@@ -377,7 +377,11 @@ vi.mock('../src/generated/bindings', () => {
       windowToggleMaximize: () => Promise.resolve(win().windowMaximize()),
       windowClose: () => Promise.resolve(win().windowClose()),
       appSetZoomFactor: (factor: number) => Promise.resolve(win().setZoomFactor(factor)),
-      shellShowContextMenu: (items: unknown[]) => Promise.resolve(win().showContextMenu(items))
+      shellShowContextMenu: (items: unknown[]) => Promise.resolve(win().showContextMenu(items)),
+      // The level only goes into the fold service's failure log; Electron's `get` takes none.
+      foldRun: (noteId: string) => window.api.noteFold.get(noteId),
+      foldRetry: (noteId: string | null) => window.api.noteFold.retry(noteId ?? undefined),
+      foldGetLastRun: () => window.api.noteFold.getLastRun()
     },
     events: {
       vaultStatusChangedEvent: event(() => window.api.onVaultStatusChanged, revised),
@@ -404,6 +408,7 @@ vi.mock('../src/generated/bindings', () => {
       journalExternalChangeEvent: event(() => api().onJournalExternalChange),
       // No Electron channel: a test reaches it through the mock api's `onJournalEventsDropped`.
       journalEventsDroppedEvent: event(() => api().onJournalEventsDropped),
+      noteFoldUpdatedEvent: event(() => window.api.noteFold.onUpdated),
       noteCreatedEvent: event(() => api().onNoteCreated),
       noteUpdatedEvent: event(() => api().onNoteUpdated),
       noteDeletedEvent: event(() => api().onNoteDeleted),

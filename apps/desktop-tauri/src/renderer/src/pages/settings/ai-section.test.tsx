@@ -9,7 +9,11 @@ const bindings = vi.hoisted(() => ({ foldGetAgentStatus: vi.fn() }))
 
 vi.mock('../../../../generated/bindings', async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  commands: { foldGetAgentStatus: bindings.foldGetAgentStatus }
+  commands: {
+    foldGetAgentStatus: bindings.foldGetAgentStatus,
+    foldGetLastRun: vi.fn(() => Promise.resolve({ status: 'idle', noteId: null }))
+  },
+  events: { noteFoldUpdatedEvent: { listen: vi.fn(() => Promise.resolve(() => {})) } }
 }))
 
 vi.mock('sonner', () => ({

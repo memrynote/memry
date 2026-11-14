@@ -64,6 +64,8 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::shell_integrations::flush_ready,
             // fold
             crate::commands::fold::fold_get_agent_status::<Wry>,
+            crate::commands::fold::fold_get_last_run::<Wry>,
+            crate::commands::fold::fold_retry::<Wry>,
             crate::commands::fold::fold_run::<Wry>,
             // ios beta
             crate::commands::ios_beta::ios_beta_join,
@@ -193,7 +195,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::settings::settings_get_local,
             crate::commands::settings::settings_get_path,
             crate::commands::settings::settings_reset_keyboard,
-            crate::commands::settings::settings_set_ai,
+            crate::commands::settings::settings_set_ai::<Wry>,
             crate::commands::settings::settings_set_group,
             crate::commands::settings::settings_set_local,
             // shell
@@ -327,6 +329,7 @@ pub fn builder() -> Builder<Wry> {
             crate::events::NoteCreatedEvent,
             crate::events::NoteDeletedEvent,
             crate::events::NoteEventsDroppedEvent,
+            crate::events::NoteFoldUpdatedEvent,
             crate::events::NoteLinksChangedEvent,
             crate::events::NoteMovedEvent,
             crate::events::NoteOutsideEditKeptEvent,

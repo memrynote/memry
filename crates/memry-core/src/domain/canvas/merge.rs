@@ -2,11 +2,12 @@
 //! (`apps/desktop/src/main/sync/item-handlers/canvas-handler.ts`), rule for
 //! rule.
 //!
-//! - **A record desktop's schema refuses is skipped** before anything else (a
-//!   key of the wrong type, a `null` the schema has no room for, a clock tick
-//!   that is not a safe integer), so a local canvas stays as it is.
-//! - **No scene, no apply** (D5). A payload without a string `scene` never
-//!   overwrites the local drawing.
+//! - **A record desktop's schema refuses is refused** before anything else (a
+//!   key of the wrong type, `scene` included, a `null` the schema has no room
+//!   for, a clock tick that is not a safe integer): a local canvas stays as it
+//!   is, and the pull ledgers it ([`crate::sync::refused_items`]).
+//! - **No scene, no apply** (D5). A payload without a `scene` is skipped and
+//!   never overwrites the local drawing.
 //! - **A create needs a `vaultId`**, or desktop would never list it.
 //! - **§6.3.1's gate decides**, through [`task_merge::document_gate`], so the
 //!   equal-clock identical skip (§6.5.2 P4) is the one every type uses.
@@ -64,7 +65,7 @@ pub fn apply_remote(
         _ => return task_merge::wholesale(conn, record, now_ms),
     };
     if fails_desktop_schema(ITEM_TYPE, remote.object(), &NOT_NULL) {
-        return Ok(Inbound::Skipped);
+        return Ok(Inbound::Refused);
     }
     let Some(remote_scene) = remote.object().get("scene").and_then(Value::as_str) else {
         return Ok(Inbound::Skipped);
@@ -169,6 +170,7 @@ fn finish(
     Ok(match outcome {
         ApplyOutcome::Applied => Inbound::Applied,
         ApplyOutcome::Corrupt { reason } => Inbound::Corrupt { reason },
+        ApplyOutcome::Refused => Inbound::Refused,
         // `task_activity` is the only expiring type and the store has no skip.
         ApplyOutcome::Skipped | ApplyOutcome::Expired => Inbound::Skipped,
     })

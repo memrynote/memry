@@ -2,9 +2,10 @@
 //! (`apps/desktop/src/main/sync/item-handlers/vault-lock-handler.ts`), rule
 //! for rule.
 //!
-//! - **A record desktop's schema refuses is skipped**, and the local record
-//!   left alone: a key of the wrong type (`target: 5`, `locked: "yes"`), a
-//!   `null` in any key, or a clock tick that is not a safe integer.
+//! - **A record desktop's schema refuses is refused**, and the local record
+//!   left alone: a key of the wrong type (`targetKind: 5`, `target: 5`,
+//!   `locked: "yes"`), a `null` in any key, or a clock tick that is not a safe
+//!   integer. The pull ledgers it ([`crate::sync::refused_items`]).
 //! - **A kind this build does not know is skipped**, and the local record left
 //!   alone: guessing what it locks could block writes or leave a target the
 //!   peer meant to protect writable. An absent `targetKind` is not unknown.
@@ -61,7 +62,7 @@ pub fn apply_remote(
         _ => return task_merge::wholesale(conn, record, now_ms),
     };
     if fails_desktop_schema(ITEM_TYPE, remote.object(), &NOT_NULL) {
-        return Ok(Inbound::Skipped);
+        return Ok(Inbound::Refused);
     }
     if let Some(Value::String(kind)) = remote.object().get("targetKind")
         && !is_known_kind(kind)

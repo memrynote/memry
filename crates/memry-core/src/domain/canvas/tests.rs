@@ -167,7 +167,7 @@ fn a_newer_remote_desktops_schema_refuses_leaves_the_local_canvas_alone() {
             }
             assert_eq!(
                 apply_inbound(conn, &inbound("c1", payload), NOW)?,
-                ApplyOutcome::Skipped,
+                ApplyOutcome::Refused,
                 "{bad}"
             );
             assert_eq!(stored(conn, "c1"), before, "{bad}");

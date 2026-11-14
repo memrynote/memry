@@ -115,7 +115,14 @@ export const commands = {
 	 *  run would use.
 	 */
 	foldGetAgentStatus: () => __TAURI_INVOKE<FoldAgentStatus>("fold_get_agent_status"),
-	/**  The note or journal day folded for a reader who asked for `level`. */
+	/**  `note-fold:last-run`: the last model run, for the settings row. */
+	foldGetLastRun: () => __TAURI_INVOKE<FoldLastRun>("fold_get_last_run"),
+	/**  `note-fold:retry`: runs the failed chunks of `note_id` (none: of the last failed note) again. */
+	foldRetry: (noteId: string | null) => __TAURI_INVOKE<FoldLayers | null>("fold_retry", { noteId }),
+	/**
+	 *  The note or journal day folded for a reader who asked for `level`, with the chunks no model
+	 *  has written yet queued.
+	 */
 	foldRun: (noteId: string, level: FoldLevel) => __TAURI_INVOKE<FoldLayers>("fold_run", { noteId, level }),
 	/**  Sent without the account's token until Step 19 (#3536) provides the session token. */
 	iosBetaJoin: (input: IosBetaJoinInput) => __TAURI_INVOKE<IosBetaJoinResult>("ios_beta_join", { input }),
@@ -466,8 +473,10 @@ export const commands = {
 	 */
 	settingsResetKeyboard: () => __TAURI_INVOKE<null>("settings_reset_keyboard"),
 	/**
-	 *  `settings:setAISettings`: writes the switches, forgets the fold's agent detection when a
-	 *  switch the fold reads changed (`refreshNoteFold`), and announces `ai` with the written fields.
+	 *  `settings:setAISettings` (`writeAISettings`): writes the switches, forgets the fold's
+	 *  agent detection when a switch the fold reads changed (`refreshNoteFold`), and announces
+	 *  `ai` with the written fields, one `setting_changed` each. With no vault open it refuses with
+	 *  the localized "no vault is open"; an empty patch only announces.
 	 */
 	settingsSetAi: (patch: AiSettingsPatch) => __TAURI_INVOKE<null>("settings_set_ai", { patch }),
 	/**
@@ -684,6 +693,7 @@ export const events = {
 	noteCreatedEvent: makeEvent<NoteCreatedEvent, NoteCreatedEvent>("note-created-event"),
 	noteDeletedEvent: makeEvent<NoteDeletedEvent, NoteDeletedEvent>("note-deleted-event"),
 	noteEventsDroppedEvent: makeEvent<NoteEventsDroppedEvent, NoteEventsDroppedEvent>("note-events-dropped-event"),
+	noteFoldUpdatedEvent: makeEvent<NoteFoldUpdatedEvent, NoteFoldUpdatedEvent>("note-fold-updated-event"),
 	noteLinksChangedEvent: makeEvent<NoteLinksChangedEvent, NoteLinksChangedEvent>("note-links-changed-event"),
 	noteMovedEvent: makeEvent<NoteMovedEvent, NoteMovedEvent>("note-moved-event"),
 	noteOutsideEditKeptEvent: makeEvent<NoteOutsideEditKeptEvent, NoteOutsideEditKeptEvent>("note-outside-edit-kept-event"),
@@ -1309,7 +1319,18 @@ export type FoldAgentStatus = {
 	resolved: string | null,
 };
 
-/**  A note folded (`FoldLayers` of `@memry/contracts/note-fold`, its local levels). */
+export type FoldKey = {
+	takeaway: string,
+	reason: string,
+};
+
+/**  The last model run, for the settings row (`FoldLastRun`). */
+export type FoldLastRun = {
+	status: LastRunStatus,
+	noteId: string | null,
+};
+
+/**  A note folded (`FoldLayers` of `@memry/contracts/note-fold`). */
 export type FoldLayers = {
 	noteId: string,
 	/**  sha256 of the text this snapshot was built from. */
@@ -1320,12 +1341,23 @@ export type FoldLayers = {
 	wordsByLevel: LevelWords,
 	/**  Empty when the note does not fold. */
 	sections: FoldSection[],
-	/**  Long enough to fold, with at least one paragraph. */
-	foldable: boolean,
+	/**  The model levels written for every chunk of the current text. */
+	ready: FoldLevel[],
+	status: FoldStatus,
+	/**  The agent's label, for "Written by <agent>"; `None` when no agent runs. */
+	agent: string | null,
 };
 
 /**  A level the reader can ask for. */
-export type FoldLevel = "full" | "brief";
+export type FoldLevel = "full" | "brief" | "key" | "takeaway" | "topic";
+
+/**  Word maps per model line; a line is `None` until the model has written it. */
+export type FoldMorph = {
+	keyTakeaway: FoldToken[] | null,
+	keyReason: FoldToken[] | null,
+	takeaway: FoldToken[] | null,
+	topic: FoldToken[] | null,
+};
 
 export type FoldParagraph = {
 	/**  sha256 of the NFC paragraph text. */
@@ -1338,13 +1370,28 @@ export type FoldParagraph = {
 	srcTokens: string[],
 	/**  Index in the word segments where each sentence starts. */
 	srcSentenceStart: number[],
-	/**  Indices into `sentences` that make Brief. */
+	/**  Word maps of the model lines onto `src_tokens`, for the slide morph. */
+	morph: FoldMorph,
+	/**  Indices into `sentences` that make Brief: the model's, else the local pick. */
 	briefIdx: number[],
+	/**  `None` until the model has written it. */
+	key: FoldKey | null,
+	/**  The model's line, else the first sentence cut to 12 words. */
+	takeaway: string,
+	/**  The model's line, else the first sentence cut to 4 words. */
+	topic: string,
+	/**  Sentence indices the model lines rest on. */
+	evidence: number[],
 };
 
 export type FoldSection = {
 	hash: string,
 	heading: string | null,
+	/**
+	 *  The model's section lines joined, once every chunk has them; the first paragraph's
+	 *  Takeaway until then.
+	 */
+	takeaway: string | null,
 	paragraphs: FoldParagraph[],
 	/**  Blocks left out of the paragraphs, in the order of the paragraph each follows. */
 	skipped: FoldSkipped[],
@@ -1356,6 +1403,15 @@ export type FoldSkipped = {
 	afterParagraph: number,
 	kind: SkippedKind,
 	count: number,
+};
+
+/**  What the settings row shows for a note (`FoldLayers.status`). */
+export type FoldStatus = "off" | "short" | "no_agent" | "writing" | "ready" | "failed";
+
+/**  A word of a model line; `src` indexes the paragraph's `src_tokens` when the word occurs there. */
+export type FoldToken = {
+	text: string,
+	src: number | null,
 };
 
 /**  `notes:set-folder-config`'s config, as `FolderConfigSchema` parses it. */
@@ -1709,9 +1765,14 @@ export type LargeFileSearchProgress = {
  */
 export type LargeFileSearchResult = { status: "complete"; query: string; hits: LargeFileHit[]; total: number; limited: boolean } | { status: "cancelled"; query: string };
 
+export type LastRunStatus = "idle" | "writing" | "failed";
+
 export type LevelWords = {
 	full: number,
 	brief: number,
+	key: number,
+	takeaway: number,
+	topic: number,
 };
 
 /**  `WikiLinkResolution`, and `WikiLinkTargetResolution` with `heading`. */
@@ -1925,6 +1986,14 @@ export type NoteEventSource = "internal" | "external";
  *  note it shows.
  */
 export type NoteEventsDroppedEvent = null;
+
+/**
+ *  A note's fold changed: a model wrote its chunks, its run failed, or the AI settings changed
+ *  (`note-fold:updated`). The renderer fetches the fold again.
+ */
+export type NoteFoldUpdatedEvent = {
+	noteId: string,
+};
 
 /**  A link the note makes (`NoteLink`). */
 export type NoteLinkView = {

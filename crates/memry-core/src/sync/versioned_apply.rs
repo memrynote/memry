@@ -103,7 +103,7 @@ impl VersionedKey {
             && match inbound {
                 Inbound::Applied => true,
                 Inbound::Merged { conflicted_fields } => conflicted_fields.is_empty(),
-                Inbound::Skipped | Inbound::Corrupt { .. } => false,
+                Inbound::Skipped | Inbound::Corrupt { .. } | Inbound::Refused => false,
             };
 
         let mut changes: Vec<(&str, Change)> = Vec::new();

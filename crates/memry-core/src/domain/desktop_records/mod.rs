@@ -2,10 +2,12 @@
 //! #3533): one whole-record clock, a desktop handler that keeps some local
 //! keys over a newer remote, and local writes that tick that clock.
 //!
-//! Inbound, [`apply_kept`] first skips a remote that fails desktop's schema (a
+//! Inbound, [`apply_kept`] first refuses a remote that fails desktop's schema (a
 //! schema key of the wrong type, a clock tick that is not a safe non-negative
 //! integer, or a `null` in [`Kept::not_null`]), and [`unreadable`] a live
-//! remote that is not an object over a local row; then [`apply_kept`] is
+//! remote that is not an object over a local row: [`Inbound::Refused`] leaves
+//! the local row as it is and the pull records the record in
+//! [`crate::sync::refused_items`] for a later build; then [`apply_kept`] is
 //! §6.3.1's document gate followed by the remote
 //! payload with the [`Kept`] keys taken back from the local record, under the
 //! merged clock on a concurrent branch (each handler's "last write wins").
@@ -37,7 +39,7 @@ use crate::storage::repositories::{Change, StoredPayload};
 pub(crate) struct Kept {
     /// The schema keys desktop's schema refuses `null` for
     /// (`packages/contracts/src/sync-payloads.ts`, every one `.optional()`
-    /// without `.nullable()`). [`apply_kept`] skips a remote that nulls one.
+    /// without `.nullable()`). [`apply_kept`] refuses a remote that nulls one.
     pub not_null: &'static [&'static str],
     /// `data.x ?? existing.x`: an absent remote value keeps the local one.
     /// Every one is in `not_null`.
@@ -79,8 +81,11 @@ const MAX_SAFE_INTEGER: u64 = (1 << 53) - 1;
 /// A live record whose payload is not a JSON object. Desktop refuses it
 /// (`parse_error` or `schema_invalid`,
 /// `apps/desktop/src/main/sync/apply-item.ts:155-176`),
-/// so a local row stays as it is; with none, it is stored as corrupt. A delete
-/// is the tombstone path unchanged.
+/// so a local row stays as it is; with none, it is stored as corrupt. JSON
+/// that is not an object is desktop's `schema_invalid`, which its ledger keeps
+/// (`apps/desktop/src/main/sync/engine/pull-coordinator.ts:684`), so it is
+/// [`Inbound::Refused`]; text that is not JSON is `parse_error`, a plain skip.
+/// A delete is the tombstone path unchanged.
 pub(crate) fn unreadable(
     conn: &Connection,
     record: &InboundRecord,
@@ -89,7 +94,12 @@ pub(crate) fn unreadable(
     if record.deleted_at.is_none()
         && sync_items::load(conn, &record.item_type, &record.item_id)?.is_some()
     {
-        return Ok(Inbound::Skipped);
+        let json = serde_json::from_str::<Value>(&record.payload_json).is_ok();
+        return Ok(if json {
+            Inbound::Refused
+        } else {
+            Inbound::Skipped
+        });
     }
     task_merge::wholesale(conn, record, now_ms)
 }
@@ -99,7 +109,8 @@ pub(crate) fn unreadable(
 /// `null` in `not_null`. Desktop parses the remote with the type's schema
 /// before its handler reads the local row and refuses the whole record
 /// (`schema_invalid`, `apps/desktop/src/main/sync/apply-item.ts:166-176`), so a
-/// caller skips it before the gate and the local record stays as it is.
+/// caller returns [`Inbound::Refused`] before the gate: the local record stays
+/// as it is, and the pull ledgers it ([`crate::sync::refused_items`]).
 pub(crate) fn fails_desktop_schema(item_type: &str, remote: &Object, not_null: &[&str]) -> bool {
     // `VectorClockSchema`'s ticks are safe non-negative integers
     // (`packages/contracts/src/sync-api.ts:386`); `Kind::Clock` takes any number.
@@ -129,7 +140,7 @@ pub(crate) fn apply_kept(
         });
     };
     if fails_desktop_schema(&record.item_type, remote.object(), kept.not_null) {
-        return Ok(Inbound::Skipped);
+        return Ok(Inbound::Refused);
     }
     let merged_clock = match task_merge::document_gate(conn, record)? {
         Gate::Skip => return Ok(Inbound::Skipped),

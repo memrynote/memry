@@ -284,7 +284,8 @@ fn a_remote_create_missing_a_row_field_or_of_an_unknown_kind_is_skipped() {
             json!({"targetKind": "folder", "target": "Projects", "clock": {"peer": 1}}),
             json!({"targetKind": "tag", "target": "Projects", "locked": true, "clock": {"peer": 1}}),
         ] {
-            assert_eq!(pull(conn, remote(ID, body.clone()))?.skipped, 1, "{body}");
+            let totals = pull(conn, remote(ID, body.clone()))?;
+            assert_eq!((totals.skipped, totals.refused.len()), (1, 0), "{body}");
             assert!(sync_items::load(conn, "vault_lock", ID)?.is_none(), "{body}");
         }
         assert_eq!(folders(conn), Vec::<String>::new());
@@ -349,7 +350,9 @@ fn a_newer_remote_desktops_schema_refuses_leaves_the_local_lock_alone() {
             json!({"locked": false, "updatedAt": null, "clock": newer}),
             json!({"locked": false, "clock": {"device-a": 1, "peer": 9_007_199_254_740_992_u64}}),
         ] {
-            assert_eq!(pull(conn, remote(ID, bad.clone()))?.skipped, 1, "{bad}");
+            let totals = pull(conn, remote(ID, bad.clone()))?;
+            let key = ("vault_lock".to_owned(), ID.to_owned());
+            assert_eq!((totals.skipped, totals.refused), (1, vec![key]), "{bad}");
             assert_eq!(payload(conn, ID), before, "{bad}");
         }
         assert_eq!(folders(conn), ["Projects"]);
