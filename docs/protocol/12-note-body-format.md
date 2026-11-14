@@ -117,6 +117,11 @@ the whole text to literal paragraphs (§12.1.0).
   is still promoted. The editor's open-time promotion
   (`apps/desktop/src/renderer/src/components/note/content-area/hooks/use-editor-sync.ts:236`)
   runs the same function, so no replica turns a styled token into a node.
+  A build before #4652 that opens a doc this build seeded still promotes a styled token, and
+  two such builds that open it before they sync each add a chip and duplicate the text after
+  it (#3871). No version floor guards this: styled tokens come only from hand edits or other
+  tools, since the app writes a chip outside the delimiters of a styled run, as in
+  `A **x** ((mention:…)) **y** b.`.
 - The token becomes a `linkMention` node with `url` set to the parsed URL and `domain` set to
   the URL's hostname with its first `www.` removed, or to the URL itself when `new URL` throws.
   `title`, `favicon` and `siteName` stay empty; the editor fills them in on open.
