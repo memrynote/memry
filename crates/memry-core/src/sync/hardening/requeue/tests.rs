@@ -5,6 +5,7 @@ use crate::storage::repositories::sync_items::{self, InboundRecord};
 use crate::storage::{open_data, test_support::temp_dir};
 use crate::sync::apply::apply_inbound_on;
 use crate::sync::clock::{VectorClock, clock_of};
+use crate::sync::outbox::{self, Change};
 
 /// One payload per merge site the requeue covers, under `clock`.
 fn payload(item_type: &str, clock: &VectorClock) -> String {
@@ -134,4 +135,34 @@ fn an_apply_that_is_not_concurrent_queues_nothing() {
         Ok(())
     })
     .expect("ordered applies");
+}
+
+#[test]
+fn a_merge_keeps_a_queued_create_or_delete_as_it_is() {
+    let dir = temp_dir("requeue-queued");
+    let db = open_data(&dir.path().join("data.db")).expect("open data.db");
+    db.call_blocking(|conn| {
+        for (item_type, queued_op) in [
+            ("task", Change::create as fn(&str, &str) -> Change),
+            ("inbox", Change::delete),
+        ] {
+            apply_inbound_on(
+                conn,
+                &record(item_type, &clock_of([("a", 2)])),
+                1,
+                Some("a"),
+            )?;
+            let tx = conn.unchecked_transaction().expect("begin");
+            outbox::enqueue(&tx, &queued_op(item_type, &format!("{item_type}-1")), 1)?;
+            tx.commit().expect("commit");
+            let op = queued(conn, item_type)[0].0.clone();
+
+            let remote = record(item_type, &clock_of([("a", 1), ("b", 1)]));
+            apply_inbound_on(conn, &remote, 2, Some("a"))?;
+
+            assert_eq!(queued(conn, item_type), vec![(op, None)], "{item_type}");
+        }
+        Ok(())
+    })
+    .expect("merge");
 }

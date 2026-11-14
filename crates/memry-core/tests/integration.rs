@@ -427,6 +427,9 @@ mod sync_refused_items;
 #[cfg(feature = "markdown")]
 #[path = "sync_requeue_convergence.rs"]
 mod sync_requeue_convergence;
+#[cfg(feature = "markdown")]
+#[path = "sync_requeue_delete.rs"]
+mod sync_requeue_delete;
 #[path = "sync_requeue_pass.rs"]
 mod sync_requeue_pass;
 #[path = "tag_fields.rs"]

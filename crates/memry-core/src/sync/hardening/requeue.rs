@@ -20,7 +20,7 @@
 //! A requeue is not a local edit, so it queues no calendar provider push
 //! ([`crate::sync::outbox::enqueue_merged`]).
 
-use rusqlite::Connection;
+use rusqlite::{Connection, params};
 
 use crate::api::errors::StorageError;
 use crate::domain::tasks::Inbound;
@@ -35,23 +35,47 @@ fn failed(error: rusqlite::Error) -> StorageError {
 
 /// Queues the merged `(item_type, item_id)` for push, inside the transaction
 /// that stored the merge.
+///
+/// A record row already queued for the key (`create`, `upsert` or `delete`)
+/// is left alone: it rebuilds from the live row at send, so it carries the
+/// merge too, and replacing it would turn a pending local `delete` into an
+/// `upsert` the server stores live, or a `create` into an update.
 pub(crate) fn requeue(
     tx: &Connection,
     item_type: &str,
     item_id: &str,
     now_ms: i64,
 ) -> Result<(), StorageError> {
+    let queued: bool = tx
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM outbox
+              WHERE item_type = ?1 AND item_id = ?2 AND op <> ?3)",
+            params![item_type, item_id, outbox::OP_CRDT_UPDATE],
+            |row| row.get(0),
+        )
+        .map_err(failed)?;
+    if queued {
+        return Ok(());
+    }
     outbox::enqueue_merged(tx, item_type, item_id, now_ms).map(drop)
 }
 
 /// Stores a concurrent branch's merged `record` and re-queues it, in one
 /// transaction. A payload the wholesale path records corrupt is not queued.
+/// A local tombstone stays one, as on the field-merge path: the merge is
+/// concurrent with the local delete, which still goes out.
 pub(crate) fn store_merged(
     conn: &Connection,
     record: &InboundRecord,
     now_ms: i64,
 ) -> Result<Inbound, StorageError> {
     let tx = conn.unchecked_transaction().map_err(failed)?;
+    let local_deleted_at =
+        sync_items::load(&tx, &record.item_type, &record.item_id)?.and_then(|row| row.deleted_at);
+    let record = &InboundRecord {
+        deleted_at: local_deleted_at,
+        ..record.clone()
+    };
     let outcome = sync_items::apply_remote_in(&tx, record, now_ms)?;
     if outcome == ApplyOutcome::Applied {
         requeue(&tx, &record.item_type, &record.item_id, now_ms)?;

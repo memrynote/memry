@@ -80,7 +80,7 @@ pub fn apply_remote(
         if !remote.object().get("vaultId").is_some_and(Value::is_string) {
             return Ok(Inbound::Skipped);
         }
-        return finish(tx, record, now_ms);
+        return finish(tx, record, now_ms, false);
     };
 
     let merged_clock = match task_merge::document_gate(&tx, record)? {
@@ -104,10 +104,7 @@ pub fn apply_remote(
         payload_json: remote.merge(&changes),
         ..record.clone()
     };
-    if merged_clock.is_some() {
-        requeue::requeue(&tx, ITEM_TYPE, &record.item_id, now_ms)?;
-    }
-    finish(tx, &merged, now_ms)
+    finish(tx, &merged, now_ms, merged_clock.is_some())
 }
 
 /// The remote payload's edits that keep what desktop keeps: an absent
@@ -168,8 +165,12 @@ fn finish(
     tx: rusqlite::Transaction<'_>,
     record: &InboundRecord,
     now_ms: i64,
+    merged: bool,
 ) -> Result<Inbound, StorageError> {
     let outcome = sync_items::apply_remote_in(&tx, record, now_ms)?;
+    if merged && outcome == ApplyOutcome::Applied {
+        requeue::requeue(&tx, ITEM_TYPE, &record.item_id, now_ms)?;
+    }
     tx.commit().map_err(failed)?;
     Ok(match outcome {
         ApplyOutcome::Applied => Inbound::Applied,

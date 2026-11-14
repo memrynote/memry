@@ -299,7 +299,7 @@ deferred or parked, the document's later rows are not claimed
 (`crates/memry-core/src/sync/outbox.rs:439-442`): a peer given them without it
 holds pending structs until the earlier update arrives, and one that never does
 would never heal. The next edit of a parked document queues a row and releases the
-batch with it (`crates/memry-core/src/sync/outbox.rs:298`). Desktop's outbox is
+batch with it (`crates/memry-core/src/sync/outbox.rs:331-338`). Desktop's outbox is
 all or none per document the same way.
 
 **A snapshot claim bounds the race with an unclaimed replace.** A snapshot sent

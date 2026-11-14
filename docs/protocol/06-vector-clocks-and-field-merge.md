@@ -246,15 +246,18 @@ and a client that breaks any of them reintroduces divergence.**
   from `packages/sync-client/src/field-merge.ts:155` and
   `packages/sync-client/src/item-handlers/types.ts:66`), but a `'conflict'`
   return re-queues the item one level up, in the pull coordinator
-  (`apps/desktop/src/main/sync/engine/conflict-report.ts:56-61`, called from
+  (`apps/desktop/src/main/sync/engine/conflict-report.ts:12-36`, called from
   `apps/desktop/src/main/sync/engine/pull-coordinator.ts:861-864`, `:559-562`,
   `:648-651` and `:942`), and an enqueue requests a push
   (`apps/desktop/src/main/sync/runtime.ts:907`). The queued row is rebuilt from
   the live — merged — row by P2, and its union clock has one component the
   stored row lacks, so `detectReplay` accepts it. Rust core: every §6.3.1
   `concurrent` branch re-queues the row in the transaction that stores the
-  merge, as an upsert with no payload, the union clock untouched
-  (`crates/memry-core/src/sync/hardening/requeue.rs:38-66`); it does so on
+  merge, as an upsert with no payload, the union clock untouched, unless a
+  `create`, `upsert` or `delete` row is already queued for the item, which
+  then stays as it is; a merge over a local tombstone keeps the tombstone, so
+  a pending local delete still goes out as a delete
+  (`crates/memry-core/src/sync/hardening/requeue.rs:36-90`); it does so on
   every concurrent merge, not only one with a conflicted field, because a
   merge that kept a local field is just as absent from the server row.
 - **P4 — an EQUAL incoming clock applies the remote row, it does not skip it.**
