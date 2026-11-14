@@ -236,9 +236,9 @@ struct TaskDetailTitleField: View {
             return
         }
         Task {
-            let wrote = await store.detailRename(current, to: text)
-            if !wrote {
-                commits = TaskTitleCommits()
+            // A failed write is reported by the store. `commits` stays as it
+            // is: focus may have come back meanwhile, and its edit still writes.
+            if await !store.detailRename(current, to: text) {
                 draft = store.items[task.id]?.title ?? task.title
             }
         }

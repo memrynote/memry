@@ -179,6 +179,8 @@ enum QuickCaptureCopy {
     static let alreadyInInbox = "Already in Inbox"
     static let view = "View"
     static let add = "New"
+    /// The menu bar's name for ⇧⌘N.
+    static let commandTitle = "Quick Capture"
     static let addHint = "Writes something down and files it"
     static let addToJournal = "Add to today"
     static let addToJournalHint = "Adds a line to today's journal entry"

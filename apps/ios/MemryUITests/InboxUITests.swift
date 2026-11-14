@@ -65,10 +65,44 @@ final class InboxUITests: XCTestCase {
         deleteFromArchived(text)
     }
 
+    /// #4355: quick capture moved from Home to the shell, which owns the
+    /// receipt now. Home still shows it beside the "+" on iPhone.
+    func testACaptureFromHomeShowsItsReceipt() throws {
+        try openVault()
+        let home = app.buttons["Home"].firstMatch
+        if home.exists { home.tap() }
+        tap("home.addButton")
+        let field = app.descendants(matching: .any)["capture.field"].firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 10), "the capture sheet did not open")
+        let text = "[agent] \(run) receipt"
+        field.typeText(text)
+        tap("capture.kind.inbox")
+        tap("capture.send")
+        let toast = app.descendants(matching: .any)["capture.toast"].firstMatch
+        XCTAssertTrue(toast.waitForExistence(timeout: 5), "Home showed no receipt for the capture")
+        let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        shot.name = "home-receipt"
+        shot.lifetime = .keepAlways
+        add(shot)
+
+        try openInboxTab()
+        let row = row(containing: text)
+        XCTAssertTrue(row.waitForExistence(timeout: 10), "the capture is not in the inbox")
+        row.swipeLeft()
+        tap("inbox.swipe.archive")
+        deleteFromArchived(text)
+    }
+
     // MARK: Steps
 
     /// Launches onto the Inbox tab.
     private func openInbox() throws {
+        try openVault()
+        try openInboxTab()
+    }
+
+    /// Launches and opens the vault.
+    private func openVault() throws {
         app.launch()
         // The staging vault's name is whatever a desktop peer last set it to;
         // `TEST_RUNNER_MEMRY_UI_VAULT` overrides the usual one.
@@ -90,8 +124,15 @@ final class InboxUITests: XCTestCase {
             Thread.sleep(forTimeInterval: 0.5)
         }
         XCTAssertTrue(menu.waitForExistence(timeout: 5), "the vault did not open")
+    }
+
+    private func openInboxTab() throws {
+        let menu = app.buttons["Menu"].firstMatch
         // Inbox sits in the bar or behind Menu, by desktop's rail order.
-        let inboxTab = app.buttons["Inbox"].firstMatch
+        // A launch can restore Inbox, whose title menu is labelled "Inbox" too.
+        let inboxTab = app.buttons.matching(NSPredicate(
+            format: "label == 'Inbox' AND identifier != 'inbox.titleMenu'"
+        )).firstMatch
         if inboxTab.exists {
             inboxTab.tap()
         } else {
