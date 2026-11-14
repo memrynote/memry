@@ -63,6 +63,9 @@ unicode-normalization = "0.1.25"
 ort = { version = "=2.0.0-rc.15", default-features = false, features = ["std", "tracing", "api-31"] }
 # The EmbeddingGemma 2 tokenizer (`tokenizer.json`, BPE with byte fallback).
 tokenizers = { version = "0.23.2", default-features = false, features = ["onig"] }
+# Decoders of the formats a vault image note can hold (packages/shared file-types.ts, minus SVG),
+# pure Rust (Kaan, 2026-11-13): JPEG is zune-jpeg.
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp"] }
 # Pinned with `vpk` (same version): the pack format and the client must agree.
 velopack = "=1.2.161"
 
@@ -70,6 +73,22 @@ velopack = "=1.2.161"
 lto = true
 codegen-units = 1
 strip = "debuginfo"
+
+# The image decoders and memry-ml's preprocessing work per pixel: unoptimised, the pixel-tensors
+# vectors take minutes in the dev profile tests use. Integer and IEEE float results do not depend
+# on the optimisation level.
+[profile.dev.package.memry-ml]
+opt-level = 3
+[profile.dev.package.zune-jpeg]
+opt-level = 3
+[profile.dev.package.png]
+opt-level = 3
+[profile.dev.package.image-webp]
+opt-level = 3
+[profile.dev.package.fdeflate]
+opt-level = 3
+[profile.dev.package.moxcms]
+opt-level = 3
 
 # WebView2 runs every init script in every frame, so an HTML embed got Tauri's IPC globals on
 # Windows (#4150). This fork is wry 0.57.1 plus one commit that starts each main-frame-only script

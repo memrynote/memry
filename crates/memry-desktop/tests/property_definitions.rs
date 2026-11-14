@@ -51,6 +51,7 @@ pub(crate) fn fixture() -> Fixture {
         definitions: PropertyDefinitions::new(
             vault.clone(),
             core.property_definition_records(store.clone()).unwrap(),
+            Some(core.search().unwrap()),
         ),
         records: core.property_definition_records(store).unwrap(),
         core,
