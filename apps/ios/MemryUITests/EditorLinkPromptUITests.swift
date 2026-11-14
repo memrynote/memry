@@ -174,5 +174,6 @@ final class EditorLinkPromptUITests: XCTestCase {
         XCTAssertTrue(notes.waitForExistence(timeout: 5), "the notes list did not show")
         notes.tap()
         XCTAssertTrue(app.buttons["notes.addButton"].waitForExistence(timeout: 10))
+        app.primeCommandKeys()
     }
 }
