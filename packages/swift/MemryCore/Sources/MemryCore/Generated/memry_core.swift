@@ -8934,6 +8934,224 @@ public func FfiConverterTypeSecureStore_lower(_ value: SecureStore) -> UInt64 {
 
 
 
+public protocol SemanticSearchProtocol: AnyObject, Sendable {
+    
+    /**
+     * Unloads the model, deletes the model files and the opt-in, and deletes
+     * this vault's `vectors.db`. Other vaults delete theirs on their next
+     * open, because the opt-in is gone.
+     */
+    func disable(vault: Vault) async throws 
+    
+    /**
+     * Opts this device in, then downloads or resumes. Refuses when the rest
+     * of the download would leave less than 64 MiB free. Idempotent.
+     */
+    func enable(availableBytes: UInt64) async throws  -> ModelState
+    
+    /**
+     * Downloads or resumes only when this device opted in. For foregrounding
+     * and Wi-Fi coming back.
+     */
+    func resume() async throws  -> ModelState
+    
+    /**
+     * Cheap: file sizes and two counts.
+     */
+    func status(vault: Vault)  -> SemanticStatus
+    
+}
+open class SemanticSearch: SemanticSearchProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_memry_core_fn_clone_semanticsearch(self.handle, $0) }
+    }
+    /**
+     * No model load and no network. Build exactly one per process.
+     */
+public convenience init(modelsDir: String, transport: Transport, reachability: Reachability) {
+    let handle =
+        try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_constructor_semanticsearch_new(
+        FfiConverterString.lower(modelsDir),
+        FfiConverterTypeTransport_lower(transport),
+        FfiConverterTypeReachability_lower(reachability),uniffiCallStatus
+    )
+}
+    self.init(unsafeFromHandle: handle)
+}
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_memry_core_fn_free_semanticsearch(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Unloads the model, deletes the model files and the opt-in, and deletes
+     * this vault's `vectors.db`. Other vaults delete theirs on their next
+     * open, because the opt-in is gone.
+     */
+open func disable(vault: Vault)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_semanticsearch_disable(
+                        self.uniffiCloneHandle(),FfiConverterTypeVault_lower(vault)
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_void,
+            completeFunc: ffi_memry_core_rust_future_complete_void,
+            freeFunc: ffi_memry_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeSemanticError_lift
+        )
+}
+    
+    /**
+     * Opts this device in, then downloads or resumes. Refuses when the rest
+     * of the download would leave less than 64 MiB free. Idempotent.
+     */
+open func enable(availableBytes: UInt64)async throws  -> ModelState  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_semanticsearch_enable(
+                        self.uniffiCloneHandle(),FfiConverterUInt64.lower(availableBytes)
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeModelState_lift,
+            errorHandler: FfiConverterTypeSemanticError_lift
+        )
+}
+    
+    /**
+     * Downloads or resumes only when this device opted in. For foregrounding
+     * and Wi-Fi coming back.
+     */
+open func resume()async throws  -> ModelState  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_semanticsearch_resume(
+                        self.uniffiCloneHandle()
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeModelState_lift,
+            errorHandler: FfiConverterTypeSemanticError_lift
+        )
+}
+    
+    /**
+     * Cheap: file sizes and two counts.
+     */
+open func status(vault: Vault) -> SemanticStatus  {
+    return try!  FfiConverterTypeSemanticStatus_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_semanticsearch_status(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeVault_lower(vault),uniffiCallStatus
+    )
+})
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSemanticSearch: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = SemanticSearch
+
+    public static func lift(_ handle: UInt64) throws -> SemanticSearch {
+        return SemanticSearch(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: SemanticSearch) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SemanticSearch {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: SemanticSearch, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSemanticSearch_lift(_ handle: UInt64) throws -> SemanticSearch {
+    return try FfiConverterTypeSemanticSearch.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSemanticSearch_lower(_ value: SemanticSearch) -> UInt64 {
+    return FfiConverterTypeSemanticSearch.lower(value)
+}
+
+
+
+
+
+
 /**
  * The synced settings over one vault.
  */
@@ -23823,6 +24041,68 @@ public func FfiConverterTypeSearchResult_lower(_ value: SearchResult) -> RustBuf
 }
 
 
+public struct SemanticStatus: Equatable, Hashable {
+    public var model: ModelState
+    public var downloadBytes: UInt64
+    public var embeddedNotes: UInt32
+    public var totalNotes: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(model: ModelState, downloadBytes: UInt64, embeddedNotes: UInt32, totalNotes: UInt32) {
+        self.model = model
+        self.downloadBytes = downloadBytes
+        self.embeddedNotes = embeddedNotes
+        self.totalNotes = totalNotes
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension SemanticStatus: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSemanticStatus: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SemanticStatus {
+        return
+            try SemanticStatus(
+                model: FfiConverterTypeModelState.read(from: &buf), 
+                downloadBytes: FfiConverterUInt64.read(from: &buf), 
+                embeddedNotes: FfiConverterUInt32.read(from: &buf), 
+                totalNotes: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: SemanticStatus, into buf: inout [UInt8]) {
+        FfiConverterTypeModelState.write(value.model, into: &buf)
+        FfiConverterUInt64.write(value.downloadBytes, into: &buf)
+        FfiConverterUInt32.write(value.embeddedNotes, into: &buf)
+        FfiConverterUInt32.write(value.totalNotes, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSemanticStatus_lift(_ buf: RustBuffer) throws -> SemanticStatus {
+    return try FfiConverterTypeSemanticStatus.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSemanticStatus_lower(_ value: SemanticStatus) -> RustBuffer {
+    return FfiConverterTypeSemanticStatus.lower(value)
+}
+
+
 /**
  * One run of snippet text. `highlighted` runs are the query's matches.
  */
@@ -29669,6 +29949,89 @@ public func FfiConverterTypeDevicePlatform_lower(_ value: DevicePlatform) -> Rus
 
 
 
+
+public enum DownloadFailure: Equatable, Hashable {
+    
+    /**
+     * A finished file's sha256 differed from the pin. The part is deleted, so
+     * the next attempt starts that file over.
+     */
+    case mismatch
+    /**
+     * The host answered with something other than the range asked for.
+     */
+    case http(status: UInt16
+    )
+    case network
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension DownloadFailure: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDownloadFailure: FfiConverterRustBuffer {
+    typealias SwiftType = DownloadFailure
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DownloadFailure {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .mismatch
+        
+        case 2: return .http(status: try FfiConverterUInt16.read(from: &buf)
+        )
+        
+        case 3: return .network
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: DownloadFailure, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .mismatch:
+            writeInt(&buf, Int32(1))
+        
+        
+        case let .http(status):
+            writeInt(&buf, Int32(2))
+            FfiConverterUInt16.write(status, into: &buf)
+            
+        
+        case .network:
+            writeInt(&buf, Int32(3))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDownloadFailure_lift(_ buf: RustBuffer) throws -> DownloadFailure {
+    return try FfiConverterTypeDownloadFailure.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDownloadFailure_lower(_ value: DownloadFailure) -> RustBuffer {
+    return FfiConverterTypeDownloadFailure.lower(value)
+}
+
+
+
 /**
  * What this device holds of a day's body.
  */
@@ -30287,6 +30650,109 @@ public func FfiConverterTypeMatchKind_lift(_ buf: RustBuffer) throws -> MatchKin
 #endif
 public func FfiConverterTypeMatchKind_lower(_ value: MatchKind) -> RustBuffer {
     return FfiConverterTypeMatchKind.lower(value)
+}
+
+
+
+
+public enum ModelState: Equatable, Hashable {
+    
+    case off
+    case downloading(received: UInt64, total: UInt64
+    )
+    /**
+     * Wi-Fi means unmetered: a hotspot or Low Data Mode counts as cellular.
+     */
+    case waitingForWifi(received: UInt64, total: UInt64
+    )
+    case failed(received: UInt64, total: UInt64, failure: DownloadFailure
+    )
+    case ready
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ModelState: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeModelState: FfiConverterRustBuffer {
+    typealias SwiftType = ModelState
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ModelState {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .off
+        
+        case 2: return .downloading(received: try FfiConverterUInt64.read(from: &buf), total: try FfiConverterUInt64.read(from: &buf)
+        )
+        
+        case 3: return .waitingForWifi(received: try FfiConverterUInt64.read(from: &buf), total: try FfiConverterUInt64.read(from: &buf)
+        )
+        
+        case 4: return .failed(received: try FfiConverterUInt64.read(from: &buf), total: try FfiConverterUInt64.read(from: &buf), failure: try FfiConverterTypeDownloadFailure.read(from: &buf)
+        )
+        
+        case 5: return .ready
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ModelState, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .off:
+            writeInt(&buf, Int32(1))
+        
+        
+        case let .downloading(received,total):
+            writeInt(&buf, Int32(2))
+            FfiConverterUInt64.write(received, into: &buf)
+            FfiConverterUInt64.write(total, into: &buf)
+            
+        
+        case let .waitingForWifi(received,total):
+            writeInt(&buf, Int32(3))
+            FfiConverterUInt64.write(received, into: &buf)
+            FfiConverterUInt64.write(total, into: &buf)
+            
+        
+        case let .failed(received,total,failure):
+            writeInt(&buf, Int32(4))
+            FfiConverterUInt64.write(received, into: &buf)
+            FfiConverterUInt64.write(total, into: &buf)
+            FfiConverterTypeDownloadFailure.write(failure, into: &buf)
+            
+        
+        case .ready:
+            writeInt(&buf, Int32(5))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeModelState_lift(_ buf: RustBuffer) throws -> ModelState {
+    return try FfiConverterTypeModelState.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeModelState_lower(_ value: ModelState) -> RustBuffer {
+    return FfiConverterTypeModelState.lower(value)
 }
 
 
@@ -31341,6 +31807,97 @@ public func FfiConverterTypeSeedOutcome_lower(_ value: SeedOutcome) -> RustBuffe
     return FfiConverterTypeSeedOutcome.lower(value)
 }
 
+
+
+public 
+enum SemanticError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
+
+    
+    
+    case Unavailable
+    case Inference(what: String
+    )
+    case Storage(source: StorageError
+    )
+
+    
+
+    
+
+    
+    public var errorDescription: String? {
+        String(reflecting: self)
+    }
+    
+}
+
+#if compiler(>=6)
+extension SemanticError: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSemanticError: FfiConverterRustBuffer {
+    typealias SwiftType = SemanticError
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SemanticError {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+        
+
+        
+        case 1: return .Unavailable
+        case 2: return .Inference(
+            what: try FfiConverterString.read(from: &buf)
+            )
+        case 3: return .Storage(
+            source: try FfiConverterTypeStorageError.read(from: &buf)
+            )
+
+         default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: SemanticError, into buf: inout [UInt8]) {
+        switch value {
+
+        
+
+        
+        
+        case .Unavailable:
+            writeInt(&buf, Int32(1))
+        
+        
+        case let .Inference(what):
+            writeInt(&buf, Int32(2))
+            FfiConverterString.write(what, into: &buf)
+            
+        
+        case let .Storage(source):
+            writeInt(&buf, Int32(3))
+            FfiConverterTypeStorageError.write(source, into: &buf)
+            
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSemanticError_lift(_ buf: RustBuffer) throws -> SemanticError {
+    return try FfiConverterTypeSemanticError.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSemanticError_lower(_ value: SemanticError) -> RustBuffer {
+    return FfiConverterTypeSemanticError.lower(value)
+}
 
 
 /**
@@ -36367,6 +36924,18 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_searchrecents_record() != 39039) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_semanticsearch_disable() != 18804) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_semanticsearch_enable() != 60176) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_semanticsearch_resume() != 55843) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_semanticsearch_status() != 37333) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_settings_clear() != 25310) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -36899,6 +37468,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_constructor_runtimehost_new() != 10694) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_constructor_semanticsearch_new() != 38333) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_constructor_vault_open() != 12310) {

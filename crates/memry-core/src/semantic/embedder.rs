@@ -1,10 +1,9 @@
 //! Text to vector: desktop's embeddinggemma q4 graph through ONNX Runtime,
 //! truncated to 256 dimensions exactly as desktop's `truncateEmbedding` does.
 
-use std::path::Path;
 use std::sync::Arc;
 
-use super::SemanticError;
+use super::{SemanticError, VerifiedModel};
 
 /// Desktop's `EMBEDDING_DIMENSION`, the Matryoshka truncation of the model's 768.
 pub const DIMENSION: usize = 256;
@@ -84,16 +83,17 @@ pub trait Embed: Send + Sync {
 }
 
 /// Loads `tokenizer.json` and `onnx/model_q4.onnx` (with its `_data` beside
-/// it) from `dir`, and checks the graph's input and output names before
-/// returning. Without the `semantic` feature this is always `Unavailable`.
-pub fn load(dir: &Path, threads: Threads) -> Result<Arc<dyn Embed>, SemanticError> {
+/// it) from the verified model, and checks the graph's input and output names
+/// before returning. Without the `semantic` feature this is always
+/// `Unavailable`.
+pub fn load(model: &VerifiedModel, threads: Threads) -> Result<Arc<dyn Embed>, SemanticError> {
     #[cfg(feature = "semantic")]
     {
-        Ok(Arc::new(onnx::OnnxEmbedder::load(dir, threads)?))
+        Ok(Arc::new(onnx::OnnxEmbedder::load(model.dir(), threads)?))
     }
     #[cfg(not(feature = "semantic"))]
     {
-        let _ = (dir, threads);
+        let _ = (model.dir(), threads);
         Err(SemanticError::Unavailable)
     }
 }
@@ -305,7 +305,10 @@ mod tests {
     #[test]
     fn load_without_the_feature_is_unavailable() {
         assert!(matches!(
-            load(Path::new("/nonexistent"), Threads::Foreground),
+            load(
+                &VerifiedModel::assume("/nonexistent".into()),
+                Threads::Foreground
+            ),
             Err(SemanticError::Unavailable)
         ));
     }
