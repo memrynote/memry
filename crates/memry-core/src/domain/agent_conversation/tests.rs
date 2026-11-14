@@ -180,7 +180,7 @@ fn concurrent_edits_merge_field_by_field_and_the_title_stays_sealed() {
         assert_eq!(
             queued(conn, ITEM_TYPE, &id),
             queued_before,
-            "the merge queues nothing (§6.5.2 P3)"
+            "the merge's requeue collapses into the queued row (§6.5.2 P3)"
         );
 
         // A concurrent title on both sides: the larger clock total wins.

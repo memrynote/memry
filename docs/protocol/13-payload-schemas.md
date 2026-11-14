@@ -105,9 +105,9 @@ requested pairs (`crates/memry-core/src/sync/pull/apply_step.rs:81-129`). A
 failed refetch is logged and the run goes on to the feed with every entry kept
 (`crates/memry-core/src/sync/pull/apply_step.rs:67-71`). Three things resolve
 an entry: an apply, an expiry or a clock decision of the record
-(`crates/memry-core/src/sync/apply.rs:208`,
+(`crates/memry-core/src/sync/apply.rs:202`,
 `crates/memry-core/src/sync/refused_items.rs:63-78`), a tombstone of it, typed, bare
-or untyped (`apply.rs:185`, `:204`, `:225`), and a refetch that did not return it
+or untyped (`apply.rs:179`, `:198`, `:219`), and a refetch that did not return it
 (`crates/memry-core/src/sync/pull/apply_step.rs:120-127`). A pair the server
 lists in `blobMissing` (chapter 05 §5.12.4) is not returned, so Rust resolves
 it as gone where desktop keeps it as `blob_missing` and refetches it on the
@@ -118,7 +118,7 @@ returned record that does not decode keeps its entry under the older build and
 the cooldown, and its local row is not flagged corrupt
 (`crates/memry-core/src/sync/pull/apply_step.rs:107-114`). One that decodes but
 applies as corrupt keeps its entry the same way, and that apply does flag the
-row corrupt, as on any pull (`crates/memry-core/src/sync/apply.rs:498`).
+row corrupt, as on any pull (`crates/memry-core/src/sync/apply/record.rs:115`).
 
 ### 13.2.1 Desktop meets the obligation by a different mechanism (#2183)
 
@@ -262,14 +262,15 @@ plaintext in `data.db`. The exception is bounded:
 (a `null` where the schema has no `.nullable()`, a value of the wrong type, or
 `widgets` that is not a string), the Rust core returns `Refused` and the pull
 ledgers it as above
-(`crates/memry-core/src/domain/desktop_records/mod.rs:107-124`,
-`crates/memry-core/src/domain/canvas/merge.rs:67-69`,
-`crates/memry-core/src/domain/vault_locks/merge.rs:64-66`,
+(`crates/memry-core/src/domain/desktop_records/mod.rs:108-125`,
+`crates/memry-core/src/domain/canvas/merge.rs:68-70`,
+`crates/memry-core/src/domain/vault_locks/merge.rs:65-67`,
 `crates/memry-core/src/domain/home_page/merge.rs:63-69`). For an
 `agent_conversation` or `agent_message` payload it still returns `Skipped`
 and writes nothing
 (`crates/memry-core/src/domain/agent_records.rs:123-134`). `Skipped` only
-counts the item (`crates/memry-core/src/sync/apply.rs:216`, `:561`): the
+counts the item (`crates/memry-core/src/sync/apply.rs:210`,
+`crates/memry-core/src/sync/apply/record.rs:179`): the
 cursor moves past it and no later build fetches it again. Electron records
 the same item in its schema-invalid ledger
 (`apps/desktop/src/main/sync/engine/pull-coordinator.ts:634`, `:684`), which
@@ -702,7 +703,7 @@ The Rust core projects it as `Field::opt_null("schema", Kind::Any)` with no
 column (`crates/memry-core/src/storage/repositories/projectors/taxonomy.rs:64`).
 It runs §6.3.1's document gate on the rest of the definition, then joins
 `schema` by chapter 06 §6.11 on every apply path, the skip included, and heals
-(`crates/memry-core/src/sync/apply.rs:491-493`, `:539-550`,
+(`crates/memry-core/src/sync/apply/record.rs:108-110`, `:157-168`,
 `crates/memry-core/src/sync/versioned_apply.rs:46`, `:74`). A schema edit
 stamps `t` one past the stored value's
 (`crates/memry-core/src/domain/tag_schema/edit.rs:97`,
@@ -1022,7 +1023,7 @@ key the remote omits keeps the local value; a key it sends as `null` clears it
 `attachmentId` keep the local value on `null` too, so a remote never clears an
 `attachmentId`: an older sender omits the key or sends `null` without knowing
 it, and a capture's file never changes once uploaded
-(`crates/memry-core/src/domain/inbox/merge.rs:35`, `:84-86`; desktop's
+(`crates/memry-core/src/domain/inbox/merge.rs:36`, `:85-87`; desktop's
 `apps/desktop/src/main/sync/item-handlers/inbox-handler.ts:65` reads it as
 `data.attachmentId ?? existing.attachmentId`). A string sets it, including over
 a different known id. `metadata` is `z.unknown()` and replaced whole.
@@ -1150,12 +1151,12 @@ the local record stays as it is: a schema key of the wrong type (a numeric
 non-negative integer
 (`VectorClockSchema`, `packages/contracts/src/sync-api.ts:386`;
 `packages/contracts/src/sync-payloads.ts:187-207`,
-`crates/memry-core/src/domain/canvas/merge.rs:67-69`). Desktop refuses it as
+`crates/memry-core/src/domain/canvas/merge.rs:68-70`). Desktop refuses it as
 `schema_invalid` before the handler runs
 (`apps/desktop/src/main/sync/apply-item.ts:155-176`). Rust also refuses a
 tick not written as a JSON integer literal (`1.0`, `-0`, `1e0`); no
 conforming writer emits one
-(`crates/memry-core/src/domain/desktop_records/mod.rs:117-118`). The refusal
+(`crates/memry-core/src/domain/desktop_records/mod.rs:118-119`). The refusal
 meets §13.2 rule 5: the pull records it in the refused-items ledger and
 refetches it once another core build runs (§13.2).
 
@@ -1204,12 +1205,12 @@ the local record stays as it is: a schema key of the wrong type
 a `clock` tick that is not a safe non-negative integer
 (`VectorClockSchema`, `packages/contracts/src/sync-api.ts:386`;
 `packages/contracts/src/sync-payloads.ts:477-484`,
-`crates/memry-core/src/domain/vault_locks/merge.rs:64-66`). Desktop refuses it
+`crates/memry-core/src/domain/vault_locks/merge.rs:65-67`). Desktop refuses it
 as `schema_invalid` before the handler runs
 (`apps/desktop/src/main/sync/apply-item.ts:155-176`). Rust also refuses a
 tick not written as a JSON integer literal (`1.0`, `-0`, `1e0`); no
 conforming writer emits one
-(`crates/memry-core/src/domain/desktop_records/mod.rs:117-118`). The refusal
+(`crates/memry-core/src/domain/desktop_records/mod.rs:118-119`). The refusal
 meets §13.2 rule 5: the pull records it in the refused-items ledger and
 refetches it once another core build runs (§13.2).
 
@@ -1224,7 +1225,7 @@ refetches it once another core build runs (§13.2).
    `updatedAt` reads as the apply time (`:62`).
 
 The Rust core follows the same rule
-(`crates/memry-core/src/domain/vault_locks/merge.rs:54-93`).
+(`crates/memry-core/src/domain/vault_locks/merge.rs:55-97`).
 
 A delete follows chapter 05 §5.8 unchanged and unlocks the target: the lock
 survives a tombstone only when its local clock is strictly after the
@@ -1271,11 +1272,11 @@ as `parse_error` or `schema_invalid` before the handler reads the local row
 (`apps/desktop/src/main/sync/apply-item.ts:155-176`). Rust also refuses a
 tick not written as a JSON integer literal (`1.0`, `-0`, `1e0`); no
 conforming writer emits one
-(`crates/memry-core/src/domain/desktop_records/mod.rs:117-118`). With no local row, a
+(`crates/memry-core/src/domain/desktop_records/mod.rs:118-119`). With no local row, a
 payload that is not an object is stored as corrupt. The refusal meets §13.2
 rule 5: JSON that fails the schema is recorded in the refused-items ledger and
 refetched once another core build runs (§13.2,
-`crates/memry-core/src/domain/desktop_records/mod.rs:97-102`, `:142-144`); text
+`crates/memry-core/src/domain/desktop_records/mod.rs:98-103`, `:143-145`); text
 that is not JSON is desktop's `parse_error`, which desktop does not ledger
 either, and stays a skip.
 
@@ -1292,7 +1293,7 @@ either, and stays a skip.
 
 The Rust core follows the same rule
 (`crates/memry-core/src/domain/canvas_folder/merge.rs:30-60`, over
-`crates/memry-core/src/domain/desktop_records/mod.rs:54-63`, `:107-166`).
+`crates/memry-core/src/domain/desktop_records/mod.rs:55-64`, `:108-170`).
 
 A delete follows chapter 05 §5.8 unchanged: the folder survives a tombstone
 only when its local clock is strictly after the tombstone's
@@ -1328,11 +1329,11 @@ as `parse_error` or `schema_invalid` before the handler reads the local row
 (`apps/desktop/src/main/sync/apply-item.ts:155-176`). Rust also refuses a
 tick not written as a JSON integer literal (`1.0`, `-0`, `1e0`); no
 conforming writer emits one
-(`crates/memry-core/src/domain/desktop_records/mod.rs:117-118`). With no local row, a
+(`crates/memry-core/src/domain/desktop_records/mod.rs:118-119`). With no local row, a
 payload that is not an object is stored as corrupt. The refusal meets §13.2
 rule 5: JSON that fails the schema is recorded in the refused-items ledger and
 refetched once another core build runs (§13.2,
-`crates/memry-core/src/domain/desktop_records/mod.rs:97-102`, `:142-144`); text
+`crates/memry-core/src/domain/desktop_records/mod.rs:98-103`, `:143-145`); text
 that is not JSON is desktop's `parse_error`, which desktop does not ledger
 either, and stays a skip.
 
@@ -1355,7 +1356,7 @@ either, and stays a skip.
 
 The Rust core follows the same rule
 (`crates/memry-core/src/domain/home_page/merge.rs:37-92`, over
-`crates/memry-core/src/domain/desktop_records/mod.rs:54-63`, `:107-166`).
+`crates/memry-core/src/domain/desktop_records/mod.rs:55-64`, `:108-170`).
 
 The `home_pages.created_at` column of a board whose payload has no
 `createdAt` keeps the time of its first apply: a later projection keeps the
@@ -1396,11 +1397,11 @@ as `parse_error` or `schema_invalid` before the handler reads the local row
 (`apps/desktop/src/main/sync/apply-item.ts:155-176`). Rust also refuses a
 tick not written as a JSON integer literal (`1.0`, `-0`, `1e0`); no
 conforming writer emits one
-(`crates/memry-core/src/domain/desktop_records/mod.rs:117-118`). With no local row, a
+(`crates/memry-core/src/domain/desktop_records/mod.rs:118-119`). With no local row, a
 payload that is not an object is stored as corrupt. The refusal meets §13.2
 rule 5: JSON that fails the schema is recorded in the refused-items ledger and
 refetched once another core build runs (§13.2,
-`crates/memry-core/src/domain/desktop_records/mod.rs:97-102`, `:142-144`); text
+`crates/memry-core/src/domain/desktop_records/mod.rs:98-103`, `:143-145`); text
 that is not JSON is desktop's `parse_error`, which desktop does not ledger
 either, and stays a skip.
 
@@ -1416,7 +1417,7 @@ either, and stays a skip.
 
 The Rust core follows the same rule
 (`crates/memry-core/src/domain/sticky_draft/merge.rs:31-54`, over
-`crates/memry-core/src/domain/desktop_records/mod.rs:54-63`, `:107-166`).
+`crates/memry-core/src/domain/desktop_records/mod.rs:55-64`, `:108-170`).
 
 A delete follows chapter 05 §5.8 unchanged: the draft survives a tombstone only
 when its local clock is strictly after the tombstone's
@@ -1503,7 +1504,7 @@ A message is immutable (§13.9):
    Electron returns `parse_error` (`:138`), and the Rust core records it
    corrupt without storing its payload
    (`crates/memry-core/src/domain/agent_message/merge.rs:58-63`,
-   `crates/memry-core/src/sync/apply.rs:575-592`). A writer sends only the
+   `crates/memry-core/src/sync/apply/record.rs:193-210`). A writer sends only the
    terminal statuses
    (`crates/memry-core/src/domain/agent_message/mod.rs:34-35`, `:87`);
 4. without a vault key Electron skips the record (`:140-149`). The Rust core
