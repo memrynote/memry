@@ -96,7 +96,12 @@ impl ModelHost {
     /// The step path: one window on a background (one-thread) session,
     /// waiting for a load when there is none. A foreground session is swapped
     /// for a background one, which costs one reload. Holds a lease throughout.
-    pub async fn embed_background(&self, input: String) -> Result<Vector, SemanticError> {
+    /// The outer error is a model that could not be had, the inner one this
+    /// input's inference failing.
+    pub async fn embed_background(
+        &self,
+        input: String,
+    ) -> Result<Result<Vector, SemanticError>, SemanticError> {
         self.leases.fetch_add(1, Ordering::SeqCst);
         let _lease = Lease(&self.leases);
         let embedder = self.background_embedder().await?;
@@ -106,11 +111,11 @@ impl ModelHost {
                 move || embedder.embed(&input)
             })
             .await
-            .map_err(SemanticError::inference)?;
+            .unwrap_or_else(|panicked| Err(SemanticError::inference(panicked)));
         if matches!(outcome, Err(SemanticError::Poisoned)) {
             self.evict(&embedder);
         }
-        outcome
+        Ok(outcome)
     }
 
     pub fn release(&self, reason: ReleaseReason) {
@@ -176,6 +181,10 @@ impl ModelHost {
                         return Ok(embedder.clone());
                     }
                     Slot::Loading => None,
+                    // Left set for the step, which stops on it.
+                    Slot::Loaded(_) | Slot::Unloaded if self.pressure.load(Ordering::SeqCst) => {
+                        return Err(SemanticError::inference("a memory warning arrived"));
+                    }
                     Slot::Loaded(_) | Slot::Unloaded => {
                         state.slot = Slot::Loading;
                         Some(state.generation)
@@ -288,8 +297,8 @@ mod tests {
         let built = Arc::new(Mutex::new(Vec::new()));
         let (counter, made) = (calls.clone(), built.clone());
         let load: Loader = Arc::new(move |threads| {
-            assert_eq!(threads, Threads::Foreground);
             counter.fetch_add(1, Ordering::SeqCst);
+            assert_eq!(threads, Threads::Foreground);
             // Bound before the match: panicking with the guard alive would
             // poison `answers` for every later load.
             let outcome = answers.lock().unwrap().recv().unwrap();
@@ -427,6 +436,24 @@ mod tests {
         until(|| h.calls.load(Ordering::SeqCst) == 2);
         h.answer.send(Outcome::Load).unwrap();
         until(|| h.host.query_vector("q").is_some());
+    }
+
+    #[test]
+    fn a_step_waiting_on_a_load_does_not_start_another_after_a_memory_warning() {
+        let h = harness();
+        h.host.query_vector("q");
+        until(|| h.calls.load(Ordering::SeqCst) == 1);
+        std::thread::scope(|scope| {
+            let step = scope.spawn(|| runtime().block_on(h.host.embed_background("w".into())));
+            h.host.release(ReleaseReason::MemoryWarning);
+            h.answer.send(Outcome::Load).unwrap();
+            assert!(step.join().unwrap().is_err(), "the step stops");
+        });
+        assert_eq!(h.calls.load(Ordering::SeqCst), 1, "no second load");
+        assert!(
+            h.host.take_pressure(),
+            "the step left the warning for stop_for"
+        );
     }
 
     #[test]

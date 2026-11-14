@@ -16,7 +16,13 @@
 //!    row stale and the note due again.
 //! 4. **Only live notes keep vectors.** Every step prunes the state rows of
 //!    notes that left the live set.
+//! 5. **A note whose inference fails is skipped, not retried.** Its source key
+//!    joins a per-process set the plan passes over, so one bad note never
+//!    holds up the notes behind it. It writes no state row: an edit or a
+//!    rename gives it a new key and a relaunch empties the set, and either
+//!    retries it. Until then its old vectors, if any, keep serving.
 
+use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 
 use rusqlite::Connection;
@@ -76,17 +82,22 @@ pub(crate) struct Plan {
 }
 
 /// Due: no state row, or one built with another model, input version or
-/// source. Never-embedded notes come before stale ones, whose old vectors
-/// keep serving meanwhile (desktop's reconcile order).
-pub(crate) fn plan(sources: &[NoteSource], states: &[NoteState], vector_key: &str) -> Plan {
-    let by_id: std::collections::HashMap<&str, &NoteState> = states
+/// source, and not `skipped` (invariant 5). Never-embedded notes come before
+/// stale ones, whose old vectors keep serving meanwhile (desktop's reconcile
+/// order).
+pub(crate) fn plan(
+    sources: &[NoteSource],
+    states: &[NoteState],
+    vector_key: &str,
+    skipped: &HashSet<[u8; 32]>,
+) -> Plan {
+    let by_id: HashMap<&str, &NoteState> = states
         .iter()
         .map(|state| (state.note_id.as_str(), state))
         .collect();
     let (mut missing, mut stale, mut embedded) = (None, None, 0u32);
     for source in sources {
         match by_id.get(source.note_id.as_str()) {
-            None => missing = missing.or(Some(&source.note_id)),
             Some(state)
                 if state.vector_key == vector_key
                     && state.input_version == EMBEDDING_INPUT_VERSION
@@ -94,10 +105,12 @@ pub(crate) fn plan(sources: &[NoteSource], states: &[NoteState], vector_key: &st
             {
                 embedded += 1;
             }
+            _ if skipped.contains(&source.source_key) => {}
+            None => missing = missing.or(Some(&source.note_id)),
             Some(_) => stale = stale.or(Some(&source.note_id)),
         }
     }
-    let live: std::collections::HashSet<&str> = sources
+    let live: HashSet<&str> = sources
         .iter()
         .map(|source| source.note_id.as_str())
         .collect();
@@ -154,6 +167,10 @@ impl InFlight {
         }
     }
 
+    pub(crate) fn source_key(&self) -> [u8; 32] {
+        self.state.source_key
+    }
+
     pub(crate) fn next_window(&self) -> Option<&Window> {
         self.windows.get(self.done.len())
     }
@@ -205,6 +222,7 @@ mod tests {
             next: Option<&'static str>,
             prune: Vec<&'static str>,
             embedded: u32,
+            skipped: Vec<u8>,
         }
         let cases = [
             Case {
@@ -214,6 +232,25 @@ mod tests {
                 next: None,
                 prune: vec![],
                 embedded: 0,
+                skipped: vec![],
+            },
+            Case {
+                name: "a skipped note is passed over, missing or stale",
+                sources: vec![source("a", 7), source("b", 8), source("c", 3)],
+                states: vec![state("b", 2, "k", V)],
+                next: Some("c"),
+                prune: vec![],
+                embedded: 0,
+                skipped: vec![7, 8],
+            },
+            Case {
+                name: "a skipped key that is current still counts",
+                sources: vec![source("a", 1)],
+                states: vec![state("a", 1, "k", V)],
+                next: None,
+                prune: vec![],
+                embedded: 1,
+                skipped: vec![1],
             },
             Case {
                 name: "all current",
@@ -222,6 +259,7 @@ mod tests {
                 next: None,
                 prune: vec![],
                 embedded: 2,
+                skipped: vec![],
             },
             Case {
                 name: "missing before stale, whatever the order",
@@ -230,6 +268,7 @@ mod tests {
                 next: Some("b"),
                 prune: vec![],
                 embedded: 0,
+                skipped: vec![],
             },
             Case {
                 name: "edited source is stale",
@@ -238,6 +277,7 @@ mod tests {
                 next: Some("a"),
                 prune: vec![],
                 embedded: 0,
+                skipped: vec![],
             },
             Case {
                 name: "another model is stale",
@@ -246,6 +286,7 @@ mod tests {
                 next: Some("a"),
                 prune: vec![],
                 embedded: 0,
+                skipped: vec![],
             },
             Case {
                 name: "an older input version is stale",
@@ -254,6 +295,7 @@ mod tests {
                 next: Some("a"),
                 prune: vec![],
                 embedded: 0,
+                skipped: vec![],
             },
             Case {
                 name: "a row whose note left is pruned",
@@ -262,10 +304,12 @@ mod tests {
                 next: None,
                 prune: vec!["gone"],
                 embedded: 1,
+                skipped: vec![],
             },
         ];
         for case in cases {
-            let plan = plan(&case.sources, &case.states, "k");
+            let skipped = case.skipped.iter().map(|&key| [key; 32]).collect();
+            let plan = plan(&case.sources, &case.states, "k", &skipped);
             assert_eq!(plan.next.as_deref(), case.next, "{}", case.name);
             assert_eq!(plan.prune, case.prune, "{}", case.name);
             assert_eq!(plan.embedded, case.embedded, "{}", case.name);

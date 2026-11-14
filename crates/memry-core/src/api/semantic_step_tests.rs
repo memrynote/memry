@@ -27,7 +27,8 @@ const COOL: StepConditions = StepConditions {
     external_power: true,
 };
 
-/// Each window takes at least 5 ms, so a measured window is never zero.
+/// Each window takes at least 5 ms, so a measured window is never zero. A
+/// window containing `poison` always fails inference.
 struct Fake {
     gate: Option<Arc<Mutex<Receiver<()>>>>,
     entered: Option<Sender<()>>,
@@ -45,6 +46,9 @@ impl Embed for Fake {
             gate.lock().unwrap().recv().unwrap();
         }
         std::thread::sleep(Duration::from_millis(5));
+        if input.contains("poison") {
+            return Err(SemanticError::inference("fake inference failed"));
+        }
         let mut values = [1.0; DIMENSION];
         values[0] += input.len() as f32;
         truncate_renormalize(&values)
@@ -386,6 +390,36 @@ async fn a_deleted_note_is_pruned() {
     let ids: Vec<String> = s.states().into_iter().map(|state| state.note_id).collect();
     assert_eq!(ids, ["b"]);
     assert_eq!(s.window_rows("a"), 0);
+}
+
+#[tokio::test]
+async fn a_note_whose_inference_fails_is_skipped_until_it_is_edited() {
+    let mut s = setup().await;
+    s.write("a", "Alpha", "a poison body that never embeds");
+    s.write("b", "Beta", "the second note body");
+    assert_eq!(s.finish().await, (1, 2), "b embedded behind a");
+    let ids: Vec<String> = s.states().into_iter().map(|state| state.note_id).collect();
+    assert_eq!(ids, ["b"], "a failed note writes no state row");
+
+    s.edit_body("a", 2, "an edit appended to the body");
+    let loads = s.loads.load(Ordering::SeqCst);
+    assert!(
+        matches!(s.step().await, StepOutcome::Embedded { .. }),
+        "the edit retries a"
+    );
+    assert_eq!(s.finish().await, (1, 2));
+    assert_eq!(
+        s.loads.load(Ordering::SeqCst),
+        loads,
+        "a failed window is not a failed load"
+    );
+
+    s.relaunch();
+    assert!(
+        matches!(s.step().await, StepOutcome::Embedded { .. }),
+        "a relaunch retries a"
+    );
+    assert_eq!(s.finish().await, (1, 2));
 }
 
 #[tokio::test]

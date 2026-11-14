@@ -76,7 +76,7 @@ impl SemanticSearch {
 
         let sources = data.call(|conn| queue::sources(conn)).await?;
         let states = vectors.call(|conn| VectorStore::new(conn).states()).await?;
-        let plan = queue::plan(&sources, &states, key);
+        let plan = queue::plan(&sources, &states, key, &lock(&self.skipped));
         if !plan.prune.is_empty() {
             let prune = plan.prune.clone();
             vectors
@@ -110,7 +110,18 @@ impl SemanticSearch {
         let started = Instant::now();
         if let Some(window) = note.next_window() {
             match self.host.embed_background(window.as_str().to_owned()).await {
-                Ok(vector) => note.push(&vector),
+                Ok(Ok(vector)) => note.push(&vector),
+                Ok(Err(error)) if !self.host.take_pressure() => {
+                    eprintln!(
+                        "memry-core: a note failed to embed, skipped until it changes: {error}"
+                    );
+                    lock(&self.skipped).insert(note.source_key());
+                    return Ok(self.embedded(&plan, started.elapsed(), conditions));
+                }
+                Ok(Err(_)) => {
+                    lock(&self.in_flight).insert(vault_dir, note);
+                    return Ok(stopped(StepStop::MemoryPressure));
+                }
                 Err(error) => {
                     lock(&self.in_flight).insert(vault_dir, note);
                     return self.stop_for(error);

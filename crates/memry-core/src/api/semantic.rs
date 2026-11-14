@@ -1,7 +1,7 @@
 //! On-device semantic search (#4505): the one device-scoped object the shell
 //! builds. It owns the opt-in, the model download and the model slot.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
@@ -84,6 +84,8 @@ pub struct SemanticSearch {
     step: tokio::sync::Mutex<()>,
     /// The note each vault's embedder is part way through, by vault directory.
     in_flight: Mutex<HashMap<PathBuf, InFlight>>,
+    /// Source keys whose inference failed this process (queue invariant 5).
+    skipped: Mutex<HashSet<[u8; 32]>>,
 }
 
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
@@ -212,6 +214,7 @@ impl SemanticSearch {
             vectors: Mutex::new(HashMap::new()),
             step: tokio::sync::Mutex::new(()),
             in_flight: Mutex::new(HashMap::new()),
+            skipped: Mutex::new(HashSet::new()),
         }
     }
 
