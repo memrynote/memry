@@ -66,6 +66,7 @@ use crate::storage::Db;
 
 use super::bootstrap::BootstrapClient;
 use super::crdt_wire::{SnapshotMeta, UpdatePage, read_update_page};
+use super::driver::observer::Observers;
 use super::store;
 
 mod log_writes;
@@ -200,6 +201,7 @@ pub struct BodyPull {
     cipher: Arc<dyn CrdtCipher>,
     vault_id: Option<String>,
     bootstrap: Option<Arc<BootstrapClient>>,
+    observers: Option<Arc<Observers>>,
 }
 
 impl BodyPull {
@@ -216,6 +218,21 @@ impl BodyPull {
             cipher,
             vault_id: None,
             bootstrap: None,
+            observers: None,
+        }
+    }
+
+    /// Tells `observers` of each document whose stored body changed, once
+    /// the write has committed: a pull that stored a baseline or an update,
+    /// and a pack seed that applied.
+    pub fn with_observers(mut self, observers: Arc<Observers>) -> Self {
+        self.observers = Some(observers);
+        self
+    }
+
+    async fn tell_observers(&self, doc_id: &str) {
+        if let Some(observers) = &self.observers {
+            observers.bodies_applied(vec![doc_id.to_owned()]).await;
         }
     }
 
@@ -276,19 +293,34 @@ impl BodyPull {
             documents: 1,
             ..BodyPullReport::default()
         };
+        // Told on the error path too: a page that fails after earlier pages
+        // committed leaves those updates stored.
+        let pulled = self.pull_stored(doc_id, probed, &mut report).await;
+        if report.baselines + report.updates > 0 {
+            self.tell_observers(doc_id).await;
+        }
+        pulled.map(|()| report)
+    }
+
+    async fn pull_stored(
+        &self,
+        doc_id: &str,
+        probed: Option<&SnapshotMeta>,
+        report: &mut BodyPullReport,
+    ) -> Result<(), BodyPullError> {
         let mut cursor = self.read_cursor(doc_id).await?;
 
         // §7.8, first clause: a cursor of 0 always takes the snapshot first.
         // There is no incremental that could have told us about it, because
         // everything at or below the watermark is answered with silence.
         if cursor == 0 {
-            if self.fetch_baseline(doc_id, cursor, &mut report).await? {
+            if self.fetch_baseline(doc_id, cursor, report).await? {
                 cursor = self.read_cursor(doc_id).await?;
             } else if !report.stopped.is_empty() {
                 // A baseline that exists and could not be used: paging on
                 // from 0 would store the updates above the watermark and move
                 // the cursor past the state below it for good.
-                return Ok(report);
+                return Ok(());
             }
         }
         // §7.8, second clause, from the probe: a server before #2299 sends no
@@ -299,26 +331,26 @@ impl BodyPull {
             && let Some(meta) = probed
             && self.baseline_due(doc_id, meta).await?
         {
-            if self.fetch_baseline(doc_id, cursor, &mut report).await? {
+            if self.fetch_baseline(doc_id, cursor, report).await? {
                 cursor = self.read_cursor(doc_id).await?;
             } else if !report.stopped.is_empty() {
-                return Ok(report);
+                return Ok(());
             }
         }
 
         let mut has_more = false;
         for _ in 0..MAX_PAGES_PER_DOCUMENT {
-            let page = self.fetch_page(doc_id, cursor, &mut report).await?;
+            let page = self.fetch_page(doc_id, cursor, report).await?;
 
             // §7.8, second clause, widened by #2299: the server advertises a
             // snapshot whose revision differs from the stored one.
             if let Some(meta) = page.snapshot_meta.as_ref()
                 && self.baseline_due(doc_id, meta).await?
             {
-                if self.fetch_baseline(doc_id, cursor, &mut report).await? {
+                if self.fetch_baseline(doc_id, cursor, report).await? {
                     cursor = self.read_cursor(doc_id).await?;
                 } else if !report.stopped.is_empty() {
-                    return Ok(report);
+                    return Ok(());
                 }
             }
 
@@ -371,7 +403,7 @@ impl BodyPull {
             self.hold_empty_body(doc_id).await?;
         }
 
-        Ok(report)
+        Ok(())
     }
 
     /// `GET /sync/crdt/snapshot/:noteId` and the store that follows it (§7.8,

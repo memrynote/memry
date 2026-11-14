@@ -84,6 +84,7 @@ mod attachment_fetch;
 mod attachments_io;
 mod inbox_attachments;
 mod pass;
+pub(crate) use pass::pass_gate;
 mod realtime;
 mod snapshot_fallback;
 

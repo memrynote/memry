@@ -16,6 +16,9 @@
  * tombstone from an earlier second to a marker (chapter 05 §5.12.3). It answers
  * `{ harnessMarkers }`, the marker count, on stdout.
  *
+ * A `register` line registers one more device for the same user, as a device signing in after
+ * the others started, and answers `{ harnessDevice }` in the bootstrap's device shape.
+ *
  * An `otp <email> <code>` line makes `<code>` the email's pending sign-in code, as the server's
  * `storeOtp` stores one (the email normalized, the code's HMAC-SHA256 under the harness key), so
  * a client can finish an email sign-in without the email. It answers `{ harnessOtp: true }`.
@@ -31,14 +34,17 @@ const server = new SimulatedServer()
 await server.start()
 
 const userId = crypto.randomUUID()
-const devices = []
-for (let at = 0; at < count; at += 1) {
+const register = async (at: number) => {
   const device = await createTestDevice(server, { userId, deviceName: `harness-${at}` })
-  devices.push({
+  return {
     deviceId: device.deviceId,
     accessToken: device.accessToken,
     signingSecretKey: to_base64(device.signingSecretKey, base64_variants.ORIGINAL)
-  })
+  }
+}
+const devices = []
+for (let at = 0; at < count; at += 1) {
+  devices.push(await register(at))
 }
 
 const kdfSalt = to_base64(new Uint8Array(16).fill(7), base64_variants.ORIGINAL)
@@ -95,5 +101,11 @@ commands.on('line', (line) => {
   const [command, ...args] = line.trim().split(/\s+/)
   if (command === 'purge') void purge()
   if (command === 'otp' && args.length === 2) void otp(args[0], args[1])
+  if (command === 'register') {
+    void register(devices.length).then((device) => {
+      devices.push(device)
+      process.stdout.write(`${JSON.stringify({ harnessDevice: device })}\n`)
+    })
+  }
 })
 commands.on('close', () => void stop())
