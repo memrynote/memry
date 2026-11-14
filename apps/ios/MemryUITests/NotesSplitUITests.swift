@@ -198,8 +198,16 @@ final class NotesSplitUITests: XCTestCase {
     func testAnOutlineEntryScrollsTheNote() throws {
         try openNotes()
         let title = "[agent] \(run) outline"
-        makeNote(title).tap()
-        app.typeText("# \(run) top\n")
+        let body = makeNote(title)
+        body.tap()
+        // Keys typed while the body takes the caret, or across the `# `
+        // conversion, get dropped: wait out each step.
+        XCTAssertTrue(matches(NSPredicate(format: "hasKeyboardFocus == true"), body), "the body has no caret")
+        app.typeText("# ")
+        XCTAssertTrue(matches(NSPredicate(format: "value == ''"), body), "`# ` did not make a heading")
+        app.typeText("\(run) top")
+        XCTAssertTrue(matches(NSPredicate(format: "value == %@", "\(run) top"), body), "the top heading lost keys")
+        app.typeText("\n")
         // A line at a time: a long burst outruns the editor's Return on a
         // busy simulator and merges lines.
         for line in 1...40 {
