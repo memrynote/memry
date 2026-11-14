@@ -41,7 +41,7 @@ struct CalendarEmptyTime: View {
             .contentShape(.rect)
             // A pan that starts here still scrolls and pages; once the hold
             // lands the grid stops (`dragState`).
-            .gesture(selectGesture)
+            .calendarHoldDrag(selectGesture)
             .overlay(alignment: .topLeading) {
                 if let range {
                     CalendarSelectionBlock(
@@ -147,6 +147,7 @@ struct CalendarGridChip: View {
             item: item, layout: layout, now: now, isSelected: dragging,
             onComplete: item.visualType == "task" ? { actions.complete(item) } : nil
         )
+        .pointerHover(.card(radius: Tokens.Calendar.chipRadius))
         .offset(y: dragging && dragState?.edge == .move ? CGFloat(liveDelta) / 60 * hourHeight : 0)
         .overlay { if dragging, dragState?.edge != .move { resizeOutline } }
         // Paper 16: handles on the top and bottom edges resize.
@@ -169,7 +170,12 @@ struct CalendarGridChip: View {
             }
         }
         .onTapGesture { actions.open(item) }
-        .gesture(moveGesture)
+        .calendarHoldDrag(moveGesture)
+        // A movable chip has no `.contextMenu` (its hold drags), so a pointer
+        // reaches the held chip's menu with a secondary click.
+        .gesture(CalendarSecondaryClick {
+            if item.canDrag, actions.move != nil, actions.contextMenu != nil { showsMenu = true }
+        })
         .sensoryFeedback(.selection, trigger: liveDelta)
         .calendarItemMenu(item.canDrag && actions.move != nil ? nil : actions.contextMenu, item: item)
         // On the chip, so the popover points at it on iPad.
@@ -238,7 +244,7 @@ struct CalendarGridChip: View {
             .frame(maxWidth: .infinity, minHeight: 14)
             .contentShape(.rect)
             .offset(y: edge == .top ? -5 : 5)
-            .gesture(resizeGesture(edge))
+            .calendarHoldDrag(resizeGesture(edge))
             .accessibilityHidden(true)
     }
 

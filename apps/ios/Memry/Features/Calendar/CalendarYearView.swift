@@ -41,12 +41,15 @@ struct CalendarYearView: View {
             .padding(.bottom, Tokens.Size.minimumHitArea * 2)
         }
         .refreshable { await store.sync() }
-        .gesture(DragGesture(minimumDistance: 30).onEnded { value in
-            guard abs(value.translation.width) > abs(value.translation.height) * 1.5 else { return }
-            store.state.anchorDate = CalendarDates.addYears(store.anchor, value.translation.width < 0 ? 1 : -1)
-        })
+        .gesture(DragGesture(minimumDistance: 30).onEnded { value in pageYear(CalendarSwipe.step(value.translation)) })
+        .gesture(CalendarScrollPage { pageYear($0) })
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("calendar.year")
+    }
+
+    private func pageYear(_ step: Int?) {
+        guard let step else { return }
+        store.state.anchorDate = CalendarDates.addYears(store.anchor, step)
     }
 
     private func miniMonth(_ first: String, busy: Set<String>) -> some View {
@@ -64,6 +67,7 @@ struct CalendarYearView: View {
                     .frame(minHeight: Tokens.Size.minimumHitArea, alignment: .leading)
             }
             .buttonStyle(.plain)
+            .pointerHover(.row)
             .accessibilityIdentifier("calendar.year.month.\(first.prefix(7))")
             Grid(horizontalSpacing: 0, verticalSpacing: 0) {
                 ForEach(0 ..< grid.count / 7, id: \.self) { row in
@@ -98,6 +102,7 @@ struct CalendarYearView: View {
                 .contentShape(.rect)
             }
             .buttonStyle(.plain)
+            .pointerHover(.glyph)
             .accessibilityLabel(CalendarWeekStrip.accessibleDay(day))
             .accessibilityIdentifier("calendar.year.\(day)")
         } else {

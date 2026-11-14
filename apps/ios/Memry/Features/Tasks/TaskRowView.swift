@@ -45,9 +45,9 @@ struct TaskRowView: View {
         HStack(alignment: .firstTextBaseline, spacing: Tokens.Space.medium) {
             lane
             if let selection {
-                content.contentShape(.rect).onTapGesture(perform: selection.toggle)
+                content.contentShape(.rect).pointerHover(.row).onTapGesture(perform: selection.toggle)
             } else {
-                TaskOpenLink(id: task.id) { content }
+                TaskOpenLink(id: task.id) { content.pointerHover(.row) }
                     .navigationLinkIndicatorVisibility(.hidden)
                 if pushesBranch { TaskBranchChip(task: task, store: store) }
             }

@@ -66,6 +66,7 @@ struct ShortcutsTitleRow: View {
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
+        .pointerHover(.row)
         .accessibilityAddTraits(.isHeader)
         .accessibilityValue(isCollapsed ? "Collapsed" : "Expanded")
         .accessibilityHint(isCollapsed ? "Shows this section." : "Hides this section.")
@@ -93,6 +94,7 @@ private struct ShowAllRow<Route: NotesSplitRoute>: View {
             .contentShape(.rect)
         }
         .navigationLinkIndicatorVisibility(.hidden)
+        .pointerHover(.row)
         .shortcutRow()
     }
 }
@@ -177,6 +179,7 @@ struct BookmarkRow: View {
                     .buttonStyle(.plain)
             }
         }
+        .pointerHover(.row)
         .shortcutRow()
     }
 

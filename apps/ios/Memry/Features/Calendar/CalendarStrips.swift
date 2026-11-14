@@ -18,6 +18,7 @@ struct CalendarWeekStrip: View {
             ForEach(days, id: \.self) { day in
                 Button { select(day) } label: { cell(day) }
                     .buttonStyle(.plain)
+                    .pointerHover(.row)
                     .frame(maxWidth: .infinity, minHeight: Tokens.Size.minimumHitArea)
                     .accessibilityLabel(Self.accessibleDay(day))
                     .accessibilityAddTraits(day == selected ? .isSelected : [])
@@ -130,6 +131,7 @@ struct CalendarAllDayStrip: View {
                             showsTime: CalendarDates.spanStart(item) == day
                         )
                         .frame(height: rowHeight)
+                        .pointerHover(.card(radius: Tokens.Calendar.chipRadius))
                         .onTapGesture { actions.open(item) }
                         .calendarItemMenu(actions.contextMenu, item: item)
                         .accessibilityElement(children: .ignore)
