@@ -39,4 +39,10 @@ extension NotesWriting {
     func toggleBookmark(itemType: String, itemId: String) async throws -> Bool {
         throw SyncError.Locked
     }
+
+    func fullWidth(id: String) async throws -> Bool? { nil }
+
+    func setFullWidth(id: String, fullWidth: Bool) async throws {
+        throw SyncError.Locked
+    }
 }

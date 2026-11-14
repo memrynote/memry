@@ -63,6 +63,11 @@ protocol NotesWriting: Sendable {
     func isBookmarked(itemType: String, itemId: String) async throws -> Bool
     /// Adds or removes the item's bookmark; answers the new state.
     func toggleBookmark(itemType: String, itemId: String) async throws -> Bool
+    /// The note's `fullWidth` frontmatter, desktop's per-note width; `nil`
+    /// follows this device's editor width.
+    func fullWidth(id: String) async throws -> Bool?
+    /// Sets the note's `fullWidth`, as desktop's page-menu toggle does.
+    func setFullWidth(id: String, fullWidth: Bool) async throws
 }
 
 /// The production writer: the core's own `NotesWriter`, over the shell's one
@@ -176,6 +181,14 @@ struct CoreNotesWriter: NotesWriting {
 
     func toggleBookmark(itemType: String, itemId: String) async throws -> Bool {
         try await executor.run { try writer().toggleBookmark(itemType: itemType, itemId: itemId) }
+    }
+
+    func fullWidth(id: String) async throws -> Bool? {
+        try await executor.run { try vault.notes().fullWidth(id: id) }
+    }
+
+    func setFullWidth(id: String, fullWidth: Bool) async throws {
+        try await executor.run { try writer().setFullWidth(id: id, fullWidth: fullWidth) }
     }
 }
 

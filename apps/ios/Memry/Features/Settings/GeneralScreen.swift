@@ -58,6 +58,12 @@ struct GeneralScreen: View {
                                 route: .newNotesFolder)
                 SettingsToggleRow(title: SettingsCopy.checkSpelling, isOn: $local.spellCheck,
                                   identifier: "settings.general.spell")
+                Picker(SettingsCopy.editorWidth, selection: $local.editorWidth) {
+                    Text(SettingsCopy.editorWidthNormal).tag(EditorWidth.normal)
+                    Text(SettingsCopy.editorWidthFull).tag(EditorWidth.full)
+                }
+                .pickerStyle(.menu)
+                .accessibilityIdentifier("settings.general.editorWidth")
             } header: {
                 Text(SettingsCopy.editing)
             } footer: {

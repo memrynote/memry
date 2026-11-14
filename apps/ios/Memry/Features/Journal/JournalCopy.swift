@@ -81,6 +81,7 @@ enum JournalCopy {
     static let findInPage = "Find in page"
     static let export = "Export…"
     static let journalSettings = "Journal Settings"
+    static let fullWidth = "Full width"
 
     // MARK: Month and Year (journal.json `empty.*`, `count.*`)
 

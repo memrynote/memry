@@ -30,6 +30,17 @@ enum ImageFiling: String, CaseIterable, Identifiable, Sendable {
     var id: String { rawValue }
 }
 
+/// Desktop's `EditorSettings.width`: Normal holds a note or journal day to
+/// the reading measure, Full runs it across the pane.
+enum EditorWidth: String, CaseIterable, Identifiable, Sendable {
+    case normal, full
+    var id: String { rawValue }
+
+    /// Whether a page runs full width: its own override wins, then this
+    /// device's setting, as desktop's `note.tsx` and `journal.tsx` decide it.
+    func isFull(override: Bool?) -> Bool { override ?? (self == .full) }
+}
+
 /// A module that can be turned off (Features, 14).
 enum AppFeature: String, CaseIterable, Identifiable, Sendable {
     case home, inbox, journal, tasks, calendar
@@ -74,6 +85,8 @@ final class LocalSettings {
         journalFolder = defaults.string(forKey: Key.journalFolder) ?? "journal"
         journalDateFormat = defaults.string(forKey: Key.journalDate) ?? "YYYY-MM-DD"
         perDayTemplates = defaults.object(forKey: Key.perDay) as? Bool ?? false
+        editorWidth = EditorWidth(rawValue: defaults.string(forKey: Key.editorWidth) ?? "") ?? .normal
+        journalFullWidth = defaults.object(forKey: Key.journalFullWidth) as? Bool
         var features: Set<AppFeature> = []
         for feature in AppFeature.allCases where defaults.object(forKey: Key.feature(feature)) as? Bool ?? true {
             features.insert(feature)
@@ -104,6 +117,12 @@ final class LocalSettings {
     var journalDateFormat: String { didSet { defaults.set(journalDateFormat, forKey: Key.journalDate); Self.trackChanged("journal.dateFormat") } }
     /// The journal page's "Different template per day" switch.
     var perDayTemplates: Bool { didSet { defaults.set(perDayTemplates, forKey: Key.perDay); Self.trackChanged("journal.perDay") } }
+    /// Desktop's per-install editor width (Settings › Editor).
+    var editorWidth: EditorWidth { didSet { defaults.set(editorWidth.rawValue, forKey: Key.editorWidth); Self.trackChanged("editor.width") } }
+    /// The Journal's own width on this device, desktop's
+    /// `memry_journal_full_width`; `nil` follows `editorWidth`.
+    var journalFullWidth: Bool? { didSet { defaults.set(journalFullWidth, forKey: Key.journalFullWidth) } }
+    var journalIsFullWidth: Bool { editorWidth.isFull(override: journalFullWidth) }
     private(set) var enabledFeatures: Set<AppFeature>
     /// The last sync pass that finished on this iPhone (spec 006 ST15).
     var lastSyncedAt: Date? { didSet { defaults.set(lastSyncedAt, forKey: Key.lastSynced) } }
@@ -153,6 +172,8 @@ final class LocalSettings {
         static let journalFolder = "settings.journal.folder"
         static let journalDate = "settings.journal.dateFormat"
         static let perDay = "settings.journal.perDay"
+        static let editorWidth = "settings.editor.width"
+        static let journalFullWidth = "settings.journal.fullWidth"
         static let lastSynced = "settings.lastSyncedAt"
         static func feature(_ feature: AppFeature) -> String { "settings.features.\(feature.rawValue)" }
     }
