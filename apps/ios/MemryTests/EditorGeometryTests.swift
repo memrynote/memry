@@ -51,15 +51,36 @@ struct EditorGeometryTests {
     }
 
     @Test func a_property_name_is_as_wide_as_its_text_with_a_minimum() {
-        #expect(PropertyRowLayout.nameWidth(ideal: 40, row: 362) == 118)
-        #expect(PropertyRowLayout.nameWidth(ideal: 170, row: 362) == 170, "half the row is the name's")
-        #expect(PropertyRowLayout.nameWidth(ideal: 260, row: 720) == 260)
+        #expect(PropertyRowLayout.nameWidth(ideal: 40, widest: 40, row: 362) == 118)
+        #expect(PropertyRowLayout.nameWidth(ideal: 170, widest: 170, row: 362) == 170, "half the row is the name's")
+        #expect(PropertyRowLayout.nameWidth(ideal: 260, widest: 260, row: 720) == 260)
+    }
+
+    @Test func every_name_in_a_list_takes_the_widest_names_width() {
+        // Short names share the minimum.
+        #expect(PropertyRowLayout.nameWidth(ideal: 40, widest: 90, row: 362) == 118)
+        #expect(PropertyRowLayout.nameWidth(ideal: 90, widest: 90, row: 362) == 118)
+        // One longer name moves every value to its edge.
+        #expect(PropertyRowLayout.nameWidth(ideal: 40, widest: 160, row: 362) == 160)
+        #expect(PropertyRowLayout.nameWidth(ideal: 160, widest: 160, row: 362) == 160)
+    }
+
+    @Test func the_shared_width_stops_at_half_the_row() {
+        // The widest name stacks; the rest share half the row.
+        #expect(PropertyRowLayout.nameWidth(ideal: 300, widest: 300, row: 362) == nil)
+        #expect(PropertyRowLayout.nameWidth(ideal: 40, widest: 300, row: 362) == 181)
+        #expect(PropertyRowLayout.nameWidth(ideal: 170, widest: 300, row: 362) == 181)
     }
 
     @Test func a_name_too_wide_for_its_row_goes_above_the_value() {
         // A large Dynamic Type size on a phone.
-        #expect(PropertyRowLayout.nameWidth(ideal: 300, row: 362) == nil)
+        #expect(PropertyRowLayout.nameWidth(ideal: 300, widest: 300, row: 362) == nil)
         // A narrow row still gives every name its minimum.
-        #expect(PropertyRowLayout.nameWidth(ideal: 100, row: 200) == 118)
+        #expect(PropertyRowLayout.nameWidth(ideal: 100, widest: 100, row: 200) == 118)
+    }
+
+    @Test func a_row_offered_no_width_keeps_names_beside_their_values() {
+        #expect(PropertyRowLayout.nameWidth(ideal: 40, widest: 600, row: nil) == 600)
+        #expect(PropertyRowLayout.nameWidth(ideal: 600, widest: 40, row: nil) == 600)
     }
 }
