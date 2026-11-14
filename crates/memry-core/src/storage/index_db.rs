@@ -3,7 +3,7 @@
 //! (data-model §A.0, §A.5).
 //!
 //! `index.db` is derived from `data.db`, so recreating it can never cost a row of
-//! user data. Three things send a file to a rebuild:
+//! user data. Four things send a file to a rebuild:
 //!
 //! - `quick_check` reports damage, or SQLite says it is not a database;
 //! - the stored `user_version` is **newer** than this build writes, i.e. a newer

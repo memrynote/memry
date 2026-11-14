@@ -92,6 +92,10 @@ pub enum ApplyOutcome {
     Skipped,
     /// Stored, not projected, and flagged. §13.2 rule 5: never a silent skip.
     Corrupt { reason: String },
+    /// The type's schema refused the remote and nothing was written; the pull
+    /// records it in [`crate::sync::refused_items`] (§13.2 rule 5). Only the
+    /// type dispatch at [`crate::sync::apply::apply_inbound`] returns it.
+    Refused,
     /// A `task_activity` row past the 90-day horizon (§13.12). **Not corrupt**:
     /// the row is expired, nothing is written, and the caller still advances
     /// its cursor past it.

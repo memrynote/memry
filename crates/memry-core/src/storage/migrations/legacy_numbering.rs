@@ -22,7 +22,8 @@
 //! Generation C is one step behind, so its own tables cannot tell it apart: old V's table belongs
 //! to new V + 1, which a file at new V holds in its crash window. Main's 17 can: a generation-C
 //! file at 17 or later holds `note_snapshots` and not `search_recents`, while every file of this
-//! numbering past 16 holds `search_recents`, and generations A and B are matched first.
+//! numbering past 16 holds `search_recents`, and generations A and B are matched first. That
+//! check holds only because no migration ever drops `search_recents` or `note_snapshots`.
 //!
 //! The next clash: main keeps its number and feat/tauri-v2 shifts its own above it in the merge
 //! (#4438). A shift of two or more needs one more `GENERATIONS` entry; a one-step shift is told

@@ -49,8 +49,7 @@ use crate::protocol::types::Declaration;
 use crate::storage::Db;
 use crate::storage::repositories::sync_items;
 
-use super::apply::{self, ApplyTotals, Pending};
-use super::body_debt;
+use super::apply::{self, Pending};
 use super::body_pull::CrdtCipher;
 use super::changes_page::{ChangesPage, read_changes_page, requested_ids, uncovered_ids};
 use super::feed_restart;
@@ -80,6 +79,8 @@ pub trait RecordCipher: Send + Sync {
 }
 
 pub use super::pull_report::{PullError, PullReport};
+
+mod apply_step;
 
 pub use super::feed_restart::{META_CURSOR_SKIP_REPAIR, META_RECORD_DECLARATION};
 
@@ -237,7 +238,11 @@ impl PullLoop {
     /// With no cursor the feed is read from the start, which is backlog and
     /// keeps 500-ref pages. A server that ignores the query sends no `inline`
     /// and the page is pulled exactly as [`PullLoop::pull_page`] pulls it.
+    ///
+    /// Every run starts here, so it first refetches what another app version
+    /// refused ([`PullLoop::retry_refused`], #4453).
     pub async fn pull_first_page(&self) -> Result<PullReport, PullError> {
+        self.retry_refused().await;
         self.page(true).await
     }
 
@@ -496,50 +501,6 @@ impl PullLoop {
             })
             .await?;
         Ok(())
-    }
-
-    /// Hands the page to [`apply`], which owns every decision about what an
-    /// item's type means. The loop's only remaining job is the clock it is
-    /// applied at, and on a feed page the body debt of its documents.
-    ///
-    /// The debt is written **before** the apply (#2294): a page re-pulled
-    /// after a crash skips its identical records (chapter 06 §6.5.2 P4), so a
-    /// debt written after them would be lost with the crash. A debt this page
-    /// created for a record it then skipped is taken back; one an earlier
-    /// page left is kept.
-    async fn apply_all(
-        &self,
-        pending: Vec<Pending>,
-        untyped: Vec<String>,
-        owe_bodies: bool,
-    ) -> Result<ApplyTotals, PullError> {
-        let now = now_ms();
-        let clock_device = self.clock_device.clone();
-        let at_rest = self.at_rest.clone();
-        Ok(self
-            .db
-            .call(move |conn| {
-                let owed_here = if owe_bodies {
-                    body_debt::owe_page(conn, &pending)?
-                } else {
-                    Vec::new()
-                };
-                let totals = apply::apply_page(
-                    conn,
-                    pending,
-                    untyped,
-                    now,
-                    clock_device.as_deref(),
-                    &at_rest,
-                )?;
-                for doc_id in &owed_here {
-                    if !totals.applied_documents.contains(doc_id) {
-                        body_debt::settle(conn, doc_id)?;
-                    }
-                }
-                Ok(totals)
-            })
-            .await?)
     }
 }
 
