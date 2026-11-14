@@ -47,6 +47,12 @@ const SETUP_PATH: &str = "/auth/setup";
 const VAULTS_PATH: &str = "/sync/vaults";
 const DEVICES_PATH: &str = "/auth/devices";
 
+/// How the text of an unresolvable signer ends, and so how the
+/// `sync_items.corrupt_reason` of its record ends
+/// ([`crate::storage::repositories::sync_items::unknown_signer_ids`] reads it
+/// back). Persisted: rows written by older builds end with these exact words.
+pub const UNKNOWN_SIGNER: &str = " is not in the directory from GET /auth/devices";
+
 /// `{ kdfSalt, keyVerifier }`, chapter 02 §2.1.1: both required, and the salt
 /// is base64 with the standard alphabet and padding (chapter 01 §1.1).
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
@@ -323,7 +329,7 @@ impl RecordCipher for AccountCipher {
             .signing_key(&envelope.signer_device_id)
             .ok_or_else(|| EnvelopeError::Malformed {
                 what: format!(
-                    "signer device `{}` is not in the directory from GET /auth/devices",
+                    "signer device `{}`{UNKNOWN_SIGNER}",
                     envelope.signer_device_id
                 ),
             })?;
@@ -347,9 +353,7 @@ impl crate::sync::body_pull::CrdtCipher for AccountCipher {
             self.directory
                 .signing_key(device_id)
                 .ok_or_else(|| EnvelopeError::Malformed {
-                    what: format!(
-                        "signer device `{device_id}` is not in the directory from GET /auth/devices"
-                    ),
+                    what: format!("signer device `{device_id}`{UNKNOWN_SIGNER}"),
                 })?;
         crate::protocol::crdt_envelope::unpack(
             update.packed,
@@ -472,7 +476,10 @@ mod tests {
             deleted_at: None,
         };
         match cipher.open(&envelope) {
-            Err(EnvelopeError::Malformed { what }) => assert!(what.contains("device-z")),
+            Err(EnvelopeError::Malformed { what }) => {
+                assert!(what.contains("device-z"));
+                assert!(what.ends_with(UNKNOWN_SIGNER));
+            }
             other => panic!("expected an unresolved signer, got {other:?}"),
         }
     }

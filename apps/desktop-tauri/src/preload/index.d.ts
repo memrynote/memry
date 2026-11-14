@@ -128,7 +128,6 @@ import type {
   StickyUndoResult,
   StickyWindowSession
 } from '@memry/contracts/sticky-api'
-import type { OcrLanguagesSetInput, OcrLanguagesState } from '@memry/contracts/ocr-languages-api'
 import type { SyncedSettings } from '../shared/contracts/settings-sync'
 import type {
   NoteFileType,
@@ -643,12 +642,6 @@ export interface OnboardingClientAPI {
   detectAgents: () => Promise<OnboardingAgentStatus[]>
   detectSources: () => Promise<OnboardingSources>
   isMemryVault: (path: string) => Promise<boolean>
-}
-
-export interface OcrLanguagesClientAPI {
-  get(): Promise<OcrLanguagesState>
-  set(input: OcrLanguagesSetInput): Promise<OcrLanguagesState>
-  retry(): Promise<OcrLanguagesState>
 }
 
 export interface HomePagesClientAPI {
@@ -1950,7 +1943,6 @@ interface API
   syncAttachments: SyncAttachmentsClientAPI
   homePages: HomePagesClientAPI
   sticky: StickyClientAPI
-  ocrLanguages: OcrLanguagesClientAPI
   onboarding: OnboardingClientAPI
   agentMcp: AgentMcpClientAPI
   agent: AgentClientAPI
@@ -2000,7 +1992,6 @@ interface API
   // Home boards event subscriptions (local writes and remote applies both emit)
   onHomePageCreated: (callback: (event: { id: string }) => void) => () => void
   onHomePageUpdated: (callback: (event: { id: string }) => void) => () => void
-  onOcrLanguagesChanged: (callback: (state: OcrLanguagesState) => void) => () => void
   onHomePageDeleted: (callback: (event: { id: string }) => void) => () => void
   // Journal event subscriptions
   onJournalEntryUpdated: (callback: (event: JournalEntryUpdatedEvent) => void) => () => void

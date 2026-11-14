@@ -11,6 +11,7 @@
 
 pub mod day_identity;
 pub mod preview;
+pub mod same_day;
 pub mod stats;
 pub mod streak;
 pub mod templates;
@@ -20,6 +21,7 @@ pub use day_identity::{
     plan_journal_day_apply, plan_journal_day_merge,
 };
 pub use preview::{JOURNAL_PREVIEW_LENGTH, extract_journal_preview};
+pub use same_day::{is_same_day_in_other_year, same_day_month_days};
 pub use stats::{
     JournalDayCounts, JournalHeatmapDay, JournalMonthActivity, JournalMonthDay,
     JournalYearMonthStats, average_activity_level, days_in_month, heatmap_day, month_activity,

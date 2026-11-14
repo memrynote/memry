@@ -46,7 +46,8 @@ use crate::domain::journal::{self, ITEM_TYPE};
 use crate::domain::journal_rules::{
     ActivityLevel, JOURNAL_PREVIEW_LENGTH, JournalHeatmapDay, JournalMonthActivity, JournalStreak,
     calculate_activity_level, compute_journal_streak, count_words, extract_journal_preview,
-    heatmap_day, month_activity, month_days, utf16_len,
+    heatmap_day, is_same_day_in_other_year, month_activity, month_days, same_day_month_days,
+    utf16_len,
 };
 use crate::domain::note_meta::NoteProperty;
 use crate::domain::notes::names;
@@ -272,16 +273,52 @@ pub fn calendar_days(
         )
         .map_err(failed)?;
     let rows = statement
-        .query_map(params![from, to], |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, Option<String>>(2)?,
-            ))
-        })
+        .query_map(params![from, to], calendar_row)
         .map_err(failed)?
         .collect::<Result<Vec<_>, _>>()
         .map_err(failed)?;
+    held_days(conn, rows)
+}
+
+/// The live days of other years that show as the same day as `date` (`getJournalSameDayEntries`),
+/// newest first, as [`CalendarDay`]. One query over every year: Feb 29 and Feb 28 are both read
+/// where [`same_day_month_days`] names them, then held to [`is_same_day_in_other_year`].
+pub fn same_day_calendar_days(
+    conn: &Connection,
+    date: &str,
+) -> Result<Vec<CalendarDay>, CrdtError> {
+    let date = journal::valid_date(date)?;
+    let month_days = same_day_month_days(date);
+    let mut statement = conn
+        .prepare(
+            "SELECT j.id, j.date, f.path FROM journal_entries j
+               LEFT JOIN note_files f ON f.note_id = j.id
+              WHERE j.deleted_at IS NULL AND substr(j.date, 6) IN (?1, ?2)
+              ORDER BY j.date DESC",
+        )
+        .map_err(failed)?;
+    // One or two month-days: the first is bound twice when there is one.
+    let (first, last) = (month_days[0], month_days[month_days.len() - 1]);
+    let rows = statement
+        .query_map(params![first, last], calendar_row)
+        .map_err(failed)?
+        .filter(|row| {
+            row.as_ref()
+                .map_or(true, |(_, other, _)| is_same_day_in_other_year(date, other))
+        })
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(failed)?;
+    held_days(conn, rows)
+}
+
+type CalendarRow = (String, String, Option<String>);
+
+fn calendar_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<CalendarRow> {
+    Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+}
+
+/// Each row as a [`CalendarDay`]; a day no file row names reads its record's text.
+fn held_days(conn: &Connection, rows: Vec<CalendarRow>) -> Result<Vec<CalendarDay>, CrdtError> {
     rows.into_iter()
         .map(|(id, date, path)| {
             let held = match path {

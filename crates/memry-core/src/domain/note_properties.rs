@@ -12,7 +12,8 @@
 //! Electron's `setPropertyRefs` keeps them: the notes relating to an item are a seek
 //! (`link_reads::incoming`).
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::path::Path;
 
 use rusqlite::{Connection, OptionalExtension as _, params};
 use serde_json::Value;
@@ -196,21 +197,104 @@ pub fn usage(index: &Connection) -> Result<Vec<PropertyUse>, StorageError> {
     Ok(usage.into_values().collect())
 }
 
-/// Each note holding `name`, and whether its value is one the property's type cannot show
-/// (`listNotesWithProperty`).
-pub fn named(index: &Connection, name: &str) -> Result<Vec<(String, bool)>, StorageError> {
+/// A note holding a property (`PropertyNoteUsage` of `properties-api.ts`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NoteWithProperty {
+    pub id: String,
+    pub title: String,
+    pub path: String,
+    pub emoji: Option<String>,
+    /// Its value is one the property's type cannot show.
+    pub mismatch: bool,
+}
+
+/// Each note holding `name` that has a file (`listNotesWithProperty`), in one statement on each
+/// database however many notes hold it. A note with no live row (a journal day) is titled by
+/// its file's name, as Electron's index titles a day.
+pub fn named(
+    data: &Connection,
+    index: &Connection,
+    name: &str,
+) -> Result<Vec<NoteWithProperty>, StorageError> {
     let mut statement = index
         .prepare("SELECT note_id, type, value FROM note_properties WHERE name = ?1")
         .map_err(failed)?;
-    statement
+    let rows = statement
         .query_map(params![name], |row| {
             let type_name: String = row.get(1)?;
             let text: Option<String> = row.get(2)?;
-            Ok((row.get(0)?, !fits(&type_name, text.as_deref())))
+            Ok((row.get::<_, String>(0)?, !fits(&type_name, text.as_deref())))
         })
         .map_err(failed)?
         .collect::<Result<Vec<_>, _>>()
-        .map_err(failed)
+        .map_err(failed)?;
+    let ids: Vec<&str> = rows.iter().map(|(id, _)| id.as_str()).collect();
+    let ids = serde_json::to_string(&ids).map_err(|error| StorageError::Failed {
+        what: error.to_string(),
+    })?;
+    let mut statement = data
+        .prepare(
+            "SELECT f.note_id, f.path, n.title, n.emoji FROM note_files f \
+             LEFT JOIN notes n ON n.id = f.note_id AND n.deleted_at IS NULL \
+             WHERE f.note_id IN (SELECT value FROM json_each(?1))",
+        )
+        .map_err(failed)?;
+    let mut files: HashMap<String, (String, Option<String>, Option<String>)> = statement
+        .query_map(params![ids], |row| {
+            Ok((row.get(0)?, (row.get(1)?, row.get(2)?, row.get(3)?)))
+        })
+        .map_err(failed)?
+        .collect::<Result<_, _>>()
+        .map_err(failed)?;
+    Ok(rows
+        .into_iter()
+        .filter_map(|(id, mismatch)| {
+            let (path, title, emoji) = files.remove(&id)?;
+            let title = title.unwrap_or_else(|| {
+                Path::new(&path)
+                    .file_stem()
+                    .map_or_else(String::new, |stem| stem.to_string_lossy().into_owned())
+            });
+            Some(NoteWithProperty {
+                id,
+                title,
+                path,
+                emoji,
+                mismatch,
+            })
+        })
+        .collect())
+}
+
+/// The names of `types` (name to type) a row holds a value of that the type cannot show, in one
+/// statement (Electron's `settleLearnedTypes` check).
+pub fn unfit(
+    index: &Connection,
+    types: &BTreeMap<String, String>,
+) -> Result<BTreeSet<String>, StorageError> {
+    let names: Vec<&str> = types.keys().map(String::as_str).collect();
+    let names = serde_json::to_string(&names).map_err(|error| StorageError::Failed {
+        what: error.to_string(),
+    })?;
+    let mut statement = index
+        .prepare(
+            "SELECT name, value FROM note_properties \
+             WHERE name IN (SELECT value FROM json_each(?1))",
+        )
+        .map_err(failed)?;
+    let mut rows = statement.query(params![names]).map_err(failed)?;
+    let mut unfit = BTreeSet::new();
+    while let Some(row) = rows.next().map_err(failed)? {
+        let name: String = row.get(0).map_err(failed)?;
+        let text: Option<String> = row.get(1).map_err(failed)?;
+        if types
+            .get(&name)
+            .is_some_and(|type_name| !fits(type_name, text.as_deref()))
+        {
+            unfit.insert(name);
+        }
+    }
+    Ok(unfit)
 }
 
 /// A missing value fits every type.
