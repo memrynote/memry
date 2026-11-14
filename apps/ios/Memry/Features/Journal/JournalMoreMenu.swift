@@ -6,9 +6,11 @@ import SwiftUI
 // Reminder), taking it elsewhere (Share, Export), Journal Settings, and
 // Delete last. Desktop's menu is `JournalHeaderActions`
 // (`components/journal/journal-header-actions.tsx`): Export only when the day
-// has an entry, a separator, then Journal Settings. Version history and full
-// width are desktop-only; icon, cover, move and duplicate are note-only (a
-// journal payload carries no icon or cover, and a day has no folder).
+// has an entry, a separator, then Full width and Journal Settings. Full width
+// is this device's, as desktop keeps it per install, and applies to every day.
+// Version history is desktop-only; icon, cover, move and duplicate are
+// note-only (a journal payload carries no icon or cover, and a day has no
+// folder).
 //
 // The label is a bare ellipsis at the 44pt floor: the Day page puts it in its
 // toolbar next to the bell, where the system draws the shared Liquid Glass
@@ -32,6 +34,7 @@ struct JournalMoreMenu: View {
     @State private var reminderSheet: JournalBellSheet?
     @State private var showingBacklinks = false
     @State private var confirmingDelete = false
+    @State private var local = LocalSettings.shared
 
     /// The day's record id: favorites and backlinks name a day by it.
     private var entryId: String? { store.cachedDay(date)?.id }
@@ -84,6 +87,14 @@ struct JournalMoreMenu: View {
                 }
             }
             Section {
+                Toggle(isOn: Binding(
+                    get: { local.journalIsFullWidth },
+                    // Desktop's toggle: the effective width, flipped, becomes the override.
+                    set: { _ in local.journalFullWidth = !local.journalIsFullWidth }
+                )) {
+                    Label(JournalCopy.fullWidth, systemImage: "arrow.left.and.right")
+                }
+                .accessibilityIdentifier("journal.more.fullWidth")
                 Button(JournalCopy.journalSettings, systemImage: "gearshape") {
                     router.openSettings()
                 }

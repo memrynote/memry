@@ -26,6 +26,7 @@ struct JournalDayScreen: View {
     @State private var pages = JournalDayPages()
     @State private var titleCollapsed = false
     @State private var fog: JournalFogPlacement?
+    @State private var local = LocalSettings.shared
 
     /// Days kept either side of the shown one (desktop `PREFETCH_DAYS`).
     static let prefetchDays = 1
@@ -63,6 +64,7 @@ struct JournalDayScreen: View {
         HStack(spacing: 0) {
             pager
                 .environment(\.journalRailShown, showsRail)
+                .environment(\.fullWidthReading, local.journalIsFullWidth)
             if showsRail {
                 JournalDayRail(store: store, date: date, show: show)
             }

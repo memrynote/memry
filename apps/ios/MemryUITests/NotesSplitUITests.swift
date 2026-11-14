@@ -194,7 +194,69 @@ final class NotesSplitUITests: XCTestCase {
         deleteNotes([title])
     }
 
+    /// #4376: the page menu's Full width writes the note's `fullWidth`,
+    /// which survives a relaunch with the body untouched, and toggles back.
+    func testFullWidthIsKeptOnTheNote() throws {
+        try openNotes()
+        let title = "[agent] \(run) wide"
+        let body = "Body kept across the width toggle."
+        app.buttons["notes.addButton"].firstMatch.tap()
+        let field = app.textFields["Title"]
+        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        field.tap()
+        field.typeText("\(title)\n")
+        XCTAssertTrue(firstBlock.waitForExistence(timeout: 10))
+        firstBlock.tap()
+        // Return commits the line: typing is committed when editing ends, and
+        // `terminate()` is a kill that never resigns the app (#2820).
+        firstBlock.typeText("\(body)\n")
+        XCTAssertTrue(matches(NSPredicate(format: "value CONTAINS %@", body), firstBlock))
+        XCTAssertFalse(fullWidthIsOn(), "a new note starts at the device's Normal width")
+
+        toggleFullWidth()
+        XCTAssertTrue(fullWidthIsOn(), "the toggle did not turn Full width on")
+
+        app.terminate()
+        try openNotes()
+        row(title).tap()
+        XCTAssertTrue(page(title).waitForExistence(timeout: 10))
+        XCTAssertTrue(matches(NSPredicate(format: "value CONTAINS %@", body), firstBlock),
+                      "the body did not survive the width write")
+        XCTAssertTrue(fullWidthIsOn(), "the note's Full width did not survive a relaunch")
+
+        toggleFullWidth()
+        XCTAssertFalse(fullWidthIsOn(), "the toggle did not turn Full width off")
+        deleteNotes([title])
+    }
+
     // MARK: Helpers
+
+    /// The page menu's Full width row, the menu left open.
+    private func fullWidthRow() -> XCUIElement {
+        let menu = app.buttons["More actions for this note"].firstMatch
+        XCTAssertTrue(menu.waitForExistence(timeout: 10))
+        let toggle = app.descendants(matching: .any).matching(identifier: "note.more.fullWidth").firstMatch
+        // With the caret in the body, the first tap can go to the editor.
+        for _ in 0 ..< 3 where !toggle.exists {
+            menu.tap()
+            _ = toggle.waitForExistence(timeout: 3)
+        }
+        XCTAssertTrue(toggle.exists, "the page menu has no Full width")
+        return toggle
+    }
+
+    private func toggleFullWidth() {
+        fullWidthRow().tap()
+    }
+
+    /// Reads the row's checkmark, then closes the menu.
+    private func fullWidthIsOn() -> Bool {
+        let row = fullWidthRow()
+        let on = row.isSelected || (row.value as? String) == "1"
+        app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.02, dy: 0.98)).tap()
+        _ = row.waitForNonExistence(timeout: 5)
+        return on
+    }
 
     /// Whether the folder tree has a column on screen. Its root row's label
     /// and icon share the identifier, so any hittable match counts.

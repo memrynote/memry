@@ -39,6 +39,11 @@ struct NoteReadToolbar: ViewModifier {
 
     @State private var showingBacklinks = false
     @State private var choosingIcon = false
+    @State private var local = LocalSettings.shared
+    @Environment(\.vaultSyncPasses) private var vaultSyncPasses
+
+    /// The note's own `fullWidth` wins, then this device's editor width.
+    private var isFullWidth: Bool { local.editorWidth.isFull(override: actions.fullWidth) }
 
     func body(content: Content) -> some View {
         content
@@ -56,6 +61,9 @@ struct NoteReadToolbar: ViewModifier {
                 }
             }
             .task { await actions.loadFavorite() }
+            // Desktop's toggle reaches this page as a pulled record.
+            .task(id: vaultSyncPasses) { await actions.loadFullWidth() }
+            .environment(\.fullWidthReading, isFullWidth)
             .sheet(isPresented: $showingBacklinks) {
                 NoteBacklinksSheet(model: backlinks) { route in
                     showingBacklinks = false
@@ -99,7 +107,12 @@ struct NoteReadToolbar: ViewModifier {
             if case .image = NoteCoverValue.of(model.metadata?.coverJson)?.kind {
                 items.repositionCover = { repositioningCover = true }
             }
+            if actions.canWrite {
+                let isFull = isFullWidth
+                items.toggleFullWidth = { Task { await actions.toggleFullWidth(isFull: isFull) } }
+            }
         }
+        items.isFullWidth = isFullWidth
         return items
     }
 
