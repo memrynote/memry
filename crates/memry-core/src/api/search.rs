@@ -19,7 +19,7 @@
 //! time, but it walks the vault, so it is not hidden inside a keystroke.
 
 #[cfg(feature = "markdown")]
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 
 use rusqlite::OptionalExtension as _;
@@ -28,7 +28,7 @@ use crate::api::errors::StorageError;
 use crate::domain::journal_ops::links::{self, BacklinkRow, OutgoingLink};
 use crate::domain::link_reads::{self, Incoming, LinkTarget, MentionSources};
 #[cfg(feature = "markdown")]
-use crate::domain::note_properties::{self, PropertyUse, StoredProperty};
+use crate::domain::note_properties::{self, NoteWithProperty, PropertyUse, StoredProperty};
 #[cfg(feature = "markdown")]
 use crate::domain::note_stats::{self, MeasuredFile, NoteStatsRow, StoredStats, Unindexed};
 #[cfg(feature = "markdown")]
@@ -281,9 +281,20 @@ impl Search {
     }
 
     /// [`note_properties::named`].
-    pub fn notes_with_property(&self, name: String) -> Result<Vec<(String, bool)>, StorageError> {
+    pub fn notes_with_property(&self, name: &str) -> Result<Vec<NoteWithProperty>, StorageError> {
+        let index = self.index.clone();
+        self.data.read_blocking(move |data| {
+            index.read_blocking(|index| note_properties::named(data, index, name))
+        })
+    }
+
+    /// [`note_properties::unfit`].
+    pub fn unfit_property_types(
+        &self,
+        types: BTreeMap<String, String>,
+    ) -> Result<BTreeSet<String>, StorageError> {
         self.index
-            .read_blocking(move |index| note_properties::named(index, &name))
+            .read_blocking(move |index| note_properties::unfit(index, &types))
     }
 
     /// The definitions' types the `note_properties` rows were typed with

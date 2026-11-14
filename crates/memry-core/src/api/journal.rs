@@ -456,6 +456,14 @@ impl Journal {
             .map_err(CrdtError::from)?
     }
 
+    /// [`reads::same_day_calendar_days`]: the live days of other years on `date`, newest first.
+    pub fn same_day_calendar_days(&self, date: &str) -> Result<Vec<reads::CalendarDay>, CrdtError> {
+        let date = date.to_owned();
+        self.db
+            .read_blocking(move |conn| Ok(reads::same_day_calendar_days(conn, &date)))
+            .map_err(CrdtError::from)?
+    }
+
     /// [`day_values::day_values`]: every live day's property values, oldest first.
     pub fn day_values(&self) -> Result<Vec<day_values::DayValues>, StorageError> {
         self.db.read_blocking(day_values::day_values)

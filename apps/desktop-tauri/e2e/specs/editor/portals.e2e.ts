@@ -111,7 +111,9 @@ test('the source open in another pane shows its usage chip as the portal is inse
   )
   await expect(page.locator('[data-pane-active="false"] ' + NOTE_TITLE)).toHaveValue(source.title)
   await expect(sourceChip).toHaveCount(0)
-  await page.locator(NOTE_EDITOR).first().click()
+  // The host's editor, not the first in the DOM: the source pane's editor is already mounted, so
+  // until the host's mounts, `NOTE_EDITOR` alone matches the source and `((` lands there (#4632).
+  await page.locator(`[data-pane-active="true"] ${NOTE_EDITOR}`).click()
 
   await typeInEditor(page, '((')
   await expectSuggestionMenuOpen(page)

@@ -185,7 +185,7 @@ fn a_dominating_local_clock_skips_a_stale_remote() {
             saved_filters::get(conn, "f1")?.expect("live").name,
             "Due this week"
         );
-        // §6.5.2 P3: the inbound path never enqueues.
+        // §6.5.2 P3: only a concurrent merge re-queues, and a skip is not one.
         assert!(outbox(conn).is_empty());
         Ok(())
     })

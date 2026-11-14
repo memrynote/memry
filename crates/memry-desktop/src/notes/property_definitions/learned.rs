@@ -58,15 +58,22 @@ impl PropertyDefinitions {
     /// file (2b3a512960): a vault opened from Obsidian keeps its text and number definitions,
     /// and Settings lists them. A name the file already holds, in an entry this build cannot
     /// parse too, keeps the file's entry. Each name the file holds then leaves the learned types.
+    /// A learned type some index row holds a value of that it cannot show is written as text, as
+    /// Electron's `settleLearnedTypes` checks every row: an older build learned the type of the
+    /// first file it read and never settled it (#4629). Without the index nothing is written.
     /// No record is written: the next sync pass seeds the file's new definitions
     /// ([`Self::seed`]), as Electron's `seedUnclocked` pushes its rows. Returns the names
     /// written.
     pub fn fold_learned(&self) -> Result<Vec<String>, DefinitionsError> {
         let _turn = TURN.lock().unwrap_or_else(PoisonError::into_inner);
+        let Some(index) = &self.index else {
+            return Ok(Vec::new());
+        };
         let learned = self.records.learned()?;
         if learned.is_empty() {
             return Ok(Vec::new());
         }
+        let unfit = index.unfit_property_types(learned.clone())?;
         let (added, held) = properties_file::update_file(&self.vault, |file| {
             let mut added = Vec::new();
             let mut held = Vec::new();
@@ -74,6 +81,10 @@ impl PropertyDefinitions {
                 let in_file = file.definitions.get(&name).is_some()
                     || file.unparsed_names().any(|unparsed| unparsed == name);
                 if !in_file {
+                    let type_name = match unfit.contains(&name) {
+                        true => "text".to_owned(),
+                        false => type_name,
+                    };
                     let Ok(wanted) = serde_json::from_value(Value::String(type_name)) else {
                         continue;
                     };

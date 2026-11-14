@@ -15,7 +15,7 @@
 //!   A local record with no `fieldClocks` seeds every field from its document
 //!   clock (`:140-142`). `updatedAt` is the later of the two, and `deletedAt`
 //!   is the remote's, else the local one (`:167-168`). The union clock is
-//!   stored and nothing is queued (§6.5.2 P3); Electron skips the write when
+//!   stored and re-queued (§6.5.2 P3); Electron skips the write when
 //!   no field changed (`:171`), which leaves its clock behind the peer's, so
 //!   this core stores the union clock either way, as `task` and `project` do.
 //! - **No key installed**: Electron skips the record (`:92-100`), which loses

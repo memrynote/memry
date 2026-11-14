@@ -208,6 +208,39 @@ async fn a_run_asks_the_model_its_writer_was_detected_with() {
     assert_eq!(run.body["model"], MODEL);
 }
 
+/// Detected with no model, the writer's cache key says `default`; a model configured before the
+/// run never writes under that key.
+#[tokio::test]
+async fn a_run_detected_without_a_model_refuses_a_model_configured_since() {
+    let fake = serve(|request| match request.method {
+        Method::GET => models(MODEL),
+        _ => answer("{\"ok\": true}", false),
+    })
+    .await;
+    let source = Arc::new(Editable(Mutex::new(provider(
+        AgentLocalProviderPreset::Custom,
+        &fake.base_url,
+        "",
+    ))));
+    let agents = FoldAgents::new(LocalAgent::new(source.clone(), client()));
+    let writer = agents
+        .writer(FoldAgentChoice::Auto)
+        .await
+        .expect("detected");
+    assert_eq!(writer.model_id, "local_openai_compatible:default");
+
+    source.0.lock().unwrap().model = MODEL.into();
+    assert!(agents.run(&writer, "Summarize").await.is_err());
+    assert!(fake.requests().iter().all(|r| r.method != Method::POST));
+    // The detection was forgotten, so the next writer names the configured model.
+    let next = agents
+        .writer(FoldAgentChoice::Auto)
+        .await
+        .expect("detected");
+    assert_eq!(next.model_id, format!("local_openai_compatible:{MODEL}"));
+    agents.run(&next, "Summarize").await.expect("a reply");
+}
+
 #[test]
 fn a_stored_choice_reads_as_electron_wrote_it_and_an_unknown_one_as_auto() {
     for choice in FoldAgentChoice::DETECTION_ORDER {

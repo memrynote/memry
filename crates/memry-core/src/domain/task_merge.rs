@@ -22,11 +22,13 @@
 //!
 //! Three obligations, and the first is the load-bearing one.
 //!
-//! - **No enqueue, ever.** §6.5.2's P3: after a merge apply the merging device
-//!   stores the union clock and does **not** re-push. A re-push here
-//!   reintroduces the §6.5.1 case-3c divergence deterministically, not as a
-//!   race, so a reviewer should treat a [`crate::sync::outbox::enqueue`]
-//!   appearing in this file as exactly that regression.
+//! - **A concurrent merge re-queues the merged row, once.** §6.5.2's P3: the
+//!   merging device stores the union clock and queues the row in the same
+//!   transaction ([`crate::sync::hardening::requeue`]), so the union is pushed as stored and dominates
+//!   the server's row. A merge that stores the union without queueing it
+//!   strands the merged value on this device. The queue row is the requeue's
+//!   alone: a local tick here would ping-pong two devices that merged the
+//!   same pair.
 //! - **A stored clock that will not parse is a hard error, never an empty
 //!   clock.** An empty one lowers `clockTotal` and changes the winner (§6.10),
 //!   so reading one as `{}` silently hands the next concurrent peer the win on
@@ -52,6 +54,7 @@ use crate::sync::field_merge::{
     DocumentResolution, init_all_field_clocks, merge_fields, payloads_identical,
     resolve_clock_conflict,
 };
+use crate::sync::hardening::requeue;
 
 /// What §6.3.1's document-level gate decided about one inbound record.
 ///
@@ -209,9 +212,9 @@ pub(crate) fn apply_remote_merged(
 /// Writes a concurrent branch's merged `changes` over the stored payload, and
 /// the bookkeeping the wholesale path would have written, in one transaction.
 ///
-/// **No outbox row**: §6.5.2 P3, the merging device stores the union clock and
-/// does not re-push. `deleted_at` is untouched: this branch cannot be a
-/// tombstone.
+/// §6.5.2 P3: the merged row is re-queued in the same transaction, at the
+/// union clock ([`crate::sync::hardening::requeue`]). `deleted_at` is untouched: this branch cannot be
+/// a tombstone.
 pub(crate) fn write_merged(
     conn: &Connection,
     record: &InboundRecord,
@@ -250,7 +253,7 @@ pub(crate) fn write_merged_in(
             ],
         )
         .map_err(failed)?;
-    Ok(())
+    requeue::requeue(transaction, &record.item_type, &record.item_id, now_ms)
 }
 
 /// The stored payload of a row that has one, or `None` when there is nothing

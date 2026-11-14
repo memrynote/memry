@@ -238,7 +238,12 @@ impl Indexer {
             }
         };
         progress(IndexProgress { built: 0, total });
-        let mut learner = Learner::new(self.root.clone(), self.vault.clone(), self.store.clone());
+        let mut learner = Learner::new(
+            self.root.clone(),
+            self.vault.clone(),
+            self.store.clone(),
+            self.search.clone(),
+        );
         // Large notes: their property rows go with the unread ones'.
         let mut large = Vec::new();
         // Learns what it read however the reads end: stopped, done, or a write failed.

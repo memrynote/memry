@@ -25,6 +25,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use memry_core::api::search::Search;
 use memry_core::api::vault::Vault;
 use memry_core::domain::note_stats::Unindexed;
 use memry_core::domain::property_values::{IndexedProperty, PROJECT_PROPERTY_KEY, value_fits_type};
@@ -40,17 +41,24 @@ pub(super) struct Learner {
     root: PathBuf,
     vault: Arc<Vault>,
     store: Arc<dyn SecureStore>,
+    search: Arc<Search>,
     /// Each name read with no definition, and the type it settles on: its first read's, or
     /// `text` once a later value does not fit that.
     seen: BTreeMap<String, String>,
 }
 
 impl Learner {
-    pub fn new(root: PathBuf, vault: Arc<Vault>, store: Arc<dyn SecureStore>) -> Self {
+    pub fn new(
+        root: PathBuf,
+        vault: Arc<Vault>,
+        store: Arc<dyn SecureStore>,
+        search: Arc<Search>,
+    ) -> Self {
         Self {
             root,
             vault,
             store,
+            search,
             seen: BTreeMap::new(),
         }
     }
@@ -110,7 +118,11 @@ impl Learner {
 
     fn open(&self) -> Option<PropertyDefinitions> {
         match self.vault.property_definition_records(self.store.clone()) {
-            Ok(records) => Some(PropertyDefinitions::new(self.root.clone(), records)),
+            Ok(records) => Some(PropertyDefinitions::new(
+                self.root.clone(),
+                records,
+                Some(self.search.clone()),
+            )),
             Err(error) => {
                 tracing::warn!(scope = "note_index", "no type learned: {error}");
                 None

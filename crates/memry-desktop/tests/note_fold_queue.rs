@@ -7,7 +7,9 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use memry_core::domain::fold_chunks::ChunkKey;
 use memry_desktop::fold::FoldStatus;
-use memry_desktop::fold::queue::{FOLD_CONCURRENCY, FoldLastRun, LastRunStatus};
+use memry_desktop::fold::agent::FoldAgentChoice;
+use memry_desktop::fold::queue::{FOLD_CONCURRENCY, FoldLastRun, FoldWriter, LastRunStatus, Queue};
+use memry_desktop::fold::sections::ParsedChunk;
 use serde_json::json;
 use tokio::sync::mpsc::error::TryRecvError;
 
@@ -265,7 +267,7 @@ async fn an_open_forgets_the_agent_and_prunes_old_chunks() {
 /// write into whichever index is open by then. A write already under way can still land in
 /// the closing vault's own index.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn closing_the_vault_cancels_the_runs_and_drops_their_results() {
+async fn closing_the_vault_cancels_the_waiting_runs() {
     let text = sectioned(3, "closing");
     let mut w = world(&[("a.md", &text)], IDLE);
     let id = w.id_of("a.md");
@@ -398,4 +400,35 @@ async fn a_local_model_writes_the_levels_through_the_agent_engine() {
         key.model_id = format!("local_openai_compatible:{MODEL}");
         assert!(search.fold_chunk(&key).expect("read").is_some());
     }
+}
+
+/// A fold that read the cache before one of its missing chunks was written folds again; a
+/// write of another chunk since (the old global counter) does not make it.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn only_a_write_of_a_missing_chunk_since_the_cache_read_folds_again() {
+    let w = world(&[("a.md", &sectioned(3, "since"))], IDLE);
+    let writer = FoldWriter {
+        id: FoldAgentChoice::LocalOpenaiCompatible,
+        label: "Local model".into(),
+        model_id: "local_openai_compatible:m".into(),
+        model: Some("m".into()),
+    };
+    let chunk = |hash: &str| ParsedChunk {
+        hash: hash.into(),
+        heading: None,
+        paragraphs: Vec::new(),
+    };
+    let mut queue = Queue::default();
+    for hash in ["missing", "other"] {
+        queue.enqueue("a", &chunk(hash), "en", &writer, &w.search());
+    }
+    let missing = queue.start_next().expect("a job").key;
+    let other = queue.start_next().expect("a job").key;
+    let seen = queue.writes;
+
+    queue.finish(&other, &Ok(()));
+    assert!(queue.written_since(&other, seen));
+    assert!(!queue.written_since(&missing, seen));
+    queue.finish(&missing, &Ok(()));
+    assert!(queue.written_since(&missing, seen));
 }

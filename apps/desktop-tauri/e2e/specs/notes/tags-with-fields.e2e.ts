@@ -110,6 +110,9 @@ test('a template added again after Undo reaches the open editor', async ({
 
   await addHeaderTag(page, 'person')
   await expect(toast).toBeVisible({ timeout: 10_000 })
+  // The toast closes 4 s after it opens unless the pointer is on it, as a user's is on the way
+  // to Undo. A slow template fill outlasted it and the click missed the closing toast.
+  await toast.hover()
   await expect(editor).toContainText('Context')
   await toast.getByRole('button', { name: 'Undo' }).click()
   await expect(editor).not.toContainText('Context')

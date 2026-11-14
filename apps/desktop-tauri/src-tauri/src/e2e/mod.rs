@@ -3,6 +3,7 @@
 //! it. A second, run-time guard ([`E2eGate`], `MEMRY_E2E=1`) keeps an e2e binary inert unless
 //! the harness started it.
 
+mod ai;
 mod app;
 mod clipboard;
 pub mod commands;
