@@ -263,7 +263,9 @@ final class EditorSession {
         if panel == .none {
             textView.inputView = nil
         } else {
-            panelView.frame.size.height = keyboardHeight
+            panelView.frame.size.height = EditorPanelView.height(
+                keyboard: keyboardHeight, window: textView.window?.bounds.height
+            )
             textView.inputView = panelView
         }
         guard reduceMotion() else { return textView.reloadInputViews() }
