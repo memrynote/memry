@@ -3,10 +3,6 @@ import MemryCore
 import SwiftUI
 import UIKit
 
-// #4512. The OS signals the embedder and the model slot listen to: thermal
-// state and power for each step, leaving the foreground and memory warnings
-// for the 330 MB model.
-
 extension Thermal {
     init(_ state: ProcessInfo.ThermalState) {
         switch state {
@@ -14,7 +10,6 @@ extension Thermal {
         case .fair: self = .fair
         case .serious: self = .serious
         case .critical: self = .critical
-        // An unknown future state stops the embedder rather than heat the phone.
         @unknown default: self = .critical
         }
     }
@@ -31,8 +26,6 @@ enum SemanticSignals {
     }
 }
 
-/// Hands the open vault to the background embedder, and relays leaving the
-/// foreground and memory warnings to the model slot.
 private struct SemanticEmbeddingScope: ViewModifier {
     let vault: Vault
     @Environment(\.semanticSearch) private var semantic

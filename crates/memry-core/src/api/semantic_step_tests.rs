@@ -1,6 +1,3 @@
-//! The step on a real vault (`Vault::open`, real SQLite, real `vectors.db`)
-//! with a fake embedder behind the real model slot.
-
 use std::collections::HashMap;
 use std::fs;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -27,8 +24,6 @@ const COOL: StepConditions = StepConditions {
     external_power: true,
 };
 
-/// Each window takes at least 5 ms, so a measured window is never zero. A
-/// window containing `poison` always fails inference.
 struct Fake {
     gate: Option<Arc<Mutex<Receiver<()>>>>,
     entered: Option<Sender<()>>,
@@ -58,7 +53,6 @@ impl Embed for Fake {
     }
 }
 
-/// Blocks each window until the test sends, and says when one starts.
 type Gate = (Arc<Mutex<Receiver<()>>>, Sender<()>);
 type Docs = HashMap<String, (Arc<Document>, Arc<Mutex<Vec<u8>>>)>;
 
@@ -80,8 +74,6 @@ fn loader(loads: Arc<AtomicUsize>, gate: Option<Gate>) -> Loader {
 }
 
 impl Setup {
-    /// A second object over the same models directory and vault, as after a
-    /// relaunch.
     fn relaunch(&mut self) {
         self.semantic = self.build(None);
     }
@@ -181,8 +173,6 @@ impl Setup {
         self.reindex();
     }
 
-    /// The app reindexes after every write, which refreshes the body cache
-    /// the queue plans from.
     fn reindex(&self) {
         self.vault.search(None).unwrap().reindex().unwrap();
     }
@@ -223,8 +213,6 @@ async fn setup() -> Setup {
     setup
 }
 
-/// Writes `text` as a new paragraph in the note's one document, so every
-/// edit extends the same block group the first write made.
 fn append_body(conn: &Connection, id: &str, seq: i64, text: &str) {
     thread_local! {
         static DOCS: std::cell::RefCell<Docs> =
@@ -259,7 +247,6 @@ fn append_body(conn: &Connection, id: &str, seq: i64, text: &str) {
         })
         .unwrap();
     let update = last.lock().unwrap().clone();
-    // Stamped by the real clock, as the reindex watermark is.
     update_log::append_server_update(conn, id, seq, &update, now_ms()).unwrap();
 }
 

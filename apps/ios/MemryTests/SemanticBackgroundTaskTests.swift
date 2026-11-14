@@ -4,7 +4,6 @@ import MemryCore
 import Testing
 @testable import Memry
 
-/// Touched only from the main actor, like the real task under `using: .main`.
 final class FakeTaskRun: SemanticTaskRun, @unchecked Sendable {
     var expirationHandler: (() -> Void)?
     var completions: [Bool] = []
@@ -27,7 +26,6 @@ final class FakeSemantic: SemanticSearchProtocol, @unchecked Sendable {
     func release(reason _: ReleaseReason) {}
 }
 
-/// A step the test answers one call at a time.
 @MainActor
 final class ScriptedSteps {
     private var waiting: CheckedContinuation<StepOutcome, Never>?
@@ -71,7 +69,7 @@ struct SemanticBackgroundTaskTests {
         var reschedules = 0
         var releases = 0
         let work = SemanticBackgroundTask.drive(
-            task, step: steps.step, conditions: { cool }, reschedule: { reschedules += 1 }, rest: { _ in }, release: { releases += 1 }
+            task, step: steps.step, conditions: { cool }, reschedule: { reschedules += 1 }, rest: { _ in }, releaseAfterLastStep: { releases += 1 }
         )
         await steps.answer(.embedded(embedded: 0, total: 3, restMs: 0))
         while steps.calls < 2 { await Task.yield() }
@@ -82,7 +80,6 @@ struct SemanticBackgroundTaskTests {
         #expect(reschedules == 1)
         #expect(releases == 0, "the window in flight still holds the model")
 
-        // The window in flight finishes after expiry and completes nothing again.
         await steps.answer(.embedded(embedded: 1, total: 3, restMs: 0))
         await work.value
         #expect(task.completions == [false])
@@ -97,7 +94,7 @@ struct SemanticBackgroundTaskTests {
         var reschedules = 0
         var releases = 0
         let work = SemanticBackgroundTask.drive(
-            task, step: steps.step, conditions: { cool }, reschedule: { reschedules += 1 }, rest: { _ in }, release: { releases += 1 }
+            task, step: steps.step, conditions: { cool }, reschedule: { reschedules += 1 }, rest: { _ in }, releaseAfterLastStep: { releases += 1 }
         )
         await steps.answer(.embedded(embedded: 1, total: 2, restMs: 0))
         await steps.answer(.finished(embedded: 2, total: 2))
@@ -113,7 +110,7 @@ struct SemanticBackgroundTaskTests {
         var reschedules = 0
         var releases = 0
         let work = SemanticBackgroundTask.drive(
-            task, step: steps.step, conditions: { cool }, reschedule: { reschedules += 1 }, rest: { _ in }, release: { releases += 1 }
+            task, step: steps.step, conditions: { cool }, reschedule: { reschedules += 1 }, rest: { _ in }, releaseAfterLastStep: { releases += 1 }
         )
         await steps.answer(.stopped(reason: .tooHot))
         await work.value
@@ -128,15 +125,13 @@ struct SemanticBackgroundTaskTests {
         var releases = 0
         await SemanticBackgroundTask.drive(
             task, step: { _ in throw CancellationError() }, conditions: { cool },
-            reschedule: { reschedules += 1 }, rest: { _ in }, release: { releases += 1 }
+            reschedule: { reschedules += 1 }, rest: { _ in }, releaseAfterLastStep: { releases += 1 }
         ).value
         #expect(task.completions == [false])
         #expect(reschedules == 1)
         #expect(releases == 1)
     }
 
-    /// The step's counts cannot tell a stale or replaced note from a current
-    /// one, so a ready model always schedules and the step decides.
     @Test func aReadyModelSchedulesEvenWhenTheCountsReadDone() throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("memry-semantic-bg-\(UUID().uuidString)")
@@ -161,7 +156,7 @@ struct SemanticBackgroundTaskTests {
         var reschedules = 0
         var releases = 0
         await SemanticBackgroundTask.drive(
-            task, step: nil, conditions: { cool }, reschedule: { reschedules += 1 }, rest: { _ in }, release: { releases += 1 }
+            task, step: nil, conditions: { cool }, reschedule: { reschedules += 1 }, rest: { _ in }, releaseAfterLastStep: { releases += 1 }
         ).value
         #expect(task.completions == [true])
         #expect(reschedules == 0)

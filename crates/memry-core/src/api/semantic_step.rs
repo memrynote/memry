@@ -1,6 +1,3 @@
-//! The background embedder's step and the shell's release relay. The queue's
-//! rules live in `semantic::queue`; this is the FFI loop body around them.
-
 use std::path::Path;
 use std::sync::Arc;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
@@ -10,7 +7,7 @@ use crate::api::errors::StorageError;
 use crate::api::vault::Vault;
 use crate::domain::search::source::note_text;
 use crate::semantic::queue::{self, InFlight, Pace, Thermal, pace};
-use crate::semantic::{ReleaseReason, SemanticError};
+use crate::semantic::{ReleaseReason, SemanticError, WindowOutcome};
 use crate::storage::Db;
 use crate::storage::vector_db::{self, VectorStore};
 
@@ -22,13 +19,13 @@ pub struct StepConditions {
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum StepOutcome {
-    /// One window ran or one note committed. Sleep `rest_ms`, then step again.
+    /// Not done yet. Sleep `rest_ms`, then step again.
     Embedded {
         embedded: u32,
         total: u32,
         rest_ms: u32,
     },
-    /// Every live note has current vectors.
+    /// Nothing is due: every live note is current or skipped after a failure.
     Finished { embedded: u32, total: u32 },
     /// Stop stepping until the next scheduled run.
     Stopped { reason: StepStop },
@@ -51,8 +48,7 @@ fn stopped(reason: StepStop) -> StepOutcome {
 
 #[uniffi::export(async_runtime = "tokio")]
 impl SemanticSearch {
-    /// At most one window of inference, on the blocking pool, with no
-    /// database lock held. Commits the note when its last window is done.
+    /// Runs at most one window of inference per call.
     pub async fn embed_step(
         &self,
         vault: Arc<Vault>,
@@ -101,7 +97,6 @@ impl SemanticSearch {
                     .await?
                 {
                     Some((title, text)) => InFlight::start(note_id, &title, &text, key),
-                    // Gone since the plan: the next step plans without it.
                     None => return Ok(self.embedded(&plan, Default::default(), conditions)),
                 }
             }
@@ -110,15 +105,15 @@ impl SemanticSearch {
         let started = Instant::now();
         if let Some(window) = note.next_window() {
             match self.host.embed_background(window.as_str().to_owned()).await {
-                Ok(Ok(vector)) => note.push(&vector),
-                Ok(Err(error)) if !self.host.take_pressure() => {
+                Ok(WindowOutcome::Embedded(vector)) => note.push(&vector),
+                Ok(WindowOutcome::InputFailed(error)) if !self.host.take_pressure() => {
                     eprintln!(
                         "memry-core: a note failed to embed, skipped until it changes: {error}"
                     );
                     lock(&self.skipped).insert(note.source_key());
                     return Ok(self.embedded(&plan, started.elapsed(), conditions));
                 }
-                Ok(Err(_)) => {
+                Ok(WindowOutcome::InputFailed(_)) => {
                     lock(&self.in_flight).insert(vault_dir, note);
                     return Ok(stopped(StepStop::MemoryPressure));
                 }
@@ -160,7 +155,6 @@ impl SemanticSearch {
         took: std::time::Duration,
         conditions: StepConditions,
     ) -> StepOutcome {
-        // `Stop` was answered before the window ran.
         let rest = match pace(conditions.thermal, took) {
             Pace::Rest(rest) => rest,
             Pace::Stop => std::time::Duration::ZERO,
@@ -172,8 +166,6 @@ impl SemanticSearch {
         }
     }
 
-    /// A window that could not run. The note stays in flight for the next
-    /// step, so its finished windows are kept.
     fn stop_for(&self, error: SemanticError) -> Result<StepOutcome, SemanticError> {
         if self.host.take_pressure() {
             return Ok(stopped(StepStop::MemoryPressure));
@@ -187,9 +179,6 @@ impl SemanticSearch {
         }
     }
 
-    /// The vault's `vectors.db`, when this device opted in and the model is
-    /// fully downloaded. The opt-in is read under the handle lock, so a step
-    /// racing `disable` never recreates the file it deleted.
     fn ready_vectors(&self, vault_dir: &Path) -> Result<Option<Db>, StorageError> {
         let mut handles = lock(&self.vectors);
         if !self.model.opted_in() || self.model.verified().is_none() {

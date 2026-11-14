@@ -24,15 +24,17 @@ pub enum ReleaseReason {
     MemoryWarning,
 }
 
+/// A window the model ran. A model that could not be had is the `Err` around it.
+pub enum WindowOutcome {
+    Embedded(Box<Vector>),
+    InputFailed(SemanticError),
+}
+
 pub struct ModelHost {
     state: Arc<Mutex<State>>,
     load: Loader,
-    /// Woken when any load ends, for a step waiting on a load it did not start.
     loaded: Arc<Notify>,
-    /// Steps currently inside `embed_background`. A lease means "the embedder
-    /// is running", which a background release leaves alone.
     leases: AtomicU32,
-    /// A memory warning arrived since the last step looked.
     pressure: AtomicBool,
 }
 
@@ -94,15 +96,7 @@ impl ModelHost {
         }
     }
 
-    /// The step path: one window on a background (one-thread) session,
-    /// waiting for a load when there is none. A foreground session is swapped
-    /// for a background one, which costs one reload. Holds a lease throughout.
-    /// The outer error is a model that could not be had, the inner one this
-    /// input's inference failing.
-    pub async fn embed_background(
-        &self,
-        input: String,
-    ) -> Result<Result<Vector, SemanticError>, SemanticError> {
+    pub async fn embed_background(&self, input: String) -> Result<WindowOutcome, SemanticError> {
         self.leases.fetch_add(1, Ordering::SeqCst);
         let _lease = Lease(&self.leases);
         let embedder = self.background_embedder().await?;
@@ -116,7 +110,9 @@ impl ModelHost {
         if matches!(outcome, Err(SemanticError::Poisoned)) {
             self.evict(&embedder);
         }
-        Ok(outcome)
+        Ok(outcome.map_or_else(WindowOutcome::InputFailed, |vector| {
+            WindowOutcome::Embedded(Box::new(vector))
+        }))
     }
 
     pub fn release(&self, reason: ReleaseReason) {
@@ -130,7 +126,10 @@ impl ModelHost {
         }
     }
 
-    /// Whether a memory warning arrived since the last call.
+    fn memory_warning_pending(&self) -> bool {
+        self.pressure.load(Ordering::SeqCst)
+    }
+
     pub fn take_pressure(&self) -> bool {
         self.pressure.swap(false, Ordering::SeqCst)
     }
@@ -182,8 +181,7 @@ impl ModelHost {
                         return Ok(embedder.clone());
                     }
                     Slot::Loading => None,
-                    // Left set for the step, which stops on it.
-                    Slot::Loaded(_) | Slot::Unloaded if self.pressure.load(Ordering::SeqCst) => {
+                    Slot::Loaded(_) | Slot::Unloaded if self.memory_warning_pending() => {
                         return Err(SemanticError::inference("a memory warning arrived"));
                     }
                     Slot::Loaded(_) | Slot::Unloaded => {
@@ -208,8 +206,6 @@ impl ModelHost {
     }
 }
 
-/// Runs one load into the slot that was set to `Loading` under `generation`,
-/// and wakes every step waiting on it.
 fn load_into(
     state: &Mutex<State>,
     load: &Loader,

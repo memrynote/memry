@@ -1,7 +1,3 @@
-//! A note or journal as the search indexes read it: whether it is live, its
-//! title, and its body text. FTS (`maintenance`) and the semantic embedder
-//! both read through here, so the two never disagree on what a note says.
-
 use rusqlite::{Connection, OptionalExtension as _, params};
 
 use crate::api::errors::StorageError;
@@ -12,18 +8,11 @@ use crate::storage::repositories::schema::Object;
 use super::body_cache::body_text;
 use super::failed;
 
-/// One note or journal row, as far as indexing cares.
 pub(crate) enum NoteRow {
-    /// No row, or a tombstone.
     Absent,
-    /// The apply path flagged it corrupt.
     Corrupt,
-    /// `metadata-only`: the record's body has not been pulled yet.
     NotPulled,
-    Live {
-        title: String,
-        tags: Vec<String>,
-    },
+    Live { title: String, tags: Vec<String> },
 }
 
 pub(crate) fn note_row(data: &Connection, id: &str) -> Result<NoteRow, StorageError> {
@@ -61,8 +50,6 @@ pub(crate) fn note_row(data: &Connection, id: &str) -> Result<NoteRow, StorageEr
     })
 }
 
-/// A live note's title and body text, the body read through the `note_bodies`
-/// cache. `None` unless the note is live.
 pub(crate) fn note_text(
     data: &Connection,
     id: &str,
@@ -74,15 +61,12 @@ pub(crate) fn note_text(
     Ok(Some((title, body_text(data, id, now_ms)?)))
 }
 
-/// A live note as the embedder plans it: its title and the sha256 of its
-/// cached body text, `None` when no body has been cached yet.
 pub(crate) struct LiveNote {
     pub(crate) note_id: String,
     pub(crate) title: String,
     pub(crate) text_sha256: Option<[u8; 32]>,
 }
 
-/// Every live note and journal, one per id, ordered by id.
 pub(crate) fn live_notes(data: &Connection) -> Result<Vec<LiveNote>, StorageError> {
     let mut statement = data
         .prepare(

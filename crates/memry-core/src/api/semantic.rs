@@ -82,11 +82,8 @@ pub struct SemanticSearch {
     download: tokio::sync::Mutex<()>,
     /// One `vectors.db` handle per vault directory.
     vectors: Mutex<HashMap<PathBuf, Db>>,
-    /// One embed step at a time.
     step: tokio::sync::Mutex<()>,
-    /// The note each vault's embedder is part way through, by vault directory.
     in_flight: Mutex<HashMap<PathBuf, InFlight>>,
-    /// Source keys whose inference failed this process (queue invariant 5).
     skipped: Mutex<HashSet<[u8; 32]>>,
 }
 
@@ -169,7 +166,6 @@ impl SemanticSearch {
         // at its next range; the second removes what that range wrote.
         self.model.clear().map_err(io_failed)?;
         let _download = self.download.lock().await;
-        // A step in flight holds a `vectors.db` handle; the delete waits for it.
         let _step = self.step.lock().await;
         self.model.clear().map_err(io_failed)?;
         *lock(&self.transfer) = Transfer::Idle;

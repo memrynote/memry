@@ -1,7 +1,4 @@
-//! The embed queue: which note to embed next, how fast, and the note being
-//! embedded. The only writer of `vectors.db`.
-//!
-//! Invariants, each held by a test in `api/semantic_step_tests.rs`:
+//! Embed queue invariants, each held by a test in `api/semantic_step_tests.rs`:
 //!
 //! 1. **No stored queue.** What is due is derived on every step from `data.db`
 //!    (live notes) and `vectors.db` (state rows). An edit, a rename, a delete,
@@ -18,7 +15,7 @@
 //!    notes that left the live set.
 //! 5. **A note whose inference fails is skipped, not retried.** Its source key
 //!    joins a per-process set the plan passes over, so one bad note never
-//!    holds up the notes behind it. It writes no state row: an edit or a
+//!    holds up the notes behind it. The failure writes no state row: an edit or a
 //!    rename gives it a new key and a relaunch empties the set, and either
 //!    retries it. Until then its old vectors, if any, keep serving.
 
@@ -48,8 +45,6 @@ pub(crate) struct NoteSource {
     pub(crate) source_key: [u8; 32],
 }
 
-/// `sha256(title || 0x00 || sha256(text))`. The title is part of the key
-/// because every window's header carries it, so a rename re-embeds.
 pub(crate) fn source_key(title: &str, text_sha256: &[u8; 32]) -> [u8; 32] {
     let mut hash = Sha256::new();
     hash.update(title.as_bytes());
@@ -58,8 +53,6 @@ pub(crate) fn source_key(title: &str, text_sha256: &[u8; 32]) -> [u8; 32] {
     hash.finalize().into()
 }
 
-/// Every live note's source key. A note whose body was never cached gets the
-/// zero key, which no state row holds, so it is always due.
 pub(crate) fn sources(data: &Connection) -> Result<Vec<NoteSource>, StorageError> {
     Ok(live_notes(data)?
         .into_iter()
@@ -76,15 +69,10 @@ pub(crate) fn sources(data: &Connection) -> Result<Vec<NoteSource>, StorageError
 pub(crate) struct Plan {
     pub(crate) next: Option<String>,
     pub(crate) prune: Vec<String>,
-    /// Live notes whose state row is current.
     pub(crate) embedded: u32,
     pub(crate) total: u32,
 }
 
-/// Due: no state row, or one built with another model, input version or
-/// source, and not `skipped` (invariant 5). Never-embedded notes come before
-/// stale ones, whose old vectors keep serving meanwhile (desktop's reconcile
-/// order).
 pub(crate) fn plan(
     sources: &[NoteSource],
     states: &[NoteState],
@@ -132,9 +120,6 @@ pub(crate) enum Pace {
     Rest(Duration),
 }
 
-/// Critical: stop before any work. Serious: rest as long as the last window
-/// took, a 50% duty cycle. Otherwise no rest. A guess to tune once the
-/// processing task is measured on a device.
 pub(crate) fn pace(thermal: Thermal, last_window: Duration) -> Pace {
     match thermal {
         Thermal::Critical => Pace::Stop,
@@ -143,7 +128,6 @@ pub(crate) fn pace(thermal: Thermal, last_window: Duration) -> Pace {
     }
 }
 
-/// The note being embedded, in memory only. Lost on a kill (invariant 2).
 pub(crate) struct InFlight {
     state: NoteState,
     windows: Vec<Window>,
@@ -183,7 +167,6 @@ impl InFlight {
         self.done.len() == self.windows.len()
     }
 
-    /// The state row and its vectors. Only a complete note commits.
     pub(crate) fn into_commit(self) -> (NoteState, Vec<VectorBytes>) {
         debug_assert!(self.is_complete());
         (self.state, self.done)
