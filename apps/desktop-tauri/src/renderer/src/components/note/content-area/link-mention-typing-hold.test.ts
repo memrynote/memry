@@ -29,6 +29,10 @@ vi.mock('@/lib/url-metadata', () => ({
   fetchLinkPreview: (url: string) => fetchLinkPreview(url),
   extractDomain: (url: string) => new URL(url).hostname
 }))
+const logWarn = vi.hoisted(() => vi.fn())
+vi.mock('@/lib/logger', () => ({
+  createLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: logWarn, error: vi.fn() })
+}))
 
 import { typingHoldOf } from '@/sync/typing-hold'
 import { editorSchema } from './editor-schema'
@@ -47,6 +51,7 @@ afterEach(() => {
     doc.destroy()
   }
   fetchLinkPreview.mockReset()
+  logWarn.mockReset()
 })
 
 function collaborativeEditor(): { editor: BlockNoteEditor; doc: Y.Doc; fragment: Y.XmlFragment } {
@@ -135,6 +140,61 @@ describe('a link preview that resolves during a typing hold', () => {
     // #then
     expect(mentionTitles(editor)).toEqual([PREVIEW.title])
     expect(fragment.toJSON()).toContain(`title="${PREVIEW.title}"`)
+    const undoManager = yUndoPluginKey.getState(editor._tiptapEditor.state)?.undoManager
+    expect(undoManager?.undoStack).toHaveLength(0)
+  })
+
+  it('logs a fill that throws after the hold instead of leaving it unhandled', async () => {
+    // #given a preview that arrived during the hold, and an editor whose write throws
+    const { editor, hold, resolvePreview } = openNoteWithHeldPreview()
+    hold.hold(1, 2000)
+    resolvePreview(PREVIEW)
+    await settle()
+    const failure = new Error('transact failed')
+    const transact = vi.spyOn(editor, 'transact').mockImplementation(() => {
+      throw failure
+    })
+
+    // #when
+    hold.release(1)
+    await settle()
+
+    // #then
+    expect(logWarn).toHaveBeenCalledWith('Link mention preview failed', failure)
+    transact.mockRestore()
+  })
+
+  it('refills a chip rebuilt bare during the hold only after the hold (#4475)', async () => {
+    // #given an open note whose chip already has its preview
+    const { editor, doc, fragment, hold, resolvePreview } = openNoteWithHeldPreview()
+    resolvePreview(PREVIEW)
+    await settle()
+    expect(mentionTitles(editor)).toEqual([PREVIEW.title])
+
+    // #when another replica rebuilds the chip bare while the hold is on
+    const remote = collaborativeEditor()
+    Y.applyUpdate(remote.doc, Y.encodeStateAsUpdate(doc))
+    remote.editor.replaceBlocks(remote.editor.document, [
+      {
+        type: 'paragraph',
+        content: [
+          { type: 'text', text: 'See ', styles: {} },
+          { type: 'linkMention', props: { url: URL_, domain: 'example.com' } },
+          { type: 'text', text: ' again', styles: {} }
+        ]
+      } as never
+    ])
+    hold.hold(1, 2000)
+    Y.applyUpdate(doc, Y.encodeStateAsUpdate(remote.doc, Y.encodeStateVector(doc)))
+    await settle()
+
+    // #then the chip stays bare until the hold ends, then fills from memory with no undo step
+    expect(mentionTitles(editor)).not.toEqual([PREVIEW.title])
+    hold.release(1)
+    await settle()
+    expect(mentionTitles(editor)).toEqual([PREVIEW.title])
+    expect(fragment.toJSON()).toContain(`title="${PREVIEW.title}"`)
+    expect(fetchLinkPreview).toHaveBeenCalledTimes(1)
     const undoManager = yUndoPluginKey.getState(editor._tiptapEditor.state)?.undoManager
     expect(undoManager?.undoStack).toHaveLength(0)
   })

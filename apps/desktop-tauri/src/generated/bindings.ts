@@ -476,7 +476,9 @@ export const commands = {
 	 *  `settings:setAISettings` (`writeAISettings`): writes the switches, forgets the fold's
 	 *  agent detection when a switch the fold reads changed (`refreshNoteFold`), and announces
 	 *  `ai` with the written fields, one `setting_changed` each. With no vault open it refuses with
-	 *  the localized "no vault is open"; an empty patch only announces.
+	 *  the localized "no vault is open"; an empty patch only announces. Turning AI on clears the
+	 *  embedding model's load backoff and, when it was off, starts a catch-up pass of the embedding
+	 *  projectors; turning it off stops the model (ai-settings.ts:72-74, :105-119).
 	 */
 	settingsSetAi: (patch: AiSettingsPatch) => __TAURI_INVOKE<null>("settings_set_ai", { patch }),
 	/**

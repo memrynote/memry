@@ -12,6 +12,7 @@
 //! comparison the easy one to write.
 
 use crate::api::errors::{CompressError, CryptoError, RecoveryError};
+use crate::crypto::vault_name::{self, SealedText, VaultText};
 use crate::crypto::{keys, recovery};
 use crate::protocol::compress;
 
@@ -135,8 +136,8 @@ pub fn core_version() -> String {
 /// A vault's name, opened from the sealed form the registry carries.
 ///
 /// The server never sees a vault name: desktop seals it under the vault key
-/// with `vault-name-v1:<vaultUuid>` as associated data
-/// (`apps/desktop/src/main/sync/vault-name-crypto.ts`), so the registry row
+/// with `vault-name-v1:<vaultUuid>` as associated data (chapter 04 §4.15,
+/// `apps/desktop/src/main/sync/vault-name-crypto.ts`), so the registry row
 /// holds only `encryptedName` and `nameNonce`. The associated data binds the
 /// name to its vault, which is what stops a server swapping two rows' names.
 ///
@@ -151,42 +152,100 @@ pub fn decrypt_vault_name(
     name_nonce: String,
 ) -> Option<String> {
     let vault_key = keys::derive_vault_key(&master_key).ok()?;
-    let ciphertext = keys::base64_decode(&encrypted_name).ok()?;
-    let nonce = keys::base64_decode(&name_nonce).ok()?;
-    let aad = format!("vault-name-v1:{vault_id}");
-    let plaintext =
-        crate::crypto::sodium::aead_decrypt(&ciphertext, Some(aad.as_bytes()), &nonce, &vault_key)
-            .ok()?;
-    String::from_utf8(plaintext.to_vec()).ok()
+    vault_name::open(
+        VaultText::Name,
+        &vault_key,
+        &vault_id,
+        &encrypted_name,
+        &name_nonce,
+    )
+}
+
+/// A vault's name sealed for `POST /sync/vaults` (chapter 04 §4.15): the
+/// `encryptedName` and `nameNonce` Electron's `encryptVaultName` writes.
+pub fn encrypt_vault_name(
+    master_key: &[u8],
+    vault_id: &str,
+    name: &str,
+) -> Result<SealedText, CryptoError> {
+    let vault_key = keys::derive_vault_key(master_key)?;
+    vault_name::seal(VaultText::Name, &vault_key, vault_id, name)
+}
+
+/// A vault's icon sealed for `PUT /sync/vaults/:vaultId/icon` (chapter 04
+/// §4.16): the `encryptedIcon` and `iconNonce` Electron's `encryptVaultIcon`
+/// writes. The caller validates the value first (`VaultIconSchema`).
+pub fn encrypt_vault_icon(
+    master_key: &[u8],
+    vault_id: &str,
+    icon: &str,
+) -> Result<SealedText, CryptoError> {
+    let vault_key = keys::derive_vault_key(master_key)?;
+    vault_name::seal(VaultText::Icon, &vault_key, vault_id, icon)
+}
+
+/// A vault's icon opened from `encryptedIcon` and `iconNonce`, `None` when it
+/// does not open (chapter 04 §4.16). An opened value is untrusted text: the
+/// caller validates it and keeps its local icon when it does not pass.
+pub fn decrypt_vault_icon(
+    master_key: &[u8],
+    vault_id: &str,
+    encrypted_icon: &str,
+    icon_nonce: &str,
+) -> Option<String> {
+    let vault_key = keys::derive_vault_key(master_key).ok()?;
+    vault_name::open(
+        VaultText::Icon,
+        &vault_key,
+        vault_id,
+        encrypted_icon,
+        icon_nonce,
+    )
 }
 
 #[cfg(test)]
-mod vault_name_tests {
+mod vault_name_crypto {
     use super::*;
-    use base64::Engine as _;
-    use base64::engine::general_purpose::STANDARD;
 
-    fn seal(master: &[u8], vault_id: &str, name: &str) -> (String, String) {
-        let key = keys::derive_vault_key(master).expect("vault key");
-        let nonce = [7u8; 24];
-        let aad = format!("vault-name-v1:{vault_id}");
-        let sealed = crate::crypto::sodium::aead_encrypt(
-            name.as_bytes(),
-            Some(aad.as_bytes()),
-            &nonce,
-            &key,
-        )
-        .expect("seal");
-        (STANDARD.encode(sealed), STANDARD.encode(nonce))
-    }
+    const MASTER: [u8; 32] = [3u8; 32];
 
     #[test]
     fn a_sealed_name_opens_to_its_plaintext() {
-        let master = vec![3u8; 32];
-        let (name, nonce) = seal(&master, "v1", "MemryNote");
+        let sealed = encrypt_vault_name(&MASTER, "v1", "MemryNote").expect("seal");
         assert_eq!(
-            decrypt_vault_name(master, "v1".into(), name, nonce).as_deref(),
+            decrypt_vault_name(
+                MASTER.to_vec(),
+                "v1".into(),
+                sealed.ciphertext,
+                sealed.nonce
+            )
+            .as_deref(),
             Some("MemryNote")
+        );
+    }
+
+    #[test]
+    fn a_sealed_icon_opens_to_its_plaintext() {
+        let sealed = encrypt_vault_icon(&MASTER, "v1", "icon:Book01Icon").expect("seal");
+        assert_eq!(
+            decrypt_vault_icon(&MASTER, "v1", &sealed.ciphertext, &sealed.nonce).as_deref(),
+            Some("icon:Book01Icon")
+        );
+    }
+
+    /// The two prefixes keep the envelopes apart: a server cannot hand a name
+    /// back as an icon, or an icon as a name.
+    #[test]
+    fn a_name_never_opens_as_an_icon_nor_an_icon_as_a_name() {
+        let name = encrypt_vault_name(&MASTER, "v1", "MemryNote").expect("seal");
+        let icon = encrypt_vault_icon(&MASTER, "v1", "🌿").expect("seal");
+        assert_eq!(
+            decrypt_vault_icon(&MASTER, "v1", &name.ciphertext, &name.nonce),
+            None
+        );
+        assert_eq!(
+            decrypt_vault_name(MASTER.to_vec(), "v1".into(), icon.ciphertext, icon.nonce),
+            None
         );
     }
 
@@ -194,16 +253,23 @@ mod vault_name_tests {
     /// vault's row does not open — which is the point of binding it.
     #[test]
     fn a_name_sealed_for_another_vault_does_not_open() {
-        let master = vec![3u8; 32];
-        let (name, nonce) = seal(&master, "v1", "MemryNote");
-        assert_eq!(decrypt_vault_name(master, "v2".into(), name, nonce), None);
+        let sealed = encrypt_vault_name(&MASTER, "v1", "MemryNote").expect("seal");
+        assert_eq!(
+            decrypt_vault_name(
+                MASTER.to_vec(),
+                "v2".into(),
+                sealed.ciphertext,
+                sealed.nonce
+            ),
+            None
+        );
     }
 
     #[test]
     fn a_wrong_key_does_not_open() {
-        let (name, nonce) = seal(&[3u8; 32], "v1", "MemryNote");
+        let sealed = encrypt_vault_icon(&MASTER, "v1", "🌿").expect("seal");
         assert_eq!(
-            decrypt_vault_name(vec![4u8; 32], "v1".into(), name, nonce),
+            decrypt_vault_icon(&[4u8; 32], "v1", &sealed.ciphertext, &sealed.nonce),
             None
         );
     }

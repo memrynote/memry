@@ -33,6 +33,8 @@ mod api_journal;
 mod api_notes_write;
 #[path = "api_search.rs"]
 mod api_search;
+#[path = "api_search_cjk.rs"]
+mod api_search_cjk;
 #[path = "api_sync_declaration.rs"]
 mod api_sync_declaration;
 #[path = "api_sync_oversized_update.rs"]
@@ -63,6 +65,8 @@ mod attachment_manifest_vectors;
 mod attachment_upload_wire;
 #[path = "auth_session.rs"]
 mod auth_session;
+#[path = "auth_web_callback.rs"]
+mod auth_web_callback;
 #[path = "block_edit_vectors.rs"]
 mod block_edit_vectors;
 #[path = "block_refs.rs"]
@@ -468,6 +472,8 @@ mod vault_locks;
 mod vault_locks_schema;
 #[path = "vault_locks_writers.rs"]
 mod vault_locks_writers;
+#[path = "vault_name_vectors.rs"]
+mod vault_name_vectors;
 #[path = "vectors.rs"]
 mod vectors;
 #[path = "versioned_keys_carry.rs"]

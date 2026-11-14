@@ -16,6 +16,9 @@ pub struct Server {
     child: Child,
     pub url: String,
     pub devices: Vec<Value>,
+    /// The whole bootstrap line (`serve.ts`), for what a case reads beyond the devices.
+    #[allow(dead_code)] // One binary reads it.
+    pub boot: Value,
     replies: Receiver<Value>,
 }
 
@@ -53,6 +56,7 @@ impl Server {
             child,
             url: boot["url"].as_str().expect("a url").to_owned(),
             devices: boot["devices"].as_array().expect("devices").clone(),
+            boot,
             replies,
         }
     }

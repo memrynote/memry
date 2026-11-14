@@ -309,6 +309,37 @@ impl ProjectionRuntime {
         Ok(())
     }
 
+    /// `reconcile(names)` (`projections/runtime.ts:139-170, 370-390`): one pass over the named
+    /// projectors only, on its own thread, never awaited. A failure is logged and the pass goes
+    /// on; unlike the open's pass, nothing is rebuilt. Once the runtime stops it does nothing.
+    pub fn reconcile_named(&self, names: &[&str]) -> std::io::Result<()> {
+        let lanes: Vec<Arc<Lane>> = self
+            .lanes
+            .iter()
+            .filter(|lane| names.contains(&lane.projector.name()))
+            .cloned()
+            .collect();
+        if lanes.is_empty() || self.stopping.load(Ordering::SeqCst) {
+            return Ok(());
+        }
+        let cancel = self.cancel.clone();
+        let handle = std::thread::Builder::new()
+            .name("projection-reconcile".into())
+            .spawn(move || {
+                for lane in lanes {
+                    let _turn = lock(&lane.work);
+                    if cancel.is_cancelled() {
+                        break;
+                    }
+                    if let Err(error) = lane.projector.reconcile(&cancel) {
+                        tracing::error!(projector = lane.projector.name(), %error, "projection reconcile failed");
+                    }
+                }
+            })?;
+        lock(&self.threads).push(("reconcile".into(), handle));
+        Ok(())
+    }
+
     /// Threads (lanes and the reconcile chain) that have not finished.
     pub fn live_threads(&self) -> usize {
         lock(&self.threads)

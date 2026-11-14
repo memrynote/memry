@@ -28,7 +28,7 @@ use yrs::{
 const NOW: i64 = 1_760_000_000_000;
 const DEVICE: &str = "device-a";
 
-fn vault(label: &str) -> (Db, Vault) {
+pub(crate) fn vault(label: &str) -> (Db, Vault) {
     let dir = tempfile::Builder::new()
         .prefix(&format!("memry-api-search-{label}-"))
         .tempdir()
@@ -49,7 +49,7 @@ fn vault(label: &str) -> (Db, Vault) {
 /// authoritative for a body and §12.2 calls create-time `content` best-effort
 /// in its own words. A test that seeded `content` would pass against an
 /// indexer that never read a body at all.
-fn write_note(db: &Db, id: &str, title: &str, body: &str) {
+pub(crate) fn write_note(db: &Db, id: &str, title: &str, body: &str) {
     db.call_blocking(|conn: &mut Connection| {
         let note = NewNote {
             id,

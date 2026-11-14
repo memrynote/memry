@@ -31,7 +31,7 @@ use crate::seams::secure_store::{SecureStore, SecureStoreKey};
 
 mod oauth;
 
-pub use oauth::{NativeOAuthRequest, NativeOAuthResponse};
+pub use oauth::{NativeOAuthRequest, OAuthCallbackRequest, OAuthSignInResponse};
 
 /// Chapter 02 §2.10 and §2.11, verbatim.
 pub const ACCESS_TOKEN_EXPIRY_SECONDS: u64 = 900;
