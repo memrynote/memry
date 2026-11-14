@@ -2,7 +2,8 @@
 //! behaviour: `hang` never answers, `hang:<file>` creates `<file>` and never answers, `crash`
 //! aborts the process, `exit` exits with code 1, `oversize` writes a frame header past the cap,
 //! `log` writes a stderr line and answers; anything else answers with one page as document 1.
-//! `PdfPageText` answers the child's pid, so a test sees which child answered.
+//! `PdfPageText` answers the child's pid, so a test sees which child answered. `PdfRenderPage`
+//! answers the names of the child's environment variables, a tab, then its cwd.
 //! `--crash-before-ready` aborts before the `Ready` frame. Never bundled.
 
 use std::io::Write;
@@ -51,6 +52,14 @@ fn main() {
                 },
             },
             Request::PdfPageText { .. } => Response::Text(std::process::id().to_string()),
+            Request::PdfRenderPage { .. } => {
+                let mut names: Vec<_> = std::env::vars_os()
+                    .map(|(name, _)| name.to_string_lossy().into_owned())
+                    .collect();
+                names.sort();
+                let cwd = std::env::current_dir().unwrap_or_default();
+                Response::Text(format!("{}\t{}", names.join("\n"), cwd.display()))
+            }
             _ => Response::Done,
         },
     );

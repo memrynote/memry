@@ -20,7 +20,7 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError, Weak};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use crate::frame::{read_frame, write_frame};
+use crate::frame::{FrameError, read_frame, write_frame};
 use crate::op::{Request, Response};
 use crate::priority;
 use crate::serve::READY_ID;
@@ -236,8 +236,17 @@ impl Supervisor {
             )
         };
         // Outside the state lock: a stop or a timeout kill of this child ends a blocked write.
-        if let Err(error) = write_frame(&mut *lock(&stdin), &request.to_frame(id)) {
+        // The stdin guard ends with this statement, before any lock the error path takes.
+        let written = write_frame(&mut *lock(&stdin), &request.to_frame(id));
+        if let Err(error) = written {
             lock(&pending).remove(&id);
+            // The codec refused the request before it wrote a byte: the child is healthy and
+            // only this call fails.
+            if let FrameError::TooLarge(len) = error {
+                return Err(WorkerError::Failed(format!(
+                    "the request of {len} bytes is over the frame cap"
+                )));
+            }
             // The child is gone. Forget it now, unless it was already stopped, so the next call
             // starts a new one instead of writing to it again; its stdout reader then finds it
             // is not current.

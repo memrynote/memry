@@ -7,7 +7,9 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use memry_ml_worker::{Clock, Limits, Request, Response, Supervisor, SystemClock, WorkerError};
+use memry_ml_worker::{
+    Clock, Limits, MAX_FRAME_LEN, Request, Response, Supervisor, SystemClock, WorkerError,
+};
 
 fn stub() -> PathBuf {
     PathBuf::from(env!("CARGO_BIN_EXE_memry-ml-worker-stub"))
@@ -418,4 +420,61 @@ fn a_hung_op_is_killed_while_a_large_request_waits_on_the_pipe() {
         Ok(opened()),
         "a new child answers"
     );
+}
+
+#[test]
+fn the_worker_gets_only_the_inherited_env_and_the_install_dir_as_cwd() {
+    // The app's own environment holds tokens and paths; the child parses untrusted files.
+    let worker = supervisor(limits());
+    let request = Request::PdfRenderPage {
+        doc: 1,
+        page: 1,
+        max_edge: 1,
+    };
+    let Ok(Response::Text(report)) = worker.call(&request) else {
+        panic!("the stub answers with its environment");
+    };
+    let (names, cwd) = report.split_once('\t').expect("names, a tab, the cwd");
+    let mut names: Vec<_> = names
+        .lines()
+        .map(|name| {
+            if cfg!(windows) {
+                name.to_uppercase()
+            } else {
+                name.to_owned()
+            }
+        })
+        .collect();
+    names.sort();
+    // Mirrors `INHERITED_ENV` in `src/supervisor.rs`.
+    let expected: &[&str] = if cfg!(windows) { &["SYSTEMROOT"] } else { &[] };
+    assert_eq!(
+        names, expected,
+        "the app's environment did not reach the child"
+    );
+    assert_eq!(
+        Path::new(cwd).canonicalize().expect("cwd exists"),
+        stub().parent().unwrap().canonicalize().unwrap(),
+        "the child runs in its install dir, not the app's cwd"
+    );
+}
+
+#[test]
+fn a_request_over_the_frame_cap_fails_only_its_call() {
+    // Nothing is written for a request the codec refuses, so the child is healthy and the
+    // failure is not a crash: with a crash limit of 1 a counted crash would pause the worker.
+    let worker = supervisor(Limits {
+        crash_limit: 1,
+        ..limits()
+    });
+    assert_eq!(worker.call(&open("ok")), Ok(opened()));
+    let pid = worker.pid().expect("running");
+    let too_large = "x".repeat(MAX_FRAME_LEN as usize);
+    assert!(matches!(
+        worker.call(&open(&too_large)),
+        Err(WorkerError::Failed(_))
+    ));
+    assert_eq!(worker.pid(), Some(pid), "the healthy child keeps running");
+    assert_eq!(worker.call(&open("ok")), Ok(opened()), "not paused");
+    assert_eq!(worker.pid(), Some(pid), "the same child answers");
 }
