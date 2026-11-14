@@ -26,7 +26,7 @@ The directions:
 | Direction              | Mechanism                                                                                                                                                                                       |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | markdown to document   | desktop's `markdownToYFragment` (`apps/desktop/src/main/sync/blocknote-converter.ts:535`) with the repairs of §12.1.1; in the core, `markdown_seed` for the two writes of §12.1.0 and no others |
-| document to markdown   | desktop only, in the vault write-back (`apps/desktop/src/main/sync/crdt-writeback.ts:603`)                                                                                                      |
+| document to markdown   | desktop only, in the vault write-back (`apps/desktop/src/main/sync/crdt-writeback.ts:598`)                                                                                                      |
 | document to plain text | `extract_text`, a plain-text walk of the `prosemirror` fragment that keeps headings and list markers, drops everything else, and claims no markdown fidelity (§12.1.3)                          |
 
 ### 12.1.0 The core's markdown seed
@@ -86,12 +86,13 @@ markdown parse and export.
   which writes the blocks and those side channels, then `recordMarkdownSourceInYDoc` (`:685`).
   The core's seed keeps a line holding a token as literal text (§12.1.0).
 - **Outbound**, the vault write-back calls `serializeNoteBody`
-  (`apps/desktop/src/main/sync/crdt-writeback.ts:603`,
-  `apps/desktop/src/main/sync/writing-markdown.ts:430`). It runs `yDocToMarkdown`
-  (`apps/desktop/src/main/sync/blocknote-converter.ts:204`), which serialises with
-  `blocksToMarkdownPreserving` and `restoreLinkReferences` (`:387-389`) and then runs
-  `restoreMarkdownSource` (`:224`), and it applies `serializeCriticMarkup` last
-  (`apps/desktop/src/main/sync/writing-markdown.ts:455`).
+  (`apps/desktop/src/main/sync/crdt-writeback.ts:598`,
+  `apps/desktop/src/main/sync/writeback-conversion.ts:36`,
+  `apps/desktop/src/main/sync/writing-markdown.ts:433`). It runs `yDocToMarkdown`
+  (`apps/desktop/src/main/sync/blocknote-converter.ts:208`), which serialises with
+  `blocksToMarkdownPreserving` and `restoreLinkReferences` (`:397-399`) and then runs
+  `restoreMarkdownSource` (`:234`), and it applies `serializeCriticMarkup` last
+  (`apps/desktop/src/main/sync/writing-markdown.ts:458`).
 
 The renderer and main build their block and inline specs from one factory (§12.1), so the block
 grammar of §12.6 and §12.7 is the same in both. **The out-of-band layer of §12.8 runs only on
