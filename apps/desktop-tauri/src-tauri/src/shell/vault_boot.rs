@@ -371,6 +371,7 @@ fn open_last_vault(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     register_editor_host(app, &session);
     register_large_files(app, &session);
     register_uploads(app, &session);
+    crate::ml_worker::register_on_close(app, &session);
     // Subscribed before the first open, so the launch's own events reach the renderer's
     // listeners; the renderer reads `status()` once after it subscribes.
     forward_events(app.clone(), session.subscribe());

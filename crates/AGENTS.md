@@ -1,6 +1,6 @@
 # Rust core guide
 
-This directory owns the Rust workspace. `memry-core` is the shared core under the iOS and desktop apps; `memry-desktop` holds desktop-only services and has no tauri dependency; `memry-ml` holds the native ML libraries (ONNX Runtime, whisper, Tesseract, images, pdfium; OCR and pdfium run in its `memry-ml-worker` sidecar process, so a hung native call is killed without taking the app down); `memrynote-cli` builds the user-facing `memrynote` binary; `memry-cli` builds `memry`, the dev tool; `uniffi-bindgen-swift` generates the Swift bindings; `memry-test-kit` holds the shared helpers of the untrusted-input tests and is a dev-dependency only. The Tauri bin crate `memry-tauri` lives in `apps/desktop-tauri/src-tauri` and is a member of this workspace. Crates that Steps 02 (#3519), 23 (#3540) and 35 (#3552) create are named here before they exist so the guide is true when they land.
+This directory owns the Rust workspace. `memry-core` is the shared core under the iOS and desktop apps; `memry-desktop` holds desktop-only services and has no tauri dependency; `memry-ml` holds the native ML libraries (ONNX Runtime, whisper); `memry-ml-worker` is the sidecar process that runs the C and C++ readers of untrusted files (pdfium now, Tesseract next), so a crash or a hung native call is killed without taking the app down, plus the frame codec and the supervisor the app drives it with (its lib has no native dependency, and `memry-desktop` links only that); `memrynote-cli` builds the user-facing `memrynote` binary; `memry-cli` builds `memry`, the dev tool; `uniffi-bindgen-swift` generates the Swift bindings; `memry-test-kit` holds the shared helpers of the untrusted-input tests and is a dev-dependency only. The Tauri bin crate `memry-tauri` lives in `apps/desktop-tauri/src-tauri` and is a member of this workspace. Crates that Steps 02 (#3519), 23 (#3540) and 35 (#3552) create are named here before they exist so the guide is true when they land.
 
 ## Ownership
 
@@ -16,6 +16,10 @@ This directory owns the Rust workspace. `memry-core` is the shared core under th
 - `memry-tauri` adapters parse arguments, call one service method and map the error, with no domain decision inside a command.
 - A blocking core call runs inside `spawn_blocking`.
 - Desktop never uses `memry_core::api::runtime`.
+
+### PDF worker
+
+`memry-ml-worker` (Step 25, #3542) is a binary the app spawns, never a library it links: pdfium (chromium/7881 from bblanchon/pdfium-binaries, bound at run time by `pdfium-render`) runs only there. `scripts/fetch-pdfium.mjs` downloads the library for one target and checks the sha256 it pins for each of the five; its tests (`tests/pdf.rs`) need it, at the default path the script writes or at `MEMRY_PDFIUM_DIR`. The app finds the sidecar next to its own executable (`WORKER_BIN`) and pdfium under `pdfium/` in the resource dir (debug builds: `apps/desktop-tauri/src-tauri/resources`). The frames are internal to one build, so they carry no version. A new op goes in `op.rs`, the worker's `pdf.rs` or a sibling, and a typed call like `pdf_client.rs`; the supervisor stays op-agnostic except for `Limits`.
 
 ### ONNX Runtime
 

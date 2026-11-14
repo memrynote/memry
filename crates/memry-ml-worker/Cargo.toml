@@ -1,0 +1,66 @@
+[package]
+name = "memry-ml-worker"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+description = "The out-of-process worker of MemryNote (pdfium) and its supervisor. Never depends on tauri."
+autobins = false
+
+# The lib (frame codec, ops, supervisor) has no native dependency: memry-desktop links it with
+# `default-features = false`. pdfium is C++ and reads untrusted PDFs, so it runs only in the
+# `memry-ml-worker` process (#3542, R2), where a crash or a hang kills the child, not the app.
+[dependencies]
+tracing = { workspace = true }
+thiserror = { workspace = true }
+pdfium-render = { version = "=0.9.4", default-features = false, features = ["pdfium_7881", "image_025"], optional = true }
+image = { version = "0.25", default-features = false, features = ["png"], optional = true }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62.2", features = ["Win32_Foundation", "Win32_System_Threading"] }
+
+[features]
+default = ["native"]
+# The worker binary: pdfium, bound at run time from the directory its `--pdfium-dir` names.
+native = ["dep:pdfium-render", "dep:image"]
+
+# The sidecar the app spawns (`memry_desktop::services::file_text::WorkerHandle`).
+[[bin]]
+name = "memry-ml-worker"
+path = "src/main.rs"
+required-features = ["native"]
+test = false
+doc = false
+
+# Test-only stand-in with the same frames: hangs, crashes or answers an oversized frame on demand,
+# so the supervisor's kill, restart and cap paths run without pdfium. Never bundled.
+[[bin]]
+name = "memry-ml-worker-stub"
+path = "src/bin/stub.rs"
+test = false
+doc = false
+
+[[test]]
+name = "frame"
+path = "tests/frame.rs"
+
+[[test]]
+name = "supervisor"
+path = "tests/supervisor.rs"
+
+[[test]]
+name = "pdf"
+path = "tests/pdf.rs"
+required-features = ["native"]
+
+[build-dependencies]
+static_vcruntime = "3.0.0"
+
+[dev-dependencies]
+memry-test-kit = { path = "../memry-test-kit" }
+proptest = "1"
+tempfile = "3"

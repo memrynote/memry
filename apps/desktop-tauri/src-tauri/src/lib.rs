@@ -14,6 +14,7 @@ pub mod fonts;
 pub mod guards;
 pub mod instance;
 pub mod menu;
+pub mod ml_worker;
 pub mod notifications;
 pub mod power;
 pub mod protocols;
@@ -85,6 +86,7 @@ fn register_stages() {
     startup::register(Stage::Handlers, "drop staging", shell::drop_stage::init);
     shell::vault_boot::register_stages();
     shutdown::register_stages();
+    ml_worker::register_stages();
     tray::register_stages();
     windows::close::register_stages();
     deep_link::register_stages();

@@ -27,6 +27,7 @@ on:
       - 'packages/article-extract/**'
       - 'scripts/check-line-ceilings.mjs'
       - 'scripts/check-test-timing*.mjs'
+      - 'scripts/fetch-pdfium.mjs'
       - '.github/workflows/rust-ci.yml'
   # The merge queue (feat/tauri-v2) runs the full matrix on the merge-group commit; `paths` do not apply.
   merge_group:
@@ -120,7 +121,7 @@ jobs:
         uses: ./.github/actions/paths-changed
         with:
           token: ${{ github.token }}
-          include: '^(crates/|apps/desktop-tauri/|tests/sync-harness/scripts/serve\.ts$|tests/sync-harness/src/|apps/sync-server/|pnpm-lock\.yaml$|packages/swift/|packages/contracts/test-vectors/|packages/article-extract/|scripts/check-line-ceilings\.mjs$|scripts/check-test-timing(\.test)?\.mjs$|\.github/workflows/rust-ci\.yml$|\.github/actions/ort-static/)'
+          include: '^(crates/|apps/desktop-tauri/|tests/sync-harness/scripts/serve\.ts$|tests/sync-harness/src/|apps/sync-server/|pnpm-lock\.yaml$|packages/swift/|packages/contracts/test-vectors/|packages/article-extract/|scripts/check-line-ceilings\.mjs$|scripts/check-test-timing(\.test)?\.mjs$|scripts/fetch-pdfium\.mjs$|\.github/workflows/rust-ci\.yml$|\.github/actions/ort-static/)'
 
   lint-and-test:
     name: Rust ${{ matrix.part }}${{ matrix.partition && format(' {0}', matrix.partition) || '' }} (${{ matrix.os }})
@@ -481,6 +482,16 @@ jobs:
       - name: Test memry-ml
         if: matrix.part != 'tests'
         run: cargo nextest run -p memry-ml --no-fail-fast
+
+      # The PDF worker and its supervisor, on the pinned pdfium of this target (sha256 checked by
+      # the script). Every OS leg, since the priority, kill and library-loading code is per OS.
+      - name: Test memry-ml-worker
+        if: matrix.part != 'tests'
+        env:
+          MEMRY_PDFIUM_DIR: ${{ runner.temp }}/pdfium
+        run: |
+          node ../scripts/fetch-pdfium.mjs --out "$MEMRY_PDFIUM_DIR"
+          cargo nextest run -p memry-ml-worker --no-fail-fast
 
       # The model tests run on the full tier only (#3540 K5): the pinned text files (207 MB) come
       # from a cache shared across OSes and, on a miss, from Hugging Face; the test checks their
