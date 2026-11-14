@@ -10,6 +10,7 @@
 //! | a definition the user creates over a purged deletion    | chapter 05 §5.12.3 (`create`)             |
 //! | a definition only the file holds meets the server's     | `rebuildSingleDbCache`, `seedUnclocked` (#4099) |
 //! | a definition only the file holds over a purged deletion | chapter 05 §5.12.3 (`create`, #4099)      |
+//! | recovery info is read with the setup token              | chapter 02 §2.7 (`/auth/recovery-info`)   |
 //!
 //! Within it: a definition another device pushed first wins over the learned type, a deleted one
 //! stays deleted, the record has the shape Electron's seed pushes, a retry pushes nothing twice,
@@ -31,10 +32,12 @@ use std::time::Duration;
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use memry_core::api::auth::{AuthSession, DeviceDescriptor};
-use memry_core::api::errors::ApiError;
+use memry_core::api::errors::{ApiError, AuthError};
 use memry_core::api::vault::Vault;
 use memry_core::crypto::keys;
-use memry_core::protocol::account::{AccountCipher, AccountSealer, DeviceSigner, device_directory};
+use memry_core::protocol::account::{
+    AccountCipher, AccountSealer, DeviceSigner, KeyMaterial, device_directory,
+};
 use memry_core::protocol::auth::DevicePlatform;
 use memry_core::protocol::types::Declaration;
 use memry_core::seams::reachability::{Reachability, ReachabilityObserver, Reachable};
@@ -60,6 +63,7 @@ struct Server {
     child: Child,
     url: String,
     devices: Vec<Value>,
+    boot: Value,
     replies: Receiver<Value>,
 }
 
@@ -94,6 +98,7 @@ impl Server {
             child,
             url: boot["url"].as_str().expect("a url").to_owned(),
             devices: boot["devices"].as_array().expect("devices").clone(),
+            boot,
             replies,
         }
     }
@@ -580,4 +585,73 @@ async fn a_definition_only_the_file_holds_over_a_purged_deletion_is_kept_and_syn
 
     b.sync().await;
     assert_eq!(b.listed(), types(&[("gone", "number")]));
+}
+
+/// An auth session over the real transport holding `setup_token`, as a reinstall holds one between
+/// sign-in and registration.
+fn holding_setup_token(server: &Server, setup_token: &str) -> AuthSession {
+    let store = device_key::with_device_key();
+    store
+        .set(SecureStoreKey::SetupToken, setup_token.as_bytes().to_vec())
+        .unwrap();
+    AuthSession::new(
+        app_transport(&["127.0.0.1".to_owned()], Arc::new(NoPins)),
+        store,
+        server.url.clone(),
+        "desktop".into(),
+        DeviceDescriptor {
+            name: "harness-recovery".into(),
+            platform: DevicePlatform::Macos,
+            form_factor: None,
+            os_version: None,
+            app_version: "1.0.0".into(),
+            vault_id: None,
+        },
+    )
+    .unwrap()
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn recovery_info_is_read_with_the_setup_token() {
+    let server = Server::start();
+    let recovery = &server.boot["recovery"];
+
+    let material = holding_setup_token(&server, recovery["setupToken"].as_str().unwrap())
+        .recovery_info()
+        .await
+        .expect("the account's key material");
+    assert_eq!(
+        material,
+        KeyMaterial {
+            kdf_salt: recovery["kdfSalt"].as_str().unwrap().to_owned(),
+            key_verifier: recovery["keyVerifier"].as_str().unwrap().to_owned(),
+        }
+    );
+
+    // An account that never completed setup: the route's 400, not a material.
+    let keyless = holding_setup_token(&server, server.boot["setupTokenNoKeys"].as_str().unwrap())
+        .recovery_info()
+        .await;
+    assert!(
+        matches!(
+            keyless,
+            Err(AuthError::Api {
+                source: ApiError::Status { status: 400, .. }
+            })
+        ),
+        "{keyless:?}"
+    );
+
+    // The route takes a setup token only: an access token in its place is refused.
+    let access = server.devices[0]["accessToken"].as_str().unwrap();
+    let refused = holding_setup_token(&server, access).recovery_info().await;
+    assert!(
+        matches!(
+            refused,
+            Err(AuthError::Api {
+                source: ApiError::Unauthorized { .. }
+            })
+        ),
+        "{refused:?}"
+    );
 }

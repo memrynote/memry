@@ -135,6 +135,18 @@ export class SimulatedServer {
       .sign(this.keys.privateKey)
   }
 
+  /** A setup token as `signSetupToken` (`apps/sync-server/src/services/auth.ts:240`) mints one. */
+  async createSetupToken(userId: string): Promise<string> {
+    if (!this.keys) throw new Error('Server not started')
+
+    return new SignJWT({ sub: userId, type: 'setup', jti: crypto.randomUUID() })
+      .setProtectedHeader({ alg: 'EdDSA' })
+      .setIssuer('memry-sync')
+      .setAudience('memry-client')
+      .setExpirationTime('5m')
+      .sign(this.keys.privateKey)
+  }
+
   async truncateTables(): Promise<void> {
     const db = await this.getD1()
     const tables = [
