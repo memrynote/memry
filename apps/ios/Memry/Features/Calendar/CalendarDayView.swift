@@ -11,6 +11,7 @@ struct CalendarDayView: View {
     @State private var dragState: CalendarDragState?
     @State private var pageDay: String?
     @State private var baseDay: String?
+    @State private var pagerWidth: CGFloat = 0
 
     var body: some View {
         let window = CalendarPeriods.window(.day, anchor: store.anchor, weekStartsOn: store.weekStartsOn, zoom: .months)
@@ -26,7 +27,12 @@ struct CalendarDayView: View {
                 store.state.anchorDate = CalendarDates.addDays(store.anchor, forward ? 7 : -7)
             })
             Rectangle().fill(Tokens.Line.border.color).frame(height: 0.5)
+            // The paging offset stays in points when the width changes
+            // (rotation, sidebar, Split View), which lands between pages on
+            // another day. A new pager per width opens on the anchor again.
             pager(items: items)
+                .id(pagerWidth)
+                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { pagerWidth = $0 }
         }
     }
 
