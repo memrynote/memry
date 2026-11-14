@@ -13,7 +13,7 @@ extension ErrorMapping {
             UserFacingError(
                 code: "property.retyped",
                 title: "\u{201C}\(name)\u{201D} holds \(existing), so Memry did not change it to \(proposed).",
-                guidance: "Change its type or value in Properties first.",
+                guidance: "Clear it in Properties, then try again.",
                 recourse: .blocked,
                 isUserVisible: true
             )

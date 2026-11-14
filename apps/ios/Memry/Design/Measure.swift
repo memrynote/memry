@@ -9,7 +9,8 @@ extension EnvironmentValues {
     /// The surface runs the full pane instead of the reading measure.
     ///
     /// The note page sets it from a note's `fullWidth` frontmatter, then this
-    /// device's editor width; the journal day from the journal override.
+    /// device's editor width; the journal day from this device's journal
+    /// override, then the same editor width.
     @Entry var fullWidthReading = false
 
     /// A wide block breaks out of the reading measure to the full pane.

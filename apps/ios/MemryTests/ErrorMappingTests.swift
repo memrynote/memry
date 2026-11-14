@@ -343,7 +343,7 @@ struct ErrorMappingTests {
         #expect(mapped.code != ErrorMapping.unrecognised.code)
         #expect(says(mapped, "\u{201C}fullWidth\u{201D} holds text"))
         #expect(says(mapped, "a boolean"))
-        #expect(says(mapped, "in Properties first"))
+        #expect(says(mapped, "Clear it in Properties, then try again."))
         #expect(mapped.recourse == .blocked, "the same write would be refused again")
         #expect(mapped.isUserVisible)
         #expect(mapped.text != String(reflecting: error))
