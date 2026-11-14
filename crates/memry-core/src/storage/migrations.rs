@@ -252,6 +252,11 @@ pub const INDEX_MIGRATIONS: &[Migration] = &[
         name: "property_refs",
         sql: include_str!("migrations/index/0009_property_refs.sql"),
     },
+    Migration {
+        version: 10,
+        name: "file_text",
+        sql: include_str!("migrations/index/0010_file_text.sql"),
+    },
 ];
 
 /// The version a fully migrated database sits at. Zero for an empty list.
@@ -366,6 +371,8 @@ fn set_user_version(conn: &Connection, version: u32) -> Result<(), StorageError>
 mod agent_records_tests;
 #[cfg(test)]
 mod desktop_record_types_tests;
+#[cfg(test)]
+mod file_text_tests;
 mod legacy_numbering;
 #[cfg(test)]
 mod note_file_marks_tests;
