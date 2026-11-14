@@ -29,6 +29,7 @@
 
 mod cipher;
 pub mod observer;
+pub mod progress;
 
 use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -54,6 +55,7 @@ use super::bootstrap::BootstrapClient;
 use super::engine::{PassReport, PassSeed, SyncEngine};
 use super::first_sync::{FirstSync, FirstSyncLimits, FirstSyncReport, ProgressSink};
 use super::first_sync_store::read_meta;
+use super::outbox;
 use super::pack_bootstrap::PackBootstrap;
 use super::pull::PullLoop;
 use super::push::PushCoordinator;
@@ -63,6 +65,7 @@ pub use observer::{
     AppliedFeed, AppliedOutcome, AppliedRecord, ApplyObserver, AttachmentDownload, FieldConflict,
     Observers,
 };
+use progress::{InitialSyncPhase, InitialSyncSink, Phases};
 
 /// How a driver syncs.
 #[derive(Debug, Clone)]
@@ -289,13 +292,18 @@ impl SyncDriver {
 
     /// The first sync under the pass gate, then passes until the feed head,
     /// so the seeds run and the outbox drains. `None` while paused.
+    ///
+    /// Progress follows Electron's full sync: `notes` and `packs` from the
+    /// first sync, `tasks` with the outbox the passes will push (only when it
+    /// is not empty), then `complete`.
     pub async fn first_sync(
         &self,
-        progress: Arc<dyn ProgressSink>,
+        progress: Arc<dyn InitialSyncSink>,
     ) -> Result<Option<FirstSyncOutcome>, SyncError> {
         if self.is_paused() {
             return Ok(None);
         }
+        let phases = Arc::new(Phases(progress));
         self.settle_misses().await;
         let first_sync = {
             let _gate = self.engine.hold_gate().await;
@@ -307,10 +315,15 @@ impl SyncDriver {
             .with_bootstrap(Arc::clone(&self.first.bootstrap))
             .with_packs(Arc::clone(&self.first.packs))
             .with_limits(self.first.limits)
-            .with_progress(progress)
+            .with_progress(Arc::clone(&phases) as Arc<dyn ProgressSink>)
             .run(super::pull::now_ms())
             .await?
         };
+        let now = super::pull::now_ms();
+        let pending = self.db.call(move |conn| outbox::pending(conn, now)).await?;
+        if pending > 0 {
+            phases.emit(InitialSyncPhase::Tasks, 0, pending as u64);
+        }
         let mut passes = Vec::new();
         let mut cursor = None;
         loop {
@@ -327,6 +340,7 @@ impl SyncDriver {
                 break;
             }
         }
+        phases.emit(InitialSyncPhase::Complete, 0, 0);
         Ok(Some(FirstSyncOutcome { first_sync, passes }))
     }
 
