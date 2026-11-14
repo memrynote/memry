@@ -7,16 +7,18 @@ use std::sync::Arc;
 
 use memry_desktop::ai::features::{self, AiSettings, AiSettingsPatch};
 use memry_desktop::fold::agent::FoldAgents;
+use memry_desktop::fold::service::FoldService;
 use memry_desktop::registry::AppConfig;
 use memry_desktop::session::{OpenVault, Session};
 use memry_desktop::settings::{SettingsError, SettingsService};
 use memry_desktop::startup_values;
 use memry_desktop::telemetry::lifecycle::setting_changed;
 use serde_json::{Map, Value};
-use tauri::{AppHandle, Manager, Wry};
+use tauri::{AppHandle, Manager, Runtime, Wry};
 
 use super::blocking;
 use super::error::{CommandError, ErrorKind};
+use super::notes::open_vault;
 use crate::events::{SettingsChangedEvent, broadcast};
 use crate::shell::services::telemetry;
 
@@ -119,10 +121,11 @@ pub async fn settings_set_group(
     group: String,
     patch: Value,
 ) -> Result<(), CommandError> {
-    let (service, vault) = (service(&app), current(&app));
+    // `writeGroupSettings`: the localized "no vault is open".
+    let (service, vault) = (service(&app), open_vault(&app)?);
     let change = blocking("settings_set_group", move || {
         service
-            .write_group(vault.as_ref(), &group, patch_of(patch)?)
+            .write_group(Some(&vault), &group, patch_of(patch)?)
             .map_err(map_error)
     })
     .await?;
@@ -186,25 +189,46 @@ pub async fn settings_get_ai(app: AppHandle<Wry>) -> Result<AiSettings, CommandE
     .await
 }
 
-/// `settings:setAISettings`: writes the switches, forgets the fold's agent detection when a
-/// switch the fold reads changed (`refreshNoteFold`), and announces `ai` with the written fields.
+/// `settings:setAISettings` (`writeAISettings`): writes the switches, forgets the fold's
+/// agent detection when a switch the fold reads changed (`refreshNoteFold`), and announces
+/// `ai` with the written fields, one `setting_changed` each. With no vault open it refuses with
+/// the localized "no vault is open"; an empty patch only announces.
 #[tauri::command]
 #[specta::specta]
-pub async fn settings_set_ai(
-    app: AppHandle<Wry>,
+pub async fn settings_set_ai<R: Runtime>(
+    app: AppHandle<R>,
     patch: AiSettingsPatch,
 ) -> Result<(), CommandError> {
-    let (service, vault) = (service(&app), current(&app));
+    let service = app.state::<SettingsService>().inner().clone();
+    let vault = open_vault(&app)?;
+    let fields = patch.fields();
+    let touches_fold = patch.touches_fold();
     blocking("settings_set_ai", move || {
-        features::write(&service, vault.as_ref(), &patch).map_err(map_error)
+        features::write(&service, Some(&vault), &patch).map_err(map_error)
     })
     .await?;
-    if patch.touches_fold()
-        && let Some(agents) = app.try_state::<Arc<FoldAgents>>()
-    {
-        agents.reset();
+    // `refreshNoteFold`: forget the agent detection, then every fetched note fetches again.
+    if touches_fold {
+        if let Some(agents) = app.try_state::<Arc<FoldAgents>>() {
+            agents.reset();
+        }
+        if let Some(fold) = app.try_state::<Arc<FoldService>>() {
+            fold.refresh();
+        }
     }
-    announce(&app, "ai", patch.fields())
+    broadcast(
+        &app,
+        SettingsChangedEvent {
+            key: "ai".to_owned(),
+            fields: fields.clone(),
+        },
+    );
+    if let Some(service) = telemetry(&app) {
+        for field in &fields {
+            setting_changed(&service, &format!("ai.{field}"));
+        }
+    }
+    Ok(())
 }
 
 /// Restores the shortcut defaults. The folder shortcuts are entries the user added, not

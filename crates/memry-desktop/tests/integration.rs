@@ -196,6 +196,10 @@ mod logship;
 mod move_dir;
 #[path = "move_journal.rs"]
 mod move_journal;
+#[path = "note_fold_model_vectors.rs"]
+mod note_fold_model_vectors;
+#[path = "note_fold_queue.rs"]
+mod note_fold_queue;
 #[path = "note_fold_service.rs"]
 mod note_fold_service;
 #[path = "note_fold_text_vectors.rs"]

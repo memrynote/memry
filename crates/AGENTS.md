@@ -61,10 +61,12 @@ This directory owns the Rust workspace. `memry-core` is the shared core under th
 
 ### Note fold
 
-`memry-desktop/src/fold` (Step 14h, #3531) ports Electron's local fold (`apps/desktop/src/main/note-fold/`) and is tested against `packages/contracts/test-vectors/note-fold-text.json` and `note-fold.json`, which `apps/desktop/scripts/note-fold-oracle/` generates by running that engine in Node.
+`memry-desktop/src/fold` (Step 14h, #3531; model levels Step 22, #3539) ports Electron's fold (`apps/desktop/src/main/note-fold/`) and is tested against `packages/contracts/test-vectors/note-fold-text.json`, `note-fold.json` and `note-fold-model.json` (Key, Takeaway and Topic: the local fallback lines, assembled model lines, chunk prompts and reply validation), which `apps/desktop/scripts/note-fold-oracle/` generates by running that engine in Node. The queue and service rules (`fold-service.ts`) are tested on a fake model in `tests/note_fold_queue.rs`, each test citing the Electron line it ports.
 
 - Regenerate with `pnpm --filter @memry/desktop vectors:note-fold`; `vectors:note-fold:check` runs in CI. Each file records the `process.versions.icu` and `unicode` it was written under, and the check fails first on a different ICU: regenerate, then fix `fold/tokens.rs` `long_date` (ICU's date strings, written by hand) and `fold/text.rs` until the Rust tests pass.
 - Known divergence: word counts of the scripts ICU splits with a dictionary. `unicode-segmentation` (UAX #29) has no dictionary, so in a note that does not read as Chinese, Japanese or Korean, a Han, Hiragana, Thai, Lao, Khmer or Myanmar run counts one word per character (more than Electron) and a Katakana run one word (at most Electron's). For those notes the fold threshold, chunk split and Brief word window can land differently from Electron. Accepted (Kaan, 2026-11-06) over adding ICU4X `icu_segmenter`; `note_fold_text_vectors.rs` holds each such case to its bound, so a change in either direction fails.
+- Known divergence: `fold/morph.rs` `MAX_LINE_TOKENS` (128). A local fallback Takeaway or Topic line of more word segments is not mapped to its source words; Electron's `engine-morph.ts` caps only the LCS cells, so a long paragraph with few spaces costs up to `MAX_LCS_CELLS` per line. Model lines keep Electron's cap only, so the vectors are unchanged; `fold_untrusted.rs` holds the linear bound.
+- Known divergence: closing the vault cancels the in-flight model runs, so a run still waiting on its model writes nothing (a write already under way can still land in the closing vault's own index, never in the next one's); Electron's `dispose` (`fold-service.ts:265-270`) lets them finish and write into whichever index is open by then.
 
 ## Untrusted-input tests
 

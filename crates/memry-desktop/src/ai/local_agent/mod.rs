@@ -236,6 +236,13 @@ impl LocalAgent {
             .result
     }
 
+    /// Whether a probe two turns share is still in its slot. For tests: a cancelled turn
+    /// leaves none.
+    #[doc(hidden)]
+    pub fn probe_in_flight(&self) -> bool {
+        self.inner.probes.in_flight()
+    }
+
     /// `getStatus`: the provider answers and lists the configured model. Live, like Electron's;
     /// the caller caches it. `model` is the configured one, empty for "any".
     pub async fn status(&self) -> LocalAgentStatus {
@@ -271,15 +278,31 @@ impl LocalAgent {
         turn::stream(self.inner.clone(), input, host, cancel)
     }
 
+    /// `text` without the provider key, for a log line or an error that may quote the provider.
+    pub async fn redact(&self, text: String) -> String {
+        self.inner.provider().await.redact(text)
+    }
+
     /// `completeStructured`: one run without tools, drained, whose reply must hold one JSON object
     /// that `T` reads (`T` stands in for the zod schema of Electron).
     pub async fn complete_structured<T: DeserializeOwned>(
         &self,
         prompt: &str,
     ) -> Result<T, StructuredError> {
+        self.complete_structured_on(prompt, None).await
+    }
+
+    /// [`Self::complete_structured`] on `model` (`None`: the configured one). The fold pins the
+    /// model it detected, which its cache key names.
+    pub async fn complete_structured_on<T: DeserializeOwned>(
+        &self,
+        prompt: &str,
+        model: Option<String>,
+    ) -> Result<T, StructuredError> {
         use futures_util::StreamExt as _;
         let mut input = LocalRunInput::new(prompt);
         input.tools_enabled = false;
+        input.model = model;
         let mut events = std::pin::pin!(self.run(input, None, CancellationToken::new()));
         let mut text = String::new();
         let mut failure = None;

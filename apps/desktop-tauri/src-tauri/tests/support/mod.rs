@@ -36,7 +36,7 @@ const LOCAL_ORIGIN: &str = "tauri://localhost";
 pub const WAIT: Duration = Duration::from_secs(25);
 
 #[derive(Default)]
-struct MemoryStore(Mutex<HashMap<SecureStoreKey, Vec<u8>>>);
+pub struct MemoryStore(Mutex<HashMap<SecureStoreKey, Vec<u8>>>);
 
 impl SecureStore for MemoryStore {
     fn get(&self, key: SecureStoreKey) -> Result<Option<Vec<u8>>, SecureStoreError> {
