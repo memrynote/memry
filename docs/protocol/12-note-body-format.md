@@ -25,7 +25,7 @@ The directions:
 
 | Direction              | Mechanism                                                                                                                                                                                       |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| markdown to document   | desktop's `markdownToYFragment` (`apps/desktop/src/main/sync/blocknote-converter.ts:548`) with the repairs of §12.1.1; in the core, `markdown_seed` for the two writes of §12.1.0 and no others |
+| markdown to document   | desktop's `markdownToYFragment` (`apps/desktop/src/main/sync/blocknote-converter.ts:535`) with the repairs of §12.1.1; in the core, `markdown_seed` for the two writes of §12.1.0 and no others |
 | document to markdown   | desktop only, in the vault write-back (`apps/desktop/src/main/sync/crdt-writeback.ts:603`)                                                                                                      |
 | document to plain text | `extract_text`, a plain-text walk of the `prosemirror` fragment that keeps headings and list markers, drops everything else, and claims no markdown fidelity (§12.1.3)                          |
 
@@ -85,6 +85,18 @@ markdown parse and export.
   reference definitions out of the text before the parse, then `applyFragmentSeed` (`:631`),
   which writes the blocks and those side channels, then `recordMarkdownSourceInYDoc` (`:685`).
   The core's seed keeps a line holding a token as literal text (§12.1.0).
+- **Outbound**, the vault write-back calls `serializeNoteBody`
+  (`apps/desktop/src/main/sync/crdt-writeback.ts:603`,
+  `apps/desktop/src/main/sync/writing-markdown.ts:430`). It runs `yDocToMarkdown`
+  (`apps/desktop/src/main/sync/blocknote-converter.ts:204`), which serialises with
+  `blocksToMarkdownPreserving` and `restoreLinkReferences` (`:387-389`) and then runs
+  `restoreMarkdownSource` (`:224`), and it applies `serializeCriticMarkup` last
+  (`apps/desktop/src/main/sync/writing-markdown.ts:455`).
+
+The renderer and main build their block and inline specs from one factory (§12.1), so the block
+grammar of §12.6 and §12.7 is the same in both. **The out-of-band layer of §12.8 runs only on
+desktop.** `markdown_seed` does not encode it: CriticMarkup and link reference definitions send
+the whole text to literal paragraphs (§12.1.0).
 
 #### 12.1.1.1 Link mentions are promoted at seed
 
@@ -106,24 +118,16 @@ The node serializes in the closed alphabet (§12.7), so a legacy token cannot co
 node alone: `a_b` and `a%5Fb` decode to the same URL. The source record (§12.10) keeps the file's
 bytes while the paragraph holding the token is unedited, edits in other blocks included. When
 that paragraph is edited, or the doc has no record, the token is written re-encoded. The
-`legacy link mention token` cases of the `markdown-roundtrip` vectors pin both outcomes.
+`legacy link mention token` cases of the `markdown-roundtrip` vectors pin both outcomes. A
+build before #4478 re-encodes a legacy token once, on its next write-back of a doc this build
+seeded; the URL does not change.
 
-A seed MUST promote exactly these tokens. A token a seed leaves as text is promoted by each
-device's editor on open, and two devices doing that before they sync merge two chips per
-mention (#3871, #4478).
-
-- **Outbound**, the vault write-back calls `serializeNoteBody`
-  (`apps/desktop/src/main/sync/crdt-writeback.ts:603`,
-  `apps/desktop/src/main/sync/writing-markdown.ts:430`). It runs `yDocToMarkdown`
-  (`apps/desktop/src/main/sync/blocknote-converter.ts:204`), which serialises with
-  `blocksToMarkdownPreserving` and `restoreLinkReferences` (`:387-389`) and then runs
-  `restoreMarkdownSource` (`:224`), and it applies `serializeCriticMarkup` last
-  (`apps/desktop/src/main/sync/writing-markdown.ts:455`).
-
-The renderer and main build their block and inline specs from one factory (§12.1), so the block
-grammar of §12.6 and §12.7 is the same in both. **The out-of-band layer of §12.8 runs only on
-desktop.** `markdown_seed` does not encode it: CriticMarkup and link reference definitions send
-the whole text to literal paragraphs (§12.1.0).
+Desktop's seed MUST promote exactly these tokens. A token a seed leaves as text is promoted by
+each device's editor on open (`apps/desktop/src/renderer/src/components/note/content-area/hooks/use-editor-sync.ts:234`),
+and two devices doing that before they sync merge two chips per mention (#3871, #4478). The
+core's seed keeps every token as text (`crates/memry-core/src/crdt/markdown_seed/prepare.rs:94`),
+so a core-seeded body reaches desktop with its tokens unpromoted, desktop's editor promotes them
+on open, and the #3871 race remains for those bodies.
 
 ### 12.1.2 What this means for a non-desktop client
 
