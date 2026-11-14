@@ -43,6 +43,7 @@ struct NoteRowsView: View {
                     NoteRowLabel(row: .note(note), note: note)
                 }
                 .buttonStyle(.plain)
+                .pointerHover(.row)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

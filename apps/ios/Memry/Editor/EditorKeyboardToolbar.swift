@@ -303,6 +303,7 @@ private struct ToolbarGlyph: View {
                 .contentShape(.rect)
         }
         .buttonStyle(.plain)
+        .pointerHover(.glyph)
         .accessibilityLabel(label)
         .accessibilityAddTraits(selected ? [.isSelected] : [])
     }
@@ -321,6 +322,7 @@ private struct ToolbarText: View {
                 .contentShape(.rect)
         }
         .buttonStyle(.plain)
+        .pointerHover(.glyph)
         .accessibilityLabel(label)
     }
 }
@@ -380,6 +382,7 @@ private struct TagSuggestionList: View {
                         .contentShape(.rect)
                     }
                     .buttonStyle(.plain)
+                    .pointerHover(.row)
                     .accessibilityLabel(item.isNew ? "Create tag \(item.tag)" : "Tag \(item.tag)")
                 }
             }
@@ -433,6 +436,7 @@ private struct EditorSuggestionList: View {
                         .contentShape(.rect)
                     }
                     .buttonStyle(.plain)
+                    .pointerHover(.row)
                 }
             }
         }
@@ -504,6 +508,7 @@ struct EditorPanelView: View {
                 .contentShape(.capsule)
             }
             .buttonStyle(.plain)
+            .pointerHover(.glyph)
             .accessibilityLabel("Filter blocks")
             .accessibilityHint("Opens the keyboard with the slash menu")
         }
@@ -560,6 +565,7 @@ struct EditorPanelView: View {
                     .contentShape(.rect)
                 }
                 .buttonStyle(.plain)
+                .pointerHover(.card(radius: Tokens.Radius.control))
                 .accessibilityLabel(tile.title)
                 .accessibilityAddTraits(tile.title == checked ? [.isSelected] : [])
             }
@@ -592,6 +598,7 @@ struct EditorPanelView: View {
                                 }
                         }
                         .buttonStyle(.plain)
+                        .pointerHover(.card(radius: Tokens.Radius.control))
                         .accessibilityLabel("\(title): \(name == "default" ? "Default" : name.capitalized)")
                         .accessibilityAddTraits(prop != nil && current == name ? [.isSelected] : [])
                 }

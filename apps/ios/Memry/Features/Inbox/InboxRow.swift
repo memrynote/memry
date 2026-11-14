@@ -74,6 +74,7 @@ struct InboxRow: View {
             withAnimation(.easeOut(duration: 0.35)) { appeared = true }
         }
         .contentShape(.rect)
+        .pointerHover(.row)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(InboxCopy.itemAccessibility(type: item.itemType, title: text.accessibility))
         .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)

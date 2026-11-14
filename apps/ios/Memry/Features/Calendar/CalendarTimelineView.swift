@@ -130,6 +130,7 @@ struct CalendarTimelineView: View {
                     .padding(.leading, CGFloat(task.depth) * Tokens.Space.medium)
             }
             .buttonStyle(.plain)
+            .pointerHover(.row)
         case let .event(event):
             Text(event.item.title)
                 .font(Tokens.Typography.caption.font)
@@ -206,6 +207,7 @@ struct CalendarTimelineView: View {
                 .fill(hue.surface.color)
                 .overlay(alignment: .leading) { Rectangle().fill(hue.rail.color).frame(width: Tokens.Calendar.railWidth) }
                 .frame(width: CGFloat(event.placement.to - event.placement.from + 1) * dayWidth - 2, height: Self.rowHeight - 12)
+                .pointerHover(.card(radius: Tokens.Calendar.chipRadius))
                 .offset(x: CGFloat(event.placement.from) * dayWidth + 1)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .onTapGesture { openItem(event.item) }

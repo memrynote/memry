@@ -29,6 +29,7 @@ struct CalendarMonthView: View {
                !typeSize.isAccessibilitySize, CalendarMonthFit.showsRail(paneWidth: proxy.size.width) {
                 regularLayout(grid: grid, items: items)
                     .gesture(pageGesture)
+                    .gesture(CalendarScrollPage { pageMonth($0) })
                     .accessibilityElement(children: .contain)
                     .accessibilityIdentifier("calendar.month")
             } else {
@@ -48,7 +49,7 @@ struct CalendarMonthView: View {
                         }
                     }
                     .onGeometryChange(for: CGSize.self) { $0.size } action: { gridSize = $0 }
-                    .gesture(rangeGesture(grid))
+                    .calendarHoldDrag(rangeGesture(grid))
                     .sensoryFeedback(.selection, trigger: dragTo)
                 }
                 CalendarAgendaList(store: store, days: [store.anchor], items: items, actions: actions, showsHeader: true)
@@ -57,15 +58,18 @@ struct CalendarMonthView: View {
         .scrollDisabled(dragFrom != nil)
         .refreshable { await store.sync() }
         .gesture(pageGesture)
+        .gesture(CalendarScrollPage { pageMonth($0) })
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("calendar.month")
     }
 
     private var pageGesture: some Gesture {
-        DragGesture(minimumDistance: 30).onEnded { value in
-            guard dragFrom == nil, abs(value.translation.width) > abs(value.translation.height) * 1.5 else { return }
-            store.state.anchorDate = CalendarDates.addMonths(store.anchor, value.translation.width < 0 ? 1 : -1)
-        }
+        DragGesture(minimumDistance: 30).onEnded { value in pageMonth(CalendarSwipe.touchStep(value.translation)) }
+    }
+
+    private func pageMonth(_ step: Int?) {
+        guard dragFrom == nil, let step else { return }
+        store.state.anchorDate = CalendarDates.addMonths(store.anchor, step)
     }
 
     func weekdayHeader(_ grid: [String]) -> some View {
@@ -132,6 +136,7 @@ struct CalendarMonthView: View {
         }
         .frame(maxWidth: .infinity, minHeight: Tokens.Size.minimumHitArea + Tokens.Space.small, alignment: .top)
         .contentShape(.rect)
+        .pointerHover(.row)
         .onTapGesture(count: 2) {
             store.state.anchorDate = day
             store.state.view = .day
@@ -163,7 +168,7 @@ struct CalendarMonthView: View {
                 dragTo = dragFrom
             case let .changed(_, location):
                 dragTo = dayAt(location) ?? dragTo
-            case let .ended(_, _, completed):
+            case let .ended(_, _, completed, _):
                 defer { dragFrom = nil; dragTo = nil }
                 guard completed, let range = selectionRange, range.lowerBound != range.upperBound else { return }
                 actions.selectDays?(range.lowerBound, range.upperBound)
@@ -250,6 +255,7 @@ struct CalendarAgendaRow: View {
                             .frame(width: Tokens.Size.minimumHitArea, height: Tokens.Size.minimumHitArea)
                     }
                     .buttonStyle(.plain)
+                    .pointerHover(.glyph)
                     .accessibilityLabel(CalendarCopy.completeTask(item.title))
                 }
             }
@@ -260,6 +266,7 @@ struct CalendarAgendaRow: View {
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
+        .pointerHover(.row)
         .calendarItemMenu(actions.contextMenu, item: item)
         .accessibilityLabel(CalendarItemStyle.accessibilityLabel(item))
         .accessibilityIdentifier("calendar.row.\(item.projectionId)")

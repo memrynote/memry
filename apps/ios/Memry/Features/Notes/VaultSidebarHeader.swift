@@ -16,6 +16,7 @@ struct VaultSidebarHeader: View {
         if let switchVault {
             Button(action: switchVault) { label }
                 .buttonStyle(.plain)
+                .pointerHover(.row)
                 .accessibilityHint("Switch vault")
                 .accessibilityIdentifier("sidebar.vault")
         } else {

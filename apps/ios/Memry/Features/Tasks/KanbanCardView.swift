@@ -23,7 +23,7 @@ struct KanbanCardView: View {
 
     var body: some View {
         TaskOpenLink(id: task.id) {
-            content
+            content.pointerHover(.card(radius: Tokens.Radius.card))
         }
         .buttonStyle(.plain)
         .draggable(task.id) {
