@@ -91,7 +91,7 @@ use crate::storage::repositories::sync_items::InboundRecord;
 use crate::storage::repositories::{Change, StoredPayload, sync_items};
 use crate::sync::clock::{ClockOrder, VectorClock, compare};
 use crate::sync::field_merge::merge_fields;
-use crate::sync::outbox;
+use crate::sync::hardening::requeue;
 
 /// §6.8's third row, for one inbound `settings` record.
 ///
@@ -163,11 +163,7 @@ pub(crate) fn apply_remote_merged(
         )
         .map_err(failed)?;
     if merged.requeue {
-        outbox::enqueue(
-            &transaction,
-            &outbox::Change::upsert(&record.item_type, &record.item_id),
-            now_ms,
-        )?;
+        requeue::requeue(&transaction, &record.item_type, &record.item_id, now_ms)?;
     }
     transaction.commit().map_err(failed)?;
 

@@ -10,8 +10,8 @@
 //! this step writes the join over whichever it kept.
 //!
 //! A heal is the one enqueue an inbound apply makes, and §6.11.4 bounds it:
-//! never on an insert, a skip, a remote `null` or a merge with conflicts
-//! (§6.5.2 P3), so two clients never ping-pong. It ticks this device into
+//! never on an insert, a skip, a remote `null` or a merge, which re-queued the
+//! row at the union clock already (§6.5.2 P3), so two clients never ping-pong. It ticks this device into
 //! the document clock, which is what lets the re-push pass the server's
 //! replay check, and names no changed field, so no field clock ticks.
 
@@ -102,8 +102,11 @@ impl VersionedKey {
         let heal = joined.remote_behind
             && match inbound {
                 Inbound::Applied => true,
-                Inbound::Merged { conflicted_fields } => conflicted_fields.is_empty(),
-                Inbound::Skipped | Inbound::Corrupt { .. } | Inbound::Refused => false,
+                // The merge re-queued the row at the union clock (§6.5.2 P3).
+                Inbound::Merged { .. }
+                | Inbound::Skipped
+                | Inbound::Corrupt { .. }
+                | Inbound::Refused => false,
             };
 
         let mut changes: Vec<(&str, Change)> = Vec::new();

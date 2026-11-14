@@ -30,9 +30,9 @@
 //!
 //! [`apply_remote`] is §6.3.1's document gate followed by §6.3's per-field
 //! rule, and it lives in [`task_merge`] because `project` runs the identical
-//! path. It **never enqueues**: §6.5.2's P3 says the merging device stores the
-//! union clock and does not re-push, and a re-push there reintroduces the
-//! §6.5.1 case-3c divergence.
+//! path. Only its concurrent branch enqueues: §6.5.2's P3 re-queues the
+//! merged row at the union clock, untouched, so it dominates the server's row
+//! ([`crate::sync::hardening::requeue`]).
 //!
 //! It also does not write `task_activity`. Desktop mints a `superseded` row per
 //! conflict; nothing in chapter 06 makes that an obligation on this core, and
@@ -130,7 +130,7 @@ pub enum Inbound {
     /// entirely and the caller still advances its cursor.
     Skipped,
     /// §6.3.1: concurrent. Merged field by field, the union clock stored, and
-    /// **not re-pushed** (§6.5.2 P3).
+    /// the row re-queued at that clock (§6.5.2 P3).
     ///
     /// `conflicted_fields` is in field-list order (§6.5.3) and is empty
     /// whenever no field met §6.3 step 6 — a concurrent pair with unequal

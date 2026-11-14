@@ -22,8 +22,8 @@
 //!   stated them, and `null` is a real clear. `vaultId` always stays local.
 //!
 //! The copy and the overwrite are one transaction, as desktop's are. The copy
-//! is the one outbox row an inbound apply writes: it is a new item no peer has,
-//! not a re-push of the merged one (§6.5.2 P3).
+//! is a new item no peer has; the merged original is re-queued beside it
+//! (§6.5.2 P3, [`crate::sync::hardening::requeue`]).
 //!
 //! Deletes are not here. [`crate::sync::apply`]'s tombstone path already lets
 //! only a local clock strictly after the delete keep the item (#2198, #2409).
@@ -41,6 +41,7 @@ use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
 use crate::storage::repositories::{Change, StoredPayload};
 use crate::sync::clock::VectorClock;
+use crate::sync::hardening::requeue;
 use crate::sync::outbox;
 
 use super::ITEM_TYPE;
@@ -79,7 +80,7 @@ pub fn apply_remote(
         if !remote.object().get("vaultId").is_some_and(Value::is_string) {
             return Ok(Inbound::Skipped);
         }
-        return finish(tx, record, now_ms);
+        return finish(tx, record, now_ms, false);
     };
 
     let merged_clock = match task_merge::document_gate(&tx, record)? {
@@ -103,7 +104,7 @@ pub fn apply_remote(
         payload_json: remote.merge(&changes),
         ..record.clone()
     };
-    finish(tx, &merged, now_ms)
+    finish(tx, &merged, now_ms, merged_clock.is_some())
 }
 
 /// The remote payload's edits that keep what desktop keeps: an absent
@@ -164,8 +165,12 @@ fn finish(
     tx: rusqlite::Transaction<'_>,
     record: &InboundRecord,
     now_ms: i64,
+    merged: bool,
 ) -> Result<Inbound, StorageError> {
     let outcome = sync_items::apply_remote_in(&tx, record, now_ms)?;
+    if merged && outcome == ApplyOutcome::Applied {
+        requeue::requeue(&tx, ITEM_TYPE, &record.item_id, now_ms)?;
+    }
     tx.commit().map_err(failed)?;
     Ok(match outcome {
         ApplyOutcome::Applied => Inbound::Applied,

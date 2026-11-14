@@ -12,7 +12,7 @@
 //! payload with the [`Kept`] keys taken back from the local record, under the
 //! merged clock on a concurrent branch (each handler's "last write wins").
 //! Keys this build does not model ride along in the remote payload (§13.2
-//! rule 3), and nothing here enqueues (§6.5.2 P3). A delete is
+//! rule 3). A concurrent branch re-queues the merged row (§6.5.2 P3). A delete is
 //! [`crate::sync::apply`]'s tombstone path unchanged: it applies unless the
 //! local clock is strictly after the delete's (each handler's
 //! `resolveDeleteClock` skip).
@@ -33,6 +33,7 @@ use crate::storage::repositories::projectors;
 use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::sync_items::{self, InboundRecord};
 use crate::storage::repositories::{Change, StoredPayload};
+use crate::sync::hardening::requeue;
 
 /// The keys a local record keeps over a remote that wins its clock, and the
 /// schema keys a remote may not state as `null`.
@@ -152,7 +153,7 @@ pub(crate) fn apply_kept(
         None => Vec::new(),
     };
     changes.extend(extra);
-    if let Some(clock) = merged_clock {
+    if let Some(clock) = &merged_clock {
         let clock = serde_json::to_value(clock).map_err(|error| StorageError::Failed {
             what: format!("clock will not serialise: {error}"),
         })?;
@@ -162,6 +163,9 @@ pub(crate) fn apply_kept(
         payload_json: remote.merge(&changes),
         ..record.clone()
     };
+    if merged_clock.is_some() {
+        return requeue::store_merged(conn, &merged, now_ms);
+    }
     task_merge::wholesale(conn, &merged, now_ms)
 }
 

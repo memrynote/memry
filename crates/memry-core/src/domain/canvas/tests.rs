@@ -311,10 +311,15 @@ fn a_concurrent_edit_over_a_different_scene_keeps_both_drawings() {
                 "ownerNoteId": "note-1", "clock": { LOCAL_DEVICE: 1 }, "deletedAt": null,
             })
         );
-        assert_eq!(
-            outbox(conn),
-            [(ITEM_TYPE.to_owned(), copy_id.clone(), "upsert".to_owned())]
-        );
+        // The copy, and the merged original re-queued (§6.5.2 P3).
+        let mut queued = outbox(conn);
+        queued.sort();
+        let mut expected = [
+            (ITEM_TYPE.to_owned(), copy_id.clone(), "upsert".to_owned()),
+            (ITEM_TYPE.to_owned(), "c1".to_owned(), "upsert".to_owned()),
+        ];
+        expected.sort();
+        assert_eq!(queued, expected);
         Ok(())
     })
     .expect("conflict");
@@ -335,7 +340,11 @@ fn a_concurrent_edit_over_an_identical_scene_merges_clocks_only() {
             ApplyOutcome::Applied
         );
         assert_eq!(canvas_ids(conn), ["c1"]);
-        assert_eq!(outbox(conn), []);
+        // No copy; the merged row is re-queued at the union (§6.5.2 P3).
+        assert_eq!(
+            outbox(conn),
+            [(ITEM_TYPE.to_owned(), "c1".to_owned(), "upsert".to_owned())]
+        );
         assert_eq!(stored(conn, "c1")["clock"], json!({ "A": 2, "B": 3 }));
         Ok(())
     })

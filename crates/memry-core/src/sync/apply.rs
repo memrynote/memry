@@ -32,38 +32,32 @@
 //!   [`ApplyOutcome`] so the counters and the cursor cannot drift apart from
 //!   what actually happened (FR-032).
 //!
-//! **Nothing here re-pushes what it applied.** §6.5.2's P3 — the merging
-//! device stores the union clock and does not re-push — is upheld by
-//! [`crate::domain::task_merge`], and a [`crate::sync::outbox::enqueue`] of an
-//! applied item anywhere on this path is that regression, not a convenience.
-//! The outbox rows an apply writes are new items that exist nowhere else: a
-//! canvas conflict copy ([`crate::domain::canvas::merge`]) and a kept copy of
-//! text a delete never saw ([`super::delete_keep`]). The one re-push is
-//! §6.11.4's heal of a versioned key the remote is behind on
-//! ([`super::versioned_apply`]), which §6.11.4 bounds so two clients never
-//! ping-pong.
-
+//! **A concurrent merge re-queues what it applied, once** (§6.5.2 P3,
+//! [`crate::sync::hardening::requeue`]): every merge branch queues the merged row in the
+//! transaction that stores it, at the union clock and never ticked, so the
+//! union dominates the server's row and two devices that merged the same pair
+//! settle by P4 instead of ping-ponging. An apply that is not a merge queues
+//! nothing of its own. The other outbox rows an apply writes are new items
+//! that exist nowhere else: a canvas conflict copy
+//! ([`crate::domain::canvas::merge`]) and a kept copy of text a delete never
+//! saw ([`super::delete_keep`]). The one ticked re-push is §6.11.4's heal of a
+//! versioned key the remote is behind on ([`super::versioned_apply`]), which
+//! §6.11.4 bounds so two clients never ping-pong.
 use rusqlite::Connection;
 
 use crate::api::errors::StorageError;
-use crate::crdt::errors::CrdtError;
-use crate::crdt::update_log;
 use crate::crypto::agent_envelope::AtRestKey;
-use crate::domain::task_merge::{self, Gate};
-use crate::domain::tasks::Inbound;
-use crate::domain::{
-    agent_conversation, agent_message, calendar_items, canvas, canvas_folder, home_page, inbox,
-    journal, projects, settings, sticky_draft, tasks,
-};
-// Desktop only, like the locks themselves: iOS never declares `vault_lock`.
-#[cfg(feature = "markdown")]
-use crate::domain::vault_locks;
-use crate::storage::repositories::projectors;
-use crate::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
+use crate::storage::repositories::sync_items::{ApplyOutcome, InboundRecord};
 
-use super::clock::{ClockOrder, VectorClock, compare};
-use super::versioned_apply::{TAG_SCHEMA, VersionedKey};
-use super::{body_debt, delete_keep, journal_day_merge, refused_items, settings_merge, store};
+use super::clock::VectorClock;
+use super::{refused_items, store};
+
+mod record;
+mod tombstone;
+
+use record::apply_record;
+pub use record::{apply_inbound, apply_inbound_on};
+use tombstone::{apply_tombstone, apply_untyped_tombstone};
 
 /// One decoded item, waiting for its turn in the apply order (§5.13).
 pub(crate) enum Pending {
@@ -227,368 +221,10 @@ pub(crate) fn apply_page(
     Ok(totals)
 }
 
-/// One typed delete, as §7.15's first two consequences require it: the record
-/// row, **its projection**, and the document's body log, in one transaction.
-///
-/// Three statements and one rule each.
-///
-/// - [`store::mark_deleted`] is the record tier, and it keeps the stored
-///   payload byte for byte (§5.12: the body is never decoded).
-/// - [`projectors::delete`] is the half that was missing, and the one with
-///   teeth. Nothing else writes `notes.deleted_at`, and until it did, a note
-///   deleted on another device stayed live in every projection-driven read on
-///   this one — and, worse, stayed inside
-///   [`super::first_sync_store::recent_document_ids`]'s `deleted_at IS NULL`
-///   window, so the next first sync handed a tombstoned id to
-///   [`super::body_pull::pull_document`] and re-applied the surviving server
-///   log over a deleted note's body.
-/// - [`update_log::purge_in`] is §7.15's first consequence, for a document
-///   type only.
-///
-/// **One transaction, not three.** A crash between the record delete and the
-/// purge would leave a deleted note with a live body, which is precisely the
-/// state §7.15 forbids; a failure in any statement rolls the delete back whole
-/// and propagates, so the page aborts with the cursor unmoved and the delete
-/// arrives again. A purge that quietly did nothing would be worse than one
-/// that errors: the caller would believe the body was gone.
-///
-/// **A clocked delete is recorded, then weighed** (#2409). Its clock is kept
-/// for a later re-create of the id ([`store::record_tombstone_clock`]), and a
-/// live local row whose clock happens strictly after it keeps the item: the
-/// §5.8 client rule, and what stops this device's own late tombstone from
-/// deleting the re-create that followed it. A tombstone with no clock applies
-/// unconditionally, as it always has.
-#[allow(clippy::too_many_arguments)]
-fn apply_tombstone(
-    conn: &Connection,
-    item_type: &str,
-    item_id: &str,
-    deleted_at: i64,
-    server_cursor: Option<i64>,
-    clock: Option<&VectorClock>,
-    body_state_vector: Option<&str>,
-    now_ms: i64,
-    clock_device: Option<&str>,
-    totals: &mut ApplyTotals,
-) -> Result<(), StorageError> {
-    let txn = conn.unchecked_transaction().map_err(sqlite_failed)?;
-    if let Some(clock) = clock.filter(|clock| !clock.is_empty()) {
-        store::record_tombstone_clock(&txn, item_type, item_id, clock, now_ms)?;
-        if live_clock_is_after(&txn, item_type, item_id, clock)? {
-            txn.commit().map_err(sqlite_failed)?;
-            totals.skipped += 1;
-            return Ok(());
-        }
-    }
-    delete_keep::keep(
-        &txn,
-        item_type,
-        item_id,
-        deleted_at,
-        clock,
-        body_state_vector,
-        clock_device,
-        now_ms,
-    )?;
-    store::mark_deleted(&txn, item_type, item_id, deleted_at, server_cursor, now_ms)?;
-    if item_type == journal::ITEM_TYPE {
-        journal_day_merge::mark_deleted(&txn, item_id)?;
-        // A live foreign row keeps its row and body for the drain (#2984).
-        if journal_day_merge::hold_for_merge(&txn, item_id, clock)? {
-            txn.commit().map_err(sqlite_failed)?;
-            totals.deleted += 1;
-            return Ok(());
-        }
-    }
-    projectors::delete(&txn, item_type, item_id, deleted_at)?;
-    let purged = if DOCUMENT_TYPES.contains(&item_type) {
-        // The body debt goes with the body: a pull owed before the delete
-        // would bring the server's surviving log back (#2297).
-        body_debt::settle(&txn, item_id)?;
-        update_log::purge_in(&txn, item_id).map_err(crdt_failed)?
-    } else {
-        0
-    };
-    txn.commit().map_err(sqlite_failed)?;
-    totals.deleted += 1;
-    if purged > 0 {
-        totals.purged_documents.push(item_id.to_owned());
-    }
-    Ok(())
-}
-
-/// Whether the live local row's clock happens strictly after `tombstone`.
-///
-/// A row that is already deleted, has no clock, or whose clock will not parse
-/// is not after anything, so the delete applies exactly as before #2409.
-fn live_clock_is_after(
-    conn: &Connection,
-    item_type: &str,
-    item_id: &str,
-    tombstone: &VectorClock,
-) -> Result<bool, StorageError> {
-    let Some(row) = sync_items::load(conn, item_type, item_id)? else {
-        return Ok(false);
-    };
-    let local = row
-        .clock
-        .filter(|_| row.deleted_at.is_none())
-        .and_then(|text| serde_json::from_str::<VectorClock>(&text).ok());
-    Ok(local.is_some_and(|local| compare(&local, tombstone) == ClockOrder::After))
-}
-
-/// An id from `deleted` that arrived with **no type on the wire** (§5.12.1).
-///
-/// The untyped delete covers *every* row under that id, whatever its type, so
-/// the projection half reads the types this device actually stored
-/// ([`store::item_types_for`]) and marks the tables each one names. The wire
-/// carried no type and a client MUST NOT invent one from the id's shape, so
-/// the local rows are the only honest source for that list.
-///
-/// The purge runs **unconditionally** here, and that is not the id-shape
-/// inference §5.12.1 forbids. The typed arm above has to be careful because a
-/// tag named like a note id would otherwise take the note's body with it; here
-/// there is no such case to be careful about, because every row under the id —
-/// the note's included — is being deleted. Body rows under a purely local
-/// document this device never got a record for go with it, which is the same
-/// rule read from the other side (§5.12: a delete for an unseen item is still
-/// recorded).
-fn apply_untyped_tombstone(
-    conn: &Connection,
-    item_id: &str,
-    now_ms: i64,
-    totals: &mut ApplyTotals,
-) -> Result<(), StorageError> {
-    let txn = conn.unchecked_transaction().map_err(sqlite_failed)?;
-    let item_types = store::item_types_for(&txn, item_id)?;
-    store::apply_untyped_tombstone(&txn, item_id, now_ms, now_ms)?;
-    journal_day_merge::mark_deleted(&txn, item_id)?;
-    if journal_day_merge::hold_for_merge(&txn, item_id, None)? {
-        txn.commit().map_err(sqlite_failed)?;
-        totals.deleted += 1;
-        return Ok(());
-    }
-    for item_type in &item_types {
-        projectors::delete(&txn, item_type, item_id, now_ms)?;
-    }
-    body_debt::settle(&txn, item_id)?;
-    let purged = update_log::purge_in(&txn, item_id).map_err(crdt_failed)?;
-    txn.commit().map_err(sqlite_failed)?;
-    totals.deleted += 1;
-    if purged > 0 {
-        totals.purged_documents.push(item_id.to_owned());
-    }
-    Ok(())
-}
-
 fn sqlite_failed(error: rusqlite::Error) -> StorageError {
     StorageError::Failed {
         what: error.to_string(),
     }
-}
-
-/// The CRDT tier's failure, back in the storage vocabulary this path speaks.
-///
-/// [`CrdtError::Storage`] is unwrapped rather than stringified: a purge cannot
-/// fail for any CRDT reason — it decodes nothing — so the only variant reachable
-/// here is a disk or lock failure, and flattening it would turn "out of space"
-/// into "bad document".
-fn crdt_failed(error: CrdtError) -> StorageError {
-    match error {
-        CrdtError::Storage { source } => source,
-        other => StorageError::Failed {
-            what: other.to_string(),
-        },
-    }
-}
-
-/// [`apply_inbound_on`] with no device clock id.
-pub fn apply_inbound(
-    conn: &Connection,
-    record: &InboundRecord,
-    now_ms: i64,
-) -> Result<ApplyOutcome, StorageError> {
-    apply_inbound_on(conn, record, now_ms, None)
-}
-
-/// Chapter 06 §6.8's table, as the one `match` this core makes on it.
-///
-/// Every one of the four rows is here, and the fourth is the one that cost a
-/// user their edit before it was:
-///
-/// - `task` and `project` run §6.3.1's document gate followed by §6.3's
-///   per-field rule;
-/// - `settings` runs §6.9's dotted-path field clocks
-///   ([`crate::sync::settings_merge`]): the payload carries no document
-///   `clock` at all (§13.7.13, §13.9), so §6.3.1's first row would fire on
-///   every pull and the per-path clocks are the whole mechanism. §6.8 forbids
-///   inferring an algorithm from the absence of a field list, so it is named
-///   here rather than falling through `_`;
-/// - **every other subscribed type takes §6.3.1's document-level resolver**
-///   ([`apply_document`]). It is *not* an unconditional wholesale store: a
-///   stale remote `note` record used to overwrite a newer local one, and a
-///   rename made on this device vanished the moment a peer that had not seen
-///   it pushed anything. `inbox`, the calendar types, `canvas`,
-///   `vault_lock`, `canvas_folder`, `home_page`, `sticky_draft` and the two
-///   agent types are named
-///   because each runs its desktop handler's rule instead.
-///
-/// `clock_device` is this device's clock id, which a diverged `canvas` needs
-/// for its conflict copy. Without one, that canvas is recorded corrupt rather
-/// than losing either drawing. No at-rest key is installed here, so an agent
-/// record is stored pending; the pull passes its key.
-pub fn apply_inbound_on(
-    conn: &Connection,
-    record: &InboundRecord,
-    now_ms: i64,
-    clock_device: Option<&str>,
-) -> Result<ApplyOutcome, StorageError> {
-    apply_record(conn, record, now_ms, clock_device, &AtRestKey::default())
-}
-
-fn apply_record(
-    conn: &Connection,
-    record: &InboundRecord,
-    now_ms: i64,
-    clock_device: Option<&str>,
-    at_rest: &AtRestKey,
-) -> Result<ApplyOutcome, StorageError> {
-    // One journal item per day (#2939): a foreign id is owed, never stored.
-    if record.item_type == journal::ITEM_TYPE
-        && let Some(outcome) = journal_day_merge::plan_inbound(conn, record)?
-    {
-        return Ok(outcome);
-    }
-    let merged = match record.item_type.as_str() {
-        tasks::ITEM_TYPE => tasks::apply_remote(conn, record, now_ms, clock_device),
-        projects::ITEM_TYPE => projects::apply_remote(conn, record, now_ms),
-        settings::SETTINGS_ITEM_TYPE => settings_merge::apply_remote_merged(conn, record, now_ms),
-        // "absent key keeps, explicit null clears" (desktop's inbox handler).
-        inbox::ITEM_TYPE => inbox::merge::apply_remote(conn, record, now_ms),
-        // Desktop's four calendar handlers (spec 007 CL010/CL011).
-        t if calendar_items::is_calendar_type(t) => {
-            calendar_items::merge::apply_remote(conn, record, now_ms)
-        }
-        // Whole-document LWW plus desktop's conflict copy (canvas-handler.ts).
-        canvas::ITEM_TYPE => canvas::merge::apply_remote(conn, record, now_ms, clock_device),
-        // Whole-row LWW, Electron's guards (vault-lock-handler.ts).
-        #[cfg(feature = "markdown")]
-        vault_locks::ITEM_TYPE => vault_locks::merge::apply_remote(conn, record, now_ms),
-        // Whole-row LWW keeping local keys (canvas-folder-handler.ts,
-        // home-page-handler.ts, sticky-draft-handler.ts).
-        canvas_folder::ITEM_TYPE => canvas_folder::merge::apply_remote(conn, record, now_ms),
-        home_page::ITEM_TYPE => home_page::merge::apply_remote(conn, record, now_ms),
-        sticky_draft::ITEM_TYPE => sticky_draft::merge::apply_remote(conn, record, now_ms),
-        // Field merge, the title sealed (agent-conversation-handler.ts).
-        agent_conversation::ITEM_TYPE => {
-            agent_conversation::merge::apply_remote(conn, record, at_rest, now_ms)
-        }
-        // Written once, terminal only, sealed (agent-message-handler.ts).
-        agent_message::ITEM_TYPE => {
-            agent_message::merge::apply_remote(conn, record, at_rest, now_ms)
-        }
-        // §6.3.1's document gate, then §6.11's join of the versioned `schema`.
-        t if t == TAG_SCHEMA.item_type => {
-            apply_versioned(conn, record, &TAG_SCHEMA, now_ms, clock_device)
-        }
-        _ => apply_document(conn, record, now_ms),
-    };
-    match merged {
-        Ok(inbound) => Ok(outcome(inbound)),
-        Err(error) => refuse(conn, record, &error.to_string(), now_ms),
-    }
-}
-
-/// §6.8's fourth row: §6.3.1's document-level resolver, with no per-field step
-/// under it.
-///
-/// The three actions are the chapter's, verbatim. `concurrent` is the one the
-/// table does not spell out for a type with no `fieldClocks`, and the answer
-/// falls out of what a merge *is* here: there are no fields to arbitrate, so
-/// the remote payload applies and the **merged** clock is what gets stored
-/// (§6.3.1, `mergedClock = merge(local, remote)`). Storing the remote's clock
-/// instead would drop the local's ticks, lower `clockTotal` and hand the next
-/// concurrent peer the win (§6.10).
-///
-/// **Nothing here enqueues** (§6.5.2 P3), including on the merge branch.
-fn apply_document(
-    conn: &Connection,
-    record: &InboundRecord,
-    now_ms: i64,
-) -> Result<Inbound, StorageError> {
-    match task_merge::document_gate(conn, record)? {
-        Gate::Wholesale => task_merge::wholesale(conn, record, now_ms),
-        Gate::Skip => Ok(Inbound::Skipped),
-        Gate::Merge {
-            remote,
-            merged_clock,
-            ..
-        } => {
-            let payload_json = task_merge::with_clock(&remote, &merged_clock)?;
-            let merged = InboundRecord {
-                payload_json,
-                ..record.clone()
-            };
-            task_merge::wholesale(conn, &merged, now_ms)
-        }
-    }
-}
-
-/// [`apply_document`], then the join of `key` over whatever it kept, and the
-/// heal §6.11.4 owes when the remote is behind.
-fn apply_versioned(
-    conn: &Connection,
-    record: &InboundRecord,
-    key: &VersionedKey,
-    now_ms: i64,
-    clock_device: Option<&str>,
-) -> Result<Inbound, StorageError> {
-    let local = key.local(conn, record)?;
-    let inbound = apply_document(conn, record, now_ms)?;
-    key.join_after_apply(conn, record, local, &inbound, clock_device, now_ms)?;
-    Ok(inbound)
-}
-
-/// The merge's own vocabulary, in the pull's.
-///
-/// `Merged`'s conflict set is deliberately dropped here. §6.5.3 and §6.5.4
-/// make the conflicts something a *caller* may show a user; §6.3.1's core
-/// obligation is that the core writes them nowhere, because desktop's
-/// `superseded` rows sync to every device as `task_activity`.
-fn outcome(inbound: Inbound) -> ApplyOutcome {
-    match inbound {
-        Inbound::Applied | Inbound::Merged { .. } => ApplyOutcome::Applied,
-        Inbound::Skipped => ApplyOutcome::Skipped,
-        Inbound::Corrupt { reason } => ApplyOutcome::Corrupt { reason },
-        Inbound::Refused => ApplyOutcome::Refused,
-    }
-}
-
-/// A merge that could not proceed: the row stays, flagged, and the page goes
-/// on (§13.2 rule 5).
-///
-/// The merge branch rolled its transaction back before returning, so nothing
-/// half-written survives. Writing the flag through the same connection is also
-/// the honest test of *why* the merge failed: a payload this build cannot read
-/// leaves the flag; a disk or lock failure fails here too and propagates,
-/// rather than being recorded as a corrupt payload it never was.
-fn refuse(
-    conn: &Connection,
-    record: &InboundRecord,
-    reason: &str,
-    now_ms: i64,
-) -> Result<ApplyOutcome, StorageError> {
-    sync_items::upsert_metadata_only(
-        conn,
-        &record.item_type,
-        &record.item_id,
-        now_ms,
-        record.server_cursor,
-    )?;
-    sync_items::mark_corrupt(conn, &record.item_type, &record.item_id, reason, now_ms)?;
-    Ok(ApplyOutcome::Corrupt {
-        reason: reason.to_owned(),
-    })
 }
 
 #[cfg(test)]
