@@ -1,6 +1,8 @@
 //! Test-only launch seams of the e2e build: the run-time gate and the per-instance control
 //! file. Nothing here touches `tauri`; the e2e build of `memry-tauri` calls it.
 
+#[cfg(feature = "e2e")]
+pub mod ai_inline;
 pub mod control;
 pub mod debug;
 pub mod dialog_queue;

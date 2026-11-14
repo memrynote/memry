@@ -32,10 +32,8 @@
 //!
 //! ## What this file does **not** do
 //!
-//! It does not push. §6.5.2 P3: after a merge apply the merging device stores
-//! the union clock and **does not re-push**. There is no enqueue anywhere in
-//! this module, and a reviewer should treat one appearing as the reintroduction
-//! of §6.5.1 case 3c.
+//! It does not push. §6.5.2 P3's requeue of the merged row is the storage
+//! layer's ([`crate::sync::hardening::requeue`]), in the transaction that stores the merge.
 
 use std::collections::BTreeMap;
 
