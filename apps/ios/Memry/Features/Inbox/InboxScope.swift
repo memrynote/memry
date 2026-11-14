@@ -33,8 +33,10 @@ final class InboxRouter {
     /// opens another.
     private(set) var unlisted: String?
 
-    /// A row, a capture's "View" or a calendar link opened `id`.
+    /// A row, a capture's "View" or a calendar link opened `id`. It replaces
+    /// a reveal still in flight; `openItem` starts its own afterwards.
     func open(_ id: String) {
+        revealing = nil
         switch width {
         case .compact: path.append(.item(id))
         case .regular:
@@ -51,6 +53,7 @@ final class InboxRouter {
         path = []
         selection = nil
         unlisted = nil
+        revealing = nil
     }
 
     func openItem(_ id: String, in tasks: TasksRouter) {

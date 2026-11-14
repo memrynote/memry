@@ -33,6 +33,7 @@ pub mod projects;
 pub mod runtime;
 pub mod search;
 pub mod search_recents;
+pub mod semantic;
 pub mod settings;
 pub mod sync;
 pub mod task_conformance;

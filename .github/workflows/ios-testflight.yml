@@ -46,6 +46,12 @@ jobs:
           sudo xcode-select -s "$app"
           xcodebuild -version
 
+      - name: Cache ONNX Runtime archive
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/memry/onnxruntime
+          key: onnxruntime-${{ hashFiles('crates/memry-core/onnxruntime.lock') }}
+
       - name: Build XCFramework (release)
         run: crates/memry-core/build-xcframework.sh --release
 
