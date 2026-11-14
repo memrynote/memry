@@ -11,8 +11,11 @@ import SwiftUI
 // screen. The other device continues it through the shell's routers, the way
 // a search hit or a reminder tap opens the item; an item that has not synced
 // there yet lands on its page's existing missing state. An activity from
-// another vault opens nothing: it shows the missing state and never switches
-// vaults.
+// another vault, or for a page turned off on this device, opens nothing: it
+// shows a missing sheet and never switches vaults.
+//
+// The device's Handoff setting only stops this device advertising. It still
+// continues what the user's other devices hand off (Kaan, #4610).
 
 /// The item an activity names.
 enum HandoffItem: Hashable, Sendable {
@@ -100,22 +103,41 @@ struct HandoffActivity: Hashable, Sendable {
     }
 
     /// Opens the item through the shell's routers when `openVault` is its
-    /// vault. Returns the kind whose missing state to show otherwise.
+    /// vault and its page is shown here. Returns why it opened nothing
+    /// otherwise.
     @MainActor
-    func open(openVault: String, tasks: TasksRouter, journal: JournalRouter, notes: NotesLinks) -> HandoffItem.Kind? {
-        guard vaultId == openVault else { return item.kind }
+    func open(
+        openVault: String,
+        isShown: (VaultTab) -> Bool,
+        tasks: TasksRouter,
+        journal: JournalRouter,
+        notes: NotesLinks
+    ) -> HandoffMissing? {
+        guard vaultId == openVault else { return .otherVault(item.kind) }
         switch item {
         case let .note(id):
             tasks.selectedTab = .notes
             notes.open(id)
         case let .journalDay(date):
+            guard isShown(.journal) else { return .pageOff(.journal) }
             journal.tabs = tasks
             journal.openDay(date)
         case let .task(id):
+            guard isShown(.tasks) else { return .pageOff(.tasks) }
             tasks.openTask(id)
         }
         return nil
     }
+}
+
+/// Why a continued activity opened nothing.
+enum HandoffMissing: Hashable, Identifiable {
+    /// The item is in another vault.
+    case otherVault(HandoffItem.Kind)
+    /// The item's page is turned off on this device (Settings › Features).
+    case pageOff(VaultTab)
+
+    var id: Self { self }
 }
 
 /// A continued activity that arrives before the vault shell exists (sign-in,
@@ -126,10 +148,10 @@ final class HandoffLinks {
     static let shared = HandoffLinks()
     private(set) var pending: HandoffActivity?
 
-    /// `false` when the activity is not one of ours or Handoff is off here.
+    /// `false` when the activity is not one of ours. The Handoff setting does
+    /// not apply: it only stops this device advertising.
     @discardableResult
-    func request(_ activity: NSUserActivity, defaults: UserDefaults = .standard) -> Bool {
-        guard defaults.object(forKey: HandoffActivity.settingKey) as? Bool ?? true else { return false }
+    func request(_ activity: NSUserActivity) -> Bool {
         guard let continued = HandoffActivity(activity) else {
             Log.app.notice("a handoff activity could not be read")
             return false
@@ -176,22 +198,65 @@ private struct HandoffAdvertiser: ViewModifier {
     }
 }
 
-/// An activity from another vault: the item's missing state, nothing opened.
+extension View {
+    /// Shows `missing` once nothing else is presented. SwiftUI drops a sheet
+    /// asked for while another is up and leaves its binding set, so this waits
+    /// for the open sheet (Menu, search, an editor) to close instead of
+    /// closing it, which could discard what the user is typing there.
+    func handoffMissingSheet(_ missing: Binding<HandoffMissing?>) -> some View {
+        modifier(HandoffMissingSheet(pending: missing))
+    }
+}
+
+private struct HandoffMissingSheet: ViewModifier {
+    @Binding var pending: HandoffMissing?
+    @State private var shown: HandoffMissing?
+
+    func body(content: Content) -> some View {
+        content
+            .task(id: pending) {
+                guard let missing = pending else { return }
+                // The shell's window, not the key one: in Split View no Memry
+                // window may be key while a sheet is up (#4344). `shown` still
+                // set with nothing presented is a sheet SwiftUI dropped; it is
+                // cleared a pass early, or the same value would never present.
+                while true {
+                    if let window = PresentingWindow.resolve(), !PresentingWindow.isPresenting(over: window) {
+                        if shown == nil { break }
+                        shown = nil
+                    }
+                    do { try await Task.sleep(for: .milliseconds(300)) } catch { return }
+                }
+                pending = nil
+                shown = missing
+            }
+            .sheet(item: $shown) { HandoffMissingView(missing: $0) }
+    }
+}
+
+/// A continued activity that opened nothing: the item's missing state, or
+/// its page turned off here.
 struct HandoffMissingView: View {
-    let kind: HandoffItem.Kind
+    let missing: HandoffMissing
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
             Group {
-                switch kind {
-                case .note: NoteMissingNotice()
-                case .task: TaskDetailMissing()
-                case .journal:
+                switch missing {
+                case .otherVault(.note): NoteMissingNotice()
+                case .otherVault(.task): TaskDetailMissing()
+                case .otherVault(.journal):
                     ContentUnavailableView {
                         Label(HandoffCopy.dayMissingTitle, systemImage: "calendar.badge.exclamationmark")
                     } description: {
                         Text(HandoffCopy.dayMissingDetail)
+                    }
+                case let .pageOff(page):
+                    ContentUnavailableView {
+                        Label(HandoffCopy.pageOffTitle(page), systemImage: "eye.slash")
+                    } description: {
+                        Text(HandoffCopy.pageOffDetail)
                     }
                 }
             }
@@ -210,5 +275,7 @@ struct HandoffMissingView: View {
 enum HandoffCopy {
     static let dayMissingTitle = "This day is not in this vault"
     static let dayMissingDetail = "It was open in another vault on your other device."
+    static func pageOffTitle(_ page: VaultTab) -> String { "\(page.title) is off on this \(ThisDevice.noun)" }
+    static let pageOffDetail = "Turn it on in Settings › Features to open what your other device handed off."
     static let done = "Done"
 }

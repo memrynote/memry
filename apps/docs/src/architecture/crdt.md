@@ -1744,10 +1744,11 @@ A link mention's `((mention:…))` is promoted by main instead, when it builds t
 markdown (`prepareFragmentSeed` in `blocknote-converter.ts`, which both the first seed and
 every external edit, restore and file-watcher feed go through). Promoting in each editor is
 not merge-safe. Two devices that open the same seeded note before they sync each replace the
-same text with their own node, and Yjs keeps both: every mention shows up twice (#3871). The
-renderer still promotes what main leaves as text: tokens in a doc an older build seeded, and
-tokens an older build wrote with `_ * ! ~ '` raw, which main skips because re-encoding them
-would change the file's bytes.
+same text with their own node, and Yjs keeps both: every mention shows up twice (#3871). Main
+promotes every token the parser accepts, including tokens an older build wrote with
+`_ * ! ~ '` raw (#4478). The node writes those re-encoded, so the source record is what keeps
+the file's bytes: they stay until the paragraph holding the token is edited, or until the doc
+has no record. The renderer still promotes tokens in a doc an older build seeded.
 
 The token carries only the URL, so a mention built from it has a domain and no title or
 favicon. The editor fills those in from a link preview, on open and on every change, and

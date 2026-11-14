@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import UIKit
 
 @testable import Memry
 
@@ -10,15 +11,21 @@ import Testing
 @Suite("Handoff")
 struct HandoffTests {
     nonisolated static let items: [HandoffItem] = [.note("note-1"), .journalDay("2099-03-02"), .task("task-1")]
+    /// The `kind` strings cross app versions: a renamed case breaks Handoff
+    /// between an old and a new build.
+    nonisolated static let kinds: [(HandoffItem, String)] = [
+        (.note("note-1"), "note"), (.journalDay("2099-03-02"), "journal"), (.task("task-1"), "task"),
+    ]
 
-    @Test(arguments: items)
-    func the_activity_holds_only_ids(_ item: HandoffItem) throws {
+    @Test(arguments: kinds)
+    func the_activity_holds_only_ids(_ item: HandoffItem, kind: String) throws {
         let activity = NSUserActivity(activityType: HandoffActivity.type)
         HandoffActivity(vaultId: "vault-1", item: item).configure(activity)
 
         let info = try #require(activity.userInfo as? [String: String])
         #expect(Set(info.keys) == ["vault", "kind", "id"])
         #expect(info["vault"] == "vault-1")
+        #expect(info["kind"] == kind)
         #expect(info["id"] == item.id)
         #expect(activity.title == nil)
         #expect(activity.isEligibleForHandoff)
@@ -30,7 +37,7 @@ struct HandoffTests {
     @Test func a_note_opens_on_the_notes_page() {
         let (tasks, journal, notes) = routers()
         let missing = HandoffActivity(vaultId: "vault-1", item: .note("note-1"))
-            .open(openVault: "vault-1", tasks: tasks, journal: journal, notes: notes)
+            .open(openVault: "vault-1", isShown: { _ in true }, tasks: tasks, journal: journal, notes: notes)
         #expect(missing == nil)
         #expect(tasks.selectedTab == .notes)
         #expect(notes.pending == "note-1")
@@ -40,7 +47,7 @@ struct HandoffTests {
         let (tasks, journal, notes) = routers()
         tasks.selectedTab = .home
         let missing = HandoffActivity(vaultId: "vault-1", item: .journalDay("2099-03-02"))
-            .open(openVault: "vault-1", tasks: tasks, journal: journal, notes: notes)
+            .open(openVault: "vault-1", isShown: { _ in true }, tasks: tasks, journal: journal, notes: notes)
         #expect(missing == nil)
         #expect(tasks.selectedTab == .journal)
         #expect(journal.path == [.month(year: 2099, month: 3), .day("2099-03-02")])
@@ -49,7 +56,7 @@ struct HandoffTests {
     @Test func a_task_opens_in_tasks() {
         let (tasks, journal, notes) = routers()
         let missing = HandoffActivity(vaultId: "vault-1", item: .task("task-1"))
-            .open(openVault: "vault-1", tasks: tasks, journal: journal, notes: notes)
+            .open(openVault: "vault-1", isShown: { _ in true }, tasks: tasks, journal: journal, notes: notes)
         #expect(missing == nil)
         #expect(tasks.selectedTab == .tasks)
         #expect(tasks.path == [.task("task-1")])
@@ -60,12 +67,25 @@ struct HandoffTests {
         let (tasks, journal, notes) = routers()
         tasks.selectedTab = .home
         let missing = HandoffActivity(vaultId: "vault-2", item: item)
-            .open(openVault: "vault-1", tasks: tasks, journal: journal, notes: notes)
-        #expect(missing == item.kind)
+            .open(openVault: "vault-1", isShown: { _ in true }, tasks: tasks, journal: journal, notes: notes)
+        #expect(missing == .otherVault(item.kind))
         #expect(tasks.selectedTab == .home)
         #expect(tasks.path.isEmpty)
         #expect(journal.path.isEmpty)
         #expect(notes.pending == nil)
+    }
+
+    @Test func a_day_or_task_whose_page_is_off_here_shows_the_missing_state() {
+        for (item, page) in [(HandoffItem.journalDay("2099-03-02"), VaultTab.journal), (.task("task-1"), .tasks)] {
+            let (tasks, journal, notes) = routers()
+            tasks.selectedTab = .home
+            let missing = HandoffActivity(vaultId: "vault-1", item: item)
+                .open(openVault: "vault-1", isShown: { $0 != page }, tasks: tasks, journal: journal, notes: notes)
+            #expect(missing == .pageOff(page))
+            #expect(tasks.selectedTab == .home)
+            #expect(tasks.path.isEmpty)
+            #expect(journal.path.isEmpty)
+        }
     }
 
     @Test func an_unknown_kind_or_a_bad_day_is_ignored() {
@@ -74,20 +94,37 @@ struct HandoffTests {
         #expect(HandoffActivity(userInfo: ["vault": "v", "kind": "note"]) == nil)
     }
 
-    @Test func turning_handoff_off_ignores_a_continued_activity() throws {
-        let defaults = try #require(UserDefaults(suiteName: "HandoffTests"))
-        defer { defaults.removePersistentDomain(forName: "HandoffTests") }
+    @Test func turning_handoff_off_still_continues_an_incoming_activity() {
+        let previous = UserDefaults.standard.object(forKey: HandoffActivity.settingKey)
+        defer { UserDefaults.standard.set(previous, forKey: HandoffActivity.settingKey) }
+        UserDefaults.standard.set(false, forKey: HandoffActivity.settingKey)
         let activity = NSUserActivity(activityType: HandoffActivity.type)
         HandoffActivity(vaultId: "vault-1", item: .task("task-1")).configure(activity)
         let links = HandoffLinks()
 
-        defaults.set(false, forKey: HandoffActivity.settingKey)
-        #expect(!links.request(activity, defaults: defaults))
-        #expect(links.pending == nil)
-
-        defaults.removeObject(forKey: HandoffActivity.settingKey)
-        #expect(links.request(activity, defaults: defaults), "absent means on")
+        #expect(links.request(activity))
         #expect(links.take() == HandoffActivity(vaultId: "vault-1", item: .task("task-1")))
+    }
+
+    /// The queued missing sheet waits on the shell's window. In Split View
+    /// no Memry window may be key (#4344), so a key-window check saw nothing
+    /// presented and the sheet was asked for over an open one and dropped.
+    @Test func a_window_that_is_not_key_still_reports_what_it_presents() async throws {
+        let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
+        let window = UIWindow(windowScene: scene)
+        let root = UIViewController()
+        window.rootViewController = root
+        window.isHidden = false
+        defer { window.isHidden = true }
+        #expect(!window.isKeyWindow)
+        #expect(!PresentingWindow.isPresenting(over: window))
+
+        // A dismiss asked for before the presentation finishes is ignored.
+        await withCheckedContinuation { done in root.present(UIViewController(), animated: false) { done.resume() } }
+        #expect(PresentingWindow.isPresenting(over: window))
+
+        await withCheckedContinuation { done in root.dismiss(animated: false) { done.resume() } }
+        #expect(!PresentingWindow.isPresenting(over: window))
     }
 
     private func routers() -> (TasksRouter, JournalRouter, NotesLinks) {
