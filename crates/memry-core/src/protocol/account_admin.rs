@@ -14,9 +14,10 @@
 //! the rest: a missing id is `MalformedResponse`, a missing `lastSyncAt` is
 //! `None`.
 
-use serde_json::Value as Json;
+use serde_json::{Value as Json, json};
 
 use crate::api::errors::ApiError;
+use crate::crypto::vault_name::SealedText;
 use crate::protocol::auth::DeviceFormFactor;
 use crate::protocol::http::{ApiRequest, Auth, HttpClient};
 
@@ -219,6 +220,33 @@ pub async fn billing(http: &HttpClient) -> Result<BillingStatus, ApiError> {
         .await?;
     read_billing(&body)
         .ok_or_else(|| malformed("/auth/billing", "expected { plan, status, limits }"))
+}
+
+/// `PUT /sync/vaults/:vaultId/icon`, chapter 05 §5.11.1: `Some` sets the
+/// sealed icon, `None` resets to the default (both fields `null`). The write is
+/// last writer wins on `icon_updated_at` (epoch ms), so the answer is the
+/// server's `applied`: `false` means a newer change was already stored.
+pub async fn set_vault_icon(
+    http: &HttpClient,
+    vault_id: &str,
+    icon: Option<&SealedText>,
+    icon_updated_at: i64,
+) -> Result<bool, ApiError> {
+    let path = format!("/sync/vaults/{}/icon", segment(vault_id)?);
+    let body: Json = http
+        .send_json(
+            ApiRequest::new("PUT", &path)
+                .auth(Auth::Session)
+                .json(&json!({
+                    "encryptedIcon": icon.map(|sealed| &sealed.ciphertext),
+                    "iconNonce": icon.map(|sealed| &sealed.nonce),
+                    "iconUpdatedAt": icon_updated_at,
+                })),
+        )
+        .await?;
+    body.get("applied")
+        .and_then(Json::as_bool)
+        .ok_or_else(|| malformed(&path, "expected { applied: boolean }"))
 }
 
 pub async fn delete_vault(http: &HttpClient, vault_id: &str) -> Result<(), ApiError> {
