@@ -110,6 +110,8 @@ mod editor_host;
 #[cfg(unix)]
 #[path = "editor_readonly.rs"]
 mod editor_readonly;
+#[path = "embedding_projector.rs"]
+mod embedding_projector;
 #[path = "embeds.rs"]
 mod embeds;
 #[path = "file_open.rs"]

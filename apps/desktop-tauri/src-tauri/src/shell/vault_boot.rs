@@ -147,13 +147,17 @@ fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
     let reporter = app.clone();
     let announcer = app.clone();
     let lander = app.clone();
+    let indexed = session.clone();
     let index = NoteIndex::new(
         tier.clone(),
         move |report| match report {
             IndexReport::Progress(step) => {
                 broadcast(&reporter, VaultIndexProgressEvent::from(step));
             }
-            IndexReport::Indexing => send_indexing_status(&reporter),
+            IndexReport::Indexing => {
+                send_indexing_status(&reporter);
+                drain_deferred_embeddings(&reporter, &indexed);
+            }
         },
         move |links| announce_links(&announcer, links),
         move |note_id| crate::shell::journal_events::landed(&lander, note_id),
@@ -179,6 +183,18 @@ fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
     crate::shell::journal_events::forward(app.clone(), tier.subscribe());
     app.manage(notes);
     app.manage(tier);
+}
+
+/// The open's build or a `vault_reindex` ended: the notes it left marked are embedded now
+/// (Electron's `drainDeferredEmbeddings`, `vault/index.ts:996-1015`). Nothing while no
+/// embedding lane is registered.
+fn drain_deferred_embeddings(app: &AppHandle<Wry>, session: &Session) {
+    if app
+        .try_state::<Arc<NoteIndex>>()
+        .is_some_and(|index| index.indexing().is_none())
+    {
+        memry_desktop::embedding::projector::drain_deferred(session);
+    }
 }
 
 /// The note fold, its model runs on the agents `services` manages (the `Handlers` stage, before
