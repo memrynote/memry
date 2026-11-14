@@ -4114,16 +4114,24 @@ dependencies = [
 name = "memry-ml"
 version = "0.0.0"
 dependencies = [
+ "base64 0.22.1",
+ "fdeflate",
  "hex",
+ "image",
  "libc",
+ "memry-test-kit",
+ "moxcms",
  "ort",
+ "proptest",
  "serde_json",
  "sha2 0.11.0",
  "static_vcruntime",
  "tempfile",
  "thiserror 2.0.20",
  "tokenizers",
+ "tracing",
  "windows",
+ "zune-jpeg",
 ]
 
 [[package]]

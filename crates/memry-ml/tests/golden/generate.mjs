@@ -19,20 +19,26 @@
  * and `truncateEmbedding` keeps the first 256 values and divides them by their norm. Most texts come
  * from `embedding-input.json`, the shaped inputs Electron's `embedding-input.ts` produces.
  */
-import { createHash } from 'node:crypto'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import os from 'node:os'
-import { basename, dirname, join, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { join, resolve } from 'node:path'
 
 import { AutoConfig, AutoModel, AutoTokenizer, env } from '@huggingface/transformers'
 
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..')
-const VECTORS = join(ROOT, 'packages/contracts/test-vectors')
-const OUT = join(VECTORS, 'embeddings-text.json')
+import {
+  MODEL_REPO,
+  MODEL_REVISION,
+  ROOT,
+  VECTORS,
+  dot,
+  modelDir,
+  sha256File,
+  storedVector,
+  truncateEmbedding,
+  writeOrCheck
+} from './common.mjs'
 
-const MODEL_REPO = 'onnx-community/embeddinggemma-2-ONNX'
-const MODEL_REVISION = 'daa72c51243991dfcaf9f9137d2c573d8f7790c0'
+const OUT = join(VECTORS, 'embeddings-text.json')
 /** The text group of `crates/memry-ml/src/files.rs`. */
 const PINS = {
   'tokenizer.json': '4d777ef5bdc1aa36227abdfb77c3e49e7b9c892d16e1b6bda41c393504828be4',
@@ -42,9 +48,8 @@ const PINS = {
 /** Read by transformers.js but not by the native engine; their hashes are recorded. */
 const UNPINNED = ['config.json', 'tokenizer_config.json']
 
-/** `MAX_EMBEDDING_INPUT_LENGTH`, `EMBEDDING_DIMENSION`, `INFERENCE_THREADS` of the worker. */
+/** `MAX_EMBEDDING_INPUT_LENGTH` and `INFERENCE_THREADS` of the worker. */
 const MAX_INPUT = 4000
-const DIMENSION = 256
 const THREADS = Math.min(2, Math.max(1, Math.floor(os.availableParallelism() / 2)))
 
 /** Acceptance of #3540: the bounds `golden_text.rs` holds every vector to. */
@@ -56,22 +61,6 @@ const TOLERANCE = { minCosine: 0.9999, maxComponentDiff: 0.001 }
  * while every text is inside the tolerance is drift to investigate.
  */
 const MIN_RANK_GAP = 1e-4
-
-const sha256 = (path) => createHash('sha256').update(readFileSync(path)).digest('hex')
-
-function modelDir() {
-  const flag = process.argv.indexOf('--model-dir')
-  const dir = flag === -1 ? process.env.MEMRY_ML_MODEL_DIR : process.argv[flag + 1]
-  if (!dir) throw new Error('pass --model-dir <.../onnx-community/embeddinggemma-2-ONNX>')
-  const abs = resolve(dir)
-  if (!abs.split(/[\\/]/).join('/').endsWith(MODEL_REPO)) {
-    throw new Error(`${abs} is not a ${MODEL_REPO} folder`)
-  }
-  for (const [file, pin] of Object.entries(PINS)) {
-    if (sha256(join(abs, file)) !== pin) throw new Error(`${file} is not the pinned file`)
-  }
-  return abs
-}
 
 const EN = [
   'The meeting moved to Thursday afternoon.',
@@ -203,20 +192,6 @@ async function loadModel(dir) {
   return { tokenizer, model }
 }
 
-/** embedding-worker.ts `truncateEmbedding`. */
-function truncateEmbedding(full) {
-  const out = new Float32Array(DIMENSION)
-  let norm = 0
-  for (let i = 0; i < DIMENSION; i++) {
-    out[i] = full[i]
-    norm += full[i] * full[i]
-  }
-  norm = Math.sqrt(norm)
-  if (!Number.isFinite(norm) || norm === 0) throw new Error('Embedding is not finite')
-  for (let i = 0; i < DIMENSION; i++) out[i] /= norm
-  return out
-}
-
 /** `handleEmbed` and `embed`: the ids the model saw and the stored vector. */
 async function embed({ tokenizer, model }, text) {
   const inputs = tokenizer([text.substring(0, MAX_INPUT)], { padding: true, truncation: true })
@@ -224,14 +199,9 @@ async function embed({ tokenizer, model }, text) {
   const tokenIds = Array.from(inputs.input_ids.data, Number)
   return {
     tokenIds,
-    // Nine significant digits give back the same f32.
-    embedding: Array.from(truncateEmbedding(output.sentence_embedding.data), (value) =>
-      Number(value.toPrecision(9))
-    )
+    embedding: storedVector(truncateEmbedding(output.sentence_embedding.data))
   }
 }
-
-const dot = (a, b) => a.reduce((sum, value, i) => sum + value * b[i], 0)
 
 async function render(dir) {
   const engine = await loadModel(dir)
@@ -283,7 +253,9 @@ async function render(dir) {
         readFileSync(join(ROOT, 'node_modules/@huggingface/transformers/package.json'), 'utf8')
       ).version,
       model: { repo: MODEL_REPO, revision: MODEL_REVISION, dtype: 'q4' },
-      unpinnedFiles: Object.fromEntries(UNPINNED.map((file) => [file, sha256(join(dir, file))])),
+      unpinnedFiles: Object.fromEntries(
+        UNPINNED.map((file) => [file, sha256File(join(dir, file))])
+      ),
       note: 'tokenIds are the input_ids of tokenizer([text], { padding: true, truncation: true }) after the 4000-unit cut. embedding is the stored 256-value vector. ranking.queries[i].order lists document indices by descending cosine.',
       loneSurrogateNote:
         'loneSurrogates[i].text is the raw string well-formed; tokenIds and embedding are transformers.js on its first 4000 units with U+FFFD, electron holds what transformers.js gives for the raw string with the lone surrogate, and electron.cosine is their cosine.',
@@ -300,51 +272,4 @@ async function render(dir) {
   return `${JSON.stringify(document, null, 2)}\n`
 }
 
-/**
- * Differences between two renders: exact on everything but `embedding`, which may differ within
- * the file's tolerance, so a run on another CPU or thread count still passes.
- */
-function differences(committed, fresh, path = '') {
-  if (path.endsWith('.embedding') && Array.isArray(committed) && Array.isArray(fresh)) {
-    const worst = Math.max(...committed.map((value, i) => Math.abs(value - fresh[i])))
-    return committed.length === fresh.length &&
-      dot(committed, fresh) >= TOLERANCE.minCosine &&
-      worst <= TOLERANCE.maxComponentDiff
-      ? []
-      : [`${path}: cosine ${dot(committed, fresh)}, largest component difference ${worst}`]
-  }
-  if (
-    typeof committed !== 'object' ||
-    committed === null ||
-    typeof fresh !== 'object' ||
-    fresh === null
-  ) {
-    return Object.is(committed, fresh) ? [] : [`${path}: ${committed} != ${fresh}`]
-  }
-  const keys = new Set([...Object.keys(committed), ...Object.keys(fresh)])
-  return [...keys].flatMap((key) => differences(committed[key], fresh[key], `${path}.${key}`))
-}
-
-async function main() {
-  const fresh = await render(modelDir())
-  if (!process.argv.includes('--check')) {
-    writeFileSync(OUT, fresh, 'utf8')
-    process.stdout.write(`wrote ${OUT}\n`)
-    return
-  }
-  let found = [`${basename(OUT)} is missing`]
-  try {
-    found = differences(JSON.parse(readFileSync(OUT, 'utf8')), JSON.parse(fresh))
-  } catch (error) {
-    found = [`${basename(OUT)}: ${error instanceof Error ? error.message : String(error)}`]
-  }
-  if (found.length > 0) {
-    process.stderr.write(
-      `${basename(OUT)} regenerates differently:\n${found.slice(0, 20).join('\n')}\n`
-    )
-    process.exit(1)
-  }
-  process.stdout.write(`${basename(OUT)} is current\n`)
-}
-
-await main()
+writeOrCheck(OUT, await render(modelDir(PINS)), TOLERANCE)

@@ -1,17 +1,23 @@
 //! `EmbeddingEngine`: the loaded model and the embedding calls of Electron's embedding worker.
 
 use std::borrow::Cow;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::MlError;
 use crate::files::{self, ModelGroup};
-use crate::text::TextModel;
+use crate::image_prep;
+use crate::text::{MediaFeatures, TextModel};
+use crate::vision::{self, VisionModel};
 
 /// Stored vector width: the first 256 of the model's 768 dimensions (Matryoshka), re-normalised.
 pub const EMBEDDING_DIMENSION: usize = 256;
 
 /// UTF-16 code units of one text the worker embeds (`MAX_EMBEDDING_INPUT_LENGTH`).
 pub const MAX_EMBEDDING_INPUT_LENGTH: usize = 4000;
+
+/// Soft tokens of an image embedded alone (`EMBEDDING_IMAGE_SOFT_TOKENS`); a page or an image with
+/// its text gets `EMBEDDING_PAGE_SOFT_TOKENS` (280) from the caller.
+pub const IMAGE_SOFT_TOKENS: usize = 140;
 
 pub type Embedding = [f32; EMBEDDING_DIMENSION];
 
@@ -36,10 +42,14 @@ pub fn default_intra_threads() -> usize {
     (cores / 2).clamp(1, 2)
 }
 
-/// The text model, loaded from a model directory (`files::model_dir`). Inference takes `&mut self`:
-/// one thread owns the engine and serves one request at a time.
+/// The text model, loaded from a model directory (`files::model_dir`), and the vision encoder,
+/// loaded with the first image as the worker does. Inference takes `&mut self`: one thread owns
+/// the engine and serves one request at a time.
 pub struct EmbeddingEngine {
+    dir: PathBuf,
+    options: LoadOptions,
     text: TextModel,
+    vision: Option<VisionModel>,
 }
 
 impl EmbeddingEngine {
@@ -48,7 +58,10 @@ impl EmbeddingEngine {
     pub fn load(dir: &Path, options: LoadOptions) -> Result<Self, MlError> {
         files::ensure_present(dir, ModelGroup::Text)?;
         Ok(Self {
+            dir: dir.to_path_buf(),
+            options,
             text: TextModel::load(dir, options.intra_threads)?,
+            vision: None,
         })
     }
 
@@ -56,7 +69,45 @@ impl EmbeddingEngine {
     /// caller adds the task prefix (`memry_core::domain::embedding_input`).
     pub fn embed_text(&mut self, text: &str) -> Result<Embedding, MlError> {
         let ids = self.token_ids(text)?;
-        truncate_embedding(&self.text.sentence_embedding(ids)?)
+        truncate_embedding(
+            &self
+                .text
+                .sentence_embedding(ids, MediaFeatures::default())?,
+        )
+    }
+
+    /// The worker's `embedImage`: the image's soft tokens (`soft_tokens`, default
+    /// [`IMAGE_SOFT_TOKENS`]) at the `<|image|>` placeholder of `text`, which the caller builds
+    /// (`memry_core::domain::embedding_input::build_interleaved_input`), or the image alone.
+    /// Loads the vision group on first use; a malformed image is an [`MlError::Input`].
+    pub fn embed_image(
+        &mut self,
+        bytes: &[u8],
+        text: Option<&str>,
+        soft_tokens: Option<usize>,
+    ) -> Result<Embedding, MlError> {
+        let tensor = image_prep::prepare(bytes, soft_tokens.unwrap_or(IMAGE_SOFT_TOKENS))?;
+        let ids = self.image_token_ids(text, tensor.num_soft_tokens)?;
+        let vision = match &mut self.vision {
+            Some(vision) => vision,
+            empty => {
+                files::ensure_present(&self.dir, ModelGroup::Vision)?;
+                empty.insert(VisionModel::load(&self.dir, self.options.intra_threads)?)
+            }
+        };
+        let image = vision.image_features(tensor)?;
+        truncate_embedding(&self.text.sentence_embedding(ids, MediaFeatures { image })?)
+    }
+
+    /// The ids [`Self::embed_image`] gives the model for an image of `num_soft_tokens` soft
+    /// tokens: the processor's expanded prompt, tokenized with `<bos>` and `<eos>` and uncut.
+    pub fn image_token_ids(
+        &self,
+        text: Option<&str>,
+        num_soft_tokens: usize,
+    ) -> Result<Vec<i64>, MlError> {
+        self.text
+            .token_ids(&vision::image_prompt(text, num_soft_tokens)?)
     }
 
     /// The ids [`Self::embed_text`] gives the model for `text`: `<bos>`, the first
