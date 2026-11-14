@@ -141,8 +141,23 @@ impl Device {
                     .query_map([&item_type], |row| row.get(0))
                     .map_err(failed)?
                     .collect::<Result<Vec<String>, _>>()
-                    .map_err(failed);
-                ids
+                    .map_err(failed)?;
+                Ok(ids)
+            })
+            .unwrap()
+    }
+
+    /// How many outbox rows of `item_type` wait to be pushed.
+    fn queued(&self, item_type: &str) -> i64 {
+        let item_type = item_type.to_owned();
+        self.db()
+            .call_blocking(move |conn| {
+                conn.query_row(
+                    "SELECT COUNT(*) FROM outbox WHERE item_type = ?1",
+                    [&item_type],
+                    |row| row.get(0),
+                )
+                .map_err(failed)
             })
             .unwrap()
     }
@@ -307,7 +322,7 @@ async fn records_converge_through_the_driver() {
     // B's edit reaches A.
     let b_tasks = b.core.tasks(b.store.clone()).unwrap();
     b_tasks
-        .update_title(task.clone(), "Ship it".into())
+        .set_title(task.clone(), "Ship it".into())
         .expect("rename on B");
     assert!(b.sync().await.pushed);
     a.sync().await;
@@ -341,7 +356,13 @@ async fn the_drivers_seeds_carry_definitions_tags_and_locks() {
             Ok(())
         })
         .unwrap();
-    assert!(a.ids("tag_definition").is_empty(), "nothing queued yet");
+    for item_type in ["tag_definition", "vault_lock"] {
+        assert_eq!(
+            a.queued(item_type),
+            0,
+            "no {item_type} queued before the pass"
+        );
+    }
 
     let pushed = a.sync().await;
     assert!(pushed.pushed, "{pushed:?}");
