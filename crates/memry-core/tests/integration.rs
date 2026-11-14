@@ -63,6 +63,8 @@ mod attachment_manifest_vectors;
 mod attachment_upload_wire;
 #[path = "auth_session.rs"]
 mod auth_session;
+#[path = "auth_web_callback.rs"]
+mod auth_web_callback;
 #[path = "block_edit_vectors.rs"]
 mod block_edit_vectors;
 #[path = "block_refs.rs"]

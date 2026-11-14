@@ -7,6 +7,10 @@
  * `{ url, userId, devices: [{ deviceId, accessToken, signingSecretKey }] }` (the key as
  * base64, libsodium's 64-byte form), and serves until stdin closes.
  *
+ * The user has account key material, and the line carries `recovery`: `{ kdfSalt, keyVerifier,
+ * setupToken }` for that user, and `setupTokenNoKeys` for a second user with none (chapter 02
+ * §2.7, `GET /auth/recovery-info`).
+ *
  * A `purge` line on stdin ends the user's retention (`version_history_days` 0, as for a user with
  * no entitlement row) and runs the Worker's cron, whose `cleanupExpiredTombstones` sheds every
  * tombstone from an earlier second to a marker (chapter 05 §5.12.3). It answers
@@ -32,8 +36,19 @@ for (let at = 0; at < count; at += 1) {
   })
 }
 
+const kdfSalt = to_base64(new Uint8Array(16).fill(7), base64_variants.ORIGINAL)
+const keyVerifier = to_base64(new Uint8Array(32).fill(5), base64_variants.ORIGINAL)
+const accountDb = await server.getD1()
+await accountDb
+  .prepare('UPDATE users SET kdf_salt = ?, key_verifier = ? WHERE id = ?')
+  .bind(kdfSalt, keyVerifier, userId)
+  .run()
+const recovery = { kdfSalt, keyVerifier, setupToken: await server.createSetupToken(userId) }
+const keyless = await createTestDevice(server, { deviceName: 'harness-keyless' })
+const setupTokenNoKeys = await server.createSetupToken(keyless.userId)
+
 const url = (await server.getDirectUrl()).toString().replace(/\/$/, '')
-process.stdout.write(`${JSON.stringify({ url, userId, devices })}\n`)
+process.stdout.write(`${JSON.stringify({ url, userId, devices, recovery, setupTokenNoKeys })}\n`)
 
 const stop = async (): Promise<void> => {
   await server.stop()

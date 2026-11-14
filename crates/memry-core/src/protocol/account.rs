@@ -4,6 +4,7 @@
 //! | Route                  | Chapter          | What it answers                        |
 //! | ---------------------- | ---------------- | -------------------------------------- |
 //! | `GET /auth/key-verifier` | 02 §2.1, §2.1.1 | `{ kdfSalt, keyVerifier }` for unlock  |
+//! | `GET /auth/recovery-info` | 02 §2.7        | the same, before a device is registered |
 //! | `GET /sync/vaults`       | 05 §5.1         | the vault registry                     |
 //! | `GET /auth/devices`      | 01 §1.4.0       | the signer key directory               |
 //!
@@ -41,6 +42,7 @@ pub use seal::{
 };
 
 const KEY_VERIFIER_PATH: &str = "/auth/key-verifier";
+const RECOVERY_INFO_PATH: &str = "/auth/recovery-info";
 const SETUP_PATH: &str = "/auth/setup";
 const VAULTS_PATH: &str = "/sync/vaults";
 const DEVICES_PATH: &str = "/auth/devices";
@@ -112,6 +114,27 @@ pub async fn key_material(http: &HttpClient) -> Result<KeyMaterial, ApiError> {
         .await?;
     read_key_material(&body).ok_or_else(|| ApiError::MalformedResponse {
         path: KEY_VERIFIER_PATH.to_string(),
+        what: "expected { kdfSalt, keyVerifier }".to_string(),
+    })
+}
+
+/// The same `{ kdfSalt, keyVerifier }` for a client that holds only a setup
+/// token, chapter 02 §2.7: the read a reinstall makes before it registers,
+/// with the setup token as the bearer (Electron:
+/// `apps/desktop/src/main/sync/device-registration.ts:294`,
+/// `ipc/auth-device-handlers.ts:446`, `sync/linking-service.ts:516`).
+///
+/// Both fields are required, as `RecoveryDataResponseSchema` requires them
+/// (`packages/contracts/src/auth-api.ts:140`): an account with a salt and no
+/// verifier answers `keyVerifier: null`, and that is a malformed response
+/// rather than a verifier nothing matches. An account with no keys at all is
+/// the route's `400`, which crosses unchanged.
+pub async fn recovery_info(http: &HttpClient, setup_token: &str) -> Result<KeyMaterial, ApiError> {
+    let body: Json = http
+        .send_json(ApiRequest::get(RECOVERY_INFO_PATH).auth(Auth::Bearer(setup_token.to_string())))
+        .await?;
+    read_key_material(&body).ok_or_else(|| ApiError::MalformedResponse {
+        path: RECOVERY_INFO_PATH.to_string(),
         what: "expected { kdfSalt, keyVerifier }".to_string(),
     })
 }

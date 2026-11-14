@@ -32,10 +32,11 @@ use crate::seams::transport::Transport;
 
 mod identity;
 mod oauth;
+mod recovery;
 mod restore;
 
 pub use identity::ensure_device_identity;
-pub use oauth::{AuthProvider, ProviderSignInOutcome};
+pub use oauth::{AuthProvider, ProviderSignInOutcome, WebSignInOutcome};
 
 /// Data-model §C.1, one variant per drawn state.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
@@ -183,6 +184,8 @@ struct PendingSignIn {
     /// registration, and it MUST be the same value on both — a token that
     /// carries a nonce rejects a registration that omits it.
     session_nonce: Option<String>,
+    /// The browser callback a web provider attempt waits for; spent on use.
+    web_callback: Option<oauth::ExpectedCallback>,
 }
 
 /// The session. One per account on the device.
