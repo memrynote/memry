@@ -184,7 +184,7 @@ impl Setup {
     /// The app reindexes after every write, which refreshes the body cache
     /// the queue plans from.
     fn reindex(&self) {
-        self.vault.search().unwrap().reindex().unwrap();
+        self.vault.search(None).unwrap().reindex().unwrap();
     }
 
     fn source_key_of(&self, id: &str) -> [u8; 32] {

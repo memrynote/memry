@@ -19,10 +19,12 @@
 //! time, but it walks the vault, so it is not hidden inside a keystroke.
 
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use rusqlite::OptionalExtension as _;
 
 use crate::api::errors::StorageError;
+use crate::api::semantic::SemanticSearch;
 use crate::domain::journal_ops::links::{self, BacklinkRow, OutgoingLink};
 use crate::domain::search::{self, HitKind, MatchKind, SearchFilter, SearchHit, SnippetSegment};
 use crate::domain::unlinked_mentions::{self, UnlinkedMention};
@@ -50,16 +52,18 @@ pub struct SearchResult {
     /// The note's vault folder (`Work/Accounts`), `None` at the vault root and
     /// for everything that is not a note.
     pub folder_path: Option<String>,
-    /// The bm25 score: negative, and more negative is a better match. Carried
-    /// so a shell can show relevance if it wants to, never re-sorted — the
-    /// order returned is already the ranking.
+    /// A per-kind diagnostic value, never re-sorted: the order returned is
+    /// already the ranking. The bm25 score for a body hit (negative, more
+    /// negative is better), zero for a fuzzy or alias hit, and the cosine for
+    /// a semantic hit.
     pub score: f64,
     /// The body text around the match, highlighted runs marked (#4316). Plain
     /// runs only when the hit matched its title alone; empty when the body
     /// (a task's description) is.
     pub snippet: Vec<SnippetSegment>,
-    /// Whether the index, the fuzzy title fallback or an alias found the hit
-    /// (#4319). Only a body hit carries a snippet.
+    /// Whether the index, the fuzzy title fallback, an alias (#4319) or the
+    /// on-device embedding (#4505) found the hit. Only a body hit carries a
+    /// snippet.
     pub match_kind: MatchKind,
     /// The alias the query matched, for a note or journal whose title does
     /// not hold the query. The row shows it as "also: <name>".
@@ -145,16 +149,26 @@ pub enum BacklinkOrder {
 pub struct Search {
     data: Db,
     index: Db,
+    directory: PathBuf,
+    /// `None` searches FTS alone.
+    semantic: Option<Arc<SemanticSearch>>,
 }
 
 impl Search {
     /// Built by [`crate::api::vault::Vault::search`], which holds the data
     /// handle and knows the directory the index belongs beside.
-    pub(crate) fn over(data: Db, directory: &str) -> Result<Self, StorageError> {
-        let opened = open_index(&PathBuf::from(directory).join("index.db"))?;
+    pub(crate) fn over(
+        data: Db,
+        directory: &str,
+        semantic: Option<Arc<SemanticSearch>>,
+    ) -> Result<Self, StorageError> {
+        let directory = PathBuf::from(directory);
+        let opened = open_index(&directory.join("index.db"))?;
         Ok(Self {
             data,
             index: opened.db,
+            directory,
+            semantic,
         })
     }
 }
@@ -327,6 +341,11 @@ impl Search {
     ///
     /// A query carrying no searchable term returns **empty, not everything**:
     /// an empty search box is not a request for the whole vault.
+    ///
+    /// With semantic search on and its model loaded, notes and journals near
+    /// the query's meaning fuse into their groups. The query is embedded
+    /// before any database lock is taken, and never waits on a model load:
+    /// the first query starts the load and answers from FTS alone.
     pub fn search(
         &self,
         query: String,
@@ -336,9 +355,19 @@ impl Search {
         let index = self.index.clone();
         let filter = filter.unwrap_or_default();
         let limit = limit as usize;
+        let hits = self
+            .semantic
+            .as_ref()
+            .map(|semantic| semantic.hits(&self.directory, &query))
+            .unwrap_or_default();
         self.data.call_blocking(move |data| {
             index.call_blocking(|index| {
-                let groups = search::search(data, index, &query, &filter, limit)?;
+                let mut groups = search::search(data, index, &query, &filter, limit)?;
+                if let Err(error) =
+                    search::semantic::fuse(data, index, &mut groups, &hits, &filter, limit)
+                {
+                    eprintln!("memry-core: semantic fusion failed, FTS only: {error}");
+                }
                 let results =
                     |hits: Vec<SearchHit>| hits.into_iter().map(SearchResult::from).collect();
                 Ok(SearchGroups {
@@ -380,3 +409,7 @@ fn now_ms() -> i64 {
         .map(|elapsed| elapsed.as_millis() as i64)
         .unwrap_or_default()
 }
+
+#[cfg(test)]
+#[path = "search_semantic_tests.rs"]
+mod semantic_tests;

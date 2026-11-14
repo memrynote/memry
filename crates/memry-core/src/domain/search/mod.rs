@@ -78,6 +78,7 @@ mod maintenance;
 mod names;
 mod query;
 pub mod recents;
+pub mod semantic;
 mod snippet;
 pub(crate) mod source;
 
@@ -108,6 +109,9 @@ pub enum MatchKind {
     Fuzzy,
     /// One of the note's or journal day's aliases is or starts with the query.
     Alias,
+    /// Only the on-device embedding found it: the note means what the query
+    /// means without holding its words ([`semantic`]).
+    Semantic,
 }
 
 /// What a hit is.
@@ -137,12 +141,13 @@ pub struct SearchHit {
     pub id: String,
     pub title: String,
     pub kind: HitKind,
-    /// The bm25 score. Negative; more negative is a better match. Zero for a
-    /// fuzzy or alias hit, which bm25 did not rank.
+    /// A per-kind diagnostic value; the order is the ranking. The bm25 score
+    /// for a body hit, negative and more negative for a better match. Zero
+    /// for a fuzzy or alias hit, and the cosine for a semantic hit.
     pub score: f64,
     /// The body window around the match (`content` for notes, journals and
-    /// inbox captures, `description` for tasks), empty when that column is, and for a fuzzy
-    /// or alias hit.
+    /// inbox captures, `description` for tasks), empty when that column is, and for a fuzzy,
+    /// alias or semantic hit.
     pub snippet: Vec<SnippetSegment>,
     pub match_kind: MatchKind,
     /// The alias the query matched, when the hit's title does not hold it.

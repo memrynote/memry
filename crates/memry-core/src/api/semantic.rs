@@ -7,6 +7,8 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use crate::api::errors::StorageError;
 use crate::api::vault::Vault;
+use crate::domain::embedding_input::query_input;
+use crate::domain::search::semantic::{SemanticHit, nearest, wants_semantic};
 use crate::seams::reachability::{Reachability, Reachable};
 use crate::seams::transport::Transport;
 use crate::semantic::download::{self, DownloadEnd, DownloadError};
@@ -188,25 +190,25 @@ impl SemanticSearch {
         reachability: Arc<dyn Reachability>,
     ) -> Self {
         let models = model.clone();
-        let load: Loader = Arc::new(move |threads| {
+        let loader: Loader = Arc::new(move |threads| {
             let verified = models
                 .verified()
                 .filter(|_| models.opted_in())
                 .ok_or_else(|| SemanticError::inference("the model is not downloaded"))?;
             load(&verified, threads)
         });
-        Self::with_loader(model, transport, reachability, load)
+        Self::with_loader(model, transport, reachability, loader)
     }
 
     pub(crate) fn with_loader(
         model: ModelDir,
         transport: Arc<dyn Transport>,
         reachability: Arc<dyn Reachability>,
-        load: Loader,
+        loader: Loader,
     ) -> Self {
         Self {
             model,
-            host: ModelHost::new(load),
+            host: ModelHost::new(loader),
             transport,
             reachability,
             transfer: Mutex::new(Transfer::Idle),
@@ -269,7 +271,43 @@ impl SemanticSearch {
         Ok(self.model_state())
     }
 
+    /// The semantic leg of one search over the vault in `vault_dir`, best
+    /// first. Empty means FTS only: the query takes no semantic leg, the model
+    /// is off, still downloading or loading, or the leg failed. Never waits on
+    /// a model load; the first query starts one.
+    pub(crate) fn hits(&self, vault_dir: &Path, query: &str) -> Vec<SemanticHit> {
+        if !wants_semantic(query) || !self.model.opted_in() || self.model.verified().is_none() {
+            return Vec::new();
+        }
+        let Some(vector) = query_input(query).and_then(|window| self.host.query_vector(&window))
+        else {
+            return Vec::new();
+        };
+        let key = self.model.manifest().vector_key;
+        self.with_vectors(vault_dir, |conn| {
+            nearest(&vector, VectorStore::new(conn).scan(key)?)
+        })
+        .map(Option::unwrap_or_default)
+        .unwrap_or_else(|error| {
+            eprintln!("memry-core: semantic leg failed, FTS only: {error}");
+            Vec::new()
+        })
+    }
+
     fn embedded_notes(&self, vault_dir: &Path) -> Result<u32, StorageError> {
+        let key = self.model.manifest().vector_key;
+        self.with_vectors(vault_dir, |conn| VectorStore::new(conn).counts(key))
+            .map(Option::unwrap_or_default)
+    }
+
+    /// Runs `read` on this vault's `vectors.db`, opened once and held, under
+    /// the handles lock so `disable` cannot delete the file mid-read. `None`
+    /// when the device is opted out.
+    fn with_vectors<T>(
+        &self,
+        vault_dir: &Path,
+        read: impl FnOnce(&mut rusqlite::Connection) -> Result<T, StorageError>,
+    ) -> Result<Option<T>, StorageError> {
         let path = vault_dir.join("vectors.db");
         let mut handles = lock(&self.vectors);
         // Read under the lock: `disable` may have run since the caller's check.
@@ -283,14 +321,13 @@ impl SemanticSearch {
             Some(db) => db.clone(),
             None => {
                 let Some(db) = vector_db::open(&path, opted_in)? else {
-                    return Ok(0);
+                    return Ok(None);
                 };
                 handles.insert(vault_dir.to_path_buf(), db.clone());
                 db
             }
         };
-        let key = self.model.manifest().vector_key;
-        db.call_blocking(|conn| VectorStore::new(conn).counts(key))
+        db.call_blocking(read).map(Some)
     }
 }
 
