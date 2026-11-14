@@ -15,7 +15,12 @@
  * no entitlement row) and runs the Worker's cron, whose `cleanupExpiredTombstones` sheds every
  * tombstone from an earlier second to a marker (chapter 05 §5.12.3). It answers
  * `{ harnessMarkers }`, the marker count, on stdout.
+ *
+ * An `otp <email> <code>` line makes `<code>` the email's pending sign-in code, as the server's
+ * `storeOtp` stores one (the email normalized, the code's HMAC-SHA256 under the harness key), so
+ * a client can finish an email sign-in without the email. It answers `{ harnessOtp: true }`.
  */
+import { createHmac } from 'node:crypto'
 import { createInterface } from 'node:readline'
 import { base64_variants, to_base64 } from 'libsodium-wrappers-sumo'
 import { SimulatedServer } from '../src/simulated-server.js'
@@ -63,8 +68,32 @@ const purge = async (): Promise<void> => {
     .first<number>('n')
   process.stdout.write(`${JSON.stringify({ harnessMarkers: markers })}\n`)
 }
+const otp = async (email: string, code: string): Promise<void> => {
+  const db = await server.getD1()
+  const normalized = email.trim().toLowerCase()
+  const now = Math.floor(Date.now() / 1000)
+  await db
+    .prepare('UPDATE otp_codes SET used = 1 WHERE email = ? AND used = 0')
+    .bind(normalized)
+    .run()
+  await db
+    .prepare(
+      'INSERT INTO otp_codes (id, email, code_hash, expires_at, attempts, used, created_at) VALUES (?, ?, ?, ?, 0, 0, ?)'
+    )
+    .bind(
+      crypto.randomUUID(),
+      normalized,
+      createHmac('sha256', 'test-otp-hmac-key').update(code).digest('hex'),
+      now + 600,
+      now
+    )
+    .run()
+  process.stdout.write(`${JSON.stringify({ harnessOtp: true })}\n`)
+}
 const commands = createInterface({ input: process.stdin })
 commands.on('line', (line) => {
-  if (line.trim() === 'purge') void purge()
+  const [command, ...args] = line.trim().split(/\s+/)
+  if (command === 'purge') void purge()
+  if (command === 'otp' && args.length === 2) void otp(args[0], args[1])
 })
 commands.on('close', () => void stop())

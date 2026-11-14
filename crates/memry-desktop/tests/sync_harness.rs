@@ -11,6 +11,7 @@
 //! | a definition only the file holds meets the server's     | `rebuildSingleDbCache`, `seedUnclocked` (#4099) |
 //! | a definition only the file holds over a purged deletion | chapter 05 §5.12.3 (`create`, #4099)      |
 //! | recovery info is read with the setup token              | chapter 02 §2.7 (`/auth/recovery-info`)   |
+//! | `account`: email sign-in, setup, known device, phrase   | `auth-device-handlers.ts`, `device-registration.ts` |
 //!
 //! Within it: a definition another device pushed first wins over the learned type, a deleted one
 //! stays deleted, the record has the shape Electron's seed pushes, a retry pushes nothing twice,
@@ -18,6 +19,8 @@
 
 #![cfg(feature = "harness")]
 
+#[path = "sync_harness/account.rs"]
+mod account;
 #[path = "device_key/mod.rs"]
 mod device_key;
 
@@ -86,7 +89,11 @@ impl Server {
         std::thread::spawn(move || {
             for line in out.lines().map_while(Result::ok) {
                 match serde_json::from_str::<Value>(&line) {
-                    Ok(value) if value.get("harnessMarkers").is_some() => {
+                    Ok(value)
+                        if value
+                            .as_object()
+                            .is_some_and(|o| o.keys().any(|k| k.starts_with("harness"))) =>
+                    {
                         let _ = reply.send(value);
                     }
                     _ => eprintln!("[worker] {line}"),
@@ -113,6 +120,17 @@ impl Server {
             .expect("purge");
         let reply = self.replies.recv().expect("the purge reply");
         reply["harnessMarkers"].as_u64().expect("a marker count")
+    }
+
+    /// Makes `code` the pending sign-in code of `email`, as the server stores one it mailed.
+    fn otp(&mut self, email: &str, code: &str) {
+        let stdin = self.child.stdin.as_mut().expect("its stdin");
+        stdin
+            .write_all(format!("otp {email} {code}\n").as_bytes())
+            .and_then(|()| stdin.flush())
+            .expect("otp");
+        let reply = self.replies.recv().expect("the otp reply");
+        assert_eq!(reply["harnessOtp"], true, "{reply}");
     }
 }
 
