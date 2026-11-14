@@ -952,6 +952,45 @@ describe('useNoteTreeActions', () => {
       expect(mutations.renameNote.mutateAsync).not.toHaveBeenCalled()
     })
 
+    // `notesService.move` answers a refused move with an envelope.
+    it('says so and refreshes the tree when the note cannot follow a folder move', async () => {
+      const mutations = createMutations()
+      mutations.moveNote.mutateAsync.mockResolvedValue({
+        success: false,
+        note: null,
+        error: 'Note is locked'
+      })
+      const { result, deps } = renderPaired({ mutations })
+
+      await act(async () => {
+        await result.current.handleMove({
+          draggedId: 'folder-Work/Note A',
+          targetId: 'folder-Work/Nested',
+          position: 'inside'
+        })
+      })
+
+      expect(toast.error).toHaveBeenCalledWith('Note is locked')
+      expect(deps.refreshFolders).toHaveBeenCalled()
+    })
+
+    // The `renameNote` mutation rejects a refused rename (`unwrapIpcResult`).
+    it('says so and refreshes the tree when the note cannot follow a folder rename', async () => {
+      const mutations = createMutations()
+      mutations.renameNote.mutateAsync.mockRejectedValue(new Error('Note is locked'))
+      const { result, deps } = renderPaired({ mutations })
+
+      act(() => result.current.handleRenameFolderClick('Work/Note A'))
+      act(() => result.current.setFolderRenameValue('Plans'))
+      await act(async () => {
+        await result.current.handleFolderRenameSubmit('Work/Note A')
+      })
+
+      expect(deps.renameFolderPath).toHaveBeenCalledWith('Work/Note A', 'Work/Plans')
+      expect(toast.error).toHaveBeenCalledWith('Note is locked')
+      expect(deps.refreshFolders).toHaveBeenCalled()
+    })
+
     it('touches nothing when another note already has the new name', async () => {
       const { result, mutations } = renderPaired()
 
