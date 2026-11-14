@@ -54,6 +54,7 @@ import {
   isVaultFile,
   remapExpandedFolderIds,
   setFoldersExpanded,
+  treeRowIdForNote,
   type FolderNode
 } from '@/components/notes-tree-utils'
 import { FILE_DROP_FOLDER_ATTR } from '@/hooks/use-file-drop'
@@ -77,11 +78,12 @@ import {
 } from '@/lib/icons'
 import { ContextMenuItem, ContextMenuSeparator } from '@/components/ui/context-menu'
 import { BookmarkMenuItem } from '@/components/sidebar/bookmark-menu-item'
-import { NoteContextMenuItems } from '@/components/notes-tree-note-menu'
+import { NoteContextMenuItems, type NoteMenuActions } from '@/components/notes-tree-note-menu'
 import {
   TreeSelectionMenuItems,
   type TreeSelectionActions
 } from '@/components/sidebar/tree-selection-menu-items'
+import { PairedFolderMenuItems, TreePairedNoteIcon } from '@/components/sidebar/paired-note-row'
 import { MoveToFolderDialog } from '@/components/folder-view/move-to-folder-dialog'
 import { VaultLockMenuItem } from '@/components/sidebar/vault-lock-menu-item'
 import { OpenTargetMenuItems } from '@/components/sidebar/open-target-menu-items'
@@ -221,6 +223,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
     selectedIds,
     setSelectedIds,
     computeTargetFolder: data.computeTargetFolder,
+    pairedNotes: data.pairedNotes,
     expandFolderPath,
     renameFolderPath
   })
@@ -301,10 +304,12 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
 
   const handleRevealComplete = useCallback(
     (noteId: string) => {
-      setSelectedIds([noteId])
-      notifyTargetFolderChange([noteId])
+      // A paired note has no row of its own: its folder's row stands for it.
+      const rowId = treeRowIdForNote(data.pairedNotes, noteId)
+      setSelectedIds([rowId])
+      notifyTargetFolderChange([rowId])
       setTimeout(() => {
-        const element = document.querySelector(`[data-tree-node-id="${noteId}"]`)
+        const element = document.querySelector(`[data-tree-node-id="${rowId}"]`)
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'center' })
           element.classList.add('bg-accent')
@@ -314,7 +319,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
       pendingRevealNoteIdRef.current = null
       setPendingRevealNoteId(null)
     },
-    [notifyTargetFolderChange]
+    [notifyTargetFolderChange, data.pairedNotes]
   )
 
   useEffect(() => {
@@ -421,6 +426,15 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
     onDeleteSelection: actions.handleBulkDelete
   }
 
+  const noteMenuActions: NoteMenuActions = {
+    onApplyTemplate: setApplyTemplateNote,
+    onSaveAsTemplate: setSaveAsTemplateNote,
+    onNewNoteFromNote: (n) => void createNoteFromNote(n.id),
+    onRemoveIcon: (n) => void data.mutations.updateNote.mutateAsync({ id: n.id, emoji: null }),
+    onOpenExternal: (n) => void actions.handleOpenExternal(n),
+    onRevealInFinder: (n) => void actions.handleRevealInFinder(n)
+  }
+
   const renderNote = (note: NoteListItem, level: number, isLast: boolean, hideLines = false) => {
     const isBeingRenamed = actions.renamingNoteId === note.id
     const isSelected = selectedIds.includes(note.id)
@@ -448,16 +462,9 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
               {!isPartOfSelection && (
                 <NoteContextMenuItems
                   note={note}
+                  {...noteMenuActions}
                   onRename={actions.handleRenameClick}
-                  onApplyTemplate={setApplyTemplateNote}
-                  onSaveAsTemplate={setSaveAsTemplateNote}
-                  onNewNoteFromNote={(n) => void createNoteFromNote(n.id)}
                   onSetIcon={(n) => actions.setIconPickerNoteId(n.id)}
-                  onRemoveIcon={(n) =>
-                    void data.mutations.updateNote.mutateAsync({ id: n.id, emoji: null })
-                  }
-                  onOpenExternal={(n) => void actions.handleOpenExternal(n)}
-                  onRevealInFinder={(n) => void actions.handleRevealInFinder(n)}
                   onDelete={actions.handleDeleteClick}
                 />
               )}
@@ -528,11 +535,32 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
     )
   }
 
+  // A folder drawn as its paired note: the note's actions, with the folder's
+  // "inside" actions beside them. Rename and delete take both along.
+  const renderPairedMenu = (folder: FolderNode, note: NoteListItem) => (
+    <NoteContextMenuItems
+      note={note}
+      {...noteMenuActions}
+      onRename={() => actions.handleRenameFolderClick(folder.path)}
+      onSetIcon={() => actions.setIconPickerFolderPath(folder.path)}
+      onDelete={() => actions.handleDeleteFolderClick(folder.path)}
+      folderItems={
+        <PairedFolderMenuItems
+          folder={folder}
+          onCreateNote={(path) => void actions.handleCreateNoteInFolder(path)}
+          onCreateFolder={(path) => void actions.handleCreateSubfolder(path)}
+          onSetSubtreeExpanded={setSubtreeExpanded}
+        />
+      }
+    />
+  )
+
   const renderFolder = (folder: FolderNode, level: number, isLast: boolean): ReactNode => {
     const hasChildren = folder.children.length > 0 || folder.notes.length > 0
     const isBeingRenamed = actions.renamingFolderPath === folder.path
     const isPartOfSelection =
       selectedIds.length > 1 && selectedIds.includes(`folder-${folder.path}`)
+    const pairedNote = folder.note
 
     return (
       <TreeNode
@@ -542,10 +570,15 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
         isLast={isLast}
         acceptsDropInside
         hasChildren={hasChildren}
+        canvasNoteId={pairedNote?.id}
+        dragTab={pairedNote ? noteTabData(pairedNote) : undefined}
       >
         <TreeNodeTrigger
           {...{ [FILE_DROP_FOLDER_ATTR]: folder.path }}
-          onMouseDown={middleClickOpen(folderTabData(folder.path, folder.icon))}
+          onMouseDown={middleClickOpen(
+            pairedNote ? noteTabData(pairedNote) : folderTabData(folder.path, folder.icon)
+          )}
+          toggleOnClick={!pairedNote}
           getSubtreeNodeIds={() => getSubtreeIds(folder.path)}
           className={cn(
             fileDropFolder === folder.path &&
@@ -554,6 +587,8 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
           contextMenuContent={
             isPartOfSelection ? (
               <TreeSelectionMenuItems count={selectedIds.length} actions={selectionActions} />
+            ) : pairedNote ? (
+              renderPairedMenu(folder, pairedNote)
             ) : (
               <>
                 <OpenTargetMenuItems tab={folderTabData(folder.path, folder.icon)} />
@@ -629,16 +664,31 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
             )
           }
         >
-          <TreeFolderIcon
-            nodeId={`folder-${folder.path}`}
-            icon={folder.icon ?? null}
-            hasChildren={hasChildren}
-            onIconChange={(icon) => void data.setFolderIcon(folder.path, icon)}
-            pickerOpen={actions.iconPickerFolderPath === folder.path}
-            onPickerOpenChange={(open) =>
-              actions.setIconPickerFolderPath(open ? folder.path : null)
-            }
-          />
+          {pairedNote ? (
+            <TreePairedNoteIcon
+              nodeId={`folder-${folder.path}`}
+              note={pairedNote}
+              hasChildren={hasChildren}
+              onIconChange={(icon) =>
+                void data.mutations.updateNote.mutateAsync({ id: pairedNote.id, emoji: icon })
+              }
+              pickerOpen={actions.iconPickerFolderPath === folder.path}
+              onPickerOpenChange={(open) =>
+                actions.setIconPickerFolderPath(open ? folder.path : null)
+              }
+            />
+          ) : (
+            <TreeFolderIcon
+              nodeId={`folder-${folder.path}`}
+              icon={folder.icon ?? null}
+              hasChildren={hasChildren}
+              onIconChange={(icon) => void data.setFolderIcon(folder.path, icon)}
+              pickerOpen={actions.iconPickerFolderPath === folder.path}
+              onPickerOpenChange={(open) =>
+                actions.setIconPickerFolderPath(open ? folder.path : null)
+              }
+            />
+          )}
           {isBeingRenamed ? (
             <input
               ref={renameCallbackRef}
@@ -688,7 +738,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
         {hasChildren && (
           <TreeNodeContent>
             {renderEntries(
-              orderFolderEntries(folder.children, folder.notes, data.tree.notesFirst),
+              orderFolderEntries(data.tree, folder.path, folder.children, folder.notes),
               level + 1
             )}
           </TreeNodeContent>
@@ -791,7 +841,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
           <FolderRevealHandler />
           <TreeView>
             {renderEntries(
-              orderFolderEntries(data.tree.folders, data.tree.rootNotes, data.tree.notesFirst),
+              orderFolderEntries(data.tree, '', data.tree.folders, data.tree.rootNotes),
               0,
               true
             )}

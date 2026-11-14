@@ -285,6 +285,7 @@ const createData = () => ({
     ],
     rootNotes: [rootNote]
   },
+  pairedNotes: new Map(),
   showFiles: true,
   notePositions: {},
   setNotePositions: vi.fn(),
