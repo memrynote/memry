@@ -324,6 +324,9 @@ mod telemetry_flush;
 mod templates;
 #[path = "templates_legacy.rs"]
 mod templates_legacy;
+#[cfg(windows)]
+#[path = "trash_held.rs"]
+mod trash_held;
 #[path = "typing_barrier.rs"]
 mod typing_barrier;
 #[path = "unsplash.rs"]
