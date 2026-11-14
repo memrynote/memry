@@ -46,6 +46,9 @@ impl PropertyDefinitions {
     /// names given a record, the file's first, in its order. A file that cannot be read seeds nothing: which
     /// names it holds is unknown.
     pub fn seed(&self) -> Result<Vec<String>, DefinitionsError> {
+        // Settled first: a learned type a note's value does not fit would become a record no
+        // later fold can change (REVIEW-4647).
+        self.fold_learned_or_warn();
         let mut seeded = self.seed_file_only()?;
         let promoted = {
             let _turn = TURN.lock().unwrap_or_else(PoisonError::into_inner);
