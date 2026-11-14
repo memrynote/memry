@@ -444,6 +444,8 @@ fn the_worker_gets_only_the_inherited_env_and_the_install_dir_as_cwd() {
                 name.to_owned()
             }
         })
+        // Windows sets this one itself in a process that runs under emulation (CI, windows-11-arm).
+        .filter(|name| !(cfg!(windows) && name == "PROCESSOR_ARCHITECTURE"))
         .collect();
     names.sort();
     // Mirrors `INHERITED_ENV` in `src/supervisor.rs`.
