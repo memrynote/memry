@@ -6,9 +6,9 @@ use serde_json::Value as Json;
 
 use super::{MAX_PULL_IDS, PullError, PullLoop, now_ms};
 use crate::sync::apply::{self, ApplyTotals, Pending};
+use crate::sync::body_debt;
 use crate::sync::driver::observer::AppliedFeed;
 use crate::sync::refused_items::{self, CORE_BUILD};
-use crate::sync::{body_debt, pull_decode};
 
 impl PullLoop {
     /// Hands the page to [`apply`], which owns every decision about what an
@@ -104,17 +104,18 @@ impl PullLoop {
         let mut answered = BTreeSet::new();
         let mut pending = Vec::new();
         for chunk in ids.chunks(MAX_PULL_IDS) {
-            let body = self.fetch_bodies(chunk).await?;
-            let Some(items) = body.get("items").and_then(Json::as_array) else {
+            let mut body = self.fetch_bodies(chunk).await?;
+            let Some(items) = Self::pulled_items(&mut body) else {
                 eprintln!("memry-core: a refused-records refetch got no pull envelope");
                 return Ok(());
             };
-            for item in items {
-                let key = (field(item, "type"), field(item, "id"));
-                if !requested.contains(&key) {
-                    continue;
-                }
-                match pull_decode::decode(&self.declaration, self.cipher.as_ref(), item) {
+            let asked: Vec<Json> = items
+                .into_iter()
+                .filter(|item| requested.contains(&(field(item, "type"), field(item, "id"))))
+                .collect();
+            for (item, decoded) in self.decode_batch(asked).await? {
+                let key = (field(&item, "type"), field(&item, "id"));
+                match decoded {
                     Ok(decoded) => pending.push(decoded),
                     Err(reason) => eprintln!(
                         "memry-core: refused {} {} still does not decode: {reason}",

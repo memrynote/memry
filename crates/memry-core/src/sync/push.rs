@@ -53,6 +53,7 @@ use crate::storage::repositories::sync_items::{self, SyncItemRow};
 
 mod crdt;
 
+use super::crypto_batch::off_runtime;
 use super::engine::PushWave;
 use super::outbox::{self, Batch, Collapsed, OutboxRow};
 use super::store;
@@ -133,7 +134,8 @@ pub struct PushReport {
 
 /// What [`PushCoordinator::build`] made of one queued row.
 enum Built {
-    Sealed(Json),
+    /// Read and opened, sealed with the rest of the batch.
+    Ready(PendingRecord),
     Retired(String),
     Held(String),
 }
@@ -237,14 +239,10 @@ impl PushCoordinator {
         items: Vec<Collapsed>,
         report: &mut PushReport,
     ) -> Result<(), PushError> {
-        let mut sealed: Vec<Json> = Vec::with_capacity(items.len());
-        let mut sent: Vec<Collapsed> = Vec::with_capacity(items.len());
+        let mut ready: Vec<(Collapsed, PendingRecord)> = Vec::with_capacity(items.len());
         for item in items {
             match self.build(&item).await? {
-                Built::Sealed(json) => {
-                    sealed.push(json);
-                    sent.push(item);
-                }
+                Built::Ready(pending) => ready.push((item, pending)),
                 // A sealed agent row that does not open waits: no key is
                 // installed, or a sealed key fails under the installed one
                 // (another key, an unknown envelope version, altered bytes).
@@ -262,13 +260,18 @@ impl PushCoordinator {
                 // whose payload cannot be parsed, and a row rejected as too
                 // large. Both are acked locally with a recorded reason,
                 // because a retry reproduces the same failure for ever.
-                Built::Retired(reason) => {
-                    let ids = item.ids();
-                    report.retired += ids.len();
-                    self.db
-                        .call(move |conn| outbox::retire(conn, &ids, &reason))
-                        .await?;
+                Built::Retired(reason) => self.retire(&item, reason, report).await?,
+            }
+        }
+        let mut sealed: Vec<Json> = Vec::with_capacity(ready.len());
+        let mut sent: Vec<Collapsed> = Vec::with_capacity(ready.len());
+        for (item, outcome) in self.seal_batch(ready).await? {
+            match outcome {
+                Ok(json) => {
+                    sealed.push(json);
+                    sent.push(item);
                 }
+                Err(error) => self.retire(&item, error.to_string(), report).await?,
             }
         }
         if sealed.is_empty() {
@@ -368,11 +371,42 @@ impl PushCoordinator {
                 Err(error) => return Ok(Built::Held(format!("{HELD_REASON}: {error}"))),
             }
         }
-        let pending = PendingRecord { operation, row };
-        Ok(match self.sealer.seal_record(&pending) {
-            Ok(json) => Built::Sealed(json),
-            Err(error) => Built::Retired(error.to_string()),
+        Ok(Built::Ready(PendingRecord { operation, row }))
+    }
+
+    /// Seals a batch on `spawn_blocking`: encryption and signing over a page
+    /// are CPU work that must not hold a runtime worker (#3534).
+    async fn seal_batch(
+        &self,
+        ready: Vec<(Collapsed, PendingRecord)>,
+    ) -> Result<Vec<(Collapsed, Result<Json, EnvelopeError>)>, PushError> {
+        let sealer = Arc::clone(&self.sealer);
+        let sealed = off_runtime("sealing a push batch", move || {
+            ready
+                .into_iter()
+                .map(|(item, pending)| {
+                    let sealed = sealer.seal_record(&pending);
+                    (item, sealed)
+                })
+                .collect()
         })
+        .await?;
+        Ok(sealed)
+    }
+
+    /// §A.2: acks a row that can never send, with its reason.
+    async fn retire(
+        &self,
+        item: &Collapsed,
+        reason: String,
+        report: &mut PushReport,
+    ) -> Result<(), PushError> {
+        let ids = item.ids();
+        report.retired += ids.len();
+        self.db
+            .call(move |conn| outbox::retire(conn, &ids, &reason))
+            .await?;
+        Ok(())
     }
 
     async fn retire_one(&self, id: i64, reason: &str) -> Result<(), PushError> {

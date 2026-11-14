@@ -1,7 +1,11 @@
 //! Decoding a page's items and fetching its note bodies: the pull loop's
 //! halves that touch neither the cursor nor the apply.
 
+use std::sync::Arc;
+
 use serde_json::Value as Json;
+
+use crate::sync::crypto_batch::off_runtime;
 
 use super::{PullError, PullLoop, PullReport, now_ms};
 use crate::storage::repositories::sync_items;
@@ -15,20 +19,51 @@ impl PullLoop {
     /// recorded corrupt item.
     pub(super) async fn take_items(
         &self,
-        items: &[Json],
+        items: Vec<Json>,
         report: &mut PullReport,
         pending: &mut Vec<Pending>,
     ) -> Result<(), PullError> {
-        for item in items {
-            match pull_decode::decode(&self.declaration, self.cipher.as_ref(), item) {
+        for (item, decoded) in self.decode_batch(items).await? {
+            match decoded {
                 Ok(decoded) => pending.push(decoded),
                 Err(corrupt) => {
                     report.corrupt += 1;
-                    self.record_corrupt(item, &corrupt).await?;
+                    self.record_corrupt(&item, &corrupt).await?;
                 }
             }
         }
         Ok(())
+    }
+
+    /// Opens and decodes `items`, in order, on `spawn_blocking`: a page's
+    /// envelope opens and signature checks are CPU work that must not hold a
+    /// runtime worker (#3534).
+    pub(super) async fn decode_batch(
+        &self,
+        items: Vec<Json>,
+    ) -> Result<Vec<(Json, Result<Pending, String>)>, PullError> {
+        let declaration = self.declaration.clone();
+        let cipher = Arc::clone(&self.cipher);
+        let decoded = off_runtime("decoding a pulled page", move || {
+            items
+                .into_iter()
+                .map(|item| {
+                    let decoded = pull_decode::decode(&declaration, cipher.as_ref(), &item);
+                    (item, decoded)
+                })
+                .collect()
+        })
+        .await?;
+        Ok(decoded)
+    }
+
+    /// The `items` array of a `POST /sync/pull` body, taken out of it; `None`
+    /// when the body is not a pull envelope (§5.14).
+    pub(super) fn pulled_items(body: &mut Json) -> Option<Vec<Json>> {
+        match body.get_mut("items").map(Json::take) {
+            Some(Json::Array(items)) => Some(items),
+            _ => None,
+        }
     }
 
     /// [`note_body_feed::fetch`] for this page, when bodies are declared.
@@ -42,7 +77,7 @@ impl PullLoop {
         page: &ChangesPage,
         pending: &[Pending],
     ) -> Result<FetchedBodies, PullError> {
-        let Some(cipher) = self.bodies.as_deref() else {
+        let Some(cipher) = self.bodies.clone() else {
             return Ok(FetchedBodies::default());
         };
         let dropped: Vec<String> = page
