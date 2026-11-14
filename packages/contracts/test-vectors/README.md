@@ -122,15 +122,15 @@ that cosine, and `golden_text.rs` holds the native vector to the measured cosine
 Similarity floors of 0.60 and up are unaffected in practice; only the one window that holds the
 cut moves.
 
-### `pixel-tensors.json` and `embeddings-image.json`: JPEG decoding and ICC conversion are a known divergence
+### `pixel-tensors.json` and `embeddings-image.json`: JPEG decoding, ICC conversion and CMYK conversion are a known divergence
 
 Electron decodes images with sharp (libvips 8.18): JPEG through libjpeg-turbo (mozjpeg) and colour
 profiles through Little CMS. `memry-ml` decodes in pure Rust (Kaan, 2026-11-13): JPEG through
 zune-jpeg (the `image` crate) and profiles through moxcms, with no C decoder in the build. PNG,
 WebP and GIF decode, resize and patch bit for bit, so those cases hold exact sha256 hashes and
 their vectors meet the text bounds (cosine 1.000000 measured). JPEG and ICC-tagged inputs decode
-a few levels apart. The tests read each case's class (`jpeg`, `icc`, `jpeg+icc`) from the input
-bytes (`crates/memry-ml/tests/common/mod.rs`), and the generator tags it the same way from sharp's
+a few levels apart. The tests read each case's class (`jpeg`, `icc`, `jpeg+icc` and the CMYK
+classes below) from the input bytes (`crates/memry-ml/tests/common/mod.rs`), and the generator tags it the same way from sharp's
 metadata: a tag the bytes do not call for fails. Measured on macOS arm64, the largest per-channel
 difference of the decoded pixels is 4 for a JPEG (all subsamplings, progressive, grey), 1 for an
 ICC-tagged PNG or WebP and 6 for an ICC-tagged JPEG (the P3 one; the seven EXIF orientations, whose
@@ -144,9 +144,18 @@ a test edits the files to show that a looser bound or a wrong tag fails. Raising
 lowering the floor needs Kaan. A
 truncated JPEG fails in both: sharp on libjpeg's warning, `memry-ml` on the missing end marker.
 
-Not covered by a vector, and different from Electron: a CMYK or YCCK JPEG (zune-jpeg converts it to
-RGB without a profile where libvips converts through the embedded or its built-in CMYK profile;
-measured 46 and 41 levels, cosine 0.977 and 0.986, PR #4525), a grey or CMYK profile on any image
+A CMYK or YCCK JPEG (four components, `is_cmyk_jpeg`) is its own class, `cmyk` without a profile
+and `cmyk+icc` with one, and an accepted divergence (Kaan, 2026-11-14): zune-jpeg converts it to
+RGB with its naive formula and `memry-ml` drops the profile, where libvips converts through the
+embedded profile or, without one, its built-in CMYK profile. The CMYK inputs are the 64x48 photo
+written by libvips through that built-in profile. The `cmyk+icc` input embeds a 40 KB resample of
+it (a 9x9x9x9 `lut16Type` table the generator samples from libvips, which decodes within a mean 0.9
+and a maximum 20 levels of the 940 KB original). Measured on macOS arm64: 46 levels for both,
+cosine 0.977145 without a profile and 0.978037 with the resampled one (0.985693 with libvips' whole
+profile). `pixel_tensors.rs` hard-codes the ceiling 48 for both classes and `golden_image.rs` the
+cosine floor 0.97, under the 0.999 of the other classes.
+
+Not covered by a vector, and different from Electron: a grey or CMYK profile on any image
 (dropped and logged where libvips applies it), a 16-bit image with a profile (cut to 8 bits before
 the profile applies, where libvips converts at 16 bits), JPEG warnings other than a missing end
 marker (zune-jpeg runs with `strict_mode` off) and a file in a format libvips reads but a vault

@@ -66,11 +66,12 @@ const PAGE_TOKENS = 280
 
 /**
  * Largest per-channel difference between Electron's decoded pixels and the Rust ones in the
- * divergent cases (JPEG: zune-jpeg against libjpeg-turbo; ICC: moxcms against Little CMS), with a
- * margin over the measured maximum (jpeg 4, icc 1, jpeg+icc 6). `pixel_tensors.rs` holds the same
- * values as ceilings: a higher one fails there.
+ * divergent cases (JPEG: zune-jpeg against libjpeg-turbo; ICC: moxcms against Little CMS; CMYK:
+ * zune-jpeg's naive conversion against Little CMS through a CMYK profile), with a margin over the
+ * measured maximum (jpeg 4, icc 1, jpeg+icc 6, cmyk 46, cmyk+icc 46). `pixel_tensors.rs` holds the
+ * same values as ceilings: a higher one fails there.
  */
-const MAX_LEVEL_DIFF = { jpeg: 6, icc: 2, 'jpeg+icc': 8 }
+const MAX_LEVEL_DIFF = { jpeg: 6, icc: 2, 'jpeg+icc': 8, cmyk: 48, 'cmyk+icc': 48 }
 
 /** The vision group of `crates/memry-ml/src/files.rs` and the text group. */
 const PINS = {
@@ -91,9 +92,17 @@ const TOLERANCE = { minCosine: 0.9999, maxComponentDiff: 0.001 }
 /**
  * Cosine bounds of the divergent cases with Electron's vector. Measured on macOS arm64: JPEG
  * photos 0.99972 to 0.99998 here, 0.9995 at worst over 20 sample images; the P3-tagged PNG
- * 0.99969. The bound leaves a margin of 5e-4 under the worst.
+ * 0.99969. The bound leaves a margin of 5e-4 under the worst. CMYK JPEGs convert naively (Kaan,
+ * 2026-11-14: accepted): 0.977145 without a profile, 0.978037 with the resampled one (0.985693
+ * with libvips' whole profile), held to 0.97.
  */
-const DIVERGENT_MIN_COSINE = { jpeg: 0.999, icc: 0.999, 'jpeg+icc': 0.999 }
+const DIVERGENT_MIN_COSINE = {
+  jpeg: 0.999,
+  icc: 0.999,
+  'jpeg+icc': 0.999,
+  cmyk: 0.97,
+  'cmyk+icc': 0.97
+}
 
 const asset = (name) => readFileSync(join(ROOT, ASSETS, name))
 
@@ -140,9 +149,154 @@ async function animated(format) {
     .toBuffer()
 }
 
+const GRID = 9
+
+/** An uncompressed CMYK TIFF of `width` x `height` pixels, which libvips reads as CMYK. */
+function cmykTiff(width, height, pixels) {
+  const entries = [
+    [256, 4, width],
+    [257, 4, height],
+    [258, 3, 4, 134],
+    [259, 3, 1],
+    [262, 3, 5],
+    [273, 4, 142],
+    [277, 3, 4],
+    [278, 4, height],
+    [279, 4, pixels.length],
+    [284, 3, 1]
+  ]
+  const head = Buffer.alloc(142)
+  head.write('II*\0', 0, 'latin1')
+  head.writeUInt32LE(8, 4)
+  head.writeUInt16LE(entries.length, 8)
+  entries.forEach(([tag, type, value, at], i) => {
+    const entry = 10 + i * 12
+    head.writeUInt16LE(tag, entry)
+    head.writeUInt16LE(type, entry + 2)
+    head.writeUInt32LE(at === undefined ? 1 : value, entry + 4)
+    if (at !== undefined) head.writeUInt32LE(at, entry + 8)
+    else if (type === 3) head.writeUInt16LE(value, entry + 8)
+    else head.writeUInt32LE(value, entry + 8)
+  })
+  for (let i = 0; i < 4; i++) head.writeUInt16LE(8, 134 + i * 2)
+  return Buffer.concat([head, pixels])
+}
+
+/**
+ * libvips' built-in CMYK profile resampled on a `GRID`^4 lattice, as one `lut16Type` table to PCS
+ * XYZ shared by A2B0, A2B1 and A2B2: about 40 KB where the profile itself is 940 KB, too large to
+ * store as base64. Each node is the sRGB libvips converts it to through that profile, back in XYZ
+ * D50. Little CMS then converts close to how libvips' profile does, where `memry-ml` drops it.
+ */
+async function cmykProfile() {
+  const ascii = (text) => Buffer.from(text, 'latin1')
+  const u16 = (values) => {
+    const out = Buffer.alloc(values.length * 2)
+    values.forEach((value, i) => out.writeUInt16BE(value, i * 2))
+    return out
+  }
+  const u32 = (values) => {
+    const out = Buffer.alloc(values.length * 4)
+    values.forEach((value, i) => out.writeUInt32BE(value >>> 0, i * 4))
+    return out
+  }
+  const xyz = (x, y, z) =>
+    Buffer.concat([ascii('XYZ '), u32([0]), u32([x, y, z].map((v) => Math.round(v * 65536)))])
+  const text = (value) => Buffer.concat([ascii('text'), u32([0]), ascii(`${value}\0`)])
+  const desc = (value) =>
+    Buffer.concat([
+      ascii('desc'),
+      u32([0, value.length + 1]),
+      ascii(`${value}\0`),
+      Buffer.alloc(4 + 4 + 2 + 1 + 67)
+    ])
+  const nodes = GRID ** 4
+  const lattice = Buffer.alloc(nodes * 4)
+  for (let node = 0; node < nodes; node++) {
+    for (let ink = 0; ink < 4; ink++) {
+      const step = Math.floor(node / GRID ** (3 - ink)) % GRID
+      lattice[node * 4 + ink] = Math.round((step * 255) / (GRID - 1))
+    }
+  }
+  const side = GRID ** 2
+  const srgb = await sharp(cmykTiff(side, side, lattice))
+    .toColourspace('rgb16')
+    .raw({ depth: 'ushort' })
+    .toBuffer()
+  const linear = (v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)
+  // sRGB to XYZ D50 (Bradford-adapted).
+  const matrix = [
+    [0.4360747, 0.3850649, 0.1430804],
+    [0.2225045, 0.7168786, 0.0606169],
+    [0.0139322, 0.0971045, 0.7141733]
+  ]
+  const clut = []
+  for (let node = 0; node < nodes; node++) {
+    const rgb = [0, 1, 2].map((c) => linear(srgb.readUInt16LE((node * 3 + c) * 2) / 65535))
+    for (const row of matrix) {
+      clut.push(Math.round(row.reduce((sum, weight, i) => sum + weight * rgb[i], 0) * 32768))
+    }
+  }
+  const lut = Buffer.concat([
+    ascii('mft2'),
+    u32([0]),
+    Buffer.from([4, 3, GRID, 0]),
+    u32([65536, 0, 0, 0, 65536, 0, 0, 0, 65536]),
+    u16([2, 2]),
+    u16([0, 65535, 0, 65535, 0, 65535, 0, 65535]),
+    u16(clut),
+    u16([0, 65535, 0, 65535, 0, 65535])
+  ])
+  const tags = [
+    ['desc', desc('memry test CMYK')],
+    ['cprt', text('No copyright, use freely')],
+    ['wtpt', xyz(0.9642, 1, 0.8249)],
+    ['A2B0', lut],
+    ['A2B1', lut],
+    ['A2B2', lut]
+  ]
+  const pad = (bytes) => Buffer.concat([bytes, Buffer.alloc((4 - (bytes.length % 4)) % 4)])
+  const table = Buffer.alloc(4 + tags.length * 12)
+  table.writeUInt32BE(tags.length, 0)
+  const bodies = []
+  const offsets = new Map()
+  let offset = 128 + table.length
+  tags.forEach(([signature, body], i) => {
+    if (!offsets.has(body)) {
+      offsets.set(body, offset)
+      bodies.push(pad(body))
+      offset += pad(body).length
+    }
+    table.write(signature, 4 + i * 12, 'latin1')
+    table.writeUInt32BE(offsets.get(body), 8 + i * 12)
+    table.writeUInt32BE(body.length, 12 + i * 12)
+  })
+  const header = Buffer.alloc(128)
+  header.writeUInt32BE(offset, 0)
+  header.writeUInt32BE(0x02100000, 8)
+  header.write('prtrCMYKXYZ ', 12, 'latin1')
+  header.write('acsp', 36, 'latin1')
+  // The D50 illuminant, s15Fixed16.
+  xyz(0.9642, 1, 0.8249).copy(header, 68, 8)
+  return Buffer.concat([header, table, ...bodies])
+}
+
+/** A JPEG with `profile` spliced in as one APP2 `ICC_PROFILE` segment after SOI. */
+function withIcc(jpeg, profile) {
+  const payload = Buffer.concat([
+    Buffer.from('ICC_PROFILE\0', 'latin1'),
+    Buffer.from([1, 1]),
+    profile
+  ])
+  const marker = Buffer.from([0xff, 0xe2, 0, 0])
+  marker.writeUInt16BE(payload.length + 2, 2)
+  return Buffer.concat([jpeg.subarray(0, 2), marker, payload, jpeg.subarray(2)])
+}
+
 /**
  * The divergence class of an input, as `crates/memry-ml/tests/common/mod.rs` reads it from the
- * bytes: a JPEG, an ICC profile, both, or none (decoded bit for bit).
+ * bytes: a CMYK or YCCK JPEG (four components) with or without a profile, another JPEG, an ICC
+ * profile, both, or none (decoded bit for bit).
  */
 async function divergence(bytes) {
   let metadata = {}
@@ -151,7 +305,8 @@ async function divergence(bytes) {
   } catch {
     // An input sharp cannot read is refused in both and carries no class.
   }
-  const { format, hasProfile } = metadata
+  const { format, hasProfile, channels } = metadata
+  if (format === 'jpeg' && channels === 4) return hasProfile ? 'cmyk+icc' : 'cmyk'
   if (format === 'jpeg') return hasProfile ? 'jpeg+icc' : 'jpeg'
   return hasProfile ? 'icc' : undefined
 }
@@ -181,6 +336,11 @@ async function synthesized() {
     ['jpeg progressive', (await base()).jpeg({ progressive: true }).toBuffer()],
     ['jpeg grey', (await base()).greyscale().jpeg().toBuffer()],
     ['jpeg p3 profile', (await base()).withIccProfile('p3').jpeg().toBuffer()],
+    ['jpeg cmyk', (await base()).toColourspace('cmyk').jpeg().toBuffer()],
+    [
+      'jpeg cmyk profile',
+      withIcc(await (await base()).toColourspace('cmyk').jpeg().toBuffer(), await cmykProfile())
+    ],
     ...(await Promise.all(
       [2, 3, 4, 5, 6, 7, 8].map(async (orientation) => [
         `jpeg orientation ${orientation}`,
@@ -295,7 +455,7 @@ async function pixelTensorsFile(inputs) {
   }
   return {
     description:
-      "Electron's image preprocessing (RawImage.fromBlob, .rgb(), Gemma4ImageProcessor) per input and soft-token budget: decoded and resized sizes, sha256 of the decoded RGB bytes, of pixel_values (f32 LE) and of image_position_ids (i64 LE), or the error. Divergent cases (JPEG decoding, ICC conversion) carry the decoded RGB as base64 and maxLevelDiff.",
+      "Electron's image preprocessing (RawImage.fromBlob, .rgb(), Gemma4ImageProcessor) per input and soft-token budget: decoded and resized sizes, sha256 of the decoded RGB bytes, of pixel_values (f32 LE) and of image_position_ids (i64 LE), or the error. Divergent cases (JPEG decoding, ICC conversion, naive CMYK conversion) carry the decoded RGB as base64 and maxLevelDiff.",
     generator: 'crates/memry-ml/tests/golden/generate-image.mjs',
     sharp: sharp.versions.sharp,
     transformers: env.version,
@@ -394,7 +554,9 @@ function embeddingCases(all) {
     pick('webp lossless', IMAGE_TOKENS, null),
     pick('webp lossy', IMAGE_TOKENS, null),
     pick('gif', IMAGE_TOKENS, null),
-    pick('png p3 profile', IMAGE_TOKENS, null)
+    pick('png p3 profile', IMAGE_TOKENS, null),
+    pick('jpeg cmyk', IMAGE_TOKENS, null),
+    pick('jpeg cmyk profile', IMAGE_TOKENS, null)
   ]
 }
 

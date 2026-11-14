@@ -1,7 +1,7 @@
 //! `packages/contracts/test-vectors/pixel-tensors.json`: the pixels Electron's image path hands the
 //! vision encoder (`crates/memry-ml/tests/golden/generate-image.mjs`). PNG, WebP and GIF inputs
-//! match bit for bit. JPEG decoding and ICC conversion are a known divergence (test-vectors
-//! README): those cases, found from the input bytes, match in every size and position and stay
+//! match bit for bit. JPEG decoding, ICC conversion and CMYK conversion are a known divergence
+//! (test-vectors README): those cases, found from the input bytes, match in every size and position and stay
 //! within `maxLevelDiff` per channel of Electron's decoded pixels, which never exceeds
 //! `MAX_LEVEL_DIFF`.
 
@@ -14,9 +14,15 @@ use serde_json::Value;
 use sha2::{Digest, Sha256};
 
 /// Ceilings on the file's `maxLevelDiff`, a margin over the measured maxima (jpeg 4, icc 1,
-/// jpeg+icc 6). The file may hold tighter bounds, never looser ones; raising a ceiling needs
+/// jpeg+icc 6, cmyk 46, cmyk+icc 46). The file may hold tighter bounds, never looser ones; raising a ceiling needs
 /// Kaan's approval.
-const MAX_LEVEL_DIFF: [(&str, u64); 3] = [("jpeg", 6), ("icc", 2), ("jpeg+icc", 8)];
+const MAX_LEVEL_DIFF: [(&str, u64); 5] = [
+    ("jpeg", 6),
+    ("icc", 2),
+    ("jpeg+icc", 8),
+    ("cmyk", 48),
+    ("cmyk+icc", 48),
+];
 
 fn vectors() -> Value {
     let path = root().join("packages/contracts/test-vectors/pixel-tensors.json");
@@ -230,6 +236,13 @@ fn a_file_that_loosens_a_bound_or_a_tag_fails() {
             .as_object_mut()
             .expect("case")
             .remove("divergent");
+    });
+    tampered("cmyk tagged jpeg", |file| {
+        let at = case_at(file, "jpeg cmyk @140");
+        file["cases"][at]["divergent"] = "jpeg".into();
+    });
+    tampered("cmyk+icc bound raised", |file| {
+        file["maxLevelDiff"]["cmyk+icc"] = 49.into()
     });
     tampered("png tagged divergent", |file| {
         let at = case_at(file, "png rgb @140");

@@ -1,9 +1,9 @@
 //! Parity with transformers.js: `packages/contracts/test-vectors/embeddings-image.json`, written by
 //! `tests/golden/generate-image.mjs` from Electron's `embedImage`, holds the token ids and the
 //! stored vector of photos, an OCR page with and without its text and small lossless images.
-//! Token ids are exact. PNG, WebP and GIF vectors meet the text bounds; JPEG and ICC-tagged images,
-//! found from the input bytes, decode differently (test-vectors README) and meet the file's
-//! `divergentMinCosine`, which never goes under `MIN_DIVERGENT_COSINE`.
+//! Token ids are exact. PNG, WebP and GIF vectors meet the text bounds; JPEG, ICC-tagged and CMYK
+//! images, found from the input bytes, decode differently (test-vectors README) and meet the file's
+//! `divergentMinCosine`, which never goes under the class's floor in `MIN_DIVERGENT_COSINE`.
 //! Needs the pinned text and vision files in `MEMRY_ML_MODEL_DIR`; CI runs it on the full tier.
 //! Run: `cargo test -p memry-ml --test golden_image -- --ignored`.
 
@@ -16,10 +16,25 @@ use common::{divergence, root};
 use memry_ml::{EMBEDDING_DIMENSION, EmbeddingEngine, LoadOptions, ModelGroup, image_prep};
 use serde_json::Value;
 
-/// The floor of every divergent class's cosine with Electron's vector; lowering it needs Kaan's
-/// approval.
-const MIN_DIVERGENT_COSINE: f64 = 0.999;
-const DIVERGENT: [&str; 3] = ["jpeg", "icc", "jpeg+icc"];
+/// The floor of each divergent class's cosine with Electron's vector; lowering one needs Kaan's
+/// approval. CMYK and YCCK JPEGs convert naively, without their profile (Kaan, 2026-11-14:
+/// accepted; measured 0.977145 without a profile and 0.985693 with libvips' profile, 0.978037 with
+/// the resampled profile the vector embeds).
+const MIN_DIVERGENT_COSINE: [(&str, f64); 5] = [
+    ("jpeg", 0.999),
+    ("icc", 0.999),
+    ("jpeg+icc", 0.999),
+    ("cmyk", 0.97),
+    ("cmyk+icc", 0.97),
+];
+
+fn floor(kind: &str) -> f64 {
+    MIN_DIVERGENT_COSINE
+        .iter()
+        .find(|(class, _)| *class == kind)
+        .unwrap_or_else(|| panic!("no floor for {kind}"))
+        .1
+}
 
 fn read_json(name: &str) -> Value {
     let path = root().join("packages/contracts/test-vectors").join(name);
@@ -63,11 +78,11 @@ fn bound_failures(vectors: &Value, pixels: &Value) -> Vec<String> {
             "tolerance {tolerance} is looser than the text bounds"
         ));
     }
-    for kind in DIVERGENT {
+    for (kind, floor) in MIN_DIVERGENT_COSINE {
         let bound = vectors["divergentMinCosine"][kind].as_f64();
-        if !bound.is_some_and(|bound| bound >= MIN_DIVERGENT_COSINE) {
+        if !bound.is_some_and(|bound| bound >= floor) {
             failures.push(format!(
-                "divergentMinCosine.{kind} is {bound:?}, under {MIN_DIVERGENT_COSINE}"
+                "divergentMinCosine.{kind} is {bound:?}, under {floor}"
             ));
         }
     }
@@ -89,9 +104,26 @@ fn a_file_that_loosens_a_bound_or_a_tag_fails() {
     let pixels = read_json("pixel-tensors.json");
     assert_eq!(bound_failures(&vectors, &pixels), Vec::<String>::new());
     type Edit = (&'static str, fn(&mut Value));
-    let edits: [Edit; 4] = [
+    let edits: [Edit; 7] = [
         ("jpeg floor lowered", |file| {
             file["divergentMinCosine"]["jpeg"] = 0.99.into();
+        }),
+        ("cmyk floor lowered", |file| {
+            file["divergentMinCosine"]["cmyk"] = 0.96.into();
+        }),
+        ("cmyk+icc floor removed", |file| {
+            file["divergentMinCosine"]
+                .as_object_mut()
+                .expect("floors")
+                .remove("cmyk+icc");
+        }),
+        ("cmyk tagged jpeg", |file| {
+            let cases = file["cases"].as_array_mut().expect("cases");
+            let cmyk = cases
+                .iter_mut()
+                .find(|case| case["image"] == "jpeg cmyk")
+                .expect("jpeg cmyk");
+            cmyk["divergent"] = "jpeg".into();
         }),
         ("text bound loosened", |file| {
             file["tolerance"]["minCosine"] = 0.999.into();
@@ -184,7 +216,7 @@ fn image_embeddings_match_electron() {
                 let bound = vectors["divergentMinCosine"][kind]
                     .as_f64()
                     .unwrap_or_else(|| panic!("divergentMinCosine.{kind}"))
-                    .max(MIN_DIVERGENT_COSINE);
+                    .max(floor(kind));
                 if cos < bound {
                     failures.push(format!(
                         "{name}: cosine {cos} under the {kind} bound {bound}"

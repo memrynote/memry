@@ -100,8 +100,10 @@ pub fn pixel_tensor(image: Rgb8, max_soft_tokens: usize) -> Result<PixelTensor, 
 /// HEIF and the other formats libvips reads are refused (a vault image is PNG, JPEG, GIF or WebP);
 /// zune-jpeg runs with `strict_mode` off as `image` sets it, so of libjpeg's warnings only the
 /// missing end marker is refused; a grey or CMYK profile is dropped where libvips converts through
-/// it; a CMYK or YCCK JPEG (`is_cmyk_jpeg`) is converted to RGB by zune-jpeg's naive formula,
-/// without a profile; and a 16-bit image is cut to 8 bits before its profile applies, where
+/// it; a CMYK or YCCK JPEG (`is_cmyk_jpeg`) is converted to RGB by zune-jpeg's naive formula and
+/// its profile dropped, where libvips converts through the embedded or its built-in CMYK profile
+/// (Kaan, 2026-11-14: accepted; up to 46 levels and cosine 0.977 to 0.986, held to 0.97 by the
+/// `cmyk` and `cmyk+icc` vectors); and a 16-bit image is cut to 8 bits before its profile applies, where
 /// libvips converts at 16 bits.
 pub fn decode(bytes: &[u8]) -> Result<Rgb8, MlError> {
     if bytes.len() > MAX_IMAGE_BYTES {
@@ -180,8 +182,8 @@ fn jpeg_coefficient_bytes(bytes: &[u8]) -> Result<u64, MlError> {
     Ok(u64::from(info.components) * 2 * pad(info.width) * pad(info.height))
 }
 
-/// Whether a JPEG is CMYK or YCCK (four components). `decode` converts one with zune-jpeg's
-/// formula, not through a profile as libvips does; what it should do instead is Kaan's call.
+/// Whether a JPEG is CMYK or YCCK (four components). `decode` converts one with zune-jpeg's naive
+/// formula, not through a profile as libvips does (an accepted divergence, see `decode`).
 pub fn is_cmyk_jpeg(bytes: &[u8]) -> bool {
     jpeg_headers(bytes).is_ok_and(|(info, _)| info.components == 4)
 }
