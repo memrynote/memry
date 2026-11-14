@@ -29980,6 +29980,10 @@ public enum DownloadFailure: Equatable, Hashable {
     case http(status: UInt16
     )
     case network
+    /**
+     * Writing the model files failed, most often because the disk is full.
+     */
+    case storage
 
 
 
@@ -30008,6 +30012,8 @@ public struct FfiConverterTypeDownloadFailure: FfiConverterRustBuffer {
         
         case 3: return .network
         
+        case 4: return .storage
+        
         default: throw UniffiInternalError.unexpectedEnumCase
         }
     }
@@ -30027,6 +30033,10 @@ public struct FfiConverterTypeDownloadFailure: FfiConverterRustBuffer {
         
         case .network:
             writeInt(&buf, Int32(3))
+        
+        
+        case .storage:
+            writeInt(&buf, Int32(4))
         
         }
     }

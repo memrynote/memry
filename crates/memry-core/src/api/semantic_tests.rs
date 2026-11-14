@@ -253,3 +253,52 @@ impl SecureStore for Store {
         Ok(())
     }
 }
+
+#[tokio::test]
+async fn a_storage_failure_mid_download_reports_failed_storage_and_still_errs() {
+    let s = setup();
+    let model_dir = s.scratch.0.join("models/test-model-1");
+    fs::create_dir_all(&model_dir).unwrap();
+    fs::write(model_dir.join(".partial"), b"not a directory").unwrap();
+
+    assert!(s.semantic.enable(ROOMY).await.is_err());
+    assert_eq!(
+        s.state(),
+        ModelState::Failed {
+            received: 0,
+            total: s.total(),
+            failure: DownloadFailure::Storage,
+        }
+    );
+
+    fs::remove_file(model_dir.join(".partial")).unwrap();
+    assert_eq!(s.semantic.resume().await.unwrap(), ModelState::Ready);
+}
+
+#[tokio::test]
+async fn a_storage_failure_after_turning_off_reports_off() {
+    let s = setup();
+    let model_dir = s.scratch.0.join("models/test-model-1");
+    fs::create_dir_all(&model_dir).unwrap();
+    fs::write(model_dir.join(".partial"), b"not a directory").unwrap();
+
+    assert_eq!(s.semantic.run_download().await.unwrap(), ModelState::Off);
+    assert_eq!(s.state(), ModelState::Off);
+}
+
+#[tokio::test]
+async fn a_status_poll_that_saw_the_opt_in_before_disable_leaves_no_vectors_db() {
+    let s = setup();
+    s.semantic.model.set_opted_in().unwrap();
+    s.semantic.status(s.vault.clone());
+    let vectors = s.vault.directory().join("vectors.db");
+    assert!(vectors.exists());
+
+    s.semantic.disable(s.vault.clone()).await.unwrap();
+    // The poll checked the opt-in, then parked on the vectors lock that
+    // disable held.
+    let embedded = s.semantic.embedded_notes(s.vault.directory()).unwrap();
+    assert_eq!(embedded, 0);
+    assert!(!vectors.exists(), "vectors.db survived off");
+    assert!(lock(&s.semantic.vectors).is_empty());
+}
