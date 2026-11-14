@@ -44,7 +44,9 @@ struct InboxSplitView: View {
             // A second outside open replaced this one while it fetched or
             // switched lists.
             guard router.revealing == id else { return }
-            if let item, store.view != .holding(item) { await store.select(.holding(item)) }
+            // A list that already holds it stays: a Past reminder is on
+            // Snoozed and Inbox both.
+            if let item, !store.detailOrder.contains(id), store.view != .holding(item) { await store.select(.holding(item)) }
             guard router.revealing == id else { return }
             router.revealed(store.detailOrder, exists: item != nil)
         }

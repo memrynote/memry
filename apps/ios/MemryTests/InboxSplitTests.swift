@@ -103,6 +103,30 @@ struct InboxRouterSplitTests {
         #expect(router.selection == InboxDetailSelection(id: "z", explicit: true))
     }
 
+    /// #4534: the user taps row `a` while Calendar's snoozed `z` is still
+    /// being revealed. The tap wins, and the list keeps following.
+    @Test func aRowTappedDuringARevealEndsIt() {
+        let router = InboxRouter()
+        router.adapt(to: .regular)
+        router.openItem("z", in: TasksRouter())
+        router.open("a")
+        #expect(router.revealing == nil)
+        router.follow(["a", "b"], ["b"])
+        #expect(router.selection == InboxDetailSelection(id: "b", explicit: false))
+    }
+
+    /// #4534: a notification opens the Inbox while a reveal is in flight:
+    /// the list's first item, not the revealed one.
+    @Test func aNotificationDuringARevealEndsIt() {
+        let router = InboxRouter()
+        router.adapt(to: .regular)
+        router.openItem("z", in: TasksRouter())
+        router.openInbox(in: TasksRouter())
+        #expect(router.revealing == nil)
+        router.follow(["a"], ["a"])
+        #expect(router.selection == InboxDetailSelection(id: "a", explicit: false))
+    }
+
     @Test func goingCompactEndsAReveal() {
         let router = InboxRouter()
         router.adapt(to: .regular)
@@ -339,6 +363,35 @@ struct InboxSplitDetailTests {
         try await settle { router.revealing == nil }
         try await Task.sleep(for: .milliseconds(300))
         #expect(store.view == .inbox, "the stale reveal switched the list")
+    }
+
+    /// #4534: a Past reminder opened on Snoozed survives a trip through
+    /// compact width without the list switching to Inbox, which also holds it.
+    @Test func aPastReminderOnSnoozedKeepsItsListAcrossCompactAndBack() async throws {
+        let scratch = try InboxTestVault()
+        _ = await scratch.store.capture("[agent] remind me")
+        let database = scratch.directory.appendingPathComponent(VaultFiles.dataDatabaseName).path
+        let metadata = #"{"targetType":"task","targetId":"t1","targetTitle":"Decide"}"#
+        try execute("""
+            UPDATE sync_items SET payload = json_set(payload, '$.type', 'reminder', '$.metadata', json('\(metadata)')) WHERE item_type = 'inbox';
+            UPDATE inbox_items SET type = 'reminder', metadata = '\(metadata)';
+            """, in: database)
+        await scratch.store.refresh()
+        let reminder = try #require(scratch.store.items.first)
+        await scratch.store.select(.snoozed)
+        #expect(scratch.store.detailOrder == [reminder.id])
+        let router = InboxRouter()
+        let window = show(Host(store: scratch.store, router: router))
+        defer { window.isHidden = true }
+        try await settle { router.selection != nil }
+        router.open(reminder.id)
+
+        router.adapt(to: .compact)
+        router.adapt(to: .regular)
+        try await settle { router.revealing == nil }
+        try await Task.sleep(for: .milliseconds(300))
+        #expect(scratch.store.view == .snoozed, "the reveal switched the list")
+        #expect(router.selection == InboxDetailSelection(id: reminder.id, explicit: true))
     }
 
     private func show(_ host: Host) -> UIWindow {
