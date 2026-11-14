@@ -379,5 +379,6 @@ struct NoteReadView: View {
         .modifier(NoteInspector(rail: NoteInspectorRail(
             model: model, metadataModel: metadataModel, backlinks: backlinks, open: openRoute
         ) { outlineJump = $0 }))
+        .handoff(.note(model.route.id))
     }
 }

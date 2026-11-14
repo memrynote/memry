@@ -46,6 +46,7 @@ struct TaskDetailView: View {
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .task(id: taskId) { await check() }
+        .handoff(.task(taskId))
         .onChange(of: store.items[taskId] == nil) { _, gone in
             if gone, deleteRequested { dismiss() }
         }

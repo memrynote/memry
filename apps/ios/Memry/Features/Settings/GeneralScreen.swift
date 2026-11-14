@@ -9,6 +9,7 @@ import SwiftUI
 struct GeneralScreen: View {
     let context: SettingsContext
     @State private var local = LocalSettings.shared
+    @AppStorage(HandoffActivity.settingKey) private var handoff = true
 
     var body: some View {
         List {
@@ -63,6 +64,8 @@ struct GeneralScreen: View {
                 SettingsFooter(SettingsCopy.newNotesFooter)
             }
             Section {
+                SettingsToggleRow(title: SettingsCopy.handoff, isOn: $handoff,
+                                  identifier: "settings.general.handoff")
                 SettingsToggleRow(title: SettingsCopy.usageMetrics, isOn: $local.usageMetrics,
                                   identifier: "settings.general.metrics")
             } header: {
