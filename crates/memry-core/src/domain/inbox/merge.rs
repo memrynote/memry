@@ -17,8 +17,8 @@
 //!    supplies desktop's insert defaults (`Untitled`, `note`).
 //!
 //! Keys this build does not model ride along either way (§13.2 rule 3): the
-//! overlay starts from the local object and inserts every remote key. Nothing
-//! here enqueues (§6.5.2 P3).
+//! overlay starts from the local object and inserts every remote key. The
+//! concurrent branch re-queues the merged row (§6.5.2 P3).
 
 use rusqlite::Connection;
 use serde_json::Value;
@@ -29,6 +29,7 @@ use crate::domain::tasks::Inbound;
 use crate::storage::repositories::StoredPayload;
 use crate::storage::repositories::sync_items::{self, InboundRecord};
 use crate::sync::clock::VectorClock;
+use crate::sync::hardening::requeue;
 
 /// The keys a `null` never clears: `data.title ?? existing.title`, and
 /// `attachmentId`, which an older sender omits or nulls without knowing it.
@@ -65,7 +66,7 @@ pub(crate) fn apply_remote(
                 payload_json: overlay(&local, &remote, Some(&merged_clock))?,
                 ..record.clone()
             };
-            task_merge::wholesale(conn, &merged, now_ms)
+            requeue::store_merged(conn, &merged, now_ms)
         }
     }
 }

@@ -251,7 +251,12 @@ and a client that breaks any of them reintroduces divergence.**
   `:648-651` and `:942`), and an enqueue requests a push
   (`apps/desktop/src/main/sync/runtime.ts:907`). The queued row is rebuilt from
   the live — merged — row by P2, and its union clock has one component the
-  stored row lacks, so `detectReplay` accepts it.
+  stored row lacks, so `detectReplay` accepts it. Rust core: every §6.3.1
+  `concurrent` branch re-queues the row in the transaction that stores the
+  merge, as an upsert with no payload, the union clock untouched
+  (`crates/memry-core/src/sync/hardening/requeue.rs:38-66`); it does so on
+  every concurrent merge, not only one with a conflicted field, because a
+  merge that kept a local field is just as absent from the server row.
 - **P4 — an EQUAL incoming clock applies the remote row, it does not skip it.**
   `packages/sync-client/src/item-handlers/types.ts` (`resolveClockConflict`).
   This is what settles the two devices whose P3 re-pushes collide: the first is
@@ -848,10 +853,10 @@ field, so it ticks no field clock (`packages/sync-client/src/task-sync.ts:87-88`
 
 - A merge that returns `'conflict'` already re-queues the merged row at the union
   clock (§6.5.2 P3), so it enqueues nothing more. A desktop tag definition merge
-  always returns it. The Rust core's concurrent tag definition merge re-queues
-  nothing and returns an apply, so it heals when the join leaves the remote
-  behind (`crates/memry-core/src/sync/apply.rs:491-493`, `:539-550`,
-  `crates/memry-core/src/sync/versioned_apply.rs:102-107`).
+  always returns it. The Rust core re-queues every concurrent merge, the tag
+  definition's and the task's included, so it heals only after a wholesale
+  apply (`crates/memry-core/src/sync/apply/record.rs:108-110`, `:157-168`,
+  `crates/memry-core/src/sync/versioned_apply.rs:102-110`).
 - A skip, an insert and a remote `null` never heal, and `'conflict'` is never
   used as a heal signal, because it shows the user a conflict count.
 - An echo of a client's own push joins to an identical value and heals nothing,
@@ -881,7 +886,7 @@ and one apply step that joins either key after its type's apply and heals
 (`crates/memry-core/src/sync/versioned_apply.rs:39`, `:46`, `:74`), run by the
 task apply and by the tag definition apply
 (`crates/memry-core/src/domain/tasks/mod.rs:354-356`,
-`crates/memry-core/src/sync/apply.rs:491-493`). It edits
+`crates/memry-core/src/sync/apply/record.rs:108-110`). It edits
 `tag_definition.schema` since #4002, so a core that joins the schema is the
 only one that edits it. The vectors below are reproduced by an independent
 implementation in its tests and asserted against the production functions.

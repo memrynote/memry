@@ -15,6 +15,7 @@ use crate::domain::{
 #[cfg(feature = "markdown")]
 use crate::domain::vault_locks;
 use crate::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
+use crate::sync::hardening::requeue;
 use crate::sync::versioned_apply::{TAG_SCHEMA, VersionedKey};
 use crate::sync::{journal_day_merge, settings_merge};
 
@@ -126,7 +127,8 @@ pub(super) fn apply_record(
 /// instead would drop the local's ticks, lower `clockTotal` and hand the next
 /// concurrent peer the win (§6.10).
 ///
-/// **Nothing here enqueues** (§6.5.2 P3), including on the merge branch.
+/// The merge branch re-queues the merged row (§6.5.2 P3,
+/// [`crate::sync::hardening::requeue`]); the other two enqueue nothing.
 fn apply_document(
     conn: &Connection,
     record: &InboundRecord,
@@ -145,7 +147,7 @@ fn apply_document(
                 payload_json,
                 ..record.clone()
             };
-            task_merge::wholesale(conn, &merged, now_ms)
+            requeue::store_merged(conn, &merged, now_ms)
         }
     }
 }

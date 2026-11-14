@@ -250,6 +250,27 @@ where
 /// The flag is [`crate::domain::note_files`]'s; clearing it queues the whole
 /// note ([`crate::domain::notes::local_only`]).
 pub fn enqueue(tx: &Connection, change: &Change, now_ms: i64) -> Result<Option<i64>, StorageError> {
+    insert(tx, change, now_ms, true)
+}
+
+/// [`enqueue`] of a merged row's upsert (§6.5.2 P3,
+/// [`super::hardening::requeue`]). A merge is not a local edit, so it queues
+/// no calendar provider push.
+pub(crate) fn enqueue_merged(
+    tx: &Connection,
+    item_type: &str,
+    item_id: &str,
+    now_ms: i64,
+) -> Result<Option<i64>, StorageError> {
+    insert(tx, &Change::upsert(item_type, item_id), now_ms, false)
+}
+
+fn insert(
+    tx: &Connection,
+    change: &Change,
+    now_ms: i64,
+    local_edit: bool,
+) -> Result<Option<i64>, StorageError> {
     if tx.is_autocommit() {
         return Err(StorageError::Failed {
             what: "an outbox row must be written in the same transaction as its source row \
@@ -303,7 +324,9 @@ pub fn enqueue(tx: &Connection, change: &Change, now_ms: i64) -> Result<Option<i
         Change::CrdtUpdate { update, .. } => Some(update),
     };
 
-    super::calendar_push::queue(tx, change, now_ms)?;
+    if local_edit {
+        super::calendar_push::queue(tx, change, now_ms)?;
+    }
 
     // An edit releases a parked batch.
     if let Change::CrdtUpdate { doc_id, .. } = change {

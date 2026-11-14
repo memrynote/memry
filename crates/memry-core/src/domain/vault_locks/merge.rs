@@ -34,6 +34,7 @@ use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::sync_items::{self, InboundRecord};
 use crate::storage::repositories::{Change, StoredPayload};
 use crate::sync::clock::VectorClock;
+use crate::sync::hardening::requeue;
 
 use super::{ITEM_TYPE, is_known_kind};
 
@@ -89,6 +90,9 @@ pub fn apply_remote(
         payload_json: remote.merge(&changes),
         ..record.clone()
     };
+    if merged_clock.is_some() {
+        return requeue::store_merged(conn, &merged, now_ms);
+    }
     task_merge::wholesale(conn, &merged, now_ms)
 }
 

@@ -5,9 +5,11 @@
 //! wave. The relay is the fake server. A push runs the sync server's per-item
 //! checks (`apps/sync-server/src/services/sync.ts`): `detectReplay` (`:230`)
 //! rejects `SYNC_REPLAY_DETECTED` and `shouldRejectResurrection` (`:286`)
-//! rejects `SYNC_DELETE_WINS`, both in `rejected` (`:763-775`); every one of
-//! the six requires a clock. An accepted item is held as the last one for its
-//! id, deleted only when its `operation` is `delete` (`:865`). A pull serves
+//! rejects `SYNC_DELETE_WINS`, both in `rejected` (`:763-775`), and a clockless
+//! item of a clocked type is `VALIDATION_ERROR` (`:664`; every type but
+//! `settings`). An accepted item is held as the last one for its `(type, id)`
+//! (`itemIdentity`, `:583`), deleted only when its `operation` is `delete`
+//! (`:865`). A pull serves
 //! every held item as one page: a live item as a ref, a deleted one in
 //! `deleted` and as a `delete` item carrying its `deletedAt` and clock
 //! (§5.12). The record cipher is the identity on both sides, so a payload
@@ -40,6 +42,8 @@ pub const NOW: i64 = 1_760_000_000_000;
 /// `NOW` in the wire's ISO form (§13.5).
 pub const NOW_ISO: &str = "2025-10-09T08:53:20.000Z";
 pub const KEY: [u8; 32] = [5; 32];
+/// The server's stage-1 rejection (`sync.ts:664`).
+const VALIDATION_ERROR: &str = "VALIDATION_ERROR";
 
 /// The six types, in `DESKTOP_ONLY_RECORD_ITEM_TYPES` order.
 pub const TYPES: [&str; 6] = [
@@ -124,13 +128,19 @@ fn http(transport: Arc<dyn Transport>) -> Arc<HttpClient> {
     ))
 }
 
-/// Opens every envelope to the payload the relay holds for its id.
-struct Identity(BTreeMap<String, String>);
+/// A held record's identity on the server, `(type, id)` (`sync.ts:583`).
+type Identity = (String, String);
 
-impl RecordCipher for Identity {
+/// Every record the server holds.
+pub type Held = BTreeMap<Identity, Sent>;
+
+/// Opens every envelope to the payload the relay holds for its `(type, id)`.
+struct Opener(BTreeMap<Identity, String>);
+
+impl RecordCipher for Opener {
     fn open(&self, envelope: &RecordEnvelope) -> Result<Vec<u8>, EnvelopeError> {
         self.0
-            .get(&envelope.id)
+            .get(&(envelope.item_type.clone(), envelope.id.clone()))
             .map(|payload| payload.as_bytes().to_vec())
             .ok_or(EnvelopeError::SignatureInvalid)
     }
@@ -151,6 +161,12 @@ pub struct Sent {
     pub clock: Option<VectorClock>,
     /// The server's per-item rejection, or `None` when it took the item.
     pub rejected: Option<&'static str>,
+}
+
+impl Sent {
+    fn identity(&self) -> Identity {
+        (self.item_type.clone(), self.item_id.clone())
+    }
 }
 
 /// Records what the wave would encrypt.
@@ -185,7 +201,7 @@ impl PushSealer for Recording {
 /// `POST /sync/push`: judges what the wave sealed against what the relay held
 /// when the wave started.
 struct PushServer {
-    held: BTreeMap<String, Sent>,
+    held: Held,
     sealed: Arc<Recording>,
 }
 
@@ -203,7 +219,12 @@ impl PushServer {
 
     /// The server's verdict on one item, `sync.ts:752-777`.
     fn verdict(&self, item: &Sent) -> Option<&'static str> {
-        let existing = self.held.get(&item.item_id)?;
+        // Stage 1, `sync.ts:664`: `settings` is the one record type with no
+        // document clock.
+        if item.clock.is_none() && item.item_type != "settings" {
+            return Some(VALIDATION_ERROR);
+        }
+        let existing = self.held.get(&item.identity())?;
         if Self::replay(item.clock.as_ref(), existing.clock.as_ref()) {
             return Some("SYNC_REPLAY_DETECTED");
         }
@@ -248,32 +269,43 @@ impl Transport for PushServer {
     }
 }
 
-/// The server: the last item pushed for each id.
+/// The server: the last item pushed for each `(type, id)`.
 #[derive(Default)]
 pub struct Relay {
-    records: Mutex<BTreeMap<String, Sent>>,
+    records: Mutex<Held>,
     cursor: Mutex<u64>,
 }
 
 impl Relay {
-    /// Holds a live payload a peer pushed, as the server would.
+    /// Holds a live payload a peer pushed, as the server would: under the
+    /// payload's own clock, which a peer's envelope carries.
     pub fn put(&self, item_type: &str, item_id: &str, payload: &str) {
+        let clock = serde_json::from_str::<Json>(payload)
+            .ok()
+            .and_then(|payload| serde_json::from_value(payload["clock"].clone()).ok())
+            .filter(|clock: &VectorClock| !clock.is_empty());
         self.hold(Sent {
             item_type: item_type.to_owned(),
             item_id: item_id.to_owned(),
             operation: SyncOperation::Update,
             payload: payload.to_owned(),
             deleted_at: None,
-            clock: None,
+            clock,
             rejected: None,
         });
     }
 
     fn hold(&self, sent: Sent) {
+        self.records.lock().unwrap().insert(sent.identity(), sent);
+    }
+
+    /// The payload the server holds for `(item_type, item_id)`.
+    pub fn held(&self, item_type: &str, item_id: &str) -> Option<String> {
         self.records
             .lock()
             .unwrap()
-            .insert(sent.item_id.clone(), sent);
+            .get(&(item_type.to_owned(), item_id.to_owned()))
+            .map(|sent| sent.payload.clone())
     }
 
     /// One sync pass: pull, then push, as a pass runs.
@@ -284,7 +316,18 @@ impl Relay {
 
     /// Serves every held record as one page.
     pub async fn pull(&self, device: &Device) -> PullReport {
-        let records = self.records.lock().unwrap().clone();
+        let records = self.snapshot();
+        self.pull_from(device, records).await
+    }
+
+    /// What the server holds now, for a page served later.
+    pub fn snapshot(&self) -> Held {
+        self.records.lock().unwrap().clone()
+    }
+
+    /// Serves `records` as one page: a page read before a push that landed
+    /// since, as §6.6.2's push-build / pull-apply race delivers it.
+    pub async fn pull_from(&self, device: &Device, records: Held) -> PullReport {
         let cursor = {
             let mut cursor = self.cursor.lock().unwrap();
             *cursor += 1;
@@ -327,13 +370,13 @@ impl Relay {
         ]);
         let plaintexts = records
             .into_iter()
-            .map(|(id, sent)| (id, sent.payload))
+            .map(|(identity, sent)| (identity, sent.payload))
             .collect();
         PullLoop::new(
             http(transport),
             device.db(),
             Declaration::desktop(),
-            Arc::new(Identity(plaintexts)),
+            Arc::new(Opener(plaintexts)),
         )
         .with_clock_device(device.id)
         .with_at_rest_key(device.vault.at_rest_key())
@@ -351,7 +394,7 @@ impl Relay {
         }
         let sealed = Arc::new(Recording::default());
         let server = Arc::new(PushServer {
-            held: self.records.lock().unwrap().clone(),
+            held: self.snapshot(),
             sealed: sealed.clone(),
         });
         let report = PushCoordinator::new(
@@ -366,6 +409,11 @@ impl Relay {
         .expect("the wave");
         assert_eq!(report.held, 0, "nothing waits in the outbox");
         let sent = sealed.0.lock().unwrap().clone();
+        assert!(
+            sent.iter()
+                .all(|item| item.rejected != Some(VALIDATION_ERROR)),
+            "the sealer refuses a clockless item (`protocol/account/seal.rs:331-338`): {sent:?}"
+        );
         for item in sent.iter().filter(|item| item.rejected.is_none()) {
             self.hold(item.clone());
         }

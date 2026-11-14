@@ -235,7 +235,7 @@ async fn two_pushes_then_two_pulls_keep_the_last_push_on_both() {
 /// Both devices push before either pulls: A's delete, then B's concurrent
 /// edit. The server refuses the edit (`SYNC_DELETE_WINS`,
 /// `shouldRejectResurrection`, `sync.ts:286-296`: B never saw the delete), B
-/// retires it, and each pull leaves the record gone.
+/// acks it, and each pull leaves the record gone.
 #[tokio::test]
 async fn a_delete_pushed_before_a_concurrent_edit_is_gone_on_both() {
     let (a, b, relay) = (Device::keyed("a"), Device::keyed("b"), Relay::default());
@@ -257,6 +257,6 @@ async fn a_delete_pushed_before_a_concurrent_edit_is_gone_on_both() {
     assert_eq!(
         b.count("SELECT COUNT(*) FROM outbox"),
         0,
-        "b retired its edit"
+        "b acked its edit"
     );
 }

@@ -32,16 +32,17 @@
 //!   [`ApplyOutcome`] so the counters and the cursor cannot drift apart from
 //!   what actually happened (FR-032).
 //!
-//! **Nothing here re-pushes what it applied.** §6.5.2's P3 — the merging
-//! device stores the union clock and does not re-push — is upheld by
-//! [`crate::domain::task_merge`], and a [`crate::sync::outbox::enqueue`] of an
-//! applied item anywhere on this path is that regression, not a convenience.
-//! The outbox rows an apply writes are new items that exist nowhere else: a
-//! canvas conflict copy ([`crate::domain::canvas::merge`]) and a kept copy of
-//! text a delete never saw ([`super::delete_keep`]). The one re-push is
-//! §6.11.4's heal of a versioned key the remote is behind on
-//! ([`super::versioned_apply`]), which §6.11.4 bounds so two clients never
-//! ping-pong.
+//! **A concurrent merge re-queues what it applied, once** (§6.5.2 P3,
+//! [`crate::sync::hardening::requeue`]): every merge branch queues the merged row in the
+//! transaction that stores it, at the union clock and never ticked, so the
+//! union dominates the server's row and two devices that merged the same pair
+//! settle by P4 instead of ping-ponging. An apply that is not a merge queues
+//! nothing of its own. The other outbox rows an apply writes are new items
+//! that exist nowhere else: a canvas conflict copy
+//! ([`crate::domain::canvas::merge`]) and a kept copy of text a delete never
+//! saw ([`super::delete_keep`]). The one ticked re-push is §6.11.4's heal of a
+//! versioned key the remote is behind on ([`super::versioned_apply`]), which
+//! §6.11.4 bounds so two clients never ping-pong.
 use rusqlite::Connection;
 
 use crate::api::errors::StorageError;

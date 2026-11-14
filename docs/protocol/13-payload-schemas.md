@@ -105,9 +105,9 @@ requested pairs (`crates/memry-core/src/sync/pull/apply_step.rs:81-129`). A
 failed refetch is logged and the run goes on to the feed with every entry kept
 (`crates/memry-core/src/sync/pull/apply_step.rs:67-71`). Three things resolve
 an entry: an apply, an expiry or a clock decision of the record
-(`crates/memry-core/src/sync/apply.rs:208`,
+(`crates/memry-core/src/sync/apply.rs:202`,
 `crates/memry-core/src/sync/refused_items.rs:63-78`), a tombstone of it, typed, bare
-or untyped (`apply.rs:185`, `:204`, `:225`), and a refetch that did not return it
+or untyped (`apply.rs:179`, `:198`, `:219`), and a refetch that did not return it
 (`crates/memry-core/src/sync/pull/apply_step.rs:120-127`). A pair the server
 lists in `blobMissing` (chapter 05 §5.12.4) is not returned, so Rust resolves
 it as gone where desktop keeps it as `blob_missing` and refetches it on the
@@ -118,7 +118,7 @@ returned record that does not decode keeps its entry under the older build and
 the cooldown, and its local row is not flagged corrupt
 (`crates/memry-core/src/sync/pull/apply_step.rs:107-114`). One that decodes but
 applies as corrupt keeps its entry the same way, and that apply does flag the
-row corrupt, as on any pull (`crates/memry-core/src/sync/apply.rs:498`).
+row corrupt, as on any pull (`crates/memry-core/src/sync/apply/record.rs:115`).
 
 ### 13.2.1 Desktop meets the obligation by a different mechanism (#2183)
 
@@ -269,7 +269,8 @@ ledgers it as above
 `agent_conversation` or `agent_message` payload it still returns `Skipped`
 and writes nothing
 (`crates/memry-core/src/domain/agent_records.rs:123-134`). `Skipped` only
-counts the item (`crates/memry-core/src/sync/apply.rs:216`, `:561`): the
+counts the item (`crates/memry-core/src/sync/apply.rs:210`,
+`crates/memry-core/src/sync/apply/record.rs:179`): the
 cursor moves past it and no later build fetches it again. Electron records
 the same item in its schema-invalid ledger
 (`apps/desktop/src/main/sync/engine/pull-coordinator.ts:634`, `:684`), which
@@ -702,7 +703,7 @@ The Rust core projects it as `Field::opt_null("schema", Kind::Any)` with no
 column (`crates/memry-core/src/storage/repositories/projectors/taxonomy.rs:64`).
 It runs §6.3.1's document gate on the rest of the definition, then joins
 `schema` by chapter 06 §6.11 on every apply path, the skip included, and heals
-(`crates/memry-core/src/sync/apply.rs:491-493`, `:539-550`,
+(`crates/memry-core/src/sync/apply/record.rs:108-110`, `:157-168`,
 `crates/memry-core/src/sync/versioned_apply.rs:46`, `:74`). A schema edit
 stamps `t` one past the stored value's
 (`crates/memry-core/src/domain/tag_schema/edit.rs:97`,
@@ -1503,7 +1504,7 @@ A message is immutable (§13.9):
    Electron returns `parse_error` (`:138`), and the Rust core records it
    corrupt without storing its payload
    (`crates/memry-core/src/domain/agent_message/merge.rs:58-63`,
-   `crates/memry-core/src/sync/apply.rs:575-592`). A writer sends only the
+   `crates/memry-core/src/sync/apply/record.rs:193-210`). A writer sends only the
    terminal statuses
    (`crates/memry-core/src/domain/agent_message/mod.rs:34-35`, `:87`);
 4. without a vault key Electron skips the record (`:140-149`). The Rust core
