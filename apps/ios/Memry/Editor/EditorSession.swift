@@ -85,10 +85,25 @@ final class EditorSession {
     private(set) var selectionMarks: Set<String> = []
     private(set) var hasSelection = false
     private(set) var trigger: InlineTrigger?
-    private(set) var suggestions: [EditorSuggestion] = []
+    private(set) var suggestions: [EditorSuggestion] = [] {
+        didSet { highlighted = 0 }
+    }
     /// The open `#` menu, when no `[[` / `@` menu is.
     private(set) var tagTrigger: HashTagTrigger?
-    private(set) var tagSuggestions: [TagSuggestion] = []
+    private(set) var tagSuggestions: [TagSuggestion] = [] {
+        didSet { highlighted = 0 }
+    }
+    /// The open menu's row that Return picks, moved by the arrow keys.
+    var highlighted = 0
+    /// The arrow keys moved `highlighted` (`menuFollowsKeys`).
+    var highlightMoved = false
+    /// Where the menu Esc closed starts, so it stays closed while the caret
+    /// is still in that trigger.
+    @ObservationIgnored private var dismissedMenu: Int?
+    /// The link alert over the selection is open (`editLink`).
+    var linkPrompt = false
+    /// Seam for tests; the app reads the attached keyboard.
+    @ObservationIgnored var hardwareKeyboard = HardwareKeyboard.shared
     /// The toolbar shows the format slide (`Aa`) rather than the main row.
     private(set) var formatting = false
     /// A block waiting for the note picker (the `...` menu's Move to).
@@ -356,6 +371,7 @@ final class EditorSession {
 
     func focusChanged(to field: BlockField?) {
         focusedBlockId = field?.blockId
+        dismissedMenu = nil
         if let field {
             focusMemory.forget()
             self.field = field
@@ -393,7 +409,13 @@ final class EditorSession {
         // A code block keeps `[[`, `@`, `/` and `#` as literal text, as
         // desktop's does: no menu opens there.
         let inCode = field.block.kind == "codeBlock"
-        let next = range.length == 0 && !inCode ? InlineTrigger.active(in: textView.text, caret: range.location) : nil
+        let typed = range.length == 0 && !inCode ? InlineTrigger.active(in: textView.text, caret: range.location) : nil
+        let typedTag = range.length == 0 && !inCode
+            ? HashTagTrigger.active(in: textView.text, caret: range.location) : nil
+        if let dismissed = dismissedMenu, typed?.range.location != dismissed, typedTag?.range.location != dismissed {
+            dismissedMenu = nil
+        }
+        let next = typed?.range.location == dismissedMenu ? nil : typed
         if next != trigger {
             let leftWiki: Bool = if case .wiki = trigger { next == nil } else { false }
             trigger = next
@@ -409,13 +431,22 @@ final class EditorSession {
             // The caret left a finished `[[target]]`: it becomes a link.
             if leftWiki, !WikiLinkText.typed(in: textView.text, since: field.base).isEmpty { commit(field) }
         }
-        let nextTag = range.length == 0 && trigger == nil && !inCode
-            ? HashTagTrigger.active(in: textView.text, caret: range.location) : nil
+        let nextTag = trigger == nil && typedTag?.range.location != dismissedMenu ? typedTag : nil
         if nextTag != tagTrigger {
             tagTrigger = nextTag
             tagSuggestions = nextTag.map { TagSuggestions.rank(query: $0.query, tags: tags) } ?? []
             if tagSuggestions.isEmpty { tagTrigger = nil }
         }
+    }
+
+    /// Esc over an open menu: it closes and stays closed until the caret
+    /// leaves its trigger.
+    func closeMenu() {
+        dismissedMenu = trigger?.range.location ?? tagTrigger?.range.location
+        trigger = nil
+        suggestions = []
+        tagTrigger = nil
+        tagSuggestions = []
     }
 
     // MARK: Ordered writes
@@ -1039,14 +1070,15 @@ final class EditorSession {
 
     // MARK: Undo
 
-    var canUndo: Bool { history.canUndo || (field?.textView.undoManager?.canUndo ?? false) }
-    var canRedo: Bool { history.canRedo || (field?.textView.undoManager?.canRedo ?? false) }
+    var canUndo: Bool { history.canUndo || (field?.textView.editorUndo.typing()?.canUndo ?? false) }
+    var canRedo: Bool { history.canRedo || (field?.textView.editorUndo.typing()?.canRedo ?? false) }
 
     /// Typing in the open block first, through the text view's own undo;
-    /// then the writes this session made, newest first.
+    /// then the writes this session made, newest first. The toolbar, ⌘Z
+    /// and the system's undo all land here (`BlockUndoManager`).
     func undo() {
-        if let undoManager = field?.textView.undoManager, undoManager.canUndo, field?.dirty == true {
-            undoManager.undo()
+        if let typing = field?.textView.editorUndo.typing(), typing.canUndo, field?.dirty == true {
+            typing.undo()
             return
         }
         guard let step = history.popUndo() else { return }
@@ -1054,8 +1086,8 @@ final class EditorSession {
     }
 
     func redo() {
-        if let undoManager = field?.textView.undoManager, undoManager.canRedo, field?.dirty == true {
-            undoManager.redo()
+        if let typing = field?.textView.editorUndo.typing(), typing.canRedo, field?.dirty == true {
+            typing.redo()
             return
         }
         guard let step = history.popRedo() else { return }
