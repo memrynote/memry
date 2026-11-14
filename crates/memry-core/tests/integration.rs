@@ -468,6 +468,8 @@ mod vault_locks;
 mod vault_locks_schema;
 #[path = "vault_locks_writers.rs"]
 mod vault_locks_writers;
+#[path = "vault_name_vectors.rs"]
+mod vault_name_vectors;
 #[path = "vectors.rs"]
 mod vectors;
 #[path = "versioned_keys_carry.rs"]

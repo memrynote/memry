@@ -7,3 +7,4 @@ pub mod cbor;
 pub mod keys;
 pub mod recovery;
 pub mod sodium;
+pub mod vault_name;

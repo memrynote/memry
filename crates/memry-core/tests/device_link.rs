@@ -421,12 +421,18 @@ async fn a_completed_link_stores_the_master_key_and_returns_the_vaults() {
                     name: None,
                     encrypted_name: None,
                     name_nonce: None,
+                    encrypted_icon: None,
+                    icon_nonce: None,
+                    icon_updated_at: None,
                 },
                 VaultSummary {
                     id: "vault-b".into(),
                     name: None,
                     encrypted_name: None,
                     name_nonce: None,
+                    encrypted_icon: None,
+                    icon_nonce: None,
+                    icon_updated_at: None,
                 },
             ]
         }

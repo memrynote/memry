@@ -731,7 +731,7 @@ a vault the account does not hold yet or renames one it does, so a repeat is not
 an error. `encryptedName` is the name sealed with XChaCha20-Poly1305 under the
 vault key (chapter 01 §1.6) with `vault-name-v1:<vaultUuid>` as associated data,
 ciphertext and nonce in standard base64
-(`apps/desktop/src/main/sync/vault-name-crypto.ts:46-53`). It answers `402`
+(`apps/desktop/src/main/sync/vault-name-crypto.ts:48-55`). It answers `402`
 without an active sync entitlement (`:115-117`) and `402 SYNC_VAULT_LIMIT_EXCEEDED`
 when the plan has no free vault slot (`ensureSyncVaultAllowed`,
 `apps/sync-server/src/services/entitlements.ts`). A client keeps `vaultUuid` within

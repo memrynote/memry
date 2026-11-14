@@ -416,12 +416,18 @@ mod tests {
                 name: Some("Work".to_string()),
                 encrypted_name: None,
                 name_nonce: None,
+                encrypted_icon: None,
+                icon_nonce: None,
+                icon_updated_at: None,
             },
             VaultSummary {
                 id: "v-2".to_string(),
                 name: None,
                 encrypted_name: None,
                 name_nonce: None,
+                encrypted_icon: None,
+                icon_nonce: None,
+                icon_updated_at: None,
             },
         ]);
         assert_eq!(rendered, "v-1\tWork\nv-2\t-\n");

@@ -1,0 +1,204 @@
+{
+  "meta": {
+    "spec": "002-native-foundation-ios",
+    "sodiumVersion": "1.0.21",
+    "encoding": "hex unless the field name says otherwise; *Base64/*B64 are standard base64 with padding",
+    "chapter": "docs/protocol/04-record-envelope.md §4.15, §4.16",
+    "oracle": "apps/desktop/src/main/sync/vault-name-crypto.ts (encryptVaultName, decryptVaultName, encryptVaultIcon, decryptVaultIcon) with a fixed nonce",
+    "note": "`keyHex` is the vault key (chapter 01 §1.7), not the master key. `ciphertextBase64` and `nonceBase64` are the `encryptedName`/`nameNonce` or `encryptedIcon`/`iconNonce` pair Electron sends; `opened` is what Electron reads back. An open case with `plaintext: null` is one Electron refuses."
+  },
+  "keyHex": "3c8f0e2b7a9d14c65e0f1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f",
+  "seals": [
+    {
+      "name": "name, ascii",
+      "kind": "name",
+      "vaultUuid": "0f8e3a52-9c1d-4b7e-a2f0-5d6c7b8a9e01",
+      "plaintext": "Personal",
+      "nonceHex": "0102030405060708090a0b0c0d0e0f101112131415161718",
+      "ciphertextBase64": "zFgiChlN/PpMB6KTRSdJC0+3QqyFywsn",
+      "nonceBase64": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcY",
+      "opened": "Personal"
+    },
+    {
+      "name": "name, empty",
+      "kind": "name",
+      "vaultUuid": "0f8e3a52-9c1d-4b7e-a2f0-5d6c7b8a9e01",
+      "plaintext": "",
+      "nonceHex": "191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f30",
+      "ciphertextBase64": "i7ZOJL8mBSbnE8h55EeHbg==",
+      "nonceBase64": "GRobHB0eHyAhIiMkJSYnKCkqKywtLi8w",
+      "opened": ""
+    },
+    {
+      "name": "name, Turkish and emoji",
+      "kind": "name",
+      "vaultUuid": "0f8e3a52-9c1d-4b7e-a2f0-5d6c7b8a9e01",
+      "plaintext": "İş notları 🗂️ Ağustos",
+      "nonceHex": "3132333435363738393a3b3c3d3e3f404142434445464748",
+      "ciphertextBase64": "ZxmZa9SQu0teUpHBmKIaWSK0KcQOcJ+Vzea5dLNBnNNbQGIm1dW7o6VL0BpQ+Q==",
+      "nonceBase64": "MTIzNDU2Nzg5Ojs8PT4/QEFCQ0RFRkdI",
+      "opened": "İş notları 🗂️ Ağustos"
+    },
+    {
+      "name": "name, 200 characters",
+      "kind": "name",
+      "vaultUuid": "7f1d2c3b-4a59-4687-9d0e-1f2a3b4c5d6e",
+      "plaintext": "vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv",
+      "nonceHex": "494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60",
+      "ciphertextBase64": "K6mFV+oPTHrV4pXGYAgEsKA/NKXvG9w+FakknppSvXMoSfd/kDeOrjlEg2RKQZ/E6bK2le36VOzDpdYes7u7F02q2WMU4SvC/1zEgOYHLneWw1cjcXVpCGic9EvwNORmZm5+y2ibtF0v7amDN26iFF2Wh+ZM9X+yecrN7DjerbRMQY7jBFvkvwwKaucskN0bx5sU7S8xic7XeL3rFLGHktgF5O/oCAHvzx7F/N0ahePJ3IoGviGLPoP8LvV5wEQtMnABR8wnKq9D/Lgc1hFBImY+0Z+z84dx",
+      "nonceBase64": "SUpLTE1OT1BRUlNUVVZXWFlaW1xdXl9g",
+      "opened": "vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv"
+    },
+    {
+      "name": "name, short vault id",
+      "kind": "name",
+      "vaultUuid": "v1",
+      "plaintext": "Work",
+      "nonceHex": "6162636465666768696a6b6c6d6e6f707172737475767778",
+      "ciphertextBase64": "rLDdkYTM1XhoB/5iq6+idROROck=",
+      "nonceBase64": "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4",
+      "opened": "Work"
+    },
+    {
+      "name": "icon, library icon",
+      "kind": "icon",
+      "vaultUuid": "0f8e3a52-9c1d-4b7e-a2f0-5d6c7b8a9e01",
+      "plaintext": "icon:Book01Icon",
+      "nonceHex": "797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f90",
+      "ciphertextBase64": "u64V0Pd9AqppUyEU75vepUhgPSP1p4NhOykifPiL9A==",
+      "nonceBase64": "eXp7fH1+f4CBgoOEhYaHiImKi4yNjo+Q",
+      "opened": "icon:Book01Icon"
+    },
+    {
+      "name": "icon, emoji",
+      "kind": "icon",
+      "vaultUuid": "0f8e3a52-9c1d-4b7e-a2f0-5d6c7b8a9e01",
+      "plaintext": "🌿",
+      "nonceHex": "9192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8",
+      "ciphertextBase64": "FVZjlFkeRvt71ENS1/ki/ldWIbc=",
+      "nonceBase64": "kZKTlJWWl5iZmpucnZ6foKGio6Slpqeo",
+      "opened": "🌿"
+    },
+    {
+      "name": "icon, ZWJ emoji sequence",
+      "kind": "icon",
+      "vaultUuid": "7f1d2c3b-4a59-4687-9d0e-1f2a3b4c5d6e",
+      "plaintext": "👩‍👩‍👧‍👦",
+      "nonceHex": "a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0",
+      "ciphertextBase64": "bY6gAfNEGh23yYOgqMrT01CtD9vEYIChbRpBLfsjNwPY8OFoT762NbA=",
+      "nonceBase64": "qaqrrK2ur7CxsrO0tba3uLm6u7y9vr/A",
+      "opened": "👩‍👩‍👧‍👦"
+    },
+    {
+      "name": "name, leading byte-order mark",
+      "kind": "name",
+      "vaultUuid": "0f8e3a52-9c1d-4b7e-a2f0-5d6c7b8a9e01",
+      "plaintext": "﻿﻿Plan",
+      "nonceHex": "c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8",
+      "ciphertextBase64": "M4Z8V2ZBSLgua8JD7Egr/DjGMp2OMZJ69lY=",
+      "nonceBase64": "wcLDxMXGx8jJysvMzc7P0NHS09TV1tfY",
+      "opened": "﻿Plan"
+    }
+  ],
+  "opens": [
+    {
+      "name": "a name does not open as an icon",
+      "kind": "icon",
+      "keyHex": "3c8f0e2b7a9d14c65e0f1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f",
+      "vaultUuid": "0f8e3a52-9c1d-4b7e-a2f0-5d6c7b8a9e01",
+      "ciphertextBase64": "zFgiChlN/PpMB6KTRSdJC0+3QqyFywsn",
+      "nonceBase64": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcY",
+      "plaintext": null
+    },
+    {
+      "name": "an icon does not open as a name",
+      "kind": "name",
+      "keyHex": "3c8f0e2b7a9d14c65e0f1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f",
+      "vaultUuid": "0f8e3a52-9c1d-4b7e-a2f0-5d6c7b8a9e01",
+      "ciphertextBase64": "u64V0Pd9AqppUyEU75vepUhgPSP1p4NhOykifPiL9A==",
+      "nonceBase64": "eXp7fH1+f4CBgoOEhYaHiImKi4yNjo+Q",
+      "plaintext": null
+    },
+    {
+      "name": "another vault id",
+      "kind": "name",
+      "keyHex": "3c8f0e2b7a9d14c65e0f1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f",
+      "vaultUuid": "7f1d2c3b-4a59-4687-9d0e-1f2a3b4c5d6e",
+      "ciphertextBase64": "zFgiChlN/PpMB6KTRSdJC0+3QqyFywsn",
+      "nonceBase64": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcY",
+      "plaintext": null
+    },
+    {
+      "name": "another key",
+      "kind": "name",
+      "keyHex": "ffeeddccbbaa99887766554433221100ffeeddccbbaa99887766554433221100",
+      "vaultUuid": "0f8e3a52-9c1d-4b7e-a2f0-5d6c7b8a9e01",
+      "ciphertextBase64": "zFgiChlN/PpMB6KTRSdJC0+3QqyFywsn",
+      "nonceBase64": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcY",
+      "plaintext": null
+    },
+    {
+      "name": "one ciphertext bit flipped",
+      "kind": "name",
+      "keyHex": "3c8f0e2b7a9d14c65e0f1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f",
+      "vaultUuid": "0f8e3a52-9c1d-4b7e-a2f0-5d6c7b8a9e01",
+      "ciphertextBase64": "zVgiChlN/PpMB6KTRSdJC0+3QqyFywsn",
+      "nonceBase64": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcY",
+      "plaintext": null
+    },
+    {
+      "name": "one nonce bit flipped",
+      "kind": "icon",
+      "keyHex": "3c8f0e2b7a9d14c65e0f1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f",
+      "vaultUuid": "0f8e3a52-9c1d-4b7e-a2f0-5d6c7b8a9e01",
+      "ciphertextBase64": "u64V0Pd9AqppUyEU75vepUhgPSP1p4NhOykifPiL9A==",
+      "nonceBase64": "eHp7fH1+f4CBgoOEhYaHiImKi4yNjo+Q",
+      "plaintext": null
+    },
+    {
+      "name": "ciphertext shorter than the tag",
+      "kind": "name",
+      "keyHex": "3c8f0e2b7a9d14c65e0f1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f",
+      "vaultUuid": "0f8e3a52-9c1d-4b7e-a2f0-5d6c7b8a9e01",
+      "ciphertextBase64": "AAAAAAAAAAAAAAAAAAAA",
+      "nonceBase64": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcY",
+      "plaintext": null
+    },
+    {
+      "name": "a 23-byte nonce",
+      "kind": "name",
+      "keyHex": "3c8f0e2b7a9d14c65e0f1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f",
+      "vaultUuid": "0f8e3a52-9c1d-4b7e-a2f0-5d6c7b8a9e01",
+      "ciphertextBase64": "zFgiChlN/PpMB6KTRSdJC0+3QqyFywsn",
+      "nonceBase64": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhc=",
+      "plaintext": null
+    },
+    {
+      "name": "ciphertext without base64 padding",
+      "kind": "name",
+      "keyHex": "3c8f0e2b7a9d14c65e0f1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f",
+      "vaultUuid": "0f8e3a52-9c1d-4b7e-a2f0-5d6c7b8a9e01",
+      "ciphertextBase64": "ZxmZa9SQu0teUpHBmKIaWSK0KcQOcJ+Vzea5dLNBnNNbQGIm1dW7o6VL0BpQ+Q",
+      "nonceBase64": "MTIzNDU2Nzg5Ojs8PT4/QEFCQ0RFRkdI",
+      "plaintext": null
+    },
+    {
+      "name": "ciphertext not base64",
+      "kind": "name",
+      "keyHex": "3c8f0e2b7a9d14c65e0f1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f",
+      "vaultUuid": "0f8e3a52-9c1d-4b7e-a2f0-5d6c7b8a9e01",
+      "ciphertextBase64": "!!!",
+      "nonceBase64": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcY",
+      "plaintext": null
+    },
+    {
+      "name": "plaintext not UTF-8",
+      "kind": "name",
+      "keyHex": "3c8f0e2b7a9d14c65e0f1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f",
+      "vaultUuid": "0f8e3a52-9c1d-4b7e-a2f0-5d6c7b8a9e01",
+      "ciphertextBase64": "Mr58MevTFjCXDkpCloaS6wI9kg==",
+      "nonceBase64": "4eLj5OXm5+jp6uvs7e7v8PHy8/T19vf4",
+      "plaintext": "W�k"
+    }
+  ]
+}
