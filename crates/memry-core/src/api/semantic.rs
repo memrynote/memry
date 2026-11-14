@@ -27,6 +27,8 @@ pub enum DownloadFailure {
         status: u16,
     },
     Network,
+    /// Writing the model files failed, most often because the disk is full.
+    Storage,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
@@ -161,7 +163,9 @@ impl SemanticSearch {
         self.model.clear().map_err(io_failed)?;
         *lock(&self.transfer) = Transfer::Idle;
         self.host.unload();
-        lock(&self.vectors).clear();
+        // Held across the delete, so a status poll cannot reopen the file.
+        let mut handles = lock(&self.vectors);
+        handles.clear();
         vector_db::open(&vault.directory().join("vectors.db"), false)?;
         Ok(())
     }
@@ -224,13 +228,16 @@ impl SemanticSearch {
             return Ok(self.model_state());
         };
         *lock(&self.transfer) = Transfer::Running;
-        let end = download::download(&self.model, &*self.transport, &*self.reachability).await;
+        let mut end = download::download(&self.model, &*self.transport, &*self.reachability).await;
+        // A turn-off mid-write deletes the files under the download.
+        if matches!(end, Err(DownloadError::Io(_))) && !self.model.opted_in() {
+            end = Ok(DownloadEnd::OptedOut);
+        }
         *lock(&self.transfer) = match &end {
             Ok(DownloadEnd::NotOnWifi) => Transfer::WaitingForWifi,
-            Ok(DownloadEnd::Complete | DownloadEnd::OptedOut) | Err(DownloadError::Io(_)) => {
-                Transfer::Idle
-            }
+            Ok(DownloadEnd::Complete | DownloadEnd::OptedOut) => Transfer::Idle,
             Err(DownloadError::Failed(failure)) => Transfer::Failed(failure.clone()),
+            Err(DownloadError::Io(_)) => Transfer::Failed(DownloadFailure::Storage),
         };
         match end {
             Ok(DownloadEnd::Complete) => self.model.sweep().map_err(io_failed)?,
@@ -243,15 +250,17 @@ impl SemanticSearch {
     fn embedded_notes(&self, vault_dir: &Path) -> Result<u32, StorageError> {
         let path = vault_dir.join("vectors.db");
         let mut handles = lock(&self.vectors);
+        // Read under the lock: `disable` may have run since the caller's check.
+        let opted_in = self.model.opted_in();
         // Sign-out removes the vault tree under an open handle, which would
         // otherwise keep counting an unlinked file.
-        if !path.exists() {
+        if !opted_in || !path.exists() {
             handles.remove(vault_dir);
         }
         let db = match handles.get(vault_dir) {
             Some(db) => db.clone(),
             None => {
-                let Some(db) = vector_db::open(&path, true)? else {
+                let Some(db) = vector_db::open(&path, opted_in)? else {
                     return Ok(0);
                 };
                 handles.insert(vault_dir.to_path_buf(), db.clone());

@@ -58,6 +58,7 @@ struct SemanticSearchDisplay: Equatable {
         case .mismatch: .failed(title: SemanticSearchCopy.damagedTitle, guidance: SemanticSearchCopy.damagedGuidance)
         case .http: .failed(title: SemanticSearchCopy.serverTitle, guidance: SemanticSearchCopy.serverGuidance)
         case .network: .failed(title: SemanticSearchCopy.networkTitle, guidance: SemanticSearchCopy.networkGuidance)
+        case .storage: .failed(title: SemanticSearchCopy.storageTitle, guidance: SemanticSearchCopy.storageGuidance)
         }
     }
 
