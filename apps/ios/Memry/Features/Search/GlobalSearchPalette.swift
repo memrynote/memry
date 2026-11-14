@@ -57,8 +57,8 @@ private struct SearchRowHighlight: ViewModifier {
     }
 }
 
-/// The palette's frame: a dimmed window, and the field over the results in a
-/// panel centred near the top.
+/// The search palette: the field and the scope picker over the results, in
+/// the palette family's frame.
 struct SearchPaletteFrame<Results: View>: View {
     @Binding var query: String
     var isFocused: FocusState<Bool>.Binding
@@ -68,6 +68,41 @@ struct SearchPaletteFrame<Results: View>: View {
     let submit: () -> Void
     let close: () -> Void
     @ViewBuilder let results: () -> Results
+
+    var body: some View {
+        PaletteFrame(prefix: "search", close: close) { windowHeight in
+            PaletteField(
+                prefix: "search", prompt: GlobalSearchCopy.prompt, submitLabel: .search,
+                query: $query, isFocused: isFocused, move: move, submit: submit, close: close
+            ) {
+                if let model {
+                    SearchFilterMenu(filters: model.filters, apply: model.apply)
+                        .labelStyle(.iconOnly)
+                }
+            }
+            Picker(GlobalSearchCopy.scope, selection: $scope) {
+                ForEach(SearchScope.allCases, id: \.self) { Text($0.title).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal, Tokens.Space.inset)
+            .padding(.bottom, Tokens.Space.small)
+            Divider()
+            results()
+                .scrollContentBackground(.hidden)
+                .frame(height: PaletteFrameHeight.list(in: windowHeight))
+        }
+    }
+}
+
+/// The palette family's frame (`DESIGN.md` › Tablet › Search): a dimmed
+/// window, and a panel about 600pt wide centred near the top. Search and the
+/// `⌘P` command palette (#4379) share it.
+struct PaletteFrame<Panel: View>: View {
+    /// Names the panel for accessibility: `<prefix>.palette`.
+    let prefix: String
+    let close: () -> Void
+    /// The panel's rows, given the window's height to cap a list by.
+    @ViewBuilder let panel: (CGFloat) -> Panel
 
     @Environment(\.colorScheme) private var colorScheme
 
@@ -80,17 +115,7 @@ struct SearchPaletteFrame<Results: View>: View {
                     .onTapGesture(perform: close)
                     .accessibilityHidden(true)
                 VStack(spacing: 0) {
-                    field
-                    Picker(GlobalSearchCopy.scope, selection: $scope) {
-                        ForEach(SearchScope.allCases, id: \.self) { Text($0.title).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
-                    .padding(.horizontal, Tokens.Space.inset)
-                    .padding(.bottom, Tokens.Space.small)
-                    Divider()
-                    results()
-                        .scrollContentBackground(.hidden)
-                        .frame(height: min(Self.resultsHeight, proxy.size.height * 0.6))
+                    panel(proxy.size.height)
                 }
                 .frame(width: min(Tokens.Size.palette, proxy.size.width - 2 * Tokens.Space.inset))
                 .background(Tokens.Canvas.background.color)
@@ -104,38 +129,55 @@ struct SearchPaletteFrame<Results: View>: View {
                 .accessibilityElement(children: .contain)
                 .accessibilityAddTraits(.isModal)
                 .accessibilityAction(.escape, close)
-                .accessibilityIdentifier("search.palette")
+                .accessibilityIdentifier("\(prefix).palette")
             }
         }
     }
+}
 
-    /// Desktop's `h-[min(452px,60vh)]`.
-    private static var resultsHeight: CGFloat { 452 }
+enum PaletteFrameHeight {
+    /// A palette list's height, desktop's `h-[min(452px,60vh)]`.
+    static func list(in windowHeight: CGFloat) -> CGFloat {
+        min(452, windowHeight * 0.6)
+    }
+}
 
-    private var field: some View {
+/// A palette's field. It keeps focus: ↓ and ↑ move the highlighted row,
+/// Return runs it, and Esc (`⌘.` on the simulator) closes.
+struct PaletteField<Accessory: View>: View {
+    /// Names the field `<prefix>.palette.field` and its close button
+    /// `<prefix>.close`.
+    let prefix: String
+    let prompt: String
+    let submitLabel: SubmitLabel
+    @Binding var query: String
+    var isFocused: FocusState<Bool>.Binding
+    let move: (Int) -> Void
+    let submit: () -> Void
+    let close: () -> Void
+    @ViewBuilder var accessory: () -> Accessory
+
+    var body: some View {
         HStack(spacing: Tokens.Space.medium) {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(Tokens.Text.tertiary.color)
                 .accessibilityHidden(true)
-            TextField(GlobalSearchCopy.prompt, text: $query)
+            TextField(prompt, text: $query)
                 .textFieldStyle(.plain)
                 .font(Tokens.Typography.body.font)
                 .autocorrectionDisabled()
-                .submitLabel(.search)
+                .submitLabel(submitLabel)
                 .focused(isFocused)
                 .onSubmit(submit)
                 .onKeyPress(.downArrow) { move(1); return .handled }
                 .onKeyPress(.upArrow) { move(-1); return .handled }
                 .onKeyPress(.return) { submit(); return .handled }
-                .accessibilityIdentifier("search.palette.field")
-            if let model {
-                SearchFilterMenu(filters: model.filters, apply: model.apply)
-                    .labelStyle(.iconOnly)
-            }
+                .accessibilityIdentifier("\(prefix).palette.field")
+            accessory()
             Button(role: .close, action: close)
                 .labelStyle(.iconOnly)
                 .keyboardShortcut(.cancelAction)
-                .accessibilityIdentifier("search.close")
+                .accessibilityIdentifier("\(prefix).close")
         }
         .padding(.horizontal, Tokens.Space.inset)
         .frame(minHeight: Tokens.Size.minimumHitArea + Tokens.Space.medium)
