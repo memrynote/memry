@@ -43,6 +43,8 @@ use crate::storage::{Db, open_index};
 #[cfg(feature = "markdown")]
 mod block_refs;
 #[cfg(feature = "markdown")]
+mod file_text;
+#[cfg(feature = "markdown")]
 mod fold;
 #[cfg(feature = "markdown")]
 mod objects;
