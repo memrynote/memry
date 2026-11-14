@@ -35,7 +35,10 @@ memrynote uses Google's **EmbeddingGemma 2** (256 dimensions). Its text half emb
 languages, so notes in Turkish, German, Japanese and others are matched by meaning, including across
 languages: an English query can find a Turkish note on the same topic. A note is embedded in
 windows of ~4000 characters, title first, up to 16 windows (~64,000 characters), so text late in a
-long note is found too. Search shows each note once, matched by its closest window.
+long note is found too. Search shows each note once, matched by its closest window. The model reads
+at most 1536 tokens of a window, which bounds its memory near 1.2 GB. A window of English or Turkish
+prose stays well under that. A window of dense text, such as Chinese, a pasted hex dump or rare CJK
+characters, is read up to the limit and the rest of that window is left out.
 
 When you update from a version that stored vectors in an older format, memrynote re-embeds every
 note once in the background. Nothing is deleted first: the old vectors keep answering search
