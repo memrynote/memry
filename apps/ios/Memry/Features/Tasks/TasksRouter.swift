@@ -61,7 +61,11 @@ enum VaultTab: String, Hashable, Sendable {
 @MainActor
 @Observable
 final class TasksRouter {
-    var selectedTab: VaultTab = .notes
+    var selectedTab: VaultTab = .notes {
+        // A ⌥⌘N the list never took (its store still loading) is dropped,
+        // so it does not open the composer on a later visit.
+        didSet { if selectedTab != .tasks { composerRequested = false } }
+    }
     var path: [TasksRoute] = []
     /// Settings' stack (spec 006 ST20): Settings routes, and the notes a
     /// Settings page opens. As a stack, every page over the root list; as a
@@ -74,6 +78,8 @@ final class TasksRouter {
     private(set) var settingsSplit = false
     /// The Calendar page's stack, wherever the page sits.
     var calendarPath = NavigationPath()
+    /// ⌥⌘N asked for the task list's composer (`newTask`).
+    private(set) var composerRequested = false
 
     /// The router for the vault ``LaunchSnapshot`` has open: the tab and the
     /// Tasks stack the user left.
@@ -128,6 +134,21 @@ final class TasksRouter {
             return
         }
         if case let .task(id) = route { openTask(id) } else { listPath.append(route) }
+    }
+
+    /// ⌥⌘N: the task list's composer, as its "+" opens it. The split view
+    /// keeps its detail; the phone stack pops to the list. The list takes
+    /// the request when it shows (`takeComposerRequest`).
+    func newTask() {
+        selectedTab = .tasks
+        if tasksSplit { listPath = [] } else { path = [] }
+        composerRequested = true
+    }
+
+    /// Whether the list should open its composer, once.
+    func takeComposerRequest() -> Bool {
+        defer { composerRequested = false }
+        return composerRequested
     }
 
     // MARK: Split view (#4350)

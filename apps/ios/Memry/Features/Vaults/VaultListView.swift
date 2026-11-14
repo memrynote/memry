@@ -102,6 +102,7 @@ struct VaultListView: View {
             }
             }
         }
+        .semanticEmbedding(vault: vault)
     }
 
     private var selection: some View {

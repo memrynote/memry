@@ -6,6 +6,7 @@
 	<array>
 		<string>com.memry.app.sync.refresh</string>
 		<string>com.memry.app.sync.processing</string>
+		<string>com.memry.app.semantic.embed</string>
 	</array>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>

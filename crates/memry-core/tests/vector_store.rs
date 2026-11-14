@@ -5,7 +5,9 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use memry_core::api::errors::StorageError;
 use memry_core::storage::migrations::user_version;
-use memry_core::storage::vector_db::{self, NoteState, VECTOR_BYTES, VectorBytes, VectorStore};
+use memry_core::storage::vector_db::{
+    self, Attempt, NoteState, VECTOR_BYTES, VectorBytes, VectorStore,
+};
 use memry_core::storage::{Db, open_data, open_index};
 use rusqlite::Connection;
 
@@ -122,7 +124,38 @@ fn rows_survive_a_reopen() {
             ("n1".to_owned(), 1, vector(2))
         ]
     );
-    assert_eq!(with(&db, user_version), 1);
+    assert_eq!(with(&db, user_version), 2);
+}
+
+#[test]
+fn a_version_one_file_migrates_forward_and_keeps_its_vectors() {
+    let scratch = Scratch::new("v1");
+    let path = scratch.vectors();
+    let db = opened(&path);
+    with(&db, |conn| {
+        VectorStore::new(conn).replace_note(&state("n1", "gemma-a", 1), &[vector(1)], 1)?;
+        sql(
+            conn,
+            "DROP TABLE note_embed_attempts; PRAGMA user_version = 1;",
+        )
+    });
+    drop(db);
+
+    let db = opened(&path);
+
+    assert_eq!(with(&db, user_version), 2);
+    assert_eq!(scan(&db, "gemma-a"), [("n1".to_owned(), 0, vector(1))]);
+    with(&db, |conn| {
+        VectorStore::new(conn).begin_attempt("n1", &[7; 32])
+    });
+    assert_eq!(
+        with(&db, |conn| VectorStore::new(conn).attempts()),
+        [Attempt {
+            note_id: "n1".to_owned(),
+            source_key: [7; 32],
+            unfinished: 1,
+        }]
+    );
 }
 
 #[test]
@@ -133,7 +166,7 @@ fn a_corrupt_file_is_rebuilt_empty() {
 
     let db = opened(&path);
 
-    assert_eq!(with(&db, user_version), 1);
+    assert_eq!(with(&db, user_version), 2);
     assert!(with(&db, |conn| VectorStore::new(conn).states()).is_empty());
 }
 
@@ -147,7 +180,7 @@ fn a_newer_additive_file_opens_untouched_and_stays_readable() {
             conn,
             "ALTER TABLE note_vectors ADD COLUMN quantized BLOB;
              ALTER TABLE note_vector_state ADD COLUMN model_rev TEXT NOT NULL DEFAULT '';
-             PRAGMA user_version = 2;",
+             PRAGMA user_version = 3;",
         )?;
         VectorStore::new(conn).replace_note(&state("n1", "gemma-a", 1), &[vector(3)], 1)
     });
@@ -155,7 +188,7 @@ fn a_newer_additive_file_opens_untouched_and_stays_readable() {
 
     let db = opened(&path);
 
-    assert_eq!(with(&db, user_version), 2);
+    assert_eq!(with(&db, user_version), 3);
     assert_eq!(scan(&db, "gemma-a"), [("n1".to_owned(), 0, vector(3))]);
     with(&db, |conn| {
         VectorStore::new(conn).replace_note(&state("n2", "gemma-a", 1), &[vector(4)], 2)
@@ -248,6 +281,27 @@ fn a_short_note_has_a_state_row_and_no_windows() {
         with(&db, |conn| VectorStore::new(conn).counts("gemma-a")),
         1
     );
+}
+
+#[test]
+fn prune_removes_the_attempt_rows_of_pruned_notes() {
+    let scratch = Scratch::new("prune-attempts");
+    let db = opened(&scratch.vectors());
+    with(&db, |conn| {
+        let store = VectorStore::new(conn);
+        store.begin_attempt("gone", &[7; 32])?;
+        store.begin_attempt("live", &[8; 32])
+    });
+
+    with(&db, |conn| {
+        VectorStore::new(conn).prune(&["gone".to_owned()])
+    });
+
+    let ids: Vec<String> = with(&db, |conn| VectorStore::new(conn).attempts())
+        .into_iter()
+        .map(|attempt| attempt.note_id)
+        .collect();
+    assert_eq!(ids, ["live"]);
 }
 
 #[test]
