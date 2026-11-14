@@ -615,19 +615,33 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
     [deps.pairedNotes, deps.noteMap]
   )
 
-  /** Move and rename a paired note after its folder, so the two stay one row. */
+  /**
+   * Move and rename a paired note after its folder, so the two stay one row.
+   * The folder has already moved, so a note that cannot follow still refreshes
+   * the tree before the error reaches the caller's toast.
+   */
   const carryPairedNote = useCallback(
     async ({ note, newPath }: PairedNoteMove) => {
-      const newFolder = extractFolderFromPath(newPath)
-      if (extractFolderFromPath(note.path) !== newFolder) {
-        await deps.mutations.moveNote.mutateAsync({ id: note.id, newFolder })
-      }
-      const newName = getDisplayName(newPath)
-      if (getDisplayName(note.path) !== newName) {
-        await deps.mutations.renameNote.mutateAsync({ id: note.id, newTitle: newName })
+      try {
+        const newFolder = extractFolderFromPath(newPath)
+        if (extractFolderFromPath(note.path) !== newFolder) {
+          const moved = await deps.mutations.moveNote.mutateAsync({ id: note.id, newFolder })
+          if (!moved.success) throw new Error(moved.error)
+        }
+        const newName = getDisplayName(newPath)
+        if (getDisplayName(note.path) !== newName) {
+          const renamed = await deps.mutations.renameNote.mutateAsync({
+            id: note.id,
+            newTitle: newName
+          })
+          if (!renamed.success) throw new Error(renamed.error)
+        }
+      } catch (err) {
+        await refreshFolderTree()
+        throw err
       }
     },
-    [deps.mutations.moveNote, deps.mutations.renameNote]
+    [deps.mutations.moveNote, deps.mutations.renameNote, refreshFolderTree]
   )
 
   // ---- Folder rename ----
