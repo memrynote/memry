@@ -83,6 +83,9 @@ pub struct VerifyOtpResponse {
     pub user_id: Option<String>,
     pub is_new_user: Option<bool>,
     pub needs_setup: Option<bool>,
+    /// The account still lists this device's committed key (`auth.ts:288`).
+    #[serde(default)]
+    pub known_device: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize)]

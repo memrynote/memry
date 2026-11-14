@@ -677,6 +677,82 @@ async fn signing_out_clears_every_entry() {
     assert_eq!(store.text(SecureStoreKey::DeviceSigningKey), None);
 }
 
+/// A sign-out from a state with no `SignedOutByUser` edge is refused before it
+/// touches the store: the attempt keeps its setup token and stays where it was.
+#[tokio::test]
+async fn a_sign_out_without_an_edge_leaves_the_store_and_the_state_alone() {
+    let mut script = sign_in_script("jti-1");
+    script.truncate(2);
+    let transport = FakeTransport::new(script);
+    let store = FakeSecureStore::new();
+    let session = session(transport.clone(), store.clone());
+    session
+        .request_email_code("kaan@example.com".to_string())
+        .await
+        .unwrap();
+    session
+        .verify_email_code("123456".to_string())
+        .await
+        .unwrap();
+    assert_eq!(session.state(), AuthState::SetupPending);
+
+    assert!(matches!(
+        session.sign_out().await.unwrap_err(),
+        AuthError::InvalidState { .. }
+    ));
+
+    assert_eq!(session.state(), AuthState::SetupPending);
+    assert!(store.text(SecureStoreKey::SetupToken).is_some());
+    assert!(
+        store
+            .get(SecureStoreKey::DeviceSigningKey)
+            .unwrap()
+            .is_some()
+    );
+    // The attempt keeps its nonce, so registration still presents it.
+    transport.push(response(
+        200,
+        r#"{"success":true,"deviceId":"device-1","accessToken":"access-1","refreshToken":"refresh-1"}"#,
+    ));
+    assert_eq!(
+        session.register_device().await.unwrap(),
+        AuthState::Registered
+    );
+    let body = body_json(&transport.calls()[2]);
+    assert!(body["sessionNonce"].is_string(), "{body}");
+}
+
+/// `knownDevice`, `needsSetup` and `isNewUser` reach the shell with the state,
+/// as Electron's verify handler reads them (`auth-device-handlers.ts:316-339`).
+#[tokio::test]
+async fn a_verified_code_reports_what_the_server_knows_about_the_device() {
+    let transport = FakeTransport::new(vec![
+        response(200, r#"{"success":true,"expiresIn":600}"#),
+        response(
+            200,
+            &format!(
+                r#"{{"success":true,"setupToken":"{}","isNewUser":false,"needsSetup":false,"knownDevice":true}}"#,
+                setup_token("jti-1")
+            ),
+        ),
+    ]);
+    let session = session(transport, FakeSecureStore::new());
+    session
+        .request_email_code("kaan@example.com".to_string())
+        .await
+        .unwrap();
+
+    let (state, answer) = session
+        .verify_email_code_answer("123456".to_string())
+        .await
+        .unwrap();
+
+    assert_eq!(state, AuthState::SetupPending);
+    assert_eq!(answer.known_device, Some(true));
+    assert_eq!(answer.needs_setup, Some(false));
+    assert_eq!(answer.is_new_user, Some(false));
+}
+
 #[tokio::test]
 async fn revocation_clears_the_session_before_it_is_shown() {
     let (session, _transport, store) = registered(vec![]).await;
