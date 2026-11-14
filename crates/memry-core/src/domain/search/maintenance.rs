@@ -33,6 +33,8 @@ use crate::api::errors::StorageError;
 use crate::crdt::blocks::extract_blocks;
 use crate::crdt::update_log::LOCAL_NAMESPACE_PREFIX;
 use crate::domain::body_tags;
+#[cfg(feature = "markdown")]
+use crate::domain::file_text;
 use crate::domain::wiki_target::{WikiNames, settle_name_keys};
 use crate::storage::repositories::StoredPayload;
 use crate::storage::repositories::projectors::{self, strings, text};
@@ -326,7 +328,7 @@ fn index_note_rows(
             params![
                 id,
                 title,
-                body_text(data, id, now_ms)?,
+                note_content(data, index, id, now_ms)?,
                 strings(&view, "tags").join(" "),
             ],
         )
@@ -334,6 +336,62 @@ fn index_note_rows(
     index_links(data, names, index, id)?;
     done.notes_indexed += 1;
     Ok(())
+}
+
+/// A note's searchable `content`: its body, then the text read out of its files
+/// (`extracted_text`). A filed PDF or image has no body, so its content is the
+/// text alone, as Electron's `withAttachmentText` and `syncExtractedTextEntry`
+/// write it (`search-projector.ts:64-77`).
+fn note_content(
+    data: &Connection,
+    index: &Connection,
+    id: &str,
+    now_ms: i64,
+) -> Result<String, StorageError> {
+    let body = body_text(data, id, now_ms)?;
+    // iOS reads no file text, so its index holds none.
+    #[cfg(not(feature = "markdown"))]
+    let _ = index;
+    #[cfg(not(feature = "markdown"))]
+    let extracted = String::new();
+    #[cfg(feature = "markdown")]
+    let extracted = file_text::extracted_text_for_note(index, id)?;
+    Ok(match (body.is_empty(), extracted.is_empty()) {
+        (_, true) => body,
+        (true, false) => extracted,
+        (false, false) => format!("{body}\n\n{extracted}"),
+    })
+}
+
+/// Rewrites the `content` of one note's `fts_notes` row after the text read out
+/// of its files changed, which moves no `data.db` stamp and so no watermark
+/// (Electron's `note.text-extracted`, `search-projector.ts:576-585`). Title,
+/// tags and links stay as the last reindex wrote them, and a note the index has
+/// no row for is left to the reindex that writes it. `true` when a row changed.
+#[cfg(feature = "markdown")]
+pub fn refresh_note_text(
+    data: &Connection,
+    index: &Connection,
+    id: &str,
+    now_ms: i64,
+) -> Result<bool, StorageError> {
+    let indexed: bool = index
+        .query_row(
+            "SELECT EXISTS (SELECT 1 FROM fts_notes WHERE id = ?1)",
+            params![id],
+            |row| row.get(0),
+        )
+        .map_err(failed)?;
+    if !indexed {
+        return Ok(false);
+    }
+    index
+        .execute(
+            "UPDATE fts_notes SET content = ?2 WHERE id = ?1",
+            params![id, note_content(data, index, id, now_ms)?],
+        )
+        .map_err(failed)?;
+    Ok(true)
 }
 
 /// Projects one note's outgoing wiki links into `note_links` (N800).

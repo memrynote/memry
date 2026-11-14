@@ -35,6 +35,9 @@ mod api_notes_write;
 mod api_search;
 #[path = "api_search_cjk.rs"]
 mod api_search_cjk;
+#[cfg(feature = "markdown")]
+#[path = "api_search_file_text.rs"]
+mod api_search_file_text;
 #[path = "api_sync_declaration.rs"]
 mod api_sync_declaration;
 #[path = "api_sync_oversized_update.rs"]

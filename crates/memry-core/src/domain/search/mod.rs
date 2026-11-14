@@ -91,6 +91,8 @@ pub use literal_links::steps as literal_link_steps;
 pub(crate) use body_cache::body_version;
 pub use filter::{ModifiedRange, SearchFilter, SearchType};
 pub use inbox::{INBOX_RANK, INBOX_WATERMARK_KEY};
+#[cfg(feature = "markdown")]
+pub use maintenance::refresh_note_text;
 pub use maintenance::{
     DATA_VERSION_KEY, NOTES_WATERMARK_KEY, Reindexed, STAMPS_KEY, TASKS_WATERMARK_KEY, reindex,
     reindex_until,
