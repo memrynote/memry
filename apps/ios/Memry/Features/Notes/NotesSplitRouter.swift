@@ -186,28 +186,17 @@ struct NotesLink<Value: NotesSplitRoute, Label: View>: View {
 /// A list of notes that, inside the split view, selects the note a row links
 /// to instead of pushing it. Rows keep their `NavigationLink(value:)`: a value
 /// link in a list whose selection has the link's type sets the selection.
-/// There ↑ ↓ select the next note, which shows it in the detail column, as a
-/// row's tap does (#4355).
 struct NotesList<Content: View>: View {
-    /// The note rows' ids, in the order the list draws them.
-    let noteIds: [String]
     @ViewBuilder let content: () -> Content
     @Environment(NotesSplitRouter.self) private var split: NotesSplitRouter?
 
     var body: some View {
         if let split {
             List(selection: Binding(get: { split.note }, set: { split.select($0) })) { content() }
-                .background {
-                    ListKeys(ids: noteIds, current: split.note?.id, move: open, open: open)
-                }
         } else {
             List { content() }
         }
     }
-}
-
-extension NotesList {
-    private func open(_ id: String) { split?.select(NoteRoute(id: id)) }
 }
 
 extension View {

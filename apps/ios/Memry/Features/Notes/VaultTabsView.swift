@@ -74,7 +74,6 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
     @State private var showsSearch = false
     /// Quick capture: Home's "+" and ⇧⌘N open the same sheet from here.
     @State private var capturing = false
-    @State private var captureReceipt: CaptureReceipt?
     @Environment(\.quickCapture) private var capture
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.verticalSizeClass) private var verticalSizeClass
@@ -149,13 +148,13 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
                     kinds: CaptureKind.allCases.filter(\.isShown),
                     capture: capture,
                     draft: capture.homeDraft
-                ) { captureReceipt = $0 }
+                ) { capture.receipt = $0 }
             }
         }
-        .task(id: captureReceipt) {
-            guard captureReceipt != nil else { return }
+        .task(id: capture?.receipt) {
+            guard capture?.receipt != nil else { return }
             try? await Task.sleep(for: .seconds(4))
-            captureReceipt = nil
+            capture?.receipt = nil
         }
         .sheet(isPresented: searchShown(.compact)) { searchView(.sheet) }
         // D3: a palette over the window at regular width (#4426).
@@ -268,7 +267,7 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
 
     /// A capture's "View": the item on its page.
     private func open(_ receipt: CaptureReceipt) {
-        captureReceipt = nil
+        capture?.receipt = nil
         switch receipt.kind {
         case .inbox: inboxRouter.openItem(receipt.id, in: router)
         case .task: router.openTask(receipt.id)
@@ -281,11 +280,8 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
     /// its "+".
     private func shown(_ page: VaultTab) -> some View {
         content(page).overlay(alignment: .bottom) {
-            if page != .home, let captureReceipt {
-                CaptureToast(receipt: captureReceipt) { open(captureReceipt) }
-                    .frame(maxWidth: Tokens.Size.form)
-                    .padding(.horizontal, Tokens.Space.inset)
-                    .padding(.bottom, Tokens.Space.medium)
+            if page != .home, let capture {
+                PageCaptureToast(capture: capture, open: open)
             }
         }
     }
@@ -294,13 +290,29 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
     /// is built in one place at a time.
     @ViewBuilder private func content(_ page: VaultTab) -> some View {
         switch page {
-        case .home: HomeTab(switchVault: switchVault, receipt: captureReceipt, capture: openCapture) { open($0) }
+        case .home: HomeTab(switchVault: switchVault, capture: openCapture) { open($0) }
         case .notes: notes()
         case .inbox: InboxTab(store: inboxStore)
         case .tasks: tasks()
         case .journal: journal()
         case .calendar: more().environment(\.shellPage, .calendar)
         case .more: more().environment(\.shellPage, .more)
+        }
+    }
+}
+
+/// ⇧⌘N's confirmation over a page. It reads the receipt in its own body: a
+/// tab's content at compact width does not redraw for the shell's state.
+private struct PageCaptureToast: View {
+    let capture: QuickCapture
+    let open: (CaptureReceipt) -> Void
+
+    var body: some View {
+        if let receipt = capture.receipt {
+            CaptureToast(receipt: receipt) { open(receipt) }
+                .frame(maxWidth: Tokens.Size.form)
+                .padding(.horizontal, Tokens.Space.inset)
+                .padding(.bottom, Tokens.Space.medium)
         }
     }
 }

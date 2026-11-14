@@ -132,5 +132,10 @@ final class KeyboardCommandsUITests: XCTestCase {
             Thread.sleep(forTimeInterval: 1)
         }
         XCTAssertTrue(notes.waitForExistence(timeout: 5), "the sidebar did not show")
+        // The system's "Hold ⌘" window takes the first ⌘ key after a launch on
+        // the simulator, and the keys after it while it comes in; ⌘1 (Home)
+        // spends it.
+        app.typeKey("1", modifierFlags: .command)
+        Thread.sleep(forTimeInterval: 3)
     }
 }

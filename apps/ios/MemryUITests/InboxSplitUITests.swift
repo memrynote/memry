@@ -48,31 +48,6 @@ final class InboxSplitUITests: XCTestCase {
         XCTAssertTrue(detailTitle(contains: older), "the detail column does not show the next item")
     }
 
-    /// #4355: ↓ and ↑ move the detail column's item through the list, and
-    /// Return opens the item they land on.
-    func testArrowKeysMoveTheSelectedItemAndReturnOpensIt() throws {
-        try openInbox()
-        let older = "[agent] \(run) older"
-        let newer = "[agent] \(run) newer"
-        addTeardownBlock { [self] in cleanUp() }
-        capture(older)
-        capture(newer)
-        let top = row(containing: newer)
-        let below = row(containing: older)
-        top.tap()
-        XCTAssertTrue(top.wait(for: \.isSelected, toEqual: true, timeout: 5))
-
-        app.typeKey(.downArrow, modifierFlags: [])
-        XCTAssertTrue(below.wait(for: \.isSelected, toEqual: true, timeout: 5), "↓ did not select the next item")
-        XCTAssertTrue(detailTitle(contains: older), "the detail column did not follow ↓")
-        app.typeKey(.upArrow, modifierFlags: [])
-        XCTAssertTrue(top.wait(for: \.isSelected, toEqual: true, timeout: 5), "↑ did not select the item above")
-        XCTAssertTrue(detailTitle(contains: newer), "the detail column did not follow ↑")
-        app.typeKey(.return, modifierFlags: [])
-        XCTAssertTrue(detailTitle(contains: newer), "Return lost the item")
-        XCTAssertTrue(top.isSelected)
-    }
-
     // MARK: Steps
 
     private func openInbox() throws {

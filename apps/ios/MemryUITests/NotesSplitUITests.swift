@@ -194,40 +194,7 @@ final class NotesSplitUITests: XCTestCase {
         deleteNotes([title])
     }
 
-    /// #4355: with no text being edited, ↓ and ↑ select the next note in the
-    /// list, which fills the detail column; inside the body they move the
-    /// caret instead.
-    func testArrowKeysMoveThroughTheList() throws {
-        try openNotes()
-        let first = "[agent] \(run) keys one"
-        let second = "[agent] \(run) keys two"
-        makeNote(first)
-        makeNote(second).typeText("Body")
-        app.typeKey(.upArrow, modifierFlags: [])
-        XCTAssertTrue(row(second).isSelected, "↑ in the body left the note")
-
-        row(first).tap()
-        XCTAssertTrue(page(first).waitForExistence(timeout: 10))
-        let firstIndex = noteRowIndex(first)
-        let secondIndex = noteRowIndex(second)
-        let delta = secondIndex > firstIndex ? XCUIKeyboardKey.downArrow : .upArrow
-        app.typeKey(delta, modifierFlags: [])
-        XCTAssertTrue(row(second).wait(for: \.isSelected, toEqual: true, timeout: 5), "the arrow did not select the next note")
-        XCTAssertTrue(page(second).waitForExistence(timeout: 10), "the detail column did not follow the arrow")
-        app.typeKey(delta == .downArrow ? .upArrow : .downArrow, modifierFlags: [])
-        XCTAssertTrue(row(first).wait(for: \.isSelected, toEqual: true, timeout: 5), "the arrow back did not select the first note")
-        app.typeKey(.return, modifierFlags: [])
-        XCTAssertTrue(page(first).waitForExistence(timeout: 10), "Return lost the note")
-
-        deleteNotes([first, second])
-    }
-
     // MARK: Helpers
-
-    /// Where a note row sits in the list, top to bottom.
-    private func noteRowIndex(_ title: String) -> CGFloat {
-        row(title).frame.minY
-    }
 
     /// Whether the folder tree has a column on screen. Its root row's label
     /// and icon share the identifier, so any hittable match counts.
