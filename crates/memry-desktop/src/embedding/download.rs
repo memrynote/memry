@@ -140,7 +140,7 @@ impl ModelSource {
                 continue;
             }
             self.fetch(file, &target, &mut meter).await?;
-            // `progress.status === 'done'` (embedding-worker.ts:132-134).
+            // `progress.status === 'done'` (embedding-worker.ts:147-149).
             progress(ModelProgress::new(
                 Phase::Loading,
                 95,
@@ -308,7 +308,7 @@ fn sha256_file(path: &Path) -> io::Result<String> {
 }
 
 /// Download progress across the whole group, weighted by size. Electron reports per chunk
-/// (`embedding-worker.ts:118-131`); this reports each whole percent once.
+/// (`embedding-worker.ts:133-145`); this reports each whole percent once.
 struct Meter<'a> {
     loaded: u64,
     total: u64,

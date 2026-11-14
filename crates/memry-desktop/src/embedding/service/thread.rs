@@ -141,7 +141,7 @@ fn serve(
     let engine = match engine {
         Some(engine) => engine,
         None => {
-            // embedding-worker.ts:107, :207-210, :214-216.
+            // embedding-worker.ts:123, :259, :265.
             progress(ModelProgress::new(
                 Phase::Loading,
                 0,

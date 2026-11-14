@@ -1,5 +1,5 @@
 //! The model-load circuit breaker of Electron's `EmbeddingModelBridge`
-//! (`apps/desktop/src/main/lib/embeddings.ts:131-143, 246-262, 683-728`). A failed load is
+//! (`apps/desktop/src/main/lib/embeddings.ts:151-152, 558-600`). A failed load is
 //! almost always the download failing, so it is retried on a widening schedule, 60 s, 2 min,
 //! 4 min, 8 min, and the fifth consecutive failure stops loads for the app session (#803, #840).
 //! Enabling AI, a manual load or a rebuild clears it ([`Breaker::clear`]).
@@ -70,7 +70,7 @@ impl Breaker {
 mod tests {
     use super::*;
 
-    /// embeddings.ts:131-143: 60 s, 2 min, 4 min, 8 min, then no more attempts; never a 16 min
+    /// embeddings.ts:574-595: 60 s, 2 min, 4 min, 8 min, then no more attempts; never a 16 min
     /// wait.
     #[test]
     fn delays_double_four_times_then_loads_stop_for_the_session() {

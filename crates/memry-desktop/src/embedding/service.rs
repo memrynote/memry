@@ -1,12 +1,12 @@
 //! `EmbeddingService`: the text model's owner, a port of Electron's `EmbeddingModelBridge`
 //! (`apps/desktop/src/main/lib/embeddings.ts`) without its utility process. One OS thread,
 //! `memry-embed`, owns the loaded model and serves one request at a time. It starts on the first
-//! request (`start`, embeddings.ts:579-647), loads the model (downloading it first) on the first
+//! request (`start`, embeddings.ts:606-673), loads the model (downloading it first) on the first
 //! request it serves, and exits with the model 30 s after its last request
-//! (`IDLE_SHUTDOWN_MS`, :846-856). A request waits at most 15 min, the download included
-//! (`REQUEST_TIMEOUT_MS`, :805-811). ONNX Runtime runs in this process, so a panic in a load or
+//! (`IDLE_SHUTDOWN_MS`, :931-950). A request waits at most 15 min, the download included
+//! (`REQUEST_TIMEOUT_MS`, :133). ONNX Runtime runs in this process, so a panic in a load or
 //! an inference is caught per request and counted the way the bridge counts a worker crash
-//! (`failProcess`, :827-841). Failed loads back off through [`Breaker`].
+//! (`failProcess`, :820-835). Failed loads back off through [`Breaker`].
 //!
 //! The model itself is a [`ModelLoader`]: the app's loader downloads the pinned files through
 //! [`super::download::ModelSource`] and loads `memry_ml::EmbeddingEngine`.
@@ -45,7 +45,7 @@ pub enum Phase {
     Error,
 }
 
-/// One `settings:embeddingProgress` event of the text model (embeddings.ts:198-210).
+/// One `settings:embeddingProgress` event of the text model (embeddings.ts:206-218).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ModelProgress {
     pub phase: Phase,
@@ -245,7 +245,7 @@ impl EmbeddingService {
             }
             Ok(Reply::Loaded) | Err(Fault::Retired | Fault::TimedOut) => None,
             Err(Fault::Panicked(message)) => {
-                // The thread dropped the model: the bridge's crashed worker (:308-316).
+                // The thread dropped the model: the bridge's crashed worker (:709-735).
                 state.loaded = false;
                 state.loading = false;
                 tracing::error!(scope = "Embeddings", "Generation failed: {message}");

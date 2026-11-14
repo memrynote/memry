@@ -213,7 +213,7 @@ fn text_under_ten_units_after_a_js_trim_never_loads_the_model() {
     assert_eq!(c.loads(), 0);
 }
 
-/// embeddings.ts:246-262: a failed load surfaces as the error event and the status error, and
+/// embeddings.ts:304-340: a failed load surfaces as the error event and the status error, and
 /// the next load inside the backoff never reaches the model, until AI is enabled again.
 #[test]
 fn a_failed_load_backs_off_until_the_failure_is_reset() {
@@ -253,7 +253,7 @@ fn a_panic_in_inference_is_caught_and_the_model_is_loaded_again() {
     assert!(!c.service.status().loaded);
     assert_eq!(c.script.dropped.load(Ordering::SeqCst), 1);
 
-    // The crash feeds the backoff (embeddings.ts:308-316); enabling AI again clears it.
+    // The crash feeds the backoff (embeddings.ts:820-835); enabling AI again clears it.
     assert_eq!(c.service.embed(TEXT), None);
     c.service.reset_failure();
     assert!(c.service.embed(TEXT).is_some());
@@ -272,7 +272,7 @@ fn a_panic_while_loading_is_caught_as_a_load_failure() {
     assert!(!c.service.load(), "backing off");
 }
 
-/// `REQUEST_TIMEOUT_MS` (embeddings.ts:805-811): the caller gets its answer at the deadline, the
+/// `REQUEST_TIMEOUT_MS` (embeddings.ts:133, 820-835): the caller gets its answer at the deadline, the
 /// failure feeds the backoff, and the stuck thread is let go.
 #[test]
 fn a_request_past_its_deadline_fails_and_lets_the_stuck_thread_go() {
@@ -345,7 +345,7 @@ fn closing_the_vault_cancels_the_download() {
     });
 }
 
-/// `IDLE_SHUTDOWN_MS` (embeddings.ts:846-856): the model is dropped after the idle time and the
+/// `IDLE_SHUTDOWN_MS` (embeddings.ts:931-950): the model is dropped after the idle time and the
 /// next request loads it again.
 #[test]
 fn an_idle_model_is_dropped_and_loaded_again_on_the_next_request() {
