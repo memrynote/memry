@@ -184,6 +184,7 @@ final class NotesSplitUITests: XCTestCase {
     /// (⌘. on the simulator) closes it.
     func testCommandKOpensThePaletteFromTheEditor() throws {
         try openNotes()
+        app.primeCommandKeys()
         let title = "[agent] \(run) editing"
         makeNote(title).typeText("Body")
         app.typeKey("k", modifierFlags: .command)
