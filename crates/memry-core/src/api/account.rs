@@ -20,6 +20,7 @@
 
 use crate::api::auth::AuthSession;
 use crate::api::errors::{ApiError, AuthError};
+use crate::crypto::vault_name::SealedText;
 use crate::protocol::account::{self, KeyMaterial, VaultSummary};
 use crate::protocol::account_admin::{self, AccountDevice, BillingStatus, StorageUsage};
 
@@ -127,5 +128,20 @@ impl AuthSession {
     /// `DELETE /sync/vaults/:id`: removes the vault from the account.
     pub async fn delete_vault(&self, vault_id: String) -> Result<(), ApiError> {
         account_admin::delete_vault(&self.http(), &vault_id).await
+    }
+}
+
+/// Desktop-only calls, kept out of the UniFFI surface until a shell needs them.
+impl AuthSession {
+    /// `PUT /sync/vaults/:vaultId/icon`: `Some` is an icon sealed by
+    /// [`crate::api::crypto::encrypt_vault_icon`], `None` a reset to the
+    /// default. `Ok(false)` means the server already holds a newer change.
+    pub async fn set_vault_icon(
+        &self,
+        vault_id: &str,
+        icon: Option<&SealedText>,
+        icon_updated_at: i64,
+    ) -> Result<bool, ApiError> {
+        account_admin::set_vault_icon(&self.http(), vault_id, icon, icon_updated_at).await
     }
 }

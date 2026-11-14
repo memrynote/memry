@@ -90,6 +90,9 @@ fn read_vault_transfer(plaintext: &[u8]) -> Result<Vec<VaultSummary>, LinkingErr
                     name: None,
                     encrypted_name: None,
                     name_nonce: None,
+                    encrypted_icon: None,
+                    icon_nonce: None,
+                    icon_updated_at: None,
                 })
                 .ok_or_else(|| LinkingError::InvalidVaultTransfer {
                     what: "a vault row carries no vaultUuid".into(),
@@ -114,12 +117,18 @@ mod tests {
                     name: None,
                     encrypted_name: None,
                     name_nonce: None,
+                    encrypted_icon: None,
+                    icon_nonce: None,
+                    icon_updated_at: None,
                 },
                 VaultSummary {
                     id: "v2".into(),
                     name: None,
                     encrypted_name: None,
                     name_nonce: None,
+                    encrypted_icon: None,
+                    icon_nonce: None,
+                    icon_updated_at: None,
                 },
             ]
         );
