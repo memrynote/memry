@@ -133,7 +133,9 @@ final class NotesSplitUITests: XCTestCase {
         attach("column-shown")
 
         sidebarRow("Journal").tap()
-        XCTAssertTrue(app.descendants(matching: .any)["journal.day"].waitForExistence(timeout: 10), "the Journal did not open")
+        // Whichever level the Journal was left on.
+        let journal = app.descendants(matching: .any).matching(NSPredicate(format: "identifier IN {'journal.day', 'journal.month', 'journal.year'}"))
+        XCTAssertTrue(journal.firstMatch.waitForExistence(timeout: 10), "the Journal did not open")
         sidebarRow("Notes").tap()
         XCTAssertTrue(page(title).waitForExistence(timeout: 10))
         Thread.sleep(forTimeInterval: 1)
