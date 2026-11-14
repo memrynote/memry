@@ -17,6 +17,8 @@ struct MemryApp: App {
                     DeepLinkTelemetry.opened(url)
                     if let link = CalendarLink(url: url) { CalendarLinks.shared.request(link) }
                 }
+                // Handoff from another device (#4381), held the same way.
+                .onContinueUserActivity(HandoffActivity.type) { HandoffLinks.shared.request($0) }
         }
         .commands { MemryCommands() }
     }

@@ -4,167 +4,37 @@ import Observation
 import SwiftUI
 
 // TP031. The Tasks tab: one navigation stack over the task list, with routes
-// to a task, a project hub, the projects list and the task settings.
-//
-// **Opening a task by id** (search results, a task block in a note, a reminder
-// notification) goes through ``TasksRouter``: it selects the Tasks tab and
-// replaces the stack with that task's detail. A task that no longer exists
-// opens a sensible "not in this vault" state inside the detail rather than
-// crashing or showing a ghost (FR-061).
-
-/// A place inside the Tasks tab.
-enum TasksRoute: Hashable, Codable, Sendable {
-    case task(String)
-    /// A task's subtasks as their own screen (#2868).
-    case branch(String)
-    case project(String)
-    case projects
-    case settings
-
-    /// Screens with a floating "+" show the toast beside it themselves.
-    var placesOwnToast: Bool {
-        if case .project = self { return true }
-        return false
-    }
-}
-
-/// The vault shell's pages, so a route can switch to one. Raw values match
-/// desktop's rail ids (`sidebar.railOrder`) and the saved launch tab.
-enum VaultTab: String, Hashable, Sendable {
-    case home, notes, inbox, tasks, journal, calendar
-    /// Menu: Settings, and the pages that did not fit the bar
-    /// (`VaultTabLayout`). The raw value predates the menu and stays, so a
-    /// saved launch tab still reads.
-    case more
-
-    @MainActor var isShown: Bool {
-        switch self {
-        case .home, .notes, .more: true
-        case .inbox: LocalSettings.shared.isOn(.inbox)
-        case .tasks: LocalSettings.shared.isOn(.tasks)
-        case .journal: LocalSettings.shared.isOn(.journal)
-        case .calendar: LocalSettings.shared.isOn(.calendar)
-        }
-    }
-}
-
-/// Cross-tab navigation into the Tasks tab.
-@MainActor
-@Observable
-final class TasksRouter {
-    var selectedTab: VaultTab = .notes
-    var path: [TasksRoute] = []
-    /// Settings' stack (spec 006 ST20): Settings routes, and the notes a
-    /// Settings page opens. As a stack, every page over the root list; as a
-    /// split view, the pages over `settingsPage` in the detail column.
-    var settingsPath = NavigationPath()
-    /// The root row Settings' split view selects (#4348). `nil`, or a row
-    /// the list does not show, shows the first row (`SettingsRootRows.page`).
-    var settingsPage: SettingsRoute?
-    /// Settings shows as a split view: the shell is at regular width.
-    private(set) var settingsSplit = false
-    /// The Calendar page's stack, wherever the page sits.
-    var calendarPath = NavigationPath()
-    /// ⌥⌘N asked for the task list's composer (`newTask`).
-    private(set) var composerRequested = false
-
-    /// The router for the vault ``LaunchSnapshot`` has open: the tab and the
-    /// Tasks stack the user left.
-    static func restored(from snapshot: LaunchSnapshot = .shared) -> TasksRouter {
-        let router = TasksRouter()
-        // A tab whose module was turned off since is not shown; stay on Notes.
-        if let tab = snapshot.tab.flatMap(VaultTab.init(rawValue:)), tab.isShown { router.selectedTab = tab }
-        router.path = snapshot.stack("tasks", as: [TasksRoute].self) ?? []
-        return router
-    }
-
-    /// Every "… › settings" entry point: Menu › Settings, that section, and
-    /// Back returns to the Settings root (flow lane 01).
-    /// In the split view, a root row's page is selected and a page under
-    /// one (Account › Devices) is pushed over its row's page.
-    func openSettings(_ route: SettingsRoute) {
-        selectedTab = .more
-        var path = NavigationPath()
-        if settingsSplit {
-            if route != .root { settingsPage = route.section }
-            if route != route.section { path.append(route) }
-        } else if route != .root {
-            path.append(route)
-        }
-        settingsPath = path
-    }
-
-    /// The shell changed width. The stack's root page carries over; a
-    /// `NavigationPath` cannot be read, so the pages over it do not, and a
-    /// stack's page is unknown to the split view, which keeps its selection.
-    func setSettingsSplit(_ split: Bool) {
-        guard split != settingsSplit else { return }
-        settingsSplit = split
-        var path = NavigationPath()
-        if !split, let settingsPage { path.append(settingsPage) }
-        settingsPath = path
-    }
-
-    /// Selects the Tasks tab and shows this task.
-    func openTask(_ id: String) {
-        selectedTab = .tasks
-        path = [.task(id)]
-    }
-
-    func open(_ route: TasksRoute) {
-        selectedTab = .tasks
-        path.append(route)
-    }
-
-    /// ⌥⌘N: the task list's composer, as its "+" opens it. The list takes
-    /// the request when it shows (`takeComposerRequest`).
-    func newTask() {
-        selectedTab = .tasks
-        path = []
-        composerRequested = true
-    }
-
-    /// Whether the list should open its composer, once.
-    func takeComposerRequest() -> Bool {
-        defer { composerRequested = false }
-        return composerRequested
-    }
-}
+// to a task, a project hub, the projects list and the task settings. At
+// regular width it is a split view instead (`TasksSplitView`, #4350). Both
+// read the one path on ``TasksRouter``.
 
 /// The Tasks tab's content for one opened vault.
 struct TasksRootView: View {
     let store: TasksStore
     @Environment(TasksRouter.self) private var router
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+
+    private var width: LayoutWidth {
+        LayoutWidth(horizontal: horizontalSizeClass, vertical: verticalSizeClass)
+    }
 
     var body: some View {
         @Bindable var router = router
-        NavigationStack(path: $router.path) {
-            TaskListScreen(store: store)
-                .navigationDestination(for: TasksRoute.self) { route in
-                    switch route {
-                    case let .task(id):
-                        TaskDetailView(taskId: id, store: store)
-                    case let .branch(id):
-                        TaskBranchView(parentId: id, store: store)
-                    case let .project(id):
-                        ProjectHubView(projectId: id, store: store)
-                    case .projects:
-                        ProjectsListView(store: store)
-                    case .settings:
-                        TaskSettingsView(store: store)
-                    }
+        Group {
+            if width == .regular {
+                TasksSplitView(store: store)
+            } else {
+                NavigationStack(path: $router.path) {
+                    TaskListScreen(store: store)
+                        .tasksDestinations(store: store)
                 }
-        }
-        // The list places its own toast beside the "+" (RD15); every pushed
-        // screen shows it here, over the tab bar.
-        .overlay(alignment: .bottom) {
-            // The hub places its own beside its "+" (RD18).
-            if let top = router.path.last, !top.placesOwnToast {
-                TasksToast(store: store)
-                    .padding(.horizontal, Tokens.Space.inset)
-                    .padding(.bottom, Tokens.Space.medium)
+                // The list places its own toast beside the "+" (RD15); every
+                // pushed screen shows it here, over the tab bar.
+                .tasksToast(store: store, over: router.path)
             }
         }
+        .onChange(of: width, initial: true) { _, width in router.setTasksSplit(width == .regular) }
         .subtaskPrompts(store: store)
         .repeatPrompts(store: store)
         .task {
@@ -175,6 +45,38 @@ struct TasksRootView: View {
         // while another tab showed: coming back re-reads it.
         .onChange(of: router.selectedTab) { _, tab in
             if tab == .tasks { Task { await store.refresh() } }
+        }
+    }
+}
+
+extension View {
+    /// Every page the Tasks tab pushes.
+    func tasksDestinations(store: TasksStore) -> some View {
+        navigationDestination(for: TasksRoute.self) { route in
+            switch route {
+            case let .task(id):
+                TaskDetailView(taskId: id, store: store)
+            case let .branch(id):
+                TaskBranchView(parentId: id, store: store)
+            case let .project(id):
+                ProjectHubView(projectId: id, store: store)
+            case .projects:
+                ProjectsListView(store: store)
+            case .settings:
+                TaskSettingsView(store: store)
+            }
+        }
+    }
+
+    /// The Undo toast over a pushed page. The list and the hub place their
+    /// own beside their "+" (RD15, RD18).
+    func tasksToast(store: TasksStore, over path: [TasksRoute]) -> some View {
+        overlay(alignment: .bottom) {
+            if let top = path.last, !top.placesOwnToast {
+                TasksToast(store: store)
+                    .padding(.horizontal, Tokens.Space.inset)
+                    .padding(.bottom, Tokens.Space.medium)
+            }
         }
     }
 }

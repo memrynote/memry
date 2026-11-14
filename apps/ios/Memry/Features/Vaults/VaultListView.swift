@@ -97,6 +97,7 @@ struct VaultListView: View {
                         // Settings spec: More › Settings, built next to the tasks store.
                         MoreTabView(context: settings, browse: browse)
                     })
+                    .environment(\.handoffVaultId, summary.id)
                 }
             }
             }
