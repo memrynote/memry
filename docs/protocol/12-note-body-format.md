@@ -88,15 +88,8 @@ markdown parse and export.
   runs `prepareFragmentSeed` (`:586`), which takes writing tools markers, CriticMarkup and link
   reference definitions out of the text before the parse, then `applyFragmentSeed` (`:636`),
   which writes the blocks and those side channels, then `recordMarkdownSourceInYDoc` (`:690`).
-  `prepareFragmentSeed` turns each `((mention:…))` token that serializes back to its own bytes
-  into a `linkMention` node with only `url` and `domain` set (`:610`). A token an older build
-  wrote with `_ * ! ~ '` raw stays text, and the editor promotes it on open. The Rust converter's
-  `prepare_fragment_seed` does the same (`crates/memry-core/src/markdown/convert/seed.rs:76`,
-  `crates/memry-core/src/markdown/schema/link_mention_normalize.rs:37`, `:135`). A build from
-  before this reads the node as the `linkMention` its schema already holds and writes it back with
-  `serializeLinkMentionToken`, which gives the token's own bytes, because only a token that
-  serializes to itself is promoted. The core's `markdown_seed` keeps a line holding a token as
-  literal text (§12.1.0).
+  The seed promotes link mention tokens as §12.1.1.1 says. The core's `markdown_seed` keeps a
+  line holding a token as literal text (§12.1.0).
 - **Outbound**, the vault write-back calls `serializeNoteBody`
   (`apps/desktop/src/main/sync/crdt-writeback.ts:603`,
   `apps/desktop/src/main/sync/writing-markdown.ts:430`). It runs `yDocToMarkdown`
@@ -109,6 +102,40 @@ The renderer and main build their block and inline specs from one factory (§12.
 grammar of §12.6 and §12.7 is the same in both. **The out-of-band layer of §12.8 runs only on
 desktop.** `markdown_seed` does not encode it: CriticMarkup and link reference definitions send
 the whole text to literal paragraphs (§12.1.0).
+
+#### 12.1.1.1 Link mentions are promoted at seed
+
+**Normative.** `prepareFragmentSeed` promotes every `((mention:…))` token
+(`apps/desktop/src/main/sync/blocknote-converter.ts:612`,
+`packages/editor-schema/src/inline/link-mention-normalize.ts:17-64`), and so does the Rust
+converter's `prepare_fragment_seed` (`crates/memry-core/src/markdown/convert/seed.rs:76`,
+`crates/memry-core/src/markdown/schema/link_mention_normalize.rs:145`):
+
+- A token is a match of `MENTION_TOKEN_REGEX`
+  (`packages/editor-schema/src/inline/link-mention.ts:28`) in a text run of any block except a
+  `codeBlock`, table cells and nested blocks included, whose payload `parseLinkMentionToken`
+  (`:81`, ported as `crates/memry-core/src/markdown/schema/link_mention_normalize.rs:38`)
+  accepts. Accepted payloads include the legacy ones: `_ * ! ~ '` raw, as builds before #1844
+  wrote them, and a stray whitespace or remark backslash, which the parse strips. A token inside
+  a link label stays text.
+- The token becomes a `linkMention` node with `url` set to the parsed URL and `domain` set to
+  the URL's hostname with its first `www.` removed, or to the URL itself when it does not parse.
+  `title`, `favicon` and `siteName` stay empty; the editor fills them in on open.
+- Text before and after the token stays in the run, with the run's styles.
+
+The node serializes in the closed alphabet (§12.7), so a legacy token cannot come back from the
+node alone: `a_b` and `a%5Fb` decode to the same URL. The source record (§12.10) keeps the file's
+bytes while the paragraph holding the token is unedited, edits in other blocks included. When
+that paragraph is edited, or the doc has no record, the token is written re-encoded. The
+`legacy link mention token` cases of the `markdown-roundtrip` vectors pin both outcomes. A build
+before #4478 re-encodes a legacy token once, on its next write-back of a doc this build seeded;
+the URL does not change.
+
+Desktop's seed MUST promote exactly these tokens. A token a seed leaves as text is promoted by
+each device's editor on open, and two devices doing that before they sync merge two chips per
+mention (#3871, #4478). The core's `markdown_seed` keeps every token as text (§12.1.0), so a
+body it seeds reaches desktop with its tokens unpromoted and the #3871 race remains for those
+bodies.
 
 ### 12.1.2 What this means for a non-desktop client
 

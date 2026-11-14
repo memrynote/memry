@@ -4,7 +4,7 @@
     "oracle": "apps/desktop/scripts/markdown-oracle (Electron converter run in place; gray-matter 4.0.3, js-yaml 3.15.1)",
     "note": "BlockNote 0.54.2 markdownToHtml (the hand-written parser that replaced remark): markdown in, HTML string out, byte for byte. Sources: a hand-written grammar covering every branch, the 275 markdown-roundtrip cases and the 288 expanded fuzz cases.",
     "yamlJsonEncoding": "Numbers that JSON cannot carry are {\"$num\": \"NaN\"|\"Infinity\"|\"-Infinity\"|\"-0\"}, a Date is {\"$date\": ISO}, a Buffer is {\"$bin\": base64}, a map with a \"$\"-prefixed key is wrapped as {\"$map\": {...}}. Key order is Object.keys order.",
-    "caseCount": 833
+    "caseCount": 836
   },
   "cases": [
     {
@@ -3118,6 +3118,39 @@
       "expected": {
         "status": "ok",
         "output": "<p>Intro ((mention:https%3A%2F%2Fexample.com%2F%21%5Fbang%2Fx.y%5F%7Ez)) outro.</p>"
+      }
+    },
+    {
+      "id": "md-html/md-to-html/rt-legacy-link-mention-token-with-a-raw-undersco",
+      "op": "md-to-html",
+      "input": {
+        "markdown": "Intro ((mention:https%3A%2F%2Fexample.com%2Fa_b)) outro."
+      },
+      "expected": {
+        "status": "ok",
+        "output": "<p>Intro ((mention:https%3A%2F%2Fexample.com%2Fa_b)) outro.</p>"
+      }
+    },
+    {
+      "id": "md-html/md-to-html/rt-two-legacy-link-mention-tokens-with-raw",
+      "op": "md-to-html",
+      "input": {
+        "markdown": "See ((mention:https%3A%2F%2Fx.test%2Fa*b_c'd)) and ((mention:https%3A%2F%2Fx.test%2Fe*f~g!)) here."
+      },
+      "expected": {
+        "status": "ok",
+        "output": "<p>See ((mention:https%3A%2F%2Fx.test%2Fa<em>b_c'd)) and ((mention:https%3A%2F%2Fx.test%2Fe</em>f~g!)) here.</p>"
+      }
+    },
+    {
+      "id": "md-html/md-to-html/rt-legacy-link-mention-token-with-a-stray-space",
+      "op": "md-to-html",
+      "input": {
+        "markdown": "Intro ((mention:https%3A%2F%2Fx.test%2Fpage )) outro."
+      },
+      "expected": {
+        "status": "ok",
+        "output": "<p>Intro ((mention:https%3A%2F%2Fx.test%2Fpage )) outro.</p>"
       }
     },
     {

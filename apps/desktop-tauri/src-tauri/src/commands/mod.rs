@@ -23,6 +23,7 @@ pub mod locale;
 pub mod logging;
 pub mod notes;
 pub mod notes_versions;
+pub mod ocr_languages;
 pub mod portals;
 pub mod properties;
 pub mod property_definitions;

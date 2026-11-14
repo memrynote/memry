@@ -26,6 +26,7 @@ pub mod paths;
 pub mod redact;
 pub mod registry;
 pub mod seams;
+pub mod services;
 pub mod session;
 pub mod settings;
 pub mod shell;
