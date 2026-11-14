@@ -6,11 +6,53 @@ use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 
 use crate::api::errors::{ApiError, AuthError};
-use crate::protocol::auth::{AuthRoutes, VerifyOtpRequest, VerifyOtpResponse};
+use crate::protocol::auth::{AuthRoutes, VerifyOtpRequest, VerifyOtpResponse, random_nonce};
 
 use super::{AuthEvent, AuthSession, AuthState, PendingSignIn, state_name};
 
 impl AuthSession {
+    /// [`Self::request_email_code`] with the code's lifetime in seconds
+    /// (`expiresIn`), which the shell's countdown shows. Rust-only.
+    pub async fn request_email_code_answer(
+        &self,
+        email: String,
+    ) -> Result<(AuthState, Option<u64>), AuthError> {
+        let next = self.apply(
+            AuthEvent::OtpRequested {
+                email: email.clone(),
+            },
+            "request an email code",
+        )?;
+        {
+            let mut pending = self.pending.lock().unwrap_or_else(|e| e.into_inner());
+            pending.email = Some(email.clone());
+            pending.session_nonce = Some(random_nonce());
+        }
+        match AuthRoutes::request_otp(&self.http, &email).await {
+            Ok(answer) => Ok((next, answer.expires_in)),
+            Err(error) => {
+                self.apply(AuthEvent::SignInFailed, "fail a sign-in")?;
+                Err(error.into())
+            }
+        }
+    }
+
+    /// [`Self::resend_email_code`] with the new code's lifetime in seconds,
+    /// `None` when the server does not say. Rust-only.
+    pub async fn resend_email_code_answer(&self) -> Result<Option<u64>, AuthError> {
+        let email = {
+            let pending = self.pending.lock().unwrap_or_else(|e| e.into_inner());
+            pending.email.clone()
+        };
+        let Some(email) = email else {
+            return Err(AuthError::InvalidState {
+                action: "resend an email code".to_string(),
+                state: state_name(&self.state_now()),
+            });
+        };
+        Ok(AuthRoutes::resend_otp(&self.http, &email).await?)
+    }
+
     /// [`Self::verify_email_code`] with the server's answer: `needsSetup`,
     /// `knownDevice` and `isNewUser` decide which screen follows. Rust-only;
     /// the setup token in the answer is already stored and is never returned

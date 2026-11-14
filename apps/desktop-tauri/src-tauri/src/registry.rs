@@ -20,6 +20,16 @@ pub fn builder() -> Builder<Wry> {
         // One type per struct: the renderer reads `StartupState` and never writes it.
         .disable_serde_phases()
         .commands(collect_commands![
+            // account
+            crate::commands::account::account_get_info,
+            crate::commands::account::auth_refresh_token,
+            crate::commands::account::auth_request_otp,
+            crate::commands::account::auth_resend_otp,
+            crate::commands::account::auth_verify_otp,
+            crate::commands::account::sync_confirm_recovery_phrase,
+            crate::commands::account::sync_get_recovery_phrase,
+            crate::commands::account::sync_link_via_recovery,
+            crate::commands::account::sync_setup_new_account,
             // agent
             crate::commands::agent::agent_get_local_provider_settings::<Wry>,
             crate::commands::agent::agent_list_local_models::<Wry>,
@@ -291,6 +301,9 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::shell::window_toggle_maximize,
         ])
         .events(collect_events![
+            // account
+            crate::events::AuthOtpDetectedEvent,
+            crate::events::AuthSessionRefreshedEvent,
             // ai
             crate::events::AiInlineSettingsChangedEvent,
             // app

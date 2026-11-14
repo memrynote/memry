@@ -3,6 +3,7 @@
 //! of Electron's `sync/device-registration.ts:285-327`.
 
 use std::collections::{HashMap, VecDeque};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -17,6 +18,10 @@ use memry_core::seams::transport::{
 use memry_desktop::account::otp_clipboard::{OtpClipboardWatch, POLL, TIMEOUT};
 use memry_desktop::account::{AccountError, AccountService, device};
 use memry_desktop::registry::config::AppConfig;
+use memry_desktop::seams::transport::NativeTransport;
+use memry_desktop::telemetry::ios_beta::{self, IosBetaJoinInput, IosBetaSource};
+use memry_desktop::telemetry::report::{self, FeedbackSubmit};
+use memry_desktop::telemetry::service::{Context, Sender, Service};
 use serde_json::{Value, json};
 
 const MASTER: [u8; 32] = [9; 32];
@@ -25,6 +30,8 @@ const MASTER: [u8; 32] = [9; 32];
 struct Script {
     answers: Mutex<VecDeque<(u16, String)>>,
     paths: Mutex<Vec<String>>,
+    /// The `authorization` header of each request, by path.
+    bearers: Mutex<Vec<(String, Option<String>)>>,
 }
 
 #[async_trait::async_trait]
@@ -35,6 +42,10 @@ impl Transport for Script {
             .trim_start_matches("https://sync.test")
             .to_owned();
         self.paths.lock().unwrap().push(path.clone());
+        self.bearers
+            .lock()
+            .unwrap()
+            .push((path.clone(), request.headers.get("authorization").cloned()));
         let (status, body) = self
             .answers
             .lock()
@@ -81,11 +92,14 @@ impl Script {
 struct Keychain {
     items: Mutex<HashMap<SecureStoreKey, Vec<u8>>>,
     master_locked: bool,
+    access_locked: AtomicBool,
 }
 
 impl SecureStore for Keychain {
     fn get(&self, key: SecureStoreKey) -> Result<Option<Vec<u8>>, SecureStoreError> {
-        if self.master_locked && key == SecureStoreKey::MasterKey {
+        if (self.master_locked && key == SecureStoreKey::MasterKey)
+            || (key == SecureStoreKey::AccessToken && self.access_locked.load(Ordering::SeqCst))
+        {
             return Err(SecureStoreError::Locked);
         }
         Ok(self.items.lock().unwrap().get(&key).cloned())
@@ -372,19 +386,77 @@ async fn a_phrase_that_is_not_the_accounts_registers_nothing() {
     assert!(!f.keychain.has(SecureStoreKey::MasterKey));
 }
 
+/// Sends feedback and a beta join with the account's bearer, and returns the `authorization`
+/// header both carried.
+async fn send_both(f: &Fixture, telemetry: &Service) -> Option<String> {
+    f.script.answer(200, json!({ "success": true }));
+    f.script.answer(200, json!({ "success": true }));
+    let bearer = f.service.access_token_if_signed_in().await;
+    let feedback = FeedbackSubmit {
+        message: "hi".into(),
+        email: None,
+        app_version: None,
+        platform: None,
+    };
+    let url = "https://sync.test/feedback";
+    let sent = report::submit_feedback(&*f.script, url, feedback, bearer.as_deref()).await;
+    assert!(sent.success, "{sent:?}");
+    let input = IosBetaJoinInput {
+        email: "me@example.com".into(),
+        source: IosBetaSource::Settings,
+    };
+    let url = "https://sync.test/ios-beta/join";
+    let joined = ios_beta::join(&*f.script, url, input, telemetry, bearer.as_deref()).await;
+    assert!(joined.success, "{joined:?}");
+    let bearers = f.script.bearers.lock().unwrap();
+    let [feedback, join] = &bearers[bearers.len() - 2..] else {
+        unreachable!()
+    };
+    assert_eq!(feedback.0, "/feedback");
+    assert_eq!(join.0, "/ios-beta/join");
+    assert_eq!(feedback.1, join.1);
+    feedback.1.clone()
+}
+
+/// Feedback and the iPhone beta invite (`ipc/feedback-handlers.ts:23-27`,
+/// `ios-beta/join-ios-beta.ts:32-33`): the bearer when signed in; none signed out or when the
+/// token cannot be read, and the request still goes.
 #[tokio::test]
-async fn the_access_token_rides_along_only_when_signed_in() {
-    let f = fixture(Keychain::default());
-    assert_eq!(f.service.access_token_if_signed_in().await, None);
+async fn feedback_and_the_beta_invite_carry_the_bearer_only_while_it_can_be_read() {
+    let dir = tempfile::tempdir().unwrap();
+    let telemetry = Service::start(
+        dir.path(),
+        Context {
+            install_id: "i".into(),
+            session_id: "s".into(),
+            app_version: "1.0.0".into(),
+            build_channel: "production".into(),
+            platform: "darwin".into(),
+            arch: "arm64".into(),
+            locale: "en".into(),
+            timezone_offset_minutes: 0,
+        },
+        // Nothing listens there: this test never flushes.
+        Sender::new(
+            "http://127.0.0.1:9/telemetry/batch",
+            NativeTransport::loopback(),
+        ),
+        false,
+    );
+    let signed_out = fixture(Keychain::default());
+    assert_eq!(send_both(&signed_out, &telemetry).await, None);
 
     let f = fixture(Keychain::holding_keys(Some(MASTER)));
     f.answer_recovery_info(MASTER);
     f.answer_registration("server-device-1");
     f.verify(known()).await.unwrap();
     assert_eq!(
-        f.service.access_token_if_signed_in().await,
-        Some(access_token("server-device-1"))
+        send_both(&f, &telemetry).await,
+        Some(format!("Bearer {}", access_token("server-device-1")))
     );
+
+    f.keychain.access_locked.store(true, Ordering::SeqCst);
+    assert_eq!(send_both(&f, &telemetry).await, None);
 }
 
 #[tokio::test(start_paused = true)]

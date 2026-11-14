@@ -159,17 +159,17 @@ impl AccountService {
         }
     }
 
-    /// `POST /auth/otp/request`. A code already pending for another address ends first.
-    pub async fn request_otp(&self, email: String) -> Result<(), AccountError> {
+    /// `POST /auth/otp/request`, then the code's lifetime in seconds. A code already pending for
+    /// another address ends first.
+    pub async fn request_otp(&self, email: String) -> Result<Option<u64>, AccountError> {
         if matches!(self.session.state(), AuthState::AwaitingOtp { .. }) {
             self.session.abandon_email_sign_in()?;
         }
-        self.session.request_email_code(email).await?;
-        Ok(())
+        Ok(self.session.request_email_code_answer(email).await?.1)
     }
 
-    pub async fn resend_otp(&self) -> Result<(), AccountError> {
-        Ok(self.session.resend_email_code().await?)
+    pub async fn resend_otp(&self) -> Result<Option<u64>, AccountError> {
+        Ok(self.session.resend_email_code_answer().await?)
     }
 
     /// `POST /auth/otp/verify`, then the known-device path when the server still lists this

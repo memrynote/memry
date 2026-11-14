@@ -349,43 +349,16 @@ impl AuthSession {
     }
 
     /// `SignedOut -> AwaitingOtp`. Mints the `sessionNonce` this attempt will
-    /// carry on both calls (chapter 02 §2.6).
+    /// carry on both calls (chapter 02 §2.6). The body is
+    /// [`Self::request_email_code_answer`].
     pub async fn request_email_code(&self, email: String) -> Result<AuthState, AuthError> {
-        let next = self.apply(
-            AuthEvent::OtpRequested {
-                email: email.clone(),
-            },
-            "request an email code",
-        )?;
-        {
-            let mut pending = self.pending.lock().unwrap_or_else(|e| e.into_inner());
-            pending.email = Some(email.clone());
-            pending.session_nonce = Some(random_nonce());
-        }
-        match AuthRoutes::request_otp(&self.http, &email).await {
-            Ok(_) => Ok(next),
-            Err(error) => {
-                self.apply(AuthEvent::SignInFailed, "fail a sign-in")?;
-                Err(error.into())
-            }
-        }
+        Ok(self.request_email_code_answer(email).await?.0)
     }
 
     /// Asks for a fresh code. Not a state transition: chapter 02 §2.11
     /// caps it at three per ten minutes and the state is unchanged either way.
     pub async fn resend_email_code(&self) -> Result<(), AuthError> {
-        let email = {
-            let pending = self.pending.lock().unwrap_or_else(|e| e.into_inner());
-            pending.email.clone()
-        };
-        let Some(email) = email else {
-            return Err(AuthError::InvalidState {
-                action: "resend an email code".to_string(),
-                state: state_name(&self.state_now()),
-            });
-        };
-        AuthRoutes::resend_otp(&self.http, &email).await?;
-        Ok(())
+        self.resend_email_code_answer().await.map(|_| ())
     }
 
     /// `AwaitingOtp -> SetupPending`, or `-> SignedOut` when the code is

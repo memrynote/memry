@@ -753,6 +753,28 @@ async fn a_verified_code_reports_what_the_server_knows_about_the_device() {
     assert_eq!(answer.is_new_user, Some(false));
 }
 
+/// The code's lifetime reaches the shell's countdown on a request and a resend
+/// (`otp-verification.tsx`); a body without it is not an error.
+#[tokio::test]
+async fn a_requested_code_reports_how_long_it_lives() {
+    let transport = FakeTransport::new(vec![
+        response(200, r#"{"success":true,"expiresIn":600}"#),
+        response(200, r#"{"success":true,"expiresIn":540}"#),
+        response(200, r#"{"success":true}"#),
+    ]);
+    let session = session(transport, FakeSecureStore::new());
+
+    let (state, expires_in) = session
+        .request_email_code_answer("kaan@example.com".to_string())
+        .await
+        .unwrap();
+
+    assert!(matches!(state, AuthState::AwaitingOtp { .. }));
+    assert_eq!(expires_in, Some(600));
+    assert_eq!(session.resend_email_code_answer().await.unwrap(), Some(540));
+    assert_eq!(session.resend_email_code_answer().await.unwrap(), None);
+}
+
 #[tokio::test]
 async fn revocation_clears_the_session_before_it_is_shown() {
     let (session, _transport, store) = registered(vec![]).await;

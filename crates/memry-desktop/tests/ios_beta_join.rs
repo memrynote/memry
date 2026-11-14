@@ -99,6 +99,7 @@ async fn joined(
         &url,
         input(" me@example.com "),
         &telemetry(dir.path(), enabled),
+        None,
     )
     .await;
     let (path, body) = rx.await.expect("request");
@@ -152,6 +153,7 @@ async fn an_invalid_email_never_leaves_the_device() {
         "http://127.0.0.1:9/ios-beta/join",
         input("not an email"),
         &telemetry(dir.path(), true),
+        None,
     )
     .await;
     assert_eq!(result.error.as_deref(), Some("INVALID_IOS_BETA_JOIN"));
