@@ -22,7 +22,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use rusqlite::{Connection, OptionalExtension as _, params};
+use rusqlite::{Connection, OptionalExtension as _, params, params_from_iter};
 
 use crate::api::errors::StorageError;
 use crate::domain::journal_rules::preview::extract_journal_preview;
@@ -362,11 +362,32 @@ pub struct FileTags {
 
 /// Every row's header tags, word count and measured bytes, by note id.
 pub fn file_tags(index: &Connection) -> Result<HashMap<String, FileTags>, StorageError> {
+    file_tags_where(index, None)
+}
+
+/// [`file_tags`] of the rows whose note id is in the JSON array `ids`, each read by its key.
+pub fn file_tags_of(
+    index: &Connection,
+    ids: &str,
+) -> Result<HashMap<String, FileTags>, StorageError> {
+    file_tags_where(index, Some(ids))
+}
+
+fn file_tags_where(
+    index: &Connection,
+    ids: Option<&str>,
+) -> Result<HashMap<String, FileTags>, StorageError> {
+    let only = match ids {
+        Some(_) => " WHERE note_id IN (SELECT value FROM json_each(?1))",
+        None => "",
+    };
     let mut statement = index
-        .prepare("SELECT note_id, header_tags, word_count, file_hash FROM note_stats")
+        .prepare(&format!(
+            "SELECT note_id, header_tags, word_count, file_hash FROM note_stats{only}"
+        ))
         .map_err(failed)?;
     let rows = statement
-        .query_map([], |row| {
+        .query_map(params_from_iter(ids), |row| {
             Ok((
                 row.get::<_, String>(0)?,
                 row.get::<_, String>(1)?,

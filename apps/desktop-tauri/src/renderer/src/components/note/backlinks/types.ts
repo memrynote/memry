@@ -1,4 +1,8 @@
-import type { Backlink as WireBacklink, LinkVia } from '@memry/contracts/notes-api'
+import type {
+  Backlink as WireBacklink,
+  LinkVia,
+  ReferenceSourceFacets
+} from '@memry/contracts/notes-api'
 
 export interface Mention {
   id: string
@@ -7,7 +11,7 @@ export interface Mention {
   linkEnd: number
 }
 
-export interface Backlink {
+export interface Backlink extends ReferenceSourceFacets {
   id: string
   noteId: string
   noteTitle: string
@@ -80,6 +84,8 @@ export function toBacklink(wire: WireBacklink, folder: string, date: Date): Back
     id: backlinkId(wire.sourceId, wire.via),
     noteId: wire.sourceId,
     noteTitle: wire.sourceTitle,
+    sourceJournalDate: wire.sourceJournalDate,
+    sourceTags: wire.sourceTags,
     folder,
     date,
     mentions: contexts.map((ctx, i) => ({

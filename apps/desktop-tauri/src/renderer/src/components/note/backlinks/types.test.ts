@@ -41,12 +41,14 @@ describe('toBacklink', () => {
     { snippet: '[[Plan]] again', linkStart: 0, linkEnd: 8 }
   ]
 
-  it('counts every link the source holds when its snippets were cut', () => {
+  it('counts every link the source holds when its snippets were cut, and keeps its facets', () => {
     const card = toBacklink(
       {
         sourceId: 'dense',
         sourcePath: 'Dense.md',
         sourceTitle: 'Dense',
+        sourceJournalDate: '2026-05-09',
+        sourceTags: ['work'],
         contexts,
         mentionCount: 60,
         truncated: true
@@ -59,6 +61,8 @@ describe('toBacklink', () => {
       id: 'dense',
       noteId: 'dense',
       noteTitle: 'Dense',
+      sourceJournalDate: '2026-05-09',
+      sourceTags: ['work'],
       folder: '',
       date,
       mentions: [
@@ -73,7 +77,14 @@ describe('toBacklink', () => {
 
   it('counts the snippets of a backlink sent without a count, as Electron sends it', () => {
     const card = toBacklink(
-      { sourceId: 'a', sourcePath: 'Work/a.md', sourceTitle: 'A', contexts },
+      {
+        sourceId: 'a',
+        sourcePath: 'Work/a.md',
+        sourceTitle: 'A',
+        sourceJournalDate: null,
+        sourceTags: [],
+        contexts
+      },
       'Work',
       date
     )

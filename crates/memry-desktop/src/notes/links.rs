@@ -5,8 +5,8 @@
 //! The core answers which notes link where and which note a name resolves to
 //! (`memry_core::domain::link_reads`), in a fixed number of statements. This adds what only the
 //! vault holds: the text around each link, read from the linking note's file the way
-//! `getNoteLinks` reads it (comments stripped, `link_contexts`), and the file path a
-//! resolution names.
+//! `getNoteLinks` reads it (the body after the frontmatter block, comments stripped,
+//! `link_contexts`), and the file path a resolution names.
 //!
 //! A journal day's backlinks list the relation properties that name its date, written or not
 //! (`LinkVia` `property`, read from the index's `property_refs`). Not here yet, stated:
@@ -23,6 +23,7 @@ use std::sync::Arc;
 use memry_core::api::errors::StorageError;
 use memry_core::api::search::Search;
 use memry_core::domain::link_reads::{IncomingLink, LinkTarget};
+use memry_core::markdown::frontmatter::split_frontmatter_block;
 use memry_core::markdown::shared::link_contexts::{LinkContext, LinkContexts, link_contexts};
 use memry_core::markdown::shared::markdown_code::strip_markdown_comments;
 use serde::Serialize;
@@ -72,6 +73,11 @@ pub struct BacklinkView {
     pub source_id: String,
     pub source_path: String,
     pub source_title: String,
+    /// The day (YYYY-MM-DD) when the source is a journal entry, `None` for a note
+    /// (`ReferenceSourceFacets`).
+    pub source_journal_date: Option<String>,
+    /// The source's tags, which the reference filter offers.
+    pub source_tags: Vec<String>,
     pub contexts: Vec<BacklinkContextView>,
     /// Every link to the note in the source's file: Electron's `contexts.length`, which the
     /// panel counts and sorts by. More than `contexts` holds when `truncated`.
@@ -166,15 +172,26 @@ impl NoteLinks {
         let incoming = self.search.incoming_links(id)?;
         let title = incoming.target_title.unwrap_or_default();
         let days = Days::new(&self.root);
+        let ids = incoming.sources.iter().map(|s| s.source_id.clone());
+        let tags = self.search.tags_of_notes(ids.collect())?;
         let incoming = incoming
             .sources
             .into_iter()
-            .map(|source| self.backlink(source, &title, &days))
+            .map(|source| {
+                let source_tags = tags.get(&source.source_id).cloned().unwrap_or_default();
+                self.backlink(source, source_tags, &title, &days)
+            })
             .collect();
         Ok(NoteLinksView { outgoing, incoming })
     }
 
-    fn backlink(&self, source: IncomingLink, target_title: &str, days: &Days) -> BacklinkView {
+    fn backlink(
+        &self,
+        source: IncomingLink,
+        source_tags: Vec<String>,
+        target_title: &str,
+        days: &Days,
+    ) -> BacklinkView {
         let found = match &source.source_path {
             Some(path) if !target_title.is_empty() && source.via_property.is_none() => {
                 self.contexts(path, target_title, &source)
@@ -189,6 +206,8 @@ impl NoteLinks {
                 .unwrap_or_default(),
             source_id: source.source_id,
             source_title: source.source_title,
+            source_journal_date: source.source_date,
+            source_tags,
             contexts: found.contexts.into_iter().map(Into::into).collect(),
             mention_count: units(found.count),
             truncated: found.truncated,
@@ -198,12 +217,16 @@ impl NoteLinks {
         }
     }
 
-    /// The links to `title` in the whole file at `path`, frontmatter included and comments
-    /// stripped, as `getNoteLinks` reads it. A file that cannot be read keeps its backlink with
-    /// no text: the panel still names the note, and the log says why.
+    /// The links to `title` in the body of the file at `path`, after its frontmatter block and
+    /// with comments stripped, as `getNoteLinks` reads it: a snippet never quotes the header. A
+    /// file that cannot be read keeps its backlink with no text: the panel still names the note,
+    /// and the log says why.
     fn contexts(&self, path: &str, title: &str, source: &IncomingLink) -> LinkContexts {
         match read_note(&self.root, path) {
-            Ok(Some(file)) => link_contexts(&strip_markdown_comments(&file.raw), title),
+            Ok(Some(file)) => {
+                let body = split_frontmatter_block(&file.raw).body;
+                link_contexts(&strip_markdown_comments(body), title)
+            }
             Ok(None) => LinkContexts::default(),
             Err(error) => {
                 tracing::warn!(
