@@ -89,7 +89,7 @@ extension InboxStore {
         let checkedMime = mime
         guard await read({ try $0.checkFile(mimeType: checkedMime, size: size) }) != nil else {
             clearFailure()
-            fail(size > 50 * 1024 * 1024 ? InboxErrors.tooLarge : InboxErrors.unsupportedType)
+            fail(InboxErrors.fileRefusal(size: size))
             trackCaptured(InboxCaptureKind(mime: mime), source: source, ok: false)
             return .failed
         }

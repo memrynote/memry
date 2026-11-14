@@ -1,4 +1,5 @@
 import Foundation
+import MemryCore
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -16,27 +17,37 @@ enum InboxDrop {
         case text(String)
         /// A copy in this app's temporary folder, removed once captured.
         case file(URL, filename: String, mimeType: String)
+        /// A file refused or lost before it reached the capture.
+        case failed(UserFacingError)
     }
+
+    /// `checkFile`'s refusal for a file of a MIME type and a size, or `nil`.
+    typealias FileCheck = @Sendable (_ mimeType: String, _ size: UInt64) -> UserFacingError?
 
     /// The composer's "Choose File" types.
     static let fileTypes: [UTType] = [.image, .audio, .movie, .pdf]
     /// What the Inbox takes: those files, a link, or text.
     static let types: [UTType] = fileTypes + [.url, .plainText]
 
+    /// Whether the Inbox takes a hovering drag, given what its items conform
+    /// to. A task drag also carries text, and is not something to capture.
+    static func takes(_ hasItems: ([UTType]) -> Bool) -> Bool {
+        hasItems(types) && !hasItems([.memryTasks])
+    }
+
     /// Each provider's item, in drop order. A file first (an image dragged
     /// from Safari also carries its address), then a web address, then text.
-    static func read(_ providers: [NSItemProvider]) async -> [Item] {
+    static func read(_ providers: [NSItemProvider], check: @escaping FileCheck) async -> [Item] {
         var items: [Item] = []
         for provider in providers {
-            if let item = await read(provider) { items.append(item) }
+            if let item = await read(provider, check: check) { items.append(item) }
         }
         return items
     }
 
-    private static func read(_ provider: NSItemProvider) async -> Item? {
-        if let type = provider.registeredContentTypes.first(where: { type in fileTypes.contains { type.conforms(to: $0) } }),
-           let file = await copy(provider, type: type) {
-            return file
+    private static func read(_ provider: NSItemProvider, check: @escaping FileCheck) async -> Item? {
+        if let type = provider.registeredContentTypes.first(where: { type in fileTypes.contains { type.conforms(to: $0) } }) {
+            return await copy(provider, type: type, check: check)
         }
         if provider.hasItemConformingToTypeIdentifier(UTType.url.identifier),
            let url = await link(provider),
@@ -68,56 +79,90 @@ enum InboxDrop {
         }
     }
 
-    /// Copies the file out of the provider's short-lived location.
-    private static func copy(_ provider: NSItemProvider, type: UTType) async -> Item? {
-        let copied: (URL, String)? = await withCheckedContinuation { continuation in
+    /// Copies the file out of the provider's short-lived location, once
+    /// `check` takes its size: a file over the limit is never copied.
+    private static func copy(_ provider: NSItemProvider, type: UTType, check: @escaping FileCheck) async -> Item {
+        let mimeType = type.preferredMIMEType ?? "application/octet-stream"
+        let suggested = provider.suggestedName
+        let item: Item = await withCheckedContinuation { continuation in
             _ = provider.loadFileRepresentation(forTypeIdentifier: type.identifier) { url, _ in
                 guard let url else {
-                    continuation.resume(returning: nil)
+                    continuation.resume(returning: .failed(InboxErrors.dropUnreadable))
+                    return
+                }
+                if let size = try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize,
+                   let refusal = check(mimeType, UInt64(size)) {
+                    continuation.resume(returning: .failed(refusal))
                     return
                 }
                 let target = FileManager.default.temporaryDirectory
                     .appendingPathComponent(UUID().uuidString)
                     .appendingPathExtension(url.pathExtension)
-                let moved = (try? FileManager.default.copyItem(at: url, to: target)) != nil
-                continuation.resume(returning: moved ? (target, url.lastPathComponent) : nil)
+                do {
+                    try FileManager.default.copyItem(at: url, to: target)
+                } catch {
+                    continuation.resume(returning: .failed(InboxErrors.dropUnreadable))
+                    return
+                }
+                let named = suggested.map { $0.contains(".") ? $0 : "\($0).\(url.pathExtension)" }
+                let filename = named ?? url.lastPathComponent
+                continuation.resume(returning: .file(target, filename: filename, mimeType: mimeType))
             }
         }
-        guard let (url, name) = copied else {
-            Log.core.error("a dropped file could not be read", .code("inbox.drop"))
-            return nil
+        if case let .failed(error) = item {
+            Log.core.error("a dropped file was not copied", .code(error.code))
         }
-        let filename = provider.suggestedName.map { $0.contains(".") ? $0 : "\($0).\(url.pathExtension)" } ?? name
-        return .file(url, filename: filename, mimeType: type.preferredMIMEType ?? "application/octet-stream")
+        return item
     }
 }
 
 extension InboxStore {
-    /// Captures every dropped item. Answers how many were captured.
+    /// Captures every dropped item, and shows each failure: one by its own
+    /// row, several by their count. Answers how many were captured.
     @discardableResult
     func captureDropped(_ providers: [NSItemProvider]) async -> Int {
+        let core = core
+        // The core serialises its own state, so the provider's thread may ask
+        // it; `captureFile` checks a HEIC photo as the JPEG it turns it into.
+        let items = await InboxDrop.read(providers) { mimeType, size in
+            let checked = mimeType == "image/heic" || mimeType == "image/heif" ? "image/jpeg" : mimeType
+            let allowed = (try? core.checkFile(mimeType: checked, size: size)) != nil
+            return allowed ? nil : InboxErrors.fileRefusal(size: size)
+        }
+        return await capture(dropped: items)
+    }
+
+    @discardableResult
+    func capture(dropped items: [InboxDrop.Item]) async -> Int {
         var captured = 0
-        for item in await InboxDrop.read(providers) {
+        var failed = 0
+        for item in items {
             let result: InboxCaptureResult
             switch item {
             case let .link(text), let .text(text):
                 result = await capture(text)
             case let .file(url, filename, mimeType):
                 defer { try? FileManager.default.removeItem(at: url) }
-                // Mapped, not read: a file over the limit is refused by its
-                // size without being loaded into memory.
+                // Mapped, not read: the file is not loaded into memory whole.
                 guard let data = try? Data(contentsOf: url, options: .mappedIfSafe) else {
-                    fail(InboxErrors.unsupportedType)
+                    Log.core.error("a dropped file could not be opened", .code(InboxErrors.dropUnopenable.code))
+                    fail(InboxErrors.dropUnopenable)
+                    failed += 1
                     continue
                 }
                 result = await captureFile(data: data, filename: filename, mimeType: mimeType)
+            case let .failed(error):
+                fail(error)
+                failed += 1
+                continue
             }
             switch result {
             case .captured: captured += 1
             case .duplicate: showToast(InboxCopy.sharedAlreadyCaptured)
-            case .failed: break
+            case .failed: failed += 1
             }
         }
+        if failed > 1 { fail(InboxErrors.dropFailed(failed)) }
         return captured
     }
 }
@@ -144,9 +189,25 @@ struct InboxDropTarget: ViewModifier {
                         .accessibilityHidden(true)
                 }
             }
-            .onDrop(of: isEnabled ? InboxDrop.types : [], isTargeted: $isTargeted) { providers in
-                Task { await store.captureDropped(providers) }
-                return true
-            }
+            .onDrop(of: isEnabled ? InboxDrop.types : [], delegate: Delegate(store: store, isTargeted: $isTargeted))
+    }
+
+    private struct Delegate: DropDelegate {
+        let store: InboxStore
+        @Binding var isTargeted: Bool
+
+        func validateDrop(info: DropInfo) -> Bool { InboxDrop.takes(info.hasItemsConforming(to:)) }
+
+        func dropEntered(info: DropInfo) { isTargeted = validateDrop(info: info) }
+
+        func dropExited(info: DropInfo) { isTargeted = false }
+
+        func performDrop(info: DropInfo) -> Bool {
+            isTargeted = false
+            guard validateDrop(info: info) else { return false }
+            let providers = info.itemProviders(for: InboxDrop.types)
+            Task { await store.captureDropped(providers) }
+            return true
+        }
     }
 }

@@ -1,13 +1,33 @@
+import CoreTransferable
 import MemryCore
 import SwiftUI
+import UniformTypeIdentifiers
 
 // #4357. A task dropped on a day: a Month cell, a Week or Day column, or a day
 // of the Journal rail's month. The drop sets the task's due date to that day
 // and keeps its time, through the write the calendar's own date controls make
-// (`CalendarStore.taskWrite` with `setDue`), Undo included. The drag carries
-// the payloads the Tasks drops already read: a task row's `TaskDragPayload`
-// or a kanban card's bare id. The grid's hold-drag (#4620) is a gesture, not
+// (`CalendarStore.tasksWrite`, under `taskWrite`, with `bulkSetDue`), Undo
+// included. The drag carries the payloads the Tasks drops already read: a
+// task row's `TaskDragPayload` or a kanban card's bare id. The grid's hold-drag (#4620) is a gesture, not
 // a drag session, so the two never meet.
+
+extension UTType {
+    /// Task ids dragged out of a task row, so a target that takes text (the
+    /// Inbox) can tell a task drag from text before it loads. Exported in
+    /// `Info.plist`.
+    static let memryTasks = UTType(exportedAs: "com.memrynote.app.tasks")
+}
+
+/// A task row's drag: the private type, then the `TaskDragPayload` text the
+/// task drops read.
+struct TaskDrag: Transferable, Sendable {
+    let ids: [String]
+
+    static var transferRepresentation: some TransferRepresentation {
+        DataRepresentation(exportedContentType: .memryTasks) { Data(TaskDragPayload.encode($0.ids).utf8) }
+        ProxyRepresentation { TaskDragPayload.encode($0.ids) }
+    }
+}
 
 enum TaskDayDrop {
     /// The task ids in dropped strings: a task row's payload, or a kanban
@@ -32,16 +52,22 @@ extension CalendarStore {
         return TaskDayDrop.ids(in: texts) { tasks.items[$0] != nil }
     }
 
-    /// Sets each task's due date to `day`, keeping its time. A task already
-    /// due that day is left as it is.
+    /// Sets each task's due date to `day`, keeping its time, as one write
+    /// with one toast and one Undo. A task already due that day is left as it
+    /// is. The core writes date and time together, so tasks sharing a time go
+    /// in one call (`TasksStore.reschedule` does the same).
     func dateTasks(_ ids: [String], to day: String) async {
         guard let tasks else { return }
-        for id in ids {
-            guard let task = tasks.items[id], task.dueDate != day else { continue }
-            let time = task.dueTime
-            await taskWrite(id, message: CalendarCopy.taskRescheduled) { core, id in
-                try core.setDue(id: id, date: day, time: time)
+        let moving = ids.compactMap { tasks.items[$0] }.filter { $0.dueDate != day }
+        guard !moving.isEmpty else { return }
+        let batches = Dictionary(grouping: moving, by: \.dueTime).map { time, tasks in (time, tasks.map(\.id)) }
+        let message = moving.count == 1 ? CalendarCopy.taskRescheduled : CalendarCopy.tasksRescheduled(moving.count)
+        await tasksWrite(message: message) { core in
+            var merged: TaskChange?
+            for (time, batch) in batches {
+                merged = TasksStore.merge(merged, try core.bulkSetDue(ids: batch, date: day, time: time))
             }
+            return TasksStore.merge(merged, nil)
         }
     }
 }
@@ -84,7 +110,7 @@ struct TaskDragSource: ViewModifier {
 
     func body(content: Content) -> some View {
         if let id, LayoutWidth(horizontal: horizontalSizeClass, vertical: verticalSizeClass) == .regular {
-            content.draggable(TaskDragPayload.encode([id]))
+            content.draggable(TaskDrag(ids: [id]))
         } else {
             content
         }
