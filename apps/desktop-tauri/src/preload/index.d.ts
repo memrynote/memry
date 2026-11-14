@@ -134,7 +134,6 @@ import type {
   StickyWindowSession
 } from '@memry/contracts/sticky-api'
 import type { FoldAgentStatus, FoldLastRun, FoldLayers } from '@memry/contracts/note-fold'
-import type { OcrLanguagesSetInput, OcrLanguagesState } from '@memry/contracts/ocr-languages-api'
 import type { SyncedSettings } from '../shared/contracts/settings-sync'
 import type {
   NoteFileType,
@@ -658,12 +657,6 @@ export interface NoteFoldClientAPI {
   getLastRun(): Promise<FoldLastRun>
   getAgentStatus(): Promise<FoldAgentStatus>
   onUpdated(callback: (event: { noteId: string }) => void): () => void
-}
-
-export interface OcrLanguagesClientAPI {
-  get(): Promise<OcrLanguagesState>
-  set(input: OcrLanguagesSetInput): Promise<OcrLanguagesState>
-  retry(): Promise<OcrLanguagesState>
 }
 
 export interface HomePagesClientAPI {
@@ -1968,7 +1961,6 @@ interface API
   homePages: HomePagesClientAPI
   sticky: StickyClientAPI
   noteFold: NoteFoldClientAPI
-  ocrLanguages: OcrLanguagesClientAPI
   onboarding: OnboardingClientAPI
   agentMcp: AgentMcpClientAPI
   agent: AgentClientAPI
@@ -2018,7 +2010,6 @@ interface API
   // Home boards event subscriptions (local writes and remote applies both emit)
   onHomePageCreated: (callback: (event: { id: string }) => void) => () => void
   onHomePageUpdated: (callback: (event: { id: string }) => void) => () => void
-  onOcrLanguagesChanged: (callback: (state: OcrLanguagesState) => void) => () => void
   onHomePageDeleted: (callback: (event: { id: string }) => void) => () => void
   // Journal event subscriptions
   onJournalEntryUpdated: (callback: (event: JournalEntryUpdatedEvent) => void) => () => void

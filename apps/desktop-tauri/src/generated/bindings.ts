@@ -403,6 +403,11 @@ export const commands = {
 	 *  Linux when a daemon owns `org.freedesktop.Notifications`.
 	 */
 	notificationSupported: () => __TAURI_INVOKE<boolean>("notification_supported"),
+	ocrLanguagesGetState: () => __TAURI_INVOKE<OcrLanguagesState>("ocr_languages_get_state"),
+	/**  Clears the failed downloads and tries them again. */
+	ocrLanguagesRetry: () => __TAURI_INVOKE<OcrLanguagesState>("ocr_languages_retry"),
+	/**  Stores the chosen languages (English is always added) and starts converging on them. */
+	ocrLanguagesSet: (languages: OcrLanguage[]) => __TAURI_INVOKE<OcrLanguagesState>("ocr_languages_set", { languages }),
 	/**
 	 *  `portals:get-usage`: the notes that show `note_id`, or its block `anchor`, with the notes
 	 *  that link to it.
@@ -700,6 +705,7 @@ export const events = {
 	noteRenamedEvent: makeEvent<NoteRenamedEvent, NoteRenamedEvent>("note-renamed-event"),
 	noteTagsChangedEvent: makeEvent<NoteTagsChangedEvent, NoteTagsChangedEvent>("note-tags-changed-event"),
 	noteUpdatedEvent: makeEvent<NoteUpdatedEvent, NoteUpdatedEvent>("note-updated-event"),
+	ocrLanguagesChangedEvent: makeEvent<OcrLanguagesChangedEvent, OcrLanguagesChangedEvent>("ocr-languages-changed-event"),
 	portalsUsageChangedEvent: makeEvent<PortalsUsageChangedEvent, PortalsUsageChangedEvent>("portals-usage-changed-event"),
 	propertyDefinitionChangedEvent: makeEvent<PropertyDefinitionChangedEvent, PropertyDefinitionChangedEvent>("property-definition-changed-event"),
 	settingsChangedEvent: makeEvent<SettingsChangedEvent, SettingsChangedEvent>("settings-changed-event"),
@@ -2240,6 +2246,24 @@ export type ObjectMatchView = {
 	viaTag: string | null,
 	subtitle: string[],
 	modified: string,
+};
+
+/**  A Tesseract language code, one per UI locale. */
+export type OcrLanguage = "ara" | "ces" | "chi_sim" | "chi_tra" | "dan" | "deu" | "ell" | "eng" | "fil" | "fin" | "fra" | "heb" | "hrv" | "hun" | "ind" | "ita" | "jpn" | "kor" | "msa" | "nld" | "nor" | "pol" | "por" | "ron" | "rus" | "slk" | "spa" | "swe" | "tha" | "tur" | "ukr" | "vie";
+
+/**
+ *  Where one chosen language stands (`OcrLanguageStatus` of `ocr-languages-api.ts`). `error` is an
+ *  `errors:` i18n key the settings row shows.
+ */
+export type OcrLanguageStatus = { state: "ready" } | { state: "downloading"; receivedBytes: number; totalBytes: number } | { state: "failed"; error: string };
+
+/**  The OCR languages or a download of their data changed (`ocr-languages:changed`). */
+export type OcrLanguagesChangedEvent = OcrLanguagesState;
+
+/**  `OcrLanguagesState` of `ocr-languages-api.ts`: the chosen languages, English first. */
+export type OcrLanguagesState = {
+	selected: OcrLanguage[],
+	statuses: Partial<{ [key in OcrLanguage]: OcrLanguageStatus }>,
 };
 
 export type OptionInput = {

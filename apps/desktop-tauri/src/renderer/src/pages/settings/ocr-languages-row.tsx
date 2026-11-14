@@ -20,6 +20,8 @@ import { SettingRow, COMPACT_SELECT } from '@/components/settings/settings-primi
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import { cn } from '@/lib/utils'
+import { subscribeToEvent } from '@/services/tauri-event'
+import { commands, events } from '../../../../generated/bindings'
 
 const log = createLogger('OcrLanguagesRow')
 
@@ -38,13 +40,13 @@ function useOcrLanguages(): OcrLanguagesState | null {
   const [state, setState] = useState<OcrLanguagesState | null>(null)
   useEffect(() => {
     let live = true
-    window.api.ocrLanguages
-      .get()
+    const unsubscribe = subscribeToEvent(events.ocrLanguagesChangedEvent, setState)
+    commands
+      .ocrLanguagesGetState()
       .then((languages) => {
         if (live) setState(languages)
       })
       .catch((error: unknown) => log.error('Failed to read OCR languages', error))
-    const unsubscribe = window.api.onOcrLanguagesChanged(setState)
     return () => {
       live = false
       unsubscribe()
@@ -72,7 +74,7 @@ export function OcrLanguagesRow() {
   const choose = async (lang: OcrLanguage, checked: boolean): Promise<void> => {
     const next = state.selected.filter((code) => code !== lang)
     try {
-      await window.api.ocrLanguages.set({ languages: checked ? [...next, lang] : next })
+      await commands.ocrLanguagesSet(checked ? [...next, lang] : next)
     } catch (error) {
       log.error('Failed to set OCR languages', error)
       toast.error(extractErrorMessage(error, t('general.ocrLanguages.saveFailed')))
@@ -81,7 +83,7 @@ export function OcrLanguagesRow() {
 
   const retry = async (): Promise<void> => {
     try {
-      await window.api.ocrLanguages.retry()
+      await commands.ocrLanguagesRetry()
     } catch (error) {
       log.error('Failed to retry OCR language downloads', error)
       toast.error(extractErrorMessage(error, t('general.ocrLanguages.saveFailed')))

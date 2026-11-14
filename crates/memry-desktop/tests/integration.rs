@@ -276,6 +276,8 @@ mod notes_update;
 mod notes_update_critic_marks;
 #[path = "notes_writes.rs"]
 mod notes_writes;
+#[path = "ocr_languages.rs"]
+mod ocr_languages;
 #[path = "path_collision.rs"]
 mod path_collision;
 #[path = "paths.rs"]

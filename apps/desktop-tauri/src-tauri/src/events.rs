@@ -6,6 +6,7 @@ use memry_desktop::ai::settings::InlineAiSettings;
 use memry_desktop::journal::JournalEntryView;
 use memry_desktop::notes::index::{IndexProgress, LinkChanges};
 use memry_desktop::notes::view::NoteListItemView;
+use memry_desktop::services::ocr_languages::OcrLanguagesState;
 use memry_desktop::session::response::VaultStatus;
 use memry_desktop::updater::state::AppUpdateState;
 use memry_desktop::vault::config::VaultConfig;
@@ -493,6 +494,10 @@ pub struct AiInlineSettingsChangedEvent {
 pub struct LocaleChangedEvent {
     pub locale: String,
 }
+
+/// The OCR languages or a download of their data changed (`ocr-languages:changed`).
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+pub struct OcrLanguagesChangedEvent(pub OcrLanguagesState);
 
 /// Open the settings modal at a section (`settings:open-section`). Emitted by the steps that own
 /// the deep links and the menu.

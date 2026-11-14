@@ -92,6 +92,7 @@ fn register_stages() {
     shortcuts::register_stages();
     spell::register_stages();
     updater::register_stages();
+    commands::ocr_languages::register_stages();
     startup::register(Stage::Window, "create main window", create_main_window);
     // After the window exists: Windows subclasses its handle.
     power::register_stages();

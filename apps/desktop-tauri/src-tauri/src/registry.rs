@@ -164,6 +164,10 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::shell_integrations::notification_permission,
             crate::commands::shell_integrations::notification_show,
             crate::commands::shell_integrations::notification_supported,
+            // ocr languages
+            crate::commands::ocr_languages::ocr_languages_get_state,
+            crate::commands::ocr_languages::ocr_languages_retry,
+            crate::commands::ocr_languages::ocr_languages_set,
             // portals
             crate::commands::portals::portals_get_usage::<Wry>,
             crate::commands::portals::portals_search::<Wry>,
@@ -313,6 +317,8 @@ pub fn builder() -> Builder<Wry> {
             crate::events::JournalExternalChangeEvent,
             // locale
             crate::events::LocaleChangedEvent,
+            // ocr languages
+            crate::events::OcrLanguagesChangedEvent,
             // settings
             crate::events::SettingsChangedEvent,
             crate::events::SettingsOpenSectionEvent,

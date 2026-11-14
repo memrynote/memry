@@ -5,13 +5,39 @@ import { I18nextProvider } from 'react-i18next'
 import type { i18n as I18nInstance } from 'i18next'
 import type { OcrLanguagesState } from '@memry/contracts/ocr-languages-api'
 import { createRendererI18n } from '@memry/i18n/renderer'
+import type * as Bindings from '../../../../generated/bindings'
 import { OcrLanguagesRow } from './ocr-languages-row'
 
 const englishOnly: OcrLanguagesState = { selected: ['eng'], statuses: { eng: { state: 'ready' } } }
 
+const ipc = vi.hoisted(() => ({
+  commands: {
+    ocrLanguagesGetState: vi.fn(),
+    ocrLanguagesSet: vi.fn(),
+    ocrLanguagesRetry: vi.fn()
+  },
+  changed: null as null | ((event: { payload: OcrLanguagesState }) => void)
+}))
+vi.mock('../../../../generated/bindings', async (importOriginal) => {
+  const actual = await importOriginal<typeof Bindings>()
+  return {
+    ...actual,
+    commands: { ...actual.commands, ...ipc.commands },
+    events: {
+      ...actual.events,
+      ocrLanguagesChangedEvent: {
+        listen: (handler: (event: { payload: OcrLanguagesState }) => void) => {
+          ipc.changed = handler
+          return Promise.resolve(() => {})
+        }
+      }
+    }
+  }
+})
+const changed = (state: OcrLanguagesState) => ipc.changed?.({ payload: state })
+
 describe('OcrLanguagesRow', () => {
   let i18n: I18nInstance
-  let changed: (state: OcrLanguagesState) => void
 
   beforeEach(async () => {
     i18n = await createRendererI18n({ locale: 'en' })
@@ -23,15 +49,9 @@ describe('OcrLanguagesRow', () => {
       HTMLElement.prototype[method] ??= vi.fn(() => false) as never
     }
     HTMLElement.prototype.scrollIntoView ??= vi.fn()
-    window.api.ocrLanguages = {
-      get: vi.fn().mockResolvedValue(englishOnly),
-      set: vi.fn().mockResolvedValue(englishOnly),
-      retry: vi.fn().mockResolvedValue(englishOnly)
-    }
-    window.api.onOcrLanguagesChanged = vi.fn((callback) => {
-      changed = callback
-      return () => {}
-    })
+    ipc.commands.ocrLanguagesGetState.mockResolvedValue(englishOnly)
+    ipc.commands.ocrLanguagesSet.mockReset().mockResolvedValue(englishOnly)
+    ipc.commands.ocrLanguagesRetry.mockReset().mockResolvedValue(englishOnly)
   })
 
   const renderRow = () =>
@@ -51,7 +71,7 @@ describe('OcrLanguagesRow', () => {
     )
     await user.click(screen.getByRole('menuitemcheckbox', { name: 'Deutsch' }))
 
-    expect(window.api.ocrLanguages.set).toHaveBeenCalledWith({ languages: ['eng', 'deu'] })
+    expect(ipc.commands.ocrLanguagesSet).toHaveBeenCalledWith(['eng', 'deu'])
   })
 
   it('shows download progress, then a failed download with its reason and a retry', async () => {
@@ -86,6 +106,6 @@ describe('OcrLanguagesRow', () => {
       )
     ).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Retry' }))
-    await waitFor(() => expect(window.api.ocrLanguages.retry).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(ipc.commands.ocrLanguagesRetry).toHaveBeenCalledTimes(1))
   })
 })

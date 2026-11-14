@@ -99,6 +99,8 @@ trash = "5.2.9"
 # Custom icons (`notes::icons`): raster uploads are decoded and re-encoded as PNG. Only the four
 # input formats of `CUSTOM_ICON_INPUT_EXTENSIONS` are compiled in.
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp"] }
+# The OCR language packs are gzip; native Tesseract reads them unpacked (`services::ocr_languages`).
+flate2 = { workspace = true }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
@@ -142,7 +144,6 @@ tokio-rustls = { version = "0.26", default-features = false, features = ["ring"]
 # `examples/cert_check.rs` prints the subject and validity of each presented certificate.
 x509-parser = "0.18.1"
 rcgen = { version = "0.14", default-features = false, features = ["ring", "pem"] }
-flate2 = { workspace = true }
 # The write-back tests author another device's edit the way the core's tests do.
 yrs = { workspace = true }
 # `journal_folder_held` counts the database steps a pass over the held days takes (`hooks`).
