@@ -493,3 +493,33 @@ async fn opted_out_the_step_stops_and_writes_nothing() {
     assert_eq!(s.step().await, stopped(StepStop::ModelNotReady));
     assert!(!s.vault.directory().join("vectors.db").exists());
 }
+
+#[tokio::test]
+async fn disable_during_a_step_leaves_no_vectors_db_behind() {
+    let mut s = setup().await;
+    let (open, gate) = channel();
+    let (entered, inside) = channel();
+    s.semantic = s.build(Some((Arc::new(Mutex::new(gate)), entered)));
+    let s = Arc::new(s);
+    s.write("a", "Alpha", "the first note body");
+
+    let running = tokio::spawn({
+        let s = s.clone();
+        async move { s.step().await }
+    });
+    tokio::task::spawn_blocking(move || inside.recv().unwrap())
+        .await
+        .unwrap();
+    let disabling = tokio::spawn({
+        let s = s.clone();
+        async move { s.semantic.disable(s.vault.clone()).await }
+    });
+    open.send(()).unwrap();
+    running.await.unwrap();
+    disabling.await.unwrap().unwrap();
+
+    for name in ["vectors.db", "vectors.db-wal", "vectors.db-shm"] {
+        assert!(!s.vault.directory().join(name).exists(), "{name} survived");
+    }
+    assert_eq!(s.step().await, stopped(StepStop::ModelNotReady));
+}

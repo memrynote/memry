@@ -37,6 +37,8 @@ private struct SemanticEmbeddingScope: ViewModifier {
     let vault: Vault
     @Environment(\.semanticSearch) private var semantic
     @Environment(\.scenePhase) private var scenePhase
+    private let memoryWarnings = NotificationCenter.default
+        .publisher(for: UIApplication.didReceiveMemoryWarningNotification)
 
     func body(content: Content) -> some View {
         content
@@ -46,9 +48,7 @@ private struct SemanticEmbeddingScope: ViewModifier {
                 semantic?.release(reason: .background)
                 SemanticBackgroundTask.shared.scheduleIfDue()
             }
-            .onReceive(NotificationCenter.default.publisher(for: UIApplication.didReceiveMemoryWarningNotification)) { _ in
-                semantic?.release(reason: .memoryWarning)
-            }
+            .onReceive(memoryWarnings) { _ in semantic?.release(reason: .memoryWarning) }
     }
 }
 

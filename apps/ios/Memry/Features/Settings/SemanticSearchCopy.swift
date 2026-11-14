@@ -27,6 +27,8 @@ enum SemanticSearchCopy {
     static let serverGuidance = "Nothing was saved from that answer. Try again later."
     static let networkTitle = "The download stopped."
     static let networkGuidance = "Check your connection, then try again. It continues where it stopped."
+    static let storageTitle = "The model could not be saved."
+    static let storageGuidance = "Free up space, then try again."
     static let retry = "Try again"
 
     static let turnOffTitle = "Turn off semantic search?"

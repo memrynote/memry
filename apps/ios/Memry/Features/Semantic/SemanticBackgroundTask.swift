@@ -67,8 +67,9 @@ final class SemanticBackgroundTask {
     }
 
     private func run(_ task: SemanticTaskRun) {
-        let step: SemanticStep? = semantic.flatMap { semantic in
-            vault.map { vault in { try await semantic.embedStep(vault: vault, conditions: $0) } }
+        var step: SemanticStep?
+        if let semantic, let vault {
+            step = { try await semantic.embedStep(vault: vault, conditions: $0) }
         }
         Self.drive(task, step: step, conditions: SemanticSignals.current, reschedule: Self.schedule)
     }

@@ -149,9 +149,10 @@ impl SemanticSearch {
         took: std::time::Duration,
         conditions: StepConditions,
     ) -> StepOutcome {
+        // `Stop` was answered before the window ran.
         let rest = match pace(conditions.thermal, took) {
             Pace::Rest(rest) => rest,
-            Pace::Stop => took,
+            Pace::Stop => std::time::Duration::ZERO,
         };
         StepOutcome::Embedded {
             embedded: plan.embedded,

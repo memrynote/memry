@@ -46,7 +46,8 @@ struct SemanticSearchDisplayTests {
     @Test(arguments: [
         (DownloadFailure.mismatch, SemanticSearchCopy.damagedTitle),
         (DownloadFailure.http(status: 503), SemanticSearchCopy.serverTitle),
-        (DownloadFailure.network, SemanticSearchCopy.networkTitle)
+        (DownloadFailure.network, SemanticSearchCopy.networkTitle),
+        (DownloadFailure.storage, SemanticSearchCopy.storageTitle)
     ])
     func each_failure_gets_its_own_sentence(failure: DownloadFailure, title: String) {
         let display = SemanticSearchDisplay(status(.failed(received: 1, total: total, failure: failure)))

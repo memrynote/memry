@@ -1,10 +1,11 @@
+import BackgroundTasks
 import Foundation
 import MemryCore
 import Testing
 @testable import Memry
 
-@MainActor
-final class FakeTaskRun: SemanticTaskRun {
+/// Touched only from the main actor, like the real task under `using: .main`.
+final class FakeTaskRun: SemanticTaskRun, @unchecked Sendable {
     var expirationHandler: (() -> Void)?
     var completions: [Bool] = []
 
