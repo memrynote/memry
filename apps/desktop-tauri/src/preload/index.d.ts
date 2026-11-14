@@ -27,11 +27,6 @@ import type {
   TagsProgressEvent
 } from '@memry/contracts/tag-schema-api'
 import type {
-  FieldFillStatus,
-  FillFieldsInput,
-  FillFieldsResult
-} from '@memry/contracts/tag-fill-api'
-import type {
   GraphLayout,
   SaveGraphLayoutRequest,
   GraphViewsSettings,
@@ -133,7 +128,6 @@ import type {
   StickyUndoResult,
   StickyWindowSession
 } from '@memry/contracts/sticky-api'
-import type { FoldAgentStatus, FoldLastRun, FoldLayers } from '@memry/contracts/note-fold'
 import type { OcrLanguagesSetInput, OcrLanguagesState } from '@memry/contracts/ocr-languages-api'
 import type { SyncedSettings } from '../shared/contracts/settings-sync'
 import type {
@@ -651,15 +645,6 @@ export interface OnboardingClientAPI {
   isMemryVault: (path: string) => Promise<boolean>
 }
 
-export interface NoteFoldClientAPI {
-  get(noteId: string): Promise<FoldLayers>
-  /** No noteId retries the last failed note; null when there is nothing to retry. */
-  retry(noteId?: string): Promise<FoldLayers | null>
-  getLastRun(): Promise<FoldLastRun>
-  getAgentStatus(): Promise<FoldAgentStatus>
-  onUpdated(callback: (event: { noteId: string }) => void): () => void
-}
-
 export interface OcrLanguagesClientAPI {
   get(): Promise<OcrLanguagesState>
   set(input: OcrLanguagesSetInput): Promise<OcrLanguagesState>
@@ -917,8 +902,6 @@ export interface TagsClientAPI {
   getSchemaSnapshot(): Promise<TagSchemaSnapshot>
   editSchema(command: TagSchemaCommand): Promise<TagSchemaCommandResult>
   previewImpact(query: ImpactQuery): Promise<ImpactResult>
-  getFillStatus(): Promise<FieldFillStatus>
-  fillFields(input: FillFieldsInput): Promise<FillFieldsResult>
   searchObjects(input: {
     query: string
     tag?: string
@@ -1967,7 +1950,6 @@ interface API
   syncAttachments: SyncAttachmentsClientAPI
   homePages: HomePagesClientAPI
   sticky: StickyClientAPI
-  noteFold: NoteFoldClientAPI
   ocrLanguages: OcrLanguagesClientAPI
   onboarding: OnboardingClientAPI
   agentMcp: AgentMcpClientAPI

@@ -124,11 +124,19 @@ pub struct Queue {
     /// Chunks written so far.
     pub writes: u64,
     /// The write count after each chunk's last write, by job key: a fold that read the cache
-    /// before one of its missing chunks was written reads again.
+    /// before one of its missing chunks was written reads again. One entry per chunk written
+    /// while the vault is open, dropped when it closes ([`Self::clear`]); not pruned sooner,
+    /// since a fold's `seen` is not tracked once it has read the cache.
     pub written: HashMap<String, u64>,
 }
 
 impl Queue {
+    /// Chunk `key` was written after a cache read that saw `seen` writes. A write of another
+    /// chunk since does not count.
+    pub fn written_since(&self, key: &str, seen: u64) -> bool {
+        self.written.get(key).is_some_and(|&at| at > seen)
+    }
+
     /// `enqueue`.
     pub fn enqueue(
         &mut self,

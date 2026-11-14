@@ -32,8 +32,9 @@ use super::settings::InlineAiSettings;
 /// The largest answer read. A proposal list or five alternatives is a few kilobytes.
 pub const ANSWER_CAP: usize = 4 * 1024 * 1024;
 
-/// A key shorter than this is not cut out of provider text: cutting a few common characters
-/// would garble the message, and the providers' keys are tens of characters long.
+/// A key shorter than this is cut out of provider text only as a whole token, and only for a
+/// custom endpoint: cutting a few common characters inside words would garble the message, and
+/// the cloud providers' keys are tens of characters long.
 const MIN_REDACTED_KEY: usize = 8;
 
 const REDACTED: &str = "[redacted]";
@@ -72,8 +73,11 @@ pub enum StructuredError {
     /// The answer held no object of the schema (`NoObjectGeneratedError`).
     #[error("No object generated: {0}")]
     NoObject(String),
-    /// The model stopped at its output token limit before the object was whole (Anthropic's
-    /// `stop_reason: max_tokens`), as a thinking model does when its thinking takes the budget.
+    /// The model stopped at its output token limit before the object was whole (Chat's
+    /// `finish_reason: length`, a Responses `incomplete_details.reason: max_output_tokens`,
+    /// Anthropic's `stop_reason: max_tokens`, Google's `finishReason: MAX_TOKENS`), as a thinking
+    /// model does when its thinking takes the budget. An intentional divergence: Electron shows the AI
+    /// SDK's generic `NoObjectGeneratedError` text; naming the limit tells the user why.
     #[error("No object generated: the model reached its output token limit")]
     OutputLimit,
     /// Every try failed; the last failure (`RetryError`, reason `maxRetriesExceeded`).
@@ -228,15 +232,40 @@ fn status_error(answer: &Answer, settings: &InlineAiSettings) -> StructuredError
 }
 
 /// `message` without the key of `settings`, as sent and as a JSON string escapes it. A provider
-/// that never got the key cannot quote it.
+/// that never got the key cannot quote it. A custom endpoint's key can be short (LiteLLM's
+/// default `sk-1234`): one shorter than [`MIN_REDACTED_KEY`] is cut out only as a whole token.
 fn redact(message: String, settings: &InlineAiSettings) -> String {
     let key = settings.api_key.as_str();
-    if !settings.provider.takes_key() || key.chars().count() < MIN_REDACTED_KEY {
+    if !settings.provider.takes_key() || key.is_empty() {
         return message;
     }
     let quoted = Value::from(key).to_string();
     let escaped = &quoted[1..quoted.len() - 1];
-    message.replace(escaped, REDACTED).replace(key, REDACTED)
+    if key.chars().count() >= MIN_REDACTED_KEY {
+        return message.replace(escaped, REDACTED).replace(key, REDACTED);
+    }
+    if settings.provider != AiProvider::Custom {
+        return message;
+    }
+    replace_token(&replace_token(&message, escaped), key)
+}
+
+/// `text` with each occurrence of `token` that no letter, digit, `-` or `_` touches replaced.
+fn replace_token(text: &str, token: &str) -> String {
+    let word = |c: Option<char>| c.is_some_and(|c| c.is_alphanumeric() || c == '-' || c == '_');
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(at) = rest.find(token) {
+        let (before, after) = (&rest[..at], &rest[at + token.len()..]);
+        let touched = word(before.chars().next_back())
+            || word(out.chars().next_back().filter(|_| before.is_empty()))
+            || word(after.chars().next());
+        out.push_str(before);
+        out.push_str(if touched { token } else { REDACTED });
+        rest = after;
+    }
+    out.push_str(rest);
+    out
 }
 
 /// The request and answer shape of each provider.
@@ -351,9 +380,7 @@ impl Dialect {
         {
             return Ok(object);
         }
-        if matches!(self, Self::Anthropic(_))
-            && body.get("stop_reason") == Some(&json!("max_tokens"))
-        {
+        if self.stopped_at_limit(&body) {
             return Err(StructuredError::OutputLimit);
         }
         Err(no_object(if text.is_none() {
@@ -361,6 +388,18 @@ impl Dialect {
         } else {
             "could not parse the response"
         }))
+    }
+
+    /// The provider says the answer stopped at its output token limit.
+    fn stopped_at_limit(self, body: &Value) -> bool {
+        let (pointer, limit) = match self {
+            // `status: incomplete` also covers `content_filter`; only this reason is the limit.
+            Self::Responses => ("/incomplete_details/reason", "max_output_tokens"),
+            Self::Chat => ("/choices/0/finish_reason", "length"),
+            Self::Anthropic(_) => ("/stop_reason", "max_tokens"),
+            Self::Google => ("/candidates/0/finishReason", "MAX_TOKENS"),
+        };
+        body.pointer(pointer).and_then(Value::as_str) == Some(limit)
     }
 
     /// The answer's text, which holds the object; `None` when there is none (a refusal).

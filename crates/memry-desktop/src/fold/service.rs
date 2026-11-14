@@ -305,9 +305,8 @@ impl FoldService {
                 })
             })
             .collect();
-        let written_since = |key: &String| {
-            seen.is_some_and(|seen| state.queue.written.get(key).is_some_and(|&at| at > seen))
-        };
+        let written_since =
+            |key: &String| seen.is_some_and(|seen| state.queue.written_since(key, seen));
         if keys.iter().any(written_since) {
             return None;
         }

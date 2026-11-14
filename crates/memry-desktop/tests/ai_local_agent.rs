@@ -666,7 +666,7 @@ async fn a_structured_completion_reads_the_fenced_object_and_a_cancelled_run_sta
         &fake.base_url,
         MODEL,
     ));
-    let title: Title = agent.complete_structured("Name it").await.unwrap();
+    let title: Title = agent.complete_structured("Name it", None).await.unwrap();
     assert_eq!(
         title,
         Title {

@@ -126,6 +126,17 @@ have the note open to hold their typing, as an outside edit does before it appli
 then writes the file, so the edit's frame applies over the typing the editor refused; one test
 closes the note first, so that typing goes in with no editor.
 
+## Inline AI keys
+
+`specs/editor/ai-keys.e2e.ts` uses two commands (`src-tauri/src/e2e/ai.rs`, over
+`memry_desktop::e2e::ai_inline`). Neither returns a key:
+
+- `e2e_ai_inline_seed_row { patch }` writes the open vault's `ai-inline` row as stored, around
+  `InlineAiStore`, so a row can carry a plaintext `apiKey` as Electron left it.
+- `e2e_ai_inline_key_state { expected }` answers `{ keychainMatches, rowKeyEmpty }`: whether the
+  keychain holds `expected` for the provider and origin the row selects, read from the keychain
+  and not the store's cache, and whether the row's `apiKey` is empty.
+
 ## Vault write-back
 
 The app makes every markdown file outside the journal folder a note (Step 13d, #3530). Until

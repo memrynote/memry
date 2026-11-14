@@ -235,6 +235,11 @@ async fn run_fill(
 ) -> FillFieldsResult {
     match fill_fields::run(proxy, settings, owner, ask, locale, Retry::SDK).await {
         Ok(proposals) => FillFieldsResult::Proposals { proposals },
+        // The proxy's own English reason ("the vault closed") is no text for a toast; a page
+        // that went shows nothing. A closed vault is no failure to warn about.
+        Err(error) if error.failure() == Failure::Ended => FillFieldsResult::Failed {
+            message: i18n::t(locale, "errors:ipc.noVaultOpen", &Args::new()),
+        },
         Err(error) => failed(error.to_string()),
     }
 }

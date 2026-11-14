@@ -61,8 +61,12 @@ const ALLOWED: &[(&str, &str)] = &[
         "the auth headers for that inline AI provider; only the header types, no request",
     ),
     (
-        "crates/memry-desktop/src/ai/proxy.rs",
+        "crates/memry-desktop/src/ai/proxy/mod.rs",
         "the inline AI provider the person picked or their local Ollama, the inline chat's requests",
+    ),
+    (
+        "crates/memry-desktop/src/ai/proxy/request.rs",
+        "the inline AI provider the person picked or their local Ollama; builds ai::proxy's requests",
     ),
     (
         "crates/memry-desktop/src/ai/structured.rs",

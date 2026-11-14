@@ -22,6 +22,11 @@ import type {
   TagSchemaSnapshot,
   TagsProgressEvent
 } from '@memry/contracts/tag-schema-api'
+import type {
+  FieldFillStatus,
+  FillFieldsInput,
+  FillFieldsResult
+} from '@memry/contracts/tag-fill-api'
 import type { RenameTagResponse } from '@memry/contracts/tags-api'
 import type { GetLinkedHereResponse, SearchObjectsResponse } from '@memry/contracts/tag-objects-api'
 import { commands, events } from '../../../generated/bindings'
@@ -48,6 +53,8 @@ type TagsService = Omit<
   deleteCategory: (id: string) => Promise<CategoryOperationResponse>
   deleteTag: (tag: string) => Promise<DeleteTagResult>
   mergeTag: (input: { source: string; target: string }) => Promise<MergeTagResult>
+  getFillStatus: () => Promise<FieldFillStatus>
+  fillFields: (input: FillFieldsInput) => Promise<FillFieldsResult>
 }
 
 /** A failed write as Electron's tag handlers answer it: the error's message. */
