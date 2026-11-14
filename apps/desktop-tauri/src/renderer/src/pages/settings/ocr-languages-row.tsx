@@ -40,13 +40,16 @@ function useOcrLanguages(): OcrLanguagesState | null {
   const [state, setState] = useState<OcrLanguagesState | null>(null)
   useEffect(() => {
     let live = true
-    const unsubscribe = subscribeToEvent(events.ocrLanguagesChangedEvent, setState)
-    commands
-      .ocrLanguagesGetState()
-      .then((languages) => {
-        if (live) setState(languages)
-      })
-      .catch((error: unknown) => log.error('Failed to read OCR languages', error))
+    // Read once the listener is live: a download that finishes before that sends its event to
+    // no one, and a read made earlier would keep the row at its old progress.
+    const unsubscribe = subscribeToEvent(events.ocrLanguagesChangedEvent, setState, () => {
+      commands
+        .ocrLanguagesGetState()
+        .then((languages) => {
+          if (live) setState(languages)
+        })
+        .catch((error: unknown) => log.error('Failed to read OCR languages', error))
+    })
     return () => {
       live = false
       unsubscribe()

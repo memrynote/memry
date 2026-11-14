@@ -20,6 +20,16 @@ const MAX_UNPACKED: u64 = 64 * 1024 * 1024;
 /// `<cache>/<lang>.traineddata`, unless the cache already holds the unpacking of those bytes.
 /// Blocking file work.
 pub fn unpack(cache: &Path, lang: OcrLanguage, source: &Path, sha256: &str) -> io::Result<()> {
+    unpack_within(cache, lang, source, sha256, MAX_UNPACKED)
+}
+
+fn unpack_within(
+    cache: &Path,
+    lang: OcrLanguage,
+    source: &Path,
+    sha256: &str,
+    max_unpacked: u64,
+) -> io::Result<()> {
     let target = cache.join(lang.file_name());
     let marker = cache.join(format!("{}.source-sha256", lang.code()));
     if target.is_file() && std::fs::read_to_string(&marker).is_ok_and(|seen| seen == sha256) {
@@ -34,12 +44,12 @@ pub fn unpack(cache: &Path, lang: OcrLanguage, source: &Path, sha256: &str) -> i
     }
     let mut unpacked = Vec::new();
     GzDecoder::new(packed.as_slice())
-        .take(MAX_UNPACKED + 1)
+        .take(max_unpacked + 1)
         .read_to_end(&mut unpacked)?;
-    if unpacked.len() as u64 > MAX_UNPACKED {
+    if unpacked.len() as u64 > max_unpacked {
         return Err(io::Error::new(
             io::ErrorKind::InvalidData,
-            format!("the {} pack unpacks past {MAX_UNPACKED} bytes", lang.code()),
+            format!("the {} pack unpacks past {max_unpacked} bytes", lang.code()),
         ));
     }
     std::fs::create_dir_all(cache)?;
@@ -50,4 +60,68 @@ pub fn unpack(cache: &Path, lang: OcrLanguage, source: &Path, sha256: &str) -> i
         return Err(error);
     }
     std::fs::write(marker, sha256)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::io::Write;
+
+    use super::*;
+
+    fn pack(dir: &Path, text: &str) -> (std::path::PathBuf, String) {
+        let mut encoder = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+        encoder.write_all(text.as_bytes()).expect("gzip");
+        let packed = encoder.finish().expect("gzip");
+        let source = dir.join("deu.traineddata.gz");
+        std::fs::write(&source, &packed).expect("write pack");
+        (source, hex::encode(Sha256::digest(&packed)))
+    }
+
+    fn names(dir: &Path) -> Vec<String> {
+        std::fs::read_dir(dir).map_or_else(
+            |_| Vec::new(),
+            |entries| {
+                entries
+                    .map(|entry| {
+                        entry
+                            .expect("entry")
+                            .file_name()
+                            .to_string_lossy()
+                            .into_owned()
+                    })
+                    .collect()
+            },
+        )
+    }
+
+    #[test]
+    fn a_pack_that_unpacks_past_the_cap_is_refused_and_leaves_nothing() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let cache = dir.path().join(CACHE_DIR);
+        let (source, sha) = pack(dir.path(), &"a".repeat(17));
+
+        let error =
+            unpack_within(&cache, OcrLanguage::Deu, &source, &sha, 16).expect_err("refused");
+
+        assert_eq!(error.kind(), io::ErrorKind::InvalidData);
+        assert!(names(&cache).is_empty(), "cache holds {:?}", names(&cache));
+        unpack_within(&cache, OcrLanguage::Deu, &source, &sha, 17).expect("at the cap");
+        assert_eq!(
+            std::fs::read_to_string(cache.join("deu.traineddata")).expect("unpacked"),
+            "a".repeat(17)
+        );
+    }
+
+    #[test]
+    fn a_pack_whose_sha256_differs_from_its_pin_is_refused_and_leaves_nothing() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let cache = dir.path().join(CACHE_DIR);
+        let (source, _) = pack(dir.path(), "deu data");
+        let other = hex::encode(Sha256::digest(b"another pack"));
+
+        let error = unpack(&cache, OcrLanguage::Deu, &source, &other).expect_err("refused");
+
+        assert_eq!(error.kind(), io::ErrorKind::InvalidData);
+        assert!(names(&cache).is_empty(), "cache holds {:?}", names(&cache));
+    }
 }

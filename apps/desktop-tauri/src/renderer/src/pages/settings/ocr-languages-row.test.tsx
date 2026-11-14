@@ -16,7 +16,8 @@ const ipc = vi.hoisted(() => ({
     ocrLanguagesSet: vi.fn(),
     ocrLanguagesRetry: vi.fn()
   },
-  changed: null as null | ((event: { payload: OcrLanguagesState }) => void)
+  changed: null as null | ((event: { payload: OcrLanguagesState }) => void),
+  listening: Promise.resolve()
 }))
 vi.mock('../../../../generated/bindings', async (importOriginal) => {
   const actual = await importOriginal<typeof Bindings>()
@@ -27,8 +28,10 @@ vi.mock('../../../../generated/bindings', async (importOriginal) => {
       ...actual.events,
       ocrLanguagesChangedEvent: {
         listen: (handler: (event: { payload: OcrLanguagesState }) => void) => {
-          ipc.changed = handler
-          return Promise.resolve(() => {})
+          return ipc.listening.then(() => {
+            ipc.changed = handler
+            return () => {}
+          })
         }
       }
     }
@@ -49,7 +52,8 @@ describe('OcrLanguagesRow', () => {
       HTMLElement.prototype[method] ??= vi.fn(() => false) as never
     }
     HTMLElement.prototype.scrollIntoView ??= vi.fn()
-    ipc.commands.ocrLanguagesGetState.mockResolvedValue(englishOnly)
+    ipc.listening = Promise.resolve()
+    ipc.commands.ocrLanguagesGetState.mockReset().mockResolvedValue(englishOnly)
     ipc.commands.ocrLanguagesSet.mockReset().mockResolvedValue(englishOnly)
     ipc.commands.ocrLanguagesRetry.mockReset().mockResolvedValue(englishOnly)
   })
@@ -72,6 +76,35 @@ describe('OcrLanguagesRow', () => {
     await user.click(screen.getByRole('menuitemcheckbox', { name: 'Deutsch' }))
 
     expect(ipc.commands.ocrLanguagesSet).toHaveBeenCalledWith(['eng', 'deu'])
+  })
+
+  it('shows a download that finished before the listener went live as done', async () => {
+    let backend: OcrLanguagesState = {
+      selected: ['eng', 'deu'],
+      statuses: {
+        eng: { state: 'ready' },
+        deu: { state: 'downloading', receivedBytes: 512, totalBytes: 1024 }
+      }
+    }
+    ipc.commands.ocrLanguagesGetState.mockImplementation(() => Promise.resolve(backend))
+    let goLive = () => {}
+    ipc.listening = new Promise<void>((resolve) => {
+      goLive = resolve
+    })
+    renderRow()
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    // The done event fires while `listen` is still pending, so no handler sees it.
+    backend = {
+      selected: ['eng', 'deu'],
+      statuses: { eng: { state: 'ready' }, deu: { state: 'ready' } }
+    }
+    await act(async () => goLive())
+
+    expect(await screen.findByTestId('ocr-languages-trigger')).toHaveTextContent('English, Deutsch')
+    expect(screen.queryByText(/Downloading Deutsch/)).not.toBeInTheDocument()
   })
 
   it('shows download progress, then a failed download with its reason and a retry', async () => {
