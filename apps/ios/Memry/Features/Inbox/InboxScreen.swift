@@ -95,6 +95,7 @@ struct InboxScreen: View {
                     InboxComposer(store: store, text: $composerText, recording: $recording) { composing = false }
                 }
             }
+            .modifier(InboxDropTarget(store: store, isEnabled: store.view == .inbox && !selecting))
             .environment(\.editMode, $editMode)
             .environment(\.inboxRowIntents, intents)
             .navigationTitle(titleCollapsed ? store.viewTitle : "")

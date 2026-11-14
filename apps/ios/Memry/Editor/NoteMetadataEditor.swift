@@ -600,9 +600,16 @@ final class NoteMetadataViewModel {
     /// An unchanged title writes nothing: every write is a payload merge and
     /// an outbox row, and tapping into the title and back out must not enqueue
     /// a push.
+    ///
+    /// A title that landed is announced with `titleSaved`, so every page on
+    /// this note re-reads, not only the one that wrote: a size-class change
+    /// commits the title as it draws the note again as a new page (#4532).
     func rename(to title: String, current: String) async {
         guard let writer, title != current else { return }
         await run { try await writer.rename(id: noteId, title: title) }
+        if status == .idle {
+            NotificationCenter.default.post(name: NoteReadViewModel.titleSaved, object: noteId)
+        }
     }
 
     /// Sets or clears the icon (N702). `nil` clears.

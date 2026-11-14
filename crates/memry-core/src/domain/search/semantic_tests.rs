@@ -53,7 +53,7 @@ fn each_window_class_keeps_its_nearest_thirty_before_collapsing_to_notes() {
         .map(|window| row("crowded", window, 0.99))
         .collect();
     rows.push(row("late-chunk", 1, 0.9));
-    rows.push(row("head", 0, 0.7));
+    rows.push(row("head", 0, 0.8));
 
     let hits = nearest(&query(), rows).unwrap();
 
@@ -69,8 +69,8 @@ fn the_floor_applies_to_a_note_best_window() {
     let rows = vec![
         row("weak-head-strong-chunk", 0, 0.5),
         row("weak-head-strong-chunk", 1, 0.8),
-        row("over", 0, 0.66),
-        row("under", 0, 0.64),
+        row("over", 0, 0.73),
+        row("under", 0, 0.72),
         row("under", 1, 0.6),
     ];
 

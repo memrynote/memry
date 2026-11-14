@@ -43,16 +43,16 @@ struct TasksDetailTests {
     /// per edit. Renamed to B, a peer renames it to C, B typed again: written.
     @Test func a_title_retyped_after_a_peer_rename_is_written() async throws {
         let (vault, id) = try await loaded()
-        var commits = TaskTitleCommits()
+        var commits = DraftCommits()
         commits.begin(try item(vault, id).title)
-        let taken = commits.take("[agent] B")
+        let taken = commits.take("[agent] B", explicit: false)
         let first = try #require(taken)
         #expect(await vault.store.detailRename(try item(vault, id), to: first))
         _ = try vault.tasks.setTitle(id: id, title: "[agent] C")
         await vault.store.refresh()
         #expect(try item(vault, id).title == "[agent] C")
         commits.begin(try item(vault, id).title)
-        let retaken = commits.take("[agent] B")
+        let retaken = commits.take("[agent] B", explicit: false)
         let again = try #require(retaken)
         #expect(await vault.store.detailRename(try item(vault, id), to: again))
         #expect(try item(vault, id).title == "[agent] B")
@@ -62,23 +62,23 @@ struct TasksDetailTests {
     /// to C. Blur, Back or a swap must not write the stale A over C.
     @Test func a_focused_untouched_title_does_not_overwrite_a_peer_rename() async throws {
         let (vault, id) = try await loaded("[agent] A")
-        var commits = TaskTitleCommits()
+        var commits = DraftCommits()
         commits.begin(try item(vault, id).title)
         _ = try vault.tasks.setTitle(id: id, title: "[agent] C")
         await vault.store.refresh()
-        if let text = commits.take("[agent] A") {
+        if let text = commits.take("[agent] A", explicit: false) {
             _ = await vault.store.detailRename(try item(vault, id), to: text)
         }
         #expect(try item(vault, id).title == "[agent] C")
     }
 
     @Test func focus_loss_and_going_away_write_one_edit_once() {
-        var commits = TaskTitleCommits()
+        var commits = DraftCommits()
         commits.begin("A")
-        #expect(commits.take("B") == "B")
-        #expect(commits.take("B") == nil)
+        #expect(commits.take("B", explicit: false) == "B")
+        #expect(commits.take("B", explicit: false) == nil)
         commits.begin("B")
-        #expect(commits.take("B2") == "B2")
+        #expect(commits.take("B2", explicit: false) == "B2")
     }
 
     /// #4611: a title write fails after the field was focused again. The edit
@@ -136,9 +136,17 @@ struct TasksDetailTests {
         }
     }
 
+    /// A task cannot be untitled: an emptied title ends the edit with no write.
+    @Test func an_emptied_title_is_dropped() {
+        var commits = DraftCommits()
+        commits.begin("A")
+        #expect(commits.take("", explicit: false) == nil)
+        #expect(commits.take("B", explicit: false) == nil, "the emptied edit ended")
+    }
+
     @Test func going_away_without_focus_writes_nothing() {
-        var commits = TaskTitleCommits()
-        #expect(commits.take("A") == nil)
+        var commits = DraftCommits()
+        #expect(commits.take("A", explicit: false) == nil)
     }
 
     @Test func status_priority_due_and_project_edits_are_undoable() async throws {

@@ -124,9 +124,14 @@ final class NotePageActions {
         return error
     }
 
+    /// A title that landed is announced with `titleSaved`, so every page on
+    /// this note re-reads it.
     func rename(to title: String) async {
         guard let writer else { return }
         await run { try await writer.rename(id: noteId, title: title) }
+        if status == .idle {
+            NotificationCenter.default.post(name: NoteReadViewModel.titleSaved, object: noteId)
+        }
     }
 
     /// `nil` is the vault root, and it travels as an explicit null so every
