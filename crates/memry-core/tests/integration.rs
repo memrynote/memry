@@ -378,6 +378,10 @@ mod portal_reads;
 mod portal_vectors;
 #[path = "projector_null_tolerance.rs"]
 mod projector_null_tolerance;
+// `note_properties` is desktop only (`markdown`).
+#[cfg(feature = "markdown")]
+#[path = "property_reads_load.rs"]
+mod property_reads_load;
 #[path = "push_crdt_update_cap.rs"]
 mod push_crdt_update_cap;
 #[path = "push_delete_wins.rs"]

@@ -199,7 +199,11 @@ impl Device {
         std::fs::create_dir_all(&data).unwrap();
         let core = Vault::open("harness".into(), data.to_string_lossy().into_owned()).unwrap();
         let records = core.property_definition_records(store.clone()).unwrap();
-        let definitions = Arc::new(PropertyDefinitions::new(vault.clone(), records));
+        let definitions = Arc::new(PropertyDefinitions::new(
+            vault.clone(),
+            records,
+            Some(core.search().unwrap()),
+        ));
 
         let transport = app_transport(&["127.0.0.1".to_owned()], Arc::new(NoPins));
         let session = AuthSession::new(

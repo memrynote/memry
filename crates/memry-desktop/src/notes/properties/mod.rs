@@ -304,7 +304,9 @@ pub fn read_definition_types(
     let records = vault
         .property_definition_records(store)
         .map_err(|error| error.to_string())?;
-    PropertyDefinitions::new(path.to_owned(), records)
+    // No index: a read of the types folds no learned type into the file, which only a fold that
+    // can settle it over the index's rows writes (#4629).
+    PropertyDefinitions::new(path.to_owned(), records, None)
         .types()
         .map_err(|error| error.to_string())
 }

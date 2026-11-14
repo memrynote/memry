@@ -11,6 +11,7 @@
 //! | a type the user chose never settles                       | only a learned type settles            |
 //! | learned definitions are in the file after a reopen        | the fold into `properties.md`          |
 //! | types an older build learned reach the file on a list     | the fold of what `meta` still holds    |
+//! | an older build's learned type settles before the fold     | `settleLearnedTypes` over every row    |
 //! | a day's title follows the type a note's title learned     | a note before a day (13q-9 diff)       |
 //! | a defined name keeps its definition                       | only a name with none is learned       |
 //! | a deleted definition stays deleted through a retype       | a retype learns nothing                |
@@ -240,6 +241,32 @@ fn types_an_older_build_learned_reach_the_file_on_a_list() {
     assert!(file.contains("  rating:\n    type: number\n"), "{file}");
     assert!(f.records.learned().unwrap().is_empty());
     assert!(f.record("rating").is_none());
+}
+
+/// #4629: an older build learned a type from the first file it read and never settled it, so
+/// `meta` holds `rating: number` while a note holds `rating: good`. The fold checks every row, as
+/// `settleLearnedTypes` does, and writes text; a learned type every value fits keeps its type.
+#[test]
+fn an_older_builds_learned_type_settles_before_the_fold() {
+    let mut f = opened(&[]);
+    f.e.close();
+    let data = rusqlite::Connection::open(f.e.vault.join(".memry/core/data.db")).unwrap();
+    data.execute(
+        "INSERT OR REPLACE INTO meta (key, value) VALUES ('property_definitions.learned', ?1)",
+        [r#"{"rating":"number","score":"number"}"#],
+    )
+    .unwrap();
+    drop(data);
+    f.e.write("First.md", "---\nrating: 5\nscore: 1\n---\n");
+    f.e.write("Second.md", "---\nrating: good\nscore: 2\n---\n");
+    f.e.open();
+    f.e.facts_until(indexed);
+    until("every file read", || index_support::all_indexed(&f.e));
+    until("the rows read", || {
+        f.row_type("Second.md", "rating").is_some()
+    });
+    f.learned_into_the_file("rating", "text");
+    f.learned_into_the_file("score", "number");
 }
 
 /// A note's `title` is a property (Electron's `RESERVED_FRONTMATTER_KEYS` holds no `title`). A

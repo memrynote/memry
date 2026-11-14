@@ -3,8 +3,6 @@
 //! index's `note_properties` rows. A property's type is vault-wide, so a note can hold a value
 //! that type cannot show (`rating: good` under a number property): such a note is a mismatch.
 
-use std::path::Path;
-
 use memry_core::api::errors::StorageError;
 use serde::Serialize;
 
@@ -44,41 +42,24 @@ pub fn property_usage(open: &OpenVault) -> Result<Vec<PropertyUsageView>, Storag
         .collect())
 }
 
-/// The notes that use `name`, by title (`listNotesWithProperty`). A journal day is titled by
+/// The notes that use `name`, by title (`listNotesWithProperty`): a journal day is titled by
 /// its file's name, as Electron's index titles it; a row whose note has no file is left out.
 pub fn notes_with_property(
     open: &OpenVault,
     name: &str,
 ) -> Result<Vec<PropertyNoteUsageView>, StorageError> {
-    let files = open.vault.note_files();
-    let mut notes = Vec::new();
-    for (id, mismatch) in open.search.notes_with_property(name.to_owned())? {
-        let note = match files.listed_by_id(&id)? {
-            Some(listed) => PropertyNoteUsageView {
-                id,
-                title: listed.title,
-                path: listed.path,
-                emoji: listed.emoji,
-                mismatch,
-            },
-            None => {
-                let Some(file) = files.by_id(&id)? else {
-                    continue;
-                };
-                let title = Path::new(&file.path)
-                    .file_stem()
-                    .map_or_else(String::new, |stem| stem.to_string_lossy().into_owned());
-                PropertyNoteUsageView {
-                    id,
-                    title,
-                    path: file.path,
-                    emoji: None,
-                    mismatch,
-                }
-            }
-        };
-        notes.push(note);
-    }
+    let mut notes: Vec<PropertyNoteUsageView> = open
+        .search
+        .notes_with_property(name)?
+        .into_iter()
+        .map(|note| PropertyNoteUsageView {
+            id: note.id,
+            title: note.title,
+            path: note.path,
+            emoji: note.emoji,
+            mismatch: note.mismatch,
+        })
+        .collect();
     // `ORDER BY title COLLATE NOCASE`: ASCII letters fold, nothing else does.
     notes.sort_by(|a, b| {
         a.title
