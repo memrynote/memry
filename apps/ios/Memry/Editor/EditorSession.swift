@@ -106,8 +106,6 @@ final class EditorSession {
         let trigger: Character
         let location: Int
     }
-    /// The link alert over the selection is open (`editLink`).
-    var linkPrompt = false
     /// Seam for tests; the app reads the attached keyboard.
     @ObservationIgnored var hardwareKeyboard = HardwareKeyboard.shared
     /// The toolbar shows the format slide (`Aa`) rather than the main row.
@@ -388,6 +386,9 @@ final class EditorSession {
         } else {
             if panel != .none { panel = .none }
             formatting = false
+            // A caret back over a selection brings the format slide back
+            // (`selectionChanged`), as after the Link prompt (#4667).
+            hasSelection = false
             trigger = nil
             suggestions = []
             tagTrigger = nil

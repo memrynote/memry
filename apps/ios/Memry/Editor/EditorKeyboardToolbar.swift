@@ -38,7 +38,6 @@ enum EditorToolbarItem: String, CaseIterable, Identifiable {
 struct EditorKeyboardToolbar: View {
     let session: EditorSession
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var address = ""
 
     private var showsFormat: Bool { session.formatting && session.panel == .none }
 
@@ -84,17 +83,6 @@ struct EditorKeyboardToolbar: View {
         .font(Tokens.Typography.body.font)
         .foregroundStyle(Tokens.Text.primary.color)
         .tint(Tokens.Text.primary.color)
-        // The format row's link button and ⇧⌘K ask here (`editLink`).
-        .alert("Link", isPresented: Binding(get: { session.linkPrompt }, set: { session.linkPrompt = $0 })) {
-            TextField("https://", text: $address)
-                .keyboardType(.URL)
-                .textInputAutocapitalization(.never)
-            Button("Cancel", role: .cancel) {}
-            Button("Add") { session.addLink(address) }
-        }
-        .onChange(of: session.linkPrompt) { _, open in
-            if open { address = "" }
-        }
     }
 
     /// A slide within the capsule, or a fade under Reduce Motion. `leading`

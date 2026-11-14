@@ -145,19 +145,14 @@ extension EditorSession {
     }
 
     /// The link over the selection: removed when it carries one, otherwise
-    /// asked for by address (`linkPrompt`).
+    /// asked for by address (`LinkPrompt`).
     func editLink() {
-        guard hasSelection else { return }
+        guard hasSelection, let field else { return }
         if selectionMarks.contains("link") {
             toggleMark("link")
         } else {
-            linkPrompt = true
+            LinkPrompt.present(session: self, textView: field.textView)
         }
-    }
-
-    func addLink(_ address: String) {
-        let trimmed = address.trimmingCharacters(in: .whitespaces)
-        if !trimmed.isEmpty { toggleMark("link", value: trimmed) }
     }
 
     private func moveHighlight(_ step: Int) {

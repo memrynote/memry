@@ -37,7 +37,7 @@ enum FormatEditMenu {
             if linked {
                 session.toggleMark("link")
             } else if let textView {
-                askForLink(session: session, textView: textView)
+                LinkPrompt.present(session: session, textView: textView)
             }
         })
         children.append(colours(title: "Text Colour", symbol: "paintpalette", mark: "textColor", session: session) {
@@ -62,29 +62,5 @@ enum FormatEditMenu {
             })
         }
         return UIMenu(title: title, image: UIImage(systemName: symbol), children: children)
-    }
-
-    /// Asks for the address, then links the selection as it stood when the
-    /// menu opened.
-    private static func askForLink(session: EditorSession, textView: UITextView) {
-        guard var presenter = textView.window?.rootViewController else { return }
-        while let next = presenter.presentedViewController { presenter = next }
-        let selection = textView.selectedRange
-        let alert = UIAlertController(title: "Link", message: nil, preferredStyle: .alert)
-        alert.addTextField { field in
-            field.placeholder = "https://"
-            field.keyboardType = .URL
-            field.autocapitalizationType = .none
-            field.autocorrectionType = .no
-        }
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        alert.addAction(UIAlertAction(title: "Add", style: .default) { [weak alert, weak textView] _ in
-            let address = alert?.textFields?.first?.text?.trimmingCharacters(in: .whitespaces) ?? ""
-            guard !address.isEmpty, let textView else { return }
-            textView.becomeFirstResponder()
-            textView.selectedRange = selection
-            session.toggleMark("link", value: address)
-        })
-        presenter.present(alert, animated: true)
     }
 }

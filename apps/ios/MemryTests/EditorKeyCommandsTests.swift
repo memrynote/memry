@@ -274,14 +274,33 @@ struct EditorKeyCommandsTests {
         #expect(page.session.history.canUndo)
     }
 
-    @Test func shiftCommandKAsksForALinkAndCommandKIsLeftToSearch() async {
+    /// #4667: the prompt is an alert over the page, so its field takes the
+    /// keys, and Add links the selection the prompt opened over.
+    @Test func shiftCommandKAsksForALinkAndCommandKIsLeftToSearch() async throws {
         let page = Page()
         #expect(!page.has("k", .command), "⌘K is global search")
-        page.field.textView.selectedRange = NSRange(location: 0, length: 2)
+        let window = try page.showInWindow()
+        defer { window.isHidden = true }
+        let selection = NSRange(location: 0, length: 2)
+        page.field.textView.selectedRange = selection
         page.session.selectionChanged(in: page.field)
         await page.press("k", [.command, .shift], writes: false)
-        #expect(page.session.linkPrompt)
-        await page.reloaded { page.session.addLink(" https://memry.app ") }
+        let alert = try #require(window.rootViewController?.presentedViewController as? UIAlertController)
+        #expect(alert.title == "Link")
+        #expect(alert.textFields?.count == 1)
+        if let coordinator = alert.transitionCoordinator {
+            await withCheckedContinuation { done in
+                coordinator.animate(alongsideTransition: nil) { _ in done.resume() }
+            }
+        }
+        #expect(alert.textFields?.first?.isFirstResponder == true, "the prompt's field has no caret")
+        await withCheckedContinuation { done in alert.dismiss(animated: false) { done.resume() } }
+        page.field.textView.selectedRange = NSRange(location: 2, length: 0)
+        await page.reloaded {
+            LinkPrompt.finish(" https://memry.app ", selection: selection, textView: page.field.textView, session: page.session)
+        }
+        #expect(page.field.textView.isFirstResponder)
+        #expect(page.field.textView.text == "hi")
         #expect(page.editor.all.last == .setMark(blockId: "b", start: 0, end: 2, mark: "link", value: "https://memry.app"))
     }
 
