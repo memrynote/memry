@@ -8,6 +8,10 @@ import UIKit
 // `packages/contracts/src/commands/`; iPad additions and substitutes for keys
 // iPadOS reserves follow epic #4334's keyboard decisions.
 //
+// **One registry (#4379).** A command's id, title and key live here, and its
+// `can` and `run` on `VaultCommands`. The menu bar and the ⌘P palette
+// (`CommandPalette`) both list these, so a command is defined once.
+//
 // A command fires only while nothing is presented over the window: a sheet,
 // the search palette, an alert or a menu. Changing the page or opening another
 // sheet under one leaves SwiftUI with a presentation it drops, such as a
@@ -16,17 +20,45 @@ import UIKit
 // Synced user overrides (`shortcut-bindings`) are follow-up #4383 (Q9).
 
 enum AppCommand: Hashable {
-    case newNote, quickCapture, newTask, search, settings, today, previousDay, nextDay
+    case newNote, quickCapture, newTask, search, commandPalette, settings, today, previousDay, nextDay
     /// The `n`th page in the visible order, 1–9.
     case page(Int)
 
     static let pageNumbers = 1 ... 9
 
+    /// The catalog's id (`packages/contracts/src/commands/`). A page's is
+    /// `VaultCommands.id(_:)`, which knows the page.
+    var id: String {
+        switch self {
+        case .newNote: "nav.newNote"
+        case .search: "nav.search"
+        case .commandPalette: "nav.commands"
+        case .settings: "nav.settings"
+        case .newTask: "create.task"
+        case .today: "journal.today"
+        case .previousDay: "journal.previous"
+        case .nextDay: "journal.next"
+        // An iPad addition with no catalog entry yet (desktop #4384).
+        case .quickCapture: "capture.quick"
+        case let .page(number): "page.\(number)"
+        }
+    }
+
+    /// Where it acts, as the catalog's `context`: the palette lists a command
+    /// of the shown page's context first.
+    var context: CommandContext {
+        switch self {
+        case .previousDay, .nextDay: .journal
+        default: .app
+        }
+    }
+
     var shortcut: KeyboardShortcut {
         switch self {
-        // nav.newNote, nav.search, nav.settings
+        // nav.newNote, nav.search, nav.commands, nav.settings
         case .newNote: KeyboardShortcut("n", modifiers: .command)
         case .search: KeyboardShortcut("k", modifiers: .command)
+        case .commandPalette: KeyboardShortcut("p", modifiers: .command)
         case .settings: KeyboardShortcut(",", modifiers: .command)
         // iPad additions (epic #4334); desktop follow-up #4384.
         case .quickCapture: KeyboardShortcut("n", modifiers: [.shift, .command])
@@ -41,22 +73,56 @@ enum AppCommand: Hashable {
         }
     }
 
+    /// The catalog's name. A page's is `VaultCommands.title(_:)`.
     var title: String {
         switch self {
-        case .newNote: NotesCreateCopy.newNote
+        case .newNote: CommandCopy.newNote
         case .quickCapture: QuickCaptureCopy.commandTitle
-        case .newTask: TasksCopy.addTask
-        case .search: GlobalSearchCopy.open
-        case .settings: SettingsCopy.title
-        case .today: JournalCopy.goToToday
-        case .previousDay: JournalCopy.previousDay
-        case .nextDay: JournalCopy.nextDay
+        case .newTask: CommandCopy.newTask
+        case .search: CommandCopy.search
+        case .commandPalette: CommandCopy.commandPalette
+        case .settings: CommandCopy.settings
+        case .today: CommandCopy.today
+        case .previousDay: CommandCopy.previousDay
+        case .nextDay: CommandCopy.nextDay
         case let .page(number): "Page \(number)"
         }
     }
 
+    /// The menu bar's groups, in menu order.
+    static let newItem: [AppCommand] = [.newNote, .quickCapture, .newTask]
+    static let find: [AppCommand] = [.search, .commandPalette]
+    static let journal: [AppCommand] = [.today, .previousDay, .nextDay]
+
     /// Every command with a fixed title, in menu order.
-    static let fixed: [AppCommand] = [.newNote, .quickCapture, .newTask, .search, .settings, .today, .previousDay, .nextDay]
+    static let fixed: [AppCommand] = newItem + [.settings] + find + journal
+}
+
+/// The catalog's `context`, for the contexts iOS has commands in.
+enum CommandContext {
+    case app, journal
+}
+
+/// The catalog's English names: `menu.json` › `commands`, and
+/// `settings.json` › `shortcuts.entries` for a command with a key
+/// (`packages/i18n/src/locales/en/`). iOS has no string catalog.
+enum CommandCopy {
+    static let newNote = "New Note"
+    static let newTask = "New Task"
+    static let search = "Search"
+    static let commandPalette = "Command Palette"
+    static let settings = "Open Settings"
+    static let today = "Go to Today's Journal"
+    static let previousDay = "Previous Journal Period"
+    static let nextDay = "Next Journal Period"
+    /// `go.*`: "Go to Home", "Go to Inbox", …
+    static func goTo(_ page: String) -> String { "Go to \(page)" }
+
+    // common.json › commandsPalette
+    static let paletteTitle = "Commands"
+    static let prompt = "Type a command…"
+    static let thisJournal = "This journal"
+    static func empty(_ query: String) -> String { "No commands match “\(query)”" }
 }
 
 struct MemryCommands: Commands {
@@ -71,30 +137,24 @@ struct MemryCommands: Commands {
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
-            button(.newNote)
-            button(.quickCapture)
-            button(.newTask)
+            ForEach(AppCommand.newItem, id: \.self, content: button)
         }
         CommandGroup(replacing: .appSettings) {
             button(.settings)
         }
         CommandMenu("Go") {
-            button(.search)
+            ForEach(AppCommand.find, id: \.self, content: button)
             Divider()
-            button(.today)
-            button(.previousDay)
-            button(.nextDay)
+            ForEach(AppCommand.journal, id: \.self, content: button)
             if let target {
                 Divider()
-                ForEach(Array(target.pages.prefix(AppCommand.pageNumbers.count).enumerated()), id: \.element) { index, page in
-                    button(.page(index + 1), title: page.title)
-                }
+                ForEach(target.pageCommands, id: \.self, content: button)
             }
         }
     }
 
-    private func button(_ command: AppCommand, title: String? = nil) -> some View {
-        Button(title ?? command.title) {
+    private func button(_ command: AppCommand) -> some View {
+        Button(target?.title(command) ?? command.title) {
             guard !Self.isPresenting else { return }
             target?.run(command)
         }
