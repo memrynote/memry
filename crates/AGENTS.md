@@ -59,6 +59,14 @@ This directory owns the Rust workspace. `memry-core` is the shared core under th
 - The generator refuses ranking texts that put two documents within 1e-4 for one query. That floor is a margin for cross-CPU floating-point noise, observed far below it (bit-identical on macOS arm64, all legs green); it does not follow from the bounds, which allow a score to shift by about 0.028. A ranking failure while every text is inside the bounds is drift to investigate, not a reason to change a ranking text.
 - Lone surrogates are a known divergence (test-vectors README): the test pins the measured cosine with Electron's vector instead of the bounds.
 
+### Embeddings audio
+
+`memry-ml`'s audio path (`audio_prep.rs`, `audio.rs`, `EmbeddingEngine::embed_audio`) is tested against two files that `crates/memry-ml/tests/golden/generate-audio.mjs` writes by running Electron's `audio-embedding.ts` in place (its settings and database imports stubbed) and the worker's audio path on transformers.js (`pnpm embed:golden:audio --model-dir <dir>`, `--check` as for text; the model folder needs the audio files too).
+
+- `audio-features.json` (no model, every tier, `tests/audio_features.rs`): WAV decoding and `embedAudio`'s windows exact, log-mel rows within 1e-4. `embeddings-audio.json` (full tier, `tests/golden_audio.rs`): eight WAV files decoded, split and embedded, token ids exact, the text file's vector bounds.
+- Inputs are integer recipes, rebuilt byte for byte by `tests/common/mod.rs`; change a recipe in both places.
+- The decoder is an untrusted-input parser: output capped at 12 windows of 300 s before allocation, sample rates under 4000 Hz refused (the one divergence, marked in the file), linear step count. Keep its kit tests red-provable.
+
 ### Note fold
 
 `memry-desktop/src/fold` (Step 14h, #3531; model levels Step 22, #3539) ports Electron's fold (`apps/desktop/src/main/note-fold/`) and is tested against `packages/contracts/test-vectors/note-fold-text.json`, `note-fold.json` and `note-fold-model.json` (Key, Takeaway and Topic: the local fallback lines, assembled model lines, chunk prompts and reply validation), which `apps/desktop/scripts/note-fold-oracle/` generates by running that engine in Node. The queue and service rules (`fold-service.ts`) are tested on a fake model in `tests/note_fold_queue.rs`, each test citing the Electron line it ports.

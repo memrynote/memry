@@ -4,6 +4,8 @@ use std::borrow::Cow;
 use std::path::Path;
 
 use crate::MlError;
+use crate::audio::{AudioEncoder, audio_prompt};
+use crate::audio_prep::audio_features;
 use crate::files::{self, ModelGroup};
 use crate::text::TextModel;
 
@@ -36,10 +38,13 @@ pub fn default_intra_threads() -> usize {
     (cores / 2).clamp(1, 2)
 }
 
-/// The text model, loaded from a model directory (`files::model_dir`). Inference takes `&mut self`:
-/// one thread owns the engine and serves one request at a time.
+/// The text model, loaded from a model directory (`files::model_dir`), and the audio encoder once
+/// [`EmbeddingEngine::load_audio`] ran. Inference takes `&mut self`: one thread owns the engine and
+/// serves one request at a time.
 pub struct EmbeddingEngine {
     text: TextModel,
+    audio: Option<AudioEncoder>,
+    intra_threads: usize,
 }
 
 impl EmbeddingEngine {
@@ -49,7 +54,38 @@ impl EmbeddingEngine {
         files::ensure_present(dir, ModelGroup::Text)?;
         Ok(Self {
             text: TextModel::load(dir, options.intra_threads)?,
+            audio: None,
+            intra_threads: options.intra_threads,
         })
+    }
+
+    /// Loads the audio encoder from `dir` unless it is loaded: the worker's
+    /// `loadEmbeddingPipeline({ audio: true })`, reached on the first recording to embed. Fails with
+    /// `ModelMissing` when a file of the audio group is absent or has the wrong size.
+    pub fn load_audio(&mut self, dir: &Path) -> Result<(), MlError> {
+        if self.audio.is_none() {
+            files::ensure_present(dir, ModelGroup::Audio)?;
+            self.audio = Some(AudioEncoder::load(dir, self.intra_threads)?);
+        }
+        Ok(())
+    }
+
+    /// Embeds one window of 16 kHz mono samples (`audio_prep::audio_windows`) as the worker's
+    /// `embedAudio`: the window's features, the encoder's soft tokens at the prompt's placeholders.
+    pub fn embed_audio(&mut self, window: &[f32]) -> Result<Embedding, MlError> {
+        let Some(encoder) = self.audio.as_mut() else {
+            return Err(MlError::Load("Audio encoder is not loaded".into()));
+        };
+        let features = audio_features(window)?;
+        let soft_tokens = encoder.encode(&features)?;
+        let ids = self.text.token_ids(&audio_prompt(features.soft_tokens()))?;
+        truncate_embedding(&self.text.sentence_embedding_with_audio(ids, soft_tokens)?)
+    }
+
+    /// The ids [`Self::embed_audio`] gives the model for `window`.
+    pub fn audio_token_ids(&self, window: &[f32]) -> Result<Vec<i64>, MlError> {
+        self.text
+            .token_ids(&audio_prompt(audio_features(window)?.soft_tokens()))
     }
 
     /// Embeds the first [`MAX_EMBEDDING_INPUT_LENGTH`] UTF-16 units of `text` as given: the

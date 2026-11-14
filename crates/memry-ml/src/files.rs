@@ -51,7 +51,7 @@ const VISION_WEIGHTS: ModelFile = ModelFile {
     size: 108_957_696,
     sha256: "0a9d6c927334f152a33dd90874f65d6ea5228999abe6a450d3f7813677fa704c",
 };
-const AUDIO_GRAPH: ModelFile = ModelFile {
+pub(crate) const AUDIO_GRAPH: ModelFile = ModelFile {
     path: "onnx/audio_encoder_q4.onnx",
     size: 245_543,
     sha256: "c4cce3370e72262280d00293cac038896050a03a8e9a27e10b061ca97510296e",

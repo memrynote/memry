@@ -81,6 +81,8 @@ one-class change reviewable.
 | `note-fold.json`                         |                                   48 | same                                                                                           | Rust `note_fold_vectors.rs`                                                          |
 | `embedding-input.json`                   |                                   61 | `apps/desktop/scripts/embedding-input-oracle/`                                                 | Rust `domain::embedding_input` tests                                                 |
 | `embeddings-text.json`                   |                    31 + 2 + 12 pairs | `crates/memry-ml/tests/golden/generate.mjs` (needs the model)                                  | Rust `memry-ml/tests/golden_text.rs` (full tier)                                     |
+| `audio-features.json`                    |                           33 + 8 + 7 | `crates/memry-ml/tests/golden/generate-audio.mjs` (needs the model)                            | Rust `memry-ml/tests/audio_features.rs`                                              |
+| `embeddings-audio.json`                  |                   8 files, 9 windows | same                                                                                           | Rust `memry-ml/tests/golden_audio.rs` (full tier)                                    |
 | `markdown-roundtrip/cases.json`          |                                  285 | `../scripts/vectors/markdown-roundtrip.ts`                                                     | `../src/__tests__/markdown-roundtrip.test.ts`                                        |
 | `markdown-roundtrip/fuzz-families.json`  |                           6 families | same                                                                                           | same                                                                                 |
 | `markdown-convert/frontmatter.json`      |                                  457 | `apps/desktop/scripts/markdown-oracle/`                                                        | `../src/__tests__/markdown-convert.test.ts` + Rust `markdown_frontmatter_vectors.rs` |
@@ -119,6 +121,16 @@ text moves more). Both are under the 0.9999 bound. `loneSurrogates` records Elec
 that cosine, and `golden_text.rs` holds the native vector to the measured cosine within 1e-4.
 Similarity floors of 0.60 and up are unaffected in practice; only the one window that holds the
 cut moves.
+
+### `audio-features.json`, `embeddings-audio.json`: what the port keeps and where it differs
+
+Both files come from Electron's audio path run in place: `decodeWavForEmbedding` and `embedAudio`
+of `apps/desktop/src/main/lib/audio-embedding.ts`, then the worker's `processor(null, null, audio)`
+and model on transformers.js. Two behaviours are easy to miss. The audio feature extractor keeps
+only the first 480,000 samples (30 s) of a window, so a 300 s window embeds its first 30 s; the
+vectors pin that (`31 s` cases), and `memry-ml` does the same. The one divergence is a WAV file
+under 4000 Hz: Electron resamples it, the native decoder refuses it, because a few bytes at 1 Hz
+would claim hours of output. Such a case carries `divergence` in `decode`.
 
 ### `markdown-convert/`
 
