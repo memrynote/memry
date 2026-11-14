@@ -257,6 +257,11 @@ pub const INDEX_MIGRATIONS: &[Migration] = &[
         name: "file_text",
         sql: include_str!("migrations/index/0010_file_text.sql"),
     },
+    Migration {
+        version: 11,
+        name: "note_embedding_hashes",
+        sql: include_str!("migrations/index/0011_note_embedding_hashes.sql"),
+    },
 ];
 
 /// The version a fully migrated database sits at. Zero for an empty list.

@@ -7,6 +7,7 @@
 
 mod ai_fake;
 mod device_key;
+mod embedding_lane;
 mod index_support;
 mod move_tree;
 mod on_warning;
@@ -110,6 +111,10 @@ mod editor_host;
 #[cfg(unix)]
 #[path = "editor_readonly.rs"]
 mod editor_readonly;
+#[path = "embedding_owed.rs"]
+mod embedding_owed;
+#[path = "embedding_projector.rs"]
+mod embedding_projector;
 #[path = "embeds.rs"]
 mod embeds;
 #[path = "file_open.rs"]
