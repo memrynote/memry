@@ -190,7 +190,8 @@ enum NotesCreateCopy {
 }
 
 /// A note to open on the Notes page from outside it (a search hit, a
-/// capture's "View"). The Notes page owns its stack, so it takes the request.
+/// capture's "View"), or a note to make there (⌘N). The Notes page owns its
+/// stack and its model, so it takes the request.
 @MainActor
 @Observable
 final class NotesLinks {
@@ -202,5 +203,16 @@ final class NotesLinks {
     func take() -> String? {
         defer { pending = nil }
         return pending
+    }
+
+    /// ⌘N asked the Notes page for a new note, which it makes with its own
+    /// model so its list shows the row.
+    private(set) var newNoteRequested = false
+
+    func requestNewNote() { newNoteRequested = true }
+
+    func takeNewNote() -> Bool {
+        defer { newNoteRequested = false }
+        return newNoteRequested
     }
 }

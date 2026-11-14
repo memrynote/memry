@@ -76,6 +76,9 @@ struct TaskListScreen: View {
                 if selecting { composer = nil }
             }
             .onChange(of: store.state.tab) { _, _ in selection = [] }
+            .onChange(of: router.composerRequested, initial: true) {
+                if router.takeComposerRequest() { openComposer() }
+            }
             .onChange(of: selection.isEmpty) { _, isEmpty in
                 // Cmd+A from a hardware keyboard selects without the menu.
                 if !isEmpty, !isSelecting { editMode = .active }
@@ -118,7 +121,7 @@ struct TaskListScreen: View {
                     label: TasksCopy.addTask,
                     hint: TasksCopy.addButtonHint,
                     identifier: "tasks.addButton"
-                ) { composer = TaskComposerRequest(projectId: store.state.projectId) }
+                ) { openComposer() }
             }
         }
         .padding(.horizontal, Tokens.Space.inset)
@@ -151,7 +154,7 @@ struct TaskListScreen: View {
             }
             if router.tasksSplit {
                 ToolbarItem(placement: .topBarTrailing) {
-                    TaskAddToolbarButton { composer = TaskComposerRequest(projectId: store.state.projectId) }
+                    TaskAddToolbarButton { openComposer() }
                 }
             }
             GlobalSearchToolbarItem()
@@ -170,6 +173,12 @@ struct TaskListScreen: View {
         }
         .accessibilityValue(count > 0 ? "\(count) \(TasksCopy.activeFilterCount)" : "")
         .accessibilityIdentifier("tasks.filterButton")
+    }
+
+    /// The "+" and ⌥⌘N: a task in the list's project scope.
+    private func openComposer() {
+        editMode = .inactive
+        composer = TaskComposerRequest(projectId: store.state.projectId)
     }
 
     private func beginSelection(_ id: String) {
