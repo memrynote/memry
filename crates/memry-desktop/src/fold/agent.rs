@@ -215,6 +215,8 @@ impl FoldBackend for FoldAgents {
             FoldAgentChoice::LocalOpenaiCompatible => {
                 // Detected with no model, the cache key says `default`: a model configured since
                 // would write its reply under that key, so the run waits for a new detection.
+                // Jobs already queued with this writer fail too, on purpose: none of them
+                // writes a reply under the stale key.
                 if writer.model.is_none() && !self.local.configured_model().await.is_empty() {
                     self.reset();
                     return Err("the local model changed after the fold detected it".to_owned());

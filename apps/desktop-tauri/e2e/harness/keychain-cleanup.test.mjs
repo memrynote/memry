@@ -106,7 +106,8 @@ test('matches e2e inline AI keys, slotted and legacy, but no other device', () =
   for (const account of [
     `api-key:vault-1:openai-e2e-${UUID}-A`,
     `api-key:vault-1:custom:http://127.0.0.1:5555-e2e-${UUID}`,
-    `api-key:vault-1-e2e-${UUID}-B`
+    `api-key:vault-1-e2e-${UUID}-B`,
+    'api-key:vault-1:openai-e2e-default-4445'
   ]) {
     assert.equal(isPurgeableE2eEntry({ service: AI, account }), true, account)
   }
@@ -116,7 +117,11 @@ test('matches e2e inline AI keys, slotted and legacy, but no other device', () =
     'api-key:vault-1:anthropic-A',
     'api-key:vault-1',
     `master-key-e2e-${UUID}-A`,
-    'api-key:vault 1:openai-e2e-x'
+    'api-key:vault 1:openai-e2e-x',
+    // A real custom endpoint whose origin contains `-e2e-` is not an e2e device suffix.
+    'api-key:vault-1:custom:http://llm-e2e-box',
+    'api-key:vault-1:custom:https://gpu-e2e-01',
+    'api-key:vault-1:custom:http://llm-e2e-box-dev'
   ]) {
     assert.equal(isPurgeableE2eEntry({ service: AI, account }), false, account)
   }

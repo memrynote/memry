@@ -61,8 +61,13 @@ export const PROTECTED_ACCOUNTS = new Set([
 /** `master-key-e2e-<uuid>-A`, `setup-token-e2e-vault-deletion-<uuid>`, ... */
 const E2E_SYNC_ACCOUNT = /^[a-z-]+-e2e-[A-Za-z0-9@._-]+$/
 
-/** `api-key:<vault id>[:<slot>]-e2e-<uuid>[-A|-B]` */
-const E2E_AI_INLINE_ACCOUNT = /^api-key:\S+-e2e-[A-Za-z0-9-]+$/
+/**
+ * `api-key:<vault id>[:<slot>]-e2e-<uuid>[-A|-B]` or `...-e2e-default-<port>`: the device ids
+ * `tauri-lifecycle.ts` and `e2e/control.rs` mint. Anchored to their shape because a custom slot
+ * embeds the endpoint origin, and a real one can contain `-e2e-` (`custom:http://llm-e2e-box`).
+ */
+const E2E_AI_INLINE_ACCOUNT =
+  /^api-key:\S+-e2e-(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:-[AB])?|default-\d+)$/
 
 /** Electron safeStorage: service `<app.name> Safe Storage`, app.name `memry-<MEMRY_DEVICE>`. */
 const E2E_SAFE_STORAGE_SERVICE = /^memry-e2e-[A-Za-z0-9-]+ Safe Storage$/

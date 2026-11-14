@@ -277,9 +277,11 @@ fn a_chat_responses_or_google_answer_cut_at_the_token_limit_says_so() {
         ),
         (
             Dialect::Responses,
-            json!({ "status": "incomplete", "output": [{ "type": "message", "content": [
-                { "type": "output_text", "text": cut },
-            ] }] }),
+            json!({ "status": "incomplete",
+                "incomplete_details": { "reason": "max_output_tokens" },
+                "output": [{ "type": "message", "content": [
+                    { "type": "output_text", "text": cut },
+                ] }] }),
             json!({ "status": "completed", "output": [{ "type": "message", "content": [
                 { "type": "output_text", "text": cut },
             ] }] }),
@@ -306,4 +308,19 @@ fn a_chat_responses_or_google_answer_cut_at_the_token_limit_says_so() {
             "{dialect:?}"
         );
     }
+}
+
+#[test]
+fn a_responses_answer_stopped_by_the_content_filter_is_no_object() {
+    // `incomplete` names its reason; only `max_output_tokens` is the output limit
+    // (`@ai-sdk/openai` maps `content_filter` to a content-filter finish).
+    let filtered = json!({ "status": "incomplete",
+        "incomplete_details": { "reason": "content_filter" },
+        "output": [{ "type": "message", "content": [
+            { "type": "output_text", "text": "{\"items\":[{\"a\":" },
+        ] }] });
+    assert!(matches!(
+        Dialect::Responses.object::<Value>(filtered.to_string().as_bytes()),
+        Err(StructuredError::NoObject(_))
+    ));
 }

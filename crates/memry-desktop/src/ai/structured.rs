@@ -74,9 +74,10 @@ pub enum StructuredError {
     #[error("No object generated: {0}")]
     NoObject(String),
     /// The model stopped at its output token limit before the object was whole (Chat's
-    /// `finish_reason: length`, a Responses `status: incomplete`, Anthropic's
-    /// `stop_reason: max_tokens`, Google's `finishReason: MAX_TOKENS`), as a thinking model does
-    /// when its thinking takes the budget.
+    /// `finish_reason: length`, a Responses `incomplete_details.reason: max_output_tokens`,
+    /// Anthropic's `stop_reason: max_tokens`, Google's `finishReason: MAX_TOKENS`), as a thinking
+    /// model does when its thinking takes the budget. An intentional divergence: Electron shows the AI
+    /// SDK's generic `NoObjectGeneratedError` text; naming the limit tells the user why.
     #[error("No object generated: the model reached its output token limit")]
     OutputLimit,
     /// Every try failed; the last failure (`RetryError`, reason `maxRetriesExceeded`).
@@ -392,7 +393,8 @@ impl Dialect {
     /// The provider says the answer stopped at its output token limit.
     fn stopped_at_limit(self, body: &Value) -> bool {
         let (pointer, limit) = match self {
-            Self::Responses => ("/status", "incomplete"),
+            // `status: incomplete` also covers `content_filter`; only this reason is the limit.
+            Self::Responses => ("/incomplete_details/reason", "max_output_tokens"),
             Self::Chat => ("/choices/0/finish_reason", "length"),
             Self::Anthropic(_) => ("/stop_reason", "max_tokens"),
             Self::Google => ("/candidates/0/finishReason", "MAX_TOKENS"),
