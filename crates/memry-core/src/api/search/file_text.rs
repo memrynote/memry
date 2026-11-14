@@ -9,6 +9,8 @@ use crate::domain::file_text::{
     self, ExtractedTextMethod, FileTextJob, FileTextJobStatus, JobOutcome, TextSource,
 };
 
+use crate::domain::search;
+
 use super::{Search, now_ms};
 
 impl Search {
@@ -111,6 +113,18 @@ impl Search {
     pub fn extracted_text_for_note(&self, note_id: &str) -> Result<String, StorageError> {
         self.index
             .read_blocking(|index| file_text::extracted_text_for_note(index, note_id))
+    }
+
+    /// Puts the text read out of `note_id`'s files into its search row, after the runner
+    /// saved or dropped some. The text moves no `data.db` stamp, so a reindex would not
+    /// reach the note; a full rebuild reads the text on its own.
+    pub fn refresh_note_text(&self, note_id: &str) -> Result<(), StorageError> {
+        let index = self.index.clone();
+        self.data.call_blocking(move |data| {
+            index.call_blocking(|index| {
+                search::refresh_note_text(data, index, note_id, now_ms()).map(|_| ())
+            })
+        })
     }
 }
 

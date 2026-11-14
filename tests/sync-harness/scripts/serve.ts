@@ -15,6 +15,9 @@
  * no entitlement row) and runs the Worker's cron, whose `cleanupExpiredTombstones` sheds every
  * tombstone from an earlier second to a marker (chapter 05 §5.12.3). It answers
  * `{ harnessMarkers }`, the marker count, on stdout.
+ *
+ * A `register` line registers one more device for the same user, as a device signing in after
+ * the others started, and answers `{ harnessDevice }` in the bootstrap's device shape.
  */
 import { createInterface } from 'node:readline'
 import { base64_variants, to_base64 } from 'libsodium-wrappers-sumo'
@@ -26,14 +29,17 @@ const server = new SimulatedServer()
 await server.start()
 
 const userId = crypto.randomUUID()
-const devices = []
-for (let at = 0; at < count; at += 1) {
+const register = async (at: number) => {
   const device = await createTestDevice(server, { userId, deviceName: `harness-${at}` })
-  devices.push({
+  return {
     deviceId: device.deviceId,
     accessToken: device.accessToken,
     signingSecretKey: to_base64(device.signingSecretKey, base64_variants.ORIGINAL)
-  })
+  }
+}
+const devices = []
+for (let at = 0; at < count; at += 1) {
+  devices.push(await register(at))
 }
 
 const kdfSalt = to_base64(new Uint8Array(16).fill(7), base64_variants.ORIGINAL)
@@ -66,5 +72,11 @@ const purge = async (): Promise<void> => {
 const commands = createInterface({ input: process.stdin })
 commands.on('line', (line) => {
   if (line.trim() === 'purge') void purge()
+  if (line.trim() === 'register') {
+    void register(devices.length).then((device) => {
+      devices.push(device)
+      process.stdout.write(`${JSON.stringify({ harnessDevice: device })}\n`)
+    })
+  }
 })
 commands.on('close', () => void stop())

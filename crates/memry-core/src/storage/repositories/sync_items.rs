@@ -320,6 +320,23 @@ pub fn mark_corrupt(
     Ok(())
 }
 
+/// The ids of the rows held corrupt because their signer was not in the
+/// device directory (chapter 01 §1.4.0), by the reason's fixed ending
+/// ([`crate::protocol::account::UNKNOWN_SIGNER`]).
+pub fn unknown_signer_ids(conn: &Connection) -> Result<Vec<String>, StorageError> {
+    let mut statement = conn
+        .prepare(
+            "SELECT DISTINCT item_id FROM sync_items
+             WHERE substr(corrupt_reason, -length(?1)) = ?1 ORDER BY item_id",
+        )
+        .map_err(failed)?;
+    statement
+        .query_map([crate::protocol::account::UNKNOWN_SIGNER], |row| row.get(0))
+        .map_err(failed)?
+        .collect::<Result<Vec<String>, _>>()
+        .map_err(failed)
+}
+
 /// Reads one row.
 pub fn load(
     conn: &Connection,

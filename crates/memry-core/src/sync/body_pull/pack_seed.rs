@@ -83,6 +83,7 @@ impl BodyPull {
             cursor,
         )
         .await?;
+        self.tell_observers(doc_id).await;
         Ok(PackSeed::Applied)
     }
 }
