@@ -427,12 +427,37 @@ export function memryPwInstall(win) {
     return Object.getOwnPropertyDescriptor(proto, 'value').set
   }
 
+  /**
+   * Runs `move` (a native `focus()` or `blur()` of `el`) and fires the focus events it owes when
+   * the browser held them back. Blink fires none while its window lacks system focus, which is
+   * where the parallel Windows CI apps sit, so an `onBlur` save never ran there (#4547). Each event
+   * is fired only when the native call moved the focus and did not fire it, so a focused window
+   * still sees one of each.
+   */
+  function moveFocus(el, move, gained) {
+    const [own, bubbling] = gained ? ['focus', 'focusin'] : ['blur', 'focusout']
+    const had = doc.activeElement === el
+    let fired = false
+    const seen = () => {
+      fired = true
+    }
+    el.addEventListener(own, seen, true)
+    try {
+      move()
+    } finally {
+      el.removeEventListener(own, seen, true)
+    }
+    if (fired || had === gained || (doc.activeElement === el) !== gained) return
+    el.dispatchEvent(new win.FocusEvent(own))
+    el.dispatchEvent(new win.FocusEvent(bubbling, { bubbles: true }))
+  }
+
   /** Playwright's fill: focus, replace the whole value, fire `input` (and `change` is left to blur). */
   function fill(spec, text) {
     const elements = queryAll(spec)
     if (elements.length !== 1) return { count: elements.length }
     const el = elements[0]
-    el.focus()
+    moveFocus(el, () => el.focus(), true)
     const tag = el.tagName
     if (tag === 'INPUT' || tag === 'TEXTAREA') {
       nativeSetter(el).call(el, text)
@@ -456,14 +481,16 @@ export function memryPwInstall(win) {
   function focus(spec) {
     const elements = queryAll(spec)
     if (elements.length !== 1) return { count: elements.length }
-    elements[0].focus()
+    const el = elements[0]
+    moveFocus(el, () => el.focus(), true)
     return { count: 1, done: true }
   }
 
   function blur(spec) {
     const elements = queryAll(spec)
     if (elements.length !== 1) return { count: elements.length }
-    elements[0].blur()
+    const el = elements[0]
+    moveFocus(el, () => el.blur(), false)
     return { count: 1, done: true }
   }
 
