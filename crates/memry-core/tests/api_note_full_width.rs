@@ -6,6 +6,7 @@
 //! | a desktop note's override reads back                  | desktop `typeof === boolean`  |
 //! | a toggle writes only `fullWidth`                      | other keys untouched, queued  |
 //! | a value that is not a boolean follows the global width | desktop `typeof === boolean`  |
+//! | the override is a property row                        | desktop lists it, unreserved  |
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -178,6 +179,29 @@ fn a_toggle_writes_only_full_width() {
         .set_full_width("n1".into(), false)
         .expect("same value");
     assert_eq!(queued(&dir), rows);
+}
+
+/// Desktop does not reserve `fullWidth` (`RESERVED_FRONTMATTER_KEYS` in
+/// `frontmatter.ts`), so its property panel lists it as a checkbox. The
+/// metadata every iOS property row and the inspector read lists it too.
+#[test]
+fn the_override_is_a_property_row() {
+    let (dir, vault) = vault("row");
+    seed(&dir, "n1", &desktop_note(json!({"status": "draft"})));
+    let writer = vault.notes_writer(registered()).expect("writer");
+    writer.set_full_width("n1".into(), true).expect("set");
+
+    let metadata = vault
+        .notes()
+        .metadata("n1".into())
+        .expect("read")
+        .expect("note");
+    let rows: Vec<(&str, &str)> = metadata
+        .properties
+        .iter()
+        .map(|it| (it.name.as_str(), it.value_json.as_str()))
+        .collect();
+    assert_eq!(rows, [("status", "\"draft\""), ("fullWidth", "true")]);
 }
 
 #[test]
