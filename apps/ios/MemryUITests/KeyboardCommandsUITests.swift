@@ -97,10 +97,23 @@ final class KeyboardCommandsUITests: XCTestCase {
         XCTAssertEqual(date.label, "Today", "off the journal page the panel opens on today")
         attach("day-panel-tasks")
 
-        sidebarRow("Journal").tap()
+        // ⌘T opens the Journal on today, whichever level it was left on.
+        app.typeKey("t", modifierFlags: .command)
         let previous = app.buttons["journal.day.previous"].firstMatch
         XCTAssertTrue(previous.waitForExistence(timeout: 10), "the Journal did not open on a day")
-        XCTAssertTrue(panel.exists, "the panel did not stay open on the Journal")
+        // The Journal keeps its own open state (open by default): a run that
+        // closed it there left it closed.
+        if !panel.waitForExistence(timeout: 3) { app.typeKey("b", modifierFlags: [.shift, .command]) }
+        XCTAssertTrue(panel.waitForExistence(timeout: 5), "⇧⌘B did not open the panel on the Journal")
+        app.typeKey("b", modifierFlags: [.shift, .command])
+        XCTAssertTrue(panel.waitForNonExistence(timeout: 5), "⇧⌘B did not close the panel on the Journal")
+        sidebarRow("Tasks").tap()
+        XCTAssertTrue(panel.waitForExistence(timeout: 5), "closing it on the Journal closed it on Tasks")
+        app.typeKey("t", modifierFlags: .command)
+        XCTAssertTrue(previous.waitForExistence(timeout: 10))
+        XCTAssertFalse(panel.exists, "the panel did not stay closed on the Journal")
+        app.typeKey("b", modifierFlags: [.shift, .command])
+        XCTAssertTrue(panel.waitForExistence(timeout: 5))
         previous.tap()
         XCTAssertTrue(matches(NSPredicate(format: "label != 'Today'"), date), "the panel did not follow the journal's shown day")
         attach("day-panel-journal")

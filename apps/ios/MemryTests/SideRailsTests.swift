@@ -8,7 +8,8 @@ import Testing
 // rail needs the reading measure beside it, two rails need room for both,
 // and opening one closes the other where both cannot fit. On the journal
 // page the panel follows the shown day; elsewhere it shows today until
-// stepped.
+// stepped. On the journal page the panel starts open and keeps its own
+// open state.
 
 @MainActor
 @Suite("Side rails")
@@ -27,32 +28,32 @@ struct SideRailsTests {
     }
 
     @Test func opening_one_rail_closes_the_other_where_only_one_fits() {
-        var open = SideRailsOpen(dayPanel: false, inspector: true)
-        open.toggleDayPanel(in: .one)
-        #expect(open == SideRailsOpen(dayPanel: true, inspector: false))
+        var open = SideRailsOpen(dayPanel: false, journalDayPanel: true, inspector: true)
+        open.toggleDayPanel(in: .one, onJournal: false)
+        #expect(open == SideRailsOpen(dayPanel: true, journalDayPanel: true, inspector: false))
         open.toggleInspector(in: .one)
-        #expect(open == SideRailsOpen(dayPanel: false, inspector: true))
+        #expect(open == SideRailsOpen(dayPanel: false, journalDayPanel: true, inspector: true))
     }
 
     @Test func both_rails_stay_open_where_both_fit() {
-        var open = SideRailsOpen(dayPanel: false, inspector: true)
-        open.toggleDayPanel(in: .two)
-        #expect(open.dayPanelShown(in: .two) && open.inspectorShown(in: .two))
-        open.toggleDayPanel(in: .two)
-        #expect(open == SideRailsOpen(dayPanel: false, inspector: true))
+        var open = SideRailsOpen(dayPanel: false, journalDayPanel: true, inspector: true)
+        open.toggleDayPanel(in: .two, onJournal: false)
+        #expect(open.dayPanelShown(in: .two, onJournal: false) && open.inspectorShown(in: .two))
+        open.toggleDayPanel(in: .two, onJournal: false)
+        #expect(open == SideRailsOpen(dayPanel: false, journalDayPanel: true, inspector: true))
     }
 
     @Test func a_window_that_shrinks_under_both_shows_the_panel_and_the_inspector_button_takes_over() {
-        var open = SideRailsOpen(dayPanel: true, inspector: true)
-        #expect(open.dayPanelShown(in: .one))
+        var open = SideRailsOpen(dayPanel: true, journalDayPanel: true, inspector: true)
+        #expect(open.dayPanelShown(in: .one, onJournal: false))
         #expect(!open.inspectorShown(in: .one))
         open.toggleInspector(in: .one)
-        #expect(open == SideRailsOpen(dayPanel: false, inspector: true), "the waiting inspector shows on the first tap")
+        #expect(open == SideRailsOpen(dayPanel: false, journalDayPanel: true, inspector: true), "the waiting inspector shows on the first tap")
     }
 
     @Test func no_rail_shows_where_none_fits() {
-        let open = SideRailsOpen(dayPanel: true, inspector: true)
-        #expect(!open.dayPanelShown(in: .none))
+        let open = SideRailsOpen(dayPanel: true, journalDayPanel: true, inspector: true)
+        #expect(!open.dayPanelShown(in: .none, onJournal: false))
         #expect(!open.inspectorShown(in: .none))
     }
 
@@ -66,7 +67,41 @@ struct SideRailsTests {
         #expect(!defaults.bool(forKey: SideRails.dayPanelKey))
 
         let relaunched = SideRails(defaults: defaults)
-        #expect(relaunched.open == SideRailsOpen(dayPanel: false, inspector: true))
+        #expect(relaunched.open == SideRailsOpen(dayPanel: false, journalDayPanel: true, inspector: true))
+    }
+
+    @Test func on_the_journal_page_the_panel_starts_open_and_elsewhere_closed() {
+        let rails = SideRails(defaults: defaults)
+        rails.room = .one
+        #expect(!rails.dayPanelShown, "closed by default off the Journal, as on desktop")
+        rails.onJournal = true
+        #expect(rails.dayPanelShown, "open by default on the Journal, as its day rail was")
+    }
+
+    @Test func closing_the_panel_on_the_journal_keeps_it_closed_there_only() {
+        let rails = SideRails(defaults: defaults)
+        rails.room = .one
+        rails.onJournal = true
+        rails.toggleDayPanel()
+        #expect(!rails.dayPanelShown)
+
+        rails.onJournal = false
+        rails.toggleDayPanel()
+        #expect(rails.dayPanelShown, "the other pages keep their own state")
+
+        let relaunched = SideRails(defaults: defaults)
+        relaunched.room = .one
+        relaunched.onJournal = true
+        #expect(!relaunched.dayPanelShown, "closed on the Journal stays closed after relaunch")
+        relaunched.onJournal = false
+        #expect(relaunched.dayPanelShown)
+    }
+
+    @Test func the_journal_panel_leaves_the_inspector_alone() {
+        var open = SideRailsOpen(dayPanel: false, journalDayPanel: false, inspector: true)
+        open.toggleDayPanel(in: .one, onJournal: true)
+        #expect(open == SideRailsOpen(dayPanel: false, journalDayPanel: true, inspector: true))
+        #expect(open.inspectorShown(in: .one), "the inspector beside a note is untouched")
     }
 
     @Test func on_the_journal_page_the_panel_follows_and_moves_the_shown_day() {

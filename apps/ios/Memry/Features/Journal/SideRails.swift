@@ -16,8 +16,11 @@ import SwiftUI
 // inspector waits; its button stays, and tapping it shows it and closes the
 // panel.
 //
-// **Per device.** Both open states live in `UserDefaults`, never in the vault
-// and never synced. Both start closed, as on desktop.
+// **Per device.** The open states live in `UserDefaults`, never in the vault
+// and never synced. The Day Panel keeps one state on the Journal page and
+// one everywhere else: on Journal it starts open, as the Journal's day rail
+// did, and stays closed there once closed. Elsewhere it starts closed, as on
+// desktop, and so does the inspector, which only shows beside a note.
 
 enum SideRailRoom: Equatable {
     case none, one, two
@@ -34,17 +37,25 @@ enum SideRailRoom: Equatable {
 
 /// Which rails are open, and what each toggle does to the other.
 struct SideRailsOpen: Equatable {
+    /// The Day Panel off the Journal page, where it shares the room with the
+    /// inspector.
     var dayPanel: Bool
+    /// The Day Panel on the Journal page.
+    var journalDayPanel: Bool
     var inspector: Bool
 
-    func dayPanelShown(in room: SideRailRoom) -> Bool { dayPanel && room != .none }
+    func dayPanelShown(in room: SideRailRoom, onJournal: Bool) -> Bool {
+        (onJournal ? journalDayPanel : dayPanel) && room != .none
+    }
 
     func inspectorShown(in room: SideRailRoom) -> Bool {
         inspector && (room == .two || (room == .one && !dayPanel))
     }
 
-    mutating func toggleDayPanel(in room: SideRailRoom) {
-        if dayPanelShown(in: room) {
+    mutating func toggleDayPanel(in room: SideRailRoom, onJournal: Bool) {
+        if onJournal {
+            journalDayPanel = !dayPanelShown(in: room, onJournal: true)
+        } else if dayPanelShown(in: room, onJournal: false) {
             dayPanel = false
         } else {
             dayPanel = true
@@ -68,14 +79,18 @@ struct SideRailsOpen: Equatable {
 @Observable
 final class SideRails {
     static let dayPanelKey = "dayPanel.open"
+    static let journalDayPanelKey = "dayPanel.journal.open"
 
     /// Measured by the shown page's `DayPanelHost`.
     var room: SideRailRoom = .none
+    /// Whether the shown page is the Journal, set by its `DayPanelHost`.
+    var onJournal = false
     /// The day stepped to off the journal page; `nil` follows today.
     var steppedDay: String?
     private(set) var open: SideRailsOpen {
         didSet {
             defaults.set(open.dayPanel, forKey: Self.dayPanelKey)
+            defaults.set(open.journalDayPanel, forKey: Self.journalDayPanelKey)
             defaults.set(open.inspector, forKey: NoteInspectorLayout.openKey)
         }
     }
@@ -86,15 +101,16 @@ final class SideRails {
         self.defaults = defaults
         open = SideRailsOpen(
             dayPanel: defaults.bool(forKey: Self.dayPanelKey),
+            journalDayPanel: defaults.object(forKey: Self.journalDayPanelKey) as? Bool ?? true,
             inspector: defaults.bool(forKey: NoteInspectorLayout.openKey)
         )
     }
 
-    var dayPanelShown: Bool { open.dayPanelShown(in: room) }
+    var dayPanelShown: Bool { open.dayPanelShown(in: room, onJournal: onJournal) }
     var inspectorFits: Bool { room != .none }
     var inspectorShown: Bool { open.inspectorShown(in: room) }
 
-    func toggleDayPanel() { open.toggleDayPanel(in: room) }
+    func toggleDayPanel() { open.toggleDayPanel(in: room, onJournal: onJournal) }
     func toggleInspector() { open.toggleInspector(in: room) }
 
     /// The Day Panel's day: the journal's shown day where it follows one,
@@ -152,7 +168,10 @@ struct DayPanelHost: ViewModifier {
             SideRailRoom(width: $0.size.width, regular: regular, accessibilitySize: large)
         } action: { room = $0 }
         .onChange(of: isSelected ? room : nil, initial: true) { _, room in
-            if let room { rails.room = room }
+            if let room {
+                rails.room = room
+                rails.onJournal = page == .journal
+            }
         }
     }
 
