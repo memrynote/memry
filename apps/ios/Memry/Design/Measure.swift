@@ -19,6 +19,18 @@ extension EnvironmentValues {
     @Entry var paneBreakout = true
 }
 
+/// A picture of a page in a note, such as a PDF or a whiteboard: as tall as
+/// the width it gets, up to the reading measure, and never below the 420pt a
+/// phone has always shown, so a 13" iPad shows a page instead of a strip and
+/// a phone lays out as before.
+enum PreviewMeasure {
+    static let minimumHeight: CGFloat = 420
+
+    static func height(forWidth width: CGFloat) -> CGFloat {
+        max(minimumHeight, min(width, Tokens.Size.reading))
+    }
+}
+
 /// The reading measure, lifted when the surface is full width.
 private struct ReadingColumn: ViewModifier {
     @Environment(\.fullWidthReading) private var fullWidth
