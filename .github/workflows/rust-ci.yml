@@ -653,8 +653,8 @@ jobs:
       - name: Sync harness (memry-desktop)
         if: matrix.part != 'tests' && runner.os == 'Linux'
         run: |
-          cargo clippy -p memry-desktop --features harness --test sync_harness -- -D warnings
-          cargo nextest run -p memry-desktop --features harness --test sync_harness --no-fail-fast
+          cargo clippy -p memry-desktop --features harness --test sync_harness --test sync_driver_harness -- -D warnings
+          cargo nextest run -p memry-desktop --features harness --test sync_harness --test sync_driver_harness --no-fail-fast
 
       - name: Line ceilings
         if: matrix.part != 'tests' && runner.os == 'Linux'
