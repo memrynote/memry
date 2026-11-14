@@ -175,8 +175,11 @@ final class CalendarUITests: XCTestCase {
     // MARK: K — move and resize by hold and drag (#4352)
 
     /// The touch path of the hold + drag `CalendarHoldDrag` reads. A pointer
-    /// click-and-hold reaches the same recogniser as an indirect touch; the
-    /// simulator cannot send one, so this lane stands in for it.
+    /// click-and-hold reaches the same long-press recogniser, and a pointer
+    /// click-and-drag that moves before the hold lands goes to
+    /// `CalendarPointerDrag`, which waits for that hold to fail. The simulator
+    /// cannot send pointer touches, so this lane stands in for both, and
+    /// `CalendarPointerTests` pins the wait.
     func testLaneKHoldAndDragMovesThenResizesAnEvent() throws {
         try openCalendar()
         // Week opens at 8 AM, so the 9–10 event is on screen; Day opens today at the now line.
