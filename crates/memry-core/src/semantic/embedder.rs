@@ -110,6 +110,7 @@ mod onnx {
     use tokenizers::Tokenizer;
 
     use super::{Embed, SemanticError, Threads, Vector, truncate_renormalize};
+    use crate::domain::embedding_input::cap_tokens;
 
     // ort-sys names only Foundation and CoreML. The iOS archive also references
     // UIDevice and nw_path_*, and the macOS slice (the host parity run) needs
@@ -196,13 +197,10 @@ mod onnx {
                 .tokenizer
                 .encode(input, true)
                 .map_err(SemanticError::inference)?;
-            let ids = encoding.get_ids().iter().map(|&i| i64::from(i)).collect();
-            let mask = encoding
-                .get_attention_mask()
-                .iter()
-                .map(|&i| i64::from(i))
-                .collect();
-            Ok((ids, mask))
+            let mut ids = encoding.get_ids().to_vec();
+            cap_tokens(&mut ids);
+            let mask = vec![1; ids.len()];
+            Ok((ids.into_iter().map(i64::from).collect(), mask))
         }
     }
 

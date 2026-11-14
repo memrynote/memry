@@ -183,3 +183,44 @@ pub fn set_aliases(
         now_ms,
     )
 }
+
+/// Desktop's per-note width override: the frontmatter key `fullWidth`, which
+/// desktop writes as a boolean (`apps/desktop/src/renderer/src/pages/note.tsx`).
+/// It is not a reserved key there, so it travels as a user property in the
+/// payload's `properties` object (chapter 13 §13.7.1) and lands in the file's
+/// frontmatter through desktop's existing property write-back.
+pub const FULL_WIDTH_PROPERTY: &str = "fullWidth";
+
+/// The note's width override, or `None` when the note has none.
+///
+/// Only a boolean counts, as on desktop (`typeof widthOverride === 'boolean'`):
+/// a `null`, a missing key or any other value follows the global setting.
+pub fn full_width(conn: &Connection, note_id: &str) -> Result<Option<bool>, StorageError> {
+    Ok(crate::domain::properties::values(conn, ITEM_TYPE, note_id)?
+        .get(FULL_WIDTH_PROPERTY)
+        .and_then(Value::as_bool))
+}
+
+/// Sets the note's width override to a boolean, as desktop's toggle does.
+///
+/// Writes through the property path, so every other property, its key order
+/// and every other payload key stay as they are; a value equal to the stored
+/// one writes nothing.
+pub fn set_full_width(
+    conn: &Connection,
+    note_id: &str,
+    full_width: bool,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<(), crate::domain::properties::PropertyError> {
+    crate::domain::properties::set(
+        conn,
+        ITEM_TYPE,
+        note_id,
+        FULL_WIDTH_PROPERTY,
+        Value::Bool(full_width),
+        device_id,
+        now_ms,
+    )
+    .map(|_| ())
+}

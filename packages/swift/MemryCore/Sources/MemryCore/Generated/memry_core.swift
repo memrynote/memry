@@ -5379,6 +5379,13 @@ public protocol NotesProtocol: AnyObject, Sendable {
     func folders() throws  -> [FolderSummary]
     
     /**
+     * The note's `fullWidth` override, desktop's per-note width: `true` or
+     * `false` wins over the device's editor width, `nil` follows it. A note
+     * this vault does not hold reads as `nil`.
+     */
+    func fullWidth(id: String) throws  -> Bool?
+    
+    /**
      * Whether a live bookmark names `(item_type, item_id)`: the page menu's
      * "Add to favorites" / "Remove from favorites".
      */
@@ -5697,6 +5704,21 @@ open func folders()throws  -> [FolderSummary]  {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_notes_folders(
             self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * The note's `fullWidth` override, desktop's per-note width: `true` or
+     * `false` wins over the device's editor width, `nil` follows it. A note
+     * this vault does not hold reads as `nil`.
+     */
+open func fullWidth(id: String)throws  -> Bool?  {
+    return try  FfiConverterOptionBool.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_notes_full_width(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),uniffiCallStatus
     )
 })
 }
@@ -6155,6 +6177,13 @@ public protocol NotesWriterProtocol: AnyObject, Sendable {
     func setCover(id: String, url: String?, offsetY: Double) throws 
     
     /**
+     * Sets the note's `fullWidth` override, as desktop's page-menu toggle
+     * does: always a boolean, never cleared, so `false` pins normal width
+     * against a global Full setting. Every other property stays as it is.
+     */
+    func setFullWidth(id: String, fullWidth: Bool) throws 
+    
+    /**
      * Sets or clears a note's icon (N701).
      *
      * The payload spells it `emoji` (§13.7.1); it is `icon` here because that
@@ -6593,6 +6622,21 @@ open func setCover(id: String, url: String?, offsetY: Double)throws   {try rustC
         FfiConverterString.lower(id),
         FfiConverterOptionString.lower(url),
         FfiConverterDouble.lower(offsetY),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * Sets the note's `fullWidth` override, as desktop's page-menu toggle
+     * does: always a boolean, never cleared, so `false` pins normal width
+     * against a global Full setting. Every other property stays as it is.
+     */
+open func setFullWidth(id: String, fullWidth: Bool)throws   {try rustCallWithError(FfiConverterTypePropertyWriteError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_noteswriter_set_full_width(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterBool.lower(fullWidth),uniffiCallStatus
     )
 }
 }
@@ -36550,7 +36594,8 @@ public func validateRecoveryPhrase(phrase: String)throws  -> String  {
 }
 /**
  * Runs every case of `embedding-input.json` and answers `{ cases: [{ name,
- * actual: { document, chunks } }], queries: [{ name, actual }] }`.
+ * actual: { document, chunks } }], queries: [{ name, actual }], tokens: [{
+ * name, actual }] }`.
  */
 public func embeddingInputConformance(vectorJson: String) -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
@@ -36832,7 +36877,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_func_validate_recovery_phrase() != 42065) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_func_embedding_input_conformance() != 55842) {
+    if (uniffi_memry_core_checksum_func_embedding_input_conformance() != 24851) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_func_inbox_conformance() != 10056) {
@@ -37348,6 +37393,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_notes_folders() != 56251) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_notes_full_width() != 59091) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_notes_is_bookmarked() != 3350) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -37433,6 +37481,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_noteswriter_set_cover() != 22061) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_noteswriter_set_full_width() != 14746) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_noteswriter_set_icon() != 32942) {

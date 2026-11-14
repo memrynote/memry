@@ -3,14 +3,15 @@
 
 use serde_json::{Value, json};
 
-use crate::domain::embedding_input::{Window, chunks, document_input, query_input};
+use crate::domain::embedding_input::{Window, cap_tokens, chunks, document_input, query_input};
 
 fn text<'a>(case: &'a Value, field: &str) -> &'a str {
     case[field].as_str().unwrap_or("")
 }
 
 /// Runs every case of `embedding-input.json` and answers `{ cases: [{ name,
-/// actual: { document, chunks } }], queries: [{ name, actual }] }`.
+/// actual: { document, chunks } }], queries: [{ name, actual }], tokens: [{
+/// name, actual }] }`.
 #[uniffi::export]
 pub fn embedding_input_conformance(vector_json: String) -> String {
     let Ok(file) = serde_json::from_str::<Value>(&vector_json) else {
@@ -39,5 +40,18 @@ pub fn embedding_input_conformance(vector_json: String) -> String {
             })
         })
         .collect();
-    json!({ "cases": cases, "queries": queries }).to_string()
+    let tokens: Vec<Value> = list("tokens")
+        .iter()
+        .map(|case| {
+            let mut ids: Vec<u32> = case["ids"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(|id| id.as_u64().and_then(|id| u32::try_from(id).ok()))
+                .collect();
+            cap_tokens(&mut ids);
+            json!({ "name": case["name"], "actual": ids })
+        })
+        .collect();
+    json!({ "cases": cases, "queries": queries, "tokens": tokens }).to_string()
 }
