@@ -45,7 +45,8 @@ use super::state::{PassTrigger, SyncState, WriteGate, is_drawn};
 
 pub use super::policy::POLICY_POLL_INTERVAL_MS;
 
-/// How many pages one pass will walk before yielding the gate.
+/// How many pages one pass will walk before yielding the gate, unless
+/// [`SyncEngine::with_max_pages`] says otherwise.
 ///
 /// A ceiling rather than "until `hasMore` is false", so a first sync cannot
 /// hold the exclusive gate for the whole feed and starve a foreground pass.
@@ -103,6 +104,8 @@ pub struct SyncEngine {
     push: Option<Arc<dyn PushWave>>,
     /// Run in order between the pull and the push ([`PassSeed`]).
     seeds: Vec<Arc<dyn PassSeed>>,
+    /// Pages one pass walks before yielding the gate.
+    max_pages: u32,
     /// The exclusive queue. Held for a whole pass.
     gate: tokio::sync::Mutex<()>,
     /// True while a [`SyncEngine::wake`] pass waits for the gate (#2290).
@@ -129,6 +132,7 @@ impl SyncEngine {
             reachability,
             push: None,
             seeds: Vec::new(),
+            max_pages: MAX_PAGES_PER_PASS,
             gate: tokio::sync::Mutex::new(()),
             wake_queued: AtomicBool::new(false),
             state: Mutex::new(SyncState::Idle),
@@ -145,6 +149,18 @@ impl SyncEngine {
     pub fn with_seed(mut self, seed: Arc<dyn PassSeed>) -> Self {
         self.seeds.push(seed);
         self
+    }
+
+    /// Pages one pass walks before it yields the gate; at least one.
+    pub fn with_max_pages(mut self, pages: u32) -> Self {
+        self.max_pages = pages.max(1);
+        self
+    }
+
+    /// Holds the pass gate, so a caller's own sub-sequence (the first sync)
+    /// runs with no pass between its steps. A pass waits for the guard.
+    pub async fn hold_gate(&self) -> tokio::sync::MutexGuard<'_, ()> {
+        self.gate.lock().await
     }
 
     pub fn state(&self) -> SyncState {
@@ -260,7 +276,7 @@ impl SyncEngine {
     /// per page.
     async fn pull_pages(&self, trail: &mut Trail) -> (PullReport, bool) {
         let mut total = PullReport::default();
-        for index in 0..MAX_PAGES_PER_PASS {
+        for index in 0..self.max_pages {
             trail.enter(SyncState::Pulling);
             let page = if index == 0 {
                 self.pull.pull_first_page().await
