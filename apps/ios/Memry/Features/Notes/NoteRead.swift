@@ -43,6 +43,10 @@ import Observation
 @Observable
 final class NoteReadViewModel {
 
+    /// Posted with a note id once that note's title is saved. Each page on
+    /// the note re-reads it (`NotePageLoad`).
+    nonisolated static let titleSaved = Notification.Name("memry.note.titleSaved")
+
     let route: NoteRoute
 
     /// The reader in use. Internal so the wiring suite can assert the
