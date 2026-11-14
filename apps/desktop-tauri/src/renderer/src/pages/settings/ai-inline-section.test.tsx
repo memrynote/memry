@@ -341,7 +341,7 @@ describe('AIInlineSettings', () => {
     expect(url).toHaveProperty('value', 'https://llm.example/v1')
   })
 
-  it('sends an unsaved key with the endpoint URL it was typed for', async () => {
+  it('saves a key on its own blur, then the endpoint URL alone', async () => {
     const custom: InlineAiSettings = {
       enabled: true,
       provider: 'custom',
@@ -360,15 +360,63 @@ describe('AIInlineSettings', () => {
 
     const key = await screen.findByPlaceholderText('API key (optional)')
     const url = screen.getByPlaceholderText('https://openrouter.ai/api/v1')
-    fireEvent.change(key, { target: { value: 'sk-typed' } })
+    // Leaving the key field for the URL field blurs the key first.
+    await userEvent.click(key)
+    await userEvent.type(key, 'sk-typed')
+    await userEvent.click(url)
+    await waitFor(() =>
+      expect(commands.aiInlineSetSettings).toHaveBeenCalledWith({ apiKey: 'sk-typed' })
+    )
+    await userEvent.clear(url)
+    await userEvent.type(url, 'https://llm.example/v1')
+    await userEvent.tab()
+
+    await waitFor(() =>
+      expect(commands.aiInlineSetSettings).toHaveBeenLastCalledWith({
+        baseUrl: 'https://llm.example/v1'
+      })
+    )
+    expect(commands.aiInlineSetSettings).toHaveBeenCalledTimes(2)
+  })
+
+  it('sends no key when the key field is left unedited', async () => {
+    commands.aiInlineGetSettings.mockResolvedValue({
+      enabled: true,
+      provider: 'custom',
+      model: '',
+      apiKey: MASKED,
+      baseUrl: 'https://old.example/v1'
+    })
+    commands.aiInlineListModels.mockResolvedValue([])
+    render(<AIInlineSettings />)
+
+    const key = await screen.findByPlaceholderText('API key (optional)')
+    fireEvent.blur(key)
+    const url = screen.getByPlaceholderText('https://openrouter.ai/api/v1')
     fireEvent.change(url, { target: { value: 'https://llm.example/v1' } })
-    fireEvent.blur(url)
+    fireEvent.blur(key)
 
     await waitFor(() =>
       expect(commands.aiInlineSetSettings).toHaveBeenCalledWith({
-        baseUrl: 'https://llm.example/v1',
-        apiKey: 'sk-typed'
+        baseUrl: 'https://llm.example/v1'
       })
     )
+    expect(commands.aiInlineSetSettings).toHaveBeenCalledTimes(1)
+  })
+
+  it('puts the saved key back in the field when Rust refuses a typed one', async () => {
+    commands.aiInlineSetSettings.mockRejectedValue({
+      kind: 'Unavailable',
+      code: 'ai.keychain',
+      message: 'The keychain is locked'
+    })
+    render(<AIInlineSettings />)
+    const input = await screen.findByPlaceholderText('Enter OpenAI API key')
+
+    fireEvent.change(input, { target: { value: 'sk-typed' } })
+    fireEvent.blur(input)
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalled())
+    expect(input).toHaveProperty('value', MASKED)
   })
 })

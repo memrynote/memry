@@ -176,10 +176,12 @@ export function AIInlineSettings(): React.JSX.Element {
         setConnected(false)
         if ('baseUrl' in updates || 'apiKey' in updates) setEndpointRevision((n) => n + 1)
       } catch (error) {
+        // A refused key leaves the field on what Rust holds, never on the typed key.
+        if ('apiKey' in updates) setSettings((prev) => ({ ...prev, apiKey: saved.apiKey }))
         toast.error(extractErrorMessage(error, t('ai.inline.updateFailed')))
       }
     },
-    [t]
+    [saved.apiKey, t]
   )
 
   const handleToggleEnabled = useCallback(
@@ -236,8 +238,14 @@ export function AIInlineSettings(): React.JSX.Element {
   // Rust keeps a custom key under the origin of its URL (#4451): without one there is no key.
   const keyWaitsForUrl = isCustom && !parseEndpoint(settings.baseUrl)
   // A key and the URL it was typed for go to Rust together, so the key lands under that URL.
+  // An unedited key is never sent: its empty or masked value would delete or keep the key of
+  // the origin the URL now names.
   const unsavedUrl = settings.baseUrl !== saved.baseUrl ? { baseUrl: settings.baseUrl } : {}
   const unsavedKey = settings.apiKey !== saved.apiKey ? { apiKey: settings.apiKey } : {}
+  const saveKeyEdits = (): void => {
+    const edits = { ...unsavedUrl, ...unsavedKey }
+    if (Object.keys(edits).length > 0) void updateSetting(edits)
+  }
   const models = modelChoices(settings.provider, settings.model, endpointModels)
 
   const connectionControls = (
@@ -347,7 +355,7 @@ export function AIInlineSettings(): React.JSX.Element {
               value={settings.apiKey}
               disabled={keyWaitsForUrl}
               onChange={(e) => setSettings((prev) => ({ ...prev, apiKey: e.target.value }))}
-              onBlur={() => void updateSetting({ ...unsavedUrl, apiKey: settings.apiKey })}
+              onBlur={saveKeyEdits}
               placeholder={
                 isCustom
                   ? t('ai.inline.customApiKeyPlaceholder')
@@ -382,7 +390,7 @@ export function AIInlineSettings(): React.JSX.Element {
             <Input
               value={settings.baseUrl}
               onChange={(e) => setSettings((prev) => ({ ...prev, baseUrl: e.target.value }))}
-              onBlur={() => void updateSetting({ ...unsavedKey, baseUrl: settings.baseUrl })}
+              onBlur={() => void updateSetting({ baseUrl: settings.baseUrl })}
               placeholder={
                 isCustom
                   ? t('ai.inline.customUrlPlaceholder')
