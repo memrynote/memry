@@ -203,6 +203,7 @@ struct BrowseRowView: View {
             }
             .navigationLinkIndicatorVisibility(.hidden)
             .modifier(NoteRowActions(note: note, model: model))
+            .modifier(NoteDragSource(note: note, model: model))
         }
     }
 }
