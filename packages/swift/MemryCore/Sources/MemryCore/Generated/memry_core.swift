@@ -8241,9 +8241,18 @@ public protocol SearchProtocol: AnyObject, Sendable {
      * With semantic search on and its model loaded, notes and journals near
      * the query's meaning fuse into their groups. The query is embedded
      * before any database lock is taken, and never waits on a model load:
-     * the first query starts the load and answers from FTS alone.
+     * the first query starts the load and answers from FTS alone, with
+     * `semantic_pending` set.
      */
     func search(query: String, filter: SearchFilter?, limit: UInt32) throws  -> SearchGroups
+    
+    /**
+     * Waits for the semantic model load in flight, if any, and answers
+     * whether the model is loaded now. A search that came back with
+     * `semantic_pending` runs again once, and only on `true`: a load that
+     * failed or was released by a memory warning answers `false`.
+     */
+    func semanticModelLoaded() async  -> Bool
     
     /**
      * Notes and journal days that mention `target_id`'s title or an alias as
@@ -8393,7 +8402,8 @@ open func reindex()throws  -> ReindexSummary  {
      * With semantic search on and its model loaded, notes and journals near
      * the query's meaning fuse into their groups. The query is embedded
      * before any database lock is taken, and never waits on a model load:
-     * the first query starts the load and answers from FTS alone.
+     * the first query starts the load and answers from FTS alone, with
+     * `semantic_pending` set.
      */
 open func search(query: String, filter: SearchFilter?, limit: UInt32)throws  -> SearchGroups  {
     return try  FfiConverterTypeSearchGroups_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
@@ -8405,6 +8415,29 @@ open func search(query: String, filter: SearchFilter?, limit: UInt32)throws  -> 
         FfiConverterUInt32.lower(limit),uniffiCallStatus
     )
 })
+}
+    
+    /**
+     * Waits for the semantic model load in flight, if any, and answers
+     * whether the model is loaded now. A search that came back with
+     * `semantic_pending` runs again once, and only on `true`: a load that
+     * failed or was released by a memory warning answers `false`.
+     */
+open func semanticModelLoaded()async  -> Bool  {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_search_semantic_model_loaded(
+                        self.uniffiCloneHandle()
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_i8,
+            completeFunc: ffi_memry_core_rust_future_complete_i8,
+            freeFunc: ffi_memry_core_rust_future_free_i8,
+            liftFunc: FfiConverterBool.lift,
+            errorHandler: nil
+            
+        )
 }
     
     /**
@@ -23823,17 +23856,29 @@ public struct SearchGroups: Equatable, Hashable {
      * Captures in every state: filed, archived and snoozed ones too (#4320).
      */
     public var inbox: [SearchResult]
+    /**
+     * The query wanted semantic hits and got FTS alone because the model
+     * was loading (#4615). Run it once more after
+     * [`Search::semantic_model_loaded`] returns.
+     */
+    public var semanticPending: Bool
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
     public init(notes: [SearchResult], journals: [SearchResult], tasks: [SearchResult], 
         /**
          * Captures in every state: filed, archived and snoozed ones too (#4320).
-         */inbox: [SearchResult]) {
+         */inbox: [SearchResult], 
+        /**
+         * The query wanted semantic hits and got FTS alone because the model
+         * was loading (#4615). Run it once more after
+         * [`Search::semantic_model_loaded`] returns.
+         */semanticPending: Bool = false) {
         self.notes = notes
         self.journals = journals
         self.tasks = tasks
         self.inbox = inbox
+        self.semanticPending = semanticPending
     }
 
     
@@ -23855,7 +23900,8 @@ public struct FfiConverterTypeSearchGroups: FfiConverterRustBuffer {
                 notes: FfiConverterSequenceTypeSearchResult.read(from: &buf), 
                 journals: FfiConverterSequenceTypeSearchResult.read(from: &buf), 
                 tasks: FfiConverterSequenceTypeSearchResult.read(from: &buf), 
-                inbox: FfiConverterSequenceTypeSearchResult.read(from: &buf)
+                inbox: FfiConverterSequenceTypeSearchResult.read(from: &buf), 
+                semanticPending: FfiConverterBool.read(from: &buf)
         )
     }
 
@@ -23864,6 +23910,7 @@ public struct FfiConverterTypeSearchGroups: FfiConverterRustBuffer {
         FfiConverterSequenceTypeSearchResult.write(value.journals, into: &buf)
         FfiConverterSequenceTypeSearchResult.write(value.tasks, into: &buf)
         FfiConverterSequenceTypeSearchResult.write(value.inbox, into: &buf)
+        FfiConverterBool.write(value.semanticPending, into: &buf)
     }
 }
 
@@ -37451,7 +37498,10 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_search_reindex() != 12616) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_search_search() != 1136) {
+    if (uniffi_memry_core_checksum_method_search_search() != 18447) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_search_semantic_model_loaded() != 41947) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_search_unlinked_mentions() != 24332) {
