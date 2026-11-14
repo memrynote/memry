@@ -300,7 +300,9 @@ final class TasksSplitUITests: XCTestCase {
         let rows = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'tasks.row.' AND label CONTAINS %@", run))
         var left = 10
         while left > 0, rows.firstMatch.waitForExistence(timeout: 3) {
-            rows.firstMatch.tap()
+            let row = rows.firstMatch
+            guard row.exists, row.isHittable else { break }
+            row.tap()
             deleteOpenTask()
             left -= 1
         }
@@ -329,8 +331,12 @@ final class TasksSplitUITests: XCTestCase {
             return
         }
         if app.descendants(matching: .any)["tasks.kanban.board"].exists {
-            app.buttons["tasks.moreMenu"].firstMatch.tap()
-            app.buttons["tasks.more.list"].firstMatch.tap()
+            let more = app.buttons["tasks.moreMenu"].firstMatch
+            let list = app.buttons["tasks.more.list"].firstMatch
+            if check(more.exists, "the board has no More menu") {
+                more.tap()
+                if check(list.waitForExistence(timeout: 5), "the More menu has no List") { list.tap() }
+            }
         }
         let all = app.buttons["tasks.sidebar.tab.all"].firstMatch
         if all.waitForExistence(timeout: 5) { all.tap() }
@@ -348,11 +354,13 @@ final class TasksSplitUITests: XCTestCase {
         let field = app.textFields["tasks.filter.search"]
         guard check(field.waitForExistence(timeout: 5), "the filter did not open") else { return }
         field.tap()
+        guard check(field.exists, "the filter field went away") else { return }
         if let current = field.value as? String, !current.isEmpty, current != field.placeholderValue {
             field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count))
         }
         field.typeText(text)
         Thread.sleep(forTimeInterval: 0.6)
-        app.buttons["tasks.filter.done"].tap()
+        let done = app.buttons["tasks.filter.done"].firstMatch
+        if check(done.exists, "the filter has no Done") { done.tap() }
     }
 }

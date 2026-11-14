@@ -191,6 +191,13 @@ struct NotesListView: View {
         .onChange(of: width) { _, width in
             if width == .compact { path = router.compactPath() }
         }
+        // ⌘N (#4355): the "+"'s create, opened the way a search hit opens.
+        .onChange(of: notesLinks.newNoteRequested, initial: true) {
+            guard notesLinks.takeNewNote() else { return }
+            Task {
+                if let id = await model.createNote(in: nil) { notesLinks.open(id) }
+            }
+        }
         .onChange(of: width, initial: true) { _, width in router.isSplit = width == .regular }
     }
 }

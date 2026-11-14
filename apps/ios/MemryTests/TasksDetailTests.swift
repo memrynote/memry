@@ -1,5 +1,6 @@
 import Foundation
 import MemryCore
+import SwiftUI
 import Testing
 
 @testable import Memry
@@ -78,6 +79,61 @@ struct TasksDetailTests {
         #expect(commits.take("B") == nil)
         commits.begin("B")
         #expect(commits.take("B2") == "B2")
+    }
+
+    /// #4611: a title write fails after the field was focused again. The edit
+    /// typed next still writes, through the real field.
+    @Test func an_edit_after_a_failed_write_and_refocus_is_written() async throws {
+        let vault = try TasksTestVault()
+        let id = try vault.task("[agent] A", project: try vault.project())
+        let tasks = FailingTitleTasks(vault.tasks)
+        let defaults = try #require(UserDefaults(suiteName: "tasks-test-\(UUID().uuidString)"))
+        let store = TasksStore(core: tasks, filler: nil, vaultId: "vault-test", defaults: defaults)
+        await store.load()
+        let task = try #require(store.items[id])
+        let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
+        let window = UIWindow(windowScene: scene)
+        window.rootViewController = UIHostingController(rootView: TaskDetailTitleField(task: task, store: store))
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        try await settle { Self.textInput(in: window) != nil }
+        let field = try #require(Self.textInput(in: window))
+
+        field.becomeFirstResponder()
+        try await settle { field.isFirstResponder }
+        // SwiftUI takes a beat to see the focus and the typed text.
+        try await Task.sleep(for: .milliseconds(200))
+        tasks.failNextTitle()
+        field.insertText(" B")
+        try await Task.sleep(for: .milliseconds(200))
+        field.resignFirstResponder()
+        try await settle { tasks.waiting }
+        #expect(tasks.waiting, "the first edit never reached the core")
+
+        field.becomeFirstResponder()
+        try await settle { field.isFirstResponder }
+        try await Task.sleep(for: .milliseconds(200))
+        tasks.release()
+        try await settle { store.failure != nil }
+        #expect(store.failure != nil, "the failed write was not reported")
+        try await Task.sleep(for: .milliseconds(200))
+
+        field.insertText(" C")
+        try await Task.sleep(for: .milliseconds(200))
+        field.resignFirstResponder()
+        try await settle { store.items[id]?.title != "[agent] A" }
+        #expect(store.items[id]?.title == "[agent] A C")
+    }
+
+    private static func textInput(in view: UIView) -> (UIView & UIKeyInput)? {
+        if let input = view as? UIView & UIKeyInput, view.canBecomeFirstResponder { return input }
+        return view.subviews.lazy.compactMap { textInput(in: $0) }.first
+    }
+
+    private func settle(_ done: () -> Bool) async throws {
+        for _ in 0 ..< 40 where !done() {
+            try await Task.sleep(for: .milliseconds(50))
+        }
     }
 
     @Test func going_away_without_focus_writes_nothing() {
@@ -351,5 +407,36 @@ struct TasksDetailTests {
         let rendered = TaskDescriptionMarkdown.render("**Bold** and [link](https://memry.app)")
         #expect(String(rendered.characters) == "Bold and link")
         #expect(rendered.runs.contains { $0.link != nil })
+    }
+}
+
+/// The real tasks surface. After `failNextTitle`, the next `setTitle` waits
+/// for `release` and then fails, as a core write can.
+private final class FailingTitleTasks: Tasks, @unchecked Sendable {
+    private let lock = NSLock()
+    private var armed = false
+    private var entered = false
+    private let gate = DispatchSemaphore(value: 0)
+
+    init(_ tasks: Tasks) { super.init(unsafeFromHandle: tasks.uniffiCloneHandle()) }
+
+    required init(unsafeFromHandle handle: UInt64) { super.init(unsafeFromHandle: handle) }
+
+    var waiting: Bool { lock.withLock { entered } }
+
+    func failNextTitle() { lock.withLock { armed = true } }
+
+    func release() { gate.signal() }
+
+    override func setTitle(id: String, title: String) throws -> TaskChange {
+        let fails = lock.withLock {
+            defer { armed = false }
+            entered = armed
+            return armed
+        }
+        guard fails else { return try super.setTitle(id: id, title: title) }
+        gate.wait()
+        lock.withLock { entered = false }
+        throw StorageError.Failed(what: "the disk is full")
     }
 }

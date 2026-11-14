@@ -20,6 +20,7 @@ struct MemryApp: App {
                 // Handoff from another device (#4381), held the same way.
                 .onContinueUserActivity(HandoffActivity.type) { HandoffLinks.shared.request($0) }
         }
+        .commands { MemryCommands() }
     }
 }
 
