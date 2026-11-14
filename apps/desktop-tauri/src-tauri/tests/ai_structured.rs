@@ -439,9 +439,9 @@ fn a_field_fill_ended_by_its_vault_shows_translated_text() {
     let proxy = app.state::<Arc<AiProxy>>().inner().clone();
     f.set(AiProvider::Custom, true, KEY, &serve(None));
     let ender = std::thread::spawn(move || {
-        // Watchdog on the wait for the request, not a budget.
         let deadline = Instant::now() + Duration::from_secs(10);
         while proxy.in_flight() == 0 {
+            // timing-bound: a 10 s watchdog on the wait for the request, not a budget.
             assert!(Instant::now() < deadline, "the request never opened");
             std::thread::sleep(Duration::from_millis(5));
         }
