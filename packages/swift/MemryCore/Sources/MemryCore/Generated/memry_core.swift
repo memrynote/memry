@@ -5379,6 +5379,13 @@ public protocol NotesProtocol: AnyObject, Sendable {
     func folders() throws  -> [FolderSummary]
     
     /**
+     * The note's `fullWidth` override, desktop's per-note width: `true` or
+     * `false` wins over the device's editor width, `nil` follows it. A note
+     * this vault does not hold reads as `nil`.
+     */
+    func fullWidth(id: String) throws  -> Bool?
+    
+    /**
      * Whether a live bookmark names `(item_type, item_id)`: the page menu's
      * "Add to favorites" / "Remove from favorites".
      */
@@ -5697,6 +5704,21 @@ open func folders()throws  -> [FolderSummary]  {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_notes_folders(
             self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * The note's `fullWidth` override, desktop's per-note width: `true` or
+     * `false` wins over the device's editor width, `nil` follows it. A note
+     * this vault does not hold reads as `nil`.
+     */
+open func fullWidth(id: String)throws  -> Bool?  {
+    return try  FfiConverterOptionBool.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_notes_full_width(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),uniffiCallStatus
     )
 })
 }
@@ -6155,6 +6177,13 @@ public protocol NotesWriterProtocol: AnyObject, Sendable {
     func setCover(id: String, url: String?, offsetY: Double) throws 
     
     /**
+     * Sets the note's `fullWidth` override, as desktop's page-menu toggle
+     * does: always a boolean, never cleared, so `false` pins normal width
+     * against a global Full setting. Every other property stays as it is.
+     */
+    func setFullWidth(id: String, fullWidth: Bool) throws 
+    
+    /**
      * Sets or clears a note's icon (N701).
      *
      * The payload spells it `emoji` (§13.7.1); it is `icon` here because that
@@ -6593,6 +6622,21 @@ open func setCover(id: String, url: String?, offsetY: Double)throws   {try rustC
         FfiConverterString.lower(id),
         FfiConverterOptionString.lower(url),
         FfiConverterDouble.lower(offsetY),uniffiCallStatus
+    )
+}
+}
+    
+    /**
+     * Sets the note's `fullWidth` override, as desktop's page-menu toggle
+     * does: always a boolean, never cleared, so `false` pins normal width
+     * against a global Full setting. Every other property stays as it is.
+     */
+open func setFullWidth(id: String, fullWidth: Bool)throws   {try rustCallWithError(FfiConverterTypePropertyWriteError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_noteswriter_set_full_width(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(id),
+        FfiConverterBool.lower(fullWidth),uniffiCallStatus
     )
 }
 }
@@ -8241,9 +8285,18 @@ public protocol SearchProtocol: AnyObject, Sendable {
      * With semantic search on and its model loaded, notes and journals near
      * the query's meaning fuse into their groups. The query is embedded
      * before any database lock is taken, and never waits on a model load:
-     * the first query starts the load and answers from FTS alone.
+     * the first query starts the load and answers from FTS alone, with
+     * `semantic_pending` set.
      */
     func search(query: String, filter: SearchFilter?, limit: UInt32) throws  -> SearchGroups
+    
+    /**
+     * Waits for the semantic model load in flight, if any, and answers
+     * whether the model is loaded now. A search that came back with
+     * `semantic_pending` runs again once, and only on `true`: a load that
+     * failed or was released by a memory warning answers `false`.
+     */
+    func semanticModelLoaded() async  -> Bool
     
     /**
      * Notes and journal days that mention `target_id`'s title or an alias as
@@ -8393,7 +8446,8 @@ open func reindex()throws  -> ReindexSummary  {
      * With semantic search on and its model loaded, notes and journals near
      * the query's meaning fuse into their groups. The query is embedded
      * before any database lock is taken, and never waits on a model load:
-     * the first query starts the load and answers from FTS alone.
+     * the first query starts the load and answers from FTS alone, with
+     * `semantic_pending` set.
      */
 open func search(query: String, filter: SearchFilter?, limit: UInt32)throws  -> SearchGroups  {
     return try  FfiConverterTypeSearchGroups_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
@@ -8405,6 +8459,29 @@ open func search(query: String, filter: SearchFilter?, limit: UInt32)throws  -> 
         FfiConverterUInt32.lower(limit),uniffiCallStatus
     )
 })
+}
+    
+    /**
+     * Waits for the semantic model load in flight, if any, and answers
+     * whether the model is loaded now. A search that came back with
+     * `semantic_pending` runs again once, and only on `true`: a load that
+     * failed or was released by a memory warning answers `false`.
+     */
+open func semanticModelLoaded()async  -> Bool  {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_search_semantic_model_loaded(
+                        self.uniffiCloneHandle()
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_i8,
+            completeFunc: ffi_memry_core_rust_future_complete_i8,
+            freeFunc: ffi_memry_core_rust_future_free_i8,
+            liftFunc: FfiConverterBool.lift,
+            errorHandler: nil
+            
+        )
 }
     
     /**
@@ -23823,17 +23900,29 @@ public struct SearchGroups: Equatable, Hashable {
      * Captures in every state: filed, archived and snoozed ones too (#4320).
      */
     public var inbox: [SearchResult]
+    /**
+     * The query wanted semantic hits and got FTS alone because the model
+     * was loading (#4615). Run it once more after
+     * [`Search::semantic_model_loaded`] returns.
+     */
+    public var semanticPending: Bool
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
     public init(notes: [SearchResult], journals: [SearchResult], tasks: [SearchResult], 
         /**
          * Captures in every state: filed, archived and snoozed ones too (#4320).
-         */inbox: [SearchResult]) {
+         */inbox: [SearchResult], 
+        /**
+         * The query wanted semantic hits and got FTS alone because the model
+         * was loading (#4615). Run it once more after
+         * [`Search::semantic_model_loaded`] returns.
+         */semanticPending: Bool = false) {
         self.notes = notes
         self.journals = journals
         self.tasks = tasks
         self.inbox = inbox
+        self.semanticPending = semanticPending
     }
 
     
@@ -23855,7 +23944,8 @@ public struct FfiConverterTypeSearchGroups: FfiConverterRustBuffer {
                 notes: FfiConverterSequenceTypeSearchResult.read(from: &buf), 
                 journals: FfiConverterSequenceTypeSearchResult.read(from: &buf), 
                 tasks: FfiConverterSequenceTypeSearchResult.read(from: &buf), 
-                inbox: FfiConverterSequenceTypeSearchResult.read(from: &buf)
+                inbox: FfiConverterSequenceTypeSearchResult.read(from: &buf), 
+                semanticPending: FfiConverterBool.read(from: &buf)
         )
     }
 
@@ -23864,6 +23954,7 @@ public struct FfiConverterTypeSearchGroups: FfiConverterRustBuffer {
         FfiConverterSequenceTypeSearchResult.write(value.journals, into: &buf)
         FfiConverterSequenceTypeSearchResult.write(value.tasks, into: &buf)
         FfiConverterSequenceTypeSearchResult.write(value.inbox, into: &buf)
+        FfiConverterBool.write(value.semanticPending, into: &buf)
     }
 }
 
@@ -36503,7 +36594,8 @@ public func validateRecoveryPhrase(phrase: String)throws  -> String  {
 }
 /**
  * Runs every case of `embedding-input.json` and answers `{ cases: [{ name,
- * actual: { document, chunks } }], queries: [{ name, actual }] }`.
+ * actual: { document, chunks } }], queries: [{ name, actual }], tokens: [{
+ * name, actual }] }`.
  */
 public func embeddingInputConformance(vectorJson: String) -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
@@ -36785,7 +36877,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_func_validate_recovery_phrase() != 42065) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_func_embedding_input_conformance() != 55842) {
+    if (uniffi_memry_core_checksum_func_embedding_input_conformance() != 24851) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_func_inbox_conformance() != 10056) {
@@ -37301,6 +37393,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_notes_folders() != 56251) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_notes_full_width() != 59091) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_notes_is_bookmarked() != 3350) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -37388,6 +37483,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_noteswriter_set_cover() != 22061) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_memry_core_checksum_method_noteswriter_set_full_width() != 14746) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_memry_core_checksum_method_noteswriter_set_icon() != 32942) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -37451,7 +37549,10 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_search_reindex() != 12616) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_search_search() != 1136) {
+    if (uniffi_memry_core_checksum_method_search_search() != 18447) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_search_semantic_model_loaded() != 41947) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_search_unlinked_mentions() != 24332) {
