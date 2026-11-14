@@ -64,6 +64,10 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
     @State private var inboxRouter = InboxRouter()
     private let inboxLinks = InboxLinks.shared
     private let calendarLinks = CalendarLinks.shared
+    private let handoffLinks = HandoffLinks.shared
+    @Environment(\.handoffVaultId) private var vaultId
+    /// A continued activity from another vault (#4381).
+    @State private var handoffMissing: HandoffItem.Kind?
     @Environment(\.inboxStore) private var inboxStore
     /// Features (settings spec ST44): a module turned off loses its tab.
     /// Home, Notes and Menu are always there.
@@ -166,6 +170,15 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
         .onChange(of: calendarLinks.pending, initial: true) { _, pending in
             if pending != nil { router.openCalendar() }
         }
+        // Handoff from another device; one that arrived before this shell
+        // waits in `HandoffLinks`, hence `initial: true`.
+        .onChange(of: handoffLinks.pending, initial: true) {
+            guard let vaultId, let activity = handoffLinks.take() else { return }
+            handoffMissing = activity.open(
+                openVault: vaultId, tasks: router, journal: journalRouter, notes: .shared
+            )
+        }
+        .sheet(item: $handoffMissing) { HandoffMissingView(kind: $0) }
         // A tapped inbox notification or a Share hand-off opens the Inbox.
         .onChange(of: inboxLinks.pending, initial: true) {
             if inboxLinks.take() { inboxRouter.openInbox(in: router) }
