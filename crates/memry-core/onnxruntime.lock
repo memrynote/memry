@@ -1,0 +1,7 @@
+# The one pin for the ONNX Runtime iOS archive (Microsoft's onnxruntime-c pod),
+# linked into libmemry_core.a by build-xcframework.sh with the `semantic`
+# feature. 1.30.0 is the runtime desktop's @huggingface/transformers runs.
+# CI's archive cache is keyed on this file's hash.
+url=https://download.onnxruntime.ai/pod-archive-onnxruntime-c-1.30.0.zip
+sha256=e6f1670c14406fd9f082bb400ab197a9b0a9646058ca6366e440642e2b54a2ea
+size=63965603

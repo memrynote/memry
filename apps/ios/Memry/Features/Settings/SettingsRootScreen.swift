@@ -25,6 +25,9 @@ struct SettingsRootScreen: View {
                     title: SettingsCopy.features, symbol: "square.grid.2x2",
                     value: SettingsCopy.featuresOn(context.local.shippedOn.count), route: .features
                 )
+                SettingsLinkRow(
+                    title: SemanticSearchCopy.title, symbol: "sparkle.magnifyingglass", route: .semanticSearch
+                )
             }
             Section(SettingsCopy.modules) {
                 if context.local.isOn(.journal) {
@@ -75,7 +78,7 @@ struct SettingsRootRows {
     init(account: AccountCardState, isOn: (AppFeature) -> Bool) {
         // The free vault's card leads to sign-in, not to Account.
         var routes: [SettingsRoute] = account == .local ? [] : [.account]
-        routes += [.general, .appearance, .features]
+        routes += [.general, .appearance, .features, .semanticSearch]
         if isOn(.tasks) { routes.append(.tasks) }
         if isOn(.inbox) { routes.append(.inbox) }
         routes += [.templates, .tags, .properties, .readwise, .vaults, .about]

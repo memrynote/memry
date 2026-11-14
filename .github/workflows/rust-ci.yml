@@ -64,6 +64,11 @@ jobs:
       - name: Clippy
         run: cargo clippy --all-targets -- -D warnings
 
+      # Type-checks the ONNX Runtime binding, which host builds leave out.
+      # A check never links, so no ONNX Runtime library is needed here.
+      - name: Clippy (semantic feature)
+        run: cargo clippy -p memry-core --all-targets --features semantic -- -D warnings
+
       - name: Test
         run: cargo test -p memry-core
 
@@ -105,6 +110,12 @@ jobs:
           fi
           sudo xcode-select -s "$app"
           xcodebuild -version
+
+      - name: Cache ONNX Runtime archive
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/memry/onnxruntime
+          key: onnxruntime-${{ hashFiles('crates/memry-core/onnxruntime.lock') }}
 
       - name: Build XCFramework and regenerate bindings
         run: crates/memry-core/build-xcframework.sh

@@ -67,6 +67,9 @@ final class VaultFiles: FileProtection {
     /// same class and backup exclusion as the other two.
     static let vectorDatabaseName = "vectors.db"
     static let imagesDirectoryName = "images"
+    /// The semantic-search model. Device-scoped, so it sits beside `vault/`
+    /// and survives sign-out; the core owns everything inside it.
+    static let modelsDirectoryName = "models"
 
     /// SQLite's companions to a database file. `-wal` and `-shm` exist only
     /// while a connection is open in WAL mode; `-journal` is what a build that
@@ -215,6 +218,14 @@ final class VaultFiles: FileProtection {
         Log.storage.info("re-asserted the vault data-protection class", .count(touched.count))
         emitter.emit(CoreEvent(.storage, scope: .vault(vaultId)))
         return touched.count
+    }
+
+    func modelsDir() throws -> URL {
+        let root = try resolvedRoot()
+        let models = root.appendingPathComponent(Self.modelsDirectoryName, isDirectory: true)
+        try harden(directory: root)
+        try harden(directory: models)
+        return models
     }
 
     /// Prepare, open, re-assert — in that order, with no way to skip the third.
