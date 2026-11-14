@@ -32,10 +32,11 @@ use crate::seams::transport::Transport;
 
 mod identity;
 mod oauth;
+mod recovery;
 mod restore;
 
 pub use identity::ensure_device_identity;
-pub use oauth::{AuthProvider, ProviderSignInOutcome};
+pub use oauth::{AuthProvider, ProviderSignInOutcome, WebSignInOutcome};
 
 /// Data-model §C.1, one variant per drawn state.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
@@ -183,6 +184,8 @@ struct PendingSignIn {
     /// registration, and it MUST be the same value on both — a token that
     /// carries a nonce rejects a registration that omits it.
     session_nonce: Option<String>,
+    /// The browser callback a web provider attempt waits for; spent on use.
+    web_callback: Option<oauth::ExpectedCallback>,
 }
 
 /// The session. One per account on the device.
@@ -585,11 +588,11 @@ impl AuthSession {
             // keep the user signed in on this device.
             let _ = AuthRoutes::logout(&self.http).await;
         }
+        // Pending, then state, the order of every edge out of an attempt: a
+        // provider answer lands before this clears or finds its attempt ended.
+        let mut pending = self.pending.lock().unwrap_or_else(|e| e.into_inner());
         self.tokens.clear()?;
-        {
-            let mut pending = self.pending.lock().unwrap_or_else(|e| e.into_inner());
-            *pending = PendingSignIn::default();
-        }
+        *pending = PendingSignIn::default();
         self.apply(AuthEvent::SignedOutByUser, "sign out")
     }
 }
