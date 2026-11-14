@@ -106,6 +106,24 @@ const mentionCases: RoundtripCase[] = [
     // closed the alphabet.
     name: 'link mention url with underscore next to punctuation',
     markdown: `Intro ${mention('https://example.com/!_bang/x.y_~z')} outro.`
+  },
+  // Tokens builds before #1844 wrote, `_ * ! ~ '` raw. The seed promotes them
+  // like any token (#4478) and the node cannot spell them back, so house style
+  // re-encodes them; the source record keeps the file's bytes.
+  {
+    name: 'legacy link mention token with a raw underscore',
+    markdown: `Intro ((mention:${encodeURIComponent('https://example.com/a_b')})) outro.`,
+    canonical: `Intro ${mention('https://example.com/a_b')} outro.`
+  },
+  {
+    name: "two legacy link mention tokens with raw * ~ ' !",
+    markdown: `See ((mention:${encodeURIComponent("https://x.test/a*b_c'd")})) and ((mention:${encodeURIComponent('https://x.test/e*f~g!')})) here.`,
+    canonical: `See ${mention("https://x.test/a*b_c'd")} and ${mention('https://x.test/e*f~g!')} here.`
+  },
+  {
+    name: 'legacy link mention token with a stray space',
+    markdown: 'Intro ((mention:https%3A%2F%2Fx.test%2Fpage )) outro.',
+    canonical: `Intro ${mention('https://x.test/page')} outro.`
   }
 ]
 

@@ -11,8 +11,7 @@ import type { Block } from '@blocknote/core'
 import {
   MENTION_TOKEN_REGEX,
   parseLinkMentionToken,
-  createLinkMentionContent,
-  serializeLinkMentionToken
+  createLinkMentionContent
 } from './link-mention'
 
 function extractDomain(url: string): string {
@@ -21,16 +20,6 @@ function extractDomain(url: string): string {
   } catch {
     return url
   }
-}
-
-export interface NormalizeLinkMentionsOptions {
-  /**
-   * Promote only a token that serializes back to its own bytes. A token an
-   * older build wrote with `_ * ! ~ '` raw would come back re-encoded, which
-   * rewrites the file. Main sets this, so its seed never changes a file's bytes;
-   * the renderer promotes and re-encodes those few tokens once, on open.
-   */
-  byteNeutralOnly?: boolean
 }
 
 function createStyledText(
@@ -42,8 +31,7 @@ function createStyledText(
 
 export function splitTextWithLinkMentions(
   text: string,
-  styles?: Record<string, boolean | string>,
-  options: NormalizeLinkMentionsOptions = {}
+  styles?: Record<string, boolean | string>
 ): { segments: Array<string | Record<string, unknown>>; didChange: boolean } {
   const pattern = new RegExp(MENTION_TOKEN_REGEX)
   const segments: Array<string | Record<string, unknown>> = []
@@ -55,7 +43,6 @@ export function splitTextWithLinkMentions(
     const [full, encoded] = match
     const url = parseLinkMentionToken(encoded)
     if (!url) continue
-    if (options.byteNeutralOnly && serializeLinkMentionToken(url) !== full) continue
 
     if (match.index > lastIndex) {
       const before = text.slice(lastIndex, match.index)
@@ -77,15 +64,12 @@ export function splitTextWithLinkMentions(
   return { segments, didChange: true }
 }
 
-function normalizeInlineContent(
-  content: string | Array<any>,
-  options: NormalizeLinkMentionsOptions
-): {
+function normalizeInlineContent(content: string | Array<any>): {
   content: string | Array<any>
   didChange: boolean
 } {
   if (typeof content === 'string') {
-    const { segments, didChange } = splitTextWithLinkMentions(content, undefined, options)
+    const { segments, didChange } = splitTextWithLinkMentions(content)
     if (!didChange) return { content, didChange: false }
     return { content: segments, didChange: true }
   }
@@ -99,11 +83,7 @@ function normalizeInlineContent(
 
   for (const item of content) {
     if (typeof item === 'string') {
-      const { segments, didChange: itemChanged } = splitTextWithLinkMentions(
-        item,
-        undefined,
-        options
-      )
+      const { segments, didChange: itemChanged } = splitTextWithLinkMentions(item)
       if (itemChanged) {
         didChange = true
         next.push(...segments)
@@ -117,8 +97,7 @@ function normalizeInlineContent(
       const styles = item.styles ?? {}
       const { segments, didChange: itemChanged } = splitTextWithLinkMentions(
         item.text ?? '',
-        styles,
-        options
+        styles
       )
       if (itemChanged) {
         didChange = true
@@ -135,10 +114,7 @@ function normalizeInlineContent(
   return { content: didChange ? next : content, didChange }
 }
 
-function normalizeTableContent(
-  tableContent: any,
-  options: NormalizeLinkMentionsOptions
-): { content: any; didChange: boolean } {
+function normalizeTableContent(tableContent: any): { content: any; didChange: boolean } {
   if (!tableContent?.rows) {
     return { content: tableContent, didChange: false }
   }
@@ -148,13 +124,13 @@ function normalizeTableContent(
     let rowChanged = false
     const cells = row.cells.map((cell: any) => {
       if (Array.isArray(cell)) {
-        const normalized = normalizeInlineContent(cell, options)
+        const normalized = normalizeInlineContent(cell)
         if (normalized.didChange) rowChanged = true
         return normalized.content
       }
 
       if (cell?.type === 'tableCell') {
-        const normalized = normalizeInlineContent(cell.content ?? '', options)
+        const normalized = normalizeInlineContent(cell.content ?? '')
         if (normalized.didChange) {
           rowChanged = true
           return { ...cell, content: normalized.content }
@@ -178,10 +154,7 @@ function normalizeTableContent(
   return { content: { ...tableContent, rows }, didChange: true }
 }
 
-export function normalizeLinkMentions(
-  blocks: Block[],
-  options: NormalizeLinkMentionsOptions = {}
-): { blocks: Block[]; didChange: boolean } {
+export function normalizeLinkMentions(blocks: Block[]): { blocks: Block[]; didChange: boolean } {
   if (!JSON.stringify(blocks).includes('((mention:')) {
     return { blocks, didChange: false }
   }
@@ -195,14 +168,14 @@ export function normalizeLinkMentions(
     // A code block's own text is literal; blocks nested under it are not code.
     if (block.content && block.type !== 'codeBlock') {
       if (typeof block.content === 'string' || Array.isArray(block.content)) {
-        const normalized = normalizeInlineContent(block.content, options)
+        const normalized = normalizeInlineContent(block.content)
         if (normalized.didChange) {
           blockChanged = true
           // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Block.content is typed per block type; the normalizer returns the same content kind it was given
           nextBlock = { ...nextBlock, content: normalized.content } as Block
         }
       } else if (block.content.type === 'tableContent') {
-        const normalized = normalizeTableContent(block.content, options)
+        const normalized = normalizeTableContent(block.content)
         if (normalized.didChange) {
           blockChanged = true
           nextBlock = { ...nextBlock, content: normalized.content }
@@ -211,7 +184,7 @@ export function normalizeLinkMentions(
     }
 
     if (block.children?.length) {
-      const normalizedChildren = normalizeLinkMentions(block.children, options)
+      const normalizedChildren = normalizeLinkMentions(block.children)
       if (normalizedChildren.didChange) {
         blockChanged = true
         nextBlock = { ...nextBlock, children: normalizedChildren.blocks }
