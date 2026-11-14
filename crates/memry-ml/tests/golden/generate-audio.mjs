@@ -6,12 +6,15 @@
  *   recording length, and the log-mel features and mask transformers.js's audio processor gives
  *   for a window. `crates/memry-ml/tests/audio_features.rs` reproduces it without the model.
  * - `packages/contracts/test-vectors/embeddings-audio.json`: the token ids and the stored 256-value
- *   vector of every window Electron embeds for a WAV file, which
- *   `crates/memry-ml/tests/golden_audio.rs` reproduces with the native engine.
+ *   vector of every window of a WAV file, which `crates/memry-ml/tests/golden_audio.rs` reproduces
+ *   with the native engine.
  *
- * Both embed the whole window (Kaan, 2026-11-14): the feature extractor runs with `truncation` off,
- * where Electron's keeps the first 30 s. A longer window also records Electron's own vector and its
- * cosine with the whole-window one (`electron`), the measured cost of that divergence.
+ * Windows are 30 s, at most 120 (Kaan, 2026-11-14): Electron's are 300 s, at most 12, and its
+ * feature extractor keeps the first 30 s (480,000 samples) of each, so 270 s of every window is
+ * never indexed. The native windows run `embedAudio` in place with `EMBEDDING_AUDIO_WINDOW_SECONDS`
+ * 30 and `EMBEDDING_AUDIO_MAX_WINDOWS` 120, the same first 60 min. Electron's own `embedAudio`
+ * runs too, and the native window that starts each Electron window records Electron's vector and
+ * their cosine (`electron`).
  *
  *   pnpm embed:golden:audio --model-dir <dir>            # write both files
  *   pnpm embed:golden:audio --model-dir <dir> --check    # regenerate in memory, compare, write nothing
@@ -21,7 +24,8 @@
  * voice memo. Nothing is downloaded, and CI does not run `--check`, because it needs the model.
  *
  * The oracle is Electron's audio path. `apps/desktop/src/main/lib/audio-embedding.ts` runs in
- * place: its settings and database imports are stubbed (audio search on), and its call into the
+ * place, twice: as shipped, and with the two window constants above. Its settings and database
+ * imports are stubbed (audio search on), and its call into the
  * embedding worker, `generateAudioEmbedding`, is replaced by the worker's `embedAudio`
  * (`embedding-worker.ts`), repeated here because the worker cannot be imported outside an
  * Electron utility process: `processor(null, null, audio)`, the model, `truncateEmbedding`.
@@ -83,8 +87,11 @@ const EMBEDDING_TOLERANCE = { minCosine: 0.9999, maxComponentDiff: 0.001 }
  */
 const FEATURE_TOLERANCE = { maxAbsDiff: 1e-4 }
 
-/** The extractor's `max_length`: Electron embeds the first 30 s of a window. */
-const ELECTRON_SAMPLES = 480_000
+/** Native windows: 30 s, the extractor's `max_length`, over the same 60 min as Electron's. */
+const NATIVE_WINDOW_SECONDS = 30
+const NATIVE_MAX_WINDOWS = 120
+/** Native windows per Electron window (300 s). */
+const NATIVE_PER_ELECTRON = 10
 
 // --- Inputs --------------------------------------------------------------------------------
 
@@ -317,16 +324,17 @@ function decodeCases() {
   }))
 }
 
-/** Recording lengths (16 kHz samples) around `embedAudio`'s window, minimum and cap rules. */
+/** Recording lengths (16 kHz samples) around the 30 s window, minimum, 10 min and cap rules. */
 const WINDOW_LENGTHS = [
   0,
   15_999,
   16_000,
-  4_800_000,
-  4_815_999,
-  4_816_000,
-  9_616_000,
-  12 * 4_800_000 + 16_000
+  480_000,
+  495_999,
+  496_000,
+  2 * 480_000 + 16_000,
+  600 * 16_000,
+  NATIVE_MAX_WINDOWS * 480_000 + 16_000
 ]
 
 const featureCase = (name, signal) => ({ name, signal })
@@ -346,7 +354,7 @@ const FEATURE_CASES = [
   ],
   ['half a second', noise(8_000, 13)],
   ['under one frame', noise(300, 14)],
-  ['31 s: the whole window', noise(16_000 * 31, 15, 2)]
+  ['30 s: a full window', noise(16_000 * 30, 15, 2)]
 ].map(([name, signal]) => featureCase(name, signal))
 
 /** WAV files Electron embeds end to end. */
@@ -375,33 +383,50 @@ const EMBEDDING_CASES = [
       subFormat: 1
     }
   ],
-  ['31 s of noise: the whole window', pcm(1, 16_000, noise(16_000 * 31, 23, 1))],
-  ['301 s: two windows, the second one second long', pcm(1, 16_000, noise(16_000 * 301, 24, 2))],
+  ['31 s of noise: a 30 s window and a 1 s tail', pcm(1, 16_000, noise(16_000 * 31, 23, 1))],
+  [
+    "301 s: eleven windows, the last one second long (Electron's second window)",
+    pcm(1, 16_000, noise(16_000 * 301, 24, 2))
+  ],
   ['0.9 s: too short to embed', pcm(1, 16_000, noise(14_400, 26))]
 ].map(([name, recipe]) => embeddingCase(name, recipe))
 
 // --- Oracle --------------------------------------------------------------------------------
 
 /**
- * Runs `audio-embedding.ts` in place: its imports other than `./embeddings-constants` resolve to a
- * stub with audio search on, whose `generateAudioEmbedding` calls `globalThis.__memryAudioOracle`.
+ * Runs `audio-embedding.ts` in place, as shipped (`electron`) and with the native window constants
+ * (`native`): its imports other than `./embeddings-constants` resolve to a stub with audio search
+ * on, whose `generateAudioEmbedding` calls `globalThis.__memryAudioOracle`.
  */
 async function loadAudioEmbedding() {
-  const stub = `data:text/javascript,${encodeURIComponent(`
+  const data = (source) => `data:text/javascript,${encodeURIComponent(source)}`
+  const stub = data(`
     export const getSetting = () => 'true'
     export const getDatabase = () => ({})
     export const getVoiceTranscriptionSettings = () => ({ audioSearch: true })
     export const generateAudioEmbedding = (window) => globalThis.__memryAudioOracle(window)
-  `)}`
-  const parent = pathToFileURL(AUDIO_EMBEDDING).href
+  `)
+  const electron = pathToFileURL(AUDIO_EMBEDDING).href
+  const native = `${electron}?windows=native`
+  const constants = pathToFileURL(
+    AUDIO_EMBEDDING.replace(/audio-embedding\.ts$/, 'embeddings-constants.ts')
+  ).href
+  const nativeConstants = data(`
+    export * from '${constants}'
+    export const EMBEDDING_AUDIO_WINDOW_SECONDS = ${NATIVE_WINDOW_SECONDS}
+    export const EMBEDDING_AUDIO_MAX_WINDOWS = ${NATIVE_MAX_WINDOWS}
+  `)
   registerHooks({
     resolve(specifier, context, next) {
-      if (context.parentURL !== parent) return next(specifier, context)
-      if (specifier === './embeddings-constants') return next(`${specifier}.ts`, context)
-      return { url: stub, shortCircuit: true }
+      if (context.parentURL !== electron && context.parentURL !== native) {
+        return next(specifier, context)
+      }
+      if (specifier !== './embeddings-constants') return { url: stub, shortCircuit: true }
+      if (context.parentURL === native) return { url: nativeConstants, shortCircuit: true }
+      return next(`${specifier}.ts`, context)
     }
   })
-  return import(parent)
+  return { electron: await import(electron), native: await import(native) }
 }
 
 async function loadModel(dir) {
@@ -419,14 +444,7 @@ async function loadModel(dir) {
     }),
     AutoProcessor.from_pretrained(MODEL_REPO)
   ])
-  // The whole window (Kaan, 2026-11-14): the processor's extractor runs with `truncation` off
-  // unless `extractor.electron` asks for Electron's 30 s.
-  const extractor = processor.feature_extractor
-  const call = extractor._call.bind(extractor)
-  const truncation = { electron: false }
-  extractor._call = (audio, options = {}) =>
-    call(audio, { ...options, truncation: truncation.electron })
-  return { model, processor, truncation }
+  return { model, processor }
 }
 
 /** embedding-worker.ts `embedAudio` for one window. */
@@ -444,9 +462,9 @@ const keptRows = (frames) =>
     .filter((row) => row >= 0 && row < frames)
     .toSorted((a, b) => a - b)
 
-async function renderFeatures(audioEmbedding, processor, unpinnedFiles) {
+async function renderFeatures({ electron, native }, processor, unpinnedFiles) {
   const decode = decodeCases().map((item) => {
-    const samples = audioEmbedding.decodeWavForEmbedding(fromHex(item.wav))
+    const samples = electron.decodeWavForEmbedding(fromHex(item.wav))
     return { ...item, expected: samples === null ? null : Array.from(samples) }
   })
 
@@ -457,7 +475,7 @@ async function renderFeatures(audioEmbedding, processor, unpinnedFiles) {
       seen.push(window.length)
       return new Float32Array(DIMENSION)
     }
-    const vectors = await audioEmbedding.embedAudio(new Float32Array(samples))
+    const vectors = await native.embedAudio(new Float32Array(samples))
     windows.push({ samples, windows: vectors === null ? [] : seen })
   }
 
@@ -503,10 +521,10 @@ async function renderFeatures(audioEmbedding, processor, unpinnedFiles) {
     meta: {
       spec: 'tauri-v2-3540-audio-features',
       oracle:
-        'crates/memry-ml/tests/golden/generate-audio.mjs (Electron audio-embedding.ts in place, transformers.js Gemma4AudioFeatureExtractor, truncation off)',
+        'crates/memry-ml/tests/golden/generate-audio.mjs (Electron audio-embedding.ts in place with 30 s windows, transformers.js Gemma4AudioFeatureExtractor)',
       transformers: transformersVersion(),
       unpinnedFiles,
-      note: 'decode[i].expected is decodeWavForEmbedding(wav) (16 kHz mono f32, exact) or null. windows[i].windows lists the lengths embedAudio hands the worker for a recording of `samples` 16 kHz samples. features[i] runs the processor feature extractor (truncation off: the whole window) on 16 kHz mono samples built from `signal`: rows keeps whole feature rows by index, rowSums sums every row, validFrames is the length of the mask prefix of ones, softTokens counts the mask at every 4th frame. Recipes: see generate-audio.mjs recipeSamples.'
+      note: 'decode[i].expected is decodeWavForEmbedding(wav) (16 kHz mono f32, exact) or null. windows[i].windows lists the lengths embedAudio, with 30 s windows and at most 120 of them, hands the worker for a recording of `samples` 16 kHz samples. features[i] runs the processor feature extractor on one window of at most 30 s (nothing truncated) of 16 kHz mono samples built from `signal`: rows keeps whole feature rows by index, rowSums sums every row, validFrames is the length of the mask prefix of ones, softTokens counts the mask at every 4th frame. Recipes: see generate-audio.mjs recipeSamples.'
     },
     tolerance: FEATURE_TOLERANCE,
     decode,
@@ -515,28 +533,36 @@ async function renderFeatures(audioEmbedding, processor, unpinnedFiles) {
   }
 }
 
-async function renderEmbeddings(audioEmbedding, engine, unpinnedFiles) {
+async function renderEmbeddings({ electron, native }, engine, unpinnedFiles) {
   const cases = []
   for (const item of EMBEDDING_CASES) {
-    const samples = audioEmbedding.decodeWavForEmbedding(wav(item.recipe))
+    const samples = electron.decodeWavForEmbedding(wav(item.recipe))
     if (samples === null) throw new Error(`${item.name}: Electron does not decode it`)
     const windows = []
     globalThis.__memryAudioOracle = async (window) => {
       const { inputs, embedding } = await embedWindow(engine, window)
       const tokenIds = Array.from(inputs.input_ids.data, Number)
-      const record = { samples: window.length, tokenIds, embedding: storedVector(embedding) }
-      if (window.length > ELECTRON_SAMPLES) {
-        engine.truncation.electron = true
-        const electron = storedVector((await embedWindow(engine, window)).embedding)
-        engine.truncation.electron = false
-        const cosine = Number(dot(record.embedding, electron).toPrecision(9))
-        record.electron = { cosine, embedding: electron }
-      }
-      windows.push(record)
+      windows.push({ samples: window.length, tokenIds, embedding: storedVector(embedding) })
       return embedding
     }
-    const vectors = await audioEmbedding.embedAudio(samples)
+    const vectors = await native.embedAudio(samples)
     if ((vectors?.length ?? 0) !== windows.length) throw new Error(`${item.name}: lost a window`)
+    // Electron's vector k is the first 30 s of its window k: native window 10k.
+    const electronWindows = []
+    globalThis.__memryAudioOracle = async (window) => {
+      const { embedding } = await embedWindow(engine, window)
+      electronWindows.push({ samples: window.length, embedding: storedVector(embedding) })
+      return embedding
+    }
+    await electron.embedAudio(samples)
+    electronWindows.forEach((theirs, k) => {
+      const ours = windows[k * NATIVE_PER_ELECTRON]
+      if (ours?.samples !== Math.min(theirs.samples, NATIVE_WINDOW_SECONDS * 16_000)) {
+        throw new Error(`${item.name}: Electron window ${k} has no native window`)
+      }
+      const cosine = Number(dot(ours.embedding, theirs.embedding).toPrecision(9))
+      ours.electron = { cosine, embedding: theirs.embedding }
+    })
     cases.push({ name: item.name, recipe: item.recipe, decodedSamples: samples.length, windows })
   }
   return {
@@ -547,7 +573,7 @@ async function renderEmbeddings(audioEmbedding, engine, unpinnedFiles) {
       transformers: transformersVersion(),
       model: { repo: MODEL_REPO, revision: MODEL_REVISION, dtype: 'q4' },
       unpinnedFiles,
-      note: 'Each case is a WAV file built from `recipe` (generate-audio.mjs wav). windows lists what Electron embeds: decodeWavForEmbedding, embedAudio windows, then per window processor(null, null, window) and the model, with the feature extractor truncation off so the whole window is embedded (Kaan, 2026-11-14; Electron keeps the first 30 s). tokenIds are the processor input_ids; embedding is the stored 256-value vector. A window over 30 s also holds electron: the vector Electron stores for it and its cosine with embedding.'
+      note: 'Each case is a WAV file built from `recipe` (generate-audio.mjs wav). windows lists the 30 s windows: decodeWavForEmbedding, embedAudio with 30 s windows (at most 120; Kaan, 2026-11-14), then per window processor(null, null, window) and the model. tokenIds are the processor input_ids; embedding is the stored 256-value vector. Window 10k also holds electron: the vector Electron stores for its 300 s window k (its extractor keeps the first 30 s) and its cosine with embedding.'
     },
     tolerance: EMBEDDING_TOLERANCE,
     cases

@@ -64,9 +64,9 @@ This directory owns the Rust workspace. `memry-core` is the shared core under th
 `memry-ml`'s audio path (`audio_prep.rs`, `audio.rs`, `EmbeddingEngine::embed_audio`) is tested against two files that `crates/memry-ml/tests/golden/generate-audio.mjs` writes by running Electron's `audio-embedding.ts` in place (its settings and database imports stubbed) and the worker's audio path on transformers.js (`pnpm embed:golden:audio --model-dir <dir>`, `--check` as for text; the model folder needs the audio files too).
 
 - `audio-features.json` (no model, every tier, `tests/audio_features.rs`): WAV decoding and `embedAudio`'s windows exact, log-mel rows within 1e-4. `embeddings-audio.json` (full tier, `tests/golden_audio.rs`): seven WAV files decoded, split and embedded, token ids exact, the text file's vector bounds. The encoder loads with the first window.
-- Each window is embedded whole, where Electron's extractor keeps its first 30 s (Kaan, 2026-11-14): an intentional divergence, so the generator runs the extractor with `truncation` off and a window over 30 s records Electron's vector and the measured cosine (test-vectors README). `audio_features` refuses a window over 300 s.
+- Windows are 30 s, at most 120, where Electron's are 300 s, at most 12, of which its extractor keeps the first 30 s (Kaan, 2026-11-14): an intentional divergence. The generator runs `embedAudio` in place with the native constants, and native window 10k records Electron's vector k and their cosine (test-vectors README). `audio_features` refuses a window over 30 s, so nothing is truncated.
 - Inputs are integer recipes, rebuilt byte for byte by `tests/common/audio.rs`; change a recipe in both places. `tests/common/` holds the helpers the vector tests share, and `tests/golden/common.mjs` those of the generators.
-- The decoder is an untrusted-input parser: output capped at 12 windows of 300 s before allocation, sample rates under 4000 Hz refused (a decoding divergence, marked in the file), linear step count. Keep its kit tests red-provable.
+- The decoder is an untrusted-input parser: files over 512 MiB refused, output capped at 120 windows of 30 s (60 min) before allocation, sample rates under 4000 Hz refused (a decoding divergence, marked in the file), linear step count. Keep its kit tests red-provable.
 
 ### Embeddings image
 

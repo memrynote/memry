@@ -37,7 +37,25 @@ fn the_output_stops_at_the_cap_before_it_is_allocated() {
         assert_eq!(capped, full[..100], "rate {rate}");
         assert!(capped.capacity() <= 100, "rate {rate}");
     }
+    // 120 windows of 30 s: the first 60 min, as Electron's 12 windows of 300 s.
     assert_eq!(MAX_DECODED_SAMPLES, 12 * 300 * 16_000);
+}
+
+/// A file over the limit is refused before its header is read, like `image_prep`'s images.
+#[test]
+fn files_over_the_byte_limit_are_refused() {
+    let mut bytes = pcm16(1, 16_000, 10);
+    bytes.resize(MAX_AUDIO_BYTES + 1, 0);
+    let error = decode_wav(&bytes).expect_err("over the limit");
+    assert_eq!(
+        error.to_string(),
+        format!(
+            "audio file is {} bytes, over the {MAX_AUDIO_BYTES}-byte limit",
+            MAX_AUDIO_BYTES + 1
+        )
+    );
+    bytes.truncate(MAX_AUDIO_BYTES);
+    assert_eq!(decode_wav(&bytes).expect("at the limit").len(), 10);
 }
 
 #[test]
@@ -93,31 +111,66 @@ fn features_of_a_window_too_short_for_one_frame_are_an_error() {
     );
     assert!(audio_features(&[]).is_err());
     let features = audio_features(&[0.5; 129]).expect("129 samples pad to 256");
-    assert_eq!((features.frames, features.soft_tokens()), (1, 0));
+    assert_eq!((features.frames, mask_soft_tokens(&features)), (1, 0));
+    assert_eq!(audio_soft_tokens(129).expect("129"), 0);
+    assert!(audio_soft_tokens(32).is_err());
     assert!(features.values.iter().all(|&v| v == 0.0));
 }
 
-/// Kaan, 2026-11-14: the whole window is embedded, where Electron's extractor keeps its first 30 s.
+/// Soft tokens the processor counts from the mask: every 4th frame that is valid.
+fn mask_soft_tokens(features: &AudioFeatures) -> usize {
+    features
+        .mask
+        .iter()
+        .step_by(4)
+        .filter(|&&valid| valid)
+        .count()
+}
+
+/// A full window is the extractor's 480,000 samples, every frame valid: the 754 ids (750 soft
+/// tokens) transformers.js gives 30 s.
 #[test]
-fn features_cover_the_whole_window() {
-    let window = vec![0.25_f32; 31 * 16_000];
-    let features = audio_features(&window).expect("31 s");
-    assert_eq!((features.frames, features.soft_tokens()), (3_099, 775));
-    assert!(features.mask.iter().all(|&valid| valid));
-    // 7500 soft tokens: the 7504 ids transformers.js gives a 300 s window without truncation.
-    let full = audio_features(&vec![0.25_f32; WINDOW_SAMPLES]).expect("300 s");
-    assert_eq!((full.frames, full.soft_tokens()), (29_999, 7_500));
+fn a_full_window_is_30_s_of_valid_frames() {
+    let full = audio_features(&vec![0.25_f32; WINDOW_SAMPLES]).expect("30 s");
+    assert_eq!((full.frames, mask_soft_tokens(&full)), (2_999, 750));
+    assert!(full.mask.iter().all(|&valid| valid));
+    assert_eq!(audio_soft_tokens(WINDOW_SAMPLES).expect("30 s"), 750);
+}
+
+/// The ids are counted from the length; the count equals the features' mask at every length.
+#[test]
+fn soft_tokens_from_the_length_equal_the_mask() {
+    for samples in (129..2_000).chain([16_000, 16_197, 40_000, WINDOW_SAMPLES - 1]) {
+        let features = audio_features(&vec![0.1_f32; samples]).expect("features");
+        assert_eq!(
+            audio_soft_tokens(samples).expect("count"),
+            mask_soft_tokens(&features),
+            "{samples} samples"
+        );
+    }
 }
 
 /// A window is at most [`WINDOW_SAMPLES`], so its features are bounded: one longer is refused
-/// before anything is allocated.
+/// before anything is allocated, and its ids are refused alike.
 #[test]
-fn a_window_longer_than_300_s_is_refused() {
-    let error = audio_features(&vec![0.0; WINDOW_SAMPLES + 1]).expect_err("300 s + 1");
+fn a_window_longer_than_30_s_is_refused() {
+    let error = audio_features(&vec![0.0; WINDOW_SAMPLES + 1]).expect_err("30 s + 1");
     assert_eq!(
         error.to_string(),
-        "4800001 samples are longer than one 300 s window"
+        "480001 samples are longer than one 30 s window"
     );
+    assert!(audio_soft_tokens(WINDOW_SAMPLES + 1).is_err());
+}
+
+/// 30 s windows cover the whole file up to [`MAX_WINDOWS`]: a 10 min recording is 20 windows.
+#[test]
+fn windows_cover_the_file_in_30_s_steps() {
+    let ten_minutes = vec![0.0_f32; 600 * 16_000];
+    let windows = audio_windows(&ten_minutes);
+    assert_eq!(windows.len(), 20);
+    assert!(windows.iter().all(|window| window.len() == WINDOW_SAMPLES));
+    let past_the_cap = vec![0.0_f32; MAX_DECODED_SAMPLES + 16_000];
+    assert_eq!(audio_windows(&past_the_cap).len(), MAX_WINDOWS);
 }
 
 #[test]
@@ -154,7 +207,10 @@ proptest! {
     #![proptest_config(proptest_config(512))]
 
     #[test]
-    fn arbitrary_bytes_decode_or_fail_without_panic(bytes in prop::collection::vec(any::<u8>(), 0..512)) {
+    fn arbitrary_bytes_decode_or_fail_without_panic(tail in prop::collection::vec(any::<u8>(), 0..512)) {
+        // A valid RIFF/WAVE header, so the bytes reach the chunk walk and the sample reader.
+        let mut bytes = b"RIFF\0\0\0\0WAVE".to_vec();
+        bytes.extend(tail);
         if let Ok(samples) = decode_wav(&bytes) {
             prop_assert!(samples.len() * 4 <= output_bound(bytes.len()));
         }

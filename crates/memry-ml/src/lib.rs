@@ -11,8 +11,9 @@ mod text;
 mod vision;
 
 pub use audio_prep::{
-    AudioFeatures, MAX_DECODED_SAMPLES, MAX_WINDOWS, MEL_BINS, MIN_SAMPLE_RATE, MIN_SAMPLES,
-    SAMPLE_RATE, WINDOW_SAMPLES, audio_features, audio_windows, decode_steps, decode_wav,
+    AudioFeatures, MAX_AUDIO_BYTES, MAX_DECODED_SAMPLES, MAX_WINDOWS, MEL_BINS, MIN_SAMPLE_RATE,
+    MIN_SAMPLES, SAMPLE_RATE, WINDOW_SAMPLES, audio_features, audio_soft_tokens, audio_windows,
+    decode_steps, decode_wav,
 };
 pub use engine::{
     EMBEDDING_DIMENSION, Embedding, EmbeddingEngine, IMAGE_SOFT_TOKENS, LoadOptions,

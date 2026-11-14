@@ -82,8 +82,8 @@ one-class change reviewable.
 | `note-fold.json`                         |                                   48 | same                                                                                           | Rust `note_fold_vectors.rs`                                                          |
 | `embedding-input.json`                   |                                   61 | `apps/desktop/scripts/embedding-input-oracle/`                                                 | Rust `domain::embedding_input` tests                                                 |
 | `embeddings-text.json`                   |                    31 + 2 + 12 pairs | `crates/memry-ml/tests/golden/generate.mjs` (needs the model)                                  | Rust `memry-ml/tests/golden_text.rs` (full tier)                                     |
-| `audio-features.json`                    |                           33 + 8 + 7 | `crates/memry-ml/tests/golden/generate-audio.mjs` (needs the model)                            | Rust `memry-ml/tests/audio_features.rs`                                              |
-| `embeddings-audio.json`                  |                   7 files, 8 windows | same                                                                                           | Rust `memry-ml/tests/golden_audio.rs` (full tier)                                    |
+| `audio-features.json`                    |                           33 + 9 + 7 | `crates/memry-ml/tests/golden/generate-audio.mjs` (needs the model)                            | Rust `memry-ml/tests/audio_features.rs`                                              |
+| `embeddings-audio.json`                  |                  7 files, 17 windows | same                                                                                           | Rust `memry-ml/tests/golden_audio.rs` (full tier)                                    |
 | `pixel-tensors.json`                     |                                   53 | `crates/memry-ml/tests/golden/generate-image.mjs`                                              | Rust `memry-ml/tests/pixel_tensors.rs`                                               |
 | `embeddings-image.json`                  |                                   14 | same, with `--model-dir` (needs the model)                                                     | Rust `memry-ml/tests/golden_image.rs` (full tier)                                    |
 | `markdown-roundtrip/cases.json`          |                                  285 | `../scripts/vectors/markdown-roundtrip.ts`                                                     | `../src/__tests__/markdown-roundtrip.test.ts`                                        |
@@ -125,28 +125,36 @@ that cosine, and `golden_text.rs` holds the native vector to the measured cosine
 Similarity floors of 0.60 and up are unaffected in practice; only the one window that holds the
 cut moves.
 
-### `audio-features.json`, `embeddings-audio.json`: the whole window is embedded, unlike Electron
+### `audio-features.json`, `embeddings-audio.json`: 30 s windows over the whole file, unlike Electron
 
 Both files come from Electron's audio path run in place: `decodeWavForEmbedding` and `embedAudio`
 of `apps/desktop/src/main/lib/audio-embedding.ts`, then the worker's `processor(null, null, audio)`
-and model on transformers.js. Decoding, the 300 s windows and their limits are Electron's, exact.
+and model on transformers.js. Decoding is Electron's, exact.
 
-The embedded window is an intentional divergence (Kaan, 2026-11-14). Electron's audio feature
-extractor keeps only the first 480,000 samples (30 s) of a window, so a 300 s window is indexed by
-its first 30 s and the other 270 s never reach the index. `memry-ml` embeds the whole window, and
-the generator runs the extractor with `truncation` off, so these vectors are a Tauri-side oracle
-for any window over 30 s, not an Electron parity claim for it. Such a window also records
-Electron's own vector and the cosine between the two (`electron`), and `golden_audio.rs` holds the
-native vector to that cosine within 1e-4. Measured with transformers.js 4.3.1 and the pinned q4
-model on LCG noise: 0.996534 for a 31 s window and 0.960938 for a full 300 s window. Stored audio
-vectors of an Electron vault therefore differ from Tauri's for recordings over 30 s and are
-re-embedded. A full 300 s window is 7,504 tokens: 129 s and a 6.8 GB peak resident set for the
-native engine on macOS arm64 (2 threads), 128 s and 6.1 GB on transformers.js, against 11 s and
-0.9 GB for a 30 s window.
+The windows are an intentional divergence (Kaan, 2026-11-14). Electron splits a recording into
+300 s windows, at most 12, and its feature extractor keeps only the first 480,000 samples (30 s,
+the model's training length) of each, so 270 s of every window never reach the index. `memry-ml`
+splits into 30 s windows, at most 120: the same first 60 min, all of it embedded, and no window
+past the extractor's length. The generator runs `embedAudio` in place with
+`EMBEDDING_AUDIO_WINDOW_SECONDS` 30 and `EMBEDDING_AUDIO_MAX_WINDOWS` 120 (the one-second minimum
+and tail rule unchanged), then Electron's own `embedAudio`: Electron's vector for its window k is
+the native window 10k, which records it with the cosine between the two (`electron`).
+`golden_audio.rs` requires that record exactly on windows 0, 10, 20 and so on, and holds the native
+vector to it within the file's bounds. Measured (transformers.js 4.3.1, pinned q4 model, LCG
+noise): the cosine of the 301 s file's first window with Electron's record is 0.999999974 on
+transformers.js and 0.999999989 natively (same samples, so equal up to rounding). Electron's stored audio vectors are a
+subset of Tauri's; the other windows are new and are embedded on migration.
+
+Cost: a 10 min recording is 20 windows. A 30 s window is 754 tokens; natively on macOS arm64
+(release, default threads) it takes 5.2 to 11.0 s (median 6.7 s), and the whole golden run, text
+model and audio encoder loaded, peaks at a 1.39 GB resident set. A single 300 s window embedded
+whole would be 7,504 tokens, 129 s and 6.8 GB.
 
 The other divergence is a WAV file under 4000 Hz: Electron resamples it, the native decoder
 refuses it, because a few bytes at 1 Hz would claim hours of output. Such a case carries
-`divergence` in `decode`.
+`divergence` in `decode`, and `audio_features.rs` derives the class from the header and fails when
+the tag disagrees. A file over 512 MiB (`MAX_AUDIO_BYTES`) is refused natively, where Electron
+decodes it and embeds its first 60 min; no vector holds one.
 
 ### `pixel-tensors.json` and `embeddings-image.json`: JPEG decoding, ICC conversion and CMYK conversion are a known divergence
 

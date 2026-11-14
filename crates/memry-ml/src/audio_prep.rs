@@ -3,6 +3,11 @@
 //! log-mel features of transformers.js's `Gemma4AudioFeatureExtractor` that the worker's
 //! `processor(null, null, audio)` computes for one window.
 //!
+//! Windows are 30 s, where Electron's are 300 s (Kaan, 2026-11-14; test-vectors README): the
+//! extractor keeps the first 480,000 samples (30 s, its `max_length` and the model's training
+//! length) of a window, so Electron indexes 30 s of every 300 s. Native windows cover the whole
+//! file, each one whole; Electron's vectors are the native windows 0, 10, 20 and so on.
+//!
 //! A WAV file is untrusted vault data. The decoder reads only inside the slice, allocates its output
 //! once, sized from the bytes present (never from a header's claims), and stops at
 //! [`MAX_DECODED_SAMPLES`]; malformed input is an error, never a panic.
@@ -15,17 +20,25 @@ use crate::MlError;
 /// `EMBEDDING_AUDIO_SAMPLE_RATE`: the encoder takes 16 kHz mono.
 pub const SAMPLE_RATE: u32 = 16_000;
 
-/// Samples of one embedded window (`EMBEDDING_AUDIO_WINDOW_SECONDS`, 300 s).
-pub const WINDOW_SAMPLES: usize = 300 * SAMPLE_RATE as usize;
+/// Samples of one embedded window: 30 s, the extractor's `max_length` (480,000 samples). Electron's
+/// `EMBEDDING_AUDIO_WINDOW_SECONDS` is 300 s, of which its extractor keeps the first 30 s.
+pub const WINDOW_SAMPLES: usize = 30 * SAMPLE_RATE as usize;
 
-/// `EMBEDDING_AUDIO_MAX_WINDOWS`: the rest of a longer recording is not indexed.
-pub const MAX_WINDOWS: usize = 12;
+/// Windows embedded per file: 120 of 30 s, the same first 60 min as Electron's 12 windows of 300 s
+/// (`EMBEDDING_AUDIO_MAX_WINDOWS`). The rest of a longer recording is not indexed.
+pub const MAX_WINDOWS: usize = 120;
 
 /// `MIN_AUDIO_SECONDS`: shorter recordings, and shorter tails after the first window, are skipped.
 pub const MIN_SAMPLES: usize = SAMPLE_RATE as usize;
 
 /// Decoded samples past this are never embedded (`MAX_WINDOWS` windows), so they are not decoded.
 pub const MAX_DECODED_SAMPLES: usize = MAX_WINDOWS * WINDOW_SAMPLES;
+
+/// Larger files are refused before decoding, as `image_prep::MAX_IMAGE_BYTES` refuses images; a
+/// caller skips them before reading. 512 MiB holds the [`MAX_WINDOWS`] windows (60 min) of 16 kHz to
+/// 44.1 kHz stereo PCM16, and over 4 hours of 16 kHz mono. Electron decodes any size and embeds its
+/// first 60 min; a longer recording at a high rate is not embedded natively.
+pub const MAX_AUDIO_BYTES: usize = 512 * 1024 * 1024;
 
 /// Lowest sample rate the decoder accepts. Electron decodes any rate; below 4 kHz a file of a few
 /// bytes would claim hours of 16 kHz output, so the native decoder refuses it (no recorder writes
@@ -95,7 +108,8 @@ fn u32_at(bytes: &[u8], at: usize) -> u32 {
 
 /// `decodeWavForEmbedding`: a PCM16, PCM32 or float32 WAV file as 16 kHz mono, channels averaged
 /// and other rates resampled linearly. Electron returns null where this returns
-/// [`MlError::Input`]. The output stops at [`MAX_DECODED_SAMPLES`].
+/// [`MlError::Input`]. A file over [`MAX_AUDIO_BYTES`] is refused; the output stops at
+/// [`MAX_DECODED_SAMPLES`].
 pub fn decode_wav(bytes: &[u8]) -> Result<Vec<f32>, MlError> {
     decode_wav_capped(bytes, MAX_DECODED_SAMPLES)
 }
@@ -105,6 +119,12 @@ fn unsupported() -> MlError {
 }
 
 pub(crate) fn decode_wav_capped(bytes: &[u8], max_samples: usize) -> Result<Vec<f32>, MlError> {
+    if bytes.len() > MAX_AUDIO_BYTES {
+        return Err(MlError::Input(format!(
+            "audio file is {} bytes, over the {MAX_AUDIO_BYTES}-byte limit",
+            bytes.len()
+        )));
+    }
     if bytes.len() < 12 || &bytes[0..4] != b"RIFF" || &bytes[8..12] != b"WAVE" {
         return Err(unsupported());
     }
@@ -198,6 +218,35 @@ pub fn audio_windows(samples: &[f32]) -> Vec<&[f32]> {
     windows
 }
 
+/// Soft tokens the encoder emits for a window of `samples`, counted from the length alone: it keeps
+/// every 4th frame (two stride-2 convolutions), and the processor counts the valid ones
+/// (`_process_audio`). The window is checked as [`audio_features`] checks it.
+pub fn audio_soft_tokens(samples: usize) -> Result<usize, MlError> {
+    window_frames(samples)?;
+    // Frame `f` is valid when `f * HOP_LENGTH + FRAME_LENGTH < pad_left + samples`.
+    let valid = (samples + FRAME_LENGTH / 2).saturating_sub(FRAME_LENGTH);
+    Ok(valid.div_ceil(HOP_LENGTH).div_ceil(4))
+}
+
+/// Frames of a window of `samples`, or an error for one longer than [`WINDOW_SAMPLES`] or too short
+/// for one frame.
+fn window_frames(samples: usize) -> Result<usize, MlError> {
+    if samples > WINDOW_SAMPLES {
+        return Err(MlError::Input(format!(
+            "{samples} samples are longer than one 30 s window"
+        )));
+    }
+    let padded = samples.div_ceil(PAD_TO_MULTIPLE) * PAD_TO_MULTIPLE;
+    // Python's `unfold(size=frame_length + 1, step=hop_length)` over the semicausal padding.
+    let span = padded + FRAME_LENGTH / 2;
+    if span < FRAME_LENGTH + 1 {
+        return Err(MlError::Input(format!(
+            "{samples} samples are too short for one audio frame"
+        )));
+    }
+    Ok((span - (FRAME_LENGTH + 1)) / HOP_LENGTH + 1)
+}
+
 /// Log-mel features of one window: `frames` rows of [`MEL_BINS`] values, zero where `mask` is
 /// false (a frame that reaches past the samples).
 #[derive(Debug, Clone, PartialEq)]
@@ -207,37 +256,15 @@ pub struct AudioFeatures {
     pub mask: Vec<bool>,
 }
 
-impl AudioFeatures {
-    /// Soft tokens the encoder emits: it keeps every 4th frame (two stride-2 convolutions), and the
-    /// processor counts the valid ones (`_process_audio`).
-    pub fn soft_tokens(&self) -> usize {
-        self.mask.iter().step_by(4).filter(|&&valid| valid).count()
-    }
-}
-
-/// `Gemma4AudioFeatureExtractor` with the model's `preprocessor_config.json` and `truncation` off:
-/// the whole window (Electron's extractor keeps its first 30 s; Kaan, 2026-11-14, test-vectors
-/// README), at most [`WINDOW_SAMPLES`] so the features stay bounded, zero-padded to a multiple of
-/// 128 samples, 160 zeros in front (semicausal), 320-sample frames
+/// `Gemma4AudioFeatureExtractor` with the model's `preprocessor_config.json` on one window of at
+/// most [`WINDOW_SAMPLES`], the extractor's `max_length` (a longer one is refused, so nothing is
+/// truncated and the features stay bounded): zero-padded to a multiple of 128 samples, 160 zeros in front (semicausal), 320-sample frames
 /// every 160 samples under a periodic Hann window, a 512-point power spectrum, its square root, the
 /// HTK mel filters (0 to 8 kHz, no normalisation), `ln(mel + 0.001)`.
 pub fn audio_features(window: &[f32]) -> Result<AudioFeatures, MlError> {
     let original = window.len();
-    if original > WINDOW_SAMPLES {
-        return Err(MlError::Input(format!(
-            "{original} samples are longer than one 300 s window"
-        )));
-    }
-    let padded = original.div_ceil(PAD_TO_MULTIPLE) * PAD_TO_MULTIPLE;
+    let frames = window_frames(original)?;
     let pad_left = FRAME_LENGTH / 2;
-    // Python's `unfold(size=frame_length + 1, step=hop_length)` over the semicausal padding.
-    let span = padded + pad_left;
-    if span < FRAME_LENGTH + 1 {
-        return Err(MlError::Input(format!(
-            "{original} samples are too short for one audio frame"
-        )));
-    }
-    let frames = (span - (FRAME_LENGTH + 1)) / HOP_LENGTH + 1;
     let sample = |index: usize| -> f64 {
         index
             .checked_sub(pad_left)

@@ -31,13 +31,13 @@ impl AudioEncoder {
     }
 
     /// The soft tokens of one window, row after row of [`SOFT_TOKEN_WIDTH`] values.
-    pub(crate) fn encode(&mut self, features: &AudioFeatures) -> Result<Vec<f32>, MlError> {
+    pub(crate) fn encode(&mut self, features: AudioFeatures) -> Result<Vec<f32>, MlError> {
         let inference = |error: ort::Error| MlError::Inference(error.to_string());
         let frames = features.frames;
-        let input_features = Tensor::from_array(([1, frames, MEL_BINS], features.values.clone()))
-            .map_err(inference)?;
+        let input_features =
+            Tensor::from_array(([1, frames, MEL_BINS], features.values)).map_err(inference)?;
         let input_features_mask =
-            Tensor::from_array(([1, frames], features.mask.clone())).map_err(inference)?;
+            Tensor::from_array(([1, frames], features.mask)).map_err(inference)?;
         let outputs = self
             .session
             .run(ort::inputs! {

@@ -1,9 +1,9 @@
 //! Parity with Electron's audio embeddings: `packages/contracts/test-vectors/embeddings-audio.json`,
 //! written by `tests/golden/generate-audio.mjs` from `audio-embedding.ts` in place and the audio
-//! path of `embedding-worker.ts` on transformers.js, holds every window Electron embeds for seven
-//! WAV files. Each file is decoded, split and embedded natively. The oracle embeds each window
-//! whole, where Electron's feature extractor keeps the first 30 s (Kaan, 2026-11-14): a longer
-//! window also records Electron's vector and its measured cosine (test-vectors README). Needs the
+//! path of `embedding-worker.ts` on transformers.js, holds every 30 s window of seven WAV files.
+//! Each file is decoded, split and embedded natively. Electron's windows are 300 s, of which its
+//! extractor keeps the first 30 s (Kaan, 2026-11-14; test-vectors README), so the native window
+//! that starts each Electron window also records Electron's stored vector and their cosine. Needs the
 //! pinned text and audio files in the directory `MEMRY_ML_MODEL_DIR` names; CI runs it on the full
 //! tier in the dev profile. Run: `cargo test -p memry-ml --test golden_audio -- --ignored`.
 
@@ -15,11 +15,12 @@ use common::audio::wav;
 use common::{cosine, floats, ids, vectors};
 use memry_ml::{
     EMBEDDING_DIMENSION, EmbeddingEngine, LoadOptions, MlError, ModelGroup, SAMPLE_RATE,
-    audio_windows, decode_wav,
+    WINDOW_SAMPLES, audio_windows, decode_wav,
 };
 
-/// Samples Electron's feature extractor keeps of a window (`max_length`, 30 s).
-const ELECTRON_SAMPLES: u64 = 30 * SAMPLE_RATE as u64;
+/// Electron's window (`EMBEDDING_AUDIO_WINDOW_SECONDS`, 300 s): its vector is the native window
+/// that starts at the same sample.
+const ELECTRON_WINDOW_SAMPLES: usize = 300 * SAMPLE_RATE as usize;
 
 fn model_dir() -> PathBuf {
     PathBuf::from(std::env::var_os("MEMRY_ML_MODEL_DIR").expect("MEMRY_ML_MODEL_DIR"))
@@ -49,7 +50,9 @@ fn native_audio_embeddings_match_transformers_js() {
     );
     let mut engine = engine();
     let mut failures = Vec::new();
-    for case in vectors["cases"].as_array().expect("cases") {
+    let cases = vectors["cases"].as_array().expect("cases");
+    assert!(cases.len() >= 7, "{} cases, at least 7", cases.len());
+    for case in cases {
         let name = case["name"].as_str().expect("name");
         let samples = decode_wav(&wav(&case["recipe"])).expect(name);
         assert_eq!(
@@ -92,18 +95,22 @@ fn native_audio_embeddings_match_transformers_js() {
                     "{name}: cosine {similarity:.7}, largest difference {worst:.6}"
                 ));
             }
-            // The divergence is read from the window's length, so the file cannot hide one.
-            if (window.len() as u64 > ELECTRON_SAMPLES) != electron.is_object() {
-                failures.push(format!("{name}: electron record does not match its length"));
+            // Read from the window's position, so the file cannot drop a record.
+            let starts_electron_window =
+                (index * WINDOW_SAMPLES).is_multiple_of(ELECTRON_WINDOW_SAMPLES);
+            if starts_electron_window != electron.is_object() {
+                failures.push(format!(
+                    "{name}: electron record does not match its position"
+                ));
                 continue;
             }
             if electron.is_object() {
                 let measured = electron["cosine"].as_f64().expect("electron.cosine");
                 let actual = cosine(&vector, &floats(&electron["embedding"]));
                 eprintln!(
-                    "{name}: cosine with Electron's 30 s vector {actual:.6}, recorded {measured:.6}"
+                    "{name}: cosine with Electron's vector {actual:.9}, recorded {measured:.9}"
                 );
-                if (actual - measured).abs() > 1e-4 {
+                if actual < min_cosine || (actual - measured).abs() > 1e-4 {
                     failures.push(format!(
                         "{name}: cosine with Electron's vector {actual:.7}, recorded {measured:.7}"
                     ));

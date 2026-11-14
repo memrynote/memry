@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use crate::MlError;
 use crate::audio::{AudioEncoder, audio_prompt};
-use crate::audio_prep::audio_features;
+use crate::audio_prep::{audio_features, audio_soft_tokens};
 use crate::files::{self, ModelGroup};
 use crate::image_prep;
 use crate::text::{MediaFeatures, TextModel};
@@ -71,11 +71,10 @@ impl EmbeddingEngine {
 
     /// Embeds one window of 16 kHz mono samples (`audio_prep::audio_windows`) as the worker's
     /// `embedAudio`: the window's features, the encoder's soft tokens at the prompt's placeholders.
-    /// Loads the audio group on first use. The whole window is embedded, where Electron's feature
-    /// extractor keeps its first 30 s (Kaan, 2026-11-14; test-vectors README).
+    /// Loads the audio group on first use. A window is at most 30 s (`audio_prep::WINDOW_SAMPLES`).
     pub fn embed_audio(&mut self, window: &[f32]) -> Result<Embedding, MlError> {
+        let ids = self.audio_token_ids(window)?;
         let features = audio_features(window)?;
-        let ids = self.text.token_ids(&audio_prompt(features.soft_tokens()))?;
         let encoder = match &mut self.audio {
             Some(encoder) => encoder,
             empty => {
@@ -83,7 +82,7 @@ impl EmbeddingEngine {
                 empty.insert(AudioEncoder::load(&self.dir, self.options.intra_threads)?)
             }
         };
-        let audio = encoder.encode(&features)?;
+        let audio = encoder.encode(features)?;
         truncate_embedding(&self.text.sentence_embedding(
             ids,
             MediaFeatures {
@@ -96,7 +95,7 @@ impl EmbeddingEngine {
     /// The ids [`Self::embed_audio`] gives the model for `window`.
     pub fn audio_token_ids(&self, window: &[f32]) -> Result<Vec<i64>, MlError> {
         self.text
-            .token_ids(&audio_prompt(audio_features(window)?.soft_tokens()))
+            .token_ids(&audio_prompt(audio_soft_tokens(window.len())?))
     }
 
     /// Embeds the first [`MAX_EMBEDDING_INPUT_LENGTH`] UTF-16 units of `text` as given: the
