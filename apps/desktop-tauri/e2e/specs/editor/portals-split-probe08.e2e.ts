@@ -77,7 +77,7 @@ test('probe: the source open in another pane shows its usage chip as the portal 
   await expect(page.locator('[data-pane-active="false"] ' + NOTE_TITLE)).toHaveValue(source.title)
   await expect(sourceChip).toHaveCount(0)
   await diag(page, 'before-click')
-  await page.locator(NOTE_EDITOR).first().click()
+  await page.locator(`[data-pane-active="true"] ${NOTE_EDITOR}`).click()
   await diag(page, 'after-click')
 
   await typeInEditor(page, '((')
