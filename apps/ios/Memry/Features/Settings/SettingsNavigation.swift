@@ -121,6 +121,7 @@ private struct SettingsSplitView: View {
         } detail: {
             NavigationStack(path: $router.settingsPath) {
                 SettingsDestinationPage(route: shown, context: context)
+                    .toolbar { DayPanelToolbarItem() }
                     .settingsDestinations(context: context, browse: browse, path: $router.settingsPath)
             }
         }

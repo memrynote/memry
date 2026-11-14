@@ -157,6 +157,7 @@ struct TaskListScreen: View {
                     TaskAddToolbarButton { openComposer() }
                 }
             }
+            DayPanelToolbarItem()
             GlobalSearchToolbarItem()
         }
     }

@@ -198,6 +198,7 @@ struct InboxScreen: View {
                 }
                 .accessibilityIdentifier("inbox.moreButton")
             }
+            DayPanelToolbarItem()
             GlobalSearchToolbarItem()
         }
     }

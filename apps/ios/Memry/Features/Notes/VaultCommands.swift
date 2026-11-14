@@ -17,6 +17,8 @@ struct VaultCommands {
     /// `nil` when the vault has no capture writers.
     let quickCapture: (() -> Void)?
     let search: () -> Void
+    /// ⇧⌘B toggles the Day Panel where a rail fits.
+    let sideRails: SideRails
     /// Opens the ⌘P palette over these commands, with the journal day they
     /// carry at the moment ⌘P was pressed.
     let commandPalette: (VaultCommands) -> Void
@@ -86,6 +88,7 @@ struct VaultCommands {
         case .search, .commandPalette, .settings: true
         case .today: VaultTab.journal.isShown
         case .previousDay, .nextDay: dayShown != nil
+        case .dayPanel: sideRails.dayPanelFits(on: tasks.selectedTab)
         case let .page(number): page(number) != nil
         }
     }
@@ -104,6 +107,7 @@ struct VaultCommands {
             if let dayShown { dayShown.today() } else { journal.openDay(today()) }
         case .previousDay: dayShown?.step(-1)
         case .nextDay: dayShown?.step(1)
+        case .dayPanel: sideRails.toggleDayPanel(on: tasks.selectedTab)
         case let .page(number): if let page = page(number) { tasks.selectedTab = page }
         }
     }

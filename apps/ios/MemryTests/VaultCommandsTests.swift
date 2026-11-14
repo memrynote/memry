@@ -11,6 +11,7 @@ import Testing
 struct VaultCommandsTests {
     private let tasks = TasksRouter()
     private let journal = JournalRouter()
+    private let rails = SideRails(defaults: UserDefaults(suiteName: "VaultCommandsTests.\(UUID())") ?? .standard)
 
     private func commands(
         width: LayoutWidth = .regular,
@@ -25,6 +26,7 @@ struct VaultCommandsTests {
             newNote: newNote,
             quickCapture: nil,
             search: {},
+            sideRails: rails,
             commandPalette: { _ in }
         )
         commands.journalDay = journalDay
@@ -124,6 +126,31 @@ struct VaultCommandsTests {
         #expect(!commands.can(.newNote))
         commands.run(.newNote)
         #expect(tasks.selectedTab == .tasks)
+    }
+
+    @Test func day_panel_key_toggles_the_selected_pages_panel_only_where_a_rail_fits() {
+        let commands = commands()
+        tasks.selectedTab = .tasks
+        rails.measured(.none, on: .tasks)
+        #expect(!commands.can(.dayPanel), "compact width and narrow windows have no panel")
+        commands.run(.dayPanel)
+        #expect(!rails.open.dayPanel)
+
+        rails.measured(.one, on: .tasks)
+        commands.run(.dayPanel)
+        #expect(rails.dayPanelShown(on: .tasks))
+        commands.run(.dayPanel)
+        #expect(!rails.dayPanelShown(on: .tasks))
+
+        tasks.selectedTab = .journal
+        rails.measured(.one, on: .journal)
+        commands.run(.dayPanel)
+        #expect(!rails.open.journalDayPanel, "on the Journal the key closes the Journal's panel")
+        #expect(!rails.open.dayPanel)
+
+        tasks.selectedTab = .calendar
+        rails.measured(.one, on: .calendar)
+        #expect(!commands.can(.dayPanel), "Calendar has its own agenda column")
     }
 
     @Test func every_command_has_its_own_key() {

@@ -18,10 +18,11 @@ import SwiftUI
 // when that width crosses the line, so a column the user shows or hides stays
 // as they left it.
 //
-// **The note inspector (#4347, D9).** It shows only when this width holds the
-// note column and the rail. Adding the list would push the note under the
-// reading measure on every iPad, so while it is open the note stands alone,
-// and the list comes back when it closes.
+// **The rails (#4347, D9, #4380).** The note inspector shows only when the
+// page holds the note column and the rail (`SideRails`, which also seats the
+// Day Panel). Adding the list would push the note under the reading measure on
+// every iPad, so while either rail is open beside a note the note stands
+// alone, and the list comes back when it closes.
 
 struct NotesSplitView: View {
     let model: VaultBrowseViewModel
@@ -30,14 +31,14 @@ struct NotesSplitView: View {
 
     @State private var columns: NavigationSplitViewVisibility = .doubleColumn
     @State private var holdsThreeColumns = false
+    /// The width's columns last set, so a reappearance sets none.
+    @State private var appliedColumns: ColumnsKey?
     /// 13" landscape is 1366-1376pt wide. Every smaller iPad in landscape
     /// (at most 1210pt), 13" portrait (1024-1032pt) and 13" landscape beside
     /// the page sidebar (about 1086pt) stay below it.
     private static let threeColumnWidth: CGFloat = 1300
     @State private var expanded: Set<String> = []
-    @State private var inspectorFits = false
-    @AppStorage(NoteInspectorLayout.openKey) private var inspectorOpen = false
-    @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(SideRails.self) private var rails: SideRails?
     @State private var selectedFolder: String?
     private let notesLinks = NotesLinks.shared
     @Environment(\.requestVaultSync) private var requestVaultSync
@@ -56,9 +57,6 @@ struct NotesSplitView: View {
         .onGeometryChange(for: Bool.self) { $0.size.width >= Self.threeColumnWidth } action: {
             holdsThreeColumns = $0
         }
-        .onGeometryChange(for: Bool.self) { $0.size.width >= NoteInspectorLayout.minimumWidth } action: {
-            inspectorFits = $0
-        }
         // One owner for the columns, set at once and again when the layout
         // settles: after a width change (a rotation, the page sidebar
         // sliding in) the split view writes its own choice over the binding
@@ -67,11 +65,17 @@ struct NotesSplitView: View {
         // sliding in leaves `widthColumns` at `.detailOnly` but still
         // triggers that write.
         .task(id: ColumnsKey(columns: widthColumns, holdsThreeColumns: holdsThreeColumns)) {
+            // The task runs again each time the page reappears (another
+            // page and back): only a new key sets the columns, so the one
+            // the user showed stays (#4380).
+            let key = ColumnsKey(columns: widthColumns, holdsThreeColumns: holdsThreeColumns)
+            guard key != appliedColumns else { return }
+            appliedColumns = key
             columns = widthColumns
             guard (try? await Task.sleep(for: .milliseconds(400))) != nil else { return }
             columns = widthColumns
         }
-        .environment(\.noteInspectorFits, railFits)
+        .environment(\.noteInspectorFits, rails?.inspectorFits ?? false)
         .environment(router)
         // A search hit or a capture's "View": the note in the detail column,
         // its row selected in the list.
@@ -93,14 +97,13 @@ struct NotesSplitView: View {
         .writeFailureAlert(model)
     }
 
-    /// The inspector fits beside the note: Journal's rail rule, accessibility
-    /// text sizes keep the page's own sections.
-    private var railFits: Bool { inspectorFits && !typeSize.isAccessibilitySize }
-
-    private var inspectorShown: Bool { railFits && inspectorOpen && router.current != nil }
+    /// A rail beside the open note: the note inspector or the Day Panel.
+    private var railShown: Bool {
+        router.current != nil && (rails?.inspectorShown == true || rails?.dayPanelShown(on: .notes) == true)
+    }
 
     private var widthColumns: NavigationSplitViewVisibility {
-        if inspectorShown { return .detailOnly }
+        if railShown { return .detailOnly }
         return holdsThreeColumns ? .all : .doubleColumn
     }
 
@@ -281,5 +284,6 @@ private struct NotesEmptyDetail: View {
             }
         }
         .background(Tokens.Canvas.background.color)
+        .toolbar { DayPanelToolbarItem() }
     }
 }
