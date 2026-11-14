@@ -31,6 +31,8 @@ struct NotesSplitView: View {
 
     @State private var columns: NavigationSplitViewVisibility = .doubleColumn
     @State private var holdsThreeColumns = false
+    /// The width's columns last set, so a reappearance sets none.
+    @State private var appliedColumns: ColumnsKey?
     /// 13" landscape is 1366-1376pt wide. Every smaller iPad in landscape
     /// (at most 1210pt), 13" portrait (1024-1032pt) and 13" landscape beside
     /// the page sidebar (about 1086pt) stay below it.
@@ -63,6 +65,12 @@ struct NotesSplitView: View {
         // sliding in leaves `widthColumns` at `.detailOnly` but still
         // triggers that write.
         .task(id: ColumnsKey(columns: widthColumns, holdsThreeColumns: holdsThreeColumns)) {
+            // The task runs again each time the page reappears (another
+            // page and back): only a new key sets the columns, so the one
+            // the user showed stays (#4380).
+            let key = ColumnsKey(columns: widthColumns, holdsThreeColumns: holdsThreeColumns)
+            guard key != appliedColumns else { return }
+            appliedColumns = key
             columns = widthColumns
             guard (try? await Task.sleep(for: .milliseconds(400))) != nil else { return }
             columns = widthColumns
