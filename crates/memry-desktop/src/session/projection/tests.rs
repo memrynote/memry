@@ -54,7 +54,7 @@ impl Projector for Fake {
     fn handles(&self, _: &ProjectionEvent) -> bool {
         true
     }
-    fn project(&self, _: &ProjectionEvent) -> Result<(), String> {
+    fn project(&self, _: &ProjectionEvent, _: &CancelToken) -> Result<(), String> {
         self.projected.fetch_add(1, Ordering::SeqCst);
         if self.gated {
             let _ = self.entered.send(());
@@ -62,7 +62,7 @@ impl Projector for Fake {
         }
         Ok(())
     }
-    fn rebuild(&self) -> Result<(), String> {
+    fn rebuild(&self, _: &CancelToken) -> Result<(), String> {
         self.rebuilt.fetch_add(1, Ordering::SeqCst);
         Ok(())
     }
@@ -287,11 +287,11 @@ impl Projector for Exclusive {
     fn handles(&self, _: &ProjectionEvent) -> bool {
         true
     }
-    fn project(&self, _: &ProjectionEvent) -> Result<(), String> {
+    fn project(&self, _: &ProjectionEvent, _: &CancelToken) -> Result<(), String> {
         self.enter();
         Ok(())
     }
-    fn rebuild(&self) -> Result<(), String> {
+    fn rebuild(&self, _: &CancelToken) -> Result<(), String> {
         self.enter();
         Ok(())
     }

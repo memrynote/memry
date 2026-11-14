@@ -269,11 +269,11 @@ fn registered_projectors_run_on_the_open_vault_and_stop_with_it() {
         fn handles(&self, _: &ProjectionEvent) -> bool {
             true
         }
-        fn project(&self, _: &ProjectionEvent) -> Result<(), String> {
+        fn project(&self, _: &ProjectionEvent, _: &CancelToken) -> Result<(), String> {
             self.0.fetch_add(1, Ordering::SeqCst);
             Ok(())
         }
-        fn rebuild(&self) -> Result<(), String> {
+        fn rebuild(&self, _: &CancelToken) -> Result<(), String> {
             Ok(())
         }
         fn reconcile(&self, _: &CancelToken) -> Result<(), String> {

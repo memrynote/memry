@@ -42,6 +42,8 @@ use crate::storage::{Db, open_index};
 // Desktop folds notes and reads block references; iOS links none of it.
 #[cfg(feature = "markdown")]
 mod block_refs;
+#[cfg(feature = "vec")]
+mod embeddings;
 #[cfg(feature = "markdown")]
 mod fold;
 #[cfg(feature = "markdown")]
