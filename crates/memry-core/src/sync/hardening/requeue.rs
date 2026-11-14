@@ -62,18 +62,30 @@ pub(crate) fn requeue(
 
 /// Stores a concurrent branch's merged `record` and re-queues it, in one
 /// transaction. A payload the wholesale path records corrupt is not queued.
-/// A local tombstone stays one, as on the field-merge path: the merge is
-/// concurrent with the local delete, which still goes out.
+/// A local tombstone whose `delete` is still queued stays one: that delete
+/// goes out at the next push, and the merge is concurrent with it. A pushed
+/// tombstone gives way to the remote's row, as before.
 pub(crate) fn store_merged(
     conn: &Connection,
     record: &InboundRecord,
     now_ms: i64,
 ) -> Result<Inbound, StorageError> {
     let tx = conn.unchecked_transaction().map_err(failed)?;
-    let local_deleted_at =
-        sync_items::load(&tx, &record.item_type, &record.item_id)?.and_then(|row| row.deleted_at);
+    let delete_queued: bool = tx
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM outbox
+              WHERE item_type = ?1 AND item_id = ?2 AND op = ?3)",
+            params![record.item_type, record.item_id, outbox::OP_DELETE],
+            |row| row.get(0),
+        )
+        .map_err(failed)?;
+    let deleted_at = if delete_queued {
+        sync_items::load(&tx, &record.item_type, &record.item_id)?.and_then(|row| row.deleted_at)
+    } else {
+        None
+    };
     let record = &InboundRecord {
-        deleted_at: local_deleted_at,
+        deleted_at,
         ..record.clone()
     };
     let outcome = sync_items::apply_remote_in(&tx, record, now_ms)?;

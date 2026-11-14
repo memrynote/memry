@@ -255,9 +255,9 @@ and a client that breaks any of them reintroduces divergence.**
   `concurrent` branch re-queues the row in the transaction that stores the
   merge, as an upsert with no payload, the union clock untouched, unless a
   `create`, `upsert` or `delete` row is already queued for the item, which
-  then stays as it is; a merge over a local tombstone keeps the tombstone, so
-  a pending local delete still goes out as a delete
-  (`crates/memry-core/src/sync/hardening/requeue.rs:36-90`); it does so on
+  then stays as it is; a merge over a local tombstone whose delete is still
+  queued keeps the tombstone, so that delete still goes out as a delete
+  (`crates/memry-core/src/sync/hardening/requeue.rs:36-102`); it does so on
   every concurrent merge, not only one with a conflicted field, because a
   merge that kept a local field is just as absent from the server row.
 - **P4 — an EQUAL incoming clock applies the remote row, it does not skip it.**
