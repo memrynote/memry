@@ -1,0 +1,69 @@
+name: flake-4668-probe
+on:
+  push:
+    branches: [fix/4668-windows-trash-flake]
+    paths: ['.github/workflows/flake-4668-probe.yml']
+  workflow_dispatch:
+jobs:
+  probe:
+    name: probe (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, windows-11-arm]
+    defaults:
+      run:
+        shell: bash
+        working-directory: crates
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/marketing/**
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: '1.98.1'
+      - uses: Swatinem/rust-cache@v2
+        continue-on-error: true
+        with:
+          workspaces: crates
+          key: probe-${{ matrix.os }}
+      - uses: ./.github/actions/ort-static
+        with:
+          token: ${{ github.token }}
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
+      - name: Build
+        run: cargo nextest run -p memry-desktop --test integration --features memry-core/markdown --no-run
+      - name: E1 isolated, serial, x40
+        run: |
+          fails=0
+          for i in $(seq 1 40); do
+            cargo nextest run -p memry-desktop --test integration --features memry-core/markdown -j1 -E 'test(=notes_mixed_order::the_marker_row_goes_away_with_its_folder)' >/tmp/e1.log 2>&1 || { fails=$((fails+1)); grep -h "Some operations" /tmp/e1.log | head -1; }
+          done
+          echo "E1 failures: $fails / 40"
+      - name: E2 all real-trash tests in parallel, x15
+        run: |
+          fails=0
+          for i in $(seq 1 15); do
+            cargo nextest run -p memry-desktop --test integration --features memry-core/markdown --no-fail-fast -E 'test(/^notes_(folder_move|folder_move_spelling|mixed_order)::/)' >/tmp/e2.log 2>&1 || { fails=$((fails+1)); sed 's/\x1b\[[0-9;]*m//g' /tmp/e2.log | grep -E "^ +FAIL|Some operations" | head -4; }
+          done
+          echo "E2 failures: $fails / 15"
+      - name: E3 mixed_order test x10 under 3 concurrent trashing loops
+        run: |
+          for k in 1 2 3; do
+            ( for i in $(seq 1 30); do cargo nextest run -p memry-desktop --test integration --features memry-core/markdown --no-fail-fast -j2 -E 'test(/^notes_folder_move::/)' >/dev/null 2>&1; done ) &
+          done
+          fails=0
+          for i in $(seq 1 15); do
+            cargo nextest run -p memry-desktop --test integration --features memry-core/markdown -j1 -E 'test(=notes_mixed_order::the_marker_row_goes_away_with_its_folder)' >/tmp/e3.log 2>&1 || { fails=$((fails+1)); grep -h "Some operations" /tmp/e3.log | head -1; }
+          done
+          echo "E3 failures: $fails / 15"
+          kill %1 %2 %3 2>/dev/null || true
