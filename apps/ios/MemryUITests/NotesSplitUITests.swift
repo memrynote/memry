@@ -194,7 +194,211 @@ final class NotesSplitUITests: XCTestCase {
         deleteNotes([title])
     }
 
+    /// #4347: the inspector's outline scrolls the note to a heading.
+    func testAnOutlineEntryScrollsTheNote() throws {
+        try openNotes()
+        let title = "[agent] \(run) outline"
+        let body = makeNote(title)
+        body.tap()
+        // Keys typed while the body takes the caret, or across the `# `
+        // conversion, get dropped: wait out each step.
+        XCTAssertTrue(matches(NSPredicate(format: "hasKeyboardFocus == true"), body), "the body has no caret")
+        app.typeText("# ")
+        XCTAssertTrue(matches(NSPredicate(format: "value == ''"), body), "`# ` did not make a heading")
+        app.typeText("\(run) top")
+        XCTAssertTrue(matches(NSPredicate(format: "value == %@", "\(run) top"), body), "the top heading lost keys")
+        app.typeText("\n")
+        // A line at a time: a long burst outruns the editor's Return on a
+        // busy simulator and merges lines.
+        for line in 1...40 {
+            app.typeText("Line \(line)\n")
+            let typed = app.textViews.matching(NSPredicate(
+                format: "identifier BEGINSWITH 'note.block.' AND value == %@", "Line \(line)"
+            )).firstMatch
+            XCTAssertTrue(typed.waitForExistence(timeout: 10), "line \(line) did not get its own block")
+        }
+        // Return commits the line: the outline lists the note as saved, which
+        // trails the typing inside a line.
+        app.typeText("## \(run) far\n")
+        try showInspector()
+
+        let top = heading("\(run) top")
+        let far = heading("\(run) far")
+        outlineEntry("\(run) top").tap()
+        XCTAssertTrue(top.wait(for: \.isHittable, toEqual: true, timeout: 5), "the outline did not scroll to the top heading")
+        XCTAssertFalse(far.isHittable, "the note is too short to prove a scroll")
+        attach("inspector-outline-top")
+        let farEntry = outlineEntry("\(run) far")
+        XCTAssertTrue(farEntry.waitForExistence(timeout: 15), "the outline does not list the far heading")
+        farEntry.tap()
+        XCTAssertTrue(far.wait(for: \.isHittable, toEqual: true, timeout: 5), "the outline did not scroll to the far heading")
+        attach("inspector-outline-far")
+
+        // A rotation there and back brings the rail back alone: the list
+        // stays collapsed beside it.
+        XCUIDevice.shared.orientation = .portrait
+        XCTAssertTrue(page(title).waitForExistence(timeout: 10))
+        XCUIDevice.shared.orientation = .landscapeLeft
+        let rail = app.descendants(matching: .any)["note.inspector"]
+        XCTAssertTrue(rail.waitForExistence(timeout: 10), "the rail did not come back")
+        Thread.sleep(forTimeInterval: 1)
+        XCTAssertFalse(app.buttons["notes.addButton"].firstMatch.isHittable, "the list came back beside the rail")
+        attach("inspector-rotated-back")
+
+        hideInspector()
+        attach("inspector-closed-landscape")
+        XCUIDevice.shared.orientation = .portrait
+        XCTAssertTrue(page(title).waitForExistence(timeout: 10))
+        XCTAssertFalse(inspectorToggle.exists, "13\" portrait cannot hold the note column and the rail")
+        attach("inspector-hidden-portrait")
+        XCUIDevice.shared.orientation = .landscapeLeft
+        deleteNotes([title])
+    }
+
+    /// #4347: a backlink in the inspector opens its note in the detail column.
+    func testABacklinkInTheInspectorOpensInTheDetailColumn() throws {
+        try openNotes()
+        let target = "[agent] \(run) linked"
+        let source = "[agent] \(run) linking"
+        makeNote(target)
+        makeNote(source).tap()
+        app.typeText("[[\(run) linked")
+        let pick = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", target)).firstMatch
+        XCTAssertTrue(pick.waitForExistence(timeout: 10), "the [[ menu did not offer the note")
+        pick.tap()
+        row(target).tap()
+        XCTAssertTrue(page(target).waitForExistence(timeout: 10))
+        try showInspector()
+
+        let backlink = app.buttons.matching(NSPredicate(
+            format: "identifier BEGINSWITH 'note.backlink.' AND label CONTAINS %@", source
+        )).firstMatch
+        XCTAssertTrue(backlink.waitForExistence(timeout: 15), "the inspector lists no backlink from \(source)")
+        attach("inspector-backlinks")
+        backlink.tap()
+        XCTAssertTrue(page(source).waitForExistence(timeout: 10), "the backlink did not open \(source)")
+        XCTAssertTrue(
+            app.descendants(matching: .any)["note.inspector"].waitForExistence(timeout: 5),
+            "the opened note has no inspector"
+        )
+        attach("inspector-backlink-opened")
+
+        hideInspector()
+        deleteNotes([source, target])
+    }
+
+    /// #4347: a property value and a tag typed in the inspector, with no
+    /// Return, land when the field is left and when the rail closes.
+    func testDraftsTypedInTheInspectorLandWhenItCloses() throws {
+        try openNotes()
+        let title = "[agent] \(run) drafts"
+        makeNote(title)
+        try showInspector()
+
+        let addProperty = app.buttons["Add a property"].firstMatch
+        XCTAssertTrue(addProperty.waitForExistence(timeout: 10), "the inspector offers no property")
+        addProperty.tap()
+        let name = app.textFields["Property name"]
+        XCTAssertTrue(name.waitForExistence(timeout: 10))
+        name.tap()
+        name.typeText("status")
+        app.buttons["Text"].firstMatch.tap()
+        let value = app.textFields["status"].firstMatch
+        XCTAssertTrue(value.waitForExistence(timeout: 10), "the property has no field")
+        value.tap()
+        value.typeText("drafted")
+
+        // Leaving the value for the tag field is the blur path.
+        let addTag = app.buttons["Add a tag"].firstMatch
+        XCTAssertTrue(addTag.waitForExistence(timeout: 10))
+        addTag.tap()
+        let tagField = app.textFields["Add a tag"].firstMatch
+        XCTAssertTrue(matches(NSPredicate(format: "hasKeyboardFocus == true"), tagField), "the tag field has no caret")
+        tagField.typeText(run)
+        attach("inspector-drafts-typed")
+
+        // Closing the rail is the disappear path.
+        hideInspector()
+        let pageValue = app.textFields["status"].firstMatch
+        XCTAssertTrue(matches(NSPredicate(format: "value == 'drafted'"), pageValue), "the typed value was lost")
+        XCTAssertTrue(app.staticTexts[run].firstMatch.waitForExistence(timeout: 10), "the typed tag was lost")
+        attach("inspector-drafts-landed")
+
+        // Written, not only drawn: the note comes back with both (D6).
+        app.terminate()
+        try openNotes()
+        XCTAssertTrue(page(title).waitForExistence(timeout: 10))
+        XCTAssertTrue(matches(NSPredicate(format: "value == 'drafted'"), app.textFields["status"].firstMatch))
+        XCTAssertTrue(app.staticTexts[run].firstMatch.waitForExistence(timeout: 10))
+
+        deleteNotes([title])
+    }
+
+    /// #4616: Clear, then Return in the field with nothing typed, leaves the
+    /// value empty; the row's draft does not write the old value back.
+    func testReturnAfterAClearKeepsThePropertyEmpty() throws {
+        try openNotes()
+        let title = "[agent] \(run) cleared"
+        makeNote(title)
+        let addProperty = app.buttons["Add a property"].firstMatch
+        XCTAssertTrue(addProperty.waitForExistence(timeout: 10))
+        addProperty.tap()
+        let name = app.textFields["Property name"]
+        XCTAssertTrue(name.waitForExistence(timeout: 10))
+        name.tap()
+        name.typeText("status")
+        app.buttons["Text"].firstMatch.tap()
+        let value = app.textFields["status"].firstMatch
+        XCTAssertTrue(value.waitForExistence(timeout: 10), "the property has no field")
+        value.tap()
+        value.typeText("old\n")
+
+        app.buttons["status"].firstMatch.press(forDuration: 1)
+        let clear = app.buttons["Clear status"].firstMatch
+        XCTAssertTrue(clear.waitForExistence(timeout: 5), "the row has no Clear")
+        clear.tap()
+        value.tap()
+        value.typeText("\n")
+        attach("property-cleared")
+
+        app.terminate()
+        try openNotes()
+        XCTAssertTrue(page(title).waitForExistence(timeout: 10))
+        let empty = NSPredicate(format: "value == '' OR value == 'Empty' OR value == nil")
+        XCTAssertTrue(matches(empty, app.textFields["status"].firstMatch), "Return after Clear wrote the old value back")
+        deleteNotes([title])
+    }
+
     // MARK: Helpers
+
+    private var inspectorToggle: XCUIElement { app.buttons["note.inspector.toggle"].firstMatch }
+
+    /// Opens the note inspector; skips where the window cannot hold it.
+    private func showInspector() throws {
+        guard inspectorToggle.waitForExistence(timeout: 5) else {
+            attach("inspector-unavailable")
+            throw XCTSkip("The window cannot hold the inspector: run on a 13\" iPad in landscape.")
+        }
+        let rail = app.descendants(matching: .any)["note.inspector"]
+        if !rail.exists { inspectorToggle.tap() }
+        XCTAssertTrue(rail.waitForExistence(timeout: 5), "the inspector did not open")
+    }
+
+    /// Closes the inspector, so the list comes back and the next run starts
+    /// from the default.
+    private func hideInspector() {
+        if inspectorToggle.waitForExistence(timeout: 3), inspectorToggle.label == "Hide inspector" { inspectorToggle.tap() }
+        XCTAssertTrue(app.buttons["notes.addButton"].firstMatch.waitForExistence(timeout: 10), "the list did not come back")
+    }
+
+    private func outlineEntry(_ title: String) -> XCUIElement {
+        app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'note.outline.' AND label CONTAINS %@", title)).firstMatch
+    }
+
+    /// A heading block in the note body.
+    private func heading(_ text: String) -> XCUIElement {
+        app.textViews.matching(NSPredicate(format: "identifier BEGINSWITH 'note.block.' AND value CONTAINS %@", text)).firstMatch
+    }
 
     /// Whether the folder tree has a column on screen. Its root row's label
     /// and icon share the identifier, so any hittable match counts.
@@ -290,6 +494,8 @@ final class NotesSplitUITests: XCTestCase {
         }
         XCTAssertTrue(notes.waitForExistence(timeout: 5), "the sidebar did not show")
         notes.tap()
+        // An earlier run may have left the inspector open, which hides the list.
+        hideInspector()
         XCTAssertTrue(app.buttons["notes.addButton"].waitForExistence(timeout: 10))
     }
 }

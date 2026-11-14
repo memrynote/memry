@@ -204,3 +204,33 @@ struct NoteFetchState: View {
         Nothing was lost, and Memry carries on from where it stopped.
         """
 }
+
+/// Reads the note on open, reports the open once, fetches the attachments
+/// still waiting, and re-reads after each sync pass. Split from
+/// `NoteReadView`.
+struct NotePageLoad: ViewModifier {
+    let model: NoteReadViewModel
+    @State private var reportedOpen = false
+    @Environment(\.vaultSyncPasses) private var vaultSyncPasses
+
+    func body(content: Content) -> some View {
+        content
+            .task {
+                await model.loadIfNeeded()
+                if !reportedOpen, case .ready = model.phase {
+                    reportedOpen = true
+                    Telemetry.shared.track(.noteOpened, surface: .notes, action: "opened", objectType: "note", result: .success)
+                }
+                // After the body and its bindings are on screen, not before: the
+                // placeholders are what FR-045 asks to be visible first, and a
+                // fetch that finished early would still only re-render them.
+                await model.fetchWaitingAttachments()
+            }
+            // On open and after each sync pass: another device's edits reach this
+            // page only through a body pull and a re-read.
+            .task(id: vaultSyncPasses) {
+                await model.loadIfNeeded()
+                await model.refreshFromRemote()
+            }
+    }
+}
