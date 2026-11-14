@@ -99,6 +99,7 @@ struct NoteAttachmentView: View {
     var remove: ((String) async -> Void)?
 
     @State private var previewing: URL?
+    @State private var previewWidth: CGFloat = 0
 
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.Space.small) {
@@ -130,13 +131,15 @@ struct NoteAttachmentView: View {
                 // one thing the reader came for. Full screen stays a tap away.
                 VStack(alignment: .leading, spacing: Tokens.Space.small) {
                     PDFPreview(url: path)
-                        .frame(height: 420)
+                        .frame(height: PreviewMeasure.height(forWidth: previewWidth))
                         .clipShape(.rect(cornerRadius: Tokens.Radius.card))
                         .overlay(
                             RoundedRectangle(cornerRadius: Tokens.Radius.card)
                                 .stroke(Tokens.Line.border.color, lineWidth: Tokens.Size.hairline)
                         )
                         .accessibilityLabel(spoken("PDF"))
+                        .frame(maxWidth: Tokens.Size.reading)
+                        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { previewWidth = $0 }
                     Button { previewing = path } label: {
                         Label("Open \(label)", systemImage: "arrow.up.left.and.arrow.down.right")
                             .font(Tokens.Typography.caption.font)

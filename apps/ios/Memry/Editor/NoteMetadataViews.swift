@@ -425,6 +425,106 @@ struct FlowLayout: Layout {
     }
 }
 
+/// A property's name beside its value. Every row of one list shares one name
+/// width, the widest name's text with a `minimum` and at most `share` of the
+/// row, so the values share an edge and no name is cut off. A name wider than
+/// that, a long one or any at a large Dynamic Type size, sits above its value
+/// instead of squeezing it.
+struct PropertyRowLayout: Layout {
+    static let minimum: CGFloat = 118
+    static let share: CGFloat = 0.5
+
+    var spacing: CGFloat
+    /// The widest name's text in this row's list (`PropertyNameWidthKey`).
+    var widest: CGFloat = 0
+
+    /// The list's shared name width beside the value, or `nil` when this
+    /// name, `ideal` wide, goes above it. A row offered no width keeps every
+    /// name beside its value.
+    static func nameWidth(ideal: CGFloat, widest: CGFloat, row: CGFloat?) -> CGFloat? {
+        let shared = min(max(minimum, widest, ideal), max(minimum, (row ?? .infinity) * share))
+        return ideal <= shared ? shared : nil
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let (name, value) = frames(width: proposal.width, subviews)
+        let union = name.union(value)
+        return CGSize(width: proposal.width ?? union.width, height: union.height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let (name, value) = frames(width: bounds.width, subviews)
+        for (subview, frame) in zip(subviews, [name, value]) {
+            subview.place(
+                at: CGPoint(x: bounds.minX + frame.minX, y: bounds.minY + frame.minY), anchor: .topLeading,
+                proposal: ProposedViewSize(frame.size)
+            )
+        }
+    }
+
+    /// Where the name and the value go in a row `width` wide, from its
+    /// leading edge: side by side and centred on each other, or stacked.
+    private func frames(width: CGFloat?, _ subviews: Subviews) -> (CGRect, CGRect) {
+        guard subviews.count == 2 else { return (.zero, .zero) }
+        let ideal = subviews[0].sizeThatFits(.unspecified).width
+        if let nameWidth = Self.nameWidth(ideal: ideal, widest: widest, row: width) {
+            let name = subviews[0].sizeThatFits(ProposedViewSize(width: nameWidth, height: nil))
+            let valueWidth = width.map { max(0, $0 - nameWidth - spacing) }
+            let value = subviews[1].sizeThatFits(ProposedViewSize(width: valueWidth, height: nil))
+            let height = max(name.height, value.height)
+            return (
+                CGRect(x: 0, y: (height - name.height) / 2, width: nameWidth, height: name.height),
+                CGRect(
+                    x: nameWidth + spacing, y: (height - value.height) / 2,
+                    width: valueWidth ?? value.width, height: value.height
+                )
+            )
+        }
+        // Stacked only when a width was offered: `nameWidth` keeps an
+        // unbounded row side by side.
+        let width = width ?? ideal
+        let name = subviews[0].sizeThatFits(ProposedViewSize(width: width, height: nil))
+        let value = subviews[1].sizeThatFits(ProposedViewSize(width: width, height: nil))
+        return (
+            CGRect(x: 0, y: 0, width: width, height: name.height),
+            CGRect(x: 0, y: name.height + Tokens.Space.tight, width: width, height: value.height)
+        )
+    }
+}
+
+/// The widest property name's text below a list, which the list hands back
+/// to its rows as `widestPropertyName` (`sharesPropertyNameWidth`).
+struct PropertyNameWidthKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
+extension EnvironmentValues {
+    @Entry var widestPropertyName: CGFloat = 0
+}
+
+private struct SharedPropertyNameWidth: ViewModifier {
+    @State private var widest: CGFloat = 0
+
+    func body(content: Content) -> some View {
+        content
+            .environment(\.widestPropertyName, widest)
+            .onPreferenceChange(PropertyNameWidthKey.self) { widest = $0 }
+            // One list's names do not widen another's.
+            .transformPreference(PropertyNameWidthKey.self) { $0 = 0 }
+    }
+}
+
+extension View {
+    /// Gives every property row inside one name width, the widest name's.
+    func sharesPropertyNameWidth() -> some View {
+        modifier(SharedPropertyNameWidth())
+    }
+}
+
 /// One property, edited against its type (N704), laid out as desktop lays it
 /// out: a type glyph and the name in a label column, the value beside it —
 /// plain text for text, numbers and dates, coloured chips for choices,
@@ -463,6 +563,10 @@ struct NotePropertyEditor: View {
     @State private var nameDraft = ""
     @State private var pickingDate = false
     @State private var pickingRelation = false
+    /// The type glyph's lane, grown with the name's text size. A minimum, so
+    /// a glyph wider than the lane at a large size pushes the name over.
+    @ScaledMetric(relativeTo: .subheadline) private var glyphLane = Tokens.Space.inset
+    @Environment(\.widestPropertyName) private var widestName
 
     private var kind: NotePropertyKind? { NotePropertyKind.of(property) ?? kindHint }
 
@@ -470,9 +574,13 @@ struct NotePropertyEditor: View {
     private var optionColors: [String: String] { NotePropertyOptions.colors(of: property.optionsJson) }
 
     var body: some View {
-        HStack(alignment: .center, spacing: Tokens.Space.medium) {
+        PropertyRowLayout(spacing: Tokens.Space.medium, widest: widestName) {
             nameLabel
-                .frame(width: 118, alignment: .leading)
+                .background {
+                    GeometryReader { proxy in
+                        Color.clear.preference(key: PropertyNameWidthKey.self, value: proxy.size.width)
+                    }
+                }
 
             editor
                 .font(Tokens.Typography.supporting.font)
@@ -537,8 +645,8 @@ struct NotePropertyEditor: View {
         let label = HStack(spacing: Tokens.Space.small) {
             // One lane for every glyph, so the names share an edge.
             Image(systemName: kind?.symbol ?? NotePropertyKind.text.symbol)
-                .frame(width: Tokens.Space.inset, alignment: .center)
-            Text(property.name).lineLimit(1)
+                .frame(minWidth: glyphLane, alignment: .center)
+            Text(property.name)
         }
         .font(Tokens.Typography.supporting.font)
         .foregroundStyle(Tokens.Text.secondary.color)
@@ -1062,6 +1170,7 @@ struct NoteMetadataEditors: View {
                                 .accessibilityActions { moveActions(property.name) }
                         }
                     }
+                    .sharesPropertyNameWidth()
                     .onDrop(of: [.plainText], isTargeted: nil) { _ in
                         commitDragOrder()
                         return true
