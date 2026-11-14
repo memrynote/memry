@@ -16,7 +16,6 @@ import SwiftUI
 
 struct NoteReadView: View {
     @State private var model: NoteReadViewModel
-    @State private var reportedOpen = false
 
     /// The production entry point. `NotesListView.body`'s one
     /// `navigationDestination(for: NoteRoute.self)` calls exactly this, with
@@ -190,7 +189,6 @@ struct NoteReadView: View {
         }
     }
     @Environment(\.requestVaultSync) private var requestVaultSync
-    @Environment(\.vaultSyncPasses) private var vaultSyncPasses
 
     private var taskBridge: NoteTaskBridge {
         .note(tasks: taskActions, editor: editorModel, router: router) {
@@ -213,6 +211,8 @@ struct NoteReadView: View {
     @State private var topInset: CGFloat = 0
     /// Find in note (N801), shown on demand rather than always.
     @State private var finding = false
+    /// The heading the inspector's outline asked for, by block index.
+    @State private var outlineJump: Int?
 
     /// Applies one direction of an undo step.
     ///
@@ -321,7 +321,7 @@ struct NoteReadView: View {
             .padding(.vertical, Tokens.Space.screenBlock)
         }
         .restoresScroll(scrollKey)
-        .modifier(NoteHeadingScroll(heading: model.route.heading, blocks: model.blocks))
+        .modifier(NoteHeadingScroll(heading: model.route.heading, blocks: model.blocks, jump: $outlineJump))
         .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top } action: { topInset = $0 }
         // A cover runs under the navigation bar; the edge blur would smear it.
         .scrollEdgeEffectHidden(hasCover, for: .top)
@@ -375,23 +375,10 @@ struct NoteReadView: View {
             )
         )
         .modifier(NotePageSync(actions: actions, metadata: metadataModel, reminders: reminders))
-        .task {
-            await model.loadIfNeeded()
-            if !reportedOpen, case .ready = model.phase {
-                reportedOpen = true
-                Telemetry.shared.track(.noteOpened, surface: .notes, action: "opened", objectType: "note", result: .success)
-            }
-            // After the body and its bindings are on screen, not before: the
-            // placeholders are what FR-045 asks to be visible first, and a
-            // fetch that finished early would still only re-render them.
-            await model.fetchWaitingAttachments()
-        }
-        // On open and after each sync pass: another device's edits reach this
-        // page only through a body pull and a re-read.
-        .task(id: vaultSyncPasses) {
-            await model.loadIfNeeded()
-            await model.refreshFromRemote()
-        }
+        .modifier(NotePageLoad(model: model))
+        .modifier(NoteInspector(rail: NoteInspectorRail(
+            model: model, metadataModel: metadataModel, backlinks: backlinks, open: openRoute
+        ) { outlineJump = $0 }))
         .handoff(.note(model.route.id))
     }
 }
