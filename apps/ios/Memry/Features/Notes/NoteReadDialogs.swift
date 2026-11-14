@@ -27,11 +27,9 @@ struct NoteReadDialogs: ViewModifier {
             .alert("Rename this note", isPresented: $renaming) {
                 TextField("Title", text: $renameDraft)
                 Button("Cancel", role: .cancel) {}
+                // The page re-reads on `titleSaved`, which the rename posts.
                 Button("Rename") {
-                    Task {
-                        await actions.rename(to: renameDraft)
-                        await model.reload()
-                    }
+                    Task { await actions.rename(to: renameDraft) }
                 }
             }
             .alert("Delete this note?", isPresented: $confirmingDelete) {
