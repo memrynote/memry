@@ -202,7 +202,6 @@ struct BrowseRowView: View {
                 NoteRowLabel(row: row, note: note)
             }
             .navigationLinkIndicatorVisibility(.hidden)
-            .pointerHover(.row)
             .modifier(NoteRowActions(note: note, model: model))
         }
     }

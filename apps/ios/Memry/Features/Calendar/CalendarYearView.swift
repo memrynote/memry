@@ -41,7 +41,7 @@ struct CalendarYearView: View {
             .padding(.bottom, Tokens.Size.minimumHitArea * 2)
         }
         .refreshable { await store.sync() }
-        .gesture(DragGesture(minimumDistance: 30).onEnded { value in pageYear(CalendarSwipe.step(value.translation)) })
+        .gesture(DragGesture(minimumDistance: 30).onEnded { value in pageYear(CalendarSwipe.touchStep(value.translation)) })
         .gesture(CalendarScrollPage { pageYear($0) })
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("calendar.year")

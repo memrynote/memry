@@ -147,7 +147,7 @@ struct CalendarWeekView: View {
                 }
             }
         }
-        .gesture(DragGesture(minimumDistance: 30).onEnded { value in pageWeek(CalendarSwipe.step(value.translation)) })
+        .gesture(DragGesture(minimumDistance: 30).onEnded { value in pageWeek(CalendarSwipe.touchStep(value.translation)) })
         .gesture(CalendarScrollPage { pageWeek($0) })
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("calendar.week")

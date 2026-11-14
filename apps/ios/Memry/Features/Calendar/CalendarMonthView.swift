@@ -64,7 +64,7 @@ struct CalendarMonthView: View {
     }
 
     private var pageGesture: some Gesture {
-        DragGesture(minimumDistance: 30).onEnded { value in pageMonth(CalendarSwipe.step(value.translation)) }
+        DragGesture(minimumDistance: 30).onEnded { value in pageMonth(CalendarSwipe.touchStep(value.translation)) }
     }
 
     private func pageMonth(_ step: Int?) {
@@ -168,7 +168,7 @@ struct CalendarMonthView: View {
                 dragTo = dragFrom
             case let .changed(_, location):
                 dragTo = dayAt(location) ?? dragTo
-            case let .ended(_, _, completed):
+            case let .ended(_, _, completed, _):
                 defer { dragFrom = nil; dragTo = nil }
                 guard completed, let range = selectionRange, range.lowerBound != range.upperBound else { return }
                 actions.selectDays?(range.lowerBound, range.upperBound)

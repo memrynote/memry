@@ -11,9 +11,11 @@ import UIKit
 // until it lifts — the whole hold + drag in one recogniser.
 //
 // A pointer has no scroll to protect: it scrolls with two fingers or a wheel,
-// which arrive as scroll events, not touches. So a click-and-drag starts the
-// same drag at once (#4356), as desktop's grid does, and the hold stays a
-// touch gesture. Attach both with `calendarHoldDrag(_:)`.
+// which arrive as scroll events, not touches. So a click that moves before the
+// hold lands drags at once (#4356), as desktop's grid does, and a click that
+// holds still takes the hold's path, as a touch does. The pointer's pan waits
+// for the hold to fail, so one click never drives both. Attach both with
+// `calendarHoldDrag(_:)`.
 
 struct CalendarHoldDrag: UIGestureRecognizerRepresentable {
     enum Phase: Equatable {
@@ -21,8 +23,9 @@ struct CalendarHoldDrag: UIGestureRecognizerRepresentable {
         case began(CGPoint)
         /// The finger moved: where it started and where it is now.
         case changed(start: CGPoint, location: CGPoint)
-        /// Lifted (`true`) or cancelled (`false`).
-        case ended(start: CGPoint, location: CGPoint, completed: Bool)
+        /// Lifted (`completed`) or cancelled. `held` is false for a pointer
+        /// drag, which moved before any hold could land.
+        case ended(start: CGPoint, location: CGPoint, completed: Bool, held: Bool)
     }
 
     var minimumDuration: TimeInterval = 0.35
@@ -30,15 +33,17 @@ struct CalendarHoldDrag: UIGestureRecognizerRepresentable {
     var space: NamedCoordinateSpace?
     var isEnabled = true
     let action: (Phase) -> Void
+    /// Set by `calendarHoldDrag(_:)` to tie this hold to its pointer drag.
+    var link: CalendarHoldLink?
 
-    func makeCoordinator(converter: CoordinateSpaceConverter) -> CalendarDragTracker { CalendarDragTracker() }
+    func makeCoordinator(converter: CoordinateSpaceConverter) -> CalendarDragTracker { CalendarDragTracker(held: true) }
 
     func makeUIGestureRecognizer(context: Context) -> UILongPressGestureRecognizer {
         let recognizer = UILongPressGestureRecognizer()
         recognizer.minimumPressDuration = minimumDuration
         recognizer.cancelsTouchesInView = false
-        recognizer.allowedTouchTypes = [UITouch.TouchType.direct, .pencil].map { NSNumber(value: $0.rawValue) }
         recognizer.isEnabled = isEnabled
+        link?.hold = recognizer
         return recognizer
     }
 
@@ -57,11 +62,12 @@ struct CalendarHoldDrag: UIGestureRecognizerRepresentable {
 struct CalendarPointerDrag: UIGestureRecognizerRepresentable {
     let hold: CalendarHoldDrag
 
-    func makeCoordinator(converter: CoordinateSpaceConverter) -> CalendarDragTracker { CalendarDragTracker() }
+    func makeCoordinator(converter: CoordinateSpaceConverter) -> CalendarDragTracker { CalendarDragTracker(held: false) }
 
     func makeUIGestureRecognizer(context: Context) -> UIPanGestureRecognizer {
         let recognizer = UIPanGestureRecognizer()
         recognizer.cancelsTouchesInView = false
+        recognizer.delegate = hold.link
         recognizer.allowedTouchTypes = [NSNumber(value: UITouch.TouchType.indirectPointer.rawValue)]
         recognizer.isEnabled = hold.isEnabled
         return recognizer
@@ -78,17 +84,34 @@ struct CalendarPointerDrag: UIGestureRecognizerRepresentable {
     }
 }
 
+/// The pointer drag waits for its own hold to fail: a click that holds still
+/// is the hold's, one that moves first is the drag's.
+final class CalendarHoldLink: NSObject, UIGestureRecognizerDelegate {
+    weak var hold: UIGestureRecognizer?
+
+    func gestureRecognizer(
+        _ gestureRecognizer: UIGestureRecognizer,
+        shouldRequireFailureOf otherGestureRecognizer: UIGestureRecognizer
+    ) -> Bool { otherGestureRecognizer === hold }
+}
+
 /// A secondary click (#4356): the pointer's way to a menu that touch reaches
 /// by holding still, where the hold also starts a drag and so cannot be a
 /// `.contextMenu`.
 struct CalendarSecondaryClick: UIGestureRecognizerRepresentable {
+    var isEnabled = true
     let action: () -> Void
 
     func makeUIGestureRecognizer(context: Context) -> UITapGestureRecognizer {
         let recognizer = UITapGestureRecognizer()
         recognizer.buttonMaskRequired = .secondary
         recognizer.allowedTouchTypes = [NSNumber(value: UITouch.TouchType.indirectPointer.rawValue)]
+        recognizer.isEnabled = isEnabled
         return recognizer
+    }
+
+    func updateUIGestureRecognizer(_ recognizer: UITapGestureRecognizer, context: Context) {
+        recognizer.isEnabled = isEnabled
     }
 
     func handleUIGestureRecognizerAction(_ recognizer: UITapGestureRecognizer, context: Context) {
@@ -100,6 +123,9 @@ struct CalendarSecondaryClick: UIGestureRecognizerRepresentable {
 /// where the drag started.
 final class CalendarDragTracker {
     private(set) var start: CGPoint = .zero
+    private let held: Bool
+
+    init(held: Bool) { self.held = held }
 
     /// `translation` is how far the pointer had moved when its pan began: the
     /// drag starts where the click went down, not where the pan noticed it.
@@ -115,19 +141,30 @@ final class CalendarDragTracker {
         case .changed:
             return [.changed(start: start, location: location)]
         case .ended:
-            return [.ended(start: start, location: location, completed: true)]
+            return [.ended(start: start, location: location, completed: true, held: held)]
         case .cancelled, .failed:
-            return [.ended(start: start, location: location, completed: false)]
+            return [.ended(start: start, location: location, completed: false, held: held)]
         default:
             return []
         }
     }
 }
 
+private struct CalendarHoldDragModifier: ViewModifier {
+    let hold: CalendarHoldDrag
+    @State private var link = CalendarHoldLink()
+
+    func body(content: Content) -> some View {
+        var linked = hold
+        linked.link = link
+        return content.gesture(linked).gesture(CalendarPointerDrag(hold: linked))
+    }
+}
+
 extension View {
-    /// A hold-then-drag for touch, and the same drag on a click-and-drag for
-    /// a pointer.
+    /// A hold-then-drag for touch and for a pointer that holds still, and the
+    /// same drag on a pointer's click-and-drag.
     func calendarHoldDrag(_ hold: CalendarHoldDrag) -> some View {
-        gesture(hold).gesture(CalendarPointerDrag(hold: hold))
+        modifier(CalendarHoldDragModifier(hold: hold))
     }
 }

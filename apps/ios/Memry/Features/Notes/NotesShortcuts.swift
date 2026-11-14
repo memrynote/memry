@@ -94,7 +94,6 @@ private struct ShowAllRow<Route: NotesSplitRoute>: View {
             .contentShape(.rect)
         }
         .navigationLinkIndicatorVisibility(.hidden)
-        .pointerHover(.row)
         .shortcutRow()
     }
 }
