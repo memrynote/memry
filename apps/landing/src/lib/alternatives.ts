@@ -325,7 +325,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       { feature: 'Built-in tasks & projects', memry: true, competitor: 'partial' },
       { feature: 'Built-in calendar', memry: true, competitor: 'partial' },
       { feature: 'Daily journal / daily notes', memry: true, competitor: true },
-      { feature: 'Mobile app', memry: false, competitor: true },
+      { feature: 'Mobile app', memry: 'partial', competitor: true },
       { feature: 'Open source', memry: true, competitor: false },
       { feature: 'No account required', memry: true, competitor: false }
     ],
@@ -396,7 +396,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       {
         question: 'Does memrynote have a mobile app like Capacities?',
         answer:
-          'Not yet. memrynote is a desktop app for macOS, Windows, and Linux today. Because your vault is plain Markdown in a folder you own, the files remain readable and editable on any device in the meantime.'
+          'An iPhone app is in beta on TestFlight, on the same vault as your desktop: notes, tasks, journal, calendar, and search. Join the beta at memrynote.com/ios-beta. Canvases, the graph, and home boards are not on the phone yet, and there is no Android app yet.'
       }
     ],
     footnote: COMPARISON_FOOTNOTE
@@ -416,7 +416,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       { feature: 'Unlimited free notes (no tier cap)', memry: true, competitor: false },
       { feature: 'Built-in tasks, projects & calendar', memry: true, competitor: 'partial' },
       { feature: 'Daily journal', memry: true, competitor: false },
-      { feature: 'Mobile apps (iOS & Android)', memry: false, competitor: true },
+      { feature: 'Mobile apps (iOS & Android)', memry: 'partial', competitor: true },
       { feature: 'Web clipper & OCR', memry: 'partial', competitor: true },
       { feature: 'Open source', memry: true, competitor: false }
     ],
@@ -482,7 +482,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       {
         question: 'Does memrynote have a mobile app like Evernote?',
         answer:
-          'Not yet — memrynote is a desktop app for macOS, Windows, and Linux today. Because your vault is plain Markdown in a folder you own, the files stay readable and editable on any device while the mobile app is in development.'
+          'An iPhone app is in beta on TestFlight, on the same vault as your desktop: notes, tasks, journal, calendar, and search. Join the beta at memrynote.com/ios-beta. Canvases, the graph, and home boards are not on the phone yet, and there is no Android app yet.'
       },
       {
         question: 'Does memrynote limit how many notes I can store for free?',
@@ -508,7 +508,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       { feature: 'Daily journal', memry: true, competitor: true },
       { feature: 'Inbox / quick capture', memry: true, competitor: false },
       { feature: 'End-to-end encrypted sync included', memry: true, competitor: 'partial' },
-      { feature: 'Mobile app', memry: false, competitor: 'partial' },
+      { feature: 'Mobile app', memry: 'partial', competitor: 'partial' },
       { feature: 'Open source', memry: true, competitor: true }
     ],
     reasons: [
@@ -579,7 +579,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       {
         question: 'Does memrynote have a mobile app like Logseq?',
         answer:
-          'Not yet. memrynote is a desktop app for macOS, Windows, and Linux today. Because your vault is plain Markdown in a folder you own, the files stay readable in any Markdown app on mobile in the meantime.'
+          'An iPhone app is in beta on TestFlight, on the same vault as your desktop: notes, tasks, journal, calendar, and search. Join the beta at memrynote.com/ios-beta. Canvases, the graph, and home boards are not on the phone yet, and there is no Android app yet.'
       }
     ],
     footnote: COMPARISON_FOOTNOTE
@@ -597,7 +597,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       { feature: 'End-to-end encryption', memry: true, competitor: true },
       { feature: 'Open source', memry: true, competitor: true },
       { feature: 'Open plain Markdown files', memry: true, competitor: false },
-      { feature: 'Mobile app (iOS & Android)', memry: false, competitor: true },
+      { feature: 'Mobile app (iOS & Android)', memry: 'partial', competitor: true },
       { feature: 'Built-in task management', memry: true, competitor: 'partial' },
       { feature: 'Built-in calendar & daily journal', memry: true, competitor: 'partial' },
       { feature: 'Inbox / quick capture', memry: true, competitor: 'partial' },
@@ -665,7 +665,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       {
         question: 'Does memrynote have a mobile app like Anytype?',
         answer:
-          'Not yet. memrynote is a desktop app for macOS, Windows, and Linux. Anytype has iOS and Android apps, a genuine advantage if mobile matters. Because memrynote notes are plain Markdown in a folder you own, you can read them on any device with a standard Markdown editor in the meantime.'
+          'An iPhone app is in beta on TestFlight, on the same vault as your desktop (join at memrynote.com/ios-beta). Anytype has both iOS and Android apps, so it is ahead if you need Android; memrynote has no Android app yet.'
       },
       {
         question: 'Does Anytype use plain Markdown files?',
@@ -691,7 +691,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       { feature: 'Built-in calendar view', memry: true, competitor: false },
       { feature: 'Daily journal', memry: true, competitor: false },
       { feature: 'End-to-end encrypted sync', memry: true, competitor: 'partial' },
-      { feature: 'iPhone & iPad app', memry: false, competitor: true },
+      { feature: 'iPhone & iPad app', memry: 'partial', competitor: true },
       { feature: 'Open source', memry: true, competitor: false }
     ],
     reasons: [
@@ -757,7 +757,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       {
         question: 'Does memrynote have an iPhone or iPad app?',
         answer:
-          'Not yet — memrynote is a desktop app for macOS, Windows, and Linux today. Because your vault is plain Markdown in a folder you own, the files stay readable and editable on any device in the meantime.'
+          'An iPhone app is in beta on TestFlight, on the same vault as your desktop: notes, tasks, journal, calendar, and search. Join the beta at memrynote.com/ios-beta. Canvases, the graph, and home boards are not on the phone yet, and there is no Android app yet.'
       },
       {
         question: 'Is Apple Notes free?',
@@ -778,7 +778,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
     rows: [
       { feature: 'macOS support', memry: true, competitor: true },
       { feature: 'Windows & Linux support', memry: true, competitor: false },
-      { feature: 'iPhone & iPad app', memry: false, competitor: true },
+      { feature: 'iPhone & iPad app', memry: 'partial', competitor: true },
       { feature: 'Plain Markdown files you own', memry: true, competitor: false },
       { feature: 'Built-in task management', memry: true, competitor: false },
       { feature: 'Built-in calendar & daily journal', memry: true, competitor: false },
@@ -853,7 +853,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       {
         question: 'Does memrynote have an iPhone app like Bear?',
         answer:
-          'Not yet — memrynote is a desktop app for macOS, Windows, and Linux today. Because your vault is plain Markdown in a folder you own, the files stay readable on any device in the meantime.'
+          'An iPhone app is in beta on TestFlight, on the same vault as your desktop: notes, tasks, journal, calendar, and search. Join the beta at memrynote.com/ios-beta. Canvases, the graph, and home boards are not on the phone yet, and there is no Android app yet.'
       }
     ],
     footnote: COMPARISON_FOOTNOTE
@@ -964,7 +964,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       { feature: 'Local-first & offline', memry: true, competitor: 'partial' },
       { feature: 'Open source', memry: true, competitor: false },
       { feature: 'Free tier', memry: true, competitor: true },
-      { feature: 'Mobile apps (iOS & Android)', memry: false, competitor: true },
+      { feature: 'Mobile apps (iOS & Android)', memry: 'partial', competitor: true },
       { feature: 'Real-time collaboration', memry: false, competitor: true },
       { feature: 'Freeform canvas & ink / handwriting', memry: false, competitor: true }
     ],
@@ -1035,7 +1035,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       {
         question: 'Does memrynote have mobile apps like OneNote?',
         answer:
-          'Not yet — memrynote is a desktop app for macOS, Windows, and Linux today. Because your vault is plain Markdown in a folder you own, the files stay readable on any device in the meantime.'
+          'An iPhone app is in beta on TestFlight, on the same vault as your desktop: notes, tasks, journal, calendar, and search. Join the beta at memrynote.com/ios-beta. Canvases, the graph, and home boards are not on the phone yet, and there is no Android app yet.'
       }
     ],
     footnote: COMPARISON_FOOTNOTE
@@ -1051,7 +1051,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
     rows: [
       { feature: 'Plain Markdown files you own', memry: true, competitor: false },
       { feature: 'End-to-end encrypted sync', memry: true, competitor: false },
-      { feature: 'Mobile apps (iOS & Android)', memry: false, competitor: true },
+      { feature: 'Mobile apps (iOS & Android)', memry: 'partial', competitor: true },
       { feature: 'Built-in task management', memry: true, competitor: false },
       { feature: 'Built-in calendar', memry: true, competitor: false },
       { feature: 'Daily journal', memry: true, competitor: false },
@@ -1127,6 +1127,11 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
         question: 'Does UpNote have task management or a calendar?',
         answer:
           'No. UpNote is a note-taking app with no built-in tasks, projects, or calendar. memrynote ships all three alongside notes, a daily journal, and an inbox in one workspace.'
+      },
+      {
+        question: 'Does memrynote have a mobile app like UpNote?',
+        answer:
+          'An iPhone app is in beta on TestFlight, on the same vault as your desktop: notes, tasks, journal, calendar, and search. Join the beta at memrynote.com/ios-beta. Canvases, the graph, and home boards are not on the phone yet, and there is no Android app yet.'
       }
     ],
     footnote: COMPARISON_FOOTNOTE
@@ -1155,7 +1160,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       { feature: 'Built-in calendar view', memry: true, competitor: false },
       { feature: 'Daily journal', memry: true, competitor: false },
       { feature: 'Inbox & quick capture', memry: true, competitor: 'partial' },
-      { feature: 'Mobile apps (Android & iOS)', memry: false, competitor: true },
+      { feature: 'Mobile apps (Android & iOS)', memry: 'partial', competitor: true },
       { feature: 'Sync to Dropbox, WebDAV, or own server', memry: false, competitor: true }
     ],
     reasons: [
@@ -1220,7 +1225,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       {
         question: 'Does Joplin have mobile apps?',
         answer:
-          'Yes. Joplin has official Android and iOS apps that support the same sync backends as desktop. This is a real advantage over memrynote, which is desktop-only (macOS, Windows, Linux) as of mid-2026.'
+          'Yes. Joplin has official Android and iOS apps that support the same sync backends as desktop. memrynote has an iPhone app in beta on TestFlight (join at memrynote.com/ios-beta), with no Android app yet, so Joplin is ahead on mobile platforms.'
       },
       {
         question: 'Does memrynote have built-in task management Joplin lacks?',
@@ -1419,26 +1424,26 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
     heading: 'The Heptabase alternative with',
     headingAccent: 'plain Markdown files and a built-in daily workspace.',
     intro:
-      'memrynote is a local-first alternative to Heptabase for people who want to own their files and run their whole day in one app. Heptabase is a beautiful visual canvas for learning and research, where notes live as cards on infinite whiteboards — but it stores your content in its own cloud format and is not end-to-end encrypted. memrynote keeps every note as a plain Markdown file in a folder you own, encrypts sync with XChaCha20-Poly1305 so the server only holds ciphertext, and ships notes, tasks, a calendar, a daily journal, and a capture inbox as first-class features. It runs on macOS, Windows, and Linux, is open source, and is free for local use. Heptabase remains the stronger choice for spatial, whiteboard-first thinking; memrynote wins on file ownership, privacy, and an integrated task-and-calendar workflow.',
+      'memrynote is a local-first alternative to Heptabase for people who want to own their files and run their whole day in one app. Heptabase is a beautiful visual canvas for learning and research, where notes live as cards on infinite whiteboards — but it stores your content in its own cloud format and is not end-to-end encrypted. memrynote keeps every note as a plain Markdown file in a folder you own, encrypts sync with XChaCha20-Poly1305 so the server only holds ciphertext, and ships notes, tasks, a calendar, a daily journal, and a capture inbox as first-class features. It runs on macOS, Windows, and Linux, is open source, and is free for local use. memrynote has a canvas too: live cards for your real notes, tasks, events, projects, and files, kept as a plain .excalidraw file in your vault. Heptabase remains the more mature choice for spatial, whiteboard-first thinking; memrynote wins on file ownership, privacy, and an integrated task-and-calendar workflow.',
     rows: [
       { feature: 'Local Markdown files you own', memry: true, competitor: false },
       { feature: 'Works fully offline', memry: true, competitor: true },
       { feature: 'End-to-end encryption', memry: true, competitor: false },
-      { feature: 'Visual whiteboard / canvas', memry: false, competitor: true },
+      { feature: 'Visual whiteboard / canvas', memry: true, competitor: true },
       { feature: 'Built-in task management', memry: true, competitor: 'partial' },
       { feature: 'Built-in calendar & daily journal', memry: true, competitor: 'partial' },
       { feature: 'Inbox / quick capture', memry: true, competitor: 'partial' },
-      { feature: 'Mobile app (iOS & Android)', memry: false, competitor: true },
+      { feature: 'Mobile app (iOS & Android)', memry: 'partial', competitor: true },
       { feature: 'Open source', memry: true, competitor: false }
     ],
     reasons: [
       {
         title: 'Files you own',
-        body: 'Notes are plain Markdown in a folder you control — readable in any editor, versionable with git, never trapped in a cloud whiteboard.'
+        body: 'Notes are plain Markdown in a folder you control — readable in any editor, versionable with git, never trapped in a cloud format.'
       },
       {
         title: 'A complete daily workspace',
-        body: 'Tasks, a calendar, a daily journal, and an inbox are built in — not just cards to arrange on a canvas.'
+        body: 'Tasks, a calendar, a daily journal, and an inbox are built in — alongside a canvas for arranging your real notes and tasks.'
       },
       {
         title: 'Encrypted & private',
@@ -1446,13 +1451,13 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       },
       {
         title: 'Open & cross-platform',
-        body: 'Open source on macOS, Windows, and Linux, with notes as portable Markdown you can read anywhere.'
+        body: 'Open source on macOS, Windows, and Linux, with an iPhone app in TestFlight beta and notes as portable Markdown you can read anywhere.'
       }
     ],
     sections: [
       {
         heading: 'Is memrynote a good Heptabase alternative?',
-        body: 'Yes, if you value owning your files and running tasks, a calendar, and a journal in one place. Heptabase is a superb visual canvas for connecting ideas spatially, but it keeps your content in a proprietary cloud format and is not end-to-end encrypted. memrynote stores every note as a plain Markdown file you own, encrypts sync so the server only holds ciphertext, and ships a complete daily workspace. If your thinking is whiteboard-first, keep Heptabase; if it is document- and workflow-first, memrynote is the better home.'
+        body: 'Yes, if you value owning your files and running tasks, a calendar, and a journal in one place. Heptabase is a superb visual canvas for connecting ideas spatially, but it keeps your content in a proprietary cloud format and is not end-to-end encrypted. memrynote stores every note as a plain Markdown file you own, encrypts sync so the server only holds ciphertext, and ships a complete daily workspace. memrynote has a canvas for spatial work, but if your thinking is whiteboard-first, Heptabase is still the more mature tool; if it is document- and workflow-first, memrynote is the better home.'
       },
       {
         heading: 'Plain Markdown files versus Heptabase cards',
@@ -1460,7 +1465,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       },
       {
         heading: 'Tasks, calendar, and journal in one app',
-        body: 'Heptabase centres on visual notes; task management, a full calendar, and structured planning are limited or added-on. memrynote ships tasks with projects, custom statuses, subtasks, and Kanban, List, and Calendar views, plus a daily journal and a capture inbox as native features. One app covers reading, writing, and planning instead of pairing a canvas with separate tools.'
+        body: 'Heptabase centres on visual notes; its task management, a full calendar, and structured planning are limited or added-on. memrynote ships tasks with projects, custom statuses, subtasks, and Kanban, List, and Calendar views, plus a daily journal and a capture inbox as native features. One app covers reading, writing, planning, and a canvas instead of pairing tools.'
       },
       {
         heading: 'Privacy, encryption, and ownership compared',
@@ -1483,7 +1488,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       {
         question: 'How are memrynote and Heptabase different?',
         answer:
-          'Heptabase is a visual, whiteboard-first note app that stores cards in its own cloud format and is not end-to-end encrypted. memrynote is local-first: every note is a plain Markdown file you own, sync is zero-knowledge encrypted, and it bundles tasks, a calendar, and a journal as first-class features. Heptabase is stronger for spatial thinking; memrynote is stronger for file ownership and an integrated workflow.'
+          'Heptabase is a visual, whiteboard-first note app that stores cards in its own cloud format and is not end-to-end encrypted. memrynote is local-first: every note is a plain Markdown file you own, sync is zero-knowledge encrypted, and it bundles tasks, a calendar, and a journal as first-class features. memrynote has a canvas with live cards, but Heptabase is more mature for spatial thinking; memrynote is stronger for file ownership and an integrated workflow.'
       },
       {
         question: 'Can I move my Heptabase notes to memrynote?',
@@ -1493,7 +1498,12 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       {
         question: 'Does memrynote have a visual whiteboard like Heptabase?',
         answer:
-          'Not today. memrynote is document-first, with wiki-links and backlinks connecting your notes into a graph rather than an infinite canvas. If a spatial whiteboard is central to how you think, Heptabase is the better fit; if owning portable files and running tasks and a calendar matters more, memrynote is.'
+          'Yes. memrynote has a canvas on desktop where the cards are your real notes, tasks, events, projects, and files, not copies. You can edit them on the board, add freehand ink, and the board is saved as a plain .excalidraw file in your vault. Heptabase is the more mature tool for whiteboard-first research; memrynote pairs its canvas with tasks, a calendar, and a journal.'
+      },
+      {
+        question: 'Does memrynote have a mobile app like Heptabase?',
+        answer:
+          'An iPhone app is in beta on TestFlight, on the same vault as your desktop. Canvases are not on the phone yet, and there is no Android app yet.'
       },
       {
         question: 'Is Heptabase end-to-end encrypted?',
