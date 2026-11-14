@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import UIKit
 
 @testable import Memry
 
@@ -103,6 +104,27 @@ struct HandoffTests {
 
         #expect(links.request(activity))
         #expect(links.take() == HandoffActivity(vaultId: "vault-1", item: .task("task-1")))
+    }
+
+    /// The queued missing sheet waits on the shell's window. In Split View
+    /// no Memry window may be key (#4344), so a key-window check saw nothing
+    /// presented and the sheet was asked for over an open one and dropped.
+    @Test func a_window_that_is_not_key_still_reports_what_it_presents() async throws {
+        let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
+        let window = UIWindow(windowScene: scene)
+        let root = UIViewController()
+        window.rootViewController = root
+        window.isHidden = false
+        defer { window.isHidden = true }
+        #expect(!window.isKeyWindow)
+        #expect(!PresentingWindow.isPresenting(over: window))
+
+        // A dismiss asked for before the presentation finishes is ignored.
+        await withCheckedContinuation { done in root.present(UIViewController(), animated: false) { done.resume() } }
+        #expect(PresentingWindow.isPresenting(over: window))
+
+        await withCheckedContinuation { done in root.dismiss(animated: false) { done.resume() } }
+        #expect(!PresentingWindow.isPresenting(over: window))
     }
 
     private func routers() -> (TasksRouter, JournalRouter, NotesLinks) {

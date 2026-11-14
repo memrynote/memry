@@ -216,7 +216,15 @@ private struct HandoffMissingSheet: ViewModifier {
         content
             .task(id: pending) {
                 guard let missing = pending else { return }
-                while MemryCommands.isPresenting {
+                // The shell's window, not the key one: in Split View no Memry
+                // window may be key while a sheet is up (#4344). `shown` still
+                // set with nothing presented is a sheet SwiftUI dropped; it is
+                // cleared a pass early, or the same value would never present.
+                while true {
+                    if let window = PresentingWindow.resolve(), !PresentingWindow.isPresenting(over: window) {
+                        if shown == nil { break }
+                        shown = nil
+                    }
                     do { try await Task.sleep(for: .milliseconds(300)) } catch { return }
                 }
                 pending = nil
