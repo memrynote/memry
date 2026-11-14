@@ -286,6 +286,8 @@ mod journal_metadata;
 mod journal_reads;
 #[path = "journal_reminders.rs"]
 mod journal_reminders;
+#[path = "journal_same_day_reads.rs"]
+mod journal_same_day_reads;
 #[path = "journal_seed.rs"]
 mod journal_seed;
 #[path = "journal_settings.rs"]
