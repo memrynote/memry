@@ -2,13 +2,13 @@ name: flake-4668-probe
 on:
   push:
     branches: [fix/4668-windows-trash-flake]
-    paths: ['.github/workflows/flake-4668-probe.yml']
+    paths: ['.github/workflows/flake-4668-probe.yml', '.github/probe-4668/**']
   workflow_dispatch:
 jobs:
   probe:
     name: probe (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 90
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -16,49 +16,20 @@ jobs:
     defaults:
       run:
         shell: bash
-        working-directory: crates
+        working-directory: .github/probe-4668
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 1
-          filter: blob:none
-          sparse-checkout-cone-mode: false
-          sparse-checkout: |
-            /*
-            !/marketing/**
+          sparse-checkout: .github/probe-4668
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: '1.98.1'
-      - uses: Swatinem/rust-cache@v2
-        continue-on-error: true
-        with:
-          workspaces: crates
-          key: probe-${{ matrix.os }}
-      - uses: ./.github/actions/ort-static
-        with:
-          token: ${{ github.token }}
-      - uses: taiki-e/install-action@v2
-        with:
-          tool: nextest
       - name: Build
-        run: cargo nextest run -p memry-desktop --test integration --features memry-core/markdown --no-run
-      - name: E4 single test x150 under CPU load
+        run: cargo build --release
+      - name: Probe under CPU load
         run: |
           pids=""
           for k in 1 2 3 4 5 6; do yes >/dev/null & pids="$pids $!"; done
-          fails=0
-          for i in $(seq 1 150); do
-            cargo nextest run -p memry-desktop --test integration --features memry-core/markdown -j1 --no-capture -E 'test(=notes_mixed_order::the_marker_row_goes_away_with_its_folder)' >/tmp/e4.log 2>&1 || { fails=$((fails+1)); grep -h "PROBE4668\|operations were" /tmp/e4.log | head -40; }
-          done
+          ./target/release/probe4668.exe 240 2>&1 | grep -E "PROBE4668" | head -300
           kill $pids
-          echo "E4 failures: $fails / 150"
-      - name: E5 mixed_order+notes_moves group x40 under CPU load
-        run: |
-          pids=""
-          for k in 1 2 3 4 5 6; do yes >/dev/null & pids="$pids $!"; done
-          fails=0
-          for i in $(seq 1 40); do
-            cargo nextest run -p memry-desktop --test integration --features memry-core/markdown --no-fail-fast --no-capture -E 'test(/^notes_(mixed_order|moves)::/)' >/tmp/e5.log 2>&1 || { fails=$((fails+1)); grep -h "PROBE4668\|operations were" /tmp/e5.log | head -40; }
-          done
-          kill $pids
-          echo "E5 failures: $fails / 40"
