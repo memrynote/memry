@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 275,
+    "exportedCaseCount": 278,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 285,
+    "caseCount": 288,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -103,6 +103,27 @@
       "canonical": null,
       "pending": null,
       "sha256": "0972a1bee7e26b3e49631d958a473270c6fdec9c0461e219994c3571d06a6be9"
+    },
+    {
+      "name": "legacy link mention token with a raw underscore",
+      "markdown": "Intro ((mention:https%3A%2F%2Fexample.com%2Fa_b)) outro.",
+      "canonical": "Intro ((mention:https%3A%2F%2Fexample.com%2Fa%5Fb)) outro.",
+      "pending": null,
+      "sha256": "3d8d24e8c7126a4d659d798ab3a8f64233a108bdec293a4bc884d0212a3df25f"
+    },
+    {
+      "name": "two legacy link mention tokens with raw * ~ ' !",
+      "markdown": "See ((mention:https%3A%2F%2Fx.test%2Fa*b_c'd)) and ((mention:https%3A%2F%2Fx.test%2Fe*f~g!)) here.",
+      "canonical": "See ((mention:https%3A%2F%2Fx.test%2Fa%2Ab%5Fc%27d)) and ((mention:https%3A%2F%2Fx.test%2Fe%2Af%7Eg%21)) here.",
+      "pending": null,
+      "sha256": "68ce1dcab3d8c800a9306d23117624adf47e63fc7f6dfb776dd482abaed908e2"
+    },
+    {
+      "name": "legacy link mention token with a stray space",
+      "markdown": "Intro ((mention:https%3A%2F%2Fx.test%2Fpage )) outro.",
+      "canonical": "Intro ((mention:https%3A%2F%2Fx.test%2Fpage)) outro.",
+      "pending": null,
+      "sha256": "dc3d690a47b592e68fe06f7ef0a6d721e26677ecb8b0d3bcd75c77b8be744232"
     },
     {
       "name": "date pill in body text",
