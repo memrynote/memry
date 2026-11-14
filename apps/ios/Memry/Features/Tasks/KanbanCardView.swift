@@ -22,7 +22,7 @@ struct KanbanCardView: View {
     }
 
     var body: some View {
-        NavigationLink(value: TasksRoute.task(task.id)) {
+        TaskOpenLink(id: task.id) {
             content
         }
         .buttonStyle(.plain)
