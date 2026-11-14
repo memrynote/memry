@@ -38,6 +38,7 @@ use std::sync::{Arc, Mutex, PoisonError};
 use memry_core::api::auth::ensure_device_identity;
 use memry_core::api::errors::AuthError;
 use memry_core::api::errors::StorageError;
+use memry_core::api::search::Search;
 use memry_core::domain::property_admin::mirror::{Edit, Written};
 use memry_core::domain::property_admin::records::DefinitionRecords;
 use memry_core::seams::secure_store::SecureStore;
@@ -97,15 +98,19 @@ const ATTEMPTS: usize = 3;
 pub struct PropertyDefinitions {
     vault: PathBuf,
     records: DefinitionRecords,
+    /// The note index, whose rows settle a learned type before [`Self::fold_learned`] writes it.
+    /// Without it nothing is folded: the learned types still type every read.
+    index: Option<Arc<Search>>,
     /// Test hook: runs once the file holds an edit, before its record is written.
     between: Mutex<Option<Box<dyn FnMut() + Send>>>,
 }
 
 impl PropertyDefinitions {
-    pub fn new(vault: PathBuf, records: DefinitionRecords) -> Self {
+    pub fn new(vault: PathBuf, records: DefinitionRecords, index: Option<Arc<Search>>) -> Self {
         Self {
             vault,
             records,
+            index,
             between: Mutex::new(None),
         }
     }
@@ -122,6 +127,7 @@ impl PropertyDefinitions {
         Ok(Self::new(
             open.path.clone(),
             open.vault.property_definition_records(store)?,
+            Some(open.search.clone()),
         ))
     }
 
