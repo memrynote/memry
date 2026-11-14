@@ -4,8 +4,9 @@
 //!
 //! - **Widgets that are present and not JSON array text are skipped** before
 //!   the clock is touched (`:40-47`), so a later readable version of the board
-//!   still wins. A `null` or a value that is not text is skipped too, as
-//!   desktop's schema rejects it (`apps/desktop/src/main/sync/apply-item.ts:166-176`).
+//!   still wins. A `null` or a value that is not text is refused, as
+//!   desktop's schema rejects it (`apps/desktop/src/main/sync/apply-item.ts:166-176`),
+//!   and ledgered for a later build ([`crate::sync::refused_items`]).
 //! - **A create needs a non-empty `name`** (`:85-91`).
 //! - **§6.3.1's gate decides**; a concurrent clock is last-writer-wins under the
 //!   merged clock (`:53-60`).
@@ -62,7 +63,9 @@ pub fn apply_remote(
     match remote_object.get("widgets") {
         None => {}
         Some(Value::String(text)) if is_widgets_blob(text) => {}
-        Some(_) => return Ok(Inbound::Skipped),
+        Some(Value::String(_)) => return Ok(Inbound::Skipped),
+        // Not text: desktop's schema refuses it, and the pull ledgers it.
+        Some(_) => return Ok(Inbound::Refused),
     }
     let local = desktop_records::stored(conn, ITEM_TYPE, &record.item_id, true)?;
     let Some(local) = local else {
