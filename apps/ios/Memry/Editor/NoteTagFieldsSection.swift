@@ -47,6 +47,7 @@ struct NoteTagFieldsSection: View {
                             row(field)
                         }
                     }
+                    .sharesPropertyNameWidth()
                     .accessibilityElement(children: .contain)
                     .accessibilityLabel(group.tag)
                 }

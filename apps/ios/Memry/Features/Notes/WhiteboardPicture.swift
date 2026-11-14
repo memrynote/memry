@@ -2,32 +2,37 @@ import SwiftUI
 import UIKit
 
 /// The scene drawn to fit the page's width, never above Excalidraw's own
-/// scale, with Excalidraw's 10 point export padding.
+/// scale and never taller than `PreviewMeasure` allows at that width, with
+/// Excalidraw's 10 point export padding.
 struct WhiteboardPicture: View {
     let scene: WhiteboardScene
 
     @Environment(\.colorScheme) private var colorScheme
 
     private static let padding: CGFloat = 10
-    private static let maxHeight: CGFloat = 420
+
+    @State private var width: CGFloat = 0
 
     var body: some View {
         if let bounds = scene.bounds, bounds.width > 0 || bounds.height > 0 {
             let box = bounds.insetBy(dx: -Self.padding, dy: -Self.padding)
+            let maxHeight = PreviewMeasure.height(forWidth: width)
             GeometryReader { proxy in
-                let scale = Self.scale(box, width: proxy.size.width)
+                let scale = Self.scale(box, width: proxy.size.width, maxHeight: maxHeight)
                 WhiteboardCanvas(scene: scene, box: box, scale: scale, dark: colorScheme == .dark)
                     .frame(width: box.width * scale, height: box.height * scale)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .aspectRatio(box.width / max(box.height, 1), contentMode: .fit)
-            .frame(maxHeight: Self.maxHeight)
+            .frame(maxHeight: maxHeight)
             .background(
                 WhiteboardInk.color(scene.background, dark: colorScheme == .dark),
                 in: .rect(cornerRadius: Tokens.Radius.card)
             )
             .clipShape(.rect(cornerRadius: Tokens.Radius.card))
             .overlay(RoundedRectangle(cornerRadius: Tokens.Radius.card).strokeBorder(Tokens.Line.border.color))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
         } else {
             Text(WhiteboardCopy.empty)
                 .font(Tokens.Typography.supporting.font)
@@ -37,7 +42,7 @@ struct WhiteboardPicture: View {
         }
     }
 
-    private static func scale(_ box: CGRect, width: CGFloat) -> CGFloat {
+    private static func scale(_ box: CGRect, width: CGFloat, maxHeight: CGFloat) -> CGFloat {
         guard box.width > 0, box.height > 0 else { return 1 }
         return min(1, width / box.width, maxHeight / box.height)
     }
