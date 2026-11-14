@@ -16,7 +16,7 @@ pub mod supervisor;
 pub use frame::{Frame, FrameError, MAX_FRAME_LEN};
 pub use op::{MAX_RENDER_EDGE, OpError, Request, Response};
 pub use pdf_client::{PdfDocument, RenderedPage};
-pub use supervisor::{Clock, Limits, Supervisor, SystemClock, WorkerError};
+pub use supervisor::{Clock, Lease, Limits, Supervisor, SystemClock, WorkerError};
 
 /// The worker's file name next to the app's executable, where the bundle places the sidecar and
 /// where Cargo places it in a dev build.

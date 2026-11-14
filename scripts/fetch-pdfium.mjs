@@ -74,7 +74,10 @@ async function main() {
   )
   const library = join(out, pin.library.split('/').pop())
   const stamp = join(out, '.pin')
-  if (existsSync(library) && existsSync(stamp) && readFileSync(stamp, 'utf8') === pin.sha256) {
+  // The archive's pin and the library's own hash, so a library changed after the fetch is refetched.
+  const stamped = () =>
+    `${pin.sha256} ${createHash('sha256').update(readFileSync(library)).digest('hex')}`
+  if (existsSync(library) && existsSync(stamp) && readFileSync(stamp, 'utf8') === stamped()) {
     console.log(`pdfium ${RELEASE} (${target}) is current in ${out}`)
     return
   }
@@ -96,7 +99,7 @@ async function main() {
     mkdirSync(out, { recursive: true })
     copyFileSync(join(work, pin.library), library)
     copyFileSync(join(work, 'LICENSE'), join(out, 'LICENSE'))
-    writeFileSync(stamp, pin.sha256)
+    writeFileSync(stamp, stamped())
   } finally {
     rmSync(work, { recursive: true, force: true })
   }

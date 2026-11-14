@@ -2,7 +2,7 @@
 //! frame cap on demand. Time is never asserted from above: a timeout test only checks that the
 //! hung child is gone and the next call gets a new one.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -313,4 +313,109 @@ fn the_worker_runs_below_normal_priority() {
         };
         assert_eq!(class, IDLE_PRIORITY_CLASS.0);
     }
+}
+
+#[test]
+fn a_handle_from_an_earlier_child_is_not_open_in_the_next_one() {
+    // Every child numbers its documents from 1, so without the handle's child in it, the first
+    // child's handle would reach the second child's document.
+    let worker = supervisor(limits());
+    let first = worker
+        .open_pdf(Path::new("ok"))
+        .expect("open in the first child");
+    worker.stop();
+    let second = worker
+        .open_pdf(Path::new("ok"))
+        .expect("open in the second child");
+    let pid = worker.pid().expect("running").to_string();
+    for outcome in [first.page_text(1).map(drop), first.close()] {
+        let error = outcome.expect_err("the first child is gone");
+        assert!(error.to_string().contains("not open"), "{error:?}");
+    }
+    assert_eq!(second.page_text(1), Ok(pid), "the live handle still works");
+    second.close().expect("close");
+}
+
+#[test]
+fn an_open_document_keeps_the_worker_from_idling_out() {
+    let clock = Arc::new(FakeClock(Mutex::new(Instant::now())));
+    let worker = Supervisor::new(
+        stub(),
+        Vec::new(),
+        Limits {
+            idle_exit: Duration::from_millis(20),
+            ..limits()
+        },
+        clock.clone(),
+    );
+    let doc = worker.open_pdf(Path::new("ok")).expect("open");
+    let pid = worker.pid().expect("running");
+    clock.advance(Duration::from_secs(3600));
+    // Many idle ticks pass on the real clock; the open document keeps the child.
+    thread::sleep(Duration::from_millis(300));
+    assert_eq!(
+        worker.pid(),
+        Some(pid),
+        "no idle exit while a document is open"
+    );
+    assert_eq!(doc.page_text(1), Ok(pid.to_string()));
+    doc.close().expect("close");
+    clock.advance(Duration::from_secs(3600));
+    let deadline = Instant::now() + Duration::from_secs(30);
+    while worker.pid().is_some() && Instant::now() < deadline {
+        thread::sleep(Duration::from_millis(20));
+    }
+    assert_eq!(worker.pid(), None, "closed and idle, the child exits");
+}
+
+#[test]
+fn a_hung_op_is_killed_while_a_large_request_waits_on_the_pipe() {
+    // The hung child reads nothing more, so a request larger than the pipe buffer blocks in its
+    // write. The hung op's timeout must still kill the child, which also ends that write.
+    let dir = tempfile::tempdir().expect("temp dir");
+    let signal = dir.path().join("hung");
+    let worker = Arc::new(supervisor(Limits {
+        op_timeout: Duration::from_secs(2),
+        ..limits()
+    }));
+    let (done, results) = std::sync::mpsc::channel();
+    let hung = {
+        let (worker, done) = (worker.clone(), done.clone());
+        let path = format!("hang:{}", signal.display());
+        thread::spawn(move || {
+            let _ = done.send(("hung", worker.call(&open(&path))));
+        })
+    };
+    let deadline = Instant::now() + Duration::from_secs(30);
+    while !signal.exists() && Instant::now() < deadline {
+        thread::sleep(Duration::from_millis(10));
+    }
+    assert!(signal.exists(), "the child took the hanging op");
+    let large = {
+        let worker = worker.clone();
+        let path = "x".repeat(4 << 20);
+        thread::spawn(move || {
+            let _ = done.send(("large", worker.call(&open(&path))));
+        })
+    };
+    let mut outcomes = std::collections::HashMap::new();
+    for _ in 0..2 {
+        // timing-bound: a watchdog against a deadlock, far past the 2 s op timeout.
+        let (name, outcome) = results
+            .recv_timeout(Duration::from_secs(60))
+            .expect("both calls end; the timeout kill is not blocked by the large write");
+        outcomes.insert(name, outcome);
+    }
+    hung.join().expect("hung caller");
+    large.join().expect("large caller");
+    assert_eq!(
+        outcomes["hung"],
+        Err(WorkerError::Timeout { op: "pdf-open" })
+    );
+    assert!(outcomes["large"].is_err(), "{:?}", outcomes["large"]);
+    assert_eq!(
+        worker.call(&open("ok")),
+        Ok(opened()),
+        "a new child answers"
+    );
 }

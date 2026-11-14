@@ -1,6 +1,8 @@
 //! Test-only stand-in for `memry-ml-worker`, speaking the same frames. `PdfOpen`'s path picks the
-//! behaviour: `hang` never answers, `crash` aborts the process, `exit` exits with code 1, `oversize` writes a frame header
-//! past the cap, `log` writes a stderr line and answers; anything else answers with one page.
+//! behaviour: `hang` never answers, `hang:<file>` creates `<file>` and never answers, `crash`
+//! aborts the process, `exit` exits with code 1, `oversize` writes a frame header past the cap,
+//! `log` writes a stderr line and answers; anything else answers with one page as document 1.
+//! `PdfPageText` answers the child's pid, so a test sees which child answered.
 //! `--crash-before-ready` aborts before the `Ready` frame. Never bundled.
 
 use std::io::Write;
@@ -20,6 +22,12 @@ fn main() {
                 "hang" => loop {
                     std::thread::park();
                 },
+                hang if hang.starts_with("hang:") => {
+                    let _ = std::fs::write(&hang["hang:".len()..], b"");
+                    loop {
+                        std::thread::park();
+                    }
+                }
                 "crash" => std::process::abort(),
                 "exit" => std::process::exit(1),
                 "oversize" => {
@@ -42,6 +50,7 @@ fn main() {
                     page_count: 1,
                 },
             },
+            Request::PdfPageText { .. } => Response::Text(std::process::id().to_string()),
             _ => Response::Done,
         },
     );

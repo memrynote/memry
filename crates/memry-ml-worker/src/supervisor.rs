@@ -6,7 +6,9 @@
 //!
 //! Lock order: the state lock, then a child's pending map. The stdout reader takes the pending
 //! map alone and the state lock alone, never one inside the other, so a call that holds the
-//! state lock while it waits for `Ready` is answered.
+//! state lock while it waits for `Ready` is answered. A child's stdin lock is taken with no other
+//! lock held: a write blocks while the child reads nothing (a hung op), and the timeout kill,
+//! [`Supervisor::stop`] and the idle exit must still get the state lock to end it.
 
 use std::collections::HashMap;
 use std::ffi::OsString;
@@ -27,6 +29,9 @@ use crate::serve::READY_ID;
 const MAX_LOG_LINE: usize = 4096;
 /// How long an idle worker gets to exit on `Shutdown` before it is killed.
 const SHUTDOWN_GRACE: Duration = Duration::from_secs(5);
+/// The child parses untrusted files, so it gets none of the app's environment but these. Windows
+/// loads system DLLs through `SystemRoot`.
+const INHERITED_ENV: &[&str] = if cfg!(windows) { &["SystemRoot"] } else { &[] };
 
 #[derive(Debug, Clone)]
 pub struct Limits {
@@ -78,6 +83,9 @@ pub enum WorkerError {
     Paused,
     #[error("the worker was stopped")]
     Stopped,
+    /// The [`Lease`]'s child has stopped, and the next child numbers its handles afresh.
+    #[error("the handle is not open: the worker that held it has stopped")]
+    NotOpen,
     /// The op failed inside a healthy worker, such as a PDF that does not parse.
     #[error("{0}")]
     Failed(String),
@@ -109,10 +117,34 @@ struct State {
 
 struct Running {
     child: Child,
-    stdin: ChildStdin,
+    stdin: Arc<Mutex<ChildStdin>>,
     pending: Pending,
     generation: u64,
     last_used: Instant,
+    /// Held [`Lease`]s; the child does not idle out while one is held.
+    leases: usize,
+}
+
+/// Ties a handle the child holds, such as an open PDF, to that child. [`Supervisor::call_on`]
+/// reaches only it: once it stops, the call fails with [`WorkerError::NotOpen`] and never reaches
+/// a handle of the same number in the next child. The child does not idle out while a lease is
+/// held. Dropping the lease releases it.
+pub struct Lease {
+    shared: Weak<Shared>,
+    generation: u64,
+}
+
+impl Drop for Lease {
+    fn drop(&mut self) {
+        let Some(shared) = self.shared.upgrade() else {
+            return;
+        };
+        let mut state = lock(&shared.state);
+        if let Some(running) = current(&mut state, self.generation) {
+            running.leases -= 1;
+            running.last_used = shared.clock.now();
+        }
+    }
 }
 
 impl Supervisor {
@@ -135,41 +167,95 @@ impl Supervisor {
 
     /// Sends `request` and waits for its answer, starting the child first when none runs.
     pub fn call(&self, request: &Request) -> Result<Response, WorkerError> {
+        self.send(request, None, false)
+            .map(|(response, _)| response)
+    }
+
+    /// [`Supervisor::call`] for a request that opens a handle in the child: the answer comes
+    /// with the handle's [`Lease`], taken when the request is sent.
+    pub fn call_leasing(&self, request: &Request) -> Result<(Response, Lease), WorkerError> {
+        let (response, lease) = self.send(request, None, true)?;
+        Ok((response, lease.expect("leased on send")))
+    }
+
+    /// [`Supervisor::call`] on the child that holds `lease`; never starts one.
+    pub fn call_on(&self, lease: &Lease, request: &Request) -> Result<Response, WorkerError> {
+        if !std::ptr::eq(lease.shared.as_ptr(), Arc::as_ptr(&self.shared)) {
+            return Err(WorkerError::NotOpen);
+        }
+        self.send(request, Some(lease.generation), false)
+            .map(|(response, _)| response)
+    }
+
+    fn send(
+        &self,
+        request: &Request,
+        pinned: Option<u64>,
+        leasing: bool,
+    ) -> Result<(Response, Option<Lease>), WorkerError> {
         let shared = &self.shared;
-        let (reply, generation) = {
+        let (reply, id, generation, stdin, pending, lease) = {
             let mut state = lock(&shared.state);
             let now = shared.clock.now();
-            if let Some(until) = state.paused_until {
-                if now < until {
-                    return Err(WorkerError::Paused);
+            if let Some(generation) = pinned {
+                if current(&mut state, generation).is_none() {
+                    return Err(WorkerError::NotOpen);
                 }
-                state.paused_until = None;
-            }
-            if state.running.is_none() {
-                start(shared, &mut state)?;
+            } else {
+                if let Some(until) = state.paused_until {
+                    if now < until {
+                        return Err(WorkerError::Paused);
+                    }
+                    state.paused_until = None;
+                }
+                if state.running.is_none() {
+                    start(shared, &mut state)?;
+                }
             }
             state.next_id = state.next_id.checked_add(1).unwrap_or(1);
             let id = state.next_id;
-            let running = state.running.as_mut().expect("started above");
+            let running = state.running.as_mut().expect("running above");
             let (tx, rx) = mpsc::channel();
             lock(&running.pending).insert(id, tx);
             running.last_used = now;
-            if let Err(error) = write_frame(&mut running.stdin, &request.to_frame(id)) {
-                lock(&running.pending).remove(&id);
-                // The child is gone. Forget it now, so the next call starts a new one instead
-                // of writing to it again; its stdout reader then finds it is not current.
-                let error = WorkerError::Exited(error.to_string());
-                record_crash(shared, &mut state);
-                let dead = state.running.take();
-                drop(state);
-                if let Some(dead) = dead {
-                    fail_all(&dead.pending, &error);
-                    reap(dead.child);
+            let lease = leasing.then(|| {
+                running.leases += 1;
+                Lease {
+                    shared: Arc::downgrade(shared),
+                    generation: running.generation,
                 }
-                return Err(error);
-            }
-            (rx, running.generation)
+            });
+            let stdin = running.stdin.clone();
+            (
+                rx,
+                id,
+                running.generation,
+                stdin,
+                running.pending.clone(),
+                lease,
+            )
         };
+        // Outside the state lock: a stop or a timeout kill of this child ends a blocked write.
+        if let Err(error) = write_frame(&mut *lock(&stdin), &request.to_frame(id)) {
+            lock(&pending).remove(&id);
+            // The child is gone. Forget it now, unless it was already stopped, so the next call
+            // starts a new one instead of writing to it again; its stdout reader then finds it
+            // is not current.
+            let error = WorkerError::Exited(error.to_string());
+            let dead = {
+                let mut state = lock(&shared.state);
+                let dead = current(&mut state, generation).is_some();
+                if dead {
+                    record_crash(shared, &mut state);
+                }
+                state.running.take_if(|_| dead)
+            };
+            if let Some(dead) = dead {
+                fail_all(&dead.pending, &error);
+                reap(dead.child);
+            }
+            return Err(error);
+        }
         let outcome = match reply.recv_timeout(shared.limits.op_timeout) {
             Ok(reply) => reply,
             Err(RecvTimeoutError::Timeout) => {
@@ -189,17 +275,13 @@ impl Supervisor {
         if outcome.is_ok() {
             let mut state = lock(&shared.state);
             state.crashes = 0;
-            if let Some(running) = state
-                .running
-                .as_mut()
-                .filter(|r| r.generation == generation)
-            {
+            if let Some(running) = current(&mut state, generation) {
                 running.last_used = shared.clock.now();
             }
         }
         match outcome? {
             Response::Failed(message) => Err(WorkerError::Failed(message)),
-            response => Ok(response),
+            response => Ok((response, lease)),
         }
     }
 
@@ -225,11 +307,32 @@ impl Drop for Supervisor {
 }
 
 fn start(shared: &Arc<Shared>, state: &mut State) -> Result<(), WorkerError> {
-    let mut child = Command::new(&shared.program)
+    let mut command = Command::new(&shared.program);
+    command
         .args(&shared.args)
+        .env_clear()
+        .envs(
+            INHERITED_ENV
+                .iter()
+                .filter_map(|key| Some((key, std::env::var_os(key)?))),
+        )
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
+        .stderr(Stdio::piped());
+    // The app's install dir, never the app's cwd, which Windows searches for DLLs at load.
+    if let Some(dir) = shared
+        .program
+        .parent()
+        .filter(|d| !d.as_os_str().is_empty())
+    {
+        command.current_dir(dir);
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(windows::Win32::System::Threading::CREATE_NO_WINDOW.0);
+    }
+    let mut child = command
         .spawn()
         .map_err(|error| WorkerError::Start(format!("{}: {error}", shared.program.display())))?;
     if let Err(error) = priority::lower(&child) {
@@ -260,7 +363,8 @@ fn start(shared: &Arc<Shared>, state: &mut State) -> Result<(), WorkerError> {
     let failure = match ready_rx.recv_timeout(shared.limits.start_timeout) {
         Ok(Ok(Response::Ready)) => None,
         Ok(Ok(other)) => Some(WorkerError::Protocol(format!(
-            "expected Ready, got {other:?}"
+            "expected Ready, got {}",
+            other.name()
         ))),
         Ok(Err(error)) => {
             // Exited before it was ready: counts as a crash (`ocr-engine.ts:126-137`).
@@ -281,10 +385,11 @@ fn start(shared: &Arc<Shared>, state: &mut State) -> Result<(), WorkerError> {
     tracing::info!(scope = "MlWorker", pid = child.id(), "worker started");
     state.running = Some(Running {
         child,
-        stdin,
+        stdin: Arc::new(Mutex::new(stdin)),
         pending,
         generation,
         last_used: shared.clock.now(),
+        leases: 0,
     });
     let weak = Arc::downgrade(shared);
     let tick = shared
@@ -370,7 +475,8 @@ fn forward_stderr(stderr: std::process::ChildStderr) {
     }
 }
 
-/// Shuts the child down once it has been idle for [`Limits::idle_exit`] with no call waiting.
+/// Shuts the child down once it has been idle for [`Limits::idle_exit`] with no call waiting and
+/// no [`Lease`] held.
 fn watch_idle(shared: Weak<Shared>, generation: u64, tick: Duration) {
     loop {
         thread::sleep(tick);
@@ -389,18 +495,19 @@ fn watch_idle(shared: Weak<Shared>, generation: u64, tick: Duration) {
                 .clock
                 .now()
                 .saturating_duration_since(running.last_used);
-            if idle < shared.limits.idle_exit || !lock(&running.pending).is_empty() {
+            if idle < shared.limits.idle_exit
+                || running.leases > 0
+                || !lock(&running.pending).is_empty()
+            {
                 continue;
             }
             state.running.take().expect("checked above")
         };
         tracing::info!(scope = "MlWorker", "worker idle; shutting it down");
         let Running {
-            mut child,
-            mut stdin,
-            ..
+            mut child, stdin, ..
         } = running;
-        let _ = write_frame(&mut stdin, &Request::Shutdown.to_frame(0));
+        let _ = write_frame(&mut *lock(&stdin), &Request::Shutdown.to_frame(0));
         drop(stdin);
         let deadline = Instant::now() + SHUTDOWN_GRACE;
         while Instant::now() < deadline {
@@ -431,6 +538,14 @@ fn stop_generation(shared: &Shared, generation: Option<u64>, error: &WorkerError
         fail_all(&running.pending, error);
         reap(running.child);
     }
+}
+
+/// The running child when it is `generation`.
+fn current(state: &mut State, generation: u64) -> Option<&mut Running> {
+    state
+        .running
+        .as_mut()
+        .filter(|r| r.generation == generation)
 }
 
 fn record_crash(shared: &Shared, state: &mut State) {

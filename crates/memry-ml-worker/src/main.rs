@@ -10,6 +10,17 @@ use std::process::ExitCode;
 use memry_ml_worker::serve::serve;
 
 fn main() -> ExitCode {
+    #[cfg(windows)]
+    {
+        use windows::Win32::System::LibraryLoader::{
+            LOAD_LIBRARY_SEARCH_DEFAULT_DIRS, SetDefaultDllDirectories,
+        };
+        // pdfium loads by its full path, and the DLLs it needs only from the app dir and System32,
+        // never from the cwd or PATH. SAFETY: plain FFI call that narrows this process's search.
+        if let Err(error) = unsafe { SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_DEFAULT_DIRS) } {
+            eprintln!("could not narrow the DLL search path: {error}");
+        }
+    }
     let mut args = std::env::args_os().skip(1);
     let mut pdfium_dir = None;
     while let Some(arg) = args.next() {

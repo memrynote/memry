@@ -125,6 +125,18 @@ impl Request {
 }
 
 impl Response {
+    /// The answer's name in logs and errors, never its payload, which holds a file's content.
+    pub fn name(&self) -> &'static str {
+        match self {
+            Self::Ready => "ready",
+            Self::PdfOpened { .. } => "pdf-opened",
+            Self::Text(_) => "text",
+            Self::Rendered { .. } => "rendered",
+            Self::Done => "done",
+            Self::Failed(_) => "failed",
+        }
+    }
+
     pub fn to_frame(&self, id: u32) -> Frame {
         let mut out = Vec::new();
         let op = match self {
