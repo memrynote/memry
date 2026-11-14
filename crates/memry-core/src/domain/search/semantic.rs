@@ -21,7 +21,7 @@ pub const MIN_QUERY_LENGTH: usize = 3;
 /// Per window class, before collapsing to one hit per note.
 pub const NEIGHBOURS: usize = 30;
 /// Desktop's `EMBEDDING_QUERY_SIMILARITY_FLOOR`.
-pub const QUERY_FLOOR: f32 = 0.65;
+pub const QUERY_FLOOR: f32 = 0.725;
 /// Cormack et al. 2009: ranks are fused, never scores.
 const RRF_K: f64 = 60.0;
 

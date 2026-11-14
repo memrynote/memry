@@ -58,7 +58,7 @@ group and has no highlighted snippet. Typing `cat` can surface a note about kitt
 English, with no shared word.
 
 Only a note's vector needs to exist, so a note that is not embedded yet is found by keywords only.
-Meaning-only matches need a similarity of about 0.65 or more, so unrelated notes are not listed. The
+Meaning-only matches need a similarity of about 0.725 or more, so unrelated notes are not listed. The
 first search after launch starts the model and answers by keywords alone, because loading takes
 seconds; later searches include meaning. Queries with `AND`, `OR`, `NOT` or quoted phrases, queries
 under three characters, and searches with embeddings off are keyword-only.
