@@ -17,8 +17,9 @@ use serde_json::Value;
 
 use crate::api::errors::{AuthError, PropertyWriteError, StorageError};
 use crate::api::journal_records::{
-    JournalDayRecord, JournalEditResult, JournalHeatmapEntry, JournalMonthRecord, JournalReminder,
-    JournalSettingsRecord, JournalStreakRecord, JournalTemplateStrings, JournalYearRecord,
+    JournalDayRecord, JournalEditResult, JournalHeatmapEntry, JournalMonthDayRecord,
+    JournalMonthRecord, JournalReminder, JournalSettingsRecord, JournalStreakRecord,
+    JournalTemplateStrings, JournalYearRecord,
 };
 use crate::crdt::body_edit::BlockEdit;
 use crate::crdt::errors::CrdtError;
@@ -96,6 +97,21 @@ impl Journal {
             .call_blocking(move |conn| Ok(reads::month(conn, year, month, &today)))
             .map_err(CrdtError::from)?
             .map(Into::into)
+    }
+
+    /// The day in every other year with a live entry, later years included,
+    /// newest first, flagged against `today` (desktop's
+    /// `getJournalSameDayEntries`). A Feb 29 shows on Feb 28 of a year
+    /// without one, and back.
+    pub fn same_day_entries(
+        &self,
+        date: String,
+        today: String,
+    ) -> Result<Vec<JournalMonthDayRecord>, CrdtError> {
+        self.db
+            .call_blocking(move |conn| Ok(reads::same_day_entries(conn, &date, &today)))
+            .map_err(CrdtError::from)?
+            .map(|days| days.into_iter().map(Into::into).collect())
     }
 
     /// Twelve month cards, totals and the streak.
