@@ -18,7 +18,7 @@ import { LinkingCodeEntry } from '@/components/sync/linking-code-entry'
 import { LinkingPending } from '@/components/sync/linking-pending'
 import { VaultPickerStep } from '@/components/sync/vault-picker-step'
 
-const MEMRY_ICON_SRC = new URL('../../../../../build/icon.png', import.meta.url).href
+const MEMRY_ICON_SRC = new URL('../../../../../src-tauri/icons/icon.png', import.meta.url).href
 const MEMRY_PRICING_URL = 'https://memrynote.com/pricing'
 
 const STEP_KEYS = ['setup.steps.signIn', 'setup.steps.verify', 'setup.steps.link'] as const

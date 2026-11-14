@@ -198,13 +198,14 @@ impl Fixture {
             .as_object_mut()
             .unwrap()
             .extend(verify.as_object().unwrap().clone());
-        let mut answers = self.script.answers.lock().unwrap();
-        answers.push_front((200, answer.to_string()));
-        answers.push_front((
-            200,
-            json!({ "success": true, "expiresIn": 600 }).to_string(),
-        ));
-        drop(answers);
+        {
+            let mut answers = self.script.answers.lock().unwrap();
+            answers.push_front((200, answer.to_string()));
+            answers.push_front((
+                200,
+                json!({ "success": true, "expiresIn": 600 }).to_string(),
+            ));
+        }
         self.service
             .request_otp("kaan@example.com".into())
             .await

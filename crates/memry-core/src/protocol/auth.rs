@@ -539,8 +539,7 @@ impl AuthRoutes {
         .await
     }
 
-    /// The new code's `expiresIn`, read leniently: a resend the server
-    /// accepted is never an error over its body.
+    /// The new code's `expiresIn`, read leniently: an accepted resend never fails on its body.
     pub async fn resend_otp(http: &HttpClient, email: &str) -> Result<Option<u64>, ApiError> {
         #[derive(Deserialize)]
         #[serde(rename_all = "camelCase")]

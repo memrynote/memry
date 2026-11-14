@@ -38,7 +38,7 @@ import {
 const MEMRY_REPOSITORY_URL = 'https://github.com/memrynote/memry'
 const MEMRY_ISSUES_URL =
   'https://github.com/memrynote/memry/issues?q=sort%3Aupdated-desc+is%3Aissue+is%3Aopen+'
-const MEMRY_ICON_SRC = new URL('../../../../../build/icon.png', import.meta.url).href
+const MEMRY_ICON_SRC = new URL('../../../../../src-tauri/icons/icon.png', import.meta.url).href
 const BILLING_SUPPORT_EMAIL = 'billing@memrynote.com'
 
 type BillingPlan = 'free' | 'plus' | 'pro' | 'believer'
