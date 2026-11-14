@@ -1,13 +1,14 @@
 //! Turning [`super::super::search`]'s hits and the semantic leg's ids into desktop's
-//! result items: metadata from `data.db` and `index.db`, the filters desktop applies
-//! after its queries, and the scores.
+//! result items: metadata from `data.db` and `index.db`, and the scores.
 
 use rusqlite::{Connection, OptionalExtension as _, params};
 
 use crate::api::errors::StorageError;
 use crate::domain::notes::names::name_key;
 
+use super::super::maintenance::journal_title;
 use super::super::{HitKind, MatchKind, SearchHit, SearchType, failed, fuzzy, is_live, note_kind};
+use super::scope::scope;
 use super::semantic::{QUERY_SIMILARITY_FLOOR, SemanticHit};
 use super::{GroupedItem, GroupedQuery, ItemMeta, MatchType};
 
@@ -21,6 +22,7 @@ const SEMANTIC_ONLY_MAX_SCORE: f64 = 0.5;
 
 /// What the metadata lookup reads for one item.
 struct Loaded {
+    /// From `data.db`; `None` for a journal day, whose title only its payload holds.
     title: Option<String>,
     modified_at: Option<i64>,
     meta: ItemMeta,
@@ -85,31 +87,6 @@ pub(super) fn from_hits(
     Ok(items)
 }
 
-/// Desktop's `applyPostFilters` project and folder rules (`search.ts:495-507`) and
-/// its note file type rule (`search.ts:93-101`).
-pub(super) fn passes(query: &GroupedQuery, item: &GroupedItem) -> bool {
-    if let Some(project) = &query.project_id
-        && !matches!(&item.meta, ItemMeta::Task { project_id, .. } if project_id == project)
-    {
-        return false;
-    }
-    if let Some(prefix) = &query.folder_path {
-        let path = match &item.meta {
-            ItemMeta::Note { path, .. } | ItemMeta::Journal { path, .. } => path.as_deref(),
-            _ => None,
-        };
-        if !path.is_some_and(|path| path.starts_with(prefix.as_str())) {
-            return false;
-        }
-    }
-    match &item.meta {
-        ItemMeta::Note { file_type, .. } if !query.note_file_types.is_empty() => {
-            query.note_file_types.contains(file_type)
-        }
-        _ => true,
-    }
-}
-
 /// Markdown notes ahead of filed files among the index hits, each side in bm25
 /// order (`search.ts:129-131`). Fuzzy and alias hits keep their places.
 pub(super) fn markdown_first(items: &mut [Found]) {
@@ -123,14 +100,12 @@ pub(super) fn markdown_first(items: &mut [Found]) {
     }
 }
 
-/// How many kept index hits are sure to lead the group: all of them, and for notes
-/// the markdown ones only.
-pub(super) fn leading(found: &[Found], kind: SearchType) -> usize {
+/// How many index hits are sure to lead the group: all of them, or the markdown
+/// ones only while `markdown_leads`.
+pub(super) fn leading(found: &[Found], markdown_leads: bool) -> usize {
     found
         .iter()
-        .filter(|(from, item)| {
-            *from == MatchKind::Body && (kind != SearchType::Note || is_markdown(item))
-        })
+        .filter(|(from, item)| *from == MatchKind::Body && (!markdown_leads || is_markdown(item)))
         .count()
 }
 
@@ -164,7 +139,7 @@ pub(super) fn normalize(items: &mut [Found]) {
 /// The items `hits` name that `data.db` holds live and the query keeps, per type,
 /// best first (`loadSemanticItems` and `loadInboxItems`,
 /// `search-semantic-merge.ts:56-147`). Every filter applies
-/// (`search.ts:648-654`). Tasks have no vectors.
+/// (`search.ts:648-654`). Tasks have no vectors. Titles come from `data.db`.
 pub(super) fn semantic_items(
     data: &Connection,
     index: &Connection,
@@ -174,9 +149,10 @@ pub(super) fn semantic_items(
     let mut by_type: Vec<(SearchType, Vec<GroupedItem>)> = Vec::new();
     for kind in [SearchType::Note, SearchType::Journal, SearchType::Inbox] {
         let kept = query.filter.kept(data, kind)?;
+        let scope = scope(data, query, kind)?;
         let mut items = Vec::new();
         for hit in hits {
-            if kept.as_ref().is_some_and(|kept| !kept.contains(&hit.id)) {
+            if kept.as_ref().is_some_and(|kept| !kept.contains(&hit.id)) || !scope.keeps(&hit.id) {
                 continue;
             }
             let journal_date = match kind {
@@ -189,20 +165,23 @@ pub(super) fn semantic_items(
                 _ => continue,
             };
             let loaded = load(data, index, kind, &hit.id, journal_date.as_deref())?;
-            let item = GroupedItem {
+            let title = match &loaded.meta {
+                ItemMeta::Journal { date, .. } => {
+                    journal_title(data, &hit.id)?.unwrap_or_else(|| date.clone())
+                }
+                _ => loaded.title.unwrap_or_default(),
+            };
+            items.push(GroupedItem {
                 id: hit.id.clone(),
                 kind,
-                title: loaded.title.unwrap_or_default(),
+                title,
                 snippet: Vec::new(),
                 score: hit.cosine,
                 normalized_score: closeness(hit.cosine) * SEMANTIC_ONLY_MAX_SCORE,
                 match_type: MatchType::Fuzzy,
                 modified_at: loaded.modified_at,
                 meta: loaded.meta,
-            };
-            if passes(query, &item) {
-                items.push(item);
-            }
+            });
         }
         items.sort_by(|a, b| b.score.total_cmp(&a.score));
         by_type.push((kind, items));
@@ -215,8 +194,9 @@ fn closeness(cosine: f64) -> f64 {
     ((cosine - QUERY_SIMILARITY_FLOOR) / (1.0 - QUERY_SIMILARITY_FLOOR)).clamp(0.0, 1.0)
 }
 
-/// One item's title, modified time and metadata. A row the projection lacks reads
-/// as empty fields, never as a lost result.
+/// One item's `data.db` title, modified time and metadata. A row the projection
+/// lacks reads as empty fields, never as a lost result. An index hit keeps the
+/// index's title and drops this one.
 fn load(
     data: &Connection,
     index: &Connection,
@@ -247,7 +227,7 @@ fn load(
                 .unwrap_or_default();
             let (title, emoji, file_type, created_at, modified_at, path) = row;
             Ok(Loaded {
-                title: fts_title(index, id)?.or(title),
+                title,
                 modified_at,
                 meta: ItemMeta::Note {
                     path,
@@ -276,12 +256,11 @@ fn load(
                 .optional()
                 .map_err(failed)?
                 .unwrap_or_default();
-            let date = journal_date.unwrap_or_default().to_owned();
             Ok(Loaded {
-                title: Some(fts_title(index, id)?.unwrap_or_else(|| date.clone())),
+                title: None,
                 modified_at,
                 meta: ItemMeta::Journal {
-                    date,
+                    date: journal_date.unwrap_or_default().to_owned(),
                     path,
                     word_count: word_count(index, id)?,
                     matched_name: None,
@@ -370,19 +349,6 @@ fn task(data: &Connection, id: &str) -> Result<Loaded, StorageError> {
             },
         })
     })
-}
-
-/// The title `fts_notes` holds for a note or journal day, as an index hit shows it.
-fn fts_title(index: &Connection, id: &str) -> Result<Option<String>, StorageError> {
-    index
-        .query_row(
-            "SELECT title FROM fts_notes WHERE id = ?1",
-            params![id],
-            |row| row.get::<_, Option<String>>(0),
-        )
-        .optional()
-        .map(Option::flatten)
-        .map_err(failed)
 }
 
 fn word_count(index: &Connection, id: &str) -> Result<Option<i64>, StorageError> {

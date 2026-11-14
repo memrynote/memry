@@ -2,6 +2,9 @@
 //! `apps/desktop/src/main/database/queries/search.test.ts` and
 //! `search-semantic.test.ts`. Semantic hits are given, as `searchAll` takes them.
 
+use std::cell::RefCell;
+
+use rusqlite::trace::{TraceEvent, TraceEventCodes};
 use rusqlite::{Connection, params};
 
 use super::*;
@@ -10,6 +13,7 @@ use crate::storage::migrations::{self, DATA_MIGRATIONS, INDEX_MIGRATIONS};
 use crate::storage::pragmas::{self, Profile};
 use crate::storage::repositories::sync_items::{self, InboundRecord};
 
+mod bounds;
 mod fusion;
 
 const NOW: i64 = 1_760_000_000_000;
@@ -131,7 +135,7 @@ fn run(
             cosine: *cosine,
         })
         .collect();
-    search_all(data, index, query, &hits).expect("search")
+    search_all(data, index, query, &hits)
 }
 
 fn ids(response: &GroupedResponse, kind: SearchType) -> Vec<&str> {
@@ -145,6 +149,34 @@ fn ids(response: &GroupedResponse, kind: SearchType) -> Vec<&str> {
 
 fn kinds(response: &GroupedResponse) -> Vec<SearchType> {
     response.groups.iter().map(|group| group.kind).collect()
+}
+
+thread_local! {
+    static STATEMENTS: RefCell<Vec<String>> = const { RefCell::new(Vec::new()) };
+}
+
+fn record(event: TraceEvent<'_>) {
+    if let TraceEvent::Stmt(_, sql) = event {
+        STATEMENTS.with(|statements| statements.borrow_mut().push(sql.to_owned()));
+    }
+}
+
+/// The statements `read` runs on `index`, in order.
+fn index_statements<T>(index: &Connection, read: impl FnOnce() -> T) -> (T, Vec<String>) {
+    STATEMENTS.with(|statements| statements.borrow_mut().clear());
+    index.trace_v2(TraceEventCodes::SQLITE_TRACE_STMT, Some(record));
+    let out = read();
+    index.trace_v2(TraceEventCodes::empty(), None);
+    (out, STATEMENTS.with(|statements| statements.take()))
+}
+
+/// How many times `statements` asked a full-text index for hits: one per
+/// [`crate::domain::search::search`] pass over one type.
+fn index_asks(statements: &[String]) -> usize {
+    statements
+        .iter()
+        .filter(|sql| sql.contains("MATCH ?1"))
+        .count()
 }
 
 /// `search.test.ts`: "maps exact FTS rows for notes, journals, tasks, and inbox items".
@@ -339,7 +371,7 @@ fn quick_search_flattens_by_normalised_score_and_stats_count_live_rows() {
     );
     reindex(&data, &index);
 
-    let results = quick_search(&data, &index, "quick", &[], &[]).expect("quick");
+    let results = quick_search(&data, &index, "quick", &[], &[]);
     assert_eq!(results.len(), 6, "five notes and the task");
     assert!(
         results

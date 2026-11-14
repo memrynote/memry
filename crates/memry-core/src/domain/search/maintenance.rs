@@ -314,12 +314,7 @@ fn index_note_rows(
     };
 
     let view = read_payload(&item_type, id, &payload)?;
-    // A journal's title is not projected anywhere, so it is read from the
-    // payload like every other field here, and falls back to its calendar date.
-    let title = text(&view, "title")
-        .filter(|title| !title.is_empty())
-        .or_else(|| text(&view, "date"))
-        .unwrap_or_default();
+    let title = indexed_title(&view);
     index
         .execute(
             "INSERT INTO fts_notes (id, title, content, tags) VALUES (?1, ?2, ?3, ?4)",
@@ -429,6 +424,34 @@ fn index_task(
 /// A row the apply path did not flag corrupt but that will not read back is a
 /// bug in this build, and it stops the pass instead of quietly leaving a note
 /// out of every search result for the life of the install.
+/// The title `fts_notes` holds for a note or journal day. A journal's title is
+/// not projected anywhere, so it is read from the payload like every other field
+/// here, and falls back to its calendar date.
+fn indexed_title(view: &crate::storage::repositories::schema::Object) -> String {
+    text(view, "title")
+        .filter(|title| !title.is_empty())
+        .or_else(|| text(view, "date"))
+        .unwrap_or_default()
+}
+
+/// The title [`indexed_title`] gives a live journal day, read from `data.db`;
+/// `None` while its payload is not pulled or is recorded corrupt.
+pub(super) fn journal_title(data: &Connection, id: &str) -> Result<Option<String>, StorageError> {
+    let payload = data
+        .query_row(
+            "SELECT payload FROM sync_items WHERE item_type = 'journal' AND item_id = ?1
+               AND deleted_at IS NULL AND corrupt_reason IS NULL",
+            params![id],
+            |row| row.get::<_, Option<String>>(0),
+        )
+        .optional()
+        .map_err(failed)?
+        .flatten();
+    payload
+        .map(|payload| read_payload("journal", id, &payload).map(|view| indexed_title(&view)))
+        .transpose()
+}
+
 fn read_payload(
     item_type: &str,
     item_id: &str,

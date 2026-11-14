@@ -7,19 +7,20 @@
 //! [`super::search`] owns which items match and their order. This adds what the
 //! desktop result list needs on top: the project, folder and note file type
 //! filters (`applyPostFilters`, `search.ts:477-507`, and `noteFileTypeFilter`,
-//! `search.ts:93-101`), markdown notes ahead of filed files (`search.ts:131`), the
+//! `search.ts:93-101`), markdown notes ahead of filed files (`search.ts:142`), the
 //! scores (`normalizeScores`, `lib/search-utils.ts:11-27`; fuzzy `score * 0.8`,
 //! `lib/fuzzysort-search.ts:37`; alias 1 or 0.9, `search-note-names.ts:24-25`), and
 //! the semantic leg.
 //!
 //! Three choices differ from desktop on purpose. The project and folder filters
 //! apply whenever they are set: desktop runs them only beside a tag or date filter
-//! (`search.ts:614`), so a lone folder filter narrows nothing there. Every filter
-//! applies before the group is cut to the limit, over a fetch five times the limit,
-//! as desktop does for tags and dates (`search.ts:584`); the file type filter
-//! therefore runs after the index query, not inside it (`search.ts:124`), and the
-//! over-fetch keeps markdown notes from being starved. A fuzzy hit carries no
-//! snippet, as [`super::search`] decides; desktop shows the highlighted title.
+//! (`search.ts:614`), so a lone folder filter narrows nothing there. They narrow the
+//! index query itself, as desktop's file type filter does ([`scope`]), so a type
+//! they exclude is never searched. A fuzzy hit carries no snippet, as
+//! [`super::search`] decides; desktop shows the highlighted title.
+//!
+//! One failing group, or a failing semantic merge, is logged and left out; the
+//! rest still answers (`search.ts:588-591,675-677`).
 
 use std::collections::HashSet;
 
@@ -31,6 +32,7 @@ use super::{SearchFilter, SearchType, SnippetSegment, failed};
 
 mod fuse;
 mod items;
+mod scope;
 pub mod semantic;
 
 pub use semantic::SemanticHit;
@@ -39,6 +41,11 @@ pub use semantic::SemanticHit;
 const QUICK_GROUP_LIMIT: usize = 5;
 /// Desktop's `quickSearch` result cap (`search.ts:681`).
 const QUICK_LIMIT: usize = 20;
+/// The most index asks one group makes ([`group`]).
+const MAX_ASKS: usize = 4;
+/// `truncateQuery`'s cap in UTF-16 units (`lib/search-utils.ts:29-31`). It also
+/// keeps a run of `NOT`s under FTS5's expression depth limit.
+const MAX_QUERY_UNITS: usize = 500;
 
 /// One search, as desktop's `SearchQuery` (`search-api.ts:116-133`). The date
 /// range and tags ride in `filter`, in core's terms ([`SearchFilter`]).
@@ -157,86 +164,101 @@ impl GroupedStats {
 
 /// Desktop's `searchAll`: the four groups, filtered and scored, with `semantic`
 /// (best first, from [`semantic::note_hits`]) fused into notes, journals and inbox.
-/// Empty `semantic` answers from the index alone.
+/// Empty `semantic` answers from the index alone. The text is cut to its first
+/// 500 UTF-16 units, and a text with no searchable term answers nothing.
 pub fn search_all(
     data: &Connection,
     index: &Connection,
     query: &GroupedQuery,
     semantic: &[SemanticHit],
-) -> Result<GroupedResponse, StorageError> {
+) -> GroupedResponse {
+    let text = truncated(&query.text);
+    if super::query::parse(text).is_none() {
+        return GroupedResponse::default();
+    }
     let active = active_types(&query.filter);
     let mut groups = Vec::new();
     for kind in &active {
-        let results = group(data, index, query, *kind)?;
-        if !results.is_empty() {
-            groups.push(Group {
+        match group(data, index, text, query, *kind) {
+            Ok(results) if results.is_empty() => {}
+            Ok(results) => groups.push(Group {
                 kind: *kind,
                 results,
-            });
+            }),
+            Err(error) => eprintln!("memry search: the {kind:?} group failed: {error}"),
         }
     }
     if !semantic.is_empty() {
-        let candidates = items::semantic_items(data, index, query, semantic)?;
-        fuse::fuse(&mut groups, candidates, &active, query.limit);
+        match items::semantic_items(data, index, query, semantic) {
+            Ok(candidates) => fuse::fuse(&mut groups, candidates, &active, query.limit),
+            Err(error) => {
+                eprintln!(
+                    "memry search: the semantic merge failed, answering from the index: {error}"
+                );
+            }
+        }
     }
     let total_count = groups.iter().map(|group| group.results.len()).sum();
-    Ok(GroupedResponse {
+    GroupedResponse {
         groups,
         total_count,
-    })
+    }
+}
+
+/// The first [`MAX_QUERY_UNITS`] UTF-16 units of `text`, cut at a char boundary.
+fn truncated(text: &str) -> &str {
+    let mut units = 0;
+    for (at, char) in text.char_indices() {
+        units += char.len_utf16();
+        if units > MAX_QUERY_UNITS {
+            return &text[..at];
+        }
+    }
+    text
 }
 
 /// One group, filtered, ordered and cut to the limit.
 ///
-/// Desktop filters note file types and puts markdown first inside its query, so
-/// its limit counts the notes it keeps (`search.ts:120-133`). [`super::search`]
-/// does neither, so this asks it for more until the group is settled: the index
-/// ran out of hits, or enough kept hits lead (for notes, enough kept markdown hits,
-/// since a later markdown hit would go ahead of a filed file). The first ask is the
-/// limit, five times it when a filter is on (`search.ts:584`), and each next ask is
-/// twice the last; a vault whose notes are all markdown settles on the first.
+/// Desktop puts markdown notes ahead of filed files inside its query, so its limit
+/// counts them first (`search.ts:142`). [`super::search_type`] ranks by bm25
+/// alone, so this asks again, for twice as many, while a later markdown hit could
+/// still lead: until the index runs out or `limit` kept markdown hits lead, at
+/// most [`MAX_ASKS`] times. A vault whose notes are all markdown settles on the
+/// first ask, as does every type but notes.
 fn group(
     data: &Connection,
     index: &Connection,
+    text: &str,
     query: &GroupedQuery,
     kind: SearchType,
 ) -> Result<Vec<GroupedItem>, StorageError> {
-    let narrowed = query.project_id.is_some()
-        || query.folder_path.is_some()
-        || !query.note_file_types.is_empty();
-    let filter = SearchFilter {
-        types: vec![kind],
-        ..query.filter.clone()
+    let only = match scope::scope(data, query, kind)? {
+        scope::Scope::Nothing => return Ok(Vec::new()),
+        scope::Scope::Every => None,
+        scope::Scope::Only(ids) => Some(ids),
     };
-    let mut fetch = if narrowed {
-        query.limit * 5
-    } else {
-        query.limit
-    };
+    let markdown_leads = kind == SearchType::Note && scope::keeps_markdown(query);
+    let mut fetch = query.limit;
+    let mut asks = 1;
     loop {
-        let found = super::search(data, index, &query.text, &filter, fetch)?;
-        let hits = match kind {
-            SearchType::Note => found.notes,
-            SearchType::Journal => found.journals,
-            SearchType::Task => found.tasks,
-            SearchType::Inbox => found.inbox,
-        };
+        let hits =
+            super::search_type(data, index, text, &query.filter, kind, only.as_ref(), fetch)?;
         let exhausted = hits
             .iter()
             .filter(|hit| hit.match_kind == super::MatchKind::Body)
             .count()
             < fetch;
-        let mut found = items::from_hits(data, index, &query.text, kind, &hits)?;
-        found.retain(|(_, item)| items::passes(query, item));
-        if exhausted || items::leading(&found, kind) >= query.limit {
-            if kind == SearchType::Note {
+        let mut found = items::from_hits(data, index, text, kind, &hits)?;
+        if exhausted || asks == MAX_ASKS || items::leading(&found, markdown_leads) >= query.limit {
+            if markdown_leads {
                 items::markdown_first(&mut found);
             }
             found.truncate(query.limit);
             items::normalize(&mut found);
             return Ok(found.into_iter().map(|(_, item)| item).collect());
         }
-        fetch = fetch.max(1) * 2;
+        fetch *= 2;
+        asks += 1;
     }
 }
 
@@ -248,21 +270,21 @@ pub fn quick_search(
     text: &str,
     note_file_types: &[String],
     semantic: &[SemanticHit],
-) -> Result<Vec<GroupedItem>, StorageError> {
+) -> Vec<GroupedItem> {
     let query = GroupedQuery {
         text: text.to_owned(),
         note_file_types: note_file_types.to_vec(),
         limit: QUICK_GROUP_LIMIT,
         ..GroupedQuery::default()
     };
-    let mut results: Vec<GroupedItem> = search_all(data, index, &query, semantic)?
+    let mut results: Vec<GroupedItem> = search_all(data, index, &query, semantic)
         .groups
         .into_iter()
         .flat_map(|group| group.results)
         .collect();
     results.sort_by(|a, b| b.normalized_score.total_cmp(&a.normalized_score));
     results.truncate(QUICK_LIMIT);
-    Ok(results)
+    results
 }
 
 /// Desktop's `getSearchStats` (`search.ts:687-737`) over the live rows of `data.db`.

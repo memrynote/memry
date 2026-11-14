@@ -82,17 +82,21 @@ pub fn best_windows(
 
 /// The notes and journal days nearest `query` (an embedded search query), best
 /// first: the [`NEIGHBOURS`] nearest of `vec_notes` and of `vec_note_chunks`, merged
-/// by [`best_windows`].
+/// by [`best_windows`]. A vector store that fails is logged and answers no hits,
+/// so the search falls back to the index (`semantic.ts:126-129`).
 #[cfg(feature = "vec")]
-pub fn note_hits(
-    index: &rusqlite::Connection,
-    query: &[f32],
-) -> Result<Vec<SemanticHit>, crate::api::errors::StorageError> {
+pub fn note_hits(index: &rusqlite::Connection, query: &[f32]) -> Vec<SemanticHit> {
     use crate::storage::vec::{VecTable, nearest};
-    Ok(best_windows(
-        nearest(index, VecTable::Notes, query, NEIGHBOURS)?,
-        nearest(index, VecTable::NoteChunks, query, NEIGHBOURS)?,
-    ))
+    let windows = nearest(index, VecTable::Notes, query, NEIGHBOURS).and_then(|notes| {
+        nearest(index, VecTable::NoteChunks, query, NEIGHBOURS).map(|chunks| (notes, chunks))
+    });
+    match windows {
+        Ok((notes, chunks)) => best_windows(notes, chunks),
+        Err(error) => {
+            eprintln!("memry search: the semantic leg failed, answering from the index: {error}");
+            Vec::new()
+        }
+    }
 }
 
 #[cfg(test)]
@@ -208,12 +212,34 @@ mod tests {
                 put(VecTable::NoteChunks, "chunked#1", axis(4, 0.95))?;
                 let mut query = vec![0.0_f32; EMBEDDING_DIMENSION];
                 query[0] = 1.0;
-                note_hits(conn, &query)
+                Ok(note_hits(conn, &query))
             })
             .expect("note hits");
         let got: Vec<&str> = hits.iter().map(|hit| hit.id.as_str()).collect();
         assert_eq!(got, ["chunked", "near"]);
         assert!((hits[0].cosine - 0.95).abs() < 1e-6);
         assert!((hits[1].cosine - 0.9).abs() < 1e-6);
+    }
+
+    /// `semantic.ts:126-129`: a vector store that will not answer leaves the search
+    /// to the index.
+    #[cfg(feature = "vec")]
+    #[test]
+    fn a_failing_vector_store_answers_no_hits() {
+        use crate::storage::index_db::open_or_rebuild;
+        use crate::storage::test_support::temp_dir;
+        use crate::storage::vec::EMBEDDING_DIMENSION;
+
+        let dir = temp_dir("semantic-note-hits-fail");
+        let opened = open_or_rebuild(&dir.path().join("index.db")).expect("open");
+        let hits = opened
+            .db
+            .call_blocking(|conn| {
+                conn.execute_batch("DROP TABLE vec_notes;")
+                    .map_err(super::super::super::failed)?;
+                Ok(note_hits(conn, &vec![1.0_f32; EMBEDDING_DIMENSION]))
+            })
+            .expect("note hits");
+        assert!(hits.is_empty());
     }
 }

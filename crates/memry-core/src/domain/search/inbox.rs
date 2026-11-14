@@ -35,13 +35,13 @@ pub(super) fn reindex(
     full: bool,
     done: &mut Reindexed,
 ) -> Result<(), StorageError> {
-    let from = match meta_number(index, INBOX_WATERMARK_KEY)? {
-        Some(from) if !full => from,
+    let (from, emptied) = match meta_number(index, INBOX_WATERMARK_KEY)? {
+        Some(from) if !full => (from, false),
         _ => {
             index
                 .execute_batch("DELETE FROM fts_inbox;")
                 .map_err(failed)?;
-            0
+            (0, true)
         }
     };
     let (ids, high) = candidates(
@@ -51,7 +51,7 @@ pub(super) fn reindex(
         params![from],
     )?;
     for id in &ids {
-        index_item(data, index, id, done)?;
+        index_item(data, index, id, !emptied, done)?;
     }
     meta_set(
         index,
@@ -66,7 +66,7 @@ pub(super) fn reindex(
 /// capture is findable before the next [`super::reindex`]. Leaves the watermark alone.
 pub fn upsert(data: &Connection, index: &Connection, id: &str) -> Result<(), StorageError> {
     let transaction = index.unchecked_transaction().map_err(failed)?;
-    index_item(data, &transaction, id, &mut Reindexed::default())?;
+    index_item(data, &transaction, id, true, &mut Reindexed::default())?;
     transaction.commit().map_err(failed)
 }
 
@@ -95,16 +95,21 @@ pub fn clear(index: &Connection) -> Result<(), StorageError> {
     transaction.commit().map_err(failed)
 }
 
-/// Re-indexes one capture: delete first, then insert if it is still live.
+/// Re-indexes one capture: delete first when `indexed` (the table may hold its
+/// row), then insert if it is still live. A refill of the emptied table skips the
+/// delete, which scans the table since `fts_inbox.id` is unindexed.
 fn index_item(
     data: &Connection,
     index: &Connection,
     id: &str,
+    indexed: bool,
     done: &mut Reindexed,
 ) -> Result<(), StorageError> {
-    index
-        .execute("DELETE FROM fts_inbox WHERE id = ?1", params![id])
-        .map_err(failed)?;
+    if indexed {
+        index
+            .execute("DELETE FROM fts_inbox WHERE id = ?1", params![id])
+            .map_err(failed)?;
+    }
 
     let record = data
         .query_row(

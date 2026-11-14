@@ -12,6 +12,9 @@
 //! | a typo finds the title                                 | the fuzzy fallback (#4319)        |
 //! | an opened capture is a recent until it is deleted      | recents liveness (#4322)          |
 //! | upsert re-indexes one capture, delete and clear drop   | `insertFtsInboxItem` and friends  |
+//! | a refill after clear deletes no row by id              | linear refill                     |
+
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use memry_core::domain::search::{
     self, HitKind, INBOX_WATERMARK_KEY, MatchKind, NOTES_WATERMARK_KEY, Reindexed, SearchHit,
@@ -20,6 +23,7 @@ use memry_core::domain::search::{
 use memry_core::storage::migrations::{self, DATA_MIGRATIONS, INDEX_MIGRATIONS};
 use memry_core::storage::open_index;
 use memry_core::storage::repositories::sync_items::{self, InboundRecord};
+use rusqlite::trace::{TraceEvent, TraceEventCodes};
 use rusqlite::{Connection, params};
 
 const NOW: i64 = 1_760_000_000_000;
@@ -347,4 +351,34 @@ fn upsert_re_indexes_one_capture_and_delete_and_clear_drop_it() {
     assert_eq!(fts_rows(&index), 0, "a deleted capture is not indexed");
     fts_inbox::upsert(&data, &index, "missing").expect("an unknown id indexes nothing");
     assert_eq!(fts_rows(&index), 0);
+}
+
+static ROW_DELETES: AtomicUsize = AtomicUsize::new(0);
+
+fn count_row_deletes(event: TraceEvent<'_>) {
+    if let TraceEvent::Stmt(_, sql) = event
+        && sql.contains("DELETE FROM fts_inbox WHERE id")
+    {
+        ROW_DELETES.fetch_add(1, Ordering::SeqCst);
+    }
+}
+
+/// A refill after `clear` writes into an empty table, so it deletes no row by id:
+/// `fts_inbox.id` is unindexed and each such delete scans the table.
+#[test]
+fn a_refill_after_clear_deletes_no_row_by_id() {
+    let (data, index) = databases();
+    for at in 0..20 {
+        capture(&data, &format!("c{at}"), r#"{"title":"Heron"}"#, NOW);
+    }
+    reindex(&data, &index, NOW);
+    fts_inbox::clear(&index).expect("clear");
+
+    ROW_DELETES.store(0, Ordering::SeqCst);
+    index.trace_v2(TraceEventCodes::SQLITE_TRACE_STMT, Some(count_row_deletes));
+    reindex(&data, &index, NOW + 1);
+    index.trace_v2(TraceEventCodes::empty(), None);
+
+    assert_eq!(fts_rows(&index), 20);
+    assert_eq!(ROW_DELETES.load(Ordering::SeqCst), 0);
 }

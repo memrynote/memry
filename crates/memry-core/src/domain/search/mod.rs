@@ -183,14 +183,11 @@ pub fn search(
     limit: usize,
 ) -> Result<Groups, StorageError> {
     let mut groups = Groups::default();
-    let Some(parsed) = query::parse(query) else {
-        return Ok(groups);
-    };
     for kind in SearchType::ALL
         .into_iter()
         .filter(|kind| filter.wants(*kind))
     {
-        let hits = search_type(data, index, query, &parsed, filter, kind, limit)?;
+        let hits = search_type(data, index, query, filter, kind, None, limit)?;
         *match kind {
             SearchType::Note => &mut groups.notes,
             SearchType::Journal => &mut groups.journals,
@@ -204,19 +201,29 @@ pub fn search(
 /// One group: the index's hits the filter keeps, then fuzzy title matches
 /// when fewer than three are left, then, for notes and journals, alias
 /// matches. A query with operators or a quoted phrase takes the index's hits
-/// alone.
-fn search_type(
+/// alone, and one with no searchable term finds nothing.
+///
+/// `only`, when set, holds the ids the group may return. Unlike the filter's
+/// date and tags it narrows the index query itself, so `limit` counts the rows
+/// it keeps (desktop's note file type filter, `search.ts:93-101,120`).
+pub(super) fn search_type(
     data: &Connection,
     index: &Connection,
     raw: &str,
-    query: &query::FtsQuery,
     filter: &SearchFilter,
     kind: SearchType,
+    only: Option<&HashSet<String>>,
     limit: usize,
 ) -> Result<Vec<SearchHit>, StorageError> {
+    let Some(query) = query::parse(raw) else {
+        return Ok(Vec::new());
+    };
     let kept = filter.kept(data, kind)?;
-    let keeps = |id: &str| kept.as_ref().is_none_or(|kept| kept.contains(id));
-    let mut hits = body_hits(data, index, query, kind, filter.fetch_limit(limit))?;
+    let keeps = |id: &str| {
+        kept.as_ref().is_none_or(|kept| kept.contains(id))
+            && only.is_none_or(|only| only.contains(id))
+    };
+    let mut hits = body_hits(data, index, &query, kind, only, filter.fetch_limit(limit))?;
     hits.retain(|hit| keeps(&hit.id));
     hits.truncate(limit);
     if query.explicit {
@@ -257,12 +264,14 @@ fn item_type(kind: SearchType) -> &'static str {
     }
 }
 
-/// The index's best `limit` hits of `kind` that `data.db` holds live.
+/// The index's best `limit` hits of `kind` that `data.db` holds live, among
+/// `only` when it is set.
 fn body_hits(
     data: &Connection,
     index: &Connection,
     query: &query::FtsQuery,
     kind: SearchType,
+    only: Option<&HashSet<String>>,
     limit: usize,
 ) -> Result<Vec<SearchHit>, StorageError> {
     let table = table(kind);
@@ -274,7 +283,7 @@ fn body_hits(
     let limit = limit as i64;
     let mut parameters: Vec<&dyn ToSql> = vec![&query.expression, &limit];
     let journals;
-    let (mut only, mut phrase_first) = (String::new(), "");
+    let (mut narrow, mut phrase_first) = (String::new(), "");
     if matches!(kind, SearchType::Note | SearchType::Journal) {
         // `fts_notes` holds both, told apart by the live journal days.
         journals = serde_json::to_string(&live_ids(data, "journal")?).map_err(|error| {
@@ -284,7 +293,7 @@ fn body_hits(
         })?;
         parameters.push(&journals);
         let not = if kind == SearchType::Note { "NOT" } else { "" };
-        only = format!(" AND id {not} IN (SELECT value FROM json_each(?3))");
+        narrow = format!(" AND id {not} IN (SELECT value FROM json_each(?3))");
         // Rows holding the words side by side first. This only reorders the
         // matching rows; which rows match is the expression's alone.
         if let Some(phrase) = &query.phrase {
@@ -292,9 +301,20 @@ fn body_hits(
             phrase_first = "id NOT IN (SELECT id FROM fts_notes WHERE fts_notes MATCH ?4),";
         }
     }
+    let eligible = only
+        .map(serde_json::to_string)
+        .transpose()
+        .map_err(|error| StorageError::Failed {
+            what: error.to_string(),
+        })?;
+    if let Some(eligible) = &eligible {
+        parameters.push(eligible);
+        let at = parameters.len();
+        narrow.push_str(&format!(" AND id IN (SELECT value FROM json_each(?{at}))"));
+    }
     let sql = format!(
         "SELECT id, title, {rank} AS score, {}
-         FROM {table} WHERE {table} MATCH ?1{only} ORDER BY {phrase_first} score LIMIT ?2",
+         FROM {table} WHERE {table} MATCH ?1{narrow} ORDER BY {phrase_first} score LIMIT ?2",
         snippet::snippet_sql(table, 2)
     );
     let mut hits = Vec::new();
