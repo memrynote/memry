@@ -8971,8 +8971,7 @@ public protocol SemanticSearchProtocol: AnyObject, Sendable {
     func status(vault: Vault)  -> SemanticStatus
     
     /**
-     * At most one window of inference, on the blocking pool, with no
-     * database lock held. Commits the note when its last window is done.
+     * Runs at most one window of inference per call.
      */
     func embedStep(vault: Vault, conditions: StepConditions) async throws  -> StepOutcome
     
@@ -9125,8 +9124,7 @@ open func status(vault: Vault) -> SemanticStatus  {
 }
     
     /**
-     * At most one window of inference, on the blocking pool, with no
-     * database lock held. Commits the note when its last window is done.
+     * Runs at most one window of inference per call.
      */
 open func embedStep(vault: Vault, conditions: StepConditions)async throws  -> StepOutcome  {
     return
@@ -32126,12 +32124,12 @@ public func FfiConverterTypeSemanticError_lower(_ value: SemanticError) -> RustB
 public enum StepOutcome: Equatable, Hashable {
     
     /**
-     * One window ran or one note committed. Sleep `rest_ms`, then step again.
+     * Not done yet. Sleep `rest_ms`, then step again.
      */
     case embedded(embedded: UInt32, total: UInt32, restMs: UInt32
     )
     /**
-     * Every live note has current vectors.
+     * Nothing is due: every live note is current or skipped after a failure.
      */
     case finished(embedded: UInt32, total: UInt32
     )
@@ -37452,7 +37450,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_semanticsearch_status() != 37333) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_semanticsearch_embed_step() != 56202) {
+    if (uniffi_memry_core_checksum_method_semanticsearch_embed_step() != 55519) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_semanticsearch_release() != 26489) {
