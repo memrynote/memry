@@ -239,6 +239,8 @@ private struct TaskSearchFake: VaultSearching {
         SearchGroups(notes: [], journals: [], tasks: tasks, inbox: [])
     }
 
+    func semanticModelLoaded() async -> Bool { false }
+
     func reindex() async throws {}
 
     func backlinks(noteId: String, order: BacklinkOrder) async throws -> [Backlink] { [] }

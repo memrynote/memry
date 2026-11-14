@@ -16,7 +16,7 @@ mod model;
 pub(crate) mod queue;
 
 pub use embedder::{DIMENSION, Embed, Threads, Vector, load, truncate_renormalize};
-pub use host::{Loader, ModelHost, ReleaseReason, WindowOutcome};
+pub use host::{Loader, ModelHost, QueryVector, ReleaseReason, WindowOutcome};
 pub use model::{ModelDir, VerifiedModel};
 
 use crate::api::errors::StorageError;
