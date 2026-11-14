@@ -343,3 +343,39 @@ test('a hover reaches its target when the real pointer moved over another elemen
 
   assert.deepEqual(overs, ['parked', 'target'])
 })
+
+for (const windowFocused of [true, false]) {
+  test(`fill and blur fire one focusin and one focusout ${windowFocused ? 'in a focused window' : 'when the window lacks system focus'}`, () => {
+    const { dom, pw } = page('<form id="f"><input id="key"></form>')
+    const { fill, focus, blur } = pw
+    const win = dom.window
+    if (!windowFocused) {
+      // Blink moves the focus but fires no focus events while its window is in the background.
+      const held = (event) => event.stopImmediatePropagation()
+      for (const method of ['focus', 'blur']) {
+        const native = win.HTMLElement.prototype[method]
+        win.HTMLElement.prototype[method] = function () {
+          for (const type of ['focus', 'focusin', 'blur', 'focusout'])
+            win.addEventListener(type, held, true)
+          try {
+            native.call(this)
+          } finally {
+            for (const type of ['focus', 'focusin', 'blur', 'focusout'])
+              win.removeEventListener(type, held, true)
+          }
+        }
+      }
+    }
+    const events = []
+    const form = win.document.getElementById('f')
+    for (const type of ['focusin', 'focusout']) form.addEventListener(type, () => events.push(type))
+    const spec = { steps: [{ kind: 'css', selector: '#key' }] }
+
+    assert.equal(fill(spec, 'typed').done, true)
+    assert.equal(focus(spec).done, true)
+    assert.equal(blur(spec).done, true)
+    assert.equal(blur(spec).done, true)
+
+    assert.deepEqual(events, ['focusin', 'focusout'])
+  })
+}

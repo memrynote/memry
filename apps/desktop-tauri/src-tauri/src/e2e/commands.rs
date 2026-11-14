@@ -17,6 +17,7 @@ macro_rules! e2e_commands {
 }
 
 e2e_commands! {
+    ai => [e2e_ai_inline_seed_row, e2e_ai_inline_key_state],
     app => [e2e_app_info, e2e_request_quit, e2e_quit_on_page_start, e2e_emit],
     clipboard => [
         e2e_clipboard_read,
