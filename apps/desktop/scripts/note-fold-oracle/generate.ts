@@ -17,6 +17,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { buildDoc } from './doc'
+import { buildModel } from './model'
 import { buildText } from './text'
 
 export const NOTE_FOLD_ZONE = 'UTC'
@@ -43,6 +44,12 @@ const FILES: VectorFile[] = [
     source: 'src/main/note-fold/{engine,engine-inline,engine-morph,engine-tokens,segmenter}.ts',
     note: 'The local fold of a note: what fold-service.ts get answers with no model lines. Inline date tokens format in timeZone.',
     build: buildDoc
+  },
+  {
+    path: 'note-fold-model.json',
+    source: 'src/main/note-fold/{engine,engine-inline,engine-morph,engine-tokens,segmenter}.ts',
+    note: 'The model levels of the fold: fallback lines, model lines of a fake reply, word maps, prompts and reply validation. Inline date tokens format in timeZone.',
+    build: buildModel
   }
 ]
 

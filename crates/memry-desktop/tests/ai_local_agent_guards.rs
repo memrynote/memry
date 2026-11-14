@@ -215,6 +215,10 @@ async fn cancelling_while_the_probe_runs_ends_the_run_and_closes_the_probe_conne
         .await
         .expect("the server sees the probe connection close")
         .expect("the server task ran");
+    assert!(
+        !agent.probe_in_flight(),
+        "the shared slot let go of the probe and its copy of the key"
+    );
     drop(agent);
 }
 

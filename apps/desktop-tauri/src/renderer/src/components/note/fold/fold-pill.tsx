@@ -1,12 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useT } from '@memry/i18n/renderer'
-import type { FoldLayers, FoldLevel } from '@memry/contracts/note-fold'
+import { FOLD_LEVELS, type FoldLayers, type FoldLevel } from '@memry/contracts/note-fold'
 import { Check, Copy } from '@/lib/icons'
 import { createLogger } from '@/lib/logger'
 import { isMac } from '@/lib/shortcut-catalog'
 import { cn } from '@/lib/utils'
 import { levelAvailability } from './fold-display'
-import { LOCAL_FOLD_LEVELS } from './fold-local'
 import { createWheelStepper } from './fold-wheel'
 
 const log = createLogger('FoldPill')
@@ -40,8 +39,8 @@ function useCaption({ layers, level, openCount }: FoldPillProps): string | null 
 }
 
 /**
- * Bottom pill, the folded view's level control: one segment per level this app
- * folds to (Full and Brief), a click switches.
+ * Bottom pill, the folded view's level control: one segment per level, a click
+ * switches. A level the agent cannot write is dimmed, and the line above says why.
  */
 export function FoldPill(props: FoldPillProps) {
   const { layers, level, onSelectLevel, onStep, onRetry, onCopy } = props
@@ -110,7 +109,7 @@ export function FoldPill(props: FoldPillProps) {
             style={{ left: 0, width: thumb.width, transform: `translateX(${thumb.left}px)` }}
           />
         )}
-        {LOCAL_FOLD_LEVELS.map((entry) => {
+        {FOLD_LEVELS.map((entry) => {
           const availability = levelAvailability(layers, entry)
           const active = entry === level
           return (

@@ -4,8 +4,9 @@
 //!
 //! - **Widgets that are present and not JSON array text are skipped** before
 //!   the clock is touched (`:40-47`), so a later readable version of the board
-//!   still wins. A `null` or a value that is not text is skipped too, as
-//!   desktop's schema rejects it (`apps/desktop/src/main/sync/apply-item.ts:166-176`).
+//!   still wins. A `null` or a value that is not text is refused, as
+//!   desktop's schema rejects it (`apps/desktop/src/main/sync/apply-item.ts:166-176`),
+//!   and ledgered for a later build ([`crate::sync::refused_items`]).
 //! - **A create needs a non-empty `name`** (`:85-91`).
 //! - **§6.3.1's gate decides**; a concurrent clock is last-writer-wins under the
 //!   merged clock (`:53-60`).
@@ -33,7 +34,7 @@ use crate::storage::repositories::projectors::home_pages::is_readable_cover;
 
 use super::{ITEM_TYPE, is_widgets_blob};
 
-const KEPT: Kept = Kept {
+pub(crate) const KEPT: Kept = Kept {
     not_null: &[
         "name",
         "position",
@@ -62,7 +63,9 @@ pub fn apply_remote(
     match remote_object.get("widgets") {
         None => {}
         Some(Value::String(text)) if is_widgets_blob(text) => {}
-        Some(_) => return Ok(Inbound::Skipped),
+        Some(Value::String(_)) => return Ok(Inbound::Skipped),
+        // Not text: desktop's schema refuses it, and the pull ledgers it.
+        Some(_) => return Ok(Inbound::Refused),
     }
     let local = desktop_records::stored(conn, ITEM_TYPE, &record.item_id, true)?;
     let Some(local) = local else {
@@ -73,7 +76,7 @@ pub fn apply_remote(
         if !named {
             return Ok(Inbound::Skipped);
         }
-        return desktop_records::apply_kept(conn, record, &remote, None, &KEPT, Vec::new(), now_ms);
+        return desktop_records::apply_kept(conn, record, &remote, None, Vec::new(), now_ms);
     };
     // An unreadable cover is absent: the local one stays.
     let extra = match remote_object.get("cover") {
@@ -85,5 +88,5 @@ pub fn apply_remote(
         }
         _ => Vec::new(),
     };
-    desktop_records::apply_kept(conn, record, &remote, Some(&local), &KEPT, extra, now_ms)
+    desktop_records::apply_kept(conn, record, &remote, Some(&local), extra, now_ms)
 }

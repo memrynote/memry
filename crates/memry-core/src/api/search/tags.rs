@@ -1,6 +1,8 @@
 //! The desktop's tag reads ([`tag_reads`]): the index's measure of each file beside the
 //! records. Not on the FFI surface: iOS keeps no files.
 
+use std::collections::HashMap;
+
 use crate::api::errors::StorageError;
 use crate::domain::note_list::NoteSort;
 use crate::domain::note_stats::{self, FileTags};
@@ -26,6 +28,19 @@ impl Search {
         let files = self.index.read_blocking(note_stats::file_tags)?;
         self.data
             .read_blocking(move |data| tag_reads::used(data, &files, only.as_deref()))
+    }
+
+    /// The tags of each filed note or journal day among `ids`, by id ([`tag_reads::of_notes`]).
+    pub fn tags_of_notes(
+        &self,
+        ids: Vec<String>,
+    ) -> Result<HashMap<String, Vec<String>>, StorageError> {
+        let index = self.index.clone();
+        self.data.read_blocking(move |data| {
+            index.read_blocking(|index| {
+                tag_reads::of_notes(data, index, ids.iter().map(String::as_str))
+            })
+        })
     }
 
     /// The colour of `tag` and the notes and journal days carrying it ([`tag_reads::tagged`]).

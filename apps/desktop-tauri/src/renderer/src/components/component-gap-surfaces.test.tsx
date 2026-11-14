@@ -280,6 +280,8 @@ describe('major renderer gap surfaces', () => {
         noteId: 'note-b',
         noteTitle: 'Beta',
         date: new Date('2026-05-08'),
+        sourceJournalDate: null,
+        sourceTags: [],
         mentions: [
           { id: 'm1', snippet: 'Mentions [[Current]] once', linkStart: 9, linkEnd: 20 },
           { id: 'm2', snippet: 'Again [[Current]]', linkStart: 6, linkEnd: 17 }
@@ -290,6 +292,8 @@ describe('major renderer gap surfaces', () => {
         noteId: 'note-a',
         noteTitle: 'Alpha',
         date: new Date('2026-05-09'),
+        sourceJournalDate: null,
+        sourceTags: [],
         mentions: [{ id: 'm3', snippet: 'Alpha [[Current]]', linkStart: 6, linkEnd: 17 }]
       },
       {
@@ -297,6 +301,8 @@ describe('major renderer gap surfaces', () => {
         noteId: 'note-c',
         noteTitle: 'Gamma',
         date: new Date('2026-05-07'),
+        sourceJournalDate: null,
+        sourceTags: [],
         mentions: [{ id: 'm4', snippet: 'Gamma [[Current]]', linkStart: 6, linkEnd: 17 }]
       }
     ]

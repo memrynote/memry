@@ -139,6 +139,10 @@ pub enum Inbound {
     Merged { conflicted_fields: Vec<String> },
     /// §13.2 rule 5: stored, flagged, never silently skipped.
     Corrupt { reason: String },
+    /// The type's schema refused the remote (desktop's `schema_invalid`):
+    /// nothing is written, and the pull records it in the refused-items
+    /// ledger for a later build ([`crate::sync::refused_items`], §13.2 rule 5).
+    Refused,
 }
 
 /// Creates a task, its payload and its outbox row.

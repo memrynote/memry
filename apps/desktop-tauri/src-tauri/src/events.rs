@@ -96,6 +96,14 @@ pub struct CustomIconsUpdatedEvent {
     pub id: String,
 }
 
+/// A note's fold changed: a model wrote its chunks, its run failed, or the AI settings changed
+/// (`note-fold:updated`). The renderer fetches the fold again.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct NoteFoldUpdatedEvent {
+    pub note_id: String,
+}
+
 /// A day's entry was made on its first write, or its file appeared outside the app
 /// (`journal:entryCreated`).
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]

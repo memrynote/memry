@@ -1,14 +1,26 @@
 import { FileText, FileType2, Image, Music, Video } from '@/lib/icons'
 import { getExtension } from '@memry/shared/file-types'
+import { pairedFolderPath } from '@memry/shared/folder-note'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { TagGlyph } from '@/features/tag-fields/object-avatar'
 import { useOptionalObjectIdentity } from '@/features/tag-fields/use-optional-object-identity'
 import { PageJournalIcon } from '@/lib/icons/page-icons'
 import type { FolderInfo } from '../../../preload/index.d'
 import type { SidebarSortMode } from '@memry/contracts/sidebar-sort'
-import { compareNotes, compareFolders } from './notes-tree-sort'
+import {
+  compareNotes,
+  compareFolders,
+  mixedOrderLevels,
+  mixedOrderMarkerPath
+} from './notes-tree-sort'
 import type { NoteListItem } from '@/hooks/use-notes-query'
-import type { FolderNode, TreeStructure } from '@/lib/virtualized-tree-utils'
+import {
+  folderEntryPath,
+  orderFolderEntries,
+  type FolderNode,
+  type TreeStructure
+} from '@/lib/virtualized-tree-utils'
+import type { DropPosition } from '@/lib/tree-drop-position'
 
 export type { FolderNode, TreeStructure }
 
@@ -83,6 +95,59 @@ export function getFoldersInParent(tree: TreeStructure, parentPath: string): str
 
   const parentFolder = findFolder(tree.folders, parentPath)
   return parentFolder ? parentFolder.children.map((f) => f.path) : []
+}
+
+/**
+ * The `notesService.reorder` paths for dropping `draggedPath` before or after
+ * `targetPath`, two items of the level under `parentPath`. Null when the drop
+ * leaves the level as it is or either item is not in it.
+ *
+ * Two notes or two folders on a level that is still grouped reorder their own
+ * group only, so `sidebar.notesFirst` keeps deciding which group comes first.
+ * A drop across the kinds, or any drop on a level already mixed, writes the
+ * whole level as one list behind its mixed-order marker.
+ */
+export function planLevelReorder(
+  tree: TreeStructure,
+  parentPath: string,
+  draggedPath: string,
+  targetPath: string,
+  position: DropPosition
+): string[] | null {
+  if (position === 'inside') return null
+
+  const folder = parentPath === '' ? null : findFolderNode(tree.folders, parentPath)
+  if (parentPath !== '' && !folder) return null
+  const entries = orderFolderEntries(
+    tree,
+    parentPath,
+    folder ? folder.children : tree.folders,
+    folder ? folder.notes : tree.rootNotes
+  )
+
+  const dragged = entries.find((entry) => folderEntryPath(entry) === draggedPath)
+  const target = entries.find((entry) => folderEntryPath(entry) === targetPath)
+  if (!dragged || !target) return null
+
+  const mixed = dragged.type !== target.type || !!tree.mixedOrder?.levels.has(parentPath)
+  const currentPaths = entries
+    .filter((entry) => mixed || entry.type === dragged.type)
+    .map(folderEntryPath)
+
+  const nextPaths = currentPaths.filter((path) => path !== draggedPath)
+  const targetIndex = nextPaths.indexOf(targetPath)
+  nextPaths.splice(position === 'after' ? targetIndex + 1 : targetIndex, 0, draggedPath)
+
+  if (nextPaths.every((path, i) => path === currentPaths[i])) return null
+  return mixed ? [mixedOrderMarkerPath(parentPath), ...nextPaths] : nextPaths
+}
+
+function findFolderNode(folders: FolderNode[], path: string): FolderNode | null {
+  for (const folder of folders) {
+    if (folder.path === path) return folder
+    if (path.startsWith(`${folder.path}/`)) return findFolderNode(folder.children, path)
+  }
+  return null
 }
 
 /**
@@ -214,7 +279,10 @@ export function buildTreeFromNotes(
   return {
     folders: rootFolders,
     rootNotes,
-    notesFirst
+    notesFirst,
+    ...(sortMode === 'manual' && {
+      mixedOrder: { levels: mixedOrderLevels(positions), positions }
+    })
   }
 }
 
@@ -244,6 +312,59 @@ export function hideVaultFiles(tree: TreeStructure): TreeStructure {
     folders: tree.folders.map(filterFolder),
     rootNotes: tree.rootNotes.filter((note) => !isVaultFile(note))
   }
+}
+
+/**
+ * The tree with every note `X.md` folded into its sibling folder `X/`, so the
+ * sidebar draws the two as one row: the label opens the note, the chevron
+ * opens the folder. `pairedFolderPath` owns which note pairs with which
+ * folder. Returns new nodes; `tree` is not mutated.
+ */
+export function pairFolderNotes(tree: TreeStructure): TreeStructure {
+  const pairLevel = (
+    folders: FolderNode[],
+    notes: NoteListItem[]
+  ): { folders: FolderNode[]; notes: NoteListItem[] } => {
+    const notesByStem = new Map<string, NoteListItem>()
+    for (const note of notes) {
+      const stem = pairedFolderPath(note.path, note.fileType, !!note.journalDate)
+      if (stem !== null && !notesByStem.has(stem)) notesByStem.set(stem, note)
+    }
+
+    const pairedIds = new Set<string>()
+    const pairedFolders = folders.map((folder): FolderNode => {
+      const inner = pairLevel(folder.children, folder.notes)
+      const note = notesByStem.get(folder.path)
+      if (note) pairedIds.add(note.id)
+      return { ...folder, children: inner.folders, notes: inner.notes, ...(note ? { note } : {}) }
+    })
+
+    return { folders: pairedFolders, notes: notes.filter((note) => !pairedIds.has(note.id)) }
+  }
+
+  const root = pairLevel(tree.folders, tree.rootNotes)
+  return { ...tree, folders: root.folders, rootNotes: root.notes }
+}
+
+/** Folder path to the note `pairFolderNotes` folded into it. */
+export function collectPairedNotes(tree: TreeStructure): Map<string, NoteListItem> {
+  const pairs = new Map<string, NoteListItem>()
+  const walk = (folders: FolderNode[]): void => {
+    for (const folder of folders) {
+      if (folder.note) pairs.set(folder.path, folder.note)
+      walk(folder.children)
+    }
+  }
+  walk(tree.folders)
+  return pairs
+}
+
+/** The tree row that stands for a note: its own row, or the folder it is paired with. */
+export function treeRowIdForNote(pairedNotes: Map<string, NoteListItem>, noteId: string): string {
+  for (const [folderPath, note] of pairedNotes) {
+    if (note.id === noteId) return `folder-${folderPath}`
+  }
+  return noteId
 }
 
 export function collectAllFolderIds(tree: TreeStructure): string[] {
