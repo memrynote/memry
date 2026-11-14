@@ -12,6 +12,7 @@ import {
 import type { TreeStructure } from '@/lib/virtualized-tree-utils'
 import { useSidebarTreeExpanded } from '@/hooks/use-sidebar-tree-expanded'
 import { isRevealed } from '@tests/utils/reveal'
+import { MEMRY_NOTE_DRAG_MIME } from '@/lib/drag-mime'
 
 // The reveal action's label branches on platform. Pin macOS so these
 // assertions read the Finder wording whatever host the suite runs on.
@@ -117,15 +118,18 @@ vi.mock('@/components/icon-picker-button', () => ({
     hasIcon,
     onIconChange,
     onPickerOpenChange,
-    ariaLabel
+    ariaLabel,
+    leading
   }: {
     children: React.ReactNode
     hasIcon: boolean
     onIconChange: (icon: string | null) => void
     onPickerOpenChange?: (open: boolean) => void
     ariaLabel: string
+    leading?: React.ReactNode
   }) => (
     <>
+      {leading}
       <button
         type="button"
         aria-label={ariaLabel}
@@ -1070,6 +1074,74 @@ describe('VirtualizedNotesTree', () => {
       fireEvent.keyDown(row('Root'), { key: 'ArrowRight' })
       fireEvent.keyDown(row('Root'), { key: 'ArrowLeft' })
       expect(props.onSelectionChange).not.toHaveBeenCalled()
+    })
+  })
+  // `Page.md` beside `Page/`: one row whose label opens the note and whose
+  // chevron opens the folder.
+  describe('a note paired with its folder', () => {
+    const pageNote = note('note-page', 'Page.md')
+    const childNote = note('note-child', 'Page/Child.md')
+    const pairedTree: TreeStructure = {
+      folders: [
+        { name: 'Page', path: 'Page', icon: null, children: [], notes: [childNote], note: pageNote }
+      ],
+      rootNotes: [rootNote]
+    }
+    const pairedNoteMap = new Map([
+      [pageNote.id, pageNote],
+      [childNote.id, childNote],
+      [rootNote.id, rootNote]
+    ])
+    const renderPaired = (
+      overrides: Partial<React.ComponentProps<typeof VirtualizedNotesTree>> = {}
+    ) => renderTree({ tree: pairedTree, noteMap: pairedNoteMap, ...overrides })
+    const pageRow = () => screen.getByText('Page').closest('[role="treeitem"]') as HTMLElement
+
+    it('selects the row on a label click without opening the folder; the chevron opens it', async () => {
+      const user = userEvent.setup()
+      const props = renderPaired()
+
+      await user.click(screen.getByText('Page'))
+      expect(props.onSelectionChange).toHaveBeenLastCalledWith(['folder-Page'])
+      expect(screen.queryByText('Child')).not.toBeInTheDocument()
+
+      await user.click(within(pageRow()).getByRole('button', { name: /expand folder/i }))
+      expect(screen.getByText('Child')).toBeInTheDocument()
+    })
+
+    it('opens the note on Enter and drags it out as the note', () => {
+      renderPaired()
+
+      fireEvent.keyDown(pageRow(), { key: 'Enter' })
+      expect(mocks.openTab.mock.lastCall?.[0]).toMatchObject({
+        type: 'note',
+        entityId: 'note-page'
+      })
+
+      const dataTransfer = { effectAllowed: '', types: [] as string[], setData: vi.fn() }
+      fireEvent.dragStart(pageRow(), { dataTransfer })
+      expect(dataTransfer.setData).toHaveBeenCalledWith('text/plain', 'folder-Page')
+      expect(dataTransfer.setData).toHaveBeenCalledWith(MEMRY_NOTE_DRAG_MIME, 'note-page')
+    })
+
+    // A label click opens the note, so the row's menu has to reach the folder view.
+    it('opens the folder view from the row menu', async () => {
+      const user = userEvent.setup()
+      renderPaired()
+
+      await user.click(screen.getByRole('button', { name: 'Open Folder View' }))
+      expect(mocks.openTab.mock.lastCall?.[0]).toMatchObject({ type: 'folder', entityId: 'Page' })
+    })
+
+    it('reveals the note on its folder row', async () => {
+      const actionsRef = createRef<VirtualizedTreeActions | null>()
+      renderPaired({ actionsRef })
+
+      act(() => actionsRef.current?.revealNote('note-page'))
+      await act(async () => {
+        await new Promise((resolve) => requestAnimationFrame(resolve))
+      })
+      expect(mocks.scrollToIndex).toHaveBeenCalledWith(0, { align: 'center' })
     })
   })
 })
