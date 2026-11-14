@@ -3,7 +3,8 @@
 //! rule.
 //!
 //! - **No scene, no apply** (D5). A payload without a string `scene` never
-//!   overwrites the local drawing.
+//!   overwrites the local drawing. A missing `scene` is skipped; one that is
+//!   not text fails desktop's schema and is refused, so the pull ledgers it.
 //! - **A create needs a `vaultId`**, or desktop would never list it.
 //! - **§6.3.1's gate decides**, through [`task_merge::document_gate`], so the
 //!   equal-clock identical skip (§6.5.2 P4) is the one every type uses.
@@ -55,8 +56,12 @@ pub fn apply_remote(
         Ok(remote) if record.deleted_at.is_none() => remote,
         _ => return task_merge::wholesale(conn, record, now_ms),
     };
-    let Some(remote_scene) = remote.object().get("scene").and_then(Value::as_str) else {
-        return Ok(Inbound::Skipped);
+    let remote_scene = match remote.object().get("scene") {
+        Some(Value::String(scene)) => scene.as_str(),
+        None => return Ok(Inbound::Skipped),
+        // Desktop's schema has `scene: z.string().optional()`: a wrong type is
+        // `schema_invalid`, which the pull ledgers for a later build.
+        Some(_) => return Ok(Inbound::Refused),
     };
 
     let tx = conn.unchecked_transaction().map_err(failed)?;
@@ -158,6 +163,7 @@ fn finish(
     Ok(match outcome {
         ApplyOutcome::Applied => Inbound::Applied,
         ApplyOutcome::Corrupt { reason } => Inbound::Corrupt { reason },
+        ApplyOutcome::Refused => Inbound::Refused,
         // `task_activity` is the only expiring type and the store has no skip.
         ApplyOutcome::Skipped | ApplyOutcome::Expired => Inbound::Skipped,
     })

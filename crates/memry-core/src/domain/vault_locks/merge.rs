@@ -4,7 +4,9 @@
 //!
 //! - **A kind this build does not know is skipped**, and the local record left
 //!   alone: guessing what it locks could block writes or leave a target the
-//!   peer meant to protect writable. An absent `targetKind` is not unknown.
+//!   peer meant to protect writable. An absent `targetKind` is not unknown;
+//!   one that is not text fails desktop's schema and is refused, so the pull
+//!   ledgers it ([`crate::sync::refused_items`]).
 //! - **A create needs `targetKind`, `target` and `locked`**: every payload
 //!   field is optional, so `{}` parses, and a lock row needs all three.
 //! - **§6.3.1's gate decides**, through [`task_merge::document_gate`]. A
@@ -45,10 +47,11 @@ pub fn apply_remote(
         Ok(remote) if record.deleted_at.is_none() => remote,
         _ => return task_merge::wholesale(conn, record, now_ms),
     };
-    if let Some(Value::String(kind)) = remote.object().get("targetKind")
-        && !is_known_kind(kind)
-    {
-        return Ok(Inbound::Skipped);
+    match remote.object().get("targetKind") {
+        Some(Value::String(kind)) if !is_known_kind(kind) => return Ok(Inbound::Skipped),
+        Some(Value::String(_)) | None => {}
+        // Not text: desktop's schema refuses it, and the pull ledgers it.
+        Some(_) => return Ok(Inbound::Refused),
     }
     let local = sync_items::load(conn, ITEM_TYPE, &record.item_id)?
         .filter(|row| row.deleted_at.is_none())

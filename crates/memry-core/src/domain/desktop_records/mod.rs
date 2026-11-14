@@ -2,10 +2,12 @@
 //! #3533): one whole-record clock, a desktop handler that keeps some local
 //! keys over a newer remote, and local writes that tick that clock.
 //!
-//! Inbound, [`apply_kept`] first skips a remote that fails desktop's schema (a
+//! Inbound, [`apply_kept`] first refuses a remote that fails desktop's schema (a
 //! schema key of the wrong type, a clock tick that is not a safe non-negative
 //! integer, or a `null` in [`Kept::not_null`]), and [`unreadable`] a live
-//! remote that is not an object over a local row; then [`apply_kept`] is
+//! remote that is not an object over a local row: [`Inbound::Refused`] leaves
+//! the local row as it is and the pull records the record in
+//! [`crate::sync::refused_items`] for a later build; then [`apply_kept`] is
 //! §6.3.1's document gate followed by the remote
 //! payload with the [`Kept`] keys taken back from the local record, under the
 //! merged clock on a concurrent branch (each handler's "last write wins").
@@ -67,8 +69,11 @@ const MAX_SAFE_INTEGER: u64 = (1 << 53) - 1;
 /// A live record whose payload is not a JSON object. Desktop refuses it
 /// (`parse_error` or `schema_invalid`,
 /// `apps/desktop/src/main/sync/apply-item.ts:155-176`),
-/// so a local row stays as it is; with none, it is stored as corrupt. A delete
-/// is the tombstone path unchanged.
+/// so a local row stays as it is; with none, it is stored as corrupt. JSON
+/// that is not an object is desktop's `schema_invalid`, which its ledger keeps
+/// (`apps/desktop/src/main/sync/engine/pull-coordinator.ts:684`), so it is
+/// [`Inbound::Refused`]; text that is not JSON is `parse_error`, a plain skip.
+/// A delete is the tombstone path unchanged.
 pub(crate) fn unreadable(
     conn: &Connection,
     record: &InboundRecord,
@@ -77,7 +82,12 @@ pub(crate) fn unreadable(
     if record.deleted_at.is_none()
         && sync_items::load(conn, &record.item_type, &record.item_id)?.is_some()
     {
-        return Ok(Inbound::Skipped);
+        let json = serde_json::from_str::<Value>(&record.payload_json).is_ok();
+        return Ok(if json {
+            Inbound::Refused
+        } else {
+            Inbound::Skipped
+        });
     }
     task_merge::wholesale(conn, record, now_ms)
 }
@@ -97,8 +107,9 @@ pub(crate) fn apply_kept(
     // Desktop parses the remote with the type's schema before its handler
     // reads the local row, and refuses the whole record on a schema key of the
     // wrong type or a `null` the schema has no room for (`schema_invalid`,
-    // `apps/desktop/src/main/sync/apply-item.ts:166-176`). Skipped here before
-    // the gate, so the local record stays as it is.
+    // `apps/desktop/src/main/sync/apply-item.ts:166-176`). Refused here before
+    // the gate, so the local record stays as it is, and ledgered by the pull
+    // as desktop's `SchemaInvalidLedger` does (`pull-coordinator.ts:684`).
     debug_assert!(
         kept.coalesce.iter().all(|key| kept.not_null.contains(key)),
         "every coalesce key is in not_null"
@@ -115,7 +126,7 @@ pub(crate) fn apply_kept(
             .iter()
             .any(|key| remote_object.get(*key).is_some_and(Value::is_null));
     if refused {
-        return Ok(Inbound::Skipped);
+        return Ok(Inbound::Refused);
     }
     let merged_clock = match task_merge::document_gate(conn, record)? {
         Gate::Skip => return Ok(Inbound::Skipped),
