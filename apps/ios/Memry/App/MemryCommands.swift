@@ -108,11 +108,6 @@ struct MemryCommands: Commands {
         UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
             .flatMap(\.windows)
-            .contains { $0.isKeyWindow && $0.rootViewController.map(presents) == true }
-    }
-
-    @MainActor
-    private static func presents(_ controller: UIViewController) -> Bool {
-        controller.presentedViewController != nil || controller.children.contains(where: presents)
+            .contains { $0.isKeyWindow && PresentingWindow.isPresenting(over: $0) }
     }
 }
