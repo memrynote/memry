@@ -171,7 +171,11 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
         .environment(router)
         .environment(journalRouter)
         // Where the next launch continues (`LaunchSnapshot`).
-        .onChange(of: router.selectedTab) { _, tab in LaunchSnapshot.shared.setTab(tab.rawValue) }
+        .onChange(of: router.selectedTab) { _, tab in
+            LaunchSnapshot.shared.setTab(tab.rawValue)
+            // A ⌘N the Notes page never took (still loading) is dropped.
+            if tab != .notes { _ = NotesLinks.shared.takeNewNote() }
+        }
         .onChange(of: router.selectedTab, initial: true) { _, tab in tab.trackPageView() }
         .onChange(of: router.path) { _, path in LaunchSnapshot.shared.setStack("tasks", value: path) }
         .environment(\.openJournalDay, { date in journalRouter.openDay(date) })

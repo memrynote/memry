@@ -62,6 +62,21 @@ struct VaultCommandsTests {
         #expect(!tasks.takeComposerRequest())
     }
 
+    @Test func new_task_in_the_split_view_keeps_the_open_task() {
+        tasks.setTasksSplit(true)
+        tasks.path = [.projects, .task("a")]
+        commands().run(.newTask)
+        #expect(tasks.path == [.task("a")])
+        #expect(tasks.takeComposerRequest())
+    }
+
+    @Test func an_untaken_new_task_request_drops_when_the_page_changes() {
+        commands().run(.newTask)
+        tasks.selectedTab = .notes
+        tasks.selectedTab = .tasks
+        #expect(!tasks.takeComposerRequest(), "a later visit must not open the composer")
+    }
+
     @Test func today_opens_the_journal_day_from_another_page() {
         tasks.selectedTab = .notes
         commands().run(.today)
@@ -80,11 +95,26 @@ struct VaultCommandsTests {
         #expect(steps.isEmpty)
 
         tasks.selectedTab = .journal
+        journal.path = [.day("2099-03-03")]
         commands.run(.previousDay)
         commands.run(.nextDay)
         commands.run(.today)
         #expect(steps == [-1, 1])
         #expect(todays == 1, "Today on the day page replaces the day in place")
+    }
+
+    @Test func day_keys_leave_a_note_pushed_over_the_day_alone() {
+        var steps: [Int] = []
+        var todays = 0
+        let day = JournalDayCommands(step: { steps.append($0) }, today: { todays += 1 })
+        tasks.selectedTab = .journal
+        journal.path = [.day("2099-03-03"), .note("n1")]
+        let commands = commands(journalDay: day)
+        #expect(!commands.can(.previousDay), "the day under a note must not move")
+        commands.run(.previousDay)
+        commands.run(.nextDay)
+        #expect(steps.isEmpty)
+        #expect(todays == 0)
     }
 
     @Test func new_note_without_a_writer_does_nothing() {

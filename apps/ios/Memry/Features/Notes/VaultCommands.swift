@@ -27,8 +27,9 @@ struct VaultCommands {
         pages.indices.contains(number - 1) ? pages[number - 1] : nil
     }
 
+    /// The day page is on top: not covered by a note or Settings it pushed.
     private var dayShown: JournalDayCommands? {
-        tasks.selectedTab == .journal ? journalDay : nil
+        tasks.selectedTab == .journal && journal.shownDay != nil ? journalDay : nil
     }
 
     func can(_ command: AppCommand) -> Bool {

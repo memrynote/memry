@@ -49,7 +49,10 @@ final class KeyboardCommandsUITests: XCTestCase {
         let search = app.textFields["search.palette.field"]
         XCTAssertTrue(search.waitForExistence(timeout: 5), "⌘K did not open search from the editor")
         app.typeKey("2", modifierFlags: .command)
-        XCTAssertFalse(second.isSelected, "⌘2 changed the page under the search palette")
+        XCTAssertFalse(
+            second.wait(for: \.isSelected, toEqual: true, timeout: 2),
+            "⌘2 changed the page under the search palette"
+        )
         app.typeKey(".", modifierFlags: .command)
         XCTAssertTrue(search.waitForNonExistence(timeout: 5))
 
