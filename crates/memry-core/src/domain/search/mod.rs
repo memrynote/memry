@@ -79,6 +79,7 @@ mod names;
 mod query;
 pub mod recents;
 mod snippet;
+pub(crate) mod source;
 
 pub(crate) use body_cache::body_version;
 pub use filter::{ModifiedRange, SearchFilter, SearchType};

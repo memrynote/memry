@@ -10,7 +10,8 @@ use crate::api::vault::Vault;
 use crate::seams::reachability::{Reachability, Reachable};
 use crate::seams::transport::Transport;
 use crate::semantic::download::{self, DownloadEnd, DownloadError};
-use crate::semantic::{ModelDir, ModelHost, SemanticError, load};
+use crate::semantic::queue::InFlight;
+use crate::semantic::{Loader, ModelDir, ModelHost, SemanticError, load};
 use crate::storage::Db;
 use crate::storage::vector_db::{self, VectorStore};
 
@@ -77,6 +78,10 @@ pub struct SemanticSearch {
     download: tokio::sync::Mutex<()>,
     /// One `vectors.db` handle per vault directory.
     vectors: Mutex<HashMap<PathBuf, Db>>,
+    /// One embed step at a time.
+    step: tokio::sync::Mutex<()>,
+    /// The note each vault's embedder is part way through, by vault directory.
+    in_flight: Mutex<HashMap<PathBuf, InFlight>>,
 }
 
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
@@ -161,6 +166,7 @@ impl SemanticSearch {
         self.model.clear().map_err(io_failed)?;
         *lock(&self.transfer) = Transfer::Idle;
         self.host.unload();
+        lock(&self.in_flight).clear();
         lock(&self.vectors).clear();
         vector_db::open(&vault.directory().join("vectors.db"), false)?;
         Ok(())
@@ -174,21 +180,32 @@ impl SemanticSearch {
         reachability: Arc<dyn Reachability>,
     ) -> Self {
         let models = model.clone();
-        let host = ModelHost::new(Arc::new(move |threads| {
+        let load: Loader = Arc::new(move |threads| {
             let verified = models
                 .verified()
                 .filter(|_| models.opted_in())
                 .ok_or_else(|| SemanticError::inference("the model is not downloaded"))?;
             load(&verified, threads)
-        }));
+        });
+        Self::with_loader(model, transport, reachability, load)
+    }
+
+    pub(crate) fn with_loader(
+        model: ModelDir,
+        transport: Arc<dyn Transport>,
+        reachability: Arc<dyn Reachability>,
+        load: Loader,
+    ) -> Self {
         Self {
             model,
-            host,
+            host: ModelHost::new(load),
             transport,
             reachability,
             transfer: Mutex::new(Transfer::Idle),
             download: tokio::sync::Mutex::new(()),
             vectors: Mutex::new(HashMap::new()),
+            step: tokio::sync::Mutex::new(()),
+            in_flight: Mutex::new(HashMap::new()),
         }
     }
 
@@ -283,6 +300,12 @@ fn io_failed(error: std::io::Error) -> SemanticError {
     }
     .into()
 }
+
+#[path = "semantic_step.rs"]
+mod step;
+pub use crate::semantic::ReleaseReason;
+pub use crate::semantic::queue::Thermal;
+pub use step::{StepConditions, StepOutcome, StepStop};
 
 #[cfg(test)]
 #[path = "semantic_tests.rs"]

@@ -2,7 +2,10 @@
 //! peaks at 427 MB while loading (#4437 spike), so two copies never coexist.
 
 use std::panic::{AssertUnwindSafe, catch_unwind};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+
+use tokio::sync::Notify;
 
 use super::{Embed, SemanticError, Threads, Vector};
 use crate::api::runtime::runtime;
@@ -10,9 +13,26 @@ use crate::api::runtime::runtime;
 /// Builds an embedder for the given thread count. Runs on the blocking pool.
 pub type Loader = Arc<dyn Fn(Threads) -> Result<Arc<dyn Embed>, SemanticError> + Send + Sync>;
 
+/// Why the shell asks the host to let go of the model.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum ReleaseReason {
+    /// The app left the foreground. Ignored while the embedder runs.
+    Background,
+    /// The OS is short of memory. Always unloads, and stops the embedder at
+    /// its next step.
+    MemoryWarning,
+}
+
 pub struct ModelHost {
     state: Arc<Mutex<State>>,
     load: Loader,
+    /// Woken when any load ends, for a step waiting on a load it did not start.
+    loaded: Arc<Notify>,
+    /// Steps currently inside `embed_background`. A lease means "the embedder
+    /// is running", which a background release leaves alone.
+    leases: AtomicU32,
+    /// A memory warning arrived since the last step looked.
+    pressure: AtomicBool,
 }
 
 struct State {
@@ -34,6 +54,14 @@ fn lock(state: &Mutex<State>) -> MutexGuard<'_, State> {
     state.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
+struct Lease<'h>(&'h AtomicU32);
+
+impl Drop for Lease<'_> {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, Ordering::SeqCst);
+    }
+}
+
 impl ModelHost {
     pub fn new(load: Loader) -> Self {
         Self {
@@ -42,6 +70,9 @@ impl ModelHost {
                 generation: 0,
             })),
             load,
+            loaded: Arc::new(Notify::new()),
+            leases: AtomicU32::new(0),
+            pressure: AtomicBool::new(false),
         }
     }
 
@@ -60,6 +91,42 @@ impl ModelHost {
                 None
             }
         }
+    }
+
+    /// The step path: one window on a background (one-thread) session,
+    /// waiting for a load when there is none. A foreground session is swapped
+    /// for a background one, which costs one reload. Holds a lease throughout.
+    pub async fn embed_background(&self, input: String) -> Result<Vector, SemanticError> {
+        self.leases.fetch_add(1, Ordering::SeqCst);
+        let _lease = Lease(&self.leases);
+        let embedder = self.background_embedder().await?;
+        let outcome = runtime()
+            .spawn_blocking({
+                let embedder = embedder.clone();
+                move || embedder.embed(&input)
+            })
+            .await
+            .map_err(SemanticError::inference)?;
+        if matches!(outcome, Err(SemanticError::Poisoned)) {
+            self.evict(&embedder);
+        }
+        outcome
+    }
+
+    pub fn release(&self, reason: ReleaseReason) {
+        match reason {
+            ReleaseReason::Background if self.leases.load(Ordering::SeqCst) > 0 => {}
+            ReleaseReason::Background => self.unload(),
+            ReleaseReason::MemoryWarning => {
+                self.pressure.store(true, Ordering::SeqCst);
+                self.unload();
+            }
+        }
+    }
+
+    /// Whether a memory warning arrived since the last call.
+    pub fn take_pressure(&self) -> bool {
+        self.pressure.swap(false, Ordering::SeqCst)
     }
 
     pub fn unload(&self) {
@@ -90,22 +157,79 @@ impl ModelHost {
         let generation = state.generation;
         drop(state);
 
-        let (shared, load) = (self.state.clone(), self.load.clone());
+        let (shared, load, loaded) = (self.state.clone(), self.load.clone(), self.loaded.clone());
         runtime().spawn_blocking(move || {
-            let loaded = catch_unwind(AssertUnwindSafe(|| load(Threads::Foreground)))
-                .unwrap_or_else(|_| Err(SemanticError::inference("model load panicked")));
-            let mut state = lock(&shared);
-            state.slot = match loaded {
-                Ok(_) if state.generation != generation => Slot::Unloaded,
-                Ok(embedder) => Slot::Loaded(embedder),
-                Err(error) => {
-                    eprintln!("memry-core: embedding model load failed: {error}");
-                    Slot::Unloaded
-                }
-            };
+            let _ = load_into(&shared, &load, &loaded, Threads::Foreground, generation);
         });
         None
     }
+
+    async fn background_embedder(&self) -> Result<Arc<dyn Embed>, SemanticError> {
+        loop {
+            let notified = self.loaded.notified();
+            tokio::pin!(notified);
+            notified.as_mut().enable();
+            let generation = {
+                let mut state = lock(&self.state);
+                match &state.slot {
+                    Slot::Loaded(embedder) if embedder.threads() == Threads::Background => {
+                        return Ok(embedder.clone());
+                    }
+                    Slot::Loading => None,
+                    Slot::Loaded(_) | Slot::Unloaded => {
+                        state.slot = Slot::Loading;
+                        Some(state.generation)
+                    }
+                }
+            };
+            let Some(generation) = generation else {
+                notified.await;
+                continue;
+            };
+            let (shared, load, loaded) =
+                (self.state.clone(), self.load.clone(), self.loaded.clone());
+            return runtime()
+                .spawn_blocking(move || {
+                    load_into(&shared, &load, &loaded, Threads::Background, generation)
+                })
+                .await
+                .map_err(SemanticError::inference)?;
+        }
+    }
+}
+
+/// Runs one load into the slot that was set to `Loading` under `generation`,
+/// and wakes every step waiting on it.
+fn load_into(
+    state: &Mutex<State>,
+    load: &Loader,
+    loaded: &Notify,
+    threads: Threads,
+    generation: u64,
+) -> Result<Arc<dyn Embed>, SemanticError> {
+    let result = catch_unwind(AssertUnwindSafe(|| load(threads)))
+        .unwrap_or_else(|_| Err(SemanticError::inference("model load panicked")));
+    let mut slot = lock(state);
+    let outcome = match result {
+        Ok(_) if slot.generation != generation => {
+            slot.slot = Slot::Unloaded;
+            Err(SemanticError::inference(
+                "the model was released while it loaded",
+            ))
+        }
+        Ok(embedder) => {
+            slot.slot = Slot::Loaded(embedder.clone());
+            Ok(embedder)
+        }
+        Err(error) => {
+            eprintln!("memry-core: embedding model load failed: {error}");
+            slot.slot = Slot::Unloaded;
+            Err(error)
+        }
+    };
+    drop(slot);
+    loaded.notify_waiters();
+    outcome
 }
 
 #[cfg(test)]

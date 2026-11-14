@@ -8960,6 +8960,18 @@ public protocol SemanticSearchProtocol: AnyObject, Sendable {
      */
     func status(vault: Vault)  -> SemanticStatus
     
+    /**
+     * At most one window of inference, on the blocking pool, with no
+     * database lock held. Commits the note when its last window is done.
+     */
+    func embedStep(vault: Vault, conditions: StepConditions) async throws  -> StepOutcome
+    
+    /**
+     * `Background` unloads unless the embedder is running. `MemoryWarning`
+     * always unloads, and the next step stops with `MemoryPressure`.
+     */
+    func release(reason: ReleaseReason) 
+    
 }
 open class SemanticSearch: SemanticSearchProtocol, @unchecked Sendable {
     fileprivate let handle: UInt64
@@ -9100,6 +9112,39 @@ open func status(vault: Vault) -> SemanticStatus  {
         FfiConverterTypeVault_lower(vault),uniffiCallStatus
     )
 })
+}
+    
+    /**
+     * At most one window of inference, on the blocking pool, with no
+     * database lock held. Commits the note when its last window is done.
+     */
+open func embedStep(vault: Vault, conditions: StepConditions)async throws  -> StepOutcome  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_memry_core_fn_method_semanticsearch_embed_step(
+                        self.uniffiCloneHandle(),FfiConverterTypeVault_lower(vault),FfiConverterTypeStepConditions_lower(conditions)
+                )
+            },
+            pollFunc: ffi_memry_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_memry_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_memry_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeStepOutcome_lift,
+            errorHandler: FfiConverterTypeSemanticError_lift
+        )
+}
+    
+    /**
+     * `Background` unloads unless the embedder is running. `MemoryWarning`
+     * always unloads, and the next step stops with `MemoryPressure`.
+     */
+open func release(reason: ReleaseReason)  {try! rustCall() {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_semanticsearch_release(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeReleaseReason_lower(reason),uniffiCallStatus
+    )
+}
 }
     
 
@@ -24381,6 +24426,60 @@ public func FfiConverterTypeStatusItem_lower(_ value: StatusItem) -> RustBuffer 
 }
 
 
+public struct StepConditions: Equatable, Hashable {
+    public var thermal: Thermal
+    public var externalPower: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(thermal: Thermal, externalPower: Bool) {
+        self.thermal = thermal
+        self.externalPower = externalPower
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension StepConditions: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeStepConditions: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> StepConditions {
+        return
+            try StepConditions(
+                thermal: FfiConverterTypeThermal.read(from: &buf), 
+                externalPower: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: StepConditions, into buf: inout [UInt8]) {
+        FfiConverterTypeThermal.write(value.thermal, into: &buf)
+        FfiConverterBool.write(value.externalPower, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeStepConditions_lift(_ buf: RustBuffer) throws -> StepConditions {
+    return try FfiConverterTypeStepConditions.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeStepConditions_lower(_ value: StepConditions) -> RustBuffer {
+    return FfiConverterTypeStepConditions.lower(value)
+}
+
+
 public struct StorageUsage: Equatable, Hashable {
     public var used: Int64
     public var limit: Int64
@@ -31429,6 +31528,82 @@ public func FfiConverterTypeRecoveryError_lower(_ value: RecoveryError) -> RustB
 
 
 /**
+ * Why the shell asks the host to let go of the model.
+ */
+
+public enum ReleaseReason: Equatable, Hashable {
+    
+    /**
+     * The app left the foreground. Ignored while the embedder runs.
+     */
+    case background
+    /**
+     * The OS is short of memory. Always unloads, and stops the embedder at
+     * its next step.
+     */
+    case memoryWarning
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ReleaseReason: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeReleaseReason: FfiConverterRustBuffer {
+    typealias SwiftType = ReleaseReason
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ReleaseReason {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .background
+        
+        case 2: return .memoryWarning
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ReleaseReason, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .background:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .memoryWarning:
+            writeInt(&buf, Int32(2))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeReleaseReason_lift(_ buf: RustBuffer) throws -> ReleaseReason {
+    return try FfiConverterTypeReleaseReason.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeReleaseReason_lower(_ value: ReleaseReason) -> RustBuffer {
+    return FfiConverterTypeReleaseReason.lower(value)
+}
+
+
+
+/**
  * One kind of search result, as the scope picker names them.
  */
 
@@ -31907,6 +32082,193 @@ public func FfiConverterTypeSemanticError_lift(_ buf: RustBuffer) throws -> Sema
 public func FfiConverterTypeSemanticError_lower(_ value: SemanticError) -> RustBuffer {
     return FfiConverterTypeSemanticError.lower(value)
 }
+
+
+
+public enum StepOutcome: Equatable, Hashable {
+    
+    /**
+     * One window ran or one note committed. Sleep `rest_ms`, then step again.
+     */
+    case embedded(embedded: UInt32, total: UInt32, restMs: UInt32
+    )
+    /**
+     * Every live note has current vectors.
+     */
+    case finished(embedded: UInt32, total: UInt32
+    )
+    /**
+     * Stop stepping until the next scheduled run.
+     */
+    case stopped(reason: StepStop
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension StepOutcome: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeStepOutcome: FfiConverterRustBuffer {
+    typealias SwiftType = StepOutcome
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> StepOutcome {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .embedded(embedded: try FfiConverterUInt32.read(from: &buf), total: try FfiConverterUInt32.read(from: &buf), restMs: try FfiConverterUInt32.read(from: &buf)
+        )
+        
+        case 2: return .finished(embedded: try FfiConverterUInt32.read(from: &buf), total: try FfiConverterUInt32.read(from: &buf)
+        )
+        
+        case 3: return .stopped(reason: try FfiConverterTypeStepStop.read(from: &buf)
+        )
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: StepOutcome, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case let .embedded(embedded,total,restMs):
+            writeInt(&buf, Int32(1))
+            FfiConverterUInt32.write(embedded, into: &buf)
+            FfiConverterUInt32.write(total, into: &buf)
+            FfiConverterUInt32.write(restMs, into: &buf)
+            
+        
+        case let .finished(embedded,total):
+            writeInt(&buf, Int32(2))
+            FfiConverterUInt32.write(embedded, into: &buf)
+            FfiConverterUInt32.write(total, into: &buf)
+            
+        
+        case let .stopped(reason):
+            writeInt(&buf, Int32(3))
+            FfiConverterTypeStepStop.write(reason, into: &buf)
+            
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeStepOutcome_lift(_ buf: RustBuffer) throws -> StepOutcome {
+    return try FfiConverterTypeStepOutcome.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeStepOutcome_lower(_ value: StepOutcome) -> RustBuffer {
+    return FfiConverterTypeStepOutcome.lower(value)
+}
+
+
+
+
+public enum StepStop: Equatable, Hashable {
+    
+    case tooHot
+    case onBattery
+    case memoryPressure
+    /**
+     * Opted out, or the model is not fully downloaded.
+     */
+    case modelNotReady
+    /**
+     * This binary has no ONNX Runtime.
+     */
+    case unavailable
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension StepStop: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeStepStop: FfiConverterRustBuffer {
+    typealias SwiftType = StepStop
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> StepStop {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .tooHot
+        
+        case 2: return .onBattery
+        
+        case 3: return .memoryPressure
+        
+        case 4: return .modelNotReady
+        
+        case 5: return .unavailable
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: StepStop, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .tooHot:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .onBattery:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .memoryPressure:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .modelNotReady:
+            writeInt(&buf, Int32(4))
+        
+        
+        case .unavailable:
+            writeInt(&buf, Int32(5))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeStepStop_lift(_ buf: RustBuffer) throws -> StepStop {
+    return try FfiConverterTypeStepStop.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeStepStop_lower(_ value: StepStop) -> RustBuffer {
+    return FfiConverterTypeStepStop.lower(value)
+}
+
 
 
 /**
@@ -32474,6 +32836,89 @@ public func FfiConverterTypeTelemetryDelivery_lift(_ buf: RustBuffer) throws -> 
 #endif
 public func FfiConverterTypeTelemetryDelivery_lower(_ value: TelemetryDelivery) -> RustBuffer {
     return FfiConverterTypeTelemetryDelivery.lower(value)
+}
+
+
+
+/**
+ * The device's thermal state, as the shell reads it.
+ */
+
+public enum Thermal: Equatable, Hashable {
+    
+    case nominal
+    case fair
+    case serious
+    case critical
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension Thermal: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeThermal: FfiConverterRustBuffer {
+    typealias SwiftType = Thermal
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Thermal {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .nominal
+        
+        case 2: return .fair
+        
+        case 3: return .serious
+        
+        case 4: return .critical
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: Thermal, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .nominal:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .fair:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .serious:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .critical:
+            writeInt(&buf, Int32(4))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeThermal_lift(_ buf: RustBuffer) throws -> Thermal {
+    return try FfiConverterTypeThermal.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeThermal_lower(_ value: Thermal) -> RustBuffer {
+    return FfiConverterTypeThermal.lower(value)
 }
 
 
@@ -36943,6 +37388,12 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_semanticsearch_status() != 37333) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_semanticsearch_embed_step() != 56202) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_semanticsearch_release() != 26489) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_settings_clear() != 25310) {
