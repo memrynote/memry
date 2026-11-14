@@ -9,7 +9,9 @@ use crate::api::vault::Vault;
 use crate::domain::notes::{self, NewNote};
 use crate::domain::search::SearchFilter;
 use crate::semantic::fakes::{Cdn, Scratch, Wifi, files, manifest};
-use crate::semantic::{DIMENSION, Embed, SemanticError, Threads, Vector, truncate_renormalize};
+use crate::semantic::{
+    DIMENSION, Embed, ReleaseReason, SemanticError, Threads, Vector, truncate_renormalize,
+};
 use crate::storage::vector_db::{self, NoteState, VectorBytes, VectorStore};
 
 const NOW: i64 = 1_760_000_000_000;
@@ -195,7 +197,7 @@ async fn a_query_during_the_load_is_pending_and_its_rerun_after_the_load_fuses()
     assert!(first.semantic_pending, "FTS alone because the model loads");
 
     open.send(()).unwrap();
-    search.semantic_model_loaded().await;
+    assert!(search.semantic_model_loaded().await);
     let rerun = search.search("cardamom".into(), None, 50).unwrap();
 
     assert_eq!(
@@ -203,6 +205,30 @@ async fn a_query_during_the_load_is_pending_and_its_rerun_after_the_load_fuses()
         [("buns", MatchKind::Body), ("spices", MatchKind::Semantic)]
     );
     assert!(!rerun.semantic_pending);
+    assert_eq!(s.loads.load(Ordering::SeqCst), 1);
+}
+
+#[tokio::test]
+async fn a_memory_warning_mid_load_reports_no_model_so_the_shell_never_reloads() {
+    let (open, gate) = channel();
+    let s = setup_gated(Some(gate)).await;
+    let search = s.search();
+
+    assert!(
+        search
+            .search("cardamom".into(), None, 50)
+            .unwrap()
+            .semantic_pending
+    );
+    let deadline = Instant::now() + Duration::from_secs(10);
+    while s.loads.load(Ordering::SeqCst) == 0 {
+        assert!(Instant::now() < deadline, "the load never started");
+        tokio::time::sleep(Duration::from_millis(2)).await;
+    }
+    s.semantic.release(ReleaseReason::MemoryWarning);
+    open.send(()).unwrap();
+
+    assert!(!search.semantic_model_loaded().await);
     assert_eq!(s.loads.load(Ordering::SeqCst), 1);
 }
 

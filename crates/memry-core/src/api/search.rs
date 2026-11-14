@@ -391,12 +391,14 @@ impl Search {
         })
     }
 
-    /// Returns once the semantic model load in flight, if any, has finished,
-    /// loaded or failed. A search that came back with `semantic_pending` runs
-    /// again after this, once.
-    pub async fn semantic_model_loaded(&self) {
-        if let Some(semantic) = &self.semantic {
-            semantic.load_finished().await;
+    /// Waits for the semantic model load in flight, if any, and answers
+    /// whether the model is loaded now. A search that came back with
+    /// `semantic_pending` runs again once, and only on `true`: a load that
+    /// failed or was released by a memory warning answers `false`.
+    pub async fn semantic_model_loaded(&self) -> bool {
+        match &self.semantic {
+            Some(semantic) => semantic.load_finished().await,
+            None => false,
         }
     }
 

@@ -8247,11 +8247,12 @@ public protocol SearchProtocol: AnyObject, Sendable {
     func search(query: String, filter: SearchFilter?, limit: UInt32) throws  -> SearchGroups
     
     /**
-     * Returns once the semantic model load in flight, if any, has finished,
-     * loaded or failed. A search that came back with `semantic_pending` runs
-     * again after this, once.
+     * Waits for the semantic model load in flight, if any, and answers
+     * whether the model is loaded now. A search that came back with
+     * `semantic_pending` runs again once, and only on `true`: a load that
+     * failed or was released by a memory warning answers `false`.
      */
-    func semanticModelLoaded() async 
+    func semanticModelLoaded() async  -> Bool
     
     /**
      * Notes and journal days that mention `target_id`'s title or an alias as
@@ -8417,11 +8418,12 @@ open func search(query: String, filter: SearchFilter?, limit: UInt32)throws  -> 
 }
     
     /**
-     * Returns once the semantic model load in flight, if any, has finished,
-     * loaded or failed. A search that came back with `semantic_pending` runs
-     * again after this, once.
+     * Waits for the semantic model load in flight, if any, and answers
+     * whether the model is loaded now. A search that came back with
+     * `semantic_pending` runs again once, and only on `true`: a load that
+     * failed or was released by a memory warning answers `false`.
      */
-open func semanticModelLoaded()async   {
+open func semanticModelLoaded()async  -> Bool  {
     return
         try!  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -8429,10 +8431,10 @@ open func semanticModelLoaded()async   {
                         self.uniffiCloneHandle()
                 )
             },
-            pollFunc: ffi_memry_core_rust_future_poll_void,
-            completeFunc: ffi_memry_core_rust_future_complete_void,
-            freeFunc: ffi_memry_core_rust_future_free_void,
-            liftFunc: { $0 },
+            pollFunc: ffi_memry_core_rust_future_poll_i8,
+            completeFunc: ffi_memry_core_rust_future_complete_i8,
+            freeFunc: ffi_memry_core_rust_future_free_i8,
+            liftFunc: FfiConverterBool.lift,
             errorHandler: nil
             
         )
@@ -37499,7 +37501,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_search_search() != 18447) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_search_semantic_model_loaded() != 40307) {
+    if (uniffi_memry_core_checksum_method_search_semantic_model_loaded() != 41947) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_search_unlinked_mentions() != 24332) {

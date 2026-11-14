@@ -295,8 +295,8 @@ impl SemanticSearch {
         Some(hits)
     }
 
-    pub(crate) async fn load_finished(&self) {
-        self.host.load_finished().await;
+    pub(crate) async fn load_finished(&self) -> bool {
+        self.host.load_finished().await
     }
 
     fn embedded_notes(&self, vault_dir: &Path) -> Result<u32, StorageError> {

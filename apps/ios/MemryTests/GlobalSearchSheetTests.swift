@@ -22,7 +22,7 @@ struct GlobalSearchSheetTests {
             queries.withLock { $0 += 1 }
             return SearchGroups(notes: [], journals: [], tasks: [], inbox: [])
         }
-        func semanticModelLoaded() async {}
+        func semanticModelLoaded() async -> Bool { false }
         func reindex() async throws {}
         func backlinks(noteId: String, order: BacklinkOrder) async throws -> [Backlink] { [] }
         func linksTo(targetId: String, order: BacklinkOrder) async throws -> [BacklinkRow] { [] }

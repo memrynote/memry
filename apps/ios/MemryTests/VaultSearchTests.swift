@@ -34,10 +34,13 @@ struct VaultSearchTests {
         private let loadFails: Bool
         private let semanticHits: [SearchResult]
         let loadWaits = Mutex(0)
+        /// Holds `semanticModelLoaded` until it yields, when set.
+        private let loadGate: AsyncStream<Void>?
 
         init(
             hits: [SearchResult] = [], failure: (any Error)? = nil, reindexFailure: (any Error)? = nil,
-            semanticHits: [SearchResult] = [], modelLoading: Bool = false, loadFails: Bool = false
+            semanticHits: [SearchResult] = [], modelLoading: Bool = false, loadFails: Bool = false,
+            loadGate: AsyncStream<Void>? = nil
         ) {
             self.hits = hits
             self.failure = failure
@@ -45,6 +48,7 @@ struct VaultSearchTests {
             self.semanticHits = semanticHits
             self.modelLoading = Mutex(modelLoading)
             self.loadFails = loadFails
+            self.loadGate = loadGate
         }
 
         /// Note hits only: the task and inbox groups are asserted against a
@@ -59,9 +63,11 @@ struct VaultSearchTests {
             )
         }
 
-        func semanticModelLoaded() async {
+        func semanticModelLoaded() async -> Bool {
             loadWaits.withLock { $0 += 1 }
+            if let loadGate { for await _ in loadGate { break } }
             if !loadFails { modelLoading.withLock { $0 = false } }
+            return !loadFails
         }
 
         func reindex() async throws {
@@ -147,15 +153,17 @@ struct VaultSearchTests {
         #expect(model.phase == .results([hit("n1", "Saturday afternoon")]))
     }
 
-    @Test("a load that fails re-runs the query once, not in a loop")
-    func failedLoadRerunsOnce() async {
+    @Test("a load that fails or a memory warning overtook runs nothing again")
+    func failedLoadDoesNotRerun() async {
+        // REVIEW-4621: a re-run after a released load would start a fresh
+        // model load and undo the memory warning.
         let search = ScriptedSearch(hits: [hit("n1", "Dune")], modelLoading: true, loadFails: true)
         let model = model(search)
 
         model.run("dune")
         await model.settle()
 
-        #expect(search.queries.withLock { $0 } == ["dune", "dune"])
+        #expect(search.queries.withLock { $0 } == ["dune"])
         #expect(search.loadWaits.withLock { $0 } == 1)
         #expect(model.phase == .results([hit("n1", "Dune")]))
     }
@@ -210,6 +218,24 @@ struct VaultSearchTests {
         for _ in 0 ..< 20 { await Task.yield() }
         #expect(index.completed == 2)
         #expect(search.queries.withLock { $0 }.count == 2, "a cancelled follower re-runs nothing")
+    }
+
+    @Test("a sheet dismissed while the model loads runs nothing when the load lands")
+    func aDismissedSheetDropsItsPendingRerun() async throws {
+        let (gate, open) = AsyncStream.makeStream(of: Void.self)
+        let search = ScriptedSearch(semanticHits: [hit("n1", "Dune")], modelLoading: true, loadGate: gate)
+        let index = VaultSearchIndex(search: search, debounce: .zero)
+        let model = VaultSearchViewModel(search: search, index: index, debounce: .zero)
+        let follower = Task { await model.followIndex() }
+        model.run("dune")
+        try await wait { search.loadWaits.withLock { $0 } == 1 }
+
+        follower.cancel()
+        await follower.value
+        open.yield()
+        await model.settle()
+
+        #expect(search.queries.withLock { $0 } == ["dune"], "nobody sees the sheet")
     }
 
     @Test("a model whose sheet is gone runs no query when a reindex finishes")

@@ -110,14 +110,17 @@ impl ModelHost {
         }
     }
 
-    /// Returns once the load in flight, if any, has finished, loaded or not.
-    pub async fn load_finished(&self) {
+    /// Waits for the load in flight, if any, and answers whether a model is
+    /// loaded now. A load overtaken by an unload or that failed answers
+    /// `false`, so a memory warning is never undone by a reload.
+    pub async fn load_finished(&self) -> bool {
         let notified = self.loaded.notified();
         tokio::pin!(notified);
         notified.as_mut().enable();
         if matches!(lock(&self.state).slot, Slot::Loading) {
             notified.await;
         }
+        matches!(lock(&self.state).slot, Slot::Loaded(_))
     }
 
     pub async fn embed_background(&self, input: String) -> Result<WindowOutcome, SemanticError> {
@@ -373,14 +376,17 @@ mod tests {
     #[test]
     fn load_finished_returns_once_the_load_in_flight_lands() {
         let h = harness();
-        runtime().block_on(h.host.load_finished());
+        assert!(
+            !runtime().block_on(h.host.load_finished()),
+            "nothing loaded"
+        );
         h.host.query_vector(&q());
         std::thread::scope(|scope| {
             let waiter = scope.spawn(|| runtime().block_on(h.host.load_finished()));
             until(|| h.calls.load(Ordering::SeqCst) == 1);
             assert!(!waiter.is_finished(), "the load is still gated");
             h.answer.send(Outcome::Load).unwrap();
-            waiter.join().unwrap();
+            assert!(waiter.join().unwrap(), "the model is loaded");
         });
         assert_eq!(
             h.host.query_vector(&q()),
