@@ -26,6 +26,9 @@ pub enum SemanticError {
     Unavailable,
     #[error("embedding inference failed: {what}")]
     Inference { what: String },
+    /// A panic during inference poisoned the session; only a reload clears it.
+    #[error("the embedding session panicked and must be reloaded")]
+    Poisoned,
     #[error(transparent)]
     Storage {
         #[from]

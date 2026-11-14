@@ -230,7 +230,7 @@ mod onnx {
 
         fn embed(&self, input: &str) -> Result<Vector, SemanticError> {
             let (ids, mask) = self.tokenize(input)?;
-            let mut session = self.session.lock().map_err(SemanticError::inference)?;
+            let mut session = self.session.lock().map_err(|_| SemanticError::Poisoned)?;
             run(&mut session, ids, mask)
         }
 
@@ -238,7 +238,7 @@ mod onnx {
             let mut session = match self.session.try_lock() {
                 Ok(session) => session,
                 Err(TryLockError::WouldBlock) => return Ok(None),
-                Err(TryLockError::Poisoned(e)) => return Err(SemanticError::inference(e)),
+                Err(TryLockError::Poisoned(_)) => return Err(SemanticError::Poisoned),
             };
             let (ids, mask) = self.tokenize(input)?;
             run(&mut session, ids, mask).map(Some)
