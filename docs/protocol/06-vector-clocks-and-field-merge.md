@@ -797,7 +797,7 @@ value, and a union of vector clocks on a tie is not associative.
   UTF-16 code units at every depth, arrays in order, no whitespace, numbers as
   the shortest round-trip digits with no exponent, `-0` as `0`, `undefined`
   members dropped (`:43-72`). It is the same string as the Rust core's writer
-  (`crates/memry-core/src/sync/field_merge.rs:243`).
+  (`crates/memry-core/src/sync/field_merge.rs:241`).
 - `a` wins over `b` iff `version(a) > version(b)`, or the versions are equal and
   `canonical(a)` is greater than `canonical(b)` compared as UTF-16 code units
   (`packages/shared/src/versioned.ts:74-80`). Equal canonical forms are the
