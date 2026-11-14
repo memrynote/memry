@@ -14,6 +14,7 @@ use crate::crdt::errors::CrdtError;
 use crate::domain::attachments::{self, BlockAttachment, CachedAttachment};
 use crate::domain::bookmarks::{self, BookmarkEntry};
 use crate::domain::note_meta::{self, NoteMetadata};
+use crate::domain::notes;
 use crate::domain::reads::{
     self, FolderSummary, LinkedTask, NoteDetail, NoteSummary, ReminderSummary, TagSummary,
     TaskCard, TemplateSummary,
@@ -142,6 +143,14 @@ impl Notes {
     pub fn metadata(&self, id: String) -> Result<Option<NoteMetadata>, StorageError> {
         self.db
             .call_blocking(move |conn| note_meta::metadata(conn, &id))
+    }
+
+    /// The note's `fullWidth` override, desktop's per-note width: `true` or
+    /// `false` wins over the device's editor width, `nil` follows it. A note
+    /// this vault does not hold reads as `nil`.
+    pub fn full_width(&self, id: String) -> Result<Option<bool>, StorageError> {
+        self.db
+            .call_blocking(move |conn| notes::full_width(conn, &id))
     }
 
     /// What a `[[wiki link]]` points at: by vault path when the note half
