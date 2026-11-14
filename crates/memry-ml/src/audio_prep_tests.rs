@@ -31,8 +31,8 @@ fn the_output_stops_at_the_cap_before_it_is_allocated() {
     // At 16 kHz and resampled, the decoder returns exactly Electron's first `cap` samples.
     for rate in [16_000, 44_100, 8_000] {
         let bytes = pcm16(1, rate, 4_000);
-        let full = decode_wav_capped(&bytes, usize::MAX).expect("decode");
-        let capped = decode_wav_capped(&bytes, 100).expect("decode");
+        let full = decode_wav_capped(&bytes, MAX_AUDIO_BYTES, usize::MAX).expect("decode");
+        let capped = decode_wav_capped(&bytes, MAX_AUDIO_BYTES, 100).expect("decode");
         assert_eq!(capped.len(), 100, "rate {rate}");
         assert_eq!(capped, full[..100], "rate {rate}");
         assert!(capped.capacity() <= 100, "rate {rate}");
@@ -41,21 +41,22 @@ fn the_output_stops_at_the_cap_before_it_is_allocated() {
     assert_eq!(MAX_DECODED_SAMPLES, 12 * 300 * 16_000);
 }
 
-/// A file over the limit is refused before its header is read, like `image_prep`'s images.
+/// A file over the limit is refused before its header is read, like `image_prep`'s images. The
+/// limit is a parameter so the test needs no 512 MiB buffer; `decode_wav` passes `MAX_AUDIO_BYTES`.
 #[test]
 fn files_over_the_byte_limit_are_refused() {
+    let limit = 1_000;
     let mut bytes = pcm16(1, 16_000, 10);
-    bytes.resize(MAX_AUDIO_BYTES + 1, 0);
-    let error = decode_wav(&bytes).expect_err("over the limit");
+    bytes.resize(limit + 1, 0);
+    let error = decode_wav_capped(&bytes, limit, MAX_DECODED_SAMPLES).expect_err("over the limit");
     assert_eq!(
         error.to_string(),
-        format!(
-            "audio file is {} bytes, over the {MAX_AUDIO_BYTES}-byte limit",
-            MAX_AUDIO_BYTES + 1
-        )
+        "audio file is 1001 bytes, over the 1000-byte limit"
     );
-    bytes.truncate(MAX_AUDIO_BYTES);
-    assert_eq!(decode_wav(&bytes).expect("at the limit").len(), 10);
+    bytes.truncate(limit);
+    let at_limit = decode_wav_capped(&bytes, limit, MAX_DECODED_SAMPLES).expect("at the limit");
+    assert_eq!(at_limit.len(), 10);
+    assert_eq!(MAX_AUDIO_BYTES, 512 * 1024 * 1024);
 }
 
 #[test]

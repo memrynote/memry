@@ -106,7 +106,9 @@ fn native_audio_embeddings_match_transformers_js() {
             }
             if electron.is_object() {
                 let measured = electron["cosine"].as_f64().expect("electron.cosine");
-                let actual = cosine(&vector, &floats(&electron["embedding"]));
+                let electron_vector = floats(&electron["embedding"]);
+                assert_eq!(electron_vector.len(), EMBEDDING_DIMENSION);
+                let actual = cosine(&vector, &electron_vector);
                 eprintln!(
                     "{name}: cosine with Electron's vector {actual:.9}, recorded {measured:.9}"
                 );

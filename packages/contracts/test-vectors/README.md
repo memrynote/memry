@@ -150,11 +150,30 @@ Cost: a 10 min recording is 20 windows. A 30 s window is 754 tokens; natively on
 model and audio encoder loaded, peaks at a 1.39 GB resident set. A single 300 s window embedded
 whole would be 7,504 tokens, 129 s and 6.8 GB.
 
+Cost at the caps, measured end to end (`std::fs::read`, `decode_wav`, `audio_windows`, then
+`EmbeddingEngine::embed_audio` on every window; release, macOS arm64, default threads, noise
+input, `/usr/bin/time -l`, on a shared host at load average 23 to 74):
+
+| File                          | Size              | Windows | Decode | Wall time                     | Peak RSS |
+| ----------------------------- | ----------------- | ------- | ------ | ----------------------------- | -------- |
+| 60 min, 16 kHz mono PCM16     | 115.2 MB          | 120     | 0.19 s | 814 s (median 6.4 s a window) | 1.63 GB  |
+| 46.6 min, 48 kHz stereo PCM16 | 512 MiB (the cap) | 94      | 0.35 s | 421 s (median 4.4 s a window) | 2.21 GB  |
+
+The file is read whole and the decoded 16 kHz samples are held whole (at most 230 MB), so the
+resident set grows with the file on top of the 1.4 GB of loaded models.
+
 The other divergence is a WAV file under 4000 Hz: Electron resamples it, the native decoder
 refuses it, because a few bytes at 1 Hz would claim hours of output. Such a case carries
 `divergence` in `decode`, and `audio_features.rs` derives the class from the header and fails when
-the tag disagrees. A file over 512 MiB (`MAX_AUDIO_BYTES`) is refused natively, where Electron
-decodes it and embeds its first 60 min; no vector holds one.
+the tag disagrees.
+
+A file over 512 MiB (`MAX_AUDIO_BYTES`) is refused natively, where Electron has no size cap: it
+decodes any file and embeds its first 60 min. No vector holds one. 512 MiB holds the 60 min only up
+to 149,130 bytes per second (PCM16 mono up to 48 kHz, PCM16 stereo or float32 mono up to 37 kHz):
+it is 50.7 min of 44.1 kHz stereo PCM16, 46.6 min of 48 kHz stereo PCM16, 23.3 min of 48 kHz
+stereo float32 and 4.7 hours of 16 kHz mono PCM16. A longer recording at a higher rate is not
+embedded natively. Reading only the bytes the first 60 min needs is left to the native voice
+projector (Step 24).
 
 ### `pixel-tensors.json` and `embeddings-image.json`: JPEG decoding, ICC conversion and CMYK conversion are a known divergence
 

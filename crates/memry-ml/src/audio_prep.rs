@@ -34,10 +34,13 @@ pub const MIN_SAMPLES: usize = SAMPLE_RATE as usize;
 /// Decoded samples past this are never embedded (`MAX_WINDOWS` windows), so they are not decoded.
 pub const MAX_DECODED_SAMPLES: usize = MAX_WINDOWS * WINDOW_SAMPLES;
 
-/// Larger files are refused before decoding, as `image_prep::MAX_IMAGE_BYTES` refuses images; a
-/// caller skips them before reading. 512 MiB holds the [`MAX_WINDOWS`] windows (60 min) of 16 kHz to
-/// 44.1 kHz stereo PCM16, and over 4 hours of 16 kHz mono. Electron decodes any size and embeds its
-/// first 60 min; a longer recording at a high rate is not embedded natively.
+/// Larger files are refused before decoding, as `image_prep::MAX_IMAGE_BYTES` refuses images. A
+/// caller has to check the file size before it reads the file into memory; the refusal here comes
+/// after the read. 512 MiB holds the [`MAX_WINDOWS`] windows (60 min) only up to 149,130 bytes per
+/// second: PCM16 mono up to 48 kHz, PCM16 stereo up to 37 kHz, float32 mono up to 37 kHz. It holds
+/// 50.7 min of 44.1 kHz stereo PCM16, 46.6 min of 48 kHz stereo PCM16, 23.3 min of 48 kHz stereo
+/// float32 and 4.7 hours of 16 kHz mono PCM16. Electron has no size cap: it decodes any file and
+/// embeds its first 60 min, so a larger file (a long high-rate recording) is not embedded natively.
 pub const MAX_AUDIO_BYTES: usize = 512 * 1024 * 1024;
 
 /// Lowest sample rate the decoder accepts. Electron decodes any rate; below 4 kHz a file of a few
@@ -111,17 +114,21 @@ fn u32_at(bytes: &[u8], at: usize) -> u32 {
 /// [`MlError::Input`]. A file over [`MAX_AUDIO_BYTES`] is refused; the output stops at
 /// [`MAX_DECODED_SAMPLES`].
 pub fn decode_wav(bytes: &[u8]) -> Result<Vec<f32>, MlError> {
-    decode_wav_capped(bytes, MAX_DECODED_SAMPLES)
+    decode_wav_capped(bytes, MAX_AUDIO_BYTES, MAX_DECODED_SAMPLES)
 }
 
 fn unsupported() -> MlError {
     MlError::Input("not a PCM16, PCM32 or float32 WAV file".into())
 }
 
-pub(crate) fn decode_wav_capped(bytes: &[u8], max_samples: usize) -> Result<Vec<f32>, MlError> {
-    if bytes.len() > MAX_AUDIO_BYTES {
+pub(crate) fn decode_wav_capped(
+    bytes: &[u8],
+    max_bytes: usize,
+    max_samples: usize,
+) -> Result<Vec<f32>, MlError> {
+    if bytes.len() > max_bytes {
         return Err(MlError::Input(format!(
-            "audio file is {} bytes, over the {MAX_AUDIO_BYTES}-byte limit",
+            "audio file is {} bytes, over the {max_bytes}-byte limit",
             bytes.len()
         )));
     }
