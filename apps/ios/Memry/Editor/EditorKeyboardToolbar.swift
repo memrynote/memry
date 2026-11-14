@@ -38,6 +38,7 @@ enum EditorToolbarItem: String, CaseIterable, Identifiable {
 struct EditorKeyboardToolbar: View {
     let session: EditorSession
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var address = ""
 
     private var showsFormat: Bool { session.formatting && session.panel == .none }
 
@@ -65,9 +66,13 @@ struct EditorKeyboardToolbar: View {
                     .padding(.vertical, Tokens.Space.tight)
                     .clipShape(.capsule)
                     .chromeGlass(in: .capsule)
-                    trailingButton
-                        .padding(Tokens.Space.tight)
-                        .chromeGlass(in: .circle)
+                    // Hiding the keyboard does nothing for a hardware one,
+                    // and drops the caret.
+                    if session.panel == .insert || !session.hardwareKeyboard.attached {
+                        trailingButton
+                            .padding(Tokens.Space.tight)
+                            .chromeGlass(in: .circle)
+                    }
                 }
             }
             .measuredColumn(Tokens.Size.reading)
@@ -79,6 +84,17 @@ struct EditorKeyboardToolbar: View {
         .font(Tokens.Typography.body.font)
         .foregroundStyle(Tokens.Text.primary.color)
         .tint(Tokens.Text.primary.color)
+        // The format row's link button and ⇧⌘K ask here (`editLink`).
+        .alert("Link", isPresented: Binding(get: { session.linkPrompt }, set: { session.linkPrompt = $0 })) {
+            TextField("https://", text: $address)
+                .keyboardType(.URL)
+                .textInputAutocapitalization(.never)
+            Button("Cancel", role: .cancel) {}
+            Button("Add") { session.addLink(address) }
+        }
+        .onChange(of: session.linkPrompt) { _, open in
+            if open { address = "" }
+        }
     }
 
     /// A slide within the capsule, or a fade under Reduce Motion. `leading`
@@ -328,27 +344,10 @@ private struct ToolbarText: View {
 /// A link over the selection, asked for by address.
 private struct LinkMarkButton: View {
     let session: EditorSession
-    @State private var asking = false
-    @State private var address = ""
 
     var body: some View {
         ToolbarGlyph(symbol: "link", label: "Add a link", selected: session.selectionMarks.contains("link")) {
-            if session.selectionMarks.contains("link") {
-                session.toggleMark("link")
-            } else {
-                address = ""
-                asking = true
-            }
-        }
-        .alert("Link", isPresented: $asking) {
-            TextField("https://", text: $address)
-                .keyboardType(.URL)
-                .textInputAutocapitalization(.never)
-            Button("Cancel", role: .cancel) {}
-            Button("Add") {
-                let trimmed = address.trimmingCharacters(in: .whitespaces)
-                if !trimmed.isEmpty { session.toggleMark("link", value: trimmed) }
-            }
+            session.editLink()
         }
     }
 }
@@ -358,9 +357,8 @@ private struct TagSuggestionList: View {
     let session: EditorSession
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                ForEach(session.tagSuggestions) { item in
+        SuggestionScroll(session: session) {
+            ForEach(Array(session.tagSuggestions.enumerated()), id: \.element.id) { index, item in
                     Button {
                         session.chooseTag(item)
                     } label: {
@@ -381,11 +379,9 @@ private struct TagSuggestionList: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(item.isNew ? "Create tag \(item.tag)" : "Tag \(item.tag)")
-                }
+                    .suggestionRow(index, session: session)
             }
         }
-        .frame(maxHeight: Tokens.Size.minimumHitArea * 4)
-        .fixedSize(horizontal: false, vertical: true)
     }
 }
 
@@ -401,9 +397,8 @@ private struct EditorSuggestionList: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                ForEach(session.suggestions) { item in
+        SuggestionScroll(session: session) {
+            ForEach(Array(session.suggestions.enumerated()), id: \.element.id) { index, item in
                     Button {
                         session.choose(item)
                     } label: {
@@ -433,11 +428,39 @@ private struct EditorSuggestionList: View {
                         .contentShape(.rect)
                     }
                     .buttonStyle(.plain)
-                }
+                    .suggestionRow(index, session: session)
             }
+        }
+    }
+}
+
+/// A suggestion menu's rows, scrolled to keep the highlighted one in view.
+private struct SuggestionScroll<Rows: View>: View {
+    let session: EditorSession
+    @ViewBuilder let rows: Rows
+
+    var body: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(spacing: 0) { rows }
+            }
+            .onChange(of: session.highlighted) { _, row in proxy.scrollTo(row) }
         }
         .frame(maxHeight: Tokens.Size.minimumHitArea * 4)
         .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+extension View {
+    /// A menu row at `index`: highlighted for Return with a hardware
+    /// keyboard, as desktop's menu highlights its row. The on-screen
+    /// keyboard has no arrows, so its menus draw as before.
+    fileprivate func suggestionRow(_ index: Int, session: EditorSession) -> some View {
+        let highlighted = session.menuFollowsKeys && index == session.highlighted
+        return id(index)
+            .background(highlighted ? Tokens.Canvas.surface.color : .clear, in: .rect)
+            .accessibilityAddTraits(highlighted ? .isSelected : [])
+            .accessibilityIdentifier("editor.suggestion")
     }
 }
 

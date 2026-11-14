@@ -79,7 +79,8 @@ struct JournalDayPage: View {
             target: .journalDay(date),
             blocks: model?.read.blocks ?? [],
             blocksRead: model?.read.blocksRead ?? false,
-            finding: Binding(get: { model?.finding ?? false }, set: { model?.finding = $0 })
+            finding: Binding(get: { model?.finding ?? false }, set: { model?.finding = $0 }),
+            answersFind: isShown
         ))
         .task(id: model == nil) {
             guard let model else { return }

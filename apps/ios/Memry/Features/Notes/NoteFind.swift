@@ -48,8 +48,12 @@ enum NoteFind {
 struct NoteFindView: View {
     let blocks: [Block]
     @Binding var query: String
+    /// Takes the caret as it appears (find opened with ⌘F).
+    var focusField = false
     /// Scrolls the page to a match's block index.
     let scrollTo: (Int) -> Void
+
+    @FocusState private var focused: Bool
 
     private var matches: [NoteMatch] { NoteFind.matches(of: query, in: blocks) }
 
@@ -59,6 +63,8 @@ struct NoteFindView: View {
                 .textFieldStyle(.roundedBorder)
                 .font(Tokens.Typography.body.font)
                 .accessibilityLabel("Find in this note")
+                .focused($focused)
+                .onAppear { if focusField { focused = true } }
 
             if !query.trimmingCharacters(in: .whitespaces).isEmpty {
                 if matches.isEmpty {
@@ -96,6 +102,7 @@ struct NoteFindView: View {
 struct NoteFindPanel: View {
     let blocks: [Block]
     @Binding var query: String
+    var focusField = false
     let scrollTo: (Int) -> Void
     let close: () -> Void
 
@@ -111,7 +118,7 @@ struct NoteFindPanel: View {
                 .accessibilityLabel("Close find")
                 .accessibilityIdentifier("find.close")
             }
-            NoteFindView(blocks: blocks, query: $query, scrollTo: scrollTo)
+            NoteFindView(blocks: blocks, query: $query, focusField: focusField, scrollTo: scrollTo)
         }
         .padding(.horizontal, Tokens.Space.screenInline)
         .padding(.bottom, Tokens.Space.small)
