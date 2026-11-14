@@ -413,7 +413,7 @@ fn a_field_fill_ended_by_its_vault_shows_translated_text() {
     let f = fixture();
     let app = f.mocked.webview.app_handle();
     let open = f.mocked.session().current().unwrap();
-    Schemas::open(&open, &app.state::<NotesService>(), "en")
+    Schemas::open(&open, app.state::<Arc<NotesService>>().inner(), "en")
         .unwrap()
         .run(
             TagSchemaCommand::AddField {
