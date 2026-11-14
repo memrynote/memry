@@ -31,10 +31,10 @@ enum NoteInspectorLayout {
     /// The per-device open state.
     static let openKey = "notes.inspector.open"
 
-    /// The reading measure plus the rail. The gutters may eat into the
-    /// measure, which is a cap (`DESIGN.md` › Tablet › Side rails): 13"
-    /// landscape beside the page sidebar (about 1056pt) holds it, 13" portrait
-    /// (1032pt) does not.
+    /// The reading measure plus the rail, 1040pt, so the note keeps its
+    /// measure (`DESIGN.md` › Tablet › Side rails): 13" landscape beside the
+    /// page sidebar (about 1086pt) holds it, 13" portrait (1024-1032pt) does
+    /// not.
     static let minimumWidth = Tokens.Size.reading + Tokens.Size.rail
 }
 

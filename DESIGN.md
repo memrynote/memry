@@ -310,10 +310,10 @@ The pages follow desktop's rail order, then Notes. Graph is absent until it exis
 
 **Side rails.** A rail reserves real space, as on desktop. Content never slides underneath a rail.
 
-- The note inspector is a system `.inspector`. It is hidden by default, and its open state is saved per device and never synced.
+- The note inspector is a plain `320pt` column beside the note page, not the system `.inspector`: inside the split view's detail column the system inspector closed itself on every push, so its binding never held. It is hidden by default, and its open state is saved per device and never synced.
 - The Day Panel (`⇧⌘B`) is a rail about `320pt` wide, matching desktop's default.
 - Journal's rail holds a mini month calendar (a tap jumps to that day, and days with content are marked), the day's tasks and events through the Day Panel component, and "On this day" entries from past years. It shows no statistics and no AI connections.
-- Desktop hides its review rail once the content and the rail no longer fit (around `920px`). The iPad equivalent keeps the rail and collapses the list column instead: when the window cannot hold the `720pt` note column plus the rail, the list column collapses, and it returns when the rail closes. The measure is a cap, not a minimum. If the window is still narrower than the column plus the rail, the note column narrows.
+- Desktop hides its review rail once the content and the rail no longer fit (around `920px`). The note inspector follows it: it shows only where the split view holds the `720pt` reading measure plus the rail (`1040pt`), so the note keeps its measure. Below that, and at accessibility text sizes, the rail and its toolbar button are hidden, and the outline, properties, and backlinks sit in the page as on the phone. While the rail is open the list column collapses, and it returns when the rail closes. Journal's day rail keeps its own rule.
 - A width that cannot hold two rails shows one at a time.
 
 **Measures.** Reading and composing surfaces cap at the `720pt` reading measure. Settings caps its detail column at the same measure. Desktop uses a `15rem` rail and a `48rem` column. Sign-in, onboarding, and other forms sit on a plain background in a centered `560pt` column (`Tokens.Size.form`), with no card or panel. Tables, whiteboards, covers, calendars, and kanban boards use the full pane. Full-width editing follows desktop's per-device editor width, per-note `fullWidth` frontmatter, and per-device journal override.
