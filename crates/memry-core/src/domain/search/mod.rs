@@ -80,6 +80,7 @@ mod query;
 pub mod recents;
 pub mod semantic;
 mod snippet;
+pub(crate) mod source;
 
 pub(crate) use body_cache::body_version;
 pub use filter::{ModifiedRange, SearchFilter, SearchType};

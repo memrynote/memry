@@ -2,7 +2,10 @@
 //! peaks at 427 MB while loading (#4437 spike), so two copies never coexist.
 
 use std::panic::{AssertUnwindSafe, catch_unwind};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+
+use tokio::sync::Notify;
 
 use super::{Embed, SemanticError, Threads, Vector};
 use crate::api::runtime::runtime;
@@ -11,9 +14,29 @@ use crate::domain::embedding_input::Window;
 /// Builds an embedder for the given thread count. Runs on the blocking pool.
 pub type Loader = Arc<dyn Fn(Threads) -> Result<Arc<dyn Embed>, SemanticError> + Send + Sync>;
 
+/// Why the shell asks the host to let go of the model.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum ReleaseReason {
+    /// The app left the foreground. Ignored while the embedder runs.
+    Background,
+    /// The OS is short of memory. Always unloads, and stops the embedder at
+    /// its next step.
+    MemoryWarning,
+}
+
+/// A window the model ran. A model that could not be had, or a session a
+/// panic poisoned, is the `Err` around it: neither is the input's fault.
+pub enum WindowOutcome {
+    Embedded(Box<Vector>),
+    InputFailed(SemanticError),
+}
+
 pub struct ModelHost {
     state: Arc<Mutex<State>>,
     load: Loader,
+    loaded: Arc<Notify>,
+    leases: AtomicU32,
+    pressure: AtomicBool,
 }
 
 struct State {
@@ -35,6 +58,14 @@ fn lock(state: &Mutex<State>) -> MutexGuard<'_, State> {
     state.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
+struct Lease<'h>(&'h AtomicU32);
+
+impl Drop for Lease<'_> {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, Ordering::SeqCst);
+    }
+}
+
 impl ModelHost {
     pub fn new(load: Loader) -> Self {
         Self {
@@ -43,6 +74,9 @@ impl ModelHost {
                 generation: 0,
             })),
             load,
+            loaded: Arc::new(Notify::new()),
+            leases: AtomicU32::new(0),
+            pressure: AtomicBool::new(false),
         }
     }
 
@@ -61,6 +95,45 @@ impl ModelHost {
                 None
             }
         }
+    }
+
+    pub async fn embed_background(&self, input: String) -> Result<WindowOutcome, SemanticError> {
+        self.leases.fetch_add(1, Ordering::SeqCst);
+        let _lease = Lease(&self.leases);
+        let embedder = self.background_embedder().await?;
+        let outcome = runtime()
+            .spawn_blocking({
+                let embedder = embedder.clone();
+                move || embedder.embed(&input)
+            })
+            .await
+            .unwrap_or_else(|panicked| Err(SemanticError::inference(panicked)));
+        if matches!(outcome, Err(SemanticError::Poisoned)) {
+            self.evict(&embedder);
+            return Err(SemanticError::Poisoned);
+        }
+        Ok(outcome.map_or_else(WindowOutcome::InputFailed, |vector| {
+            WindowOutcome::Embedded(Box::new(vector))
+        }))
+    }
+
+    pub fn release(&self, reason: ReleaseReason) {
+        match reason {
+            ReleaseReason::Background if self.leases.load(Ordering::SeqCst) > 0 => {}
+            ReleaseReason::Background => self.unload(),
+            ReleaseReason::MemoryWarning => {
+                self.pressure.store(true, Ordering::SeqCst);
+                self.unload();
+            }
+        }
+    }
+
+    fn memory_warning_pending(&self) -> bool {
+        self.pressure.load(Ordering::SeqCst)
+    }
+
+    pub fn take_pressure(&self) -> bool {
+        self.pressure.swap(false, Ordering::SeqCst)
     }
 
     pub fn unload(&self) {
@@ -91,22 +164,80 @@ impl ModelHost {
         let generation = state.generation;
         drop(state);
 
-        let (shared, load) = (self.state.clone(), self.load.clone());
+        let (shared, load, loaded) = (self.state.clone(), self.load.clone(), self.loaded.clone());
         runtime().spawn_blocking(move || {
-            let loaded = catch_unwind(AssertUnwindSafe(|| load(Threads::Foreground)))
-                .unwrap_or_else(|_| Err(SemanticError::inference("model load panicked")));
-            let mut state = lock(&shared);
-            state.slot = match loaded {
-                Ok(_) if state.generation != generation => Slot::Unloaded,
-                Ok(embedder) => Slot::Loaded(embedder),
-                Err(error) => {
-                    eprintln!("memry-core: embedding model load failed: {error}");
-                    Slot::Unloaded
-                }
-            };
+            let _ = load_into(&shared, &load, &loaded, Threads::Foreground, generation);
         });
         None
     }
+
+    async fn background_embedder(&self) -> Result<Arc<dyn Embed>, SemanticError> {
+        loop {
+            let notified = self.loaded.notified();
+            tokio::pin!(notified);
+            notified.as_mut().enable();
+            let generation = {
+                let mut state = lock(&self.state);
+                match &state.slot {
+                    Slot::Loaded(embedder) if embedder.threads() == Threads::Background => {
+                        return Ok(embedder.clone());
+                    }
+                    Slot::Loading => None,
+                    Slot::Loaded(_) | Slot::Unloaded if self.memory_warning_pending() => {
+                        return Err(SemanticError::inference("a memory warning arrived"));
+                    }
+                    Slot::Loaded(_) | Slot::Unloaded => {
+                        state.slot = Slot::Loading;
+                        Some(state.generation)
+                    }
+                }
+            };
+            let Some(generation) = generation else {
+                notified.await;
+                continue;
+            };
+            let (shared, load, loaded) =
+                (self.state.clone(), self.load.clone(), self.loaded.clone());
+            return runtime()
+                .spawn_blocking(move || {
+                    load_into(&shared, &load, &loaded, Threads::Background, generation)
+                })
+                .await
+                .map_err(SemanticError::inference)?;
+        }
+    }
+}
+
+fn load_into(
+    state: &Mutex<State>,
+    load: &Loader,
+    loaded: &Notify,
+    threads: Threads,
+    generation: u64,
+) -> Result<Arc<dyn Embed>, SemanticError> {
+    let result = catch_unwind(AssertUnwindSafe(|| load(threads)))
+        .unwrap_or_else(|_| Err(SemanticError::inference("model load panicked")));
+    let mut slot = lock(state);
+    let outcome = match result {
+        Ok(_) if slot.generation != generation => {
+            slot.slot = Slot::Unloaded;
+            Err(SemanticError::inference(
+                "the model was released while it loaded",
+            ))
+        }
+        Ok(embedder) => {
+            slot.slot = Slot::Loaded(embedder.clone());
+            Ok(embedder)
+        }
+        Err(error) => {
+            eprintln!("memry-core: embedding model load failed: {error}");
+            slot.slot = Slot::Unloaded;
+            Err(error)
+        }
+    };
+    drop(slot);
+    loaded.notify_waiters();
+    outcome
 }
 
 #[cfg(test)]
@@ -170,8 +301,8 @@ mod tests {
         let built = Arc::new(Mutex::new(Vec::new()));
         let (counter, made) = (calls.clone(), built.clone());
         let load: Loader = Arc::new(move |threads| {
-            assert_eq!(threads, Threads::Foreground);
             counter.fetch_add(1, Ordering::SeqCst);
+            assert_eq!(threads, Threads::Foreground);
             // Bound before the match: panicking with the guard alive would
             // poison `answers` for every later load.
             let outcome = answers.lock().unwrap().recv().unwrap();
@@ -309,6 +440,24 @@ mod tests {
         until(|| h.calls.load(Ordering::SeqCst) == 2);
         h.answer.send(Outcome::Load).unwrap();
         until(|| h.host.query_vector(&q()).is_some());
+    }
+
+    #[test]
+    fn a_step_waiting_on_a_load_does_not_start_another_after_a_memory_warning() {
+        let h = harness();
+        h.host.query_vector(&q());
+        until(|| h.calls.load(Ordering::SeqCst) == 1);
+        std::thread::scope(|scope| {
+            let step = scope.spawn(|| runtime().block_on(h.host.embed_background("w".into())));
+            h.host.release(ReleaseReason::MemoryWarning);
+            h.answer.send(Outcome::Load).unwrap();
+            assert!(step.join().unwrap().is_err(), "the step stops");
+        });
+        assert_eq!(h.calls.load(Ordering::SeqCst), 1, "no second load");
+        assert!(
+            h.host.take_pressure(),
+            "the step left the warning for stop_for"
+        );
     }
 
     #[test]

@@ -13,9 +13,10 @@ mod embedder;
 pub(crate) mod fakes;
 mod host;
 mod model;
+pub(crate) mod queue;
 
 pub use embedder::{DIMENSION, Embed, Threads, Vector, load, truncate_renormalize};
-pub use host::{Loader, ModelHost};
+pub use host::{Loader, ModelHost, ReleaseReason, WindowOutcome};
 pub use model::{ModelDir, VerifiedModel};
 
 use crate::api::errors::StorageError;

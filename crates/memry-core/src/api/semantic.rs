@@ -1,7 +1,7 @@
 //! On-device semantic search (#4505): the one device-scoped object the shell
 //! builds. It owns the opt-in, the model download and the model slot.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
@@ -12,6 +12,7 @@ use crate::domain::search::semantic::{SemanticHit, nearest, wants_semantic};
 use crate::seams::reachability::{Reachability, Reachable};
 use crate::seams::transport::Transport;
 use crate::semantic::download::{self, DownloadEnd, DownloadError};
+use crate::semantic::queue::InFlight;
 use crate::semantic::{Loader, ModelDir, ModelHost, SemanticError, load};
 use crate::storage::Db;
 use crate::storage::vector_db::{self, VectorStore};
@@ -81,6 +82,9 @@ pub struct SemanticSearch {
     download: tokio::sync::Mutex<()>,
     /// One `vectors.db` handle per vault directory.
     vectors: Mutex<HashMap<PathBuf, Db>>,
+    step: tokio::sync::Mutex<()>,
+    in_flight: Mutex<HashMap<PathBuf, InFlight>>,
+    skipped: Mutex<HashSet<[u8; 32]>>,
 }
 
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
@@ -162,9 +166,11 @@ impl SemanticSearch {
         // at its next range; the second removes what that range wrote.
         self.model.clear().map_err(io_failed)?;
         let _download = self.download.lock().await;
+        let _step = self.step.lock().await;
         self.model.clear().map_err(io_failed)?;
         *lock(&self.transfer) = Transfer::Idle;
         self.host.unload();
+        lock(&self.in_flight).clear();
         // Held across the delete, so a status poll cannot reopen the file.
         let mut handles = lock(&self.vectors);
         handles.clear();
@@ -204,6 +210,9 @@ impl SemanticSearch {
             transfer: Mutex::new(Transfer::Idle),
             download: tokio::sync::Mutex::new(()),
             vectors: Mutex::new(HashMap::new()),
+            step: tokio::sync::Mutex::new(()),
+            in_flight: Mutex::new(HashMap::new()),
+            skipped: Mutex::new(HashSet::new()),
         }
     }
 
@@ -338,6 +347,12 @@ fn io_failed(error: std::io::Error) -> SemanticError {
     }
     .into()
 }
+
+#[path = "semantic_step.rs"]
+mod step;
+pub use crate::semantic::ReleaseReason;
+pub use crate::semantic::queue::Thermal;
+pub use step::{StepConditions, StepOutcome, StepStop};
 
 #[cfg(test)]
 #[path = "semantic_tests.rs"]
