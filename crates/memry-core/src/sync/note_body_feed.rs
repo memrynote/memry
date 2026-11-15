@@ -22,6 +22,7 @@
 //! whole-body pull still fetches the missing ones (§7.9).
 
 use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
@@ -37,6 +38,7 @@ use crate::protocol::http::{ApiRequest, HttpClient, RetryPolicy};
 use super::body_debt;
 use super::body_pull::{CrdtCipher, PackedUpdate, crdt_cursor_scope};
 use super::crdt_wire::read_update_page;
+use super::crypto_batch::off_runtime;
 use super::first_sync_store::{read_meta, write_meta};
 use super::store::{self, RECORD_CURSOR_SCOPE};
 
@@ -81,7 +83,7 @@ pub(super) struct FetchedBodies {
 pub(super) struct FeedClient<'a> {
     pub(super) http: &'a HttpClient,
     pub(super) request: &'a (dyn Fn(&str, &str) -> ApiRequest + Sync),
-    pub(super) cipher: &'a dyn CrdtCipher,
+    pub(super) cipher: Arc<dyn CrdtCipher>,
 }
 
 /// Parses, fetches, opens and parses each entry of `noteBodies`.
@@ -211,7 +213,7 @@ async fn fetch_update(
             (found.data, found.signer_device_id)
         }
     };
-    let Some(update) = open(client, doc_id, signer.as_deref(), &data) else {
+    let Some(update) = open(client, doc_id, signer, data).await else {
         return Fetched::Owed;
     };
     Fetched::Landed(Landing::Update {
@@ -230,42 +232,57 @@ async fn fetch_snapshot(client: &FeedClient<'_>, doc_id: &str) -> Fetched {
         Ok(body) => body,
         Err(error) => return failed_fetch(&error),
     };
-    let landed = (|| {
-        let encoded = body.get("snapshot").and_then(Json::as_str)?;
-        let signer = body.get("signerDeviceId").and_then(Json::as_str);
-        let snapshot = open(client, doc_id, signer, encoded)?;
-        Some(Landing::Snapshot {
-            doc_id: doc_id.to_owned(),
-            sequence_num: body.get("sequenceNum").and_then(Json::as_i64)?,
-            revision: body
-                .get("revision")
-                .and_then(Json::as_str)
-                .map(str::to_owned),
-            snapshot,
-        })
-    })();
-    landed.map_or(Fetched::Owed, Fetched::Landed)
+    let (Some(encoded), Some(sequence_num)) = (
+        body.get("snapshot").and_then(Json::as_str),
+        body.get("sequenceNum").and_then(Json::as_i64),
+    ) else {
+        return Fetched::Owed;
+    };
+    let signer = body
+        .get("signerDeviceId")
+        .and_then(Json::as_str)
+        .map(str::to_owned);
+    let Some(snapshot) = open(client, doc_id, signer, encoded.to_owned()).await else {
+        return Fetched::Owed;
+    };
+    Fetched::Landed(Landing::Snapshot {
+        doc_id: doc_id.to_owned(),
+        sequence_num,
+        revision: body
+            .get("revision")
+            .and_then(Json::as_str)
+            .map(str::to_owned),
+        snapshot,
+    })
 }
 
 /// Decodes, opens and **parses** one packed body, so nothing unparseable is
-/// ever stored.
-fn open(
+/// ever stored. On `spawn_blocking` (#3534).
+async fn open(
     client: &FeedClient<'_>,
     doc_id: &str,
-    signer: Option<&str>,
-    data: &str,
+    signer: Option<String>,
+    data: String,
 ) -> Option<Vec<u8>> {
-    let packed = BASE64.decode(data).ok()?;
-    let opened = client
-        .cipher
-        .open(&PackedUpdate {
-            doc_id,
-            signer_device_id: signer,
-            packed: &packed,
-        })
-        .ok()?;
-    Update::decode_v1(&opened).ok()?;
-    Some(opened)
+    let cipher = Arc::clone(&client.cipher);
+    let doc_id = doc_id.to_owned();
+    let opened = off_runtime("opening a feed body", move || {
+        let packed = BASE64.decode(data).ok()?;
+        let opened = cipher
+            .open(&PackedUpdate {
+                doc_id: &doc_id,
+                signer_device_id: signer.as_deref(),
+                packed: &packed,
+            })
+            .ok()?;
+        Update::decode_v1(&opened).ok()?;
+        Some(opened)
+    })
+    .await;
+    opened.unwrap_or_else(|error| {
+        eprintln!("memry-core: {error}; the body stays owed");
+        None
+    })
 }
 
 /// What this device holds for the documents a page's entries name, read

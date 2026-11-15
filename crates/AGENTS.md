@@ -55,6 +55,10 @@ This directory owns the Rust workspace. `memry-core` is the shared core under th
 
 `memry-core/src/domain/embedding_input.rs` (Step 23, #3540) ports Electron's `apps/desktop/src/main/lib/embedding-input.ts` and is tested against `packages/contracts/test-vectors/embedding-input.json`, which `apps/desktop/scripts/embedding-input-oracle/` generates by running that module in Node. Regenerate with `pnpm --filter @memry/desktop vectors:embedding-input`; `vectors:embedding-input:check` runs in CI. Lengths are UTF-16 code units, and a cut that splits a surrogate pair is U+FFFD on both sides.
 
+### HTML block text
+
+`memry-desktop/src/services/file_text/html.rs` (Step 25, #3542) ports Electron's `apps/desktop/src/main/file-text/html-text.ts` on html5ever and is tested against `packages/contracts/test-vectors/html-text.json`, which `apps/desktop/scripts/html-text-oracle/` generates by running that module in Node. Regenerate with `pnpm --filter @memry/desktop vectors:html-text`; `vectors:html-text:check` runs in CI. Two cases differ on purpose and the test pins both: foster-parented table text, and elements inside `select` (the module doc says why).
+
 ### Embeddings text
 
 `memry-ml`'s text engine is tested against `packages/contracts/test-vectors/embeddings-text.json`: the token ids and the stored 256-value vector transformers.js gives on Electron's text path (`embedding-worker.ts`) for 31 texts (30 taken from `embedding-input.json`, one past the 4000-unit cut), 2 texts Electron embeds with a lone surrogate, and 12 query and document pairs with their oracle ranking. `crates/memry-ml/tests/golden/generate.mjs` writes it from a local copy of the pinned model (`pnpm embed:golden --model-dir <.../onnx-community/embeddinggemma-2-ONNX>`). `--check` writes nothing; it is exact on token ids, order and meta and holds the vectors to the file's tolerance. It needs the model, so CI does not run it.
@@ -63,12 +67,21 @@ This directory owns the Rust workspace. `memry-core` is the shared core under th
 - The generator refuses ranking texts that put two documents within 1e-4 for one query. That floor is a margin for cross-CPU floating-point noise, observed far below it (bit-identical on macOS arm64, all legs green); it does not follow from the bounds, which allow a score to shift by about 0.028. A ranking failure while every text is inside the bounds is drift to investigate, not a reason to change a ranking text.
 - Lone surrogates are a known divergence (test-vectors README): the test pins the measured cosine with Electron's vector instead of the bounds.
 
+### Embeddings audio
+
+`memry-ml`'s audio path (`audio_prep.rs`, `audio.rs`, `EmbeddingEngine::embed_audio`) is tested against two files that `crates/memry-ml/tests/golden/generate-audio.mjs` writes by running Electron's `audio-embedding.ts` in place (its settings and database imports stubbed) and the worker's audio path on transformers.js (`pnpm embed:golden:audio --model-dir <dir>`, `--check` as for text; the model folder needs the audio files too).
+
+- `audio-features.json` (no model, every tier, `tests/audio_features.rs`): WAV decoding and `embedAudio`'s windows exact, log-mel rows within 1e-4. `embeddings-audio.json` (full tier, `tests/golden_audio.rs`): seven WAV files decoded, split and embedded, token ids exact, the text file's vector bounds. The encoder loads with the first window.
+- Windows are 30 s, at most 120, where Electron's are 300 s, at most 12, of which its extractor keeps the first 30 s (Kaan, 2026-11-14): an intentional divergence. The generator runs `embedAudio` in place with the native constants, and native window 10k records Electron's vector k and their cosine (test-vectors README). `audio_features` refuses a window over 30 s, so nothing is truncated.
+- Inputs are integer recipes, rebuilt byte for byte by `tests/common/audio.rs`; change a recipe in both places. `tests/common/` holds the helpers the vector tests share, and `tests/golden/common.mjs` those of the generators.
+- The decoder is an untrusted-input parser: files over 512 MiB refused, output capped at 120 windows of 30 s (60 min) before allocation, sample rates under 4000 Hz refused (a decoding divergence, marked in the file), linear step count. Keep its kit tests red-provable.
+
 ### Embeddings image
 
 `memry-ml`'s image path (`image_prep.rs`, `vision.rs`, `EmbeddingEngine::embed_image`) ports Electron's `embedImage`: sharp's decode (first frame, EXIF orientation, ICC to sRGB), `.rgb()`, `Gemma4ImageProcessor` (libvips' fixed-point bicubic resize, 16x16 patches) and `EmbeddingGemma2Processor`'s placeholder expansion. `crates/memry-ml/tests/golden/generate-image.mjs` (`pnpm embed:golden:image [--model-dir <dir>] [--check]`) writes two vector classes: `pixel-tensors.json` (needs no model) and, with the model, `embeddings-image.json`. `--check` runs locally only: the inputs are small images sharp encodes, and sharp's resize is not proven identical across CPUs.
 
 - `tests/pixel_tensors.rs` (every tier) holds PNG, WebP and GIF inputs to Electron's decoded pixels, pixel values and positions by sha256, and refuses every input Electron refuses. `tests/golden_image.rs` (full tier, `MEMRY_ML_MODEL_DIR` with the text and vision groups) holds token ids exact and vectors to the text bounds.
-- JPEG decoding (zune-jpeg) and ICC conversion (moxcms) are pure Rust and a known divergence from libjpeg-turbo and Little CMS (Kaan, 2026-11-13; numbers and the uncovered cases, CMYK JPEG among them, in the test-vectors README). `tests/common/mod.rs` reads each case's class from its bytes; those cases are held to `maxLevelDiff` and `divergentMinCosine` under ceilings and a floor the tests hard-code. Never loosen either; a C decoder for bit-exactness needs Kaan's approval.
+- JPEG decoding (zune-jpeg) and ICC conversion (moxcms) are pure Rust and a known divergence from libjpeg-turbo and Little CMS (Kaan, 2026-11-13; numbers and the uncovered cases, CMYK JPEG among them, in the test-vectors README). `tests/common/image.rs` reads each case's class from its bytes; those cases are held to `maxLevelDiff` and `divergentMinCosine` under ceilings and a floor the tests hard-code. Never loosen either; a C decoder for bit-exactness needs Kaan's approval.
 - `image_prep_tests.rs` holds the untrusted-input guards: the 30 MiB file cap, sharp's pixel limit, the 512 MiB decode peak (frame buffer plus a progressive JPEG's coefficients, checked from the headers before the decoder allocates), the 10 MiB colour profile (a PNG's `iCCP` is inflated before the decoder opens), the soft-token range, the JPEG end marker, a linear resize and proptests over mutated images and profiles.
 
 ### Note fold

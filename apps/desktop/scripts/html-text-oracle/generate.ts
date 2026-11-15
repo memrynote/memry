@@ -90,7 +90,27 @@ const CASES: Array<{ name: string; html: string }> = [
   },
   { name: 'details and summary', html: '<details><summary>Sum</summary>Hidden body</details>' },
   { name: 'hr and dl', html: 'a<hr>b<dl><dt>term</dt><dd>def</dd></dl>' },
-  { name: 'replacement characters', html: 'a\u0000b<p>\ufffdc</p>' }
+  { name: 'replacement characters', html: 'a\u0000b<p>\ufffdc</p>' },
+  {
+    name: 'a leading byte order mark',
+    html:
+      '\ufeff<!doctype html><html><head><title>Head title</title></head>' +
+      '<body><p>Body</p></body></html>'
+  },
+  { name: 'adoption agency with a nested a', html: '<a>1<p>2<a>3</a></p>' },
+  { name: 'adoption agency with a block in b', html: '<b><div>x</b>y</div>' },
+  {
+    name: 'nested tables',
+    html: '<table><tr><td>outer<table><tr><td>inner</td></tr></table>after</td></tr></table>'
+  },
+  { name: 'misnested tables', html: '<table><tr><td>a<table><td>b</table>c</td><p>d</table>e' },
+  {
+    name: 'select with non-option content',
+    html: '<select><option>one</option><div>block</div><b>bold</b>text</select>after'
+  },
+  { name: 'legacy entities', html: '<p>&notit; &amp &#x80; &#0; &#xD800; &copy</p>' },
+  { name: 'crlf line endings', html: '<p>one\r\ntwo</p>\r\n<pre>a\r\nb\rc</pre>' },
+  { name: 'the hidden attribute', html: '<p hidden>hidden text</p><div>shown</div>' }
 ]
 
 async function render(): Promise<string> {

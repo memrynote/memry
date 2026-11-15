@@ -8,10 +8,13 @@
 //! `sequenceNum` and its stored revision is the snapshot's `revision`, so the
 //! bodies pass's §7.8 checks find nothing to fetch.
 
+use std::sync::Arc;
+
 use crate::api::errors::StorageError;
 use crate::crdt::update_log::{self, Namespace};
 
 use super::{BodyPull, BodyPullError, PackedUpdate};
+use crate::sync::crypto_batch::off_runtime;
 
 /// What one packed snapshot did.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -58,19 +61,20 @@ impl BodyPull {
 
         // The index names no signer, so every registered device is tried. This
         // proves what the item path proves: signed by a key of this account.
-        let opened = self
-            .cipher
-            .signer_candidates()
-            .into_iter()
-            .find_map(|device| {
-                self.cipher
+        let cipher = Arc::clone(&self.cipher);
+        let (doc, packed) = (doc_id.to_owned(), packed.to_vec());
+        let opened = off_runtime("opening a packed snapshot", move || {
+            cipher.signer_candidates().into_iter().find_map(|device| {
+                cipher
                     .open(&PackedUpdate {
-                        doc_id,
+                        doc_id: &doc,
                         signer_device_id: Some(&device),
-                        packed,
+                        packed: &packed,
                     })
                     .ok()
-            });
+            })
+        })
+        .await?;
         let Some(snapshot) = opened else {
             return Ok(PackSeed::Unverified);
         };

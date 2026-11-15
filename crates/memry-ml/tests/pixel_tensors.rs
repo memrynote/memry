@@ -8,7 +8,8 @@
 mod common;
 
 use base64::Engine as _;
-use common::{divergence, root};
+use common::image::divergence;
+use common::{root, vectors};
 use memry_ml::image_prep::{self, PixelTensor};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -23,11 +24,6 @@ const MAX_LEVEL_DIFF: [(&str, u64); 5] = [
     ("cmyk", 48),
     ("cmyk+icc", 48),
 ];
-
-fn vectors() -> Value {
-    let path = root().join("packages/contracts/test-vectors/pixel-tensors.json");
-    serde_json::from_slice(&std::fs::read(path).expect("pixel-tensors.json")).expect("json")
-}
 
 fn sha256(bytes: &[u8]) -> String {
     hex::encode(Sha256::digest(bytes))
@@ -158,7 +154,7 @@ fn check(name: &str, case: &Value, bytes: &[u8], limits: &Value) -> Option<u8> {
 
 #[test]
 fn every_case_matches_electrons_preprocessing() {
-    let file = vectors();
+    let file = vectors("pixel-tensors.json");
     let cases = file["cases"].as_array().expect("cases");
     assert!(cases.len() >= 50, "{} cases", cases.len());
     let loosened = limit_failures(&file);
@@ -214,7 +210,7 @@ fn case_at(file: &Value, name: &str) -> usize {
 
 #[test]
 fn a_file_that_loosens_a_bound_or_a_tag_fails() {
-    let file = vectors();
+    let file = vectors("pixel-tensors.json");
     assert_eq!(limit_failures(&file), Vec::<String>::new());
     let tampered = |name: &str, edit: fn(&mut Value)| {
         let mut copy = file.clone();

@@ -26,12 +26,17 @@ pub(crate) const SENTENCE_EMBEDDING_WIDTH: usize = 768;
 #[derive(Debug, Default)]
 pub(crate) struct MediaFeatures {
     pub(crate) image: Vec<f32>,
+    pub(crate) audio: Vec<f32>,
 }
 
 impl MediaFeatures {
     /// Rows per modality, in `PLACEHOLDERS` order (video is never passed).
     fn rows(&self) -> [usize; 3] {
-        [self.image.len() / SOFT_TOKEN_WIDTH, 0, 0]
+        [
+            self.image.len() / SOFT_TOKEN_WIDTH,
+            0,
+            self.audio.len() / SOFT_TOKEN_WIDTH,
+        ]
     }
 }
 
@@ -77,6 +82,8 @@ impl TextModel {
             || Tensor::from_array(([0, SOFT_TOKEN_WIDTH], Vec::<f32>::new())).map_err(inference);
         let image_features =
             Tensor::from_array(([rows[0], SOFT_TOKEN_WIDTH], features.image)).map_err(inference)?;
+        let audio_features =
+            Tensor::from_array(([rows[2], SOFT_TOKEN_WIDTH], features.audio)).map_err(inference)?;
         let outputs = self
             .session
             .run(ort::inputs! {
@@ -84,7 +91,7 @@ impl TextModel {
                 "attention_mask" => attention_mask,
                 "image_features" => image_features,
                 "video_features" => no_features()?,
-                "audio_features" => no_features()?,
+                "audio_features" => audio_features,
             })
             .map_err(inference)?;
         let embedding = outputs
@@ -138,12 +145,29 @@ mod tests {
         );
         let two_rows = MediaFeatures {
             image: vec![0.0; 2 * SOFT_TOKEN_WIDTH],
+            ..MediaFeatures::default()
         };
         assert!(check_placeholders(&[2, 258_880, 258_880, 1], &two_rows).is_ok());
         let error = check_placeholders(&[2, 258_880, 1], &two_rows).expect_err("one placeholder");
         assert_eq!(
             error.to_string(),
             "The number of image tokens (1) and image features (2) do not match."
+        );
+        let audio_prompt = [2, 256_000, 258_881, 258_881, 258_883, 1];
+        let two_audio_rows = MediaFeatures {
+            audio: vec![0.0; 2 * SOFT_TOKEN_WIDTH],
+            ..MediaFeatures::default()
+        };
+        assert!(check_placeholders(&audio_prompt, &two_audio_rows).is_ok());
+        let three_audio_rows = MediaFeatures {
+            audio: vec![0.0; 3 * SOFT_TOKEN_WIDTH],
+            ..MediaFeatures::default()
+        };
+        let error =
+            check_placeholders(&audio_prompt, &three_audio_rows).expect_err("one row too many");
+        assert_eq!(
+            error.to_string(),
+            "The number of audio tokens (2) and audio features (3) do not match."
         );
     }
 }

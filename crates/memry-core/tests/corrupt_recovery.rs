@@ -10,6 +10,7 @@
 //! | recovery keeps tasks, the outbox and the device id  | every core table is salvaged         |
 //! | the damaged file is moved aside, never deleted      | production data, maybe the only copy |
 //! | the rebuilt database opens and takes writes         | the vault is usable again            |
+//! | a salvage that could not start reports the lost vault id | #3534: a new id orphans old stamps |
 
 #[allow(unused_imports)]
 use crate::http_fakes;
@@ -237,6 +238,9 @@ fn corrupt_recovery_salvages_tasks_outbox_and_device_id() {
         .expect("tasks");
     assert_eq!(tasks.copied, TASKS as u64);
     assert!(tasks.read_error.is_none());
+    // `meta` came over with `vault.id`: the vault keeps its id.
+    assert!(!report.vault_id_lost);
+    assert!(!report.problems().unwrap_or_default().contains("vault id"));
 }
 
 #[test]
@@ -351,11 +355,18 @@ fn corrupt_recovery_reports_a_salvage_that_could_not_start() {
         report.salvage_error.is_some(),
         "an empty report must not look like a clean, empty salvage"
     );
+    // #3534 (the Step 08c recovery case): the next open mints a new vault id,
+    // and the report says what that orphans.
+    assert!(report.vault_id_lost);
+    let problems = report.problems().expect("problems");
+    assert!(problems.contains("no vault id came over"), "{problems}");
+    let db = open_data(&path).expect("the fresh database opens");
+    let (_, detail) = log_detail(&db);
+    assert!(detail.contains("no vault id came over"), "{detail}");
     assert_eq!(
         std::fs::read(&report.quarantined).expect("kept"),
         vec![0xAB; 8192]
     );
-    open_data(&path).expect("the fresh database opens");
 }
 
 #[test]

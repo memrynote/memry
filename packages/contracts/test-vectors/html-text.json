@@ -2,7 +2,7 @@
   "meta": {
     "spec": "tauri-v2-3542-html-text",
     "oracle": "apps/desktop/scripts/html-text-oracle (Electron src/main/file-text/html-text.ts run in place)",
-    "caseCount": 26
+    "caseCount": 35
   },
   "cases": [
     {
@@ -134,6 +134,51 @@
       "name": "replacement characters",
       "html": "a\u0000b<p>�c</p>",
       "text": "ab\n\n�c"
+    },
+    {
+      "name": "a leading byte order mark",
+      "html": "﻿<!doctype html><html><head><title>Head title</title></head><body><p>Body</p></body></html>",
+      "text": "Head title\n\nBody"
+    },
+    {
+      "name": "adoption agency with a nested a",
+      "html": "<a>1<p>2<a>3</a></p>",
+      "text": "1\n\n23"
+    },
+    {
+      "name": "adoption agency with a block in b",
+      "html": "<b><div>x</b>y</div>",
+      "text": "xy"
+    },
+    {
+      "name": "nested tables",
+      "html": "<table><tr><td>outer<table><tr><td>inner</td></tr></table>after</td></tr></table>",
+      "text": "outer\n\ninner\n\nafter"
+    },
+    {
+      "name": "misnested tables",
+      "html": "<table><tr><td>a<table><td>b</table>c</td><p>d</table>e",
+      "text": "d\n\na\n\nb\n\nc\n\ne"
+    },
+    {
+      "name": "select with non-option content",
+      "html": "<select><option>one</option><div>block</div><b>bold</b>text</select>after",
+      "text": "oneblockboldtextafter"
+    },
+    {
+      "name": "legacy entities",
+      "html": "<p>&notit; &amp &#x80; &#0; &#xD800; &copy</p>",
+      "text": "¬it; & € � � ©"
+    },
+    {
+      "name": "crlf line endings",
+      "html": "<p>one\r\ntwo</p>\r\n<pre>a\r\nb\rc</pre>",
+      "text": "one\ntwo\n\n```\na\nb\nc\n```"
+    },
+    {
+      "name": "the hidden attribute",
+      "html": "<p hidden>hidden text</p><div>shown</div>",
+      "text": "hidden text\n\nshown"
     }
   ]
 }

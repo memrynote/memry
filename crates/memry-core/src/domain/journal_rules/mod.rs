@@ -40,7 +40,7 @@ pub type ActivityLevel = u8;
 /// JavaScript's `\s` and `String.prototype.trim` set: WhiteSpace plus
 /// LineTerminator. Differs from [`char::is_whitespace`] on U+0085 (not in the
 /// JS set) and U+FEFF (in it).
-pub fn is_js_whitespace(c: char) -> bool {
+pub(crate) fn is_js_whitespace(c: char) -> bool {
     matches!(
         c,
         '\t' | '\n' | '\u{000B}' | '\u{000C}' | '\r' | ' ' | '\u{00A0}' | '\u{1680}' | '\u{2000}'
