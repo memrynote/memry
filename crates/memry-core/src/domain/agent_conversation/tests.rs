@@ -384,7 +384,7 @@ fn a_plain_title_shaped_like_an_envelope_is_sealed_read_and_pushed_as_itself() {
 }
 
 #[test]
-fn a_remote_the_schema_refuses_is_skipped_and_writes_nothing() {
+fn a_remote_the_schema_refuses_is_refused_and_writes_nothing() {
     let (db, _dir) = open("agent-conversation-refused");
     db.call_blocking(|conn| {
         let key = key();
@@ -407,6 +407,11 @@ fn a_remote_the_schema_refuses_is_skipped_and_writes_nothing() {
             let dominating = peer(&id, fields.clone(), json!({DEVICE: 9}), field_clocks);
             let totals = pull(conn, &key, vec![dominating])?;
             assert_eq!((totals.skipped, totals.corrupt), (1, 0), "{fields}");
+            assert_eq!(
+                totals.refused,
+                [(ITEM_TYPE.to_owned(), id.clone())],
+                "{fields}"
+            );
             assert_eq!(stored_text(conn, &id), before, "{fields}");
             assert_eq!(corrupt_reason(conn, &id), None, "{fields}");
         }
@@ -418,7 +423,9 @@ fn a_remote_the_schema_refuses_is_skipped_and_writes_nothing() {
             json!({"peer": 1}),
             json!({}),
         );
-        assert_eq!(pull(conn, &AtRestKey::default(), vec![fresh])?.skipped, 1);
+        let totals = pull(conn, &AtRestKey::default(), vec![fresh])?;
+        assert_eq!(totals.skipped, 1);
+        assert_eq!(totals.refused, [(ITEM_TYPE.to_owned(), "c-new".to_owned())]);
         let rows: i64 = conn
             .query_row(
                 "SELECT COUNT(*) FROM sync_items WHERE payload LIKE '%SECRET-REFUSED%'",

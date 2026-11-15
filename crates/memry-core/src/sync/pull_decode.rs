@@ -3,26 +3,44 @@
 
 use serde_json::Value as Json;
 
-use crate::protocol::envelope::{self, RecordEnvelope, SyncOperation};
+use crate::protocol::envelope::{self, EnvelopeError, RecordEnvelope, SyncOperation};
 use crate::protocol::types::{ArrivingItemType, Declaration};
 use crate::storage::repositories::sync_items::InboundRecord;
 
 use super::apply::{DOCUMENT_TYPES, Pending};
 use super::pull::{RecordCipher, now_ms};
 
+/// Why one pulled item did not decode: **one** corrupt item (§5.14).
+#[derive(Debug)]
+pub(super) struct Undecodable {
+    pub reason: String,
+    /// The record's signature did not verify: the quarantine's input
+    /// ([`super::hardening::quarantine`]).
+    pub signature_invalid: bool,
+}
+
+impl From<String> for Undecodable {
+    fn from(reason: String) -> Self {
+        Self {
+            reason,
+            signature_invalid: false,
+        }
+    }
+}
+
 /// Per-item validation. Every `Err` here is **one** corrupt item.
 pub(super) fn decode(
     declaration: &Declaration,
     cipher: &dyn RecordCipher,
     item: &Json,
-) -> Result<Pending, String> {
+) -> Result<Pending, Undecodable> {
     let envelope =
         envelope::from_json(item).map_err(|error| format!("malformed envelope: {error}"))?;
 
     // §5.3.1: a type this client did not declare is recorded, not applied.
     // The record feed cannot produce it today; the rule is defensive.
     if declaration.classify(&envelope.item_type) == ArrivingItemType::Undeclared {
-        return Err(format!("undeclared item type `{}`", envelope.item_type));
+        return Err(format!("undeclared item type `{}`", envelope.item_type).into());
     }
 
     // §5.12: a present `deletedAt` overrides the declared operation, and
@@ -41,9 +59,10 @@ pub(super) fn decode(
         });
     }
 
-    let plaintext = cipher
-        .open(&envelope)
-        .map_err(|error| format!("could not open the record: {error}"))?;
+    let plaintext = cipher.open(&envelope).map_err(|error| Undecodable {
+        signature_invalid: matches!(error, EnvelopeError::SignatureInvalid),
+        reason: format!("could not open the record: {error}"),
+    })?;
     let payload_json = String::from_utf8(plaintext)
         .map_err(|_| "the decrypted payload is not UTF-8".to_owned())?;
 

@@ -257,27 +257,26 @@ plaintext in `data.db`. The exception is bounded:
   an earlier free can leave plain bytes on a freelist page until the page is
   reused or the file is vacuumed.
 
-**Rule 5 departs for the agent types.** Where Electron's schema refuses a
-`canvas`, `vault_lock`, `canvas_folder`, `home_page` or `sticky_draft` payload
-(a `null` where the schema has no `.nullable()`, a value of the wrong type, or
-`widgets` that is not a string), the Rust core returns `Refused` and the pull
-ledgers it as above
+**The desktop-only types refuse the same way.** Where Electron's schema
+refuses a `canvas`, `vault_lock`, `canvas_folder`, `home_page`,
+`sticky_draft`, `agent_conversation` or `agent_message` payload (a `null`
+where the schema has no `.nullable()`, a value of the wrong type, or `widgets`
+that is not a string), the Rust core returns `Refused`, writes nothing, and
+the pull ledgers it as above
 (`crates/memry-core/src/domain/desktop_records/mod.rs:108-125`,
 `crates/memry-core/src/domain/canvas/merge.rs:68-70`,
 `crates/memry-core/src/domain/vault_locks/merge.rs:65-67`,
-`crates/memry-core/src/domain/home_page/merge.rs:63-69`). For an
-`agent_conversation` or `agent_message` payload it still returns `Skipped`
-and writes nothing
-(`crates/memry-core/src/domain/agent_records.rs:123-134`). `Skipped` only
-counts the item (`crates/memry-core/src/sync/apply.rs:210`,
-`crates/memry-core/src/sync/apply/record.rs:179`): the
-cursor moves past it and no later build fetches it again. Electron records
-the same item in its schema-invalid ledger
+`crates/memry-core/src/domain/home_page/merge.rs:63-69`,
+`crates/memry-core/src/domain/agent_conversation/merge.rs:66-68`,
+`crates/memry-core/src/domain/agent_message/merge.rs:55-57`,
+`crates/memry-core/src/sync/apply.rs:236`). Electron records the same item in
+its schema-invalid ledger
 (`apps/desktop/src/main/sync/engine/pull-coordinator.ts:634`, `:684`), which
 fetches it again by id once another app version runs
-(`apps/desktop/src/main/sync/engine/schema-invalid-ledger.ts:41-46`). A
-payload that a newer build can read is therefore recovered by Electron after
-an update and stays lost on the Rust core until the core keeps such a ledger.
+(`apps/desktop/src/main/sync/engine/schema-invalid-ledger.ts:41-46`). An
+`agent_message` id this device already holds is checked first and skips
+whatever the remote says (`crates/memry-core/src/domain/agent_message/merge.rs:49-53`),
+since a message is written once.
 
 **Disposition of Q13.2: answered** (this section).
 
@@ -703,7 +702,7 @@ The Rust core projects it as `Field::opt_null("schema", Kind::Any)` with no
 column (`crates/memry-core/src/storage/repositories/projectors/taxonomy.rs:64`).
 It runs §6.3.1's document gate on the rest of the definition, then joins
 `schema` by chapter 06 §6.11 on every apply path, the skip included, and heals
-(`crates/memry-core/src/sync/apply/record.rs:108-110`, `:157-168`,
+(`crates/memry-core/src/sync/apply/record.rs:113-115`, `:163-174`,
 `crates/memry-core/src/sync/versioned_apply.rs:46`, `:74`). A schema edit
 stamps `t` one past the stored value's
 (`crates/memry-core/src/domain/tag_schema/edit.rs:97`,
@@ -1441,8 +1440,8 @@ It is the field-level merge (§13.9) over `title`, `backend`, `backendModel`,
 (`crates/memry-core/src/domain/agent_conversation/mod.rs:36-38`):
 
 1. a remote the schema refuses (a value of the wrong type, or `null` in a key
-   the schema does not mark `.nullable()`) is skipped before the clock is
-   compared, and nothing is written
+   the schema does not mark `.nullable()`) is refused before the clock is
+   compared, nothing is written, and the pull ledgers it (§13.2.3)
    (`crates/memry-core/src/domain/agent_conversation/merge.rs:65-68`,
    `crates/memry-core/src/domain/agent_conversation/mod.rs:40-53`);
 2. no local record, or a remote clock that dominates the local one, stores the
@@ -1497,7 +1496,8 @@ A message is immutable (§13.9):
    (`crates/memry-core/src/domain/agent_message/merge.rs:49-53`). A new id
    stores the remote as sent (`:155-176`);
 2. a remote the schema refuses (a value of the wrong type, or `null` in a key
-   the schema does not mark `.nullable()`) is skipped and nothing is written
+   the schema does not mark `.nullable()`) is refused, nothing is written,
+   and the pull ledgers it (§13.2.3)
    (`crates/memry-core/src/domain/agent_message/merge.rs:54-57`,
    `crates/memry-core/src/domain/agent_message/mod.rs:37-49`);
 3. a `status` that is not terminal, absent included, refuses the record:

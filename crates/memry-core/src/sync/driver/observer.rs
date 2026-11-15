@@ -21,6 +21,8 @@ use std::time::{Duration, Instant};
 
 use serde_json::Value as Json;
 
+pub use crate::sync::hardening::quarantine::SecurityWarning;
+
 /// What the apply did with one pulled record.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AppliedOutcome {
@@ -109,6 +111,10 @@ pub trait ApplyObserver: Send + Sync {
     /// Record pages carry no body change, and `Editor::subscribe` sees only
     /// resident documents, so this is how a non-resident body reaches its file.
     fn bodies_applied(&self, _doc_ids: &[String]) {}
+
+    /// A pulled record's signature did not verify, and its quarantine
+    /// counted it (desktop's `SecurityWarningEvent`).
+    fn security_warning(&self, _warning: &SecurityWarning) {}
 }
 
 /// An observer call this slow is logged: it runs under the pass gate.
@@ -173,6 +179,22 @@ impl Observers {
             guarded(observer, "bodies_applied", size, || {
                 observer.bodies_applied(&doc_ids)
             });
+        })
+        .await;
+    }
+
+    /// Tells every observer each quarantine, on `spawn_blocking`.
+    pub async fn security_warnings(&self, warnings: Vec<SecurityWarning>) {
+        if warnings.is_empty() {
+            return;
+        }
+        let size = warnings.len();
+        self.each("security_warning", move |observer| {
+            for warning in &warnings {
+                guarded(observer, "security_warning", size, || {
+                    observer.security_warning(warning)
+                });
+            }
         })
         .await;
     }
