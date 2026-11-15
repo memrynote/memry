@@ -86,18 +86,40 @@ impl HostPolicy {
 /// feedback and incident reports, then sync (Step 17, #3534).
 pub type SyncTransport = Arc<dyn Transport>;
 
+/// The OAuth init (Step 19, #3536): one request whose 3xx comes back as a response with its
+/// `location`, never followed, over the same hosts and TLS stack as the app's transport.
+#[async_trait::async_trait]
+pub trait NoRedirect: Send + Sync {
+    async fn send_no_redirect(&self, request: HttpRequest) -> Result<HttpResponse, TransportError>;
+}
+
+/// The app's [`NoRedirect`] half, as managed state beside [`SyncTransport`].
+pub type NoRedirectTransport = Arc<dyn NoRedirect>;
+
 /// The pinned transport over the memry hosts and `loopback_hosts`. When the TLS stack cannot
 /// start, the app still opens (local first) and every send fails with the reason.
 pub fn app_transport(loopback_hosts: &[String], sink: Arc<dyn PinFailureSink>) -> SyncTransport {
+    app_transports(loopback_hosts, sink).0
+}
+
+/// [`app_transport`] and its [`NoRedirect`] half, over one TLS stack.
+pub fn app_transports(
+    loopback_hosts: &[String],
+    sink: Arc<dyn PinFailureSink>,
+) -> (SyncTransport, NoRedirectTransport) {
     let hosts: Vec<&str> = loopback_hosts.iter().map(String::as_str).collect();
     match NativeTransport::with_extra_hosts(sink, &hosts) {
-        Ok(transport) => Arc::new(transport),
+        Ok(transport) => {
+            let transport = Arc::new(transport);
+            (transport.clone(), transport)
+        }
         Err(error) => {
             tracing::error!(
                 scope = "Transport",
                 "the sync transport could not start; nothing reaches the server this run: {error}"
             );
-            Arc::new(Unavailable(error.to_string()))
+            let unavailable = Arc::new(Unavailable(error.to_string()));
+            (unavailable.clone(), unavailable)
         }
     }
 }
@@ -117,6 +139,18 @@ impl Transport for Unavailable {
         _request: SocketRequest,
         _listener: Arc<dyn SocketListener>,
     ) -> Result<Arc<dyn SocketHandle>, TransportError> {
+        Err(TransportError::Failed {
+            what: self.0.clone(),
+        })
+    }
+}
+
+#[async_trait::async_trait]
+impl NoRedirect for Unavailable {
+    async fn send_no_redirect(
+        &self,
+        _request: HttpRequest,
+    ) -> Result<HttpResponse, TransportError> {
         Err(TransportError::Failed {
             what: self.0.clone(),
         })
@@ -230,19 +264,17 @@ impl NativeTransport {
         })
     }
 
-    /// Like `send` but a 3xx is returned as a response with its `location` header, never followed
-    /// (the OAuth init request, Step 19 (#3536)).
-    pub async fn send_no_redirect(
-        &self,
-        request: HttpRequest,
-    ) -> Result<HttpResponse, TransportError> {
-        self.hosts.check_str(&request.url)?;
-        http::send(&self.no_redirect, request).await
-    }
-
     /// Whether a pin mismatch has ended the socket for this run.
     pub fn socket_blocked_by_pin(&self) -> bool {
         self.pin_latched.load(Ordering::Acquire)
+    }
+}
+
+#[async_trait::async_trait]
+impl NoRedirect for NativeTransport {
+    async fn send_no_redirect(&self, request: HttpRequest) -> Result<HttpResponse, TransportError> {
+        self.hosts.check_str(&request.url)?;
+        http::send(&self.no_redirect, request).await
     }
 }
 
