@@ -563,7 +563,7 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
 
     func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
         // Held for the block a Return is making, as typed (#4692).
-        if let session, session.holdsKeys(self) { return session.holdsRange(range, in: self) }
+        if let session, session.holdsKeys(self), let holds = session.holdsEdit(range, text, in: self) { return holds }
         let string = textView.text as NSString
         // `[[` becomes `[[]]` with the caret between (desktop's autocomplete),
         // outside a code block, whose text stays literal.
@@ -625,7 +625,7 @@ extension EditorSession {
         commit(field) { [weak self] in
             guard let self else { return }
             guard let model = self.model, let newId = await model.insert(next, after: field.blockId) else {
-                return self.dropReturnBurst(from: field)
+                return self.keepHeldKeys(in: field)
             }
             if plain { await model.setProp(newId, "plain", "true") }
             self.history.record(.insert(blockId: newId, after: field.blockId, kind: next, text: ""))
@@ -644,8 +644,7 @@ extension EditorSession {
     /// only an empty paragraph goes. Not yet here: a block with nested blocks
     /// (desktop lifts them out) and the first block of a column.
     func backspaceAtStart(_ field: BlockField) {
-        // Nothing typed since Return to delete: the new block is still empty.
-        if holdsKeys(field) { return }
+        keepHeldKeys(in: field)
         if field.block.kind != "paragraph" { return turnInto(InsertableBlock.all[0]) }
         if canOutdent { return nest(false) }
         let blocks = blocks()

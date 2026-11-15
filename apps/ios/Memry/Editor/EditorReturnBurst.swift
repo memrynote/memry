@@ -49,10 +49,14 @@ extension EditorSession {
         if returnBurst?.source === field { returnBurst?.target = blockId }
     }
 
-    /// The core made no block for the Return in `field`: its keys stay where
-    /// they were typed.
-    func dropReturnBurst(from field: BlockField) {
-        if returnBurst?.source === field { returnBurst = nil }
+    /// `field` stops holding keys: those it holds stay where they were
+    /// typed and commit there, as before #4692. For when the core made no
+    /// block, the user edited outside the held keys, or a commit came first.
+    /// A held Return stays a line break in the text.
+    func keepHeldKeys(in field: BlockField) {
+        guard holdsKeys(field) else { return }
+        Log.interface.info("keys typed after Return stayed in their block")
+        returnBurst = nil
     }
 
     /// `field`'s keys are held for the block its Return makes.
@@ -61,14 +65,23 @@ extension EditorSession {
         return burst.source === field && !burst.ended
     }
 
-    /// Whether `range` in `field`'s text lies among the keys it holds. An
-    /// autocorrection reaching back past the Return would join the two
-    /// blocks' words ("Milkeggs" to "Milk eggs"), so it is refused.
-    func holdsRange(_ range: NSRange, in field: BlockField) -> Bool {
-        guard let burst = returnBurst else { return false }
-        let length = (field.textView.text as NSString).length
-        return range.location >= (burst.head as NSString).length
-            && NSMaxRange(range) <= length - (burst.tail as NSString).length
+    /// Whether `field`, which holds keys, takes the edit of `range` to
+    /// `text`. Among the held keys it does, as typed. An autocorrection
+    /// reaching back past the Return would join the two blocks' words
+    /// ("Milk⏎eggs" to "Milk eggs"), so it is refused: a replacement that
+    /// starts before the held keys, brings text, and is not the user's
+    /// selection. Any other edit (Backspace past the Return, typing where an
+    /// arrow moved the caret) ends the hold and answers `nil`: it applies
+    /// as usual, and the keys stay in `field`.
+    func holdsEdit(_ range: NSRange, _ text: String, in field: BlockField) -> Bool? {
+        guard let burst = returnBurst else { return nil }
+        let view = field.textView
+        let head = (burst.head as NSString).length
+        let end = (view.text as NSString).length - (burst.tail as NSString).length
+        if range.location >= head, NSMaxRange(range) <= end { return true }
+        if range.location < head, range.length > 0, !text.isEmpty, range != view.selectedRange { return false }
+        keepHeldKeys(in: field)
+        return nil
     }
 
     /// `field` stopped editing, before its typing commits. Handing over, it
@@ -95,10 +108,16 @@ extension EditorSession {
         // keys stay held until it moves in (`field(_:movedInto:)`).
         if handing, textView.window == nil { return pendingFocus = field.blockId }
         if handing { returnBurst?.handing = true }
-        textView.becomeFirstResponder()
+        let took = textView.becomeFirstResponder()
         if atEnd { textView.selectedRange = NSRange(location: textView.textStorage.length, length: 0) }
         guard handing, let burst = returnBurst else { return }
         returnBurst = nil
+        // The source kept the caret, so the next keys go on landing there:
+        // the held ones stay with them, in order.
+        if !took, !burst.ended {
+            Log.interface.error("the block a Return made did not take the caret")
+            return
+        }
         // A source that was not editing never resigned: its keys come now.
         let held = burst.ended ? burst.carried : takeHeldKeys(burst)
         guard let held else { return }
@@ -128,11 +147,15 @@ extension EditorSession {
         let range = NSRange(location: head, length: text.length - head - tail)
         guard range.length > 0 else { return nil }
         let held = text.substring(with: range)
+        // An attachment (a paste) has no text to type again in the new
+        // block: the keys stay with it.
+        guard !held.contains(BlockText.placeholder) else {
+            Log.interface.error("keys typed after Return held an attachment and stayed in their block")
+            return nil
+        }
         view.textStorage.replaceCharacters(in: range, with: "")
         view.selectedRange = NSRange(location: head, length: 0)
         view.forgetTyping()
-        // A commit while the keys were held (a typed link) wrote them to the
-        // old block: its resign then writes them back out.
         source.dirty = view.text != source.base
         source.typed = burst.typed
         return held

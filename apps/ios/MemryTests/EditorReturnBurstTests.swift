@@ -17,11 +17,20 @@ import UIKit
 /// A note body held in memory, applying the edits the editor sends.
 private final class BodyEditor: BlockEditing, @unchecked Sendable {
     let blocks: Mutex<[Block]>
+    /// What the core does with a new block: lands it, holds it until set
+    /// back to `.land`, or refuses it.
+    let inserts = Mutex(Inserts.land)
+    enum Inserts { case land, wait, refuse }
+    struct Refused: Error {}
 
     init(_ blocks: [Block]) { self.blocks = Mutex(blocks) }
 
     func edit(noteId: String, _ edit: BlockEdit) async throws -> Bool {
-        blocks.withLock { blocks in
+        if case .insertBlock = edit {
+            while inserts.withLock({ $0 }) == .wait { try await Task.sleep(for: .milliseconds(10)) }
+            if inserts.withLock({ $0 }) == .refuse { throw Refused() }
+        }
+        return blocks.withLock { blocks in
             switch edit {
             case let .setText(blockId, text), let .replaceText(blockId, text, _):
                 update(&blocks, blockId) { $0.inline = Self.runs(text) }
@@ -32,11 +41,13 @@ private final class BodyEditor: BlockEditing, @unchecked Sendable {
                 blocks.removeAll { $0.id == blockId }
             case let .setProp(blockId, name, value):
                 update(&blocks, blockId) { $0.props.append(BlockProp(name: name, value: value)) }
+            case let .turnInto(blockId, kind):
+                update(&blocks, blockId) { $0.kind = kind }
             default:
                 break
             }
+            return true
         }
-        return true
     }
 
     private static func runs(_ text: String) -> [InlineRun] {
@@ -83,11 +94,15 @@ private final class Screen {
     let model: NoteEditorViewModel
     let window: UIWindow
 
-    init(_ kind: String = "paragraph", text: String) throws {
+    /// The block typed in, then a paragraph for each of `below`.
+    init(_ kind: String = "paragraph", text: String, below: [String] = []) throws {
         let block = Block(id: "a", kind: kind, depth: 0, props: [], inline: [InlineRun(text: text, marks: [], markAttrs: [:], target: nil)])
-        editor = BodyEditor([block])
+        let blocks = [block] + below.enumerated().map { index, text in
+            Block(id: "b\(index)", kind: "paragraph", depth: 0, props: [], inline: [InlineRun(text: text, marks: [], markAttrs: [:], target: nil)])
+        }
+        editor = BodyEditor(blocks)
         model = NoteEditorViewModel(noteId: "note-1", editor: editor)
-        let page = Page([block])
+        let page = Page(blocks)
         let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
         window = UIWindow(windowScene: scene)
         window.frame = CGRect(x: 0, y: 0, width: 400, height: 800)
@@ -115,12 +130,12 @@ private final class Screen {
     /// Runs `scenario` on a new screen until a run is not interrupted, and
     /// returns what it saw. An interrupted run proves nothing either way.
     static func run<T>(
-        _ kind: String = "paragraph", text: String, _ scenario: (Screen) async throws -> T
+        _ kind: String = "paragraph", text: String, below: [String] = [], _ scenario: (Screen) async throws -> T
     ) async throws -> T {
         var attempt = 0
         while true {
             attempt += 1
-            let screen = try Screen(kind, text: text)
+            let screen = try Screen(kind, text: text, below: below)
             defer { screen.close() }
             let seen = try await scenario(screen)
             if !screen.interrupted || attempt == 10 { return seen }
@@ -160,6 +175,20 @@ private final class Screen {
             if view.delegate?.textView?(view, shouldChangeTextIn: view.selectedRange, replacementText: key) != false {
                 view.insertText(key)
             }
+        }
+    }
+
+    /// Backspace as the keyboard delivers it: through the delegate, then
+    /// `deleteBackward`, which at the block's start asks no delegate.
+    func backspace() {
+        guard let view = focused else {
+            Issue.record("no text view holds the caret")
+            return
+        }
+        let caret = view.selectedRange
+        let range = caret.length > 0 || caret.location == 0 ? caret : NSRange(location: caret.location - 1, length: 1)
+        if range.length == 0 || view.delegate?.textView?(view, shouldChangeTextIn: range, replacementText: "") != false {
+            view.deleteBackward()
         }
     }
 
@@ -280,5 +309,130 @@ struct EditorReturnBurstTests {
         #expect(typed == "Beta1")
         #expect(afterTypingUndo == "", "the typing undo empties the new block")
         #expect(shown == ["Alpha1"], "then the block goes, and the first keeps its text")
+    }
+
+    // MARK: Edits outside the held keys end the hold (REVIEW-4707 M1)
+
+    /// Backspace past the Return deletes the text before it, as before #4692:
+    /// the keys then stay in the old block, and nothing is lost.
+    @Test(.timeLimit(.minutes(1))) func backspacePastTheReturnDeletesAndKeepsTheKeys() async throws {
+        let shown = try await Screen.run(text: "") { screen in
+            _ = try await screen.start()
+            screen.keys("Alpha\n")
+            screen.backspace()
+            screen.keys("Beta")
+            try await screen.finish(blocks: 2)
+            return screen.editor.shown
+        }
+        #expect(shown == ["AlphBeta", ""], "\(shown)")
+    }
+
+    /// Typing where an arrow moved the caret lands there.
+    @Test(.timeLimit(.minutes(1))) func typingAfterTheCaretMovedLandsWhereItIs() async throws {
+        let shown = try await Screen.run(text: "") { screen in
+            let first = try await screen.start()
+            screen.keys("Alpha\nBe")
+            first.selectedRange = NSRange(location: 2, length: 0)
+            screen.keys("X")
+            try await screen.finish(blocks: 2)
+            return screen.editor.shown
+        }
+        #expect(shown == ["AlXphaBe", ""], "\(shown)")
+    }
+
+    /// Backspace at the block's start does what it does anywhere: a
+    /// checklist item turns into a paragraph.
+    @Test(.timeLimit(.minutes(1))) func backspaceAtTheStartActsAsUsual() async throws {
+        let blocks = try await Screen.run("checkListItem", text: "milk") { screen in
+            _ = try await screen.start(caret: 0)
+            screen.keys("\n")
+            screen.backspace()
+            try await screen.finish(blocks: 2)
+            return screen.editor.all
+        }
+        #expect(blocks.map(\.kind) == ["paragraph", "checkListItem"])
+        #expect(blocks.map { BlockText.shown($0.inline) } == ["milk", ""])
+    }
+
+    // MARK: Links and attachments in held keys (REVIEW-4707 M2)
+
+    /// A `[[link]]` typed among the held keys reaches the new block as
+    /// text it can link, never as the old block's bare chip placeholder.
+    @Test(.timeLimit(.minutes(1))) func aLinkTypedAfterReturnReachesTheNewBlockAsText() async throws {
+        let shown = try await Screen.run(text: "Alpha") { screen in
+            _ = try await screen.start()
+            screen.keys("\n[[Foo]]")
+            try await screen.finish(blocks: 2)
+            return screen.editor.shown
+        }
+        #expect(shown == ["Alpha", "[[Foo]]"], "\(shown)")
+    }
+
+    /// An attachment among the held keys cannot be typed again: the keys
+    /// stay in the old block with it.
+    @Test(.timeLimit(.minutes(1))) func heldKeysWithAnAttachmentStayInTheirBlock() async throws {
+        let shown = try await Screen.run(text: "Alpha") { screen in
+            _ = try await screen.start()
+            screen.keys("\nA\(BlockText.placeholder)B")
+            try await screen.finish(blocks: 2)
+            return screen.editor.shown
+        }
+        #expect(shown == ["AlphaA\(BlockText.placeholder)B", ""], "\(shown)")
+    }
+
+    // MARK: The new block never takes the caret (REVIEW-4707 M3)
+
+    /// The core refuses the new block: the keys stay where they were typed,
+    /// and the editor shows the failure.
+    @Test(.timeLimit(.minutes(1))) func aRefusedBlockLeavesTheKeysInTheOldOne() async throws {
+        let (shown, failed) = try await Screen.run(text: "") { screen in
+            screen.editor.inserts.withLock { $0 = .refuse }
+            _ = try await screen.start()
+            screen.keys("Alpha\nBeta")
+            var failed = false
+            for _ in 0 ..< 80 where !failed {
+                if case .failed = screen.model.status { failed = true } else { try await Task.sleep(for: .milliseconds(25)) }
+            }
+            try await screen.finish(blocks: 1)
+            return (screen.editor.shown, failed)
+        }
+        #expect(shown == ["AlphaBeta"], "\(shown)")
+        #expect(failed, "the refused block shows as a failed save")
+    }
+
+    /// A tap in another block before the new one is drawn: the keys stay
+    /// in the old block.
+    @Test(.timeLimit(.minutes(1))) func aTapElsewhereDuringTheHoldKeepsTheKeys() async throws {
+        let shown = try await Screen.run(text: "", below: ["other"]) { screen in
+            screen.editor.inserts.withLock { $0 = .wait }
+            _ = try await screen.start()
+            screen.keys("Alpha\nBeta")
+            let other = try #require(screen.textViews().last)
+            #expect(other.becomeFirstResponder())
+            screen.editor.inserts.withLock { $0 = .land }
+            try await screen.finish(blocks: 3)
+            return screen.editor.shown
+        }
+        #expect(shown == ["AlphaBeta", "", "other"], "\(shown)")
+    }
+
+    /// Leaving the app before the new block is drawn commits the keys to
+    /// the old block, so a kill from the app switcher keeps them, and the
+    /// new block takes none of them once it is drawn.
+    @Test(.timeLimit(.minutes(1))) func leavingTheAppDuringTheHoldCommitsTheKeys() async throws {
+        let shown = try await Screen.run(text: "") { screen in
+            screen.editor.inserts.withLock { $0 = .wait }
+            _ = try await screen.start()
+            screen.keys("Alpha\nBeta")
+            NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
+            screen.editor.inserts.withLock { $0 = .land }
+            // No resign here: what lands is what leaving the app committed.
+            for _ in 0 ..< 80 where screen.editor.all.count < 2 { try await Task.sleep(for: .milliseconds(25)) }
+            try await Task.sleep(for: .milliseconds(200))
+            screen.model.session.enqueue {}
+            await screen.model.session.tail?.value
+            return screen.editor.shown
+        }
+        #expect(shown == ["AlphaBeta", ""], "\(shown)")
     }
 }

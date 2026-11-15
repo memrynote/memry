@@ -442,7 +442,11 @@ final class EditorSession {
             if case .mention = next, suggestions.isEmpty { trigger = nil }
             if case .slash = next, suggestions.isEmpty { trigger = nil }
             // The caret left a finished `[[target]]`: it becomes a link.
-            if leftWiki, !WikiLinkText.typed(in: textView.text, since: field.base).isEmpty { commit(field) }
+            // Not in keys held for a Return's new block (#4692): drawn here,
+            // the link would reach that block as a bare placeholder.
+            if leftWiki, !holdsKeys(field), !WikiLinkText.typed(in: textView.text, since: field.base).isEmpty {
+                commit(field)
+            }
         }
         let nextTag = trigger == nil && typedTagMenu != dismissedMenu ? typedTag : nil
         if nextTag != tagTrigger {
@@ -506,6 +510,10 @@ final class EditorSession {
     /// link drawn as its one-character node.
     @discardableResult
     func commit(_ field: BlockField, then: (@MainActor () async -> Void)? = nil) -> (Int) -> Int {
+        // Keys held for a Return's new block commit here instead (Tab, ⌘B,
+        // leaving the app): moved on later, they would leave undo steps that
+        // write them twice.
+        keepHeldKeys(in: field)
         // Held by the queued write, not read when it runs: a page torn down
         // (a split view swapping notes, Back, a size-class re-host) drops
         // the model before its last typing lands.
