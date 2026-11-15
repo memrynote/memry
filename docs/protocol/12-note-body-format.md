@@ -109,16 +109,17 @@ the whole text to literal paragraphs (§12.1.0).
 (`apps/desktop/src/main/sync/blocknote-converter.ts:612`,
 `packages/editor-schema/src/inline/link-mention-normalize.ts:17-79`), and so does the Rust
 converter's `prepare_fragment_seed` (`crates/memry-core/src/markdown/convert/seed.rs:76`,
-`crates/memry-core/src/markdown/schema/link_mention_normalize.rs:145`):
+`crates/memry-core/src/markdown/schema/link_mention_normalize.rs:159`):
 
 - A token is a match of `MENTION_TOKEN_REGEX`
   (`packages/editor-schema/src/inline/link-mention.ts:28`) in a text run of any block except a
   `codeBlock`, table cells and nested blocks included, whose payload `parseLinkMentionToken`
-  (`:81`, ported as `crates/memry-core/src/markdown/schema/link_mention_normalize.rs:38`)
+  (`:81`, ported as `crates/memry-core/src/markdown/schema/link_mention_normalize.rs:39`)
   accepts. Accepted payloads include the legacy ones: `_ * ! ~ '` raw, as builds before #1844
   wrote them, and a stray whitespace or remark backslash, which the parse strips. A token inside
   a link label stays text.
-- A token in a text run with any active style stays text (`:37-48`): code, bold, italic,
+- A token in a text run with any active style stays text (`:37-48`, ported as
+  `crates/memry-core/src/markdown/schema/link_mention_normalize.rs:63-75`): code, bold, italic,
   strikethrough, underline, or a text or background colour other than `default`. A
   `linkMention` node carries no styles, so promoting such a token would drop the backticks or
   delimiters around it on the next write-back (#4652). An unstyled token in the same paragraph
