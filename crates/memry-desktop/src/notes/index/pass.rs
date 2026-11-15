@@ -316,12 +316,13 @@ impl Indexer {
     /// none (#4418, Electron's `ensureTagDefinitions` for each file it indexes), once a pass's
     /// search reindex brought the body tags up to date. A pass mints for the files it read; the
     /// open's pass for every note, which defines the tags of a vault an older build indexed. A
+    /// mint goes to `defined`: a list read before it showed the name's default colour. A
     /// failure is logged, and the next pass that reads the file, or the next open, tries again.
-    pub(super) fn define_tags(&self, only: Option<Vec<String>>) {
+    pub(super) fn define_tags(&self, only: Option<Vec<String>>, defined: &dyn Fn()) {
         if only.as_ref().is_some_and(Vec::is_empty) {
             return;
         }
-        let defined = self.search.used_tags(only).and_then(|tags| {
+        let minted = self.search.used_tags(only).and_then(|tags| {
             let hub =
                 self.vault
                     .tag_hub(self.store.clone())
@@ -330,9 +331,12 @@ impl Indexer {
                     })?;
             hub.define_used(&tags)
         });
-        match defined {
+        match minted {
             Ok(0) => {}
-            Ok(created) => tracing::info!(scope = "note_index", created, "tags defined"),
+            Ok(created) => {
+                tracing::info!(scope = "note_index", created, "tags defined");
+                defined();
+            }
             Err(error) => {
                 tracing::warn!(
                     scope = "note_index",
