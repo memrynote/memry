@@ -4,9 +4,11 @@
 //! request (`start`, embeddings.ts:606-673), loads the model (downloading it first) on the first
 //! request it serves, and exits with the model 30 s after its last request
 //! (`IDLE_SHUTDOWN_MS`, :931-950). A request waits at most 15 min, the download included
-//! (`REQUEST_TIMEOUT_MS`, :133). A panic in a load or an inference is caught per request and
-//! counted the way the bridge counts a worker crash (`failProcess`, :820-835). Failed loads back
-//! off through [`Breaker`].
+//! (`REQUEST_TIMEOUT_MS`, :133). A panic in a load or an inference, and an inference whose model
+//! process died, timed out or is paused ([`EmbedError::Crashed`]), drop the model and count the
+//! way the bridge counts a worker crash with an embed in flight (`failProcess`, :820-835):
+//! `loaded` goes false, the embed failure count rises and the failure feeds [`Breaker`], which
+//! stops loads for the session after five in a row. Failed loads back off through it too.
 //!
 //! The model itself is a [`ModelLoader`]: the app's loader ([`super::worker::WorkerModel`])
 //! downloads the pinned files through [`super::download::ModelSource`] and runs
@@ -64,9 +66,19 @@ impl ModelProgress {
     }
 }
 
+/// Why an inference failed.
+#[derive(Debug)]
+pub enum EmbedError {
+    /// The model answered with an error and stays loaded.
+    Failed(String),
+    /// The process holding the model died, timed out or is paused: the model is gone, and the
+    /// failure counts as the bridge's `failProcess` does.
+    Crashed(String),
+}
+
 /// A loaded model. Owned by the embedding thread, which serves one request at a time.
 pub trait Engine: Send {
-    fn embed_text(&mut self, text: &str) -> Result<Vec<f32>, String>;
+    fn embed_text(&mut self, text: &str) -> Result<Vec<f32>, EmbedError>;
 }
 
 /// Makes the model present and loads it, on the embedding thread.
@@ -245,8 +257,8 @@ impl EmbeddingService {
                 None
             }
             Ok(Reply::Loaded) | Err(Fault::Retired | Fault::TimedOut) => None,
-            Err(Fault::Panicked(message)) => {
-                // The thread dropped the model: the bridge's crashed worker (:709-735).
+            Err(Fault::Crashed(message)) => {
+                // The thread dropped the model: the bridge's crashed worker (:709-735, :826-830).
                 state.loaded = false;
                 state.loading = false;
                 tracing::error!(scope = "Embeddings", "Generation failed: {message}");
@@ -420,7 +432,7 @@ impl EmbeddingService {
     fn load_failed(state: &mut State, fault: Fault) {
         state.loading = false;
         state.error = Some(match fault {
-            Fault::Load(message) | Fault::Inference(message) | Fault::Panicked(message) => message,
+            Fault::Load(message) | Fault::Inference(message) | Fault::Crashed(message) => message,
             Fault::TimedOut | Fault::Retired => return,
         });
         Self::record_failure(state);

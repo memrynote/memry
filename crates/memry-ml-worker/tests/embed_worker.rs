@@ -145,6 +145,16 @@ fn a_crash_on_an_embed_fails_it_and_counts_toward_the_pause() {
     );
 }
 
+/// A NaN would reach the stored vectors and every similarity computed from them.
+#[test]
+fn an_embedding_with_a_value_that_is_not_finite_is_refused() {
+    let (worker, _) = supervisor(Vec::new());
+    assert!(matches!(
+        worker.embed_text("nan"),
+        Err(WorkerError::Protocol(_))
+    ));
+}
+
 #[cfg(unix)]
 #[test]
 fn a_clean_idle_shutdown_reports_nothing() {

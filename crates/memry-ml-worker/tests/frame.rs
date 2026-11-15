@@ -6,7 +6,8 @@ use std::io::{Cursor, Read};
 use memry_ml_worker::frame::{HEADER_LEN, read_frame, write_frame};
 use memry_ml_worker::{
     EMBEDDING_DIMENSION, Frame, FrameError, MAX_EMBED_IMAGE_BYTES, MAX_EMBED_TEXT_BYTES,
-    MAX_FRAME_LEN, Manifest, ManifestFile, ModelGroup, OpError, Request, Response,
+    MAX_FAILED_MESSAGE, MAX_FRAME_LEN, Manifest, ManifestFile, ModelGroup, OpError, Request,
+    Response,
 };
 use memry_test_kit::{output_bound, proptest_config};
 use proptest::prelude::*;
@@ -215,6 +216,25 @@ fn embedding_answers_of_the_wrong_shape_are_refused() {
         Request::from_frame(&frame(0x13, 3u32.to_be_bytes().to_vec())),
         Err(OpError::Malformed(0x13))
     );
+}
+
+/// A `Failed` message reaches `ModelStatus.error` and the log: the app refuses one over its cap
+/// from the declared length, and the worker cuts its own on a character boundary.
+#[test]
+fn a_failed_message_is_capped() {
+    let declared = u32::try_from(MAX_FAILED_MESSAGE + 1).unwrap();
+    assert_eq!(
+        Response::from_frame(&frame(0xff, declared.to_be_bytes().to_vec())),
+        Err(OpError::TooLarge(0xff))
+    );
+    let long = format!("a{}", "é".repeat(MAX_FAILED_MESSAGE));
+    let Ok(Response::Failed(cut)) =
+        Response::from_frame(&Response::Failed(long.clone()).to_frame(1))
+    else {
+        panic!("a cut message round-trips");
+    };
+    assert_eq!(cut.len(), MAX_FAILED_MESSAGE - 1);
+    assert!(long.starts_with(&cut));
 }
 
 fn request() -> impl Strategy<Value = Request> {

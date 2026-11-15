@@ -18,6 +18,14 @@ pub const MAX_EMBED_IMAGE_BYTES: usize = 30 << 20;
 /// The most files a `ModelManifest` answer lists, and the longest string in it.
 const MAX_MANIFEST_FILES: u32 = 16;
 const MAX_MANIFEST_STRING: usize = 256;
+/// The longest `Failed` message, in UTF-8 bytes: the worker cuts a longer one, the app refuses it.
+pub const MAX_FAILED_MESSAGE: usize = 4096;
+
+/// The model repo and revision the app downloads from (`memry_ml::MODEL_REPO`,
+/// `MODEL_REVISION`; the worker binary asserts they are equal at compile time). The app refuses a
+/// manifest that names another, so a worker cannot point the download elsewhere.
+pub const MODEL_REPO: &str = "onnx-community/embeddinggemma-2-ONNX";
+pub const MODEL_REVISION: &str = "daa72c51243991dfcaf9f9137d2c573d8f7790c0";
 
 const PDF_OPEN: u8 = 0x01;
 const PDF_PAGE_TEXT: u8 = 0x02;
@@ -320,7 +328,7 @@ impl Response {
                 MANIFEST
             }
             Self::Failed(message) => {
-                put_str(&mut out, message);
+                put_str(&mut out, cut(message, MAX_FAILED_MESSAGE));
                 FAILED
             }
         };
@@ -375,7 +383,7 @@ impl Response {
                     files,
                 })
             }
-            FAILED => Self::Failed(r.string()?),
+            FAILED => Self::Failed(r.string_within(MAX_FAILED_MESSAGE)?),
             other => return Err(OpError::UnknownOp(other)),
         };
         r.end()?;
@@ -387,6 +395,15 @@ fn put_u32s(out: &mut Vec<u8>, values: &[u32]) {
     for value in values {
         out.extend_from_slice(&value.to_be_bytes());
     }
+}
+
+/// The longest prefix of `text` of at most `max` bytes that ends on a character boundary.
+fn cut(text: &str, max: usize) -> &str {
+    let mut end = text.len().min(max);
+    while !text.is_char_boundary(end) {
+        end -= 1;
+    }
+    &text[..end]
 }
 
 fn put_str(out: &mut Vec<u8>, value: &str) {

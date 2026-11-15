@@ -17,8 +17,9 @@ pub mod supervisor;
 
 pub use frame::{Frame, FrameError, MAX_FRAME_LEN};
 pub use op::{
-    EMBEDDING_DIMENSION, MAX_EMBED_IMAGE_BYTES, MAX_EMBED_TEXT_BYTES, MAX_RENDER_EDGE, Manifest,
-    ManifestFile, ModelGroup, OpError, Request, Response,
+    EMBEDDING_DIMENSION, MAX_EMBED_IMAGE_BYTES, MAX_EMBED_TEXT_BYTES, MAX_FAILED_MESSAGE,
+    MAX_RENDER_EDGE, MODEL_REPO, MODEL_REVISION, Manifest, ManifestFile, ModelGroup, OpError,
+    Request, Response,
 };
 pub use pdf_client::{PdfDocument, RenderedPage};
 pub use supervisor::{

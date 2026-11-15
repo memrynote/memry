@@ -4,14 +4,19 @@
 //! `log` writes a stderr line and answers; anything else answers with one page as document 1.
 //! `PdfPageText` answers the child's pid, so a test sees which child answered. `PdfRenderPage`
 //! answers the names of the child's environment variables, a tab, then its cwd. `EmbedText` hangs,
-//! crashes and creates files as `PdfOpen` does and otherwise answers an embedding whose values
-//! are the child's pid; `EmbedLoad` answers `Done`.
+//! crashes (any text that starts with `crash`) and creates files as `PdfOpen` does, answers NaNs
+//! to `nan` and otherwise answers an embedding whose values are the child's pid; `EmbedLoad`
+//! answers `Done`;
+//! `ModelManifest` names one empty file, `config.json`, in the app's pinned repo and revision.
 //! `--crash-before-ready` aborts before the `Ready` frame. Never bundled.
 
 use std::io::Write;
 
 use memry_ml_worker::serve::serve;
-use memry_ml_worker::{EMBEDDING_DIMENSION, MAX_FRAME_LEN, Request, Response};
+use memry_ml_worker::{
+    EMBEDDING_DIMENSION, MAX_FRAME_LEN, MODEL_REPO, MODEL_REVISION, Manifest, ManifestFile,
+    Request, Response,
+};
 
 fn park_forever() -> ! {
     loop {
@@ -61,13 +66,25 @@ fn main() {
             },
             Request::PdfPageText { .. } => Response::Text(std::process::id().to_string()),
             Request::EmbedLoad => Response::Done,
+            Request::ModelManifest { .. } => Response::Manifest(Manifest {
+                repo: MODEL_REPO.into(),
+                revision: MODEL_REVISION.into(),
+                files: vec![ManifestFile {
+                    path: "config.json".into(),
+                    size: 0,
+                    // The SHA-256 of no bytes.
+                    sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                        .into(),
+                }],
+            }),
             Request::EmbedText { text } => match text.as_str() {
                 "hang" => park_forever(),
                 hang if hang.starts_with("hang:") => {
                     let _ = std::fs::write(&hang["hang:".len()..], b"");
                     park_forever()
                 }
-                "crash" => std::process::abort(),
+                crash if crash.starts_with("crash") => std::process::abort(),
+                "nan" => Response::Embedded(vec![f32::NAN; EMBEDDING_DIMENSION]),
                 _ => Response::Embedded(vec![std::process::id() as f32; EMBEDDING_DIMENSION]),
             },
             Request::PdfRenderPage { .. } => {

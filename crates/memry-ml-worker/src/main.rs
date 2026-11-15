@@ -3,6 +3,7 @@
 //! on the first PDF, and the embedding model loads from its directory under the cache on the first embedding op, so a
 //! worker without either still starts and fails those ops with the reason.
 
+#[cfg(feature = "embed")]
 mod embed;
 mod pdf;
 
@@ -42,7 +43,10 @@ fn main() -> ExitCode {
         return ExitCode::from(2);
     };
     let mut pdfs = pdf::Pdfs::new(pdfium_dir);
+    #[cfg(feature = "embed")]
     let mut embedder = embed::Embedder::new(model_cache);
+    #[cfg(not(feature = "embed"))]
+    let _ = model_cache;
     match serve(
         std::io::stdin().lock(),
         std::io::stdout().lock(),
@@ -50,7 +54,19 @@ fn main() -> ExitCode {
             Request::EmbedLoad
             | Request::EmbedText { .. }
             | Request::EmbedImage { .. }
-            | Request::ModelManifest { .. } => embedder.handle(request),
+            | Request::ModelManifest { .. } => {
+                #[cfg(feature = "embed")]
+                {
+                    embedder.handle(request)
+                }
+                #[cfg(not(feature = "embed"))]
+                {
+                    memry_ml_worker::Response::Failed(
+                        "this worker was built without the embedding model (cargo feature `embed`)"
+                            .into(),
+                    )
+                }
+            }
             request => pdfs.handle(request),
         },
     ) {

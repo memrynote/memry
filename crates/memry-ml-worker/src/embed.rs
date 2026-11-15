@@ -12,6 +12,27 @@ use memry_ml_worker::{Manifest, ManifestFile, ModelGroup, Request, Response};
 const _: () = assert!(memry_ml::EMBEDDING_DIMENSION == memry_ml_worker::EMBEDDING_DIMENSION);
 const _: () =
     assert!(memry_ml::image_prep::MAX_IMAGE_BYTES == memry_ml_worker::MAX_EMBED_IMAGE_BYTES);
+// The app refuses a manifest of any other repo or revision.
+const _: () = assert!(same(memry_ml::MODEL_REPO, memry_ml_worker::MODEL_REPO));
+const _: () = assert!(same(
+    memry_ml::MODEL_REVISION,
+    memry_ml_worker::MODEL_REVISION
+));
+
+const fn same(a: &str, b: &str) -> bool {
+    let (a, b) = (a.as_bytes(), b.as_bytes());
+    if a.len() != b.len() {
+        return false;
+    }
+    let mut i = 0;
+    while i < a.len() {
+        if a[i] != b[i] {
+            return false;
+        }
+        i += 1;
+    }
+    true
+}
 
 pub struct Embedder {
     dir: Option<PathBuf>,

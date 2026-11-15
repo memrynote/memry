@@ -18,7 +18,7 @@ use memry_desktop::ai::features::{self, AiSettingsPatch};
 use memry_desktop::embedding::download::Abort;
 use memry_desktop::embedding::projector::drain_deferred;
 use memry_desktop::embedding::service::{
-    EmbeddingService, Engine, ModelLoader, ModelProgress, Timing,
+    EmbedError, EmbeddingService, Engine, ModelLoader, ModelProgress, Timing,
 };
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::index::{IndexReport, NoteIndex};
@@ -53,7 +53,7 @@ impl Embedded {
 struct FakeEngine(Arc<Embedded>);
 
 impl Engine for FakeEngine {
-    fn embed_text(&mut self, text: &str) -> Result<Vec<f32>, String> {
+    fn embed_text(&mut self, text: &str) -> Result<Vec<f32>, EmbedError> {
         self.0.0.lock().unwrap().push(text.to_owned());
         Ok(vec![0.0625; 256])
     }

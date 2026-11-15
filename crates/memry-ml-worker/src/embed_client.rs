@@ -53,8 +53,12 @@ impl Supervisor {
     }
 }
 
+/// A NaN or infinity would reach the stored vectors and every similarity computed from them.
 fn embedded(response: Response) -> Result<Vec<f32>, WorkerError> {
     match response {
+        Response::Embedded(values) if values.iter().any(|value| !value.is_finite()) => Err(
+            WorkerError::Protocol("an embedding with a value that is not finite".into()),
+        ),
         Response::Embedded(values) if values.len() == EMBEDDING_DIMENSION => Ok(values),
         other => Err(unexpected(&other)),
     }

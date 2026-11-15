@@ -83,6 +83,11 @@ pub struct ModelSource {
     files: Vec<PinnedFile>,
     /// Every file on disk was hashed once this app session. A later load checks sizes only:
     /// the files are written by this source alone, and only after their hash matched.
+    ///
+    /// Accepted risk: nothing re-hashes a file swapped after that, and every worker child started
+    /// later in the session (after a crash or an idle exit) loads it with the size check alone.
+    /// The worker runs unsandboxed as the same user, so a process able to swap the file can do
+    /// as much without it; the hash guards the download, not the disk.
     verified: AtomicBool,
     /// Held across a whole `ensure`: a retired embedding thread may still be finishing its
     /// download when its replacement starts one, and both would append to the same `.part`.

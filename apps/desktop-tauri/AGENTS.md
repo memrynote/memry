@@ -30,6 +30,8 @@ Until the cutover step deletes `apps/desktop`, a renderer change that fixes a cr
 
 ## Dev tools
 
+- `tauri dev` builds the `memry-ml-worker` sidecar first (`pnpm dev:worker`, `scripts/dev-worker.mjs`) and fetches pdfium. The worker links ONNX Runtime, which needs `ORT_LIB_LOCATION` on every target but macOS arm64 (commands in `crates/.cargo/config.toml`). Without it the script builds the worker without its `embed` feature and says so: PDFs work, and the embedding model shows as failed. Set `ORT_LIB_LOCATION` to run embeddings in dev.
+
 - The web inspector exists in debug builds only: View > Toggle Developer Tools, F12, and Tauri's Cmd+Opt+I or Ctrl+Shift+I. Release builds compile none of it, so the `tauri` dependency carries no `devtools` feature (Rust CI fails when a crate turns it on) and inspector code sits behind `cfg(debug_assertions)`.
 - Cmd/Ctrl+R and F5 reload the page in debug builds only (`windows/scripts/dev-keys.js`). In a release build View > Reload is the only reload.
 - React DevTools, which the Electron app loaded as an extension, has no counterpart here. Read component state through the inspector.

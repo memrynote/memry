@@ -1,8 +1,9 @@
 //! The real `memry-ml-worker` binary on the embedding ops. Without the model it answers the
 //! manifest from memry-ml's pins and fails an embed with the missing file. With the pinned text
-//! files in `MEMRY_ML_MODEL_DIR` (CI's full tier), an embed matches the transformers.js vector of
-//! `packages/contracts/test-vectors/embeddings-text.json`, and after the worker is killed the next
-//! embed loads the model in a new child and matches again. The kill of an embed in flight is
+//! files in `MEMRY_ML_MODEL_DIR` (CI's full tier), every text of
+//! `packages/contracts/test-vectors/embeddings-text.json` matches its transformers.js vector within
+//! `tests/golden_text.rs`'s bounds (cosine and largest component difference), and after the worker
+//! is killed the next embed loads the model in a new child and is within them again. The kill of an embed in flight is
 //! `tests/embed_worker.rs`, on the stub, which can hold an op open.
 //! Run: `cargo test -p memry-ml-worker --test embed -- --include-ignored`.
 
@@ -75,25 +76,68 @@ fn an_embed_without_the_model_fails_with_the_missing_file() {
     assert_eq!(worker.pid(), Some(pid), "a failed load is not a crash");
 }
 
-fn golden() -> (String, Vec<f32>, f64) {
+/// The 31 texts of `embeddings-text.json` and `tests/golden_text.rs`'s bounds on them.
+struct Golden {
+    texts: Vec<(String, String, Vec<f32>)>,
+    min_cosine: f64,
+    max_component_diff: f64,
+}
+
+fn golden() -> Golden {
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../packages/contracts/test-vectors/embeddings-text.json");
     let vectors: Value =
         serde_json::from_str(&std::fs::read_to_string(path).expect("embeddings-text.json"))
             .expect("valid JSON");
-    let case = &vectors["texts"][0];
-    let embedding = case["embedding"]
+    let texts: Vec<_> = vectors["texts"]
         .as_array()
-        .expect("embedding")
+        .expect("texts")
         .iter()
-        .map(|v| v.as_f64().expect("a number") as f32)
+        .map(|case| {
+            let embedding = case["embedding"]
+                .as_array()
+                .expect("embedding")
+                .iter()
+                .map(|v| v.as_f64().expect("a number") as f32)
+                .collect();
+            (
+                case["name"].as_str().expect("name").to_owned(),
+                case["text"].as_str().expect("text").to_owned(),
+                embedding,
+            )
+        })
         .collect();
-    let min_cosine = vectors["tolerance"]["minCosine"].as_f64().expect("bound");
-    (
-        case["text"].as_str().expect("text").to_owned(),
-        embedding,
-        min_cosine,
-    )
+    assert_eq!(texts.len(), 31);
+    let golden = Golden {
+        texts,
+        min_cosine: vectors["tolerance"]["minCosine"].as_f64().expect("bound"),
+        max_component_diff: vectors["tolerance"]["maxComponentDiff"]
+            .as_f64()
+            .expect("bound"),
+    };
+    assert!(golden.min_cosine >= 0.9999 && golden.max_component_diff <= 0.001);
+    golden
+}
+
+impl Golden {
+    /// Why `actual` is outside the bounds of `expected`, if it is.
+    fn miss(&self, name: &str, actual: &[f32], expected: &[f32]) -> Option<String> {
+        let similarity = cosine(actual, expected);
+        let worst = actual
+            .iter()
+            .zip(expected)
+            .map(|(&a, &b)| (f64::from(a) - f64::from(b)).abs())
+            .fold(0.0, f64::max);
+        (actual.len() != expected.len()
+            || similarity < self.min_cosine
+            || worst > self.max_component_diff)
+            .then(|| {
+                format!(
+                    "{name}: {} values, cosine {similarity:.7}, largest component difference {worst:.6}",
+                    actual.len()
+                )
+            })
+    }
 }
 
 fn kill(pid: u32) {
@@ -124,14 +168,17 @@ fn cosine(a: &[f32], b: &[f32]) -> f64 {
 fn an_embed_through_the_real_worker_matches_transformers_js_and_survives_a_kill() {
     let dir = PathBuf::from(std::env::var_os("MEMRY_ML_MODEL_DIR").expect("MEMRY_ML_MODEL_DIR"));
     memry_ml::verify(&dir, memry_ml::ModelGroup::Text).expect("the pinned text files");
-    let (text, expected, min_cosine) = golden();
+    let golden = golden();
     // `MEMRY_ML_MODEL_DIR` is `<cache>/onnx-community/embeddinggemma-2-ONNX`.
     let cache = dir.ancestors().nth(2).expect("the cache above the repo");
     let worker = worker(cache);
     worker.embed_load().expect("load");
-    let first = worker.embed_text(&text).expect("embed");
-    let similarity = cosine(&first, &expected);
-    assert!(similarity >= min_cosine, "cosine {similarity}");
+    let mut failures = Vec::new();
+    for (name, text, expected) in &golden.texts {
+        let actual = worker.embed_text(text).expect("embed");
+        failures.extend(golden.miss(name, &actual, expected));
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
 
     let killed = worker.pid().expect("running");
     kill(killed);
@@ -141,9 +188,10 @@ fn an_embed_through_the_real_worker_matches_transformers_js_and_survives_a_kill(
     while worker.pid() == Some(killed) && Instant::now() < deadline {
         std::thread::sleep(Duration::from_millis(10));
     }
+    let (name, text, expected) = &golden.texts[0];
     let again = worker
-        .embed_text(&text)
+        .embed_text(text)
         .expect("a new child loads the model");
     assert_ne!(worker.pid(), Some(killed));
-    assert_eq!(again, first, "the same model gives the same vector");
+    assert_eq!(golden.miss(name, &again, expected), None);
 }
