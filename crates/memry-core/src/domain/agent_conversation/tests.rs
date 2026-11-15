@@ -166,6 +166,10 @@ fn concurrent_edits_merge_field_by_field_and_the_title_stays_sealed() {
             )],
         )?;
         assert_eq!(totals.applied, 1);
+        assert_eq!(
+            totals.feed.records[0].outcome,
+            crate::sync::driver::observer::AppliedOutcome::Merged
+        );
         let merged = get(conn, &key, &id).map_err(storage)?.expect("live");
         assert_eq!(
             merged.title, "Local title",

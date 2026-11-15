@@ -156,6 +156,11 @@ pub struct FirstSyncProgress {
 /// worth an await and a sink that blocked would stall the pass reporting it.
 pub trait ProgressSink: Send + Sync {
     fn progress(&self, progress: FirstSyncProgress);
+
+    /// The pack bootstrap starts (`None`) and ends (`Some(report)`). A no-op
+    /// by default: [`FirstSyncPhase`] and the FFI's `SyncPhase` have no packs
+    /// pass, and only the desktop driver reports one (Electron's `packs`).
+    fn packs(&self, _report: Option<&PackBootstrapReport>) {}
 }
 
 /// A sink that drops everything, for a caller that does not want progress.
@@ -289,7 +294,9 @@ impl FirstSync {
         self.metadata_pass(&mut report).await?;
         // After refs, so a tombstoned document is known and never seeded.
         if let Some(packs) = &self.packs {
+            self.progress.packs(None);
             report.packs = packs.run(now_ms / 1_000).await?;
+            self.progress.packs(Some(&report.packs));
         }
         self.bodies_pass(report.window_start, &mut report).await?;
 

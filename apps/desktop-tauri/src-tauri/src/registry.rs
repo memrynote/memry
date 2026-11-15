@@ -42,6 +42,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::ai::ai_inline_set_settings::<Wry>,
             crate::commands::ai::ai_inline_test_connection,
             crate::commands::ai::ai_provider_cancel::<Wry>,
+            crate::commands::ai::ai_reindex_embeddings::<Wry>,
             crate::commands::ai_structured::tags_fill_fields::<Wry>,
             crate::commands::ai_structured::tags_fill_status::<Wry>,
             crate::commands::ai_structured::writing_generate_assist::<Wry>,
@@ -202,6 +203,13 @@ pub fn builder() -> Builder<Wry> {
             // menu
             crate::commands::shell::menu_hide_alt,
             crate::commands::shell::menu_toggle_alt,
+            // search
+            crate::commands::search::search_add_reason::<Wry>,
+            crate::commands::search::search_clear_reasons::<Wry>,
+            crate::commands::search::search_get_reasons::<Wry>,
+            crate::commands::search::search_get_stats::<Wry>,
+            crate::commands::search::search_query::<Wry>,
+            crate::commands::search::search_quick::<Wry>,
             // settings
             crate::commands::settings::app_set_zoom_factor,
             crate::commands::settings::settings_get_ai,

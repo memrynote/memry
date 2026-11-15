@@ -48,6 +48,7 @@ mod calendar_push;
 mod changes_page;
 pub mod clock;
 pub mod crdt_wire;
+mod crypto_batch;
 pub mod delete_keep;
 pub mod driver;
 pub mod engine;

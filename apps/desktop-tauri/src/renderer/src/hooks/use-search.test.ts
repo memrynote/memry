@@ -1,8 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHookWithProviders, act, wait } from '@tests/utils/hook-test-wrapper'
-import { useSearch } from './use-search'
 import type { SearchReason } from '@memry/contracts/search-api'
-import type { Mock } from 'vitest'
+
+const searchService = vi.hoisted(() => ({
+  query: vi.fn(),
+  getReasons: vi.fn(),
+  addReason: vi.fn(),
+  clearReasons: vi.fn()
+}))
+
+vi.mock('@/services/search-service', () => ({ searchService }))
+
+import { useSearch } from './use-search'
 
 const mockReasons: SearchReason[] = [
   {
@@ -25,31 +34,16 @@ const mockReasons: SearchReason[] = [
   }
 ]
 
-const mockSearchConfig = {
-  search: {
-    getReasons: vi.fn().mockResolvedValue(mockReasons),
-    addReason: vi.fn().mockResolvedValue({ success: true }),
-    clearReasons: vi.fn().mockResolvedValue({ cleared: true })
-  }
-}
-
-function getSearchMock(mockAPI: Record<string, unknown>) {
-  return mockAPI.search as { getReasons: Mock; addReason: Mock; clearReasons: Mock }
-}
-
 describe('useSearch: reasons', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockSearchConfig.search.getReasons.mockResolvedValue(mockReasons)
-    mockSearchConfig.search.clearReasons.mockResolvedValue({ cleared: true })
-    mockSearchConfig.search.addReason.mockResolvedValue({ success: true })
+    searchService.getReasons.mockResolvedValue(mockReasons)
+    searchService.clearReasons.mockResolvedValue({ cleared: true })
   })
 
   it('initializes with empty reasons array', () => {
     // #when
-    const { result } = renderHookWithProviders(() => useSearch(), {
-      mockAPI: mockSearchConfig
-    })
+    const { result } = renderHookWithProviders(() => useSearch())
 
     // #then
     expect(result.current.reasons).toEqual([])
@@ -57,9 +51,7 @@ describe('useSearch: reasons', () => {
 
   it('loads reasons via loadReasons', async () => {
     // #given
-    const { result, mockAPI } = renderHookWithProviders(() => useSearch(), {
-      mockAPI: mockSearchConfig
-    })
+    const { result } = renderHookWithProviders(() => useSearch())
 
     // #when
     await act(async () => {
@@ -69,14 +61,12 @@ describe('useSearch: reasons', () => {
 
     // #then
     expect(result.current.reasons).toEqual(mockReasons)
-    expect(getSearchMock(mockAPI).getReasons).toHaveBeenCalledOnce()
+    expect(searchService.getReasons).toHaveBeenCalledOnce()
   })
 
   it('clears reasons via clearReasons', async () => {
     // #given — load reasons first
-    const { result, mockAPI } = renderHookWithProviders(() => useSearch(), {
-      mockAPI: mockSearchConfig
-    })
+    const { result } = renderHookWithProviders(() => useSearch())
 
     await act(async () => {
       result.current.loadReasons()
@@ -92,14 +82,12 @@ describe('useSearch: reasons', () => {
 
     // #then
     expect(result.current.reasons).toEqual([])
-    expect(getSearchMock(mockAPI).clearReasons).toHaveBeenCalledOnce()
+    expect(searchService.clearReasons).toHaveBeenCalledOnce()
   })
 
   it('does not auto-save query strings as reasons', async () => {
     // #given
-    const { result, mockAPI } = renderHookWithProviders(() => useSearch(), {
-      mockAPI: mockSearchConfig
-    })
+    const { result } = renderHookWithProviders(() => useSearch())
 
     // #when — type a query
     await act(async () => {
@@ -107,14 +95,12 @@ describe('useSearch: reasons', () => {
     })
 
     // #then — addReason should NOT be called (reasons are saved on item click only)
-    expect(getSearchMock(mockAPI).addReason).not.toHaveBeenCalled()
+    expect(searchService.addReason).not.toHaveBeenCalled()
   })
 
   it('clamps query length to 500 chars', () => {
     // #given
-    const { result } = renderHookWithProviders(() => useSearch(), {
-      mockAPI: mockSearchConfig
-    })
+    const { result } = renderHookWithProviders(() => useSearch())
     const longQuery = 'a'.repeat(600)
 
     // #when
@@ -128,9 +114,7 @@ describe('useSearch: reasons', () => {
 
   it('reset clears query, results, and filters', () => {
     // #given
-    const { result } = renderHookWithProviders(() => useSearch(), {
-      mockAPI: mockSearchConfig
-    })
+    const { result } = renderHookWithProviders(() => useSearch())
     act(() => {
       result.current.setQuery('something')
     })

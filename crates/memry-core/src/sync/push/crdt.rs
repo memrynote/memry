@@ -10,6 +10,8 @@
 //! did not. Retiring would drop the user's edit, and sending would fail the
 //! route and stall every row behind it.
 
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
@@ -19,6 +21,7 @@ use crate::api::errors::ApiError;
 use crate::protocol::crdt_envelope::MAX_UPDATE_PAYLOAD_CHARS;
 use crate::protocol::envelope::EnvelopeError;
 use crate::protocol::http::RetryPolicy;
+use crate::sync::crypto_batch::off_runtime;
 use crate::sync::outbox::{self, OutboxRow};
 
 use super::{PushCoordinator, PushError, PushReport, now_ms, retry_at};
@@ -86,8 +89,9 @@ impl PushCoordinator {
         let mut updates: Vec<String> = Vec::with_capacity(rows.len());
         let mut sent: Vec<i64> = Vec::with_capacity(rows.len());
         let mut oversized = false;
+        let mut unsealed: Vec<(i64, Vec<u8>)> = Vec::with_capacity(rows.len());
         for row in rows {
-            let Some(update) = row.payload.as_deref() else {
+            let Some(update) = row.payload else {
                 // A CRDT row with no bytes is the one row that cannot be
                 // rebuilt from anywhere: the update is the change.
                 self.retire_one(row.id, "crdt outbox row carries no update bytes")
@@ -95,20 +99,23 @@ impl PushCoordinator {
                 report.retired += 1;
                 continue;
             };
-            match self.sealer.seal_crdt_update(doc_id, update) {
+            unsealed.push((row.id, update));
+        }
+        for (id, sealed) in self.seal_updates(doc_id, unsealed).await? {
+            match sealed {
                 Ok(packed) => {
                     let encoded = BASE64.encode(packed);
                     oversized |= encoded.len() > MAX_UPDATE_PAYLOAD_CHARS;
                     updates.push(encoded);
-                    sent.push(row.id);
+                    sent.push(id);
                 }
                 // Past the route's own cap: the same case, not an unsealable row.
                 Err(EnvelopeError::ItemTooLarge { .. }) => {
                     oversized = true;
-                    sent.push(row.id);
+                    sent.push(id);
                 }
                 Err(error) => {
-                    self.retire_one(row.id, &error.to_string()).await?;
+                    self.retire_one(id, &error.to_string()).await?;
                     report.retired += 1;
                 }
             }
@@ -143,6 +150,23 @@ impl PushCoordinator {
         report.crdt_updates += sent.len();
         self.db.call(move |conn| outbox::ack(conn, &sent)).await?;
         Ok(BatchEnd::Done)
+    }
+
+    /// Seals one document's updates in one `spawn_blocking` hop, in row order.
+    async fn seal_updates(
+        &self,
+        doc_id: &str,
+        rows: Vec<(i64, Vec<u8>)>,
+    ) -> Result<Vec<(i64, Result<Vec<u8>, EnvelopeError>)>, PushError> {
+        let sealer = Arc::clone(&self.sealer);
+        let doc_id = doc_id.to_owned();
+        let sealed = off_runtime("sealing a document's crdt updates", move || {
+            rows.into_iter()
+                .map(|(id, update)| (id, sealer.seal_crdt_update(&doc_id, &update)))
+                .collect()
+        })
+        .await?;
+        Ok(sealed)
     }
 
     /// Acks every row of the batch when the snapshot is stored, defers every

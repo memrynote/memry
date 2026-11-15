@@ -7,6 +7,7 @@ pub mod features;
 pub mod fill_fields;
 pub mod local_agent;
 pub mod local_provider;
+pub mod model;
 pub mod provider;
 pub mod proxy;
 pub mod settings;
