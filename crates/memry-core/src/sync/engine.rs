@@ -64,9 +64,10 @@ pub trait PushWave: Send + Sync {
     /// How many rows are queued. Never removes one.
     async fn pending(&self) -> Result<usize, ApiError>;
 
-    /// Drains the wave. Chapter 05 §5.6's halving ladder and the 50-iteration
-    /// cap belong to the implementation, not to the engine.
-    async fn drain(&self) -> Result<(), ApiError>;
+    /// Drains the wave and answers how many rows the server accepted.
+    /// Chapter 05 §5.6's halving ladder and the 50-iteration cap belong to
+    /// the implementation, not to the engine.
+    async fn drain(&self) -> Result<usize, ApiError>;
 }
 
 /// Local rows a pass makes syncable before it pushes: Electron's full-sync seed step
@@ -97,6 +98,12 @@ pub struct PassReport {
     /// The outbox was parked by a blocked policy: no attempt was made.
     pub parked: bool,
     pub pushed: bool,
+    /// Rows the push wave's server accepted.
+    pub pushed_items: usize,
+    /// Why the pull failed, when it did (the sync history's `error` row).
+    pub pull_error: Option<String>,
+    /// Why the push failed, when it did.
+    pub push_error: Option<String>,
 }
 
 /// The engine. One per vault.
@@ -252,9 +259,10 @@ impl SyncEngine {
             trail.enter(SyncState::Idle);
         }
 
+        let mut done = Done::default();
         if self.reachability.current() == Reachable::Offline {
             trail.enter(SyncState::Offline);
-            return self.finish(trigger, trail, PullReport::default(), false, false);
+            return self.finish(trigger, trail, PullReport::default(), done);
         }
 
         let gate = self.refresh_policy(trigger).await;
@@ -263,28 +271,31 @@ impl SyncEngine {
         // for anything.
         let (pull, pull_failed) = self.pull_pages(&mut trail).await;
         if trail.current == SyncState::Refused {
-            return self.finish(trigger, trail, pull, false, false);
+            return self.finish(trigger, trail, pull, done);
         }
-        if pull_failed {
-            return self.finish(trigger, trail, pull, false, false);
+        if let Some(error) = pull_failed {
+            done.pull_error = Some(error);
+            return self.finish(trigger, trail, pull, done);
         }
 
         if let Some(blocked) = gate.blocked_state() {
             // Parked: no attempt, no backoff, no row removed.
             trail.enter(blocked);
-            return self.finish(trigger, trail, pull, true, false);
+            done.parked = true;
+            return self.finish(trigger, trail, pull, done);
         }
 
         if !pull.has_more {
             self.seed().await;
         }
-        let pushed = self.push_wave(&mut trail).await;
-        self.finish(trigger, trail, pull, false, pushed)
+        self.push_wave(&mut trail, &mut done).await;
+        self.finish(trigger, trail, pull, done)
     }
 
     /// `Idle -> Pulling -> Applying -> (Pulling | Idle | Refused)`, one lap
     /// per page.
-    async fn pull_pages(&self, trail: &mut Trail) -> (PullReport, bool) {
+    /// The `String` is why a page failed.
+    async fn pull_pages(&self, trail: &mut Trail) -> (PullReport, Option<String>) {
         let mut total = PullReport::default();
         for index in 0..self.max_pages {
             trail.enter(SyncState::Pulling);
@@ -312,7 +323,7 @@ impl SyncEngine {
                     } else {
                         SyncState::Failed
                     });
-                    return (total, true);
+                    return (total, Some(error.to_string()));
                 }
             };
             trail.enter(SyncState::Applying);
@@ -336,17 +347,17 @@ impl SyncEngine {
 
             if page.refused {
                 trail.enter(SyncState::Refused);
-                return (total, false);
+                return (total, None);
             }
             if !page.has_more {
                 trail.enter(SyncState::Idle);
-                return (total, false);
+                return (total, None);
             }
         }
         // The page ceiling: caught up as far as this pass goes, and the next
         // pass resumes from the committed cursor.
         trail.enter(SyncState::Idle);
-        (total, false)
+        (total, None)
     }
 
     /// Every [`PassSeed`], in order. A failure is logged and the push still runs.
@@ -362,23 +373,25 @@ impl SyncEngine {
     }
 
     /// `Idle -> Pushing -> (Idle | ReadOnly | BlockedUpgrade | Failed)`.
-    async fn push_wave(&self, trail: &mut Trail) -> bool {
+    async fn push_wave(&self, trail: &mut Trail, done: &mut Done) {
         let Some(push) = self.push.as_ref() else {
-            return false;
+            return;
         };
         match push.pending().await {
-            Ok(0) => return false,
+            Ok(0) => return,
             Ok(_) => {}
-            Err(_) => {
+            Err(error) => {
                 trail.enter(SyncState::Failed);
-                return false;
+                done.push_error = Some(error.to_string());
+                return;
             }
         }
         trail.enter(SyncState::Pushing);
         match push.drain().await {
-            Ok(()) => {
+            Ok(accepted) => {
                 trail.enter(SyncState::Idle);
-                true
+                done.pushed = true;
+                done.pushed_items = accepted;
             }
             // §11.9: a mid-wave 403, 426 or 402 is not a sync failure the
             // user can retry. The policy tier records the fact so the next
@@ -388,7 +401,7 @@ impl SyncEngine {
             Err(error) => {
                 let blocked = self.policy.observe(&error);
                 trail.enter(blocked.unwrap_or(SyncState::Failed));
-                false
+                done.push_error = Some(error.to_string());
             }
         }
     }
@@ -416,8 +429,7 @@ impl SyncEngine {
         trigger: PassTrigger,
         trail: Trail,
         pull: PullReport,
-        parked: bool,
-        pushed: bool,
+        done: Done,
     ) -> PassReport {
         *self
             .state
@@ -428,10 +440,23 @@ impl SyncEngine {
             transitions: trail.entered,
             final_state: trail.current,
             pull,
-            parked,
-            pushed,
+            parked: done.parked,
+            pushed: done.pushed,
+            pushed_items: done.pushed_items,
+            pull_error: done.pull_error,
+            push_error: done.push_error,
         }
     }
+}
+
+/// What a pass's push half did, for [`PassReport`].
+#[derive(Default)]
+struct Done {
+    parked: bool,
+    pushed: bool,
+    pushed_items: usize,
+    pull_error: Option<String>,
+    push_error: Option<String>,
 }
 
 /// Clears [`SyncEngine::wake`]'s queued flag on drop.

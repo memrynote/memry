@@ -142,11 +142,11 @@ impl PushWave for ScriptedPush {
         Ok(self.pending)
     }
 
-    async fn drain(&self) -> Result<(), ApiError> {
+    async fn drain(&self) -> Result<usize, ApiError> {
         self.drains.fetch_add(1, Ordering::Relaxed);
         match self.result.lock().unwrap().clone() {
             Some(error) => Err(error),
-            None => Ok(()),
+            None => Ok(self.pending),
         }
     }
 }

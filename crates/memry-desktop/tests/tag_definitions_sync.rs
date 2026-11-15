@@ -143,7 +143,7 @@ impl PushWave for Push {
         Ok(usize::try_from(count).unwrap())
     }
 
-    async fn drain(&self) -> Result<(), ApiError> {
+    async fn drain(&self) -> Result<usize, ApiError> {
         let ids = self
             .db
             .call(|conn| {
@@ -162,8 +162,9 @@ impl PushWave for Push {
             })
             .await
             .unwrap();
+        let accepted = ids.len();
         self.pushed.lock().unwrap().extend(ids);
-        Ok(())
+        Ok(accepted)
     }
 }
 
