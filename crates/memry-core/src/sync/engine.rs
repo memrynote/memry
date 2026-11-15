@@ -100,14 +100,16 @@ pub struct PassReport {
     pub pushed: bool,
     /// Rows the push wave's server accepted.
     pub pushed_items: usize,
-    /// Why the pull failed, when it did (the sync history's `error` row).
+    /// Why the pull failed, when it did.
     pub pull_error: Option<SyncError>,
-    /// Why the push failed, when it did.
+    /// Why the push failed, when it did (a mid-wave refusal that parked the
+    /// outbox included).
     pub push_error: Option<SyncError>,
 }
 
 impl PassReport {
-    /// The pass's failure: the pull's, else the push's.
+    /// What failed the pass, so a shell can name it: the pull's error, else
+    /// the push's. `None` for a pass that failed nothing, offline included.
     pub fn error(&self) -> Option<&SyncError> {
         self.pull_error.as_ref().or(self.push_error.as_ref())
     }
@@ -301,7 +303,6 @@ impl SyncEngine {
 
     /// `Idle -> Pulling -> Applying -> (Pulling | Idle | Refused)`, one lap
     /// per page.
-    /// The `String` is why a page failed.
     async fn pull_pages(&self, trail: &mut Trail) -> (PullReport, Option<SyncError>) {
         let mut total = PullReport::default();
         for index in 0..self.max_pages {
@@ -330,7 +331,11 @@ impl SyncEngine {
                     } else {
                         SyncState::Failed
                     });
-                    return (total, Some(SyncError::from(error)));
+                    let error = match error {
+                        super::pull::PullError::Api { source } => SyncError::from(source),
+                        super::pull::PullError::Storage { source } => SyncError::from(source),
+                    };
+                    return (total, Some(error));
                 }
             };
             trail.enter(SyncState::Applying);
