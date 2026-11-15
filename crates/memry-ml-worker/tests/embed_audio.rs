@@ -74,7 +74,7 @@ fn the_worker_splits_each_recording_into_electrons_windows() {
     for (name, path, windows) in recordings(&vectors(), dir.path()) {
         let recording = worker.open_audio(&path).expect(&name);
         assert_eq!(recording.windows() as usize, windows.len(), "{name}");
-        recording.close().expect("close");
+        worker.close_audio(recording).expect("close");
     }
 }
 
@@ -118,14 +118,41 @@ fn a_bad_recording_or_a_missing_model_fails_without_a_crash() {
     let (_, path, _) = recordings(&vectors, dir.path()).swap_remove(0);
     let recording = worker.open_audio(&path).expect("open");
     assert_eq!(
-        recording.embed_window(0),
+        worker.embed_audio_window(&recording, 0),
         Err(WorkerError::Failed(
             "model file tokenizer.json is missing or incomplete".into()
         ))
     );
-    let past = recording.embed_window(recording.windows());
+    let past = worker.embed_audio_window(&recording, recording.windows());
     assert!(matches!(past, Err(WorkerError::Failed(_))), "{past:?}");
     assert_eq!(worker.pid(), Some(pid), "no failure here is a crash");
+}
+
+/// Only a regular file is read: opening a FIFO would block the worker until the op timeout, which
+/// the app counts as a crash. A directory is refused on every platform.
+#[test]
+fn a_recording_that_is_not_a_regular_file_is_refused_without_a_read() {
+    let dir = tempdir("memry-audio-irregular");
+    let worker = worker(dir.path());
+    let mut paths = vec![dir.path().join("folder.wav")];
+    std::fs::create_dir(&paths[0]).expect("dir");
+    #[cfg(unix)]
+    {
+        use std::os::unix::ffi::OsStrExt;
+        let fifo = dir.path().join("fifo.wav");
+        let name = std::ffi::CString::new(fifo.as_os_str().as_bytes()).expect("path");
+        // SAFETY: a plain FFI call with a NUL-terminated path.
+        assert_eq!(unsafe { libc::mkfifo(name.as_ptr(), 0o600) }, 0, "mkfifo");
+        paths.push(fifo);
+    }
+    for path in paths {
+        match worker.open_audio(&path) {
+            Err(WorkerError::Failed(message)) => {
+                assert_eq!(message, "the recording is not a regular file")
+            }
+            other => panic!("{:?}", other.map(|recording| recording.windows())),
+        }
+    }
 }
 
 fn floats(value: &Value) -> Vec<f32> {
@@ -168,7 +195,9 @@ fn audio_embeddings_through_the_real_worker_match_transformers_js() {
         let recording = worker.open_audio(&path).expect(&name);
         assert_eq!(recording.windows() as usize, windows.len(), "{name}");
         for (index, oracle) in windows.iter().enumerate() {
-            let actual = recording.embed_window(index as u32).expect("embed");
+            let actual = worker
+                .embed_audio_window(&recording, index as u32)
+                .expect("embed");
             let expected = floats(&oracle["embedding"]);
             assert_eq!(expected.len(), EMBEDDING_DIMENSION);
             let similarity = cosine(&actual, &expected);
@@ -183,7 +212,7 @@ fn audio_embeddings_through_the_real_worker_match_transformers_js() {
                 ));
             }
         }
-        recording.close().expect("close");
+        worker.close_audio(recording).expect("close");
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }

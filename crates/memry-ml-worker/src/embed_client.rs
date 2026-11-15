@@ -18,8 +18,8 @@ use crate::op::{
 use crate::supervisor::{Lease, Supervisor, WorkerError};
 
 /// A WAV file decoded in the worker, held there until it is closed or the next one is opened.
-pub struct AudioRecording<'a> {
-    worker: &'a Supervisor,
+/// It borrows no [`Supervisor`], so an engine can keep it between the requests of its windows.
+pub struct AudioRecording {
     lease: Lease,
     recording: u32,
     windows: u32,
@@ -70,13 +70,13 @@ impl Supervisor {
 
     /// Decodes the WAV file at `path` in the worker. A file the worker cannot read, one over
     /// [`crate::MAX_AUDIO_BYTES`] and one that is not a WAV it decodes are [`WorkerError::Failed`].
-    pub fn open_audio(&self, path: &Path) -> Result<AudioRecording<'_>, WorkerError> {
+    /// The error names no path: a voice memo's name is the user's.
+    pub fn open_audio(&self, path: &Path) -> Result<AudioRecording, WorkerError> {
         let path = path
             .to_str()
-            .ok_or_else(|| WorkerError::Failed(format!("{} is not valid UTF-8", path.display())))?;
+            .ok_or_else(|| WorkerError::Failed("the recording's path is not valid UTF-8".into()))?;
         match self.call_leasing(&Request::AudioOpen { path: path.into() })? {
             (Response::AudioOpened { recording, windows }, lease) => Ok(AudioRecording {
-                worker: self,
                 lease,
                 recording,
                 windows,
@@ -86,28 +86,34 @@ impl Supervisor {
     }
 }
 
-impl AudioRecording<'_> {
+impl AudioRecording {
     /// The 30 s windows to embed, none for a recording under one second.
     pub fn windows(&self) -> u32 {
         self.windows
     }
+}
 
-    pub fn embed_window(&self, window: u32) -> Result<Vec<f32>, WorkerError> {
-        embedded(self.worker.call_on(
-            &self.lease,
+impl Supervisor {
+    pub fn embed_audio_window(
+        &self,
+        recording: &AudioRecording,
+        window: u32,
+    ) -> Result<Vec<f32>, WorkerError> {
+        embedded(self.call_on(
+            &recording.lease,
             &Request::EmbedAudioWindow {
-                recording: self.recording,
+                recording: recording.recording,
                 window,
             },
         )?)
     }
 
     /// Frees the decoded samples in the worker.
-    pub fn close(self) -> Result<(), WorkerError> {
-        match self.worker.call_on(
-            &self.lease,
+    pub fn close_audio(&self, recording: AudioRecording) -> Result<(), WorkerError> {
+        match self.call_on(
+            &recording.lease,
             &Request::AudioClose {
-                recording: self.recording,
+                recording: recording.recording,
             },
         )? {
             Response::Done => Ok(()),

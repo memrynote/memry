@@ -210,10 +210,25 @@ fn embed_recording(worker: &Supervisor, path: &str) -> Result<Vec<Vec<f32>>, Wor
     let recording = worker.open_audio(std::path::Path::new(path))?;
     let mut vectors = Vec::new();
     for window in 0..recording.windows() {
-        vectors.push(recording.embed_window(window)?);
+        vectors.push(worker.embed_audio_window(&recording, window)?);
     }
-    recording.close()?;
+    worker.close_audio(recording)?;
     Ok(vectors)
+}
+
+/// A voice memo's name is the user's: the refusal of a path that is not UTF-8 names no path.
+#[cfg(unix)]
+#[test]
+fn a_path_that_is_not_utf8_is_refused_without_naming_it() {
+    use std::os::unix::ffi::OsStrExt;
+    let (worker, _) = supervisor(Vec::new());
+    let path = std::path::Path::new(std::ffi::OsStr::from_bytes(b"/memo-\xff-private.wav"));
+    match worker.open_audio(path) {
+        Err(WorkerError::Failed(message)) => {
+            assert!(!message.contains("private"), "{message}")
+        }
+        other => panic!("{:?}", other.map(|recording| recording.windows())),
+    }
 }
 
 #[test]
@@ -226,7 +241,7 @@ fn a_recording_is_embedded_window_by_window_in_one_child() {
         .open_audio(std::path::Path::new("short.wav"))
         .expect("opened");
     assert_eq!(short.windows(), 0, "a recording under one second has none");
-    short.close().expect("closed");
+    worker.close_audio(short).expect("closed");
     assert!(exits.lock().unwrap().is_empty());
 }
 
@@ -243,9 +258,11 @@ fn a_crash_on_an_audio_window_fails_the_recording_and_the_next_gets_a_new_child(
             .open_audio(std::path::Path::new("crash.wav"))
             .expect("opened");
         killed.push(worker.pid().expect("running"));
-        recording.embed_window(0).expect("the first window");
+        worker
+            .embed_audio_window(&recording, 0)
+            .expect("the first window");
         assert!(matches!(
-            recording.embed_window(1),
+            worker.embed_audio_window(&recording, 1),
             Err(WorkerError::Exited(_))
         ));
     }
@@ -279,10 +296,13 @@ fn a_hung_audio_window_is_killed_at_the_op_timeout() {
         .expect("opened");
     let killed = worker.pid().expect("running");
     assert!(matches!(
-        hung.embed_window(1),
+        worker.embed_audio_window(&hung, 1),
         Err(WorkerError::Timeout { .. })
     ));
-    assert!(matches!(hung.embed_window(0), Err(WorkerError::NotOpen)));
+    assert!(matches!(
+        worker.embed_audio_window(&hung, 0),
+        Err(WorkerError::NotOpen)
+    ));
     assert_eq!(
         embed_recording(&worker, "memo.wav")
             .expect("a new child")

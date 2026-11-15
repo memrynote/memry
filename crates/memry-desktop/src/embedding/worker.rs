@@ -15,25 +15,27 @@
 //! the model directory and checks the sizes alone.
 //!
 //! Audio (`embedAudio`, `apps/desktop/src/main/lib/audio-embedding.ts`): the first recording
-//! downloads the audio group (189 MB) the same way, with no progress event (the settings UI shows
-//! the text model's), then the worker reads and decodes the WAV file itself and embeds it one
-//! 30 s window per op, so neither the file nor its samples cross the pipe. A crash or a timeout
-//! on any window is [`EmbedError::Crashed`], counted toward the service's breaker (#3407) like a
-//! text embed's; an unreadable or malformed file is [`EmbedError::Failed`].
+//! downloads the audio group (189 MB) the same way, on the caller's thread, with no progress event
+//! (the settings UI shows the text model's), then the worker reads and decodes the WAV file itself
+//! and embeds it one 30 s window per op, so neither the file nor its samples cross the pipe. A
+//! crash or a timeout on any window is [`EmbedError::Crashed`] and a window the encoder fails
+//! (its files missing or broken) [`EmbedError::Failed`], both counted by the service's audio
+//! breaker only; a file the worker cannot open or decode is [`EmbedError::Input`] and counts
+//! nowhere.
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use memry_ml_worker::{
-    ExitObserver, Limits, MODEL_REPO, MODEL_REVISION, Manifest, ModelGroup, Supervisor,
-    SystemClock, WorkerError,
+    AudioRecording, ExitObserver, Limits, MODEL_REPO, MODEL_REVISION, Manifest, ModelGroup,
+    Supervisor, SystemClock, WorkerError,
 };
 use tokio::runtime::Handle;
 
 use super::download::{Abort, HUB_HOST, ModelSource, PinnedFile};
-use super::service::{EmbedError, Engine, ModelLoader, ModelProgress};
+use super::service::{AudioOpened, EmbedError, Engine, ModelLoader, ModelProgress};
 use crate::services::file_text::WorkerPaths;
 use crate::session::Session;
 use crate::telemetry::events::Metrics;
@@ -143,39 +145,86 @@ impl ModelLoader for WorkerModel {
             return Err("the model load was cancelled".to_owned());
         }
         shared.supervisor.embed_load().map_err(worker_error)?;
-        Ok(Box::new(WorkerEngine(shared.clone())))
-    }
-}
-
-struct WorkerEngine(Arc<Shared>);
-
-impl Engine for WorkerEngine {
-    fn embed_text(&mut self, text: &str) -> Result<Vec<f32>, EmbedError> {
-        self.0.supervisor.embed_text(text).map_err(embed_error)
+        Ok(Box::new(WorkerEngine {
+            shared: shared.clone(),
+            recording: None,
+            opened: 0,
+        }))
     }
 
-    fn embed_audio(&mut self, path: &Path, abort: &Abort) -> Result<Vec<Vec<f32>>, EmbedError> {
+    fn prepare_audio(&self, abort: &Abort) -> Result<(), String> {
         let shared = &self.0;
-        let source = shared
-            .source(ModelGroup::Audio, &shared.audio)
-            .map_err(EmbedError::Failed)?;
+        let source = shared.source(ModelGroup::Audio, &shared.audio)?;
         shared
             .runtime
             .block_on(source.ensure(abort, &|_| {}))
-            .map_err(|error| EmbedError::Failed(error.to_string()))?;
-        let recording = shared.supervisor.open_audio(path).map_err(embed_error)?;
-        let mut vectors = Vec::with_capacity(recording.windows() as usize);
-        for window in 0..recording.windows() {
-            // A retired thread (vault close, quit, the request's deadline) embeds no more windows.
-            if abort.cancel.is_cancelled() || Instant::now() >= abort.deadline {
-                return Err(EmbedError::Failed(
-                    "the audio embed was cancelled".to_owned(),
-                ));
-            }
-            vectors.push(recording.embed_window(window).map_err(embed_error)?);
+            .map_err(|error| error.to_string())
+    }
+}
+
+struct WorkerEngine {
+    shared: Arc<Shared>,
+    /// The open recording and its handle, from `opened`.
+    recording: Option<(u64, AudioRecording)>,
+    opened: u64,
+}
+
+impl WorkerEngine {
+    /// Frees the decoded samples (up to 230 MB) in the worker, best effort: after a crash or a
+    /// timeout the child is gone and the lease answers at once.
+    fn close_audio(&mut self) {
+        if let Some((_, recording)) = self.recording.take()
+            && let Err(error) = self.shared.supervisor.close_audio(recording)
+        {
+            tracing::debug!(scope = "Embeddings", "closing a recording failed: {error}");
         }
-        recording.close().map_err(embed_error)?;
-        Ok(vectors)
+    }
+}
+
+impl Engine for WorkerEngine {
+    fn embed_text(&mut self, text: &str) -> Result<Vec<f32>, EmbedError> {
+        self.shared.supervisor.embed_text(text).map_err(embed_error)
+    }
+
+    fn open_audio(&mut self, path: &Path) -> Result<AudioOpened, EmbedError> {
+        self.close_audio();
+        let recording = self
+            .shared
+            .supervisor
+            .open_audio(path)
+            .map_err(|error| match error {
+                // The file's fault: unreadable, over the cap, or not a WAV the worker decodes.
+                WorkerError::Failed(message) => EmbedError::Input(message),
+                other => embed_error(other),
+            })?;
+        self.opened += 1;
+        let opened = AudioOpened {
+            recording: self.opened,
+            windows: recording.windows(),
+        };
+        self.recording = Some((opened.recording, recording));
+        if opened.windows == 0 {
+            self.close_audio();
+        }
+        Ok(opened)
+    }
+
+    fn embed_audio_window(&mut self, recording: u64, window: u32) -> Result<Vec<f32>, EmbedError> {
+        let Some((_, open)) = self.recording.as_ref().filter(|(id, _)| *id == recording) else {
+            return Err(EmbedError::Input(
+                "the recording is no longer open".to_owned(),
+            ));
+        };
+        let last = window + 1 >= open.windows();
+        let result = self.shared.supervisor.embed_audio_window(open, window);
+        if last || result.is_err() {
+            self.close_audio();
+        }
+        result.map_err(|error| match error {
+            // The child that held it was replaced: neither the file's fault nor the encoder's.
+            WorkerError::NotOpen => EmbedError::Input(error.to_string()),
+            other => embed_error(other),
+        })
     }
 }
 

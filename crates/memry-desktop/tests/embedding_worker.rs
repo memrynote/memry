@@ -3,7 +3,8 @@
 //! a text that starts with `crash`. A child that dies under an embed counts as Electron's
 //! `failProcess` does with an embed in flight (`apps/desktop/src/main/lib/embeddings.ts:820-835`):
 //! the model is no longer loaded, and five in a row stop the model for the session (#3407). A
-//! recording whose worker dies under a window counts the same way.
+//! recording whose worker dies under a window feeds only the audio encoder's breaker
+//! (`recordEncoderFailure('audio')`, embeddings.ts:830-832): text indexing goes on.
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -83,9 +84,10 @@ fn a_worker_that_dies_under_each_embed_stops_the_model_for_the_session() {
     model.stop();
 }
 
-/// The stub opens any path as three windows and aborts on window 1 of `crash.wav`.
+/// The stub opens any path as three windows and aborts on window 1 of `crash.wav`. A hostile
+/// recording that kills the worker every time never stops text indexing.
 #[test]
-fn a_worker_that_dies_under_each_recording_stops_the_model_for_the_session() {
+fn a_worker_that_dies_under_each_recording_never_stops_text() {
     let runtime = tokio::runtime::Runtime::new().expect("runtime");
     let cache = tempfile::tempdir().expect("cache");
     let (service, model) = stub_service(&runtime, &cache);
@@ -113,15 +115,11 @@ fn a_worker_that_dies_under_each_recording_stops_the_model_for_the_session() {
         );
         assert!(status.error.is_some(), "attempt {attempt}");
     }
-    assert!(
-        !service.load(),
-        "five crashes in a row stop loads until the user resets the failure"
-    );
-    assert_eq!(service.embed_audio(&memo), None);
-    assert_eq!(service.embed("a note long enough to embed"), None);
-
-    service.reset_failure();
+    assert!(service.load(), "audio crashes never stop text loads");
+    let vector = service
+        .embed("a note long enough to embed")
+        .expect("text still embeds");
+    assert_eq!(vector.len(), 256);
     assert_eq!(service.embed_audio(&memo).map(|v| v.len()), Some(3));
-    assert!(service.status().loaded);
     model.stop();
 }

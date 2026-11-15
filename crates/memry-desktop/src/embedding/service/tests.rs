@@ -11,6 +11,8 @@ use crate::registry::{AppConfig, VaultRegistry};
 use crate::session::OpenSource;
 use crate::shell::shutdown::{Deadline, ShutdownContext, ShutdownReason};
 
+mod audio;
+
 /// A hang guard, never a bound on how fast the code is.
 const HANG: Duration = Duration::from_secs(60);
 
@@ -53,12 +55,19 @@ enum Step {
     Block(Arc<Gate>),
     /// Waits for the request's abort, as a download does.
     AwaitAbort(Arc<Gate>),
+    Sleep(Duration),
 }
 
 #[derive(Default)]
 struct Script {
     loads: Mutex<VecDeque<Step>>,
     embeds: Mutex<VecDeque<Step>>,
+    /// Audio windows and audio downloads.
+    windows: Mutex<VecDeque<Step>>,
+    downloads: Mutex<VecDeque<Step>>,
+    opens: AtomicUsize,
+    /// `text` and `window`, in the order the thread served them.
+    order: Mutex<Vec<&'static str>>,
     load_calls: AtomicUsize,
     dropped: AtomicUsize,
     cancelled: AtomicUsize,
@@ -73,6 +82,10 @@ impl Script {
             Step::Panic => panic!("onnx runtime fault"),
             Step::Block(gate) => {
                 gate.wait();
+                Ok(())
+            }
+            Step::Sleep(time) => {
+                std::thread::sleep(time);
                 Ok(())
             }
             Step::AwaitAbort(gate) => {
@@ -92,10 +105,33 @@ struct FakeEngine(Arc<Script>);
 
 impl Engine for FakeEngine {
     fn embed_text(&mut self, _: &str) -> Result<Vec<f32>, EmbedError> {
+        lock(&self.0.order).push("text");
         self.0
             .play(&self.0.embeds, None)
             .map_err(EmbedError::Failed)?;
         Ok(vec![0.5; EMBEDDING_DIMENSION])
+    }
+
+    /// `unreadable.wav` is the file's fault, `short.wav` has no window, anything else three.
+    fn open_audio(&mut self, path: &std::path::Path) -> Result<AudioOpened, EmbedError> {
+        self.0.opens.fetch_add(1, Ordering::SeqCst);
+        let windows = match path.to_str() {
+            Some("unreadable.wav") => return Err(EmbedError::Input("not a WAV".to_owned())),
+            Some("short.wav") => 0,
+            _ => 3,
+        };
+        Ok(AudioOpened {
+            recording: 1,
+            windows,
+        })
+    }
+
+    fn embed_audio_window(&mut self, _: u64, _: u32) -> Result<Vec<f32>, EmbedError> {
+        lock(&self.0.order).push("window");
+        self.0
+            .play(&self.0.windows, None)
+            .map_err(EmbedError::Failed)?;
+        Ok(vec![0.25; EMBEDDING_DIMENSION])
     }
 }
 
@@ -121,6 +157,10 @@ impl ModelLoader for FakeLoader {
         ));
         self.0.play(&self.0.loads, Some(abort))?;
         Ok(Box::new(FakeEngine(self.0.clone())))
+    }
+
+    fn prepare_audio(&self, abort: &Abort) -> Result<(), String> {
+        self.0.play(&self.0.downloads, Some(abort))
     }
 }
 
@@ -163,6 +203,16 @@ impl Case {
 
     fn error(&self) -> String {
         self.service.status().error.unwrap_or_default()
+    }
+
+    fn opens(&self) -> usize {
+        self.script.opens.load(Ordering::SeqCst)
+    }
+
+    fn audio(&self, name: &str) -> Option<Vec<Vec<f32>>> {
+        let service = self.service.clone();
+        let name = name.to_owned();
+        returns(move || service.embed_audio(std::path::Path::new(&name)))
     }
 }
 
@@ -214,21 +264,6 @@ fn text_under_ten_units_after_a_js_trim_never_loads_the_model() {
     let c = case(long_deadline());
     assert_eq!(c.service.embed("\u{feff}  123456789 \n"), None);
     assert_eq!(c.loads(), 0);
-}
-
-/// A recording the worker cannot read or decode (the fake embeds no audio) is the file's fault:
-/// even as the request that loads the model, it never feeds the backoff, so a vault of broken
-/// voice memos cannot stop embeddings. Electron decodes in the main process and never sends one.
-#[test]
-fn a_recording_that_fails_never_backs_off_the_model() {
-    let c = case(long_deadline());
-    assert_eq!(
-        c.service.embed_audio(std::path::Path::new("memo.wav")),
-        None
-    );
-    assert_eq!(c.error(), "this model embeds no audio");
-    assert_eq!(c.service.embed(TEXT), Some(vec![0.5; EMBEDDING_DIMENSION]));
-    assert_eq!(c.loads(), 1);
 }
 
 /// embeddings.ts:304-340: a failed load surfaces as the error event and the status error, and

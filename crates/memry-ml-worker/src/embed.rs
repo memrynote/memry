@@ -148,22 +148,32 @@ impl Embedder {
     }
 }
 
-/// The file's bytes, refused from its size before any is read when it is over the cap; one that
-/// grew past the cap since is cut there, and `decode_wav` refuses it.
+/// The file's bytes, refused from its size before any is read when it is over the cap. Only a
+/// regular file is opened: a FIFO would block the open past the op timeout. Exactly the stat'ed
+/// length is read, and a file that changed since is refused.
 fn read_recording(path: &Path) -> Result<Vec<u8>, String> {
     let cap = memry_ml_worker::MAX_AUDIO_BYTES;
     let unreadable = |error: std::io::Error| format!("the recording could not be read: {error}");
-    let file = File::open(path).map_err(unreadable)?;
-    let len = file.metadata().map_err(unreadable)?.len();
+    let not_regular = || "the recording is not a regular file".to_owned();
+    if !std::fs::metadata(path).map_err(unreadable)?.is_file() {
+        return Err(not_regular());
+    }
+    let mut file = File::open(path).map_err(unreadable)?;
+    let metadata = file.metadata().map_err(unreadable)?;
+    if !metadata.is_file() {
+        return Err(not_regular());
+    }
+    let len = metadata.len();
     if len > cap as u64 {
         return Err(format!(
             "the recording of {len} bytes is over the {cap}-byte cap"
         ));
     }
-    let mut bytes = Vec::with_capacity(len as usize);
-    file.take(cap as u64 + 1)
-        .read_to_end(&mut bytes)
-        .map_err(unreadable)?;
+    let mut bytes = vec![0; len as usize];
+    file.read_exact(&mut bytes).map_err(unreadable)?;
+    if file.read(&mut [0]).map_err(unreadable)? != 0 {
+        return Err("the recording changed while it was read".to_owned());
+    }
     Ok(bytes)
 }
 

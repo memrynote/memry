@@ -10,31 +10,35 @@ use std::time::{Duration, Instant};
 use tokio_util::sync::CancellationToken;
 
 use super::{
-    EMBEDDING_DIMENSION, EmbedError, EmbeddingService, Engine, ModelLoader, ModelProgress, Phase,
-    lock,
+    AudioOpened, EMBEDDING_DIMENSION, EmbedError, EmbeddingService, Engine, ModelLoader,
+    ModelProgress, Phase, lock,
 };
 use crate::embedding::download::Abort;
 
 pub(super) enum Request {
     Load,
     Embed(String),
-    EmbedAudio(PathBuf),
+    /// Each audio op is its own request with its own deadline, so text runs between the windows
+    /// of a recording (Electron's timer is per window, embeddings.ts:792-798).
+    OpenAudio(PathBuf),
+    AudioWindow {
+        recording: u64,
+        window: u32,
+    },
 }
 
 pub(super) enum Reply {
     Loaded,
     Embedded(Vec<f32>),
-    EmbeddedAudio(Vec<Vec<f32>>),
+    AudioOpened(AudioOpened),
 }
 
 impl Reply {
     /// The width of a vector in the reply that is not [`EMBEDDING_DIMENSION`] wide.
     pub(super) fn wrong_width(&self) -> Option<usize> {
-        let wrong = |width: &usize| *width != EMBEDDING_DIMENSION;
         match self {
-            Self::Loaded => None,
-            Self::Embedded(vector) => Some(vector.len()).filter(wrong),
-            Self::EmbeddedAudio(vectors) => vectors.iter().map(Vec::len).find(wrong),
+            Self::Embedded(vector) => Some(vector.len()).filter(|w| *w != EMBEDDING_DIMENSION),
+            Self::Loaded | Self::AudioOpened(_) => None,
         }
     }
 }
@@ -43,6 +47,8 @@ impl Reply {
 pub(super) enum Fault {
     Load(String),
     Inference(String),
+    /// The request's input cannot be used (a recording the worker cannot read or decode).
+    Input(String),
     /// A panic, or a model process that died under the request; the model was dropped.
     Crashed(String),
     TimedOut,
@@ -185,10 +191,14 @@ fn serve(
     let outcome = match request {
         Request::Load => return Ok(Reply::Loaded),
         Request::Embed(text) => loaded.embed_text(text).map(Reply::Embedded),
-        Request::EmbedAudio(path) => loaded.embed_audio(path, abort).map(Reply::EmbeddedAudio),
+        Request::OpenAudio(path) => loaded.open_audio(path).map(Reply::AudioOpened),
+        Request::AudioWindow { recording, window } => loaded
+            .embed_audio_window(*recording, *window)
+            .map(Reply::Embedded),
     };
     outcome.map_err(|error| match error {
         EmbedError::Failed(message) => Fault::Inference(message),
+        EmbedError::Input(message) => Fault::Input(message),
         EmbedError::Crashed(message) => {
             *engine = None;
             Fault::Crashed(message)
