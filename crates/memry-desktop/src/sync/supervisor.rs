@@ -1,0 +1,166 @@
+//! `SyncSupervisor`: one task per open vault that decides when the driver runs a pass, ported from
+//! Electron's sync runtime (`engine.ts:868-890`, `sync-context.ts`, `runtime.ts`).
+//!
+//! One loop owns every decision: it starts the driver once the gate allows, runs at most one pass
+//! at a time (a request during a pass queues exactly one trailing pass), spaces pushes 300 ms
+//! apart, backs off after a `429` and runs a pass when the wait ends, pauses on clock skew, and
+//! throttles status events. Passes run in a spawned task so the loop keeps answering; stop aborts
+//! a running pass, as Electron's `abortController` does. Timing goes through `tokio::time`, so tests drive it on a paused clock.
+
+use std::sync::Arc;
+
+use memry_core::api::errors::StorageError;
+use memry_core::seams::reachability::{Reachability, ReachabilityObserver, Reachable};
+use memry_core::storage::Db;
+use tokio::sync::{broadcast, mpsc, oneshot, watch};
+
+use super::backend::SyncBackend;
+use super::gate::{self, GateDecision, SyncStartGate};
+use super::result::{SyncNowBlockedReason as Blocked, TriggerSyncResult};
+use super::run_loop::Loop;
+use super::status::{self, StatusFacts, SyncStatus};
+use super::triggers::Trigger;
+use crate::shell::power::PowerEvent;
+
+/// What a supervisor is built from.
+pub struct SupervisorParts {
+    pub backend: Arc<dyn SyncBackend>,
+    pub gate: Arc<SyncStartGate>,
+    pub reachability: Arc<dyn Reachability>,
+    /// Power events; a supervisor rebuilt on a vault switch subscribes again.
+    pub power: Option<broadcast::Receiver<PowerEvent>>,
+    /// The vault's `data.db`: the persisted pause and the outbox depth.
+    pub db: Db,
+    /// Every status change, at most one per [`STATUS_THROTTLE`], the latest winning.
+    pub on_status: Arc<dyn Fn(&SyncStatus) + Send + Sync>,
+}
+
+pub(super) enum Command {
+    Trigger(Trigger),
+    RequestPush,
+    SyncNow(oneshot::Sender<TriggerSyncResult>),
+    SetPaused(bool, oneshot::Sender<Result<(), StorageError>>),
+    Reachable(Reachable),
+    Socket { generation: u64, connected: bool },
+    Stop(oneshot::Sender<()>),
+}
+
+/// The handle. Cheap to clone; the loop stops on [`SyncSupervisor::stop`] or when every handle
+/// is dropped.
+#[derive(Clone)]
+pub struct SyncSupervisor {
+    commands: mpsc::UnboundedSender<Command>,
+    status: watch::Receiver<SyncStatus>,
+}
+
+impl SyncSupervisor {
+    /// Starts the loop on `runtime`; its first step reads the persisted pause, before any
+    /// request is handled.
+    pub fn start(runtime: &tokio::runtime::Handle, parts: SupervisorParts) -> Self {
+        let paused = false;
+        let (commands, rx) = mpsc::unbounded_channel();
+        // Weak: the reachability source keeps its observers for good, and must not keep the
+        // loop alive once every handle is gone.
+        parts
+            .reachability
+            .observe(Arc::new(Observer(commands.downgrade())));
+        let online = parts.reachability.current() != Reachable::Offline;
+        let first = status::derive(&StatusFacts {
+            gate: GateDecision::NotStarted(gate::SyncNotStartedReason::Unavailable),
+            paused,
+            online,
+            syncing: false,
+            engine: None,
+            last_error: None,
+            last_sync_at: None,
+            pending: 0,
+            offline_since: None,
+        });
+        let (status_tx, status) = watch::channel(first);
+        let state = Loop::new(parts, rx, status_tx, paused, online);
+        runtime.spawn(state.run());
+        Self { commands, status }
+    }
+
+    /// A local write wants pushing: a pass at once, or when 300 ms have passed since the last
+    /// one started (`push-coordinator.ts:585-609`).
+    pub fn request_push(&self) {
+        let _ = self.commands.send(Command::RequestPush);
+    }
+
+    /// The app came to the foreground.
+    pub fn foreground(&self) {
+        let _ = self.commands.send(Command::Trigger(Trigger::Foreground));
+    }
+
+    /// The realtime socket's state (L4b): a tick skips its pull while one generation stayed
+    /// connected since the last tick.
+    pub fn note_socket(&self, generation: u64, connected: bool) {
+        let _ = self.commands.send(Command::Socket {
+            generation,
+            connected,
+        });
+    }
+
+    /// Sync Now: ends a pause, then runs a pass and answers how it went.
+    pub async fn sync_now(&self) -> TriggerSyncResult {
+        let (reply, answer) = oneshot::channel();
+        if self.commands.send(Command::SyncNow(reply)).is_err() {
+            return TriggerSyncResult::blocked(Blocked::Unavailable, None);
+        }
+        answer
+            .await
+            .unwrap_or_else(|_| TriggerSyncResult::blocked(Blocked::Unavailable, None))
+    }
+
+    /// Pauses or resumes sync, persisted in `meta` `sync.paused` before the driver is told.
+    pub async fn set_paused(&self, paused: bool) -> Result<(), StorageError> {
+        let (reply, answer) = oneshot::channel();
+        let gone = || StorageError::Failed {
+            what: "sync is not running for this vault; the pause was not saved".into(),
+        };
+        if self
+            .commands
+            .send(Command::SetPaused(paused, reply))
+            .is_err()
+        {
+            return Err(gone());
+        }
+        answer.await.unwrap_or_else(|_| Err(gone()))
+    }
+
+    /// The latest status, unthrottled.
+    pub fn status(&self) -> SyncStatus {
+        self.status.borrow().clone()
+    }
+
+    /// Aborts a running pass, closes the driver and ends the loop.
+    pub async fn stop(&self) {
+        let (reply, done) = oneshot::channel();
+        if self.commands.send(Command::Stop(reply)).is_ok() {
+            let _ = done.await;
+        }
+    }
+
+    /// [`SyncSupervisor::stop`] from a thread outside the runtime (a session close hook).
+    pub fn stop_blocking(&self) {
+        let (reply, done) = oneshot::channel();
+        if self.commands.send(Command::Stop(reply)).is_ok() {
+            let _ = done.blocking_recv();
+        }
+    }
+}
+
+struct Observer(mpsc::WeakUnboundedSender<Command>);
+
+impl ReachabilityObserver for Observer {
+    fn on_change(&self, reachable: Reachable) {
+        if let Some(commands) = self.0.upgrade() {
+            let _ = commands.send(Command::Reachable(reachable));
+        }
+    }
+}
+
+#[cfg(test)]
+#[path = "supervisor_tests.rs"]
+mod tests;
