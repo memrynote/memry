@@ -28,7 +28,7 @@ Electron suite.
 | `hasNoteOnDevice`                           | `e2e_has_note_on_device`                  | Step 14 (#3531) |
 | `getWritebackDebugState`                    | `e2e_writeback_debug_state`               | Step 14 (#3531) |
 | `getCrdtMarkdownSourceState`                | `e2e_crdt_markdown_source_state`          | Step 14 (#3531) |
-| `simulateCrdtTeardownForTests`              | `e2e_simulate_crdt_teardown`              | Step 14 (#3531) |
+| `simulateCrdtTeardownForTests`              | `sync_logout` (the real teardown)         | Step 19 (#3536) |
 | `seedGoogleCalendarTokens`                  | `e2e_seed_google_calendar_tokens`         | Step 29 (#3546) |
 | `getGooglePushChannelProbe`                 | `e2e_google_push_channel_probe`           | Step 29 (#3546) |
 | `connectGoogleCalendarForE2E`               | `e2e_connect_google_calendar`             | Step 29 (#3546) |

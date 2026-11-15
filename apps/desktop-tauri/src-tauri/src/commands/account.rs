@@ -19,6 +19,7 @@ use crate::events::{
     AuthOauthCallbackEvent, AuthOauthErrorEvent, AuthOtpDetectedEvent, AuthSessionRefreshedEvent,
     broadcast,
 };
+use crate::shell::account_sync::{after_sign_in, attach_if_signed_in};
 use crate::shell::external::open_url;
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
@@ -185,6 +186,9 @@ pub async fn auth_verify_otp(
         .await
         .map_err(|e| map_error(&app, "auth_verify_otp", &e))?;
     app.state::<OtpClipboardWatch>().stop();
+    if verified.device_id.is_some() {
+        after_sign_in(app.clone());
+    }
     Ok(AuthOtpVerified {
         is_new_user: verified.is_new_user,
         needs_setup: verified.needs_setup,
@@ -236,7 +240,9 @@ pub async fn sync_confirm_recovery_phrase(
 ) -> Result<(), CommandError> {
     account(&app)
         .confirm_recovery_phrase(confirmed)
-        .map_err(|e| map_error(&app, "sync_confirm_recovery_phrase", &e))
+        .map_err(|e| map_error(&app, "sync_confirm_recovery_phrase", &e))?;
+    attach_if_signed_in(app);
+    Ok(())
 }
 
 /// `sync:link-via-recovery`.
@@ -246,11 +252,12 @@ pub async fn sync_link_via_recovery(
     app: AppHandle<Wry>,
     recovery_phrase: String,
 ) -> Result<AccountDevice, CommandError> {
-    account(&app)
+    let device_id = account(&app)
         .link_via_recovery(recovery_phrase)
         .await
-        .map(|device_id| AccountDevice { device_id })
-        .map_err(|e| map_error(&app, "sync_link_via_recovery", &e))
+        .map_err(|e| map_error(&app, "sync_link_via_recovery", &e))?;
+    after_sign_in(app);
+    Ok(AccountDevice { device_id })
 }
 
 /// The account as the renderer shows it at launch, from the keychain and `memry-config.json`
@@ -355,13 +362,16 @@ pub async fn sync_setup_first_device(
         log_failure("sync_setup_first_device", &error);
         return Err(error);
     }
-    account(&app)
+    let first = account(&app)
         .setup_first_device(oauth_token, state)
         .await
-        .map(|first| AuthFirstDevice {
-            needs_recovery_setup: first.needs_recovery_setup,
-            needs_recovery_input: first.needs_recovery_input,
-            device_id: first.device_id,
-        })
-        .map_err(|e| map_error(&app, "sync_setup_first_device", &e))
+        .map_err(|e| map_error(&app, "sync_setup_first_device", &e))?;
+    if first.device_id.is_some() {
+        after_sign_in(app);
+    }
+    Ok(AuthFirstDevice {
+        needs_recovery_setup: first.needs_recovery_setup,
+        needs_recovery_input: first.needs_recovery_input,
+        device_id: first.device_id,
+    })
 }

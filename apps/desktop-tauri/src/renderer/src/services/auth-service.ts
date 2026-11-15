@@ -4,6 +4,7 @@ import type { SetupFirstDeviceResult } from '@memry/contracts/ipc-auth'
 
 import { commands, type AuthOtpSent } from '../../../generated/bindings'
 import { commandErrorCode, extractErrorMessage } from '@/lib/ipc-error'
+import { syncAccountService } from './sync-account-service'
 
 /**
  * The Rust account commands, answered in Electron's `{ success, error, errorCode }` envelopes
@@ -105,7 +106,5 @@ export const authService = {
   /** The account at launch, from this device alone: offline or waiting still reads as signed in. */
   getAccountInfo: () => commands.accountGetInfo(),
 
-  logout: () => {
-    return window.api.syncAuth.logout()
-  }
+  logout: () => syncAccountService.logout()
 }

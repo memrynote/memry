@@ -1,0 +1,246 @@
+//! The account side of sync against the real Worker, through the shell's wiring
+//! ([`SyncWiring`] attached to a real `Session`): a vault one account synced holds as `Foreign`
+//! for the next account and never runs a pass (`vault-account-binding.ts:79-110`), and a device
+//! the account revokes stops sync and reports one event that keeps its keys
+//! (`DeviceRevokedEvent`, D7).
+
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
+
+use memry_core::seams::reachability::Reachability;
+use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
+use memry_core::sync::outbox;
+use memry_desktop::account::AccountService;
+use memry_desktop::account::binding::BindingState;
+use memry_desktop::account::session_events::{self, AccountEvent};
+use memry_desktop::account::vault_sync::{OpenVaultBinding, SyncWiring};
+use memry_desktop::registry::config::AppConfig;
+use memry_desktop::registry::vaults::VaultRegistry;
+use memry_desktop::session::Session;
+use tokio::sync::broadcast;
+
+use super::account::{CODE, install};
+use super::{Online, Server, device_key};
+
+const OTHER: &str = "Harness-Other@Example.com";
+
+fn wiring(
+    account: &Arc<AccountService>,
+    store: &Arc<dyn SecureStore>,
+    session: &Session,
+) -> (Arc<SyncWiring>, Arc<Mutex<Vec<BindingState>>>) {
+    let changes = Arc::new(Mutex::new(Vec::new()));
+    let seen = changes.clone();
+    let wiring = Arc::new(SyncWiring {
+        runtime: tokio::runtime::Handle::current(),
+        account: account.clone(),
+        registry: session.registry().clone(),
+        store: store.clone(),
+        reachability: Arc::new(Online) as Arc<dyn Reachability>,
+        power: None,
+        keychain_recovered: broadcast::Sender::new(4),
+        telemetry: None,
+        on_status: Arc::new(|_| {}),
+        bindings: Arc::new(OpenVaultBinding::default()),
+        on_binding: Arc::new(move |state| seen.lock().unwrap().push(state.clone())),
+    });
+    (wiring, changes)
+}
+
+async fn attach(session: &Session, wiring: &Arc<SyncWiring>) {
+    let session = session.clone();
+    let factory = wiring.clone().factory();
+    tokio::task::spawn_blocking(move || session.attach_sync(factory))
+        .await
+        .unwrap();
+}
+
+async fn detach(session: &Session) {
+    let session = session.clone();
+    tokio::task::spawn_blocking(move || session.detach_sync())
+        .await
+        .unwrap();
+}
+
+async fn wait_for_binding(wiring: &SyncWiring, want: &BindingState) {
+    for _ in 0..120 {
+        if wiring.bindings.state() == *want {
+            return;
+        }
+        tokio::time::sleep(Duration::from_millis(250)).await;
+    }
+    panic!(
+        "the binding never became {want:?}: {:?}",
+        wiring.bindings.state()
+    );
+}
+
+/// A new account on `store`, set up and confirmed, on a paid plan, and its phrase.
+async fn new_account(
+    server: &mut Server,
+    store: Arc<dyn SecureStore>,
+    email: &str,
+) -> (tempfile::TempDir, Arc<AccountService>, String) {
+    let (dir, account) = install(server, store);
+    account.request_otp(email.into()).await.expect("a code");
+    server.otp(email, CODE);
+    assert!(account.verify_otp(CODE.into()).await.unwrap().needs_setup);
+    account.setup_new_account().await.expect("setup");
+    let phrase = account.recovery_phrase().expect("the phrase").to_string();
+    account.confirm_recovery_phrase(true).unwrap();
+    server.entitle(email);
+    (dir, Arc::new(account), phrase)
+}
+
+fn open_session(dir: &tempfile::TempDir) -> Session {
+    let registry = VaultRegistry::new(Arc::new(AppConfig::load(dir.path().join("vaults.json"))));
+    let session = Session::new(registry);
+    session.create(dir.path(), "Mine").expect("a vault");
+    session
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_vault_one_account_synced_holds_foreign_for_the_next_and_runs_no_pass() {
+    let mut server = Server::start();
+    let vault_dir = tempfile::tempdir().unwrap();
+    let session = open_session(&vault_dir);
+
+    let a_store = device_key::with_device_key();
+    let (_a_dir, a, _) = new_account(&mut server, a_store.clone(), super::account::EMAIL).await;
+    let (a_wiring, a_changes) = wiring(&a, &a_store, &session);
+    attach(&session, &a_wiring).await;
+    wait_for_binding(&a_wiring, &BindingState::Bound).await;
+    assert_eq!(*a_changes.lock().unwrap(), vec![BindingState::Bound]);
+    detach(&session).await;
+    assert_eq!(a_wiring.bindings.state(), BindingState::Bound, "neutral");
+
+    let b_store = device_key::with_device_key();
+    let (_b_dir, b, _) = new_account(&mut server, b_store.clone(), OTHER).await;
+    let (b_wiring, b_changes) = wiring(&b, &b_store, &session);
+    attach(&session, &b_wiring).await;
+    wait_for_binding(&b_wiring, &BindingState::Foreign).await;
+    assert_eq!(*b_changes.lock().unwrap(), vec![BindingState::Foreign]);
+
+    let supervisor = session.sync_supervisor().expect("a supervisor");
+    let answer = supervisor.sync_now().await;
+    assert!(!answer.success, "{answer:?}");
+    assert_eq!(supervisor.completed_pulls(), 0, "no pass ran");
+    detach(&session).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_revoked_device_stops_sync_once_and_keeps_its_keys_and_queue() {
+    let mut server = Server::start();
+    let a_store = device_key::with_device_key();
+    let (_a_dir, a, phrase) =
+        new_account(&mut server, a_store.clone(), super::account::EMAIL).await;
+
+    // The second device: the same account, its own device key, linked with the phrase.
+    let b_store = device_key::without_device_key();
+    let vault_dir = tempfile::tempdir().unwrap();
+    let session = open_session(&vault_dir);
+    let (_b_dir, b) = install(&server, b_store.clone());
+    b.request_otp(super::account::EMAIL.into()).await.unwrap();
+    server.otp(super::account::EMAIL, CODE);
+    assert!(
+        b.verify_otp(CODE.into())
+            .await
+            .unwrap()
+            .needs_recovery_input
+    );
+    let device_id = b.link_via_recovery(phrase).await.expect("linked");
+    let b = Arc::new(b);
+
+    let events = Arc::new(Mutex::new(Vec::new()));
+    let heard = events.clone();
+    session_events::listen(
+        &tokio::runtime::Handle::current(),
+        b.clone(),
+        session.clone(),
+        session.subscribe_auth_signals(),
+        move |event| heard.lock().unwrap().push(event),
+    );
+    let (b_wiring, _) = wiring(&b, &b_store, &session);
+    attach(&session, &b_wiring).await;
+    wait_for_binding(&b_wiring, &BindingState::Bound).await;
+    let open = session.current().unwrap();
+    b.session()
+        .register_vault(
+            open.vault.server_vault_id().unwrap().unwrap(),
+            "Mine".into(),
+        )
+        .await
+        .expect("the vault is on the account");
+
+    a.remove_device(device_id).await.expect("revoked");
+    // The socket's close 4004 can stop sync first; otherwise a pass meets the 403.
+    if let Some(supervisor) = session.sync_supervisor() {
+        let _ = supervisor.sync_now().await;
+    }
+    for _ in 0..120 {
+        if !events.lock().unwrap().is_empty() {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(250)).await;
+    }
+    tokio::time::sleep(Duration::from_secs(1)).await;
+    let queued = open.vault.db_handle().read(outbox::depth).await.unwrap() as u64;
+    assert_eq!(
+        *events.lock().unwrap(),
+        vec![AccountEvent::DeviceRevoked {
+            unsynced_count: queued
+        }]
+    );
+    assert!(session.sync_supervisor().is_none(), "sync stopped");
+    assert!(b_store.get(SecureStoreKey::MasterKey).unwrap().is_some());
+    assert!(b_store.get(SecureStoreKey::RefreshToken).unwrap().is_some());
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn after_sign_in_an_empty_vault_adopts_the_accounts_vault_and_one_with_notes_keeps_its_own() {
+    const HOME: &str = "0b9f3c8e-5d4a-4c1e-9a7b-2f6e8d1c3a50";
+    let mut server = Server::start();
+    let a_store = device_key::with_device_key();
+    let (_a_dir, a, phrase) =
+        new_account(&mut server, a_store.clone(), super::account::EMAIL).await;
+    a.session()
+        .register_vault(HOME.into(), "Home".into())
+        .await
+        .expect("the vault is on the account");
+
+    let b_store = device_key::without_device_key();
+    let (_b_dir, b) = install(&server, b_store.clone());
+    b.request_otp(super::account::EMAIL.into()).await.unwrap();
+    server.otp(super::account::EMAIL, CODE);
+    assert!(
+        b.verify_otp(CODE.into())
+            .await
+            .unwrap()
+            .needs_recovery_input
+    );
+    b.link_via_recovery(phrase).await.expect("linked");
+
+    let with_notes = tempfile::tempdir().unwrap();
+    let kept = open_session(&with_notes);
+    let open = kept.current().unwrap();
+    std::fs::write(open.path.join("note.md"), "# mine\n").unwrap();
+    assert_eq!(b.adopt_account_vault_if_absent(&open).await.unwrap(), None);
+    assert_eq!(open.vault.server_vault_id().unwrap(), None, "its own id");
+
+    let empty = tempfile::tempdir().unwrap();
+    let session = open_session(&empty);
+    let open = session.current().unwrap();
+    assert_eq!(
+        b.adopt_account_vault_if_absent(&open)
+            .await
+            .unwrap()
+            .as_deref(),
+        Some(HOME)
+    );
+    assert_eq!(open.vault.server_vault_id().unwrap().as_deref(), Some(HOME));
+    assert_eq!(
+        b.adopt_account_vault_if_absent(&open).await.unwrap(),
+        None,
+        "once"
+    );
+}

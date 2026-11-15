@@ -162,7 +162,7 @@ async fn a_locked_keychain_is_only_read_again_never_written() {
             keychain_recovered: Some(recovered_rx),
             db: open_data(&dir.path().join("data.db")).unwrap(),
             telemetry: None,
-            signals: Default::default(),
+            signals: memry_desktop::sync::signals::AuthSignals::new(),
             on_status: Arc::new(|_| {}),
         },
     );

@@ -11,6 +11,14 @@ import {
 import { toast } from 'sonner'
 import { useAuth } from './auth-context'
 import { onVaultStatusChanged } from '@/services/vault-service'
+import {
+  onDeviceRevoked,
+  onLinkingApproved,
+  onLinkingRequest,
+  onSessionExpired,
+  onVaultBindingChanged,
+  syncAccountService
+} from '@/services/sync-account-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { requestOpenSettings } from '@/lib/settings-navigation'
 import { DeviceRevokedDialog } from '@/components/sync/device-revoked-dialog'
@@ -345,13 +353,13 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
       setVaultBinding(next)
       setBindingPromptDismissed(false)
     }
-    void window.api.syncOps
+    void syncAccountService
       .getVaultBinding()
       .then(applyBinding)
       .catch(() => {})
 
     const cleanups: Array<() => void> = []
-    cleanups.push(window.api.onVaultBindingChanged(applyBinding))
+    cleanups.push(onVaultBindingChanged(applyBinding))
 
     // These toasts vanish in ten seconds; the same failures are kept in the
     // vault activity log, so the toast offers the way back to them.
@@ -438,7 +446,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     )
 
     cleanups.push(
-      window.api.onSessionExpired((event) => {
+      onSessionExpired((event) => {
         // An advisory keeps the session and retries on its own, so it must
         // not send the user into a sign-in they do not need (#2612).
         if (cancelled || !isSessionEndedReason(event.reason)) return
@@ -450,7 +458,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     )
 
     cleanups.push(
-      window.api.onDeviceRevoked((event) => {
+      onDeviceRevoked((event) => {
         if (cancelled) return
         dispatch({
           type: 'DEVICE_REVOKED',
@@ -494,14 +502,14 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     )
 
     cleanups.push(
-      window.api.onLinkingRequest((event) => {
+      onLinkingRequest((event) => {
         if (cancelled) return
         setLinkingRequest(event)
       })
     )
 
     cleanups.push(
-      window.api.onLinkingApproved(() => {
+      onLinkingApproved(() => {
         if (cancelled) return
         setLinkingRequest(null)
       })
@@ -628,7 +636,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
   const resolveVaultBinding = useCallback(
     async (choice: VaultBindingChoice): Promise<void> => {
       try {
-        const result = await window.api.syncOps.resolveVaultBinding(choice)
+        const result = await syncAccountService.resolveVaultBinding(choice)
         // The IPC error envelope carries no state; keep the current one then.
         if (result.state) setVaultBinding(result.state)
         if (!result.success) {

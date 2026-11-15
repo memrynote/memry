@@ -608,6 +608,17 @@ export const commands = {
 	 *  tells the user that recent edits may be lost.
 	 */
 	shellTakeCrashReload: () => __TAURI_INVOKE<boolean>("shell_take_crash_reload"),
+	/**  `account:sign-out`. */
+	accountSignOut: () => __TAURI_INVOKE<SignOutResult>("account_sign_out"),
+	/**  `sync:get-vault-binding`: `bound` while no supervisor runs (signed out, no vault). */
+	syncGetVaultBinding: () => __TAURI_INVOKE<VaultBindingState>("sync_get_vault_binding"),
+	/**  `sync:auth-logout`. */
+	syncLogout: () => __TAURI_INVOKE<SignOutResult>("sync_logout"),
+	/**
+	 *  `sync:resolve-vault-binding`: the user's answer to the binding prompt. A refused choice is
+	 *  `success: false` with the state unchanged, as Electron answers.
+	 */
+	syncResolveVaultBinding: (choice: VaultBindingChoice) => __TAURI_INVOKE<ResolveVaultBindingResult>("sync_resolve_vault_binding", { choice }),
 	/**  One schema command, answered with the snapshot after it. */
 	tagsEditSchema: (command: TagSchemaCommand) => __TAURI_INVOKE<TagSchemaCommandResultView>("tags_edit_schema", { command }),
 	/**  What points at a note: relation fields, task fields and wiki links, grouped. */
@@ -776,6 +787,7 @@ export const events = {
 	authOauthCallbackEvent: makeEvent<AuthOauthCallbackEvent, AuthOauthCallbackEvent>("auth-oauth-callback-event"),
 	authOauthErrorEvent: makeEvent<AuthOauthErrorEvent, AuthOauthErrorEvent>("auth-oauth-error-event"),
 	authOtpDetectedEvent: makeEvent<AuthOtpDetectedEvent, AuthOtpDetectedEvent>("auth-otp-detected-event"),
+	authSessionExpiredEvent: makeEvent<AuthSessionExpiredEvent, AuthSessionExpiredEvent>("auth-session-expired-event"),
 	authSessionRefreshedEvent: makeEvent<AuthSessionRefreshedEvent, AuthSessionRefreshedEvent>("auth-session-refreshed-event"),
 	crdtProviderReadyEvent: makeEvent<CrdtProviderReadyEvent, CrdtProviderReadyEvent>("crdt-provider-ready-event"),
 	crdtProviderResetEvent: makeEvent<CrdtProviderResetEvent, CrdtProviderResetEvent>("crdt-provider-reset-event"),
@@ -806,7 +818,11 @@ export const events = {
 	propertyDefinitionChangedEvent: makeEvent<PropertyDefinitionChangedEvent, PropertyDefinitionChangedEvent>("property-definition-changed-event"),
 	settingsChangedEvent: makeEvent<SettingsChangedEvent, SettingsChangedEvent>("settings-changed-event"),
 	settingsOpenSectionEvent: makeEvent<SettingsOpenSectionEvent, SettingsOpenSectionEvent>("settings-open-section-event"),
+	syncDeviceRemovedEvent: makeEvent<SyncDeviceRemovedEvent, SyncDeviceRemovedEvent>("sync-device-removed-event"),
+	syncLinkingApprovedEvent: makeEvent<SyncLinkingApprovedEvent, SyncLinkingApprovedEvent>("sync-linking-approved-event"),
 	syncLinkingFinalizedEvent: makeEvent<SyncLinkingFinalizedEvent, SyncLinkingFinalizedEvent>("sync-linking-finalized-event"),
+	syncLinkingRequestedEvent: makeEvent<SyncLinkingRequestedEvent, SyncLinkingRequestedEvent>("sync-linking-requested-event"),
+	syncVaultBindingChangedEvent: makeEvent<SyncVaultBindingChangedEvent, SyncVaultBindingChangedEvent>("sync-vault-binding-changed-event"),
 	tagCategoriesChangedEvent: makeEvent<TagCategoriesChangedEvent, TagCategoriesChangedEvent>("tag-categories-changed-event"),
 	tagColorUpdatedEvent: makeEvent<TagColorUpdatedEvent, TagColorUpdatedEvent>("tag-color-updated-event"),
 	tagDeletedEvent: makeEvent<TagDeletedEvent, TagDeletedEvent>("tag-deleted-event"),
@@ -1120,6 +1136,11 @@ export type AuthRefreshResult = {
 	success: boolean,
 	/**  True only when the server refused the session and a new sign-in is needed. */
 	sessionEnded: boolean,
+};
+
+/**  The server refused the session for good (`auth:session-expired`). */
+export type AuthSessionExpiredEvent = {
+	reason: SessionExpiredReason,
 };
 
 /**  The access token was renewed (`sync:token-refreshed`; the name keeps the secret scan off it). */
@@ -2787,6 +2808,13 @@ export type ReorderInput = {
 	categories?: CategoryOrderInput[] | null,
 };
 
+/**  `ResolveVaultBindingResult`. */
+export type ResolveVaultBindingResult = {
+	success: boolean,
+	state: VaultBindingState,
+	error?: string | null,
+};
+
 /**  `ResolvedField`. */
 export type ResolvedFieldView = {
 	name: string,
@@ -2967,6 +2995,9 @@ export type SelectVaultResponse = {
 	errorCode?: string | null,
 };
 
+/**  Why the session ended (`SessionExpiredReason`); sync reports only a refused refresh. */
+export type SessionExpiredReason = "refresh_rejected";
+
 /**
  *  A set's or a merge's answer (`SetPropertiesResponse` on success): the values as stored, and
  *  the names the edit removed.
@@ -3001,6 +3032,12 @@ export type ShortcutBinding = {
 
 /**  What the OS did with a configured binding. Serialized as the renderer's `GlobalCaptureStatus`. */
 export type ShortcutStatus = "unbound" | "registered" | "in_use" | "unsupported";
+
+/**  `{ success, keychainWarning? }` of both sign-out channels. */
+export type SignOutResult = {
+	success: boolean,
+	keychainWarning?: string | null,
+};
 
 /**  `NoteSizeClass`. */
 export type SizeClass = "note" | "large-file";
@@ -3064,6 +3101,19 @@ export type StreakView = {
 };
 
 /**
+ *  This device was revoked (`sync:device-removed`, `DeviceRevokedEvent`). Sync stopped; every
+ *  secret and queued edit stays, `unsynced_count` of them in the open vault.
+ */
+export type SyncDeviceRemovedEvent = {
+	unsyncedCount: number,
+};
+
+/**  A link this device started was approved (`sync:linking-approved`). */
+export type SyncLinkingApprovedEvent = {
+	sessionId: string,
+};
+
+/**
  *  A linked device finished registering, or failed to (`sync:linking-finalized`). The new device's
  *  link finalizes in the background after the approval; `error` is the failure's message.
  */
@@ -3071,6 +3121,16 @@ export type SyncLinkingFinalizedEvent = {
 	deviceId: string | null,
 	error: string | null,
 };
+
+/**  Another device asks to be linked (`sync:linking-request`). */
+export type SyncLinkingRequestedEvent = {
+	sessionId: string,
+	newDeviceName: string,
+	newDevicePlatform: string,
+};
+
+/**  The open vault's binding changed (`sync:vault-binding-changed`). */
+export type SyncVaultBindingChangedEvent = VaultBindingState;
 
 /**  `TagAssignment`: where a drag put a tag. */
 export type TagAssignmentInput = {
@@ -3488,6 +3548,12 @@ export type VaultAttachmentEntry = {
 	modifiedAt: string,
 };
 
+/**  `VaultBindingChoice`. */
+export type VaultBindingChoice = "sync" | "merge" | "local";
+
+/**  `VaultBindingState` (`ipc-sync-ops.ts:114`): whether the open vault syncs with the account. */
+export type VaultBindingState = { status: "bound" } | { status: "local-only" } | { status: "foreign" } | { status: "unknown" } | { status: "needs-decision"; accountVaultCount: number; mergeTarget: VaultMergeTarget | null };
+
 /**  The vault settings, in the `VaultConfig` shape of `packages/contracts/src/vault-api.ts`. */
 export type VaultConfig = {
 	excludePatterns: string[],
@@ -3592,6 +3658,12 @@ export type VaultLocksExternalEditRestoredEvent = {
 	noteId: string,
 	path: string,
 	title: string,
+};
+
+/**  The account vault a merge would join. */
+export type VaultMergeTarget = {
+	vaultUuid: string,
+	name: string | null,
 };
 
 /**

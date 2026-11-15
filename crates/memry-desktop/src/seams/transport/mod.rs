@@ -124,7 +124,7 @@ pub fn app_transports(
     }
 }
 
-struct Unavailable(String);
+pub(crate) struct Unavailable(pub(crate) String);
 
 #[async_trait::async_trait]
 impl Transport for Unavailable {

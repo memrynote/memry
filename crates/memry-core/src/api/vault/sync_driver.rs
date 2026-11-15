@@ -10,7 +10,7 @@ use crate::api::vault::Vault;
 use crate::seams::reachability::Reachability;
 use crate::sync::driver::{DriverConfig, DriverParts, SyncDriver};
 use crate::sync::engine::PassSeed;
-use crate::sync::server_vault;
+use crate::sync::{account_binding, server_vault};
 
 impl Vault {
     /// Binds this vault to the server's vault `id` (decision K1 of #3534): the
@@ -28,6 +28,40 @@ impl Vault {
     #[doc(hidden)]
     pub fn server_vault_id(&self) -> Result<Option<String>, StorageError> {
         self.db.call_blocking(|conn| server_vault::bound(conn))
+    }
+
+    /// The account binding as stored (`sync.account-binding.v1`, Electron's JSON), if any.
+    #[doc(hidden)]
+    pub fn account_binding(&self) -> Result<Option<String>, StorageError> {
+        self.db.read_blocking(account_binding::read)
+    }
+
+    /// Stores the account binding JSON the shell decided on.
+    #[doc(hidden)]
+    pub fn set_account_binding(&self, json: &str) -> Result<(), StorageError> {
+        let json = json.to_owned();
+        self.db
+            .call_blocking(move |conn| account_binding::write(conn, &json))
+    }
+
+    /// A task or inbox item exists ([`account_binding::has_local_rows`]).
+    #[doc(hidden)]
+    pub fn has_local_rows(&self) -> Result<bool, StorageError> {
+        self.db.read_blocking(account_binding::has_local_rows)
+    }
+
+    /// A synced record carries a tick from a device not in `own`.
+    #[doc(hidden)]
+    pub fn has_foreign_history(&self, own: Vec<String>) -> Result<bool, StorageError> {
+        self.db
+            .read_blocking(move |conn| account_binding::has_foreign_history(conn, &own))
+    }
+
+    /// Ends the signed-out session's sync state ([`account_binding::clear_session_state`]).
+    #[doc(hidden)]
+    pub fn clear_sync_session_state(&self) -> Result<(), StorageError> {
+        self.db
+            .call_blocking(|conn| account_binding::clear_session_state(conn))
     }
 
     /// A [`SyncDriver`] over this vault and `session`. `seeds` run after the
