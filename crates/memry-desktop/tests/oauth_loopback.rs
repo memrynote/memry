@@ -58,9 +58,9 @@ async fn the_first_callback_for_the_state_is_the_answer_and_the_server_closes() 
     let (status, body) = get(&format!("{uri}?code=c-1&state=s-1")).await.unwrap();
     assert_eq!((status, body.as_str()), (200, SUCCESS_HTML));
     // A second delivery of the same redirect, while the attempt is still held, finds it spent.
-    match get(&format!("{uri}?code=c-1&state=s-1")).await {
-        Ok((status, _)) => assert_ne!(status, 200, "a second callback was taken"),
-        Err(_) => {} // nothing listens any more
+    // An error means nothing listens any more.
+    if let Ok((status, _)) = get(&format!("{uri}?code=c-1&state=s-1")).await {
+        assert_ne!(status, 200, "a second callback was taken");
     }
     assert_eq!(
         callback.outcome().await,

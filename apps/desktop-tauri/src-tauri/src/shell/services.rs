@@ -25,7 +25,7 @@ use memry_desktop::paths::{AppPaths, DEVICE_VAR};
 use memry_desktop::registry::AppConfig;
 use memry_desktop::seams::secure_store::{DeviceIdentityStore, KeyringStore};
 use memry_desktop::seams::tls::{PinFailure, PinFailureReason, PinFailureSink};
-use memry_desktop::seams::transport::{SyncTransport, app_transport};
+use memry_desktop::seams::transport::{NoRedirectTransport, SyncTransport, app_transports};
 use memry_desktop::session::Session;
 use memry_desktop::settings::SettingsService;
 use memry_desktop::startup_values;
@@ -177,8 +177,8 @@ fn start_telemetry(app: &AppHandle<Wry>) -> Result<(), CommandError> {
         timezone_offset_minutes: -localtime::timezone_offset_minutes(),
     };
 
-    let transport: SyncTransport =
-        app_transport(&runtime.loopback_hosts(), Arc::new(LogPinFailures));
+    let (transport, no_redirect): (SyncTransport, NoRedirectTransport) =
+        app_transports(&runtime.loopback_hosts(), Arc::new(LogPinFailures));
     let service = Arc::new(Service::start(
         &paths.data_dir,
         context.clone(),
@@ -214,6 +214,7 @@ fn start_telemetry(app: &AppHandle<Wry>) -> Result<(), CommandError> {
 
     app.manage(runtime);
     app.manage(transport);
+    app.manage(no_redirect);
     app.manage(service.clone());
     app.manage(ship.clone());
     app.manage(Mutex::new(marker));
