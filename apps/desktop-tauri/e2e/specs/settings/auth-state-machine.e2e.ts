@@ -14,6 +14,12 @@ const OTP_HMAC_KEY = 'test-otp-hmac-key'
 const test = base.extend<{ syncBootstrap: SharedSyncBootstrap; syncServerUrl: string | null }>({
   // oxlint-disable-next-line no-empty-pattern -- the harness reads a fixture's deps from the first-argument destructuring
   syncBootstrap: async ({}, provide) => {
+    // workerd (Miniflare's runtime) ships no win32-arm64 build: it throws "Unsupported platform:
+    // win32 arm64 LE". Every other e2e leg runs this spec.
+    base.skip(
+      process.platform === 'win32' && process.arch === 'arm64',
+      'workerd has no win32-arm64 build'
+    )
     const bootstrap = await startSharedSyncBootstrap()
     try {
       await provide(bootstrap)
