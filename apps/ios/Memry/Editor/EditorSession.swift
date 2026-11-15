@@ -142,6 +142,8 @@ final class EditorSession {
     /// The field a block shortcut fired in, held until the row its type
     /// change redraws takes the caret (`BlockField.takeOver`).
     @ObservationIgnored var shortcutField: BlockField?
+    /// Keys typed after a Return, held for the block it makes (#4692).
+    @ObservationIgnored var returnBurst: ReturnBurst?
     /// A column list just inserted, by its `id` prop: the caret goes to its
     /// first block once a redraw shows the ids the core minted for it
     /// (`resolveColumnFocus`).
@@ -371,9 +373,7 @@ final class EditorSession {
             pendingFocus = blockId
             return
         }
-        let textView = field.textView
-        textView.becomeFirstResponder()
-        textView.selectedRange = NSRange(location: textView.textStorage.length, length: 0)
+        takeCaret(field)
     }
 
     func focusChanged(to field: BlockField?) {

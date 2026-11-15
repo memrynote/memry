@@ -86,6 +86,9 @@ extension EditorSession {
             guard let ended = endedField, ended.field === field, let noteId else { return }
             endedField = nil
             focusMemory.remember(noteId: noteId, blockId: field.blockId, selection: ended.selection, writes: tail)
+        } else if pendingFocus == field.blockId, returnBurst?.target == field.blockId {
+            pendingFocus = nil
+            takeCaret(field)
         } else {
             restoreFocus(field)
         }
