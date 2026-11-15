@@ -2,9 +2,12 @@
 //! embedding worker and image-processing worker run it (sharp 0.35 on libvips 8.18): the first
 //! frame, the EXIF orientation applied and an embedded ICC profile converted to sRGB.
 //!
-//! The bytes are untrusted vault files and the decode runs inside the app. Every limit, the
-//! whole pipeline's peak included, is checked from the headers before the pixel buffer is
-//! allocated, and a malformed file is a `DecodeError`, never a panic.
+//! The bytes are untrusted vault files and the decode runs inside the app. Every limit is checked
+//! from the headers before the pixel buffer is allocated, and a malformed file is a `DecodeError`,
+//! never a panic. The checked peak counts the pixel buffers: the frame, the decoder's scratch beside
+//! it (a progressive JPEG's coefficients, `scratch` for WebP and GIF) and the pipeline's copies
+//! after it. It does not count a lossless WebP's Huffman tables, which grow with the file, not the
+//! image.
 
 use std::io::Cursor;
 
@@ -17,6 +20,8 @@ use image::{
 use zune_jpeg::zune_core::options::DecoderOptions;
 use zune_jpeg::{ImageInfo as JpegInfo, JpegDecoder};
 
+mod scratch;
+
 /// Larger files are refused: the embedding projector's `MAX_IMAGE_BYTES`, which skips them before
 /// reading.
 pub const MAX_IMAGE_BYTES: usize = 30 * 1024 * 1024;
@@ -25,10 +30,12 @@ pub const MAX_IMAGE_BYTES: usize = 30 * 1024 * 1024;
 const MAX_INPUT_PIXELS: u64 = 0x3FFF * 0x3FFF;
 
 /// Ceiling on the pixel buffers one decode holds at once, from the decoder's frame to the last
-/// copy: the frame plus a progressive JPEG's coefficients while decoding, then whichever copies
-/// the pipeline keeps beside it (`decode_peak`, `fit_peak`). sharp has none below its pixel
-/// limit; this refuses, for example, an RGBA image above 128 megapixels, or a grey one that
-/// `decode` must widen to RGB above 134 megapixels, which Electron would still decode.
+/// copy: the frame plus the decoder's scratch while decoding (`scratch::decoder_scratch`, a
+/// progressive JPEG's coefficients), then whichever copies the pipeline keeps beside it
+/// (`decode_peak`, `fit_peak`). sharp has none below its pixel limit, so this refuses images
+/// Electron would decode: `decode` an RGBA image above 76 megapixels (the frame and its RGB copy,
+/// 7 bytes a pixel), `decode_fit` one above 134, and either an animated WebP above 44 to 48 megapixels
+/// (its frame and canvas, 12 or 11 bytes a pixel).
 /// `Limits::max_alloc` caps each allocation on its own and not every decoder checks it before
 /// allocating, so the sum is checked from the headers. Up to four decodes run at once in the app
 /// (`memry-desktop`'s image pool).
@@ -295,8 +302,8 @@ fn read_frame(bytes: &[u8], after: impl FnOnce(&Header) -> u64) -> Result<Frame,
         .as_deref()
         .and_then(Orientation::from_exif_chunk)
         .unwrap_or(Orientation::NoTransforms);
-    // The decoders do not all check `Limits::max_alloc` before allocating the frame buffer, and a
-    // progressive JPEG holds its coefficients beside it.
+    // The decoders do not all check `Limits::max_alloc` before allocating the frame buffer, and
+    // none checks the sum of it and the scratch it holds beside it.
     let header = Header {
         width,
         height,
@@ -304,10 +311,8 @@ fn read_frame(bytes: &[u8], after: impl FnOnce(&Header) -> u64) -> Result<Frame,
         frame: decoder.total_bytes(),
         orientation,
     };
-    let peak = header
-        .frame
-        .saturating_add(coefficients)
-        .max(after(&header));
+    let scratch = coefficients + scratch::decoder_scratch(format, bytes, width, height);
+    let peak = header.frame.saturating_add(scratch).max(after(&header));
     if peak > MAX_DECODE_ALLOC {
         return Err(input(format!(
             "image needs {peak} bytes to decode, over the {MAX_DECODE_ALLOC}-byte limit"

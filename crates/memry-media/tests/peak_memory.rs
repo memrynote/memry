@@ -150,3 +150,126 @@ fn a_grey_image_too_large_to_convert_whole_is_refused_before_allocating() {
     );
     assert!(peak < 16 * 1024 * 1024, "peak {peak} bytes");
 }
+
+/// A RIFF WebP of `chunks`, each a fourcc and its data.
+fn webp(chunks: &[(&[u8; 4], Vec<u8>)]) -> Vec<u8> {
+    let mut body = b"WEBP".to_vec();
+    for (fourcc, data) in chunks {
+        body.extend(fourcc.as_slice());
+        body.extend(u32::try_from(data.len()).expect("small").to_le_bytes());
+        body.extend(data);
+        if data.len() % 2 == 1 {
+            body.push(0);
+        }
+    }
+    let mut out = b"RIFF".to_vec();
+    out.extend(u32::try_from(body.len()).expect("small").to_le_bytes());
+    out.extend(body);
+    out
+}
+
+/// A VP8L bitstream of transparent black: no transforms, and five Huffman codes of one symbol
+/// each, so every pixel takes no bits.
+fn vp8l(width: u32, height: u32, alpha: bool) -> Vec<u8> {
+    let mut bits = 0_u64;
+    let mut at = 0;
+    let mut push = |value: u32, count: u32| {
+        bits |= u64::from(value) << at;
+        at += count;
+    };
+    push(0x2F, 8);
+    push(width - 1, 14);
+    push(height - 1, 14);
+    push(u32::from(alpha), 1);
+    push(0, 3); // version
+    push(0, 3); // no transform, no colour cache, no meta Huffman codes
+    for _ in 0..5 {
+        push(0b0001, 4); // simple code, one symbol, 1-bit symbol 0
+    }
+    bits.to_le_bytes().to_vec()
+}
+
+fn three_bytes(value: u32) -> [u8; 3] {
+    let [a, b, c, _] = value.to_le_bytes();
+    [a, b, c]
+}
+
+/// An animated WebP without alpha whose one frame, lossless, fills the canvas.
+fn animated_webp(width: u32, height: u32) -> Vec<u8> {
+    let mut vp8x = vec![0x02, 0, 0, 0];
+    vp8x.extend(three_bytes(width - 1));
+    vp8x.extend(three_bytes(height - 1));
+    let mut anmf = [0, 0, 0, 0, 0, 0].to_vec();
+    anmf.extend(three_bytes(width - 1));
+    anmf.extend(three_bytes(height - 1));
+    anmf.extend(three_bytes(100));
+    anmf.push(0);
+    let frame = vp8l(width, height, false);
+    anmf.extend(b"VP8L");
+    anmf.extend(u32::try_from(frame.len()).expect("small").to_le_bytes());
+    anmf.extend(frame);
+    webp(&[(b"VP8X", vp8x), (b"ANIM", vec![0; 6]), (b"ANMF", anmf)])
+}
+
+/// A GIF whose first frame starts one pixel in from the left, so the decoder reads it into a
+/// buffer of its own. Its LZW data ends at once, so a decode that gets that far fails.
+fn offset_gif(width: u16, height: u16) -> Vec<u8> {
+    let mut gif = b"GIF89a".to_vec();
+    gif.extend(width.to_le_bytes());
+    gif.extend(height.to_le_bytes());
+    gif.extend([0x80, 0, 0, 0, 0, 0, 0xFF, 0xFF, 0xFF]);
+    gif.push(0x2C);
+    for value in [1, 0, width - 1, height] {
+        gif.extend(value.to_le_bytes());
+    }
+    gif.extend([0, 2, 1, 0x2C, 0, 0x3B]);
+    gif
+}
+
+fn assert_refused_before_allocating(bytes: &[u8]) {
+    let (fitted, peak) = peak_of(|| decode_fit(bytes, 200));
+    let error = fitted.expect_err("refused").to_string();
+    assert!(error.ends_with("-byte limit"), "{error}");
+    assert!(peak < 16 * 1024 * 1024, "peak {peak} bytes");
+
+    let (rgb, peak) = peak_of(|| memry_media::decode(bytes));
+    let error = rgb.expect_err("refused").to_string();
+    assert!(error.ends_with("-byte limit"), "{error}");
+    assert!(peak < 16 * 1024 * 1024, "peak {peak} bytes");
+}
+
+/// Its 536 MB RGB frame fits the cap, but the decoder also holds the first frame as RGBA and an
+/// RGBA canvas: 1.96 GB.
+#[test]
+fn an_animated_opaque_webp_at_the_cap_is_refused_before_allocating() {
+    assert_refused_before_allocating(&animated_webp(16_384, 10_900));
+}
+
+/// Its 536 MB RGB frame fits the cap, but the decoder decodes it as RGBA first: 1.25 GB.
+#[test]
+fn a_lossless_opaque_webp_at_the_cap_is_refused_before_allocating() {
+    let bytes = webp(&[(b"VP8L", vp8l(16_383, 10_900, false))]);
+    assert_refused_before_allocating(&bytes);
+}
+
+/// Its 524 MB frame fits the cap, but the decoder reads the offset first frame into an RGBA buffer
+/// and its palette indices beside it: 1.18 GB.
+#[test]
+fn an_offset_first_frame_gif_at_the_cap_is_refused_before_allocating() {
+    assert_refused_before_allocating(&offset_gif(16_384, 8_000));
+}
+
+/// The largest WebPs the decoder's scratch lets through, decoded: the counted scratch is at least
+/// what the decoder holds.
+#[test]
+fn webps_just_under_the_cap_with_their_scratch_decode_under_it() {
+    for bytes in [
+        webp(&[(b"VP8L", vp8l(8_192, 8_192, false))]),
+        animated_webp(8_192, 5_900),
+    ] {
+        let (fitted, peak) = peak_of(|| decode_fit(&bytes, 200));
+        let fitted = fitted.expect("decodes");
+        assert_eq!(fitted.image.width(), 200);
+        assert!(peak < CAP, "peak {peak} bytes");
+    }
+}
