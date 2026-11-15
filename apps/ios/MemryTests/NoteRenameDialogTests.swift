@@ -124,10 +124,14 @@ extension NoteTitleRehostTests {
 
         /// Opens the page menu and picks `title`, as a tap on each would.
         private func pickPageMenuItem(_ title: String, in window: UIWindow) async throws {
-            let more = try #require(
-                views(in: window).first { $0.accessibilityLabel == "More actions for this note" },
-                "the page menu was not drawn"
-            )
+            // The bar's one menu button. Its label is not read here: a
+            // bar button has one only once accessibility is on.
+            func button() -> UIView? {
+                views(in: window).compactMap { $0 as? UINavigationBar }.flatMap { views(in: $0) }
+                    .first { $0 is UIControl && $0.interactions.contains { $0 is UIContextMenuInteraction } }
+            }
+            await until { button() != nil }
+            let more = try #require(button(), "the page menu was not drawn")
             let interaction = try #require(more.interactions.lazy.compactMap { $0 as? UIContextMenuInteraction }.first)
             // Private: the menu has no public way to open but a touch.
             let present = NSSelectorFromString("_presentMenuAtLocation:")
