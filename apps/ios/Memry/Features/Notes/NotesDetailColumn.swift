@@ -44,6 +44,16 @@ struct NotesDetailColumn: View {
                 pane(.side)
             }
         }
+        .toolbar {
+            if router.splitShown, let trail = router.pane(router.focus)?.trail, !trail.isEmpty {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Back", systemImage: "chevron.backward") {
+                        router.setTrail(Array(trail.dropLast()), in: router.focus)
+                    }
+                    .accessibilityIdentifier("notes.pane.back")
+                }
+            }
+        }
         .coordinateSpace(.named(Self.space))
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
         // Every write in the note asks for a sync pass. The list stays on
@@ -73,12 +83,18 @@ struct NotesDetailColumn: View {
 
     private func pane(_ slot: NotesPaneSlot) -> some View {
         let focused = router.splitShown && router.focus == slot
+        // Every `NavigationStack` in the column pushes onto the column's own
+        // stack, over both panes (VERIFY-4700). While both show, a pane's
+        // stack holds no path: its root draws the pane's current note, and
+        // the column's Back pops the focused pane. A path the stack reports
+        // then (its pop as the split opens) is not the pane's trail.
+        let stacked = !router.splitShown
         return NavigationStack(path: Binding(
-            get: { router.pane(slot)?.trail ?? [] },
-            set: { router.setTrail($0, in: slot) }
+            get: { stacked ? router.pane(slot)?.trail ?? [] : [] },
+            set: { if !router.splitShown { router.setTrail($0, in: slot) } }
         )) {
             Group {
-                if let note = router.pane(slot)?.note {
+                if let note = stacked ? router.pane(slot)?.note : router.pane(slot)?.current {
                     reader(note, in: slot).id(note)
                 } else if slot == .side {
                     NotesPanePicker(model: model) { router.open($0, in: .side) }
