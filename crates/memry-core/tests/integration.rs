@@ -411,6 +411,8 @@ mod search_body_cache;
 mod session_refresh_errors;
 #[path = "snapshot_embeds.rs"]
 mod snapshot_embeds;
+#[path = "sync_applied_records.rs"]
+mod sync_applied_records;
 #[path = "sync_body_heal.rs"]
 mod sync_body_heal;
 #[path = "sync_cursor_repair.rs"]

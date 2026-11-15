@@ -98,6 +98,7 @@ fn a_merge_outcome_maps_onto_the_pull_vocabulary_without_a_silent_skip() {
     assert_eq!(
         outcome(Inbound::Merged {
             conflicted_fields: vec!["title".to_owned()],
+            conflicts: Vec::new(),
         }),
         ApplyOutcome::Applied
     );
