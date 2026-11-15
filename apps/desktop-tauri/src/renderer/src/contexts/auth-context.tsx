@@ -8,10 +8,12 @@ import {
   useRef,
   type ReactNode
 } from 'react'
-import { authService } from '@/services/auth-service'
+import { SETUP_CONFLICT, authService } from '@/services/auth-service'
 import { extractErrorMessage, getIpcErrorCode, IpcFailureError } from '@/lib/ipc-error'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
-import { deviceService, setupService } from '@/services/device-service'
+import { setupService } from '@/services/device-service'
+import { subscribeToEvent } from '@/services/tauri-event'
+import { events } from '../../../generated/bindings'
 import { getI18n } from 'react-i18next'
 import { isSessionEndedReason } from '@memry/contracts/ipc-events'
 
@@ -274,22 +276,24 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
     const checkAuth = async (): Promise<void> => {
       dispatch({ type: 'CHECK_START' })
       try {
-        const result = await deviceService.getDevices()
-        if (result.devices.length > 0) {
-          const current = result.devices.find((d) => d.isCurrentDevice)
-          const deviceId = current?.id ?? result.devices[0].id
+        // From this device alone (keychain and config), so offline or waiting on a refresh
+        // still reads as signed in.
+        const result = await authService.getAccountInfo()
+        if (result.signedIn) {
+          const deviceId = result.deviceId ?? ''
+          const email = result.email ?? undefined
           if (result.needsRecoveryConfirmation) {
             dispatch({
               type: 'CHECK_RECOVERY_PENDING',
               deviceId,
-              email: result.email
+              email
             })
             return
           }
           dispatch({
             type: 'CHECK_AUTHENTICATED',
             deviceId,
-            email: result.email
+            email
           })
           // Offline at launch or right after a wake is not a sign-out: main
           // keeps the tokens and refreshes again once the server answers.
@@ -325,17 +329,19 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
     let cancelled = false
     const signedOutAt = Date.now()
     const recheck = (): void => {
-      deviceService
-        .getDevices()
+      authService
+        .getAccountInfo()
         .then((result) => {
-          if (cancelled || result.needsRecoveryConfirmation) return
-          const device = result.devices.find((d) => d.isCurrentDevice) ?? result.devices[0]
-          if (!device) return
-          dispatch({ type: 'CHECK_AUTHENTICATED', deviceId: device.id, email: result.email })
+          if (cancelled || result.needsRecoveryConfirmation || !result.signedIn) return
+          dispatch({
+            type: 'CHECK_AUTHENTICATED',
+            deviceId: result.deviceId ?? '',
+            email: result.email ?? undefined
+          })
         })
         .catch(() => {})
     }
-    const unsubscribeToken = window.api.onTokenRefreshed(recheck)
+    const unsubscribeToken = subscribeToEvent(events.authSessionRefreshedEvent, recheck)
     const unsubscribeStatus = window.api.onSyncStatusChanged(({ status, lastSyncAt }) => {
       if (sessionEndedRef.current) return
       if (status === 'idle' && lastSyncAt !== undefined && lastSyncAt >= signedOutAt) recheck()
@@ -453,8 +459,12 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
           )
         }
 
-        if (result.needsSetup) {
-          const setupResult = await authService.setupNewAccount()
+        // A setup another device finished first registered this device without the account's
+        // key: the account's phrase links it, as for a device the server does not know.
+        const setupResult = result.needsSetup ? await authService.setupNewAccount() : null
+        const conflicted =
+          setupResult?.success === false && setupResult.errorCode === SETUP_CONFLICT
+        if (setupResult && !conflicted) {
           if (!setupResult.success) {
             throw new Error(
               extractErrorMessage(
@@ -614,7 +624,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
 
   const linkViaRecovery = useCallback(async (phrase: string): Promise<{ deviceId?: string }> => {
     try {
-      const result = await window.api.syncLinking.linkViaRecovery({ recoveryPhrase: phrase })
+      const result = await authService.linkViaRecovery({ recoveryPhrase: phrase })
       if (!result.success) {
         throw new IpcFailureError(
           extractErrorMessage(

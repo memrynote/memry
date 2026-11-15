@@ -11,9 +11,14 @@ autotests = false
 [dependencies]
 # The markdown converter is a desktop-only feature of the core; iOS keeps it off.
 memry-core = { path = "../memry-core", default-features = false, features = ["markdown", "vec"] }
+# The PDF worker's frames and supervisor only: the pdfium side is the sidecar binary, never linked.
+memry-ml-worker = { path = "../memry-ml-worker", default-features = false }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
+# Device name and OS version for registration (Step 19); both already in the lockfile.
+gethostname = "1.1.0"
+os_info = { version = "3.15.0", default-features = false }
 tracing = { workspace = true }
 tracing-subscriber = { version = "0.3.23", default-features = false, features = ["std", "fmt", "env-filter"] }
 tracing-appender = "0.2.5"

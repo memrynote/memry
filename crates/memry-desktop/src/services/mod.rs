@@ -1,3 +1,4 @@
-//! Background services of the attachment text pipeline (Step 25, #3542).
+//! Background services of the app that run outside the vault session's own work.
 
+pub mod file_text;
 pub mod ocr_languages;

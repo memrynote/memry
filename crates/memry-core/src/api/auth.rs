@@ -24,7 +24,7 @@ use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 use crate::api::errors::{ApiError, AuthError, SecureStoreError};
 use crate::protocol::auth::{
     AuthRoutes, DeviceFormFactor, DevicePlatform, DeviceRegisterRequest, RenewSetupTokenRequest,
-    TokenClaims, TokenManager, VerifyOtpRequest, random_nonce, sign_device_challenge,
+    TokenClaims, TokenManager, random_nonce, sign_device_challenge,
 };
 use crate::protocol::http::{ClientIdentity, HttpClient};
 use crate::seams::secure_store::{SecureStore, SecureStoreKey};
@@ -32,8 +32,10 @@ use crate::seams::transport::Transport;
 
 mod identity;
 mod oauth;
+mod otp;
 mod recovery;
 mod restore;
+mod token;
 
 pub use identity::ensure_device_identity;
 pub use oauth::{AuthProvider, ProviderSignInOutcome, WebSignInOutcome};
@@ -258,7 +260,7 @@ impl AuthSession {
     /// sees it as a device. A pushed record is signed as its sender, and the
     /// server looks the signer up among the account's registered devices, so
     /// signing with the local id is refused as `AUTH_DEVICE_NOT_FOUND`.
-    pub(crate) fn registered_device_id(&self) -> Result<String, AuthError> {
+    pub fn registered_device_id(&self) -> Result<String, AuthError> {
         let token = self
             .tokens
             .access_token_sync()?
@@ -347,90 +349,25 @@ impl AuthSession {
     }
 
     /// `SignedOut -> AwaitingOtp`. Mints the `sessionNonce` this attempt will
-    /// carry on both calls (chapter 02 §2.6).
+    /// carry on both calls (chapter 02 §2.6). The body is
+    /// [`Self::request_email_code_answer`].
     pub async fn request_email_code(&self, email: String) -> Result<AuthState, AuthError> {
-        let next = self.apply(
-            AuthEvent::OtpRequested {
-                email: email.clone(),
-            },
-            "request an email code",
-        )?;
-        {
-            let mut pending = self.pending.lock().unwrap_or_else(|e| e.into_inner());
-            pending.email = Some(email.clone());
-            pending.session_nonce = Some(random_nonce());
-        }
-        match AuthRoutes::request_otp(&self.http, &email).await {
-            Ok(_) => Ok(next),
-            Err(error) => {
-                self.apply(AuthEvent::SignInFailed, "fail a sign-in")?;
-                Err(error.into())
-            }
-        }
+        Ok(self.request_email_code_answer(email).await?.0)
     }
 
     /// Asks for a fresh code. Not a state transition: chapter 02 §2.11
     /// caps it at three per ten minutes and the state is unchanged either way.
+    /// Outside `AwaitingOtp` it is `InvalidState` and sends nothing.
     pub async fn resend_email_code(&self) -> Result<(), AuthError> {
-        let email = {
-            let pending = self.pending.lock().unwrap_or_else(|e| e.into_inner());
-            pending.email.clone()
-        };
-        let Some(email) = email else {
-            return Err(AuthError::InvalidState {
-                action: "resend an email code".to_string(),
-                state: state_name(&self.state_now()),
-            });
-        };
-        AuthRoutes::resend_otp(&self.http, &email).await?;
-        Ok(())
+        self.resend_email_code_answer().await.map(|_| ())
     }
 
-    /// `AwaitingOtp -> SetupPending`, or `-> SignedOut` when the code is
-    /// rejected.
-    ///
-    /// Commits `devicePublicKey`, which is what makes `SetupExpired`
-    /// recoverable: without it the grant is a single non-renewable five
-    /// minutes (chapter 02 §2.5), and a user hunting for a 24-word phrase
-    /// routinely outlasts that.
+    /// `AwaitingOtp -> SetupPending`. A wrong, expired or rate-limited code
+    /// (a 4xx) stays in `AwaitingOtp`, so a resend and the right code still
+    /// finish the attempt; any other failure is `-> SignedOut`. The body is
+    /// [`Self::verify_email_code_answer`].
     pub async fn verify_email_code(&self, code: String) -> Result<AuthState, AuthError> {
-        let (email, session_nonce) = {
-            let pending = self.pending.lock().unwrap_or_else(|e| e.into_inner());
-            (pending.email.clone(), pending.session_nonce.clone())
-        };
-        let Some(email) = email else {
-            return Err(AuthError::InvalidState {
-                action: "verify an email code".to_string(),
-                state: state_name(&self.state_now()),
-            });
-        };
-
-        let secret = self.signing_secret_key()?;
-        let public = Self::signing_public_key(&secret)?;
-        let request = VerifyOtpRequest {
-            email,
-            code,
-            session_nonce,
-            device_public_key: Some(BASE64_STANDARD.encode(public)),
-        };
-
-        let response = match AuthRoutes::verify_otp(&self.http, &request).await {
-            Ok(response) => response,
-            Err(error @ ApiError::RateLimited { .. }) => return Err(error.into()), // #2940
-            Err(error) => {
-                self.apply(AuthEvent::SignInFailed, "fail a sign-in")?;
-                return Err(error.into());
-            }
-        };
-
-        // §C.1 draws exactly two edges out of `AwaitingOtp`, and a response
-        // with no setup token is not the one to `SetupPending`.
-        let Some(setup_token) = response.setup_token else {
-            self.apply(AuthEvent::SignInFailed, "fail a sign-in")?;
-            return Err(AuthError::NoSetupToken);
-        };
-        self.tokens.store_setup_token(&setup_token)?;
-        self.apply(AuthEvent::SetupTokenIssued, "accept a setup token")
+        Ok(self.verify_email_code_answer(code).await?.0)
     }
 
     /// `SetupPending -> Registered`, or `-> SetupExpired` when the grant aged
@@ -588,11 +525,6 @@ impl AuthSession {
             // keep the user signed in on this device.
             let _ = AuthRoutes::logout(&self.http).await;
         }
-        // Pending, then state, the order of every edge out of an attempt: a
-        // provider answer lands before this clears or finds its attempt ended.
-        let mut pending = self.pending.lock().unwrap_or_else(|e| e.into_inner());
-        self.tokens.clear()?;
-        *pending = PendingSignIn::default();
-        self.apply(AuthEvent::SignedOutByUser, "sign out")
+        self.clear_and_sign_out()
     }
 }

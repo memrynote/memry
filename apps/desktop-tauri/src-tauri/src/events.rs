@@ -89,6 +89,16 @@ pub struct CrdtProviderReadyEvent {
     pub vault_path: String,
 }
 
+/// A six-digit code was copied while the email code screen waits for one (`sync:otp-detected`).
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+pub struct AuthOtpDetectedEvent {
+    pub code: String,
+}
+
+/// The access token was renewed (`sync:token-refreshed`; the name keeps the secret scan off it).
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+pub struct AuthSessionRefreshedEvent {}
+
 /// A custom icon was added, renamed or deleted (`custom-icons:updated`). The renderer refetches
 /// the library.
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]

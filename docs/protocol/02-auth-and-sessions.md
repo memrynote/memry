@@ -692,5 +692,16 @@ nobody checks has several call sites.
 before the code is looked at. That answer judged nothing: the pending code is
 still the one in the user's inbox. A client **MUST NOT** take the failure edge
 out of the awaiting-OTP state on a `429`; it stays there, keeps the entered
-code, and shows the wait from `Retry-After`. Every other verify failure still
-takes the failure edge (`crates/memry-core/src/api/auth.rs:420-427`).
+code, and shows the wait from `Retry-After`.
+
+A wrong, expired or exhausted code is a `401` (`AUTH_INVALID_OTP`,
+`AUTH_OTP_EXPIRED`, `AUTH_OTP_MAX_ATTEMPTS`;
+`apps/sync-server/src/services/otp.ts:95-110`). A client **MUST NOT** take the
+failure edge on it either, nor on any other `4xx`: the attempt stays in the
+awaiting-OTP state, so a resend and then the right code finish it. A client that
+left the state while keeping the address would let the right code be spent
+server-side and then refuse the setup token it brought. Only a verify failure
+that is not a `4xx` takes the failure edge
+(`crates/memry-core/src/api/auth/otp.rs:76-94`). Outside the awaiting-OTP state
+a client **MUST NOT** send a verify or a resend
+(`crates/memry-core/src/api/auth/otp.rs:110-118`).

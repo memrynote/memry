@@ -5,6 +5,27 @@ import * as __TAURI_EVENT from "@tauri-apps/api/event";
 
 /** Commands */
 export const commands = {
+	/**
+	 *  The account as the renderer shows it at launch, from the keychain and `memry-config.json`
+	 *  alone: offline or waiting on a refresh still reads as signed in.
+	 */
+	accountGetInfo: () => __TAURI_INVOKE<AccountInfoView>("account_get_info"),
+	/**  `sync:auth-refresh-token`. */
+	authRefreshToken: () => __TAURI_INVOKE<AuthRefreshResult>("auth_refresh_token"),
+	/**  `sync:auth-request-otp`. */
+	authRequestOtp: (email: string) => __TAURI_INVOKE<AuthOtpSent>("auth_request_otp", { email }),
+	/**  `sync:auth-resend-otp`, to the address of the pending request. */
+	authResendOtp: () => __TAURI_INVOKE<AuthOtpSent>("auth_resend_otp"),
+	/**  `sync:auth-verify-otp`, then the known-device path. */
+	authVerifyOtp: (code: string) => __TAURI_INVOKE<AuthOtpVerified>("auth_verify_otp", { code }),
+	/**  `sync:confirm-recovery-phrase`. */
+	syncConfirmRecoveryPhrase: (confirmed: boolean) => __TAURI_INVOKE<null>("sync_confirm_recovery_phrase", { confirmed }),
+	/**  `sync:get-recovery-phrase`: the phrase of the setup, until it is confirmed. */
+	syncGetRecoveryPhrase: () => __TAURI_INVOKE<string | null>("sync_get_recovery_phrase"),
+	/**  `sync:link-via-recovery`. */
+	syncLinkViaRecovery: (recoveryPhrase: string) => __TAURI_INVOKE<AccountDevice>("sync_link_via_recovery", { recoveryPhrase }),
+	/**  `sync:setup-new-account`. The phrase waits for `sync_get_recovery_phrase`. */
+	syncSetupNewAccount: () => __TAURI_INVOKE<AccountDevice>("sync_setup_new_account"),
 	/**  `agent:getLocalProviderSettings`. A locked keychain still opens the screen. */
 	agentGetLocalProviderSettings: () => __TAURI_INVOKE<AgentLocalProviderSettings>("agent_get_local_provider_settings"),
 	/**
@@ -104,7 +125,7 @@ export const commands = {
 	dropStageOsFiles: (uris: string[]) => __TAURI_INVOKE<StagedDrop[]>("drop_stage_os_files", { uris }),
 	/**  Deletes staged copies after their import settled. */
 	dropStageRelease: (ids: string[]) => __TAURI_INVOKE<null>("drop_stage_release", { ids }),
-	/**  Beta feedback, anonymous or with the account's token (Step 19, #3536, adds the bearer). */
+	/**  Beta feedback, anonymous or with the account's token when signed in. */
 	feedbackSubmit: (input: FeedbackSubmit) => __TAURI_INVOKE<FeedbackSubmitResult>("feedback_submit", { input }),
 	/**  The unread count on the app icon; 0 clears it. */
 	badgeSet: (count: number) => __TAURI_INVOKE<void>("badge_set", { count }),
@@ -129,7 +150,7 @@ export const commands = {
 	 *  has written yet queued.
 	 */
 	foldRun: (noteId: string, level: FoldLevel) => __TAURI_INVOKE<FoldLayers>("fold_run", { noteId, level }),
-	/**  Sent without the account's token until Step 19 (#3536) provides the session token. */
+	/**  With the account's token when signed in. */
 	iosBetaJoin: (input: IosBetaJoinInput) => __TAURI_INVOKE<IosBetaJoinResult>("ios_beta_join", { input }),
 	/**
 	 *  The day made on its first write; a day that has a file is answered as it is. A journal
@@ -706,6 +727,8 @@ export const commands = {
 export const events = {
 	aiInlineSettingsChangedEvent: makeEvent<AiInlineSettingsChangedEvent, AiInlineSettingsChangedEvent>("ai-inline-settings-changed-event"),
 	appNavigationRequestedEvent: makeEvent<AppNavigationRequestedEvent, AppNavigationRequestedEvent>("app-navigation-requested-event"),
+	authOtpDetectedEvent: makeEvent<AuthOtpDetectedEvent, AuthOtpDetectedEvent>("auth-otp-detected-event"),
+	authSessionRefreshedEvent: makeEvent<AuthSessionRefreshedEvent, AuthSessionRefreshedEvent>("auth-session-refreshed-event"),
 	crdtProviderReadyEvent: makeEvent<CrdtProviderReadyEvent, CrdtProviderReadyEvent>("crdt-provider-ready-event"),
 	crdtProviderResetEvent: makeEvent<CrdtProviderResetEvent, CrdtProviderResetEvent>("crdt-provider-reset-event"),
 	crdtWriteBackFailedEvent: makeEvent<CrdtWriteBackFailedEvent, CrdtWriteBackFailedEvent>("crdt-write-back-failed-event"),
@@ -761,6 +784,17 @@ export const events = {
 };
 
 /* Types */
+export type AccountDevice = {
+	deviceId: string,
+};
+
+export type AccountInfoView = {
+	signedIn: boolean,
+	email: string | null,
+	deviceId: string | null,
+	needsRecoveryConfirmation: boolean,
+};
+
 /**  `AddReasonInput`. */
 export type AddReasonInput = {
 	itemId: string,
@@ -954,6 +988,33 @@ export type AttachmentLocation = {
 	/**  False while the file is not on this device (not synced yet, or gone). */
 	exists: boolean,
 };
+
+/**  A six-digit code was copied while the email code screen waits for one (`sync:otp-detected`). */
+export type AuthOtpDetectedEvent = {
+	code: string,
+};
+
+export type AuthOtpSent = {
+	/**  Seconds the code lives, when the server says. */
+	expiresIn: number | null,
+};
+
+export type AuthOtpVerified = {
+	isNewUser: boolean,
+	needsSetup: boolean,
+	needsRecoveryInput: boolean,
+	/**  Set when the device signed back in as a known device, without the phrase. */
+	deviceId: string | null,
+};
+
+export type AuthRefreshResult = {
+	success: boolean,
+	/**  True only when the server refused the session and a new sign-in is needed. */
+	sessionEnded: boolean,
+};
+
+/**  The access token was renewed (`sync:token-refreshed`; the name keeps the secret scan off it). */
+export type AuthSessionRefreshedEvent = Record<string, never>;
 
 /**  A link's text in the linking note (`BacklinkContext`); offsets are UTF-16 units. */
 export type BacklinkContextView = {
