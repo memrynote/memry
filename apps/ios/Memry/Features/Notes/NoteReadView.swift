@@ -226,7 +226,7 @@ struct NoteReadView: View {
         await model.reload()
     }
 
-    private func focusBody(atEnd: Bool, carrying held: (() -> String?)? = nil) async {
+    private func focusBody(atEnd: Bool, carrying held: (@MainActor () -> String?)? = nil) async {
         await editorModel.focusBody(in: model.blocks, atEnd: atEnd, carrying: held)
         await model.reload()
     }

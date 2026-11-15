@@ -175,8 +175,8 @@ struct JournalDayPage: View {
         if case .empty = preview {
             JournalDayFirstLine(
                 placeholder: JournalCopy.placeholder(date: date, today: store.clock.today)
-            ) { line in
-                await model.writeFirstLine(line)
+            ) { line, carrying in
+                await model.writeFirstLine(line, carrying: carrying)
             }
         } else {
             NoteBodyView(

@@ -108,9 +108,10 @@ final class JournalDayPageModel {
     /// The first line typed into an empty day: one paragraph through
     /// `editDay`, which creates the day (D2). The block editor takes over
     /// once the re-read draws the new block. A line typed after it (keys
-    /// after its Return, #4705) goes after it.
+    /// after its Return, #4705) goes after it. `carrying` hands the new
+    /// block the keys typed after the line's Return, as it takes the caret.
     @discardableResult
-    func writeFirstLine(_ text: String) async -> Bool {
+    func writeFirstLine(_ text: String, carrying held: (@MainActor () -> String?)? = nil) async -> Bool {
         let id = UUID().uuidString.lowercased()
         let edit = BlockEdit.insertParagraph(afterBlockId: lastLine, text: text, newBlockId: id)
         do {
@@ -121,6 +122,10 @@ final class JournalDayPageModel {
         }
         lastLine = id
         await read.reload()
+        if let held {
+            editor.session.titleBurst = TitleBurst(target: id, take: held)
+            editor.session.focus(id)
+        }
         return true
     }
 }

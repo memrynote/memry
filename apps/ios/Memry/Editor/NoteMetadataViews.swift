@@ -87,7 +87,7 @@ struct NoteTitleEditor: View {
     let setIcon: (String?) -> Void
     /// Return in the title moves the caret into the body, as on desktop,
     /// with the way to take the keys the title holds for it meanwhile.
-    var returnToBody: ((@escaping () -> String?) -> Void)?
+    var returnToBody: ((@escaping @MainActor () -> String?) -> Void)?
     /// The edit in progress as it changes, `nil` once it ends.
     var draftChanged: ((String?) -> Void)?
 

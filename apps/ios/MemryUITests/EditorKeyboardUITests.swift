@@ -137,6 +137,39 @@ final class EditorKeyboardUITests: XCTestCase {
         deleteNotes([title])
     }
 
+    /// #4705: Return in the title after the app comes back moves to the
+    /// body, with the keys typed after it. A resume that ends the edit under
+    /// the caret (a reload on resume) is pinned by the hosted
+    /// `NoteTitleBurstTests`; this one keeps the user's path covered.
+    func testReturnInTheTitleAfterResumeMovesToTheBody() throws {
+        try openNotes()
+        let title = "[agent] \(run) resumed title"
+        app.buttons["notes.addButton"].firstMatch.tap()
+        let field = app.textFields["Title"]
+        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        field.typeText(title)
+
+        XCUIDevice.shared.press(.home)
+        Thread.sleep(forTimeInterval: 2)
+        app.activate()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 10))
+        XCTAssertTrue(matches(NSPredicate(format: "hasKeyboardFocus == true"), field), "the title lost the caret")
+        field.typeText("\nbody words")
+        XCTAssertTrue(matches(NSPredicate(format: "value == 'body words'"), block(0)), "Return left the keys in the title")
+        XCTAssertTrue(matches(NSPredicate(format: "value == %@", title), field), "the title changed")
+
+        XCUIDevice.shared.press(.home)
+        Thread.sleep(forTimeInterval: 2)
+        app.terminate()
+        try openNotes()
+        let stored = row(title)
+        XCTAssertTrue(stored.waitForExistence(timeout: 10), "the stored title is not the typed one")
+        stored.tap()
+        XCTAssertTrue(matches(NSPredicate(format: "value == 'body words'"), block(0)), "the stored body is not the typed one")
+
+        deleteNotes([title])
+    }
+
     // MARK: Helpers
 
     private func block(_ index: Int) -> XCUIElement {

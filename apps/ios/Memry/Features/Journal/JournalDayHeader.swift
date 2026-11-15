@@ -181,24 +181,24 @@ struct JournalDayReadOnlyMetadata: View {
 /// The empty day's first line: the placeholder as an editable field.
 /// Text lands on Return, when the field loses focus, and when the page goes
 /// away, always on this field's own day; an empty field writes nothing (D2).
-/// Keys typed after the Return land as the next line (#4705).
+/// Keys typed after the Return go to the block the line lands as, which
+/// takes the caret: the editor types them there, a Return among them
+/// included (#4705).
 struct JournalDayFirstLine: View {
     let placeholder: String
-    /// `true` when the line landed; a failure keeps what was typed.
-    let write: (String) async -> Bool
+    /// Writes `line`, `true` when it landed; a failure keeps what was typed.
+    /// `carrying` takes the keys typed after the line's Return, for the
+    /// block the line lands as.
+    let write: (_ line: String, _ carrying: (@MainActor () -> String?)?) async -> Bool
 
-    @State private var text = ""
-    /// The Return whose line is landing, while the keys after it wait.
-    @State private var returned: LineReturn?
-    /// The writes in flight, one after another so lines land in order.
-    @State private var landing: Task<Void, Never>?
+    @State private var draft = JournalFirstLineDraft()
     @FocusState private var focused: Bool
 
     var body: some View {
         // The setter sees each keystroke as UIKit makes it. The Return is
         // split off there: a render later, keys typed after it are in the
         // text too, and the newline is no longer last.
-        TextField(JournalCopy.firstLineLabel, text: Binding(get: { text }, set: typed), prompt: prompt, axis: .vertical)
+        TextField(JournalCopy.firstLineLabel, text: Binding(get: { draft.text }, set: typed), prompt: prompt, axis: .vertical)
             .font(Tokens.Typography.body.font)
             .foregroundStyle(Tokens.Text.primary.color)
             .focused($focused)
@@ -217,43 +217,76 @@ struct JournalDayFirstLine: View {
     }
 
     private func typed(_ value: String) {
-        if let burst = returned {
-            text = value
+        let draft = draft
+        if let burst = draft.returned {
+            draft.text = value
             // An edit past the Return (a Backspace) joins the held keys to
             // the line, which is already landing: they land as typed.
-            if burst.held(in: value) == nil { returned = nil }
+            if burst.held(in: value) == nil { draft.returned = nil }
             return
         }
-        guard let burst = LineReturn(previous: text, value: value) else { return text = value }
+        guard let burst = LineReturn(previous: draft.text, value: value) else { return draft.text = value }
         // Return on an empty line writes nothing and stays.
         guard !burst.line.trimmingCharacters(in: .whitespaces).isEmpty else {
-            return text = burst.held(in: value) ?? ""
+            return draft.text = burst.held(in: value) ?? ""
         }
-        text = value
-        returned = burst
-        land(burst.line)
+        draft.text = value
+        draft.returned = burst
+        land(burst.line) { draft.takeHeld() }
     }
 
-    /// Lands what the field holds: the keys after a Return as lines of their
-    /// own, or the whole field.
+    /// The field lost the caret or went away: what it holds lands as lines
+    /// of their own. Keys held for a Return's block wait a turn, as that
+    /// block takes them as it takes the caret, which can come after the
+    /// field went away; they land here only when it did not.
     private func landAll() {
-        let lines = returned.flatMap { $0.held(in: text) } ?? (returned == nil ? text : "")
-        returned = nil
-        text = ""
-        lines.split(separator: "\n").forEach { land(String($0)) }
+        guard draft.returned != nil else { return landRest() }
+        DispatchQueue.main.async { landRest() }
     }
 
-    private func land(_ line: String) {
+    private func landRest() {
+        let draft = draft
+        let lines = draft.returned.map { $0.held(in: draft.text) ?? "" } ?? draft.text
+        draft.returned = nil
+        draft.text = ""
+        lines.split(separator: "\n").forEach { land(String($0), carrying: nil) }
+    }
+
+    private func land(_ line: String, carrying: (@MainActor () -> String?)?) {
         let line = line.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !line.isEmpty else { return }
-        let previous = landing
-        landing = Task {
+        let draft = draft
+        let previous = draft.landing
+        draft.landing = Task {
             await previous?.value
             // A failure keeps the line in the field to try again.
-            if !(await write(line)) {
-                returned = nil
-                text = text.isEmpty ? line : "\(line) \(text)"
+            if !(await write(line, carrying)) {
+                draft.returned = nil
+                draft.text = draft.text.isEmpty ? line : "\(line) \(draft.text)"
             }
         }
+    }
+}
+
+/// The first line's text, kept by reference: the block its Return lands
+/// as takes the keys held for it once the field has gone away.
+@MainActor
+@Observable
+final class JournalFirstLineDraft {
+    var text = ""
+    /// The Return whose line is landing, while the keys after it wait.
+    @ObservationIgnored var returned: LineReturn?
+    /// The writes in flight, one after another so lines land in order.
+    @ObservationIgnored var landing: Task<Void, Never>?
+
+    /// The keys typed since the Return, after a Return of their own: typed
+    /// at the end of the line's block, they make the next block as Return
+    /// does there. `nil` when none were typed, or they landed already.
+    func takeHeld() -> String? {
+        guard let burst = returned else { return nil }
+        returned = nil
+        let held = burst.held(in: text) ?? ""
+        text = ""
+        return held.isEmpty ? nil : "\n" + held
     }
 }

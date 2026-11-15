@@ -33,11 +33,12 @@ struct ReturnBurst {
     var carried: String?
 }
 
-/// The block a Return in the note's title moves the caret to, and the way
-/// to take the keys the title held for it meanwhile (`LineReturn`).
+/// The block a Return in a one-line field (the note's title, a journal
+/// day's first line) moves the caret to, and the way to take the keys the
+/// field held for it meanwhile (`LineReturn`).
 struct TitleBurst {
     let target: String
-    let take: () -> String?
+    let take: @MainActor () -> String?
 }
 
 extension EditorSession {
@@ -120,7 +121,7 @@ extension EditorSession {
         if atEnd { textView.selectedRange = NSRange(location: textView.textStorage.length, length: 0) }
         if fromTitle, let burst = titleBurst {
             titleBurst = nil
-            // The title kept the caret, so its keys stay with it.
+            // The field kept the caret, so its keys stay with it.
             guard took, let held = burst.take() else { return }
             type(held, into: field)
             if !textView.isFirstResponder, field.dirty { commit(field) }
