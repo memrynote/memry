@@ -11,6 +11,7 @@
 //! | passes over one vault serialize                        | one pass gate: drivers and `sync_now` |
 //! | the driver sends the bound vault id                    | K1: unbound refused, rebinding refused |
 //! | a desktop first sync pulls every body                  | > 500 bodies, one older than 30 days; progress phases |
+//! | the manifest check pulls a lost row, pushes a lost create | ch. 05 §5.15, at most every 30 min |
 
 #![cfg(feature = "harness")]
 
@@ -1010,4 +1011,60 @@ async fn the_driver_records_each_pass_in_the_sync_history() {
         "{on_b:?}"
     );
     assert!(on_b.iter().all(|(kind, _, _)| kind != "error"), "{on_b:?}");
+}
+
+impl Device {
+    /// Runs `sql` on this vault's data database: the harness's way to lose a row.
+    fn exec(&self, sql: &'static str, id: &str) -> usize {
+        let id = id.to_owned();
+        self.db()
+            .call_blocking(move |conn| conn.execute(sql, [&id]).map_err(failed))
+            .unwrap()
+    }
+}
+
+/// The manifest check repairs what the feed cannot (#3534 L3b): B loses its row of a task the
+/// server still holds, and A loses the push of a task it made. A fresh driver on each (the
+/// check runs at most every 30 minutes per driver) pulls B's task back by id and queues A's as
+/// `create`, which the next pass pushes and B pulls.
+#[tokio::test(flavor = "multi_thread")]
+async fn the_manifest_check_pulls_a_lost_row_and_pushes_a_lost_create() {
+    let server = Server::start();
+    let mut a = Device::new(&server, 0).await;
+    let mut b = Device::new(&server, 1).await;
+    let kept = a.new_task("Ship");
+    assert!(a.sync().await.pushed);
+    b.sync().await;
+    assert!(b.stored("task", &kept).is_some());
+
+    let lost = "DELETE FROM sync_items WHERE item_type = 'task' AND item_id = ?1";
+    assert_eq!(b.exec(lost, &kept), 1);
+    b.reopen().await;
+    b.sync().await;
+    assert!(
+        b.stored("task", &kept).is_some(),
+        "the server-only task is pulled by id"
+    );
+
+    let unsent = a.new_task("Review");
+    assert_eq!(
+        a.exec(
+            "DELETE FROM outbox WHERE item_type = 'task' AND item_id = ?1",
+            &unsent
+        ),
+        1
+    );
+    a.reopen().await;
+    a.sync().await;
+    assert_eq!(
+        a.queued("task"),
+        1,
+        "the local-only task is queued as create"
+    );
+    assert!(a.sync().await.pushed);
+    b.sync().await;
+    assert!(
+        b.stored("task", &unsent).is_some(),
+        "the re-pushed task reaches B"
+    );
 }
