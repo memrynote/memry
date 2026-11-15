@@ -10,25 +10,22 @@
 //! lock held: a write blocks while the child reads nothing (a hung op), and the timeout kill,
 //! [`Supervisor::stop`] and the idle exit must still get the state lock to end it.
 
+mod child;
+
 use std::collections::HashMap;
 use std::ffi::OsString;
-use std::io::{BufRead, BufReader, Read};
 use std::path::PathBuf;
-use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
+use std::process::{Child, ChildStdin, Command, ExitStatus, Stdio};
 use std::sync::mpsc::{self, RecvTimeoutError, Sender};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError, Weak};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use crate::frame::{FrameError, read_frame, write_frame};
+use self::child::{forward_stderr, read_replies, watch_idle};
+use crate::frame::{FrameError, write_frame};
 use crate::op::{Request, Response};
 use crate::priority;
 use crate::serve::READY_ID;
-
-/// The longest stderr line forwarded to the log; the rest of the line is dropped.
-const MAX_LOG_LINE: usize = 4096;
-/// How long an idle worker gets to exit on `Shutdown` before it is killed.
-const SHUTDOWN_GRACE: Duration = Duration::from_secs(5);
 /// The child parses untrusted files, so it gets none of the app's environment but these. Windows
 /// loads system DLLs through `SystemRoot`.
 const INHERITED_ENV: &[&str] = if cfg!(windows) { &["SystemRoot"] } else { &[] };
@@ -91,6 +88,35 @@ pub enum WorkerError {
     Failed(String),
 }
 
+/// Where a child was in its life when it exited without the app stopping it, as Electron's
+/// `WorkerExitPhase` (`apps/desktop/src/main/lib/embeddings.ts:49,737-741`): before `Ready`, with
+/// calls waiting on it, idle, or while it was being shut down for idleness (reported only when
+/// it had to be killed or exited non-zero, as `embeddings.ts:716-722`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ExitPhase {
+    Starting,
+    InFlight,
+    Idle,
+    IdleShutdown,
+}
+
+impl ExitPhase {
+    /// The phase in Electron's `worker_exit_<phase>` log action.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Starting => "starting",
+            Self::InFlight => "in_flight",
+            Self::Idle => "idle",
+            Self::IdleShutdown => "idle_shutdown",
+        }
+    }
+}
+
+/// Hears each exit of [`ExitPhase`] with the child's exit code (minus the signal number of a
+/// child a signal ended). Runs on the supervisor's threads, at times under its state lock, so it
+/// never calls the supervisor.
+pub type ExitObserver = Arc<dyn Fn(ExitPhase, Option<i32>) + Send + Sync>;
+
 type Reply = Result<Response, WorkerError>;
 type Pending = Arc<Mutex<HashMap<u32, Sender<Reply>>>>;
 
@@ -103,6 +129,7 @@ struct Shared {
     args: Vec<OsString>,
     limits: Limits,
     clock: Arc<dyn Clock>,
+    exits: Option<ExitObserver>,
     state: Mutex<State>,
 }
 
@@ -160,9 +187,18 @@ impl Supervisor {
                 args,
                 limits,
                 clock,
+                exits: None,
                 state: Mutex::new(State::default()),
             }),
         }
+    }
+
+    /// Reports the child's unexpected exits to `observer` (Electron's `worker_exit_*` log).
+    pub fn observing_exits(mut self, observer: ExitObserver) -> Self {
+        Arc::get_mut(&mut self.shared)
+            .expect("no lease or thread holds a supervisor before its first call")
+            .exits = Some(observer);
+        self
     }
 
     /// Sends `request` and waits for its answer, starting the child first when none runs.
@@ -261,7 +297,8 @@ impl Supervisor {
             };
             if let Some(dead) = dead {
                 fail_all(&dead.pending, &error);
-                reap(dead.child);
+                let status = reap(dead.child);
+                report_exit(shared, ExitPhase::InFlight, status);
             }
             return Err(error);
         }
@@ -388,7 +425,11 @@ fn start(shared: &Arc<Shared>, state: &mut State) -> Result<(), WorkerError> {
         }
     };
     if let Some(error) = failure {
-        reap(child);
+        let exited = matches!(error, WorkerError::Exited(_));
+        let status = reap(child);
+        if exited {
+            report_exit(shared, ExitPhase::Starting, status);
+        }
         return Err(error);
     }
     tracing::info!(scope = "MlWorker", pid = child.id(), "worker started");
@@ -410,124 +451,6 @@ fn start(shared: &Arc<Shared>, state: &mut State) -> Result<(), WorkerError> {
         .spawn(move || watch_idle(weak, generation, tick))
         .map_err(|error| WorkerError::Start(error.to_string()))?;
     Ok(())
-}
-
-/// Routes each answer to its caller. Ends when the child's stdout closes or breaks the
-/// protocol; either way every waiting call fails and the child is taken down.
-fn read_replies(shared: Weak<Shared>, stdout: ChildStdout, pending: Pending, generation: u64) {
-    let mut stdout = BufReader::new(stdout);
-    let error = loop {
-        match read_frame(&mut stdout) {
-            Ok(Some(frame)) => {
-                let reply = Response::from_frame(&frame)
-                    .map_err(|error| WorkerError::Protocol(error.to_string()));
-                let protocol_error = reply.as_ref().err().cloned();
-                if let Some(waiter) = lock(&pending).remove(&frame.id) {
-                    let _ = waiter.send(reply);
-                }
-                if let Some(error) = protocol_error {
-                    break error;
-                }
-            }
-            Ok(None) => break WorkerError::Exited("the worker closed its output".into()),
-            Err(error) => break WorkerError::Protocol(error.to_string()),
-        }
-    };
-    // The state forgets the child before its callers hear of the failure, so a caller that
-    // calls again at once starts a new child instead of writing to the dead one. A child that
-    // never sent `Ready` is not in the state: `start` holds the state lock while it waits for
-    // `Ready`, and accounts for the failure itself.
-    let starting = lock(&pending).contains_key(&READY_ID);
-    let taken = match shared.upgrade() {
-        Some(shared) if !starting => {
-            let mut state = lock(&shared.state);
-            let current = state
-                .running
-                .as_ref()
-                .is_some_and(|r| r.generation == generation);
-            // Not stopped by the app: it crashed or misbehaved.
-            if current {
-                record_crash(&shared, &mut state);
-            }
-            state.running.take_if(|_| current)
-        }
-        _ => None,
-    };
-    fail_all(&pending, &error);
-    if let Some(running) = taken {
-        tracing::warn!(scope = "MlWorker", "worker ended: {error}");
-        reap(running.child);
-    }
-}
-
-fn forward_stderr(stderr: std::process::ChildStderr) {
-    let mut reader = BufReader::new(stderr);
-    let mut line = Vec::new();
-    // Inside an overlong line: its rest is dropped, a chunk at a time.
-    let mut skipping = false;
-    loop {
-        line.clear();
-        match reader
-            .by_ref()
-            .take(MAX_LOG_LINE as u64)
-            .read_until(b'\n', &mut line)
-        {
-            Ok(0) | Err(_) => return,
-            Ok(_) => {
-                if !skipping {
-                    let text = String::from_utf8_lossy(&line);
-                    tracing::info!(scope = "MlWorker", "{}", text.trim_end());
-                }
-                skipping = !line.ends_with(b"\n");
-            }
-        }
-    }
-}
-
-/// Shuts the child down once it has been idle for [`Limits::idle_exit`] with no call waiting and
-/// no [`Lease`] held.
-fn watch_idle(shared: Weak<Shared>, generation: u64, tick: Duration) {
-    loop {
-        thread::sleep(tick);
-        let Some(shared) = shared.upgrade() else {
-            return;
-        };
-        let running = {
-            let mut state = lock(&shared.state);
-            let Some(running) = state.running.as_ref() else {
-                return;
-            };
-            if running.generation != generation {
-                return;
-            }
-            let idle = shared
-                .clock
-                .now()
-                .saturating_duration_since(running.last_used);
-            if idle < shared.limits.idle_exit
-                || running.leases > 0
-                || !lock(&running.pending).is_empty()
-            {
-                continue;
-            }
-            state.running.take().expect("checked above")
-        };
-        tracing::info!(scope = "MlWorker", "worker idle; shutting it down");
-        let Running {
-            mut child, stdin, ..
-        } = running;
-        let _ = write_frame(&mut *lock(&stdin), &Request::Shutdown.to_frame(0));
-        drop(stdin);
-        let deadline = Instant::now() + SHUTDOWN_GRACE;
-        while Instant::now() < deadline {
-            if matches!(child.try_wait(), Ok(Some(_))) {
-                return;
-            }
-            thread::sleep(Duration::from_millis(20));
-        }
-        reap(child);
-        return;
-    }
 }
 
 /// Kills the running child when it is `generation` (any child for `None`) and fails its calls.
@@ -572,9 +495,30 @@ fn fail_all(pending: &Pending, error: &WorkerError) {
     }
 }
 
-fn reap(mut child: Child) {
+/// Kills the child unless it has exited, and waits for it.
+fn reap(mut child: Child) -> Option<ExitStatus> {
     let _ = child.kill();
-    let _ = child.wait();
+    child.wait().ok()
+}
+
+fn report_exit(shared: &Shared, phase: ExitPhase, status: Option<ExitStatus>) {
+    let Some(observer) = &shared.exits else {
+        return;
+    };
+    let code = status.and_then(|status| {
+        #[cfg(unix)]
+        {
+            use std::os::unix::process::ExitStatusExt;
+            status
+                .code()
+                .or_else(|| status.signal().map(|signal| -signal))
+        }
+        #[cfg(not(unix))]
+        {
+            status.code()
+        }
+    });
+    observer(phase, code);
 }
 
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {

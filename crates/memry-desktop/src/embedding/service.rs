@@ -4,12 +4,13 @@
 //! request (`start`, embeddings.ts:606-673), loads the model (downloading it first) on the first
 //! request it serves, and exits with the model 30 s after its last request
 //! (`IDLE_SHUTDOWN_MS`, :931-950). A request waits at most 15 min, the download included
-//! (`REQUEST_TIMEOUT_MS`, :133). ONNX Runtime runs in this process, so a panic in a load or
-//! an inference is caught per request and counted the way the bridge counts a worker crash
-//! (`failProcess`, :820-835). Failed loads back off through [`Breaker`].
+//! (`REQUEST_TIMEOUT_MS`, :133). A panic in a load or an inference is caught per request and
+//! counted the way the bridge counts a worker crash (`failProcess`, :820-835). Failed loads back
+//! off through [`Breaker`].
 //!
-//! The model itself is a [`ModelLoader`]: the app's loader downloads the pinned files through
-//! [`super::download::ModelSource`] and loads `memry_ml::EmbeddingEngine`.
+//! The model itself is a [`ModelLoader`]: the app's loader ([`super::worker::WorkerModel`])
+//! downloads the pinned files through [`super::download::ModelSource`] and runs
+//! `memry_ml::EmbeddingEngine` in the `memry-ml-worker` sidecar, out of this process.
 
 #[cfg(test)]
 mod tests;
