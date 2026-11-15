@@ -1,6 +1,7 @@
 //! The two reasons the record feed is read again from the start (chapter 05
 //! §5.11). Both are one statement group, run by [`super::pull::PullLoop::begin_run`]
-//! before a run's first page, in `PullLoop::run` and in every engine pass.
+//! before a run's first page, in `PullLoop::run` and in every engine pass, and
+//! by [`super::first_sync::FirstSync::run`] before its refs pass.
 //!
 //! - **The declared types grew.** The server filters the one feed by the
 //!   declaration, so a type added later has rows behind the stored cursor

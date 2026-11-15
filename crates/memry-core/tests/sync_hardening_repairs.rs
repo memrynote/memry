@@ -28,6 +28,7 @@ use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
 use memry_core::protocol::types::Declaration;
 use memry_core::storage::{Db, open_data};
+use memry_core::sync::driver::progress::SilentInitialSync;
 use memry_core::sync::first_sync_store::read_meta;
 use memry_core::sync::hardening::manifest::{ManifestCheck, ManifestOutcome};
 use memry_core::sync::pull::{PullLoop, RecordCipher};
@@ -386,4 +387,30 @@ async fn a_stale_reconnect_during_an_interrupted_repair_reads_from_the_start_and
         .expect("read");
     assert_eq!(marker.as_deref(), Some("done"));
     assert_eq!(cursor.as_deref(), Some("4300"), "the feed advanced");
+}
+
+/// A first sync reads the feed from the start under this build's
+/// declaration, which is the cursor-skip repair too, so the pass after it
+/// carries on from the cursor the first sync stored.
+#[tokio::test]
+async fn the_first_pass_after_a_first_sync_sends_the_stored_cursor() {
+    let desktop = Desktop::open(&["task"], |_| Ok(())).await;
+    desktop.server.put("task", "t1", json!({"title": "one"}));
+    desktop.server.page(&["t1"], "4200");
+
+    desktop
+        .driver
+        .first_sync(Arc::new(SilentInitialSync))
+        .await
+        .expect("the first sync")
+        .expect("not paused");
+
+    let feed: Vec<String> = desktop
+        .server
+        .urls()
+        .into_iter()
+        .filter(|url| url.contains("/sync/changes"))
+        .collect();
+    assert!(!feed[0].contains("cursor="), "{feed:?}");
+    assert!(feed[1].contains("cursor=4200"), "{feed:?}");
 }

@@ -149,8 +149,10 @@ impl FakeServer {
         );
     }
 
-    fn answer(&self, request: &HttpRequest) -> String {
-        match route_of(&request.url) {
+    fn answer(&self, request: &HttpRequest) -> (u16, String) {
+        let body = match route_of(&request.url) {
+            // No bootstrap window and no packs: a first sync reads the feed.
+            "/sync/bootstrap" | "/sync/packs" => return (404, "{}".to_owned()),
             "/auth/devices" => {
                 let public = |seed: u8| {
                     let (public, _) = sodium::sign_seed_keypair(&[seed; 32]).expect("a keypair");
@@ -198,7 +200,8 @@ impl FakeServer {
                     .to_string()
             }
             route => panic!("the fake server has no route {route}"),
-        }
+        };
+        (200, body)
     }
 }
 
@@ -215,10 +218,11 @@ struct Routes(Arc<FakeServer>);
 impl Transport for Routes {
     async fn send(&self, request: HttpRequest) -> Result<HttpResponse, TransportError> {
         self.0.calls.lock().unwrap().push(request.clone());
+        let (status, body) = self.0.answer(&request);
         Ok(HttpResponse {
-            status: 200,
+            status,
             headers: HashMap::new(),
-            body: self.0.answer(&request).into_bytes(),
+            body: body.into_bytes(),
         })
     }
 
