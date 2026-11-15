@@ -106452,7 +106452,7 @@
       "input": {
         "fn": "taskBlock.normalizeFromMarkdown",
         "args": [
-          "> [!success]\n> 1. a\n> 2. b"
+          "> [!info]\n> One\n>\n> Two"
         ]
       },
       "expected": {
@@ -106468,7 +106468,7 @@
               "content": [
                 {
                   "styles": {},
-                  "text": "[!success]\na\nb",
+                  "text": "[!info]\n One\nTwo",
                   "type": "text"
                 }
               ],
@@ -106942,7 +106942,7 @@
       "input": {
         "fn": "taskBlock.normalizeFromMarkdown",
         "args": [
-          "Before\n\n$$\nx^2 + y^2 = z^2\n$$\n\nAfter"
+          "$$\n$$"
         ]
       },
       "expected": {
@@ -106959,39 +106959,7 @@
               "content": [
                 {
                   "styles": {},
-                  "text": "Before",
-                  "type": "text"
-                }
-              ],
-              "children": []
-            },
-            {
-              "type": "paragraph",
-              "props": {
-                "backgroundColor": "default",
-                "textAlignment": "left",
-                "textColor": "default"
-              },
-              "content": [
-                {
-                  "styles": {},
-                  "text": "$$\n x^2 + y^2 = z^2\n $$",
-                  "type": "text"
-                }
-              ],
-              "children": []
-            },
-            {
-              "type": "paragraph",
-              "props": {
-                "backgroundColor": "default",
-                "textAlignment": "left",
-                "textColor": "default"
-              },
-              "content": [
-                {
-                  "styles": {},
-                  "text": "After",
+                  "text": "$$\n $$",
                   "type": "text"
                 }
               ],
@@ -109463,31 +109431,13 @@
       "input": {
         "fn": "taskBlock.normalizeFromMarkdown",
         "args": [
-          "**Bold**\n- Item"
+          "- a\n    - b"
         ]
       },
       "expected": {
         "status": "ok",
         "output": {
           "blocks": [
-            {
-              "type": "paragraph",
-              "props": {
-                "backgroundColor": "default",
-                "textAlignment": "left",
-                "textColor": "default"
-              },
-              "content": [
-                {
-                  "styles": {
-                    "bold": true
-                  },
-                  "text": "Bold",
-                  "type": "text"
-                }
-              ],
-              "children": []
-            },
             {
               "type": "bulletListItem",
               "props": {
@@ -109498,11 +109448,28 @@
               "content": [
                 {
                   "styles": {},
-                  "text": "Item",
+                  "text": "a",
                   "type": "text"
                 }
               ],
-              "children": []
+              "children": [
+                {
+                  "type": "bulletListItem",
+                  "props": {
+                    "backgroundColor": "default",
+                    "textAlignment": "left",
+                    "textColor": "default"
+                  },
+                  "content": [
+                    {
+                      "styles": {},
+                      "text": "b",
+                      "type": "text"
+                    }
+                  ],
+                  "children": []
+                }
+              ]
             }
           ],
           "didChange": false
@@ -110025,7 +109992,7 @@
       "input": {
         "fn": "taskBlock.normalizeFromMarkdown",
         "args": [
-          "- a  \n  b"
+          "> a  \n> b"
         ]
       },
       "expected": {
@@ -110033,37 +110000,19 @@
         "output": {
           "blocks": [
             {
-              "type": "bulletListItem",
+              "type": "quote",
               "props": {
                 "backgroundColor": "default",
-                "textAlignment": "left",
                 "textColor": "default"
               },
               "content": [
                 {
                   "styles": {},
-                  "text": "a",
+                  "text": "a\n b",
                   "type": "text"
                 }
               ],
-              "children": [
-                {
-                  "type": "paragraph",
-                  "props": {
-                    "backgroundColor": "default",
-                    "textAlignment": "left",
-                    "textColor": "default"
-                  },
-                  "content": [
-                    {
-                      "styles": {},
-                      "text": "b",
-                      "type": "text"
-                    }
-                  ],
-                  "children": []
-                }
-              ]
+              "children": []
             }
           ],
           "didChange": false
@@ -110368,7 +110317,7 @@
       "input": {
         "fn": "taskBlock.normalizeFromMarkdown",
         "args": [
-          "> - a\n>\n> ```\n> b\n> ```"
+          "> ```\n> - x\n> ```\nz"
         ]
       },
       "expected": {
@@ -110384,7 +110333,7 @@
               "content": [
                 {
                   "styles": {},
-                  "text": "ab",
+                  "text": "- xz",
                   "type": "text"
                 }
               ],
@@ -110700,7 +110649,7 @@
       "input": {
         "fn": "taskBlock.normalizeFromMarkdown",
         "args": [
-          "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%20z1z101%250%3D%7E)) tail."
+          "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%E6%97%A5%299%7E%2310%26%2Az)) tail."
         ]
       },
       "expected": {
@@ -110717,7 +110666,7 @@
               "content": [
                 {
                   "styles": {},
-                  "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%20z1z101%250%3D%7E)) tail.",
+                  "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%E6%97%A5%299%7E%2310%26%2Az)) tail.",
                   "type": "text"
                 }
               ],
@@ -110734,7 +110683,7 @@
       "input": {
         "fn": "taskBlock.normalizeFromMarkdown",
         "args": [
-          "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F19%C3%A9%21%21c%27%E6%97%A5%E6%97%A5%26099%20%C3%A9%3D%3D1z%3D%C3%A9%21)) tail."
+          "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F9%E6%97%A51%20%27%C3%A9%299%3Daa%26%21)) tail."
         ]
       },
       "expected": {
@@ -110751,7 +110700,7 @@
               "content": [
                 {
                   "styles": {},
-                  "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F19%C3%A9%21%21c%27%E6%97%A5%E6%97%A5%26099%20%C3%A9%3D%3D1z%3D%C3%A9%21)) tail.",
+                  "text": "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F9%E6%97%A51%20%27%C3%A9%299%3Daa%26%21)) tail.",
                   "type": "text"
                 }
               ],
@@ -110768,7 +110717,7 @@
       "input": {
         "fn": "taskBlock.normalizeFromMarkdown",
         "args": [
-          "Fuzz ((date:eyJhbmNob3JJZCI6ImE5MX7;LT4wPGIiLCJkYXRlSVNPIjoiMjAyNi0wOC0xNFQwOTowMDowMC4wMDBaIiwiaGFzVGltZSI6ZmFsc2UsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6ImF0IiwidGltZUZvcm1hdCI6InN5c3RlbSJ9)) tail."
+          "Fuzz ((date:eyJhbmNob3JJZCI6Iv9fPnpjX;85LT8wfjFfIiwiZGF0ZUlTTyI6IjIwMjYtMDgtMTRUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOmZhbHNlLCJkYXRlRm9ybWF0IjoicmVsYXRpdmUiLCJyZW1pbmQiOiJub25lIiwidGltZUZvcm1hdCI6InN5c3RlbSJ9)) tail."
         ]
       },
       "expected": {
@@ -110785,7 +110734,7 @@
               "content": [
                 {
                   "styles": {},
-                  "text": "Fuzz ((date:eyJhbmNob3JJZCI6ImE5MX7;LT4wPGIiLCJkYXRlSVNPIjoiMjAyNi0wOC0xNFQwOTowMDowMC4wMDBaIiwiaGFzVGltZSI6ZmFsc2UsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6ImF0IiwidGltZUZvcm1hdCI6InN5c3RlbSJ9)) tail.",
+                  "text": "Fuzz ((date:eyJhbmNob3JJZCI6Iv9fPnpjX;85LT8wfjFfIiwiZGF0ZUlTTyI6IjIwMjYtMDgtMTRUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOmZhbHNlLCJkYXRlRm9ybWF0IjoicmVsYXRpdmUiLCJyZW1pbmQiOiJub25lIiwidGltZUZvcm1hdCI6InN5c3RlbSJ9)) tail.",
                   "type": "text"
                 }
               ],
@@ -110802,7 +110751,7 @@
       "input": {
         "fn": "taskBlock.normalizeFromMarkdown",
         "args": [
-          "> [!warning]\n> 900:b0b, !\n> !é0 é,;1?bb??é;;"
+          "> [!error]\n> :1?aa; .zz99é日a1?日\n> éz1é c.日日?"
         ]
       },
       "expected": {
@@ -110818,7 +110767,7 @@
               "content": [
                 {
                   "styles": {},
-                  "text": "[!warning]\n 900:b0b, !\n !é0 é,;1?bb??é;;",
+                  "text": "[!error]\n :1?aa; .zz99é日a1?日\n éz1é c.日日?",
                   "type": "text"
                 }
               ],
@@ -110835,7 +110784,7 @@
       "input": {
         "fn": "taskBlock.normalizeFromMarkdown",
         "args": [
-          "$$\nz={&}0\naa_9{yx11= a0- \\{9=y\n$$"
+          "$$\n\\}0a{ab{z\\\\} 1b_1b}\\x1b\n+ &\\}}^{0\n$$"
         ]
       },
       "expected": {
@@ -110852,7 +110801,39 @@
               "content": [
                 {
                   "styles": {},
-                  "text": "$$\n z={&}0\n aa_9{yx11= a0- {9=y\n $$",
+                  "text": "$$\n }0a{ab{z\\} 1b_1b}\\x1b",
+                  "type": "text"
+                }
+              ],
+              "children": []
+            },
+            {
+              "type": "bulletListItem",
+              "props": {
+                "backgroundColor": "default",
+                "textAlignment": "left",
+                "textColor": "default"
+              },
+              "content": [
+                {
+                  "styles": {},
+                  "text": "&}}^{0",
+                  "type": "text"
+                }
+              ],
+              "children": []
+            },
+            {
+              "type": "paragraph",
+              "props": {
+                "backgroundColor": "default",
+                "textAlignment": "left",
+                "textColor": "default"
+              },
+              "content": [
+                {
+                  "styles": {},
+                  "text": "$$",
                   "type": "text"
                 }
               ],
@@ -110869,7 +110850,7 @@
       "input": {
         "fn": "taskBlock.normalizeFromMarkdown",
         "args": [
-          "<details data-memry-toggle open>\n<summary>1zb;.é</summary>\n\né .:01a\n\n</details>"
+          "<details data-memry-toggle open>\n<summary>0.zzc.caébc,1é?é?ac</summary>\n\n```ts\nconst x = 35\n```\n\n</details>"
         ]
       },
       "expected": {
@@ -110886,23 +110867,21 @@
               "content": [
                 {
                   "styles": {},
-                  "text": "1zb;.é",
+                  "text": "0.zzc.caébc,1é?é?ac",
                   "type": "text"
                 }
               ],
               "children": []
             },
             {
-              "type": "paragraph",
+              "type": "codeBlock",
               "props": {
-                "backgroundColor": "default",
-                "textAlignment": "left",
-                "textColor": "default"
+                "language": "ts"
               },
               "content": [
                 {
                   "styles": {},
-                  "text": "é .:01a",
+                  "text": "const x = 35",
                   "type": "text"
                 }
               ],
@@ -110919,7 +110898,7 @@
       "input": {
         "fn": "taskBlock.normalizeFromMarkdown",
         "args": [
-          "9ab0b ((date:eyJhbmNob3JJZCI6ImJiYX5jeiIsImRhdGVJU08iOiIyMDI2LTA4LTE0VDA5OjAwOjAwLjAwMFoiLCJoYXNUaW1lIjp0cnVlLCJkYXRlRm9ybWF0IjoicmVsYXRpdmUiLCJyZW1pbmQiOiJub25lIiwidGltZUZvcm1hdCI6InN5c3RlbSJ9))\n\n\n<details data-memry-toggle>\n<summary>zzc.caébc,1</summary>\n\né1.cc;90日 .1日0\n\n</details>\n\n\n<details data-memry-toggle open>\n<summary>9:</summary>\n\nac é,,;,1!:?0a;a\n\n</details>\n\n\n.:01a01zb ((mention:https%3A%2F%2Ffuzz.example%2F%20zc%E6%97%A50%C3%A901%C3%A9)) .é0béé!?190, 0\n\n\nc0z,日 0 a:éb? ((date:eyJhbmNob3JJZCI6IjwmJl9fXyIsImRhdGVJU08iOiIyMDI2LTA4LTE0VDA5OjAwOjAwLjAwMFoiLCJoYXNUaW1lIjp0cnVlLCJkYXRlRm9ybWF0IjoicmVsYXRpdmUiLCJyZW1pbmQiOiJub25lIiwidGltZUZvcm1hdCI6InN5c3RlbSJ9))"
+          "1.!zz;9c.!日é;\n\n\n1 !c0c0z0;z? a,;?1, ((mention:https%3A%2F%2Ffuzz.example%2F%E6%97%A5ca%C3%A910)) 日b?;é !c z\n\n\n!日é0,:a,c!; ((mention:https%3A%2F%2Ffuzz.example%2F910%28%E6%97%A5)) 0é?b:,!z日,:é19.0;1.,"
         ]
       },
       "expected": {
@@ -110936,7 +110915,7 @@
               "content": [
                 {
                   "styles": {},
-                  "text": "9ab0b ((date:eyJhbmNob3JJZCI6ImJiYX5jeiIsImRhdGVJU08iOiIyMDI2LTA4LTE0VDA5OjAwOjAwLjAwMFoiLCJoYXNUaW1lIjp0cnVlLCJkYXRlRm9ybWF0IjoicmVsYXRpdmUiLCJyZW1pbmQiOiJub25lIiwidGltZUZvcm1hdCI6InN5c3RlbSJ9))",
+                  "text": "1.!zz;9c.!日é;",
                   "type": "text"
                 }
               ],
@@ -110952,7 +110931,7 @@
               "content": [
                 {
                   "styles": {},
-                  "text": "zzc.caébc,1",
+                  "text": "1 !c0c0z0;z? a,;?1, ((mention:https%3A%2F%2Ffuzz.example%2F%E6%97%A5ca%C3%A910)) 日b?;é !c z",
                   "type": "text"
                 }
               ],
@@ -110968,71 +110947,7 @@
               "content": [
                 {
                   "styles": {},
-                  "text": "é1.cc;90日 .1日0",
-                  "type": "text"
-                }
-              ],
-              "children": []
-            },
-            {
-              "type": "paragraph",
-              "props": {
-                "backgroundColor": "default",
-                "textAlignment": "left",
-                "textColor": "default"
-              },
-              "content": [
-                {
-                  "styles": {},
-                  "text": "9:",
-                  "type": "text"
-                }
-              ],
-              "children": []
-            },
-            {
-              "type": "paragraph",
-              "props": {
-                "backgroundColor": "default",
-                "textAlignment": "left",
-                "textColor": "default"
-              },
-              "content": [
-                {
-                  "styles": {},
-                  "text": "ac é,,;,1!:?0a;a",
-                  "type": "text"
-                }
-              ],
-              "children": []
-            },
-            {
-              "type": "paragraph",
-              "props": {
-                "backgroundColor": "default",
-                "textAlignment": "left",
-                "textColor": "default"
-              },
-              "content": [
-                {
-                  "styles": {},
-                  "text": ".:01a01zb ((mention:https%3A%2F%2Ffuzz.example%2F%20zc%E6%97%A50%C3%A901%C3%A9)) .é0béé!?190, 0",
-                  "type": "text"
-                }
-              ],
-              "children": []
-            },
-            {
-              "type": "paragraph",
-              "props": {
-                "backgroundColor": "default",
-                "textAlignment": "left",
-                "textColor": "default"
-              },
-              "content": [
-                {
-                  "styles": {},
-                  "text": "c0z,日 0 a:éb? ((date:eyJhbmNob3JJZCI6IjwmJl9fXyIsImRhdGVJU08iOiIyMDI2LTA4LTE0VDA5OjAwOjAwLjAwMFoiLCJoYXNUaW1lIjp0cnVlLCJkYXRlRm9ybWF0IjoicmVsYXRpdmUiLCJyZW1pbmQiOiJub25lIiwidGltZUZvcm1hdCI6InN5c3RlbSJ9))",
+                  "text": "!日é0,:a,c!; ((mention:https%3A%2F%2Ffuzz.example%2F910%28%E6%97%A5)) 0é?b:,!z日,:é19.0;1.,",
                   "type": "text"
                 }
               ],
@@ -111049,7 +110964,7 @@
       "input": {
         "fn": "taskBlock.normalizeFromMarkdown",
         "args": [
-          "<details data-memry-toggle>\n<summary>;éc?;:!z!1éz 9?c??日c</summary>\n\n```ts\nconst x = 12\n```\n\n</details>\n\n\n<details data-memry-toggle>\n<summary>9!bb</summary>\n\né:\n\n</details>"
+          "é;\n\n\n> [!success]\n> 0!b9\n> ;:9a01éa,,:z0"
         ]
       },
       "expected": {
@@ -111066,53 +110981,22 @@
               "content": [
                 {
                   "styles": {},
-                  "text": ";éc?;:!z!1éz 9?c??日c",
+                  "text": "é;",
                   "type": "text"
                 }
               ],
               "children": []
             },
             {
-              "type": "codeBlock",
-              "props": {
-                "language": "ts"
-              },
-              "content": [
-                {
-                  "styles": {},
-                  "text": "const x = 12",
-                  "type": "text"
-                }
-              ],
-              "children": []
-            },
-            {
-              "type": "paragraph",
+              "type": "quote",
               "props": {
                 "backgroundColor": "default",
-                "textAlignment": "left",
                 "textColor": "default"
               },
               "content": [
                 {
                   "styles": {},
-                  "text": "9!bb",
-                  "type": "text"
-                }
-              ],
-              "children": []
-            },
-            {
-              "type": "paragraph",
-              "props": {
-                "backgroundColor": "default",
-                "textAlignment": "left",
-                "textColor": "default"
-              },
-              "content": [
-                {
-                  "styles": {},
-                  "text": "é:",
+                  "text": "[!success]\n 0!b9\n ;:9a01éa,,:z0",
                   "type": "text"
                 }
               ],
@@ -125890,7 +125774,7 @@
       "input": {
         "fn": "blockMarkers.linesFromMarkdown",
         "args": [
-          "> [!success]\n> 1. a\n> 2. b"
+          "> [!info]\n> One\n>\n> Two"
         ]
       },
       "expected": {
@@ -125974,7 +125858,7 @@
       "input": {
         "fn": "blockMarkers.linesFromMarkdown",
         "args": [
-          "Before\n\n$$\nx^2 + y^2 = z^2\n$$\n\nAfter"
+          "$$\n$$"
         ]
       },
       "expected": {
@@ -126450,7 +126334,7 @@
       "input": {
         "fn": "blockMarkers.linesFromMarkdown",
         "args": [
-          "**Bold**\n- Item"
+          "- a\n    - b"
         ]
       },
       "expected": {
@@ -126632,7 +126516,7 @@
       "input": {
         "fn": "blockMarkers.linesFromMarkdown",
         "args": [
-          "- a  \n  b"
+          "> a  \n> b"
         ]
       },
       "expected": {
@@ -126674,7 +126558,7 @@
       "input": {
         "fn": "blockMarkers.linesFromMarkdown",
         "args": [
-          "> - a\n>\n> ```\n> b\n> ```"
+          "> ```\n> - x\n> ```\nz"
         ]
       },
       "expected": {
@@ -126758,7 +126642,7 @@
       "input": {
         "fn": "blockMarkers.linesFromMarkdown",
         "args": [
-          "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%20z1z101%250%3D%7E)) tail."
+          "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F%E6%97%A5%299%7E%2310%26%2Az)) tail."
         ]
       },
       "expected": {
@@ -126772,7 +126656,7 @@
       "input": {
         "fn": "blockMarkers.linesFromMarkdown",
         "args": [
-          "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F19%C3%A9%21%21c%27%E6%97%A5%E6%97%A5%26099%20%C3%A9%3D%3D1z%3D%C3%A9%21)) tail."
+          "Fuzz ((mention:https%3A%2F%2Ffuzz.example%2F9%E6%97%A51%20%27%C3%A9%299%3Daa%26%21)) tail."
         ]
       },
       "expected": {
@@ -126786,7 +126670,7 @@
       "input": {
         "fn": "blockMarkers.linesFromMarkdown",
         "args": [
-          "Fuzz ((date:eyJhbmNob3JJZCI6ImE5MX7;LT4wPGIiLCJkYXRlSVNPIjoiMjAyNi0wOC0xNFQwOTowMDowMC4wMDBaIiwiaGFzVGltZSI6ZmFsc2UsImRhdGVGb3JtYXQiOiJyZWxhdGl2ZSIsInJlbWluZCI6ImF0IiwidGltZUZvcm1hdCI6InN5c3RlbSJ9)) tail."
+          "Fuzz ((date:eyJhbmNob3JJZCI6Iv9fPnpjX;85LT8wfjFfIiwiZGF0ZUlTTyI6IjIwMjYtMDgtMTRUMDk6MDA6MDAuMDAwWiIsImhhc1RpbWUiOmZhbHNlLCJkYXRlRm9ybWF0IjoicmVsYXRpdmUiLCJyZW1pbmQiOiJub25lIiwidGltZUZvcm1hdCI6InN5c3RlbSJ9)) tail."
         ]
       },
       "expected": {
@@ -126800,7 +126684,7 @@
       "input": {
         "fn": "blockMarkers.linesFromMarkdown",
         "args": [
-          "> [!warning]\n> 900:b0b, !\n> !é0 é,;1?bb??é;;"
+          "> [!error]\n> :1?aa; .zz99é日a1?日\n> éz1é c.日日?"
         ]
       },
       "expected": {
@@ -126814,7 +126698,7 @@
       "input": {
         "fn": "blockMarkers.linesFromMarkdown",
         "args": [
-          "$$\nz={&}0\naa_9{yx11= a0- \\{9=y\n$$"
+          "$$\n\\}0a{ab{z\\\\} 1b_1b}\\x1b\n+ &\\}}^{0\n$$"
         ]
       },
       "expected": {
@@ -126828,7 +126712,7 @@
       "input": {
         "fn": "blockMarkers.linesFromMarkdown",
         "args": [
-          "<details data-memry-toggle open>\n<summary>1zb;.é</summary>\n\né .:01a\n\n</details>"
+          "<details data-memry-toggle open>\n<summary>0.zzc.caébc,1é?é?ac</summary>\n\n```ts\nconst x = 35\n```\n\n</details>"
         ]
       },
       "expected": {
@@ -126842,7 +126726,7 @@
       "input": {
         "fn": "blockMarkers.linesFromMarkdown",
         "args": [
-          "9ab0b ((date:eyJhbmNob3JJZCI6ImJiYX5jeiIsImRhdGVJU08iOiIyMDI2LTA4LTE0VDA5OjAwOjAwLjAwMFoiLCJoYXNUaW1lIjp0cnVlLCJkYXRlRm9ybWF0IjoicmVsYXRpdmUiLCJyZW1pbmQiOiJub25lIiwidGltZUZvcm1hdCI6InN5c3RlbSJ9))\n\n\n<details data-memry-toggle>\n<summary>zzc.caébc,1</summary>\n\né1.cc;90日 .1日0\n\n</details>\n\n\n<details data-memry-toggle open>\n<summary>9:</summary>\n\nac é,,;,1!:?0a;a\n\n</details>\n\n\n.:01a01zb ((mention:https%3A%2F%2Ffuzz.example%2F%20zc%E6%97%A50%C3%A901%C3%A9)) .é0béé!?190, 0\n\n\nc0z,日 0 a:éb? ((date:eyJhbmNob3JJZCI6IjwmJl9fXyIsImRhdGVJU08iOiIyMDI2LTA4LTE0VDA5OjAwOjAwLjAwMFoiLCJoYXNUaW1lIjp0cnVlLCJkYXRlRm9ybWF0IjoicmVsYXRpdmUiLCJyZW1pbmQiOiJub25lIiwidGltZUZvcm1hdCI6InN5c3RlbSJ9))"
+          "1.!zz;9c.!日é;\n\n\n1 !c0c0z0;z? a,;?1, ((mention:https%3A%2F%2Ffuzz.example%2F%E6%97%A5ca%C3%A910)) 日b?;é !c z\n\n\n!日é0,:a,c!; ((mention:https%3A%2F%2Ffuzz.example%2F910%28%E6%97%A5)) 0é?b:,!z日,:é19.0;1.,"
         ]
       },
       "expected": {
@@ -126856,7 +126740,7 @@
       "input": {
         "fn": "blockMarkers.linesFromMarkdown",
         "args": [
-          "<details data-memry-toggle>\n<summary>;éc?;:!z!1éz 9?c??日c</summary>\n\n```ts\nconst x = 12\n```\n\n</details>\n\n\n<details data-memry-toggle>\n<summary>9!bb</summary>\n\né:\n\n</details>"
+          "é;\n\n\n> [!success]\n> 0!b9\n> ;:9a01éa,,:z0"
         ]
       },
       "expected": {
