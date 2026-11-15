@@ -140,6 +140,7 @@ struct JournalDayPage: View {
                     openTag: nil,
                     brokenLink: $brokenLink,
                     emptyBody: { preview in emptyBody(preview, model: model) },
+                    keepsEmptyBody: model.handingOff,
                     afterBacklinks: { EmptyView() }
                 )
             }
@@ -172,12 +173,16 @@ struct JournalDayPage: View {
     /// page's own body state (not on this phone, with its fetch button).
     @ViewBuilder
     private func emptyBody(_ preview: NoteBodyPreview, model: JournalDayPageModel) -> some View {
-        if case .empty = preview {
+        if preview == .empty || model.handingOff {
             JournalDayFirstLine(
                 placeholder: JournalCopy.placeholder(date: date, today: store.clock.today)
-            ) { line in
-                await model.writeFirstLine(line)
+            ) { line, carrying in
+                await model.writeFirstLine(line, carrying: carrying)
             }
+            // Its line is drawn as a block already.
+            .frame(height: model.handingOff ? 0 : nil)
+            .opacity(model.handingOff ? 0 : 1)
+            .accessibilityHidden(model.handingOff)
         } else {
             NoteBodyView(
                 preview: preview,

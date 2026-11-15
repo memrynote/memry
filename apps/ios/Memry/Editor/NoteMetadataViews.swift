@@ -85,13 +85,16 @@ struct NoteTitleEditor: View {
     let canEdit: Bool
     let rename: (String) -> Void
     let setIcon: (String?) -> Void
-    /// Return in the title moves the caret into the body, as on desktop.
-    var returnToBody: (() -> Void)?
+    /// Return in the title moves the caret into the body, as on desktop,
+    /// with the way to take the keys the title holds for it meanwhile.
+    var returnToBody: ((@escaping TitleBurst.Take) -> Void)?
     /// The edit in progress as it changes, `nil` once it ends.
     var draftChanged: ((String?) -> Void)?
 
     @State private var draft: String = ""
     @State private var commits = DraftCommits()
+    /// The Return whose keys the title holds until the body takes the caret.
+    @State private var returned: LineReturn?
     @State private var pickingIcon = false
     /// A new note's title wants the caret until the user types or moves it.
     @State private var claimsFocus = false
@@ -111,10 +114,63 @@ struct NoteTitleEditor: View {
         focused = false
     }
 
-    private func commitAndContinue() {
-        guard commits.editing else { return }
-        commit()
-        returnToBody?()
+    /// Return: saves the title before it and keeps the caret, holding the
+    /// keys typed after it for the body (`LineReturn`).
+    private func returnPressed(_ burst: LineReturn) {
+        guard let returnToBody else {
+            draft = draft.replacingOccurrences(of: "\n", with: "")
+            return commit()
+        }
+        returned = burst
+        if let text = commits.take(burst.line, explicit: true), text != title { rename(text) }
+        returnToBody(takeHeld)
+    }
+
+    /// The body took the caret: the keys typed since the Return go to it.
+    /// It refused the caret: they stay in the title (`TitleBurst.Take`).
+    private func takeHeld(_ moved: Bool) -> String? {
+        guard moved else {
+            keepHeld()
+            return nil
+        }
+        guard let burst = returned else { return nil }
+        returned = nil
+        let held = burst.held(in: draft)
+        draft = burst.line
+        return held?.isEmpty == false ? held : nil
+    }
+
+    /// The caret left the title before the body took it, or an edit reached
+    /// past the Return: the keys stay in the title, as a title edit.
+    private func keepHeld() {
+        guard let burst = returned else { return }
+        returned = nil
+        commits.begin(burst.line)
+        draft = draft.replacingOccurrences(of: "\n", with: "")
+    }
+
+    private func typed(_ value: String) {
+        if let burst = returned {
+            draft = value
+            if burst.held(in: value) == nil { keepHeld() }
+            return
+        }
+        // The edit ended while the field kept the caret (the app resumed):
+        // the keys start a new one. The field showed the stored title, and
+        // must not show it again over them.
+        if !commits.editing {
+            guard value != title else { return }
+            draft = title
+            commits.begin(title)
+        }
+        // A vertical field takes Return as a newline rather than a submit; a
+        // title is one line, so Return ends it.
+        if let burst = LineReturn(previous: draft, value: value) {
+            draft = value
+            return returnPressed(burst)
+        }
+        if value != draft { claimsFocus = false }
+        draft = value
     }
 
     var body: some View {
@@ -135,20 +191,12 @@ struct NoteTitleEditor: View {
             if canEdit {
                 TextField(
                     "",
+                    // The field shows the draft as typed, keys held after a
+                    // Return too: showing anything else would write it over
+                    // keys UIKit has and the binding has not seen yet.
                     text: Binding(
-                        get: { commits.editing ? draft : title },
-                        set: { value in
-                            // A vertical field takes Return as a newline
-                            // rather than a submit; a title is one line, so
-                            // Return commits it.
-                            if value.contains("\n") {
-                                draft = value.replacingOccurrences(of: "\n", with: "")
-                                commitAndContinue()
-                            } else {
-                                if value != draft { claimsFocus = false }
-                                draft = value
-                            }
-                        }
+                        get: { commits.editing || returned != nil ? draft : title },
+                        set: typed
                     ),
                     // Wraps rather than truncating a long title.
                     axis: .vertical
@@ -158,13 +206,29 @@ struct NoteTitleEditor: View {
                 .font(Tokens.Typography.screenTitle.font)
                 .foregroundStyle(Tokens.Text.primary.color)
                 .focused($focused)
-                .onSubmit(commitAndContinue)
+                .onSubmit {
+                    guard returned == nil else { return }
+                    // An edit that ended under the caret (the app resumed)
+                    // still moves to the body.
+                    if !commits.editing {
+                        draft = title
+                        commits.begin(title)
+                    }
+                    returnPressed(LineReturn(submitted: draft))
+                }
                 .onChange(of: focused) { _, isFocused in
                     if isFocused {
                         EditorFocusMemory.shared.forget()
-                        if !commits.editing {
+                        if !commits.editing, returned == nil {
                             draft = title
                             commits.begin(title)
+                        }
+                    } else if returned != nil {
+                        // The body taking the caret ends the title's focus
+                        // before it takes the held keys, on the same turn.
+                        DispatchQueue.main.async {
+                            keepHeld()
+                            commit()
                         }
                     } else {
                         commit()
@@ -212,6 +276,7 @@ struct NoteTitleEditor: View {
                 // still lands (#2680).
                 .onDisappear {
                     claimsFocus = false
+                    keepHeld()
                     commit()
                     draftChanged?(nil)
                 }

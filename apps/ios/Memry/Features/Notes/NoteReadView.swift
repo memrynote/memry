@@ -226,8 +226,8 @@ struct NoteReadView: View {
         await model.reload()
     }
 
-    private func focusBody(atEnd: Bool) async {
-        await editorModel.focusBody(in: model.blocks, atEnd: atEnd)
+    private func focusBody(atEnd: Bool, carrying held: TitleBurst.Take? = nil) async {
+        await editorModel.focusBody(in: model.blocks, atEnd: atEnd, carrying: held)
         await model.reload()
     }
 
@@ -276,7 +276,7 @@ struct NoteReadView: View {
                 case let .ready(detail):
                     NotePageTitle(
                         model: model, detail: detail, metadataModel: metadataModel,
-                        returnToBody: editorModel.canEdit ? { Task { await focusBody(atEnd: false) } } : nil
+                        returnToBody: editorModel.canEdit ? { held in Task { await focusBody(atEnd: false, carrying: held) } } : nil
                     )
                     NotePageContent(
                         model: model,

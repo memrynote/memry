@@ -146,6 +146,8 @@ final class EditorSession {
     @ObservationIgnored var shortcutKind = "paragraph"
     /// Keys typed after a Return, held for the block it makes (#4692).
     @ObservationIgnored var returnBurst: ReturnBurst?
+    /// Keys typed after the title's Return, held for the body (#4705).
+    @ObservationIgnored var titleBurst: TitleBurst?
     /// A column list just inserted, by its `id` prop: the caret goes to its
     /// first block once a redraw shows the ids the core minted for it
     /// (`resolveColumnFocus`).

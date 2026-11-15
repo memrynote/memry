@@ -40,6 +40,19 @@ struct ReturnBurst {
     var refused = false
 }
 
+/// The block a Return in a one-line field (the note's title, a journal
+/// day's first line) moves the caret to, and the way to take the keys the
+/// field held for it meanwhile (`LineReturn`).
+struct TitleBurst {
+    /// Takes the keys the field held. `moved` is false when the block
+    /// refused the caret: the field keeps its keys, stops holding them so
+    /// its Return works again, and answers `nil`.
+    typealias Take = @MainActor (_ moved: Bool) -> String?
+
+    let target: String
+    let take: Take
+}
+
 extension EditorSession {
     /// Return was pressed in `field` and its new block is on its way: keys
     /// typed in `field` from now are held for that block.
@@ -153,7 +166,10 @@ extension EditorSession {
     /// for it, so taking them any earlier misses those.
     func takeCaret(_ field: BlockField, atEnd: Bool = true) {
         let handing = returnBurst.map { $0.target == field.blockId && $0.source !== field } ?? false
+        let fromTitle = titleBurst?.target == field.blockId
         let textView = field.textView
+        // A row drawn but not yet in the window cannot take the caret: the
+        // keys stay held until it moves in (`field(_:movedInto:)`).
         if takesCaretOnArrival(field) { return pendingFocus = field.blockId }
         if handing { returnBurst?.handing = true }
         let took = textView.becomeFirstResponder()
@@ -162,6 +178,14 @@ extension EditorSession {
         if !took, redraws(field) {
             Log.interface.error("the row a type change redrew did not take the caret")
             pendingFocus = field.blockId
+        }
+        if fromTitle, let burst = titleBurst {
+            titleBurst = nil
+            // The field kept the caret, so its keys stay with it.
+            guard let held = burst.take(took) else { return }
+            type(held, into: field)
+            if !textView.isFirstResponder, field.dirty { commit(field) }
+            return
         }
         guard handing, let burst = returnBurst else { return }
         returnBurst = nil
@@ -182,11 +206,12 @@ extension EditorSession {
     /// `field` is not in a window yet, and takes the caret as it moves in
     /// (`field(_:movedInto:)`), in the turn the row it takes over from may
     /// leave: so no key arrives while no text view holds the caret. It is
-    /// the block a Return made, or a row a type change redrew.
+    /// the block a Return made, the block a one-line field's Return moves
+    /// to, or a row a type change redrew.
     func takesCaretOnArrival(_ field: BlockField) -> Bool {
         guard field.textView.window == nil else { return false }
         let handing = returnBurst.map { $0.target == field.blockId && $0.source !== field } ?? false
-        return handing || redraws(field)
+        return handing || titleBurst?.target == field.blockId || redraws(field)
     }
 
     /// `field` is the new row of a block a type change is redrawing.
