@@ -16,12 +16,10 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use memry_core::api::errors::StorageError;
-use memry_core::domain::body_tags::ALL_NOTE_TAGS;
 use memry_core::domain::embedding_input::build_query_embedding_input;
 use memry_core::domain::search::grouped::{self, GroupedQuery, GroupedResponse, SemanticHit};
 use memry_core::domain::search::{ModifiedRange, SearchFilter};
 use memry_core::storage::repositories::instants::to_epoch_ms;
-use rusqlite::{Connection, params};
 use serde::Deserialize;
 
 use crate::ai::features;
@@ -161,9 +159,8 @@ impl Searcher<'_> {
         let semantic = self.semantic_hits(&query.text);
         // Electron times `searchAll` after the query is embedded (`search.ts:553,680`).
         let start = Instant::now();
-        let response =
-            self.read(|data, index| Ok(grouped::search_all(data, index, &query, &semantic)));
-        let response = response.map(|response| self.respond(response, start));
+        let response = logged(self.vault.search.grouped(&query, &semantic))
+            .map(|response| self.respond(response, start));
         self.track(
             "global",
             response.as_ref().map(|r| (r.query_time_ms, r.total_count)),
@@ -180,8 +177,7 @@ impl Searcher<'_> {
         let types = note_file_types(types)?;
         let semantic = self.semantic_hits(text);
         let start = Instant::now();
-        let found = self
-            .read(|data, index| Ok(grouped::quick_search(data, index, text, &types, &semantic)));
+        let found = logged(self.vault.search.grouped_quick(text, &types, &semantic));
         let response = found.map(|found| {
             let tags = self.tags(found.iter().map(|item| item.id.as_str()));
             QuickSearchResponse {
@@ -223,23 +219,6 @@ impl Searcher<'_> {
         }
     }
 
-    /// Runs `read` over a reader of `data.db` and one of `index.db`; a failure is logged and
-    /// answers `None`.
-    fn read<T>(
-        &self,
-        read: impl FnOnce(&Connection, &Connection) -> Result<T, StorageError>,
-    ) -> Option<T> {
-        let index = self.vault.search.index_handle();
-        let answer = self
-            .vault
-            .vault
-            .db_handle()
-            .read_blocking(move |data| index.read_blocking(|index| read(data, index)));
-        answer
-            .inspect_err(|error| tracing::error!(scope = "Search", "search failed: {error}"))
-            .ok()
-    }
-
     /// The tags of the notes and journal days among `ids`, each once by its folded spelling,
     /// first spelling kept. Empty when the read fails.
     fn tags<'a>(&self, ids: impl Iterator<Item = &'a str>) -> Tags {
@@ -247,25 +226,10 @@ impl Searcher<'_> {
         if ids.is_empty() {
             return Tags::new();
         }
-        let ids = serde_json::to_string(&ids).unwrap_or_default();
-        let rows = self.vault.vault.db_handle().read_blocking(move |data| {
-            let mut statement = data
-                .prepare(&format!(
-                    "SELECT t.note_id, t.tag FROM {ALL_NOTE_TAGS} t
-                     WHERE t.note_id IN (SELECT value FROM json_each(?1))
-                     ORDER BY t.note_id, t.tag"
-                ))
-                .map_err(failed)?;
-            let rows = statement
-                .query_map(params![ids], |row| {
-                    Ok((row.get::<_, String>(0)?, row.get(1)?))
-                })
-                .map_err(failed)?
-                .collect::<Result<Vec<(String, String)>, _>>()
-                .map_err(failed)?;
-            Ok(rows)
-        });
-        let rows = rows
+        let rows = self
+            .vault
+            .search
+            .result_tags(&ids)
             .inspect_err(|error| tracing::warn!(scope = "Search", "result tags: {error}"))
             .unwrap_or_default();
         let mut tags = Tags::new();
@@ -309,8 +273,7 @@ impl Searcher<'_> {
         };
         self.vault
             .search
-            .index_handle()
-            .read_blocking(|index| Ok(grouped::semantic::note_hits(index, &vector)))
+            .semantic_note_hits(&vector)
             .inspect_err(|error| {
                 tracing::warn!(scope = "Search:Semantic", "vector read failed: {error}")
             })
@@ -343,18 +306,17 @@ fn warm_up(model: Arc<EmbeddingService>) {
     }
 }
 
-fn failed(error: rusqlite::Error) -> StorageError {
-    StorageError::Failed {
-        what: error.to_string(),
-    }
+/// A search read's answer; a failure is logged and answers `None`.
+fn logged<T>(read: Result<T, StorageError>) -> Option<T> {
+    read.inspect_err(|error| tracing::error!(scope = "Search", "search failed: {error}"))
+        .ok()
 }
 
 /// `search:get-stats`: the live rows of each type. A failed read answers zeros, as Electron does.
 pub fn stats(vault: &OpenVault) -> SearchStats {
     vault
-        .vault
-        .db_handle()
-        .read_blocking(grouped::stats)
+        .search
+        .grouped_stats()
         .map(view::stats)
         .inspect_err(|error| tracing::error!(scope = "Search", "search stats failed: {error}"))
         .unwrap_or_default()

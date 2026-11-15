@@ -10,13 +10,15 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
-use memry_core::storage::vec::{EMBEDDING_DIMENSION, VecTable, to_blob};
+use memry_core::storage::vec::EMBEDDING_DIMENSION;
 use memry_desktop::ai::features::{self, AiSettingsPatch};
 use memry_desktop::embedding::download::Abort;
+use memry_desktop::embedding::projector::NoteEmbeddingProjector;
 use memry_desktop::embedding::service::{
     EmbeddingService, Engine, ModelLoader, ModelProgress, Timing,
 };
 use memry_desktop::registry::AppConfig;
+use memry_desktop::session::OpenSource;
 use memry_desktop::settings::SettingsService;
 use serde_json::{Value, json};
 use support::{MemoryStore, Mocked, WAIT};
@@ -36,6 +38,7 @@ fn opened() -> Fixture {
     let commands = tauri_specta::Builder::<MockRuntime>::new()
         .error_handling(tauri_specta::ErrorHandlingMode::Throw)
         .commands(collect_commands![
+            memry_tauri::commands::ai::ai_reindex_embeddings::<MockRuntime>,
             memry_tauri::commands::search::search_query::<MockRuntime>,
             memry_tauri::commands::search::search_quick::<MockRuntime>,
             memry_tauri::commands::search::search_get_stats::<MockRuntime>,
@@ -79,6 +82,20 @@ fn note_ids(response: &Value) -> Vec<String> {
         .flat_map(|group| group["results"].as_array().unwrap().iter())
         .map(|item| item["id"].as_str().unwrap().to_owned())
         .collect()
+}
+
+fn reindex(f: &Fixture) -> Value {
+    f.mocked.invoke("ai_reindex_embeddings", json!({})).unwrap()
+}
+
+fn set_ai(f: &Fixture, enabled: bool) {
+    let settings = f.mocked.webview.state::<SettingsService>();
+    let vault = f.mocked.session().current();
+    let patch = AiSettingsPatch {
+        enabled: Some(enabled),
+        ..AiSettingsPatch::default()
+    };
+    features::write(&settings, vault.as_ref(), &patch).unwrap();
 }
 
 fn note_id(f: &Fixture, word: &str) -> String {
@@ -293,29 +310,14 @@ fn with_model(f: &Fixture, model: Arc<Model>) -> Arc<EmbeddingService> {
     service
 }
 
-/// Stores [`unit`] as the garden note's vector and answers its id.
+/// Stores [`unit`] as the garden note's vectors, through the store the embedding lane writes
+/// with, and answers its id.
 fn garden_near_everything(f: &Fixture) -> String {
     let garden = note_id(f, "tomatoes");
-    let id = garden.clone();
-    f.mocked
-        .session()
-        .current()
-        .unwrap()
-        .search
-        .index_handle()
-        .call_blocking(move |index| {
-            index
-                .execute(
-                    &format!(
-                        "INSERT INTO {}(note_id, embedding) VALUES (?1, ?2)",
-                        VecTable::Notes.name()
-                    ),
-                    (id, to_blob(&unit())),
-                )
-                .map_err(|error| memry_core::api::errors::StorageError::Failed {
-                    what: error.to_string(),
-                })
-        })
+    let search = f.mocked.session().current().unwrap().search;
+    let note = search.embeddable_note(&garden).unwrap().unwrap();
+    search
+        .store_note_embeddings(&note, "hash", vec![unit()], unit())
         .unwrap();
     garden
 }
@@ -352,13 +354,7 @@ fn ai_off_answers_from_the_index_without_embedding() {
     let model = Arc::new(Model::default());
     let service = with_model(&f, model.clone());
     assert!(service.load());
-    let settings = f.mocked.webview.state::<SettingsService>();
-    let vault = f.mocked.session().current();
-    let off = AiSettingsPatch {
-        enabled: Some(false),
-        ..AiSettingsPatch::default()
-    };
-    features::write(&settings, vault.as_ref(), &off).unwrap();
+    set_ai(&f, false);
 
     assert_eq!(note_ids(&query(&f, "vegetables")), Vec::<String>::new());
     assert_eq!(model.embeds.load(Ordering::SeqCst), 0);
@@ -386,4 +382,63 @@ fn with_no_model_the_query_answers_from_the_index() {
     garden_near_everything(&f);
     assert_eq!(note_ids(&query(&f, "vegetables")), Vec::<String>::new());
     assert_eq!(note_ids(&query(&f, "basil")).len(), 1);
+}
+
+/// The app's embedding lane over `model`, on the vault reopened so its runtime runs the lane.
+/// Opened with AI off, so the open's reconcile embeds nothing.
+fn with_lane(f: &Fixture, model: Arc<Model>) {
+    let service = with_model(f, model);
+    let session = f.mocked.session();
+    let settings = f.mocked.webview.state::<SettingsService>().inner().clone();
+    session.register_projector(NoteEmbeddingProjector::new(
+        &session,
+        service,
+        Arc::new(move |vault| features::read(&settings, Some(vault)).is_ok_and(|ai| ai.enabled)),
+        Arc::new(|| false),
+        Arc::new(|_| {}),
+    ));
+    set_ai(f, false);
+    session.close();
+    session.open(&f.mocked.vault, OpenSource::Select).unwrap();
+    until("the reopened vault answered a search", || {
+        query(f, "tomatoes")["totalCount"] == 1
+    });
+}
+
+#[test]
+fn a_reindex_embeds_every_note_and_the_query_finds_them_by_meaning() {
+    let f = opened();
+    let model = Arc::new(Model::default());
+    with_lane(&f, model.clone());
+    let mut notes = vec![note_id(&f, "roadmap"), note_id(&f, "tomatoes")];
+    notes.sort();
+
+    assert_eq!(
+        reindex(&f),
+        json!({ "success": false, "computed": 0, "skipped": 0, "error": "AI is disabled" })
+    );
+    assert_eq!(note_ids(&query(&f, "vegetables")), Vec::<String>::new());
+
+    set_ai(&f, true);
+    assert_eq!(
+        reindex(&f),
+        json!({ "success": true, "computed": 2, "skipped": 0 })
+    );
+    let mut found = note_ids(&query(&f, "vegetables"));
+    found.sort();
+    assert_eq!(found, notes);
+}
+
+#[test]
+fn a_reindex_with_no_embedding_lane_says_the_model_did_not_load() {
+    let f = opened();
+    assert_eq!(
+        reindex(&f),
+        json!({
+            "success": false, "computed": 0, "skipped": 0,
+            "error": "Failed to load embedding model"
+        })
+    );
+    f.mocked.session().close();
+    assert_eq!(reindex(&f)["error"], "No vault is open");
 }

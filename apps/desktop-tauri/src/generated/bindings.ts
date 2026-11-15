@@ -48,6 +48,11 @@ export const commands = {
 	/**  Ends a provider call the renderer aborted, before or after its head. */
 	aiProviderCancel: (requestId: string) => __TAURI_INVOKE<void>("ai_provider_cancel", { requestId }),
 	/**
+	 *  `settings:reindex-embeddings`: every note embedded again by the `embedding` lane, awaited.
+	 *  A refusal is the answer's `error`, as Electron's.
+	 */
+	aiReindexEmbeddings: () => __TAURI_INVOKE<ReindexResult>("ai_reindex_embeddings"),
+	/**
 	 *  Proposals for the empty fields of a note's header tags from the inline AI model. Writes
 	 *  nothing but the disclosure's acceptance; a model failure is the `failed` result.
 	 */
@@ -2494,6 +2499,14 @@ export type QuickSearchResponse = {
  *  the file (a frontmatter that does not parse, a document a markdown file cannot hold).
  */
 export type RefsKept = "changing" | "unreadable";
+
+/**  `reindexEmbeddings`'s answer. `error` is the lane's English reason, as Electron answers it. */
+export type ReindexResult = {
+	success: boolean,
+	computed: number,
+	skipped: number,
+	error?: string | null,
+};
 
 /**  `RelationKind`. */
 export type RelationKind = "note" | "task" | "event" | "external-event" | "canvas" | "journal";
