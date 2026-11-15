@@ -164,7 +164,6 @@ const baseAuthState = {
   wizardLinkingSessionId: null,
   wizardVerificationCode: null,
   wizardExpiresAt: null,
-  wizardOAuthState: null,
   wizardError: null
 }
 
@@ -194,7 +193,16 @@ function mockAuth(
       needsRecoveryInput: false
     }),
     resendOtp: vi.fn().mockResolvedValue({ expiresIn: 30 }),
-    initOAuth: vi.fn().mockResolvedValue({ state: 'oauth-state' }),
+    oauthSession: null,
+    isOAuthBusy: false,
+    initOAuth: vi.fn().mockResolvedValue({
+      state: 'oauth-state',
+      authorizationUrl: 'https://accounts.google.com/auth?state=oauth-state',
+      browserOpened: true
+    }),
+    retryOAuth: vi.fn().mockResolvedValue(undefined),
+    cancelOAuth: vi.fn(),
+    setupFirstDevice: vi.fn().mockResolvedValue(null),
     confirmRecoveryPhrase: vi.fn().mockResolvedValue(undefined),
     linkViaRecovery: vi.fn().mockResolvedValue({ deviceId: 'device-1' }),
     linkingCompleted: vi.fn(),
@@ -235,10 +243,7 @@ describe('SetupWizard', () => {
     expect(auth.clearWizardError).toHaveBeenCalled()
 
     await user.click(screen.getByRole('button', { name: 'google oauth' }))
-    await waitFor(() =>
-      expect(auth.setWizardStep).toHaveBeenCalledWith('sign-in', { oauthState: 'oauth-state' })
-    )
-    expect(auth.initOAuth).toHaveBeenCalledWith()
+    await waitFor(() => expect(auth.initOAuth).toHaveBeenCalledWith())
   })
 
   it('handles OTP verify, resend, and back paths', async () => {
