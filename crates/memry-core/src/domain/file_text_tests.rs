@@ -248,6 +248,7 @@ fn delete_source_and_delete_notes_forget_jobs_and_text() {
             reset_file(conn, &s, "s", "1", T0)?;
             save_part(conn, &s, 1, ExtractedTextMethod::PdfText, note)?;
         }
+        assert_eq!(note_ids(conn)?, ["a", "b", "c"]);
         delete_source(conn, &src("a", "x.html"))?;
         assert!(job(conn, &src("a", "x.html"))?.is_none());
         assert!(job(conn, &src("a", OWN_FILE))?.is_some());
@@ -258,6 +259,27 @@ fn delete_source_and_delete_notes_forget_jobs_and_text() {
         assert!(job(conn, &src("b", OWN_FILE))?.is_none());
         assert_eq!(extracted_text_for_note(conn, "a")?, "");
         assert_eq!(extracted_text_for_note(conn, "c")?, "c");
+        assert_eq!(note_ids(conn)?, ["c"]);
+        Ok(())
+    })
+    .expect("run");
+}
+
+/// A status a newer build wrote reads as pending (REVIEW-4618): an error here would fail every
+/// scan of the file after a downgrade.
+#[test]
+fn a_status_a_newer_build_wrote_reads_as_pending() {
+    let db = index();
+    db.call_blocking(|conn| {
+        let s = src("a", OWN_FILE);
+        reset_file(conn, &s, "s", "1", T0)?;
+        conn.execute("UPDATE file_text_jobs SET status = 'paused'", [])
+            .map_err(failed)?;
+        assert_eq!(
+            job(conn, &s)?.expect("row").status,
+            FileTextJobStatus::Pending
+        );
+        assert_eq!(jobs_with_status(conn, FileTextJobStatus::Pending)?.len(), 0);
         Ok(())
     })
     .expect("run");

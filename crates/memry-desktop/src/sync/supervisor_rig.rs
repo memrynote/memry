@@ -96,6 +96,7 @@ impl SyncPasses for FakeDriver {
             pull: PullReport::default(),
             parked: false,
             pushed: false,
+            pushed_items: 0,
             pull_error: error,
             push_error: None,
         })
