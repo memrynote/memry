@@ -507,9 +507,15 @@ final class EditorSession {
     /// since the last commit into a link node (desktop's input rule). Never
     /// in a code block, whose text stays literal. Answers where a UTF-16
     /// location in `field` before the commit is after it, with each such
-    /// link drawn as its one-character node.
+    /// link drawn as its one-character node. `nodes` puts inline nodes in
+    /// after the typing and answers the edits it ran, which join the
+    /// typing's undo step.
     @discardableResult
-    func commit(_ field: BlockField, then: (@MainActor () async -> Void)? = nil) -> (Int) -> Int {
+    func commit(
+        _ field: BlockField,
+        then: (@MainActor () async -> Void)? = nil,
+        inserting nodes: (@MainActor (NoteEditorViewModel) async -> [BlockEdit])? = nil
+    ) -> (Int) -> Int {
         // Held by the queued write, not read when it runs: a page torn down
         // (a split view swapping notes, Back, a size-class re-host) drops
         // the model before its last typing lands.
@@ -543,17 +549,34 @@ final class EditorSession {
         let moved = links.isEmpty ? { $0 } : field.drawLinks(links)
         // The session too, so the write still schedules its sync pass.
         enqueue {
-            if dirty, text != base {
-                await model.commit(text, for: blockId, base: base)
-                // From `base`, as the write: the block may hold another
-                // pane's typing since, which undo and redo keep.
+            let wrote = dirty && text != base
+            if wrote { await model.commit(text, for: blockId, base: base) }
+            let converted = typed.isEmpty
+                ? [] : await model.insertTypedWikiLinks(typed, in: blockId, typedLength: length)
+            let added = await nodes?(model) ?? []
+            // From `base`, as the write: the block may hold another pane's
+            // typing since, which undo and redo keep. To this pane's text
+            // with the nodes in, so undo takes them back too.
+            if !converted.isEmpty || !added.isEmpty {
+                let spans = converted.map { $0.link.start ..< $0.link.start + $0.link.literal.utf8.count }
+                    + added.compactMap(Self.span)
+                self.history.record(.text(
+                    blockId: blockId, from: base, typed: text, nodes: converted.map(\.edit) + added,
+                    to: BlockText.placingNodes(spans, in: attributed)
+                ))
+            } else if wrote {
                 self.history.record(.text(blockId: blockId, from: base, to: text))
             }
-            if !typed.isEmpty { await model.insertTypedWikiLinks(typed, in: blockId, typedLength: length) }
             await then?()
-            if dirty || !typed.isEmpty || then != nil { await self.didChange() }
+            if dirty || !typed.isEmpty || nodes != nil || then != nil { await self.didChange() }
         }
         return moved
+    }
+
+    /// The core range an `insertInline` replaced.
+    private static func span(_ edit: BlockEdit) -> Range<Int>? {
+        guard case let .insertInline(_, start, end, _, _, _) = edit else { return nil }
+        return Int(start) ..< Int(max(start, end))
     }
 
     /// Commits the focused block (if any), then runs `work` against it.
@@ -702,9 +725,10 @@ final class EditorSession {
         self.tagTrigger = nil
         tagSuggestions = []
         let attrs = HashTagAttrs.attrs(tag: suggestion.tag, colors: tagColors)
-        withFocused { model, blockId in
-            await model.insertInline(blockId, from: start, to: end, kind: "hashTag", text: "", attrs: attrs)
-        }
+        let blockId = field.blockId
+        commit(field, inserting: { model in
+            [await model.insertInline(blockId, from: start, to: end, kind: "hashTag", text: "", attrs: attrs)]
+        })
     }
 
     // MARK: The focused block's place
@@ -1092,25 +1116,26 @@ final class EditorSession {
         // Read once the commit has drawn a typed `[[…]]` before `range` as
         // its node, as the core holds it when the nodes go in.
         var start = 0
-        let moved = commit(field) { [weak self] in
-            guard let model = self?.model else { return }
+        let moved = commit(field, inserting: { model in
+            var edits: [BlockEdit] = []
             // Last first, so each node's offset still counts only the spaces
             // before it.
             for (index, kind) in kinds.enumerated().reversed() {
                 let at = start + index
                 switch kind {
                 case let .note(title, alias):
-                    await model.insertWikiLink(in: blockId, from: at, to: at, title: title, alias: alias)
+                    edits.append(await model.insertWikiLink(in: blockId, from: at, to: at, title: title, alias: alias))
                 case let .create(title, alias):
                     await model.createNote(titled: title)
-                    await model.insertWikiLink(in: blockId, from: at, to: at, title: title, alias: alias)
+                    edits.append(await model.insertWikiLink(in: blockId, from: at, to: at, title: title, alias: alias))
                 case let .date(value):
-                    await model.insertDateMention(in: blockId, from: at, to: at, value: value)
+                    edits.append(await model.insertDateMention(in: blockId, from: at, to: at, value: value))
                 case .slash:
                     break
                 }
             }
-        }
+            return edits
+        })
         let location = moved(range.location)
         start = BlockText.coreOffset(in: textView.attributedText ?? NSAttributedString(), utf16: location)
         field.pendingSelection = NSRange(location: location + 2 * kinds.count, length: 0)

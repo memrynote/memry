@@ -77,21 +77,51 @@ enum BlockText {
     /// The core offset of a UTF-16 position in the text view's text.
     static func coreOffset(in text: NSAttributedString, utf16 offset: Int) -> Int {
         let end = min(max(offset, 0), text.length)
-        let string = text.string as NSString
         var bytes = 0
         var index = 0
         while index < end {
-            let range = string.rangeOfComposedCharacterSequence(at: index)
-            let piece = string.substring(with: range)
-            if piece == placeholder,
-               let nodeBytes = text.attribute(.memryNodeBytes, at: index, effectiveRange: nil) as? Int {
-                bytes += nodeBytes
-            } else {
-                bytes += piece.utf8.count
-            }
-            index = range.location + range.length
+            bytes += coreBytes(in: text, at: &index)
         }
         return bytes
+    }
+
+    /// The UTF-16 position of a core offset in the text view's text: the
+    /// first one that many bytes in.
+    static func utf16Offset(in text: NSAttributedString, core offset: Int) -> Int {
+        var bytes = 0
+        var index = 0
+        while index < text.length, bytes < offset {
+            bytes += coreBytes(in: text, at: &index)
+        }
+        return index
+    }
+
+    /// The core bytes of the character at `index`, which moves past it.
+    private static func coreBytes(in text: NSAttributedString, at index: inout Int) -> Int {
+        let range = (text.string as NSString).rangeOfComposedCharacterSequence(at: index)
+        let piece = (text.string as NSString).substring(with: range)
+        defer { index = NSMaxRange(range) }
+        if piece == placeholder,
+           let nodeBytes = text.attribute(.memryNodeBytes, at: index, effectiveRange: nil) as? Int {
+            return nodeBytes
+        }
+        return piece.utf8.count
+    }
+
+    /// `text` with an atom node, a U+FFFC of no core bytes, put over each
+    /// core range in turn: the block as the core holds it once those
+    /// `insertInline`s land on `text`.
+    static func placingNodes(_ spans: [Range<Int>], in text: NSAttributedString) -> String {
+        let result = NSMutableAttributedString(attributedString: text)
+        for span in spans {
+            let lower = utf16Offset(in: result, core: span.lowerBound)
+            let upper = max(lower, utf16Offset(in: result, core: span.upperBound))
+            result.replaceCharacters(
+                in: NSRange(location: lower, length: upper - lower),
+                with: NSAttributedString(string: placeholder, attributes: [.memryNodeBytes: 0])
+            )
+        }
+        return result.string
     }
 
     // MARK: - Drawing

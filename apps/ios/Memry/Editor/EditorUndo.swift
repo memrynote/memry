@@ -30,7 +30,8 @@ struct EditorUndoStep: Sendable, Equatable {
     /// The operation that does it again.
     let forward: BlockEdit
     /// Replayed after `forward`: the props an inserted block carries, which
-    /// `InsertBlock` alone cannot write.
+    /// `InsertBlock` alone cannot write, or the inline nodes typing put in,
+    /// which `ReplaceText` cannot.
     var forwardProps: [BlockEdit] = []
     /// Replayed after `backward`: a step that changed two blocks, such as a
     /// merge, puts both back.
@@ -122,6 +123,22 @@ extension EditorUndoStep {
             name: "Typing",
             backward: .replaceText(blockId: blockId, text: previous, base: next),
             forward: .replaceText(blockId: blockId, text: next, base: previous)
+        )
+    }
+
+    /// Typing whose commit then put inline nodes in: a typed `[[link]]`, a
+    /// menu's or a drop's link or date. `next` is the block as the step left
+    /// it, each node a U+FFFC, so undo's diff takes the nodes back with the
+    /// typing. A U+FFFC in `ReplaceText` makes no node, so redo writes the
+    /// typing, `typed`, then runs `nodes` again as they went in.
+    static func text(
+        blockId: String, from previous: String, typed: String, nodes: [BlockEdit], to next: String
+    ) -> EditorUndoStep {
+        EditorUndoStep(
+            name: "Typing",
+            backward: .replaceText(blockId: blockId, text: previous, base: next),
+            forward: .replaceText(blockId: blockId, text: typed, base: previous),
+            forwardProps: nodes
         )
     }
 

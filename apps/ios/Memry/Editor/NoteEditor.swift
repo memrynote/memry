@@ -387,7 +387,9 @@ final class NoteEditorViewModel {
     /// as elements beside the block's text, so `mark` cannot make one and the
     /// core has its own operation for it.
     ///
-    /// `start == end` inserts at the caret without removing anything.
+    /// `start == end` inserts at the caret without removing anything. Answers
+    /// the edit it ran, which an undo step's redo runs again.
+    @discardableResult
     func insertInline(
         _ blockId: String,
         from start: Int,
@@ -395,17 +397,17 @@ final class NoteEditorViewModel {
         kind: String,
         text: String,
         attrs: [String: String]
-    ) async {
-        await run(
-            .insertInline(
-                blockId: blockId,
-                start: UInt32(max(0, start)),
-                end: UInt32(max(0, end)),
-                kind: kind,
-                text: text,
-                attrs: attrs
-            )
+    ) async -> BlockEdit {
+        let edit = BlockEdit.insertInline(
+            blockId: blockId,
+            start: UInt32(max(0, start)),
+            end: UInt32(max(0, end)),
+            kind: kind,
+            text: text,
+            attrs: attrs
         )
+        await run(edit)
+        return edit
     }
 
     /// A wiki link to `title` (N602), in desktop's shape.
@@ -415,13 +417,14 @@ final class NoteEditorViewModel {
     /// no text inside the node, and an empty `alias` when the link shows its
     /// target. An alias equal to the target is no alias, as `wikiLinkToText`
     /// treats it.
+    @discardableResult
     func insertWikiLink(
         in blockId: String,
         from start: Int,
         to end: Int,
         title: String,
         alias: String? = nil
-    ) async {
+    ) async -> BlockEdit {
         await insertInline(
             blockId,
             from: start,
@@ -436,25 +439,35 @@ final class NoteEditorViewModel {
     /// Each `start` is in the pane's text, `typedLength` core bytes long.
     /// A pane that had not re-read the note lands its commit rebased on the
     /// live block (#4377), so each literal is found where the block now
-    /// holds it; one no longer there stays text.
-    func insertTypedWikiLinks(_ links: [WikiLinkText.Typed], in blockId: String, typedLength: Int) async {
-        var live: String?
+    /// holds it; one no longer there stays text. A block that could not be
+    /// read keeps every literal as text: the pane's offsets may miss it.
+    /// Answers each link it converted with the edit it ran, in that order.
+    func insertTypedWikiLinks(
+        _ links: [WikiLinkText.Typed], in blockId: String, typedLength: Int
+    ) async -> [(link: WikiLinkText.Typed, edit: BlockEdit)] {
+        let live: String?
         do {
             live = try await editor?.blockText(noteId: noteId, blockId: blockId)
         } catch {
             Log.storage.error("a typed link's block could not be read", .code(ErrorMapping.userFacing(error).code))
+            return []
         }
+        // `nil` without an error: the surface reads no block (the journal),
+        // and holds only this pane's text.
         let starts: [Int?] = live.map { WikiLinkText.locate(links, in: $0, typedLength: typedLength) }
             ?? links.map(\.start)
+        var converted: [(link: WikiLinkText.Typed, edit: BlockEdit)] = []
         for (link, start) in zip(links, starts).reversed() {
             guard let start else {
                 Log.storage.error("a typed link's text was gone from its block")
                 continue
             }
-            await insertWikiLink(
+            let edit = await insertWikiLink(
                 in: blockId, from: start, to: start + link.literal.utf8.count, title: link.target, alias: link.alias
             )
+            converted.append((link, edit))
         }
+        return converted
     }
 
     /// Creates the note titled `title` in the new-notes folder, for the `[[`
@@ -478,13 +491,14 @@ final class NoteEditorViewModel {
     /// (`packages/editor-schema/src/inline/date-mention.ts`), minted by
     /// `insertDatePill` with a `dm_<uuid>` anchor. An edited date keeps its
     /// `anchorId`, as desktop's `updateDateMention` does.
+    @discardableResult
     func insertDateMention(
         in blockId: String,
         from start: Int,
         to end: Int,
         value: DateMentionValue,
         anchorId: String? = nil
-    ) async {
+    ) async -> BlockEdit {
         await insertInline(
             blockId,
             from: start,
