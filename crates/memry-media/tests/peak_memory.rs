@@ -138,9 +138,9 @@ fn an_rgb_image_with_a_profile_thumbnails_under_the_cap() {
 fn a_grey_image_too_large_to_convert_whole_is_refused_before_allocating() {
     let bytes = zeros_png(0x3FFF, 0x3FFF, 0, None);
     let (fitted, peak) = peak_of(|| decode_fit(&bytes, 0x3FFF));
+    assert!(peak < 16 * 1024 * 1024, "peak {peak} bytes");
     let error = fitted.expect_err("refused").to_string();
     assert!(error.ends_with("-byte limit"), "{error}");
-    assert!(peak < 16 * 1024 * 1024, "peak {peak} bytes");
 
     let (rgb, peak) = peak_of(|| memry_media::decode(&bytes));
     assert!(
@@ -211,31 +211,37 @@ fn animated_webp(width: u32, height: u32) -> Vec<u8> {
     webp(&[(b"VP8X", vp8x), (b"ANIM", vec![0; 6]), (b"ANMF", anmf)])
 }
 
-/// A GIF whose first frame starts one pixel in from the left, so the decoder reads it into a
-/// buffer of its own. Its LZW data ends at once, so a decode that gets that far fails.
-fn offset_gif(width: u16, height: u16) -> Vec<u8> {
+/// A GIF whose first frame, `left` pixels in from the left, is `width` by `height` on a `screen`,
+/// so the decoder reads it into a buffer of its own unless it fills the screen's rows. Its LZW data
+/// ends at once, so a decode that gets that far fails.
+fn first_frame_gif(screen: (u16, u16), left: u16, width: u16, height: u16) -> Vec<u8> {
     let mut gif = b"GIF89a".to_vec();
-    gif.extend(width.to_le_bytes());
-    gif.extend(height.to_le_bytes());
+    gif.extend(screen.0.to_le_bytes());
+    gif.extend(screen.1.to_le_bytes());
     gif.extend([0x80, 0, 0, 0, 0, 0, 0xFF, 0xFF, 0xFF]);
     gif.push(0x2C);
-    for value in [1, 0, width - 1, height] {
+    for value in [left, 0, width, height] {
         gif.extend(value.to_le_bytes());
     }
     gif.extend([0, 2, 1, 0x2C, 0, 0x3B]);
     gif
 }
 
+/// A GIF whose first frame starts one pixel in from the left.
+fn offset_gif(width: u16, height: u16) -> Vec<u8> {
+    first_frame_gif((width, height), 1, width - 1, height)
+}
+
 fn assert_refused_before_allocating(bytes: &[u8]) {
     let (fitted, peak) = peak_of(|| decode_fit(bytes, 200));
+    assert!(peak < 16 * 1024 * 1024, "peak {peak} bytes");
     let error = fitted.expect_err("refused").to_string();
     assert!(error.ends_with("-byte limit"), "{error}");
-    assert!(peak < 16 * 1024 * 1024, "peak {peak} bytes");
 
     let (rgb, peak) = peak_of(|| memry_media::decode(bytes));
+    assert!(peak < 16 * 1024 * 1024, "peak {peak} bytes");
     let error = rgb.expect_err("refused").to_string();
     assert!(error.ends_with("-byte limit"), "{error}");
-    assert!(peak < 16 * 1024 * 1024, "peak {peak} bytes");
 }
 
 /// Its 536 MB RGB frame fits the cap, but the decoder also holds the first frame as RGBA and an
@@ -272,4 +278,246 @@ fn webps_just_under_the_cap_with_their_scratch_decode_under_it() {
         assert_eq!(fitted.image.width(), 200);
         assert!(peak < CAP, "peak {peak} bytes");
     }
+}
+
+/// A VP8 key frame's header, `width` by `height`, with an empty first partition: the decoder
+/// allocates its planes, then fails.
+fn vp8(width: u16, height: u16) -> Vec<u8> {
+    let mut data = vec![0, 0, 0, 0x9D, 0x01, 0x2A];
+    data.extend(width.to_le_bytes());
+    data.extend(height.to_le_bytes());
+    data
+}
+
+/// A VP8X header: `flags`, then the canvas size.
+fn vp8x(flags: u8, width: u32, height: u32) -> Vec<u8> {
+    let mut data = vec![flags, 0, 0, 0];
+    data.extend(three_bytes(width - 1));
+    data.extend(three_bytes(height - 1));
+    data
+}
+
+/// An ANMF chunk's data: a `width` by `height` frame at the origin, then `frame`.
+fn anmf(width: u32, height: u32, frame: &[u8]) -> Vec<u8> {
+    let mut data = [0, 0, 0, 0, 0, 0].to_vec();
+    data.extend(three_bytes(width - 1));
+    data.extend(three_bytes(height - 1));
+    data.extend(three_bytes(100));
+    data.push(0);
+    data.extend(frame);
+    data
+}
+
+fn subchunk(fourcc: &[u8; 4], data: &[u8]) -> Vec<u8> {
+    let mut out = fourcc.to_vec();
+    out.extend(u32::try_from(data.len()).expect("small").to_le_bytes());
+    out.extend(data);
+    out
+}
+
+/// Refused before the frame or any scratch is allocated, with `reason`.
+fn assert_refused_early(bytes: &[u8], reason: &str) {
+    let (fitted, peak) = peak_of(|| decode_fit(bytes, 200));
+    assert!(peak < 16 * 1024 * 1024, "peak {peak} bytes");
+    let error = fitted.expect_err("refused").to_string();
+    assert!(error.contains(reason), "{error}");
+
+    let (rgb, peak) = peak_of(|| memry_media::decode(bytes));
+    assert!(peak < 16 * 1024 * 1024, "peak {peak} bytes");
+    let error = rgb.expect_err("refused").to_string();
+    assert!(error.contains(reason), "{error}");
+}
+
+/// A still image whose decoder reads the lossless frame inside an ANMF chunk instead of the lossy
+/// one beside it: counted as lossy (4.5 bytes a pixel, 533 MB), it decodes at 7.875 (932 MB).
+#[test]
+fn a_still_webp_holding_an_animation_frame_is_refused_before_allocating() {
+    let lossless = subchunk(b"VP8L", &vp8l(10_880, 10_880, false));
+    let bytes = webp(&[
+        (b"VP8X", vp8x(0, 10_880, 10_880)),
+        (b"VP8 ", vp8(10_880, 10_880)),
+        (b"ANMF", anmf(10_880, 10_880, &lossless)),
+    ]);
+    assert_refused_early(&bytes, "animation frame");
+}
+
+/// The decoder sizes a VP8 frame's planes from its own header, before comparing it with the
+/// image: a 16383 square header in a 10880 square still image, 758 MB.
+#[test]
+fn a_vp8_header_larger_than_its_still_image_is_refused_before_allocating() {
+    let still = webp(&[
+        (b"VP8X", vp8x(0, 10_880, 10_880)),
+        (b"VP8 ", vp8(16_383, 16_383)),
+    ]);
+    assert_refused_early(&still, "VP8 frame size");
+}
+
+/// The same in a 6900 square animation frame, 545 MB.
+#[test]
+fn a_vp8_header_larger_than_its_animation_frame_is_refused_before_allocating() {
+    let frame = subchunk(b"VP8 ", &vp8(16_383, 16_383));
+    let animated = webp(&[
+        (b"VP8X", vp8x(0x02, 6_900, 6_900)),
+        (b"ANIM", vec![0; 6]),
+        (b"ANMF", anmf(6_900, 6_900, &frame)),
+    ]);
+    assert_refused_early(&animated, "VP8 frame size");
+}
+
+/// `webp` with a last chunk whose header declares 4 GiB and whose data stops after 4 bytes.
+fn with_cut_chunk(mut file: Vec<u8>, fourcc: &[u8; 4]) -> Vec<u8> {
+    file.extend(fourcc);
+    file.extend(0xFFFF_FFF0_u32.to_le_bytes());
+    file.extend([0; 4]);
+    let riff = u32::try_from(file.len() - 8).expect("small");
+    file[4..8].copy_from_slice(&riff.to_le_bytes());
+    file
+}
+
+/// The decoder allocates an EXIF chunk at its declared size before reading it: 4 GiB from a
+/// 58-byte file.
+#[test]
+fn a_webp_chunk_past_the_end_of_the_file_is_refused_before_allocating() {
+    let still = with_cut_chunk(
+        webp(&[(b"VP8X", vp8x(0x08, 1, 1)), (b"VP8L", vp8l(1, 1, false))]),
+        b"EXIF",
+    );
+    assert_refused_early(&still, "past the end of the file");
+}
+
+/// The same as an animation frame's subchunk, which the decoder files as the image's EXIF.
+#[test]
+fn a_webp_frame_subchunk_past_the_end_of_the_file_is_refused_before_allocating() {
+    let mut cut = b"EXIF".to_vec();
+    cut.extend(0xFFFF_FFF0_u32.to_le_bytes());
+    cut.extend([0; 4]);
+    let animated = webp(&[
+        (b"VP8X", vp8x(0x02, 1, 1)),
+        (b"ANIM", vec![0; 6]),
+        (b"ANMF", anmf(1, 1, &cut)),
+    ]);
+    assert_refused_early(&animated, "past the end of the file");
+}
+
+/// cwebp's default for an image with alpha: a lossy frame and a lossless-coded alpha plane, which
+/// the decoder decodes to RGBA beside a copy: 11.375 bytes a pixel, 557 MB at 7000 square.
+#[test]
+fn a_lossy_webp_with_lossless_alpha_at_the_cap_is_refused_before_allocating() {
+    let bytes = webp(&[
+        (b"VP8X", vp8x(0x10, 7_000, 7_000)),
+        (b"ALPH", vec![0x01]),
+        (b"VP8 ", vp8(7_000, 7_000)),
+    ]);
+    assert_refused_before_allocating(&bytes);
+}
+
+/// A first frame larger than a 16-pixel screen: the decoder reads it whole into its own RGBA
+/// buffer beside its palette indices, 655 MB.
+#[test]
+fn a_gif_first_frame_larger_than_its_screen_is_refused_before_allocating() {
+    assert_refused_before_allocating(&first_frame_gif((16, 16), 0, 16_384, 8_000));
+}
+
+/// Bits written least significant first, as VP8L reads them.
+#[derive(Default)]
+struct Bits {
+    bytes: Vec<u8>,
+    at: usize,
+}
+
+impl Bits {
+    fn push(&mut self, value: u32, count: u32) {
+        for bit in 0..count {
+            if self.at.is_multiple_of(8) {
+                self.bytes.push(0);
+            }
+            if value >> bit & 1 == 1 {
+                *self.bytes.last_mut().expect("pushed") |= 1 << (self.at % 8);
+            }
+            self.at += 1;
+        }
+    }
+
+    /// A Huffman code, its first bit the most significant.
+    fn push_code(&mut self, code: u32, length: u32) {
+        for bit in (0..length).rev() {
+            self.push(code >> bit & 1, 1);
+        }
+    }
+}
+
+/// A 1 by 1 VP8L image whose entropy image names group 65535, so the decoder reads 65,536 groups
+/// of five Huffman codes. Each code has lengths 1 to 10 and 10 again, about 12 bytes to describe,
+/// and the decoder builds a 1024-entry table for it: 1.25 GiB of tables from 3.8 MB.
+fn huffman_groups_vp8l() -> Vec<u8> {
+    let mut bits = Bits::default();
+    bits.push(0x2F, 8);
+    bits.push(0, 14); // width - 1
+    bits.push(0, 14); // height - 1
+    bits.push(0, 1); // no alpha
+    bits.push(0, 3); // version
+    bits.push(0, 1); // no transform
+    bits.push(0, 1); // no colour cache
+    bits.push(1, 1); // meta Huffman codes
+    bits.push(0, 3); // 4 by 4 blocks
+    // The entropy image, one pixel: no colour cache, then one-symbol codes for green 0xFF, red
+    // 0xFF, blue, alpha and distance 0, so the pixel is 0x__FFFF__ and takes no bits.
+    bits.push(0, 1);
+    for symbol in [0xFF, 0xFF] {
+        bits.push(0b1, 1); // simple
+        bits.push(0, 1); // one symbol
+        bits.push(1, 1); // 8 bits
+        bits.push(symbol, 8);
+    }
+    for _ in 0..3 {
+        bits.push(0b0001, 4); // simple, one symbol, 1-bit symbol 0
+    }
+    // The code-length code: lengths 1 to 6 coded in 3 bits, 7 to 10 in 4 (a complete code), in
+    // `CODE_LENGTH_CODE_ORDER` up to symbol 10, the 14th.
+    let order = [17, 18, 0, 1, 2, 3, 4, 5, 16, 6, 7, 8, 9, 10];
+    let code_length = |symbol: u32| match symbol {
+        1..=6 => 3,
+        7..=10 => 4,
+        _ => 0,
+    };
+    // Canonical codes: 1 to 6 are 0b000 to 0b101, 7 to 10 are 0b1100 to 0b1111.
+    let code = |length: u32| {
+        if length <= 6 {
+            (length - 1, 3)
+        } else {
+            (0b1100 + length - 7, 4)
+        }
+    };
+    let lengths = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10];
+    for _ in 0..65_536 * 5 {
+        bits.push(0, 1); // normal code
+        bits.push(order.len() as u32 - 4, 4);
+        for symbol in order {
+            bits.push(code_length(symbol), 3);
+        }
+        bits.push(1, 1); // the symbol count follows
+        bits.push(1, 3); // in 4 bits
+        bits.push(lengths.len() as u32 - 2, 4);
+        for length in lengths {
+            let (value, bits_long) = code(length);
+            bits.push_code(value, bits_long);
+        }
+    }
+    bits.bytes
+}
+
+/// image-webp builds every group's tables, used or not, and counts none against a limit. The
+/// 30 MiB file cap does not bound them in practice. Ignored until that is fixed: see the PR
+/// comment "WebP Huffman tables: options for Kaan" on memrynote/memry#4709.
+#[test]
+#[ignore = "documents a known gap: WebP Huffman tables are uncounted (memrynote/memry#4709)"]
+fn a_lossless_webp_with_65536_huffman_groups_decodes_under_the_cap() {
+    let bytes = webp(&[(b"VP8L", huffman_groups_vp8l())]);
+    assert!(bytes.len() < memry_media::MAX_IMAGE_BYTES);
+    let (_, peak) = peak_of(|| decode_fit(&bytes, 200));
+    assert!(
+        peak < CAP,
+        "peak {peak} bytes from a {}-byte file",
+        bytes.len()
+    );
 }

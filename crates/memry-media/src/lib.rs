@@ -33,9 +33,14 @@ const MAX_INPUT_PIXELS: u64 = 0x3FFF * 0x3FFF;
 /// copy: the frame plus the decoder's scratch while decoding (`scratch::decoder_scratch`, a
 /// progressive JPEG's coefficients), then whichever copies the pipeline keeps beside it
 /// (`decode_peak`, `fit_peak`). sharp has none below its pixel limit, so this refuses images
-/// Electron would decode: `decode` an RGBA image above 76 megapixels (the frame and its RGB copy,
-/// 7 bytes a pixel), `decode_fit` one above 134, and either an animated WebP above 44 to 48 megapixels
-/// (its frame and canvas, 12 or 11 bytes a pixel).
+/// Electron would decode (bytes a pixel at the peak, then the megapixels refused above):
+/// - `decode`: RGBA 7 (76.7), quarter-turned RGBA 8 (67), quarter-turned RGB 6 (89), Rgb16 9
+///   (59.7), Rgba16 11 (48.8); `decode_fit`: RGBA 4 (134), GIF 5 (107).
+/// - Both: lossless opaque WebP 7.875 (68); lossy WebP with a lossless-coded alpha plane, cwebp's
+///   default, 11.375 (47.2); animated WebP, opaque or alpha, 11 or 12 (48.8 or 44.7); GIF whose
+///   first frame is offset, 9 (59.6); GIF whose first frame is larger than the screen, the screen's
+///   4 plus 5 a frame pixel.
+///
 /// `Limits::max_alloc` caps each allocation on its own and not every decoder checks it before
 /// allocating, so the sum is checked from the headers. Up to four decodes run at once in the app
 /// (`memry-desktop`'s image pool).
@@ -280,6 +285,10 @@ fn read_frame(bytes: &[u8], after: impl FnOnce(&Header) -> u64) -> Result<Frame,
         ImageFormat::Jpeg => jpeg_coefficient_bytes(bytes)?,
         ImageFormat::Png => {
             check_png_profile(bytes)?;
+            0
+        }
+        ImageFormat::WebP => {
+            scratch::check_webp(bytes)?;
             0
         }
         _ => 0,
