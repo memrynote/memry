@@ -7,6 +7,7 @@
 //! imports), the master key write, and the phrase shown once after setup. Sync is not started
 //! here: the master key lands in the keychain and the sync supervisor picks it up (A4).
 
+mod adopt;
 pub mod binding;
 pub mod device;
 mod devices;
@@ -16,6 +17,7 @@ pub mod otp_clipboard;
 mod recovery;
 pub mod session_events;
 mod teardown;
+pub mod vault_sync;
 
 pub use devices::DeviceList;
 pub use linking::{LinkPoll, LinkScanned, LinkingQr, VaultChoice, dormant_vault_folder_name};
@@ -326,6 +328,17 @@ impl AccountService {
             device_id,
             needs_recovery_confirmation: signed_in && confirmed == Some(false),
         }
+    }
+
+    /// What the sync gate reads at each start attempt: signed in, and `sync.recoveryPhraseConfirmed`
+    /// is not `false`. The master key is the backend's own read.
+    pub fn sync_facts(&self) -> (bool, bool) {
+        let signed_in = matches!(
+            self.session.state(),
+            AuthState::Registered | AuthState::Refreshing | AuthState::SessionExpired
+        );
+        let (_, _, confirmed) = self.sync_fields();
+        (signed_in, confirmed != Some(false))
     }
 
     /// The access token when the user is signed in, for feedback and the beta invite; `None`

@@ -223,6 +223,20 @@ impl DeviceApprover {
     /// vault list, and posts `POST /auth/linking/approve`. The invite is
     /// cleared either way.
     pub async fn approve(&self) -> Result<(), LinkingError> {
+        self.approve_with_fallback(Vec::new()).await
+    }
+
+    /// Drops the pending invite and its ephemeral secret. Blocking, no I/O.
+    pub fn cancel(&self) {
+        *self.pending.lock().unwrap_or_else(|e| e.into_inner()) = None;
+    }
+}
+
+impl DeviceApprover {
+    /// [`Self::approve`], sending `fallback` as the vault list when the account lists none or
+    /// the list cannot be read (Electron's `collectVaultTransfer`): the desktop sends its open
+    /// vault's server id. Not exported over UniFFI.
+    pub async fn approve_with_fallback(&self, fallback: Vec<String>) -> Result<(), LinkingError> {
         let (session_id, secret) = self.current()?;
         let result = async {
             let session = self.session(&session_id).await?;
@@ -242,10 +256,11 @@ impl DeviceApprover {
                     actual: 0,
                 },
             )?);
-            let vaults: Vec<String> = account::vaults(&self.http)
+            let listed: Vec<String> = account::vaults(&self.http)
                 .await
                 .map(|rows| rows.into_iter().map(|v| v.id).collect())
                 .unwrap_or_default();
+            let vaults = if listed.is_empty() { fallback } else { listed };
             let body = approval_body(&session_id, &secret, public, confirm, &master_key, &vaults)?;
             let _: Json = self
                 .http
@@ -260,11 +275,6 @@ impl DeviceApprover {
         .await;
         self.cancel();
         result
-    }
-
-    /// Drops the pending invite and its ephemeral secret. Blocking, no I/O.
-    pub fn cancel(&self) {
-        *self.pending.lock().unwrap_or_else(|e| e.into_inner()) = None;
     }
 }
 

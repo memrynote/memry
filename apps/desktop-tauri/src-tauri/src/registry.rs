@@ -246,6 +246,11 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::shell::shell_open_path,
             crate::commands::shell::shell_reveal_path,
             crate::commands::shell::shell_take_crash_reload,
+            // sync account
+            crate::commands::sync_account::account_sign_out,
+            crate::commands::sync_account::sync_get_vault_binding,
+            crate::commands::sync_account::sync_logout,
+            crate::commands::sync_account::sync_resolve_vault_binding,
             // tags
             crate::commands::tag_schema::tags_edit_schema,
             crate::commands::tag_schema::tags_get_linked_here,
@@ -333,6 +338,7 @@ pub fn builder() -> Builder<Wry> {
             crate::events::AuthOauthCallbackEvent,
             crate::events::AuthOauthErrorEvent,
             crate::events::AuthOtpDetectedEvent,
+            crate::events::AuthSessionExpiredEvent,
             crate::events::AuthSessionRefreshedEvent,
             // ai
             crate::events::AiInlineSettingsChangedEvent,
@@ -357,7 +363,9 @@ pub fn builder() -> Builder<Wry> {
             // locale
             crate::events::LocaleChangedEvent,
             // linking
+            crate::events::SyncLinkingApprovedEvent,
             crate::events::SyncLinkingFinalizedEvent,
+            crate::events::SyncLinkingRequestedEvent,
             // ocr languages
             crate::events::OcrLanguagesChangedEvent,
             // settings
@@ -365,6 +373,9 @@ pub fn builder() -> Builder<Wry> {
             crate::events::SettingsOpenSectionEvent,
             // menu
             crate::events::MenuCommandInvokedEvent,
+            // sync account
+            crate::events::SyncDeviceRemovedEvent,
+            crate::events::SyncVaultBindingChangedEvent,
             // templates
             crate::events::TemplateCreatedEvent,
             crate::events::TemplateDeletedEvent,

@@ -23,7 +23,7 @@ use zeroize::Zeroizing;
 
 use super::recovery::setup_expired;
 use super::{AccountError, AccountService};
-use crate::session::Session;
+use crate::session::{OpenVault, Session};
 
 /// The approver's code, as the QR screen shows it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -238,10 +238,25 @@ impl AccountService {
 
     /// `APPROVE_LINKING` (`linking-service.ts:653-766`): core verifies the scanning device's
     /// confirm tag before it reads the master key, then seals the key and the account's vault
-    /// list for it. The pending code is gone either way.
-    pub async fn approve_linking(&self, session_id: &str) -> Result<(), AccountError> {
+    /// list for it. An account that lists no vault sends the open vault's server id instead
+    /// (`collectVaultTransfer`). The pending code is gone either way.
+    pub async fn approve_linking(
+        &self,
+        session_id: &str,
+        open: Option<&OpenVault>,
+    ) -> Result<(), AccountError> {
         self.pending_invite(session_id)?;
-        let approved = self.linking.approver.approve().await;
+        let fallback = match open.map(|open| open.vault.clone()) {
+            Some(vault) => tokio::task::spawn_blocking(move || vault.server_vault_id())
+                .await
+                .ok()
+                .and_then(Result::ok)
+                .flatten()
+                .into_iter()
+                .collect(),
+            None => Vec::new(),
+        };
+        let approved = self.linking.approver.approve_with_fallback(fallback).await;
         *lock(&self.linking.invite) = None;
         approved?;
         tracing::info!(scope = "DeviceLinking", "device linking approved");
