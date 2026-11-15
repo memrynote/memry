@@ -1,8 +1,10 @@
 //! `notes_create` and `notes_update` define a note's new tags before they send
 //! `notes:tags-changed` (#4732), as Electron's `createNote` and `updateNote` call
 //! `ensureTagDefinitions` first: the tag list the event makes the renderer read shows each new
-//! tag in its definition's colour, never its name's default colour first. A mock app over a real
-//! vault and vault tier with no note index, so no index pass mints for them.
+//! tag in its definition's colour, never its name's default colour first. Create mints its header
+//! tags only, as `createNote` does: its body tags are not listed yet, and the index pass that
+//! lists them mints them. A mock app over a real vault and vault tier with no note index, so no
+//! index pass mints for them.
 
 use std::fs;
 use std::sync::{Arc, Mutex};
@@ -33,8 +35,8 @@ use support::MemoryStore;
 
 const WAIT: Duration = Duration::from_secs(25);
 
-/// The colour each tag's definition held, `None` for none, read as each `notes:tags-changed`
-/// arrived.
+/// The colour the tag list (`tag_counts`, as the renderer reads it) gave each tag, `None` for a
+/// tag not listed, read as each `notes:tags-changed` arrived.
 type Heard = Arc<Mutex<Vec<Vec<Option<String>>>>>;
 
 fn opened(tags: &'static [&'static str]) -> (tempfile::TempDir, App<MockRuntime>, Heard) {
@@ -67,10 +69,15 @@ fn opened(tags: &'static [&'static str]) -> (tempfile::TempDir, App<MockRuntime>
     let handle = app.handle().clone();
     app.listen_any(NoteTagsChangedEvent::NAME, move |_| {
         let open = handle.state::<Session>().current().unwrap();
-        let names = tags.iter().map(|tag| (*tag).to_owned()).collect();
-        sink.lock()
-            .unwrap()
-            .push(open.search.tag_colors(names).unwrap());
+        let listed = open.search.tag_counts().unwrap();
+        let colors = tags
+            .iter()
+            .map(|tag| {
+                let row = listed.iter().find(|row| row.name.eq_ignore_ascii_case(tag));
+                row.map(|row| row.color.clone())
+            })
+            .collect();
+        sink.lock().unwrap().push(colors);
     });
     (dir, app, heard)
 }
@@ -93,11 +100,13 @@ fn some(color: &str) -> Option<String> {
 
 #[test]
 fn a_new_tag_is_defined_before_notes_tags_changed() {
-    // Minted by how many live definitions came before (`PALETTE[live % 24]`): rose, pink,
-    // fuchsia, purple; none of these names defaults to its mint's colour.
-    let tags = &["Plan", "idea", "Draft", "later"];
+    // Minted by how many live definitions came before (`PALETTE[live % 24]`): `Plan` rose at
+    // create, then `Draft` pink and `later` fuchsia at update; none of these names defaults to
+    // its mint's colour. With no note index here, `idea` (the create's body tag) is never
+    // listed: in the app the create's index pass lists and mints it.
+    let tags = &["Plan", "Draft", "idea", "later"];
     let (_dir, app, heard) = opened(tags);
-    for (tag, mint) in tags.iter().zip(["rose", "pink", "fuchsia", "purple"]) {
+    for (tag, mint) in [("Plan", "rose"), ("Draft", "pink"), ("later", "fuchsia")] {
         assert_ne!(default_color(tag), mint, "{tag}");
     }
 
@@ -113,8 +122,8 @@ fn a_new_tag_is_defined_before_notes_tags_changed() {
     let note = tauri::async_runtime::block_on(notes_create(app.handle().clone(), input)).unwrap();
     assert_eq!(
         next_heard(&heard),
-        [some("rose"), some("pink"), None, None],
-        "the header tag, then the body's"
+        [some("rose"), None, None, None],
+        "the header tag; the body's waits for its index pass"
     );
 
     let input = NoteUpdateInput {
@@ -129,6 +138,6 @@ fn a_new_tag_is_defined_before_notes_tags_changed() {
     tauri::async_runtime::block_on(notes_update(app.handle().clone(), input)).unwrap();
     assert_eq!(
         next_heard(&heard),
-        [some("rose"), some("pink"), some("fuchsia"), some("purple")]
+        [some("rose"), some("pink"), None, some("fuchsia")]
     );
 }

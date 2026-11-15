@@ -125,11 +125,13 @@ impl NotesService {
     }
 
     /// Electron's `ensureTagDefinitions` after `createNote` and `updateNote` (#4732): a
-    /// definition for each of the note's header tags, then its body's `#tags`, that has no
-    /// record ([`memry_core::domain::tag_mint::define_used`]), before the command sends
+    /// definition for each of `header`, then each `#tag` of `body`, that has no record
+    /// ([`memry_core::domain::tag_mint::define_used`]), before the command sends
     /// `notes:tags-changed`. The tag lists read the note's tags once it is written, and a tag
     /// with no definition reads its name's default colour, which the index pass's mint then
-    /// replaced. The note is written either way: a failure is logged and that pass mints it.
+    /// replaced. Create passes no body: its body tags are not indexed yet, so the pass that
+    /// indexes them mints them and sends `TagsDefined`. The note is written either way: a
+    /// failure is logged and that pass mints it.
     pub(crate) fn define_tags(&self, open: &OpenVault, header: &[String], body: &str) {
         let mut tags = header.to_vec();
         tags.extend(body_tags::extract_markdown(body));
