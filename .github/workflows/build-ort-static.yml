@@ -1,6 +1,7 @@
 # CPU-only static ONNX Runtime libraries for the targets ort-sys has no usable prebuilt archive for
 # (crates/AGENTS.md, ONNX Runtime): macOS x64 (none), Windows x64 and ARM64 (DirectML builds) and
-# Linux x64 (built against glibc 2.38; the app supports glibc 2.35, so this one builds on Ubuntu 22.04).
+# Linux x64 and arm64 (built against glibc 2.38; the app supports glibc 2.35, so these build on
+# Ubuntu 22.04).
 # Built once per ONNX Runtime version and attached to the release `ort-static-<version>`, which is
 # not an app release: a prerelease that is never marked latest, holding these archives only.
 # rust-ci.yml and the release builds fetch an archive through .github/actions/ort-static, which
@@ -30,9 +31,12 @@ env:
   ORT_VERSION: 1.31.0
   # The commit of the tag v1.31.0, so a moved tag cannot change what builds.
   ORT_COMMIT: 402979ac1bef89dcd55add41eaa7277c407599eb
-  # r2: Windows archives built with the static VC runtime (/MT). ort-static-1.31.0 holds the
-  # first set (Windows /MD) and stays published, unused.
-  RELEASE_TAG: ort-static-1.31.0-r2
+  # r3: Linux arm64 (Kaan, 2026-11-14), the only archive it holds. r2 holds the other four
+  # (x86_64-apple-darwin on macos-15, x86_64-pc-windows-msvc on windows-2022,
+  # aarch64-pc-windows-msvc on windows-11-arm, x86_64-unknown-linux-gnu on ubuntu-22.04), the
+  # Windows ones built with the static VC runtime (/MT), and stays the tag of those four.
+  # ort-static-1.31.0 holds the first set (Windows /MD) and stays published, unused.
+  RELEASE_TAG: ort-static-1.31.0-r3
 
 jobs:
   plan:
@@ -55,10 +59,7 @@ jobs:
             assets=
           fi
           targets=$(jq -cn --arg assets "$assets" --arg tag "$RELEASE_TAG" '
-            [ {triple: "x86_64-apple-darwin", os: "macos-15"},
-              {triple: "x86_64-pc-windows-msvc", os: "windows-2022"},
-              {triple: "aarch64-pc-windows-msvc", os: "windows-11-arm"},
-              {triple: "x86_64-unknown-linux-gnu", os: "ubuntu-22.04"} ]
+            [ {triple: "aarch64-unknown-linux-gnu", os: "ubuntu-22.04-arm"} ]
             | map(select("\($tag)-\(.triple).tar.zst" as $name | ($assets | split("\n") | index($name)) == null))')
           echo "targets=$targets" >> "$GITHUB_OUTPUT"
           echo "To build: $targets"
@@ -134,6 +135,9 @@ jobs:
               # Reads the whole listing: `grep -m1` would end readelf with SIGPIPE under pipefail.
               readelf -h libonnxruntime_common.a | grep 'Machine:' | sort -u | tee "$RUNNER_TEMP/arch.txt"
               [ "$(wc -l < "$RUNNER_TEMP/arch.txt")" -eq 1 ] && grep -q 'X86-64' "$RUNNER_TEMP/arch.txt" ;;
+            aarch64-unknown-linux-gnu)
+              readelf -h libonnxruntime_common.a | grep 'Machine:' | sort -u | tee "$RUNNER_TEMP/arch.txt"
+              [ "$(wc -l < "$RUNNER_TEMP/arch.txt")" -eq 1 ] && grep -q 'AArch64' "$RUNNER_TEMP/arch.txt" ;;
             *)
               # The COFF machine of every object in the archive, read directly (no dumpbin lookup).
               want=$([ "${{ matrix.triple }}" = aarch64-pc-windows-msvc ] && echo aa64 || echo 8664)

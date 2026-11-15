@@ -58,6 +58,8 @@ impl Shell {
         let heard = match report {
             IndexReport::Progress(step) => Heard::Progress(step),
             IndexReport::Indexing => Heard::Indexing(indexing),
+            // `index_tag_definitions` covers it; the status is what is heard here.
+            IndexReport::TagsDefined => return,
         };
         self.heard.lock().unwrap().push(heard);
         if matches!(report, IndexReport::Progress(_)) && self.panic.swap(false, Ordering::SeqCst) {

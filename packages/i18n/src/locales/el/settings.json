@@ -2467,8 +2467,7 @@
       "failedToCloseVault": "Αποτυχία κλεισίματος θησαυροφυλακίου",
       "failedToSwitchVault": "Αποτυχία αλλαγής θησαυροφυλακίου",
       "failedToUpdateConfig": "Αποτυχία ενημέρωσης παραμέτρων",
-      "failedToReindex": "Αποτυχία νέας ευρετηρίασης",
-      "googleSignInFailed": "Η σύνδεση στο Google απέτυχε"
+      "failedToReindex": "Αποτυχία νέας ευρετηρίασης"
     }
   },
   "agentMcp": {

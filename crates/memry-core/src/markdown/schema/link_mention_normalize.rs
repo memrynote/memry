@@ -8,6 +8,7 @@
 //! Every token `parseLinkMentionToken` accepts is promoted, a legacy one with
 //! `_ * ! ~ '` raw included (#4478). The node re-encodes it, so the source
 //! record keeps the file's bytes until the token's own paragraph is edited.
+//! A token in a run with any active style stays text (#4652).
 
 use std::sync::LazyLock;
 
@@ -56,9 +57,22 @@ fn styled_text(text: &str, styles: Option<&Json>) -> Json {
     }
 }
 
+/// `hasActiveStyle`: a `linkMention` node carries no styles, so a token in a
+/// run with code, emphasis, strikethrough, underline or a colour stays text;
+/// as a chip it would lose the delimiters around it on write-back.
+fn has_active_style(styles: &Json) -> bool {
+    styles.as_object().is_some_and(|styles| {
+        styles.values().any(|value| match value {
+            Json::Bool(active) => *active,
+            Json::String(colour) => colour != "default",
+            _ => false,
+        })
+    })
+}
+
 /// `splitTextWithLinkMentions`: `None` when nothing was promoted.
 fn split_text(text: &str, styles: Option<&Json>) -> Option<Vec<Json>> {
-    if !text.contains("((mention:") {
+    if !text.contains("((mention:") || styles.is_some_and(has_active_style) {
         return None;
     }
     let mut segments = Vec::new();

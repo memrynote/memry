@@ -7,7 +7,9 @@ use std::time::{Duration, Instant};
 
 use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::notes::identity::NotesIdentity;
-use memry_desktop::notes::index::{IndexProgress, Indexer, OpenBuild, TaskHandle, task_channel};
+use memry_desktop::notes::index::{
+    IndexProgress, Indexer, OpenBuild, TaskEvents, TaskHandle, task_channel,
+};
 use memry_desktop::session::OpenVault;
 use memry_desktop::session::projection::CancelToken;
 use memry_desktop::vault::consumer::Applied;
@@ -195,13 +197,16 @@ pub fn with_task_under(
                     facts,
                     inbox,
                     &cancel,
-                    &|build| {
-                        if let OpenBuild::Step(step) = build {
-                            report(step);
-                        }
+                    TaskEvents {
+                        report: &|build| {
+                            if let OpenBuild::Step(step) = build {
+                                report(step);
+                            }
+                        },
+                        announce: &|_| {},
+                        landed: &|_| {},
+                        defined: &|| {},
                     },
-                    &|_| {},
-                    &|_| {},
                 )
                 .unwrap()
         });

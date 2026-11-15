@@ -873,6 +873,8 @@ Links in a note are enriched with the page title, site name and favicon, both fo
 
 Only the URL is written to the note file, so a mention that has been through a restart or a vault switch comes back showing its site's domain. Its title and favicon return the next time that note's links are looked up.
 
+A mention is saved as a `((mention:…))` token. A token written inside inline code, bold, italic, underline, strikethrough or a colour stays plain text, so editing that paragraph keeps the backticks or formatting marks around it. An unformatted token anywhere else in the note still opens as a pill.
+
 That in-memory cache holds the 200 most recently used links and evicts the least recently used entry beyond that, which keeps a long session with many link-heavy notes from growing without a limit. Evicted links are simply fetched again the next time they are shown.
 
 ## Readwise Sections
