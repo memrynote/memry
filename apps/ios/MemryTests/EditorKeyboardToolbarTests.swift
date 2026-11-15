@@ -152,10 +152,7 @@ struct AttachmentBlockTests {
         let model = NoteEditorViewModel(noteId: "n1", editor: editor)
         let session = model.session
         session.model = model
-        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            session.reload = { done.resume() }
-            session.insertAttachment(AttachmentBlock.make(noteId: "n1", filename: "a.jpg", mimeType: "image/jpeg", size: 1))
-        }
+        await session.insertAttachment(AttachmentBlock.make(noteId: "n1", filename: "a.jpg", mimeType: "image/jpeg", size: 1))
         let edits = editor.all
         #expect(edits.count == 4)
         guard case let .insertBlock(kind, after, _, newId) = edits.first else {
@@ -173,10 +170,7 @@ struct AttachmentBlockTests {
         let model = NoteEditorViewModel(noteId: "n1", editor: editor)
         let session = model.session
         session.model = model
-        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            session.reload = { done.resume() }
-            session.insertAttachment(AttachmentBlock.make(noteId: "n1", filename: "a.pdf", mimeType: "application/pdf", size: 3))
-        }
+        await session.insertAttachment(AttachmentBlock.make(noteId: "n1", filename: "a.pdf", mimeType: "application/pdf", size: 3))
         guard case let .insertBlock(_, _, _, newId) = editor.all.first else {
             Issue.record("expected an insert first")
             return

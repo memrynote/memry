@@ -500,14 +500,17 @@ final class EditorSession {
 
     /// Writes what the user typed in `field`, then turns a `[[target]]` typed
     /// since the last commit into a link node (desktop's input rule). Never
-    /// in a code block, whose text stays literal.
-    func commit(_ field: BlockField, then: (@MainActor () async -> Void)? = nil) {
+    /// in a code block, whose text stays literal. Answers where a UTF-16
+    /// location in `field` before the commit is after it, with each such
+    /// link drawn as its one-character node.
+    @discardableResult
+    func commit(_ field: BlockField, then: (@MainActor () async -> Void)? = nil) -> (Int) -> Int {
         // Held by the queued write, not read when it runs: a page torn down
         // (a split view swapping notes, Back, a size-class re-host) drops
         // the model before its last typing lands.
         guard let model else {
             Log.storage.error("a block commit had no editor model")
-            return
+            return { $0 }
         }
         let attributed = field.textView.attributedText ?? NSAttributedString()
         let text = attributed.string
@@ -527,7 +530,7 @@ final class EditorSession {
         // The literal text goes now, not when the page reloads: typing that
         // lands before the reload would keep it, and the next commit's base
         // would still spell a link the core already holds as a node.
-        if !links.isEmpty { field.drawLinks(links) }
+        let moved = links.isEmpty ? { $0 } : field.drawLinks(links)
         // The session too, so the write still schedules its sync pass.
         enqueue {
             if dirty, text != base {
@@ -540,6 +543,7 @@ final class EditorSession {
             await then?()
             if dirty || !offsets.isEmpty || then != nil { await self.didChange() }
         }
+        return moved
     }
 
     private static func textStep(_ blockId: String, from: String, to: String, formatted: Bool) -> EditorUndoStep {
@@ -844,7 +848,10 @@ final class EditorSession {
             in: range, with: NSAttributedString(string: replacement, attributes: attributes)
         )
         field.dirty = true
-        guard case let .update(value) = edit else { return commit(field) }
+        guard case let .update(value) = edit else {
+            commit(field)
+            return
+        }
         let attributed = field.textView.attributedText ?? NSAttributedString()
         let start = BlockText.coreOffset(in: attributed, utf16: range.location)
         let blockId = field.blockId
@@ -1017,19 +1024,26 @@ final class EditorSession {
     /// An uploaded attachment's block, after `target`: the block a file was
     /// dropped on. A picked file goes after the caret's block (or at the end
     /// of the body when none has had the caret). Undo removes the block and
-    /// keeps the upload, as desktop's undo does.
-    func insertAttachment(_ block: AttachmentBlock, after target: String? = nil) {
+    /// keeps the upload, as desktop's undo does. Answers the new block's id
+    /// once it is written, so the next of a batch goes after it; `nil` when
+    /// the insert failed, which the editor's status shows.
+    @discardableResult
+    func insertAttachment(_ block: AttachmentBlock, after target: String? = nil) async -> String? {
         let after = target ?? field?.blockId
         if let field { commit(field) }
-        enqueue { [weak self] in
-            guard let self, let model = self.model else { return }
-            guard let newId = await model.insert(block.kind, after: after) else { return }
-            let props = block.props.map { BlockEdit.setProp(blockId: newId, name: $0.name, value: $0.value) }
-            for prop in props { await model.apply(prop) }
-            var step = EditorUndoStep.insert(blockId: newId, after: after, kind: block.kind, text: "")
-            step.forwardProps = props
-            self.history.record(step)
-            await self.didChange()
+        return await withCheckedContinuation { done in
+            enqueue { [weak self] in
+                guard let self, let model = self.model,
+                      let newId = await model.insert(block.kind, after: after)
+                else { return done.resume(returning: nil) }
+                let props = block.props.map { BlockEdit.setProp(blockId: newId, name: $0.name, value: $0.value) }
+                for prop in props { await model.apply(prop) }
+                var step = EditorUndoStep.insert(blockId: newId, after: after, kind: block.kind, text: "")
+                step.forwardProps = props
+                self.history.record(step)
+                await self.didChange()
+                done.resume(returning: newId)
+            }
         }
     }
 
@@ -1066,14 +1080,15 @@ final class EditorSession {
                 at: range.location
             )
         }
-        let start = BlockText.coreOffset(in: textView.attributedText ?? NSAttributedString(), utf16: range.location)
-        field.pendingSelection = NSRange(location: range.location + 2 * kinds.count, length: 0)
         if field === self.field {
             trigger = nil
             suggestions = []
         }
         let blockId = field.blockId
-        commit(field) { [weak self] in
+        // Read once the commit has drawn a typed `[[…]]` before `range` as
+        // its node, as the core holds it when the nodes go in.
+        var start = 0
+        let moved = commit(field) { [weak self] in
             guard let model = self?.model else { return }
             // Last first, so each node's offset still counts only the spaces
             // before it.
@@ -1092,6 +1107,9 @@ final class EditorSession {
                 }
             }
         }
+        let location = moved(range.location)
+        start = BlockText.coreOffset(in: textView.attributedText ?? NSAttributedString(), utf16: location)
+        field.pendingSelection = NSRange(location: location + 2 * kinds.count, length: 0)
     }
 
     /// A link or date at the end of `block`, followed by a space: the page

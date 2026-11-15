@@ -51,8 +51,13 @@ private final class FakeTextDrop: NSObject, @preconcurrency UITextDropRequest {
 /// The attachment upload, answered without a server.
 private final class DropUploader: VaultFilling, @unchecked Sendable {
     private let failure: (any Error)?
+    /// A suggested name whose upload is refused, the rest go through.
+    private let refusing: String?
     private let uploads = Mutex<[String]>([])
-    init(failure: (any Error)? = nil) { self.failure = failure }
+    init(failure: (any Error)? = nil, refusing: String? = nil) {
+        self.failure = failure
+        self.refusing = refusing
+    }
     var uploaded: [String] { uploads.withLock { $0 } }
 
     func isFirstSyncComplete() async throws -> Bool { true }
@@ -62,6 +67,7 @@ private final class DropUploader: VaultFilling, @unchecked Sendable {
     }
     func uploadAttachment(noteId: String, filename: String, mimeType: String, bytes: Data) async throws -> String {
         if let failure { throw failure }
+        if let refusing, filename.hasSuffix("-\(refusing).png") { throw SyncError.Locked }
         uploads.withLock { $0.append("\(filename)|\(mimeType)") }
         return "att-\(filename)"
     }
@@ -75,6 +81,7 @@ struct EditorDropTests {
         let vault: TasksTestVault
         let source: String
         let target: String
+        let second: String
         let reader: CoreNotesReader
         let model: NoteEditorViewModel
         let field: BlockField
@@ -82,12 +89,13 @@ struct EditorDropTests {
     }
 
     /// A note holding one paragraph, "see ", open in an editor over the real
-    /// core, and a second note, "Agent Dune", to drag into it.
+    /// core, and two notes, "Agent Dune" and "Dune Messiah", to drag into it.
     private func fixture() async throws -> Fixture {
         let vault = try TasksTestVault()
         let writer = try vault.vault.notesWriter(store: TaskTestKeychain())
         let source = try writer.create(title: "Reading", folderPath: nil)
         let target = try writer.create(title: "Agent Dune", folderPath: nil)
+        let second = try writer.create(title: "Dune Messiah", folderPath: nil)
         _ = try writer.editBlock(
             noteId: source,
             edit: .insertBlock(kind: "paragraph", afterBlockId: nil, text: "see ", newBlockId: "p1")
@@ -101,11 +109,11 @@ struct EditorDropTests {
         let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
         let field = BlockField(block: block, session: model.session, style: style, alignment: .natural)
         field.render()
-        return Fixture(vault: vault, source: source, target: target, reader: reader, model: model, field: field)
+        return Fixture(vault: vault, source: source, target: target, second: second, reader: reader, model: model, field: field)
     }
 
-    private func noteProvider(_ f: Fixture) async throws -> NSItemProvider {
-        let note = try #require(try await f.reader.list().first { $0.id == f.target })
+    private func noteProvider(_ f: Fixture, _ id: String? = nil) async throws -> NSItemProvider {
+        let note = try #require(try await f.reader.list().first { $0.id == (id ?? f.target) })
         return NoteDrag.provider(for: note, vaultId: "vault-test") { nil }
     }
 
@@ -153,6 +161,64 @@ struct EditorDropTests {
         #expect(BlockText.shown(runs) == "see chapter one \u{FFFC} ", "the typing first, then a space, the link and a space")
         #expect(runs.filter { $0.marks.contains("wikiLink") }.map(\.target) == ["Agent Dune"])
         #expect(!f.field.dirty)
+    }
+
+    /// The commit draws a typed `[[Foo]]` as its one-character node before
+    /// the dropped link goes in, so the link and the caret count from that.
+    @Test func a_note_dropped_after_a_typed_link_lands_at_the_drop_point() async throws {
+        let f = try await fixture()
+        f.session.focusChanged(to: f.field)
+        f.field.textView.textStorage.append(NSAttributedString(string: "[[Foo]] and "))
+        f.field.dirty = true
+
+        try await drop([try await noteProvider(f)], at: 16, on: f)
+
+        let runs = try await blocks(f).flatMap(\.inline)
+        #expect(BlockText.shown(runs) == "see \u{FFFC} and \u{FFFC} ")
+        #expect(runs.filter { $0.marks.contains("wikiLink") }.map(\.target) == ["Foo", "Agent Dune"])
+        #expect(f.field.pendingSelection == NSRange(location: 12, length: 0), "the caret after the dropped link's space")
+    }
+
+    @Test func a_link_chosen_after_a_typed_link_lands_where_the_query_was() async throws {
+        let f = try await fixture()
+        f.session.focusChanged(to: f.field)
+        f.field.textView.textStorage.append(NSAttributedString(string: "[[Foo]] and [[Agent"))
+        f.field.dirty = true
+        f.field.textView.selectedRange = NSRange(location: 23, length: 0)
+        f.session.selectionChanged(in: f.field)
+        let row = try #require(f.session.suggestions.first { $0.kind == .note(title: "Agent Dune", alias: "") })
+
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            f.session.reload = { done.resume() }
+            f.session.choose(row)
+        }
+
+        let runs = try await blocks(f).flatMap(\.inline)
+        #expect(BlockText.shown(runs) == "see \u{FFFC} and \u{FFFC} ")
+        #expect(runs.filter { $0.marks.contains("wikiLink") }.map(\.target) == ["Foo", "Agent Dune"])
+        #expect(f.field.pendingSelection == NSRange(location: 12, length: 0))
+    }
+
+    @Test func two_notes_dragged_together_are_both_linked_in_order() async throws {
+        let f = try await fixture()
+
+        try await drop([try await noteProvider(f), try await noteProvider(f, f.second)], at: 4, on: f)
+
+        let runs = try await blocks(f).flatMap(\.inline)
+        #expect(BlockText.shown(runs) == "see \u{FFFC} \u{FFFC} ", "space-separated")
+        #expect(runs.filter { $0.marks.contains("wikiLink") }.map(\.target) == ["Agent Dune", "Dune Messiah"])
+        #expect(f.field.pendingSelection == NSRange(location: 8, length: 0), "the caret after the last")
+    }
+
+    @Test func a_dragged_note_this_vault_does_not_list_is_reported() async throws {
+        let f = try await fixture()
+        let provider = try await noteProvider(f)
+        f.session.linkNotes = f.session.linkNotes.filter { $0.id != f.target }
+
+        await f.session.dropNotes([provider], at: 4, in: f.field)
+
+        #expect(f.session.failure?.code == ErrorMapping.notesNotLinked(1).code)
+        #expect(BlockText.shown(try await blocks(f).flatMap(\.inline)) == "see ")
     }
 
     @Test func a_note_is_not_dropped_into_a_code_block() async throws {
@@ -246,6 +312,67 @@ struct EditorDropTests {
         }
         #expect(error.code == ErrorMapping.locked.code)
         #expect(try await blocks(f).map(\.kind) == ["paragraph"])
+    }
+
+    private func imageURL(_ block: Block) -> String {
+        block.props.first { $0.name == "url" }?.value ?? ""
+    }
+
+    @Test func dropped_files_keep_their_order_past_a_refusal_and_one_alert_counts_it() async throws {
+        let f = try await fixture()
+        let composer = NoteAttachmentComposer(noteId: f.source, filler: DropUploader(refusing: "B"))
+        let files = try ["A", "B", "C"].map { try Self.pngProvider(name: $0) }
+
+        await composer.attachDropped(files, in: f.session, after: "p1")
+
+        let blocks = try await blocks(f)
+        #expect(blocks.map(\.kind) == ["paragraph", "image", "image"])
+        #expect(imageURL(blocks[1]).hasSuffix("-A.png") && imageURL(blocks[2]).hasSuffix("-C.png"), "in the drag's order")
+        guard case let .failed(error) = composer.state else {
+            Issue.record("the refusal must leave the alert's failure")
+            return
+        }
+        #expect(error.code == ErrorMapping.locked.code, "in the refusal's words")
+        #expect(error.guidance?.hasPrefix("1 of 3 files wasn't added.") == true)
+    }
+
+    @Test func an_unreadable_dropped_file_counts_as_not_added() async throws {
+        let f = try await fixture()
+        let composer = NoteAttachmentComposer(noteId: f.source, filler: DropUploader())
+        let unreadable = NSItemProvider()
+        unreadable.registerFileRepresentation(for: .pdf, visibility: .all) { completion in
+            completion(nil, false, CocoaError(.fileReadNoSuchFile))
+            return nil
+        }
+
+        await composer.attachDropped([unreadable, try Self.pngProvider(name: "A")], in: f.session, after: "p1")
+
+        #expect(try await blocks(f).map(\.kind) == ["paragraph", "image"])
+        guard case let .failed(error) = composer.state else {
+            Issue.record("an unreadable file must not be skipped silently")
+            return
+        }
+        #expect(error.code == ErrorMapping.droppedFileUnreadable.code)
+        #expect(error.guidance?.hasPrefix("1 of 2 files wasn't added.") == true)
+    }
+
+    /// No sync session: the paperclip is hidden, and a file dragged over a
+    /// block shows it will not land. A picture from Safari stays the text
+    /// view's own drop.
+    @Test func a_vault_without_uploads_refuses_files_visibly() async throws {
+        let f = try await fixture()
+        #expect(f.session.attachDropped == nil)
+        let pdf = NSItemProvider()
+        pdf.registerFileRepresentation(for: .pdf, visibility: .all) { _ in nil }
+        let session = FakeDropSession([pdf])
+        let interaction = try #require(
+            f.field.textView.interactions.lazy.compactMap { $0 as? UIDropInteraction }.first { $0.delegate === f.field }
+        )
+
+        #expect(f.field.dropInteraction(interaction, canHandle: session))
+        #expect(f.field.dropInteraction(interaction, sessionDidUpdate: session).operation == .forbidden)
+        let picture = FakeTextDrop(at: f.field.textView.beginningOfDocument, [try Self.pngProvider(name: "cover")])
+        #expect(f.field.textDroppableView(f.field.textView, proposalForDrop: picture) === picture.suggestedProposal)
     }
 
     @Test func text_and_links_keep_the_text_views_own_drop() throws {

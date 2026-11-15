@@ -60,14 +60,17 @@ extension EditorSuggestions {
 extension EditorSession {
     /// A wiki link to each dropped note, at `location` (UTF-16) in `field`,
     /// through the `[[` menu's insert. Typing not yet committed in the block
-    /// is written first. A note this vault does not list is skipped.
+    /// is written first. A note this vault does not list, or one the drag
+    /// could not hand over, is skipped, and the editor's alert says so.
     func dropNotes(_ providers: [NSItemProvider], at location: Int, in field: BlockField) async {
         let payloads = await NoteFolderDrop.payloads(from: providers)
         let links = payloads.compactMap { EditorSuggestions.link(to: $0.noteId, in: linkNotes) }
-        guard !links.isEmpty else {
-            Log.storage.error("a note drop carried no note of this vault", .count(payloads.count))
-            return
+        let dragged = providers.filter { $0.hasItemConformingToTypeIdentifier(UTType.memryNote.identifier) }.count
+        if links.count < dragged {
+            Log.storage.error("a note drop skipped notes this vault does not list", .count(dragged - links.count))
+            failure = ErrorMapping.notesNotLinked(dragged - links.count)
         }
+        guard !links.isEmpty else { return }
         let storage = field.textView.textStorage
         var at = min(max(0, location), storage.length)
         // After a word, a space first, as the `@` button does (`startTrigger`).
@@ -90,12 +93,12 @@ extension BlockField: UITextDropDelegate, UIDropInteractionDelegate {
 
     /// What a drop on this block does, or `nil` for the text view's own.
     private func editorDrop(_ session: UIDropSession) -> EditorDrop? {
-        switch EditorDrop.of(session.items.map(\.itemProvider)) {
-        case .notes: .notes
-        case .files where self.session?.attachDropped != nil: .files
-        default: nil
-        }
+        EditorDrop.of(session.items.map(\.itemProvider))
     }
+
+    /// Whether this note takes files: not in a vault with no sync session,
+    /// where the paperclip is hidden too.
+    private var takesFiles: Bool { session?.attachDropped != nil }
 
     // MARK: Notes, and files the text view takes
 
@@ -103,6 +106,9 @@ extension BlockField: UITextDropDelegate, UIDropInteractionDelegate {
         _ textDroppableView: UIView & UITextDroppable, proposalForDrop drop: UITextDropRequest
     ) -> UITextDropProposal {
         guard let kind = editorDrop(drop.dropSession) else { return drop.suggestedProposal }
+        // Where files are not taken, a picture from Safari is the text
+        // view's own drop, as before files were.
+        if kind == .files, !takesFiles { return drop.suggestedProposal }
         // A code block's text stays literal: no link node goes in.
         if kind == .notes, block.kind == "codeBlock" || session?.model == nil {
             return UITextDropProposal(operation: .forbidden)
@@ -136,8 +142,9 @@ extension BlockField: UITextDropDelegate, UIDropInteractionDelegate {
         return own.delegate?.dropInteraction?(own, canHandle: session) != true
     }
 
+    /// Refused where files are not taken, so the drag shows it will not land.
     func dropInteraction(_ interaction: UIDropInteraction, sessionDidUpdate session: UIDropSession) -> UIDropProposal {
-        UIDropProposal(operation: .copy)
+        UIDropProposal(operation: takesFiles ? .copy : .forbidden)
     }
 
     func dropInteraction(_ interaction: UIDropInteraction, performDrop session: UIDropSession) {
