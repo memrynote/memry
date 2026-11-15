@@ -1,6 +1,7 @@
 // A tag's colour from its tab's "Tag actions" menu in the running app (Step 13j, #3530), ported
 // from Electron's `tag-custom-color.e2e.ts`: a palette swatch and a custom hex reach the tag's
 // definition, and the menu stays open while the native colour chooser takes and returns focus.
+import { defaultTagColorName } from '@memry/contracts/tag-colors'
 import type { Page } from '../../harness/pw-compat/page'
 import { listedTags, openTagTab, seedNote, unique, vaultOpen } from '../../harness/tags'
 import { test, expect } from '../../harness/test'
@@ -30,6 +31,21 @@ test('selects a named palette color from the swatch grid', async ({ page }) => {
   await page.locator('button[title="emerald"]').click()
   await expect.poll(() => tagColor(page, tag), { timeout: 10_000 }).toBe('emerald')
   await expect(page.locator('input[type="color"]')).toBeVisible()
+})
+
+// #4678: a tag with no definition yet shows its name's default colour, and the index's mint
+// colours it otherwise. Picking the colour shown still writes it, and the mint's colour reaches
+// the tab. A name whose default is `emerald` made the test above fail 1 run in 20.
+test('selects the palette color the tag shows before its definition is minted', async ({
+  page
+}) => {
+  await vaultOpen(page)
+  let tag = `colornamed${unique()}`
+  for (let i = 0; defaultTagColorName(tag) !== 'emerald'; i++) tag = `colornamed${unique()}${i}`
+  await openChangeColorSubmenu(page, tag)
+
+  await page.locator('button[title="emerald"]').click()
+  await expect.poll(() => tagColor(page, tag), { timeout: 10_000 }).toBe('emerald')
 })
 
 test('selects a custom hex via the native color input', async ({ page }) => {
