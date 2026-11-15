@@ -126,6 +126,8 @@ pub struct FileTextRunner {
     /// Files whose bytes a scan compared, and scans that ended, for the tests.
     compared: AtomicUsize,
     scans: AtomicUsize,
+    /// HTML files parsed, for the tests.
+    html_parses: AtomicUsize,
 }
 
 /// OCR text read without one of `languages`. `None` is a build that read English only.
@@ -213,6 +215,7 @@ impl FileTextRunner {
             wake: Condvar::new(),
             compared: AtomicUsize::new(0),
             scans: AtomicUsize::new(0),
+            html_parses: AtomicUsize::new(0),
         })
     }
 
@@ -253,6 +256,12 @@ impl FileTextRunner {
     #[doc(hidden)]
     pub fn scans(&self) -> usize {
         self.scans.load(Ordering::SeqCst)
+    }
+
+    /// The HTML files the runner parsed.
+    #[doc(hidden)]
+    pub fn html_parses(&self) -> usize {
+        self.html_parses.load(Ordering::SeqCst)
     }
 
     fn lock(&self) -> MutexGuard<'_, Wake> {

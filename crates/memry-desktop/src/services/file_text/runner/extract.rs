@@ -5,6 +5,7 @@ use std::cell::Cell;
 use std::collections::BTreeSet;
 use std::io::Read as _;
 use std::path::Path;
+use std::sync::atomic::Ordering;
 
 use memry_core::domain::file_text::{
     ExtractedTextMethod, FileTextJob, JobOutcome, normalize_extracted_text,
@@ -15,7 +16,7 @@ use super::{
     file_signature, is_oversized_html, misses_ocr_language, text,
 };
 use crate::services::file_text::PdfPages;
-use crate::services::file_text::html::{HTML_TEXT_MAX_BYTES, read_html_text};
+use crate::services::file_text::html::{HTML_TEXT_MAX_BYTES, HtmlTextError, read_html_text};
 use crate::shell::file_open::Resolution;
 use crate::vault::paths::{open_vault_file, resolve_vault_file};
 
@@ -195,19 +196,24 @@ impl FileTextRunner {
             self.text_changed(&file.of.note_id);
             return Ok(());
         }
-        let Some(result) = self.read_twice(|_| {
-            let limit = HTML_TEXT_MAX_BYTES as u64;
-            let bytes = read_vault_bytes(&self.deps.vault_path, &file.path, Some(limit))?;
-            // Grown since the size check: never parse it.
-            if bytes.len() > HTML_TEXT_MAX_BYTES {
-                return Err("HTML file grew past the cap".into());
+        let text = match self.read_html(file) {
+            None => return Ok(()),
+            Some(Ok(text)) => text,
+            Some(Err(error)) => {
+                tracing::warn!(scope = "FileText", note_id = file.of.note_id, %error, "Could not read an HTML file's text");
+                if !self.owns(file, signature)? {
+                    return Ok(());
+                }
+                self.set_page_count(file, 1)?;
+                self.save_part(file, 1, &PageText::unreadable())?;
+                work.fail(error)?;
+                self.text_changed(&file.of.note_id);
+                return Ok(());
             }
-            Ok(PageText {
-                method: ExtractedTextMethod::Html,
-                text: read_html_text(&bytes).map_err(text)?,
-            })
-        }) else {
-            return Ok(());
+        };
+        let result = PageText {
+            method: ExtractedTextMethod::Html,
+            text,
         };
         if !self.owns(file, signature)? {
             return Ok(());
@@ -217,6 +223,38 @@ impl FileTextRunner {
         work.finish_part(&result)?;
         self.text_changed(&file.of.note_id);
         Ok(())
+    }
+
+    /// `readTwice` for an HTML file, with the error kept for the job: a read that failed is
+    /// tried once more, and so is a parse past [`PARSE_DEADLINE`](crate::services::file_text::html::PARSE_DEADLINE) (a busy machine), but a file
+    /// over a cap (size, depth, nodes) fails the same way every time and is parsed once. A parse
+    /// cannot be stopped, so the stop is checked before and after each. `None` after a stop.
+    fn read_html(&self, file: &TextFile) -> Option<Result<String, String>> {
+        let mut retried = false;
+        loop {
+            if self.stopped() {
+                return None;
+            }
+            let limit = HTML_TEXT_MAX_BYTES as u64;
+            let outcome = match read_vault_bytes(&self.deps.vault_path, &file.path, Some(limit)) {
+                Ok(bytes) => {
+                    let parsed = read_html_text(&bytes);
+                    self.html_parses.fetch_add(1, Ordering::SeqCst);
+                    if self.stopped() {
+                        return None;
+                    }
+                    match parsed {
+                        Ok(text) => return Some(Ok(text)),
+                        Err(error) => (matches!(error, HtmlTextError::TooSlow), error.to_string()),
+                    }
+                }
+                Err(error) => (true, error),
+            };
+            match outcome {
+                (true, _) if !retried => retried = true,
+                (_, error) => return Some(Err(error)),
+            }
+        }
     }
 
     fn extract_pdf(&self, work: &Job<'_>, signature: &str, path: &Path) -> Result<(), String> {

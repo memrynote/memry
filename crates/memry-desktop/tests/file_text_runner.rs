@@ -247,6 +247,32 @@ fn html_over_the_cap_is_never_parsed_nor_retried() {
     assert_eq!(f.job(&of).unwrap(), job);
 }
 
+/// A cap the file's bytes hit fails it the same way every time: one parse, and the job says why.
+#[test]
+fn html_past_a_cap_is_parsed_once_and_its_job_keeps_the_reason() {
+    let mut f = ft(&[]);
+    let id = f.write_note("n.md", "# Note\n");
+    let folder = f.e.vault.join("attachments").join(&id);
+    std::fs::create_dir_all(&folder).unwrap();
+    let deep = "<div>".repeat(memry_desktop::services::file_text::html::MAX_DEPTH + 10);
+    std::fs::write(folder.join("deep.html"), deep).unwrap();
+    let parses = f.file_text.runner().expect("running").html_parses();
+    f.write_note(
+        "n.md",
+        &format!("# Note\n\n![deep](attachments/{id}/deep.html)\n"),
+    );
+    let job = f.settled_job(&TextSource {
+        note_id: id,
+        source: "deep.html".into(),
+    });
+    assert_eq!(job.status, FileTextJobStatus::Failed);
+    assert_eq!(
+        job.error.as_deref(),
+        Some("the HTML nests more than 512 elements deep")
+    );
+    assert_eq!(f.file_text.runner().unwrap().html_parses() - parses, 1);
+}
+
 #[cfg(unix)]
 #[test]
 fn an_attachment_linked_outside_the_vault_fails_its_job() {
