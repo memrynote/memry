@@ -54,13 +54,14 @@ struct NoteReadToolbar: ViewModifier {
                 // Everything the bottom bar used to hold lives here now: the
                 // keyboard toolbar owns editing at the caret, and one bottom
                 // surface fewer leaves the page to the writing.
-                if pane?.showsPageMenu ?? true {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        NotePageMenu(
-                            items: menuItems,
-                            editing: editorModel.canEdit ? editingItems : nil
-                        )
-                    }
+                if !headed {
+                    ToolbarItem(placement: .topBarTrailing) { pageMenu }
+                }
+            }
+            // Two panes: the menu goes in the pane's own header (#4699).
+            .safeAreaBar(edge: .top) {
+                if let pane, headed {
+                    NotesPaneHeader(pane: pane) { pageMenu }
                 }
             }
             .task { await actions.loadFavorite() }
@@ -82,6 +83,12 @@ struct NoteReadToolbar: ViewModifier {
                     }
                 }
             }
+    }
+
+    private var headed: Bool { pane?.headed ?? false }
+
+    private var pageMenu: some View {
+        NotePageMenu(items: menuItems, editing: editorModel.canEdit ? editingItems : nil)
     }
 
     private var menuItems: NotePageMenuItems {
