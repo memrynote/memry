@@ -11,10 +11,9 @@ const serviceMocks = vi.hoisted(() => ({
     refreshToken: vi.fn(),
     setupFirstDevice: vi.fn(),
     setupNewAccount: vi.fn(),
+    linkViaRecovery: vi.fn(),
+    getAccountInfo: vi.fn(),
     logout: vi.fn()
-  },
-  deviceService: {
-    getDevices: vi.fn()
   },
   setupService: {
     confirmRecoveryPhrase: vi.fn()
@@ -22,12 +21,26 @@ const serviceMocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@/services/auth-service', () => ({
+  SETUP_CONFLICT: 'account-setup-conflict',
   authService: serviceMocks.authService
 }))
 
 vi.mock('@/services/device-service', () => ({
-  deviceService: serviceMocks.deviceService,
   setupService: serviceMocks.setupService
+}))
+
+vi.mock('../../../generated/bindings', () => ({
+  events: {
+    authSessionRefreshedEvent: {
+      listen: vi.fn(async (handler: (event: { payload: object }) => void) => {
+        const cb = (): void => handler({ payload: {} })
+        tokenRefreshedCallback = cb
+        return () => {
+          if (tokenRefreshedCallback === cb) tokenRefreshedCallback = null
+        }
+      })
+    }
+  }
 }))
 
 import { AuthProvider, useAuth } from './auth-context'
@@ -41,6 +54,20 @@ let oauthErrorCallback: EventCallback<{ error?: string }> | null = null
 let linkingFinalizedCallback: EventCallback<{ deviceId?: string; error?: string }> | null = null
 let oauthCallback: EventCallback<{ code: string; state: string }> | null = null
 
+const signedOut = {
+  signedIn: false,
+  email: null,
+  deviceId: null,
+  needsRecoveryConfirmation: false
+}
+
+const signedIn = {
+  signedIn: true,
+  email: 'kaan@example.com',
+  deviceId: 'current-device',
+  needsRecoveryConfirmation: false
+}
+
 function wrapper({ children }: { children: ReactNode }) {
   return <AuthProvider>{children}</AuthProvider>
 }
@@ -50,12 +77,6 @@ function installApiHandlers(): void {
   api.onSessionExpired = vi.fn((cb: EventCallback<{ reason: string }>) => {
     sessionExpiredCallback = cb
     return vi.fn()
-  })
-  api.onTokenRefreshed = vi.fn((cb: () => void) => {
-    tokenRefreshedCallback = cb
-    return () => {
-      if (tokenRefreshedCallback === cb) tokenRefreshedCallback = null
-    }
   })
   api.onSyncStatusChanged = vi.fn((cb: EventCallback<{ status: string; lastSyncAt?: number }>) => {
     syncStatusCallback = cb
@@ -75,9 +96,6 @@ function installApiHandlers(): void {
     oauthCallback = cb
     return vi.fn()
   })
-  api.syncLinking = {
-    linkViaRecovery: vi.fn().mockResolvedValue({ success: true, deviceId: 'linked-device' })
-  }
 }
 
 describe('AuthProvider', () => {
@@ -90,7 +108,11 @@ describe('AuthProvider', () => {
     linkingFinalizedCallback = null
     oauthCallback = null
     installApiHandlers()
-    serviceMocks.deviceService.getDevices.mockResolvedValue({ devices: [] })
+    serviceMocks.authService.getAccountInfo.mockResolvedValue(signedOut)
+    serviceMocks.authService.linkViaRecovery.mockResolvedValue({
+      success: true,
+      deviceId: 'linked-device'
+    })
     serviceMocks.authService.refreshToken.mockResolvedValue({ success: true })
     serviceMocks.authService.requestOtp.mockResolvedValue({ success: true, expiresIn: 90 })
     serviceMocks.authService.resendOtp.mockResolvedValue({ success: true, expiresIn: 60 })
@@ -158,13 +180,7 @@ describe('AuthProvider', () => {
   })
 
   it('checks existing auth and responds to session, OAuth, and linking events', async () => {
-    serviceMocks.deviceService.getDevices.mockResolvedValue({
-      email: 'kaan@example.com',
-      devices: [
-        { id: 'old-device', isCurrentDevice: false },
-        { id: 'current-device', isCurrentDevice: true }
-      ]
-    })
+    serviceMocks.authService.getAccountInfo.mockResolvedValue(signedIn)
 
     const { result } = renderHook(() => useAuth(), { wrapper })
 
@@ -199,13 +215,8 @@ describe('AuthProvider', () => {
   })
 
   describe('session survives network failures', () => {
-    const signedInDevices = {
-      email: 'kaan@example.com',
-      devices: [{ id: 'current-device', isCurrentDevice: true }]
-    }
-
     it('stays signed in when an advisory session-expired arrives', async () => {
-      serviceMocks.deviceService.getDevices.mockResolvedValue(signedInDevices)
+      serviceMocks.authService.getAccountInfo.mockResolvedValue(signedIn)
       const { result } = renderHook(() => useAuth(), { wrapper })
       await waitFor(() => expect(result.current.state.status).toBe('authenticated'))
 
@@ -217,7 +228,7 @@ describe('AuthProvider', () => {
     })
 
     it('signs out when the keychain no longer holds a refresh token', async () => {
-      serviceMocks.deviceService.getDevices.mockResolvedValue(signedInDevices)
+      serviceMocks.authService.getAccountInfo.mockResolvedValue(signedIn)
       const { result } = renderHook(() => useAuth(), { wrapper })
       await waitFor(() => expect(result.current.state.status).toBe('authenticated'))
 
@@ -229,7 +240,7 @@ describe('AuthProvider', () => {
     })
 
     it('stays signed in when the first refresh fails on the network', async () => {
-      serviceMocks.deviceService.getDevices.mockResolvedValue(signedInDevices)
+      serviceMocks.authService.getAccountInfo.mockResolvedValue(signedIn)
       serviceMocks.authService.refreshToken.mockResolvedValue({
         success: false,
         sessionEnded: false,
@@ -246,7 +257,7 @@ describe('AuthProvider', () => {
     })
 
     it('signs out when the first refresh reports the session ended', async () => {
-      serviceMocks.deviceService.getDevices.mockResolvedValue(signedInDevices)
+      serviceMocks.authService.getAccountInfo.mockResolvedValue(signedIn)
       serviceMocks.authService.refreshToken.mockResolvedValue({
         success: false,
         sessionEnded: true,
@@ -259,7 +270,7 @@ describe('AuthProvider', () => {
     })
 
     it('leaves the signed-out state when main refreshes a token', async () => {
-      serviceMocks.deviceService.getDevices.mockResolvedValue(signedInDevices)
+      serviceMocks.authService.getAccountInfo.mockResolvedValue(signedIn)
       const { result } = renderHook(() => useAuth(), { wrapper })
       await waitFor(() => expect(result.current.state.status).toBe('authenticated'))
       act(() => {
@@ -277,7 +288,7 @@ describe('AuthProvider', () => {
     })
 
     it('stays signed out on a sync after the server ended the session', async () => {
-      serviceMocks.deviceService.getDevices.mockResolvedValue(signedInDevices)
+      serviceMocks.authService.getAccountInfo.mockResolvedValue(signedIn)
       const { result } = renderHook(() => useAuth(), { wrapper })
       await waitFor(() => expect(result.current.state.status).toBe('authenticated'))
       act(() => {
@@ -291,21 +302,21 @@ describe('AuthProvider', () => {
         await Promise.resolve()
       })
 
-      expect(serviceMocks.deviceService.getDevices).toHaveBeenCalledTimes(1)
+      expect(serviceMocks.authService.getAccountInfo).toHaveBeenCalledTimes(1)
       expect(result.current.state.status).toBe('unauthenticated')
     })
 
     it('leaves the signed-out state when a sync succeeds', async () => {
-      serviceMocks.deviceService.getDevices
+      serviceMocks.authService.getAccountInfo
         .mockRejectedValueOnce(new Error('device lookup failed'))
-        .mockResolvedValue(signedInDevices)
+        .mockResolvedValue(signedIn)
       const { result } = renderHook(() => useAuth(), { wrapper })
       await waitFor(() => expect(result.current.state.status).toBe('unauthenticated'))
 
       act(() => {
         syncStatusCallback?.({ status: 'idle', lastSyncAt: Date.now() - 60_000 })
       })
-      expect(serviceMocks.deviceService.getDevices).toHaveBeenCalledTimes(1)
+      expect(serviceMocks.authService.getAccountInfo).toHaveBeenCalledTimes(1)
       expect(result.current.state.status).toBe('unauthenticated')
 
       act(() => {
@@ -345,10 +356,9 @@ describe('AuthProvider', () => {
   })
 
   it('keeps existing devices in recovery setup when recovery confirmation is pending', async () => {
-    serviceMocks.deviceService.getDevices.mockResolvedValue({
-      email: 'kaan@example.com',
-      needsRecoveryConfirmation: true,
-      devices: [{ id: 'current-device', isCurrentDevice: true }]
+    serviceMocks.authService.getAccountInfo.mockResolvedValue({
+      ...signedIn,
+      needsRecoveryConfirmation: true
     })
 
     const { result } = renderHook(() => useAuth(), { wrapper })
@@ -457,7 +467,7 @@ describe('AuthProvider', () => {
   })
 
   it('covers unauthenticated error branches and rejected device flows', async () => {
-    serviceMocks.deviceService.getDevices.mockRejectedValueOnce(new Error('device lookup failed'))
+    serviceMocks.authService.getAccountInfo.mockRejectedValueOnce(new Error('device lookup failed'))
     const { result } = renderHook(() => useAuth(), { wrapper })
 
     await waitFor(() => expect(result.current.state.status).toBe('unauthenticated'))
@@ -489,6 +499,21 @@ describe('AuthProvider', () => {
     await expect(async () => result.current.verifyOtp('123456')).rejects.toThrow(
       'setup account failed'
     )
+
+    // Another device set the account up first: its phrase links this one.
+    serviceMocks.authService.verifyOtp.mockResolvedValueOnce({ success: true, needsSetup: true })
+    serviceMocks.authService.setupNewAccount.mockResolvedValueOnce({
+      success: false,
+      error: 'set up elsewhere',
+      errorCode: 'account-setup-conflict'
+    })
+    await act(async () => {
+      expect(await result.current.verifyOtp('123456')).toEqual({
+        deviceId: '',
+        needsRecoverySetup: true,
+        needsRecoveryInput: true
+      })
+    })
 
     serviceMocks.authService.verifyOtp.mockResolvedValueOnce({ success: true, needsSetup: false })
     await act(async () => {
@@ -522,7 +547,7 @@ describe('AuthProvider', () => {
     await expect(async () => result.current.confirmRecoveryPhrase()).rejects.toThrow(
       'Failed to confirm recovery phrase'
     )
-    ;(window.api.syncLinking.linkViaRecovery as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+    serviceMocks.authService.linkViaRecovery.mockResolvedValueOnce({
       success: false,
       error: 'link failed'
     })

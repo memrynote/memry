@@ -170,10 +170,11 @@ final class SignInViewModel {
             return
         }
         guard await perform(.verify, { _ = try await $0.verifyEmailCode(code: digits) }) else {
-            // A rejected code moved the core to `SignedOut` and must not sit in
-            // the field waiting to be resubmitted. A rate-limited verify judged
-            // nothing and stays on the code screen, so the code stays (#2940).
-            if case .awaitingOtp = state { return }
+            // A wrong or expired code keeps the core in `AwaitingOtp`, so a
+            // resend and the right code still finish the sign-in; the field
+            // empties for it, as desktop's does (`otp-input.tsx:67`). A
+            // rate-limited verify judged nothing, so the code stays (#2940).
+            if error?.code == ErrorCode("api.rateLimited") { return }
             code = ""
             return
         }

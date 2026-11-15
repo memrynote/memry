@@ -347,10 +347,26 @@ struct SignInViewModelTests {
         #expect(model.error?.recourse == .retryLater)
     }
 
-    @Test("a rejected code is cleared from the field and the core says where the user is")
+    @Test("a rejected code is cleared from the field and the code screen stays for the next one")
     func rejectedCodeIsCleared() async {
         let (model, _) = makeModel(from: .awaitingOtp(email: "kaan@example.com"), [
-            .fails(ApiError.Status(status: 400, code: "VALIDATION_ERROR", message: "bad"), leaving: .signedOut)
+            .fails(ApiError.Status(status: 400, code: "VALIDATION_ERROR", message: "bad"), leaving: .awaitingOtp(email: "kaan@example.com"))
+        ])
+        model.code = "123456"
+        await model.run(.verify)
+
+        #expect(model.code.isEmpty)
+        #expect(model.state == .awaitingOtp(email: "kaan@example.com"))
+        #expect(model.step.field == .code)
+        // A 4xx the client has no policy for must not read as transient.
+        #expect(model.error?.recourse == .blocked)
+        #expect(model.error?.title == "The Memry server refused that request.")
+    }
+
+    @Test("a verify that ended the attempt clears the code and returns to the email")
+    func endedAttemptClearsTheCode() async {
+        let (model, _) = makeModel(from: .awaitingOtp(email: "kaan@example.com"), [
+            .fails(ApiError.Status(status: 500, code: "INTERNAL", message: "bad"), leaving: .signedOut)
         ])
         model.code = "123456"
         await model.run(.verify)
@@ -358,9 +374,6 @@ struct SignInViewModelTests {
         #expect(model.code.isEmpty)
         #expect(model.state == .signedOut)
         #expect(model.step.field == .email)
-        // A 4xx the client has no policy for must not read as transient.
-        #expect(model.error?.recourse == .blocked)
-        #expect(model.error?.title == "The Memry server refused that request.")
     }
 
     /// `DESIGN.md`: silent means not alerted, never not known.

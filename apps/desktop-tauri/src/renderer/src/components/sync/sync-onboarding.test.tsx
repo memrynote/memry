@@ -16,7 +16,19 @@ const mocks = vi.hoisted(() => ({
   syncState: {
     initialSyncProgress: null as null | { phase: string; current: number; total: number }
   },
-  clipboardWrite: vi.fn()
+  clipboardWrite: vi.fn(),
+  otpDetected: undefined as undefined | ((event: { payload: { code: string } }) => void)
+}))
+
+vi.mock('../../../../generated/bindings', () => ({
+  events: {
+    authOtpDetectedEvent: {
+      listen: vi.fn(async (handler: (event: { payload: { code: string } }) => void) => {
+        mocks.otpDetected = handler
+        return () => undefined
+      })
+    }
+  }
 }))
 
 vi.mock('@memry/i18n/renderer', () => ({
@@ -60,14 +72,8 @@ vi.mock('@/components/ui/input-otp', () => ({
 
 const phrase = Array.from({ length: 24 }, (_, i) => `word${i + 1}`).join(' ')
 
-const setOtpDetected = () => {
-  let detectedCallback: ((event: { code?: string }) => void) | undefined
-  ;(window.api as any).onOtpDetected = vi.fn((callback: (event: { code?: string }) => void) => {
-    detectedCallback = callback
-    return vi.fn()
-  })
-  return () => detectedCallback
-}
+const setOtpDetected = () => () => (event: { code: string }) =>
+  mocks.otpDetected?.({ payload: event })
 
 describe('sync onboarding components', () => {
   beforeEach(() => {
