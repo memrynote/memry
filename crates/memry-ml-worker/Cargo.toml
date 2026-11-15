@@ -32,7 +32,8 @@ default = ["native"]
 # pins; and memry-ml (`embed`), which links ONNX Runtime statically (crates/AGENTS.md, ONNX
 # Runtime), so building it needs `ORT_LIB_LOCATION` on every target but macOS arm64. A build
 # without `embed` answers every embedding op with a failure: the dev loop builds one when ONNX
-# Runtime is not at hand (apps/desktop-tauri/scripts/dev-worker.mjs). Releases build `native`.
+# Runtime is not at hand (apps/desktop-tauri/scripts/dev-worker.mjs), and one without `ocr`, which
+# fails every OCR op, when cmake is not. Releases build `native`.
 native = ["pdf", "ocr", "embed"]
 pdf = ["dep:pdfium-render", "dep:image"]
 ocr = ["dep:image"]
@@ -42,7 +43,7 @@ embed = ["dep:memry-ml"]
 [[bin]]
 name = "memry-ml-worker"
 path = "src/main.rs"
-required-features = ["pdf", "ocr"]
+required-features = ["pdf"]
 test = false
 doc = false
 

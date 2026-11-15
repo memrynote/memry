@@ -137,3 +137,19 @@ fn the_bundled_english_data_is_unpacked_for_the_worker() {
     let unpacked = std::fs::metadata(data.path().join("eng.traineddata")).unwrap();
     assert!(unpacked.len() > 1_000_000, "{}", unpacked.len());
 }
+
+/// A data dir that already holds English does not hide a bundled pack removed from the install.
+#[test]
+fn a_removed_bundled_pack_fails_with_english_already_unpacked() {
+    let resources =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../apps/desktop-tauri/src-tauri/resources");
+    let data = tempfile::tempdir().unwrap();
+    let _ = engine(&resources).read(&grey_rgb(4, 4), data.path(), &[OcrLanguage::Eng]);
+    assert!(data.path().join("eng.traineddata").is_file());
+
+    let missing = tempfile::tempdir().unwrap();
+    let error = engine(missing.path())
+        .read(&grey_rgb(4, 4), data.path(), &[OcrLanguage::Eng])
+        .unwrap_err();
+    assert_eq!(error, "OCR language data is missing");
+}

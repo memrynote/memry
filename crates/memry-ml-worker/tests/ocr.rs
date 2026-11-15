@@ -22,6 +22,10 @@ fn worker() -> Supervisor {
 
 /// A data dir holding the plain `eng.traineddata`.
 fn tessdata() -> tempfile::TempDir {
+    tessdata_named("ocr")
+}
+
+fn tessdata_named(prefix: &str) -> tempfile::TempDir {
     let packed = std::fs::read(
         Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../apps/desktop-tauri/src-tauri/resources/tessdata/eng.traineddata.gz"),
@@ -31,7 +35,10 @@ fn tessdata() -> tempfile::TempDir {
     GzDecoder::new(packed.as_slice())
         .read_to_end(&mut plain)
         .expect("gunzip");
-    let dir = tempfile::tempdir().expect("temp dir");
+    let dir = tempfile::Builder::new()
+        .prefix(prefix)
+        .tempdir()
+        .expect("temp dir");
     std::fs::write(dir.path().join("eng.traineddata"), plain).expect("write");
     dir
 }
@@ -50,6 +57,17 @@ fn eng() -> Vec<String> {
 #[test]
 fn reads_the_text_of_an_image_with_the_bundled_english_data() {
     let data = tessdata();
+    let text = worker()
+        .recognize(data.path(), &eng(), fixture())
+        .expect("read");
+    assert_eq!(text.trim(), "Heron count at dawn");
+}
+
+/// A Windows profile dir like `C:\Users\Çağrı`: Tesseract's narrow `fopen` reads the path in
+/// the ANSI code page there.
+#[test]
+fn reads_with_data_under_a_non_ascii_dir() {
+    let data = tessdata_named("ocr-ç");
     let text = worker()
         .recognize(data.path(), &eng(), fixture())
         .expect("read");

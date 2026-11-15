@@ -242,7 +242,14 @@ pub fn register(app: &AppHandle<Wry>, session: &Session) {
 /// OCR with the languages the OCR languages service has ready. Without that service or the
 /// resource dir, images and scanned pages fail `OCR unavailable` this run.
 fn recognizer(app: &AppHandle<Wry>, worker: &Arc<WorkerHandle>) -> Option<Recognize> {
-    let languages = app.try_state::<Arc<OcrLanguages>>()?.inner().clone();
+    let Some(languages) = app.try_state::<Arc<OcrLanguages>>() else {
+        tracing::error!(
+            scope = "MlWorker",
+            "no OCR this run: the OCR languages service is not running"
+        );
+        return None;
+    };
+    let languages = languages.inner().clone();
     match resource_dir(app) {
         Ok(dir) => Some(OcrEngine::new(worker.clone(), &dir).recognizer(languages)),
         Err(error) => {

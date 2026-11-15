@@ -47,16 +47,21 @@ unsafe extern "C" {
 struct Engine(*mut c_void);
 
 impl Engine {
+    /// Tesseract opens `<datapath>/<lang>.traineddata` with narrow `fopen`, which MSVC reads in
+    /// the ANSI code page, so a profile dir like `C:\Users\Çağrı` would never open. The worker
+    /// moves into `datapath` with the wide-character API and hands Tesseract `.`; Init2 reads
+    /// every language's data before it returns. No other path in the worker is relative.
     fn new(datapath: &str, languages: &str) -> Result<Self, String> {
-        let path = CString::new(datapath).map_err(|_| "the data path holds a NUL byte")?;
         let langs = CString::new(languages).map_err(|_| "a language holds a NUL byte")?;
+        std::env::set_current_dir(datapath)
+            .map_err(|error| format!("the OCR data dir could not be opened: {error}"))?;
         // SAFETY: Create returns an owned handle, freed by `Drop`; Init2 reads the two C strings,
         // which outlive the call.
         let engine = Self(unsafe { TessBaseAPICreate() });
         if engine.0.is_null() {
             return Err("Tesseract could not start".into());
         }
-        if unsafe { TessBaseAPIInit2(engine.0, path.as_ptr(), langs.as_ptr(), OEM_LSTM_ONLY) } != 0
+        if unsafe { TessBaseAPIInit2(engine.0, c".".as_ptr(), langs.as_ptr(), OEM_LSTM_ONLY) } != 0
         {
             return Err(format!("Tesseract could not load {languages}"));
         }

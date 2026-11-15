@@ -13,7 +13,7 @@
 use std::path::{Path, PathBuf};
 
 /// Bump when a cmake option below changes, so every machine and CI cache builds again.
-const BUILD_KEY: &str = "b1";
+const BUILD_KEY: &str = "b2";
 const LEPTONICA: &str = "leptonica-1.87.0";
 const TESSERACT: &str = "tesseract-5.5.2";
 
@@ -89,6 +89,8 @@ fn tesseract(target_os: &str, msvc: bool) {
     );
     let build = root.join("build").join(&key);
     let done = build.join(".done");
+    // A deleted build dir reruns this script instead of linking from paths that are gone.
+    println!("cargo:rerun-if-changed={}", done.display());
     if !done.is_file() {
         std::fs::create_dir_all(root.join("build")).expect("create the Tesseract build dir");
         // Two checkouts building the same key at once wait for each other.
@@ -120,6 +122,9 @@ fn tesseract(target_os: &str, msvc: bool) {
                 &deployment,
             )
             .define("CMAKE_PREFIX_PATH", &leptonica)
+            // Without it a miss falls back to pkg-config, whose system Leptonica headers would
+            // not match the pinned static library.
+            .define("Leptonica_DIR", leptonica.join("lib/cmake/leptonica"))
             .define("SW_BUILD", "OFF")
             .define("WIN32_MT_BUILD", "ON")
             .define("OPENMP_BUILD", "OFF")

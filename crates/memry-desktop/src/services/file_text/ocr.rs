@@ -84,20 +84,27 @@ impl OcrEngine {
     }
 
     /// The text in `image` read with `languages`, whose data `datapath` holds except English,
-    /// which this unpacks there. Without English data that matches its pin the read fails at
-    /// once, logged once per run (`assertLanguageData`). Blocking.
+    /// which this unpacks there. Without the bundled pack, or when the pack does not match its pin
+    /// on the first unpack, the read fails at once, logged once per run (`assertLanguageData`).
+    /// Blocking.
     pub fn read(
         &self,
         image: &[u8],
         datapath: &Path,
         languages: &[OcrLanguage],
     ) -> Result<String, String> {
-        if let Err(error) = unpack(
-            datapath,
-            OcrLanguage::BUNDLED,
-            &self.bundled_pack,
-            BUNDLED_PACK_SHA256,
-        ) {
+        // `unpack` skips the pack once the cache holds it; a removed pack still fails the read.
+        let unpacked = if self.bundled_pack.is_file() {
+            unpack(
+                datapath,
+                OcrLanguage::BUNDLED,
+                &self.bundled_pack,
+                BUNDLED_PACK_SHA256,
+            )
+        } else {
+            Err(std::io::ErrorKind::NotFound.into())
+        };
+        if let Err(error) = unpacked {
             if !self.reported_missing.swap(true, Ordering::SeqCst) {
                 tracing::error!(
                     scope = "Ocr",
