@@ -55,6 +55,7 @@ use super::bootstrap::BootstrapClient;
 use super::engine::{PassReport, PassSeed, SyncEngine};
 use super::first_sync::{FirstSync, FirstSyncLimits, FirstSyncReport, ProgressSink};
 use super::first_sync_store::read_meta;
+use super::hardening::history::{self, HistoryKind};
 use super::pack_bootstrap::PackBootstrap;
 use super::policy::ServerClock;
 use super::pull::PullLoop;
@@ -63,7 +64,7 @@ use super::state::{PassTrigger, SyncState, WriteGate};
 use cipher::DirectoryCipher;
 pub use observer::{
     AppliedFeed, AppliedOutcome, AppliedRecord, ApplyObserver, AttachmentDownload, FieldConflict,
-    Observers,
+    Observers, SecurityWarning,
 };
 use progress::{InitialSyncPhase, InitialSyncSink, Phases, TasksPhase};
 
@@ -195,6 +196,7 @@ impl SyncDriver {
             .with_at_rest_key(at_rest.clone())
             .with_observers(Arc::clone(&observers))
             .with_vault(&server_vault)
+            .with_hardening()
         };
         let feed = pull_loop().with_note_bodies(cipher.clone());
         let push = PushCoordinator::new(Arc::clone(&http), db.clone(), declaration.clone(), sealer)
@@ -270,7 +272,9 @@ impl SyncDriver {
             return None;
         }
         self.settle_misses().await;
+        let started = super::pull::now_ms();
         let pass = self.engine.run_pass(trigger).await;
+        self.record_history(&pass, started).await;
         self.settle_misses().await;
         Some(pass)
     }
@@ -281,7 +285,11 @@ impl SyncDriver {
             return None;
         }
         self.settle_misses().await;
+        let started = super::pull::now_ms();
         let pass = self.engine.wake(cursor).await;
+        if let Some(pass) = &pass {
+            self.record_history(pass, started).await;
+        }
         self.settle_misses().await;
         pass
     }
@@ -391,6 +399,49 @@ impl SyncDriver {
     /// The account's plan ([`SyncEngine::set_entitled`]).
     pub fn set_entitled(&self, entitled: bool) {
         self.engine.set_entitled(entitled);
+    }
+
+    /// The pass's [`history`] rows, as Electron's coordinators write them: a
+    /// pull that succeeded (`pull-coordinator.ts:527`), a push that sent rows
+    /// (`push-coordinator.ts:519`), and each failure (`:583`, `:566`). A row
+    /// that does not write is logged; the pass already happened.
+    async fn record_history(&self, pass: &PassReport, started_ms: i64) {
+        let mut rows: Vec<(HistoryKind, usize, Option<String>)> = Vec::new();
+        if pass.pull.pages > 0 && pass.pull_error.is_none() && !pass.pull.refused {
+            rows.push((
+                HistoryKind::Pull,
+                pass.pull.applied + pass.pull.deleted,
+                None,
+            ));
+        }
+        if pass.pushed_items > 0 {
+            rows.push((HistoryKind::Push, pass.pushed_items, None));
+        }
+        for error in [&pass.pull_error, &pass.push_error].into_iter().flatten() {
+            rows.push((HistoryKind::Error, 0, Some(error.to_string())));
+        }
+        if rows.is_empty() {
+            return;
+        }
+        let recorded = self
+            .db
+            .call(move |conn| {
+                let now = super::pull::now_ms();
+                rows.iter().try_for_each(|(kind, count, details)| {
+                    history::record(
+                        conn,
+                        *kind,
+                        *count,
+                        now - started_ms,
+                        details.as_deref(),
+                        now,
+                    )
+                })
+            })
+            .await;
+        if let Err(error) = recorded {
+            eprintln!("memry-core: recording the sync history failed: {error}");
+        }
     }
 
     /// The server clock the last policy poll read ([`super::policy::PolicyTier::server_clock`]).

@@ -753,10 +753,10 @@ impl memry_core::sync::engine::PushWave for ScriptedPush {
         Ok(1)
     }
 
-    async fn drain(&self) -> Result<(), ApiError> {
+    async fn drain(&self) -> Result<usize, ApiError> {
         match self.0.lock().unwrap().clone() {
             Some(error) => Err(error),
-            None => Ok(()),
+            None => Ok(1),
         }
     }
 }

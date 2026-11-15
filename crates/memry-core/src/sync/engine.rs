@@ -64,9 +64,10 @@ pub trait PushWave: Send + Sync {
     /// How many rows are queued. Never removes one.
     async fn pending(&self) -> Result<usize, ApiError>;
 
-    /// Drains the wave. Chapter 05 §5.6's halving ladder and the 50-iteration
-    /// cap belong to the implementation, not to the engine.
-    async fn drain(&self) -> Result<(), ApiError>;
+    /// Drains the wave and answers how many rows the server accepted.
+    /// Chapter 05 §5.6's halving ladder and the 50-iteration cap belong to
+    /// the implementation, not to the engine.
+    async fn drain(&self) -> Result<usize, ApiError>;
 }
 
 /// Local rows a pass makes syncable before it pushes: Electron's full-sync seed step
@@ -97,6 +98,8 @@ pub struct PassReport {
     /// The outbox was parked by a blocked policy: no attempt was made.
     pub parked: bool,
     pub pushed: bool,
+    /// Rows the push wave's server accepted.
+    pub pushed_items: usize,
     /// Why the pull failed, when it did.
     pub pull_error: Option<SyncError>,
     /// Why the push failed, when it did (a mid-wave refusal that parked the
@@ -397,9 +400,10 @@ impl SyncEngine {
         }
         trail.enter(SyncState::Pushing);
         match push.drain().await {
-            Ok(()) => {
+            Ok(accepted) => {
                 trail.enter(SyncState::Idle);
                 done.pushed = true;
+                done.pushed_items = accepted;
             }
             // §11.9: a mid-wave 403, 426 or 402 is not a sync failure the
             // user can retry. The policy tier records the fact so the next
@@ -450,6 +454,7 @@ impl SyncEngine {
             pull,
             parked: done.parked,
             pushed: done.pushed,
+            pushed_items: done.pushed_items,
             pull_error: done.pull_error,
             push_error: done.push_error,
         }
@@ -461,6 +466,7 @@ impl SyncEngine {
 struct Done {
     parked: bool,
     pushed: bool,
+    pushed_items: usize,
     pull_error: Option<SyncError>,
     push_error: Option<SyncError>,
 }
