@@ -16,7 +16,9 @@
 //!   owned by the same note, under a fresh clock of this device's, and queued
 //!   for push. The remote scene then wins under the merged clock. Identical
 //!   scenes merge the clocks and copy nothing. A tombstoned local row has no
-//!   drawing to save (desktop's file is gone), so it is revived without a copy.
+//!   drawing to save (desktop's file is gone), so it gets no copy; it stays
+//!   deleted while its `delete` is queued and is revived once that delete has
+//!   been pushed ([`requeue::queued_tombstone`], the rule every merge keeps).
 //! - **An absent key keeps the local value.** `title`, `folder`, `icon` and
 //!   `ownerNoteId` absent from the remote mean an older client that never
 //!   stated them, and `null` is a real clear. `vaultId` always stays local.
@@ -167,6 +169,16 @@ fn finish(
     now_ms: i64,
     merged: bool,
 ) -> Result<Inbound, StorageError> {
+    let kept;
+    let record = if merged {
+        kept = InboundRecord {
+            deleted_at: requeue::queued_tombstone(&tx, record)?,
+            ..record.clone()
+        };
+        &kept
+    } else {
+        record
+    };
     let outcome = sync_items::apply_remote_in(&tx, record, now_ms)?;
     if merged && outcome == ApplyOutcome::Applied {
         requeue::requeue(&tx, ITEM_TYPE, &record.item_id, now_ms)?;

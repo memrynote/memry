@@ -119,10 +119,16 @@ mod editor_readonly;
 mod embedding_owed;
 #[path = "embedding_projector.rs"]
 mod embedding_projector;
+#[path = "embedding_worker.rs"]
+mod embedding_worker;
 #[path = "embeds.rs"]
 mod embeds;
 #[path = "file_open.rs"]
 mod file_open;
+#[path = "file_text_env.rs"]
+mod file_text_env;
+#[path = "file_text_runner.rs"]
+mod file_text_runner;
 #[path = "fold_agent.rs"]
 mod fold_agent;
 #[path = "fold_untrusted.rs"]
@@ -319,6 +325,8 @@ mod seams_tls;
 mod seams_transport;
 #[path = "settings_service.rs"]
 mod settings_service;
+#[path = "sync_backend.rs"]
+mod sync_backend;
 #[path = "sync_host_clients.rs"]
 mod sync_host_clients;
 #[path = "tag_definitions_sync.rs"]
@@ -335,6 +343,8 @@ mod tag_schema;
 mod tags;
 #[path = "telemetry_flush.rs"]
 mod telemetry_flush;
+#[path = "telemetry_report_posts.rs"]
+mod telemetry_report_posts;
 #[path = "templates.rs"]
 mod templates;
 #[path = "templates_legacy.rs"]

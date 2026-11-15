@@ -2467,8 +2467,7 @@
       "failedToCloseVault": "Holvin sulkeminen epäonnistui",
       "failedToSwitchVault": "Holvin vaihtaminen epäonnistui",
       "failedToUpdateConfig": "Määritysten päivittäminen epäonnistui",
-      "failedToReindex": "Uudelleenindeksoiminen epäonnistui",
-      "googleSignInFailed": "Google-sisäänkirjautuminen epäonnistui"
+      "failedToReindex": "Uudelleenindeksoiminen epäonnistui"
     }
   },
   "agentMcp": {

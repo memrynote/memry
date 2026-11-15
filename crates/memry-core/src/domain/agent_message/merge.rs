@@ -9,8 +9,8 @@
 //!   Electron skips an identical message and logs a conflict for a different
 //!   one, and this core has no log, so both are `Skipped`. A row with no
 //!   payload (metadata only) holds no message yet and takes the remote.
-//! - **A remote Electron's schema refuses is skipped** and nothing is written
-//!   ([`refuses`] over [`NOT_NULL`]; chapter 13 §13.2.3).
+//! - **A remote Electron's schema refuses is refused**, nothing is written and
+//!   the pull ledgers it ([`refuses`] over [`NOT_NULL`]; chapter 13 §13.2.3).
 //! - **Only a terminal status is a record** (`:138`): any other status,
 //!   absent included, is an error, so the pull records the item corrupt and
 //!   stores none of its payload.
@@ -53,7 +53,7 @@ pub fn apply_remote(
     }
     let remote = parse_object(record)?;
     if refuses(ITEM_TYPE, &remote, &NOT_NULL) {
-        return Ok(Inbound::Skipped);
+        return Ok(Inbound::Refused);
     }
     let status = remote.get("status").and_then(Value::as_str);
     if !status.is_some_and(|status| TERMINAL_STATUSES.contains(&status)) {

@@ -124,7 +124,8 @@ fn register_settings_hook(app: &AppHandle<Wry>, session: &Session) {
 /// finished once each open's walk ends (Step 13j-4, 13j-3d). The pre-sync template
 /// files import as the vault opens (Step 13l), into its activity log. The note fold starts with
 /// every open and stops with every close (Step 14h). The identity raises the vault's notices,
-/// the watch limit its consumer hits included (Step 14l).
+/// the watch limit its consumer hits included (Step 14l). The note embedding lane follows the
+/// tier's facts (Step 23).
 fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
     // Managed by the `Handlers` stage, which runs before this one.
     let Some(store) = app.try_state::<Arc<DeviceIdentityStore>>() else {
@@ -163,6 +164,7 @@ fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
         move |note_id| crate::shell::journal_events::landed(&lander, note_id),
     );
     index.register(session);
+    crate::ml_worker::register_embedding_lane(app, session, &index, &tier);
     app.manage(index);
     register_flushes(app, &tier, session);
     forward_writeback_failures(app.clone(), tier.subscribe_failures());
@@ -383,7 +385,7 @@ fn open_last_vault(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     register_editor_host(app, &session);
     register_large_files(app, &session);
     register_uploads(app, &session);
-    crate::ml_worker::register_on_close(app, &session);
+    crate::ml_worker::register(app, &session);
     // Subscribed before the first open, so the launch's own events reach the renderer's
     // listeners; the renderer reads `status()` once after it subscribes.
     forward_events(app.clone(), session.subscribe());

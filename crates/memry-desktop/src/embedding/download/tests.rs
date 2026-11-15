@@ -413,6 +413,58 @@ async fn cancelling_ends_a_stalled_download() {
     watcher.await.unwrap();
 }
 
+/// A retired embedding thread can still be downloading when its replacement starts: the second
+/// `ensure` waits for the first to end instead of appending to the same `.part` (REVIEW-4548).
+#[tokio::test]
+async fn a_second_ensure_waits_for_the_first_instead_of_sharing_its_part_file() {
+    let weights = bytes(8192, 12);
+    let fake = Fake::start(&[("w.bin", weights.clone())], Mode::StallAfter(256)).await;
+    let case = Case::new(&fake, vec![pin("w.bin", &weights)]);
+    let first_abort = abort_after(HANG);
+    let cancel_first = first_abort.cancel.clone();
+    let part = part_path(&case.path("w.bin"));
+    let (first, second) = tokio::join!(case.ensure_with(&first_abort), async {
+        while fs::metadata(&part).map_or(0, |m| m.len()) < 256 {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+        let second = case.ensure();
+        tokio::pin!(second);
+        // An absence window, not a speed bound: the second must not reach the host meanwhile.
+        let early = tokio::time::timeout(Duration::from_millis(300), &mut second).await;
+        assert!(
+            early.is_err(),
+            "the second ensure ended while the first ran"
+        );
+        assert_eq!(
+            fake.seen().len(),
+            1,
+            "only the first one requested the file"
+        );
+        *fake.mode.lock().unwrap() = Mode::Serve;
+        cancel_first.cancel();
+        second.await
+    });
+    assert!(matches!(first, Err(DownloadError::Cancelled)), "{first:?}");
+    second.expect("the second ensure downloads the file");
+    assert_eq!(fs::read(case.path("w.bin")).unwrap(), weights);
+}
+
+/// A cancel that lands with nothing left to download still wins: the thread it retired must
+/// not report a load it was told to drop.
+#[tokio::test]
+async fn a_cancel_wins_over_an_ensure_that_is_already_done() {
+    let weights = bytes(64, 13);
+    let fake = Fake::start(&[("w.bin", weights.clone())], Mode::Serve).await;
+    let case = Case::new(&fake, vec![pin("w.bin", &weights)]);
+    case.ensure().await.expect("downloaded");
+    for _ in 0..32 {
+        let abort = abort_after(HANG);
+        abort.cancel.cancel();
+        let error = case.ensure_with(&abort).await.expect_err("cancelled");
+        assert!(matches!(error, DownloadError::Cancelled), "{error:?}");
+    }
+}
+
 #[tokio::test]
 async fn a_missing_file_is_an_http_error_naming_it() {
     let fake = Fake::start(&[], Mode::Serve).await;

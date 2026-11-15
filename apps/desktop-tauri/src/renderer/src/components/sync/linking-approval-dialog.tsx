@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
+import { linkingService } from '@/services/linking-service'
 import type { LinkingRequestEvent } from '@memry/contracts/ipc-events'
 import { Monitor, Smartphone, Loader2 } from '@/lib/icons'
 import { useT } from '@memry/i18n/renderer'
@@ -52,7 +53,7 @@ export function LinkingApprovalDialog({
       if (cancelled) return
       setSasLoading(true)
     })
-    window.api.syncLinking
+    linkingService
       .getLinkingSas({ sessionId: event.sessionId })
       .then((result) => {
         if (cancelled) return
@@ -86,7 +87,7 @@ export function LinkingApprovalDialog({
     setIsApproving(true)
     setError(null)
 
-    window.api.syncLinking
+    linkingService
       .approveLinking({ sessionId: event.sessionId })
       .then((result) => {
         if (!result.success) {

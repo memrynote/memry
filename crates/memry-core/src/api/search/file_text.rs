@@ -85,6 +85,11 @@ impl Search {
             .call_blocking(move |index| file_text::delete_source(index, &of))
     }
 
+    /// Every note with a job or a part ([`file_text::note_ids`]).
+    pub fn file_text_note_ids(&self) -> Result<Vec<String>, StorageError> {
+        self.index.read_blocking(file_text::note_ids)
+    }
+
     pub fn delete_notes_file_text(&self, note_ids: Vec<String>) -> Result<(), StorageError> {
         self.index
             .call_blocking(move |index| file_text::delete_notes(index, &note_ids))

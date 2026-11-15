@@ -13,7 +13,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use memry_core::seams::secure_store::SecureStore;
-use memry_desktop::shell::shutdown::{Deadline, SESSION_END_BUDGET};
+use memry_desktop::shell::shutdown::{Deadline, LAST_CHANCE, SESSION_END_BUDGET, WRITEBACK_FLUSH};
 use memry_desktop::shell::shutdown::{
     ShutdownCore, ShutdownEffects, ShutdownReason, StepFn, UpdateApplyHook,
 };
@@ -280,8 +280,25 @@ impl UpdateApplyHook for Update {
     fn apply_on_quit(&self) {}
 }
 
-/// A quit of the app as the shell wires it: the tier's step as `flush-writebacks`, and
-/// `extra` for the other steps a test needs.
+/// The shell's `close-vault`: the session's close, which runs every pass the flush left.
+fn close_vault(e: &Env) -> StepFn {
+    let session = e.session.clone();
+    Arc::new(move |_, _| {
+        let session = session.clone();
+        Box::pin(async move {
+            tokio::task::spawn_blocking(move || session.close())
+                .await
+                .map_err(|error| error.to_string())
+        })
+    })
+}
+
+/// A quit of the app as the shell wires it: the tier's step as `flush-writebacks`, the
+/// session's close as `close-vault`, and `extra` for the other steps a test needs.
+///
+/// A test that runs it on tokio's paused clock holds the budget still while a step blocks
+/// (`spawn_blocking` stops the clock's auto-advance), so a stalled runner cannot spend it: only
+/// the flush's own share is wall time, and the close behind it finishes what that share left.
 async fn quit(
     e: &Env,
     reason: ShutdownReason,
@@ -291,6 +308,9 @@ async fn quit(
     let core = Arc::new(ShutdownCore::default());
     core.registry
         .register("flush-writebacks", e.tier.flush_step())
+        .unwrap();
+    core.registry
+        .register("close-vault", close_vault(e))
         .unwrap();
     for (name, step) in extra {
         core.registry.register(name, step).unwrap();
@@ -308,12 +328,30 @@ async fn quit(
     exits.lock().unwrap().clone()
 }
 
+/// Holds the rows' lane, so the scheduled pass waits, until the flush's whole share has passed:
+/// a runner whose disk stalls the pass past it (#4731).
+fn stall_past_the_flush(e: &Env, identity: &Arc<Creates>) -> std::thread::JoinHandle<()> {
+    park_the_consumer(e, identity);
+    let identity = identity.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(WRITEBACK_FLUSH + Duration::from_millis(500));
+        identity.release();
+    })
+}
+
 /// The app menu's Quit, Cmd-Q and the Dock's Quit all start the sequence as a `Quit`, a
 /// Windows sign-out or shutdown as a `SessionEnd`, and "restart to update" as a `Quit` that
 /// starts the installer before its clean exit. An edit scheduled just before is in the file
-/// when the process goes, and when the installer starts.
-#[tokio::test(flavor = "multi_thread")]
+/// when the process goes, and when the installer starts, also when its pass outlasts the
+/// flush's share (#4731): the vault close behind the flush writes it.
+#[tokio::test(start_paused = true)]
 async fn every_way_the_app_quits_writes_the_scheduled_edit_first() {
+    for stalled in [false, true] {
+        every_way_the_app_quits(stalled).await;
+    }
+}
+
+async fn every_way_the_app_quits(stalled: bool) {
     let cases: [(_, _, &[&str]); 3] = [
         (ShutdownReason::Quit, false, &["exit_clean"]),
         (ShutdownReason::SessionEnd, false, &["exit_clean"]),
@@ -325,14 +363,21 @@ async fn every_way_the_app_quits_writes_the_scheduled_edit_first() {
     ];
     for (reason, update, hows) in cases {
         let (e, identity, id) = one_note();
+        let stall = stalled.then(|| stall_past_the_flush(&e, &identity));
         e.edit_in_app(&identity.store, &id, "typed in the app");
         e.tier.schedule(&id);
         let exits = quit(&e, reason, update, vec![]).await;
+        if let Some(stall) = stall {
+            stall.join().unwrap();
+        }
         let want: Vec<_> = hows
             .iter()
             .map(|how| (*how, "typed in the app\n".to_owned()))
             .collect();
-        assert_eq!(exits, want, "{reason:?}, update {update}");
+        assert_eq!(
+            exits, want,
+            "{reason:?}, update {update}, stalled {stalled}"
+        );
     }
 }
 
@@ -348,13 +393,23 @@ impl Drop for OnDrop {
 }
 
 /// A step before the flush wedges and spends the budget. The edit it schedules as the budget
-/// ends is not due until after it, so only the last chance's flush writes it. The sequence
+/// ends is not due until after it, so only the last chance's flush writes it, or, when its
+/// pass outlasts the flush's share (#4731), the last chance's vault close. The sequence
 /// drops the wedged step when the budget ends, and the edit is scheduled then: tied to that
 /// moment and not to a margin on the clock, a stalled runner cannot push it past the last
 /// chance.
-#[tokio::test(flavor = "multi_thread")]
+#[tokio::test(start_paused = true)]
 async fn a_step_that_wedges_before_the_flush_leaves_it_the_last_chance() {
+    for stalled in [false, true] {
+        a_step_that_wedges(stalled).await;
+    }
+}
+
+async fn a_step_that_wedges(stalled: bool) {
     let (e, identity, id) = one_note();
+    if stalled {
+        park_the_consumer(&e, &identity);
+    }
     let wedged: StepFn = {
         let (tier, core, store, id) = (
             e.tier.clone(),
@@ -362,8 +417,10 @@ async fn a_step_that_wedges_before_the_flush_leaves_it_the_last_chance() {
             identity.store.clone() as Arc<dyn SecureStore>,
             id.clone(),
         );
+        let identity = identity.clone();
         Arc::new(move |_, _| {
             let (tier, core, store, id) = (tier.clone(), core.clone(), store.clone(), id.clone());
+            let identity = identity.clone();
             // On a thread of its own: the core's blocking calls do not run on a runtime worker.
             let at_the_end = OnDrop(Some(Box::new(move || {
                 std::thread::spawn(move || {
@@ -372,6 +429,13 @@ async fn a_step_that_wedges_before_the_flush_leaves_it_the_last_chance() {
                 })
                 .join()
                 .unwrap();
+                // The pass stalls past the last chance's flush share, which is half of it.
+                if stalled {
+                    std::thread::spawn(move || {
+                        std::thread::sleep(LAST_CHANCE);
+                        identity.release();
+                    });
+                }
             })));
             Box::pin(async move {
                 let _at_the_end = at_the_end;
@@ -386,7 +450,11 @@ async fn a_step_that_wedges_before_the_flush_leaves_it_the_last_chance() {
         vec![("flush-windows", wedged)],
     )
     .await;
-    assert_eq!(exits, vec![("terminate", "typed in the app\n".to_owned())]);
+    assert_eq!(
+        exits,
+        vec![("terminate", "typed in the app\n".to_owned())],
+        "stalled {stalled}"
+    );
 }
 
 /// An edit scheduled after the flush step (a late page of sync, a window's last save) is
@@ -407,22 +475,11 @@ async fn an_edit_scheduled_after_the_flush_is_written_by_the_vault_close() {
             Box::pin(async { Ok(()) })
         })
     };
-    let close: StepFn = {
-        let session = e.session.clone();
-        Arc::new(move |_, _| {
-            let session = session.clone();
-            Box::pin(async move {
-                tokio::task::spawn_blocking(move || session.close())
-                    .await
-                    .map_err(|error| error.to_string())
-            })
-        })
-    };
     let exits = quit(
         &e,
         ShutdownReason::Quit,
         false,
-        vec![("stop-schedulers", late), ("close-vault", close)],
+        vec![("stop-schedulers", late)],
     )
     .await;
     assert_eq!(exits, vec![("exit_clean", "typed late\n".to_owned())]);
@@ -477,9 +534,11 @@ async fn a_flush_that_cannot_finish_leaves_the_steps_behind_it_their_share() {
     e.tier.schedule(&id);
     let left: Arc<Mutex<Option<Duration>>> = Arc::default();
     let later: StepFn = {
-        let left = left.clone();
+        let (left, identity) = (left.clone(), identity.clone());
         Arc::new(move |_, deadline: Deadline| {
             *left.lock().unwrap() = Some(deadline.remaining());
+            // The vault close behind waits for the parked consumer.
+            identity.release();
             Box::pin(async { Ok(()) })
         })
     };

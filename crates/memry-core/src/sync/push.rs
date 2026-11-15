@@ -454,9 +454,9 @@ impl PushWave for PushCoordinator {
             .map_err(local_failure)
     }
 
-    async fn drain(&self) -> Result<(), ApiError> {
+    async fn drain(&self) -> Result<usize, ApiError> {
         match self.drain_wave().await {
-            Ok(_) => Ok(()),
+            Ok(report) => Ok(report.accepted),
             Err(PushError::Api { source }) => Err(source),
             Err(PushError::Storage { source }) => Err(local_failure(source)),
         }

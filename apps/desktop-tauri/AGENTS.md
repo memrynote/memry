@@ -28,7 +28,13 @@ Until the cutover step deletes `apps/desktop`, a renderer change that fixes a cr
 - An event is a struct deriving `tauri_specta::Event`, named `<Domain><Noun><Verb>Event` (`CalendarChangedEvent`, `SyncStatusChangedEvent`). The wire name is the one tauri-specta derives. Legacy channel strings are not used.
 - List it in `registry.rs` and emit it after commit with `events::broadcast` or `events::send_to`. Both log a failed delivery and return, so they are safe inside a transaction. Do not call `emit` directly.
 
+## Sync
+
+`memry_desktop::sync::supervisor::SyncSupervisor` runs the open vault's sync: one task on the Tauri tokio runtime, one per open vault (`Session::attach_sync`, rebuilt on a vault switch, stopped by `stop-sync-runtime`). Desktop never uses `memry_core::api::runtime`, `BackgroundExec`, `LifecycleObserver` or `RuntimeHost`; those are the iOS runtime. `memry-desktop`'s `no_core_runtime_in_desktop` test fails on a use of them.
+
 ## Dev tools
+
+- `tauri dev` builds the `memry-ml-worker` sidecar first (`pnpm dev:worker`, `scripts/dev-worker.mjs`) and fetches pdfium. The worker links ONNX Runtime, which needs `ORT_LIB_LOCATION` on every target but macOS arm64 (commands in `crates/.cargo/config.toml`). Without it the script builds the worker without its `embed` feature and says so: PDFs work, and the embedding model shows as failed. Set `ORT_LIB_LOCATION` to run embeddings in dev.
 
 - The web inspector exists in debug builds only: View > Toggle Developer Tools, F12, and Tauri's Cmd+Opt+I or Ctrl+Shift+I. Release builds compile none of it, so the `tauri` dependency carries no `devtools` feature (Rust CI fails when a crate turns it on) and inspector code sits behind `cfg(debug_assertions)`.
 - Cmd/Ctrl+R and F5 reload the page in debug builds only (`windows/scripts/dev-keys.js`). In a release build View > Reload is the only reload.

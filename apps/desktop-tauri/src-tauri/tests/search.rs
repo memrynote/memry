@@ -15,7 +15,7 @@ use memry_desktop::ai::features::{self, AiSettingsPatch};
 use memry_desktop::embedding::download::Abort;
 use memry_desktop::embedding::projector::NoteEmbeddingProjector;
 use memry_desktop::embedding::service::{
-    EmbeddingService, Engine, ModelLoader, ModelProgress, Timing,
+    EmbedError, EmbeddingService, Engine, ModelLoader, ModelProgress, Timing,
 };
 use memry_desktop::registry::AppConfig;
 use memry_desktop::session::OpenSource;
@@ -280,10 +280,10 @@ struct Loaded {
 }
 
 impl Engine for Loaded {
-    fn embed_text(&mut self, _: &str) -> Result<Vec<f32>, String> {
+    fn embed_text(&mut self, _: &str) -> Result<Vec<f32>, EmbedError> {
         self.embeds.fetch_add(1, Ordering::SeqCst);
         if self.broken {
-            Err("inference failed".to_owned())
+            Err(EmbedError::Failed("inference failed".to_owned()))
         } else {
             Ok(unit())
         }
