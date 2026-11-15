@@ -56,19 +56,31 @@ export function truncateEmbedding(full) {
 /** A stored vector: nine significant digits give back the same f32. */
 export const storedVector = (vector) => Array.from(vector, (value) => Number(value.toPrecision(9)))
 
+const worstDiff = (a, b) => Math.max(...a.map((value, i) => Math.abs(value - b[i])))
+
 /**
  * Differences between two renders: exact on everything but `embedding`, which may differ within
- * `tolerance` (`minCosine`, `maxComponentDiff`), so a run on another CPU or thread count still
- * passes.
+ * `tolerance` (`minCosine`, `maxComponentDiff`), and, when `tolerance.maxAbsDiff` is set, the
+ * feature `rows` (within it) and `rowSums` (within 128 times it), so a run on another CPU or
+ * thread count still passes.
  */
 export function differences(committed, fresh, tolerance, path = '') {
-  if (path.endsWith('.embedding') && Array.isArray(committed) && Array.isArray(fresh)) {
-    const worst = Math.max(...committed.map((value, i) => Math.abs(value - fresh[i])))
+  const arrays = Array.isArray(committed) && Array.isArray(fresh)
+  if (arrays && path.endsWith('.embedding')) {
+    const worst = worstDiff(committed, fresh)
     return committed.length === fresh.length &&
       dot(committed, fresh) >= tolerance.minCosine &&
       worst <= tolerance.maxComponentDiff
       ? []
       : [`${path}: cosine ${dot(committed, fresh)}, largest component difference ${worst}`]
+  }
+  const rows = /\.rows\.\d+$/.test(path) || path.endsWith('.rowSums')
+  if (arrays && rows && tolerance.maxAbsDiff !== undefined) {
+    const bound = path.endsWith('.rowSums') ? 128 * tolerance.maxAbsDiff : tolerance.maxAbsDiff
+    const worst = worstDiff(committed, fresh)
+    return committed.length === fresh.length && worst <= bound
+      ? []
+      : [`${path}: largest difference ${worst}`]
   }
   if (
     typeof committed !== 'object' ||
