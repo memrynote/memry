@@ -22,9 +22,10 @@ fn split_scheme(input: &str) -> Option<(String, &str)> {
     valid.then(|| (scheme.to_ascii_lowercase(), &input[at + 1..]))
 }
 
-/// whatwg-url 15.1 (jsdom 27.4) fails to parse a non-special URL whose
-/// authority has credentials and no host, or a port with a non-digit, which
-/// `src` then reports as written. The `url` crate recovers from both.
+/// whatwg-url 15.1 (jsdom 27.4) and Node's `new URL` fail to parse a
+/// non-special URL whose authority has credentials and no host, or a port with
+/// a non-digit, which `src` then reports as written. The `url` crate recovers
+/// from both.
 fn authority_fails(scheme: &str, rest: &str) -> bool {
     if SPECIAL.contains(&scheme) {
         return false;
@@ -251,13 +252,27 @@ fn resolve_dot_segments(scheme: &str, rest: &str) -> Option<String> {
     Some(format!("{scheme}:{authority}{guard}{joined}{after_path}"))
 }
 
-pub fn reflect_url(value: &str) -> String {
-    // The URL parser drops tabs and newlines everywhere before it looks at anything.
+/// The input the URL parser looks at: tabs and newlines dropped everywhere,
+/// then C0 controls and spaces trimmed from both ends.
+fn parser_input(value: &str) -> String {
     let stripped: String = value
         .chars()
         .filter(|c| !matches!(c, '\t' | '\n' | '\r'))
         .collect();
-    let trimmed = stripped.trim_matches(|c: char| c <= ' ');
+    stripped.trim_matches(|c: char| c <= ' ').to_owned()
+}
+
+/// `new URL(value)` in Node: the `url` crate's parse, failing where its
+/// authority recovery differs from the WHATWG parser (see `authority_fails`).
+pub(crate) fn parse_like_node(value: &str) -> Option<Url> {
+    let input = parser_input(value);
+    let fails = split_scheme(&input).is_some_and(|(scheme, rest)| authority_fails(&scheme, rest));
+    if fails { None } else { Url::parse(value).ok() }
+}
+
+pub fn reflect_url(value: &str) -> String {
+    let trimmed = parser_input(value);
+    let trimmed = trimmed.as_str();
     if let Some((scheme, rest)) = split_scheme(trimmed) {
         if authority_fails(&scheme, rest) {
             return value.to_owned();

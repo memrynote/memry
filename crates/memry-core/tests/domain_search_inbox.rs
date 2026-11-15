@@ -11,14 +11,19 @@
 //! | an index.db from before fts_inbox migrates and fills  | in-place index migration 0003     |
 //! | a typo finds the title                                 | the fuzzy fallback (#4319)        |
 //! | an opened capture is a recent until it is deleted      | recents liveness (#4322)          |
+//! | upsert re-indexes one capture, delete and clear drop   | `insertFtsInboxItem` and friends  |
+//! | a refill after clear deletes no row by id              | linear refill                     |
+
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use memry_core::domain::search::{
     self, HitKind, INBOX_WATERMARK_KEY, MatchKind, NOTES_WATERMARK_KEY, Reindexed, SearchHit,
-    recents,
+    inbox as fts_inbox, recents,
 };
 use memry_core::storage::migrations::{self, DATA_MIGRATIONS, INDEX_MIGRATIONS};
 use memry_core::storage::open_index;
 use memry_core::storage::repositories::sync_items::{self, InboundRecord};
+use rusqlite::trace::{TraceEvent, TraceEventCodes};
 use rusqlite::{Connection, params};
 
 const NOW: i64 = 1_760_000_000_000;
@@ -298,4 +303,82 @@ fn an_opened_capture_is_a_recent_until_it_is_deleted() {
 
     apply(&data, "c1", "{}", Some(NOW + 1_000), NOW + 1_000);
     assert!(recents::list(&data).expect("list").is_empty());
+}
+
+/// `fts-inbox.ts:47-81`: `insertFtsInboxItem` (delete then insert, one
+/// transaction), `deleteFtsInboxItem` and `clearFtsInboxTable`, each without a
+/// reindex pass.
+#[test]
+fn upsert_re_indexes_one_capture_and_delete_and_clear_drop_it() {
+    let (data, index) = databases();
+    capture(&data, "c1", r#"{"title":"Heron sighting"}"#, NOW);
+    capture(&data, "c2", r#"{"title":"Heron again"}"#, NOW);
+    fts_inbox::upsert(&data, &index, "c1").expect("upsert");
+    assert_eq!(
+        ids(&inbox(&data, &index, "heron")),
+        ["c1"],
+        "no reindex ran"
+    );
+
+    capture(
+        &data,
+        "c1",
+        r#"{"title":"Egret sighting","type":"voice","transcription":"a grey heron"}"#,
+        NOW + 1,
+    );
+    fts_inbox::upsert(&data, &index, "c1").expect("upsert the edit");
+    fts_inbox::upsert(&data, &index, "c1").expect("upsert twice");
+    assert_eq!(fts_rows(&index), 1, "one row per capture");
+    assert_eq!(ids(&inbox(&data, &index, "egret")), ["c1"]);
+    assert_eq!(
+        ids(&inbox(&data, &index, "grey")),
+        ["c1"],
+        "the transcription"
+    );
+
+    fts_inbox::upsert(&data, &index, "c2").expect("upsert c2");
+    fts_inbox::delete(&index, "c1").expect("delete");
+    assert_eq!(fts_rows(&index), 1);
+    reindex(&data, &index, NOW + 1);
+    fts_inbox::clear(&index).expect("clear");
+    assert_eq!(fts_rows(&index), 0);
+    reindex(&data, &index, NOW + 1);
+    assert_eq!(fts_rows(&index), 2, "the next pass refills every capture");
+    fts_inbox::clear(&index).expect("clear again");
+
+    apply(&data, "c2", "{}", Some(NOW + 2), NOW + 2);
+    fts_inbox::upsert(&data, &index, "c2").expect("upsert a tombstone");
+    assert_eq!(fts_rows(&index), 0, "a deleted capture is not indexed");
+    fts_inbox::upsert(&data, &index, "missing").expect("an unknown id indexes nothing");
+    assert_eq!(fts_rows(&index), 0);
+}
+
+static ROW_DELETES: AtomicUsize = AtomicUsize::new(0);
+
+fn count_row_deletes(event: TraceEvent<'_>) {
+    if let TraceEvent::Stmt(_, sql) = event
+        && sql.contains("DELETE FROM fts_inbox WHERE id")
+    {
+        ROW_DELETES.fetch_add(1, Ordering::SeqCst);
+    }
+}
+
+/// A refill after `clear` writes into an empty table, so it deletes no row by id:
+/// `fts_inbox.id` is unindexed and each such delete scans the table.
+#[test]
+fn a_refill_after_clear_deletes_no_row_by_id() {
+    let (data, index) = databases();
+    for at in 0..20 {
+        capture(&data, &format!("c{at}"), r#"{"title":"Heron"}"#, NOW);
+    }
+    reindex(&data, &index, NOW);
+    fts_inbox::clear(&index).expect("clear");
+
+    ROW_DELETES.store(0, Ordering::SeqCst);
+    index.trace_v2(TraceEventCodes::SQLITE_TRACE_STMT, Some(count_row_deletes));
+    reindex(&data, &index, NOW + 1);
+    index.trace_v2(TraceEventCodes::empty(), None);
+
+    assert_eq!(fts_rows(&index), 20);
+    assert_eq!(ROW_DELETES.load(Ordering::SeqCst), 0);
 }

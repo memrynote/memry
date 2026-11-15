@@ -134,6 +134,9 @@ const NOTES: Record<string, string> = {
   'date-mention': 'On ((date:2026-01-02)) we met\n',
   'link-mention': 'With ((mention:note:abc|Title)) there\n',
   'token-emphasis': 'x ((mention:note:a_b_c|T_t)) *y*\n',
+  // `a://@` and `a://:@` (credentials, no host) fail `new URL` (#4478).
+  'mention-credentials-no-host':
+    'A ((mention:a%3A%2F%2F%40 )) B ((mention:a%3A%2F%2F%3A%40%2Fx )) C ((mention:a%3A%2F%2F%40))\n',
   'wiki-image-embed': '![[photo.png]]\n',
   'wiki-image-embed-sized': '![[photo.png|300]]\n',
   'wiki-image-embed-inline': 'text ![[photo.png]] more\n',

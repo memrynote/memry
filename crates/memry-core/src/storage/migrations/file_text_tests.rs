@@ -81,7 +81,7 @@ fn a_version_9_index_opens_in_place_and_gains_electrons_file_text_tables() {
     opened
         .db
         .call_blocking(|conn| {
-            assert_eq!(user_version(conn)?, 10);
+            assert_eq!(user_version(conn)?, latest_version(INDEX_MIGRATIONS));
             assert_eq!(count(conn, "SELECT COUNT(*) FROM property_refs"), 1);
             assert_eq!(count(conn, "SELECT COUNT(*) FROM index_meta"), 1);
 
@@ -141,7 +141,7 @@ fn an_index_that_already_holds_the_tables_keeps_their_rows() {
     opened
         .db
         .call_blocking(|conn| {
-            assert_eq!(user_version(conn)?, 10);
+            assert_eq!(user_version(conn)?, latest_version(INDEX_MIGRATIONS));
             assert_eq!(
                 count(
                     conn,

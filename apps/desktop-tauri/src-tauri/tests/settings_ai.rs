@@ -181,10 +181,10 @@ impl Projector for Counted {
     fn handles(&self, _: &ProjectionEvent) -> bool {
         false
     }
-    fn project(&self, _: &ProjectionEvent) -> Result<(), String> {
+    fn project(&self, _: &ProjectionEvent, _: &CancelToken) -> Result<(), String> {
         Ok(())
     }
-    fn rebuild(&self) -> Result<(), String> {
+    fn rebuild(&self, _: &CancelToken) -> Result<(), String> {
         Ok(())
     }
     fn reconcile(&self, _: &CancelToken) -> Result<(), String> {
