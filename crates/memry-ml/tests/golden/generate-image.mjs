@@ -294,7 +294,7 @@ function withIcc(jpeg, profile) {
 }
 
 /**
- * The divergence class of an input, as `crates/memry-ml/tests/common/mod.rs` reads it from the
+ * The divergence class of an input, as `crates/memry-ml/tests/common/image.rs` reads it from the
  * bytes: a CMYK or YCCK JPEG (four components) with or without a profile, another JPEG, an ICC
  * profile, both, or none (decoded bit for bit).
  */

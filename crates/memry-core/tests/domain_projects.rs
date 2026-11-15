@@ -165,7 +165,8 @@ fn a_concurrent_project_merges_over_the_nine_fields_including_modified_at() {
         assert_eq!(
             outcome,
             Inbound::Merged {
-                conflicted_fields: Vec::new()
+                conflicted_fields: Vec::new(),
+                conflicts: Vec::new(),
             }
         );
         let project = projects::get(conn, "proj-1")?.expect("the project");

@@ -82,7 +82,7 @@ pub const PROJECT_SYNCABLE_FIELDS: [&str; 9] = [
 /// The three values are `Option` because **absent is not `null`**: a field the
 /// remote did not send has no `remoteValue` at all, and the distinction is what
 /// `null-versus-undefined` pins.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FieldConflict {
     pub field: String,
     pub local_value: Option<Json>,

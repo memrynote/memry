@@ -29,6 +29,7 @@
 
 mod cipher;
 pub mod observer;
+pub mod progress;
 
 use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -59,7 +60,11 @@ use super::pull::PullLoop;
 use super::push::PushCoordinator;
 use super::state::{PassTrigger, SyncState, WriteGate};
 use cipher::DirectoryCipher;
-pub use observer::{AppliedOutcome, AppliedRecord, ApplyObserver, FieldConflict, Observers};
+pub use observer::{
+    AppliedFeed, AppliedOutcome, AppliedRecord, ApplyObserver, AttachmentDownload, FieldConflict,
+    Observers,
+};
+use progress::{InitialSyncPhase, InitialSyncSink, Phases, TasksPhase};
 
 /// How a driver syncs.
 #[derive(Debug, Clone)]
@@ -134,6 +139,8 @@ pub struct SyncDriver {
     http: Arc<HttpClient>,
     cipher: Arc<DirectoryCipher>,
     observers: Arc<Observers>,
+    /// The `tasks` progress, the seed registered after every other.
+    tasks: Arc<TasksPhase>,
     paused: AtomicBool,
     /// Chapter 07 §7.13.3: per document, the first and last request instants.
     snapshots: Mutex<BTreeMap<String, (i64, i64)>>,
@@ -226,6 +233,8 @@ impl SyncDriver {
         for seed in seeds {
             engine = engine.with_seed(seed);
         }
+        let tasks = Arc::new(TasksPhase::new(db.clone()));
+        engine = engine.with_seed(Arc::clone(&tasks) as Arc<dyn PassSeed>);
 
         let driver = Self {
             engine,
@@ -240,6 +249,7 @@ impl SyncDriver {
             http,
             cipher,
             observers,
+            tasks,
             paused: AtomicBool::new(false),
             snapshots: Mutex::default(),
         };
@@ -286,13 +296,18 @@ impl SyncDriver {
 
     /// The first sync under the pass gate, then passes until the feed head,
     /// so the seeds run and the outbox drains. `None` while paused.
+    ///
+    /// Progress follows Electron's full sync: `notes` and `packs` from the
+    /// first sync, `tasks` with the outbox the passes will push once their
+    /// seeds ran (only when it is not empty), then `complete`.
     pub async fn first_sync(
         &self,
-        progress: Arc<dyn ProgressSink>,
+        progress: Arc<dyn InitialSyncSink>,
     ) -> Result<Option<FirstSyncOutcome>, SyncError> {
         if self.is_paused() {
             return Ok(None);
         }
+        let phases = Arc::new(Phases(progress));
         self.settle_misses().await;
         let first_sync = {
             let _gate = self.engine.hold_gate().await;
@@ -304,10 +319,11 @@ impl SyncDriver {
             .with_bootstrap(Arc::clone(&self.first.bootstrap))
             .with_packs(Arc::clone(&self.first.packs))
             .with_limits(self.first.limits)
-            .with_progress(progress)
+            .with_progress(Arc::clone(&phases) as Arc<dyn ProgressSink>)
             .run(super::pull::now_ms())
             .await?
         };
+        self.tasks.arm(Some(Arc::clone(&phases)));
         let mut passes = Vec::new();
         let mut cursor = None;
         loop {
@@ -324,6 +340,8 @@ impl SyncDriver {
                 break;
             }
         }
+        self.tasks.arm(None);
+        phases.emit(InitialSyncPhase::Complete, 0, 0);
         Ok(Some(FirstSyncOutcome { first_sync, passes }))
     }
 

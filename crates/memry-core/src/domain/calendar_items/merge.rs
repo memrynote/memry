@@ -41,7 +41,7 @@ use crate::domain::tasks::Inbound;
 use crate::storage::repositories::StoredPayload;
 use crate::storage::repositories::sync_items::{self, InboundRecord};
 use crate::sync::clock::VectorClock;
-use crate::sync::field_merge::{init_all_field_clocks, merge_fields};
+use crate::sync::field_merge::{FieldConflict, init_all_field_clocks, merge_fields};
 use crate::sync::hardening::requeue;
 
 use super::{BINDING_TYPE, EVENT_TYPE, EXTERNAL_TYPE, SOURCE_TYPE};
@@ -208,17 +208,27 @@ pub(crate) fn apply_remote(
             remote,
             merged_clock,
         } => {
-            let mut merged = if is_event {
+            let (mut merged, conflicts) = if is_event {
                 merge_event(local.object(), remote.object())?
             } else {
-                overlay(
+                let merged = overlay(
                     local.object(),
                     &remote_keys(is_source, remote.object()),
                     null_keeps,
-                )
+                );
+                let conflicts = overlaid(local.object(), &merged, &merged_clock);
+                (merged, conflicts)
             };
             merged.insert("clock".to_owned(), to_json(&merged_clock)?);
-            requeue::store_merged(conn, &with_payload(record, merged)?, now_ms)
+            // A merged row the store refused reports as the store said.
+            let merged = with_payload(record, merged)?;
+            Ok(match requeue::store_merged(conn, &merged, now_ms)? {
+                Inbound::Merged { .. } => Inbound::Merged {
+                    conflicted_fields: conflicts.iter().map(|c| c.field.clone()).collect(),
+                    conflicts,
+                },
+                other => other,
+            })
         }
     }
 }
@@ -249,11 +259,39 @@ pub fn overlay(
     merged
 }
 
-/// The concurrent branch of `calendar-event-handler.ts`.
+/// The keys a concurrent overlay changed, each a conflict the remote won.
+/// Desktop's source, binding and external handlers report every concurrent
+/// apply as a conflict (`calendar-source-handler.ts:73`); one that changed
+/// nothing has nothing to report.
+fn overlaid(
+    local: &Map<String, Value>,
+    merged: &Map<String, Value>,
+    merged_clock: &VectorClock,
+) -> Vec<FieldConflict> {
+    merged
+        .iter()
+        .filter(|(key, value)| {
+            !matches!(
+                key.as_str(),
+                "clock" | "fieldClocks" | "createdAt" | "modifiedAt"
+            ) && local.get(*key) != Some(*value)
+        })
+        .map(|(key, value)| FieldConflict {
+            field: key.clone(),
+            local_value: local.get(key).cloned(),
+            remote_value: Some(value.clone()),
+            merged_value: Some(value.clone()),
+            merged_clock: merged_clock.clone(),
+        })
+        .collect()
+}
+
+/// The concurrent branch of `calendar-event-handler.ts`, and the fields
+/// §6.3 step 6 called a conflict.
 pub fn merge_event(
     local: &Map<String, Value>,
     remote: &Map<String, Value>,
-) -> Result<Map<String, Value>, StorageError> {
+) -> Result<(Map<String, Value>, Vec<FieldConflict>), StorageError> {
     let local_fc = field_clocks_or_seed(local, "local")?;
     let remote_fc = field_clocks_or_seed(remote, "remote")?;
 
@@ -298,7 +336,7 @@ pub fn merge_event(
         "fieldClocks".to_owned(),
         to_json(&result.merged_field_clocks)?,
     );
-    Ok(merged)
+    Ok((merged, result.conflicts))
 }
 
 fn is_event_schema_key(key: &str) -> bool {
@@ -423,7 +461,7 @@ mod tests {
             "clock": {"a": 1, "b": 2},
             "fieldClocks": {"title": {"a": 1}, "location": {"a": 1, "b": 1}}
         }));
-        let out = merge_event(&local, &remote).expect("merge");
+        let (out, _) = merge_event(&local, &remote).expect("merge");
         assert_eq!(out["title"], "Local title");
         assert_eq!(out["location"], "New");
         // Absent in the remote: the local routing key stands.
