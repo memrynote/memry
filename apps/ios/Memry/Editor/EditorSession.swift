@@ -146,6 +146,8 @@ final class EditorSession {
     /// The field a block shortcut fired in, held until the row its type
     /// change redraws takes the caret (`BlockField.takeOver`).
     @ObservationIgnored var shortcutField: BlockField?
+    /// Keys typed after a Return, held for the block it makes (#4692).
+    @ObservationIgnored var returnBurst: ReturnBurst?
     /// A column list just inserted, by its `id` prop: the caret goes to its
     /// first block once a redraw shows the ids the core minted for it
     /// (`resolveColumnFocus`).
@@ -375,9 +377,7 @@ final class EditorSession {
             pendingFocus = blockId
             return
         }
-        let textView = field.textView
-        textView.becomeFirstResponder()
-        textView.selectedRange = NSRange(location: textView.textStorage.length, length: 0)
+        takeCaret(field)
     }
 
     func focusChanged(to field: BlockField?) {
@@ -446,7 +446,11 @@ final class EditorSession {
             if case .mention = next, suggestions.isEmpty { trigger = nil }
             if case .slash = next, suggestions.isEmpty { trigger = nil }
             // The caret left a finished `[[target]]`: it becomes a link.
-            if leftWiki, !WikiLinkText.typed(in: textView.text, since: field.base).isEmpty { commit(field) }
+            // Not in keys held for a Return's new block (#4692): drawn here,
+            // the link would reach that block as a bare placeholder.
+            if leftWiki, !holdsKeys(field), !WikiLinkText.typed(in: textView.text, since: field.base).isEmpty {
+                commit(field)
+            }
         }
         let nextTag = trigger == nil && typedTagMenu != dismissedMenu ? typedTag : nil
         if nextTag != tagTrigger {
@@ -518,6 +522,10 @@ final class EditorSession {
         over: [EditorUndoStep.TextNode] = [],
         inserting nodes: (@MainActor (NoteEditorViewModel) async -> [BlockEdit])? = nil
     ) -> (Int) -> Int {
+        // Keys held for a Return's new block commit here instead (Tab, ⌘B,
+        // leaving the app): moved on later, they would leave undo steps that
+        // write them twice.
+        keepHeldKeys(in: field)
         // Held by the queued write, not read when it runs: a page torn down
         // (a split view swapping notes, Back, a size-class re-host) drops
         // the model before its last typing lands.
