@@ -161,6 +161,7 @@ impl PullLoop {
         let quarantined =
             (self.hardened && corrupt.signature_invalid).then(|| field(item, "signerDeviceId"));
         let now = now_ms();
+        let eviction_logged = Arc::clone(&self.eviction_logged);
         let warning = self
             .db
             .call(move |conn| {
@@ -169,7 +170,15 @@ impl PullLoop {
                 quarantined
                     .map(|signer| {
                         quarantine::record_failure(
-                            conn, &item_type, &item_id, &signer, &reason, now,
+                            conn,
+                            quarantine::Failure {
+                                item_type: &item_type,
+                                item_id: &item_id,
+                                signer_device_id: &signer,
+                                error: &reason,
+                            },
+                            now,
+                            &eviction_logged,
                         )
                     })
                     .transpose()

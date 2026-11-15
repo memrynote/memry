@@ -1,3 +1,5 @@
+use std::sync::atomic::AtomicBool;
+
 use rusqlite::{Connection, params};
 
 use super::*;
@@ -6,16 +8,17 @@ use crate::storage::{open_data, test_support::temp_dir};
 const NOW: i64 = 1_760_000_000_000;
 const DAY: i64 = 24 * 60 * 60 * 1000;
 
+fn failure<'a>(item_type: &'a str, id: &'a str) -> Failure<'a> {
+    Failure {
+        item_type,
+        item_id: id,
+        signer_device_id: "dev-x",
+        error: "record signature did not verify",
+    }
+}
+
 fn fail(conn: &Connection, id: &str, at: i64) -> SecurityWarning {
-    record_failure(
-        conn,
-        "task",
-        id,
-        "dev-x",
-        "record signature did not verify",
-        at,
-    )
-    .expect("record")
+    record_failure(conn, failure("task", id), at, &AtomicBool::new(false)).expect("record")
 }
 
 fn is_blocked(conn: &Connection, id: &str, at: i64) -> bool {
@@ -36,7 +39,12 @@ fn the_third_failure_is_permanent_and_survives_a_reopen() {
         let third = fail(conn, "t1", NOW + 2);
         assert_eq!((third.attempt_count, third.permanent), (3, true));
         // Keyed by (type, id): a project of the same id is not touched.
-        record_failure(conn, "project", "t1", "dev-x", "bad", NOW + 2)?;
+        record_failure(
+            conn,
+            failure("project", "t1"),
+            NOW + 2,
+            &AtomicBool::new(false),
+        )?;
         assert!(!blocked(conn, NOW + 2)?.contains(&("project".to_owned(), "t1".to_owned())));
         Ok(())
     })
@@ -110,4 +118,29 @@ fn the_cap_evicts_the_oldest_partial_entries_and_never_a_permanent_one() {
         Ok(())
     })
     .expect("cap");
+}
+
+#[test]
+fn the_cap_is_logged_once_per_pull_loop_flag() {
+    let dir = temp_dir("quarantine-cap-log");
+    let db = open_data(&dir.path().join("data.db")).expect("open");
+    db.call_blocking(|conn| {
+        let transaction = conn.unchecked_transaction().expect("tx");
+        for index in 0..=MAX_ENTRIES {
+            transaction
+                .execute(
+                    "INSERT INTO sync_quarantine VALUES ('task', ?1, 'dev-x', ?2, 3, 'bad')",
+                    params![format!("permanent-{index:05}"), NOW + index],
+                )
+                .expect("seed");
+        }
+        transaction.commit().expect("commit");
+        // Two vaults' pull loops: each logs its first overflow, once.
+        let (first, second) = (AtomicBool::new(false), AtomicBool::new(false));
+        assert!(evict_overflow(conn, &first)?);
+        assert!(!evict_overflow(conn, &first)?);
+        assert!(evict_overflow(conn, &second)?);
+        Ok(())
+    })
+    .expect("cap log");
 }

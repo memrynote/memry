@@ -61,14 +61,20 @@ fn failed(error: rusqlite::Error) -> StorageError {
 
 /// Counts one signature failure of `(item_type, item_id)` at `now_ms`. An
 /// expired entry is dropped first, so its count starts again at one.
+/// `eviction_logged` is the caller's flag for the cap's one log line
+/// ([`evict_overflow`]).
 pub(crate) fn record_failure(
     conn: &Connection,
-    item_type: &str,
-    item_id: &str,
-    signer_device_id: &str,
-    error: &str,
+    failure: Failure<'_>,
     now_ms: i64,
+    eviction_logged: &AtomicBool,
 ) -> Result<SecurityWarning, StorageError> {
+    let Failure {
+        item_type,
+        item_id,
+        signer_device_id,
+        error,
+    } = failure;
     conn.execute(
         "DELETE FROM sync_quarantine WHERE failed_at <= ?1",
         params![now_ms - ENTRY_TTL_MS],
@@ -89,7 +95,7 @@ pub(crate) fn record_failure(
             |row| row.get(0),
         )
         .map_err(failed)?;
-    evict_overflow(conn)?;
+    evict_overflow(conn, eviction_logged)?;
     let permanent = attempt_count >= MAX_ATTEMPTS;
     eprintln!(
         "memry-core: SECURITY_AUDIT: signature verification failed for {item_type} {item_id} \
@@ -104,16 +110,23 @@ pub(crate) fn record_failure(
     })
 }
 
-static EVICTION_LOGGED: AtomicBool = AtomicBool::new(false);
+/// One signature failure: the record's key, its signer and the error.
+pub(crate) struct Failure<'a> {
+    pub item_type: &'a str,
+    pub item_id: &'a str,
+    pub signer_device_id: &'a str,
+    pub error: &'a str,
+}
 
 /// Drops the oldest partial entries above [`MAX_ENTRIES`]. Permanent entries
-/// stay even when only they are left over the cap.
-fn evict_overflow(conn: &Connection) -> Result<(), StorageError> {
+/// stay even when only they are left over the cap. `true` when this call
+/// printed the cap's log line, which happens once per `logged` flag.
+fn evict_overflow(conn: &Connection, logged: &AtomicBool) -> Result<bool, StorageError> {
     let count: i64 = conn
         .query_row("SELECT COUNT(*) FROM sync_quarantine", [], |row| row.get(0))
         .map_err(failed)?;
     if count <= MAX_ENTRIES {
-        return Ok(());
+        return Ok(false);
     }
     let evicted = conn
         .execute(
@@ -123,17 +136,18 @@ fn evict_overflow(conn: &Connection) -> Result<(), StorageError> {
             params![MAX_ATTEMPTS, count - MAX_ENTRIES],
         )
         .map_err(failed)?;
-    // Once per process, as desktop's `evictionLogged`
-    // (`quarantine-manager.ts:190-191`).
-    if EVICTION_LOGGED.swap(true, Ordering::Relaxed) {
-        return Ok(());
+    // Once per pull loop, as desktop's `evictionLogged` is once per
+    // `QuarantineManager` (`quarantine-manager.ts:190-191`): one supervisor
+    // per open vault, so a process-wide flag left every later vault silent.
+    if logged.swap(true, Ordering::Relaxed) {
+        return Ok(false);
     }
     eprintln!(
         "memry-core: the sync quarantine is at its cap of {MAX_ENTRIES}: evicted {evicted} \
          partial entr(ies), {} permanent over the cap",
         count - MAX_ENTRIES - evicted as i64
     );
-    Ok(())
+    Ok(true)
 }
 
 /// The `(type, id)` of every permanent entry live at `now_ms`: the items the

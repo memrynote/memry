@@ -39,6 +39,7 @@
 //! one dispatch lives there, so that a route added later cannot forget it.
 
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 
 use serde_json::{Value as Json, json};
 
@@ -54,6 +55,8 @@ use super::changes_page::{ChangesPage, read_changes_page, requested_ids, uncover
 use super::driver::Observers;
 use super::driver::observer::AppliedFeed;
 use super::feed_restart;
+use super::hardening::orphans::OrphanRepair;
+use super::hardening::stale_cursor::{self, StaleCursor};
 use super::note_body_feed::{self, NOTE_BODY_SYNC_TYPE};
 
 use super::store::{self, RECORD_CURSOR_SCOPE};
@@ -103,6 +106,14 @@ pub struct PullLoop {
     observers: Option<Arc<Observers>>,
     /// The desktop ledgers run ([`PullLoop::with_hardening`]).
     hardened: bool,
+    /// Whether this loop printed the quarantine cap's log line
+    /// ([`super::hardening::quarantine`]), as Electron's per-manager
+    /// `evictionLogged`.
+    eviction_logged: Arc<AtomicBool>,
+    /// The extended-offline reset ([`PullLoop::with_stale_cursor`]).
+    stale_cursor: Option<Arc<StaleCursor>>,
+    /// The parents this loop fetched for orphan repair.
+    orphans: Arc<OrphanRepair>,
 }
 
 impl PullLoop {
@@ -123,6 +134,9 @@ impl PullLoop {
             at_rest: AtRestKey::default(),
             observers: None,
             hardened: false,
+            eviction_logged: Arc::default(),
+            stale_cursor: None,
+            orphans: Arc::default(),
         }
     }
 
@@ -134,6 +148,14 @@ impl PullLoop {
     /// it; iOS's `VaultSync::sync_now` does not, so its pull is unchanged.
     pub fn with_hardening(mut self) -> Self {
         self.hardened = true;
+        self
+    }
+
+    /// Resets the record cursor before the first page of the run after a
+    /// reconnect more than a day after the last successful pull
+    /// ([`super::hardening::stale_cursor`]). Only the driver's feed pull.
+    pub fn with_stale_cursor(mut self, stale: Arc<StaleCursor>) -> Self {
+        self.stale_cursor = Some(stale);
         self
     }
 
@@ -151,6 +173,21 @@ impl PullLoop {
     pub fn with_note_bodies(mut self, cipher: Arc<dyn CrdtCipher>) -> Self {
         self.bodies = Some(cipher);
         self
+    }
+
+    /// The data database this loop applies into.
+    pub fn db(&self) -> &Db {
+        &self.db
+    }
+
+    /// The declaration every request of this loop carries.
+    pub fn declaration(&self) -> &Declaration {
+        &self.declaration
+    }
+
+    /// This device's clock id, when the loop was given one.
+    pub fn clock_device(&self) -> Option<&str> {
+        self.clock_device.as_deref()
     }
 
     /// The client every record call goes out through. Public for the same
@@ -221,6 +258,12 @@ impl PullLoop {
                 .call(|conn| feed_restart::finish_cursor_skip_repair(conn))
                 .await?;
         }
+        // At the head of the feed, so the deletes and moves pushed before
+        // now have all landed ([`super::hardening::orphans`]).
+        let delivered = total.applied + total.deleted > 0;
+        if self.hardened && delivered && !total.refused && !total.has_more {
+            self.orphans.run(self).await?;
+        }
         Ok(total)
     }
 
@@ -238,14 +281,19 @@ impl PullLoop {
         applied.is_some_and(|applied| cursor <= applied)
     }
 
-    /// Runs [`feed_restart`]'s two rules before the first page, and answers
-    /// whether the cursor-skip repair is pending.
+    /// Runs [`feed_restart`]'s two rules before the first page, after the
+    /// stale-cursor reset when a reconnect armed it, and answers whether the
+    /// cursor-skip repair is pending.
     async fn restart_feed(&self) -> Result<bool, PullError> {
         let current = self.declaration.header_value();
+        let reconnected = self.stale_cursor.as_ref().is_some_and(|stale| stale.take());
         Ok(self
             .db
             .call(move |conn| {
                 let now = now_ms();
+                if reconnected {
+                    stale_cursor::reset_if_stale(conn, now)?;
+                }
                 feed_restart::restart_on_new_declaration(conn, &current, now)?;
                 feed_restart::begin_cursor_skip_repair(conn, now)
             })
