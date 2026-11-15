@@ -183,8 +183,12 @@ A well-formed token is promoted under either rule, so only its `domain` can diff
 bytes come from `url` alone (§12.7), so no file changes. A build before #4685 that opens a doc
 this build seeded sees the decision and the domain this build made. It still promotes on open
 a repaired token that this build left as text and `new URL` accepts, which is the two-build
-race described for styled tokens above. Such tokens come only from hand edits or other tools,
-and no version floor guards this.
+race described for styled tokens above. The reverse direction holds too: a doc a build before
+#4685 seeded keeps as text each repaired token whose host `new URL` rejected (`https://1.2.3.256`,
+`https://[1:2]`, `http://999.1.1.1`, `https://xn--zz-.com`, `https://a.שb.com`), every upgraded
+device promotes it on open, and two upgraded devices that open it before they sync can merge two
+chips (#3871). Such tokens come only from hand edits or other tools, and no version floor guards
+either direction.
 
 The node serializes in the closed alphabet (§12.7), so a legacy token cannot come back from the
 node alone: `a_b` and `a%5Fb` decode to the same URL. The source record (§12.10) keeps the file's
@@ -193,8 +197,9 @@ that paragraph is edited, or the doc has no record, the token is written re-enco
 `legacy link mention token` cases of the `markdown-roundtrip` vectors pin both outcomes, and the
 `link mention token in inline code` and `link mention token in italics, bold and strikethrough`
 cases pin that a styled token round-trips as text. The `mention-underline-colour` case of the
-`markdown-convert` vectors pins that an underlined or coloured token is seeded as text. A build before #4478 re-encodes a legacy token once, on its next write-back of a doc this build seeded;
-the URL does not change.
+`markdown-convert` vectors pins that an underlined or coloured token is seeded as text.
+A build before #4478 re-encodes a legacy token once, on its next write-back of a doc this build
+seeded; the URL does not change.
 
 Desktop's seed MUST promote exactly these tokens. A token a seed leaves as text is promoted by
 each device's editor on open, and two devices doing that before they sync merge two chips per
