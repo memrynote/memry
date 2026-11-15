@@ -250,6 +250,10 @@ name = "telemetry_vectors"
 path = "tests/telemetry_vectors.rs"
 
 [[test]]
+name = "file_text_worker"
+path = "tests/file_text_worker.rs"
+
+[[test]]
 name = "watch_perf"
 path = "tests/watch_perf.rs"
 

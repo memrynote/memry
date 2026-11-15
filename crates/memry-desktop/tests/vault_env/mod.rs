@@ -3,6 +3,8 @@
 
 #![allow(dead_code, reason = "each test binary uses a part of it")]
 
+pub mod files_too;
+
 use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, Condvar, Mutex};
