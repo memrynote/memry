@@ -513,7 +513,10 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
         // The old row has resigned by now, so nothing more lands in it.
         if let old = session?.shortcutField {
             session?.shortcutField = nil
-            if old !== self, old.blockId == blockId { takeOver(from: old) }
+            if old !== self, old.blockId == blockId {
+                takeOver(from: old)
+                session?.returnBurstMoved(to: self)
+            }
         }
         session?.focusChanged(to: self)
     }

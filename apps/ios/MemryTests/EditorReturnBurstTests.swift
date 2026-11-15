@@ -403,6 +403,55 @@ struct EditorReturnBurstTests {
         #expect(!steps.contains { $0.forward == $0.backward }, "no undo step that changes nothing")
     }
 
+    /// Keys typed after the row is redrawn, and before the new block lands,
+    /// go to the new block after the ones the old row held, in order, a
+    /// Return among them included (REVIEW-4714 M3). In the other order the
+    /// new block lands before the redraw.
+    @Test(.timeLimit(.minutes(1)), arguments: [
+        (true, "def", ["", "abcdef"]), (true, "def\ngh", ["", "abcdef", "gh"]),
+        (false, "def", ["", "abcdef"]), (false, "def\ngh", ["", "abcdef", "gh"]),
+    ])
+    func keysTypedAfterTheRedrawFollowTheHeldOnes(redrawFirst: Bool, later: String, expected: [String]) async throws {
+        let blocks = try await Screen.run("checkListItem", text: "") { screen in
+            let item = try await screen.start()
+            if redrawFirst { screen.editor.inserts.withLock { $0 = .wait } }
+            screen.keys("\n\nabc")
+            for _ in 0 ..< 80 where screen.textViews().contains(item) || screen.focused == nil {
+                try await Task.sleep(for: .milliseconds(25))
+            }
+            if !redrawFirst {
+                for _ in 0 ..< 80 where screen.focused?.text != "abc" { try await Task.sleep(for: .milliseconds(25)) }
+            }
+            screen.keys(later)
+            screen.editor.inserts.withLock { $0 = .land }
+            try await screen.finish(blocks: expected.count)
+            return screen.editor.all
+        }
+        #expect(blocks.map(\.kind) == expected.map { _ in "paragraph" })
+        #expect(blocks.map { BlockText.shown($0.inline) } == expected, "\(blocks.map { BlockText.shown($0.inline) })")
+    }
+
+    /// The core refuses the new block after the row was redrawn: the keys
+    /// typed before and after the redraw stay in the paragraph, in order.
+    @Test(.timeLimit(.minutes(1))) func aRefusedBlockAfterTheRedrawKeepsEveryKey() async throws {
+        let blocks = try await Screen.run("checkListItem", text: "") { screen in
+            let item = try await screen.start()
+            screen.editor.inserts.withLock { $0 = .wait }
+            screen.keys("\n\nabc")
+            for _ in 0 ..< 80 where screen.textViews().contains(item) || screen.focused == nil {
+                try await Task.sleep(for: .milliseconds(25))
+            }
+            screen.keys("def")
+            screen.editor.inserts.withLock { $0 = .refuse }
+            for _ in 0 ..< 80 where screen.model.session.returnBurst != nil { try await Task.sleep(for: .milliseconds(25)) }
+            screen.keys("g")
+            try await screen.finish(blocks: 1)
+            return screen.editor.all
+        }
+        #expect(blocks.map(\.kind) == ["paragraph"])
+        #expect(blocks.map { BlockText.shown($0.inline) } == ["abcdefg"], "\(blocks.map { BlockText.shown($0.inline) })")
+    }
+
     /// Text typed into the item as it turns into a paragraph stays there, and
     /// a Return after it makes a paragraph that takes the rest.
     @Test(.timeLimit(.minutes(1))) func linesTypedDuringAListExitStayParagraphs() async throws {

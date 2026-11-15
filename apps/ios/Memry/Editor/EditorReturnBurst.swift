@@ -15,7 +15,11 @@ import UIKit
 
 /// The block Return was pressed in, until the block it made takes the caret.
 struct ReturnBurst {
+    /// The text view holding the keys: the one Return was pressed in, or the
+    /// row a type change redrew for its block (`returnBurstMoved`).
     weak var source: BlockField?
+    /// The block Return was pressed in.
+    let blockId: String
     /// The source's text before and after the caret when Return was pressed.
     /// Keys typed since sit between the two.
     let head: String
@@ -31,6 +35,9 @@ struct ReturnBurst {
     /// The source resigned, and the keys it handed over (`nil`: none).
     var ended = false
     var carried: String?
+    /// The core made no block while the keys were carried: the redrawn row
+    /// keeps them.
+    var refused = false
 }
 
 extension EditorSession {
@@ -40,13 +47,15 @@ extension EditorSession {
         let text = field.textView.text as NSString
         let caret = min(field.textView.selectedRange.location, text.length)
         returnBurst = ReturnBurst(
-            source: field, head: text.substring(to: caret), tail: text.substring(from: caret), typed: field.typed
+            source: field, blockId: field.blockId, head: text.substring(to: caret), tail: text.substring(from: caret),
+            typed: field.typed
         )
     }
 
-    /// The core made `blockId` for the Return in `field`.
+    /// The core made `blockId` for the Return in `field`, whose row a type
+    /// change may have redrawn since.
     func returnMade(_ blockId: String, from field: BlockField) {
-        if returnBurst?.source === field { returnBurst?.target = blockId }
+        if returnBurst?.blockId == field.blockId { returnBurst?.target = blockId }
     }
 
     /// `field` stops holding keys: those it holds stay where they were
@@ -60,18 +69,15 @@ extension EditorSession {
     }
 
     /// The core made no block for the Return in `field`: the keys typed
-    /// after it stay in `field`'s block. Those `field` gave up as a type
-    /// change redrew its row (`returnBurstEnded`) go back in.
+    /// after it stay in its block, in the row that holds them now. Keys a
+    /// redrawn row has yet to take back stay with the burst until it does.
     func returnRefused(in field: BlockField) {
-        guard let burst = returnBurst, burst.source === field, burst.ended else { return keepHeldKeys(in: field) }
-        returnBurst = nil
-        guard let carried = burst.carried else { return }
-        Log.interface.error("keys typed after Return went back to their redrawn block")
-        let view = field.textView
-        view.selectedRange = NSRange(location: (burst.head as NSString).length, length: 0)
-        view.insertText(carried)
-        field.textViewDidChange(view)
-        commit(field)
+        guard let burst = returnBurst, burst.blockId == field.blockId else { return }
+        guard burst.ended else {
+            Log.interface.info("keys typed after Return stayed in their block")
+            return returnBurst = nil
+        }
+        returnBurst?.refused = true
     }
 
     /// `field`'s keys are held for the block its Return makes.
@@ -111,6 +117,31 @@ extension EditorSession {
         guard burst.handing || shortcutField === field else { return returnBurst = nil }
         returnBurst?.carried = takeHeldKeys(burst)
         returnBurst?.ended = true
+    }
+
+    /// `field`, the row a type change redrew, took the caret from the row
+    /// Return was pressed in: it holds the keys that row gave up, and those
+    /// typed from now, until the Return's block takes the caret
+    /// (REVIEW-4714 M3).
+    func returnBurstMoved(to field: BlockField) {
+        guard let burst = returnBurst, burst.blockId == field.blockId, burst.ended else { return }
+        if let carried = burst.carried {
+            let view = field.textView
+            let head = min((burst.head as NSString).length, view.textStorage.length)
+            view.textStorage.replaceCharacters(
+                in: NSRange(location: head, length: 0),
+                with: NSAttributedString(string: carried, attributes: BlockText.baseAttributes(field.style))
+            )
+            view.selectedRange = NSRange(location: head + (carried as NSString).length, length: 0)
+            field.dirty = view.text != field.base
+        }
+        if burst.refused {
+            Log.interface.error("keys typed after Return went back to their redrawn block")
+            return returnBurst = nil
+        }
+        returnBurst?.source = field
+        returnBurst?.ended = false
+        returnBurst?.carried = nil
     }
 
     /// Puts the caret in `field`, at its end unless `atEnd` is false, and
