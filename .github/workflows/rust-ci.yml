@@ -128,9 +128,11 @@ jobs:
     needs: plan
     if: ${{ !cancelled() && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') }}
     runs-on: ${{ matrix.os }}
-    # The Intel leg runs every step in one job on the slowest runner; with a cold cargo cache and the
-    # memry-ml release smoke build it ran past 65 minutes (run 43392998324).
-    timeout-minutes: ${{ matrix.os == 'macos-15-intel' && 90 || 65 }}
+    # Each macOS leg runs every step in one job. With a cold cargo cache the Intel leg ran past 65
+    # minutes (run 43392998324), and so does Apple Silicon: about 71 minutes of work, of which the
+    # nextest suite alone is 11 of build and 24 of run (run 43766971845). A timed-out run saves no
+    # cache, so the next run starts cold again. Warm, the Apple Silicon leg takes about 57 minutes.
+    timeout-minutes: ${{ startsWith(matrix.os, 'macos') && 90 || 65 }}
     strategy:
       fail-fast: false
       matrix:
