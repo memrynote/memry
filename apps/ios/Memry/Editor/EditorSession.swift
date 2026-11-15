@@ -401,6 +401,7 @@ final class EditorSession {
 
     func selectionChanged(in field: BlockField) {
         guard field === self.field else { return }
+        refreshTypingState()
         let textView = field.textView
         let range = textView.selectedRange
         let selected = range.length > 0
@@ -526,7 +527,11 @@ final class EditorSession {
             $0
         ) }
         field.dirty = false
-        if dirty { field.base = text }
+        if dirty {
+            field.base = text
+            field.textView.forgetTyping()
+        }
+        if field === self.field { refreshTypingState() }
         // The literal text goes now, not when the page reloads: typing that
         // lands before the reload would keep it, and the next commit's base
         // would still spell a link the core already holds as a node.
@@ -1140,9 +1145,48 @@ final class EditorSession {
     // MARK: Undo
 
     /// What `undo()` and `redo()` would take: typing counts only while the
-    /// block holds uncommitted typing.
-    var canUndo: Bool { history.canUndo || (pendingTyping?.canUndo ?? false) }
-    var canRedo: Bool { history.canRedo || (pendingTyping?.canRedo ?? false) }
+    /// block holds uncommitted typing, and nothing while an IME composition
+    /// is open. Changed typing is a new edit: its commit records a step,
+    /// which ends redo, so only its own typing redo is left.
+    var canUndo: Bool {
+        _ = typingState
+        return !composing && (history.canUndo || typingChanged || pendingTyping?.canUndo == true)
+    }
+
+    var canRedo: Bool {
+        _ = typingState
+        return !composing && (pendingTyping?.canRedo == true || !typingChanged && history.canRedo)
+    }
+
+    /// What `canUndo` and `canRedo` read from the open text view, which
+    /// nothing observes. They read this copy so the toolbars redraw as
+    /// typing starts, composes or is committed, and the text view itself
+    /// for the answer.
+    private(set) var typingState = TypingState()
+
+    struct TypingState: Equatable {
+        var changed = false
+        var composing = false
+        var undo = false
+        var redo = false
+    }
+
+    private func refreshTypingState() {
+        let now = TypingState(
+            changed: typingChanged, composing: composing,
+            undo: pendingTyping?.canUndo == true, redo: pendingTyping?.canRedo == true
+        )
+        if now != typingState { typingState = now }
+    }
+
+    private var composing: Bool { field?.textView.markedTextRange != nil }
+
+    /// The open block holds typing that its commit will record as a step
+    /// (`commit`).
+    private var typingChanged: Bool {
+        guard let field, field.dirty else { return false }
+        return field.textView.text != field.base
+    }
 
     /// The text view's typing undo, while the open block's typing is not yet
     /// committed. After a commit, the typing is a history step.
@@ -1158,39 +1202,65 @@ final class EditorSession {
     /// then the writes this session made, newest first. The toolbar, ⌘Z
     /// and the system's undo all land here (`BlockUndoManager`).
     func undo() {
+        // An IME composition keeps its text: a replay's reload would cancel
+        // it (#4659). The undo waits for the composition to end.
+        guard !composing else { return }
         if let field, let typing = pendingTyping, typing.canUndo {
             if !typing.canRedo { undoneTyping = (field.blockId, field.textView.text) }
             typing.undo()
             return
         }
-        guard history.canUndo else { return }
+        guard canUndo else { return }
         // The block step's replay drops the text view's typing redo, so typing
         // undone before it is kept as a history step to redo after it.
+        var kept: EditorUndoStep?
         if let field, let undone = undoneTyping, undone.blockId == field.blockId,
            pendingTyping?.canRedo == true, undone.text != field.textView.text {
             let formatted = BlockText.isFormatted(field.block.inline) || undone.text.contains(BlockText.placeholder)
-            history.keepRedo(Self.textStep(field.blockId, from: field.textView.text, to: undone.text, formatted: formatted))
+            kept = Self.textStep(field.blockId, from: field.textView.text, to: undone.text, formatted: formatted)
         }
         undoneTyping = nil
-        guard let step = history.popUndo() else { return }
-        replay([step.backward] + step.backwardAfter)
+        // The commit records the changed typing, and this undo takes it back
+        // off: the core ends as the block was drawn before the typing, so
+        // no reload redraws the text view (`updateUIView` compares blocks).
+        replay(redrawing: typingChanged ? field : nil) { history in
+            if let kept { history.keepRedo(kept) }
+            return history.popUndo().map { [$0.backward] + $0.backwardAfter }
+        }
     }
 
     func redo() {
+        guard !composing else { return }
         if let typing = pendingTyping, typing.canRedo {
             typing.redo()
             return
         }
-        guard let step = history.popRedo() else { return }
-        replay([step.forward] + step.forwardProps)
+        guard canRedo else { return }
+        replay { $0.popRedo().map { [$0.forward] + $0.forwardProps } }
     }
 
-    private func replay(_ edits: [BlockEdit]) {
-        if let field { field.dirty = false }
-        enqueue { [weak self] in
-            guard let self, let model = self.model else { return }
+    /// Takes a step with `take` and applies its edits once the open block's
+    /// typing is written and recorded: the reload that follows redraws the
+    /// block from the core, which would drop typing it does not hold
+    /// (#4659), and a step taken before that record would replay over text
+    /// it never saw, ahead of it in the history.
+    private func replay(
+        redrawing reverted: BlockField? = nil, _ take: @escaping @MainActor (EditorUndoStack) -> [BlockEdit]?
+    ) {
+        let apply: @MainActor () async -> Void = { [weak self] in
+            guard let self, let model = self.model, let edits = take(self.history) else { return }
             for edit in edits { await model.apply(edit) }
-            await self.didChange()
+            // Never over typing that landed during the writes: its next
+            // commit sends the change from `base` onto the reverted core.
+            if reverted?.dirty == false { reverted?.render() }
+        }
+        if let field {
+            commit(field, then: apply)
+            return
+        }
+        enqueue { [weak self] in
+            await apply()
+            await self?.didChange()
         }
     }
 

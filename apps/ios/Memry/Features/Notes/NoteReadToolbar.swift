@@ -147,8 +147,8 @@ struct NoteReadToolbar: ViewModifier {
     private var editingItems: NotePageEditingItems {
         let session = editorModel.session
         return NotePageEditingItems(
-            canUndo: session.history.canUndo,
-            canRedo: session.history.canRedo,
+            canUndo: session.canUndo,
+            canRedo: session.canRedo,
             undo: { session.undo() },
             redo: { session.redo() }
         )
