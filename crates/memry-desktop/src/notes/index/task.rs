@@ -222,25 +222,33 @@ impl Owed {
     }
 }
 
+/// What the task tells its owner, on the task's thread.
+pub struct TaskEvents<'a> {
+    /// The open's build (owed at the start).
+    pub report: &'a dyn Fn(OpenBuild),
+    /// The links each pass changed, once committed.
+    pub announce: &'a dyn Fn(LinkChanges),
+    /// Each note a measure request left to a pass, once a pass wrote its row.
+    pub landed: &'a dyn Fn(&str),
+    /// A pass minted tag definitions, once committed.
+    pub defined: &'a dyn Fn(),
+}
+
 impl Indexer {
     /// The task: facts and requests in, passes out, until the handle stops it or `cancel` is
-    /// seen. Errs only when it could not start. `report` gets the open's build (owed at the
-    /// start), `announce` the links each pass changed, once committed, and `landed` each note a
-    /// measure request left to a pass, once a pass wrote its row.
+    /// seen. Errs only when it could not start. What it did goes to `events`.
     pub fn run(
         &self,
         facts: Receiver<Applied>,
         inbox: TaskInbox,
         cancel: &CancelToken,
-        report: &dyn Fn(OpenBuild),
-        announce: &dyn Fn(LinkChanges),
-        landed: &dyn Fn(&str),
+        events: TaskEvents<'_>,
     ) -> Result<(), String> {
         let runtime = tokio::runtime::Builder::new_current_thread()
             .enable_time()
             .build()
             .map_err(|error| format!("the note index task has no runtime: {error}"))?;
-        runtime.block_on(self.serve(facts, inbox, cancel, report, announce, landed));
+        runtime.block_on(self.serve(facts, inbox, cancel, events));
         Ok(())
     }
 
@@ -249,10 +257,14 @@ impl Indexer {
         mut facts: Receiver<Applied>,
         inbox: TaskInbox,
         cancel: &CancelToken,
-        report: &dyn Fn(OpenBuild),
-        announce: &dyn Fn(LinkChanges),
-        landed: &dyn Fn(&str),
+        events: TaskEvents<'_>,
     ) {
+        let TaskEvents {
+            report,
+            announce,
+            landed,
+            defined,
+        } = events;
         let TaskInbox(mut commands) = inbox;
         // Owed at every open: a pass that wrote rows may have ended before its search reindex.
         // The open's report too: a watcher that failed before any walk still refreshes the list.
@@ -270,8 +282,8 @@ impl Indexer {
                 }
                 for (progress, answer) in waiting.drain(..) {
                     // The asker may have gone; the work is done either way.
-                    let _ =
-                        answer.send(self.reindex(&mut owed, progress, cancel, announce, landed));
+                    let _ = answer
+                        .send(self.reindex(&mut owed, progress, cancel, announce, landed, defined));
                 }
             }
             let next = owed.next();
@@ -308,7 +320,7 @@ impl Indexer {
                     let carried = std::mem::take(&mut owed.report);
                     let step = |step| report(OpenBuild::Step(step));
                     let steps = carried.then_some(&step as &dyn Fn(IndexProgress));
-                    self.work(&mut owed, cancel, steps, announce, landed);
+                    self.work(&mut owed, cancel, steps, announce, landed, defined);
                     if carried {
                         report(OpenBuild::Ended);
                     }
@@ -369,6 +381,7 @@ impl Indexer {
         report: Option<&dyn Fn(IndexProgress)>,
         announce: &dyn Fn(LinkChanges),
         landed: &dyn Fn(&str),
+        defined: &dyn Fn(),
     ) {
         let ids = std::mem::take(&mut owed.queue);
         let scan = std::mem::take(&mut owed.scan);
@@ -403,7 +416,7 @@ impl Indexer {
         if let Ok(pass) = &outcome
             && pass.reindexed
         {
-            self.define_tags((!sweep).then(|| pass.written.clone()));
+            self.define_tags((!sweep).then(|| pass.written.clone()), defined);
         }
         owed.settle(ids, scan, &outcome);
         owed.land(&outcome, landed);
@@ -433,6 +446,7 @@ impl Indexer {
         cancel: &CancelToken,
         announce: &dyn Fn(LinkChanges),
         landed: &dyn Fn(&str),
+        defined: &dyn Fn(),
     ) -> Result<Backfilled, IndexError> {
         let ids = std::mem::take(&mut owed.queue);
         let scan = std::mem::take(&mut owed.scan);
@@ -458,7 +472,7 @@ impl Indexer {
         if let Ok(pass) = &outcome
             && pass.reindexed
         {
-            self.define_tags(None);
+            self.define_tags(None, defined);
         }
         owed.settle(ids, scan, &outcome);
         owed.land(&outcome, landed);

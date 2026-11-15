@@ -48,7 +48,9 @@ export function TagOverflowMenu({
   const [isUpdatingColor, setIsUpdatingColor] = React.useState(false)
 
   const handleColorChange = async (newColor: string) => {
-    if (newColor === color || isUpdatingColor) {
+    // No skip for the colour shown: a tag with no definition shows its name's default colour,
+    // and picking it must still write it before the index's mint colours the tag otherwise.
+    if (isUpdatingColor) {
       return
     }
 

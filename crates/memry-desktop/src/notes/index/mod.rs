@@ -71,7 +71,7 @@ use tokio::sync::broadcast::Receiver;
 
 pub use pass::Indexer;
 pub use progress::{IndexProgress, ProgressThrottle};
-pub use task::{OpenBuild, TaskHandle, TaskInbox, task_channel};
+pub use task::{OpenBuild, TaskEvents, TaskHandle, TaskInbox, task_channel};
 
 use crate::session::{OpenStage, Session};
 use crate::vault::consumer::{Applied, VaultTier};
@@ -136,6 +136,9 @@ pub enum IndexReport {
     Progress(IndexProgress),
     /// [`NoteIndex::indexing`] changed: the shell sends the vault status again.
     Indexing,
+    /// A pass minted tag definitions: a tag list read before showed the default colour of a
+    /// name the mint coloured otherwise, so the renderer reads the tags again.
+    TagsDefined,
 }
 
 type Report = Arc<dyn Fn(IndexReport) + Send + Sync>;
@@ -220,9 +223,9 @@ pub struct NoteIndex {
 }
 
 impl NoteIndex {
-    /// `report` gets the progress of each open's pass and each change of [`Self::indexing`],
-    /// `links` the links each pass changed once it committed them (`NoteLinksChangedEvent`), and
-    /// `landed` each note [`Self::measure`] left to a pass once a pass wrote its row, all on the
+    /// `report` gets the progress of each open's pass, each change of [`Self::indexing`] and
+    /// each mint of tag definitions, `links` the links each pass changed once it committed them
+    /// (`NoteLinksChangedEvent`), and `landed` each note [`Self::measure`] left to a pass once a pass wrote its row, all on the
     /// task's thread (a reindex's request and answer on its asker's).
     pub fn new(
         tier: Arc<VaultTier>,
@@ -277,9 +280,12 @@ impl NoteIndex {
                     facts,
                     inbox,
                     cancel,
-                    &|build| index.open_build(&handle, build),
-                    &index.links,
-                    &index.landed,
+                    TaskEvents {
+                        report: &|build| index.open_build(&handle, build),
+                        announce: &index.links,
+                        landed: &index.landed,
+                        defined: &|| (index.report)(IndexReport::TagsDefined),
+                    },
                 );
                 if ended.is_err() {
                     let mut slot = lock(&index.slot);

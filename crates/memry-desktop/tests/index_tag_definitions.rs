@@ -6,6 +6,7 @@
 //! | the open's pass defines each tag in Electron's walk order   | `TAG_COLOR_PALETTE[count % 24]`      |
 //! | a definition someone made keeps its colour                  | an existing definition is never edited |
 //! | an outside edit's new tag is defined by its pass            | a later file's tag is defined too    |
+//! | a mint tells the shell once its definition reads            | the renderer reads the tags again    |
 //! | a later pass defines only the tags of the files it read     | `ensureTagDefinitions` per file      |
 //! | an open defines the tags an older build indexed without one | existing vaults catch up on open     |
 //!
@@ -20,13 +21,14 @@ use crate::index_support;
 use crate::vault_env;
 
 use std::collections::BTreeMap;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use index_support::until;
 use memry_core::domain::tag_admin::definitions;
 use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::notes::identity::NotesIdentity;
-use memry_desktop::notes::index::NoteIndex;
+use memry_desktop::notes::index::{IndexReport, NoteIndex};
 use serde_json::Value;
 use vault_env::{Env, env, indexed};
 
@@ -40,6 +42,13 @@ const FILES: [(&str, &str); 4] = [
 ];
 
 fn opened(files: &[(&str, &str)]) -> (Env, Arc<dyn SecureStore>) {
+    opened_hearing(files, |_| {})
+}
+
+fn opened_hearing(
+    files: &[(&str, &str)],
+    report: impl Fn(IndexReport) + Send + Sync + 'static,
+) -> (Env, Arc<dyn SecureStore>) {
     let store: Mutex<Option<Arc<dyn SecureStore>>> = Mutex::default();
     let mut e = env(|s| {
         *store.lock().unwrap() = Some(s.clone());
@@ -48,7 +57,7 @@ fn opened(files: &[(&str, &str)]) -> (Env, Arc<dyn SecureStore>) {
     for (rel, text) in files {
         e.write(rel, text);
     }
-    NoteIndex::new(e.tier.clone(), |_| {}, |_| {}, |_| {}).register(&e.session);
+    NoteIndex::new(e.tier.clone(), report, |_| {}, |_| {}).register(&e.session);
     e.open();
     e.facts_until(indexed);
     until("every file read", || index_support::all_indexed(&e));
@@ -147,6 +156,28 @@ fn an_outside_edits_new_tag_is_defined_by_its_pass() {
     until("later defined", || color(&e, "later").is_some());
     assert_eq!(color(&e, "later").as_deref(), Some("blue"));
     assert_eq!(color(&e, "health").as_deref(), Some("violet"));
+}
+
+/// A tag list read before the mint gave the tag its name's default colour (`emerald` for
+/// `colornamed0x`), the mint another (#4678): the shell hears of the mint once the definition
+/// reads, and broadcasts it so the renderer reads the tags again.
+#[test]
+fn a_mint_tells_the_shell_once_its_definition_reads() {
+    let heard = Arc::new(AtomicUsize::new(0));
+    let counter = heard.clone();
+    let (e, _) = opened_hearing(&FILES, move |report| {
+        if report == IndexReport::TagsDefined {
+            counter.fetch_add(1, Ordering::SeqCst);
+        }
+    });
+    until("every tag defined", || colors(&e).len() == 6);
+    until("the open's mint heard", || heard.load(Ordering::SeqCst) > 0);
+    let before = heard.load(Ordering::SeqCst);
+    e.write("b.md", "---\ntags: [health, colornamed0x]\n---\nBody.\n");
+    until("the edit's mint heard", || {
+        heard.load(Ordering::SeqCst) > before
+    });
+    assert_eq!(color(&e, "colornamed0x").as_deref(), Some("blue"));
 }
 
 /// A pass that reads one file mints for that file's tags, not for every note's: `walk`, whose
