@@ -13,15 +13,30 @@ use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_core::sync::driver::{DriverConfig, SyncDriver};
 use memry_core::sync::engine::{PassReport, PassSeed};
 use memry_core::sync::policy::ServerClock;
+use memry_core::sync::socket::HintSink;
+use memry_core::sync::socket_run::TerminalLatch;
 use memry_core::sync::state::PassTrigger;
 use zeroize::Zeroizing;
 
 use super::gate::AuthFacts;
+use super::realtime::{CoreSocket, PinWatch, RealtimeSocket};
 
 #[async_trait::async_trait]
 pub trait SyncPasses: Send + Sync {
     /// One pass; `None` while paused.
     async fn run_pass(&self, trigger: PassTrigger) -> Option<PassReport>;
+    /// A socket hint's pass; `None` while paused or when the hint was dropped.
+    async fn wake(&self, cursor: Option<i64>) -> Option<PassReport>;
+    /// The server refused the refresh token for good.
+    fn refresh_refused(&self) -> bool;
+    /// The vault's realtime socket: hints to `sink`, `on_connected` at each open, terminal
+    /// closes latched in `latch`.
+    fn realtime(
+        &self,
+        sink: Arc<dyn HintSink>,
+        latch: Arc<TerminalLatch>,
+        on_connected: Arc<dyn Fn() + Send + Sync>,
+    ) -> Arc<dyn RealtimeSocket>;
     fn pause(&self);
     fn resume(&self);
     fn set_entitled(&self, entitled: bool);
@@ -32,6 +47,28 @@ pub trait SyncPasses: Send + Sync {
 impl SyncPasses for SyncDriver {
     async fn run_pass(&self, trigger: PassTrigger) -> Option<PassReport> {
         SyncDriver::run_pass(self, trigger).await
+    }
+    async fn wake(&self, cursor: Option<i64>) -> Option<PassReport> {
+        SyncDriver::wake(self, cursor).await
+    }
+    fn refresh_refused(&self) -> bool {
+        SyncDriver::refresh_refused(self)
+    }
+    fn realtime(
+        &self,
+        sink: Arc<dyn HintSink>,
+        latch: Arc<TerminalLatch>,
+        on_connected: Arc<dyn Fn() + Send + Sync>,
+    ) -> Arc<dyn RealtimeSocket> {
+        let watch = PinWatch::new(self.transport());
+        let client = self.realtime_client(Arc::clone(&watch) as _, sink);
+        Arc::new(CoreSocket::new(
+            client,
+            self.token_provider(),
+            &watch,
+            latch,
+            on_connected,
+        ))
     }
     fn pause(&self) {
         SyncDriver::pause(self);
@@ -101,7 +138,7 @@ impl SyncBackend for VaultSyncBackend {
         // The keychain can block on an access prompt: off the async workers, and the key it
         // hands back is zeroed on drop.
         let store = Arc::clone(&self.store);
-        let key_verified = tokio::task::spawn_blocking(move || {
+        let key = tokio::task::spawn_blocking(move || {
             store
                 .get(SecureStoreKey::MasterKey)
                 .map(|key| key.map(Zeroizing::new).is_some())
@@ -109,8 +146,10 @@ impl SyncBackend for VaultSyncBackend {
         .await;
         AuthFacts {
             signed_in,
-            key_verified: matches!(key_verified, Ok(Ok(true))),
+            key_verified: matches!(key, Ok(Ok(true))),
             recovery_confirmed,
+            // Locked, denied or failed: the key may be there, the keychain did not answer.
+            keychain_unavailable: matches!(key, Ok(Err(_))),
         }
     }
 

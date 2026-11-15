@@ -85,6 +85,20 @@ impl SyncPasses for FakeDriver {
             push_error: None,
         })
     }
+    async fn wake(&self, _cursor: Option<i64>) -> Option<PassReport> {
+        self.run_pass(PassTrigger::SocketHint).await
+    }
+    fn refresh_refused(&self) -> bool {
+        false
+    }
+    fn realtime(
+        &self,
+        _sink: Arc<dyn memry_core::sync::socket::HintSink>,
+        _latch: Arc<memry_core::sync::socket_run::TerminalLatch>,
+        _on_connected: Arc<dyn Fn() + Send + Sync>,
+    ) -> Arc<dyn super::super::realtime::RealtimeSocket> {
+        Arc::new(QuietSocket::default())
+    }
     fn pause(&self) {
         self.paused.store(true, Ordering::SeqCst);
     }
@@ -96,6 +110,21 @@ impl SyncPasses for FakeDriver {
     }
     fn server_clock(&self) -> Option<ServerClock> {
         *lock(&self.clock)
+    }
+}
+
+/// A socket that never connects and ends only when stopped.
+#[derive(Default)]
+struct QuietSocket(tokio::sync::Notify);
+
+#[async_trait::async_trait]
+impl super::super::realtime::RealtimeSocket for QuietSocket {
+    async fn run(&self) -> super::super::realtime::SocketEnd {
+        self.0.notified().await;
+        super::super::realtime::SocketEnd::Stopped
+    }
+    fn stop(&self) {
+        self.0.notify_one();
     }
 }
 
@@ -115,6 +144,7 @@ impl SyncBackend for FakeBackend {
             signed_in: self.signed_in.load(Ordering::SeqCst),
             key_verified: true,
             recovery_confirmed: true,
+            keychain_unavailable: false,
         }
     }
     async fn open(&self) -> Result<Arc<dyn SyncPasses>, SyncError> {
@@ -201,6 +231,7 @@ impl Rig {
                 gate: Arc::clone(&self.gate),
                 reachability: Arc::clone(&self.net) as Arc<dyn Reachability>,
                 power: None,
+                keychain_recovered: None,
                 db: self.db.clone(),
                 on_status: Arc::new(move |status| {
                     lock(&events).push((Instant::now(), status.clone()));

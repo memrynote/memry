@@ -119,6 +119,7 @@ mod tests {
                 signed_in: true,
                 key_verified: true,
                 recovery_confirmed: true,
+                keychain_unavailable: false,
             }
         }
         async fn open(&self) -> Result<Arc<dyn SyncPasses>, SyncError> {
@@ -164,6 +165,7 @@ mod tests {
                         gate: Arc::clone(&gate),
                         reachability: Arc::new(Online),
                         power: None,
+                        keychain_recovered: None,
                         db: open.vault.db_handle(),
                         on_status: Arc::new(|_| {}),
                     },
@@ -240,6 +242,7 @@ mod tests {
                         gate: Arc::clone(&gate),
                         reachability: Arc::clone(&reachability) as Arc<dyn Reachability>,
                         power: None,
+                        keychain_recovered: None,
                         db: open.vault.db_handle(),
                         on_status: Arc::new(|_| {}),
                     },

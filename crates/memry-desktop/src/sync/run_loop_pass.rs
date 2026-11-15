@@ -7,17 +7,20 @@ use memry_core::api::errors::{ApiError, SyncError};
 use memry_core::sync::engine::PassReport;
 use memry_core::sync::outbox;
 use memry_core::sync::state::SyncState;
+use tokio::sync::oneshot;
 use tokio::time::Instant;
 
 use super::{Loop, blocking, now_ms};
 use crate::sync::backend::{SyncBackend, SyncPasses};
 use crate::sync::error_category::SyncErrorCategory;
+use crate::sync::gate::GateDecision;
 use crate::sync::result::{SyncNowBlockedReason as Blocked, TriggerSyncResult};
 use crate::sync::triggers::{MAX_CLOCK_SKEW_MS, Trigger, rate_limit_backoff};
 
 /// What a pass task hands back.
 pub(super) struct PassDone {
     pub(super) id: u64,
+    trigger: Trigger,
     /// When the pass was requested: a pull's age counts from its start.
     started: Instant,
     /// The driver the pass ran on, or why it could not be opened.
@@ -44,9 +47,10 @@ pub(super) async fn run(
             }
         }),
     };
-    let report = match &driver {
-        Ok(driver) => driver.run_pass(trigger.pass_trigger()).await,
-        Err(_) => None,
+    let report = match (&driver, trigger) {
+        (Ok(driver), Trigger::Hint { cursor }) => driver.wake(cursor).await,
+        (Ok(driver), _) => driver.run_pass(trigger.pass_trigger()).await,
+        (Err(_), _) => None,
     };
     let pending = match blocking(&db, outbox::depth).await {
         Ok(depth) => u32::try_from(depth).ok(),
@@ -57,6 +61,7 @@ pub(super) async fn run(
     };
     PassDone {
         id,
+        trigger,
         started,
         driver,
         report,
@@ -72,8 +77,10 @@ impl Loop {
         let driver = match done.driver {
             Ok(driver) => driver,
             Err(error) => {
-                tracing::warn!(%error, "sync did not start; retried on the next trigger");
-                self.last_error = Some((error.to_string(), SyncErrorCategory::of(&error)));
+                tracing::warn!(%error, "sync did not start");
+                let category = SyncErrorCategory::of(&error);
+                self.last_error = Some((error.to_string(), category));
+                self.failed(category, None);
                 self.answer(
                     done.id,
                     TriggerSyncResult::blocked(Blocked::Failed, Some(error)),
@@ -81,14 +88,24 @@ impl Loop {
                 return;
             }
         };
+        // The keychain answered: the open read the master key.
+        self.keychain = None;
         if self.paused {
             driver.pause();
         }
         self.driver = Some(Arc::clone(&driver));
         let result = match &done.report {
+            // A hint the engine dropped: this device already holds its change.
+            None if matches!(done.trigger, Trigger::Hint { .. }) && !self.paused => {
+                TriggerSyncResult::ok()
+            }
             None => TriggerSyncResult::blocked(Blocked::Paused, None),
-            Some(report) => self.record(report, done.started),
+            Some(report) => self.record(report, done.started, driver.as_ref()),
         };
+        if result.success {
+            self.socket_refused = false;
+        }
+        self.ensure_socket();
         // Only a reading this pass learned: the driver keeps the last one, and a fixed clock
         // must not pause again on it (`push-coordinator.ts:525` checks each fresh `serverTime`).
         let fresh = driver
@@ -116,19 +133,28 @@ impl Loop {
     }
 
     /// Takes in what one pass did and says how a Sync Now caller sees it.
-    fn record(&mut self, report: &PassReport, started: Instant) -> TriggerSyncResult {
+    fn record(
+        &mut self,
+        report: &PassReport,
+        started: Instant,
+        driver: &dyn SyncPasses,
+    ) -> TriggerSyncResult {
         self.engine = Some(report.final_state);
         if report.transitions.contains(&SyncState::Applying) {
             self.last_pull = Some(started);
+            self.signals.pulled();
         }
         match report.error() {
             Some(error) => {
+                let category = SyncErrorCategory::of(error);
+                self.last_error = Some((error.to_string(), category));
                 if let Some(retry_after) = rate_limited(error) {
                     self.rate_failures += 1;
                     let wait = rate_limit_backoff(retry_after, self.rate_failures);
                     self.blocked_until = Some(Instant::now() + wait);
+                } else if report.final_state != SyncState::Offline {
+                    self.failed(category, Some(driver));
                 }
-                self.last_error = Some((error.to_string(), SyncErrorCategory::of(error)));
                 if report.final_state == SyncState::Offline {
                     return TriggerSyncResult::blocked(Blocked::Offline, None);
                 }
@@ -143,6 +169,7 @@ impl Loop {
                 let message = "the server answered the pull with something that is not a sync \
                                page; nothing was pushed";
                 self.last_error = Some((message.to_owned(), SyncErrorCategory::ServerError));
+                self.back_off();
                 let mut result = TriggerSyncResult::blocked(Blocked::Failed, None);
                 result.error = Some(message.to_owned());
                 result
@@ -150,11 +177,90 @@ impl Loop {
             None => {
                 self.rate_failures = 0;
                 self.blocked_until = None;
+                self.failures = 0;
+                self.backoff_until = None;
                 self.last_error = None;
                 self.last_sync_at = Some(now_ms());
                 TriggerSyncResult::ok()
             }
         }
+    }
+}
+
+impl Loop {
+    /// What a failed open or pass leads to: a revoked device, a session the server refused for
+    /// good and a pin mismatch end sync; an unreadable keychain waits on its ladder; anything
+    /// else backs off.
+    fn failed(&mut self, category: SyncErrorCategory, driver: Option<&dyn SyncPasses>) {
+        match category {
+            SyncErrorCategory::DeviceRevoked | SyncErrorCategory::CertificatePinFailed => {
+                self.latch(category);
+            }
+            SyncErrorCategory::AuthExpired if driver.is_some_and(|d| d.refresh_refused()) => {
+                self.latch(category);
+            }
+            SyncErrorCategory::KeychainUnavailable => self.keychain_failed(),
+            _ => self.back_off(),
+        }
+    }
+
+    pub(super) async fn sync_now(&mut self, reply: oneshot::Sender<TriggerSyncResult>) {
+        let facts = self.backend.auth_facts().await;
+        if !facts.signed_in {
+            let _ = reply.send(TriggerSyncResult::blocked(Blocked::SignedOut, None));
+            return;
+        }
+        self.reevaluate_with(facts);
+        if self.decision != GateDecision::Start {
+            let _ = reply.send(self.blocked_result(Blocked::Unavailable));
+            return;
+        }
+        let resume = self.resume_trigger();
+        self.backoff_until = None;
+        if self.paused
+            && let Err(error) = self.set_paused(false).await
+        {
+            tracing::error!(%error, "could not persist the end of the pause");
+        }
+        if let Some(reason) = self.blocked() {
+            let _ = reply.send(self.blocked_result(reason));
+            return;
+        }
+        // A running pass may have read the feed before this request: the answer comes from the
+        // next pass that starts.
+        let target = self.next_id;
+        self.request(resume);
+        self.waiters.push((target, reply));
+    }
+
+    pub(super) fn blocked_result(&self, reason: Blocked) -> TriggerSyncResult {
+        let mut result = TriggerSyncResult::blocked(reason, None);
+        if reason == Blocked::Failed && self.latched.is_some() {
+            result.error = self.last_error.as_ref().map(|(message, _)| message.clone());
+            return result;
+        }
+        if reason == Blocked::Failed
+            && let Some(until) = self.blocked_until
+        {
+            let secs = until
+                .saturating_duration_since(Instant::now())
+                .as_secs_f64()
+                .ceil();
+            result.error = Some(format!("Rate limited. Resuming in {secs}s."));
+        }
+        result
+    }
+
+    pub(super) fn answer(&mut self, id: u64, result: TriggerSyncResult) {
+        let mut kept = Vec::new();
+        for (target, reply) in self.waiters.drain(..) {
+            if target <= id {
+                let _ = reply.send(result.clone());
+            } else {
+                kept.push((target, reply));
+            }
+        }
+        self.waiters = kept;
     }
 }
 

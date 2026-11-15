@@ -35,7 +35,9 @@ use crate::api::errors::StorageError;
 use crate::protocol::crdt_envelope::{MAX_REQUEST_PAYLOAD_CHARS, max_payload_chars};
 
 mod collapse;
+mod probe;
 pub use collapse::{Collapsed, collapse_records};
+pub use probe::depth_of;
 
 /// The three `op` spellings data-model §A.2 defines, and `create`.
 pub const OP_UPSERT: &str = "upsert";

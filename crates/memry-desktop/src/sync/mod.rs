@@ -3,10 +3,13 @@
 
 pub mod backend;
 pub mod error_category;
+mod frames;
 pub mod gate;
+pub mod realtime;
 pub mod result;
 mod run_loop;
 pub mod shutdown;
+pub mod signals;
 pub mod status;
 pub mod supervisor;
 pub mod triggers;

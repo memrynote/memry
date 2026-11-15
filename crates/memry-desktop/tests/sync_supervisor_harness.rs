@@ -130,6 +130,7 @@ impl Device {
                 gate: Arc::clone(gate),
                 reachability: Arc::new(Online),
                 power: None,
+                keychain_recovered: None,
                 db: self.core.db_handle(),
                 on_status: Arc::new(|_| {}),
             },

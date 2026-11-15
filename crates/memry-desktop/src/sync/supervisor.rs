@@ -6,18 +6,27 @@
 //! apart, backs off after a `429` and runs a pass when the wait ends, pauses on clock skew, and
 //! throttles status events. Passes run in a spawned task so the loop keeps answering; stop aborts
 //! a running pass, as Electron's `abortController` does. Timing goes through `tokio::time`, so tests drive it on a paused clock.
+//!
+//! Once a driver is open it also holds the vault's realtime socket ([`super::realtime`]), whose
+//! hints wake passes ([`super::frames`]). A revoked device, a refused session and a pin failure
+//! latch sync off for the loop's life; other failures back off 5 s doubling to 5 min; an
+//! unreadable keychain retries along its ladder and at once when the keychain recovers.
 
 use std::sync::Arc;
 
 use memry_core::api::errors::StorageError;
 use memry_core::seams::reachability::{Reachability, ReachabilityObserver, Reachable};
 use memry_core::storage::Db;
+use memry_core::sync::outbox;
+use memry_core::sync::socket::HintSink;
 use tokio::sync::{broadcast, mpsc, oneshot, watch};
 
 use super::backend::SyncBackend;
+use super::frames::FrameSink;
 use super::gate::{self, GateDecision, SyncStartGate};
 use super::result::{SyncNowBlockedReason as Blocked, TriggerSyncResult};
 use super::run_loop::Loop;
+use super::signals::{AuthSignal, Signals};
 use super::status::{self, StatusFacts, SyncStatus};
 use super::triggers::Trigger;
 use crate::shell::power::PowerEvent;
@@ -29,6 +38,8 @@ pub struct SupervisorParts {
     pub reachability: Arc<dyn Reachability>,
     /// Power events; a supervisor rebuilt on a vault switch subscribes again.
     pub power: Option<broadcast::Receiver<PowerEvent>>,
+    /// Each time the keychain answers again after failing (`KeyringStore::subscribe_recovered`).
+    pub keychain_recovered: Option<broadcast::Receiver<()>>,
     /// The vault's `data.db`: the persisted pause and the outbox depth.
     pub db: Db,
     /// Every status change, at most one per [`STATUS_THROTTLE`], the latest winning.
@@ -41,7 +52,14 @@ pub(super) enum Command {
     SyncNow(oneshot::Sender<TriggerSyncResult>),
     SetPaused(bool, oneshot::Sender<Result<(), StorageError>>),
     Reachable(Reachable),
-    Socket { generation: u64, connected: bool },
+    Socket {
+        generation: u64,
+        connected: bool,
+    },
+    /// A socket hint: the engine's wake past this cursor.
+    Wake(Option<i64>),
+    /// The socket said this device is revoked.
+    Revoked,
     Stop(oneshot::Sender<()>),
 }
 
@@ -51,6 +69,8 @@ pub(super) enum Command {
 pub struct SyncSupervisor {
     commands: mpsc::UnboundedSender<Command>,
     status: watch::Receiver<SyncStatus>,
+    signals: Arc<Signals>,
+    db: Db,
 }
 
 impl SyncSupervisor {
@@ -75,11 +95,63 @@ impl SyncSupervisor {
             last_sync_at: None,
             pending: 0,
             offline_since: None,
+            keychain_unavailable: false,
         });
         let (status_tx, status) = watch::channel(first);
-        let state = Loop::new(parts, rx, status_tx, paused, online);
+        let signals = Arc::new(Signals::default());
+        let db = parts.db.clone();
+        let state = Loop::new(
+            parts,
+            rx,
+            commands.downgrade(),
+            Arc::clone(&signals),
+            status_tx,
+            paused,
+            online,
+        );
         runtime.spawn(state.run());
-        Self { commands, status }
+        Self {
+            commands,
+            status,
+            signals,
+            db,
+        }
+    }
+
+    /// Session expiry, revocation and linking requests, as sync learns them.
+    pub fn subscribe_auth_signals(&self) -> broadcast::Receiver<AuthSignal> {
+        self.signals.subscribe()
+    }
+
+    /// How many passes have pulled since the loop started.
+    pub fn completed_pulls(&self) -> u64 {
+        self.signals.completed_pulls()
+    }
+
+    /// Waits until more than `after` passes have pulled; answers how many have.
+    pub async fn wait_for_pull(&self, after: u64) -> u64 {
+        self.signals.wait_for_pull(after).await
+    }
+
+    /// Outbox rows of `item_type`, sent or not yet.
+    pub async fn outbox_count(&self, item_type: &str) -> Result<usize, StorageError> {
+        let db = self.db.clone();
+        let item_type = item_type.to_owned();
+        tokio::task::spawn_blocking(move || {
+            db.read_blocking(move |conn| outbox::depth_of(conn, &item_type))
+        })
+        .await
+        .map_err(|error| StorageError::Failed {
+            what: format!("the outbox read task failed: {error}"),
+        })?
+    }
+
+    /// Where the realtime socket's frames go; tests and e2e feed frames here too.
+    pub fn hint_sink(&self) -> Arc<dyn HintSink> {
+        Arc::new(FrameSink {
+            commands: self.commands.downgrade(),
+            signals: Arc::clone(&self.signals),
+        })
     }
 
     /// A local write wants pushing: a pass at once, or when 300 ms have passed since the last

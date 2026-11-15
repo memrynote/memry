@@ -8,6 +8,7 @@ use memry_core::seams::reachability::Reachable;
 use memry_core::storage::Db;
 use memry_core::sync::pause;
 use memry_core::sync::policy::ServerClock;
+use memry_core::sync::socket_run::TerminalLatch;
 use memry_core::sync::state::SyncState;
 use tokio::sync::{broadcast, mpsc, oneshot, watch};
 use tokio::task::JoinHandle;
@@ -16,7 +17,9 @@ use tokio::time::Instant;
 use super::backend::{SyncBackend, SyncPasses};
 use super::error_category::SyncErrorCategory;
 use super::gate::{self, AuthFacts, Entitlement, GateDecision, SyncStartGate};
+use super::realtime::SocketEnd;
 use super::result::{SyncNowBlockedReason as Blocked, TriggerSyncResult};
+use super::signals::Signals;
 use super::status::{self, StatusFacts, SyncStatus};
 use super::supervisor::{Command, SupervisorParts};
 use super::triggers::{PUSH_DEBOUNCE, STATUS_THROTTLE, TICK, Trigger, tick_pulls};
@@ -24,8 +27,11 @@ use crate::shell::power::PowerEvent;
 
 #[path = "run_loop_pass.rs"]
 mod pass;
+#[path = "run_loop_realtime.rs"]
+mod realtime;
 
 use pass::PassDone;
+use realtime::{KeychainWait, SocketTask};
 
 enum Event {
     Command(Option<Command>),
@@ -37,6 +43,11 @@ enum Event {
     Emit,
     GateChanged,
     Power(Result<PowerEvent, broadcast::error::RecvError>),
+    /// The failure backoff ended.
+    BackoffDue,
+    SocketEnded(Result<SocketEnd, tokio::task::JoinError>),
+    KeychainRetry,
+    KeychainRecovered(Result<(), broadcast::error::RecvError>),
 }
 
 pub(super) struct Loop {
@@ -45,10 +56,16 @@ pub(super) struct Loop {
     db: Db,
     on_status: Arc<dyn Fn(&SyncStatus) + Send + Sync>,
     power: Option<broadcast::Receiver<PowerEvent>>,
+    keychain_recovered: Option<broadcast::Receiver<()>>,
+    /// The loop's own inbox, for the socket's frames.
+    commands: mpsc::WeakUnboundedSender<Command>,
+    signals: Arc<Signals>,
     status_tx: watch::Sender<SyncStatus>,
     gate_changes: watch::Receiver<u64>,
     rx: mpsc::UnboundedReceiver<Command>,
     driver: Option<Arc<dyn SyncPasses>>,
+    /// A pass may have opened a driver (and installed the at-rest key) since the last close.
+    opened: bool,
     decision: GateDecision,
     paused: bool,
     online: bool,
@@ -61,6 +78,20 @@ pub(super) struct Loop {
     last_start: Option<Instant>,
     blocked_until: Option<Instant>,
     rate_failures: u32,
+    /// After a failed open or pass, automatic passes wait until then (5 s doubling to 5 min).
+    backoff_until: Option<Instant>,
+    failures: u32,
+    /// A revoked device, a refused session or a pin failure: no pass runs again in this loop.
+    latched: Option<SyncErrorCategory>,
+    keychain: Option<KeychainWait>,
+    realtime: Option<SocketTask>,
+    socket_generation: u64,
+    /// §9.9's latch, held across the sockets of every driver of this loop.
+    socket_latch: Arc<TerminalLatch>,
+    /// A terminal close or a pin failure: no socket again in this loop.
+    socket_off: bool,
+    /// The handshake was refused 401: no socket until a pass succeeds.
+    socket_refused: bool,
     last_pull: Option<Instant>,
     socket: Option<(u64, bool)>,
     socket_held: bool,
@@ -83,6 +114,8 @@ impl Loop {
     pub(super) fn new(
         parts: SupervisorParts,
         rx: mpsc::UnboundedReceiver<Command>,
+        commands: mpsc::WeakUnboundedSender<Command>,
+        signals: Arc<Signals>,
         status_tx: watch::Sender<SyncStatus>,
         paused: bool,
         online: bool,
@@ -94,10 +127,14 @@ impl Loop {
             db: parts.db,
             on_status: parts.on_status,
             power: parts.power,
+            keychain_recovered: parts.keychain_recovered,
+            commands,
+            signals,
             status_tx,
             gate_changes,
             rx,
             driver: None,
+            opened: false,
             decision: GateDecision::NotStarted(gate::SyncNotStartedReason::Unavailable),
             paused,
             online,
@@ -109,6 +146,15 @@ impl Loop {
             last_start: None,
             blocked_until: None,
             rate_failures: 0,
+            backoff_until: None,
+            failures: 0,
+            latched: None,
+            keychain: None,
+            realtime: None,
+            socket_generation: 0,
+            socket_latch: Arc::default(),
+            socket_off: false,
+            socket_refused: false,
             last_pull: None,
             socket: None,
             socket_held: false,
@@ -144,6 +190,10 @@ impl Loop {
                 () = sleep(self.emit_at) => Event::Emit,
                 _ = self.gate_changes.changed() => Event::GateChanged,
                 power = recv(&mut self.power) => Event::Power(power),
+                () = sleep(self.backoff_until) => Event::BackoffDue,
+                end = realtime::join(&mut self.realtime) => Event::SocketEnded(end),
+                () = sleep(self.keychain.and_then(|wait| wait.retry_at)) => Event::KeychainRetry,
+                recovered = recv(&mut self.keychain_recovered) => Event::KeychainRecovered(recovered),
             };
             match event {
                 Event::Command(None) => {
@@ -160,7 +210,7 @@ impl Loop {
                     self.running = None;
                     match *done {
                         Ok(done) => self.finished(done).await,
-                        Err(error) => tracing::error!(%error, "a sync pass task ended abnormally"),
+                        Err(error) => self.pass_panicked(&error),
                     }
                     self.after_pass();
                 }
@@ -186,6 +236,20 @@ impl Loop {
                 Event::Power(Ok(PowerEvent::Resume)) => self.request(Trigger::PowerResume),
                 Event::Power(Ok(_) | Err(broadcast::error::RecvError::Lagged(_))) => {}
                 Event::Power(Err(broadcast::error::RecvError::Closed)) => self.power = None,
+                Event::BackoffDue => {
+                    self.backoff_until = None;
+                    self.request(Trigger::Explicit);
+                }
+                Event::SocketEnded(end) => self.socket_ended(end),
+                Event::KeychainRetry => self.retry_keychain("timer").await,
+                Event::KeychainRecovered(Ok(()) | Err(broadcast::error::RecvError::Lagged(_))) => {
+                    if self.keychain.is_some() {
+                        self.retry_keychain("keychain-recovered").await;
+                    }
+                }
+                Event::KeychainRecovered(Err(broadcast::error::RecvError::Closed)) => {
+                    self.keychain_recovered = None;
+                }
             }
         }
     }
@@ -208,6 +272,7 @@ impl Loop {
                 let outcome = self.set_paused(paused).await;
                 if outcome.is_ok() && !paused {
                     self.request(resume);
+                    self.ensure_socket();
                 }
                 let _ = reply.send(outcome);
             }
@@ -218,6 +283,10 @@ impl Loop {
                     self.offline_since = (!online).then(now_ms);
                     if online {
                         self.request(Trigger::Online);
+                        self.ensure_socket();
+                    } else {
+                        // `engine.ts` disconnects the socket when the network goes.
+                        self.stop_socket();
                     }
                 }
             }
@@ -230,6 +299,8 @@ impl Loop {
                 }
                 self.socket = Some((generation, connected));
             }
+            Command::Wake(cursor) => self.request(Trigger::Hint { cursor }),
+            Command::Revoked => self.latch(SyncErrorCategory::DeviceRevoked),
             Command::Stop(_) => unreachable!("handled by the loop"),
         }
     }
@@ -243,6 +314,11 @@ impl Loop {
     fn reevaluate_with(&mut self, facts: AuthFacts) {
         let decision = gate::evaluate(&self.gate.inputs(facts));
         let was = std::mem::replace(&mut self.decision, decision);
+        if facts.keychain_unavailable {
+            self.keychain_failed();
+        } else if decision != GateDecision::Start {
+            self.keychain = None;
+        }
         if decision != GateDecision::Start {
             self.close_driver();
             return;
@@ -260,6 +336,9 @@ impl Loop {
     fn blocked(&self) -> Option<Blocked> {
         if self.decision != GateDecision::Start {
             return Some(Blocked::Unavailable);
+        }
+        if self.latched.is_some() {
+            return Some(Blocked::Failed);
         }
         if self.paused {
             return Some(Blocked::Paused);
@@ -280,6 +359,19 @@ impl Loop {
         if self.blocked().is_some() {
             return;
         }
+        // Edits, ticks and hints wait out a failure backoff; its end runs the pass they wanted.
+        // Starts, resumes and Sync Now do not.
+        let automatic = matches!(
+            trigger,
+            Trigger::Push | Trigger::Tick | Trigger::Hint { .. }
+        );
+        if automatic
+            && self
+                .backoff_until
+                .is_some_and(|until| until > Instant::now())
+        {
+            return;
+        }
         if self.running.is_some() {
             // One trailing pass; a policy-refreshing trigger is never traded for a weaker one.
             self.trailing = Some(
@@ -291,6 +383,7 @@ impl Loop {
         let id = self.next_id;
         self.next_id += 1;
         self.last_start = Some(Instant::now());
+        self.opened |= self.driver.is_none();
         self.running = Some(tokio::spawn(pass::run(
             id,
             trigger,
@@ -324,60 +417,6 @@ impl Loop {
         }
     }
 
-    async fn sync_now(&mut self, reply: oneshot::Sender<TriggerSyncResult>) {
-        let facts = self.backend.auth_facts().await;
-        if !facts.signed_in {
-            let _ = reply.send(TriggerSyncResult::blocked(Blocked::SignedOut, None));
-            return;
-        }
-        self.reevaluate_with(facts);
-        if self.decision != GateDecision::Start {
-            let _ = reply.send(self.blocked_result(Blocked::Unavailable));
-            return;
-        }
-        let resume = self.resume_trigger();
-        if self.paused
-            && let Err(error) = self.set_paused(false).await
-        {
-            tracing::error!(%error, "could not persist the end of the pause");
-        }
-        if let Some(reason) = self.blocked() {
-            let _ = reply.send(self.blocked_result(reason));
-            return;
-        }
-        // A running pass may have read the feed before this request: the answer comes from the
-        // next pass that starts.
-        let target = self.next_id;
-        self.request(resume);
-        self.waiters.push((target, reply));
-    }
-
-    fn blocked_result(&self, reason: Blocked) -> TriggerSyncResult {
-        let mut result = TriggerSyncResult::blocked(reason, None);
-        if reason == Blocked::Failed
-            && let Some(until) = self.blocked_until
-        {
-            let secs = until
-                .saturating_duration_since(Instant::now())
-                .as_secs_f64()
-                .ceil();
-            result.error = Some(format!("Rate limited. Resuming in {secs}s."));
-        }
-        result
-    }
-
-    fn answer(&mut self, id: u64, result: TriggerSyncResult) {
-        let mut kept = Vec::new();
-        for (target, reply) in self.waiters.drain(..) {
-            if target <= id {
-                let _ = reply.send(result.clone());
-            } else {
-                kept.push((target, reply));
-            }
-        }
-        self.waiters = kept;
-    }
-
     async fn set_paused(&mut self, paused: bool) -> Result<(), StorageError> {
         let db = self.db.clone();
         let write = move || db.call_blocking(move |conn| pause::write(conn, paused));
@@ -395,13 +434,18 @@ impl Loop {
                 driver.resume();
             }
         }
+        if paused {
+            self.stop_socket();
+        }
         Ok(())
     }
 
     /// Aborts a running pass, answers whoever waited on it, and forgets the driver and the
     /// at-rest key. The key goes even with no driver kept: the open that installed it may have
-    /// failed, or its pass was cut before it handed the driver back.
+    /// failed, or its pass was cut before it handed the driver back. A loop that never opened
+    /// one leaves the key alone: another owner may have installed it.
     fn close_driver(&mut self) {
+        self.stop_socket();
         if let Some(running) = self.running.take() {
             running.abort();
         }
@@ -413,7 +457,9 @@ impl Loop {
         self.engine = None;
         self.driver = None;
         self.seen_clock = None;
-        self.backend.close();
+        if std::mem::take(&mut self.opened) {
+            self.backend.close();
+        }
     }
 
     fn facts(&self) -> StatusFacts {
@@ -427,6 +473,7 @@ impl Loop {
             last_sync_at: self.last_sync_at,
             pending: self.pending,
             offline_since: self.offline_since,
+            keychain_unavailable: self.keychain.is_some(),
         }
     }
 
@@ -490,11 +537,11 @@ async fn sleep(until: Option<Instant>) {
     }
 }
 
-async fn recv(
-    power: &mut Option<broadcast::Receiver<PowerEvent>>,
-) -> Result<PowerEvent, broadcast::error::RecvError> {
-    match power {
-        Some(power) => power.recv().await,
+async fn recv<T: Clone>(
+    events: &mut Option<broadcast::Receiver<T>>,
+) -> Result<T, broadcast::error::RecvError> {
+    match events {
+        Some(events) => events.recv().await,
         None => std::future::pending().await,
     }
 }
