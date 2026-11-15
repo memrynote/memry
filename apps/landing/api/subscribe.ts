@@ -98,13 +98,13 @@ type Failure = { status: number; error: string }
 /**
  * The iPhone beta step: a Turnstile check (Apple mails every address we add, so bots must not
  * reach it), then the address joins the external TestFlight group and Apple sends the invite.
- * Re-adding an existing tester succeeds, so a repeat submit stays idempotent.
+ * An address already in the group gets the invite again, so a repeat submit still succeeds.
  */
 async function inviteToTestflight(
   req: VercelRequest,
   email: string,
   turnstileToken: unknown
-): Promise<Failure | null> {
+): Promise<Failure | { alreadyInvited: boolean }> {
   const turnstileSecret = process.env.TURNSTILE_SECRET_KEY?.trim()
   const ascConfig = readAppStoreConnectConfig(process.env)
   if (!turnstileSecret || !ascConfig) {
@@ -135,7 +135,7 @@ async function inviteToTestflight(
     return { status: 502, error: 'Could not send the TestFlight invite. Please try again.' }
   }
 
-  return null
+  return { alreadyInvited: result.alreadyInvited }
 }
 
 /**
@@ -186,9 +186,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    let alreadyInvited = false
     if (list === 'ios-beta') {
-      const failure = await inviteToTestflight(req, email, fields.turnstileToken)
-      if (failure) return res.status(failure.status).json({ error: failure.error })
+      const invite = await inviteToTestflight(req, email, fields.turnstileToken)
+      if ('error' in invite) return res.status(invite.status).json({ error: invite.error })
+      alreadyInvited = invite.alreadyInvited
     }
 
     const contactRes = await fetch(`${RESEND_API_BASE_URL}/contacts`, {
@@ -223,7 +225,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    return res.status(200).json({ success: true })
+    return res
+      .status(200)
+      .json(alreadyInvited ? { success: true, alreadyInvited } : { success: true })
   } catch (error) {
     console.error('[subscribe] request failed:', sanitizeLogValue(error))
     return res.status(500).json({ error: 'Internal server error' })

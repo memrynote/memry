@@ -142,6 +142,8 @@ final class EditorSession {
     /// The field a block shortcut fired in, held until the row its type
     /// change redraws takes the caret (`BlockField.takeOver`).
     @ObservationIgnored var shortcutField: BlockField?
+    /// The kind `shortcutField`'s block is turning into.
+    @ObservationIgnored var shortcutKind = "paragraph"
     /// Keys typed after a Return, held for the block it makes (#4692).
     @ObservationIgnored var returnBurst: ReturnBurst?
     /// Keys typed after the title's Return, held for the body (#4705).
