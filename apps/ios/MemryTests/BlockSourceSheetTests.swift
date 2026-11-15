@@ -60,8 +60,8 @@ struct BlockSourceSheetTests {
             session.reload = { done.resume() }
             session.saveSource("graph TD; A-->C")
         }
-        #expect(editor.all == [.replaceText(blockId: "d", text: "graph TD; A-->C", base: nil)])
-        #expect(session.history.popUndo()?.backward == .replaceText(blockId: "d", text: "graph TD; A-->B"))
+        #expect(editor.all == [.replaceText(blockId: "d", text: "graph TD; A-->C", base: "graph TD; A-->B")])
+        #expect(session.history.popUndo()?.backward == .replaceText(blockId: "d", text: "graph TD; A-->B", base: "graph TD; A-->C"))
     }
 
     @Test func doneWithTheSourceUnchangedWritesNothing() {

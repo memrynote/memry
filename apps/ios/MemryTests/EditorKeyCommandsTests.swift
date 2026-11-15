@@ -216,7 +216,7 @@ struct EditorKeyCommandsTests {
         #expect(page.editor.all.last == .indent(blockId: "b"), "the first ⇧⌘Z redoes the nest")
         #expect(undo.canRedo)
         await page.reloaded { undo.redo() }
-        #expect(page.editor.all.last == .setText(blockId: "b", text: "hi!"), "the second ⇧⌘Z redoes the typing")
+        #expect(page.editor.all.last == .replaceText(blockId: "b", text: "hi!", base: "hi"), "the second ⇧⌘Z redoes the typing")
         #expect(!undo.canRedo)
         #expect(undo.canUndo)
     }
@@ -278,14 +278,14 @@ struct EditorKeyCommandsTests {
         page.field.textView.insertText("!")
         try await Task.sleep(for: .milliseconds(50))
         await page.press("\t")
-        #expect(page.editor.all == [.setText(blockId: "b", text: "hi!"), .indent(blockId: "b")])
+        #expect(page.editor.all == [.replaceText(blockId: "b", text: "hi!", base: "hi"), .indent(blockId: "b")])
 
         await page.reloaded { page.field.textView.undoManager?.undo() }
         #expect(page.editor.all.last == .outdent(blockId: "b"), "the first ⌘Z undoes the nest")
         #expect(page.field.textView.text == "hi!", "the typing waits for the second ⌘Z")
 
         await page.reloaded { page.field.textView.undoManager?.undo() }
-        #expect(page.editor.all.last == .setText(blockId: "b", text: "hi"), "the second ⌘Z undoes the typing")
+        #expect(page.editor.all.last == .replaceText(blockId: "b", text: "hi", base: "hi!"), "the second ⌘Z undoes the typing")
         #expect(page.editor.all.count == 4)
     }
 
@@ -313,7 +313,7 @@ struct EditorKeyCommandsTests {
         #expect(page.field.textView.text == "hix", "the typing is still on screen")
         #expect(page.editor.all.last == .outdent(blockId: "b"), "the nest is not put back")
         await page.settled { _ = page.field.textView.resignFirstResponder() }
-        #expect(page.editor.all.last == .setText(blockId: "b", text: "hix"), "the typing is written")
+        #expect(page.editor.all.last == .replaceText(blockId: "b", text: "hix", base: "hi"), "the typing is written")
         #expect(!page.session.history.canRedo)
     }
 
@@ -328,7 +328,7 @@ struct EditorKeyCommandsTests {
         page.field.textView.insertText("hello")
         try await Task.sleep(for: .milliseconds(50))
         await page.settled { _ = page.field.textView.resignFirstResponder() }
-        #expect(page.editor.all.last == .setText(blockId: "b", text: "hello"))
+        #expect(page.editor.all.last == .replaceText(blockId: "b", text: "hello", base: ""))
         #expect(page.field.textView.becomeFirstResponder())
         await page.settled { undo.undo() }
         #expect(page.field.textView.text == "")
@@ -339,10 +339,10 @@ struct EditorKeyCommandsTests {
         await page.settled { fromKeys ? undo.redo() : page.session.redo() }
         #expect(page.field.textView.text == "world")
         await page.settled { _ = page.field.textView.resignFirstResponder() }
-        #expect(page.editor.all.last == .setText(blockId: "b", text: "world"), "the stored text")
+        #expect(page.editor.all.last == .replaceText(blockId: "b", text: "world", base: ""), "the stored text")
         #expect(page.field.textView.text == "world")
         #expect(!page.session.history.canRedo)
-        #expect(page.session.history.undoable.map(\.forward) == [.setText(blockId: "b", text: "world")])
+        #expect(page.session.history.undoable.map(\.forward) == [.replaceText(blockId: "b", text: "world", base: "")])
     }
 
     /// DATA-LOSS (REVIEW-4693): typing with no UIKit typing undo left, after
@@ -360,7 +360,10 @@ struct EditorKeyCommandsTests {
         #expect(undo.canUndo)
 
         await page.settled { undo.undo() }
-        #expect(page.editor.all == [.indent(blockId: "b"), .setText(blockId: "b", text: "hi[[]]"), .setText(blockId: "b", text: "hi")])
+        #expect(page.editor.all == [
+            .indent(blockId: "b"), .replaceText(blockId: "b", text: "hi[[]]", base: "hi"),
+            .replaceText(blockId: "b", text: "hi", base: "hi[[]]"),
+        ])
         #expect(page.field.textView.text == "hi")
         await page.settled { undo.undo() }
         #expect(page.editor.all.last == .outdent(blockId: "b"), "then the nest")
@@ -391,7 +394,7 @@ struct EditorKeyCommandsTests {
             page.field.textView.insertText("x")
             release?.resume()
         }
-        #expect(page.editor.all.last == .setText(blockId: "b", text: "hi"), "the undo reached the core")
+        #expect(page.editor.all.last == .replaceText(blockId: "b", text: "hi", base: "hi[[]]"), "the undo reached the core")
         #expect(page.field.textView.text == "hi[[]]x", "the typing is still drawn")
         await page.settled { _ = page.field.textView.resignFirstResponder() }
         #expect(
@@ -432,7 +435,7 @@ struct EditorKeyCommandsTests {
         #expect(!undo.canRedo)
         #expect(!page.editor.all[outdented...].contains(.indent(blockId: "b")), "the nest stays undone")
         await page.settled { _ = page.field.textView.resignFirstResponder() }
-        #expect(page.editor.all.last == .setText(blockId: "b", text: "ab"))
+        #expect(page.editor.all.last == .replaceText(blockId: "b", text: "ab", base: "a"))
     }
 
     /// An open IME composition: neither toolbar offers undo or redo, which
@@ -491,7 +494,7 @@ struct EditorKeyCommandsTests {
         #expect(page.field.textView.text == "hi!", "the first ⌘Z undoes only the typing since the replay")
         await page.settled { undo.undo() }
         #expect(page.field.textView.text == "hi", "the second undoes the committed typing, as a history step")
-        #expect(page.editor.all.last == .setText(blockId: "b", text: "hi"))
+        #expect(page.editor.all.last == .replaceText(blockId: "b", text: "hi", base: "hi!"))
         await page.settled { undo.undo() }
         #expect(page.field.textView.text == "hi")
         #expect(!undo.canUndo)

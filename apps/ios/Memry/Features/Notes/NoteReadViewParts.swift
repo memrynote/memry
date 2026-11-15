@@ -210,6 +210,8 @@ struct NoteFetchState: View {
 /// `NoteReadView`.
 struct NotePageLoad: ViewModifier {
     let model: NoteReadViewModel
+    /// This page's own writes, which it has drawn already.
+    let source: UUID
     @State private var reportedOpen = false
     @Environment(\.vaultSyncPasses) private var vaultSyncPasses
 
@@ -234,6 +236,13 @@ struct NotePageLoad: ViewModifier {
             }
             .onReceive(NotificationCenter.default.publisher(for: NoteReadViewModel.titleSaved)) { note in
                 guard note.object as? String == model.route.id else { return }
+                Task { await model.reload() }
+            }
+            // Another page on this note wrote its body (#4377: a second pane).
+            .onReceive(NotificationCenter.default.publisher(for: AnnouncedEdits.bodyChanged)) { note in
+                guard note.object as? String == model.route.id,
+                      note.userInfo?[AnnouncedEdits.sourceKey] as? UUID != source
+                else { return }
                 Task { await model.reload() }
             }
     }

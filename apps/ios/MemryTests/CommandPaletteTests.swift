@@ -37,7 +37,9 @@ struct CommandPaletteTests {
     @Test func every_menu_bar_command_is_in_the_palette_but_the_palette() {
         let commands = commands()
         let listed = commands.paletteCommands(matching: "")
-        #expect(Set(listed) == Set(commands.menuCommands).subtracting([.commandPalette]))
+        // The split's commands run only on Notes, and the journal day is not:
+        // `NotesTwoPaneTests` lists them.
+        #expect(Set(listed) == Set(commands.menuCommands).subtracting([.commandPalette, .splitRight, .closeSplit]))
         #expect(listed.count == Set(listed).count)
     }
 
@@ -69,16 +71,16 @@ struct CommandPaletteTests {
     @Test func every_command_but_the_pages_is_in_fixed() {
         let all: [AppCommand] = [
             .newNote, .quickCapture, .newTask, .search, .commandPalette, .settings, .today, .previousDay, .nextDay,
-            .dayPanel,
+            .dayPanel, .splitRight, .closeSplit,
         ]
         for command in all {
             // Exhaustive: a new case does not compile until it is listed above.
             switch command {
             case .newNote, .quickCapture, .newTask, .search, .commandPalette, .settings, .today, .previousDay,
-                 .nextDay, .dayPanel, .page: break
+                 .nextDay, .dayPanel, .splitRight, .closeSplit, .page: break
             }
         }
-        let menuBar = AppCommand.newItem + [.settings] + AppCommand.find + AppCommand.journal + [.dayPanel]
+        let menuBar = AppCommand.newItem + [.settings] + AppCommand.find + AppCommand.journal + AppCommand.view
         #expect(Set(all) == Set(AppCommand.fixed))
         #expect(Set(menuBar) == Set(AppCommand.fixed))
         #expect(AppCommand.fixed.count == Set(AppCommand.fixed).count)

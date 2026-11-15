@@ -83,6 +83,23 @@ final class SideRailsTests {
         #expect(!rails.inspectorFits)
     }
 
+    /// #4377: two notes side by side take the Notes page's rail room, and each
+    /// rail is back as it was when the split closes.
+    @Test func the_notes_split_takes_the_rails_room_and_gives_it_back() {
+        let rails = rails(.two)
+        if !rails.inspectorShown { rails.toggleInspector() }
+        #expect(rails.inspectorShown)
+
+        rails.notesSplit = true
+        #expect(!rails.inspectorFits && !rails.inspectorShown)
+        #expect(!rails.dayPanelFits(on: .notes))
+        #expect(rails.dayPanelFits(on: .tasks), "other pages keep their room")
+        #expect(rails.pageRoom(on: .notes) == .two, "the split reads the page's own room")
+
+        rails.notesSplit = false
+        #expect(rails.inspectorShown)
+    }
+
     /// The Notes page reads its own state while the Journal is the selected
     /// page, so returning to Notes beside an open note does not collapse the
     /// list for a panel that is open only on the Journal.

@@ -21,6 +21,10 @@ import SwiftUI
 // inspector waits; its button stays, and tapping it shows it and closes the
 // panel.
 //
+// **The Notes split yields nothing (#4377).** Two notes side by side take the
+// room a rail would: while they show, Notes holds no rail, and each rail keeps
+// its open state for when the split closes.
+//
 // **Per device.** The open states live in `UserDefaults`, never in the vault
 // and never synced. The Day Panel keeps one state on the Journal page and
 // one everywhere else: on Journal it starts open, as the Journal's day rail
@@ -117,15 +121,26 @@ final class SideRails {
         )
     }
 
+    /// Two notes show side by side on Notes, where the rails yield to them.
+    var notesSplit = false
+
     func measured(_ room: SideRailRoom, on page: VaultTab) {
         if rooms[page] != room { rooms[page] = room }
+    }
+
+    /// `page`'s room as measured, before the Notes split takes it.
+    func pageRoom(on page: VaultTab) -> SideRailRoom { rooms[page] ?? .none }
+
+    /// The room `page` leaves for rails.
+    private func railRoom(on page: VaultTab) -> SideRailRoom {
+        page == .notes && notesSplit ? .none : pageRoom(on: page)
     }
 
     /// The Day Panel's room on `page`: none on Calendar, which has its own
     /// agenda column, and none while Journal is off.
     func dayPanelRoom(on page: VaultTab) -> SideRailRoom {
         guard page != .calendar, settings.isOn(.journal) else { return .none }
-        return rooms[page] ?? .none
+        return railRoom(on: page)
     }
 
     func dayPanelFits(on page: VaultTab) -> Bool { dayPanelRoom(on: page) != .none }
@@ -139,13 +154,13 @@ final class SideRails {
     }
 
     // The inspector shows beside a note on the Notes page.
-    var inspectorFits: Bool { rooms[.notes, default: .none] != .none }
+    var inspectorFits: Bool { railRoom(on: .notes) != .none }
     var inspectorShown: Bool {
-        open.inspectorShown(in: rooms[.notes, default: .none], panelRoom: dayPanelRoom(on: .notes))
+        open.inspectorShown(in: railRoom(on: .notes), panelRoom: dayPanelRoom(on: .notes))
     }
 
     func toggleInspector() {
-        open.toggleInspector(in: rooms[.notes, default: .none], panelRoom: dayPanelRoom(on: .notes))
+        open.toggleInspector(in: railRoom(on: .notes), panelRoom: dayPanelRoom(on: .notes))
     }
 
     /// The Day Panel's day: the journal's shown day where it follows one,

@@ -30,6 +30,11 @@ protocol BlockEditing: Sendable {
     /// and then that write is not undoable. Never stored or synced.
     func snapshot(noteId: String, blockId: String) async throws -> String?
 
+    /// One block's text as the core holds it now, every run's text joined,
+    /// so core offsets index its UTF-8. `nil` when the surface has none (the
+    /// journal, test fakes): then a page's own text stands in for it.
+    func blockText(noteId: String, blockId: String) async throws -> String?
+
     /// Whether a block can leave this body for another note (desktop's block
     /// menu "Move to"): the surface reads snapshots and appends them to
     /// another note's body.
@@ -45,6 +50,7 @@ extension BlockEditing {
     /// A surface with no snapshot read (the journal, test fakes) offers no
     /// undo for a delete.
     func snapshot(noteId: String, blockId: String) async throws -> String? { nil }
+    func blockText(noteId: String, blockId: String) async throws -> String? { nil }
 
     /// The journal and test fakes move no block to another note.
     var movesBlocksBetweenNotes: Bool { false }
@@ -79,6 +85,12 @@ struct CoreBlockEditor: BlockEditing {
 
     func snapshot(noteId: String, blockId: String) async throws -> String? {
         try await executor.run { try writer().blockSnapshot(noteId: noteId, blockId: blockId) }
+    }
+
+    func blockText(noteId: String, blockId: String) async throws -> String? {
+        let vault = vault
+        let blocks = try await executor.run { try vault.notes().blocks(id: noteId) }
+        return blocks?.first { $0.id == blockId }.map { $0.inline.map(\.text).joined() }
     }
 
     var movesBlocksBetweenNotes: Bool { true }

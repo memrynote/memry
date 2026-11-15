@@ -40,7 +40,8 @@ struct NoteReadDialogs: ViewModifier {
             .onChange(of: renaming) { _, shown in
                 if shown { renameCommits.begin(renameDraft) }
             }
-            .alert("Delete this note?", isPresented: $confirmingDelete) {
+            // Named: beside a second pane, the alert says which note goes.
+            .alert("Delete \u{201c}\(model.displayTitle)\u{201d}?", isPresented: $confirmingDelete) {
                 Button("Cancel", role: .cancel) {}
                 Button("Delete", role: .destructive) {
                     Task {

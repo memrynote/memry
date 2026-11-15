@@ -102,7 +102,7 @@ struct EditorFocusMemoryTests {
 
         #expect(new.textView.isFirstResponder)
         #expect(new.textView.selectedRange == NSRange(location: 6, length: 5))
-        #expect(editsAtReload.first == [.setText(blockId: "a", text: "hello world")], "the page re-reads the typing first")
+        #expect(editsAtReload.first == [.replaceText(blockId: "a", text: "hello world", base: "hello")], "the page re-reads the typing first")
         #expect(memory.titleMayAutofocus("note-1"))
         new.textView.resignFirstResponder()
         new.textView.removeFromSuperview()
@@ -213,7 +213,7 @@ struct EditorFocusMemoryTests {
         model = nil
         await editor.firstEdit()
 
-        #expect(editor.all == [.setText(blockId: "a", text: "hello world")])
+        #expect(editor.all == [.replaceText(blockId: "a", text: "hello world", base: "hello")])
     }
 
     /// A checklist line typed in and swapped away with its page (#4494's

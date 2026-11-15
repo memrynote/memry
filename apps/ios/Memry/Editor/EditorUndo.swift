@@ -30,11 +30,33 @@ struct EditorUndoStep: Sendable, Equatable {
     /// The operation that does it again.
     let forward: BlockEdit
     /// Replayed after `forward`: the props an inserted block carries, which
-    /// `InsertBlock` alone cannot write.
+    /// `InsertBlock` alone cannot write, or the inline nodes typing put in,
+    /// which `ReplaceText` cannot.
     var forwardProps: [BlockEdit] = []
+    /// Replayed after `forward`, before `forwardProps`: the nodes that
+    /// replaced text the typing wrote, a typed `[[link]]` or a `#tag`. Each
+    /// goes over its literal where the block holds it once `forward` lands
+    /// (`NoteEditorViewModel.insert(_:over:typedLength:)`), not at its
+    /// recorded offsets: another pane may have typed before it since
+    /// (#4377).
+    var forwardOverText: [TextNode] = []
+    /// `forward`'s text in core bytes, which each `TextNode.start` counts in.
+    var forwardLength = 0
+    /// Where a redo leaves the caret, in UTF-16 of the block it draws: after
+    /// the nodes it put back. The redraw's own guess lands before a node
+    /// put back beside an equal one.
+    var caret: Int?
     /// Replayed after `backward`: a step that changed two blocks, such as a
     /// merge, puts both back.
     var backwardAfter: [BlockEdit] = []
+
+    /// An inline node over text: `edit` replaced `literal`, which starts
+    /// `start` core bytes into the text the typing wrote.
+    struct TextNode: Sendable, Equatable {
+        let start: Int
+        let literal: String
+        let edit: BlockEdit
+    }
 }
 
 /// This session's undo history.
@@ -110,27 +132,44 @@ final class EditorUndoStack {
 }
 
 extension EditorUndoStep {
-    /// The step for a text change, which is the common one.
+    /// The step for a text change, which is the common one: `ReplaceText`
+    /// both ways, each carrying the text it starts from as its `base`.
     ///
-    /// Both directions are a `SetText`, which makes text undo exact rather
-    /// than approximate.
+    /// The core then applies only this step's own change to the live block,
+    /// in place, keeping marks and inline nodes. Another pane on the note
+    /// (#4377) or a peer may have typed in the block since: undo takes back
+    /// `next` to `previous` and redo puts it again, and their typing stays.
     static func text(blockId: String, from previous: String, to next: String) -> EditorUndoStep {
         EditorUndoStep(
             name: "Typing",
-            backward: .setText(blockId: blockId, text: previous),
-            forward: .setText(blockId: blockId, text: next)
+            backward: .replaceText(blockId: blockId, text: previous, base: next),
+            forward: .replaceText(blockId: blockId, text: next, base: previous)
         )
     }
 
-    /// The step for a text change in a block holding marks or inline nodes:
-    /// `ReplaceText` both ways, so undo edits in place and keeps them.
-    static func replaceText(blockId: String, from previous: String, to next: String)
-        -> EditorUndoStep
-    {
-        EditorUndoStep(
+    /// Typing whose commit then put inline nodes in: a typed `[[link]]`, a
+    /// menu's or a drop's link or date. `next` is the block as the step left
+    /// it, each node a U+FFFC, then with each node in turn back as text
+    /// (`BlockText.placingNodes`): undo walks it, so each diff takes back
+    /// exactly its node and never one beside it, and ends at `previous`.
+    /// A U+FFFC in `ReplaceText` makes no node, so redo writes the
+    /// typing, `typed` (`typedLength` core bytes), then puts `overText` back
+    /// over their literals and runs `nodes` again as they went in.
+    static func text(
+        blockId: String, from previous: String, typed: String, typedLength: Int,
+        overText: [TextNode], nodes: [BlockEdit], to next: [String], caret: Int
+    ) -> EditorUndoStep {
+        let texts = next + [previous]
+        let back = zip(texts, texts.dropFirst()).map { BlockEdit.replaceText(blockId: blockId, text: $1, base: $0) }
+        return EditorUndoStep(
             name: "Typing",
-            backward: .replaceText(blockId: blockId, text: previous),
-            forward: .replaceText(blockId: blockId, text: next)
+            backward: back[0],
+            forward: .replaceText(blockId: blockId, text: typed, base: previous),
+            forwardProps: nodes,
+            forwardOverText: overText,
+            forwardLength: typedLength,
+            caret: caret,
+            backwardAfter: Array(back.dropFirst())
         )
     }
 
