@@ -96,8 +96,7 @@ struct EditableBlockView: UIViewRepresentable {
                 // A row a shortcut redrew takes its caret from the old row
                 // as it begins editing (`textViewDidBeginEditing`).
                 let handover = session.shortcutField?.blockId == field.blockId
-                view.becomeFirstResponder()
-                if !handover { view.selectedRange = NSRange(location: view.textStorage.length, length: 0) }
+                session.takeCaret(field, atEnd: !handover)
             }
         }
     }
@@ -520,6 +519,7 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
     /// Committed when editing ends rather than per keystroke: every commit is a
     /// CRDT update and an outbox row (FR-030).
     func textViewDidEndEditing(_ textView: UITextView) {
+        session?.returnBurstEnded(in: self)
         commitTyping()
         session?.editingEnded(self, selection: textView.selectedRange)
         if session?.field === self { session?.focusChanged(to: nil) }
@@ -562,6 +562,8 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
     }
 
     func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
+        // Held for the block a Return is making, as typed (#4692).
+        if let session, session.holdsKeys(self), let holds = session.holdsEdit(range, text, in: self) { return holds }
         let string = textView.text as NSString
         // `[[` becomes `[[]]` with the caret between (desktop's autocomplete),
         // outside a code block, whose text stays literal.
@@ -621,12 +623,17 @@ extension EditorSession {
         // another plain checkbox, never a task.
         let plain = kind == "checkListItem" && field.value("plain") == "true"
         commit(field) { [weak self] in
-            guard let self, let model = self.model else { return }
-            guard let newId = await model.insert(next, after: field.blockId) else { return }
+            guard let self else { return }
+            guard let model = self.model, let newId = await model.insert(next, after: field.blockId) else {
+                return self.keepHeldKeys(in: field)
+            }
             if plain { await model.setProp(newId, "plain", "true") }
             self.history.record(.insert(blockId: newId, after: field.blockId, kind: next, text: ""))
+            self.returnMade(newId, from: field)
             self.focus(newId)
         }
+        // After the commit, which can redraw a typed link in `field`.
+        if model != nil { startReturnBurst(in: field) }
     }
 
     /// Backspace with the caret at a block's start, in desktop's order
@@ -637,6 +644,7 @@ extension EditorSession {
     /// only an empty paragraph goes. Not yet here: a block with nested blocks
     /// (desktop lifts them out) and the first block of a column.
     func backspaceAtStart(_ field: BlockField) {
+        keepHeldKeys(in: field)
         if field.block.kind != "paragraph" { return turnInto(InsertableBlock.all[0]) }
         if canOutdent { return nest(false) }
         let blocks = blocks()
