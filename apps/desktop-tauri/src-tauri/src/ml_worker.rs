@@ -1,4 +1,4 @@
-//! The `memry-ml-worker` sidecar (pdfium, out of process): one `WorkerHandle` for the app, read
+//! The `memry-ml-worker` sidecar (pdfium and Tesseract, out of process): one `WorkerHandle` for the app, read
 //! by the file text runner of the open vault, which stops it on every vault close, and stopped in
 //! the `stop-utility-processes` shutdown step. The child starts only on the first call.
 
@@ -7,6 +7,8 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use memry_desktop::notes::index::NoteIndex;
+use memry_desktop::services::file_text::ocr::OcrEngine;
+use memry_desktop::services::file_text::runner::Recognize;
 use memry_desktop::services::file_text::service::{FileText, FileTextConfig};
 use memry_desktop::services::file_text::{WorkerHandle, WorkerPaths};
 use memry_desktop::services::ocr_languages::OcrLanguages;
@@ -59,8 +61,8 @@ fn worker_paths(app: &AppHandle<Wry>) -> Result<WorkerPaths, String> {
     Ok(WorkerPaths::new(exe_dir, &resource_dir(app)?))
 }
 
-/// A debug build runs from the checkout, where `scripts/fetch-pdfium.mjs` puts pdfium; Tauri's
-/// resource dir of an unbundled build is the target dir, which holds no resources.
+/// A debug build runs from the checkout, where `scripts/fetch-pdfium.mjs` puts pdfium and the
+/// English OCR data is committed; Tauri's resource dir of an unbundled build is the target dir, which holds no resources.
 fn resource_dir(app: &AppHandle<Wry>) -> Result<PathBuf, String> {
     if cfg!(debug_assertions) {
         return Ok(Path::new(env!("MEMRY_CHECKOUT_DIR")).join("src-tauri/resources"));
@@ -68,20 +70,21 @@ fn resource_dir(app: &AppHandle<Wry>) -> Result<PathBuf, String> {
     app.path().resource_dir().map_err(|error| error.to_string())
 }
 
-/// The file text runner of every open vault (#3542 lane G), reading PDFs through the worker. No
-/// worker (see `manage`) leaves the app without file text this run, as without PDFs: the runner's
-/// jobs would fail and be read again only a day later.
+/// The file text runner of every open vault (#3542 lane G), reading PDFs and OCR through the
+/// worker. No worker (see `manage`) leaves the app without file text this run, as without PDFs:
+/// the runner's jobs would fail and be read again only a day later.
 pub fn register(app: &AppHandle<Wry>, session: &Session) {
     let Some(worker) = app.try_state::<Arc<WorkerHandle>>() else {
         return;
     };
+    let recognize = recognizer(app, worker.inner());
     let (languages, index) = (app.clone(), app.clone());
     let file_text = FileText::new(
         session,
         FileTextConfig {
             app_version: app.package_info().version.to_string(),
             pdf: worker.inner().clone(),
-            recognize: None,
+            recognize,
             ocr_languages: Arc::new(move || {
                 languages
                     .try_state::<Arc<OcrLanguages>>()
@@ -110,4 +113,17 @@ pub fn register(app: &AppHandle<Wry>, session: &Session) {
     );
     file_text.register();
     app.manage(file_text);
+}
+
+/// OCR with the languages the OCR languages service has ready. Without that service or the
+/// resource dir, images and scanned pages fail `OCR unavailable` this run.
+fn recognizer(app: &AppHandle<Wry>, worker: &Arc<WorkerHandle>) -> Option<Recognize> {
+    let languages = app.try_state::<Arc<OcrLanguages>>()?.inner().clone();
+    match resource_dir(app) {
+        Ok(dir) => Some(OcrEngine::new(worker.clone(), &dir).recognizer(languages)),
+        Err(error) => {
+            tracing::error!(scope = "MlWorker", "no OCR this run: {error}");
+            None
+        }
+    }
 }

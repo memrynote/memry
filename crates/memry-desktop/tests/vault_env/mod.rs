@@ -117,6 +117,15 @@ pub fn env_named(
     let vault = dir.path().join(name);
     fs::create_dir_all(&vault).unwrap();
     fs::create_dir_all(dir.path().join("app")).unwrap();
+    env_in(dir, vault, identity)
+}
+
+/// A new session on the vault and app config of `dir`, as a new app run gets.
+fn env_in(
+    dir: tempfile::TempDir,
+    vault: PathBuf,
+    identity: impl FnOnce(Arc<dyn SecureStore>) -> Option<Arc<dyn NoteIdentity>>,
+) -> Env {
     let store = device_key::with_device_key();
     let registry = VaultRegistry::new(Arc::new(AppConfig::load(
         dir.path().join("app/memry-config.json"),
@@ -148,6 +157,16 @@ pub fn creates(store: Arc<dyn SecureStore>) -> Arc<Creates> {
 }
 
 impl Env {
+    /// Closes the vault and starts a new app run on it: a new session and tier, the same
+    /// vault and app data (the device key is fixed).
+    pub fn restart(
+        mut self,
+        identity: impl FnOnce(Arc<dyn SecureStore>) -> Option<Arc<dyn NoteIdentity>>,
+    ) -> Env {
+        self.close();
+        env_in(self._dir, self.vault, identity)
+    }
+
     pub fn open(&mut self) {
         let opened = self.session.open(&self.vault, OpenSource::Select).unwrap();
         self.core = Some(opened.vault.vault.clone());
