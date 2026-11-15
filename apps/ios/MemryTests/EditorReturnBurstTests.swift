@@ -20,6 +20,8 @@ private final class BodyEditor: BlockEditing, @unchecked Sendable {
     /// What the core does with a new block: lands it, holds it until set
     /// back to `.land`, or refuses it.
     let inserts = Mutex(Inserts.land)
+    /// The same for a block's text, which the core writes or holds.
+    let texts = Mutex(Inserts.land)
     enum Inserts { case land, wait, refuse }
     struct Refused: Error {}
 
@@ -29,6 +31,12 @@ private final class BodyEditor: BlockEditing, @unchecked Sendable {
         if case .insertBlock = edit {
             while inserts.withLock({ $0 }) == .wait { try await Task.sleep(for: .milliseconds(10)) }
             if inserts.withLock({ $0 }) == .refuse { throw Refused() }
+        }
+        switch edit {
+        case .setText, .replaceText:
+            while texts.withLock({ $0 }) == .wait { try await Task.sleep(for: .milliseconds(10)) }
+        default:
+            break
         }
         return blocks.withLock { blocks in
             switch edit {
@@ -467,6 +475,42 @@ struct EditorReturnBurstTests {
         #expect(!steps.contains { $0.forward == $0.backward }, "no undo step that changes nothing")
     }
 
+    // MARK: A block shortcut, then a burst (#4720)
+
+    /// The old row commits what it took as the redrawn row takes over, and
+    /// the core echoes that text back only after a Return in the new row
+    /// committed more. The echo is no news to the row: drawn, it put the
+    /// older text back, and the next keys landed inside the item (`megilk`).
+    /// The old row can commit more than once before it hands over (here,
+    /// the app resigning active mid-word): no echo of either is drawn.
+    @Test(.timeLimit(.minutes(1)), arguments: [
+        ("[] ", "checkListItem", false), ("- ", "bulletListItem", false), ("1. ", "numberedListItem", false),
+        ("[] ", "checkListItem", true),
+    ])
+    func theEchoOfATakenOverCommitLeavesNewerTypingAlone(shortcut: String, kind: String, twice: Bool) async throws {
+        let blocks = try await Screen.run(text: "") { screen in
+            let paragraph = try await screen.start()
+            screen.editor.texts.withLock { $0 = .wait }
+            screen.editor.inserts.withLock { $0 = .wait }
+            screen.keys(shortcut + "mi")
+            if twice { NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil) }
+            screen.keys("l")
+            for _ in 0 ..< 80 where screen.textViews().contains(paragraph) || screen.focused?.text != "mil" {
+                try await Task.sleep(for: .milliseconds(25))
+            }
+            screen.keys("k\n")
+            screen.editor.texts.withLock { $0 = .land }
+            for _ in 0 ..< 80 where screen.editor.shown.first != "milk" { try await Task.sleep(for: .milliseconds(25)) }
+            try await Task.sleep(for: .milliseconds(200))
+            screen.keys("eggs\n")
+            screen.editor.inserts.withLock { $0 = .land }
+            try await screen.finish(blocks: 3)
+            return screen.editor.all
+        }
+        #expect(blocks.map(\.kind) == [kind, kind, kind])
+        #expect(blocks.map { BlockText.shown($0.inline) } == ["milk", "eggs", ""], "\(blocks.map { BlockText.shown($0.inline) })")
+    }
+
     // MARK: Edits outside the held keys end the hold (REVIEW-4707 M1)
 
     /// Backspace past the Return deletes the text before it, as before #4692:
@@ -590,5 +634,25 @@ struct EditorReturnBurstTests {
             return screen.editor.shown
         }
         #expect(shown == ["AlphaBeta", ""], "\(shown)")
+    }
+
+    /// #4722: keys typed into the block a Return made, once it holds the
+    /// caret, are committed as the app leaves, so a kill keeps them.
+    @Test(.timeLimit(.minutes(1))) func leavingTheAppAfterTypingInTheNewBlockCommitsIt() async throws {
+        let shown = try await Screen.run(text: "") { screen in
+            let first = try await screen.start()
+            screen.keys("Alpha\n")
+            for _ in 0 ..< 80 where screen.focused == nil || screen.focused === first || screen.editor.all.count < 2 {
+                try await Task.sleep(for: .milliseconds(25))
+            }
+            try await Task.sleep(for: .milliseconds(200))
+            screen.keys("Beta")
+            NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
+            // No resign here: what lands is what leaving the app committed.
+            screen.model.session.enqueue {}
+            await screen.model.session.tail?.value
+            return screen.editor.shown
+        }
+        #expect(shown == ["Alpha", "Beta"], "\(shown)")
     }
 }

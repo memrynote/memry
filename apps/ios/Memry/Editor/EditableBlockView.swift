@@ -75,6 +75,13 @@ struct EditableBlockView: UIViewRepresentable {
         let changed = field.block != block || field.style.font != Self.font(for: role) || field.alignment != alignment
             || field.style.ink.resolvedColor(with: traits) != nextInk.resolvedColor(with: traits)
         let moved = field.block.id != block.id
+        // The core's echo of a text this row committed before its last
+        // commit (`superseded`) is older than the row: drawn, it put that
+        // text back under the caret, and the next keys landed inside it
+        // (#4720). The echo of the last commit puts the two back in step.
+        let shown = BlockText.shown(block.inline)
+        let echo = shown != field.base && field.superseded.contains(shown)
+        if shown == field.base { field.superseded = [] }
         field.block = block
         // Rows are drawn by position: a block inserted or removed above hands
         // this text view the next block, which `focus` must find it under.
@@ -85,7 +92,7 @@ struct EditableBlockView: UIViewRepresentable {
         // **Only when it differs, and never over unsaved typing.** Re-rendering
         // resets the text storage, which would move a caret mid-word or drop
         // what the user typed since the last commit.
-        if changed || field.stale, !field.dirty { field.render() }
+        if changed || field.stale, !field.dirty, !echo { field.render() }
         // The block changed under a text view that kept the caret (a type
         // change that kept the row's shape): nothing is left to focus.
         if changed, session.pendingFocus == field.blockId, view.isFirstResponder {
@@ -291,7 +298,15 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
     /// committed. While `dirty`, `block` can move on under the text view (a
     /// peer's edit merging in), and a commit sends only the change from
     /// here, so it lands on the live block without deleting the peer's edit.
-    var base = ""
+    var base = "" {
+        didSet {
+            if rendering { superseded = [] } else if base != oldValue { superseded.insert(oldValue) }
+        }
+    }
+    /// The texts `base` held since the core's block last matched it: what
+    /// this row, or the row it took over from, committed before its last
+    /// commit. The core echoes each back, in order, after newer typing.
+    var superseded: Set<String> = []
     /// Where the caret goes after the next render (a mark, a chosen link).
     var pendingSelection: NSRange?
     /// Inside `render`, whose `attributedText` puts the caret at the end before
@@ -494,6 +509,7 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
             textView.attributedText = text
             textView.typingAttributes = BlockText.baseAttributes(style)
             base = old.base
+            superseded.formUnion(old.superseded)
             dirty = old.dirty
             old.dirty = false
             textView.invalidateIntrinsicContentSize()
