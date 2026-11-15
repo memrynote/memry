@@ -505,8 +505,9 @@ jobs:
           node ../scripts/fetch-pdfium.mjs --out "$MEMRY_PDFIUM_DIR"
           cargo nextest run -p memry-ml-worker --no-fail-fast
 
-      # Tesseract and Leptonica are linked into the worker statically, and on Windows so is the VC
-      # runtime: the app ships no Tesseract library and needs no VC++ redistributable.
+      # Tesseract, Leptonica and ONNX Runtime are linked into the worker statically, and on Windows
+      # so is the VC runtime: the app ships none of their libraries and needs no VC++
+      # redistributable.
       - name: memry-ml-worker linked libraries
         if: matrix.part != 'tests' && needs.plan.outputs.full == 'true'
         run: |
@@ -522,8 +523,8 @@ jobs:
           esac | tee "$RUNNER_TEMP/worker-dependencies.txt"
           # An empty or failed listing would pass the checks below.
           grep -qiE 'libc\.so|libSystem|KERNEL32' "$RUNNER_TEMP/worker-dependencies.txt"
-          if grep -iE 'tesseract|lept' "$RUNNER_TEMP/worker-dependencies.txt"; then
-            echo "::error::$bin depends on a shared Tesseract or Leptonica library"
+          if grep -iE 'tesseract|lept|onnxruntime|directml' "$RUNNER_TEMP/worker-dependencies.txt"; then
+            echo "::error::$bin depends on a shared Tesseract, Leptonica, ONNX Runtime or DirectML library"
             exit 1
           fi
           if grep -iE 'msvcp[0-9]|vcruntime[0-9]' "$RUNNER_TEMP/worker-dependencies.txt"; then
