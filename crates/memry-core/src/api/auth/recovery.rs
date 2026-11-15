@@ -8,6 +8,7 @@
 
 use crate::api::errors::{ApiError, AuthError};
 use crate::protocol::account::{self, KeyMaterial};
+use crate::protocol::auth::{TokenClaims, now_unix_s};
 
 use super::{AuthEvent, AuthSession, AuthState};
 
@@ -33,5 +34,23 @@ impl AuthSession {
             }
             answer => Ok(answer?),
         }
+    }
+
+    /// Electron's `ensureLiveSetupToken` (`sync/setup-token.ts:109-113`): a
+    /// setup token whose own `exp` has passed takes the `SetupExpired` edge and
+    /// is renewed before anything spends it, so the first call after a long
+    /// hunt for the phrase is not a `401`. From `SetupExpired` it renews; from
+    /// any other state it reports the state and sends nothing. Rust-only.
+    pub async fn live_setup_token(&self) -> Result<AuthState, AuthError> {
+        if self.state_now() == AuthState::SetupPending
+            && let Some(token) = self.tokens.setup_token()?
+            && TokenClaims::parse(&token)?.is_expired(now_unix_s())
+        {
+            self.apply(AuthEvent::SetupTokenExpired, "expire a setup token")?;
+        }
+        if self.state_now() == AuthState::SetupExpired {
+            return self.renew_setup_token().await;
+        }
+        Ok(self.state_now())
     }
 }

@@ -92,14 +92,15 @@ impl IosBetaJoinResult {
     }
 }
 
-/// Posts the join request to `url` (the server's `/ios-beta/join`). Step 19 (#3536) adds the
-/// account's bearer when signed in; until then it goes without one, as Electron does signed out.
-/// `telemetry` is `None` until its launch stage has run, and the join then fails.
+/// Posts the join request to `url` (the server's `/ios-beta/join`), with the account's token when
+/// the user is signed in (`join-ios-beta.ts:32-33`). `telemetry` is `None` until its launch stage
+/// has run, and the join then fails.
 pub async fn join(
     transport: &dyn Transport,
     url: &str,
     input: IosBetaJoinInput,
     telemetry: Option<&Service>,
+    bearer: Option<&str>,
 ) -> IosBetaJoinResult {
     let email = input.email.trim();
     if !is_schema_email(email) {
@@ -120,7 +121,7 @@ pub async fn join(
         Ok(body) => body,
         Err(error) => return IosBetaJoinResult::failed(error.to_string()),
     };
-    let error = match send_json(transport, url, body, None).await {
+    let error = match send_json(transport, url, body, bearer).await {
         Ok(response) if (200..300).contains(&response.status) => {
             return IosBetaJoinResult {
                 success: true,

@@ -790,13 +790,15 @@ public protocol AuthSessionProtocol: AnyObject, Sendable {
     
     /**
      * `SignedOut -> AwaitingOtp`. Mints the `sessionNonce` this attempt will
-     * carry on both calls (chapter 02 §2.6).
+     * carry on both calls (chapter 02 §2.6). The body is
+     * [`Self::request_email_code_answer`].
      */
     func requestEmailCode(email: String) async throws  -> AuthState
     
     /**
      * Asks for a fresh code. Not a state transition: chapter 02 §2.11
      * caps it at three per ten minutes and the state is unchanged either way.
+     * Outside `AwaitingOtp` it is `InvalidState` and sends nothing.
      */
     func resendEmailCode() async throws 
     
@@ -809,13 +811,10 @@ public protocol AuthSessionProtocol: AnyObject, Sendable {
     func state()  -> AuthState
     
     /**
-     * `AwaitingOtp -> SetupPending`, or `-> SignedOut` when the code is
-     * rejected.
-     *
-     * Commits `devicePublicKey`, which is what makes `SetupExpired`
-     * recoverable: without it the grant is a single non-renewable five
-     * minutes (chapter 02 §2.5), and a user hunting for a 24-word phrase
-     * routinely outlasts that.
+     * `AwaitingOtp -> SetupPending`. A wrong, expired or rate-limited code
+     * (a 4xx) stays in `AwaitingOtp`, so a resend and the right code still
+     * finish the attempt; any other failure is `-> SignedOut`. The body is
+     * [`Self::verify_email_code_answer`].
      */
     func verifyEmailCode(code: String) async throws  -> AuthState
     
@@ -1334,7 +1333,8 @@ open func renewSetupToken()async throws  -> AuthState  {
     
     /**
      * `SignedOut -> AwaitingOtp`. Mints the `sessionNonce` this attempt will
-     * carry on both calls (chapter 02 §2.6).
+     * carry on both calls (chapter 02 §2.6). The body is
+     * [`Self::request_email_code_answer`].
      */
 open func requestEmailCode(email: String)async throws  -> AuthState  {
     return
@@ -1355,6 +1355,7 @@ open func requestEmailCode(email: String)async throws  -> AuthState  {
     /**
      * Asks for a fresh code. Not a state transition: chapter 02 §2.11
      * caps it at three per ten minutes and the state is unchanged either way.
+     * Outside `AwaitingOtp` it is `InvalidState` and sends nothing.
      */
 open func resendEmailCode()async throws   {
     return
@@ -1402,13 +1403,10 @@ open func state() -> AuthState  {
 }
     
     /**
-     * `AwaitingOtp -> SetupPending`, or `-> SignedOut` when the code is
-     * rejected.
-     *
-     * Commits `devicePublicKey`, which is what makes `SetupExpired`
-     * recoverable: without it the grant is a single non-renewable five
-     * minutes (chapter 02 §2.5), and a user hunting for a 24-word phrase
-     * routinely outlasts that.
+     * `AwaitingOtp -> SetupPending`. A wrong, expired or rate-limited code
+     * (a 4xx) stays in `AwaitingOtp`, so a resend and the right code still
+     * finish the attempt; any other failure is `-> SignedOut`. The body is
+     * [`Self::verify_email_code_answer`].
      */
 open func verifyEmailCode(code: String)async throws  -> AuthState  {
     return
@@ -35841,10 +35839,10 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_authsession_renew_setup_token() != 52922) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_authsession_request_email_code() != 33217) {
+    if (uniffi_memry_core_checksum_method_authsession_request_email_code() != 33229) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_authsession_resend_email_code() != 49631) {
+    if (uniffi_memry_core_checksum_method_authsession_resend_email_code() != 10169) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_authsession_sign_out() != 11383) {
@@ -35853,7 +35851,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_authsession_state() != 9316) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_authsession_verify_email_code() != 43431) {
+    if (uniffi_memry_core_checksum_method_authsession_verify_email_code() != 49057) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_authsession_abandon_provider_sign_in() != 26731) {

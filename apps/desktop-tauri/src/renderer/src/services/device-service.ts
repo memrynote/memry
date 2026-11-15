@@ -1,3 +1,5 @@
+import { authService } from './auth-service'
+
 export const deviceService = {
   getDevices: () => {
     return window.api.syncDevices.getDevices()
@@ -17,11 +19,7 @@ export const setupService = {
     return window.api.syncSetup.setupFirstDevice(input)
   },
 
-  setupNewAccount: () => {
-    return window.api.syncSetup.setupNewAccount()
-  },
+  setupNewAccount: authService.setupNewAccount,
 
-  confirmRecoveryPhrase: (input: { confirmed: boolean }) => {
-    return window.api.syncSetup.confirmRecoveryPhrase(input)
-  }
+  confirmRecoveryPhrase: authService.confirmRecoveryPhrase
 }

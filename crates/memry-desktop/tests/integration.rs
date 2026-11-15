@@ -16,6 +16,8 @@ mod svg_inert;
 mod unsplash_server;
 mod vault_env;
 
+#[path = "account_service.rs"]
+mod account_service;
 #[path = "activity_log.rs"]
 mod activity_log;
 #[path = "activity_scan.rs"]

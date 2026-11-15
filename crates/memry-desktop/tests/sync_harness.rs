@@ -11,6 +11,7 @@
 //! | a definition only the file holds meets the server's     | `rebuildSingleDbCache`, `seedUnclocked` (#4099) |
 //! | a definition only the file holds over a purged deletion | chapter 05 §5.12.3 (`create`, #4099)      |
 //! | recovery info is read with the setup token              | chapter 02 §2.7 (`/auth/recovery-info`)   |
+//! | `account`: email sign-in, setup, known device, phrase   | `auth-device-handlers.ts`, `device-registration.ts` |
 //!
 //! Within it: a definition another device pushed first wins over the learned type, a deleted one
 //! stays deleted, the record has the shape Electron's seed pushes, a retry pushes nothing twice,
@@ -18,6 +19,8 @@
 
 #![cfg(feature = "harness")]
 
+#[path = "sync_harness/account.rs"]
+mod account;
 #[path = "device_key/mod.rs"]
 mod device_key;
 #[path = "harness_server/mod.rs"]
