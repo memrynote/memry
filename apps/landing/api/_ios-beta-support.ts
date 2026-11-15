@@ -46,7 +46,78 @@ export function createAppStoreConnectToken(
   return `${signingInput}.${signature.toString('base64url')}`
 }
 
-export type BetaTesterResult = { ok: true } | { ok: false; status: number; detail: string }
+export type BetaTesterResult =
+  | { ok: true; alreadyInvited: boolean }
+  | { ok: false; status: number; detail: string }
+
+/** GETs `path`, or POSTs `body` to it when one is given. */
+function ascRequest(
+  config: AppStoreConnectConfig,
+  path: string,
+  body?: unknown
+): Promise<Response> {
+  const headers = {
+    Authorization: `Bearer ${createAppStoreConnectToken(config)}`,
+    'Content-Type': 'application/json'
+  }
+  const url = `${ASC_API_BASE_URL}${path}`
+  return body === undefined
+    ? fetch(url, { headers })
+    : fetch(url, { method: 'POST', headers, body: JSON.stringify(body) })
+}
+
+function dataId(data: unknown): string | null {
+  const item: unknown =
+    data && typeof data === 'object' && 'data' in data
+      ? Array.isArray(data.data)
+        ? data.data[0]
+        : data.data
+      : null
+  return item && typeof item === 'object' && 'id' in item && typeof item.id === 'string'
+    ? item.id
+    : null
+}
+
+async function failure(response: Response): Promise<BetaTesterResult> {
+  const errors = getAppStoreConnectErrors(await response.json().catch(() => null))
+  const detail = errors.map((error) => `${error.code}: ${error.detail}`).join('; ')
+  return { ok: false, status: response.status, detail: detail || response.statusText }
+}
+
+/**
+ * Apple answers 409 when the address is already in the group and sends no new email, so a
+ * visitor who lost the first invite would be stuck. Send that tester the invite again.
+ */
+async function resendInvite(
+  config: AppStoreConnectConfig,
+  email: string
+): Promise<BetaTesterResult | null> {
+  const group = encodeURIComponent(config.betaGroupId)
+  const [testerRes, appRes] = await Promise.all([
+    ascRequest(
+      config,
+      `/v1/betaTesters?filter[email]=${encodeURIComponent(email)}&filter[betaGroups]=${group}&fields[betaTesters]=email&limit=1`
+    ),
+    ascRequest(config, `/v1/betaGroups/${group}/relationships/app`)
+  ])
+  if (!testerRes.ok) return failure(testerRes)
+  if (!appRes.ok) return failure(appRes)
+
+  const testerId = dataId(await testerRes.json())
+  const appId = dataId(await appRes.json())
+  if (!testerId || !appId) return null
+
+  const invitation = await ascRequest(config, '/v1/betaTesterInvitations', {
+    data: {
+      type: 'betaTesterInvitations',
+      relationships: {
+        app: { data: { type: 'apps', id: appId } },
+        betaTester: { data: { type: 'betaTesters', id: testerId } }
+      }
+    }
+  })
+  return invitation.ok ? { ok: true, alreadyInvited: true } : failure(invitation)
+}
 
 function getAppStoreConnectErrors(data: unknown): { code: string; detail: string }[] {
   if (!data || typeof data !== 'object' || !('errors' in data) || !Array.isArray(data.errors)) {
@@ -65,33 +136,26 @@ function getAppStoreConnectErrors(data: unknown): { code: string; detail: string
 /**
  * Adds the address to the external TestFlight group, the same as adding a tester by hand in
  * App Store Connect. Apple sends the invite email itself once the group has a build that
- * passed Beta App Review.
+ * passed Beta App Review. An address already in the group gets the invite again.
  */
 export async function addExternalBetaTester(
   config: AppStoreConnectConfig,
   email: string
 ): Promise<BetaTesterResult> {
-  const response = await fetch(`${ASC_API_BASE_URL}/v1/betaTesters`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${createAppStoreConnectToken(config)}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      data: {
-        type: 'betaTesters',
-        attributes: { email },
-        relationships: {
-          betaGroups: { data: [{ type: 'betaGroups', id: config.betaGroupId }] }
-        }
+  const response = await ascRequest(config, '/v1/betaTesters', {
+    data: {
+      type: 'betaTesters',
+      attributes: { email },
+      relationships: {
+        betaGroups: { data: [{ type: 'betaGroups', id: config.betaGroupId }] }
       }
-    })
+    }
   })
-  if (response.ok) return { ok: true }
+  if (response.ok) return { ok: true, alreadyInvited: false }
 
-  const errors = getAppStoreConnectErrors(await response.json().catch(() => null))
-  const detail = errors.map((error) => `${error.code}: ${error.detail}`).join('; ')
-  return { ok: false, status: response.status, detail: detail || response.statusText }
+  const added = await failure(response)
+  if (response.status !== 409) return added
+  return (await resendInvite(config, email)) ?? added
 }
 
 /** Server-side check of the Cloudflare Turnstile token the /ios-beta form sends. */

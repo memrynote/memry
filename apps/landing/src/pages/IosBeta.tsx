@@ -8,7 +8,7 @@ import { IosScreenshotCarousel } from '@/components/site/IosScreenshotCarousel'
 import { trackLandingEvent } from '@/lib/analytics'
 import { cn } from '@/lib/utils'
 
-type Status = 'idle' | 'loading' | 'success' | 'error'
+type Status = 'idle' | 'loading' | 'success' | 'resent' | 'error'
 
 const REQUIREMENTS = [
   'An iPhone on iOS 26 or later.',
@@ -134,7 +134,7 @@ export function IosBetaPage() {
 
       if (response.ok && data.success) {
         trackLandingEvent('landing_ios_beta_success', 'ios-beta')
-        setStatus('success')
+        setStatus(data.alreadyInvited === true ? 'resent' : 'success')
         setEmail('')
         return
       }
@@ -164,11 +164,13 @@ export function IosBetaPage() {
         }
         sub="The iPhone beta is open on TestFlight. Leave the email you want the invite sent to, and Apple emails the TestFlight invite to that address."
         actions={
-          status === 'success' ? (
+          status === 'success' || status === 'resent' ? (
             // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- live status region; output element would change inline layout
             <p role="status" className="text-[15px] font-medium text-ink">
-              You&rsquo;re in. Apple is sending your TestFlight invite to that address. Check your
-              spam folder if it does not show up.
+              {status === 'resent'
+                ? 'You were already invited, so Apple is sending your TestFlight invite again.'
+                : 'You\u2019re in. Apple is sending your TestFlight invite to that address.'}{' '}
+              Check your spam folder if it does not show up.
             </p>
           ) : (
             <form

@@ -15,7 +15,11 @@ import UIKit
 
 /// The block Return was pressed in, until the block it made takes the caret.
 struct ReturnBurst {
+    /// The text view holding the keys: the one Return was pressed in, or the
+    /// row a type change redrew for its block (`returnBurstMoved`).
     weak var source: BlockField?
+    /// The block Return was pressed in.
+    let blockId: String
     /// The source's text before and after the caret when Return was pressed.
     /// Keys typed since sit between the two.
     let head: String
@@ -31,6 +35,9 @@ struct ReturnBurst {
     /// The source resigned, and the keys it handed over (`nil`: none).
     var ended = false
     var carried: String?
+    /// The core made no block while the keys were carried: the redrawn row
+    /// keeps them.
+    var refused = false
 }
 
 extension EditorSession {
@@ -40,13 +47,15 @@ extension EditorSession {
         let text = field.textView.text as NSString
         let caret = min(field.textView.selectedRange.location, text.length)
         returnBurst = ReturnBurst(
-            source: field, head: text.substring(to: caret), tail: text.substring(from: caret), typed: field.typed
+            source: field, blockId: field.blockId, head: text.substring(to: caret), tail: text.substring(from: caret),
+            typed: field.typed
         )
     }
 
-    /// The core made `blockId` for the Return in `field`.
+    /// The core made `blockId` for the Return in `field`, whose row a type
+    /// change may have redrawn since.
     func returnMade(_ blockId: String, from field: BlockField) {
-        if returnBurst?.source === field { returnBurst?.target = blockId }
+        if returnBurst?.blockId == field.blockId { returnBurst?.target = blockId }
     }
 
     /// `field` stops holding keys: those it holds stay where they were
@@ -57,6 +66,18 @@ extension EditorSession {
         guard holdsKeys(field) else { return }
         Log.interface.info("keys typed after Return stayed in their block")
         returnBurst = nil
+    }
+
+    /// The core made no block for the Return in `field`: the keys typed
+    /// after it stay in its block, in the row that holds them now. Keys a
+    /// redrawn row has yet to take back stay with the burst until it does.
+    func returnRefused(in field: BlockField) {
+        guard let burst = returnBurst, burst.blockId == field.blockId else { return }
+        guard burst.ended else {
+            Log.interface.info("keys typed after Return stayed in their block")
+            return returnBurst = nil
+        }
+        returnBurst?.refused = true
     }
 
     /// `field`'s keys are held for the block its Return makes.
@@ -84,14 +105,43 @@ extension EditorSession {
         return nil
     }
 
-    /// `field` stopped editing, before its typing commits. Handing over, it
-    /// gives up the keys it held; otherwise (the caret went elsewhere first)
-    /// they stay in it and commit there.
+    /// `field` stopped editing, or its row went, before its typing commits.
+    /// Handing over, or redrawn by a type change, it gives up the keys it
+    /// held; otherwise (the caret went elsewhere first) they stay in it and
+    /// commit there.
     func returnBurstEnded(in field: BlockField) {
-        guard let burst = returnBurst, burst.source === field else { return }
-        guard burst.handing else { return returnBurst = nil }
+        guard let burst = returnBurst, burst.source === field, !burst.ended else { return }
+        // A row a type change is redrawing goes, and resigns, before the
+        // Return's block takes the caret: its keys go on all the same
+        // (REVIEW-4714).
+        guard burst.handing || shortcutField === field else { return returnBurst = nil }
         returnBurst?.carried = takeHeldKeys(burst)
         returnBurst?.ended = true
+    }
+
+    /// `field`, the row a type change redrew, took the caret from the row
+    /// Return was pressed in: it holds the keys that row gave up, and those
+    /// typed from now, until the Return's block takes the caret
+    /// (REVIEW-4714 M3).
+    func returnBurstMoved(to field: BlockField) {
+        guard let burst = returnBurst, burst.blockId == field.blockId, burst.ended else { return }
+        if let carried = burst.carried {
+            let view = field.textView
+            let head = min((burst.head as NSString).length, view.textStorage.length)
+            view.textStorage.replaceCharacters(
+                in: NSRange(location: head, length: 0),
+                with: NSAttributedString(string: carried, attributes: BlockText.baseAttributes(field.style))
+            )
+            view.selectedRange = NSRange(location: head + (carried as NSString).length, length: 0)
+            field.dirty = view.text != field.base
+        }
+        if burst.refused {
+            Log.interface.error("keys typed after Return went back to their redrawn block")
+            return returnBurst = nil
+        }
+        returnBurst?.source = field
+        returnBurst?.ended = false
+        returnBurst?.carried = nil
     }
 
     /// Puts the caret in `field`, at its end unless `atEnd` is false, and
@@ -104,12 +154,15 @@ extension EditorSession {
     func takeCaret(_ field: BlockField, atEnd: Bool = true) {
         let handing = returnBurst.map { $0.target == field.blockId && $0.source !== field } ?? false
         let textView = field.textView
-        // A row drawn but not yet in the window cannot take the caret: the
-        // keys stay held until it moves in (`field(_:movedInto:)`).
-        if handing, textView.window == nil { return pendingFocus = field.blockId }
+        if takesCaretOnArrival(field) { return pendingFocus = field.blockId }
         if handing { returnBurst?.handing = true }
         let took = textView.becomeFirstResponder()
         if atEnd { textView.selectedRange = NSRange(location: textView.textStorage.length, length: 0) }
+        // The old row may have left already, so nothing else holds the caret.
+        if !took, redraws(field) {
+            Log.interface.error("the row a type change redrew did not take the caret")
+            pendingFocus = field.blockId
+        }
         guard handing, let burst = returnBurst else { return }
         returnBurst = nil
         // The source kept the caret, so the next keys go on landing there:
@@ -124,6 +177,21 @@ extension EditorSession {
         type(held, into: field)
         // Typing commits as editing ends, which never began here.
         if !textView.isFirstResponder, field.dirty { commit(field) }
+    }
+
+    /// `field` is not in a window yet, and takes the caret as it moves in
+    /// (`field(_:movedInto:)`), in the turn the row it takes over from may
+    /// leave: so no key arrives while no text view holds the caret. It is
+    /// the block a Return made, or a row a type change redrew.
+    func takesCaretOnArrival(_ field: BlockField) -> Bool {
+        guard field.textView.window == nil else { return false }
+        let handing = returnBurst.map { $0.target == field.blockId && $0.source !== field } ?? false
+        return handing || redraws(field)
+    }
+
+    /// `field` is the new row of a block a type change is redrawing.
+    private func redraws(_ field: BlockField) -> Bool {
+        shortcutField.map { $0.blockId == field.blockId && $0 !== field } ?? false
     }
 
     /// Takes the keys held for the burst's target out of the block they were
