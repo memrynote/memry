@@ -391,7 +391,12 @@ struct SameNotePanesTests {
     // MARK: Nodes a stale pane puts in (#4706)
 
     private static let due = DateMentionValue(dateISO: "2026-06-02T09:00:00.000Z", hasTime: false)
-    private static let moved = DateMentionValue(dateISO: "2026-07-14T09:00:00.000Z", hasTime: false)
+    /// With a reminder, which a lost chip would take with it.
+    private static let moved = {
+        var value = DateMentionValue(dateISO: "2026-07-14T09:00:00.000Z", hasTime: false)
+        value.remind = "at"
+        return value
+    }()
 
     /// `hello ` and a date chip, anchored `dm_due`.
     private func fixtureWithDate() async throws -> Fixture {
@@ -425,6 +430,14 @@ struct SameNotePanesTests {
         try await block(f).inline.filter { $0.marks.contains("dateMention") }.map(\.markAttrs)
     }
 
+    /// One date chip, `dm_due`, holding the edited date and its reminder.
+    private func expectMovedDate(_ f: Fixture) async throws {
+        let dates = try await dates(f)
+        #expect(dates.map { $0["dateMention.dateISO"] } == [Self.moved.dateISO])
+        #expect(dates.map { $0["dateMention.remind"] } == ["at"])
+        #expect(dates.map { $0["dateMention.anchorId"] } == ["dm_due"])
+    }
+
     /// DATA-LOSS (#4706): B edits a date chip without having re-read A's
     /// `XYZ `. The chip is updated where the block holds it, and no byte of
     /// A's or the block's text goes.
@@ -441,9 +454,7 @@ struct SameNotePanesTests {
 
         let shown = BlockText.shown(try await block(f).inline)
         #expect(shown == "XYZ hello \u{FFFC}")
-        let dates = try await dates(f)
-        #expect(dates.map { $0["dateMention.dateISO"] } == [Self.moved.dateISO])
-        #expect(dates.map { $0["dateMention.anchorId"] } == ["dm_due"])
+        try await expectMovedDate(f)
         #expect(b.status == .idle)
     }
 
@@ -515,7 +526,7 @@ struct SameNotePanesTests {
 
         func edit(
             noteId: String, blockId: String, locating locate: @escaping @Sendable ([InlineRun]?) -> BlockEdit?
-        ) async throws -> (edit: BlockEdit, landed: Bool)? {
+        ) async throws -> LocatedEdit {
             try await interpose(noteId)
             return try await core.edit(noteId: noteId, blockId: blockId, locating: locate)
         }
@@ -538,10 +549,29 @@ struct SameNotePanesTests {
         #expect(try await dates(f).map { $0["dateMention.anchorId"] } == ["dm_due"])
     }
 
-    /// DATA-LOSS (#4706): another pane's write takes the space B's date
-    /// edit wrote before the chip goes back in. The chip is not put in over
-    /// the other pane's text: it stays out, and every byte stays.
-    @Test(.timeLimit(.minutes(1))) func a_date_chip_whose_space_another_pane_took_is_refused() async throws {
+    /// DATA-LOSS (REVIEW-4758): another pane's unseen edits sit on both
+    /// sides of the chip's space. The space is found by the text next to it,
+    /// and the chip goes back over it.
+    @Test(.timeLimit(.minutes(1))) func a_date_chip_between_two_unseen_edits_goes_back_in_place() async throws {
+        let f = try await fixtureWithDate()
+        let editor = WritesFirst(f) { "XYZ " + $0 + "!" }
+        let b = pane(f, editor: editor)
+        let fieldB = draw(try await block(f), in: b)
+
+        editor.armed.withLock { $0 = true }
+        try await editDate(in: fieldB, of: b)
+
+        let shown = BlockText.shown(try await block(f).inline)
+        #expect(shown == "XYZ hello \u{FFFC}!")
+        try await expectMovedDate(f)
+        #expect(b.status == .idle)
+    }
+
+    /// DATA-LOSS (REVIEW-4758): another pane's write takes the space B's
+    /// date edit wrote before the chip goes back in. The chip is not put in
+    /// over the other pane's text, and not lost with its reminder: it goes
+    /// at the end of the block's text, and the status says so.
+    @Test(.timeLimit(.minutes(1))) func a_date_chip_whose_space_another_pane_took_goes_at_the_end_and_says_so() async throws {
         let f = try await fixtureWithDate()
         let editor = WritesFirst(f) { $0.dropLast() + "X" }
         let b = pane(f, editor: editor)
@@ -550,8 +580,23 @@ struct SameNotePanesTests {
         editor.armed.withLock { $0 = true }
         try await editDate(in: fieldB, of: b)
 
-        #expect(try await stored(f) == "hello X")
-        #expect(try await dates(f).isEmpty)
+        let shown = BlockText.shown(try await block(f).inline)
+        #expect(shown == "hello X\u{FFFC}")
+        try await expectMovedDate(f)
+        #expect(b.status == .failed(NodeAnchor.moved))
+    }
+
+    /// REVIEW-4758: a node for a block the note no longer holds is refused
+    /// as any edit to it is, and says so.
+    @Test(.timeLimit(.minutes(1))) func a_node_for_a_missing_block_reports_the_refusal() async throws {
+        let f = try fixture("hello")
+        let model = pane(f)
+        let anchor = NodeAnchor(typed: "hello ", location: 5, replaces: false, paneRange: 5 ..< 5)
+
+        #expect(await model.insertDateMention(in: "no-such-block", at: anchor, value: Self.due) == nil)
+
+        #expect(model.status == .failed(ErrorMapping.unknownNote))
+        #expect(try await stored(f) == "hello")
     }
 
     /// DATA-LOSS (REVIEW-4700 on #4706): another pane's write lands between

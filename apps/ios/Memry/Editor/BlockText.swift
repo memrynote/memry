@@ -440,14 +440,56 @@ struct NodeAnchor: Sendable {
         return NodeAnchor(typed: text.string, location: location, replaces: replaces, paneRange: start ..< start + (replaces ? 1 : 0))
     }
 
+    static let moved = UserFacingError(
+        code: "editor.nodeMoved",
+        title: "The text around it changed in another pane, so it went at the end of the paragraph.",
+        guidance: "Nothing was lost. Move it where you want it.",
+        recourse: .blocked,
+        isUserVisible: true
+    )
+
     /// The core range the node goes over in `runs`, the block as the core
-    /// holds it: the pane's space carried past what changed since. `nil`
-    /// when a change touched the space, so a ranged insert never replaces
-    /// another writer's text.
+    /// holds it: the pane's space carried past what changed since, or found
+    /// by the text on both sides of it. `nil` when neither finds it, so a
+    /// ranged insert never replaces another writer's text.
     func range(in runs: [InlineRun]?) -> Range<Int>? {
         guard let runs else { return paneRange }
-        guard let at = BlockText.follow(location, length: 1, from: typed, to: BlockText.shown(runs)) else { return nil }
+        let live = BlockText.shown(runs)
+        guard let at = BlockText.follow(location, length: 1, from: typed, to: live) ?? found(in: live) else { return nil }
         let start = BlockText.coreOffset(in: runs, shown: at)
         return start ..< start + (replaces ? 1 : 0)
+    }
+
+    /// The space in `live` by its context: the widest window of `typed`
+    /// around it, as wide on each side (cut at `typed`'s ends), that `live`
+    /// holds exactly once. Another pane's edits on both sides of the space
+    /// leave the text next to it. A window held twice is ambiguous, and so
+    /// is every narrower one.
+    private func found(in live: String) -> Int? {
+        let typed = typed as NSString
+        let live = live as NSString
+        for width in stride(from: max(location, typed.length - location - 1), through: 1, by: -1) {
+            let lower = max(0, location - width)
+            let window = typed.substring(with: NSRange(location: lower, length: min(typed.length, location + 1 + width) - lower))
+            let first = live.range(of: window, options: .literal)
+            guard first.location != NSNotFound else { continue }
+            let rest = NSRange(location: first.location + 1, length: live.length - first.location - 1)
+            guard live.range(of: window, options: .literal, range: rest).location == NSNotFound else { return nil }
+            return first.location + location - lower
+        }
+        return nil
+    }
+
+    /// The end of the block's last run of text, in core bytes: where a
+    /// node whose place is gone goes, as an insert needs a text run.
+    static func textEnd(in runs: [InlineRun]?) -> Int? {
+        guard let runs else { return nil }
+        var bytes = 0
+        var end: Int?
+        for segment in BlockText.segments(runs) {
+            bytes += segment.coreBytes
+            if !segment.isNode, !segment.text.isEmpty { end = bytes }
+        }
+        return end
     }
 }

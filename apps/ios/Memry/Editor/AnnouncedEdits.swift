@@ -33,9 +33,9 @@ struct AnnouncedEdits: BlockEditing {
 
     func edit(
         noteId: String, blockId: String, locating locate: @escaping @Sendable ([InlineRun]?) -> BlockEdit?
-    ) async throws -> (edit: BlockEdit, landed: Bool)? {
+    ) async throws -> LocatedEdit {
         let located = try await editor.edit(noteId: noteId, blockId: blockId, locating: locate)
-        if located?.landed == true { await announce(noteId) }
+        if case .landed = located { await announce(noteId) }
         return located
     }
 

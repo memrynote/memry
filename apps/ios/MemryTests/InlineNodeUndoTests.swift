@@ -170,7 +170,7 @@ struct InlineNodeUndoTests {
         }
         func edit(
             noteId: String, blockId: String, locating locate: @escaping @Sendable ([InlineRun]?) -> BlockEdit?
-        ) async throws -> (edit: BlockEdit, landed: Bool)? { throw ReadFailed() }
+        ) async throws -> LocatedEdit { throw ReadFailed() }
     }
 
     /// The pane's offsets may miss a literal another pane moved, so a typed

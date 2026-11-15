@@ -391,9 +391,13 @@ final class NoteEditorViewModel {
     /// as elements beside the block's text, so `mark` cannot make one and the
     /// core has its own operation for it.
     ///
+    /// A node whose place another pane's edit took goes at the end of the
+    /// block's text instead, never over that edit and never lost (a date's
+    /// reminder with it), and the status says so.
+    ///
     /// Answers the edit at the pane's own offsets, which an undo step's redo
-    /// runs again after the pane's typing, or `nil` when it did not land: a
-    /// step must not redo a node the user never had.
+    /// runs again after the pane's typing, or `nil` when it did not land
+    /// there: a step must not redo a node the user never had.
     @discardableResult
     func insertInline(
         _ blockId: String,
@@ -408,8 +412,16 @@ final class NoteEditorViewModel {
                 kind: kind, text: text, attrs: attrs
             )
         }
-        let landed = await run(in: blockId) { runs in anchor.range(in: runs).map(edit) }
-        return landed == nil ? nil : edit(anchor.paneRange)
+        switch await run(in: blockId, locating: { runs in anchor.range(in: runs).map(edit) }) {
+        case .landed?:
+            return edit(anchor.paneRange)
+        case .notFound?:
+            let moved = await run(in: blockId) { runs in NodeAnchor.textEnd(in: runs).map { edit($0 ..< $0) } }
+            if case .landed? = moved { status = .failed(NodeAnchor.moved) }
+            return nil
+        case .refused?, nil:
+            return nil
+        }
     }
 
     /// A wiki link to `title` (N602), in desktop's shape.
@@ -468,7 +480,7 @@ final class NoteEditorViewModel {
             guard case let .insertInline(_, _, _, kind, text, attrs) = node.edit else { continue }
             let links = ordered[...index].map { ($0.start, $0.literal) }
             let length = typedLength - taken
-            let edit = await run(in: blockId) { runs in
+            let located = await run(in: blockId) { runs in
                 // No runs: the surface reads no block (the journal), and
                 // holds only this pane's text.
                 let start = runs.map {
@@ -481,7 +493,7 @@ final class NoteEditorViewModel {
                     )
                 }
             }
-            guard let edit else { continue }
+            guard case let .landed(edit)? = located else { continue }
             landed.append(.init(start: node.start, literal: node.literal, edit: edit))
             taken += node.literal.utf8.count
         }
@@ -604,53 +616,48 @@ final class NoteEditorViewModel {
     /// applies, such as a range past the block's end.
     @discardableResult
     private func run(_ edit: BlockEdit, then finish: (() -> Void)? = nil) async -> Bool {
-        await write(then: finish) { try await self.send(edit) }
+        let outcome = await write(then: finish) { try await self.send(edit) ? .landed(edit) : .refused }
+        if case .landed? = outcome { return true }
+        return false
     }
 
     /// `run`, for an edit `locate` builds from the block as the core holds
-    /// it (`BlockEditing.edit(noteId:blockId:locating:)`). Answers the edit
-    /// that landed.
+    /// it (`BlockEditing.edit(noteId:blockId:locating:)`). `nil` when it
+    /// threw.
     private func run(
         in blockId: String, locating locate: @escaping @Sendable ([InlineRun]?) -> BlockEdit?
-    ) async -> BlockEdit? {
+    ) async -> LocatedEdit? {
         guard let editor else { return nil }
-        var landed: BlockEdit?
-        await write {
-            guard let located = try await editor.edit(noteId: self.noteId, blockId: blockId, locating: locate) else { return nil }
-            if located.landed { landed = located.edit }
-            return located.landed
-        }
-        return landed
+        return await write { try await editor.edit(noteId: self.noteId, blockId: blockId, locating: locate) }
     }
 
-    /// One write, `nil` when it found nothing to write at, with the status
-    /// handling every caller would repeat. Answers whether it landed.
-    @discardableResult
-    private func write(then finish: (() -> Void)? = nil, _ attempt: () async throws -> Bool?) async -> Bool {
-        guard editor != nil else { return false }
+    /// One write, with the status handling every caller would repeat.
+    /// Answers what it did, or `nil` when it threw.
+    private func write(then finish: (() -> Void)? = nil, _ attempt: () async throws -> LocatedEdit) async -> LocatedEdit? {
+        guard editor != nil else { return nil }
         let failure: Status? = if holdsFailure, case .failed = status { status } else { nil }
         status = .saving
         do {
             let outcome = try await attempt()
             finish?()
             switch outcome {
-            case true?:
+            case .landed:
                 status = failure ?? .idle
-            case false?:
+            case .refused:
                 // Refused, as `commit` reports it: the note or block is gone.
                 status = failure ?? .failed(ErrorMapping.unknownNote)
                 Log.storage.error("a block edit was refused")
-            case nil:
+            case .notFound:
                 // Another writer took the text the edit went at: writing at
                 // the offsets this page holds would replace theirs.
                 status = failure ?? .idle
                 Log.storage.error("an inline node's place was gone from its block")
             }
-            return outcome == true
+            return outcome
         } catch {
             Log.storage.error("a block edit did not land")
             status = .failed(ErrorMapping.userFacing(error))
-            return false
+            return nil
         }
     }
 }

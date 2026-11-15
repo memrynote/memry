@@ -37,11 +37,9 @@ protocol BlockEditing: Sendable {
     /// a page's own text stands in for it; it answers `nil` when the block
     /// no longer holds what the edit goes at, and nothing is written.
     ///
-    /// - Returns: the edit and whether it landed, as `edit(noteId:_:)`
-    ///   answers, or `nil` when no edit was built.
     func edit(
         noteId: String, blockId: String, locating locate: @escaping @Sendable ([InlineRun]?) -> BlockEdit?
-    ) async throws -> (edit: BlockEdit, landed: Bool)?
+    ) async throws -> LocatedEdit
 
     /// Whether a block can leave this body for another note (desktop's block
     /// menu "Move to"): the surface reads snapshots and appends them to
@@ -60,14 +58,23 @@ extension BlockEditing {
     func snapshot(noteId: String, blockId: String) async throws -> String? { nil }
     func edit(
         noteId: String, blockId: String, locating locate: @escaping @Sendable ([InlineRun]?) -> BlockEdit?
-    ) async throws -> (edit: BlockEdit, landed: Bool)? {
-        guard let edit = locate(nil) else { return nil }
-        return (edit, try await self.edit(noteId: noteId, edit))
+    ) async throws -> LocatedEdit {
+        guard let edit = locate(nil) else { return .notFound }
+        return try await self.edit(noteId: noteId, edit) ? .landed(edit) : .refused
     }
 
     /// The journal and test fakes move no block to another note.
     var movesBlocksBetweenNotes: Bool { false }
     func appendSnapshot(_ snapshot: String, toNote noteId: String) async throws -> Bool { false }
+}
+
+/// What `BlockEditing.edit(noteId:blockId:locating:)` did.
+enum LocatedEdit: Sendable {
+    case landed(BlockEdit)
+    /// The note or block is gone, or the core refused the edit.
+    case refused
+    /// The block no longer holds what the edit goes at: nothing was written.
+    case notFound
 }
 
 /// The production editor: the core's own `NotesWriter`, over the shell's one
@@ -102,14 +109,15 @@ struct CoreBlockEditor: BlockEditing {
 
     func edit(
         noteId: String, blockId: String, locating locate: @escaping @Sendable ([InlineRun]?) -> BlockEdit?
-    ) async throws -> (edit: BlockEdit, landed: Bool)? {
+    ) async throws -> LocatedEdit {
         let vault = vault
-        let located = try await executor.run { () throws -> (edit: BlockEdit, landed: Bool)? in
-            let runs = try vault.notes().blocks(id: noteId)?.first { $0.id == blockId }?.inline
-            guard let runs, let edit = locate(runs) else { return nil }
-            return (edit, try writer().editBlock(noteId: noteId, edit: edit))
+        let located = try await executor.run { () throws -> LocatedEdit in
+            // A note or block that is gone refuses the edit, as `edit` does.
+            guard let runs = try vault.notes().blocks(id: noteId)?.first(where: { $0.id == blockId })?.inline else { return .refused }
+            guard let edit = locate(runs) else { return .notFound }
+            return try writer().editBlock(noteId: noteId, edit: edit) ? .landed(edit) : .refused
         }
-        if located?.landed == true { NotesTelemetry.noteUpdated(noteId, source: "editor_body") }
+        if case .landed = located { NotesTelemetry.noteUpdated(noteId, source: "editor_body") }
         return located
     }
 
