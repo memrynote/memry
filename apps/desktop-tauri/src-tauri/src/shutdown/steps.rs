@@ -1,5 +1,6 @@
-//! The steps this step owns: `flush-windows`, `close-vault` and `flush-telemetry`. Every other
-//! step belongs to the owner of the thing it stops and registers in its own PR.
+//! The steps this step owns: `flush-windows`, `close-vault` and `flush-telemetry`, plus Step 17's
+//! `stop-sync-runtime`. Every other step belongs to the owner of the thing it stops and registers
+//! in its own PR.
 
 use std::sync::Arc;
 
@@ -37,6 +38,17 @@ pub fn register(app: &AppHandle<Wry>) -> Result<(), CommandError> {
             "flush-windows",
             step(app, |app, _, deadline| {
                 Box::pin(flush_windows(app, deadline))
+            }),
+        )
+        .map_err(to_error)?;
+    service
+        .register(
+            "stop-sync-runtime",
+            step(app, |app, ctx, deadline| match app.try_state::<Session>() {
+                Some(session) => memry_desktop::sync::shutdown::stop_sync_runtime(
+                    session.inner().clone(),
+                )(ctx, deadline),
+                None => Box::pin(async { Ok(()) }),
             }),
         )
         .map_err(to_error)?;

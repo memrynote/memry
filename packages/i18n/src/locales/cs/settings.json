@@ -2467,8 +2467,7 @@
       "failedToCloseVault": "Trezor se nepodařilo zavřít",
       "failedToSwitchVault": "Trezor se nepodařilo přepnout",
       "failedToUpdateConfig": "Konfiguraci se nepodařilo aktualizovat",
-      "failedToReindex": "Přeindexování se nezdařilo",
-      "googleSignInFailed": "Přihlášení přes Google se nezdařilo"
+      "failedToReindex": "Přeindexování se nezdařilo"
     }
   },
   "agentMcp": {

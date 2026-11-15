@@ -215,6 +215,10 @@ name = "sync_driver_harness"
 path = "tests/sync_driver_harness.rs"
 
 [[test]]
+name = "sync_supervisor_harness"
+path = "tests/sync_supervisor_harness.rs"
+
+[[test]]
 name = "keyring_live"
 path = "tests/keyring_live.rs"
 
@@ -253,6 +257,10 @@ path = "tests/sanitize_svg_memory.rs"
 [[test]]
 name = "telemetry_vectors"
 path = "tests/telemetry_vectors.rs"
+
+[[test]]
+name = "file_text_worker"
+path = "tests/file_text_worker.rs"
 
 [[test]]
 name = "watch_perf"
