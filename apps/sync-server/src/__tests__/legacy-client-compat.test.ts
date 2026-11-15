@@ -32,6 +32,7 @@ vi.mock('../middleware/auth', () => ({
 }))
 
 const { sync } = await import('../routes/sync')
+const { blob } = await import('../routes/blob')
 
 let harness: SqliteD1
 let env: Bindings
@@ -586,5 +587,104 @@ describe('identified clients', () => {
 
     expect(res.status).toBe(200)
     expect(itemRow('task-9')?.client_platform).toBeNull()
+  })
+})
+
+// #4716: the pull-side POSTs carry an id list in the body and only read, so a
+// device the write gate has dropped to read-only must still fetch what a peer
+// changed. Before the fix every POST was gated, so the pass failed at Pulling.
+describe.each([
+  { gate: 'below the version floor', policy: { minWriteVersion: '2.0.0' }, status: 426 },
+  { gate: 'under the kill switch', policy: { writesEnabled: 0 }, status: 403 }
+])('a read-only device $gate', ({ policy, status }) => {
+  const READ_ONLY = 'ios/1.0.0'
+  const body = Buffer.from([7, 7, 7]).toString('base64')
+
+  const buildAppWithBlob = () => {
+    const app = buildApp()
+    // Production mounts both routers on /sync (src/index.ts), and each one
+    // runs the gate on every /sync/* request.
+    app.route('/sync', blob)
+    return app
+  }
+
+  const seedPeerChanges = async (app: ReturnType<typeof buildApp>): Promise<void> => {
+    const push = await request(app, '/sync/push', {
+      method: 'POST',
+      body: JSON.stringify({ items: [await pushItem('task-peer')] })
+    })
+    expect(push.status).toBe(200)
+    const crdt = await request(app, '/sync/crdt/updates', {
+      method: 'POST',
+      body: JSON.stringify({ noteId: 'note_peer', updates: [body] })
+    })
+    expect(crdt.status).toBe(200)
+    setPolicy('ios', policy)
+  }
+
+  it.each(['/sync/pull', '/sync/records/pull'])('pulls item blobs from %s', async (path) => {
+    const app = buildAppWithBlob()
+    await seedPeerChanges(app)
+
+    const res = await request(app, path, {
+      method: 'POST',
+      clientHeader: READ_ONLY,
+      body: JSON.stringify({ itemIds: ['task-peer'] })
+    })
+
+    expect(res.status).toBe(200)
+    const { items } = (await res.json()) as { items: Array<{ id: string }> }
+    expect(items.map((item) => item.id)).toEqual(['task-peer'])
+  })
+
+  it('pulls a CRDT update batch', async () => {
+    const app = buildAppWithBlob()
+    await seedPeerChanges(app)
+
+    const res = await request(app, '/sync/crdt/updates/batch', {
+      method: 'POST',
+      clientHeader: READ_ONLY,
+      body: JSON.stringify({ notes: [{ noteId: 'note_peer', since: 0 }] })
+    })
+
+    expect(res.status).toBe(200)
+    const { notes } = (await res.json()) as {
+      notes: Record<string, { updates: Array<{ data: string }> }>
+    }
+    expect(notes.note_peer?.updates.map((update) => update.data)).toEqual([body])
+  })
+
+  it('reaches the attachment presign route instead of the gate', async () => {
+    const app = buildAppWithBlob()
+    setPolicy('ios', policy)
+
+    const res = await request(app, '/sync/attachments/presign-batch', {
+      method: 'POST',
+      clientHeader: READ_ONLY,
+      body: JSON.stringify({ chunkHashes: ['a'.repeat(64)] })
+    })
+
+    // No R2 presign secrets in this env, so the handler itself answers 501.
+    expect(res.status).toBe(501)
+    await expect(res.json()).resolves.toMatchObject({
+      error: { code: 'STORAGE_PRESIGN_UNAVAILABLE' }
+    })
+  })
+
+  it.each([
+    ['/sync/push', async () => ({ items: [await pushItem('task-blocked', 2)] })],
+    ['/sync/crdt/updates', async () => ({ noteId: 'note_blocked', updates: [body] })]
+  ])('is still refused on %s', async (path, makeBody) => {
+    const app = buildAppWithBlob()
+    setPolicy('ios', policy)
+
+    const res = await request(app, path, {
+      method: 'POST',
+      clientHeader: READ_ONLY,
+      body: JSON.stringify(await makeBody())
+    })
+
+    expect(res.status).toBe(status)
+    expect(itemRow('task-blocked')).toBeUndefined()
   })
 })

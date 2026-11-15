@@ -12,4 +12,12 @@ extension XCUIApplication {
         typeKey("0", modifierFlags: .command)
         Thread.sleep(forTimeInterval: 3)
     }
+
+    /// A hardware Return key, which a text field takes as a submit. Neither
+    /// `typeText("\n")`, which inserts a newline as text, nor
+    /// `typeKey(.return)`, which the simulator drops in a SwiftUI text
+    /// field, presses it.
+    func pressReturnKey() {
+        typeKey("\n", modifierFlags: [])
+    }
 }

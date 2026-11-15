@@ -94,6 +94,12 @@ floor its release does not.
 The server keeps one `client_policies` row per platform, holding a semver write
 floor and a kill switch. It is consulted on **writes only**; reads are never
 gated, so a device dropped to read-only can still open every note it owns.
+The gate classifies by route, not by method: besides `GET`, `HEAD` and
+`OPTIONS`, the `POST` routes that only read are exempt too: `/sync/pull`,
+`/sync/records/pull`, `/sync/crdt/updates/batch` and
+`/sync/attachments/presign-batch`. Without that list a read-only device could
+not fetch a change a peer made after the floor went up (#4716). Protocol
+chapter 11 §11.4 holds the full list.
 
 | Condition                                | Server behaviour                                                   |
 | ---------------------------------------- | ------------------------------------------------------------------ |

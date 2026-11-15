@@ -32,6 +32,10 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
     @Binding var brokenLink: String?
     /// What the page says when it has no blocks to draw.
     @ViewBuilder let emptyBody: (NoteBodyPreview) -> EmptyBody
+    /// The empty body stays, above the first blocks, until they are in the
+    /// window: a journal day's first line holds the caret until its block
+    /// takes it (#4705).
+    var keepsEmptyBody = false
     @ViewBuilder let afterBacklinks: () -> AfterBacklinks
     /// A tap in the space under the body puts the caret at its end. `nil`
     /// leaves no such space (a read-only page, the journal day).
@@ -134,12 +138,13 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
         if let metadata = model.metadata, !inspectorShown {
             NotePropertiesBlock(model: model, metadata: metadata, metadataModel: metadataModel)
         }
-        if model.blocks.isEmpty {
+        if model.blocks.isEmpty || keepsEmptyBody {
             // No blocks to draw. Which of the three reasons it is — never
             // pulled, genuinely empty, or a walk that failed — is the
             // caller's to say.
             emptyBody(NoteBodyPreview.of(detail.body))
-        } else {
+        }
+        if !model.blocks.isEmpty {
             // With no stack to push onto (`open` is nil) the links are still
             // drawn and readable; they lead nowhere.
             NoteBlocksView(

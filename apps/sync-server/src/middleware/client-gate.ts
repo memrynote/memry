@@ -6,11 +6,18 @@ import { ErrorCodes } from '../lib/errors'
 import { evaluateWriteAccess, getClientPolicy } from '../services/client-policies'
 import type { AppContext } from '../types'
 
-// GET/HEAD/OPTIONS are reads. Reads are NEVER gated -- neither by the version
-// floor nor by the kill switch -- so a device dropped to read-only can still
-// open every note it owns (FR-010). Anything else mutates and goes through the
-// policy check.
+// Reads are NEVER gated -- neither by the version floor nor by the kill switch
+// -- so a device dropped to read-only can still open every note it owns
+// (FR-010). GET/HEAD/OPTIONS are reads, and so are the POSTs below: they carry
+// an id list in the body and only select (#4716). Anything else mutates and
+// goes through the policy check.
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
+const READ_POST_PATHS = new Set([
+  '/sync/pull',
+  '/sync/records/pull',
+  '/sync/crdt/updates/batch',
+  '/sync/attachments/presign-batch'
+])
 
 /**
  * Per-platform write gate (contracts/sync-protocol-additions.md §1-3).
@@ -31,7 +38,8 @@ export const clientGateMiddleware: MiddlewareHandler<AppContext> = async (c, nex
   const identity = parseClientIdentity(c.req.header(CLIENT_HEADER))
   if (identity) c.set('client', identity)
 
-  if (READ_METHODS.has(c.req.method)) return next()
+  const { method, path } = c.req
+  if (READ_METHODS.has(method) || (method === 'POST' && READ_POST_PATHS.has(path))) return next()
 
   // No header = legacy desktop = full access. This is the branch every
   // currently-shipped build takes, and it must stay free of DB work.
