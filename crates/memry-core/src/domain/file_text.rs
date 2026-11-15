@@ -61,10 +61,13 @@ impl FileTextJobStatus {
         }
     }
 
-    fn parse(text: &str) -> Option<Self> {
-        [Self::Pending, Self::Done, Self::Failed]
+    /// A status a newer build wrote reads as `Pending`, so a downgraded build keeps scanning the
+    /// file instead of failing on its row (REVIEW-4618).
+    fn parse(text: &str) -> Self {
+        [Self::Done, Self::Failed]
             .into_iter()
             .find(|status| status.as_str() == text)
+            .unwrap_or(Self::Pending)
     }
 }
 
@@ -138,13 +141,7 @@ fn job_row(row: &Row<'_>) -> rusqlite::Result<FileTextJob> {
         note_id: row.get(0)?,
         source: row.get(1)?,
         signature: row.get(2)?,
-        status: FileTextJobStatus::parse(&status).ok_or_else(|| {
-            rusqlite::Error::FromSqlConversionFailure(
-                3,
-                rusqlite::types::Type::Text,
-                format!("unknown file_text_jobs status {status:?}").into(),
-            )
-        })?,
+        status: FileTextJobStatus::parse(&status),
         page_count: row.get(4)?,
         error: row.get(5)?,
         app_version: row.get(6)?,

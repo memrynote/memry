@@ -262,3 +262,23 @@ fn delete_source_and_delete_notes_forget_jobs_and_text() {
     })
     .expect("run");
 }
+
+/// A status a newer build wrote reads as pending (REVIEW-4618): an error here would fail every
+/// scan of the file after a downgrade.
+#[test]
+fn a_status_a_newer_build_wrote_reads_as_pending() {
+    let db = index();
+    db.call_blocking(|conn| {
+        let s = src("a", OWN_FILE);
+        reset_file(conn, &s, "s", "1", T0)?;
+        conn.execute("UPDATE file_text_jobs SET status = 'paused'", [])
+            .map_err(failed)?;
+        assert_eq!(
+            job(conn, &s)?.expect("row").status,
+            FileTextJobStatus::Pending
+        );
+        assert_eq!(jobs_with_status(conn, FileTextJobStatus::Pending)?.len(), 0);
+        Ok(())
+    })
+    .expect("run");
+}

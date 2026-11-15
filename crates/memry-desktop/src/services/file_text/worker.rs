@@ -64,3 +64,52 @@ impl WorkerHandle {
         session.on_close("ml-worker", Arc::new(move |_| worker.stop()));
     }
 }
+
+/// What the file text runner reads PDFs with: the worker in the app (`openPdf` and `release` of
+/// Electron's `FileTextDeps`, `runner.ts:89-92`). Errors are the worker's message.
+pub trait PdfReader: Send + Sync {
+    fn open(&self, path: &Path) -> Result<Box<dyn PdfPages + '_>, String>;
+
+    /// Fails the calls in flight now (a stop).
+    fn release(&self);
+}
+
+/// One open document (`PdfDocument` of `pdf-host.ts:26-39`). Pages count from 1.
+pub trait PdfPages {
+    fn page_count(&self) -> u32;
+    fn page_text(&self, page: u32) -> Result<String, String>;
+    /// The page as PNG, its long edge at most `max_edge` px.
+    fn render_page(&self, page: u32, max_edge: u32) -> Result<Vec<u8>, String>;
+    fn close(self: Box<Self>) -> Result<(), String>;
+}
+
+impl PdfReader for WorkerHandle {
+    fn open(&self, path: &Path) -> Result<Box<dyn PdfPages + '_>, String> {
+        let doc = self.open_pdf(path).map_err(|error| error.to_string())?;
+        Ok(Box::new(doc))
+    }
+
+    fn release(&self) {
+        self.stop();
+    }
+}
+
+impl PdfPages for PdfDocument<'_> {
+    fn page_count(&self) -> u32 {
+        PdfDocument::page_count(self)
+    }
+
+    fn page_text(&self, page: u32) -> Result<String, String> {
+        PdfDocument::page_text(self, page).map_err(|error| error.to_string())
+    }
+
+    fn render_page(&self, page: u32, max_edge: u32) -> Result<Vec<u8>, String> {
+        PdfDocument::render_page(self, page, max_edge)
+            .map(|rendered| rendered.png)
+            .map_err(|error| error.to_string())
+    }
+
+    fn close(self: Box<Self>) -> Result<(), String> {
+        PdfDocument::close(*self).map_err(|error| error.to_string())
+    }
+}

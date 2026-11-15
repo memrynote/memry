@@ -11,7 +11,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use crate::api::errors::StorageError;
 use crate::domain::inbox::queries::FiledVoice;
-use crate::domain::note_files::{self, NoteFile, NoteFileStat, StampMark};
+use crate::domain::note_files::{self, FiledTextFile, NoteFile, NoteFileStat, StampMark};
 use crate::domain::note_list::{self, ListedNote, NoteListPage, NoteListQuery};
 use crate::domain::notes::local_only::{self, LocalOnlyChange};
 use crate::domain::owed_file_body;
@@ -226,5 +226,20 @@ impl NoteFiles {
         let path = path.to_owned();
         self.db
             .read_blocking(move |conn| note_list::by_path(conn, &path))
+    }
+
+    /// The filed PDFs and images among `ids`, or every one ([`note_files::filed_text_files`]).
+    pub fn filed_text_files(
+        &self,
+        ids: Option<Vec<String>>,
+    ) -> Result<Vec<FiledTextFile>, StorageError> {
+        self.db
+            .read_blocking(move |conn| note_files::filed_text_files(conn, ids.as_deref()))
+    }
+
+    /// The markdown notes among `ids`, as `(note_id, path)` ([`note_files::markdown_notes`]).
+    pub fn markdown_notes(&self, ids: Vec<String>) -> Result<Vec<(String, String)>, StorageError> {
+        self.db
+            .read_blocking(move |conn| note_files::markdown_notes(conn, &ids))
     }
 }
