@@ -10,12 +10,19 @@ export const commands = {
 	 *  alone: offline or waiting on a refresh still reads as signed in.
 	 */
 	accountGetInfo: () => __TAURI_INVOKE<AccountInfoView>("account_get_info"),
+	/**
+	 *  `sync:auth-init-oauth`: the loopback waits, the browser opens on Google's page, and the
+	 *  loopback's one answer arrives as an event.
+	 */
+	authInitOauth: () => __TAURI_INVOKE<AuthOAuthStarted>("auth_init_oauth"),
 	/**  `sync:auth-refresh-token`. */
 	authRefreshToken: () => __TAURI_INVOKE<AuthRefreshResult>("auth_refresh_token"),
 	/**  `sync:auth-request-otp`. */
 	authRequestOtp: (email: string) => __TAURI_INVOKE<AuthOtpSent>("auth_request_otp", { email }),
 	/**  `sync:auth-resend-otp`, to the address of the pending request. */
 	authResendOtp: () => __TAURI_INVOKE<AuthOtpSent>("auth_resend_otp"),
+	/**  `sync:auth-retry-oauth`: reopens the browser of the attempt still waiting. */
+	authRetryOauth: (state: string) => __TAURI_INVOKE<AuthOAuthRetried>("auth_retry_oauth", { state }),
 	/**  `sync:auth-verify-otp`, then the known-device path. */
 	authVerifyOtp: (code: string) => __TAURI_INVOKE<AuthOtpVerified>("auth_verify_otp", { code }),
 	/**  `sync:confirm-recovery-phrase`. */
@@ -24,6 +31,8 @@ export const commands = {
 	syncGetRecoveryPhrase: () => __TAURI_INVOKE<string | null>("sync_get_recovery_phrase"),
 	/**  `sync:link-via-recovery`. */
 	syncLinkViaRecovery: (recoveryPhrase: string) => __TAURI_INVOKE<AccountDevice>("sync_link_via_recovery", { recoveryPhrase }),
+	/**  `sync:setup-first-device`: the browser's code, exchanged once. */
+	syncSetupFirstDevice: (provider: string, oauthToken: string, state: string) => __TAURI_INVOKE<AuthFirstDevice>("sync_setup_first_device", { provider, oauthToken, state }),
 	/**  `sync:setup-new-account`. The phrase waits for `sync_get_recovery_phrase`. */
 	syncSetupNewAccount: () => __TAURI_INVOKE<AccountDevice>("sync_setup_new_account"),
 	/**  `agent:getLocalProviderSettings`. A locked keychain still opens the screen. */
@@ -704,6 +713,8 @@ export const commands = {
 export const events = {
 	aiInlineSettingsChangedEvent: makeEvent<AiInlineSettingsChangedEvent, AiInlineSettingsChangedEvent>("ai-inline-settings-changed-event"),
 	appNavigationRequestedEvent: makeEvent<AppNavigationRequestedEvent, AppNavigationRequestedEvent>("app-navigation-requested-event"),
+	authOauthCallbackEvent: makeEvent<AuthOauthCallbackEvent, AuthOauthCallbackEvent>("auth-oauth-callback-event"),
+	authOauthErrorEvent: makeEvent<AuthOauthErrorEvent, AuthOauthErrorEvent>("auth-oauth-error-event"),
 	authOtpDetectedEvent: makeEvent<AuthOtpDetectedEvent, AuthOtpDetectedEvent>("auth-otp-detected-event"),
 	authSessionRefreshedEvent: makeEvent<AuthSessionRefreshedEvent, AuthSessionRefreshedEvent>("auth-session-refreshed-event"),
 	crdtProviderReadyEvent: makeEvent<CrdtProviderReadyEvent, CrdtProviderReadyEvent>("crdt-provider-ready-event"),
@@ -955,6 +966,41 @@ export type AttachmentLocation = {
 	storedFilename: string,
 	/**  False while the file is not on this device (not synced yet, or gone). */
 	exists: boolean,
+};
+
+export type AuthFirstDevice = {
+	needsRecoverySetup: boolean,
+	needsRecoveryInput: boolean,
+	/**  Set when this device is set up or signed back in without the phrase. */
+	deviceId: string | null,
+};
+
+export type AuthOAuthRetried = {
+	browserOpened: boolean,
+};
+
+export type AuthOAuthStarted = {
+	state: string,
+	/**  Shown for copying when the browser did not open. */
+	authorizationUrl: string,
+	browserOpened: boolean,
+};
+
+/**
+ *  The browser sign-in came back with its code (`sync:oauth-callback`). The renderer passes both
+ *  to `sync_setup_first_device`; neither is logged.
+ */
+export type AuthOauthCallbackEvent = {
+	code: string,
+	state: string,
+};
+
+/**
+ *  The browser sign-in ended without a code: declined or timed out (`sync:oauth-error`). `error`
+ *  is the translated sentence.
+ */
+export type AuthOauthErrorEvent = {
+	error: string,
 };
 
 /**  A six-digit code was copied while the email code screen waits for one (`sync:otp-detected`). */

@@ -6,15 +6,20 @@
 use std::sync::Arc;
 
 use memry_desktop::account::otp_clipboard::OtpClipboardWatch;
-use memry_desktop::account::{AccountError, AccountService};
+use memry_desktop::account::{AccountError, AccountService, OAuthEvent};
 use memry_desktop::i18n::{self, Args};
 use memry_desktop::locale::LocaleService;
+use memry_desktop::seams::transport::NoRedirectTransport;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, Wry};
 use tauri_plugin_clipboard_manager::ClipboardExt;
 
-use super::error::{CommandError, log_failure};
-use crate::events::{AuthOtpDetectedEvent, AuthSessionRefreshedEvent, broadcast};
+use super::error::{CommandError, ErrorKind, log_failure};
+use crate::events::{
+    AuthOauthCallbackEvent, AuthOauthErrorEvent, AuthOtpDetectedEvent, AuthSessionRefreshedEvent,
+    broadcast,
+};
+use crate::shell::external::open_url;
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
@@ -39,6 +44,30 @@ pub struct AuthRefreshResult {
     pub success: bool,
     /// True only when the server refused the session and a new sign-in is needed.
     pub session_ended: bool,
+}
+
+#[derive(Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct AuthOAuthStarted {
+    pub state: String,
+    /// Shown for copying when the browser did not open.
+    pub authorization_url: String,
+    pub browser_opened: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct AuthOAuthRetried {
+    pub browser_opened: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct AuthFirstDevice {
+    pub needs_recovery_setup: bool,
+    pub needs_recovery_input: bool,
+    /// Set when this device is set up or signed back in without the phrase.
+    pub device_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
@@ -68,11 +97,12 @@ fn map_error(app: &AppHandle<Wry>, command: &str, error: &AccountError) -> Comma
         AccountError::SetupSessionExpired => Some("errors:auth.setupSessionExpired"),
         AccountError::PhraseMismatch => Some("errors:auth.recoveryPhraseMismatch"),
         AccountError::InvalidPhrase => Some("errors:auth.invalidRecoveryPhraseFormat"),
+        AccountError::OAuthExpired => Some("errors:auth.oauthExpired"),
+        AccountError::OAuthInvalidResponse => Some("errors:auth.oauthInvalidResponse"),
         _ => None,
     };
     if let Some(key) = key {
-        let locale = app.state::<Arc<LocaleService>>().get();
-        mapped.message = i18n::t(locale, key, &Args::new());
+        mapped.message = translated(app, key);
     }
     log_failure(command, &mapped);
     mapped
@@ -87,6 +117,20 @@ fn watch_clipboard(app: &AppHandle<Wry>) {
         move || reader.clipboard().read_text().ok(),
         move |code| broadcast(&emitter, AuthOtpDetectedEvent { code }),
     );
+}
+
+fn translated(app: &AppHandle<Wry>, key: &str) -> String {
+    i18n::t(app.state::<Arc<LocaleService>>().get(), key, &Args::new())
+}
+
+/// Electron's `openOAuthBrowser`: the platform error may carry the URL and its state, so only
+/// the fact is logged.
+fn open_browser(app: &AppHandle<Wry>, url: &str) -> bool {
+    let opened = open_url(app, url).is_ok();
+    if !opened {
+        tracing::warn!(scope = "Account", "could not open the sign-in browser");
+    }
+    opened
 }
 
 fn seconds(expires_in: Option<u64>) -> AuthOtpSent {
@@ -223,4 +267,83 @@ pub async fn account_get_info(app: AppHandle<Wry>) -> Result<AccountInfoView, Co
         device_id: info.device_id,
         needs_recovery_confirmation: info.needs_recovery_confirmation,
     })
+}
+
+/// `sync:auth-init-oauth`: the loopback waits, the browser opens on Google's page, and the
+/// loopback's one answer arrives as an event.
+#[tauri::command]
+#[specta::specta]
+pub async fn auth_init_oauth(app: AppHandle<Wry>) -> Result<AuthOAuthStarted, CommandError> {
+    let probe = app.state::<NoRedirectTransport>().inner().clone();
+    let emitter = app.clone();
+    let started = account(&app)
+        .init_oauth(probe.as_ref(), move |event| match event {
+            OAuthEvent::Callback { code, state } => {
+                broadcast(&emitter, AuthOauthCallbackEvent { code, state });
+            }
+            OAuthEvent::Cancelled => broadcast(
+                &emitter,
+                AuthOauthErrorEvent {
+                    error: translated(&emitter, "errors:auth.oauthCancelled"),
+                },
+            ),
+            OAuthEvent::Expired => broadcast(
+                &emitter,
+                AuthOauthErrorEvent {
+                    error: translated(&emitter, "errors:auth.oauthExpired"),
+                },
+            ),
+        })
+        .await
+        .map_err(|e| map_error(&app, "auth_init_oauth", &e))?;
+    let browser_opened = open_browser(&app, &started.authorization_url);
+    Ok(AuthOAuthStarted {
+        state: started.state,
+        authorization_url: started.authorization_url,
+        browser_opened,
+    })
+}
+
+/// `sync:auth-retry-oauth`: reopens the browser of the attempt still waiting.
+#[tauri::command]
+#[specta::specta]
+pub async fn auth_retry_oauth(
+    app: AppHandle<Wry>,
+    state: String,
+) -> Result<AuthOAuthRetried, CommandError> {
+    let url = account(&app)
+        .oauth_retry_url(&state)
+        .map_err(|e| map_error(&app, "auth_retry_oauth", &e))?;
+    Ok(AuthOAuthRetried {
+        browser_opened: open_browser(&app, &url),
+    })
+}
+
+/// `sync:setup-first-device`: the browser's code, exchanged once.
+#[tauri::command]
+#[specta::specta]
+pub async fn sync_setup_first_device(
+    app: AppHandle<Wry>,
+    provider: String,
+    oauth_token: String,
+    state: String,
+) -> Result<AuthFirstDevice, CommandError> {
+    if provider != "google" {
+        let error = CommandError::new(
+            ErrorKind::Invalid,
+            "unknown_provider",
+            "only Google sign-in is supported",
+        );
+        log_failure("sync_setup_first_device", &error);
+        return Err(error);
+    }
+    account(&app)
+        .setup_first_device(oauth_token, state)
+        .await
+        .map(|first| AuthFirstDevice {
+            needs_recovery_setup: first.needs_recovery_setup,
+            needs_recovery_input: first.needs_recovery_input,
+            device_id: first.device_id,
+        })
+        .map_err(|e| map_error(&app, "sync_setup_first_device", &e))
 }
