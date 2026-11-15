@@ -427,3 +427,65 @@ fn a_replace_whose_base_is_the_live_block_is_an_ordinary_replace() {
     replace_from(&document, "hello world", "hello there");
     assert_eq!(shown(&document), "hello there");
 }
+
+/// The targets of block `a`'s wiki links, in order.
+fn link_targets(document: &Document) -> Vec<String> {
+    runs(document)
+        .into_iter()
+        .filter(|run| run.marks.iter().any(|mark| mark == "wikiLink"))
+        .filter_map(|run| run.mark_attrs.get("wikiLink.target").cloned())
+        .collect()
+}
+
+#[test]
+fn deleting_one_chip_and_typing_past_another_keeps_the_other_chip() {
+    let document = opened(&paragraph("abc"));
+    wiki_link(&document, 1, "A");
+    wiki_link(&document, 2, "B");
+    assert_eq!(shown(&document), format!("a{NODE}b{NODE}c"));
+
+    // One commit: chip A deleted, "X" typed at the end, past chip B.
+    replace(&document, &format!("ab{NODE}cX"));
+
+    assert_eq!(shown(&document), format!("ab{NODE}cX"));
+    assert_eq!(link_targets(&document), vec!["B"]);
+}
+
+#[test]
+fn a_peers_node_inside_the_users_change_survives_the_rebase() {
+    // The shell read "hello world"; a peer's link merged in after "hello ".
+    let document = opened(&paragraph("hello world"));
+    wiki_link(&document, 6, "Dune");
+    assert_eq!(shown(&document), format!("hello {NODE}world"));
+
+    // The user's one-run change spans the whole block.
+    replace_from(&document, "hello world", "Ahello worldB");
+
+    assert_eq!(link_targets(&document), vec!["Dune"]);
+    assert_eq!(shown(&document).replace(NODE, ""), "Ahello worldB");
+}
+
+#[test]
+fn edits_on_both_sides_of_a_kept_chip_land_on_their_own_side() {
+    let document = opened(&paragraph("one two"));
+    wiki_link(&document, 4, "Mid");
+    assert_eq!(shown(&document), format!("one {NODE}two"));
+
+    replace(&document, &format!("zero {NODE}three"));
+
+    assert_eq!(shown(&document), format!("zero {NODE}three"));
+    assert_eq!(link_targets(&document), vec!["Mid"]);
+}
+
+#[test]
+fn a_rewrite_too_large_to_align_still_keeps_the_chip() {
+    let before = "a".repeat(1100);
+    let document = opened(&paragraph(&format!("{before}{before}")));
+    wiki_link(&document, 1100, "Mid");
+
+    let after = "b".repeat(1100);
+    replace(&document, &format!("{after}{NODE}{after}"));
+
+    assert_eq!(shown(&document), format!("{after}{NODE}{after}"));
+    assert_eq!(link_targets(&document), vec!["Mid"]);
+}
