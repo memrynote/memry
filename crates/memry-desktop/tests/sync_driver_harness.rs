@@ -941,8 +941,26 @@ async fn a_queued_delete_survives_a_concurrent_edit_pulled_in_the_same_pass() {
     assert!(b.sync().await.pushed);
 
     let pass = a.sync().await;
-    assert!(pass.pull.applied + pass.pull.skipped >= 1, "{pass:?}");
     assert!(a.stored("task", &task).is_none(), "A's task stays deleted");
+    let tombstone: String = {
+        let task = task.clone();
+        a.db()
+            .call_blocking(move |conn| {
+                conn.query_row(
+                    "SELECT payload FROM sync_items WHERE item_type = 'task' AND item_id = ?1",
+                    [&task],
+                    |row| row.get(0),
+                )
+                .map_err(|error| memry_core::api::errors::StorageError::Failed {
+                    what: error.to_string(),
+                })
+            })
+            .unwrap()
+    };
+    assert!(
+        tombstone.contains("Ship it"),
+        "B's edit took the concurrent merge, under the delete: {pass:?}"
+    );
     assert_eq!(a.queued("task"), 0, "A's delete pushed");
 
     b.sync().await;

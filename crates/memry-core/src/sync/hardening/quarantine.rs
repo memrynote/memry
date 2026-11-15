@@ -15,6 +15,7 @@
 //! which `SyncDriver` is and iOS's `sync_now` is not (decision K2).
 
 use std::collections::BTreeSet;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use rusqlite::{Connection, params};
 
@@ -103,6 +104,8 @@ pub(crate) fn record_failure(
     })
 }
 
+static EVICTION_LOGGED: AtomicBool = AtomicBool::new(false);
+
 /// Drops the oldest partial entries above [`MAX_ENTRIES`]. Permanent entries
 /// stay even when only they are left over the cap.
 fn evict_overflow(conn: &Connection) -> Result<(), StorageError> {
@@ -120,6 +123,11 @@ fn evict_overflow(conn: &Connection) -> Result<(), StorageError> {
             params![MAX_ATTEMPTS, count - MAX_ENTRIES],
         )
         .map_err(failed)?;
+    // Once per process, as desktop's `evictionLogged`
+    // (`quarantine-manager.ts:190-191`).
+    if EVICTION_LOGGED.swap(true, Ordering::Relaxed) {
+        return Ok(());
+    }
     eprintln!(
         "memry-core: the sync quarantine is at its cap of {MAX_ENTRIES}: evicted {evicted} \
          partial entr(ies), {} permanent over the cap",

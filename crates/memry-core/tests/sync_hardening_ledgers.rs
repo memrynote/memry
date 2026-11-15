@@ -384,3 +384,56 @@ async fn only_the_corrupt_rows_past_the_cooldown_are_refetched() {
     assert_eq!(body_json(&refetch[0]), json!({ "itemIds": ["draft-old"] }));
     assert!(corrupt_at(&db, "draft-new").is_some());
 }
+
+/// An entry another build left in `sync_refused_items`, due for retry now.
+fn refused_by_another_build(db: &Db, id: &str) {
+    let id = id.to_owned();
+    db.call_blocking(move |conn| {
+        conn.execute(
+            "INSERT INTO sync_refused_items (item_type, item_id, refused_by_version, refused_at)
+             VALUES (?1, ?2, 'an-older-build', 0)",
+            [TYPE, id.as_str()],
+        )
+        .expect("ledger");
+        Ok(())
+    })
+    .expect("write");
+}
+
+#[tokio::test]
+async fn a_permanently_quarantined_refused_item_is_not_refetched() {
+    let db = scratch_db();
+    let id = "draft-forged";
+    quarantined_for_good(&db, id).await;
+    refused_by_another_build(&db, id);
+
+    let (_, transport) = hardened(&db, Opens::Accepted)
+        .first_page(vec![changes(&[], "13")])
+        .await;
+
+    assert!(transport.calls_to("/sync/pull").is_empty());
+    assert_eq!(content(&db, id), None, "never re-applied by any path");
+}
+
+#[tokio::test]
+async fn a_bad_signature_on_a_refused_refetch_is_quarantined() {
+    let db = scratch_db();
+    let id = "draft-refused";
+    refused_by_another_build(&db, id);
+    let warnings = Arc::new(Warnings::default());
+    let run = Run {
+        warnings: Some(warnings.clone()),
+        ..hardened(&db, Opens::BadSignature)
+    };
+
+    let (_, transport) = run
+        .first_page(vec![pulled(&[id]), changes(&[], "11")])
+        .await;
+
+    assert_eq!(
+        body_json(&transport.calls_to("/sync/pull")[0]),
+        json!({ "itemIds": [id] })
+    );
+    assert_eq!(quarantine_rows(&db), vec![(id.to_owned(), 1)]);
+    assert_eq!(warnings.attempts(), vec![(1, false)]);
+}

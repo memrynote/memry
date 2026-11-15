@@ -12,8 +12,12 @@
 -- (`packages/contracts/src/ipc-sync-ops.ts`), one per pull, push or failed
 -- pass, newest 500 kept. `kind` is `push`, `pull` or `error`.
 --
--- Additive only: two new tables, no existing table or row touched, no
--- backfill. An older build never reads them.
+-- `sync_items_corrupt_at`: the corrupt refetch reads the rows marked corrupt
+-- at the start of every pull, a handful among every synced row.
+--
+-- Additive only: two new tables and one partial index, no existing row
+-- touched, no backfill. An older build never reads them, and SQLite keeps the
+-- index current under its writes.
 CREATE TABLE IF NOT EXISTS sync_quarantine (
   item_type        TEXT NOT NULL,
   item_id          TEXT NOT NULL,
@@ -35,3 +39,6 @@ CREATE TABLE IF NOT EXISTS sync_history (
 );
 
 CREATE INDEX IF NOT EXISTS sync_history_created_at ON sync_history (created_at);
+
+CREATE INDEX IF NOT EXISTS sync_items_corrupt_at ON sync_items (corrupt_at)
+  WHERE corrupt_at IS NOT NULL;

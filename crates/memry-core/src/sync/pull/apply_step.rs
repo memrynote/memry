@@ -9,7 +9,7 @@ use super::{MAX_PULL_IDS, PullError, PullLoop, now_ms};
 use crate::sync::apply::{self, ApplyTotals, Pending};
 use crate::sync::body_debt;
 use crate::sync::driver::observer::AppliedFeed;
-use crate::sync::hardening::corrupt;
+use crate::sync::hardening::{corrupt, quarantine};
 use crate::sync::refused_items::{self, CORE_BUILD};
 
 impl PullLoop {
@@ -114,14 +114,20 @@ impl PullLoop {
             .db
             .call(move |conn| {
                 let now = now_ms();
-                let refused = refused_items::take_retryable(conn, CORE_BUILD, now)?;
+                let mut refused: BTreeSet<_> =
+                    refused_items::take_retryable(conn, CORE_BUILD, now)?
+                        .into_iter()
+                        .collect();
                 let corrupt = if hardened {
+                    // A permanent quarantine is never re-applied by any path.
+                    let blocked = quarantine::blocked(conn, now)?;
+                    refused.retain(|key| !blocked.contains(key));
                     corrupt::take_retryable(conn, now)?
                 } else {
                     Vec::new()
                 };
                 Ok::<_, crate::api::errors::StorageError>((
-                    refused.into_iter().collect::<BTreeSet<_>>(),
+                    refused,
                     corrupt.into_iter().collect::<BTreeSet<_>>(),
                 ))
             })
@@ -136,30 +142,44 @@ impl PullLoop {
         let mut answered = BTreeSet::new();
         let mut pending = Vec::new();
         let mut warnings = Vec::new();
-        for chunk in ids.chunks(MAX_PULL_IDS) {
-            let mut body = self.fetch_bodies(chunk).await?;
-            let Some(items) = Self::pulled_items(&mut body) else {
-                eprintln!("memry-core: a refused-records refetch got no pull envelope");
-                return Ok(());
-            };
-            let asked: Vec<Json> = items
-                .into_iter()
-                .filter(|item| requested.contains(&(field(item, "type"), field(item, "id"))))
-                .collect();
-            for (item, decoded) in self.decode_batch(asked).await? {
-                let key = (field(&item, "type"), field(&item, "id"));
-                match decoded {
-                    Ok(decoded) => pending.push(decoded),
-                    Err(failure) if corrupt.contains(&key) => {
-                        warnings.extend(self.record_corrupt(&item, &failure).await?);
+        let fetched: Result<bool, PullError> = async {
+            for chunk in ids.chunks(MAX_PULL_IDS) {
+                let mut body = self.fetch_bodies(chunk).await?;
+                let Some(items) = Self::pulled_items(&mut body) else {
+                    eprintln!("memry-core: a refused-records refetch got no pull envelope");
+                    return Ok(false);
+                };
+                let asked: Vec<Json> = items
+                    .into_iter()
+                    .filter(|item| requested.contains(&(field(item, "type"), field(item, "id"))))
+                    .collect();
+                for (item, decoded) in self.decode_batch(asked).await? {
+                    let key = (field(&item, "type"), field(&item, "id"));
+                    match decoded {
+                        Ok(decoded) => pending.push(decoded),
+                        // A bad signature counts toward the quarantine
+                        // whichever ledger asked for the item.
+                        Err(failure)
+                            if corrupt.contains(&key)
+                                || (self.hardened && failure.signature_invalid) =>
+                        {
+                            warnings.extend(self.record_corrupt(&item, &failure).await?);
+                        }
+                        Err(failure) => eprintln!(
+                            "memry-core: refused {} {} still does not decode: {}",
+                            key.0, key.1, failure.reason
+                        ),
                     }
-                    Err(failure) => eprintln!(
-                        "memry-core: refused {} {} still does not decode: {}",
-                        key.0, key.1, failure.reason
-                    ),
+                    answered.insert(key);
                 }
-                answered.insert(key);
             }
+            Ok(true)
+        }
+        .await;
+        // The warnings already counted reach the observers on every exit.
+        if !matches!(fetched, Ok(true)) {
+            self.warn(warnings).await;
+            return fetched.map(drop);
         }
         pending.sort_by_key(|item| apply::apply_rank(item.item_type()));
         let mut feed = AppliedFeed::default();
