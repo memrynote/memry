@@ -121,7 +121,7 @@ Run these from `crates/`, where `rust-toolchain.toml` pins the toolchain CI uses
 ```bash
 cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
-cargo test -p <touched crates>   # CI runs memry-core, memry-desktop, memry-tauri and memry-test-kit through nextest, memry-cli on Ubuntu only
+cargo test -p <touched crates>   # CI runs memry-core, memry-desktop, memry-media, memry-tauri and memry-test-kit through nextest, memry-cli on Ubuntu only
 node ../scripts/check-line-ceilings.mjs
 node ../scripts/check-test-timing.mjs   # no wall-clock upper bound in a test; drive time through the code's clock or a gate
 ```
