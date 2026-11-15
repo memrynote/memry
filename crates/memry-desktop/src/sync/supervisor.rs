@@ -28,8 +28,10 @@ use super::result::{SyncNowBlockedReason as Blocked, TriggerSyncResult};
 use super::run_loop::Loop;
 use super::signals::{AuthSignal, Signals};
 use super::status::{self, StatusFacts, SyncStatus};
+use super::telemetry::BootstrapMetrics;
 use super::triggers::Trigger;
 use crate::shell::power::PowerEvent;
+use crate::telemetry::Service;
 
 /// What a supervisor is built from.
 pub struct SupervisorParts {
@@ -42,9 +44,14 @@ pub struct SupervisorParts {
     pub keychain_recovered: Option<broadcast::Receiver<()>>,
     /// The vault's `data.db`: the persisted pause and the outbox depth.
     pub db: Db,
+    /// The app's telemetry, which drops every event while telemetry is off.
+    pub telemetry: Option<Arc<Service>>,
     /// Every status change, at most one per [`STATUS_THROTTLE`], the latest winning.
     pub on_status: Arc<dyn Fn(&SyncStatus) + Send + Sync>,
 }
+
+/// How long [`SyncSupervisor::stop_blocking`] waits for the loop.
+pub const STOP_WAIT: std::time::Duration = std::time::Duration::from_secs(5);
 
 pub(super) enum Command {
     Trigger(Trigger),
@@ -71,6 +78,7 @@ pub struct SyncSupervisor {
     status: watch::Receiver<SyncStatus>,
     signals: Arc<Signals>,
     db: Db,
+    bootstrap: Arc<BootstrapMetrics>,
 }
 
 impl SyncSupervisor {
@@ -100,6 +108,7 @@ impl SyncSupervisor {
         let (status_tx, status) = watch::channel(first);
         let signals = Arc::new(Signals::default());
         let db = parts.db.clone();
+        let bootstrap = Arc::new(BootstrapMetrics::new(parts.telemetry.clone()));
         let state = Loop::new(
             parts,
             rx,
@@ -115,7 +124,13 @@ impl SyncSupervisor {
             status,
             signals,
             db,
+            bootstrap,
         }
+    }
+
+    /// The fresh-device bootstrap window of this vault.
+    pub fn bootstrap(&self) -> &BootstrapMetrics {
+        &self.bootstrap
     }
 
     /// Session expiry, revocation and linking requests, as sync learns them.
@@ -208,17 +223,36 @@ impl SyncSupervisor {
 
     /// Aborts a running pass, closes the driver and ends the loop.
     pub async fn stop(&self) {
+        self.bootstrap.abandon();
         let (reply, done) = oneshot::channel();
         if self.commands.send(Command::Stop(reply)).is_ok() {
             let _ = done.await;
         }
     }
 
-    /// [`SyncSupervisor::stop`] from a thread outside the runtime (a session close hook).
-    pub fn stop_blocking(&self) {
-        let (reply, done) = oneshot::channel();
-        if self.commands.send(Command::Stop(reply)).is_ok() {
-            let _ = done.blocking_recv();
+    /// [`SyncSupervisor::stop`] from a thread outside the runtime (a session close hook), waiting
+    /// at most [`STOP_WAIT`]: a loop held in a keychain prompt must not hold the close. Answers
+    /// whether the loop stopped in time; one that did not still stops when it reads the request.
+    pub fn stop_blocking(&self) -> bool {
+        self.bootstrap.abandon();
+        let (reply, mut done) = oneshot::channel();
+        if self.commands.send(Command::Stop(reply)).is_err() {
+            return true;
+        }
+        let deadline = std::time::Instant::now() + STOP_WAIT;
+        loop {
+            match done.try_recv() {
+                Err(oneshot::error::TryRecvError::Empty)
+                    if std::time::Instant::now() < deadline =>
+                {
+                    std::thread::sleep(std::time::Duration::from_millis(10));
+                }
+                Err(oneshot::error::TryRecvError::Empty) => {
+                    tracing::error!("sync did not stop in time; the close goes on without it");
+                    return false;
+                }
+                _ => return true,
+            }
         }
     }
 }
@@ -235,7 +269,7 @@ impl ReachabilityObserver for Observer {
 
 #[cfg(test)]
 #[path = "supervisor_rig.rs"]
-mod rig;
+pub(crate) mod rig;
 #[cfg(test)]
 #[path = "supervisor_signal_tests.rs"]
 mod signal_tests;

@@ -15,6 +15,7 @@ use crate::sync::backend::{SyncBackend, SyncPasses};
 use crate::sync::error_category::SyncErrorCategory;
 use crate::sync::gate::GateDecision;
 use crate::sync::result::{SyncNowBlockedReason as Blocked, TriggerSyncResult};
+use crate::sync::telemetry::{ConflictTelemetry, sync_error_event};
 use crate::sync::triggers::{MAX_CLOCK_SKEW_MS, Trigger, rate_limit_backoff};
 
 /// What a pass task hands back.
@@ -78,6 +79,7 @@ impl Loop {
             Ok(driver) => driver,
             Err(error) => {
                 tracing::warn!(%error, "sync did not start");
+                self.report(&error);
                 let category = SyncErrorCategory::of(&error);
                 self.last_error = Some((error.to_string(), category));
                 self.failed(category, None);
@@ -90,6 +92,13 @@ impl Loop {
         };
         // The keychain answered: the open read the master key.
         self.keychain = None;
+        let fresh = !self
+            .driver
+            .as_ref()
+            .is_some_and(|d| Arc::ptr_eq(d, &driver));
+        if let Some(telemetry) = self.telemetry.as_ref().filter(|_| fresh) {
+            driver.observe(Arc::new(ConflictTelemetry(Arc::clone(telemetry))));
+        }
         if self.paused {
             driver.pause();
         }
@@ -146,6 +155,7 @@ impl Loop {
         }
         match report.error() {
             Some(error) => {
+                self.report(error);
                 let category = SyncErrorCategory::of(error);
                 self.last_error = Some((error.to_string(), category));
                 if let Some(retry_after) = rate_limited(error) {
@@ -188,6 +198,13 @@ impl Loop {
 }
 
 impl Loop {
+    /// `sync_error`, redacted by the service; dropped by it while telemetry is off.
+    fn report(&self, error: &memry_core::api::errors::SyncError) {
+        if let Some(telemetry) = &self.telemetry {
+            telemetry.track_main_event(sync_error_event(error, |m| telemetry.redact_message(m)));
+        }
+    }
+
     /// What a failed open or pass leads to: a revoked device, a session the server refused for
     /// good and a pin mismatch end sync; an unreadable keychain waits on its ladder; anything
     /// else backs off.

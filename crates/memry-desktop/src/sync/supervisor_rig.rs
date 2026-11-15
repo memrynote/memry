@@ -22,38 +22,39 @@ use super::super::gate::{AuthFacts, Entitlement, SyncStartGate, VaultBinding};
 use super::super::realtime::{RealtimeSocket, SocketEnd};
 use super::super::status::SyncStatus;
 use super::{SupervisorParts, SyncSupervisor};
-pub(super) use crate::session::lock;
+pub(crate) use crate::session::lock;
 
 /// One pass takes this long on the fake, so a request can land while it runs.
-pub(super) const PASS: Duration = Duration::from_millis(50);
+pub(crate) const PASS: Duration = Duration::from_millis(50);
 
 #[derive(Default)]
-pub(super) struct FakeDriver {
-    pub(super) passes: Mutex<Vec<PassTrigger>>,
+pub(crate) struct FakeDriver {
+    pub(crate) passes: Mutex<Vec<PassTrigger>>,
     /// When each pass started.
-    pub(super) starts: Mutex<Vec<Instant>>,
-    pub(super) paused: AtomicBool,
-    pub(super) entitled: Mutex<Option<bool>>,
+    pub(crate) starts: Mutex<Vec<Instant>>,
+    pub(crate) paused: AtomicBool,
+    pub(crate) entitled: Mutex<Option<bool>>,
     /// Errors the next passes fail with, in order.
-    pub(super) errors: Mutex<Vec<SyncError>>,
+    pub(crate) errors: Mutex<Vec<SyncError>>,
     /// The last reading, kept across passes as `PolicyTier` keeps it.
-    pub(super) clock: Mutex<Option<ServerClock>>,
+    pub(crate) clock: Mutex<Option<ServerClock>>,
     /// A pass reads the server clock this far behind the local one, as a status poll does.
-    pub(super) skew_ms: Mutex<Option<i64>>,
+    pub(crate) skew_ms: Mutex<Option<i64>>,
     /// Passes end `Refused` with no error, as a non-envelope pull body does.
-    pub(super) refuse: AtomicBool,
+    pub(crate) refuse: AtomicBool,
     /// The token manager says the server refused the refresh token for good.
-    pub(super) refresh_refused: AtomicBool,
+    pub(crate) refresh_refused: AtomicBool,
     /// The next pass panics.
-    pub(super) panic_next: AtomicBool,
+    pub(crate) panic_next: AtomicBool,
     /// Sockets end at once with this; `None` holds them quietly until stopped.
-    pub(super) socket_end: Mutex<Option<SocketEnd>>,
+    pub(crate) socket_end: Mutex<Option<SocketEnd>>,
     /// Sockets opened.
-    pub(super) sockets: AtomicUsize,
+    pub(crate) sockets: AtomicUsize,
+    pub(crate) observers: Mutex<Vec<Arc<dyn memry_core::sync::driver::ApplyObserver>>>,
 }
 
 impl FakeDriver {
-    pub(super) fn passes(&self) -> usize {
+    pub(crate) fn passes(&self) -> usize {
         lock(&self.passes).len()
     }
 }
@@ -131,6 +132,9 @@ impl SyncPasses for FakeDriver {
     fn server_clock(&self) -> Option<ServerClock> {
         *lock(&self.clock)
     }
+    fn observe(&self, observer: Arc<dyn memry_core::sync::driver::ApplyObserver>) {
+        lock(&self.observers).push(observer);
+    }
 }
 
 /// A socket that ends at once with `end`, or never connects and ends only when stopped.
@@ -153,21 +157,23 @@ impl RealtimeSocket for FakeSocket {
     }
 }
 
-pub(super) struct FakeBackend {
-    pub(super) driver: Arc<FakeDriver>,
-    pub(super) signed_in: AtomicBool,
+pub(crate) struct FakeBackend {
+    pub(crate) driver: Arc<FakeDriver>,
+    pub(crate) signed_in: AtomicBool,
+    /// The gate read never returns, as a keychain access prompt nobody answers.
+    pub(crate) stall_facts: AtomicBool,
     /// The keychain does not answer the master-key read.
-    pub(super) keychain_locked: AtomicBool,
+    pub(crate) keychain_locked: AtomicBool,
     /// When each gate read ran.
-    pub(super) fact_reads: Mutex<Vec<Instant>>,
+    pub(crate) fact_reads: Mutex<Vec<Instant>>,
     /// `open` fails, as it does offline or on an unbound vault.
-    pub(super) fail_open: AtomicBool,
-    pub(super) opens: Mutex<Vec<Instant>>,
-    pub(super) closes: AtomicUsize,
+    pub(crate) fail_open: AtomicBool,
+    pub(crate) opens: Mutex<Vec<Instant>>,
+    pub(crate) closes: AtomicUsize,
 }
 
 impl FakeBackend {
-    pub(super) fn opens(&self) -> usize {
+    pub(crate) fn opens(&self) -> usize {
         lock(&self.opens).len()
     }
 }
@@ -176,6 +182,9 @@ impl FakeBackend {
 impl SyncBackend for FakeBackend {
     async fn auth_facts(&self) -> AuthFacts {
         lock(&self.fact_reads).push(Instant::now());
+        if self.stall_facts.load(Ordering::SeqCst) {
+            std::future::pending::<()>().await;
+        }
         let locked = self.keychain_locked.load(Ordering::SeqCst);
         AuthFacts {
             signed_in: self.signed_in.load(Ordering::SeqCst),
@@ -199,13 +208,13 @@ impl SyncBackend for FakeBackend {
 }
 
 #[derive(Default)]
-pub(super) struct Net {
+pub(crate) struct Net {
     observers: Mutex<Vec<Arc<dyn ReachabilityObserver>>>,
     offline: AtomicBool,
 }
 
 impl Net {
-    pub(super) fn set(&self, reachable: Reachable) {
+    pub(crate) fn set(&self, reachable: Reachable) {
         self.offline
             .store(reachable == Reachable::Offline, Ordering::SeqCst);
         for observer in lock(&self.observers).iter() {
@@ -227,19 +236,20 @@ impl Reachability for Net {
     }
 }
 
-pub(super) struct Rig {
+pub(crate) struct Rig {
     _dir: tempfile::TempDir,
-    pub(super) db: Db,
-    pub(super) backend: Arc<FakeBackend>,
-    pub(super) gate: Arc<SyncStartGate>,
-    pub(super) net: Arc<Net>,
+    pub(crate) db: Db,
+    pub(crate) backend: Arc<FakeBackend>,
+    pub(crate) gate: Arc<SyncStartGate>,
+    pub(crate) net: Arc<Net>,
     /// `KeyringStore::subscribe_recovered`'s stand-in.
-    pub(super) recovered: broadcast::Sender<()>,
-    pub(super) events: Arc<Mutex<Vec<(Instant, SyncStatus)>>>,
+    pub(crate) recovered: broadcast::Sender<()>,
+    pub(crate) events: Arc<Mutex<Vec<(Instant, SyncStatus)>>>,
+    pub(crate) telemetry: Option<Arc<crate::telemetry::Service>>,
 }
 
 impl Rig {
-    pub(super) fn new() -> Self {
+    pub(crate) fn new() -> Self {
         let dir = tempfile::tempdir().unwrap();
         let db = open_data(&dir.path().join("data.db")).unwrap();
         let gate = Arc::new(SyncStartGate::default());
@@ -251,6 +261,7 @@ impl Rig {
             backend: Arc::new(FakeBackend {
                 driver: Arc::default(),
                 signed_in: AtomicBool::new(true),
+                stall_facts: AtomicBool::new(false),
                 keychain_locked: AtomicBool::new(false),
                 fact_reads: Mutex::default(),
                 fail_open: AtomicBool::new(false),
@@ -261,10 +272,11 @@ impl Rig {
             net: Arc::default(),
             recovered: broadcast::Sender::new(4),
             events: Arc::default(),
+            telemetry: None,
         }
     }
 
-    pub(super) async fn start(&self) -> SyncSupervisor {
+    pub(crate) async fn start(&self) -> SyncSupervisor {
         let events = Arc::clone(&self.events);
         let supervisor = SyncSupervisor::start(
             &tokio::runtime::Handle::current(),
@@ -275,6 +287,7 @@ impl Rig {
                 power: None,
                 keychain_recovered: Some(self.recovered.subscribe()),
                 db: self.db.clone(),
+                telemetry: self.telemetry.clone(),
                 on_status: Arc::new(move |status| {
                     lock(&events).push((Instant::now(), status.clone()));
                 }),
@@ -284,18 +297,18 @@ impl Rig {
         supervisor
     }
 
-    pub(super) fn passes(&self) -> usize {
+    pub(crate) fn passes(&self) -> usize {
         self.backend.driver.passes()
     }
 
-    pub(super) fn closes(&self) -> usize {
+    pub(crate) fn closes(&self) -> usize {
         self.backend.closes.load(Ordering::SeqCst)
     }
 }
 
 /// Lets the loop and a pass run to completion. A virtual sleep, not `advance`: the paused clock
 /// does not move while the pass's `spawn_blocking` read runs, so the pass finishes first.
-pub(super) async fn settle() {
+pub(crate) async fn settle() {
     for _ in 0..4 {
         sleep(PASS).await;
     }

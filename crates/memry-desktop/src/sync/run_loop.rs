@@ -57,6 +57,7 @@ pub(super) struct Loop {
     on_status: Arc<dyn Fn(&SyncStatus) + Send + Sync>,
     power: Option<broadcast::Receiver<PowerEvent>>,
     keychain_recovered: Option<broadcast::Receiver<()>>,
+    telemetry: Option<Arc<crate::telemetry::Service>>,
     /// The loop's own inbox, for the socket's frames.
     commands: mpsc::WeakUnboundedSender<Command>,
     signals: Arc<Signals>,
@@ -128,6 +129,7 @@ impl Loop {
             on_status: parts.on_status,
             power: parts.power,
             keychain_recovered: parts.keychain_recovered,
+            telemetry: parts.telemetry,
             commands,
             signals,
             status_tx,

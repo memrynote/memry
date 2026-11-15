@@ -153,6 +153,7 @@ impl Device {
                 power: None,
                 keychain_recovered: None,
                 db: self.core.db_handle(),
+                telemetry: None,
                 on_status: Arc::new(|_| {}),
             },
         )
@@ -435,6 +436,9 @@ impl SyncPasses for Held {
     }
     fn server_clock(&self) -> Option<ServerClock> {
         self.inner.server_clock()
+    }
+    fn observe(&self, observer: Arc<dyn memry_core::sync::driver::ApplyObserver>) {
+        self.inner.observe(observer);
     }
 }
 

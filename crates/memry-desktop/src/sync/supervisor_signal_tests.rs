@@ -284,3 +284,17 @@ async fn a_panicked_pass_answers_sync_now_as_a_failure() {
     assert_eq!(result.error.as_deref(), Some("Sync failed unexpectedly"));
     assert_eq!(supervisor.status().status, SyncStatusValue::Error);
 }
+
+/// VERIFY-4713 Low 7: a loop stuck in a keychain prompt does not hold a session close.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_blocking_stop_gives_up_on_a_loop_stuck_in_the_keychain() {
+    let rig = Rig::new();
+    let supervisor = rig.start().await;
+    rig.backend.stall_facts.store(true, Ordering::SeqCst);
+    rig.gate.set_entitlement(Entitlement::Unentitled);
+    settle().await;
+    let stopped = tokio::task::spawn_blocking(move || supervisor.stop_blocking())
+        .await
+        .unwrap();
+    assert!(!stopped, "the close went on without the loop");
+}

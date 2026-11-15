@@ -78,14 +78,14 @@ impl Session {
         // Swapped, not stored: whatever got in meanwhile is stopped, never left running.
         let replaced = std::mem::replace(&mut lock(&self.inner.sync).running, supervisor);
         if let Some(replaced) = replaced {
-            replaced.stop_blocking();
+            let _ = replaced.stop_blocking();
         }
     }
 
     fn stop_sync(&self) {
         let running = lock(&self.inner.sync).running.take();
         if let Some(supervisor) = running {
-            supervisor.stop_blocking();
+            let _ = supervisor.stop_blocking();
         }
     }
 }
@@ -167,6 +167,7 @@ mod tests {
                         power: None,
                         keychain_recovered: None,
                         db: open.vault.db_handle(),
+                        telemetry: None,
                         on_status: Arc::new(|_| {}),
                     },
                 ))
@@ -244,6 +245,7 @@ mod tests {
                         power: None,
                         keychain_recovered: None,
                         db: open.vault.db_handle(),
+                        telemetry: None,
                         on_status: Arc::new(|_| {}),
                     },
                 ))

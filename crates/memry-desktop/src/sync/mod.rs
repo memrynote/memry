@@ -12,6 +12,7 @@ pub mod shutdown;
 pub mod signals;
 pub mod status;
 pub mod supervisor;
+pub mod telemetry;
 pub mod triggers;
 
 #[cfg(test)]

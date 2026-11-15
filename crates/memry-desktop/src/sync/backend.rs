@@ -10,7 +10,7 @@ use memry_core::api::vault::Vault;
 use memry_core::crypto::keys::derive_vault_key;
 use memry_core::seams::reachability::Reachability;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
-use memry_core::sync::driver::{DriverConfig, SyncDriver};
+use memry_core::sync::driver::{ApplyObserver, DriverConfig, SyncDriver};
 use memry_core::sync::engine::{PassReport, PassSeed};
 use memry_core::sync::policy::ServerClock;
 use memry_core::sync::socket::HintSink;
@@ -41,6 +41,8 @@ pub trait SyncPasses: Send + Sync {
     fn resume(&self);
     fn set_entitled(&self, entitled: bool);
     fn server_clock(&self) -> Option<ServerClock>;
+    /// Hears every committed page from now on.
+    fn observe(&self, observer: Arc<dyn ApplyObserver>);
 }
 
 #[async_trait::async_trait]
@@ -81,6 +83,9 @@ impl SyncPasses for SyncDriver {
     }
     fn server_clock(&self) -> Option<ServerClock> {
         SyncDriver::server_clock(self)
+    }
+    fn observe(&self, observer: Arc<dyn ApplyObserver>) {
+        self.register_observer(observer);
     }
 }
 
