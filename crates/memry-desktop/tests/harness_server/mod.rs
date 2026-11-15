@@ -92,6 +92,13 @@ impl Server {
         assert_eq!(reply["harnessEntitled"], true, "{reply}");
     }
 
+    /// Changes an account vault's id on the server, as a server that chose a hostile id would.
+    #[allow(dead_code)] // One binary renames.
+    pub fn rename_vault(&mut self, from: &str, to: &str) {
+        let reply = self.command(&format!("rename-vault {from} {to}"));
+        assert_eq!(reply["harnessRenamed"], true, "{reply}");
+    }
+
     fn command(&mut self, line: &str) -> Value {
         let stdin = self.child.stdin.as_mut().expect("its stdin");
         stdin

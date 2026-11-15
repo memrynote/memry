@@ -25,6 +25,14 @@ describe('VaultPickerStep', () => {
     })
   })
 
+  it('tells rows that carry only an id apart by their short id', () => {
+    const ids = [{ vaultUuid: '0b9f3c8e-5d4a' }, { vaultUuid: '7e2d1a6c-9b3f' }]
+    render(<VaultPickerStep sessionId="sess-1" vaults={ids} onError={vi.fn()} />)
+    expect(screen.getByText('0b9f3c8e')).toBeInTheDocument()
+    expect(screen.getByText('7e2d1a6c')).toBeInTheDocument()
+    expect(screen.queryByText('setup.linking.vaultRow')).toBeNull()
+  })
+
   it('disables the confirm button until a folder is chosen', () => {
     render(<VaultPickerStep sessionId="sess-1" vaults={vaults} onError={vi.fn()} />)
     expect(screen.getByRole('button', { name: 'setup.linking.vaultPickerConfirm' })).toBeDisabled()

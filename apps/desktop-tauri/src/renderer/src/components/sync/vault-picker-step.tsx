@@ -137,10 +137,16 @@ export function VaultPickerStep({
                   aria-label={vault.vaultUuid}
                 />
                 <span className="flex-1 text-start text-sm">
-                  {t('setup.linking.vaultRow', {
-                    count: vault.itemCount ?? 0,
-                    date: formatDate(vault.createdAt)
-                  })}
+                  {/* The new device's rows carry only ids (core's vault transfer), so the
+                      short id tells them apart, as the folder name `memry-vault-<id>` does. */}
+                  {vault.itemCount === undefined ? (
+                    <span className="font-mono">{vault.vaultUuid.slice(0, 8)}</span>
+                  ) : (
+                    t('setup.linking.vaultRow', {
+                      count: vault.itemCount,
+                      date: formatDate(vault.createdAt)
+                    })
+                  )}
                 </span>
                 {isChecked && (
                   <span className="text-xs text-muted-foreground">

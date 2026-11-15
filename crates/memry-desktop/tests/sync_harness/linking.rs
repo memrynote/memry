@@ -254,3 +254,99 @@ async fn a_vault_choice_waits_for_a_valid_pick_and_opens_the_primary_bound() {
     assert_eq!(master(&b_store), master(&a_store));
     assert_eq!(b.info().device_id.as_deref(), Some(device_id.as_str()));
 }
+
+/// A key that is not the account's, with a vault open and two account vaults: the key is checked
+/// before the choice, so no vault is offered, provisioned, opened or registered.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_wrong_key_never_reaches_the_vault_choice() {
+    let mut server = Server::start();
+    let (_a_dir, a, a_store) = approver(&mut server, &[HOME, WORK]).await;
+    a_store
+        .set(SecureStoreKey::MasterKey, vec![3u8; 32])
+        .unwrap();
+    let (b_dir, b, b_store, session) = new_device(&mut server, true).await;
+    let mine = session.current().expect("its own vault").path;
+
+    let (session_id, poll, finalized) = link(&a, &b, &session).await;
+
+    assert_eq!(poll, LinkPoll::Linked { vaults: None }, "no choice offered");
+    let error = tokio::time::timeout(Duration::from_secs(30), finalized)
+        .await
+        .expect("the finalize ends")
+        .expect("it reports")
+        .unwrap_err();
+    assert!(
+        matches!(error, AccountError::LinkedKeyMismatch),
+        "{error:?}"
+    );
+    let parent = b_dir.path().join("linked");
+    let refused = b
+        .finalize_vault_choice(
+            &session,
+            VaultChoice {
+                session_id,
+                parent_folder: parent.to_string_lossy().into_owned(),
+                selected: vec![HOME.to_owned()],
+                primary: HOME.to_owned(),
+            },
+        )
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(refused, AccountError::NoPendingLink),
+        "{refused:?}"
+    );
+    assert!(!parent.exists(), "nothing provisioned");
+    assert_eq!(session.current().expect("still open").path, mine);
+    assert_eq!(master(&b_store), None, "no key is kept");
+    assert!(b.info().device_id.is_none());
+}
+
+/// A vault id the server chose to climb out of the picked folder is refused before anything is
+/// created; the choice stays for a valid pick.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_vault_id_that_leaves_the_picked_folder_is_refused() {
+    const CLIMB: &str = "../../..";
+    let mut server = Server::start();
+    let (_a_dir, a, _a_store) = approver(&mut server, &[HOME, WORK]).await;
+    server.rename_vault(WORK, CLIMB);
+    let (b_dir, b, _b_store, session) = new_device(&mut server, true).await;
+    let mine = session.current().expect("its own vault").path;
+
+    let (session_id, poll, _finalized) = link(&a, &b, &session).await;
+
+    assert!(
+        matches!(poll, LinkPoll::Linked { vaults: Some(_) }),
+        "{poll:?}"
+    );
+    let parent = b_dir.path().join("linked");
+    let choice = |primary: &str| VaultChoice {
+        session_id: session_id.clone(),
+        parent_folder: parent.to_string_lossy().into_owned(),
+        selected: vec![primary.to_owned()],
+        primary: primary.to_owned(),
+    };
+    let refused = b
+        .finalize_vault_choice(&session, choice(CLIMB))
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(refused, AccountError::VaultChoice(_)),
+        "{refused:?}"
+    );
+    assert!(!parent.exists(), "nothing created under the picked folder");
+    assert!(
+        !b_dir.path().join(".memry").exists(),
+        "nothing written above it"
+    );
+    assert_eq!(session.current().expect("still open").path, mine);
+
+    b.finalize_vault_choice(&session, choice(HOME))
+        .await
+        .expect("the kept choice")
+        .expect("the device registers");
+    assert_eq!(
+        session.current().expect("the primary").path,
+        parent.join(dormant_vault_folder_name(HOME))
+    );
+}

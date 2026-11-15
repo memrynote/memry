@@ -8,8 +8,9 @@
 //! store, and [`AccountService::finalize_link`] writes it to the keychain last, as Electron's
 //! `persistKeysAndRegisterDevice` does (`device-registration.ts:115-205`).
 
-use std::path::Path;
-use std::sync::{Arc, Mutex};
+use std::path::{Component, Path, PathBuf};
+use std::sync::{Arc, Mutex, Weak};
+use std::time::Duration;
 
 use memry_core::api::errors::{ApiError, SecureStoreError};
 use memry_core::api::linking::{DeviceLink, LinkingPoll};
@@ -123,7 +124,7 @@ pub(super) struct Linking {
     invite: Mutex<Option<String>>,
     /// Polls run one at a time: two in flight would both read the approval.
     new_device: tokio::sync::Mutex<Option<NewDevice>>,
-    choice: Mutex<Option<PendingChoice>>,
+    choice: Arc<Mutex<Option<PendingChoice>>>,
 }
 
 impl Linking {
@@ -132,9 +133,56 @@ impl Linking {
             approver,
             invite: Mutex::new(None),
             new_device: tokio::sync::Mutex::new(None),
-            choice: Mutex::new(None),
+            choice: Arc::default(),
         }
     }
+}
+
+/// Stores the choice, and forgets it (with its key) when its session expires, if the user never
+/// picks: the key does not wait in memory for the process to end.
+fn hold_choice(slot: &Arc<Mutex<Option<PendingChoice>>>, choice: PendingChoice) {
+    let session_id = choice.session_id.clone();
+    let left = u64::try_from(choice.expires_at.saturating_sub(now_s())).unwrap_or(0);
+    *lock(slot) = Some(choice);
+    let slot: Weak<Mutex<Option<PendingChoice>>> = Arc::downgrade(slot);
+    tokio::spawn(async move {
+        tokio::time::sleep(Duration::from_secs(left.saturating_add(1))).await;
+        if let Some(slot) = slot.upgrade()
+            && lock(&slot)
+                .take_if(|p| p.session_id == session_id)
+                .is_some()
+        {
+            tracing::info!(scope = "DeviceLinking", "the vault choice expired");
+        }
+    });
+}
+
+/// `<parent>/memry-vault-<id>`, refused for an id that is not one: the id comes from the server,
+/// and a name like `memry-vault-../../..` would leave the folder the user picked. Clients mint
+/// vault ids as UUIDs; this is core's id rule (`account_admin::segment`).
+fn vault_folder(parent: &Path, vault_id: &str) -> Result<PathBuf, AccountError> {
+    let refused = || AccountError::VaultChoice("The account vault's id is not valid".into());
+    if vault_id.is_empty()
+        || vault_id.len() > 128
+        || !vault_id
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
+    {
+        return Err(refused());
+    }
+    let name = dormant_vault_folder_name(vault_id);
+    let mut components = Path::new(&name).components();
+    if !matches!(
+        (components.next(), components.next()),
+        (Some(Component::Normal(_)), None)
+    ) {
+        return Err(refused());
+    }
+    let folder = parent.join(&name);
+    if folder.parent() != Some(parent) {
+        return Err(refused());
+    }
+    Ok(folder)
 }
 
 /// `dormantVaultFolderName` (`sync/vault-provisioning.ts:16-18`).
@@ -196,6 +244,7 @@ impl AccountService {
         self.ensure_live_setup_token().await?;
         let mut pending = self.linking.new_device.lock().await;
         *pending = None;
+        *lock(&self.linking.choice) = None;
         let key = Arc::new(HeldKey::default());
         let link = DeviceLink::new(
             self.transport.clone(),
@@ -263,13 +312,18 @@ impl AccountService {
         let master = pending.key.take().ok_or(AccountError::Derive)?;
         let ids: Vec<String> = vaults.into_iter().map(|v| v.id).collect();
         let open = session.current().map(|open| open.vault);
-        let outcome = if open.is_some() && ids.len() >= 2 {
-            *lock(&self.linking.choice) = Some(PendingChoice {
-                session_id: session_id.to_owned(),
-                master,
-                vaults: ids.clone(),
-                expires_at: pending.expires_at,
-            });
+        // Before the choice: a wrong key must not provision, bind or open a vault.
+        let checked = self.check_linked_key(&master).await;
+        let outcome = if checked.is_ok() && open.is_some() && ids.len() >= 2 {
+            hold_choice(
+                &self.linking.choice,
+                PendingChoice {
+                    session_id: session_id.to_owned(),
+                    master,
+                    vaults: ids.clone(),
+                    expires_at: pending.expires_at,
+                },
+            );
             tracing::info!(
                 scope = "DeviceLinking",
                 count = ids.len(),
@@ -280,7 +334,17 @@ impl AccountService {
             let adopt = open.zip(ids.into_iter().next());
             let service = self.clone();
             tokio::spawn(async move {
-                on_finalized(service.finalize_link(master, adopt).await);
+                let outcome = match checked {
+                    Ok(_) => service.finalize_link(master, adopt).await,
+                    Err(error) => {
+                        tracing::error!(
+                            scope = "DeviceLinking",
+                            "linking finalization failed: {error}"
+                        );
+                        Err(error)
+                    }
+                };
+                on_finalized(outcome);
             });
             LinkPoll::Linked { vaults: None }
         };
@@ -316,8 +380,13 @@ impl AccountService {
             }
             pending
         };
-        let folder =
-            Path::new(&choice.parent_folder).join(dormant_vault_folder_name(&choice.primary));
+        let folder = match vault_folder(Path::new(&choice.parent_folder), &choice.primary) {
+            Ok(folder) => folder,
+            Err(error) => {
+                *lock(&self.linking.choice) = Some(pending);
+                return Err(error);
+            }
+        };
         let opened = {
             let session = session.clone();
             let primary = choice.primary.clone();
@@ -326,7 +395,8 @@ impl AccountService {
                 session.switch(&folder)
             })
             .await
-            .map_err(|e| AccountError::VaultChoice(e.to_string()))?
+            .map_err(|e| e.to_string())
+            .and_then(|opened| opened.map_err(|e| e.to_string()))
         };
         let opened = match opened {
             Ok(opened) => opened,
@@ -336,7 +406,7 @@ impl AccountService {
                     "finalizeVaultChoice failed: {error}"
                 );
                 *lock(&self.linking.choice) = Some(pending);
-                return Err(AccountError::VaultChoice(error.to_string()));
+                return Err(AccountError::VaultChoice(error));
             }
         };
         let PendingChoice { master, .. } = pending;
@@ -356,12 +426,7 @@ impl AccountService {
     ) -> Result<String, AccountError> {
         let result = async {
             let _key_op = self.key_op.lock().await;
-            self.ensure_live_setup_token().await?;
-            let material = self.session.recovery_info().await.map_err(setup_expired)?;
-            let verifier = keys::account_key_verifier(&master).map_err(|_| AccountError::Derive)?;
-            if !keys::account_key_verifier_matches(&verifier, &material.key_verifier) {
-                return Err(AccountError::LinkedKeyMismatch);
-            }
+            let verifier = self.check_linked_key(&master).await?;
             if let Some((vault, server_id)) = adopt {
                 bind(vault, server_id).await;
             }
@@ -378,6 +443,18 @@ impl AccountService {
             ),
         }
         result
+    }
+
+    /// The linked key against the account's verifier (`/auth/recovery-info`); returns the key's
+    /// verifier. Electron trusts the SAS alone, which proves the channel, not the key.
+    async fn check_linked_key(&self, master: &[u8]) -> Result<String, AccountError> {
+        self.ensure_live_setup_token().await?;
+        let material = self.session.recovery_info().await.map_err(setup_expired)?;
+        let verifier = keys::account_key_verifier(master).map_err(|_| AccountError::Derive)?;
+        if !keys::account_key_verifier_matches(&verifier, &material.key_verifier) {
+            return Err(AccountError::LinkedKeyMismatch);
+        }
+        Ok(verifier)
     }
 }
 
@@ -424,5 +501,43 @@ mod tests {
             Some(&[2; 32][..])
         );
         assert_eq!(held.take(), None, "taken once");
+    }
+
+    /// A choice the user never makes is forgotten, key and all, once its session expires; a
+    /// choice of a later session is not.
+    #[tokio::test(start_paused = true)]
+    async fn an_unpicked_choice_is_forgotten_when_it_expires() {
+        let slot = Arc::<Mutex<Option<PendingChoice>>>::default();
+        let choice = |id: &str, ttl: i64| PendingChoice {
+            session_id: id.into(),
+            master: Zeroizing::new(vec![1; 32]),
+            vaults: vec![],
+            expires_at: now_s() + ttl,
+        };
+        hold_choice(&slot, choice("first", 60));
+        tokio::time::sleep(Duration::from_secs(30)).await;
+        assert!(lock(&slot).is_some(), "still pending");
+        tokio::time::sleep(Duration::from_secs(40)).await;
+        assert!(lock(&slot).is_none(), "expired");
+
+        hold_choice(&slot, choice("old", 10));
+        hold_choice(&slot, choice("new", 600));
+        tokio::time::sleep(Duration::from_secs(30)).await;
+        assert_eq!(
+            lock(&slot).as_ref().map(|p| p.session_id.as_str()),
+            Some("new")
+        );
+    }
+
+    #[test]
+    fn a_vault_folder_stays_in_the_picked_folder() {
+        let parent = Path::new("/picked");
+        assert_eq!(
+            vault_folder(parent, "0b9f3c8e-5d4a-4c1e").unwrap(),
+            parent.join("memry-vault-0b9f3c8e")
+        );
+        for id in ["", "../../..", "..", "a/b", "a\\b", "x.y", " id"] {
+            assert!(vault_folder(parent, id).is_err(), "{id:?}");
+        }
     }
 }

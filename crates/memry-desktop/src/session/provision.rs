@@ -15,14 +15,16 @@ use crate::registry::vaults::{StoredVault, basename, iso_millis};
 impl Session {
     /// Creates `folder` (and any missing parent), initialises it as a vault, binds its core to
     /// `server_vault_id` and registers it. The open vault is never closed or repointed. On a
-    /// failure, every folder this call created that is still empty is removed again; a file in
-    /// one (written by anyone) keeps it.
+    /// failure, the folders this call created are removed from `.memry` upward while they are
+    /// empty, as Electron does: a `.memry` with content keeps the whole vault, so a retry finds it
+    /// initialised and complete.
     pub fn provision_dormant(
         &self,
         folder: &Path,
         server_vault_id: &str,
     ) -> Result<(), SessionError> {
-        if server_vault_id.trim().is_empty() {
+        let server_vault_id = server_vault_id.trim();
+        if server_vault_id.is_empty() {
             return Err(SessionError::Invalid("the account vault has no id".into()));
         }
         let _queue = lock(&self.inner.lifecycle);
@@ -65,7 +67,7 @@ impl Session {
             task_count: 0,
             last_opened: iso_millis(now),
             is_default: false,
-            vault_uuid: Some(server_vault_id.trim().to_owned()),
+            vault_uuid: Some(server_vault_id.to_owned()),
             account_binding: None,
         })?;
         tracing::info!("provisioned a dormant vault");
@@ -88,13 +90,14 @@ fn first_missing(folder: &Path) -> Option<PathBuf> {
     first
 }
 
-/// Removes the empty folders under `folder`, then `folder` and its parents up to `first`, the
-/// first folder the attempt created. Never removes a file or follows a link; stops at the first
-/// folder that is not empty.
+/// Electron's cleanup walk (`vault-provisioning.ts:40-61`): removes `folder/.memry`, then
+/// `folder` and its parents up to `first`, the first folder the attempt created, each only while
+/// it is empty. Stops at the first one that is not; never removes a file.
 fn remove_created_empty_dirs(folder: &Path, first: &Path) {
-    remove_empty_below(folder);
-    let mut current = Some(folder);
-    while let Some(dir) = current {
+    let stop = first.parent();
+    let memry = folder.join(crate::vault::layout::MEMRY_DIR);
+    let mut current = Some(memry.as_path());
+    while let Some(dir) = current.filter(|dir| Some(*dir) != stop) {
         match std::fs::remove_dir(dir) {
             Ok(()) => {}
             Err(error) if error.kind() == io::ErrorKind::NotFound => {}
@@ -106,25 +109,7 @@ fn remove_created_empty_dirs(folder: &Path, first: &Path) {
                 return;
             }
         }
-        if dir == first {
-            return;
-        }
         current = dir.parent();
-    }
-}
-
-fn remove_empty_below(dir: &Path) {
-    let Ok(entries) = std::fs::read_dir(dir) else {
-        return;
-    };
-    for entry in entries.flatten() {
-        let is_dir = entry.file_type().is_ok_and(|t| t.is_dir());
-        if is_dir {
-            let path = entry.path();
-            remove_empty_below(&path);
-            // Fails on a folder that is not empty, which is what keeps it.
-            let _ = std::fs::remove_dir(&path);
-        }
     }
 }
 
@@ -165,23 +150,27 @@ mod tests {
     }
 
     /// A failure after the folders exist (here the registry write: `vaults` is not a list) keeps
-    /// the open vault and removes the empty folders the attempt created; the files it wrote keep
-    /// theirs, and nothing outside the attempt is touched.
+    /// the open vault and the vault the attempt initialised, whole: a retry finds it initialised
+    /// and must still find its `journal` and `attachments` folders. Nothing outside the attempt is
+    /// touched.
     #[test]
-    fn a_failed_provisioning_keeps_the_active_vault_and_removes_only_created_empty_folders() {
+    fn a_failed_provisioning_keeps_the_active_vault_and_a_retry_finds_a_whole_vault() {
         let f = fixture();
         let active = f.vault("active");
         f.session.open(&active, OpenSource::Select).expect("open");
         let sibling = f.vault("my-notes");
         std::fs::write(sibling.join("keep.md"), "existing vault content").unwrap();
-        f.session
-            .registry()
-            .config()
-            .update(|map| {
-                map.insert("vaults".into(), serde_json::json!({}));
-                Ok::<_, crate::registry::config::ConfigError>(())
-            })
-            .unwrap();
+        let set_vaults = |value: serde_json::Value| {
+            f.session
+                .registry()
+                .config()
+                .update(|map| {
+                    map.insert("vaults".into(), value);
+                    Ok::<_, crate::registry::config::ConfigError>(())
+                })
+                .unwrap();
+        };
+        set_vaults(serde_json::json!({}));
         let target = f.dir.path().join("new").join("memry-vault-abc");
 
         let error = f
@@ -195,28 +184,30 @@ mod tests {
             std::fs::read_to_string(sibling.join("keep.md")).unwrap(),
             "existing vault content"
         );
-        // The vault folders init made are gone; `.memry` keeps the database the attempt wrote.
-        assert!(!target.join("attachments").exists());
         assert!(target.join(".memry/core/data.db").is_file());
+
+        set_vaults(serde_json::json!([]));
+        f.session
+            .provision_dormant(&target, "server-vault-uuid")
+            .expect("the retry");
+        assert!(target.join("attachments").is_dir());
+        assert!(target.join("journal").is_dir());
     }
 
     #[test]
-    fn the_cleanup_removes_an_untouched_attempt_and_keeps_a_users_file() {
+    fn the_cleanup_removes_an_untouched_attempt_and_keeps_a_started_vault() {
         let dir = tempfile::tempdir().unwrap();
         let attempt = dir.path().join("a").join("vault");
-        std::fs::create_dir_all(attempt.join(".memry/core")).unwrap();
-        std::fs::create_dir_all(attempt.join("attachments")).unwrap();
+        std::fs::create_dir_all(attempt.join(".memry")).unwrap();
         remove_created_empty_dirs(&attempt, &dir.path().join("a"));
         assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 0);
 
         std::fs::create_dir_all(attempt.join(".memry")).unwrap();
-        std::fs::write(attempt.join("user-note.md"), "written by another process").unwrap();
+        std::fs::create_dir_all(attempt.join("attachments")).unwrap();
+        std::fs::write(attempt.join(".memry/config.json"), "{}").unwrap();
         remove_created_empty_dirs(&attempt, &dir.path().join("a"));
-        assert_eq!(
-            std::fs::read_to_string(attempt.join("user-note.md")).unwrap(),
-            "written by another process"
-        );
-        assert!(!attempt.join(".memry").exists());
+        assert!(attempt.join(".memry/config.json").is_file());
+        assert!(attempt.join("attachments").is_dir());
     }
 
     #[test]

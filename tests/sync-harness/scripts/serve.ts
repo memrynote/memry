@@ -102,7 +102,7 @@ const otp = async (email: string, code: string): Promise<void> => {
 }
 const entitle = async (email: string): Promise<void> => {
   const db = await server.getD1()
-  await db
+  const { meta } = await db
     .prepare(
       `INSERT OR REPLACE INTO sync_entitlements (user_id, plan, status, source, storage_limit, max_file_size, max_vaults, version_history_days, expires_at, updated_at)
        SELECT u.id, e.plan, e.status, e.source, e.storage_limit, e.max_file_size, e.max_vaults, e.version_history_days, e.expires_at, e.updated_at
@@ -110,7 +110,16 @@ const entitle = async (email: string): Promise<void> => {
     )
     .bind(email.trim().toLowerCase(), userId)
     .run()
-  process.stdout.write(`${JSON.stringify({ harnessEntitled: true })}\n`)
+  process.stdout.write(`${JSON.stringify({ harnessEntitled: meta.changes > 0 })}\n`)
+}
+// A server that lies: gives an account vault an id no client would register.
+const renameVault = async (from: string, to: string): Promise<void> => {
+  const db = await server.getD1()
+  const { meta } = await db
+    .prepare('UPDATE sync_vaults SET vault_id = ? WHERE vault_id = ?')
+    .bind(to, from)
+    .run()
+  process.stdout.write(`${JSON.stringify({ harnessRenamed: meta.changes > 0 })}\n`)
 }
 const commands = createInterface({ input: process.stdin })
 commands.on('line', (line) => {
@@ -118,6 +127,7 @@ commands.on('line', (line) => {
   if (command === 'purge') void purge()
   if (command === 'otp' && args.length === 2) void otp(args[0], args[1])
   if (command === 'entitle' && args.length === 1) void entitle(args[0])
+  if (command === 'rename-vault' && args.length === 2) void renameVault(args[0], args[1])
   if (command === 'register') {
     void register(devices.length).then((device) => {
       devices.push(device)
