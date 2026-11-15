@@ -76,37 +76,24 @@ final class NoteEditorViewModel {
     /// unchanged commit is still a CRDT update and an outbox row (FR-030) —
     /// tapping into a block and back out must not enqueue a push.
     ///
-    /// `formatted` routes the write through `ReplaceText`, which edits in place
-    /// and keeps the block's marks and inline nodes: `SetText` would replace a
-    /// formatted block's whole content and drop them. A plain block keeps
-    /// `SetText`'s in-place single-run edit.
-    ///
-    /// `base` is the text the user's typing started from. With a `base`, the
-    /// write is always a `ReplaceText` carrying it, so the core applies only
-    /// the user's change, `base` to `text`, on the live block, and an edit
-    /// that landed since survives. `current` cannot tell whether one did: a
-    /// second pane on the note (#4377) can write after this page last read
-    /// it, and then `current` and `base` both still spell the old text, and
-    /// a `SetText` of `text` would delete that pane's edit. With a `base`,
-    /// "unchanged" means the user changed nothing, whatever the peer did.
-    func commit(
-        _ text: String, for blockId: String, current: String, formatted: Bool = false, base: String? = nil
-    ) async {
+    /// The write is a `ReplaceText` carrying `base`, the text the user's
+    /// change started from. It edits in place, keeping the block's marks and
+    /// inline nodes, and the core applies only the change, `base` to `text`,
+    /// on the live block, so an edit that landed since survives: a second
+    /// pane on the note (#4377) can write after this page last read it. For
+    /// the same reason "unchanged" means the user changed nothing, whatever
+    /// the peer did.
+    func commit(_ text: String, for blockId: String, base: String) async {
         guard let editor else { return }
         drafts[blockId] = text
-        guard text != (base ?? current) else {
+        guard text != base else {
             status = .idle
             return
         }
 
         status = .saving
         do {
-            let landed = try await editor.edit(
-                noteId: noteId,
-                formatted || base != nil
-                    ? .replaceText(blockId: blockId, text: text, base: base)
-                    : .setText(blockId: blockId, text: text)
-            )
+            let landed = try await editor.edit(noteId: noteId, .replaceText(blockId: blockId, text: text, base: base))
             if landed {
                 status = .idle
             } else {
@@ -443,6 +430,31 @@ final class NoteEditorViewModel {
             text: "",
             attrs: WikiLinkAttrs.attrs(target: title, alias: alias)
         )
+    }
+
+    /// Turns the `[[target]]` literals a commit just wrote into link nodes.
+    /// Each `start` is in the pane's text, `typedLength` core bytes long.
+    /// A pane that had not re-read the note lands its commit rebased on the
+    /// live block (#4377), so each literal is found where the block now
+    /// holds it; one no longer there stays text.
+    func insertTypedWikiLinks(_ links: [WikiLinkText.Typed], in blockId: String, typedLength: Int) async {
+        var live: String?
+        do {
+            live = try await editor?.blockText(noteId: noteId, blockId: blockId)
+        } catch {
+            Log.storage.error("a typed link's block could not be read", .code(ErrorMapping.userFacing(error).code))
+        }
+        let starts: [Int?] = live.map { WikiLinkText.locate(links, in: $0, typedLength: typedLength) }
+            ?? links.map(\.start)
+        for (link, start) in zip(links, starts).reversed() {
+            guard let start else {
+                Log.storage.error("a typed link's text was gone from its block")
+                continue
+            }
+            await insertWikiLink(
+                in: blockId, from: start, to: start + link.literal.utf8.count, title: link.target, alias: link.alias
+            )
+        }
     }
 
     /// Creates the note titled `title` in the new-notes folder, for the `[[`

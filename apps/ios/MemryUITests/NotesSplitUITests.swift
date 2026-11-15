@@ -198,6 +198,8 @@ final class NotesSplitUITests: XCTestCase {
         XCTAssertTrue(main.textFields.matching(NSPredicate(format: "value == %@", source)).firstMatch.exists)
         XCTAssertTrue(matches(NSPredicate(format: "isSelected == true"), side), "the new pane has no focus")
         attach("two-panes")
+        let menus = app.buttons.matching(NSPredicate(format: "label == 'More actions for this note'"))
+        XCTAssertEqual(menus.count, 1, "both panes show a page menu")
 
         let sideBlock = block(in: side)
         sideBlock.tap()
@@ -207,6 +209,17 @@ final class NotesSplitUITests: XCTestCase {
         XCTAssertTrue(matches(NSPredicate(format: "isSelected == true"), main), "a tap did not move the focus")
         app.typeText(" typed main")
         attach("two-panes-typed")
+        XCTAssertEqual(menus.count, 1, "both panes show a page menu")
+        // The one menu is the focused pane's, and Delete names its note.
+        menus.firstMatch.tap()
+        let delete = app.buttons["trash"]
+        XCTAssertTrue(delete.waitForExistence(timeout: 5), "the page menu has no Delete")
+        delete.tap()
+        let alert = app.alerts["Delete \u{201c}\(source)\u{201d}?"]
+        XCTAssertTrue(alert.waitForExistence(timeout: 5), "Delete does not name the focused pane's note")
+        attach("delete-names-the-note")
+        alert.buttons["Cancel"].tap()
+        XCTAssertTrue(alert.waitForNonExistence(timeout: 5))
 
         // 13" portrait has no room for two panes: the focused one shows alone,
         // and the other comes back with the width.

@@ -40,12 +40,6 @@ enum BlockText {
         run.marks.contains { nodeKinds.contains($0) }
     }
 
-    /// Any mark or node: a block whose text must be written with
-    /// `replaceText` rather than `setText`.
-    static func isFormatted(_ runs: [InlineRun]) -> Bool {
-        runs.contains { !$0.marks.isEmpty }
-    }
-
     struct Segment: Equatable {
         let run: InlineRun
         let isNode: Bool

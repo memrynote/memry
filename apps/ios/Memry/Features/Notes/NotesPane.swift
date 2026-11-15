@@ -40,6 +40,11 @@ struct NotesPaneContext: Equatable {
         lhs.router === rhs.router && lhs.slot == rhs.slot
     }
 
+    /// While both panes show, only the focused one's page menu does: both
+    /// menus draw over one pane, and a tap on the wrong one would delete
+    /// the other note.
+    @MainActor var showsPageMenu: Bool { !router.splitShown || router.focus == slot }
+
     /// "Open to the Side", where the width holds two panes; `nil` elsewhere,
     /// so no control offers a pane that cannot show.
     @MainActor var openToTheSide: ((NoteRoute) -> Void)? {

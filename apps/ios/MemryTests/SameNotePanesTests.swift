@@ -139,6 +139,51 @@ struct SameNotePanesTests {
         #expect(try await stored(f) == "0 1 mid 2 3")
     }
 
+    /// DATA-LOSS (REVIEW-4700): ⌘Z in B takes back only B's typing, and redo
+    /// puts back only B's: A's typing in the same block, which landed after
+    /// B's commit, stays through both.
+    @Test(.timeLimit(.minutes(1))) func undo_and_redo_in_one_pane_keep_the_other_panes_typing() async throws {
+        let f = try fixture("hello")
+        let a = pane(f)
+        let b = pane(f)
+        let drawn = try await block(f)
+        let fieldA = draw(drawn, in: a)
+        let fieldB = draw(drawn, in: b)
+
+        type("hello B", in: fieldB)
+        await commit(fieldB, in: b)
+        type("A hello", in: fieldA)
+        await commit(fieldA, in: a)
+        #expect(try await stored(f) == "A hello B")
+
+        b.session.undo()
+        await b.session.tail?.value
+        #expect(try await stored(f) == "A hello", "B's undo kept A's typing")
+        b.session.redo()
+        await b.session.tail?.value
+        #expect(try await stored(f) == "A hello B", "B's redo kept A's typing")
+    }
+
+    /// A `[[target]]` B typed becomes a link where the block holds it after
+    /// B's rebased commit, not at the offsets of B's stale text.
+    @Test(.timeLimit(.minutes(1))) func a_link_typed_in_a_stale_pane_converts_where_the_block_holds_it() async throws {
+        let f = try fixture("hello")
+        let a = pane(f)
+        let b = pane(f)
+        let drawn = try await block(f)
+        let fieldA = draw(drawn, in: a)
+        let fieldB = draw(drawn, in: b)
+
+        type("XYZ hello", in: fieldA)
+        await commit(fieldA, in: a)
+        type("hello [[Foo]]", in: fieldB)
+        await commit(fieldB, in: b)
+
+        let runs = try await block(f).inline
+        #expect(BlockText.shown(runs) == "XYZ hello \u{FFFC}")
+        #expect(runs.last?.markAttrs["wikiLink.target"] == "Foo")
+    }
+
     /// A pane's write is announced under its own source, so the other pane on
     /// the note re-reads (`NotePageLoad`) and the writer does not.
     @Test(.timeLimit(.minutes(1))) func a_landed_edit_is_announced_with_its_panes_source() async throws {

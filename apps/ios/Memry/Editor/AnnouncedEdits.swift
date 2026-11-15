@@ -31,6 +31,10 @@ struct AnnouncedEdits: BlockEditing {
         try await editor.snapshot(noteId: noteId, blockId: blockId)
     }
 
+    func blockText(noteId: String, blockId: String) async throws -> String? {
+        try await editor.blockText(noteId: noteId, blockId: blockId)
+    }
+
     var movesBlocksBetweenNotes: Bool { editor.movesBlocksBetweenNotes }
 
     func appendSnapshot(_ snapshot: String, toNote noteId: String) async throws -> Bool {

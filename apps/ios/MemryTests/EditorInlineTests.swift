@@ -130,7 +130,6 @@ struct BlockTextTests {
     @Test func a_node_is_one_placeholder_and_zero_core_bytes() {
         let runs = [run("see "), run("", ["wikiLink"], ["wikiLink.target": "Dune"]), run(" later", ["bold"])]
         #expect(BlockText.shown(runs) == "see \u{FFFC} later")
-        #expect(BlockText.isFormatted(runs))
 
         let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
         let text = BlockText.attributed(runs, style: style)
@@ -189,7 +188,7 @@ struct EditorCommitBaseTests {
         let editor = RecordingEditor()
         let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
 
-        await model.commit("hello brave world", for: "a", current: "hello world!", base: "hello world")
+        await model.commit("hello brave world", for: "a", base: "hello world")
 
         #expect(editor.all == [.replaceText(blockId: "a", text: "hello brave world", base: "hello world")])
     }
@@ -198,7 +197,7 @@ struct EditorCommitBaseTests {
         let editor = RecordingEditor()
         let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
 
-        await model.commit("hello world", for: "a", current: "hello world!", base: "hello world")
+        await model.commit("hello world", for: "a", base: "hello world")
 
         #expect(editor.all.isEmpty, "writing the stale text would delete the peer's edit")
     }

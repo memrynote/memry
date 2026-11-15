@@ -110,27 +110,18 @@ final class EditorUndoStack {
 }
 
 extension EditorUndoStep {
-    /// The step for a text change, which is the common one.
+    /// The step for a text change, which is the common one: `ReplaceText`
+    /// both ways, each carrying the text it starts from as its `base`.
     ///
-    /// Both directions are a `SetText`, which makes text undo exact rather
-    /// than approximate.
+    /// The core then applies only this step's own change to the live block,
+    /// in place, keeping marks and inline nodes. Another pane on the note
+    /// (#4377) or a peer may have typed in the block since: undo takes back
+    /// `next` to `previous` and redo puts it again, and their typing stays.
     static func text(blockId: String, from previous: String, to next: String) -> EditorUndoStep {
         EditorUndoStep(
             name: "Typing",
-            backward: .setText(blockId: blockId, text: previous),
-            forward: .setText(blockId: blockId, text: next)
-        )
-    }
-
-    /// The step for a text change in a block holding marks or inline nodes:
-    /// `ReplaceText` both ways, so undo edits in place and keeps them.
-    static func replaceText(blockId: String, from previous: String, to next: String)
-        -> EditorUndoStep
-    {
-        EditorUndoStep(
-            name: "Typing",
-            backward: .replaceText(blockId: blockId, text: previous),
-            forward: .replaceText(blockId: blockId, text: next)
+            backward: .replaceText(blockId: blockId, text: previous, base: next),
+            forward: .replaceText(blockId: blockId, text: next, base: previous)
         )
     }
 

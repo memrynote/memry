@@ -519,17 +519,18 @@ final class EditorSession {
         }
         let attributed = field.textView.attributedText ?? NSAttributedString()
         let text = attributed.string
-        let current = BlockText.shown(field.block.inline)
-        let formatted = BlockText.isFormatted(field.block.inline) || text.contains(BlockText.placeholder)
         let blockId = field.blockId
         let dirty = field.dirty
         let base = field.base
         let links = dirty && field.block.kind != "codeBlock" ? WikiLinkText.typed(in: text, since: base) : []
-        let offsets = links.map { (
-            BlockText.coreOffset(in: attributed, utf16: $0.range.location),
-            BlockText.coreOffset(in: attributed, utf16: NSMaxRange($0.range)),
-            $0
-        ) }
+        let typed = links.map { link in
+            WikiLinkText.Typed(
+                start: BlockText.coreOffset(in: attributed, utf16: link.range.location),
+                literal: (text as NSString).substring(with: link.range),
+                target: link.target, alias: link.alias
+            )
+        }
+        let length = BlockText.coreOffset(in: attributed, utf16: attributed.length)
         field.dirty = false
         if dirty {
             field.base = text
@@ -543,22 +544,16 @@ final class EditorSession {
         // The session too, so the write still schedules its sync pass.
         enqueue {
             if dirty, text != base {
-                await model.commit(text, for: blockId, current: current, formatted: formatted, base: base)
-                self.history.record(Self.textStep(blockId, from: current, to: text, formatted: formatted))
+                await model.commit(text, for: blockId, base: base)
+                // From `base`, as the write: the block may hold another
+                // pane's typing since, which undo and redo keep.
+                self.history.record(.text(blockId: blockId, from: base, to: text))
             }
-            for (start, end, link) in offsets.reversed() {
-                await model.insertWikiLink(in: blockId, from: start, to: end, title: link.target, alias: link.alias)
-            }
+            if !typed.isEmpty { await model.insertTypedWikiLinks(typed, in: blockId, typedLength: length) }
             await then?()
-            if dirty || !offsets.isEmpty || then != nil { await self.didChange() }
+            if dirty || !typed.isEmpty || then != nil { await self.didChange() }
         }
         return moved
-    }
-
-    private static func textStep(_ blockId: String, from: String, to: String, formatted: Bool) -> EditorUndoStep {
-        formatted
-            ? .replaceText(blockId: blockId, from: from, to: to)
-            : .text(blockId: blockId, from: from, to: to)
     }
 
     /// Commits the focused block (if any), then runs `work` against it.
@@ -899,8 +894,8 @@ final class EditorSession {
             case .diagram:
                 // A diagram's source is its plain content: `ReplaceText`
                 // edits it in place, so a peer's concurrent edit survives.
-                await model.commit(text, for: request.blockId, current: request.source, formatted: true)
-                self?.history.record(.replaceText(blockId: request.blockId, from: request.source, to: text))
+                await model.commit(text, for: request.blockId, base: request.source)
+                self?.history.record(.text(blockId: request.blockId, from: request.source, to: text))
             }
         }
     }
@@ -998,8 +993,8 @@ final class EditorSession {
         if let blockId = request.blockId {
             guard text != request.text else { return }
             runBlockAction { [weak self] model in
-                await model.commit(text, for: blockId, current: request.text, formatted: true)
-                self?.history.record(.replaceText(blockId: blockId, from: request.text, to: text))
+                await model.commit(text, for: blockId, base: request.text)
+                self?.history.record(.text(blockId: blockId, from: request.text, to: text))
             }
             return
         }
@@ -1130,7 +1125,7 @@ final class EditorSession {
         enqueue { [weak self] in
             guard let self, let model = self.model else { return }
             // The space first, so the node lands inside a text run.
-            await model.commit(shown + " ", for: blockId, current: shown, formatted: true)
+            await model.commit(shown + " ", for: blockId, base: shown)
             switch kind {
             case let .note(title, alias):
                 await model.insertWikiLink(in: blockId, from: end, to: end, title: title, alias: alias)
@@ -1220,8 +1215,7 @@ final class EditorSession {
         var kept: EditorUndoStep?
         if let field, let undone = undoneTyping, undone.blockId == field.blockId,
            pendingTyping?.canRedo == true, undone.text != field.textView.text {
-            let formatted = BlockText.isFormatted(field.block.inline) || undone.text.contains(BlockText.placeholder)
-            kept = Self.textStep(field.blockId, from: field.textView.text, to: undone.text, formatted: formatted)
+            kept = .text(blockId: field.blockId, from: field.textView.text, to: undone.text)
         }
         undoneTyping = nil
         // The commit records the changed typing, and this undo takes it back
