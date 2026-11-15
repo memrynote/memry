@@ -511,6 +511,52 @@ struct EditorReturnBurstTests {
         #expect(blocks.map { BlockText.shown($0.inline) } == ["milk", "eggs", ""], "\(blocks.map { BlockText.shown($0.inline) })")
     }
 
+    // MARK: Keys reaching the old row after it carried its keys (#4737)
+
+    /// The row a type change redraws gives up its held keys as SwiftUI
+    /// dismantles it, before the redrawn row takes the caret. UIKit then
+    /// hands the old row the keys it queued for it as it resigns. Those
+    /// keys follow the carried ones: they landed ahead of the next keys,
+    /// and `milk⏎eggs⏎` was stored `milk|egs|g`. A queued Backspace takes
+    /// back the last carried key, not the old block's text.
+    @Test(.timeLimit(.minutes(1)), arguments: [("g", false), ("gx", true)])
+    func keysQueuedForTheDismantledRowFollowTheCarriedOnes(late keys: String, backspace: Bool) async throws {
+        let (late, blocks) = try await Screen.run(text: "") { screen in
+            let paragraph = try await screen.start()
+            screen.editor.inserts.withLock { $0 = .wait }
+            var late = false
+            let observer = NotificationCenter.default.addObserver(
+                forName: UITextView.textDidEndEditingNotification, object: paragraph, queue: nil
+            ) { _ in
+                MainActor.assumeIsolated {
+                    guard !late, screen.model.session.returnBurst?.ended == true else { return }
+                    late = true
+                    for key in keys.map(String.init)
+                    where paragraph.delegate?.textView?(paragraph, shouldChangeTextIn: paragraph.selectedRange, replacementText: key) != false {
+                        paragraph.insertText(key)
+                    }
+                    let caret = paragraph.selectedRange.location
+                    let range = NSRange(location: max(caret - 1, 0), length: min(caret, 1))
+                    if backspace, paragraph.delegate?.textView?(paragraph, shouldChangeTextIn: range, replacementText: "") != false {
+                        paragraph.deleteBackward()
+                    }
+                }
+            }
+            defer { NotificationCenter.default.removeObserver(observer) }
+            screen.keys("[] milk\neg")
+            for _ in 0 ..< 80 where screen.textViews().contains(paragraph) || screen.focused == nil {
+                try await Task.sleep(for: .milliseconds(25))
+            }
+            screen.keys("s\n")
+            screen.editor.inserts.withLock { $0 = .land }
+            try await screen.finish(blocks: 3)
+            return (late, screen.editor.all)
+        }
+        #expect(late, "a key reached the old row after it carried its keys")
+        #expect(blocks.map(\.kind) == ["checkListItem", "checkListItem", "checkListItem"])
+        #expect(blocks.map { BlockText.shown($0.inline) } == ["milk", "eggs", ""], "\(blocks.map { BlockText.shown($0.inline) })")
+    }
+
     // MARK: Edits outside the held keys end the hold (REVIEW-4707 M1)
 
     /// Backspace past the Return deletes the text before it, as before #4692:
