@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { linkingService } from '@/services/linking-service'
 import type { AccountVaultInfo } from '../../../preload/index.d'
 import { useT } from '@memry/i18n/renderer'
 
@@ -41,7 +42,7 @@ export function DownloadVaultDialog({ vault, onClose }: DownloadVaultDialogProps
   const displayPath = parentPath ? `${parentPath}/${folderName}` : vault.suggestedPath
 
   const handleChangeLocation = async (): Promise<void> => {
-    const { path } = await window.api.syncLinking.pickVaultFolder()
+    const { path } = await linkingService.pickVaultFolder()
     if (path) setParentPath(path)
   }
 

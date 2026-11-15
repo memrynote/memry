@@ -40,7 +40,7 @@ const SANDBOX_FOLDER: &str = "Sandbox";
 const SANDBOX_MARKER: &str = "sandbox-vault.json";
 
 /// `system:dialog.vault.title` in the live language.
-fn picker_title(app: &AppHandle<Wry>) -> String {
+pub(crate) fn picker_title(app: &AppHandle<Wry>) -> String {
     let locale = app.state::<Arc<LocaleService>>().get();
     i18n::t(locale, "system:dialog.vault.title", &i18n::Args::new())
 }

@@ -172,11 +172,11 @@ vi.mock('@/components/note/note-title/HugeIconGrid', () => ({
   )
 }))
 
+const linking = vi.hoisted(() => ({}) as Record<string, ReturnType<typeof vi.fn>>)
+vi.mock('@/services/linking-service', () => ({ linkingService: linking }))
+
 function installWindowApi(overrides: Partial<typeof window.api> = {}) {
   ;(window as Window & { api: unknown }).api = {
-    syncLinking: {
-      completeLinkingQr: vi.fn()
-    },
     onReminderDue: vi.fn(),
     onReminderClicked: vi.fn(),
     ...overrides
@@ -205,6 +205,7 @@ describe('medium cold renderer surfaces', () => {
       value: ResizeObserverStub
     })
     installWindowApi()
+    Object.assign(linking, { completeLinkingQr: vi.fn() })
   })
 
   it('polls linking sessions, formats verification code, completes, and handles failures', async () => {
@@ -212,7 +213,7 @@ describe('medium cold renderer surfaces', () => {
     const onComplete = vi.fn()
     const onError = vi.fn()
     const onCancel = vi.fn()
-    window.api.syncLinking.completeLinkingQr = vi.fn().mockResolvedValueOnce({
+    linking.completeLinkingQr = vi.fn().mockResolvedValueOnce({
       success: false,
       error: 'Session not yet approved'
     })
@@ -231,11 +232,11 @@ describe('medium cold renderer surfaces', () => {
     await act(async () => {
       await vi.runOnlyPendingTimersAsync()
     })
-    expect(window.api.syncLinking.completeLinkingQr).toHaveBeenCalledWith({
+    expect(linking.completeLinkingQr).toHaveBeenCalledWith({
       sessionId: 'session-1'
     })
 
-    window.api.syncLinking.completeLinkingQr = vi.fn().mockResolvedValueOnce({ success: true })
+    linking.completeLinkingQr = vi.fn().mockResolvedValueOnce({ success: true })
     await act(async () => {
       await vi.advanceTimersByTimeAsync(3000)
     })
@@ -247,7 +248,7 @@ describe('medium cold renderer surfaces', () => {
     const failing = render(
       <LinkingPending sessionId="bad" onComplete={vi.fn()} onError={onError} onCancel={onCancel} />
     )
-    window.api.syncLinking.completeLinkingQr = vi
+    linking.completeLinkingQr = vi
       .fn()
       .mockResolvedValueOnce({ success: false, error: 'Expired session' })
     await waitFor(() => expect(onError).toHaveBeenCalledWith('Expired session'))

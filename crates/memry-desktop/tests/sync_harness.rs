@@ -12,6 +12,7 @@
 //! | a definition only the file holds over a purged deletion | chapter 05 §5.12.3 (`create`, #4099)      |
 //! | recovery info is read with the setup token              | chapter 02 §2.7 (`/auth/recovery-info`)   |
 //! | `account`: email sign-in, setup, known device, phrase   | `auth-device-handlers.ts`, `device-registration.ts` |
+//! | `linking`: QR link, vault choice, wrong key, revoke     | `sync/linking-service.ts`, chapter 03      |
 //!
 //! Within it: a definition another device pushed first wins over the learned type, a deleted one
 //! stays deleted, the record has the shape Electron's seed pushes, a retry pushes nothing twice,
@@ -25,6 +26,8 @@ mod account;
 mod device_key;
 #[path = "harness_server/mod.rs"]
 mod harness_server;
+#[path = "sync_harness/linking.rs"]
+mod linking;
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
