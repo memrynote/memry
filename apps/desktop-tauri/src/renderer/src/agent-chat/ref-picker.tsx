@@ -9,6 +9,7 @@ import { useT } from '@memry/i18n/renderer'
 import { MentionIcon, type MentionAttachment, type MentionIconSpec } from './mention-icons'
 import { useDebouncedValue } from '@/hooks/use-task-filters'
 import { cn } from '@/lib/utils'
+import { searchService } from '@/services/search-service'
 
 interface RefPickerProps {
   query: string
@@ -92,7 +93,7 @@ function matchesCalendarEvent(event: CalendarEventRecord, query: string): boolea
 
 async function loadSearchResults(text: string): Promise<RefPickerResult[]> {
   try {
-    const response = await window.api.search.query({ text, limit: 20 })
+    const response = await searchService.query({ text, limit: 20 })
     return response.groups.flatMap((group) =>
       group.results.flatMap((item) => {
         const result = toAttachmentResult(item)
