@@ -42,6 +42,10 @@ struct EditorUndoStep: Sendable, Equatable {
     var forwardOverText: [TextNode] = []
     /// `forward`'s text in core bytes, which each `TextNode.start` counts in.
     var forwardLength = 0
+    /// Where a redo leaves the caret, in UTF-16 of the block it draws: after
+    /// the nodes it put back. The redraw's own guess lands before a node
+    /// put back beside an equal one.
+    var caret: Int?
     /// Replayed after `backward`: a step that changed two blocks, such as a
     /// merge, puts both back.
     var backwardAfter: [BlockEdit] = []
@@ -145,21 +149,27 @@ extension EditorUndoStep {
 
     /// Typing whose commit then put inline nodes in: a typed `[[link]]`, a
     /// menu's or a drop's link or date. `next` is the block as the step left
-    /// it, each node a U+FFFC, so undo's diff takes the nodes back with the
-    /// typing. A U+FFFC in `ReplaceText` makes no node, so redo writes the
+    /// it, each node a U+FFFC, then with each node in turn back as text
+    /// (`BlockText.placingNodes`): undo walks it, so each diff takes back
+    /// exactly its node and never one beside it, and ends at `previous`.
+    /// A U+FFFC in `ReplaceText` makes no node, so redo writes the
     /// typing, `typed` (`typedLength` core bytes), then puts `overText` back
     /// over their literals and runs `nodes` again as they went in.
     static func text(
         blockId: String, from previous: String, typed: String, typedLength: Int,
-        overText: [TextNode], nodes: [BlockEdit], to next: String
+        overText: [TextNode], nodes: [BlockEdit], to next: [String], caret: Int
     ) -> EditorUndoStep {
-        EditorUndoStep(
+        let texts = next + [previous]
+        let back = zip(texts, texts.dropFirst()).map { BlockEdit.replaceText(blockId: blockId, text: $1, base: $0) }
+        return EditorUndoStep(
             name: "Typing",
-            backward: .replaceText(blockId: blockId, text: previous, base: next),
+            backward: back[0],
             forward: .replaceText(blockId: blockId, text: typed, base: previous),
             forwardProps: nodes,
             forwardOverText: overText,
-            forwardLength: typedLength
+            forwardLength: typedLength,
+            caret: caret,
+            backwardAfter: Array(back.dropFirst())
         )
     }
 

@@ -577,7 +577,8 @@ final class EditorSession {
                 let spans = converted.map { $0.start ..< $0.start + $0.literal.utf8.count } + added.compactMap(Self.span)
                 self.history.record(.text(
                     blockId: blockId, from: base, typed: text, typedLength: length, overText: converted,
-                    nodes: added, to: BlockText.placingNodes(spans, in: attributed)
+                    nodes: added, to: BlockText.placingNodes(spans, in: attributed),
+                    caret: (field.pendingSelection ?? field.textView.selectedRange).location
                 ))
             } else if wrote {
                 self.history.record(.text(blockId: blockId, from: base, to: text))
@@ -1277,9 +1278,15 @@ final class EditorSession {
             return
         }
         guard canRedo else { return }
-        replay { history in
+        replay { [weak self] history in
             guard let step = history.popRedo() else { return nil }
-            return { model in await model.redo(step) }
+            return { model in
+                await model.redo(step)
+                if let caret = step.caret, let field = self?.field,
+                   case let .replaceText(blockId, _, _) = step.forward, field.blockId == blockId {
+                    field.pendingSelection = NSRange(location: caret, length: 0)
+                }
+            }
         }
     }
 

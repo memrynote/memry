@@ -767,6 +767,13 @@ final class NotesSplitUITests: XCTestCase {
         }
         XCTAssertTrue(notes.waitForExistence(timeout: 5), "the sidebar did not show")
         notes.tap()
+        // An earlier run may have left a split, which the launch restores.
+        let side = app.otherElements["notes.pane.side"]
+        if side.waitForExistence(timeout: 3) {
+            app.primeCommandKeys()
+            app.typeKey("w", modifierFlags: [.command, .option])
+            XCTAssertTrue(side.waitForNonExistence(timeout: 5), "a restored split did not close")
+        }
         // An earlier run may have left the inspector open, which hides the list.
         hideInspector()
         XCTAssertTrue(app.buttons["notes.addButton"].waitForExistence(timeout: 10))

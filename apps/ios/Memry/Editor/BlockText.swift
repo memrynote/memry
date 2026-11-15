@@ -110,18 +110,53 @@ enum BlockText {
 
     /// `text` with an atom node, a U+FFFC of no core bytes, put over each
     /// core range in turn: the block as the core holds it once those
-    /// `insertInline`s land on `text`.
-    static func placingNodes(_ spans: [Range<Int>], in text: NSAttributedString) -> String {
+    /// `insertInline`s land on `text`. Then that block with each of those
+    /// nodes, last first, turned back into the text it went over, or a
+    /// space for one that went over none. The core diffs `ReplaceText` by
+    /// prefix and suffix, so dropping a U+FFFC beside another node can drop
+    /// that node instead (VERIFY-4700); changing one U+FFFC into other text
+    /// changes exactly that one.
+    static func placingNodes(_ spans: [Range<Int>], in text: NSAttributedString) -> [String] {
         let result = NSMutableAttributedString(attributedString: text)
+        let placed = NSAttributedString.Key("memry.placed")
         for span in spans {
             let lower = utf16Offset(in: result, core: span.lowerBound)
             let upper = max(lower, utf16Offset(in: result, core: span.upperBound))
+            let range = NSRange(location: lower, length: upper - lower)
+            let covered = (result.string as NSString).substring(with: range)
             result.replaceCharacters(
-                in: NSRange(location: lower, length: upper - lower),
-                with: NSAttributedString(string: placeholder, attributes: [.memryNodeBytes: 0])
+                in: range,
+                with: NSAttributedString(
+                    string: placeholder, attributes: [.memryNodeBytes: 0, placed: covered.isEmpty ? " " : covered]
+                )
             )
         }
-        return result.string
+        var chain = [result.string]
+        for location in (0 ..< result.length).reversed() {
+            guard let covered = result.attribute(placed, at: location, effectiveRange: nil) as? String else { continue }
+            result.replaceCharacters(in: NSRange(location: location, length: 1), with: covered)
+            chain.append(result.string)
+        }
+        return chain
+    }
+
+    /// `base` to `text` as one change per run of text between inline nodes,
+    /// when both hold the same nodes: the text after each change, in order.
+    /// The core diffs `ReplaceText` by one common prefix and suffix, so
+    /// typing on both sides of a node in one write spans the node and
+    /// deletes it (VERIFY-4700). Typing never adds a node, so an equal
+    /// count is the same nodes.
+    static func stepsAroundNodes(from base: String, to text: String) -> [String] {
+        let old = base.components(separatedBy: placeholder)
+        let new = text.components(separatedBy: placeholder)
+        guard old.count == new.count else { return [text] }
+        var parts = old
+        var steps: [String] = []
+        for index in parts.indices where parts[index] != new[index] {
+            parts[index] = new[index]
+            steps.append(parts.joined(separator: placeholder))
+        }
+        return steps.isEmpty ? [text] : steps
     }
 
     /// `range` in `old` moved onto `new`, in UTF-16: the text both share

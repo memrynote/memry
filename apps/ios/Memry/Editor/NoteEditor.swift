@@ -96,7 +96,7 @@ final class NoteEditorViewModel {
 
         status = .saving
         do {
-            let landed = try await editor.edit(noteId: noteId, .replaceText(blockId: blockId, text: text, base: base))
+            let landed = try await send(.replaceText(blockId: blockId, text: text, base: base))
             if landed {
                 status = .idle
             } else {
@@ -613,7 +613,7 @@ final class NoteEditorViewModel {
         let failure: Status? = if holdsFailure, case .failed = status { status } else { nil }
         status = .saving
         do {
-            let landed = try await editor.edit(noteId: noteId, edit)
+            let landed = try await send(edit)
             finish?()
             // Refused, as `commit` reports it: the note or block is gone.
             status = failure ?? (landed ? .idle : .failed(ErrorMapping.unknownNote))
@@ -624,6 +624,22 @@ final class NoteEditorViewModel {
             status = .failed(ErrorMapping.userFacing(error))
             return false
         }
+    }
+}
+
+extension NoteEditorViewModel {
+    /// `edit`, with a `ReplaceText` written one run of text between nodes at
+    /// a time (`BlockText.stepsAroundNodes`), so it keeps every node. Answers
+    /// whether every write landed.
+    fileprivate func send(_ edit: BlockEdit) async throws -> Bool {
+        guard let editor else { return false }
+        guard case let .replaceText(blockId, text, base?) = edit else { return try await editor.edit(noteId: noteId, edit) }
+        var from = base
+        for step in BlockText.stepsAroundNodes(from: base, to: text) {
+            guard try await editor.edit(noteId: noteId, .replaceText(blockId: blockId, text: step, base: from)) else { return false }
+            from = step
+        }
+        return true
     }
 }
 

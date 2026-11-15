@@ -269,6 +269,176 @@ struct InlineNodeUndoTests {
         guard case .failed = f.model.status else { Issue.record("status is \(f.model.status)"); return }
     }
 
+    /// Unsaved typing at UTF-16 `location`, with the caret after it.
+    private func type(_ text: String, at location: Int, in f: Fixture) {
+        f.field.textView.textStorage.insert(NSAttributedString(string: text), at: location)
+        f.field.dirty = true
+        f.field.textView.selectedRange = NSRange(location: location + (text as NSString).length, length: 0)
+    }
+
+    /// `qq `, then a committed link node to Foo, then `tail`.
+    private func linked(_ tail: String) async throws -> Fixture {
+        let f = try await fixture("qq ")
+        type("[[Foo]]" + tail, in: f)
+        f.session.commit(f.field)
+        await f.session.tail?.value
+        #expect(try await shown(f) == "qq \u{FFFC}" + tail)
+        return f
+    }
+
+    private func kinds(_ f: Fixture) async throws -> [String] {
+        try await runs(f).compactMap { run in run.marks.first { BlockText.nodeKinds.contains($0) } }
+    }
+
+    /// VERIFY-4700: a tag picked right before a link node keeps the link,
+    /// and its undo and redo take back and put back only the tag.
+    @Test(.timeLimit(.minutes(1))) func a_tag_picked_before_a_node_keeps_the_node() async throws {
+        let f = try await linked(" ")
+        f.session.tags = ["wo"]
+        type("#wo", at: 3, in: f)
+        f.session.selectionChanged(in: f.field)
+        f.session.chooseTag(try #require(f.session.tagSuggestions.first { $0.tag == "wo" }))
+        await f.session.tail?.value
+        #expect(try await shown(f) == "qq \u{FFFC} \u{FFFC} ")
+        #expect(try await kinds(f) == ["hashTag", "wikiLink"])
+
+        await undo(f)
+        #expect(try await shown(f) == "qq \u{FFFC} ")
+        #expect(try await kinds(f) == ["wikiLink"])
+
+        await redo(f)
+        #expect(try await shown(f) == "qq \u{FFFC} \u{FFFC} ")
+        #expect(try await kinds(f) == ["hashTag", "wikiLink"])
+    }
+
+    /// VERIFY-4700, as the keyboard leaves it: the link went in when the
+    /// caret left its `]]`, the space after it is not written yet, and the
+    /// tag is typed before it. One write with typing on both sides of the
+    /// link kept the link.
+    @Test(.timeLimit(.minutes(1))) func a_tag_picked_before_a_node_with_typing_after_it_keeps_the_node() async throws {
+        let f = try await linked("")
+        type(" ", in: f)
+        f.session.tags = ["wo"]
+        type("#wo", at: 3, in: f)
+        f.session.selectionChanged(in: f.field)
+        f.session.chooseTag(try #require(f.session.tagSuggestions.first { $0.tag == "wo" }))
+        await f.session.tail?.value
+        #expect(try await shown(f) == "qq \u{FFFC} \u{FFFC} ")
+        #expect(try await kinds(f) == ["hashTag", "wikiLink"])
+
+        await undo(f)
+        #expect(try await shown(f) == "qq \u{FFFC}")
+        #expect(try await kinds(f) == ["wikiLink"])
+
+        await redo(f)
+        #expect(try await shown(f) == "qq \u{FFFC} \u{FFFC} ")
+        #expect(try await kinds(f) == ["hashTag", "wikiLink"])
+    }
+
+    /// Typing on both sides of a node in one write keeps the node, and its
+    /// undo does too.
+    @Test(.timeLimit(.minutes(1))) func typing_on_both_sides_of_a_node_keeps_it() async throws {
+        let f = try await linked("")
+        type(" after", in: f)
+        type("before ", at: 0, in: f)
+        f.session.commit(f.field)
+        await f.session.tail?.value
+        #expect(try await shown(f) == "before qq \u{FFFC} after")
+        #expect(try await kinds(f) == ["wikiLink"])
+
+        await undo(f)
+        #expect(try await shown(f) == "qq \u{FFFC}")
+        #expect(try await kinds(f) == ["wikiLink"])
+    }
+
+    /// VERIFY-4700 Low: a redo that puts a tag back before an equal node
+    /// leaves the caret after the tag and its space, where the pick left it.
+    @Test(.timeLimit(.minutes(1))) func a_redone_tag_leaves_the_caret_after_it() async throws {
+        let f = try await linked(" ")
+        let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
+        let window = UIWindow(windowScene: scene)
+        defer { window.isHidden = true }
+        window.rootViewController = UIViewController()
+        f.field.textView.frame = CGRect(x: 0, y: 0, width: 400, height: 60)
+        window.rootViewController?.view.addSubview(f.field.textView)
+        window.makeKeyAndVisible()
+        #expect(f.field.textView.becomeFirstResponder())
+        f.session.tags = ["wo"]
+        type("#wo", at: 3, in: f)
+        f.session.selectionChanged(in: f.field)
+        f.session.chooseTag(try #require(f.session.tagSuggestions.first { $0.tag == "wo" }))
+        await f.session.tail?.value
+        await undo(f)
+        f.field.block = try #require(try await f.reader.blocks(id: f.noteId)?.first { $0.id == f.blockId })
+        f.field.render()
+        f.field.textView.selectedRange = NSRange(location: 3, length: 0)
+
+        await redo(f)
+        f.field.block = try #require(try await f.reader.blocks(id: f.noteId)?.first { $0.id == f.blockId })
+        f.field.render()
+        #expect(f.field.textView.text == "qq \u{FFFC} \u{FFFC} ")
+        #expect(f.field.textView.selectedRange == NSRange(location: 5, length: 0))
+    }
+
+    /// A tag picked right after a node, and one between two nodes.
+    @Test(.timeLimit(.minutes(1))) func a_tag_picked_between_nodes_keeps_both() async throws {
+        let f = try await linked(" ")
+        type("[[Bar]]", in: f)
+        f.session.commit(f.field)
+        await f.session.tail?.value
+        #expect(try await shown(f) == "qq \u{FFFC} \u{FFFC}")
+        f.session.tags = ["wo"]
+        type("#wo", at: 5, in: f)
+        f.session.selectionChanged(in: f.field)
+        f.session.chooseTag(try #require(f.session.tagSuggestions.first { $0.tag == "wo" }))
+        await f.session.tail?.value
+        #expect(try await shown(f) == "qq \u{FFFC} \u{FFFC} \u{FFFC}")
+        #expect(try await kinds(f) == ["wikiLink", "hashTag", "wikiLink"])
+
+        await undo(f)
+        #expect(try await shown(f) == "qq \u{FFFC} \u{FFFC}")
+        #expect(try await kinds(f) == ["wikiLink", "wikiLink"])
+
+        await redo(f)
+        #expect(try await shown(f) == "qq \u{FFFC} \u{FFFC} \u{FFFC}")
+        #expect(try await kinds(f) == ["wikiLink", "hashTag", "wikiLink"])
+    }
+
+    /// A link typed right before a node, and one chosen from the menu there.
+    @Test(.timeLimit(.minutes(1))) func a_link_typed_before_a_node_keeps_the_node() async throws {
+        let f = try await linked("")
+        type("[[Bar]] ", at: 3, in: f)
+        f.session.commit(f.field)
+        await f.session.tail?.value
+        #expect(try await shown(f) == "qq \u{FFFC} \u{FFFC}")
+        #expect(try await runs(f).filter { $0.marks.contains("wikiLink") }.map(\.target) == ["Bar", "Foo"])
+
+        await undo(f)
+        #expect(try await shown(f) == "qq \u{FFFC}")
+        #expect(try await runs(f).filter { $0.marks.contains("wikiLink") }.map(\.target) == ["Foo"])
+
+        await redo(f)
+        #expect(try await shown(f) == "qq \u{FFFC} \u{FFFC}")
+        #expect(try await runs(f).filter { $0.marks.contains("wikiLink") }.map(\.target) == ["Bar", "Foo"])
+    }
+
+    @Test(.timeLimit(.minutes(1))) func a_link_chosen_before_a_node_keeps_the_node() async throws {
+        let f = try await linked("")
+        type("[[Agent", at: 3, in: f)
+        f.session.selectionChanged(in: f.field)
+        let row = try #require(f.session.suggestions.first { $0.kind == .note(title: "Agent Dune", alias: "") })
+        f.session.choose(row)
+        await f.session.tail?.value
+        #expect(try await runs(f).filter { $0.marks.contains("wikiLink") }.map(\.target) == ["Agent Dune", "Foo"])
+
+        await undo(f)
+        #expect(try await shown(f) == "qq \u{FFFC}")
+        #expect(try await runs(f).filter { $0.marks.contains("wikiLink") }.map(\.target) == ["Foo"])
+
+        await redo(f)
+        #expect(try await runs(f).filter { $0.marks.contains("wikiLink") }.map(\.target) == ["Agent Dune", "Foo"])
+    }
+
     /// A node the core refused is not in the step: redo puts back the typing
     /// the user had, and no node they never saw.
     @Test(.timeLimit(.minutes(1))) func a_refused_node_is_not_redone() async throws {
