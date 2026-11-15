@@ -28,7 +28,8 @@ struct NotePageTitle: View {
                         await model.reload()
                     }
                 },
-                returnToBody: returnToBody
+                returnToBody: returnToBody,
+                draftChanged: { metadataModel.titleDraft = $0 }
             )
         } else {
             NoteHeader(title: model.displayTitle, summary: detail.summary)
