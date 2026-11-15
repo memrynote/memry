@@ -4,6 +4,7 @@ import { DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { useCountdown } from '@/hooks/use-countdown'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { linkingService } from '@/services/linking-service'
 import { RefreshCw, Loader2, Clock, AlertCircle, Copy, Lock } from '@/lib/icons'
 import { useT } from '@memry/i18n/renderer'
 
@@ -35,7 +36,7 @@ export function QrLinking({ onCancel }: QrLinkingProps): React.JSX.Element {
   const generateQr = useCallback(() => {
     setQrState('loading')
     setError(null)
-    window.api.syncLinking
+    linkingService
       .generateLinkingQr()
       .then((result) => {
         if (!result.qrData || !result.sessionId || !result.expiresAt) {
