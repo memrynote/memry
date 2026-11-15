@@ -27,6 +27,8 @@ final class NoteEditorViewModel {
     }
 
     let noteId: String
+    /// Names this page's writes in `bodyChanged`, so it skips its own.
+    let source: UUID
     private let editor: (any BlockEditing)?
     /// Creates the note a `[[` menu's Create row names. `nil` creates none.
     private let notes: (any NotesWriting)?
@@ -44,7 +46,9 @@ final class NoteEditorViewModel {
 
     init(noteId: String, editor: (any BlockEditing)?, notes: (any NotesWriting)? = nil) {
         self.noteId = noteId
-        self.editor = editor
+        let source = UUID()
+        self.source = source
+        self.editor = editor.map { AnnouncedEdits(editor: $0, source: source) }
         self.notes = notes
     }
 

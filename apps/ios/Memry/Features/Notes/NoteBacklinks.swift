@@ -170,6 +170,10 @@ struct BacklinkRowButton: View {
     var leaving: (() -> Void)?
 
     @Environment(\.openJournalDay) private var openJournalDay
+    /// The split view's pane this row's page is in (#4377).
+    @Environment(\.notesPane) private var pane
+    /// `⌘` was held as the row was touched: the tap opens to the side.
+    @State private var commandHeld = false
 
     var body: some View {
         Button(action: tap) {
@@ -187,6 +191,7 @@ struct BacklinkRowButton: View {
             .contentShape(.rect)
         }
         .disabled(isJournal && openJournalDay == nil)
+        .modifier(BacklinkOpenToTheSide(open: toSide, commandHeld: $commandHeld))
         .accessibilityElement(children: .combine)
         .accessibilityHint(isJournal ? JournalCopy.openInJournal : "")
         .accessibilityIdentifier("note.backlink.\(backlink.id)")
@@ -197,7 +202,18 @@ struct BacklinkRowButton: View {
         return false
     }
 
+    /// Opens the row's note in the pane beside this one; `nil` for a journal
+    /// day, and where no pane can show.
+    private var toSide: (() -> Void)? {
+        guard case let .note(route) = backlink.destination, let toSide = pane?.openToTheSide else { return nil }
+        return {
+            leaving?()
+            toSide(route)
+        }
+    }
+
     private func tap() {
+        if commandHeld, let toSide { return toSide() }
         switch backlink.destination {
         case let .note(route): open(route)
         case let .journalDay(date):
@@ -246,5 +262,23 @@ struct NoteBacklinksSheet: View {
         }
         .presentationDetents([.medium, .large])
         .task(id: searchIndex?.completed) { await model.reload() }
+    }
+}
+
+/// A backlink's "Open to the Side" (#4377): its menu, and a `⌘`-click.
+private struct BacklinkOpenToTheSide: ViewModifier {
+    let open: (() -> Void)?
+    @Binding var commandHeld: Bool
+
+    func body(content: Content) -> some View {
+        if let open {
+            content
+                .gesture(TouchDown { commandHeld = $0.contains(.command) })
+                .contextMenu {
+                    Button(NotesPaneCopy.openToTheSide, systemImage: "rectangle.split.2x1", action: open)
+                }
+        } else {
+            content
+        }
     }
 }

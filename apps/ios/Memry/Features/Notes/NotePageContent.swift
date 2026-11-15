@@ -47,6 +47,8 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
     /// The note inspector shows the properties, review and backlinks, so the
     /// page leaves them out (#4347).
     @Environment(\.noteInspectorShown) private var inspectorShown
+    /// The split view's pane this page is in (#4377), `nil` elsewhere.
+    @Environment(\.notesPane) private var pane
 
     /// Opens a wiki link's note, for the read view and the editor alike.
     /// Resolved on the tap, then pushed onto the stack the browse list pushes
@@ -62,6 +64,21 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
                         brokenLink = title
                     }
                 }
+            }
+        }
+    }
+
+    /// Opens a wiki link's note in the pane beside this one (#4377). A
+    /// journal day still opens in the Journal.
+    private var openTargetToSide: ((String) -> Void)? {
+        guard let toSide = pane?.openToTheSide, let open else { return nil }
+        return { title in
+            Task {
+                guard let route = await model.wikiTarget(for: title) else {
+                    brokenLink = title
+                    return
+                }
+                if JournalLink.date(fromJournalId: route.id) != nil { open(route) } else { toSide(route) }
             }
         }
     }
@@ -86,6 +103,7 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
         session.blocks = { model.blocks }
         session.openTag = openTag
         session.openWikiTarget = openTarget
+        session.openWikiTargetToSide = openTargetToSide
         session.requestSync = requestVaultSync
         session.whiteboards = whiteboards
         let noteTitle = detail.summary.title

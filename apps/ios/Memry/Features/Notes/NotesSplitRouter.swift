@@ -14,6 +14,12 @@ import SwiftUI
 // At compact width the phone's stack stays the owner of navigation. It still
 // reports each note it shows, so the last opened note survives a switch to
 // regular width and a relaunch there (`DESIGN.md` › Tablet, D6).
+//
+// **Two panes (#4377).** The detail column can hold a second note beside the
+// first, as desktop's `⌘\` split does. Each pane has its own back stack. The
+// focused pane, the one last touched or opened, takes what the list, search
+// and the menu bar open, and the list marks its note. The side pane is kept
+// while the width cannot show it, so it comes back when the width does.
 
 /// What the list column shows.
 enum NotesScope: Hashable, Codable, Sendable {
@@ -36,10 +42,18 @@ final class NotesSplitRouter {
     /// What is saved across launches. Ids only, like every `LaunchSnapshot`
     /// entry. Each field is optional on decode so a later field never makes an
     /// older save unreadable.
+    ///
+    /// `note` and `trail` are the main pane, as before the split. The split's
+    /// keys are additive: a build without the split ignores them and opens
+    /// the main pane, and `focus` is a raw string, so a slot a later build
+    /// adds reads as the main pane rather than failing the whole save.
     struct Saved: Codable, Equatable {
         var scope: NotesScope?
         var note: NoteRoute?
         var trail: [NoteRoute]?
+        var side: NotesPane?
+        var focus: String?
+        var ratio: Double?
     }
 
     static let snapshotKey = "notes.split"
@@ -67,6 +81,29 @@ final class NotesSplitRouter {
         didSet { save() }
     }
 
+    /// The second pane, `nil` while the detail column holds one note. Kept
+    /// while the width collapses the split.
+    private(set) var side: NotesPane? {
+        didSet { save() }
+    }
+
+    /// The pane the list, search and the menu bar act on.
+    private(set) var focus: NotesPaneSlot = .main {
+        didSet { if focus != oldValue { save() } }
+    }
+
+    /// The main pane's share of the detail column's width.
+    var ratio = 0.5 {
+        didSet { save() }
+    }
+
+    /// Set by the split view: its width holds two panes.
+    var splitFits = false
+
+    /// The last link each pane followed, and the note it was followed from:
+    /// what `⌘\` opens beside that note. Not saved.
+    @ObservationIgnored private var lastLinks: [NotesPaneSlot: (from: NoteRoute, to: NoteRoute)] = [:]
+
     private let snapshot: LaunchSnapshot?
 
     init(snapshot: LaunchSnapshot? = nil) {
@@ -75,22 +112,60 @@ final class NotesSplitRouter {
         scope = saved.scope ?? .root
         note = saved.note
         trail = saved.trail ?? []
+        side = saved.side
+        focus = side == nil ? .main : saved.focus.flatMap(NotesPaneSlot.init(rawValue:)) ?? .main
+        ratio = saved.ratio ?? 0.5
     }
 
     static func restored() -> NotesSplitRouter { NotesSplitRouter(snapshot: .shared) }
 
-    /// The note on screen: the last one followed, else the selected one.
-    var current: NoteRoute? { trail.last ?? note }
+    /// The focused pane's note on screen: the last one followed, else the
+    /// one it opened on.
+    var current: NoteRoute? { pane(focus)?.current }
 
-    /// A row picked in the list or the sidebar.
-    func select(_ route: NoteRoute?) {
-        note = route
-        trail = []
+    /// The focused pane's own note, which the list marks.
+    var selected: NoteRoute? { pane(focus)?.note }
+
+    /// Both panes are on screen.
+    var splitShown: Bool { side != nil && splitFits }
+
+    func pane(_ slot: NotesPaneSlot) -> NotesPane? {
+        switch slot {
+        case .main: NotesPane(note: note, trail: trail)
+        case .side: side
+        }
     }
 
-    /// A link followed inside the open note.
-    func follow(_ route: NoteRoute) {
-        trail.append(route)
+    /// A row picked in the list or the sidebar, into the focused pane.
+    func select(_ route: NoteRoute?) {
+        update(focus) { $0 = NotesPane(note: route) }
+    }
+
+    /// `route` as `slot`'s own note, which takes the focus.
+    func open(_ route: NoteRoute, in slot: NotesPaneSlot) {
+        update(slot) { $0 = NotesPane(note: route) }
+        activate(slot)
+    }
+
+    /// A link followed inside a pane, by default the focused one.
+    func follow(_ route: NoteRoute, in slot: NotesPaneSlot? = nil) {
+        let slot = slot ?? focus
+        update(slot) { pane in
+            if let from = pane.current { lastLinks[slot] = (from, route) }
+            pane.trail.append(route)
+        }
+        focus = slot
+    }
+
+    /// A pane's back stack, as its `NavigationStack` changes it.
+    func setTrail(_ trail: [NoteRoute], in slot: NotesPaneSlot) {
+        update(slot) { if $0.trail != trail { $0.trail = trail } }
+    }
+
+    /// A touch in a pane.
+    func activate(_ slot: NotesPaneSlot) {
+        guard pane(slot) != nil else { return }
+        focus = slot
     }
 
     func show(_ scope: NotesScope) {
@@ -118,9 +193,13 @@ final class NotesSplitRouter {
     /// own page, so the detail column falls back to its empty state rather
     /// than drawing a note that is gone.
     func prune(keeping ids: Set<String>) {
-        if let note, !ids.contains(note.id) { select(nil) }
-        let kept = trail.filter { ids.contains($0.id) }
-        if kept != trail { trail = kept }
+        for slot in NotesPaneSlot.allCases {
+            update(slot) { pane in
+                if let note = pane.note, !ids.contains(note.id) { pane = NotesPane() }
+                let kept = pane.trail.filter { ids.contains($0.id) }
+                if kept != pane.trail { pane.trail = kept }
+            }
+        }
     }
 
     /// The phone stack that shows the same place, for a window that narrows
@@ -134,13 +213,69 @@ final class NotesSplitRouter {
         case .tags: path.append(TagListRoute())
         case .bookmarks: path.append(BookmarkListRoute())
         }
-        for route in (note.map { [$0] } ?? []) + trail { path.append(route) }
+        let pane = pane(focus) ?? NotesPane(note: note, trail: trail)
+        for route in (pane.note.map { [$0] } ?? []) + pane.trail { path.append(route) }
         return path
     }
 
+    private func update(_ slot: NotesPaneSlot, _ change: (inout NotesPane) -> Void) {
+        switch slot {
+        case .main:
+            var pane = NotesPane(note: note, trail: trail)
+            change(&pane)
+            if pane.note != note { note = pane.note }
+            if pane.trail != trail { trail = pane.trail }
+        case .side:
+            guard var pane = side else { return }
+            change(&pane)
+            if pane != side { side = pane }
+        }
+    }
+
     private func save() {
-        snapshot?.setStack(Self.snapshotKey, value: Saved(scope: scope, note: note, trail: trail))
+        snapshot?.setStack(Self.snapshotKey, value: Saved(
+            scope: scope, note: note, trail: trail,
+            side: side, focus: side == nil ? nil : focus.rawValue, ratio: side == nil ? nil : ratio
+        ))
         if isSplit { snapshot?.setPath(Self.compactKey, compactPath()) }
+    }
+}
+
+// MARK: - The split (#4377)
+
+extension NotesSplitRouter {
+    /// `⌘\` (desktop's `tabs.splitRight`): a side pane beside the focused
+    /// one, on the note the focused note's last followed link opened, or
+    /// empty with a note picker when it followed none.
+    func splitRight() {
+        guard side == nil else { return }
+        let target = pane(focus)?.current.flatMap { current in
+            lastLinks[focus].flatMap { $0.from == current ? $0.to : nil }
+        }
+        side = NotesPane(note: target)
+        focus = .side
+    }
+
+    /// "Open to the Side" and `⌘`-click: `route` in the pane beside `slot`,
+    /// which takes the focus. With one pane, that is a new side pane.
+    func openToTheSide(_ route: NoteRoute, from slot: NotesPaneSlot? = nil) {
+        let target: NotesPaneSlot = (slot ?? focus) == .side ? .main : .side
+        if target == .side, side == nil {
+            side = NotesPane(note: route)
+        } else {
+            update(target) { $0 = NotesPane(note: route) }
+        }
+        focus = target
+    }
+
+    /// `⌘⌥W` (desktop's `tabs.closeSplit`): closes the focused pane, and the
+    /// other one fills the detail column.
+    func closeSplit() {
+        guard let side else { return }
+        if focus == .main { update(.main) { $0 = side } }
+        lastLinks = [:]
+        focus = .main
+        self.side = nil
     }
 }
 
@@ -192,7 +327,7 @@ struct NotesList<Content: View>: View {
 
     var body: some View {
         if let split {
-            List(selection: Binding(get: { split.note }, set: { split.select($0) })) { content() }
+            List(selection: Binding(get: { split.selected }, set: { split.select($0) })) { content() }
         } else {
             List { content() }
         }
@@ -216,7 +351,7 @@ private struct NotesRowSelection: ViewModifier {
     func body(content: Content) -> some View {
         if let split, case let .note(note) = row.kind {
             content.background {
-                if split.note?.id == note.id {
+                if split.selected?.id == note.id {
                     RoundedRectangle(cornerRadius: Tokens.Radius.small)
                         .fill(Tokens.Canvas.surfaceActive.color)
                 }

@@ -288,6 +288,8 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
     /// Inside `render`, whose `attributedText` puts the caret at the end before
     /// the old selection goes back: the session sees only where it lands.
     private var rendering = false
+    /// A wiki link's Open and Open to the Side (#4377).
+    private var linkMenu: WikiLinkMenu?
 
     init(block: Block, session: EditorSession, style: BlockText.Style, alignment: NSTextAlignment) {
         self.block = block
@@ -298,6 +300,7 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
         let tap = UITapGestureRecognizer(target: self, action: #selector(openTappedTag(_:)))
         tap.delegate = self
         textView.addGestureRecognizer(tap)
+        linkMenu = WikiLinkMenu(field: self)
         textView.backspaceAtStart = { [weak self] in
             guard let self else { return }
             self.session?.backspaceAtStart(self)
@@ -351,7 +354,12 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
         if let date = date(at: point) {
             session?.requestDateEdit(date, in: self)
         } else if let target = wikiTarget(at: point) {
-            session?.openWikiTarget?(target)
+            // ⌘-click opens the link beside this pane, as on desktop.
+            if gesture.modifierFlags.contains(.command), let side = session?.openWikiTargetToSide {
+                side(target)
+            } else {
+                session?.openWikiTarget?(target)
+            }
         } else if let tag = tag(at: point) {
             session?.openTag?(tag)
         }
@@ -361,7 +369,7 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
         attribute(.memryTag, at: point)
     }
 
-    private func wikiTarget(at point: CGPoint) -> String? {
+    func wikiTarget(at point: CGPoint) -> String? {
         attribute(.memryWikiTarget, at: point)
     }
 

@@ -63,6 +63,10 @@ final class EditorSession {
     /// Opens a wiki link's target, for a tap on a link in a block. `nil`
     /// leaves the tap to place the caret.
     @ObservationIgnored var openWikiTarget: ((String) -> Void)?
+    /// Opens a wiki link's target in the pane beside this note (#4377), for
+    /// a `⌘`-tap and the link's menu. `nil` where no pane can show beside
+    /// it: a tap opens the link here, and the link has no menu.
+    @ObservationIgnored var openWikiTargetToSide: ((String) -> Void)?
     /// Schedules a vault sync pass (`requestVaultSync`, debounced), so a
     /// write reaches other devices without waiting for the next foreground
     /// or launch. `didChange` calls it after every committed write.

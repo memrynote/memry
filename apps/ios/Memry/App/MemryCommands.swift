@@ -22,6 +22,7 @@ import UIKit
 
 enum AppCommand: Hashable {
     case newNote, quickCapture, newTask, search, commandPalette, settings, today, previousDay, nextDay, dayPanel
+    case splitRight, closeSplit
     /// The `n`th page in the visible order, 1–9.
     case page(Int)
 
@@ -40,6 +41,8 @@ enum AppCommand: Hashable {
         case .previousDay: "journal.previous"
         case .nextDay: "journal.next"
         case .dayPanel: "view.toggleDayPanel"
+        case .splitRight: "tabs.splitRight"
+        case .closeSplit: "tabs.closeSplit"
         // An iPad addition with no catalog entry yet (desktop #4384).
         case .quickCapture: "capture.quick"
         case let .page(number): "page.\(number)"
@@ -72,6 +75,9 @@ enum AppCommand: Hashable {
         case .nextDay: KeyboardShortcut(.rightArrow, modifiers: [.option, .command])
         // view.toggleDayPanel
         case .dayPanel: KeyboardShortcut("b", modifiers: [.shift, .command])
+        // tabs.splitRight, tabs.closeSplit: two notes side by side (#4377).
+        case .splitRight: KeyboardShortcut("\\", modifiers: .command)
+        case .closeSplit: KeyboardShortcut("w", modifiers: [.option, .command])
         // app-sidebar.tsx: ⌘1–⌘9 open the nth visible page.
         case let .page(number): KeyboardShortcut(KeyEquivalent(Character(String(number))), modifiers: .command)
         }
@@ -103,6 +109,8 @@ enum AppCommand: Hashable {
         case .previousDay: CommandCopy.previousDay
         case .nextDay: CommandCopy.nextDay
         case .dayPanel: CommandCopy.dayPanel
+        case .splitRight: CommandCopy.splitRight
+        case .closeSplit: CommandCopy.closeSplit
         case let .page(number): "Page \(number)"
         }
     }
@@ -111,9 +119,10 @@ enum AppCommand: Hashable {
     static let newItem: [AppCommand] = [.newNote, .quickCapture, .newTask]
     static let find: [AppCommand] = [.search, .commandPalette]
     static let journal: [AppCommand] = [.today, .previousDay, .nextDay]
+    static let view: [AppCommand] = [.dayPanel, .splitRight, .closeSplit]
 
     /// Every command with a fixed title, in menu order.
-    static let fixed: [AppCommand] = newItem + [.settings] + find + journal + [.dayPanel]
+    static let fixed: [AppCommand] = newItem + [.settings] + find + journal + view
 }
 
 /// The catalog's `context`, for the contexts iOS has commands in.
@@ -134,6 +143,8 @@ enum CommandCopy {
     static let previousDay = "Previous Journal Period"
     static let nextDay = "Next Journal Period"
     static let dayPanel = "Toggle Day Panel"
+    static let splitRight = "Split Right"
+    static let closeSplit = "Close Split Pane"
     /// `go.*`: "Go to Home", "Go to Inbox", …
     static func goTo(_ page: String) -> String { "Go to \(page)" }
 
@@ -157,10 +168,12 @@ enum CommandCopy {
 struct MemryCommands: Commands {
     @FocusedValue(\.vaultCommands) private var vault
     @FocusedValue(\.journalDayCommands) private var journalDay
+    @FocusedValue(\.notesSplit) private var notesSplit
 
     private var target: VaultCommands? {
         guard var vault else { return nil }
         vault.journalDay = journalDay
+        vault.notesSplit = notesSplit
         return vault
     }
 
@@ -172,7 +185,7 @@ struct MemryCommands: Commands {
             button(.settings)
         }
         CommandGroup(after: .sidebar) {
-            button(.dayPanel)
+            ForEach(AppCommand.view, id: \.self, content: button)
         }
         CommandMenu("Go") {
             ForEach(AppCommand.find, id: \.self, content: button)

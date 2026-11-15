@@ -24,6 +24,8 @@ struct VaultCommands {
     let commandPalette: (VaultCommands) -> Void
     /// The shown journal day's own keys, when a day page is on screen.
     var journalDay: JournalDayCommands?
+    /// The Notes split view's panes (#4377), when it is on screen.
+    var notesSplit: NotesSplitRouter?
 
     /// Today's date in the Journal's terms, as the router and capture use it.
     var today: () -> String = { JournalClock.debugPin() ?? JournalDates.key(Date()) }
@@ -80,6 +82,11 @@ struct VaultCommands {
         tasks.selectedTab == .journal && journal.shownDay != nil ? journalDay : nil
     }
 
+    /// The split view, while Notes is the page on screen.
+    private var notesShown: NotesSplitRouter? {
+        tasks.selectedTab == .notes ? notesSplit : nil
+    }
+
     func can(_ command: AppCommand) -> Bool {
         switch command {
         case .newNote: newNote != nil
@@ -89,6 +96,8 @@ struct VaultCommands {
         case .today: VaultTab.journal.isShown
         case .previousDay, .nextDay: dayShown != nil
         case .dayPanel: sideRails.dayPanelFits(on: tasks.selectedTab)
+        case .splitRight: notesShown.map { $0.splitFits && $0.side == nil } ?? false
+        case .closeSplit: notesShown?.splitShown ?? false
         case let .page(number): page(number) != nil
         }
     }
@@ -108,6 +117,8 @@ struct VaultCommands {
         case .previousDay: dayShown?.step(-1)
         case .nextDay: dayShown?.step(1)
         case .dayPanel: sideRails.toggleDayPanel(on: tasks.selectedTab)
+        case .splitRight: notesShown?.splitRight()
+        case .closeSplit: notesShown?.closeSplit()
         case let .page(number): if let page = page(number) { tasks.selectedTab = page }
         }
     }
@@ -122,6 +133,7 @@ struct JournalDayCommands {
 extension FocusedValues {
     @Entry var vaultCommands: VaultCommands?
     @Entry var journalDayCommands: JournalDayCommands?
+    @Entry var notesSplit: NotesSplitRouter?
 }
 
 extension VaultTabLayout {
