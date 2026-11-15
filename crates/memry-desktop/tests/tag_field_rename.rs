@@ -121,7 +121,51 @@ fn opened(files: &[(&str, &str)]) -> Vault {
     });
     add_field(&vault.schemas(), "Phone");
     definitions.seed().unwrap();
+    // The rename queues `delete Phone` only for a live record, so a setup that left Phone
+    // file-only fails here, with the state, not eight renames later on a differing outbox.
+    let live = definition_records(&vault)
+        .iter()
+        .any(|(id, _, deleted_at)| id == "Phone" && deleted_at.is_none());
+    assert!(
+        live,
+        "Phone has no live sync record after the seed\n{}",
+        setup_state(&vault)
+    );
     vault
+}
+
+/// The `property_definition` sync records, as `(item id, payload state, deleted_at)`.
+fn definition_records(vault: &Vault) -> Vec<(String, String, Option<i64>)> {
+    vault
+        .e
+        .core()
+        .db_handle()
+        .call_blocking(|conn| {
+            let mut rows = conn
+                .prepare(
+                    "SELECT item_id, payload_state, deleted_at FROM sync_items \
+                     WHERE item_type = 'property_definition' ORDER BY item_id",
+                )
+                .unwrap();
+            Ok(rows
+                .query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))
+                .unwrap()
+                .map(Result::unwrap)
+                .collect())
+        })
+        .unwrap()
+}
+
+/// What a failure of the definitions' setup needs to name it: the property definitions' sync
+/// records, the outbox and `.memry/properties.md`.
+fn setup_state(vault: &Vault) -> String {
+    let file = std::fs::read_to_string(vault.e.vault.join(".memry/properties.md"))
+        .unwrap_or_else(|e| format!("<unreadable: {e}>"));
+    format!(
+        "property_definition sync records (id, state, deleted_at): {:?}\noutbox (op, type, id): {:?}\nproperties.md:\n{file}",
+        definition_records(vault),
+        queued(vault),
+    )
 }
 
 fn add_field(schemas: &Schemas, name: &str) {
@@ -621,6 +665,7 @@ fn a_rename_stopped_at_any_step_comes_to_the_same_end_when_resumed() {
     const CHECKS: usize = 2 + 4 + 2;
     let mut reference = None;
     let mut pushed = None;
+    let mut pushed_before = String::new();
     for stop_at in std::iter::once(CHECKS).chain(0..CHECKS) {
         let vault = opened(&[
             ("Ahmet.md", AHMET),
@@ -652,6 +697,7 @@ fn a_rename_stopped_at_any_step_comes_to_the_same_end_when_resumed() {
             rows
         };
         clear_outbox(&vault.e);
+        let before = setup_state(&vault);
         let calls = AtomicUsize::new(0);
         let ran =
             vault
@@ -675,11 +721,17 @@ fn a_rename_stopped_at_any_step_comes_to_the_same_end_when_resumed() {
             assert!(twice.is_empty(), "{stop_at}: queued twice {twice:?}");
             let mut both_runs = [first, second].concat();
             both_runs.sort();
-            assert_eq!(Some(&both_runs), pushed.as_ref(), "{stop_at}");
+            assert_eq!(
+                Some(&both_runs),
+                pushed.as_ref(),
+                "{stop_at}\nbefore this rename:\n{before}\nbefore the reference's rename:\n{pushed_before}\nafter both runs:\n{}",
+                setup_state(&vault)
+            );
         } else {
             let ran = ran.unwrap();
             assert_eq!((ran.notes, ran.tasks, ran.skipped_existing), (3, 1, 2));
             pushed = Some(labelled(queued(&vault)));
+            pushed_before = before;
         }
         assert!(!vault.job(), "{stop_at}");
         let end = end_state(&vault, &task);

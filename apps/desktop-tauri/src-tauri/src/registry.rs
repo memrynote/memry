@@ -63,6 +63,10 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::custom_icons::custom_icons_delete,
             crate::commands::custom_icons::custom_icons_list,
             crate::commands::custom_icons::custom_icons_rename,
+            // devices
+            crate::commands::devices::sync_get_devices,
+            crate::commands::devices::sync_remove_device,
+            crate::commands::devices::sync_rename_device,
             // diagnostics
             crate::commands::diagnostics::diagnostics_preview_report,
             crate::commands::diagnostics::diagnostics_send_report,
@@ -103,6 +107,14 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::locale::locale_get,
             crate::commands::locale::locale_list,
             crate::commands::locale::locale_set,
+            // linking
+            crate::commands::linking::sync_approve_linking,
+            crate::commands::linking::sync_complete_linking_qr,
+            crate::commands::linking::sync_finalize_vault_choice,
+            crate::commands::linking::sync_generate_linking_qr,
+            crate::commands::linking::sync_get_linking_sas,
+            crate::commands::linking::sync_link_via_qr,
+            crate::commands::linking::sync_pick_vault_folder,
             // notes (`notes_upload_attachment` and `notes_upload_attachment_chunk` are binary
             // commands)
             crate::commands::attachment_sources::notes_download_attachment_from_url::<Wry>,
@@ -347,6 +359,8 @@ pub fn builder() -> Builder<Wry> {
             crate::events::JournalExternalChangeEvent,
             // locale
             crate::events::LocaleChangedEvent,
+            // linking
+            crate::events::SyncLinkingFinalizedEvent,
             // ocr languages
             crate::events::OcrLanguagesChangedEvent,
             // settings

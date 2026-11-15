@@ -41,6 +41,18 @@ vi.mock('../../../generated/bindings', () => ({
         }
       })
     },
+    syncLinkingFinalizedEvent: {
+      listen: vi.fn(
+        async (handler: (event: { payload: { deviceId?: string; error?: string } }) => void) => {
+          const cb: EventCallback<{ deviceId?: string; error?: string }> = (payload) =>
+            handler({ payload })
+          linkingFinalizedCallback = cb
+          return () => {
+            if (linkingFinalizedCallback === cb) linkingFinalizedCallback = null
+          }
+        }
+      )
+    },
     authOauthCallbackEvent: {
       listen: vi.fn(
         async (handler: (event: { payload: { code: string; state: string } }) => void) => {
@@ -105,10 +117,6 @@ function installApiHandlers(): void {
     return () => {
       if (syncStatusCallback === cb) syncStatusCallback = null
     }
-  })
-  api.onLinkingFinalized = vi.fn((cb: EventCallback<{ deviceId?: string; error?: string }>) => {
-    linkingFinalizedCallback = cb
-    return vi.fn()
   })
 }
 

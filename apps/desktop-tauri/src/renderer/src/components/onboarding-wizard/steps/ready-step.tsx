@@ -8,6 +8,7 @@ import { createLogger } from '@/lib/logger'
 import { cn } from '@/lib/utils'
 import { subscribeToEvent } from '@/services/tauri-event'
 import { vaultService } from '@/services/vault-service'
+import { linkingService } from '@/services/linking-service'
 import { events } from '../../../../../generated/bindings'
 import { applyNewUser } from '../apply-onboarding'
 import {
@@ -190,7 +191,7 @@ export function ReadyStep({ state, dispatch }: StepProps): React.JSX.Element {
   const pick = async (mode: 'parent' | 'existing'): Promise<void> => {
     setError(null)
     try {
-      const { path } = await window.api.syncLinking.pickVaultFolder()
+      const { path } = await linkingService.pickVaultFolder()
       if (!path) return
       if (mode === 'parent') {
         setExistingVault(false)

@@ -10,6 +10,9 @@ vi.mock('@memry/i18n/renderer', () => ({
   })
 }))
 
+const linking = vi.hoisted(() => ({}) as Record<string, ReturnType<typeof vi.fn>>)
+vi.mock('@/services/linking-service', () => ({ linkingService: linking }))
+
 vi.mock('@/components/traffic-lights', () => ({
   TrafficLights: () => <div data-testid="traffic-lights" />
 }))
@@ -137,7 +140,7 @@ describe('first-run wizard', () => {
   })
 
   it('keeps an existing Memry vault’s own settings when the user opens that folder', async () => {
-    api.syncLinking = { pickVaultFolder: vi.fn().mockResolvedValue({ path: '/Users/k/Old' }) }
+    linking.pickVaultFolder = vi.fn().mockResolvedValue({ path: '/Users/k/Old' })
     api.onboarding.isMemryVault.mockResolvedValue(true)
     api.vault.select = vi.fn().mockResolvedValue({ success: true, vault: { path: '/Users/k/Old' } })
     render(<FirstRunGate />)

@@ -85,6 +85,20 @@ impl Server {
         assert_eq!(reply["harnessOtp"], true, "{reply}");
     }
 
+    /// Gives the user who signed in with `email` a paid plan, so it can add vaults to its account.
+    #[allow(dead_code)] // One binary entitles.
+    pub fn entitle(&mut self, email: &str) {
+        let reply = self.command(&format!("entitle {email}"));
+        assert_eq!(reply["harnessEntitled"], true, "{reply}");
+    }
+
+    /// Changes an account vault's id on the server, as a server that chose a hostile id would.
+    #[allow(dead_code)] // One binary renames.
+    pub fn rename_vault(&mut self, from: &str, to: &str) {
+        let reply = self.command(&format!("rename-vault {from} {to}"));
+        assert_eq!(reply["harnessRenamed"], true, "{reply}");
+    }
+
     /// Sets the `desktop` client policy (§11.8): the kill switch and the optional write floor.
     #[allow(dead_code)] // One binary sets it.
     pub fn policy(&mut self, writes_enabled: bool, min_write_version: Option<&str>) {
