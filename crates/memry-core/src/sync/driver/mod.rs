@@ -57,6 +57,7 @@ use super::first_sync::{FirstSync, FirstSyncLimits, FirstSyncReport, ProgressSin
 use super::first_sync_store::read_meta;
 use super::hardening::history::{self, HistoryKind};
 use super::pack_bootstrap::PackBootstrap;
+use super::policy::ServerClock;
 use super::pull::PullLoop;
 use super::push::PushCoordinator;
 use super::state::{PassTrigger, SyncState, WriteGate};
@@ -441,6 +442,11 @@ impl SyncDriver {
         if let Err(error) = recorded {
             eprintln!("memry-core: recording the sync history failed: {error}");
         }
+    }
+
+    /// The server clock the last policy poll read ([`super::policy::PolicyTier::server_clock`]).
+    pub fn server_clock(&self) -> Option<ServerClock> {
+        self.engine.policy().server_clock()
     }
 
     fn is_paused(&self) -> bool {

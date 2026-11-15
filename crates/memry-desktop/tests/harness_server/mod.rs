@@ -85,6 +85,18 @@ impl Server {
         assert_eq!(reply["harnessOtp"], true, "{reply}");
     }
 
+    /// Sets the `desktop` client policy (§11.8): the kill switch and the optional write floor.
+    #[allow(dead_code)] // One binary sets it.
+    pub fn policy(&mut self, writes_enabled: bool, min_write_version: Option<&str>) {
+        let line = format!(
+            "policy {} {}",
+            u8::from(writes_enabled),
+            min_write_version.unwrap_or("")
+        );
+        let reply = self.command(line.trim_end());
+        assert_eq!(reply["harnessPolicy"], true, "{reply}");
+    }
+
     fn command(&mut self, line: &str) -> Value {
         let stdin = self.child.stdin.as_mut().expect("its stdin");
         stdin

@@ -61,6 +61,7 @@ pub mod journal_day_merge;
 pub mod note_body_feed;
 pub mod outbox;
 pub mod pack_bootstrap;
+pub mod pause;
 pub mod policy;
 pub mod pull;
 mod pull_decode;

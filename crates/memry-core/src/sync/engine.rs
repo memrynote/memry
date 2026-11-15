@@ -433,7 +433,7 @@ impl SyncEngine {
             return self.write_gate();
         }
 
-        super::policy::poll(&self.http, &self.policy, now_ms()).await
+        super::policy::poll(&self.http, &self.policy, now_ms).await
     }
 
     fn finish(

@@ -3,6 +3,7 @@ use std::time::Instant;
 
 use super::fixture::*;
 use super::projection::{CancelToken, ProjectionEvent};
+use crate::registry::create::CreateError;
 
 #[test]
 fn lifecycle_open_lays_out_core_and_registers_the_vault() {

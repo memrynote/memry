@@ -42,8 +42,8 @@ unicode-segmentation = "1.13.3"
 chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
 # `String.prototype.normalize("NFKC")` of the MathJax glyph text in `elements/math`.
 unicode-normalization = "0.1.25"
-# Turndown parses its input with domino, a spec-conformant HTML parser: the one place html5ever
-# is used. Everything else parses with the htmlparser2 port.
+# Spec-conformant HTML parsing where Electron uses one: Turndown's domino and the HTML block text
+# reader's jsdom (`services/file_text/html`). Everything else parses with the htmlparser2 port.
 html5ever = "0.40.1"
 markup5ever = "0.40.0"
 specta = { version = "=2.0.0-rc.26", features = ["derive", "serde_json"] }
@@ -95,6 +95,8 @@ tokio = { workspace = true, features = ["time", "sync", "net", "fs", "io-util"] 
 # The loopback media server (`shell/loopback.rs`): HTTP/1 on 127.0.0.1, streamed bodies.
 axum = { version = "0.8.9", default-features = false, features = ["http1", "tokio"] }
 tokio-util = { version = "0.7.19", features = ["io"] }
+# The sign-in loopback compares `state` in constant time; already in the lockfile.
+subtle = "2.6.1"
 icu_plurals = "2.4.0"
 icu_locale = "2.4.0"
 icu_decimal = "2.4.0"
@@ -208,6 +210,10 @@ path = "tests/sync_harness.rs"
 [[test]]
 name = "sync_driver_harness"
 path = "tests/sync_driver_harness.rs"
+
+[[test]]
+name = "sync_supervisor_harness"
+path = "tests/sync_supervisor_harness.rs"
 
 [[test]]
 name = "keyring_live"
