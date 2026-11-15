@@ -70,6 +70,17 @@ pub struct OcrLanguagesState {
     pub statuses: BTreeMap<OcrLanguage, OcrLanguageStatus>,
 }
 
+impl OcrLanguagesState {
+    /// The chosen languages whose data checked out, in the order chosen: what OCR reads with.
+    pub fn ready(&self) -> Vec<OcrLanguage> {
+        self.selected
+            .iter()
+            .copied()
+            .filter(|lang| self.statuses.get(lang) == Some(&OcrLanguageStatus::Ready))
+            .collect()
+    }
+}
+
 impl OcrLanguage {
     pub fn from_code(code: &str) -> Option<Self> {
         Self::ALL.into_iter().find(|lang| lang.code() == code)
@@ -153,11 +164,7 @@ impl OcrLanguages {
     /// What OCR reads with now: English and every chosen language whose data checked out
     /// (`ocrLanguageSet().codes`).
     pub fn ready(&self) -> Vec<OcrLanguage> {
-        let live = self.lock();
-        self.selected()
-            .into_iter()
-            .filter(|lang| self.status_of(&live, *lang) == OcrLanguageStatus::Ready)
-            .collect()
+        self.state().ready()
     }
 
     /// A Tesseract data dir holding the plain `.traineddata` of every downloaded language in

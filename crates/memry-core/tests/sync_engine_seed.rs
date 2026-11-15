@@ -95,9 +95,9 @@ impl PushWave for Push {
         Ok(1)
     }
 
-    async fn drain(&self) -> Result<(), ApiError> {
+    async fn drain(&self) -> Result<usize, ApiError> {
         self.log.lock().unwrap().push("push".into());
-        Ok(())
+        Ok(1)
     }
 }
 

@@ -123,6 +123,10 @@ mod embedding_projector;
 mod embeds;
 #[path = "file_open.rs"]
 mod file_open;
+#[path = "file_text_env.rs"]
+mod file_text_env;
+#[path = "file_text_runner.rs"]
+mod file_text_runner;
 #[path = "fold_agent.rs"]
 mod fold_agent;
 #[path = "fold_untrusted.rs"]

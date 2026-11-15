@@ -76,7 +76,7 @@ impl PushWave for Wave {
             })
     }
 
-    async fn drain(&self) -> Result<(), ApiError> {
+    async fn drain(&self) -> Result<usize, ApiError> {
         let report = self
             .push
             .drain_wave()
@@ -85,7 +85,7 @@ impl PushWave for Wave {
                 what: error.to_string(),
             })?;
         assert_eq!(report.rejected, 0, "the server took every row: {report:?}");
-        Ok(())
+        Ok(report.accepted)
     }
 }
 

@@ -263,7 +263,7 @@ fn a_message_this_device_holds_skips_a_remote_that_is_not_terminal() {
 }
 
 #[test]
-fn a_remote_the_schema_refuses_is_skipped_and_writes_nothing() {
+fn a_remote_the_schema_refuses_is_refused_and_writes_nothing() {
     let (db, _dir) = open("agent-message-refused");
     db.call_blocking(|conn| {
         let cases = [
@@ -283,6 +283,11 @@ fn a_remote_the_schema_refuses_is_skipped_and_writes_nothing() {
             for key in [AtRestKey::default(), key()] {
                 let totals = pull(conn, &key, vec![remote(ITEM_TYPE, &id, &bad)])?;
                 assert_eq!((totals.skipped, totals.corrupt), (1, 0), "{name}");
+                assert_eq!(
+                    totals.refused,
+                    [(ITEM_TYPE.to_owned(), id.clone())],
+                    "{name}"
+                );
                 assert_eq!(stored_payload_or_none(conn, &id), None, "{name}");
             }
         }

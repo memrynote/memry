@@ -101,6 +101,8 @@ pub struct PullLoop {
     at_rest: AtRestKey,
     /// Told what each page applied, after it commits ([`Observers`]).
     observers: Option<Arc<Observers>>,
+    /// The desktop ledgers run ([`PullLoop::with_hardening`]).
+    hardened: bool,
 }
 
 impl PullLoop {
@@ -120,7 +122,19 @@ impl PullLoop {
             clock_device: None,
             at_rest: AtRestKey::default(),
             observers: None,
+            hardened: false,
         }
+    }
+
+    /// Runs the desktop ledgers (decision K2, #3534): a permanently
+    /// quarantined item is skipped undecoded and a bad signature counts
+    /// toward its quarantine ([`super::hardening::quarantine`]), and a run
+    /// starts by refetching the rows marked corrupt an hour ago or more
+    /// ([`super::hardening::corrupt`]). `SyncDriver` builds its pulls with
+    /// it; iOS's `VaultSync::sync_now` does not, so its pull is unchanged.
+    pub fn with_hardening(mut self) -> Self {
+        self.hardened = true;
+        self
     }
 
     /// Tells `observers` what each page applied, once the page has committed.
@@ -251,7 +265,8 @@ impl PullLoop {
     /// and the page is pulled exactly as [`PullLoop::pull_page`] pulls it.
     ///
     /// Every run starts here, so it first refetches what another app version
-    /// refused ([`PullLoop::retry_refused`], #4453).
+    /// refused and, hardened, the rows held corrupt
+    /// ([`PullLoop::retry_refused`], #4453).
     pub async fn pull_first_page(&self) -> Result<PullReport, PullError> {
         self.retry_refused().await;
         self.page(true).await
