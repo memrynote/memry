@@ -318,6 +318,7 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
         undo.sessionRedo = { [weak self] in self?.session?.redo() }
         undo.sessionCanUndo = { [weak self] in self?.session?.canUndo ?? false }
         undo.sessionCanRedo = { [weak self] in self?.session?.canRedo ?? false }
+        installDrops()
     }
 
     var blockId: String { block.id ?? "" }
