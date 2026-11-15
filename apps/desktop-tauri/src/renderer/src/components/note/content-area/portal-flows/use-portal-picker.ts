@@ -14,6 +14,7 @@ import { useT } from '@memry/i18n/renderer'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import { notesService } from '@/services/notes-service'
+import { searchService } from '@/services/search-service'
 import type { EditorSchema } from '../editor-schema'
 import { updatePortalDefinition } from '../portal/portal-definition'
 import { searchPortalBlocks, stampPortalAnchor } from './portal-api'
@@ -41,7 +42,7 @@ async function loadNotes(query: string): Promise<PortalPickerNote[]> {
       emoji: note.emoji
     }))
   }
-  const response = await window.api.search.query({
+  const response = await searchService.query({
     text: query,
     types: ['note'],
     noteFileTypes: ['markdown'],
