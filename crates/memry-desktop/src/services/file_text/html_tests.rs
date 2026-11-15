@@ -39,6 +39,15 @@ fn reads_every_vector_as_electron_does() {
             );
             continue;
         }
+        if case.name == "select with non-option content" {
+            // Known divergence (module doc): the current spec keeps elements inside `select`.
+            assert_eq!(case.text, "oneblockboldtextafter");
+            assert_eq!(
+                read_html_text(case.html.as_bytes()).as_deref(),
+                Ok("one\n\nblock\n\nboldtextafter")
+            );
+            continue;
+        }
         assert_eq!(
             read_html_text(case.html.as_bytes()).as_deref(),
             Ok(case.text.as_str()),
@@ -89,11 +98,12 @@ fn nesting_reads_up_to_the_depth_cap_on_a_small_stack() {
 }
 
 /// The tree builder scans its open elements for most tags, so 100,000 nested elements cost
-/// 10^10 scans inside html5ever. The cap stops the parse a chunk past `MAX_DEPTH`, and the
-/// sink creates at most one node per byte of what it read.
+/// 10^10 scans inside html5ever. The cap stops the parse a chunk past `MAX_DEPTH`; the sink
+/// creates at most one node per byte of what it read, and each attach follows at most
+/// `MAX_DEPTH + 1` parent links. A template's contents nest one level below the template.
 #[test]
 fn deeper_nesting_stops_at_the_depth_cap_on_a_small_stack() {
-    for open in ["<div>", "<span>", "<b>", "<code>"] {
+    for open in ["<div>", "<span>", "<b>", "<code>", "<template>"] {
         let html = format!("{}deep", open.repeat(100_000));
         let (result, steps) = on_small_stack(move || {
             let before = html_steps();
@@ -101,8 +111,57 @@ fn deeper_nesting_stops_at_the_depth_cap_on_a_small_stack() {
             (result, html_steps() - before)
         });
         assert_eq!(result, Err(HtmlTextError::TooDeep), "{open}");
-        assert!(steps <= MAX_DEPTH + FEED_CHUNK + 8, "{open}: {steps} nodes");
+        assert!(
+            steps <= (MAX_DEPTH + FEED_CHUNK + 8) * (MAX_DEPTH + 3),
+            "{open}: {steps} steps"
+        );
     }
+}
+
+/// The adoption agency moves a block's children under a new, still detached element, and the
+/// tree keeps growing below them: each `<b><div>x9</b>` cycle nests about 10 levels deeper while
+/// an element's depth counted when it was first attached stays near 12. Unchecked, 40,000
+/// cycles build a 400,000-entry stack of open elements that html5ever scans for every `div`.
+/// Depth counted from the parent links stops it within `MAX_DEPTH / 9` cycles and a chunk.
+#[test]
+fn moved_subtrees_still_stop_at_the_depth_cap_on_a_small_stack() {
+    let cycle = format!("<b>{}</b>", "<div>".repeat(9));
+    let html = cycle.repeat(40_000);
+    let read = (MAX_DEPTH / 9 + 1) * cycle.len() + FEED_CHUNK;
+    let (result, steps) = on_small_stack(move || {
+        let before = html_steps();
+        let result = read_html_text(html.as_bytes());
+        (result, html_steps() - before)
+    });
+    assert_eq!(result, Err(HtmlTextError::TooDeep));
+    assert!(
+        steps <= 2 * read * (MAX_DEPTH + 3),
+        "{steps} steps for {read} bytes"
+    );
+}
+
+/// The largest node arena a file may ask for, before any text: 128 MiB.
+#[test]
+fn the_largest_tree_fits_in_128_mib() {
+    assert!(size_of::<Node>() <= 32, "{} bytes", size_of::<Node>());
+    assert!(size_of::<Node>() * node_budget(HTML_TEXT_MAX_BYTES) <= 128 << 20);
+}
+
+/// One tag with 400,000 distinct attributes builds one node, while html5ever compares each
+/// attribute with every earlier one: 8 * 10^10 comparisons. The deadline stops it.
+#[test]
+fn an_attribute_flood_stops_at_the_deadline() {
+    let mut html = String::from("<p ");
+    for i in 0..400_000_u32 {
+        for place in [17_576, 676, 26, 1] {
+            html.push(char::from(b'a' + (i / place % 26) as u8));
+        }
+        html.push(' ');
+    }
+    html.push('>');
+    assert!(html.len() <= HTML_TEXT_MAX_BYTES);
+    let result = parse(&html, node_budget(html.len()), Duration::from_secs(1));
+    assert!(matches!(result, Err(HtmlTextError::TooSlow)));
 }
 
 /// The walk visits each node once and the code walk once more at most.
@@ -117,7 +176,8 @@ fn the_walk_is_linear_in_the_nodes() {
 /// Formatting reconstruction clones every open formatting element for each run of text:
 /// 500 distinct `<b>` closed by `</div>` and then 20,000 paragraphs ask for 10 million
 /// elements from 170 KB. The budget stops the parse within one chunk of the budget, where at
-/// most one element is cloned per 16 bytes of the chunk for each byte of input.
+/// most one element is cloned per 16 bytes of the chunk for each byte of input. Each node within
+/// the budget follows at most `MAX_DEPTH + 1` parent links when it is attached.
 #[test]
 fn formatting_reconstruction_stops_at_the_node_budget() {
     let mut html = String::from("<div>");
@@ -131,7 +191,7 @@ fn formatting_reconstruction_stops_at_the_node_budget() {
     assert_steps_at_most(
         "formatting reconstruction",
         html_steps,
-        2 * node_budget(len) + FEED_CHUNK * len / 16,
+        node_budget(len) * (MAX_DEPTH + 3) + FEED_CHUNK * len / 16,
         || result = Some(read_html_text(html.as_bytes())),
     );
     assert_eq!(
@@ -139,6 +199,26 @@ fn formatting_reconstruction_stops_at_the_node_budget() {
         Some(Err(HtmlTextError::TooManyNodes {
             limit: node_budget(len)
         }))
+    );
+}
+
+/// The budget counts the file's bytes: each invalid byte decodes to a 3-byte U+FFFD, so a
+/// budget taken from the decoded text would triple.
+#[test]
+fn the_node_budget_counts_bytes_not_decoded_text() {
+    let mut html = b"<!--".to_vec();
+    html.resize(100_000, 0xff);
+    html.extend_from_slice(b"--><div>");
+    for i in 0..500 {
+        html.extend_from_slice(format!("<b id={i}>").as_bytes());
+    }
+    html.extend_from_slice(b"</div>");
+    html.extend_from_slice("<p>x</p>".repeat(20_000).as_bytes());
+    assert_eq!(
+        read_html_text(&html),
+        Err(HtmlTextError::TooManyNodes {
+            limit: node_budget(html.len())
+        })
     );
 }
 
