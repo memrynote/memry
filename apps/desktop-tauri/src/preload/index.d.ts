@@ -1019,15 +1019,6 @@ export interface JournalSettings {
 
 export type AISettings = AiSettings
 
-export interface AIModelStatus {
-  name: string
-  dimension: number
-  loaded: boolean
-  loading: boolean
-  error: string | null
-  embeddingCount?: number
-}
-
 export interface VoiceTranscriptionSettings {
   provider: 'local' | 'openai'
   memoNameMode: 'transcript' | 'timestamp' | 'none'
@@ -1055,14 +1046,6 @@ export interface VoiceTranscriptionOpenAIKeyStatus {
 export interface SettingsChangedEvent {
   key: string
   value: unknown
-}
-
-export interface EmbeddingProgressEvent {
-  current: number
-  total: number
-  phase: 'downloading' | 'loading' | 'ready' | 'error' | 'scanning' | 'embedding' | 'complete'
-  status?: string
-  progress?: number
 }
 
 export interface VoiceModelProgressEvent {
@@ -1395,14 +1378,6 @@ export interface SettingsClientAPI {
   getVoiceRecordingReadiness(): Promise<VoiceRecordingReadiness>
   getVoiceTranscriptionOpenAIKeyStatus(): Promise<VoiceTranscriptionOpenAIKeyStatus>
   setVoiceTranscriptionOpenAIKey(apiKey: string): Promise<{ success: boolean; error?: string }>
-  getAIModelStatus(): Promise<AIModelStatus>
-  loadAIModel(): Promise<{ success: boolean; error?: string; message?: string }>
-  reindexEmbeddings(): Promise<{
-    success: boolean
-    computed?: number
-    skipped?: number
-    error?: string
-  }>
   // Tab Settings
   getTabSettings(): Promise<TabSettings>
   setTabSettings(settings: Partial<TabSettings>): Promise<{ success: boolean; error?: string }>

@@ -18,6 +18,11 @@ impl Search {
             .read_blocking(move |data| note_embeddings::embeddable_note(data, &note_id))
     }
 
+    /// How many notes have a head vector ([`note_embeddings::count`]).
+    pub fn note_embedding_count(&self) -> Result<u64, StorageError> {
+        self.index.read_blocking(note_embeddings::count)
+    }
+
     pub fn mark_embedding_dirty(&self, note_id: &str) -> Result<(), StorageError> {
         let note_id = note_id.to_owned();
         self.index

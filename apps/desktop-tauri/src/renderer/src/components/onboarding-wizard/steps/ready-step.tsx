@@ -6,8 +6,10 @@ import { useAuth } from '@/contexts/auth-context'
 import { Cloud, Download, FileText, Shield, Sparkles } from '@/lib/icons'
 import { createLogger } from '@/lib/logger'
 import { cn } from '@/lib/utils'
+import { subscribeToEvent } from '@/services/tauri-event'
 import { vaultService } from '@/services/vault-service'
 import { linkingService } from '@/services/linking-service'
+import { events } from '../../../../../generated/bindings'
 import { applyNewUser } from '../apply-onboarding'
 import {
   activeImports,
@@ -69,7 +71,7 @@ function useModelProgress(): number | null {
   const [percent, setPercent] = useState<number | null>(null)
   useEffect(
     () =>
-      window.api.onEmbeddingProgress((event) => {
+      subscribeToEvent(events.aiEmbeddingProgressEvent, (event) => {
         if (event.phase === 'downloading' || event.phase === 'loading') {
           setPercent(Math.round(event.progress ?? 0))
         } else if (event.phase === 'ready') {
