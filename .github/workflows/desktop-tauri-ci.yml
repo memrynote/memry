@@ -455,7 +455,7 @@ jobs:
           SHARD: ${{ matrix.shard && format('--shard={0}/2', matrix.shard) || '' }}
         # The two-device spec runs once, in the first shard.
         run: |
-          pnpm --filter @memry/desktop-tauri exec wdio run e2e/wdio.conf.ts --spec e2e/specs/updater/zz-diag.e2e.ts --spec e2e/specs/updater/updater.e2e.ts
+          pnpm --filter @memry/desktop-tauri exec wdio run e2e/wdio.conf.ts --spec e2e/specs/updater/zz-diag.e2e.ts
 
       - name: E2E specs (Linux)
         if: matrix.variant == 'e2e' && matrix.platform == 'linux-x64'

@@ -109,111 +109,118 @@ async function shippedUpdaterFailures(page: Page): Promise<ShippedEvent[]> {
   )
 }
 
-for (let round = 0; round < 8; round++)
-  test(`diag offline round ${round}`, async ({ app, page }) => {
-    shipped.length = 0
-    const { logDir } = await appInfo(app)
-    await invoke(page, 'telemetry_set_enabled', { enabled: true })
-    await script(app, page, [
-      { kind: 'fail', error: 'offline' },
-      { kind: 'fail', error: 'offline' }
-    ])
-    // Counts every error toast that appears, since a toast leaves on its own after a few seconds.
-    await page.evaluate(() => {
-      const body = document.body
-      body.dataset.errorToasts = '0'
-      new MutationObserver((records) => {
-        const selector = '[data-sonner-toast][data-type="error"]'
-        for (const record of records)
-          for (const node of record.addedNodes) {
-            if (!(node instanceof Element)) continue
-            const added = (node.matches(selector) ? 1 : 0) + node.querySelectorAll(selector).length
-            body.dataset.errorToasts = String(Number(body.dataset.errorToasts) + added)
-          }
-      }).observe(body, { childList: true, subtree: true })
-    })
-    const errorToasts = () => page.evaluate(() => Number(document.body.dataset.errorToasts))
-
-    await page.evaluate(() => {
-      const w = window as unknown as { __ev: string[] }
-      w.__ev = []
-      const t0 = performance.now()
-      for (const type of ['mousedown', 'mouseup', 'click'])
-        window.addEventListener(
-          type,
-          (e) => {
-            const el = e.target as Element
-            w.__ev.push(
-              `${Math.round(performance.now() - t0)} ${type} ${el.tagName}[${(el.textContent || '').trim().slice(0, 24)}] y=${(e as MouseEvent).clientY} trusted=${e.isTrusted}`
-            )
-          },
-          true
-        )
-    })
-    await page.getByRole('button', { name: 'Settings', exact: true }).click()
-    await page.getByRole('button', { name: 'General', exact: true }).click()
-    if (fixed) await expect(page.getByTestId('ocr-languages-setting')).toBeVisible()
-    const probe = () =>
-      page.evaluate(() => {
-        const b = [...document.querySelectorAll('button')].find(
-          (x) => x.textContent?.trim() === 'Check now'
-        ) as HTMLButtonElement | undefined
-        const r = b?.getBoundingClientRect()
-        const top = r ? document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) : null
-        return JSON.stringify({
-          rect: r && [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)],
-          top: top?.outerHTML.slice(0, 100),
-          disabled: b?.disabled,
-          inner: [innerWidth, innerHeight],
-          outer: [outerWidth, outerHeight],
-          screen: [screen.width, screen.height, devicePixelRatio],
-          focus: document.hasFocus(),
-          visibility: document.visibilityState,
-          scrolled: [...document.querySelectorAll('*')]
-            .filter((e) => e.scrollTop > 0)
-            .map((e) => `${e.tagName}:${Math.round(e.scrollTop)}`)
-        })
+for (const fixed of [false, true])
+  for (let round = 0; round < 10; round++)
+    test(`diag offline fixed=${fixed} round ${round}`, async ({ app, page }) => {
+      shipped.length = 0
+      const { logDir } = await appInfo(app)
+      await invoke(page, 'telemetry_set_enabled', { enabled: true })
+      await script(app, page, [
+        { kind: 'fail', error: 'offline' },
+        { kind: 'fail', error: 'offline' }
+      ])
+      // Counts every error toast that appears, since a toast leaves on its own after a few seconds.
+      await page.evaluate(() => {
+        const body = document.body
+        body.dataset.errorToasts = '0'
+        new MutationObserver((records) => {
+          const selector = '[data-sonner-toast][data-type="error"]'
+          for (const record of records)
+            for (const node of record.addedNodes) {
+              if (!(node instanceof Element)) continue
+              const added =
+                (node.matches(selector) ? 1 : 0) + node.querySelectorAll(selector).length
+              body.dataset.errorToasts = String(Number(body.dataset.errorToasts) + added)
+            }
+        }).observe(body, { childList: true, subtree: true })
       })
-    const events = () =>
-      page.evaluate(() => JSON.stringify((window as unknown as { __ev: string[] }).__ev))
-    const before = await probe()
-    await page.getByRole('button', { name: 'Check now' }).click()
-    const afterClick = await probe()
-    try {
-      await expect.poll(async () => (await state(page)).status, { timeout: 8_000 }).toBe('error')
-    } catch (error) {
-      const updaterLines = readMainLog(logDir)
-        .split('\n')
-        .filter((line) => /Updater|updater/.test(line))
-        .slice(-12)
-      console.log(
-        `DIAG-MISS fixed=${fixed} round ${round}\n before ${before}\n afterClick ${afterClick}\n now ${await probe()}\n events ${await events()}\n state ${JSON.stringify(await state(page))}\n log ${updaterLines.join(' | ')}`
-      )
-      throw error
-    }
-    console.log(`DIAG-OK fixed=${fixed} round ${round}`)
-    await expect.poll(errorToasts).toBe(1)
-    await expect(page.getByText(/could not be resolved/).first()).toBeVisible()
-    // Red is for an install that failed; being offline is not one.
-    await expect(page.getByText('Update failed')).toHaveCount(0)
-    await expect(page.getByRole('dialog')).toHaveCount(0)
+      const errorToasts = () => page.evaluate(() => Number(document.body.dataset.errorToasts))
 
-    // Turning auto check back on runs a check in the background, which fails offline again.
-    const autoCheck = page.getByRole('switch', { name: 'Automatically check for updates' })
-    await autoCheck.click()
-    await expect.poll(async () => (await state(page)).autoCheckEnabled).toBe(false)
-    await autoCheck.click()
-    await expect.poll(async () => (await shippedUpdaterFailures(page)).length).toBe(2)
+      await page.evaluate(() => {
+        const w = window as unknown as { __ev: string[] }
+        w.__ev = []
+        const t0 = performance.now()
+        for (const type of ['mousedown', 'mouseup', 'click'])
+          window.addEventListener(
+            type,
+            (e) => {
+              const el = e.target as Element
+              w.__ev.push(
+                `${Math.round(performance.now() - t0)} ${type} ${el.tagName}[${(el.textContent || '').trim().slice(0, 24)}] y=${(e as MouseEvent).clientY} trusted=${e.isTrusted}`
+              )
+            },
+            true
+          )
+      })
+      await page.getByRole('button', { name: 'Settings', exact: true }).click()
+      await page.getByRole('button', { name: 'General', exact: true }).click()
+      if (fixed) await expect(page.getByTestId('ocr-languages-setting')).toBeVisible()
+      const probe = () =>
+        page.evaluate(() => {
+          const b = [...document.querySelectorAll('button')].find(
+            (x) => x.textContent?.trim() === 'Check now'
+          ) as HTMLButtonElement | undefined
+          const r = b?.getBoundingClientRect()
+          const top = r ? document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) : null
+          return JSON.stringify({
+            rect: r && [
+              Math.round(r.x),
+              Math.round(r.y),
+              Math.round(r.width),
+              Math.round(r.height)
+            ],
+            top: top?.outerHTML.slice(0, 100),
+            disabled: b?.disabled,
+            inner: [innerWidth, innerHeight],
+            outer: [outerWidth, outerHeight],
+            screen: [screen.width, screen.height, devicePixelRatio],
+            focus: document.hasFocus(),
+            visibility: document.visibilityState,
+            scrolled: [...document.querySelectorAll('*')]
+              .filter((e) => e.scrollTop > 0)
+              .map((e) => `${e.tagName}:${Math.round(e.scrollTop)}`)
+          })
+        })
+      const events = () =>
+        page.evaluate(() => JSON.stringify((window as unknown as { __ev: string[] }).__ev))
+      const before = await probe()
+      await page.getByRole('button', { name: 'Check now' }).click()
+      const afterClick = await probe()
+      try {
+        await expect.poll(async () => (await state(page)).status, { timeout: 8_000 }).toBe('error')
+      } catch (error) {
+        const updaterLines = readMainLog(logDir)
+          .split('\n')
+          .filter((line) => /Updater|updater/.test(line))
+          .slice(-12)
+        console.log(
+          `DIAG-MISS fixed=${fixed} round ${round}\n before ${before}\n afterClick ${afterClick}\n now ${await probe()}\n events ${await events()}\n state ${JSON.stringify(await state(page))}\n log ${updaterLines.join(' | ')}`
+        )
+        throw error
+      }
+      console.log(`DIAG-OK fixed=${fixed} round ${round}`)
+      await expect.poll(errorToasts).toBe(1)
+      await expect(page.getByText(/could not be resolved/).first()).toBeVisible()
+      // Red is for an install that failed; being offline is not one.
+      await expect(page.getByText('Update failed')).toHaveCount(0)
+      await expect(page.getByRole('dialog')).toHaveCount(0)
 
-    const failures = await shippedUpdaterFailures(page)
-    // A warning (`app_log_recorded` at `warn`), never an exception in Error Tracking.
-    expect(failures.map(({ name, action, errorCode }) => ({ name, action, errorCode }))).toEqual([
-      { name: 'app_log_recorded', action: 'warn', errorCode: 'HOST_NOT_FOUND' },
-      { name: 'app_log_recorded', action: 'warn', errorCode: 'HOST_NOT_FOUND' }
-    ])
-    expect(await errorToasts()).toBe(1)
-    // Back in the workspace, the sidebar footer has no failed-update row either.
-    await page.keyboard.press('Escape')
-    await expect(page.getByTestId('settings-view')).toHaveCount(0)
-    await expect(page.getByRole('button', { name: 'Update failed' })).toHaveCount(0)
-  })
+      // Turning auto check back on runs a check in the background, which fails offline again.
+      const autoCheck = page.getByRole('switch', { name: 'Automatically check for updates' })
+      await autoCheck.click()
+      await expect.poll(async () => (await state(page)).autoCheckEnabled).toBe(false)
+      await autoCheck.click()
+      await expect.poll(async () => (await shippedUpdaterFailures(page)).length).toBe(2)
+
+      const failures = await shippedUpdaterFailures(page)
+      // A warning (`app_log_recorded` at `warn`), never an exception in Error Tracking.
+      expect(failures.map(({ name, action, errorCode }) => ({ name, action, errorCode }))).toEqual([
+        { name: 'app_log_recorded', action: 'warn', errorCode: 'HOST_NOT_FOUND' },
+        { name: 'app_log_recorded', action: 'warn', errorCode: 'HOST_NOT_FOUND' }
+      ])
+      expect(await errorToasts()).toBe(1)
+      // Back in the workspace, the sidebar footer has no failed-update row either.
+      await page.keyboard.press('Escape')
+      await expect(page.getByTestId('settings-view')).toHaveCount(0)
+      await expect(page.getByRole('button', { name: 'Update failed' })).toHaveCount(0)
+    })
