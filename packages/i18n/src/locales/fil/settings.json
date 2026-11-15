@@ -2467,8 +2467,7 @@
       "failedToCloseVault": "Hindi maisara ang vault",
       "failedToSwitchVault": "Hindi makalipat ng vault",
       "failedToUpdateConfig": "Hindi ma-update ang config",
-      "failedToReindex": "Hindi ma-index ulit",
-      "googleSignInFailed": "Nabigo ang pag-sign in sa Google"
+      "failedToReindex": "Hindi ma-index ulit"
     }
   },
   "agentMcp": {

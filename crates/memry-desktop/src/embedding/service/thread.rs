@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 
 use tokio_util::sync::CancellationToken;
 
-use super::{EmbeddingService, Engine, ModelLoader, ModelProgress, Phase, lock};
+use super::{EmbedError, EmbeddingService, Engine, ModelLoader, ModelProgress, Phase, lock};
 use crate::embedding::download::Abort;
 
 pub(super) enum Request {
@@ -25,7 +25,8 @@ pub(super) enum Reply {
 pub(super) enum Fault {
     Load(String),
     Inference(String),
-    Panicked(String),
+    /// A panic, or a model process that died under the request; the model was dropped.
+    Crashed(String),
     TimedOut,
     /// The thread was stopped or replaced before it answered.
     Retired,
@@ -125,7 +126,7 @@ pub(super) fn work(
         }));
         let result = served.unwrap_or_else(|panic| {
             engine = None;
-            Err(Fault::Panicked(panic_message(&*panic)))
+            Err(Fault::Crashed(panic_message(&*panic)))
         });
         job.slot.fill(result);
     }
@@ -138,8 +139,8 @@ fn serve(
     abort: &Abort,
     progress: &(dyn Fn(ModelProgress) + Sync),
 ) -> Result<Reply, Fault> {
-    let engine = match engine {
-        Some(engine) => engine,
+    let loaded = match engine {
+        Some(loaded) => loaded,
         None => {
             // embedding-worker.ts:123, :259, :265.
             progress(ModelProgress::new(
@@ -165,9 +166,13 @@ fn serve(
     };
     match request {
         Request::Load => Ok(Reply::Loaded),
-        Request::Embed(text) => engine
-            .embed_text(text)
-            .map(Reply::Embedded)
-            .map_err(Fault::Inference),
+        Request::Embed(text) => match loaded.embed_text(text) {
+            Ok(vector) => Ok(Reply::Embedded(vector)),
+            Err(EmbedError::Failed(message)) => Err(Fault::Inference(message)),
+            Err(EmbedError::Crashed(message)) => {
+                *engine = None;
+                Err(Fault::Crashed(message))
+            }
+        },
     }
 }

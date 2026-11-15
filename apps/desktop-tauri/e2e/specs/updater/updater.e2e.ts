@@ -236,6 +236,9 @@ test('an offline check is a warning and shows one error, with no failed-update r
 
   await page.getByRole('button', { name: 'Settings', exact: true }).click()
   await page.getByRole('button', { name: 'General', exact: true }).click()
+  // The OCR languages row mounts once its IPC read answers and pushes the Updates group down 70 px.
+  // A click aimed before that lands on the row that moved under it (#3967, macOS CI's 686 px page).
+  await expect(page.getByTestId('ocr-languages-setting')).toBeVisible()
   await page.getByRole('button', { name: 'Check now' }).click()
   await expect.poll(async () => (await state(page)).status).toBe('error')
   await expect.poll(errorToasts).toBe(1)

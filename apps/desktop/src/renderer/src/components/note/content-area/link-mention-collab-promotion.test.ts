@@ -22,7 +22,7 @@ import { BlockNoteEditor, type Block } from '@blocknote/core'
 import { yUndoPluginKey } from 'y-prosemirror'
 import * as Y from 'yjs'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
-import { serializeLinkMentionToken } from '@memry/editor-schema/inline'
+import { serializeLinkMentionToken, splitTextWithLinkMentions } from '@memry/editor-schema/inline'
 
 vi.mock('react-pdf', () => ({
   Document: () => null,
@@ -296,4 +296,56 @@ describe('the renderer promotes ((mention:…)) inside a collaborative document'
     // #then
     expect(updates).toEqual([])
   })
+
+  // Documented, accepted risk (§12.1.1.1, decided on #4688): a build before
+  // #4652 promoted a token whatever the run's styles, so it still promotes a
+  // styled token this build leaves as text, and two such builds that open the
+  // note before they sync each add a chip and duplicate the text after it (#3871).
+  it('gets one chip per device when two pre-#4652 builds open a styled token before they sync', () => {
+    // #given a styled token as this build seeds it, on two replicas
+    const a = createCollaborativeEditor()
+    a.editor.replaceBlocks(a.editor.document, [
+      {
+        type: 'paragraph',
+        content: [
+          { type: 'text', text: 'A ', styles: {} },
+          { type: 'text', text: serializeLinkMentionToken(URL_), styles: { bold: true } },
+          { type: 'text', text: ' b.', styles: {} }
+        ]
+      } as never
+    ])
+    const b = createCollaborativeEditor()
+    Y.applyUpdate(b.doc, Y.encodeStateAsUpdate(a.doc))
+
+    // #when each opens it with the pre-#4652 promotion, then they sync
+    for (const { editor } of [a, b]) {
+      editor.replaceBlocks(editor.document, promoteIgnoringStyles(editor.document))
+    }
+    Y.applyUpdate(a.doc, Y.encodeStateAsUpdate(b.doc))
+    Y.applyUpdate(b.doc, Y.encodeStateAsUpdate(a.doc))
+
+    // #then
+    for (const { editor } of [a, b]) {
+      const runs = (editor.document[0] as Block).content as Array<{ type: string; text?: string }>
+      expect(runs.map((run) => run.text ?? `[${run.type}]`).join('')).toBe(
+        'A [linkMention] b.[linkMention] b.'
+      )
+    }
+  })
 })
+
+/** The open-time promotion of a build before #4652: top-level paragraphs only. */
+function promoteIgnoringStyles(blocks: Block[]): Block[] {
+  return blocks.map((block) => {
+    if (!Array.isArray(block.content)) return block
+    const content = block.content.flatMap((item) => {
+      if (item.type !== 'text') return [item]
+      const { segments, didChange } = splitTextWithLinkMentions(item.text)
+      if (!didChange) return [item]
+      return segments.map((segment) =>
+        typeof segment === 'string' ? { type: 'text', text: segment, styles: item.styles } : segment
+      )
+    })
+    return { ...block, content } as Block
+  })
+}

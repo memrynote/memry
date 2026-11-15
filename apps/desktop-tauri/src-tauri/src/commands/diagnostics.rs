@@ -16,7 +16,7 @@ use memry_desktop::telemetry::report::{
 use serde::Serialize;
 use tauri::{AppHandle, Manager, Wry};
 
-use super::error::{CommandError, ErrorKind};
+use super::error::CommandError;
 use crate::shell::services::telemetry;
 
 #[derive(Debug, Clone, Serialize, specta::Type)]
@@ -114,10 +114,7 @@ pub async fn diagnostics_send_report(
     let url = app
         .state::<RuntimeConfig>()
         .server_url("/diagnostics/report");
-    let body = serde_json::to_string(&report)
-        .map_err(|e| CommandError::new(ErrorKind::Internal, "diagnostics_encode", e.to_string()))?;
-    // Step 19 (#3536) adds the bearer so the server attributes the report to the account.
-    match report::post_json(app.state::<SyncTransport>().as_ref(), &url, body, None).await {
+    match report::send_incident_report(app.state::<SyncTransport>().as_ref(), &url, &report).await {
         Ok(()) => Ok(DiagnosticSendResult {
             success: true,
             incident_id: Some(report.incident_id),
@@ -128,7 +125,7 @@ pub async fn diagnostics_send_report(
                 scope = "Diagnostics",
                 "failed to send the incident report: {error}"
             );
-            Ok(fail("SEND_FAILED"))
+            Ok(fail(&error))
         }
     }
 }

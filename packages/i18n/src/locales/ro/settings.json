@@ -2467,8 +2467,7 @@
       "failedToCloseVault": "Nu s-a putut închide seiful",
       "failedToSwitchVault": "Nu s-a putut schimba seiful",
       "failedToUpdateConfig": "Nu s-a putut actualiza configurația",
-      "failedToReindex": "Nu s-a putut reindexa",
-      "googleSignInFailed": "Conectarea la Google a eșuat"
+      "failedToReindex": "Nu s-a putut reindexa"
     }
   },
   "agentMcp": {

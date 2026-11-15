@@ -1404,7 +1404,7 @@ export type FailureDetail = {
 
 /**
  *  The user's feedback (`FeedbackSubmitSchema`): the message trimmed and 1 to 5000 characters, an
- *  optional email that looks like one.
+ *  optional email of at most 320 characters.
  */
 export type FeedbackSubmit = {
 	message: string,
