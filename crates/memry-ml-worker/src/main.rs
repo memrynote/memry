@@ -1,8 +1,11 @@
-//! `memry-ml-worker --pdfium-dir <dir>`: answers the app's frames on stdin and stdout. Logs go to
-//! stderr, which the app forwards to `main.log`. pdfium is bound from `<dir>` on the first PDF,
-//! so a worker without it still starts and fails each PDF op with the reason. OCR runs on the
-//! Tesseract linked into this binary.
+//! `memry-ml-worker --pdfium-dir <dir> [--model-cache <dir>]`: answers the app's frames on stdin and
+//! stdout. Logs go to stderr, which the app forwards to `main.log`. pdfium is bound from its dir
+//! on the first PDF, and the embedding model loads from its directory under the cache on the first
+//! embedding op, so a worker without either still starts and fails those ops with the reason. OCR
+//! runs on the Tesseract linked into this binary.
 
+#[cfg(feature = "embed")]
+mod embed;
 mod ocr;
 mod pdf;
 
@@ -26,9 +29,12 @@ fn main() -> ExitCode {
     }
     let mut args = std::env::args_os().skip(1);
     let mut pdfium_dir = None;
+    let mut model_cache = None;
     while let Some(arg) = args.next() {
         if arg == "--pdfium-dir" {
             pdfium_dir = args.next().map(PathBuf::from);
+        } else if arg == "--model-cache" {
+            model_cache = args.next().map(PathBuf::from);
         } else {
             eprintln!("unknown argument {}", arg.to_string_lossy());
             return ExitCode::from(2);
@@ -40,6 +46,10 @@ fn main() -> ExitCode {
     };
     let mut pdfs = pdf::Pdfs::new(pdfium_dir);
     let mut ocr = ocr::Ocr::default();
+    #[cfg(feature = "embed")]
+    let mut embedder = embed::Embedder::new(model_cache);
+    #[cfg(not(feature = "embed"))]
+    let _ = model_cache;
     match serve(
         std::io::stdin().lock(),
         std::io::stdout().lock(),
@@ -49,7 +59,23 @@ fn main() -> ExitCode {
                 languages,
                 png,
             } => ocr.handle(&datapath, &languages, &png),
-            other => pdfs.handle(other),
+            Request::EmbedLoad
+            | Request::EmbedText { .. }
+            | Request::EmbedImage { .. }
+            | Request::ModelManifest { .. } => {
+                #[cfg(feature = "embed")]
+                {
+                    embedder.handle(request)
+                }
+                #[cfg(not(feature = "embed"))]
+                {
+                    memry_ml_worker::Response::Failed(
+                        "this worker was built without the embedding model (cargo feature `embed`)"
+                            .into(),
+                    )
+                }
+            }
+            request => pdfs.handle(request),
         },
     ) {
         Ok(()) => ExitCode::SUCCESS,

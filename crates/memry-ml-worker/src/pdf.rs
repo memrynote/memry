@@ -46,8 +46,7 @@ impl Pdfs {
                 self.docs.remove(&doc);
                 Ok(Response::Done)
             }
-            Request::Ocr { .. } => Err("OCR is not a PDF op".into()),
-            Request::Shutdown => Ok(Response::Done),
+            other => Err(format!("{} is not a PDF op", other.name())),
         };
         outcome.unwrap_or_else(Response::Failed)
     }

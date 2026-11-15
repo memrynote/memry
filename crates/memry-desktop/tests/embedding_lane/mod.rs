@@ -15,7 +15,7 @@ use memry_desktop::embedding::PROJECTORS;
 use memry_desktop::embedding::download::Abort;
 use memry_desktop::embedding::projector::{NoteEmbeddingProjector, drain_deferred};
 use memry_desktop::embedding::service::{
-    EMBEDDING_DIMENSION, EmbeddingService, Engine, ModelLoader, ModelProgress, Timing,
+    EMBEDDING_DIMENSION, EmbedError, EmbeddingService, Engine, ModelLoader, ModelProgress, Timing,
 };
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::index::{IndexReport, NoteIndex};
@@ -77,7 +77,7 @@ pub fn vector(text: &str) -> Vec<f32> {
 struct FakeEngine(Arc<Model>);
 
 impl Engine for FakeEngine {
-    fn embed_text(&mut self, text: &str) -> Result<Vec<f32>, String> {
+    fn embed_text(&mut self, text: &str) -> Result<Vec<f32>, EmbedError> {
         // `vault_env`'s watcher probe is a note too, and the watcher may report it again late.
         if text.contains("barrier") {
             return Ok(vector(text));

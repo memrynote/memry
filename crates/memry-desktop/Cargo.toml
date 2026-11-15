@@ -166,6 +166,16 @@ zbus = { version = "5.19.0", default-features = false, features = ["blocking-api
 [build-dependencies]
 serde_json.workspace = true
 
+# The stub worker of `memry-ml-worker` (its `src/bin/stub.rs`), built here so the integration
+# tests drive `embedding::worker::WorkerModel` over a real child process: Cargo hands a test the
+# path of its own package's binaries only. Test builds only (`test-hooks`); never bundled.
+[[bin]]
+name = "memry-desktop-worker-stub"
+path = "../memry-ml-worker/src/bin/stub.rs"
+required-features = ["test-hooks"]
+test = false
+doc = false
+
 # Integration tests: one binary for every file that runs in a shared process
 
 # (tests/integration.rs), and a target of its own for each file that needs one.

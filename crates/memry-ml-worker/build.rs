@@ -2,7 +2,7 @@
 //! (tauri-build's `staticVCRuntime`). The worker does the same, so no binary needs the VC++
 //! redistributable.
 //!
-//! With the `native` feature it also builds Leptonica and Tesseract with cmake and links both
+//! With the `ocr` feature it also builds Leptonica and Tesseract with cmake and links both
 //! statically (#3542, R1): Tesseract reads untrusted images, so it runs only in this process. The
 //! sources come from `scripts/fetch-tesseract-sources.mjs`, which pins them; cargo never fetches
 //! them. They are built once per machine, target and [`BUILD_KEY`] under `<root>/build`, shared by
@@ -26,7 +26,7 @@ fn main() {
     if msvc {
         static_vcruntime::metabuild();
     }
-    if std::env::var_os("CARGO_FEATURE_NATIVE").is_some() {
+    if std::env::var_os("CARGO_FEATURE_OCR").is_some() {
         tesseract(&target_os, msvc);
     }
 }

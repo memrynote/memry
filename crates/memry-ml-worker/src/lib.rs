@@ -5,8 +5,10 @@
 //! hang on a hostile file kills the child, never the app. The app talks to it over stdin and stdout
 //! in length-prefixed frames ([`frame`]) that carry the ops of [`op`]; [`supervisor::Supervisor`]
 //! owns the child, and [`Supervisor::open_pdf`] and [`Supervisor::recognize`] are the typed APIs
-//! over it.
+//! over it. ONNX Runtime (`memry-ml`) runs there too, on its own [`Supervisor`] (Kaan,
+//! 2026-11-14): `Supervisor::embed_text` and its siblings.
 
+mod embed_client;
 pub mod frame;
 mod ocr_client;
 pub mod op;
@@ -16,9 +18,15 @@ pub mod serve;
 pub mod supervisor;
 
 pub use frame::{Frame, FrameError, MAX_FRAME_LEN};
-pub use op::{MAX_OCR_EDGE, MAX_OCR_LANGUAGES, MAX_RENDER_EDGE, OpError, Request, Response};
+pub use op::{
+    EMBEDDING_DIMENSION, MAX_EMBED_IMAGE_BYTES, MAX_EMBED_TEXT_BYTES, MAX_FAILED_MESSAGE,
+    MAX_OCR_EDGE, MAX_OCR_LANGUAGES, MAX_RENDER_EDGE, MODEL_REPO, MODEL_REVISION, Manifest,
+    ManifestFile, ModelGroup, OpError, Request, Response,
+};
 pub use pdf_client::{PdfDocument, RenderedPage};
-pub use supervisor::{Clock, Lease, Limits, Supervisor, SystemClock, WorkerError};
+pub use supervisor::{
+    Clock, ExitObserver, ExitPhase, Lease, Limits, Supervisor, SystemClock, WorkerError,
+};
 
 /// The worker's file name next to the app's executable, where the bundle places the sidecar and
 /// where Cargo places it in a dev build.
