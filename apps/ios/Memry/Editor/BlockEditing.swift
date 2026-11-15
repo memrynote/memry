@@ -30,10 +30,18 @@ protocol BlockEditing: Sendable {
     /// and then that write is not undoable. Never stored or synced.
     func snapshot(noteId: String, blockId: String) async throws -> String?
 
-    /// One block's text as the core holds it now, every run's text joined,
-    /// so core offsets index its UTF-8. `nil` when the surface has none (the
-    /// journal, test fakes): then a page's own text stands in for it.
-    func blockText(noteId: String, blockId: String) async throws -> String?
+    /// Applies the edit `locate` builds from `blockId`'s runs as the core
+    /// holds them, read in the same turn of the core queue as the write, so
+    /// no other pane's write lands between them (#4706). `locate` gets `nil`
+    /// when the surface reads no block (the journal, test fakes), and then
+    /// a page's own text stands in for it; it answers `nil` when the block
+    /// no longer holds what the edit goes at, and nothing is written.
+    ///
+    /// - Returns: the edit and whether it landed, as `edit(noteId:_:)`
+    ///   answers, or `nil` when no edit was built.
+    func edit(
+        noteId: String, blockId: String, locating locate: @escaping @Sendable ([InlineRun]?) -> BlockEdit?
+    ) async throws -> (edit: BlockEdit, landed: Bool)?
 
     /// Whether a block can leave this body for another note (desktop's block
     /// menu "Move to"): the surface reads snapshots and appends them to
@@ -50,7 +58,12 @@ extension BlockEditing {
     /// A surface with no snapshot read (the journal, test fakes) offers no
     /// undo for a delete.
     func snapshot(noteId: String, blockId: String) async throws -> String? { nil }
-    func blockText(noteId: String, blockId: String) async throws -> String? { nil }
+    func edit(
+        noteId: String, blockId: String, locating locate: @escaping @Sendable ([InlineRun]?) -> BlockEdit?
+    ) async throws -> (edit: BlockEdit, landed: Bool)? {
+        guard let edit = locate(nil) else { return nil }
+        return (edit, try await self.edit(noteId: noteId, edit))
+    }
 
     /// The journal and test fakes move no block to another note.
     var movesBlocksBetweenNotes: Bool { false }
@@ -87,10 +100,17 @@ struct CoreBlockEditor: BlockEditing {
         try await executor.run { try writer().blockSnapshot(noteId: noteId, blockId: blockId) }
     }
 
-    func blockText(noteId: String, blockId: String) async throws -> String? {
+    func edit(
+        noteId: String, blockId: String, locating locate: @escaping @Sendable ([InlineRun]?) -> BlockEdit?
+    ) async throws -> (edit: BlockEdit, landed: Bool)? {
         let vault = vault
-        let blocks = try await executor.run { try vault.notes().blocks(id: noteId) }
-        return blocks?.first { $0.id == blockId }.map { $0.inline.map(\.text).joined() }
+        let located = try await executor.run { () throws -> (edit: BlockEdit, landed: Bool)? in
+            let runs = try vault.notes().blocks(id: noteId)?.first { $0.id == blockId }?.inline
+            guard let runs, let edit = locate(runs) else { return nil }
+            return (edit, try writer().editBlock(noteId: noteId, edit: edit))
+        }
+        if located?.landed == true { NotesTelemetry.noteUpdated(noteId, source: "editor_body") }
+        return located
     }
 
     var movesBlocksBetweenNotes: Bool { true }

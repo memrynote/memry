@@ -168,7 +168,9 @@ struct InlineNodeUndoTests {
         func edit(noteId: String, _ edit: BlockEdit) async throws -> Bool {
             try await core.edit(noteId: noteId, edit)
         }
-        func blockText(noteId: String, blockId: String) async throws -> String? { throw ReadFailed() }
+        func edit(
+            noteId: String, blockId: String, locating locate: @escaping @Sendable ([InlineRun]?) -> BlockEdit?
+        ) async throws -> (edit: BlockEdit, landed: Bool)? { throw ReadFailed() }
     }
 
     /// The pane's offsets may miss a literal another pane moved, so a typed
@@ -193,9 +195,6 @@ struct InlineNodeUndoTests {
             }
             return try await core.edit(noteId: noteId, edit)
         }
-        func blockText(noteId: String, blockId: String) async throws -> String? {
-            try await core.blockText(noteId: noteId, blockId: blockId)
-        }
     }
 
     /// The core's editor, except that once armed it refuses typing, or the
@@ -214,9 +213,6 @@ struct InlineNodeUndoTests {
                 }
             }
             return refused ? false : try await core.edit(noteId: noteId, edit)
-        }
-        func blockText(noteId: String, blockId: String) async throws -> String? {
-            try await core.blockText(noteId: noteId, blockId: blockId)
         }
     }
 

@@ -28,15 +28,15 @@ extension NSAttributedString.Key {
 
 @MainActor
 enum BlockText {
-    static let placeholder = "\u{FFFC}"
+    nonisolated static let placeholder = "\u{FFFC}"
 
     /// BlockNote's inline nodes, which the core carries as elements.
-    static let nodeKinds: Set<String> = [
+    nonisolated static let nodeKinds: Set<String> = [
         "wikiLink", "hashTag", "dateMention", "linkMention", "inlineImage", "inlineCheckbox",
         "htmlComment",
     ]
 
-    static func isNode(_ run: InlineRun) -> Bool {
+    nonisolated static func isNode(_ run: InlineRun) -> Bool {
         run.marks.contains { nodeKinds.contains($0) }
     }
 
@@ -49,7 +49,7 @@ enum BlockText {
         var text: String
     }
 
-    static func segments(_ runs: [InlineRun]) -> [Segment] {
+    nonisolated static func segments(_ runs: [InlineRun]) -> [Segment] {
         var out: [Segment] = []
         for run in runs {
             let node = isNode(run)
@@ -64,14 +64,31 @@ enum BlockText {
         return out
     }
 
-    private static func nodeAttrs(_ run: InlineRun) -> [String: String] {
+    nonisolated private static func nodeAttrs(_ run: InlineRun) -> [String: String] {
         run.markAttrs.filter { key, _ in nodeKinds.contains { key.hasPrefix($0 + ".") } }
             .merging(["_tag": run.marks.first { nodeKinds.contains($0) } ?? ""]) { $1 }
     }
 
     /// The block as the text view spells it.
-    static func shown(_ runs: [InlineRun]) -> String {
+    nonisolated static func shown(_ runs: [InlineRun]) -> String {
         segments(runs).map { $0.isNode ? placeholder : $0.text }.joined()
+    }
+
+    /// The core offset of a UTF-16 position in `shown(runs)`.
+    nonisolated static func coreOffset(in runs: [InlineRun], shown offset: Int) -> Int {
+        var left = offset
+        var bytes = 0
+        for segment in segments(runs) where left > 0 {
+            if segment.isNode {
+                left -= 1
+                bytes += segment.coreBytes
+            } else {
+                let text = segment.text as NSString
+                bytes += text.substring(to: min(left, text.length)).utf8.count
+                left -= text.length
+            }
+        }
+        return bytes
     }
 
     /// The core offset of a UTF-16 position in the text view's text.
@@ -164,13 +181,9 @@ enum BlockText {
     /// moves by its length, one before it stays, and one inside it goes to
     /// its end.
     static func carry(_ range: NSRange, from old: String, to new: String) -> NSRange {
+        let (prefix, suffix) = sharedEnds(old, new)
         let old = Array(old.utf16)
         let new = Array(new.utf16)
-        let shortest = min(old.count, new.count)
-        var prefix = 0
-        while prefix < shortest, old[prefix] == new[prefix] { prefix += 1 }
-        var suffix = 0
-        while suffix < shortest - prefix, old[old.count - 1 - suffix] == new[new.count - 1 - suffix] { suffix += 1 }
         let changedEnd = old.count - suffix
         let move = { (location: Int) -> Int in
             if location <= prefix { return location }
@@ -179,6 +192,30 @@ enum BlockText {
         }
         let start = move(range.location)
         return NSRange(location: start, length: max(0, move(NSMaxRange(range)) - start))
+    }
+
+    /// `length` UTF-16 units at `location` in `old`, found in `new` as
+    /// `carry` moves them, or `nil` when the change between them touches
+    /// them: their place is no longer known.
+    nonisolated static func follow(_ location: Int, length: Int, from old: String, to new: String) -> Int? {
+        let (prefix, suffix) = sharedEnds(old, new)
+        let delta = new.utf16.count - old.utf16.count
+        if location + length <= prefix { return location }
+        if location >= old.utf16.count - suffix { return location + delta }
+        return nil
+    }
+
+    /// The UTF-16 units `old` and `new` share at their start, then at their
+    /// end, not overlapping.
+    nonisolated private static func sharedEnds(_ old: String, _ new: String) -> (prefix: Int, suffix: Int) {
+        let old = Array(old.utf16)
+        let new = Array(new.utf16)
+        let shortest = min(old.count, new.count)
+        var prefix = 0
+        while prefix < shortest, old[prefix] == new[prefix] { prefix += 1 }
+        var suffix = 0
+        while suffix < shortest - prefix, old[old.count - 1 - suffix] == new[new.count - 1 - suffix] { suffix += 1 }
+        return (prefix, suffix)
     }
 
     // MARK: - Drawing
@@ -380,5 +417,37 @@ enum BlockText {
             range: NSRange(location: 0, length: out.length)
         )
         return out
+    }
+}
+
+/// Where a pane puts an inline node: at the space it wrote at UTF-16
+/// `location` in `typed`, its text once its commit landed, either over
+/// that space (`replaces`, a date chip's update) or just before it (a
+/// menu's node, an append). Another pane's write may land before the node
+/// does and move that space (#4706), so the node goes where the block holds
+/// it then.
+struct NodeAnchor: Sendable {
+    let typed: String
+    let location: Int
+    let replaces: Bool
+    /// The core range in the pane's own text, for a surface that reads no
+    /// block (the journal): it holds only this pane's text.
+    let paneRange: Range<Int>
+
+    /// The anchor at `location` in `text`, the pane's text view's text.
+    @MainActor static func at(_ location: Int, in text: NSAttributedString, replaces: Bool) -> NodeAnchor {
+        let start = BlockText.coreOffset(in: text, utf16: location)
+        return NodeAnchor(typed: text.string, location: location, replaces: replaces, paneRange: start ..< start + (replaces ? 1 : 0))
+    }
+
+    /// The core range the node goes over in `runs`, the block as the core
+    /// holds it: the pane's space carried past what changed since. `nil`
+    /// when a change touched the space, so a ranged insert never replaces
+    /// another writer's text.
+    func range(in runs: [InlineRun]?) -> Range<Int>? {
+        guard let runs else { return paneRange }
+        guard let at = BlockText.follow(location, length: 1, from: typed, to: BlockText.shown(runs)) else { return nil }
+        let start = BlockText.coreOffset(in: runs, shown: at)
+        return start ..< start + (replaces ? 1 : 0)
     }
 }
