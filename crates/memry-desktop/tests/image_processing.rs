@@ -8,7 +8,7 @@ use std::time::Duration;
 
 use base64::Engine as _;
 use image::{ImageFormat, ImageReader, Rgba, RgbaImage};
-use memry_desktop::services::image_processing::{ImageError, ImageService};
+use memry_desktop::services::image_processing::ImageService;
 
 /// `(width, height, thumbnail size, inbox thumbnail size)` from sharp's `resize(200 | 400, ...,
 /// { fit: 'inside', withoutEnlargement: true })`.
@@ -222,6 +222,8 @@ async fn an_image_over_30_mib_is_read_only_to_the_cap() {
 #[tokio::test]
 async fn a_fifo_is_refused_without_blocking() {
     use std::os::unix::ffi::OsStrExt as _;
+
+    use memry_desktop::services::image_processing::ImageError;
 
     let dir = tempfile::tempdir().expect("dir");
     let fifo = dir.path().join("a.png");
