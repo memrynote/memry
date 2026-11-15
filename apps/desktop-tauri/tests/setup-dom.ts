@@ -638,21 +638,6 @@ const createMockApi = () => ({
     getLinkedTasks: vi.fn().mockResolvedValue([])
   },
 
-  // Search API
-  search: {
-    query: vi.fn().mockResolvedValue({ results: [], total: 0 }),
-    quick: vi.fn().mockResolvedValue([]),
-    suggestions: vi.fn().mockResolvedValue([]),
-    getReasons: vi.fn().mockResolvedValue([]),
-    clearReasons: vi.fn().mockResolvedValue({ success: true }),
-    addReason: vi.fn().mockResolvedValue({ success: true }),
-    getStats: vi.fn().mockResolvedValue({}),
-    rebuildIndex: vi.fn().mockResolvedValue({ success: true }),
-    searchNotes: vi.fn().mockResolvedValue([]),
-    findByTag: vi.fn().mockResolvedValue([]),
-    findBacklinks: vi.fn().mockResolvedValue([])
-  },
-
   // Settings API
   settings: {
     get: vi.fn().mockResolvedValue(null),

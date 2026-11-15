@@ -208,6 +208,10 @@ jobs:
       - name: Check embedding input vectors against the Electron oracle
         run: pnpm --filter @memry/desktop vectors:embedding-input:check
 
+      # The HTML block text vectors come from Electron's file-text/html-text.ts the same way.
+      - name: Check HTML text vectors against the Electron oracle
+        run: pnpm --filter @memry/desktop vectors:html-text:check
+
       # oxlint, type-aware, over the whole repo. Rules with a backlog are warnings held
       # by the ratchet in scripts/lint-baseline.json; new violations show as annotations.
       # --ignore-scripts skipped the extension's postinstall, and its tsconfig extends the
