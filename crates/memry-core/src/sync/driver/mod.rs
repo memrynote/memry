@@ -56,6 +56,7 @@ use super::engine::{PassReport, PassSeed, SyncEngine};
 use super::first_sync::{FirstSync, FirstSyncLimits, FirstSyncReport, ProgressSink};
 use super::first_sync_store::read_meta;
 use super::pack_bootstrap::PackBootstrap;
+use super::policy::ServerClock;
 use super::pull::PullLoop;
 use super::push::PushCoordinator;
 use super::state::{PassTrigger, SyncState, WriteGate};
@@ -390,6 +391,11 @@ impl SyncDriver {
     /// The account's plan ([`SyncEngine::set_entitled`]).
     pub fn set_entitled(&self, entitled: bool) {
         self.engine.set_entitled(entitled);
+    }
+
+    /// The server clock the last policy poll read ([`super::policy::PolicyTier::server_clock`]).
+    pub fn server_clock(&self) -> Option<ServerClock> {
+        self.engine.policy().server_clock()
     }
 
     fn is_paused(&self) -> bool {
