@@ -124,6 +124,16 @@ const mentionCases: RoundtripCase[] = [
     name: 'legacy link mention token with a stray space',
     markdown: 'Intro ((mention:https%3A%2F%2Fx.test%2Fpage )) outro.',
     canonical: `Intro ${mention('https://x.test/page')} outro.`
+  },
+  // A token in a formatted run stays text (#4652): a chip carries no style, so
+  // promoting it dropped the backticks or delimiters around it on write-back.
+  {
+    name: 'link mention token in inline code',
+    markdown: `Intro \`${mention('https://example.com/a_b')}\` outro.`
+  },
+  {
+    name: 'link mention token in italics, bold and strikethrough',
+    markdown: `See *${mention('https://example.com/a_b')}*, **${mention('https://x.test/c')}** and ~~${mention('https://x.test/d')}~~ here.`
   }
 ]
 
