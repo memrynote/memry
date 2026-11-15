@@ -1,13 +1,15 @@
 //! The palette's `search_*` commands through the IPC a renderer calls, over a real vault and its
 //! SQLite databases (Electron's `ipc/search-handlers.ts` and `search/semantic.ts`, #3540): the
 //! contract shapes, the refused inputs, the counts, the recently opened results, and the query's
-//! semantic leg with a fake text model and raw `vec_notes` rows.
+//! semantic leg with a fake text model and raw `vec_notes` rows; the text model's status, load and
+//! reindex (`settings/ai-settings.ts:124-171`) and the progress events they send.
 
 #[allow(dead_code, reason = "only the open and invoke of the harness are used")]
 mod support;
 
-use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::mpsc::{Receiver, channel};
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use memry_core::storage::vec::EMBEDDING_DIMENSION;
@@ -17,14 +19,17 @@ use memry_desktop::embedding::projector::NoteEmbeddingProjector;
 use memry_desktop::embedding::service::{
     EmbedError, EmbeddingService, Engine, ModelLoader, ModelProgress, Timing,
 };
+use memry_desktop::locale::LocaleService;
 use memry_desktop::registry::AppConfig;
 use memry_desktop::session::OpenSource;
 use memry_desktop::settings::SettingsService;
+use memry_tauri::events::AiEmbeddingProgressEvent;
+use memry_tauri::ml_worker::{model_progress, pass_progress};
 use serde_json::{Value, json};
 use support::{MemoryStore, Mocked, WAIT};
-use tauri::Manager;
 use tauri::test::MockRuntime;
-use tauri_specta::collect_commands;
+use tauri::{Listener, Manager};
+use tauri_specta::{Event, collect_commands};
 
 const ALPHA: &str = "# Alpha\n\nThe quarterly roadmap lives here.\n";
 const GARDEN: &str = "# Garden\n\nTomatoes and basil, planted in May.\n";
@@ -38,6 +43,8 @@ fn opened() -> Fixture {
     let commands = tauri_specta::Builder::<MockRuntime>::new()
         .error_handling(tauri_specta::ErrorHandlingMode::Throw)
         .commands(collect_commands![
+            memry_tauri::commands::ai::ai_get_model_status::<MockRuntime>,
+            memry_tauri::commands::ai::ai_load_model::<MockRuntime>,
             memry_tauri::commands::ai::ai_reindex_embeddings::<MockRuntime>,
             memry_tauri::commands::search::search_query::<MockRuntime>,
             memry_tauri::commands::search::search_quick::<MockRuntime>,
@@ -266,12 +273,15 @@ fn unit() -> Vec<f32> {
     vector
 }
 
-/// A text model that embeds every text to [`unit`], or fails each embed with `broken`.
+/// A text model that embeds every text to [`unit`], or fails each embed with `broken`. Its load
+/// fails with `refuse`, and waits for `hold` when one is set.
 #[derive(Default)]
 struct Model {
     loads: AtomicUsize,
     embeds: Arc<AtomicUsize>,
     broken: bool,
+    refuse: Option<&'static str>,
+    hold: Mutex<Option<Receiver<()>>>,
 }
 
 struct Loaded {
@@ -297,6 +307,12 @@ impl ModelLoader for Model {
         _: &(dyn Fn(ModelProgress) + Sync),
     ) -> Result<Box<dyn Engine>, String> {
         self.loads.fetch_add(1, Ordering::SeqCst);
+        if let Some(hold) = self.hold.lock().unwrap().take() {
+            hold.recv().unwrap();
+        }
+        if let Some(reason) = self.refuse {
+            return Err(reason.to_owned());
+        }
         Ok(Box::new(Loaded {
             embeds: self.embeds.clone(),
             broken: self.broken,
@@ -305,7 +321,8 @@ impl ModelLoader for Model {
 }
 
 fn with_model(f: &Fixture, model: Arc<Model>) -> Arc<EmbeddingService> {
-    let service = EmbeddingService::new(model, Arc::new(|_| {}), Timing::default());
+    let app = f.mocked.webview.app_handle();
+    let service = EmbeddingService::new(model, model_progress(app), Timing::default());
     f.mocked.webview.app_handle().manage(service.clone());
     service
 }
@@ -395,7 +412,7 @@ fn with_lane(f: &Fixture, model: Arc<Model>) {
         service,
         Arc::new(move |vault| features::read(&settings, Some(vault)).is_ok_and(|ai| ai.enabled)),
         Arc::new(|| false),
-        Arc::new(|_| {}),
+        pass_progress(f.mocked.webview.app_handle()),
     ));
     set_ai(f, false);
     session.close();
@@ -441,4 +458,139 @@ fn a_reindex_with_no_embedding_lane_says_the_model_did_not_load() {
     );
     f.mocked.session().close();
     assert_eq!(reindex(&f)["error"], "No vault is open");
+}
+
+/// Every [`AiEmbeddingProgressEvent`] the app sends from here on.
+fn progress_heard(f: &Fixture) -> Arc<Mutex<Vec<Value>>> {
+    let heard = Arc::new(Mutex::new(Vec::new()));
+    let sink = heard.clone();
+    f.mocked
+        .webview
+        .app_handle()
+        .listen_any(AiEmbeddingProgressEvent::NAME, move |event| {
+            sink.lock()
+                .unwrap()
+                .push(serde_json::from_str(event.payload()).unwrap());
+        });
+    heard
+}
+
+fn model_status(f: &Fixture) -> Value {
+    f.mocked.invoke("ai_get_model_status", json!({})).unwrap()
+}
+
+fn load_model(f: &Fixture) -> Value {
+    f.mocked.invoke("ai_load_model", json!({})).unwrap()
+}
+
+#[test]
+fn the_model_status_counts_the_open_vaults_notes_with_a_vector() {
+    let f = opened();
+    assert_eq!(
+        model_status(&f),
+        json!({
+            "name": "EmbeddingGemma 2", "dimension": 256, "loaded": false, "loading": false,
+            "error": "Failed to load embedding model", "embeddingCount": 0
+        })
+    );
+
+    garden_near_everything(&f);
+    let service = with_model(&f, Arc::new(Model::default()));
+    assert!(service.load());
+    assert_eq!(
+        model_status(&f),
+        json!({
+            "name": "EmbeddingGemma 2", "dimension": 256, "loaded": true, "loading": false,
+            "error": null, "embeddingCount": 1
+        })
+    );
+
+    f.mocked.session().close();
+    assert_eq!(model_status(&f)["embeddingCount"], 0);
+}
+
+#[test]
+fn a_model_load_answers_as_electron_and_tells_the_windows_its_progress() {
+    let f = opened();
+    assert_eq!(
+        load_model(&f),
+        json!({ "success": false, "error": "Failed to load model" })
+    );
+
+    let heard = progress_heard(&f);
+    let model = Arc::new(Model::default());
+    with_model(&f, model.clone());
+    assert_eq!(load_model(&f), json!({ "success": true }));
+    assert_eq!(
+        load_model(&f),
+        json!({ "success": true, "message": "Model already loaded" })
+    );
+    assert_eq!(model.loads.load(Ordering::SeqCst), 1);
+    assert_eq!(
+        *heard.lock().unwrap(),
+        [
+            json!({ "phase": "loading", "progress": 0, "status": "Initializing model..." }),
+            json!({ "phase": "ready", "progress": 100, "status": "Model ready" }),
+        ]
+    );
+}
+
+#[test]
+fn a_failed_load_answers_the_models_reason_and_a_load_in_flight_is_refused() {
+    let f = opened();
+    let (release, hold) = channel();
+    let service = with_model(
+        &f,
+        Arc::new(Model {
+            refuse: Some("offline"),
+            hold: Mutex::new(Some(hold)),
+            ..Model::default()
+        }),
+    );
+    let loading = {
+        let service = service.clone();
+        std::thread::spawn(move || service.load())
+    };
+    until("the load started", || service.status().loading);
+    f.mocked.webview.state::<Arc<LocaleService>>().switch("de");
+    assert_eq!(
+        load_model(&f),
+        json!({ "success": false, "error": "Das Modell wird bereits geladen" })
+    );
+    release.send(()).unwrap();
+    assert!(!loading.join().unwrap());
+
+    // The back-off of the failed load is cleared: the user's load is attempted at once.
+    assert_eq!(
+        load_model(&f),
+        json!({ "success": false, "error": "offline" })
+    );
+}
+
+#[test]
+fn a_reindex_tells_the_windows_how_far_the_pass_got() {
+    let f = opened();
+    with_lane(&f, Arc::new(Model::default()));
+    set_ai(&f, true);
+    let heard = progress_heard(&f);
+
+    assert_eq!(
+        reindex(&f),
+        json!({ "success": true, "computed": 2, "skipped": 0 })
+    );
+    let passes: Vec<Value> = heard
+        .lock()
+        .unwrap()
+        .iter()
+        .filter(|event| event.get("current").is_some())
+        .cloned()
+        .collect();
+    assert_eq!(
+        passes,
+        [
+            json!({ "phase": "embedding", "current": 0, "total": 2 }),
+            json!({ "phase": "embedding", "current": 2, "total": 2 }),
+            json!({ "phase": "complete", "current": 2, "total": 2 }),
+        ]
+    );
 }
