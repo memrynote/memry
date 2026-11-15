@@ -447,7 +447,7 @@ struct InsertGridTests {
             session.openAttachment(.files)
         }
         withExtendedLifetime(field) {}
-        #expect(writtenBeforeOpen == [.setText(blockId: "a", text: "typed")])
+        #expect(writtenBeforeOpen == [.replaceText(blockId: "a", text: "typed", base: "")])
     }
 
     @Test func mediaWordsFindTheMediaRows() {

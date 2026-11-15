@@ -171,6 +171,63 @@ final class NotesSplitUITests: XCTestCase {
         deleteNotes([source, target])
     }
 
+    /// #4377: a wiki link's menu opens its note beside the linking one, each
+    /// pane takes typing, and ⌘⌥W closes the focused pane with both notes'
+    /// typing kept.
+    func testAWikiLinkOpensToTheSideAndBothPanesTakeTyping() throws {
+        try openNotes()
+        app.primeCommandKeys()
+        let target = "[agent] \(run) side"
+        let source = "[agent] \(run) main"
+        makeNote(target)
+        makeNote(source).tap()
+        app.typeText("[[\(run) side")
+        let pick = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", target)).firstMatch
+        XCTAssertTrue(pick.waitForExistence(timeout: 10), "the [[ menu did not offer the note")
+        pick.tap()
+        let chip = firstBlock.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0.5)).withOffset(CGVector(dx: 48, dy: 0))
+        chip.press(forDuration: 1)
+        let toSide = app.descendants(matching: .any).matching(NSPredicate(format: "label == 'Open to the Side'")).firstMatch
+        XCTAssertTrue(toSide.waitForExistence(timeout: 5), "holding the link showed no Open to the Side")
+        toSide.tap()
+
+        let main = app.otherElements["notes.pane.main"]
+        let side = app.otherElements["notes.pane.side"]
+        XCTAssertTrue(side.waitForExistence(timeout: 10), "no side pane")
+        XCTAssertTrue(side.textFields.matching(NSPredicate(format: "value == %@", target)).firstMatch.waitForExistence(timeout: 10))
+        XCTAssertTrue(main.textFields.matching(NSPredicate(format: "value == %@", source)).firstMatch.exists)
+        XCTAssertTrue(matches(NSPredicate(format: "isSelected == true"), side), "the new pane has no focus")
+        attach("two-panes")
+
+        let sideBlock = block(in: side)
+        sideBlock.tap()
+        app.typeText("typed beside")
+        let mainBlock = block(in: main)
+        mainBlock.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+        XCTAssertTrue(matches(NSPredicate(format: "isSelected == true"), main), "a tap did not move the focus")
+        app.typeText(" typed main")
+        attach("two-panes-typed")
+
+        // 13" portrait has no room for two panes: the focused one shows alone,
+        // and the other comes back with the width.
+        XCUIDevice.shared.orientation = .portrait
+        XCTAssertTrue(side.waitForNonExistence(timeout: 5), "portrait kept two panes")
+        XCTAssertTrue(page(source).exists, "portrait did not keep the focused pane")
+        attach("collapsed-portrait")
+        XCUIDevice.shared.orientation = .landscapeLeft
+        XCTAssertTrue(side.waitForExistence(timeout: 5), "landscape did not bring the side pane back")
+
+        app.typeKey("w", modifierFlags: [.command, .option])
+        XCTAssertTrue(side.waitForNonExistence(timeout: 5), "⌘⌥W did not close the split")
+        XCTAssertTrue(page(target).waitForExistence(timeout: 10), "the side pane's note did not fill the column")
+        XCTAssertTrue(matches(NSPredicate(format: "value CONTAINS 'typed beside'"), firstBlock), "the side pane's typing is gone")
+        row(source).tap()
+        XCTAssertTrue(page(source).waitForExistence(timeout: 10))
+        XCTAssertTrue(matches(NSPredicate(format: "value CONTAINS 'typed main'"), firstBlock), "the main pane's typing is gone")
+
+        deleteNotes([source, target])
+    }
+
     /// #4426 (D3): the Search row opens the palette; ↓ moves the highlight
     /// to the second hit and Return opens that one in the detail column.
     func testTheSearchPaletteOpensTheHighlightedHitInTheDetailColumn() throws {
@@ -556,6 +613,10 @@ final class NotesSplitUITests: XCTestCase {
 
     private var firstBlock: XCUIElement {
         app.textViews.matching(NSPredicate(format: "identifier BEGINSWITH 'note.block.'")).firstMatch
+    }
+
+    private func block(in pane: XCUIElement) -> XCUIElement {
+        pane.textViews.matching(NSPredicate(format: "identifier BEGINSWITH 'note.block.'")).firstMatch
     }
 
     /// A note list row by title.

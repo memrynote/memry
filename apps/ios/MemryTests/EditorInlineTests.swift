@@ -245,7 +245,7 @@ struct EditorCommitBaseTests {
 
         await commit(session, field)
 
-        #expect(editsAtSync == [[.setText(blockId: "a", text: "hello world")]])
+        #expect(editsAtSync == [[.replaceText(blockId: "a", text: "hello world", base: "hello")]])
     }
 
     /// #2820: leaving the app does not end editing, so a kill from the app
@@ -267,7 +267,7 @@ struct EditorCommitBaseTests {
             NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
         }
 
-        #expect(editor.all == [.setText(blockId: "a", text: "hello world")])
+        #expect(editor.all == [.replaceText(blockId: "a", text: "hello world", base: "hello")])
         #expect(!field.dirty)
     }
 
@@ -337,7 +337,7 @@ struct EditorCommitBaseTests {
             field.textViewDidEndEditing(field.textView)
         }
 
-        #expect(editor.all == [.setText(blockId: "a", text: "hello world")])
+        #expect(editor.all == [.replaceText(blockId: "a", text: "hello world", base: "hello")])
     }
 
     /// #4506: the dismantle commit (#4346) of a page whose model and session
@@ -360,7 +360,7 @@ struct EditorCommitBaseTests {
         }
         for _ in 0..<50 { await Task.yield() }
 
-        #expect(editor.all == [.setText(blockId: "a", text: "hello world")])
+        #expect(editor.all == [.replaceText(blockId: "a", text: "hello world", base: "hello")])
         #expect(freed == nil, "the page's model is released once its writes land")
     }
 
