@@ -10,8 +10,8 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use memry_desktop::ai::features;
-use memry_desktop::embedding::projector::NoteEmbeddingProjector;
-use memry_desktop::embedding::service::{EmbeddingService, Timing};
+use memry_desktop::embedding::projector::{self, NoteEmbeddingProjector};
+use memry_desktop::embedding::service::{self, EmbeddingService, Timing};
 use memry_desktop::embedding::worker::{WorkerModel, exit_telemetry};
 use memry_desktop::notes::index::NoteIndex;
 use memry_desktop::paths::AppPaths;
@@ -25,6 +25,7 @@ use memry_desktop::vault::consumer::VaultTier;
 use tauri::{AppHandle, Manager, Runtime, Wry};
 
 use crate::commands::error::{CommandError, ErrorKind};
+use crate::events::{AiEmbeddingProgressEvent, broadcast};
 use crate::shutdown::ShutdownService;
 use crate::startup::{self, Stage};
 
@@ -58,20 +59,7 @@ fn manage(app: &AppHandle<Wry>) -> Result<(), CommandError> {
         tauri::async_runtime::handle().inner().clone(),
         exit_telemetry(move || crate::shell::services::telemetry(&telemetry)),
     );
-    // A log sink until the renderer's progress event lands (#3540 lane 11).
-    let service = EmbeddingService::new(
-        model.clone(),
-        Arc::new(|progress| {
-            tracing::debug!(
-                scope = "Embeddings",
-                phase = ?progress.phase,
-                progress = progress.progress,
-                status = progress.status,
-                "model progress"
-            );
-        }),
-        Timing::default(),
-    );
+    let service = EmbeddingService::new(model.clone(), model_progress(app), Timing::default());
     let shutdown = app.state::<ShutdownService>();
     let to_error = |error: memry_desktop::shell::shutdown::UnknownStep| {
         CommandError::new(ErrorKind::Internal, "shutdown_step", error.to_string())
@@ -109,6 +97,18 @@ fn manage(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     app.manage(model);
     app.manage(service);
     Ok(())
+}
+
+/// The text model's download and load progress, to every window.
+pub fn model_progress<R: Runtime>(app: &AppHandle<R>) -> service::ProgressSink {
+    let app = app.clone();
+    Arc::new(move |progress| broadcast(&app, AiEmbeddingProgressEvent::from(progress)))
+}
+
+/// A note embedding pass's progress, to every window.
+pub fn pass_progress<R: Runtime>(app: &AppHandle<R>) -> projector::ProgressSink {
+    let app = app.clone();
+    Arc::new(move |progress| broadcast(&app, AiEmbeddingProgressEvent::from(progress)))
 }
 
 fn worker_paths(app: &AppHandle<Wry>) -> Result<WorkerPaths, String> {
@@ -170,16 +170,7 @@ pub fn register_embedding_lane<R: Runtime>(
                 .upgrade()
                 .is_some_and(|index| index.indexing().is_some())
         }),
-        // A log sink until the renderer's progress event lands (#3540 lane 11).
-        Arc::new(|progress| {
-            tracing::debug!(
-                scope = "Embeddings",
-                current = progress.current,
-                total = progress.total,
-                phase = progress.phase,
-                "note embedding progress"
-            );
-        }),
+        pass_progress(app),
     );
     session.register_projector(projector);
     if let Err(error) = feed::watch(session, tier.subscribe()) {

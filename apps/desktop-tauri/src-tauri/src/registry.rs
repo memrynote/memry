@@ -41,10 +41,12 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::agent::agent_set_local_provider_settings::<Wry>,
             crate::commands::agent::agent_test_local_provider::<Wry>,
             // ai
+            crate::commands::ai::ai_get_model_status::<Wry>,
             crate::commands::ai::ai_inline_get_settings::<Wry>,
             crate::commands::ai::ai_inline_list_models,
             crate::commands::ai::ai_inline_set_settings::<Wry>,
             crate::commands::ai::ai_inline_test_connection,
+            crate::commands::ai::ai_load_model::<Wry>,
             crate::commands::ai::ai_provider_cancel::<Wry>,
             crate::commands::ai::ai_reindex_embeddings::<Wry>,
             crate::commands::ai_structured::tags_fill_fields::<Wry>,
@@ -335,6 +337,7 @@ pub fn builder() -> Builder<Wry> {
             crate::events::AuthOtpDetectedEvent,
             crate::events::AuthSessionRefreshedEvent,
             // ai
+            crate::events::AiEmbeddingProgressEvent,
             crate::events::AiInlineSettingsChangedEvent,
             // app
             crate::events::AppNavigationRequestedEvent,

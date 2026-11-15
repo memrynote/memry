@@ -23,7 +23,7 @@ use std::sync::atomic::Ordering;
 
 use memry_desktop::embedding::PROJECTORS;
 use memry_desktop::embedding::projector::drain_deferred;
-use memry_desktop::session::projection::{CancelToken, Projector};
+use memry_desktop::session::projection::{CancelToken, Projector, Rebuilt};
 use memry_desktop::vault::consumer::Applied;
 
 use crate::embedding_lane::{ALPHA, BETA, GAMMA, lane};
@@ -216,6 +216,33 @@ fn a_reconcile_while_indexing_keeps_every_vector() {
         assert_eq!(l.state(id).map(|(v, _)| v), Some(6), "{id} lost its state");
         assert!(l.head(id).is_some(), "{id} lost its vector");
     }
+}
+
+#[test]
+fn a_rebuild_counts_what_it_embedded_and_a_stopped_one_fails() {
+    let mut l = lane();
+    l.write("a.md", ALPHA);
+    l.settled();
+
+    let open = l.e.session.current().expect("open");
+    let notes = open.search.embeddable_notes().unwrap().len();
+    assert!(notes >= 1);
+    assert_eq!(
+        l.projector.rebuild(&CancelToken::default()),
+        Ok(Rebuilt {
+            computed: u32::try_from(notes).unwrap(),
+            skipped: 0
+        })
+    );
+
+    // A close between the reindex's runtime read and the rebuild (Electron's
+    // `bindDatabase` refusal): nothing was embedded, so it is no success.
+    let cancel = CancelToken::default();
+    cancel.cancel();
+    assert_eq!(
+        l.projector.rebuild(&cancel),
+        Err("Projector database is no longer current".to_owned())
+    );
 }
 
 #[test]

@@ -15,7 +15,7 @@ use memry_core::protocol::http::{ClientIdentity, TokenProvider};
 use memry_core::seams::transport::{
     HttpRequest, HttpResponse, SocketHandle, SocketListener, SocketRequest, Transport,
 };
-use memry_core::sync::socket::{Hint, HintSink, KEEPALIVE_FRAME, RealtimeClient};
+use memry_core::sync::socket::{Hint, HintSink, KEEPALIVE_FRAME, RealtimeClient, Terminal};
 use memry_core::sync::socket_run::{RunEnd, StopSignal, TerminalLatch, run};
 
 #[derive(Default)]
@@ -368,7 +368,12 @@ async fn a_late_close_from_a_replaced_socket_is_ignored() {
 
 #[tokio::test(start_paused = true)]
 async fn a_handshake_refused_403_or_426_latches_without_reconnecting() {
-    for (status, terminal) in [(403, "revoked"), (426, "version")] {
+    // A 403 is told apart from a close 4004: an edge in front of the server can answer 403 too,
+    // so only the HTTP path's `AUTH_DEVICE_REVOKED` proves a revoked device.
+    for (status, terminal) in [
+        (403, Terminal::HandshakeForbidden),
+        (426, Terminal::VersionIncompatible),
+    ] {
         let latch = Arc::new(TerminalLatch::default());
         let first = start_latched(Arc::clone(&latch));
         settle().await;
@@ -379,7 +384,8 @@ async fn a_handshake_refused_403_or_426_latches_without_reconnecting() {
         let end = tokio::time::timeout(Duration::from_secs(1), first.running)
             .await
             .expect("a refused handshake ends the run without a rung");
-        assert_eq!(end.unwrap(), RunEnd::Terminal, "{status} ({terminal})");
+        assert_eq!(end.unwrap(), RunEnd::Terminal, "{status}");
+        assert_eq!(latch.get(), Some(terminal), "{status}");
         assert_eq!(first.socket.opened(), 1, "{status}: no reconnect");
 
         let next = start_latched(latch);

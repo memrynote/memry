@@ -21,6 +21,7 @@ vi.mock('@/contexts/auth-context', () => ({
   useAuth: () => ({ state: { status: 'unauthenticated', wizardStep: 'idle', email: null } })
 }))
 
+import { commands } from '../../../../generated/bindings'
 import { FirstRunGate } from './first-run-gate'
 
 type Mocked = Record<string, ReturnType<typeof vi.fn>>
@@ -56,7 +57,6 @@ describe('first-run wizard', () => {
     api.settings.setGeneralSettings = vi.fn().mockResolvedValue({ success: true })
     api.settings.setFeaturesSettings = vi.fn().mockResolvedValue({ success: true })
     api.settings.setAISettings = vi.fn().mockResolvedValue({ success: true })
-    ;(window.api as unknown as Record<string, unknown>).onEmbeddingProgress = vi.fn(() => () => {})
   })
 
   it('shows the vault picker, not the wizard, when this computer already knows a vault', async () => {
@@ -96,7 +96,7 @@ describe('first-run wizard', () => {
       )
     )
     expect(api.settings.setAISettings).toHaveBeenCalledWith({ enabled: false })
-    expect(api.settings.loadAIModel).not.toHaveBeenCalled()
+    expect(commands.aiLoadModel).not.toHaveBeenCalled()
     // The wizard replaces the sidebar tour.
     expect(localStorage.getItem('memry:onboarding:tour:v1')).toBe('1')
   })

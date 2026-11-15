@@ -5,15 +5,40 @@ import { toast } from 'sonner'
 import { createMockApi } from '@tests/setup-dom'
 import { AISettings } from './ai-section'
 
-const bindings = vi.hoisted(() => ({ foldGetAgentStatus: vi.fn() }))
+type EmbeddingProgressEvent = {
+  phase: string
+  progress?: number
+  current?: number
+  total?: number
+  status?: string
+}
+
+const bindings = vi.hoisted(() => ({
+  foldGetAgentStatus: vi.fn(),
+  aiGetModelStatus: vi.fn(),
+  aiLoadModel: vi.fn(),
+  aiReindexEmbeddings: vi.fn(),
+  embeddingCallbacks: [] as Array<(event: EmbeddingProgressEvent) => void>
+}))
 
 vi.mock('../../../../generated/bindings', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   commands: {
     foldGetAgentStatus: bindings.foldGetAgentStatus,
-    foldGetLastRun: vi.fn(() => Promise.resolve({ status: 'idle', noteId: null }))
+    foldGetLastRun: vi.fn(() => Promise.resolve({ status: 'idle', noteId: null })),
+    aiGetModelStatus: () => bindings.aiGetModelStatus(),
+    aiLoadModel: () => bindings.aiLoadModel(),
+    aiReindexEmbeddings: () => bindings.aiReindexEmbeddings()
   },
-  events: { noteFoldUpdatedEvent: { listen: vi.fn(() => Promise.resolve(() => {})) } }
+  events: {
+    noteFoldUpdatedEvent: { listen: vi.fn(() => Promise.resolve(() => {})) },
+    aiEmbeddingProgressEvent: {
+      listen: (handler: (event: { payload: EmbeddingProgressEvent }) => void) => {
+        bindings.embeddingCallbacks.push((payload) => handler({ payload }))
+        return Promise.resolve(() => {})
+      }
+    }
+  }
 }))
 
 vi.mock('sonner', () => ({
@@ -38,28 +63,19 @@ vi.mock('./agent-mcp-section', () => ({
   AgentMcpSection: () => <div data-testid="agent-mcp-panel" />
 }))
 
-type EmbeddingProgressEvent = {
-  phase: string
-  progress?: number
-  current?: number
-  total?: number
-  status?: string
-}
-
 // oxlint-disable-next-line typescript/no-redundant-type-constituents -- test types come from a mock factory or an alias that tsgolint resolves to any; the declared type is intentional
 type SettingsApi = ReturnType<typeof createMockApi> & {
-  onEmbeddingProgress: (callback: (event: EmbeddingProgressEvent) => void) => () => void
   onVoiceModelProgress: (callback: (event: EmbeddingProgressEvent) => void) => () => void
 }
 
 describe('AISettings', () => {
   let api: SettingsApi
-  let embeddingCallbacks: Array<(event: EmbeddingProgressEvent) => void>
+  const embeddingCallbacks = bindings.embeddingCallbacks
   let voiceCallbacks: Array<(event: EmbeddingProgressEvent) => void>
 
   beforeEach(() => {
     vi.clearAllMocks()
-    embeddingCallbacks = []
+    embeddingCallbacks.length = 0
     voiceCallbacks = []
 
     if (!HTMLElement.prototype.hasPointerCapture) {
@@ -78,7 +94,7 @@ describe('AISettings', () => {
     api = createMockApi()
     api.settings.getAISettings = vi.fn().mockResolvedValue({ enabled: true })
     api.settings.setAISettings = vi.fn().mockResolvedValue({ success: true })
-    api.settings.getAIModelStatus = vi
+    bindings.aiGetModelStatus = vi
       .fn()
       .mockResolvedValueOnce({
         name: 'MiniLM',
@@ -96,8 +112,8 @@ describe('AISettings', () => {
         error: null,
         embeddingCount: 24
       })
-    api.settings.loadAIModel = vi.fn().mockResolvedValue({ success: true, message: 'ready' })
-    api.settings.reindexEmbeddings = vi.fn().mockResolvedValue({
+    bindings.aiLoadModel = vi.fn().mockResolvedValue({ success: true, message: 'ready' })
+    bindings.aiReindexEmbeddings = vi.fn().mockResolvedValue({
       success: true,
       computed: 3,
       skipped: 1
@@ -116,10 +132,6 @@ describe('AISettings', () => {
       hasApiKey: false
     })
     api.settings.setVoiceTranscriptionOpenAIKey = vi.fn().mockResolvedValue({ success: true })
-    api.onEmbeddingProgress = vi.fn((callback) => {
-      embeddingCallbacks.push(callback)
-      return () => {}
-    })
     api.onVoiceModelProgress = vi.fn((callback) => {
       voiceCallbacks.push(callback)
       return () => {}
@@ -146,7 +158,7 @@ describe('AISettings', () => {
     api.settings.getAISettings = vi
       .fn()
       .mockResolvedValue({ enabled: true, summarizeLongNotes: true })
-    api.settings.getAIModelStatus = vi.fn().mockRejectedValue(new Error('not ported'))
+    bindings.aiGetModelStatus = vi.fn().mockRejectedValue(new Error('not ported'))
     render(<AISettings />)
 
     expect(await screen.findByRole('switch', { name: 'Summarize long notes' })).toBeChecked()
@@ -226,11 +238,11 @@ describe('AISettings', () => {
     await waitFor(() => expect(screen.getByTestId('embedding-model-row')).toBeInTheDocument())
 
     await userEvent.click(screen.getByRole('button', { name: 'Download & Load Model' }))
-    expect(api.settings.loadAIModel).toHaveBeenCalled()
+    expect(bindings.aiLoadModel).toHaveBeenCalled()
     await waitFor(() => expect(screen.getByText('Loaded')).toBeInTheDocument())
 
     await userEvent.click(screen.getByRole('button', { name: 'Rebuild Index' }))
-    expect(api.settings.reindexEmbeddings).toHaveBeenCalled()
+    expect(bindings.aiReindexEmbeddings).toHaveBeenCalled()
     expect(toast.success).toHaveBeenCalledWith('Embeddings reindexed: 3 computed, 1 skipped')
   })
 
@@ -427,7 +439,7 @@ describe('AISettings', () => {
 
   it('surfaces failed setting, model, voice, key, and reindex mutations', async () => {
     api.settings.getAISettings = vi.fn().mockResolvedValue({ enabled: true })
-    api.settings.getAIModelStatus = vi.fn().mockResolvedValue({
+    bindings.aiGetModelStatus = vi.fn().mockResolvedValue({
       name: 'MiniLM',
       dimension: 384,
       loaded: false,
@@ -438,8 +450,8 @@ describe('AISettings', () => {
     api.settings.setAISettings = vi
       .fn()
       .mockResolvedValue({ success: false, error: 'toggle failed' })
-    api.settings.loadAIModel = vi.fn().mockResolvedValue({ success: false, error: 'load failed' })
-    api.settings.reindexEmbeddings = vi
+    bindings.aiLoadModel = vi.fn().mockResolvedValue({ success: false, error: 'load failed' })
+    bindings.aiReindexEmbeddings = vi
       .fn()
       .mockResolvedValueOnce({ success: false, error: 'reindex failed' })
       .mockRejectedValueOnce(new Error('reindex exploded'))
@@ -485,7 +497,7 @@ describe('AISettings', () => {
 
   it('handles reindex progress completion and voice/embedding progress error fallbacks', async () => {
     api.settings.getAISettings = vi.fn().mockResolvedValue({ enabled: true })
-    api.settings.getAIModelStatus = vi.fn().mockResolvedValue({
+    bindings.aiGetModelStatus = vi.fn().mockResolvedValue({
       name: 'MiniLM',
       dimension: 384,
       loaded: true,
@@ -501,7 +513,7 @@ describe('AISettings', () => {
       error: null
     })
     let resolveReindex!: (value: { success: boolean; computed: number; skipped: number }) => void
-    api.settings.reindexEmbeddings = vi.fn(
+    bindings.aiReindexEmbeddings = vi.fn(
       () =>
         new Promise((resolve) => {
           resolveReindex = resolve
@@ -522,12 +534,12 @@ describe('AISettings', () => {
       embeddingCallbacks[0]({ phase: 'complete', current: 5, total: 5 })
       vi.advanceTimersByTime(1000)
     })
-    await waitFor(() => expect(api.settings.getAIModelStatus).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(bindings.aiGetModelStatus).toHaveBeenCalledTimes(2))
 
     await act(async () => {
       embeddingCallbacks[0]({ phase: 'ready' })
     })
-    await waitFor(() => expect(api.settings.getAIModelStatus).toHaveBeenCalledTimes(3))
+    await waitFor(() => expect(bindings.aiGetModelStatus).toHaveBeenCalledTimes(3))
 
     await act(async () => {
       voiceCallbacks[0]({ phase: 'error' })
