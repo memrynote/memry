@@ -335,6 +335,8 @@ mod tag_schema;
 mod tags;
 #[path = "telemetry_flush.rs"]
 mod telemetry_flush;
+#[path = "telemetry_report_posts.rs"]
+mod telemetry_report_posts;
 #[path = "templates.rs"]
 mod templates;
 #[path = "templates_legacy.rs"]
