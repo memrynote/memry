@@ -107,7 +107,7 @@ the whole text to literal paragraphs (§12.1.0).
 
 **Normative.** `prepareFragmentSeed` promotes every `((mention:…))` token
 (`apps/desktop/src/main/sync/blocknote-converter.ts:612`,
-`packages/editor-schema/src/inline/link-mention-normalize.ts:17-64`), and so does the Rust
+`packages/editor-schema/src/inline/link-mention-normalize.ts:17-79`), and so does the Rust
 converter's `prepare_fragment_seed` (`crates/memry-core/src/markdown/convert/seed.rs:76`,
 `crates/memry-core/src/markdown/schema/link_mention_normalize.rs:145`):
 
@@ -118,6 +118,18 @@ converter's `prepare_fragment_seed` (`crates/memry-core/src/markdown/convert/see
   accepts. Accepted payloads include the legacy ones: `_ * ! ~ '` raw, as builds before #1844
   wrote them, and a stray whitespace or remark backslash, which the parse strips. A token inside
   a link label stays text.
+- A token in a text run with any active style stays text (`:37-48`): code, bold, italic,
+  strikethrough, underline, or a text or background colour other than `default`. A
+  `linkMention` node carries no styles, so promoting such a token would drop the backticks or
+  delimiters around it on the next write-back (#4652). An unstyled token in the same paragraph
+  is still promoted. The editor's open-time promotion
+  (`apps/desktop/src/renderer/src/components/note/content-area/hooks/use-editor-sync.ts:236`)
+  runs the same function, so no replica turns a styled token into a node.
+  A build before #4652 that opens a doc this build seeded still promotes a styled token, and
+  two such builds that open it before they sync each add a chip and duplicate the text after
+  it (#3871). No version floor guards this: styled tokens come only from hand edits or other
+  tools, since the app writes a chip outside the delimiters of a styled run, as in
+  `A **x** ((mention:…)) **y** b.`.
 - The token becomes a `linkMention` node with `url` set to the parsed URL and `domain` set to
   the URL's hostname with its first `www.` removed, or to the URL itself when it does not parse.
   `title`, `favicon` and `siteName` stay empty; the editor fills them in on open.
@@ -127,8 +139,9 @@ The node serializes in the closed alphabet (§12.7), so a legacy token cannot co
 node alone: `a_b` and `a%5Fb` decode to the same URL. The source record (§12.10) keeps the file's
 bytes while the paragraph holding the token is unedited, edits in other blocks included. When
 that paragraph is edited, or the doc has no record, the token is written re-encoded. The
-`legacy link mention token` cases of the `markdown-roundtrip` vectors pin both outcomes. A build
-before #4478 re-encodes a legacy token once, on its next write-back of a doc this build seeded;
+`legacy link mention token` cases of the `markdown-roundtrip` vectors pin both outcomes, and the
+`link mention token in inline code` and `link mention token in italics, bold and strikethrough`
+cases pin that a styled token round-trips as text. A build before #4478 re-encodes a legacy token once, on its next write-back of a doc this build seeded;
 the URL does not change.
 
 Desktop's seed MUST promote exactly these tokens. A token a seed leaves as text is promoted by

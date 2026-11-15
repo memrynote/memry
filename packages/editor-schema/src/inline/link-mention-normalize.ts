@@ -29,10 +29,24 @@ function createStyledText(
   return { type: 'text', text, styles }
 }
 
+/**
+ * A `linkMention` node carries no styles, so a token in a run with code,
+ * emphasis, strikethrough, underline or a colour stays text: as a chip it would
+ * lose the backticks or delimiters around it on the next write-back (#4652).
+ */
+function hasActiveStyle(styles: Record<string, boolean | string>): boolean {
+  return Object.values(styles).some(
+    (value) => value === true || (typeof value === 'string' && value !== 'default')
+  )
+}
+
 export function splitTextWithLinkMentions(
   text: string,
   styles?: Record<string, boolean | string>
 ): { segments: Array<string | Record<string, unknown>>; didChange: boolean } {
+  if (styles && hasActiveStyle(styles)) {
+    return { segments: [createStyledText(text, styles)], didChange: false }
+  }
   const pattern = new RegExp(MENTION_TOKEN_REGEX)
   const segments: Array<string | Record<string, unknown>> = []
   let didChange = false
