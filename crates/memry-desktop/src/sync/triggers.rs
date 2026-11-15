@@ -17,6 +17,14 @@ pub const PUSH_DEBOUNCE: Duration = Duration::from_millis(300);
 pub const STATUS_THROTTLE: Duration = Duration::from_millis(100);
 /// Past this much clock skew against the server, sync pauses (`push-coordinator.ts:525`).
 pub const MAX_CLOCK_SKEW_MS: i64 = 300_000;
+/// The retries after the keychain could not be read (`keychain-retry.ts:23`); the last repeats.
+pub const KEYCHAIN_RETRY: [Duration; 5] = [
+    Duration::from_secs(15),
+    Duration::from_secs(30),
+    Duration::from_secs(60),
+    Duration::from_secs(120),
+    Duration::from_secs(300),
+];
 const RATE_LIMIT_BASE: Duration = Duration::from_secs(5);
 const RATE_LIMIT_MAX: Duration = Duration::from_secs(5 * 60);
 
@@ -33,6 +41,11 @@ pub enum Trigger {
     Tick,
     /// A requested push's 300 ms window ended.
     Push,
+    /// A socket hint (chapter 09): the engine's wake, which drops a hint at or below the applied
+    /// cursor. `None` pulls whatever the feed holds.
+    Hint {
+        cursor: Option<i64>,
+    },
 }
 
 impl Trigger {
@@ -44,16 +57,25 @@ impl Trigger {
             }
             Self::Explicit | Self::Push => PassTrigger::Explicit,
             Self::Tick => PassTrigger::Timer,
+            Self::Hint { .. } => PassTrigger::SocketHint,
         }
     }
 
     /// The one of two queued triggers that does more: a policy refresh beats a plain pass, which
-    /// beats a timer pass.
+    /// beats a timer pass, which beats a hint.
     pub fn stronger(self, other: Self) -> Self {
+        // Two hints are one wake past both cursors; a hint without one pulls whatever is there.
+        if let (Self::Hint { cursor: a }, Self::Hint { cursor: b }) = (self, other) {
+            return Self::Hint {
+                cursor: a.zip(b).map(|(a, b)| a.max(b)),
+            };
+        }
         let rank = |trigger: Self| match trigger.pass_trigger() {
-            PassTrigger::Foreground => 2,
-            PassTrigger::Explicit | PassTrigger::SocketHint => 1,
-            PassTrigger::Timer => 0,
+            PassTrigger::Foreground => 3,
+            PassTrigger::Explicit => 2,
+            PassTrigger::Timer => 1,
+            // A plain pass pulls everything a hint would; a hint may be dropped by its cursor.
+            PassTrigger::SocketHint => 0,
         };
         if rank(other) > rank(self) {
             other
@@ -79,9 +101,30 @@ pub fn tick_pulls(socket_held_since_last_tick: bool, since_last_pull: Option<Dur
     !socket_held_since_last_tick || since_last_pull.is_none_or(|since| since >= QUIET_PULL)
 }
 
+/// The wait before keychain retry `attempt` (from 0).
+pub fn keychain_retry(attempt: u32) -> Duration {
+    KEYCHAIN_RETRY[(attempt as usize).min(KEYCHAIN_RETRY.len() - 1)]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn queued_hints_merge_into_one_wake_and_a_plain_pass_beats_them() {
+        let hint = |cursor| Trigger::Hint { cursor };
+        assert_eq!(hint(Some(3)).stronger(hint(Some(9))), hint(Some(9)));
+        assert_eq!(hint(Some(3)).stronger(hint(None)), hint(None));
+        assert_eq!(hint(Some(3)).stronger(Trigger::Push), Trigger::Push);
+        assert_eq!(Trigger::Explicit.stronger(hint(None)), Trigger::Explicit);
+        assert_eq!(hint(None).stronger(Trigger::Tick), Trigger::Tick);
+    }
+
+    #[test]
+    fn the_keychain_ladder_is_15_30_60_120_then_300_seconds() {
+        let secs: Vec<u64> = (0..7).map(|n| keychain_retry(n).as_secs()).collect();
+        assert_eq!(secs, [15, 30, 60, 120, 300, 300, 300]);
+    }
 
     #[test]
     fn rate_limit_backoff_doubles_from_five_seconds_and_caps_at_five_minutes() {

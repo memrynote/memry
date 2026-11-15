@@ -65,6 +65,22 @@ impl Service {
         self.track_main_event(event);
     }
 
+    /// `text` through the salted redaction diagnostics and log shipping use, so placeholders
+    /// correlate across an incident (`getMainRedactOptions`).
+    pub fn redact_message(&self, text: &str) -> String {
+        let hasher = |value: &str| salted_hash(&self.salt, value);
+        let root = self
+            .vault_root
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone();
+        let opts = RedactOptions {
+            vault_root: root.as_deref(),
+            hash: Some(&hasher),
+        };
+        crate::redact::redact_text(text, &opts)
+    }
+
     fn redact_detail(&self, failure: &Failure, source: &str, action: &str) -> Option<ErrorDetail> {
         let hasher = |value: &str| salted_hash(&self.salt, value);
         let root = self
