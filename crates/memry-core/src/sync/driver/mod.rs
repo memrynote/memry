@@ -417,7 +417,7 @@ impl SyncDriver {
             rows.push((HistoryKind::Push, pass.pushed_items, None));
         }
         for error in [&pass.pull_error, &pass.push_error].into_iter().flatten() {
-            rows.push((HistoryKind::Error, 0, Some(error.clone())));
+            rows.push((HistoryKind::Error, 0, Some(error.to_string())));
         }
         if rows.is_empty() {
             return;

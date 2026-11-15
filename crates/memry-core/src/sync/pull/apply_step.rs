@@ -110,7 +110,7 @@ impl PullLoop {
     /// the server no longer returns stays corrupt, retried after the cooldown.
     async fn refetch_refused(&self) -> Result<(), PullError> {
         let hardened = self.hardened;
-        let (refused, corrupt): (Vec<(String, String)>, Vec<(String, String)>) = self
+        let (refused, corrupt) = self
             .db
             .call(move |conn| {
                 let now = now_ms();
@@ -120,11 +120,12 @@ impl PullLoop {
                 } else {
                     Vec::new()
                 };
-                Ok::<_, crate::api::errors::StorageError>((refused, corrupt))
+                Ok::<_, crate::api::errors::StorageError>((
+                    refused.into_iter().collect::<BTreeSet<_>>(),
+                    corrupt.into_iter().collect::<BTreeSet<_>>(),
+                ))
             })
             .await?;
-        let corrupt: BTreeSet<(String, String)> = corrupt.into_iter().collect();
-        let refused: BTreeSet<(String, String)> = refused.into_iter().collect();
         let requested: BTreeSet<(String, String)> = refused.union(&corrupt).cloned().collect();
         let ids: Vec<String> = requested
             .iter()

@@ -35,7 +35,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use crate::api::errors::{ApiError, StorageError, TransportError};
+use crate::api::errors::{ApiError, StorageError, SyncError, TransportError};
 use crate::protocol::http::HttpClient;
 use crate::seams::reachability::{Reachability, Reachable};
 
@@ -101,9 +101,16 @@ pub struct PassReport {
     /// Rows the push wave's server accepted.
     pub pushed_items: usize,
     /// Why the pull failed, when it did (the sync history's `error` row).
-    pub pull_error: Option<String>,
+    pub pull_error: Option<SyncError>,
     /// Why the push failed, when it did.
-    pub push_error: Option<String>,
+    pub push_error: Option<SyncError>,
+}
+
+impl PassReport {
+    /// The pass's failure: the pull's, else the push's.
+    pub fn error(&self) -> Option<&SyncError> {
+        self.pull_error.as_ref().or(self.push_error.as_ref())
+    }
 }
 
 /// The engine. One per vault.
@@ -295,7 +302,7 @@ impl SyncEngine {
     /// `Idle -> Pulling -> Applying -> (Pulling | Idle | Refused)`, one lap
     /// per page.
     /// The `String` is why a page failed.
-    async fn pull_pages(&self, trail: &mut Trail) -> (PullReport, Option<String>) {
+    async fn pull_pages(&self, trail: &mut Trail) -> (PullReport, Option<SyncError>) {
         let mut total = PullReport::default();
         for index in 0..self.max_pages {
             trail.enter(SyncState::Pulling);
@@ -323,7 +330,7 @@ impl SyncEngine {
                     } else {
                         SyncState::Failed
                     });
-                    return (total, Some(error.to_string()));
+                    return (total, Some(SyncError::from(error)));
                 }
             };
             trail.enter(SyncState::Applying);
@@ -382,7 +389,7 @@ impl SyncEngine {
             Ok(_) => {}
             Err(error) => {
                 trail.enter(SyncState::Failed);
-                done.push_error = Some(error.to_string());
+                done.push_error = Some(error.into());
                 return;
             }
         }
@@ -401,7 +408,7 @@ impl SyncEngine {
             Err(error) => {
                 let blocked = self.policy.observe(&error);
                 trail.enter(blocked.unwrap_or(SyncState::Failed));
-                done.push_error = Some(error.to_string());
+                done.push_error = Some(error.into());
             }
         }
     }
@@ -455,8 +462,8 @@ struct Done {
     parked: bool,
     pushed: bool,
     pushed_items: usize,
-    pull_error: Option<String>,
-    push_error: Option<String>,
+    pull_error: Option<SyncError>,
+    push_error: Option<SyncError>,
 }
 
 /// Clears [`SyncEngine::wake`]'s queued flag on drop.
