@@ -4,6 +4,7 @@ import path from 'path'
 import fs from 'fs'
 import { fileURLToPath } from 'url'
 import { buildWorker } from '../scripts/build-worker.js'
+import { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, createGoogleStub } from './google-stub.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.resolve(__dirname, '../../..')
@@ -37,6 +38,9 @@ export class SimulatedServer {
       // local `dev:sync-server`). Consumers read the real URL from getDirectUrl().
       port: 0,
 
+      // Google's token and certs endpoints for a browser sign-in; everything else passes.
+      outboundService: await createGoogleStub(),
+
       d1Databases: { DB: 'test-db' },
       r2Buckets: { STORAGE: 'test-bucket' },
 
@@ -62,7 +66,9 @@ export class SimulatedServer {
         // bundle version on macOS, "0.0" on Linux CI. A 0.1.0 floor refused
         // every Linux E2E socket with 426 and the realtime path went untested.
         MIN_APP_VERSION: '0.0.0',
-        ALLOWED_ORIGIN: 'http://localhost:3000'
+        ALLOWED_ORIGIN: 'http://localhost:3000',
+        GOOGLE_CLIENT_ID,
+        GOOGLE_CLIENT_SECRET
       }
     })
 
