@@ -24,8 +24,11 @@
 //! journals among them. The server accepts their `create` over a marker, and
 //! this core does not apply markers yet, so a re-upload of one would bring a
 //! deleted item back on every device. [`REUPLOADED`] is Electron's
-//! `REUPLOADABLE_TYPES` (`:268-288`) without them and without
-//! `task_activity`, whose retention this core does not track.
+//! `REUPLOADABLE_TYPES` (`:268-288`) without them, without `task_activity`,
+//! whose retention this core does not track, and without `settings`, the one
+//! clock-exempt type (chapter 05 §5.4): the server's delete-wins check needs a
+//! clock to refuse a `create` over a purged tombstone, so a `settings` create
+//! is re-created over one just as the re-creatable types are.
 
 use std::collections::BTreeSet;
 use std::sync::Mutex;
@@ -173,11 +176,15 @@ pub(crate) fn diff(
         .iter()
         .flat_map(|(item_type, id)| spellings(item_type, id))
         .collect();
-    let mut excluded: BTreeSet<(String, String)> = refused_items::entries(conn)?
+    let mut blocked: Vec<(String, String)> = refused_items::entries(conn)?
         .into_iter()
         .map(|item| (item.item_type, item.item_id))
         .collect();
-    excluded.extend(quarantine::blocked(conn, now_ms)?);
+    blocked.extend(quarantine::blocked(conn, now_ms)?);
+    let excluded: BTreeSet<(String, String)> = blocked
+        .iter()
+        .flat_map(|(item_type, id)| spellings(item_type, id))
+        .collect();
     let server_only: Vec<(String, String)> = server
         .iter()
         .filter(|(item_type, _)| item_type != "task_activity" && declared.contains(item_type))

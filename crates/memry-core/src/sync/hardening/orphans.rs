@@ -15,11 +15,18 @@
 //! - **A parent this device never held is fetched by id.** Once per parent
 //!   per pull loop: one that the server does not serve (Electron's default
 //!   `inbox` project, never a record) stays absent, and its children stay.
-//! - **A child whose parent is a tombstone here is tombstoned**, and the
-//!   delete pushed, which is what the cascade should have pushed. The children
-//!   are fetched again first, so a move a peer pushed with the parent's delete
-//!   (this core's project delete moves its tasks to the inbox) lands before
-//!   the check, and a child with a local change queued is left to that change.
+//! - **A task or an external event whose parent is a tombstone here is
+//!   tombstoned**, and the delete pushed, which is what the cascade should
+//!   have pushed. The children are fetched again first, so a move a peer
+//!   pushed with the parent's delete (this core's project delete moves its
+//!   tasks to the inbox) lands before the check, and a child with a local
+//!   change queued is left to that change. The deleting side pushes a
+//!   parent's delete only after the child rows queued before it
+//!   ([`crate::sync::outbox::claim`]), so a move in backoff is never
+//!   overtaken by the delete it came with.
+//! - **A message of a deleted conversation is kept**: a soft-deleted
+//!   conversation counts as present (`agent-message-handler.ts:104-107`), and
+//!   no delete of one cascades to its messages, here or in Electron.
 //!
 //! **More conservative than Electron, on purpose:** Electron also takes a
 //! parent the server did not return as gone (`orphan-repair.ts:96-103`). Here
@@ -37,7 +44,7 @@ use rusqlite::{Connection, params};
 
 use crate::api::errors::StorageError;
 use crate::domain::notes::tombstone_local;
-use crate::domain::{agent_message, tasks};
+use crate::domain::tasks;
 use crate::sync::outbox::{self, Change};
 use crate::sync::pull::{PullError, PullLoop};
 
@@ -47,6 +54,10 @@ pub const LINKS: [(&str, &str, &str); 3] = [
     ("calendar_external_event", "sourceId", "calendar_source"),
     ("agent_message", "conversationId", "agent_conversation"),
 ];
+
+/// The children a tombstoned parent's delete cascades to: every link but the
+/// message's, whose conversation counts as present deleted.
+pub const CASCADED: [(&str, &str, &str); 2] = [LINKS[0], LINKS[1]];
 
 /// What a repair did.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -129,7 +140,8 @@ impl OrphanRepair {
     }
 }
 
-/// Every live, fully stored child whose parent is in `state` here.
+/// Every live, fully stored child whose parent is in `state` here: of every
+/// link when absent, of the [`CASCADED`] ones when a tombstone.
 pub(crate) fn links(conn: &Connection, state: Parent) -> Result<Vec<Link>, StorageError> {
     let parent_row = match state {
         Parent::Absent => {
@@ -143,7 +155,11 @@ pub(crate) fn links(conn: &Connection, state: Parent) -> Result<Vec<Link>, Stora
         }
     };
     let mut found = Vec::new();
-    for (child_type, key, parent_type) in LINKS {
+    let links: &[(&str, &str, &str)] = match state {
+        Parent::Absent => &LINKS,
+        Parent::Tombstoned => &CASCADED,
+    };
+    for &(child_type, key, parent_type) in links {
         // `CASE`, not `AND`: SQLite does not promise to test `json_valid`
         // first, and `json_extract` of a sealed or broken payload throws.
         let sql = format!(
@@ -199,9 +215,6 @@ pub(crate) fn tombstone_orphans(
         let (child_type, id) = (link.child_type.as_str(), link.child_id.as_str());
         match child_type {
             "task" => tasks::delete(conn, id, device_id, now_ms)?.acknowledge(),
-            "agent_message" => {
-                agent_message::delete(conn, id, device_id, now_ms)?;
-            }
             _ => outbox::commit(conn, &Change::delete(child_type, id), now_ms, |tx| {
                 tombstone_local(tx, child_type, id, device_id, now_ms)
             })?

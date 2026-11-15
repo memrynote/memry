@@ -1,174 +1,58 @@
 //! Orphan repair (Step 17 L3b, #3534; `sync::hardening::orphans`) through the
-//! real hardened pull: a child whose parent is a tombstone here is
-//! tombstoned and its delete queued; a child whose parent is only absent is
-//! kept, and the absent parent is fetched by id once per pull loop.
+//! desktop driver's pass (`SyncDriver::run_pass`): a task or an external event
+//! whose parent is a tombstone here is tombstoned and its delete pushed; a
+//! message of a deleted conversation is kept; a child whose parent is only
+//! absent is kept, and the absent parent is fetched by id once per driver.
 //!
-//! Real `HttpClient`, SQLite, apply and domain deletes; the transport and the
-//! record cipher are the only fakes. One `PullLoop` plays one driver across
-//! several runs, so the per-loop memory of fetched parents is the real one.
+//! The server is `driver_fakes`'s; everything else is real.
 
-#[allow(unused_imports)]
-use crate::http_fakes;
-
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
-
-use http_fakes::{FakeTransport, body_json, response};
 use memry_core::api::errors::StorageError;
-use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
-use memry_core::protocol::http::{ClientIdentity, HttpClient};
-use memry_core::protocol::types::Declaration;
-use memry_core::storage::{Db, open_data};
 use memry_core::sync::outbox::{self, Change};
-use memry_core::sync::pull::{PullLoop, RecordCipher};
 use serde_json::{Value as Json, json};
 
-const DEVICE: &str = "device-a";
+use crate::driver_fakes::Desktop;
+
 const NOW: i64 = 1_760_000_000_000;
 
-/// Opens each envelope to the payload scripted for its id.
-#[derive(Default)]
-struct Payloads(Mutex<HashMap<String, Json>>);
-
-impl Payloads {
-    fn set(&self, id: &str, payload: Json) {
-        self.0.lock().unwrap().insert(id.to_owned(), payload);
-    }
-}
-
-impl RecordCipher for Payloads {
-    fn open(&self, envelope: &RecordEnvelope) -> Result<Vec<u8>, EnvelopeError> {
-        let payload = self.0.lock().unwrap().get(&envelope.id).cloned();
-        Ok(payload
-            .unwrap_or_else(|| panic!("no payload scripted for {}", envelope.id))
-            .to_string()
-            .into_bytes())
-    }
-}
-
-/// One hardened desktop pull loop over a scratch vault, scripted per run.
-struct Device {
-    db: Db,
-    transport: Arc<FakeTransport>,
-    payloads: Arc<Payloads>,
-    pull: PullLoop,
-}
-
-fn device() -> Device {
-    let dir = tempfile::Builder::new()
-        .prefix("memry-hardening-orphans-")
-        .tempdir()
-        .expect("the scratch directory")
-        .keep();
-    let db = open_data(&dir.join("data.db")).expect("open data.db");
-    let transport = FakeTransport::new(Vec::new());
-    let payloads = Arc::new(Payloads::default());
-    let http = HttpClient::new(
-        transport.clone(),
-        "https://sync.example",
-        ClientIdentity::new("desktop", "1.0.0").expect("a valid identity"),
-    );
-    let pull = PullLoop::new(
-        Arc::new(http),
-        db.clone(),
-        Declaration::declare(&[
+async fn desktop() -> Desktop {
+    Desktop::open(
+        &[
             "project",
             "task",
             "calendar_source",
             "calendar_external_event",
             "agent_conversation",
             "agent_message",
-        ])
-        .expect("recognised"),
-        payloads.clone(),
+        ],
+        |_| Ok(()),
     )
-    .with_hardening()
-    .with_clock_device(DEVICE);
-    Device {
-        db,
-        transport,
-        payloads,
-        pull,
-    }
+    .await
 }
 
-fn envelope(id: &str, item_type: &str) -> Json {
-    json!({
-        "id": id, "type": item_type, "operation": "update",
-        "encryptedKey": "AAAA", "keyNonce": "AAAA", "encryptedData": "AAAA",
-        "dataNonce": "AAAA", "signature": "AAAA", "signerDeviceId": "peer",
-    })
+fn deleted_at(device: &Desktop, item_type: &'static str, id: &str) -> Option<i64> {
+    let id = id.to_owned();
+    device
+        .db
+        .call_blocking(move |conn| {
+            conn.query_row(
+                "SELECT deleted_at FROM sync_items WHERE item_type = ?1 AND item_id = ?2",
+                [item_type, id.as_str()],
+                |row| row.get(0),
+            )
+            .map_err(failed)
+        })
+        .expect("the row")
 }
 
-fn tombstone(id: &str, item_type: &str) -> Json {
-    let mut item = envelope(id, item_type);
-    item["deletedAt"] = json!(NOW + 1_000);
-    item
-}
-
-fn items(envelopes: Vec<Json>) -> String {
-    json!({ "items": envelopes }).to_string()
-}
-
-impl Device {
-    fn script(&self, bodies: &[String]) {
-        for body in bodies {
-            self.transport.push(response(200, body));
-        }
-    }
-
-    /// One feed page carrying `envelopes`, applied by a full run.
-    async fn run_page(&self, envelopes: Vec<Json>, cursor: &str) {
-        let listed: Vec<Json> = envelopes
-            .iter()
-            .map(|item| json!({"id": item["id"], "type": item["type"]}))
-            .collect();
-        self.script(&[
-            json!({"items": listed, "deleted": [], "hasMore": false, "nextCursor": cursor})
-                .to_string(),
-            items(envelopes),
-        ]);
-        let report = self.pull.run(5).await.expect("the run");
-        assert!(report.applied + report.deleted > 0, "the page delivered");
-    }
-
-    fn deleted_at(&self, item_type: &'static str, id: &str) -> Option<i64> {
-        let id = id.to_owned();
-        self.db
-            .call_blocking(move |conn| {
-                conn.query_row(
-                    "SELECT deleted_at FROM sync_items WHERE item_type = ?1 AND item_id = ?2",
-                    [item_type, id.as_str()],
-                    |row| row.get(0),
-                )
-                .map_err(failed)
-            })
-            .expect("the row")
-    }
-
-    fn queued(&self, item_type: &'static str, id: &str) -> Vec<String> {
-        let id = id.to_owned();
-        self.db
-            .call_blocking(move |conn| {
-                let mut statement = conn
-                    .prepare("SELECT op FROM outbox WHERE item_type = ?1 AND item_id = ?2")
-                    .map_err(failed)?;
-                statement
-                    .query_map([item_type, id.as_str()], |row| row.get(0))
-                    .map_err(failed)?
-                    .collect::<Result<_, _>>()
-                    .map_err(failed)
-            })
-            .expect("the outbox")
-    }
-
-    fn pulled_ids(&self) -> Vec<Json> {
-        self.transport
-            .calls_to("/sync/pull")
-            .iter()
-            .map(|call| body_json(call)["itemIds"].clone())
-            .collect()
-    }
+/// The ops the server was sent for `id`.
+fn pushed(device: &Desktop, id: &str) -> Vec<String> {
+    device
+        .server
+        .pushed()
+        .into_iter()
+        .filter(|(_, pushed, _)| pushed == id)
+        .map(|(_, _, op)| op)
+        .collect()
 }
 
 fn failed(error: rusqlite::Error) -> StorageError {
@@ -221,92 +105,58 @@ fn external_event() -> Json {
     })
 }
 
-/// A parent and its child pulled live in one page.
+/// A parent and its child pulled live in one pass.
 async fn pull_live(
-    device: &Device,
+    device: &Desktop,
     (parent_type, parent_id, parent): (&str, &str, Json),
     (child_type, child_id, child): (&str, &str, Json),
 ) {
-    device.payloads.set(parent_id, parent);
-    device.payloads.set(child_id, child);
-    device
-        .run_page(
-            vec![
-                envelope(parent_id, parent_type),
-                envelope(child_id, child_type),
-            ],
-            "10",
-        )
-        .await;
+    device.server.put(parent_type, parent_id, parent);
+    device.server.put(child_type, child_id, child);
+    device.server.page(&[parent_id, child_id], "10");
+    let pass = device.pass().await;
+    assert_eq!(pass.pull.applied, 2, "{:?}", pass.pull);
 }
 
-/// The parent's tombstone pulled without the child's, as when a peer's
-/// cascade never reached the server. The orphan repair re-fetches the child,
-/// which the server still holds unchanged.
-async fn pull_parent_tombstone(device: &Device, parent: (&str, &str), child: (&str, &str)) {
+/// The parent's delete pulled without the child's, as when a peer's cascade
+/// never reached the server. The orphan repair fetches the child again, which
+/// the server still holds unchanged.
+async fn pull_parent_tombstone(device: &Desktop, parent: (&str, &str), child: &str) {
     let (parent_type, parent_id) = parent;
-    let (child_type, child_id) = child;
-    device.script(&[
-        json!({"items": [{"id": parent_id, "type": parent_type}], "deleted": [],
-               "hasMore": false, "nextCursor": "11"})
-        .to_string(),
-        items(vec![tombstone(parent_id, parent_type)]),
-        items(vec![envelope(child_id, child_type)]),
-    ]);
-    let report = device.pull.run(5).await.expect("the run");
-    assert_eq!(report.deleted, 1, "the parent's tombstone applied");
+    device.server.delete(parent_type, parent_id);
+    device.server.page(&[parent_id], "11");
+    let pass = device.pass().await;
+    assert_eq!(pass.pull.deleted, 1, "the parent's tombstone applied");
     assert_eq!(
-        device.pulled_ids().last(),
-        Some(&json!([child_id])),
+        device.server.pulled_ids().last(),
+        Some(&json!([child])),
         "the child is fetched again before the check"
     );
 }
 
 #[tokio::test]
-async fn a_task_whose_project_is_a_tombstone_here_is_tombstoned_and_its_delete_queued() {
-    let device = device();
+async fn a_task_whose_project_is_a_tombstone_here_is_tombstoned_and_its_delete_pushed() {
+    let device = desktop().await;
     pull_live(
         &device,
         ("project", "p1", project()),
         ("task", "t1", task("p1")),
     )
     .await;
-    assert!(device.queued("task", "t1").is_empty());
 
-    pull_parent_tombstone(&device, ("project", "p1"), ("task", "t1")).await;
+    pull_parent_tombstone(&device, ("project", "p1"), "t1").await;
 
-    assert!(device.deleted_at("project", "p1").is_some());
+    assert!(deleted_at(&device, "project", "p1").is_some());
     assert!(
-        device.deleted_at("task", "t1").is_some(),
+        deleted_at(&device, "task", "t1").is_some(),
         "the orphan is tombstoned"
     );
-    assert_eq!(device.queued("task", "t1"), vec!["delete"]);
+    assert_eq!(pushed(&device, "t1"), vec!["delete"]);
 }
 
 #[tokio::test]
-async fn a_message_whose_conversation_is_a_tombstone_here_is_tombstoned_and_its_delete_queued() {
-    let device = device();
-    pull_live(
-        &device,
-        ("agent_conversation", "conv-1", conversation()),
-        ("agent_message", "m1", message("conv-1")),
-    )
-    .await;
-
-    pull_parent_tombstone(
-        &device,
-        ("agent_conversation", "conv-1"),
-        ("agent_message", "m1"),
-    )
-    .await;
-
-    assert!(device.deleted_at("agent_message", "m1").is_some());
-    assert_eq!(device.queued("agent_message", "m1"), vec!["delete"]);
-}
-
-#[tokio::test]
-async fn an_external_event_whose_source_is_a_tombstone_here_is_tombstoned_and_its_delete_queued() {
-    let device = device();
+async fn an_external_event_whose_source_is_a_tombstone_here_is_tombstoned_and_its_delete_pushed() {
+    let device = desktop().await;
     pull_live(
         &device,
         ("calendar_source", "src-work", source()),
@@ -314,27 +164,60 @@ async fn an_external_event_whose_source_is_a_tombstone_here_is_tombstoned_and_it
     )
     .await;
 
-    pull_parent_tombstone(
-        &device,
-        ("calendar_source", "src-work"),
-        ("calendar_external_event", "ext-1"),
-    )
-    .await;
+    pull_parent_tombstone(&device, ("calendar_source", "src-work"), "ext-1").await;
 
-    assert!(
-        device
-            .deleted_at("calendar_external_event", "ext-1")
-            .is_some()
-    );
-    assert_eq!(
-        device.queued("calendar_external_event", "ext-1"),
-        vec!["delete"]
-    );
+    assert!(deleted_at(&device, "calendar_external_event", "ext-1").is_some());
+    assert_eq!(pushed(&device, "ext-1"), vec!["delete"]);
+}
+
+/// Electron counts a soft-deleted conversation as present
+/// (`agent-message-handler.ts:104-107`) and no delete of one cascades to its
+/// messages: tombstoning them would push a delete per message from every
+/// desktop that pulls the conversation's delete.
+#[tokio::test]
+async fn the_messages_of_a_conversation_a_peer_deleted_are_kept() {
+    let device = desktop().await;
+    device
+        .server
+        .put("agent_conversation", "conv-1", conversation());
+    let ids: Vec<String> = (0..200).map(|n| format!("m{n:03}")).collect();
+    for id in &ids {
+        device.server.put("agent_message", id, message("conv-1"));
+    }
+    let mut listed: Vec<&str> = vec!["conv-1"];
+    listed.extend(ids.iter().map(String::as_str));
+    device.server.page(&listed, "10");
+    assert_eq!(device.pass().await.pull.applied, 201);
+
+    device.server.delete("agent_conversation", "conv-1");
+    device.server.page(&["conv-1"], "11");
+    assert_eq!(device.pass().await.pull.deleted, 1);
+
+    let deletes: Vec<_> = device
+        .server
+        .pushed()
+        .into_iter()
+        .filter(|(_, _, op)| op == "delete")
+        .collect();
+    assert_eq!(deletes, Vec::new(), "no delete is pushed");
+    let tombstoned: i64 = device
+        .db
+        .call_blocking(|conn| {
+            conn.query_row(
+                "SELECT COUNT(*) FROM sync_items
+                  WHERE item_type = 'agent_message' AND deleted_at IS NOT NULL",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(failed)
+        })
+        .expect("the count");
+    assert_eq!(tombstoned, 0);
 }
 
 #[tokio::test]
 async fn a_child_with_a_change_queued_is_left_to_that_change() {
-    let device = device();
+    let device = desktop().await;
     pull_live(
         &device,
         ("project", "p1", project()),
@@ -350,14 +233,14 @@ async fn a_child_with_a_change_queued_is_left_to_that_change() {
         })
         .expect("a queued edit");
 
-    pull_parent_tombstone(&device, ("project", "p1"), ("task", "t1")).await;
+    pull_parent_tombstone(&device, ("project", "p1"), "t1").await;
 
     assert_eq!(
-        device.deleted_at("task", "t1"),
+        deleted_at(&device, "task", "t1"),
         None,
         "the queued edit decides"
     );
-    assert_eq!(device.queued("task", "t1"), vec!["upsert"]);
+    assert_eq!(pushed(&device, "t1"), vec!["update"]);
 }
 
 /// A parent the server does not return is not gone: absence carries no
@@ -365,46 +248,45 @@ async fn a_child_with_a_change_queued_is_left_to_that_change() {
 /// record, and its tasks must stay.
 #[tokio::test]
 async fn a_task_whose_project_is_only_absent_is_kept_and_the_project_fetched_once() {
-    let device = device();
-    device.payloads.set("t1", task("inbox"));
-    device.payloads.set("t2", task("inbox"));
-    // The page, its body, then the absent parent's fetch: the server has none.
-    device.script(&[
-        json!({"items": [{"id": "t1", "type": "task"}], "deleted": [],
-               "hasMore": false, "nextCursor": "10"})
-        .to_string(),
-        items(vec![envelope("t1", "task")]),
-        items(Vec::new()),
-    ]);
-    device.pull.run(5).await.expect("the first run");
-    assert_eq!(device.pulled_ids(), vec![json!(["t1"]), json!(["inbox"])]);
+    let device = desktop().await;
+    device.server.put("task", "t1", task("inbox"));
+    device.server.page(&["t1"], "10");
+    device.pass().await;
+    assert_eq!(
+        device.server.pulled_ids(),
+        vec![json!(["t1"]), json!(["inbox"])]
+    );
 
-    // A second delivering run of the same loop does not ask again; an
-    // unscripted request would panic the fake transport.
-    device.run_page(vec![envelope("t2", "task")], "11").await;
+    // A second delivering pass of the same driver does not ask again.
+    device.server.put("task", "t2", task("inbox"));
+    device.server.page(&["t2"], "11");
+    device.pass().await;
 
-    assert_eq!(device.pulled_ids().len(), 3, "the parent was fetched once");
+    assert_eq!(
+        device.server.pulled_ids(),
+        vec![json!(["t1"]), json!(["inbox"]), json!(["t2"])],
+        "the parent was fetched once"
+    );
     for id in ["t1", "t2"] {
-        assert_eq!(device.deleted_at("task", id), None, "{id} is kept");
-        assert!(device.queued("task", id).is_empty(), "no delete for {id}");
+        assert_eq!(deleted_at(&device, "task", id), None, "{id} is kept");
+        assert!(pushed(&device, id).is_empty(), "nothing pushed for {id}");
     }
 }
 
 #[tokio::test]
 async fn a_message_whose_conversation_is_absent_fetches_it_by_id_and_applies_it() {
-    let device = device();
-    device.payloads.set("m1", message("conv-1"));
-    device.payloads.set("conv-1", conversation());
-    device.script(&[
-        json!({"items": [{"id": "m1", "type": "agent_message"}], "deleted": [],
-               "hasMore": false, "nextCursor": "10"})
-        .to_string(),
-        items(vec![envelope("m1", "agent_message")]),
-        items(vec![envelope("conv-1", "agent_conversation")]),
-    ]);
-    device.pull.run(5).await.expect("the run");
+    let device = desktop().await;
+    device.server.put("agent_message", "m1", message("conv-1"));
+    device
+        .server
+        .put("agent_conversation", "conv-1", conversation());
+    device.server.page(&["m1"], "10");
+    device.pass().await;
 
-    assert_eq!(device.pulled_ids(), vec![json!(["m1"]), json!(["conv-1"])]);
-    assert_eq!(device.deleted_at("agent_conversation", "conv-1"), None);
-    assert_eq!(device.deleted_at("agent_message", "m1"), None);
+    assert_eq!(
+        device.server.pulled_ids(),
+        vec![json!(["m1"]), json!(["conv-1"])]
+    );
+    assert_eq!(deleted_at(&device, "agent_conversation", "conv-1"), None);
+    assert_eq!(deleted_at(&device, "agent_message", "m1"), None);
 }

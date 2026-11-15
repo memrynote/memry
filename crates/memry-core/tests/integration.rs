@@ -8,6 +8,7 @@
 // The desktop record tests seed `vault_locks`, which exists only with `markdown` (desktop builds).
 #[cfg(feature = "markdown")]
 mod desktop_relay;
+mod driver_fakes;
 #[cfg(feature = "markdown")]
 mod editor_support;
 mod http_fakes;

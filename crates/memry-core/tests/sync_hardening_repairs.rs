@@ -7,8 +7,8 @@
 //!   quarantined one, `task_activity`, or a type the server re-creates over a
 //!   purged tombstone (notes among them). At most once per 30 minutes.
 //! - A reconnect more than a day after the last successful pull reads the
-//!   record feed from the start; less than a day keeps the cursor. A crash
-//!   between that reset and the cursor-skip marker still ends `done`.
+//!   record feed from the start; less than a day keeps the cursor. Through the
+//!   desktop driver's pass, on `driver_fakes`'s server.
 //!
 //! Real `HttpClient`, SQLite and apply; the transport and the record cipher
 //! are the only fakes. The fake transport panics on an unscripted request, so
@@ -16,6 +16,8 @@
 
 #[allow(unused_imports)]
 use crate::http_fakes;
+
+use crate::driver_fakes::Desktop;
 
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -25,11 +27,9 @@ use memry_core::api::errors::StorageError;
 use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
 use memry_core::protocol::types::Declaration;
-use memry_core::seams::reachability::{ReachabilityObserver, Reachable};
 use memry_core::storage::{Db, open_data};
 use memry_core::sync::first_sync_store::read_meta;
 use memry_core::sync::hardening::manifest::{ManifestCheck, ManifestOutcome};
-use memry_core::sync::hardening::stale_cursor::StaleCursor;
 use memry_core::sync::pull::{PullLoop, RecordCipher};
 use memry_core::sync::store::{self, RECORD_CURSOR_SCOPE};
 use serde_json::{Value as Json, json};
@@ -263,7 +263,8 @@ async fn a_refused_or_permanently_quarantined_item_is_not_pulled() {
     exec(
         &db,
         "INSERT INTO sync_refused_items (item_type, item_id, refused_by_version, refused_at)
-         VALUES ('task', 't5', 'this-build', 0);",
+         VALUES ('task', 't5', 'this-build', 0),
+                ('note', 'n7', 'this-build', 0);",
     );
     let quarantined = format!(
         "INSERT INTO sync_quarantine
@@ -274,7 +275,8 @@ async fn a_refused_or_permanently_quarantined_item_is_not_pulled() {
         .expect("seed");
     let transport = FakeTransport::new(vec![response(
         200,
-        &manifest(&[("task", "t5"), ("task", "t6")]),
+        // The refused note listed in its other spelling.
+        &manifest(&[("task", "t5"), ("task", "t6"), ("journal", "n7")]),
     )]);
 
     let outcome = ManifestCheck::default()
@@ -315,13 +317,16 @@ async fn the_check_runs_at_most_once_per_30_minutes() {
     assert_eq!(transport.calls_to("&cursor=0").len(), 2);
 }
 
-/// A device that last pulled `hours_ago`, holding cursor `4200`, comes back
-/// online; returns the first feed request's URL.
-async fn reconnect(db: &Db, hours_ago: i64, cursor: Option<&str>) -> String {
+/// A desktop that last pulled `hours_ago`, holding `cursor` and the
+/// cursor-skip marker `repair`, comes back online and runs one driver pass
+/// (`SyncDriver::run_pass`) to a page ending at `4300`; returns the desktop
+/// and the first feed request's URL.
+async fn reconnect(hours_ago: i64, cursor: &str, repair: &str) -> (Desktop, String) {
+    const TYPES: [&str; 5] = ["note", "journal", "task", "project", "task_activity"];
     let last_pull = now_ms() - hours_ago * HOUR_MS;
     let header = declaration().header_value();
-    let cursor = cursor.map(str::to_owned);
-    db.call_blocking(move |conn| {
+    let (cursor, repair) = (cursor.to_owned(), repair.to_owned());
+    let desktop = Desktop::open(&TYPES, move |conn| {
         conn.execute(
             "INSERT INTO sync_history (id, kind, item_count, created_at)
              VALUES ('h1', 'pull', 3, ?1)",
@@ -329,53 +334,49 @@ async fn reconnect(db: &Db, hours_ago: i64, cursor: Option<&str>) -> String {
         )
         .map_err(failed)?;
         conn.execute(
-            "INSERT INTO meta (key, value) VALUES ('sync.record_declaration', ?1)",
-            [header],
+            "INSERT INTO meta (key, value) VALUES ('sync.record_declaration', ?1),
+                                                  ('sync.cursor_skip_repair', ?2)",
+            [header, repair],
         )
         .map_err(failed)?;
-        if let Some(cursor) = &cursor {
-            conn.execute(
-                "INSERT INTO meta (key, value) VALUES ('sync.cursor_skip_repair', 'done')",
-                [],
-            )
-            .map_err(failed)?;
-            store::write_cursor(conn, RECORD_CURSOR_SCOPE, Some(cursor), last_pull)?;
-        }
-        Ok(())
+        store::write_cursor(conn, RECORD_CURSOR_SCOPE, Some(&cursor), last_pull)
     })
-    .expect("seed");
-
-    let transport = FakeTransport::new(vec![response(200, &changes(&[], "4300"))]);
-    let stale = Arc::new(StaleCursor::default());
-    let pull = pull_loop(db, transport.clone()).with_stale_cursor(stale.clone());
-    stale.on_change(Reachable::Wifi);
-    pull.run(1).await.expect("the run");
-    transport.calls()[0].url.clone()
+    .await;
+    desktop.server.page(&[], "4300");
+    desktop.network.reconnect();
+    desktop.pass().await;
+    let url = desktop
+        .server
+        .urls()
+        .into_iter()
+        .find(|url| url.contains("/sync/changes"))
+        .expect("a feed request");
+    (desktop, url)
 }
 
 #[tokio::test]
 async fn a_reconnect_25_hours_after_the_last_pull_reads_the_feed_from_the_start() {
-    let url = reconnect(&scratch_db(), 25, Some("4200")).await;
-    assert!(url.contains("/sync/changes"), "{url}");
+    let (_, url) = reconnect(25, "4200", "done").await;
     assert!(!url.contains("cursor="), "{url}");
 }
 
 #[tokio::test]
 async fn a_reconnect_23_hours_after_the_last_pull_keeps_the_cursor() {
-    let url = reconnect(&scratch_db(), 23, Some("4200")).await;
+    let (_, url) = reconnect(23, "4200", "done").await;
     assert!(url.contains("cursor=4200"), "{url}");
 }
 
-/// The stale reset cleared the cursor and the process died before the
-/// cursor-skip repair wrote its marker: no cursor, no marker. The next run
-/// reads the whole feed, and the repair ends `done` with nothing left owed.
+/// The cursor-skip repair reset the cursor from `4200` and the process died
+/// mid-repair, at `50`. A stale reconnect reads the feed from the start again
+/// without starting a second repair, and the pass that reaches the head
+/// records the repair `done`.
 #[tokio::test]
-async fn a_crash_between_the_reset_and_the_repair_marker_ends_done() {
-    let db = scratch_db();
-    let url = reconnect(&db, 25, None).await;
+async fn a_stale_reconnect_during_an_interrupted_repair_reads_from_the_start_and_ends_done() {
+    let (desktop, url) = reconnect(25, "50", "pending:4200").await;
 
     assert!(!url.contains("cursor="), "{url}");
-    let (marker, cursor) = db
+    let (marker, cursor) = desktop
+        .db
         .call_blocking(|conn| {
             Ok((
                 read_meta(conn, "sync.cursor_skip_repair")?,

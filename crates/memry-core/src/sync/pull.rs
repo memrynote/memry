@@ -225,7 +225,7 @@ impl PullLoop {
     /// run that skipped it. After a non-envelope pull body the cursor held, and
     /// continuing would re-read the same page.
     pub async fn run(&self, max_pages: u32) -> Result<PullReport, PullError> {
-        let repairing = self.restart_feed().await?;
+        let repairing = self.begin_run().await?;
         let mut total = PullReport::default();
         for index in 0..max_pages {
             let page = if index == 0 {
@@ -253,18 +253,34 @@ impl PullLoop {
                 break;
             }
         }
-        if repairing && !total.refused && !total.has_more {
+        self.end_run(&total, repairing).await?;
+        Ok(total)
+    }
+
+    /// What a run does after its last page, when it reached the head of the
+    /// feed unrefused: records the cursor-skip repair done when `repairing`,
+    /// then, hardened and when the run delivered, the orphan repair
+    /// ([`super::hardening::orphans`]), now that the deletes and moves pushed
+    /// before it have all landed. An orphan-repair failure is logged, not
+    /// returned: the pages have committed, and the next delivering run
+    /// repairs again.
+    pub async fn end_run(&self, total: &PullReport, repairing: bool) -> Result<(), PullError> {
+        if total.refused || total.has_more {
+            return Ok(());
+        }
+        if repairing {
             self.db
                 .call(|conn| feed_restart::finish_cursor_skip_repair(conn))
                 .await?;
         }
-        // At the head of the feed, so the deletes and moves pushed before
-        // now have all landed ([`super::hardening::orphans`]).
         let delivered = total.applied + total.deleted > 0;
-        if self.hardened && delivered && !total.refused && !total.has_more {
-            self.orphans.run(self).await?;
+        if self.hardened
+            && delivered
+            && let Err(error) = self.orphans.run(self).await
+        {
+            eprintln!("memry-core: the orphan repair failed; the next run repairs again: {error}");
         }
-        Ok(total)
+        Ok(())
     }
 
     /// Whether the stored record cursor is at or past `cursor`. `false` when
@@ -281,10 +297,11 @@ impl PullLoop {
         applied.is_some_and(|applied| cursor <= applied)
     }
 
-    /// Runs [`feed_restart`]'s two rules before the first page, after the
-    /// stale-cursor reset when a reconnect armed it, and answers whether the
-    /// cursor-skip repair is pending.
-    async fn restart_feed(&self) -> Result<bool, PullError> {
+    /// What a run does before its first page: [`feed_restart`]'s two rules,
+    /// after the stale-cursor reset when a reconnect armed it. Answers whether
+    /// the cursor-skip repair is pending, for [`PullLoop::end_run`]. Public
+    /// because [`super::engine::SyncEngine`] walks the pages itself.
+    pub async fn begin_run(&self) -> Result<bool, PullError> {
         let current = self.declaration.header_value();
         let reconnected = self.stale_cursor.as_ref().is_some_and(|stale| stale.take());
         Ok(self

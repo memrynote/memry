@@ -303,12 +303,24 @@ impl SyncEngine {
 
     /// `Idle -> Pulling -> Applying -> (Pulling | Idle | Refused)`, one lap
     /// per page.
+    ///
+    /// The run's start and end are the pull loop's ([`PullLoop::begin_run`],
+    /// [`PullLoop::end_run`]): the stale-cursor reset and the feed restarts
+    /// before the first page, the orphan repair after a page that reached the
+    /// head. A pass that stops at the page ceiling ends no run.
     async fn pull_pages(&self, trail: &mut Trail) -> (PullReport, Option<SyncError>) {
         let mut total = PullReport::default();
+        let mut repairing = false;
         for index in 0..self.max_pages {
             trail.enter(SyncState::Pulling);
             let page = if index == 0 {
-                self.pull.pull_first_page().await
+                match self.pull.begin_run().await {
+                    Ok(pending) => {
+                        repairing = pending;
+                        self.pull.pull_first_page().await
+                    }
+                    Err(error) => Err(error),
+                }
             } else {
                 self.pull.pull_page().await
             };
@@ -362,6 +374,11 @@ impl SyncEngine {
                 return (total, None);
             }
             if !page.has_more {
+                // The pages have committed: a repair marker left unwritten is
+                // written by the next run that reaches the head.
+                if let Err(error) = self.pull.end_run(&total, repairing).await {
+                    eprintln!("memry-core: ending the pull run failed: {error}");
+                }
                 trail.enter(SyncState::Idle);
                 return (total, None);
             }
