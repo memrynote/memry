@@ -552,6 +552,15 @@ jobs:
           MEMRY_ML_MODEL_DIR: ${{ runner.temp }}/models/onnx-community/embeddinggemma-2-ONNX
         run: cargo test -p memry-ml --test golden_text -- --ignored
 
+      # The same golden vector through the real `memry-ml-worker` binary (the app's embedding path,
+      # ONNX Runtime out of process), and again in a new child after the first is killed.
+      - name: memry-ml-worker real embed
+        if: matrix.part != 'tests' && needs.plan.outputs.full == 'true'
+        timeout-minutes: 20
+        env:
+          MEMRY_ML_MODEL_DIR: ${{ runner.temp }}/models/onnx-community/embeddinggemma-2-ONNX
+        run: cargo test -p memry-ml-worker --test embed -- --ignored
+
       # The vision encoder (109 MB) has its own cache entry, holding only its two files, so the
       # text entry above stays as it is.
       - name: Restore the vision encoder (memry-ml golden image)

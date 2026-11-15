@@ -119,6 +119,8 @@ mod editor_readonly;
 mod embedding_owed;
 #[path = "embedding_projector.rs"]
 mod embedding_projector;
+#[path = "embedding_worker.rs"]
+mod embedding_worker;
 #[path = "embeds.rs"]
 mod embeds;
 #[path = "file_open.rs"]
