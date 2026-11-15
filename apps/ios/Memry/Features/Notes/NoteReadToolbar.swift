@@ -41,6 +41,7 @@ struct NoteReadToolbar: ViewModifier {
     @State private var choosingIcon = false
     @State private var local = LocalSettings.shared
     @Environment(\.vaultSyncPasses) private var vaultSyncPasses
+    @Environment(\.notesPane) private var pane
 
     /// The note's own `fullWidth` wins, then this device's editor width.
     private var isFullWidth: Bool { local.editorWidth.isFull(override: actions.fullWidth) }
@@ -53,11 +54,13 @@ struct NoteReadToolbar: ViewModifier {
                 // Everything the bottom bar used to hold lives here now: the
                 // keyboard toolbar owns editing at the caret, and one bottom
                 // surface fewer leaves the page to the writing.
-                ToolbarItem(placement: .topBarTrailing) {
-                    NotePageMenu(
-                        items: menuItems,
-                        editing: editorModel.canEdit ? editingItems : nil
-                    )
+                if pane?.showsPageMenu ?? true {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        NotePageMenu(
+                            items: menuItems,
+                            editing: editorModel.canEdit ? editingItems : nil
+                        )
+                    }
                 }
             }
             .task { await actions.loadFavorite() }

@@ -66,6 +66,10 @@ final class EditorSession {
     /// Opens a wiki link's target, for a tap on a link in a block. `nil`
     /// leaves the tap to place the caret.
     @ObservationIgnored var openWikiTarget: ((String) -> Void)?
+    /// Opens a wiki link's target in the pane beside this note (#4377), for
+    /// a `⌘`-tap and the link's menu. `nil` where no pane can show beside
+    /// it: a tap opens the link here, and the link has no menu.
+    @ObservationIgnored var openWikiTargetToSide: ((String) -> Void)?
     /// Schedules a vault sync pass (`requestVaultSync`, debounced), so a
     /// write reaches other devices without waiting for the next foreground
     /// or launch. `didChange` calls it after every committed write.
@@ -511,9 +515,17 @@ final class EditorSession {
     /// since the last commit into a link node (desktop's input rule). Never
     /// in a code block, whose text stays literal. Answers where a UTF-16
     /// location in `field` before the commit is after it, with each such
-    /// link drawn as its one-character node.
+    /// link drawn as its one-character node. `nodes` puts zero-width inline
+    /// nodes in after the typing and answers the edits it ran, which join
+    /// the typing's undo step. `over` puts nodes over text in `field`, such
+    /// as a `#tag`, as the typed links go (`NoteEditorViewModel.insert`).
     @discardableResult
-    func commit(_ field: BlockField, then: (@MainActor () async -> Void)? = nil) -> (Int) -> Int {
+    func commit(
+        _ field: BlockField,
+        then: (@MainActor () async -> Void)? = nil,
+        over: [EditorUndoStep.TextNode] = [],
+        inserting nodes: (@MainActor (NoteEditorViewModel) async -> [BlockEdit])? = nil
+    ) -> (Int) -> Int {
         // Keys held for a Return's new block commit here instead (Tab, ⌘B,
         // leaving the app): moved on later, they would leave undo steps that
         // write them twice.
@@ -527,17 +539,21 @@ final class EditorSession {
         }
         let attributed = field.textView.attributedText ?? NSAttributedString()
         let text = attributed.string
-        let current = BlockText.shown(field.block.inline)
-        let formatted = BlockText.isFormatted(field.block.inline) || text.contains(BlockText.placeholder)
         let blockId = field.blockId
         let dirty = field.dirty
         let base = field.base
         let links = dirty && field.block.kind != "codeBlock" ? WikiLinkText.typed(in: text, since: base) : []
-        let offsets = links.map { (
-            BlockText.coreOffset(in: attributed, utf16: $0.range.location),
-            BlockText.coreOffset(in: attributed, utf16: NSMaxRange($0.range)),
-            $0
-        ) }
+        let overText = links.map { link in
+            NoteEditorViewModel.wikiLinkNode(
+                WikiLinkText.Typed(
+                    start: BlockText.coreOffset(in: attributed, utf16: link.range.location),
+                    literal: (text as NSString).substring(with: link.range),
+                    target: link.target, alias: link.alias
+                ),
+                in: blockId
+            )
+        } + over
+        let length = BlockText.coreOffset(in: attributed, utf16: attributed.length)
         field.dirty = false
         if dirty {
             field.base = text
@@ -550,23 +566,35 @@ final class EditorSession {
         let moved = links.isEmpty ? { $0 } : field.drawLinks(links)
         // The session too, so the write still schedules its sync pass.
         enqueue {
-            if dirty, text != base {
-                await model.commit(text, for: blockId, current: current, formatted: formatted, base: base)
-                self.history.record(Self.textStep(blockId, from: current, to: text, formatted: formatted))
-            }
-            for (start, end, link) in offsets.reversed() {
-                await model.insertWikiLink(in: blockId, from: start, to: end, title: link.target, alias: link.alias)
+            let wrote = dirty && text != base
+            if wrote { await model.commit(text, for: blockId, base: base) }
+            let converted = overText.isEmpty
+                ? [] : await model.insert(overText, over: blockId, typedLength: length)
+            let added = await nodes?(model) ?? []
+            // From `base`, as the write: the block may hold another pane's
+            // typing since, which undo and redo keep. To this pane's text
+            // with the nodes in, so undo takes them back too. A node over
+            // text, such as a `#tag`, keeps its literal for redo to find.
+            if !converted.isEmpty || !added.isEmpty {
+                let spans = converted.map { $0.start ..< $0.start + $0.literal.utf8.count } + added.compactMap(Self.span)
+                self.history.record(.text(
+                    blockId: blockId, from: base, typed: text, typedLength: length, overText: converted,
+                    nodes: added, to: BlockText.placingNodes(spans, in: attributed),
+                    caret: (field.pendingSelection ?? field.textView.selectedRange).location
+                ))
+            } else if wrote {
+                self.history.record(.text(blockId: blockId, from: base, to: text))
             }
             await then?()
-            if dirty || !offsets.isEmpty || then != nil { await self.didChange() }
+            if dirty || !overText.isEmpty || nodes != nil || then != nil { await self.didChange() }
         }
         return moved
     }
 
-    private static func textStep(_ blockId: String, from: String, to: String, formatted: Bool) -> EditorUndoStep {
-        formatted
-            ? .replaceText(blockId: blockId, from: from, to: to)
-            : .text(blockId: blockId, from: from, to: to)
+    /// The core range an `insertInline` replaced.
+    private static func span(_ edit: BlockEdit) -> Range<Int>? {
+        guard case let .insertInline(_, start, end, _, _, _) = edit else { return nil }
+        return Int(start) ..< Int(max(start, end))
     }
 
     /// Commits the focused block (if any), then runs `work` against it.
@@ -714,10 +742,11 @@ final class EditorSession {
         field.pendingSelection = NSRange(location: range.location + 2, length: 0)
         self.tagTrigger = nil
         tagSuggestions = []
-        let attrs = HashTagAttrs.attrs(tag: suggestion.tag, colors: tagColors)
-        withFocused { model, blockId in
-            await model.insertInline(blockId, from: start, to: end, kind: "hashTag", text: "", attrs: attrs)
-        }
+        let edit = BlockEdit.insertInline(
+            blockId: field.blockId, start: UInt32(start), end: UInt32(end), kind: "hashTag", text: "",
+            attrs: HashTagAttrs.attrs(tag: suggestion.tag, colors: tagColors)
+        )
+        commit(field, over: [.init(start: start, literal: string.substring(with: range), edit: edit)])
     }
 
     // MARK: The focused block's place
@@ -907,8 +936,8 @@ final class EditorSession {
             case .diagram:
                 // A diagram's source is its plain content: `ReplaceText`
                 // edits it in place, so a peer's concurrent edit survives.
-                await model.commit(text, for: request.blockId, current: request.source, formatted: true)
-                self?.history.record(.replaceText(blockId: request.blockId, from: request.source, to: text))
+                await model.commit(text, for: request.blockId, base: request.source)
+                self?.history.record(.text(blockId: request.blockId, from: request.source, to: text))
             }
         }
     }
@@ -1006,8 +1035,8 @@ final class EditorSession {
         if let blockId = request.blockId {
             guard text != request.text else { return }
             runBlockAction { [weak self] model in
-                await model.commit(text, for: blockId, current: request.text, formatted: true)
-                self?.history.record(.replaceText(blockId: blockId, from: request.text, to: text))
+                await model.commit(text, for: blockId, base: request.text)
+                self?.history.record(.text(blockId: blockId, from: request.text, to: text))
             }
             return
         }
@@ -1105,25 +1134,26 @@ final class EditorSession {
         // Read once the commit has drawn a typed `[[…]]` before `range` as
         // its node, as the core holds it when the nodes go in.
         var start = 0
-        let moved = commit(field) { [weak self] in
-            guard let model = self?.model else { return }
+        let moved = commit(field, inserting: { model in
+            var edits: [BlockEdit] = []
             // Last first, so each node's offset still counts only the spaces
             // before it.
             for (index, kind) in kinds.enumerated().reversed() {
                 let at = start + index
                 switch kind {
                 case let .note(title, alias):
-                    await model.insertWikiLink(in: blockId, from: at, to: at, title: title, alias: alias)
+                    if let edit = await model.insertWikiLink(in: blockId, from: at, to: at, title: title, alias: alias) { edits.append(edit) }
                 case let .create(title, alias):
                     await model.createNote(titled: title)
-                    await model.insertWikiLink(in: blockId, from: at, to: at, title: title, alias: alias)
+                    if let edit = await model.insertWikiLink(in: blockId, from: at, to: at, title: title, alias: alias) { edits.append(edit) }
                 case let .date(value):
-                    await model.insertDateMention(in: blockId, from: at, to: at, value: value)
+                    if let edit = await model.insertDateMention(in: blockId, from: at, to: at, value: value) { edits.append(edit) }
                 case .slash:
                     break
                 }
             }
-        }
+            return edits
+        })
         let location = moved(range.location)
         start = BlockText.coreOffset(in: textView.attributedText ?? NSAttributedString(), utf16: location)
         field.pendingSelection = NSRange(location: location + 2 * kinds.count, length: 0)
@@ -1138,7 +1168,7 @@ final class EditorSession {
         enqueue { [weak self] in
             guard let self, let model = self.model else { return }
             // The space first, so the node lands inside a text run.
-            await model.commit(shown + " ", for: blockId, current: shown, formatted: true)
+            await model.commit(shown + " ", for: blockId, base: shown)
             switch kind {
             case let .note(title, alias):
                 await model.insertWikiLink(in: blockId, from: end, to: end, title: title, alias: alias)
@@ -1228,8 +1258,7 @@ final class EditorSession {
         var kept: EditorUndoStep?
         if let field, let undone = undoneTyping, undone.blockId == field.blockId,
            pendingTyping?.canRedo == true, undone.text != field.textView.text {
-            let formatted = BlockText.isFormatted(field.block.inline) || undone.text.contains(BlockText.placeholder)
-            kept = Self.textStep(field.blockId, from: field.textView.text, to: undone.text, formatted: formatted)
+            kept = .text(blockId: field.blockId, from: field.textView.text, to: undone.text)
         }
         undoneTyping = nil
         // The commit records the changed typing, and this undo takes it back
@@ -1237,7 +1266,10 @@ final class EditorSession {
         // no reload redraws the text view (`updateUIView` compares blocks).
         replay(redrawing: typingChanged ? field : nil) { history in
             if let kept { history.keepRedo(kept) }
-            return history.popUndo().map { [$0.backward] + $0.backwardAfter }
+            guard let step = history.popUndo() else { return nil }
+            return { model in
+                for edit in [step.backward] + step.backwardAfter { await model.apply(edit) }
+            }
         }
     }
 
@@ -1248,7 +1280,16 @@ final class EditorSession {
             return
         }
         guard canRedo else { return }
-        replay { $0.popRedo().map { [$0.forward] + $0.forwardProps } }
+        replay { [weak self] history in
+            guard let step = history.popRedo() else { return nil }
+            return { model in
+                await model.redo(step)
+                if let caret = step.caret, let field = self?.field,
+                   case let .replaceText(blockId, _, _) = step.forward, field.blockId == blockId {
+                    field.pendingSelection = NSRange(location: caret, length: 0)
+                }
+            }
+        }
     }
 
     /// Takes a step with `take` and applies its edits once the open block's
@@ -1257,11 +1298,12 @@ final class EditorSession {
     /// (#4659), and a step taken before that record would replay over text
     /// it never saw, ahead of it in the history.
     private func replay(
-        redrawing reverted: BlockField? = nil, _ take: @escaping @MainActor (EditorUndoStack) -> [BlockEdit]?
+        redrawing reverted: BlockField? = nil,
+        _ take: @escaping @MainActor (EditorUndoStack) -> (@MainActor (NoteEditorViewModel) async -> Void)?
     ) {
         let apply: @MainActor () async -> Void = { [weak self] in
-            guard let self, let model = self.model, let edits = take(self.history) else { return }
-            for edit in edits { await model.apply(edit) }
+            guard let self, let model = self.model, let run = take(self.history) else { return }
+            await run(model)
             // Never over typing that landed during the writes: its next
             // commit sends the change from `base` onto the reverted core.
             if reverted?.dirty == false { reverted?.render() }

@@ -23,6 +23,11 @@ import SwiftUI
 // Day Panel). Adding the list would push the note under the reading measure on
 // every iPad, so while either rail is open beside a note the note stands
 // alone, and the list comes back when it closes.
+//
+// **Two notes (#4377).** The detail column holds a second note beside the
+// first where the page holds a note and a rail (`NotesDetailColumn`). The two
+// take the room the rails and the list would: while they show, the rails
+// yield and the notes stand alone, as beside a rail.
 
 struct NotesSplitView: View {
     let model: VaultBrowseViewModel
@@ -77,6 +82,12 @@ struct NotesSplitView: View {
         }
         .environment(\.noteInspectorFits, rails?.inspectorFits ?? false)
         .environment(router)
+        .onChange(of: rails?.pageRoom(on: .notes) ?? SideRailRoom.none, initial: true) { _, room in
+            router.splitFits = room != .none
+        }
+        .onChange(of: router.splitShown, initial: true) { _, shown in rails?.notesSplit = shown }
+        // ⌘\ and ⌘⌥W (`VaultCommands`).
+        .focusedSceneValue(\.notesSplit, router)
         // A search hit or a capture's "View": the note in the detail column,
         // its row selected in the list.
         .onChange(of: notesLinks.pending, initial: true) {
@@ -103,7 +114,7 @@ struct NotesSplitView: View {
     }
 
     private var widthColumns: NavigationSplitViewVisibility {
-        if railShown { return .detailOnly }
+        if railShown || router.splitShown { return .detailOnly }
         return holdsThreeColumns ? .all : .doubleColumn
     }
 
@@ -201,89 +212,4 @@ private struct FolderSidebarLabel: View {
 private extension FolderNode {
     /// `nil` for a leaf, so the tree draws no disclosure arrow on it.
     var sidebarChildren: [FolderNode]? { children.isEmpty ? nil : children }
-}
-
-/// The note, with the notes opened from inside it stacked behind it, or the
-/// empty state when no note is open (D6).
-private struct NotesDetailColumn: View {
-    let model: VaultBrowseViewModel
-    @Bindable var router: NotesSplitRouter
-    @Environment(\.requestVaultSync) private var requestVaultSync
-    /// Built once: a new closure on every render would change the
-    /// environment of the open note and redraw its page while it is typed in.
-    @State private var afterWrite: (@MainActor () -> Void)?
-    /// Handed to each page: a page pushed onto the stack does not see an
-    /// environment set outside it.
-    @Environment(\.noteInspectorFits) private var inspectorFits
-
-    var body: some View {
-        NavigationStack(path: $router.trail) {
-            Group {
-                if let note = router.note {
-                    reader(note).id(note)
-                } else {
-                    NotesEmptyDetail(model: model, router: router)
-                }
-            }
-            .navigationDestination(for: NoteRoute.self) { reader($0) }
-        }
-        // Every write in the note asks for a sync pass. The list stays on
-        // screen beside it, so it re-reads too: a new title or a move shows
-        // in its row at once, where the phone stack re-reads on Back.
-        .environment(\.requestVaultSync, afterWrite)
-        .onChange(of: requestVaultSync == nil, initial: true) {
-            let upstream = requestVaultSync
-            afterWrite = { [model] in
-                upstream?()
-                Task { await model.refresh() }
-            }
-        }
-    }
-
-    private func reader(_ route: NoteRoute) -> some View {
-        NoteReadView(
-            route: route,
-            reader: model.reader,
-            filler: model.filler,
-            editor: model.editor,
-            metadataWriter: model.metadataWriter,
-            writer: model.writer,
-            search: model.searcher,
-            open: { router.follow($0) },
-            openTag: { router.show(.tag($0)) },
-            noteTasks: model.noteTasks
-        )
-        .environment(\.noteInspectorFits, inspectorFits)
-    }
-}
-
-/// No note open: what is absent and the next useful action.
-private struct NotesEmptyDetail: View {
-    let model: VaultBrowseViewModel
-    let router: NotesSplitRouter
-
-    private var folder: String? {
-        if case let .folder(path) = router.scope { return path }
-        return nil
-    }
-
-    var body: some View {
-        ContentUnavailableView {
-            Label("No note open", systemImage: "doc.text")
-        } description: {
-            Text("Choose a note from the list.")
-        } actions: {
-            if model.writer != nil {
-                Button(NotesCreateCopy.newNote, systemImage: "square.and.pencil") {
-                    Task {
-                        if let id = await model.createNote(in: folder) { router.select(NoteRoute(id: id)) }
-                    }
-                }
-                .memryPrimaryAction()
-                .accessibilityIdentifier("notes.empty.newNote")
-            }
-        }
-        .background(Tokens.Canvas.background.color)
-        .toolbar { DayPanelToolbarItem() }
-    }
 }

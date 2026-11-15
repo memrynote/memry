@@ -40,12 +40,6 @@ enum BlockText {
         run.marks.contains { nodeKinds.contains($0) }
     }
 
-    /// Any mark or node: a block whose text must be written with
-    /// `replaceText` rather than `setText`.
-    static func isFormatted(_ runs: [InlineRun]) -> Bool {
-        runs.contains { !$0.marks.isEmpty }
-    }
-
     struct Segment: Equatable {
         let run: InlineRun
         let isNode: Bool
@@ -83,21 +77,108 @@ enum BlockText {
     /// The core offset of a UTF-16 position in the text view's text.
     static func coreOffset(in text: NSAttributedString, utf16 offset: Int) -> Int {
         let end = min(max(offset, 0), text.length)
-        let string = text.string as NSString
         var bytes = 0
         var index = 0
         while index < end {
-            let range = string.rangeOfComposedCharacterSequence(at: index)
-            let piece = string.substring(with: range)
-            if piece == placeholder,
-               let nodeBytes = text.attribute(.memryNodeBytes, at: index, effectiveRange: nil) as? Int {
-                bytes += nodeBytes
-            } else {
-                bytes += piece.utf8.count
-            }
-            index = range.location + range.length
+            bytes += coreBytes(in: text, at: &index)
         }
         return bytes
+    }
+
+    /// The UTF-16 position of a core offset in the text view's text: the
+    /// first one that many bytes in.
+    static func utf16Offset(in text: NSAttributedString, core offset: Int) -> Int {
+        var bytes = 0
+        var index = 0
+        while index < text.length, bytes < offset {
+            bytes += coreBytes(in: text, at: &index)
+        }
+        return index
+    }
+
+    /// The core bytes of the character at `index`, which moves past it.
+    private static func coreBytes(in text: NSAttributedString, at index: inout Int) -> Int {
+        let range = (text.string as NSString).rangeOfComposedCharacterSequence(at: index)
+        let piece = (text.string as NSString).substring(with: range)
+        defer { index = NSMaxRange(range) }
+        if piece == placeholder,
+           let nodeBytes = text.attribute(.memryNodeBytes, at: index, effectiveRange: nil) as? Int {
+            return nodeBytes
+        }
+        return piece.utf8.count
+    }
+
+    /// `text` with an atom node, a U+FFFC of no core bytes, put over each
+    /// core range in turn: the block as the core holds it once those
+    /// `insertInline`s land on `text`. Then that block with each of those
+    /// nodes, last first, turned back into the text it went over, or a
+    /// space for one that went over none. The core diffs `ReplaceText` by
+    /// prefix and suffix, so dropping a U+FFFC beside another node can drop
+    /// that node instead (VERIFY-4700); changing one U+FFFC into other text
+    /// changes exactly that one.
+    static func placingNodes(_ spans: [Range<Int>], in text: NSAttributedString) -> [String] {
+        let result = NSMutableAttributedString(attributedString: text)
+        let placed = NSAttributedString.Key("memry.placed")
+        for span in spans {
+            let lower = utf16Offset(in: result, core: span.lowerBound)
+            let upper = max(lower, utf16Offset(in: result, core: span.upperBound))
+            let range = NSRange(location: lower, length: upper - lower)
+            let covered = (result.string as NSString).substring(with: range)
+            result.replaceCharacters(
+                in: range,
+                with: NSAttributedString(
+                    string: placeholder, attributes: [.memryNodeBytes: 0, placed: covered.isEmpty ? " " : covered]
+                )
+            )
+        }
+        var chain = [result.string]
+        for location in (0 ..< result.length).reversed() {
+            guard let covered = result.attribute(placed, at: location, effectiveRange: nil) as? String else { continue }
+            result.replaceCharacters(in: NSRange(location: location, length: 1), with: covered)
+            chain.append(result.string)
+        }
+        return chain
+    }
+
+    /// `base` to `text` as one change per run of text between inline nodes,
+    /// when both hold the same nodes: the text after each change, in order.
+    /// The core diffs `ReplaceText` by one common prefix and suffix, so
+    /// typing on both sides of a node in one write spans the node and
+    /// deletes it (VERIFY-4700). Typing never adds a node, so an equal
+    /// count is the same nodes.
+    static func stepsAroundNodes(from base: String, to text: String) -> [String] {
+        let old = base.components(separatedBy: placeholder)
+        let new = text.components(separatedBy: placeholder)
+        guard old.count == new.count else { return [text] }
+        var parts = old
+        var steps: [String] = []
+        for index in parts.indices where parts[index] != new[index] {
+            parts[index] = new[index]
+            steps.append(parts.joined(separator: placeholder))
+        }
+        return steps.isEmpty ? [text] : steps
+    }
+
+    /// `range` in `old` moved onto `new`, in UTF-16: the text both share
+    /// before and after the change holds still, so a caret after the change
+    /// moves by its length, one before it stays, and one inside it goes to
+    /// its end.
+    static func carry(_ range: NSRange, from old: String, to new: String) -> NSRange {
+        let old = Array(old.utf16)
+        let new = Array(new.utf16)
+        let shortest = min(old.count, new.count)
+        var prefix = 0
+        while prefix < shortest, old[prefix] == new[prefix] { prefix += 1 }
+        var suffix = 0
+        while suffix < shortest - prefix, old[old.count - 1 - suffix] == new[new.count - 1 - suffix] { suffix += 1 }
+        let changedEnd = old.count - suffix
+        let move = { (location: Int) -> Int in
+            if location <= prefix { return location }
+            if location >= changedEnd { return location + new.count - old.count }
+            return new.count - suffix
+        }
+        let start = move(range.location)
+        return NSRange(location: start, length: max(0, move(NSMaxRange(range)) - start))
     }
 
     // MARK: - Drawing

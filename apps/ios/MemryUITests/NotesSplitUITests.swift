@@ -171,6 +171,136 @@ final class NotesSplitUITests: XCTestCase {
         deleteNotes([source, target])
     }
 
+    /// #4377: a wiki link's menu opens its note beside the linking one, each
+    /// pane takes typing, and ⌘⌥W closes the focused pane with both notes'
+    /// typing kept.
+    func testAWikiLinkOpensToTheSideAndBothPanesTakeTyping() throws {
+        try openNotes()
+        app.primeCommandKeys()
+        let target = "[agent] \(run) side"
+        let source = "[agent] \(run) main"
+        makeNote(target)
+        makeNote(source).tap()
+        app.typeText("[[\(run) side")
+        let pick = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", target)).firstMatch
+        XCTAssertTrue(pick.waitForExistence(timeout: 10), "the [[ menu did not offer the note")
+        pick.tap()
+        let chip = firstBlock.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0.5)).withOffset(CGVector(dx: 48, dy: 0))
+        chip.press(forDuration: 1)
+        let toSide = app.descendants(matching: .any).matching(NSPredicate(format: "label == 'Open to the Side'")).firstMatch
+        XCTAssertTrue(toSide.waitForExistence(timeout: 5), "holding the link showed no Open to the Side")
+        toSide.tap()
+
+        let main = app.otherElements["notes.pane.main"]
+        let side = app.otherElements["notes.pane.side"]
+        XCTAssertTrue(side.waitForExistence(timeout: 10), "no side pane")
+        XCTAssertTrue(side.textFields.matching(NSPredicate(format: "value == %@", target)).firstMatch.waitForExistence(timeout: 10))
+        XCTAssertTrue(main.textFields.matching(NSPredicate(format: "value == %@", source)).firstMatch.exists)
+        XCTAssertTrue(matches(NSPredicate(format: "isSelected == true"), side), "the new pane has no focus")
+        attach("two-panes")
+        let menus = app.buttons.matching(NSPredicate(format: "label == 'More actions for this note'"))
+        XCTAssertEqual(menus.count, 1, "both panes show a page menu")
+
+        let sideBlock = block(in: side)
+        sideBlock.tap()
+        app.typeText("typed beside")
+        let mainBlock = block(in: main)
+        mainBlock.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+        XCTAssertTrue(matches(NSPredicate(format: "isSelected == true"), main), "a tap did not move the focus")
+        app.typeText(" typed main")
+        attach("two-panes-typed")
+        XCTAssertEqual(menus.count, 1, "both panes show a page menu")
+        // The one menu is the focused pane's, and Delete names its note.
+        menus.firstMatch.tap()
+        let delete = app.buttons["trash"]
+        XCTAssertTrue(delete.waitForExistence(timeout: 5), "the page menu has no Delete")
+        delete.tap()
+        let alert = app.alerts["Delete \u{201c}\(source)\u{201d}?"]
+        XCTAssertTrue(alert.waitForExistence(timeout: 5), "Delete does not name the focused pane's note")
+        attach("delete-names-the-note")
+        alert.buttons["Cancel"].tap()
+        XCTAssertTrue(alert.waitForNonExistence(timeout: 5))
+
+        // 13" portrait has no room for two panes: the focused one shows alone,
+        // and the other comes back with the width.
+        XCUIDevice.shared.orientation = .portrait
+        XCTAssertTrue(side.waitForNonExistence(timeout: 5), "portrait kept two panes")
+        XCTAssertTrue(page(source).exists, "portrait did not keep the focused pane")
+        attach("collapsed-portrait")
+        XCUIDevice.shared.orientation = .landscapeLeft
+        XCTAssertTrue(side.waitForExistence(timeout: 5), "landscape did not bring the side pane back")
+
+        app.typeKey("w", modifierFlags: [.command, .option])
+        XCTAssertTrue(side.waitForNonExistence(timeout: 5), "⌘⌥W did not close the split")
+        XCTAssertTrue(page(target).waitForExistence(timeout: 10), "the side pane's note did not fill the column")
+        XCTAssertTrue(matches(NSPredicate(format: "value CONTAINS 'typed beside'"), firstBlock), "the side pane's typing is gone")
+        row(source).tap()
+        XCTAssertTrue(page(source).waitForExistence(timeout: 10))
+        XCTAssertTrue(matches(NSPredicate(format: "value CONTAINS 'typed main'"), firstBlock), "the main pane's typing is gone")
+
+        deleteNotes([source, target])
+    }
+
+    /// VERIFY-4700: a backlink's Open to the Side on a page a link pushed
+    /// opens the backlink's note beside it, and the main pane keeps its
+    /// stack: the pushed page, and the linking note behind it. A link
+    /// followed in a pane then opens in that pane.
+    func testABacklinkOnAPushedPageOpensToTheSide() throws {
+        try openNotes()
+        app.primeCommandKeys()
+        let target = "[agent] \(run) gamma"
+        let source = "[agent] \(run) alpha"
+        makeNote(target)
+        makeNote(source).tap()
+        app.typeText("[[\(run) gamma")
+        let pick = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", target)).firstMatch
+        XCTAssertTrue(pick.waitForExistence(timeout: 10), "the [[ menu did not offer the note")
+        pick.tap()
+        let chip = { (pane: XCUIElement) in
+            self.block(in: pane).coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0.5)).withOffset(CGVector(dx: 48, dy: 0))
+        }
+        chip(app).tap()
+        XCTAssertTrue(page(target).waitForExistence(timeout: 10), "the link did not open \(target)")
+        let backlink = app.buttons.matching(NSPredicate(
+            format: "identifier BEGINSWITH 'note.backlink.' AND label CONTAINS %@", source
+        )).firstMatch
+        XCTAssertTrue(backlink.waitForExistence(timeout: 30), "\(target) lists no backlink from \(source)")
+        backlink.press(forDuration: 1)
+        let toSide = app.descendants(matching: .any).matching(NSPredicate(format: "label == 'Open to the Side'")).firstMatch
+        XCTAssertTrue(toSide.waitForExistence(timeout: 5), "holding the backlink showed no Open to the Side")
+        toSide.tap()
+
+        let main = app.otherElements["notes.pane.main"]
+        let side = app.otherElements["notes.pane.side"]
+        XCTAssertTrue(side.waitForExistence(timeout: 10), "no side pane")
+        attach("backlink-to-the-side")
+        let sidePage = side.textFields.matching(NSPredicate(format: "value == %@", source)).firstMatch
+        XCTAssertTrue(sidePage.waitForExistence(timeout: 10), "the side pane does not show \(source)")
+        XCTAssertTrue(sidePage.isHittable, "the side pane's page is covered")
+        let mainPage = main.textFields.matching(NSPredicate(format: "value == %@", target)).firstMatch
+        XCTAssertTrue(mainPage.waitForExistence(timeout: 10), "the main pane does not show \(target)")
+        XCTAssertLessThan(mainPage.frame.maxX, sidePage.frame.minX, "the panes are not side by side")
+
+        // Back pops the focused pane only.
+        mainPage.tap()
+        XCTAssertTrue(matches(NSPredicate(format: "isSelected == true"), main), "a tap did not focus the main pane")
+        app.buttons["notes.pane.back"].firstMatch.tap()
+        let mainSource = main.textFields.matching(NSPredicate(format: "value == %@", source)).firstMatch
+        XCTAssertTrue(mainSource.waitForExistence(timeout: 10), "Back in the main pane did not return to \(source)")
+        XCTAssertTrue(sidePage.exists, "Back moved the side pane")
+        chip(main).tap()
+        XCTAssertTrue(mainPage.waitForExistence(timeout: 10), "the link did not open in the main pane")
+        XCTAssertTrue(sidePage.isHittable, "the link pushed over the side pane")
+        attach("pane-link")
+
+        app.typeKey("w", modifierFlags: [.command, .option])
+        XCTAssertTrue(side.waitForNonExistence(timeout: 5), "⌘⌥W did not close the split")
+        // With no split, ⌘⌥W does nothing: the window stays.
+        app.typeKey("w", modifierFlags: [.command, .option])
+        XCTAssertTrue(row(source).waitForExistence(timeout: 5), "⌘⌥W with no split closed the window")
+        deleteNotes([source, target])
+    }
+
     /// #4426 (D3): the Search row opens the palette; ↓ moves the highlight
     /// to the second hit and Return opens that one in the detail column.
     func testTheSearchPaletteOpensTheHighlightedHitInTheDetailColumn() throws {
@@ -558,6 +688,10 @@ final class NotesSplitUITests: XCTestCase {
         app.textViews.matching(NSPredicate(format: "identifier BEGINSWITH 'note.block.'")).firstMatch
     }
 
+    private func block(in pane: XCUIElement) -> XCUIElement {
+        pane.textViews.matching(NSPredicate(format: "identifier BEGINSWITH 'note.block.'")).firstMatch
+    }
+
     /// A note list row by title.
     private func row(_ title: String) -> XCUIElement {
         app.buttons.matching(NSPredicate(format: "label CONTAINS %@", title)).firstMatch
@@ -633,6 +767,13 @@ final class NotesSplitUITests: XCTestCase {
         }
         XCTAssertTrue(notes.waitForExistence(timeout: 5), "the sidebar did not show")
         notes.tap()
+        // An earlier run may have left a split, which the launch restores.
+        let side = app.otherElements["notes.pane.side"]
+        if side.waitForExistence(timeout: 3) {
+            app.primeCommandKeys()
+            app.typeKey("w", modifierFlags: [.command, .option])
+            XCTAssertTrue(side.waitForNonExistence(timeout: 5), "a restored split did not close")
+        }
         // An earlier run may have left the inspector open, which hides the list.
         hideInspector()
         XCTAssertTrue(app.buttons["notes.addButton"].waitForExistence(timeout: 10))
