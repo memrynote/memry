@@ -1,12 +1,14 @@
 //! The out-of-process worker of MemryNote and the app's supervisor of it.
 //!
-//! pdfium is C++ and reads PDFs from the vault, which are untrusted input. It runs only in the
-//! `memry-ml-worker` child process (#3542, R2), so a crash or a hang on a hostile file kills the
-//! child, never the app. The app talks to it over stdin and stdout in length-prefixed frames
-//! ([`frame`]) that carry the ops of [`op`]; [`supervisor::Supervisor`] owns the child, and
-//! [`Supervisor::open_pdf`] is the typed PDF API over it.
+//! pdfium and Tesseract are C++ and read PDFs and images from the vault, which are untrusted
+//! input. They run only in the `memry-ml-worker` child process (#3542, R1 and R2), so a crash or a
+//! hang on a hostile file kills the child, never the app. The app talks to it over stdin and stdout
+//! in length-prefixed frames ([`frame`]) that carry the ops of [`op`]; [`supervisor::Supervisor`]
+//! owns the child, and [`Supervisor::open_pdf`] and [`Supervisor::recognize`] are the typed APIs
+//! over it.
 
 pub mod frame;
+mod ocr_client;
 pub mod op;
 mod pdf_client;
 mod priority;
@@ -14,7 +16,7 @@ pub mod serve;
 pub mod supervisor;
 
 pub use frame::{Frame, FrameError, MAX_FRAME_LEN};
-pub use op::{MAX_RENDER_EDGE, OpError, Request, Response};
+pub use op::{MAX_OCR_EDGE, MAX_OCR_LANGUAGES, MAX_RENDER_EDGE, OpError, Request, Response};
 pub use pdf_client::{PdfDocument, RenderedPage};
 pub use supervisor::{Clock, Lease, Limits, Supervisor, SystemClock, WorkerError};
 

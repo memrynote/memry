@@ -5,12 +5,13 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 publish = false
-description = "The out-of-process worker of MemryNote (pdfium) and its supervisor. Never depends on tauri."
+description = "The out-of-process worker of MemryNote (pdfium, Tesseract) and its supervisor. Never depends on tauri."
 autobins = false
 
 # The lib (frame codec, ops, supervisor) has no native dependency: memry-desktop links it with
-# `default-features = false`. pdfium is C++ and reads untrusted PDFs, so it runs only in the
-# `memry-ml-worker` process (#3542, R2), where a crash or a hang kills the child, not the app.
+# `default-features = false`. pdfium and Tesseract are C++ and read untrusted PDFs and images, so
+# they run only in the `memry-ml-worker` process (#3542, R1 and R2), where a crash or a hang kills
+# the child, not the app.
 [dependencies]
 tracing = { workspace = true }
 thiserror = { workspace = true }
@@ -25,7 +26,8 @@ windows = { version = "0.62.2", features = ["Win32_Foundation", "Win32_System_Li
 
 [features]
 default = ["native"]
-# The worker binary: pdfium, bound at run time from the directory its `--pdfium-dir` names.
+# The worker binary: pdfium, bound at run time from the directory its `--pdfium-dir` names, and
+# Tesseract, built by build.rs from the sources `scripts/fetch-tesseract-sources.mjs` pins.
 native = ["dep:pdfium-render", "dep:image"]
 
 # The sidecar the app spawns (`memry_desktop::services::file_text::WorkerHandle`).
@@ -57,10 +59,21 @@ name = "pdf"
 path = "tests/pdf.rs"
 required-features = ["native"]
 
+[[test]]
+name = "ocr_timeout"
+path = "tests/ocr_timeout.rs"
+
+[[test]]
+name = "ocr"
+path = "tests/ocr.rs"
+required-features = ["native"]
+
 [build-dependencies]
 static_vcruntime = "3.0.0"
+cmake = "0.1.58"
 
 [dev-dependencies]
+flate2 = { workspace = true }
 memry-test-kit = { path = "../memry-test-kit" }
 proptest = "1"
 tempfile = "3"

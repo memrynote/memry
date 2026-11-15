@@ -1,12 +1,15 @@
 //! `memry-ml-worker --pdfium-dir <dir>`: answers the app's frames on stdin and stdout. Logs go to
 //! stderr, which the app forwards to `main.log`. pdfium is bound from `<dir>` on the first PDF,
-//! so a worker without it still starts and fails each PDF op with the reason.
+//! so a worker without it still starts and fails each PDF op with the reason. OCR runs on the
+//! Tesseract linked into this binary.
 
+mod ocr;
 mod pdf;
 
 use std::path::PathBuf;
 use std::process::ExitCode;
 
+use memry_ml_worker::Request;
 use memry_ml_worker::serve::serve;
 
 fn main() -> ExitCode {
@@ -36,10 +39,18 @@ fn main() -> ExitCode {
         return ExitCode::from(2);
     };
     let mut pdfs = pdf::Pdfs::new(pdfium_dir);
+    let mut ocr = ocr::Ocr::default();
     match serve(
         std::io::stdin().lock(),
         std::io::stdout().lock(),
-        |request| pdfs.handle(request),
+        |request| match request {
+            Request::Ocr {
+                datapath,
+                languages,
+                png,
+            } => ocr.handle(&datapath, &languages, &png),
+            other => pdfs.handle(other),
+        },
     ) {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {

@@ -4,6 +4,8 @@
 //! `log` writes a stderr line and answers; anything else answers with one page as document 1.
 //! `PdfPageText` answers the child's pid, so a test sees which child answered. `PdfRenderPage`
 //! answers the names of the child's environment variables, a tab, then its cwd.
+//! `Ocr`'s first language picks its behaviour: `hang` never answers, `slow:<ms>` answers `read`
+//! after that many milliseconds, anything else answers `read` at once.
 //! `--crash-before-ready` aborts before the `Ready` frame. Never bundled.
 
 use std::io::Write;
@@ -59,6 +61,18 @@ fn main() {
                 names.sort();
                 let cwd = std::env::current_dir().unwrap_or_default();
                 Response::Text(format!("{}\t{}", names.join("\n"), cwd.display()))
+            }
+            Request::Ocr { languages, .. } => {
+                let first = languages.first().map_or("", String::as_str);
+                if first == "hang" {
+                    loop {
+                        std::thread::park();
+                    }
+                }
+                if let Some(ms) = first.strip_prefix("slow:").and_then(|ms| ms.parse().ok()) {
+                    std::thread::sleep(std::time::Duration::from_millis(ms));
+                }
+                Response::Text("read".into())
             }
             _ => Response::Done,
         },

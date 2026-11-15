@@ -4,7 +4,9 @@
 use std::io::{Cursor, Read};
 
 use memry_ml_worker::frame::{HEADER_LEN, read_frame, write_frame};
-use memry_ml_worker::{Frame, FrameError, MAX_FRAME_LEN, OpError, Request, Response};
+use memry_ml_worker::{
+    Frame, FrameError, MAX_FRAME_LEN, MAX_OCR_LANGUAGES, OpError, Request, Response,
+};
 use memry_test_kit::{output_bound, proptest_config};
 use proptest::prelude::*;
 
@@ -143,6 +145,19 @@ fn unknown_ops_and_bad_payloads_are_errors() {
     }
 }
 
+#[test]
+fn an_ocr_request_past_the_language_cap_is_refused() {
+    let request = |count: u32| Request::Ocr {
+        datapath: "tessdata".into(),
+        languages: (0..count).map(|_| "eng".to_owned()).collect(),
+        png: vec![1, 2, 3],
+    };
+    let at_cap = request(MAX_OCR_LANGUAGES);
+    assert_eq!(Request::from_frame(&at_cap.to_frame(1)), Ok(at_cap));
+    let past = request(MAX_OCR_LANGUAGES + 1).to_frame(1);
+    assert_eq!(Request::from_frame(&past), Err(OpError::Malformed(past.op)));
+}
+
 fn request() -> impl Strategy<Value = Request> {
     prop_oneof![
         ".{0,64}".prop_map(|path| Request::PdfOpen { path }),
@@ -155,6 +170,16 @@ fn request() -> impl Strategy<Value = Request> {
             }
         }),
         any::<u32>().prop_map(|doc| Request::PdfClose { doc }),
+        (
+            ".{0,64}",
+            proptest::collection::vec("[a-z_]{0,8}", 0..=MAX_OCR_LANGUAGES as usize),
+            proptest::collection::vec(any::<u8>(), 0..64)
+        )
+            .prop_map(|(datapath, languages, png)| Request::Ocr {
+                datapath,
+                languages,
+                png
+            }),
         Just(Request::Shutdown),
     ]
 }

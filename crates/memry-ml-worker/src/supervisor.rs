@@ -39,6 +39,8 @@ pub struct Limits {
     pub start_timeout: Duration,
     /// Per op; past it the child is killed (`pdf-host.ts:23`).
     pub op_timeout: Duration,
+    /// [`Limits::op_timeout`] of an OCR read (`ocr-engine.ts:24`).
+    pub ocr_timeout: Duration,
     pub idle_exit: Duration,
     pub crash_limit: u32,
     pub crash_cooldown: Duration,
@@ -49,9 +51,19 @@ impl Default for Limits {
         Self {
             start_timeout: Duration::from_secs(15),
             op_timeout: Duration::from_secs(120),
+            ocr_timeout: Duration::from_secs(180),
             idle_exit: Duration::from_secs(60),
             crash_limit: 3,
             crash_cooldown: Duration::from_secs(10 * 60),
+        }
+    }
+}
+
+impl Limits {
+    fn timeout_of(&self, request: &Request) -> Duration {
+        match request {
+            Request::Ocr { .. } => self.ocr_timeout,
+            _ => self.op_timeout,
         }
     }
 }
@@ -265,7 +277,7 @@ impl Supervisor {
             }
             return Err(error);
         }
-        let outcome = match reply.recv_timeout(shared.limits.op_timeout) {
+        let outcome = match reply.recv_timeout(shared.limits.timeout_of(request)) {
             Ok(reply) => reply,
             Err(RecvTimeoutError::Timeout) => {
                 let error = WorkerError::Timeout { op: request.name() };
