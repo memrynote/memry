@@ -122,9 +122,9 @@ pub(crate) fn parse_object(record: &InboundRecord) -> Result<Object, StorageErro
 
 /// Whether Electron's schema refuses an inbound agent payload: a value of the
 /// wrong type for its key, or `null` for a key in `not_null` (a key the schema
-/// does not mark `.nullable()`). The merge skips such a remote before the
+/// does not mark `.nullable()`). The merge refuses such a remote before the
 /// clock gate and writes nothing, as the other desktop-only types do (chapter
-/// 13 §13.2.3): storing it would put an unsealed payload in `sync_items` and
+/// 13 §13.2.3), so the pull ledgers it: storing it would put an unsealed payload in `sync_items` and
 /// let a malformed remote replace a good local record.
 pub(crate) fn refuses(item_type: &str, remote: &Object, not_null: &[&str]) -> bool {
     not_null
