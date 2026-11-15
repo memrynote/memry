@@ -129,14 +129,6 @@ import type {
   StickyWindowSession
 } from '@memry/contracts/sticky-api'
 import type { SyncedSettings } from '../shared/contracts/settings-sync'
-import type {
-  NoteFileType,
-  SearchResponse,
-  QuickSearchResponse,
-  SearchStats,
-  SearchReason,
-  IndexRebuildProgress
-} from '@memry/contracts/search-api'
 import type { RecentlyOpenedItem, RecordRecentlyOpenedInput } from '@memry/contracts/recents-api'
 
 // Vault types (mirrored from contracts for preload compatibility)
@@ -936,32 +928,6 @@ export type InboxProcessingErrorEvent = InboxRpc.InboxProcessingErrorEvent
 export type LinkPreviewData = InboxRpc.LinkPreviewData
 
 export type InboxClientAPI = InboxRpc.InboxClientAPI
-
-export interface SearchClientAPI {
-  query(params: {
-    text: string
-    types?: Array<'note' | 'journal' | 'task' | 'inbox'>
-    tags?: string[]
-    dateRange?: { from: string; to: string } | null
-    projectId?: string | null
-    folderPath?: string | null
-    limit?: number
-    offset?: number
-    noteFileTypes?: NoteFileType[]
-  }): Promise<SearchResponse>
-  quick(text: string, noteFileTypes?: NoteFileType[]): Promise<QuickSearchResponse>
-  getStats(): Promise<SearchStats>
-  rebuildIndex(): Promise<{ started: true }>
-  getReasons(): Promise<SearchReason[]>
-  addReason(params: {
-    itemId: string
-    itemType: 'note' | 'journal' | 'task' | 'inbox'
-    itemTitle: string
-    searchQuery: string
-  }): Promise<SearchReason>
-  clearReasons(): Promise<{ cleared: true }>
-  getAllTags(): Promise<string[]>
-}
 
 // Recents API (device-local "recently opened" trail)
 export interface RecentsClientAPI {
@@ -1928,7 +1894,6 @@ interface API
   }
   reminders: RemindersClientAPI
   recents: RecentsClientAPI
-  search: SearchClientAPI
   graph: GraphClientAPI
   quickCapture: QuickCaptureClientAPI
   folderView: FolderViewClientAPI
@@ -2020,10 +1985,6 @@ interface API
   // Folder View event subscriptions
   onFolderViewConfigUpdated: (callback: (event: FolderViewConfigUpdatedEvent) => void) => () => void
   // Search event subscriptions
-  onSearchIndexRebuildStarted: (callback: () => void) => () => void
-  onSearchIndexRebuildProgress: (callback: (progress: IndexRebuildProgress) => void) => () => void
-  onSearchIndexRebuildCompleted: (callback: () => void) => () => void
-  onSearchIndexCorrupt: (callback: () => void) => () => void
   // Sync event subscriptions
   onSyncStatusChanged: (callback: (event: SyncStatusChangedEvent) => void) => () => void
   onItemSynced: (callback: (event: ItemSyncedEvent) => void) => () => void

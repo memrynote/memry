@@ -192,6 +192,13 @@ pub fn builder() -> Builder<Wry> {
             // menu
             crate::commands::shell::menu_hide_alt,
             crate::commands::shell::menu_toggle_alt,
+            // search
+            crate::commands::search::search_add_reason::<Wry>,
+            crate::commands::search::search_clear_reasons::<Wry>,
+            crate::commands::search::search_get_reasons::<Wry>,
+            crate::commands::search::search_get_stats::<Wry>,
+            crate::commands::search::search_query::<Wry>,
+            crate::commands::search::search_quick::<Wry>,
             // settings
             crate::commands::settings::app_set_zoom_factor,
             crate::commands::settings::settings_get_ai,

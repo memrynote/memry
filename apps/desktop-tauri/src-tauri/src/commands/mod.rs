@@ -26,6 +26,7 @@ pub mod ocr_languages;
 pub mod portals;
 pub mod properties;
 pub mod property_definitions;
+pub mod search;
 pub mod settings;
 pub mod shell;
 pub mod shell_integrations;

@@ -1,61 +1,44 @@
 import type {
   NoteFileType,
-  SearchQueryInput,
   SearchResponse,
   QuickSearchResponse,
   SearchStats,
   SearchReason,
-  AddReasonInput,
-  IndexRebuildProgress
+  AddReasonInput
 } from '@memry/contracts/search-api'
+import { commands, type SearchQueryInput } from '../../../generated/bindings'
 
+/**
+ * The palette's search over the `search_*` commands (#3540). The commands answer the contract
+ * shapes; the bindings type `fileType` and `itemType` as strings and the scores as nullable, so
+ * each answer is narrowed to its contract type here.
+ */
 export const searchService = {
-  query(params: SearchQueryInput): Promise<SearchResponse> {
-    return window.api.search.query(params)
+  async query(params: SearchQueryInput): Promise<SearchResponse> {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the command answers the contract's SearchResponse
+    return (await commands.searchQuery(params)) as SearchResponse
   },
 
-  quick(text: string, noteFileTypes?: NoteFileType[]): Promise<QuickSearchResponse> {
-    return window.api.search.quick(text, noteFileTypes)
+  async quick(text: string, noteFileTypes?: NoteFileType[]): Promise<QuickSearchResponse> {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the command answers the contract's QuickSearchResponse
+    return (await commands.searchQuick(text, noteFileTypes ?? null)) as QuickSearchResponse
   },
 
   getStats(): Promise<SearchStats> {
-    return window.api.search.getStats()
-  },
-
-  rebuildIndex(): Promise<{ started: true }> {
-    return window.api.search.rebuildIndex()
+    return commands.searchGetStats()
   },
 
   getReasons(): Promise<SearchReason[]> {
-    return window.api.search.getReasons()
+    return commands.searchGetReasons()
   },
 
   addReason(params: AddReasonInput): Promise<SearchReason> {
-    return window.api.search.addReason(params)
+    return commands.searchAddReason(params)
   },
 
-  clearReasons(): Promise<{ cleared: true }> {
-    return window.api.search.clearReasons()
-  },
-
-  getAllTags(): Promise<string[]> {
-    return window.api.search.getAllTags()
-  },
-
-  onIndexRebuildStarted(cb: () => void): () => void {
-    return window.api.onSearchIndexRebuildStarted(cb)
-  },
-
-  onIndexRebuildProgress(cb: (progress: IndexRebuildProgress) => void): () => void {
-    return window.api.onSearchIndexRebuildProgress(cb)
-  },
-
-  onIndexRebuildCompleted(cb: () => void): () => void {
-    return window.api.onSearchIndexRebuildCompleted(cb)
-  },
-
-  onIndexCorrupt(cb: () => void): () => void {
-    return window.api.onSearchIndexCorrupt(cb)
+  async clearReasons(): Promise<{ cleared: true }> {
+    await commands.searchClearReasons()
+    return { cleared: true }
   }
 }
 
