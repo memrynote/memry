@@ -6,10 +6,10 @@
     "class": "markdown-roundtrip",
     "chapter": "docs/protocol/12-note-body-format.md",
     "source": "packages/editor-schema/src/conformance.ts",
-    "exportedCaseCount": 278,
+    "exportedCaseCount": 280,
     "storageCaseCount": 4,
     "outOfBandCaseCount": 6,
-    "caseCount": 288,
+    "caseCount": 290,
     "secondImplementationAsserts": "byte preservation only; the editor bundle owns conversion"
   },
   "cases": [
@@ -124,6 +124,20 @@
       "canonical": "Intro ((mention:https%3A%2F%2Fx.test%2Fpage)) outro.",
       "pending": null,
       "sha256": "dc3d690a47b592e68fe06f7ef0a6d721e26677ecb8b0d3bcd75c77b8be744232"
+    },
+    {
+      "name": "link mention token in inline code",
+      "markdown": "Intro `((mention:https%3A%2F%2Fexample.com%2Fa%5Fb))` outro.",
+      "canonical": null,
+      "pending": null,
+      "sha256": "eb4481959b0462f62661cd82a3581f3b85049d70e0b7a3f7fee718d14858f675"
+    },
+    {
+      "name": "link mention token in italics, bold and strikethrough",
+      "markdown": "See *((mention:https%3A%2F%2Fexample.com%2Fa%5Fb))*, **((mention:https%3A%2F%2Fx.test%2Fc))** and ~~((mention:https%3A%2F%2Fx.test%2Fd))~~ here.",
+      "canonical": null,
+      "pending": null,
+      "sha256": "696d65eaafc0e8af974331f63f4e51ad27df98dab9dfe5ab047bc0c1fca452e1"
     },
     {
       "name": "date pill in body text",
