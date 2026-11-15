@@ -78,6 +78,29 @@ struct JournalFirstLineTests {
         #expect(draft.text.isEmpty)
     }
 
+    /// A hardware Return key arrives as a submit, not as a newline.
+    @Test func a_return_key_lands_the_line_and_hands_its_block_the_keys_after_it() async throws {
+        let vault = try JournalTestVault()
+        let page = page(vault)
+        let draft = JournalFirstLineDraft()
+        draft.focused = true
+        let write: JournalFirstLineDraft.Write = { await page.writeFirstLine($0, carrying: $1) }
+
+        type("line", into: draft, write: write)
+        draft.submitted(write: write)
+        // A submit right after a newline typed as text is the same key.
+        draft.submitted(write: write)
+        type("more", into: draft, write: write)
+        await draft.landing?.value
+
+        #expect(try await body(page) == ["line"])
+        #expect(page.handingOff, "the field went before the line's block took the caret")
+        let burst = try #require(page.editor.session.titleBurst, "the line's block does not take the caret")
+        #expect(burst.take(true) == "\nmore")
+        #expect(!page.handingOff)
+        #expect(draft.text.isEmpty)
+    }
+
     @Test func keys_stay_in_the_field_when_the_block_refuses_the_caret() {
         let draft = JournalFirstLineDraft()
         type("line\nmore", into: draft) { _, _ in true }

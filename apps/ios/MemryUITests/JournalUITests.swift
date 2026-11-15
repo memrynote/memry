@@ -191,6 +191,16 @@ final class JournalUITests: XCTestCase {
         }
     }
 
+    /// #4705: a hardware Return key arrives as a submit, not as a newline.
+    /// It starts a block too, and the words typed right after it land there.
+    func testTheReturnKeyStartsANewBlock() throws {
+        try returnInTheFirstLine { field, line in
+            field.typeText(line)
+            app.pressReturnKey()
+            app.typeText("more words")
+        }
+    }
+
     /// Types `line`, a Return and "more words" into an empty day's first
     /// line with `typing`, then checks they land in order, also after a
     /// relaunch, and deletes the day.

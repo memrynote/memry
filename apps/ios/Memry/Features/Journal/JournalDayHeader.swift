@@ -204,6 +204,13 @@ struct JournalDayFirstLine: View {
         .foregroundStyle(Tokens.Text.primary.color)
         .focused($focused)
         .frame(minHeight: Tokens.Size.minimumHitArea, alignment: .topLeading)
+        // A hardware Return arrives as a submit rather than a newline, and
+        // ends the field's editing. The field keeps the caret, so the keys
+        // typed after the Return wait in it for the line's block.
+        .onSubmit {
+            focused = true
+            draft.submitted(write: write)
+        }
         .onChange(of: focused) { _, isFocused in
             draft.focused = isFocused
             if !isFocused { draft.landAll(write: write) }
@@ -253,6 +260,14 @@ final class JournalFirstLineDraft {
         text = value
         returned = burst
         land(burst.line, returning: burst, write: write)
+    }
+
+    /// A Return the field took as a submit (a hardware Return key): typed
+    /// as a newline at the end, as the field shows it. A submit right after
+    /// a newline came in as text is that same key.
+    func submitted(write: @escaping Write) {
+        guard !text.hasSuffix("\n") else { return }
+        typed(text + "\n", write: write)
     }
 
     /// The field lost the caret or went away: what it holds lands as lines

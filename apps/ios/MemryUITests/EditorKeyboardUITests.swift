@@ -137,6 +137,49 @@ final class EditorKeyboardUITests: XCTestCase {
         deleteNotes([title])
     }
 
+    /// #4705: a hardware Return key in the title arrives as a submit, not as
+    /// a newline. The words typed right after it land in the first block.
+    func testTheReturnKeyInTheTitleMovesTheNextKeysToTheBody() throws {
+        try openNotes()
+        let title = "[agent] \(run) return key"
+        app.buttons["notes.addButton"].firstMatch.tap()
+        let field = app.textFields["Title"]
+        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        XCTAssertTrue(matches(NSPredicate(format: "hasKeyboardFocus == true"), field), "the new note's title has no caret")
+        field.typeText(title)
+        app.pressReturnKey()
+        app.typeText("body words")
+        XCTAssertTrue(matches(NSPredicate(format: "value == 'body words'"), block(0)), "the body did not get the keys after Return")
+        XCTAssertTrue(matches(NSPredicate(format: "value == %@", title), field), "the title lost or gained keys")
+        XCTAssertTrue(row(title).waitForExistence(timeout: 10), "the stored title is not the typed one")
+        deleteNotes([title])
+    }
+
+    /// #4705: Return as the last key of a burst in the title moves the caret
+    /// to the body, so the words typed after a pause land there, each Return
+    /// starting a block.
+    func testTheReturnKeyEndingATitleBurstHandsTheCaretToTheBody() throws {
+        try openNotes()
+        let title = "[agent] \(run) last return"
+        app.buttons["notes.addButton"].firstMatch.tap()
+        let field = app.textFields["Title"]
+        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        XCTAssertTrue(matches(NSPredicate(format: "hasKeyboardFocus == true"), field), "the new note's title has no caret")
+        field.typeText(title)
+        app.pressReturnKey()
+        Thread.sleep(forTimeInterval: 2)
+        for (index, word) in ["one", "two", "three"].enumerated() {
+            if index > 0 { app.pressReturnKey() }
+            app.typeText(word)
+        }
+        // A new block may capitalise its first letter.
+        XCTAssertTrue(matches(NSPredicate(format: "value ==[c] 'three'"), block(2)), "the words after Return did not make three blocks")
+        XCTAssertEqual((block(0).value as? String)?.lowercased(), "one")
+        XCTAssertEqual((block(1).value as? String)?.lowercased(), "two")
+        XCTAssertTrue(matches(NSPredicate(format: "value == %@", title), field), "the title lost or gained keys")
+        deleteNotes([title])
+    }
+
     /// #4705 smoke test: Return in the title after the app comes back moves
     /// to the body, with the keys typed after it. It passes before #4705 too:
     /// a plain resume does not end the edit under the caret. That case (a

@@ -31,6 +31,9 @@ final class JournalDayPageModel {
     var finding = false
     /// The user tapped a disabled ghost row: say why it is disabled.
     var explainsReadOnlyMetadata = false
+    /// The first line's Return made a block that has yet to take the caret:
+    /// the field stays, hidden and holding the caret, until it does.
+    private(set) var handingOff = false
     private var seedChecked = false
 
     init(store: JournalStore, date: String, context: JournalVaultContext) {
@@ -118,13 +121,20 @@ final class JournalDayPageModel {
             Log.storage.error("the first line of a journal day did not land")
             return false
         }
-        await read.reload()
         // The user moved the caret elsewhere during the write: it stays
-        // there, and the field lands its keys as lines of their own.
+        // there, and the field lands its keys as lines of their own. Set
+        // before the re-read, so the block takes the caret as it is drawn,
+        // from the field, which stays until then (`handingOff`): a key typed
+        // while neither holds the caret is lost.
         if let draft, draft.focused {
-            editor.session.titleBurst = TitleBurst(target: id, take: draft.takeHeld)
+            handingOff = true
+            editor.session.titleBurst = TitleBurst(target: id) { [weak self] moved in
+                self?.handingOff = false
+                return draft.takeHeld(moved)
+            }
             editor.session.focus(id)
         }
+        await read.reload()
         return true
     }
 }
