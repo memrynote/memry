@@ -337,14 +337,17 @@ impl PolicyTier {
 /// answer is not evidence that writes are off. It *is* evidence when the
 /// answer was a `402`, `403` or `426`, so the failure is offered to the tier
 /// before it is discarded (§11.7.1).
-pub async fn poll(http: &HttpClient, tier: &PolicyTier, now_ms: i64) -> WriteGate {
+///
+/// `now_ms` is read once the answer is in, so the server clock is compared with the local one
+/// at the same moment, not one round trip (and its retries) earlier.
+pub async fn poll(http: &HttpClient, tier: &PolicyTier, now_ms: impl Fn() -> i64) -> WriteGate {
     // Chapter 07 §7.10's polled ladder: `retryOn429: false`, because for a
     // polled call the poll cadence is itself the retry.
     let request = ApiRequest::get(STATUS_PATH)
         .auth(Auth::Session)
         .retry(RetryPolicy::polled());
     match http.send_json::<Json>(request).await {
-        Ok(body) => tier.learn(&body, now_ms),
+        Ok(body) => tier.learn(&body, now_ms()),
         Err(error) => {
             tier.observe(&error);
             tier.gate()

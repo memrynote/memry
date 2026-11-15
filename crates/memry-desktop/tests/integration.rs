@@ -313,6 +313,8 @@ mod seams_tls;
 mod seams_transport;
 #[path = "settings_service.rs"]
 mod settings_service;
+#[path = "sync_backend.rs"]
+mod sync_backend;
 #[path = "sync_host_clients.rs"]
 mod sync_host_clients;
 #[path = "tag_definitions_sync.rs"]

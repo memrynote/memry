@@ -2,10 +2,10 @@
 //! Electron's sync runtime (`engine.ts:868-890`, `sync-context.ts`, `runtime.ts`).
 //!
 //! One loop owns every decision: it starts the driver once the gate allows, runs at most one pass
-//! at a time (a request during a pass queues exactly one trailing pass), debounces pushes, backs
-//! off after a `429`, pauses on clock skew, and throttles status events. Passes run in a spawned
-//! task so the loop keeps answering; stop aborts a running pass, as Electron's
-//! `abortController` does. Timing goes through `tokio::time`, so tests drive it on a paused clock.
+//! at a time (a request during a pass queues exactly one trailing pass), spaces pushes 300 ms
+//! apart, backs off after a `429` and runs a pass when the wait ends, pauses on clock skew, and
+//! throttles status events. Passes run in a spawned task so the loop keeps answering; stop aborts
+//! a running pass, as Electron's `abortController` does. Timing goes through `tokio::time`, so tests drive it on a paused clock.
 
 use std::sync::Arc;
 
@@ -59,9 +59,11 @@ impl SyncSupervisor {
     pub fn start(runtime: &tokio::runtime::Handle, parts: SupervisorParts) -> Self {
         let paused = false;
         let (commands, rx) = mpsc::unbounded_channel();
+        // Weak: the reachability source keeps its observers for good, and must not keep the
+        // loop alive once every handle is gone.
         parts
             .reachability
-            .observe(Arc::new(Observer(commands.clone())));
+            .observe(Arc::new(Observer(commands.downgrade())));
         let online = parts.reachability.current() != Reachable::Offline;
         let first = status::derive(&StatusFacts {
             gate: GateDecision::NotStarted(gate::SyncNotStartedReason::Unavailable),
@@ -80,7 +82,8 @@ impl SyncSupervisor {
         Self { commands, status }
     }
 
-    /// A local write wants pushing: one pass 300 ms after the last request.
+    /// A local write wants pushing: a pass at once, or when 300 ms have passed since the last
+    /// one started (`push-coordinator.ts:585-609`).
     pub fn request_push(&self) {
         let _ = self.commands.send(Command::RequestPush);
     }
@@ -113,14 +116,17 @@ impl SyncSupervisor {
     /// Pauses or resumes sync, persisted in `meta` `sync.paused` before the driver is told.
     pub async fn set_paused(&self, paused: bool) -> Result<(), StorageError> {
         let (reply, answer) = oneshot::channel();
+        let gone = || StorageError::Failed {
+            what: "sync is not running for this vault; the pause was not saved".into(),
+        };
         if self
             .commands
             .send(Command::SetPaused(paused, reply))
             .is_err()
         {
-            return Ok(());
+            return Err(gone());
         }
-        answer.await.unwrap_or(Ok(()))
+        answer.await.unwrap_or_else(|_| Err(gone()))
     }
 
     /// The latest status, unthrottled.
@@ -145,11 +151,13 @@ impl SyncSupervisor {
     }
 }
 
-struct Observer(mpsc::UnboundedSender<Command>);
+struct Observer(mpsc::WeakUnboundedSender<Command>);
 
 impl ReachabilityObserver for Observer {
     fn on_change(&self, reachable: Reachable) {
-        let _ = self.0.send(Command::Reachable(reachable));
+        if let Some(commands) = self.0.upgrade() {
+            let _ = commands.send(Command::Reachable(reachable));
+        }
     }
 }
 

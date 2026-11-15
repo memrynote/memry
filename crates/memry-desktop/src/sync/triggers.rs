@@ -10,7 +10,8 @@ use memry_core::sync::state::PassTrigger;
 pub const TICK: Duration = Duration::from_secs(60);
 /// A tick pulls when the socket dropped since the last tick, or the last pull is this old.
 pub const QUIET_PULL: Duration = Duration::from_secs(5 * 60);
-/// Local writes coalesce for this long before a push pass (`sync-context.ts:290`).
+/// Push passes start at least this far apart; a push after a quiet window goes out at once
+/// (`push-coordinator.ts:585-609`).
 pub const PUSH_DEBOUNCE: Duration = Duration::from_millis(300);
 /// At most one status event per this interval; the latest status wins.
 pub const STATUS_THROTTLE: Duration = Duration::from_millis(100);
@@ -30,7 +31,7 @@ pub enum Trigger {
     /// Sync Now.
     Explicit,
     Tick,
-    /// The push debounce ran out.
+    /// A requested push's 300 ms window ended.
     Push,
 }
 
@@ -43,6 +44,21 @@ impl Trigger {
             }
             Self::Explicit | Self::Push => PassTrigger::Explicit,
             Self::Tick => PassTrigger::Timer,
+        }
+    }
+
+    /// The one of two queued triggers that does more: a policy refresh beats a plain pass, which
+    /// beats a timer pass.
+    pub fn stronger(self, other: Self) -> Self {
+        let rank = |trigger: Self| match trigger.pass_trigger() {
+            PassTrigger::Foreground => 2,
+            PassTrigger::Explicit | PassTrigger::SocketHint => 1,
+            PassTrigger::Timer => 0,
+        };
+        if rank(other) > rank(self) {
+            other
+        } else {
+            self
         }
     }
 }

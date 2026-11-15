@@ -6,6 +6,7 @@
 //! | writes disabled parks the outbox                       | §11.8 kill switch: no attempt, then drains |
 //! | an unentitled driver pulls and does not push           | §11.7.1: reads are never gated         |
 //! | the supervisor pushes a local write to another device  | `VaultSyncBackend`, `set_binding(Bound)`, `request_push` |
+//! | a write floor above the build parks the outbox         | §11.8 `minWriteVersion`: `version_incompatible`, pulls go on |
 
 #![cfg(feature = "harness")]
 
@@ -33,6 +34,7 @@ use memry_core::sync::state::{PassTrigger, SyncState};
 use memry_desktop::notes::property_definitions::{DefinitionsSeed, PropertyDefinitions};
 use memry_desktop::seams::transport::app_transport;
 use memry_desktop::sync::backend::VaultSyncBackend;
+use memry_desktop::sync::error_category::SyncErrorCategory;
 use memry_desktop::sync::gate::{SyncStartGate, VaultBinding};
 use memry_desktop::sync::supervisor::{SupervisorParts, SyncSupervisor};
 use serde_json::Value;
@@ -110,6 +112,28 @@ impl Device {
             definitions,
             session,
         }
+    }
+
+    /// A supervisor over this device's real backend, gated on `gate`.
+    fn supervisor(&self, gate: &Arc<SyncStartGate>) -> SyncSupervisor {
+        SyncSupervisor::start(
+            &tokio::runtime::Handle::current(),
+            SupervisorParts {
+                backend: Arc::new(VaultSyncBackend::new(
+                    Arc::clone(&self.core),
+                    Arc::clone(&self.session),
+                    Arc::clone(&self.store),
+                    Arc::new(Online),
+                    self.seeds(),
+                    Arc::new(|| (true, true)),
+                )),
+                gate: Arc::clone(gate),
+                reachability: Arc::new(Online),
+                power: None,
+                db: self.core.db_handle(),
+                on_status: Arc::new(|_| {}),
+            },
+        )
     }
 
     fn seeds(&self) -> Vec<Arc<dyn PassSeed>> {
@@ -237,24 +261,7 @@ async fn the_supervisor_pushes_a_local_write_to_another_device() {
     let driver_b = b.driver().await;
 
     let gate = Arc::new(SyncStartGate::default());
-    let supervisor = SyncSupervisor::start(
-        &tokio::runtime::Handle::current(),
-        SupervisorParts {
-            backend: Arc::new(VaultSyncBackend {
-                vault: Arc::clone(&a.core),
-                session: Arc::clone(&a.session),
-                store: Arc::clone(&a.store),
-                reachability: Arc::new(Online),
-                seeds: a.seeds(),
-                account: Arc::new(|| (true, true)),
-            }),
-            gate: Arc::clone(&gate),
-            reachability: Arc::new(Online),
-            power: None,
-            db: a.core.db_handle(),
-            on_status: Arc::new(|_| {}),
-        },
-    );
+    let supervisor = a.supervisor(&gate);
 
     // The start pass runs once the binding is known; wait for it so the push below is the
     // request's, not the start's.
@@ -272,6 +279,38 @@ async fn the_supervisor_pushes_a_local_write_to_another_device() {
     pass(&driver_b).await;
     assert_eq!(b.notes(), 1, "A's note reached B");
     supervisor.stop().await;
+}
+
+/// A `minWriteVersion` above this build parks A's outbox: the supervisor reports
+/// `version_incompatible`, the pull still runs, and nothing is attempted. B pushes nothing here:
+/// the server gates every `POST`, and a blob fetch is one (`POST /sync/pull`, reported on the
+/// PR).
+#[tokio::test(flavor = "multi_thread")]
+async fn a_write_floor_above_the_build_parks_the_outbox_and_pulls_continue() {
+    let mut server = Server::start();
+    server.policy(true, Some("999.0.0"));
+    let a = Device::new(&server, 0);
+    a.write_note("From A");
+    let gate = Arc::new(SyncStartGate::default());
+    let supervisor = a.supervisor(&gate);
+    gate.set_binding(VaultBinding::Bound);
+    until("the version floor parks the outbox", || {
+        supervisor.status().error_category == Some(SyncErrorCategory::VersionIncompatible)
+    })
+    .await;
+    supervisor.stop().await;
+
+    let report = pass(&a.driver().await).await;
+    assert!(report.parked, "{report:?}");
+    assert_eq!(report.final_state, SyncState::BlockedUpgrade);
+    assert!(
+        report.transitions.contains(&SyncState::Pulling),
+        "{report:?}"
+    );
+    assert!(!report.transitions.contains(&SyncState::Pushing));
+    assert_eq!(report.error(), None, "a parked outbox is not a failure");
+    assert_eq!(a.outbox(), 1, "A's note stays queued");
+    assert_eq!(a.attempts(), 0, "a parked row accrues no attempt");
 }
 
 /// Polls `done` every 50 ms, at most 600 times.

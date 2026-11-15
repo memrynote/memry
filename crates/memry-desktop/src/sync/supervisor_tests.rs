@@ -27,11 +27,18 @@ const PASS: Duration = Duration::from_millis(50);
 #[derive(Default)]
 struct FakeDriver {
     passes: Mutex<Vec<PassTrigger>>,
+    /// When each pass started.
+    starts: Mutex<Vec<Instant>>,
     paused: AtomicBool,
     entitled: Mutex<Option<bool>>,
     /// Errors the next passes fail with, in order.
     errors: Mutex<Vec<SyncError>>,
+    /// The last reading, kept across passes as `PolicyTier` keeps it.
     clock: Mutex<Option<ServerClock>>,
+    /// A pass reads the server clock this far behind the local one, as a status poll does.
+    skew_ms: Mutex<Option<i64>>,
+    /// Passes end `Refused` with no error, as a non-envelope pull body does.
+    refuse: AtomicBool,
 }
 
 impl FakeDriver {
@@ -47,6 +54,14 @@ impl SyncPasses for FakeDriver {
             return None;
         }
         lock(&self.passes).push(trigger);
+        lock(&self.starts).push(Instant::now());
+        if let Some(skew) = *lock(&self.skew_ms) {
+            let local_ms = super::super::run_loop::now_ms();
+            *lock(&self.clock) = Some(ServerClock {
+                server_ms: local_ms - skew,
+                local_ms,
+            });
+        }
         tokio::time::sleep(PASS).await;
         let error = {
             let mut errors = lock(&self.errors);
@@ -58,6 +73,8 @@ impl SyncPasses for FakeDriver {
             transitions: vec![SyncState::Pulling, SyncState::Applying, SyncState::Idle],
             final_state: if failed {
                 SyncState::Failed
+            } else if self.refuse.load(Ordering::SeqCst) {
+                SyncState::Refused
             } else {
                 SyncState::Idle
             },
@@ -85,13 +102,15 @@ impl SyncPasses for FakeDriver {
 struct FakeBackend {
     driver: Arc<FakeDriver>,
     signed_in: AtomicBool,
+    /// `open` fails, as it does offline or on an unbound vault.
+    fail_open: AtomicBool,
     opens: AtomicUsize,
     closes: AtomicUsize,
 }
 
 #[async_trait::async_trait]
 impl SyncBackend for FakeBackend {
-    fn auth_facts(&self) -> AuthFacts {
+    async fn auth_facts(&self) -> AuthFacts {
         AuthFacts {
             signed_in: self.signed_in.load(Ordering::SeqCst),
             key_verified: true,
@@ -100,6 +119,9 @@ impl SyncBackend for FakeBackend {
     }
     async fn open(&self) -> Result<Arc<dyn SyncPasses>, SyncError> {
         self.opens.fetch_add(1, Ordering::SeqCst);
+        if self.fail_open.load(Ordering::SeqCst) {
+            return Err(SyncError::Locked);
+        }
         // A new `SyncDriver` starts unpaused.
         self.driver.paused.store(false, Ordering::SeqCst);
         Ok(Arc::clone(&self.driver) as Arc<dyn SyncPasses>)
@@ -160,6 +182,7 @@ impl Rig {
             backend: Arc::new(FakeBackend {
                 driver: Arc::default(),
                 signed_in: AtomicBool::new(true),
+                fail_open: AtomicBool::new(false),
                 opens: AtomicUsize::new(0),
                 closes: AtomicUsize::new(0),
             }),
@@ -215,38 +238,64 @@ async fn the_gate_decides_whether_a_pass_runs_and_a_change_starts_one() {
     assert_eq!(rig.backend.opens.load(Ordering::SeqCst), 1);
     assert_eq!(*lock(&rig.backend.driver.entitled), Some(true));
 
+    let closes = rig.backend.closes.load(Ordering::SeqCst);
     rig.gate.set_entitlement(Entitlement::Unentitled);
     settle().await;
     assert_eq!(
         rig.backend.closes.load(Ordering::SeqCst),
-        1,
+        closes + 1,
         "the driver is closed"
     );
     assert_eq!(supervisor.status().status, SyncStatusValue::LocalOnly);
 }
 
+/// Leading edge with a trailing guard (`push-coordinator.ts:585-609`, #2289): a push after a
+/// quiet window goes out at once, and steady writes push once per 300 ms instead of never.
 #[tokio::test(start_paused = true)]
-async fn pushes_debounce_and_a_request_during_a_pass_queues_one_trailing_pass() {
+async fn a_push_goes_out_at_once_and_steady_writes_push_once_per_window() {
     let rig = Rig::new();
     let supervisor = rig.start().await;
     assert_eq!(rig.passes(), 1, "the start pass");
 
-    for _ in 0..3 {
+    sleep(Duration::from_secs(1)).await;
+    supervisor.request_push();
+    sleep(Duration::from_millis(1)).await;
+    assert_eq!(
+        rig.passes(),
+        2,
+        "a push after a quiet window goes out at once"
+    );
+
+    settle().await;
+    let before = rig.passes();
+    for _ in 0..50 {
         supervisor.request_push();
-        tokio::task::yield_now().await;
-        sleep(Duration::from_millis(100)).await;
+        sleep(Duration::from_millis(200)).await;
     }
-    assert_eq!(rig.passes(), 1, "still inside 300 ms of the last request");
-    sleep(Duration::from_millis(250)).await;
-    tokio::task::yield_now().await;
-    assert_eq!(rig.passes(), 2, "one pass for three requests");
+    let pushed = rig.passes() - before;
+    assert!(
+        pushed >= 20,
+        "10 s of writes 200 ms apart pushed {pushed} times"
+    );
+    let starts = lock(&rig.backend.driver.starts).clone();
+    for pair in starts[1..].windows(2) {
+        assert!(
+            pair[1] - pair[0] >= Duration::from_millis(300),
+            "two pushes {:?} apart",
+            pair[1] - pair[0]
+        );
+    }
 
     // The pass is running: two requests queue exactly one trailing pass.
+    settle().await;
+    let before = rig.passes();
+    supervisor.foreground();
+    tokio::task::yield_now().await;
     supervisor.foreground();
     supervisor.foreground();
     settle().await;
     settle().await;
-    assert_eq!(rig.passes(), 3);
+    assert_eq!(rig.passes(), before + 2);
 }
 
 #[tokio::test(start_paused = true)]
@@ -313,11 +362,17 @@ async fn a_429_backs_off_and_sync_now_says_when_it_resumes() {
     settle().await;
     assert_eq!(rig.passes(), 1, "inside the 5 s window nothing runs");
 
+    // `error-recovery-handler.ts:162-169`: the window's end runs a pass by itself, which
+    // pushes what the window held back.
     sleep(Duration::from_secs(5)).await;
+    settle().await;
+    assert_eq!(rig.passes(), 2, "the window's end runs a pass");
+    assert_eq!(supervisor.status().status, SyncStatusValue::Idle);
+
     let ran = supervisor.sync_now();
     let (ran, ()) = tokio::join!(ran, settle());
     assert!(ran.success, "{ran:?}");
-    assert_eq!(rig.passes(), 2);
+    assert_eq!(rig.passes(), 3);
 }
 
 #[tokio::test(start_paused = true)]
@@ -345,20 +400,22 @@ async fn a_pause_is_persisted_survives_a_reopen_and_sync_now_ends_it() {
 #[tokio::test(start_paused = true)]
 async fn clock_skew_past_five_minutes_pauses_sync_and_persists_it() {
     let rig = Rig::new();
-    *lock(&rig.backend.driver.clock) = Some(ServerClock {
-        server_ms: 1_000_000,
-        local_ms: 1_000_000 + 300_001,
-    });
+    *lock(&rig.backend.driver.skew_ms) = Some(300_001);
     let supervisor = rig.start().await;
     assert_eq!(supervisor.status().status, SyncStatusValue::Paused);
     assert!(rig.db.read_blocking(pause::read).unwrap());
     assert!(rig.backend.driver.paused.load(Ordering::SeqCst));
 
+    // The user fixed the clock. No status poll ran since (the driver keeps the old reading),
+    // and Sync Now does not pause again on it.
+    *lock(&rig.backend.driver.skew_ms) = None;
+    let (result, ()) = tokio::join!(supervisor.sync_now(), settle());
+    assert!(result.success, "{result:?}");
+    assert_eq!(supervisor.status().status, SyncStatusValue::Idle);
+    assert!(!rig.db.read_blocking(pause::read).unwrap());
+
     let rig = Rig::new();
-    *lock(&rig.backend.driver.clock) = Some(ServerClock {
-        server_ms: 1_000_000,
-        local_ms: 1_000_000 - 300_000,
-    });
+    *lock(&rig.backend.driver.skew_ms) = Some(-300_000);
     let supervisor = rig.start().await;
     assert_eq!(
         supervisor.status().status,
@@ -414,6 +471,88 @@ async fn status_events_are_throttled_to_one_per_100_ms_and_the_latest_wins() {
         supervisor.status(),
         "the latest status is emitted"
     );
+}
+
+/// A gate change during a pass answers the Sync Now waiting on it; nothing else ever would.
+#[tokio::test(start_paused = true)]
+async fn a_gate_change_answers_the_sync_now_waiting_on_the_pass_it_cut() {
+    let rig = Rig::new();
+    let supervisor = rig.start().await;
+    let close = async {
+        sleep(PASS / 5).await;
+        assert_eq!(rig.passes(), 2, "the Sync Now pass is running");
+        rig.gate.set_entitlement(Entitlement::Unentitled);
+    };
+    let answered = tokio::time::timeout(Duration::from_secs(3600), async {
+        tokio::join!(supervisor.sync_now(), close).0
+    })
+    .await
+    .expect("Sync Now is answered");
+    assert_eq!(answered.reason, Some(SyncNowBlockedReason::Unavailable));
+}
+
+/// Closing forgets the at-rest key even when no driver was kept: the open failed, or the pass
+/// that opened it was cut.
+#[tokio::test(start_paused = true)]
+async fn closing_clears_the_key_when_the_open_failed_or_its_pass_was_cut() {
+    let rig = Rig::new();
+    rig.backend.fail_open.store(true, Ordering::SeqCst);
+    let _supervisor = rig.start().await;
+    assert_eq!(rig.backend.opens.load(Ordering::SeqCst), 1);
+    rig.gate.set_entitlement(Entitlement::Unentitled);
+    settle().await;
+    assert!(
+        rig.backend.closes.load(Ordering::SeqCst) >= 1,
+        "a failed open"
+    );
+
+    let rig = Rig::new();
+    rig.gate.set_binding(VaultBinding::Unknown);
+    let _supervisor = rig.start().await;
+    rig.gate.set_binding(VaultBinding::Bound);
+    sleep(PASS / 5).await;
+    assert_eq!(
+        rig.passes(),
+        1,
+        "the first pass is running on a fresh driver"
+    );
+    rig.gate.set_entitlement(Entitlement::Unentitled);
+    settle().await;
+    assert!(rig.backend.closes.load(Ordering::SeqCst) >= 1, "a cut pass");
+}
+
+/// A `Refused` pass pushed nothing: it is a failure, never "synced just now".
+#[tokio::test(start_paused = true)]
+async fn a_refused_pass_is_a_failure() {
+    let rig = Rig::new();
+    rig.backend.driver.refuse.store(true, Ordering::SeqCst);
+    let supervisor = rig.start().await;
+    let (result, ()) = tokio::join!(supervisor.sync_now(), settle());
+    assert!(!result.success, "{result:?}");
+    assert_eq!(result.reason, Some(SyncNowBlockedReason::Failed));
+    let status = supervisor.status();
+    assert_eq!(status.last_sync_at, None);
+    assert_eq!(status.status, SyncStatusValue::Error);
+    assert_eq!(
+        status.error_category,
+        Some(super::super::error_category::SyncErrorCategory::ServerError)
+    );
+}
+
+/// The last dropped handle ends the loop, though the reachability source keeps its observer.
+#[tokio::test(start_paused = true)]
+async fn dropping_every_handle_ends_the_loop() {
+    let rig = Rig::new();
+    let alone = Arc::strong_count(&rig.gate);
+    let supervisor = rig.start().await;
+    assert_eq!(
+        Arc::strong_count(&rig.gate),
+        alone + 1,
+        "the loop holds the gate"
+    );
+    drop(supervisor);
+    settle().await;
+    assert_eq!(Arc::strong_count(&rig.gate), alone, "the loop ended");
 }
 
 #[tokio::test(start_paused = true)]

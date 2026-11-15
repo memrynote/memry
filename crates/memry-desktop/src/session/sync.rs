@@ -21,8 +21,10 @@ pub(super) struct SyncSlot {
 }
 
 impl Session {
-    /// Runs a supervisor for every vault opened from now on, and for the one open now.
+    /// Runs a supervisor for every vault opened from now on, and for the one open now. Queued
+    /// behind a running open, close or switch, like they are; never call it from a session hook.
     pub fn attach_sync(&self, factory: SupervisorFactory) {
+        let _queue = lock(&self.inner.lifecycle);
         let first = {
             let mut slot = lock(&self.inner.sync);
             slot.factory = Some(factory);
@@ -57,6 +59,7 @@ impl Session {
 
     /// Stops the running supervisor and builds no more.
     pub fn detach_sync(&self) {
+        let _queue = lock(&self.inner.lifecycle);
         lock(&self.inner.sync).factory = None;
         self.stop_sync();
     }
@@ -72,7 +75,11 @@ impl Session {
         };
         self.stop_sync();
         let supervisor = factory(open);
-        lock(&self.inner.sync).running = supervisor;
+        // Swapped, not stored: whatever got in meanwhile is stopped, never left running.
+        let replaced = std::mem::replace(&mut lock(&self.inner.sync).running, supervisor);
+        if let Some(replaced) = replaced {
+            replaced.stop_blocking();
+        }
     }
 
     fn stop_sync(&self) {
@@ -107,7 +114,7 @@ mod tests {
 
     #[async_trait::async_trait]
     impl SyncBackend for NeverStarts {
-        fn auth_facts(&self) -> AuthFacts {
+        async fn auth_facts(&self) -> AuthFacts {
             AuthFacts {
                 signed_in: true,
                 key_verified: true,
@@ -194,5 +201,71 @@ mod tests {
             "detached: nothing more is built"
         );
         assert_eq!(lock(&paths).len(), 2);
+    }
+
+    /// Keeps every observer, as `DesktopReachability` does.
+    #[derive(Default)]
+    struct Keeps(Mutex<Vec<Arc<dyn ReachabilityObserver>>>);
+
+    impl Reachability for Keeps {
+        fn current(&self) -> Reachable {
+            Reachable::Wifi
+        }
+        fn observe(&self, observer: Arc<dyn ReachabilityObserver>) {
+            lock(&self.0).push(observer);
+        }
+    }
+
+    /// Two attaches racing each other leave one loop on the vault, not one per caller.
+    #[test]
+    fn racing_attaches_leave_one_running_loop() {
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(1)
+            .enable_all()
+            .build()
+            .unwrap();
+        let handle = runtime.handle().clone();
+        let f = fixture();
+        let gate = Arc::new(SyncStartGate::default());
+        let reachability = Arc::new(Keeps::default());
+        let factory: SupervisorFactory = {
+            let gate = Arc::clone(&gate);
+            Arc::new(move |open: &OpenVault| {
+                // Widens the window between the check and the store.
+                std::thread::sleep(std::time::Duration::from_millis(20));
+                Some(SyncSupervisor::start(
+                    &handle,
+                    SupervisorParts {
+                        backend: Arc::new(NeverStarts),
+                        gate: Arc::clone(&gate),
+                        reachability: Arc::clone(&reachability) as Arc<dyn Reachability>,
+                        power: None,
+                        db: open.vault.db_handle(),
+                        on_status: Arc::new(|_| {}),
+                    },
+                ))
+            })
+        };
+        // The test and the factory hold the gate; each running loop holds one more.
+        let idle = Arc::strong_count(&gate);
+        f.session
+            .open(&f.vault("only"), OpenSource::Select)
+            .unwrap();
+        std::thread::scope(|scope| {
+            for _ in 0..2 {
+                let session = f.session.clone();
+                let factory = Arc::clone(&factory);
+                scope.spawn(move || session.attach_sync(factory));
+            }
+        });
+        // Stopped loops let go of the gate a moment after they answer the stop.
+        for _ in 0..500 {
+            if Arc::strong_count(&gate) <= idle + 1 {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        assert_eq!(Arc::strong_count(&gate) - idle, 1, "one loop runs");
+        f.session.detach_sync();
     }
 }

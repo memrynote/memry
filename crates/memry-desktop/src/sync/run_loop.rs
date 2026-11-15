@@ -2,45 +2,37 @@
 //! on one task, from one event at a time.
 
 use std::sync::Arc;
-use std::time::Duration;
 
-use memry_core::api::errors::{ApiError, StorageError, SyncError};
+use memry_core::api::errors::StorageError;
 use memry_core::seams::reachability::Reachable;
 use memry_core::storage::Db;
-use memry_core::sync::engine::PassReport;
+use memry_core::sync::pause;
+use memry_core::sync::policy::ServerClock;
 use memry_core::sync::state::SyncState;
-use memry_core::sync::{outbox, pause};
 use tokio::sync::{broadcast, mpsc, oneshot, watch};
 use tokio::task::JoinHandle;
 use tokio::time::Instant;
 
 use super::backend::{SyncBackend, SyncPasses};
 use super::error_category::SyncErrorCategory;
-use super::gate::{self, Entitlement, GateDecision, SyncStartGate};
+use super::gate::{self, AuthFacts, Entitlement, GateDecision, SyncStartGate};
 use super::result::{SyncNowBlockedReason as Blocked, TriggerSyncResult};
 use super::status::{self, StatusFacts, SyncStatus};
 use super::supervisor::{Command, SupervisorParts};
-use super::triggers::{
-    MAX_CLOCK_SKEW_MS, PUSH_DEBOUNCE, STATUS_THROTTLE, TICK, Trigger, rate_limit_backoff,
-    tick_pulls,
-};
+use super::triggers::{PUSH_DEBOUNCE, STATUS_THROTTLE, TICK, Trigger, tick_pulls};
 use crate::shell::power::PowerEvent;
 
-/// What a pass task hands back.
-struct PassDone {
-    id: u64,
-    /// When the pass was requested: a pull's age counts from its start.
-    started: Instant,
-    /// The driver the pass ran on, or why it could not be opened.
-    driver: Result<Arc<dyn SyncPasses>, SyncError>,
-    report: Option<PassReport>,
-    pending: Option<u32>,
-}
+#[path = "run_loop_pass.rs"]
+mod pass;
+
+use pass::PassDone;
 
 enum Event {
     Command(Option<Command>),
     Done(Box<Result<PassDone, tokio::task::JoinError>>),
     PushDue,
+    /// The `429` window ended.
+    RetryDue,
     Tick,
     Emit,
     GateChanged,
@@ -65,12 +57,18 @@ pub(super) struct Loop {
     next_id: u64,
     trailing: Option<Trigger>,
     push_at: Option<Instant>,
+    /// When the last pass started: pushes keep 300 ms apart from it.
+    last_start: Option<Instant>,
     blocked_until: Option<Instant>,
     rate_failures: u32,
     last_pull: Option<Instant>,
     socket: Option<(u64, bool)>,
     socket_held: bool,
     engine: Option<SyncState>,
+    /// The last server clock reading acted on.
+    seen_clock: Option<ServerClock>,
+    /// The pause is the clock-skew one: ending it polls the server clock again.
+    skew_paused: bool,
     last_error: Option<(String, SyncErrorCategory)>,
     last_sync_at: Option<i64>,
     pending: u32,
@@ -108,12 +106,15 @@ impl Loop {
             next_id: 0,
             trailing: None,
             push_at: None,
+            last_start: None,
             blocked_until: None,
             rate_failures: 0,
             last_pull: None,
             socket: None,
             socket_held: false,
             engine: None,
+            seen_clock: None,
+            skew_paused: false,
             last_error: None,
             last_sync_at: None,
             pending: 0,
@@ -131,13 +132,14 @@ impl Loop {
             Ok(paused) => self.paused = paused,
             Err(error) => tracing::error!(%error, "could not read the sync pause; running"),
         }
-        self.reevaluate();
+        self.reevaluate().await;
         loop {
             self.publish();
             let event = tokio::select! {
                 command = self.rx.recv() => Event::Command(command),
                 done = join(&mut self.running) => Event::Done(Box::new(done)),
                 () = sleep(self.push_at) => Event::PushDue,
+                () = sleep(self.blocked_until) => Event::RetryDue,
                 _ = tick.tick() => Event::Tick,
                 () = sleep(self.emit_at) => Event::Emit,
                 _ = self.gate_changes.changed() => Event::GateChanged,
@@ -145,11 +147,11 @@ impl Loop {
             };
             match event {
                 Event::Command(None) => {
-                    self.shut_down();
+                    self.close_driver();
                     return;
                 }
                 Event::Command(Some(Command::Stop(reply))) => {
-                    self.shut_down();
+                    self.close_driver();
                     let _ = reply.send(());
                     return;
                 }
@@ -166,6 +168,12 @@ impl Loop {
                     self.push_at = None;
                     self.request(Trigger::Push);
                 }
+                // `error-recovery-handler.ts:162-169`: a pass at the window's end, which pushes
+                // whatever the window dropped.
+                Event::RetryDue => {
+                    self.blocked_until = None;
+                    self.request(Trigger::Explicit);
+                }
                 Event::Tick => {
                     let since = self.last_pull.map(|at| at.elapsed());
                     if tick_pulls(self.socket_held, since) {
@@ -174,7 +182,7 @@ impl Loop {
                     self.socket_held = self.socket.is_some_and(|(_, connected)| connected);
                 }
                 Event::Emit => self.emit_now(),
-                Event::GateChanged => self.reevaluate(),
+                Event::GateChanged => self.reevaluate().await,
                 Event::Power(Ok(PowerEvent::Resume)) => self.request(Trigger::PowerResume),
                 Event::Power(Ok(_) | Err(broadcast::error::RecvError::Lagged(_))) => {}
                 Event::Power(Err(broadcast::error::RecvError::Closed)) => self.power = None,
@@ -185,12 +193,21 @@ impl Loop {
     async fn command(&mut self, command: Command) {
         match command {
             Command::Trigger(trigger) => self.request(trigger),
-            Command::RequestPush => self.push_at = Some(Instant::now() + PUSH_DEBOUNCE),
+            // Leading edge with a trailing guard (`push-coordinator.ts:585-609`, #2289): at
+            // once after a quiet window, else once when the window ends; never re-armed.
+            Command::RequestPush => {
+                if self.push_at.is_none() {
+                    let now = Instant::now();
+                    let window = self.last_start.map(|at| at + PUSH_DEBOUNCE);
+                    self.push_at = Some(window.map_or(now, |end| end.max(now)));
+                }
+            }
             Command::SyncNow(reply) => self.sync_now(reply).await,
             Command::SetPaused(paused, reply) => {
+                let resume = self.resume_trigger();
                 let outcome = self.set_paused(paused).await;
                 if outcome.is_ok() && !paused {
-                    self.request(Trigger::Explicit);
+                    self.request(resume);
                 }
                 let _ = reply.send(outcome);
             }
@@ -218,8 +235,13 @@ impl Loop {
     }
 
     /// Re-reads the gate. Starting runs a pass (which opens the driver); stopping closes it.
-    fn reevaluate(&mut self) {
-        let decision = gate::evaluate(&self.gate.inputs(self.backend.auth_facts()));
+    async fn reevaluate(&mut self) {
+        let facts = self.backend.auth_facts().await;
+        self.reevaluate_with(facts);
+    }
+
+    fn reevaluate_with(&mut self, facts: AuthFacts) {
+        let decision = gate::evaluate(&self.gate.inputs(facts));
         let was = std::mem::replace(&mut self.decision, decision);
         if decision != GateDecision::Start {
             self.close_driver();
@@ -259,119 +281,33 @@ impl Loop {
             return;
         }
         if self.running.is_some() {
-            self.trailing = Some(trigger);
+            // One trailing pass; a policy-refreshing trigger is never traded for a weaker one.
+            self.trailing = Some(
+                self.trailing
+                    .map_or(trigger, |queued| queued.stronger(trigger)),
+            );
             return;
         }
         let id = self.next_id;
         self.next_id += 1;
-        let existing = self.driver.clone();
-        let backend = Arc::clone(&self.backend);
-        let db = self.db.clone();
-        let entitled = self.gate.entitlement() == Entitlement::Entitled;
-        let started = Instant::now();
-        self.running = Some(tokio::spawn(async move {
-            let driver = match existing {
-                Some(driver) => Ok(driver),
-                None => backend.open().await.inspect(|driver| {
-                    if entitled {
-                        driver.set_entitled(true);
-                    }
-                }),
-            };
-            let report = match &driver {
-                Ok(driver) => driver.run_pass(trigger.pass_trigger()).await,
-                Err(_) => None,
-            };
-            let pending = match blocking(&db, outbox::depth).await {
-                Ok(depth) => u32::try_from(depth).ok(),
-                Err(error) => {
-                    tracing::warn!(%error, "could not read the outbox depth");
-                    None
-                }
-            };
-            PassDone {
-                id,
-                started,
-                driver,
-                report,
-                pending,
-            }
-        }));
+        self.last_start = Some(Instant::now());
+        self.running = Some(tokio::spawn(pass::run(
+            id,
+            trigger,
+            self.driver.clone(),
+            Arc::clone(&self.backend),
+            self.db.clone(),
+            self.gate.entitlement() == Entitlement::Entitled,
+        )));
     }
 
-    async fn finished(&mut self, done: PassDone) {
-        if let Some(pending) = done.pending {
-            self.pending = pending;
-        }
-        let driver = match done.driver {
-            Ok(driver) => driver,
-            Err(error) => {
-                tracing::warn!(%error, "sync did not start; retried on the next trigger");
-                self.last_error = Some((error.to_string(), SyncErrorCategory::of(&error)));
-                self.answer(
-                    done.id,
-                    TriggerSyncResult::blocked(Blocked::Failed, Some(error)),
-                );
-                return;
-            }
-        };
-        if self.paused {
-            driver.pause();
-        }
-        self.driver = Some(Arc::clone(&driver));
-        let result = match &done.report {
-            None => TriggerSyncResult::blocked(Blocked::Paused, None),
-            Some(report) => self.record(report, done.started),
-        };
-        if let Some(clock) = driver.server_clock()
-            && clock.skew_ms().abs() > MAX_CLOCK_SKEW_MS
-            && !self.paused
-        {
-            tracing::warn!(
-                skew_ms = clock.skew_ms(),
-                "the clock is off from the server's; sync paused"
-            );
-            if let Err(error) = self.set_paused(true).await {
-                tracing::error!(%error, "could not persist the clock-skew pause");
-            }
-        }
-        let result = if self.paused {
-            TriggerSyncResult::blocked(Blocked::Paused, None)
+    /// Ending a clock-skew pause polls the server clock again (a foreground pass), so a clock
+    /// that is still off pauses at once.
+    fn resume_trigger(&self) -> Trigger {
+        if self.skew_paused {
+            Trigger::Foreground
         } else {
-            result
-        };
-        self.answer(done.id, result);
-    }
-
-    /// Takes in what one pass did and says how a Sync Now caller sees it.
-    fn record(&mut self, report: &PassReport, started: Instant) -> TriggerSyncResult {
-        self.engine = Some(report.final_state);
-        if report.transitions.contains(&SyncState::Applying) {
-            self.last_pull = Some(started);
-        }
-        match report.error() {
-            Some(error) => {
-                if let Some(retry_after) = rate_limited(error) {
-                    self.rate_failures += 1;
-                    let wait = rate_limit_backoff(retry_after, self.rate_failures);
-                    self.blocked_until = Some(Instant::now() + wait);
-                }
-                self.last_error = Some((error.to_string(), SyncErrorCategory::of(error)));
-                if report.final_state == SyncState::Offline {
-                    return TriggerSyncResult::blocked(Blocked::Offline, None);
-                }
-                TriggerSyncResult::blocked(Blocked::Failed, Some(error.clone()))
-            }
-            None if report.final_state == SyncState::Offline => {
-                TriggerSyncResult::blocked(Blocked::Offline, None)
-            }
-            None => {
-                self.rate_failures = 0;
-                self.blocked_until = None;
-                self.last_error = None;
-                self.last_sync_at = Some(now_ms());
-                TriggerSyncResult::ok()
-            }
+            Trigger::Explicit
         }
     }
 
@@ -389,16 +325,22 @@ impl Loop {
     }
 
     async fn sync_now(&mut self, reply: oneshot::Sender<TriggerSyncResult>) {
+        let facts = self.backend.auth_facts().await;
+        if !facts.signed_in {
+            let _ = reply.send(TriggerSyncResult::blocked(Blocked::SignedOut, None));
+            return;
+        }
+        self.reevaluate_with(facts);
+        if self.decision != GateDecision::Start {
+            let _ = reply.send(self.blocked_result(Blocked::Unavailable));
+            return;
+        }
+        let resume = self.resume_trigger();
         if self.paused
             && let Err(error) = self.set_paused(false).await
         {
             tracing::error!(%error, "could not persist the end of the pause");
         }
-        if !self.backend.auth_facts().signed_in {
-            let _ = reply.send(TriggerSyncResult::blocked(Blocked::SignedOut, None));
-            return;
-        }
-        self.reevaluate();
         if let Some(reason) = self.blocked() {
             let _ = reply.send(self.blocked_result(reason));
             return;
@@ -406,7 +348,7 @@ impl Loop {
         // A running pass may have read the feed before this request: the answer comes from the
         // next pass that starts.
         let target = self.next_id;
-        self.request(Trigger::Explicit);
+        self.request(resume);
         self.waiters.push((target, reply));
     }
 
@@ -445,6 +387,7 @@ impl Loop {
                 what: format!("the pause write task failed: {error}"),
             })??;
         self.paused = paused;
+        self.skew_paused = false;
         if let Some(driver) = &self.driver {
             if paused {
                 driver.pause();
@@ -455,23 +398,22 @@ impl Loop {
         Ok(())
     }
 
+    /// Aborts a running pass, answers whoever waited on it, and forgets the driver and the
+    /// at-rest key. The key goes even with no driver kept: the open that installed it may have
+    /// failed, or its pass was cut before it handed the driver back.
     fn close_driver(&mut self) {
         if let Some(running) = self.running.take() {
             running.abort();
         }
-        self.trailing = None;
-        self.push_at = None;
-        self.engine = None;
-        if self.driver.take().is_some() {
-            self.backend.close();
-        }
-    }
-
-    fn shut_down(&mut self) {
-        self.close_driver();
         for (_, reply) in self.waiters.drain(..) {
             let _ = reply.send(TriggerSyncResult::blocked(Blocked::Unavailable, None));
         }
+        self.trailing = None;
+        self.push_at = None;
+        self.engine = None;
+        self.driver = None;
+        self.seen_clock = None;
+        self.backend.close();
     }
 
     fn facts(&self) -> StatusFacts {
@@ -515,19 +457,6 @@ impl Loop {
         (self.on_status)(&status);
         self.emitted = Some(status);
         self.last_emit = Some(Instant::now());
-    }
-}
-
-/// `Some(retry_after)` for a `429`.
-fn rate_limited(error: &SyncError) -> Option<Option<Duration>> {
-    match error {
-        SyncError::Api {
-            source: ApiError::RateLimited { retry_after_s, .. },
-        } => Some(retry_after_s.map(Duration::from_secs)),
-        SyncError::Api {
-            source: ApiError::Status { status: 429, .. },
-        } => Some(None),
-        _ => None,
     }
 }
 

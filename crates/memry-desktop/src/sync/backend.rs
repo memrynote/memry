@@ -2,7 +2,7 @@
 //! [`SyncPasses`] is the driver as the supervisor uses it. `SyncDriver` and [`VaultSyncBackend`]
 //! are the real ones; tests put fakes behind both.
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use memry_core::api::auth::AuthSession;
 use memry_core::api::errors::SyncError;
@@ -50,32 +50,66 @@ impl SyncPasses for SyncDriver {
 #[async_trait::async_trait]
 pub trait SyncBackend: Send + Sync {
     /// The account side of the gate, read at each start attempt.
-    fn auth_facts(&self) -> AuthFacts;
+    async fn auth_facts(&self) -> AuthFacts;
     /// A driver for the open vault. Fails offline (it fetches the device directory) and on a
     /// vault bound to no server vault; the supervisor retries on the next trigger.
     async fn open(&self) -> Result<Arc<dyn SyncPasses>, SyncError>;
-    /// The driver was dropped: forget the at-rest key.
+    /// The driver was dropped, or never kept: forget the at-rest key.
     fn close(&self);
 }
 
 /// The open vault's backend over the app's session and keychain.
 pub struct VaultSyncBackend {
-    pub vault: Arc<Vault>,
-    pub session: Arc<AuthSession>,
-    pub store: Arc<dyn SecureStore>,
-    pub reachability: Arc<dyn Reachability>,
-    pub seeds: Vec<Arc<dyn PassSeed>>,
-    /// `sync.recoveryPhraseConfirmed != false` and signed in, read from the account service.
-    pub account: Arc<dyn Fn() -> (bool, bool) + Send + Sync>,
+    vault: Arc<Vault>,
+    session: Arc<AuthSession>,
+    store: Arc<dyn SecureStore>,
+    reachability: Arc<dyn Reachability>,
+    seeds: Vec<Arc<dyn PassSeed>>,
+    account: Arc<dyn Fn() -> (bool, bool) + Send + Sync>,
+    /// Bumped by each close, under this lock: a key install that a close overtook (the pass was
+    /// aborted, its blocking install was not) installs nothing.
+    closes: Arc<Mutex<u64>>,
+}
+
+impl VaultSyncBackend {
+    /// `account` answers signed in and `sync.recoveryPhraseConfirmed != false`, from the account
+    /// service.
+    pub fn new(
+        vault: Arc<Vault>,
+        session: Arc<AuthSession>,
+        store: Arc<dyn SecureStore>,
+        reachability: Arc<dyn Reachability>,
+        seeds: Vec<Arc<dyn PassSeed>>,
+        account: Arc<dyn Fn() -> (bool, bool) + Send + Sync>,
+    ) -> Self {
+        Self {
+            vault,
+            session,
+            store,
+            reachability,
+            seeds,
+            account,
+            closes: Arc::default(),
+        }
+    }
 }
 
 #[async_trait::async_trait]
 impl SyncBackend for VaultSyncBackend {
-    fn auth_facts(&self) -> AuthFacts {
+    async fn auth_facts(&self) -> AuthFacts {
         let (signed_in, recovery_confirmed) = (self.account)();
+        // The keychain can block on an access prompt: off the async workers, and the key it
+        // hands back is zeroed on drop.
+        let store = Arc::clone(&self.store);
+        let key_verified = tokio::task::spawn_blocking(move || {
+            store
+                .get(SecureStoreKey::MasterKey)
+                .map(|key| key.map(Zeroizing::new).is_some())
+        })
+        .await;
         AuthFacts {
             signed_in,
-            key_verified: matches!(self.store.get(SecureStoreKey::MasterKey), Ok(Some(_))),
+            key_verified: matches!(key_verified, Ok(Ok(true))),
             recovery_confirmed,
         }
     }
@@ -83,6 +117,8 @@ impl SyncBackend for VaultSyncBackend {
     async fn open(&self) -> Result<Arc<dyn SyncPasses>, SyncError> {
         let vault = Arc::clone(&self.vault);
         let store = Arc::clone(&self.store);
+        let closes = Arc::clone(&self.closes);
+        let generation = *crate::session::lock(&self.closes);
         // The at-rest key is the vault key, installed only while the master key is readable.
         tokio::task::spawn_blocking(move || -> Result<(), SyncError> {
             let master = Zeroizing::new(
@@ -95,7 +131,12 @@ impl SyncBackend for VaultSyncBackend {
                 .as_slice()
                 .try_into()
                 .map_err(|_| SyncError::Locked)?;
+            let closed = crate::session::lock(&closes);
+            if *closed != generation {
+                return Err(SyncError::Locked);
+            }
             vault.set_at_rest_key(Some(Zeroizing::new(key)))?;
+            drop(closed);
             Ok(())
         })
         .await
@@ -112,11 +153,14 @@ impl SyncBackend for VaultSyncBackend {
                 DriverConfig::desktop(),
                 self.seeds.clone(),
             )
-            .await?;
+            .await
+            .inspect_err(|_| self.close())?;
         Ok(Arc::new(driver))
     }
 
     fn close(&self) {
+        let mut closes = crate::session::lock(&self.closes);
+        *closes += 1;
         if let Err(error) = self.vault.set_at_rest_key(None) {
             tracing::warn!(%error, "could not clear the at-rest key");
         }
