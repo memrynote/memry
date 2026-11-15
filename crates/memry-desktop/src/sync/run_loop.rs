@@ -349,7 +349,7 @@ impl Loop {
         if report.transitions.contains(&SyncState::Applying) {
             self.last_pull = Some(started);
         }
-        match &report.error {
+        match report.error() {
             Some(error) => {
                 if let Some(retry_after) = rate_limited(error) {
                     self.rate_failures += 1;

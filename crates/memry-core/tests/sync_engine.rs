@@ -794,7 +794,7 @@ async fn a_mid_wave_403_moves_pushing_to_read_only_rather_than_failed() {
     assert_every_edge_is_drawn(&report, SyncState::Idle);
     assert_eq!(push.drains(), 1);
     assert_eq!(
-        report.error,
+        report.push_error,
         Some(SyncError::Api {
             source: ApiError::WritesDisabled {
                 message: "writes are off for ios".to_owned(),
@@ -838,20 +838,20 @@ async fn a_transport_failure_during_a_pull_is_failed_and_exits_to_idle() {
     assert_every_edge_is_drawn(&first, SyncState::Idle);
     assert!(
         matches!(
-            first.error,
+            first.pull_error,
             Some(SyncError::Api {
                 source: ApiError::Status { status: 400, .. }
             })
         ),
         "the pull's failure is on the report: {:?}",
-        first.error
+        first.pull_error
     );
 
     let second = engine.run_pass(PassTrigger::Timer).await;
     assert_eq!(second.transitions[0], SyncState::Idle, "Failed -> Idle");
     assert_every_edge_is_drawn(&second, SyncState::Failed);
     assert_eq!(second.final_state, SyncState::Idle);
-    assert_eq!(second.error, None);
+    assert_eq!(second.error(), None);
 }
 
 #[tokio::test]

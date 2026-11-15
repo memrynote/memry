@@ -64,7 +64,8 @@ impl SyncPasses for FakeDriver {
             pull: PullReport::default(),
             parked: false,
             pushed: false,
-            error,
+            pull_error: error,
+            push_error: None,
         })
     }
     fn pause(&self) {
