@@ -67,3 +67,25 @@ pub fn markdown_notes(
         .and_then(|rows| rows.collect())
         .map_err(failed)
 }
+
+/// The ids among `ids` that name no note any more: no `note_files` row, and no live record in
+/// `notes` or `journal_entries`. A filed PDF or image has a record but no row until #4209, so
+/// it is not gone.
+pub fn gone_notes(conn: &Connection, ids: &[String]) -> Result<Vec<String>, StorageError> {
+    let ids = id_list(ids)?;
+    let mut statement = conn
+        .prepare_cached(
+            "SELECT i.value FROM json_each(?1) i
+              WHERE NOT EXISTS (SELECT 1 FROM note_files f WHERE f.note_id = i.value)
+                AND NOT EXISTS (SELECT 1 FROM notes n
+                                 WHERE n.id = i.value AND n.deleted_at IS NULL)
+                AND NOT EXISTS (SELECT 1 FROM journal_entries j
+                                 WHERE j.id = i.value AND j.deleted_at IS NULL)
+              ORDER BY i.value",
+        )
+        .map_err(failed)?;
+    statement
+        .query_map([ids], |row| row.get(0))
+        .and_then(|rows| rows.collect())
+        .map_err(failed)
+}

@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 use memry_core::domain::file_text::{FileTextJobStatus, TextSource};
 use memry_desktop::services::file_text::{PdfPages, PdfReader};
 
-use crate::file_text_env::{Ft, ft_with, own};
+use crate::file_text_env::{Ft, ft_with, ft_without_ocr, own};
 
 /// Pages by file name: `Ok(text layer)` or `Err` for a page the worker fails on.
 #[derive(Default)]
@@ -19,6 +19,7 @@ pub struct FakePdf {
     /// Every `page_text` call, as `(file, page)`.
     pub reads: Mutex<Vec<(String, u32)>>,
     pub released: AtomicUsize,
+    pub renders: AtomicUsize,
 }
 
 struct FakeDoc<'a> {
@@ -60,6 +61,7 @@ impl PdfPages for FakeDoc<'_> {
     }
 
     fn render_page(&self, page: u32, _: u32) -> Result<Vec<u8>, String> {
+        self.pdf.renders.fetch_add(1, Ordering::SeqCst);
         Ok(format!("{}#{page}", self.name).into_bytes())
     }
 
@@ -352,4 +354,70 @@ fn a_scan_with_nothing_changed_compares_each_file_once() {
         jobs,
         "no job written"
     );
+}
+
+/// Without OCR a page with no text layer is stored unreadable and does not stop the read, so
+/// the text-layer pages after a run of blank or scanned ones are searchable. The job fails, so
+/// the app-version retry reads it again once a build has OCR.
+#[test]
+fn blank_pages_without_ocr_do_not_stop_the_read() {
+    let f = ft_without_ocr(&[("scan.pdf", b"%PDF")], Arc::new(FakePdf::default()));
+    f.pdf.pages.lock().unwrap().insert(
+        "scan.pdf".into(),
+        pages(&[Ok(""), Ok(" "), Ok(""), Ok("Zebra four")]),
+    );
+    f.scanned();
+    let of = own(&f.id_of("scan.pdf"));
+    let job = f.settled_job(&of);
+    assert_eq!(
+        (job.status, job.error.as_deref()),
+        (FileTextJobStatus::Failed, Some("OCR unavailable"))
+    );
+    assert_eq!(f.found("Zebra"), std::slice::from_ref(&of.note_id));
+    assert_eq!(f.pdf.renders.load(Ordering::SeqCst), 0, "nothing rendered");
+    assert_eq!(f.pdf.opens.load(Ordering::SeqCst), 1);
+}
+
+/// A rescan forgets the finished jobs and text of a note that is gone, not only its pending
+/// ones (Electron's `note_cache` cascade).
+#[test]
+fn a_rescan_drops_the_finished_jobs_of_a_gone_note() {
+    let f = ft(&[]);
+    let open = f.e.session.current().unwrap();
+    let ghost = own("ghost");
+    open.search
+        .reset_file_text(ghost.clone(), "1:1".into(), "1.0.0".into())
+        .unwrap();
+    open.search
+        .save_extracted_part(
+            ghost.clone(),
+            1,
+            memry_core::domain::file_text::ExtractedTextMethod::PdfText,
+            "old".into(),
+        )
+        .unwrap();
+    open.search
+        .finish_file_text(
+            ghost.clone(),
+            memry_core::domain::file_text::JobOutcome::Done,
+            Some("eng".into()),
+        )
+        .unwrap();
+    f.scanned();
+    assert_eq!(f.job(&ghost), None);
+    assert_eq!(f.text("ghost"), "");
+}
+
+/// Without OCR an image is not read at all: its job fails `OCR unavailable` at once.
+#[test]
+fn an_image_without_ocr_is_not_read_and_fails_for_the_retry() {
+    let f = ft_without_ocr(&[("scan.png", b"png bytes")], Arc::new(FakePdf::default()));
+    f.scanned();
+    let of = own(&f.id_of("scan.png"));
+    let job = f.settled_job(&of);
+    assert_eq!(
+        (job.status, job.error.as_deref(), job.page_count),
+        (FileTextJobStatus::Failed, Some("OCR unavailable"), Some(1))
+    );
+    assert_eq!(f.text(&of.note_id), "");
 }

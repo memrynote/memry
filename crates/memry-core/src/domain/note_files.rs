@@ -47,7 +47,7 @@ use behind::body_moved_after_stamp;
 pub use behind::{behind_bodies, behind_body};
 pub use large::{is_large_file, set_large_file};
 pub use marks::{LogMark, StampMark, mark_unmarked, stamped_mark};
-pub use text_files::{FiledTextFile, filed_text_files, markdown_notes};
+pub use text_files::{FiledTextFile, filed_text_files, gone_notes, markdown_notes};
 
 const COLUMNS: &str = "f.note_id, f.path, f.file_type, f.mime_type, f.file_size, f.content_hash,
      f.local_only, f.indexed_at, h.file_hash";

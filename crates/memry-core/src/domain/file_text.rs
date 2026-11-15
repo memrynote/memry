@@ -303,6 +303,19 @@ pub fn delete_source(conn: &mut Connection, of: &TextSource) -> Result<(), Stora
     tx.commit().map_err(failed)
 }
 
+/// Every note that has a job or a part, for the rescan that forgets the gone ones.
+pub fn note_ids(conn: &Connection) -> Result<Vec<String>, StorageError> {
+    let mut stmt = conn
+        .prepare_cached(
+            "SELECT note_id FROM file_text_jobs UNION SELECT note_id FROM extracted_text
+              ORDER BY note_id",
+        )
+        .map_err(failed)?;
+    stmt.query_map([], |row| row.get(0))
+        .and_then(|rows| rows.collect())
+        .map_err(failed)
+}
+
 /// Forget every job and part of these notes: what Electron's cascade from `note_cache` did.
 pub fn delete_notes(conn: &mut Connection, note_ids: &[String]) -> Result<(), StorageError> {
     let ids = serde_json::to_string(note_ids).map_err(|err| StorageError::Failed {

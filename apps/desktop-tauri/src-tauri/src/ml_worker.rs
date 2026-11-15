@@ -7,7 +7,7 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use memry_desktop::notes::index::NoteIndex;
-use memry_desktop::services::file_text::service::{FileText, FileTextConfig, ocr_unavailable};
+use memry_desktop::services::file_text::service::{FileText, FileTextConfig};
 use memry_desktop::services::file_text::{WorkerHandle, WorkerPaths};
 use memry_desktop::services::ocr_languages::OcrLanguages;
 use memry_desktop::session::Session;
@@ -81,7 +81,7 @@ pub fn register(app: &AppHandle<Wry>, session: &Session) {
         FileTextConfig {
             app_version: app.package_info().version.to_string(),
             pdf: worker.inner().clone(),
-            recognize: ocr_unavailable(),
+            recognize: None,
             ocr_languages: Arc::new(move || {
                 languages
                     .try_state::<Arc<OcrLanguages>>()

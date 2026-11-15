@@ -16,21 +16,44 @@ use super::{
     file_signature, is_oversized_html, misses_ocr_language, text,
 };
 use crate::services::file_text::PdfPages;
-use crate::services::file_text::html::{HTML_TEXT_MAX_BYTES, HtmlTextError, read_html_text};
+use crate::services::file_text::html::{HTML_TEXT_MAX_BYTES, HtmlTextError, read_html_text_until};
 use crate::shell::file_open::Resolution;
 use crate::vault::paths::{open_vault_file, resolve_vault_file};
+
+/// How a job without OCR ends, so the app-version retry reads its OCR parts once a build has
+/// it (#3542 lane F).
+const OCR_UNAVAILABLE: &str = "OCR unavailable";
 
 struct PageText {
     method: ExtractedTextMethod,
     text: String,
+    /// Unreadable only because this build has no OCR: not a failure of the page.
+    ocr_missing: bool,
 }
 
 impl PageText {
-    fn unreadable() -> Self {
+    fn read(method: ExtractedTextMethod, text: String) -> Self {
         Self {
-            method: ExtractedTextMethod::Unreadable,
-            text: String::new(),
+            method,
+            text,
+            ocr_missing: false,
         }
+    }
+
+    fn unreadable() -> Self {
+        Self::read(ExtractedTextMethod::Unreadable, String::new())
+    }
+
+    fn without_ocr() -> Self {
+        Self {
+            ocr_missing: true,
+            ..Self::unreadable()
+        }
+    }
+
+    /// A page read that went wrong, which counts toward [`MAX_CONSECUTIVE_FAILURES`].
+    fn failed(&self) -> bool {
+        self.method == ExtractedTextMethod::Unreadable && !self.ocr_missing
     }
 }
 
@@ -44,10 +67,14 @@ struct Job<'a> {
     languages: String,
     read_again: BTreeSet<u32>,
     kept_old_text: Cell<bool>,
+    ocr_missing: Cell<bool>,
 }
 
 impl Job<'_> {
     fn save(&self, part: u32, result: &PageText) -> Result<(), String> {
+        if result.ocr_missing {
+            self.ocr_missing.set(true);
+        }
         if result.method == ExtractedTextMethod::Unreadable && self.read_again.contains(&part) {
             self.kept_old_text.set(true);
             return Ok(());
@@ -67,6 +94,11 @@ impl Job<'_> {
             )
         } else if failed {
             (JobOutcome::Failed(error), Some(self.languages.clone()))
+        } else if self.ocr_missing.get() {
+            (
+                JobOutcome::Failed(Some(OCR_UNAVAILABLE.into())),
+                Some(self.languages.clone()),
+            )
         } else {
             (JobOutcome::Done, Some(self.languages.clone()))
         };
@@ -83,7 +115,7 @@ impl Job<'_> {
 
     /// `finish(result.method === 'unreadable' ? 'failed' : 'done')`.
     fn finish_part(&self, result: &PageText) -> Result<(), String> {
-        self.end(result.method == ExtractedTextMethod::Unreadable, None)
+        self.end(result.failed(), None)
     }
 }
 
@@ -93,19 +125,21 @@ fn is_flush_point(page: u32) -> bool {
     page & (page - 1) == 0
 }
 
-/// A vault file's bytes read through the opened file, at most `limit + 1` of them; a missing or
-/// outside file is an error.
-fn read_vault_bytes(vault: &Path, rel: &str, limit: Option<u64>) -> Result<Vec<u8>, String> {
+/// A vault file's bytes read through the opened file, at most `limit + 1` of them, and its size
+/// after the read; a missing or outside file is an error.
+fn read_vault_bytes(vault: &Path, rel: &str, limit: Option<u64>) -> Result<(Vec<u8>, u64), String> {
     let file = open_vault_file(vault, rel)
         .map_err(text)?
         .ok_or_else(|| "File not found".to_owned())?;
     let mut bytes = Vec::new();
     match limit {
-        Some(limit) => file.take(limit + 1).read_to_end(&mut bytes),
+        Some(limit) => (&file).take(limit + 1).read_to_end(&mut bytes),
         None => (&file).read_to_end(&mut bytes),
     }
     .map_err(text)?;
-    Ok(bytes)
+    let read = bytes.len() as u64;
+    let size = file.metadata().map_err(text)?.len();
+    Ok((bytes, size.max(read)))
 }
 
 impl FileTextRunner {
@@ -138,6 +172,7 @@ impl FileTextRunner {
             languages: languages.join("+"),
             read_again,
             kept_old_text: Cell::new(false),
+            ocr_missing: Cell::new(false),
         };
         let resolved = resolve_vault_file(&self.deps.vault_path, &file.path).map_err(text)?;
         let path = match resolved {
@@ -166,11 +201,18 @@ impl FileTextRunner {
         match file.kind {
             TextKind::Html => self.extract_html(&work, signature, current.size),
             TextKind::Image => {
-                let Some(result) = self.read_twice(|_| {
-                    let bytes = read_vault_bytes(&self.deps.vault_path, &file.path, None)?;
-                    self.ocr(&bytes)
-                }) else {
-                    return Ok(());
+                let result = match &self.deps.recognize {
+                    None => PageText::without_ocr(),
+                    Some(_) => {
+                        let Some(result) = self.read_twice(|_| {
+                            let (bytes, _) =
+                                read_vault_bytes(&self.deps.vault_path, &file.path, None)?;
+                            self.ocr(&bytes)
+                        }) else {
+                            return Ok(());
+                        };
+                        result
+                    }
                 };
                 if !self.owns(file, signature)? {
                     return Ok(());
@@ -211,10 +253,7 @@ impl FileTextRunner {
                 return Ok(());
             }
         };
-        let result = PageText {
-            method: ExtractedTextMethod::Html,
-            text,
-        };
+        let result = PageText::read(ExtractedTextMethod::Html, text);
         if !self.owns(file, signature)? {
             return Ok(());
         }
@@ -228,7 +267,7 @@ impl FileTextRunner {
     /// `readTwice` for an HTML file, with the error kept for the job: a read that failed is
     /// tried once more, and so is a parse past [`PARSE_DEADLINE`](crate::services::file_text::html::PARSE_DEADLINE) (a busy machine), but a file
     /// over a cap (size, depth, nodes) fails the same way every time and is parsed once. A parse
-    /// cannot be stopped, so the stop is checked before and after each. `None` after a stop.
+    /// stops between input chunks once the runner stops. `None` after a stop.
     fn read_html(&self, file: &TextFile) -> Option<Result<String, String>> {
         let mut retried = false;
         loop {
@@ -237,8 +276,13 @@ impl FileTextRunner {
             }
             let limit = HTML_TEXT_MAX_BYTES as u64;
             let outcome = match read_vault_bytes(&self.deps.vault_path, &file.path, Some(limit)) {
-                Ok(bytes) => {
-                    let parsed = read_html_text(&bytes);
+                Ok((bytes, size)) if bytes.len() > HTML_TEXT_MAX_BYTES => {
+                    // It grew past the cap since it was compared: a cap, so no second read.
+                    let size = usize::try_from(size).unwrap_or(usize::MAX);
+                    return Some(Err(HtmlTextError::TooLarge { size }.to_string()));
+                }
+                Ok((bytes, _)) => {
+                    let parsed = read_html_text_until(&bytes, &|| self.stopped());
                     self.html_parses.fetch_add(1, Ordering::SeqCst);
                     if self.stopped() {
                         return None;
@@ -269,6 +313,14 @@ impl FileTextRunner {
                 return work.fail(error);
             }
         };
+        // A stop that came while the worker opened it: `release` ran before this child started.
+        if self.stopped() {
+            if let Err(error) = pdf.close() {
+                tracing::debug!(scope = "FileText", %error, "Closing a PDF failed");
+            }
+            self.deps.pdf.release();
+            return Ok(());
+        }
         let mut doc = Some(pdf);
         let outcome = self.read_pages(work, signature, path, &mut doc);
         if let Some(doc) = doc
@@ -305,6 +357,9 @@ impl FileTextRunner {
                         let _ = old.close();
                     }
                     *doc = Some(self.deps.pdf.open(path)?);
+                    if self.stopped() {
+                        return Err("stopped".into());
+                    }
                 }
                 let pdf = doc.as_deref().ok_or("the PDF is not open")?;
                 self.read_pdf_page(pdf, page)
@@ -316,7 +371,7 @@ impl FileTextRunner {
             }
             work.save(page, &result)?;
 
-            failures_in_a_row = if result.method == ExtractedTextMethod::Unreadable {
+            failures_in_a_row = if result.failed() {
                 failures_in_a_row + 1
             } else {
                 0
@@ -338,20 +393,21 @@ impl FileTextRunner {
     fn read_pdf_page(&self, pdf: &dyn PdfPages, page: u32) -> Result<PageText, String> {
         let layer = normalize_extracted_text(&pdf.page_text(page)?);
         if !layer.is_empty() {
-            return Ok(PageText {
-                method: ExtractedTextMethod::PdfText,
-                text: layer,
-            });
+            return Ok(PageText::read(ExtractedTextMethod::PdfText, layer));
+        }
+        if self.deps.recognize.is_none() {
+            return Ok(PageText::without_ocr());
         }
         let png = pdf.render_page(page, OCR_RENDER_MAX_EDGE)?;
         self.ocr(&png)
     }
 
     fn ocr(&self, image: &[u8]) -> Result<PageText, String> {
-        Ok(PageText {
-            method: ExtractedTextMethod::Ocr,
-            text: normalize_extracted_text(&(self.deps.recognize)(image)?),
-        })
+        let recognize = self.deps.recognize.as_ref().ok_or(OCR_UNAVAILABLE)?;
+        Ok(PageText::read(
+            ExtractedTextMethod::Ocr,
+            normalize_extracted_text(&recognize(image)?),
+        ))
     }
 
     /// One retry (`read(1)`), because the usual failure is a crashed or timed-out helper that

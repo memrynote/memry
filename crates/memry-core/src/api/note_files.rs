@@ -242,4 +242,10 @@ impl NoteFiles {
         self.db
             .read_blocking(move |conn| note_files::markdown_notes(conn, &ids))
     }
+
+    /// The ids among `ids` that name no note any more ([`note_files::gone_notes`]).
+    pub fn gone_notes(&self, ids: Vec<String>) -> Result<Vec<String>, StorageError> {
+        self.db
+            .read_blocking(move |conn| note_files::gone_notes(conn, &ids))
+    }
 }

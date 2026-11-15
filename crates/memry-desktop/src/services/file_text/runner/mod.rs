@@ -3,8 +3,13 @@
 //! folder is read too, as one part of visible text. A port of Electron's
 //! `apps/desktop/src/main/file-text/runner.ts`, on one thread.
 //!
+//! Filed PDFs and images are read only once they have a `note_files` row, which the Tauri vault
+//! tier does not write for them until #4209; until then only attachments are read.
+//!
 //! One loop, one file at a time, one page at a time. A PDF page with a text layer is read from
-//! it; a page without one, and every image, goes through OCR. Every page is stored as it
+//! it; a page without one, and every image, goes through OCR. A build without OCR (until #3542
+//! lane F) stores those parts unreadable without rendering or reading them, reads on past them,
+//! and fails the job `OCR unavailable`, so the app-version retry reads them again. Every page is stored as it
 //! finishes, and a job reads only the pages it has no row for, so a restart resumes where it
 //! stopped. Each file's job lives in `file_text_jobs`:
 //!
@@ -20,7 +25,10 @@
 //!     since                                  -> pending again (OCR pages read again, their
 //!                                               old text kept until then)
 //!   attachment file gone -> job and text deleted
-//!   note gone (no `note_files` row)          -> its jobs and text deleted
+//!   pending, its note without a `note_files`
+//!     row                                    -> its jobs and text deleted
+//!   note gone (no `note_files` row and no
+//!     live record), at a full rescan         -> its jobs and text deleted
 //! ```
 //!
 //! This loop is the only writer of `file_text_jobs` and `extracted_text`. Search and
@@ -74,8 +82,8 @@ pub struct RunnerDeps {
     pub app_version: String,
     pub vault: Arc<Vault>,
     pub search: Arc<Search>,
-    /// The image's text; an error leaves the part unreadable.
-    pub recognize: Recognize,
+    /// The image's text; an error leaves the part unreadable. `None` in a build without OCR.
+    pub recognize: Option<Recognize>,
     /// The Tesseract languages `recognize` reads with now (`eng`, `deu`, ...).
     pub ocr_languages: OcrLanguageCodes,
     pub pdf: Arc<dyn PdfReader>,

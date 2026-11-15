@@ -248,6 +248,7 @@ fn delete_source_and_delete_notes_forget_jobs_and_text() {
             reset_file(conn, &s, "s", "1", T0)?;
             save_part(conn, &s, 1, ExtractedTextMethod::PdfText, note)?;
         }
+        assert_eq!(note_ids(conn)?, ["a", "b", "c"]);
         delete_source(conn, &src("a", "x.html"))?;
         assert!(job(conn, &src("a", "x.html"))?.is_none());
         assert!(job(conn, &src("a", OWN_FILE))?.is_some());
@@ -258,6 +259,7 @@ fn delete_source_and_delete_notes_forget_jobs_and_text() {
         assert!(job(conn, &src("b", OWN_FILE))?.is_none());
         assert_eq!(extracted_text_for_note(conn, "a")?, "");
         assert_eq!(extracted_text_for_note(conn, "c")?, "c");
+        assert_eq!(note_ids(conn)?, ["c"]);
         Ok(())
     })
     .expect("run");

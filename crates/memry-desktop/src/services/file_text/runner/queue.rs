@@ -45,6 +45,9 @@ impl FileTextRunner {
             .markdown_notes(folders)
             .map_err(text)?;
         for (note_id, note_path) in notes {
+            if self.stopped() {
+                break;
+            }
             let candidates: Vec<String> = std::fs::read_dir(root.join(&note_id))
                 .map(|entries| {
                     entries
@@ -94,6 +97,9 @@ impl FileTextRunner {
         let (attachments, unread) = self.attachment_files(ids)?;
         if self.stopped() {
             return Ok(());
+        }
+        if ids.is_none() {
+            self.forget_gone_notes()?;
         }
 
         let kept: HashSet<&TextSource> = attachments.iter().map(|file| &file.of).collect();
@@ -158,6 +164,20 @@ impl FileTextRunner {
             }
         }
         Ok(())
+    }
+
+    /// Every job and part of a note that is gone: Electron's `note_cache` cascade. The gone
+    /// notes have no search row to refresh.
+    fn forget_gone_notes(&self) -> Result<(), String> {
+        let ids = self.deps.search.file_text_note_ids().map_err(text)?;
+        if ids.is_empty() {
+            return Ok(());
+        }
+        let gone = self.deps.vault.note_files().gone_notes(ids).map_err(text)?;
+        if gone.is_empty() {
+            return Ok(());
+        }
+        self.deps.search.delete_notes_file_text(gone).map_err(text)
     }
 
     /// A link outside the vault gets a signature of its own, so text an older build read from

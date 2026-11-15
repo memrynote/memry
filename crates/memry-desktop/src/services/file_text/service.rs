@@ -20,17 +20,11 @@ pub const NAME: &str = "file-text";
 pub struct FileTextConfig {
     pub app_version: String,
     pub pdf: Arc<dyn PdfReader>,
-    pub recognize: Recognize,
+    /// `None` until the Tesseract engine ships (#3542 lane F).
+    pub recognize: Option<Recognize>,
     pub ocr_languages: OcrLanguageCodes,
     pub now_ms: NowMs,
     pub indexing: Indexing,
-}
-
-/// OCR comes with the Tesseract engine (#3542 lane F). Until then a scanned page or an image
-/// reads as unreadable and its job fails; the app-version retry reads it again once a build
-/// has OCR.
-pub fn ocr_unavailable() -> Recognize {
-    Arc::new(|_| Err("OCR is not available in this build".into()))
 }
 
 pub struct FileText {
@@ -139,7 +133,8 @@ impl FileText {
 /// Tells the runner a note was indexed, so it compares that note's files with the bytes its
 /// stored text came from. The vault tier's facts (`NoteFileChanged`) carry no kind, so every
 /// one is passed on and the runner's lists skip notes with no text-bearing file. A deleted
-/// note needs no message: the runner drops the jobs of a note with no `note_files` row.
+/// note needs no message: the runner drops its pending jobs when it reaches them, and every
+/// job of it at the next full rescan.
 struct FileTextProjector(Arc<FileText>);
 
 impl Projector for FileTextProjector {

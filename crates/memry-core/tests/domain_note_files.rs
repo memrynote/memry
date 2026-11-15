@@ -640,3 +640,34 @@ fn the_text_file_lists_read_filed_files_and_markdown_notes_by_kind() {
         ]
     );
 }
+
+/// A note is gone for the file text runner only when nothing names it: no row, and no live
+/// record. A filed PDF with a record and no row yet (#4209) stays.
+#[test]
+fn a_note_is_gone_with_no_row_and_no_live_record() {
+    let Fixture { vault, .. } = fixture();
+    vault
+        .note_files()
+        .upsert_stat(stat("rowed", "a.md"))
+        .unwrap();
+    exec(
+        &vault,
+        "INSERT INTO notes (id, title, deleted_at) VALUES
+           ('filed-pdf', 'a', NULL), ('deleted', 'b', 5);
+         INSERT INTO journal_entries (id, date, deleted_at) VALUES
+           ('live-day', '2024-01-03', NULL), ('dead-day', '2024-01-04', 5);",
+    );
+    let ids = [
+        "rowed",
+        "filed-pdf",
+        "deleted",
+        "live-day",
+        "dead-day",
+        "never",
+    ];
+    let gone = vault
+        .note_files()
+        .gone_notes(ids.iter().map(|id| (*id).to_owned()).collect())
+        .unwrap();
+    assert_eq!(gone, ["dead-day", "deleted", "never"]);
+}
