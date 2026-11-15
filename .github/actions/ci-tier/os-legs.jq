@@ -8,7 +8,8 @@
 #   - it is build.rs, under .cargo/, the toolchain file, or a CI definition the workflow uses (tests)
 #   - it is a Cargo manifest or the lock (checks)
 #   - its path names the OS (windows, win, win32, msvc; macos, mac, darwin, apple, .plist)
-#   - it is in a module only that OS compiles (`#[cfg(windows)] mod win;`)
+#   - it is in a module only that OS compiles (`#[cfg(windows)] mod win;`), or is a file that holds
+#     an inline one (`#[cfg(windows)] mod win { ... }`)
 #   - it is a .rs file whose hunks, context included, carry an OS cfg (`cfg`, `cfg_attr`, `cfg!`
 #     naming windows, unix, target_os, target_family or target_env, or a `target_os = ` line of a
 #     multi-line cfg), or whose changed lines use an OS API (std::os::windows, windows_sys, objc2).
@@ -30,7 +31,7 @@ def is_test:
   any(names[]; test("(^|/)tests?/|(^|/)tests?\\.rs$|_tests?\\.rs$"))
   or any(hunk; test("#\\[(tokio::)?test\\b|cfg\\((all\\()?test\\b"));
 def found: if is_test then 2 else 1 end;
-def gated_os: [names[] as $n | $gated[] as $g | select($n == $g.prefix + ".rs" or ($n | startswith($g.prefix + "/"))) | $g.os];
+def gated_os: [names[] as $n | $gated[] as $g | select($n == $g.prefix or $n == $g.prefix + ".rs" or ($n | startswith($g.prefix + "/"))) | $g.os];
 def level($os; $os_path):
   if any(names[]; test("(^|/)build\\.rs$|(^|/)\\.cargo/|(^|/)rust-toolchain(\\.toml)?$|^\\.github/")) then 2
   elif any(names[]; test("(^|/)Cargo\\.(toml|lock)$")) then 1

@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { after, describe, it } from 'node:test'
@@ -60,8 +68,43 @@ const source = writeTree(join(scratch, 'source'), {
     '#[cfg(windows)]',
     '#[path = "trash/mod.rs"]',
     'mod trash;'
+  ].join('\n'),
+  'apps/desktop-tauri/src-tauri/src/shell/permissions.rs': [
+    'pub fn install() {}',
+    '#[cfg(windows)]',
+    'mod windows_impl {',
+    '    pub fn install() {}',
+    '}'
+  ].join('\n'),
+  'crates/memry-desktop/tests/live.rs': [
+    '#[cfg(target_os = "macos")]',
+    'mod macos {',
+    '    #[test]',
+    '    fn reads() {}',
+    '}'
+  ].join('\n'),
+  'crates/memry-desktop/src/plain.rs': ['#[cfg(test)]', 'mod tests {', '}'].join('\n'),
+  'crates/memry-core/src/forms.rs': [
+    '#[cfg(windows)] mod one_line;',
+    '#[cfg(target_os = "macos")]',
+    'mod after_one_line;',
+    '#[cfg(windows)]',
+    '#[cfg(feature = "x")]',
+    'mod with_feature;',
+    '#[cfg(target_os = "macos")] // note',
+    'mod commented;',
+    'mod plain;'
   ].join('\n')
 })
+
+function osModules(root) {
+  const result = spawnSync('bash', [join(tierDir, 'os-modules.sh'), root], { encoding: 'utf8' })
+  assert.equal(result.status, 0, result.stderr)
+  return result.stdout
+    .trim()
+    .split('\n')
+    .map((line) => line.split('\t'))
+}
 
 // `patches` maps a file to its unified-diff hunks (a string), or to `{ patch, previous_filename,
 // changes }`, as the pull request files API returns them; a file absent from `patches` gets no patch
@@ -359,6 +402,32 @@ describe('ci tier OS legs for a fast-tier PR', () => {
     )
   })
 
+  it('adds the OS of an inline module for any change to the file that holds it', () => {
+    const body = ['-    old();', '+    new();']
+    assert.deepEqual(
+      legsOf('apps/desktop-tauri/src-tauri/src/shell/permissions.rs', ...body),
+      legs('checks', 'none', 'checks', 'none')
+    )
+    assert.deepEqual(
+      legsOf('crates/memry-desktop/tests/live.rs', ...body),
+      legs('none', 'tests', 'none', 'tests')
+    )
+    assert.deepEqual(legsOf('crates/memry-desktop/src/plain.rs', ...body), noOsLegs)
+  })
+
+  it('reads a one-line cfg, a cfg followed by another attribute and a trailing comment', () => {
+    const forms = osModules(source)
+      .filter(([, , at]) => at.startsWith('crates/memry-core/src/forms.rs:'))
+      .map(([prefix, os]) => `${prefix} ${os}`)
+    const dir = 'crates/memry-core/src/forms'
+    assert.deepEqual(forms, [
+      `${dir}/one_line win`,
+      `${dir}/after_one_line mac`,
+      `${dir}/with_feature win`,
+      `${dir}/commented mac`
+    ])
+  })
+
   it('judges a rename by its old name too, and a pure rename of plain code adds nothing', () => {
     const src = 'apps/desktop-tauri/src-tauri/src'
     const moved = `${src}/power/common.rs`
@@ -449,14 +518,9 @@ describe('ci tier OS legs for a fast-tier PR', () => {
 })
 
 describe('ci tier on the repo itself', () => {
-  const modules = spawnSync('bash', [join(tierDir, 'os-modules.sh'), repo], { encoding: 'utf8' })
-  const gated = modules.stdout
-    .trim()
-    .split('\n')
-    .map((line) => line.split('\t'))
+  const gated = osModules(repo)
 
   it('finds the Windows-only and macOS-only modules', () => {
-    assert.equal(modules.status, 0, modules.stderr)
     const found = Object.fromEntries(gated)
     const src = 'apps/desktop-tauri/src-tauri/src'
     for (const name of [
@@ -471,11 +535,55 @@ describe('ci tier on the repo itself', () => {
     for (const name of ['power/mac', 'autostart/mac', 'notifications/mac', 'shutdown/mac_quit']) {
       assert.equal(found[`${src}/${name}`], 'mac', name)
     }
+    const inline = new Set(
+      gated.filter(([prefix]) => prefix.endsWith('.rs')).map(([, os, at]) => `${at} ${os}`)
+    )
+    for (const decl of [
+      `${src}/shell/permissions.rs:68 win`,
+      'crates/memry-desktop/tests/move_dir.rs:764 win',
+      'crates/memry-desktop/tests/electron_secrets_live.rs:75 mac',
+      'crates/memry-desktop/tests/electron_secrets_live.rs:346 win'
+    ]) {
+      assert.ok(inline.has(decl), decl)
+    }
+  })
+
+  // An independent read of the same sources: every `mod x;` or `mod x {` whose attributes, back to
+  // the previous item, carry an OS cfg (one only Linux satisfies excepted, as the scanner does).
+  it('lists every OS-gated module declaration a plain grep finds', () => {
+    const expected = []
+    const walk = (dir) => {
+      for (const entry of readdirSync(join(repo, dir), { withFileTypes: true })) {
+        const path = `${dir}/${entry.name}`
+        if (entry.isDirectory() && entry.name !== 'target') walk(path)
+        else if (entry.name.endsWith('.rs')) {
+          const lines = readFileSync(join(repo, path), 'utf8')
+            .split('\n')
+            .map((l) => l.replace(/\/\/.*$/, ''))
+          lines.forEach((line, i) => {
+            const decl = /^\s*(#\[.*\]\s*)*(pub(\([^)]*\))?\s+)?mod\s+\w+\s*(;|\{|$)/.exec(line)
+            if (!decl) return
+            let attrs = decl[1] ?? ''
+            for (let j = i - 1; j >= 0 && !/[;{}]\s*$/.test(lines[j]); j--) attrs = lines[j] + attrs
+            const cfgs = attrs.match(/#\[cfg\s*\([^\]]*\]/g)?.join(' ') ?? ''
+            const os =
+              /\b(windows|unix|macos|ios|apple|darwin|msvc)\b/.test(cfgs) ||
+              (/target_(os|family|env)/.test(cfgs) && /not\s*\(/.test(cfgs))
+            if (os) expected.push(`${path}:${i + 1}`)
+          })
+        }
+      }
+    }
+    walk('crates')
+    walk('apps/desktop-tauri/src-tauri')
+    assert.deepEqual(new Set(gated.map(([, , at]) => at)), new Set(expected))
   })
 
   it('adds its OS for an edit inside every cfg-gated module of the repo', () => {
     for (const [prefix, os] of gated) {
-      const file = [`${prefix}.rs`, `${prefix}/mod.rs`].find((f) => existsSync(join(repo, f)))
+      const file = prefix.endsWith('.rs')
+        ? prefix
+        : [`${prefix}.rs`, `${prefix}/mod.rs`].find((f) => existsSync(join(repo, f)))
       if (!file) continue
       const patches = { [file]: hunk('-    old();', '+    new();') }
       const out = tier({ files: [file], patches, sourceRoot: repo })
