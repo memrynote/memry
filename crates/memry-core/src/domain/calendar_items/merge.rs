@@ -271,7 +271,10 @@ fn overlaid(
     merged
         .iter()
         .filter(|(key, value)| {
-            !matches!(key.as_str(), "clock" | "fieldClocks") && local.get(*key) != Some(*value)
+            !matches!(
+                key.as_str(),
+                "clock" | "fieldClocks" | "createdAt" | "modifiedAt"
+            ) && local.get(*key) != Some(*value)
         })
         .map(|(key, value)| FieldConflict {
             field: key.clone(),

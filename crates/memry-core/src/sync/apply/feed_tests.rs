@@ -78,6 +78,7 @@ fn downloads(owner: &str) -> Vec<AttachmentDownload> {
             owner_id: owner.to_owned(),
             attachment_id: attachment_id.to_owned(),
             hint: "note".to_owned(),
+            own_file: false,
         })
         .to_vec()
 }
@@ -96,17 +97,24 @@ fn every_item_of_a_page_is_one_record_with_its_outcome() {
             vec![
                 record("note", "note00000001", note(json!({"peer": 1}))),
                 record("note", "note00000002", note(json!({"peer": 2}))),
+                tombstone("note", "note00000002", json!({"peer": 3})),
+                tombstone("note", "note00000002", json!({"peer": 4})),
                 tombstone("sticky_draft", "sticky-never-seen", json!({"peer": 1})),
             ],
         );
+        // A tombstone for an item that was never live here, or is already
+        // deleted, changed nothing (Electron's `note-handler.ts:739`).
         assert_eq!(
             outcomes(&totals),
             [
                 ("note00000001".to_owned(), AppliedOutcome::Created),
                 ("note00000002".to_owned(), AppliedOutcome::Updated),
-                ("sticky-never-seen".to_owned(), AppliedOutcome::Deleted),
+                ("note00000002".to_owned(), AppliedOutcome::Deleted),
+                ("note00000002".to_owned(), AppliedOutcome::Skipped),
+                ("sticky-never-seen".to_owned(), AppliedOutcome::Skipped),
             ]
         );
+        assert!(totals.feed.revived_notes.is_empty());
         let mut wanted = downloads("note00000001");
         wanted.extend(downloads("note00000002"));
         assert_eq!(totals.feed.downloads, wanted);
@@ -150,6 +158,47 @@ fn a_losing_note_tombstone_revives_the_note_and_an_identical_skip_asks_for_files
     .expect("the pages");
 }
 
+/// Electron's `note-handler.ts:637-644`: a created non-markdown note asks for
+/// its own file, once; an update of it does not.
+#[test]
+fn a_created_non_markdown_note_asks_for_its_own_file() {
+    let dir = temp_dir("feed-own-file");
+    let db = open_data(&dir.path().join("data.db")).expect("open data.db");
+    let pdf = |clock: Value| {
+        json!({
+            "title": "Scan", "fileType": "pdf", "mimeType": "application/pdf",
+            "attachmentId": "att-own", "folderPath": "Notes",
+            "clock": clock, "createdAt": ISO, "modifiedAt": ISO,
+        })
+    };
+    db.call_blocking(move |conn| {
+        let created = page(
+            conn,
+            vec![record("note", "note00000003", pdf(json!({"peer": 1})))],
+        );
+        assert_eq!(
+            created.feed.downloads,
+            [AttachmentDownload {
+                owner_id: "note00000003".to_owned(),
+                attachment_id: "att-own".to_owned(),
+                hint: "note".to_owned(),
+                own_file: true,
+            }]
+        );
+        let updated = page(
+            conn,
+            vec![record("note", "note00000003", pdf(json!({"peer": 2})))],
+        );
+        assert!(
+            updated.feed.downloads.is_empty(),
+            "{:?}",
+            updated.feed.downloads
+        );
+        Ok(())
+    })
+    .expect("the pages");
+}
+
 /// Desktop reports a concurrent calendar apply as a conflict
 /// (`calendar-source-handler.ts:73`); the feed names the field the remote won.
 #[test]
@@ -165,14 +214,11 @@ fn a_concurrent_calendar_source_is_merged_with_the_field_it_decided() {
                 source("Work", json!({"a": 1})),
             )],
         );
-        let totals = page(
-            conn,
-            vec![record(
-                "calendar_source",
-                "src-1",
-                source("Office", json!({"b": 1})),
-            )],
-        );
+        // The remote's own timestamps are bookkeeping, never a conflict.
+        let mut remote = source("Office", json!({"b": 1}));
+        remote["createdAt"] = json!("2026-09-25T08:00:00.000Z");
+        remote["modifiedAt"] = json!("2026-09-25T08:00:00.000Z");
+        let totals = page(conn, vec![record("calendar_source", "src-1", remote)]);
         let merged = &totals.feed.records[0];
         assert_eq!(merged.outcome, AppliedOutcome::Merged);
         let fields: Vec<&str> = merged.conflicts.iter().map(|c| c.field.as_str()).collect();

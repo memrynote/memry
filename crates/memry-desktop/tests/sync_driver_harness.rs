@@ -741,7 +741,8 @@ fn write_bodies(device: &Device, range: std::ops::Range<usize>) -> Vec<String> {
 
 /// A desktop's first sync takes the whole vault (Electron's full sync): more than the phone's 500
 /// bodies, and a body last edited before the phone's 30-day window. Its progress runs `notes`,
-/// `packs`, then `tasks` for the outbox the catch-up pushes, and ends `complete`.
+/// `packs`, then `tasks` for the outbox the catch-up pushes once its seeds ran, and ends
+/// `complete`.
 ///
 /// The bodies come from two devices because the Worker allows one device 300 CRDT pushes a
 /// minute (`crdtPushRateLimit`).
@@ -785,12 +786,20 @@ async fn a_desktop_first_sync_pulls_every_body_old_or_past_the_phone_limit() {
         assert_eq!(device.outbox(), 0, "every note and body pushed");
     }
 
-    // A local change B's catch-up passes push: the `tasks` phase.
-    b.core
-        .notes_writer(b.store.clone())
-        .unwrap()
-        .create("Local".into(), None)
+    // A lock only the pass's seed queues: `tasks` counts the outbox after the seeds
+    // (Electron's `full-sync-runner.ts:424-451`).
+    let lock = vault_locks::lock_id(TargetKind::Folder, "Old");
+    b.db()
+        .call_blocking(move |conn| {
+            conn.execute(
+                "INSERT INTO vault_locks (id, target_kind, target, locked, created_at, updated_at)
+                 VALUES (?1, 'folder', 'Old', 1, ?2, ?2)",
+                rusqlite::params![lock, NOW],
+            )
+            .map_err(failed)
+        })
         .unwrap();
+    assert_eq!(b.outbox(), 0, "nothing queued before the seeds");
 
     let progress = Arc::new(RecordedProgress::default());
     let first = b

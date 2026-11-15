@@ -52,6 +52,7 @@ use super::apply::{self, Pending};
 use super::body_pull::CrdtCipher;
 use super::changes_page::{ChangesPage, read_changes_page, requested_ids, uncovered_ids};
 use super::driver::Observers;
+use super::driver::observer::AppliedFeed;
 use super::feed_restart;
 use super::note_body_feed::{self, NOTE_BODY_SYNC_TYPE};
 
@@ -310,32 +311,42 @@ impl PullLoop {
         // Only a loop that lands bodies owes them: its caller is the one that
         // settles the debts (#2297 review A-7).
         let owe_bodies = self.bodies.is_some();
-        let mut outcomes = self.apply_all(pending, untyped, owe_bodies).await?;
-        let feed = std::mem::take(&mut outcomes.feed);
-        report.applied += outcomes.applied;
-        report.deleted += outcomes.deleted;
-        report.skipped += outcomes.skipped;
-        report.corrupt += outcomes.corrupt;
-        report.expired += outcomes.expired;
-        report.purged_documents.extend(outcomes.purged_documents);
+        let mut feed = AppliedFeed::default();
+        let landed = async {
+            let outcomes = self
+                .apply_all(pending, untyped, owe_bodies, &mut feed)
+                .await?;
+            report.applied += outcomes.applied;
+            report.deleted += outcomes.deleted;
+            report.skipped += outcomes.skipped;
+            report.corrupt += outcomes.corrupt;
+            report.expired += outcomes.expired;
+            report.purged_documents.extend(outcomes.purged_documents);
 
-        // §5.11: only now, and in the transaction that lands the bodies.
-        let advanced = page.next_cursor.clone().or(cursor);
-        let stored = advanced.clone();
-        report.advanced_documents = self
-            .db
-            .call(move |conn| {
-                // Stamped under the writer, as `body_pull::store_update` says why.
-                note_body_feed::land_and_advance(conn, bodies, stored.as_deref(), now_ms())
-            })
-            .await?;
-        report.cursor = advanced;
-        if let Some(observers) = &self.observers {
-            observers
-                .bodies_applied(report.advanced_documents.clone())
-                .await;
+            // §5.11: only now, and in the transaction that lands the bodies.
+            let advanced = page.next_cursor.clone().or(cursor);
+            let stored = advanced.clone();
+            report.advanced_documents = self
+                .db
+                .call(move |conn| {
+                    // Stamped under the writer, as `body_pull::store_update` says why.
+                    note_body_feed::land_and_advance(conn, bodies, stored.as_deref(), now_ms())
+                })
+                .await?;
+            report.cursor = advanced;
+            if let Some(observers) = &self.observers {
+                observers
+                    .bodies_applied(report.advanced_documents.clone())
+                    .await;
+            }
+            Ok::<(), PullError>(())
         }
+        .await;
+        // Each record committed on its own, so a failure after some of them
+        // still tells those: a re-pull reports them `Skipped`, and an observer
+        // that missed them now would never write their files (#3534).
         self.tell(feed).await;
+        landed?;
 
         // §5.14's breaker, all three conditions or none.
         let yielded = report.applied + report.deleted + report.skipped + report.expired;
@@ -367,8 +378,10 @@ impl PullLoop {
         }
 
         pending.sort_by_key(|item| apply::apply_rank(item.item_type()));
-        let mut outcomes = self.apply_all(pending, Vec::new(), true).await?;
-        self.tell(std::mem::take(&mut outcomes.feed)).await;
+        let mut feed = AppliedFeed::default();
+        let applied = self.apply_all(pending, Vec::new(), true, &mut feed).await;
+        self.tell(feed).await;
+        let outcomes = applied?;
         report.applied += outcomes.applied;
         report.deleted += outcomes.deleted;
         report.skipped += outcomes.skipped;

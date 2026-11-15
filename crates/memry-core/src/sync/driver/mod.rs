@@ -55,7 +55,6 @@ use super::bootstrap::BootstrapClient;
 use super::engine::{PassReport, PassSeed, SyncEngine};
 use super::first_sync::{FirstSync, FirstSyncLimits, FirstSyncReport, ProgressSink};
 use super::first_sync_store::read_meta;
-use super::outbox;
 use super::pack_bootstrap::PackBootstrap;
 use super::pull::PullLoop;
 use super::push::PushCoordinator;
@@ -65,7 +64,7 @@ pub use observer::{
     AppliedFeed, AppliedOutcome, AppliedRecord, ApplyObserver, AttachmentDownload, FieldConflict,
     Observers,
 };
-use progress::{InitialSyncPhase, InitialSyncSink, Phases};
+use progress::{InitialSyncPhase, InitialSyncSink, Phases, TasksPhase};
 
 /// How a driver syncs.
 #[derive(Debug, Clone)]
@@ -140,6 +139,8 @@ pub struct SyncDriver {
     http: Arc<HttpClient>,
     cipher: Arc<DirectoryCipher>,
     observers: Arc<Observers>,
+    /// The `tasks` progress, the seed registered after every other.
+    tasks: Arc<TasksPhase>,
     paused: AtomicBool,
     /// Chapter 07 §7.13.3: per document, the first and last request instants.
     snapshots: Mutex<BTreeMap<String, (i64, i64)>>,
@@ -232,6 +233,8 @@ impl SyncDriver {
         for seed in seeds {
             engine = engine.with_seed(seed);
         }
+        let tasks = Arc::new(TasksPhase::new(db.clone()));
+        engine = engine.with_seed(Arc::clone(&tasks) as Arc<dyn PassSeed>);
 
         let driver = Self {
             engine,
@@ -246,6 +249,7 @@ impl SyncDriver {
             http,
             cipher,
             observers,
+            tasks,
             paused: AtomicBool::new(false),
             snapshots: Mutex::default(),
         };
@@ -294,8 +298,8 @@ impl SyncDriver {
     /// so the seeds run and the outbox drains. `None` while paused.
     ///
     /// Progress follows Electron's full sync: `notes` and `packs` from the
-    /// first sync, `tasks` with the outbox the passes will push (only when it
-    /// is not empty), then `complete`.
+    /// first sync, `tasks` with the outbox the passes will push once their
+    /// seeds ran (only when it is not empty), then `complete`.
     pub async fn first_sync(
         &self,
         progress: Arc<dyn InitialSyncSink>,
@@ -319,11 +323,7 @@ impl SyncDriver {
             .run(super::pull::now_ms())
             .await?
         };
-        let now = super::pull::now_ms();
-        let pending = self.db.call(move |conn| outbox::pending(conn, now)).await?;
-        if pending > 0 {
-            phases.emit(InitialSyncPhase::Tasks, 0, pending as u64);
-        }
+        self.tasks.arm(Some(Arc::clone(&phases)));
         let mut passes = Vec::new();
         let mut cursor = None;
         loop {
@@ -340,6 +340,7 @@ impl SyncDriver {
                 break;
             }
         }
+        self.tasks.arm(None);
         phases.emit(InitialSyncPhase::Complete, 0, 0);
         Ok(Some(FirstSyncOutcome { first_sync, passes }))
     }

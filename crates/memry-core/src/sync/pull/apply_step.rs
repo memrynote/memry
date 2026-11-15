@@ -27,35 +27,47 @@ impl PullLoop {
         pending: Vec<Pending>,
         untyped: Vec<String>,
         owe_bodies: bool,
+        feed: &mut AppliedFeed,
     ) -> Result<ApplyTotals, PullError> {
         let now = now_ms();
         let clock_device = self.clock_device.clone();
         let at_rest = self.at_rest.clone();
-        Ok(self
+        let (mut totals, applied) = self
             .db
             .call(move |conn| {
-                let owed_here = if owe_bodies {
-                    body_debt::owe_page(conn, &pending)?
-                } else {
-                    Vec::new()
-                };
-                let totals = apply::apply_page(
-                    conn,
-                    pending,
-                    untyped,
-                    now,
-                    clock_device.as_deref(),
-                    &at_rest,
-                )?;
-                for doc_id in &owed_here {
-                    if !totals.applied_documents.contains(doc_id) {
-                        body_debt::settle(conn, doc_id)?;
+                let mut totals = ApplyTotals::default();
+                let applied = (|| {
+                    let owed_here = if owe_bodies {
+                        body_debt::owe_page(conn, &pending)?
+                    } else {
+                        Vec::new()
+                    };
+                    apply::apply_page_into(
+                        conn,
+                        pending,
+                        untyped,
+                        now,
+                        clock_device.as_deref(),
+                        &at_rest,
+                        &mut totals,
+                    )?;
+                    for doc_id in &owed_here {
+                        if !totals.applied_documents.contains(doc_id) {
+                            body_debt::settle(conn, doc_id)?;
+                        }
                     }
-                }
-                refused_items::record(conn, &totals.refused, CORE_BUILD, now)?;
-                Ok(totals)
+                    refused_items::record(conn, &totals.refused, CORE_BUILD, now)
+                })();
+                Ok((totals, applied))
             })
-            .await?)
+            .await?;
+        // What committed before a failure is the caller's to tell (#3534).
+        let committed = std::mem::take(&mut totals.feed);
+        feed.records.extend(committed.records);
+        feed.revived_notes.extend(committed.revived_notes);
+        feed.downloads.extend(committed.downloads);
+        applied?;
+        Ok(totals)
     }
 
     /// Tells the observers what an apply committed
@@ -126,10 +138,12 @@ impl PullLoop {
             }
         }
         pending.sort_by_key(|item| apply::apply_rank(item.item_type()));
-        let totals = self
-            .apply_all(pending, Vec::new(), self.bodies.is_some())
-            .await?;
-        self.tell(totals.feed).await;
+        let mut feed = AppliedFeed::default();
+        let applied = self
+            .apply_all(pending, Vec::new(), self.bodies.is_some(), &mut feed)
+            .await;
+        self.tell(feed).await;
+        applied?;
         let gone: Vec<(String, String)> = requested.difference(&answered).cloned().collect();
         self.db
             .call(move |conn| {

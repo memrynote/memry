@@ -3,13 +3,17 @@
 //!
 //! The first sync's refs, metadata and bodies passes all report `notes`, the
 //! pack bootstrap reports `packs`, the outbox the catch-up passes will push
-//! reports `tasks` (Electron's `full-sync-runner.ts`), and the end reports
-//! `complete`. `manifest` belongs to the manifest check, which is not the
-//! driver's.
+//! once their seeds ran reports `tasks` (Electron's `full-sync-runner.ts`), and
+//! the end reports `complete`. `manifest` belongs to the manifest check, which
+//! is not the driver's.
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, PoisonError};
 
+use crate::api::errors::StorageError;
+use crate::storage::Db;
+use crate::sync::engine::PassSeed;
 use crate::sync::first_sync::{FirstSyncPhase, FirstSyncProgress, ProgressSink};
+use crate::sync::outbox;
 use crate::sync::pack_bootstrap::PackBootstrapReport;
 
 /// `InitialSyncPhase`, minus `manifest` and `attachments`, which other owners
@@ -87,5 +91,48 @@ impl ProgressSink for Phases {
             (report.entries_applied + report.entries_skipped + report.entries_failed) as u64
         });
         self.emit(InitialSyncPhase::Packs, done, done);
+    }
+}
+
+/// Reports `tasks` with the outbox the pass will push, counted after every
+/// other seed ran, as Electron counts after `runInitialSeed`
+/// (`full-sync-runner.ts:424-451`). The driver registers it last; only its
+/// first sync arms it, and the first pass that seeds reports once.
+pub(super) struct TasksPhase {
+    db: Db,
+    armed: Mutex<Option<Arc<Phases>>>,
+}
+
+impl TasksPhase {
+    pub(super) fn new(db: Db) -> Self {
+        Self {
+            db,
+            armed: Mutex::default(),
+        }
+    }
+
+    /// Arms the next seeding pass to report to `phases`, or disarms.
+    pub(super) fn arm(&self, phases: Option<Arc<Phases>>) {
+        *self.armed.lock().unwrap_or_else(PoisonError::into_inner) = phases;
+    }
+}
+
+#[async_trait::async_trait]
+impl PassSeed for TasksPhase {
+    async fn seed(&self) -> Result<(), StorageError> {
+        let armed = self
+            .armed
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .take();
+        let Some(phases) = armed else {
+            return Ok(());
+        };
+        let now = crate::sync::pull::now_ms();
+        let pending = self.db.call(move |conn| outbox::pending(conn, now)).await?;
+        if pending > 0 {
+            phases.emit(InitialSyncPhase::Tasks, 0, pending as u64);
+        }
+        Ok(())
     }
 }

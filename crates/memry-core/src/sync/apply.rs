@@ -4,7 +4,7 @@
 //! Every route that brings a record into this device ends here: the
 //! steady-state page ([`super::pull::PullLoop::pull_page`]) and the first
 //! sync's metadata pass ([`super::pull::PullLoop::fetch_ids`], driven by
-//! [`super::first_sync`]) both hand their decoded items to [`apply_page`].
+//! [`super::first_sync`]) both hand their decoded items to [`apply_page_into`].
 //! That is deliberate. Chapter 06 §6.8 is a table over item types, and a table
 //! consulted at each call site is a table the next call site forgets:
 //! `task` and `project` are field-merged, `settings` has its own dotted-path
@@ -143,12 +143,8 @@ pub(crate) struct ApplyTotals {
 /// asking for them.
 pub(crate) const DOCUMENT_TYPES: [&str; 2] = ["note", "journal"];
 
-/// Applies one page's decoded items, in the order they were handed over, plus
-/// the ids §5.12.1 leaves with no type on the wire.
-///
-/// `clock_device` is this device's clock id (chapter 01 §1.5), which a canvas
-/// conflict copy is clocked under. `at_rest` seals the agent records
-/// ([`crate::crypto::agent_payload`]).
+/// [`apply_page_into`] fresh totals, for the tests that apply a page directly.
+#[cfg(test)]
 pub(crate) fn apply_page(
     conn: &Connection,
     pending: Vec<Pending>,
@@ -158,6 +154,38 @@ pub(crate) fn apply_page(
     at_rest: &AtRestKey,
 ) -> Result<ApplyTotals, StorageError> {
     let mut totals = ApplyTotals::default();
+    apply_page_into(
+        conn,
+        pending,
+        untyped,
+        now_ms,
+        clock_device,
+        at_rest,
+        &mut totals,
+    )?;
+    Ok(totals)
+}
+
+/// Applies one page's decoded items, in the order they were handed over, plus
+/// the ids §5.12.1 leaves with no type on the wire.
+///
+/// `clock_device` is this device's clock id (chapter 01 §1.5), which a canvas
+/// conflict copy is clocked under. `at_rest` seals the agent records
+/// ([`crate::crypto::agent_payload`]).
+///
+/// The outcomes go into the caller's `totals`. Each record commits on its own,
+/// so on an error `totals` (its `feed` above all) still holds every record
+/// that committed before it: the pull tells the observers that part, because
+/// a re-pull reports those rows `Skipped` and a write-back would never run.
+pub(crate) fn apply_page_into(
+    conn: &Connection,
+    pending: Vec<Pending>,
+    untyped: Vec<String>,
+    now_ms: i64,
+    clock_device: Option<&str>,
+    at_rest: &AtRestKey,
+    totals: &mut ApplyTotals,
+) -> Result<(), StorageError> {
     for item in pending {
         match item {
             Pending::Tombstone {
@@ -178,7 +206,7 @@ pub(crate) fn apply_page(
                     body_state_vector.as_deref(),
                     now_ms,
                     clock_device,
-                    &mut totals,
+                    totals,
                 )?;
                 refused_items::resolve(conn, &item_type, &item_id)?;
             }
@@ -197,15 +225,15 @@ pub(crate) fn apply_page(
                         None,
                         now_ms,
                         clock_device,
-                        &mut totals,
+                        totals,
                     )?;
                     refused_items::resolve(conn, &record.item_type, &record.item_id)?;
                     continue;
                 }
                 let existed = feed::is_live(conn, &record.item_type, &record.item_id)?;
                 let (outcome, merged) = apply_record(conn, &record, now_ms, clock_device, at_rest)?;
-                refused_items::settle(conn, &record, &outcome, &mut totals.refused)?;
                 feed::record(conn, &mut totals.feed, &record, &outcome, existed, merged)?;
+                refused_items::settle(conn, &record, &outcome, &mut totals.refused)?;
                 match outcome {
                     ApplyOutcome::Applied => {
                         totals.applied += 1;
@@ -221,10 +249,10 @@ pub(crate) fn apply_page(
         }
     }
     for item_id in untyped {
-        apply_untyped_tombstone(conn, &item_id, now_ms, &mut totals)?;
+        apply_untyped_tombstone(conn, &item_id, now_ms, totals)?;
         refused_items::resolve_id(conn, &item_id)?;
     }
-    Ok(totals)
+    Ok(())
 }
 
 fn sqlite_failed(error: rusqlite::Error) -> StorageError {

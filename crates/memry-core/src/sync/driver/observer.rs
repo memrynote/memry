@@ -9,12 +9,15 @@
 //!   not see it yet, and a slow observer would hold the writer.
 //! - **Off the runtime.** Observers are synchronous and may block (a file
 //!   write-back, a lock reconcile), so they run on `spawn_blocking`.
-//! - **One panic stops one observer.** A panic is logged with the observer's
-//!   name and the page size, and the next observer still runs: a broken status
-//!   feed must not stop a note reaching its file.
+//! - **One panic stops one call.** A panic is logged with the observer's name,
+//!   the method and the page size, and the observer's next method and the next
+//!   observer still run: a broken status feed must not stop a note reaching its
+//!   file. A call slower than [`SLOW_CALL`] is logged too, since it holds the
+//!   pass.
 
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::{Arc, RwLock};
+use std::time::{Duration, Instant};
 
 use serde_json::Value as Json;
 
@@ -62,6 +65,9 @@ pub struct AttachmentDownload {
     pub attachment_id: String,
     /// The owner's item type.
     pub hint: String,
+    /// The attachment is the owner's own file (a non-markdown note's
+    /// `attachmentId`, `note-handler.ts:637`), not one it embeds.
+    pub own_file: bool,
 }
 
 /// What one committed page applied, as the observers hear it.
@@ -97,14 +103,16 @@ pub trait ApplyObserver: Send + Sync {
 
     /// An applied record references attachment `attachment_id`, which this
     /// device may lack: the observer skips one it has or already asked for.
-    /// `hint` is the owner's type.
-    fn attachment_download_needed(&self, _owner_id: &str, _attachment_id: &str, _hint: &str) {}
+    fn attachment_download_needed(&self, _download: &AttachmentDownload) {}
 
     /// These note or journal bodies changed in the update log, committed.
     /// Record pages carry no body change, and `Editor::subscribe` sees only
     /// resident documents, so this is how a non-resident body reaches its file.
     fn bodies_applied(&self, _doc_ids: &[String]) {}
 }
+
+/// An observer call this slow is logged: it runs under the pass gate.
+const SLOW_CALL: Duration = Duration::from_secs(5);
 
 /// The registered observers, in registration order. Shared by every pull of
 /// one driver, so an observer registered after the driver was built still
@@ -135,19 +143,21 @@ impl Observers {
             return;
         }
         let size = feed.records.len();
-        self.each("records_applied", size, move |observer| {
+        self.each("applied", move |observer| {
             if !feed.records.is_empty() {
-                observer.records_applied(&feed.records);
+                guarded(observer, "records_applied", size, || {
+                    observer.records_applied(&feed.records)
+                });
             }
             for note_id in &feed.revived_notes {
-                observer.note_revived(note_id);
+                guarded(observer, "note_revived", size, || {
+                    observer.note_revived(note_id)
+                });
             }
             for download in &feed.downloads {
-                observer.attachment_download_needed(
-                    &download.owner_id,
-                    &download.attachment_id,
-                    &download.hint,
-                );
+                guarded(observer, "attachment_download_needed", size, || {
+                    observer.attachment_download_needed(download)
+                });
             }
         })
         .await;
@@ -159,38 +169,49 @@ impl Observers {
             return;
         }
         let size = doc_ids.len();
-        self.each("bodies_applied", size, move |observer| {
-            observer.bodies_applied(&doc_ids)
+        self.each("bodies_applied", move |observer| {
+            guarded(observer, "bodies_applied", size, || {
+                observer.bodies_applied(&doc_ids)
+            });
         })
         .await;
     }
 
-    async fn each(
-        &self,
-        what: &'static str,
-        size: usize,
-        call: impl Fn(&dyn ApplyObserver) + Send + 'static,
-    ) {
+    async fn each(&self, what: &'static str, call: impl Fn(&dyn ApplyObserver) + Send + 'static) {
         let observers = self.snapshot();
         if observers.is_empty() {
             return;
         }
         let joined = tokio::task::spawn_blocking(move || {
             for observer in &observers {
-                let ran = catch_unwind(AssertUnwindSafe(|| call(observer.as_ref())));
-                if ran.is_err() {
-                    eprintln!(
-                        "memry-core: sync observer `{}` panicked in {what} over {size} item(s); \
-                         the next observer still runs",
-                        observer.name()
-                    );
-                }
+                call(observer.as_ref());
             }
         })
         .await;
         if let Err(error) = joined {
             eprintln!("memry-core: the sync observers' {what} task failed: {error}");
         }
+    }
+}
+
+/// Runs one observer method: a panic is logged and stops only this call, and
+/// a call slower than [`SLOW_CALL`] is logged.
+fn guarded(observer: &dyn ApplyObserver, method: &str, size: usize, call: impl FnOnce()) {
+    let started = Instant::now();
+    if catch_unwind(AssertUnwindSafe(call)).is_err() {
+        eprintln!(
+            "memry-core: sync observer `{}` panicked in {method} over {size} item(s); \
+             the rest still runs",
+            observer.name()
+        );
+    }
+    let took = started.elapsed();
+    if took > SLOW_CALL {
+        eprintln!(
+            "memry-core: sync observer `{}` took {took:?} in {method} over {size} item(s), \
+             holding the sync pass",
+            observer.name()
+        );
     }
 }
 
@@ -215,6 +236,10 @@ mod tests {
             assert!(!self.panics, "a broken observer");
             let ids = batch.iter().map(|record| record.item_id.clone());
             self.seen.lock().unwrap().extend(ids);
+        }
+
+        fn note_revived(&self, note_id: &str) {
+            self.seen.lock().unwrap().push(format!("revived {note_id}"));
         }
 
         fn bodies_applied(&self, doc_ids: &[String]) {
@@ -248,18 +273,22 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread")]
-    async fn a_panicking_observer_does_not_stop_the_next_one() {
+    async fn a_panic_stops_one_call_not_the_observers_next_method_or_the_next_observer() {
         let observers = Observers::default();
         let broken = recording("broken", true);
         let after = recording("after", false);
-        observers.register(broken);
+        observers.register(broken.clone());
         observers.register(after.clone());
 
-        observers
-            .applied(page(vec![record("t1"), record("t2")]))
-            .await;
+        let mut feed = page(vec![record("t1"), record("t2")]);
+        feed.revived_notes.push("n0".into());
+        observers.applied(feed).await;
         observers.bodies_applied(vec!["n1".into()]).await;
-        assert_eq!(*after.seen.lock().unwrap(), ["t1", "t2", "n1"]);
+        assert_eq!(*broken.seen.lock().unwrap(), ["revived n0"]);
+        assert_eq!(
+            *after.seen.lock().unwrap(),
+            ["t1", "t2", "revived n0", "n1"]
+        );
     }
 
     #[tokio::test(flavor = "multi_thread")]

@@ -56,36 +56,51 @@ pub(super) fn record(
         // is stored flagged (§13.2 rule 5), or it expired (§13.12).
         _ => (AppliedOutcome::Skipped, Vec::new()),
     };
-    // Electron asks again on an identical skip too: the only re-request for a
-    // download that died with the process before the page re-pulled (#2294).
-    let wants_files = outcome != AppliedOutcome::Skipped || identical_skip(conn, record)?;
-    if record.item_type == notes::ITEM_TYPE && wants_files {
-        feed.downloads.extend(downloads(record));
-    }
+    // The record first: the row is committed, so a failure below must not
+    // drop its outcome.
     feed.records.push(AppliedRecord {
         item_type: record.item_type.clone(),
         item_id: record.item_id.clone(),
         outcome,
         conflicts,
     });
+    // Electron asks again on an identical skip too: the only re-request for a
+    // download that died with the process before the page re-pulled (#2294).
+    if record.item_type == notes::ITEM_TYPE
+        && (outcome != AppliedOutcome::Skipped || identical_skip(conn, record)?)
+    {
+        feed.downloads
+            .extend(downloads(record, outcome == AppliedOutcome::Created));
+    }
     Ok(())
 }
 
-/// Adds one record a tombstone deleted or, losing to a newer local edit,
-/// skipped. A skipped note tombstone revives the note (Electron's
-/// `note-handler.ts:744`).
-pub(super) fn tombstone(feed: &mut AppliedFeed, item_type: &str, item_id: &str, deleted: bool) {
-    if !deleted && item_type == notes::ITEM_TYPE {
+/// Adds one record a tombstone deleted. A tombstone for an item that was
+/// never live here, or is already deleted, changed nothing and is `Skipped`
+/// (Electron's `note-handler.ts:739`).
+pub(super) fn deleted(feed: &mut AppliedFeed, item_type: &str, item_id: &str, was_live: bool) {
+    let outcome = if was_live {
+        AppliedOutcome::Deleted
+    } else {
+        AppliedOutcome::Skipped
+    };
+    push(feed, item_type, item_id, outcome);
+}
+
+/// Adds one tombstone that lost to a newer local edit. A note lives on, so it
+/// is revived (Electron's `note-handler.ts:744`).
+pub(super) fn revived(feed: &mut AppliedFeed, item_type: &str, item_id: &str) {
+    if item_type == notes::ITEM_TYPE {
         feed.revived_notes.push(item_id.to_owned());
     }
+    push(feed, item_type, item_id, AppliedOutcome::Skipped);
+}
+
+fn push(feed: &mut AppliedFeed, item_type: &str, item_id: &str, outcome: AppliedOutcome) {
     feed.records.push(AppliedRecord {
         item_type: item_type.to_owned(),
         item_id: item_id.to_owned(),
-        outcome: if deleted {
-            AppliedOutcome::Deleted
-        } else {
-            AppliedOutcome::Skipped
-        },
+        outcome,
         conflicts: Vec::new(),
     });
 }
@@ -124,11 +139,24 @@ fn identical_skip(conn: &Connection, record: &InboundRecord) -> Result<bool, Sto
     Ok(remote.is_some_and(|remote| remote == stored))
 }
 
-fn downloads(record: &InboundRecord) -> Vec<AttachmentDownload> {
+/// The attachments a note references and, when `created` and the note is not
+/// markdown, its own file (Electron's `note-handler.ts:637-644`).
+fn downloads(record: &InboundRecord, created: bool) -> Vec<AttachmentDownload> {
     let Ok(payload) = serde_json::from_str::<Json>(&record.payload_json) else {
         return Vec::new();
     };
-    payload
+    let own_file = payload
+        .get("fileType")
+        .and_then(Json::as_str)
+        .filter(|file_type| created && *file_type != "markdown")
+        .and(payload.get("attachmentId").and_then(Json::as_str))
+        .map(|attachment_id| AttachmentDownload {
+            owner_id: record.item_id.clone(),
+            attachment_id: attachment_id.to_owned(),
+            hint: record.item_type.clone(),
+            own_file: true,
+        });
+    let references = payload
         .get("attachmentReferences")
         .and_then(Json::as_array)
         .into_iter()
@@ -138,6 +166,7 @@ fn downloads(record: &InboundRecord) -> Vec<AttachmentDownload> {
             owner_id: record.item_id.clone(),
             attachment_id: attachment_id.to_owned(),
             hint: record.item_type.clone(),
-        })
-        .collect()
+            own_file: false,
+        });
+    own_file.into_iter().chain(references).collect()
 }
