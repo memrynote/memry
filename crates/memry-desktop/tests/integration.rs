@@ -15,6 +15,8 @@ mod svg_inert;
 mod unsplash_server;
 mod vault_env;
 
+#[path = "account_oauth.rs"]
+mod account_oauth;
 #[path = "account_service.rs"]
 mod account_service;
 #[path = "activity_log.rs"]
@@ -278,6 +280,8 @@ mod notes_update;
 mod notes_update_critic_marks;
 #[path = "notes_writes.rs"]
 mod notes_writes;
+#[path = "oauth_loopback.rs"]
+mod oauth_loopback;
 #[path = "ocr_languages.rs"]
 mod ocr_languages;
 #[path = "path_collision.rs"]

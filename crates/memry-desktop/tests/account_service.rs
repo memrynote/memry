@@ -24,10 +24,10 @@ use memry_desktop::telemetry::report::{self, FeedbackSubmit};
 use memry_desktop::telemetry::service::{Context, Sender, Service};
 use serde_json::{Value, json};
 
-const MASTER: [u8; 32] = [9; 32];
+pub(crate) const MASTER: [u8; 32] = [9; 32];
 
 #[derive(Default)]
-struct Script {
+pub(crate) struct Script {
     answers: Mutex<VecDeque<(u16, String)>>,
     paths: Mutex<Vec<String>>,
     /// The `authorization` header of each request, by path.
@@ -71,18 +71,18 @@ impl Transport for Script {
 }
 
 impl Script {
-    fn answer(&self, status: u16, body: Value) {
+    pub(crate) fn answer(&self, status: u16, body: Value) {
         self.answers
             .lock()
             .unwrap()
             .push_back((status, body.to_string()));
     }
 
-    fn called(&self, path: &str) -> bool {
+    pub(crate) fn called(&self, path: &str) -> bool {
         self.count(path) > 0
     }
 
-    fn count(&self, path: &str) -> usize {
+    pub(crate) fn count(&self, path: &str) -> usize {
         self.paths
             .lock()
             .unwrap()
@@ -94,7 +94,7 @@ impl Script {
 
 /// The keychain, with an optional locked master key.
 #[derive(Default)]
-struct Keychain {
+pub(crate) struct Keychain {
     items: Mutex<HashMap<SecureStoreKey, Vec<u8>>>,
     master_locked: bool,
     access_locked: AtomicBool,
@@ -124,10 +124,10 @@ impl SecureStore for Keychain {
 }
 
 impl Keychain {
-    fn has(&self, key: SecureStoreKey) -> bool {
+    pub(crate) fn has(&self, key: SecureStoreKey) -> bool {
         self.items.lock().unwrap().contains_key(&key)
     }
-    fn holding_keys(master: Option<[u8; 32]>) -> Self {
+    pub(crate) fn holding_keys(master: Option<[u8; 32]>) -> Self {
         let keychain = Self::default();
         let (_, secret) = sodium::sign_seed_keypair(&[7; 32]).unwrap();
         keychain
@@ -148,11 +148,11 @@ fn jwt(payload: Value) -> String {
     format!("{header}.{body}.c2ln")
 }
 
-fn setup_token() -> String {
+pub(crate) fn setup_token() -> String {
     jwt(json!({ "sub": "u", "jti": "jti-1", "exp": 4_102_444_800u64, "type": "setup" }))
 }
 
-fn access_token(device: &str) -> String {
+pub(crate) fn access_token(device: &str) -> String {
     jwt(json!({ "sub": "u", "device_id": device, "exp": 4_102_444_800u64 }))
 }
 
