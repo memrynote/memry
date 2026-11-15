@@ -16,6 +16,10 @@ struct NoteReadDialogs: ViewModifier {
     @Binding var confirmingDelete: Bool
     @Binding var brokenLink: String?
     @State private var moveFolders: [FolderSummary] = []
+    /// The rename dialog's edit of the title. Rename with no change writes
+    /// nothing: opening the dialog ends a title edit on the page, and its
+    /// write may land before or after the dialog's (#4691).
+    @State private var renameCommits = DraftCommits()
 
     @Environment(\.dismiss) private var dismiss
 
@@ -26,11 +30,15 @@ struct NoteReadDialogs: ViewModifier {
             // whole and none of them should be one stray tap away.
             .alert("Rename this note", isPresented: $renaming) {
                 TextField("Title", text: $renameDraft)
-                Button("Cancel", role: .cancel) {}
+                Button("Cancel", role: .cancel) { _ = renameCommits.take(renameDraft, explicit: true) }
                 // The page re-reads on `titleSaved`, which the rename posts.
                 Button("Rename") {
-                    Task { await actions.rename(to: renameDraft) }
+                    guard let title = renameCommits.take(renameDraft, explicit: true) else { return }
+                    Task { await actions.rename(to: title) }
                 }
+            }
+            .onChange(of: renaming) { _, shown in
+                if shown { renameCommits.begin(renameDraft) }
             }
             .alert("Delete this note?", isPresented: $confirmingDelete) {
                 Button("Cancel", role: .cancel) {}
