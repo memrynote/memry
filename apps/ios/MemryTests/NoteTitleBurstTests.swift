@@ -160,4 +160,26 @@ struct NoteTitleBurstTests {
 
         try await expectBody(in: window, f)
     }
+
+    /// #4722: keys typed slowly into the block the title's Return moved the
+    /// caret to are stored as the app leaves, with the block still focused.
+    @Test(.timeLimit(.minutes(1))) func leaving_the_app_stores_the_keys_typed_after_the_titles_return() async throws {
+        let f = try fixture()
+        let (window, field) = try await open(f)
+        defer { window.isHidden = true }
+
+        for key in "F1 paragraph\n" { field.insertText(String(key)) }
+        await until { views(BlockTextView.self, in: window).first?.isFirstResponder == true }
+        let block = try #require(views(BlockTextView.self, in: window).first, "the body has no block")
+        try await settle(f)
+        for key in "body" {
+            if block.delegate?.textView?(block, shouldChangeTextIn: block.selectedRange, replacementText: String(key)) != false {
+                block.insertText(String(key))
+            }
+        }
+        NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
+
+        try await expectStored(f, title: "F1 paragraph", body: ["body"])
+        #expect(block.isFirstResponder, "the block kept the caret: only leaving the app committed it")
+    }
 }

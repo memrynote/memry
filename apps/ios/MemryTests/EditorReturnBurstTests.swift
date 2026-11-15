@@ -591,4 +591,24 @@ struct EditorReturnBurstTests {
         }
         #expect(shown == ["AlphaBeta", ""], "\(shown)")
     }
+
+    /// #4722: keys typed into the block a Return made, once it holds the
+    /// caret, are committed as the app leaves, so a kill keeps them.
+    @Test(.timeLimit(.minutes(1))) func leavingTheAppAfterTypingInTheNewBlockCommitsIt() async throws {
+        let shown = try await Screen.run(text: "") { screen in
+            let first = try await screen.start()
+            screen.keys("Alpha\n")
+            for _ in 0 ..< 80 where screen.focused == nil || screen.focused === first || screen.editor.all.count < 2 {
+                try await Task.sleep(for: .milliseconds(25))
+            }
+            try await Task.sleep(for: .milliseconds(200))
+            screen.keys("Beta")
+            NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
+            // No resign here: what lands is what leaving the app committed.
+            screen.model.session.enqueue {}
+            await screen.model.session.tail?.value
+            return screen.editor.shown
+        }
+        #expect(shown == ["Alpha", "Beta"], "\(shown)")
+    }
 }
