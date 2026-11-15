@@ -170,18 +170,19 @@ impl Rig {
 
     async fn start(&self) -> SyncSupervisor {
         let events = Arc::clone(&self.events);
-        let supervisor = SyncSupervisor::start(SupervisorParts {
-            backend: Arc::clone(&self.backend) as Arc<dyn SyncBackend>,
-            gate: Arc::clone(&self.gate),
-            reachability: Arc::clone(&self.net) as Arc<dyn Reachability>,
-            power: None,
-            db: self.db.clone(),
-            on_status: Arc::new(move |status| {
-                lock(&events).push((Instant::now(), status.clone()));
-            }),
-        })
-        .await
-        .unwrap();
+        let supervisor = SyncSupervisor::start(
+            &tokio::runtime::Handle::current(),
+            SupervisorParts {
+                backend: Arc::clone(&self.backend) as Arc<dyn SyncBackend>,
+                gate: Arc::clone(&self.gate),
+                reachability: Arc::clone(&self.net) as Arc<dyn Reachability>,
+                power: None,
+                db: self.db.clone(),
+                on_status: Arc::new(move |status| {
+                    lock(&events).push((Instant::now(), status.clone()));
+                }),
+            },
+        );
         settle().await;
         supervisor
     }

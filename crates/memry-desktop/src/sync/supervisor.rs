@@ -12,13 +12,12 @@ use std::sync::Arc;
 use memry_core::api::errors::StorageError;
 use memry_core::seams::reachability::{Reachability, ReachabilityObserver, Reachable};
 use memry_core::storage::Db;
-use memry_core::sync::pause;
 use tokio::sync::{broadcast, mpsc, oneshot, watch};
 
 use super::backend::SyncBackend;
 use super::gate::{self, GateDecision, SyncStartGate};
 use super::result::{SyncNowBlockedReason as Blocked, TriggerSyncResult};
-use super::run_loop::{self, Loop};
+use super::run_loop::Loop;
 use super::status::{self, StatusFacts, SyncStatus};
 use super::triggers::Trigger;
 use crate::shell::power::PowerEvent;
@@ -55,9 +54,10 @@ pub struct SyncSupervisor {
 }
 
 impl SyncSupervisor {
-    /// Reads the persisted pause, then starts the loop on `runtime`.
-    pub async fn start(parts: SupervisorParts) -> Result<Self, StorageError> {
-        let paused = run_loop::blocking(&parts.db, pause::read).await?;
+    /// Starts the loop on `runtime`; its first step reads the persisted pause, before any
+    /// request is handled.
+    pub fn start(runtime: &tokio::runtime::Handle, parts: SupervisorParts) -> Self {
+        let paused = false;
         let (commands, rx) = mpsc::unbounded_channel();
         parts
             .reachability
@@ -76,8 +76,8 @@ impl SyncSupervisor {
         });
         let (status_tx, status) = watch::channel(first);
         let state = Loop::new(parts, rx, status_tx, paused, online);
-        tokio::spawn(state.run());
-        Ok(Self { commands, status })
+        runtime.spawn(state.run());
+        Self { commands, status }
     }
 
     /// A local write wants pushing: one pass 300 ms after the last request.

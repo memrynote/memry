@@ -127,6 +127,10 @@ impl Loop {
     pub(super) async fn run(mut self) {
         let mut tick = tokio::time::interval_at(Instant::now() + TICK, TICK);
         tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+        match blocking(&self.db, pause::read).await {
+            Ok(paused) => self.paused = paused,
+            Err(error) => tracing::error!(%error, "could not read the sync pause; running"),
+        }
         self.reevaluate();
         loop {
             self.publish();
@@ -529,7 +533,7 @@ fn rate_limited(error: &SyncError) -> Option<Option<Duration>> {
 
 /// A read of `data.db` on the blocking pool (crates/AGENTS.md: a blocking core call runs inside
 /// `spawn_blocking`).
-pub(super) async fn blocking<T: Send + 'static>(
+async fn blocking<T: Send + 'static>(
     db: &Db,
     read: fn(&rusqlite::Connection) -> Result<T, StorageError>,
 ) -> Result<T, StorageError> {

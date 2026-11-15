@@ -24,6 +24,7 @@ pub mod prompt;
 mod repair;
 pub mod response;
 mod startup;
+mod sync;
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -43,6 +44,7 @@ use projection::{ProjectionRuntime, Projector};
 pub use repair::{CreateOrOpenError, RepairOutcome};
 use response::MovesRecovered;
 pub use startup::{FORCE_VAULT_PICKER_VAR, StartupVault, resolve_startup_vault};
+pub use sync::SupervisorFactory;
 
 use crate::error::{CoreError, FailureKind};
 use crate::registry::create::create_vault_folder;
@@ -200,6 +202,7 @@ struct Inner {
     /// holds one (invariant: no two live handles for one vault path).
     held: Mutex<HashMap<PathBuf, Held>>,
     hook_deadline: Duration,
+    sync: Mutex<sync::SyncSlot>,
 }
 
 #[derive(Clone)]
@@ -239,6 +242,7 @@ impl Session {
                 subscribers: Mutex::new(Vec::new()),
                 held: Mutex::new(HashMap::new()),
                 hook_deadline,
+                sync: Mutex::new(sync::SyncSlot::default()),
             }),
         }
     }
