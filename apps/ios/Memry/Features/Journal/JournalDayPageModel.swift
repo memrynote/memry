@@ -32,6 +32,8 @@ final class JournalDayPageModel {
     /// The user tapped a disabled ghost row: say why it is disabled.
     var explainsReadOnlyMetadata = false
     private var seedChecked = false
+    /// The block the first line's last write made: the next line goes after it.
+    private var lastLine: String?
 
     init(store: JournalStore, date: String, context: JournalVaultContext) {
         self.date = date
@@ -105,20 +107,19 @@ final class JournalDayPageModel {
 
     /// The first line typed into an empty day: one paragraph through
     /// `editDay`, which creates the day (D2). The block editor takes over
-    /// once the re-read draws the new block.
+    /// once the re-read draws the new block. A line typed after it (keys
+    /// after its Return, #4705) goes after it.
     @discardableResult
     func writeFirstLine(_ text: String) async -> Bool {
-        let edit = BlockEdit.insertParagraph(
-            afterBlockId: nil,
-            text: text,
-            newBlockId: UUID().uuidString.lowercased()
-        )
+        let id = UUID().uuidString.lowercased()
+        let edit = BlockEdit.insertParagraph(afterBlockId: lastLine, text: text, newBlockId: id)
         do {
             _ = try await bridge.edit(noteId: read.route.id, edit)
         } catch {
             Log.storage.error("the first line of a journal day did not land")
             return false
         }
+        lastLine = id
         await read.reload()
         return true
     }

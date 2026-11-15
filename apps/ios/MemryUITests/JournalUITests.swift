@@ -168,6 +168,46 @@ final class JournalUITests: XCTestCase {
         XCTAssertTrue(field.waitForExistence(timeout: 10), "the day was not deleted")
     }
 
+    /// #4705: a line, its Return and the next words typed in one burst land
+    /// whole and in order, and stay so after a relaunch.
+    func testABurstWithReturnLandsTheWholeFirstLine() throws {
+        try openJournal(today: Self.randomDay())
+        app.primeCommandKeys()
+        let field = app.descendants(matching: .any)["journal.day.firstLine"].firstMatch
+        for _ in 0 ..< 10 where !field.waitForExistence(timeout: 3) {
+            app.buttons["journal.day.next"].firstMatch.tap()
+        }
+        XCTAssertTrue(field.exists, "no empty day within ten days")
+        let day = try XCTUnwrap(shownDate())
+        let line = "[agent] SHIP-4705 journal linkword"
+        field.tap()
+        field.typeText(line + "\nmore words")
+        let first = app.textViews.matching(NSPredicate(format: "value == %@", line)).firstMatch
+        let next = app.textViews.matching(NSPredicate(format: "value == 'more words'")).firstMatch
+        XCTAssertTrue(first.waitForExistence(timeout: 10), "the line did not land whole")
+        XCTAssertTrue(next.waitForExistence(timeout: 10), "the words after Return did not land")
+        XCTAssertLessThan(first.frame.minY, next.frame.minY, "the words after Return landed above the line")
+
+        app.terminate()
+        try openJournal(today: day)
+        XCTAssertTrue(first.waitForExistence(timeout: 10), "the stored line is not the typed one")
+        XCTAssertTrue(next.waitForExistence(timeout: 10), "the stored words after Return are not the typed ones")
+        XCTAssertLessThan(first.frame.minY, next.frame.minY, "the stored words after Return are above the line")
+
+        let more = app.buttons["journal.more"].firstMatch
+        if !more.waitForExistence(timeout: 5) {
+            app.navigationBars.buttons.element(boundBy: app.navigationBars.buttons.count - 1).tap()
+        }
+        let delete = app.buttons["journal.more.delete"].firstMatch
+        for _ in 0 ..< 3 where !delete.exists {
+            more.tap()
+            _ = delete.waitForExistence(timeout: 3)
+        }
+        delete.tap()
+        app.buttons["Delete entry"].firstMatch.tap()
+        XCTAssertTrue(field.waitForExistence(timeout: 10), "the day was not deleted")
+    }
+
     func testMonthAndYearDrillDownAndBack() throws {
         let today = Self.randomDay()
         try openJournal(today: today)

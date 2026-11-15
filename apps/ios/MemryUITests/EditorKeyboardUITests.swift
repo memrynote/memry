@@ -108,6 +108,35 @@ final class EditorKeyboardUITests: XCTestCase {
         deleteNotes([title])
     }
 
+    /// #4705: a title, its Return and the body's first words typed in one
+    /// burst: the title lands whole and the words land in the first block,
+    /// after a relaunch too.
+    func testABurstThroughTheTitlesReturnKeepsEveryKey() throws {
+        try openNotes()
+        let title = "[agent] \(run) F1 paragraph"
+        let add = app.buttons["notes.addButton"].firstMatch
+        add.tap()
+        let field = app.textFields["Title"]
+        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        XCTAssertTrue(matches(NSPredicate(format: "hasKeyboardFocus == true"), field), "the new note's title has no caret")
+        field.typeText("\(title)\nbody words")
+        XCTAssertTrue(matches(NSPredicate(format: "value == 'body words'"), block(0)), "the body did not get the keys after Return")
+        XCTAssertTrue(matches(NSPredicate(format: "value == %@", title), field), "the title lost keys")
+        XCTAssertTrue(row(title).waitForExistence(timeout: 10), "the stored title is not the typed one")
+
+        // Leaving the app ends the block's edit, which saves its typing.
+        XCUIDevice.shared.press(.home)
+        Thread.sleep(forTimeInterval: 2)
+        app.terminate()
+        try openNotes()
+        let stored = row(title)
+        XCTAssertTrue(stored.waitForExistence(timeout: 10), "the stored title is not the typed one")
+        stored.tap()
+        XCTAssertTrue(matches(NSPredicate(format: "value == 'body words'"), block(0)), "the stored body is not the typed one")
+
+        deleteNotes([title])
+    }
+
     // MARK: Helpers
 
     private func block(_ index: Int) -> XCUIElement {

@@ -33,6 +33,13 @@ struct ReturnBurst {
     var carried: String?
 }
 
+/// The block a Return in the note's title moves the caret to, and the way
+/// to take the keys the title held for it meanwhile (`LineReturn`).
+struct TitleBurst {
+    let target: String
+    let take: () -> String?
+}
+
 extension EditorSession {
     /// Return was pressed in `field` and its new block is on its way: keys
     /// typed in `field` from now are held for that block.
@@ -103,13 +110,22 @@ extension EditorSession {
     /// for it, so taking them any earlier misses those.
     func takeCaret(_ field: BlockField, atEnd: Bool = true) {
         let handing = returnBurst.map { $0.target == field.blockId && $0.source !== field } ?? false
+        let fromTitle = titleBurst?.target == field.blockId
         let textView = field.textView
         // A row drawn but not yet in the window cannot take the caret: the
         // keys stay held until it moves in (`field(_:movedInto:)`).
-        if handing, textView.window == nil { return pendingFocus = field.blockId }
+        if handing || fromTitle, textView.window == nil { return pendingFocus = field.blockId }
         if handing { returnBurst?.handing = true }
         let took = textView.becomeFirstResponder()
         if atEnd { textView.selectedRange = NSRange(location: textView.textStorage.length, length: 0) }
+        if fromTitle, let burst = titleBurst {
+            titleBurst = nil
+            // The title kept the caret, so its keys stay with it.
+            guard took, let held = burst.take() else { return }
+            type(held, into: field)
+            if !textView.isFirstResponder, field.dirty { commit(field) }
+            return
+        }
         guard handing, let burst = returnBurst else { return }
         returnBurst = nil
         // The source kept the caret, so the next keys go on landing there:

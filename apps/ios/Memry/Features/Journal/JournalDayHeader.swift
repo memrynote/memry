@@ -181,34 +181,32 @@ struct JournalDayReadOnlyMetadata: View {
 /// The empty day's first line: the placeholder as an editable field.
 /// Text lands on Return, when the field loses focus, and when the page goes
 /// away, always on this field's own day; an empty field writes nothing (D2).
+/// Keys typed after the Return land as the next line (#4705).
 struct JournalDayFirstLine: View {
     let placeholder: String
     /// `true` when the line landed; a failure keeps what was typed.
     let write: (String) async -> Bool
 
     @State private var text = ""
-    @State private var committing = false
+    /// The Return whose line is landing, while the keys after it wait.
+    @State private var returned: LineReturn?
+    /// The writes in flight, one after another so lines land in order.
+    @State private var landing: Task<Void, Never>?
     @FocusState private var focused: Bool
 
     var body: some View {
-        TextField(JournalCopy.firstLineLabel, text: $text, prompt: prompt, axis: .vertical)
+        // The setter sees each keystroke as UIKit makes it. The Return is
+        // split off there: a render later, keys typed after it are in the
+        // text too, and the newline is no longer last.
+        TextField(JournalCopy.firstLineLabel, text: Binding(get: { text }, set: typed), prompt: prompt, axis: .vertical)
             .font(Tokens.Typography.body.font)
             .foregroundStyle(Tokens.Text.primary.color)
             .focused($focused)
             .frame(minHeight: Tokens.Size.minimumHitArea, alignment: .topLeading)
-            .onChange(of: text) { _, value in
-                guard value.contains("\n") else { return }
-                // Return in a vertical field is a trailing newline: treat it
-                // as done. Newlines inside pasted text become spaces rather
-                // than gluing the lines together.
-                let isReturn = value.hasSuffix("\n")
-                text = value.trimmingCharacters(in: .newlines).replacingOccurrences(of: "\n", with: " ")
-                if isReturn { commit() }
-            }
             .onChange(of: focused) { _, isFocused in
-                if !isFocused { commit() }
+                if !isFocused { landAll() }
             }
-            .onDisappear { commit() }
+            .onDisappear { landAll() }
             .accessibilityLabel(JournalCopy.firstLineLabel)
             .accessibilityHint(placeholder)
             .accessibilityIdentifier("journal.day.firstLine")
@@ -218,17 +216,44 @@ struct JournalDayFirstLine: View {
         Text(placeholder).foregroundStyle(Tokens.Text.tertiary.color)
     }
 
-    private func commit() {
-        let line = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !line.isEmpty, !committing else { return }
-        committing = true
-        Task {
-            // Keeps whatever was typed while the write ran.
-            if await write(line) {
-                let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-                text = trimmed.hasPrefix(line) ? String(trimmed.dropFirst(line.count)) : trimmed
+    private func typed(_ value: String) {
+        if let burst = returned {
+            text = value
+            // An edit past the Return (a Backspace) joins the held keys to
+            // the line, which is already landing: they land as typed.
+            if burst.held(in: value) == nil { returned = nil }
+            return
+        }
+        guard let burst = LineReturn(previous: text, value: value) else { return text = value }
+        // Return on an empty line writes nothing and stays.
+        guard !burst.line.trimmingCharacters(in: .whitespaces).isEmpty else {
+            return text = burst.held(in: value) ?? ""
+        }
+        text = value
+        returned = burst
+        land(burst.line)
+    }
+
+    /// Lands what the field holds: the keys after a Return as lines of their
+    /// own, or the whole field.
+    private func landAll() {
+        let lines = returned.flatMap { $0.held(in: text) } ?? (returned == nil ? text : "")
+        returned = nil
+        text = ""
+        lines.split(separator: "\n").forEach { land(String($0)) }
+    }
+
+    private func land(_ line: String) {
+        let line = line.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !line.isEmpty else { return }
+        let previous = landing
+        landing = Task {
+            await previous?.value
+            // A failure keeps the line in the field to try again.
+            if !(await write(line)) {
+                returned = nil
+                text = text.isEmpty ? line : "\(line) \(text)"
             }
-            committing = false
         }
     }
 }
