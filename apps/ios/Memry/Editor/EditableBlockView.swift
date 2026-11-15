@@ -190,6 +190,14 @@ final class BlockTextView: UITextView {
     override var undoManager: UndoManager? { editorUndo }
     /// The manager the text view's typing is registered in.
     var typingUndo: UndoManager? { super.undoManager }
+
+    /// Drops the typing registered against this text. Once committed it is
+    /// a history step, and once redrawn from the core it is not this text's,
+    /// so a later typing undo would apply it a second time, coalesced with
+    /// newer typing (#4644). UIKit registers typing against the storage.
+    func forgetTyping() {
+        typingUndo?.removeAllActions(withTarget: textStorage)
+    }
 }
 
 /// The undo manager a block's text view answers with. `undo()` and
@@ -422,6 +430,7 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
         paragraph.alignment = alignment
         text.addAttribute(.paragraphStyle, value: paragraph, range: NSRange(location: 0, length: text.length))
         textView.attributedText = text
+        textView.forgetTyping()
         base = text.string
         textView.typingAttributes = BlockText.baseAttributes(style)
         if textView.isFirstResponder {

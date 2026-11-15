@@ -27,6 +27,7 @@ private final class Page {
     let model: NoteEditorViewModel
     let session: EditorSession
     let field: BlockField
+    private let initial: Block
 
     /// Blocks `a` and `b`, the caret in `focus`, `b` nested under `a` when
     /// `nested`. `text` is drawn in the focused block, a `kind` block.
@@ -43,6 +44,7 @@ private final class Page {
         session.blocks = { blocks }
         let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
         let block = blocks.first { $0.id == focus } ?? blocks[0]
+        initial = block
         field = BlockField(block: block, session: session, style: style, alignment: .natural)
         field.render()
         session.focusChanged(to: field)
@@ -67,7 +69,8 @@ private final class Page {
     func reloaded(_ work: () -> Void) async {
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
             var waiting = true
-            session.reload = {
+            session.reload = { [self] in
+                redraw()
                 if waiting { done.resume() }
                 waiting = false
             }
@@ -89,6 +92,34 @@ private final class Page {
         #expect(field.textView.becomeFirstResponder())
         field.textView.selectedRange = NSRange(location: field.textView.text.utf16.count, length: 0)
         return window
+    }
+
+    /// The core's copy of the focused block as the recorded writes leave it,
+    /// drawn as `updateUIView` draws it: never over uncommitted typing.
+    func redraw() {
+        var text = BlockText.shown(initial.inline)
+        var depth = initial.depth
+        for edit in editor.all {
+            switch edit {
+            case let .setText(id, next) where id == field.blockId: text = next
+            case let .replaceText(id, next, _) where id == field.blockId: text = next
+            case let .indent(id) where id == field.blockId: depth += 1
+            case let .outdent(id) where id == field.blockId: depth -= 1
+            default: break
+            }
+        }
+        let block = Block(id: initial.id, kind: initial.kind, depth: depth, props: [], inline: [InlineRun(text: text, marks: [], markAttrs: [:], target: nil)])
+        guard block != field.block else { return }
+        field.block = block
+        if !field.dirty { field.render() }
+    }
+
+    /// Runs `work`, then waits for every write it queued, redrawing after.
+    func settled(_ work: () -> Void) async {
+        session.reload = { [self] in redraw() }
+        work()
+        session.enqueue {}
+        await session.tail?.value
     }
 
     func has(_ input: String, _ modifiers: UIKeyModifierFlags = []) -> Bool {
@@ -255,6 +286,83 @@ struct EditorKeyCommandsTests {
         await page.reloaded { page.field.textView.undoManager?.undo() }
         #expect(page.editor.all.last == .setText(blockId: "b", text: "hi"), "the second ⌘Z undoes the typing")
         #expect(page.editor.all.count == 4)
+    }
+
+    /// DATA-LOSS (#4659): typing after a block undo survives a redo, from
+    /// ⇧⌘Z and from the toolbar, which both reach `EditorSession.redo`.
+    @Test(arguments: [true, false])
+    func redoAfterABlockUndoKeepsTheTypingSinceIt(fromKeys: Bool) async throws {
+        let page = Page()
+        let window = try page.showInWindow()
+        defer { window.isHidden = true }
+        let undo = try #require(page.field.textView.undoManager)
+        await page.press("\t")
+        await page.settled { undo.undo() }
+        #expect(page.editor.all.last == .outdent(blockId: "b"))
+        page.field.textView.insertText("x")
+        try await Task.sleep(for: .milliseconds(50))
+        await page.settled { fromKeys ? undo.redo() : page.session.redo() }
+        #expect(page.field.textView.text == "hix", "the typing is still on screen")
+        #expect(page.editor.all.contains(.setText(blockId: "b", text: "hix")), "and written")
+    }
+
+    /// DATA-LOSS (#4659): a block undo or redo while an IME composition is
+    /// pending waits: replaying would redraw the block and cancel it.
+    @Test func blockUndoWaitsForAnIMEComposition() async throws {
+        let page = Page()
+        let window = try page.showInWindow()
+        defer { window.isHidden = true }
+        let undo = try #require(page.field.textView.undoManager)
+        await page.press("\t")
+        page.field.textView.setMarkedText("に", selectedRange: NSRange(location: 1, length: 0))
+        await page.settled { undo.undo() }
+        await page.settled { page.session.undo() }
+        #expect(page.field.textView.markedTextRange != nil, "the composition is still open")
+        #expect(page.field.textView.text == "hiに")
+        #expect(page.editor.all.last == .indent(blockId: "b"), "nothing replayed")
+
+        page.field.textView.unmarkText()
+        await page.settled { undo.undo() }
+        #expect(page.field.textView.text == "hi", "once confirmed, the composition is typing ⌘Z takes first")
+        await page.settled { undo.undo() }
+        #expect(page.editor.all.last == .outdent(blockId: "b"), "then the nest")
+    }
+
+    /// DATA-LOSS (#4644): the window's typing undo keeps typing the session
+    /// already committed as a history step. Typing after a block undo must
+    /// not undo it along with the new typing, from before the replay.
+    @Test func typingUndoAfterABlockUndoTakesOnlyTheNewTyping() async throws {
+        let page = Page()
+        let window = try page.showInWindow()
+        defer { window.isHidden = true }
+        let undo = try #require(page.field.textView.undoManager)
+        page.field.textView.insertText("!")
+        try await Task.sleep(for: .milliseconds(50))
+        await page.press("\t")
+        await page.settled { undo.undo() }
+        #expect(page.editor.all.last == .outdent(blockId: "b"))
+        page.field.textView.insertText("?")
+        try await Task.sleep(for: .milliseconds(50))
+
+        await page.settled { undo.undo() }
+        #expect(page.field.textView.text == "hi!", "the first ⌘Z undoes only the typing since the replay")
+        await page.settled { undo.undo() }
+        #expect(page.field.textView.text == "hi", "the second undoes the committed typing, as a history step")
+        #expect(page.editor.all.last == .setText(blockId: "b", text: "hi"))
+        await page.settled { undo.undo() }
+        #expect(page.field.textView.text == "hi")
+        #expect(!undo.canUndo)
+
+        // Per-block typing undo still works after the clean-up.
+        page.field.textView.insertText("a")
+        try await Task.sleep(for: .milliseconds(50))
+        page.field.textView.insertText("b")
+        try await Task.sleep(for: .milliseconds(50))
+        #expect(undo.canUndo)
+        await page.settled { undo.undo() }
+        #expect(page.field.textView.text == "hi")
+        await page.settled { undo.redo() }
+        #expect(page.field.textView.text == "hiab")
     }
 
     /// Desktop's keys: ⌘B, ⌘I, ⌘U, ⇧⌘S and ⌘E.

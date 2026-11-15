@@ -520,7 +520,10 @@ final class EditorSession {
             $0
         ) }
         field.dirty = false
-        if dirty { field.base = text }
+        if dirty {
+            field.base = text
+            field.textView.forgetTyping()
+        }
         // The literal text goes now, not when the page reloads: typing that
         // lands before the reload would keep it, and the next commit's base
         // would still spell a link the core already holds as a node.
@@ -1116,6 +1119,9 @@ final class EditorSession {
     /// then the writes this session made, newest first. The toolbar, ⌘Z
     /// and the system's undo all land here (`BlockUndoManager`).
     func undo() {
+        // An IME composition keeps its text: a replay's reload would cancel
+        // it (#4659). The undo waits for the composition to end.
+        guard field?.textView.markedTextRange == nil else { return }
         if let field, let typing = pendingTyping, typing.canUndo {
             if !typing.canRedo { undoneTyping = (field.blockId, field.textView.text) }
             typing.undo()
@@ -1135,6 +1141,7 @@ final class EditorSession {
     }
 
     func redo() {
+        guard field?.textView.markedTextRange == nil else { return }
         if let typing = pendingTyping, typing.canRedo {
             typing.redo()
             return
@@ -1143,12 +1150,18 @@ final class EditorSession {
         replay([step.forward] + step.forwardProps)
     }
 
+    /// Applies `edits` after the open block's typing is written: the reload
+    /// that follows redraws the block from the core, which would drop typing
+    /// it does not hold (#4659).
     private func replay(_ edits: [BlockEdit]) {
-        if let field { field.dirty = false }
-        enqueue { [weak self] in
-            guard let self, let model = self.model else { return }
+        let apply: @MainActor () async -> Void = { [weak self] in
+            guard let model = self?.model else { return }
             for edit in edits { await model.apply(edit) }
-            await self.didChange()
+        }
+        if let field { return commit(field, then: apply) }
+        enqueue { [weak self] in
+            await apply()
+            await self?.didChange()
         }
     }
 
