@@ -122,6 +122,10 @@ name = "markdown_layer_text_vectors"
 path = "tests/markdown_layer_text_vectors.rs"
 
 [[test]]
+name = "markdown_link_mention_differential"
+path = "tests/markdown_link_mention_differential.rs"
+
+[[test]]
 name = "markdown_perf"
 path = "tests/markdown_perf.rs"
 

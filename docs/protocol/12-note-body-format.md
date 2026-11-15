@@ -107,19 +107,22 @@ the whole text to literal paragraphs (§12.1.0).
 
 **Normative.** `prepareFragmentSeed` promotes every `((mention:…))` token
 (`apps/desktop/src/main/sync/blocknote-converter.ts:612`,
-`packages/editor-schema/src/inline/link-mention-normalize.ts:17-79`), and so does the Rust
+`packages/editor-schema/src/inline/link-mention-normalize.ts:18-77`), and so does the Rust
 converter's `prepare_fragment_seed` (`crates/memry-core/src/markdown/convert/seed.rs:76`,
-`crates/memry-core/src/markdown/schema/link_mention_normalize.rs:159`):
+`crates/memry-core/src/markdown/schema/link_mention_normalize.rs:193`):
 
 - A token is a match of `MENTION_TOKEN_REGEX`
   (`packages/editor-schema/src/inline/link-mention.ts:28`) in a text run of any block except a
   `codeBlock`, table cells and nested blocks included, whose payload `parseLinkMentionToken`
-  (`:81`, ported as `crates/memry-core/src/markdown/schema/link_mention_normalize.rs:39`)
-  accepts. Accepted payloads include the legacy ones: `_ * ! ~ '` raw, as builds before #1844
-  wrote them, and a stray whitespace or remark backslash, which the parse strips. A token inside
-  a link label stays text.
-- A token in a text run with any active style stays text (`:37-48`, ported as
-  `crates/memry-core/src/markdown/schema/link_mention_normalize.rs:63-75`): code, bold, italic,
+  (`:99`, ported as `crates/memry-core/src/markdown/schema/link_mention_normalize.rs:73`)
+  accepts. A payload with no whitespace and no backslash is accepted when it percent-decodes to
+  a non-empty string. The legacy ones are accepted too: `_ * ! ~ '` raw, as builds before #1844
+  wrote them, and a stray whitespace or remark backslash, which the parse strips. A repaired
+  payload must then be in the union alphabet and decode to a URL that the host rule below gives
+  a host. A token inside a link label stays text.
+- A token in a text run with any active style stays text
+  (`packages/editor-schema/src/inline/link-mention-normalize.ts:30-39`, ported as
+  `crates/memry-core/src/markdown/schema/link_mention_normalize.rs:94-105`): code, bold, italic,
   strikethrough, underline, or a text or background colour other than `default`. A
   `linkMention` node carries no styles, so promoting such a token would drop the backticks or
   delimiters around it on the next write-back (#4652). An unstyled token in the same paragraph
@@ -132,9 +135,56 @@ converter's `prepare_fragment_seed` (`crates/memry-core/src/markdown/convert/see
   tools, since the app writes a chip outside the delimiters of a styled run, as in
   `A **x** ((mention:…)) **y** b.`.
 - The token becomes a `linkMention` node with `url` set to the parsed URL and `domain` set to
-  the URL's hostname with its first `www.` removed, or to the URL itself when it does not parse.
+  the host the host rule gives, with its first `www.` removed wherever it sits, or to the URL
+  itself when the rule gives no host
+  (`packages/editor-schema/src/inline/link-mention-normalize.ts:18-21`,
+  `crates/memry-core/src/markdown/schema/link_mention_normalize.rs:63-67`).
   `title`, `favicon` and `siteName` stay empty; the editor fills them in on open.
 - Text before and after the token stays in the run, with the run's styles.
+
+**Host rule.** One rule, with no IDNA, decides both the URL check of a repaired payload and the
+`domain` (`packages/editor-schema/src/inline/link-mention.ts:71-97`, ported as
+`crates/memry-core/src/markdown/schema/link_mention_normalize.rs:25-61`). Each step works on code
+points:
+
+1. The URL starts with a scheme, `[A-Za-z][A-Za-z0-9+.-]*`, then `://`. The authority is what
+   follows, up to the first `/`, `?` or `#`, or to the end. A URL without `://` right after its
+   scheme has no host: `mailto:a@b.test`, `https:x.test`.
+2. Everything up to and including the last `@` of the authority is dropped.
+3. When the rest starts with `[`, the host runs up to and including the first `]`. The port
+   separator is the first `:` after that point, or after the start otherwise. The host is what
+   comes before it, and the port is what comes after.
+4. The port is zero or more ASCII digits with a value of at most 65535.
+5. A host that starts with `[` is `[`, one or more of `[0-9A-Fa-f:.]`, then `]`. Any other host
+   is one or more code points, none of them U+0000 to U+0020, U+007F, `%`, `<`, `>`, `[`, `\`,
+   `]`, `^` or `|`. Every code point from U+0080 up is allowed as it is: no mapping,
+   normalisation, punycode or bidi check.
+6. The host is the result with `A-Z` lowercased. Only ASCII changes case.
+
+A URL that fails a step has no host. Node's `new URL` decided this before #4685, through the
+IDNA of the ada build that each Node release bundles. That ada's bidi check differs from
+RFC 5893, which the Rust `idna` crate applies. So Electron and the Rust seed promoted different
+repaired tokens, and gave different domains, for hosts with Arabic or Hebrew letters,
+Arabic-Indic digits or U+0640. The `mention-host-rtl`, `mention-host-ascii` and
+`mention-host-refused` cases of the `markdown-convert` vectors pin the rule, and
+`crates/memry-core/tests/markdown_link_mention_differential.rs` compares the two seeds on random
+tokens, the RTL corpus included.
+
+Compared with `new URL`, this rule:
+
+- gives every IDN host as written where `new URL` gave punycode (`https://Bücher.DE` gives
+  `bücher.de`, not `xn--bcher-kva.de`), and accepts the hosts its IDNA rejected
+  (`https://١٢٣.com`, `https://a.שb.com`);
+- gives no host for a URL without `://` (`mailto:`, `https:x.test`), or with a backslash, a
+  percent-encoded host or a space before the scheme, where `new URL` parsed one;
+- does not normalise IPv4 or IPv6 literals, and does not lowercase non-ASCII letters.
+
+A well-formed token is promoted under either rule, so only its `domain` can differ. The token
+bytes come from `url` alone (§12.7), so no file changes. A build before #4685 that opens a doc
+this build seeded sees the decision and the domain this build made. It still promotes on open
+a repaired token that this build left as text and `new URL` accepts, which is the two-build
+race described for styled tokens above. Such tokens come only from hand edits or other tools,
+and no version floor guards this.
 
 The node serializes in the closed alphabet (§12.7), so a legacy token cannot come back from the
 node alone: `a_b` and `a%5Fb` decode to the same URL. The source record (§12.10) keeps the file's
@@ -142,7 +192,8 @@ bytes while the paragraph holding the token is unedited, edits in other blocks i
 that paragraph is edited, or the doc has no record, the token is written re-encoded. The
 `legacy link mention token` cases of the `markdown-roundtrip` vectors pin both outcomes, and the
 `link mention token in inline code` and `link mention token in italics, bold and strikethrough`
-cases pin that a styled token round-trips as text. A build before #4478 re-encodes a legacy token once, on its next write-back of a doc this build seeded;
+cases pin that a styled token round-trips as text. The `mention-underline-colour` case of the
+`markdown-convert` vectors pins that an underlined or coloured token is seeded as text. A build before #4478 re-encodes a legacy token once, on its next write-back of a doc this build seeded;
 the URL does not change.
 
 Desktop's seed MUST promote exactly these tokens. A token a seed leaves as text is promoted by

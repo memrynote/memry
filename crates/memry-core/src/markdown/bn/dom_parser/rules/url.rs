@@ -262,14 +262,6 @@ fn parser_input(value: &str) -> String {
     stripped.trim_matches(|c: char| c <= ' ').to_owned()
 }
 
-/// `new URL(value)` in Node: the `url` crate's parse, failing where its
-/// authority recovery differs from the WHATWG parser (see `authority_fails`).
-pub(crate) fn parse_like_node(value: &str) -> Option<Url> {
-    let input = parser_input(value);
-    let fails = split_scheme(&input).is_some_and(|(scheme, rest)| authority_fails(&scheme, rest));
-    if fails { None } else { Url::parse(value).ok() }
-}
-
 pub fn reflect_url(value: &str) -> String {
     let trimmed = parser_input(value);
     let trimmed = trimmed.as_str();

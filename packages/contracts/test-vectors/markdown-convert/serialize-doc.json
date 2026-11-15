@@ -4,7 +4,7 @@
     "oracle": "apps/desktop/scripts/markdown-oracle (Electron converter run in place; gray-matter 4.0.3, js-yaml 3.15.1)",
     "note": "yDocToMarkdown over documents authored from Yjs trees (note-blocks documents, hand cases, fail-closed shapes) and over seeded documents edited before they are read: the three way source merge, record states, file spelling and the empty-conversion guard. status \"error\" means the oracle threw. doc-repair-ids is repairEmptyBlockIds.",
     "yamlJsonEncoding": "Numbers that JSON cannot carry are {\"$num\": \"NaN\"|\"Infinity\"|\"-Infinity\"|\"-0\"}, a Date is {\"$date\": ISO}, a Buffer is {\"$bin\": base64}, a map with a \"$\"-prefixed key is wrapped as {\"$map\": {...}}. Key order is Object.keys order.",
-    "caseCount": 540
+    "caseCount": 542
   },
   "cases": [
     {
@@ -3635,6 +3635,70 @@
           "canonical": "A ((mention:a%3A%2F%2F%40 )) B ((mention:a%3A%2F%2F%3A%40%2Fx )) C  tail((mention:a%3A%2F%2F%40))",
           "noteBody": {
             "markdown": "A ((mention:a%3A%2F%2F%40 )) B ((mention:a%3A%2F%2F%3A%40%2Fx )) C  tail((mention:a%3A%2F%2F%40))",
+            "writing": {
+              "alternatives": {},
+              "overflow": []
+            },
+            "outcome": "house-style-fallback"
+          },
+          "unrepresentable": []
+        }
+      }
+    },
+    {
+      "id": "serialize-edit/doc-serialize/start-mention-host-ascii",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "((mention:https%3A%2F%2Fxn--bcher-kva.de%2Fa)) ((mention:https%3A%2F%2Fxn--bcher-kva.de%2Fa ))\n\n((mention:https%3A%2F%2FB%C3%BCcher.DE)) ((mention:https%3A%2F%2FB%C3%BCcher.DE ))\n\n((mention:https%3A%2F%2FWWW.Example.com%3A8080%2Fp%3Fq%23f)) ((mention:https%3A%2F%2FWWW.Example.com%3A8080%2Fp%3Fq%23f ))\n\n((mention:https%3A%2F%2Fu%3Ap%40host.test)) ((mention:https%3A%2F%2Fu%3Ap%40host.test ))\n\n((mention:http%3A%2F%2F%5B%3A%3A1%5D%3A80%2F)) ((mention:http%3A%2F%2F%5B%3A%3A1%5D%3A80%2F ))\n",
+        "edits": [
+          {
+            "kind": "insert-start",
+            "run": 0,
+            "text": "EDIT "
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "markdown": "((mention:https%3A%2F%2Fxn--bcher-kva.de%2Fa))EDIT  ((mention:https%3A%2F%2Fxn--bcher-kva.de%2Fa))\n\n((mention:https%3A%2F%2FB%C3%BCcher.DE)) ((mention:https%3A%2F%2FB%C3%BCcher.DE ))\n\n((mention:https%3A%2F%2FWWW.Example.com%3A8080%2Fp%3Fq%23f)) ((mention:https%3A%2F%2FWWW.Example.com%3A8080%2Fp%3Fq%23f ))\n\n((mention:https%3A%2F%2Fu%3Ap%40host.test)) ((mention:https%3A%2F%2Fu%3Ap%40host.test ))\n\n((mention:http%3A%2F%2F%5B%3A%3A1%5D%3A80%2F)) ((mention:http%3A%2F%2F%5B%3A%3A1%5D%3A80%2F ))\n",
+          "outcome": "merged",
+          "canonical": "((mention:https%3A%2F%2Fxn--bcher-kva.de%2Fa))EDIT  ((mention:https%3A%2F%2Fxn--bcher-kva.de%2Fa))\n\n((mention:https%3A%2F%2FB%C3%BCcher.DE)) ((mention:https%3A%2F%2FB%C3%BCcher.DE))\n\n((mention:https%3A%2F%2FWWW.Example.com%3A8080%2Fp%3Fq%23f)) ((mention:https%3A%2F%2FWWW.Example.com%3A8080%2Fp%3Fq%23f))\n\n((mention:https%3A%2F%2Fu%3Ap%40host.test)) ((mention:https%3A%2F%2Fu%3Ap%40host.test))\n\n((mention:http%3A%2F%2F%5B%3A%3A1%5D%3A80%2F)) ((mention:http%3A%2F%2F%5B%3A%3A1%5D%3A80%2F))",
+          "noteBody": {
+            "markdown": "((mention:https%3A%2F%2Fxn--bcher-kva.de%2Fa))EDIT  ((mention:https%3A%2F%2Fxn--bcher-kva.de%2Fa))\n\n((mention:https%3A%2F%2FB%C3%BCcher.DE)) ((mention:https%3A%2F%2FB%C3%BCcher.DE ))\n\n((mention:https%3A%2F%2FWWW.Example.com%3A8080%2Fp%3Fq%23f)) ((mention:https%3A%2F%2FWWW.Example.com%3A8080%2Fp%3Fq%23f ))\n\n((mention:https%3A%2F%2Fu%3Ap%40host.test)) ((mention:https%3A%2F%2Fu%3Ap%40host.test ))\n\n((mention:http%3A%2F%2F%5B%3A%3A1%5D%3A80%2F)) ((mention:http%3A%2F%2F%5B%3A%3A1%5D%3A80%2F ))\n",
+            "writing": {
+              "alternatives": {},
+              "overflow": []
+            },
+            "outcome": "merged"
+          },
+          "unrepresentable": []
+        }
+      }
+    },
+    {
+      "id": "serialize-edit/doc-serialize/end-mention-underline-colour",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "A <u>((mention:https%3A%2F%2Fx.test%2Fu))</u> B <span style=\"color: red\">((mention:https%3A%2F%2Fx.test%2Fc))</span> C <span style=\"background-color: yellow\">((mention:https%3A%2F%2Fx.test%2Fb))</span> D\n",
+        "edits": [
+          {
+            "kind": "insert-end",
+            "run": 0,
+            "text": " tail"
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "markdown": "A <span style=\"text-decoration:underline\">((mention:https%3A%2F%2Fx.test%2Fu))</span> B <span style=\"color:red\">((mention:https%3A%2F%2Fx.test%2Fc))</span> C <span style=\"background-color:yellow\">((mention:https%3A%2F%2Fx.test%2Fb))</span> D tail",
+          "outcome": "house-style-fallback",
+          "canonical": "A <span style=\"text-decoration:underline\">((mention:https%3A%2F%2Fx.test%2Fu))</span> B <span style=\"color:red\">((mention:https%3A%2F%2Fx.test%2Fc))</span> C <span style=\"background-color:yellow\">((mention:https%3A%2F%2Fx.test%2Fb))</span> D tail",
+          "noteBody": {
+            "markdown": "A <span style=\"text-decoration:underline\">((mention:https%3A%2F%2Fx.test%2Fu))</span> B <span style=\"color:red\">((mention:https%3A%2F%2Fx.test%2Fc))</span> C <span style=\"background-color:yellow\">((mention:https%3A%2F%2Fx.test%2Fb))</span> D tail",
             "writing": {
               "alternatives": {},
               "overflow": []

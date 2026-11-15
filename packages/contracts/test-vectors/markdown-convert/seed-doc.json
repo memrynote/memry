@@ -4,7 +4,7 @@
     "oracle": "apps/desktop/scripts/markdown-oracle (Electron converter run in place; gray-matter 4.0.3, js-yaml 3.15.1)",
     "note": "The Y.Doc a markdown seed writes (markdownToYFragment): the fragment as canonical text with block ids removed, and the side roots as JSON (markdownSource, criticMarkupMarks, link reference definitions and usages, writing tools records). A writing tools anchor is stated as the text run and index it resolves to, since Yjs ids are free.",
     "yamlJsonEncoding": "Numbers that JSON cannot carry are {\"$num\": \"NaN\"|\"Infinity\"|\"-Infinity\"|\"-0\"}, a Date is {\"$date\": ISO}, a Buffer is {\"$bin\": base64}, a map with a \"$\"-prefixed key is wrapped as {\"$map\": {...}}. Key order is Object.keys order.",
-    "caseCount": 757
+    "caseCount": 761
   },
   "cases": [
     {
@@ -2399,7 +2399,7 @@
         "status": "ok",
         "output": {
           "seeded": true,
-          "fragment": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"With \"\n3 element linkMention domain=\"\" favicon=\"\" siteName=\"\" title=\"\" url=\"note:abc|Title\"\n3 text \" there\"",
+          "fragment": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"With \"\n3 element linkMention domain=\"note:abc|Title\" favicon=\"\" siteName=\"\" title=\"\" url=\"note:abc|Title\"\n3 text \" there\"",
           "roots": {
             "markdownSource": {
               "source": "With ((mention:note:abc|Title)) there\n",
@@ -2425,7 +2425,7 @@
         "status": "ok",
         "output": {
           "seeded": true,
-          "fragment": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"x \"\n3 element linkMention domain=\"\" favicon=\"\" siteName=\"\" title=\"\" url=\"note:a_b_c|T_t\"\n3 text \" \"\n3 text \"y\" italic={}",
+          "fragment": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"x \"\n3 element linkMention domain=\"note:a_b_c|T_t\" favicon=\"\" siteName=\"\" title=\"\" url=\"note:a_b_c|T_t\"\n3 text \" \"\n3 text \"y\" italic={}",
           "roots": {
             "markdownSource": {
               "source": "x ((mention:note:a_b_c|T_t)) *y*\n",
@@ -2455,6 +2455,110 @@
           "roots": {
             "markdownSource": {
               "source": "A ((mention:a%3A%2F%2F%40 )) B ((mention:a%3A%2F%2F%3A%40%2Fx )) C ((mention:a%3A%2F%2F%40))\n",
+              "htmlComments": true
+            },
+            "criticMarkupMarks": [],
+            "linkReferenceDefinitions": [],
+            "linkReferenceUsages": [],
+            "writingAlternatives": [],
+            "writingGhosts": [],
+            "writingOverflow": []
+          }
+        }
+      }
+    },
+    {
+      "id": "seed-doc/doc-seed/mention-host-rtl",
+      "op": "doc-seed",
+      "input": {
+        "markdown": "((mention:https%3A%2F%2F%D9%A1%D9%A2%D9%A3.com%2Fx)) ((mention:https%3A%2F%2F%D9%A1%D9%A2%D9%A3.com%2Fx ))\n\n((mention:https%3A%2F%2Fshop%D9%A3.com)) ((mention:https%3A%2F%2Fshop%D9%A3.com ))\n\n((mention:https%3A%2F%2Fa%D9%80b.com)) ((mention:https%3A%2F%2Fa%D9%80b.com ))\n\n((mention:https%3A%2F%2F%D7%A9%D7%9C%D7%95%D7%9D.co.il%2F)) ((mention:https%3A%2F%2F%D7%A9%D7%9C%D7%95%D7%9D.co.il%2F ))\n\n((mention:https%3A%2F%2F%D9%85%D8%AB%D8%A7%D9%84.%D8%A7%D8%AE%D8%AA%D8%A8%D8%A7%D8%B1)) ((mention:https%3A%2F%2F%D9%85%D8%AB%D8%A7%D9%84.%D8%A7%D8%AE%D8%AA%D8%A8%D8%A7%D8%B1 ))\n\n((mention:https%3A%2F%2Fa.%D7%A9b.com)) ((mention:https%3A%2F%2Fa.%D7%A9b.com ))\n\n((mention:https%3A%2F%2FZ%D7%90.com)) ((mention:https%3A%2F%2FZ%D7%90.com ))\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "fragment": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element linkMention domain=\"١٢٣.com\" favicon=\"\" siteName=\"\" title=\"\" url=\"https://١٢٣.com/x\"\n3 text \" \"\n3 element linkMention domain=\"١٢٣.com\" favicon=\"\" siteName=\"\" title=\"\" url=\"https://١٢٣.com/x\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element linkMention domain=\"shop٣.com\" favicon=\"\" siteName=\"\" title=\"\" url=\"https://shop٣.com\"\n3 text \" \"\n3 element linkMention domain=\"shop٣.com\" favicon=\"\" siteName=\"\" title=\"\" url=\"https://shop٣.com\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element linkMention domain=\"aـb.com\" favicon=\"\" siteName=\"\" title=\"\" url=\"https://aـb.com\"\n3 text \" \"\n3 element linkMention domain=\"aـb.com\" favicon=\"\" siteName=\"\" title=\"\" url=\"https://aـb.com\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element linkMention domain=\"שלום.co.il\" favicon=\"\" siteName=\"\" title=\"\" url=\"https://שלום.co.il/\"\n3 text \" \"\n3 element linkMention domain=\"שלום.co.il\" favicon=\"\" siteName=\"\" title=\"\" url=\"https://שלום.co.il/\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element linkMention domain=\"مثال.اختبار\" favicon=\"\" siteName=\"\" title=\"\" url=\"https://مثال.اختبار\"\n3 text \" \"\n3 element linkMention domain=\"مثال.اختبار\" favicon=\"\" siteName=\"\" title=\"\" url=\"https://مثال.اختبار\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element linkMention domain=\"a.שb.com\" favicon=\"\" siteName=\"\" title=\"\" url=\"https://a.שb.com\"\n3 text \" \"\n3 element linkMention domain=\"a.שb.com\" favicon=\"\" siteName=\"\" title=\"\" url=\"https://a.שb.com\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element linkMention domain=\"zא.com\" favicon=\"\" siteName=\"\" title=\"\" url=\"https://Zא.com\"\n3 text \" \"\n3 element linkMention domain=\"zא.com\" favicon=\"\" siteName=\"\" title=\"\" url=\"https://Zא.com\"",
+          "roots": {
+            "markdownSource": {
+              "source": "((mention:https%3A%2F%2F%D9%A1%D9%A2%D9%A3.com%2Fx)) ((mention:https%3A%2F%2F%D9%A1%D9%A2%D9%A3.com%2Fx ))\n\n((mention:https%3A%2F%2Fshop%D9%A3.com)) ((mention:https%3A%2F%2Fshop%D9%A3.com ))\n\n((mention:https%3A%2F%2Fa%D9%80b.com)) ((mention:https%3A%2F%2Fa%D9%80b.com ))\n\n((mention:https%3A%2F%2F%D7%A9%D7%9C%D7%95%D7%9D.co.il%2F)) ((mention:https%3A%2F%2F%D7%A9%D7%9C%D7%95%D7%9D.co.il%2F ))\n\n((mention:https%3A%2F%2F%D9%85%D8%AB%D8%A7%D9%84.%D8%A7%D8%AE%D8%AA%D8%A8%D8%A7%D8%B1)) ((mention:https%3A%2F%2F%D9%85%D8%AB%D8%A7%D9%84.%D8%A7%D8%AE%D8%AA%D8%A8%D8%A7%D8%B1 ))\n\n((mention:https%3A%2F%2Fa.%D7%A9b.com)) ((mention:https%3A%2F%2Fa.%D7%A9b.com ))\n\n((mention:https%3A%2F%2FZ%D7%90.com)) ((mention:https%3A%2F%2FZ%D7%90.com ))\n",
+              "htmlComments": true
+            },
+            "criticMarkupMarks": [],
+            "linkReferenceDefinitions": [],
+            "linkReferenceUsages": [],
+            "writingAlternatives": [],
+            "writingGhosts": [],
+            "writingOverflow": []
+          }
+        }
+      }
+    },
+    {
+      "id": "seed-doc/doc-seed/mention-host-ascii",
+      "op": "doc-seed",
+      "input": {
+        "markdown": "((mention:https%3A%2F%2Fxn--bcher-kva.de%2Fa)) ((mention:https%3A%2F%2Fxn--bcher-kva.de%2Fa ))\n\n((mention:https%3A%2F%2FB%C3%BCcher.DE)) ((mention:https%3A%2F%2FB%C3%BCcher.DE ))\n\n((mention:https%3A%2F%2FWWW.Example.com%3A8080%2Fp%3Fq%23f)) ((mention:https%3A%2F%2FWWW.Example.com%3A8080%2Fp%3Fq%23f ))\n\n((mention:https%3A%2F%2Fu%3Ap%40host.test)) ((mention:https%3A%2F%2Fu%3Ap%40host.test ))\n\n((mention:http%3A%2F%2F%5B%3A%3A1%5D%3A80%2F)) ((mention:http%3A%2F%2F%5B%3A%3A1%5D%3A80%2F ))\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "fragment": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element linkMention domain=\"xn--bcher-kva.de\" favicon=\"\" siteName=\"\" title=\"\" url=\"https://xn--bcher-kva.de/a\"\n3 text \" \"\n3 element linkMention domain=\"xn--bcher-kva.de\" favicon=\"\" siteName=\"\" title=\"\" url=\"https://xn--bcher-kva.de/a\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element linkMention domain=\"bücher.de\" favicon=\"\" siteName=\"\" title=\"\" url=\"https://Bücher.DE\"\n3 text \" \"\n3 element linkMention domain=\"bücher.de\" favicon=\"\" siteName=\"\" title=\"\" url=\"https://Bücher.DE\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element linkMention domain=\"example.com\" favicon=\"\" siteName=\"\" title=\"\" url=\"https://WWW.Example.com:8080/p?q#f\"\n3 text \" \"\n3 element linkMention domain=\"example.com\" favicon=\"\" siteName=\"\" title=\"\" url=\"https://WWW.Example.com:8080/p?q#f\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element linkMention domain=\"host.test\" favicon=\"\" siteName=\"\" title=\"\" url=\"https://u:p@host.test\"\n3 text \" \"\n3 element linkMention domain=\"host.test\" favicon=\"\" siteName=\"\" title=\"\" url=\"https://u:p@host.test\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element linkMention domain=\"[::1]\" favicon=\"\" siteName=\"\" title=\"\" url=\"http://[::1]:80/\"\n3 text \" \"\n3 element linkMention domain=\"[::1]\" favicon=\"\" siteName=\"\" title=\"\" url=\"http://[::1]:80/\"",
+          "roots": {
+            "markdownSource": {
+              "source": "((mention:https%3A%2F%2Fxn--bcher-kva.de%2Fa)) ((mention:https%3A%2F%2Fxn--bcher-kva.de%2Fa ))\n\n((mention:https%3A%2F%2FB%C3%BCcher.DE)) ((mention:https%3A%2F%2FB%C3%BCcher.DE ))\n\n((mention:https%3A%2F%2FWWW.Example.com%3A8080%2Fp%3Fq%23f)) ((mention:https%3A%2F%2FWWW.Example.com%3A8080%2Fp%3Fq%23f ))\n\n((mention:https%3A%2F%2Fu%3Ap%40host.test)) ((mention:https%3A%2F%2Fu%3Ap%40host.test ))\n\n((mention:http%3A%2F%2F%5B%3A%3A1%5D%3A80%2F)) ((mention:http%3A%2F%2F%5B%3A%3A1%5D%3A80%2F ))\n",
+              "htmlComments": true
+            },
+            "criticMarkupMarks": [],
+            "linkReferenceDefinitions": [],
+            "linkReferenceUsages": [],
+            "writingAlternatives": [],
+            "writingGhosts": [],
+            "writingOverflow": []
+          }
+        }
+      }
+    },
+    {
+      "id": "seed-doc/doc-seed/mention-host-refused",
+      "op": "doc-seed",
+      "input": {
+        "markdown": "((mention:mailto%3Aa%40b.test)) ((mention:mailto%3Aa%40b.test ))\n\n((mention:https%3Ax.test)) ((mention:https%3Ax.test ))\n\n((mention:https%3A%2F%2Fx.test%3A65536)) ((mention:https%3A%2F%2Fx.test%3A65536 ))\n\n((mention:https%3A%2F%2F%2541.test)) ((mention:https%3A%2F%2F%2541.test ))\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "fragment": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element linkMention domain=\"mailto:a@b.test\" favicon=\"\" siteName=\"\" title=\"\" url=\"mailto:a@b.test\"\n3 text \" ((mention:mailto%3Aa%40b.test ))\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element linkMention domain=\"https:x.test\" favicon=\"\" siteName=\"\" title=\"\" url=\"https:x.test\"\n3 text \" ((mention:https%3Ax.test ))\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element linkMention domain=\"https://x.test:65536\" favicon=\"\" siteName=\"\" title=\"\" url=\"https://x.test:65536\"\n3 text \" ((mention:https%3A%2F%2Fx.test%3A65536 ))\"\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 element linkMention domain=\"https://%41.test\" favicon=\"\" siteName=\"\" title=\"\" url=\"https://%41.test\"\n3 text \" ((mention:https%3A%2F%2F%2541.test ))\"",
+          "roots": {
+            "markdownSource": {
+              "source": "((mention:mailto%3Aa%40b.test)) ((mention:mailto%3Aa%40b.test ))\n\n((mention:https%3Ax.test)) ((mention:https%3Ax.test ))\n\n((mention:https%3A%2F%2Fx.test%3A65536)) ((mention:https%3A%2F%2Fx.test%3A65536 ))\n\n((mention:https%3A%2F%2F%2541.test)) ((mention:https%3A%2F%2F%2541.test ))\n",
+              "htmlComments": true
+            },
+            "criticMarkupMarks": [],
+            "linkReferenceDefinitions": [],
+            "linkReferenceUsages": [],
+            "writingAlternatives": [],
+            "writingGhosts": [],
+            "writingOverflow": []
+          }
+        }
+      }
+    },
+    {
+      "id": "seed-doc/doc-seed/mention-underline-colour",
+      "op": "doc-seed",
+      "input": {
+        "markdown": "A <u>((mention:https%3A%2F%2Fx.test%2Fu))</u> B <span style=\"color: red\">((mention:https%3A%2F%2Fx.test%2Fc))</span> C <span style=\"background-color: yellow\">((mention:https%3A%2F%2Fx.test%2Fb))</span> D\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "fragment": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"A \"\n3 text \"((mention:https%3A%2F%2Fx.test%2Fu))\" underline={}\n3 text \" B \"\n3 text \"((mention:https%3A%2F%2Fx.test%2Fc))\" textColor={\"stringValue\":\"red\"}\n3 text \" C \"\n3 text \"((mention:https%3A%2F%2Fx.test%2Fb))\" backgroundColor={\"stringValue\":\"yellow\"}\n3 text \" D\"",
+          "roots": {
+            "markdownSource": {
+              "source": "A <u>((mention:https%3A%2F%2Fx.test%2Fu))</u> B <span style=\"color: red\">((mention:https%3A%2F%2Fx.test%2Fc))</span> C <span style=\"background-color: yellow\">((mention:https%3A%2F%2Fx.test%2Fb))</span> D\n",
               "htmlComments": true
             },
             "criticMarkupMarks": [],

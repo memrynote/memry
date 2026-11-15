@@ -78,6 +78,13 @@ jobs:
           MEMRY_URL_INPUTS: '50000'
         run: cargo test -p memry-core --features markdown --release --test markdown_url_differential -- --ignored --nocapture
 
+      - name: Link mention differential, 20000 random tokens
+        working-directory: crates
+        env:
+          TZ: UTC
+          MEMRY_MENTION_INPUTS: '20000'
+        run: cargo test -p memry-core --features markdown --release --test markdown_link_mention_differential -- --ignored --nocapture
+
       # The synthetic vault (bulk generator, demo seed) and the sandbox vault the
       # dev command builds (`pnpm --filter @memry/cli sandbox`), both written to
       # fresh directories, Rust against the oracle.
