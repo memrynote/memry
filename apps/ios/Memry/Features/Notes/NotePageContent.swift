@@ -100,6 +100,11 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
         if (session.attach == nil) == composer.canUpload {
             session.attach = composer.canUpload ? { attaching = $0 } : nil
         }
+        session.attachDropped = composer.canUpload
+            ? { [composer, weak session] providers, after in
+                guard let session else { return }
+                Task { await composer.attachDropped(providers, in: session, after: after) }
+            } : nil
         return bridge
     }
 

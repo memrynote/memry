@@ -326,6 +326,7 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
         undo.sessionRedo = { [weak self] in self?.session?.redo() }
         undo.sessionCanUndo = { [weak self] in self?.session?.canUndo ?? false }
         undo.sessionCanRedo = { [weak self] in self?.session?.canRedo ?? false }
+        installDrops()
     }
 
     var blockId: String { block.id ?? "" }
@@ -471,8 +472,10 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
     /// Draws each typed `[[target]]` as the link chip the commit turns it
     /// into, keeps the caret on the same text, and takes the result as the
     /// next commit's base: the block the core holds once the link lands.
-    func drawLinks(_ links: [WikiLinkText.Match]) {
-        var caret = textView.selectedRange.location
+    /// Answers where a UTF-16 location before the drawing is after it.
+    func drawLinks(_ links: [WikiLinkText.Match]) -> (Int) -> Int {
+        let caret = textView.selectedRange.location
+        var drawn: [(literal: NSRange, chip: Int)] = []
         for link in links.reversed() {
             let attrs = WikiLinkAttrs.attrs(target: link.target, alias: link.alias)
             let run = InlineRun(
@@ -485,16 +488,22 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
                 chip.addAttribute(.paragraphStyle, value: paragraph, range: NSRange(location: 0, length: chip.length))
             }
             textView.textStorage.replaceCharacters(in: link.range, with: chip)
-            if caret >= NSMaxRange(link.range) {
-                caret -= link.range.length - chip.length
-            } else if caret > link.range.location {
-                caret = link.range.location + chip.length
+            drawn.append((link.range, chip.length))
+        }
+        // Each link's range is in the text before any was drawn, so each
+        // shifts a location on its own.
+        let moved = { (location: Int) -> Int in
+            drawn.reduce(location) { moved, link in
+                if location >= NSMaxRange(link.literal) { return moved - (link.literal.length - link.chip) }
+                if location > link.literal.location { return moved - (location - link.literal.location) + link.chip }
+                return moved
             }
         }
         base = textView.textStorage.string
-        textView.selectedRange = NSRange(location: min(caret, textView.textStorage.length), length: 0)
+        textView.selectedRange = NSRange(location: min(moved(caret), textView.textStorage.length), length: 0)
         textView.typingAttributes = BlockText.baseAttributes(style)
         textView.invalidateIntrinsicContentSize()
+        return moved
     }
 
     // MARK: UITextViewDelegate
