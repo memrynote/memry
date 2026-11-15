@@ -52,6 +52,8 @@ struct EditableBlockView: UIViewRepresentable {
     /// column opening another note) removes its text views without ending
     /// their edits, so typing not yet committed would be lost with them.
     static func dismantleUIView(_ view: BlockTextView, coordinator: BlockField) {
+        // A row a type change redraws goes before it resigns (REVIEW-4714).
+        coordinator.session?.returnBurstEnded(in: coordinator)
         if coordinator.dirty { coordinator.commitTyping() }
     }
 
@@ -90,7 +92,7 @@ struct EditableBlockView: UIViewRepresentable {
             session.pendingFocus = nil
             session.shortcutField = nil
         }
-        if session.pendingFocus == field.blockId, !view.isFirstResponder {
+        if session.pendingFocus == field.blockId, !view.isFirstResponder, !session.takesCaretOnArrival(field) {
             session.pendingFocus = nil
             DispatchQueue.main.async {
                 // A row a shortcut redrew takes its caret from the old row
@@ -511,7 +513,10 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
         // The old row has resigned by now, so nothing more lands in it.
         if let old = session?.shortcutField {
             session?.shortcutField = nil
-            if old !== self, old.blockId == blockId { takeOver(from: old) }
+            if old !== self, old.blockId == blockId {
+                takeOver(from: old)
+                session?.returnBurstMoved(to: self)
+            }
         }
         session?.focusChanged(to: self)
     }
@@ -612,12 +617,11 @@ extension EditorSession {
     /// Return: a new block below, the same kind for a list item (desktop);
     /// an empty list item or heading becomes a paragraph instead.
     func returnPressed(_ field: BlockField) {
-        let kind = field.block.kind
+        // A type change still on its way (`turnKeepingCaret`), such as an
+        // earlier Return's, is the kind this Return acts on.
+        let kind = shortcutField === field ? shortcutKind : field.block.kind
         let empty = field.textView.text.isEmpty
-        if empty, kind != "paragraph" {
-            turnInto(InsertableBlock.all[0])
-            return
-        }
+        if empty, kind != "paragraph" { return turnKeepingCaret(field, into: InsertableBlock.all[0]) }
         let next = Self.continuingKinds.contains(kind) ? kind : "paragraph"
         // Desktop's `plainByContext`: Return in a plain checklist makes
         // another plain checkbox, never a task.
@@ -625,7 +629,7 @@ extension EditorSession {
         commit(field) { [weak self] in
             guard let self else { return }
             guard let model = self.model, let newId = await model.insert(next, after: field.blockId) else {
-                return self.keepHeldKeys(in: field)
+                return self.returnRefused(in: field)
             }
             if plain { await model.setProp(newId, "plain", "true") }
             self.history.record(.insert(blockId: newId, after: field.blockId, kind: next, text: ""))

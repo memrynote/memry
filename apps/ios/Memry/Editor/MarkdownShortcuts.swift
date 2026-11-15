@@ -191,16 +191,23 @@ extension EditorSession {
             }
             return
         }
-        // The row can change shape (a paragraph to a bullet), which makes a
-        // new text view. The caret is asked for in the write that redraws the
-        // row, and the old field stays alive until the new one takes over
-        // what was typed in it meanwhile (#2946).
-        shortcutField = field
         let choice = InsertableBlock(id: rule.kind, name: "", symbol: "", level: rule.level)
+        turnKeepingCaret(field, into: choice, props: rule.props)
+    }
+
+    /// Turns `field`'s block into `choice` while the user types on. The row
+    /// can change shape (a paragraph to a bullet), which makes a new text
+    /// view. The caret is asked for in the write that redraws the row, and
+    /// the old field stays alive until the new one takes over what was typed
+    /// in it meanwhile (#2946, #4704).
+    func turnKeepingCaret(_ field: BlockField, into choice: InsertableBlock, props: [String: String] = [:]) {
+        let blockId = field.blockId
+        shortcutField = field
+        shortcutKind = choice.id
         commit(field) { [weak self] in
             guard let self, let model = self.model else { return }
             await self.turn(model, blockId, into: choice)
-            for (name, value) in rule.props.sorted(by: { $0.key < $1.key }) {
+            for (name, value) in props.sorted(by: { $0.key < $1.key }) {
                 await model.setProp(blockId, name, value)
             }
             self.pendingFocus = blockId

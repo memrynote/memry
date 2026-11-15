@@ -89,6 +89,12 @@ extension EditorSession {
         } else if pendingFocus == field.blockId, returnBurst?.target == field.blockId {
             pendingFocus = nil
             takeCaret(field)
+        } else if pendingFocus == field.blockId, shortcutField?.blockId == field.blockId {
+            // A row a type change redrew takes the caret as it appears, so
+            // no key arrives while no text view holds it (#4704). It takes
+            // the old row's caret as it begins editing (`takeOver`).
+            pendingFocus = nil
+            takeCaret(field, atEnd: false)
         } else {
             restoreFocus(field)
         }
