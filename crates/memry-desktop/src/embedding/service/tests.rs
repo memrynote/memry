@@ -216,6 +216,21 @@ fn text_under_ten_units_after_a_js_trim_never_loads_the_model() {
     assert_eq!(c.loads(), 0);
 }
 
+/// A recording the worker cannot read or decode (the fake embeds no audio) is the file's fault:
+/// even as the request that loads the model, it never feeds the backoff, so a vault of broken
+/// voice memos cannot stop embeddings. Electron decodes in the main process and never sends one.
+#[test]
+fn a_recording_that_fails_never_backs_off_the_model() {
+    let c = case(long_deadline());
+    assert_eq!(
+        c.service.embed_audio(std::path::Path::new("memo.wav")),
+        None
+    );
+    assert_eq!(c.error(), "this model embeds no audio");
+    assert_eq!(c.service.embed(TEXT), Some(vec![0.5; EMBEDDING_DIMENSION]));
+    assert_eq!(c.loads(), 1);
+}
+
 /// embeddings.ts:304-340: a failed load surfaces as the error event and the status error, and
 /// the next load inside the backoff never reaches the model, until AI is enabled again.
 #[test]

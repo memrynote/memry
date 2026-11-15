@@ -5,9 +5,9 @@ use std::io::{Cursor, Read};
 
 use memry_ml_worker::frame::{HEADER_LEN, read_frame, write_frame};
 use memry_ml_worker::{
-    EMBEDDING_DIMENSION, Frame, FrameError, MAX_EMBED_IMAGE_BYTES, MAX_EMBED_TEXT_BYTES,
-    MAX_FAILED_MESSAGE, MAX_FRAME_LEN, Manifest, ManifestFile, ModelGroup, OpError, Request,
-    Response,
+    EMBEDDING_DIMENSION, Frame, FrameError, MAX_AUDIO_WINDOWS, MAX_EMBED_IMAGE_BYTES,
+    MAX_EMBED_TEXT_BYTES, MAX_FAILED_MESSAGE, MAX_FRAME_LEN, Manifest, ManifestFile, ModelGroup,
+    OpError, Request, Response,
 };
 use memry_test_kit::{output_bound, proptest_config};
 use proptest::prelude::*;
@@ -218,6 +218,30 @@ fn embedding_answers_of_the_wrong_shape_are_refused() {
     );
 }
 
+/// A recording's samples stay in the worker, so the only audio answer that grows with the file is
+/// its window count, which the app refuses past the windows memry-ml embeds (60 min).
+#[test]
+fn an_audio_answer_past_the_window_cap_is_refused() {
+    let opened = |windows: u32| {
+        Response::from_frame(&frame(
+            0x87,
+            [7u32, windows]
+                .iter()
+                .flat_map(|n| n.to_be_bytes())
+                .collect(),
+        ))
+    };
+    assert_eq!(
+        opened(MAX_AUDIO_WINDOWS),
+        Ok(Response::AudioOpened {
+            recording: 7,
+            windows: MAX_AUDIO_WINDOWS
+        })
+    );
+    assert_eq!(opened(MAX_AUDIO_WINDOWS + 1), Err(OpError::Malformed(0x87)));
+    assert_eq!(opened(u32::MAX), Err(OpError::Malformed(0x87)));
+}
+
 /// A `Failed` message reaches `ModelStatus.error` and the log: the app refuses one over its cap
 /// from the declared length, and the worker cuts its own on a character boundary.
 #[test]
@@ -262,6 +286,10 @@ fn request() -> impl Strategy<Value = Request> {
                 text,
                 soft_tokens,
             }),
+        ".{0,64}".prop_map(|path| Request::AudioOpen { path }),
+        (any::<u32>(), any::<u32>())
+            .prop_map(|(recording, window)| Request::EmbedAudioWindow { recording, window }),
+        any::<u32>().prop_map(|recording| Request::AudioClose { recording }),
         prop_oneof![
             Just(ModelGroup::Text),
             Just(ModelGroup::Vision),
@@ -284,6 +312,8 @@ fn response() -> impl Strategy<Value = Response> {
         )
             .prop_map(|(width, height, png)| Response::Rendered { width, height, png }),
         Just(Response::Done),
+        (any::<u32>(), 0..=MAX_AUDIO_WINDOWS)
+            .prop_map(|(recording, windows)| Response::AudioOpened { recording, windows }),
         proptest::collection::vec(-1.0f32..1.0, EMBEDDING_DIMENSION).prop_map(Response::Embedded),
         (
             ".{0,64}",

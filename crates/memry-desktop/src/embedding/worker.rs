@@ -13,11 +13,18 @@
 //! downloads with one [`ModelSource`] for the whole app session (so the
 //! 207 MB hash runs once), and only then asks the worker to load them. The worker never writes to
 //! the model directory and checks the sizes alone.
+//!
+//! Audio (`embedAudio`, `apps/desktop/src/main/lib/audio-embedding.ts`): the first recording
+//! downloads the audio group (189 MB) the same way, with no progress event (the settings UI shows
+//! the text model's), then the worker reads and decodes the WAV file itself and embeds it one
+//! 30 s window per op, so neither the file nor its samples cross the pipe. A crash or a timeout
+//! on any window is [`EmbedError::Crashed`], counted toward the service's breaker (#3407) like a
+//! text embed's; an unreadable or malformed file is [`EmbedError::Failed`].
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use memry_ml_worker::{
     ExitObserver, Limits, MODEL_REPO, MODEL_REVISION, Manifest, ModelGroup, Supervisor,
@@ -38,13 +45,17 @@ const MAX_FILES: usize = 16;
 /// Larger than any pinned file (the audio weights are 189 MB).
 const MAX_FILE_SIZE: u64 = 2 << 30;
 
-pub struct WorkerModel {
-    supervisor: Arc<Supervisor>,
+pub struct WorkerModel(Arc<Shared>);
+
+/// What the loader and the engines it hands out share.
+struct Shared {
+    supervisor: Supervisor,
     /// `<app data>/models/transformers`, the transformers.js cache root of Electron.
     cache: PathBuf,
     runtime: Handle,
-    /// Built from the first manifest and kept for the app session.
-    source: OnceLock<ModelSource>,
+    /// Built from each group's first manifest and kept for the app session.
+    text: OnceLock<ModelSource>,
+    audio: OnceLock<ModelSource>,
 }
 
 impl WorkerModel {
@@ -73,17 +84,18 @@ impl WorkerModel {
             Arc::new(SystemClock),
         )
         .observing_exits(exits);
-        Arc::new(Self {
-            supervisor: Arc::new(supervisor),
+        Arc::new(Self(Arc::new(Shared {
+            supervisor,
             cache,
             runtime,
-            source: OnceLock::new(),
-        })
+            text: OnceLock::new(),
+            audio: OnceLock::new(),
+        })))
     }
 
     /// Kills the child, if one runs. The next load starts a new one.
     pub fn stop(&self) {
-        self.supervisor.stop();
+        self.0.supervisor.stop();
     }
 
     /// Every vault close stops the child with the embedding thread
@@ -92,18 +104,25 @@ impl WorkerModel {
         let model = self.clone();
         session.on_close("embedding-worker", Arc::new(move |_| model.stop()));
     }
+}
 
-    fn source(&self) -> Result<&ModelSource, String> {
-        if let Some(source) = self.source.get() {
+impl Shared {
+    /// The source of `group`'s files, kept in `cell`.
+    fn source<'a>(
+        &self,
+        group: ModelGroup,
+        cell: &'a OnceLock<ModelSource>,
+    ) -> Result<&'a ModelSource, String> {
+        if let Some(source) = cell.get() {
             return Ok(source);
         }
         let manifest = self
             .supervisor
-            .model_manifest(ModelGroup::Text)
+            .model_manifest(group)
             .map_err(worker_error)?;
         let (dir, files) = checked(&self.cache, manifest.clone())?;
         let source = ModelSource::new(HUB_HOST, &manifest.repo, &manifest.revision, dir, files);
-        Ok(self.source.get_or_init(|| source))
+        Ok(cell.get_or_init(|| source))
     }
 }
 
@@ -113,34 +132,64 @@ impl ModelLoader for WorkerModel {
         abort: &Abort,
         progress: &(dyn Fn(ModelProgress) + Sync),
     ) -> Result<Box<dyn Engine>, String> {
-        let source = self.source()?;
-        self.runtime
+        let shared = &self.0;
+        let source = shared.source(ModelGroup::Text, &shared.text)?;
+        shared
+            .runtime
             .block_on(source.ensure(abort, progress))
             .map_err(|error| error.to_string())?;
         // A thread retired between the download and here (vault close, quit) starts no child.
         if abort.cancel.is_cancelled() {
             return Err("the model load was cancelled".to_owned());
         }
-        self.supervisor.embed_load().map_err(worker_error)?;
-        Ok(Box::new(WorkerEngine(self.supervisor.clone())))
+        shared.supervisor.embed_load().map_err(worker_error)?;
+        Ok(Box::new(WorkerEngine(shared.clone())))
     }
 }
 
-struct WorkerEngine(Arc<Supervisor>);
+struct WorkerEngine(Arc<Shared>);
 
 impl Engine for WorkerEngine {
     fn embed_text(&mut self, text: &str) -> Result<Vec<f32>, EmbedError> {
-        self.0.embed_text(text).map_err(|error| match error {
-            // The child that held the model is gone or unusable: Electron's `failProcess`.
-            WorkerError::Start(_)
-            | WorkerError::Timeout { .. }
-            | WorkerError::Exited(_)
-            | WorkerError::Protocol(_)
-            | WorkerError::Paused => EmbedError::Crashed(error.to_string()),
-            WorkerError::Stopped | WorkerError::NotOpen | WorkerError::Failed(_) => {
-                EmbedError::Failed(error.to_string())
+        self.0.supervisor.embed_text(text).map_err(embed_error)
+    }
+
+    fn embed_audio(&mut self, path: &Path, abort: &Abort) -> Result<Vec<Vec<f32>>, EmbedError> {
+        let shared = &self.0;
+        let source = shared
+            .source(ModelGroup::Audio, &shared.audio)
+            .map_err(EmbedError::Failed)?;
+        shared
+            .runtime
+            .block_on(source.ensure(abort, &|_| {}))
+            .map_err(|error| EmbedError::Failed(error.to_string()))?;
+        let recording = shared.supervisor.open_audio(path).map_err(embed_error)?;
+        let mut vectors = Vec::with_capacity(recording.windows() as usize);
+        for window in 0..recording.windows() {
+            // A retired thread (vault close, quit, the request's deadline) embeds no more windows.
+            if abort.cancel.is_cancelled() || Instant::now() >= abort.deadline {
+                return Err(EmbedError::Failed(
+                    "the audio embed was cancelled".to_owned(),
+                ));
             }
-        })
+            vectors.push(recording.embed_window(window).map_err(embed_error)?);
+        }
+        recording.close().map_err(embed_error)?;
+        Ok(vectors)
+    }
+}
+
+fn embed_error(error: WorkerError) -> EmbedError {
+    match error {
+        // The child that held the model is gone or unusable: Electron's `failProcess`.
+        WorkerError::Start(_)
+        | WorkerError::Timeout { .. }
+        | WorkerError::Exited(_)
+        | WorkerError::Protocol(_)
+        | WorkerError::Paused => EmbedError::Crashed(error.to_string()),
+        WorkerError::Stopped | WorkerError::NotOpen | WorkerError::Failed(_) => {
+            EmbedError::Failed(error.to_string())
+        }
     }
 }
 

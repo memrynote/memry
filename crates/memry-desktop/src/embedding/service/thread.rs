@@ -2,23 +2,41 @@
 
 use std::any::Any;
 use std::panic::{AssertUnwindSafe, catch_unwind};
+use std::path::PathBuf;
 use std::sync::mpsc::{self, RecvTimeoutError};
 use std::sync::{Arc, Condvar, Mutex, PoisonError, Weak};
 use std::time::{Duration, Instant};
 
 use tokio_util::sync::CancellationToken;
 
-use super::{EmbedError, EmbeddingService, Engine, ModelLoader, ModelProgress, Phase, lock};
+use super::{
+    EMBEDDING_DIMENSION, EmbedError, EmbeddingService, Engine, ModelLoader, ModelProgress, Phase,
+    lock,
+};
 use crate::embedding::download::Abort;
 
 pub(super) enum Request {
     Load,
     Embed(String),
+    EmbedAudio(PathBuf),
 }
 
 pub(super) enum Reply {
     Loaded,
     Embedded(Vec<f32>),
+    EmbeddedAudio(Vec<Vec<f32>>),
+}
+
+impl Reply {
+    /// The width of a vector in the reply that is not [`EMBEDDING_DIMENSION`] wide.
+    pub(super) fn wrong_width(&self) -> Option<usize> {
+        let wrong = |width: &usize| *width != EMBEDDING_DIMENSION;
+        match self {
+            Self::Loaded => None,
+            Self::Embedded(vector) => Some(vector.len()).filter(wrong),
+            Self::EmbeddedAudio(vectors) => vectors.iter().map(Vec::len).find(wrong),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -164,15 +182,16 @@ fn serve(
             }
         }
     };
-    match request {
-        Request::Load => Ok(Reply::Loaded),
-        Request::Embed(text) => match loaded.embed_text(text) {
-            Ok(vector) => Ok(Reply::Embedded(vector)),
-            Err(EmbedError::Failed(message)) => Err(Fault::Inference(message)),
-            Err(EmbedError::Crashed(message)) => {
-                *engine = None;
-                Err(Fault::Crashed(message))
-            }
-        },
-    }
+    let outcome = match request {
+        Request::Load => return Ok(Reply::Loaded),
+        Request::Embed(text) => loaded.embed_text(text).map(Reply::Embedded),
+        Request::EmbedAudio(path) => loaded.embed_audio(path, abort).map(Reply::EmbeddedAudio),
+    };
+    outcome.map_err(|error| match error {
+        EmbedError::Failed(message) => Fault::Inference(message),
+        EmbedError::Crashed(message) => {
+            *engine = None;
+            Fault::Crashed(message)
+        }
+    })
 }

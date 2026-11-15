@@ -663,6 +663,15 @@ jobs:
           MEMRY_ML_MODEL_DIR: ${{ runner.temp }}/models/onnx-community/embeddinggemma-2-ONNX
         run: cargo test -p memry-ml --test golden_audio -- --ignored
 
+      # The same audio vectors through the real `memry-ml-worker` binary (the app's audio path):
+      # the worker reads and decodes each WAV file and embeds it one 30 s window per op.
+      - name: memry-ml-worker real audio embed
+        if: matrix.part != 'tests' && needs.plan.outputs.full == 'true'
+        timeout-minutes: 20
+        env:
+          MEMRY_ML_MODEL_DIR: ${{ runner.temp }}/models/onnx-community/embeddinggemma-2-ONNX
+        run: cargo test -p memry-ml-worker --test embed_audio -- --ignored
+
       # The shipping profile (fat LTO): the smoke test embeds with the downloaded model, then the
       # test binary's size and its shared-library dependencies are printed. No ONNX Runtime or
       # DirectML library may be among them: ONNX Runtime is linked in, CPU only. On Windows
