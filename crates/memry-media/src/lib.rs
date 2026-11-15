@@ -6,8 +6,8 @@
 //! from the headers before the pixel buffer is allocated, and a malformed file is a `DecodeError`,
 //! never a panic. The checked peak counts the pixel buffers: the frame, the decoder's scratch beside
 //! it (a progressive JPEG's coefficients, `scratch` for WebP and GIF) and the pipeline's copies
-//! after it. It does not count a lossless WebP's Huffman tables, which grow with the file, not the
-//! image.
+//! after it. A lossless WebP's Huffman tables, which grow with the file, not the image, are held
+//! to what that peak leaves by image-webp's memory limit (`webp`).
 
 use std::io::Cursor;
 
@@ -21,6 +21,7 @@ use zune_jpeg::zune_core::options::DecoderOptions;
 use zune_jpeg::{ImageInfo as JpegInfo, JpegDecoder};
 
 mod scratch;
+mod webp;
 
 /// Larger files are refused: the embedding projector's `MAX_IMAGE_BYTES`, which skips them before
 /// reading.
@@ -336,7 +337,12 @@ fn read_frame(bytes: &[u8], after: impl FnOnce(&Header) -> u64) -> Result<Frame,
         has_exif: exif.is_some(),
         has_icc: icc.is_some(),
     };
-    let mut image = DynamicImage::from_decoder(decoder).map_err(decode_error)?;
+    let mut image = if format == ImageFormat::WebP {
+        drop(decoder);
+        webp::decode(bytes, &header, MAX_DECODE_ALLOC - peak)?
+    } else {
+        DynamicImage::from_decoder(decoder).map_err(decode_error)?
+    };
     if let (ImageFormat::Gif, DynamicImage::ImageRgba8(buffer)) = (format, &mut image) {
         // libnsgif writes a transparent pixel as zero in all four channels.
         for pixel in buffer.pixels_mut().filter(|pixel| pixel[3] == 0) {

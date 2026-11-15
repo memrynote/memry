@@ -18,6 +18,8 @@ moxcms = "0.8"
 fdeflate = "0.3"
 # The JPEG decoder `image` runs: its header reader sizes a progressive frame before decoding.
 zune-jpeg = "0.5"
+# The WebP decoder `image` runs, driven directly: `image` does not pass a memory limit to it.
+image-webp = "0.2.4"
 
 [dev-dependencies]
 base64 = { workspace = true }

@@ -110,3 +110,9 @@ wry = { git = "https://github.com/memrynote/wry", rev = "f73aedfa757b988436a4eff
 # Upstream: https://github.com/tauri-apps/tauri/issues/15408. Remove when tao ships it.
 tao = { git = "https://github.com/memrynote/tao", rev = "317b55792617af0cb7a4aab908c04df0008040b1" }
 tao-macros = { git = "https://github.com/memrynote/tao", rev = "317b55792617af0cb7a4aab908c04df0008040b1" }
+# image-webp builds the Huffman tables of every group a lossless WebP names, used or not, and
+# counted none against its memory limit: a 3.8 MB 1x1 file built 1.3 GB (#4719). This fork is
+# image-webp 0.2.4 plus one commit that charges them to `WebPDecoder::set_memory_limit`, which
+# memry-media sets. `memry-media`'s `tests/peak_memory.rs` is red without it.
+# Upstream: https://github.com/image-rs/image-webp/pull/213. Remove when released.
+image-webp = { git = "https://github.com/memrynote/image-webp", rev = "4bbebaf8cd17864f1a89891ce680a2c881654a12" }

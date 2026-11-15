@@ -74,7 +74,8 @@ fn vp8_planes(width: u32, height: u32) -> u64 {
 
 /// A VP8L image's sub-images at their smallest block of 4 by 4 pixels, 4 bytes each: the predictor
 /// and colour transforms' (`lossless.rs:221`, `:238`), and the entropy image (`:313`) beside the
-/// 2-byte group indices made from it (`:316`). The Huffman tables are not counted.
+/// 2-byte group indices made from it (`:316`). The Huffman tables are bounded by image-webp's
+/// memory limit instead (`webp`).
 fn lossless_scratch(width: u32, height: u32) -> u64 {
     let blocks = u64::from(width.div_ceil(4)) * u64::from(height.div_ceil(4));
     blocks * (4 + 4 + 4 + 2)
