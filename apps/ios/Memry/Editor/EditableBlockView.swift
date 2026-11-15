@@ -83,7 +83,7 @@ struct EditableBlockView: UIViewRepresentable {
         // **Only when it differs, and never over unsaved typing.** Re-rendering
         // resets the text storage, which would move a caret mid-word or drop
         // what the user typed since the last commit.
-        if changed, !field.dirty { field.render() }
+        if changed || field.stale, !field.dirty { field.render() }
         // The block changed under a text view that kept the caret (a type
         // change that kept the row's shape): nothing is left to focus.
         if changed, session.pendingFocus == field.blockId, view.isFirstResponder {
@@ -295,6 +295,8 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
     /// Inside `render`, whose `attributedText` puts the caret at the end before
     /// the old selection goes back: the session sees only where it lands.
     private var rendering = false
+    /// A render skipped over an IME composition, which the next update runs.
+    private(set) var stale = false
     /// A wiki link's Open and Open to the Side (#4377).
     private var linkMenu: WikiLinkMenu?
 
@@ -420,13 +422,35 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
         block.props.first { $0.name == name }?.value
     }
 
+    /// Draws `block`. Under the caret (a peer pane's or device's edit landing
+    /// in the focused block), the keyboard is told the text changed, so it
+    /// drops the context it holds: with that context stale, its next keys
+    /// replaced the wrong range and deleted bytes (VERIFY-4700). The caret
+    /// moves with the text around it. An IME composition is never drawn
+    /// over: the render waits for the next update (`stale`).
     func render() {
+        guard textView.markedTextRange == nil else {
+            stale = true
+            return
+        }
+        stale = false
+        let focused = textView.isFirstResponder
+        let old = textView.textStorage.string
         let selection = pendingSelection ?? textView.selectedRange
+        let mapped = pendingSelection != nil
         pendingSelection = nil
         rendering = true
+        if focused {
+            textView.inputDelegate?.selectionWillChange(textView)
+            textView.inputDelegate?.textWillChange(textView)
+        }
         defer {
             rendering = false
-            if textView.isFirstResponder { session?.selectionChanged(in: self) }
+            if focused {
+                textView.inputDelegate?.textDidChange(textView)
+                textView.inputDelegate?.selectionDidChange(textView)
+                session?.selectionChanged(in: self)
+            }
         }
         let text = NSMutableAttributedString(attributedString: BlockText.attributed(block.inline, style: style))
         if block.kind != "codeBlock" {
@@ -441,9 +465,10 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
         textView.forgetTyping()
         base = text.string
         textView.typingAttributes = BlockText.baseAttributes(style)
-        if textView.isFirstResponder {
-            let location = min(selection.location, text.length)
-            textView.selectedRange = NSRange(location: location, length: min(selection.length, text.length - location))
+        if focused {
+            let kept = mapped ? selection : BlockText.carry(selection, from: old, to: text.string)
+            let location = min(kept.location, text.length)
+            textView.selectedRange = NSRange(location: location, length: min(kept.length, text.length - location))
         }
         textView.invalidateIntrinsicContentSize()
     }

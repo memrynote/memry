@@ -124,6 +124,28 @@ enum BlockText {
         return result.string
     }
 
+    /// `range` in `old` moved onto `new`, in UTF-16: the text both share
+    /// before and after the change holds still, so a caret after the change
+    /// moves by its length, one before it stays, and one inside it goes to
+    /// its end.
+    static func carry(_ range: NSRange, from old: String, to new: String) -> NSRange {
+        let old = Array(old.utf16)
+        let new = Array(new.utf16)
+        let shortest = min(old.count, new.count)
+        var prefix = 0
+        while prefix < shortest, old[prefix] == new[prefix] { prefix += 1 }
+        var suffix = 0
+        while suffix < shortest - prefix, old[old.count - 1 - suffix] == new[new.count - 1 - suffix] { suffix += 1 }
+        let changedEnd = old.count - suffix
+        let move = { (location: Int) -> Int in
+            if location <= prefix { return location }
+            if location >= changedEnd { return location + new.count - old.count }
+            return new.count - suffix
+        }
+        let start = move(range.location)
+        return NSRange(location: start, length: max(0, move(NSMaxRange(range)) - start))
+    }
+
     // MARK: - Drawing
 
     struct Style {
