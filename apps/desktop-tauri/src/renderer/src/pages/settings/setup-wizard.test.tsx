@@ -15,6 +15,10 @@ vi.mock('@memry/i18n/renderer', () => ({
   })
 }))
 
+const phraseMock = vi.hoisted(() => ({ getRecoveryPhrase: vi.fn() }))
+
+vi.mock('@/services/auth-service', () => ({ authService: phraseMock }))
+
 vi.mock('@/contexts/auth-context', () => ({
   useAuth: authMock.useAuth
 }))
@@ -212,11 +216,7 @@ describe('SetupWizard', () => {
     vi.clearAllMocks()
     vi.useRealTimers()
     stubClipboard()
-    ;(window as Window & { api: unknown }).api = {
-      syncSetup: {
-        getRecoveryPhrase: vi.fn().mockResolvedValue('alpha beta gamma')
-      }
-    }
+    phraseMock.getRecoveryPhrase.mockResolvedValue('alpha beta gamma')
   })
 
   it('requests email OTP and starts Google OAuth from sign-in', async () => {
@@ -299,10 +299,7 @@ describe('SetupWizard', () => {
 
   it('refetches the pending recovery phrase after the wizard remounts', async () => {
     mockAuth({ wizardStep: 'recovery-display' })
-    const getRecoveryPhrase = vi.fn().mockResolvedValue('alpha beta gamma')
-    ;(window as Window & { api: unknown }).api = {
-      syncSetup: { getRecoveryPhrase }
-    }
+    const { getRecoveryPhrase } = phraseMock
 
     const { unmount } = render(<SetupWizard />)
     expect(await screen.findByText('display:alpha beta gamma')).toBeInTheDocument()
@@ -317,9 +314,7 @@ describe('SetupWizard', () => {
   it('shows a recoverable error when the pending recovery phrase is gone', async () => {
     const user = userEvent.setup()
     const auth = mockAuth({ wizardStep: 'recovery-display' })
-    ;(window as Window & { api: unknown }).api = {
-      syncSetup: { getRecoveryPhrase: vi.fn().mockResolvedValue(null) }
-    }
+    phraseMock.getRecoveryPhrase.mockResolvedValue(null)
 
     render(<SetupWizard />)
 
@@ -332,9 +327,7 @@ describe('SetupWizard', () => {
 
   it('shows a recoverable error when fetching the recovery phrase fails', async () => {
     mockAuth({ wizardStep: 'recovery-confirm' })
-    ;(window as Window & { api: unknown }).api = {
-      syncSetup: { getRecoveryPhrase: vi.fn().mockRejectedValue(new Error('ipc down')) }
-    }
+    phraseMock.getRecoveryPhrase.mockRejectedValue(new Error('ipc down'))
 
     render(<SetupWizard />)
 

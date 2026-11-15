@@ -1,12 +1,14 @@
 //! The app-wide services this step owns and their boot stages: the app config and the language
-//! (`I18n`), telemetry with its crash marker and log shipping (`Telemetry`), and the settings
-//! service (`Handlers`). Each is managed state that commands read; none is rebuilt per call.
+//! (`I18n`), telemetry with its crash marker and log shipping (`Telemetry`), and the settings and
+//! account services (`Handlers`). Each is managed state that commands read; none is rebuilt per call.
 
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
+use memry_desktop::account::otp_clipboard::OtpClipboardWatch;
+use memry_desktop::account::{AccountService, device};
 use memry_desktop::ai::catalog::ProbeClient;
 use memry_desktop::ai::local_agent::LocalAgent;
 use memry_desktop::ai::local_provider::LocalProviderStore;
@@ -81,6 +83,7 @@ pub fn register_stages() {
     );
     startup::register(Stage::Telemetry, "start telemetry", start_telemetry);
     startup::register(Stage::Handlers, "manage settings", manage_settings);
+    startup::register(Stage::Handlers, "manage account", manage_account);
 }
 
 fn failed(code: &str, error: impl std::fmt::Display) -> CommandError {
@@ -305,6 +308,23 @@ fn manage_settings(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     app.manage(keychain);
     app.manage(identity);
     app.manage(settings);
+    Ok(())
+}
+
+/// The app's one `AuthSession`, over the keychain `manage_settings` opened and the pinned
+/// transport, and the clipboard watch of the email code screen.
+fn manage_account(app: &AppHandle<Wry>) -> Result<(), CommandError> {
+    let identity = app.state::<Arc<DeviceIdentityStore>>().inner().clone();
+    let account = AccountService::new(
+        app.state::<SyncTransport>().inner().clone(),
+        identity,
+        app.state::<RuntimeConfig>().sync_server_url.clone(),
+        device::descriptor(&app.package_info().version.to_string()),
+        app.state::<Arc<AppConfig>>().inner().clone(),
+    )
+    .map_err(|e| failed("account_service", e))?;
+    app.manage(Arc::new(account));
+    app.manage(OtpClipboardWatch::default());
     Ok(())
 }
 

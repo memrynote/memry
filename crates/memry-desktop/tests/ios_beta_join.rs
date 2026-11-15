@@ -104,6 +104,7 @@ async fn joined(
         &url,
         input(" me@example.com "),
         Some(&telemetry(dir.path(), enabled)),
+        None,
     )
     .await;
     let (path, body) = rx.await.expect("request");
@@ -187,6 +188,7 @@ async fn uninitialized_telemetry_is_a_failed_join_that_sends_nothing() {
         "http://127.0.0.1:9/ios-beta/join",
         input("me@example.com"),
         None,
+        None,
     )
     .await;
     assert!(!result.success);
@@ -227,6 +229,7 @@ async fn the_email_check_is_the_server_schema() {
             "http://127.0.0.1:9/ios-beta/join",
             input(email),
             Some(&service),
+            None,
         )
         .await;
         assert_eq!(
@@ -251,6 +254,7 @@ async fn the_email_check_is_the_server_schema() {
             "http://127.0.0.1:9/ios-beta/join",
             input(email),
             Some(&service),
+            None,
         )
         .await;
         assert_ne!(

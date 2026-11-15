@@ -83,6 +83,9 @@ pub struct VerifyOtpResponse {
     pub user_id: Option<String>,
     pub is_new_user: Option<bool>,
     pub needs_setup: Option<bool>,
+    /// The account still lists this device's committed key (`auth.ts:288`).
+    #[serde(default)]
+    pub known_device: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -536,14 +539,23 @@ impl AuthRoutes {
         .await
     }
 
-    pub async fn resend_otp(http: &HttpClient, email: &str) -> Result<(), ApiError> {
-        http.send(
-            ApiRequest::post("/auth/otp/resend").json(&RequestOtpRequest {
-                email: email.to_string(),
-            }),
-        )
-        .await
-        .map(|_| ())
+    /// The new code's `expiresIn`, read leniently: an accepted resend never fails on its body.
+    pub async fn resend_otp(http: &HttpClient, email: &str) -> Result<Option<u64>, ApiError> {
+        #[derive(Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct Answer {
+            expires_in: Option<u64>,
+        }
+        let response = http
+            .send(
+                ApiRequest::post("/auth/otp/resend").json(&RequestOtpRequest {
+                    email: email.to_string(),
+                }),
+            )
+            .await?;
+        Ok(serde_json::from_slice::<Answer>(&response.body)
+            .ok()
+            .and_then(|answer| answer.expires_in))
     }
 
     pub async fn verify_otp(

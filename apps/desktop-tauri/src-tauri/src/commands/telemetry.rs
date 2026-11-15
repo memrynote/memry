@@ -4,11 +4,12 @@
 
 use std::sync::Arc;
 
+use memry_desktop::account::AccountService;
 use memry_desktop::config::RuntimeConfig;
 use memry_desktop::seams::transport::SyncTransport;
 use memry_desktop::telemetry::TelemetryEvent;
 use memry_desktop::telemetry::logship::LogShip;
-use memry_desktop::telemetry::report::{self, FeedbackSubmit};
+use memry_desktop::telemetry::report::{self, FeedbackSubmit, FeedbackSubmitResult};
 use memry_desktop::telemetry::service::{FlushReason, Service};
 use serde::Serialize;
 use tauri::{AppHandle, Manager, Wry};
@@ -39,13 +40,6 @@ pub struct TelemetryFlushResult {
     pub success: bool,
     pub attempted: u32,
     pub accepted: u32,
-    pub error: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, specta::Type)]
-#[serde(rename_all = "camelCase")]
-pub struct FeedbackSubmitResult {
-    pub success: bool,
     pub error: Option<String>,
 }
 
@@ -103,32 +97,23 @@ pub async fn telemetry_set_auto_send_diagnostics(
     Ok(())
 }
 
-/// Beta feedback, anonymous or with the account's token (Step 19, #3536, adds the bearer).
+/// Beta feedback, anonymous or with the account's token when signed in.
 #[tauri::command]
 #[specta::specta]
 pub async fn feedback_submit(
     app: AppHandle<Wry>,
     input: FeedbackSubmit,
 ) -> Result<FeedbackSubmitResult, CommandError> {
-    let fail = |error: String| FeedbackSubmitResult {
-        success: false,
-        error: Some(error),
-    };
-    let input = match input.validated() {
-        Ok(input) => input,
-        Err(code) => return Ok(fail(code.to_owned())),
-    };
     let url = app.state::<RuntimeConfig>().server_url("/feedback");
-    let body = serde_json::to_string(&input)
-        .map_err(|e| CommandError::new(ErrorKind::Internal, "feedback_encode", e.to_string()))?;
-    match report::post_json(app.state::<SyncTransport>().as_ref(), &url, body, None).await {
-        Ok(()) => Ok(FeedbackSubmitResult {
-            success: true,
-            error: None,
-        }),
-        Err(error) => {
-            tracing::error!(scope = "Feedback", "failed to submit feedback: {error}");
-            Ok(fail("FEEDBACK_SUBMIT_FAILED".to_owned()))
-        }
-    }
+    let bearer = app
+        .state::<Arc<AccountService>>()
+        .access_token_if_signed_in()
+        .await;
+    Ok(report::submit_feedback(
+        app.state::<SyncTransport>().as_ref(),
+        &url,
+        input,
+        bearer.as_deref(),
+    )
+    .await)
 }

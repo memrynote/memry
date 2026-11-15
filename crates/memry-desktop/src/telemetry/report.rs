@@ -170,6 +170,48 @@ pub(super) fn looks_like_email(e: &str) -> bool {
         && matches!(e.split_once('@'), Some((l, d)) if !l.is_empty() && d.contains('.') && !d.starts_with('.') && !d.ends_with('.'))
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct FeedbackSubmitResult {
+    pub success: bool,
+    pub error: Option<String>,
+}
+
+/// Posts beta feedback to `url` (the server's `/feedback`), with the account's token when the
+/// user is signed in so the server can attach the plan (`ipc/feedback-handlers.ts:17-35`).
+pub async fn submit_feedback(
+    transport: &dyn Transport,
+    url: &str,
+    input: FeedbackSubmit,
+    bearer: Option<&str>,
+) -> FeedbackSubmitResult {
+    let fail = |error: &str| FeedbackSubmitResult {
+        success: false,
+        error: Some(error.to_owned()),
+    };
+    let input = match input.validated() {
+        Ok(input) => input,
+        Err(code) => return fail(code),
+    };
+    let body = match serde_json::to_string(&input) {
+        Ok(body) => body,
+        Err(error) => {
+            tracing::error!(scope = "Feedback", "feedback could not be encoded: {error}");
+            return fail("FEEDBACK_SUBMIT_FAILED");
+        }
+    };
+    match post_json(transport, url, body, bearer).await {
+        Ok(()) => FeedbackSubmitResult {
+            success: true,
+            error: None,
+        },
+        Err(error) => {
+            tracing::error!(scope = "Feedback", "failed to submit feedback: {error}");
+            fail("FEEDBACK_SUBMIT_FAILED")
+        }
+    }
+}
+
 /// The user's feedback (`FeedbackSubmitSchema`): the message trimmed and 1 to 5000 characters, an
 /// optional email that looks like one.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, specta::Type)]

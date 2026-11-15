@@ -42,8 +42,9 @@ impl Server {
             for line in out.lines().map_while(Result::ok) {
                 match serde_json::from_str::<Value>(&line) {
                     Ok(value)
-                        if value.get("harnessMarkers").is_some()
-                            || value.get("harnessDevice").is_some() =>
+                        if value
+                            .as_object()
+                            .is_some_and(|o| o.keys().any(|k| k.starts_with("harness"))) =>
                     {
                         let _ = reply.send(value);
                     }
@@ -75,6 +76,13 @@ impl Server {
     #[allow(dead_code)] // One binary registers.
     pub fn register(&mut self) -> Value {
         self.command("register")["harnessDevice"].clone()
+    }
+
+    /// Makes `code` the pending sign-in code of `email`, as the server stores one it mailed.
+    #[allow(dead_code)] // One binary signs in.
+    pub fn otp(&mut self, email: &str, code: &str) {
+        let reply = self.command(&format!("otp {email} {code}"));
+        assert_eq!(reply["harnessOtp"], true, "{reply}");
     }
 
     fn command(&mut self, line: &str) -> Value {
