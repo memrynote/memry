@@ -2467,8 +2467,7 @@
       "failedToCloseVault": "Der Tresor konnte nicht geschlossen werden",
       "failedToSwitchVault": "Der Tresor konnte nicht gewechselt werden",
       "failedToUpdateConfig": "Konfiguration konnte nicht aktualisiert werden",
-      "failedToReindex": "Neuindizierung fehlgeschlagen",
-      "googleSignInFailed": "Die Google-Anmeldung ist fehlgeschlagen"
+      "failedToReindex": "Neuindizierung fehlgeschlagen"
     }
   },
   "agentMcp": {
