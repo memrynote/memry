@@ -22,10 +22,29 @@ let calls: ResendCall[] = []
 let externalCalls: ExternalCall[] = []
 let turnstilePasses = true
 let appleStatus = 201
+let existingTesterId: string | null = null
 
 const ascKeys = generateKeyPairSync('ec', { namedCurve: 'P-256' })
 const TURNSTILE_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify'
-const BETA_TESTERS_URL = 'https://api.appstoreconnect.apple.com/v1/betaTesters'
+const ASC_URL = 'https://api.appstoreconnect.apple.com'
+const BETA_TESTERS_URL = `${ASC_URL}/v1/betaTesters`
+const INVITATIONS_URL = `${ASC_URL}/v1/betaTesterInvitations`
+
+/** App Store Connect as observed: 409 for an address already in the group, lookups, resend. */
+function appleResponse(url: string, method: string): Response {
+  if (url === BETA_TESTERS_URL && method === 'POST') {
+    const status = existingTesterId ? 409 : appleStatus
+    return Response.json(status === 201 ? { data: {} } : { errors: [] }, { status })
+  }
+  if (url.startsWith(`${BETA_TESTERS_URL}?`)) {
+    return Response.json({ data: existingTesterId ? [{ id: existingTesterId }] : [] })
+  }
+  if (url.endsWith('/relationships/app')) {
+    return Response.json({ data: { type: 'apps', id: 'app-1' } })
+  }
+  if (url === INVITATIONS_URL) return Response.json({ data: { id: 'inv-1' } }, { status: 201 })
+  throw new Error(`unexpected App Store Connect call: ${method} ${url}`)
+}
 
 /**
  * Stands in for Resend (every contact is created as contact_1), Cloudflare Turnstile, and the
@@ -36,7 +55,7 @@ function stubExternalApis(): void {
   externalCalls = []
   globalThis.fetch = async (input, init) => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
-    if (url === TURNSTILE_URL || url === BETA_TESTERS_URL) {
+    if (url === TURNSTILE_URL || url.startsWith(ASC_URL)) {
       const body = init?.body instanceof URLSearchParams ? Object.fromEntries(init.body) : null
       externalCalls.push({
         url,
@@ -44,9 +63,7 @@ function stubExternalApis(): void {
         body: typeof init?.body === 'string' ? JSON.parse(init.body) : body
       })
       if (url === TURNSTILE_URL) return Response.json({ success: turnstilePasses })
-      return Response.json(appleStatus === 201 ? { data: {} } : { errors: [] }, {
-        status: appleStatus
-      })
+      return appleResponse(url, init?.method ?? 'GET')
     }
     calls.push({ url, body: typeof init?.body === 'string' ? JSON.parse(init.body) : null })
     const payload = url.endsWith('/contacts') ? { id: 'contact_1' } : {}
@@ -112,6 +129,7 @@ describe('subscribe', () => {
       .toString()
     turnstilePasses = true
     appleStatus = 201
+    existingTesterId = null
     stubExternalApis()
   })
 
@@ -167,6 +185,33 @@ describe('subscribe', () => {
     const result = await post({ email: 'ada@example.com', list: 'ios-beta', turnstileToken: 'tok' })
 
     assert.equal(result.status, 502)
+    assert.deepEqual(calls, [])
+  })
+
+  it('sends the invite again to an address already in the TestFlight group', async () => {
+    existingTesterId = 'tester-1'
+    const result = await post({ email: 'ada@example.com', list: 'ios-beta', turnstileToken: 'tok' })
+
+    assert.deepEqual(result, { status: 200, body: { success: true, alreadyInvited: true } })
+    const invitation = externalCalls.find((call) => call.url === INVITATIONS_URL)
+    assert.deepEqual(invitation?.body, {
+      data: {
+        type: 'betaTesterInvitations',
+        relationships: {
+          app: { data: { type: 'apps', id: 'app-1' } },
+          betaTester: { data: { type: 'betaTesters', id: 'tester-1' } }
+        }
+      }
+    })
+    assert.equal(calls.length, 2)
+  })
+
+  it('fails a 409 for an address Apple does not list in the group', async () => {
+    appleStatus = 409
+    const result = await post({ email: 'ada@example.com', list: 'ios-beta', turnstileToken: 'tok' })
+
+    assert.equal(result.status, 502)
+    assert.ok(!externalCalls.some((call) => call.url === INVITATIONS_URL))
     assert.deepEqual(calls, [])
   })
 
