@@ -1,21 +1,21 @@
-//! Port of `normalizeLinkMentions(blocks, { byteNeutralOnly: true })` in
+//! Port of `normalizeLinkMentions` in
 //! `packages/editor-schema/src/inline/link-mention-normalize.ts`: the seed turns
 //! each `((mention:…))` token into a `linkMention` node, once, in the doc every
 //! device receives. Left as text, each device's editor promoted it on open, and
 //! two devices doing that before they synced merged into two chips per mention
 //! (#3871).
 //!
-//! Only a token that serializes back to its own bytes is promoted, so the seed
-//! never changes a file's bytes. A token an older build wrote with `_ * ! ~ '`
-//! raw stays text and the editor promotes it on open.
+//! Every token `parseLinkMentionToken` accepts is promoted, a legacy one with
+//! `_ * ! ~ '` raw included (#4478). The node re-encodes it, so the source
+//! record keeps the file's bytes until the token's own paragraph is edited.
 
 use std::sync::LazyLock;
 
 use regex::Regex;
 use serde_json::{Map, Value as Json, json};
-use url::Url;
 
-use crate::markdown::bn::export::inline::link_mention_token;
+use crate::markdown::bn::dom_parser::rules::url::parse_like_node;
+use crate::markdown::frontmatter::js::is_js_whitespace;
 use crate::markdown::shared::critic_markup::uri::decode_uri_component;
 
 /// `MENTION_TOKEN_REGEX`.
@@ -25,18 +25,28 @@ static MENTION_TOKEN: LazyLock<Regex> =
 /// `extractDomain`: `new URL(url).hostname.replace('www.', '')`, which drops the
 /// first `www.` wherever it sits, and the URL itself when it does not parse.
 fn extract_domain(url: &str) -> String {
-    match Url::parse(url) {
-        Ok(parsed) => parsed.host_str().unwrap_or("").replacen("www.", "", 1),
-        Err(_) => url.to_owned(),
+    match parse_like_node(url) {
+        Some(parsed) => parsed.host_str().unwrap_or("").replacen("www.", "", 1),
+        None => url.to_owned(),
     }
 }
 
-/// `parseLinkMentionToken` restricted to byte-neutral tokens. Its repair path
-/// (whitespace or a backslash in the payload) yields a URL that never
-/// serializes back to those bytes, so only the plain decode is needed.
-fn byte_neutral_url(full: &str, encoded: &str) -> Option<String> {
-    let url = decode_uri_component(encoded).filter(|url| !url.is_empty())?;
-    (link_mention_token(&url) == full).then_some(url)
+/// `parseLinkMentionToken`. A payload without whitespace or a backslash is
+/// decoded as it is. Otherwise both are stripped, a repair older builds' remark
+/// escapes and stray spaces need, and what is left must be in the union of every
+/// token alphabet and decode to a URL.
+fn parse_link_mention_token(encoded: &str) -> Option<String> {
+    let strip = |c: char| is_js_whitespace(c) || c == '\\';
+    if !encoded.contains(strip) {
+        return decode_uri_component(encoded).filter(|url| !url.is_empty());
+    }
+    let repaired: String = encoded.chars().filter(|&c| !strip(c)).collect();
+    let in_any_alphabet = |b: u8| b.is_ascii_alphanumeric() || b".%!'*~_-".contains(&b);
+    if repaired.is_empty() || !repaired.bytes().all(in_any_alphabet) {
+        return None;
+    }
+    let url = decode_uri_component(&repaired)?;
+    parse_like_node(&url).map(|_| url)
 }
 
 fn styled_text(text: &str, styles: Option<&Json>) -> Json {
@@ -55,7 +65,7 @@ fn split_text(text: &str, styles: Option<&Json>) -> Option<Vec<Json>> {
     let mut last = 0;
     for caps in MENTION_TOKEN.captures_iter(text) {
         let full = caps.get(0).expect("whole match");
-        let Some(url) = byte_neutral_url(full.as_str(), &caps[1]) else {
+        let Some(url) = parse_link_mention_token(&caps[1]) else {
             continue;
         };
         if full.start() > last {
@@ -131,7 +141,7 @@ fn normalize_table(table: &mut Json) {
     }
 }
 
-/// `normalizeLinkMentions(blocks, { byteNeutralOnly: true })`, in place.
+/// `normalizeLinkMentions(blocks)`, in place.
 pub fn normalize_link_mentions(blocks: &mut [Json]) {
     for block in blocks {
         // A code block's own text is literal; blocks nested under it are not code.

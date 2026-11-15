@@ -3,6 +3,7 @@
 
 mod breaker;
 pub mod download;
+pub mod projector;
 pub mod service;
 
 pub use breaker::{MAX_CONSECUTIVE_FAILURES, RETRY_BASE};

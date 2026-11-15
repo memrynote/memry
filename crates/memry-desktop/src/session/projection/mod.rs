@@ -14,6 +14,7 @@
 
 mod bus;
 mod event;
+pub mod feed;
 #[cfg(test)]
 mod tests;
 
@@ -55,9 +56,16 @@ pub trait Projector: Send + Sync + 'static {
 
     fn handles(&self, event: &ProjectionEvent) -> bool;
 
-    fn project(&self, event: &ProjectionEvent) -> Result<(), String>;
+    /// Runs on the publisher's thread when an event it handles is published, before it is
+    /// queued and outside the lane's turn, even once the runtime is stopping. Cheap: no I/O,
+    /// no model, no wait on the lane.
+    fn published(&self, _event: &ProjectionEvent) {}
 
-    fn rebuild(&self) -> Result<(), String>;
+    /// `cancel` is set once the session closes: an event the close drains must not start work
+    /// that outlives the vault (a model load).
+    fn project(&self, event: &ProjectionEvent, cancel: &CancelToken) -> Result<(), String>;
+
+    fn rebuild(&self, cancel: &CancelToken) -> Result<(), String>;
 
     /// Consistency pass, run backgrounded on every vault open. It stops promptly when
     /// `cancel` is set: a vault switch must not leave the old pass reading the previous
@@ -110,7 +118,7 @@ impl Lane {
                 if self.projector.handles(&event)
                     && let Err(error) = {
                         let _turn = lock(&self.work);
-                        self.projector.project(&event)
+                        self.projector.project(&event, cancel)
                     }
                 {
                     tracing::error!(projector = self.projector.name(), %error, "projection failed");
@@ -236,9 +244,15 @@ impl ProjectionRuntime {
         self.cancel.clone()
     }
 
-    /// Queues the event on every lane. Refused (and logged) once the runtime is stopping:
-    /// anything still emitting would refill a lane as fast as the drain empties it.
+    /// [`Projector::published`] of each lane that handles the event, then queues the event on
+    /// every lane. Refused (and logged) once the runtime is stopping: anything still emitting
+    /// would refill a lane as fast as the drain empties it.
     pub fn publish(&self, event: ProjectionEvent) {
+        for lane in &self.lanes {
+            if lane.projector.handles(&event) {
+                lane.projector.published(&event);
+            }
+        }
         if self.stopping.load(Ordering::SeqCst) {
             tracing::debug!(kind = ?event.kind(), "projection event refused: runtime is stopping");
             return;
@@ -300,7 +314,7 @@ impl ProjectionRuntime {
                     };
                     tracing::error!(projector = projector.name(), %error, "projection reconcile failed");
                     on_failure(projector.name(), &error);
-                    if let Err(error) = projector.rebuild() {
+                    if let Err(error) = projector.rebuild(&cancel) {
                         tracing::error!(projector = projector.name(), %error, "projection rebuild failed");
                     }
                 }
@@ -338,6 +352,18 @@ impl ProjectionRuntime {
             })?;
         lock(&self.threads).push(("reconcile".into(), handle));
         Ok(())
+    }
+
+    /// Every lane runs its `reconcile` once its queue is empty, as after a queue overflow: a
+    /// publisher missed events (a lagged subscription) and the lanes cannot tell which.
+    pub fn repair(&self) {
+        for lane in &self.lanes {
+            let mut state = lock(&lane.state);
+            if !state.stopped {
+                state.needs_reconcile = true;
+                lane.changed.notify_all();
+            }
+        }
     }
 
     /// Threads (lanes and the reconcile chain) that have not finished.

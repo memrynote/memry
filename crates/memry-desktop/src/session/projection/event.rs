@@ -78,6 +78,12 @@ pub enum ProjectionEvent {
     NoteTextExtracted {
         note_id: String,
     },
+    /// Tauri only: the vault tier applied a change to the note's file (added, changed, moved
+    /// or restored, [`super::feed`]). The tier's facts carry no parsed note, so a consumer
+    /// reads the note itself; Electron's `note.upserted` carried it.
+    NoteFileChanged {
+        note_id: String,
+    },
     /// The note's frontmatter `tags:` as read by the header-tag backfill, for tag rows an
     /// older build wrote without a header flag.
     NoteHeaderTagsResolved {
@@ -116,6 +122,7 @@ pub enum EventKind {
     NoteUpserted,
     NoteDeleted,
     NoteTextExtracted,
+    NoteFileChanged,
     NoteHeaderTagsResolved,
     TaskUpserted,
     TaskDeleted,
@@ -133,6 +140,7 @@ impl ProjectionEvent {
             Self::NoteUpserted(_) => EventKind::NoteUpserted,
             Self::NoteDeleted { .. } => EventKind::NoteDeleted,
             Self::NoteTextExtracted { .. } => EventKind::NoteTextExtracted,
+            Self::NoteFileChanged { .. } => EventKind::NoteFileChanged,
             Self::NoteHeaderTagsResolved { .. } => EventKind::NoteHeaderTagsResolved,
             Self::TaskUpserted { .. } => EventKind::TaskUpserted,
             Self::TaskDeleted { .. } => EventKind::TaskDeleted,
@@ -152,6 +160,7 @@ impl ProjectionEvent {
             Self::NoteUpserted(record) => format!("note:{}", record.note_id()),
             Self::NoteDeleted { note_id, .. }
             | Self::NoteTextExtracted { note_id }
+            | Self::NoteFileChanged { note_id }
             | Self::NoteHeaderTagsResolved { note_id, .. } => format!("note:{note_id}"),
             Self::TaskUpserted { task_id } | Self::TaskDeleted { task_id } => {
                 format!("task:{task_id}")
