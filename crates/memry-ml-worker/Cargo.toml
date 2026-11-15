@@ -5,7 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 publish = false
-description = "The out-of-process worker of MemryNote (pdfium) and its supervisor. Never depends on tauri."
+description = "The out-of-process worker of MemryNote (pdfium, ONNX Runtime) and its supervisor. Never depends on tauri."
 autobins = false
 
 # The lib (frame codec, ops, supervisor) has no native dependency: memry-desktop links it with
@@ -16,6 +16,7 @@ tracing = { workspace = true }
 thiserror = { workspace = true }
 pdfium-render = { version = "=0.9.4", default-features = false, features = ["pdfium_7881", "image_025"], optional = true }
 image = { version = "0.25", default-features = false, features = ["png"], optional = true }
+memry-ml = { path = "../memry-ml", optional = true }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
@@ -25,8 +26,10 @@ windows = { version = "0.62.2", features = ["Win32_Foundation", "Win32_System_Li
 
 [features]
 default = ["native"]
-# The worker binary: pdfium, bound at run time from the directory its `--pdfium-dir` names.
-native = ["dep:pdfium-render", "dep:image"]
+# The worker binary: pdfium, bound at run time from the directory its `--pdfium-dir` names, and
+# memry-ml, which links ONNX Runtime statically (crates/AGENTS.md, ONNX Runtime), so building it
+# needs `ORT_LIB_LOCATION` on every target but macOS arm64.
+native = ["dep:pdfium-render", "dep:image", "dep:memry-ml"]
 
 # The sidecar the app spawns (`memry_desktop::services::file_text::WorkerHandle`).
 [[bin]]
@@ -53,8 +56,17 @@ name = "supervisor"
 path = "tests/supervisor.rs"
 
 [[test]]
+name = "embed_worker"
+path = "tests/embed_worker.rs"
+
+[[test]]
 name = "pdf"
 path = "tests/pdf.rs"
+required-features = ["native"]
+
+[[test]]
+name = "embed"
+path = "tests/embed.rs"
 required-features = ["native"]
 
 [build-dependencies]
@@ -63,4 +75,5 @@ static_vcruntime = "3.0.0"
 [dev-dependencies]
 memry-test-kit = { path = "../memry-test-kit" }
 proptest = "1"
+serde_json = { workspace = true }
 tempfile = "3"
