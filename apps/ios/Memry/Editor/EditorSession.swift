@@ -1250,7 +1250,9 @@ final class EditorSession {
         let apply: @MainActor () async -> Void = { [weak self] in
             guard let self, let model = self.model, let edits = take(self.history) else { return }
             for edit in edits { await model.apply(edit) }
-            reverted?.render()
+            // Never over typing that landed during the writes: its next
+            // commit sends the change from `base` onto the reverted core.
+            if reverted?.dirty == false { reverted?.render() }
         }
         if let field {
             commit(field, then: apply)

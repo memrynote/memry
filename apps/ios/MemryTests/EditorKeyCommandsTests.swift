@@ -367,6 +367,39 @@ struct EditorKeyCommandsTests {
         #expect(!undo.canUndo)
     }
 
+    /// DATA-LOSS (REVIEW-4693): typing that lands while the storage-edit
+    /// undo's writes run is kept, not drawn over, and its commit stores it.
+    @Test func typingDuringAStorageEditUndoIsKept() async throws {
+        let page = Page()
+        let window = try page.showInWindow()
+        defer { window.isHidden = true }
+        let undo = try #require(page.field.textView.undoManager)
+        page.type("hi[")
+        _ = page.field.textView(page.field.textView, shouldChangeTextIn: NSRange(location: 3, length: 0), replacementText: "[")
+        #expect(page.field.textView.text == "hi[[]]")
+        #expect(page.field.textView.typingUndo?.canUndo != true)
+
+        var release: CheckedContinuation<Void, Never>?
+        await withCheckedContinuation { (held: CheckedContinuation<Void, Never>) in
+            page.session.enqueue {
+                await withCheckedContinuation { release = $0; held.resume() }
+            }
+        }
+        await page.settled {
+            undo.undo()
+            page.field.textView.selectedRange = NSRange(location: 6, length: 0)
+            page.field.textView.insertText("x")
+            release?.resume()
+        }
+        #expect(page.editor.all.last == .setText(blockId: "b", text: "hi"), "the undo reached the core")
+        #expect(page.field.textView.text == "hi[[]]x", "the typing is still drawn")
+        await page.settled { _ = page.field.textView.resignFirstResponder() }
+        #expect(
+            page.editor.all.last == .replaceText(blockId: "b", text: "hi[[]]x", base: "hi[[]]"),
+            "the typing goes from its base onto the reverted core"
+        )
+    }
+
     /// After typing, a nest, its undo, new typing and a redo that does
     /// nothing, ⌘Z walks back newest first and ⇧⌘Z forward again, never
     /// putting back the nest the new typing ended.
