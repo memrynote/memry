@@ -295,6 +295,9 @@ final class NotesSplitUITests: XCTestCase {
 
         app.typeKey("w", modifierFlags: [.command, .option])
         XCTAssertTrue(side.waitForNonExistence(timeout: 5), "⌘⌥W did not close the split")
+        // With no split, ⌘⌥W does nothing: the window stays.
+        app.typeKey("w", modifierFlags: [.command, .option])
+        XCTAssertTrue(row(source).waitForExistence(timeout: 5), "⌘⌥W with no split closed the window")
         deleteNotes([source, target])
     }
 

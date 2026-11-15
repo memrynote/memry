@@ -204,7 +204,10 @@ struct MemryCommands: Commands {
             target?.run(command)
         }
         .keyboardShortcut(command.shortcut)
-        .disabled(target?.can(command) != true)
+        // ⌘⌥W stays claimed with no split to close: a disabled one falls
+        // through to iPadOS, which closes the app's window (VERIFY-4700).
+        // `run` does nothing then.
+        .disabled(command != .closeSplit && target?.can(command) != true)
     }
 
     /// Whether anything is presented over the key window.
