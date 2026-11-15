@@ -83,6 +83,8 @@ one-class change reviewable.
 | `embedding-input.json`                   |                                   61 | `apps/desktop/scripts/embedding-input-oracle/`                                                 | Rust `domain::embedding_input` tests                                                 |
 | `html-text.json`                         |                                   35 | `apps/desktop/scripts/html-text-oracle/`                                                       | Rust `services::file_text::html` tests                                               |
 | `embeddings-text.json`                   |                    31 + 2 + 12 pairs | `crates/memry-ml/tests/golden/generate.mjs` (needs the model)                                  | Rust `memry-ml/tests/golden_text.rs` (full tier)                                     |
+| `audio-features.json`                    |                           33 + 9 + 7 | `crates/memry-ml/tests/golden/generate-audio.mjs` (needs the model)                            | Rust `memry-ml/tests/audio_features.rs`                                              |
+| `embeddings-audio.json`                  |                  7 files, 17 windows | same                                                                                           | Rust `memry-ml/tests/golden_audio.rs` (full tier)                                    |
 | `pixel-tensors.json`                     |                                   53 | `crates/memry-ml/tests/golden/generate-image.mjs`                                              | Rust `memry-ml/tests/pixel_tensors.rs`                                               |
 | `embeddings-image.json`                  |                                   14 | same, with `--model-dir` (needs the model)                                                     | Rust `memry-ml/tests/golden_image.rs` (full tier)                                    |
 | `markdown-roundtrip/cases.json`          |                                  285 | `../scripts/vectors/markdown-roundtrip.ts`                                                     | `../src/__tests__/markdown-roundtrip.test.ts`                                        |
@@ -124,6 +126,56 @@ that cosine, and `golden_text.rs` holds the native vector to the measured cosine
 Similarity floors of 0.60 and up are unaffected in practice; only the one window that holds the
 cut moves.
 
+### `audio-features.json`, `embeddings-audio.json`: 30 s windows over the whole file, unlike Electron
+
+Both files come from Electron's audio path run in place: `decodeWavForEmbedding` and `embedAudio`
+of `apps/desktop/src/main/lib/audio-embedding.ts`, then the worker's `processor(null, null, audio)`
+and model on transformers.js. Decoding is Electron's, exact.
+
+The windows are an intentional divergence (Kaan, 2026-11-14). Electron splits a recording into
+300 s windows, at most 12, and its feature extractor keeps only the first 480,000 samples (30 s,
+the model's training length) of each, so 270 s of every window never reach the index. `memry-ml`
+splits into 30 s windows, at most 120: the same first 60 min, all of it embedded, and no window
+past the extractor's length. The generator runs `embedAudio` in place with
+`EMBEDDING_AUDIO_WINDOW_SECONDS` 30 and `EMBEDDING_AUDIO_MAX_WINDOWS` 120 (the one-second minimum
+and tail rule unchanged), then Electron's own `embedAudio`: Electron's vector for its window k is
+the native window 10k, which records it with the cosine between the two (`electron`).
+`golden_audio.rs` requires that record exactly on windows 0, 10, 20 and so on, and holds the native
+vector to it within the file's bounds. Measured (transformers.js 4.3.1, pinned q4 model, LCG
+noise): the cosine of the 301 s file's first window with Electron's record is 0.999999974 on
+transformers.js and 0.999999989 natively (same samples, so equal up to rounding). Electron's stored audio vectors are a
+subset of Tauri's; the other windows are new and are embedded on migration.
+
+Cost: a 10 min recording is 20 windows. A 30 s window is 754 tokens; natively on macOS arm64
+(release, default threads) it takes 5.2 to 11.0 s (median 6.7 s), and the whole golden run, text
+model and audio encoder loaded, peaks at a 1.39 GB resident set. A single 300 s window embedded
+whole would be 7,504 tokens, 129 s and 6.8 GB.
+
+Cost at the caps, measured end to end (`std::fs::read`, `decode_wav`, `audio_windows`, then
+`EmbeddingEngine::embed_audio` on every window; release, macOS arm64, default threads, noise
+input, `/usr/bin/time -l`, on a shared host at load average 23 to 74):
+
+| File                          | Size              | Windows | Decode | Wall time                     | Peak RSS |
+| ----------------------------- | ----------------- | ------- | ------ | ----------------------------- | -------- |
+| 60 min, 16 kHz mono PCM16     | 115.2 MB          | 120     | 0.19 s | 814 s (median 6.4 s a window) | 1.63 GB  |
+| 46.6 min, 48 kHz stereo PCM16 | 512 MiB (the cap) | 94      | 0.35 s | 421 s (median 4.4 s a window) | 2.21 GB  |
+
+The file is read whole and the decoded 16 kHz samples are held whole (at most 230 MB), so the
+resident set grows with the file on top of the 1.4 GB of loaded models.
+
+The other divergence is a WAV file under 4000 Hz: Electron resamples it, the native decoder
+refuses it, because a few bytes at 1 Hz would claim hours of output. Such a case carries
+`divergence` in `decode`, and `audio_features.rs` derives the class from the header and fails when
+the tag disagrees.
+
+A file over 512 MiB (`MAX_AUDIO_BYTES`) is refused natively, where Electron has no size cap: it
+decodes any file and embeds its first 60 min. No vector holds one. 512 MiB holds the 60 min only up
+to 149,130 bytes per second (PCM16 mono up to 48 kHz, PCM16 stereo or float32 mono up to 37 kHz):
+it is 50.7 min of 44.1 kHz stereo PCM16, 46.6 min of 48 kHz stereo PCM16, 23.3 min of 48 kHz
+stereo float32 and 4.7 hours of 16 kHz mono PCM16. A longer recording at a higher rate is not
+embedded natively. Reading only the bytes the first 60 min needs is left to the native voice
+projector (Step 24).
+
 ### `pixel-tensors.json` and `embeddings-image.json`: JPEG decoding, ICC conversion and CMYK conversion are a known divergence
 
 Electron decodes images with sharp (libvips 8.18): JPEG through libjpeg-turbo (mozjpeg) and colour
@@ -132,7 +184,7 @@ zune-jpeg (the `image` crate) and profiles through moxcms, with no C decoder in 
 WebP and GIF decode, resize and patch bit for bit, so those cases hold exact sha256 hashes and
 their vectors meet the text bounds (cosine 1.000000 measured). JPEG and ICC-tagged inputs decode
 a few levels apart. The tests read each case's class (`jpeg`, `icc`, `jpeg+icc` and the CMYK
-classes below) from the input bytes (`crates/memry-ml/tests/common/mod.rs`), and the generator tags it the same way from sharp's
+classes below) from the input bytes (`crates/memry-ml/tests/common/image.rs`), and the generator tags it the same way from sharp's
 metadata: a tag the bytes do not call for fails. Measured on macOS arm64, the largest per-channel
 difference of the decoded pixels is 4 for a JPEG (all subsamplings, progressive, grey), 1 for an
 ICC-tagged PNG or WebP and 6 for an ICC-tagged JPEG (the P3 one; the seven EXIF orientations, whose

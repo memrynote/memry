@@ -15,6 +15,7 @@ use crate::domain::{
 #[cfg(feature = "markdown")]
 use crate::domain::vault_locks;
 use crate::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
+use crate::sync::field_merge::FieldConflict;
 use crate::sync::hardening::requeue;
 use crate::sync::versioned_apply::{TAG_SCHEMA, VersionedKey};
 use crate::sync::{journal_day_merge, settings_merge};
@@ -61,7 +62,11 @@ pub fn apply_inbound_on(
     clock_device: Option<&str>,
 ) -> Result<ApplyOutcome, StorageError> {
     apply_record(conn, record, now_ms, clock_device, &AtRestKey::default())
+        .map(|(outcome, _)| outcome)
 }
+
+/// The outcome, and the conflict set when a concurrent merge decided it.
+type Applied = (ApplyOutcome, Option<Vec<FieldConflict>>);
 
 pub(super) fn apply_record(
     conn: &Connection,
@@ -69,12 +74,12 @@ pub(super) fn apply_record(
     now_ms: i64,
     clock_device: Option<&str>,
     at_rest: &AtRestKey,
-) -> Result<ApplyOutcome, StorageError> {
+) -> Result<Applied, StorageError> {
     // One journal item per day (#2939): a foreign id is owed, never stored.
     if record.item_type == journal::ITEM_TYPE
         && let Some(outcome) = journal_day_merge::plan_inbound(conn, record)?
     {
-        return Ok(outcome);
+        return Ok((outcome, None));
     }
     let merged = match record.item_type.as_str() {
         tasks::ITEM_TYPE => tasks::apply_remote(conn, record, now_ms, clock_device),
@@ -111,8 +116,9 @@ pub(super) fn apply_record(
         _ => apply_document(conn, record, now_ms),
     };
     match merged {
-        Ok(inbound) => Ok(outcome(inbound)),
-        Err(error) => refuse(conn, record, &error.to_string(), now_ms),
+        Ok(Inbound::Merged { conflicts, .. }) => Ok((ApplyOutcome::Applied, Some(conflicts))),
+        Ok(inbound) => Ok((outcome(inbound), None)),
+        Err(error) => Ok((refuse(conn, record, &error.to_string(), now_ms)?, None)),
     }
 }
 

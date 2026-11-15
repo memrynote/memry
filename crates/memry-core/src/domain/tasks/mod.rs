@@ -136,7 +136,14 @@ pub enum Inbound {
     /// whenever no field met §6.3 step 6 — a concurrent pair with unequal
     /// totals is resolved by the larger total and is deliberately **not** a
     /// conflict (§6.5.4).
-    Merged { conflicted_fields: Vec<String> },
+    ///
+    /// `conflicts` carries those fields' values for the applied-record feed
+    /// ([`crate::sync::driver::observer`]). `task` and `project` leave it
+    /// empty until Step 21 (#3538).
+    Merged {
+        conflicted_fields: Vec<String>,
+        conflicts: Vec<crate::sync::field_merge::FieldConflict>,
+    },
     /// §13.2 rule 5: stored, flagged, never silently skipped.
     Corrupt { reason: String },
     /// The type's schema refused the remote (desktop's `schema_invalid`):

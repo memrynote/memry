@@ -12,7 +12,8 @@ mod common;
 use std::path::PathBuf;
 
 use base64::Engine as _;
-use common::{divergence, root};
+use common::image::divergence;
+use common::{cosine, root, vectors};
 use memry_ml::{EMBEDDING_DIMENSION, EmbeddingEngine, LoadOptions, ModelGroup, image_prep};
 use serde_json::Value;
 
@@ -34,11 +35,6 @@ fn floor(kind: &str) -> f64 {
         .find(|(class, _)| *class == kind)
         .unwrap_or_else(|| panic!("no floor for {kind}"))
         .1
-}
-
-fn read_json(name: &str) -> Value {
-    let path = root().join("packages/contracts/test-vectors").join(name);
-    serde_json::from_slice(&std::fs::read(path).expect(name)).expect("valid JSON")
 }
 
 /// The bytes of a `pixel-tensors.json` input by image name.
@@ -100,8 +96,8 @@ fn bound_failures(vectors: &Value, pixels: &Value) -> Vec<String> {
 
 #[test]
 fn a_file_that_loosens_a_bound_or_a_tag_fails() {
-    let vectors = read_json("embeddings-image.json");
-    let pixels = read_json("pixel-tensors.json");
+    let pixels = vectors("pixel-tensors.json");
+    let vectors = vectors("embeddings-image.json");
     assert_eq!(bound_failures(&vectors, &pixels), Vec::<String>::new());
     type Edit = (&'static str, fn(&mut Value));
     let edits: [Edit; 7] = [
@@ -147,18 +143,11 @@ fn a_file_that_loosens_a_bound_or_a_tag_fails() {
     }
 }
 
-fn cosine(a: &[f32], b: &[f32]) -> f64 {
-    a.iter()
-        .zip(b)
-        .map(|(&x, &y)| f64::from(x) * f64::from(y))
-        .sum()
-}
-
 #[test]
 #[ignore = "needs the model files in MEMRY_ML_MODEL_DIR"]
 fn image_embeddings_match_electron() {
-    let vectors = read_json("embeddings-image.json");
-    let pixels = read_json("pixel-tensors.json");
+    let pixels = vectors("pixel-tensors.json");
+    let vectors = vectors("embeddings-image.json");
     let loosened = bound_failures(&vectors, &pixels);
     assert!(loosened.is_empty(), "{}", loosened.join("\n"));
     let tolerance = &vectors["tolerance"];

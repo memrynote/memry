@@ -62,19 +62,36 @@ pub struct RecoveryReport {
     /// database is empty in that case and the quarantined file still holds every
     /// row: nothing is lost, but nothing was carried over either.
     pub salvage_error: Option<String>,
+    /// The damaged `meta` could not be read whole and no `vault.id` came over,
+    /// so the next open mints a new one (#3534, the Step 08c recovery case):
+    /// records stamped with the old id (a canvas's `vaultId`) stop matching,
+    /// and the server vault binding (`sync.server_vault_id`) went with it.
+    pub vault_id_lost: bool,
 }
 
 impl RecoveryReport {
     /// What could not be carried over, or `None` for a clean salvage. The same
     /// text is stored in the database's `recovery_log`.
     pub fn problems(&self) -> Option<String> {
-        let text = describe(&self.tables, self.salvage_error.as_deref());
+        let text = describe(
+            &self.tables,
+            self.salvage_error.as_deref(),
+            self.vault_id_lost,
+        );
         (!text.is_empty()).then_some(text)
     }
 }
 
-fn describe(tables: &[TableSalvage], salvage_error: Option<&str>) -> String {
+/// The report line for [`RecoveryReport::vault_id_lost`].
+const VAULT_ID_LOST: &str = "meta: no vault id came over, so the next open mints a new one; \
+     records stamped with the old id (a canvas's vaultId) no longer match it, and sync stays \
+     off until the server vault is bound again";
+
+fn describe(tables: &[TableSalvage], salvage_error: Option<&str>, vault_id_lost: bool) -> String {
     let mut parts: Vec<String> = salvage_error.map(str::to_owned).into_iter().collect();
+    if vault_id_lost {
+        parts.push(VAULT_ID_LOST.to_owned());
+    }
     for table in tables {
         if let Some(err) = &table.read_error {
             parts.push(format!("{}: {err}", table.table));
@@ -262,17 +279,22 @@ fn rebuild(
         }
     };
     let fresh = open_fresh(path)?;
-    let (tables, salvage_error) = fresh.call_blocking(|conn| salvage(&quarantined, conn))?;
+    let (tables, salvage_error, vault_id_lost) =
+        fresh.call_blocking(|conn| salvage(&quarantined, conn))?;
     drop(fresh);
     remove_marker(path);
     Ok(RecoveryReport {
         quarantined,
         tables,
         salvage_error,
+        vault_id_lost,
     })
 }
 
-type Salvaged = (Vec<TableSalvage>, Option<String>);
+type Copied = (Vec<TableSalvage>, Option<String>);
+/// What the salvage copied, why it could not start, and whether `vault.id`
+/// is missing from the fresh database afterwards.
+type Salvaged = (Vec<TableSalvage>, Option<String>, bool);
 
 /// Copies every table present in both files, over the columns both have, and
 /// records the recovery, all in one transaction. `Err` means nothing committed.
@@ -296,6 +318,7 @@ fn salvage_in_transaction(backup: &Path, fresh: &mut Connection) -> Result<Salva
     let (tables, salvage_error) = copy_all(backup, &tx)?;
     let copied: u64 = tables.iter().map(|t| t.copied).sum();
     let rejected: u64 = tables.iter().map(|t| t.rejected).sum();
+    let vault_id_lost = vault_id_lost(&tx, &tables, salvage_error.is_some())?;
     let name = backup
         .file_name()
         .map(|name| name.to_string_lossy().into_owned())
@@ -309,16 +332,39 @@ fn salvage_in_transaction(backup: &Path, fresh: &mut Connection) -> Result<Salva
             i64::try_from(now_ms()).unwrap_or(i64::MAX),
             i64::try_from(copied).unwrap_or(i64::MAX),
             i64::try_from(rejected).unwrap_or(i64::MAX),
-            describe(&tables, salvage_error.as_deref()),
+            describe(&tables, salvage_error.as_deref(), vault_id_lost),
         ],
     )
     .map_err(|err| transient("record the recovery", &err))?;
     tx.commit()
         .map_err(|err| transient("commit the salvage", &err))?;
-    Ok((tables, salvage_error))
+    Ok((tables, salvage_error, vault_id_lost))
 }
 
-fn copy_all(backup: &Path, fresh: &Connection) -> Result<Salvaged, StorageError> {
+/// Whether the damaged file may have held a `vault.id` that did not come over:
+/// the fresh database has none and the old `meta` was not read to the end. A
+/// `meta` read whole without one never minted an id, so nothing was stamped
+/// with it.
+fn vault_id_lost(
+    fresh: &Connection,
+    tables: &[TableSalvage],
+    salvage_failed: bool,
+) -> Result<bool, StorageError> {
+    let has_id = fresh
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM meta WHERE key = 'vault.id')",
+            [],
+            |row| row.get::<_, bool>(0),
+        )
+        .map_err(|err| transient("read the salvaged vault id", &err))?;
+    let meta_read_whole = !salvage_failed
+        && tables
+            .iter()
+            .any(|table| table.table == "meta" && table.read_error.is_none());
+    Ok(!has_id && !meta_read_whole)
+}
+
+fn copy_all(backup: &Path, fresh: &Connection) -> Result<Copied, StorageError> {
     let old = match Connection::open_with_flags(
         backup,
         OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,

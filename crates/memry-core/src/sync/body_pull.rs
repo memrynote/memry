@@ -56,7 +56,6 @@ use base64::engine::general_purpose::STANDARD as BASE64;
 use serde_json::Value as Json;
 
 use crate::api::errors::{ApiError, StorageError};
-use crate::crdt::update_log::{self, Namespace};
 use crate::protocol::envelope::EnvelopeError;
 use crate::protocol::http::{
     ApiRequest, Auth, HttpClient, RetryPolicy, SYNC_TYPES_HEADER, VAULT_ID_HEADER,
@@ -65,10 +64,12 @@ use crate::protocol::types::Declaration;
 use crate::storage::Db;
 
 use super::bootstrap::BootstrapClient;
-use super::crdt_wire::{SnapshotMeta, UpdatePage, read_update_page};
+use super::crdt_wire::{SnapshotMeta, UpdateEntry, UpdatePage, read_update_page};
+use super::crypto_batch::off_runtime;
 use super::driver::observer::Observers;
 use super::store;
 
+mod baseline;
 mod log_writes;
 mod pack_seed;
 mod probe;
@@ -355,21 +356,13 @@ impl BodyPull {
             }
 
             let mut stopped = false;
-            for entry in page.updates {
+            let has_more_here = page.has_more;
+            for (entry, opened) in self.open_page(doc_id, cursor, page.updates).await? {
                 // §7.9: a replay, already applied.
                 if entry.sequence_num <= cursor {
                     report.replays += 1;
                     continue;
                 }
-                let opened = BASE64.decode(&entry.data).ok().and_then(|packed| {
-                    self.cipher
-                        .open(&PackedUpdate {
-                            doc_id,
-                            signer_device_id: entry.signer_device_id.as_deref(),
-                            packed: &packed,
-                        })
-                        .ok()
-                });
                 let Some(update) = opened else {
                     // §7.9's stop-at-gap. The watermark stays where it is and
                     // a later pass retries from here; advancing past the gap
@@ -388,8 +381,8 @@ impl BodyPull {
                 }
             }
 
-            has_more = page.has_more;
-            if stopped || !page.has_more {
+            has_more = has_more_here;
+            if stopped || !has_more_here {
                 break;
             }
         }
@@ -406,83 +399,38 @@ impl BodyPull {
         Ok(())
     }
 
-    /// `GET /sync/crdt/snapshot/:noteId` and the store that follows it (§7.8,
-    /// §7.11). Answers whether a baseline was actually taken.
-    async fn fetch_baseline(
+    /// Opens every update of a page past `cursor` in one batch on
+    /// `spawn_blocking` (#3534); a replay is not opened. `None` is an update
+    /// that does not decode or open, where §7.9 stops the document.
+    async fn open_page(
         &self,
         doc_id: &str,
         cursor: i64,
-        report: &mut BodyPullReport,
-    ) -> Result<bool, BodyPullError> {
-        report.requests += 1;
-        let body: Json = self
-            .http
-            .send_json(
-                self.request("GET", &format!("/sync/crdt/snapshot/{doc_id}"))
-                    .retry(RetryPolicy::polled()),
-            )
-            .await?;
-
-        // §7.11: `snapshot` is null when there is none. That is not a failure
-        // and it is the ordinary answer for a document nobody has snapshotted.
-        let Some(encoded) = body.get("snapshot").and_then(Json::as_str) else {
-            return Ok(false);
+        updates: Vec<UpdateEntry>,
+    ) -> Result<Vec<(UpdateEntry, Option<Vec<u8>>)>, BodyPullError> {
+        let cipher = Arc::clone(&self.cipher);
+        let doc_id = doc_id.to_owned();
+        let open = move || {
+            let open_one = |entry: &UpdateEntry| {
+                let packed = BASE64.decode(&entry.data).ok()?;
+                let update = PackedUpdate {
+                    doc_id: &doc_id,
+                    signer_device_id: entry.signer_device_id.as_deref(),
+                    packed: &packed,
+                };
+                cipher.open(&update).ok()
+            };
+            updates
+                .into_iter()
+                .map(|entry| {
+                    let opened = (entry.sequence_num > cursor)
+                        .then(|| open_one(&entry))
+                        .flatten();
+                    (entry, opened)
+                })
+                .collect()
         };
-        let Ok(packed) = BASE64.decode(encoded) else {
-            report.stopped.push(doc_id.to_owned());
-            return Ok(false);
-        };
-        let sequence_num = body
-            .get("sequenceNum")
-            .and_then(Json::as_i64)
-            .unwrap_or_default();
-        let signer = body
-            .get("signerDeviceId")
-            .and_then(Json::as_str)
-            .map(str::to_owned);
-        // §7.11.1: the client MUST resolve the snapshot response's signer and
-        // fail the baseline when it cannot.
-        let Ok(snapshot) = self.cipher.open(&PackedUpdate {
-            doc_id,
-            signer_device_id: signer.as_deref(),
-            packed: &packed,
-        }) else {
-            report.stopped.push(doc_id.to_owned());
-            return Ok(false);
-        };
-        let revision = body
-            .get("revision")
-            .and_then(Json::as_str)
-            .map(str::to_owned);
-
-        self.store_baseline(doc_id, snapshot, sequence_num, revision, cursor)
-            .await?;
-        report.baselines += 1;
-        Ok(true)
-    }
-
-    /// §7.8's second clause, against the locally stored revision.
-    async fn baseline_due(&self, doc_id: &str, meta: &SnapshotMeta) -> Result<bool, BodyPullError> {
-        // #2299: a coversThrough push moves the watermark over rows it prunes,
-        // and a cursor between the old and the new one never re-reads them.
-        // Any snapshot whose revision this device does not hold is taken,
-        // whatever its sequence; a held one never is.
-        let doc = doc_id.to_owned();
-        let stored = self
-            .db
-            .call(move |conn| {
-                update_log::snapshot(conn, Namespace::Server, &doc)
-                    .map_err(|error| StorageError::Failed {
-                        what: error.to_string(),
-                    })
-                    .map(|row| row.and_then(|row| row.server_revision))
-            })
-            .await?;
-        // §7.5: compared for equality and for nothing else. A local NULL —
-        // which is what a snapshot this device pushed stores, §7.13.4 — never
-        // equals a server token, so it always yields to a baseline rather
-        // than suppressing one.
-        Ok(stored.as_deref() != Some(meta.revision.as_str()))
+        Ok(off_runtime("opening a body page", open).await?)
     }
 
     async fn fetch_page(
