@@ -71,7 +71,7 @@ struct ChecklistAutoTaskTests {
         let asked = await leave(field)
 
         #expect(asked == ["c1"])
-        #expect(editor.all == [.setText(blockId: "c1", text: "Buy milk")])
+        #expect(editor.all == [.replaceText(blockId: "c1", text: "Buy milk", base: "")])
     }
 
     /// `[] ` redraws the row as a checklist item with a new text view, and the

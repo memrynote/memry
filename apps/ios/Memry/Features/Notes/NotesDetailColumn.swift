@@ -36,10 +36,10 @@ struct NotesDetailColumn: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            if shows(.main) {
+            if router.shows(.main) {
                 pane(.main).frame(width: router.splitShown ? mainWidth : nil)
             }
-            if shows(.side) {
+            if router.shows(.side) {
                 if router.splitShown { divider }
                 pane(.side)
             }
@@ -57,11 +57,6 @@ struct NotesDetailColumn: View {
                 Task { await model.refresh() }
             }
         }
-    }
-
-    /// Both panes while the split shows, else the focused one.
-    private func shows(_ slot: NotesPaneSlot) -> Bool {
-        router.pane(slot) != nil && (router.splitShown || router.focus == slot)
     }
 
     private var available: CGFloat { max(0, width - Tokens.Size.hairline) }

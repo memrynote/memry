@@ -129,6 +129,12 @@ final class NotesSplitRouter {
     /// Both panes are on screen.
     var splitShown: Bool { side != nil && splitFits }
 
+    /// Whether the detail column draws `slot`: both panes while the split
+    /// shows, else the focused one alone.
+    func shows(_ slot: NotesPaneSlot) -> Bool {
+        pane(slot) != nil && (splitShown || focus == slot)
+    }
+
     func pane(_ slot: NotesPaneSlot) -> NotesPane? {
         switch slot {
         case .main: NotesPane(note: note, trail: trail)

@@ -246,7 +246,7 @@ struct EditorKeyCommandsTests {
         page.field.textView.insertText("!")
         try await Task.sleep(for: .milliseconds(50))
         await page.press("\t")
-        #expect(page.editor.all == [.setText(blockId: "b", text: "hi!"), .indent(blockId: "b")])
+        #expect(page.editor.all == [.replaceText(blockId: "b", text: "hi!", base: "hi"), .indent(blockId: "b")])
 
         await page.reloaded { page.field.textView.undoManager?.undo() }
         #expect(page.editor.all.last == .outdent(blockId: "b"), "the first ⌘Z undoes the nest")

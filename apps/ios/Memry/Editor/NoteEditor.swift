@@ -81,12 +81,14 @@ final class NoteEditorViewModel {
     /// formatted block's whole content and drop them. A plain block keeps
     /// `SetText`'s in-place single-run edit.
     ///
-    /// `base` is the text the user's typing started from. When `current` has
-    /// moved on since (a peer's edit merged while the block held unsaved
-    /// typing), the write is a `ReplaceText` carrying `base`, so the core
-    /// applies only the user's change and the peer's edit survives; a
-    /// `SetText` of `text` would delete it. With a `base`, "unchanged" means
-    /// the user changed nothing, whatever the peer did.
+    /// `base` is the text the user's typing started from. With a `base`, the
+    /// write is always a `ReplaceText` carrying it, so the core applies only
+    /// the user's change, `base` to `text`, on the live block, and an edit
+    /// that landed since survives. `current` cannot tell whether one did: a
+    /// second pane on the note (#4377) can write after this page last read
+    /// it, and then `current` and `base` both still spell the old text, and
+    /// a `SetText` of `text` would delete that pane's edit. With a `base`,
+    /// "unchanged" means the user changed nothing, whatever the peer did.
     func commit(
         _ text: String, for blockId: String, current: String, formatted: Bool = false, base: String? = nil
     ) async {
@@ -101,7 +103,7 @@ final class NoteEditorViewModel {
         do {
             let landed = try await editor.edit(
                 noteId: noteId,
-                formatted || (base != nil && base != current)
+                formatted || base != nil
                     ? .replaceText(blockId: blockId, text: text, base: base)
                     : .setText(blockId: blockId, text: text)
             )
