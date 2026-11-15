@@ -1132,6 +1132,12 @@ its parent (requested and no live row served, or its delete applied here); a
 parent in `blobMissing`, on the re-fetch cooldown, or in the schema-invalid
 ledger keeps its children.
 
+The Rust core's desktop driver is stricter: orphan repair tombstones a child
+only when its parent is a tombstone here
+(`crates/memry-core/src/sync/hardening/orphans.rs:139`), and a parent that is
+only absent, requested by id and not served, keeps its children
+(`orphans.rs:182-200`).
+
 ## 5.15 The manifest, and the absence of a digest
 
 **Normative.** `RecordSyncManifestSchema` carries `nextCursor` **only** on a
@@ -1148,6 +1154,14 @@ not UUIDs: `tag_definition` ids are tag names and `folder_config` ids are folder
 paths (chapter 13 §13.6). An id-only key made a project and a tag both named
 `inbox` share one entry and corrupt each other's state
 (`apps/desktop/src/main/sync/engine/sync-context.ts:118-124`).
+
+The Rust core's desktop driver runs the manifest check at most every 30
+minutes (`crates/memry-core/src/sync/hardening/manifest.rs:44`), diffs on
+`(type, id)` with a note and a journal of one id as one item (`manifest.rs:155`),
+pulls by id a live server row it holds no row of (`manifest.rs:166-183`), and
+queues as `create` a live clocked local row the server does not list, only of
+the types in `REUPLOADED` (`manifest.rs:50`): none the server re-creates over a
+purged tombstone, since this core does not apply markers yet.
 
 ## 5.16 Clock skew
 
