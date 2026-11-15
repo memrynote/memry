@@ -152,6 +152,24 @@ struct Refusal {
     min_version: Option<String>,
 }
 
+/// The server's clock as one `GET /sync/status` read it, against the local
+/// clock at the moment the answer was learned.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ServerClock {
+    /// `serverTime`, in epoch milliseconds (the wire carries whole seconds).
+    pub server_ms: i64,
+    /// The local epoch milliseconds the answer was learned at.
+    pub local_ms: i64,
+}
+
+impl ServerClock {
+    /// How far the local clock runs ahead of the server's; negative when it
+    /// runs behind. Whole-second resolution on the server side.
+    pub fn skew_ms(&self) -> i64 {
+        self.local_ms - self.server_ms
+    }
+}
+
 /// The inputs and the one gate derived from them. One per vault.
 pub struct PolicyTier {
     policy: Mutex<ClientPolicy>,
@@ -160,6 +178,8 @@ pub struct PolicyTier {
     refusal: Mutex<Option<Refusal>>,
     /// Epoch milliseconds of the last successful `GET /sync/status`, or 0.
     checked_at: AtomicI64,
+    /// The last `serverTime` a status answer carried.
+    server_clock: Mutex<Option<ServerClock>>,
     client_version: String,
 }
 
@@ -171,6 +191,7 @@ impl PolicyTier {
             entitled: AtomicBool::new(true),
             refusal: Mutex::new(None),
             checked_at: AtomicI64::new(0),
+            server_clock: Mutex::new(None),
             client_version: client_version.to_owned(),
         }
     }
@@ -238,7 +259,26 @@ impl PolicyTier {
         *self.locked() = ClientPolicy::from_status(body);
         *self.refusal_locked() = None;
         self.checked_at.store(now_ms, Ordering::Relaxed);
+        if let Some(server_s) = body.get("serverTime").and_then(Json::as_i64) {
+            *self
+                .server_clock
+                .lock()
+                .expect("the clock mutex is never poisoned") = Some(ServerClock {
+                server_ms: server_s.saturating_mul(1000),
+                local_ms: now_ms,
+            });
+        }
         self.gate()
+    }
+
+    /// The last server clock a status answer carried, or `None` before one
+    /// did. A shell compares it with its own clock (Electron pauses sync past
+    /// 300 s of skew, `push-coordinator.ts`).
+    pub fn server_clock(&self) -> Option<ServerClock> {
+        *self
+            .server_clock
+            .lock()
+            .expect("the clock mutex is never poisoned")
     }
 
     /// Applies what a `/sync/*` response taught, and answers with the state
@@ -382,6 +422,22 @@ mod tests {
         let tier = PolicyTier::new("1.0.0");
         assert_eq!(tier.learn(&json!({"serverTime": 1}), 1), WriteGate::Open);
         assert_eq!(tier.policy(), ClientPolicy::default());
+    }
+
+    #[test]
+    fn a_status_answer_records_the_server_clock_against_the_local_one() {
+        let tier = PolicyTier::new("1.0.0");
+        assert_eq!(tier.server_clock(), None, "nothing learned yet");
+        // `serverTime` is whole seconds (sync-server `services/sync.ts`).
+        tier.learn(&json!({"serverTime": 1_000}), 1_400_250);
+        let clock = tier.server_clock().expect("learned");
+        assert_eq!(clock.server_ms, 1_000_000);
+        assert_eq!(clock.local_ms, 1_400_250);
+        assert_eq!(clock.skew_ms(), 400_250);
+
+        // A status without `serverTime` keeps the last reading.
+        tier.learn(&json!({"clientPolicy": {}}), 2_000_000);
+        assert_eq!(tier.server_clock(), Some(clock));
     }
 
     #[test]
