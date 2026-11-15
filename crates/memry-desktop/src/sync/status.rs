@@ -51,12 +51,24 @@ pub struct StatusFacts {
     pub last_sync_at: Option<i64>,
     pub pending: u32,
     pub offline_since: Option<i64>,
+    /// The keychain did not answer; sync waits on its retry ladder (`keychain-retry.ts`).
+    pub keychain_unavailable: bool,
 }
+
+/// `KEYCHAIN_UNAVAILABLE_STATUS`'s message, a renderer translation key.
+pub const KEYCHAIN_UNAVAILABLE: &str = "errors:sync.keychainUnavailable";
 
 pub fn derive(facts: &StatusFacts) -> SyncStatus {
     use SyncStatusValue as V;
     let mut error = None;
     let status = match facts.gate {
+        _ if facts.keychain_unavailable => {
+            error = Some((
+                KEYCHAIN_UNAVAILABLE.to_owned(),
+                SyncErrorCategory::KeychainUnavailable,
+            ));
+            V::Error
+        }
         GateDecision::NotStarted(SyncNotStartedReason::Unavailable) => V::Idle,
         GateDecision::NotStarted(_) => V::LocalOnly,
         GateDecision::Start if facts.paused => V::Paused,
@@ -114,6 +126,27 @@ mod tests {
             last_sync_at: Some(5),
             pending: 2,
             offline_since: None,
+            keychain_unavailable: false,
+        }
+    }
+
+    #[test]
+    fn an_unreadable_keychain_is_an_error_whatever_the_gate_says() {
+        for gate in [
+            GateDecision::Start,
+            GateDecision::NotStarted(SyncNotStartedReason::Unavailable),
+        ] {
+            let status = derive(&StatusFacts {
+                gate,
+                keychain_unavailable: true,
+                ..started()
+            });
+            assert_eq!(status.status, V::Error);
+            assert_eq!(
+                status.error_category,
+                Some(SyncErrorCategory::KeychainUnavailable)
+            );
+            assert_eq!(status.error.as_deref(), Some(KEYCHAIN_UNAVAILABLE));
         }
     }
 
