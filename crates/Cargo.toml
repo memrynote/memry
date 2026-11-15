@@ -5,6 +5,7 @@ members = [
     "memry-cli",
     "memry-desktop",
     "memry-ml",
+    "memry-ml-worker",
     "memry-test-kit",
     "uniffi-bindgen-swift",
     "../apps/desktop-tauri/src-tauri",

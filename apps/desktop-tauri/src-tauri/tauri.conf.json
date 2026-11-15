@@ -6,7 +6,7 @@
   "build": {
     "frontendDist": "../dist/renderer",
     "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "pnpm dev:renderer",
+    "beforeDevCommand": "pnpm dev:worker && pnpm dev:renderer",
     "beforeBuildCommand": "pnpm build:renderer"
   },
   "app": {
