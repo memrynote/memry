@@ -27,11 +27,15 @@ async function waitForSyncedDeviceList(page: Page, email: string): Promise<void>
     .poll(
       () =>
         page.evaluate(() =>
-          window.api.syncDevices.getDevices().then((result: any) => ({
+          (
+            window.__TAURI__.core.invoke('sync_get_devices') as Promise<{
+              email: string | null
+              devices: { isCurrentDevice: boolean }[]
+            }>
+          ).then((result) => ({
             email: result.email,
             deviceCount: result.devices.length,
-            currentDeviceCount: result.devices.filter((device: any) => device.isCurrentDevice)
-              .length
+            currentDeviceCount: result.devices.filter((device) => device.isCurrentDevice).length
           }))
         ),
       { timeout: 30_000 }

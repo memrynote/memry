@@ -21,6 +21,7 @@ mod hooks;
 mod open;
 pub mod projection;
 pub mod prompt;
+mod provision;
 mod repair;
 pub mod response;
 mod startup;

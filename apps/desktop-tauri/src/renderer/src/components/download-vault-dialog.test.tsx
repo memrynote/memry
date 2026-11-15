@@ -3,6 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DownloadVaultDialog } from './download-vault-dialog'
 import type { AccountVaultInfo } from '../../../preload/index.d'
 
+const linking = vi.hoisted(() => ({}) as Record<string, ReturnType<typeof vi.fn>>)
+vi.mock('@/services/linking-service', () => ({ linkingService: linking }))
+
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
     t: (key: string) => key
@@ -21,10 +24,9 @@ const vault: AccountVaultInfo = {
 describe('DownloadVaultDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    window.api.syncLinking = {
-      ...window.api.syncLinking,
+    Object.assign(linking, {
       pickVaultFolder: vi.fn().mockResolvedValue({ path: '/picked/parent' })
-    }
+    })
     window.api.vault = {
       ...window.api.vault,
       downloadRemote: vi.fn().mockResolvedValue({ success: true, vault: { path: '/x' } })

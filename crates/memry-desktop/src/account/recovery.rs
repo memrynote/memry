@@ -166,7 +166,7 @@ impl AccountService {
     /// `POST /auth/devices`, then the server's id. A failed registration keeps the device key:
     /// it exists before any account and names this device in offline clocks (difference 9 of the
     /// plan; Electron deletes it, `device-registration.ts:142`).
-    async fn register(&self) -> Result<String, AccountError> {
+    pub(super) async fn register(&self) -> Result<String, AccountError> {
         self.ensure_live_setup_token().await?;
         self.session
             .register_device()
@@ -178,7 +178,7 @@ impl AccountService {
     /// Electron's `ensureLiveSetupToken` (`sync/setup-token.ts:109-113`): a setup token that
     /// aged out, by the server's `401` or by its own `exp`, is renewed in place; one that cannot
     /// be is "sign in again".
-    async fn ensure_live_setup_token(&self) -> Result<(), AccountError> {
+    pub(super) async fn ensure_live_setup_token(&self) -> Result<(), AccountError> {
         self.session.live_setup_token().await.map_err(|error| {
             tracing::warn!(
                 scope = "Account",
@@ -193,7 +193,7 @@ impl AccountService {
     /// `sync.deviceId`, the server's id (`device-registration.ts:174-205`). The config write is a
     /// cache Electron writes best-effort (`device-registration.ts:178-187`): a failure is logged
     /// and the key stays.
-    fn keep_master_key(
+    pub(super) fn keep_master_key(
         &self,
         master: &[u8],
         verifier: &str,
@@ -214,7 +214,7 @@ impl AccountService {
 }
 
 /// A `401` on the setup token is Electron's "sign in again" (`auth-device-handlers.ts:200-202`).
-fn setup_expired(error: AuthError) -> AccountError {
+pub(super) fn setup_expired(error: AuthError) -> AccountError {
     match error {
         AuthError::Api {
             source: ApiError::Unauthorized { .. },
