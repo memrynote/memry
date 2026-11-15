@@ -12,8 +12,6 @@ use std::sync::Arc;
 
 use memry_ml_worker::{Limits, PdfDocument, Supervisor, SystemClock, WorkerError};
 
-use crate::session::Session;
-
 /// Where the sidecar and the pdfium library are; the shell resolves both.
 #[derive(Debug, Clone)]
 pub struct WorkerPaths {
@@ -57,11 +55,6 @@ impl WorkerHandle {
     /// Kills the child, if one runs, and fails the calls waiting on it.
     pub fn stop(&self) {
         self.supervisor.stop();
-    }
-
-    pub fn register(self: &Arc<Self>, session: &Session) {
-        let worker = self.clone();
-        session.on_close("ml-worker", Arc::new(move |_| worker.stop()));
     }
 }
 
