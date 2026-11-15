@@ -6,6 +6,7 @@
 
 import Foundation
 import MemryCore
+import Observation
 import Synchronization
 import Testing
 import UIKit
@@ -288,10 +289,11 @@ struct EditorKeyCommandsTests {
         #expect(page.editor.all.count == 4)
     }
 
-    /// DATA-LOSS (#4659): typing after a block undo survives a redo, from
-    /// ⇧⌘Z and from the toolbar, which both reach `EditorSession.redo`.
+    /// DATA-LOSS (#4659): typing after a block undo is a new edit, which ends
+    /// redo. ⇧⌘Z and the toolbar's Redo, both `EditorSession.redo`, do
+    /// nothing: the typing stays and the nest is not put back.
     @Test(arguments: [true, false])
-    func redoAfterABlockUndoKeepsTheTypingSinceIt(fromKeys: Bool) async throws {
+    func typingAfterABlockUndoEndsRedo(fromKeys: Bool) async throws {
         let page = Page()
         let window = try page.showInWindow()
         defer { window.isHidden = true }
@@ -299,11 +301,119 @@ struct EditorKeyCommandsTests {
         await page.press("\t")
         await page.settled { undo.undo() }
         #expect(page.editor.all.last == .outdent(blockId: "b"))
+        #expect(page.session.canRedo)
+        let redraws = Mutex(false)
+        withObservationTracking { _ = page.session.canRedo } onChange: { redraws.withLock { $0 = true } }
         page.field.textView.insertText("x")
         try await Task.sleep(for: .milliseconds(50))
+        #expect(!page.session.canRedo, "the toolbar's Redo is disabled")
+        #expect(redraws.withLock { $0 }, "and the toolbars reading it redraw")
+        #expect(!undo.canRedo)
         await page.settled { fromKeys ? undo.redo() : page.session.redo() }
         #expect(page.field.textView.text == "hix", "the typing is still on screen")
-        #expect(page.editor.all.contains(.setText(blockId: "b", text: "hix")), "and written")
+        #expect(page.editor.all.last == .outdent(blockId: "b"), "the nest is not put back")
+        await page.settled { _ = page.field.textView.resignFirstResponder() }
+        #expect(page.editor.all.last == .setText(blockId: "b", text: "hix"), "the typing is written")
+        #expect(!page.session.history.canRedo)
+    }
+
+    /// DATA-LOSS (REVIEW-4693): redo after committed typing was undone and
+    /// new typing started does not replay the old step over the new text.
+    @Test(arguments: [true, false])
+    func redoDoesNotReplayCommittedTypingOverNewTyping(fromKeys: Bool) async throws {
+        let page = Page(text: "")
+        let window = try page.showInWindow()
+        defer { window.isHidden = true }
+        let undo = try #require(page.field.textView.undoManager)
+        page.field.textView.insertText("hello")
+        try await Task.sleep(for: .milliseconds(50))
+        await page.settled { _ = page.field.textView.resignFirstResponder() }
+        #expect(page.editor.all.last == .setText(blockId: "b", text: "hello"))
+        #expect(page.field.textView.becomeFirstResponder())
+        await page.settled { undo.undo() }
+        #expect(page.field.textView.text == "")
+        page.field.textView.insertText("world")
+        try await Task.sleep(for: .milliseconds(50))
+        #expect(!page.session.canRedo, "the toolbar's Redo is disabled")
+
+        await page.settled { fromKeys ? undo.redo() : page.session.redo() }
+        #expect(page.field.textView.text == "world")
+        await page.settled { _ = page.field.textView.resignFirstResponder() }
+        #expect(page.editor.all.last == .setText(blockId: "b", text: "world"), "the stored text")
+        #expect(page.field.textView.text == "world")
+        #expect(!page.session.history.canRedo)
+        #expect(page.session.history.undoable.map(\.forward) == [.setText(blockId: "b", text: "world")])
+    }
+
+    /// DATA-LOSS (REVIEW-4693): typing with no UIKit typing undo left, after
+    /// the `[[` storage edit: ⌘Z undoes that typing, not the nest before it.
+    @Test func undoAfterAStorageEditUndoesTheTypingFirst() async throws {
+        let page = Page()
+        let window = try page.showInWindow()
+        defer { window.isHidden = true }
+        let undo = try #require(page.field.textView.undoManager)
+        await page.press("\t")
+        page.type("hi[")
+        _ = page.field.textView(page.field.textView, shouldChangeTextIn: NSRange(location: 3, length: 0), replacementText: "[")
+        #expect(page.field.textView.text == "hi[[]]")
+        #expect(page.field.textView.typingUndo?.canUndo != true)
+        #expect(undo.canUndo)
+
+        await page.settled { undo.undo() }
+        #expect(page.editor.all == [.indent(blockId: "b"), .setText(blockId: "b", text: "hi[[]]"), .setText(blockId: "b", text: "hi")])
+        #expect(page.field.textView.text == "hi")
+        await page.settled { undo.undo() }
+        #expect(page.editor.all.last == .outdent(blockId: "b"), "then the nest")
+        #expect(!undo.canUndo)
+    }
+
+    /// After typing, a nest, its undo, new typing and a redo that does
+    /// nothing, ⌘Z walks back newest first and ⇧⌘Z forward again, never
+    /// putting back the nest the new typing ended.
+    @Test func undoAndRedoKeepTheirOrderAfterNewTyping() async throws {
+        let page = Page(text: "")
+        let window = try page.showInWindow()
+        defer { window.isHidden = true }
+        let undo = try #require(page.field.textView.undoManager)
+        page.field.textView.insertText("a")
+        try await Task.sleep(for: .milliseconds(50))
+        await page.settled { _ = page.field.textView.resignFirstResponder() }
+        #expect(page.field.textView.becomeFirstResponder())
+        await page.press("\t")
+        await page.settled { undo.undo() }
+        page.field.textView.insertText("b")
+        try await Task.sleep(for: .milliseconds(50))
+        await page.settled { undo.redo() }
+        #expect(page.field.textView.text == "ab")
+        let outdented = page.editor.all.count
+
+        await page.settled { undo.undo() }
+        #expect(page.field.textView.text == "a")
+        await page.settled { undo.undo() }
+        #expect(page.field.textView.text == "")
+        #expect(!undo.canUndo)
+        await page.settled { undo.redo() }
+        #expect(page.field.textView.text == "a")
+        await page.settled { undo.redo() }
+        #expect(page.field.textView.text == "ab")
+        #expect(!undo.canRedo)
+        #expect(!page.editor.all[outdented...].contains(.indent(blockId: "b")), "the nest stays undone")
+        await page.settled { _ = page.field.textView.resignFirstResponder() }
+        #expect(page.editor.all.last == .setText(blockId: "b", text: "ab"))
+    }
+
+    /// An open IME composition: neither toolbar offers undo or redo, which
+    /// would do nothing.
+    @Test func noUndoOrRedoOfferedDuringAComposition() async throws {
+        let page = Page()
+        let window = try page.showInWindow()
+        defer { window.isHidden = true }
+        await page.press("\t")
+        await page.settled { page.session.undo() }
+        #expect(page.session.canUndo || page.session.canRedo)
+        page.field.textView.setMarkedText("に", selectedRange: NSRange(location: 1, length: 0))
+        #expect(!page.session.canUndo)
+        #expect(!page.session.canRedo)
     }
 
     /// DATA-LOSS (#4659): a block undo or redo while an IME composition is
@@ -354,9 +464,9 @@ struct EditorKeyCommandsTests {
         #expect(!undo.canUndo)
 
         // Per-block typing undo still works after the clean-up.
-        page.field.textView.insertText("a")
-        try await Task.sleep(for: .milliseconds(50))
-        page.field.textView.insertText("b")
+        // One insert: two, with a wait between, coalesce into one typing
+        // undo only when the run loop is idle enough.
+        page.field.textView.insertText("ab")
         try await Task.sleep(for: .milliseconds(50))
         #expect(undo.canUndo)
         await page.settled { undo.undo() }

@@ -86,9 +86,11 @@ final class EditorUndoStack {
     }
 
     /// Puts a step on the redo stack without doing it: undone typing that the
-    /// next undo would otherwise strand (`EditorSession.undo`).
+    /// next undo would otherwise strand (`EditorSession.undo`). The typing
+    /// was a new edit, so the steps redo held from before it go, as
+    /// `record` drops them.
     func keepRedo(_ step: EditorUndoStep) {
-        redoable.append(step)
+        redoable = [step]
     }
 
     func popRedo() -> EditorUndoStep? {
