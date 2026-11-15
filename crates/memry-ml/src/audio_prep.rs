@@ -34,7 +34,7 @@ pub const MIN_SAMPLES: usize = SAMPLE_RATE as usize;
 /// Decoded samples past this are never embedded (`MAX_WINDOWS` windows), so they are not decoded.
 pub const MAX_DECODED_SAMPLES: usize = MAX_WINDOWS * WINDOW_SAMPLES;
 
-/// Larger files are refused before decoding, as `image_prep::MAX_IMAGE_BYTES` refuses images. A
+/// Larger files are refused before decoding, as `memry_media::MAX_IMAGE_BYTES` refuses images. A
 /// caller has to check the file size before it reads the file into memory; the refusal here comes
 /// after the read. 512 MiB holds the [`MAX_WINDOWS`] windows (60 min) only up to 149,130 bytes per
 /// second: PCM16 mono up to 48 kHz, PCM16 stereo up to 37 kHz, float32 mono up to 37 kHz. It holds

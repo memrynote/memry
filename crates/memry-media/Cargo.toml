@@ -1,0 +1,26 @@
+[package]
+name = "memry-media"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+description = "Bounded decoding of untrusted vault images, pure Rust. Shared by memry-ml and memry-desktop; links no ONNX Runtime and never depends on tauri."
+
+[dependencies]
+image = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+# Colour management in pure Rust (Kaan, 2026-11-13): sharp converts with Little CMS, so a
+# profile-tagged image can differ by a level per channel (test-vectors README, pixel tensors).
+moxcms = "0.8"
+# zlib inflate in pure Rust (the `png` crate's own): bounds an `iCCP` profile before decoding.
+fdeflate = "0.3"
+# The JPEG decoder `image` runs: its header reader sizes a progressive frame before decoding.
+zune-jpeg = "0.5"
+
+[dev-dependencies]
+base64 = { workspace = true }
+memry-test-kit = { path = "../memry-test-kit" }
+proptest = "1"
+serde_json = { workspace = true }
