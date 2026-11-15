@@ -95,8 +95,8 @@ private final class Screen {
     let window: UIWindow
 
     /// The block typed in, then a paragraph for each of `below`.
-    init(_ kind: String = "paragraph", text: String, below: [String] = []) throws {
-        let block = Block(id: "a", kind: kind, depth: 0, props: [], inline: [InlineRun(text: text, marks: [], markAttrs: [:], target: nil)])
+    init(_ kind: String = "paragraph", depth: UInt32 = 0, text: String, below: [String] = []) throws {
+        let block = Block(id: "a", kind: kind, depth: depth, props: [], inline: [InlineRun(text: text, marks: [], markAttrs: [:], target: nil)])
         let blocks = [block] + below.enumerated().map { index, text in
             Block(id: "b\(index)", kind: "paragraph", depth: 0, props: [], inline: [InlineRun(text: text, marks: [], markAttrs: [:], target: nil)])
         }
@@ -130,12 +130,13 @@ private final class Screen {
     /// Runs `scenario` on a new screen until a run is not interrupted, and
     /// returns what it saw. An interrupted run proves nothing either way.
     static func run<T>(
-        _ kind: String = "paragraph", text: String, below: [String] = [], _ scenario: (Screen) async throws -> T
+        _ kind: String = "paragraph", depth: UInt32 = 0, text: String, below: [String] = [],
+        _ scenario: (Screen) async throws -> T
     ) async throws -> T {
         var attempt = 0
         while true {
             attempt += 1
-            let screen = try Screen(kind, text: text, below: below)
+            let screen = try Screen(kind, depth: depth, text: text, below: below)
             defer { screen.close() }
             let seen = try await scenario(screen)
             if !screen.interrupted || attempt == 10 { return seen }
@@ -309,6 +310,49 @@ struct EditorReturnBurstTests {
         #expect(typed == "Beta1")
         #expect(afterTypingUndo == "", "the typing undo empties the new block")
         #expect(shown == ["Alpha1"], "then the block goes, and the first keeps its text")
+    }
+
+    // MARK: Return on an empty list item (#4704)
+
+    /// Return on an empty list item turns it into a paragraph, nested or
+    /// not (desktop's `listItemEnterHandler`), and the redrawn row takes the
+    /// caret: keys typed once it is drawn land in it.
+    @Test(.timeLimit(.minutes(1)), arguments: [
+        ("checkListItem", 0 as UInt32), ("bulletListItem", 0), ("numberedListItem", 0), ("checkListItem", 1),
+    ])
+    func keysTypedAfterAListExitLandInTheParagraph(kind: String, depth: UInt32) async throws {
+        let blocks = try await Screen.run(kind, depth: depth, text: "") { screen in
+            let item = try await screen.start()
+            screen.keys("\n")
+            for _ in 0 ..< 80 where screen.editor.all.first?.kind != "paragraph" || screen.textViews().contains(item) {
+                try await Task.sleep(for: .milliseconds(25))
+            }
+            try await Task.sleep(for: .milliseconds(200))
+            screen.keys("abc")
+            try await screen.finish(blocks: 1)
+            return screen.editor.all
+        }
+        #expect(blocks.map(\.kind) == ["paragraph"])
+        #expect(blocks.map(\.depth) == [depth])
+        #expect(blocks.map { BlockText.shown($0.inline) } == ["abc"])
+    }
+
+    /// The same keys typed in one burst with the Return, before the row is
+    /// redrawn, land in the paragraph too.
+    @Test(.timeLimit(.minutes(1))) func keysTypedInABurstWithAListExitLandInTheParagraph() async throws {
+        let (caret, blocks) = try await Screen.run("checkListItem", text: "") { screen in
+            let item = try await screen.start()
+            screen.keys("\nabc")
+            for _ in 0 ..< 80 where screen.textViews().contains(item) || screen.focused?.text != "abc" {
+                try await Task.sleep(for: .milliseconds(25))
+            }
+            let caret = screen.focused?.text
+            try await screen.finish(blocks: 1)
+            return (caret, screen.editor.all)
+        }
+        #expect(caret == "abc", "the redrawn row holds the caret and the keys")
+        #expect(blocks.map(\.kind) == ["paragraph"])
+        #expect(blocks.map { BlockText.shown($0.inline) } == ["abc"])
     }
 
     // MARK: Edits outside the held keys end the hold (REVIEW-4707 M1)

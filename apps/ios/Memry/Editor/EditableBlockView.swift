@@ -614,10 +614,7 @@ extension EditorSession {
     func returnPressed(_ field: BlockField) {
         let kind = field.block.kind
         let empty = field.textView.text.isEmpty
-        if empty, kind != "paragraph" {
-            turnInto(InsertableBlock.all[0])
-            return
-        }
+        if empty, kind != "paragraph" { return turnKeepingCaret(field, into: InsertableBlock.all[0]) }
         let next = Self.continuingKinds.contains(kind) ? kind : "paragraph"
         // Desktop's `plainByContext`: Return in a plain checklist makes
         // another plain checkbox, never a task.
