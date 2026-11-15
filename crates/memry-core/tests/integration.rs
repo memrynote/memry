@@ -429,6 +429,10 @@ mod sync_equal_clock;
 mod sync_first_sync;
 #[path = "sync_hardening_ledgers.rs"]
 mod sync_hardening_ledgers;
+#[path = "sync_hardening_orphans.rs"]
+mod sync_hardening_orphans;
+#[path = "sync_hardening_repairs.rs"]
+mod sync_hardening_repairs;
 #[path = "sync_note_body_feed.rs"]
 mod sync_note_body_feed;
 #[path = "sync_outbox.rs"]
