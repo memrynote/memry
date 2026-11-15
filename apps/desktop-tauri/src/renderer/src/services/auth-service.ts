@@ -61,6 +61,13 @@ export const authService = {
 
   retryOAuth: (input: { state: string }) => envelope(() => commands.authRetryOauth(input.state)),
 
+  // Closes the loopback and signs the session out (no Electron counterpart: no core state there).
+  cancelOAuth: () =>
+    envelope(async () => {
+      await commands.authCancelOauth()
+      return {}
+    }),
+
   refreshToken: () => commands.authRefreshToken(),
 
   setupFirstDevice: (input: {

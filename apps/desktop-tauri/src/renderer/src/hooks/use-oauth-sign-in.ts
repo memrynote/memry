@@ -4,8 +4,11 @@ import type { InitOAuthResult, SetupFirstDeviceResult } from '@memry/contracts/i
 import type { OAuthCallbackEvent } from '@memry/contracts/ipc-events'
 import { authService } from '@/services/auth-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { createLogger } from '@/lib/logger'
 import { subscribeToEvent } from '@/services/tauri-event'
 import { events } from '../../../generated/bindings'
+
+const log = createLogger('OAuthSignIn')
 
 type OAuthFlow =
   | { kind: 'idle' }
@@ -129,6 +132,9 @@ export function useOAuthSignIn({ onStart, onVerified, onError, onCancel }: OAuth
     if (flowRef.current.kind === 'idle') return
     setFlow({ kind: 'idle' })
     onCancel()
+    void authService.cancelOAuth().then((result) => {
+      if (!result.success) log.warn('the Google sign-in did not end', result.error)
+    })
   }, [onCancel, setFlow])
 
   return {

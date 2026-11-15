@@ -14,14 +14,22 @@ const TTL: Duration = Duration::from_secs(10 * 60);
 
 /// One `GET` over a fresh connection, as a browser tab sends it: `(status, body)`.
 pub(crate) async fn get(url: &str) -> std::io::Result<(u16, String)> {
+    send("GET", url, None).await
+}
+
+/// One request over a fresh connection, with the URL's own `Host` unless `host` names another.
+async fn send(method: &str, url: &str, host: Option<&str>) -> std::io::Result<(u16, String)> {
     let rest = url.trim_start_matches("http://");
     let (address, path) = rest.split_at(rest.find('/').unwrap_or(rest.len()));
     let path = if path.is_empty() { "/" } else { path };
+    let host = host.unwrap_or(address);
     let mut stream = TcpStream::connect(address).await?;
     stream
         .write_all(
-            format!("GET {path} HTTP/1.1\r\nHost: {address}\r\nConnection: close\r\n\r\n")
-                .as_bytes(),
+            format!(
+                "{method} {path} HTTP/1.1\r\nHost: {host}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+            )
+            .as_bytes(),
         )
         .await?;
     let mut reply = String::new();
@@ -102,6 +110,36 @@ async fn other_paths_and_other_states_are_refused_and_the_wait_goes_on() {
         CallbackOutcome::Code {
             code: "c-2".into(),
             state: "s-2".into()
+        }
+    );
+}
+
+/// Only a browser's `GET` to `127.0.0.1:<port>` is served: a page that rebinds its own name to
+/// the loopback sends that name as `Host`.
+#[tokio::test]
+async fn another_method_or_host_is_refused_and_the_wait_goes_on() {
+    let callback = OneShotCallback::bind(TTL).await.unwrap();
+    let uri = callback.redirect_uri();
+    let port = uri
+        .trim_start_matches("http://127.0.0.1:")
+        .trim_end_matches("/callback");
+    callback.expect_state("s-1");
+    let url = format!("{uri}?code=c-1&state=s-1");
+
+    let (status, _) = send("POST", &url, None).await.unwrap();
+    assert_eq!(status, 405);
+    for host in [format!("localhost:{port}"), "attacker.test".to_owned()] {
+        let (status, _) = send("GET", &url, Some(&host)).await.unwrap();
+        assert_eq!(status, 400, "{host}");
+    }
+
+    let (status, body) = get(&url).await.unwrap();
+    assert_eq!((status, body.as_str()), (200, SUCCESS_HTML));
+    assert_eq!(
+        callback.outcome().await,
+        CallbackOutcome::Code {
+            code: "c-1".into(),
+            state: "s-1".into()
         }
     );
 }

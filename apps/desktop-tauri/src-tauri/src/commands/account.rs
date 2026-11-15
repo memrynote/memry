@@ -90,7 +90,9 @@ fn account(app: &AppHandle<Wry>) -> Arc<AccountService> {
 }
 
 /// The core mapping, with Electron's translated sentence for the failures the user acts on
-/// (`errors:auth.*`). The message never carries the phrase: `InvalidPhrase` drops the word.
+/// (`errors:auth.*`), and the command's own sentence for the rest of the Google sign-in
+/// (`auth-oauth-handlers.ts:205,217,274`). The message never carries the phrase:
+/// `InvalidPhrase` drops the word.
 fn map_error(app: &AppHandle<Wry>, command: &str, error: &AccountError) -> CommandError {
     let mut mapped = CommandError::from_core(error);
     let key = match error {
@@ -99,7 +101,12 @@ fn map_error(app: &AppHandle<Wry>, command: &str, error: &AccountError) -> Comma
         AccountError::InvalidPhrase => Some("errors:auth.invalidRecoveryPhraseFormat"),
         AccountError::OAuthExpired => Some("errors:auth.oauthExpired"),
         AccountError::OAuthInvalidResponse => Some("errors:auth.oauthInvalidResponse"),
-        _ => None,
+        _ => match command {
+            "auth_init_oauth" => Some("errors:auth.initiateOAuthFailed"),
+            "auth_retry_oauth" => Some("errors:auth.retryOAuthFailed"),
+            "sync_setup_first_device" => Some("errors:auth.setupFirstDeviceOAuthFailed"),
+            _ => None,
+        },
     };
     if let Some(key) = key {
         mapped.message = translated(app, key);
@@ -317,6 +324,17 @@ pub async fn auth_retry_oauth(
     Ok(AuthOAuthRetried {
         browser_opened: open_browser(&app, &url),
     })
+}
+
+/// The wizard's Cancel: the loopback closes and the session signs out, so a consent the user
+/// still finishes in the browser finds nothing waiting.
+#[tauri::command]
+#[specta::specta]
+pub async fn auth_cancel_oauth(app: AppHandle<Wry>) -> Result<(), CommandError> {
+    account(&app)
+        .cancel_oauth()
+        .await
+        .map_err(|e| map_error(&app, "auth_cancel_oauth", &e))
 }
 
 /// `sync:setup-first-device`: the browser's code, exchanged once.

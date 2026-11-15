@@ -9,12 +9,15 @@ import { SetupWizard } from './setup-wizard'
 const state = 'manual-browser-state'
 const authorizationUrl = `https://accounts.google.com/o/oauth2/v2/auth?state=${state}`
 type Commands = typeof Bindings.commands
-const { initOAuth, retryOAuth, setupFirstDevice, listeners } = vi.hoisted(() => ({
-  initOAuth: vi.fn<Commands['authInitOauth']>(),
-  retryOAuth: vi.fn<Commands['authRetryOauth']>(),
-  setupFirstDevice: vi.fn<Commands['syncSetupFirstDevice']>(),
-  listeners: new Map<string, (payload: unknown) => void>()
-}))
+const { initOAuth, retryOAuth, cancelOAuthCommand, setupFirstDevice, listeners } = vi.hoisted(
+  () => ({
+    initOAuth: vi.fn<Commands['authInitOauth']>(),
+    cancelOAuthCommand: vi.fn<Commands['authCancelOauth']>(),
+    retryOAuth: vi.fn<Commands['authRetryOauth']>(),
+    setupFirstDevice: vi.fn<Commands['syncSetupFirstDevice']>(),
+    listeners: new Map<string, (payload: unknown) => void>()
+  })
+)
 let oauthCallback: ((payload: { code: string; state: string }) => void) | undefined
 let oauthError: ((payload: { error: string }) => void) | undefined
 
@@ -36,6 +39,7 @@ vi.mock('../../../../generated/bindings', async (importOriginal) => {
       ...actual.commands,
       authInitOauth: initOAuth,
       authRetryOauth: retryOAuth,
+      authCancelOauth: cancelOAuthCommand,
       syncSetupFirstDevice: setupFirstDevice,
       accountGetInfo: vi.fn().mockResolvedValue({
         signedIn: false,
@@ -81,6 +85,7 @@ describe('Google sign-in browser recovery', () => {
     oauthError = (payload) => listeners.get('error')?.(payload)
     initOAuth.mockResolvedValue({ state, authorizationUrl, browserOpened: false })
     retryOAuth.mockResolvedValue({ browserOpened: true })
+    cancelOAuthCommand.mockResolvedValue(null)
     setupFirstDevice.mockResolvedValue({
       deviceId: 'known-device',
       needsRecoverySetup: false,
@@ -197,6 +202,8 @@ describe('Google sign-in browser recovery', () => {
     await user.click(screen.getByRole('button', { name: 'Continue with Google' }))
     expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeDisabled()
     await user.click(screen.getByRole('button', { name: 'Cancel Google sign-in' }))
+    // Rust ends the attempt once the start in flight has opened it.
+    expect(cancelOAuthCommand).toHaveBeenCalledOnce()
     await act(async () => {
       finishLaunch?.({ state, authorizationUrl, browserOpened: false })
     })
@@ -243,6 +250,8 @@ describe('Google sign-in browser recovery', () => {
     await user.click(screen.getByRole('button', { name: 'Continue with Google' }))
     await user.click(await screen.findByRole('button', { name: 'Use another sign-in method' }))
 
+    // The loopback closes and the session signs out, not only the wizard.
+    expect(cancelOAuthCommand).toHaveBeenCalledOnce()
     expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeEnabled()
     expect(screen.getByLabelText('Authentication status')).toHaveTextContent('unauthenticated')
     act(() => oauthCallback?.({ code: 'abandoned-code', state }))

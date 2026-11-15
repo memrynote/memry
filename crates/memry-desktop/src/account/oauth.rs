@@ -89,6 +89,8 @@ impl AccountService {
         probe: &dyn NoRedirect,
         on_event: impl Fn(OAuthEvent) + Send + Sync + 'static,
     ) -> Result<OAuthStarted, AccountError> {
+        // Held until the attempt is in place, so a later start or a Cancel ends it.
+        let _start = self.oauth_start.lock().await;
         self.end_pending_sign_in()?;
         let callback = OneShotCallback::bind(OAUTH_ATTEMPT_TTL)
             .await
@@ -153,19 +155,11 @@ impl AccountService {
                 }
             }
         });
-        let replaced = self
-            .oauth
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .replace(OAuthAttempt {
-                state: state.clone(),
-                authorization_url: Some(authorization_url.clone()),
-                waiter: waiter.abort_handle(),
-            });
-        // Two starts at once: the later one is the user's attempt.
-        if let Some(replaced) = replaced {
-            replaced.cancel();
-        }
+        *self.oauth.lock().unwrap_or_else(PoisonError::into_inner) = Some(OAuthAttempt {
+            state: state.clone(),
+            authorization_url: Some(authorization_url.clone()),
+            waiter: waiter.abort_handle(),
+        });
         Ok(OAuthStarted {
             state,
             authorization_url,
@@ -229,6 +223,13 @@ impl AccountService {
             needs_recovery_input: device_id.is_none(),
             device_id,
         })
+    }
+
+    /// The user's Cancel: ends the attempt in flight, after a start still waiting on the server
+    /// has opened it.
+    pub async fn cancel_oauth(&self) -> Result<(), AccountError> {
+        let _start = self.oauth_start.lock().await;
+        self.end_oauth_attempt()
     }
 
     /// Ends the browser attempt in flight, if any: its loopback closes and the session leaves

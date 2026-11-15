@@ -4,6 +4,7 @@
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use memry_core::api::auth::AuthState;
 use memry_core::api::errors::TransportError;
@@ -26,6 +27,8 @@ const GOOGLE: &str = "https://accounts.google.com/o/oauth2/v2/auth?client_id=c&s
 struct Probe {
     location: Mutex<Option<String>>,
     urls: Mutex<Vec<String>>,
+    /// How long the server takes to answer.
+    delay: Duration,
 }
 
 #[async_trait::async_trait]
@@ -33,6 +36,7 @@ impl NoRedirect for Probe {
     async fn send_no_redirect(&self, request: HttpRequest) -> Result<HttpResponse, TransportError> {
         assert_eq!(request.method, "GET");
         self.urls.lock().unwrap().push(request.url);
+        tokio::time::sleep(self.delay).await;
         let mut headers = HashMap::new();
         if let Some(location) = self.location.lock().unwrap().clone() {
             headers.insert("location".to_owned(), location);
@@ -50,6 +54,13 @@ impl Probe {
         let probe = Self::default();
         *probe.location.lock().unwrap() = Some(location.to_owned());
         probe
+    }
+
+    fn slow(location: &str) -> Self {
+        Self {
+            delay: Duration::from_millis(50),
+            ..Self::to(location)
+        }
     }
 
     /// The `redirect_uri` of the last init request.
@@ -361,6 +372,54 @@ async fn a_new_start_or_an_email_code_ends_the_attempt_in_flight() {
     assert!(matches!(f.state(), AuthState::AwaitingOtp { .. }));
     assert!(f.service.oauth_retry_url("state-2").is_err());
     assert!(!listening(&second.redirect_uri()).await);
+}
+
+/// Two starts at once: the later one is the user's attempt, and the earlier one ends with its
+/// loopback.
+#[tokio::test]
+async fn of_two_starts_at_once_the_later_one_ends_the_earlier() {
+    let f = fixture(Keychain::default());
+    let first = Probe::slow(&format!("{GOOGLE}state-1"));
+    let second = Probe::to(&format!("{GOOGLE}state-2"));
+
+    let (earlier, later) = tokio::join!(f.start(&first), f.start(&second));
+
+    assert_eq!(earlier.unwrap().0, "state-1");
+    assert_eq!(later.unwrap().0, "state-2");
+    assert!(!listening(&first.redirect_uri()).await);
+    assert!(listening(&second.redirect_uri()).await);
+    assert!(f.service.oauth_retry_url("state-1").is_err());
+    assert!(f.service.oauth_retry_url("state-2").is_ok());
+    assert!(matches!(f.state(), AuthState::AwaitingProviderToken { .. }));
+}
+
+#[tokio::test]
+async fn cancel_closes_the_loopback_and_signs_out() {
+    let f = fixture(Keychain::default());
+    let probe = Probe::to(&format!("{GOOGLE}state-1"));
+    let (_, mut events) = f.start(&probe).await.unwrap();
+
+    f.service.cancel_oauth().await.unwrap();
+
+    assert!(!listening(&probe.redirect_uri()).await);
+    assert_eq!(f.state(), AuthState::SignedOut);
+    assert!(f.service.oauth_retry_url("state-1").is_err());
+    // The attempt ended by the user's hand: no event follows.
+    assert!(events.recv().await.is_none());
+}
+
+/// Cancel while the start still waits on the server ends the attempt that start opens.
+#[tokio::test]
+async fn cancel_during_a_start_ends_the_attempt_it_opens() {
+    let f = fixture(Keychain::default());
+    let probe = Probe::slow(&format!("{GOOGLE}state-1"));
+
+    let (started, cancelled) = tokio::join!(f.start(&probe), f.service.cancel_oauth());
+
+    started.unwrap();
+    cancelled.unwrap();
+    assert!(!listening(&probe.redirect_uri()).await);
+    assert_eq!(f.state(), AuthState::SignedOut);
 }
 
 /// The real transport against a server whose 302 points at a host the transport may follow:

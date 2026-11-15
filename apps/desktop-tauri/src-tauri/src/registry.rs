@@ -22,6 +22,7 @@ pub fn builder() -> Builder<Wry> {
         .commands(collect_commands![
             // account
             crate::commands::account::account_get_info,
+            crate::commands::account::auth_cancel_oauth,
             crate::commands::account::auth_init_oauth,
             crate::commands::account::auth_refresh_token,
             crate::commands::account::auth_request_otp,

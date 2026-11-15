@@ -11,6 +11,11 @@ export const commands = {
 	 */
 	accountGetInfo: () => __TAURI_INVOKE<AccountInfoView>("account_get_info"),
 	/**
+	 *  The wizard's Cancel: the loopback closes and the session signs out, so a consent the user
+	 *  still finishes in the browser finds nothing waiting.
+	 */
+	authCancelOauth: () => __TAURI_INVOKE<null>("auth_cancel_oauth"),
+	/**
 	 *  `sync:auth-init-oauth`: the loopback waits, the browser opens on Google's page, and the
 	 *  loopback's one answer arrives as an event.
 	 */

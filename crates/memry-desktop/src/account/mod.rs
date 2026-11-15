@@ -131,6 +131,8 @@ pub struct AccountService {
     key_op: tokio::sync::Mutex<()>,
     /// The Google sign-in waiting for its browser (`oauthSessions`, `ipc/auth-oauth-state.ts`).
     oauth: Mutex<Option<oauth::OAuthAttempt>>,
+    /// One Google start or Cancel at a time: a start ends the attempt before it.
+    oauth_start: tokio::sync::Mutex<()>,
 }
 
 impl AccountService {
@@ -158,6 +160,7 @@ impl AccountService {
             phrase: Mutex::new(None),
             key_op: tokio::sync::Mutex::new(()),
             oauth: Mutex::new(None),
+            oauth_start: tokio::sync::Mutex::new(()),
         };
         service.restore();
         Ok(service)

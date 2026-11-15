@@ -17,7 +17,8 @@ use std::time::Duration;
 use axum::Router;
 use axum::body::Body;
 use axum::extract::State;
-use axum::http::{HeaderValue, Request, Response, StatusCode, header};
+use axum::http::{HeaderValue, Method, Request, Response, StatusCode, header};
+use subtle::ConstantTimeEq;
 use tokio::net::TcpListener;
 use tokio::sync::{Notify, oneshot};
 use tokio::task::JoinHandle;
@@ -61,6 +62,9 @@ impl std::fmt::Debug for CallbackOutcome {
 }
 
 struct Shared {
+    /// `127.0.0.1:<port>`, the only `Host` served: a page that rebinds a name to the loopback
+    /// sends its own.
+    host: String,
     expected: Mutex<Option<String>>,
     answer: Mutex<Option<oneshot::Sender<CallbackOutcome>>>,
     answered: Notify,
@@ -82,6 +86,7 @@ impl OneShotCallback {
         let deadline = tokio::time::Instant::now() + ttl;
         let (sender, outcome) = oneshot::channel();
         let shared = Arc::new(Shared {
+            host: format!("{}:{port}", Ipv4Addr::LOCALHOST),
             expected: Mutex::new(None),
             answer: Mutex::new(Some(sender)),
             answered: Notify::new(),
@@ -169,6 +174,13 @@ fn page(status: StatusCode, html: Option<&'static str>) -> Response<Body> {
 }
 
 async fn handle(State(shared): State<Arc<Shared>>, request: Request<Body>) -> Response<Body> {
+    if request.method() != Method::GET {
+        return page(StatusCode::METHOD_NOT_ALLOWED, None);
+    }
+    let host = request.headers().get(header::HOST);
+    if host.is_none_or(|host| host.as_bytes() != shared.host.as_bytes()) {
+        return page(StatusCode::BAD_REQUEST, None);
+    }
     if request.uri().path() != CALLBACK_PATH {
         return page(StatusCode::NOT_FOUND, None);
     }
@@ -189,7 +201,11 @@ async fn handle(State(shared): State<Arc<Shared>>, request: Request<Body>) -> Re
         .lock()
         .unwrap_or_else(PoisonError::into_inner)
         .clone();
-    let Some(state) = state.filter(|state| expected.as_deref() == Some(state.as_str())) else {
+    let Some(state) = state.filter(|state| {
+        expected
+            .as_deref()
+            .is_some_and(|expected| bool::from(expected.as_bytes().ct_eq(state.as_bytes())))
+    }) else {
         return page(StatusCode::BAD_REQUEST, Some(ERROR_HTML));
     };
     if error {
