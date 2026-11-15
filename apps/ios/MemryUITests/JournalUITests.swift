@@ -305,8 +305,9 @@ final class JournalUITests: XCTestCase {
         item.tap()
     }
 
+    /// The month's Back. In landscape the page sidebar's bar comes first.
     private func back() {
-        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.navigationBars.buttons["BackButton"].firstMatch.tap()
     }
 
     /// The shown day: the header's spoken date matched against the days

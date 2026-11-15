@@ -120,6 +120,30 @@ final class NotesSplitUITests: XCTestCase {
         XCTAssertTrue(list.isHittable, "portrait hides the list")
     }
 
+    /// #4380: the Day Panel, open on the Journal by default, stays the
+    /// Journal's. Back on Notes beside an open note, the column the user
+    /// showed is still there.
+    func testAColumnShownBesideANoteSurvivesAVisitToTheJournal() throws {
+        try openNotes()
+        let title = "[agent] \(run) column"
+        makeNote(title)
+        XCTAssertFalse(treeShown(), "beside the page sidebar the tree takes a column")
+        toggleNotesSidebar()
+        XCTAssertTrue(treeShown(), "the split view's sidebar button did not show the tree")
+        attach("column-shown")
+
+        sidebarRow("Journal").tap()
+        // Whichever level the Journal was left on.
+        let journal = app.descendants(matching: .any).matching(NSPredicate(format: "identifier IN {'journal.day', 'journal.month', 'journal.year'}"))
+        XCTAssertTrue(journal.firstMatch.waitForExistence(timeout: 10), "the Journal did not open")
+        sidebarRow("Notes").tap()
+        XCTAssertTrue(page(title).waitForExistence(timeout: 10))
+        Thread.sleep(forTimeInterval: 1)
+        attach("column-after-journal")
+        XCTAssertTrue(treeShown(), "returning to Notes reset the column the user showed")
+        deleteNotes([title])
+    }
+
     func testAWikiLinkOpensInTheDetailColumnAndBackReturns() throws {
         try openNotes()
         let target = "[agent] \(run) target"
@@ -519,6 +543,15 @@ final class NotesSplitUITests: XCTestCase {
         let toggle = toggles.filter(\.isHittable).min { $0.frame.minX < $1.frame.minX }
         XCTAssertNotNil(toggle, "no sidebar button: \(toggles.map(\.label))")
         toggle?.tap()
+    }
+
+    /// The split view's own sidebar button: every hittable sidebar button
+    /// but the page sidebar's, the leftmost.
+    private func toggleNotesSidebar() {
+        let toggles = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'sidebar'")).allElementsBoundByIndex
+            .filter(\.isHittable).sorted { $0.frame.minX < $1.frame.minX }
+        XCTAssertGreaterThan(toggles.count, 1, "no split view sidebar button: \(toggles.map(\.label))")
+        toggles.last?.tap()
     }
 
     private var firstBlock: XCUIElement {

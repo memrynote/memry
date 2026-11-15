@@ -9,8 +9,9 @@ import SwiftUI
 // day keys (`JournalDayShortcuts`, `MemryCommands`) replace the shown day in place through
 // `JournalRouter.showDay`, so Back still leads to the month; Esc drills up.
 // Each page owns its own models keyed by its date, so an edit pending on one
-// day never lands on another. At regular width the rail (`JournalDayRail`)
-// sits beside the pager in its own space (#4351).
+// day never lands on another. At regular width the Day Panel (`DayPanelRail`)
+// is the Journal rail: `JournalRootView` lays it beside the page and it follows the
+// shown day (#4351, #4380).
 
 struct JournalDayScreen: View {
     let store: JournalStore
@@ -19,9 +20,7 @@ struct JournalDayScreen: View {
     @Environment(JournalRouter.self) private var router
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @Environment(\.verticalSizeClass) private var verticalSizeClass
-    @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(SideRails.self) private var rails: SideRails?
     @State private var selection: String
     @State private var pages = JournalDayPages()
     @State private var titleCollapsed = false
@@ -51,24 +50,12 @@ struct JournalDayScreen: View {
 
     private var isToday: Bool { date == store.clock.today }
 
-    /// DESIGN.md › Tablet: regular width and height. A large iPhone in
-    /// landscape (regular width, compact height) keeps the phone page, and
-    /// so do accessibility text sizes, which break words in the rail's 320
-    /// points; the page then shows the day's tasks under the entry.
-    private var showsRail: Bool {
-        LayoutWidth(horizontal: horizontalSizeClass, vertical: verticalSizeClass) == .regular
-            && !typeSize.isAccessibilitySize
-    }
-
     var body: some View {
-        HStack(spacing: 0) {
-            pager
-                .environment(\.journalRailShown, showsRail)
-                .environment(\.fullWidthReading, local.journalIsFullWidth)
-            if showsRail {
-                JournalDayRail(store: store, date: date, show: show)
-            }
-        }
+        pager
+        // Where the panel is closed or cannot fit, the page shows the day's
+        // tasks under the entry.
+        .environment(\.journalRailShown, rails?.dayPanelShown(on: .journal) ?? false)
+        .environment(\.fullWidthReading, local.journalIsFullWidth)
         .safeAreaInset(edge: .top) { JournalFailureBanner(store: store) }
         .background {
             ZStack(alignment: .topLeading) {
@@ -151,6 +138,7 @@ struct JournalDayScreen: View {
                 open: open
             )
         }
+        DayPanelToolbarItem()
         GlobalSearchToolbarItem()
     }
 

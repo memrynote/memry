@@ -21,7 +21,7 @@ import UIKit
 // Synced user overrides (`shortcut-bindings`) are follow-up #4383 (Q9).
 
 enum AppCommand: Hashable {
-    case newNote, quickCapture, newTask, search, commandPalette, settings, today, previousDay, nextDay
+    case newNote, quickCapture, newTask, search, commandPalette, settings, today, previousDay, nextDay, dayPanel
     /// The `n`th page in the visible order, 1–9.
     case page(Int)
 
@@ -39,6 +39,7 @@ enum AppCommand: Hashable {
         case .today: "journal.today"
         case .previousDay: "journal.previous"
         case .nextDay: "journal.next"
+        case .dayPanel: "view.toggleDayPanel"
         // An iPad addition with no catalog entry yet (desktop #4384).
         case .quickCapture: "capture.quick"
         case let .page(number): "page.\(number)"
@@ -69,6 +70,8 @@ enum AppCommand: Hashable {
         // caret; the journal page keeps those itself (`JournalDayShortcuts`).
         case .previousDay: KeyboardShortcut(.leftArrow, modifiers: [.option, .command])
         case .nextDay: KeyboardShortcut(.rightArrow, modifiers: [.option, .command])
+        // view.toggleDayPanel
+        case .dayPanel: KeyboardShortcut("b", modifiers: [.shift, .command])
         // app-sidebar.tsx: ⌘1–⌘9 open the nth visible page.
         case let .page(number): KeyboardShortcut(KeyEquivalent(Character(String(number))), modifiers: .command)
         }
@@ -81,6 +84,7 @@ enum AppCommand: Hashable {
         case .today: CommandCopy.Menu.today
         case .previousDay: CommandCopy.Menu.previousDay
         case .nextDay: CommandCopy.Menu.nextDay
+        case .dayPanel: CommandCopy.Menu.dayPanel
         default: paletteTitle
         }
     }
@@ -98,6 +102,7 @@ enum AppCommand: Hashable {
         case .today: CommandCopy.today
         case .previousDay: CommandCopy.previousDay
         case .nextDay: CommandCopy.nextDay
+        case .dayPanel: CommandCopy.dayPanel
         case let .page(number): "Page \(number)"
         }
     }
@@ -108,7 +113,7 @@ enum AppCommand: Hashable {
     static let journal: [AppCommand] = [.today, .previousDay, .nextDay]
 
     /// Every command with a fixed title, in menu order.
-    static let fixed: [AppCommand] = newItem + [.settings] + find + journal
+    static let fixed: [AppCommand] = newItem + [.settings] + find + journal + [.dayPanel]
 }
 
 /// The catalog's `context`, for the contexts iOS has commands in.
@@ -128,6 +133,7 @@ enum CommandCopy {
     static let today = "Go to Today's Journal"
     static let previousDay = "Previous Journal Period"
     static let nextDay = "Next Journal Period"
+    static let dayPanel = "Toggle Day Panel"
     /// `go.*`: "Go to Home", "Go to Inbox", …
     static func goTo(_ page: String) -> String { "Go to \(page)" }
 
@@ -138,6 +144,7 @@ enum CommandCopy {
         static let today = "Today"
         static let previousDay = "Previous Day"
         static let nextDay = "Next Day"
+        static let dayPanel = "Day Panel"
     }
 
     // common.json › commandsPalette
@@ -163,6 +170,9 @@ struct MemryCommands: Commands {
         }
         CommandGroup(replacing: .appSettings) {
             button(.settings)
+        }
+        CommandGroup(after: .sidebar) {
+            button(.dayPanel)
         }
         CommandMenu("Go") {
             ForEach(AppCommand.find, id: \.self, content: button)

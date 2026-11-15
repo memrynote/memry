@@ -11,10 +11,13 @@ import Testing
 struct CommandPaletteTests {
     private let tasks = TasksRouter()
     private let journal = JournalRouter()
+    private let rails = SideRails(defaults: UserDefaults(suiteName: "CommandPaletteTests.\(UUID())") ?? .standard)
 
-    /// Every command runnable: a writer, capture, and a journal day on screen.
+    /// Every command runnable: a writer, capture, a journal day on screen, and
+    /// room for the Day Panel.
     private func commands() -> VaultCommands {
         journal.tabs = tasks
+        rails.measured(.one, on: .journal)
         tasks.selectedTab = .journal
         journal.path = [.day("2099-03-03")]
         var commands = VaultCommands(
@@ -24,6 +27,7 @@ struct CommandPaletteTests {
             newNote: {},
             quickCapture: {},
             search: {},
+            sideRails: rails,
             commandPalette: { _ in }
         )
         commands.journalDay = JournalDayCommands(step: { _ in }, today: {})
@@ -48,14 +52,15 @@ struct CommandPaletteTests {
     /// shows and matches the catalog's.
     @Test func the_menu_bar_shows_short_names_and_the_palette_the_catalogs() {
         let commands = commands()
-        let menu = [AppCommand.newNote, .newTask, .settings, .today, .previousDay, .nextDay, .page(1), .page(2)]
+        let menu = [AppCommand.newNote, .newTask, .settings, .today, .previousDay, .nextDay, .dayPanel, .page(1), .page(2)]
         #expect(menu.map(commands.title) == [
-            "New Note", "New Task", "Settings…", "Today", "Previous Day", "Next Day", "Home", "Inbox",
+            "New Note", "New Task", "Settings…", "Today", "Previous Day", "Next Day", "Day Panel", "Home", "Inbox",
         ])
         #expect(menu.map(commands.paletteTitle) == [
             "New Note", "New Task", "Open Settings", "Go to Today's Journal",
-            "Previous Journal Period", "Next Journal Period", "Go to Home", "Go to Inbox",
+            "Previous Journal Period", "Next Journal Period", "Toggle Day Panel", "Go to Home", "Go to Inbox",
         ])
+        #expect(commands.id(.dayPanel) == "view.toggleDayPanel")
         #expect(commands.paletteCommands(matching: "open settings") == [.settings])
     }
 
@@ -64,15 +69,16 @@ struct CommandPaletteTests {
     @Test func every_command_but_the_pages_is_in_fixed() {
         let all: [AppCommand] = [
             .newNote, .quickCapture, .newTask, .search, .commandPalette, .settings, .today, .previousDay, .nextDay,
+            .dayPanel,
         ]
         for command in all {
             // Exhaustive: a new case does not compile until it is listed above.
             switch command {
             case .newNote, .quickCapture, .newTask, .search, .commandPalette, .settings, .today, .previousDay,
-                 .nextDay, .page: break
+                 .nextDay, .dayPanel, .page: break
             }
         }
-        let menuBar = AppCommand.newItem + [.settings] + AppCommand.find + AppCommand.journal
+        let menuBar = AppCommand.newItem + [.settings] + AppCommand.find + AppCommand.journal + [.dayPanel]
         #expect(Set(all) == Set(AppCommand.fixed))
         #expect(Set(menuBar) == Set(AppCommand.fixed))
         #expect(AppCommand.fixed.count == Set(AppCommand.fixed).count)
@@ -102,7 +108,7 @@ struct CommandPaletteTests {
         var commands = commands()
         commands = VaultCommands(
             tasks: tasks, journal: journal, pages: commands.pages,
-            newNote: nil, quickCapture: nil, search: {}, commandPalette: { _ in }
+            newNote: nil, quickCapture: nil, search: {}, sideRails: rails, commandPalette: { _ in }
         )
         let listed = commands.paletteCommands(matching: "")
         #expect(!listed.contains(.newNote) && !listed.contains(.quickCapture))
@@ -112,7 +118,7 @@ struct CommandPaletteTests {
         var opened: VaultCommands?
         let commands = VaultCommands(
             tasks: tasks, journal: journal, pages: [.home],
-            newNote: nil, quickCapture: nil, search: {}, commandPalette: { opened = $0 }
+            newNote: nil, quickCapture: nil, search: {}, sideRails: rails, commandPalette: { opened = $0 }
         )
         commands.run(.commandPalette)
         #expect(opened?.pages == [.home])

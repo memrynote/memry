@@ -85,6 +85,12 @@ final class EditorUndoStack {
         return step
     }
 
+    /// Puts a step on the redo stack without doing it: undone typing that the
+    /// next undo would otherwise strand (`EditorSession.undo`).
+    func keepRedo(_ step: EditorUndoStep) {
+        redoable.append(step)
+    }
+
     func popRedo() -> EditorUndoStep? {
         guard let step = redoable.popLast() else { return nil }
         undoable.append(step)
