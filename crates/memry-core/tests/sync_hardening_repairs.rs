@@ -414,3 +414,50 @@ async fn the_first_pass_after_a_first_sync_sends_the_stored_cursor() {
     assert!(!feed[0].contains("cursor="), "{feed:?}");
     assert!(feed[1].contains("cursor=4200"), "{feed:?}");
 }
+
+/// A row the first sync's metadata pass could not fill stays metadata-only, and
+/// nothing but a feed re-read retries it: the pass after the first sync reads the
+/// feed from the start once and fills it.
+#[tokio::test]
+async fn a_row_the_first_sync_left_metadata_only_is_filled_by_the_next_pass() {
+    let desktop = Desktop::open(&["task"], |_| Ok(())).await;
+    desktop.server.put("task", "t1", json!({"title": "one"}));
+    desktop.server.put("task", "t2", json!({"title": "two"}));
+    desktop.server.page(&["t1", "t2"], "4200");
+    desktop.server.withhold("t2");
+
+    desktop
+        .driver
+        .first_sync(Arc::new(SilentInitialSync))
+        .await
+        .expect("the first sync")
+        .expect("not paused");
+    let state = |desktop: &Desktop| {
+        desktop
+            .db
+            .call_blocking(|conn| {
+                conn.query_row(
+                    "SELECT payload_state FROM sync_items WHERE item_id = 't2'",
+                    [],
+                    |row| row.get::<_, String>(0),
+                )
+                .map_err(failed)
+            })
+            .expect("t2's row")
+    };
+    assert_eq!(state(&desktop), "metadata-only");
+
+    desktop.server.put("task", "t2", json!({"title": "two"}));
+    desktop.server.page(&["t1", "t2"], "4300");
+    desktop.network.reconnect();
+    desktop.pass().await;
+
+    let feed: Vec<String> = desktop
+        .server
+        .urls()
+        .into_iter()
+        .filter(|url| url.contains("/sync/changes"))
+        .collect();
+    assert!(!feed[1].contains("cursor="), "{feed:?}");
+    assert_eq!(state(&desktop), "full");
+}

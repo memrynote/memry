@@ -16,11 +16,16 @@ use crate::api::errors::StorageError;
 /// (deferred or parked), the document's later rows are not claimed: a peer given
 /// them without it holds pending structs that may never heal.
 ///
-/// **A parent's delete waits for the rows of its cascaded children queued
-/// before it** ([`crate::sync::hardening::orphans::CASCADED`]), deferred or not: a
+/// **A parent's delete waits while any record row of a cascaded child type is
+/// queued** ([`crate::sync::hardening::orphans::CASCADED`]), deferred or not: a
 /// project delete that overtook its tasks' Inbox moves would let a peer's orphan
-/// repair tombstone them. Any earlier row of the child type holds it, since a
-/// moved child no longer names the parent.
+/// repair tombstone them. Any row of the child type holds it, since a moved child
+/// no longer names the parent, and a row queued after the delete counts too: an
+/// edit re-queues a moved task under a new id. No cascaded type is also a parent,
+/// so the hold has no cycle. It ends when the child-type rows leave the queue
+/// (accepted, retired, or answered replay or delete-wins); a child the server keeps
+/// rejecting keeps the delete queued with it, which delays the delete and loses
+/// nothing.
 ///
 /// `skip_docs` are documents this wave already deferred: their rows stay out of
 /// the rest of the wave, whatever the clock says.
@@ -49,7 +54,7 @@ pub fn claim(
                 AND NOT (op = ?2 AND item_id IN (SELECT value FROM json_each(?4)))
                 AND NOT (op = ?5 AND EXISTS (
                       SELECT 1 FROM outbox child
-                       WHERE child.id < outbox.id AND child.op <> ?2
+                       WHERE child.op <> ?2
                          AND (outbox.item_type, child.item_type) IN (VALUES {cascades})))
               ORDER BY (op <> ?2),
                        CASE WHEN op = ?2 THEN item_id ELSE '' END,

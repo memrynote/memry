@@ -28,10 +28,12 @@ use std::sync::Arc;
 
 use http_fakes::{FakeTransport, body_json, error_response, response};
 use memry_core::api::errors::{ApiError, StorageError};
+use memry_core::domain::projects::{self, TaskDisposition};
+use memry_core::domain::tasks;
 use memry_core::protocol::envelope::EnvelopeError;
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
 use memry_core::protocol::types::Declaration;
-use memry_core::storage::repositories::sync_items;
+use memry_core::storage::repositories::{Change as FieldChange, sync_items};
 use memry_core::storage::{Db, open_data};
 use memry_core::sync::outbox::{self, Batch, Change, OP_CRDT_UPDATE, RecordOp};
 use memry_core::sync::policy::{PolicyTier, SYNC_PAYMENT_REQUIRED};
@@ -921,4 +923,86 @@ async fn a_project_delete_goes_in_the_batch_after_the_task_rows_queued_before_it
         vec![vec!["t1".to_owned()], vec!["p1".to_owned()]]
     );
     assert!(outbox_rows(&db).is_empty());
+}
+
+fn seed_remote(conn: &rusqlite::Connection, item_type: &str, item_id: &str, payload: Json) {
+    let record = sync_items::InboundRecord {
+        item_type: item_type.to_owned(),
+        item_id: item_id.to_owned(),
+        payload_json: payload.to_string(),
+        server_cursor: Some(7),
+        signer_device_id: Some("device-b".to_owned()),
+        updated_at: 1,
+        deleted_at: None,
+    };
+    sync_items::apply_remote(conn, &record, 1).expect("apply");
+}
+
+/// Offline: P deleted with its tasks moved to the Inbox, then T edited there. The edit
+/// re-queues T's row after P's delete, so a hold on earlier rows only would let the delete
+/// go while T's move is rejected, and a peer's orphan repair would tombstone T.
+#[tokio::test]
+async fn a_project_delete_waits_for_a_moved_task_edited_after_it() {
+    let db = scratch_db("parent-delete-edit-after");
+    db.call_blocking(|conn| {
+        seed_remote(
+            conn,
+            "project",
+            "inbox",
+            json!({"name": "Inbox", "isInbox": true, "statuses": [], "clock": {"device-b": 1}}),
+        );
+        seed_remote(
+            conn,
+            "project",
+            "p1",
+            json!({"name": "Gone", "statuses": [], "clock": {"device-b": 1}}),
+        );
+        seed_remote(
+            conn,
+            "task",
+            "t1",
+            json!({"title": "Kept", "projectId": "p1", "clock": {"device-b": 1}}),
+        );
+        projects::delete(conn, "p1", TaskDisposition::MoveToInbox, "device-a", 2)?.acknowledge();
+        tasks::edit(
+            conn,
+            "t1",
+            vec![("title", FieldChange::set("Edited"))],
+            "device-a",
+            3,
+        )?
+        .acknowledge();
+        Ok(())
+    })
+    .expect("delete, then edit");
+    let queued: Vec<(String, String)> = outbox_rows(&db)
+        .into_iter()
+        .map(|row| (row.item_id, row.op))
+        .collect();
+    assert_eq!(
+        queued,
+        vec![
+            ("p1".into(), "delete".into()),
+            ("t1".into(), "upsert".into())
+        ],
+        "the edit re-queued T after P's delete"
+    );
+
+    // One script entry: a second request panics the fake transport.
+    let transport = FakeTransport::new(vec![response(
+        200,
+        &json!({
+            "accepted": [],
+            "rejected": [{"id": "t1", "reason": "SYNC_INVALID_SIGNATURE"}],
+            "serverTime": 1,
+            "maxCursor": 1,
+        })
+        .to_string(),
+    )]);
+    let push = coordinator(db.clone(), transport.clone(), RecordingSealer::new());
+    push.drain_wave().await.expect("the wave");
+
+    assert_eq!(pushed_ids(&transport), vec![vec!["t1".to_owned()]]);
+    let ops: Vec<String> = outbox_rows(&db).into_iter().map(|row| row.op).collect();
+    assert_eq!(ops, vec!["delete", "upsert"], "the delete waits for T");
 }

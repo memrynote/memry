@@ -71,6 +71,12 @@ impl FakeServer {
         );
     }
 
+    /// Stops serving `id` by id, as a pull whose blob went missing; a page queued
+    /// before still lists it.
+    pub fn withhold(&self, id: &str) {
+        self.records.lock().unwrap().remove(id);
+    }
+
     /// Every request URL, in order.
     pub fn urls(&self) -> Vec<String> {
         self.calls

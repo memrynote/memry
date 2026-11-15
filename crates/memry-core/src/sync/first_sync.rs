@@ -305,6 +305,16 @@ impl FirstSync {
 
         self.refs_pass(tail_cursor, &mut report).await?;
         self.metadata_pass(&mut report).await?;
+        // A chunk that was not a pull envelope, or an id the server did not serve,
+        // leaves its rows `metadata-only`.
+        self.db
+            .call(|conn| {
+                if pending_metadata_ids(conn)?.is_empty() {
+                    return Ok(());
+                }
+                feed_restart::reopen_cursor_skip_repair(conn)
+            })
+            .await?;
         // After refs, so a tombstoned document is known and never seeded.
         if let Some(packs) = &self.packs {
             self.progress.packs(None);
