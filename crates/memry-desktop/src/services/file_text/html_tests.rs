@@ -160,8 +160,26 @@ fn an_attribute_flood_stops_at_the_deadline() {
     }
     html.push('>');
     assert!(html.len() <= HTML_TEXT_MAX_BYTES);
-    let result = parse(&html, node_budget(html.len()), Duration::from_secs(1));
+    let result = parse(
+        &html,
+        node_budget(html.len()),
+        Duration::from_secs(1),
+        &|| false,
+    );
     assert!(matches!(result, Err(HtmlTextError::TooSlow)));
+}
+
+/// A stop ends the parse at the next chunk, not at the deadline: the caller asks once per chunk.
+#[test]
+fn a_stop_ends_the_parse_at_the_next_chunk() {
+    let html = "<p>words</p>".repeat(1_000);
+    let asked = Cell::new(0_usize);
+    let result = read_html_text_until(html.as_bytes(), &|| {
+        asked.set(asked.get() + 1);
+        asked.get() >= 3
+    });
+    assert_eq!(result, Err(HtmlTextError::Stopped));
+    assert_eq!(asked.get(), 3);
 }
 
 /// The walk visits each node once and the code walk once more at most.

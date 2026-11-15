@@ -1,11 +1,15 @@
-//! The `memry-ml-worker` sidecar (pdfium, out of process): one `WorkerHandle` for the app, stopped
-//! on every vault close and in the `stop-utility-processes` shutdown step. It has no caller until
-//! the file-text runner lands (#3542 lane G), and the child starts only on the first call.
+//! The `memry-ml-worker` sidecar (pdfium, out of process): one `WorkerHandle` for the app, read
+//! by the file text runner of the open vault, which stops it on every vault close, and stopped in
+//! the `stop-utility-processes` shutdown step. The child starts only on the first call.
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 
+use memry_desktop::notes::index::NoteIndex;
+use memry_desktop::services::file_text::service::{FileText, FileTextConfig};
 use memry_desktop::services::file_text::{WorkerHandle, WorkerPaths};
+use memry_desktop::services::ocr_languages::OcrLanguages;
 use memry_desktop::session::Session;
 use tauri::{AppHandle, Manager, Wry};
 
@@ -64,10 +68,46 @@ fn resource_dir(app: &AppHandle<Wry>) -> Result<PathBuf, String> {
     app.path().resource_dir().map_err(|error| error.to_string())
 }
 
-/// Every vault close stops the worker: its open documents belong to that vault. No worker (see
-/// `manage`) leaves nothing to stop.
-pub fn register_on_close(app: &AppHandle<Wry>, session: &Session) {
-    if let Some(worker) = app.try_state::<Arc<WorkerHandle>>() {
-        worker.register(session);
-    }
+/// The file text runner of every open vault (#3542 lane G), reading PDFs through the worker. No
+/// worker (see `manage`) leaves the app without file text this run, as without PDFs: the runner's
+/// jobs would fail and be read again only a day later.
+pub fn register(app: &AppHandle<Wry>, session: &Session) {
+    let Some(worker) = app.try_state::<Arc<WorkerHandle>>() else {
+        return;
+    };
+    let (languages, index) = (app.clone(), app.clone());
+    let file_text = FileText::new(
+        session,
+        FileTextConfig {
+            app_version: app.package_info().version.to_string(),
+            pdf: worker.inner().clone(),
+            recognize: None,
+            ocr_languages: Arc::new(move || {
+                languages
+                    .try_state::<Arc<OcrLanguages>>()
+                    .map(|service| {
+                        service
+                            .ready()
+                            .iter()
+                            .map(|l| l.code().to_owned())
+                            .collect()
+                    })
+                    .unwrap_or_default()
+            }),
+            now_ms: Arc::new(|| {
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .map_or(0, |since| {
+                        i64::try_from(since.as_millis()).unwrap_or(i64::MAX)
+                    })
+            }),
+            indexing: Arc::new(move || {
+                index
+                    .try_state::<Arc<NoteIndex>>()
+                    .is_some_and(|index| index.indexing().is_some())
+            }),
+        },
+    );
+    file_text.register();
+    app.manage(file_text);
 }
