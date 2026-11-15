@@ -32,8 +32,6 @@ final class JournalDayPageModel {
     /// The user tapped a disabled ghost row: say why it is disabled.
     var explainsReadOnlyMetadata = false
     private var seedChecked = false
-    /// The block the first line's last write made: the next line goes after it.
-    private var lastLine: String?
 
     init(store: JournalStore, date: String, context: JournalVaultContext) {
         self.date = date
@@ -107,23 +105,24 @@ final class JournalDayPageModel {
 
     /// The first line typed into an empty day: one paragraph through
     /// `editDay`, which creates the day (D2). The block editor takes over
-    /// once the re-read draws the new block. A line typed after it (keys
-    /// after its Return, #4705) goes after it. `carrying` hands the new
-    /// block the keys typed after the line's Return, as it takes the caret.
+    /// once the re-read draws the new block. A line written after it goes
+    /// at the end. `carrying` hands the new block the keys typed after the
+    /// line's Return, as it takes the caret (#4705).
     @discardableResult
-    func writeFirstLine(_ text: String, carrying held: (@MainActor () -> String?)? = nil) async -> Bool {
+    func writeFirstLine(_ text: String, carrying draft: JournalFirstLineDraft? = nil) async -> Bool {
         let id = UUID().uuidString.lowercased()
-        let edit = BlockEdit.insertParagraph(afterBlockId: lastLine, text: text, newBlockId: id)
+        let edit = BlockEdit.insertParagraph(afterBlockId: nil, text: text, newBlockId: id)
         do {
             _ = try await bridge.edit(noteId: read.route.id, edit)
         } catch {
             Log.storage.error("the first line of a journal day did not land")
             return false
         }
-        lastLine = id
         await read.reload()
-        if let held {
-            editor.session.titleBurst = TitleBurst(target: id, take: held)
+        // The user moved the caret elsewhere during the write: it stays
+        // there, and the field lands its keys as lines of their own.
+        if let draft, draft.focused {
+            editor.session.titleBurst = TitleBurst(target: id, take: draft.takeHeld)
             editor.session.focus(id)
         }
         return true

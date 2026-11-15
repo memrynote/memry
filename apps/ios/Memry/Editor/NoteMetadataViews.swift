@@ -87,7 +87,7 @@ struct NoteTitleEditor: View {
     let setIcon: (String?) -> Void
     /// Return in the title moves the caret into the body, as on desktop,
     /// with the way to take the keys the title holds for it meanwhile.
-    var returnToBody: ((@escaping @MainActor () -> String?) -> Void)?
+    var returnToBody: ((@escaping TitleBurst.Take) -> Void)?
     /// The edit in progress as it changes, `nil` once it ends.
     var draftChanged: ((String?) -> Void)?
 
@@ -123,11 +123,16 @@ struct NoteTitleEditor: View {
         }
         returned = burst
         if let text = commits.take(burst.line, explicit: true), text != title { rename(text) }
-        returnToBody { takeHeld() }
+        returnToBody(takeHeld)
     }
 
     /// The body took the caret: the keys typed since the Return go to it.
-    private func takeHeld() -> String? {
+    /// It refused the caret: they stay in the title (`TitleBurst.Take`).
+    private func takeHeld(_ moved: Bool) -> String? {
+        guard moved else {
+            keepHeld()
+            return nil
+        }
         guard let burst = returned else { return nil }
         returned = nil
         let held = burst.held(in: draft)

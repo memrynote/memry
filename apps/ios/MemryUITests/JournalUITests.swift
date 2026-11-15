@@ -67,12 +67,16 @@ final class JournalUITests: XCTestCase {
         XCTAssertTrue(field.exists, "no empty day within ten days")
         let line = "[agent] SHIP-4152 a"
         field.tap()
-        // Return makes the line the day's first block.
+        // Return makes the line the day's first block and starts the next
+        // one, which takes the caret (#4705).
         field.typeText(line + "\n")
         let block = app.textViews.matching(NSPredicate(format: "value == %@", line)).firstMatch
         XCTAssertTrue(block.waitForExistence(timeout: 10), "the typed line did not become a block")
-        // The caret at the end of the line.
-        block.coordinate(withNormalizedOffset: CGVector(dx: 0.99, dy: 0.5)).tap()
+        let blocks = app.textViews.matching(NSPredicate(format: "identifier BEGINSWITH 'note.block.'"))
+        XCTAssertTrue(waitUntil { blocks.count == 2 }, "Return started no block after the line")
+        // Backspace in the empty block puts the caret at the end of the line.
+        app.typeText(XCUIKeyboardKey.delete.rawValue)
+        XCTAssertTrue(waitUntil { blocks.count == 1 }, "Backspace left the empty block")
         assertBackspaceJoinsBlocks(in: app, line: line)
 
         // On a day other than today the bar's Today button pushes the More
@@ -171,6 +175,26 @@ final class JournalUITests: XCTestCase {
     /// #4705: a line, its Return and the next words typed in one burst land
     /// whole and in order, and stay so after a relaunch.
     func testABurstWithReturnLandsTheWholeFirstLine() throws {
+        try returnInTheFirstLine { field, line in field.typeText(line + "\nmore words") }
+    }
+
+    /// #4705: Return typed at a normal speed starts a new block too, which
+    /// takes the caret and the next words.
+    func testReturnAtNormalSpeedStartsANewBlock() throws {
+        try returnInTheFirstLine { field, line in
+            field.typeText(line + "\n")
+            let landed = app.textViews.matching(NSPredicate(format: "value == %@", line)).firstMatch
+            XCTAssertTrue(landed.waitForExistence(timeout: 10), "the line did not land")
+            // A pause between Return and the next words, as a typist makes.
+            Thread.sleep(forTimeInterval: 1.5)
+            app.typeText("more words")
+        }
+    }
+
+    /// Types `line`, a Return and "more words" into an empty day's first
+    /// line with `typing`, then checks they land in order, also after a
+    /// relaunch, and deletes the day.
+    private func returnInTheFirstLine(typing: (XCUIElement, String) -> Void) throws {
         try openJournal(today: Self.randomDay())
         app.primeCommandKeys()
         let field = app.descendants(matching: .any)["journal.day.firstLine"].firstMatch
@@ -181,13 +205,16 @@ final class JournalUITests: XCTestCase {
         let day = try XCTUnwrap(shownDate())
         let line = "[agent] SHIP-4705 journal linkword"
         field.tap()
-        field.typeText(line + "\nmore words")
+        typing(field, line)
         let first = app.textViews.matching(NSPredicate(format: "value == %@", line)).firstMatch
         let next = app.textViews.matching(NSPredicate(format: "value == 'more words'")).firstMatch
         XCTAssertTrue(first.waitForExistence(timeout: 10), "the line did not land whole")
         XCTAssertTrue(next.waitForExistence(timeout: 10), "the words after Return did not land")
         XCTAssertLessThan(first.frame.minY, next.frame.minY, "the words after Return landed above the line")
 
+        // Going to the background saves the block being typed in.
+        XCUIDevice.shared.press(.home)
+        Thread.sleep(forTimeInterval: 2)
         app.terminate()
         try openJournal(today: day)
         XCTAssertTrue(first.waitForExistence(timeout: 10), "the stored line is not the typed one")

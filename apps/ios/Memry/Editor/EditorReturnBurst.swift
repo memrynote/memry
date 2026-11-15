@@ -37,8 +37,13 @@ struct ReturnBurst {
 /// day's first line) moves the caret to, and the way to take the keys the
 /// field held for it meanwhile (`LineReturn`).
 struct TitleBurst {
+    /// Takes the keys the field held. `moved` is false when the block
+    /// refused the caret: the field keeps its keys, stops holding them so
+    /// its Return works again, and answers `nil`.
+    typealias Take = @MainActor (_ moved: Bool) -> String?
+
     let target: String
-    let take: @MainActor () -> String?
+    let take: Take
 }
 
 extension EditorSession {
@@ -122,7 +127,7 @@ extension EditorSession {
         if fromTitle, let burst = titleBurst {
             titleBurst = nil
             // The field kept the caret, so its keys stay with it.
-            guard took, let held = burst.take() else { return }
+            guard let held = burst.take(took) else { return }
             type(held, into: field)
             if !textView.isFirstResponder, field.dirty { commit(field) }
             return

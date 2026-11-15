@@ -137,11 +137,11 @@ final class EditorKeyboardUITests: XCTestCase {
         deleteNotes([title])
     }
 
-    /// #4705: Return in the title after the app comes back moves to the
-    /// body, with the keys typed after it. A resume that ends the edit under
-    /// the caret (a reload on resume) is pinned by the hosted
-    /// `NoteTitleBurstTests`; this one keeps the user's path covered.
-    func testReturnInTheTitleAfterResumeMovesToTheBody() throws {
+    /// #4705 smoke test: Return in the title after the app comes back moves
+    /// to the body, with the keys typed after it. It passes before #4705 too:
+    /// a plain resume does not end the edit under the caret. That case (a
+    /// reload on resume) is pinned by the hosted `NoteTitleBurstTests`.
+    func testSmokeTitleReturnAfterResumeReachesTheBody() throws {
         try openNotes()
         let title = "[agent] \(run) resumed title"
         app.buttons["notes.addButton"].firstMatch.tap()

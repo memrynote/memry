@@ -5,7 +5,7 @@ extension NoteEditorViewModel {
     /// its end (a tap under it). A body with nowhere to type gets a new empty
     /// paragraph, as desktop does. `carrying` takes the keys the title held
     /// since its Return, which the block types as it takes the caret.
-    func focusBody(in blocks: [Block], atEnd: Bool, carrying held: (@MainActor () -> String?)? = nil) async {
+    func focusBody(in blocks: [Block], atEnd: Bool, carrying held: TitleBurst.Take? = nil) async {
         let target = atEnd ? blocks.last : blocks.first
         let typable = target.map { block in
             atEnd

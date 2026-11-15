@@ -10,7 +10,7 @@ struct NotePageTitle: View {
     let metadataModel: NoteMetadataViewModel
     /// Return in the title moves the caret to the body, with the keys the
     /// title held since. `nil` on a page whose body is read only.
-    let returnToBody: ((@escaping @MainActor () -> String?) -> Void)?
+    let returnToBody: ((@escaping TitleBurst.Take) -> Void)?
 
     var body: some View {
         if metadataModel.canEdit {
