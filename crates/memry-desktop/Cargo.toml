@@ -104,6 +104,9 @@ trash = "5.2.9"
 # Custom icons (`notes::icons`): raster uploads are decoded and re-encoded as PNG. Only the four
 # input formats of `CUSTOM_ICON_INPUT_EXTENSIONS` are compiled in.
 image = { workspace = true }
+# The bounded decode of untrusted images (`services::image_processing`); never `memry-ml`, which
+# links ONNX Runtime.
+memry-media = { path = "../memry-media" }
 # The OCR language packs are gzip; native Tesseract reads them unpacked (`services::ocr_languages`).
 flate2 = { workspace = true }
 
