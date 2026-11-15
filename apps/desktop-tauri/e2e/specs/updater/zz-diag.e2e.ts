@@ -152,6 +152,7 @@ for (let round = 0; round < 8; round++)
     })
     await page.getByRole('button', { name: 'Settings', exact: true }).click()
     await page.getByRole('button', { name: 'General', exact: true }).click()
+    if (fixed) await expect(page.getByTestId('ocr-languages-setting')).toBeVisible()
     const probe = () =>
       page.evaluate(() => {
         const b = [...document.querySelectorAll('button')].find(
@@ -186,11 +187,11 @@ for (let round = 0; round < 8; round++)
         .filter((line) => /Updater|updater/.test(line))
         .slice(-12)
       console.log(
-        `DIAG-MISS round ${round}\n before ${before}\n afterClick ${afterClick}\n now ${await probe()}\n events ${await events()}\n state ${JSON.stringify(await state(page))}\n log ${updaterLines.join(' | ')}`
+        `DIAG-MISS fixed=${fixed} round ${round}\n before ${before}\n afterClick ${afterClick}\n now ${await probe()}\n events ${await events()}\n state ${JSON.stringify(await state(page))}\n log ${updaterLines.join(' | ')}`
       )
       throw error
     }
-    console.log(`DIAG-OK round ${round} ${before}`)
+    console.log(`DIAG-OK fixed=${fixed} round ${round}`)
     await expect.poll(errorToasts).toBe(1)
     await expect(page.getByText(/could not be resolved/).first()).toBeVisible()
     // Red is for an install that failed; being offline is not one.
