@@ -99,6 +99,15 @@ pub struct AuthOtpDetectedEvent {
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
 pub struct AuthSessionRefreshedEvent {}
 
+/// A linked device finished registering, or failed to (`sync:linking-finalized`). The new device's
+/// link finalizes in the background after the approval; `error` is the failure's message.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncLinkingFinalizedEvent {
+    pub device_id: Option<String>,
+    pub error: Option<String>,
+}
+
 /// A custom icon was added, renamed or deleted (`custom-icons:updated`). The renderer refetches
 /// the library.
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]

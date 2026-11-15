@@ -85,6 +85,13 @@ impl Server {
         assert_eq!(reply["harnessOtp"], true, "{reply}");
     }
 
+    /// Gives the user who signed in with `email` a paid plan, so it can add vaults to its account.
+    #[allow(dead_code)] // One binary entitles.
+    pub fn entitle(&mut self, email: &str) {
+        let reply = self.command(&format!("entitle {email}"));
+        assert_eq!(reply["harnessEntitled"], true, "{reply}");
+    }
+
     fn command(&mut self, line: &str) -> Value {
         let stdin = self.child.stdin.as_mut().expect("its stdin");
         stdin

@@ -1,63 +1,73 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createMockApi } from '@tests/setup-dom'
+
+const mocks = vi.hoisted(() => ({
+  commands: {
+    syncGetDevices: vi.fn(),
+    syncRemoveDevice: vi.fn(),
+    syncRenameDevice: vi.fn()
+  }
+}))
+
+vi.mock('../../../generated/bindings', () => ({ commands: mocks.commands }))
+
 import { deviceService, setupService } from './device-service'
 
 describe('device-service', () => {
-  let api: ReturnType<typeof createMockApi>
-
   beforeEach(() => {
-    api = createMockApi()
-    ;(window as Window & { api: unknown }).api = api
+    vi.clearAllMocks()
   })
 
-  it('forwards getDevices to window.api.syncDevices', async () => {
-    // #given
-    const response = {
+  it('answers the device list in the shape the device list reads', async () => {
+    mocks.commands.syncGetDevices.mockResolvedValue({
       devices: [
         {
           id: 'dev-1',
           name: 'MacBook',
           platform: 'macos',
+          formFactor: null,
           isCurrentDevice: true,
-          linkedAt: Date.now()
+          lastSyncAt: null,
+          linkedAt: 1_700_000_000_000
+        },
+        {
+          id: 'dev-2',
+          name: 'iPad',
+          platform: 'ios',
+          formFactor: 'tablet',
+          isCurrentDevice: false,
+          lastSyncAt: 1_700_000_100_000,
+          linkedAt: 1_700_000_000_000
         }
-      ]
-    }
-    api.syncDevices.getDevices = vi.fn().mockResolvedValue(response)
+      ],
+      email: null,
+      needsRecoveryConfirmation: false
+    })
 
-    // #when
     const result = await deviceService.getDevices()
 
-    // #then
-    expect(api.syncDevices.getDevices).toHaveBeenCalled()
-    expect(result).toEqual(response)
+    expect(result.email).toBeUndefined()
+    expect(result.devices[0].lastSyncAt).toBeUndefined()
+    expect(result.devices[1]).toMatchObject({ formFactor: 'tablet', lastSyncAt: 1_700_000_100_000 })
   })
 
-  it('forwards removeDevice to window.api.syncDevices', async () => {
-    // #given
-    api.syncDevices.removeDevice = vi.fn().mockResolvedValue({ success: true })
-
-    // #when
-    const result = await deviceService.removeDevice({ deviceId: 'dev-1' })
-
-    // #then
-    expect(api.syncDevices.removeDevice).toHaveBeenCalledWith({ deviceId: 'dev-1' })
-    expect(result).toEqual({ success: true })
-  })
-
-  it('forwards renameDevice to window.api.syncDevices', async () => {
-    // #given
-    api.syncDevices.renameDevice = vi.fn().mockResolvedValue({ success: true })
-
-    // #when
-    const result = await deviceService.renameDevice({ deviceId: 'dev-1', newName: 'My Laptop' })
-
-    // #then
-    expect(api.syncDevices.renameDevice).toHaveBeenCalledWith({
-      deviceId: 'dev-1',
-      newName: 'My Laptop'
+  it('answers a rename and a removal in envelopes, with the failure message', async () => {
+    mocks.commands.syncRenameDevice.mockResolvedValue(null)
+    mocks.commands.syncRemoveDevice.mockRejectedValue({
+      kind: 'invalid',
+      code: 'cannot_remove_current_device',
+      message: 'You cannot remove the current device.'
     })
-    expect(result).toEqual({ success: true })
+
+    await expect(
+      deviceService.renameDevice({ deviceId: 'dev-1', newName: 'My Laptop' })
+    ).resolves.toEqual({ success: true })
+    await expect(deviceService.removeDevice({ deviceId: 'dev-1' })).resolves.toEqual({
+      success: false,
+      error: 'You cannot remove the current device.'
+    })
+    expect(mocks.commands.syncRenameDevice).toHaveBeenCalledWith('dev-1', 'My Laptop')
+    expect(mocks.commands.syncRemoveDevice).toHaveBeenCalledWith('dev-1')
   })
 })
 

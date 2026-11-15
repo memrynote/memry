@@ -15,6 +15,7 @@ mod recovery;
 
 pub use devices::DeviceList;
 pub use linking::{LinkPoll, LinkScanned, LinkingQr, VaultChoice, dormant_vault_folder_name};
+pub use memry_core::protocol::auth::DeviceFormFactor;
 
 use std::sync::{Arc, Mutex};
 

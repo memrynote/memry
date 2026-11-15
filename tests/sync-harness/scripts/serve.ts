@@ -22,6 +22,10 @@
  * An `otp <email> <code>` line makes `<code>` the email's pending sign-in code, as the server's
  * `storeOtp` stores one (the email normalized, the code's HMAC-SHA256 under the harness key), so
  * a client can finish an email sign-in without the email. It answers `{ harnessOtp: true }`.
+ *
+ * An `entitle <email>` line gives the user who signed in with `<email>` the bootstrap user's paid
+ * plan, so it can add vaults to its account (`POST /sync/vaults`). It answers
+ * `{ harnessEntitled: true }`.
  */
 import { createHmac } from 'node:crypto'
 import { createInterface } from 'node:readline'
@@ -96,11 +100,24 @@ const otp = async (email: string, code: string): Promise<void> => {
     .run()
   process.stdout.write(`${JSON.stringify({ harnessOtp: true })}\n`)
 }
+const entitle = async (email: string): Promise<void> => {
+  const db = await server.getD1()
+  await db
+    .prepare(
+      `INSERT OR REPLACE INTO sync_entitlements (user_id, plan, status, source, storage_limit, max_file_size, max_vaults, version_history_days, expires_at, updated_at)
+       SELECT u.id, e.plan, e.status, e.source, e.storage_limit, e.max_file_size, e.max_vaults, e.version_history_days, e.expires_at, e.updated_at
+       FROM users u, sync_entitlements e WHERE u.email = ? AND e.user_id = ?`
+    )
+    .bind(email.trim().toLowerCase(), userId)
+    .run()
+  process.stdout.write(`${JSON.stringify({ harnessEntitled: true })}\n`)
+}
 const commands = createInterface({ input: process.stdin })
 commands.on('line', (line) => {
   const [command, ...args] = line.trim().split(/\s+/)
   if (command === 'purge') void purge()
   if (command === 'otp' && args.length === 2) void otp(args[0], args[1])
+  if (command === 'entitle' && args.length === 1) void entitle(args[0])
   if (command === 'register') {
     void register(devices.length).then((device) => {
       devices.push(device)

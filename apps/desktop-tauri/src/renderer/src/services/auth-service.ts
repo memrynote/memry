@@ -26,7 +26,8 @@ function failure(error: unknown, errorCodes: ErrorCodes): Failure {
   return result
 }
 
-async function envelope<T extends object>(
+/** Electron's `{ success, error, errorCode }` envelope around a command. */
+export async function envelope<T extends object>(
   run: () => Promise<T>,
   errorCodes: ErrorCodes = {}
 ): Promise<({ success: true } & T) | Failure> {

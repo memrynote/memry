@@ -290,13 +290,14 @@ impl AccountService {
 
     /// `FINALIZE_VAULT_CHOICE` (`linking-service.ts:579-647`): provisions the primary vault in
     /// `<parent>/memry-vault-<id>` without touching the open vault, opens it, then registers the
-    /// device. A failed provisioning or open keeps the choice for another try; the other selected
-    /// vaults stay in the account for the vault switcher.
+    /// device. A failed provisioning or open keeps the choice for another try (the outer error);
+    /// the other selected vaults stay in the account for the vault switcher. The inner result is
+    /// the finalize's, which Electron reports through `sync:linking-finalized`.
     pub async fn finalize_vault_choice(
-        self: &Arc<Self>,
+        &self,
         session: &Session,
         choice: VaultChoice,
-    ) -> Result<String, AccountError> {
+    ) -> Result<Result<String, AccountError>, AccountError> {
         let pending = {
             let mut slot = lock(&self.linking.choice);
             let pending = slot
@@ -339,8 +340,9 @@ impl AccountService {
             }
         };
         let PendingChoice { master, .. } = pending;
-        self.finalize_link(master, Some((opened.vault.vault, choice.primary)))
-            .await
+        Ok(self
+            .finalize_link(master, Some((opened.vault.vault, choice.primary)))
+            .await)
     }
 
     /// `finalizeLinking` (`linking-service.ts:494-552`): the key is checked against the account's
@@ -394,4 +396,33 @@ async fn bind(vault: Arc<Vault>, server_id: String) {
 
 fn lock<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
     mutex.lock().unwrap_or_else(|e| e.into_inner())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The link's store holds the master key and nothing else, and never reads one back: the
+    /// link cannot leave a device key or token in memory, nor read the keychain through it.
+    #[test]
+    fn the_held_key_takes_only_the_master_key() {
+        let held = HeldKey::default();
+        for key in [
+            SecureStoreKey::DeviceSigningKey,
+            SecureStoreKey::AccessToken,
+            SecureStoreKey::RefreshToken,
+            SecureStoreKey::SetupToken,
+        ] {
+            assert!(held.set(key, vec![1; 32]).is_err(), "{key:?}");
+        }
+        assert_eq!(held.take(), None);
+
+        held.set(SecureStoreKey::MasterKey, vec![2; 32]).unwrap();
+        assert_eq!(held.get(SecureStoreKey::MasterKey).unwrap(), None);
+        assert_eq!(
+            held.take().as_deref().map(Vec::as_slice),
+            Some(&[2; 32][..])
+        );
+        assert_eq!(held.take(), None, "taken once");
+    }
 }

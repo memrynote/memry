@@ -83,7 +83,6 @@ import type {
   ItemSyncedEvent,
   LinkingRequestEvent,
   LinkingApprovedEvent,
-  LinkingFinalizedEvent,
   UploadProgressEvent,
   AttachmentMaterializedEvent,
   AttachmentUploadFailedEvent,
@@ -1547,49 +1546,6 @@ interface SyncSetupClientAPI {
   getRecoveryPhrase: () => Promise<string | null>
 }
 
-// Device Linking API
-interface SyncLinkingClientAPI {
-  generateLinkingQr: () => Promise<{
-    sessionId?: string
-    qrData?: string
-    expiresAt?: number
-  }>
-  linkViaQr: (input: { qrData: string; provider?: string; oauthToken?: string }) => Promise<{
-    success: boolean
-    status?: 'waiting_approval' | 'approved' | 'error'
-    verificationCode?: string
-    error?: string
-    errorCode?: 'setup-session-expired'
-  }>
-  linkViaRecovery: (input: { recoveryPhrase: string }) => Promise<{
-    success: boolean
-    deviceId?: string
-    error?: string
-    errorCode?: 'setup-session-expired'
-  }>
-  approveLinking: (input: { sessionId: string }) => Promise<{
-    success: boolean
-    error?: string
-  }>
-  getLinkingSas: (input: { sessionId: string }) => Promise<{
-    verificationCode?: string
-    error?: string
-  }>
-  completeLinkingQr: (input: { sessionId: string }) => Promise<{
-    success: boolean
-    deviceId?: string
-    error?: string
-    vaults?: Array<{ vaultUuid: string; itemCount?: number; createdAt?: number | null }>
-  }>
-  finalizeVaultChoice: (input: {
-    sessionId: string
-    parentFolderPath: string
-    selectedVaultUuids: string[]
-    primaryVaultUuid: string
-  }) => Promise<{ success: boolean; error?: string }>
-  pickVaultFolder: () => Promise<{ path: string | null }>
-}
-
 // Account API
 type BillingPlanId = 'plus' | 'pro' | 'believer'
 type BillingPlan = 'free' | BillingPlanId
@@ -1656,30 +1612,6 @@ interface PlanChangePreview {
   recurringAmount: string
   currencyCode: string
   nextBilledAt: string | null
-}
-
-// Device Management API
-interface SyncDevicesClientAPI {
-  getDevices: () => Promise<{
-    devices: Array<{
-      id: string
-      name: string
-      platform: string
-      isCurrentDevice: boolean
-      lastSyncAt?: number
-      linkedAt: number
-    }>
-    email?: string
-    needsRecoveryConfirmation: boolean
-  }>
-  removeDevice: (input: { deviceId: string }) => Promise<{
-    success: boolean
-    error?: string
-  }>
-  renameDevice: (input: { deviceId: string; newName: string }) => Promise<{
-    success: boolean
-    error?: string
-  }>
 }
 
 // Sync Operations API
@@ -1935,9 +1867,7 @@ interface API
   locale: LocaleApi
   syncAuth: SyncAuthClientAPI
   syncSetup: SyncSetupClientAPI
-  syncLinking: SyncLinkingClientAPI
   account: AccountClientAPI
-  syncDevices: SyncDevicesClientAPI
   syncOps: SyncOpsClientAPI
   crypto: CryptoClientAPI
   syncAttachments: SyncAttachmentsClientAPI
@@ -2029,7 +1959,6 @@ interface API
   onItemSynced: (callback: (event: ItemSyncedEvent) => void) => () => void
   onLinkingRequest: (callback: (event: LinkingRequestEvent) => void) => () => void
   onLinkingApproved: (callback: (event: LinkingApprovedEvent) => void) => () => void
-  onLinkingFinalized: (callback: (event: LinkingFinalizedEvent) => void) => () => void
   onUploadProgress: (callback: (event: UploadProgressEvent) => void) => () => void
   onDownloadProgress: (callback: (event: DownloadProgressEvent) => void) => () => void
   onAttachmentUploadFailed: (callback: (event: AttachmentUploadFailedEvent) => void) => () => void

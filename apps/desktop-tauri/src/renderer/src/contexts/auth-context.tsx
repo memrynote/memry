@@ -362,14 +362,13 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
   }, [])
 
   useEffect(() => {
-    const unsubscribe = window.api.onLinkingFinalized(({ deviceId, error }) => {
+    return subscribeToEvent(events.syncLinkingFinalizedEvent, ({ deviceId, error }) => {
       if (deviceId) {
         dispatch({ type: 'LINKING_COMPLETED', deviceId })
       } else if (error) {
         dispatch({ type: 'SET_ERROR', error })
       }
     })
-    return unsubscribe
   }, [])
 
   useEffect(() => {
