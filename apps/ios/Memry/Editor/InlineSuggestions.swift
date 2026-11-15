@@ -207,13 +207,14 @@ enum WikiLinkText {
         let alias: String
     }
 
-    /// Where each link's literal starts in `live`, the block's text as the
-    /// core holds it after the commit, in core bytes; `nil` for one it no
-    /// longer holds. The pane's text was `typedLength` bytes. Another pane's
-    /// edit before a link moves it by the length difference, and one after
-    /// it moves it not at all, so of several copies of a literal the one
-    /// nearest either place is the typed one. Links stay in order.
-    static func locate(_ links: [Typed], in live: String, typedLength: Int) -> [Int?] {
+    /// Where each literal starts in `live`, the block's text as the core
+    /// holds it after the write, in core bytes; `nil` for one it no longer
+    /// holds. Each `start` is in the written text, `typedLength` bytes.
+    /// Another pane's edit before a literal moves it by the length
+    /// difference, and one after it moves it not at all, so of several
+    /// copies of a literal the one nearest either place is the typed one.
+    /// Literals come in order and stay in order.
+    static func locate(_ links: [(start: Int, literal: String)], in live: String, typedLength: Int) -> [Int?] {
         let bytes = Array(live.utf8)
         let shift = bytes.count - typedLength
         var from = 0

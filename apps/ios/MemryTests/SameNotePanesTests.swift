@@ -206,6 +206,33 @@ struct SameNotePanesTests {
         #expect(BlockText.shown(try await block(f).inline) == "XYZ hello")
     }
 
+    /// DATA-LOSS (REVIEW-4700): B's redo of a link it typed puts the node
+    /// over the literal where the block holds it once the typing is back,
+    /// not at the offsets B recorded: A has typed before it since.
+    @Test(.timeLimit(.minutes(1))) func redo_of_a_typed_link_after_the_other_pane_typed_before_it() async throws {
+        let f = try fixture("hello")
+        let a = pane(f)
+        let b = pane(f)
+        let drawn = try await block(f)
+        let fieldA = draw(drawn, in: a)
+        let fieldB = draw(drawn, in: b)
+
+        type("hello [[Foo]]", in: fieldB)
+        await commit(fieldB, in: b)
+        #expect(BlockText.shown(try await block(f).inline) == "hello \u{FFFC}")
+        b.session.undo()
+        await b.session.tail?.value
+        #expect(try await stored(f) == "hello")
+        type("XYZ hello", in: fieldA)
+        await commit(fieldA, in: a)
+
+        b.session.redo()
+        await b.session.tail?.value
+        let runs = try await block(f).inline
+        #expect(BlockText.shown(runs) == "XYZ hello \u{FFFC}", "A's typing intact, no partial literal")
+        #expect(runs.filter { $0.marks.contains("wikiLink") }.map(\.target) == ["Foo"])
+    }
+
     /// A pane's write is announced under its own source, so the other pane on
     /// the note re-reads (`NotePageLoad`) and the writer does not.
     @Test(.timeLimit(.minutes(1))) func a_landed_edit_is_announced_with_its_panes_source() async throws {

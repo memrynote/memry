@@ -556,13 +556,15 @@ final class EditorSession {
             let added = await nodes?(model) ?? []
             // From `base`, as the write: the block may hold another pane's
             // typing since, which undo and redo keep. To this pane's text
-            // with the nodes in, so undo takes them back too.
+            // with the nodes in, so undo takes them back too. A node over
+            // text, such as a `#tag`, keeps its literal for redo to find.
             if !converted.isEmpty || !added.isEmpty {
-                let spans = converted.map { $0.link.start ..< $0.link.start + $0.link.literal.utf8.count }
-                    + added.compactMap(Self.span)
+                let overText = converted + added.compactMap { Self.overText($0, in: attributed) }
+                let spans = overText.map { $0.start ..< $0.start + $0.literal.utf8.count }
+                    + added.compactMap(Self.span).filter(\.isEmpty)
                 self.history.record(.text(
-                    blockId: blockId, from: base, typed: text, nodes: converted.map(\.edit) + added,
-                    to: BlockText.placingNodes(spans, in: attributed)
+                    blockId: blockId, from: base, typed: text, typedLength: length, overText: overText,
+                    nodes: added.filter { Self.span($0)?.isEmpty != false }, to: BlockText.placingNodes(spans, in: attributed)
                 ))
             } else if wrote {
                 self.history.record(.text(blockId: blockId, from: base, to: text))
@@ -577,6 +579,15 @@ final class EditorSession {
     private static func span(_ edit: BlockEdit) -> Range<Int>? {
         guard case let .insertInline(_, start, end, _, _, _) = edit else { return nil }
         return Int(start) ..< Int(max(start, end))
+    }
+
+    /// An `insertInline` that replaced text in `text`, with that text.
+    private static func overText(_ edit: BlockEdit, in text: NSAttributedString) -> EditorUndoStep.TextNode? {
+        guard let span = span(edit), !span.isEmpty else { return nil }
+        let lower = BlockText.utf16Offset(in: text, core: span.lowerBound)
+        let upper = BlockText.utf16Offset(in: text, core: span.upperBound)
+        let literal = (text.string as NSString).substring(with: NSRange(location: lower, length: upper - lower))
+        return EditorUndoStep.TextNode(start: span.lowerBound, literal: literal, edit: edit)
     }
 
     /// Commits the focused block (if any), then runs `work` against it.
@@ -727,7 +738,7 @@ final class EditorSession {
         let attrs = HashTagAttrs.attrs(tag: suggestion.tag, colors: tagColors)
         let blockId = field.blockId
         commit(field, inserting: { model in
-            [await model.insertInline(blockId, from: start, to: end, kind: "hashTag", text: "", attrs: attrs)]
+            [await model.insertInline(blockId, from: start, to: end, kind: "hashTag", text: "", attrs: attrs)].compactMap { $0 }
         })
     }
 
@@ -1124,12 +1135,12 @@ final class EditorSession {
                 let at = start + index
                 switch kind {
                 case let .note(title, alias):
-                    edits.append(await model.insertWikiLink(in: blockId, from: at, to: at, title: title, alias: alias))
+                    if let edit = await model.insertWikiLink(in: blockId, from: at, to: at, title: title, alias: alias) { edits.append(edit) }
                 case let .create(title, alias):
                     await model.createNote(titled: title)
-                    edits.append(await model.insertWikiLink(in: blockId, from: at, to: at, title: title, alias: alias))
+                    if let edit = await model.insertWikiLink(in: blockId, from: at, to: at, title: title, alias: alias) { edits.append(edit) }
                 case let .date(value):
-                    edits.append(await model.insertDateMention(in: blockId, from: at, to: at, value: value))
+                    if let edit = await model.insertDateMention(in: blockId, from: at, to: at, value: value) { edits.append(edit) }
                 case .slash:
                     break
                 }
@@ -1248,7 +1259,10 @@ final class EditorSession {
         // no reload redraws the text view (`updateUIView` compares blocks).
         replay(redrawing: typingChanged ? field : nil) { history in
             if let kept { history.keepRedo(kept) }
-            return history.popUndo().map { [$0.backward] + $0.backwardAfter }
+            guard let step = history.popUndo() else { return nil }
+            return { model in
+                for edit in [step.backward] + step.backwardAfter { await model.apply(edit) }
+            }
         }
     }
 
@@ -1259,7 +1273,10 @@ final class EditorSession {
             return
         }
         guard canRedo else { return }
-        replay { $0.popRedo().map { [$0.forward] + $0.forwardProps } }
+        replay { history in
+            guard let step = history.popRedo() else { return nil }
+            return { model in await model.redo(step) }
+        }
     }
 
     /// Takes a step with `take` and applies its edits once the open block's
@@ -1268,11 +1285,12 @@ final class EditorSession {
     /// (#4659), and a step taken before that record would replay over text
     /// it never saw, ahead of it in the history.
     private func replay(
-        redrawing reverted: BlockField? = nil, _ take: @escaping @MainActor (EditorUndoStack) -> [BlockEdit]?
+        redrawing reverted: BlockField? = nil,
+        _ take: @escaping @MainActor (EditorUndoStack) -> (@MainActor (NoteEditorViewModel) async -> Void)?
     ) {
         let apply: @MainActor () async -> Void = { [weak self] in
-            guard let self, let model = self.model, let edits = take(self.history) else { return }
-            for edit in edits { await model.apply(edit) }
+            guard let self, let model = self.model, let run = take(self.history) else { return }
+            await run(model)
             // Never over typing that landed during the writes: its next
             // commit sends the change from `base` onto the reverted core.
             if reverted?.dirty == false { reverted?.render() }

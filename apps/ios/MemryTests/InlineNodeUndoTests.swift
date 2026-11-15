@@ -7,6 +7,7 @@
 
 import Foundation
 import MemryCore
+import Synchronization
 import Testing
 import UIKit
 
@@ -164,5 +165,40 @@ struct InlineNodeUndoTests {
         await f.session.tail?.value
         #expect(try await shown(f) == "hello see [[Foo]]")
         #expect(try await nodes(f, "wikiLink") == 0)
+    }
+
+    /// The core's editor, except that it refuses the first inline node.
+    private final class RefusesFirstNode: BlockEditing, Sendable {
+        let core: CoreBlockEditor
+        private let refused = Mutex(false)
+        init(core: CoreBlockEditor) { self.core = core }
+        func edit(noteId: String, _ edit: BlockEdit) async throws -> Bool {
+            if case .insertInline = edit, refused.withLock({ done in defer { done = true }; return !done }) {
+                return false
+            }
+            return try await core.edit(noteId: noteId, edit)
+        }
+        func blockText(noteId: String, blockId: String) async throws -> String? {
+            try await core.blockText(noteId: noteId, blockId: blockId)
+        }
+    }
+
+    /// A node the core refused is not in the step: redo puts back the typing
+    /// the user had, and no node they never saw.
+    @Test(.timeLimit(.minutes(1))) func a_refused_node_is_not_redone() async throws {
+        let f = try await fixture("due ", editor: { RefusesFirstNode(core: $0) })
+        type("@tom", in: f)
+        let value = DateMentionValue(dateISO: "2026-06-02T09:00:00.000Z", hasTime: false)
+        f.session.insertInline(.date(value), replacing: NSRange(location: 4, length: 4))
+        await f.session.tail?.value
+        #expect(try await shown(f) == "due  ")
+        #expect(try await nodes(f, "dateMention") == 0)
+
+        await undo(f)
+        #expect(try await shown(f) == "due ")
+
+        await redo(f)
+        #expect(try await shown(f) == "due  ")
+        #expect(try await nodes(f, "dateMention") == 0, "no node the user never had")
     }
 }

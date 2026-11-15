@@ -388,7 +388,8 @@ final class NoteEditorViewModel {
     /// core has its own operation for it.
     ///
     /// `start == end` inserts at the caret without removing anything. Answers
-    /// the edit it ran, which an undo step's redo runs again.
+    /// the edit it ran, which an undo step's redo runs again, or `nil` when
+    /// it did not land: a step must not redo a node the user never had.
     @discardableResult
     func insertInline(
         _ blockId: String,
@@ -397,7 +398,7 @@ final class NoteEditorViewModel {
         kind: String,
         text: String,
         attrs: [String: String]
-    ) async -> BlockEdit {
+    ) async -> BlockEdit? {
         let edit = BlockEdit.insertInline(
             blockId: blockId,
             start: UInt32(max(0, start)),
@@ -406,8 +407,7 @@ final class NoteEditorViewModel {
             text: text,
             attrs: attrs
         )
-        await run(edit)
-        return edit
+        return await run(edit) ? edit : nil
     }
 
     /// A wiki link to `title` (N602), in desktop's shape.
@@ -424,7 +424,7 @@ final class NoteEditorViewModel {
         to end: Int,
         title: String,
         alias: String? = nil
-    ) async -> BlockEdit {
+    ) async -> BlockEdit? {
         await insertInline(
             blockId,
             from: start,
@@ -435,39 +435,73 @@ final class NoteEditorViewModel {
         )
     }
 
-    /// Turns the `[[target]]` literals a commit just wrote into link nodes.
-    /// Each `start` is in the pane's text, `typedLength` core bytes long.
-    /// A pane that had not re-read the note lands its commit rebased on the
-    /// live block (#4377), so each literal is found where the block now
-    /// holds it; one no longer there stays text. A block that could not be
-    /// read keeps every literal as text: the pane's offsets may miss it.
-    /// Answers each link it converted with the edit it ran, in that order.
+    /// Turns the `[[target]]` literals a commit just wrote into link nodes
+    /// (`insert(_:over:typedLength:)`). Each `start` is in the pane's text,
+    /// `typedLength` core bytes long.
     func insertTypedWikiLinks(
         _ links: [WikiLinkText.Typed], in blockId: String, typedLength: Int
-    ) async -> [(link: WikiLinkText.Typed, edit: BlockEdit)] {
+    ) async -> [EditorUndoStep.TextNode] {
+        let nodes = links.map { link in
+            EditorUndoStep.TextNode(
+                start: link.start, literal: link.literal,
+                edit: .insertInline(
+                    blockId: blockId, start: UInt32(link.start), end: UInt32(link.start + link.literal.utf8.count),
+                    kind: "wikiLink", text: "", attrs: WikiLinkAttrs.attrs(target: link.target, alias: link.alias)
+                )
+            )
+        }
+        return await insert(nodes, over: blockId, typedLength: typedLength)
+    }
+
+    /// Puts each node's `insertInline` in over its literal, where `blockId`
+    /// holds it now. Each `start` is in text `typedLength` core bytes long
+    /// that a write rebased onto the live block (#4377): a commit's, or a
+    /// redo's `forward`. Another pane's typing may have moved a literal, so
+    /// it is found, and one no longer there stays text. A block that could
+    /// not be read keeps every literal as text: the offsets may miss it.
+    /// Answers the nodes that landed, last first, as they went in.
+    @discardableResult
+    func insert(
+        _ nodes: [EditorUndoStep.TextNode], over blockId: String, typedLength: Int
+    ) async -> [EditorUndoStep.TextNode] {
+        guard !nodes.isEmpty else { return [] }
         let live: String?
         do {
             live = try await editor?.blockText(noteId: noteId, blockId: blockId)
         } catch {
-            Log.storage.error("a typed link's block could not be read", .code(ErrorMapping.userFacing(error).code))
+            Log.storage.error("a node's block could not be read", .code(ErrorMapping.userFacing(error).code))
             return []
         }
+        let ordered = nodes.sorted { $0.start < $1.start }
         // `nil` without an error: the surface reads no block (the journal),
         // and holds only this pane's text.
-        let starts: [Int?] = live.map { WikiLinkText.locate(links, in: $0, typedLength: typedLength) }
-            ?? links.map(\.start)
-        var converted: [(link: WikiLinkText.Typed, edit: BlockEdit)] = []
-        for (link, start) in zip(links, starts).reversed() {
+        let starts: [Int?] = live.map {
+            WikiLinkText.locate(ordered.map { ($0.start, $0.literal) }, in: $0, typedLength: typedLength)
+        } ?? ordered.map(\.start)
+        var landed: [EditorUndoStep.TextNode] = []
+        // Last first, so each offset still counts only the text before it.
+        for (node, start) in zip(ordered, starts).reversed() {
             guard let start else {
-                Log.storage.error("a typed link's text was gone from its block")
+                Log.storage.error("a node's text was gone from its block")
                 continue
             }
-            let edit = await insertWikiLink(
-                in: blockId, from: start, to: start + link.literal.utf8.count, title: link.target, alias: link.alias
+            guard case let .insertInline(_, _, _, kind, text, attrs) = node.edit else { continue }
+            let edit = await insertInline(
+                blockId, from: start, to: start + node.literal.utf8.count, kind: kind, text: text, attrs: attrs
             )
-            converted.append((link, edit))
+            if let edit { landed.append(.init(start: node.start, literal: node.literal, edit: edit)) }
         }
-        return converted
+        return landed
+    }
+
+    /// Does `step` again: `forward`, then its nodes over text where the
+    /// block now holds their literals, then the rest.
+    func redo(_ step: EditorUndoStep) async {
+        await run(step.forward)
+        if case let .replaceText(blockId, _, _) = step.forward {
+            await insert(step.forwardOverText, over: blockId, typedLength: step.forwardLength)
+        }
+        for edit in step.forwardProps { await run(edit) }
     }
 
     /// Creates the note titled `title` in the new-notes folder, for the `[[`
@@ -498,7 +532,7 @@ final class NoteEditorViewModel {
         to end: Int,
         value: DateMentionValue,
         anchorId: String? = nil
-    ) async -> BlockEdit {
+    ) async -> BlockEdit? {
         await insertInline(
             blockId,
             from: start,
@@ -570,16 +604,22 @@ final class NoteEditorViewModel {
     }
 
     /// One operation, with the status handling every caller would repeat.
-    private func run(_ edit: BlockEdit, then finish: (() -> Void)? = nil) async {
-        guard let editor else { return }
+    /// Answers whether it landed: the core refuses one that no longer
+    /// applies, such as a range past the block's end.
+    @discardableResult
+    private func run(_ edit: BlockEdit, then finish: (() -> Void)? = nil) async -> Bool {
+        guard let editor else { return false }
         status = .saving
         do {
-            _ = try await editor.edit(noteId: noteId, edit)
+            let landed = try await editor.edit(noteId: noteId, edit)
             finish?()
             status = .idle
+            if !landed { Log.storage.error("a block edit was refused") }
+            return landed
         } catch {
             Log.storage.error("a block edit did not land")
             status = .failed(ErrorMapping.userFacing(error))
+            return false
         }
     }
 }

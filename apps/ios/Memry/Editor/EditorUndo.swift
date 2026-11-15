@@ -33,9 +33,26 @@ struct EditorUndoStep: Sendable, Equatable {
     /// `InsertBlock` alone cannot write, or the inline nodes typing put in,
     /// which `ReplaceText` cannot.
     var forwardProps: [BlockEdit] = []
+    /// Replayed after `forward`, before `forwardProps`: the nodes that
+    /// replaced text the typing wrote, a typed `[[link]]` or a `#tag`. Each
+    /// goes over its literal where the block holds it once `forward` lands
+    /// (`NoteEditorViewModel.insert(_:over:typedLength:)`), not at its
+    /// recorded offsets: another pane may have typed before it since
+    /// (#4377).
+    var forwardOverText: [TextNode] = []
+    /// `forward`'s text in core bytes, which each `TextNode.start` counts in.
+    var forwardLength = 0
     /// Replayed after `backward`: a step that changed two blocks, such as a
     /// merge, puts both back.
     var backwardAfter: [BlockEdit] = []
+
+    /// An inline node over text: `edit` replaced `literal`, which starts
+    /// `start` core bytes into the text the typing wrote.
+    struct TextNode: Sendable, Equatable {
+        let start: Int
+        let literal: String
+        let edit: BlockEdit
+    }
 }
 
 /// This session's undo history.
@@ -130,15 +147,19 @@ extension EditorUndoStep {
     /// menu's or a drop's link or date. `next` is the block as the step left
     /// it, each node a U+FFFC, so undo's diff takes the nodes back with the
     /// typing. A U+FFFC in `ReplaceText` makes no node, so redo writes the
-    /// typing, `typed`, then runs `nodes` again as they went in.
+    /// typing, `typed` (`typedLength` core bytes), then puts `overText` back
+    /// over their literals and runs `nodes` again as they went in.
     static func text(
-        blockId: String, from previous: String, typed: String, nodes: [BlockEdit], to next: String
+        blockId: String, from previous: String, typed: String, typedLength: Int,
+        overText: [TextNode], nodes: [BlockEdit], to next: String
     ) -> EditorUndoStep {
         EditorUndoStep(
             name: "Typing",
             backward: .replaceText(blockId: blockId, text: previous, base: next),
             forward: .replaceText(blockId: blockId, text: typed, base: previous),
-            forwardProps: nodes
+            forwardProps: nodes,
+            forwardOverText: overText,
+            forwardLength: typedLength
         )
     }
 
