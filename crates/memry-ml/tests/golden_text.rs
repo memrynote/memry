@@ -4,17 +4,13 @@
 //! Needs the pinned text files in the directory `MEMRY_ML_MODEL_DIR` names; CI runs it on the full
 //! tier in the dev profile. Run: `cargo test -p memry-ml --test golden_text -- --ignored`.
 
-use std::path::{Path, PathBuf};
+mod common;
 
+use std::path::PathBuf;
+
+use common::{cosine, floats, ids, vectors};
 use memry_ml::{EMBEDDING_DIMENSION, Embedding, EmbeddingEngine, LoadOptions, ModelGroup};
 use serde_json::Value;
-
-fn vectors() -> Value {
-    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../packages/contracts/test-vectors/embeddings-text.json");
-    serde_json::from_str(&std::fs::read_to_string(&path).expect("embeddings-text.json"))
-        .expect("valid JSON")
-}
 
 fn engine() -> EmbeddingEngine {
     let dir = PathBuf::from(std::env::var_os("MEMRY_ML_MODEL_DIR").expect("MEMRY_ML_MODEL_DIR"));
@@ -22,31 +18,10 @@ fn engine() -> EmbeddingEngine {
     EmbeddingEngine::load(&dir, LoadOptions::default()).expect("load")
 }
 
-fn ids(value: &Value) -> Vec<i64> {
-    value
-        .as_array()
-        .expect("tokenIds")
-        .iter()
-        .map(|id| id.as_i64().expect("an integer id"))
-        .collect()
-}
-
 fn embedding(value: &Value) -> Vec<f32> {
-    let values: Vec<f32> = value
-        .as_array()
-        .expect("embedding")
-        .iter()
-        .map(|v| v.as_f64().expect("a number") as f32)
-        .collect();
+    let values = floats(value);
     assert_eq!(values.len(), EMBEDDING_DIMENSION);
     values
-}
-
-fn cosine(a: &[f32], b: &[f32]) -> f64 {
-    a.iter()
-        .zip(b)
-        .map(|(&x, &y)| f64::from(x) * f64::from(y))
-        .sum()
 }
 
 struct Tolerance {
@@ -116,7 +91,7 @@ fn check(
 #[test]
 #[ignore = "needs the downloaded model in MEMRY_ML_MODEL_DIR"]
 fn native_text_embeddings_match_transformers_js() {
-    let vectors = vectors();
+    let vectors = vectors("embeddings-text.json");
     let tolerance = tolerance(&vectors);
     let texts = vectors["texts"].as_array().expect("texts");
     assert_eq!(texts.len(), 31);
@@ -156,7 +131,7 @@ fn native_text_embeddings_match_transformers_js() {
 #[test]
 #[ignore = "needs the downloaded model in MEMRY_ML_MODEL_DIR"]
 fn native_vectors_rank_documents_as_transformers_js() {
-    let vectors = vectors();
+    let vectors = vectors("embeddings-text.json");
     let tolerance = tolerance(&vectors);
     let queries = vectors["ranking"]["queries"].as_array().expect("queries");
     let documents = vectors["ranking"]["documents"]

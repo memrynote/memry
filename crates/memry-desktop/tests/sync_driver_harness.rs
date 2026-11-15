@@ -10,6 +10,7 @@
 //! | a new signer's record, driver dropped before it settled | re-pulled when the next driver opens |
 //! | passes over one vault serialize                        | one pass gate: drivers and `sync_now` |
 //! | the driver sends the bound vault id                    | K1: unbound refused, rebinding refused |
+//! | a desktop first sync pulls every body                  | > 500 bodies, one older than 30 days; progress phases |
 
 #![cfg(feature = "harness")]
 
@@ -30,6 +31,7 @@ use memry_core::api::errors::{StorageError, SyncError};
 use memry_core::api::projects::ProjectDraft;
 use memry_core::api::tasks_write::NewTaskInput;
 use memry_core::api::vault::Vault;
+use memry_core::crdt::body_edit::BlockEdit;
 use memry_core::domain::agent_conversation::{self, NewConversation};
 use memry_core::domain::agent_message::{self, NewMessage};
 use memry_core::domain::vault_locks::{self, TargetKind};
@@ -37,9 +39,12 @@ use memry_core::domain::{canvas_folder, home_page, sticky_draft, tag_mint};
 use memry_core::protocol::auth::DevicePlatform;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_core::storage::Db;
+use memry_core::sync::driver::progress::{
+    InitialSyncPhase, InitialSyncProgress, InitialSyncSink, SilentInitialSync,
+};
 use memry_core::sync::driver::{DriverConfig, SyncDriver};
 use memry_core::sync::engine::{PassReport, PassSeed};
-use memry_core::sync::first_sync::SilentProgress;
+use memry_core::sync::first_sync::{RECENT_BODY_LIMIT, RECENT_WINDOW_MS};
 use memry_core::sync::state::PassTrigger;
 use memry_desktop::notes::property_definitions::{
     DefinitionType, DefinitionsSeed, PropertyDefinitions,
@@ -87,7 +92,11 @@ impl Local {
         let core = Vault::open("harness".into(), data.to_string_lossy().into_owned()).unwrap();
         core.set_at_rest_key(Some(Zeroizing::new(AT_REST))).unwrap();
         let records = core.property_definition_records(store.clone()).unwrap();
-        let definitions = Arc::new(PropertyDefinitions::new(vault, records));
+        let definitions = Arc::new(PropertyDefinitions::new(
+            vault,
+            records,
+            Some(core.search().unwrap()),
+        ));
 
         let transport = app_transport(&["127.0.0.1".to_owned()], Arc::new(NoPins));
         let session = Arc::new(
@@ -213,6 +222,16 @@ impl Device {
                     .collect::<Result<Vec<String>, _>>()
                     .map_err(failed)?;
                 Ok(ids)
+            })
+            .unwrap()
+    }
+
+    /// How many outbox rows wait to be pushed, of any type.
+    fn outbox(&self) -> i64 {
+        self.db()
+            .call_blocking(|conn| {
+                conn.query_row("SELECT COUNT(*) FROM outbox", [], |row| row.get(0))
+                    .map_err(failed)
             })
             .unwrap()
     }
@@ -373,7 +392,7 @@ async fn records_converge_through_the_driver() {
     assert!(b.driver.needs_first_sync().await.unwrap());
     let first = b
         .driver
-        .first_sync(Arc::new(SilentProgress))
+        .first_sync(Arc::new(SilentInitialSync))
         .await
         .unwrap()
         .expect("not paused");
@@ -493,7 +512,7 @@ async fn a_paused_driver_runs_no_pass() {
     assert!(a.driver.wake(None).await.is_none());
     assert!(
         a.driver
-            .first_sync(Arc::new(SilentProgress))
+            .first_sync(Arc::new(SilentInitialSync))
             .await
             .unwrap()
             .is_none()
@@ -687,4 +706,158 @@ async fn the_driver_sends_the_bound_vault_id() {
     c.sync().await;
     assert!(b.ids("note").is_empty(), "another server vault");
     assert!(c.stored("note", &note).is_some(), "the same server vault");
+}
+
+/// The driver's progress, in order.
+#[derive(Default)]
+struct RecordedProgress(std::sync::Mutex<Vec<InitialSyncProgress>>);
+
+impl InitialSyncSink for RecordedProgress {
+    fn progress(&self, progress: InitialSyncProgress) {
+        self.0.lock().unwrap().push(progress);
+    }
+}
+
+/// How many bodies A writes: past the phone's [`RECENT_BODY_LIMIT`].
+const BODIES: usize = RECENT_BODY_LIMIT + 1;
+
+/// Writes notes `range` on `device`, each with one paragraph `body {i}` in block `b-{i}`, and
+/// pushes them all.
+fn write_bodies(device: &Device, range: std::ops::Range<usize>) -> Vec<String> {
+    let writer = device.core.notes_writer(device.store.clone()).unwrap();
+    let mut notes = Vec::with_capacity(range.len());
+    for i in range {
+        let id = writer.create(format!("Note {i}"), None).unwrap();
+        let edit = BlockEdit::InsertParagraph {
+            after_block_id: None,
+            text: format!("body {i}"),
+            new_block_id: format!("b-{i}"),
+        };
+        assert!(writer.edit_block(id.clone(), edit).unwrap());
+        notes.push(id);
+    }
+    notes
+}
+
+/// A desktop's first sync takes the whole vault (Electron's full sync): more than the phone's 500
+/// bodies, and a body last edited before the phone's 30-day window. Its progress runs `notes`,
+/// `packs`, then `tasks` for the outbox the catch-up pushes once its seeds ran, and ends
+/// `complete`.
+///
+/// The bodies come from two devices because the Worker allows one device 300 CRDT pushes a
+/// minute (`crdtPushRateLimit`).
+#[tokio::test(flavor = "multi_thread")]
+async fn a_desktop_first_sync_pulls_every_body_old_or_past_the_phone_limit() {
+    let mut server = Server::start();
+    let a = Device::new(&server, 0).await;
+    // Registered before B's driver opens, so B's directory knows C.
+    let boot = server.register();
+    let c = Device::bound(&server.url, &boot, VAULT, Vec::new()).await;
+    let b = Device::new(&server, 1).await;
+
+    let half = BODIES / 2;
+    let mut notes = write_bodies(&a, 0..half);
+    notes.extend(write_bodies(&c, half..BODIES));
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as i64;
+    // The record the push sends is the `sync_items` payload: its `modifiedAt` dates the note.
+    let oldest = notes[0].clone();
+    a.db()
+        .call_blocking(move |conn| {
+            conn.execute(
+                "UPDATE sync_items SET payload = json_set(payload,
+                   '$.createdAt', '2020-01-01T00:00:00.000Z',
+                   '$.modifiedAt', '2020-01-01T00:00:00.000Z')
+                 WHERE item_type = 'note' AND item_id = ?1",
+                [&oldest],
+            )
+            .map_err(failed)
+        })
+        .unwrap();
+    for device in [&a, &c] {
+        for _ in 0..10 {
+            device.sync().await;
+            if device.outbox() == 0 {
+                break;
+            }
+        }
+        assert_eq!(device.outbox(), 0, "every note and body pushed");
+    }
+
+    // A lock only the pass's seed queues: `tasks` counts the outbox after the seeds
+    // (Electron's `full-sync-runner.ts:424-451`).
+    let lock = vault_locks::lock_id(TargetKind::Folder, "Old");
+    b.db()
+        .call_blocking(move |conn| {
+            conn.execute(
+                "INSERT INTO vault_locks (id, target_kind, target, locked, created_at, updated_at)
+                 VALUES (?1, 'folder', 'Old', 1, ?2, ?2)",
+                rusqlite::params![lock, NOW],
+            )
+            .map_err(failed)
+        })
+        .unwrap();
+    assert_eq!(b.outbox(), 0, "nothing queued before the seeds");
+
+    let progress = Arc::new(RecordedProgress::default());
+    let first = b
+        .driver
+        .first_sync(Arc::clone(&progress) as Arc<dyn InitialSyncSink>)
+        .await
+        .unwrap()
+        .expect("not paused");
+    let pulled = first.first_sync.bodies.documents;
+    assert!(pulled >= BODIES, "the first sync pulled {pulled} bodies");
+
+    let id = notes[0].clone();
+    let modified: i64 = b
+        .db()
+        .call_blocking(move |conn| {
+            conn.query_row(
+                "SELECT modified_at FROM notes WHERE id = ?1",
+                [&id],
+                |row| row.get(0),
+            )
+            .map_err(failed)
+        })
+        .unwrap();
+    assert!(
+        modified < now - RECENT_WINDOW_MS,
+        "the note is outside the phone's window"
+    );
+    let reader = b.core.notes_writer(b.store.clone()).unwrap();
+    for (i, id) in notes.iter().enumerate() {
+        let block = reader
+            .block_snapshot(id.clone(), format!("b-{i}"))
+            .unwrap_or_else(|error| panic!("B lacks note {i}'s body: {error}"))
+            .expect("the note is live on B");
+        assert!(block.contains(&format!("body {i}")), "{block}");
+    }
+
+    let seen = progress.0.lock().unwrap().clone();
+    assert!(
+        seen.iter().all(|p| p.processed_items <= p.total_items),
+        "{seen:?}"
+    );
+    let phases: Vec<InitialSyncPhase> = seen.iter().map(|p| p.phase).collect();
+    let first_of = |phase| phases.iter().position(|p| *p == phase);
+    let notes_at = first_of(InitialSyncPhase::Notes).expect("notes");
+    let packs_at = first_of(InitialSyncPhase::Packs).expect("packs");
+    let tasks_at = first_of(InitialSyncPhase::Tasks).expect("tasks");
+    assert!(notes_at < packs_at && packs_at < tasks_at, "{phases:?}");
+    assert!(seen[tasks_at].total_items >= 1 && seen[tasks_at].processed_items == 0);
+    assert_eq!(
+        phases.last(),
+        Some(&InitialSyncPhase::Complete),
+        "{phases:?}"
+    );
+    assert_eq!(
+        phases
+            .iter()
+            .filter(|p| **p == InitialSyncPhase::Complete)
+            .count(),
+        1
+    );
 }
