@@ -605,9 +605,9 @@ export async function prepareFragmentSeed(
   // `((mention:…))` becomes a `linkMention` node here, once, in the doc every
   // device receives. Left as text, each device's editor promoted it on open,
   // and two devices doing that before they synced merged into two chips per
-  // mention (#3871). Every token is promoted, a legacy one with `_ * ! ~ '`
-  // raw included (#4478): the node re-encodes it, and the source record keeps
-  // the file's bytes until the token's own paragraph is edited.
+  // mention (#3871). A token in an unstyled run is promoted, legacy `_ * ! ~ '`
+  // included (#4478), and the source record keeps its bytes until its paragraph
+  // is edited. A token in code or emphasis stays text (#4652).
   const normalized = normalizePlainCheckboxes(
     normalizeTaskBlocks(normalizeLinkMentions(blocks).blocks, source).blocks
   ).blocks

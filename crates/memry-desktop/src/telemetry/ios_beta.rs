@@ -3,49 +3,11 @@
 //! The install id rides along only while telemetry is on, so a user who opted out is never
 //! linked to their email.
 
-use std::sync::LazyLock;
-
 use memry_core::seams::transport::Transport;
-use regex::Regex;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 
-use super::report::send_json;
+use super::report::{is_schema_email, refusal_message, send_json};
 use super::service::Service;
-
-/// zod 4's `.email()` pattern, which `IosBetaJoinInputSchema` applies. The `regex` crate has no
-/// lookahead, so `is_schema_email` checks zod's `(?!\.)(?!.*\.\.)` by hand.
-static EMAIL: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^[A-Za-z0-9_'+\-.]*[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$")
-        .expect("email pattern")
-});
-
-/// `z.string().trim().email().max(254)` on an already trimmed address.
-fn is_schema_email(email: &str) -> bool {
-    !email.starts_with('.')
-        && !email.contains("..")
-        && email.chars().count() <= 254
-        && EMAIL.is_match(email)
-}
-
-/// The message Electron's `syncFetch` (`apps/desktop/src/main/sync/http-client.ts`) throws for a
-/// non-2xx answer, which `joinIosBeta` hands to the renderer.
-fn refusal_message(status: u16, body: &[u8]) -> String {
-    if status == 429 {
-        return "Too many requests. Please try again later.".to_owned();
-    }
-    let Ok(body) = serde_json::from_slice::<Value>(body) else {
-        return format!("Server returned {status}");
-    };
-    fn text(v: Option<&Value>) -> Option<&str> {
-        v.and_then(Value::as_str).filter(|s| !s.is_empty())
-    }
-    let error = body.get("error");
-    text(error)
-        .or_else(|| text(error.and_then(|e| e.get("message"))))
-        .or_else(|| text(body.get("message")))
-        .map_or_else(|| format!("Server error ({status})"), str::to_owned)
-}
 
 /// Where in the app the user asked for the invite (`IOS_BETA_SOURCES`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
@@ -103,7 +65,8 @@ pub async fn join(
     bearer: Option<&str>,
 ) -> IosBetaJoinResult {
     let email = input.email.trim();
-    if !is_schema_email(email) {
+    // `IosBetaJoinInputSchema`: `z.string().trim().email().max(254)`.
+    if !is_schema_email(email, 254) {
         return IosBetaJoinResult::failed("INVALID_IOS_BETA_JOIN");
     }
     let Some(telemetry) = telemetry else {

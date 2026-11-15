@@ -2467,8 +2467,7 @@
       "failedToCloseVault": "Kan de kluis niet sluiten",
       "failedToSwitchVault": "Kan niet van kluis wisselen",
       "failedToUpdateConfig": "Kan de configuratie niet bijwerken",
-      "failedToReindex": "Opnieuw indexeren is mislukt",
-      "googleSignInFailed": "Inloggen met Google mislukt"
+      "failedToReindex": "Opnieuw indexeren is mislukt"
     }
   },
   "agentMcp": {
