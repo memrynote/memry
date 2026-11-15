@@ -258,6 +258,112 @@ struct SameNotePanesTests {
         #expect(runs.filter { $0.marks.contains("hashTag") }.count == 1)
     }
 
+    /// `field`'s text view in a key window, holding the caret at `selection`,
+    /// as a tap in pane B leaves it.
+    private func focus(_ field: BlockField, at selection: NSRange) throws -> UIWindow {
+        let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
+        let window = UIWindow(windowScene: scene)
+        window.frame = CGRect(x: 0, y: 0, width: 400, height: 200)
+        window.rootViewController = UIViewController()
+        field.textView.delegate = field
+        field.textView.frame = CGRect(x: 0, y: 40, width: 400, height: 60)
+        window.rootViewController?.view.addSubview(field.textView)
+        window.makeKeyAndVisible()
+        #expect(field.textView.becomeFirstResponder())
+        field.textView.selectedRange = selection
+        return window
+    }
+
+    /// Keys as the keyboard delivers them: through the delegate, then
+    /// `insertText` over the text view's selection.
+    private func keys(_ text: String, in field: BlockField) {
+        for character in text {
+            let view = field.textView
+            if view.delegate?.textView?(view, shouldChangeTextIn: view.selectedRange, replacementText: String(character)) != false {
+                view.insertText(String(character))
+            }
+        }
+    }
+
+    /// DATA-LOSS (VERIFY-4700): A types `XYZ ` at the block's start, B's page
+    /// re-reads under B's caret and redraws, then B types. The caret moves
+    /// with B's text, so B's keys land where B put the caret.
+    @Test(.timeLimit(.minutes(1))) func a_redraw_under_the_caret_keeps_the_caret_on_its_text() async throws {
+        let f = try fixture("golf body text")
+        let a = pane(f)
+        let b = pane(f)
+        let drawn = try await block(f)
+        let fieldA = draw(drawn, in: a)
+        let fieldB = draw(drawn, in: b)
+        let window = try focus(fieldB, at: NSRange(location: 14, length: 0))
+        defer { window.isHidden = true }
+
+        type("XYZ golf body text", in: fieldA)
+        await commit(fieldA, in: a)
+        fieldB.block = try await block(f)
+        fieldB.render()
+        #expect(fieldB.textView.selectedRange == NSRange(location: 18, length: 0))
+        keys(" zz", in: fieldB)
+        await commit(fieldB, in: b)
+
+        #expect(try await stored(f) == "XYZ golf body text zz")
+    }
+
+    /// DATA-LOSS (VERIFY-4700): B's tap selected `text` before A's edit
+    /// landed. The selection stays on `text`, so B's keys replace only it:
+    /// no byte B did not select is lost.
+    @Test(.timeLimit(.minutes(1))) func a_redraw_under_a_selection_keeps_the_selection_on_its_text() async throws {
+        let f = try fixture("golf body text")
+        let a = pane(f)
+        let b = pane(f)
+        let drawn = try await block(f)
+        let fieldA = draw(drawn, in: a)
+        let fieldB = draw(drawn, in: b)
+        let window = try focus(fieldB, at: NSRange(location: 10, length: 4))
+        defer { window.isHidden = true }
+
+        type("XYZ golf body text", in: fieldA)
+        await commit(fieldA, in: a)
+        fieldB.block = try await block(f)
+        fieldB.render()
+        #expect(fieldB.textView.selectedRange == NSRange(location: 14, length: 4))
+        keys(" zz", in: fieldB)
+        await commit(fieldB, in: b)
+
+        #expect(try await stored(f) == "XYZ golf body  zz")
+    }
+
+    /// An IME composition in B is not drawn over when A's edit lands: the
+    /// redraw waits, then draws A's edit and the composed text.
+    @Test(.timeLimit(.minutes(1))) func a_redraw_waits_for_a_composition_to_end() async throws {
+        let f = try fixture("golf body text")
+        let a = pane(f)
+        let b = pane(f)
+        let drawn = try await block(f)
+        let fieldA = draw(drawn, in: a)
+        let fieldB = draw(drawn, in: b)
+        let window = try focus(fieldB, at: NSRange(location: 14, length: 0))
+        defer { window.isHidden = true }
+
+        fieldB.textView.setMarkedText("zz", selectedRange: NSRange(location: 2, length: 0))
+        // A commit mid-composition (the scene leaving the foreground).
+        await commit(fieldB, in: b)
+        type("XYZ golf body text", in: fieldA)
+        await commit(fieldA, in: a)
+        fieldB.block = try await block(f)
+        fieldB.render()
+        #expect(fieldB.textView.markedTextRange != nil, "the composition is kept")
+        #expect(fieldB.textView.text == "golf body textzz")
+        #expect(fieldB.stale)
+
+        fieldB.textView.unmarkText()
+        fieldB.render()
+        #expect(!fieldB.stale)
+        #expect(fieldB.textView.text == "XYZ golf body textzz")
+        #expect(fieldB.textView.selectedRange == NSRange(location: 20, length: 0))
+        #expect(try await stored(f) == "XYZ golf body textzz")
+    }
+
     /// A pane's write is announced under its own source, so the other pane on
     /// the note re-reads (`NotePageLoad`) and the writer does not.
     @Test(.timeLimit(.minutes(1))) func a_landed_edit_is_announced_with_its_panes_source() async throws {
@@ -279,5 +385,37 @@ struct SameNotePanesTests {
         await commit(fieldA, in: a)
 
         #expect(heard == [a.source])
+    }
+}
+
+@Suite("A range carried across a redraw")
+@MainActor
+struct BlockTextCarryTests {
+    @Test func a_caret_after_an_insert_moves_by_its_length() {
+        #expect(BlockText.carry(NSRange(location: 4, length: 0), from: "golf", to: "XYZ golf") == NSRange(location: 8, length: 0))
+    }
+
+    @Test func a_caret_before_an_insert_stays() {
+        #expect(BlockText.carry(NSRange(location: 2, length: 0), from: "golf", to: "golf XYZ") == NSRange(location: 2, length: 0))
+    }
+
+    @Test func a_selection_after_a_deletion_moves_back() {
+        #expect(BlockText.carry(NSRange(location: 8, length: 4), from: "XYZ golf body", to: "golf body") == NSRange(location: 4, length: 4))
+    }
+
+    @Test func a_caret_inside_a_replaced_span_goes_to_its_end() {
+        #expect(BlockText.carry(NSRange(location: 2, length: 0), from: "abcdef", to: "aXYZef") == NSRange(location: 4, length: 0))
+    }
+
+    @Test func a_selection_around_an_insert_grows_with_it() {
+        #expect(BlockText.carry(NSRange(location: 0, length: 4), from: "golf", to: "goXlf") == NSRange(location: 0, length: 5))
+    }
+
+    @Test func offsets_count_utf16() {
+        #expect(BlockText.carry(NSRange(location: 2, length: 0), from: "ab", to: "🙂ab") == NSRange(location: 4, length: 0))
+    }
+
+    @Test func unchanged_text_keeps_the_range() {
+        #expect(BlockText.carry(NSRange(location: 1, length: 2), from: "abc", to: "abc") == NSRange(location: 1, length: 2))
     }
 }
