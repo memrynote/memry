@@ -2,6 +2,7 @@ import { useState, useCallback, type SyntheticEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { linkingService } from '@/services/linking-service'
 import { ArrowLeft, Loader2, CheckCircle, AlertCircle } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
@@ -55,7 +56,7 @@ export function LinkingCodeEntry({
       setIsLoading(true)
       setError(null)
 
-      window.api.syncLinking
+      linkingService
         .linkViaQr({ qrData: code.trim() })
         .then((result) => {
           if (!result.success) {

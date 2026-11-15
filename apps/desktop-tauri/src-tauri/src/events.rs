@@ -15,6 +15,9 @@ use tauri::{AppHandle, Emitter, EventTarget, Runtime};
 
 use crate::commands::vault_locks::VaultLockStateView;
 
+mod account;
+pub use account::*;
+
 /// Emit `event` to every webview: the one window-wide emit (inv09#66). Each listener gets it once.
 /// The generated `listen` registers for any target, and Tauri hands every such listener each
 /// `emit_to` as well, so a `send_to` per window would deliver one copy per window. A failed
@@ -88,37 +91,6 @@ pub struct CrdtProviderResetEvent;
 pub struct CrdtProviderReadyEvent {
     pub vault_path: String,
 }
-
-/// A six-digit code was copied while the email code screen waits for one (`sync:otp-detected`).
-#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
-pub struct AuthOtpDetectedEvent {
-    pub code: String,
-}
-
-/// The browser sign-in came back with its code (`sync:oauth-callback`). The renderer passes both
-/// to `sync_setup_first_device`; neither is logged.
-#[derive(Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
-pub struct AuthOauthCallbackEvent {
-    pub code: String,
-    pub state: String,
-}
-
-impl std::fmt::Debug for AuthOauthCallbackEvent {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("AuthOauthCallbackEvent { <redacted> }")
-    }
-}
-
-/// The browser sign-in ended without a code: declined or timed out (`sync:oauth-error`). `error`
-/// is the translated sentence.
-#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
-pub struct AuthOauthErrorEvent {
-    pub error: String,
-}
-
-/// The access token was renewed (`sync:token-refreshed`; the name keeps the secret scan off it).
-#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
-pub struct AuthSessionRefreshedEvent {}
 
 /// A custom icon was added, renamed or deleted (`custom-icons:updated`). The renderer refetches
 /// the library.

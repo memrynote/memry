@@ -2,6 +2,9 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { VaultPickerStep } from './vault-picker-step'
 
+const linking = vi.hoisted(() => ({}) as Record<string, ReturnType<typeof vi.fn>>)
+vi.mock('@/services/linking-service', () => ({ linkingService: linking }))
+
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
     t: (key: string) => key
@@ -16,11 +19,18 @@ const vaults = [
 describe('VaultPickerStep', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    window.api.syncLinking = {
-      ...window.api.syncLinking,
+    Object.assign(linking, {
       pickVaultFolder: vi.fn().mockResolvedValue({ path: '/tmp/parent' }),
       finalizeVaultChoice: vi.fn().mockResolvedValue({ success: true })
-    }
+    })
+  })
+
+  it('tells rows that carry only an id apart by their short id', () => {
+    const ids = [{ vaultUuid: '0b9f3c8e-5d4a' }, { vaultUuid: '7e2d1a6c-9b3f' }]
+    render(<VaultPickerStep sessionId="sess-1" vaults={ids} onError={vi.fn()} />)
+    expect(screen.getByText('0b9f3c8e')).toBeInTheDocument()
+    expect(screen.getByText('7e2d1a6c')).toBeInTheDocument()
+    expect(screen.queryByText('setup.linking.vaultRow')).toBeNull()
   })
 
   it('disables the confirm button until a folder is chosen', () => {
@@ -40,7 +50,7 @@ describe('VaultPickerStep', () => {
     fireEvent.click(screen.getByRole('button', { name: 'setup.linking.vaultPickerConfirm' }))
 
     await waitFor(() =>
-      expect(window.api.syncLinking.finalizeVaultChoice).toHaveBeenCalledWith({
+      expect(linking.finalizeVaultChoice).toHaveBeenCalledWith({
         sessionId: 'sess-1',
         parentFolderPath: '/tmp/parent',
         selectedVaultUuids: ['v-a', 'v-b'],
@@ -51,9 +61,7 @@ describe('VaultPickerStep', () => {
 
   it('surfaces a finalize failure via onError', async () => {
     const onError = vi.fn()
-    window.api.syncLinking.finalizeVaultChoice = vi
-      .fn()
-      .mockResolvedValue({ success: false, error: 'boom' })
+    linking.finalizeVaultChoice = vi.fn().mockResolvedValue({ success: false, error: 'boom' })
     render(<VaultPickerStep sessionId="sess-1" vaults={vaults} onError={onError} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'setup.linking.vaultPickerChooseFolder' }))
@@ -64,9 +72,7 @@ describe('VaultPickerStep', () => {
   })
 
   it('shows the finalize failure in the step itself', async () => {
-    window.api.syncLinking.finalizeVaultChoice = vi
-      .fn()
-      .mockResolvedValue({ success: false, error: 'boom' })
+    linking.finalizeVaultChoice = vi.fn().mockResolvedValue({ success: false, error: 'boom' })
     render(<VaultPickerStep sessionId="sess-1" vaults={vaults} onError={vi.fn()} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'setup.linking.vaultPickerChooseFolder' }))

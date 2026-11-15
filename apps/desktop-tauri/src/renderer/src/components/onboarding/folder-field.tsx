@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { linkingService } from '@/services/linking-service'
 import { useT } from '@memry/i18n/renderer'
 
 /**
@@ -24,7 +25,7 @@ export function FolderField({
 
   const choose = async (): Promise<void> => {
     try {
-      const { path: picked } = await window.api.syncLinking.pickVaultFolder()
+      const { path: picked } = await linkingService.pickVaultFolder()
       if (picked) onChange(picked)
     } catch (err) {
       onError(extractErrorMessage(err, t('phaseF.componentsVaultOnboarding.flow.openFailed')))

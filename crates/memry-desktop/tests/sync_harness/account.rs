@@ -18,11 +18,14 @@ use tokio::sync::mpsc;
 
 use super::{NoPins, Server, device_key};
 
-const EMAIL: &str = "Harness-Account@Example.com";
-const CODE: &str = "424242";
+pub(super) const EMAIL: &str = "Harness-Account@Example.com";
+pub(super) const CODE: &str = "424242";
 
 /// A fresh install's config over `store`.
-fn install(server: &Server, store: Arc<dyn SecureStore>) -> (tempfile::TempDir, AccountService) {
+pub(super) fn install(
+    server: &Server,
+    store: Arc<dyn SecureStore>,
+) -> (tempfile::TempDir, AccountService) {
     let dir = tempfile::tempdir().unwrap();
     let service = AccountService::new(
         app_transport(&["127.0.0.1".to_owned()], Arc::new(NoPins)),
@@ -35,7 +38,7 @@ fn install(server: &Server, store: Arc<dyn SecureStore>) -> (tempfile::TempDir, 
     (dir, service)
 }
 
-async fn sign_in(server: &mut Server, account: &AccountService) -> OtpVerified {
+pub(super) async fn sign_in(server: &mut Server, account: &AccountService) -> OtpVerified {
     account.request_otp(EMAIL.into()).await.expect("a code");
     server.otp(EMAIL, CODE);
     account
