@@ -79,6 +79,9 @@ vi.mock('@/services/device-service', () => ({
   deviceService: mocks.deviceService
 }))
 
+const linking = vi.hoisted(() => ({}) as Record<string, ReturnType<typeof vi.fn>>)
+vi.mock('@/services/linking-service', () => ({ linkingService: linking }))
+
 vi.mock('@/hooks/use-sync-status', () => ({
   useSyncStatus: () => mocks.syncStatus
 }))
@@ -365,22 +368,19 @@ describe('sync components coverage', () => {
       configurable: true,
       value: { writeText: mocks.clipboardWrite }
     })
-    ;(window as any).api = {
-      ...(window as any).api,
-      syncLinking: {
-        generateLinkingQr: vi.fn().mockResolvedValue({
-          qrData: JSON.stringify({ sessionId: 'session-1', ephemeralPublicKey: 'pub' }),
-          sessionId: 'session-1',
-          expiresAt: Date.now() + 30_000
-        }),
-        linkViaQr: vi.fn().mockResolvedValue({
-          success: true,
-          verificationCode: '654321'
-        }),
-        getLinkingSas: vi.fn().mockResolvedValue({ verificationCode: '123456' }),
-        approveLinking: vi.fn().mockResolvedValue({ success: true })
-      }
-    }
+    Object.assign(linking, {
+      generateLinkingQr: vi.fn().mockResolvedValue({
+        qrData: JSON.stringify({ sessionId: 'session-1', ephemeralPublicKey: 'pub' }),
+        sessionId: 'session-1',
+        expiresAt: Date.now() + 30_000
+      }),
+      linkViaQr: vi.fn().mockResolvedValue({
+        success: true,
+        verificationCode: '654321'
+      }),
+      getLinkingSas: vi.fn().mockResolvedValue({ verificationCode: '123456' }),
+      approveLinking: vi.fn().mockResolvedValue({ success: true })
+    })
   })
 
   it('loads devices, expands hidden rows, renames, revokes, and starts linking', async () => {
@@ -617,7 +617,7 @@ describe('sync components coverage', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: 'setup.linking.linkDevice' }))
     await waitFor(() => expect(onLinked).toHaveBeenCalledWith('session-2', '654321'))
-    ;(window as any).api.syncLinking.linkViaQr.mockResolvedValueOnce({
+    linking.linkViaQr.mockResolvedValueOnce({
       success: false,
       error: 'expired'
     })
@@ -647,7 +647,7 @@ describe('sync components coverage', () => {
     await waitFor(() => expect(screen.getByText('123 456')).toBeInTheDocument())
     fireEvent.click(screen.getByRole('button', { name: 'linkingApproval.approve' }))
     await waitFor(() => expect(onApprove).toHaveBeenCalledWith('session-4'))
-    ;(window as any).api.syncLinking.approveLinking.mockResolvedValueOnce({
+    linking.approveLinking.mockResolvedValueOnce({
       success: false,
       error: 'approval failed'
     })
