@@ -93,8 +93,10 @@ struct NoteReadToolbar: ViewModifier {
         if actions.canWrite {
             items.toggleFavorite = toggleFavorite
             items.rename = {
-                // The dialog edits the current title, as the notes list's does.
-                renameDraft = model.title
+                // The dialog edits the current title, as the notes list's
+                // does: the one typed in the title field, if it is not saved
+                // yet (#4691).
+                renameDraft = metadataModel.titleDraft ?? model.title
                 renaming = true
             }
             items.duplicate = duplicate
@@ -133,7 +135,8 @@ struct NoteReadToolbar: ViewModifier {
     /// Copies the note, then opens the copy, as desktop's canvas Duplicate
     /// leaves the user on what it made.
     private func duplicate() {
-        let title = model.displayTitle.isEmpty ? "Untitled" : model.displayTitle
+        let current = metadataModel.titleDraft ?? model.displayTitle
+        let title = current.isEmpty ? "Untitled" : current
         Task {
             if let id = await actions.duplicate(title: "\(title) copy") {
                 open?(NoteRoute(id: id))

@@ -586,6 +586,12 @@ final class NoteMetadataViewModel {
     /// `nil` because its writer is `JournalStore`, which asks for itself.
     @ObservationIgnored var requestSync: (@MainActor () -> Void)?
 
+    /// The title field's edit in progress, `nil` when there is none. The
+    /// page menu's Rename opens on it rather than on the stored title, which
+    /// the edit has not reached yet (#4691). Not observed: only a menu tap
+    /// reads it, and each keystroke would redraw the page.
+    @ObservationIgnored var titleDraft: String?
+
     init(noteId: String, writer: (any NoteMetadataWriting)?) {
         self.noteId = noteId
         self.writer = writer

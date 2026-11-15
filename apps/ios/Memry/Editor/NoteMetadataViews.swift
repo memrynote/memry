@@ -87,6 +87,8 @@ struct NoteTitleEditor: View {
     let setIcon: (String?) -> Void
     /// Return in the title moves the caret into the body, as on desktop.
     var returnToBody: (() -> Void)?
+    /// The edit in progress as it changes, `nil` once it ends.
+    var draftChanged: ((String?) -> Void)?
 
     @State private var draft: String = ""
     @State private var commits = DraftCommits()
@@ -177,6 +179,7 @@ struct NoteTitleEditor: View {
                 .onChange(of: title) { _, new in
                     if commits.editing { draft = commits.follow(draft, stored: new) }
                 }
+                .onChange(of: commits.editing ? draft : nil) { _, pending in draftChanged?(pending) }
                 // A note with no title (a new one) opens with the caret in
                 // its title, as desktop does. Not when the page is drawn
                 // again under a block that had the caret (#4457).
@@ -210,6 +213,7 @@ struct NoteTitleEditor: View {
                 .onDisappear {
                     claimsFocus = false
                     commit()
+                    draftChanged?(nil)
                 }
                 .accessibilityLabel("Title")
             } else {
