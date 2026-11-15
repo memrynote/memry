@@ -134,18 +134,9 @@ fn a_bad_recording_or_a_missing_model_fails_without_a_crash() {
 fn a_recording_that_is_not_a_regular_file_is_refused_without_a_read() {
     let dir = tempdir("memry-audio-irregular");
     let worker = worker(dir.path());
-    let mut paths = vec![dir.path().join("folder.wav")];
-    std::fs::create_dir(&paths[0]).expect("dir");
-    #[cfg(unix)]
-    {
-        use std::os::unix::ffi::OsStrExt;
-        let fifo = dir.path().join("fifo.wav");
-        let name = std::ffi::CString::new(fifo.as_os_str().as_bytes()).expect("path");
-        // SAFETY: a plain FFI call with a NUL-terminated path.
-        assert_eq!(unsafe { libc::mkfifo(name.as_ptr(), 0o600) }, 0, "mkfifo");
-        paths.push(fifo);
-    }
-    for path in paths {
+    let folder = dir.path().join("folder.wav");
+    std::fs::create_dir(&folder).expect("dir");
+    for path in std::iter::once(folder).chain(fifo(dir.path())) {
         match worker.open_audio(&path) {
             Err(WorkerError::Failed(message)) => {
                 assert_eq!(message, "the recording is not a regular file")
@@ -153,6 +144,21 @@ fn a_recording_that_is_not_a_regular_file_is_refused_without_a_read() {
             other => panic!("{:?}", other.map(|recording| recording.windows())),
         }
     }
+}
+
+#[cfg(unix)]
+fn fifo(dir: &Path) -> Option<PathBuf> {
+    use std::os::unix::ffi::OsStrExt;
+    let fifo = dir.join("fifo.wav");
+    let name = std::ffi::CString::new(fifo.as_os_str().as_bytes()).expect("path");
+    // SAFETY: a plain FFI call with a NUL-terminated path.
+    assert_eq!(unsafe { libc::mkfifo(name.as_ptr(), 0o600) }, 0, "mkfifo");
+    Some(fifo)
+}
+
+#[cfg(not(unix))]
+fn fifo(_: &Path) -> Option<PathBuf> {
+    None
 }
 
 fn floats(value: &Value) -> Vec<f32> {
