@@ -2467,8 +2467,7 @@
       "failedToCloseVault": "تعذّر إغلاق الخزنة",
       "failedToSwitchVault": "تعذّر تبديل الخزنة",
       "failedToUpdateConfig": "تعذّر تحديث التكوين",
-      "failedToReindex": "تعذّر إعادة الفهرسة",
-      "googleSignInFailed": "فشل تسجيل الدخول باستخدام Google"
+      "failedToReindex": "تعذّر إعادة الفهرسة"
     }
   },
   "agentMcp": {

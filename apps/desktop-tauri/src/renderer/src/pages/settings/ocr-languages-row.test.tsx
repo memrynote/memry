@@ -65,6 +65,18 @@ describe('OcrLanguagesRow', () => {
       </I18nextProvider>
     )
 
+  it('holds its place in Settings while the languages are still loading', async () => {
+    ipc.commands.ocrLanguagesGetState.mockReturnValue(new Promise(() => {}))
+    renderRow()
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(screen.getByTestId('ocr-languages-setting')).toHaveTextContent('Text recognition')
+    expect(screen.getByRole('button', { name: 'Text recognition' })).toBeDisabled()
+    expect(screen.queryByTestId('ocr-languages-trigger')).not.toBeInTheDocument()
+  })
+
   it('adds a language to the ones already chosen, with English always on', async () => {
     const user = userEvent.setup()
     renderRow()

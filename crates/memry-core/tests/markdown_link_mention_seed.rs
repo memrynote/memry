@@ -1,7 +1,8 @@
 //! The seed promotes every `((mention:…))` token `parseLinkMentionToken`
 //! accepts to a `linkMention` node, legacy ones with `_ * ! ~ '` raw included,
 //! as Electron's `prepareFragmentSeed` does since #3871 and #4478. The source
-//! record keeps a legacy token's bytes until its own paragraph is edited.
+//! record keeps a legacy token's bytes until its own paragraph is edited. A
+//! token in a styled run stays text (#4652).
 
 #![cfg(feature = "markdown")]
 
@@ -116,6 +117,48 @@ fn a_legacy_token_in_a_fenced_code_block_or_a_link_label_stays_text() {
         label[0]
     );
     assert!(label[0].to_string().contains(token), "{}", label[0]);
+}
+
+const STYLED_TOKEN: &str = "((mention:https%3A%2F%2Fexample.com%2Fa%5Fb))";
+
+/// A `linkMention` node carries no styles, so a token in code or emphasis
+/// stays text and its paragraph keeps the delimiters when edited (#4652).
+#[test]
+fn a_token_in_a_styled_run_stays_text_and_keeps_its_bytes_when_edited() {
+    let converter = Converter::new(Default::default());
+    for markdown in [
+        format!("A `{STYLED_TOKEN}` b."),
+        format!("A *{STYLED_TOKEN}* b."),
+        format!("A **{STYLED_TOKEN}** b."),
+        format!("A ~~{STYLED_TOKEN}~~ b."),
+    ] {
+        let doc = replica("device-a");
+        assert!(converter.seed_body(&doc, &markdown, None, None, &NoEmbeds));
+        assert_eq!(link_mentions(&doc), 0, "{markdown}");
+
+        append_to_paragraph(&doc, " b.", " Edited.");
+
+        assert_eq!(body(&converter, &doc), format!("{markdown} Edited."));
+    }
+}
+
+/// #4478 holds beside a styled token: the unstyled legacy one is promoted.
+#[test]
+fn an_unstyled_legacy_token_beside_a_styled_one_is_still_promoted() {
+    let converter = Converter::new(Default::default());
+    let doc = replica("device-a");
+    let markdown = format!("A `{STYLED_TOKEN}` and **{STYLED_TOKEN}** and {LEGACY} b.");
+    assert!(converter.seed_body(&doc, &markdown, None, None, &NoEmbeds));
+    assert_eq!(link_mentions(&doc), 1);
+
+    append_to_paragraph(&doc, " b.", " Edited.");
+
+    assert_eq!(
+        body(&converter, &doc),
+        format!(
+            "A `{STYLED_TOKEN}` and **{STYLED_TOKEN}** and ((mention:https%3A%2F%2Fexample.com%2Fa%5Fb)) b. Edited."
+        )
+    );
 }
 
 /// The `legacy link mention token` rows of the `markdown-roundtrip` vectors
@@ -244,6 +287,30 @@ fn body(converter: &Converter, doc: &Document) -> String {
         .doc_to_markdown(doc, BODY_FRAGMENT, &SerializeOptions::default())
         .expect("serializes")
         .markdown
+}
+
+/// Append `suffix` to the first text run whose string, formatting tags
+/// included, ends with `tail`.
+fn append_to_paragraph(doc: &Document, tail: &str, suffix: &str) {
+    fn find<T: ReadTxn>(txn: &T, node: &XmlElementRef, tail: &str) -> Option<XmlTextRef> {
+        (0..node.len(txn)).find_map(|i| match node.get(txn, i) {
+            Some(XmlOut::Text(text)) if text.get_string(txn).ends_with(tail) => Some(text),
+            Some(XmlOut::Element(child)) => find(txn, &child, tail),
+            _ => None,
+        })
+    }
+    doc.write(|txn| {
+        let fragment = txn.get_or_insert_xml_fragment(BODY_FRAGMENT);
+        let text = (0..fragment.len(txn))
+            .find_map(|i| match fragment.get(txn, i) {
+                Some(XmlOut::Element(child)) => find(txn, &child, tail),
+                _ => None,
+            })
+            .unwrap_or_else(|| panic!("a text run ending in {tail:?}"));
+        let end = text.len(txn);
+        text.insert(txn, end, suffix);
+    })
+    .expect("write");
 }
 
 /// Append `suffix` to the first text run that reads exactly `run`.

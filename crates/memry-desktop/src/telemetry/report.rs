@@ -3,10 +3,13 @@
 //! built once, previewed, and the same value is sent, so the user sees what leaves.
 
 use std::collections::HashMap;
+use std::sync::LazyLock;
 use std::time::Duration;
 
 use memry_core::seams::transport::{HttpRequest, HttpResponse, Transport};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use super::logship::DiagnosticLine;
 use super::service::Context;
@@ -125,20 +128,43 @@ pub fn build_incident_report(trigger: &DiagnosticTrigger, inputs: BuildInputs) -
     }
 }
 
-/// POSTs `body` as JSON through the pinned transport. A non-2xx answer is an error naming only the
-/// status.
-pub async fn post_json(
+/// Sends the incident report as Electron's `sendIncidentReport` (`diagnostics/incident-report.ts`)
+/// does: a plain fetch, not `syncFetch`, so a refusal names only the status.
+// Step 19 (#3536) adds the bearer so the server attributes the report to the account.
+pub async fn send_incident_report(
     transport: &dyn Transport,
     url: &str,
-    body: String,
-    bearer: Option<&str>,
+    report: &DiagnosticReport,
 ) -> Result<(), String> {
-    let response = send_json(transport, url, body, bearer).await?;
+    let body = serde_json::to_string(report).map_err(|e| e.to_string())?;
+    let response = send_json(transport, url, body, None).await?;
     if (200..300).contains(&response.status) {
         Ok(())
     } else {
-        Err(format!("status {}", response.status))
+        Err(format!(
+            "Failed to send incident report (status {})",
+            response.status
+        ))
     }
+}
+
+/// The message Electron's `syncFetch` (`apps/desktop/src/main/sync/http-client.ts`) throws for a
+/// non-2xx answer, which its callers hand to the renderer.
+pub(super) fn refusal_message(status: u16, body: &[u8]) -> String {
+    if status == 429 {
+        return "Too many requests. Please try again later.".to_owned();
+    }
+    let Ok(body) = serde_json::from_slice::<Value>(body) else {
+        return format!("Server returned {status}");
+    };
+    fn text(v: Option<&Value>) -> Option<&str> {
+        v.and_then(Value::as_str).filter(|s| !s.is_empty())
+    }
+    let error = body.get("error");
+    text(error)
+        .or_else(|| text(error.and_then(|e| e.get("message"))))
+        .or_else(|| text(body.get("message")))
+        .map_or_else(|| format!("Server error ({status})"), str::to_owned)
 }
 
 /// POSTs `body` as JSON and returns the response whatever its status; `Err` is a transport failure.
@@ -164,10 +190,19 @@ pub(super) async fn send_json(
         .map_err(|e| e.to_string())
 }
 
-/// `local@domain.tld` with no whitespace. The sync server applies the full contract.
-pub(super) fn looks_like_email(e: &str) -> bool {
-    !e.contains(char::is_whitespace)
-        && matches!(e.split_once('@'), Some((l, d)) if !l.is_empty() && d.contains('.') && !d.starts_with('.') && !d.ends_with('.'))
+/// zod 4's `.email()` pattern, which the contracts' email fields apply. The `regex` crate has no
+/// lookahead, so `is_schema_email` checks zod's `(?!\.)(?!.*\.\.)` by hand.
+static EMAIL: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^[A-Za-z0-9_'+\-.]*[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$")
+        .expect("email pattern")
+});
+
+/// `z.string().trim().email().max(max)` on an already trimmed address.
+pub(super) fn is_schema_email(email: &str, max: usize) -> bool {
+    !email.starts_with('.')
+        && !email.contains("..")
+        && email.chars().count() <= max
+        && EMAIL.is_match(email)
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, specta::Type)]
@@ -200,20 +235,22 @@ pub async fn submit_feedback(
             return fail("FEEDBACK_SUBMIT_FAILED");
         }
     };
-    match post_json(transport, url, body, bearer).await {
-        Ok(()) => FeedbackSubmitResult {
-            success: true,
-            error: None,
-        },
-        Err(error) => {
-            tracing::error!(scope = "Feedback", "failed to submit feedback: {error}");
-            fail("FEEDBACK_SUBMIT_FAILED")
+    let error = match send_json(transport, url, body, bearer).await {
+        Ok(response) if (200..300).contains(&response.status) => {
+            return FeedbackSubmitResult {
+                success: true,
+                error: None,
+            };
         }
-    }
+        Ok(response) => refusal_message(response.status, &response.body),
+        Err(error) => error,
+    };
+    tracing::error!(scope = "Feedback", "failed to submit feedback: {error}");
+    fail(&error)
 }
 
 /// The user's feedback (`FeedbackSubmitSchema`): the message trimmed and 1 to 5000 characters, an
-/// optional email that looks like one.
+/// optional email of at most 320 characters.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct FeedbackSubmit {
@@ -231,9 +268,7 @@ impl FeedbackSubmit {
     pub fn validated(self) -> Result<Self, &'static str> {
         let message = self.message.trim().to_owned();
         let email = self.email.map(|e| e.trim().to_owned());
-        let bad_email = email
-            .as_deref()
-            .is_some_and(|e| e.chars().count() > 320 || !looks_like_email(e));
+        let bad_email = email.as_deref().is_some_and(|e| !is_schema_email(e, 320));
         let too_long =
             |v: &Option<String>, max| v.as_deref().is_some_and(|s| s.chars().count() > max);
         if message.is_empty()

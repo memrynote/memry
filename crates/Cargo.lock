@@ -4172,9 +4172,11 @@ version = "0.0.0"
 dependencies = [
  "image",
  "libc",
+ "memry-ml",
  "memry-test-kit",
  "pdfium-render",
  "proptest",
+ "serde_json",
  "static_vcruntime",
  "tempfile",
  "thiserror 2.0.20",

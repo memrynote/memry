@@ -2467,8 +2467,7 @@
       "failedToCloseVault": "Gagal menutup bilik kebal",
       "failedToSwitchVault": "Gagal menukar bilik kebal",
       "failedToUpdateConfig": "Gagal mengemas kini konfigurasi",
-      "failedToReindex": "Gagal mengindeks semula",
-      "googleSignInFailed": "Log masuk Google gagal"
+      "failedToReindex": "Gagal mengindeks semula"
     }
   },
   "agentMcp": {
