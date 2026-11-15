@@ -13,7 +13,11 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuSubContent
 } from '@/components/ui/dropdown-menu'
-import { COLOR_NAMES, getTagColors } from '@/components/note/tags-row/tag-colors'
+import {
+  COLOR_NAMES,
+  defaultTagColorName,
+  getTagColors
+} from '@/components/note/tags-row/tag-colors'
 import { CustomColorSwatch } from '@/components/note/tags-row/CustomColorSwatch'
 import { tagsService } from '@/services/tags-service'
 import { createLogger } from '@/lib/logger'
@@ -48,9 +52,12 @@ export function TagOverflowMenu({
   const [isUpdatingColor, setIsUpdatingColor] = React.useState(false)
 
   const handleColorChange = async (newColor: string) => {
-    // No skip for the colour shown: a tag with no definition shows its name's default colour,
-    // and picking it must still write it before the index's mint colours the tag otherwise.
-    if (isUpdatingColor) {
+    // Electron's no-op for the colour shown, which would mark a mint's colour as picked and sync
+    // it. A tag the app's create or update made is defined before it is listed (#4732), but one
+    // an outside edit or a pull brought shows its name's default colour until the index mints
+    // it, and picking that colour must still write it: only a colour other than the default is
+    // surely the definition's.
+    if (isUpdatingColor || (newColor === color && color !== defaultTagColorName(tag))) {
       return
     }
 

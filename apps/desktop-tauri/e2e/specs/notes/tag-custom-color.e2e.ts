@@ -33,9 +33,9 @@ test('selects a named palette color from the swatch grid', async ({ page }) => {
   await expect(page.locator('input[type="color"]')).toBeVisible()
 })
 
-// #4678: a tag with no definition yet shows its name's default colour, and the index's mint
-// colours it otherwise. Picking the colour shown still writes it, and the mint's colour reaches
-// the tab. A name whose default is `emerald` made the test above fail 1 run in 20.
+// #4678: a name whose default colour is `emerald` made the test above fail 1 run in 20, when the
+// tab showed that default before the index's mint. The create defines the tag now (#4732), and
+// picking `emerald` writes it whether the mint gave it or another colour.
 test('selects the palette color the tag shows before its definition is minted', async ({
   page
 }) => {
