@@ -87,7 +87,8 @@ if [ -n "${SOURCE_ROOT:-}" ] && modules=$(bash "$(dirname "$0")/os-modules.sh" "
   gated=$(printf '%s\n' "$modules" | jq -Rn '[inputs | select(length > 0) | split("\t") | {prefix: .[0], os: .[1]}]')
   legs=$(jq -sr --arg tauri_exclude "$tauri_exclude" --argjson gated "$gated" -f "$(dirname "$0")/os-legs.jq" "$patches")
 else
-  echo "::warning::no Rust sources to read cfg-gated modules from; adding every OS leg"
+  # stdout is $GITHUB_OUTPUT. Desktop CI passes no sources: it reads no OS leg.
+  if [ -n "${SOURCE_ROOT:-}" ]; then echo "::warning::no Rust sources under $SOURCE_ROOT; adding every OS leg" >&2; fi
   legs="tests tests tests tests"
 fi
 read -r rust_windows rust_macos tauri_windows tauri_macos <<< "$legs"

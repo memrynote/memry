@@ -102,6 +102,8 @@ function tier({
     encoding: 'utf8'
   })
   assert.equal(result.status, 0, result.stderr)
+  // stdout is $GITHUB_OUTPUT: anything but `key=value` lines fails the step.
+  for (const line of result.stdout.trim().split('\n')) assert.match(line, /^[a-z_]+=[a-z]+$/)
   return Object.fromEntries(
     result.stdout
       .trim()
