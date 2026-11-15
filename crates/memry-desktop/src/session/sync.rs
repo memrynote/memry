@@ -78,14 +78,14 @@ impl Session {
         // Swapped, not stored: whatever got in meanwhile is stopped, never left running.
         let replaced = std::mem::replace(&mut lock(&self.inner.sync).running, supervisor);
         if let Some(replaced) = replaced {
-            replaced.stop_blocking();
+            let _ = replaced.stop_blocking();
         }
     }
 
     fn stop_sync(&self) {
         let running = lock(&self.inner.sync).running.take();
         if let Some(supervisor) = running {
-            supervisor.stop_blocking();
+            let _ = supervisor.stop_blocking();
         }
     }
 }
@@ -119,10 +119,14 @@ mod tests {
                 signed_in: true,
                 key_verified: true,
                 recovery_confirmed: true,
+                keychain_unavailable: false,
             }
         }
         async fn open(&self) -> Result<Arc<dyn SyncPasses>, SyncError> {
             Err(SyncError::Locked)
+        }
+        fn refresh_refused(&self) -> bool {
+            false
         }
         fn close(&self) {}
     }
@@ -164,7 +168,10 @@ mod tests {
                         gate: Arc::clone(&gate),
                         reachability: Arc::new(Online),
                         power: None,
+                        keychain_recovered: None,
                         db: open.vault.db_handle(),
+                        telemetry: None,
+                        signals: Default::default(),
                         on_status: Arc::new(|_| {}),
                     },
                 ))
@@ -240,7 +247,10 @@ mod tests {
                         gate: Arc::clone(&gate),
                         reachability: Arc::clone(&reachability) as Arc<dyn Reachability>,
                         power: None,
+                        keychain_recovered: None,
                         db: open.vault.db_handle(),
+                        telemetry: None,
+                        signals: Default::default(),
                         on_status: Arc::new(|_| {}),
                     },
                 ))

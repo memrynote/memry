@@ -7,6 +7,8 @@
 //! | an unentitled driver pulls and does not push           | §11.7.1: reads are never gated         |
 //! | the supervisor pushes a local write to another device  | `VaultSyncBackend`, `set_binding(Bound)`, `request_push` |
 //! | a write floor above the build parks the outbox         | §11.8 `minWriteVersion`: `version_incompatible`, pulls go on |
+//! | wait_for_pull and outbox_count follow real passes      | L4b test hooks: a pull counted, `synced_settings` 1 then 0 |
+//! | ten hints during a held pass give one trailing pass    | chapter 09 hints coalesce into one wake |
 
 #![cfg(feature = "harness")]
 
@@ -16,26 +18,33 @@ mod device_key;
 mod harness_server;
 
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use harness_server::{NoPins, Online, Server};
 use memry_core::api::auth::{AuthSession, DeviceDescriptor};
-use memry_core::api::errors::StorageError;
+use memry_core::api::errors::{StorageError, SyncError};
 use memry_core::api::vault::Vault;
 use memry_core::crypto::keys::derive_vault_key;
 use memry_core::protocol::auth::DevicePlatform;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_core::sync::driver::{DriverConfig, SyncDriver};
 use memry_core::sync::engine::{PassReport, PassSeed};
+use memry_core::sync::policy::ServerClock;
+use memry_core::sync::socket::{HintSink, parse_frame};
+use memry_core::sync::socket_run::TerminalLatch;
 use memry_core::sync::state::{PassTrigger, SyncState};
 use memry_desktop::notes::property_definitions::{DefinitionsSeed, PropertyDefinitions};
 use memry_desktop::seams::transport::app_transport;
-use memry_desktop::sync::backend::VaultSyncBackend;
+use memry_desktop::sync::backend::{SyncBackend, SyncPasses, VaultSyncBackend};
 use memry_desktop::sync::error_category::SyncErrorCategory;
+use memry_desktop::sync::gate::AuthFacts;
 use memry_desktop::sync::gate::{SyncStartGate, VaultBinding};
+use memry_desktop::sync::realtime::{RealtimeSocket, SocketEnd};
+use memry_desktop::sync::status::SyncStatusValue;
 use memry_desktop::sync::supervisor::{SupervisorParts, SyncSupervisor};
 use serde_json::Value;
 use zeroize::Zeroizing;
@@ -116,21 +125,36 @@ impl Device {
 
     /// A supervisor over this device's real backend, gated on `gate`.
     fn supervisor(&self, gate: &Arc<SyncStartGate>) -> SyncSupervisor {
+        self.supervisor_over(gate, Arc::new(self.backend()))
+    }
+
+    fn backend(&self) -> VaultSyncBackend {
+        VaultSyncBackend::new(
+            Arc::clone(&self.core),
+            Arc::clone(&self.session),
+            Arc::clone(&self.store),
+            Arc::new(Online),
+            self.seeds(),
+            Arc::new(|| (true, true)),
+        )
+    }
+
+    fn supervisor_over(
+        &self,
+        gate: &Arc<SyncStartGate>,
+        backend: Arc<dyn SyncBackend>,
+    ) -> SyncSupervisor {
         SyncSupervisor::start(
             &tokio::runtime::Handle::current(),
             SupervisorParts {
-                backend: Arc::new(VaultSyncBackend::new(
-                    Arc::clone(&self.core),
-                    Arc::clone(&self.session),
-                    Arc::clone(&self.store),
-                    Arc::new(Online),
-                    self.seeds(),
-                    Arc::new(|| (true, true)),
-                )),
+                backend,
                 gate: Arc::clone(gate),
                 reachability: Arc::new(Online),
                 power: None,
+                keychain_recovered: None,
                 db: self.core.db_handle(),
+                telemetry: None,
+                signals: Default::default(),
                 on_status: Arc::new(|_| {}),
             },
         )
@@ -311,6 +335,198 @@ async fn a_write_floor_above_the_build_parks_the_outbox_and_pulls_continue() {
     assert_eq!(report.error(), None, "a parked outbox is not a failure");
     assert_eq!(a.outbox(), 1, "A's note stays queued");
     assert_eq!(a.attempts(), 0, "a parked row accrues no attempt");
+}
+
+/// The test hooks over real passes: `wait_for_pull` returns once a pass pulled B's note, and
+/// `outbox_count` sees a settings write queued, then drained by a push.
+#[tokio::test(flavor = "multi_thread")]
+async fn wait_for_pull_and_outbox_count_follow_real_passes() {
+    let server = Server::start();
+    let a = Device::new(&server, 0);
+    let b = Device::new(&server, 1);
+    b.write_note("From B");
+    assert!(pass(&b.driver().await).await.pushed);
+
+    let gate = Arc::new(SyncStartGate::default());
+    let supervisor = a.supervisor(&gate);
+    assert_eq!(supervisor.completed_pulls(), 0);
+    gate.set_binding(VaultBinding::Bound);
+    let pulls = tokio::time::timeout(Duration::from_secs(30), supervisor.wait_for_pull(0))
+        .await
+        .expect("a pass pulled");
+    assert!(pulls >= 1);
+    assert_eq!(a.notes(), 1, "B's note was pulled before the wait returned");
+
+    until("the start pass settled", || {
+        supervisor.status().last_sync_at.is_some()
+    })
+    .await;
+    let device = server.devices[0]["deviceId"].as_str().unwrap().to_owned();
+    a.core
+        .db_handle()
+        .call_blocking(move |conn| {
+            memry_core::domain::settings::set(
+                conn,
+                "inbox.reviewReminderEnabled",
+                serde_json::json!(true),
+                &device,
+                1_700_000_000_000,
+            )
+            .map(|_| ())
+        })
+        .unwrap();
+    assert_eq!(supervisor.outbox_count("synced_settings").await.unwrap(), 1);
+    supervisor.request_push();
+    for _ in 0..600 {
+        if supervisor.outbox_count("synced_settings").await.unwrap() == 0 {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    assert_eq!(supervisor.outbox_count("synced_settings").await.unwrap(), 0);
+    supervisor.stop().await;
+}
+
+/// The real driver behind a gate that holds a pass while `hold` is set; counts what ran. Its
+/// socket stays quiet, so the only hints are the test's.
+struct Held {
+    inner: Arc<dyn SyncPasses>,
+    hold: Arc<AtomicBool>,
+    release: Arc<tokio::sync::Notify>,
+    ran: Arc<Mutex<Vec<PassTrigger>>>,
+}
+
+impl Held {
+    async fn gate(&self, trigger: PassTrigger) {
+        self.ran.lock().unwrap().push(trigger);
+        if self.hold.load(Ordering::SeqCst) {
+            self.release.notified().await;
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl SyncPasses for Held {
+    async fn run_pass(&self, trigger: PassTrigger) -> Option<PassReport> {
+        self.gate(trigger).await;
+        self.inner.run_pass(trigger).await
+    }
+    async fn wake(&self, cursor: Option<i64>) -> Option<PassReport> {
+        self.gate(PassTrigger::SocketHint).await;
+        self.inner.wake(cursor).await
+    }
+    fn realtime(
+        &self,
+        _sink: Arc<dyn HintSink>,
+        _latch: Arc<TerminalLatch>,
+        _on_connected: Arc<dyn Fn() + Send + Sync>,
+    ) -> Arc<dyn RealtimeSocket> {
+        Arc::new(Quiet::default())
+    }
+    fn pause(&self) {
+        self.inner.pause();
+    }
+    fn resume(&self) {
+        self.inner.resume();
+    }
+    fn set_entitled(&self, entitled: bool) {
+        self.inner.set_entitled(entitled);
+    }
+    fn server_clock(&self) -> Option<ServerClock> {
+        self.inner.server_clock()
+    }
+    fn observe(&self, observer: Arc<dyn memry_core::sync::driver::ApplyObserver>) {
+        self.inner.observe(observer);
+    }
+}
+
+#[derive(Default)]
+struct Quiet(tokio::sync::Notify);
+
+#[async_trait::async_trait]
+impl RealtimeSocket for Quiet {
+    async fn run(&self) -> SocketEnd {
+        self.0.notified().await;
+        SocketEnd::Stopped
+    }
+    fn stop(&self) {
+        self.0.notify_one();
+    }
+}
+
+struct HeldBackend {
+    inner: VaultSyncBackend,
+    hold: Arc<AtomicBool>,
+    release: Arc<tokio::sync::Notify>,
+    ran: Arc<Mutex<Vec<PassTrigger>>>,
+}
+
+#[async_trait::async_trait]
+impl SyncBackend for HeldBackend {
+    async fn auth_facts(&self) -> AuthFacts {
+        self.inner.auth_facts().await
+    }
+    async fn open(&self) -> Result<Arc<dyn SyncPasses>, SyncError> {
+        Ok(Arc::new(Held {
+            inner: self.inner.open().await?,
+            hold: Arc::clone(&self.hold),
+            release: Arc::clone(&self.release),
+            ran: Arc::clone(&self.ran),
+        }))
+    }
+    fn refresh_refused(&self) -> bool {
+        self.inner.refresh_refused()
+    }
+    fn close(&self) {
+        self.inner.close();
+    }
+}
+
+/// Ten `changes_available` frames while a pass is held give exactly one trailing pass, a wake.
+#[tokio::test(flavor = "multi_thread")]
+async fn ten_hints_during_a_held_pass_give_exactly_one_trailing_pass() {
+    let server = Server::start();
+    let a = Device::new(&server, 0);
+    let b = Device::new(&server, 1);
+    let backend = Arc::new(HeldBackend {
+        inner: a.backend(),
+        hold: Arc::default(),
+        release: Arc::default(),
+        ran: Arc::default(),
+    });
+    let gate = Arc::new(SyncStartGate::default());
+    let supervisor = a.supervisor_over(&gate, Arc::clone(&backend) as Arc<dyn SyncBackend>);
+    gate.set_binding(VaultBinding::Bound);
+    until("the start pass", || {
+        supervisor.status().last_sync_at.is_some()
+    })
+    .await;
+    let ran = || backend.ran.lock().unwrap().clone();
+    let before = ran().len();
+
+    backend.hold.store(true, Ordering::SeqCst);
+    supervisor.foreground();
+    until("the held pass started", || ran().len() == before + 1).await;
+    b.write_note("From B");
+    assert!(pass(&b.driver().await).await.pushed);
+    let sink = supervisor.hint_sink();
+    for cursor in 1..=10 {
+        let frame = format!(r#"{{"type":"changes_available","payload":{{"cursor":{cursor}}}}}"#);
+        sink.hint(parse_frame(frame.as_bytes()).unwrap());
+    }
+    backend.hold.store(false, Ordering::SeqCst);
+    backend.release.notify_one();
+    until("B's note arrived", || a.notes() == 1).await;
+    until("idle", || {
+        supervisor.status().status != SyncStatusValue::Syncing
+    })
+    .await;
+    // Absence: nothing else runs after the trailing pass.
+    tokio::time::sleep(Duration::from_secs(2)).await;
+    let ran = ran();
+    assert_eq!(ran.len(), before + 2, "{ran:?}");
+    assert_eq!(ran.last(), Some(&PassTrigger::SocketHint));
+    supervisor.stop().await;
 }
 
 /// Polls `done` every 50 ms, at most 600 times.
