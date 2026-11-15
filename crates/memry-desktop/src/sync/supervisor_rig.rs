@@ -294,7 +294,7 @@ impl Rig {
             recovered: broadcast::Sender::new(4),
             events: Arc::default(),
             telemetry: None,
-            signals: AuthSignals::default(),
+            signals: AuthSignals::new(),
         }
     }
 

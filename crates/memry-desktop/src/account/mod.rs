@@ -7,17 +7,21 @@
 //! imports), the master key write, and the phrase shown once after setup. Sync is not started
 //! here: the master key lands in the keychain and the sync supervisor picks it up (A4).
 
+pub mod binding;
 pub mod device;
 mod devices;
 mod linking;
 mod oauth;
 pub mod otp_clipboard;
 mod recovery;
+pub mod session_events;
+mod teardown;
 
 pub use devices::DeviceList;
 pub use linking::{LinkPoll, LinkScanned, LinkingQr, VaultChoice, dormant_vault_folder_name};
 pub use memry_core::protocol::auth::DeviceFormFactor;
 pub use oauth::{FirstDevice, OAUTH_ATTEMPT_TTL, OAuthEvent, OAuthStarted};
+pub use teardown::SignedOut;
 
 use std::sync::{Arc, Mutex};
 
@@ -157,7 +161,7 @@ pub struct RefreshOutcome {
 }
 
 pub struct AccountService {
-    session: AuthSession,
+    session: Arc<AuthSession>,
     transport: Arc<dyn Transport>,
     base_url: String,
     device: DeviceDescriptor,
@@ -185,13 +189,13 @@ impl AccountService {
         device: DeviceDescriptor,
         config: Arc<AppConfig>,
     ) -> Result<Self, ApiError> {
-        let session = AuthSession::new(
+        let session = Arc::new(AuthSession::new(
             transport.clone(),
             store.clone(),
             base_url.clone(),
             "desktop".to_owned(),
             device.clone(),
-        )?;
+        )?);
         let service = Self {
             linking: linking::Linking::new(session.device_approver()),
             session,
@@ -214,6 +218,11 @@ impl AccountService {
         &self.session
     }
 
+    /// The session shared, for the sync backend of each open vault.
+    pub fn shared_session(&self) -> Arc<AuthSession> {
+        Arc::clone(&self.session)
+    }
+
     /// A launch probe; a locked keychain leaves the session signed out until the next probe.
     fn restore(&self) {
         if let Err(error) = self.session.restore() {
@@ -227,15 +236,18 @@ impl AccountService {
     /// `POST /auth/otp/request`, then the code's lifetime in seconds. A sign-in in flight ends
     /// first ([`Self::end_pending_sign_in`]).
     pub async fn request_otp(&self, email: String) -> Result<Option<u64>, AccountError> {
-        self.end_pending_sign_in()?;
+        self.end_pending_sign_in().await?;
         Ok(self.session.request_email_code_answer(email).await?.1)
     }
 
     /// Before a new sign-in: a code pending for another address ends, a Google attempt ends with
     /// its loopback, and a setup that never registered a device (a failed or expired setup, a
-    /// locked keychain) ends; only its setup token goes.
-    fn end_pending_sign_in(&self) -> Result<(), AccountError> {
+    /// locked keychain) ends; only its setup token goes. A link in flight and a vault choice of
+    /// the previous account end too: a choice picked after signing in to another account would
+    /// provision and open a vault before its key is refused (VERIFY-4711 Low 1).
+    async fn end_pending_sign_in(&self) -> Result<(), AccountError> {
         self.end_oauth_attempt()?;
+        self.linking.forget_pending().await;
         match self.session.state() {
             AuthState::AwaitingOtp { .. } => {
                 self.session.abandon_email_sign_in()?;
