@@ -45,6 +45,7 @@ use memry_core::sync::driver::progress::{
 use memry_core::sync::driver::{DriverConfig, SyncDriver};
 use memry_core::sync::engine::{PassReport, PassSeed};
 use memry_core::sync::first_sync::{RECENT_BODY_LIMIT, RECENT_WINDOW_MS};
+use memry_core::sync::hardening::history;
 use memry_core::sync::state::PassTrigger;
 use memry_desktop::notes::property_definitions::{
     DefinitionType, DefinitionsSeed, PropertyDefinitions,
@@ -860,4 +861,135 @@ async fn a_desktop_first_sync_pulls_every_body_old_or_past_the_phone_limit() {
             .count(),
         1
     );
+}
+
+impl Device {
+    /// A project and one task in it, as the user makes them; the task's id.
+    fn new_task(&self, title: &str) -> String {
+        let tasks = self.core.tasks(self.store.clone()).unwrap();
+        let project = tasks
+            .create_project(ProjectDraft {
+                name: "Launch".into(),
+                description: None,
+                color: None,
+                icon: None,
+                statuses: None,
+            })
+            .unwrap();
+        tasks
+            .create(NewTaskInput {
+                title: title.into(),
+                project_id: project,
+                status_id: None,
+                parent_id: None,
+                priority: 0,
+                description: None,
+                due_date: None,
+                due_time: None,
+                start_date: None,
+                repeat: None,
+                repeat_from: None,
+                tags: Vec::new(),
+                linked_note_ids: Vec::new(),
+                linked_canvas_ids: Vec::new(),
+                source_note_id: None,
+                position: None,
+            })
+            .unwrap()
+            .created[0]
+            .clone()
+    }
+
+    /// The `(kind, item_count, details)` of each sync history row, oldest first.
+    fn history(&self) -> Vec<(String, i64, Option<String>)> {
+        let (mut rows, _) = self
+            .db()
+            .call_blocking(|conn| history::entries(conn, 100, 0))
+            .unwrap();
+        rows.reverse();
+        rows.into_iter()
+            .map(|row| (row.kind, row.item_count, row.details))
+            .collect()
+    }
+}
+
+/// A delete queued on A while B edits the same task: B's edit, pulled into A's pass before A's
+/// delete pushes, does not resurrect the task. A keeps it deleted, its delete reaches the server,
+/// and B and a device that joins later both end with the task deleted (Electron's
+/// `pending-deletes`, which the shared apply makes unnecessary, #3534 L3a).
+#[tokio::test(flavor = "multi_thread")]
+async fn a_queued_delete_survives_a_concurrent_edit_pulled_in_the_same_pass() {
+    let mut server = Server::start();
+    let a = Device::new(&server, 0).await;
+    let b = Device::new(&server, 1).await;
+    let task = a.new_task("Ship");
+    assert!(a.sync().await.pushed);
+    b.sync().await;
+    assert!(b.stored("task", &task).is_some());
+
+    a.core
+        .tasks(a.store.clone())
+        .unwrap()
+        .delete(task.clone(), false)
+        .expect("delete on A");
+    assert_eq!(a.queued("task"), 1, "the delete waits for A's pass");
+    b.core
+        .tasks(b.store.clone())
+        .unwrap()
+        .set_title(task.clone(), "Ship it".into())
+        .expect("rename on B");
+    assert!(b.sync().await.pushed);
+
+    let pass = a.sync().await;
+    assert!(pass.pull.applied + pass.pull.skipped >= 1, "{pass:?}");
+    assert!(a.stored("task", &task).is_none(), "A's task stays deleted");
+    assert_eq!(a.queued("task"), 0, "A's delete pushed");
+
+    b.sync().await;
+    assert!(
+        b.stored("task", &task).is_none(),
+        "B ends with the task deleted"
+    );
+    let late = server.register();
+    let c = Device::bound(&server.url, &late, VAULT, Vec::new()).await;
+    c.sync().await;
+    assert!(
+        c.stored("task", &task).is_none(),
+        "the server holds the tombstone"
+    );
+}
+
+/// Each pass the driver runs leaves its sync history rows: a push that sent rows, a pull that
+/// pulled, as Electron's coordinators write them (#3534 L3a).
+#[tokio::test(flavor = "multi_thread")]
+async fn the_driver_records_each_pass_in_the_sync_history() {
+    let server = Server::start();
+    let a = Device::new(&server, 0).await;
+    let b = Device::new(&server, 1).await;
+    a.new_task("Ship");
+    let pass = a.sync().await;
+    assert!(pass.pushed_items >= 2, "{pass:?}");
+
+    let pushed = a
+        .history()
+        .into_iter()
+        .filter(|(kind, _, _)| kind == "push")
+        .collect::<Vec<_>>();
+    assert_eq!(
+        pushed,
+        [("push".to_owned(), pass.pushed_items as i64, None)]
+    );
+
+    let pulled = b.sync().await;
+    assert!(pulled.pull.applied >= 2, "{pulled:?}");
+    let on_b = b.history();
+    assert!(
+        on_b.contains(&(
+            "pull".to_owned(),
+            (pulled.pull.applied + pulled.pull.deleted) as i64,
+            None
+        )),
+        "{on_b:?}"
+    );
+    assert!(on_b.iter().all(|(kind, _, _)| kind != "error"), "{on_b:?}");
 }
