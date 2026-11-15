@@ -206,6 +206,12 @@ private final class Screen {
     }
 }
 
+/// What the old row saw as it left the window.
+@MainActor
+private final class Seen {
+    var held: Bool?
+}
+
 /// Serialized: each test takes the first responder of a key window.
 @Suite(.serialized)
 @MainActor
@@ -353,6 +359,63 @@ struct EditorReturnBurstTests {
         #expect(caret == "abc", "the redrawn row holds the caret and the keys")
         #expect(blocks.map(\.kind) == ["paragraph"])
         #expect(blocks.map { BlockText.shown($0.inline) } == ["abc"])
+    }
+
+    /// The redrawn row holds the caret as the old row leaves the window, in
+    /// that turn, so no key arrives while no text view holds it
+    /// (REVIEW-4714 M1).
+    @Test(.timeLimit(.minutes(1))) func theRedrawnRowHoldsTheCaretAsTheOldOneLeaves() async throws {
+        let held = try await Screen.run("checkListItem", text: "") { screen in
+            let item = try await screen.start()
+            let seen = Seen()
+            let moved = item.movedToWindow
+            item.movedToWindow = { window in
+                moved?(window)
+                if window == nil, seen.held == nil { seen.held = screen.focused != nil }
+            }
+            screen.keys("\n")
+            for _ in 0 ..< 80 where seen.held == nil { try await Task.sleep(for: .milliseconds(25)) }
+            return seen.held
+        }
+        #expect(held == true, "a text view holds the caret as the old row leaves")
+    }
+
+    /// A second Return while the item turns into a paragraph is a
+    /// paragraph's Return: a new paragraph below takes the keys after it, as
+    /// on desktop, and the item is turned once (REVIEW-4714 M2). The row is
+    /// redrawn before or after the new block lands.
+    @Test(.timeLimit(.minutes(1)), arguments: [false, true])
+    func aSecondReturnDuringAListExitMakesAParagraphBelow(redrawFirst: Bool) async throws {
+        let (blocks, steps) = try await Screen.run("checkListItem", text: "") { screen in
+            let item = try await screen.start()
+            if redrawFirst { screen.editor.inserts.withLock { $0 = .wait } }
+            screen.keys("\n\nabc")
+            for _ in 0 ..< 80 where redrawFirst && screen.textViews().contains(item) {
+                try await Task.sleep(for: .milliseconds(25))
+            }
+            screen.editor.inserts.withLock { $0 = .land }
+            for _ in 0 ..< 80 where screen.focused?.text != "abc" { try await Task.sleep(for: .milliseconds(25)) }
+            try await screen.finish(blocks: 2)
+            return (screen.editor.all, screen.model.session.history.undoable)
+        }
+        #expect(blocks.map(\.kind) == ["paragraph", "paragraph"])
+        #expect(blocks.map { BlockText.shown($0.inline) } == ["", "abc"])
+        #expect(!steps.contains { $0.forward == $0.backward }, "no undo step that changes nothing")
+    }
+
+    /// Text typed into the item as it turns into a paragraph stays there, and
+    /// a Return after it makes a paragraph that takes the rest.
+    @Test(.timeLimit(.minutes(1))) func linesTypedDuringAListExitStayParagraphs() async throws {
+        let (blocks, steps) = try await Screen.run("checkListItem", text: "") { screen in
+            _ = try await screen.start()
+            screen.keys("\nab\ncd")
+            for _ in 0 ..< 80 where screen.focused?.text != "cd" { try await Task.sleep(for: .milliseconds(25)) }
+            try await screen.finish(blocks: 2)
+            return (screen.editor.all, screen.model.session.history.undoable)
+        }
+        #expect(blocks.map(\.kind) == ["paragraph", "paragraph"])
+        #expect(blocks.map { BlockText.shown($0.inline) } == ["ab", "cd"])
+        #expect(!steps.contains { $0.forward == $0.backward }, "no undo step that changes nothing")
     }
 
     // MARK: Edits outside the held keys end the hold (REVIEW-4707 M1)

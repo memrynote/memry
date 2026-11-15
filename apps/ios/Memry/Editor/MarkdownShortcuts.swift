@@ -203,6 +203,7 @@ extension EditorSession {
     func turnKeepingCaret(_ field: BlockField, into choice: InsertableBlock, props: [String: String] = [:]) {
         let blockId = field.blockId
         shortcutField = field
+        shortcutKind = choice.id
         commit(field) { [weak self] in
             guard let self, let model = self.model else { return }
             await self.turn(model, blockId, into: choice)
