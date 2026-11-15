@@ -2,7 +2,7 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::time::Instant;
 
 use super::fixture::*;
-use super::projection::{CancelToken, ProjectionEvent};
+use super::projection::{CancelToken, ProjectionEvent, Rebuilt};
 use crate::registry::create::CreateError;
 
 #[test]
@@ -274,8 +274,8 @@ fn registered_projectors_run_on_the_open_vault_and_stop_with_it() {
             self.0.fetch_add(1, Ordering::SeqCst);
             Ok(())
         }
-        fn rebuild(&self, _: &CancelToken) -> Result<(), String> {
-            Ok(())
+        fn rebuild(&self, _: &CancelToken) -> Result<Rebuilt, String> {
+            Ok(Rebuilt::default())
         }
         fn reconcile(&self, _: &CancelToken) -> Result<(), String> {
             self.1.fetch_add(1, Ordering::SeqCst);

@@ -59,6 +59,8 @@ export const commands = {
 	agentSetLocalProviderSettings: (input: AgentLocalProviderSettingsUpdate) => __TAURI_INVOKE<AgentLocalProviderSettings>("agent_set_local_provider_settings", { input }),
 	/**  `agent:testLocalProvider`: the server answers `GET /models` and lists the model. */
 	agentTestLocalProvider: () => __TAURI_INVOKE<AgentLocalProviderProbeResult>("agent_test_local_provider"),
+	/**  `settings:getAIModelStatus`: the local text model's state and the open vault's note vectors. */
+	aiGetModelStatus: () => __TAURI_INVOKE<AiModelStatus>("ai_get_model_status"),
 	/**
 	 *  The settings with the key masked (`ai-inline:get-settings`). The key itself is never read,
 	 *  so a locked keychain still opens the screen.
@@ -80,6 +82,11 @@ export const commands = {
 	 *  answer, not a failed call.
 	 */
 	aiInlineTestConnection: () => __TAURI_INVOKE<TestConnectionResult>("ai_inline_test_connection"),
+	/**
+	 *  `settings:loadAIModel`: loads the local text model, downloading it first, and waits. A
+	 *  refusal is the answer's `error`, as Electron's.
+	 */
+	aiLoadModel: () => __TAURI_INVOKE<ModelLoadResult>("ai_load_model"),
 	/**  Ends a provider call the renderer aborted, before or after its head. */
 	aiProviderCancel: (requestId: string) => __TAURI_INVOKE<void>("ai_provider_cancel", { requestId }),
 	/**
@@ -739,6 +746,7 @@ export const commands = {
 
 /** Events */
 export const events = {
+	aiEmbeddingProgressEvent: makeEvent<AiEmbeddingProgressEvent, AiEmbeddingProgressEvent>("ai-embedding-progress-event"),
 	aiInlineSettingsChangedEvent: makeEvent<AiInlineSettingsChangedEvent, AiInlineSettingsChangedEvent>("ai-inline-settings-changed-event"),
 	appNavigationRequestedEvent: makeEvent<AppNavigationRequestedEvent, AppNavigationRequestedEvent>("app-navigation-requested-event"),
 	authOauthCallbackEvent: makeEvent<AuthOauthCallbackEvent, AuthOauthCallbackEvent>("auth-oauth-callback-event"),
@@ -870,12 +878,37 @@ export type AgentLocalProviderSettingsUpdate = {
 /**  `AgentLocalThinking`: `off` asks a thinking model to answer without thinking. */
 export type AgentLocalThinking = "default" | "off";
 
+/**  `EmbeddingProgressEvent.phase`: the model's download and load, then a note embedding pass. */
+export type AiEmbeddingPhase = "downloading" | "loading" | "ready" | "error" | "embedding" | "complete";
+
+/**
+ *  The local text model's progress (`settings:embeddingProgress`). A model event carries
+ *  `progress` (0 to 100) and `status`; a note embedding pass carries `current` of `total` notes.
+ */
+export type AiEmbeddingProgressEvent = {
+	phase: AiEmbeddingPhase,
+	current?: number | null,
+	total?: number | null,
+	progress?: number | null,
+	status?: string | null,
+};
+
 /**
  *  The inline AI settings were written (replaces Electron's `ai-inline:server-ready` as the
  *  settings refresh). The key is masked.
  */
 export type AiInlineSettingsChangedEvent = {
 	settings: InlineAiSettings,
+};
+
+/**  `AIModelStatus`: the model's state and how many notes have a vector in the open vault. */
+export type AiModelStatus = {
+	name: string,
+	dimension: number,
+	loaded: boolean,
+	loading: boolean,
+	error: string | null,
+	embeddingCount: number,
 };
 
 /**
@@ -2054,6 +2087,16 @@ export type Metrics = {
 	retryCount?: number | null,
 	activeSeconds?: number | null,
 	value?: number | null,
+};
+
+/**
+ *  `loadAIModel`'s answer. `message` is English, as Electron's; `error` is translated, or the
+ *  model's own reason.
+ */
+export type ModelLoadResult = {
+	success: boolean,
+	message?: string | null,
+	error?: string | null,
 };
 
 export type Modifiers = {

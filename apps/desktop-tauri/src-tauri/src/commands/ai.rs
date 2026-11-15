@@ -6,7 +6,7 @@
 use std::sync::Arc;
 
 use memry_desktop::ai::catalog::{self, ProbeClient, ProbeFailure};
-use memry_desktop::ai::model::{self, ReindexResult};
+use memry_desktop::ai::model::{self, AiModelStatus, ModelLoadResult, ReindexResult};
 use memry_desktop::ai::provider::AiProvider;
 use memry_desktop::ai::proxy::{AiProviderHead, AiProviderRequest, AiProxy, ProxyError};
 use memry_desktop::ai::settings::{
@@ -295,6 +295,37 @@ fn proxy_error(locale: &str, settings: &InlineAiSettings, error: ProxyError) -> 
     CommandError::new(kind, code, message)
 }
 
+fn embedding_model<R: Runtime>(app: &AppHandle<R>) -> Option<Arc<EmbeddingService>> {
+    app.try_state::<Arc<EmbeddingService>>()
+        .map(|model| model.inner().clone())
+}
+
+/// `settings:getAIModelStatus`: the local text model's state and the open vault's note vectors.
+#[tauri::command]
+#[specta::specta]
+pub async fn ai_get_model_status<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<AiModelStatus, CommandError> {
+    blocking("ai_get_model_status", move || {
+        Ok(model::status(
+            &app.state::<Session>(),
+            embedding_model(&app).as_ref(),
+        ))
+    })
+    .await
+}
+
+/// `settings:loadAIModel`: loads the local text model, downloading it first, and waits. A
+/// refusal is the answer's `error`, as Electron's.
+#[tauri::command]
+#[specta::specta]
+pub async fn ai_load_model<R: Runtime>(app: AppHandle<R>) -> Result<ModelLoadResult, CommandError> {
+    blocking("ai_load_model", move || {
+        Ok(model::load(embedding_model(&app).as_ref(), locale(&app)))
+    })
+    .await
+}
+
 /// `settings:reindex-embeddings`: every note embedded again by the `embedding` lane, awaited.
 /// A refusal is the answer's `error`, as Electron's.
 #[tauri::command]
@@ -303,10 +334,10 @@ pub async fn ai_reindex_embeddings<R: Runtime>(
     app: AppHandle<R>,
 ) -> Result<ReindexResult, CommandError> {
     blocking("ai_reindex_embeddings", move || {
-        let model = app
-            .try_state::<Arc<EmbeddingService>>()
-            .map(|model| model.inner().clone());
-        Ok(model::reindex(&app.state::<Session>(), model.as_ref()))
+        Ok(model::reindex(
+            &app.state::<Session>(),
+            embedding_model(&app).as_ref(),
+        ))
     })
     .await
 }
