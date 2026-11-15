@@ -91,8 +91,10 @@ impl Script {
 struct FakeEngine(Arc<Script>);
 
 impl Engine for FakeEngine {
-    fn embed_text(&mut self, _: &str) -> Result<Vec<f32>, String> {
-        self.0.play(&self.0.embeds, None)?;
+    fn embed_text(&mut self, _: &str) -> Result<Vec<f32>, EmbedError> {
+        self.0
+            .play(&self.0.embeds, None)
+            .map_err(EmbedError::Failed)?;
         Ok(vec![0.5; EMBEDDING_DIMENSION])
     }
 }

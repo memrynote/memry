@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { linkingService } from '@/services/linking-service'
 import { Loader2, X, CheckCircle, AlertCircle } from '@/lib/icons'
 import { useT } from '@memry/i18n/renderer'
 
@@ -44,7 +45,7 @@ export function LinkingPending({
     if (cancelledRef.current) return
 
     try {
-      const result = await window.api.syncLinking.completeLinkingQr({ sessionId })
+      const result = await linkingService.completeLinkingQr({ sessionId })
 
       if (cancelledRef.current) return
 

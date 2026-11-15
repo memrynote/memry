@@ -29,7 +29,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use http_fakes::{FakeTransport, response};
-use memry_core::api::errors::ApiError;
+use memry_core::api::errors::{ApiError, SyncError};
 use memry_core::domain::notes::{self, NewNote};
 use memry_core::domain::settings;
 use memry_core::domain::tasks;
@@ -142,11 +142,11 @@ impl PushWave for ScriptedPush {
         Ok(self.pending)
     }
 
-    async fn drain(&self) -> Result<(), ApiError> {
+    async fn drain(&self) -> Result<usize, ApiError> {
         self.drains.fetch_add(1, Ordering::Relaxed);
         match self.result.lock().unwrap().clone() {
             Some(error) => Err(error),
-            None => Ok(()),
+            None => Ok(self.pending),
         }
     }
 }
@@ -793,6 +793,15 @@ async fn a_mid_wave_403_moves_pushing_to_read_only_rather_than_failed() {
     assert_eq!(report.final_state, SyncState::ReadOnly);
     assert_every_edge_is_drawn(&report, SyncState::Idle);
     assert_eq!(push.drains(), 1);
+    assert_eq!(
+        report.push_error,
+        Some(SyncError::Api {
+            source: ApiError::WritesDisabled {
+                message: "writes are off for ios".to_owned(),
+            }
+        }),
+        "the refusal reaches the shell, which names it"
+    );
     // The next pass parks instead of attempting again.
     assert_eq!(engine.write_gate(), WriteGate::ReadOnly);
 }
@@ -827,11 +836,22 @@ async fn a_transport_failure_during_a_pull_is_failed_and_exits_to_idle() {
     let first = engine.run_pass(PassTrigger::Timer).await;
     assert_eq!(first.final_state, SyncState::Failed);
     assert_every_edge_is_drawn(&first, SyncState::Idle);
+    assert!(
+        matches!(
+            first.pull_error,
+            Some(SyncError::Api {
+                source: ApiError::Status { status: 400, .. }
+            })
+        ),
+        "the pull's failure is on the report: {:?}",
+        first.pull_error
+    );
 
     let second = engine.run_pass(PassTrigger::Timer).await;
     assert_eq!(second.transitions[0], SyncState::Idle, "Failed -> Idle");
     assert_every_edge_is_drawn(&second, SyncState::Failed);
     assert_eq!(second.final_state, SyncState::Idle);
+    assert_eq!(second.error(), None);
 }
 
 #[tokio::test]

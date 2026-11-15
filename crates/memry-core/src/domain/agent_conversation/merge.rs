@@ -3,9 +3,9 @@
 //! (`apps/desktop/src/main/sync/item-handlers/agent-conversation-handler.ts:86-187`),
 //! with the title sealed at rest ([`crate::crypto::agent_payload`]).
 //!
-//! - **A remote Electron's schema refuses is skipped** before the gate and
-//!   nothing is written ([`refuses`] over [`NOT_NULL`]); Electron records it
-//!   `schema_invalid` (chapter 13 §13.2.3).
+//! - **A remote Electron's schema refuses is refused** before the gate and
+//!   nothing is written ([`refuses`] over [`NOT_NULL`]); the pull ledgers it,
+//!   as Electron records it `schema_invalid` (chapter 13 §13.2.3).
 //! - **§6.3.1's gate decides.** An equal clock compares the local payload
 //!   with its title opened, the payload a push would send (§6.5.2 P4). No local record, or a remote that dominates,
 //!   stores the remote with its title sealed. A dominating local record skips.
@@ -64,7 +64,7 @@ pub fn apply_remote(
     }
     let remote = parse_object(record)?;
     if refuses(ITEM_TYPE, &remote, &NOT_NULL) {
-        return Ok(Inbound::Skipped);
+        return Ok(Inbound::Refused);
     }
     let pending = is_sealed_pending(conn, ITEM_TYPE, &record.item_id)?;
     let opened = opened_local(conn, &record.item_id, pending, key)?;

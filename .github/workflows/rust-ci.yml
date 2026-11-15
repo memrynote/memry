@@ -493,6 +493,16 @@ jobs:
           node ../scripts/fetch-pdfium.mjs --out "$MEMRY_PDFIUM_DIR"
           cargo nextest run -p memry-ml-worker --no-fail-fast
 
+      # The file text runner through the real worker: the stub's pages, closing the vault stopping
+      # the child, and pdfium's text layer (pdfium fetched by the step above).
+      - name: Test the file text runner on the worker
+        if: matrix.part != 'tests' && runner.os == 'Linux'
+        env:
+          MEMRY_PDFIUM_DIR: ${{ runner.temp }}/pdfium
+        run: |
+          cargo build -p memry-ml-worker --bins
+          cargo nextest run -p memry-desktop --test file_text_worker --run-ignored only --no-fail-fast
+
       # The model tests run on the full tier only (#3540 K5): the pinned text files (207 MB) come
       # from a cache shared across OSes and, on a miss, from Hugging Face; the test checks their
       # size and hash before loading.
@@ -541,6 +551,15 @@ jobs:
         env:
           MEMRY_ML_MODEL_DIR: ${{ runner.temp }}/models/onnx-community/embeddinggemma-2-ONNX
         run: cargo test -p memry-ml --test golden_text -- --ignored
+
+      # The same golden vector through the real `memry-ml-worker` binary (the app's embedding path,
+      # ONNX Runtime out of process), and again in a new child after the first is killed.
+      - name: memry-ml-worker real embed
+        if: matrix.part != 'tests' && needs.plan.outputs.full == 'true'
+        timeout-minutes: 20
+        env:
+          MEMRY_ML_MODEL_DIR: ${{ runner.temp }}/models/onnx-community/embeddinggemma-2-ONNX
+        run: cargo test -p memry-ml-worker --test embed -- --ignored
 
       # The vision encoder (109 MB) has its own cache entry, holding only its two files, so the
       # text entry above stays as it is.
@@ -715,8 +734,8 @@ jobs:
       - name: Sync harness (memry-desktop)
         if: matrix.part != 'tests' && runner.os == 'Linux'
         run: |
-          cargo clippy -p memry-desktop --features harness --test sync_harness --test sync_driver_harness -- -D warnings
-          cargo nextest run -p memry-desktop --features harness --test sync_harness --test sync_driver_harness --no-fail-fast
+          cargo clippy -p memry-desktop --features harness --test sync_harness --test sync_driver_harness --test sync_supervisor_harness -- -D warnings
+          cargo nextest run -p memry-desktop --features harness --test sync_harness --test sync_driver_harness --test sync_supervisor_harness --no-fail-fast
 
       - name: Line ceilings
         if: matrix.part != 'tests' && runner.os == 'Linux'

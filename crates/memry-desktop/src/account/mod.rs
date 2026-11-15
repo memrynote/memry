@@ -8,16 +8,22 @@
 //! here: the master key lands in the keychain and the sync supervisor picks it up (A4).
 
 pub mod device;
+mod devices;
+mod linking;
 mod oauth;
 pub mod otp_clipboard;
 mod recovery;
 
+pub use devices::DeviceList;
+pub use linking::{LinkPoll, LinkScanned, LinkingQr, VaultChoice, dormant_vault_folder_name};
+pub use memry_core::protocol::auth::DeviceFormFactor;
 pub use oauth::{FirstDevice, OAUTH_ATTEMPT_TTL, OAuthEvent, OAuthStarted};
 
 use std::sync::{Arc, Mutex};
 
 use memry_core::api::auth::{AuthSession, AuthState, DeviceDescriptor};
 use memry_core::api::errors::{ApiError, AuthError, SecureStoreError};
+use memry_core::protocol::linking::LinkingError;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_core::seams::transport::Transport;
 use serde_json::{Map, Value};
@@ -51,6 +57,21 @@ pub enum AccountError {
     SetupConflict,
     #[error("key derivation failed")]
     Derive,
+    #[error(transparent)]
+    Linking(#[from] LinkingError),
+    #[error("No pending linking session found")]
+    NoPendingLink,
+    #[error("Session has not been scanned yet")]
+    LinkNotScanned,
+    #[error("Linking session has expired")]
+    LinkSessionExpired,
+    /// The approver sent a key that is not this account's (its verifier does not match).
+    #[error("the linked key does not belong to this account")]
+    LinkedKeyMismatch,
+    #[error("{0}")]
+    VaultChoice(String),
+    #[error("this device cannot remove itself")]
+    CannotRemoveCurrentDevice,
     /// The server's answer to the sign-in request named no `https` provider URL with a `state`.
     #[error("the server gave no usable sign-in link")]
     OAuthInvalidResponse,
@@ -85,6 +106,22 @@ impl CoreError for AccountError {
             Self::PhraseMismatch => (FailureKind::Auth, "recovery_phrase_mismatch"),
             Self::SetupConflict => (FailureKind::Auth, "account_setup_conflict"),
             Self::Derive => (FailureKind::Crypto, "key_derivation_failed"),
+            Self::Linking(LinkingError::Api { source }) => source.kind_and_code(),
+            Self::Linking(LinkingError::SecureStore { source }) => source.kind_and_code(),
+            Self::Linking(LinkingError::SessionExpired) | Self::LinkSessionExpired => {
+                (FailureKind::Auth, "linking_session_expired")
+            }
+            Self::Linking(LinkingError::InvalidQrPayload { .. }) => {
+                (FailureKind::Invalid, "linking_invalid_qr")
+            }
+            Self::Linking(_) => (FailureKind::Crypto, "linking_failed"),
+            Self::NoPendingLink => (FailureKind::NotFound, "linking_no_session"),
+            Self::LinkNotScanned => (FailureKind::Invalid, "linking_not_scanned"),
+            Self::LinkedKeyMismatch => (FailureKind::Crypto, "linking_key_mismatch"),
+            Self::VaultChoice(_) => (FailureKind::Storage, "linking_vault_choice_failed"),
+            Self::CannotRemoveCurrentDevice => {
+                (FailureKind::Invalid, "cannot_remove_current_device")
+            }
             Self::OAuthInvalidResponse => (FailureKind::Api, "oauth_invalid_response"),
             Self::OAuthExpired => (FailureKind::Auth, "oauth_expired"),
             Self::OAuthLoopback => (FailureKind::Internal, "oauth_loopback_unavailable"),
@@ -121,8 +158,11 @@ pub struct RefreshOutcome {
 
 pub struct AccountService {
     session: AuthSession,
-    store: Arc<dyn SecureStore>,
+    transport: Arc<dyn Transport>,
     base_url: String,
+    device: DeviceDescriptor,
+    linking: linking::Linking,
+    store: Arc<dyn SecureStore>,
     config: Arc<AppConfig>,
     /// Electron's `pendingRecoveryPhrase` (`auth-device-handlers.ts:140`): held in memory only,
     /// until the user confirms it.
@@ -146,16 +186,19 @@ impl AccountService {
         config: Arc<AppConfig>,
     ) -> Result<Self, ApiError> {
         let session = AuthSession::new(
-            transport,
+            transport.clone(),
             store.clone(),
             base_url.clone(),
             "desktop".to_owned(),
-            device,
+            device.clone(),
         )?;
         let service = Self {
+            linking: linking::Linking::new(session.device_approver()),
             session,
-            store,
+            transport,
             base_url,
+            device,
+            store,
             config,
             phrase: Mutex::new(None),
             key_op: tokio::sync::Mutex::new(()),
@@ -264,16 +307,7 @@ impl AccountService {
             self.session.state(),
             AuthState::Registered | AuthState::Refreshing | AuthState::SessionExpired
         ) && !matches!(self.store.get(SecureStoreKey::MasterKey), Ok(None));
-        let (email, device_id, confirmed) = self.config.read(|config| {
-            let sync = config.get("sync");
-            let text = |key: &str| sync.and_then(|s| s.get(key)).and_then(Value::as_str);
-            (
-                text("email").map(str::to_owned),
-                text("deviceId").map(str::to_owned),
-                sync.and_then(|s| s.get("recoveryPhraseConfirmed"))
-                    .and_then(Value::as_bool),
-            )
-        });
+        let (email, device_id, confirmed) = self.sync_fields();
         AccountInfo {
             signed_in,
             email,
@@ -295,6 +329,20 @@ impl AccountService {
                 None
             }
         }
+    }
+
+    /// `sync.email`, `sync.deviceId` and `sync.recoveryPhraseConfirmed`.
+    fn sync_fields(&self) -> (Option<String>, Option<String>, Option<bool>) {
+        self.config.read(|config| {
+            let sync = config.get("sync");
+            let text = |key: &str| sync.and_then(|s| s.get(key)).and_then(Value::as_str);
+            (
+                text("email").map(str::to_owned),
+                text("deviceId").map(str::to_owned),
+                sync.and_then(|s| s.get("recoveryPhraseConfirmed"))
+                    .and_then(Value::as_bool),
+            )
+        })
     }
 
     /// Writes into `memry-config.json` `sync`, keeping every key another build wrote.

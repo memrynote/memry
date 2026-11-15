@@ -588,3 +588,86 @@ fn the_file_hash_follows_reads_and_goes_with_its_row() {
         Err(StorageError::NotFound { .. })
     ));
 }
+
+/// The file text runner's lists (#3542 lane G): filed PDFs and images, of some notes or all,
+/// and the markdown notes among some ids, from rows that survive a reopen.
+#[test]
+fn the_text_file_lists_read_filed_files_and_markdown_notes_by_kind() {
+    let f = fixture();
+    let kinds = [
+        ("m1", "a.md", "markdown"),
+        ("p1", "b.pdf", "pdf"),
+        ("i1", "c.png", "image"),
+        ("v1", "d.mp4", "video"),
+        ("m2", "e.md", "markdown"),
+    ];
+    let stats: Vec<_> = kinds
+        .iter()
+        .map(|(id, path, kind)| NoteFileStat {
+            file_type: (*kind).to_owned(),
+            ..stat(id, path)
+        })
+        .collect();
+    f.vault.note_files().upsert_stats(&stats).expect("upsert");
+    drop(f.vault);
+    let files = open_at(f.dir.path()).note_files();
+    let filed = |ids: Option<&[&str]>| -> Vec<(String, String, String)> {
+        files
+            .filed_text_files(ids.map(|ids| ids.iter().map(|id| (*id).to_owned()).collect()))
+            .expect("filed")
+            .into_iter()
+            .map(|file| (file.note_id, file.path, file.file_type))
+            .collect()
+    };
+    let row = |id: &str, path: &str, kind: &str| (id.to_owned(), path.to_owned(), kind.to_owned());
+    assert_eq!(
+        filed(None),
+        [row("p1", "b.pdf", "pdf"), row("i1", "c.png", "image")]
+    );
+    assert_eq!(
+        filed(Some(&["i1", "m1", "gone"])),
+        [row("i1", "c.png", "image")]
+    );
+    assert_eq!(filed(Some(&[])), []);
+    let markdown = files
+        .markdown_notes(vec!["m2".into(), "p1".into(), "m1".into(), "gone".into()])
+        .expect("markdown");
+    assert_eq!(
+        markdown,
+        [
+            ("m1".to_owned(), "a.md".to_owned()),
+            ("m2".to_owned(), "e.md".to_owned())
+        ]
+    );
+}
+
+/// A note is gone for the file text runner only when nothing names it: no row, and no live
+/// record. A filed PDF with a record and no row yet (#4209) stays.
+#[test]
+fn a_note_is_gone_with_no_row_and_no_live_record() {
+    let Fixture { vault, .. } = fixture();
+    vault
+        .note_files()
+        .upsert_stat(stat("rowed", "a.md"))
+        .unwrap();
+    exec(
+        &vault,
+        "INSERT INTO notes (id, title, deleted_at) VALUES
+           ('filed-pdf', 'a', NULL), ('deleted', 'b', 5);
+         INSERT INTO journal_entries (id, date, deleted_at) VALUES
+           ('live-day', '2024-01-03', NULL), ('dead-day', '2024-01-04', 5);",
+    );
+    let ids = [
+        "rowed",
+        "filed-pdf",
+        "deleted",
+        "live-day",
+        "dead-day",
+        "never",
+    ];
+    let gone = vault
+        .note_files()
+        .gone_notes(ids.iter().map(|id| (*id).to_owned()).collect())
+        .unwrap();
+    assert_eq!(gone, ["dead-day", "deleted", "never"]);
+}

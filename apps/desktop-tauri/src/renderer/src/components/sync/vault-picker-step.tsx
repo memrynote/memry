@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { linkingService } from '@/services/linking-service'
 import { Loader2 } from '@/lib/icons'
 import { useT } from '@memry/i18n/renderer'
 import type { WizardVaultSummary } from '@/contexts/auth-context'
@@ -50,7 +51,7 @@ export function VaultPickerStep({
 
   const chooseFolder = useCallback(async () => {
     try {
-      const { path } = await window.api.syncLinking.pickVaultFolder()
+      const { path } = await linkingService.pickVaultFolder()
       if (path) setFolderPath(path)
     } catch (err) {
       onError(extractErrorMessage(err, t('setup.linking.deviceFailed')))
@@ -65,7 +66,7 @@ export function VaultPickerStep({
     setSubmitting(true)
     setError(null)
     try {
-      const result = await window.api.syncLinking.finalizeVaultChoice({
+      const result = await linkingService.finalizeVaultChoice({
         sessionId,
         parentFolderPath: folderPath,
         selectedVaultUuids: ordered,
@@ -136,10 +137,16 @@ export function VaultPickerStep({
                   aria-label={vault.vaultUuid}
                 />
                 <span className="flex-1 text-start text-sm">
-                  {t('setup.linking.vaultRow', {
-                    count: vault.itemCount ?? 0,
-                    date: formatDate(vault.createdAt)
-                  })}
+                  {/* The new device's rows carry only ids (core's vault transfer), so the
+                      short id tells them apart, as the folder name `memry-vault-<id>` does. */}
+                  {vault.itemCount === undefined ? (
+                    <span className="font-mono">{vault.vaultUuid.slice(0, 8)}</span>
+                  ) : (
+                    t('setup.linking.vaultRow', {
+                      count: vault.itemCount,
+                      date: formatDate(vault.createdAt)
+                    })
+                  )}
                 </span>
                 {isChecked && (
                   <span className="text-xs text-muted-foreground">

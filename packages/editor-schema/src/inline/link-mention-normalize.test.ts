@@ -21,9 +21,24 @@ describe('splitTextWithLinkMentions', () => {
     ])
   })
 
-  it('preserves styles on surrounding text segments', () => {
-    const styles = { bold: true }
-    const { segments } = splitTextWithLinkMentions(`a ${token}`, styles)
+  it('keeps a token in a styled run as text (#4652)', () => {
+    const styled: Array<Record<string, boolean | string>> = [
+      { code: true },
+      { italic: true },
+      { bold: true },
+      { textColor: 'red' }
+    ]
+    for (const styles of styled) {
+      const { segments, didChange } = splitTextWithLinkMentions(`a ${token}`, styles)
+      expect(didChange).toBe(false)
+      expect(segments).toEqual([{ type: 'text', text: `a ${token}`, styles }])
+    }
+  })
+
+  it('promotes a token in a run with only inactive styles', () => {
+    const styles = { bold: false, textColor: 'default' }
+    const { segments, didChange } = splitTextWithLinkMentions(`a ${token}`, styles)
+    expect(didChange).toBe(true)
     expect(segments[0]).toEqual({ type: 'text', text: 'a ', styles })
   })
 

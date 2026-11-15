@@ -5,6 +5,9 @@
 //! The decode (sharp's half) is `memry_media::decode`, which checks every limit of the untrusted
 //! bytes before it allocates; this module is the tensor half.
 
+/// The largest image file decoded (owned by `memry_media`), re-exported for the worker's
+/// `EmbedImage` frame cap, which must equal it (`memry-ml-worker` asserts so).
+pub use memry_media::MAX_IMAGE_BYTES;
 use memry_media::Rgb8;
 
 use crate::MlError;

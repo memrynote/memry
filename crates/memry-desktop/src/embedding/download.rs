@@ -83,7 +83,15 @@ pub struct ModelSource {
     files: Vec<PinnedFile>,
     /// Every file on disk was hashed once this app session. A later load checks sizes only:
     /// the files are written by this source alone, and only after their hash matched.
+    ///
+    /// Accepted risk: nothing re-hashes a file swapped after that, and every worker child started
+    /// later in the session (after a crash or an idle exit) loads it with the size check alone.
+    /// The worker runs unsandboxed as the same user, so a process able to swap the file can do
+    /// as much without it; the hash guards the download, not the disk.
     verified: AtomicBool,
+    /// Held across a whole `ensure`: a retired embedding thread may still be finishing its
+    /// download when its replacement starts one, and both would append to the same `.part`.
+    ensuring: tokio::sync::Mutex<()>,
 }
 
 impl ModelSource {
@@ -107,6 +115,7 @@ impl ModelSource {
             dir,
             files,
             verified: AtomicBool::new(false),
+            ensuring: tokio::sync::Mutex::new(()),
         }
     }
 
@@ -116,7 +125,8 @@ impl ModelSource {
 
     /// Makes every file present and verified, downloading what is missing, reporting progress
     /// weighted by file size. A file of the wrong size or hash is deleted and fetched again,
-    /// including one an Electron profile left at the same path.
+    /// including one an Electron profile left at the same path. One `ensure` runs at a time; a
+    /// cancel or the deadline wins over a download that finishes in the same poll.
     pub async fn ensure(
         &self,
         abort: &Abort,
@@ -124,9 +134,10 @@ impl ModelSource {
     ) -> Result<(), DownloadError> {
         let deadline = tokio::time::Instant::from_std(abort.deadline);
         tokio::select! {
-            result = self.ensure_all(progress) => result,
+            biased;
             () = abort.cancel.cancelled() => Err(DownloadError::Cancelled),
             () = tokio::time::sleep_until(deadline) => Err(DownloadError::DeadlineExceeded),
+            result = self.ensure_all(progress) => result,
         }
     }
 
@@ -134,6 +145,7 @@ impl ModelSource {
         &self,
         progress: &(dyn Fn(ModelProgress) + Sync),
     ) -> Result<(), DownloadError> {
+        let _one_at_a_time = self.ensuring.lock().await;
         let total: u64 = self.files.iter().map(|f| f.size).sum();
         let mut meter = Meter::new(total, progress);
         let hash_present = !self.verified.load(Ordering::SeqCst);

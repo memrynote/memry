@@ -121,6 +121,12 @@ export const commands = {
 	/**  Every icon, oldest first. Writes the file of an icon that has none. */
 	customIconsList: () => __TAURI_INVOKE<CustomIconView[]>("custom_icons_list"),
 	customIconsRename: (id: string, name: string) => __TAURI_INVOKE<CustomIconView>("custom_icons_rename", { id, name }),
+	/**  `sync:get-devices`. Empty when this install registered no device or the server did not answer. */
+	syncGetDevices: () => __TAURI_INVOKE<DeviceListView>("sync_get_devices"),
+	/**  `sync:remove-device`: never this device. */
+	syncRemoveDevice: (deviceId: string) => __TAURI_INVOKE<null>("sync_remove_device", { deviceId }),
+	/**  `sync:rename-device`. */
+	syncRenameDevice: (deviceId: string, newName: string) => __TAURI_INVOKE<null>("sync_rename_device", { deviceId, newName }),
 	diagnosticsPreviewReport: (trigger: DiagnosticTrigger) => __TAURI_INVOKE<DiagnosticPreview>("diagnostics_preview_report", { trigger }),
 	diagnosticsSendReport: (report: DiagnosticReport) => __TAURI_INVOKE<DiagnosticSendResult>("diagnostics_send_report", { report }),
 	/**
@@ -222,6 +228,24 @@ export const commands = {
 	 *  the synced `general.language`, and tells every window.
 	 */
 	localeSet: (locale: string) => __TAURI_INVOKE<null>("locale_set", { locale }),
+	/**  `sync:approve-linking`: sends the master key and the account's vault list to the device. */
+	syncApproveLinking: (sessionId: string) => __TAURI_INVOKE<null>("sync_approve_linking", { sessionId }),
+	/**  `sync:complete-linking-qr`, one poll (the renderer polls every 3 s). */
+	syncCompleteLinkingQr: (sessionId: string) => __TAURI_INVOKE<LinkPollView>("sync_complete_linking_qr", { sessionId }),
+	/**
+	 *  `sync:finalize-vault-choice`: opens the picked account vault, then registers the device. A
+	 *  failure before the registration throws and keeps the choice; the registration's outcome goes
+	 *  out as `SyncLinkingFinalizedEvent`.
+	 */
+	syncFinalizeVaultChoice: (sessionId: string, parentFolderPath: string, selectedVaultUuids: string[], primaryVaultUuid: string) => __TAURI_INVOKE<null>("sync_finalize_vault_choice", { sessionId, parentFolderPath, selectedVaultUuids, primaryVaultUuid }),
+	/**  `sync:generate-linking-qr`. Replaces a pending code. */
+	syncGenerateLinkingQr: () => __TAURI_INVOKE<LinkingQrView>("sync_generate_linking_qr"),
+	/**  `sync:get-linking-sas`: the six digits the approver compares, once the code was scanned. */
+	syncGetLinkingSas: (sessionId: string) => __TAURI_INVOKE<string>("sync_get_linking_sas", { sessionId }),
+	/**  `sync:link-via-qr`: the new device scans (or pastes) the approver's code. */
+	syncLinkViaQr: (qrData: string) => __TAURI_INVOKE<LinkScannedView>("sync_link_via_qr", { qrData }),
+	/**  `sync:pick-vault-folder`: the parent folder for a linked vault, `None` when cancelled. */
+	syncPickVaultFolder: () => __TAURI_INVOKE<string | null>("sync_pick_vault_folder"),
 	/**  Copies the image at `url` into the note's attachments folder. */
 	notesDownloadAttachmentFromUrl: (noteId: string, url: string) => __TAURI_INVOKE<UrlDownload>("notes_download_attachment_from_url", { noteId, url }),
 	/**
@@ -774,6 +798,7 @@ export const events = {
 	propertyDefinitionChangedEvent: makeEvent<PropertyDefinitionChangedEvent, PropertyDefinitionChangedEvent>("property-definition-changed-event"),
 	settingsChangedEvent: makeEvent<SettingsChangedEvent, SettingsChangedEvent>("settings-changed-event"),
 	settingsOpenSectionEvent: makeEvent<SettingsOpenSectionEvent, SettingsOpenSectionEvent>("settings-open-section-event"),
+	syncLinkingFinalizedEvent: makeEvent<SyncLinkingFinalizedEvent, SyncLinkingFinalizedEvent>("sync-linking-finalized-event"),
 	tagCategoriesChangedEvent: makeEvent<TagCategoriesChangedEvent, TagCategoriesChangedEvent>("tag-categories-changed-event"),
 	tagColorUpdatedEvent: makeEvent<TagColorUpdatedEvent, TagColorUpdatedEvent>("tag-color-updated-event"),
 	tagDeletedEvent: makeEvent<TagDeletedEvent, TagDeletedEvent>("tag-deleted-event"),
@@ -1279,6 +1304,24 @@ export type DeletedAttachment = {
 	referencedBy: string[],
 };
 
+export type DeviceListView = {
+	devices: DeviceView[],
+	email: string | null,
+	needsRecoveryConfirmation: boolean,
+};
+
+export type DeviceView = {
+	id: string,
+	name: string,
+	platform: string,
+	formFactor: FormFactor | null,
+	isCurrentDevice: boolean,
+	/**  Epoch milliseconds. */
+	lastSyncAt: number | null,
+	/**  Epoch milliseconds; 0 when the server sent no `createdAt`. */
+	linkedAt: number,
+};
+
 /**  One shipped line (`DiagnosticLogLineSchema`). */
 export type DiagnosticLine = {
 	ts: string,
@@ -1361,7 +1404,7 @@ export type FailureDetail = {
 
 /**
  *  The user's feedback (`FeedbackSubmitSchema`): the message trimmed and 1 to 5000 characters, an
- *  optional email that looks like one.
+ *  optional email of at most 320 characters.
  */
 export type FeedbackSubmit = {
 	message: string,
@@ -1615,6 +1658,9 @@ export type FolderView = {
 	path: string,
 	icon: string | null,
 };
+
+/**  Chapter 02 §2.3.4: `None` is unknown and the device list falls back to `platform`. */
+export type FormFactor = "phone" | "tablet";
 
 /**  `GetLinkedHereSchema`. */
 export type GetLinkedHereInput = {
@@ -1960,6 +2006,14 @@ export type LevelWords = {
 	topic: number,
 };
 
+/**
+ *  One poll of the new device's link. `waiting`: not approved yet, poll again. `rateLimited`: the
+ *  server refused the poll for its rate limit, poll again later. `linked`: approved; `vaults`
+ *  lists the account's vaults when the user picks one (`sync_finalize_vault_choice`), otherwise
+ *  the finalize reports through `SyncLinkingFinalizedEvent`.
+ */
+export type LinkPollView = { status: "waiting" } | { status: "rateLimited" } | { status: "linked"; vaults: string[] | null };
+
 /**  `WikiLinkResolution`, and `WikiLinkTargetResolution` with `heading`. */
 export type LinkResolutionView = {
 	id: string,
@@ -1971,6 +2025,11 @@ export type LinkResolutionView = {
 	 *  (`notes:resolve-by-title`'s `journalDate`).
 	 */
 	journalDate?: string | null,
+};
+
+export type LinkScannedView = {
+	sessionId: string,
+	verificationCode: string,
 };
 
 export type LinkTargetView = {
@@ -2010,6 +2069,13 @@ export type LinkedTaskView = {
 	title: string,
 	dueDate: string | null,
 	completed: boolean,
+};
+
+export type LinkingQrView = {
+	qrData: string,
+	sessionId: string,
+	/**  Epoch seconds, as the server sent it. */
+	expiresAt: number,
 };
 
 /**  The UI language changed (`locale:changed`). */
@@ -2952,6 +3018,15 @@ export type StreakView = {
 	currentStreak: number,
 	longestStreak: number,
 	lastEntryDate: string | null,
+};
+
+/**
+ *  A linked device finished registering, or failed to (`sync:linking-finalized`). The new device's
+ *  link finalizes in the background after the approval; `error` is the failure's message.
+ */
+export type SyncLinkingFinalizedEvent = {
+	deviceId: string | null,
+	error: string | null,
 };
 
 /**  `TagAssignment`: where a drag put a tag. */

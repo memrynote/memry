@@ -2467,8 +2467,7 @@
       "failedToCloseVault": "Det gick inte att stänga valvet",
       "failedToSwitchVault": "Det gick inte att byta valv",
       "failedToUpdateConfig": "Det gick inte att uppdatera konfigurationen",
-      "failedToReindex": "Det gick inte att indexera om",
-      "googleSignInFailed": "Google-inloggning misslyckades"
+      "failedToReindex": "Det gick inte att indexera om"
     }
   },
   "agentMcp": {

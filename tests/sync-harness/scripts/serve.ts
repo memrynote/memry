@@ -22,6 +22,14 @@
  * An `otp <email> <code>` line makes `<code>` the email's pending sign-in code, as the server's
  * `storeOtp` stores one (the email normalized, the code's HMAC-SHA256 under the harness key), so
  * a client can finish an email sign-in without the email. It answers `{ harnessOtp: true }`.
+ *
+ * An `entitle <email>` line gives the user who signed in with `<email>` the bootstrap user's paid
+ * plan, so it can add vaults to its account (`POST /sync/vaults`). It answers
+ * `{ harnessEntitled: true }`.
+ *
+ * A `policy <writesEnabled 0|1> [minWriteVersion]` line upserts the `desktop` row of
+ * `client_policies` (chapter 11 §11.8), which the Worker reads on every request. It answers
+ * `{ harnessPolicy: true }`.
  */
 import { createHmac } from 'node:crypto'
 import { createInterface } from 'node:readline'
@@ -96,11 +104,48 @@ const otp = async (email: string, code: string): Promise<void> => {
     .run()
   process.stdout.write(`${JSON.stringify({ harnessOtp: true })}\n`)
 }
+const entitle = async (email: string): Promise<void> => {
+  const db = await server.getD1()
+  const { meta } = await db
+    .prepare(
+      `INSERT OR REPLACE INTO sync_entitlements (user_id, plan, status, source, storage_limit, max_file_size, max_vaults, version_history_days, expires_at, updated_at)
+       SELECT u.id, e.plan, e.status, e.source, e.storage_limit, e.max_file_size, e.max_vaults, e.version_history_days, e.expires_at, e.updated_at
+       FROM users u, sync_entitlements e WHERE u.email = ? AND e.user_id = ?`
+    )
+    .bind(email.trim().toLowerCase(), userId)
+    .run()
+  process.stdout.write(`${JSON.stringify({ harnessEntitled: meta.changes > 0 })}\n`)
+}
+// A server that lies: gives an account vault an id no client would register.
+const renameVault = async (from: string, to: string): Promise<void> => {
+  const db = await server.getD1()
+  const { meta } = await db
+    .prepare('UPDATE sync_vaults SET vault_id = ? WHERE vault_id = ?')
+    .bind(to, from)
+    .run()
+  process.stdout.write(`${JSON.stringify({ harnessRenamed: meta.changes > 0 })}\n`)
+}
+const policy = async (writesEnabled: string, minWriteVersion?: string): Promise<void> => {
+  const db = await server.getD1()
+  await db
+    .prepare(
+      `INSERT INTO client_policies (platform, min_write_version, writes_enabled, updated_at)
+       VALUES ('desktop', ?, ?, ?)
+       ON CONFLICT (platform) DO UPDATE SET min_write_version = excluded.min_write_version,
+         writes_enabled = excluded.writes_enabled, updated_at = excluded.updated_at`
+    )
+    .bind(minWriteVersion ?? null, Number(writesEnabled), Math.floor(Date.now() / 1000))
+    .run()
+  process.stdout.write(`${JSON.stringify({ harnessPolicy: true })}\n`)
+}
 const commands = createInterface({ input: process.stdin })
 commands.on('line', (line) => {
   const [command, ...args] = line.trim().split(/\s+/)
   if (command === 'purge') void purge()
   if (command === 'otp' && args.length === 2) void otp(args[0], args[1])
+  if (command === 'entitle' && args.length === 1) void entitle(args[0])
+  if (command === 'rename-vault' && args.length === 2) void renameVault(args[0], args[1])
+  if (command === 'policy' && args.length >= 1) void policy(args[0], args[1])
   if (command === 'register') {
     void register(devices.length).then((device) => {
       devices.push(device)

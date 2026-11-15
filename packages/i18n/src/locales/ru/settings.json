@@ -2467,8 +2467,7 @@
       "failedToCloseVault": "Не удалось закрыть хранилище",
       "failedToSwitchVault": "Не удалось переключить хранилище",
       "failedToUpdateConfig": "Не удалось обновить конфигурацию",
-      "failedToReindex": "Не удалось переиндексировать",
-      "googleSignInFailed": "Не удалось войти через Google"
+      "failedToReindex": "Не удалось переиндексировать"
     }
   },
   "agentMcp": {
