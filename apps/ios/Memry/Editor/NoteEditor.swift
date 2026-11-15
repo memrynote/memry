@@ -34,6 +34,9 @@ final class NoteEditorViewModel {
     private let notes: (any NotesWriting)?
 
     private(set) var status: Status = .idle
+    /// Set while `redo` runs a step's edits: one that lands keeps the
+    /// status of one before it that failed.
+    @ObservationIgnored private var holdsFailure = false
 
     /// The keyboard toolbar's state and actions for this body.
     let session = EditorSession()
@@ -435,22 +438,16 @@ final class NoteEditorViewModel {
         )
     }
 
-    /// Turns the `[[target]]` literals a commit just wrote into link nodes
-    /// (`insert(_:over:typedLength:)`). Each `start` is in the pane's text,
-    /// `typedLength` core bytes long.
-    func insertTypedWikiLinks(
-        _ links: [WikiLinkText.Typed], in blockId: String, typedLength: Int
-    ) async -> [EditorUndoStep.TextNode] {
-        let nodes = links.map { link in
-            EditorUndoStep.TextNode(
-                start: link.start, literal: link.literal,
-                edit: .insertInline(
-                    blockId: blockId, start: UInt32(link.start), end: UInt32(link.start + link.literal.utf8.count),
-                    kind: "wikiLink", text: "", attrs: WikiLinkAttrs.attrs(target: link.target, alias: link.alias)
-                )
+    /// The link node for a `[[target]]` literal a commit wrote, for
+    /// `insert(_:over:typedLength:)`. `start` is in the pane's text.
+    static func wikiLinkNode(_ link: WikiLinkText.Typed, in blockId: String) -> EditorUndoStep.TextNode {
+        EditorUndoStep.TextNode(
+            start: link.start, literal: link.literal,
+            edit: .insertInline(
+                blockId: blockId, start: UInt32(link.start), end: UInt32(link.start + link.literal.utf8.count),
+                kind: "wikiLink", text: "", attrs: WikiLinkAttrs.attrs(target: link.target, alias: link.alias)
             )
-        }
-        return await insert(nodes, over: blockId, typedLength: typedLength)
+        )
     }
 
     /// Puts each node's `insertInline` in over its literal, where `blockId`
@@ -495,9 +492,13 @@ final class NoteEditorViewModel {
     }
 
     /// Does `step` again: `forward`, then its nodes over text where the
-    /// block now holds their literals, then the rest.
+    /// block now holds their literals, then the rest. None of them when
+    /// `forward` did not land: a literal found then is another writer's
+    /// text. A failure stays the status through the edits after it.
     func redo(_ step: EditorUndoStep) async {
-        await run(step.forward)
+        guard await run(step.forward) else { return }
+        holdsFailure = true
+        defer { holdsFailure = false }
         if case let .replaceText(blockId, _, _) = step.forward {
             await insert(step.forwardOverText, over: blockId, typedLength: step.forwardLength)
         }
@@ -609,11 +610,13 @@ final class NoteEditorViewModel {
     @discardableResult
     private func run(_ edit: BlockEdit, then finish: (() -> Void)? = nil) async -> Bool {
         guard let editor else { return false }
+        let failure: Status? = if holdsFailure, case .failed = status { status } else { nil }
         status = .saving
         do {
             let landed = try await editor.edit(noteId: noteId, edit)
             finish?()
-            status = .idle
+            // Refused, as `commit` reports it: the note or block is gone.
+            status = failure ?? (landed ? .idle : .failed(ErrorMapping.unknownNote))
             if !landed { Log.storage.error("a block edit was refused") }
             return landed
         } catch {

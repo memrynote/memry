@@ -507,13 +507,15 @@ final class EditorSession {
     /// since the last commit into a link node (desktop's input rule). Never
     /// in a code block, whose text stays literal. Answers where a UTF-16
     /// location in `field` before the commit is after it, with each such
-    /// link drawn as its one-character node. `nodes` puts inline nodes in
-    /// after the typing and answers the edits it ran, which join the
-    /// typing's undo step.
+    /// link drawn as its one-character node. `nodes` puts zero-width inline
+    /// nodes in after the typing and answers the edits it ran, which join
+    /// the typing's undo step. `over` puts nodes over text in `field`, such
+    /// as a `#tag`, as the typed links go (`NoteEditorViewModel.insert`).
     @discardableResult
     func commit(
         _ field: BlockField,
         then: (@MainActor () async -> Void)? = nil,
+        over: [EditorUndoStep.TextNode] = [],
         inserting nodes: (@MainActor (NoteEditorViewModel) async -> [BlockEdit])? = nil
     ) -> (Int) -> Int {
         // Held by the queued write, not read when it runs: a page torn down
@@ -529,13 +531,16 @@ final class EditorSession {
         let dirty = field.dirty
         let base = field.base
         let links = dirty && field.block.kind != "codeBlock" ? WikiLinkText.typed(in: text, since: base) : []
-        let typed = links.map { link in
-            WikiLinkText.Typed(
-                start: BlockText.coreOffset(in: attributed, utf16: link.range.location),
-                literal: (text as NSString).substring(with: link.range),
-                target: link.target, alias: link.alias
+        let overText = links.map { link in
+            NoteEditorViewModel.wikiLinkNode(
+                WikiLinkText.Typed(
+                    start: BlockText.coreOffset(in: attributed, utf16: link.range.location),
+                    literal: (text as NSString).substring(with: link.range),
+                    target: link.target, alias: link.alias
+                ),
+                in: blockId
             )
-        }
+        } + over
         let length = BlockText.coreOffset(in: attributed, utf16: attributed.length)
         field.dirty = false
         if dirty {
@@ -551,26 +556,24 @@ final class EditorSession {
         enqueue {
             let wrote = dirty && text != base
             if wrote { await model.commit(text, for: blockId, base: base) }
-            let converted = typed.isEmpty
-                ? [] : await model.insertTypedWikiLinks(typed, in: blockId, typedLength: length)
+            let converted = overText.isEmpty
+                ? [] : await model.insert(overText, over: blockId, typedLength: length)
             let added = await nodes?(model) ?? []
             // From `base`, as the write: the block may hold another pane's
             // typing since, which undo and redo keep. To this pane's text
             // with the nodes in, so undo takes them back too. A node over
             // text, such as a `#tag`, keeps its literal for redo to find.
             if !converted.isEmpty || !added.isEmpty {
-                let overText = converted + added.compactMap { Self.overText($0, in: attributed) }
-                let spans = overText.map { $0.start ..< $0.start + $0.literal.utf8.count }
-                    + added.compactMap(Self.span).filter(\.isEmpty)
+                let spans = converted.map { $0.start ..< $0.start + $0.literal.utf8.count } + added.compactMap(Self.span)
                 self.history.record(.text(
-                    blockId: blockId, from: base, typed: text, typedLength: length, overText: overText,
-                    nodes: added.filter { Self.span($0)?.isEmpty != false }, to: BlockText.placingNodes(spans, in: attributed)
+                    blockId: blockId, from: base, typed: text, typedLength: length, overText: converted,
+                    nodes: added, to: BlockText.placingNodes(spans, in: attributed)
                 ))
             } else if wrote {
                 self.history.record(.text(blockId: blockId, from: base, to: text))
             }
             await then?()
-            if dirty || !typed.isEmpty || nodes != nil || then != nil { await self.didChange() }
+            if dirty || !overText.isEmpty || nodes != nil || then != nil { await self.didChange() }
         }
         return moved
     }
@@ -579,15 +582,6 @@ final class EditorSession {
     private static func span(_ edit: BlockEdit) -> Range<Int>? {
         guard case let .insertInline(_, start, end, _, _, _) = edit else { return nil }
         return Int(start) ..< Int(max(start, end))
-    }
-
-    /// An `insertInline` that replaced text in `text`, with that text.
-    private static func overText(_ edit: BlockEdit, in text: NSAttributedString) -> EditorUndoStep.TextNode? {
-        guard let span = span(edit), !span.isEmpty else { return nil }
-        let lower = BlockText.utf16Offset(in: text, core: span.lowerBound)
-        let upper = BlockText.utf16Offset(in: text, core: span.upperBound)
-        let literal = (text.string as NSString).substring(with: NSRange(location: lower, length: upper - lower))
-        return EditorUndoStep.TextNode(start: span.lowerBound, literal: literal, edit: edit)
     }
 
     /// Commits the focused block (if any), then runs `work` against it.
@@ -735,11 +729,11 @@ final class EditorSession {
         field.pendingSelection = NSRange(location: range.location + 2, length: 0)
         self.tagTrigger = nil
         tagSuggestions = []
-        let attrs = HashTagAttrs.attrs(tag: suggestion.tag, colors: tagColors)
-        let blockId = field.blockId
-        commit(field, inserting: { model in
-            [await model.insertInline(blockId, from: start, to: end, kind: "hashTag", text: "", attrs: attrs)].compactMap { $0 }
-        })
+        let edit = BlockEdit.insertInline(
+            blockId: field.blockId, start: UInt32(start), end: UInt32(end), kind: "hashTag", text: "",
+            attrs: HashTagAttrs.attrs(tag: suggestion.tag, colors: tagColors)
+        )
+        commit(field, over: [.init(start: start, literal: string.substring(with: range), edit: edit)])
     }
 
     // MARK: The focused block's place

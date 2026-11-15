@@ -233,6 +233,31 @@ struct SameNotePanesTests {
         #expect(runs.filter { $0.marks.contains("wikiLink") }.map(\.target) == ["Foo"])
     }
 
+    /// DATA-LOSS (REVIEW-4700): a tag B picks goes over its `#query` where
+    /// the block holds it after B's rebased commit, not at B's stale offsets.
+    @Test(.timeLimit(.minutes(1))) func a_tag_picked_in_a_stale_pane_goes_where_the_block_holds_it() async throws {
+        let f = try fixture("hello")
+        let a = pane(f)
+        let b = pane(f)
+        let drawn = try await block(f)
+        let fieldA = draw(drawn, in: a)
+        let fieldB = draw(drawn, in: b)
+
+        type("XYZ hello", in: fieldA)
+        await commit(fieldA, in: a)
+        b.session.tags = ["task"]
+        b.session.focusChanged(to: fieldB)
+        type("hello #ta", in: fieldB)
+        fieldB.textView.selectedRange = NSRange(location: 9, length: 0)
+        b.session.selectionChanged(in: fieldB)
+        b.session.chooseTag(try #require(b.session.tagSuggestions.first { $0.tag == "task" }))
+        await b.session.tail?.value
+
+        let runs = try await block(f).inline
+        #expect(BlockText.shown(runs) == "XYZ hello \u{FFFC} ", "A's typing intact, no partial word")
+        #expect(runs.filter { $0.marks.contains("hashTag") }.count == 1)
+    }
+
     /// A pane's write is announced under its own source, so the other pane on
     /// the note re-reads (`NotePageLoad`) and the writer does not.
     @Test(.timeLimit(.minutes(1))) func a_landed_edit_is_announced_with_its_panes_source() async throws {

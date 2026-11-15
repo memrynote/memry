@@ -117,6 +117,21 @@ struct InlineNodeUndoTests {
         #expect(try await runs(f).filter { $0.marks.contains("wikiLink") }.map(\.target) == ["Foo"])
     }
 
+    @Test(.timeLimit(.minutes(1))) func a_tag_chosen_from_the_menu_is_undone_and_redone_as_one_node() async throws {
+        let f = try await fixture("hello ")
+        try pickTag("#ta", in: f)
+        await f.session.tail?.value
+        #expect(try await shown(f) == "hello \u{FFFC} ")
+
+        await undo(f)
+        #expect(try await shown(f) == "hello ")
+        #expect(try await nodes(f, "hashTag") == 0)
+
+        await redo(f)
+        #expect(try await shown(f) == "hello \u{FFFC} ", "one node, no literal")
+        #expect(try await nodes(f, "hashTag") == 1)
+    }
+
     @Test(.timeLimit(.minutes(1))) func a_date_chosen_from_the_menu_is_undone_with_its_space() async throws {
         let f = try await fixture("due ")
         type("@tom", in: f)
@@ -181,6 +196,77 @@ struct InlineNodeUndoTests {
         func blockText(noteId: String, blockId: String) async throws -> String? {
             try await core.blockText(noteId: noteId, blockId: blockId)
         }
+    }
+
+    /// The core's editor, except that once armed it refuses typing, or the
+    /// next inline node.
+    private final class Refuses: BlockEditing, Sendable {
+        enum Mode { case nothing, typing, nextNode }
+        let core: CoreBlockEditor
+        let mode = Mutex(Mode.nothing)
+        init(core: CoreBlockEditor) { self.core = core }
+        func edit(noteId: String, _ edit: BlockEdit) async throws -> Bool {
+            let refused = mode.withLock { mode in
+                switch (mode, edit) {
+                case (.typing, .replaceText): return true
+                case (.nextNode, .insertInline): mode = .nothing; return true
+                default: return false
+                }
+            }
+            return refused ? false : try await core.edit(noteId: noteId, edit)
+        }
+        func blockText(noteId: String, blockId: String) async throws -> String? {
+            try await core.blockText(noteId: noteId, blockId: blockId)
+        }
+    }
+
+    private func pickTag(_ typed: String, in f: Fixture) throws {
+        f.session.tags = ["task"]
+        type(typed, in: f)
+        f.session.selectionChanged(in: f.field)
+        f.session.chooseTag(try #require(f.session.tagSuggestions.first { $0.tag == "task" }))
+    }
+
+    /// REVIEW-4700: a redo whose typing the core refused puts no node in. The
+    /// literal it would find is another writer's text, and the refusal shows.
+    @Test(.timeLimit(.minutes(1))) func a_refused_redo_puts_no_node_over_another_writers_text() async throws {
+        var refuses: Refuses?
+        let f = try await fixture("hello ", editor: { core in
+            let editor = Refuses(core: core)
+            refuses = editor
+            return editor
+        })
+        try pickTag("#ta", in: f)
+        await f.session.tail?.value
+        await undo(f)
+        let core = try #require(refuses).core
+        _ = try await core.edit(noteId: f.noteId, .replaceText(blockId: f.blockId, text: "hello #ta ", base: "hello "))
+        try #require(refuses).mode.withLock { $0 = .typing }
+
+        await redo(f)
+        #expect(try await shown(f) == "hello #ta ", "the other writer's text stays")
+        #expect(try await nodes(f, "hashTag") == 0)
+        guard case .failed = f.model.status else { Issue.record("status is \(f.model.status)"); return }
+    }
+
+    /// A node a redo could not put back stays the status after one that
+    /// went in.
+    @Test(.timeLimit(.minutes(1))) func a_refused_node_in_a_redo_stays_the_status() async throws {
+        var refuses: Refuses?
+        let f = try await fixture("hello", editor: { core in
+            let editor = Refuses(core: core)
+            refuses = editor
+            return editor
+        })
+        try pickTag(" [[Foo]] #ta", in: f)
+        await f.session.tail?.value
+        #expect(try await shown(f) == "hello \u{FFFC} \u{FFFC} ")
+        await undo(f)
+        try #require(refuses).mode.withLock { $0 = .nextNode }
+
+        await redo(f)
+        #expect(try await nodes(f, "wikiLink") == 1)
+        guard case .failed = f.model.status else { Issue.record("status is \(f.model.status)"); return }
     }
 
     /// A node the core refused is not in the step: redo puts back the typing
