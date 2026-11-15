@@ -8,7 +8,8 @@ description: >-
   A tiered PR runs the fast tier unless it carries the `full-ci` label. The path outputs say
   whether the diff can change what a gate protects, and the `rust_*` and `tauri_*` outputs add the
   Windows and Apple Silicon legs the diff can break (see tier.sh). If the file list cannot be read
-  the run is full; if the patches cannot be read the OS legs fail open (`tests`).
+  the run is full (so is a list of 3000 files, where the API stops); if the patches or the Rust
+  sources cannot be read the OS legs fail open (`tests`).
 
   Two more outputs serve the merge queue (#3517). `electron` says whether the diff touches what
   the Electron Desktop CI heavy jobs protect; it is detected for tiered PRs (even with `full-ci`),
@@ -22,6 +23,11 @@ inputs:
   token:
     description: Token that can read the pull request's files
     required: true
+  source:
+    description: >-
+      Checkout holding the PR's Rust sources (crates/ and apps/desktop-tauri/src-tauri/), whose
+      `#[cfg(<os>)] mod` declarations the OS legs read. Empty: the OS legs fail open (`tests`).
+    default: ''
 outputs:
   full:
     description: The full matrix runs (push, dispatch, merge queue, `full-ci` label, a PR into main, or an unreadable file list)
@@ -70,6 +76,7 @@ runs:
         MQ_HEAD_SHA: ${{ github.event.merge_group.head_sha }}
         PUSH_BEFORE: ${{ github.event.before }}
         PUSH_AFTER: ${{ github.sha }}
+        SOURCE_ROOT: ${{ inputs.source }}
       run: |
         set -euo pipefail
 
@@ -85,7 +92,7 @@ runs:
         patches="$RUNNER_TEMP/ci-tier-pr-files.jsonl"
         rm -f "$patches"
         if [ "$kind" = pr ]; then
-          if gh api "repos/$REPO/pulls/$PR_NUMBER/files" --paginate --jq '.[] | {filename, patch, changes}' > "$patches" \
+          if gh api "repos/$REPO/pulls/$PR_NUMBER/files" --paginate --jq '.[] | {filename, previous_filename, patch, changes}' > "$patches" \
             && files=$(jq -r '.filename' "$patches"); then listed=true; else rm -f "$patches"; fi
         elif [ "$kind" = range ]; then
           if [[ ! "$from" =~ ^0*$ ]] && git fetch --no-tags --depth=1 --filter=blob:none origin "$from" "$to" \
