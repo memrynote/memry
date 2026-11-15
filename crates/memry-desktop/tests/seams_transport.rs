@@ -14,7 +14,7 @@ use memry_core::seams::transport::{
     HttpRequest, SocketHandle, SocketListener, SocketRequest, Transport,
 };
 use memry_desktop::seams::transport::{
-    HOST_NOT_ALLOWED, MAX_FRAME_BYTES, MAX_RESPONSE_BYTES, NativeTransport,
+    HOST_NOT_ALLOWED, MAX_FRAME_BYTES, MAX_RESPONSE_BYTES, NativeTransport, NoRedirect,
 };
 use support::{Chain, RecordingSink, Server, serve, setup};
 use tokio::io::AsyncWriteExt;

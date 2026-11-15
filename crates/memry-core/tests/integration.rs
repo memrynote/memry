@@ -427,6 +427,8 @@ mod sync_engine_seed;
 mod sync_equal_clock;
 #[path = "sync_first_sync.rs"]
 mod sync_first_sync;
+#[path = "sync_hardening_ledgers.rs"]
+mod sync_hardening_ledgers;
 #[path = "sync_note_body_feed.rs"]
 mod sync_note_body_feed;
 #[path = "sync_outbox.rs"]

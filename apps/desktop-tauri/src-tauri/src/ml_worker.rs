@@ -1,11 +1,13 @@
 //! The `memry-ml-worker` sidecar, out of process, as two children of the same binary: the PDF
-//! worker (pdfium, one `WorkerHandle`, no caller until the file-text runner lands, #3542 lane G)
-//! and the embedding model (`WorkerModel` under the app's `EmbeddingService`, Step 23). Each
-//! child starts on its first call and stops on every vault close and in the
-//! `stop-utility-processes` shutdown step. The note embedding lane runs on every open vault.
+//! worker (pdfium, one `WorkerHandle`, read by the file text runner of the open vault, which stops
+//! it on every vault close, #3542 lane G) and the embedding model (`WorkerModel` under the app's
+//! `EmbeddingService`, Step 23). Each child starts on its first call and stops on every vault close
+//! and in the `stop-utility-processes` shutdown step. The note embedding lane runs on every open
+//! vault.
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use memry_desktop::ai::features;
 use memry_desktop::embedding::projector::NoteEmbeddingProjector;
@@ -13,7 +15,9 @@ use memry_desktop::embedding::service::{EmbeddingService, Timing};
 use memry_desktop::embedding::worker::{WorkerModel, exit_telemetry};
 use memry_desktop::notes::index::NoteIndex;
 use memry_desktop::paths::AppPaths;
+use memry_desktop::services::file_text::service::{FileText, FileTextConfig};
 use memry_desktop::services::file_text::{WorkerHandle, WorkerPaths};
+use memry_desktop::services::ocr_languages::OcrLanguages;
 use memry_desktop::session::Session;
 use memry_desktop::session::projection::feed;
 use memry_desktop::settings::SettingsService;
@@ -122,13 +126,10 @@ fn resource_dir(app: &AppHandle<Wry>) -> Result<PathBuf, String> {
     app.path().resource_dir().map_err(|error| error.to_string())
 }
 
-/// Every vault close stops the workers: the PDF worker's open documents belong to that vault, and
-/// no embedding request of the closing vault is served once the next one opens. No worker (see
-/// `manage`) leaves nothing to stop.
+/// Every vault close stops the embedding model: no embedding request of the closing vault is
+/// served once the next one opens. The PDF worker is stopped by the file text runner's close
+/// (`register`). No model (see `manage`) leaves nothing to stop.
 pub fn register_on_close<R: Runtime>(app: &AppHandle<R>, session: &Session) {
-    if let Some(worker) = app.try_state::<Arc<WorkerHandle>>() {
-        worker.register(session);
-    }
     if let Some(model) = app.try_state::<Arc<WorkerModel>>() {
         model.register(session);
     }
@@ -187,4 +188,50 @@ pub fn register_embedding_lane<R: Runtime>(
             "no projection feed: note edits are embedded at the next open: {error}"
         );
     }
+}
+
+/// The file text runner of every open vault (#3542 lane G), reading PDFs through the worker. No
+/// worker (see `manage`) leaves the app without file text this run, as without PDFs: the runner's
+/// jobs would fail and be read again only a day later. The embedding model stops on every close
+/// (`register_on_close`) whether or not the PDF worker exists.
+pub fn register(app: &AppHandle<Wry>, session: &Session) {
+    register_on_close(app, session);
+    let Some(worker) = app.try_state::<Arc<WorkerHandle>>() else {
+        return;
+    };
+    let (languages, index) = (app.clone(), app.clone());
+    let file_text = FileText::new(
+        session,
+        FileTextConfig {
+            app_version: app.package_info().version.to_string(),
+            pdf: worker.inner().clone(),
+            recognize: None,
+            ocr_languages: Arc::new(move || {
+                languages
+                    .try_state::<Arc<OcrLanguages>>()
+                    .map(|service| {
+                        service
+                            .ready()
+                            .iter()
+                            .map(|l| l.code().to_owned())
+                            .collect()
+                    })
+                    .unwrap_or_default()
+            }),
+            now_ms: Arc::new(|| {
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .map_or(0, |since| {
+                        i64::try_from(since.as_millis()).unwrap_or(i64::MAX)
+                    })
+            }),
+            indexing: Arc::new(move || {
+                index
+                    .try_state::<Arc<NoteIndex>>()
+                    .is_some_and(|index| index.indexing().is_some())
+            }),
+        },
+    );
+    file_text.register();
+    app.manage(file_text);
 }

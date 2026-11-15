@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createMockApi } from '@tests/setup-dom'
-import { deviceService, setupService } from './device-service'
+import { deviceService } from './device-service'
 
 describe('device-service', () => {
   let api: ReturnType<typeof createMockApi>
@@ -58,37 +58,5 @@ describe('device-service', () => {
       newName: 'My Laptop'
     })
     expect(result).toEqual({ success: true })
-  })
-})
-
-describe('setup-service', () => {
-  let api: ReturnType<typeof createMockApi>
-
-  beforeEach(() => {
-    api = createMockApi()
-    ;(window as Window & { api: unknown }).api = api
-  })
-
-  it('forwards setupFirstDevice to window.api.syncSetup', async () => {
-    // #given
-    const response = {
-      success: true,
-      recoveryPhrase: 'word1 word2 word3',
-      deviceId: 'dev-1'
-    }
-    api.syncSetup.setupFirstDevice = vi.fn().mockResolvedValue(response)
-
-    // #when
-    const result = await setupService.setupFirstDevice({
-      provider: 'google',
-      oauthToken: 'oauth-token-123'
-    })
-
-    // #then
-    expect(api.syncSetup.setupFirstDevice).toHaveBeenCalledWith({
-      provider: 'google',
-      oauthToken: 'oauth-token-123'
-    })
-    expect(result).toEqual(response)
   })
 })

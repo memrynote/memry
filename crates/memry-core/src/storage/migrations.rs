@@ -198,6 +198,11 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "sync_refused_items",
         sql: include_str!("migrations/data/0030_sync_refused_items.sql"),
     },
+    Migration {
+        version: 31,
+        name: "sync_hardening",
+        sql: include_str!("migrations/data/0031_sync_hardening.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.

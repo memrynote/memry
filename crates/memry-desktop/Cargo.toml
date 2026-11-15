@@ -95,6 +95,8 @@ tokio = { workspace = true, features = ["time", "sync", "net", "fs", "io-util"] 
 # The loopback media server (`shell/loopback.rs`): HTTP/1 on 127.0.0.1, streamed bodies.
 axum = { version = "0.8.9", default-features = false, features = ["http1", "tokio"] }
 tokio-util = { version = "0.7.19", features = ["io"] }
+# The sign-in loopback compares `state` in constant time; already in the lockfile.
+subtle = "2.6.1"
 icu_plurals = "2.4.0"
 icu_locale = "2.4.0"
 icu_decimal = "2.4.0"
@@ -220,6 +222,10 @@ name = "sync_driver_harness"
 path = "tests/sync_driver_harness.rs"
 
 [[test]]
+name = "sync_supervisor_harness"
+path = "tests/sync_supervisor_harness.rs"
+
+[[test]]
 name = "keyring_live"
 path = "tests/keyring_live.rs"
 
@@ -258,6 +264,10 @@ path = "tests/sanitize_svg_memory.rs"
 [[test]]
 name = "telemetry_vectors"
 path = "tests/telemetry_vectors.rs"
+
+[[test]]
+name = "file_text_worker"
+path = "tests/file_text_worker.rs"
 
 [[test]]
 name = "watch_perf"

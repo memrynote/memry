@@ -858,7 +858,7 @@ field, so it ticks no field clock (`packages/sync-client/src/task-sync.ts:87-88`
   clock (§6.5.2 P3), so it enqueues nothing more. A desktop tag definition merge
   always returns it. The Rust core re-queues every concurrent merge, the tag
   definition's and the task's included, so it heals only after a wholesale
-  apply (`crates/memry-core/src/sync/apply/record.rs:108-110`, `:157-168`,
+  apply (`crates/memry-core/src/sync/apply/record.rs:113-115`, `:163-174`,
   `crates/memry-core/src/sync/versioned_apply.rs:102-110`).
 - A skip, an insert and a remote `null` never heal, and `'conflict'` is never
   used as a heal signal, because it shows the user a conflict count.
@@ -889,7 +889,7 @@ and one apply step that joins either key after its type's apply and heals
 (`crates/memry-core/src/sync/versioned_apply.rs:39`, `:46`, `:74`), run by the
 task apply and by the tag definition apply
 (`crates/memry-core/src/domain/tasks/mod.rs:354-356`,
-`crates/memry-core/src/sync/apply/record.rs:108-110`). It edits
+`crates/memry-core/src/sync/apply/record.rs:113-115`). It edits
 `tag_definition.schema` since #4002, so a core that joins the schema is the
 only one that edits it. The vectors below are reproduced by an independent
 implementation in its tests and asserted against the production functions.

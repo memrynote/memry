@@ -61,10 +61,13 @@ impl FileTextJobStatus {
         }
     }
 
-    fn parse(text: &str) -> Option<Self> {
-        [Self::Pending, Self::Done, Self::Failed]
+    /// A status a newer build wrote reads as `Pending`, so a downgraded build keeps scanning the
+    /// file instead of failing on its row (REVIEW-4618).
+    fn parse(text: &str) -> Self {
+        [Self::Done, Self::Failed]
             .into_iter()
             .find(|status| status.as_str() == text)
+            .unwrap_or(Self::Pending)
     }
 }
 
@@ -138,13 +141,7 @@ fn job_row(row: &Row<'_>) -> rusqlite::Result<FileTextJob> {
         note_id: row.get(0)?,
         source: row.get(1)?,
         signature: row.get(2)?,
-        status: FileTextJobStatus::parse(&status).ok_or_else(|| {
-            rusqlite::Error::FromSqlConversionFailure(
-                3,
-                rusqlite::types::Type::Text,
-                format!("unknown file_text_jobs status {status:?}").into(),
-            )
-        })?,
+        status: FileTextJobStatus::parse(&status),
         page_count: row.get(4)?,
         error: row.get(5)?,
         app_version: row.get(6)?,
@@ -304,6 +301,19 @@ pub fn delete_source(conn: &mut Connection, of: &TextSource) -> Result<(), Stora
         .map_err(failed)?;
     }
     tx.commit().map_err(failed)
+}
+
+/// Every note that has a job or a part, for the rescan that forgets the gone ones.
+pub fn note_ids(conn: &Connection) -> Result<Vec<String>, StorageError> {
+    let mut stmt = conn
+        .prepare_cached(
+            "SELECT note_id FROM file_text_jobs UNION SELECT note_id FROM extracted_text
+              ORDER BY note_id",
+        )
+        .map_err(failed)?;
+    stmt.query_map([], |row| row.get(0))
+        .and_then(|rows| rows.collect())
+        .map_err(failed)
 }
 
 /// Forget every job and part of these notes: what Electron's cascade from `note_cache` did.

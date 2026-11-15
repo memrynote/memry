@@ -60,17 +60,15 @@ pub(crate) fn requeue(
     outbox::enqueue_merged(tx, item_type, item_id, now_ms).map(drop)
 }
 
-/// Stores a concurrent branch's merged `record` and re-queues it, in one
-/// transaction. A payload the wholesale path records corrupt is not queued.
-/// A local tombstone whose `delete` is still queued stays one: that delete
-/// goes out at the next push, and the merge is concurrent with it. A pushed
-/// tombstone gives way to the remote's row, as before.
-pub(crate) fn store_merged(
-    conn: &Connection,
+/// The `deleted_at` a concurrent merge stores for `record`'s key: the local
+/// tombstone while its `delete` is still queued, since that delete goes out at
+/// the next push and the merge is concurrent with it; otherwise `None`, so a
+/// pushed tombstone gives way to the remote's row. Every merge that stores
+/// over a possibly deleted row reads it here.
+pub(crate) fn queued_tombstone(
+    tx: &Connection,
     record: &InboundRecord,
-    now_ms: i64,
-) -> Result<Inbound, StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+) -> Result<Option<i64>, StorageError> {
     let delete_queued: bool = tx
         .query_row(
             "SELECT EXISTS(SELECT 1 FROM outbox
@@ -79,13 +77,24 @@ pub(crate) fn store_merged(
             |row| row.get(0),
         )
         .map_err(failed)?;
-    let deleted_at = if delete_queued {
-        sync_items::load(&tx, &record.item_type, &record.item_id)?.and_then(|row| row.deleted_at)
-    } else {
-        None
-    };
+    if !delete_queued {
+        return Ok(None);
+    }
+    Ok(sync_items::load(tx, &record.item_type, &record.item_id)?.and_then(|row| row.deleted_at))
+}
+
+/// Stores a concurrent branch's merged `record` and re-queues it, in one
+/// transaction. A payload the wholesale path records corrupt is not queued.
+/// A local tombstone whose `delete` is still queued stays one
+/// ([`queued_tombstone`]).
+pub(crate) fn store_merged(
+    conn: &Connection,
+    record: &InboundRecord,
+    now_ms: i64,
+) -> Result<Inbound, StorageError> {
+    let tx = conn.unchecked_transaction().map_err(failed)?;
     let record = &InboundRecord {
-        deleted_at,
+        deleted_at: queued_tombstone(&tx, record)?,
         ..record.clone()
     };
     let outcome = sync_items::apply_remote_in(&tx, record, now_ms)?;

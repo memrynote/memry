@@ -16,6 +16,8 @@ mod svg_inert;
 mod unsplash_server;
 mod vault_env;
 
+#[path = "account_oauth.rs"]
+mod account_oauth;
 #[path = "account_service.rs"]
 mod account_service;
 #[path = "activity_log.rs"]
@@ -123,6 +125,10 @@ mod embedding_worker;
 mod embeds;
 #[path = "file_open.rs"]
 mod file_open;
+#[path = "file_text_env.rs"]
+mod file_text_env;
+#[path = "file_text_runner.rs"]
+mod file_text_runner;
 #[path = "fold_agent.rs"]
 mod fold_agent;
 #[path = "fold_untrusted.rs"]
@@ -285,6 +291,8 @@ mod notes_update;
 mod notes_update_critic_marks;
 #[path = "notes_writes.rs"]
 mod notes_writes;
+#[path = "oauth_loopback.rs"]
+mod oauth_loopback;
 #[path = "ocr_languages.rs"]
 mod ocr_languages;
 #[path = "path_collision.rs"]
@@ -315,6 +323,8 @@ mod seams_tls;
 mod seams_transport;
 #[path = "settings_service.rs"]
 mod settings_service;
+#[path = "sync_backend.rs"]
+mod sync_backend;
 #[path = "sync_host_clients.rs"]
 mod sync_host_clients;
 #[path = "tag_definitions_sync.rs"]

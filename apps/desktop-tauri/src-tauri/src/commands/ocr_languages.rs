@@ -3,13 +3,14 @@
 //! main window shows and again on every UI language change (`startOcrLanguages`, Electron
 //! `index.ts:1677`).
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, PoisonError};
 
 use memry_desktop::config::RuntimeConfig;
 use memry_desktop::locale::LocaleService;
 use memry_desktop::paths::AppPaths;
 use memry_desktop::registry::AppConfig;
 use memry_desktop::seams::transport::SyncTransport;
+use memry_desktop::services::file_text::service::FileText;
 use memry_desktop::services::ocr_languages::{
     DOWNLOAD_TIMEOUT, OcrLanguage, OcrLanguages, OcrLanguagesDeps, OcrLanguagesState, PINS,
 };
@@ -26,6 +27,8 @@ pub fn register_stages() {
 /// After telemetry has managed the `RuntimeConfig` (the sync server URL) and the `SyncTransport`.
 fn manage(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     let events = app.clone();
+    let active: Arc<Mutex<String>> = Arc::default();
+    let last_active = active.clone();
     let service = OcrLanguages::new(OcrLanguagesDeps {
         config: app.state::<Arc<AppConfig>>().inner().clone(),
         locale: app.state::<Arc<LocaleService>>().inner().clone(),
@@ -34,9 +37,22 @@ fn manage(app: &AppHandle<Wry>) -> Result<(), CommandError> {
         transport: app.state::<SyncTransport>().inner().clone(),
         pins: PINS,
         download_timeout: DOWNLOAD_TIMEOUT,
-        on_change: Box::new(move |state| broadcast(&events, OcrLanguagesChangedEvent(state))),
+        on_change: Box::new(move |state| {
+            let key = active_key(&state);
+            broadcast(&events, OcrLanguagesChangedEvent(state));
+            // OCR's languages moved: the runner reads the OCR pages again (`publish`,
+            // `file-text/ocr-languages.ts:118-124`).
+            let mut last = last_active.lock().unwrap_or_else(PoisonError::into_inner);
+            if *last != key {
+                *last = key;
+                if let Some(file_text) = events.try_state::<Arc<FileText>>() {
+                    file_text.rescan_all();
+                }
+            }
+        }),
         runtime: tauri::async_runtime::handle().inner().clone(),
     });
+    *active.lock().unwrap_or_else(PoisonError::into_inner) = active_key(&service.state());
     let on_locale = service.clone();
     app.listen_any(
         <LocaleChangedEvent as tauri_specta::Event>::NAME,
@@ -44,6 +60,12 @@ fn manage(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     );
     app.manage(service);
     Ok(())
+}
+
+/// The languages OCR reads with (`activeKey`).
+fn active_key(state: &OcrLanguagesState) -> String {
+    let codes: Vec<&str> = state.ready().into_iter().map(OcrLanguage::code).collect();
+    codes.join("+")
 }
 
 /// Called once the main window shows: downloads what the app language needs.

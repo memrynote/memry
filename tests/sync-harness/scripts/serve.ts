@@ -22,6 +22,10 @@
  * An `otp <email> <code>` line makes `<code>` the email's pending sign-in code, as the server's
  * `storeOtp` stores one (the email normalized, the code's HMAC-SHA256 under the harness key), so
  * a client can finish an email sign-in without the email. It answers `{ harnessOtp: true }`.
+ *
+ * A `policy <writesEnabled 0|1> [minWriteVersion]` line upserts the `desktop` row of
+ * `client_policies` (chapter 11 §11.8), which the Worker reads on every request. It answers
+ * `{ harnessPolicy: true }`.
  */
 import { createHmac } from 'node:crypto'
 import { createInterface } from 'node:readline'
@@ -96,11 +100,25 @@ const otp = async (email: string, code: string): Promise<void> => {
     .run()
   process.stdout.write(`${JSON.stringify({ harnessOtp: true })}\n`)
 }
+const policy = async (writesEnabled: string, minWriteVersion?: string): Promise<void> => {
+  const db = await server.getD1()
+  await db
+    .prepare(
+      `INSERT INTO client_policies (platform, min_write_version, writes_enabled, updated_at)
+       VALUES ('desktop', ?, ?, ?)
+       ON CONFLICT (platform) DO UPDATE SET min_write_version = excluded.min_write_version,
+         writes_enabled = excluded.writes_enabled, updated_at = excluded.updated_at`
+    )
+    .bind(minWriteVersion ?? null, Number(writesEnabled), Math.floor(Date.now() / 1000))
+    .run()
+  process.stdout.write(`${JSON.stringify({ harnessPolicy: true })}\n`)
+}
 const commands = createInterface({ input: process.stdin })
 commands.on('line', (line) => {
   const [command, ...args] = line.trim().split(/\s+/)
   if (command === 'purge') void purge()
   if (command === 'otp' && args.length === 2) void otp(args[0], args[1])
+  if (command === 'policy' && args.length >= 1) void policy(args[0], args[1])
   if (command === 'register') {
     void register(devices.length).then((device) => {
       devices.push(device)
