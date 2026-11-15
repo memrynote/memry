@@ -6,11 +6,13 @@
 use std::sync::Arc;
 
 use memry_desktop::ai::catalog::{self, ProbeClient, ProbeFailure};
+use memry_desktop::ai::model::{self, ReindexResult};
 use memry_desktop::ai::provider::AiProvider;
 use memry_desktop::ai::proxy::{AiProviderHead, AiProviderRequest, AiProxy, ProxyError};
 use memry_desktop::ai::settings::{
     AiSettingsError, InlineAiSettings, InlineAiStore, InlineAiUpdates,
 };
+use memry_desktop::embedding::service::EmbeddingService;
 use memry_desktop::i18n::{self, Arg, Args};
 use memry_desktop::locale::LocaleService;
 use memry_desktop::session::Session;
@@ -291,4 +293,20 @@ fn proxy_error(locale: &str, settings: &InlineAiSettings, error: ProxyError) -> 
         ProxyError::Invalid(_) => (ErrorKind::Invalid, "ai.invalidRequest", error.to_string()),
     };
     CommandError::new(kind, code, message)
+}
+
+/// `settings:reindex-embeddings`: every note embedded again by the `embedding` lane, awaited.
+/// A refusal is the answer's `error`, as Electron's.
+#[tauri::command]
+#[specta::specta]
+pub async fn ai_reindex_embeddings<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<ReindexResult, CommandError> {
+    blocking("ai_reindex_embeddings", move || {
+        let model = app
+            .try_state::<Arc<EmbeddingService>>()
+            .map(|model| model.inner().clone());
+        Ok(model::reindex(&app.state::<Session>(), model.as_ref()))
+    })
+    .await
 }

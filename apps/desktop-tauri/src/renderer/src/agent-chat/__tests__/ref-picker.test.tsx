@@ -3,9 +3,14 @@ import type { ComponentProps } from 'react'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import type * as Bindings from '../../../../generated/bindings'
 import { RefPicker } from '../ref-picker'
 
-const mockSearchQuery = vi.fn()
+const mockSearchQuery = vi.hoisted(() => vi.fn())
+vi.mock('../../../../generated/bindings', async (importOriginal) => {
+  const actual = await importOriginal<typeof Bindings>()
+  return { ...actual, commands: { ...actual.commands, searchQuery: mockSearchQuery } }
+})
 const mockCalendarListEvents = vi.fn()
 
 /** Comfortably past the picker's 150 ms search debounce. */
@@ -77,7 +82,6 @@ describe('RefPicker', () => {
     })
     mockCalendarListEvents.mockReset()
     mockCalendarListEvents.mockResolvedValue({ events: [] })
-    vi.mocked(window.api.search.query).mockImplementation(mockSearchQuery)
     Object.assign(window.api, {
       calendar: {
         ...(window.api as unknown as { calendar?: Record<string, unknown> }).calendar,

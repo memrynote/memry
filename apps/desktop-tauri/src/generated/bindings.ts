@@ -69,6 +69,11 @@ export const commands = {
 	/**  Ends a provider call the renderer aborted, before or after its head. */
 	aiProviderCancel: (requestId: string) => __TAURI_INVOKE<void>("ai_provider_cancel", { requestId }),
 	/**
+	 *  `settings:reindex-embeddings`: every note embedded again by the `embedding` lane, awaited.
+	 *  A refusal is the answer's `error`, as Electron's.
+	 */
+	aiReindexEmbeddings: () => __TAURI_INVOKE<ReindexResult>("ai_reindex_embeddings"),
+	/**
 	 *  Proposals for the empty fields of a note's header tags from the inline AI model. Writes
 	 *  nothing but the disclosure's acceptance; a model failure is the `failed` result.
 	 */
@@ -483,6 +488,24 @@ export const commands = {
 	 *  shows or hides the menu bar, Windows pops the menu up. Returns whether a menu bar shows.
 	 */
 	menuToggleAlt: () => __TAURI_INVOKE<boolean>("menu_toggle_alt"),
+	/**  `search:add-reason`: records a result opened from the palette and answers its row. */
+	searchAddReason: (input: AddReasonInput) => __TAURI_INVOKE<SearchReason>("search_add_reason", { input }),
+	/**  `search:clear-reasons`. */
+	searchClearReasons: () => __TAURI_INVOKE<null>("search_clear_reasons"),
+	/**
+	 *  `search:get-reasons`: the recently opened results, newest first. A failed read answers none,
+	 *  as Electron does.
+	 */
+	searchGetReasons: () => __TAURI_INVOKE<SearchReason[]>("search_get_reasons"),
+	/**  `search:get-stats`: the live rows of each type; zeros with no vault open. */
+	searchGetStats: () => __TAURI_INVOKE<SearchStats>("search_get_stats"),
+	/**  `search:query`: the grouped results, with the semantic leg fused in when AI is on. */
+	searchQuery: (input: SearchQueryInput) => __TAURI_INVOKE<SearchResponse>("search_query", { input }),
+	/**
+	 *  `search:quick`: the best results across every group, optionally only notes of
+	 *  `note_file_types`.
+	 */
+	searchQuick: (text: string, noteFileTypes: string[] | null) => __TAURI_INVOKE<QuickSearchResponse>("search_quick", { text, noteFileTypes }),
 	/**  Stores the zoom factor for the next launch's first paint (`startupValues`). */
 	appSetZoomFactor: (factor: number | null) => __TAURI_INVOKE<null>("app_set_zoom_factor", { factor }),
 	/**  `settings:getAISettings`: the AI switches of the open vault, or their defaults. */
@@ -772,6 +795,15 @@ export type AccountInfoView = {
 	needsRecoveryConfirmation: boolean,
 };
 
+/**  `AddReasonInput`. */
+export type AddReasonInput = {
+	itemId: string,
+	itemType: ContentType,
+	itemTitle: string,
+	itemIcon?: string | null,
+	searchQuery: string,
+};
+
 /**  `AgentLocalModelList`. */
 export type AgentLocalModelList = {
 	models: string[],
@@ -1054,6 +1086,9 @@ export type CommandError = {
 	message: string,
 };
 
+/**  `ContentType`. */
+export type ContentType = "note" | "journal" | "task" | "inbox";
+
 /**
  *  The item shape of the Electron `showContextMenu`, `{ id, label, accelerator?, disabled?, type? }`,
  *  which the renderer's callers still build.
@@ -1123,6 +1158,12 @@ export type CustomIconView = {
  */
 export type CustomIconsUpdatedEvent = {
 	id: string,
+};
+
+/**  `DateRange`: ISO instants, both ends inclusive. */
+export type DateRange = {
+	from: string,
+	to: string,
 };
 
 /**  `DayContext`. */
@@ -1586,6 +1627,14 @@ export type InboxOpenItemEvent = {
 	itemId: string,
 };
 
+/**  `InboxResultMetadata`. `itemType` is the stored text; the renderer narrows it. */
+export type InboxResultMetadata = {
+	itemType: string,
+	sourceUrl: string | null,
+	sourceTitle: string | null,
+	filedAt: string | null,
+};
+
 export type InheritedFieldsView = {
 	from: string,
 	fields: ResolvedFieldView[],
@@ -1755,6 +1804,15 @@ export type JournalPropertySummaryView = {
 	count: number,
 };
 
+/**  `JournalResultMetadata`. */
+export type JournalResultMetadata = {
+	date: string,
+	path: string,
+	tags: string[],
+	wordCount: number | null,
+	matchedName?: string | null,
+};
+
 /**  `UpdateEntryInputSchema`. */
 export type JournalUpdateInput = {
 	date: string,
@@ -1909,6 +1967,9 @@ export type LocaleChangedEvent = {
 };
 
 export type LogLevel = "error" | "warn" | "info" | "verbose" | "debug";
+
+/**  `MatchType`. */
+export type MatchType = "exact" | "prefix" | "fuzzy";
 
 /**
  *  A native menu item that the renderer runs as a command was clicked. `command` is the
@@ -2181,6 +2242,20 @@ export type NoteRenamedEvent = {
 	newPath: string,
 	oldTitle: string,
 	newTitle: string,
+};
+
+/**
+ *  `NoteResultMetadata`. `fileType` is the stored text (`markdown`, `pdf`, `image`, `audio`,
+ *  `video`); the renderer narrows it.
+ */
+export type NoteResultMetadata = {
+	path: string,
+	tags: string[],
+	emoji: string | null,
+	wordCount: number | null,
+	createdAt: string | null,
+	fileType: string,
+	matchedName?: string | null,
 };
 
 /**
@@ -2473,12 +2548,26 @@ export type PropertyValueView = {
 	type: string,
 };
 
+/**  `QuickSearchResponse`. */
+export type QuickSearchResponse = {
+	results: SearchResultItem[],
+	queryTimeMs: number | null,
+};
+
 /**
  *  Why a moved note's relative refs were left as they were: `changing`, the note changed while
  *  it moved (an outside edit or a sync merge not written yet); `unreadable`, the app cannot edit
  *  the file (a frontmatter that does not parse, a document a markdown file cannot hold).
  */
 export type RefsKept = "changing" | "unreadable";
+
+/**  `reindexEmbeddings`'s answer. `error` is the lane's English reason, as Electron answers it. */
+export type ReindexResult = {
+	success: boolean,
+	computed: number,
+	skipped: number,
+	error?: string | null,
+};
 
 /**  `RelationKind`. */
 export type RelationKind = "note" | "task" | "event" | "external-event" | "canvas" | "journal";
@@ -2622,6 +2711,85 @@ export type SearchObjectsView = {
 	matches: ObjectMatchView[],
 	/**  Always `true`: the note index has no row from before header tags were measured. */
 	complete: boolean,
+};
+
+/**  `SearchQueryInput`, with `SearchQuerySchema`'s defaults. */
+export type SearchQueryInput = {
+	text: string,
+	types?: ContentType[],
+	tags?: string[],
+	dateRange?: DateRange | null,
+	projectId?: string | null,
+	folderPath?: string | null,
+	limit?: number,
+	/**  Accepted and unused, as in Electron (`searchAll` reads no offset). */
+	offset?: number,
+	noteFileTypes?: string[] | null,
+};
+
+/**
+ *  `SearchReason`: a result opened from the palette. `id` is `<itemType>:<itemId>`, one row per
+ *  item as the store keeps it.
+ */
+export type SearchReason = {
+	id: string,
+	itemId: string,
+	itemType: ContentType,
+	itemTitle: string,
+	itemIcon: string | null,
+	searchQuery: string,
+	visitedAt: string,
+};
+
+/**  `SearchResponse`. */
+export type SearchResponse = {
+	groups: SearchResultGroup[],
+	totalCount: number,
+	queryTimeMs: number | null,
+};
+
+/**  `SearchResultGroup`. */
+export type SearchResultGroup = {
+	type: ContentType,
+	results: SearchResultItem[],
+	totalInGroup: number,
+};
+
+/**
+ *  `SearchResultItem`. `snippet` marks each match `<mark>…</mark>`, as FTS5's `snippet()` does
+ *  for Electron.
+ */
+export type SearchResultItem = {
+	id: string,
+	type: ContentType,
+	title: string,
+	snippet: string,
+	score: number | null,
+	normalizedScore: number | null,
+	matchType: MatchType,
+	modifiedAt: string,
+	metadata: SearchResultMetadata,
+};
+
+/**  `SearchResultMetadata`, told apart by `type`. */
+export type SearchResultMetadata = {
+	type: "note",
+} & NoteResultMetadata | {
+	type: "journal",
+} & JournalResultMetadata | {
+	type: "task",
+} & TaskResultMetadata | {
+	type: "inbox",
+} & InboxResultMetadata;
+
+/**  `SearchStats`. `lastIndexedAt` is always null, as in Electron (`search.ts:735`). */
+export type SearchStats = {
+	totalNotes: number,
+	totalJournals: number,
+	totalTasks: number,
+	totalInboxItems: number,
+	totalIndexed: number,
+	lastIndexedAt: string | null,
 };
 
 /**  `SelectOption`. */
@@ -2855,6 +3023,19 @@ export type TagsProgressEvent = {
 	runId: string,
 	done: number,
 	total: number,
+};
+
+/**  `TaskResultMetadata`. */
+export type TaskResultMetadata = {
+	projectId: string,
+	projectName: string,
+	projectColor: string,
+	statusId: string | null,
+	statusName: string | null,
+	dueDate: string | null,
+	priority: number,
+	completedAt: string | null,
+	createdAt: string | null,
 };
 
 export type TelemetryEvent = {
