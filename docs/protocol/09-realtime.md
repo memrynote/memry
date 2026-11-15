@@ -28,7 +28,7 @@ running:
   backgrounded mobile app, so its socket cannot be serviced and every broadcast
   to it is a wasted wake. The Rust core leaves the lifecycle to the shell: it
   exposes `RealtimeClient::connect` and `RealtimeClient::disconnect`
-  (`crates/memry-core/src/sync/socket.rs:247`, `:287`) and observes no app
+  (`crates/memry-core/src/sync/socket.rs:252`, `:294`) and observes no app
   state itself. The shell starts `VaultRealtime::run` and calls
   `VaultRealtime::stop` (`crates/memry-core/src/api/sync/realtime.rs:95`,
   `:111`); iOS runs it until the scene goes to the background
@@ -294,7 +294,12 @@ The Rust core learns the handshake's status from the shell as
 `TransportError::HandshakeRejected` (`crates/memry-core/src/api/errors.rs:179`).
 It latches `403` and `426` like their in-socket counterparts 4004 and 4009, and
 ends the run on `401` without latching, so the next foreground tries again
-(`crates/memry-core/src/sync/socket.rs:342`, `:360`). A handshake with neither
+(`crates/memry-core/src/sync/socket.rs:349`, `:366`). It reports a `403` as
+`Terminal::HandshakeForbidden`, apart from 4004's `Terminal::DeviceRevoked`
+(`:350`): an edge in front of the server can refuse a handshake `403` too, so
+a client MUST NOT treat it as a revoked device. Desktop turns the socket off and
+leaves revocation to the HTTP path's `403 AUTH_DEVICE_REVOKED`
+(`apps/desktop/src/main/sync/websocket.ts:218-224`). A handshake with neither
 an open nor an error after `HANDSHAKE_TIMEOUT_MS` (15 000) is dropped and
 retried along the ladder (`crates/memry-core/src/sync/socket_run.rs:39`,
 `:166`).

@@ -213,6 +213,12 @@ impl AuthSession {
         self.http.clone()
     }
 
+    /// The server refused the refresh token for good (chapter 02 §2.10): nothing authenticates
+    /// until the user signs in again. Not part of the FFI surface.
+    pub fn refresh_refused(&self) -> bool {
+        self.tokens.refresh_block_ms() == Some(0)
+    }
+
     /// The master key this device unlocked with, or `None` when nothing has
     /// unlocked it.
     ///

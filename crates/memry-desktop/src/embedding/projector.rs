@@ -37,19 +37,26 @@ use memry_core::markdown::frontmatter::split_frontmatter_block;
 
 use super::service::EmbeddingService;
 use crate::notes::index::NoteIndex;
-use crate::session::projection::{CancelToken, ProjectionEvent, Projector};
+use crate::session::projection::{CancelToken, ProjectionEvent, Projector, Rebuilt};
 use crate::session::{OpenVault, Session};
 use crate::vault::note_file::read_note_lossy;
 
 /// The lane's name (`embedding::PROJECTORS[0]`).
 pub const NAME: &str = "embedding";
 
-/// `EMBEDDING_PROGRESS`: `current` of `total` notes, in `phase` (`embedding`, `complete`).
+/// `EMBEDDING_PROGRESS`: `current` of `total` notes, in `phase`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EmbeddingProgress {
     pub current: usize,
     pub total: usize,
-    pub phase: &'static str,
+    pub phase: Pass,
+}
+
+/// The phases a note embedding pass reports.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Pass {
+    Embedding,
+    Complete,
 }
 
 /// Whether local AI is on for the open vault (`isAIEnabled`); `false` when it cannot be read.
@@ -240,13 +247,13 @@ impl NoteEmbeddingProjector {
                 break;
             }
             if (i + 1) % 5 == 0 || i + 1 == notes.len() {
-                self.report(i + 1, notes.len(), "embedding");
+                self.report(i + 1, notes.len(), Pass::Embedding);
             }
         }
         computed
     }
 
-    fn report(&self, current: usize, total: usize, phase: &'static str) {
+    fn report(&self, current: usize, total: usize, phase: Pass) {
         (self.progress)(EmbeddingProgress {
             current,
             total,
@@ -323,9 +330,9 @@ impl Projector for NoteEmbeddingProjector {
     /// `runRebuild` (:285-358): every note owed, embedded again; old vectors stay until each
     /// note's new ones replace them. Refused while the index builds: `note_files` may be
     /// half filled, and the drain reconciles once it is done.
-    fn rebuild(&self, cancel: &CancelToken) -> Result<(), String> {
+    fn rebuild(&self, cancel: &CancelToken) -> Result<Rebuilt, String> {
         let Some(work) = self.work(cancel) else {
-            return Ok(());
+            return Err("Projector database is no longer current".into());
         };
         if (self.indexing)() {
             return Err("The index is building".into());
@@ -336,8 +343,8 @@ impl Projector for NoteEmbeddingProjector {
         let notes = work.open.search.embeddable_notes().map_err(text)?;
         if notes.is_empty() {
             work.open.search.clear_note_embeddings().map_err(text)?;
-            self.report(0, 0, "complete");
-            return Ok(());
+            self.report(0, 0, Pass::Complete);
+            return Ok(Rebuilt::default());
         }
         let mut listed = Vec::with_capacity(notes.len());
         for note in notes {
@@ -350,12 +357,16 @@ impl Projector for NoteEmbeddingProjector {
         if !self.may_embed(&work) {
             return Err("Embedding pass stopped".into());
         }
-        self.report(0, listed.len(), "embedding");
-        if self.embed_all(&work, &listed) != listed.len() || !self.may_embed(&work) {
+        self.report(0, listed.len(), Pass::Embedding);
+        let computed = self.embed_all(&work, &listed);
+        if computed != listed.len() || !self.may_embed(&work) {
             return Err("Embedding pass incomplete".into());
         }
-        self.report(listed.len(), listed.len(), "complete");
-        Ok(())
+        self.report(listed.len(), listed.len(), Pass::Complete);
+        Ok(Rebuilt {
+            computed: u32::try_from(computed).unwrap_or(u32::MAX),
+            skipped: 0,
+        })
     }
 
     /// `reconcile` (:483-583): drop the vectors of gone notes, then embed the notes with no
@@ -392,9 +403,9 @@ impl Projector for NoteEmbeddingProjector {
         if !self.may_embed(&work) {
             return Ok(());
         }
-        self.report(0, listed.len(), "embedding");
+        self.report(0, listed.len(), Pass::Embedding);
         if self.embed_all(&work, &listed) == listed.len() && self.may_embed(&work) {
-            self.report(listed.len(), listed.len(), "complete");
+            self.report(listed.len(), listed.len(), Pass::Complete);
         }
         Ok(())
     }

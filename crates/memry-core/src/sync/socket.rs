@@ -109,13 +109,18 @@ pub enum Reconnect {
     Stopped,
 }
 
-/// The two terminal close conditions of §9.9, kept apart because they mean
-/// different things to a user: one signs the device out, the other waits for
-/// an application update.
+/// The terminal conditions of §9.9 and §9.10, kept apart because they mean
+/// different things to a user: a revoked device signs out, a rejected version
+/// waits for an application update.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Terminal {
+    /// A close 4004: the server revoked this device.
     DeviceRevoked,
     VersionIncompatible,
+    /// The handshake was refused `403`. Latched like 4004, but not proof of a
+    /// revoked device: an edge in front of the server answers 403 too, so the
+    /// HTTP path's `AUTH_DEVICE_REVOKED` decides (`websocket.ts:218-224`).
+    HandshakeForbidden,
 }
 
 /// §9.10: `min(BASE * 2^attempt + random()*JITTER, MAX)`.
@@ -248,7 +253,7 @@ impl RealtimeClient {
         if let Some(terminal) = self.terminal() {
             return Err(TransportError::SocketClosed {
                 code: match terminal {
-                    Terminal::DeviceRevoked => CLOSE_DEVICE_REVOKED,
+                    Terminal::DeviceRevoked | Terminal::HandshakeForbidden => CLOSE_DEVICE_REVOKED,
                     Terminal::VersionIncompatible => CLOSE_VERSION_INCOMPATIBLE,
                 },
                 reason: "reconnection is latched off for this session".to_owned(),
@@ -337,11 +342,10 @@ impl RealtimeClient {
 
         // §9.10: a refused handshake is never reconnected into. 403 and 426
         // are §9.9's 4004 and 4009 met before the upgrade, so they latch the
-        // same way.
+        // same way; a 403 is reported apart, since an edge can answer it too.
         if let Some(terminal) = match (code, refused) {
-            (Some(CLOSE_DEVICE_REVOKED), _) | (_, Some(HANDSHAKE_DEVICE_REVOKED)) => {
-                Some(Terminal::DeviceRevoked)
-            }
+            (Some(CLOSE_DEVICE_REVOKED), _) => Some(Terminal::DeviceRevoked),
+            (_, Some(HANDSHAKE_DEVICE_REVOKED)) => Some(Terminal::HandshakeForbidden),
             (Some(CLOSE_VERSION_INCOMPATIBLE), _) | (_, Some(HANDSHAKE_VERSION_INCOMPATIBLE)) => {
                 Some(Terminal::VersionIncompatible)
             }

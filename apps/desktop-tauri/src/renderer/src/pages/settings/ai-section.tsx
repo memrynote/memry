@@ -15,6 +15,8 @@ import { AgentMcpSection } from './agent-mcp-section'
 import { CommandLineSettings } from './command-line-section'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useT } from '@memry/i18n/renderer'
+import { subscribeToEvent } from '@/services/tauri-event'
+import { commands, events } from '../../../../generated/bindings'
 import {
   VOICE_TRANSCRIPTION_LANGUAGES,
   VOICE_TRANSCRIPTION_SETTINGS_DEFAULTS,
@@ -132,7 +134,7 @@ export function AISettings({
       const [aiSettings, status, voiceConfig, voiceStatus, voiceKeyStatus] =
         await Promise.allSettled([
           window.api.settings.getAISettings(),
-          window.api.settings.getAIModelStatus(),
+          commands.aiGetModelStatus(),
           window.api.settings.getVoiceTranscriptionSettings(),
           window.api.settings.getVoiceModelStatus(),
           window.api.settings.getVoiceTranscriptionOpenAIKeyStatus()
@@ -160,7 +162,7 @@ export function AISettings({
   useEffect(() => {
     let completeTimeout: ReturnType<typeof setTimeout> | null = null
 
-    const unsubscribe = window.api.onEmbeddingProgress((event) => {
+    const unsubscribe = subscribeToEvent(events.aiEmbeddingProgressEvent, (event) => {
       if (event.phase === 'downloading' || event.phase === 'loading') {
         setIsLoadingModel(true)
         setReindexProgress({
@@ -171,7 +173,7 @@ export function AISettings({
       } else if (event.phase === 'ready') {
         setIsLoadingModel(false)
         setReindexProgress(null)
-        void window.api.settings.getAIModelStatus().then(setModelStatus)
+        void commands.aiGetModelStatus().then(setModelStatus)
       } else if (event.phase === 'error') {
         setIsLoadingModel(false)
         setReindexProgress(null)
@@ -179,13 +181,17 @@ export function AISettings({
           prev ? { ...prev, error: event.status ?? t('ai.unknownError') } : null
         )
       } else {
-        setReindexProgress(event)
+        setReindexProgress({
+          current: event.current ?? 0,
+          total: event.total ?? 0,
+          phase: event.phase
+        })
         if (event.phase === 'complete') {
           if (completeTimeout) clearTimeout(completeTimeout)
           completeTimeout = setTimeout(() => {
             setIsReindexing(false)
             setReindexProgress(null)
-            void window.api.settings.getAIModelStatus().then(setModelStatus)
+            void commands.aiGetModelStatus().then(setModelStatus)
           }, 1000)
         }
       }
@@ -284,10 +290,10 @@ export function AISettings({
   const handleLoadModel = useCallback(async () => {
     setIsLoadingModel(true)
     try {
-      const result = await window.api.settings.loadAIModel()
+      const result = await commands.aiLoadModel()
       if (result.success) {
         toast.success(result.message || t('ai.embedding.loadSuccess'))
-        const status = await window.api.settings.getAIModelStatus()
+        const status = await commands.aiGetModelStatus()
         setModelStatus(status)
       } else {
         toast.error(extractErrorMessage(result.error, t('ai.embedding.loadFailed')))
@@ -303,7 +309,7 @@ export function AISettings({
     setIsReindexing(true)
     setReindexProgress({ current: 0, total: 0, phase: 'scanning' })
     try {
-      const result = await window.api.settings.reindexEmbeddings()
+      const result = await commands.aiReindexEmbeddings()
       if (result.success) {
         toast.success(
           t('ai.embedding.reindexed', {
