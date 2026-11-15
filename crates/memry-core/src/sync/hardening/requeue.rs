@@ -96,6 +96,7 @@ pub(crate) fn store_merged(
     Ok(match outcome {
         ApplyOutcome::Applied => Inbound::Merged {
             conflicted_fields: Vec::new(),
+            conflicts: Vec::new(),
         },
         other => crate::domain::task_merge::inbound(other),
     })

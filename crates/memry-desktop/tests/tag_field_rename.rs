@@ -111,7 +111,16 @@ fn opened(files: &[(&str, &str)]) -> Vault {
     until("the index read every Phone", || {
         vault.holders("Phone") == holding
     });
+    // The index learns a read property's type after it wrote the rows, and the fold writes it
+    // into `properties.md` as a definition with no record. Whether that or `add_field` comes
+    // first decides whether Phone has a record, so whether a rename queues `delete Phone`. Wait
+    // for the learn, then let the seed record the definition, as a sync pass does.
+    let definitions = PropertyDefinitions::open(&vault.open(), vault.store.clone()).unwrap();
+    until("the index learned Phone's type", || {
+        definitions.types().unwrap().contains_key("Phone")
+    });
     add_field(&vault.schemas(), "Phone");
+    definitions.seed().unwrap();
     vault
 }
 

@@ -354,6 +354,21 @@ impl ProjectionRuntime {
         Ok(())
     }
 
+    /// `rebuild([name])` (`projections/runtime.ts`, as `reindexEmbeddings` calls it): the named
+    /// projector's `rebuild`, on the caller's thread in the lane's turn, awaited. `None` when no
+    /// lane has that name or the runtime is stopping.
+    pub fn rebuild_named(&self, name: &str) -> Option<Result<(), String>> {
+        if self.stopping.load(Ordering::SeqCst) {
+            return None;
+        }
+        let lane = self
+            .lanes
+            .iter()
+            .find(|lane| lane.projector.name() == name)?;
+        let _turn = lock(&lane.work);
+        Some(lane.projector.rebuild(&self.cancel))
+    }
+
     /// Every lane runs its `reconcile` once its queue is empty, as after a queue overflow: a
     /// publisher missed events (a lagged subscription) and the lanes cannot tell which.
     pub fn repair(&self) {

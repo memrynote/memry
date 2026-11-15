@@ -6,8 +6,9 @@ use serde_json::Value as Json;
 
 use super::{MAX_PULL_IDS, PullError, PullLoop, now_ms};
 use crate::sync::apply::{self, ApplyTotals, Pending};
+use crate::sync::body_debt;
+use crate::sync::driver::observer::AppliedFeed;
 use crate::sync::refused_items::{self, CORE_BUILD};
-use crate::sync::{body_debt, pull_decode};
 
 impl PullLoop {
     /// Hands the page to [`apply`], which owns every decision about what an
@@ -26,35 +27,56 @@ impl PullLoop {
         pending: Vec<Pending>,
         untyped: Vec<String>,
         owe_bodies: bool,
+        feed: &mut AppliedFeed,
     ) -> Result<ApplyTotals, PullError> {
         let now = now_ms();
         let clock_device = self.clock_device.clone();
         let at_rest = self.at_rest.clone();
-        Ok(self
+        let (mut totals, applied) = self
             .db
             .call(move |conn| {
-                let owed_here = if owe_bodies {
-                    body_debt::owe_page(conn, &pending)?
-                } else {
-                    Vec::new()
-                };
-                let totals = apply::apply_page(
-                    conn,
-                    pending,
-                    untyped,
-                    now,
-                    clock_device.as_deref(),
-                    &at_rest,
-                )?;
-                for doc_id in &owed_here {
-                    if !totals.applied_documents.contains(doc_id) {
-                        body_debt::settle(conn, doc_id)?;
+                let mut totals = ApplyTotals::default();
+                let applied = (|| {
+                    let owed_here = if owe_bodies {
+                        body_debt::owe_page(conn, &pending)?
+                    } else {
+                        Vec::new()
+                    };
+                    apply::apply_page_into(
+                        conn,
+                        pending,
+                        untyped,
+                        now,
+                        clock_device.as_deref(),
+                        &at_rest,
+                        &mut totals,
+                    )?;
+                    for doc_id in &owed_here {
+                        if !totals.applied_documents.contains(doc_id) {
+                            body_debt::settle(conn, doc_id)?;
+                        }
                     }
-                }
-                refused_items::record(conn, &totals.refused, CORE_BUILD, now)?;
-                Ok(totals)
+                    refused_items::record(conn, &totals.refused, CORE_BUILD, now)
+                })();
+                Ok((totals, applied))
             })
-            .await?)
+            .await?;
+        // What committed before a failure is the caller's to tell (#3534).
+        let committed = std::mem::take(&mut totals.feed);
+        feed.records.extend(committed.records);
+        feed.revived_notes.extend(committed.revived_notes);
+        feed.downloads.extend(committed.downloads);
+        applied?;
+        Ok(totals)
+    }
+
+    /// Tells the observers what an apply committed
+    /// ([`crate::sync::driver::observer::Observers::applied`]).
+    /// Called after the commit, never inside it: an observer reads the row.
+    pub(super) async fn tell(&self, feed: AppliedFeed) {
+        if let Some(observers) = &self.observers {
+            observers.applied(feed).await;
+        }
     }
 
     /// Refetches the records another core build refused
@@ -94,17 +116,18 @@ impl PullLoop {
         let mut answered = BTreeSet::new();
         let mut pending = Vec::new();
         for chunk in ids.chunks(MAX_PULL_IDS) {
-            let body = self.fetch_bodies(chunk).await?;
-            let Some(items) = body.get("items").and_then(Json::as_array) else {
+            let mut body = self.fetch_bodies(chunk).await?;
+            let Some(items) = Self::pulled_items(&mut body) else {
                 eprintln!("memry-core: a refused-records refetch got no pull envelope");
                 return Ok(());
             };
-            for item in items {
-                let key = (field(item, "type"), field(item, "id"));
-                if !requested.contains(&key) {
-                    continue;
-                }
-                match pull_decode::decode(&self.declaration, self.cipher.as_ref(), item) {
+            let asked: Vec<Json> = items
+                .into_iter()
+                .filter(|item| requested.contains(&(field(item, "type"), field(item, "id"))))
+                .collect();
+            for (item, decoded) in self.decode_batch(asked).await? {
+                let key = (field(&item, "type"), field(&item, "id"));
+                match decoded {
                     Ok(decoded) => pending.push(decoded),
                     Err(reason) => eprintln!(
                         "memry-core: refused {} {} still does not decode: {reason}",
@@ -115,8 +138,12 @@ impl PullLoop {
             }
         }
         pending.sort_by_key(|item| apply::apply_rank(item.item_type()));
-        self.apply_all(pending, Vec::new(), self.bodies.is_some())
-            .await?;
+        let mut feed = AppliedFeed::default();
+        let applied = self
+            .apply_all(pending, Vec::new(), self.bodies.is_some(), &mut feed)
+            .await;
+        self.tell(feed).await;
+        applied?;
         let gone: Vec<(String, String)> = requested.difference(&answered).cloned().collect();
         self.db
             .call(move |conn| {

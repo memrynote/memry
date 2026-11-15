@@ -12,7 +12,8 @@ const mockUseActiveTab = vi.hoisted(() => vi.fn())
 const mockPrepareVoiceMemoAudio = vi.hoisted(() => vi.fn())
 const localProvider = vi.hoisted(() => ({
   agentGetLocalProviderSettings: vi.fn(),
-  agentListLocalModels: vi.fn()
+  agentListLocalModels: vi.fn(),
+  searchQuery: vi.fn()
 }))
 
 vi.mock('../agent-context', () => ({
@@ -193,7 +194,7 @@ describe('Composer', () => {
       sendTurn: mockSendTurn,
       cancelTurn: mockCancelTurn
     })
-    vi.mocked(window.api.search.query).mockImplementation(mockSearchQuery)
+    localProvider.searchQuery.mockImplementation(mockSearchQuery)
     mockGetProviderStatus.mockReset()
     mockGetProviderStatus.mockResolvedValue({ provider: 'google', connected: true })
     mockConnectProvider.mockReset()

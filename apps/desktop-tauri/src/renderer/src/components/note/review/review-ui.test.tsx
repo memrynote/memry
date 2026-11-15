@@ -5,6 +5,7 @@ import { act, fireEvent, render, renderHook, screen, waitFor, within } from '@te
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { serializeCriticMarkup } from '@memry/shared'
+import type * as Bindings from '../../../../../generated/bindings'
 import { ReviewRail } from './review-rail'
 import {
   useCriticMarkupReview,
@@ -32,12 +33,18 @@ vi.mock('@/agent-chat/messages/memry-links', () => ({
 const reviewUiMocks = vi.hoisted(() => ({
   notesService: {
     uploadAttachment: vi.fn()
-  }
+  },
+  searchQuery: vi.fn()
 }))
 
 vi.mock('@/services/notes-service', () => ({
   notesService: reviewUiMocks.notesService
 }))
+
+vi.mock('../../../../../generated/bindings', async (importOriginal) => {
+  const actual = await importOriginal<typeof Bindings>()
+  return { ...actual, commands: { ...actual.commands, searchQuery: reviewUiMocks.searchQuery } }
+})
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -300,7 +307,7 @@ describe('review UI', () => {
       totalCount: 1,
       queryTimeMs: 0
     })
-    vi.mocked(window.api.search.query).mockImplementation(searchQuery)
+    reviewUiMocks.searchQuery.mockImplementation(searchQuery)
     Object.assign(window.api, {
       calendar: {
         ...(window.api as unknown as { calendar?: Record<string, unknown> }).calendar,

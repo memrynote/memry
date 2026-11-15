@@ -11,7 +11,7 @@ use crate::storage::repositories::{projectors, sync_items};
 use crate::sync::clock::{ClockOrder, VectorClock, compare};
 use crate::sync::{body_debt, delete_keep, journal_day_merge, store};
 
-use super::{ApplyTotals, DOCUMENT_TYPES, sqlite_failed};
+use super::{ApplyTotals, DOCUMENT_TYPES, feed, sqlite_failed};
 
 /// One typed delete, as §7.15's first two consequences require it: the record
 /// row, **its projection**, and the document's body log, in one transaction.
@@ -63,9 +63,11 @@ pub(super) fn apply_tombstone(
         if live_clock_is_after(&txn, item_type, item_id, clock)? {
             txn.commit().map_err(sqlite_failed)?;
             totals.skipped += 1;
+            feed::revived(&mut totals.feed, item_type, item_id);
             return Ok(());
         }
     }
+    let was_live = feed::is_live(&txn, item_type, item_id)?;
     delete_keep::keep(
         &txn,
         item_type,
@@ -83,6 +85,7 @@ pub(super) fn apply_tombstone(
         if journal_day_merge::hold_for_merge(&txn, item_id, clock)? {
             txn.commit().map_err(sqlite_failed)?;
             totals.deleted += 1;
+            feed::deleted(&mut totals.feed, item_type, item_id, was_live);
             return Ok(());
         }
     }
@@ -97,6 +100,7 @@ pub(super) fn apply_tombstone(
     };
     txn.commit().map_err(sqlite_failed)?;
     totals.deleted += 1;
+    feed::deleted(&mut totals.feed, item_type, item_id, was_live);
     if purged > 0 {
         totals.purged_documents.push(item_id.to_owned());
     }
@@ -147,11 +151,18 @@ pub(super) fn apply_untyped_tombstone(
 ) -> Result<(), StorageError> {
     let txn = conn.unchecked_transaction().map_err(sqlite_failed)?;
     let item_types = store::item_types_for(&txn, item_id)?;
+    let was_live = item_types
+        .iter()
+        .map(|item_type| feed::is_live(&txn, item_type, item_id))
+        .collect::<Result<Vec<_>, _>>()?;
     store::apply_untyped_tombstone(&txn, item_id, now_ms, now_ms)?;
     journal_day_merge::mark_deleted(&txn, item_id)?;
     if journal_day_merge::hold_for_merge(&txn, item_id, None)? {
         txn.commit().map_err(sqlite_failed)?;
         totals.deleted += 1;
+        for (item_type, live) in item_types.iter().zip(&was_live) {
+            feed::deleted(&mut totals.feed, item_type, item_id, *live);
+        }
         return Ok(());
     }
     for item_type in &item_types {
@@ -161,6 +172,9 @@ pub(super) fn apply_untyped_tombstone(
     let purged = update_log::purge_in(&txn, item_id).map_err(crdt_failed)?;
     txn.commit().map_err(sqlite_failed)?;
     totals.deleted += 1;
+    for (item_type, live) in item_types.iter().zip(&was_live) {
+        feed::deleted(&mut totals.feed, item_type, item_id, *live);
+    }
     if purged > 0 {
         totals.purged_documents.push(item_id.to_owned());
     }
