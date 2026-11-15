@@ -237,7 +237,10 @@ mod tests {
         assert!(!bindings.publish(&closed, &BindingState::Foreign));
         assert_eq!(bindings.state(), BindingState::Unknown);
         assert!(bindings.publish(&open, &BindingState::LocalOnly));
-        assert!(!bindings.publish(&open, &BindingState::LocalOnly), "unchanged");
+        assert!(
+            !bindings.publish(&open, &BindingState::LocalOnly),
+            "unchanged"
+        );
         assert_eq!(bindings.state(), BindingState::LocalOnly);
 
         drop(open);
