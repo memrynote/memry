@@ -131,6 +131,15 @@ fn an_over_long_message_is_cut_to_the_schema_limit() {
     assert_eq!(message.chars().count(), 512);
 }
 
+/// REVIEW-4728 Medium 4: the schema counts UTF-16 units, so 300 emoji (600 units) are cut to 256.
+#[test]
+fn an_astral_message_is_cut_in_utf16_units() {
+    let event = sync_error_event(&status(500, None, "x"), |_| "\u{1F600}".repeat(300));
+    let message = event.error.and_then(|e| e.message).unwrap();
+    assert_eq!(crate::redact::utf16_len(&message), 512);
+    assert_eq!(message.chars().count(), 256);
+}
+
 fn run_bootstrap(metrics: &BootstrapMetrics) {
     metrics.begin(BootstrapSource::VaultDownload);
     metrics.mark_interactive();
@@ -230,4 +239,79 @@ async fn the_supervisor_reports_failures_and_conflicts_only_with_consent() {
         }
         supervisor.stop().await;
     }
+}
+
+fn ws_events(service: &Service) -> Vec<(String, Option<String>, Option<String>)> {
+    service
+        .queued()
+        .into_iter()
+        .filter(|e| e.name == "sync_error")
+        .map(|e| (e.action, e.error_code, e.source))
+        .collect()
+}
+
+/// REVIEW-4728 Medium 5: what only the socket saw sends `sync_error` with `source: "ws"`, as
+/// Electron does; a pin failure also latches with its status at once.
+#[tokio::test(start_paused = true)]
+async fn socket_side_failures_send_sync_error_from_ws() {
+    use crate::sync::realtime::SocketEnd;
+    use crate::sync::status::SyncStatusValue;
+    use memry_core::sync::socket::Terminal;
+    for (end, action) in [
+        (
+            SocketEnd::Terminal(Terminal::DeviceRevoked),
+            "device_revoked",
+        ),
+        (SocketEnd::PinFailed, "certificate_pin_failed"),
+        (
+            SocketEnd::Terminal(Terminal::VersionIncompatible),
+            "ws_version_rejected",
+        ),
+    ] {
+        let dir = tempfile::tempdir().unwrap();
+        let service = service(&dir, true);
+        let mut rig = Rig::new();
+        rig.telemetry = Some(Arc::clone(&service));
+        *lock(&rig.backend.driver.socket_end) = Some(end);
+        let supervisor = rig.start().await;
+        settle().await;
+        assert_eq!(
+            ws_events(&service),
+            [(
+                action.to_owned(),
+                Some(action.to_owned()),
+                Some("ws".to_owned())
+            )],
+            "{action}"
+        );
+        if end == SocketEnd::PinFailed {
+            let status = supervisor.status();
+            assert_eq!(status.status, SyncStatusValue::Error);
+            assert_eq!(
+                status.error.as_deref(),
+                Some("errors:sync.certificatePinFailed")
+            );
+        }
+        supervisor.stop().await;
+    }
+}
+
+/// A revocation a pass met already sent its `sync_error`: the latch adds no `ws` one.
+#[tokio::test(start_paused = true)]
+async fn a_revocation_from_a_pass_is_counted_once() {
+    let dir = tempfile::tempdir().unwrap();
+    let service = service(&dir, true);
+    let mut rig = Rig::new();
+    rig.telemetry = Some(Arc::clone(&service));
+    lock(&rig.backend.driver.errors).push(SyncError::Api {
+        source: ApiError::DeviceRevoked {
+            message: "revoked".into(),
+        },
+    });
+    let supervisor = rig.start().await;
+    settle().await;
+    let events = ws_events(&service);
+    assert_eq!(events.len(), 1, "{events:?}");
+    assert_eq!(events[0].2.as_deref(), Some("full"));
+    supervisor.stop().await;
 }

@@ -35,7 +35,8 @@ use realtime::{KeychainWait, SocketTask};
 
 enum Event {
     Command(Option<Command>),
-    Done(Box<Result<PassDone, tokio::task::JoinError>>),
+    /// `None`: the handle's stop cut the pass.
+    Done(Box<Result<Option<PassDone>, tokio::task::JoinError>>),
     PushDue,
     /// The `429` window ended.
     RetryDue,
@@ -62,6 +63,8 @@ pub(super) struct Loop {
     commands: mpsc::WeakUnboundedSender<Command>,
     signals: Arc<Signals>,
     status_tx: watch::Sender<SyncStatus>,
+    /// The handle's stop, fired before it waits: the socket and the pass watch it.
+    stopping: watch::Receiver<bool>,
     gate_changes: watch::Receiver<u64>,
     rx: mpsc::UnboundedReceiver<Command>,
     driver: Option<Arc<dyn SyncPasses>>,
@@ -71,7 +74,7 @@ pub(super) struct Loop {
     paused: bool,
     online: bool,
     offline_since: Option<i64>,
-    running: Option<JoinHandle<PassDone>>,
+    running: Option<JoinHandle<Option<PassDone>>>,
     next_id: u64,
     trailing: Option<Trigger>,
     push_at: Option<Instant>,
@@ -118,7 +121,7 @@ impl Loop {
         commands: mpsc::WeakUnboundedSender<Command>,
         signals: Arc<Signals>,
         status_tx: watch::Sender<SyncStatus>,
-        paused: bool,
+        stopping: watch::Receiver<bool>,
         online: bool,
     ) -> Self {
         let gate_changes = parts.gate.subscribe();
@@ -133,12 +136,14 @@ impl Loop {
             commands,
             signals,
             status_tx,
+            stopping,
             gate_changes,
             rx,
             driver: None,
             opened: false,
             decision: GateDecision::NotStarted(gate::SyncNotStartedReason::Unavailable),
-            paused,
+            // `run` reads the persisted pause before it handles anything.
+            paused: false,
             online,
             offline_since: (!online).then(now_ms),
             running: None,
@@ -203,6 +208,12 @@ impl Loop {
                     return;
                 }
                 Event::Command(Some(Command::Stop(reply))) => {
+                    // The next supervisor of this vault opens its own socket: this one ends
+                    // first (§9.3).
+                    if let Some(task) = self.realtime.take() {
+                        task.socket.stop();
+                        let _ = task.handle.await;
+                    }
                     self.close_driver();
                     let _ = reply.send(());
                     return;
@@ -211,7 +222,9 @@ impl Loop {
                 Event::Done(done) => {
                     self.running = None;
                     match *done {
-                        Ok(done) => self.finished(done).await,
+                        Ok(Some(done)) => self.finished(done).await,
+                        // Stopping: the stop command follows.
+                        Ok(None) => {}
                         Err(error) => self.pass_panicked(&error),
                     }
                     self.after_pass();
@@ -296,6 +309,10 @@ impl Loop {
                 generation,
                 connected,
             } => {
+                // A late report from a socket this loop already stopped.
+                if self.realtime.as_ref().map(|task| task.generation) != Some(generation) {
+                    return;
+                }
                 if self.socket.is_some_and(|(seen, _)| seen != generation) || !connected {
                     self.socket_held = false;
                 }
@@ -314,11 +331,21 @@ impl Loop {
     }
 
     fn reevaluate_with(&mut self, facts: AuthFacts) {
-        let decision = gate::evaluate(&self.gate.inputs(facts));
+        let inputs = self.gate.inputs(facts);
+        let decision = gate::evaluate(&inputs);
         let was = std::mem::replace(&mut self.decision, decision);
-        if facts.keychain_unavailable {
+        // The keychain only holds sync back when everything else would start it
+        // (`runtime.ts:982`); otherwise the gate's own status shows.
+        let readable = gate::GateInputs {
+            auth: AuthFacts {
+                key_verified: true,
+                ..facts
+            },
+            ..inputs
+        };
+        if facts.keychain_unavailable && gate::evaluate(&readable) == GateDecision::Start {
             self.keychain_failed();
-        } else if decision != GateDecision::Start {
+        } else {
             self.keychain = None;
         }
         if decision != GateDecision::Start {
@@ -362,7 +389,8 @@ impl Loop {
             return;
         }
         // Edits, ticks and hints wait out a failure backoff; its end runs the pass they wanted.
-        // Starts, resumes and Sync Now do not.
+        // Starts, resumes and Sync Now do not. Inclusive: an edit due at the very instant the
+        // backoff ends would otherwise run beside the end's own pass.
         let automatic = matches!(
             trigger,
             Trigger::Push | Trigger::Tick | Trigger::Hint { .. }
@@ -370,7 +398,7 @@ impl Loop {
         if automatic
             && self
                 .backoff_until
-                .is_some_and(|until| until > Instant::now())
+                .is_some_and(|until| until >= Instant::now())
         {
             return;
         }
@@ -386,14 +414,21 @@ impl Loop {
         self.next_id += 1;
         self.last_start = Some(Instant::now());
         self.opened |= self.driver.is_none();
-        self.running = Some(tokio::spawn(pass::run(
+        let pass = pass::run(
             id,
             trigger,
             self.driver.clone(),
             Arc::clone(&self.backend),
             self.db.clone(),
             self.gate.entitlement() == Entitlement::Entitled,
-        )));
+        );
+        let mut stopping = self.stopping.clone();
+        self.running = Some(tokio::spawn(async move {
+            tokio::select! {
+                done = pass => Some(done),
+                _ = async { stopping.wait_for(|stop| *stop).await.map(|_| ()) } => None,
+            }
+        }));
     }
 
     /// Ending a clock-skew pause polls the server clock again (a foreground pass), so a clock
@@ -524,8 +559,8 @@ async fn blocking<T: Send + 'static>(
 }
 
 async fn join(
-    running: &mut Option<JoinHandle<PassDone>>,
-) -> Result<PassDone, tokio::task::JoinError> {
+    running: &mut Option<JoinHandle<Option<PassDone>>>,
+) -> Result<Option<PassDone>, tokio::task::JoinError> {
     match running {
         Some(handle) => handle.await,
         None => std::future::pending().await,

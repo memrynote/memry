@@ -47,10 +47,7 @@ async fn start_unbound(rig: &Rig) -> SyncSupervisor {
 #[tokio::test(start_paused = true)]
 async fn a_refused_refresh_sends_one_session_expired_and_stops_sync() {
     let rig = Rig::new();
-    rig.backend
-        .driver
-        .refresh_refused
-        .store(true, Ordering::SeqCst);
+    rig.backend.refresh_refused.store(true, Ordering::SeqCst);
     lock(&rig.backend.driver.errors).push(unauthorized());
     let supervisor = start_unbound(&rig).await;
     let mut signals = supervisor.subscribe_auth_signals();
@@ -293,8 +290,10 @@ async fn a_blocking_stop_gives_up_on_a_loop_stuck_in_the_keychain() {
     rig.backend.stall_facts.store(true, Ordering::SeqCst);
     rig.gate.set_entitlement(Entitlement::Unentitled);
     settle().await;
-    let stopped = tokio::task::spawn_blocking(move || supervisor.stop_blocking())
-        .await
-        .unwrap();
+    let stopped = tokio::task::spawn_blocking(move || {
+        supervisor.stop_blocking_within(Duration::from_millis(50))
+    })
+    .await
+    .unwrap();
     assert!(!stopped, "the close went on without the loop");
 }

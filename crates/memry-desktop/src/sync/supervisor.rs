@@ -26,7 +26,7 @@ use super::frames::FrameSink;
 use super::gate::{self, GateDecision, SyncStartGate};
 use super::result::{SyncNowBlockedReason as Blocked, TriggerSyncResult};
 use super::run_loop::Loop;
-use super::signals::{AuthSignal, Signals};
+use super::signals::{AuthSignal, AuthSignals, Signals};
 use super::status::{self, StatusFacts, SyncStatus};
 use super::telemetry::BootstrapMetrics;
 use super::triggers::Trigger;
@@ -46,6 +46,8 @@ pub struct SupervisorParts {
     pub db: Db,
     /// The app's telemetry, which drops every event while telemetry is off.
     pub telemetry: Option<Arc<Service>>,
+    /// The session's account signals, shared by every supervisor it builds.
+    pub signals: AuthSignals,
     /// Every status change, at most one per [`STATUS_THROTTLE`], the latest winning.
     pub on_status: Arc<dyn Fn(&SyncStatus) + Send + Sync>,
 }
@@ -79,13 +81,14 @@ pub struct SyncSupervisor {
     signals: Arc<Signals>,
     db: Db,
     bootstrap: Arc<BootstrapMetrics>,
+    /// Fired before a stop waits: the socket and the pass end even while the loop is stuck.
+    stopping: Arc<watch::Sender<bool>>,
 }
 
 impl SyncSupervisor {
     /// Starts the loop on `runtime`; its first step reads the persisted pause, before any
     /// request is handled.
     pub fn start(runtime: &tokio::runtime::Handle, parts: SupervisorParts) -> Self {
-        let paused = false;
         let (commands, rx) = mpsc::unbounded_channel();
         // Weak: the reachability source keeps its observers for good, and must not keep the
         // loop alive once every handle is gone.
@@ -95,7 +98,7 @@ impl SyncSupervisor {
         let online = parts.reachability.current() != Reachable::Offline;
         let first = status::derive(&StatusFacts {
             gate: GateDecision::NotStarted(gate::SyncNotStartedReason::Unavailable),
-            paused,
+            paused: false,
             online,
             syncing: false,
             engine: None,
@@ -106,7 +109,8 @@ impl SyncSupervisor {
             keychain_unavailable: false,
         });
         let (status_tx, status) = watch::channel(first);
-        let signals = Arc::new(Signals::default());
+        let signals = Arc::new(Signals::new(parts.signals.clone()));
+        let stopping = Arc::new(watch::Sender::new(false));
         let db = parts.db.clone();
         let bootstrap = Arc::new(BootstrapMetrics::new(parts.telemetry.clone()));
         let state = Loop::new(
@@ -115,7 +119,7 @@ impl SyncSupervisor {
             commands.downgrade(),
             Arc::clone(&signals),
             status_tx,
-            paused,
+            stopping.subscribe(),
             online,
         );
         runtime.spawn(state.run());
@@ -125,6 +129,7 @@ impl SyncSupervisor {
             signals,
             db,
             bootstrap,
+            stopping,
         }
     }
 
@@ -133,7 +138,8 @@ impl SyncSupervisor {
         &self.bootstrap
     }
 
-    /// Session expiry, revocation and linking requests, as sync learns them.
+    /// Session expiry, revocation and linking requests, as sync learns them. The session-wide
+    /// [`AuthSignals`] this supervisor was built with hears every rebuilt supervisor too.
     pub fn subscribe_auth_signals(&self) -> broadcast::Receiver<AuthSignal> {
         self.signals.subscribe()
     }
@@ -224,6 +230,7 @@ impl SyncSupervisor {
     /// Aborts a running pass, closes the driver and ends the loop.
     pub async fn stop(&self) {
         self.bootstrap.abandon();
+        self.stopping.send_replace(true);
         let (reply, done) = oneshot::channel();
         if self.commands.send(Command::Stop(reply)).is_ok() {
             let _ = done.await;
@@ -231,15 +238,21 @@ impl SyncSupervisor {
     }
 
     /// [`SyncSupervisor::stop`] from a thread outside the runtime (a session close hook), waiting
-    /// at most [`STOP_WAIT`]: a loop held in a keychain prompt must not hold the close. Answers
-    /// whether the loop stopped in time; one that did not still stops when it reads the request.
+    /// at most [`STOP_WAIT`]: a loop held in a keychain prompt must not hold the close. Its socket
+    /// and pass stop at once all the same. Answers whether the loop stopped in time; one that did
+    /// not ends when it reads the request.
     pub fn stop_blocking(&self) -> bool {
+        self.stop_blocking_within(STOP_WAIT)
+    }
+
+    pub(crate) fn stop_blocking_within(&self, wait: std::time::Duration) -> bool {
         self.bootstrap.abandon();
+        self.stopping.send_replace(true);
         let (reply, mut done) = oneshot::channel();
         if self.commands.send(Command::Stop(reply)).is_err() {
             return true;
         }
-        let deadline = std::time::Instant::now() + STOP_WAIT;
+        let deadline = std::time::Instant::now() + wait;
         loop {
             match done.try_recv() {
                 Err(oneshot::error::TryRecvError::Empty)
@@ -267,6 +280,9 @@ impl ReachabilityObserver for Observer {
     }
 }
 
+#[cfg(test)]
+#[path = "supervisor_review_tests.rs"]
+mod review_tests;
 #[cfg(test)]
 #[path = "supervisor_rig.rs"]
 pub(crate) mod rig;

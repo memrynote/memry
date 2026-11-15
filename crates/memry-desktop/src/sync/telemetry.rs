@@ -17,9 +17,9 @@ use crate::telemetry::Service;
 use crate::telemetry::events::{ErrorDetail, FailureDetail, Metrics, TelemetryEvent};
 use crate::telemetry::main_warning::Level;
 
-/// `TelemetryErrorDetailSchema.message` caps at 512 characters, and the server refuses a whole
-/// batch for one invalid event.
-const MAX_MESSAGE_CHARS: usize = 512;
+/// `TelemetryErrorDetailSchema.message` caps at 512 UTF-16 units (`z.string().max(512)`), and
+/// the server refuses a whole batch for one invalid event.
+const MAX_MESSAGE_UNITS: usize = 512;
 
 /// The HTTP status and the server's code a failure carries, when it came from a response.
 fn response_facts(error: &SyncError) -> (Option<u16>, Option<String>) {
@@ -55,7 +55,7 @@ fn retryable(category: SyncErrorCategory, status: Option<u16>) -> bool {
 }
 
 /// `sync_error` for a failed pass: the category, the facts that make it actionable, and the
-/// message after `redact` (the service's salted redaction), cut to 512 characters.
+/// message after `redact` (the service's salted redaction), cut to 512 UTF-16 units.
 pub fn sync_error_event(error: &SyncError, redact: impl Fn(&str) -> String) -> TelemetryEvent {
     let category = SyncErrorCategory::of(error);
     let (http_status, server_code) = response_facts(error);
@@ -69,14 +69,21 @@ pub fn sync_error_event(error: &SyncError, redact: impl Fn(&str) -> String) -> T
         server_code,
         retryable: Some(retryable(category, http_status)),
     });
-    let message: String = redact(&error.to_string())
-        .chars()
-        .take(MAX_MESSAGE_CHARS)
-        .collect();
+    let message = crate::redact::cap(&redact(&error.to_string()), MAX_MESSAGE_UNITS);
     event.error = (!message.is_empty()).then(|| ErrorDetail {
         message: Some(message),
         ..ErrorDetail::default()
     });
+    event
+}
+
+/// `sync_error` for a failure only the socket saw: `device_revoked`, `certificate_pin_failed`
+/// or `ws_version_rejected` (`error-recovery-handler.ts:56`, `:86`, `websocket.ts:194`, `:231`).
+pub fn ws_error_event(action: &str) -> TelemetryEvent {
+    let mut event = Service::event("sync_error", "sync", action);
+    event.result = Some("failed".to_owned());
+    event.error_code = Some(action.to_owned());
+    event.source = Some("ws".to_owned());
     event
 }
 

@@ -154,6 +154,7 @@ impl Device {
                 keychain_recovered: None,
                 db: self.core.db_handle(),
                 telemetry: None,
+                signals: Default::default(),
                 on_status: Arc::new(|_| {}),
             },
         )
@@ -414,9 +415,6 @@ impl SyncPasses for Held {
         self.gate(PassTrigger::SocketHint).await;
         self.inner.wake(cursor).await
     }
-    fn refresh_refused(&self) -> bool {
-        self.inner.refresh_refused()
-    }
     fn realtime(
         &self,
         _sink: Arc<dyn HintSink>,
@@ -475,6 +473,9 @@ impl SyncBackend for HeldBackend {
             release: Arc::clone(&self.release),
             ran: Arc::clone(&self.ran),
         }))
+    }
+    fn refresh_refused(&self) -> bool {
+        self.inner.refresh_refused()
     }
     fn close(&self) {
         self.inner.close();

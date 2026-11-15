@@ -15,9 +15,9 @@ use crate::sync::signals::{AuthSignal, SessionEndReason};
 use crate::sync::triggers::{Trigger, keychain_retry};
 
 pub(super) struct SocketTask {
-    generation: u64,
-    socket: Arc<dyn RealtimeSocket>,
-    handle: JoinHandle<SocketEnd>,
+    pub(super) generation: u64,
+    pub(super) socket: Arc<dyn RealtimeSocket>,
+    pub(super) handle: JoinHandle<SocketEnd>,
 }
 
 /// An unreadable-keychain episode (`keychain-retry.ts`): retries so far, and when the next runs
@@ -60,7 +60,19 @@ impl Loop {
         });
         let socket = driver.realtime(sink, Arc::clone(&self.socket_latch), on_connected);
         let running = Arc::clone(&socket);
-        let handle = tokio::spawn(async move { running.run().await });
+        let mut stopping = self.stopping.clone();
+        // The handle's stop reaches the socket even while this loop is stuck (a keychain prompt).
+        let handle = tokio::spawn(async move {
+            let run = running.run();
+            tokio::pin!(run);
+            tokio::select! {
+                end = &mut run => end,
+                _ = async { stopping.wait_for(|stop| *stop).await.map(|_| ()) } => {
+                    running.stop();
+                    run.await
+                }
+            }
+        });
         self.realtime = Some(SocketTask {
             generation,
             socket,
@@ -92,15 +104,26 @@ impl Loop {
                 tracing::warn!("the sync socket was refused 401; retried after the next pass");
                 self.socket_refused = true;
             }
-            Ok(SocketEnd::PinFailed) => self.socket_off = true,
+            Ok(SocketEnd::PinFailed) => {
+                self.socket_off = true;
+                self.latch(SyncErrorCategory::CertificatePinFailed);
+            }
             Ok(SocketEnd::Terminal(Terminal::DeviceRevoked)) => {
                 self.socket_off = true;
                 self.latch(SyncErrorCategory::DeviceRevoked);
+            }
+            Ok(SocketEnd::Terminal(Terminal::HandshakeForbidden)) => {
+                // `websocket.ts:218-224`: an edge can answer 403 too, so the HTTP path decides
+                // whether the device is revoked.
+                tracing::warn!("the sync socket handshake was refused 403; asking the server");
+                self.socket_off = true;
+                self.request(Trigger::Explicit);
             }
             Ok(SocketEnd::Terminal(Terminal::VersionIncompatible)) => {
                 // The HTTP path parks writes on its own (`BlockedUpgrade`); pulls go on.
                 tracing::warn!("the sync socket refused this app version; passes continue");
                 self.socket_off = true;
+                self.report_ws("ws_version_rejected");
             }
             Err(error) => tracing::error!(%error, "the sync socket task ended abnormally"),
         }
@@ -111,31 +134,59 @@ impl Loop {
         if self.latched.is_some() {
             return;
         }
+        // Renderer translation keys, as Electron's `lastError`.
         let (message, signal) = match category {
-            SyncErrorCategory::DeviceRevoked => (
-                "This device was removed from your account",
-                Some(AuthSignal::DeviceRevoked),
-            ),
+            SyncErrorCategory::DeviceRevoked => {
+                ("errors:sync.deviceRevoked", Some(AuthSignal::DeviceRevoked))
+            }
             SyncErrorCategory::AuthExpired => (
-                "Your session expired. Sign in again to keep syncing",
+                "errors:sync.authExpired",
                 Some(AuthSignal::SessionExpired {
                     reason: SessionEndReason::RefreshRejected,
                 }),
             ),
-            _ => ("Sync stopped: the server's certificate did not match", None),
+            _ => ("errors:sync.certificatePinFailed", None),
         };
         tracing::error!(
             category = category.as_str(),
             "sync stopped until the account acts"
         );
+        // A failed pass already sent its `sync_error`; the socket's own never pass through one
+        // (`error-recovery-handler.ts:56`, `:86`).
+        let from_pass = self
+            .last_error
+            .as_ref()
+            .is_some_and(|(_, seen)| *seen == category);
+        if !from_pass && category != SyncErrorCategory::AuthExpired {
+            self.report_ws(category.as_str());
+        }
+        if category == SyncErrorCategory::DeviceRevoked
+            && let Some(running) = self.running.take()
+        {
+            // `error-recovery-handler.ts:64`: a revoked device pushes nothing more.
+            running.abort();
+        }
         self.latched = Some(category);
         self.last_error = Some((message.to_owned(), category));
         self.trailing = None;
         self.push_at = None;
         self.backoff_until = None;
         self.stop_socket();
+        let answer = self.blocked_result(crate::sync::result::SyncNowBlockedReason::Failed);
+        if self.running.is_none() {
+            for (_, reply) in self.waiters.drain(..) {
+                let _ = reply.send(answer.clone());
+            }
+        }
         if let Some(signal) = signal {
             self.signals.send(signal);
+        }
+    }
+
+    /// A socket-side `sync_error` (`source: "ws"`); dropped by the service while telemetry is off.
+    fn report_ws(&self, action: &str) {
+        if let Some(telemetry) = &self.telemetry {
+            telemetry.track_main_event(crate::sync::telemetry::ws_error_event(action));
         }
     }
 

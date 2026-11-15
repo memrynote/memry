@@ -82,7 +82,7 @@ impl Loop {
                 self.report(&error);
                 let category = SyncErrorCategory::of(&error);
                 self.last_error = Some((error.to_string(), category));
-                self.failed(category, None);
+                self.failed(category);
                 self.answer(
                     done.id,
                     TriggerSyncResult::blocked(Blocked::Failed, Some(error)),
@@ -109,7 +109,7 @@ impl Loop {
                 TriggerSyncResult::ok()
             }
             None => TriggerSyncResult::blocked(Blocked::Paused, None),
-            Some(report) => self.record(report, done.started, driver.as_ref()),
+            Some(report) => self.record(report, done.started),
         };
         if result.success {
             self.socket_refused = false;
@@ -142,12 +142,7 @@ impl Loop {
     }
 
     /// Takes in what one pass did and says how a Sync Now caller sees it.
-    fn record(
-        &mut self,
-        report: &PassReport,
-        started: Instant,
-        driver: &dyn SyncPasses,
-    ) -> TriggerSyncResult {
+    fn record(&mut self, report: &PassReport, started: Instant) -> TriggerSyncResult {
         self.engine = Some(report.final_state);
         if report.transitions.contains(&SyncState::Applying) {
             self.last_pull = Some(started);
@@ -163,7 +158,7 @@ impl Loop {
                     let wait = rate_limit_backoff(retry_after, self.rate_failures);
                     self.blocked_until = Some(Instant::now() + wait);
                 } else if report.final_state != SyncState::Offline {
-                    self.failed(category, Some(driver));
+                    self.failed(category);
                 }
                 if report.final_state == SyncState::Offline {
                     return TriggerSyncResult::blocked(Blocked::Offline, None);
@@ -207,13 +202,14 @@ impl Loop {
 
     /// What a failed open or pass leads to: a revoked device, a session the server refused for
     /// good and a pin mismatch end sync; an unreadable keychain waits on its ladder; anything
-    /// else backs off.
-    fn failed(&mut self, category: SyncErrorCategory, driver: Option<&dyn SyncPasses>) {
+    /// else backs off. The open fetches the device directory with the session's tokens, so a
+    /// refused refresh there latches too.
+    fn failed(&mut self, category: SyncErrorCategory) {
         match category {
             SyncErrorCategory::DeviceRevoked | SyncErrorCategory::CertificatePinFailed => {
                 self.latch(category);
             }
-            SyncErrorCategory::AuthExpired if driver.is_some_and(|d| d.refresh_refused()) => {
+            SyncErrorCategory::AuthExpired if self.backend.refresh_refused() => {
                 self.latch(category);
             }
             SyncErrorCategory::KeychainUnavailable => self.keychain_failed(),
@@ -230,6 +226,10 @@ impl Loop {
         self.reevaluate_with(facts);
         if self.decision != GateDecision::Start {
             let _ = reply.send(self.blocked_result(Blocked::Unavailable));
+            return;
+        }
+        if self.latched.is_some() {
+            let _ = reply.send(self.blocked_result(Blocked::Failed));
             return;
         }
         let resume = self.resume_trigger();

@@ -125,6 +125,9 @@ mod tests {
         async fn open(&self) -> Result<Arc<dyn SyncPasses>, SyncError> {
             Err(SyncError::Locked)
         }
+        fn refresh_refused(&self) -> bool {
+            false
+        }
         fn close(&self) {}
     }
 
@@ -168,6 +171,7 @@ mod tests {
                         keychain_recovered: None,
                         db: open.vault.db_handle(),
                         telemetry: None,
+                        signals: Default::default(),
                         on_status: Arc::new(|_| {}),
                     },
                 ))
@@ -246,6 +250,7 @@ mod tests {
                         keychain_recovered: None,
                         db: open.vault.db_handle(),
                         telemetry: None,
+                        signals: Default::default(),
                         on_status: Arc::new(|_| {}),
                     },
                 ))

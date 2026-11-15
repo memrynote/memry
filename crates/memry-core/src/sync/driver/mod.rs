@@ -142,7 +142,7 @@ pub struct SyncDriver {
     first: FirstSyncParts,
     db: Db,
     http: Arc<HttpClient>,
-    /// The session's tokens: the realtime socket's handshake, and whether refresh is refused.
+    /// The session's tokens, for the realtime socket's handshake.
     tokens: Arc<TokenManager>,
     server_vault: String,
     cipher: Arc<DirectoryCipher>,
@@ -482,12 +482,6 @@ impl SyncDriver {
     /// The session's tokens, which the realtime socket refreshes through.
     pub fn token_provider(&self) -> Arc<dyn TokenProvider> {
         Arc::clone(&self.tokens) as Arc<dyn TokenProvider>
-    }
-
-    /// The server refused the refresh token for good (chapter 02 §2.10): nothing authenticates
-    /// until the user signs in again.
-    pub fn refresh_refused(&self) -> bool {
-        self.tokens.refresh_block_ms() == Some(0)
     }
 
     fn is_paused(&self) -> bool {

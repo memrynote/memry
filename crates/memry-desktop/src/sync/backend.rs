@@ -27,8 +27,6 @@ pub trait SyncPasses: Send + Sync {
     async fn run_pass(&self, trigger: PassTrigger) -> Option<PassReport>;
     /// A socket hint's pass; `None` while paused or when the hint was dropped.
     async fn wake(&self, cursor: Option<i64>) -> Option<PassReport>;
-    /// The server refused the refresh token for good.
-    fn refresh_refused(&self) -> bool;
     /// The vault's realtime socket: hints to `sink`, `on_connected` at each open, terminal
     /// closes latched in `latch`.
     fn realtime(
@@ -52,9 +50,6 @@ impl SyncPasses for SyncDriver {
     }
     async fn wake(&self, cursor: Option<i64>) -> Option<PassReport> {
         SyncDriver::wake(self, cursor).await
-    }
-    fn refresh_refused(&self) -> bool {
-        SyncDriver::refresh_refused(self)
     }
     fn realtime(
         &self,
@@ -96,6 +91,9 @@ pub trait SyncBackend: Send + Sync {
     /// A driver for the open vault. Fails offline (it fetches the device directory) and on a
     /// vault bound to no server vault; the supervisor retries on the next trigger.
     async fn open(&self) -> Result<Arc<dyn SyncPasses>, SyncError>;
+    /// The server refused the session's refresh token for good. Answered from the session's
+    /// tokens, so a refused refresh during [`SyncBackend::open`] counts too.
+    fn refresh_refused(&self) -> bool;
     /// The driver was dropped, or never kept: forget the at-rest key.
     fn close(&self);
 }
@@ -200,6 +198,10 @@ impl SyncBackend for VaultSyncBackend {
             .await
             .inspect_err(|_| self.close())?;
         Ok(Arc::new(driver))
+    }
+
+    fn refresh_refused(&self) -> bool {
+        self.session.refresh_refused()
     }
 
     fn close(&self) {

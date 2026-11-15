@@ -20,6 +20,7 @@ use tokio::time::{Instant, sleep};
 use super::super::backend::{SyncBackend, SyncPasses};
 use super::super::gate::{AuthFacts, Entitlement, SyncStartGate, VaultBinding};
 use super::super::realtime::{RealtimeSocket, SocketEnd};
+use super::super::signals::AuthSignals;
 use super::super::status::SyncStatus;
 use super::{SupervisorParts, SyncSupervisor};
 pub(crate) use crate::session::lock;
@@ -42,14 +43,17 @@ pub(crate) struct FakeDriver {
     pub(crate) skew_ms: Mutex<Option<i64>>,
     /// Passes end `Refused` with no error, as a non-envelope pull body does.
     pub(crate) refuse: AtomicBool,
-    /// The token manager says the server refused the refresh token for good.
-    pub(crate) refresh_refused: AtomicBool,
     /// The next pass panics.
     pub(crate) panic_next: AtomicBool,
     /// Sockets end at once with this; `None` holds them quietly until stopped.
     pub(crate) socket_end: Mutex<Option<SocketEnd>>,
     /// Sockets opened.
     pub(crate) sockets: AtomicUsize,
+    /// Sockets running now, and stops asked of them.
+    pub(crate) live: Arc<AtomicUsize>,
+    pub(crate) socket_stops: Arc<AtomicUsize>,
+    /// Passes that ran to their end, not aborted.
+    pub(crate) finished: AtomicUsize,
     pub(crate) observers: Mutex<Vec<Arc<dyn memry_core::sync::driver::ApplyObserver>>>,
 }
 
@@ -83,6 +87,7 @@ impl SyncPasses for FakeDriver {
             let mut errors = lock(&self.errors);
             (!errors.is_empty()).then(|| errors.remove(0))
         };
+        self.finished.fetch_add(1, Ordering::SeqCst);
         let failed = error.is_some();
         Some(PassReport {
             trigger,
@@ -105,9 +110,6 @@ impl SyncPasses for FakeDriver {
     async fn wake(&self, _cursor: Option<i64>) -> Option<PassReport> {
         self.run_pass(PassTrigger::SocketHint).await
     }
-    fn refresh_refused(&self) -> bool {
-        self.refresh_refused.load(Ordering::SeqCst)
-    }
     fn realtime(
         &self,
         _sink: Arc<dyn HintSink>,
@@ -118,6 +120,8 @@ impl SyncPasses for FakeDriver {
         Arc::new(FakeSocket {
             end: *lock(&self.socket_end),
             stopped: tokio::sync::Notify::new(),
+            live: Arc::clone(&self.live),
+            stops: Arc::clone(&self.socket_stops),
         })
     }
     fn pause(&self) {
@@ -141,6 +145,8 @@ impl SyncPasses for FakeDriver {
 struct FakeSocket {
     end: Option<SocketEnd>,
     stopped: tokio::sync::Notify,
+    live: Arc<AtomicUsize>,
+    stops: Arc<AtomicUsize>,
 }
 
 #[async_trait::async_trait]
@@ -149,10 +155,15 @@ impl RealtimeSocket for FakeSocket {
         if let Some(end) = self.end {
             return end;
         }
+        self.live.fetch_add(1, Ordering::SeqCst);
         self.stopped.notified().await;
+        // Closing takes a moment, as a real socket's close does.
+        sleep(Duration::from_millis(1)).await;
+        self.live.fetch_sub(1, Ordering::SeqCst);
         SocketEnd::Stopped
     }
     fn stop(&self) {
+        self.stops.fetch_add(1, Ordering::SeqCst);
         self.stopped.notify_one();
     }
 }
@@ -166,8 +177,11 @@ pub(crate) struct FakeBackend {
     pub(crate) keychain_locked: AtomicBool,
     /// When each gate read ran.
     pub(crate) fact_reads: Mutex<Vec<Instant>>,
-    /// `open` fails, as it does offline or on an unbound vault.
+    /// `open` fails, as it does offline or on an unbound vault: with `open_error`, else `Locked`.
     pub(crate) fail_open: AtomicBool,
+    pub(crate) open_error: Mutex<Option<SyncError>>,
+    /// The session's token manager says the server refused the refresh token for good.
+    pub(crate) refresh_refused: AtomicBool,
     pub(crate) opens: Mutex<Vec<Instant>>,
     pub(crate) closes: AtomicUsize,
 }
@@ -196,11 +210,14 @@ impl SyncBackend for FakeBackend {
     async fn open(&self) -> Result<Arc<dyn SyncPasses>, SyncError> {
         lock(&self.opens).push(Instant::now());
         if self.fail_open.load(Ordering::SeqCst) {
-            return Err(SyncError::Locked);
+            return Err(lock(&self.open_error).clone().unwrap_or(SyncError::Locked));
         }
         // A new `SyncDriver` starts unpaused.
         self.driver.paused.store(false, Ordering::SeqCst);
         Ok(Arc::clone(&self.driver) as Arc<dyn SyncPasses>)
+    }
+    fn refresh_refused(&self) -> bool {
+        self.refresh_refused.load(Ordering::SeqCst)
     }
     fn close(&self) {
         self.closes.fetch_add(1, Ordering::SeqCst);
@@ -246,6 +263,8 @@ pub(crate) struct Rig {
     pub(crate) recovered: broadcast::Sender<()>,
     pub(crate) events: Arc<Mutex<Vec<(Instant, SyncStatus)>>>,
     pub(crate) telemetry: Option<Arc<crate::telemetry::Service>>,
+    /// The session's account signals, shared by every supervisor the rig starts.
+    pub(crate) signals: AuthSignals,
 }
 
 impl Rig {
@@ -265,6 +284,8 @@ impl Rig {
                 keychain_locked: AtomicBool::new(false),
                 fact_reads: Mutex::default(),
                 fail_open: AtomicBool::new(false),
+                open_error: Mutex::default(),
+                refresh_refused: AtomicBool::new(false),
                 opens: Mutex::default(),
                 closes: AtomicUsize::new(0),
             }),
@@ -273,6 +294,7 @@ impl Rig {
             recovered: broadcast::Sender::new(4),
             events: Arc::default(),
             telemetry: None,
+            signals: AuthSignals::default(),
         }
     }
 
@@ -288,6 +310,7 @@ impl Rig {
                 keychain_recovered: Some(self.recovered.subscribe()),
                 db: self.db.clone(),
                 telemetry: self.telemetry.clone(),
+                signals: self.signals.clone(),
                 on_status: Arc::new(move |status| {
                     lock(&events).push((Instant::now(), status.clone()));
                 }),

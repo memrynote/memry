@@ -20,8 +20,9 @@ pub enum AuthSignal {
     SessionExpired {
         reason: SessionEndReason,
     },
-    /// The server revoked this device: a `403 AUTH_DEVICE_REVOKED`, a socket close 4004 or a
-    /// handshake refused 403 (§9.9).
+    /// The server revoked this device: a `403 AUTH_DEVICE_REVOKED`, a socket close 4004 or an
+    /// `AUTH_DEVICE_REVOKED` frame (§9.9). A handshake refused 403 is not one: an edge can answer
+    /// it too.
     DeviceRevoked,
     /// §9.5.1: another device asks to be linked. Advisory; the linking flow still polls.
     LinkingRequest {
@@ -34,26 +35,58 @@ pub enum AuthSignal {
     },
 }
 
-/// Shared by the handle and the loop.
-pub(super) struct Signals {
-    auth: broadcast::Sender<AuthSignal>,
-    pulls: watch::Sender<u64>,
-}
-
-impl Default for Signals {
-    fn default() -> Self {
-        Self {
-            auth: broadcast::Sender::new(16),
-            pulls: watch::Sender::new(0),
+impl AuthSignal {
+    /// What the log may say: never a linking session id or a device name.
+    fn kind(&self) -> &'static str {
+        match self {
+            Self::SessionExpired { .. } => "session_expired",
+            Self::DeviceRevoked => "device_revoked",
+            Self::LinkingRequest { .. } => "linking_request",
+            Self::LinkingApproved { .. } => "linking_approved",
         }
     }
 }
 
-impl Signals {
+/// The account signals of every supervisor of one session. The session's owner makes one and
+/// passes it in each [`super::supervisor::SupervisorParts`], so a subscriber taken before
+/// `attach_sync` hears the supervisors a vault switch rebuilds too.
+#[derive(Clone)]
+pub struct AuthSignals(broadcast::Sender<AuthSignal>);
+
+impl Default for AuthSignals {
+    fn default() -> Self {
+        Self(broadcast::Sender::new(16))
+    }
+}
+
+impl AuthSignals {
+    pub fn subscribe(&self) -> broadcast::Receiver<AuthSignal> {
+        self.0.subscribe()
+    }
+
     pub(super) fn send(&self, signal: AuthSignal) {
-        tracing::info!(?signal, "sync signal");
+        tracing::info!(signal = signal.kind(), "sync signal");
         // No subscriber is not a failure: nobody is listening yet.
-        let _ = self.auth.send(signal);
+        let _ = self.0.send(signal);
+    }
+}
+
+/// Shared by the handle and the loop.
+pub(super) struct Signals {
+    auth: AuthSignals,
+    pulls: watch::Sender<u64>,
+}
+
+impl Signals {
+    pub(super) fn new(auth: AuthSignals) -> Self {
+        Self {
+            auth,
+            pulls: watch::Sender::new(0),
+        }
+    }
+
+    pub(super) fn send(&self, signal: AuthSignal) {
+        self.auth.send(signal);
     }
 
     pub(super) fn subscribe(&self) -> broadcast::Receiver<AuthSignal> {

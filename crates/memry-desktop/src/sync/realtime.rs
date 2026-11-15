@@ -3,7 +3,8 @@
 //!
 //! - **Terminal closes.** A close 4004 or 4009, or a handshake refused 403 or 426, latches the
 //!   socket off for the supervisor's life ([`TerminalLatch`]), as Electron's `versionRejected`
-//!   and device-revoked handling do.
+//!   and device-revoked handling do. Only a 4004 says the device is revoked: a 403 handshake
+//!   comes back as [`Terminal::HandshakeForbidden`], and the HTTP path decides.
 //! - **Pin failure.** A certificate pin mismatch on the socket ends it until the app restarts
 //!   (`websocket.ts` `certPinFailed`); the transport refuses later sockets too.
 
@@ -162,3 +163,7 @@ impl SocketListener for Watched {
         self.inner.on_error(error);
     }
 }
+
+#[cfg(test)]
+#[path = "realtime_tests.rs"]
+mod tests;
