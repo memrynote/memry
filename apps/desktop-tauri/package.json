@@ -7,6 +7,7 @@
   "description": "MemryNote desktop app on Tauri v2",
   "scripts": {
     "dev:renderer": "cross-env VITE_MEMRY_DEV_API_PROXY=1 vite",
+    "dev:worker": "cargo build --manifest-path ../../crates/Cargo.toml -p memry-ml-worker --bin memry-ml-worker && node ../../scripts/fetch-pdfium.mjs",
     "build:renderer": "cross-env VITE_MEMRY_DEV_API_PROXY=1 vite build",
     "build:renderer:e2e": "cross-env VITE_MEMRY_E2E=1 VITE_MEMRY_DEV_API_PROXY=1 vite build",
     "tauri": "tauri",
