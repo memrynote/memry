@@ -37,7 +37,7 @@ use crate::protocol::crdt_envelope::{MAX_REQUEST_PAYLOAD_CHARS, max_payload_char
 mod collapse;
 mod probe;
 pub use collapse::{Collapsed, collapse_records};
-pub use probe::depth_of;
+pub use probe::queued_for;
 
 /// The three `op` spellings data-model §A.2 defines, and `create`.
 pub const OP_UPSERT: &str = "upsert";

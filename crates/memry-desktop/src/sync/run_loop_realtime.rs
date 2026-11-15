@@ -180,7 +180,8 @@ impl Loop {
         if self.keychain.is_some_and(|wait| wait.retry_at.is_some()) {
             return;
         }
-        if self.decision == GateDecision::Start && self.driver.is_none() {
+        // The gate's own start (a locked read held it shut) already runs the pass.
+        if self.decision == GateDecision::Start && self.driver.is_none() && self.running.is_none() {
             self.request(Trigger::Start);
         }
     }

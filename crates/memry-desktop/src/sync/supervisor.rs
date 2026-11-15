@@ -133,12 +133,12 @@ impl SyncSupervisor {
         self.signals.wait_for_pull(after).await
     }
 
-    /// Outbox rows of `item_type`, sent or not yet.
-    pub async fn outbox_count(&self, item_type: &str) -> Result<usize, StorageError> {
+    /// Outbox rows queued for item `item_id` (`synced_settings` is the settings item).
+    pub async fn outbox_count(&self, item_id: &str) -> Result<usize, StorageError> {
         let db = self.db.clone();
-        let item_type = item_type.to_owned();
+        let item_id = item_id.to_owned();
         tokio::task::spawn_blocking(move || {
-            db.read_blocking(move |conn| outbox::depth_of(conn, &item_type))
+            db.read_blocking(move |conn| outbox::queued_for(conn, &item_id))
         })
         .await
         .map_err(|error| StorageError::Failed {
@@ -233,6 +233,12 @@ impl ReachabilityObserver for Observer {
     }
 }
 
+#[cfg(test)]
+#[path = "supervisor_rig.rs"]
+mod rig;
+#[cfg(test)]
+#[path = "supervisor_signal_tests.rs"]
+mod signal_tests;
 #[cfg(test)]
 #[path = "supervisor_tests.rs"]
 mod tests;
