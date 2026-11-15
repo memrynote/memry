@@ -97,10 +97,10 @@ fn an_image_over_sharps_pixel_limit_is_refused_from_its_header() {
 
 #[test]
 fn an_image_whose_buffer_passes_the_allocation_cap_is_refused_before_allocating() {
-    // 192 megapixels: under sharp's pixel limit, 768 MB of RGBA.
+    // 192 megapixels: under sharp's pixel limit, 768 MB of RGBA and 576 MB of RGB beside it.
     assert_eq!(
         message(decode(&png_header(16_000, 12_000))),
-        "image needs 768000000 bytes to decode, over the 536870912-byte limit"
+        "image needs 1344000000 bytes to decode, over the 536870912-byte limit"
     );
 }
 
@@ -242,21 +242,61 @@ fn p3_profile() -> Vec<u8> {
 }
 
 #[test]
-fn decode_rgba_keeps_alpha_and_reports_the_stored_size_and_metadata() {
-    let (info, rgba) = decode_rgba(&fixture("png rgba @140")).expect("rgba");
-    assert_eq!(info.format, ImageFormat::Png);
-    assert_eq!((rgba.width(), rgba.height()), (info.width, info.height));
+fn decode_fit_keeps_alpha_and_reports_the_stored_size_and_metadata() {
+    let fitted = decode_fit(&fixture("png rgba @140"), 64).expect("rgba");
+    assert_eq!(fitted.info.format, ImageFormat::Png);
+    assert_eq!(
+        (fitted.width, fitted.height),
+        (fitted.info.width, fitted.info.height)
+    );
+    let rgba = fitted.image.as_rgba8().expect("alpha kept");
+    assert_eq!(rgba.dimensions(), fit_size(fitted.width, fitted.height, 64));
     assert!(rgba.pixels().any(|pixel| pixel[3] < 255), "alpha dropped");
 
-    // Orientation 6 turns the stored frame a quarter: the info keeps the stored size.
-    let (info, rgba) = decode_rgba(&fixture("jpeg orientation 6 @140")).expect("rotated");
-    assert!(info.has_exif);
-    assert_eq!(info.orientation, Orientation::Rotate90);
-    assert_eq!((rgba.width(), rgba.height()), (info.height, info.width));
-    assert_ne!(info.width, info.height);
+    // Orientation 6 turns the stored frame a quarter: the info keeps the stored size, the fitted
+    // image and its source size are upright, and an opaque JPEG stays RGB.
+    let fitted = decode_fit(&fixture("jpeg orientation 6 @140"), 64).expect("rotated");
+    assert!(fitted.info.has_exif);
+    assert_eq!(fitted.info.orientation, Orientation::Rotate90);
+    assert_ne!(fitted.info.width, fitted.info.height);
+    assert_eq!(
+        (fitted.width, fitted.height),
+        (fitted.info.height, fitted.info.width)
+    );
+    let rgb = fitted.image.as_rgb8().expect("opaque stays RGB");
+    assert_eq!(rgb.dimensions(), fit_size(fitted.width, fitted.height, 64));
 
-    let (info, _) = decode_rgba(&fixture("png p3 profile @140")).expect("p3");
-    assert!(info.has_icc && !info.has_exif);
+    let fitted = decode_fit(&fixture("png p3 profile @140"), 64).expect("p3");
+    assert!(fitted.info.has_icc && !fitted.info.has_exif);
+}
+
+/// An image over twice the edge is reduced by the area average, then by Lanczos3, to the size
+/// sharp gives; one at the edge or under it keeps its size.
+#[test]
+fn decode_fit_gives_sharps_size_through_the_prefilter() {
+    let bytes = fixture("png rgb @140");
+    let info = decode_fit(&bytes, u32::MAX).expect("whole").info;
+    for edge in [1, 7, 40, info.width.max(info.height)] {
+        let fitted = decode_fit(&bytes, edge).expect("fits");
+        assert_eq!(
+            (fitted.image.width(), fitted.image.height()),
+            fit_size(info.width, info.height, edge)
+        );
+    }
+}
+
+/// libvips casts a 16-bit sample to 8 bits by its high byte: 0x01FF is 1, where rounding gives 2.
+#[test]
+fn a_16_bit_sample_keeps_its_high_byte() {
+    let mut grey = image::ImageBuffer::<image::Luma<u16>, _>::new(1, 1);
+    grey.put_pixel(0, 0, image::Luma([0x01FF]));
+    let mut bytes = std::io::Cursor::new(Vec::new());
+    DynamicImage::ImageLuma16(grey)
+        .write_to(&mut bytes, ImageFormat::Png)
+        .expect("png");
+    let fitted = decode_fit(bytes.get_ref(), 8).expect("decodes");
+    assert_eq!(fitted.image.as_rgb8().expect("rgb").as_raw(), &[1, 1, 1]);
+    assert_eq!(decode(bytes.get_ref()).expect("decodes").data, [1, 1, 1]);
 }
 
 proptest! {
@@ -281,13 +321,15 @@ proptest! {
                 bytes.truncate(cut.index(bytes.len()) + 1);
             }
         }
-        let (rgb, rgba) = on_small_stack(move || (decode(&bytes), decode_rgba(&bytes)));
+        let (rgb, fitted) = on_small_stack(move || (decode(&bytes), decode_fit(&bytes, 64)));
         if let Ok(image) = rgb {
             prop_assert_eq!(image.data.len(), image.width * image.height * 3);
         }
-        if let Ok((info, image)) = rgba {
-            let (width, height) = (u64::from(image.width()), u64::from(image.height()));
-            prop_assert_eq!(width * height, u64::from(info.width) * u64::from(info.height));
+        if let Ok(fitted) = fitted {
+            let (width, height) = (fitted.image.width(), fitted.image.height());
+            prop_assert_eq!((width, height), fit_size(fitted.width, fitted.height, 64));
+            let channels = if fitted.image.color().has_alpha() { 4 } else { 3 };
+            prop_assert_eq!(fitted.image.as_bytes().len(), (width * height) as usize * channels);
         }
     }
 

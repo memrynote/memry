@@ -83,6 +83,8 @@ strip = "debuginfo"
 opt-level = 3
 [profile.dev.package.memry-media]
 opt-level = 3
+[profile.dev.package.image]
+opt-level = 3
 [profile.dev.package.zune-jpeg]
 opt-level = 3
 [profile.dev.package.png]

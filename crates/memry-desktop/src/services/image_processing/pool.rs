@@ -2,8 +2,10 @@
 //! a few requests run at once, at most 256 wait behind them, and a running request has 60 s.
 //!
 //! Electron frees a timed-out request's slot while its worker keeps working; here the work keeps
-//! its slot until it returns, so abandoned work never runs past the concurrency bound. Every
-//! operation is bounded (the decode's caps, ffmpeg's own 10 s), so a slot always comes back.
+//! its slot until it returns, so abandoned work never runs past the concurrency bound. The
+//! operations bound themselves: the decode by its caps, ffmpeg by its own 10 s, and a FIFO or
+//! device is refused before it is read. A read from a stalled network mount is not bounded: it
+//! holds its slot until the mount answers, while its caller gets `TimedOut` at 60 s.
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};

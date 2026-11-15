@@ -8,7 +8,7 @@ use std::time::Duration;
 
 use base64::Engine as _;
 use image::{ImageFormat, ImageReader, Rgba, RgbaImage};
-use memry_desktop::services::image_processing::ImageService;
+use memry_desktop::services::image_processing::{ImageError, ImageService};
 
 /// `(width, height, thumbnail size, inbox thumbnail size)` from sharp's `resize(200 | 400, ...,
 /// { fit: 'inside', withoutEnlargement: true })`.
@@ -144,6 +144,101 @@ async fn an_unreadable_image_gets_no_thumbnail() {
         let outcome = service().generate_thumbnail(path, "image/png").await;
         assert!(outcome.expect("ran").is_none());
     }
+}
+
+#[tokio::test]
+async fn a_thumbnail_keeps_alpha() {
+    let dir = tempfile::tempdir().expect("dir");
+    let image = RgbaImage::from_fn(300, 300, |x, _| {
+        Rgba([200, 30, 30, if x < 150 { 0 } else { 255 }])
+    });
+    let path = write(dir.path(), "alpha.png", &png(&image));
+    let thumbnail = service()
+        .generate_thumbnail(path, "image/png")
+        .await
+        .expect("ran")
+        .expect("thumbnail");
+    let decoded = read_as(&thumbnail.data, ImageFormat::WebP);
+    assert_eq!(decoded.get_pixel(10, 100)[3], 0);
+    assert_eq!(decoded.get_pixel(190, 100)[3], 255);
+}
+
+/// The first frame, as sharp reads an animated image: the thumbnail's mean colour is the first
+/// frame's, not the second's.
+#[tokio::test]
+async fn an_animated_webp_thumbnails_its_first_frame() {
+    use image::AnimationDecoder as _;
+
+    let bytes = fixture("webp animated @140");
+    let frames: Vec<RgbaImage> = image::codecs::webp::WebPDecoder::new(Cursor::new(&bytes))
+        .expect("webp")
+        .into_frames()
+        .take(2)
+        .map(|frame| frame.expect("frame").into_buffer())
+        .collect();
+    let mean = |image: &RgbaImage| {
+        let mut sum = [0_u64; 3];
+        for pixel in image.pixels() {
+            for (total, value) in sum.iter_mut().zip(pixel.0) {
+                *total += u64::from(value);
+            }
+        }
+        sum.map(|total| total / u64::from(image.width() * image.height()))
+    };
+    let (first, second) = (mean(&frames[0]), mean(&frames[1]));
+    assert_ne!(first, second, "the fixture's frames differ");
+
+    let dir = tempfile::tempdir().expect("dir");
+    let path = write(dir.path(), "animated.webp", &bytes);
+    let thumbnail = service()
+        .generate_thumbnail(path, "image/webp")
+        .await
+        .expect("ran")
+        .expect("thumbnail");
+    let got = mean(&read_as(&thumbnail.data, ImageFormat::WebP));
+    let distance =
+        |a: [u64; 3], b: [u64; 3]| a.iter().zip(b).map(|(x, y)| x.abs_diff(y)).sum::<u64>();
+    assert!(distance(got, first) <= 3, "{got:?} vs first {first:?}");
+    assert!(distance(got, second) > 3, "{got:?} vs second {second:?}");
+}
+
+/// Only one byte past the 30 MiB cap is read: the decode reports that size, not the file's.
+#[tokio::test]
+async fn an_image_over_30_mib_is_read_only_to_the_cap() {
+    let dir = tempfile::tempdir().expect("dir");
+    let mut bytes = png(&noise(4, 4));
+    bytes.resize(30 * 1024 * 1024 + 4096, 0);
+    let path = write(dir.path(), "big.png", &bytes);
+    let error = service().inbox_image(path).await.expect_err("refused");
+    assert_eq!(
+        error.to_string(),
+        "image is 31457281 bytes, over the 31457280-byte limit"
+    );
+}
+
+/// A FIFO named like an image is refused before a read, which would block until a writer came and
+/// hold a worker until then.
+#[cfg(unix)]
+#[tokio::test]
+async fn a_fifo_is_refused_without_blocking() {
+    use std::os::unix::ffi::OsStrExt as _;
+
+    let dir = tempfile::tempdir().expect("dir");
+    let fifo = dir.path().join("a.png");
+    let name = std::ffi::CString::new(fifo.as_os_str().as_bytes()).expect("path");
+    // SAFETY: `name` is a NUL-terminated path that outlives the call.
+    assert_eq!(unsafe { libc::mkfifo(name.as_ptr(), 0o600) }, 0, "mkfifo");
+    let service = service();
+    let error = service
+        .inbox_image(fifo.clone())
+        .await
+        .expect_err("refused");
+    assert!(
+        matches!(&error, ImageError::Read(io) if io.kind() == std::io::ErrorKind::InvalidInput),
+        "{error:?}"
+    );
+    let thumbnail = service.generate_thumbnail(fifo, "image/png").await;
+    assert!(thumbnail.expect("ran").is_none());
 }
 
 #[tokio::test]
@@ -293,7 +388,7 @@ mod fake_ffmpeg {
     async fn the_path_reaches_ffmpeg_as_one_file_argument_and_no_shell_runs_it() {
         let dir = tempfile::tempdir().expect("dir");
         let root = dir.path().canonicalize().expect("root");
-        let frame = write(&root, "frame.png", &png(&noise(320, 180)));
+        let frame = write(&root, "frame.png", &png(&noise(160, 90)));
         let args = root.join("args");
         let bin = install(
             &root,
@@ -314,7 +409,7 @@ mod fake_ffmpeg {
         // ffmpeg scaled the frame already; the WebP keeps its size.
         assert_eq!(
             read_as(&thumbnail.data, ImageFormat::WebP).dimensions(),
-            (320, 180)
+            (160, 90)
         );
 
         let received = std::fs::read_to_string(&args).expect("args");
@@ -326,6 +421,8 @@ mod fake_ffmpeg {
             "error",
             "-protocol_whitelist",
             "file,pipe",
+            "-format_whitelist",
+            "mov,mp4,m4a,3gp,3g2,mj2,matroska,webm",
             "-i",
             &input,
             "-ss",
@@ -368,6 +465,55 @@ mod fake_ffmpeg {
         // SAFETY: signal 0 only checks that the process exists; it sends nothing.
         let alive = unsafe { libc::kill(pid, 0) } == 0;
         assert!(!alive, "ffmpeg {pid} still runs");
+    }
+
+    /// More output than a frame can hold ends the run at once, without waiting for the time limit.
+    #[tokio::test]
+    async fn ffmpeg_printing_more_than_a_frame_is_killed() {
+        let dir = tempfile::tempdir().expect("dir");
+        let root = dir.path().canonicalize().expect("root");
+        let pid_file = root.join("pid");
+        let bin = install(
+            &root,
+            &format!(
+                "echo $$ > '{}'\nhead -c 17000000 /dev/zero\nexec sleep 600",
+                pid_file.display()
+            ),
+        );
+        let video = write(&root, "clip.mp4", b"video");
+        // A limit past the pool's 60 s: only the output cap can end this run in time.
+        let service = ImageService::with_ffmpeg_dirs(vec![bin], Duration::from_secs(600));
+        let outcome = service.generate_thumbnail(video, "video/mp4").await;
+        assert!(outcome.expect("ran").is_none());
+
+        let pid: libc::pid_t = std::fs::read_to_string(&pid_file)
+            .expect("the script started")
+            .trim()
+            .parse()
+            .expect("pid");
+        // SAFETY: signal 0 only checks that the process exists; it sends nothing.
+        let alive = unsafe { libc::kill(pid, 0) } == 0;
+        assert!(!alive, "ffmpeg {pid} still runs");
+    }
+
+    /// A non-executable `ffmpeg` earlier on `PATH` is skipped, as `which` skips it.
+    #[tokio::test]
+    async fn a_non_executable_ffmpeg_is_skipped() {
+        let dir = tempfile::tempdir().expect("dir");
+        let root = dir.path().canonicalize().expect("root");
+        let frame = write(&root, "frame.png", &png(&noise(32, 18)));
+        let shadow = root.join("shadow");
+        std::fs::create_dir(&shadow).expect("shadow");
+        std::fs::write(shadow.join("ffmpeg"), "#!/bin/sh\nexit 1\n").expect("shadow ffmpeg");
+        let bin = install(&root, &format!("cat '{}'", frame.display()));
+        let video = write(&root, "clip.mp4", b"video");
+        let service = ImageService::with_ffmpeg_dirs(vec![shadow, bin], Duration::from_secs(10));
+        let thumbnail = service
+            .generate_thumbnail(video, "video/mp4")
+            .await
+            .expect("ran")
+            .expect("the executable one ran");
+        assert_eq!((thumbnail.width, thumbnail.height), (32, 18));
     }
 
     #[tokio::test]

@@ -3,8 +3,10 @@
 //!
 //! The file is untrusted. ffmpeg runs without a shell, with the path as one argument behind the
 //! `file:` protocol (so a name like `-y`, `concat:` or `http://` is never an option or a URL),
-//! reads only `file` and `pipe` (an `.mp4` holding an HLS playlist cannot fetch the network), and
-//! is killed when it passes its time limit or prints more than a frame can hold.
+//! reads only `file` and `pipe` (an `.mp4` holding an HLS playlist cannot fetch the network),
+//! opens the input only as a video container (a `.mp4` holding a DASH manifest, which ffmpeg
+//! detects by content, is not read as one and cannot point it at other files), and is killed when
+//! it passes its time limit or prints more than a frame can hold.
 
 use std::ffi::{OsStr, OsString};
 use std::io::Read;
@@ -23,6 +25,8 @@ const LOOKUP_TIMEOUT: Duration = Duration::from_secs(3);
 pub(super) const RUN_TIMEOUT: Duration = Duration::from_secs(10);
 /// One 200 px PNG frame is far below this; more is not a frame.
 const MAX_FRAME_BYTES: u64 = 16 * 1024 * 1024;
+/// The demuxers of the containers `video/mp4` and `video/webm` come in.
+const FORMATS: &str = "mov,mp4,m4a,3gp,3g2,mj2,matroska,webm";
 
 const EXECUTABLE: &str = if cfg!(windows) {
     "ffmpeg.exe"
@@ -58,15 +62,12 @@ impl Ffmpeg {
         self.found
             .get_or_init(|| {
                 let dirs = self.dirs.clone();
-                let (tx, rx) = mpsc::channel();
-                thread::spawn(move || {
-                    let found = dirs
-                        .into_iter()
+                let found = within(LOOKUP_TIMEOUT, move || {
+                    dirs.into_iter()
                         .map(|dir| dir.join(EXECUTABLE))
-                        .find(|candidate| candidate.is_file());
-                    tx.send(found)
-                });
-                let found = rx.recv_timeout(LOOKUP_TIMEOUT).ok().flatten();
+                        .find(|candidate| is_executable(candidate))
+                })
+                .flatten();
                 if found.is_none() {
                     tracing::debug!("ffmpeg not found, skipping video thumbnails");
                 }
@@ -90,7 +91,8 @@ impl Ffmpeg {
         let mut command = Command::new(ffmpeg);
         command
             .args(["-nostdin", "-hide_banner", "-loglevel", "error"])
-            .args(["-protocol_whitelist", "file,pipe", "-i"])
+            .args(["-protocol_whitelist", "file,pipe"])
+            .args(["-format_whitelist", FORMATS, "-i"])
             .arg(input)
             .args(["-ss", "1", "-vframes", "1", "-vf", &scale])
             .args(["-f", "image2pipe", "-vcodec", "png", "-"])
@@ -111,10 +113,55 @@ impl Ffmpeg {
     }
 }
 
+/// `job`'s result when it comes within `timeout`; otherwise None, and the job's thread is left to
+/// finish on its own.
+fn within<T: Send + 'static>(
+    timeout: Duration,
+    job: impl FnOnce() -> T + Send + 'static,
+) -> Option<T> {
+    let (tx, rx) = mpsc::channel();
+    thread::spawn(move || tx.send(job()));
+    rx.recv_timeout(timeout).ok()
+}
+
+/// A file a process can be started from: on unix, one with an execute bit, as `which` skips a
+/// non-executable `ffmpeg` earlier on `PATH`.
+fn is_executable(path: &Path) -> bool {
+    let Ok(metadata) = path.metadata() else {
+        return false;
+    };
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        metadata.is_file() && metadata.permissions().mode() & 0o111 != 0
+    }
+    #[cfg(not(unix))]
+    {
+        metadata.is_file()
+    }
+}
+
+/// ffmpeg, killed when dropped while it still runs: past its limits in `run`, and on an unwind. A
+/// plain `Child` leaves the process running when dropped.
+struct KillOnDrop(Child);
+
+impl Drop for KillOnDrop {
+    fn drop(&mut self) {
+        if matches!(self.0.try_wait(), Ok(Some(_))) {
+            return;
+        }
+        if let Err(error) = self.0.kill() {
+            tracing::warn!(%error, "ffmpeg kill failed");
+        }
+        let _ = self.0.wait();
+    }
+}
+
 /// The stdout of `child` once it exits successfully within `timeout`; otherwise it is killed.
-fn run(mut child: Child, timeout: Duration) -> Option<Vec<u8>> {
+fn run(child: Child, timeout: Duration) -> Option<Vec<u8>> {
     let deadline = Instant::now() + timeout;
-    let mut stdout = child.stdout.take()?;
+    let mut child = KillOnDrop(child);
+    let mut stdout = child.0.stdout.take()?;
     let (tx, rx) = mpsc::channel();
     thread::spawn(move || {
         let mut frame = Vec::new();
@@ -131,16 +178,20 @@ fn run(mut child: Child, timeout: Duration) -> Option<Vec<u8>> {
                 Ok(Ok(_)) => "printed more than a frame",
                 Ok(Err(_)) => "output unreadable",
             };
-            return kill(child, reason);
+            tracing::warn!(reason, "ffmpeg stopped");
+            return None;
         }
     };
-    match wait_until(&mut child, deadline) {
+    match wait_until(&mut child.0, deadline) {
         Some(status) if status.success() && !frame.is_empty() => Some(frame),
         Some(status) => {
             tracing::debug!(%status, "ffmpeg gave no frame");
             None
         }
-        None => kill(child, "timed out"),
+        None => {
+            tracing::warn!(reason = "timed out", "ffmpeg stopped");
+            None
+        }
     }
 }
 
@@ -156,15 +207,6 @@ fn wait_until(child: &mut Child, deadline: Instant) -> Option<ExitStatus> {
     }
 }
 
-fn kill(mut child: Child, reason: &str) -> Option<Vec<u8>> {
-    tracing::warn!(reason, "ffmpeg stopped");
-    if let Err(error) = child.kill() {
-        tracing::warn!(%error, "ffmpeg kill failed");
-    }
-    let _ = child.wait();
-    None
-}
-
 /// Where ffmpeg is looked for: the absolute `PATH` entries (a relative one would resolve against
 /// whatever directory the app runs in), then the extra directories.
 pub(super) fn search_dirs(search_path: Option<&OsStr>) -> Vec<PathBuf> {
@@ -175,4 +217,17 @@ pub(super) fn search_dirs(search_path: Option<&OsStr>) -> Vec<PathBuf> {
         .filter(|dir| dir.is_absolute())
         .chain(EXTRA_DIRS.iter().map(PathBuf::from))
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_lookup_past_its_limit_gives_up() {
+        let (_hold, blocked) = mpsc::channel::<()>();
+        let found = within(Duration::from_millis(10), move || blocked.recv().ok());
+        assert_eq!(found, None);
+        assert_eq!(within(LOOKUP_TIMEOUT, || 7), Some(7));
+    }
 }

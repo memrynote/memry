@@ -135,10 +135,9 @@ impl ImageService {
                     Kind::Image => encode::read_bounded(&path)
                         .map_err(ImageError::from)
                         .and_then(|bytes| encode::thumbnail(&bytes)),
+                    // ffmpeg already scaled the frame; the fit leaves it as it is.
                     Kind::Video => match ffmpeg.frame_png(&path) {
-                        Some(frame) => memry_media::decode_rgba(&frame)
-                            .map_err(ImageError::from)
-                            .and_then(|(_, image)| encode::webp(&image)),
+                        Some(frame) => encode::thumbnail(&frame),
                         None => return None,
                     },
                 };
