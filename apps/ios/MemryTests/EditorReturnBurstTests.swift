@@ -93,6 +93,41 @@ private final class Screen {
         window.frame = CGRect(x: 0, y: 0, width: 400, height: 800)
         window.rootViewController = UIHostingController(rootView: Body(page: page, model: model, editor: editor))
         window.makeKeyAndVisible()
+        observer = NotificationCenter.default.addObserver(
+            forName: UIWindow.didResignKeyNotification, object: window, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.interrupted = true }
+        }
+    }
+
+    /// Another suite made its window key while this screen was up. Suites
+    /// run in parallel in this process, and that takes the caret from the
+    /// old block for a reason other than its Return's new block, which
+    /// leaves the held keys where they were typed (by design).
+    private(set) var interrupted = false
+    private var observer: NSObjectProtocol?
+
+    func close() {
+        observer.map(NotificationCenter.default.removeObserver)
+        window.isHidden = true
+    }
+
+    /// Runs `scenario` on a new screen until a run is not interrupted, and
+    /// returns what it saw. An interrupted run proves nothing either way.
+    static func run<T>(
+        _ kind: String = "paragraph", text: String, _ scenario: (Screen) async throws -> T
+    ) async throws -> T {
+        var attempt = 0
+        while true {
+            attempt += 1
+            let screen = try Screen(kind, text: text)
+            defer { screen.close() }
+            let seen = try await scenario(screen)
+            if !screen.interrupted || attempt == 10 { return seen }
+            print("EditorReturnBurstTests: another suite took the caret, run \(attempt) discarded")
+            // The other suite types for a while: wait it out.
+            try await Task.sleep(for: .milliseconds(200 * attempt))
+        }
     }
 
     func textViews(in view: UIView? = nil) -> [BlockTextView] {
@@ -118,7 +153,7 @@ private final class Screen {
     func keys(_ text: String) {
         for character in text {
             guard let view = focused else {
-                Issue.record("no text view holds the caret")
+                if !interrupted { Issue.record("no text view holds the caret") }
                 return
             }
             let key = String(character)
@@ -147,93 +182,103 @@ private final class Screen {
 struct EditorReturnBurstTests {
     /// The issue's burst: `Alpha1`, Return, `Beta1` in one go.
     @Test(.timeLimit(.minutes(1))) func keysTypedRightAfterReturnLandInTheNewBlock() async throws {
-        let screen = try Screen(text: "")
-        defer { screen.window.isHidden = true }
-        _ = try await screen.start()
-        screen.keys("Alpha1\nBeta1")
-        for _ in 0 ..< 80 where screen.focused?.text != "Beta1" { try await Task.sleep(for: .milliseconds(25)) }
-        #expect(screen.focused?.text == "Beta1", "the caret went on with the keys")
-        try await screen.finish(blocks: 2)
-        #expect(screen.editor.shown == ["Alpha1", "Beta1"], "\(screen.editor.shown)")
+        let (caret, shown) = try await Screen.run(text: "") { screen in
+            _ = try await screen.start()
+            screen.keys("Alpha1\nBeta1")
+            for _ in 0 ..< 80 where screen.focused?.text != "Beta1" { try await Task.sleep(for: .milliseconds(25)) }
+            let caret = screen.focused?.text
+            try await screen.finish(blocks: 2)
+            return (caret, screen.editor.shown)
+        }
+        #expect(caret == "Beta1", "the caret went on with the keys")
+        #expect(shown == ["Alpha1", "Beta1"], "\(shown)")
     }
 
     /// Several Returns in one burst each make their block, in order.
     @Test(.timeLimit(.minutes(1))) func aBurstOfLinesMakesOneBlockPerLine() async throws {
-        let screen = try Screen(text: "")
-        defer { screen.window.isHidden = true }
-        _ = try await screen.start()
-        screen.keys("Alpha1\nBeta1\nAlpha2\nBeta2")
-        try await screen.finish(blocks: 4)
-        #expect(screen.editor.shown == ["Alpha1", "Beta1", "Alpha2", "Beta2"], "\(screen.editor.shown)")
+        let shown = try await Screen.run(text: "") { screen in
+            _ = try await screen.start()
+            screen.keys("Alpha1\nBeta1\nAlpha2\nBeta2")
+            try await screen.finish(blocks: 4)
+            return screen.editor.shown
+        }
+        #expect(shown == ["Alpha1", "Beta1", "Alpha2", "Beta2"], "\(shown)")
     }
 
     /// A checklist item's Return makes a sibling item, which takes the keys.
     @Test(.timeLimit(.minutes(1))) func keysAfterReturnInAChecklistLandInTheNewItem() async throws {
-        let screen = try Screen("checkListItem", text: "milk")
-        defer { screen.window.isHidden = true }
-        _ = try await screen.start()
-        screen.keys("\neggs")
-        try await screen.finish(blocks: 2)
-        #expect(screen.editor.all.map(\.kind) == ["checkListItem", "checkListItem"])
-        #expect(screen.editor.shown == ["milk", "eggs"], "\(screen.editor.shown)")
+        let blocks = try await Screen.run("checkListItem", text: "milk") { screen in
+            _ = try await screen.start()
+            screen.keys("\neggs")
+            try await screen.finish(blocks: 2)
+            return screen.editor.all
+        }
+        #expect(blocks.map(\.kind) == ["checkListItem", "checkListItem"])
+        #expect(blocks.map { BlockText.shown($0.inline) } == ["milk", "eggs"])
     }
 
     /// Return with the caret inside the text: the keys typed after it go to
     /// the new block, and the text around the caret stays whole.
     @Test(.timeLimit(.minutes(1))) func keysAfterAReturnMidTextLeaveTheTextWhole() async throws {
-        let screen = try Screen(text: "headtail")
-        defer { screen.window.isHidden = true }
-        _ = try await screen.start(caret: 4)
-        screen.keys("\nnew")
-        try await screen.finish(blocks: 2)
-        #expect(screen.editor.shown == ["headtail", "new"], "\(screen.editor.shown)")
+        let shown = try await Screen.run(text: "headtail") { screen in
+            _ = try await screen.start(caret: 4)
+            screen.keys("\nnew")
+            try await screen.finish(blocks: 2)
+            return screen.editor.shown
+        }
+        #expect(shown == ["headtail", "new"], "\(shown)")
     }
 
     /// An IME composition begun before the new block takes the caret moves
     /// there whole, converted as it stood.
     @Test(.timeLimit(.minutes(1))) func aCompositionBegunAfterReturnMovesToTheNewBlock() async throws {
-        let screen = try Screen(text: "")
-        defer { screen.window.isHidden = true }
-        let first = try await screen.start()
-        screen.keys("Alpha\n")
-        first.setMarkedText("にほん", selectedRange: NSRange(location: 3, length: 0))
-        try await screen.finish(blocks: 2)
-        #expect(screen.editor.shown == ["Alpha", "にほん"], "\(screen.editor.shown)")
+        let shown = try await Screen.run(text: "") { screen in
+            let first = try await screen.start()
+            screen.keys("Alpha\n")
+            first.setMarkedText("にほん", selectedRange: NSRange(location: 3, length: 0))
+            try await screen.finish(blocks: 2)
+            return screen.editor.shown
+        }
+        #expect(shown == ["Alpha", "にほん"], "\(shown)")
     }
 
     /// Autocorrect sees the held keys as one word with the text before the
     /// Return and splits it ("Milkeggs" to "Milk eggs"). It never reaches
     /// back past the Return, so the new block gets no leading space.
     @Test(.timeLimit(.minutes(1))) func autocorrectionAcrossTheReturnIsRefused() async throws {
-        let screen = try Screen(text: "")
-        defer { screen.window.isHidden = true }
-        let first = try await screen.start()
-        screen.keys("Milk\neggs")
-        let whole = NSRange(location: 0, length: first.textStorage.length)
-        if first.delegate?.textView?(first, shouldChangeTextIn: whole, replacementText: "Milk eggs") != false {
-            first.textStorage.replaceCharacters(in: whole, with: "Milk eggs")
+        let shown = try await Screen.run(text: "") { screen in
+            let first = try await screen.start()
+            screen.keys("Milk\neggs")
+            let whole = NSRange(location: 0, length: first.textStorage.length)
+            if first.delegate?.textView?(first, shouldChangeTextIn: whole, replacementText: "Milk eggs") != false {
+                first.textStorage.replaceCharacters(in: whole, with: "Milk eggs")
+            }
+            try await screen.finish(blocks: 2)
+            return screen.editor.shown
         }
-        try await screen.finish(blocks: 2)
-        #expect(screen.editor.shown == ["Milk", "eggs"], "\(screen.editor.shown)")
+        #expect(shown == ["Milk", "eggs"], "\(shown)")
     }
 
     /// Undo after the burst takes back the new block's typing first, then
     /// the block itself, and leaves the first block's text alone.
     @Test(.timeLimit(.minutes(1))) func undoAfterTheBurstTakesTheNewTypingThenTheBlock() async throws {
-        let screen = try Screen(text: "")
-        defer { screen.window.isHidden = true }
-        _ = try await screen.start()
-        screen.keys("Alpha1\nBeta1")
-        for _ in 0 ..< 80 where screen.editor.all.count < 2 || screen.focused?.text != "Beta1" {
-            try await Task.sleep(for: .milliseconds(25))
+        let (typed, afterTypingUndo, shown) = try await Screen.run(text: "") { screen in
+            _ = try await screen.start()
+            screen.keys("Alpha1\nBeta1")
+            for _ in 0 ..< 80 where screen.editor.all.count < 2 || screen.focused?.text != "Beta1" {
+                try await Task.sleep(for: .milliseconds(25))
+            }
+            let session = screen.model.session
+            let typed = screen.focused?.text
+            session.undo()
+            let afterTypingUndo = screen.focused?.text
+            session.undo()
+            session.enqueue {}
+            await session.tail?.value
+            return (typed, afterTypingUndo, screen.editor.shown)
         }
-        let session = screen.model.session
-        #expect(screen.focused?.text == "Beta1")
-        session.undo()
-        #expect(screen.focused?.text == "", "the typing undo empties the new block")
-        session.undo()
-        session.enqueue {}
-        await session.tail?.value
-        #expect(screen.editor.shown == ["Alpha1"], "then the block goes, and the first keeps its text")
+        #expect(typed == "Beta1")
+        #expect(afterTypingUndo == "", "the typing undo empties the new block")
+        #expect(shown == ["Alpha1"], "then the block goes, and the first keeps its text")
     }
 }
