@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { createMockApi } from '@tests/setup-dom'
 
 const mocks = vi.hoisted(() => ({
   commands: {
@@ -11,7 +10,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('../../../generated/bindings', () => ({ commands: mocks.commands }))
 
-import { deviceService, setupService } from './device-service'
+import { deviceService } from './device-service'
 
 describe('device-service', () => {
   beforeEach(() => {
@@ -68,37 +67,5 @@ describe('device-service', () => {
     })
     expect(mocks.commands.syncRenameDevice).toHaveBeenCalledWith('dev-1', 'My Laptop')
     expect(mocks.commands.syncRemoveDevice).toHaveBeenCalledWith('dev-1')
-  })
-})
-
-describe('setup-service', () => {
-  let api: ReturnType<typeof createMockApi>
-
-  beforeEach(() => {
-    api = createMockApi()
-    ;(window as Window & { api: unknown }).api = api
-  })
-
-  it('forwards setupFirstDevice to window.api.syncSetup', async () => {
-    // #given
-    const response = {
-      success: true,
-      recoveryPhrase: 'word1 word2 word3',
-      deviceId: 'dev-1'
-    }
-    api.syncSetup.setupFirstDevice = vi.fn().mockResolvedValue(response)
-
-    // #when
-    const result = await setupService.setupFirstDevice({
-      provider: 'google',
-      oauthToken: 'oauth-token-123'
-    })
-
-    // #then
-    expect(api.syncSetup.setupFirstDevice).toHaveBeenCalledWith({
-      provider: 'google',
-      oauthToken: 'oauth-token-123'
-    })
-    expect(result).toEqual(response)
   })
 })

@@ -8,6 +8,7 @@ const serviceMocks = vi.hoisted(() => ({
     verifyOtp: vi.fn(),
     resendOtp: vi.fn(),
     initOAuth: vi.fn(),
+    retryOAuth: vi.fn(),
     refreshToken: vi.fn(),
     setupFirstDevice: vi.fn(),
     setupNewAccount: vi.fn(),
@@ -51,6 +52,27 @@ vi.mock('../../../generated/bindings', () => ({
           }
         }
       )
+    },
+    authOauthCallbackEvent: {
+      listen: vi.fn(
+        async (handler: (event: { payload: { code: string; state: string } }) => void) => {
+          const cb = (payload: { code: string; state: string }): void => handler({ payload })
+          oauthCallback = cb
+          return () => {
+            if (oauthCallback === cb) oauthCallback = null
+          }
+        }
+      )
+    },
+    authOauthErrorEvent: {
+      listen: vi.fn(async (handler: (event: { payload: { error: string } }) => void) => {
+        const cb = (payload: { error?: string }): void =>
+          handler({ payload: { error: payload.error ?? '' } })
+        oauthErrorCallback = cb
+        return () => {
+          if (oauthErrorCallback === cb) oauthErrorCallback = null
+        }
+      })
     }
   }
 }))
@@ -96,14 +118,6 @@ function installApiHandlers(): void {
       if (syncStatusCallback === cb) syncStatusCallback = null
     }
   })
-  api.onOAuthError = vi.fn((cb: EventCallback<{ error?: string }>) => {
-    oauthErrorCallback = cb
-    return vi.fn()
-  })
-  api.onOAuthCallback = vi.fn((cb: EventCallback<{ code: string; state: string }>) => {
-    oauthCallback = cb
-    return vi.fn()
-  })
 }
 
 describe('AuthProvider', () => {
@@ -129,7 +143,11 @@ describe('AuthProvider', () => {
       success: true,
       deviceId: 'new-device'
     })
-    serviceMocks.authService.initOAuth.mockResolvedValue({ state: 'oauth-state' })
+    serviceMocks.authService.initOAuth.mockResolvedValue({
+      state: 'oauth-state',
+      authorizationUrl: 'https://accounts.google.com/auth?state=oauth-state',
+      browserOpened: true
+    })
     serviceMocks.authService.setupFirstDevice.mockResolvedValue({
       deviceId: 'oauth-device',
       needsRecoverySetup: true
@@ -201,6 +219,9 @@ describe('AuthProvider', () => {
     })
     expect(result.current.state.status).toBe('unauthenticated')
 
+    await act(async () => {
+      await result.current.initOAuth()
+    })
     act(() => {
       oauthErrorCallback?.({ error: 'OAuth failed' })
     })
@@ -384,18 +405,21 @@ describe('AuthProvider', () => {
     await waitFor(() => expect(result.current.state.status).toBe('unauthenticated'))
 
     await act(async () => {
-      expect(await result.current.initOAuth()).toEqual({ state: 'oauth-state' })
+      expect(await result.current.initOAuth()).toEqual({
+        state: 'oauth-state',
+        authorizationUrl: 'https://accounts.google.com/auth?state=oauth-state',
+        browserOpened: true
+      })
     })
 
     act(() => {
       result.current.setWizardStep('linking-scan', {
         linkingSessionId: 'session-1',
         verificationCode: '246810',
-        expiresAt: 123,
-        oauthState: 'expected-state'
+        expiresAt: 123
       })
     })
-    await waitFor(() => expect(result.current.state.wizardOAuthState).toBe('expected-state'))
+    expect(result.current.oauthSession?.state).toBe('oauth-state')
 
     await act(async () => {
       oauthCallback?.({ code: 'ignored-code', state: 'wrong-state' })
@@ -404,7 +428,7 @@ describe('AuthProvider', () => {
     expect(serviceMocks.authService.setupFirstDevice).not.toHaveBeenCalled()
 
     await act(async () => {
-      oauthCallback?.({ code: 'oauth-code', state: 'expected-state' })
+      oauthCallback?.({ code: 'oauth-code', state: 'oauth-state' })
       await Promise.resolve()
     })
 
@@ -575,28 +599,26 @@ describe('AuthProvider', () => {
     const { result } = renderHook(() => useAuth(), { wrapper })
     await waitFor(() => expect(result.current.state.status).toBe('unauthenticated'))
 
-    act(() => {
-      result.current.setWizardStep('linking-scan', { oauthState: 'oauth-error-state' })
+    await act(async () => {
+      await result.current.initOAuth()
     })
-    await waitFor(() => expect(result.current.state.wizardOAuthState).toBe('oauth-error-state'))
 
     serviceMocks.authService.setupFirstDevice.mockResolvedValueOnce({
       error: 'google setup failed'
     })
     await act(async () => {
-      oauthCallback?.({ code: 'oauth-code', state: 'oauth-error-state' })
+      oauthCallback?.({ code: 'oauth-code', state: 'oauth-state' })
       await Promise.resolve()
     })
     await waitFor(() => expect(result.current.state.wizardError).toBe('google setup failed'))
 
-    act(() => {
-      result.current.setWizardStep('linking-scan', { oauthState: 'oauth-throw-state' })
+    await act(async () => {
+      await result.current.initOAuth()
     })
-    await waitFor(() => expect(result.current.state.wizardOAuthState).toBe('oauth-throw-state'))
 
     serviceMocks.authService.setupFirstDevice.mockRejectedValueOnce(new Error('google threw'))
     await act(async () => {
-      oauthCallback?.({ code: 'oauth-code', state: 'oauth-throw-state' })
+      oauthCallback?.({ code: 'oauth-code', state: 'oauth-state' })
       await Promise.resolve()
     })
     await waitFor(() => expect(result.current.state.wizardError).toBe('google threw'))

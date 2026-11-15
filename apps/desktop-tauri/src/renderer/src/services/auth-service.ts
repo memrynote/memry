@@ -1,5 +1,7 @@
 import { LINK_FAILURE_SETUP_SESSION_EXPIRED } from '@memry/contracts/ipc-devices'
 
+import type { SetupFirstDeviceResult } from '@memry/contracts/ipc-auth'
+
 import { commands, type AuthOtpSent } from '../../../generated/bindings'
 import { commandErrorCode, extractErrorMessage } from '@/lib/ipc-error'
 
@@ -55,15 +57,33 @@ export const authService = {
   resendOtp: (_input: { email: string }) =>
     envelope(async () => sent(await commands.authResendOtp())),
 
-  initOAuth: (input: { provider: 'google' }) => {
-    return window.api.syncAuth.initOAuth(input)
-  },
+  // Google is the one provider; the command knows it.
+  initOAuth: (_input: { provider: 'google' }) => envelope(() => commands.authInitOauth()),
+
+  retryOAuth: (input: { state: string }) => envelope(() => commands.authRetryOauth(input.state)),
+
+  // Closes the loopback and signs the session out (no Electron counterpart: no core state there).
+  cancelOAuth: () =>
+    envelope(async () => {
+      await commands.authCancelOauth()
+      return {}
+    }),
 
   refreshToken: () => commands.authRefreshToken(),
 
-  setupFirstDevice: (input: { provider: 'google'; oauthToken: string; state: string }) => {
-    return window.api.syncSetup.setupFirstDevice(input)
-  },
+  setupFirstDevice: (input: {
+    provider: 'google'
+    oauthToken: string
+    state: string
+  }): Promise<SetupFirstDeviceResult> =>
+    envelope(async () => {
+      const first = await commands.syncSetupFirstDevice(
+        input.provider,
+        input.oauthToken,
+        input.state
+      )
+      return { ...first, deviceId: first.deviceId ?? undefined }
+    }),
 
   setupNewAccount: () =>
     envelope(() => commands.syncSetupNewAccount(), { account_setup_conflict: SETUP_CONFLICT }),

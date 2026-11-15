@@ -15,6 +15,9 @@ use tauri::{AppHandle, Emitter, EventTarget, Runtime};
 
 use crate::commands::vault_locks::VaultLockStateView;
 
+mod account;
+pub use account::*;
+
 /// Emit `event` to every webview: the one window-wide emit (inv09#66). Each listener gets it once.
 /// The generated `listen` registers for any target, and Tauri hands every such listener each
 /// `emit_to` as well, so a `send_to` per window would deliver one copy per window. A failed
@@ -87,25 +90,6 @@ pub struct CrdtProviderResetEvent;
 #[serde(rename_all = "camelCase")]
 pub struct CrdtProviderReadyEvent {
     pub vault_path: String,
-}
-
-/// A six-digit code was copied while the email code screen waits for one (`sync:otp-detected`).
-#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
-pub struct AuthOtpDetectedEvent {
-    pub code: String,
-}
-
-/// The access token was renewed (`sync:token-refreshed`; the name keeps the secret scan off it).
-#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
-pub struct AuthSessionRefreshedEvent {}
-
-/// A linked device finished registering, or failed to (`sync:linking-finalized`). The new device's
-/// link finalizes in the background after the approval; `error` is the failure's message.
-#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
-#[serde(rename_all = "camelCase")]
-pub struct SyncLinkingFinalizedEvent {
-    pub device_id: Option<String>,
-    pub error: Option<String>,
 }
 
 /// A custom icon was added, renamed or deleted (`custom-icons:updated`). The renderer refetches

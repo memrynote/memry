@@ -29,10 +29,6 @@ export const deviceService = {
 }
 
 export const setupService = {
-  setupFirstDevice: (input: { provider: 'google'; oauthToken: string; state: string }) => {
-    return window.api.syncSetup.setupFirstDevice(input)
-  },
-
   setupNewAccount: authService.setupNewAccount,
 
   confirmRecoveryPhrase: authService.confirmRecoveryPhrase

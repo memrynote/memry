@@ -10,12 +10,14 @@
 pub mod device;
 mod devices;
 mod linking;
+mod oauth;
 pub mod otp_clipboard;
 mod recovery;
 
 pub use devices::DeviceList;
 pub use linking::{LinkPoll, LinkScanned, LinkingQr, VaultChoice, dormant_vault_folder_name};
 pub use memry_core::protocol::auth::DeviceFormFactor;
+pub use oauth::{FirstDevice, OAUTH_ATTEMPT_TTL, OAuthEvent, OAuthStarted};
 
 use std::sync::{Arc, Mutex};
 
@@ -70,6 +72,14 @@ pub enum AccountError {
     VaultChoice(String),
     #[error("this device cannot remove itself")]
     CannotRemoveCurrentDevice,
+    /// The server's answer to the sign-in request named no `https` provider URL with a `state`.
+    #[error("the server gave no usable sign-in link")]
+    OAuthInvalidResponse,
+    /// The browser attempt ended (declined, expired, or already used).
+    #[error("the sign-in attempt expired")]
+    OAuthExpired,
+    #[error("the sign-in loopback could not start")]
+    OAuthLoopback,
 }
 
 impl From<SecureStoreError> for AccountError {
@@ -112,6 +122,9 @@ impl CoreError for AccountError {
             Self::CannotRemoveCurrentDevice => {
                 (FailureKind::Invalid, "cannot_remove_current_device")
             }
+            Self::OAuthInvalidResponse => (FailureKind::Api, "oauth_invalid_response"),
+            Self::OAuthExpired => (FailureKind::Auth, "oauth_expired"),
+            Self::OAuthLoopback => (FailureKind::Internal, "oauth_loopback_unavailable"),
         }
     }
 }
@@ -156,6 +169,10 @@ pub struct AccountService {
     phrase: Mutex<Option<Zeroizing<String>>>,
     /// One key-changing operation at a time: two setups would each mint a master key.
     key_op: tokio::sync::Mutex<()>,
+    /// The Google sign-in waiting for its browser (`oauthSessions`, `ipc/auth-oauth-state.ts`).
+    oauth: Mutex<Option<oauth::OAuthAttempt>>,
+    /// One Google start or Cancel at a time: a start ends the attempt before it.
+    oauth_start: tokio::sync::Mutex<()>,
 }
 
 impl AccountService {
@@ -185,6 +202,8 @@ impl AccountService {
             config,
             phrase: Mutex::new(None),
             key_op: tokio::sync::Mutex::new(()),
+            oauth: Mutex::new(None),
+            oauth_start: tokio::sync::Mutex::new(()),
         };
         service.restore();
         Ok(service)
@@ -205,10 +224,18 @@ impl AccountService {
         }
     }
 
-    /// `POST /auth/otp/request`, then the code's lifetime in seconds. A code already pending for
-    /// another address ends first, and so does a setup that never registered a device (a failed
-    /// or expired setup, a locked keychain): only its setup token goes.
+    /// `POST /auth/otp/request`, then the code's lifetime in seconds. A sign-in in flight ends
+    /// first ([`Self::end_pending_sign_in`]).
     pub async fn request_otp(&self, email: String) -> Result<Option<u64>, AccountError> {
+        self.end_pending_sign_in()?;
+        Ok(self.session.request_email_code_answer(email).await?.1)
+    }
+
+    /// Before a new sign-in: a code pending for another address ends, a Google attempt ends with
+    /// its loopback, and a setup that never registered a device (a failed or expired setup, a
+    /// locked keychain) ends; only its setup token goes.
+    fn end_pending_sign_in(&self) -> Result<(), AccountError> {
+        self.end_oauth_attempt()?;
         match self.session.state() {
             AuthState::AwaitingOtp { .. } => {
                 self.session.abandon_email_sign_in()?;
@@ -218,7 +245,7 @@ impl AccountService {
             }
             _ => {}
         }
-        Ok(self.session.request_email_code_answer(email).await?.1)
+        Ok(())
     }
 
     pub async fn resend_otp(&self) -> Result<Option<u64>, AccountError> {
