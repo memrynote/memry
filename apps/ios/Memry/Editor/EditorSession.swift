@@ -798,6 +798,7 @@ final class EditorSession {
         guard let field else { return }
         let textView = field.textView
         show(.none)
+        textView.unmarkText()
         let caret = textView.selectedRange.location
         let string = textView.text as NSString
         let before = caret > 0 && caret <= string.length ? string.character(at: caret - 1) : 32
