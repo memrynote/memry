@@ -177,22 +177,6 @@ struct NoteTitleEditor: View {
         draft = draft.replacingOccurrences(of: "\n", with: "")
     }
 
-    /// The title's text view, which has the caret, holds an input method's
-    /// composition.
-    private var composing: Bool {
-        func editing(in view: UIView) -> UITextView? {
-            if let text = view as? UITextView, text.isFirstResponder { return text }
-            // A plain loop: a lazy `compactMap(...).first` maps each level
-            // again for every level above it, which hung the app on a page's
-            // deep view tree.
-            for subview in view.subviews {
-                if let text = editing(in: subview) { return text }
-            }
-            return nil
-        }
-        return host.window.flatMap(editing)?.markedTextRange != nil
-    }
-
     private func typed(_ value: String) {
         if let burst = returned {
             draft = value
@@ -258,7 +242,7 @@ struct NoteTitleEditor: View {
                 // block already drawn in that same turn (`returnToBody`).
                 .onKeyPress(.return, phases: .down) { _ in
                     // An input method's composition takes the Return as its own.
-                    guard !composing else { return .ignored }
+                    guard titleTextView?.markedTextRange == nil else { return .ignored }
                     guard returned == nil else { return .handled }
                     // An edit that ended under the caret (the app resumed)
                     // still moves to the body.
