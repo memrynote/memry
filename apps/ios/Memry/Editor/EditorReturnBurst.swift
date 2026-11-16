@@ -128,15 +128,20 @@ extension EditorSession {
         // Return's block takes the caret: its keys go on all the same
         // (REVIEW-4714).
         guard burst.handing || shortcutField === field else { return returnBurst = nil }
-        // Taking the keys edits the text, and UIKit flushes the keys it
+        // Removing the keys edits the text, and UIKit flushes the keys it
         // queued for the row from inside that edit, as the selection
-        // changes (#4769). They meet a row that gave up its keys
-        // (`carriesEdit`), and no access to the burst is open: one would
-        // abort the app.
+        // changes (#4769). The burst carries them first, so those keys meet
+        // a row that gave up its keys (`carriesEdit`) and act on them in
+        // order. No access to the burst may stay open across the edit: one
+        // aborts the app.
+        let held = heldKeys(burst)
+        // Reading the keys ends a composition, which UIKit may flush as
+        // held keys; one outside them ends the hold (`holdsEdit`).
+        guard returnBurst?.source === field else { return }
         returnBurst?.ended = true
-        let taken = takeHeldKeys(burst)
-        let late = returnBurst?.carried ?? ""
-        if let taken { returnBurst?.carried = taken + late }
+        guard let held else { return }
+        returnBurst?.carried = held
+        removeHeldKeys(burst, held)
     }
 
     /// Whether `field`, which gave up its keys as its row went
@@ -146,7 +151,8 @@ extension EditorSession {
     /// such a key came out after the carried keys but ahead of the caret,
     /// so the next keys landed before it (`milk⏎eggs⏎` stored as
     /// `milk|egs|g`, #4737). A key typed at the caret joins the carried
-    /// keys, and a Backspace takes back the last of them.
+    /// keys, and a Backspace takes back the last of them. Any other text
+    /// (an autocorrection) is refused.
     func carriesEdit(_ range: NSRange, _ text: String, in field: BlockField) -> Bool {
         guard let burst = returnBurst, burst.source === field, burst.ended,
               field.textView.text == burst.head + burst.tail
@@ -156,7 +162,8 @@ extension EditorSession {
             returnBurst?.carried = (burst.carried ?? "") + text
             return true
         }
-        guard text.isEmpty, range.length > 0, NSMaxRange(range) == head, var carried = burst.carried else { return false }
+        if !text.isEmpty { return true }
+        guard range.length > 0, NSMaxRange(range) == head, var carried = burst.carried else { return false }
         carried.removeLast()
         returnBurst?.carried = carried.isEmpty ? nil : carried
         return true
@@ -226,8 +233,9 @@ extension EditorSession {
             return
         }
         // A source that was not editing never resigned: its keys come now.
-        let held = burst.ended ? burst.carried : takeHeldKeys(burst)
+        let held = burst.ended ? burst.carried : heldKeys(burst)
         guard let held else { return }
+        if !burst.ended { removeHeldKeys(burst, held) }
         type(held, into: field)
         // Typing commits as editing ends, which never began here.
         if !textView.isFirstResponder, field.dirty { commit(field) }
@@ -249,10 +257,10 @@ extension EditorSession {
         shortcutField.map { $0.blockId == field.blockId && $0 !== field } ?? false
     }
 
-    /// Takes the keys held for the burst's target out of the block they were
-    /// typed in. A composition still open there ends as it stands, so its
-    /// text moves too.
-    private func takeHeldKeys(_ burst: ReturnBurst) -> String? {
+    /// The keys held for the burst's target in the block they were typed
+    /// in. A composition still open there ends as it stands, so its text
+    /// moves too.
+    private func heldKeys(_ burst: ReturnBurst) -> String? {
         guard let source = burst.source else { return nil }
         let view = source.textView
         if view.markedTextRange != nil { view.unmarkText() }
@@ -276,12 +284,19 @@ extension EditorSession {
             Log.interface.error("keys typed after Return held an attachment and stayed in their block")
             return nil
         }
-        view.textStorage.replaceCharacters(in: range, with: "")
+        return held
+    }
+
+    /// Takes `held`, read by `heldKeys`, out of the block they were typed in.
+    private func removeHeldKeys(_ burst: ReturnBurst, _ held: String) {
+        guard let source = burst.source else { return }
+        let view = source.textView
+        let head = (burst.head as NSString).length
+        view.textStorage.replaceCharacters(in: NSRange(location: head, length: (held as NSString).length), with: "")
         view.selectedRange = NSRange(location: head, length: 0)
         view.forgetTyping()
         source.dirty = view.text != source.base
         source.typed = burst.typed
-        return held
     }
 
     /// Types `text` into `field` a key at a time, as the keyboard does. A
