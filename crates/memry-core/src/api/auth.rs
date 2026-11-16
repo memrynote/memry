@@ -16,6 +16,7 @@
 //! (`protocol::auth::refresh_delay_ms`); whoever drives the timer calls
 //! `refresh` and the machine records the transition.
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use base64::Engine as _;
@@ -199,6 +200,10 @@ pub struct AuthSession {
     device: DeviceDescriptor,
     state: Mutex<AuthState>,
     pending: Mutex<PendingSignIn>,
+    /// Set when the user signs out, cleared when a device registers: a refresh token a
+    /// refused keychain delete left behind never restores the session the user ended
+    /// ([`Self::restore`]).
+    signed_out_by_user: AtomicBool,
 }
 
 impl AuthSession {
@@ -269,6 +274,9 @@ impl AuthSession {
         let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
         match transition(&state, &event) {
             Some(next) => {
+                if event == AuthEvent::DeviceRegistered {
+                    self.signed_out_by_user.store(false, Ordering::SeqCst);
+                }
                 *state = next.clone();
                 Ok(next)
             }
@@ -374,6 +382,7 @@ impl AuthSession {
             device,
             state: Mutex::new(AuthState::SignedOut),
             pending: Mutex::new(PendingSignIn::default()),
+            signed_out_by_user: AtomicBool::new(false),
         })
     }
 

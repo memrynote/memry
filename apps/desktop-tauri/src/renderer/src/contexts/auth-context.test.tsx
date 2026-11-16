@@ -21,6 +21,9 @@ const serviceMocks = vi.hoisted(() => ({
   }
 }))
 
+const toastWarning = vi.hoisted(() => vi.fn())
+vi.mock('sonner', () => ({ toast: { warning: toastWarning } }))
+
 vi.mock('@/services/auth-service', () => ({
   SETUP_CONFLICT: 'account-setup-conflict',
   authService: serviceMocks.authService
@@ -206,6 +209,23 @@ describe('AuthProvider', () => {
       await result.current.logout()
     })
     expect(result.current.state.status).toBe('unauthenticated')
+  })
+
+  it('signs out and shows the keychain entries a sign-out could not remove', async () => {
+    serviceMocks.authService.getAccountInfo.mockResolvedValue(signedIn)
+    serviceMocks.authService.logout.mockResolvedValue({
+      success: true,
+      keychainWarning: 'Failed to remove: master-key, refresh-token'
+    })
+    const { result } = renderHook(() => useAuth(), { wrapper })
+    await waitFor(() => expect(result.current.state.status).toBe('authenticated'))
+
+    await act(async () => {
+      await result.current.logout()
+    })
+
+    expect(result.current.state.status).toBe('unauthenticated')
+    expect(toastWarning).toHaveBeenCalledWith('Failed to remove: master-key, refresh-token')
   })
 
   it('checks existing auth and responds to session, OAuth, and linking events', async () => {

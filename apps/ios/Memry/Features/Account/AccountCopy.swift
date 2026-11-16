@@ -63,4 +63,16 @@ enum AccountCopy {
         recourse: .retry,
         isUserVisible: true
     )
+
+    /// The core signed out and the keychain kept some of its entries; a locked
+    /// phone is the usual reason. It says nothing about the vault content, which
+    /// may have failed too. `.blocked`: the account screen offers no sign-out
+    /// from `SignedOut`.
+    static let keysSurvived = UserFacingError(
+        code: "account.keysSurvived",
+        title: "You are signed out, but some of this \(ThisDevice.noun)'s keys could not be removed.",
+        guidance: "This usually happens while the \(ThisDevice.noun) is locked.",
+        recourse: .blocked,
+        isUserVisible: true
+    )
 }

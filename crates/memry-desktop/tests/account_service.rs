@@ -92,12 +92,13 @@ impl Script {
     }
 }
 
-/// The keychain, with an optional locked master key.
+/// The keychain, with an optional locked master key and entries it refuses to delete.
 #[derive(Default)]
 pub(crate) struct Keychain {
     items: Mutex<HashMap<SecureStoreKey, Vec<u8>>>,
     master_locked: bool,
     access_locked: AtomicBool,
+    undeletable: Mutex<Vec<SecureStoreKey>>,
 }
 
 impl SecureStore for Keychain {
@@ -114,16 +115,27 @@ impl SecureStore for Keychain {
         Ok(())
     }
     fn delete(&self, key: SecureStoreKey) -> Result<(), SecureStoreError> {
+        if self.undeletable.lock().unwrap().contains(&key) {
+            return Err(SecureStoreError::Failed {
+                what: "the keychain refused".into(),
+            });
+        }
         self.items.lock().unwrap().remove(&key);
         Ok(())
     }
+    /// Every entry, one after another; the first refusal is returned (`KeyringStore::clear`).
     fn clear(&self) -> Result<(), SecureStoreError> {
-        self.items.lock().unwrap().clear();
-        Ok(())
+        let keys: Vec<_> = self.items.lock().unwrap().keys().copied().collect();
+        keys.into_iter()
+            .map(|key| self.delete(key))
+            .fold(Ok(()), Result::and)
     }
 }
 
 impl Keychain {
+    pub(crate) fn refuse_delete(&self, keys: &[SecureStoreKey]) {
+        self.undeletable.lock().unwrap().extend_from_slice(keys);
+    }
     pub(crate) fn has(&self, key: SecureStoreKey) -> bool {
         self.items.lock().unwrap().contains_key(&key)
     }

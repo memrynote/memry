@@ -395,3 +395,72 @@ struct SignOutWiringTests {
         #expect(startup.account != nil)
     }
 }
+
+// MARK: - A keychain that keeps its entries
+
+/// Holds the entries it is given and refuses every delete the way a phone
+/// locked since boot does (`errSecInteractionNotAllowed`, which `Keychain`
+/// maps to `SecureStoreError.Locked`).
+private final class LockedDeleteKeychainItems: KeychainItemStore, @unchecked Sendable {
+    private let stored: Mutex<[String: Data]>
+
+    init(seed: [String: String]) {
+        stored = Mutex(seed.mapValues { Data($0.utf8) })
+    }
+
+    func has(_ account: String) -> Bool { stored.withLock { $0[account] != nil } }
+
+    func copy(query: [String: Any]) -> (status: OSStatus, data: Data?) {
+        let account = (query[kSecAttrAccount as String] as? String) ?? "<none>"
+        guard let data = stored.withLock({ $0[account] }) else { return (errSecItemNotFound, nil) }
+        return (errSecSuccess, data)
+    }
+
+    func add(attributes: [String: Any]) -> OSStatus { errSecInteractionNotAllowed }
+    func update(query: [String: Any], attributes: [String: Any]) -> OSStatus { errSecInteractionNotAllowed }
+    func delete(query: [String: Any]) -> OSStatus { errSecInteractionNotAllowed }
+}
+
+@Suite("T159 a keychain that refuses the sign-out", .serialized)
+struct SignOutKeptKeysTests {
+    /// The real core over the real `Keychain`, whose deletes all fail. The core
+    /// signs out and then reports the store's error; the shell must still
+    /// remove the vault content (FR-025) and say that keys stayed, and the
+    /// refresh token left behind must not restore the session it ended.
+    @Test("a sign-out the keychain refuses still removes the files and reports the keys")
+    @MainActor
+    func keysThatStayStillWipeTheFiles() async throws {
+        let items = LockedDeleteKeychainItems(seed: ["refresh-token": "refresh-from-the-last-run"])
+        let root = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+            .appendingPathComponent("t159-kept-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let vault = root
+            .appendingPathComponent(VaultFiles.vaultsDirectoryName, isDirectory: true)
+            .appendingPathComponent("t159-0123456789abcdef", isDirectory: true)
+        try FileManager.default.createDirectory(at: vault, withIntermediateDirectories: true)
+        try Data("content".utf8).write(to: vault.appendingPathComponent("data.db"))
+
+        let events = CoreEvents()
+        let session = try AuthComposition.makeSession(
+            environment: .staging,
+            device: AuthComposition.device(appVersion: "0.1.0+t159"),
+            emitter: events.emitter,
+            transportConfiguration: stubbedConfiguration(),
+            keychainItems: items
+        )
+        #expect(try session.restore() == .registered)
+        let service = SignOutService(
+            session: session,
+            content: VaultContentRemover(files: VaultFiles(emitter: events.emitter, root: root)),
+            executor: CoreExecutor(label: "t159-kept-keys-tests")
+        )
+
+        let wipe = try await service.signOut()
+
+        #expect(wipe.state == .signedOut)
+        #expect(wipe.residue == AccountCopy.keysSurvived)
+        #expect(!FileManager.default.fileExists(atPath: vault.path), "the vault content survived")
+        #expect(items.has("refresh-token"))
+        #expect(try session.restore() == .signedOut)
+    }
+}
