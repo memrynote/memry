@@ -154,7 +154,13 @@ struct NoteTitleEditor: View {
     private var composing: Bool {
         func editing(in view: UIView) -> UITextView? {
             if let text = view as? UITextView, text.isFirstResponder { return text }
-            return view.subviews.lazy.compactMap(editing).first
+            // A plain loop: a lazy `compactMap(...).first` maps each level
+            // again for every level above it, which hung the app on a page's
+            // deep view tree.
+            for subview in view.subviews {
+                if let text = editing(in: subview) { return text }
+            }
+            return nil
         }
         return host.window.flatMap(editing)?.markedTextRange != nil
     }
