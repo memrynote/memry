@@ -146,7 +146,7 @@ function tier({
   })
   assert.equal(result.status, 0, result.stderr)
   // stdout is $GITHUB_OUTPUT: anything but `key=value` lines fails the step.
-  for (const line of result.stdout.trim().split('\n')) assert.match(line, /^[a-z_]+=[a-z]+$/)
+  for (const line of result.stdout.trim().split('\n')) assert.match(line, /^[a-z0-9_]+=[a-z]+$/)
   return Object.fromEntries(
     result.stdout
       .trim()
@@ -192,7 +192,8 @@ describe('ci tier for a PR into feat/tauri-v2', () => {
       electron: false,
       intel: false,
       macos: true,
-      ...noOsLegs
+      ...noOsLegs,
+      rust_linux_arm64: false
     })
   })
 
@@ -247,6 +248,69 @@ describe('ci tier for a PR into feat/tauri-v2', () => {
     assert.equal(out.electron, false)
     assert.equal(tier({ files: largeDiff('crates/memry-core/src/lib.rs') }).swift, true)
     assert.equal(tier({ files: largeDiff('packages/shared/src/index.ts') }).electron, true)
+  })
+})
+
+// rust-ci.yml's ml-worker-linux-arm64 job (#4775).
+describe('ci tier Linux arm64 worker leg', () => {
+  const arm64Files = [
+    'crates/memry-ml-worker/src/main.rs',
+    'crates/memry-ml-worker/build.rs',
+    'crates/memry-ml/src/runtime.rs',
+    'crates/memry-media/src/lib.rs',
+    'crates/Cargo.toml',
+    'crates/Cargo.lock',
+    'crates/rust-toolchain.toml',
+    'crates/.cargo/config.toml',
+    'scripts/fetch-pdfium.mjs',
+    'scripts/fetch-tesseract-sources.mjs',
+    '.github/actions/ci-tier/tier.sh',
+    '.github/actions/ort-static/action.yml',
+    '.github/actions/tesseract-sources/action.yml',
+    '.github/workflows/rust-ci.yml'
+  ]
+
+  it('runs on a PR that touches the worker, the crates it links or their native inputs', () => {
+    for (const file of arm64Files) {
+      assert.equal(tier({ files: [file], patches: {} }).rust_linux_arm64, true, file)
+    }
+  })
+
+  it('skips a PR that cannot change the worker', () => {
+    for (const file of [
+      'crates/memry-core/src/lib.rs',
+      'crates/memry-desktop/src/services/file_text/worker.rs',
+      'crates/memry-mlx/src/lib.rs',
+      'apps/desktop-tauri/src-tauri/src/ml_worker.rs',
+      '.github/workflows/desktop-tauri-ci.yml',
+      'apps/docs/x.md'
+    ]) {
+      assert.equal(tier({ files: [file], patches: {} }).rust_linux_arm64, false, file)
+    }
+  })
+
+  it('runs on the full tier but the merge queue', () => {
+    const docs = ['apps/docs/x.md']
+    assert.equal(tier({ labels: 'full-ci', files: docs }).rust_linux_arm64, true)
+    assert.equal(tier({ listed: false, files: [] }).rust_linux_arm64, true)
+    assert.equal(
+      tier({ event: 'push', ref: 'refs/heads/feat/tauri-v2', base: '', files: docs })
+        .rust_linux_arm64,
+      true
+    )
+    assert.equal(
+      tier({ event: 'merge_group', base: '', files: arm64Files }).rust_linux_arm64,
+      false
+    )
+  })
+
+  it('starts Rust CI for every file that adds the leg', () => {
+    const include = new RegExp(
+      readFileSync(join(repo, '.github/workflows/rust-ci.yml'), 'utf8').match(
+        /include: '([^']+)'/
+      )[1]
+    )
+    for (const file of arm64Files) assert.match(file, include, file)
   })
 })
 
@@ -844,7 +908,8 @@ describe('ci tier outside PRs into feat/tauri-v2', () => {
       electron: true,
       intel: true,
       macos: true,
-      ...allOsLegs
+      ...allOsLegs,
+      rust_linux_arm64: true
     })
   })
 })

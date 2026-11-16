@@ -19,8 +19,8 @@ files=$(cat)
 
 emit() {
   { echo "full=$1"; echo "tauri=$2"; echo "swift=$3"; echo "electron=$4"; echo "intel=$5"; echo "macos=$6"
-    echo "rust_windows=$7"; echo "rust_macos=$8"; echo "tauri_windows=$9"; echo "tauri_macos=${10}"; }
-  echo "tier: full=$1 tauri=$2 swift=$3 electron=$4 intel=$5 macos=$6 rust_windows=$7 rust_macos=$8 tauri_windows=$9 tauri_macos=${10}" >&2
+    echo "rust_windows=$7"; echo "rust_macos=$8"; echo "tauri_windows=$9"; echo "tauri_macos=${10}"; echo "rust_linux_arm64=${11}"; }
+  echo "tier: full=$1 tauri=$2 swift=$3 electron=$4 intel=$5 macos=$6 rust_windows=$7 rust_macos=$8 tauri_windows=$9 tauri_macos=${10} rust_linux_arm64=${11}" >&2
 }
 
 # A tiered PR is any PR whose base is not main: one into feat/tauri-v2, or one stacked on another PR's
@@ -54,9 +54,22 @@ fi
 # The pull request files API stops at 3000 files, so a list that long may be cut short.
 if [ "$EVENT" = "pull_request" ] && [ "$(printf '%s\n' "$files" | grep -c .)" -ge 3000 ]; then LISTED=false; fi
 
+# The Linux arm64 worker leg (#4775) skips the merge queue, like the Macs: the PRs whose diff can
+# break it ran it already, and the push that follows the merge runs it.
+linux_arm64=true
+if [ "$EVENT" = "merge_group" ]; then linux_arm64=false; fi
+
 # Untiered runs, `full-ci` and an unreadable file list run every leg.
 if [ "$tiered" != true ] || [[ ",$LABELS," == *",full-ci,"* ]] || [ "$LISTED" != true ]; then
-  emit true true true "$electron" "$intel" "$macos" tests tests tests tests; exit 0
+  emit true true true "$electron" "$intel" "$macos" tests tests tests tests "$linux_arm64"; exit 0
+fi
+
+# A fast-tier PR adds the Linux arm64 worker leg when it changes the worker or the crates it links
+# (memry-ml, memry-media), their native inputs (the build scripts, the ONNX Runtime pins in
+# crates/.cargo/, pdfium and the Tesseract sources), the toolchain or lock, or the CI that builds them.
+linux_arm64=false
+if printf '%s\n' "$files" | grep -E '^(crates/(memry-ml-worker|memry-ml|memry-media)/|crates/(Cargo\.(toml|lock)|rust-toolchain\.toml)$|crates/\.cargo/|scripts/fetch-(pdfium|tesseract-sources)\.mjs$|\.github/(actions/(ci-tier|free-disk|ort-static|tesseract-sources)/|workflows/rust-ci\.yml$))' >/dev/null; then
+  linux_arm64=true
 fi
 
 # App behavior: the Tauri app and its Rust shells, everything the renderer bundles
@@ -92,4 +105,4 @@ else
   legs="tests tests tests tests"
 fi
 read -r rust_windows rust_macos tauri_windows tauri_macos <<< "$legs"
-emit false "$tauri" "$swift" "$electron" "$intel" "$macos" "$rust_windows" "$rust_macos" "$tauri_windows" "$tauri_macos"
+emit false "$tauri" "$swift" "$electron" "$intel" "$macos" "$rust_windows" "$rust_macos" "$tauri_windows" "$tauri_macos" "$linux_arm64"

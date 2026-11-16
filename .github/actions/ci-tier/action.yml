@@ -59,6 +59,9 @@ outputs:
   tauri_macos:
     description: Apple Silicon Tauri build legs a fast-tier PR adds (none, checks = debug, tests = debug and e2e)
     value: ${{ steps.tier.outputs.tauri_macos }}
+  rust_linux_arm64:
+    description: The Linux arm64 memry-ml-worker leg runs (full tier but the merge queue, or a fast-tier PR that touches the worker, its native inputs or their CI)
+    value: ${{ steps.tier.outputs.rust_linux_arm64 }}
 runs:
   using: composite
   steps:
