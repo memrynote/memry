@@ -310,7 +310,8 @@ struct InlineNodeUndoTests {
     /// VERIFY-4700, as the keyboard leaves it: the link went in when the
     /// caret left its `]]`, the space after it is not written yet, and the
     /// tag is typed before it. One write with typing on both sides of the
-    /// link kept the link.
+    /// link kept the link. Undo takes back the tag, and the next undo the
+    /// uncommitted space (#4804).
     @Test(.timeLimit(.minutes(1))) func a_tag_picked_before_a_node_with_typing_after_it_keeps_the_node() async throws {
         let f = try await linked("")
         type(" ", in: f)
@@ -323,12 +324,41 @@ struct InlineNodeUndoTests {
         #expect(try await kinds(f) == ["hashTag", "wikiLink"])
 
         await undo(f)
-        #expect(try await shown(f) == "qq \u{FFFC}")
+        #expect(try await shown(f) == "qq \u{FFFC} ")
         #expect(try await kinds(f) == ["wikiLink"])
+        await undo(f)
+        #expect(try await shown(f) == "qq \u{FFFC}")
 
+        await redo(f)
         await redo(f)
         #expect(try await shown(f) == "qq \u{FFFC} \u{FFFC} ")
         #expect(try await kinds(f) == ["hashTag", "wikiLink"])
+    }
+
+    /// #4804: typing not committed, the caret moved back into it, `#`
+    /// typed there and a tag picked, as on a keyboard. Undo takes back only
+    /// the tag, the next undo the typing, and redo puts them back in order.
+    @Test(.timeLimit(.minutes(1))) func a_tag_picked_inside_uncommitted_typing_is_undone_without_it() async throws {
+        let f = try await fixture("q ")
+        type("abc", in: f)
+        f.session.tags = ["task"]
+        type("#ta", at: 2, in: f)
+        f.session.selectionChanged(in: f.field)
+        f.session.chooseTag(try #require(f.session.tagSuggestions.first { $0.tag == "task" }))
+        await f.session.tail?.value
+        #expect(try await shown(f) == "q \u{FFFC} abc")
+
+        await undo(f)
+        #expect(try await shown(f) == "q abc")
+        #expect(try await nodes(f, "hashTag") == 0)
+        await undo(f)
+        #expect(try await shown(f) == "q ")
+
+        await redo(f)
+        #expect(try await shown(f) == "q abc")
+        await redo(f)
+        #expect(try await shown(f) == "q \u{FFFC} abc")
+        #expect(try await nodes(f, "hashTag") == 1)
     }
 
     /// Typing on both sides of a node in one write keeps the node, and its
@@ -462,8 +492,8 @@ struct InlineNodeUndoTests {
     }
 
     /// VERIFY-4753: a link picked from the menu, typing after it, then a tag
-    /// picked right after the link. Undo takes back the tag and the typing
-    /// and nothing else, and redo puts back one tag.
+    /// picked right after the link. Undo takes back only the tag, the next
+    /// undo the uncommitted `z` (#4804), and redo puts them back in order.
     @Test(.timeLimit(.minutes(1))) func a_tag_picked_right_after_a_picked_link_is_undone_and_redone_exactly() async throws {
         let f = try await fixture("q ")
         type("[[Agent", in: f)
@@ -484,9 +514,13 @@ struct InlineNodeUndoTests {
         #expect(try await kinds(f) == ["wikiLink", "hashTag"])
 
         await undo(f)
-        #expect(try await shown(f) == "q \u{FFFC} ")
+        #expect(try await shown(f) == "q \u{FFFC} z")
         #expect(try await kinds(f) == ["wikiLink"])
+        await undo(f)
+        #expect(try await shown(f) == "q \u{FFFC} ")
 
+        await redo(f)
+        #expect(try await shown(f) == "q \u{FFFC} z")
         await redo(f)
         #expect(try await shown(f) == "q \u{FFFC}\u{FFFC} z")
         #expect(try await kinds(f) == ["wikiLink", "hashTag"])
