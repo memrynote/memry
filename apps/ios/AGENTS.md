@@ -34,7 +34,7 @@ xcodebuild test -project apps/ios/Memry.xcodeproj -scheme Memry -testPlan Unit \
 
 Run the narrowest of the three plans that covers the change:
 
-- `TestPlans/Unit.xctestplan` runs `MemryTests`. The `Swift bindings and iOS unit tests` job in `.github/workflows/rust-ci.yml` runs it on PRs into `feat/tauri-v2` that touch `apps/ios`, `crates/memry-core` or `packages/swift`.
+- `TestPlans/Unit.xctestplan` runs `MemryTests`. The `iOS unit tests` job in `.github/workflows/rust-ci.yml` runs it on PRs into `feat/tauri-v2` whose diff touches `apps/ios`, `crates/memry-core`, `packages/swift` or `rust-ci.yml`. It does not gate the merge: the plan still has intermittent tests, so a red run is a signal to read, not a block.
 - `TestPlans/Conformance.xctestplan` runs `MemryConformanceTests`, which hold iOS to the same protocol and domain behavior as desktop through the shared vectors. A failure here means iOS diverged, not that the test is wrong.
 - `TestPlans/UI.xctestplan` runs `MemryUITests`.
 
