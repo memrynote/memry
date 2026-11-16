@@ -1212,6 +1212,20 @@ final class EditorSession {
             suggestions = []
         }
         let blockId = field.blockId
+        // Each node as the row draws it and the core gets it, a date under
+        // the anchor its chip carries.
+        let nodes: [(kind: EditorSuggestion.Kind, run: InlineRun?, anchorId: String?)] = kinds.map { kind in
+            switch kind {
+            case let .note(title, alias), let .create(title, alias):
+                let attrs = WikiLinkAttrs.attrs(target: title, alias: alias)
+                return (kind, Self.node("wikiLink", attrs), nil)
+            case let .date(value):
+                let anchorId = DateMentionValue.mintAnchorId()
+                return (kind, Self.node("dateMention", value.attrs(anchorId: anchorId)), anchorId)
+            case .slash:
+                return (kind, nil, nil)
+            }
+        }
         // Read once the commit has drawn a typed `[[…]]` before `range` as
         // its node, as the core holds it when the nodes go in. Each node
         // goes before its own space.
@@ -1220,15 +1234,17 @@ final class EditorSession {
             var edits: [BlockEdit] = []
             // Last first, so each node's offset still counts only the spaces
             // before it.
-            for (kind, at) in zip(kinds, anchors).reversed() {
-                switch kind {
+            for (node, at) in zip(nodes, anchors).reversed() {
+                switch node.kind {
                 case let .note(title, alias):
                     if let edit = await model.insertWikiLink(in: blockId, at: at, title: title, alias: alias) { edits.append(edit) }
                 case let .create(title, alias):
                     await model.createNote(titled: title)
                     if let edit = await model.insertWikiLink(in: blockId, at: at, title: title, alias: alias) { edits.append(edit) }
                 case let .date(value):
-                    if let edit = await model.insertDateMention(in: blockId, at: at, value: value) { edits.append(edit) }
+                    if let edit = await model.insertDateMention(in: blockId, at: at, value: value, anchorId: node.anchorId) {
+                        edits.append(edit)
+                    }
                 case .slash:
                     break
                 }
@@ -1238,7 +1254,20 @@ final class EditorSession {
         let location = moved(range.location)
         let text = textView.attributedText ?? NSAttributedString()
         anchors = kinds.indices.map { NodeAnchor.at(location + $0, in: text, replaces: false) }
+        // Drawn now, as `commit` draws a typed `[[…]]` (#4780): keys typed
+        // before the nodes land leave the row dirty, a dirty row is never
+        // redrawn, and the chips stayed off screen until its next commit.
+        field.drawNodes(nodes.compactMap(\.run), at: location)
         field.pendingSelection = NSRange(location: location + 2 * kinds.count, length: 0)
+    }
+
+    /// An inline node run of `mark`, with `attrs` under the mark's prefix,
+    /// as the core reads it back.
+    private static func node(_ mark: String, _ attrs: [String: String]) -> InlineRun {
+        InlineRun(
+            text: "", marks: [mark],
+            markAttrs: Dictionary(uniqueKeysWithValues: attrs.map { ("\(mark).\($0.key)", $0.value) }), target: nil
+        )
     }
 
     /// A link or date at the end of `block`, followed by a space: the page

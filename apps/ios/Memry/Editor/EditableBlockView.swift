@@ -544,10 +544,7 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
                 markAttrs: ["wikiLink.target": attrs["target"] ?? link.target, "wikiLink.alias": attrs["alias"] ?? ""],
                 target: nil
             )
-            let chip = NSMutableAttributedString(attributedString: BlockText.attributed([run], style: style))
-            if let paragraph = textView.textStorage.attribute(.paragraphStyle, at: link.range.location, effectiveRange: nil) {
-                chip.addAttribute(.paragraphStyle, value: paragraph, range: NSRange(location: 0, length: chip.length))
-            }
+            let chip = chip(run, at: link.range.location)
             textView.textStorage.replaceCharacters(in: link.range, with: chip)
             drawn.append((link.range, chip.length))
         }
@@ -565,6 +562,31 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
         textView.typingAttributes = BlockText.baseAttributes(style)
         textView.invalidateIntrinsicContentSize()
         return moved
+    }
+
+    /// Draws each of `nodes` as its chip, the first at `location` and each
+    /// before the space that follows it there, puts the caret after the
+    /// last one's space, and takes the result as the next commit's base:
+    /// the block the core holds once the nodes land (#4780).
+    func drawNodes(_ nodes: [InlineRun], at location: Int) {
+        for (offset, run) in nodes.enumerated().reversed() {
+            textView.textStorage.insert(chip(run, at: location + offset), at: location + offset)
+        }
+        base = textView.textStorage.string
+        textView.selectedRange = NSRange(location: min(location + 2 * nodes.count, textView.textStorage.length), length: 0)
+        textView.typingAttributes = BlockText.baseAttributes(style)
+        textView.invalidateIntrinsicContentSize()
+    }
+
+    /// `run` drawn as its chip, in the paragraph style of the text at
+    /// `location`.
+    private func chip(_ run: InlineRun, at location: Int) -> NSAttributedString {
+        let chip = NSMutableAttributedString(attributedString: BlockText.attributed([run], style: style))
+        if location < textView.textStorage.length,
+           let paragraph = textView.textStorage.attribute(.paragraphStyle, at: location, effectiveRange: nil) {
+            chip.addAttribute(.paragraphStyle, value: paragraph, range: NSRange(location: 0, length: chip.length))
+        }
+        return chip
     }
 
     // MARK: UITextViewDelegate
