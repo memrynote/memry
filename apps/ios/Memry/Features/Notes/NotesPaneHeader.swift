@@ -8,6 +8,9 @@ import SwiftUI
 
 struct NotesPaneHeader<PageMenu: View>: View {
     let pane: NotesPaneContext
+    /// A cover runs under the header with the edge blur hidden, so the
+    /// controls carry glass there, as the system bar's do.
+    let overCover: Bool
     @ViewBuilder let menu: PageMenu
 
     private var id: String { "notes.pane.\(pane.slot.rawValue)" }
@@ -15,20 +18,37 @@ struct NotesPaneHeader<PageMenu: View>: View {
     var body: some View {
         HStack(spacing: Tokens.Space.small) {
             if let trail = pane.router.pane(pane.slot)?.trail, !trail.isEmpty {
-                Button("Back", systemImage: "chevron.backward") {
-                    pane.router.setTrail(Array(trail.dropLast()), in: pane.slot)
-                }
-                .labelStyle(.iconOnly)
-                .frame(minWidth: Tokens.Size.minimumHitArea, minHeight: Tokens.Size.minimumHitArea)
-                .contentShape(.rect)
+                control(
+                    Button("Back", systemImage: "chevron.backward") {
+                        pane.router.setTrail(Array(trail.dropLast()), in: pane.slot)
+                    }
+                    .labelStyle(.iconOnly)
+                )
                 .accessibilityIdentifier("\(id).back")
             }
             Spacer(minLength: 0)
-            menu
-                .frame(minWidth: Tokens.Size.minimumHitArea, minHeight: Tokens.Size.minimumHitArea)
-                .contentShape(.rect)
+            control(menu.menuStyle(.button))
                 .accessibilityIdentifier("\(id).more")
         }
         .padding(.horizontal, Tokens.Space.small)
+    }
+
+    /// The text colour, not the tint, which is under 3:1 on the canvas
+    /// (WCAG 1.4.11). Both panes have the same two controls, so the hint
+    /// names the pane for VoiceOver.
+    @ViewBuilder
+    private func control(_ view: some View) -> some View {
+        let styled = view
+            .foregroundStyle(Tokens.Text.primary.color)
+            .accessibilityHint(NotesPaneCopy.pane(pane.slot))
+        Group {
+            if overCover {
+                styled.buttonStyle(.glass).buttonBorderShape(.circle)
+            } else {
+                styled.buttonStyle(.borderless)
+            }
+        }
+        .frame(minWidth: Tokens.Size.minimumHitArea, minHeight: Tokens.Size.minimumHitArea)
+        .contentShape(.rect)
     }
 }

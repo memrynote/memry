@@ -205,6 +205,9 @@ final class NotesSplitUITests: XCTestCase {
         XCTAssertTrue(sideMenu.waitForExistence(timeout: 5), "the side pane has no page menu")
         assertOver(mainMenu, main)
         assertOver(sideMenu, side)
+        // VoiceOver tells the two panes' identical controls apart.
+        XCTAssertEqual(main.label, "Main pane")
+        XCTAssertEqual(side.label, "Side pane")
 
         let sideBlock = block(in: side)
         sideBlock.tap()
@@ -223,7 +226,7 @@ final class NotesSplitUITests: XCTestCase {
         XCTAssertTrue(delete.waitForExistence(timeout: 5), "the page menu has no Delete")
         delete.tap()
         let alert = app.alerts["Delete \u{201c}\(source)\u{201d}?"]
-        XCTAssertTrue(alert.waitForExistence(timeout: 5), "Delete does not name the focused pane's note")
+        XCTAssertTrue(alert.waitForExistence(timeout: 5), "Delete does not name the main pane's note")
         attach("delete-names-the-note")
         alert.buttons["Cancel"].tap()
         XCTAssertTrue(alert.waitForNonExistence(timeout: 5))

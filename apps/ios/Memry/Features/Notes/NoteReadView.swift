@@ -231,11 +231,6 @@ struct NoteReadView: View {
         await model.reload()
     }
 
-    private var hasCover: Bool {
-        guard case .ready = model.phase else { return false }
-        return NoteCoverValue.of(model.metadata?.coverJson) != nil
-    }
-
     var body: some View {
         ScrollView {
             // The cover sits above everything, as desktop puts it, and spans
@@ -324,7 +319,7 @@ struct NoteReadView: View {
         .modifier(NoteHeadingScroll(heading: model.route.heading, blocks: model.blocks, jump: $outlineJump))
         .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top } action: { topInset = $0 }
         // A cover runs under the navigation bar; the edge blur would smear it.
-        .scrollEdgeEffectHidden(hasCover, for: .top)
+        .scrollEdgeEffectHidden(model.hasCover, for: .top)
         .modifier(NoteFindScroll(target: .note(model.route.id), blocks: model.blocks, blocksRead: model.blocksRead, finding: $finding))
         // The keyboard accessory is floating glass: paint the page colour under
         // it and drop the bottom edge blur, or the strip behind the toolbar reads

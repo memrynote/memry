@@ -61,7 +61,7 @@ struct NoteReadToolbar: ViewModifier {
             // Two panes: the menu goes in the pane's own header (#4699).
             .safeAreaBar(edge: .top) {
                 if let pane, headed {
-                    NotesPaneHeader(pane: pane) { pageMenu }
+                    NotesPaneHeader(pane: pane, overCover: model.hasCover) { pageMenu }
                 }
             }
             .task { await actions.loadFavorite() }

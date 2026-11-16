@@ -76,8 +76,9 @@ struct NotesDetailColumn: View {
         // Every `NavigationStack` in the column pushes onto the column's own
         // stack, over both panes (VERIFY-4700). While both show, a pane's
         // stack holds no path: its root draws the pane's current note, and
-        // the Back in the pane's header pops it (`NotesPaneHeader`). A path the stack reports
-        // then (its pop as the split opens) is not the pane's trail.
+        // the Back in the pane's header pops it (`NotesPaneHeader`). A path
+        // the stack reports then (its pop as the split opens) is not the
+        // pane's trail.
         let stacked = !router.splitShown
         return NavigationStack(path: Binding(
             get: { stacked ? router.pane(slot)?.trail ?? [] : [] },
