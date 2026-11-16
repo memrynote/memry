@@ -7,20 +7,43 @@
 
 use std::sync::{Arc, Weak};
 
+use tokio::sync::broadcast;
+
 use super::{Inner, OpenStage, OpenVault, Session, lock};
+use crate::sync::signals::{AuthSignal, AuthSignals};
 use crate::sync::supervisor::SyncSupervisor;
 
-/// Builds the supervisor of a vault that just opened, or `None` when it cannot sync at all.
-pub type SupervisorFactory = Arc<dyn Fn(&OpenVault) -> Option<SyncSupervisor> + Send + Sync>;
+/// Builds the supervisor of a vault that just opened, or `None` when it cannot sync at all. The
+/// supervisor sends on the session's hub it is given (`SupervisorParts.signals`).
+pub type SupervisorFactory =
+    Arc<dyn Fn(&OpenVault, &AuthSignals) -> Option<SyncSupervisor> + Send + Sync>;
 
-#[derive(Default)]
 pub(super) struct SyncSlot {
     factory: Option<SupervisorFactory>,
     running: Option<SyncSupervisor>,
     hooked: bool,
+    /// The one account-signal hub of this session, for every supervisor it builds.
+    signals: AuthSignals,
+}
+
+impl Default for SyncSlot {
+    fn default() -> Self {
+        Self {
+            factory: None,
+            running: None,
+            hooked: false,
+            signals: AuthSignals::new(),
+        }
+    }
 }
 
 impl Session {
+    /// The account signals of every supervisor this session builds, now and after a vault
+    /// switch. Subscribe before [`Self::attach_sync`] to hear the first one.
+    pub fn subscribe_auth_signals(&self) -> broadcast::Receiver<AuthSignal> {
+        lock(&self.inner.sync).signals.subscribe()
+    }
+
     /// Runs a supervisor for every vault opened from now on, and for the one open now. Queued
     /// behind a running open, close or switch, like they are; never call it from a session hook.
     pub fn attach_sync(&self, factory: SupervisorFactory) {
@@ -70,11 +93,15 @@ impl Session {
     }
 
     fn start_sync(&self, open: &OpenVault) {
-        let Some(factory) = lock(&self.inner.sync).factory.clone() else {
-            return;
+        let (factory, signals) = {
+            let slot = lock(&self.inner.sync);
+            let Some(factory) = slot.factory.clone() else {
+                return;
+            };
+            (factory, slot.signals.clone())
         };
         self.stop_sync();
-        let supervisor = factory(open);
+        let supervisor = factory(open, &signals);
         // Swapped, not stored: whatever got in meanwhile is stopped, never left running.
         let replaced = std::mem::replace(&mut lock(&self.inner.sync).running, supervisor);
         if let Some(replaced) = replaced {
@@ -158,7 +185,7 @@ mod tests {
         let factory: SupervisorFactory = {
             let built = Arc::clone(&built);
             let paths = Arc::clone(&paths);
-            Arc::new(move |open: &OpenVault| {
+            Arc::new(move |open: &OpenVault, signals: &AuthSignals| {
                 built.fetch_add(1, Ordering::SeqCst);
                 lock(&paths).push(open.path.clone());
                 Some(SyncSupervisor::start(
@@ -171,7 +198,7 @@ mod tests {
                         keychain_recovered: None,
                         db: open.vault.db_handle(),
                         telemetry: None,
-                        signals: Default::default(),
+                        signals: signals.clone(),
                         on_status: Arc::new(|_| {}),
                     },
                 ))
@@ -237,7 +264,7 @@ mod tests {
         let reachability = Arc::new(Keeps::default());
         let factory: SupervisorFactory = {
             let gate = Arc::clone(&gate);
-            Arc::new(move |open: &OpenVault| {
+            Arc::new(move |open: &OpenVault, signals: &AuthSignals| {
                 // Widens the window between the check and the store.
                 std::thread::sleep(std::time::Duration::from_millis(20));
                 Some(SyncSupervisor::start(
@@ -250,7 +277,7 @@ mod tests {
                         keychain_recovered: None,
                         db: open.vault.db_handle(),
                         telemetry: None,
-                        signals: Default::default(),
+                        signals: signals.clone(),
                         on_status: Arc::new(|_| {}),
                     },
                 ))
@@ -277,5 +304,30 @@ mod tests {
         }
         assert_eq!(Arc::strong_count(&gate) - idle, 1, "one loop runs");
         f.session.detach_sync();
+    }
+
+    /// VERIFY-4728 Low 2: the session owns the one hub, so a subscriber taken before the attach
+    /// hears the supervisor a vault switch builds, not only the first.
+    #[test]
+    fn one_subscriber_hears_every_supervisor_the_session_builds() {
+        let f = fixture();
+        let mut signals = f.session.subscribe_auth_signals();
+        let factory: SupervisorFactory = Arc::new(|open: &OpenVault, hub: &AuthSignals| {
+            hub.send(AuthSignal::LinkingApproved {
+                session_id: open.path.display().to_string(),
+            });
+            None
+        });
+        let first = f.vault("first");
+        let second = f.vault("second");
+        f.session.attach_sync(factory);
+        f.session.open(&first, OpenSource::Select).unwrap();
+        f.session.switch(&second).unwrap();
+        let mut heard = Vec::new();
+        while let Ok(AuthSignal::LinkingApproved { session_id }) = signals.try_recv() {
+            heard.push(session_id);
+        }
+        assert_eq!(heard.len(), 2, "{heard:?}");
+        assert!(heard[1].ends_with("second"), "{heard:?}");
     }
 }

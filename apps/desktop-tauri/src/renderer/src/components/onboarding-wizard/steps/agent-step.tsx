@@ -21,6 +21,7 @@ import {
 } from '../wizard-ui'
 import type { StepProps } from './basic-steps'
 import { openLink } from '@/lib/external-link-guard'
+import { commands } from '../../../../../generated/bindings'
 
 const log = createLogger('Onboarding:Agent')
 const K = 'onboardingWizard.agent'
@@ -48,8 +49,8 @@ const STATE_KEY: Record<OnboardingAgentStatus['state'], string> = {
 
 /** Starts the model download as the user leaves this step, so it runs while they finish. */
 export function startSmartConnectionsDownload(): void {
-  window.api.settings
-    .loadAIModel()
+  commands
+    .aiLoadModel()
     .then((result) => {
       if (!result.success) log.warn('Smart connections model did not load', result.error)
     })

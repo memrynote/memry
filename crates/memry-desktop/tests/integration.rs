@@ -20,6 +20,8 @@ mod vault_env;
 mod account_oauth;
 #[path = "account_service.rs"]
 mod account_service;
+#[path = "account_teardown.rs"]
+mod account_teardown;
 #[path = "activity_log.rs"]
 mod activity_log;
 #[path = "activity_scan.rs"]

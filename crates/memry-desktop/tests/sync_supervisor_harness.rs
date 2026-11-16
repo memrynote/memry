@@ -154,7 +154,7 @@ impl Device {
                 keychain_recovered: None,
                 db: self.core.db_handle(),
                 telemetry: None,
-                signals: Default::default(),
+                signals: memry_desktop::sync::signals::AuthSignals::new(),
                 on_status: Arc::new(|_| {}),
             },
         )

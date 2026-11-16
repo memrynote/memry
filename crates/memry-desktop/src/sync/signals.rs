@@ -47,24 +47,25 @@ impl AuthSignal {
     }
 }
 
-/// The account signals of every supervisor of one session. The session's owner makes one and
-/// passes it in each [`super::supervisor::SupervisorParts`], so a subscriber taken before
-/// `attach_sync` hears the supervisors a vault switch rebuilds too.
+/// The account signals of every supervisor of one session. The [`crate::session::Session`] owns
+/// the one hub and hands it to its `SupervisorFactory` for each supervisor it builds, so a
+/// subscriber ([`crate::session::Session::subscribe_auth_signals`]) hears the supervisors a vault
+/// switch rebuilds too. No `Default`: a factory that minted its own would drop every signal.
 #[derive(Clone)]
 pub struct AuthSignals(broadcast::Sender<AuthSignal>);
 
-impl Default for AuthSignals {
-    fn default() -> Self {
+impl AuthSignals {
+    /// The session's hub; tests that run a supervisor without a session build their own.
+    #[doc(hidden)]
+    pub fn new() -> Self {
         Self(broadcast::Sender::new(16))
     }
-}
 
-impl AuthSignals {
     pub fn subscribe(&self) -> broadcast::Receiver<AuthSignal> {
         self.0.subscribe()
     }
 
-    pub(super) fn send(&self, signal: AuthSignal) {
+    pub(crate) fn send(&self, signal: AuthSignal) {
         tracing::info!(signal = signal.kind(), "sync signal");
         // No subscriber is not a failure: nobody is listening yet.
         let _ = self.0.send(signal);

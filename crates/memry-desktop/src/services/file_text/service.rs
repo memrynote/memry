@@ -9,7 +9,7 @@ use std::thread::JoinHandle;
 use super::PdfReader;
 use super::runner::{FileTextRunner, Indexing, NowMs, OcrLanguageCodes, Recognize, RunnerDeps};
 use crate::session::projection::{
-    CancelToken, NoteProjectionRecord, ProjectionEvent, Projector, feed,
+    CancelToken, NoteProjectionRecord, ProjectionEvent, Projector, Rebuilt, feed,
 };
 use crate::session::{OpenStage, OpenVault, Session};
 
@@ -162,9 +162,9 @@ impl Projector for FileTextProjector {
         Ok(())
     }
 
-    fn rebuild(&self, _: &CancelToken) -> Result<(), String> {
+    fn rebuild(&self, _: &CancelToken) -> Result<Rebuilt, String> {
         self.0.rescan_all();
-        Ok(())
+        Ok(Rebuilt::default())
     }
 
     fn reconcile(&self, _: &CancelToken) -> Result<(), String> {

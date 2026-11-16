@@ -62,9 +62,9 @@ impl Projector for Fake {
         }
         Ok(())
     }
-    fn rebuild(&self, _: &CancelToken) -> Result<(), String> {
+    fn rebuild(&self, _: &CancelToken) -> Result<Rebuilt, String> {
         self.rebuilt.fetch_add(1, Ordering::SeqCst);
-        Ok(())
+        Ok(Rebuilt::default())
     }
     fn reconcile(&self, cancel: &CancelToken) -> Result<(), String> {
         self.reconciled.fetch_add(1, Ordering::SeqCst);
@@ -291,9 +291,9 @@ impl Projector for Exclusive {
         self.enter();
         Ok(())
     }
-    fn rebuild(&self, _: &CancelToken) -> Result<(), String> {
+    fn rebuild(&self, _: &CancelToken) -> Result<Rebuilt, String> {
         self.enter();
-        Ok(())
+        Ok(Rebuilt::default())
     }
     fn reconcile(&self, _: &CancelToken) -> Result<(), String> {
         self.enter();

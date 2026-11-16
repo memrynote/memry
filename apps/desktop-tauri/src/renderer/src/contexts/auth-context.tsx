@@ -9,6 +9,7 @@ import {
   type ReactNode
 } from 'react'
 import { SETUP_CONFLICT, authService } from '@/services/auth-service'
+import { onSessionExpired } from '@/services/sync-account-service'
 import { useOAuthSignIn } from '@/hooks/use-oauth-sign-in'
 import type { InitOAuthResult } from '@memry/contracts/ipc-auth'
 import { extractErrorMessage, getIpcErrorCode, IpcFailureError } from '@/lib/ipc-error'
@@ -339,7 +340,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
   }, [])
 
   useEffect(() => {
-    const unsubscribe = window.api.onSessionExpired(({ reason }) => {
+    const unsubscribe = onSessionExpired(({ reason }) => {
       if (!isSessionEndedReason(reason)) return
       sessionEndedRef.current = true
       dispatch({ type: 'RESET_AUTH' })

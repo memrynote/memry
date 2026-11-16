@@ -38,6 +38,7 @@
 //! and a reviewer should treat one appearing as a constitution violation
 //! rather than a convenience.
 
+pub mod account_binding;
 pub mod apply;
 pub mod body_debt;
 pub mod body_heal;

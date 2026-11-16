@@ -45,6 +45,13 @@ impl CancelToken {
     }
 }
 
+/// What a [`Projector::rebuild`] did: Electron's projector results (`computed`, `skipped`).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Rebuilt {
+    pub computed: u32,
+    pub skipped: u32,
+}
+
 pub trait Projector: Send + Sync + 'static {
     fn name(&self) -> &str;
 
@@ -65,7 +72,7 @@ pub trait Projector: Send + Sync + 'static {
     /// that outlives the vault (a model load).
     fn project(&self, event: &ProjectionEvent, cancel: &CancelToken) -> Result<(), String>;
 
-    fn rebuild(&self, cancel: &CancelToken) -> Result<(), String>;
+    fn rebuild(&self, cancel: &CancelToken) -> Result<Rebuilt, String>;
 
     /// Consistency pass, run backgrounded on every vault open. It stops promptly when
     /// `cancel` is set: a vault switch must not leave the old pass reading the previous
@@ -357,7 +364,7 @@ impl ProjectionRuntime {
     /// `rebuild([name])` (`projections/runtime.ts`, as `reindexEmbeddings` calls it): the named
     /// projector's `rebuild`, on the caller's thread in the lane's turn, awaited. `None` when no
     /// lane has that name or the runtime is stopping.
-    pub fn rebuild_named(&self, name: &str) -> Option<Result<(), String>> {
+    pub fn rebuild_named(&self, name: &str) -> Option<Result<Rebuilt, String>> {
         if self.stopping.load(Ordering::SeqCst) {
             return None;
         }

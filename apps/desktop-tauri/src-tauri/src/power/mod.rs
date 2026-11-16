@@ -44,7 +44,7 @@ impl PowerMonitor {
     }
 
     /// A cheap handle a platform callback can own.
-    fn sender(&self) -> broadcast::Sender<PowerEvent> {
+    pub(crate) fn sender(&self) -> broadcast::Sender<PowerEvent> {
         self.tx.clone()
     }
 }

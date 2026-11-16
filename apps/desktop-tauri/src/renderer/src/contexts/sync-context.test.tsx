@@ -12,19 +12,14 @@ let syncStatusListeners: EventCallback[] = []
 let uploadProgressListeners: EventCallback[] = []
 let downloadProgressListeners: EventCallback[] = []
 let attachmentUploadFailedListeners: EventCallback[] = []
-let linkingRequestListeners: EventCallback[] = []
-let linkingApprovedListeners: EventCallback[] = []
 let itemSyncedListeners: EventCallback[] = []
 let initialSyncProgressListeners: EventCallback[] = []
 let queueClearedListeners: VoidCallback[] = []
 let clockSkewWarningListeners: VoidCallback[] = []
-let sessionExpiredListeners: EventCallback[] = []
-let deviceRevokedListeners: EventCallback[] = []
 let securityWarningListeners: EventCallback[] = []
 let certificatePinFailedListeners: VoidCallback[] = []
 let vaultRecoveryNeededListeners: EventCallback[] = []
 let vaultStatusListeners: EventCallback[] = []
-let vaultBindingListeners: EventCallback[] = []
 let i18n: I18nInstance
 
 const toastMock = vi.hoisted(() => ({
@@ -70,6 +65,37 @@ vi.mock('sonner', () => ({
   toast: toastMock
 }))
 
+// The account's events, keyed by the service function that subscribes to them.
+const accountEvents = vi.hoisted(() => new Map<string, Array<(event: never) => void>>())
+const mockAccount = vi.hoisted(() => ({
+  getVaultBinding: vi.fn(),
+  resolveVaultBinding: vi.fn()
+}))
+
+vi.mock('@/services/sync-account-service', () => {
+  const subscribe =
+    (name: string) =>
+    (cb: (event: never) => void): (() => void) => {
+      accountEvents.set(name, [...(accountEvents.get(name) ?? []), cb])
+      return () =>
+        accountEvents.set(
+          name,
+          (accountEvents.get(name) ?? []).filter((l) => l !== cb)
+        )
+    }
+  return {
+    syncAccountService: mockAccount,
+    onSessionExpired: subscribe('sessionExpired'),
+    onDeviceRevoked: subscribe('deviceRevoked'),
+    onLinkingRequest: subscribe('linkingRequest'),
+    onLinkingApproved: subscribe('linkingApproved'),
+    onVaultBindingChanged: subscribe('vaultBinding')
+  }
+})
+
+const listenersOf = (name: string): EventCallback[] =>
+  (accountEvents.get(name) ?? []) as unknown as EventCallback[]
+
 const mockSyncOps = {
   getStatus: vi.fn().mockResolvedValue({
     status: 'idle',
@@ -79,9 +105,7 @@ const mockSyncOps = {
   }),
   triggerSync: vi.fn().mockResolvedValue({ success: true }),
   pause: vi.fn().mockResolvedValue({ success: true, wasPaused: false }),
-  resume: vi.fn().mockResolvedValue({ success: true, pendingCount: 0 }),
-  getVaultBinding: vi.fn().mockResolvedValue({ status: 'bound' }),
-  resolveVaultBinding: vi.fn()
+  resume: vi.fn().mockResolvedValue({ success: true, pendingCount: 0 })
 }
 
 beforeEach(async () => {
@@ -97,26 +121,22 @@ beforeEach(async () => {
   mockSyncOps.triggerSync.mockResolvedValue({ success: true })
   mockSyncOps.pause.mockResolvedValue({ success: true, wasPaused: false })
   mockSyncOps.resume.mockResolvedValue({ success: true, pendingCount: 0 })
-  mockSyncOps.getVaultBinding.mockResolvedValue({ status: 'bound' })
-  mockSyncOps.resolveVaultBinding.mockReset()
+  mockAccount.getVaultBinding.mockResolvedValue({ status: 'bound' })
+  mockAccount.resolveVaultBinding.mockReset()
+  accountEvents.clear()
 
   syncStatusListeners = []
   uploadProgressListeners = []
   downloadProgressListeners = []
   attachmentUploadFailedListeners = []
-  linkingRequestListeners = []
-  linkingApprovedListeners = []
   itemSyncedListeners = []
   initialSyncProgressListeners = []
   queueClearedListeners = []
   clockSkewWarningListeners = []
-  sessionExpiredListeners = []
-  deviceRevokedListeners = []
   securityWarningListeners = []
   certificatePinFailedListeners = []
   vaultRecoveryNeededListeners = []
   vaultStatusListeners = []
-  vaultBindingListeners = []
   logoutMock.mockClear()
   vi.mocked(useAuth).mockReturnValue({
     state: { status: 'authenticated' },
@@ -147,30 +167,6 @@ beforeEach(async () => {
     attachmentUploadFailedListeners.push(cb)
     return () => {
       attachmentUploadFailedListeners = attachmentUploadFailedListeners.filter((l) => l !== cb)
-    }
-  })
-  api.onLinkingRequest = vi.fn((cb: EventCallback) => {
-    linkingRequestListeners.push(cb)
-    return () => {
-      linkingRequestListeners = linkingRequestListeners.filter((l) => l !== cb)
-    }
-  })
-  api.onLinkingApproved = vi.fn((cb: EventCallback) => {
-    linkingApprovedListeners.push(cb)
-    return () => {
-      linkingApprovedListeners = linkingApprovedListeners.filter((l) => l !== cb)
-    }
-  })
-  api.onSessionExpired = vi.fn((cb: VoidCallback) => {
-    sessionExpiredListeners.push(cb)
-    return () => {
-      sessionExpiredListeners = sessionExpiredListeners.filter((l) => l !== cb)
-    }
-  })
-  api.onDeviceRevoked = vi.fn((cb: EventCallback) => {
-    deviceRevokedListeners.push(cb)
-    return () => {
-      deviceRevokedListeners = deviceRevokedListeners.filter((l) => l !== cb)
     }
   })
   api.onQueueCleared = vi.fn((cb: VoidCallback) => {
@@ -213,12 +209,6 @@ beforeEach(async () => {
     vaultRecoveryNeededListeners.push(cb)
     return () => {
       vaultRecoveryNeededListeners = vaultRecoveryNeededListeners.filter((l) => l !== cb)
-    }
-  })
-  api.onVaultBindingChanged = vi.fn((cb: EventCallback) => {
-    vaultBindingListeners.push(cb)
-    return () => {
-      vaultBindingListeners = vaultBindingListeners.filter((l) => l !== cb)
     }
   })
   api.onVaultStatusChanged = vi.fn((cb: EventCallback) => {
@@ -264,7 +254,7 @@ describe('SyncProvider', () => {
     }
 
     it('#then asks at mount when main decided before the window listened', async () => {
-      mockSyncOps.getVaultBinding.mockResolvedValue(needsDecision)
+      mockAccount.getVaultBinding.mockResolvedValue(needsDecision)
       const { result } = renderHook(() => useSync(), { wrapper })
 
       await vi.waitFor(() => expect(result.current.vaultBinding).toEqual(needsDecision))
@@ -273,7 +263,7 @@ describe('SyncProvider', () => {
     })
 
     it('#then sends the choice and takes the state main answers with', async () => {
-      mockSyncOps.resolveVaultBinding.mockResolvedValue({
+      mockAccount.resolveVaultBinding.mockResolvedValue({
         success: true,
         state: { status: 'local-only' }
       })
@@ -281,23 +271,23 @@ describe('SyncProvider', () => {
       await vi.waitFor(() => expect(result.current.state.status).toBe('idle'))
 
       act(() => {
-        for (const cb of vaultBindingListeners) cb(needsDecision)
+        for (const cb of listenersOf('vaultBinding')) cb(needsDecision)
       })
       act(() => {
         screen.getByRole('button', { name: 'Keep on this device' }).click()
       })
 
       await vi.waitFor(() => expect(result.current.vaultBinding).toEqual({ status: 'local-only' }))
-      expect(mockSyncOps.resolveVaultBinding).toHaveBeenCalledWith('local')
+      expect(mockAccount.resolveVaultBinding).toHaveBeenCalledWith('local')
       expect(screen.queryByText('Sync this vault to your account?')).toBeNull()
     })
 
     it('#then keeps the current state and reports when main refuses', async () => {
-      mockSyncOps.resolveVaultBinding.mockResolvedValue({ success: false, error: 'nope' })
+      mockAccount.resolveVaultBinding.mockResolvedValue({ success: false, error: 'nope' })
       const { result } = renderHook(() => useSync(), { wrapper })
       await vi.waitFor(() => expect(result.current.state.status).toBe('idle'))
       act(() => {
-        for (const cb of vaultBindingListeners) cb(needsDecision)
+        for (const cb of listenersOf('vaultBinding')) cb(needsDecision)
       })
 
       await act(async () => {
@@ -599,19 +589,19 @@ describe('SyncProvider', () => {
 
     it('#then translates session and device revoked state errors', async () => {
       const { result } = renderHook(() => useSync(), { wrapper })
-      await vi.waitFor(() => expect(sessionExpiredListeners.length).toBeGreaterThan(0))
+      await vi.waitFor(() => expect(listenersOf('sessionExpired').length).toBeGreaterThan(0))
 
       // #2612: an advisory keeps the session, so nothing may tell the user to
       // sign in again.
       act(() => {
-        for (const cb of sessionExpiredListeners) cb({ reason: 'token_expired' })
+        for (const cb of listenersOf('sessionExpired')) cb({ reason: 'token_expired' })
       })
       expect(toastMock.error).not.toHaveBeenCalled()
       expect(result.current.state.sessionExpired).toBe(false)
       expect(screen.queryByText('Your session has ended')).toBeNull()
 
       act(() => {
-        for (const cb of deviceRevokedListeners) cb({ unsyncedCount: 2 })
+        for (const cb of listenersOf('deviceRevoked')) cb({ unsyncedCount: 2 })
       })
       await vi.waitFor(() =>
         expect(result.current.state.error).toBe('This device has been removed from your account.')
@@ -620,10 +610,10 @@ describe('SyncProvider', () => {
 
     it('#then prompts for re-auth instead of a toast when the refresh token is rejected', async () => {
       renderHook(() => useSync(), { wrapper })
-      await vi.waitFor(() => expect(sessionExpiredListeners.length).toBeGreaterThan(0))
+      await vi.waitFor(() => expect(listenersOf('sessionExpired').length).toBeGreaterThan(0))
 
       act(() => {
-        for (const cb of sessionExpiredListeners) cb({ reason: 'refresh_rejected' })
+        for (const cb of listenersOf('sessionExpired')) cb({ reason: 'refresh_rejected' })
       })
 
       await screen.findByText('Your session has ended')
@@ -637,12 +627,12 @@ describe('SyncProvider', () => {
     // next sign-in always asked for the recovery phrase.
     it('#then signs in again from the re-auth prompt without deleting the device keys', async () => {
       renderHook(() => useSync(), { wrapper })
-      await vi.waitFor(() => expect(sessionExpiredListeners.length).toBeGreaterThan(0))
+      await vi.waitFor(() => expect(listenersOf('sessionExpired').length).toBeGreaterThan(0))
       const opened = vi.fn()
       const unsubscribe = onOpenSettingsRequested(opened)
 
       act(() => {
-        for (const cb of sessionExpiredListeners) cb({ reason: 'refresh_rejected' })
+        for (const cb of listenersOf('sessionExpired')) cb({ reason: 'refresh_rejected' })
       })
       const signIn = await screen.findByRole('button', { name: 'Sign in again' })
       act(() => {
@@ -692,10 +682,10 @@ describe('SyncProvider', () => {
 
     it('#then handles linking lifecycle, key-rotation errors, and clear/dismiss actions', async () => {
       const { result } = renderHook(() => useSync(), { wrapper })
-      await vi.waitFor(() => expect(linkingRequestListeners.length).toBeGreaterThan(0))
+      await vi.waitFor(() => expect(listenersOf('linkingRequest').length).toBeGreaterThan(0))
 
       act(() => {
-        for (const cb of linkingRequestListeners) cb({ code: 'ABCD', deviceName: 'Laptop' })
+        for (const cb of listenersOf('linkingRequest')) cb({ code: 'ABCD', deviceName: 'Laptop' })
       })
       expect(result.current.linkingRequest).toEqual({ code: 'ABCD', deviceName: 'Laptop' })
 
@@ -703,13 +693,13 @@ describe('SyncProvider', () => {
       expect(result.current.linkingRequest).toBeNull()
 
       act(() => {
-        for (const cb of linkingRequestListeners) cb({ code: 'EFGH', deviceName: 'Phone' })
-        for (const cb of linkingApprovedListeners) cb({})
+        for (const cb of listenersOf('linkingRequest')) cb({ code: 'EFGH', deviceName: 'Phone' })
+        for (const cb of listenersOf('linkingApproved')) cb({})
       })
       expect(result.current.linkingRequest).toBeNull()
 
       act(() => {
-        for (const cb of deviceRevokedListeners) cb({ unsyncedCount: 7 })
+        for (const cb of listenersOf('deviceRevoked')) cb({ unsyncedCount: 7 })
       })
       expect(result.current.state.deviceRevoked).toEqual({ unsyncedCount: 7 })
 
@@ -770,10 +760,10 @@ describe('SyncProvider', () => {
 
     it('#then exposes device revoked export and sign-out actions through the dialog', async () => {
       renderHook(() => useSync(), { wrapper })
-      await vi.waitFor(() => expect(deviceRevokedListeners.length).toBeGreaterThan(0))
+      await vi.waitFor(() => expect(listenersOf('deviceRevoked').length).toBeGreaterThan(0))
 
       act(() => {
-        for (const cb of deviceRevokedListeners) cb({ unsyncedCount: 3 })
+        for (const cb of listenersOf('deviceRevoked')) cb({ unsyncedCount: 3 })
       })
 
       await vi.waitFor(() => expect(document.body).toHaveTextContent('revoked:3'))
