@@ -264,6 +264,10 @@ describe('ci tier Linux arm64 worker leg', () => {
     'crates/.cargo/config.toml',
     'scripts/fetch-pdfium.mjs',
     'scripts/fetch-tesseract-sources.mjs',
+    'packages/contracts/test-vectors/embeddings-text.json',
+    'packages/contracts/test-vectors/pixel-tensors.json',
+    'packages/contracts/test-vectors/audio-features.json',
+    'apps/desktop-tauri/src-tauri/resources/tessdata/eng.traineddata.gz',
     '.github/actions/ci-tier/tier.sh',
     '.github/actions/ort-static/action.yml',
     '.github/actions/tesseract-sources/action.yml',
@@ -282,6 +286,8 @@ describe('ci tier Linux arm64 worker leg', () => {
       'crates/memry-desktop/src/services/file_text/worker.rs',
       'crates/memry-mlx/src/lib.rs',
       'apps/desktop-tauri/src-tauri/src/ml_worker.rs',
+      'apps/desktop-tauri/src-tauri/resources/icons/icon.png',
+      'packages/contracts/test-vectors/crdt-update.json',
       '.github/workflows/desktop-tauri-ci.yml',
       'apps/docs/x.md'
     ]) {
@@ -289,7 +295,7 @@ describe('ci tier Linux arm64 worker leg', () => {
     }
   })
 
-  it('runs on the full tier but the merge queue', () => {
+  it('runs on every full run, the merge queue included', () => {
     const docs = ['apps/docs/x.md']
     assert.equal(tier({ labels: 'full-ci', files: docs }).rust_linux_arm64, true)
     assert.equal(tier({ listed: false, files: [] }).rust_linux_arm64, true)
@@ -298,10 +304,7 @@ describe('ci tier Linux arm64 worker leg', () => {
         .rust_linux_arm64,
       true
     )
-    assert.equal(
-      tier({ event: 'merge_group', base: '', files: arm64Files }).rust_linux_arm64,
-      false
-    )
+    assert.equal(tier({ event: 'merge_group', base: '', files: docs }).rust_linux_arm64, true)
   })
 
   it('starts Rust CI for every file that adds the leg', () => {

@@ -54,21 +54,18 @@ fi
 # The pull request files API stops at 3000 files, so a list that long may be cut short.
 if [ "$EVENT" = "pull_request" ] && [ "$(printf '%s\n' "$files" | grep -c .)" -ge 3000 ]; then LISTED=false; fi
 
-# The Linux arm64 worker leg (#4775) skips the merge queue, like the Macs: the PRs whose diff can
-# break it ran it already, and the push that follows the merge runs it.
-linux_arm64=true
-if [ "$EVENT" = "merge_group" ]; then linux_arm64=false; fi
-
 # Untiered runs, `full-ci` and an unreadable file list run every leg.
 if [ "$tiered" != true ] || [[ ",$LABELS," == *",full-ci,"* ]] || [ "$LISTED" != true ]; then
-  emit true true true "$electron" "$intel" "$macos" tests tests tests tests "$linux_arm64"; exit 0
+  emit true true true "$electron" "$intel" "$macos" tests tests tests tests true; exit 0
 fi
 
 # A fast-tier PR adds the Linux arm64 worker leg when it changes the worker or the crates it links
 # (memry-ml, memry-media), their native inputs (the build scripts, the ONNX Runtime pins in
-# crates/.cargo/, pdfium and the Tesseract sources), the toolchain or lock, or the CI that builds them.
+# crates/.cargo/, pdfium and the Tesseract sources), the toolchain or lock, the golden vectors and
+# tessdata its tests read (arm64 float kernels can miss a tolerance x64 meets), or the CI that builds them.
+# Every full run, the merge queue included, runs the leg.
 linux_arm64=false
-if printf '%s\n' "$files" | grep -E '^(crates/(memry-ml-worker|memry-ml|memry-media)/|crates/(Cargo\.(toml|lock)|rust-toolchain\.toml)$|crates/\.cargo/|scripts/fetch-(pdfium|tesseract-sources)\.mjs$|\.github/(actions/(ci-tier|free-disk|ort-static|tesseract-sources)/|workflows/rust-ci\.yml$))' >/dev/null; then
+if printf '%s\n' "$files" | grep -E '^(crates/(memry-ml-worker|memry-ml|memry-media)/|crates/(Cargo\.(toml|lock)|rust-toolchain\.toml)$|crates/\.cargo/|scripts/fetch-(pdfium|tesseract-sources)\.mjs$|packages/contracts/test-vectors/(embeddings-text|pixel-tensors|audio-features)\.json$|apps/desktop-tauri/src-tauri/resources/tessdata/|\.github/(actions/(ci-tier|free-disk|ort-static|tesseract-sources)/|workflows/rust-ci\.yml$))' >/dev/null; then
   linux_arm64=true
 fi
 

@@ -822,15 +822,15 @@ jobs:
 
   # memry-ml-worker on Linux arm64, a release target (#4775): the cmake build of Tesseract and
   # Leptonica, the ORT static archive of that triple, pdfium, OCR, the linked libraries and the real
-  # embed. One job, worker only: the rest of the workspace has no arm64-specific native code. Runs
-  # where tier.sh's rust_linux_arm64 says (full tier but the merge queue; a PR touching the worker,
-  # the crates it links, their native inputs or this CI).
+  # embed, on the release image (glibc 2.35 floor). One job, worker only: the rest of the workspace
+  # has no arm64-specific native code. Runs where tier.sh's rust_linux_arm64 says (every full run,
+  # the merge queue included; a PR touching the worker, the crates it links or their inputs).
   ml-worker-linux-arm64:
-    name: Rust ml-worker (ubuntu-24.04-arm)
+    name: Rust ml-worker (ubuntu-22.04-arm)
     needs: plan
     if: ${{ !cancelled() && needs.plan.outputs.paths == 'true' && needs.plan.outputs.linux_arm64 == 'true' }}
-    runs-on: ubuntu-24.04-arm
-    timeout-minutes: 45
+    runs-on: ubuntu-22.04-arm
+    timeout-minutes: 25
     defaults:
       run:
         shell: bash
@@ -869,7 +869,7 @@ jobs:
           SEGMENT_DOWNLOAD_TIMEOUT_MINS: 3
         with:
           workspaces: crates
-          key: ubuntu-24.04-arm-ml-worker
+          key: ubuntu-22.04-arm-ml-worker
           save-if: ${{ github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref == 'main') }}
 
       - name: Drop a partial cargo cache
