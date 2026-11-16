@@ -561,7 +561,9 @@ describe('ci tier on the repo itself', () => {
             .split('\n')
             .map((l) => l.replace(/\/\/.*$/, ''))
           lines.forEach((line, i) => {
-            const decl = /^\s*(#\[.*\]\s*)*(pub(\([^)]*\))?\s+)?mod\s+\w+\s*(;|\{|$)/.exec(line)
+            const decl = /^\s*((?:#\[[^\]]*\]\s*)*)(pub(\([^)]*\))?\s+)?mod\s+\w+\s*(;|\{|$)/.exec(
+              line
+            )
             if (!decl) return
             let attrs = decl[1] ?? ''
             for (let j = i - 1; j >= 0 && !/[;{}]\s*$/.test(lines[j]); j--) attrs = lines[j] + attrs
