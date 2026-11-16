@@ -170,4 +170,58 @@ struct JournalFirstLineLeavingTests {
         await until { written.count == 2 }
         #expect(written.sorted() == ["Fook", "keep"], "\(written)")
     }
+
+    /// A text view drawn over the first line, such as a sheet's note field,
+    /// is not the line's: its composition stays, and the line lands only
+    /// what the line kept.
+    @Test(.timeLimit(.minutes(1))) func a_text_view_over_the_first_line_does_not_land_as_it() async throws {
+        var written: [String] = []
+        var failsFirst = true
+        let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
+        let window = UIWindow(windowScene: scene)
+        defer { window.isHidden = true }
+        window.rootViewController = UIHostingController(rootView: JournalDayFirstLine(placeholder: "one") { line, _ in
+            if failsFirst { failsFirst = false; return false }
+            written.append(line)
+            return true
+        }
+        .overlay(OverTextView()))
+        window.makeKeyAndVisible()
+        await until { views(UITextView.self, in: window).count == 2 }
+        let over = try #require(views(UITextView.self, in: window).first { $0.tag == OverTextView.tag })
+        let line = try #require(views(UITextView.self, in: window).first { $0.tag != OverTextView.tag })
+
+        line.becomeFirstResponder()
+        await settle()
+        for key in "keep" { line.insertText(String(key)) }
+        await settle()
+        // The caret moves to the view over the line: the line's write fails
+        // and it stays in the field.
+        over.becomeFirstResponder()
+        await until { line.text == "keep" && !failsFirst }
+        await settle()
+        for key in "Foo" { over.insertText(String(key)) }
+        over.setMarkedText("k", selectedRange: NSRange(location: 1, length: 0))
+        await settle()
+
+        NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
+        NotificationCenter.default.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
+        await until { !written.isEmpty }
+        await settle()
+        #expect(written == ["keep"], "\(written)")
+        #expect(over.markedTextRange != nil, "the line ended another view's composition")
+    }
+}
+
+/// A plain text view drawn over the first line, as a sheet's field may be.
+private struct OverTextView: UIViewRepresentable {
+    static let tag = 4781
+
+    func makeUIView(context: Context) -> UITextView {
+        let view = UITextView()
+        view.tag = Self.tag
+        return view
+    }
+
+    func updateUIView(_ view: UITextView, context: Context) {}
 }

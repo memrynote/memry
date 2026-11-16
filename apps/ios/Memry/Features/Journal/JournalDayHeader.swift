@@ -225,10 +225,10 @@ struct JournalDayFirstLine: View {
         // background ends the composition as it stands and lands the line.
         .background(JournalFirstLinePlace.Reader(place: place))
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
-            if place.editing?.markedTextRange == nil { draft.leave(write: write) }
+            if composing == nil { draft.leave(write: write) }
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
-            if let view = place.editing, view.markedTextRange != nil {
+            if let view = composing {
                 view.unmarkText()
                 draft.typed(view.text, write: write)
             }
@@ -237,6 +237,14 @@ struct JournalDayFirstLine: View {
         .accessibilityLabel(JournalCopy.firstLineLabel)
         .accessibilityHint(placeholder)
         .accessibilityIdentifier("journal.day.firstLine")
+    }
+
+    /// The field's text view while an input method composes in it. Only
+    /// while the field has the caret: another text view, such as a sheet's
+    /// field, may be drawn over the line.
+    private var composing: UITextView? {
+        guard draft.focused, let view = place.editing, view.markedTextRange != nil else { return nil }
+        return view
     }
 
     private var prompt: Text {
