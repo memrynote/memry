@@ -506,15 +506,15 @@ fn huffman_groups_vp8l() -> Vec<u8> {
     bits.bytes
 }
 
-/// image-webp builds every group's tables, used or not, and counts none against a limit. The
-/// 30 MiB file cap does not bound them in practice. Ignored until that is fixed: see the PR
-/// comment "WebP Huffman tables: options for Kaan" on memrynote/memry#4709.
+/// image-webp builds every group's tables, used or not, and the 30 MiB file cap does not bound
+/// them; `read_frame` hands image-webp's memory limit what the checked peak leaves, so the decode
+/// fails before it builds them all.
 #[test]
-#[ignore = "documents a known gap: WebP Huffman tables are uncounted (memrynote/memry#4709)"]
 fn a_lossless_webp_with_65536_huffman_groups_decodes_under_the_cap() {
     let bytes = webp(&[(b"VP8L", huffman_groups_vp8l())]);
     assert!(bytes.len() < memry_media::MAX_IMAGE_BYTES);
-    let (_, peak) = peak_of(|| decode_fit(&bytes, 200));
+    let (result, peak) = peak_of(|| decode_fit(&bytes, 200));
+    assert!(result.is_err(), "decoded {result:?}");
     assert!(
         peak < CAP,
         "peak {peak} bytes from a {}-byte file",
