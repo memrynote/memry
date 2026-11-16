@@ -55,6 +55,7 @@ mod crdt;
 
 use super::crypto_batch::off_runtime;
 use super::engine::PushWave;
+use super::hardening::manifest;
 use super::outbox::{self, Batch, Collapsed, OutboxRow};
 use super::store;
 use crdt::BatchEnd;
@@ -305,9 +306,10 @@ impl PushCoordinator {
             // row queued would retry it every pass for ever.
             if reason == REASON_REPLAY_DETECTED || reason == REASON_DELETE_WINS {
                 acked.extend(item.ids());
+                let (item_type, op) = (item.row.item_type.as_str(), item.row.op.as_str());
                 if reason == REASON_DELETE_WINS
-                    && item.row.item_type == property_admin::ITEM_TYPE
-                    && item.row.op == outbox::OP_UPSERT
+                    && ((item_type == property_admin::ITEM_TYPE && op == outbox::OP_UPSERT)
+                        || (op == outbox::OP_CREATE && manifest::REUPLOADED.contains(&item_type)))
                 {
                     deleted_there.push((item.row.item_type.clone(), key));
                 }
@@ -484,8 +486,9 @@ fn local_failure(error: StorageError) -> ApiError {
 /// `property_definition` upsert (#4025): a device that never saw a definition's tombstone (shed
 /// to a marker, §5.12.3, which this core never pulls) can still learn its name and promote it,
 /// and this refusal is the only delete it will ever see. A user's create is a `create`, which the
-/// server re-creates over the marker. Acked in the same transaction, so the local record never
-/// outlives its outbox row.
+/// server re-creates over the marker. And for the manifest check's re-upload, a `create` of a
+/// [`manifest::REUPLOADED`] type: kept live, the row would be re-pushed every 30 minutes for
+/// ever. Acked in the same transaction, so the local record never outlives its outbox row.
 ///
 /// A change queued while the refused push was in flight is the user's newer edit, create or
 /// delete: the record stays as it is and that row is pushed next.

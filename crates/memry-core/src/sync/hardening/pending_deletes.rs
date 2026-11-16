@@ -34,7 +34,10 @@ mod tests {
     use crate::domain::notes::{self, NewNote, tombstone_local};
     use crate::domain::projects::{self, NewProject, TaskDisposition};
     use crate::domain::tasks::{self, NewTask};
-    use crate::domain::{agent_conversation, inbox, journal, tag_admin};
+    use crate::domain::{
+        agent_conversation, agent_message, canvas_folder, home_page, inbox, journal, sticky_draft,
+        tag_admin,
+    };
     use crate::storage::repositories::sync_items::{self, InboundRecord};
     use crate::storage::{open_data, test_support::temp_dir};
     use crate::sync::apply::{Pending, apply_inbound_on, apply_page};
@@ -110,6 +113,22 @@ mod tests {
                     .expect("journal")
                     .id
             }
+            "home_page" => {
+                home_page::create(
+                    conn,
+                    &home_page::NewHomePage {
+                        name: "Home",
+                        icon: None,
+                        position: 1.0,
+                        widgets: "[]",
+                        cover: None,
+                    },
+                    "a",
+                    NOW,
+                )
+                .expect("home page")
+                .id
+            }
             other => seed(conn, other),
         }
     }
@@ -163,6 +182,20 @@ mod tests {
                     "timezone": "UTC",
                 }),
             ),
+            "canvas_folder" => (
+                "cvf_work",
+                json!({"id": "cvf_work", "vaultId": "vault-1", "path": "Work", "icon": null,
+                       "deletedAt": null}),
+            ),
+            "sticky_draft" => ("draft-1", json!({"content": "jot", "kind": "note"})),
+            "agent_message" => (
+                "msg-1",
+                json!({
+                    "conversationId": "conv-1", "role": "user", "content": "hi",
+                    "attachments": [], "toolCallId": null, "status": "completed",
+                    "createdAt": NOW, "updatedAt": NOW, "deletedAt": null,
+                }),
+            ),
             "canvas" => (
                 "canvas-1",
                 json!({
@@ -203,6 +236,14 @@ mod tests {
                 agent_conversation::soft_delete(conn, id, "a", NOW + 2).map(drop)
             }
             "tag_definition" => tag_admin::delete_definitions(conn, id, "a", NOW + 2),
+            "canvas_folder" => canvas_folder::delete(conn, "Work", "a", NOW + 2)
+                .map(|done| assert!(done, "canvas_folder: nothing to delete")),
+            "home_page" => home_page::delete(conn, id, "a", NOW + 2)
+                .map(|done| assert!(done, "home_page: nothing to delete")),
+            "sticky_draft" => sticky_draft::delete(conn, id, "a", NOW + 2)
+                .map(|done| assert!(done, "sticky_draft: nothing to delete")),
+            "agent_message" => agent_message::delete(conn, id, "a", NOW + 2)
+                .map(|done| assert!(done, "agent_message: nothing to delete")),
             // No public delete of its own (the calendar purge, a future canvas
             // or lock delete): the tombstone and queued `delete` every domain
             // delete above reduces to (`selection::purge_mirrors`).
@@ -260,7 +301,7 @@ mod tests {
             let raw = sync_items::load(conn, &item_type, &id)
                 .expect("read")
                 .and_then(|row| row.payload)
-                .expect("payload");
+                .unwrap_or_else(|| panic!("{item_type}: no stored payload"));
             conn.execute("DELETE FROM outbox", []).expect("drain");
             delete(conn, &item_type, &id);
             let payload: Value = serde_json::from_str(&raw).expect("json");
@@ -293,8 +334,9 @@ mod tests {
         .expect("probe");
     }
 
-    /// Every type this device can delete, or will once its delete is ported.
-    const TYPES: [&str; 13] = [
+    /// Every type this device can delete, or will once its delete is ported,
+    /// except `agent_message` ([`WRITTEN_ONCE`]).
+    const TYPES: [&str; 16] = [
         "note",
         "task",
         "project",
@@ -308,13 +350,21 @@ mod tests {
         "calendar_binding",
         "calendar_external_event",
         "canvas",
+        "canvas_folder",
+        "home_page",
+        "sticky_draft",
     ];
+
+    /// A message is written once: every pulled update of a held id is
+    /// skipped, older or concurrent (`agent_message::merge`).
+    const WRITTEN_ONCE: &str = "agent_message";
 
     #[test]
     fn a_pending_delete_survives_a_replayed_older_update() {
         for item_type in TYPES {
             probe(item_type, json!({"a": 1}), false);
         }
+        probe(WRITTEN_ONCE, json!({"a": 1}), false);
     }
 
     #[test]
@@ -322,5 +372,6 @@ mod tests {
         for item_type in TYPES {
             probe(item_type, json!({"a": 1, "b": 1}), true);
         }
+        probe(WRITTEN_ONCE, json!({"a": 1, "b": 1}), false);
     }
 }

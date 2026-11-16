@@ -188,7 +188,12 @@ only after a pull that delivered. Desktop keeps it in `cursorSkipRepair`
 it in the `meta` row `sync.cursor_skip_repair`, writes the reset and `pending`
 in one transaction, and records `done` after a run that was not refused and
 reached `hasMore: false` (`crates/memry-core/src/sync/feed_restart.rs`,
-#2304).
+#2304). A first sync runs both feed-restart rules before its refs pass, so a
+fresh device records its declaration and `done` and its next pass keeps the
+cursor the first sync stored (`crates/memry-core/src/sync/first_sync.rs:298-304`).
+When its metadata pass leaves rows `metadata-only` that are not held corrupt or
+refused, it removes the repair marker again, so the next pass reads the feed from
+the start once and fills them (`first_sync.rs:308-319`, `feed_restart.rs`).
 
 **Acks are per item id.** Two queued rows sharing an id cannot be told apart in a
 mixed response, so **a client MUST collapse to one push item per id before
@@ -1132,6 +1137,20 @@ its parent (requested and no live row served, or its delete applied here); a
 parent in `blobMissing`, on the re-fetch cooldown, or in the schema-invalid
 ledger keeps its children.
 
+The Rust core's desktop driver is stricter: orphan repair tombstones a task or
+an external event only when its parent is a tombstone here
+(`crates/memry-core/src/sync/hardening/orphans.rs:154-158`), and a parent that
+is only absent, requested by id and not served, keeps its children
+(`orphans.rs:99-113`). A message of a deleted conversation is kept, as in
+Electron (`orphans.rs:63`, `apps/desktop/src/main/sync/agent-message-handler.ts:104-107`).
+A parent's delete is not pushed while any row of its cascaded children's type
+is queued, so a child moved out of the parent, or moved and then edited, is never
+overtaken by the delete (`crates/memry-core/src/sync/outbox/claim.rs:104-107`).
+The hold has no bound: a child row the server keeps rejecting holds the delete
+until that child is edited or deleted. While a parent's own delete is still
+queued, orphan repair leaves that parent's children alone, so a peer's new child
+of it survives (`orphans.rs:209-228`).
+
 ## 5.15 The manifest, and the absence of a digest
 
 **Normative.** `RecordSyncManifestSchema` carries `nextCursor` **only** on a
@@ -1148,6 +1167,14 @@ not UUIDs: `tag_definition` ids are tag names and `folder_config` ids are folder
 paths (chapter 13 §13.6). An id-only key made a project and a tag both named
 `inbox` share one entry and corrupt each other's state
 (`apps/desktop/src/main/sync/engine/sync-context.ts:118-124`).
+
+The Rust core's desktop driver runs the manifest check at most every 30
+minutes (`crates/memry-core/src/sync/hardening/manifest.rs:47`), diffs on
+`(type, id)` with a note and a journal of one id as one item (`manifest.rs:158`),
+pulls by id a live server row it holds no row of (`manifest.rs:175-193`), and
+queues as `create` a live clocked local row the server does not list, only of
+the types in `REUPLOADED` (`manifest.rs:53`): none the server re-creates over a
+purged tombstone, since this core does not apply markers yet.
 
 ## 5.16 Clock skew
 

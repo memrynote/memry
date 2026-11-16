@@ -56,8 +56,10 @@ use crate::storage::repositories::sync_items;
 
 use super::body_pull::{BodyPull, BodyPullError, BodyPullReport};
 use super::bootstrap::BootstrapClient;
+use super::feed_restart;
 use super::first_sync_store::{
-    owe_live_documents, pending_metadata_ids, read_meta, recent_document_ids, write_meta,
+    metadata_left_behind, owe_live_documents, pending_metadata_ids, read_meta, recent_document_ids,
+    write_meta,
 };
 use super::note_body_feed;
 use super::pack_bootstrap::{PackBootstrap, PackBootstrapReport};
@@ -290,8 +292,31 @@ impl FirstSync {
 
         report.window_start = self.window_start(now_ms).await?;
 
+        // The refs pass reads the feed from the start under this declaration,
+        // which is the cursor-skip repair too. Recording both here keeps the
+        // first pass after it on the stored cursor; a resumed first sync whose
+        // cursor predates the markers starts over once.
+        let declaration = self.pull.declaration().header_value();
+        self.db
+            .call(move |conn| {
+                feed_restart::restart_on_new_declaration(conn, &declaration, now_ms)?;
+                feed_restart::begin_cursor_skip_repair(conn, now_ms).map(drop)
+            })
+            .await?;
+
         self.refs_pass(tail_cursor, &mut report).await?;
         self.metadata_pass(&mut report).await?;
+        // A chunk that was not a pull envelope, or an id the server did not serve,
+        // leaves its rows `metadata-only`. A row held corrupt or refused does too,
+        // and a re-read does not fix it.
+        self.db
+            .call(|conn| {
+                if !metadata_left_behind(conn)? {
+                    return Ok(());
+                }
+                feed_restart::reopen_cursor_skip_repair(conn)
+            })
+            .await?;
         // After refs, so a tombstoned document is known and never seeded.
         if let Some(packs) = &self.packs {
             self.progress.packs(None);

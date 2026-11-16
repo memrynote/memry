@@ -6,6 +6,7 @@
 //! | a learned definition refused as deleted is deleted here | §5.8 client rule, §5.12.3          |
 //! | every other refusal leaves the local record live        | §5.7, §5.8: only a definition upsert |
 //! | a user's create is sent as `create` and stays live       | §5.12.3 re-create over a marker    |
+//! | a manifest re-upload refused as deleted is deleted here | §5.8, §5.15: not re-pushed for ever |
 //! | an edit made while the refused push was in flight stays | the edit is pushed next            |
 
 #[allow(unused_imports)]
@@ -209,6 +210,21 @@ async fn a_users_create_is_sent_as_create_and_stays_live_when_refused() {
         .expect("the wave");
     assert_eq!(*sealer.0.lock().unwrap(), ["create"]);
     assert!(live(&db, DEFINITION));
+}
+
+/// The manifest check queued a task the server did not list as `create` (§5.15); the server
+/// holds it deleted. Kept live, the next check would queue it again, every 30 minutes for ever.
+#[tokio::test]
+async fn a_manifest_re_upload_refused_as_deleted_is_deleted_here() {
+    let db = scratch_db("reupload");
+    queued_row(&db, "task", outbox::OP_CREATE);
+    let transport = FakeTransport::new(vec![refused("gone", "SYNC_DELETE_WINS")]);
+    push(&db, transport, Arc::new(Operations::default()))
+        .drain_wave()
+        .await
+        .expect("the wave");
+    assert!(!live(&db, "task"), "the delete wins here too");
+    assert!(queued(&db).is_empty());
 }
 
 /// Edits `gone` while the first push of its record is in flight and answers `SYNC_DELETE_WINS`;

@@ -18,6 +18,7 @@
 //! | halving holds its ceiling across waves    | chapter 05 §5.6                             |
 //! | the three blocked states stay distinct    | chapter 11 §11.7.1, FR-035                  |
 //! | a 402 demotes to `Unentitled`             | chapter 11 §11.7.1, chapter 00 §0.5         |
+//! | a parent's delete waits for child rows    | Step 17 L3b (#3534), orphan repair          |
 
 #[allow(unused_imports)]
 use crate::http_fakes;
@@ -27,10 +28,12 @@ use std::sync::Arc;
 
 use http_fakes::{FakeTransport, body_json, error_response, response};
 use memry_core::api::errors::{ApiError, StorageError};
+use memry_core::domain::projects::{self, TaskDisposition};
+use memry_core::domain::tasks;
 use memry_core::protocol::envelope::EnvelopeError;
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
 use memry_core::protocol::types::Declaration;
-use memry_core::storage::repositories::sync_items;
+use memry_core::storage::repositories::{Change as FieldChange, sync_items};
 use memry_core::storage::{Db, open_data};
 use memry_core::sync::outbox::{self, Batch, Change, OP_CRDT_UPDATE, RecordOp};
 use memry_core::sync::policy::{PolicyTier, SYNC_PAYMENT_REQUIRED};
@@ -852,4 +855,154 @@ async fn a_mid_wave_402_demotes_the_engine_to_unentitled_and_parks_the_next_pass
     // Only the account tier clears it (§11.7.1).
     engine.set_entitled(true);
     assert_eq!(engine.write_gate(), WriteGate::Open);
+}
+
+/// The ids each `POST /sync/push` carried, in order.
+fn pushed_ids(transport: &FakeTransport) -> Vec<Vec<String>> {
+    transport
+        .calls_to("/sync/push")
+        .iter()
+        .map(|call| {
+            body_json(call)["items"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .map(|item| item["id"].as_str().unwrap_or_default().to_owned())
+                .collect()
+        })
+        .collect()
+}
+
+/// A project deleted with its tasks moved to the Inbox queues the moves, then the delete.
+fn queue_move_then_delete(db: &Db) {
+    seed_item(db, "task", "t1", r#"{"title":"Kept","projectId":"inbox"}"#);
+    seed_item(db, "project", "p1", r#"{"title":"Gone"}"#);
+    db.call_blocking(|conn| outbox::commit(conn, &Change::upsert("task", "t1"), 1, |_| Ok(())))
+        .expect("the move");
+    db.call_blocking(|conn| outbox::commit(conn, &Change::delete("project", "p1"), 2, |_| Ok(())))
+        .expect("the delete");
+}
+
+/// The delete waits for the move: a peer that pulled the project's tombstone before the
+/// move would tombstone the task in its orphan repair, and the late move would then lose.
+#[tokio::test]
+async fn a_project_delete_is_not_sent_while_a_task_row_queued_before_it_is_in_backoff() {
+    let db = scratch_db("parent-delete-deferred");
+    queue_move_then_delete(&db);
+    db.call_blocking(|conn| {
+        outbox::defer(conn, &[1], "SYNC_INVALID_SIGNATURE", Some(i64::MAX - 1))
+    })
+    .expect("the move in backoff");
+
+    // An empty script: any request panics the fake transport.
+    let transport = FakeTransport::new(Vec::new());
+    let push = coordinator(db.clone(), transport.clone(), RecordingSealer::new());
+    let report = push.drain_wave().await.expect("the wave");
+
+    assert_eq!(report.accepted, 0);
+    assert!(transport.calls_to("/sync/push").is_empty());
+    let ops: Vec<String> = outbox_rows(&db).into_iter().map(|row| row.op).collect();
+    assert_eq!(ops, vec!["upsert", "delete"], "both still queued");
+}
+
+#[tokio::test]
+async fn a_project_delete_goes_in_the_batch_after_the_task_rows_queued_before_it() {
+    let db = scratch_db("parent-delete-order");
+    queue_move_then_delete(&db);
+
+    let transport = FakeTransport::new(vec![
+        response(200, &push_ok(&["t1"])),
+        response(200, &push_ok(&["p1"])),
+    ]);
+    let push = coordinator(db.clone(), transport.clone(), RecordingSealer::new());
+    let report = push.drain_wave().await.expect("the wave");
+
+    assert_eq!(report.accepted, 2);
+    assert_eq!(
+        pushed_ids(&transport),
+        vec![vec!["t1".to_owned()], vec!["p1".to_owned()]]
+    );
+    assert!(outbox_rows(&db).is_empty());
+}
+
+fn seed_remote(conn: &rusqlite::Connection, item_type: &str, item_id: &str, payload: Json) {
+    let record = sync_items::InboundRecord {
+        item_type: item_type.to_owned(),
+        item_id: item_id.to_owned(),
+        payload_json: payload.to_string(),
+        server_cursor: Some(7),
+        signer_device_id: Some("device-b".to_owned()),
+        updated_at: 1,
+        deleted_at: None,
+    };
+    sync_items::apply_remote(conn, &record, 1).expect("apply");
+}
+
+/// Offline: P deleted with its tasks moved to the Inbox, then T edited there. The edit
+/// re-queues T's row after P's delete, so a hold on earlier rows only would let the delete
+/// go while T's move is rejected, and a peer's orphan repair would tombstone T.
+#[tokio::test]
+async fn a_project_delete_waits_for_a_moved_task_edited_after_it() {
+    let db = scratch_db("parent-delete-edit-after");
+    db.call_blocking(|conn| {
+        seed_remote(
+            conn,
+            "project",
+            "inbox",
+            json!({"name": "Inbox", "isInbox": true, "statuses": [], "clock": {"device-b": 1}}),
+        );
+        seed_remote(
+            conn,
+            "project",
+            "p1",
+            json!({"name": "Gone", "statuses": [], "clock": {"device-b": 1}}),
+        );
+        seed_remote(
+            conn,
+            "task",
+            "t1",
+            json!({"title": "Kept", "projectId": "p1", "clock": {"device-b": 1}}),
+        );
+        projects::delete(conn, "p1", TaskDisposition::MoveToInbox, "device-a", 2)?.acknowledge();
+        tasks::edit(
+            conn,
+            "t1",
+            vec![("title", FieldChange::set("Edited"))],
+            "device-a",
+            3,
+        )?
+        .acknowledge();
+        Ok(())
+    })
+    .expect("delete, then edit");
+    let queued: Vec<(String, String)> = outbox_rows(&db)
+        .into_iter()
+        .map(|row| (row.item_id, row.op))
+        .collect();
+    assert_eq!(
+        queued,
+        vec![
+            ("p1".into(), "delete".into()),
+            ("t1".into(), "upsert".into())
+        ],
+        "the edit re-queued T after P's delete"
+    );
+
+    // One script entry: a second request panics the fake transport.
+    let transport = FakeTransport::new(vec![response(
+        200,
+        &json!({
+            "accepted": [],
+            "rejected": [{"id": "t1", "reason": "SYNC_INVALID_SIGNATURE"}],
+            "serverTime": 1,
+            "maxCursor": 1,
+        })
+        .to_string(),
+    )]);
+    let push = coordinator(db.clone(), transport.clone(), RecordingSealer::new());
+    push.drain_wave().await.expect("the wave");
+
+    assert_eq!(pushed_ids(&transport), vec![vec!["t1".to_owned()]]);
+    let ops: Vec<String> = outbox_rows(&db).into_iter().map(|row| row.op).collect();
+    assert_eq!(ops, vec!["delete", "upsert"], "the delete waits for T");
 }

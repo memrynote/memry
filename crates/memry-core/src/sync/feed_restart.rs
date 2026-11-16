@@ -1,6 +1,7 @@
 //! The two reasons the record feed is read again from the start (chapter 05
-//! §5.11). Both are one statement group, run by [`super::pull::PullLoop::run`]
-//! before its first page.
+//! §5.11). Both are one statement group, run by [`super::pull::PullLoop::begin_run`]
+//! before a run's first page, in `PullLoop::run` and in every engine pass, and
+//! by [`super::first_sync::FirstSync::run`] before its refs pass.
 //!
 //! - **The declared types grew.** The server filters the one feed by the
 //!   declaration, so a type added later has rows behind the stored cursor
@@ -83,6 +84,15 @@ pub(super) fn begin_cursor_skip_repair(
 /// the end of the feed.
 pub(super) fn finish_cursor_skip_repair(conn: &Connection) -> Result<(), StorageError> {
     write_meta(conn, META_CURSOR_SKIP_REPAIR, REPAIR_DONE)
+}
+
+/// Leaves the repair unstarted, so the next run that holds a cursor reads the
+/// feed from the start once. A first sync calls it when its metadata pass left
+/// rows `metadata-only`: that re-read is the only retry they get.
+pub(super) fn reopen_cursor_skip_repair(conn: &Connection) -> Result<(), StorageError> {
+    conn.execute("DELETE FROM meta WHERE key = ?1", [META_CURSOR_SKIP_REPAIR])
+        .map_err(failed)?;
+    Ok(())
 }
 
 fn failed(error: rusqlite::Error) -> StorageError {

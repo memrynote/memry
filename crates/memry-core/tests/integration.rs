@@ -8,6 +8,7 @@
 // The desktop record tests seed `vault_locks`, which exists only with `markdown` (desktop builds).
 #[cfg(feature = "markdown")]
 mod desktop_relay;
+mod driver_fakes;
 #[cfg(feature = "markdown")]
 mod editor_support;
 mod http_fakes;
@@ -377,6 +378,8 @@ mod note_stats_vectors;
 mod offline_reconnect;
 #[path = "offset_kind.rs"]
 mod offset_kind;
+#[path = "outbox_claim_load.rs"]
+mod outbox_claim_load;
 #[path = "outbox_crdt_batch_cap.rs"]
 mod outbox_crdt_batch_cap;
 #[path = "pack_vectors.rs"]
@@ -429,6 +432,10 @@ mod sync_equal_clock;
 mod sync_first_sync;
 #[path = "sync_hardening_ledgers.rs"]
 mod sync_hardening_ledgers;
+#[path = "sync_hardening_orphans.rs"]
+mod sync_hardening_orphans;
+#[path = "sync_hardening_repairs.rs"]
+mod sync_hardening_repairs;
 #[path = "sync_note_body_feed.rs"]
 mod sync_note_body_feed;
 #[path = "sync_outbox.rs"]

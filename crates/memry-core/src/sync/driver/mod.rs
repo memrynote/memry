@@ -23,6 +23,11 @@
 //!   and the records that missed re-pulled in the same pass. The records an
 //!   earlier driver stored corrupt for an unknown signer are re-pulled when
 //!   the driver opens, so a quit before that re-pull loses nothing.
+//! - **The stale-cursor reset** ([`super::hardening::stale_cursor`]): it
+//!   watches the reachability seam, and the feed pull after a reconnect a
+//!   day past the last successful pull reads the feed from the start.
+//! - **The manifest check** ([`super::hardening::manifest`]) after a pass
+//!   whose pull reached the head of the feed, at most every 30 minutes.
 //! - **The snapshot cadence** (chapter 07 §7.13.3): which documents asked for
 //!   a snapshot, and which are due. The push itself needs the resident
 //!   document and is the supervisor's.
@@ -30,6 +35,7 @@
 mod cipher;
 pub mod observer;
 pub mod progress;
+mod repairs;
 
 use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -47,7 +53,7 @@ use crate::protocol::account::{AccountSealer, DeviceSigner, device_directory};
 use crate::protocol::auth::TokenManager;
 use crate::protocol::http::{HttpClient, TokenProvider};
 use crate::protocol::types::Declaration;
-use crate::seams::reachability::Reachability;
+use crate::seams::reachability::{Reachability, ReachabilityObserver};
 use crate::seams::transport::Transport;
 use crate::storage::Db;
 use crate::storage::repositories::sync_items;
@@ -58,6 +64,8 @@ use super::engine::{PassReport, PassSeed, SyncEngine};
 use super::first_sync::{FirstSync, FirstSyncLimits, FirstSyncReport, ProgressSink};
 use super::first_sync_store::read_meta;
 use super::hardening::history::{self, HistoryKind};
+use super::hardening::manifest::ManifestCheck;
+use super::hardening::stale_cursor::StaleCursor;
 use super::pack_bootstrap::PackBootstrap;
 use super::policy::ServerClock;
 use super::pull::PullLoop;
@@ -150,6 +158,8 @@ pub struct SyncDriver {
     /// The `tasks` progress, the seed registered after every other.
     tasks: Arc<TasksPhase>,
     paused: AtomicBool,
+    /// The 30-minute manifest check ([`super::hardening::manifest`]).
+    manifest: ManifestCheck,
     /// Chapter 07 §7.13.3: per document, the first and last request instants.
     snapshots: Mutex<BTreeMap<String, (i64, i64)>>,
 }
@@ -204,7 +214,11 @@ impl SyncDriver {
             .with_vault(&server_vault)
             .with_hardening()
         };
-        let feed = pull_loop().with_note_bodies(cipher.clone());
+        let stale_cursor = Arc::new(StaleCursor::default());
+        reachability.observe(Arc::clone(&stale_cursor) as Arc<dyn ReachabilityObserver>);
+        let feed = pull_loop()
+            .with_note_bodies(cipher.clone())
+            .with_stale_cursor(stale_cursor);
         let push = PushCoordinator::new(Arc::clone(&http), db.clone(), declaration.clone(), sealer)
             .with_at_rest_key(at_rest.clone())
             .with_vault(&server_vault);
@@ -262,6 +276,7 @@ impl SyncDriver {
             observers,
             tasks,
             paused: AtomicBool::new(false),
+            manifest: ManifestCheck::default(),
             snapshots: Mutex::default(),
         };
         driver.repull_unknown_signers().await?;
@@ -284,6 +299,7 @@ impl SyncDriver {
         let pass = self.engine.run_pass(trigger).await;
         self.record_history(&pass, started).await;
         self.settle_misses().await;
+        self.check_manifest(&pass).await;
         Some(pass)
     }
 

@@ -11,6 +11,9 @@
 //! | passes over one vault serialize                        | one pass gate: drivers and `sync_now` |
 //! | the driver sends the bound vault id                    | K1: unbound refused, rebinding refused |
 //! | a desktop first sync pulls every body                  | > 500 bodies, one older than 30 days; progress phases |
+//! | the manifest check pulls a lost row, pushes a lost create | ch. 05 §5.15, at most every 30 min |
+//! | a reconnect a day after the last pull reads the feed again | Electron `reconnectSync`, the driver's pass |
+//! | a task whose project a peer deleted is deleted and pushed | orphan repair, the driver's pass      |
 
 #![cfg(feature = "harness")]
 
@@ -37,6 +40,7 @@ use memry_core::domain::agent_message::{self, NewMessage};
 use memry_core::domain::vault_locks::{self, TargetKind};
 use memry_core::domain::{canvas_folder, home_page, sticky_draft, tag_mint};
 use memry_core::protocol::auth::DevicePlatform;
+use memry_core::seams::reachability::{Reachability, ReachabilityObserver, Reachable};
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_core::storage::Db;
 use memry_core::sync::driver::progress::{
@@ -181,13 +185,18 @@ impl Device {
 
     /// A fresh driver over this vault, in place of the one it held.
     async fn reopen(&mut self) {
+        self.reopen_on(Arc::new(Online)).await;
+    }
+
+    /// [`Device::reopen`] with the driver watching `reachability`.
+    async fn reopen_on(&mut self, reachability: Arc<dyn Reachability>) {
         let seeds: Vec<Arc<dyn PassSeed>> =
             vec![Arc::new(DefinitionsSeed(Arc::clone(&self.definitions)))];
         self.driver = self
             .core
             .sync_driver(
                 Arc::clone(&self.session),
-                Arc::new(Online),
+                reachability,
                 DriverConfig::desktop(),
                 seeds,
             )
@@ -1010,4 +1019,154 @@ async fn the_driver_records_each_pass_in_the_sync_history() {
         "{on_b:?}"
     );
     assert!(on_b.iter().all(|(kind, _, _)| kind != "error"), "{on_b:?}");
+}
+
+impl Device {
+    /// Runs `sql` on this vault's data database: the harness's way to lose a row.
+    fn exec(&self, sql: &'static str, id: &str) -> usize {
+        let id = id.to_owned();
+        self.db()
+            .call_blocking(move |conn| conn.execute(sql, [&id]).map_err(failed))
+            .unwrap()
+    }
+}
+
+/// The manifest check repairs what the feed cannot (#3534 L3b): B loses its row of a task the
+/// server still holds, and A loses the push of a task it made. A fresh driver on each (the
+/// check runs at most every 30 minutes per driver) pulls B's task back by id and queues A's as
+/// `create`, which the next pass pushes and B pulls.
+#[tokio::test(flavor = "multi_thread")]
+async fn the_manifest_check_pulls_a_lost_row_and_pushes_a_lost_create() {
+    let server = Server::start();
+    let mut a = Device::new(&server, 0).await;
+    let mut b = Device::new(&server, 1).await;
+    let kept = a.new_task("Ship");
+    assert!(a.sync().await.pushed);
+    b.sync().await;
+    assert!(b.stored("task", &kept).is_some());
+
+    let lost = "DELETE FROM sync_items WHERE item_type = 'task' AND item_id = ?1";
+    assert_eq!(b.exec(lost, &kept), 1);
+    b.reopen().await;
+    b.sync().await;
+    assert!(
+        b.stored("task", &kept).is_some(),
+        "the server-only task is pulled by id"
+    );
+
+    let unsent = a.new_task("Review");
+    assert_eq!(
+        a.exec(
+            "DELETE FROM outbox WHERE item_type = 'task' AND item_id = ?1",
+            &unsent
+        ),
+        1
+    );
+    a.reopen().await;
+    a.sync().await;
+    assert_eq!(
+        a.queued("task"),
+        1,
+        "the local-only task is queued as create"
+    );
+    assert!(a.sync().await.pushed);
+    b.sync().await;
+    assert!(
+        b.stored("task", &unsent).is_some(),
+        "the re-pushed task reaches B"
+    );
+}
+
+/// Online all along; [`Reconnects::reconnect`] tells the driver the network came back.
+#[derive(Default)]
+struct Reconnects(std::sync::Mutex<Vec<Arc<dyn ReachabilityObserver>>>);
+
+impl Reconnects {
+    fn reconnect(&self) {
+        for observer in self.0.lock().unwrap().iter() {
+            observer.on_change(Reachable::Wifi);
+        }
+    }
+}
+
+impl Reachability for Reconnects {
+    fn current(&self) -> Reachable {
+        Reachable::Wifi
+    }
+
+    fn observe(&self, observer: Arc<dyn ReachabilityObserver>) {
+        self.0.lock().unwrap().push(observer);
+    }
+}
+
+/// The extended-offline reset on the driver's pass (#3534 L3b): B loses its row of a task behind
+/// its cursor, and its last pull is 25 hours old. Coming back online, B's next pass reads the
+/// feed from the start and the task comes back. One driver throughout, so the manifest check
+/// (once per 30 minutes per driver, on the first pass) is not what restores it.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_reconnect_a_day_after_the_last_pull_reads_the_feed_again() {
+    let server = Server::start();
+    let a = Device::new(&server, 0).await;
+    let mut b = Device::new(&server, 1).await;
+    let network = Arc::new(Reconnects::default());
+    b.reopen_on(network.clone()).await;
+    let task = a.new_task("Ship");
+    assert!(a.sync().await.pushed);
+    b.sync().await;
+    assert!(b.stored("task", &task).is_some());
+
+    let lost = "DELETE FROM sync_items WHERE item_type = 'task' AND item_id = ?1";
+    assert_eq!(b.exec(lost, &task), 1);
+    b.sync().await;
+    assert!(
+        b.stored("task", &task).is_none(),
+        "the cursor is past the task"
+    );
+
+    let day_ago = "UPDATE sync_history SET created_at = created_at - 90000000 WHERE ?1 = ?1";
+    assert!(b.exec(day_ago, "") > 0);
+    network.reconnect();
+    b.sync().await;
+    assert!(
+        b.stored("task", &task).is_some(),
+        "the feed was read from the start"
+    );
+}
+
+/// Orphan repair on the driver's pass (#3534 L3b): A deletes a project and its task's delete is
+/// lost before it reaches the server. B pulls the project's tombstone, fetches the task again,
+/// tombstones it and pushes the delete, so a device that joins later holds it deleted.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_task_whose_project_a_peer_deleted_is_deleted_and_its_delete_pushed() {
+    let mut server = Server::start();
+    let a = Device::new(&server, 0).await;
+    let b = Device::new(&server, 1).await;
+    let task = a.new_task("Ship");
+    assert!(a.sync().await.pushed);
+    b.sync().await;
+    let stored = b.stored("task", &task).expect("B holds the task");
+    let project = serde_json::from_str::<Value>(&stored).unwrap()["projectId"]
+        .as_str()
+        .expect("the task's project")
+        .to_owned();
+
+    let tasks = a.core.tasks(a.store.clone()).unwrap();
+    tasks.delete_project(project.clone(), false).unwrap();
+    let unsent = "DELETE FROM outbox WHERE item_type = 'task' AND item_id = ?1";
+    assert_eq!(a.exec(unsent, &task), 1, "the task's delete is lost");
+    assert!(a.sync().await.pushed);
+
+    b.sync().await;
+    assert!(b.stored("project", &project).is_none());
+    assert!(b.stored("task", &task).is_none(), "the orphan is deleted");
+    assert_eq!(b.queued("task"), 0, "its delete was pushed");
+
+    let late = server.register();
+    let c = Device::bound(&server.url, &late, VAULT, Vec::new()).await;
+    c.sync().await;
+    assert!(c.stored("project", &project).is_none());
+    assert!(
+        c.stored("task", &task).is_none(),
+        "the server holds the task deleted"
+    );
 }
