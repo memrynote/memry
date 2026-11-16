@@ -15,15 +15,21 @@
 //! Old vectors keep answering until new ones replace them.
 //!
 //! Live notes are the markdown rows of `note_files` (journal days included), as
-//! `note_stats::prune` reads them. Electron also embeds file notes with extracted text; that
-//! half comes with the extracted-text tables (Step 25, #3542).
+//! `note_stats::prune` reads them, plus the filed files (PDFs, images) with text read out of
+//! them (`EMBEDDABLE_NOTES`, `embedding-projector.ts:118-123`). A markdown note's input ends
+//! with the opening of its attachments' text and a file note's input is that text alone
+//! (`withAttachmentText`, `readFileTextOpening`, :126-143), so the recorded hash also names
+//! the text read ([`embedded_hash`]): a new read (another OCR language, a replaced attachment)
+//! leaves the note owed, as Electron's `note.text-extracted` marks it dirty (:400-425).
 
 use std::collections::{HashMap, HashSet};
 
 use rusqlite::{Connection, OptionalExtension as _, params};
 
 use crate::api::errors::StorageError;
-use crate::domain::embedding_input::EMBEDDING_INPUT_VERSION;
+use crate::domain::content_hash::{ContentHasher, content_hash};
+use crate::domain::embedding_input::{EMBEDDING_INPUT_VERSION, MAX_EMBEDDABLE_CONTENT_LENGTH};
+use crate::domain::file_text::extracted_text_for_note;
 use crate::storage::vec::to_blob;
 
 fn failed(err: rusqlite::Error) -> StorageError {
@@ -40,61 +46,195 @@ pub struct EmbeddableNote {
     /// The note's title; a journal day's is its file name without `.md`
     /// (`extractTitleFromPath`), as Electron's index titles it.
     pub title: String,
-    /// The hash of the bytes on disk (`note_file_hashes.file_hash`), else of the text the
-    /// note's document holds: what the projector reads and hashes when it embeds. `None` when
-    /// the tier never read the file.
+    /// A markdown note, whose body the projector reads from disk; else a filed file, whose
+    /// input is the text read out of it.
+    pub markdown: bool,
+    /// What the vectors are built from: the hash of the bytes on disk
+    /// (`note_file_hashes.file_hash`, else of the text the note's document holds; a file
+    /// note has none), joined with the hash of the text read out of the note's files
+    /// ([`embedded_hash`]). `None` when the tier never read the file and no text was read.
     pub content_hash: Option<String>,
 }
 
-fn file_title(path: &str) -> String {
+/// `extractTitleFromPath` for a markdown note; a filed file drops its extension
+/// (`vault/indexer.ts:304`).
+fn file_title(path: &str, markdown: bool) -> String {
     let name = path.rsplit('/').next().unwrap_or(path);
-    name.strip_suffix(".md")
-        .filter(|stem| !stem.is_empty())
+    let stem = if markdown {
+        name.strip_suffix(".md")
+    } else {
+        name.rsplit_once('.').map(|(stem, _)| stem)
+    };
+    stem.filter(|stem| !stem.is_empty())
         .unwrap_or(name)
         .to_owned()
 }
 
-const EMBEDDABLE: &str = "SELECT f.note_id, f.path, n.title, \
-     COALESCE(h.file_hash, f.content_hash) FROM note_files f \
+const CANDIDATES: &str = "SELECT f.note_id, f.path, n.title, \
+     COALESCE(h.file_hash, f.content_hash), f.file_type = 'markdown' FROM note_files f \
      LEFT JOIN notes n ON n.id = f.note_id AND n.deleted_at IS NULL \
-     LEFT JOIN note_file_hashes h ON h.note_id = f.note_id \
-     WHERE f.file_type = 'markdown'";
+     LEFT JOIN note_file_hashes h ON h.note_id = f.note_id";
 
-fn embeddable_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<EmbeddableNote> {
+fn candidate_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<EmbeddableNote> {
     let path: String = row.get(1)?;
     let title: Option<String> = row.get(2)?;
+    let markdown: bool = row.get(4)?;
     Ok(EmbeddableNote {
         note_id: row.get(0)?,
-        title: title.unwrap_or_else(|| file_title(&path)),
+        title: title.unwrap_or_else(|| file_title(&path, markdown)),
         path,
-        content_hash: row.get(3)?,
+        markdown,
+        content_hash: if markdown { row.get(3)? } else { None },
     })
 }
 
-/// Every live markdown note, in path order (`EMBEDDABLE_NOTES`, markdown half).
-pub fn embeddable(data: &Connection) -> Result<Vec<EmbeddableNote>, StorageError> {
+/// Every live note file, in path order: `data.db`'s half of `EMBEDDABLE_NOTES`. The text read
+/// out of files lives in `index.db`; [`with_file_text`] finishes the list.
+pub fn candidates(data: &Connection) -> Result<Vec<EmbeddableNote>, StorageError> {
     let mut statement = data
-        .prepare(&format!("{EMBEDDABLE} ORDER BY f.path"))
+        .prepare(&format!("{CANDIDATES} ORDER BY f.path"))
         .map_err(failed)?;
     statement
-        .query_map([], embeddable_row)
+        .query_map([], candidate_row)
         .map_err(failed)?
         .collect::<Result<_, _>>()
         .map_err(failed)
 }
 
-/// The live markdown note `note_id`, `None` when it has no markdown file.
-pub fn embeddable_note(
-    data: &Connection,
-    note_id: &str,
-) -> Result<Option<EmbeddableNote>, StorageError> {
+/// The live note file `note_id` ([`candidates`] for one note).
+pub fn candidate(data: &Connection, note_id: &str) -> Result<Option<EmbeddableNote>, StorageError> {
     data.query_row(
-        &format!("{EMBEDDABLE} AND f.note_id = ?1"),
+        &format!("{CANDIDATES} WHERE f.note_id = ?1"),
         [note_id],
-        embeddable_row,
+        candidate_row,
     )
     .optional()
     .map_err(failed)
+}
+
+/// The hash a note's vectors record: `file_hash` (the bytes of a markdown note) alone when no
+/// text was read out of its files, else joined with the hash of that text as
+/// [`extracted_text_for_note`] gives it. A note with no extracted text keeps the hash it had
+/// before file text was embedded, so an upgrade re-embeds only the notes that have some.
+pub fn embedded_hash(file_hash: Option<&str>, extracted: &str) -> Option<String> {
+    joined_hash(
+        file_hash,
+        (!extracted.is_empty()).then(|| content_hash(extracted)),
+    )
+}
+
+fn joined_hash(file_hash: Option<&str>, text_hash: Option<String>) -> Option<String> {
+    match text_hash {
+        None => file_hash.map(str::to_owned),
+        Some(text_hash) => Some(format!("{}|{text_hash}", file_hash.unwrap_or_default())),
+    }
+}
+
+/// The first `max_units` UTF-16 units of `text` (`.slice(0, max)`); a cut through a surrogate
+/// pair leaves U+FFFD, as `embedding_input` does.
+fn opening(text: &str, max_units: usize) -> String {
+    if text.len() <= max_units {
+        return text.to_owned();
+    }
+    let units: Vec<u16> = text.encode_utf16().take(max_units).collect();
+    String::from_utf16_lossy(&units)
+}
+
+/// `withAttachmentText` (:128-133): a markdown note's body, then the opening of the text read
+/// out of its attachments, up to the most the embedding input reads.
+pub fn with_attachment_text(body: String, extracted: &str) -> String {
+    let room = MAX_EMBEDDABLE_CONTENT_LENGTH.saturating_sub(body.encode_utf16().count());
+    if room == 0 || extracted.is_empty() {
+        return body;
+    }
+    format!("{body}\n\n{}", opening(extracted, room))
+}
+
+/// `readFileTextOpening` (:126): a file note's input, its text up to the most the embedding
+/// input reads.
+pub fn file_text_opening(extracted: &str) -> String {
+    opening(extracted, MAX_EMBEDDABLE_CONTENT_LENGTH)
+}
+
+/// One candidate finished against `index.db`: a file note with no text read is dropped.
+fn finish(note: EmbeddableNote, text_hash: Option<String>) -> Option<EmbeddableNote> {
+    if !note.markdown && text_hash.is_none() {
+        return None;
+    }
+    let content_hash = joined_hash(note.content_hash.as_deref(), text_hash);
+    Some(EmbeddableNote {
+        content_hash,
+        ..note
+    })
+}
+
+/// `EMBEDDABLE_NOTES`: the markdown notes of `notes`, and its files with text read out of them,
+/// each with the hash its vectors must record ([`embedded_hash`]).
+pub fn with_file_text(
+    index: &Connection,
+    notes: Vec<EmbeddableNote>,
+) -> Result<Vec<EmbeddableNote>, StorageError> {
+    let mut texts = extracted_hashes(index)?;
+    Ok(notes
+        .into_iter()
+        .filter_map(|note| {
+            let text_hash = texts.remove(&note.note_id);
+            finish(note, text_hash)
+        })
+        .collect())
+}
+
+/// [`with_file_text`] for one note.
+pub fn with_note_file_text(
+    index: &Connection,
+    note: EmbeddableNote,
+) -> Result<Option<EmbeddableNote>, StorageError> {
+    let extracted = extracted_text_for_note(index, &note.note_id)?;
+    let text_hash = (!extracted.is_empty()).then(|| content_hash(&extracted));
+    Ok(finish(note, text_hash))
+}
+
+#[cfg(test)]
+thread_local! {
+    /// `extracted_text` rows [`extracted_hashes`] read on this thread.
+    pub(crate) static TEXT_ROWS_HASHED: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+/// `content_hash` of each note's [`extracted_text_for_note`], read in one pass, one row's
+/// text held at a time.
+fn extracted_hashes(index: &Connection) -> Result<HashMap<String, String>, StorageError> {
+    let mut statement = index
+        .prepare(
+            "SELECT note_id, text FROM extracted_text WHERE text <> ''
+             ORDER BY note_id, source, part",
+        )
+        .map_err(failed)?;
+    let mut rows = statement.query([]).map_err(failed)?;
+    let mut hashes = HashMap::new();
+    let mut current: Option<(String, ContentHasher)> = None;
+    while let Some(row) = rows.next().map_err(failed)? {
+        #[cfg(test)]
+        TEXT_ROWS_HASHED.with(|n| n.set(n.get() + 1));
+        let (note_id, text): (String, String) =
+            (row.get(0).map_err(failed)?, row.get(1).map_err(failed)?);
+        match &mut current {
+            Some((id, hasher)) if *id == note_id => {
+                hasher.update("\n\n");
+                hasher.update(&text);
+            }
+            _ => {
+                let mut hasher = ContentHasher::new();
+                hasher.update(&text);
+                if let Some((id, done)) = current.replace((note_id, hasher)) {
+                    hashes.insert(id, done.digest());
+                }
+            }
+        }
+    }
+    if let Some((id, hasher)) = current {
+        hashes.insert(id, hasher.digest());
+    }
+    Ok(hashes)
 }
 
 /// `markDirty`: the note's vectors are owed again whatever its hash says (a rebuild). Keeps
@@ -242,9 +382,20 @@ fn ids(conn: &Connection, sql: &str) -> Result<HashSet<String>, StorageError> {
         .map_err(failed)
 }
 
-/// The reconcile's prune: the vectors and state rows of notes that are not `live`. Returns how
-/// many notes lost theirs.
-pub fn prune(index: &Connection, live: &HashSet<String>) -> Result<usize, StorageError> {
+/// The reconcile's prune: the vectors and state rows of notes that are not embeddable, the
+/// markdown notes of `notes` and its files with text read out of them (`EMBEDDABLE_NOTES`,
+/// :118-123). Reads only which notes have text, never the text: it runs holding the index
+/// writer. Returns how many notes lost theirs.
+pub fn prune(index: &Connection, notes: Vec<EmbeddableNote>) -> Result<usize, StorageError> {
+    let with_text = ids(
+        index,
+        "SELECT DISTINCT note_id FROM extracted_text WHERE text <> ''",
+    )?;
+    let live: HashSet<String> = notes
+        .into_iter()
+        .filter(|note| note.markdown || with_text.contains(&note.note_id))
+        .map(|note| note.note_id)
+        .collect();
     let mut known = ids(index, "SELECT note_id FROM vec_notes")?;
     known.extend(ids(index, "SELECT note_id FROM vec_note_similar")?);
     known.extend(ids(index, "SELECT note_id FROM note_embedding_state")?);
