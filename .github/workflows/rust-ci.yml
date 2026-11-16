@@ -978,16 +978,19 @@ jobs:
         run: pnpm --filter @memry/article-extract entities --check
 
   swift-bindings-fresh:
-    name: Generated Swift bindings are current
+    name: Swift bindings and iOS unit tests
     needs: plan
     # Fast tier: only when the UniFFI surface or the iOS app can have changed. Never in the merge queue
     # (macos=false): this is a macOS-only check (the XCFramework needs the iOS SDK), so a UniFFI drift
-    # is caught on the PR when the diff touches the surface and on the push that follows the merge.
-    if: ${{ !cancelled() && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') && needs.plan.outputs.macos != 'false' && (needs.plan.result == 'failure' || needs.plan.outputs.full == 'true' || needs.plan.outputs.swift == 'true') }}
+    # or a red iOS unit test is caught on the PR when the diff touches the surface or apps/ios, and on the
+    # push that follows the merge. The `paths` output is not part of the condition: it leaves out apps/ios
+    # on purpose (an iOS-only PR must not start the Rust legs), and the tier's `swift` output covers
+    # crates/memry-core, apps/ios and packages/swift.
+    if: ${{ !cancelled() && needs.plan.outputs.macos != 'false' && (needs.plan.result == 'failure' || needs.plan.outputs.full == 'true' || needs.plan.outputs.swift == 'true') }}
     # macOS: the XCFramework needs the iOS SDK, and the bindings are generated
     # from the same build. Anything less proves nothing about what ships.
     runs-on: macos-26
-    timeout-minutes: 45
+    timeout-minutes: 60
 
     steps:
       - name: Checkout
@@ -1039,6 +1042,39 @@ jobs:
         with:
           name: MemryCoreFFI-xcframework
           path: packages/swift/MemryCore/MemryCoreFFI.xcframework
+          retention-days: 7
+
+      # Reuses the XCFramework built above, so the unit plan costs one app build and the test run, not a
+      # second Rust build. The plan runs MemryTests inside the app on a simulator, as apps/ios/AGENTS.md
+      # does locally. Prefers iPhone 17 and falls back to any available iPhone when the image lacks it.
+      - name: Pick an iPhone simulator
+        run: |
+          udid=$(xcrun simctl list devices available -j | jq -r '
+            [.devices | to_entries[] | select(.key | test("iOS")) | .value[] | select(.name | startswith("iPhone"))]
+            | (map(select(.name == "iPhone 17")) + .)[0].udid // empty')
+          if [ -z "$udid" ]; then
+            echo "::error::No iPhone simulator on this runner."
+            xcrun simctl list devices available
+            exit 1
+          fi
+          echo "Simulator: $udid"
+          echo "SIM_UDID=$udid" >> "$GITHUB_ENV"
+
+      - name: iOS unit tests
+        run: |
+          xcodebuild test \
+            -project apps/ios/Memry.xcodeproj \
+            -scheme Memry \
+            -testPlan Unit \
+            -destination "platform=iOS Simulator,id=$SIM_UDID" \
+            -resultBundlePath "$RUNNER_TEMP/unit.xcresult"
+
+      - name: Upload iOS unit test results
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-unit-xcresult
+          path: ${{ runner.temp }}/unit.xcresult
           retention-days: 7
 
   # Posts the tests that passed only on retry in a merge-queue run to #3967, once per run. Its own job,
