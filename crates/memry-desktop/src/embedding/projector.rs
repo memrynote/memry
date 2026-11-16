@@ -21,8 +21,11 @@
 //!   check and the store are two steps: an edit published between them gets the older
 //!   vector stored, with the hash of the older bytes, so the edit stays owed. Its queued event
 //!   replaces that vector, or the next reconcile does.
-//! - **Markdown notes only.** File notes and the attachment text Electron appends
-//!   (`withAttachmentText`, :128-133) come with the extracted-text tables (Step 25, #3542).
+//! - **Text read out of files** (Step 25, #3542): a markdown note's input is its body then the
+//!   opening of its attachments' text (`withAttachmentText`, :128-133, 452), and a filed PDF
+//!   or image with text is embedded from that text alone (`readFileTextOpening`,
+//!   `embedFileText`, :126, 136-155, 360-370). The recorded hash names that text too, so a new
+//!   read leaves the note owed. A file whose text is gone loses its vectors (:363-366).
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -32,7 +35,9 @@ use memry_core::api::errors::StorageError;
 use memry_core::domain::embedding_input::{
     EmbeddingTask, build_embedding_chunks, build_embedding_input,
 };
-use memry_core::domain::note_embeddings::EmbeddableNote;
+use memry_core::domain::note_embeddings::{
+    EmbeddableNote, embedded_hash, file_text_opening, with_attachment_text,
+};
 use memry_core::markdown::frontmatter::split_frontmatter_block;
 
 use super::service::EmbeddingService;
@@ -154,13 +159,32 @@ impl NoteEmbeddingProjector {
         Ok(revision)
     }
 
-    /// The note's body as Electron reads it (`readVaultFile` and `parseNote(..).content`), and
-    /// the hash of the bytes read, which its vectors record.
-    fn content(&self, work: &Work<'_>, note: &EmbeddableNote) -> Result<(String, String), String> {
+    /// The note's input as Electron reads it (`readEmbeddableContent`, :145-155): a markdown
+    /// note's body (`readVaultFile` and `parseNote(..).content`) with its attachments' text, a
+    /// file note's text; and the hash its vectors record ([`embedded_hash`]).
+    fn content(
+        &self,
+        work: &Work<'_>,
+        note: &EmbeddableNote,
+    ) -> Result<(String, Option<String>), String> {
+        let extracted = work
+            .open
+            .search
+            .extracted_text_for_note(&note.note_id)
+            .map_err(text)?;
+        if !note.markdown {
+            return Ok((
+                file_text_opening(&extracted),
+                embedded_hash(None, &extracted),
+            ));
+        }
         match read_note_lossy(&work.open.path, &note.path) {
             Ok(Some(file)) => Ok((
-                split_frontmatter_block(&file.raw).body.to_owned(),
-                file.hash,
+                with_attachment_text(
+                    split_frontmatter_block(&file.raw).body.to_owned(),
+                    &extracted,
+                ),
+                embedded_hash(Some(&file.hash), &extracted),
             )),
             Ok(None) => Err(format!("Note file is missing: {}", note.path)),
             Err(error) => Err(format!("{}: {error}", note.path)),
@@ -172,7 +196,7 @@ impl NoteEmbeddingProjector {
         &self,
         work: &Work<'_>,
         note: &EmbeddableNote,
-        (content, read_hash): &(String, String),
+        (content, read_hash): &(String, Option<String>),
         revision: Option<u64>,
     ) -> Result<bool, String> {
         let current = || self.may_embed(work) && self.revision(&note.note_id) == revision;
@@ -180,7 +204,8 @@ impl NoteEmbeddingProjector {
             return Ok(false);
         }
         let windows = build_embedding_chunks(Some(&note.title), Some(content));
-        if windows.is_empty() {
+        // A file's text went between the listing and the read (`embedFileText`, :361-366).
+        if windows.is_empty() || (!note.markdown && content.is_empty()) {
             work.open
                 .search
                 .delete_note_embedding(&note.note_id)
@@ -218,7 +243,7 @@ impl NoteEmbeddingProjector {
         }
         work.open
             .search
-            .store_note_embeddings(note, read_hash, vectors, similar)
+            .store_note_embeddings(note, read_hash.as_deref(), vectors, similar)
             .map_err(text)?;
         Ok(true)
     }
@@ -266,15 +291,20 @@ impl NoteEmbeddingProjector {
         self.service.status().loaded || self.service.load()
     }
 
-    /// `note.text-extracted` for a markdown note and the tier's note writes (:400-425,
-    /// 436-456): embed it, against the revision it has now, unless the index is building.
+    /// `note.text-extracted` and the tier's note writes (:400-425, 436-456): embed the note,
+    /// against the revision it has now, unless the index is building. A note that is not
+    /// embeddable (a file whose text is gone) loses its vectors (`embedFileText`, :363-366).
     fn note_changed(&self, work: &Work<'_>, note_id: &str) -> Result<(), String> {
         if (self.indexing)() || !self.may_embed(work) {
             return Ok(());
         }
         let revision = self.revision(note_id);
         let Some(note) = work.open.search.embeddable_note(note_id).map_err(text)? else {
-            return Ok(());
+            return work
+                .open
+                .search
+                .delete_note_embedding(note_id)
+                .map_err(text);
         };
         let read = self.content(work, &note)?;
         self.update(work, &note, &read, revision).map(drop)

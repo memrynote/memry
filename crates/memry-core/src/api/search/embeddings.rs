@@ -6,16 +6,25 @@ use crate::domain::note_embeddings::{self, EmbeddableNote};
 use super::Search;
 
 impl Search {
-    /// Every live markdown note, in path order ([`note_embeddings::embeddable`]).
+    /// Every live markdown note and every file with text read out of it, in path order, with
+    /// the hash its vectors must record ([`note_embeddings::with_file_text`]).
     pub fn embeddable_notes(&self) -> Result<Vec<EmbeddableNote>, StorageError> {
-        self.data.read_blocking(note_embeddings::embeddable)
+        let notes = self.data.read_blocking(note_embeddings::candidates)?;
+        self.index
+            .read_blocking(move |index| note_embeddings::with_file_text(index, notes))
     }
 
-    /// The live markdown note `note_id` ([`note_embeddings::embeddable_note`]).
+    /// The note `note_id` if it is embeddable ([`Self::embeddable_notes`] for one note).
     pub fn embeddable_note(&self, note_id: &str) -> Result<Option<EmbeddableNote>, StorageError> {
         let note_id = note_id.to_owned();
-        self.data
-            .read_blocking(move |data| note_embeddings::embeddable_note(data, &note_id))
+        let Some(note) = self
+            .data
+            .read_blocking(move |data| note_embeddings::candidate(data, &note_id))?
+        else {
+            return Ok(None);
+        };
+        self.index
+            .read_blocking(move |index| note_embeddings::with_note_file_text(index, note))
     }
 
     /// How many notes have a head vector ([`note_embeddings::count`]).
@@ -29,22 +38,22 @@ impl Search {
             .call_blocking(move |index| note_embeddings::mark_dirty(index, &note_id))
     }
 
-    /// The note's vectors, recorded as built from the bytes `read_hash` names and the note's
-    /// title ([`note_embeddings::store`]).
+    /// The note's vectors, recorded as built from the input `read_hash` names
+    /// ([`note_embeddings::embedded_hash`]) and the note's title ([`note_embeddings::store`]).
     pub fn store_note_embeddings(
         &self,
         note: &EmbeddableNote,
-        read_hash: &str,
+        read_hash: Option<&str>,
         windows: Vec<Vec<f32>>,
         similar: Vec<f32>,
     ) -> Result<(), StorageError> {
         let (note_id, hash, title) = (
             note.note_id.clone(),
-            read_hash.to_owned(),
+            read_hash.map(str::to_owned),
             note.title.clone(),
         );
         self.index.call_blocking(move |index| {
-            note_embeddings::store(index, &note_id, Some(&hash), &title, &windows, &similar)
+            note_embeddings::store(index, &note_id, hash.as_deref(), &title, &windows, &similar)
         })
     }
 
@@ -59,15 +68,17 @@ impl Search {
             .call_blocking(|index| note_embeddings::clear(index))
     }
 
-    /// Drops the vectors of notes with no markdown file row. Holds the index writer while it
-    /// reads the live notes, so a note embedded meanwhile keeps its vectors.
+    /// Drops the vectors of notes that are not embeddable: gone, or a file with no text read
+    /// out of it. Holds the index writer while it reads the live notes, so a note embedded
+    /// meanwhile keeps its vectors.
     pub fn prune_note_embeddings(&self) -> Result<usize, StorageError> {
         let data = self.data.clone();
         self.index.call_blocking(move |index| {
-            let live = data.read_blocking(|data| {
-                note_embeddings::embeddable(data)
-                    .map(|notes| notes.into_iter().map(|note| note.note_id).collect())
-            })?;
+            let notes = data.read_blocking(note_embeddings::candidates)?;
+            let live = note_embeddings::with_file_text(index, notes)?
+                .into_iter()
+                .map(|note| note.note_id)
+                .collect();
             note_embeddings::prune(index, &live)
         })
     }
