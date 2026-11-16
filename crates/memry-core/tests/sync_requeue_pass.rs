@@ -140,6 +140,7 @@ async fn a_pass_that_merges_a_concurrent_record_pushes_it_once_at_the_union_cloc
                 app_version: "1.0.0".to_owned(),
                 vault_id: None,
             },
+            None,
         )
         .expect("a session"),
     );

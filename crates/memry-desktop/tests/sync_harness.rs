@@ -149,6 +149,7 @@ impl Device {
                 app_version: "1.0.0".into(),
                 vault_id: None,
             },
+            None,
         )
         .unwrap();
         let http = session.http();
@@ -536,6 +537,7 @@ fn holding_setup_token(server: &Server, setup_token: &str) -> AuthSession {
             app_version: "1.0.0".into(),
             vault_id: None,
         },
+        None,
     )
     .unwrap()
 }

@@ -46,6 +46,7 @@ fn session(transport: Arc<FakeTransport>, store: Arc<dyn SecureStore>) -> AuthSe
             app_version: "1.0.0".to_string(),
             vault_id: None,
         },
+        None,
     )
     .unwrap()
 }

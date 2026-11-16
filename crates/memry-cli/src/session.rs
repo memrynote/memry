@@ -114,6 +114,7 @@ impl Cli {
                 app_version: core_version(),
                 vault_id: None,
             },
+            None,
         )?)
     }
 

@@ -94,6 +94,7 @@ async fn a_local_write_is_pulled_over_then_pushed_and_leaves_the_outbox() {
                 app_version: "1.0.0".to_string(),
                 vault_id: None,
             },
+            None,
         )
         .expect("a session"),
     );
@@ -177,6 +178,7 @@ async fn an_attachment_manifest_is_signed_as_the_registered_device() {
                 app_version: "1.0.0".to_string(),
                 vault_id: None,
             },
+            None,
         )
         .expect("a session"),
     );
@@ -268,6 +270,7 @@ async fn overlapping_passes_over_one_vault_push_a_row_once() {
                 app_version: "1.0.0".to_string(),
                 vault_id: None,
             },
+            None,
         )
         .expect("a session"),
     );
@@ -359,6 +362,7 @@ async fn the_pass_pulls_owed_bodies_and_settles_only_the_merged_ones() {
                 app_version: "1.0.0".to_string(),
                 vault_id: None,
             },
+            None,
         )
         .expect("a session"),
     );
@@ -412,6 +416,7 @@ fn vault_with_side(
                 app_version: "1.0.0".to_string(),
                 vault_id: None,
             },
+            None,
         )
         .expect("a session"),
     );

@@ -58,6 +58,7 @@ fn unbound(dir: &std::path::Path, store: Arc<dyn SecureStore>) -> (Arc<Vault>, V
             app_version: "1.0.0".into(),
             vault_id: None,
         },
+        None,
     )
     .unwrap();
     let backend = VaultSyncBackend::new(

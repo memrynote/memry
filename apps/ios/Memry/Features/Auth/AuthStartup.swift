@@ -295,6 +295,7 @@ final class AuthStartup {
             let configuration = transportConfiguration
             let items = keychainItems
             let hold = ExchangeHold.application()
+            let marker = try VaultFiles(emitter: emitter).signOutMarker()
             let graph = try await executor.run {
                 try AuthComposition.makeGraph(
                     environment: environment,
@@ -302,7 +303,8 @@ final class AuthStartup {
                     emitter: hints,
                     transportConfiguration: configuration,
                     keychainItems: items,
-                    exchangeHold: hold
+                    exchangeHold: hold,
+                    signOutMarker: marker
                 )
             }
             let session = graph.session

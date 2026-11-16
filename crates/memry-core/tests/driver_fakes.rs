@@ -327,6 +327,7 @@ impl Desktop {
                     app_version: "1.0.0".to_owned(),
                     vault_id: None,
                 },
+                None,
             )
             .expect("a session"),
         );

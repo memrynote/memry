@@ -38,6 +38,7 @@ fn session(script: Script) -> (AuthSession, Arc<FakeTransport>) {
         "https://sync.example.com".to_string(),
         "ios".to_string(),
         device,
+        None,
     )
     .unwrap();
     (session, transport)
