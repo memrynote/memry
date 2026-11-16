@@ -7,6 +7,8 @@
 //! crashes (any text that starts with `crash`) and creates files as `PdfOpen` does, answers NaNs
 //! to `nan` and otherwise answers an embedding whose values are the child's pid; `EmbedLoad`
 //! answers `Done`;
+//! `EmbedImage` answers `Rejected` for bytes that start with `corrupt` (the worker's answer for an
+//! image it cannot decode) and otherwise an embedding whose values are the child's pid;
 //! `ModelManifest` names one empty file, `config.json`, in the app's pinned repo and revision.
 //! `AudioOpen` opens any path as recording 1 of three windows (none for a path ending in
 //! `short.wav`); `EmbedAudioWindow` answers the child's pid, except that window 1 of a path ending
@@ -93,6 +95,12 @@ fn main() {
                 "nan" => Response::Embedded(vec![f32::NAN; EMBEDDING_DIMENSION]),
                 _ => Response::Embedded(vec![std::process::id() as f32; EMBEDDING_DIMENSION]),
             },
+            Request::EmbedImage { bytes, .. } if bytes.starts_with(b"corrupt") => {
+                Response::Rejected("the image cannot be decoded".into())
+            }
+            Request::EmbedImage { .. } => {
+                Response::Embedded(vec![std::process::id() as f32; EMBEDDING_DIMENSION])
+            }
             Request::AudioOpen { path } => {
                 let windows = if path.ends_with("short.wav") { 0 } else { 3 };
                 recording = path;

@@ -22,6 +22,13 @@
 //! (its files missing or broken) [`EmbedError::Failed`], both counted by the service's audio
 //! breaker only; a file the worker cannot open or decode is [`EmbedError::Input`] and counts
 //! nowhere.
+//!
+//! Images (`embedImage`): the first image downloads the vision group (about 109 MB) the same way,
+//! then each image or rendered page crosses the pipe in one op (at most 30 MiB). A failure of that
+//! op counts toward the service's vision breaker, as Electron's `embed-image` errors do, except an
+//! image the worker cannot decode or an input it refuses ([`WorkerError::Rejected`]): that is
+//! [`EmbedError::Input`] and counts nowhere, so one corrupt image never stops the others. A
+//! departure from Electron, which counts it (Kaan, 9 Nov).
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -35,7 +42,7 @@ use memry_ml_worker::{
 use tokio::runtime::Handle;
 
 use super::download::{Abort, HUB_HOST, ModelSource, PinnedFile};
-use super::service::{AudioOpened, EmbedError, Engine, ModelLoader, ModelProgress};
+use super::service::{AudioOpened, EmbedError, Engine, ImageInput, ModelLoader, ModelProgress};
 use crate::services::file_text::WorkerPaths;
 use crate::session::Session;
 use crate::telemetry::events::Metrics;
@@ -58,6 +65,7 @@ struct Shared {
     /// Built from each group's first manifest and kept for the app session.
     text: OnceLock<ModelSource>,
     audio: OnceLock<ModelSource>,
+    vision: OnceLock<ModelSource>,
 }
 
 impl WorkerModel {
@@ -92,6 +100,7 @@ impl WorkerModel {
             runtime,
             text: OnceLock::new(),
             audio: OnceLock::new(),
+            vision: OnceLock::new(),
         })))
     }
 
@@ -126,6 +135,20 @@ impl Shared {
         let source = ModelSource::new(HUB_HOST, &manifest.repo, &manifest.revision, dir, files);
         Ok(cell.get_or_init(|| source))
     }
+
+    /// Downloads an encoder group's missing files, with no progress event (the settings UI
+    /// shows the text model's).
+    fn prepare(
+        &self,
+        group: ModelGroup,
+        cell: &OnceLock<ModelSource>,
+        abort: &Abort,
+    ) -> Result<(), String> {
+        let source = self.source(group, cell)?;
+        self.runtime
+            .block_on(source.ensure(abort, &|_| {}))
+            .map_err(|error| error.to_string())
+    }
 }
 
 impl ModelLoader for WorkerModel {
@@ -153,12 +176,11 @@ impl ModelLoader for WorkerModel {
     }
 
     fn prepare_audio(&self, abort: &Abort) -> Result<(), String> {
-        let shared = &self.0;
-        let source = shared.source(ModelGroup::Audio, &shared.audio)?;
-        shared
-            .runtime
-            .block_on(source.ensure(abort, &|_| {}))
-            .map_err(|error| error.to_string())
+        self.0.prepare(ModelGroup::Audio, &self.0.audio, abort)
+    }
+
+    fn prepare_vision(&self, abort: &Abort) -> Result<(), String> {
+        self.0.prepare(ModelGroup::Vision, &self.0.vision, abort)
     }
 }
 
@@ -226,6 +248,15 @@ impl Engine for WorkerEngine {
             other => embed_error(other),
         })
     }
+
+    /// An image the worker cannot decode is [`EmbedError::Input`] through `embed_error`; any
+    /// other failure of the op is [`EmbedError::Failed`].
+    fn embed_image(&mut self, image: &ImageInput) -> Result<Vec<f32>, EmbedError> {
+        self.shared
+            .supervisor
+            .embed_image(&image.bytes, image.text.as_deref(), image.soft_tokens)
+            .map_err(embed_error)
+    }
 }
 
 fn embed_error(error: WorkerError) -> EmbedError {
@@ -236,6 +267,8 @@ fn embed_error(error: WorkerError) -> EmbedError {
         | WorkerError::Exited(_)
         | WorkerError::Protocol(_)
         | WorkerError::Paused => EmbedError::Crashed(error.to_string()),
+        // The file's fault, not the model's: nothing counts.
+        WorkerError::Rejected(message) => EmbedError::Input(message),
         WorkerError::Stopped | WorkerError::NotOpen | WorkerError::Failed(_) => {
             EmbedError::Failed(error.to_string())
         }

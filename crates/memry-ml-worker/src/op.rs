@@ -63,6 +63,7 @@ const DONE: u8 = 0x84;
 const EMBEDDED: u8 = 0x85;
 const MANIFEST: u8 = 0x86;
 const AUDIO_OPENED: u8 = 0x87;
+const REJECTED: u8 = 0xfe;
 const FAILED: u8 = 0xff;
 
 /// The model files that load together (`memry_ml::ModelGroup`).
@@ -193,6 +194,9 @@ pub enum Response {
     /// [`EMBEDDING_DIMENSION`] values.
     Embedded(Vec<f32>),
     Manifest(Manifest),
+    /// The op ran in a healthy worker and the input is the fault: an image it cannot decode.
+    /// Nothing about the model or the worker is wrong, so the app counts it toward no breaker.
+    Rejected(String),
     Failed(String),
 }
 
@@ -386,6 +390,7 @@ impl Response {
             Self::AudioOpened { .. } => "audio-opened",
             Self::Embedded(_) => "embedded",
             Self::Manifest(_) => "manifest",
+            Self::Rejected(_) => "rejected",
             Self::Failed(_) => "failed",
         }
     }
@@ -431,6 +436,10 @@ impl Response {
                     put_str(&mut out, &file.sha256);
                 }
                 MANIFEST
+            }
+            Self::Rejected(message) => {
+                put_str(&mut out, cut(message, MAX_FAILED_MESSAGE));
+                REJECTED
             }
             Self::Failed(message) => {
                 put_str(&mut out, cut(message, MAX_FAILED_MESSAGE));
@@ -494,6 +503,7 @@ impl Response {
                     files,
                 })
             }
+            REJECTED => Self::Rejected(r.string_within(MAX_FAILED_MESSAGE)?),
             FAILED => Self::Failed(r.string_within(MAX_FAILED_MESSAGE)?),
             other => return Err(OpError::UnknownOp(other)),
         };

@@ -3,13 +3,14 @@
 //! it on every vault close, #3542 lane G) and the embedding model (`WorkerModel` under the app's
 //! `EmbeddingService`, Step 23). Each child starts on its first call and stops on every vault close
 //! and in the `stop-utility-processes` shutdown step. The note embedding lane runs on every open
-//! vault.
+//! vault, and the image embedding lane too when the PDF worker exists (it renders PDF pages).
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use memry_desktop::ai::features;
+use memry_desktop::embedding::image_projector::ImageEmbeddingProjector;
 use memry_desktop::embedding::projector::{self, NoteEmbeddingProjector};
 use memry_desktop::embedding::service::{self, EmbeddingService, Timing};
 use memry_desktop::embedding::worker::{WorkerModel, exit_telemetry};
@@ -159,11 +160,13 @@ pub fn register_on_close<R: Runtime>(app: &AppHandle<R>, session: &Session) {
     }
 }
 
-/// The note embedding lane on every open of `session`, fed by `tier`'s facts and deferred while
-/// `index` builds. Registered before the first open. Without the managed service (see `manage`)
-/// there is no lane and no feed: the feed's events would reach no projector, and the notes stay
-/// owed. The lane checks the vault's `ai.enabled` before every inference and embeds nothing once
-/// the vault closes (REVIEW-4548).
+/// The note and image embedding lanes on every open of `session`, fed by `tier`'s facts and
+/// deferred while `index` builds. Registered before the first open. Without the managed service
+/// (see `manage`) there is no lane and no feed: the feed's events would reach no projector, and
+/// the notes stay owed. The note lane checks the vault's `ai.enabled` before every inference, the
+/// image lane `ai.enabled` and `ai.imageEmbeddings` before every image, and neither embeds once
+/// the vault closes (REVIEW-4548). Without the PDF worker there is no image lane this run: its
+/// images stay owed for a run that has one.
 pub fn register_embedding_lane<R: Runtime>(
     app: &AppHandle<R>,
     session: &Session,
@@ -182,18 +185,36 @@ pub fn register_embedding_lane<R: Runtime>(
     };
     let settings = settings.inner().clone();
     let index = Arc::downgrade(index);
+    let indexing: projector::Indexing = Arc::new(move || {
+        index
+            .upgrade()
+            .is_some_and(|index| index.indexing().is_some())
+    });
+    let note_settings = settings.clone();
     let projector = NoteEmbeddingProjector::new(
         session,
         service.inner().clone(),
-        Arc::new(move |open| features::read(&settings, Some(open)).is_ok_and(|ai| ai.enabled)),
-        Arc::new(move || {
-            index
-                .upgrade()
-                .is_some_and(|index| index.indexing().is_some())
-        }),
+        Arc::new(move |open| features::read(&note_settings, Some(open)).is_ok_and(|ai| ai.enabled)),
+        indexing.clone(),
         pass_progress(app),
     );
     session.register_projector(projector);
+    match app.try_state::<Arc<WorkerHandle>>() {
+        Some(worker) => session.register_projector(ImageEmbeddingProjector::new(
+            session,
+            service.inner().clone(),
+            worker.inner().clone(),
+            Arc::new(move |open| {
+                features::read(&settings, Some(open))
+                    .is_ok_and(|ai| ai.enabled && ai.image_embeddings)
+            }),
+            indexing,
+        )),
+        None => tracing::error!(
+            scope = "Embeddings",
+            "no PDF worker: images are not embedded this run"
+        ),
+    }
     if let Err(error) = feed::watch(session, tier.subscribe()) {
         tracing::error!(
             scope = "Embeddings",

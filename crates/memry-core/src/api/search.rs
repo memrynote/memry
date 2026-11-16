@@ -50,6 +50,8 @@ mod file_text;
 mod fold;
 #[cfg(feature = "vec")]
 mod grouped;
+#[cfg(feature = "vec")]
+mod image_embeddings;
 #[cfg(feature = "markdown")]
 mod objects;
 mod results;

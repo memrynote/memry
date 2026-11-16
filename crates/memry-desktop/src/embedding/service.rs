@@ -10,22 +10,18 @@
 //! `loaded` goes false, the embed failure count rises and the failure feeds [`Breaker`], which
 //! stops loads for the session after five in a row. Failed loads back off through it too.
 //!
-//! [`EmbeddingService::embed_audio`] is `embedAudio` (`apps/desktop/src/main/lib/audio-embedding.ts`)
-//! on the same thread and model, behind the text breaker, with the audio encoder's own breaker
-//! ([`EncoderBreaker`], `recordEncoderFailure('audio')`, embeddings.ts:247-254, 830-832): a
-//! recording that crashes or hangs the worker, an audio download that fails and an audio model
-//! that does not load back off audio only, so a hostile file never stops text indexing. A file
-//! the worker cannot read or decode ([`EmbedError::Input`]) counts nowhere. The audio download
-//! runs on the caller's thread, and the open and each window are separate requests with their own
-//! deadline (embeddings.ts:792-798), so text runs between them. It has no caller yet: Electron's only one, the voice memo projector
-//! (`projections/projectors/voice-embedding-projector.ts`), is not ported, and its port owns the
-//! gates `embedAudio` checks first (`ai.enabled`, `voiceTranscription.audioSearch`, a `.wav` name).
+//! [`EmbeddingService::embed_audio`] (`audio`) and [`EmbeddingService::embed_image`] (`image`)
+//! run on the same thread and model, behind the text breaker, each with its encoder's own
+//! breaker ([`EncoderBreaker`], `recordEncoderFailure`, embeddings.ts:247-254, 830-832), so a
+//! hostile file never stops text indexing.
 //!
 //! The model itself is a [`ModelLoader`]: the app's loader ([`super::worker::WorkerModel`])
 //! downloads the pinned files through [`super::download::ModelSource`] and runs
 //! `memry_ml::EmbeddingEngine` in the `memry-ml-worker` sidecar, out of this process.
 
 mod audio;
+mod encoder;
+mod image;
 #[cfg(test)]
 mod tests;
 mod thread;
@@ -38,6 +34,9 @@ use std::time::{Duration, Instant};
 
 use tokio_util::sync::CancellationToken;
 
+pub use self::audio::AudioOpened;
+use self::encoder::Encoder;
+pub use self::image::ImageInput;
 use self::thread::{Fault, Job, Reply, Request, Slot, work};
 use super::breaker::{Breaker, EncoderBreaker, RETRY_BASE};
 use super::download::Abort;
@@ -92,14 +91,6 @@ pub enum EmbedError {
     Input(String),
 }
 
-/// A recording an [`Engine`] holds open: its handle and its 30 s windows, none for a recording
-/// under one second.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct AudioOpened {
-    pub recording: u64,
-    pub windows: u32,
-}
-
 /// A loaded model. Owned by the embedding thread, which serves one request at a time.
 pub trait Engine: Send {
     fn embed_text(&mut self, text: &str) -> Result<Vec<f32>, EmbedError>;
@@ -118,6 +109,11 @@ pub trait Engine: Send {
     ) -> Result<Vec<f32>, EmbedError> {
         Err(EmbedError::Failed("this model embeds no audio".to_owned()))
     }
+
+    /// The image's vector ([`ImageInput`]). Test models embed text only.
+    fn embed_image(&mut self, _image: &ImageInput) -> Result<Vec<f32>, EmbedError> {
+        Err(EmbedError::Failed("this model embeds no images".to_owned()))
+    }
 }
 
 /// Makes the model present and loads it, on the embedding thread.
@@ -134,6 +130,11 @@ pub trait ModelLoader: Send + Sync + 'static {
 
     /// Downloads the audio encoder's files that are missing, on the caller's thread.
     fn prepare_audio(&self, _abort: &Abort) -> Result<(), String> {
+        Ok(())
+    }
+
+    /// Downloads the vision encoder's files that are missing, on the caller's thread.
+    fn prepare_vision(&self, _abort: &Abort) -> Result<(), String> {
         Ok(())
     }
 }
@@ -192,6 +193,7 @@ struct State {
     error: Option<String>,
     breaker: Breaker,
     audio: EncoderBreaker,
+    vision: EncoderBreaker,
 }
 
 /// Which breaker a request past its deadline feeds.
@@ -199,7 +201,7 @@ struct State {
 enum Counts {
     Load,
     Embed,
-    Audio,
+    Encoder(Encoder),
 }
 
 pub struct EmbeddingService {
@@ -233,6 +235,7 @@ impl EmbeddingService {
                 error: None,
                 breaker: Breaker::new(timing.retry_base),
                 audio: EncoderBreaker::new(timing.retry_base),
+                vision: EncoderBreaker::new(timing.retry_base),
             }),
         })
     }
@@ -349,11 +352,12 @@ impl EmbeddingService {
     }
 
     /// `resetEmbeddingModelFailure` (`clearLoadFailure`, embeddings.ts:558-567): the next load,
-    /// and the next recording, are attempted at once.
+    /// recording and image are attempted at once.
     pub fn reset_failure(&self) {
         let mut state = lock(&self.state);
         state.breaker.clear();
         state.audio.clear();
+        state.vision.clear();
     }
 
     /// `stopEmbeddingModel`: every waiting request ends, a download stops (its part file stays
@@ -415,7 +419,8 @@ impl EmbeddingService {
         let counts = match request {
             Request::Load => Counts::Load,
             Request::Embed(_) => Counts::Embed,
-            Request::OpenAudio(_) | Request::AudioWindow { .. } => Counts::Audio,
+            Request::OpenAudio(_) | Request::AudioWindow { .. } => Counts::Encoder(Encoder::Audio),
+            Request::EmbedImage(_) => Counts::Encoder(Encoder::Vision),
         };
         let slot = Arc::new(Slot::default());
         let generation = {
@@ -477,7 +482,7 @@ impl EmbeddingService {
     /// `failProcess` for a request past its deadline: the thread is let go (an inference cannot
     /// be interrupted; it drops the model when it returns) and the failure feeds the backoff of
     /// the request's kind (embeddings.ts:826-832). Only an `embed` counts as an embed failure,
-    /// which a later successful load does not clear; an audio request feeds only the audio
+    /// which a later successful load does not clear; an audio or image request feeds only its
     /// encoder's breaker.
     fn time_out(&self, generation: u64, counts: Counts) {
         let mut state = lock(&self.state);
@@ -486,7 +491,7 @@ impl EmbeddingService {
         }
         let message = "Embedding request timed out".to_owned();
         match counts {
-            Counts::Audio => Self::audio_failed(&mut state, message),
+            Counts::Encoder(encoder) => Self::encoder_failed(&mut state, encoder, message),
             Counts::Load | Counts::Embed => {
                 state.error = Some(message);
                 if counts == Counts::Embed {

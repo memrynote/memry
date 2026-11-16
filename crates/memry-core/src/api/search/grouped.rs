@@ -56,10 +56,15 @@ impl Search {
         self.data.read_blocking(grouped::stats)
     }
 
-    /// [`grouped::semantic::note_hits`]: the notes whose vectors lie nearest `query`.
-    pub fn semantic_note_hits(&self, query: &[f32]) -> Result<Vec<SemanticHit>, StorageError> {
+    /// [`grouped::semantic::note_hits`]: the notes whose vectors lie nearest `query`, their
+    /// images' vectors included when `images` is on.
+    pub fn semantic_note_hits(
+        &self,
+        query: &[f32],
+        images: bool,
+    ) -> Result<Vec<SemanticHit>, StorageError> {
         self.index
-            .read_blocking(|index| Ok(grouped::semantic::note_hits(index, query)))
+            .read_blocking(move |index| Ok(grouped::semantic::note_hits(index, query, images)))
     }
 
     /// The `(id, tag)` rows of the notes and journal days among `ids`, by id then tag.

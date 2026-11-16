@@ -39,6 +39,8 @@ pub mod folders;
 #[cfg(feature = "markdown")]
 pub mod header_tags;
 pub mod home_page;
+#[cfg(feature = "vec")]
+pub mod image_embeddings;
 pub mod inbox;
 pub mod journal;
 pub mod journal_ops;
