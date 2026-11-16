@@ -878,7 +878,8 @@ final class EditorSession {
     /// words for a conversion, nothing for a removal); an update then puts
     /// the node back over that space under the same anchor, the path a typed
     /// `[[link]]` takes. The space keeps the insert inside a text run even
-    /// when the chip was the block's only content.
+    /// when the chip was the block's only content, and is what the node is
+    /// found by once the commit is rebased onto another pane's edits (#4706).
     func applyDateEdit(_ edit: DateMentionEdit) {
         guard let request = dateEdit, let field = dateEditField, field.blockId == request.blockId,
               let range = field.dateChipRange(anchorId: request.anchorId)
@@ -898,14 +899,17 @@ final class EditorSession {
             commit(field)
             return
         }
-        let attributed = field.textView.attributedText ?? NSAttributedString()
-        let start = BlockText.coreOffset(in: attributed, utf16: range.location)
         let blockId = field.blockId
-        commit(field) { [weak self] in
-            await self?.model?.insertDateMention(
-                in: blockId, from: start, to: start + 1, value: value, anchorId: request.anchorId
-            )
+        // Read once the commit has drawn a typed `[[…]]` as its node, as the
+        // core holds it when the chip goes back in.
+        var anchor: NodeAnchor?
+        let moved = commit(field) { [weak self] in
+            guard let anchor else { return }
+            await self?.model?.insertDateMention(in: blockId, at: anchor, value: value, anchorId: request.anchorId)
         }
+        anchor = NodeAnchor.at(
+            moved(range.location), in: field.textView.attributedText ?? NSAttributedString(), replaces: true
+        )
     }
 
     // MARK: Source blocks
@@ -1132,22 +1136,22 @@ final class EditorSession {
         }
         let blockId = field.blockId
         // Read once the commit has drawn a typed `[[…]]` before `range` as
-        // its node, as the core holds it when the nodes go in.
-        var start = 0
+        // its node, as the core holds it when the nodes go in. Each node
+        // goes before its own space.
+        var anchors: [NodeAnchor] = []
         let moved = commit(field, inserting: { model in
             var edits: [BlockEdit] = []
             // Last first, so each node's offset still counts only the spaces
             // before it.
-            for (index, kind) in kinds.enumerated().reversed() {
-                let at = start + index
+            for (kind, at) in zip(kinds, anchors).reversed() {
                 switch kind {
                 case let .note(title, alias):
-                    if let edit = await model.insertWikiLink(in: blockId, from: at, to: at, title: title, alias: alias) { edits.append(edit) }
+                    if let edit = await model.insertWikiLink(in: blockId, at: at, title: title, alias: alias) { edits.append(edit) }
                 case let .create(title, alias):
                     await model.createNote(titled: title)
-                    if let edit = await model.insertWikiLink(in: blockId, from: at, to: at, title: title, alias: alias) { edits.append(edit) }
+                    if let edit = await model.insertWikiLink(in: blockId, at: at, title: title, alias: alias) { edits.append(edit) }
                 case let .date(value):
-                    if let edit = await model.insertDateMention(in: blockId, from: at, to: at, value: value) { edits.append(edit) }
+                    if let edit = await model.insertDateMention(in: blockId, at: at, value: value) { edits.append(edit) }
                 case .slash:
                     break
                 }
@@ -1155,7 +1159,8 @@ final class EditorSession {
             return edits
         })
         let location = moved(range.location)
-        start = BlockText.coreOffset(in: textView.attributedText ?? NSAttributedString(), utf16: location)
+        let text = textView.attributedText ?? NSAttributedString()
+        anchors = kinds.indices.map { NodeAnchor.at(location + $0, in: text, replaces: false) }
         field.pendingSelection = NSRange(location: location + 2 * kinds.count, length: 0)
     }
 
@@ -1165,18 +1170,21 @@ final class EditorSession {
         guard let blockId = block.id else { return }
         let shown = BlockText.shown(block.inline)
         let end = block.inline.reduce(0) { $0 + $1.text.utf8.count }
+        // The node goes before the space, where the block holds it once the
+        // commit is rebased onto edits this page has not read (#4706).
+        let anchor = NodeAnchor(typed: shown + " ", location: (shown as NSString).length, replaces: false, paneRange: end ..< end)
         enqueue { [weak self] in
             guard let self, let model = self.model else { return }
             // The space first, so the node lands inside a text run.
             await model.commit(shown + " ", for: blockId, base: shown)
             switch kind {
             case let .note(title, alias):
-                await model.insertWikiLink(in: blockId, from: end, to: end, title: title, alias: alias)
+                await model.insertWikiLink(in: blockId, at: anchor, title: title, alias: alias)
             case let .create(title, alias):
                 await model.createNote(titled: title)
-                await model.insertWikiLink(in: blockId, from: end, to: end, title: title, alias: alias)
+                await model.insertWikiLink(in: blockId, at: anchor, title: title, alias: alias)
             case let .date(value):
-                await model.insertDateMention(in: blockId, from: end, to: end, value: value)
+                await model.insertDateMention(in: blockId, at: anchor, value: value)
             case .slash:
                 break
             }
