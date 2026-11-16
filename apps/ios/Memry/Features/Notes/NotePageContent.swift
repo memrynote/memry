@@ -99,9 +99,11 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
                 model.vaultNotes.compactMap { note in ProjectIconValue.emoji(note.emoji).map { (note.title.lowercased(), $0) } },
                 uniquingKeysWith: { first, _ in first }
             ),
-            titleExists: model.titleExists
+            titleExists: model.titleExists,
+            drawnGeneration: { model.blocksGeneration }
         ) { await model.reload() }
         let session = bridge.session
+        model.landedWrites = { [weak session] in session?.landedWrites ?? 0 }
         session.tags = model.vaultTagNames
         session.tagColors = model.tagColors
         session.blocks = { model.blocks }

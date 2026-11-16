@@ -469,7 +469,10 @@ struct SameNotePanesTests {
         let drawn = try await block(f)
         let fieldA = draw(drawn, in: a)
         let fieldB = draw(drawn, in: b)
-        b.session.reload = { [f] in if let block = try? await block(f) { fieldB.receive(block) } }
+        b.session.reload = { [f] in
+            let generation = b.session.landedWrites
+            if let block = try? await block(f) { fieldB.receive(block, generation: generation) }
+        }
 
         await prepend(in: fieldA, of: a)
         let paneA = fieldA.textView.text

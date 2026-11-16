@@ -130,6 +130,11 @@ struct NoteReadView: View {
         _composer = State(
             initialValue: NoteAttachmentComposer(noteId: model.route.id, filler: model.filler)
         )
+        // A fresh session counts writes from 0 while `model` may keep a
+        // `blocksGeneration` from an earlier page's session (#4738). The
+        // stamp only holds back a read older than a row's own write, and
+        // this page's rows start with none, so an old stamp draws for them;
+        // `loadBlocks` stamps from this session from its next read on.
         _editorModel = State(
             initialValue: NoteEditorViewModel(noteId: model.route.id, editor: editor, notes: writer)
         )

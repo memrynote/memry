@@ -75,6 +75,8 @@ private final class BodyEditor: BlockEditing, @unchecked Sendable {
 @Observable
 private final class Page {
     var blocks: [Block]
+    /// The writes `blocks` includes (`NoteReadViewModel.blocksGeneration`).
+    var generation = 0
     init(_ blocks: [Block]) { self.blocks = blocks }
 }
 
@@ -86,7 +88,10 @@ private struct Body: View {
     let editor: BodyEditor
 
     var body: some View {
-        let bridge = NoteEditingBridge(model: model) { page.blocks = editor.all }
+        let bridge = NoteEditingBridge(model: model, drawnGeneration: { page.generation }) {
+            page.generation = model.session.landedWrites
+            page.blocks = editor.all
+        }
         VStack {
             ForEach(page.blocks, id: \.id) { block in
                 NoteBlockView(block: block, editing: bridge)
