@@ -550,12 +550,16 @@ final class EditorSession {
     /// nodes in after the typing and answers the ones that landed, which join
     /// the typing's undo step. `over` puts nodes over text in `field`, such
     /// as a `#tag`, as the typed links go (`NoteEditorViewModel.insert`).
-    /// `drawing` draws chips for the nodes in the row once the typed links
-    /// are drawn, given where a location before them is after them.
+    /// `typing` is the text without what `nodes` and `over` brought: the
+    /// typing up to it is its own undo step, so undo takes back the nodes
+    /// and not the typing before them (#4796). `drawing` draws chips for the
+    /// nodes in the row once the typed links are drawn, given where a
+    /// location before them is after them.
     @discardableResult
     func commit(
         _ field: BlockField,
         then: (@MainActor () async -> Void)? = nil,
+        typing: String? = nil,
         over: [EditorUndoStep.TextNode] = [],
         drawing: ((Int) -> Int) -> Void = { _ in },
         inserting nodes: (@MainActor (NoteEditorViewModel) async -> [EditorUndoStep.PlacedNode])? = nil
@@ -650,8 +654,10 @@ final class EditorSession {
             let placed = !converted.isEmpty || !added.isEmpty
             if landed, placed, sent == text {
                 let spans = converted.map { $0.start ..< $0.start + $0.literal.utf8.count } + added.compactMap { Self.span($0.edit) }
+                let typed = typing ?? from
+                if typed != from { self.history.record(.text(blockId: blockId, from: from, to: typed)) }
                 self.history.record(.text(
-                    blockId: blockId, from: from, typed: text, typedLength: length, overText: converted,
+                    blockId: blockId, from: typed, typed: text, typedLength: length, overText: converted,
                     nodes: added, to: BlockText.placingNodes(spans, in: attributed),
                     caret: (field.pendingSelection ?? field.textView.selectedRange).location
                 ))
@@ -1216,9 +1222,15 @@ final class EditorSession {
 
     /// `range` of `field` replaced with each node, in order, each followed
     /// by a space: the menus' path, and a drop's (#4357). Typing not yet
-    /// committed in `field` is written first, so the nodes land in it.
+    /// committed in `field` is written first, so the nodes land in it, as
+    /// its own undo step: undo takes back the nodes and not the typing
+    /// before them (#4796). The part of `range` that typing wrote goes with
+    /// that step, and a part already committed with the nodes'.
     func insertInline(_ kinds: [EditorSuggestion.Kind], replacing range: NSRange, in field: BlockField) {
         let textView = field.textView
+        // No intersection leaves its location undefined.
+        let typed = NSIntersectionRange(range, Self.typed(since: field.base, in: textView.text))
+        let typing = typed.length == 0 ? textView.text : (textView.text as NSString).replacingCharacters(in: typed, with: "")
         textView.textStorage.deleteCharacters(in: range)
         field.dirty = true
         // The trailing spaces go in as text first, so each node lands before
@@ -1255,7 +1267,7 @@ final class EditorSession {
         // its node, as the core holds it when the nodes go in. Each node
         // goes before its own space.
         var anchors: [NodeAnchor] = []
-        commit(field, drawing: { moved in
+        commit(field, typing: typing, drawing: { moved in
             let location = moved(range.location)
             let text = textView.attributedText ?? NSAttributedString()
             anchors = kinds.indices.map { NodeAnchor.at(location + $0, in: text, replaces: false) }
@@ -1285,6 +1297,22 @@ final class EditorSession {
             }
             return edits
         })
+    }
+
+    /// What typing changed in `text` since `base`: the span between their
+    /// common prefix and common suffix.
+    private static func typed(since base: String, in text: String) -> NSRange {
+        let base = base as NSString, text = text as NSString
+        var prefix = 0
+        while prefix < min(base.length, text.length), base.character(at: prefix) == text.character(at: prefix) {
+            prefix += 1
+        }
+        var suffix = 0
+        while suffix < min(base.length, text.length) - prefix,
+              base.character(at: base.length - 1 - suffix) == text.character(at: text.length - 1 - suffix) {
+            suffix += 1
+        }
+        return NSRange(location: prefix, length: text.length - prefix - suffix)
     }
 
     /// An inline node run of `mark`, with `attrs` under the mark's prefix,
