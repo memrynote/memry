@@ -113,19 +113,18 @@ impl AccountService {
                 continue;
             }
             let known = remote.iter().find(|v| v.vault_uuid == uuid);
-            if known.is_none_or(|v| v.name.as_deref() != Some(local.name.as_str())) {
-                if let Err(error) = self
+            if known.is_none_or(|v| v.name.as_deref() != Some(local.name.as_str()))
+                && let Err(error) = self
                     .session
                     .register_vault(uuid.to_owned(), local.name.clone())
                     .await
-                {
-                    // A 402 (no plan, or the vault limit) is expected: registration retries on
-                    // the next refresh once the entitlement changes.
-                    tracing::info!(
-                        scope = "VaultDirectory",
-                        "vault self-registration skipped: {error}"
-                    );
-                }
+            {
+                // A 402 (no plan, or the vault limit) is expected: registration retries on the
+                // next refresh once the entitlement changes.
+                tracing::info!(
+                    scope = "VaultDirectory",
+                    "vault self-registration skipped: {error}"
+                );
             }
             let server = rows.iter().map(|r| &r.summary).find(|s| s.id == uuid);
             if self

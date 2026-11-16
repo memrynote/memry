@@ -93,6 +93,7 @@ vi.mock('@/components/download-vault-dialog', () => ({
 }))
 
 import { VaultSwitcher } from './vault-switcher'
+import { vaultService } from '@/services/vault-service'
 import { beginVaultSwitch, endVaultSwitch, resetVaultSwitchState } from '@/lib/vault-switch-state'
 import type { SandboxInfo, VaultInfo } from '../../../preload/index.d'
 
@@ -105,6 +106,8 @@ const vault = (name: string, extra: Partial<VaultInfo> = {}): VaultInfo => ({
   isDefault: false,
   ...extra
 })
+
+const deleteFromAccount = vi.spyOn(vaultService, 'deleteFromAccount')
 
 const ACTIVE = vault('Active', { vaultUuid: 'uuid-active' })
 const OLD = vault('Old', { vaultUuid: 'uuid-old' })
@@ -127,6 +130,7 @@ function serveVaults(...lists: VaultInfo[][]): void {
 describe('VaultSwitcher delete from account', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    deleteFromAccount.mockResolvedValue(undefined)
     serveVaults([ACTIVE, OLD])
   })
 
@@ -134,7 +138,7 @@ describe('VaultSwitcher delete from account', () => {
     render(<VaultSwitcher />)
     fireEvent.click(await screen.findByLabelText('Delete Old from account'))
     fireEvent.click(screen.getByText('phaseF.componentsVaultSwitcher.deleteVaultConfirm'))
-    await waitFor(() => expect(window.api.vault.deleteFromAccount).toHaveBeenCalledWith('uuid-old'))
+    await waitFor(() => expect(deleteFromAccount).toHaveBeenCalledWith('uuid-old'))
   })
 
   it('drops a local vault from the list once it is deleted from the account', async () => {
@@ -161,9 +165,7 @@ describe('VaultSwitcher delete from account', () => {
     render(<VaultSwitcher />)
     fireEvent.click(screen.getByLabelText('Delete Cloud from account'))
     fireEvent.click(screen.getByText('phaseF.componentsVaultSwitcher.deleteVaultConfirm'))
-    await waitFor(() =>
-      expect(window.api.vault.deleteFromAccount).toHaveBeenCalledWith('uuid-cloud')
-    )
+    await waitFor(() => expect(deleteFromAccount).toHaveBeenCalledWith('uuid-cloud'))
   })
 
   it('never offers delete on the active vault', async () => {
@@ -179,14 +181,14 @@ describe('VaultSwitcher delete from account', () => {
     fireEvent.click(screen.getByText('phaseF.componentsVaultSwitcher.remove2'))
     await waitFor(() => expect(screen.queryByText('Old')).not.toBeInTheDocument())
     expect(window.api.vault.remove).toHaveBeenCalledWith('/vaults/Old')
-    expect(window.api.vault.deleteFromAccount).not.toHaveBeenCalled()
+    expect(deleteFromAccount).not.toHaveBeenCalled()
   })
 
-  it('does not call the IPC when the confirm is cancelled', async () => {
+  it('does not delete when the confirm is cancelled', async () => {
     render(<VaultSwitcher />)
     fireEvent.click(await screen.findByLabelText('Delete Old from account'))
     fireEvent.click(screen.getByText('phaseF.componentsVaultSwitcher.cancel'))
-    expect(window.api.vault.deleteFromAccount).not.toHaveBeenCalled()
+    expect(deleteFromAccount).not.toHaveBeenCalled()
   })
 })
 
@@ -195,6 +197,7 @@ describe('VaultSwitcher missing vault folder', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    deleteFromAccount.mockResolvedValue(undefined)
     serveVaults([ACTIVE, OLD, GONE])
   })
 
@@ -237,7 +240,7 @@ describe('VaultSwitcher missing vault folder', () => {
     fireEvent.keyDown(await screen.findByLabelText('Delete Old from account'), { key: 'Enter' })
     fireEvent.click(screen.getByText('phaseF.componentsVaultSwitcher.deleteVaultConfirm'))
 
-    await waitFor(() => expect(window.api.vault.deleteFromAccount).toHaveBeenCalledWith('uuid-old'))
+    await waitFor(() => expect(deleteFromAccount).toHaveBeenCalledWith('uuid-old'))
     expect(mocks.switchVault).not.toHaveBeenCalled()
   })
 })

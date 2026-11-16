@@ -14,6 +14,7 @@
 //! | `account`: email sign-in, setup, known device, phrase   | `auth-device-handlers.ts`, `device-registration.ts` |
 //! | `linking`: QR link, vault choice, wrong key, revoke     | `sync/linking-service.ts`, chapter 03      |
 //! | `binding`: foreign vault held, revocation event         | `vault-account-binding.ts`, D7             |
+//! | `vault_directory`: registration, 402 retry, delete      | `sync/vault-directory.ts`                  |
 //!
 //! Within it: a definition another device pushed first wins over the learned type, a deleted one
 //! stays deleted, the record has the shape Electron's seed pushes, a retry pushes nothing twice,
@@ -31,6 +32,8 @@ mod device_key;
 mod harness_server;
 #[path = "sync_harness/linking.rs"]
 mod linking;
+#[path = "sync_harness/vault_directory.rs"]
+mod vault_directory;
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
