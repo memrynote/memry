@@ -873,43 +873,54 @@ final class EditorSession {
         dateEditField = nil
     }
 
-    /// Rewrites the open chip. The chip's character is swapped in the text
-    /// view and committed like typing (a space for an update, the date's
-    /// words for a conversion, nothing for a removal); an update then puts
-    /// the node back over that space under the same anchor, the path a typed
-    /// `[[link]]` takes. The space keeps the insert inside a text run even
-    /// when the chip was the block's only content, and is what the node is
-    /// found by once the commit is rebased onto another pane's edits (#4706).
+    /// Rewrites the open chip. An update rewrites the node under the same
+    /// anchor where the block holds it (`NoteEditorViewModel.rewriteDate`),
+    /// after the block's typing, as one undo step; the text view keeps the
+    /// chip, so the page's re-read draws the new date (#4762). A conversion
+    /// or a removal swaps the chip's character in the text view for the
+    /// date's words, or nothing, and commits it like typing.
     func applyDateEdit(_ edit: DateMentionEdit) {
         guard let request = dateEdit, let field = dateEditField, field.blockId == request.blockId,
               let range = field.dateChipRange(anchorId: request.anchorId)
         else { return cancelDateEdit() }
         cancelDateEdit()
-        let replacement = switch edit {
-        case .update: " "
-        case .convertToText: DateMentionRemind.plainText(request.value)
-        case .remove: ""
+        let replacement: String
+        switch edit {
+        case let .update(value):
+            return rewriteDate(request, at: range, in: field, to: value)
+        case .convertToText:
+            replacement = DateMentionRemind.plainText(request.value)
+        case .remove:
+            replacement = ""
         }
         let attributes = BlockText.baseAttributes(field.style)
         field.textView.textStorage.replaceCharacters(
             in: range, with: NSAttributedString(string: replacement, attributes: attributes)
         )
         field.dirty = true
-        guard case let .update(value) = edit else {
-            commit(field)
+        commit(field)
+    }
+
+    private func rewriteDate(_ request: DateMentionEditRequest, at range: NSRange, in field: BlockField, to value: DateMentionValue) {
+        // Held now, as `commit` holds it: a page torn down drops its model.
+        guard let model else {
+            Log.storage.error("a date edit had no editor model")
             return
         }
         let blockId = field.blockId
-        // Read once the commit has drawn a typed `[[…]]` as its node, as the
-        // core holds it when the chip goes back in.
-        var anchor: NodeAnchor?
-        let moved = commit(field) { [weak self] in
-            guard let anchor else { return }
-            await self?.model?.insertDateMention(in: blockId, at: anchor, value: value, anchorId: request.anchorId)
-        }
-        anchor = NodeAnchor.at(
-            moved(range.location), in: field.textView.attributedText ?? NSAttributedString(), replaces: true
+        // The chip's place once the commit has drawn a typed `[[…]]` as its
+        // node, as the core holds it when the chip is rewritten.
+        let moved = commit(field)
+        let chip = DateChipAnchor(
+            anchorId: request.anchorId,
+            place: NodeAnchor.at(moved(range.location), in: field.textView.attributedText ?? NSAttributedString(), replaces: true)
         )
+        enqueue { [weak self] in
+            if await model.rewriteDate(chip, in: blockId, to: value) {
+                self?.history.record(.date(blockId: blockId, chip: chip, from: request.value, to: value))
+            }
+            await self?.didChange()
+        }
     }
 
     // MARK: Source blocks
@@ -1275,9 +1286,7 @@ final class EditorSession {
         replay(redrawing: typingChanged ? field : nil) { history in
             if let kept { history.keepRedo(kept) }
             guard let step = history.popUndo() else { return nil }
-            return { model in
-                for edit in [step.backward] + step.backwardAfter { await model.apply(edit) }
-            }
+            return { model in await model.undo(step) }
         }
     }
 

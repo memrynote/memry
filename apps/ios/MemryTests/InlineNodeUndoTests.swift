@@ -453,4 +453,108 @@ struct InlineNodeUndoTests {
         #expect(try await shown(f) == "due  ")
         #expect(try await nodes(f, "dateMention") == 0, "no node the user never had")
     }
+
+    // MARK: A date chip edited through its sheet (#4762)
+
+    /// The chip's first date, with a reminder undo must bring back.
+    private static let due = {
+        var value = DateMentionValue(dateISO: "2026-06-02T09:00:00.000Z", hasTime: false)
+        value.remind = "1d"
+        return value
+    }()
+
+    private static let moved = {
+        var value = DateMentionValue(dateISO: "2026-07-14T09:00:00.000Z", hasTime: false)
+        value.remind = "at"
+        return value
+    }()
+
+    /// `hello ` and the date chip `dm_due`, drawn in the pane, which re-reads
+    /// the block after every write as the page does (`updateUIView`).
+    /// With `anchored` false, a chip written before anchors existed.
+    private func fixtureWithDate(anchored: Bool = true) async throws -> Fixture {
+        let f = try await fixture("hello ")
+        var attrs = Self.due.attrs(anchorId: "dm_due")
+        if !anchored { attrs["anchorId"] = nil }
+        _ = try f.vault.vault.notesWriter(store: TaskTestKeychain()).editBlock(
+            noteId: f.noteId,
+            edit: .insertInline(blockId: f.blockId, start: 6, end: 6, kind: "dateMention", text: "", attrs: attrs)
+        )
+        let reread = { @MainActor [f] in
+            let blocks = try await f.reader.blocks(id: f.noteId)
+            if let block = blocks?.first(where: { $0.id == f.blockId }) { f.field.receive(block) }
+        }
+        try await reread()
+        f.session.reload = { try? await reread() }
+        return f
+    }
+
+    /// The chip the pane's text view draws: its one U+FFFC's node.
+    private func drawnChip(_ f: Fixture) throws -> DateMentionChip {
+        let text = f.field.textView.attributedText ?? NSAttributedString()
+        #expect(text.string == "hello \u{FFFC}")
+        return try #require(text.attribute(.memryDate, at: 6, effectiveRange: nil) as? DateMentionChip)
+    }
+
+    /// The core's date nodes: date, reminder and anchor of each.
+    private func dates(_ f: Fixture) async throws -> [[String?]] {
+        try await runs(f).filter { $0.marks.contains("dateMention") }.map { run in
+            ["dateMention.dateISO", "dateMention.remind", "dateMention.anchorId"].map { run.markAttrs[$0] }
+        }
+    }
+
+    private func editDate(_ f: Fixture, to value: DateMentionValue) async throws {
+        f.session.requestDateEdit(try drawnChip(f), in: f.field)
+        f.session.applyDateEdit(.update(value))
+        await f.session.tail?.value
+    }
+
+    /// #4762: the pane draws the edited chip from the block it re-reads, not
+    /// the space the edit wrote, without the note being opened again.
+    @Test(.timeLimit(.minutes(1))) func an_edited_date_is_drawn_in_its_pane_at_once() async throws {
+        let f = try await fixtureWithDate()
+        try await editDate(f, to: Self.moved)
+
+        #expect(try await dates(f) == [[Self.moved.dateISO, "at", "dm_due"]])
+        let chip = try drawnChip(f)
+        #expect(chip.value == Self.moved)
+        #expect(chip.anchorId == "dm_due")
+    }
+
+    /// #4762: the edit is one step. Undo puts the old date and its reminder
+    /// back under the same anchor, redo the new one, and the pane draws each.
+    @Test(.timeLimit(.minutes(1))) func a_date_edit_is_undone_and_redone_as_one_step() async throws {
+        let f = try await fixtureWithDate()
+        try await editDate(f, to: Self.moved)
+
+        await undo(f)
+        #expect(try await dates(f) == [[Self.due.dateISO, "1d", "dm_due"]])
+        #expect(try await shown(f) == "hello \u{FFFC}")
+        #expect(try drawnChip(f).value == Self.due)
+
+        await redo(f)
+        #expect(try await dates(f) == [[Self.moved.dateISO, "at", "dm_due"]])
+        #expect(try await shown(f) == "hello \u{FFFC}")
+        #expect(try drawnChip(f).value == Self.moved)
+
+        await undo(f)
+        #expect(try await dates(f) == [[Self.due.dateISO, "1d", "dm_due"]])
+        #expect(!f.session.history.canUndo, "one step, not a text step beside it")
+    }
+
+    /// A chip with no anchor, from before anchors existed, is found by its
+    /// place: rewritten there under the anchor the pane gave it, not added
+    /// again at the end, and undone the same way.
+    @Test(.timeLimit(.minutes(1))) func an_unanchored_date_is_rewritten_where_it_is() async throws {
+        let f = try await fixtureWithDate(anchored: false)
+        let anchor = try drawnChip(f).anchorId
+        try await editDate(f, to: Self.moved)
+
+        #expect(try await dates(f) == [[Self.moved.dateISO, "at", anchor]])
+        #expect(try await shown(f) == "hello \u{FFFC}")
+        #expect(f.model.status == .idle)
+
+        await undo(f)
+        #expect(try await dates(f) == [[Self.due.dateISO, "1d", anchor]])
+    }
 }
