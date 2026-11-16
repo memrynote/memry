@@ -236,7 +236,7 @@ Options:
 
 `eval` runs in the renderer; the main process has no eval. The webview is driven by the `webdriver-memry` MCP server (`apps/desktop-tauri/scripts/webdriver-mcp.mjs`, `.pi/mcp.json`), which keeps the tool names of the Playwright MCP (`browser_snapshot`, `browser_click`, `browser_type`, `browser_take_screenshot`, ...). `pnpm staging:tauri` runs the app against staging, and `pnpm staging:tauri:debug` adds the e2e build with WebDriver on port 9333 and a persistent profile in `~/.memry/staging-tauri-profile`; it reads `apps/desktop-tauri/.env.staging`, which is gitignored.
 
-For a Windows or Linux VM, CI builds the app on demand: `gh workflow run desktop-tauri-ci.yml --ref <ref>` uploads `memry-tauri-e2e-<os>-<arch>` (the Ubuntu VM is arm64, so `linux-arm64`), which the `vm-repro` skill installs.
+For a Windows or Linux VM, CI builds the app on demand: `gh workflow run desktop-tauri-ci.yml --ref <ref>` uploads `memry-tauri-e2e-<os>-<arch>` (the Ubuntu VM is arm64, so `linux-arm64`), which the `vm-repro` skill installs. The arm64 artifacts also hold `memry-ml-worker` and `resources/{pdfium,tessdata}` (PDF text and OCR); `install-artifact <run-id> --with-file-text` copies them beside the app, and a debug build copied off its runner reads `resources/` beside the executable. Only the `windows-arm64` e2e leg runs the attachment-text specs in CI (`MEMRY_E2E_FILE_TEXT=1`); the other legs skip them.
 
 ### Virtualized UI Tests
 
