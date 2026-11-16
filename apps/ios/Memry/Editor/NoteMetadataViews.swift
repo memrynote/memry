@@ -95,9 +95,6 @@ struct NoteTitleEditor: View {
     @State private var commits = DraftCommits()
     /// The Return whose keys the title holds until the body takes the caret.
     @State private var returned: LineReturn?
-    /// An input method took a hardware Return as its own; the focus loss
-    /// that follows as the key comes up gives the caret back.
-    @State private var composedReturn = false
     @State private var pickingIcon = false
     /// A new note's title wants the caret until the user types or moves it.
     @State private var claimsFocus = false
@@ -132,17 +129,19 @@ struct NoteTitleEditor: View {
     /// a turn late.
     private var titleTextView: UITextView? {
         guard commits.editing else { return nil }
-        func editing(in view: UIView) -> UITextView? {
-            if let text = view as? UITextView, text.isFirstResponder { return text }
-            // A plain loop: a lazy `compactMap(...).first` maps each level
-            // again for every level above it, which hung the app on a page's
-            // deep view tree.
-            for subview in view.subviews {
-                if let text = editing(in: subview) { return text }
-            }
-            return nil
+        return host.window.flatMap(Self.caretHolder)
+    }
+
+    /// The text view with the caret in `view`, if any.
+    private static func caretHolder(in view: UIView) -> UITextView? {
+        if let text = view as? UITextView, text.isFirstResponder { return text }
+        // A plain loop: a lazy `compactMap(...).first` maps each level again
+        // for every level above it, which hung the app on a page's deep view
+        // tree.
+        for subview in view.subviews {
+            if let text = caretHolder(in: subview) { return text }
         }
-        return host.window.flatMap(editing)
+        return nil
     }
 
     /// Return: saves the title before it and keeps the caret, holding the
@@ -166,6 +165,7 @@ struct NoteTitleEditor: View {
         }
         guard let burst = returned else { return nil }
         returned = nil
+        host.body = host.window.flatMap(Self.caretHolder)
         let held = burst.held(in: draft)
         draft = burst.line
         return held?.isEmpty == false ? held : nil
@@ -181,6 +181,16 @@ struct NoteTitleEditor: View {
     }
 
     private func typed(_ value: String) {
+        if let field = titleTextView {
+            host.title = field
+            // An input method confirming its composition on Return first
+            // deletes it: only a key that adds text ends the composition.
+            if field.markedTextRange != nil {
+                host.composing = true
+            } else if value.count > draft.count {
+                host.composing = false
+            }
+        }
         if let burst = returned {
             draft = value
             if burst.held(in: value) == nil { keepHeld() }
@@ -237,27 +247,40 @@ struct NoteTitleEditor: View {
                 .font(Tokens.Typography.screenTitle.font)
                 .foregroundStyle(Tokens.Text.primary.color)
                 .focused($focused)
-                // A hardware Return arrives as a press, not a newline. SwiftUI
-                // submits it as the key comes up and ends the field's editing
-                // whatever a handler answers, and a key typed before the body
-                // took the caret then reached no text view (#4756). Taken as
-                // the key goes down, the Return moves the caret to a body
-                // block already drawn in that same turn (`returnToBody`).
-                .onKeyPress(.return, phases: .down) { _ in
-                    // An input method's composition takes the Return as its own.
-                    guard titleTextView?.markedTextRange == nil else {
-                        composedReturn = true
-                        return .ignored
+                // The hand-off to the body keeps one invariant (#4756): it
+                // takes the line only after every key typed before the
+                // Return has reached the title, and it has the caret in a
+                // text view again in the turn SwiftUI ends the title's
+                // editing at the key-up, so no key typed after the Return
+                // reaches none. A hardware Return's press arrives ahead of
+                // the keys the keyboard still queues, so a key-down handler
+                // cut the title short, and nothing acts on the key going
+                // down. In the queue's order, behind those keys, the Return
+                // may insert a newline, which hands off in `typed`. Its
+                // key-up, also behind them, ends the editing of every text
+                // view and then submits here, in the same turn.
+                .onSubmit {
+                    guard host.window.flatMap(Self.caretHolder) == nil else { return }
+                    if host.composing || returned != nil {
+                        // An input method took the Return as its own, or the
+                        // body has yet to take the keys held for it: the
+                        // caret goes back to the title.
+                        host.composing = false
+                        host.title?.becomeFirstResponder()
+                    } else if let body = host.body, body.window != nil {
+                        // The newline moved the caret to the body already.
+                        host.body = nil
+                        body.becomeFirstResponder()
+                    } else {
+                        // An edit that ended under the caret (the app
+                        // resumed) still moves to the body.
+                        if !commits.editing {
+                            draft = title
+                            commits.begin(title)
+                        }
+                        if let text = host.title?.text { draft = text }
+                        returnPressed(LineReturn(submitted: draft))
                     }
-                    guard returned == nil else { return .handled }
-                    // An edit that ended under the caret (the app resumed)
-                    // still moves to the body.
-                    if !commits.editing {
-                        draft = title
-                        commits.begin(title)
-                    }
-                    returnPressed(LineReturn(submitted: draft))
-                    return .handled
                 }
                 .onChange(of: focused) { _, isFocused in
                     if isFocused {
@@ -266,14 +289,13 @@ struct NoteTitleEditor: View {
                             draft = title
                             commits.begin(title)
                         }
-                    } else if composedReturn {
-                        // SwiftUI ends the field's editing as the input
-                        // method's Return comes up, and no text view would
-                        // take the keys after it. The caret stays in the
-                        // title, and the edit goes on; a tap that moved the
-                        // caret to a block keeps it there.
-                        composedReturn = false
-                        if titleTextView == nil { focused = true } else { commit() }
+                        if let field = titleTextView { host.title = field }
+                        host.composing = titleTextView?.markedTextRange != nil
+                        host.body = nil
+                    } else if host.title?.isFirstResponder == true {
+                        // The Return's key-up ended the edit, and the title
+                        // took the caret back (`onSubmit`): the edit goes on.
+                        focused = true
                     } else if returned != nil {
                         // The body taking the caret ends the title's focus
                         // before it takes the held keys, on the same turn.
@@ -366,6 +388,15 @@ struct NoteTitleEditor: View {
 /// The window a title is drawn in, read without redrawing the title.
 private final class TitleWindow {
     weak var window: UIWindow?
+    /// The title's text view, which keeps no caret once SwiftUI ends its
+    /// editing.
+    weak var title: UITextView?
+    /// Whether an input method composes in the title: from a change with
+    /// marked text until a key adds text without.
+    var composing = false
+    /// The body block a Return in the title moved the caret to, until the
+    /// title takes the caret again.
+    weak var body: UITextView?
 }
 
 private struct TitleWindowReader: UIViewRepresentable {
