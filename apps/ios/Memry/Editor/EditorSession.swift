@@ -547,11 +547,14 @@ final class EditorSession {
     /// nodes in after the typing and answers the edits it ran, which join
     /// the typing's undo step. `over` puts nodes over text in `field`, such
     /// as a `#tag`, as the typed links go (`NoteEditorViewModel.insert`).
+    /// `drawing` draws chips for the nodes in the row once the typed links
+    /// are drawn, given where a location before them is after them.
     @discardableResult
     func commit(
         _ field: BlockField,
         then: (@MainActor () async -> Void)? = nil,
         over: [EditorUndoStep.TextNode] = [],
+        drawing: ((Int) -> Int) -> Void = { _ in },
         inserting nodes: (@MainActor (NoteEditorViewModel) async -> [BlockEdit])? = nil
     ) -> (Int) -> Int {
         // Keys held for a Return's new block commit here instead (Tab, ⌘B,
@@ -591,7 +594,12 @@ final class EditorSession {
         // The literal text goes now, not when the page reloads: typing that
         // lands before the reload would keep it, and the next commit's base
         // would still spell a link the core already holds as a node.
+        let draw = BlockField.beginDraw()
         let moved = links.isEmpty ? { $0 } : field.drawLinks(links)
+        drawing(moved)
+        // The row's base with this commit's chips drawn: `text` when it
+        // drew none.
+        let drawn = field.base
         let wrote = dirty && text != base
         // The session too, so the write still schedules its sync pass.
         let generation = enqueue {
@@ -610,7 +618,10 @@ final class EditorSession {
             // base a later commit moved on has that commit queued, which
             // sends this typing too.
             let row = self.drawnFields.object(forKey: blockId as NSString).flatMap { $0.blockId == blockId ? $0 : nil } ?? field
-            if !landed, row.base == text {
+            // A row still on this commit's drawn chips gets back the text
+            // they replaced, and keeps it unsaved the same way (REVIEW-4784).
+            if !landed, row.base == text || (drawn != text && row.base == drawn) {
+                if row.base != text { row.undraw(draw) }
                 row.base = held
                 row.dirty = true
             }
@@ -1230,7 +1241,16 @@ final class EditorSession {
         // its node, as the core holds it when the nodes go in. Each node
         // goes before its own space.
         var anchors: [NodeAnchor] = []
-        let moved = commit(field, inserting: { model in
+        commit(field, drawing: { moved in
+            let location = moved(range.location)
+            let text = textView.attributedText ?? NSAttributedString()
+            anchors = kinds.indices.map { NodeAnchor.at(location + $0, in: text, replaces: false) }
+            // Drawn now, as `commit` draws a typed `[[…]]` (#4780): keys typed
+            // before the nodes land leave the row dirty, a dirty row is never
+            // redrawn, and the chips stayed off screen until its next commit.
+            field.drawNodes(nodes.compactMap(\.run), at: location)
+            field.pendingSelection = NSRange(location: location + 2 * kinds.count, length: 0)
+        }, inserting: { model in
             var edits: [BlockEdit] = []
             // Last first, so each node's offset still counts only the spaces
             // before it.
@@ -1251,14 +1271,6 @@ final class EditorSession {
             }
             return edits
         })
-        let location = moved(range.location)
-        let text = textView.attributedText ?? NSAttributedString()
-        anchors = kinds.indices.map { NodeAnchor.at(location + $0, in: text, replaces: false) }
-        // Drawn now, as `commit` draws a typed `[[…]]` (#4780): keys typed
-        // before the nodes land leave the row dirty, a dirty row is never
-        // redrawn, and the chips stayed off screen until its next commit.
-        field.drawNodes(nodes.compactMap(\.run), at: location)
-        field.pendingSelection = NSRange(location: location + 2 * kinds.count, length: 0)
     }
 
     /// An inline node run of `mark`, with `attrs` under the mark's prefix,

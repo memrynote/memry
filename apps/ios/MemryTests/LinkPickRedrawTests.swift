@@ -61,6 +61,8 @@ struct LinkPickRedrawTests {
         let view = try #require(row(), "the body has no row")
         let field = try #require(view.delegate as? BlockField)
         let session = try #require(field.session)
+        // The page hands the session its notes on the update after it reads them.
+        await until { !session.linkNotes.isEmpty }
         session.hardwareKeyboard = HardwareKeyboard(attached: true)
         view.becomeFirstResponder()
         func key(_ text: String) {

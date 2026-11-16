@@ -544,7 +544,7 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
                 markAttrs: ["wikiLink.target": attrs["target"] ?? link.target, "wikiLink.alias": attrs["alias"] ?? ""],
                 target: nil
             )
-            let chip = chip(run, at: link.range.location)
+            let chip = chip(run, at: link.range.location, replacing: (textView.text as NSString).substring(with: link.range))
             textView.textStorage.replaceCharacters(in: link.range, with: chip)
             drawn.append((link.range, chip.length))
         }
@@ -557,6 +557,7 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
                 return moved
             }
         }
+        BlockText.markWikiLinks(in: textView.textStorage, titleExists: style.titleExists)
         base = textView.textStorage.string
         textView.selectedRange = NSRange(location: min(moved(caret), textView.textStorage.length), length: 0)
         textView.typingAttributes = BlockText.baseAttributes(style)
@@ -570,8 +571,9 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
     /// the block the core holds once the nodes land (#4780).
     func drawNodes(_ nodes: [InlineRun], at location: Int) {
         for (offset, run) in nodes.enumerated().reversed() {
-            textView.textStorage.insert(chip(run, at: location + offset), at: location + offset)
+            textView.textStorage.insert(chip(run, at: location + offset, replacing: ""), at: location + offset)
         }
+        BlockText.markWikiLinks(in: textView.textStorage, titleExists: style.titleExists)
         base = textView.textStorage.string
         textView.selectedRange = NSRange(location: min(location + 2 * nodes.count, textView.textStorage.length), length: 0)
         textView.typingAttributes = BlockText.baseAttributes(style)
@@ -579,14 +581,50 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
     }
 
     /// `run` drawn as its chip, in the paragraph style of the text at
-    /// `location`.
-    private func chip(_ run: InlineRun, at location: Int) -> NSAttributedString {
+    /// `location`, marked as drawn ahead of the core (`undraw`) with the
+    /// text it replaces.
+    private func chip(_ run: InlineRun, at location: Int, replacing literal: String) -> NSAttributedString {
         let chip = NSMutableAttributedString(attributedString: BlockText.attributed([run], style: style))
         if location < textView.textStorage.length,
            let paragraph = textView.textStorage.attribute(.paragraphStyle, at: location, effectiveRange: nil) {
             chip.addAttribute(.paragraphStyle, value: paragraph, range: NSRange(location: 0, length: chip.length))
         }
+        chip.addAttribute(.memryDrawn, value: DrawnChip(draw: Self.draws, literal: literal), range: NSRange(location: 0, length: chip.length))
         return chip
+    }
+
+    /// Chips are numbered by the commit that draws them: `draws` is the
+    /// number the next chips get until `beginDraw` moves it on.
+    private static var draws = 0
+
+    /// Numbers the chips drawn from here on, and answers their number.
+    static func beginDraw() -> Int {
+        draws += 1
+        return draws
+    }
+
+    /// Puts back the text each chip of draw `draw` replaced: a
+    /// failed write never gave the core its node, and the row keeps the
+    /// typing (REVIEW-4784). The caret stays on the same text.
+    func undraw(_ draw: Int) {
+        let storage = textView.textStorage
+        var caret = textView.selectedRange.location
+        var drawn: [(range: NSRange, literal: String)] = []
+        storage.enumerateAttribute(.memryDrawn, in: NSRange(location: 0, length: storage.length)) { value, range, _ in
+            guard let chip = value as? DrawnChip, chip.draw == draw else { return }
+            // Each chip is one character, so adjacent chips are undrawn one by one.
+            for location in range.location ..< NSMaxRange(range) {
+                drawn.append((NSRange(location: location, length: 1), chip.literal))
+            }
+        }
+        for (range, literal) in drawn.reversed() {
+            storage.replaceCharacters(in: range, with: NSAttributedString(string: literal, attributes: BlockText.baseAttributes(style)))
+            if caret > range.location { caret += (literal as NSString).length - range.length }
+        }
+        BlockText.markWikiLinks(in: storage, titleExists: style.titleExists)
+        textView.selectedRange = NSRange(location: min(caret, storage.length), length: 0)
+        textView.typingAttributes = BlockText.baseAttributes(style)
+        textView.invalidateIntrinsicContentSize()
     }
 
     // MARK: UITextViewDelegate
@@ -764,4 +802,14 @@ extension EditorSession {
             session: self, target: BlockActionTarget(block: blocks[index], siblings: BlockSiblings.of(index, in: blocks))
         )
     }
+}
+
+/// A chip drawn ahead of the core, and the text it replaced (`undraw`).
+private struct DrawnChip {
+    let draw: Int
+    let literal: String
+}
+
+private extension NSAttributedString.Key {
+    static let memryDrawn = NSAttributedString.Key("memry.drawn")
 }
