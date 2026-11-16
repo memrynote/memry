@@ -33,6 +33,19 @@ pub(super) fn pending_metadata_ids(conn: &Connection) -> Result<Vec<String>, Sto
     Ok(ids)
 }
 
+/// Whether pass two left a row it can still fill: `metadata-only`, live, and not
+/// held corrupt or refused (`corrupt_reason`), which a re-read would not fix.
+pub(super) fn metadata_left_behind(conn: &Connection) -> Result<bool, StorageError> {
+    conn.query_row(
+        "SELECT EXISTS(SELECT 1 FROM sync_items
+                        WHERE payload_state = 'metadata-only' AND deleted_at IS NULL
+                          AND corrupt_reason IS NULL)",
+        [],
+        |row| row.get(0),
+    )
+    .map_err(sqlite_failed)
+}
+
 /// Pass three's work list: the note and journal documents inside the window,
 /// newest first, capped at `limit` (`None`: every one).
 ///

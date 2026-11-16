@@ -22,10 +22,12 @@ use crate::api::errors::StorageError;
 /// repair tombstone them. Any row of the child type holds it, since a moved child
 /// no longer names the parent, and a row queued after the delete counts too: an
 /// edit re-queues a moved task under a new id. No cascaded type is also a parent,
-/// so the hold has no cycle. It ends when the child-type rows leave the queue
-/// (accepted, retired, or answered replay or delete-wins); a child the server keeps
-/// rejecting keeps the delete queued with it, which delays the delete and loses
-/// nothing.
+/// so the hold has no cycle. It ends only when the child-type rows leave the queue
+/// (accepted, retired, or answered replay or delete-wins), so it has **no bound**:
+/// a task the server keeps rejecting holds every project delete until the task is
+/// edited or deleted. While a delete is held, orphan repair leaves the children of
+/// that parent alone ([`crate::sync::hardening::orphans::tombstone_orphans`]). The
+/// held parent types are one uncorrelated subquery, read once per claim.
 ///
 /// `skip_docs` are documents this wave already deferred: their rows stay out of
 /// the rest of the wave, whatever the clock says.
@@ -38,28 +40,17 @@ pub fn claim(
     let skipped = serde_json::to_string(skip_docs).map_err(|error| StorageError::Failed {
         what: format!("could not encode the skipped documents: {error}"),
     })?;
-    let cascades = crate::sync::hardening::orphans::CASCADED
-        .map(|(child, _, parent)| format!("('{parent}', '{child}')"))
-        .join(", ");
     let mut statement = conn
         .prepare(&format!(
             "SELECT id, item_type, item_id, op, payload, enqueued_at,
                     attempt_count, last_error, next_attempt_at
                FROM outbox
-              WHERE (next_attempt_at IS NULL OR next_attempt_at <= ?1)
-                AND NOT (op = ?2 AND EXISTS (
-                      SELECT 1 FROM outbox held
-                       WHERE held.op = ?2 AND held.item_id = outbox.item_id
-                         AND held.id < outbox.id AND held.next_attempt_at > ?1))
-                AND NOT (op = ?2 AND item_id IN (SELECT value FROM json_each(?4)))
-                AND NOT (op = ?5 AND EXISTS (
-                      SELECT 1 FROM outbox child
-                       WHERE child.op <> ?2
-                         AND (outbox.item_type, child.item_type) IN (VALUES {cascades})))
+              WHERE {}
               ORDER BY (op <> ?2),
                        CASE WHEN op = ?2 THEN item_id ELSE '' END,
                        id
-              LIMIT ?3"
+              LIMIT ?3",
+            claimable()
         ))
         .map_err(failed)?;
     let rows = statement
@@ -83,4 +74,36 @@ pub fn claim(
         .collect::<Result<Vec<_>, _>>()
         .map_err(failed)?;
     Ok(rows)
+}
+
+/// How many rows [`claim`] would hand out now, with no document skipped. Never
+/// removes one.
+pub fn claimable_count(conn: &Connection, now_ms: i64) -> Result<usize, StorageError> {
+    conn.query_row(
+        &format!("SELECT count(*) FROM outbox WHERE {}", claimable()),
+        params![now_ms, OP_CRDT_UPDATE, 0, "[]", OP_DELETE],
+        |row| row.get::<_, i64>(0),
+    )
+    .map_err(failed)
+    .map(|count| count as usize)
+}
+
+/// The rows claimable now, over `?1` now, `?2` the CRDT op, `?4` the skipped
+/// documents and `?5` the delete op.
+fn claimable() -> String {
+    let cascades = crate::sync::hardening::orphans::CASCADED
+        .map(|(child, _, parent)| format!("('{parent}', '{child}')"))
+        .join(", ");
+    format!(
+        "(next_attempt_at IS NULL OR next_attempt_at <= ?1)
+         AND NOT (op = ?2 AND EXISTS (
+               SELECT 1 FROM outbox held
+                WHERE held.op = ?2 AND held.item_id = outbox.item_id
+                  AND held.id < outbox.id AND held.next_attempt_at > ?1))
+         AND NOT (op = ?2 AND item_id IN (SELECT value FROM json_each(?4)))
+         AND NOT (op = ?5 AND item_type IN (
+               SELECT cascade.column1 FROM (VALUES {cascades}) AS cascade
+                WHERE EXISTS (SELECT 1 FROM outbox child
+                               WHERE child.item_type = cascade.column2 AND child.op <> ?2)))"
+    )
 }

@@ -355,16 +355,11 @@ fn insert(
 ///
 /// Rows parked in backoff are excluded: `next_attempt_at` NULL means
 /// claimable now (§A.2), and a pass that entered `Pushing` for a row it
-/// cannot yet send would report a push that never happened.
+/// cannot yet send would report a push that never happened. So are the rows
+/// [`claim`] holds back (a document's rows behind a deferred one, a parent's
+/// held delete), for the same reason.
 pub fn pending(conn: &Connection, now_ms: i64) -> Result<usize, StorageError> {
-    conn.query_row(
-        "SELECT count(*) FROM outbox
-          WHERE next_attempt_at IS NULL OR next_attempt_at <= ?1",
-        params![now_ms],
-        |row| row.get::<_, i64>(0),
-    )
-    .map_err(failed)
-    .map(|count| count as usize)
+    claim::claimable_count(conn, now_ms)
 }
 
 /// Every row, claimable or not. The queue depth a UI would show.

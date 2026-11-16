@@ -378,6 +378,8 @@ mod note_stats_vectors;
 mod offline_reconnect;
 #[path = "offset_kind.rs"]
 mod offset_kind;
+#[path = "outbox_claim_load.rs"]
+mod outbox_claim_load;
 #[path = "outbox_crdt_batch_cap.rs"]
 mod outbox_crdt_batch_cap;
 #[path = "pack_vectors.rs"]

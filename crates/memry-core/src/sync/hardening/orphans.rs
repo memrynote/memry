@@ -21,9 +21,12 @@
 //!   pushed with the parent's delete (this core's project delete moves its
 //!   tasks to the inbox) lands before the check, and a child with a local
 //!   change queued is left to that change. The deleting side pushes a
-//!   parent's delete only after the child rows queued before it
+//!   parent's delete only while no row of the child type is queued
 //!   ([`crate::sync::outbox::claim`]), so a move in backoff is never
-//!   overtaken by the delete it came with.
+//!   overtaken by the delete it came with. A parent whose own delete is still
+//!   queued here keeps its children: the server has not seen that delete, so a
+//!   peer's new child of it is no orphan yet, and the peers' repair settles it
+//!   once the delete lands.
 //! - **A message of a deleted conversation is kept**: a soft-deleted
 //!   conversation counts as present (`agent-message-handler.ts:104-107`), and
 //!   no delete of one cascades to its messages, here or in Electron.
@@ -192,7 +195,8 @@ pub(crate) fn links(conn: &Connection, state: Parent) -> Result<Vec<Link>, Stora
 }
 
 /// Tombstones each live child of a tombstoned parent that has no change
-/// queued, through its type's delete, so the delete is clocked past the
+/// queued and whose parent's delete is not still queued here (the claim may
+/// hold it without bound), through its type's delete, so the delete is clocked past the
 /// child and queued in the same transaction (`withIncrementedClock`,
 /// `orphan-repair.ts:204`).
 pub(crate) fn tombstone_orphans(
@@ -202,10 +206,22 @@ pub(crate) fn tombstone_orphans(
 ) -> Result<Vec<(String, String)>, StorageError> {
     let mut tombstoned = Vec::new();
     for link in links(conn, Parent::Tombstoned)? {
+        let parent_type = CASCADED
+            .iter()
+            .find(|(child, _, _)| *child == link.child_type)
+            .map_or("", |(_, _, parent)| *parent);
         let queued: bool = conn
             .query_row(
-                "SELECT EXISTS(SELECT 1 FROM outbox WHERE item_type = ?1 AND item_id = ?2)",
-                params![link.child_type, link.child_id],
+                "SELECT EXISTS(SELECT 1 FROM outbox WHERE item_type = ?1 AND item_id = ?2)
+                     OR EXISTS(SELECT 1 FROM outbox
+                                WHERE item_type = ?3 AND item_id = ?4 AND op = ?5)",
+                params![
+                    link.child_type,
+                    link.child_id,
+                    parent_type,
+                    link.parent_id,
+                    outbox::OP_DELETE
+                ],
                 |row| row.get(0),
             )
             .map_err(failed)?;

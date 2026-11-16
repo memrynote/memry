@@ -58,7 +58,8 @@ use super::body_pull::{BodyPull, BodyPullError, BodyPullReport};
 use super::bootstrap::BootstrapClient;
 use super::feed_restart;
 use super::first_sync_store::{
-    owe_live_documents, pending_metadata_ids, read_meta, recent_document_ids, write_meta,
+    metadata_left_behind, owe_live_documents, pending_metadata_ids, read_meta, recent_document_ids,
+    write_meta,
 };
 use super::note_body_feed;
 use super::pack_bootstrap::{PackBootstrap, PackBootstrapReport};
@@ -306,10 +307,11 @@ impl FirstSync {
         self.refs_pass(tail_cursor, &mut report).await?;
         self.metadata_pass(&mut report).await?;
         // A chunk that was not a pull envelope, or an id the server did not serve,
-        // leaves its rows `metadata-only`.
+        // leaves its rows `metadata-only`. A row held corrupt or refused does too,
+        // and a re-read does not fix it.
         self.db
             .call(|conn| {
-                if pending_metadata_ids(conn)?.is_empty() {
+                if !metadata_left_behind(conn)? {
                     return Ok(());
                 }
                 feed_restart::reopen_cursor_skip_repair(conn)

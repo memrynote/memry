@@ -7,6 +7,7 @@
 //! The server is `driver_fakes`'s; everything else is real.
 
 use memry_core::api::errors::StorageError;
+use memry_core::domain::projects::{self, TaskDisposition};
 use memry_core::sync::outbox::{self, Change};
 use serde_json::{Value as Json, json};
 
@@ -289,4 +290,41 @@ async fn a_message_whose_conversation_is_absent_fetches_it_by_id_and_applies_it(
     );
     assert_eq!(deleted_at(&device, "agent_conversation", "conv-1"), None);
     assert_eq!(deleted_at(&device, "agent_message", "m1"), None);
+}
+
+/// A's own project delete is still queued (held behind a task the server keeps
+/// rejecting, here deferred for good) when a peer's new task in that project
+/// arrives. The project is a tombstone here, but the peer's task is not an
+/// orphan of a delete the server has seen: it stays, and nothing is pushed for it.
+#[tokio::test]
+async fn a_task_of_a_project_whose_local_delete_is_still_queued_is_kept() {
+    let device = desktop().await;
+    device.server.put("project", "p1", project());
+    device.server.page(&["p1"], "10");
+    device.pass().await;
+    device
+        .db
+        .call_blocking(|conn| {
+            projects::delete(conn, "p1", TaskDisposition::Delete, "device-a", NOW)?.acknowledge();
+            conn.execute(
+                "UPDATE outbox SET next_attempt_at = ?1 WHERE item_id = 'p1'",
+                [i64::MAX - 1],
+            )
+            .map_err(failed)?;
+            Ok(())
+        })
+        .expect("a held local delete");
+
+    device.server.put("task", "t2", task("p1"));
+    device.server.page(&["t2"], "11");
+    let pass = device.pass().await;
+    assert_eq!(pass.pull.applied, 1, "{:?}", pass.pull);
+
+    assert_eq!(
+        deleted_at(&device, "task", "t2"),
+        None,
+        "the peer's task stays"
+    );
+    assert!(pushed(&device, "t2").is_empty());
+    assert!(pushed(&device, "p1").is_empty(), "the delete is still held");
 }
