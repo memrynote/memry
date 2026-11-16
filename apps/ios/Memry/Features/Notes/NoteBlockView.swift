@@ -169,14 +169,14 @@ struct NoteBlockView: View {
         case "heading":
             field.accessibilityAddTraits(.isHeader)
         case "bulletListItem", "numberedListItem":
-            EditableMarkerRow(marker: marker ?? bullet) { field }
+            EditableMarkerRow(marker: marker ?? bullet) { field.baselineAligned }
         case "checkListItem":
             EditableCheckRow(isChecked: flag("checked"), toggle: block.id.map { id in
                 { Task { await editing?.session.model?.setProp(id, "checked", flag("checked") ? "false" : "true"); await editing?.session.didChange() } }
-            }) { field }
+            }) { field.baselineAligned }
                 .modifier(ChecklistTaskMenu(blockId: block.id))
         case "toggleListItem":
-            EditableToggleRow(isOpen: isOpen, toggle: toggle) { field }
+            EditableToggleRow(isOpen: isOpen, toggle: toggle) { field.baselineAligned }
         case "quote":
             EditableQuoteRow { field }
         case "callout":

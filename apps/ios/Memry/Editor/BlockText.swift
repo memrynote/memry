@@ -237,6 +237,9 @@ enum BlockText {
         /// The vault's tag colours by lowercased name, for a tag whose node
         /// carries none.
         var tagColors: [String: String] = [:]
+        /// A ticked checklist item: its text is struck through, as desktop's
+        /// `[data-checked=true]` draws it. Display only, never a `strike` mark.
+        var struck = false
     }
 
     static func attributed(_ runs: [InlineRun], style: Style) -> NSAttributedString {
@@ -316,7 +319,14 @@ enum BlockText {
 
     /// What a character typed with nothing to its left carries.
     static func baseAttributes(_ style: Style) -> [NSAttributedString.Key: Any] {
-        [.font: style.font, .foregroundColor: style.ink, .memryMarks: [String]()]
+        var attrs: [NSAttributedString.Key: Any] = [
+            .font: style.font, .foregroundColor: style.ink, .memryMarks: [String]()
+        ]
+        if style.struck {
+            attrs[.strikethroughStyle] = NSUnderlineStyle.single.rawValue
+            attrs[.strikethroughColor] = UIColor(Tokens.Text.secondary.color)
+        }
+        return attrs
     }
 
     static func attributes(_ run: InlineRun, style: Style) -> [NSAttributedString.Key: Any] {
