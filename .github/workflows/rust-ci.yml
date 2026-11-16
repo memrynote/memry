@@ -8,7 +8,7 @@ name: Rust CI
 
 on:
   pull_request:
-    # `labeled` starts the full matrix for a PR into feat/tauri-v2 once `full-ci` is added; every
+    # `labeled` starts the full matrix for a tiered PR (base not main) once `full-ci` is added; every
     # other labeled event skips all jobs, so PRs into main see no change.
     types: [opened, synchronize, reopened, labeled]
   push:
@@ -29,6 +29,12 @@ on:
       - 'scripts/check-test-timing*.mjs'
       - 'scripts/fetch-pdfium.mjs'
       - '.github/workflows/rust-ci.yml'
+      - '.github/actions/apt-install/**'
+      - '.github/actions/ci-tier/**'
+      - '.github/actions/free-disk/**'
+      - '.github/actions/ort-static/**'
+      - '.github/actions/paths-changed/**'
+      - '.github/actions/setup-pnpm/**'
   # The merge queue (feat/tauri-v2) runs the full matrix on the merge-group commit; `paths` do not apply.
   merge_group:
   workflow_dispatch:
@@ -40,7 +46,7 @@ concurrency:
   # One group per workflow and ref; a PR with `full-ci` and the noop runs keep their own groups. A
   # workflow_dispatch on feat/tauri-v2 gets its own group so a manual Intel run is neither cancelled
   # by a push nor cancels one.
-  group: rust-ci-${{ github.workflow }}-${{ github.ref }}${{ ((github.event.action == 'labeled' && !(github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')) || (github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) && format('-noop-{0}', github.run_id) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/feat/tauri-v2' && format('-dispatch-{0}', github.run_id) || (github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci') && '-full' || '')) }}
+  group: rust-ci-${{ github.workflow }}-${{ github.ref }}${{ ((github.event.action == 'labeled' && !(github.base_ref != 'main' && github.event.label.name == 'full-ci')) || (github.event.action == 'opened' && github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) && format('-noop-{0}', github.run_id) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/feat/tauri-v2' && format('-dispatch-{0}', github.run_id) || (github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci') && '-full' || '')) }}
   # A burst of merges into feat/tauri-v2 checks only the newest head: a push there cancels the run
   # of the previous head. Every other ref behaves as before (main pushes cancelled before this change).
   cancel-in-progress: true
@@ -55,11 +61,13 @@ env:
   CARGO_PROFILE_DEV_DEBUG: line-tables-only
 
 jobs:
-  # Tiering: a PR into feat/tauri-v2 runs the fast tier; `full-ci`, a push to feat/tauri-v2 and
-  # workflow_dispatch run everything. Every other trigger gets full = tauri = swift = true.
+  # Tiering: a PR whose base is not main (feat/tauri-v2 or a stacked PR's branch) runs the fast
+  # tier, plus the Windows and Apple Silicon legs its diff can break; `full-ci`, the merge queue, a
+  # push to feat/tauri-v2 and workflow_dispatch run everything. Every other trigger gets full =
+  # tauri = swift = true.
   plan:
     name: CI tier
-    if: (github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')
+    if: (github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref != 'main' && github.event.label.name == 'full-ci')
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     permissions:
@@ -74,43 +82,38 @@ jobs:
       legs: ${{ steps.matrix.outputs.legs }}
       paths: ${{ steps.paths.outputs.changed }}
     steps:
+      # The CI definitions and the Rust sources, whose `#[cfg(<os>)] mod` declarations tell the tier
+      # which files only Windows or macOS compiles (blobless and sparse: ~20 MB of .rs).
       - name: Checkout
         uses: actions/checkout@v6
         with:
-          sparse-checkout: .github
+          fetch-depth: 1
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /.github/
+            /crates/**/*.rs
+            /apps/desktop-tauri/src-tauri/**/*.rs
 
       - name: Decide tier
         id: tier
         uses: ./.github/actions/ci-tier
         with:
           token: ${{ github.token }}
+          source: ${{ github.workspace }}
 
-      # Fast tier: Linux only; Windows runs in the merge queue, where a Windows-only failure ejects the
-      # PR. Full adds Windows x64 and ARM, plus Apple Silicon unless the run is a merge-queue run
-      # (macos=false) and Intel only where plan.intel is true (main, dispatch).
+      # The OS matrix (rules in .github/actions/ci-tier/rust-legs.jq).
       - name: Build the OS matrix
         id: matrix
         env:
           FULL: ${{ steps.tier.outputs.full }}
           MACOS: ${{ steps.tier.outputs.macos }}
           INTEL: ${{ steps.tier.outputs.intel }}
+          WINDOWS_LEGS: ${{ steps.tier.outputs.rust_windows }}
+          MACOS_LEGS: ${{ steps.tier.outputs.rust_macos }}
         run: |
-          os='["ubuntu-22.04"]'
-          if [ "$FULL" = true ]; then
-            os=$(jq -cn --arg macos "$MACOS" --arg intel "$INTEL" '
-              ["ubuntu-22.04"]
-              + (if $macos == "true" then ["macos-15"] else [] end)
-              + (if $intel == "true" then ["macos-15-intel"] else [] end)
-              + ["windows-2022","windows-11-arm"]')
-          fi
-          # Linux and Windows legs split in three jobs: `checks` (fmt, clippy, doctests, the live OS
-          # seams, the release test) and the nextest suite in two hash partitions. The suite alone ran
-          # 7 minutes of CPU-bound tests after a 2-minute build in one job. macOS legs stay one `all`
-          # job each: that pool is the scarcest, and three jobs would hold three of its runners.
-          legs=$(jq -cn --argjson os "$os" '[$os[] as $o
-            | if ($o | startswith("macos")) then {os: $o, part: "all"}
-              else ({os: $o, part: "checks"}, {os: $o, part: "tests", partition: "1/2"}, {os: $o, part: "tests", partition: "2/2"})
-              end]')
+          legs=$(jq -cn --arg full "$FULL" --arg macos "$MACOS" --arg intel "$INTEL" --arg win "$WINDOWS_LEGS" --arg mac "$MACOS_LEGS" \
+            -f .github/actions/ci-tier/rust-legs.jq)
           echo "legs=$legs" >> "$GITHUB_OUTPUT"
           echo "Legs: $legs"
 
@@ -121,7 +124,7 @@ jobs:
         uses: ./.github/actions/paths-changed
         with:
           token: ${{ github.token }}
-          include: '^(crates/|apps/desktop-tauri/|tests/sync-harness/scripts/serve\.ts$|tests/sync-harness/src/|apps/sync-server/|pnpm-lock\.yaml$|packages/swift/|packages/contracts/test-vectors/|packages/article-extract/|scripts/check-line-ceilings\.mjs$|scripts/check-test-timing(\.test)?\.mjs$|scripts/fetch-pdfium\.mjs$|\.github/workflows/rust-ci\.yml$|\.github/actions/ort-static/)'
+          include: '^(crates/|apps/desktop-tauri/|tests/sync-harness/scripts/serve\.ts$|tests/sync-harness/src/|apps/sync-server/|pnpm-lock\.yaml$|packages/swift/|packages/contracts/test-vectors/|packages/article-extract/|scripts/check-line-ceilings\.mjs$|scripts/check-test-timing(\.test)?\.mjs$|scripts/fetch-pdfium\.mjs$|\.github/workflows/rust-ci\.yml$|\.github/actions/(apt-install|ci-tier|free-disk|ort-static|paths-changed|setup-pnpm)/)'
 
   lint-and-test:
     name: Rust ${{ matrix.part }}${{ matrix.partition && format(' {0}', matrix.partition) || '' }} (${{ matrix.os }})
@@ -138,7 +141,8 @@ jobs:
       matrix:
         # Built by the plan job (see "Build the OS matrix"). The fallback is the fast tier, for a plan
         # job that failed. macOS is the scarcest runner pool: no Mac in the merge queue, Apple
-        # Silicon from `full-ci` up and on a push to feat/tauri-v2, Intel only on main and dispatch.
+        # Silicon on a PR whose diff can break macOS, from `full-ci` up and on a push to feat/tauri-v2,
+        # Intel only on main and dispatch.
         include: ${{ fromJSON(needs.plan.outputs.legs || '[{"os":"ubuntu-22.04","part":"checks"},{"os":"ubuntu-22.04","part":"tests","partition":"1/2"},{"os":"ubuntu-22.04","part":"tests","partition":"2/2"}]') }}
     defaults:
       run:
@@ -218,7 +222,7 @@ jobs:
           toolchain: '1.98.1'
           components: rustfmt, clippy
 
-      # Saves only on push, dispatch and PRs into main. A PR into feat/tauri-v2 and a merge-queue run
+      # Saves only on push, dispatch and PRs into main. A tiered PR (base not main) and a merge-queue run
       # restore what the push to feat/tauri-v2 saved and write nothing (a save is 2-4 GB per job).
       - name: Cache cargo
         id: cargo-cache
@@ -233,7 +237,7 @@ jobs:
           # (26.04) save restored here and its build scripts needed GLIBC_2.39 (#3846).
           # The two test partitions build the same binaries and share one entry.
           key: ${{ matrix.os }}-${{ matrix.part }}
-          save-if: ${{ github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2') }}
+          save-if: ${{ github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref == 'main') }}
 
       # A restore cut off at the step timeout can leave half an archive on disk. Start the
       # build cold rather than from files cargo might trust.
@@ -538,7 +542,7 @@ jobs:
           EOF
 
       - name: Save the text model (memry-ml smoke)
-        if: matrix.part != 'tests' && needs.plan.outputs.full == 'true' && steps.model-cache.outputs.cache-hit != 'true' && github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2')
+        if: matrix.part != 'tests' && needs.plan.outputs.full == 'true' && steps.model-cache.outputs.cache-hit != 'true' && github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref == 'main')
         uses: actions/cache/save@v4
         with:
           path: ${{ runner.temp }}/models
@@ -595,7 +599,7 @@ jobs:
           EOF
 
       - name: Save the vision encoder (memry-ml golden image)
-        if: matrix.part != 'tests' && needs.plan.outputs.full == 'true' && steps.vision-cache.outputs.cache-hit != 'true' && github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2')
+        if: matrix.part != 'tests' && needs.plan.outputs.full == 'true' && steps.vision-cache.outputs.cache-hit != 'true' && github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref == 'main')
         uses: actions/cache/save@v4
         with:
           path: |
@@ -646,7 +650,7 @@ jobs:
           EOF
 
       - name: Save the audio encoder (memry-ml golden audio)
-        if: matrix.part != 'tests' && needs.plan.outputs.full == 'true' && steps.audio-model-cache.outputs.cache-hit != 'true' && github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2')
+        if: matrix.part != 'tests' && needs.plan.outputs.full == 'true' && steps.audio-model-cache.outputs.cache-hit != 'true' && github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref == 'main')
         uses: actions/cache/save@v4
         with:
           path: |
@@ -767,7 +771,7 @@ jobs:
   article-extract-oracle-fresh:
     name: Article-extraction vectors are current
     needs: plan
-    if: ${{ !cancelled() && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')) }}
+    if: ${{ !cancelled() && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref != 'main' && github.event.label.name == 'full-ci')) }}
     runs-on: ubuntu-22.04
     timeout-minutes: 30
 
@@ -817,14 +821,14 @@ jobs:
           toolchain: '1.98.1'
           targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios
 
-      # Saves only on push, dispatch and PRs into main. A PR into feat/tauri-v2 and a merge-queue run
+      # Saves only on push, dispatch and PRs into main. A tiered PR (base not main) and a merge-queue run
       # restore what the push to feat/tauri-v2 saved and write nothing (a save is 2-4 GB per job).
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: crates
           key: macos-26
-          save-if: ${{ github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2') }}
+          save-if: ${{ github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref == 'main') }}
 
       # Glob, not a fixed path: the runner image names it Xcode_26.x.app and the
       # patch version moves. Failing loudly with the available list beats a bare
@@ -860,12 +864,13 @@ jobs:
 
   # The one check name a ruleset requires for this workflow (merge queue, #3517). Matrix legs and
   # fast/full tiers change which jobs exist; this name does not. A skipped job counts as passed.
-  # Runs only for feat/tauri-v2 and the merge queue, so main and its PRs see no new check.
+  # Runs only for feat/tauri-v2, the PRs stacked on it and the merge queue, so main and its PRs see
+  # no new check.
   gate:
     name: Rust CI gate
     needs: [plan, lint-and-test, article-extract-oracle-fresh, swift-bindings-fresh]
     # Skipped (not red) in noop runs: the merge queue is the authoritative gate.
-    if: ${{ always() && !((github.event.action == 'labeled' && !(github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')) || (github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) && (github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || github.base_ref == 'feat/tauri-v2' || github.ref == 'refs/heads/feat/tauri-v2') }}
+    if: ${{ always() && !((github.event.action == 'labeled' && !(github.base_ref != 'main' && github.event.label.name == 'full-ci')) || (github.event.action == 'opened' && github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) && (github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.base_ref != 'main') || github.ref == 'refs/heads/feat/tauri-v2') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     steps:
