@@ -80,6 +80,10 @@ final class NoteReadViewModel {
     /// that was never pulled, and a reader that cannot walk blocks are three
     /// different facts and only the first two are the note's.
     private(set) var blocks: [Block] = []
+    /// The page editor's `EditorSession.landedWrites`, set by the page.
+    @ObservationIgnored var landedWrites: () -> Int = { 0 }
+    /// The writes `blocks` includes: `landedWrites` as it was read (#4738).
+    @ObservationIgnored private(set) var blocksGeneration = 0
     /// The first walk of the blocks has finished, whatever it found.
     private(set) var blocksRead = false
     /// Each table in the body, by the block id of its `table` block.
@@ -185,13 +189,17 @@ final class NoteReadViewModel {
     /// text preview are already loaded, so the screen falls back to the
     /// preview rather than replacing a readable note with an error.
     private func loadBlocks() async {
+        let generation = landedWrites()
         do {
-            blocks = try await reader.blocks(id: route.id) ?? []
+            let read = try await reader.blocks(id: route.id) ?? []
+            blocksGeneration = generation
+            blocks = read
         } catch {
             // Cancelled, not failed: keep the blocks being edited on screen.
             if Task.isCancelled { return }
             let mapped = ErrorMapping.userFacing(error)
             Log.storage.error("this note's blocks could not be walked", .code(mapped.code))
+            blocksGeneration = generation
             blocks = []
         }
         // A body not on this device yet has no blocks to find in: a find

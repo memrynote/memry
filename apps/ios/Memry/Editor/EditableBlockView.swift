@@ -78,7 +78,7 @@ struct EditableBlockView: UIViewRepresentable {
         field.session = session
         field.alignment = alignment
         field.style = BlockText.Style(font: Self.font(for: role), ink: nextInk, titleExists: session.titleExists, tagColors: session.tagColors)
-        let changed = field.receive(block, restyled: restyled)
+        let changed = field.receive(block, generation: session.drawnGeneration(), restyled: restyled)
         // Rows are drawn by position: a block inserted or removed above hands
         // this text view the next block, which `focus` must find it under.
         if moved { session.drawn(field) }
@@ -287,21 +287,18 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
     /// committed. While `dirty`, `block` can move on under the text view (a
     /// peer's edit merging in), and a commit sends only the change from
     /// here, so it lands on the live block without deleting the peer's edit.
-    var base = "" {
-        didSet {
-            if rendering { superseded = [] } else if base != oldValue { superseded.insert(oldValue) }
-        }
-    }
-    /// The texts `base` held since the core's block last matched it: what
-    /// this row, or the row it took over from, committed before its last
-    /// commit. The core echoes each back, in order, after newer typing.
-    var superseded: Set<String> = []
+    var base = ""
+    /// The write generation of this row's last write to its block, or the
+    /// row's it took over from (`EditorSession.enqueue`). A read older than
+    /// it holds the block from before that write (#4738).
+    var written = 0
     /// Where the caret goes after the next render (a mark, a chosen link).
     var pendingSelection: NSRange?
     /// Inside `render`, whose `attributedText` puts the caret at the end before
     /// the old selection goes back: the session sees only where it lands.
     private var rendering = false
-    /// A render skipped over an IME composition, which the next update runs.
+    /// A render skipped over an IME composition, or a restyle skipped with
+    /// an old read, which the next update runs.
     private(set) var stale = false
     /// A wiki link's Open and Open to the Side (#4377).
     private var linkMenu: WikiLinkMenu?
@@ -431,19 +428,25 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
     /// Takes the page's latest read of the block, and draws it when it or
     /// the row's style changed. **Never over unsaved typing**: re-rendering
     /// resets the text storage, which would move a caret mid-word or drop
-    /// what the user typed since the last commit. Nor over the core's echo
-    /// of a text this row committed before its last commit (`superseded`),
-    /// which is older than the row: drawn, it put that text back under the
-    /// caret, and the next keys landed inside it (#4720). The echo of the
-    /// last commit puts the two back in step. Answers whether it changed.
+    /// what the user typed since the last commit. Nor a read of
+    /// `generation`, the writes it includes, older than the row's last
+    /// write (`written`): it holds text older than the row's, and drawn, it
+    /// put that text back under the caret and the next keys landed inside
+    /// it (#4720). A row handed another block takes it. A newer read is
+    /// drawn when it differs from the text the row committed too: one equal
+    /// to the block the row was drawn from is the core going back to it
+    /// (an undo, another pane), not news to skip. Answers whether it
+    /// changed.
     @discardableResult
-    func receive(_ next: Block, restyled: Bool = false) -> Bool {
+    func receive(_ next: Block, generation: Int, restyled: Bool = false) -> Bool {
+        guard next.id != block.id || generation >= written else {
+            if restyled { stale = true }
+            return false
+        }
         let changed = block != next || restyled
-        let shown = BlockText.shown(next.inline)
-        let echo = shown != base && superseded.contains(shown)
-        if shown == base { superseded = [] }
+        let behind = BlockText.shown(next.inline) != base
         block = next
-        if changed || stale, !dirty, !echo { render() }
+        if changed || stale || behind, !dirty { render() }
         return changed
     }
 
@@ -504,6 +507,7 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
     /// draws them from the core.
     private func takeOver(from old: BlockField) {
         typed = typed || old.typed
+        written = max(written, old.written)
         let source = old.textView
         if source.text != textView.text {
             let text = NSMutableAttributedString(attributedString: source.attributedText ?? NSAttributedString())
@@ -517,7 +521,6 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
             textView.attributedText = text
             textView.typingAttributes = BlockText.baseAttributes(style)
             base = old.base
-            superseded.formUnion(old.superseded)
             dirty = old.dirty
             old.dirty = false
             textView.invalidateIntrinsicContentSize()
