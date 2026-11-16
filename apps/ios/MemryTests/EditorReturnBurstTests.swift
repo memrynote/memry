@@ -220,6 +220,42 @@ private final class Screen {
     }
 }
 
+/// Asks `view`'s delegate about an edit from inside the first deletion of
+/// three or more characters from its text (the `- ` shortcut takes two),
+/// as UIKit does as the selection changes: an autocorrection it accepts
+/// (the word that went, replaced), a key it queued (at the caret) or a
+/// Backspace.
+@MainActor
+private final class KeyFlush: NSObject, NSTextStorageDelegate {
+    private weak var view: BlockTextView?
+    private let key: String?
+    /// The delegate's answer: whether UIKit applies the edit.
+    private(set) var applies: Bool?
+
+    /// `key`: a key at the caret, `""` a Backspace; `nil`: the word that
+    /// went, as `abc`.
+    init(_ view: BlockTextView, key: String?) {
+        self.view = view
+        self.key = key
+    }
+
+    nonisolated func textStorage(
+        _ textStorage: NSTextStorage, didProcessEditing editedMask: NSTextStorage.EditActions,
+        range editedRange: NSRange, changeInLength delta: Int
+    ) {
+        MainActor.assumeIsolated {
+            guard applies == nil, delta <= -3, editedMask.contains(.editedCharacters), let view else { return }
+            let caret = editedRange.location
+            let range = switch key {
+            case nil: NSRange(location: caret, length: -delta)
+            case "": NSRange(location: caret - 1, length: 1)
+            default: NSRange(location: caret, length: 0)
+            }
+            applies = view.delegate?.textView?(view, shouldChangeTextIn: range, replacementText: key ?? "abc") != false
+        }
+    }
+}
+
 /// What the old row saw as it left the window.
 @MainActor
 private final class Seen {
@@ -587,6 +623,30 @@ struct EditorReturnBurstTests {
         #expect(late, "a key reached the old row after it carried its keys")
         #expect(blocks.map(\.kind) == ["checkListItem", "checkListItem", "checkListItem"])
         #expect(blocks.map { BlockText.shown($0.inline) } == ["milk", "eggs", ""], "\(blocks.map { BlockText.shown($0.inline) })")
+    }
+
+    /// UIKit flushes the keys it queued for a text view, such as an
+    /// autocorrection it accepts, as that view's selection changes: so when
+    /// the redrawn-away row gives up its keys, from inside that edit. The
+    /// flushed edit asks the row about the keys it was giving up, which
+    /// aborted the app (exclusive access to `returnBurst`, #4769) or, read
+    /// as an edit outside the held keys, dropped them.
+    /// A key at the caret follows the keys given up, a Backspace takes back
+    /// the last of them (not the text before the Return), and an
+    /// autocorrection is refused.
+    @Test(.timeLimit(.minutes(1)), arguments: [(nil, "abc"), ("d", "abcd"), ("", "ab")] as [(String?, String)])
+    func anEditUIKitFlushesWhileTheRowGivesUpItsKeysKeepsThem(key: String?, expected: String) async throws {
+        let (applies, blocks) = try await Screen.run(text: "") { screen in
+            let paragraph = try await screen.start()
+            let flush = KeyFlush(paragraph, key: key)
+            paragraph.textStorage.delegate = flush
+            screen.keys("- milk\n\nabc")
+            try await screen.finish(blocks: 2)
+            return (flush.applies, screen.editor.all)
+        }
+        #expect(applies == false, "the row that gave up its keys takes the edit, or refuses it")
+        #expect(blocks.map(\.kind) == ["bulletListItem", "paragraph"])
+        #expect(blocks.map { BlockText.shown($0.inline) } == ["milk", expected], "\(blocks.map { BlockText.shown($0.inline) })")
     }
 
     // MARK: Edits outside the held keys end the hold (REVIEW-4707 M1)
