@@ -30,10 +30,15 @@ import UIKit
 final class SignInStubURLProtocol: URLProtocol, @unchecked Sendable {
     static let captured = Mutex<[URLRequest]>([])
     static let status = Mutex<Int>(429)
+    /// `/auth/otp/request` answers this when set. The core sends a session
+    /// whose request failed back to `SignedOut`, so a test that goes on to
+    /// verify needs the request to succeed and every other route to fail.
+    static let otpRequestStatus = Mutex<Int?>(nil)
 
-    static func reset(status code: Int) {
+    static func reset(status code: Int, otpRequestStatus otpCode: Int? = nil) {
         captured.withLock { $0 = [] }
         status.withLock { $0 = code }
+        otpRequestStatus.withLock { $0 = otpCode }
     }
 
     // swiftlint:disable static_over_final_class
@@ -44,7 +49,8 @@ final class SignInStubURLProtocol: URLProtocol, @unchecked Sendable {
     override func startLoading() {
         Self.captured.withLock { $0.append(request) }
         guard let url = request.url else { return }
-        let code = Self.status.withLock { $0 }
+        let isOtpRequest = url.path == "/auth/otp/request"
+        let code = (isOtpRequest ? Self.otpRequestStatus.withLock { $0 } : nil) ?? Self.status.withLock { $0 }
         let response = HTTPURLResponse(
             url: url, statusCode: code, httpVersion: "HTTP/1.1",
             // No `retry-after`, so the core's `retryOn429` ladder uses its own
@@ -55,7 +61,10 @@ final class SignInStubURLProtocol: URLProtocol, @unchecked Sendable {
         if let response {
             client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
         }
-        client?.urlProtocol(self, didLoad: Data(#"{"code":"RATE_LIMITED","message":"no"}"#.utf8))
+        let body = (200..<300).contains(code)
+            ? #"{"success":true,"expiresIn":300}"#
+            : #"{"code":"RATE_LIMITED","message":"no"}"#
+        client?.urlProtocol(self, didLoad: Data(body.utf8))
         client?.urlProtocolDidFinishLoading(self)
     }
 
@@ -185,7 +194,7 @@ struct SignInWiringTests {
     @Test("the core reaches the real Keychain, with data-model §B's query")
     @MainActor
     func coreReachesTheRealKeychain() async throws {
-        SignInStubURLProtocol.reset(status: 400)
+        SignInStubURLProtocol.reset(status: 400, otpRequestStatus: 200)
         let events = CoreEvents()
         let items = RecordingKeychainItems()
         let session = try AuthComposition.makeSession(
@@ -217,7 +226,7 @@ struct SignInWiringTests {
     @Test("a locked keychain reaches the event hub through the real seam")
     @MainActor
     func lockedKeychainReachesTheHub() async throws {
-        SignInStubURLProtocol.reset(status: 400)
+        SignInStubURLProtocol.reset(status: 400, otpRequestStatus: 200)
         let events = CoreEvents()
         let session = try AuthComposition.makeSession(
             environment: .staging,
