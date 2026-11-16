@@ -461,8 +461,9 @@ fn a_peers_node_inside_the_users_change_survives_the_rebase() {
     // The user's one-run change spans the whole block.
     replace_from(&document, "hello world", "Ahello worldB");
 
+    // In its own place, between the text it was typed between.
+    assert_eq!(shown(&document), format!("Ahello {NODE}worldB"));
     assert_eq!(link_targets(&document), vec!["Dune"]);
-    assert_eq!(shown(&document).replace(NODE, ""), "Ahello worldB");
 }
 
 #[test]
@@ -488,4 +489,25 @@ fn a_rewrite_too_large_to_align_still_keeps_the_chip() {
 
     assert_eq!(shown(&document), format!("{after}{NODE}{after}"));
     assert_eq!(link_targets(&document), vec!["Mid"]);
+}
+
+#[test]
+fn an_undo_whose_base_holds_both_nodes_takes_back_only_the_second() {
+    // A link, then a tag picked right after it, as the shell's undo sees
+    // them: its base spells both nodes, and its text has the tag back as
+    // the literal it went over.
+    let document = opened(&paragraph("q  z"));
+    wiki_link(&document, 2, "Bar");
+    wiki_link(&document, 2, "Tag");
+    assert_eq!(shown(&document), format!("q {NODE}{NODE} z"));
+    let first = link_targets(&document)[0].clone();
+
+    replace_from(
+        &document,
+        &format!("q {NODE}{NODE} z"),
+        &format!("q {NODE}#vt z"),
+    );
+
+    assert_eq!(shown(&document), format!("q {NODE}#vt z"));
+    assert_eq!(link_targets(&document), vec![first]);
 }

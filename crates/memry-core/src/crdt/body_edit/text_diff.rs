@@ -65,17 +65,27 @@ pub(super) fn changed_spans(
 const ALIGNMENT_CELL_LIMIT: usize = 1 << 20;
 
 /// The nodes `current` and `wanted` both keep, as index pairs in order.
-///
-/// A longest common subsequence in which one node outweighs every character,
-/// so as many nodes are kept as `wanted` still spells and none is deleted to
-/// save a character; the characters then pick which nodes those are. The
-/// shell cannot make a node, so `wanted` never holds more nodes than it saw.
 fn kept_nodes(current: &[char], wanted: &[char]) -> Vec<(usize, usize)> {
-    let is_node = |character: &char| *character == INLINE_NODE_PLACEHOLDER;
     if !current.iter().any(is_node) || !wanted.iter().any(is_node) {
         return Vec::new();
     }
-    let (rows, columns) = (current.len(), wanted.len());
+    common(current, wanted)
+        .into_iter()
+        .filter(|&(at, _)| is_node(&current[at]))
+        .collect()
+}
+
+fn is_node(character: &char) -> bool {
+    *character == INLINE_NODE_PLACEHOLDER
+}
+
+/// The characters `from` and `to` share, as index pairs in order: a longest
+/// common subsequence in which one node outweighs every character, so as
+/// many nodes are kept as `to` still spells and none is given up to keep a
+/// character; the characters then pick which nodes those are. The shell
+/// cannot make a node, so `to` never holds more nodes than it saw.
+fn common(from: &[char], to: &[char]) -> Vec<(usize, usize)> {
+    let (rows, columns) = (from.len(), to.len());
     if (rows + 1).saturating_mul(columns + 1) > ALIGNMENT_CELL_LIMIT {
         // A rewrite this large is a paste, not typing: keep the first nodes
         // in order, so no more nodes are deleted than the shell removed.
@@ -84,35 +94,30 @@ fn kept_nodes(current: &[char], wanted: &[char]) -> Vec<(usize, usize)> {
                 .filter(|&index| is_node(&text[index]))
                 .collect()
         };
-        return positions(current)
-            .into_iter()
-            .zip(positions(wanted))
-            .collect();
+        return positions(from).into_iter().zip(positions(to)).collect();
     }
 
     // Bounded by the cell limit: the score fits in u32.
     let node_weight = rows.min(columns) as u32 + 1;
     let weight = |character: &char| if is_node(character) { node_weight } else { 1 };
     let width = columns + 1;
-    // best[i * width + j]: the best score aligning current[i..] with wanted[j..].
+    // best[i * width + j]: the best score aligning from[i..] with to[j..].
     let mut best = vec![0u32; (rows + 1) * width];
     for i in (0..rows).rev() {
         for j in (0..columns).rev() {
             let mut score = best[(i + 1) * width + j].max(best[i * width + j + 1]);
-            if current[i] == wanted[j] {
-                score = score.max(weight(&current[i]) + best[(i + 1) * width + j + 1]);
+            if from[i] == to[j] {
+                score = score.max(weight(&from[i]) + best[(i + 1) * width + j + 1]);
             }
             best[i * width + j] = score;
         }
     }
-    let mut kept = Vec::new();
+    let mut pairs = Vec::new();
     let (mut i, mut j) = (0, 0);
     while i < rows && j < columns {
         let here = best[i * width + j];
-        if current[i] == wanted[j] && here == weight(&current[i]) + best[(i + 1) * width + j + 1] {
-            if is_node(&current[i]) {
-                kept.push((i, j));
-            }
+        if from[i] == to[j] && here == weight(&from[i]) + best[(i + 1) * width + j + 1] {
+            pairs.push((i, j));
             (i, j) = (i + 1, j + 1);
         } else if here == best[(i + 1) * width + j] {
             i += 1;
@@ -120,43 +125,65 @@ fn kept_nodes(current: &[char], wanted: &[char]) -> Vec<(usize, usize)> {
             j += 1;
         }
     }
-    kept
+    pairs
 }
 
 /// The shell's edit, `base` to `wanted`, replayed on the live block `current`.
 ///
 /// A shell holding unsaved typing does not see a peer's edit that merged in
 /// the meantime, so its `wanted` lacks it; diffing `wanted` against the live
-/// block would delete it. Instead the peer's span (`base` to `current`) and the
-/// user's span (`base` to `wanted`) are both taken against `base`, and the
-/// user's span is moved past the peer's. Where the two overlap the peer's new
-/// text is kept, as the CRDT merge of the two edits would keep it: the user's
-/// delete removes what it covered around the peer's text, never the text.
+/// block would delete it. So this is a three-way merge: each live character
+/// is traced to the `base` character it is (`changed_spans`, so a peer's
+/// node is never confused with one beside it) or marked the peer's, and the
+/// user's own edit, `base` to `wanted` as its smallest set of deletes and
+/// inserts, is replayed on those. The peer's text and nodes stay where the
+/// peer put them, even inside text the user retyped: `hello world` typed to
+/// `Ahello worldB` over a peer's link after `hello ` is `Ahello ￼worldB`.
+/// A user's delete removes the base text it covered and never the peer's,
+/// and a user's insert at the peer's place lands after the peer's text.
 pub(super) fn rebase(base: &[char], current: &[char], wanted: &[char]) -> Vec<char> {
-    let (peer_start, peer_end_base, peer_end_live) = changed_span(base, current);
-    let (start, end_base, end_wanted) = changed_span(base, wanted);
-    let inserted = &wanted[start..end_wanted];
-    // A base position at or after the peer's span, in the live block.
-    let shift = |position: usize| position + peer_end_live - peer_end_base;
-    let (head, tail) = if end_base <= peer_start {
-        (current[..start].to_vec(), end_base)
-    } else if start >= peer_end_base {
-        (current[..shift(start)].to_vec(), shift(end_base))
-    } else {
-        // Overlapping: the peer's new text survives, and the user's change
-        // lands on whichever side of it the user's span started.
-        let tail = shift(end_base).max(peer_end_live);
-        if start <= peer_start {
-            let mut out = current[..start].to_vec();
-            out.extend_from_slice(inserted);
-            out.extend_from_slice(&current[peer_start..peer_end_live]);
-            out.extend_from_slice(&current[tail..]);
-            return out;
+    // The base index each live character is, `None` for the peer's.
+    let mut origin: Vec<Option<usize>> = Vec::with_capacity(current.len());
+    let mut from_base = 0;
+    for (removed, inserted) in changed_spans(base, current) {
+        origin.extend((from_base..removed.start).map(Some));
+        origin.extend(inserted.map(|_| None));
+        from_base = removed.end;
+    }
+    origin.extend((from_base..base.len()).map(Some));
+
+    // The user's edit: which base characters go, and what goes in before
+    // which base index.
+    let (start, base_end, wanted_end) = changed_span(base, wanted);
+    let kept = common(&base[start..base_end], &wanted[start..wanted_end])
+        .into_iter()
+        .map(|(at_base, at_wanted)| (start + at_base, start + at_wanted));
+    let mut deleted = vec![false; base.len()];
+    let mut inserts: Vec<(usize, &[char])> = Vec::new();
+    let (mut next_base, mut next_wanted) = (start, start);
+    for (at_base, at_wanted) in kept.chain([(base_end, wanted_end)]) {
+        deleted[next_base..at_base].fill(true);
+        if next_wanted < at_wanted {
+            inserts.push((next_base, &wanted[next_wanted..at_wanted]));
         }
-        (current[..peer_end_live].to_vec(), tail)
-    };
-    let mut out = head;
-    out.extend_from_slice(inserted);
-    out.extend_from_slice(&current[tail..]);
+        (next_base, next_wanted) = (at_base + 1, at_wanted + 1);
+    }
+
+    let mut out = Vec::with_capacity(current.len() + wanted.len());
+    let mut inserts = inserts.into_iter().peekable();
+    for (character, origin) in current.iter().zip(origin) {
+        if let Some(at) = origin {
+            while let Some((_, text)) = inserts.next_if(|(before, _)| *before <= at) {
+                out.extend_from_slice(text);
+            }
+            if deleted[at] {
+                continue;
+            }
+        }
+        out.push(*character);
+    }
+    for (_, text) in inserts {
+        out.extend_from_slice(text);
+    }
     out
 }
