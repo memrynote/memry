@@ -13,6 +13,9 @@ pub const QUIET_PULL: Duration = Duration::from_secs(5 * 60);
 /// Push passes start at least this far apart; a push after a quiet window goes out at once
 /// (`push-coordinator.ts:585-609`).
 pub const PUSH_DEBOUNCE: Duration = Duration::from_millis(300);
+/// How often the loop asks whether a snapshot came due: `SNAPSHOT_BATCH_WINDOW_MS`
+/// (`crdt-snapshot-scheduler.ts:30`), so the documents due together go in one batch.
+pub const SNAPSHOT_TICK: Duration = Duration::from_secs(2);
 /// At most one status event per this interval; the latest status wins.
 pub const STATUS_THROTTLE: Duration = Duration::from_millis(100);
 /// Past this much clock skew against the server, sync pauses (`push-coordinator.ts:525`).

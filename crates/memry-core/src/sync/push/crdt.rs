@@ -18,9 +18,11 @@ use base64::engine::general_purpose::STANDARD as BASE64;
 use serde_json::{Value as Json, json};
 
 use crate::api::errors::ApiError;
+use crate::crdt::snapshot_cadence::SnapshotRequests;
 use crate::protocol::crdt_envelope::MAX_UPDATE_PAYLOAD_CHARS;
 use crate::protocol::envelope::EnvelopeError;
 use crate::protocol::http::RetryPolicy;
+use crate::sync::admission::CrdtAdmission;
 use crate::sync::crypto_batch::off_runtime;
 use crate::sync::outbox::{self, OutboxRow};
 
@@ -76,7 +78,28 @@ pub(super) enum BatchEnd {
     Deferred,
 }
 
+/// The driver's shared CRDT admission, and its snapshot requests: a document
+/// whose updates the server stored wants a snapshot (`note-body-push.ts:96`).
+pub(super) struct Pacing {
+    admission: Arc<CrdtAdmission>,
+    requests: Arc<SnapshotRequests>,
+}
+
 impl PushCoordinator {
+    /// Paces every `/sync/crdt/updates` through `admission`, and requests a
+    /// snapshot of each document it stored updates of.
+    pub fn with_crdt_pacing(
+        mut self,
+        admission: Arc<CrdtAdmission>,
+        requests: Arc<SnapshotRequests>,
+    ) -> Self {
+        self.crdt_pacing = Some(Pacing {
+            admission,
+            requests,
+        });
+        self
+    }
+
     /// One `POST /sync/crdt/updates` for one document (§7.2), or one snapshot
     /// when a row is too large to ride it.
     pub(super) async fn push_crdt(
@@ -133,7 +156,24 @@ impl PushCoordinator {
             // `baseDelayMs: 2000`, `retryOn429: false`.
             .retry(RetryPolicy::polled())
             .json(&json!({ "noteId": doc_id, "updates": updates }));
-        let body: Json = self.http.send_json(request).await?;
+        // A `429` cooldown holds every document's rows untouched, this wave
+        // and until it ends (`crdt-push-admission.ts`).
+        let _permit = match &self.crdt_pacing {
+            Some(pacing) => match pacing.admission.admit().await {
+                Ok(permit) => Some(permit),
+                Err(_) => return Ok(BatchEnd::Deferred),
+            },
+            None => None,
+        };
+        let body: Json = match self.http.send_json(request).await {
+            Ok(body) => body,
+            Err(error) => {
+                if let Some(pacing) = &self.crdt_pacing {
+                    pacing.admission.note(&error);
+                }
+                return Err(error.into());
+            }
+        };
 
         // §7.4: the server assigns the sequence numbers and answers
         // `{ sequences }`, one per update, in order. A row is acked against
@@ -148,7 +188,11 @@ impl PushCoordinator {
         sent.truncate(assigned);
         report.accepted += sent.len();
         report.crdt_updates += sent.len();
+        let stored = !sent.is_empty();
         self.db.call(move |conn| outbox::ack(conn, &sent)).await?;
+        if stored && let Some(pacing) = &self.crdt_pacing {
+            pacing.requests.request(doc_id, now_ms());
+        }
         Ok(BatchEnd::Done)
     }
 

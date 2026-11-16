@@ -70,6 +70,7 @@ pub(super) enum Command {
     /// The socket said this device is revoked.
     Revoked,
     Stop(oneshot::Sender<()>),
+    FinalSnapshots(tokio::time::Instant, oneshot::Sender<()>),
 }
 
 /// The handle. Cheap to clone; the loop stops on [`SyncSupervisor::stop`] or when every handle
@@ -222,6 +223,18 @@ impl SyncSupervisor {
         answer.await.unwrap_or_else(|_| Err(gone()))
     }
 
+    /// Pushes every pending snapshot before `deadline` (shutdown); returns once done or cut.
+    pub async fn final_snapshots(&self, deadline: tokio::time::Instant) {
+        let (reply, done) = oneshot::channel();
+        if self
+            .commands
+            .send(Command::FinalSnapshots(deadline, reply))
+            .is_ok()
+        {
+            let _ = tokio::time::timeout_at(deadline, done).await;
+        }
+    }
+
     /// The latest status, unthrottled.
     pub fn status(&self) -> SyncStatus {
         self.status.borrow().clone()
@@ -289,6 +302,9 @@ pub(crate) mod rig;
 #[cfg(test)]
 #[path = "supervisor_signal_tests.rs"]
 mod signal_tests;
+#[cfg(test)]
+#[path = "supervisor_snapshot_tests.rs"]
+mod snapshot_tests;
 #[cfg(test)]
 #[path = "supervisor_tests.rs"]
 mod tests;

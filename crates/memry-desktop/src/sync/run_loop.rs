@@ -22,7 +22,7 @@ use super::result::{SyncNowBlockedReason as Blocked, TriggerSyncResult};
 use super::signals::Signals;
 use super::status::{self, StatusFacts, SyncStatus};
 use super::supervisor::{Command, SupervisorParts};
-use super::triggers::{PUSH_DEBOUNCE, STATUS_THROTTLE, TICK, Trigger, tick_pulls};
+use super::triggers::{PUSH_DEBOUNCE, SNAPSHOT_TICK, STATUS_THROTTLE, TICK, Trigger, tick_pulls};
 use crate::shell::power::PowerEvent;
 
 #[path = "run_loop_pass.rs"]
@@ -49,6 +49,7 @@ enum Event {
     SocketEnded(Result<SocketEnd, tokio::task::JoinError>),
     KeychainRetry,
     KeychainRecovered(Result<(), broadcast::error::RecvError>),
+    SnapshotTick,
 }
 
 pub(super) struct Loop {
@@ -181,6 +182,7 @@ impl Loop {
     pub(super) async fn run(mut self) {
         let mut tick = tokio::time::interval_at(Instant::now() + TICK, TICK);
         tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+        let mut snapshots = tokio::time::interval(SNAPSHOT_TICK);
         match blocking(&self.db, pause::read).await {
             Ok(paused) => self.paused = paused,
             Err(error) => tracing::error!(%error, "could not read the sync pause; running"),
@@ -194,6 +196,7 @@ impl Loop {
                 () = sleep(self.push_at) => Event::PushDue,
                 () = sleep(self.blocked_until) => Event::RetryDue,
                 _ = tick.tick() => Event::Tick,
+                _ = snapshots.tick() => Event::SnapshotTick,
                 () = sleep(self.emit_at) => Event::Emit,
                 _ = self.gate_changes.changed() => Event::GateChanged,
                 power = recv(&mut self.power) => Event::Power(power),
@@ -247,6 +250,7 @@ impl Loop {
                     self.socket_held = self.socket.is_some_and(|(_, connected)| connected);
                 }
                 Event::Emit => self.emit_now(),
+                Event::SnapshotTick => self.snapshot_tick(),
                 Event::GateChanged => self.reevaluate().await,
                 Event::Power(Ok(PowerEvent::Resume)) => self.request(Trigger::PowerResume),
                 Event::Power(Ok(_) | Err(broadcast::error::RecvError::Lagged(_))) => {}
@@ -320,6 +324,7 @@ impl Loop {
             }
             Command::Wake(cursor) => self.request(Trigger::Hint { cursor }),
             Command::Revoked => self.latch(SyncErrorCategory::DeviceRevoked),
+            Command::FinalSnapshots(deadline, reply) => self.final_snapshots(deadline, reply).await,
             Command::Stop(_) => unreachable!("handled by the loop"),
         }
     }

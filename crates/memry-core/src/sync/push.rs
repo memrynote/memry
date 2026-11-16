@@ -149,6 +149,8 @@ pub struct PushCoordinator {
     declaration: Declaration,
     vault_id: Option<String>,
     snapshot_fallback: Option<Arc<dyn SnapshotFallback>>,
+    /// Paces `/sync/crdt/updates` and asks for snapshots after it (`push/crdt.rs`).
+    crdt_pacing: Option<crdt::Pacing>,
     /// Opens the sealed keys of an agent record before it is sealed for the
     /// wire (chapter 04 §4.17).
     at_rest: AtRestKey,
@@ -171,6 +173,7 @@ impl PushCoordinator {
             declaration,
             vault_id: None,
             snapshot_fallback: None,
+            crdt_pacing: None,
             at_rest: AtRestKey::default(),
             ceiling: AtomicUsize::new(PUSH_BATCH_SIZE),
             halvings: AtomicUsize::new(0),
