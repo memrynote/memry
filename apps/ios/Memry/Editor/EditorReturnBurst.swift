@@ -213,9 +213,11 @@ extension EditorSession {
         if takesCaretOnArrival(field) { return pendingFocus = field.blockId }
         // A redrawn row can take the caret before the old row goes: the old
         // row then resigns without leaving, and hands its keys on all the
-        // same (`returnBurstMoved`, #4777).
+        // same (`returnBurstMoved`, #4777). Only the row redrawn for its
+        // own block: another block's row would never take them back
+        // (REVIEW-4790 M1).
         let redraw = redraws(field)
-        if handing || redraw { returnBurst?.handing = true }
+        if handing || redraw && returnBurst?.source === shortcutField { returnBurst?.handing = true }
         let took = textView.becomeFirstResponder()
         if redraw { returnBurst?.handing = false }
         if atEnd { textView.selectedRange = NSRange(location: textView.textStorage.length, length: 0) }

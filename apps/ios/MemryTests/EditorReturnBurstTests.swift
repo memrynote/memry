@@ -496,6 +496,30 @@ struct EditorReturnBurstTests {
         #expect(holds, "they are still held for the Return's block")
     }
 
+    /// The row a type change redrew for another block takes the caret while
+    /// a Return's keys are held: they stay in their block, which keeps them
+    /// when the core refuses the new one. Handed over, they were held only
+    /// in memory, for a row that never takes them (REVIEW-4790 M1).
+    @Test(.timeLimit(.minutes(1))) func anotherBlocksRedrawnRowLeavesTheHeldKeys() async throws {
+        let (shown, old) = try await Screen.run(text: "", below: ["y"]) { screen in
+            screen.editor.inserts.withLock { $0 = .refuse }
+            let item = try await screen.start()
+            let other = try #require(screen.textViews().first { $0 !== item }?.delegate as? BlockField)
+            screen.model.session.shortcutField = other
+            screen.keys("\nabc")
+            let row = BlockField(block: other.block, session: screen.model.session, style: other.style, alignment: .natural)
+            row.textView.delegate = row
+            screen.window.addSubview(row.textView)
+            defer { row.textView.removeFromSuperview() }
+            screen.model.session.takeCaret(row, atEnd: false)
+            screen.model.session.enqueue {}
+            await screen.model.session.tail?.value
+            return (screen.editor.shown, item.text ?? "")
+        }
+        #expect(old == "abc", "the keys stay in their block")
+        #expect(shown == ["abc", "y"], "\(shown)")
+    }
+
     /// Keys typed after the row is redrawn, and before the new block lands,
     /// go to the new block after the ones the old row held, in order, a
     /// Return among them included (REVIEW-4714 M3). In the other order the
