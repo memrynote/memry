@@ -182,4 +182,57 @@ struct NoteTitleBurstTests {
         try await expectStored(f, title: "F1 paragraph", body: ["body"])
         #expect(block.isFirstResponder, "the block kept the caret: only leaving the app committed it")
     }
+
+    /// Waits for the stored title to be `title`.
+    private func expectTitle(_ f: Fixture, _ title: String) async throws {
+        for _ in 0..<300 where try await stored(f).title != title {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(try await stored(f).title == title)
+    }
+
+    /// #4776: a title typed without Return is stored as the app leaves, with
+    /// the title still focused, so a kill from the background keeps it.
+    @Test(.timeLimit(.minutes(1))) func leaving_the_app_stores_a_title_typed_without_return() async throws {
+        let f = try fixture()
+        let (window, field) = try await open(f)
+        defer { window.isHidden = true }
+
+        for key in "Title" { field.insertText(String(key)) }
+        try await settle(f)
+        NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
+
+        try await expectTitle(f, "Title")
+        #expect(field.isFirstResponder, "the title kept the caret: only leaving the app saved it")
+        #expect(field.text == "Title")
+
+        // Typing on after coming back saves again as the edit ends.
+        for key in " two" { field.insertText(String(key)) }
+        try await settle(f)
+        field.resignFirstResponder()
+        try await expectTitle(f, "Title two")
+    }
+
+    /// #4776: an input method's composition is not saved half-composed as
+    /// the app resigns (Control Center keeps it open); going to the
+    /// background ends it and saves the title with its text.
+    @Test(.timeLimit(.minutes(1))) func a_composing_title_is_saved_once_the_app_goes_to_the_background() async throws {
+        let f = try fixture()
+        let (window, field) = try await open(f)
+        defer { window.isHidden = true }
+
+        for key in "Foo" { field.insertText(String(key)) }
+        field.setMarkedText("k", selectedRange: NSRange(location: 1, length: 0))
+        try await settle(f)
+        NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
+        try await settle(f)
+        #expect(field.markedTextRange != nil, "resigning ended the composition")
+        #expect(try await stored(f).title == "", "a half-composed title was saved")
+
+        NotificationCenter.default.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
+
+        try await expectTitle(f, "Fook")
+        #expect(field.markedTextRange == nil)
+        #expect(field.text == "Fook")
+    }
 }
