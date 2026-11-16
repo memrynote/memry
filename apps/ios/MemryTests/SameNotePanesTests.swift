@@ -8,6 +8,7 @@
 
 import Foundation
 import MemryCore
+import Synchronization
 import Testing
 import UIKit
 
@@ -41,8 +42,8 @@ struct SameNotePanesTests {
     }
 
     /// One pane's page: its model and session, as `NotePageContent` builds them.
-    private func pane(_ f: Fixture) -> NoteEditorViewModel {
-        let model = NoteEditorViewModel(noteId: f.noteId, editor: f.editor)
+    private func pane(_ f: Fixture, editor: (any BlockEditing)? = nil) -> NoteEditorViewModel {
+        let model = NoteEditorViewModel(noteId: f.noteId, editor: editor ?? f.editor)
         model.session.model = model
         return model
     }
@@ -385,6 +386,235 @@ struct SameNotePanesTests {
         await commit(fieldA, in: a)
 
         #expect(heard == [a.source])
+    }
+
+    // MARK: Nodes a stale pane puts in (#4706)
+
+    private static let due = DateMentionValue(dateISO: "2026-06-02T09:00:00.000Z", hasTime: false)
+    /// With a reminder, which a lost chip would take with it.
+    private static let moved = {
+        var value = DateMentionValue(dateISO: "2026-07-14T09:00:00.000Z", hasTime: false)
+        value.remind = "at"
+        return value
+    }()
+
+    /// `hello ` and a date chip, anchored `dm_due`.
+    private func fixtureWithDate() async throws -> Fixture {
+        let f = try fixture("hello ")
+        _ = try f.vault.vault.notesWriter(store: TaskTestKeychain()).editBlock(
+            noteId: f.noteId,
+            edit: .insertInline(
+                blockId: f.blockId, start: 6, end: 6, kind: "dateMention", text: "", attrs: Self.due.attrs(anchorId: "dm_due")
+            )
+        )
+        return f
+    }
+
+    /// A's `XYZ ` at the block's start, committed.
+    private func prepend(in field: BlockField, of model: NoteEditorViewModel) async {
+        field.textView.textStorage.insert(NSAttributedString(string: "XYZ "), at: 0)
+        field.dirty = true
+        await commit(field, in: model)
+    }
+
+    /// The date chip `field` draws, edited to `Self.moved` through the sheet.
+    private func editDate(in field: BlockField, of model: NoteEditorViewModel) async throws {
+        let range = try #require(field.dateChipRange(anchorId: "dm_due"))
+        let chip = try #require(field.textView.textStorage.attribute(.memryDate, at: range.location, effectiveRange: nil) as? DateMentionChip)
+        model.session.requestDateEdit(chip, in: field)
+        model.session.applyDateEdit(.update(Self.moved))
+        await model.session.tail?.value
+    }
+
+    private func dates(_ f: Fixture) async throws -> [[String: String]] {
+        try await block(f).inline.filter { $0.marks.contains("dateMention") }.map(\.markAttrs)
+    }
+
+    /// One date chip, `dm_due`, holding the edited date and its reminder.
+    private func expectMovedDate(_ f: Fixture) async throws {
+        let dates = try await dates(f)
+        #expect(dates.map { $0["dateMention.dateISO"] } == [Self.moved.dateISO])
+        #expect(dates.map { $0["dateMention.remind"] } == ["at"])
+        #expect(dates.map { $0["dateMention.anchorId"] } == ["dm_due"])
+    }
+
+    /// DATA-LOSS (#4706): B edits a date chip without having re-read A's
+    /// `XYZ `. The chip is updated where the block holds it, and no byte of
+    /// A's or the block's text goes.
+    @Test(.timeLimit(.minutes(1))) func a_date_edited_in_a_stale_pane_keeps_every_byte() async throws {
+        let f = try await fixtureWithDate()
+        let a = pane(f)
+        let b = pane(f)
+        let drawn = try await block(f)
+        let fieldA = draw(drawn, in: a)
+        let fieldB = draw(drawn, in: b)
+
+        await prepend(in: fieldA, of: a)
+        try await editDate(in: fieldB, of: b)
+
+        let shown = BlockText.shown(try await block(f).inline)
+        #expect(shown == "XYZ hello \u{FFFC}")
+        try await expectMovedDate(f)
+        #expect(b.status == .idle)
+    }
+
+    /// #4706: a `[[` row B picks at the block's end lands at the end of the
+    /// block as the core holds it, after A's `XYZ `.
+    @Test(.timeLimit(.minutes(1))) func a_link_picked_in_a_stale_pane_lands_where_its_caret_is() async throws {
+        let f = try fixture("hello ")
+        let a = pane(f)
+        let b = pane(f)
+        let drawn = try await block(f)
+        let fieldA = draw(drawn, in: a)
+        let fieldB = draw(drawn, in: b)
+
+        await prepend(in: fieldA, of: a)
+        type("hello [[Fo", in: fieldB)
+        b.session.insertInline([.note(title: "Foo", alias: "")], replacing: NSRange(location: 6, length: 4), in: fieldB)
+        await b.session.tail?.value
+
+        let runs = try await block(f).inline
+        #expect(BlockText.shown(runs) == "XYZ hello \u{FFFC} ")
+        #expect(runs.filter { $0.marks.contains("wikiLink") }.map(\.target) == ["Foo"])
+    }
+
+    /// #4706: the page menu's append from B, which has not re-read A's
+    /// `XYZ `, lands at the end of the block as the core holds it.
+    @Test(.timeLimit(.minutes(1))) func an_append_from_a_stale_pane_lands_at_the_live_end() async throws {
+        let f = try fixture("hello")
+        let a = pane(f)
+        let b = pane(f)
+        let drawn = try await block(f)
+        let fieldA = draw(drawn, in: a)
+
+        await prepend(in: fieldA, of: a)
+        b.session.append(.note(title: "Foo", alias: ""), to: drawn)
+        await b.session.tail?.value
+
+        let runs = try await block(f).inline
+        #expect(BlockText.shown(runs) == "XYZ hello\u{FFFC} ")
+        #expect(runs.filter { $0.marks.contains("wikiLink") }.map(\.target) == ["Foo"])
+    }
+
+    /// The core's editor, except that once armed, another pane's write
+    /// (`XYZ ` at the block's start, unless told otherwise) lands just before
+    /// the next inline node does: after the pane decided where it goes.
+    private final class WritesFirst: BlockEditing, Sendable {
+        let core: CoreBlockEditor
+        let reader: CoreNotesReader
+        let blockId: String
+        let rewrite: @Sendable (String) -> String
+        let armed = Mutex(false)
+        init(_ f: Fixture, rewrite: @escaping @Sendable (String) -> String = { "XYZ " + $0 }) {
+            core = f.editor
+            reader = f.reader
+            blockId = f.blockId
+            self.rewrite = rewrite
+        }
+
+        private func interpose(_ noteId: String) async throws {
+            guard armed.withLock({ armed in defer { armed = false }; return armed }) else { return }
+            let blocks = try await reader.blocks(id: noteId)
+            let live = blocks?.first { $0.id == blockId }?.inline.map(\.text).joined() ?? ""
+            _ = try await core.edit(noteId: noteId, .replaceText(blockId: blockId, text: rewrite(live), base: live))
+        }
+
+        func edit(noteId: String, _ edit: BlockEdit) async throws -> Bool {
+            if case .insertInline = edit { try await interpose(noteId) }
+            return try await core.edit(noteId: noteId, edit)
+        }
+
+        func edit(
+            noteId: String, blockId: String, locating locate: @escaping @Sendable ([InlineRun]?) -> BlockEdit?
+        ) async throws -> LocatedEdit {
+            try await interpose(noteId)
+            return try await core.edit(noteId: noteId, blockId: blockId, locating: locate)
+        }
+    }
+
+    /// DATA-LOSS (#4706): another pane's write lands after B's commit and
+    /// before B's date chip goes back in. The chip goes where the block
+    /// holds its space then, and no byte of the other write goes.
+    @Test(.timeLimit(.minutes(1))) func a_write_between_a_date_edits_commit_and_its_chip_keeps_every_byte() async throws {
+        let f = try await fixtureWithDate()
+        let editor = WritesFirst(f)
+        let b = pane(f, editor: editor)
+        let fieldB = draw(try await block(f), in: b)
+
+        editor.armed.withLock { $0 = true }
+        try await editDate(in: fieldB, of: b)
+
+        let shown = BlockText.shown(try await block(f).inline)
+        #expect(shown == "XYZ hello \u{FFFC}")
+        #expect(try await dates(f).map { $0["dateMention.anchorId"] } == ["dm_due"])
+    }
+
+    /// DATA-LOSS (REVIEW-4758): another pane's unseen edits sit on both
+    /// sides of the chip's space. The space is found by the text next to it,
+    /// and the chip goes back over it.
+    @Test(.timeLimit(.minutes(1))) func a_date_chip_between_two_unseen_edits_goes_back_in_place() async throws {
+        let f = try await fixtureWithDate()
+        let editor = WritesFirst(f) { "XYZ " + $0 + "!" }
+        let b = pane(f, editor: editor)
+        let fieldB = draw(try await block(f), in: b)
+
+        editor.armed.withLock { $0 = true }
+        try await editDate(in: fieldB, of: b)
+
+        let shown = BlockText.shown(try await block(f).inline)
+        #expect(shown == "XYZ hello \u{FFFC}!")
+        try await expectMovedDate(f)
+        #expect(b.status == .idle)
+    }
+
+    /// DATA-LOSS (REVIEW-4758): another pane's write takes the space B's
+    /// date edit wrote before the chip goes back in. The chip is not put in
+    /// over the other pane's text, and not lost with its reminder: it goes
+    /// at the end of the block's text, and the status says so.
+    @Test(.timeLimit(.minutes(1))) func a_date_chip_whose_space_another_pane_took_goes_at_the_end_and_says_so() async throws {
+        let f = try await fixtureWithDate()
+        let editor = WritesFirst(f) { $0.dropLast() + "X" }
+        let b = pane(f, editor: editor)
+        let fieldB = draw(try await block(f), in: b)
+
+        editor.armed.withLock { $0 = true }
+        try await editDate(in: fieldB, of: b)
+
+        let shown = BlockText.shown(try await block(f).inline)
+        #expect(shown == "hello X\u{FFFC}")
+        try await expectMovedDate(f)
+        #expect(b.status == .failed(NodeAnchor.moved))
+    }
+
+    /// REVIEW-4758: a node for a block the note no longer holds is refused
+    /// as any edit to it is, and says so.
+    @Test(.timeLimit(.minutes(1))) func a_node_for_a_missing_block_reports_the_refusal() async throws {
+        let f = try fixture("hello")
+        let model = pane(f)
+        let anchor = NodeAnchor(typed: "hello ", location: 5, replaces: false, paneRange: 5 ..< 5)
+
+        #expect(await model.insertDateMention(in: "no-such-block", at: anchor, value: Self.due) == nil)
+
+        #expect(model.status == .failed(ErrorMapping.unknownNote))
+        #expect(try await stored(f) == "hello")
+    }
+
+    /// DATA-LOSS (REVIEW-4700 on #4706): another pane's write lands between
+    /// B's commit of a typed `[[Foo]]` and its link node. The node goes over
+    /// the literal where the block holds it then.
+    @Test(.timeLimit(.minutes(1))) func a_write_between_a_typed_links_commit_and_its_node_keeps_every_byte() async throws {
+        let f = try fixture("hello")
+        let editor = WritesFirst(f)
+        let b = pane(f, editor: editor)
+        let fieldB = draw(try await block(f), in: b)
+
+        type("hello [[Foo]]", in: fieldB)
+        editor.armed.withLock { $0 = true }
+        await commit(fieldB, in: b)
+
+        let runs = try await block(f).inline
+        #expect(BlockText.shown(runs) == "XYZ hello \u{FFFC}")
+        #expect(runs.filter { $0.marks.contains("wikiLink") }.map(\.target) == ["Foo"])
     }
 }
 

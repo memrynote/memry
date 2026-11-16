@@ -31,8 +31,12 @@ struct AnnouncedEdits: BlockEditing {
         try await editor.snapshot(noteId: noteId, blockId: blockId)
     }
 
-    func blockText(noteId: String, blockId: String) async throws -> String? {
-        try await editor.blockText(noteId: noteId, blockId: blockId)
+    func edit(
+        noteId: String, blockId: String, locating locate: @escaping @Sendable ([InlineRun]?) -> BlockEdit?
+    ) async throws -> LocatedEdit {
+        let located = try await editor.edit(noteId: noteId, blockId: blockId, locating: locate)
+        if case .landed = located { await announce(noteId) }
+        return located
     }
 
     var movesBlocksBetweenNotes: Bool { editor.movesBlocksBetweenNotes }
