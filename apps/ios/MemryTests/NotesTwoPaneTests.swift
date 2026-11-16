@@ -109,20 +109,20 @@ struct NotesTwoPaneTests {
         #expect(router.focus == .main)
     }
 
-    @Test("while both panes show, only the focused pane offers its page menu")
-    func onlyTheFocusedPaneHasAPageMenu() {
+    @Test("while both panes show, each pane draws its own header, focused or not")
+    func eachPaneHasItsOwnHeader() {
         let router = split()
         let main = NotesPaneContext(router: router, slot: .main)
         let side = NotesPaneContext(router: router, slot: .side)
-        #expect(main.showsPageMenu, "one pane: its menu shows")
+        #expect(!main.headed, "one pane: the navigation bar carries its controls")
 
         router.openToTheSide(loose)
-        #expect(!main.showsPageMenu && side.showsPageMenu)
+        #expect(main.headed && side.headed)
         router.activate(.main)
-        #expect(main.showsPageMenu && !side.showsPageMenu)
+        #expect(main.headed && side.headed)
 
         router.splitFits = false
-        #expect(main.showsPageMenu, "the pane shown alone keeps its menu")
+        #expect(!main.headed, "the pane shown alone goes back to the navigation bar")
     }
 
     @Test("a width too narrow for two panes shows the focused one and keeps the other")

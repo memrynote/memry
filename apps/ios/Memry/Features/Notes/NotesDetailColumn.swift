@@ -44,16 +44,6 @@ struct NotesDetailColumn: View {
                 pane(.side)
             }
         }
-        .toolbar {
-            if router.splitShown, let trail = router.pane(router.focus)?.trail, !trail.isEmpty {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Back", systemImage: "chevron.backward") {
-                        router.setTrail(Array(trail.dropLast()), in: router.focus)
-                    }
-                    .accessibilityIdentifier("notes.pane.back")
-                }
-            }
-        }
         .coordinateSpace(.named(Self.space))
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
         // Every write in the note asks for a sync pass. The list stays on
@@ -86,8 +76,9 @@ struct NotesDetailColumn: View {
         // Every `NavigationStack` in the column pushes onto the column's own
         // stack, over both panes (VERIFY-4700). While both show, a pane's
         // stack holds no path: its root draws the pane's current note, and
-        // the column's Back pops the focused pane. A path the stack reports
-        // then (its pop as the split opens) is not the pane's trail.
+        // the Back in the pane's header pops it (`NotesPaneHeader`). A path
+        // the stack reports then (its pop as the split opens) is not the
+        // pane's trail.
         let stacked = !router.splitShown
         return NavigationStack(path: Binding(
             get: { stacked ? router.pane(slot)?.trail ?? [] : [] },
@@ -115,6 +106,8 @@ struct NotesDetailColumn: View {
         .gesture(TouchDown { _ in router.activate(slot) })
         .accessibilityElement(children: .contain)
         .accessibilityAddTraits(focused ? .isSelected : [])
+        // Names each pane's header controls apart for VoiceOver (#4699).
+        .accessibilityLabel(router.splitShown ? NotesPaneCopy.pane(slot) : "")
         .accessibilityIdentifier("notes.pane.\(slot.rawValue)")
     }
 
