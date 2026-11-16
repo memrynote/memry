@@ -473,6 +473,29 @@ struct EditorReturnBurstTests {
         #expect(shown == ["abc", ""], "\(shown)")
     }
 
+    /// #4777 HID: the row a type change redrew can take the caret before
+    /// the old row is dismantled, so the old row resigns, without leaving,
+    /// while it holds keys for the second Return's block. It hands them to
+    /// the redrawn row, which holds them on: kept in the old row, they
+    /// committed there and split the burst (`- a⏎⏎⏎abc` stored `a|bc`).
+    @Test(.timeLimit(.minutes(1))) func theRedrawnRowTakingTheCaretFirstTakesTheHeldKeys() async throws {
+        let (redrawn, old, holds) = try await Screen.run("checkListItem", text: "") { screen in
+            let item = try await screen.start()
+            let field = try #require(item.delegate as? BlockField)
+            screen.keys("\n\na")
+            // The redrawn row, drawn and in the window before the old one goes.
+            let row = BlockField(block: field.block, session: screen.model.session, style: field.style, alignment: .natural)
+            row.textView.delegate = row
+            screen.window.addSubview(row.textView)
+            defer { row.textView.removeFromSuperview() }
+            screen.model.session.takeCaret(row, atEnd: false)
+            return (row.textView.text ?? "", item.text ?? "", screen.model.session.holdsKeys(row))
+        }
+        #expect(redrawn == "a", "the redrawn row has the held keys")
+        #expect(old == "", "the old row gave them up")
+        #expect(holds, "they are still held for the Return's block")
+    }
+
     /// Keys typed after the row is redrawn, and before the new block lands,
     /// go to the new block after the ones the old row held, in order, a
     /// Return among them included (REVIEW-4714 M3). In the other order the

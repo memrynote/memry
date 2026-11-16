@@ -29,8 +29,8 @@ struct ReturnBurst {
     let typed: Bool
     /// The block Return made, once the core holds it.
     var target: String?
-    /// The target is taking the caret: the source hands over its keys as it
-    /// resigns.
+    /// The target, or the row a type change redrew for the source's block,
+    /// is taking the caret: the source hands over its keys as it resigns.
     var handing = false
     /// The source resigned, and the keys it handed over (`nil`: none).
     var ended = false
@@ -211,11 +211,16 @@ extension EditorSession {
         // A row drawn but not yet in the window cannot take the caret: the
         // keys stay held until it moves in (`field(_:movedInto:)`).
         if takesCaretOnArrival(field) { return pendingFocus = field.blockId }
-        if handing { returnBurst?.handing = true }
+        // A redrawn row can take the caret before the old row goes: the old
+        // row then resigns without leaving, and hands its keys on all the
+        // same (`returnBurstMoved`, #4777).
+        let redraw = redraws(field)
+        if handing || redraw { returnBurst?.handing = true }
         let took = textView.becomeFirstResponder()
+        if redraw { returnBurst?.handing = false }
         if atEnd { textView.selectedRange = NSRange(location: textView.textStorage.length, length: 0) }
         // The old row may have left already, so nothing else holds the caret.
-        if !took, redraws(field) {
+        if !took, redraw {
             Log.interface.error("the row a type change redrew did not take the caret")
             pendingFocus = field.blockId
         }
