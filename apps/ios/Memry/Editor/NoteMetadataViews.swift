@@ -114,6 +114,34 @@ struct NoteTitleEditor: View {
         focused = false
     }
 
+    /// Saves the title typed so far and keeps the edit open, with the caret
+    /// (#4776): leaving the app ends no edit, and iOS may end a backgrounded
+    /// app before the title's focus changes. The edit goes on from what was
+    /// saved, so its end writes only what changes after this.
+    private func save() {
+        guard returned == nil, commits.editing else { return }
+        if let text = commits.take(draft, explicit: true), text != title { rename(text) }
+        commits.begin(draft)
+    }
+
+    /// The title's text view while the title is edited: the window's text
+    /// view with the caret. Not gated on `focused`, which follows the caret
+    /// a turn late.
+    private var titleTextView: UITextView? {
+        guard commits.editing else { return nil }
+        func editing(in view: UIView) -> UITextView? {
+            if let text = view as? UITextView, text.isFirstResponder { return text }
+            // A plain loop: a lazy `compactMap(...).first` maps each level
+            // again for every level above it, which hung the app on a page's
+            // deep view tree.
+            for subview in view.subviews {
+                if let text = editing(in: subview) { return text }
+            }
+            return nil
+        }
+        return host.window.flatMap(editing)
+    }
+
     /// Return: saves the title before it and keeps the caret, holding the
     /// keys typed after it for the body (`LineReturn`).
     private func returnPressed(_ burst: LineReturn) {
@@ -294,6 +322,21 @@ struct NoteTitleEditor: View {
                     else { return }
                     claimsFocus = false
                     if !(next is UITextInput) { Task { focused = true } }
+                }
+                // Saved as the app resigns, as a body block is (#2820). Not
+                // while an input method composes: Control Center resigns the
+                // app too, and the draft holds the half-made text. Going to
+                // the background ends the composition as it stands, as a
+                // Return in the body does, and saves it.
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
+                    if titleTextView?.markedTextRange == nil { save() }
+                }
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
+                    if let view = titleTextView, view.markedTextRange != nil {
+                        view.unmarkText()
+                        typed(view.text)
+                    }
+                    save()
                 }
                 .background(TitleWindowReader(host: host))
                 // Leaving the page, or the page reloading under the field,
