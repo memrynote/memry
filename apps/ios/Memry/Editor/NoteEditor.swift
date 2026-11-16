@@ -85,22 +85,25 @@ final class NoteEditorViewModel {
     /// on the live block, so an edit that landed since survives: a second
     /// pane on the note (#4377) can write after this page last read it. For
     /// the same reason "unchanged" means the user changed nothing, whatever
-    /// the peer did. Answers whether the text is written.
+    /// the peer did. Answers whether the text is written, and the text the
+    /// write left the block at as far as it knows: `text`, or the last of
+    /// its steps that landed (`send`), or `base`.
     @discardableResult
-    func commit(_ text: String, for blockId: String, base: String) async -> Bool {
-        guard let editor else { return false }
+    func commit(_ text: String, for blockId: String, base: String) async -> (landed: Bool, held: String) {
+        guard let editor else { return (false, base) }
         drafts[blockId] = text
         guard text != base else {
             status = .idle
-            return true
+            return (true, text)
         }
 
         status = .saving
+        var held = base
         do {
-            let landed = try await send(.replaceText(blockId: blockId, text: text, base: base))
+            let landed = try await send(.replaceText(blockId: blockId, text: text, base: base)) { held = $0 }
             if landed {
                 status = .idle
-                return true
+                return (true, text)
             } else {
                 // The note is gone. Not an error the user caused, and not
                 // something a retry fixes. The existing copy for exactly this
@@ -112,7 +115,7 @@ final class NoteEditorViewModel {
             Log.storage.error("a block edit did not land")
             status = .failed(ErrorMapping.userFacing(error))
         }
-        return false
+        return (false, held)
     }
 
     /// Inserts a paragraph after `blockId` and returns its new id.
@@ -715,14 +718,16 @@ final class NoteEditorViewModel {
 
 extension NoteEditorViewModel {
     /// `edit`, with a `ReplaceText` written one run of text between nodes at
-    /// a time (`BlockText.stepsAroundNodes`), so it keeps every node. Answers
-    /// whether every write landed.
-    fileprivate func send(_ edit: BlockEdit) async throws -> Bool {
+    /// a time (`BlockText.stepsAroundNodes`), so it keeps every node, each
+    /// step's text to `landed` as it lands. Answers whether every write
+    /// landed.
+    fileprivate func send(_ edit: BlockEdit, landed: (String) -> Void = { _ in }) async throws -> Bool {
         guard let editor else { return false }
         guard case let .replaceText(blockId, text, base?) = edit else { return try await editor.edit(noteId: noteId, edit) }
         var from = base
         for step in BlockText.stepsAroundNodes(from: base, to: text) {
             guard try await editor.edit(noteId: noteId, .replaceText(blockId: blockId, text: step, base: from)) else { return false }
+            landed(step)
             from = step
         }
         return true

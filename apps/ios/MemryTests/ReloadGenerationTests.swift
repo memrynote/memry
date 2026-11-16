@@ -397,6 +397,100 @@ struct ReloadGenerationTests {
         #expect(try await pane.stored == "a")
     }
 
+    /// REVIEW-4778: a failed commit that drew a typed `[[link]]` as its chip
+    /// leaves the row's base on the chip, so the row is not kept dirty and
+    /// is redrawn from the core. A peer's write and the user's next typing
+    /// then go from that redraw, not from the failed commit's base.
+    @Test(.timeLimit(.minutes(1))) func typingAfterAFailedLinkCommitsRedrawGoesFromTheRedraw() async throws {
+        let f = try fixture("a")
+        let editor = Interposed(f.editor)
+        let pane = try await Pane(f, editor: editor)
+        pane.rereads()
+        editor.failures.withLock { $0 = 1 }
+
+        pane.type("a [[t]]")
+        await pane.commit()
+        #expect(try await pane.stored == "a")
+        #expect(pane.field.textView.text == "a")
+
+        _ = try f.vault.vault.notesWriter(store: TaskTestKeychain()).editBlock(
+            noteId: f.noteId, edit: .replaceText(blockId: f.blockId, text: "xa", base: "a")
+        )
+        pane.deliver(try await pane.read())
+        #expect(pane.field.textView.text == "xa")
+        pane.type("xaq")
+        await pane.commit()
+
+        #expect(try await pane.stored == "xaq")
+    }
+
+    /// REVIEW-4778: the failure lands on the old row of a takeover, and the
+    /// row that took over is redrawn from the core. A peer's write and the
+    /// next typing go from that redraw.
+    @Test(.timeLimit(.minutes(1))) func typingAfterAFailureOnADeadRowGoesFromTheRedraw() async throws {
+        let f = try fixture("a")
+        let editor = Interposed(f.editor)
+        let old = try await Pane(f, editor: editor)
+        let session = old.model.session
+        session.drawn(old.field)
+        editor.failures.withLock { $0 = 1 }
+        let gate = Gate(session)
+
+        old.type("ab")
+        session.commit(old.field)
+        // Never registered as the block's row: the restore finds the old one.
+        let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
+        let block = try #require(try await f.reader.blocks(id: f.noteId)?.first { $0.id == f.blockId })
+        let row = BlockField(block: block, session: session, style: style, alignment: .natural)
+        row.render()
+        session.shortcutField = old.field
+        row.textViewDidBeginEditing(row.textView)
+        gate.open()
+        await session.tail?.value
+
+        let redraw = try await old.read()
+        row.receive(redraw.block, generation: redraw.generation)
+        #expect(row.textView.text == "a")
+        _ = try f.vault.vault.notesWriter(store: TaskTestKeychain()).editBlock(
+            noteId: f.noteId, edit: .replaceText(blockId: f.blockId, text: "xa", base: "a")
+        )
+        let peer = try await old.read()
+        row.receive(peer.block, generation: peer.generation)
+        #expect(row.textView.text == "xa")
+        row.textView.text = "xaq"
+        row.dirty = true
+        session.commit(row)
+        await session.tail?.value
+
+        #expect(try await old.stored == "xaq")
+    }
+
+    /// REVIEW-4778 Low: a commit split around a node lands its first step
+    /// and fails its second. The commit queued behind it goes from the
+    /// step that landed, so the first step's typing is not written twice.
+    @Test(.timeLimit(.minutes(1))) func aCommitQueuedBehindAPartlyLandedSplitGoesFromTheLandedStep() async throws {
+        let f = try fixtureWithDate()
+        let editor = Interposed(f.editor)
+        let pane = try await Pane(f, editor: editor)
+        pane.rereads()
+        editor.afterNext.withLock { $0 = { editor.failures.withLock { $0 = 1 } } }
+        let gate = Gate(pane.model.session)
+
+        pane.field.textView.textStorage.insert(NSAttributedString(string: "X"), at: 0)
+        pane.field.textView.textStorage.append(NSAttributedString(string: "Y"))
+        pane.field.dirty = true
+        pane.model.session.commit(pane.field)
+        pane.field.textView.textStorage.append(NSAttributedString(string: "Z"))
+        pane.field.dirty = true
+        pane.model.session.commit(pane.field)
+        gate.open()
+        await pane.model.session.tail?.value
+
+        #expect(try await pane.stored == "Xhello \u{FFFC}YZ")
+        #expect(pane.field.textView.text == "Xhello \u{FFFC}YZ")
+        #expect(!pane.field.dirty)
+    }
+
     /// A read taken between the writes of a commit split around a node
     /// (`BlockText.stepsAroundNodes`) is older than the commit, so the row
     /// skips it when it lands after the commit's own re-read.
