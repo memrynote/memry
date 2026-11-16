@@ -97,6 +97,17 @@ jobs:
             -authenticationKeyID "$ASC_KEY_ID" \
             -authenticationKeyIssuerID "$ASC_ISSUER_ID"
 
+      # Cloud signing mints an "Apple Development: Created via API" certificate
+      # on every run, and the ephemeral runner never reuses it. Apple stops
+      # signing at its certificate limit, so revoke them when the run ends.
+      - name: Revoke CI development certificates
+        if: always() && env.ASC_KEY_PATH != ''
+        continue-on-error: true
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: node apps/ios/scripts/revoke-ci-dev-certs.mjs
+
       - name: Remove API key
         if: always()
         run: rm -f "$RUNNER_TEMP/AuthKey.p8"

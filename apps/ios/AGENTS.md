@@ -27,6 +27,7 @@ xcodebuild test -project apps/ios/Memry.xcodeproj -scheme Memry -testPlan Unit \
 - Debug builds talk to staging and Release builds talk to production, set by `MEMRY_SYNC_ENVIRONMENT` in the project's build settings. A Release build on a device or simulator signs in to real accounts and reads production data, so agents build Debug.
 - `.github/workflows/ios-testflight.yml` archives, signs, and uploads a build. It runs only when someone dispatches it by hand from the Actions tab. An upload counts as a release: ask Kaan before each one.
 - Signing is Xcode automatic signing, authorised by the App Store Connect API key in the repo secrets `ASC_KEY_ID`, `ASC_ISSUER_ID`, and `ASC_KEY_P8`. Nothing in the repo holds a certificate or a profile.
+- Each run's cloud signing mints an `Apple Development: Created via API` certificate, and the run's last step (`scripts/revoke-ci-dev-certs.mjs`) revokes them. At Apple's certificate limit the Archive fails with `Choose a certificate to revoke`: run that script by hand with the key's env vars.
 - The build number is `1000 + run number`. A build uploaded by hand from Xcode needs a number below 1000.
 - A change the iOS app depends on in the sync server reaches TestFlight users only after a production sync-server deploy.
 
