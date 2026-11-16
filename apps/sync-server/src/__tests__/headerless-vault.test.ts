@@ -38,10 +38,13 @@ const rateLimiter = {
   })
 }
 
-const request = (path: string) =>
+const request = (
+  path: string,
+  init: { method?: string; headers?: Record<string, string>; body?: string } = {}
+) =>
   app.request(
     path,
-    { method: 'GET', headers: { Authorization: `Bearer ${token}` } },
+    { method: 'GET', ...init, headers: { Authorization: `Bearer ${token}`, ...init.headers } },
     {
       DB: harness.db,
       JWT_PUBLIC_KEY: publicKeyPem,
@@ -132,4 +135,38 @@ it('refuses storage to an account without a plan, creating nothing', async () =>
   const body = (await res.json()) as { error: { code: string } }
   expect(body.error.code).toBe('SYNC_PAYMENT_REQUIRED')
   expect(vaultIds()).toEqual([REAL_VAULT])
+})
+
+// #3967: memry-core polls GET /sync/status with no X-Memry-Vault-Id at the start
+// of a pass, racing vault registration. On an account with no vaults yet the
+// poll minted `default`, and on Plus the real vault's registration then hit 402.
+describe.each([
+  { plan: 'plus', maxVaults: 1 },
+  { plan: 'believer', maxVaults: null }
+])('a header-less status poll on a $plan account with no vaults', ({ plan, maxVaults }) => {
+  beforeEach(() => {
+    harness.raw.prepare('DELETE FROM sync_vaults WHERE user_id = ?').run(USER_ID)
+    grant(plan, maxVaults)
+  })
+
+  it('answers as before and creates no vault, so registration yields exactly that vault', async () => {
+    const status = await request('/sync/status')
+
+    expect(status.status).toBe(200)
+    expect(await status.json()).toEqual({
+      connected: true,
+      pendingItems: 0,
+      serverTime: expect.any(Number)
+    })
+    expect(vaultIds()).toEqual([])
+
+    const registered = await request('/sync/vaults', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vaultUuid: REAL_VAULT, encryptedName: 'name', nameNonce: 'nonce' })
+    })
+
+    expect(registered.status).toBe(200)
+    expect(vaultIds()).toEqual([REAL_VAULT])
+  })
 })

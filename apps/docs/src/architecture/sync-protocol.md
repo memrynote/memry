@@ -43,6 +43,12 @@ as `default`. `GET /sync/storage` is account-wide and sits outside this gate ent
 vault header and never creates a vault, and it still answers `SYNC_PAYMENT_REQUIRED` without an active
 plan.
 
+`GET /sync/status` (and `GET /sync/records/status`) resolve the vault the same way and return the same
+400 and 402 errors, but never create the vault row. The Rust core polls status with no vault header at
+the start of a sync pass, racing vault registration. Before this, on an account with no vaults the poll
+minted `default`, and on Plus the real vault's registration then failed with 402 (#3967). A status read
+for a vault with no row answers `pendingItems: 0` and no `lastSyncAt`, the same body as before.
+
 The desktop client mirrors this gate locally to avoid pointless round-trips that can only return 402. Handlers for paid-only endpoints check the cached entitlement first and return their empty
 value (`GET_STATUS` → `local_only`, `GET_STORAGE_BREAKDOWN` → `null`) when the cache says the user
 is on the free plan. Only a **known-unpaid** entitlement is gated — an unknown/uncached
