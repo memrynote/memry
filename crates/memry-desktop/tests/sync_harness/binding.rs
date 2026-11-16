@@ -43,6 +43,7 @@ fn wiring(
         on_status: Arc::new(|_| {}),
         bindings: Arc::new(OpenVaultBinding::default()),
         on_binding: Arc::new(move |state| seen.lock().unwrap().push(state.clone())),
+        on_vault_list_changed: Arc::new(|| {}),
     });
     (wiring, changes)
 }

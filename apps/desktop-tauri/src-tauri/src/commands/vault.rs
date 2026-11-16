@@ -110,18 +110,29 @@ pub async fn vault_get_status(app: AppHandle<Wry>) -> Result<VaultStatus, Comman
 #[specta::specta]
 pub async fn vault_get_default_parent(app: AppHandle<Wry>) -> Result<String, CommandError> {
     let session = session(&app);
-    let documents = app.path().document_dir().map_err(|error| {
-        CommandError::new(ErrorKind::Internal, "documents_dir", error.to_string())
-    })?;
+    let documents = documents_dir(&app)?;
     blocking("vault_get_default_parent", move || {
-        let parent = session
-            .registry()
-            .current()
-            .and_then(|current| PathBuf::from(current).parent().map(PathBuf::from))
-            .unwrap_or_else(|| documents.join("Memry"));
-        Ok(parent.to_string_lossy().into_owned())
+        Ok(default_parent(&session, &documents)
+            .to_string_lossy()
+            .into_owned())
     })
     .await
+}
+
+pub(crate) fn documents_dir(app: &AppHandle<Wry>) -> Result<PathBuf, CommandError> {
+    app.path()
+        .document_dir()
+        .map_err(|error| CommandError::new(ErrorKind::Internal, "documents_dir", error.to_string()))
+}
+
+/// `defaultVaultParentDir`: next to the current vault when one is registered, else
+/// `<documents>/Memry`.
+pub(crate) fn default_parent(session: &Session, documents: &Path) -> PathBuf {
+    session
+        .registry()
+        .current()
+        .and_then(|current| PathBuf::from(current).parent().map(PathBuf::from))
+        .unwrap_or_else(|| documents.join("Memry"))
 }
 
 /// Opens `path` through `open`, offering repair once when its database is damaged.
@@ -276,7 +287,11 @@ pub async fn vault_set_icon(
             .set_icon(&path, icon.as_deref(), now_ms)
             .map_err(icon_error)
     })
-    .await
+    .await?;
+    // Pushes the change to the account; a failure stays pending for the next refresh
+    // (`vault-handlers.ts:161-164`).
+    super::vault_account::refresh_in_background(app);
+    Ok(())
 }
 
 fn icon_error(error: IconError) -> CommandError {

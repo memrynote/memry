@@ -364,7 +364,17 @@ impl AccountService {
                 user_id: user_id.to_owned(),
                 mode: BindingMode::Sync,
             },
-        )
+        )?;
+        // The account vault directory registers the vault under this id (a merge changes it,
+        // `vault-binding-resolve.ts:44-47`).
+        if let Err(error) = registry.stamp_vault_uuid(&open.path.to_string_lossy(), Some(&id), &id)
+        {
+            tracing::warn!(
+                scope = "Binding",
+                "the vault id was not stamped on the registry entry: {error}"
+            );
+        }
+        Ok(())
     }
 
     /// Ticks from a device other than this install's own: the id its writes stamp (from the

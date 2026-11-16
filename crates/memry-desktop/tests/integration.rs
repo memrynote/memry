@@ -22,6 +22,8 @@ mod account_oauth;
 mod account_service;
 #[path = "account_teardown.rs"]
 mod account_teardown;
+#[path = "account_vault_directory.rs"]
+mod account_vault_directory;
 #[path = "activity_log.rs"]
 mod activity_log;
 #[path = "activity_scan.rs"]

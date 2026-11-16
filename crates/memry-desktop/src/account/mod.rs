@@ -17,6 +17,7 @@ pub mod otp_clipboard;
 mod recovery;
 pub mod session_events;
 mod teardown;
+pub mod vault_directory;
 pub mod vault_sync;
 
 pub use devices::DeviceList;
@@ -86,6 +87,13 @@ pub enum AccountError {
     OAuthExpired,
     #[error("the sign-in loopback could not start")]
     OAuthLoopback,
+    /// `deleteAccountVault` refuses the open vault (`vault-directory.ts:250-252`).
+    #[error("Cannot delete the active vault. Switch to another vault first.")]
+    DeleteOpenVault,
+    #[error("Sign in to delete a vault from your account.")]
+    DeleteSignedOut,
+    #[error("the vault list could not be saved: {0}")]
+    VaultList(String),
 }
 
 impl From<SecureStoreError> for AccountError {
@@ -131,6 +139,9 @@ impl CoreError for AccountError {
             Self::OAuthInvalidResponse => (FailureKind::Api, "oauth_invalid_response"),
             Self::OAuthExpired => (FailureKind::Auth, "oauth_expired"),
             Self::OAuthLoopback => (FailureKind::Internal, "oauth_loopback_unavailable"),
+            Self::DeleteOpenVault => (FailureKind::Invalid, "vault_is_open"),
+            Self::DeleteSignedOut => (FailureKind::Auth, "signed_out"),
+            Self::VaultList(_) => (FailureKind::Storage, "vault_list_unwritable"),
         }
     }
 }
@@ -179,6 +190,9 @@ pub struct AccountService {
     oauth: Mutex<Option<oauth::OAuthAttempt>>,
     /// One Google start or Cancel at a time: a start ends the attempt before it.
     oauth_start: tokio::sync::Mutex<()>,
+    /// One vault directory refresh at a time, and when the last one read the account's list
+    /// (`lastRefreshAt`, `sync/vault-directory.ts:54`).
+    directory: tokio::sync::Mutex<Option<tokio::time::Instant>>,
 }
 
 impl AccountService {
@@ -210,6 +224,7 @@ impl AccountService {
             key_op: tokio::sync::Mutex::new(()),
             oauth: Mutex::new(None),
             oauth_start: tokio::sync::Mutex::new(()),
+            directory: tokio::sync::Mutex::new(None),
         };
         service.restore();
         Ok(service)

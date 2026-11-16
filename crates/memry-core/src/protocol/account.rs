@@ -94,6 +94,17 @@ pub struct VaultSummary {
     pub icon_updated_at: Option<i64>,
 }
 
+/// One row of `GET /sync/vaults` as desktop's account vault directory reads it: the summary,
+/// plus the item count and creation time the switcher shows. Not part of the FFI surface.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VaultDirectoryRow {
+    pub summary: VaultSummary,
+    /// `itemCount`; absent reads as 0.
+    pub item_count: i64,
+    /// `createdAt` as the server sends it; absent or null reads as `None`.
+    pub created_at: Option<i64>,
+}
+
 /// The signer key directory of chapter 01 §1.4.0.
 ///
 /// A snapshot, not a live view: a `signerDeviceId` it cannot resolve means the
@@ -211,10 +222,19 @@ pub async fn complete_setup(
 /// The vault registry. FR-021's "choose one and route to it" is this plus the
 /// `X-Memry-Vault-Id` header (chapter 01 §1.7).
 pub async fn vaults(http: &HttpClient) -> Result<Vec<VaultSummary>, ApiError> {
+    Ok(vault_directory(http)
+        .await?
+        .into_iter()
+        .map(|row| row.summary)
+        .collect())
+}
+
+/// The same list with the counts the desktop vault switcher shows (`vault-directory.ts:42-52`).
+pub async fn vault_directory(http: &HttpClient) -> Result<Vec<VaultDirectoryRow>, ApiError> {
     let body: Json = http
         .send_json(ApiRequest::get(VAULTS_PATH).auth(Auth::Session))
         .await?;
-    read_vaults(&body).ok_or_else(|| ApiError::MalformedResponse {
+    read_vault_rows(&body).ok_or_else(|| ApiError::MalformedResponse {
         path: VAULTS_PATH.to_string(),
         what: "expected an array of vaults, or an object carrying one".to_string(),
     })
@@ -245,7 +265,17 @@ fn rows<'a>(body: &'a Json, key: &str) -> Option<&'a Vec<Json>> {
         .or_else(|| body.get(key).and_then(Json::as_array))
 }
 
+#[cfg(test)]
 fn read_vaults(body: &Json) -> Option<Vec<VaultSummary>> {
+    Some(
+        read_vault_rows(body)?
+            .into_iter()
+            .map(|row| row.summary)
+            .collect(),
+    )
+}
+
+fn read_vault_rows(body: &Json) -> Option<Vec<VaultDirectoryRow>> {
     let mut vaults = Vec::new();
     for row in rows(body, "vaults")? {
         // `vaultUuid` first, because that is what the server actually sends
@@ -261,14 +291,18 @@ fn read_vaults(body: &Json) -> Option<Vec<VaultSummary>> {
         // rule FR-032 states for a zero-row first page: an empty result on an
         // account known to hold data is a failure to report, never an empty
         // account.
-        vaults.push(VaultSummary {
-            id: text(row, &["vaultUuid", "vaultId", "id"])?,
-            name: text(row, &["name"]),
-            encrypted_name: text(row, &["encryptedName"]),
-            name_nonce: text(row, &["nameNonce"]),
-            encrypted_icon: text(row, &["encryptedIcon"]),
-            icon_nonce: text(row, &["iconNonce"]),
-            icon_updated_at: row.get("iconUpdatedAt").and_then(Json::as_i64),
+        vaults.push(VaultDirectoryRow {
+            summary: VaultSummary {
+                id: text(row, &["vaultUuid", "vaultId", "id"])?,
+                name: text(row, &["name"]),
+                encrypted_name: text(row, &["encryptedName"]),
+                name_nonce: text(row, &["nameNonce"]),
+                encrypted_icon: text(row, &["encryptedIcon"]),
+                icon_nonce: text(row, &["iconNonce"]),
+                icon_updated_at: row.get("iconUpdatedAt").and_then(Json::as_i64),
+            },
+            item_count: row.get("itemCount").and_then(Json::as_i64).unwrap_or(0),
+            created_at: row.get("createdAt").and_then(Json::as_i64),
         });
     }
     Some(vaults)
@@ -415,6 +449,19 @@ mod tests {
         assert_eq!(read_vaults(&wrapped).as_deref(), Some(expected.as_slice()));
         // A body that is neither is a malformed response, not an empty account.
         assert_eq!(read_vaults(&json!({ "ok": true })), None);
+    }
+
+    /// `vault-directory.ts:42-52`: the switcher's item count and creation time; absent reads as
+    /// 0 and `None`.
+    #[test]
+    fn the_directory_rows_carry_the_item_count_and_creation_time() {
+        let body = json!({ "vaults": [
+            { "vaultUuid": "v1", "itemCount": 12, "createdAt": 1000 },
+            { "vaultUuid": "v2", "createdAt": null }
+        ]});
+        let rows = read_vault_rows(&body).expect("rows");
+        assert_eq!((rows[0].item_count, rows[0].created_at), (12, Some(1000)));
+        assert_eq!((rows[1].item_count, rows[1].created_at), (0, None));
     }
 
     /// Chapter 05 §5.11.1: servers that predate vault icons omit the three

@@ -313,6 +313,8 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::vault::vault_set_icon,
             crate::commands::vault::vault_switch,
             crate::commands::vault::vault_update_config::<Wry>,
+            crate::commands::vault_account::vault_delete_from_account,
+            crate::commands::vault_account::vault_list_account,
             // vault activity
             crate::commands::vault_activity::vault_activity_clear,
             crate::commands::vault_activity::vault_activity_list,
