@@ -10,6 +10,7 @@
 import Foundation
 import MemryCore
 import Synchronization
+import SwiftUI
 import Testing
 import UIKit
 
@@ -63,6 +64,9 @@ struct ReloadGenerationTests {
         struct Failed: Error {}
         let core: CoreBlockEditor
         let fails = Mutex(false)
+        /// Fails located edits, such as a date rewrite's swap, after
+        /// running `afterNext`.
+        let failsLocated = Mutex(false)
         let afterNext = Mutex<(@Sendable @MainActor () async -> Void)?>(nil)
         init(_ core: CoreBlockEditor) { self.core = core }
 
@@ -76,6 +80,10 @@ struct ReloadGenerationTests {
         func edit(
             noteId: String, blockId: String, locating locate: @escaping @Sendable ([InlineRun]?) -> BlockEdit?
         ) async throws -> LocatedEdit {
+            if failsLocated.withLock({ $0 }) {
+                await after()
+                throw Failed()
+            }
             let located = try await core.edit(noteId: noteId, blockId: blockId, locating: locate)
             await after()
             return located
@@ -99,6 +107,13 @@ struct ReloadGenerationTests {
     @MainActor
     private final class Late {
         var read: Read?
+    }
+
+    /// The page's blocks and the writes they include.
+    @MainActor
+    private final class Drawn {
+        var blocks: [Block] = []
+        var generation = 0
     }
 
     /// One pane on the note: its model, and its block's row, drawn.
@@ -135,6 +150,22 @@ struct ReloadGenerationTests {
         func rereads() {
             let pane = self
             model.session.reload = { if let read = try? await pane.read() { pane.deliver(read) } }
+        }
+
+        /// The page as `NotePageContent` wires it, with SwiftUI updating no
+        /// row: each write's re-read only replaces the page's blocks and
+        /// their stamp, as when the blocks it read equal the ones drawn.
+        func drawsWithoutUpdates() {
+            let pane = self
+            let drawn = Drawn()
+            model.session.reload = {
+                guard let read = try? await pane.read() else { return }
+                drawn.blocks = [read.block]
+                drawn.generation = read.generation
+            }
+            model.session.blocks = { drawn.blocks }
+            model.session.drawnGeneration = { drawn.generation }
+            model.session.drawn(field)
         }
 
         func type(_ text: String) {
@@ -277,5 +308,119 @@ struct ReloadGenerationTests {
         #expect(pane.field.textView.text == "hello \u{FFFC}")
         let drawn = pane.field.textView.textStorage.attribute(.memryDate, at: range.location, effectiveRange: nil) as? DateMentionChip
         #expect(drawn?.value == Self.moved)
+    }
+
+    /// REVIEW-4770 Low 1: a commit of the text the row was drawn with sends
+    /// nothing, so a peer's change read while it was queued is drawn, not
+    /// held back as older than a write that never happened.
+    @Test(.timeLimit(.minutes(1))) func aCommitThatSendsNothingHoldsBackNoRead() async throws {
+        let f = try fixture("a")
+        let pane = try await Pane(f)
+        pane.type("a")
+        pane.model.session.commit(pane.field)
+        _ = try f.vault.vault.notesWriter(store: TaskTestKeychain()).editBlock(
+            noteId: f.noteId, edit: .replaceText(blockId: f.blockId, text: "ab", base: "a")
+        )
+        let read = try await pane.read()
+        pane.deliver(read)
+        await pane.model.session.tail?.value
+
+        #expect(read.generation == 0)
+        #expect(pane.field.textView.text == "ab")
+    }
+
+    /// REVIEW-4770 Low 1: a refused date edit leaves the block as it was.
+    /// The peer's change the row skipped while the edit was queued is drawn
+    /// once the edit's re-read is in, though SwiftUI updates no row.
+    @Test(.timeLimit(.minutes(1))) func aRefusedDateEditDrawsThePeersChangeItHeldBack() async throws {
+        let f = try fixtureWithDate()
+        let editor = Interposed(f.editor)
+        let pane = try await Pane(f, editor: editor)
+        let peer = try await Pane(f)
+        pane.drawsWithoutUpdates()
+        editor.failsLocated.withLock { $0 = true }
+        let skipped = Late()
+        editor.afterNext.withLock {
+            $0 = {
+                _ = await peer.model.commit("Xhello \u{FFFC}", for: f.blockId, base: "hello \u{FFFC}")
+                skipped.read = try? await pane.read()
+                if let read = skipped.read { pane.deliver(read) }
+            }
+        }
+
+        let range = try #require(pane.field.dateChipRange(anchorId: "dm_due"))
+        let chip = try #require(
+            pane.field.textView.textStorage.attribute(.memryDate, at: range.location, effectiveRange: nil) as? DateMentionChip
+        )
+        pane.model.session.requestDateEdit(chip, in: pane.field)
+        pane.model.session.applyDateEdit(.update(Self.moved))
+        await pane.model.session.tail?.value
+
+        #expect(try #require(skipped.read).generation < pane.field.written)
+        #expect(try await pane.stored == "Xhello \u{FFFC}")
+        #expect(pane.field.textView.text == "Xhello \u{FFFC}")
+    }
+
+    /// REVIEW-4770 Low 3: nodes inserted after a text write that failed
+    /// leave no undo step, which would replay typing the core never had.
+    @Test(.timeLimit(.minutes(1))) func nodesAfterAFailedTextWriteLeaveNoUndoStep() async throws {
+        let f = try fixture("a")
+        let editor = Interposed(f.editor)
+        let pane = try await Pane(f, editor: editor)
+        pane.type("ab")
+        editor.fails.withLock { $0 = true }
+        let blockId = f.blockId
+        pane.model.session.commit(pane.field, inserting: { model in
+            let at = NodeAnchor.at(1, in: NSAttributedString(string: "a"), replaces: false)
+            return await model.insertDateMention(in: blockId, at: at, value: Self.due).map { [$0] } ?? []
+        })
+        await pane.model.session.tail?.value
+
+        #expect(try await pane.stored == "a\u{FFFC}")
+        #expect(!pane.model.session.canUndo)
+    }
+
+    /// REVIEW-4770 Low 6: the note page as production builds it. Its read
+    /// model stamps each read with the page session's landed writes, and
+    /// the row reads that stamp, so another device's change read after the
+    /// row's own commit is drawn.
+    @Test(.timeLimit(.minutes(1))) func thePageDrawsAChangeReadAfterTheRowsCommit() async throws {
+        let f = try fixture("a")
+        let model = NoteReadViewModel(route: NoteRoute(id: f.noteId), reader: f.reader)
+        let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
+        let window = UIWindow(windowScene: scene)
+        window.frame = CGRect(x: 0, y: 0, width: 400, height: 800)
+        window.rootViewController = UIHostingController(rootView: NoteReadView(model: model, editor: f.editor))
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        func row() -> BlockTextView? {
+            func all(_ view: UIView) -> [BlockTextView] { ((view as? BlockTextView).map { [$0] } ?? []) + view.subviews.flatMap(all) }
+            return all(window).first
+        }
+        func until(_ condition: () -> Bool) async {
+            for _ in 0 ..< 300 where !condition() {
+                try? await Task.sleep(for: .milliseconds(20))
+            }
+        }
+
+        await until { row()?.text == "a" }
+        let field = try #require(row(), "the body has no row")
+        field.becomeFirstResponder()
+        field.selectedRange = NSRange(location: 1, length: 0)
+        if field.delegate?.textView?(field, shouldChangeTextIn: field.selectedRange, replacementText: "b") != false {
+            field.insertText("b")
+        }
+        field.resignFirstResponder()
+        await until { model.blocksGeneration > 0 }
+        #expect(model.blocksGeneration > 0, "the page stamped no read with the row's commit")
+        let stored = try await f.reader.blocks(id: f.noteId)?.first { $0.id == f.blockId }
+        #expect(stored.map { BlockText.shown($0.inline) } == "ab")
+
+        _ = try f.vault.vault.notesWriter(store: TaskTestKeychain()).editBlock(
+            noteId: f.noteId, edit: .replaceText(blockId: f.blockId, text: "abc", base: "ab")
+        )
+        await model.reload()
+        await until { field.text == "abc" }
+        #expect(field.text == "abc")
     }
 }

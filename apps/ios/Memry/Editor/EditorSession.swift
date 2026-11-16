@@ -584,9 +584,9 @@ final class EditorSession {
         // lands before the reload would keep it, and the next commit's base
         // would still spell a link the core already holds as a node.
         let moved = links.isEmpty ? { $0 } : field.drawLinks(links)
+        let wrote = dirty && text != base
         // The session too, so the write still schedules its sync pass.
         let generation = enqueue {
-            let wrote = dirty && text != base
             let landed = wrote ? await model.commit(text, for: blockId, base: base) : true
             // Not written: the row keeps its text unsaved, so a redraw keeps
             // it and the next commit sends it again (REVIEW-4700).
@@ -601,20 +601,26 @@ final class EditorSession {
             // typing since, which undo and redo keep. To this pane's text
             // with the nodes in, so undo takes them back too. A node over
             // text, such as a `#tag`, keeps its literal for redo to find.
-            if !converted.isEmpty || !added.isEmpty {
+            // Only over a text write that landed: undo would replay a change
+            // the core never had.
+            if landed, !converted.isEmpty || !added.isEmpty {
                 let spans = converted.map { $0.start ..< $0.start + $0.literal.utf8.count } + added.compactMap(Self.span)
                 self.history.record(.text(
                     blockId: blockId, from: base, typed: text, typedLength: length, overText: converted,
                     nodes: added, to: BlockText.placingNodes(spans, in: attributed),
                     caret: (field.pendingSelection ?? field.textView.selectedRange).location
                 ))
-            } else if wrote, landed {
+            } else if landed, wrote {
                 self.history.record(.text(blockId: blockId, from: base, to: text))
             }
             await then?()
-            if dirty || !overText.isEmpty || nodes != nil || then != nil { await self.didChange() }
+            if dirty || !overText.isEmpty || nodes != nil || then != nil {
+                await self.didChange()
+                self.caughtUp(blockId)
+            }
         }
-        if dirty || !overText.isEmpty || nodes != nil { field.written = generation }
+        // A commit that sends nothing holds back no read.
+        if wrote || !overText.isEmpty || nodes != nil { field.written = generation }
         return moved
     }
 
@@ -947,7 +953,20 @@ final class EditorSession {
                 self?.history.record(.date(blockId: blockId, chip: chip, from: request.value, to: value))
             }
             await self?.didChange()
+            self?.caughtUp(blockId)
         }
+    }
+
+    /// The row of `blockId` takes the page's blocks once its run has
+    /// re-read them. A run that left the block as it was (a refused date
+    /// edit, nodes that did not land) re-reads the block the row skipped
+    /// as older while the run was queued, and SwiftUI does not update a
+    /// row whose block did not change, so the skipped read is drawn here.
+    private func caughtUp(_ blockId: String) {
+        guard let field = drawnFields.object(forKey: blockId as NSString), field.blockId == blockId,
+              let block = blocks().first(where: { $0.id == blockId })
+        else { return }
+        field.receive(block, generation: drawnGeneration())
     }
 
     // MARK: Source blocks
@@ -1308,8 +1327,9 @@ final class EditorSession {
         }
         undoneTyping = nil
         // The commit records the changed typing, and this undo takes it back
-        // off: the core ends as the block was drawn before the typing, so
-        // no reload redraws the text view (`updateUIView` compares blocks).
+        // off: the core ends as the block was drawn before the typing, and
+        // SwiftUI may not update a row whose block did not change, so the
+        // replay redraws the text view itself (`redrawing`).
         replay(redrawing: typingChanged ? field : nil) { history in
             if let kept { history.keepRedo(kept) }
             guard let step = history.popUndo() else { return nil }
