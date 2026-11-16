@@ -129,10 +129,17 @@ const CALENDAR: &str = "
     VALUES ('src-1', 'google', 'calendar', 'work@example.com', 'tok-1');";
 
 /// A `data.db` file as a build running `list` left it at `version`, with rows in it.
+///
+/// In WAL with `synchronous` NORMAL, as every build's writer leaves `data.db`
+/// (`pragmas::configure_writer`). SQLite's default rollback journal costs about 90 ms a commit
+/// on the Windows runners, two commits a migration, which ran these tests past nextest's
+/// 300 s limit (#4768).
 fn file_at(list: &[Migration], version: u32) -> (TempDir, PathBuf, Vec<&'static str>) {
     let dir = temp_dir("numbering");
     let path = dir.path().join("data.db");
     let mut conn = Connection::open(&path).expect("create");
+    conn.execute_batch("PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;")
+        .expect("a writer's journal");
     assert_eq!(
         run(&mut conn, &list[..version as usize]).expect("migrate"),
         version
