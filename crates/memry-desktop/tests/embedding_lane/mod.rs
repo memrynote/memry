@@ -17,12 +17,12 @@ use memry_desktop::embedding::projector::{NoteEmbeddingProjector, drain_deferred
 use memry_desktop::embedding::service::{
     EMBEDDING_DIMENSION, EmbedError, EmbeddingService, Engine, ModelLoader, ModelProgress, Timing,
 };
-use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::notes::index::{IndexReport, NoteIndex};
 use memry_desktop::session::projection::{ProjectionEvent, feed};
 use memry_desktop::vault::consumer::Applied;
 use rusqlite::OptionalExtension;
 
+use crate::vault_env::files_too::files_too;
 use crate::vault_env::{Env, WAIT, edit_in_app, env, indexed};
 
 /// A point the fake model waits at until the test lets it go, telling the test it got there.
@@ -122,7 +122,8 @@ pub fn lane() -> Lane {
     let kept = Mutex::new(None);
     let mut e = env(|store| {
         *kept.lock().unwrap() = Some(store.clone());
-        Some(NotesIdentity::new(store))
+        // Filed PDFs and images get notes too, as the app's identity gives them.
+        Some(files_too(store))
     });
     let store = kept.into_inner().unwrap().unwrap();
     let built: Arc<OnceLock<Weak<NoteIndex>>> = Arc::default();

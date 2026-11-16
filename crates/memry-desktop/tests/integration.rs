@@ -119,6 +119,8 @@ mod editor_host;
 #[cfg(unix)]
 #[path = "editor_readonly.rs"]
 mod editor_readonly;
+#[path = "embedding_file_text.rs"]
+mod embedding_file_text;
 #[path = "embedding_owed.rs"]
 mod embedding_owed;
 #[path = "embedding_projector.rs"]
