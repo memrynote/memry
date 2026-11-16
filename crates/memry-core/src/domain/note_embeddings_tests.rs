@@ -114,6 +114,16 @@ impl Dbs {
         self.index(move |conn| with_file_text(conn, notes))
     }
 
+    /// The reconcile's prune, and the `extracted_text` rows it hashed.
+    fn prune(&self) -> (usize, usize) {
+        let notes = self.data.read_blocking(candidates).expect("candidates");
+        self.index(move |conn| {
+            TEXT_ROWS_HASHED.with(|n| n.set(0));
+            let pruned = prune(conn, notes)?;
+            Ok((pruned, TEXT_ROWS_HASHED.with(std::cell::Cell::get)))
+        })
+    }
+
     fn embeddable_note(&self, id: &'static str) -> Option<EmbeddableNote> {
         let note = self
             .data
@@ -377,8 +387,7 @@ fn prune_drops_everything_a_gone_note_owned() {
         store(conn, "gone", None, "Gone", &[v(1.0), v(2.0)], &v(1.0))?;
         mark_dirty(conn, "dirty-gone")
     });
-    let live: HashSet<String> = d.embeddable().into_iter().map(|n| n.note_id).collect();
-    assert_eq!(d.index(move |conn| prune(conn, &live)), 2);
+    assert_eq!(d.prune().0, 2);
     assert_eq!(d.count("SELECT count(*) FROM vec_notes"), 1);
     assert_eq!(d.count("SELECT count(*) FROM vec_note_similar"), 1);
     assert_eq!(d.count("SELECT count(*) FROM vec_note_chunks"), 0);
@@ -386,14 +395,22 @@ fn prune_drops_everything_a_gone_note_owned() {
     assert_eq!(d.count("SELECT count(*) FROM note_embedding_hashes"), 1);
 }
 
+/// The prune holds the index writer, so it reads which notes have text, never the text.
 #[test]
-fn prune_drops_a_file_whose_text_is_gone() {
+fn prune_drops_a_file_whose_text_is_gone_without_reading_any_text() {
     let d = dbs();
-    d.file("pdf", "a/doc.pdf", "pdf", None);
-    d.index(|conn| store(conn, "pdf", None, "doc", &[v(1.0)], &v(1.0)));
-    let live: HashSet<String> = d.embeddable().into_iter().map(|n| n.note_id).collect();
-    assert_eq!(d.index(move |conn| prune(conn, &live)), 1);
-    assert_eq!(d.count("SELECT count(*) FROM vec_notes"), 0);
+    d.file("read", "a/read.pdf", "pdf", None);
+    d.file("gone", "a/gone.pdf", "pdf", None);
+    d.read("read", "", 1, "page one");
+    d.read("read", "", 2, "page two");
+    d.index(|conn| {
+        store(conn, "read", None, "read", &[v(1.0)], &v(1.0))?;
+        store(conn, "gone", None, "gone", &[v(1.0)], &v(1.0))
+    });
+    assert_eq!(d.prune(), (1, 0));
+    assert_eq!(d.state("gone"), None);
+    assert!(d.state("read").is_some());
+    assert_eq!(d.count("SELECT count(*) FROM vec_notes"), 1);
 }
 
 #[test]

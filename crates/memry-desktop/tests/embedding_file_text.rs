@@ -8,6 +8,7 @@
 //! | a markdown note's input ends with its attachments' text    | `withAttachmentText`, :128-133, 452  |
 //! | a read whose event never came is owed and reconciled       | the recorded hash names the text     |
 //! | a file whose text is gone loses its vectors                | `embedFileText`, :363-366            |
+//! | a body at the size cap embeds 16 windows of body alone     | `withAttachmentText`, :128-133       |
 
 use memry_core::domain::file_text::{ExtractedTextMethod, TextSource};
 use memry_desktop::session::projection::{ProjectionEvent, feed};
@@ -82,6 +83,26 @@ fn a_read_whose_event_never_came_is_owed_and_reconciled() {
     l.reconcile();
     assert!(l.head_text(&id).unwrap().contains(SHOT));
     assert!(l.owed().is_empty());
+}
+
+/// 16 windows of `title: long | text: ` hold less than the 64,000-unit cap, so a body near
+/// the cap fills every window, its attachment text never reaches one, and the hash recorded
+/// with that text leaves nothing owed.
+#[test]
+fn a_body_at_the_size_cap_embeds_16_windows_of_body_alone() {
+    let mut l = lane();
+    let body = "word ".repeat(12_798);
+    assert_eq!(body.encode_utf16().count(), 63_990);
+    let id = l.write("long.md", &body);
+    l.embedded(&id);
+
+    read(&l, source(&id, "shot.png"), SHOT);
+    extracted(&l, &id);
+    l.reconcile();
+    assert!(l.owed().is_empty());
+    assert_eq!(l.state(&id).map(|(_, chunks)| chunks), Some(15));
+    let embedded = l.model.embedded.lock().unwrap();
+    assert!(embedded.iter().all(|text| !text.contains("Whiteboard")));
 }
 
 #[test]

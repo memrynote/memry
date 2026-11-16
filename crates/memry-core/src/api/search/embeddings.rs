@@ -75,11 +75,7 @@ impl Search {
         let data = self.data.clone();
         self.index.call_blocking(move |index| {
             let notes = data.read_blocking(note_embeddings::candidates)?;
-            let live = note_embeddings::with_file_text(index, notes)?
-                .into_iter()
-                .map(|note| note.note_id)
-                .collect();
-            note_embeddings::prune(index, &live)
+            note_embeddings::prune(index, notes)
         })
     }
 

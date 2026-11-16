@@ -27,7 +27,7 @@ use std::collections::{HashMap, HashSet};
 use rusqlite::{Connection, OptionalExtension as _, params};
 
 use crate::api::errors::StorageError;
-use crate::domain::content_hash::content_hash;
+use crate::domain::content_hash::{ContentHasher, content_hash};
 use crate::domain::embedding_input::{EMBEDDING_INPUT_VERSION, MAX_EMBEDDABLE_CONTENT_LENGTH};
 use crate::domain::file_text::extracted_text_for_note;
 use crate::storage::vec::to_blob;
@@ -194,7 +194,13 @@ pub fn with_note_file_text(
     Ok(finish(note, text_hash))
 }
 
-/// `content_hash` of each note's [`extracted_text_for_note`], read in one pass, one note's
+#[cfg(test)]
+thread_local! {
+    /// `extracted_text` rows [`extracted_hashes`] read on this thread.
+    pub(crate) static TEXT_ROWS_HASHED: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+/// `content_hash` of each note's [`extracted_text_for_note`], read in one pass, one row's
 /// text held at a time.
 fn extracted_hashes(index: &Connection) -> Result<HashMap<String, String>, StorageError> {
     let mut statement = index
@@ -205,24 +211,28 @@ fn extracted_hashes(index: &Connection) -> Result<HashMap<String, String>, Stora
         .map_err(failed)?;
     let mut rows = statement.query([]).map_err(failed)?;
     let mut hashes = HashMap::new();
-    let mut current: Option<(String, String)> = None;
+    let mut current: Option<(String, ContentHasher)> = None;
     while let Some(row) = rows.next().map_err(failed)? {
+        #[cfg(test)]
+        TEXT_ROWS_HASHED.with(|n| n.set(n.get() + 1));
         let (note_id, text): (String, String) =
             (row.get(0).map_err(failed)?, row.get(1).map_err(failed)?);
         match &mut current {
-            Some((id, joined)) if *id == note_id => {
-                joined.push_str("\n\n");
-                joined.push_str(&text);
+            Some((id, hasher)) if *id == note_id => {
+                hasher.update("\n\n");
+                hasher.update(&text);
             }
             _ => {
-                if let Some((id, joined)) = current.replace((note_id, text)) {
-                    hashes.insert(id, content_hash(&joined));
+                let mut hasher = ContentHasher::new();
+                hasher.update(&text);
+                if let Some((id, done)) = current.replace((note_id, hasher)) {
+                    hashes.insert(id, done.digest());
                 }
             }
         }
     }
-    if let Some((id, joined)) = current {
-        hashes.insert(id, content_hash(&joined));
+    if let Some((id, hasher)) = current {
+        hashes.insert(id, hasher.digest());
     }
     Ok(hashes)
 }
@@ -372,9 +382,20 @@ fn ids(conn: &Connection, sql: &str) -> Result<HashSet<String>, StorageError> {
         .map_err(failed)
 }
 
-/// The reconcile's prune: the vectors and state rows of notes that are not `live`. Returns how
-/// many notes lost theirs.
-pub fn prune(index: &Connection, live: &HashSet<String>) -> Result<usize, StorageError> {
+/// The reconcile's prune: the vectors and state rows of notes that are not embeddable, the
+/// markdown notes of `notes` and its files with text read out of them (`EMBEDDABLE_NOTES`,
+/// :118-123). Reads only which notes have text, never the text: it runs holding the index
+/// writer. Returns how many notes lost theirs.
+pub fn prune(index: &Connection, notes: Vec<EmbeddableNote>) -> Result<usize, StorageError> {
+    let with_text = ids(
+        index,
+        "SELECT DISTINCT note_id FROM extracted_text WHERE text <> ''",
+    )?;
+    let live: HashSet<String> = notes
+        .into_iter()
+        .filter(|note| note.markdown || with_text.contains(&note.note_id))
+        .map(|note| note.note_id)
+        .collect();
     let mut known = ids(index, "SELECT note_id FROM vec_notes")?;
     known.extend(ids(index, "SELECT note_id FROM vec_note_similar")?);
     known.extend(ids(index, "SELECT note_id FROM note_embedding_state")?);
