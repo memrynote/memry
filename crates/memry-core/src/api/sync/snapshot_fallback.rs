@@ -20,6 +20,8 @@ use crate::crdt::snapshots::SnapshotError;
 use crate::crdt::{Refusal, SnapshotGate, SnapshotOutcome, SnapshotPusher};
 use crate::storage::Db;
 use crate::sync::admission::CrdtAdmission;
+use crate::sync::engine::PullSink;
+use crate::sync::pull::PullReport;
 use crate::sync::push::{SnapshotFallback, SnapshotFallbackOutcome};
 
 // TODO(#3664): desktop tells the user a note is too large to sync or over
@@ -31,8 +33,8 @@ pub(crate) struct PassSnapshots {
     pub(crate) pusher: SnapshotPusher,
     pub(crate) db: Db,
     pub(crate) device_id: String,
-    /// The pull the snapshot gate reads: this pass's on iOS, the last finished
-    /// pass's on desktop's driver.
+    /// The pull the snapshot gate reads: this pass's, set before its push
+    /// wave (on desktop's driver through [`PullSink`]).
     pub(crate) pull: Arc<RwLock<LastPull>>,
     /// The driver's shared CRDT admission; iOS paces nothing.
     pub(crate) admission: Option<Arc<CrdtAdmission>>,
@@ -44,6 +46,27 @@ pub(crate) struct LastPull {
     /// The pull ran to its end with nothing refused, dropped or left undecoded.
     pub(crate) clean: bool,
     pub(crate) purged: Vec<String>,
+}
+
+impl LastPull {
+    /// What `pull` left; `failed` when it ended in an error.
+    pub(crate) fn of(pull: &PullReport, failed: bool) -> Self {
+        Self {
+            clean: !failed
+                && !pull.has_more
+                && !pull.refused
+                && pull.corrupt == 0
+                && pull.dropped_pages == 0,
+            purged: pull.purged_documents.clone(),
+        }
+    }
+}
+
+/// Desktop's driver: each pass's pull, before its push wave.
+impl PullSink for PassSnapshots {
+    fn pulled(&self, pull: &PullReport, failed: bool) {
+        *self.pull.write().unwrap_or_else(PoisonError::into_inner) = LastPull::of(pull, failed);
+    }
 }
 
 impl PassSnapshots {

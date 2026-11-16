@@ -214,7 +214,7 @@ impl PushCoordinator {
         for _ in 0..MAX_PUSH_ITERATIONS {
             let ceiling = self.batch_ceiling();
             let now = now_ms();
-            let skip = deferred_docs.clone();
+            let skip = self.skipped_docs(&deferred_docs).await?;
             let Some(batch) = self
                 .db
                 .call(move |conn| outbox::next_batch(conn, now, ceiling, &skip))

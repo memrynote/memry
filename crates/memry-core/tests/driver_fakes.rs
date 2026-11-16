@@ -288,6 +288,27 @@ impl FakeServer {
                 json!({"accepted": ids, "rejected": [], "serverTime": 1, "maxCursor": 1})
                     .to_string()
             }
+            // CRDT: every update and snapshot is stored, and nothing is held remotely.
+            "/sync/crdt/updates" if request.method == "GET" => {
+                json!({"updates": [], "hasMore": false}).to_string()
+            }
+            "/sync/crdt/updates" => {
+                let sent = body_json(request)["updates"].as_array().map_or(0, Vec::len);
+                json!({ "sequences": (1..=sent).collect::<Vec<_>>() }).to_string()
+            }
+            "/sync/crdt/snapshot" => json!({"sequenceNum": 1, "revision": "r1"}).to_string(),
+            "/sync/crdt/snapshot/batch" => {
+                let results: Vec<Json> = body_json(request)["snapshots"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .map(|entry| json!({"noteId": entry["noteId"], "accepted": true, "sequenceNum": 1}))
+                    .collect();
+                json!({ "results": results }).to_string()
+            }
+            route if route.starts_with("/sync/crdt/snapshot/") => {
+                json!({"snapshot": null}).to_string()
+            }
             route => panic!("the fake server has no route {route}"),
         };
         (200, body)

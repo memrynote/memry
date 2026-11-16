@@ -100,6 +100,22 @@ impl PushCoordinator {
         self
     }
 
+    /// The documents the wave's next batch skips: those it already deferred,
+    /// and every queued one while a `429` cooldown holds CRDT pushes, so the
+    /// record rows behind them still go (`crdt-push-admission.ts`).
+    pub(super) async fn skipped_docs(&self, deferred: &[String]) -> Result<Vec<String>, PushError> {
+        if !self.cooling_down() {
+            return Ok(deferred.to_vec());
+        }
+        Ok(self.db.call(|conn| outbox::crdt_docs(conn)).await?)
+    }
+
+    fn cooling_down(&self) -> bool {
+        self.crdt_pacing
+            .as_ref()
+            .is_some_and(|pacing| pacing.admission.holding())
+    }
+
     /// One `POST /sync/crdt/updates` for one document (§7.2), or one snapshot
     /// when a row is too large to ride it.
     pub(super) async fn push_crdt(
@@ -108,6 +124,10 @@ impl PushCoordinator {
         rows: Vec<OutboxRow>,
         report: &mut PushReport,
     ) -> Result<BatchEnd, PushError> {
+        // A cooldown that began mid-wave: nothing is sealed or touched.
+        if self.cooling_down() {
+            return Ok(BatchEnd::Deferred);
+        }
         let attempts = rows.iter().map(|row| row.attempt_count).max().unwrap_or(0);
         let mut updates: Vec<String> = Vec::with_capacity(rows.len());
         let mut sent: Vec<i64> = Vec::with_capacity(rows.len());

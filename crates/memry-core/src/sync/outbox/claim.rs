@@ -76,6 +76,19 @@ pub fn claim(
     Ok(rows)
 }
 
+/// Every document with a CRDT row queued, for a wave that skips them all.
+pub fn crdt_docs(conn: &Connection) -> Result<Vec<String>, StorageError> {
+    let mut statement = conn
+        .prepare("SELECT DISTINCT item_id FROM outbox WHERE op = ?1")
+        .map_err(failed)?;
+    let docs = statement
+        .query_map([OP_CRDT_UPDATE], |row| row.get(0))
+        .map_err(failed)?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(failed)?;
+    Ok(docs)
+}
+
 /// How many rows [`claim`] would hand out now, with no document skipped. Never
 /// removes one.
 pub fn claimable_count(conn: &Connection, now_ms: i64) -> Result<usize, StorageError> {

@@ -4,7 +4,9 @@
 //! The push wave requests a snapshot of every document whose updates the server
 //! stored ([`SnapshotRequests`]). The shell polls [`SyncDriver::snapshots_due`]
 //! on a short timer and runs a pass when one is; the pass ends with
-//! [`SyncDriver::push_due_snapshots`], so the gate reads the pull that just ran.
+//! [`SyncDriver::push_due_snapshots`], so the gate reads the pull that just ran
+//! (the engine's [`crate::sync::engine::PullSink`] records it). The same poll
+//! starts a push once a `429` cooldown that held CRDT rows ends.
 //! At shutdown [`SyncDriver::final_snapshots`] pushes every pending one.
 //!
 //! A snapshot is destructive on the server (§7.7), so every push runs under the
@@ -14,13 +16,11 @@
 
 use tokio::time::Instant;
 
-use crate::api::sync::snapshot_fallback::{LastPull, classify};
+use crate::api::sync::snapshot_fallback::classify;
 use crate::crdt::snapshot_batch::MAX_SNAPSHOT_BATCH_ENTRIES;
 use crate::sync::push::SnapshotFallbackOutcome;
 
-use crate::sync::state::SyncState;
-
-use super::{PassReport, SyncDriver};
+use super::SyncDriver;
 
 /// What one snapshot push round did.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -34,9 +34,10 @@ pub struct SnapshotRound {
 }
 
 impl SyncDriver {
-    /// Whether a snapshot is due at `now_ms` (30 s quiet, 120 s at most).
+    /// Whether a push is due at `now_ms`: a snapshot (30 s quiet, 120 s at
+    /// most), or CRDT rows a `429` cooldown held, now that it ended.
     pub fn snapshots_due(&self, now_ms: i64) -> bool {
-        self.snapshot_requests.any_due(now_ms)
+        self.snapshot_requests.any_due(now_ms) || self.admission.take_resume()
     }
 
     /// Pushes the snapshots due at `now_ms`. Run after a pass, under its gate.
@@ -50,28 +51,6 @@ impl SyncDriver {
     pub async fn final_snapshots(&self, deadline: Instant) -> SnapshotRound {
         let pending = self.snapshot_requests.take_all();
         self.push_snapshots(pending, Some(deadline)).await
-    }
-
-    /// The pull the snapshot gate reads, from a pass that reached the server.
-    pub(super) fn record_pull(&self, pass: &PassReport) {
-        if pass.final_state == SyncState::Offline {
-            return;
-        }
-        let pull = &pass.pull;
-        let clean = pass.pull_error.is_none()
-            && pass.final_state != SyncState::Refused
-            && !pull.has_more
-            && !pull.refused
-            && pull.corrupt == 0
-            && pull.dropped_pages == 0;
-        *self
-            .snapshots
-            .pull
-            .write()
-            .unwrap_or_else(std::sync::PoisonError::into_inner) = LastPull {
-            clean,
-            purged: pull.purged_documents.clone(),
-        };
     }
 
     async fn push_snapshots(&self, docs: Vec<String>, deadline: Option<Instant>) -> SnapshotRound {

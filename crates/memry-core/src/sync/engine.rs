@@ -86,6 +86,14 @@ pub trait PassSeed: Send + Sync {
     async fn seed(&self) -> Result<(), StorageError>;
 }
 
+/// Told what each pass's pull did, before its push wave runs. The snapshot
+/// gate reads it (chapter 07 §7.13.2 condition 1): a push wave's snapshot
+/// fallback must see this pass's pull, never the one before.
+pub trait PullSink: Send + Sync {
+    /// `failed` when the pull ended in an error.
+    fn pulled(&self, pull: &PullReport, failed: bool);
+}
+
 /// What one pass did, in enough detail to assert the drawn edges.
 #[derive(Debug, Clone)]
 pub struct PassReport {
@@ -121,6 +129,7 @@ pub struct SyncEngine {
     http: Arc<HttpClient>,
     reachability: Arc<dyn Reachability>,
     push: Option<Arc<dyn PushWave>>,
+    pull_sink: Option<Arc<dyn PullSink>>,
     /// Run in order between the pull and the push ([`PassSeed`]).
     seeds: Vec<Arc<dyn PassSeed>>,
     /// Pages one pass walks before yielding the gate.
@@ -150,6 +159,7 @@ impl SyncEngine {
             http,
             reachability,
             push: None,
+            pull_sink: None,
             seeds: Vec::new(),
             max_pages: MAX_PAGES_PER_PASS,
             gate: Arc::default(),
@@ -161,6 +171,12 @@ impl SyncEngine {
 
     pub fn with_push(mut self, push: Arc<dyn PushWave>) -> Self {
         self.push = Some(push);
+        self
+    }
+
+    /// Tells `sink` each pass's pull, before the push ([`PullSink`]).
+    pub fn with_pull_sink(mut self, sink: Arc<dyn PullSink>) -> Self {
+        self.pull_sink = Some(sink);
         self
     }
 
@@ -279,6 +295,9 @@ impl SyncEngine {
         // Reads are never gated, so the pull runs before the gate is consulted
         // for anything.
         let (pull, pull_failed) = self.pull_pages(&mut trail).await;
+        if let Some(sink) = &self.pull_sink {
+            sink.pulled(&pull, pull_failed.is_some());
+        }
         if trail.current == SyncState::Refused {
             return self.finish(trigger, trail, pull, done);
         }

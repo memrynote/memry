@@ -267,6 +267,7 @@ impl SyncDriver {
         let tags = TagHub::over(db.clone(), &session.store)?;
         let mut engine = SyncEngine::new(Arc::new(feed), Arc::clone(&http), reachability)
             .with_push(Arc::new(push))
+            .with_pull_sink(Arc::clone(&snapshots) as _)
             .with_gate(pass_gate)
             .with_max_pages(config.max_pages_per_pass)
             .with_seed(Arc::new(TagSeed(Arc::new(tags))));
@@ -325,7 +326,6 @@ impl SyncDriver {
         self.settle_misses().await;
         let started = super::pull::now_ms();
         let pass = self.engine.run_pass(trigger).await;
-        self.record_pull(&pass);
         self.record_history(&pass, started).await;
         self.settle_misses().await;
         self.check_manifest(&pass).await;
@@ -341,7 +341,6 @@ impl SyncDriver {
         let started = super::pull::now_ms();
         let pass = self.engine.wake(cursor).await;
         if let Some(pass) = &pass {
-            self.record_pull(pass);
             self.record_history(pass, started).await;
         }
         self.settle_misses().await;

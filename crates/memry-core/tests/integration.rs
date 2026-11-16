@@ -148,6 +148,7 @@ mod desktop_record_deletes;
 #[cfg(feature = "markdown")]
 #[path = "desktop_record_types.rs"]
 mod desktop_record_types;
+// `deleted_page` and `count` are desktop only (`markdown`).
 #[path = "device_link.rs"]
 mod device_link;
 #[path = "domain_bookmarks.rs"]
@@ -246,6 +247,9 @@ mod domain_template_legacy;
 mod domain_template_store;
 #[path = "domain_templates.rs"]
 mod domain_templates;
+#[cfg(feature = "markdown")]
+#[path = "driver_snapshots.rs"]
+mod driver_snapshots;
 #[path = "dryoc_parity.rs"]
 mod dryoc_parity;
 #[path = "editor_compaction.rs"]
@@ -396,6 +400,8 @@ mod projector_null_tolerance;
 #[cfg(feature = "markdown")]
 #[path = "property_reads_load.rs"]
 mod property_reads_load;
+#[path = "push_crdt_pacing.rs"]
+mod push_crdt_pacing;
 #[path = "push_crdt_update_cap.rs"]
 mod push_crdt_update_cap;
 #[path = "push_delete_wins.rs"]
