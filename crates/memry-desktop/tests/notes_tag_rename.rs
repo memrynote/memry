@@ -284,8 +284,9 @@ fn a_rename_writes_each_file_and_record_once_and_merges_into_a_name_in_use() {
 #[test]
 fn a_case_only_rename_keeps_the_definition_and_a_spaced_name_leaves_the_bodies() {
     let (e, notes, store) = opened();
-    let id = note(&notes, &e, "Work", "Deep #Work today", &["Work"]);
+    // Coloured first: the create defines a tag that has no definition under its key (#4732).
     hub(&e, &store).set_color("Work", "teal").unwrap();
+    let id = note(&notes, &e, "Work", "Deep #Work today", &["Work"]);
     let open = e.session.current().unwrap();
 
     let renamed = notes.rename_tag(&open, &job("Work", "work"), &mut |_, _| {});
