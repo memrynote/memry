@@ -9,11 +9,16 @@
  */
 
 import { describe, expect, it } from 'vitest'
+import { BlockNoteEditor } from '@blocknote/core'
 import {
+  LinkMention,
   MENTION_TOKEN_REGEX,
+  linkMentionDisplayHost,
   serializeLinkMentionToken,
   parseLinkMentionToken
 } from './link-mention'
+import { createMemrySchema } from '../schema'
+import { createServerBlockSpecs, createServerInlineSpecs } from '../server'
 
 function roundTrip(url: string): string | null {
   const token = serializeLinkMentionToken(url)
@@ -149,5 +154,50 @@ describe('parseLinkMentionToken', () => {
     expect(parseLinkMentionToken(' see http://x.com')).toBeNull()
     expect(parseLinkMentionToken(' javascript:alert(1)')).toBeNull()
     expect(parseLinkMentionToken('  ')).toBeNull()
+  })
+})
+
+/**
+ * The chip label is the stored host as written (#4685), so without a
+ * display-time conversion a Cyrillic look-alike reads as the real site and a
+ * bidi override reorders the label (#4751). iOS pins the same values in
+ * `NoteInlineLabelTests.linkMentionHostIsDisplaySafe` (apps/ios/MemryTests/NoteParityRenderTests.swift).
+ */
+describe('linkMentionDisplayHost', () => {
+  it.each([
+    ['a Cyrillic look-alike as punycode', '\u0430pple.com', 'xn--pple-43d.com'],
+    ['a bidi override stripped', 'evil\u202Ecom.example', 'evilcom.example'],
+    ['format and control characters stripped', 'a\u200Bb\u2066c\u0085.example', 'abc.example'],
+    ['an ASCII host unchanged', 'github.com', 'github.com'],
+    ['a stored punycode host unchanged', 'xn--pple-43d.com', 'xn--pple-43d.com'],
+    ['a non-host domain with its non-ASCII percent-encoded', 'x.com/ş', 'x.com/%C5%9F']
+  ])('shows %s', (_name, domain, label) => {
+    expect(linkMentionDisplayHost(domain)).toBe(label)
+  })
+})
+
+describe('LinkMention chip label', () => {
+  function renderChip(domain: string): HTMLElement {
+    const editor = BlockNoteEditor.create({
+      schema: createMemrySchema({
+        blocks: createServerBlockSpecs(),
+        inline: { ...createServerInlineSpecs(), linkMention: LinkMention }
+      })
+    } as never)
+    const props = { url: 'https://example.test/', domain, title: '', favicon: '', siteName: '' }
+    const rendered = LinkMention.implementation.render(
+      { type: 'linkMention', props },
+      () => {},
+      editor
+    )
+    if (!(rendered.dom instanceof HTMLElement)) throw new Error('the chip renders an element')
+    return rendered.dom
+  }
+
+  it('shows the host as ASCII and keeps the stored domain', () => {
+    const domain = '\u202E\u0430pple.com'
+    const chip = renderChip(domain)
+    expect(chip.querySelector('.link-mention-site')?.textContent).toBe('xn--pple-43d.com')
+    expect(chip.getAttribute('data-domain')).toBe(domain)
   })
 })

@@ -40,10 +40,31 @@ enum NoteInlineLabel {
     private static func linkMention(_ run: InlineRun) -> String {
         nonEmpty(run.markAttrs["linkMention.title"])
             ?? nonEmpty(run.markAttrs["linkMention.siteName"])
-            ?? nonEmpty(run.markAttrs["linkMention.domain"])
+            ?? nonEmpty(run.markAttrs["linkMention.domain"].map(displayHost))
             ?? nonEmpty(run.markAttrs["linkMention.url"])
             ?? nonEmpty(run.target)
             ?? ""
+    }
+
+    /// The stored domain as the chip shows it, ASCII only: `\u{430}pple.com`
+    /// (Cyrillic `\u{430}`) reads `xn--pple-43d.com`, and bidi and format
+    /// controls are gone (#4751). Display only; the stored domain keeps the
+    /// host as written. Ports `linkMentionDisplayHost` in
+    /// `packages/editor-schema/src/inline/link-mention.ts`.
+    static func displayHost(_ domain: String) -> String {
+        let visible = String(String.UnicodeScalarView(domain.unicodeScalars.filter {
+            $0.properties.generalCategory != .format && $0.properties.generalCategory != .control
+        }))
+        if visible.unicodeScalars.allSatisfy(\.isASCII) { return visible }
+        if visible.range(of: #"^[^\s/?#@:%\\\[\]]+$"#, options: .regularExpression) != nil {
+            var components = URLComponents()
+            components.host = visible
+            if let host = components.encodedHost, host.unicodeScalars.allSatisfy(\.isASCII) {
+                return host
+            }
+        }
+        let ascii = CharacterSet(charactersIn: Unicode.Scalar(0)...Unicode.Scalar(0x7F))
+        return visible.addingPercentEncoding(withAllowedCharacters: ascii) ?? ""
     }
 
     /// Desktop's pill label (`date-mention.tsx` `formatDateMentionLabel`): a
