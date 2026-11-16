@@ -28,6 +28,7 @@ on:
       - 'scripts/check-line-ceilings.mjs'
       - 'scripts/check-test-timing*.mjs'
       - 'scripts/fetch-pdfium.mjs'
+      - 'scripts/fetch-tesseract-sources.mjs'
       - '.github/workflows/rust-ci.yml'
       - '.github/actions/apt-install/**'
       - '.github/actions/ci-tier/**'
@@ -35,6 +36,7 @@ on:
       - '.github/actions/ort-static/**'
       - '.github/actions/paths-changed/**'
       - '.github/actions/setup-pnpm/**'
+      - '.github/actions/tesseract-sources/**'
   # The merge queue (feat/tauri-v2) runs the full matrix on the merge-group commit; `paths` do not apply.
   merge_group:
   workflow_dispatch:
@@ -124,7 +126,7 @@ jobs:
         uses: ./.github/actions/paths-changed
         with:
           token: ${{ github.token }}
-          include: '^(crates/|apps/desktop-tauri/|tests/sync-harness/scripts/serve\.ts$|tests/sync-harness/src/|apps/sync-server/|pnpm-lock\.yaml$|packages/swift/|packages/contracts/test-vectors/|packages/article-extract/|scripts/check-line-ceilings\.mjs$|scripts/check-test-timing(\.test)?\.mjs$|scripts/fetch-pdfium\.mjs$|\.github/workflows/rust-ci\.yml$|\.github/actions/(apt-install|ci-tier|free-disk|ort-static|paths-changed|setup-pnpm)/)'
+          include: '^(crates/|apps/desktop-tauri/|tests/sync-harness/scripts/serve\.ts$|tests/sync-harness/src/|apps/sync-server/|pnpm-lock\.yaml$|packages/swift/|packages/contracts/test-vectors/|packages/article-extract/|scripts/check-line-ceilings\.mjs$|scripts/check-test-timing(\.test)?\.mjs$|scripts/fetch-pdfium\.mjs$|scripts/fetch-tesseract-sources\.mjs$|\.github/workflows/rust-ci\.yml$|\.github/actions/(apt-install|ci-tier|free-disk|ort-static|paths-changed|setup-pnpm|tesseract-sources)/)'
 
   lint-and-test:
     name: Rust ${{ matrix.part }}${{ matrix.partition && format(' {0}', matrix.partition) || '' }} (${{ matrix.os }})
@@ -254,6 +256,16 @@ jobs:
         with:
           token: ${{ github.token }}
 
+      # memry-ml-worker links Tesseract, which its build.rs builds with cmake from these sources
+      # (crates/AGENTS.md, PDF worker). Before Clippy: a workspace lint builds the worker's
+      # `native` feature, so the cmake build runs once there and the worker steps below reuse it.
+      # The test partitions build no worker.
+      - name: Tesseract sources
+        if: matrix.part != 'tests'
+        uses: ./.github/actions/tesseract-sources
+        with:
+          save: ${{ github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2') }}
+
       - name: Format
         if: matrix.part != 'tests' && runner.os == 'Linux'
         run: cargo fmt --all --check
@@ -283,11 +295,25 @@ jobs:
         with:
           tool: nextest
 
+      # The merge queue retries a failed test twice (nextest profile `merge-queue`): a flake there
+      # ejects the PR and costs a full requeue. PR runs do not retry. The flaky-report job posts
+      # every test that passed only on retry to #3967.
       - name: Test
         if: matrix.part != 'checks'
         env:
           PARTITION: ${{ matrix.partition }}
-        run: cargo nextest run -p memry-core -p memry-desktop -p memry-media -p memry-tauri -p memry-test-kit --no-fail-fast --features memry-core/markdown ${PARTITION:+--partition "hash:$PARTITION"}
+          PROFILE: ${{ github.event_name == 'merge_group' && 'merge-queue' || 'default' }}
+        run: cargo nextest run --profile "$PROFILE" -p memry-core -p memry-desktop -p memry-media -p memry-tauri -p memry-test-kit --no-fail-fast --features memry-core/markdown ${PARTITION:+--partition "hash:$PARTITION"}
+
+      - name: Upload the JUnit report (merge queue)
+        if: ${{ !cancelled() && matrix.part != 'checks' && github.event_name == 'merge_group' }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: nextest-junit-${{ matrix.os }}-${{ strategy.job-index }}
+          path: crates/target/nextest/merge-queue/junit.xml
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Doctests
         if: matrix.part != 'tests'
@@ -499,8 +525,36 @@ jobs:
           node ../scripts/fetch-pdfium.mjs --out "$MEMRY_PDFIUM_DIR"
           cargo nextest run -p memry-ml-worker --no-fail-fast
 
+      # Tesseract, Leptonica and ONNX Runtime are linked into the worker statically, and on Windows
+      # so is the VC runtime: the app ships none of their libraries and needs no VC++
+      # redistributable.
+      - name: memry-ml-worker linked libraries
+        if: matrix.part != 'tests' && needs.plan.outputs.full == 'true'
+        run: |
+          cargo build -p memry-ml-worker --bin memry-ml-worker
+          bin="target/debug/memry-ml-worker"
+          echo "Worker: $bin"
+          case "$RUNNER_OS" in
+            macOS) otool -L "$bin" ;;
+            Linux) ldd "$bin" ;;
+            Windows)
+              dumpbin=$(ls /c/Program\ Files*/Microsoft\ Visual\ Studio/*/*/VC/Tools/MSVC/*/bin/Host*/*/dumpbin.exe | head -1)
+              "$dumpbin" -dependents "$bin.exe" ;; # `/dependents` would be rewritten as an MSYS path
+          esac | tee "$RUNNER_TEMP/worker-dependencies.txt"
+          # An empty or failed listing would pass the checks below.
+          grep -qiE 'libc\.so|libSystem|KERNEL32' "$RUNNER_TEMP/worker-dependencies.txt"
+          if grep -iE 'tesseract|lept|onnxruntime|directml' "$RUNNER_TEMP/worker-dependencies.txt"; then
+            echo "::error::$bin depends on a shared Tesseract, Leptonica, ONNX Runtime or DirectML library"
+            exit 1
+          fi
+          if grep -iE 'msvcp[0-9]|vcruntime[0-9]' "$RUNNER_TEMP/worker-dependencies.txt"; then
+            echo "::error::$bin depends on the VC++ redistributable"
+            exit 1
+          fi
+
       # The file text runner through the real worker: the stub's pages, closing the vault stopping
-      # the child, and pdfium's text layer (pdfium fetched by the step above).
+      # the child, pdfium's text layer and OCR of a scanned image and PDF page (pdfium fetched by
+      # the step above).
       - name: Test the file text runner on the worker
         if: matrix.part != 'tests' && runner.os == 'Linux'
         env:
@@ -861,6 +915,39 @@ jobs:
           name: MemryCoreFFI-xcframework
           path: packages/swift/MemryCore/MemryCoreFFI.xcframework
           retention-days: 7
+
+  # Posts the tests that passed only on retry in a merge-queue run to #3967, once per run. Its own job,
+  # so the token that can write issues never runs the build. Not a gate dependency, and every step
+  # tolerates failure: logging a flake never ejects a PR.
+  flaky-report:
+    name: Report flaky tests
+    needs: lint-and-test
+    if: ${{ !cancelled() && github.event_name == 'merge_group' }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          sparse-checkout: scripts
+
+      - name: Download the JUnit reports
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          pattern: nextest-junit-*
+          path: ${{ runner.temp }}/junit
+
+      - name: Post flaky tests to #3967
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MERGE_GROUP_REF: ${{ github.ref }}
+        run: node scripts/report-flaky-tests.mjs "$RUNNER_TEMP/junit"
 
   # The one check name a ruleset requires for this workflow (merge queue, #3517). Matrix legs and
   # fast/full tiers change which jobs exist; this name does not. A skipped job counts as passed.

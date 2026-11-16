@@ -105,6 +105,7 @@ fn env(script: Vec<Scripted>) -> Env {
                 app_version: "1.0.0".to_string(),
                 vault_id: None,
             },
+            None,
         )
         .expect("a session"),
     );

@@ -83,6 +83,7 @@ async fn pass_headers(declaration: Option<Declaration>) -> (Vec<String>, Vec<Str
                 app_version: "1.0.0".to_string(),
                 vault_id: None,
             },
+            None,
         )
         .expect("a session"),
     );

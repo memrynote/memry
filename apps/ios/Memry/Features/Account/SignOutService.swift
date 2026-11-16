@@ -41,7 +41,11 @@ import MemryCore
 //
 //   * **The core call failed.** Nothing local was removed and the session is
 //     where it was. The error is thrown to the caller, which renders it and
-//     offers the action again. This is the locked-keychain case.
+//     offers the action again.
+//   * **The core signed out and the keychain kept entries.** `sign_out` takes
+//     the edge before it returns the store's error (`clear_and_sign_out`), so
+//     the session is `SignedOut`: the user asked to leave, and the files go.
+//     The kept keys are reported as `residue`. A locked keychain is this case.
 //   * **The core call succeeded and the files did not go.** The five entries
 //     are gone, the session is `SignedOut` or `Revoked`, and some vault content
 //     survives on disk. That is **not** a failed sign-out and must not be
@@ -78,9 +82,10 @@ struct LocalWipe: Sendable, Equatable {
     /// The state the core reported **after** its half. Not computed here
     /// (FR-037): the shell renders states, it does not decide them.
     let state: AuthState
-    /// `nil` when nothing is left. Non-`nil` when the keys went and some vault
-    /// content did not — see the file comment. The user is signed out either
-    /// way, so this is never rendered as a failed sign-out.
+    /// `nil` when nothing is left. Non-`nil` when the keychain kept entries, or
+    /// when the keys went and some vault content did not — see the file
+    /// comment. The user is signed out either way, so this is never rendered
+    /// as a failed sign-out.
     let residue: UserFacingError?
 
     var isComplete: Bool { residue == nil }
@@ -109,10 +114,19 @@ struct SignOutService: Sendable {
     /// `POST /auth/logout` rather than blocking a thread, and parking a queue
     /// thread on a round trip would stall every other core call behind it.
     ///
-    /// - Throws: whatever the core raised, with nothing removed locally. A
-    ///   `SecureStore.Locked` here is the retryable one.
+    /// - Throws: whatever the core raised when it did not sign out, with
+    ///   nothing removed locally. A core that signed out and then reported a
+    ///   keychain error is not a throw: the files go and the kept keys are the
+    ///   residue.
     func signOut() async throws -> LocalWipe {
-        let state = try await session.signOut()
+        let state: AuthState
+        do {
+            state = try await session.signOut()
+        } catch {
+            guard session.state() == .signedOut else { throw error }
+            Log.auth.error("signed out; keychain entries survived", .code(ErrorMapping.userFacing(error).code))
+            return wipe(.signedOutByUser, leaving: .signedOut, keysSurvived: true)
+        }
         Log.auth.notice("signed out; removing local vault content")
         return wipe(.signedOutByUser, leaving: state)
     }
@@ -137,15 +151,15 @@ struct SignOutService: Sendable {
 
     /// The filesystem half, which runs only after the core's half returned.
     ///
-    /// It does not throw. By the time it runs the keys are gone and the state
-    /// has moved, so a failure here is a fact about the phone's disk and not a
+    /// It does not throw. By the time it runs the core has signed out and the
+    /// state has moved, so a failure here is a fact about the phone's disk and not a
     /// reason to tell the user their sign-out did not happen.
-    private func wipe(_ reason: LocalWipeReason, leaving state: AuthState) -> LocalWipe {
+    private func wipe(_ reason: LocalWipeReason, leaving state: AuthState, keysSurvived: Bool = false) -> LocalWipe {
         // Where the user was names the account's vaults and notes by id.
         LaunchSnapshot.shared.clear()
         do {
             try content.removeAllVaultContent()
-            return LocalWipe(reason: reason, state: state, residue: nil)
+            return LocalWipe(reason: reason, state: state, residue: keysSurvived ? AccountCopy.keysSurvived : nil)
         } catch {
             // The mapped code goes to the log, which is where a `StorageError`
             // variant is a diagnostic; the *sentence* is the screen's, because
@@ -154,7 +168,8 @@ struct SignOutService: Sendable {
             // `AccountCopy.contentSurvived`.
             let mapped = ErrorMapping.userFacing(error)
             Log.storage.fault("local vault content survived", .code(mapped.code))
-            return LocalWipe(reason: reason, state: state, residue: AccountCopy.contentSurvived)
+            let residue = keysSurvived ? AccountCopy.keysSurvived : AccountCopy.contentSurvived
+            return LocalWipe(reason: reason, state: state, residue: residue)
         }
     }
 }

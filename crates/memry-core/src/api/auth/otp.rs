@@ -166,7 +166,11 @@ impl AuthSession {
     /// `SignedOut`) is `InvalidState` and leaves the store, the attempt and the
     /// state as they were. Pending, then state, the order of every edge out of
     /// an attempt, held through the clear so a provider answer lands before it
-    /// or finds its attempt ended.
+    /// or finds its attempt ended. A store that fails to clear still takes the
+    /// edge and then returns its error: the user asked to be signed out, and a
+    /// session left over half-deleted secrets would refuse the next sign-in.
+    /// The caller reports what remains, and [`Self::restore`] does not bring it
+    /// back.
     pub(super) fn clear_and_sign_out(&self) -> Result<AuthState, AuthError> {
         let mut pending = self.pending.lock().unwrap_or_else(|e| e.into_inner());
         let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
@@ -182,9 +186,24 @@ impl AuthSession {
                 state: state_name(&state),
             });
         };
-        self.tokens.clear()?;
+        self.sign_out_marker.set();
+        let cleared = self.tokens.clear();
+        if cleared.is_ok() {
+            self.sign_out_marker.store_cleared();
+        }
         *pending = PendingSignIn::default();
         *state = next.clone();
+        cleared?;
         Ok(next)
+    }
+
+    /// A shell's sign-out from a state with no `SignedOutByUser` edge: clears
+    /// the store with no edge, and [`Self::restore`] does not bring back what a
+    /// refused delete left. Rust-only.
+    pub fn clear_without_edge(&self) -> Result<(), AuthError> {
+        self.sign_out_marker.set();
+        self.tokens.clear()?;
+        self.sign_out_marker.store_cleared();
+        Ok(())
     }
 }

@@ -11,6 +11,8 @@
 //! `AudioOpen` opens any path as recording 1 of three windows (none for a path ending in
 //! `short.wav`); `EmbedAudioWindow` answers the child's pid, except that window 1 of a path ending
 //! in `crash.wav` aborts, of `hang.wav` never answers, and of `nan.wav` answers NaNs.
+//! `Ocr`'s first language picks its behaviour: `hang` never answers, `slow:<ms>` answers `read`
+//! after that many milliseconds, anything else answers `read` at once.
 //! `--crash-before-ready` aborts before the `Ready` frame. Never bundled.
 
 use std::io::Write;
@@ -118,6 +120,18 @@ fn main() {
                 names.sort();
                 let cwd = std::env::current_dir().unwrap_or_default();
                 Response::Text(format!("{}\t{}", names.join("\n"), cwd.display()))
+            }
+            Request::Ocr { languages, .. } => {
+                let first = languages.first().map_or("", String::as_str);
+                if first == "hang" {
+                    loop {
+                        std::thread::park();
+                    }
+                }
+                if let Some(ms) = first.strip_prefix("slow:").and_then(|ms| ms.parse().ok()) {
+                    std::thread::sleep(std::time::Duration::from_millis(ms));
+                }
+                Response::Text("read".into())
             }
             _ => Response::Done,
         },

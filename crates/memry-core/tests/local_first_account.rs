@@ -49,6 +49,7 @@ fn session(transport: Arc<FakeTransport>, store: Arc<FakeSecureStore>) -> AuthSe
         "https://sync.example.com".to_string(),
         "ios".to_string(),
         device,
+        None,
     )
     .unwrap()
 }

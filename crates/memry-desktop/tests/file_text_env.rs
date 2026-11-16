@@ -31,43 +31,66 @@ pub struct Ft<P> {
     _index: Arc<NoteIndex>,
 }
 
+/// What the runner reads images with.
+pub enum Ocr {
+    /// A build without OCR.
+    Off,
+    /// Answers with [`Ft::ocr`].
+    Fake,
+    Real(Recognize),
+}
+
 /// A vault with `files` written before it opens, then opened and indexed with the runner
 /// registered as `vault_boot` registers it.
 pub fn ft_with<P: PdfReader + 'static>(files: &[(&str, &[u8])], pdf: Arc<P>) -> Ft<P> {
-    ft_built(files, pdf, true)
+    ft_built(files, pdf, Ocr::Fake, "1.0.0")
 }
 
 /// [`ft_with`] in a build without OCR, as the app ships until #3542 lane F.
 pub fn ft_without_ocr<P: PdfReader + 'static>(files: &[(&str, &[u8])], pdf: Arc<P>) -> Ft<P> {
-    ft_built(files, pdf, false)
+    ft_built(files, pdf, Ocr::Off, "1.0.0")
 }
 
-fn ft_built<P: PdfReader + 'static>(files: &[(&str, &[u8])], pdf: Arc<P>, has_ocr: bool) -> Ft<P> {
-    let mut e = env(|store| Some(files_too(store)));
+pub fn ft_built<P: PdfReader + 'static>(
+    files: &[(&str, &[u8])],
+    pdf: Arc<P>,
+    ocr: Ocr,
+    app_version: &str,
+) -> Ft<P> {
+    let e = env(|store| Some(files_too(store)));
     for (rel, bytes) in files {
         let path = e.vault.join(rel);
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         std::fs::write(path, bytes).unwrap();
     }
+    opened(e, pdf, ocr, app_version)
+}
+
+fn opened<P: PdfReader + 'static>(mut e: Env, pdf: Arc<P>, ocr: Ocr, app_version: &str) -> Ft<P> {
     let index = NoteIndex::new(e.tier.clone(), |_| {}, |_| {}, |_| {});
     index.register(&e.session);
-    let ocr: Arc<Mutex<Option<String>>> = Arc::default();
+    let answer: Arc<Mutex<Option<String>>> = Arc::default();
     let languages = Arc::new(Mutex::new(vec!["eng".to_owned()]));
     let clock_offset = Arc::new(AtomicI64::new(0));
     let weak: Weak<NoteIndex> = Arc::downgrade(&index);
+    let recognize = match ocr {
+        Ocr::Off => None,
+        Ocr::Real(recognize) => Some(recognize),
+        Ocr::Fake => {
+            let answer = answer.clone();
+            let recognize: Recognize = Arc::new(move |_| {
+                let answer = answer.lock().unwrap().clone();
+                answer.ok_or_else(|| "OCR failed".to_owned())
+            });
+            Some(recognize)
+        }
+    };
     let file_text = FileText::new(
         &e.session,
         FileTextConfig {
-            app_version: "1.0.0".into(),
+            app_version: app_version.into(),
             pdf: pdf.clone(),
-            recognize: has_ocr.then(|| {
-                let ocr = ocr.clone();
-                let recognize: Recognize = Arc::new(move |_| {
-                    let ocr = ocr.lock().unwrap().clone();
-                    ocr.ok_or_else(|| "OCR failed".to_owned())
-                });
-                recognize
-            }),
+            recognize,
             ocr_languages: {
                 let languages = languages.clone();
                 Arc::new(move || languages.lock().unwrap().clone())
@@ -92,10 +115,18 @@ fn ft_built<P: PdfReader + 'static>(files: &[(&str, &[u8])], pdf: Arc<P>, has_oc
         e,
         file_text,
         pdf,
-        ocr,
+        ocr: answer,
         languages,
         clock_offset,
         _index: index,
+    }
+}
+
+impl<P: PdfReader + 'static> Ft<P> {
+    /// Closes the vault and opens it again in a new app run, of `app_version` and with `ocr`.
+    pub fn restart(self, ocr: Ocr, app_version: &str) -> Self {
+        let e = self.e.restart(|store| Some(files_too(store)));
+        opened(e, self.pdf, ocr, app_version)
     }
 }
 

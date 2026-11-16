@@ -63,6 +63,7 @@ final class VaultFiles: FileProtection {
     static let dataDatabaseName = "data.db"
     static let indexDatabaseName = "index.db"
     static let imagesDirectoryName = "images"
+    static let signOutMarkerName = "signed-out"
 
     /// SQLite's companions to a database file. `-wal` and `-shm` exist only
     /// while a connection is open in WAL mode; `-journal` is what a build that
@@ -269,6 +270,12 @@ final class VaultFiles: FileProtection {
     /// which is a different fact from one this call emptied.
     func vaultsDirectory() throws -> URL {
         try resolvedRoot().appendingPathComponent(Self.vaultsDirectoryName, isDirectory: true)
+    }
+
+    /// `<root>/signed-out`, the core's sign-out marker (#4767): beside the
+    /// vaults directory and outside it, so the sign-out's own wipe keeps it.
+    func signOutMarker() throws -> URL {
+        try resolvedRoot().appendingPathComponent(Self.signOutMarkerName, isDirectory: false)
     }
 
     /// `<root>/vault/<vaultId>`, with the identifier checked before it becomes

@@ -131,6 +131,8 @@ mod embeds;
 mod file_open;
 #[path = "file_text_env.rs"]
 mod file_text_env;
+#[path = "file_text_ocr.rs"]
+mod file_text_ocr;
 #[path = "file_text_runner.rs"]
 mod file_text_runner;
 #[path = "fold_agent.rs"]

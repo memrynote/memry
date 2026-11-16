@@ -163,6 +163,8 @@ impl Sleeper for RecordingSleeper {
 pub struct FakeSecureStore {
     entries: Mutex<HashMap<SecureStoreKey, Vec<u8>>>,
     locked: Mutex<bool>,
+    /// `clear` removes nothing and fails, as a keychain that refuses a delete does.
+    clear_fails: Mutex<bool>,
 }
 
 impl FakeSecureStore {
@@ -179,6 +181,10 @@ impl FakeSecureStore {
     /// assert the retry that fact exists for.
     pub fn unlock_device(&self) {
         *self.locked.lock().unwrap() = false;
+    }
+
+    pub fn fail_clear(&self) {
+        *self.clear_fails.lock().unwrap() = true;
     }
 
     pub fn text(&self, key: SecureStoreKey) -> Option<String> {
@@ -219,6 +225,11 @@ impl SecureStore for FakeSecureStore {
     }
 
     fn clear(&self) -> Result<(), SecureStoreError> {
+        if *self.clear_fails.lock().unwrap() {
+            return Err(SecureStoreError::Failed {
+                what: "the keychain refused".into(),
+            });
+        }
         self.entries.lock().unwrap().clear();
         Ok(())
     }

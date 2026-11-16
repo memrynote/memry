@@ -200,6 +200,7 @@ fn vault_with_side(
                 app_version: "1.0.0".to_string(),
                 vault_id: None,
             },
+            None,
         )
         .expect("a session"),
     );

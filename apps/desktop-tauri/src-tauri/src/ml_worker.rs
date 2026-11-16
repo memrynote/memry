@@ -1,5 +1,5 @@
 //! The `memry-ml-worker` sidecar, out of process, as two children of the same binary: the PDF
-//! worker (pdfium, one `WorkerHandle`, read by the file text runner of the open vault, which stops
+//! worker (pdfium and Tesseract, one `WorkerHandle`, read by the file text runner of the open vault, which stops
 //! it on every vault close, #3542 lane G) and the embedding model (`WorkerModel` under the app's
 //! `EmbeddingService`, Step 23). Each child starts on its first call and stops on every vault close
 //! and in the `stop-utility-processes` shutdown step. The note embedding lane runs on every open
@@ -15,6 +15,8 @@ use memry_desktop::embedding::service::{self, EmbeddingService, Timing};
 use memry_desktop::embedding::worker::{WorkerModel, exit_telemetry};
 use memry_desktop::notes::index::NoteIndex;
 use memry_desktop::paths::AppPaths;
+use memry_desktop::services::file_text::ocr::OcrEngine;
+use memry_desktop::services::file_text::runner::Recognize;
 use memry_desktop::services::file_text::service::{FileText, FileTextConfig};
 use memry_desktop::services::file_text::{WorkerHandle, WorkerPaths};
 use memry_desktop::services::ocr_languages::OcrLanguages;
@@ -117,8 +119,8 @@ fn worker_paths(app: &AppHandle<Wry>) -> Result<WorkerPaths, String> {
     Ok(WorkerPaths::new(exe_dir, &resource_dir(app)?))
 }
 
-/// A debug build runs from the checkout, where `scripts/fetch-pdfium.mjs` puts pdfium; Tauri's
-/// resource dir of an unbundled build is the target dir, which holds no resources.
+/// A debug build runs from the checkout, where `scripts/fetch-pdfium.mjs` puts pdfium and the
+/// English OCR data is committed; Tauri's resource dir of an unbundled build is the target dir, which holds no resources.
 fn resource_dir(app: &AppHandle<Wry>) -> Result<PathBuf, String> {
     if cfg!(debug_assertions) {
         return Ok(Path::new(env!("MEMRY_CHECKOUT_DIR")).join("src-tauri/resources"));
@@ -181,22 +183,23 @@ pub fn register_embedding_lane<R: Runtime>(
     }
 }
 
-/// The file text runner of every open vault (#3542 lane G), reading PDFs through the worker. No
-/// worker (see `manage`) leaves the app without file text this run, as without PDFs: the runner's
-/// jobs would fail and be read again only a day later. The embedding model stops on every close
+/// The file text runner of every open vault (#3542 lane G), reading PDFs and OCR through the
+/// worker. No worker (see `manage`) leaves the app without file text this run, as without PDFs:
+/// the runner's jobs would fail and be read again only a day later. The embedding model stops on every close
 /// (`register_on_close`) whether or not the PDF worker exists.
 pub fn register(app: &AppHandle<Wry>, session: &Session) {
     register_on_close(app, session);
     let Some(worker) = app.try_state::<Arc<WorkerHandle>>() else {
         return;
     };
+    let recognize = recognizer(app, worker.inner());
     let (languages, index) = (app.clone(), app.clone());
     let file_text = FileText::new(
         session,
         FileTextConfig {
             app_version: app.package_info().version.to_string(),
             pdf: worker.inner().clone(),
-            recognize: None,
+            recognize,
             ocr_languages: Arc::new(move || {
                 languages
                     .try_state::<Arc<OcrLanguages>>()
@@ -225,4 +228,24 @@ pub fn register(app: &AppHandle<Wry>, session: &Session) {
     );
     file_text.register();
     app.manage(file_text);
+}
+
+/// OCR with the languages the OCR languages service has ready. Without that service or the
+/// resource dir, images and scanned pages fail `OCR unavailable` this run.
+fn recognizer(app: &AppHandle<Wry>, worker: &Arc<WorkerHandle>) -> Option<Recognize> {
+    let Some(languages) = app.try_state::<Arc<OcrLanguages>>() else {
+        tracing::error!(
+            scope = "MlWorker",
+            "no OCR this run: the OCR languages service is not running"
+        );
+        return None;
+    };
+    let languages = languages.inner().clone();
+    match resource_dir(app) {
+        Ok(dir) => Some(OcrEngine::new(worker.clone(), &dir).recognizer(languages)),
+        Err(error) => {
+            tracing::error!(scope = "MlWorker", "no OCR this run: {error}");
+            None
+        }
+    }
 }

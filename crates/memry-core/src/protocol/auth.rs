@@ -393,11 +393,11 @@ impl TokenManager {
         Ok(())
     }
 
-    /// Sign-out and revocation, data-model §B: every entry goes.
+    /// Sign-out and revocation, data-model §B: every entry goes; the latch resets even on failure.
     pub fn clear(&self) -> Result<(), AuthError> {
-        self.store.clear()?;
+        let cleared = self.store.clear();
         self.reset_latch();
-        Ok(())
+        Ok(cleared?)
     }
 
     fn reset_latch(&self) {

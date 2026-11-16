@@ -1,8 +1,11 @@
 #!/usr/bin/env node
-// Builds the `memry-ml-worker` sidecar for `tauri dev` and fetches the pdfium it binds. The worker
-// links ONNX Runtime statically, which needs `ORT_LIB_LOCATION` on every target but macOS arm64
-// (crates/AGENTS.md, ONNX Runtime). Without it, the dev build leaves out the `embed` feature: PDFs
-// work, and every embedding op fails with the reason, so the app shows the model as failed.
+// Builds the `memry-ml-worker` sidecar for `tauri dev`, after fetching the Tesseract sources it
+// links, and fetches the pdfium it binds. The worker links ONNX Runtime statically, which needs
+// `ORT_LIB_LOCATION` on every target but macOS arm64 (crates/AGENTS.md, ONNX Runtime). Without it,
+// the dev build leaves out the `embed` feature: PDFs and OCR work, and every embedding op fails
+// with the reason, so the app shows the model as failed. Tesseract is built with cmake; without
+// cmake on PATH the dev build leaves out the `ocr` feature the same way, and images and scanned
+// pages fail with the reason.
 //
 //   node scripts/dev-worker.mjs
 import { spawnSync } from 'node:child_process'
@@ -11,13 +14,19 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const ROOT = resolve(fileURLToPath(new URL('../../..', import.meta.url)))
 
-/** The cargo feature arguments: the whole worker when ONNX Runtime can link, else PDFs only. */
+/** The cargo feature arguments: the whole worker when ONNX Runtime can link and cmake runs, else PDFs plus what can build. */
 export function workerFeatures(
-  /** @type {{ platform: string, arch: string, env: Record<string, string | undefined> }} */ host
+  /** @type {{ platform: string, arch: string, env: Record<string, string | undefined>, cmake: boolean }} */ host
 ) {
   const ort =
     Boolean(host.env.ORT_LIB_LOCATION) || (host.platform === 'darwin' && host.arch === 'arm64')
-  return ort ? ['--features', 'native'] : ['--no-default-features', '--features', 'pdf']
+  if (ort && host.cmake) return ['--features', 'native']
+  const features = ['pdf', host.cmake && 'ocr', ort && 'embed'].filter(Boolean)
+  return ['--no-default-features', '--features', features.join(',')]
+}
+
+function hasCmake() {
+  return spawnSync('cmake', ['--version'], { stdio: 'ignore' }).status === 0
 }
 
 function run(/** @type {string} */ command, /** @type {string[]} */ args) {
@@ -26,15 +35,27 @@ function run(/** @type {string} */ command, /** @type {string[]} */ args) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const cmake = hasCmake()
   const features = workerFeatures({
     platform: process.platform,
     arch: process.arch,
-    env: process.env
+    env: process.env,
+    cmake
   })
-  if (features.includes('--no-default-features')) {
+  const built = features.at(-1) ?? ''
+  if (!built.includes('embed') && built !== 'native') {
     console.warn(
       'ORT_LIB_LOCATION is not set: building memry-ml-worker without the embedding model. ' +
         'Set it as crates/.cargo/config.toml describes to run embeddings in dev.'
+    )
+  }
+  if (cmake) {
+    run(process.execPath, ['scripts/fetch-tesseract-sources.mjs'])
+  } else {
+    console.warn(
+      'cmake is not on PATH: building memry-ml-worker without OCR (Tesseract), so images and ' +
+        'scanned pages are not read in dev. Install cmake and a C++ compiler ' +
+        '(apps/desktop-tauri/AGENTS.md) to read them.'
     )
   }
   run('cargo', [

@@ -72,14 +72,17 @@ impl AuthSession {
     /// lifecycle instead — a launch, a return from protected-data-unavailable —
     /// and a lifecycle signal that arrives twice must not be an error the shell
     /// has to learn to suppress. From anything but `SignedOut` it reports the
-    /// state it found and touches nothing.
+    /// state it found and touches nothing, and so it does after the user signed
+    /// out, in this process or an earlier one, until a device registers: a
+    /// refresh token the keychain refused to delete is not a session to
+    /// restore (#4767).
     ///
     /// - Returns: the state after the probe.
     /// - Throws: `SecureStore` when the store could not be read at all. That is
     ///   **not** "no session": call it again once the device is unlocked.
     pub fn restore(&self) -> Result<AuthState, AuthError> {
         let current = self.state_now();
-        if current != AuthState::SignedOut {
+        if current != AuthState::SignedOut || self.sign_out_marker.is_set() {
             return Ok(current);
         }
         // The read is the whole probe. A token that is present but expired is

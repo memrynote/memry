@@ -20,7 +20,7 @@ pub const NAME: &str = "file-text";
 pub struct FileTextConfig {
     pub app_version: String,
     pub pdf: Arc<dyn PdfReader>,
-    /// `None` until the Tesseract engine ships (#3542 lane F).
+    /// `None` in a build without OCR: images and scanned pages fail `OCR unavailable`.
     pub recognize: Option<Recognize>,
     pub ocr_languages: OcrLanguageCodes,
     pub now_ms: NowMs,

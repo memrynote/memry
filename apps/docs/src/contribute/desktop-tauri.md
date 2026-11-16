@@ -9,6 +9,7 @@ The desktop app is moving from Electron to Tauri v2 over the Rust core. The new 
 - macOS: Xcode command line tools.
 - Windows: the Visual Studio C++ build tools and WebView2, which Windows 11 includes.
 - Linux: `libwebkit2gtk-4.1-dev libsoup-3.0-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev libxdo-dev libsecret-1-dev libfontconfig1-dev patchelf`.
+- cmake 3.18 or later on `PATH`, for the Tesseract OCR engine that the `memry-ml-worker` sidecar builds from pinned sources. The first build downloads those sources once and compiles them for a few minutes. Without cmake, `pnpm dev:tauri` builds the sidecar without OCR and says so: PDFs still read, and images and scanned pages do not.
 
 ## Run it
 

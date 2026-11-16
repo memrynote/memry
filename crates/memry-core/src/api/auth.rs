@@ -35,7 +35,10 @@ mod oauth;
 mod otp;
 mod recovery;
 mod restore;
+mod sign_out_marker;
 mod token;
+
+use sign_out_marker::SignOutMarker;
 
 pub use identity::ensure_device_identity;
 pub use oauth::{AuthProvider, ProviderSignInOutcome, WebSignInOutcome};
@@ -199,6 +202,10 @@ pub struct AuthSession {
     device: DeviceDescriptor,
     state: Mutex<AuthState>,
     pending: Mutex<PendingSignIn>,
+    /// Set when the user signs out, cleared when a device registers, kept across a restart: a
+    /// refresh token a refused keychain delete left behind never restores the session the user
+    /// ended ([`Self::restore`]).
+    sign_out_marker: SignOutMarker,
 }
 
 impl AuthSession {
@@ -269,6 +276,9 @@ impl AuthSession {
         let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
         match transition(&state, &event) {
             Some(next) => {
+                if event == AuthEvent::DeviceRegistered {
+                    self.sign_out_marker.clear();
+                }
                 *state = next.clone();
                 Ok(next)
             }
@@ -348,6 +358,9 @@ impl AuthSession {
     /// `client_platform` is `ios | android | desktop` (chapter 11 §11.2) and is
     /// validated here: chapter 11 §11.3 says a malformed header opts the client
     /// out of the write gate silently, so it never leaves this constructor.
+    ///
+    /// `sign_out_marker` is the file that keeps a sign-out across a restart (#4767), in the app's
+    /// own directory and outside any vault; `None` keeps it in memory only (tests, tools).
     #[uniffi::constructor]
     pub fn new(
         transport: Arc<dyn Transport>,
@@ -355,6 +368,7 @@ impl AuthSession {
         base_url: String,
         client_platform: String,
         device: DeviceDescriptor,
+        sign_out_marker: Option<String>,
     ) -> Result<Self, ApiError> {
         let identity = ClientIdentity::new(&client_platform, &device.app_version)?;
         // The refresh client carries no token provider, so a 401 on
@@ -374,6 +388,7 @@ impl AuthSession {
             device,
             state: Mutex::new(AuthState::SignedOut),
             pending: Mutex::new(PendingSignIn::default()),
+            sign_out_marker: SignOutMarker::new(sign_out_marker),
         })
     }
 
