@@ -204,7 +204,7 @@ export function VaultSwitcher({ renderTrigger, placement }: VaultSwitcherProps =
     if (!vaultToDelete) return
     setDeleting(true)
     try {
-      await window.api.vault.deleteFromAccount(vaultToDelete.uuid)
+      await vaultService.deleteFromAccount(vaultToDelete.uuid)
       setVaultToDelete(null)
       await Promise.all([refreshAccountVaults(), refreshVaults()])
     } catch (err) {

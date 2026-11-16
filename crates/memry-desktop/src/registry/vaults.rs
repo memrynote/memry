@@ -119,6 +119,41 @@ impl VaultRegistry {
         }
     }
 
+    /// Every entry as stored, without touching the folders.
+    pub fn stored(&self) -> Vec<StoredVault> {
+        self.config
+            .read(|map| vault_objects(map).filter_map(to_stored).collect())
+    }
+
+    /// Records the id the account knows the vault at `path` by, so the account vault directory
+    /// matches it without opening its database (`vault/index.ts:966-971`). A server id the vault
+    /// is bound to always wins; the vault's own id fills only an empty entry, so an id another
+    /// build stamped stays until this build binds the vault.
+    pub fn stamp_vault_uuid(
+        &self,
+        path: &str,
+        server_id: Option<&str>,
+        own_id: &str,
+    ) -> Result<(), RegistryError> {
+        self.config.update(|map| {
+            let Some(entry) = vaults_mut(map)?
+                .into_iter()
+                .flatten()
+                .filter_map(Value::as_object_mut)
+                .find(|o| path_of(o) == Some(path))
+            else {
+                return Ok(());
+            };
+            let stamp = match server_id {
+                Some(id) => id,
+                None if entry.get("vaultUuid").and_then(Value::as_str).is_none() => own_id,
+                None => return Ok(()),
+            };
+            entry.insert("vaultUuid".into(), Value::String(stamp.to_owned()));
+            Ok::<_, RegistryError>(())
+        })
+    }
+
     pub fn get(&self, path: &str) -> Option<StoredVault> {
         self.config.read(|map| {
             vault_objects(map)

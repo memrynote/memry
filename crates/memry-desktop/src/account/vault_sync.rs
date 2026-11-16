@@ -102,6 +102,8 @@ pub struct SyncWiring {
     pub bindings: Arc<OpenVaultBinding>,
     /// Each binding change of the open vault (`sync:vault-binding-changed`).
     pub on_binding: Arc<dyn Fn(&BindingState) + Send + Sync>,
+    /// A vault directory refresh changed a vault's icon (`vault:list-changed`).
+    pub on_vault_list_changed: Arc<dyn Fn() + Send + Sync>,
 }
 
 /// The open vault without keeping it open: a closed vault ends the binding task.
@@ -193,6 +195,10 @@ impl SyncWiring {
             if self.bindings.publish(&live, &state) {
                 (self.on_binding)(&state);
             }
+            if state == BindingState::Bound {
+                // Sync starts for this vault: register it with the account (`runtime.ts:897`).
+                self.refresh_vault_directory();
+            }
             drop(live);
             if state != BindingState::Unknown {
                 return;
@@ -216,7 +222,23 @@ impl SyncWiring {
         {
             (self.on_binding)(&state);
         }
+        if state == BindingState::Bound {
+            // `vault-binding-resolve.ts:54`.
+            self.refresh_vault_directory();
+        }
         Ok(state)
+    }
+
+    /// A forced vault directory refresh in the background; an icon it changes is announced.
+    pub fn refresh_vault_directory(&self) {
+        let account = Arc::clone(&self.account);
+        let registry = self.registry.clone();
+        let on_changed = Arc::clone(&self.on_vault_list_changed);
+        self.runtime.spawn(async move {
+            if account.refresh_vault_directory(&registry, true).await {
+                on_changed();
+            }
+        });
     }
 }
 

@@ -21,7 +21,7 @@
 use crate::api::auth::AuthSession;
 use crate::api::errors::{ApiError, AuthError};
 use crate::crypto::vault_name::SealedText;
-use crate::protocol::account::{self, KeyMaterial, VaultSummary};
+use crate::protocol::account::{self, KeyMaterial, VaultDirectoryRow, VaultSummary};
 use crate::protocol::account_admin::{self, AccountDevice, BillingStatus, StorageUsage};
 
 #[uniffi::export(async_runtime = "tokio")]
@@ -133,6 +133,12 @@ impl AuthSession {
 
 /// Desktop-only calls, kept out of the UniFFI surface until a shell needs them.
 impl AuthSession {
+    /// `GET /sync/vaults` with each vault's item count and creation time, for desktop's
+    /// account vault directory.
+    pub async fn vault_directory(&self) -> Result<Vec<VaultDirectoryRow>, ApiError> {
+        account::vault_directory(&self.http()).await
+    }
+
     /// `PUT /sync/vaults/:vaultId/icon`: `Some` is an icon sealed by
     /// [`crate::api::crypto::encrypt_vault_icon`], `None` a reset to the
     /// default. `Ok(false)` means the server already holds a newer change.
