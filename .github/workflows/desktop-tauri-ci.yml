@@ -4,7 +4,7 @@ name: Desktop Tauri CI
 
 on:
   pull_request:
-    # `labeled` starts the full matrix for a PR into feat/tauri-v2 once `full-ci` is added; every
+    # `labeled` starts the full matrix for a tiered PR (base not main) once `full-ci` is added; every
     # other labeled event skips all jobs, so PRs into main see no change.
     types: [opened, synchronize, reopened, labeled]
   # The full matrix runs on every merge into feat/tauri-v2.
@@ -19,6 +19,10 @@ on:
       - 'oxlint.config.mts'
       - '.github/workflows/desktop-tauri-ci.yml'
       - '.github/actions/apt-install/**'
+      - '.github/actions/ci-tier/**'
+      - '.github/actions/free-disk/**'
+      - '.github/actions/paths-changed/**'
+      - '.github/actions/setup-pnpm/**'
       - 'scripts/check-renderer-no-sync-host*.mjs'
       - 'scripts/release/**'
       - 'scripts/rehearsal/**'
@@ -33,7 +37,7 @@ concurrency:
   # One group per workflow and ref; a PR with `full-ci` and the noop runs keep their own groups. A
   # workflow_dispatch on feat/tauri-v2 gets its own group so a manual Intel run is neither cancelled
   # by a push nor cancels one.
-  group: desktop-tauri-ci-${{ github.workflow }}-${{ github.ref }}${{ ((github.event.action == 'labeled' && !(github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')) || (github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) && format('-noop-{0}', github.run_id) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/feat/tauri-v2' && format('-dispatch-{0}', github.run_id) || (github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci') && '-full' || '')) }}
+  group: desktop-tauri-ci-${{ github.workflow }}-${{ github.ref }}${{ ((github.event.action == 'labeled' && !(github.base_ref != 'main' && github.event.label.name == 'full-ci')) || (github.event.action == 'opened' && github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) && format('-noop-{0}', github.run_id) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/feat/tauri-v2' && format('-dispatch-{0}', github.run_id) || (github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci') && '-full' || '')) }}
   # A burst of merges into feat/tauri-v2 checks only the newest head: a push there cancels the run
   # of the previous head. main pushes keep running to completion, as before.
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
@@ -48,11 +52,13 @@ env:
   CARGO_PROFILE_DEV_DEBUG: line-tables-only
 
 jobs:
-  # Tiering: a PR into feat/tauri-v2 runs the fast tier; `full-ci`, a push to feat/tauri-v2 and
-  # workflow_dispatch run everything. Every other trigger gets full = tauri = swift = true.
+  # Tiering: a PR whose base is not main (feat/tauri-v2 or a stacked PR's branch) runs the fast
+  # tier, plus the Windows and Apple Silicon legs its diff can break; `full-ci`, the merge queue, a
+  # push to feat/tauri-v2 and workflow_dispatch run everything. Every other trigger gets full =
+  # tauri = swift = true.
   plan:
     name: CI tier
-    if: (github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')
+    if: (github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref != 'main' && github.event.label.name == 'full-ci')
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     permissions:
@@ -67,45 +73,39 @@ jobs:
       build_matrix: ${{ steps.matrix.outputs.build }}
       paths: ${{ steps.paths.outputs.changed }}
     steps:
+      # The CI definitions and the Rust sources, whose `#[cfg(<os>)] mod` declarations tell the tier
+      # which files only Windows or macOS compiles (blobless and sparse: ~20 MB of .rs).
       - name: Checkout
         uses: actions/checkout@v6
         with:
-          sparse-checkout: .github
+          fetch-depth: 1
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /.github/
+            /crates/**/*.rs
+            /apps/desktop-tauri/src-tauri/**/*.rs
 
       - name: Decide tier
         id: tier
         uses: ./.github/actions/ci-tier
         with:
           token: ${{ github.token }}
+          source: ${{ github.workspace }}
 
-      # Fast tier: linux-x64 only. Full: every platform, minus Apple Silicon in the merge queue
-      # (macos=false) and minus Intel unless plan.intel is true (main, dispatch). macos-x64 has no
-      # e2e leg: nothing downloads it. The merge queue also skips the windows-arm64 e2e leg: at
-      # ~29 min it held every queue group ~10 min past the next job, mostly in pnpm disk I/O on the
-      # runner's one drive. It still runs on the push after the merge and under `full-ci`.
-      # linux-x64 (the fast tier's longest job) and windows-x64 (the queue's) run their e2e specs
-      # in two legs (`shard` 1 and 2). Each leg builds its own app: a warm build is 3-4 min, and a
-      # specs job that downloaded it would wait on `needs: build`, the whole matrix.
+      # The build matrix (rules in .github/actions/ci-tier/tauri-builds.jq).
       - name: Build the build matrix
         id: matrix
         env:
           FULL: ${{ steps.tier.outputs.full }}
           MACOS: ${{ steps.tier.outputs.macos }}
           INTEL: ${{ steps.tier.outputs.intel }}
+          WINDOWS_LEGS: ${{ steps.tier.outputs.tauri_windows }}
+          MACOS_LEGS: ${{ steps.tier.outputs.tauri_macos }}
           QUEUE: ${{ github.event_name == 'merge_group' }}
         run: |
-          matrix=$(jq -cn --arg full "$FULL" --arg macos "$MACOS" --arg intel "$INTEL" --arg queue "$QUEUE" '
-            [
-              {platform: "macos-arm64", os: "macos-15", triple: "aarch64-apple-darwin", on: ($macos == "true")},
-              {platform: "macos-x64", os: "macos-15-intel", triple: "x86_64-apple-darwin", on: ($intel == "true")},
-              {platform: "windows-x64", os: "windows-2022", triple: "x86_64-pc-windows-msvc", on: true},
-              {platform: "windows-arm64", os: "windows-11-arm", triple: "aarch64-pc-windows-msvc", on: true},
-              {platform: "linux-x64", os: "ubuntu-22.04", triple: "x86_64-unknown-linux-gnu", on: true},
-              {platform: "linux-arm64", os: "ubuntu-22.04-arm", triple: "aarch64-unknown-linux-gnu", on: true}
-            ]
-            | map(select(.on and ($full == "true" or .platform == "linux-x64")) | del(.on))
-            | {include: [.[] | . as $p | ("debug", "e2e") as $variant | select($p.platform != "macos-x64" or $variant != "e2e") | select($queue != "true" or $p.platform != "windows-arm64" or $variant != "e2e") | $p + {variant: $variant}
-              | if .variant == "e2e" and (.platform == "linux-x64" or .platform == "windows-x64") then (. + {shard: 1}), (. + {shard: 2}) else . end]}')
+          matrix=$(jq -cn --arg full "$FULL" --arg macos "$MACOS" --arg intel "$INTEL" --arg queue "$QUEUE" --arg win "$WINDOWS_LEGS" --arg mac "$MACOS_LEGS" \
+            -f .github/actions/ci-tier/tauri-builds.jq)
           echo "build=$matrix" >> "$GITHUB_OUTPUT"
           echo "Build matrix: $matrix"
 
@@ -116,12 +116,12 @@ jobs:
         uses: ./.github/actions/paths-changed
         with:
           token: ${{ github.token }}
-          include: '^(apps/desktop-tauri/|crates/|packages/|pnpm-lock\.yaml$|oxlint\.config\.mts$|\.github/workflows/desktop-tauri-ci\.yml$|\.github/actions/apt-install/|scripts/check-renderer-no-sync-host(\.test)?\.mjs$|scripts/(release|rehearsal)/)'
+          include: '^(apps/desktop-tauri/|crates/|packages/|pnpm-lock\.yaml$|oxlint\.config\.mts$|\.github/workflows/desktop-tauri-ci\.yml$|\.github/actions/(apt-install|ci-tier|free-disk|paths-changed|setup-pnpm)/|scripts/check-renderer-no-sync-host(\.test)?\.mjs$|scripts/(release|rehearsal)/)'
 
   static:
     name: Static checks
     needs: plan
-    if: ${{ !cancelled() && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')) }}
+    if: ${{ !cancelled() && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref != 'main' && github.event.label.name == 'full-ci')) }}
     runs-on: ubuntu-22.04
     timeout-minutes: 40
     steps:
@@ -189,7 +189,7 @@ jobs:
         with:
           toolchain: '1.98.1'
 
-      # Saves only on push, dispatch and PRs into main. A PR into feat/tauri-v2 and a merge-queue run
+      # Saves only on push, dispatch and PRs into main. A tiered PR (base not main) and a merge-queue run
       # restore what the push to feat/tauri-v2 saved and write nothing (a save is 2-4 GB per job).
       - name: Cache cargo
         id: cargo-cache
@@ -201,7 +201,7 @@ jobs:
         with:
           workspaces: crates
           key: ubuntu-22.04
-          save-if: ${{ github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2') }}
+          save-if: ${{ github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref == 'main') }}
 
       # A restore cut off at the step timeout can leave half an archive on disk. Start the
       # build cold rather than from files cargo might trust.
@@ -245,7 +245,7 @@ jobs:
   renderer-tests:
     name: Renderer tests (${{ matrix.shard }}/3)
     needs: plan
-    if: ${{ !cancelled() && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')) }}
+    if: ${{ !cancelled() && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref != 'main' && github.event.label.name == 'full-ci')) }}
     runs-on: ubuntu-22.04
     timeout-minutes: 40
     strategy:
@@ -279,8 +279,9 @@ jobs:
         if: matrix.shard == 1
         run: pnpm --filter @memry/desktop-tauri test:scripts
 
-  # Fast tier: linux-x64 only, and only when the diff can change app behavior. Full: every leg the plan
-  # job lists (no Apple Silicon in the merge queue, no Intel except on main and dispatch).
+  # Fast tier: linux-x64 (plus the windows-x64 and macos-arm64 legs the plan adds for a diff that can
+  # break them), and only when the diff can change app behavior. Full: every leg the plan job lists
+  # (no Apple Silicon in the merge queue, no Intel except on main and dispatch).
   # Entries that name an existing `platform` add their keys to that platform's legs. Each leg
   # builds and then tests on its own runner, so a platform waits only for itself and a macOS
   # platform takes one runner slot per variant: `Build debug` also runs the launch smoke and the
@@ -347,7 +348,7 @@ jobs:
           toolchain: '1.98.1'
           targets: ${{ matrix.triple }}
 
-      # Saves only on push, dispatch and PRs into main. A PR into feat/tauri-v2 and a merge-queue run
+      # Saves only on push, dispatch and PRs into main. A tiered PR (base not main) and a merge-queue run
       # restore what the push to feat/tauri-v2 saved and write nothing (a save is 2-4 GB per job).
       - name: Cache cargo
         id: cargo-cache
@@ -360,7 +361,7 @@ jobs:
           workspaces: crates
           key: ${{ matrix.os }}-${{ matrix.variant }}-${{ matrix.triple }}
           # Of two e2e shards, the first saves the entry both restore.
-          save-if: ${{ matrix.shard != 2 && github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2') }}
+          save-if: ${{ matrix.shard != 2 && github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref == 'main') }}
 
       # A restore cut off at the step timeout can leave half an archive on disk. Start the
       # build cold rather than from files cargo might trust.
@@ -495,12 +496,13 @@ jobs:
 
   # The one check name a ruleset requires for this workflow (merge queue, #3517). Matrix legs and
   # fast/full tiers change which jobs exist; this name does not. A skipped job counts as passed.
-  # Runs only for feat/tauri-v2 and the merge queue, so main and its PRs see no new check.
+  # Runs only for feat/tauri-v2, the PRs stacked on it and the merge queue, so main and its PRs see
+  # no new check.
   gate:
     name: Desktop Tauri CI gate
     needs: [plan, static, renderer-tests, build]
     # Skipped (not red) in noop runs: the merge queue is the authoritative gate.
-    if: ${{ always() && !((github.event.action == 'labeled' && !(github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')) || (github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) && (github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || github.base_ref == 'feat/tauri-v2' || github.ref == 'refs/heads/feat/tauri-v2') }}
+    if: ${{ always() && !((github.event.action == 'labeled' && !(github.base_ref != 'main' && github.event.label.name == 'full-ci')) || (github.event.action == 'opened' && github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) && (github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.base_ref != 'main') || github.ref == 'refs/heads/feat/tauri-v2') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     steps:

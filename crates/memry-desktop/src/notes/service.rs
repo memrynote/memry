@@ -20,9 +20,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 
 use memry_core::api::journal::Journal;
+use memry_core::domain::body_tags;
 use memry_core::seams::secure_store::SecureStore;
 
-use super::error::NotesError;
+use super::error::{NotesError, SCOPE};
 use super::tag_template::Undos;
 use super::write_order::WriteOrder;
 use crate::session::OpenVault;
@@ -121,6 +122,32 @@ impl NotesService {
     /// The journal of the open vault, for its reads (`journal::calendar`).
     pub fn journal(&self, open: &OpenVault) -> Result<Arc<Journal>, NotesError> {
         Ok(open.vault.journal(self.store.clone())?)
+    }
+
+    /// Electron's `ensureTagDefinitions` after `createNote` and `updateNote` (#4732): a
+    /// definition for each of `header`, then each `#tag` of `body`, that has no record
+    /// ([`memry_core::domain::tag_mint::define_used`]), before the command sends
+    /// `notes:tags-changed`. The tag lists read the note's tags once it is written, and a tag
+    /// with no definition reads its name's default colour, which the index pass's mint then
+    /// replaced. Create passes no body: its body tags are not indexed yet, so the pass that
+    /// indexes them mints them and sends `TagsDefined`. The note is written either way: a
+    /// failure is logged and that pass mints it.
+    pub(crate) fn define_tags(&self, open: &OpenVault, header: &[String], body: &str) {
+        let mut tags = header.to_vec();
+        tags.extend(body_tags::extract_markdown(body));
+        if tags.is_empty() {
+            return;
+        }
+        let minted = match open.vault.tag_hub(self.store.clone()) {
+            Ok(hub) => hub.define_used(&tags).map_err(|error| error.to_string()),
+            Err(error) => Err(format!("no device identity: {error}")),
+        };
+        if let Err(error) = minted {
+            tracing::warn!(
+                scope = SCOPE,
+                "tags not defined, the index pass retries: {error}"
+            );
+        }
     }
 
     /// Test hook: `hook` runs inside the next journal save, between its file write and the

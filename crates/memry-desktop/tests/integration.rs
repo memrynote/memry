@@ -20,6 +20,8 @@ mod vault_env;
 mod account_oauth;
 #[path = "account_service.rs"]
 mod account_service;
+#[path = "account_teardown.rs"]
+mod account_teardown;
 #[path = "activity_log.rs"]
 mod activity_log;
 #[path = "activity_scan.rs"]
@@ -281,6 +283,8 @@ mod notes_properties;
 mod notes_resolve_refs;
 #[path = "notes_service.rs"]
 mod notes_service;
+#[path = "notes_tag_mint_lists.rs"]
+mod notes_tag_mint_lists;
 #[path = "notes_tag_rename.rs"]
 mod notes_tag_rename;
 #[path = "notes_tag_retag.rs"]

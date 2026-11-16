@@ -159,6 +159,7 @@ fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
                 send_indexing_status(&reporter);
                 drain_deferred_embeddings(&reporter, &indexed);
             }
+            IndexReport::TagsDefined => broadcast(&reporter, NoteTagsChangedEvent),
         },
         move |links| announce_links(&announcer, links),
         move |note_id| crate::shell::journal_events::landed(&lander, note_id),

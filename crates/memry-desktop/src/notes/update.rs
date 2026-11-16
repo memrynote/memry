@@ -278,6 +278,10 @@ impl NotesService {
         };
         let note = read::get(open, &edit.id, None)?
             .ok_or_else(|| NotesError::NotFound(edit.id.clone()))?;
+        // `updateNote` mints for the note's tags when they changed.
+        if tags_changed {
+            self.define_tags(open, &note.header_tags, &body);
+        }
         Ok(Updated {
             saved_content: Some(body),
             note,

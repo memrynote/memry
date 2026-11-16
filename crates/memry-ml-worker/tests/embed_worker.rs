@@ -203,3 +203,120 @@ fn an_embed_over_its_cap_fails_without_reaching_the_worker() {
     ));
     assert_eq!(worker.pid(), None);
 }
+
+/// Every window of a recording on the stub, which opens any path as three windows. The samples
+/// stay in the worker; only the window count and one embedding per window cross the pipe.
+fn embed_recording(worker: &Supervisor, path: &str) -> Result<Vec<Vec<f32>>, WorkerError> {
+    let recording = worker.open_audio(std::path::Path::new(path))?;
+    let mut vectors = Vec::new();
+    for window in 0..recording.windows() {
+        vectors.push(worker.embed_audio_window(&recording, window)?);
+    }
+    worker.close_audio(recording)?;
+    Ok(vectors)
+}
+
+/// A voice memo's name is the user's: the refusal of a path that is not UTF-8 names no path.
+#[cfg(unix)]
+#[test]
+fn a_path_that_is_not_utf8_is_refused_without_naming_it() {
+    use std::os::unix::ffi::OsStrExt;
+    let (worker, _) = supervisor(Vec::new());
+    let path = std::path::Path::new(std::ffi::OsStr::from_bytes(b"/memo-\xff-private.wav"));
+    match worker.open_audio(path) {
+        Err(WorkerError::Failed(message)) => {
+            assert!(!message.contains("private"), "{message}")
+        }
+        other => panic!("{:?}", other.map(|recording| recording.windows())),
+    }
+}
+
+#[test]
+fn a_recording_is_embedded_window_by_window_in_one_child() {
+    let (worker, exits) = supervisor(Vec::new());
+    let vectors = embed_recording(&worker, "memo.wav").expect("embedded");
+    let pid = worker.pid().expect("running") as f32;
+    assert_eq!(vectors, vec![vec![pid; EMBEDDING_DIMENSION]; 3]);
+    let short = worker
+        .open_audio(std::path::Path::new("short.wav"))
+        .expect("opened");
+    assert_eq!(short.windows(), 0, "a recording under one second has none");
+    worker.close_audio(short).expect("closed");
+    assert!(exits.lock().unwrap().is_empty());
+}
+
+/// A native crash on any window (an audio encoder fault on a hostile file) fails the recording,
+/// so no partial set is stored, and reaches the exit observer; the next recording gets a new
+/// child. The open and the windows before it succeed, which resets the supervisor's crash count:
+/// the app's breaker counts each such recording (`memry-desktop/tests/embedding_worker.rs`).
+#[test]
+fn a_crash_on_an_audio_window_fails_the_recording_and_the_next_gets_a_new_child() {
+    let (worker, exits) = supervisor(Vec::new());
+    let mut killed = Vec::new();
+    for _ in 0..3 {
+        let recording = worker
+            .open_audio(std::path::Path::new("crash.wav"))
+            .expect("opened");
+        killed.push(worker.pid().expect("running"));
+        worker
+            .embed_audio_window(&recording, 0)
+            .expect("the first window");
+        assert!(matches!(
+            worker.embed_audio_window(&recording, 1),
+            Err(WorkerError::Exited(_))
+        ));
+    }
+    assert_eq!(
+        embed_recording(&worker, "memo.wav").expect("served").len(),
+        3
+    );
+    assert!(!killed.contains(&worker.pid().expect("running")));
+    let seen = exits_after(&exits, 3);
+    assert_eq!(
+        seen.iter().map(|(phase, _)| *phase).collect::<Vec<_>>(),
+        [ExitPhase::InFlight; 3]
+    );
+}
+
+/// A window that never returns is killed at the op timeout; the next recording gets a new child,
+/// and a window of the old child's recording is refused rather than sent to the new one.
+#[test]
+fn a_hung_audio_window_is_killed_at_the_op_timeout() {
+    let worker = Supervisor::new(
+        PathBuf::from(env!("CARGO_BIN_EXE_memry-ml-worker-stub")),
+        Vec::new(),
+        Limits {
+            op_timeout: Duration::from_millis(500),
+            ..Limits::default()
+        },
+        Arc::new(SystemClock),
+    );
+    let hung = worker
+        .open_audio(std::path::Path::new("hang.wav"))
+        .expect("opened");
+    let killed = worker.pid().expect("running");
+    assert!(matches!(
+        worker.embed_audio_window(&hung, 1),
+        Err(WorkerError::Timeout { .. })
+    ));
+    assert!(matches!(
+        worker.embed_audio_window(&hung, 0),
+        Err(WorkerError::NotOpen)
+    ));
+    assert_eq!(
+        embed_recording(&worker, "memo.wav")
+            .expect("a new child")
+            .len(),
+        3
+    );
+    assert_ne!(worker.pid(), Some(killed));
+}
+
+#[test]
+fn an_audio_embedding_with_a_value_that_is_not_finite_is_refused() {
+    let (worker, _) = supervisor(Vec::new());
+    assert!(matches!(
+        embed_recording(&worker, "nan.wav"),
+        Err(WorkerError::Protocol(_))
+    ));
+}

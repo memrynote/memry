@@ -14,7 +14,7 @@ use memry_desktop::account::{
 };
 use memry_desktop::registry::config::AppConfig;
 use memry_desktop::registry::vaults::VaultRegistry;
-use memry_desktop::session::Session;
+use memry_desktop::session::{OpenVault, Session};
 use tokio::sync::oneshot;
 
 use super::account::{EMAIL, install, sign_in};
@@ -73,6 +73,7 @@ async fn new_device(
 /// the link is approved. Returns the poll's answer and the background finalize's outcome.
 async fn link(
     approver: &AccountService,
+    approver_open: Option<&OpenVault>,
     device: &Arc<AccountService>,
     session: &Session,
 ) -> (
@@ -89,7 +90,7 @@ async fn link(
         .expect("the approver's code");
     assert_eq!(sas, scan.verification_code, "both sides show one code");
     approver
-        .approve_linking(&qr.session_id)
+        .approve_linking(&qr.session_id, approver_open)
         .await
         .expect("the approval");
 
@@ -128,7 +129,7 @@ async fn a_scanned_code_brings_the_accounts_key_and_vault_and_a_removed_device_i
     let (_a_dir, a, a_store) = approver(&mut server, &[HOME]).await;
     let (_b_dir, b, b_store, session) = new_device(&mut server, true).await;
 
-    let (_, poll, finalized) = link(&a, &b, &session).await;
+    let (_, poll, finalized) = link(&a, None, &b, &session).await;
 
     assert_eq!(poll, LinkPoll::Linked { vaults: None });
     let device_id = tokio::time::timeout(Duration::from_secs(30), finalized)
@@ -179,7 +180,7 @@ async fn a_key_that_is_not_the_accounts_is_refused_and_nothing_is_registered() {
         .unwrap();
     let (_b_dir, b, b_store, session) = new_device(&mut server, false).await;
 
-    let (_, poll, finalized) = link(&a, &b, &session).await;
+    let (_, poll, finalized) = link(&a, None, &b, &session).await;
 
     assert_eq!(poll, LinkPoll::Linked { vaults: None });
     let error = tokio::time::timeout(Duration::from_secs(30), finalized)
@@ -197,6 +198,31 @@ async fn a_key_that_is_not_the_accounts_is_refused_and_nothing_is_registered() {
     assert!(b.session().registered_device_id().is_err());
 }
 
+/// An account that lists no vault: the approver sends its open vault's server id instead
+/// (`collectVaultTransfer`), and the new device's open vault is bound to it.
+#[tokio::test(flavor = "multi_thread")]
+async fn an_account_with_no_vault_listed_sends_the_approvers_open_vault() {
+    let mut server = Server::start();
+    let (a_dir, a, _a_store) = approver(&mut server, &[]).await;
+    let a_session = Session::new(VaultRegistry::new(Arc::new(AppConfig::load(
+        a_dir.path().join("vaults.json"),
+    ))));
+    a_session.create(a_dir.path(), "Approver").expect("a vault");
+    let a_open = a_session.current().unwrap();
+    a_open.vault.bind_server_vault(WORK).unwrap();
+    let (_b_dir, b, _b_store, session) = new_device(&mut server, true).await;
+
+    let (_, poll, finalized) = link(&a, Some(&a_open), &b, &session).await;
+
+    assert_eq!(poll, LinkPoll::Linked { vaults: None });
+    tokio::time::timeout(Duration::from_secs(30), finalized)
+        .await
+        .expect("the finalize ends")
+        .expect("it reports")
+        .expect("the device registers");
+    assert_eq!(bound(&session).as_deref(), Some(WORK));
+}
+
 /// Two account vaults: the key waits for the user's pick. A pick whose primary is not among the
 /// selected keeps the choice; the next pick provisions the primary beside the open vault, opens
 /// it bound to the account's vault, and registers the device.
@@ -207,7 +233,7 @@ async fn a_vault_choice_waits_for_a_valid_pick_and_opens_the_primary_bound() {
     let (b_dir, b, b_store, session) = new_device(&mut server, true).await;
     let mine = session.current().expect("its own vault").path;
 
-    let (session_id, poll, _finalized) = link(&a, &b, &session).await;
+    let (session_id, poll, _finalized) = link(&a, None, &b, &session).await;
 
     let LinkPoll::Linked {
         vaults: Some(mut vaults),
@@ -267,7 +293,7 @@ async fn a_wrong_key_never_reaches_the_vault_choice() {
     let (b_dir, b, b_store, session) = new_device(&mut server, true).await;
     let mine = session.current().expect("its own vault").path;
 
-    let (session_id, poll, finalized) = link(&a, &b, &session).await;
+    let (session_id, poll, finalized) = link(&a, None, &b, &session).await;
 
     assert_eq!(poll, LinkPoll::Linked { vaults: None }, "no choice offered");
     let error = tokio::time::timeout(Duration::from_secs(30), finalized)
@@ -313,7 +339,7 @@ async fn a_vault_id_that_leaves_the_picked_folder_is_refused() {
     let (b_dir, b, _b_store, session) = new_device(&mut server, true).await;
     let mine = session.current().expect("its own vault").path;
 
-    let (session_id, poll, _finalized) = link(&a, &b, &session).await;
+    let (session_id, poll, _finalized) = link(&a, None, &b, &session).await;
 
     assert!(
         matches!(poll, LinkPoll::Linked { vaults: Some(_) }),

@@ -382,6 +382,20 @@ vi.mock('../src/generated/bindings', () => {
       foldRun: (noteId: string) => window.api.noteFold.get(noteId),
       foldRetry: (noteId: string | null) => window.api.noteFold.retry(noteId ?? undefined),
       foldGetLastRun: () => window.api.noteFold.getLastRun(),
+      // Settings > AI and the onboarding read and start the text model; the section's own test
+      // mocks the bindings.
+      aiGetModelStatus: vi.fn(() =>
+        Promise.resolve({
+          name: 'EmbeddingGemma 2',
+          dimension: 256,
+          loaded: false,
+          loading: false,
+          error: null,
+          embeddingCount: 0
+        })
+      ),
+      aiLoadModel: vi.fn(() => Promise.resolve({ success: true })),
+      aiReindexEmbeddings: vi.fn(() => Promise.resolve({ success: true, computed: 0, skipped: 0 })),
       // Settings > General reads it on mount; the row's own test mocks the bindings.
       ocrLanguagesGetState: () =>
         Promise.resolve({ selected: ['eng'], statuses: { eng: { state: 'ready' } } })
@@ -406,6 +420,7 @@ vi.mock('../src/generated/bindings', () => {
       customIconsUpdatedEvent: { listen: async () => () => undefined },
       vaultNoticesChangedEvent: { listen: async () => () => undefined },
       ocrLanguagesChangedEvent: { listen: async () => () => undefined },
+      aiEmbeddingProgressEvent: { listen: async () => () => undefined },
       journalEntryCreatedEvent: event(() => api().onJournalEntryCreated),
       journalEntryUpdatedEvent: event(() => api().onJournalEntryUpdated),
       journalEntryDeletedEvent: event(() => api().onJournalEntryDeleted),
@@ -648,9 +663,6 @@ const createMockApi = () => ({
     setJournalSettings: vi.fn().mockResolvedValue({ success: true }),
     getAISettings: vi.fn().mockResolvedValue({ enabled: false }),
     setAISettings: vi.fn().mockResolvedValue({ success: true }),
-    getAIModelStatus: vi.fn().mockResolvedValue({ loaded: false }),
-    loadAIModel: vi.fn().mockResolvedValue({ success: true }),
-    reindexEmbeddings: vi.fn().mockResolvedValue({ success: true }),
     getTabSettings: vi.fn().mockResolvedValue({}),
     setTabSettings: vi.fn().mockResolvedValue({ success: true }),
     getStartupThemeSync: vi.fn().mockReturnValue('system'),

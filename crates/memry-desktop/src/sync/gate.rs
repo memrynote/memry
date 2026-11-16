@@ -41,6 +41,9 @@ pub struct AuthFacts {
     pub key_verified: bool,
     /// `sync.recoveryPhraseConfirmed` is not `false`.
     pub recovery_confirmed: bool,
+    /// The keychain did not answer the master-key read (locked, denied, failed), so whether the
+    /// key is there is unknown. Retried along the keychain ladder.
+    pub keychain_unavailable: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -194,6 +197,7 @@ mod tests {
                 signed_in: bits & 1 != 0,
                 key_verified: bits & 2 != 0,
                 recovery_confirmed: bits & 4 != 0,
+                keychain_unavailable: false,
             };
             for binding in BINDINGS {
                 for entitlement in PLANS {
