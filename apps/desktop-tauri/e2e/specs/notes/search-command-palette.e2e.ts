@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url'
 
 import { appReady } from '../../harness/app-ready'
 import { uploadAttachment } from '../../harness/attachments'
-import { FILE_TEXT_UNAVAILABLE, fileTextAvailable } from '../../harness/file-text'
+import { fileTextSkipReason } from '../../harness/file-text'
 import type { Page } from '../../harness/pw-compat/page'
 import { createNote, vaultOpen } from '../../harness/notes'
 import { test, expect } from '../../harness/test'
@@ -126,7 +126,8 @@ async function expectPaletteFinds(page: Page, text: string, title: string): Prom
 }
 
 test('a note is found by the text layer of a PDF attached to it', async ({ page }) => {
-  test.skip(!fileTextAvailable(), FILE_TEXT_UNAVAILABLE)
+  const unavailable = fileTextSkipReason()
+  test.skip(unavailable !== null, unavailable ?? '')
   test.slow()
   await appReady(page)
   await vaultOpen(page)
@@ -139,7 +140,8 @@ test('a note is found by the text layer of a PDF attached to it', async ({ page 
 })
 
 test('a note is found by the words OCR reads from an image attached to it', async ({ page }) => {
-  test.skip(!fileTextAvailable(), FILE_TEXT_UNAVAILABLE)
+  const unavailable = fileTextSkipReason()
+  test.skip(unavailable !== null, unavailable ?? '')
   test.slow()
   await appReady(page)
   await vaultOpen(page)

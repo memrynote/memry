@@ -120,12 +120,31 @@ fn worker_paths(app: &AppHandle<Wry>) -> Result<WorkerPaths, String> {
 }
 
 /// A debug build runs from the checkout, where `scripts/fetch-pdfium.mjs` puts pdfium and the
-/// English OCR data is committed; Tauri's resource dir of an unbundled build is the target dir, which holds no resources.
+/// English OCR data is committed; Tauri's resource dir of an unbundled build is the target dir,
+/// which holds no resources.
 fn resource_dir(app: &AppHandle<Wry>) -> Result<PathBuf, String> {
     if cfg!(debug_assertions) {
-        return Ok(Path::new(env!("MEMRY_CHECKOUT_DIR")).join("src-tauri/resources"));
+        let exe = std::env::current_exe().map_err(|error| error.to_string())?;
+        let exe_dir = exe.parent().ok_or("the executable has no directory")?;
+        return Ok(debug_resource_dir(
+            Path::new(env!("MEMRY_CHECKOUT_DIR")),
+            exe_dir,
+        ));
     }
     app.path().resource_dir().map_err(|error| error.to_string())
+}
+
+/// The checkout's `src-tauri/resources` while that directory exists. A debug binary copied off its
+/// build machine (the CI artifact the Windows and Ubuntu VMs run) has no checkout at the path it
+/// was built at, and reads `resources/` beside the executable instead, where
+/// `winvm.sh install-artifact --with-file-text` puts it.
+fn debug_resource_dir(checkout: &Path, exe_dir: &Path) -> PathBuf {
+    let in_checkout = checkout.join("src-tauri/resources");
+    if in_checkout.is_dir() {
+        in_checkout
+    } else {
+        exe_dir.join("resources")
+    }
 }
 
 /// Every vault close stops the embedding model: no embedding request of the closing vault is
@@ -247,5 +266,32 @@ fn recognizer(app: &AppHandle<Wry>, worker: &Arc<WorkerHandle>) -> Option<Recogn
             tracing::error!(scope = "MlWorker", "no OCR this run: {error}");
             None
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_debug_build_reads_the_checkout_resources_while_the_checkout_exists() {
+        let checkout = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(checkout.path().join("src-tauri/resources")).unwrap();
+        assert_eq!(
+            debug_resource_dir(checkout.path(), Path::new("/vm/memry-tauri")),
+            checkout.path().join("src-tauri/resources")
+        );
+    }
+
+    #[test]
+    fn a_debug_build_copied_off_its_checkout_reads_resources_beside_the_executable() {
+        let gone = tempfile::tempdir()
+            .unwrap()
+            .path()
+            .join("runner/work/memry");
+        assert_eq!(
+            debug_resource_dir(&gone, Path::new("/vm/memry-tauri")),
+            Path::new("/vm/memry-tauri/resources")
+        );
     }
 }
