@@ -16,6 +16,7 @@ use tokio::time::Instant;
 
 use crate::api::sync::snapshot_fallback::{LastPull, classify};
 use crate::crdt::snapshot_batch::MAX_SNAPSHOT_BATCH_ENTRIES;
+use crate::sync::hardening::body_state::{self, PushEvent};
 use crate::sync::push::SnapshotFallbackOutcome;
 
 use crate::sync::state::SyncState;
@@ -115,11 +116,34 @@ impl SyncDriver {
             .iter()
             .map(|document| (&**document, self.snapshots.gate(document.id())))
             .collect();
+        let mut stored = Vec::new();
         for (doc_id, outcome) in self.snapshots.pusher.push_batch(&pairs, now).await {
             if let Err(crate::crdt::snapshots::SnapshotError::Api { source }) = &outcome {
                 self.admission.note(source);
             }
-            self.settle(&doc_id, classify(outcome), now, round);
+            let outcome = classify(outcome);
+            if matches!(outcome, Ok(SnapshotFallbackOutcome::Pushed)) {
+                stored.push(doc_id.to_string());
+            }
+            self.settle(&doc_id, outcome, now, round);
+        }
+        self.record_stored(stored, now).await;
+    }
+
+    /// A stored snapshot confirms the body and clears a refusal ([`body_state`]).
+    async fn record_stored(&self, docs: Vec<String>, now: i64) {
+        if docs.is_empty() {
+            return;
+        }
+        let recorded = self
+            .db
+            .call(move |conn| {
+                docs.iter()
+                    .try_for_each(|doc| body_state::record(conn, doc, PushEvent::Snapshot, now))
+            })
+            .await;
+        if let Err(error) = recorded {
+            eprintln!("memry-core: recording the stored snapshots failed: {error}");
         }
     }
 

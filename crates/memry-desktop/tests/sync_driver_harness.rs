@@ -14,6 +14,7 @@
 //! | the manifest check pulls a lost row, pushes a lost create | ch. 05 §5.15, at most every 30 min |
 //! | a reconnect a day after the last pull reads the feed again | Electron `reconnectSync`, the driver's pass |
 //! | a task whose project a peer deleted is deleted and pushed | orphan repair, the driver's pass      |
+//! | a body owed a per-note pull arrives in the driver's pass | `body_step`, `note_body_sync` confirmed |
 
 #![cfg(feature = "harness")]
 
@@ -43,12 +44,14 @@ use memry_core::protocol::auth::DevicePlatform;
 use memry_core::seams::reachability::{Reachability, ReachabilityObserver, Reachable};
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_core::storage::Db;
+use memry_core::sync::body_debt;
 use memry_core::sync::driver::progress::{
     InitialSyncPhase, InitialSyncProgress, InitialSyncSink, SilentInitialSync,
 };
 use memry_core::sync::driver::{DriverConfig, SyncDriver};
 use memry_core::sync::engine::{PassReport, PassSeed};
 use memry_core::sync::first_sync::{RECENT_BODY_LIMIT, RECENT_WINDOW_MS};
+use memry_core::sync::hardening::body_state::{self, SyncStateValue};
 use memry_core::sync::hardening::history;
 use memry_core::sync::state::PassTrigger;
 use memry_desktop::notes::property_definitions::{
@@ -1170,4 +1173,70 @@ async fn a_task_whose_project_a_peer_deleted_is_deleted_and_its_delete_pushed() 
         c.stored("task", &task).is_none(),
         "the server holds the task deleted"
     );
+}
+
+/// A document owed a per-note pull is pulled by the driver's pass (`body_step`, as iOS's
+/// `sync_now` does), and the pushing device reads its note's body as confirmed.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_body_owed_a_per_note_pull_arrives_in_the_drivers_pass() {
+    let server = Server::start();
+    let a = Device::new(&server, 0).await;
+    let b = Device::new(&server, 1).await;
+    let note = write_bodies(&a, 0..1).remove(0);
+    for _ in 0..3 {
+        a.sync().await;
+    }
+    assert_eq!(a.outbox(), 0, "A pushed the note and its body");
+    let state = {
+        let note = note.clone();
+        a.db()
+            .call_blocking(move |conn| {
+                // The vault file's row, which the desktop indexer writes.
+                conn.execute(
+                    "INSERT INTO note_files (note_id, path, indexed_at) VALUES (?1, ?1 || '.md', 0)",
+                    [&note],
+                )
+                .map_err(failed)?;
+                body_state::note_sync_state(conn, &note, true)
+            })
+            .unwrap()
+            .expect("A knows its note")
+    };
+    assert_eq!(state.state, SyncStateValue::Confirmed, "{state:?}");
+
+    b.sync().await;
+    assert!(b.stored("note", &note).is_some());
+    // B loses the body it pulled and owes the document: only the body step brings it back.
+    let doc = note.clone();
+    b.db()
+        .call_blocking(move |conn| {
+            for sql in [
+                "DELETE FROM yjs_updates WHERE doc_id = ?1",
+                "DELETE FROM yjs_snapshots WHERE doc_id = ?1",
+                "DELETE FROM sync_cursors WHERE scope = 'crdt:' || ?1",
+            ] {
+                conn.execute(sql, [&doc]).map_err(failed)?;
+            }
+            body_debt::owe(conn, &doc)
+        })
+        .unwrap();
+
+    b.sync().await;
+
+    let doc = note.clone();
+    let (owed, updates) = b
+        .db()
+        .call_blocking(move |conn| {
+            let updates: i64 = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM yjs_updates WHERE doc_id = ?1",
+                    [&doc],
+                    |row| row.get(0),
+                )
+                .map_err(failed)?;
+            Ok((body_debt::owed(conn)?, updates))
+        })
+        .unwrap();
+    assert!(!owed.contains(&note), "the debt settled: {owed:?}");
+    assert!(updates > 0, "the body is back on B");
 }

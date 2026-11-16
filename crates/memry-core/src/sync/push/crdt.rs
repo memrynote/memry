@@ -24,6 +24,7 @@ use crate::protocol::envelope::EnvelopeError;
 use crate::protocol::http::RetryPolicy;
 use crate::sync::admission::CrdtAdmission;
 use crate::sync::crypto_batch::off_runtime;
+use crate::sync::hardening::body_state::{self, PushEvent};
 use crate::sync::outbox::{self, OutboxRow};
 
 use super::{PushCoordinator, PushError, PushReport, now_ms, retry_at};
@@ -112,6 +113,7 @@ impl PushCoordinator {
         let mut updates: Vec<String> = Vec::with_capacity(rows.len());
         let mut sent: Vec<i64> = Vec::with_capacity(rows.len());
         let mut oversized = false;
+        let retired_before = report.retired;
         let mut unsealed: Vec<(i64, Vec<u8>)> = Vec::with_capacity(rows.len());
         for row in rows {
             let Some(update) = row.payload else {
@@ -143,6 +145,14 @@ impl PushCoordinator {
                 }
             }
         }
+        if report.retired > retired_before {
+            // Dropped for good: only a snapshot of the whole document carries
+            // them now (`note-body-outbox.ts:323`).
+            self.mark(doc_id, PushEvent::Rejected).await?;
+            if let Some(pacing) = &self.crdt_pacing {
+                pacing.requests.request(doc_id, now_ms());
+            }
+        }
         if sent.is_empty() {
             return Ok(BatchEnd::Done);
         }
@@ -165,11 +175,15 @@ impl PushCoordinator {
             },
             None => None,
         };
+        self.mark(doc_id, PushEvent::Sent).await?;
         let body: Json = match self.http.send_json(request).await {
             Ok(body) => body,
             Err(error) => {
                 if let Some(pacing) = &self.crdt_pacing {
                     pacing.admission.note(&error);
+                }
+                if let Err(record) = self.mark(doc_id, PushEvent::Failed).await {
+                    eprintln!("memry-core: recording the failed body push of {doc_id}: {record:?}");
                 }
                 return Err(error.into());
             }
@@ -189,7 +203,17 @@ impl PushCoordinator {
         report.accepted += sent.len();
         report.crdt_updates += sent.len();
         let stored = !sent.is_empty();
-        self.db.call(move |conn| outbox::ack(conn, &sent)).await?;
+        let doc = doc_id.to_owned();
+        self.db
+            .call(move |conn| {
+                let tx = conn.transaction().map_err(storage_failed)?;
+                outbox::ack(&tx, &sent)?;
+                if stored {
+                    body_state::record(&tx, &doc, PushEvent::Confirmed, now_ms())?;
+                }
+                tx.commit().map_err(storage_failed)
+            })
+            .await?;
         if stored && let Some(pacing) = &self.crdt_pacing {
             pacing.requests.request(doc_id, now_ms());
         }
@@ -228,11 +252,19 @@ impl PushCoordinator {
             None => SnapshotFallbackOutcome::Transient(NO_FALLBACK.to_owned()),
         };
         let now = now_ms();
+        let doc = doc_id.to_owned();
         let (reason, at) = match outcome {
             SnapshotFallbackOutcome::Pushed => {
                 report.accepted += ids.len();
                 report.crdt_updates += ids.len();
-                self.db.call(move |conn| outbox::ack(conn, &ids)).await?;
+                self.db
+                    .call(move |conn| {
+                        let tx = conn.transaction().map_err(storage_failed)?;
+                        outbox::ack(&tx, &ids)?;
+                        body_state::record(&tx, &doc, PushEvent::Snapshot, now)?;
+                        tx.commit().map_err(storage_failed)
+                    })
+                    .await?;
                 return Ok(BatchEnd::Done);
             }
             SnapshotFallbackOutcome::Transient(reason) => (
@@ -245,8 +277,29 @@ impl PushCoordinator {
         };
         report.rejected += ids.len();
         self.db
-            .call(move |conn| outbox::defer(conn, &ids, &reason, Some(at)))
+            .call(move |conn| {
+                let tx = conn.transaction().map_err(storage_failed)?;
+                outbox::defer(&tx, &ids, &reason, Some(at))?;
+                body_state::record(&tx, &doc, PushEvent::Failed, now)?;
+                tx.commit().map_err(storage_failed)
+            })
             .await?;
         Ok(BatchEnd::Deferred)
+    }
+
+    /// Records what this wave did with `doc_id`'s body ([`body_state`]).
+    async fn mark(&self, doc_id: &str, event: PushEvent) -> Result<(), PushError> {
+        let doc = doc_id.to_owned();
+        let at = now_ms();
+        self.db
+            .call(move |conn| body_state::record(conn, &doc, event, at))
+            .await?;
+        Ok(())
+    }
+}
+
+fn storage_failed(error: rusqlite::Error) -> crate::api::errors::StorageError {
+    crate::api::errors::StorageError::Failed {
+        what: error.to_string(),
     }
 }

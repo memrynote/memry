@@ -33,6 +33,7 @@
 //!   shutdown, and behind an update too large for the incremental route. All
 //!   CRDT pushes share one [`CrdtAdmission`].
 
+mod bodies;
 mod cipher;
 pub mod observer;
 pub mod progress;
@@ -326,6 +327,7 @@ impl SyncDriver {
         let started = super::pull::now_ms();
         let pass = self.engine.run_pass(trigger).await;
         self.record_pull(&pass);
+        self.pull_bodies(&pass).await;
         self.record_history(&pass, started).await;
         self.settle_misses().await;
         self.check_manifest(&pass).await;
