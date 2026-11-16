@@ -189,31 +189,57 @@ struct NoteTitleBurstTests {
     /// key lands once, in order: the title gave up the caret as Return
     /// submitted it, before the body took it, and the keys typed meanwhile
     /// reached no text view (`] milk`, the `[` lost).
-    @Test(.timeLimit(.minutes(1)), arguments: [0, 1, 3, 100])
+    @Test(.timeLimit(.minutes(2)), arguments: [0, 1, 3, 100])
     func a_burst_through_the_titles_return_key_into_a_checklist_keeps_every_key(gap: Int) async throws {
-        let f = try await newNote()
-        let (window, field) = try await open(f)
-        defer { window.isHidden = true }
+        let seen = try await uninterrupted { f, window, field in
+            for character in "title" { key(String(character), in: window, title: field) }
+            let press = HardwarePress(.keyboardReturnOrEnter, "\r")
+            field.pressesBegan([press], with: nil)
+            field.pressesEnded([press], with: nil)
+            for character in "[] milk" {
+                for _ in 0 ..< gap { try await Task.sleep(for: .milliseconds(1)) }
+                key(String(character), in: window, title: field)
+            }
 
-        for character in "title" { key(String(character), in: window, title: field) }
-        let press = HardwarePress(.keyboardReturnOrEnter, "\r")
-        field.pressesBegan([press], with: nil)
-        field.pressesEnded([press], with: nil)
-        for character in "[] milk" {
-            for _ in 0 ..< gap { try await Task.sleep(for: .milliseconds(1)) }
-            key(String(character), in: window, title: field)
+            await until { views(BlockTextView.self, in: window).first?.text == "milk" }
+            let block = views(BlockTextView.self, in: window).first
+            let body = block?.text
+            let shown = field.text
+            await until { field.text == "title" }
+            let title = field.text
+            block?.resignFirstResponder()
+            for _ in 0..<300 {
+                let now = try await stored(f)
+                if now.title == "title", now.body == ["milk"] { break }
+                try await Task.sleep(for: .milliseconds(20))
+            }
+            let kinds = try await f.reader.blocks(id: f.noteId)?.map(\.kind)
+            return (body, shown, title, try await stored(f), kinds)
         }
+        #expect(seen.0 == "milk", "the body shows \(seen.0 ?? "nil")")
+        #expect(seen.2 == "title", "the title shows \(seen.2 ?? "nil"), at first \(seen.1 ?? "nil")")
+        #expect(seen.3.title == "title", "\(seen.3)")
+        #expect(seen.3.body == ["milk"], "\(seen.3)")
+        #expect(seen.4 == ["checkListItem"], "\(seen.4 ?? [])")
+    }
 
-        await until { views(BlockTextView.self, in: window).first?.text == "milk" }
-        let block = try #require(views(BlockTextView.self, in: window).first, "the body has no block")
-        #expect(block.text == "milk", "the body shows \(block.text ?? "nil")")
-        let shown = field.text
-        await until { field.text == "title" }
-        #expect(field.text == "title", "the title shows \(field.text ?? "nil"), at first \(shown ?? "nil")")
-        block.resignFirstResponder()
-        try await expectStored(f, title: "title", body: ["milk"])
-        let kinds = try await f.reader.blocks(id: f.noteId)?.map(\.kind)
-        #expect(kinds == ["checkListItem"], "\(kinds ?? [])")
+    /// Runs `scenario` on a new note until no other suite made its window
+    /// key meanwhile, and returns what it saw. Suites run in parallel in this
+    /// process, and a window made key elsewhere takes the caret mid-burst:
+    /// such a run proves nothing either way (as in `EditorReturnBurstTests`).
+    private func uninterrupted<T>(_ scenario: (Fixture, UIWindow, UITextView) async throws -> T) async throws -> T {
+        var attempt = 0
+        while true {
+            attempt += 1
+            let f = try await newNote()
+            let (window, field) = try await open(f)
+            let resigned = Resigned(window)
+            let seen = try await scenario(f, window, field)
+            resigned.stop()
+            window.isHidden = true
+            if !resigned.happened || attempt == 10 { return seen }
+            try await Task.sleep(for: .milliseconds(200 * attempt))
+        }
     }
 
     /// #4756: a hardware Return while an input method composes in the title
@@ -287,4 +313,24 @@ private final class HardwareKey: UIKey {
     override var characters: String { text }
     override var charactersIgnoringModifiers: String { text }
     override var modifierFlags: UIKeyModifierFlags { [] }
+}
+
+/// Whether `window` stopped being the key window while watched.
+@MainActor
+private final class Resigned {
+    private(set) var happened = false
+    private var observer: NSObjectProtocol?
+
+    init(_ window: UIWindow) {
+        observer = NotificationCenter.default.addObserver(
+            forName: UIWindow.didResignKeyNotification, object: window, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.happened = true }
+        }
+    }
+
+    func stop() {
+        observer.map(NotificationCenter.default.removeObserver)
+        observer = nil
+    }
 }
