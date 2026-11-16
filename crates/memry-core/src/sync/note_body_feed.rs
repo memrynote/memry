@@ -346,6 +346,7 @@ pub(super) fn land_and_advance(
     conn: &Connection,
     fetched: FetchedBodies,
     cursor: Option<&str>,
+    at_head: bool,
     now_ms: i64,
 ) -> Result<Vec<String>, StorageError> {
     let txn = conn.unchecked_transaction().map_err(sqlite_failed)?;
@@ -423,6 +424,9 @@ pub(super) fn land_and_advance(
     }
     // §5.11: last, after every body of the page landed or was owed.
     store::write_cursor(&txn, RECORD_CURSOR_SCOPE, cursor, now_ms)?;
+    if at_head {
+        super::hardening::purged::end_from_zero(&txn)?;
+    }
     txn.commit().map_err(sqlite_failed)?;
     Ok(advanced)
 }

@@ -32,6 +32,9 @@ pub(super) struct DirectoryCipher {
     missed: AtomicBool,
     /// The ids of the records whose signer was not in the directory.
     missed_records: Mutex<BTreeSet<String>>,
+    /// Marker signers a refetch did not name this run, as Electron caches
+    /// `null` in `deviceKeyCache`: one refetch per signer per run.
+    absent_signers: Mutex<HashSet<String>>,
 }
 
 /// The cipher over one fetched directory, that directory, and its signer ids.
@@ -59,6 +62,7 @@ impl DirectoryCipher {
             vault_key: Zeroizing::new(vault_key),
             missed: AtomicBool::new(false),
             missed_records: Mutex::default(),
+            absent_signers: Mutex::default(),
         }
     }
 
@@ -117,6 +121,12 @@ impl DirectoryCipher {
             .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
+    fn absent_signers_lock(&self) -> std::sync::MutexGuard<'_, HashSet<String>> {
+        self.absent_signers
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+
     fn current(&self) -> Arc<Current> {
         Arc::clone(
             &self
@@ -160,8 +170,19 @@ impl SignerKeys for DirectoryCipher {
         if let Some(key) = self.current().directory.signing_key(device_id) {
             return Ok(Some(key.to_vec()));
         }
+        if self.absent_signers_lock().contains(device_id) {
+            return Ok(None);
+        }
         let fresh = self.refetch(http).await?;
-        Ok(fresh.directory.signing_key(device_id).map(<[u8]>::to_vec))
+        let key = fresh.directory.signing_key(device_id).map(<[u8]>::to_vec);
+        if key.is_none() {
+            self.absent_signers_lock().insert(device_id.to_owned());
+        }
+        Ok(key)
+    }
+
+    fn begin_run(&self) {
+        self.absent_signers_lock().clear();
     }
 
     fn known_devices(&self) -> Option<HashSet<String>> {

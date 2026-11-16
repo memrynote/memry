@@ -15,6 +15,7 @@ use memry_core::protocol::envelope::SyncOperation;
 use memry_core::protocol::types::Declaration;
 use memry_core::sync::clock::VectorClock;
 use memry_core::sync::driver::progress::SilentInitialSync;
+use memry_core::sync::engine::MAX_PAGES_PER_PASS;
 use memry_core::sync::state::PassTrigger;
 use memry_core::sync::store::{self, RECORD_CURSOR_SCOPE};
 use rusqlite::Connection;
@@ -410,6 +411,92 @@ async fn a_run_from_cursor_zero_applies_no_marker_until_it_reaches_the_head() {
     desktop.pass().await;
 
     assert_eq!(deleted_at(&desktop, "task", "t1"), Some(DELETED_AT));
+}
+
+/// A device reset to cursor 0 holding `t1`, whose run from cursor 0 is longer
+/// than one pass: a full pass of pages, then the page that names `t1`.
+async fn a_run_from_zero_longer_than_a_pass() -> Desktop {
+    let desktop = Desktop::open_with(Declaration::desktop(), |conn| {
+        hold(conn, "task", "t1", Some(json!({ PEER: 1 })), 1_000)
+    })
+    .await;
+    desktop.server.purge(peer_marker("task", "t1"));
+    for page in 1..=MAX_PAGES_PER_PASS {
+        desktop.server.deleted_page(&[], &page.to_string(), true);
+    }
+    let head = (MAX_PAGES_PER_PASS + 1).to_string();
+    desktop.server.deleted_page(&["t1"], &head, false);
+    desktop
+}
+
+#[tokio::test]
+async fn a_run_from_cursor_zero_over_several_passes_applies_no_marker_until_the_head() {
+    let desktop = a_run_from_zero_longer_than_a_pass().await;
+
+    desktop.pass().await;
+    assert_eq!(cursor(&desktop), Some(MAX_PAGES_PER_PASS.to_string()));
+    desktop.pass().await;
+
+    assert_eq!(deleted_at(&desktop, "task", "t1"), None);
+    assert_eq!(cursor(&desktop), Some((MAX_PAGES_PER_PASS + 1).to_string()));
+
+    desktop.server.deleted_page(&["t1"], "999", false);
+    desktop.pass().await;
+
+    assert_eq!(deleted_at(&desktop, "task", "t1"), Some(DELETED_AT));
+}
+
+#[tokio::test]
+async fn a_run_from_cursor_zero_survives_a_restart_between_passes() {
+    let desktop = a_run_from_zero_longer_than_a_pass().await;
+
+    desktop.pass().await;
+    assert_eq!(cursor(&desktop), Some(MAX_PAGES_PER_PASS.to_string()));
+    let desktop = desktop.reopen(Declaration::desktop()).await;
+    desktop.pass().await;
+
+    assert_eq!(deleted_at(&desktop, "task", "t1"), None);
+    assert_eq!(cursor(&desktop), Some((MAX_PAGES_PER_PASS + 1).to_string()));
+
+    desktop.server.deleted_page(&["t1"], "999", false);
+    desktop.pass().await;
+
+    assert_eq!(deleted_at(&desktop, "task", "t1"), Some(DELETED_AT));
+}
+
+#[tokio::test]
+async fn a_signer_the_directory_lacks_is_looked_up_once_per_run() {
+    let desktop = Desktop::open_with(Declaration::desktop(), |conn| {
+        pulled_to_one(conn)?;
+        hold(conn, "task", "t1", Some(json!({ PEER: 1 })), 1_000)?;
+        hold(conn, "task", "t2", Some(json!({ PEER: 1 })), 1_000)
+    })
+    .await;
+    let ghost = |id: &str| {
+        marker(
+            "task",
+            id,
+            json!({ PEER: 2 }),
+            DELETED_AT,
+            Some(("ghost", 14)),
+        )
+    };
+    desktop.server.purge(ghost("t1"));
+    desktop.server.purge(ghost("t2"));
+    desktop.server.deleted_page(&["t1"], "2", true);
+    desktop.server.deleted_page(&["t2"], "3", false);
+    let lookups = desktop.server.count("/auth/devices");
+
+    desktop.pass().await;
+
+    assert_eq!(desktop.server.count("/auth/devices"), lookups + 1);
+    assert_eq!(cursor(&desktop).as_deref(), Some("3"));
+
+    desktop.server.purge(ghost("t1"));
+    desktop.server.deleted_page(&["t1"], "4", false);
+    desktop.pass().await;
+
+    assert_eq!(desktop.server.count("/auth/devices"), lookups + 2);
 }
 
 #[tokio::test]

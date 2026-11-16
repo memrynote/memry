@@ -1050,15 +1050,19 @@ entry to the apply input a signed tombstone produces. It declares
 The Rust core's desktop driver declares it too (`Declaration::desktop`,
 `crates/memry-core/src/protocol/types.rs:190`, byte for byte Electron's
 `SYNC_TYPES_HEADER_VALUE`) and applies markers by the same rules in
-`crates/memry-core/src/sync/hardening/purged.rs`: admission (`:160`), the
+`crates/memry-core/src/sync/hardening/purged.rs`: admission (`:194`), the
 attestation under the signer's key from the driver's device directory,
-refetched once when the signer is not in it, a failed refetch failing the page
-with the cursor held (`crates/memry-core/src/sync/driver/cipher.rs:154`;
-`purged.rs:210`), the local refusals over the item's `sync_items` row
-(`purged.rs:260`), then the signed-tombstone apply. Every id a
+refetched once per run when the signer is not in it, a failed refetch failing
+the page with the cursor held (`crates/memry-core/src/sync/driver/cipher.rs:164`;
+`purged.rs:244`), the local refusals over the item's `sync_items` row
+(`purged.rs:295`), then the signed-tombstone apply. Every id a
 `purgedTombstones` entry names is kept out of the page's untyped deletes
-(`crates/memry-core/src/sync/pull.rs:410`), and a run that started from cursor
-0 applies none until it reaches the head (`pull.rs:363`, `:460`). Its first
+(`crates/memry-core/src/sync/pull.rs:404`). A run that started from cursor 0
+applies none until a page that is not refused lands at the head. The core keeps
+that state in `meta` (`sync.purged_from_zero`, `purged.rs:67`), set when a page
+is read from cursor 0 and cleared in the transaction that lands the head
+(`crates/memry-core/src/sync/note_body_feed.rs:428`), so it holds across the
+passes of a long run and across a restart. Its first
 sync's refs pass, which applies every `deleted` id untyped, reads the feed
 without the token (`crates/memry-core/src/sync/first_sync.rs:370`). iOS
 (`Declaration::subscribed`) and the shared sync-client do not declare it

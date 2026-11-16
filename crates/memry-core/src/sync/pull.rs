@@ -39,7 +39,7 @@
 //! one dispatch lives there, so that a route added later cannot forget it.
 
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::AtomicBool;
 
 use serde_json::{Value as Json, json};
 
@@ -117,9 +117,6 @@ pub struct PullLoop {
     orphans: Arc<OrphanRepair>,
     /// The keys purged tombstones verify under ([`PullLoop::with_signer_keys`]).
     signer_keys: Option<Arc<dyn SignerKeys>>,
-    /// Set while a run that started from cursor 0 has not reached the head:
-    /// its pages apply no purged tombstone (§5.12.3).
-    from_zero: Arc<AtomicBool>,
 }
 
 impl PullLoop {
@@ -144,7 +141,6 @@ impl PullLoop {
             stale_cursor: None,
             orphans: Arc::default(),
             signer_keys: None,
-            from_zero: Arc::default(),
         }
     }
 
@@ -350,18 +346,17 @@ impl PullLoop {
     /// ([`PullLoop::retry_refused`], #4453).
     pub async fn pull_first_page(&self) -> Result<PullReport, PullError> {
         self.retry_refused().await;
+        if let Some(keys) = &self.signer_keys {
+            keys.begin_run();
+        }
         self.page(true).await
     }
 
     async fn page(&self, ask_inline: bool) -> Result<PullReport, PullError> {
-        let cursor = self
+        let (cursor, from_zero) = self
             .db
-            .call(|conn| store::read_cursor(conn, RECORD_CURSOR_SCOPE))
+            .call(|conn| purged::cursor_and_from_zero(conn))
             .await?;
-
-        if ask_inline && cursor.as_deref().is_none_or(|cursor| cursor == "0") {
-            self.from_zero.store(true, Ordering::SeqCst);
-        }
         let inline = ask_inline && cursor.is_some();
         let mut page = self.fetch_changes(cursor.as_deref(), inline).await?;
         let mut report = PullReport {
@@ -393,7 +388,6 @@ impl PullLoop {
             };
             self.take_items(items, &mut report, &mut pending).await?;
         }
-        let from_zero = self.from_zero.load(Ordering::SeqCst);
         let named = self.take_markers(markers, from_zero, &mut pending).await?;
 
         // §5.13: rank, then a **stable** sort, so two items of the same rank
@@ -427,6 +421,10 @@ impl PullLoop {
             report.corrupt += outcomes.corrupt;
             report.expired += outcomes.expired;
             report.purged_documents.extend(outcomes.purged_documents);
+            // §5.14's breaker, all three conditions or none.
+            let yielded = report.applied + report.deleted + report.skipped + report.expired;
+            report.refused = yielded == 0 && report.corrupt > 0 && !ids.is_empty();
+            let at_head = !report.has_more && !report.refused;
 
             // §5.11: only now, and in the transaction that lands the bodies.
             let advanced = page.next_cursor.clone().or(cursor);
@@ -435,7 +433,13 @@ impl PullLoop {
                 .db
                 .call(move |conn| {
                     // Stamped under the writer, as `body_pull::store_update` says why.
-                    note_body_feed::land_and_advance(conn, bodies, stored.as_deref(), now_ms())
+                    note_body_feed::land_and_advance(
+                        conn,
+                        bodies,
+                        stored.as_deref(),
+                        at_head,
+                        now_ms(),
+                    )
                 })
                 .await?;
             report.cursor = advanced;
@@ -452,13 +456,6 @@ impl PullLoop {
         // that missed them now would never write their files (#3534).
         self.tell(feed).await;
         landed?;
-
-        // §5.14's breaker, all three conditions or none.
-        let yielded = report.applied + report.deleted + report.skipped + report.expired;
-        report.refused = yielded == 0 && report.corrupt > 0 && !ids.is_empty();
-        if !report.has_more && !report.refused {
-            self.from_zero.store(false, Ordering::SeqCst);
-        }
 
         Ok(report)
     }

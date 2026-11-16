@@ -33,7 +33,9 @@ use crate::storage::Db;
 use crate::storage::repositories::{instants, sync_items};
 use crate::sync::apply::Pending;
 use crate::sync::clock::{OFFLINE_CLOCK_DEVICE_ID, VectorClock};
+use crate::sync::first_sync_store::{read_meta, write_meta};
 use crate::sync::pull::PullError;
+use crate::sync::store::{self, RECORD_CURSOR_SCOPE};
 
 /// `RECREATABLE_AFTER_PURGE_ITEM_TYPES` (`packages/contracts/src/sync-api.ts:217-228`).
 pub const RECREATABLE_AFTER_PURGE_ITEM_TYPES: [&str; 10] = [
@@ -55,6 +57,34 @@ const CLOCK_EXEMPT_ITEM_TYPE: &str = "settings";
 /// Electron's `toEpochSeconds` reads a number above this as milliseconds.
 const MILLISECONDS_ABOVE: i64 = 1_000_000_000_000;
 
+/// Present while a pull run that started from cursor 0 has not reached the
+/// head (§5.12.3): its pages apply no marker. Kept in `meta`, not in memory,
+/// because such a run spans passes (`MAX_PAGES_PER_PASS`) and restarts.
+const META_FROM_ZERO: &str = "sync.purged_from_zero";
+
+/// The record cursor, and whether the page read from it belongs to a run from
+/// cursor 0. Reading from cursor 0 starts such a run.
+pub(crate) fn cursor_and_from_zero(
+    conn: &Connection,
+) -> Result<(Option<String>, bool), StorageError> {
+    let cursor = store::read_cursor(conn, RECORD_CURSOR_SCOPE)?;
+    if cursor.as_deref().is_none_or(|cursor| cursor == "0") {
+        write_meta(conn, META_FROM_ZERO, "1")?;
+        return Ok((cursor, true));
+    }
+    Ok((cursor, read_meta(conn, META_FROM_ZERO)?.is_some()))
+}
+
+/// Ends a run from cursor 0: called in the transaction that lands a page at
+/// the head that was not refused.
+pub(crate) fn end_from_zero(conn: &Connection) -> Result<(), StorageError> {
+    conn.execute("DELETE FROM meta WHERE key = ?1", params![META_FROM_ZERO])
+        .map_err(|error| StorageError::Failed {
+            what: error.to_string(),
+        })?;
+    Ok(())
+}
+
 /// The signing keys a marker's attestation verifies under (Electron's
 /// `resolveDeviceKey`).
 #[async_trait::async_trait]
@@ -71,6 +101,10 @@ pub trait SignerKeys: Send + Sync {
     /// The account's device ids this client knows, `None` when it knows none
     /// (Electron's `readKnownDeviceIds`).
     fn known_devices(&self) -> Option<HashSet<String>>;
+
+    /// A pull run starts: forget the signers the last run did not find, as
+    /// Electron clears `deviceKeyCache` (`pull-coordinator.ts:153`).
+    fn begin_run(&self) {}
 }
 
 /// Why a marker applies nothing, logged by reason (Electron's
@@ -255,8 +289,9 @@ pub(crate) enum Local {
 }
 
 /// `localTombstoneRefusal`, over the `sync_items` row that holds the item's
-/// clock. Runs on the writer, in the transaction that applies (`api/sync`
-/// decision inputs).
+/// clock. Runs in its own writer call before the page's apply, not in the
+/// apply transaction: a local edit can land in between, across the page's
+/// `fetch_note_bodies` network call. The apply's §5.8 clock rule still runs.
 pub(crate) fn local(
     conn: &Connection,
     marker: &Marker,

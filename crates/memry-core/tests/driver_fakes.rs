@@ -376,8 +376,27 @@ impl Desktop {
         })
         .expect("seed");
 
-        let (_, own_secret) = sodium::sign_seed_keypair(&[11u8; 32]).expect("a keypair");
         let (_, peer_secret) = sodium::sign_seed_keypair(&[12u8; 32]).expect("a keypair");
+        let server = Arc::new(FakeServer {
+            records: Mutex::default(),
+            pages: Mutex::default(),
+            calls: Mutex::default(),
+            peer_secret: peer_secret.to_vec(),
+            markers: Mutex::default(),
+            added_devices: Mutex::default(),
+            devices_down: AtomicBool::new(false),
+        });
+        Self::drive(db, server, declaration).await
+    }
+
+    /// The app restarted: a new driver over the same `data.db` and server.
+    pub async fn reopen(self, declaration: Declaration) -> Self {
+        let Self { db, server, .. } = self;
+        Self::drive(db, server, declaration).await
+    }
+
+    async fn drive(db: Db, server: Arc<FakeServer>, declaration: Declaration) -> Self {
+        let (_, own_secret) = sodium::sign_seed_keypair(&[11u8; 32]).expect("a keypair");
         let store = FakeSecureStore::new();
         store.put_text(
             SecureStoreKey::AccessToken,
@@ -392,15 +411,6 @@ impl Desktop {
         store
             .set(SecureStoreKey::DeviceSigningKey, own_secret.to_vec())
             .expect("the signing key");
-        let server = Arc::new(FakeServer {
-            records: Mutex::default(),
-            pages: Mutex::default(),
-            calls: Mutex::default(),
-            peer_secret: peer_secret.to_vec(),
-            markers: Mutex::default(),
-            added_devices: Mutex::default(),
-            devices_down: AtomicBool::new(false),
-        });
         let session = Arc::new(
             AuthSession::new(
                 Arc::new(Routes(Arc::clone(&server))),
