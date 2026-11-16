@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="nextest-run" tests="3" skipped="0" failures="1" errors="0" uuid="aad2f1cb-6db4-4299-9800-34514e83388c" timestamp="2026-11-16T10:33:55.871+03:00" time="0.048">
+    <testsuite name="memry-tauri::ml_embedding_lane" tests="3" skipped="0" errors="0" failures="1">
+        <testcase name="steady" classname="memry-tauri::ml_embedding_lane" timestamp="2026-11-16T10:33:55.871+03:00" time="0.011"/>
+        <testcase name="a_vault_close_stops_the_model" classname="memry-tauri::ml_embedding_lane" timestamp="2026-11-16T10:33:55.885+03:00" time="0.016">
+            <flakyFailure timestamp="2026-11-16T10:33:55.871+03:00" time="0.012" message="thread &apos;a_vault_close_stops_the_model&apos; (31174376) panicked at src/lib.rs:6:60" type="test failure with exit code 101">thread &apos;a_vault_close_stops_the_model&apos; (31174376) panicked at src/lib.rs:6:60:
+assertion failed: !l.service.status().loaded
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+                <system-out>
+running 1 test
+test a_vault_close_stops_the_model ... FAILED
+
+failures:
+
+failures:
+    a_vault_close_stops_the_model
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+</system-out>
+                <system-err>
+thread &apos;a_vault_close_stops_the_model&apos; (31174376) panicked at src/lib.rs:6:60:
+assertion failed: !l.service.status().loaded
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+</system-err>
+            </flakyFailure>
+        </testcase>
+        <testcase name="a_test_that_always_fails" classname="memry-tauri::ml_embedding_lane" timestamp="2026-11-16T10:33:55.871+03:00" time="0.011">
+            <failure message="thread &apos;a_test_that_always_fails&apos; (31174374) panicked at src/lib.rs:11:25" type="test failure with exit code 101">thread &apos;a_test_that_always_fails&apos; (31174374) panicked at src/lib.rs:11:25:
+real failure
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace</failure>
+            <rerunFailure timestamp="2026-11-16T10:33:55.885+03:00" time="0.017" message="thread &apos;a_test_that_always_fails&apos; (31174402) panicked at src/lib.rs:11:25" type="test failure with exit code 101">thread &apos;a_test_that_always_fails&apos; (31174402) panicked at src/lib.rs:11:25:
+real failure
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+                <system-out>
+running 1 test
+test a_test_that_always_fails ... FAILED
+
+failures:
+
+failures:
+    a_test_that_always_fails
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+</system-out>
+                <system-err>
+thread &apos;a_test_that_always_fails&apos; (31174402) panicked at src/lib.rs:11:25:
+real failure
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+</system-err>
+            </rerunFailure>
+            <rerunFailure timestamp="2026-11-16T10:33:55.903+03:00" time="0.016" message="thread &apos;a_test_that_always_fails&apos; (31174405) panicked at src/lib.rs:11:25" type="test failure with exit code 101">thread &apos;a_test_that_always_fails&apos; (31174405) panicked at src/lib.rs:11:25:
+real failure
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+                <system-out>
+running 1 test
+test a_test_that_always_fails ... FAILED
+
+failures:
+
+failures:
+    a_test_that_always_fails
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+</system-out>
+                <system-err>
+thread &apos;a_test_that_always_fails&apos; (31174405) panicked at src/lib.rs:11:25:
+real failure
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+</system-err>
+            </rerunFailure>
+            <system-out>
+running 1 test
+test a_test_that_always_fails ... FAILED
+
+failures:
+
+failures:
+    a_test_that_always_fails
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+</system-out>
+            <system-err>
+thread &apos;a_test_that_always_fails&apos; (31174374) panicked at src/lib.rs:11:25:
+real failure
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+</system-err>
+        </testcase>
+    </testsuite>
+</testsuites>

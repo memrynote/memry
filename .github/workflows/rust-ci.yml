@@ -295,11 +295,25 @@ jobs:
         with:
           tool: nextest
 
+      # The merge queue retries a failed test twice (nextest profile `merge-queue`): a flake there
+      # ejects the PR and costs a full requeue. PR runs do not retry. The flaky-report job posts
+      # every test that passed only on retry to #3967.
       - name: Test
         if: matrix.part != 'checks'
         env:
           PARTITION: ${{ matrix.partition }}
-        run: cargo nextest run -p memry-core -p memry-desktop -p memry-media -p memry-tauri -p memry-test-kit --no-fail-fast --features memry-core/markdown ${PARTITION:+--partition "hash:$PARTITION"}
+          PROFILE: ${{ github.event_name == 'merge_group' && 'merge-queue' || 'default' }}
+        run: cargo nextest run --profile "$PROFILE" -p memry-core -p memry-desktop -p memry-media -p memry-tauri -p memry-test-kit --no-fail-fast --features memry-core/markdown ${PARTITION:+--partition "hash:$PARTITION"}
+
+      - name: Upload the JUnit report (merge queue)
+        if: ${{ !cancelled() && matrix.part != 'checks' && github.event_name == 'merge_group' }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: nextest-junit-${{ matrix.os }}-${{ strategy.job-index }}
+          path: crates/target/nextest/merge-queue/junit.xml
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Doctests
         if: matrix.part != 'tests'
@@ -901,6 +915,39 @@ jobs:
           name: MemryCoreFFI-xcframework
           path: packages/swift/MemryCore/MemryCoreFFI.xcframework
           retention-days: 7
+
+  # Posts the tests that passed only on retry in a merge-queue run to #3967, once per run. Its own job,
+  # so the token that can write issues never runs the build. Not a gate dependency, and every step
+  # tolerates failure: logging a flake never ejects a PR.
+  flaky-report:
+    name: Report flaky tests
+    needs: lint-and-test
+    if: ${{ !cancelled() && github.event_name == 'merge_group' }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          sparse-checkout: scripts
+
+      - name: Download the JUnit reports
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          pattern: nextest-junit-*
+          path: ${{ runner.temp }}/junit
+
+      - name: Post flaky tests to #3967
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MERGE_GROUP_REF: ${{ github.ref }}
+        run: node scripts/report-flaky-tests.mjs "$RUNNER_TEMP/junit"
 
   # The one check name a ruleset requires for this workflow (merge queue, #3517). Matrix legs and
   # fast/full tiers change which jobs exist; this name does not. A skipped job counts as passed.
