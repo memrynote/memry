@@ -626,6 +626,7 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
     func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
         // Held for the block a Return is making, as typed (#4692).
         if let session, session.holdsKeys(self), let holds = session.holdsEdit(range, text, in: self) { return holds }
+        if let session, session.carriesEdit(range, text, in: self) { return false }
         let string = textView.text as NSString
         // `[[` becomes `[[]]` with the caret between (desktop's autocomplete),
         // outside a code block, whose text stays literal.

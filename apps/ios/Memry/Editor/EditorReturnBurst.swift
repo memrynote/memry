@@ -132,6 +132,29 @@ extension EditorSession {
         returnBurst?.ended = true
     }
 
+    /// Whether `field`, which gave up its keys as its row went
+    /// (`returnBurstEnded`), takes the edit of `range` to `text` into them.
+    /// UIKit can still hand it a key before the redrawn row takes the caret:
+    /// as it resigns, it gets the keys queued for it. Typed into its text,
+    /// such a key came out after the carried keys but ahead of the caret,
+    /// so the next keys landed before it (`milk⏎eggs⏎` stored as
+    /// `milk|egs|g`, #4737). A key typed at the caret joins the carried
+    /// keys, and a Backspace takes back the last of them.
+    func carriesEdit(_ range: NSRange, _ text: String, in field: BlockField) -> Bool {
+        guard let burst = returnBurst, burst.source === field, burst.ended,
+              field.textView.text == burst.head + burst.tail
+        else { return false }
+        let head = (burst.head as NSString).length
+        if range == NSRange(location: head, length: 0), !text.isEmpty {
+            returnBurst?.carried = (burst.carried ?? "") + text
+            return true
+        }
+        guard text.isEmpty, range.length > 0, NSMaxRange(range) == head, var carried = burst.carried else { return false }
+        carried.removeLast()
+        returnBurst?.carried = carried.isEmpty ? nil : carried
+        return true
+    }
+
     /// `field`, the row a type change redrew, took the caret from the row
     /// Return was pressed in: it holds the keys that row gave up, and those
     /// typed from now, until the Return's block takes the caret
