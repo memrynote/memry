@@ -861,10 +861,14 @@ async fn signing_out_clears_every_entry() {
 }
 
 /// A keychain that refuses the clear still ends the session: the user asked to
-/// be signed out, and the error names the failure for the shell to report.
+/// be signed out, and the error names the failure for the shell to report. The
+/// refresh token it kept is not restored in this process, and signing in again
+/// still works.
 #[tokio::test]
 async fn a_sign_out_the_keychain_refuses_still_signs_out_and_reports_it() {
-    let (session, _transport, store) = registered(vec![response(200, "{}")]).await;
+    let mut extra = vec![response(200, "{}")];
+    extra.extend(sign_in_script("jti-2"));
+    let (session, _transport, store) = registered(extra).await;
     store.fail_clear();
 
     assert!(matches!(
@@ -877,6 +881,18 @@ async fn a_sign_out_the_keychain_refuses_still_signs_out_and_reports_it() {
         store.text(SecureStoreKey::RefreshToken).is_some(),
         "the store kept them"
     );
+    assert_eq!(session.restore().unwrap(), AuthState::SignedOut);
+
+    session
+        .request_email_code("kaan@example.com".to_string())
+        .await
+        .unwrap();
+    session
+        .verify_email_code("123456".to_string())
+        .await
+        .unwrap();
+    session.register_device().await.unwrap();
+    assert_eq!(session.state(), AuthState::Registered);
 }
 
 /// A sign-out from a state with no `SignedOutByUser` edge is refused before it

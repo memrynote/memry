@@ -4,7 +4,10 @@
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use base64::Engine as _;
+use base64::engine::general_purpose::STANDARD as BASE64;
 use memry_core::api::auth::AuthState;
+use memry_core::crypto::keys;
 use memry_core::seams::reachability::{Reachability, ReachabilityObserver, Reachable};
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_desktop::account::binding::{Applied, BindingState};
@@ -18,7 +21,7 @@ use memry_desktop::sync::signals::AuthSignal;
 use serde_json::{Value, json};
 use tokio::sync::broadcast;
 
-use crate::account_service::{Keychain, MASTER, Script, access_token};
+use crate::account_service::{Keychain, MASTER, Script, access_token, setup_token};
 
 const ALL: [SecureStoreKey; 5] = [
     SecureStoreKey::MasterKey,
@@ -150,12 +153,11 @@ async fn a_sign_out_the_keychain_refuses_still_signs_out_and_names_what_stays() 
 
     let result = s.account.sign_out(&s.session).await.unwrap();
 
-    assert_eq!(result.keychain_failures, ["master-key", "refresh-token"]);
+    assert_eq!(result.keychain_failures, ["refresh-token", "master-key"]);
     assert_eq!(
         result.keychain_warning().as_deref(),
-        Some("Failed to remove: master-key, refresh-token")
+        Some("Failed to remove: refresh-token, master-key")
     );
-    assert_eq!(s.account.session().state(), AuthState::SignedOut);
     assert!(!s.account.info().signed_in, "account_get_info");
     assert_eq!(s.account.session().state(), AuthState::SignedOut);
     for key in [
@@ -167,6 +169,47 @@ async fn a_sign_out_the_keychain_refuses_still_signs_out_and_names_what_stays() 
     }
     let sync = s.config.read(|c| c.get("sync").cloned());
     assert_eq!(sync, Some(Value::Object(Default::default())));
+}
+
+/// After a sign-out that left the refresh token behind, signing in again in the same process
+/// signs in: the session the user ended stays ended, and the new one is not refused.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn signing_in_again_after_a_refused_sign_out_signs_in() {
+    let s = signed_in();
+    s.script.answer(200, json!({}));
+    s.keychain
+        .refuse_delete(&[SecureStoreKey::MasterKey, SecureStoreKey::RefreshToken]);
+    s.account.sign_out(&s.session).await.unwrap();
+    assert!(!s.account.info().signed_in);
+
+    s.script
+        .answer(200, json!({ "success": true, "expiresIn": 600 }));
+    s.script.answer(
+        200,
+        json!({ "success": true, "setupToken": setup_token(), "needsSetup": false, "knownDevice": true }),
+    );
+    s.script.answer(
+        200,
+        json!({
+            "kdfSalt": BASE64.encode([7u8; 16]),
+            "keyVerifier": keys::account_key_verifier(&MASTER).unwrap(),
+        }),
+    );
+    s.script.answer(
+        200,
+        json!({
+            "success": true, "deviceId": "server-device-2",
+            "accessToken": access_token("server-device-2"), "refreshToken": "refresh-2",
+        }),
+    );
+    s.account
+        .request_otp("kaan@example.com".into())
+        .await
+        .unwrap();
+    let verified = s.account.verify_otp("123456".into()).await.unwrap();
+
+    assert_eq!(verified.device_id.as_deref(), Some("server-device-2"));
+    assert!(s.account.info().signed_in, "account_get_info");
 }
 
 struct Offline;

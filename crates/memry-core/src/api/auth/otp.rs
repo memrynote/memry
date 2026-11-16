@@ -2,6 +2,8 @@
 //! answer, which says whether the account is set up and whether it still lists
 //! this device's key (Electron: `ipc/auth-device-handlers.ts:316-339`).
 
+use std::sync::atomic::Ordering;
+
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 
@@ -169,7 +171,8 @@ impl AuthSession {
     /// or finds its attempt ended. A store that fails to clear still takes the
     /// edge and then returns its error: the user asked to be signed out, and a
     /// session left over half-deleted secrets would refuse the next sign-in.
-    /// The caller reports what remains.
+    /// The caller reports what remains, and [`Self::restore`] does not bring it
+    /// back.
     pub(super) fn clear_and_sign_out(&self) -> Result<AuthState, AuthError> {
         let mut pending = self.pending.lock().unwrap_or_else(|e| e.into_inner());
         let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
@@ -185,10 +188,19 @@ impl AuthSession {
                 state: state_name(&state),
             });
         };
+        self.signed_out_by_user.store(true, Ordering::SeqCst);
         let cleared = self.tokens.clear();
         *pending = PendingSignIn::default();
         *state = next.clone();
         cleared?;
         Ok(next)
+    }
+
+    /// A shell's sign-out from a state with no `SignedOutByUser` edge: clears
+    /// the store with no edge, and [`Self::restore`] does not bring back what a
+    /// refused delete left. Rust-only.
+    pub fn clear_without_edge(&self) -> Result<(), AuthError> {
+        self.signed_out_by_user.store(true, Ordering::SeqCst);
+        self.tokens.clear()
     }
 }

@@ -882,7 +882,9 @@ public protocol AuthSessionProtocol: AnyObject, Sendable {
      * lifecycle instead — a launch, a return from protected-data-unavailable —
      * and a lifecycle signal that arrives twice must not be an error the shell
      * has to learn to suppress. From anything but `SignedOut` it reports the
-     * state it found and touches nothing.
+     * state it found and touches nothing, and so it does after the user signed
+     * out in this process until a device registers: a refresh token the
+     * keychain refused to delete is not a session to restore.
      *
      * - Returns: the state after the probe.
      * - Throws: `SecureStore` when the store could not be read at all. That is
@@ -1517,7 +1519,9 @@ open func completeProviderSignIn(idToken: String)async throws  -> ProviderSignIn
      * lifecycle instead — a launch, a return from protected-data-unavailable —
      * and a lifecycle signal that arrives twice must not be an error the shell
      * has to learn to suppress. From anything but `SignedOut` it reports the
-     * state it found and touches nothing.
+     * state it found and touches nothing, and so it does after the user signed
+     * out in this process until a device registers: a refresh token the
+     * keychain refused to delete is not a session to restore.
      *
      * - Returns: the state after the probe.
      * - Throws: `SecureStore` when the store could not be read at all. That is
@@ -35863,7 +35867,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_authsession_complete_provider_sign_in() != 35896) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_authsession_restore() != 2414) {
+    if (uniffi_memry_core_checksum_method_authsession_restore() != 25801) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_authsession_billing_portal_url() != 59389) {

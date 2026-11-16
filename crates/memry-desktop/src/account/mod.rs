@@ -25,7 +25,6 @@ pub use memry_core::protocol::auth::DeviceFormFactor;
 pub use oauth::{FirstDevice, OAUTH_ATTEMPT_TTL, OAuthEvent, OAuthStarted};
 pub use teardown::SignedOut;
 
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use memry_core::api::auth::{AuthSession, AuthState, DeviceDescriptor};
@@ -180,9 +179,6 @@ pub struct AccountService {
     oauth: Mutex<Option<oauth::OAuthAttempt>>,
     /// One Google start or Cancel at a time: a start ends the attempt before it.
     oauth_start: tokio::sync::Mutex<()>,
-    /// Set by [`Self::sign_out`]: a refresh token a failed keychain delete left behind never
-    /// restores the session the user ended (the restore probe is for launch).
-    signed_out: AtomicBool,
 }
 
 impl AccountService {
@@ -214,7 +210,6 @@ impl AccountService {
             key_op: tokio::sync::Mutex::new(()),
             oauth: Mutex::new(None),
             oauth_start: tokio::sync::Mutex::new(()),
-            signed_out: AtomicBool::new(false),
         };
         service.restore();
         Ok(service)
@@ -232,9 +227,6 @@ impl AccountService {
 
     /// A launch probe; a locked keychain leaves the session signed out until the next probe.
     fn restore(&self) {
-        if self.signed_out.load(Ordering::SeqCst) {
-            return;
-        }
         if let Err(error) = self.session.restore() {
             tracing::warn!(
                 scope = "Account",
