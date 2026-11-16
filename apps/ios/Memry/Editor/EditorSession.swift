@@ -807,11 +807,13 @@ final class EditorSession {
     }
 
     /// Replaces the open `#query` with a `hashTag` node and a space, as
-    /// desktop's tag menu does.
+    /// desktop's tag menu does. Undo takes back the tag and not the typing
+    /// before it (#4804), as `insertInline`.
     func chooseTag(_ suggestion: TagSuggestion) {
         guard let field, let tagTrigger else { return }
         let textView = field.textView
         let range = tagTrigger.range
+        let typing = Self.typing(without: range, in: field)
         let after = NSMaxRange(range)
         let string = textView.text as NSString
         if after >= string.length || string.character(at: after) != 32 {
@@ -830,7 +832,7 @@ final class EditorSession {
             blockId: field.blockId, start: UInt32(start), end: UInt32(end), kind: "hashTag", text: "",
             attrs: HashTagAttrs.attrs(tag: suggestion.tag, colors: tagColors)
         )
-        commit(field, over: [.init(start: start, literal: string.substring(with: range), edit: edit)])
+        commit(field, typing: typing, over: [.init(start: start, literal: string.substring(with: range), edit: edit)])
     }
 
     // MARK: The focused block's place
@@ -1228,9 +1230,7 @@ final class EditorSession {
     /// that step, and a part already committed with the nodes'.
     func insertInline(_ kinds: [EditorSuggestion.Kind], replacing range: NSRange, in field: BlockField) {
         let textView = field.textView
-        // No intersection leaves its location undefined.
-        let typed = NSIntersectionRange(range, Self.typed(since: field.base, in: textView.text))
-        let typing = typed.length == 0 ? textView.text : (textView.text as NSString).replacingCharacters(in: typed, with: "")
+        let typing = Self.typing(without: range, in: field)
         textView.textStorage.deleteCharacters(in: range)
         field.dirty = true
         // The trailing spaces go in as text first, so each node lands before
@@ -1297,6 +1297,15 @@ final class EditorSession {
             }
             return edits
         })
+    }
+
+    /// `field`'s text without the part of `range` that typing wrote since
+    /// its base: a pick's `typing` (`commit`).
+    private static func typing(without range: NSRange, in field: BlockField) -> String {
+        let text = field.textView.text ?? ""
+        // No intersection leaves its location undefined.
+        let typed = NSIntersectionRange(range, Self.typed(since: field.base, in: text))
+        return typed.length == 0 ? text : (text as NSString).replacingCharacters(in: typed, with: "")
     }
 
     /// What typing changed in `text` since `base`: the span between their
