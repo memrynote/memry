@@ -860,6 +860,25 @@ async fn signing_out_clears_every_entry() {
     assert_eq!(store.text(SecureStoreKey::DeviceSigningKey), None);
 }
 
+/// A keychain that refuses the clear still ends the session: the user asked to
+/// be signed out, and the error names the failure for the shell to report.
+#[tokio::test]
+async fn a_sign_out_the_keychain_refuses_still_signs_out_and_reports_it() {
+    let (session, _transport, store) = registered(vec![response(200, "{}")]).await;
+    store.fail_clear();
+
+    assert!(matches!(
+        session.sign_out().await.unwrap_err(),
+        AuthError::SecureStore { .. }
+    ));
+
+    assert_eq!(session.state(), AuthState::SignedOut);
+    assert!(
+        store.text(SecureStoreKey::RefreshToken).is_some(),
+        "the store kept them"
+    );
+}
+
 /// A sign-out from a state with no `SignedOutByUser` edge is refused before it
 /// touches the store: the attempt keeps its setup token and stays where it was.
 #[tokio::test]

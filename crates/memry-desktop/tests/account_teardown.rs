@@ -1,18 +1,22 @@
 //! Sign-out, revocation and the vault binding over a real vault, a real `data.db` and
 //! `memry-config.json` (#3536 A4). The server is the scripted transport of `account_service`.
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use memry_core::api::auth::AuthState;
+use memry_core::seams::reachability::{Reachability, ReachabilityObserver, Reachable};
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_desktop::account::binding::{Applied, BindingState};
 use memry_desktop::account::session_events::AccountEvent;
+use memry_desktop::account::vault_sync::{BINDING_RETRY, OpenVaultBinding, SyncWiring};
 use memry_desktop::account::{AccountService, device};
 use memry_desktop::registry::VaultRegistry;
 use memry_desktop::registry::config::AppConfig;
 use memry_desktop::session::{OpenSource, OpenVault, Session};
 use memry_desktop::sync::signals::AuthSignal;
 use serde_json::{Value, json};
+use tokio::sync::broadcast;
 
 use crate::account_service::{Keychain, MASTER, Script, access_token};
 
@@ -29,7 +33,7 @@ struct Signed {
     script: Arc<Script>,
     keychain: Arc<Keychain>,
     config: Arc<AppConfig>,
-    account: AccountService,
+    account: Arc<AccountService>,
     session: Session,
     open: OpenVault,
 }
@@ -58,14 +62,16 @@ fn signed_in() -> Signed {
         keychain.set(key, value.into_bytes()).unwrap();
     }
     let script = Arc::new(Script::default());
-    let account = AccountService::new(
-        script.clone(),
-        keychain.clone(),
-        "https://sync.test".into(),
-        device::descriptor("1.0.0"),
-        config.clone(),
-    )
-    .unwrap();
+    let account = Arc::new(
+        AccountService::new(
+            script.clone(),
+            keychain.clone(),
+            "https://sync.test".into(),
+            device::descriptor("1.0.0"),
+            config.clone(),
+        )
+        .unwrap(),
+    );
     assert_eq!(account.session().state(), AuthState::Registered);
     let session = Session::new(VaultRegistry::new(config.clone()));
     let path = dir.path().join("vault");
@@ -130,6 +136,102 @@ async fn sign_out_deletes_the_five_secrets_and_empties_sync_and_keeps_the_queue(
     assert_eq!(count(&s.open, "outbox"), 2, "queued edits stay");
     assert_eq!(count(&s.open, "sync_history"), 0);
     assert!(s.open.vault.account_binding().unwrap().is_some());
+}
+
+/// A keychain that refuses some deletes still signs out (`teardownSession` signs out whatever
+/// `deleteKey` answers, `session-teardown.ts:95-101`), names the entries that stay, and the
+/// refresh token left behind does not read as signed in.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_sign_out_the_keychain_refuses_still_signs_out_and_names_what_stays() {
+    let s = signed_in();
+    s.script.answer(200, json!({}));
+    s.keychain
+        .refuse_delete(&[SecureStoreKey::MasterKey, SecureStoreKey::RefreshToken]);
+
+    let result = s.account.sign_out(&s.session).await.unwrap();
+
+    assert_eq!(result.keychain_failures, ["master-key", "refresh-token"]);
+    assert_eq!(
+        result.keychain_warning().as_deref(),
+        Some("Failed to remove: master-key, refresh-token")
+    );
+    assert_eq!(s.account.session().state(), AuthState::SignedOut);
+    assert!(!s.account.info().signed_in, "account_get_info");
+    assert_eq!(s.account.session().state(), AuthState::SignedOut);
+    for key in [
+        SecureStoreKey::DeviceSigningKey,
+        SecureStoreKey::AccessToken,
+        SecureStoreKey::SetupToken,
+    ] {
+        assert!(!s.keychain.has(key), "{key:?} remains");
+    }
+    let sync = s.config.read(|c| c.get("sync").cloned());
+    assert_eq!(sync, Some(Value::Object(Default::default())));
+}
+
+struct Offline;
+
+impl Reachability for Offline {
+    fn current(&self) -> Reachable {
+        Reachable::Offline
+    }
+    fn observe(&self, _observer: Arc<dyn ReachabilityObserver>) {}
+}
+
+/// `BINDING_RETRY_MS`: a vault list that cannot be read holds the vault as `Unknown`, which
+/// reports nothing, and the check runs again a minute later; its answer is reported once and
+/// never asked again.
+#[tokio::test(start_paused = true)]
+async fn an_unknown_binding_is_checked_again_after_a_minute_and_reported_once() {
+    let s = signed_in();
+    s.open.vault.set_account_binding("not json").unwrap();
+    std::fs::write(s.open.path.join("note.md"), "# mine\n").unwrap();
+    // A list it cannot read (a 5xx is retried inside the client first).
+    s.script.answer(200, json!({ "vaults": "none" }));
+    s.script.answer(200, json!([]));
+    let changes = Arc::new(Mutex::new(Vec::new()));
+    let seen = changes.clone();
+    let wiring = Arc::new(SyncWiring {
+        runtime: tokio::runtime::Handle::current(),
+        account: s.account.clone(),
+        registry: s.session.registry().clone(),
+        store: s.keychain.clone(),
+        reachability: Arc::new(Offline),
+        power: None,
+        keychain_recovered: broadcast::Sender::new(4),
+        telemetry: None,
+        on_status: Arc::new(|_| {}),
+        bindings: Arc::new(OpenVaultBinding::default()),
+        on_binding: Arc::new(move |state| seen.lock().unwrap().push(state.clone())),
+    });
+    let start = tokio::time::Instant::now();
+    let session = s.session.clone();
+    let factory = wiring.clone().factory();
+    tokio::task::spawn_blocking(move || session.attach_sync(factory))
+        .await
+        .unwrap();
+
+    for _ in 0..1_000 {
+        if !changes.lock().unwrap().is_empty() {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    let decided = BindingState::NeedsDecision {
+        account_vault_count: 0,
+        merge_target: None,
+    };
+    assert_eq!(*changes.lock().unwrap(), vec![decided.clone()]);
+    assert!(start.elapsed() >= BINDING_RETRY, "{:?}", start.elapsed());
+    assert_eq!(s.script.count("/sync/vaults"), 2);
+
+    tokio::time::sleep(BINDING_RETRY * 10).await;
+    assert_eq!(s.script.count("/sync/vaults"), 2, "a decision is final");
+    assert_eq!(*changes.lock().unwrap(), vec![decided]);
+    let session = s.session.clone();
+    tokio::task::spawn_blocking(move || session.detach_sync())
+        .await
+        .unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

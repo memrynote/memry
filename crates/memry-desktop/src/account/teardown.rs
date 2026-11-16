@@ -2,15 +2,18 @@
 //!
 //! Stops the open vault's sync, revokes the server session (best effort), deletes the five
 //! keychain secrets (the session's store holds exactly them: master key, device key and the three
-//! tokens), ends the open vault's sync session state, and empties `memry-config.json` `sync`
+//! tokens; a keychain error still signs out and names the entries that stay), ends the open vault's sync session state, and empties `memry-config.json` `sync`
 //! (`store.set('sync', {})`, `:119`). Vault files, the outbox and the CRDT store stay: editing
 //! never depends on a session. The `integrity` reason (keeps the master key) and the Google
 //! Calendar disconnect (Step 29) are not here.
+
+use std::sync::atomic::Ordering;
 
 use memry_core::api::auth::AuthState;
 use serde_json::{Map, Value};
 
 use super::{AccountError, AccountService};
+use crate::seams::secure_store::{KEYS, account};
 use crate::session::Session;
 
 /// `TeardownResult`: the keychain entries that could not be removed.
@@ -47,13 +50,11 @@ impl AccountService {
         self.linking.forget_pending().await;
         crate::session::lock(&self.phrase).take();
 
+        self.signed_out.store(true, Ordering::SeqCst);
         let mut result = SignedOut::default();
         if let Err(error) = self.end_session().await {
-            tracing::error!(
-                scope = "SessionTeardown",
-                "keychain entries remain: {error}"
-            );
-            result.keychain_failures.push("memry-keychain".into());
+            tracing::error!(scope = "SessionTeardown", "keychain clear failed: {error}");
+            result.keychain_failures = self.undeletable_entries();
         }
         if let Some(open) = session.current()
             && let Err(error) = open.vault.clear_sync_session_state()
@@ -70,6 +71,25 @@ impl AccountService {
             "session teardown complete"
         );
         Ok(result)
+    }
+
+    /// Deletes each entry on its own after a failed clear and names the ones that stay
+    /// (Electron's per-entry `deleteKey`, `session-teardown.ts:95-101`).
+    fn undeletable_entries(&self) -> Vec<String> {
+        KEYS.into_iter()
+            .filter(|key| match self.store.delete(*key) {
+                Ok(()) => false,
+                Err(error) => {
+                    tracing::error!(
+                        scope = "SessionTeardown",
+                        "failed to delete keychain entry {}: {error}",
+                        account(*key, None)
+                    );
+                    true
+                }
+            })
+            .map(|key| account(key, None))
+            .collect()
     }
 
     /// The session's own sign-out where the machine has the edge (it revokes the server session

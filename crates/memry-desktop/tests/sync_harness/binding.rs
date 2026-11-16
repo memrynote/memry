@@ -7,11 +7,13 @@
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use memry_core::api::projects::ProjectDraft;
+use memry_core::api::tasks_write::NewTaskInput;
 use memry_core::seams::reachability::Reachability;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_core::sync::outbox;
 use memry_desktop::account::AccountService;
-use memry_desktop::account::binding::BindingState;
+use memry_desktop::account::binding::{Applied, BindingState};
 use memry_desktop::account::session_events::{self, AccountEvent};
 use memry_desktop::account::vault_sync::{OpenVaultBinding, SyncWiring};
 use memry_desktop::registry::config::AppConfig;
@@ -82,6 +84,12 @@ async fn new_account(
     email: &str,
 ) -> (tempfile::TempDir, Arc<AccountService>, String) {
     let (dir, account) = install(server, store);
+    let phrase = set_up(server, &account, email).await;
+    (dir, Arc::new(account), phrase)
+}
+
+/// `email` signs in on `account` as a new account, set up and confirmed, on a paid plan.
+async fn set_up(server: &mut Server, account: &AccountService, email: &str) -> String {
     account.request_otp(email.into()).await.expect("a code");
     server.otp(email, CODE);
     assert!(account.verify_otp(CODE.into()).await.unwrap().needs_setup);
@@ -89,7 +97,7 @@ async fn new_account(
     let phrase = account.recovery_phrase().expect("the phrase").to_string();
     account.confirm_recovery_phrase(true).unwrap();
     server.entitle(email);
-    (dir, Arc::new(account), phrase)
+    phrase
 }
 
 fn open_session(dir: &tempfile::TempDir) -> Session {
@@ -126,6 +134,60 @@ async fn a_vault_one_account_synced_holds_foreign_for_the_next_and_runs_no_pass(
     assert!(!answer.success, "{answer:?}");
     assert_eq!(supervisor.completed_pulls(), 0, "no pass ran");
     detach(&session).await;
+}
+
+/// A vault the last account edited but never bound is held `Foreign` for the next account on
+/// this install: sign-out deletes the device key, so the next sign-in stamps a new device id and
+/// the last account's ticks read as another device's (`vault-account-binding.ts:79-110`).
+#[tokio::test(flavor = "multi_thread")]
+async fn after_sign_out_an_unbound_vault_the_last_account_edited_holds_foreign() {
+    let mut server = Server::start();
+    let vault_dir = tempfile::tempdir().unwrap();
+    let session = open_session(&vault_dir);
+    let store = device_key::with_device_key();
+    let (_dir, account, _) = new_account(&mut server, store.clone(), super::account::EMAIL).await;
+    let open = session.current().unwrap();
+    let tasks = open.vault.tasks(store.clone()).unwrap();
+    let project = tasks
+        .create_project(ProjectDraft {
+            name: "Home".into(),
+            description: None,
+            color: None,
+            icon: None,
+            statuses: None,
+        })
+        .unwrap();
+    tasks
+        .create(NewTaskInput {
+            title: "Call the bank".into(),
+            project_id: project,
+            status_id: None,
+            parent_id: None,
+            priority: 0,
+            description: None,
+            due_date: None,
+            due_time: None,
+            start_date: None,
+            repeat: None,
+            repeat_from: None,
+            tags: Vec::new(),
+            linked_note_ids: Vec::new(),
+            linked_canvas_ids: Vec::new(),
+            source_note_id: None,
+            position: None,
+        })
+        .unwrap();
+    drop(tasks);
+
+    account.sign_out(&session).await.expect("signed out");
+    set_up(&mut server, &account, OTHER).await;
+
+    let applied = account
+        .apply_open_vault_binding(&open, session.registry())
+        .await
+        .unwrap();
+    assert_eq!(applied, Applied::Held(BindingState::Foreign));
+    assert_eq!(open.vault.account_binding().unwrap(), None, "never bound");
 }
 
 #[tokio::test(flavor = "multi_thread")]

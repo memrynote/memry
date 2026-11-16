@@ -18,6 +18,7 @@ import { setupService } from '@/services/device-service'
 import { subscribeToEvent } from '@/services/tauri-event'
 import { events } from '../../../generated/bindings'
 import { getI18n } from 'react-i18next'
+import { toast } from 'sonner'
 import { isSessionEndedReason } from '@memry/contracts/ipc-events'
 
 type AuthStatus =
@@ -605,7 +606,9 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
   const logout = useCallback(async (): Promise<void> => {
     cancelOAuth()
     try {
-      await authService.logout()
+      const { keychainWarning } = await authService.logout()
+      // Signed out either way; the entries the keychain kept are the user's to remove.
+      if (keychainWarning) toast.warning(keychainWarning)
     } finally {
       dispatch({ type: 'RESET_AUTH' })
     }
