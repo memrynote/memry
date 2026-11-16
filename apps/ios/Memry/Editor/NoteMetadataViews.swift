@@ -149,6 +149,16 @@ struct NoteTitleEditor: View {
         draft = draft.replacingOccurrences(of: "\n", with: "")
     }
 
+    /// The title's text view, which has the caret, holds an input method's
+    /// composition.
+    private var composing: Bool {
+        func editing(in view: UIView) -> UITextView? {
+            if let text = view as? UITextView, text.isFirstResponder { return text }
+            return view.subviews.lazy.compactMap(editing).first
+        }
+        return host.window.flatMap(editing)?.markedTextRange != nil
+    }
+
     private func typed(_ value: String) {
         if let burst = returned {
             draft = value
@@ -206,8 +216,16 @@ struct NoteTitleEditor: View {
                 .font(Tokens.Typography.screenTitle.font)
                 .foregroundStyle(Tokens.Text.primary.color)
                 .focused($focused)
-                .onSubmit {
-                    guard returned == nil else { return }
+                // A hardware Return arrives as a press, not a newline. SwiftUI
+                // submits it as the key comes up and ends the field's editing
+                // whatever a handler answers, and a key typed before the body
+                // took the caret then reached no text view (#4756). Taken as
+                // the key goes down, the Return moves the caret to a body
+                // block already drawn in that same turn (`returnToBody`).
+                .onKeyPress(.return, phases: .down) { _ in
+                    // An input method's composition takes the Return as its own.
+                    guard !composing else { return .ignored }
+                    guard returned == nil else { return .handled }
                     // An edit that ended under the caret (the app resumed)
                     // still moves to the body.
                     if !commits.editing {
@@ -215,6 +233,7 @@ struct NoteTitleEditor: View {
                         commits.begin(title)
                     }
                     returnPressed(LineReturn(submitted: draft))
+                    return .handled
                 }
                 .onChange(of: focused) { _, isFocused in
                     if isFocused {

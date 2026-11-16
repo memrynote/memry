@@ -64,6 +64,14 @@ struct NoteTitleBurstTests {
         return Fixture(vault: vault, noteId: noteId, reader: CoreNotesReader(vault: vault.vault, executor: .shared))
     }
 
+    /// A new note as the app makes it, on one empty paragraph.
+    private func newNote() async throws -> Fixture {
+        let vault = try TasksTestVault()
+        let noteId = try await CoreNotesWriter(vault: vault.vault, store: TaskTestKeychain(), executor: .shared)
+            .create(title: "", folderPath: nil)
+        return Fixture(vault: vault, noteId: noteId, reader: CoreNotesReader(vault: vault.vault, executor: .shared))
+    }
+
     /// Opens the new note's page in a scene window; its title takes the caret.
     private func open(_ f: Fixture) async throws -> (UIWindow, UITextView) {
         let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
@@ -161,6 +169,71 @@ struct NoteTitleBurstTests {
         try await expectBody(in: window, f)
     }
 
+    /// A key as the keyboard delivers it: to the text view that has the
+    /// caret, through its delegate as UIKit asks it (the ranges form where
+    /// the delegate has it, as the title's does). With no text view holding
+    /// the caret the key reaches nothing, as on a device.
+    private func key(_ key: String, in window: UIWindow, title: UITextView) {
+        guard let view = title.isFirstResponder ? title : views(BlockTextView.self, in: window).first(where: \.isFirstResponder)
+        else { return }
+        let ranges = [NSValue(range: view.selectedRange)]
+        let allowed = view.delegate?.textView?(view, shouldChangeTextInRanges: ranges, replacementText: key)
+            ?? view.delegate?.textView?(view, shouldChangeTextIn: view.selectedRange, replacementText: key)
+        if allowed != false { view.insertText(key) }
+    }
+
+    /// #4756: `title⏎[] milk` typed as a hardware burst. The Return is the
+    /// hardware key, which the title's text view takes as a press (a submit,
+    /// #4705) rather than as text; the keys after it arrive `gap` run-loop
+    /// turns apart while the body's row is drawn and takes the caret. Every
+    /// key lands once, in order: the title gave up the caret as Return
+    /// submitted it, before the body took it, and the keys typed meanwhile
+    /// reached no text view (`] milk`, the `[` lost).
+    @Test(.timeLimit(.minutes(1)), arguments: [0, 1, 3, 100])
+    func a_burst_through_the_titles_return_key_into_a_checklist_keeps_every_key(gap: Int) async throws {
+        let f = try await newNote()
+        let (window, field) = try await open(f)
+        defer { window.isHidden = true }
+
+        for character in "title" { key(String(character), in: window, title: field) }
+        let press = HardwarePress(.keyboardReturnOrEnter, "\r")
+        field.pressesBegan([press], with: nil)
+        field.pressesEnded([press], with: nil)
+        for character in "[] milk" {
+            for _ in 0 ..< gap { try await Task.sleep(for: .milliseconds(1)) }
+            key(String(character), in: window, title: field)
+        }
+
+        await until { views(BlockTextView.self, in: window).first?.text == "milk" }
+        let block = try #require(views(BlockTextView.self, in: window).first, "the body has no block")
+        #expect(block.text == "milk", "the body shows \(block.text ?? "nil")")
+        let shown = field.text
+        await until { field.text == "title" }
+        #expect(field.text == "title", "the title shows \(field.text ?? "nil"), at first \(shown ?? "nil")")
+        block.resignFirstResponder()
+        try await expectStored(f, title: "title", body: ["milk"])
+        let kinds = try await f.reader.blocks(id: f.noteId)?.map(\.kind)
+        #expect(kinds == ["checkListItem"], "\(kinds ?? [])")
+    }
+
+    /// #4756: a hardware Return while an input method composes in the title
+    /// is the composition's, not the move to the body.
+    @Test(.timeLimit(.minutes(1))) func a_return_key_during_a_composition_stays_in_the_title() async throws {
+        let f = try await newNote()
+        let (window, field) = try await open(f)
+        defer { window.isHidden = true }
+
+        for character in "title" { key(String(character), in: window, title: field) }
+        field.setMarkedText("か", selectedRange: NSRange(location: 1, length: 0))
+        let press = HardwarePress(.keyboardReturnOrEnter, "\r")
+        field.pressesBegan([press], with: nil)
+        field.pressesEnded([press], with: nil)
+        try await settle(f)
+
+        #expect(views(BlockTextView.self, in: window).allSatisfy { !$0.isFirstResponder }, "the body took the caret")
+        #expect(field.text == "titleか")
+    }
+
     /// #4722: keys typed slowly into the block the title's Return moved the
     /// caret to are stored as the app leaves, with the block still focused.
     @Test(.timeLimit(.minutes(1))) func leaving_the_app_stores_the_keys_typed_after_the_titles_return() async throws {
@@ -182,4 +255,36 @@ struct NoteTitleBurstTests {
         try await expectStored(f, title: "F1 paragraph", body: ["body"])
         #expect(block.isFirstResponder, "the block kept the caret: only leaving the app committed it")
     }
+}
+
+/// A hardware key press, as a keyboard delivers it to the first responder's
+/// `pressesBegan`.
+private final class HardwarePress: UIPress {
+    private let hardwareKey: UIKey
+
+    init(_ code: UIKeyboardHIDUsage, _ characters: String) {
+        hardwareKey = HardwareKey(code, characters)
+        super.init()
+    }
+
+    override var key: UIKey? { hardwareKey }
+    override var phase: UIPress.Phase { .began }
+}
+
+private final class HardwareKey: UIKey {
+    private let code: UIKeyboardHIDUsage
+    private let text: String
+
+    init(_ code: UIKeyboardHIDUsage, _ text: String) {
+        self.code = code
+        self.text = text
+        super.init()
+    }
+
+    required init?(coder: NSCoder) { nil }
+
+    override var keyCode: UIKeyboardHIDUsage { code }
+    override var characters: String { text }
+    override var charactersIgnoringModifiers: String { text }
+    override var modifierFlags: UIKeyModifierFlags { [] }
 }

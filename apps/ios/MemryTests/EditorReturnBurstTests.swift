@@ -22,6 +22,8 @@ private final class BodyEditor: BlockEditing, @unchecked Sendable {
     let inserts = Mutex(Inserts.land)
     /// The same for a block's text, which the core writes or holds.
     let texts = Mutex(Inserts.land)
+    /// The same for a block's props.
+    let props = Mutex(Inserts.land)
     enum Inserts { case land, wait, refuse }
     struct Refused: Error {}
 
@@ -35,6 +37,8 @@ private final class BodyEditor: BlockEditing, @unchecked Sendable {
         switch edit {
         case .setText, .replaceText:
             while texts.withLock({ $0 }) == .wait { try await Task.sleep(for: .milliseconds(10)) }
+        case .setProp:
+            while props.withLock({ $0 }) == .wait { try await Task.sleep(for: .milliseconds(10)) }
         default:
             break
         }
@@ -101,6 +105,8 @@ private final class Screen {
     let editor: BodyEditor
     let model: NoteEditorViewModel
     let window: UIWindow
+    /// The blocks the page draws, which a re-read of the note sets.
+    let page: Page
 
     /// The block typed in, then a paragraph for each of `below`.
     init(_ kind: String = "paragraph", depth: UInt32 = 0, text: String, below: [String] = []) throws {
@@ -110,7 +116,7 @@ private final class Screen {
         }
         editor = BodyEditor(blocks)
         model = NoteEditorViewModel(noteId: "note-1", editor: editor)
-        let page = Page(blocks)
+        page = Page(blocks)
         let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
         window = UIWindow(windowScene: scene)
         window.frame = CGRect(x: 0, y: 0, width: 400, height: 800)
@@ -386,6 +392,32 @@ struct EditorReturnBurstTests {
             return seen.held
         }
         #expect(held == true, "a text view holds the caret as the old row leaves")
+    }
+
+    /// #4756: the page re-reads the note while a block shortcut is still
+    /// writing (the title's rename, the body taking the caret) and redraws
+    /// the row in its new shape before the shortcut asked for the caret. The
+    /// new row takes the caret as it moves in, so the keys typed from then
+    /// land in it: they reached no text view (`[] milk` stored as `m`).
+    @Test(.timeLimit(.minutes(1))) func aRowRedrawnBeforeTheShortcutAsksForTheCaretTakesIt() async throws {
+        let (blocks, focused) = try await Screen.run(text: "") { screen in
+            let item = try await screen.start()
+            screen.editor.props.withLock { $0 = .wait }
+            screen.keys("[] ")
+            for _ in 0 ..< 80 where screen.editor.all.first?.kind != "checkListItem" {
+                try await Task.sleep(for: .milliseconds(25))
+            }
+            screen.page.blocks = screen.editor.all
+            for _ in 0 ..< 80 where screen.textViews().contains(item) { try await Task.sleep(for: .milliseconds(25)) }
+            let focused = screen.focused != nil
+            screen.keys("milk")
+            screen.editor.props.withLock { $0 = .land }
+            try await screen.finish(blocks: 1)
+            return (screen.editor.all, focused)
+        }
+        #expect(focused, "no text view holds the caret once the row is redrawn")
+        #expect(blocks.map(\.kind) == ["checkListItem"])
+        #expect(blocks.map { BlockText.shown($0.inline) } == ["milk"], "\(blocks.map { BlockText.shown($0.inline) })")
     }
 
     /// A second Return while the item turns into a paragraph is a
