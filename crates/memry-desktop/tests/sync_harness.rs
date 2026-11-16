@@ -13,6 +13,7 @@
 //! | recovery info is read with the setup token              | chapter 02 §2.7 (`/auth/recovery-info`)   |
 //! | `account`: email sign-in, setup, known device, phrase   | `auth-device-handlers.ts`, `device-registration.ts` |
 //! | `linking`: QR link, vault choice, wrong key, revoke     | `sync/linking-service.ts`, chapter 03      |
+//! | `binding`: foreign vault held, revocation event         | `vault-account-binding.ts`, D7             |
 //!
 //! Within it: a definition another device pushed first wins over the learned type, a deleted one
 //! stays deleted, the record has the shape Electron's seed pushes, a retry pushes nothing twice,
@@ -22,6 +23,8 @@
 
 #[path = "sync_harness/account.rs"]
 mod account;
+#[path = "sync_harness/binding.rs"]
+mod binding;
 #[path = "device_key/mod.rs"]
 mod device_key;
 #[path = "harness_server/mod.rs"]

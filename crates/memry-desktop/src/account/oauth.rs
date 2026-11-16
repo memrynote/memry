@@ -91,7 +91,7 @@ impl AccountService {
     ) -> Result<OAuthStarted, AccountError> {
         // Held until the attempt is in place, so a later start or a Cancel ends it.
         let _start = self.oauth_start.lock().await;
-        self.end_pending_sign_in()?;
+        self.end_pending_sign_in().await?;
         let callback = OneShotCallback::bind(OAUTH_ATTEMPT_TTL)
             .await
             .map_err(|error| {

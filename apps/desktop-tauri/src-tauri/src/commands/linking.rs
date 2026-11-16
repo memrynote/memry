@@ -67,10 +67,13 @@ fn map_error(app: &AppHandle<Wry>, command: &str, error: &AccountError) -> Comma
 /// `sync:linking-finalized`. The error is the finalize's message, as Electron sends it.
 fn report_finalized(app: &AppHandle<Wry>, outcome: Result<String, AccountError>) {
     let event = match outcome {
-        Ok(device_id) => SyncLinkingFinalizedEvent {
-            device_id: Some(device_id),
-            error: None,
-        },
+        Ok(device_id) => {
+            crate::shell::account_sync::attach_if_signed_in(app.clone());
+            SyncLinkingFinalizedEvent {
+                device_id: Some(device_id),
+                error: None,
+            }
+        }
         Err(error) => SyncLinkingFinalizedEvent {
             device_id: None,
             error: Some(CommandError::from_core(&error).message),
@@ -114,8 +117,9 @@ pub async fn sync_approve_linking(
     app: AppHandle<Wry>,
     session_id: String,
 ) -> Result<(), CommandError> {
+    let open = app.state::<Session>().current();
     account(&app)
-        .approve_linking(&session_id)
+        .approve_linking(&session_id, open.as_ref())
         .await
         .map_err(|e| map_error(&app, "sync_approve_linking", &e))
 }

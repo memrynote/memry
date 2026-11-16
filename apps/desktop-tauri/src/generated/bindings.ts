@@ -59,6 +59,8 @@ export const commands = {
 	agentSetLocalProviderSettings: (input: AgentLocalProviderSettingsUpdate) => __TAURI_INVOKE<AgentLocalProviderSettings>("agent_set_local_provider_settings", { input }),
 	/**  `agent:testLocalProvider`: the server answers `GET /models` and lists the model. */
 	agentTestLocalProvider: () => __TAURI_INVOKE<AgentLocalProviderProbeResult>("agent_test_local_provider"),
+	/**  `settings:getAIModelStatus`: the local text model's state and the open vault's note vectors. */
+	aiGetModelStatus: () => __TAURI_INVOKE<AiModelStatus>("ai_get_model_status"),
 	/**
 	 *  The settings with the key masked (`ai-inline:get-settings`). The key itself is never read,
 	 *  so a locked keychain still opens the screen.
@@ -80,6 +82,11 @@ export const commands = {
 	 *  answer, not a failed call.
 	 */
 	aiInlineTestConnection: () => __TAURI_INVOKE<TestConnectionResult>("ai_inline_test_connection"),
+	/**
+	 *  `settings:loadAIModel`: loads the local text model, downloading it first, and waits. A
+	 *  refusal is the answer's `error`, as Electron's.
+	 */
+	aiLoadModel: () => __TAURI_INVOKE<ModelLoadResult>("ai_load_model"),
 	/**  Ends a provider call the renderer aborted, before or after its head. */
 	aiProviderCancel: (requestId: string) => __TAURI_INVOKE<void>("ai_provider_cancel", { requestId }),
 	/**
@@ -601,6 +608,17 @@ export const commands = {
 	 *  tells the user that recent edits may be lost.
 	 */
 	shellTakeCrashReload: () => __TAURI_INVOKE<boolean>("shell_take_crash_reload"),
+	/**  `account:sign-out`. */
+	accountSignOut: () => __TAURI_INVOKE<SignOutResult>("account_sign_out"),
+	/**  `sync:get-vault-binding`: `bound` while no supervisor runs (signed out, no vault). */
+	syncGetVaultBinding: () => __TAURI_INVOKE<VaultBindingState>("sync_get_vault_binding"),
+	/**  `sync:auth-logout`. */
+	syncLogout: () => __TAURI_INVOKE<SignOutResult>("sync_logout"),
+	/**
+	 *  `sync:resolve-vault-binding`: the user's answer to the binding prompt. A refused choice is
+	 *  `success: false` with the state unchanged, as Electron answers.
+	 */
+	syncResolveVaultBinding: (choice: VaultBindingChoice) => __TAURI_INVOKE<ResolveVaultBindingResult>("sync_resolve_vault_binding", { choice }),
 	/**  One schema command, answered with the snapshot after it. */
 	tagsEditSchema: (command: TagSchemaCommand) => __TAURI_INVOKE<TagSchemaCommandResultView>("tags_edit_schema", { command }),
 	/**  What points at a note: relation fields, task fields and wiki links, grouped. */
@@ -763,11 +781,13 @@ export const commands = {
 
 /** Events */
 export const events = {
+	aiEmbeddingProgressEvent: makeEvent<AiEmbeddingProgressEvent, AiEmbeddingProgressEvent>("ai-embedding-progress-event"),
 	aiInlineSettingsChangedEvent: makeEvent<AiInlineSettingsChangedEvent, AiInlineSettingsChangedEvent>("ai-inline-settings-changed-event"),
 	appNavigationRequestedEvent: makeEvent<AppNavigationRequestedEvent, AppNavigationRequestedEvent>("app-navigation-requested-event"),
 	authOauthCallbackEvent: makeEvent<AuthOauthCallbackEvent, AuthOauthCallbackEvent>("auth-oauth-callback-event"),
 	authOauthErrorEvent: makeEvent<AuthOauthErrorEvent, AuthOauthErrorEvent>("auth-oauth-error-event"),
 	authOtpDetectedEvent: makeEvent<AuthOtpDetectedEvent, AuthOtpDetectedEvent>("auth-otp-detected-event"),
+	authSessionExpiredEvent: makeEvent<AuthSessionExpiredEvent, AuthSessionExpiredEvent>("auth-session-expired-event"),
 	authSessionRefreshedEvent: makeEvent<AuthSessionRefreshedEvent, AuthSessionRefreshedEvent>("auth-session-refreshed-event"),
 	crdtProviderReadyEvent: makeEvent<CrdtProviderReadyEvent, CrdtProviderReadyEvent>("crdt-provider-ready-event"),
 	crdtProviderResetEvent: makeEvent<CrdtProviderResetEvent, CrdtProviderResetEvent>("crdt-provider-reset-event"),
@@ -798,7 +818,11 @@ export const events = {
 	propertyDefinitionChangedEvent: makeEvent<PropertyDefinitionChangedEvent, PropertyDefinitionChangedEvent>("property-definition-changed-event"),
 	settingsChangedEvent: makeEvent<SettingsChangedEvent, SettingsChangedEvent>("settings-changed-event"),
 	settingsOpenSectionEvent: makeEvent<SettingsOpenSectionEvent, SettingsOpenSectionEvent>("settings-open-section-event"),
+	syncDeviceRemovedEvent: makeEvent<SyncDeviceRemovedEvent, SyncDeviceRemovedEvent>("sync-device-removed-event"),
+	syncLinkingApprovedEvent: makeEvent<SyncLinkingApprovedEvent, SyncLinkingApprovedEvent>("sync-linking-approved-event"),
 	syncLinkingFinalizedEvent: makeEvent<SyncLinkingFinalizedEvent, SyncLinkingFinalizedEvent>("sync-linking-finalized-event"),
+	syncLinkingRequestedEvent: makeEvent<SyncLinkingRequestedEvent, SyncLinkingRequestedEvent>("sync-linking-requested-event"),
+	syncVaultBindingChangedEvent: makeEvent<SyncVaultBindingChangedEvent, SyncVaultBindingChangedEvent>("sync-vault-binding-changed-event"),
 	tagCategoriesChangedEvent: makeEvent<TagCategoriesChangedEvent, TagCategoriesChangedEvent>("tag-categories-changed-event"),
 	tagColorUpdatedEvent: makeEvent<TagColorUpdatedEvent, TagColorUpdatedEvent>("tag-color-updated-event"),
 	tagDeletedEvent: makeEvent<TagDeletedEvent, TagDeletedEvent>("tag-deleted-event"),
@@ -895,12 +919,37 @@ export type AgentLocalProviderSettingsUpdate = {
 /**  `AgentLocalThinking`: `off` asks a thinking model to answer without thinking. */
 export type AgentLocalThinking = "default" | "off";
 
+/**  `EmbeddingProgressEvent.phase`: the model's download and load, then a note embedding pass. */
+export type AiEmbeddingPhase = "downloading" | "loading" | "ready" | "error" | "embedding" | "complete";
+
+/**
+ *  The local text model's progress (`settings:embeddingProgress`). A model event carries
+ *  `progress` (0 to 100) and `status`; a note embedding pass carries `current` of `total` notes.
+ */
+export type AiEmbeddingProgressEvent = {
+	phase: AiEmbeddingPhase,
+	current?: number | null,
+	total?: number | null,
+	progress?: number | null,
+	status?: string | null,
+};
+
 /**
  *  The inline AI settings were written (replaces Electron's `ai-inline:server-ready` as the
  *  settings refresh). The key is masked.
  */
 export type AiInlineSettingsChangedEvent = {
 	settings: InlineAiSettings,
+};
+
+/**  `AIModelStatus`: the model's state and how many notes have a vector in the open vault. */
+export type AiModelStatus = {
+	name: string,
+	dimension: number,
+	loaded: boolean,
+	loading: boolean,
+	error: string | null,
+	embeddingCount: number,
 };
 
 /**
@@ -1087,6 +1136,11 @@ export type AuthRefreshResult = {
 	success: boolean,
 	/**  True only when the server refused the session and a new sign-in is needed. */
 	sessionEnded: boolean,
+};
+
+/**  The server refused the session for good (`auth:session-expired`). */
+export type AuthSessionExpiredEvent = {
+	reason: SessionExpiredReason,
 };
 
 /**  The access token was renewed (`sync:token-refreshed`; the name keeps the secret scan off it). */
@@ -2122,6 +2176,16 @@ export type Metrics = {
 	value?: number | null,
 };
 
+/**
+ *  `loadAIModel`'s answer. `message` is English, as Electron's; `error` is translated, or the
+ *  model's own reason.
+ */
+export type ModelLoadResult = {
+	success: boolean,
+	message?: string | null,
+	error?: string | null,
+};
+
 export type Modifiers = {
 	meta?: boolean,
 	ctrl?: boolean,
@@ -2744,6 +2808,13 @@ export type ReorderInput = {
 	categories?: CategoryOrderInput[] | null,
 };
 
+/**  `ResolveVaultBindingResult`. */
+export type ResolveVaultBindingResult = {
+	success: boolean,
+	state: VaultBindingState,
+	error?: string | null,
+};
+
 /**  `ResolvedField`. */
 export type ResolvedFieldView = {
 	name: string,
@@ -2924,6 +2995,9 @@ export type SelectVaultResponse = {
 	errorCode?: string | null,
 };
 
+/**  Why the session ended (`SessionExpiredReason`); sync reports only a refused refresh. */
+export type SessionExpiredReason = "refresh_rejected";
+
 /**
  *  A set's or a merge's answer (`SetPropertiesResponse` on success): the values as stored, and
  *  the names the edit removed.
@@ -2958,6 +3032,12 @@ export type ShortcutBinding = {
 
 /**  What the OS did with a configured binding. Serialized as the renderer's `GlobalCaptureStatus`. */
 export type ShortcutStatus = "unbound" | "registered" | "in_use" | "unsupported";
+
+/**  `{ success, keychainWarning? }` of both sign-out channels. */
+export type SignOutResult = {
+	success: boolean,
+	keychainWarning?: string | null,
+};
 
 /**  `NoteSizeClass`. */
 export type SizeClass = "note" | "large-file";
@@ -3021,6 +3101,19 @@ export type StreakView = {
 };
 
 /**
+ *  This device was revoked (`sync:device-removed`, `DeviceRevokedEvent`). Sync stopped; every
+ *  secret and queued edit stays, `unsynced_count` of them in the open vault.
+ */
+export type SyncDeviceRemovedEvent = {
+	unsyncedCount: number,
+};
+
+/**  A link this device started was approved (`sync:linking-approved`). */
+export type SyncLinkingApprovedEvent = {
+	sessionId: string,
+};
+
+/**
  *  A linked device finished registering, or failed to (`sync:linking-finalized`). The new device's
  *  link finalizes in the background after the approval; `error` is the failure's message.
  */
@@ -3028,6 +3121,16 @@ export type SyncLinkingFinalizedEvent = {
 	deviceId: string | null,
 	error: string | null,
 };
+
+/**  Another device asks to be linked (`sync:linking-request`). */
+export type SyncLinkingRequestedEvent = {
+	sessionId: string,
+	newDeviceName: string,
+	newDevicePlatform: string,
+};
+
+/**  The open vault's binding changed (`sync:vault-binding-changed`). */
+export type SyncVaultBindingChangedEvent = VaultBindingState;
 
 /**  `TagAssignment`: where a drag put a tag. */
 export type TagAssignmentInput = {
@@ -3445,6 +3548,12 @@ export type VaultAttachmentEntry = {
 	modifiedAt: string,
 };
 
+/**  `VaultBindingChoice`. */
+export type VaultBindingChoice = "sync" | "merge" | "local";
+
+/**  `VaultBindingState` (`ipc-sync-ops.ts:114`): whether the open vault syncs with the account. */
+export type VaultBindingState = { status: "bound" } | { status: "local-only" } | { status: "foreign" } | { status: "unknown" } | { status: "needs-decision"; accountVaultCount: number; mergeTarget: VaultMergeTarget | null };
+
 /**  The vault settings, in the `VaultConfig` shape of `packages/contracts/src/vault-api.ts`. */
 export type VaultConfig = {
 	excludePatterns: string[],
@@ -3549,6 +3658,12 @@ export type VaultLocksExternalEditRestoredEvent = {
 	noteId: string,
 	path: string,
 	title: string,
+};
+
+/**  The account vault a merge would join. */
+export type VaultMergeTarget = {
+	vaultUuid: string,
+	name: string | null,
 };
 
 /**

@@ -212,6 +212,16 @@ pub fn delete(index: &Connection, note_id: &str) -> Result<(), StorageError> {
     transaction.commit().map_err(failed)
 }
 
+/// `getEmbeddingCount`: how many notes have a head vector (`vec_notes` rows).
+pub fn count(index: &Connection) -> Result<u64, StorageError> {
+    index
+        .query_row("SELECT COUNT(*) FROM vec_notes", [], |row| {
+            row.get::<_, i64>(0)
+        })
+        .map(i64::unsigned_abs)
+        .map_err(failed)
+}
+
 /// `rebuild` of a vault with no note: every note vector and state row.
 pub fn clear(index: &Connection) -> Result<(), StorageError> {
     index

@@ -42,7 +42,7 @@ mod tests {
         let built = Arc::new(AtomicUsize::new(0));
         let factory: SupervisorFactory = {
             let built = Arc::clone(&built);
-            Arc::new(move |_| {
+            Arc::new(move |_, _| {
                 built.fetch_add(1, Ordering::SeqCst);
                 None
             })
