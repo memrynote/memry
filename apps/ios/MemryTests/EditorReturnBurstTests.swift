@@ -206,10 +206,12 @@ private final class Screen {
         }
     }
 
-    /// Lets every queued write and redraw land, then ends editing, which
-    /// commits the open block.
+    /// Lets every queued write and redraw land, and the keys held after a
+    /// Return reach their block, then ends editing, which commits the open
+    /// block. Ended sooner, the edit keeps the held keys where they were
+    /// typed (#4777).
     func finish(blocks count: Int) async throws {
-        for _ in 0 ..< 80 where editor.all.count < count || focused == nil {
+        for _ in 0 ..< 80 where editor.all.count < count || focused == nil || model.session.returnBurst != nil {
             try await Task.sleep(for: .milliseconds(25))
         }
         try await Task.sleep(for: .milliseconds(200))
@@ -450,6 +452,25 @@ struct EditorReturnBurstTests {
         #expect(blocks.map(\.kind) == ["paragraph", "paragraph"])
         #expect(blocks.map { BlockText.shown($0.inline) } == ["", "abc"])
         #expect(!steps.contains { $0.forward == $0.backward }, "no undo step that changes nothing")
+    }
+
+    /// #4777: the caret leaves the item (the keyboard hidden, Back) after a
+    /// second Return during a list exit, before the row is redrawn. That is
+    /// not the redraw taking the row's keys, so they stay in the item and
+    /// commit there, as for a paragraph's Return. They were taken out of
+    /// the row and held only in memory for a row to take the caret: what
+    /// the core held lost them (`["", ""]`).
+    @Test(.timeLimit(.minutes(1))) func leavingTheItemDuringAListExitCommitsTheKeys() async throws {
+        let shown = try await Screen.run("checkListItem", text: "") { screen in
+            _ = try await screen.start()
+            screen.keys("\n\nabc")
+            screen.focused?.resignFirstResponder()
+            // No further resign: what lands is what leaving the item committed.
+            screen.model.session.enqueue {}
+            await screen.model.session.tail?.value
+            return screen.editor.shown
+        }
+        #expect(shown == ["abc", ""], "\(shown)")
     }
 
     /// Keys typed after the row is redrawn, and before the new block lands,

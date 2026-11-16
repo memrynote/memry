@@ -53,7 +53,7 @@ struct EditableBlockView: UIViewRepresentable {
     /// their edits, so typing not yet committed would be lost with them.
     static func dismantleUIView(_ view: BlockTextView, coordinator: BlockField) {
         // A row a type change redraws goes before it resigns (REVIEW-4714).
-        coordinator.session?.returnBurstEnded(in: coordinator)
+        coordinator.session?.returnBurstEnded(in: coordinator, leaving: true)
         if coordinator.dirty { coordinator.commitTyping() }
     }
 

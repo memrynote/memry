@@ -118,16 +118,19 @@ extension EditorSession {
         return nil
     }
 
-    /// `field` stopped editing, or its row went, before its typing commits.
-    /// Handing over, or redrawn by a type change, it gives up the keys it
-    /// held; otherwise (the caret went elsewhere first) they stay in it and
-    /// commit there.
-    func returnBurstEnded(in field: BlockField) {
+    /// `field` stopped editing, or its row went (`leaving`), before its
+    /// typing commits. Handing over, or leaving as a type change redraws
+    /// it, it gives up the keys it held; otherwise (the caret went
+    /// elsewhere first, the keyboard was hidden) they stay in it and commit
+    /// there (#4777).
+    func returnBurstEnded(in field: BlockField, leaving: Bool = false) {
         guard let burst = returnBurst, burst.source === field, !burst.ended else { return }
         // A row a type change is redrawing goes, and resigns, before the
         // Return's block takes the caret: its keys go on all the same
-        // (REVIEW-4714).
-        guard burst.handing || shortcutField === field else { return returnBurst = nil }
+        // (REVIEW-4714). Only its leaving says so: resigning, it may be
+        // ending the edit, and keys given up then were held only in memory
+        // for a row that might never take the caret (#4777).
+        guard burst.handing || leaving && shortcutField === field else { return returnBurst = nil }
         // Removing the keys edits the text, and UIKit flushes the keys it
         // queued for the row from inside that edit, as the selection
         // changes (#4769). The burst carries them first, so those keys meet
