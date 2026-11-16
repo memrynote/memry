@@ -528,6 +528,50 @@ struct InlineNodeUndoTests {
         #expect(try await kinds(f) == ["wikiLink", "dateMention"])
     }
 
+    /// #4796: as above, but `z` stays uncommitted before the pick, as on a
+    /// keyboard. Undo takes back only the date, the next undo the `z`, and
+    /// redo puts them back in order.
+    @Test(.timeLimit(.minutes(1))) func a_pick_after_uncommitted_typing_is_undone_without_it() async throws {
+        let f = try await fixture("q ")
+        try pickNote("[[Agent", in: f)
+        await f.session.tail?.value
+        try await reload(f)
+        type("z", in: f)
+
+        type("@", at: 3, in: f)
+        f.session.insertInline(.date(Self.today), replacing: NSRange(location: 3, length: 1))
+        await f.session.tail?.value
+        #expect(try await shown(f) == "q \u{FFFC}\u{FFFC} z")
+
+        await undo(f)
+        #expect(try await shown(f) == "q \u{FFFC} z")
+        #expect(try await kinds(f) == ["wikiLink"])
+        await undo(f)
+        #expect(try await shown(f) == "q \u{FFFC} ")
+
+        await redo(f)
+        #expect(try await shown(f) == "q \u{FFFC} z")
+        await redo(f)
+        #expect(try await shown(f) == "q \u{FFFC}\u{FFFC} z")
+        #expect(try await kinds(f) == ["wikiLink", "dateMention"])
+    }
+
+    /// #4796: in a block holding only uncommitted typing, undo of a date
+    /// picked inside it keeps the typing.
+    @Test(.timeLimit(.minutes(1))) func a_pick_inside_uncommitted_typing_keeps_the_typing() async throws {
+        let f = try await fixture("")
+        type("k z", in: f)
+        type("@", at: 1, in: f)
+        f.session.insertInline(.date(Self.today), replacing: NSRange(location: 1, length: 1))
+        await f.session.tail?.value
+        #expect(try await shown(f) == "k\u{FFFC} z")
+
+        await undo(f)
+        #expect(try await shown(f) == "k z")
+        await undo(f)
+        #expect(try await shown(f) == "")
+    }
+
     /// #4765: a date picked from the menu, its space deleted, then `[[`
     /// typed and a link picked right after the chip. The link lands after
     /// the chip, and undo and redo take back and put back only the link.
