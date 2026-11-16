@@ -81,6 +81,7 @@ jobs:
       swift: ${{ steps.tier.outputs.swift }}
       intel: ${{ steps.tier.outputs.intel }}
       macos: ${{ steps.tier.outputs.macos }}
+      linux_arm64: ${{ steps.tier.outputs.rust_linux_arm64 }}
       legs: ${{ steps.matrix.outputs.legs }}
       paths: ${{ steps.paths.outputs.changed }}
     steps:
@@ -819,6 +820,130 @@ jobs:
           cargo tree -p memry-tauri -e normal,build,features --target all > "$RUNNER_TEMP/features.txt"
           if grep -E '(tauri|tauri-runtime-wry|wry) feature "devtools"' "$RUNNER_TEMP/features.txt"; then exit 1; fi
 
+  # memry-ml-worker on Linux arm64, a release target (#4775): the cmake build of Tesseract and
+  # Leptonica, the ORT static archive of that triple, pdfium, OCR, the linked libraries and the real
+  # embed, on the release image (glibc 2.35 floor). One job, worker only: the rest of the workspace
+  # has no arm64-specific native code. Runs where tier.sh's rust_linux_arm64 says (every full run,
+  # the merge queue included; a PR touching the worker, the crates it links or their inputs).
+  ml-worker-linux-arm64:
+    name: Rust ml-worker (ubuntu-22.04-arm)
+    needs: plan
+    if: ${{ !cancelled() && needs.plan.outputs.paths == 'true' && needs.plan.outputs.linux_arm64 == 'true' }}
+    runs-on: ubuntu-22.04-arm
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: bash
+        working-directory: crates
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with: *lean-checkout
+
+      - name: Free disk space
+        uses: ./.github/actions/free-disk
+
+      - name: Setup Rust
+        id: rust
+        uses: dtolnay/rust-toolchain@stable
+        timeout-minutes: 5
+        continue-on-error: true
+        with:
+          toolchain: '1.98.1'
+
+      - name: Setup Rust (retry)
+        if: steps.rust.outcome == 'failure'
+        uses: dtolnay/rust-toolchain@stable
+        timeout-minutes: 5
+        with:
+          toolchain: '1.98.1'
+
+      # Saved like lint-and-test's cache: by the push to feat/tauri-v2, restored by PRs.
+      - name: Cache cargo
+        id: cargo-cache
+        uses: Swatinem/rust-cache@v2
+        timeout-minutes: 8
+        continue-on-error: true
+        env:
+          SEGMENT_DOWNLOAD_TIMEOUT_MINS: 3
+        with:
+          workspaces: crates
+          key: ubuntu-22.04-arm-ml-worker
+          save-if: ${{ github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref == 'main') }}
+
+      - name: Drop a partial cargo cache
+        if: steps.cargo-cache.outcome == 'failure'
+        run: rm -rf target "$HOME/.cargo/registry/cache" "$HOME/.cargo/registry/index" "$HOME/.cargo/git/db"
+
+      - name: ONNX Runtime static library
+        uses: ./.github/actions/ort-static
+        with:
+          token: ${{ github.token }}
+
+      - name: Tesseract sources
+        uses: ./.github/actions/tesseract-sources
+        with:
+          save: ${{ github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2') }}
+
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
+
+      - name: Test memry-ml and memry-ml-worker
+        env:
+          MEMRY_PDFIUM_DIR: ${{ runner.temp }}/pdfium
+        run: |
+          node ../scripts/fetch-pdfium.mjs --out "$MEMRY_PDFIUM_DIR"
+          cargo nextest run -p memry-ml -p memry-ml-worker --no-fail-fast
+
+      - name: memry-ml-worker linked libraries
+        run: |
+          cargo build -p memry-ml-worker --bin memry-ml-worker
+          ldd target/debug/memry-ml-worker | tee "$RUNNER_TEMP/worker-dependencies.txt"
+          grep -q 'libc\.so' "$RUNNER_TEMP/worker-dependencies.txt"
+          if grep -iE 'tesseract|lept|onnxruntime' "$RUNNER_TEMP/worker-dependencies.txt"; then
+            echo "::error::the worker depends on a shared Tesseract, Leptonica or ONNX Runtime library"
+            exit 1
+          fi
+
+      # The text model of lint-and-test's smoke steps, from the same cross-OS cache entry (saved by
+      # those steps), downloaded on a miss.
+      - name: Restore the text model
+        id: model-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/models
+          key: embeddinggemma-2-text-daa72c51243991dfcaf9f9137d2c573d8f7790c0
+          enableCrossOsArchive: true
+
+      - name: Download the text model
+        if: steps.model-cache.outputs.cache-hit != 'true'
+        working-directory: ${{ runner.temp }}
+        run: |
+          base=https://huggingface.co/onnx-community/embeddinggemma-2-ONNX/resolve/daa72c51243991dfcaf9f9137d2c573d8f7790c0
+          dir=models/onnx-community/embeddinggemma-2-ONNX
+          mkdir -p "$dir/onnx"
+          while read -r sum file; do
+            curl -fsSL --retry 3 -o "$dir/$file" "$base/$file"
+            if [ "$(sha256sum "$dir/$file" | cut -d' ' -f1)" != "$sum" ]; then
+              echo "::error::$file does not match its pinned sha256"
+              exit 1
+            fi
+          done <<'EOF'
+          4d777ef5bdc1aa36227abdfb77c3e49e7b9c892d16e1b6bda41c393504828be4 tokenizer.json
+          f9eeba97acddf139b8ee2ddf04bc30dceafa88de93fadf74d7644e0d61a477a9 onnx/model_q4.onnx
+          c3975f2d1ab7a1878ae31a7d7a9b7804a827aff3800b60dfceafce21cac3df49 onnx/model_q4.onnx_data
+          EOF
+
+      # The golden text vector through the real worker binary, as on the other OSes.
+      - name: memry-ml-worker real embed
+        timeout-minutes: 20
+        env:
+          MEMRY_ML_MODEL_DIR: ${{ runner.temp }}/models/onnx-community/embeddinggemma-2-ONNX
+        run: cargo test -p memry-ml-worker --test embed -- --ignored
+
   # The article-extraction vectors and the entity table are generated from the TypeScript
   # oracle (linkedom, Defuddle, htmlparser2). A change to the oracle or its pins that ships
   # without regenerating them leaves the Rust port tested against a stale oracle.
@@ -955,7 +1080,14 @@ jobs:
   # no new check.
   gate:
     name: Rust CI gate
-    needs: [plan, lint-and-test, article-extract-oracle-fresh, swift-bindings-fresh]
+    needs:
+      [
+        plan,
+        lint-and-test,
+        ml-worker-linux-arm64,
+        article-extract-oracle-fresh,
+        swift-bindings-fresh
+      ]
     # Skipped (not red) in noop runs: the merge queue is the authoritative gate.
     if: ${{ always() && !((github.event.action == 'labeled' && !(github.base_ref != 'main' && github.event.label.name == 'full-ci')) || (github.event.action == 'opened' && github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) && (github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.base_ref != 'main') || github.ref == 'refs/heads/feat/tauri-v2') }}
     runs-on: ubuntu-22.04

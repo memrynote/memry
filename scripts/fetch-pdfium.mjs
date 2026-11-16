@@ -4,7 +4,7 @@
  * bblanchon/pdfium-binaries chromium/7881, the build `pdfium-render`'s `pdfium_7881` feature
  * targets. Each archive's sha256 is pinned below; a mismatch fails without writing anything.
  *
- *   node scripts/fetch-pdfium.mjs [--target <darwin-arm64|darwin-x64|win32-x64|win32-arm64|linux-x64>] [--out <dir>]
+ *   node scripts/fetch-pdfium.mjs [--target <darwin-arm64|darwin-x64|win32-x64|win32-arm64|linux-x64|linux-arm64>] [--out <dir>]
  *
  * Writes `<out>/<library>` and `<out>/LICENSE`. The default `<out>` is
  * `apps/desktop-tauri/src-tauri/resources/pdfium` (gitignored), which debug builds of the app
@@ -54,6 +54,11 @@ export const PINS = {
   'linux-x64': {
     archive: 'pdfium-linux-x64.tgz',
     sha256: '1470e21b8b4a3b4ad7f85684e2da11d94f3b69a86d81dee11b9b6709d927ac1d',
+    library: 'lib/libpdfium.so'
+  },
+  'linux-arm64': {
+    archive: 'pdfium-linux-arm64.tgz',
+    sha256: 'ee7f7b7d5468958336a818c1cd580bdd20972846b7377b13f9a923d92d1d4674',
     library: 'lib/libpdfium.so'
   }
 }
