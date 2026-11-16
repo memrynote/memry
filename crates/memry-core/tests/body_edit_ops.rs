@@ -1740,3 +1740,59 @@ fn an_in_place_set_text_edits_at_byte_offsets_around_multibyte_text() {
     let blocks = extract_blocks(&document).expect("blocks");
     assert_eq!(text_of(&blocks[0]), "日記 🌙☀️ the end");
 }
+
+/// Each run of block `a`: a node by its kind, text as itself.
+fn spelled(document: &Document) -> Vec<String> {
+    let block = extract_blocks(document)
+        .expect("blocks")
+        .into_iter()
+        .find(|block| block.id.as_deref() == Some("a"))
+        .expect("a");
+    block
+        .inline
+        .iter()
+        .map(|run| {
+            run.marks
+                .iter()
+                .find(|mark| ["wikiLink", "dateMention"].contains(&mark.as_str()))
+                .cloned()
+                .unwrap_or_else(|| run.text.clone())
+        })
+        .collect()
+}
+
+fn atom(at: u32, kind: &str) -> BlockEdit {
+    BlockEdit::InsertInline {
+        block_id: "a".to_owned(),
+        start: at,
+        end: at,
+        kind: kind.to_owned(),
+        text: String::new(),
+        attrs: inline_attrs(&[("target", "x")]),
+    }
+}
+
+/// #4765: a node with no text has no width in the offsets, so an empty
+/// range at its offset is both before and after it. The run holding the
+/// character at that offset decides: the shell writes a node's space first
+/// and puts the node before that space, which lies after the earlier node.
+#[test]
+fn an_empty_range_at_a_textless_node_lands_after_it() {
+    for (first, second) in [("wikiLink", "dateMention"), ("dateMention", "wikiLink")] {
+        let document = opened(&body(&[("a", "paragraph", "q  z")]));
+        apply(&document, &atom(2, first)).expect("the first node");
+        assert_eq!(spelled(&document), ["q ", first, " z"]);
+
+        apply(&document, &atom(2, second)).expect("the second node");
+        assert_eq!(spelled(&document), ["q ", first, second, " z"]);
+    }
+}
+
+/// With no text after the node, the range still lands, in the run before it.
+#[test]
+fn an_empty_range_at_a_trailing_textless_node_still_lands() {
+    let document = opened(&body(&[("a", "paragraph", "q ")]));
+    apply(&document, &atom(2, "wikiLink")).expect("the link");
+    apply(&document, &atom(2, "dateMention")).expect("the date");
+    assert_eq!(spelled(&document), ["q ", "dateMention", "wikiLink"]);
+}

@@ -517,6 +517,41 @@ struct SameNotePanesTests {
         #expect(runs.filter { $0.marks.contains("wikiLink") }.map(\.target) == ["Foo"])
     }
 
+    /// #4765: B, which has not re-read A's `XYZ `, picks a date with its
+    /// caret right after a link. The date lands after the link, where the
+    /// block holds it, and B's undo takes back only the date and keeps A's
+    /// typing.
+    @Test(.timeLimit(.minutes(1))) func a_date_picked_after_a_link_in_a_stale_pane_lands_after_it() async throws {
+        let f = try fixture("q  z")
+        _ = try f.vault.vault.notesWriter(store: TaskTestKeychain()).editBlock(
+            noteId: f.noteId,
+            edit: .insertInline(
+                blockId: f.blockId, start: 2, end: 2, kind: "wikiLink", text: "", attrs: WikiLinkAttrs.attrs(target: "Foo", alias: nil)
+            )
+        )
+        let a = pane(f)
+        let b = pane(f)
+        let drawn = try await block(f)
+        let fieldA = draw(drawn, in: a)
+        let fieldB = draw(drawn, in: b)
+        #expect(fieldB.textView.text == "q \u{FFFC} z")
+
+        await prepend(in: fieldA, of: a)
+        fieldB.textView.textStorage.insert(NSAttributedString(string: "@"), at: 3)
+        fieldB.dirty = true
+        b.session.insertInline([.date(Self.due)], replacing: NSRange(location: 3, length: 1), in: fieldB)
+        await b.session.tail?.value
+
+        let kinds = { [f] in try await self.block(f).inline.compactMap { $0.marks.first { BlockText.nodeKinds.contains($0) } } }
+        #expect(BlockText.shown(try await block(f).inline) == "XYZ q \u{FFFC}\u{FFFC} z")
+        #expect(try await kinds() == ["wikiLink", "dateMention"])
+
+        b.session.undo()
+        await b.session.tail?.value
+        #expect(BlockText.shown(try await block(f).inline) == "XYZ q \u{FFFC} z")
+        #expect(try await kinds() == ["wikiLink"])
+    }
+
     /// #4706: the page menu's append from B, which has not re-read A's
     /// `XYZ `, lands at the end of the block as the core holds it.
     @Test(.timeLimit(.minutes(1))) func an_append_from_a_stale_pane_lands_at_the_live_end() async throws {
