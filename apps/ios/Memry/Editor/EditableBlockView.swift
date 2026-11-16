@@ -603,21 +603,13 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
         return draws
     }
 
-    /// Puts back the text each chip of draw `draw` replaced: a
+    /// Puts back the text each chip of `draws` replaced: a
     /// failed write never gave the core its node, and the row keeps the
     /// typing (REVIEW-4784). The caret stays on the same text.
-    func undraw(_ draw: Int) {
+    func undraw(_ draws: Set<Int>) {
         let storage = textView.textStorage
         var caret = textView.selectedRange.location
-        var drawn: [(range: NSRange, literal: String)] = []
-        storage.enumerateAttribute(.memryDrawn, in: NSRange(location: 0, length: storage.length)) { value, range, _ in
-            guard let chip = value as? DrawnChip, chip.draw == draw else { return }
-            // Each chip is one character, so adjacent chips are undrawn one by one.
-            for location in range.location ..< NSMaxRange(range) {
-                drawn.append((NSRange(location: location, length: 1), chip.literal))
-            }
-        }
-        for (range, literal) in drawn.reversed() {
+        for (range, literal) in Self.chips(of: draws, in: storage).reversed() {
             storage.replaceCharacters(in: range, with: NSAttributedString(string: literal, attributes: BlockText.baseAttributes(style)))
             if caret > range.location { caret += (literal as NSString).length - range.length }
         }
@@ -625,6 +617,30 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
         textView.selectedRange = NSRange(location: min(caret, storage.length), length: 0)
         textView.typingAttributes = BlockText.baseAttributes(style)
         textView.invalidateIntrinsicContentSize()
+    }
+
+    /// `text` with each chip of `draws` back to the text it replaced: what
+    /// a commit queued behind a failed one sends, as the core never got
+    /// those nodes (REVIEW-4784).
+    static func undrawn(_ text: NSAttributedString, draws: Set<Int>) -> String {
+        let string = NSMutableString(string: text.string)
+        for (range, literal) in chips(of: draws, in: text).reversed() {
+            string.replaceCharacters(in: range, with: literal)
+        }
+        return string as String
+    }
+
+    /// Each chip of `draws` in `text`, in order, and the text it replaced.
+    private static func chips(of draws: Set<Int>, in text: NSAttributedString) -> [(range: NSRange, literal: String)] {
+        var drawn: [(range: NSRange, literal: String)] = []
+        text.enumerateAttribute(.memryDrawn, in: NSRange(location: 0, length: text.length)) { value, range, _ in
+            guard let chip = value as? DrawnChip, draws.contains(chip.draw) else { return }
+            // Each chip is one character, so adjacent chips are undrawn one by one.
+            for location in range.location ..< NSMaxRange(range) {
+                drawn.append((NSRange(location: location, length: 1), chip.literal))
+            }
+        }
+        return drawn
     }
 
     // MARK: UITextViewDelegate

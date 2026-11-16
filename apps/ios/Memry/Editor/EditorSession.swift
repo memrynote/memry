@@ -164,13 +164,16 @@ final class EditorSession {
     @ObservationIgnored private var queuedWrites = 0
     @ObservationIgnored private(set) var landedWrites = 0
     /// Each block's last typing commit from this session that failed,
-    /// until one lands (#4773): the text it sent (`typed`), the text it
-    /// left the block at (`held`), and the runs queued by then (`queued`).
-    /// A commit queued by then on top of `typed` sends its change from
-    /// `held`, so the failed one's typing goes with it. Any other commit
-    /// was drawn or typed from what the row showed, and goes from its own
-    /// base: a clean redraw since puts the core's text there.
-    @ObservationIgnored private var unlanded: [String: (typed: String, held: String, queued: Int)] = [:]
+    /// until one lands (#4773): the text it sent (`typed`), the row's base
+    /// with its chips drawn (`drawn`), the draws whose chips the core never
+    /// got (`draws`), the text it left the block at (`held`), and the runs
+    /// queued by then (`queued`). A commit queued by then on top of `typed`
+    /// or `drawn` sends its change from `held`, with those chips back to
+    /// the text they replaced, so the failed one's typing goes with it
+    /// (REVIEW-4784). Any other commit was drawn or typed from what the row
+    /// showed, and goes from its own base: a clean redraw since puts the
+    /// core's text there.
+    @ObservationIgnored private var unlanded: [String: (typed: String, drawn: String, draws: Set<Int>, held: String, queued: Int)] = [:]
     /// The generation the run this task is in was queued as.
     @TaskLocal private static var running: Int?
     /// The generation the page's drawn blocks include: `landedWrites` as
@@ -605,12 +608,19 @@ final class EditorSession {
         let generation = enqueue {
             // Queued behind a commit that failed, `base` holds typing the
             // core never got: the change goes from what it holds (#4773).
-            let failed = self.unlanded[blockId]
-            let carries = dirty && failed.map { $0.typed == base && (Self.running ?? 0) <= $0.queued } == true
-            let from = carries ? failed?.held ?? base : base
-            let sends = dirty && text != from
-            let (landed, held) = sends ? await model.commit(text, for: blockId, base: from) : (true, text)
-            if dirty { self.unlanded[blockId] = landed ? nil : (typed: text, held: held, queued: self.queuedWrites) }
+            let failed = self.unlanded[blockId].flatMap {
+                dirty && ($0.typed == base || $0.drawn == base) && (Self.running ?? 0) <= $0.queued ? $0 : nil
+            }
+            let from = failed?.held ?? base
+            // Its chips the core never got go as the text they replaced.
+            let carried = failed?.draws ?? []
+            let sent = carried.isEmpty ? text : BlockField.undrawn(attributed, draws: carried)
+            let sends = dirty && sent != from
+            let (landed, held) = sends ? await model.commit(sent, for: blockId, base: from) : (true, sent)
+            if dirty {
+                self.unlanded[blockId] = landed
+                    ? nil : (typed: text, drawn: drawn, draws: carried.union([draw]), held: held, queued: self.queuedWrites)
+            }
             // Not written: the block's row keeps its text unsaved, so a
             // redraw keeps it and the next commit sends it again
             // (REVIEW-4700). The row that took this one's typing over
@@ -621,28 +631,32 @@ final class EditorSession {
             // A row still on this commit's drawn chips gets back the text
             // they replaced, and keeps it unsaved the same way (REVIEW-4784).
             if !landed, row.base == text || (drawn != text && row.base == drawn) {
-                if row.base != text { row.undraw(draw) }
+                row.undraw(carried.union([draw]))
                 row.base = held
                 row.dirty = true
             }
-            let converted = overText.isEmpty
+            // Not after a failed write: their places hold typing the core
+            // never got, and they would go at the block's end (REVIEW-4784).
+            let converted = !landed || overText.isEmpty
                 ? [] : await model.insert(overText, over: blockId, typedLength: length)
-            let added = await nodes?(model) ?? []
+            let added = landed ? await nodes?(model) ?? [] : []
             // From `from`, as the write: the block may hold another pane's
             // typing since, which undo and redo keep. To this pane's text
             // with the nodes in, so undo takes them back too. A node over
             // text, such as a `#tag`, keeps its literal for redo to find.
             // Only over a text write that landed: undo would replay a change
-            // the core never had.
-            if landed, !converted.isEmpty || !added.isEmpty {
+            // the core never had. Nor when a failed commit's chips were
+            // swapped out of this text: its nodes' places count them.
+            let placed = !converted.isEmpty || !added.isEmpty
+            if landed, placed, sent == text {
                 let spans = converted.map { $0.start ..< $0.start + $0.literal.utf8.count } + added.compactMap(Self.span)
                 self.history.record(.text(
                     blockId: blockId, from: from, typed: text, typedLength: length, overText: converted,
                     nodes: added, to: BlockText.placingNodes(spans, in: attributed),
                     caret: (field.pendingSelection ?? field.textView.selectedRange).location
                 ))
-            } else if landed, sends {
-                self.history.record(.text(blockId: blockId, from: from, to: text))
+            } else if landed, sends, !placed {
+                self.history.record(.text(blockId: blockId, from: from, to: sent))
             }
             await then?()
             if dirty || !overText.isEmpty || nodes != nil || then != nil {

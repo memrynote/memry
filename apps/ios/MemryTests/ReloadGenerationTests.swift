@@ -454,8 +454,102 @@ struct ReloadGenerationTests {
         #expect(pane.field.textView.text == "a see   and more")
         #expect(pane.field.dirty)
         await pane.commit()
-        let stored = try await pane.stored
-        #expect(stored.replacingOccurrences(of: "\u{FFFC}", with: "") == "a see   and more", "stored: \(stored.debugDescription)")
+        // No link at the block's end: the failed write's nodes stay out.
+        #expect(try await pane.stored == "a see   and more")
+        #expect(pane.model.status == .idle)
+    }
+
+    /// REVIEW-4784 High: a commit queued behind a pick whose write fails
+    /// carries its typing, with the pick's chip left out, as the core never
+    /// got it. One undo step takes it all back.
+    @Test(.timeLimit(.minutes(1))) func aCommitQueuedBehindAFailedPickCarriesItsTyping() async throws {
+        let f = try fixture("a")
+        let editor = Interposed(f.editor)
+        let pane = try await Pane(f, editor: editor)
+        pane.rereads()
+        let session = pane.model.session
+        session.linkNotes = [
+            NoteSummary(id: "pane", title: "Pane", folderPath: nil, emoji: nil, createdAt: nil, modifiedAt: nil, aliases: []),
+        ]
+        session.focusChanged(to: pane.field)
+        pane.type("a see [[pan")
+        pane.field.textView.selectedRange = NSRange(location: 11, length: 0)
+        session.selectionChanged(in: pane.field)
+        editor.failures.withLock { $0 = 1 }
+        let gate = Gate(session)
+
+        session.choose(try #require(session.suggestions.first))
+        #expect(pane.field.textView.text == "a see \u{FFFC} ")
+        pane.field.textView.insertText(" and more")
+        pane.field.dirty = true
+        session.commit(pane.field)
+        gate.open()
+        await session.tail?.value
+
+        #expect(try await pane.stored == "a see   and more")
+        #expect(pane.field.textView.text == "a see   and more")
+        #expect(!pane.field.dirty)
+        #expect(pane.model.status == .idle)
+
+        session.undo()
+        await session.tail?.value
+        #expect(try await pane.stored == "a")
+        #expect(!session.canUndo)
+    }
+
+    /// REVIEW-4784 High: the same for a typed `[[x]]` drawn as its chip.
+    /// The queued commit sends the literal, which stays text.
+    @Test(.timeLimit(.minutes(1))) func aCommitQueuedBehindAFailedTypedLinkCarriesItsTyping() async throws {
+        let f = try fixture("a")
+        let editor = Interposed(f.editor)
+        let pane = try await Pane(f, editor: editor)
+        pane.rereads()
+        let session = pane.model.session
+        editor.failures.withLock { $0 = 1 }
+        let gate = Gate(session)
+
+        pane.type("a see [[x]]")
+        pane.field.textView.selectedRange = NSRange(location: 11, length: 0)
+        session.commit(pane.field)
+        #expect(pane.field.textView.text == "a see \u{FFFC}")
+        pane.field.textView.insertText(" and more")
+        pane.field.dirty = true
+        session.commit(pane.field)
+        gate.open()
+        await session.tail?.value
+
+        #expect(try await pane.stored == "a see [[x]] and more")
+        #expect(pane.field.textView.text == "a see [[x]] and more")
+        #expect(!pane.field.dirty)
+        #expect(pane.model.status == .idle)
+    }
+
+    /// REVIEW-4784: both the typed link's commit and the one queued behind
+    /// it fail. The row gets the literal back, unsaved, and the next commit
+    /// lands it all.
+    @Test(.timeLimit(.minutes(1))) func twoFailedCommitsAfterATypedLinkKeepTheTypingForTheNext() async throws {
+        let f = try fixture("a")
+        let editor = Interposed(f.editor)
+        let pane = try await Pane(f, editor: editor)
+        pane.rereads()
+        let session = pane.model.session
+        editor.failures.withLock { $0 = 2 }
+        let gate = Gate(session)
+
+        pane.type("a see [[x]]")
+        pane.field.textView.selectedRange = NSRange(location: 11, length: 0)
+        session.commit(pane.field)
+        pane.field.textView.insertText(" and more")
+        pane.field.dirty = true
+        session.commit(pane.field)
+        gate.open()
+        await session.tail?.value
+
+        #expect(try await pane.stored == "a")
+        #expect(pane.field.textView.text == "a see [[x]] and more")
+        #expect(pane.field.dirty)
+        await pane.commit()
+        #expect(try await pane.stored == "a see \u{FFFC} and more")
     }
 
     /// REVIEW-4778: the failure lands on the old row of a takeover, and the
@@ -626,8 +720,9 @@ struct ReloadGenerationTests {
         #expect(pane.field.textView.text == "Xhello \u{FFFC}")
     }
 
-    /// REVIEW-4770 Low 3: nodes inserted after a text write that failed
-    /// leave no undo step, which would replay typing the core never had.
+    /// REVIEW-4770 Low 3: a failed text write leaves no undo step, which
+    /// would replay typing the core never had. REVIEW-4784: nor its nodes,
+    /// whose places are in that typing.
     @Test(.timeLimit(.minutes(1))) func nodesAfterAFailedTextWriteLeaveNoUndoStep() async throws {
         let f = try fixture("a")
         let editor = Interposed(f.editor)
@@ -641,7 +736,7 @@ struct ReloadGenerationTests {
         })
         await pane.model.session.tail?.value
 
-        #expect(try await pane.stored == "a\u{FFFC}")
+        #expect(try await pane.stored == "a")
         #expect(!pane.model.session.canUndo)
     }
 
