@@ -570,6 +570,140 @@ struct SameNotePanesTests {
         #expect(runs.filter { $0.marks.contains("wikiLink") }.map(\.target) == ["Foo"])
     }
 
+    /// `q `, a link to Foo, then ` z`.
+    private func fixtureWithLink() throws -> Fixture {
+        let f = try fixture("q  z")
+        _ = try f.vault.vault.notesWriter(store: TaskTestKeychain()).editBlock(
+            noteId: f.noteId,
+            edit: .insertInline(
+                blockId: f.blockId, start: 2, end: 2, kind: "wikiLink", text: "", attrs: WikiLinkAttrs.attrs(target: "Foo", alias: nil)
+            )
+        )
+        return f
+    }
+
+    /// The inline nodes the block holds, in order, by kind.
+    private func kinds(_ f: Fixture) async throws -> [String] {
+        try await block(f).inline.compactMap { $0.marks.first { BlockText.nodeKinds.contains($0) } }
+    }
+
+    /// B, which has not re-read A's `XYZ `, types `@` right after the link
+    /// and picks a date.
+    private func pickDateAfterLink(in fieldB: BlockField, of b: NoteEditorViewModel) async {
+        fieldB.textView.textStorage.insert(NSAttributedString(string: "@"), at: 3)
+        fieldB.dirty = true
+        b.session.insertInline([.date(Self.due)], replacing: NSRange(location: 3, length: 1), in: fieldB)
+        await b.session.tail?.value
+    }
+
+    private func undo(in model: NoteEditorViewModel) async {
+        model.session.undo()
+        await model.session.tail?.value
+    }
+
+    private func redo(in model: NoteEditorViewModel) async {
+        model.session.redo()
+        await model.session.tail?.value
+    }
+
+    /// DATA-LOSS (#4794): B's redo of a date it picked puts the date back
+    /// where the block holds its place, after the link, not at B's stale
+    /// offsets inside A's `XYZ `.
+    @Test(.timeLimit(.minutes(1))) func redo_of_a_date_picked_in_a_stale_pane_lands_where_the_block_holds_it() async throws {
+        let f = try fixtureWithLink()
+        let a = pane(f)
+        let b = pane(f)
+        let drawn = try await block(f)
+        let fieldA = draw(drawn, in: a)
+        let fieldB = draw(drawn, in: b)
+
+        await prepend(in: fieldA, of: a)
+        await pickDateAfterLink(in: fieldB, of: b)
+        #expect(BlockText.shown(try await block(f).inline) == "XYZ q \u{FFFC}\u{FFFC} z")
+        await undo(in: b)
+        #expect(BlockText.shown(try await block(f).inline) == "XYZ q \u{FFFC} z")
+
+        await redo(in: b)
+        #expect(BlockText.shown(try await block(f).inline) == "XYZ q \u{FFFC}\u{FFFC} z", "A's XYZ intact")
+        #expect(try await stored(f) == "XYZ q  z")
+        #expect(try await kinds(f) == ["wikiLink", "dateMention"])
+        #expect(b.status == .idle)
+    }
+
+    /// #4794: A keeps typing on both sides after B's pick. B's undo takes
+    /// back only the date and B's redo puts it back after the link, and
+    /// every byte A typed stays through both.
+    @Test(.timeLimit(.minutes(1))) func undo_and_redo_of_a_stale_panes_date_keep_the_other_panes_later_typing() async throws {
+        let f = try fixtureWithLink()
+        let a = pane(f)
+        let b = pane(f)
+        let drawn = try await block(f)
+        let fieldA = draw(drawn, in: a)
+        let fieldB = draw(drawn, in: b)
+
+        await prepend(in: fieldA, of: a)
+        await pickDateAfterLink(in: fieldB, of: b)
+        fieldA.textView.textStorage.insert(NSAttributedString(string: "W "), at: 0)
+        fieldA.textView.textStorage.append(NSAttributedString(string: "!"))
+        fieldA.dirty = true
+        await commit(fieldA, in: a)
+        #expect(BlockText.shown(try await block(f).inline) == "W XYZ q \u{FFFC}\u{FFFC} z!")
+
+        await undo(in: b)
+        #expect(BlockText.shown(try await block(f).inline) == "W XYZ q \u{FFFC} z!")
+        #expect(try await kinds(f) == ["wikiLink"])
+
+        await redo(in: b)
+        #expect(BlockText.shown(try await block(f).inline) == "W XYZ q \u{FFFC}\u{FFFC} z!")
+        #expect(try await kinds(f) == ["wikiLink", "dateMention"])
+        #expect(b.status == .idle)
+    }
+
+    /// #4794: a `[[` row B picked after A's unseen `XYZ ` is redone where
+    /// the block holds it.
+    @Test(.timeLimit(.minutes(1))) func redo_of_a_link_picked_in_a_stale_pane_lands_where_the_block_holds_it() async throws {
+        let f = try fixture("hello ")
+        let a = pane(f)
+        let b = pane(f)
+        let drawn = try await block(f)
+        let fieldA = draw(drawn, in: a)
+        let fieldB = draw(drawn, in: b)
+
+        await prepend(in: fieldA, of: a)
+        type("hello [[Fo", in: fieldB)
+        b.session.insertInline([.note(title: "Foo", alias: "")], replacing: NSRange(location: 6, length: 4), in: fieldB)
+        await b.session.tail?.value
+        await undo(in: b)
+        #expect(BlockText.shown(try await block(f).inline) == "XYZ hello ")
+
+        await redo(in: b)
+        let runs = try await block(f).inline
+        #expect(BlockText.shown(runs) == "XYZ hello \u{FFFC} ")
+        #expect(runs.filter { $0.marks.contains("wikiLink") }.map(\.target) == ["Foo"])
+    }
+
+    /// DATA-LOSS (#4794): A rewrote the text around the place of B's undone
+    /// date. B's redo finds no place for it, so it writes no node over A's
+    /// text, at B's offsets or anywhere, and says so.
+    @Test(.timeLimit(.minutes(1))) func redo_of_a_node_whose_place_is_gone_writes_nothing_and_says_so() async throws {
+        let f = try fixtureWithLink()
+        let a = pane(f)
+        let b = pane(f)
+        let fieldB = draw(try await block(f), in: b)
+
+        await pickDateAfterLink(in: fieldB, of: b)
+        await undo(in: b)
+        let fieldA = draw(try await block(f), in: a)
+        type("other words", in: fieldA)
+        await commit(fieldA, in: a)
+        #expect(BlockText.shown(try await block(f).inline) == "other words")
+
+        await redo(in: b)
+        #expect(BlockText.shown(try await block(f).inline) == "other words")
+        #expect(try await kinds(f) == [])
+        #expect(b.status == .failed(NodeAnchor.gone))
+    }
+
     /// The core's editor, except that once armed, another pane's write
     /// (`XYZ ` at the block's start, unless told otherwise) lands just before
     /// the next inline node does: after the pane decided where it goes.
