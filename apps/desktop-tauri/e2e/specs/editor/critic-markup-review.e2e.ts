@@ -78,6 +78,44 @@ async function selectEditorText(page: Page, text: string): Promise<void> {
   await expect(commentButton(page)).toBeVisible()
 }
 
+/**
+ * Waits until the draft composer has stopped moving. The review canvas slides the content and
+ * rail under a 200 ms `transform` transition once the rail's shift is measured, which starts a
+ * frame or two after the composer mounts. A click aims at the input's rect at the time of the
+ * call and lands a round trip later, on whatever the sliding composer then has under that point:
+ * the attach or mention button, or nothing focusable, and the typed text goes nowhere. A running
+ * transition or a rect that moved within the last frames both mean it is not settled.
+ */
+async function expectComposerSettled(page: Page): Promise<void> {
+  await expect
+    .poll(() =>
+      commentComposer(page).evaluate(async (composer: HTMLElement) => {
+        const nextFrame = () =>
+          new Promise<void>((resolve) => {
+            requestAnimationFrame(() => resolve())
+            setTimeout(resolve, 50)
+          })
+        const rect = () => {
+          const box = composer.getBoundingClientRect()
+          return `${box.left},${box.top},${box.width},${box.height}`
+        }
+        const initial = rect()
+        for (let frame = 0; frame < 5; frame++) {
+          await nextFrame()
+          if (rect() !== initial) return false
+        }
+        return document.getAnimations().every((animation) => {
+          const target = animation.effect instanceof KeyframeEffect ? animation.effect.target : null
+          return !(
+            target instanceof Element &&
+            (target.contains(composer) || composer.contains(target))
+          )
+        })
+      })
+    )
+    .toBe(true)
+}
+
 /** Selects `text` inside the comment composer's own editor. */
 async function selectComposerText(page: Page, text: string): Promise<void> {
   const selected = await page.evaluate((target: string) => {
@@ -329,8 +367,11 @@ test('formats a comment draft from the selection toolbar without cancelling the 
   const draft = commentComposer(page)
   await expect(draft).toBeVisible()
   const input = draft.getByLabel('Add a comment...')
+  await expectComposerSettled(page)
   await input.click()
+  await expect(input).toBeFocused()
   await typeInEditor(page, 'needs a source')
+  await expect(input).toHaveText('needs a source')
 
   await selectComposerText(page, 'source')
   await expect(page.locator('[data-comment-format-toolbar]').first()).toBeVisible()
