@@ -4185,6 +4185,8 @@ dependencies = [
 name = "memry-ml-worker"
 version = "0.0.0"
 dependencies = [
+ "cmake",
+ "flate2",
  "image",
  "libc",
  "memry-ml",

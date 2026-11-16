@@ -1,10 +1,14 @@
 //! `memry-ml-worker --pdfium-dir <dir> [--model-cache <dir>]`: answers the app's frames on stdin and
 //! stdout. Logs go to stderr, which the app forwards to `main.log`. pdfium is bound from its dir
-//! on the first PDF, and the embedding model loads from its directory under the cache on the first embedding op, so a
-//! worker without either still starts and fails those ops with the reason.
+//! on the first PDF, and the embedding model loads from its directory under the cache on the first
+//! embedding op, so a worker without either still starts and fails those ops with the reason. OCR
+//! runs on the Tesseract linked into this binary; a build without the `ocr` feature (a dev machine
+//! without cmake) fails every OCR op with the reason.
 
 #[cfg(feature = "embed")]
 mod embed;
+#[cfg(feature = "ocr")]
+mod ocr;
 mod pdf;
 
 use std::path::PathBuf;
@@ -43,6 +47,8 @@ fn main() -> ExitCode {
         return ExitCode::from(2);
     };
     let mut pdfs = pdf::Pdfs::new(pdfium_dir);
+    #[cfg(feature = "ocr")]
+    let mut ocr = ocr::Ocr::default();
     #[cfg(feature = "embed")]
     let mut embedder = embed::Embedder::new(model_cache);
     #[cfg(not(feature = "embed"))]
@@ -51,6 +57,16 @@ fn main() -> ExitCode {
         std::io::stdin().lock(),
         std::io::stdout().lock(),
         |request| match request {
+            #[cfg(feature = "ocr")]
+            Request::Ocr {
+                datapath,
+                languages,
+                png,
+            } => ocr.handle(&datapath, &languages, &png),
+            #[cfg(not(feature = "ocr"))]
+            Request::Ocr { .. } => memry_ml_worker::Response::Failed(
+                "this worker was built without OCR (cargo feature `ocr`)".into(),
+            ),
             Request::EmbedLoad
             | Request::EmbedText { .. }
             | Request::EmbedImage { .. }

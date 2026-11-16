@@ -7,11 +7,11 @@
 //! tier does not write for them until #4209; until then only attachments are read.
 //!
 //! One loop, one file at a time, one page at a time. A PDF page with a text layer is read from
-//! it; a page without one, and every image, goes through OCR. A build without OCR (until #3542
-//! lane F) stores those parts unreadable without rendering or reading them, reads on past them,
-//! and fails the job `OCR unavailable`, so the app-version retry reads them again. Every page is stored as it
-//! finishes, and a job reads only the pages it has no row for, so a restart resumes where it
-//! stopped. Each file's job lives in `file_text_jobs`:
+//! it; a page without one, and every image, goes through OCR. A run without OCR (a build before
+//! #3542 lane F) stores those parts unreadable without rendering or reading them, reads on past
+//! them, and fails the job `OCR unavailable`, so the app-version retry reads them again. Every
+//! page is stored as it finishes, and a job reads only the pages it has no row for, so a restart
+//! resumes where it stopped. Each file's job lives in `file_text_jobs`:
 //!
 //! ```text
 //!   (no job) or signature moved -> pending -> done

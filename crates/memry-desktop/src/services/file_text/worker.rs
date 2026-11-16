@@ -1,8 +1,8 @@
-//! The app's handle on the `memry-ml-worker` sidecar, which runs pdfium out of process (#3542,
-//! R2). Replaces the Electron app's hidden PDF host page (`apps/desktop/src/main/file-text/
-//! pdf-host.ts`): the child starts on the first call, a call past its timeout kills it, it is
-//! restarted by the next call, it exits after a minute idle, and three crashes in a row pause it
-//! for ten minutes (`memry_ml_worker::Supervisor`). Its stderr goes to `main.log`.
+//! The app's handle on the `memry-ml-worker` sidecar, which runs pdfium and Tesseract out of
+//! process (#3542, R1 and R2). Replaces the Electron app's hidden PDF host page
+//! (`apps/desktop/src/main/file-text/pdf-host.ts`) and its OCR utility process: the child starts
+//! on the first call, a call past its timeout kills it, it is restarted by the next call, it
+//! exits after a minute idle, and three crashes in a row pause it for ten minutes (`memry_ml_worker::Supervisor`). Its stderr goes to `main.log`.
 //!
 //! It stops when the vault closes (the runner's `release`, `file-text/index.ts:26-29`) and in the
 //! `stop-utility-processes` shutdown step.
@@ -50,6 +50,17 @@ impl WorkerHandle {
 
     pub fn open_pdf(&self, path: &Path) -> Result<PdfDocument<'_>, WorkerError> {
         self.supervisor.open_pdf(path)
+    }
+
+    /// Tesseract's text in `png`, a prepared image ([`super::ocr::to_ocr_png`]), with the
+    /// `.traineddata` of `languages` from `datapath`.
+    pub fn recognize(
+        &self,
+        datapath: &Path,
+        languages: &[String],
+        png: Vec<u8>,
+    ) -> Result<String, WorkerError> {
+        self.supervisor.recognize(datapath, languages, png)
     }
 
     /// Kills the child, if one runs, and fails the calls waiting on it.

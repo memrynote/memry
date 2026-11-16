@@ -6,6 +6,11 @@ use crate::frame::Frame;
 
 /// The largest long edge, in pixels, a page is rendered at.
 pub const MAX_RENDER_EDGE: u32 = 4000;
+/// The largest long edge, in pixels, of an image OCR reads: the app's OCR prep caps it there
+/// (`ocr-reader.ts:8`).
+pub const MAX_OCR_EDGE: u32 = 4000;
+/// More languages than the app has (English and the 31 it downloads) are refused.
+pub const MAX_OCR_LANGUAGES: u32 = 32;
 
 /// The width of a stored embedding (`memry_ml::EMBEDDING_DIMENSION`); an `Embedded` answer holds
 /// exactly this many `f32`s.
@@ -46,6 +51,9 @@ const MODEL_MANIFEST: u8 = 0x13;
 const AUDIO_OPEN: u8 = 0x14;
 const EMBED_AUDIO_WINDOW: u8 = 0x15;
 const AUDIO_CLOSE: u8 = 0x16;
+/// Past the embedding ops (0x10 to 0x13, #4701) and the audio ops (0x14 to 0x16, #4742). Its
+/// answer is `TEXT` (0x82), so it adds no answer code.
+const OCR: u8 = 0x17;
 
 const READY: u8 = 0x80;
 const PDF_OPENED: u8 = 0x81;
@@ -118,6 +126,14 @@ pub enum Request {
     },
     PdfClose {
         doc: u32,
+    },
+    /// The text Tesseract reads in a PNG, with the models of `languages` (Tesseract codes such as
+    /// `eng` and `chi_sim`) from the plain `.traineddata` files in `datapath`. Answered with
+    /// [`Response::Text`].
+    Ocr {
+        datapath: String,
+        languages: Vec<String>,
+        png: Vec<u8>,
     },
     Shutdown,
     /// Loads the text model from the worker's `--model-cache`, unless it is loaded.
@@ -214,6 +230,22 @@ impl Request {
                 put_u32s(&mut out, &[*doc]);
                 PDF_CLOSE
             }
+            Self::Ocr {
+                datapath,
+                languages,
+                png,
+            } => {
+                put_str(&mut out, datapath);
+                put_u32s(
+                    &mut out,
+                    &[u32::try_from(languages.len()).unwrap_or(u32::MAX)],
+                );
+                for language in languages {
+                    put_str(&mut out, language);
+                }
+                out.extend_from_slice(png);
+                OCR
+            }
             Self::Shutdown => SHUTDOWN,
             Self::EmbedLoad => EMBED_LOAD,
             Self::EmbedText { text } => {
@@ -274,6 +306,19 @@ impl Request {
                 max_edge: r.u32()?,
             },
             PDF_CLOSE => Self::PdfClose { doc: r.u32()? },
+            OCR => {
+                let datapath = r.string()?;
+                let count = r.u32()?;
+                if count > MAX_OCR_LANGUAGES {
+                    return Err(OpError::Malformed(op));
+                }
+                let languages = (0..count).map(|_| r.string()).collect::<Result<_, _>>()?;
+                Self::Ocr {
+                    datapath,
+                    languages,
+                    png: r.rest(),
+                }
+            }
             SHUTDOWN => Self::Shutdown,
             EMBED_LOAD => Self::EmbedLoad,
             EMBED_TEXT => Self::EmbedText {
@@ -316,6 +361,7 @@ impl Request {
             Self::PdfPageText { .. } => "pdf-page-text",
             Self::PdfRenderPage { .. } => "pdf-render-page",
             Self::PdfClose { .. } => "pdf-close",
+            Self::Ocr { .. } => "ocr",
             Self::Shutdown => "shutdown",
             Self::EmbedLoad => "embed-load",
             Self::EmbedText { .. } => "embed-text",

@@ -6,8 +6,8 @@ use std::io::{Cursor, Read};
 use memry_ml_worker::frame::{HEADER_LEN, read_frame, write_frame};
 use memry_ml_worker::{
     EMBEDDING_DIMENSION, Frame, FrameError, MAX_AUDIO_WINDOWS, MAX_EMBED_IMAGE_BYTES,
-    MAX_EMBED_TEXT_BYTES, MAX_FAILED_MESSAGE, MAX_FRAME_LEN, Manifest, ManifestFile, ModelGroup,
-    OpError, Request, Response,
+    MAX_EMBED_TEXT_BYTES, MAX_FAILED_MESSAGE, MAX_FRAME_LEN, MAX_OCR_LANGUAGES, Manifest,
+    ManifestFile, ModelGroup, OpError, Request, Response,
 };
 use memry_test_kit::{output_bound, proptest_config};
 use proptest::prelude::*;
@@ -147,6 +147,19 @@ fn unknown_ops_and_bad_payloads_are_errors() {
     }
 }
 
+#[test]
+fn an_ocr_request_past_the_language_cap_is_refused() {
+    let request = |count: u32| Request::Ocr {
+        datapath: "tessdata".into(),
+        languages: (0..count).map(|_| "eng".to_owned()).collect(),
+        png: vec![1, 2, 3],
+    };
+    let at_cap = request(MAX_OCR_LANGUAGES);
+    assert_eq!(Request::from_frame(&at_cap.to_frame(1)), Ok(at_cap));
+    let past = request(MAX_OCR_LANGUAGES + 1).to_frame(1);
+    assert_eq!(Request::from_frame(&past), Err(OpError::Malformed(past.op)));
+}
+
 fn frame(op: u8, payload: Vec<u8>) -> Frame {
     Frame { op, id: 1, payload }
 }
@@ -273,6 +286,16 @@ fn request() -> impl Strategy<Value = Request> {
             }
         }),
         any::<u32>().prop_map(|doc| Request::PdfClose { doc }),
+        (
+            ".{0,64}",
+            proptest::collection::vec("[a-z_]{0,8}", 0..=MAX_OCR_LANGUAGES as usize),
+            proptest::collection::vec(any::<u8>(), 0..64)
+        )
+            .prop_map(|(datapath, languages, png)| Request::Ocr {
+                datapath,
+                languages,
+                png
+            }),
         Just(Request::Shutdown),
         Just(Request::EmbedLoad),
         ".{0,64}".prop_map(|text| Request::EmbedText { text }),

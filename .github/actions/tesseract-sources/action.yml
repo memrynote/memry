@@ -1,0 +1,44 @@
+name: Tesseract sources
+description: >-
+  Points MEMRY_TESSERACT_DIR at the runner's temp dir, restores the Leptonica and Tesseract
+  sources and the C++ build that crates/memry-ml-worker/build.rs keeps there (one cache per OS,
+  arch and runner image, so a new compiler builds again, keyed by the pins and the build options),
+  and fetches the pinned sources on a miss (scripts/fetch-tesseract-sources.mjs, sha256 checked). The cmake build itself runs in the first
+  cargo build of memry-ml-worker with its `native` feature, which the cache then holds.
+inputs:
+  save:
+    description: Save the cache after the job on a miss ('true' or 'false').
+    required: true
+runs:
+  using: composite
+  steps:
+    # ImageOS and ImageVersion are runner variables, not in the `env` context.
+    - name: Set MEMRY_TESSERACT_DIR
+      id: dir
+      shell: bash
+      run: |
+        dir="$RUNNER_TEMP/memry-tesseract"
+        if [ "$RUNNER_OS" = Windows ]; then dir=$(cygpath -m "$dir"); fi
+        echo "MEMRY_TESSERACT_DIR=$dir" >> "$GITHUB_ENV"
+        echo "image=${ImageOS:-unknown}-${ImageVersion:-unknown}" >> "$GITHUB_OUTPUT"
+
+    # actions/cache saves in its post step, after the job's cargo build ran cmake, and only when
+    # the job succeeded, so a cut-off build is never saved.
+    - name: Restore and save the Tesseract build
+      if: inputs.save == 'true'
+      uses: actions/cache@v4
+      with:
+        path: ${{ runner.temp }}/memry-tesseract
+        key: tesseract-${{ runner.os }}-${{ runner.arch }}-${{ steps.dir.outputs.image }}-${{ hashFiles('scripts/fetch-tesseract-sources.mjs', 'crates/memry-ml-worker/build.rs') }}
+
+    - name: Restore the Tesseract build
+      if: inputs.save != 'true'
+      uses: actions/cache/restore@v4
+      with:
+        path: ${{ runner.temp }}/memry-tesseract
+        key: tesseract-${{ runner.os }}-${{ runner.arch }}-${{ steps.dir.outputs.image }}-${{ hashFiles('scripts/fetch-tesseract-sources.mjs', 'crates/memry-ml-worker/build.rs') }}
+
+    # Downloads nothing when the restored sources carry the pins.
+    - name: Fetch the pinned sources
+      shell: bash
+      run: node "$GITHUB_WORKSPACE/scripts/fetch-tesseract-sources.mjs"
