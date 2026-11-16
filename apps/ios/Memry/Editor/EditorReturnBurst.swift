@@ -128,8 +128,15 @@ extension EditorSession {
         // Return's block takes the caret: its keys go on all the same
         // (REVIEW-4714).
         guard burst.handing || shortcutField === field else { return returnBurst = nil }
-        returnBurst?.carried = takeHeldKeys(burst)
+        // Taking the keys edits the text, and UIKit flushes the keys it
+        // queued for the row from inside that edit, as the selection
+        // changes (#4769). They meet a row that gave up its keys
+        // (`carriesEdit`), and no access to the burst is open: one would
+        // abort the app.
         returnBurst?.ended = true
+        let taken = takeHeldKeys(burst)
+        let late = returnBurst?.carried ?? ""
+        if let taken { returnBurst?.carried = taken + late }
     }
 
     /// Whether `field`, which gave up its keys as its row went
