@@ -431,7 +431,7 @@ enum BlockText {
 /// menu's node, an append). Another pane's write may land before the node
 /// does and move that space (#4706), so the node goes where the block holds
 /// it then.
-struct NodeAnchor: Sendable {
+struct NodeAnchor: Sendable, Equatable {
     let typed: String
     let location: Int
     let replaces: Bool
@@ -459,10 +459,15 @@ struct NodeAnchor: Sendable {
     /// ranged insert never replaces another writer's text.
     func range(in runs: [InlineRun]?) -> Range<Int>? {
         guard let runs else { return paneRange }
-        let live = BlockText.shown(runs)
-        guard let at = BlockText.follow(location, length: 1, from: typed, to: live) ?? found(in: live) else { return nil }
+        guard let at = location(in: BlockText.shown(runs)) else { return nil }
         let start = BlockText.coreOffset(in: runs, shown: at)
         return start ..< start + (replaces ? 1 : 0)
+    }
+
+    /// The pane's space, in UTF-16 of `live`, the block's text as the core
+    /// holds it (`range(in:)`).
+    func location(in live: String) -> Int? {
+        BlockText.follow(location, length: 1, from: typed, to: live) ?? found(in: live)
     }
 
     /// The space in `live` by its context: the widest window of `typed`

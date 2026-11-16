@@ -505,6 +505,10 @@ final class NoteEditorViewModel {
     /// `forward` did not land: a literal found then is another writer's
     /// text. A failure stays the status through the edits after it.
     func redo(_ step: EditorUndoStep) async {
+        if let date = step.date {
+            await rewriteDate(date.chip, in: date.blockId, to: date.to)
+            return
+        }
         guard await run(step.forward) else { return }
         holdsFailure = true
         defer { holdsFailure = false }
@@ -512,6 +516,15 @@ final class NoteEditorViewModel {
             await insert(step.forwardOverText, over: blockId, typedLength: step.forwardLength)
         }
         for edit in step.forwardProps { await run(edit) }
+    }
+
+    /// Takes `step` back: `backward`, then the rest, in order.
+    func undo(_ step: EditorUndoStep) async {
+        if let date = step.date {
+            await rewriteDate(date.chip, in: date.blockId, to: date.from)
+            return
+        }
+        for edit in [step.backward] + step.backwardAfter { await run(edit) }
     }
 
     /// Creates the note titled `title` in the new-notes folder, for the `[[`
@@ -549,6 +562,41 @@ final class NoteEditorViewModel {
             text: "",
             attrs: value.attrs(anchorId: anchorId ?? DateMentionValue.mintAnchorId())
         )
+    }
+
+    /// Rewrites the date chip at `chip` to `value` under the same anchor, as
+    /// desktop's `updateDateMention` does: its U+FFFC becomes a space, read
+    /// and written in one core-queue turn, then the node goes back over that
+    /// space (`insertInline`), which keeps #4706's rules. A chip the block
+    /// no longer holds gets `value` at the end of its text, so the date is
+    /// never lost, and the status says so. Answers whether the node went
+    /// back where the chip was.
+    @discardableResult
+    func rewriteDate(_ chip: DateChipAnchor, in blockId: String, to value: DateMentionValue) async -> Bool {
+        let swapped = await run(in: blockId) { runs in
+            guard let at = chip.location(in: runs) else { return nil }
+            let live = runs.map(BlockText.shown) ?? chip.place.typed
+            let text = (live as NSString).replacingCharacters(in: NSRange(location: at, length: 1), with: " ")
+            return .replaceText(blockId: blockId, text: text, base: live)
+        }
+        switch swapped {
+        case let .landed(.replaceText(_, text, base?))?:
+            // The chip's place: where the two first differ.
+            let at = zip(base.utf16, text.utf16).prefix { $0 == $1 }.count
+            let anchor = NodeAnchor(typed: text, location: at, replaces: true, paneRange: chip.place.paneRange)
+            return await insertDateMention(in: blockId, at: anchor, value: value, anchorId: chip.anchorId) != nil
+        case .notFound?:
+            let attrs = value.attrs(anchorId: chip.anchorId)
+            let appended = await run(in: blockId) { runs in
+                NodeAnchor.textEnd(in: runs).map {
+                    .insertInline(blockId: blockId, start: UInt32($0), end: UInt32($0), kind: "dateMention", text: "", attrs: attrs)
+                }
+            }
+            if case .landed? = appended { status = .failed(NodeAnchor.moved) }
+            return false
+        default:
+            return false
+        }
     }
 
     // MARK: - Tables (N505)

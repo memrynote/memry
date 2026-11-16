@@ -40,10 +40,10 @@ struct NotesPaneContext: Equatable {
         lhs.router === rhs.router && lhs.slot == rhs.slot
     }
 
-    /// While both panes show, only the focused one's page menu does: both
-    /// menus draw over one pane, and a tap on the wrong one would delete
-    /// the other note.
-    @MainActor var showsPageMenu: Bool { !router.splitShown || router.focus == slot }
+    /// While both panes show, each page draws Back and its page menu in a
+    /// header over its own pane (`NotesPaneHeader`): in the column's one
+    /// navigation bar they would sit over the other pane (#4699).
+    @MainActor var headed: Bool { router.splitShown }
 
     /// "Open to the Side", where the width holds two panes; `nil` elsewhere,
     /// so no control offers a pane that cannot show.
@@ -64,6 +64,13 @@ enum NotesPaneCopy {
     static let resize = "Resize panes"
     static let pickerTitle = "Open a note"
     static let pickerPrompt = "Search notes"
+
+    static func pane(_ slot: NotesPaneSlot) -> String {
+        switch slot {
+        case .main: "Main pane"
+        case .side: "Side pane"
+        }
+    }
 }
 
 /// Reports each touch as it lands, with the keys held (`⌘`-click), then

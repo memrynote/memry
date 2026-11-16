@@ -198,8 +198,16 @@ final class NotesSplitUITests: XCTestCase {
         XCTAssertTrue(main.textFields.matching(NSPredicate(format: "value == %@", source)).firstMatch.exists)
         XCTAssertTrue(matches(NSPredicate(format: "isSelected == true"), side), "the new pane has no focus")
         attach("two-panes")
-        let menus = app.buttons.matching(NSPredicate(format: "label == 'More actions for this note'"))
-        XCTAssertEqual(menus.count, 1, "both panes show a page menu")
+        // #4699: each pane carries its own page menu, over its own note.
+        let mainMenu = app.buttons["notes.pane.main.more"]
+        let sideMenu = app.buttons["notes.pane.side.more"]
+        XCTAssertTrue(mainMenu.waitForExistence(timeout: 5), "the main pane has no page menu")
+        XCTAssertTrue(sideMenu.waitForExistence(timeout: 5), "the side pane has no page menu")
+        assertOver(mainMenu, main)
+        assertOver(sideMenu, side)
+        // VoiceOver tells the two panes' identical controls apart.
+        XCTAssertEqual(main.label, "Main pane")
+        XCTAssertEqual(side.label, "Side pane")
 
         let sideBlock = block(in: side)
         sideBlock.tap()
@@ -209,14 +217,16 @@ final class NotesSplitUITests: XCTestCase {
         XCTAssertTrue(matches(NSPredicate(format: "isSelected == true"), main), "a tap did not move the focus")
         app.typeText(" typed main")
         attach("two-panes-typed")
-        XCTAssertEqual(menus.count, 1, "both panes show a page menu")
-        // The one menu is the focused pane's, and Delete names its note.
-        menus.firstMatch.tap()
+        // The main pane's menu acts on the main pane's note, whichever pane
+        // has the focus.
+        sideBlock.tap()
+        XCTAssertTrue(matches(NSPredicate(format: "isSelected == true"), side), "a tap did not move the focus")
+        mainMenu.tap()
         let delete = app.buttons["trash"]
         XCTAssertTrue(delete.waitForExistence(timeout: 5), "the page menu has no Delete")
         delete.tap()
         let alert = app.alerts["Delete \u{201c}\(source)\u{201d}?"]
-        XCTAssertTrue(alert.waitForExistence(timeout: 5), "Delete does not name the focused pane's note")
+        XCTAssertTrue(alert.waitForExistence(timeout: 5), "Delete does not name the main pane's note")
         attach("delete-names-the-note")
         alert.buttons["Cancel"].tap()
         XCTAssertTrue(alert.waitForNonExistence(timeout: 5))
@@ -281,13 +291,31 @@ final class NotesSplitUITests: XCTestCase {
         XCTAssertTrue(mainPage.waitForExistence(timeout: 10), "the main pane does not show \(target)")
         XCTAssertLessThan(mainPage.frame.maxX, sidePage.frame.minX, "the panes are not side by side")
 
-        // Back pops the focused pane only.
-        mainPage.tap()
-        XCTAssertTrue(matches(NSPredicate(format: "isSelected == true"), main), "a tap did not focus the main pane")
-        app.buttons["notes.pane.back"].firstMatch.tap()
+        // #4699: Back sits over the pane it pops, and pops that pane only.
+        let mainBack = app.buttons["notes.pane.main.back"]
+        let sideBack = app.buttons["notes.pane.side.back"]
+        XCTAssertTrue(mainBack.waitForExistence(timeout: 5), "the main pane, with a followed link, has no Back")
+        XCTAssertFalse(sideBack.exists, "the side pane, with nothing followed, shows Back")
+        assertOver(mainBack, main)
+        assertOver(app.buttons["notes.pane.main.more"], main)
+        assertOver(app.buttons["notes.pane.side.more"], side)
+        mainBack.tap()
         let mainSource = main.textFields.matching(NSPredicate(format: "value == %@", source)).firstMatch
         XCTAssertTrue(mainSource.waitForExistence(timeout: 10), "Back in the main pane did not return to \(source)")
         XCTAssertTrue(sidePage.exists, "Back moved the side pane")
+        XCTAssertTrue(mainBack.waitForNonExistence(timeout: 5), "the main pane kept Back with nothing to go back to")
+
+        // A link followed in the side pane puts Back over the side pane.
+        chip(side).tap()
+        let sideTarget = side.textFields.matching(NSPredicate(format: "value == %@", target)).firstMatch
+        XCTAssertTrue(sideTarget.waitForExistence(timeout: 10), "the link did not open in the side pane")
+        XCTAssertTrue(sideBack.waitForExistence(timeout: 5), "the side pane, with a followed link, has no Back")
+        assertOver(sideBack, side)
+        XCTAssertFalse(mainBack.exists, "the main pane shows Back for the side pane's link")
+        attach("side-link")
+        sideBack.tap()
+        XCTAssertTrue(sidePage.waitForExistence(timeout: 10), "Back in the side pane did not return to \(source)")
+        XCTAssertTrue(mainSource.exists, "Back in the side pane moved the main pane")
         chip(main).tap()
         XCTAssertTrue(mainPage.waitForExistence(timeout: 10), "the link did not open in the main pane")
         XCTAssertTrue(sidePage.isHittable, "the link pushed over the side pane")
@@ -705,6 +733,15 @@ final class NotesSplitUITests: XCTestCase {
     private func sidebarRow(_ title: String) -> XCUIElement {
         app.collectionViews.containing(.any, identifier: "magnifyingglass").firstMatch
             .cells.matching(NSPredicate(format: "label BEGINSWITH %@", title)).firstMatch
+    }
+
+    /// `control` lies inside `pane`'s frame (#4699).
+    private func assertOver(_ control: XCUIElement, _ pane: XCUIElement, line: UInt = #line) {
+        XCTAssertTrue(
+            pane.frame.contains(control.frame),
+            "\(control.identifier) at \(control.frame) is not over \(pane.identifier) at \(pane.frame)",
+            line: line
+        )
     }
 
     private func matches(_ predicate: NSPredicate, _ element: XCUIElement) -> Bool {

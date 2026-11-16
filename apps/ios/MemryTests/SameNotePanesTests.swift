@@ -458,6 +458,42 @@ struct SameNotePanesTests {
         #expect(b.status == .idle)
     }
 
+    /// #4762: B edits the chip after A's `XYZ ` it has not re-read, then
+    /// undoes and redoes it. Each finds the chip by its anchor where the
+    /// block holds it, keeps A's bytes, draws in B, and leaves A's text
+    /// view alone.
+    @Test(.timeLimit(.minutes(1))) func a_stale_panes_date_edit_is_undone_and_redone_where_the_chip_is() async throws {
+        let f = try await fixtureWithDate()
+        let a = pane(f)
+        let b = pane(f)
+        let drawn = try await block(f)
+        let fieldA = draw(drawn, in: a)
+        let fieldB = draw(drawn, in: b)
+        b.session.reload = { [f] in if let block = try? await block(f) { fieldB.receive(block) } }
+
+        await prepend(in: fieldA, of: a)
+        let paneA = fieldA.textView.text
+        try await editDate(in: fieldB, of: b)
+        try await expectMovedDate(f)
+        #expect(fieldB.textView.text == "XYZ hello \u{FFFC}")
+        let chipB = try #require(fieldB.dateChipRange(anchorId: "dm_due"))
+        #expect((fieldB.textView.textStorage.attribute(.memryDate, at: chipB.location, effectiveRange: nil) as? DateMentionChip)?.value == Self.moved)
+
+        b.session.undo()
+        await b.session.tail?.value
+        let dates = try await dates(f)
+        #expect(dates.map { $0["dateMention.dateISO"] } == [Self.due.dateISO])
+        #expect(dates.map { $0["dateMention.anchorId"] } == ["dm_due"])
+        #expect(BlockText.shown(try await block(f).inline) == "XYZ hello \u{FFFC}")
+
+        b.session.redo()
+        await b.session.tail?.value
+        try await expectMovedDate(f)
+        #expect(BlockText.shown(try await block(f).inline) == "XYZ hello \u{FFFC}")
+        #expect(fieldA.textView.text == paneA)
+        #expect(b.status == .idle)
+    }
+
     /// #4706: a `[[` row B picks at the block's end lands at the end of the
     /// block as the core holds it, after A's `XYZ `.
     @Test(.timeLimit(.minutes(1))) func a_link_picked_in_a_stale_pane_lands_where_its_caret_is() async throws {
@@ -527,7 +563,10 @@ struct SameNotePanesTests {
         func edit(
             noteId: String, blockId: String, locating locate: @escaping @Sendable ([InlineRun]?) -> BlockEdit?
         ) async throws -> LocatedEdit {
-            try await interpose(noteId)
+            // A located text write, such as a date chip's swap for its
+            // space, is not the node.
+            let runs = try await reader.blocks(id: noteId)?.first { $0.id == blockId }?.inline
+            if case .insertInline = locate(runs) { try await interpose(noteId) }
             return try await core.edit(noteId: noteId, blockId: blockId, locating: locate)
         }
     }
