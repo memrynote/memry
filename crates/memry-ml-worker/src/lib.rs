@@ -17,11 +17,12 @@ mod priority;
 pub mod serve;
 pub mod supervisor;
 
+pub use embed_client::AudioRecording;
 pub use frame::{Frame, FrameError, MAX_FRAME_LEN};
 pub use op::{
-    EMBEDDING_DIMENSION, MAX_EMBED_IMAGE_BYTES, MAX_EMBED_TEXT_BYTES, MAX_FAILED_MESSAGE,
-    MAX_OCR_EDGE, MAX_OCR_LANGUAGES, MAX_RENDER_EDGE, MODEL_REPO, MODEL_REVISION, Manifest,
-    ManifestFile, ModelGroup, OpError, Request, Response,
+    EMBEDDING_DIMENSION, MAX_AUDIO_BYTES, MAX_AUDIO_WINDOWS, MAX_EMBED_IMAGE_BYTES,
+    MAX_EMBED_TEXT_BYTES, MAX_FAILED_MESSAGE, MAX_OCR_EDGE, MAX_OCR_LANGUAGES, MAX_RENDER_EDGE,
+    MODEL_REPO, MODEL_REVISION, Manifest, ManifestFile, ModelGroup, OpError, Request, Response,
 };
 pub use pdf_client::{PdfDocument, RenderedPage};
 pub use supervisor::{

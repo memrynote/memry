@@ -1,229 +1,18 @@
-//! The supervisor on a paused tokio clock, over a fake driver and a real `data.db`.
+//! The supervisor on a paused tokio clock, over the fakes of [`super::rig`].
 
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use std::sync::atomic::Ordering;
 use std::time::Duration;
 
 use memry_core::api::errors::{ApiError, SyncError};
-use memry_core::seams::reachability::{Reachability, ReachabilityObserver, Reachable};
-use memry_core::storage::{Db, open_data};
-use memry_core::sync::engine::PassReport;
+use memry_core::seams::reachability::Reachable;
 use memry_core::sync::pause;
-use memry_core::sync::policy::ServerClock;
-use memry_core::sync::pull::PullReport;
-use memry_core::sync::state::{PassTrigger, SyncState};
-use tokio::time::{Instant, sleep};
+use tokio::time::sleep;
 
-use super::super::backend::{SyncBackend, SyncPasses};
-use super::super::gate::{AuthFacts, Entitlement, SyncStartGate, VaultBinding};
+use super::super::gate::{Entitlement, VaultBinding};
 use super::super::result::SyncNowBlockedReason;
-use super::super::status::{SyncStatus, SyncStatusValue};
-use super::{SupervisorParts, SyncSupervisor};
-use crate::session::lock;
-
-/// One pass takes this long on the fake, so a request can land while it runs.
-const PASS: Duration = Duration::from_millis(50);
-
-#[derive(Default)]
-struct FakeDriver {
-    passes: Mutex<Vec<PassTrigger>>,
-    /// When each pass started.
-    starts: Mutex<Vec<Instant>>,
-    paused: AtomicBool,
-    entitled: Mutex<Option<bool>>,
-    /// Errors the next passes fail with, in order.
-    errors: Mutex<Vec<SyncError>>,
-    /// The last reading, kept across passes as `PolicyTier` keeps it.
-    clock: Mutex<Option<ServerClock>>,
-    /// A pass reads the server clock this far behind the local one, as a status poll does.
-    skew_ms: Mutex<Option<i64>>,
-    /// Passes end `Refused` with no error, as a non-envelope pull body does.
-    refuse: AtomicBool,
-}
-
-impl FakeDriver {
-    fn passes(&self) -> usize {
-        lock(&self.passes).len()
-    }
-}
-
-#[async_trait::async_trait]
-impl SyncPasses for FakeDriver {
-    async fn run_pass(&self, trigger: PassTrigger) -> Option<PassReport> {
-        if self.paused.load(Ordering::SeqCst) {
-            return None;
-        }
-        lock(&self.passes).push(trigger);
-        lock(&self.starts).push(Instant::now());
-        if let Some(skew) = *lock(&self.skew_ms) {
-            let local_ms = super::super::run_loop::now_ms();
-            *lock(&self.clock) = Some(ServerClock {
-                server_ms: local_ms - skew,
-                local_ms,
-            });
-        }
-        tokio::time::sleep(PASS).await;
-        let error = {
-            let mut errors = lock(&self.errors);
-            (!errors.is_empty()).then(|| errors.remove(0))
-        };
-        let failed = error.is_some();
-        Some(PassReport {
-            trigger,
-            transitions: vec![SyncState::Pulling, SyncState::Applying, SyncState::Idle],
-            final_state: if failed {
-                SyncState::Failed
-            } else if self.refuse.load(Ordering::SeqCst) {
-                SyncState::Refused
-            } else {
-                SyncState::Idle
-            },
-            pull: PullReport::default(),
-            parked: false,
-            pushed: false,
-            pushed_items: 0,
-            pull_error: error,
-            push_error: None,
-        })
-    }
-    fn pause(&self) {
-        self.paused.store(true, Ordering::SeqCst);
-    }
-    fn resume(&self) {
-        self.paused.store(false, Ordering::SeqCst);
-    }
-    fn set_entitled(&self, entitled: bool) {
-        *lock(&self.entitled) = Some(entitled);
-    }
-    fn server_clock(&self) -> Option<ServerClock> {
-        *lock(&self.clock)
-    }
-}
-
-struct FakeBackend {
-    driver: Arc<FakeDriver>,
-    signed_in: AtomicBool,
-    /// `open` fails, as it does offline or on an unbound vault.
-    fail_open: AtomicBool,
-    opens: AtomicUsize,
-    closes: AtomicUsize,
-}
-
-#[async_trait::async_trait]
-impl SyncBackend for FakeBackend {
-    async fn auth_facts(&self) -> AuthFacts {
-        AuthFacts {
-            signed_in: self.signed_in.load(Ordering::SeqCst),
-            key_verified: true,
-            recovery_confirmed: true,
-        }
-    }
-    async fn open(&self) -> Result<Arc<dyn SyncPasses>, SyncError> {
-        self.opens.fetch_add(1, Ordering::SeqCst);
-        if self.fail_open.load(Ordering::SeqCst) {
-            return Err(SyncError::Locked);
-        }
-        // A new `SyncDriver` starts unpaused.
-        self.driver.paused.store(false, Ordering::SeqCst);
-        Ok(Arc::clone(&self.driver) as Arc<dyn SyncPasses>)
-    }
-    fn close(&self) {
-        self.closes.fetch_add(1, Ordering::SeqCst);
-    }
-}
-
-#[derive(Default)]
-struct Net {
-    observers: Mutex<Vec<Arc<dyn ReachabilityObserver>>>,
-    offline: AtomicBool,
-}
-
-impl Net {
-    fn set(&self, reachable: Reachable) {
-        self.offline
-            .store(reachable == Reachable::Offline, Ordering::SeqCst);
-        for observer in lock(&self.observers).iter() {
-            observer.on_change(reachable);
-        }
-    }
-}
-
-impl Reachability for Net {
-    fn current(&self) -> Reachable {
-        if self.offline.load(Ordering::SeqCst) {
-            Reachable::Offline
-        } else {
-            Reachable::Wifi
-        }
-    }
-    fn observe(&self, observer: Arc<dyn ReachabilityObserver>) {
-        lock(&self.observers).push(observer);
-    }
-}
-
-struct Rig {
-    _dir: tempfile::TempDir,
-    db: Db,
-    backend: Arc<FakeBackend>,
-    gate: Arc<SyncStartGate>,
-    net: Arc<Net>,
-    events: Arc<Mutex<Vec<(Instant, SyncStatus)>>>,
-}
-
-impl Rig {
-    fn new() -> Self {
-        let dir = tempfile::tempdir().unwrap();
-        let db = open_data(&dir.path().join("data.db")).unwrap();
-        let gate = Arc::new(SyncStartGate::default());
-        gate.set_binding(VaultBinding::Bound);
-        gate.set_entitlement(Entitlement::Entitled);
-        Self {
-            _dir: dir,
-            db,
-            backend: Arc::new(FakeBackend {
-                driver: Arc::default(),
-                signed_in: AtomicBool::new(true),
-                fail_open: AtomicBool::new(false),
-                opens: AtomicUsize::new(0),
-                closes: AtomicUsize::new(0),
-            }),
-            gate,
-            net: Arc::default(),
-            events: Arc::default(),
-        }
-    }
-
-    async fn start(&self) -> SyncSupervisor {
-        let events = Arc::clone(&self.events);
-        let supervisor = SyncSupervisor::start(
-            &tokio::runtime::Handle::current(),
-            SupervisorParts {
-                backend: Arc::clone(&self.backend) as Arc<dyn SyncBackend>,
-                gate: Arc::clone(&self.gate),
-                reachability: Arc::clone(&self.net) as Arc<dyn Reachability>,
-                power: None,
-                db: self.db.clone(),
-                on_status: Arc::new(move |status| {
-                    lock(&events).push((Instant::now(), status.clone()));
-                }),
-            },
-        );
-        settle().await;
-        supervisor
-    }
-
-    fn passes(&self) -> usize {
-        self.backend.driver.passes()
-    }
-}
-
-/// Lets the loop and a pass run to completion. A virtual sleep, not `advance`: the paused clock
-/// does not move while the pass's `spawn_blocking` read runs, so the pass finishes first.
-async fn settle() {
-    for _ in 0..4 {
-        sleep(PASS).await;
-    }
-}
+use super::super::status::SyncStatusValue;
+use super::rig::{PASS, Rig, lock, settle};
 
 #[tokio::test(start_paused = true)]
 async fn the_gate_decides_whether_a_pass_runs_and_a_change_starts_one() {
@@ -236,7 +25,7 @@ async fn the_gate_decides_whether_a_pass_runs_and_a_change_starts_one() {
     rig.gate.set_binding(VaultBinding::Bound);
     settle().await;
     assert_eq!(rig.passes(), 1, "binding the vault starts sync");
-    assert_eq!(rig.backend.opens.load(Ordering::SeqCst), 1);
+    assert_eq!(rig.backend.opens(), 1);
     assert_eq!(*lock(&rig.backend.driver.entitled), Some(true));
 
     let closes = rig.backend.closes.load(Ordering::SeqCst);
@@ -499,7 +288,7 @@ async fn closing_clears_the_key_when_the_open_failed_or_its_pass_was_cut() {
     let rig = Rig::new();
     rig.backend.fail_open.store(true, Ordering::SeqCst);
     let _supervisor = rig.start().await;
-    assert_eq!(rig.backend.opens.load(Ordering::SeqCst), 1);
+    assert_eq!(rig.backend.opens(), 1);
     rig.gate.set_entitlement(Entitlement::Unentitled);
     settle().await;
     assert!(

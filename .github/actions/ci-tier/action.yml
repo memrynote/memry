@@ -1,28 +1,36 @@
 name: CI tier
 description: >-
-  Decide which CI tier a run needs. Only pull requests whose base is feat/tauri-v2 are tiered;
-  every other event (push, workflow_dispatch, a PR into main) gets every output true, so those
-  runs behave as they did before tiering.
+  Decide which CI tier a run needs. A pull request whose base is not main is tiered: one into
+  feat/tauri-v2, or one stacked on another PR's branch. Every other event (push, workflow_dispatch,
+  a PR into main) gets every output true and every OS leg, so those runs behave as they did before
+  tiering.
 
   A tiered PR runs the fast tier unless it carries the `full-ci` label. The path outputs say
-  whether the diff can change what a gate protects. If the file list cannot be read, they fail
-  open (true).
+  whether the diff can change what a gate protects, and the `rust_*` and `tauri_*` outputs add the
+  Windows and Apple Silicon legs the diff can break (see tier.sh). If the file list cannot be read
+  the run is full (so is a list of 3000 files, where the API stops); if the patches or the Rust
+  sources cannot be read the OS legs fail open (`tests`).
 
   Two more outputs serve the merge queue (#3517). `electron` says whether the diff touches what
-  the Electron Desktop CI heavy jobs protect; it is detected for PRs into feat/tauri-v2 (even
-  with `full-ci`), the merge queue and pushes to feat/tauri-v2, and is true everywhere else.
-  `intel` says whether Intel macOS legs run: false on PRs into feat/tauri-v2, in the merge queue
-  and on a push to feat/tauri-v2; true everywhere else (main, workflow_dispatch), so main keeps
-  them and a dispatch is the way to run them for feat/tauri-v2. `macos` says whether Apple
-  Silicon macOS legs run: false only in the merge queue, where the macOS runner pool is the
-  bottleneck; PRs with `full-ci` and pushes to feat/tauri-v2 still run them.
+  the Electron Desktop CI heavy jobs protect; it is detected for tiered PRs (even with `full-ci`),
+  the merge queue and pushes to feat/tauri-v2, and is true everywhere else. `intel` says whether
+  Intel macOS legs run: false on tiered PRs, in the merge queue and on a push to feat/tauri-v2;
+  true everywhere else (main, workflow_dispatch), so main keeps them and a dispatch is the way to
+  run them for feat/tauri-v2. `macos` says whether Apple Silicon macOS legs run: false only in the
+  merge queue, where the macOS runner pool is the bottleneck; PRs with `full-ci` and pushes to
+  feat/tauri-v2 still run them.
 inputs:
   token:
     description: Token that can read the pull request's files
     required: true
+  source:
+    description: >-
+      Checkout holding the PR's Rust sources (crates/ and apps/desktop-tauri/src-tauri/), whose
+      `#[cfg(<os>)] mod` declarations the OS legs read. Empty: the OS legs fail open (`tests`).
+    default: ''
 outputs:
   full:
-    description: The full matrix runs (push, dispatch, `full-ci` label, or a PR not into feat/tauri-v2)
+    description: The full matrix runs (push, dispatch, merge queue, `full-ci` label, a PR into main, or an unreadable file list)
     value: ${{ steps.tier.outputs.full }}
   tauri:
     description: The diff can change Tauri app behavior, so the Tauri build and E2E run
@@ -34,11 +42,23 @@ outputs:
     description: The diff can change Electron desktop behavior, so the Electron Desktop CI heavy jobs run
     value: ${{ steps.tier.outputs.electron }}
   intel:
-    description: Intel macOS legs run (false on PRs into feat/tauri-v2, in the merge queue and on a push to feat/tauri-v2)
+    description: Intel macOS legs run (false on tiered PRs, in the merge queue and on a push to feat/tauri-v2)
     value: ${{ steps.tier.outputs.intel }}
   macos:
     description: Apple Silicon macOS legs run (false in the merge queue only)
     value: ${{ steps.tier.outputs.macos }}
+  rust_windows:
+    description: Windows x64 Rust legs a fast-tier PR adds (none, checks, tests)
+    value: ${{ steps.tier.outputs.rust_windows }}
+  rust_macos:
+    description: Apple Silicon Rust legs a fast-tier PR adds (none, checks, tests)
+    value: ${{ steps.tier.outputs.rust_macos }}
+  tauri_windows:
+    description: Windows x64 Tauri build legs a fast-tier PR adds (none, checks = debug, tests = debug and e2e)
+    value: ${{ steps.tier.outputs.tauri_windows }}
+  tauri_macos:
+    description: Apple Silicon Tauri build legs a fast-tier PR adds (none, checks = debug, tests = debug and e2e)
+    value: ${{ steps.tier.outputs.tauri_macos }}
 runs:
   using: composite
   steps:
@@ -56,19 +76,24 @@ runs:
         MQ_HEAD_SHA: ${{ github.event.merge_group.head_sha }}
         PUSH_BEFORE: ${{ github.event.before }}
         PUSH_AFTER: ${{ github.sha }}
+        SOURCE_ROOT: ${{ inputs.source }}
       run: |
         set -euo pipefail
 
-        # Changed files, for the path outputs. Other events (main, dispatch, PRs into main) are not path-gated.
+        # Changed files, for the path outputs, and a PR's patches, for its OS legs. Other events (main,
+        # dispatch, PRs into main) are not path-gated.
         kind=none
-        if [ "$EVENT" = "pull_request" ] && [ "$BASE_REF" = "feat/tauri-v2" ]; then kind=pr; fi
+        if [ "$EVENT" = "pull_request" ] && [ "$BASE_REF" != "main" ]; then kind=pr; fi
         if [ "$EVENT" = "merge_group" ]; then kind=range; from="$MQ_BASE_SHA"; to="$MQ_HEAD_SHA"; fi
         if [ "$EVENT" = "push" ] && [ "$REF" = "refs/heads/feat/tauri-v2" ]; then kind=range; from="$PUSH_BEFORE"; to="$PUSH_AFTER"; fi
 
         files=""
         listed=false
+        patches="$RUNNER_TEMP/ci-tier-pr-files.jsonl"
+        rm -f "$patches"
         if [ "$kind" = pr ]; then
-          if files=$(gh api "repos/$REPO/pulls/$PR_NUMBER/files" --paginate --jq '.[].filename'); then listed=true; fi
+          if gh api "repos/$REPO/pulls/$PR_NUMBER/files" --paginate --jq '.[] | {filename, previous_filename, patch, changes}' > "$patches" \
+            && files=$(jq -r '.filename' "$patches"); then listed=true; else rm -f "$patches"; fi
         elif [ "$kind" = range ]; then
           if [[ ! "$from" =~ ^0*$ ]] && git fetch --no-tags --depth=1 --filter=blob:none origin "$from" "$to" \
             && files=$(git diff --name-only --no-renames "$from" "$to"); then listed=true; fi
@@ -77,4 +102,4 @@ runs:
           echo "::warning::could not list the changed files; running the path-gated jobs"
         fi
 
-        printf '%s\n' "$files" | LISTED="$listed" bash "$GITHUB_ACTION_PATH/tier.sh" >> "$GITHUB_OUTPUT"
+        printf '%s\n' "$files" | LISTED="$listed" PATCHES="$patches" bash "$GITHUB_ACTION_PATH/tier.sh" >> "$GITHUB_OUTPUT"

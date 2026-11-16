@@ -36,6 +36,13 @@
 //!
 //! A note whose file would land in a locked folder is refused before step 2.
 //!
+//! Once the note is made, its header tags with no definition get one
+//! ([`NotesService::define_tags`]), so the first colour a tag list shows for a new header tag is
+//! its definition's. Its body `#tags` are left to the index pass, as Electron's `createNote`
+//! mints only the template's and the input's tags: they are not indexed yet when create
+//! answers, so a mint here would leave the pass nothing to mint and no `TagsDefined` to send,
+//! and the lists would miss them.
+//!
 //! Not here yet, though Electron's create does it: the note's date reminders (Step 21).
 
 use std::path::Path;
@@ -267,6 +274,7 @@ impl NotesService {
                 "the new note got no slot: {error}"
             );
         }
+        self.define_tags(open, &note.tags, "");
         // The answer is made from the bytes written, not read back: the note is made, so the
         // create cannot fail from here on, and the renderer gets the note it can open.
         Ok(new_note_view(id, rel, note, &output))

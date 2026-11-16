@@ -213,6 +213,39 @@ impl AuthSession {
         self.http.clone()
     }
 
+    /// The server refused the refresh token for good (chapter 02 §2.10): nothing authenticates
+    /// until the user signs in again. Not part of the FFI surface.
+    pub fn refresh_refused(&self) -> bool {
+        self.tokens.refresh_block_ms() == Some(0)
+    }
+
+    /// The signed-in account's id (`sub` of the access token, else of the refresh token), as
+    /// Electron's `getSignedInUserId` reads it; `None` signed out. Not part of the FFI surface.
+    pub fn account_user_id(&self) -> Option<String> {
+        let access = self.tokens.access_token_sync().ok().flatten();
+        let refresh = self.tokens.refresh_token().ok().flatten();
+        [access, refresh]
+            .into_iter()
+            .flatten()
+            .filter_map(|token| TokenClaims::parse(&token).ok())
+            .map(|claims| claims.sub)
+            .find(|sub| !sub.is_empty())
+    }
+
+    /// The id this device stamps its clock ticks with ([`Self::device_id`]). Not part of the FFI
+    /// surface.
+    pub fn local_device_id(&self) -> Result<String, AuthError> {
+        self.device_id()
+    }
+
+    /// `Registered -> Revoked`, keeping every secret. Desktop follows Electron, which deletes
+    /// nothing on revocation (`engine/error-recovery-handler.ts:49-77`): the master key and the
+    /// queue stay for the export the revoked dialog offers, and sign-out clears them.
+    /// [`Self::mark_revoked`] (iOS) clears first. Not part of the FFI surface.
+    pub fn note_device_revoked(&self) -> Result<AuthState, AuthError> {
+        self.apply(AuthEvent::DeviceRevoked, "revoke this device")
+    }
+
     /// The master key this device unlocked with, or `None` when nothing has
     /// unlocked it.
     ///

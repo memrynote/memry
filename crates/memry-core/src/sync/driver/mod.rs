@@ -44,9 +44,11 @@ use crate::crdt::snapshots::snapshot_is_due;
 use crate::crypto::agent_envelope::AtRestKey;
 use crate::crypto::keys;
 use crate::protocol::account::{AccountSealer, DeviceSigner, device_directory};
-use crate::protocol::http::HttpClient;
+use crate::protocol::auth::TokenManager;
+use crate::protocol::http::{HttpClient, TokenProvider};
 use crate::protocol::types::Declaration;
 use crate::seams::reachability::Reachability;
+use crate::seams::transport::Transport;
 use crate::storage::Db;
 use crate::storage::repositories::sync_items;
 
@@ -60,6 +62,7 @@ use super::pack_bootstrap::PackBootstrap;
 use super::policy::ServerClock;
 use super::pull::PullLoop;
 use super::push::PushCoordinator;
+use super::socket::{HintSink, RealtimeClient};
 use super::state::{PassTrigger, SyncState, WriteGate};
 use cipher::DirectoryCipher;
 pub use observer::{
@@ -139,6 +142,9 @@ pub struct SyncDriver {
     first: FirstSyncParts,
     db: Db,
     http: Arc<HttpClient>,
+    /// The session's tokens, for the realtime socket's handshake.
+    tokens: Arc<TokenManager>,
+    server_vault: String,
     cipher: Arc<DirectoryCipher>,
     observers: Arc<Observers>,
     /// The `tasks` progress, the seed registered after every other.
@@ -250,6 +256,8 @@ impl SyncDriver {
             },
             db,
             http,
+            tokens: Arc::clone(&session.tokens),
+            server_vault: server_vault.clone(),
             cipher,
             observers,
             tasks,
@@ -447,6 +455,33 @@ impl SyncDriver {
     /// The server clock the last policy poll read ([`super::policy::PolicyTier::server_clock`]).
     pub fn server_clock(&self) -> Option<ServerClock> {
         self.engine.policy().server_clock()
+    }
+
+    /// The realtime socket of this driver's server vault (chapter 09), over `transport` (the
+    /// session's, or a wrapper of [`SyncDriver::transport`]) and the session's tokens.
+    pub fn realtime_client(
+        &self,
+        transport: Arc<dyn Transport>,
+        sink: Arc<dyn HintSink>,
+    ) -> RealtimeClient {
+        RealtimeClient::new(
+            transport,
+            self.http.base_url(),
+            self.http.identity().clone(),
+            self.token_provider(),
+            sink,
+        )
+        .with_vault(&self.server_vault)
+    }
+
+    /// The session's transport.
+    pub fn transport(&self) -> Arc<dyn Transport> {
+        self.http.transport()
+    }
+
+    /// The session's tokens, which the realtime socket refreshes through.
+    pub fn token_provider(&self) -> Arc<dyn TokenProvider> {
+        Arc::clone(&self.tokens) as Arc<dyn TokenProvider>
     }
 
     fn is_paused(&self) -> bool {

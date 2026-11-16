@@ -62,7 +62,28 @@ function useOcrLanguages(): OcrLanguagesState | null {
 export function OcrLanguagesRow() {
   const { t } = useT('settings')
   const state = useOcrLanguages()
-  if (!state) return null
+  // The row keeps its place while the state loads: rendering nothing until then pushed the
+  // groups below down on every open of Settings > General (#3967).
+  if (!state) {
+    return (
+      <div data-testid="ocr-languages-setting">
+        <SettingRow
+          label={t('general.ocrLanguages.label')}
+          description={t('general.ocrLanguages.helper')}
+        >
+          <Button
+            variant="outline"
+            disabled
+            aria-busy
+            aria-label={t('general.ocrLanguages.label')}
+            className={cn(COMPACT_SELECT, 'max-w-48')}
+          >
+            <span className="invisible">{LANGUAGE_NAMES[BUNDLED_OCR_LANGUAGE]}</span>
+          </Button>
+        </SettingRow>
+      </div>
+    )
+  }
 
   const selected = new Set(state.selected)
   const names = state.selected.map((lang) => LANGUAGE_NAMES[lang])

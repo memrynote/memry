@@ -20,6 +20,13 @@ pub const EMBEDDING_DIMENSION: usize = 256;
 pub const MAX_EMBED_TEXT_BYTES: usize = 1 << 20;
 /// The largest image an `EmbedImage` request carries (`memry_ml::image_prep::MAX_IMAGE_BYTES`).
 pub const MAX_EMBED_IMAGE_BYTES: usize = 30 << 20;
+/// The windows of one recording the worker embeds (`memry_ml::audio_prep::MAX_WINDOWS`, 60 min of
+/// 30 s windows); an `AudioOpened` answer of more is refused.
+pub const MAX_AUDIO_WINDOWS: u32 = 120;
+/// The largest audio file the worker reads (`memry_ml::audio_prep::MAX_AUDIO_BYTES`). It reads the
+/// file itself, from the path the app sends: the file and its decoded samples (up to 230 MB) never
+/// cross the pipe, whose frames are capped at 80 MiB.
+pub const MAX_AUDIO_BYTES: usize = 512 * 1024 * 1024;
 /// The most files a `ModelManifest` answer lists, and the longest string in it.
 const MAX_MANIFEST_FILES: u32 = 16;
 const MAX_MANIFEST_STRING: usize = 256;
@@ -41,6 +48,9 @@ const EMBED_LOAD: u8 = 0x10;
 const EMBED_TEXT: u8 = 0x11;
 const EMBED_IMAGE: u8 = 0x12;
 const MODEL_MANIFEST: u8 = 0x13;
+const AUDIO_OPEN: u8 = 0x14;
+const EMBED_AUDIO_WINDOW: u8 = 0x15;
+const AUDIO_CLOSE: u8 = 0x16;
 /// Past the embedding ops (0x10 to 0x13, #4701) and the audio ops (0x14 to 0x16, #4742). Its
 /// answer is `TEXT` (0x82), so it adds no answer code.
 const OCR: u8 = 0x17;
@@ -52,6 +62,7 @@ const RENDERED: u8 = 0x83;
 const DONE: u8 = 0x84;
 const EMBEDDED: u8 = 0x85;
 const MANIFEST: u8 = 0x86;
+const AUDIO_OPENED: u8 = 0x87;
 const FAILED: u8 = 0xff;
 
 /// The model files that load together (`memry_ml::ModelGroup`).
@@ -141,6 +152,20 @@ pub enum Request {
     ModelManifest {
         group: ModelGroup,
     },
+    /// Reads and decodes the WAV file at `path` into the worker's one open recording, replacing
+    /// the one before. Answers `AudioOpened`.
+    AudioOpen {
+        path: String,
+    },
+    /// The embedding of one 30 s window of the open recording, the audio model loaded first when
+    /// it is not. Windows count from 0.
+    EmbedAudioWindow {
+        recording: u32,
+        window: u32,
+    },
+    AudioClose {
+        recording: u32,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -159,6 +184,12 @@ pub enum Response {
         png: Vec<u8>,
     },
     Done,
+    /// The open recording and its window count, at most [`MAX_AUDIO_WINDOWS`]: none for a
+    /// recording under one second.
+    AudioOpened {
+        recording: u32,
+        windows: u32,
+    },
     /// [`EMBEDDING_DIMENSION`] values.
     Embedded(Vec<f32>),
     Manifest(Manifest),
@@ -240,6 +271,18 @@ impl Request {
                 put_u32s(&mut out, &[group.code()]);
                 MODEL_MANIFEST
             }
+            Self::AudioOpen { path } => {
+                put_str(&mut out, path);
+                AUDIO_OPEN
+            }
+            Self::EmbedAudioWindow { recording, window } => {
+                put_u32s(&mut out, &[*recording, *window]);
+                EMBED_AUDIO_WINDOW
+            }
+            Self::AudioClose { recording } => {
+                put_u32s(&mut out, &[*recording]);
+                AUDIO_CLOSE
+            }
         };
         Frame {
             op,
@@ -297,6 +340,14 @@ impl Request {
             MODEL_MANIFEST => Self::ModelManifest {
                 group: ModelGroup::from_code(r.u32()?).ok_or(OpError::Malformed(op))?,
             },
+            AUDIO_OPEN => Self::AudioOpen { path: r.string()? },
+            EMBED_AUDIO_WINDOW => Self::EmbedAudioWindow {
+                recording: r.u32()?,
+                window: r.u32()?,
+            },
+            AUDIO_CLOSE => Self::AudioClose {
+                recording: r.u32()?,
+            },
             other => return Err(OpError::UnknownOp(other)),
         };
         r.end()?;
@@ -316,6 +367,9 @@ impl Request {
             Self::EmbedText { .. } => "embed-text",
             Self::EmbedImage { .. } => "embed-image",
             Self::ModelManifest { .. } => "model-manifest",
+            Self::AudioOpen { .. } => "audio-open",
+            Self::EmbedAudioWindow { .. } => "embed-audio-window",
+            Self::AudioClose { .. } => "audio-close",
         }
     }
 }
@@ -329,6 +383,7 @@ impl Response {
             Self::Text(_) => "text",
             Self::Rendered { .. } => "rendered",
             Self::Done => "done",
+            Self::AudioOpened { .. } => "audio-opened",
             Self::Embedded(_) => "embedded",
             Self::Manifest(_) => "manifest",
             Self::Failed(_) => "failed",
@@ -353,6 +408,10 @@ impl Response {
                 RENDERED
             }
             Self::Done => DONE,
+            Self::AudioOpened { recording, windows } => {
+                put_u32s(&mut out, &[*recording, *windows]);
+                AUDIO_OPENED
+            }
             Self::Embedded(values) => {
                 for value in values {
                     out.extend_from_slice(&value.to_be_bytes());
@@ -401,6 +460,12 @@ impl Response {
                 png: r.rest(),
             },
             DONE => Self::Done,
+            AUDIO_OPENED => Self::AudioOpened {
+                recording: r.u32()?,
+                windows: Some(r.u32()?)
+                    .filter(|&windows| windows <= MAX_AUDIO_WINDOWS)
+                    .ok_or(OpError::Malformed(op))?,
+            },
             EMBEDDED => {
                 let mut values = Vec::with_capacity(EMBEDDING_DIMENSION);
                 for _ in 0..EMBEDDING_DIMENSION {

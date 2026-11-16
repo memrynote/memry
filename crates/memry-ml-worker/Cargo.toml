@@ -78,6 +78,11 @@ path = "tests/embed.rs"
 required-features = ["native"]
 
 [[test]]
+name = "embed_audio"
+path = "tests/embed_audio.rs"
+required-features = ["native"]
+
+[[test]]
 name = "ocr_timeout"
 path = "tests/ocr_timeout.rs"
 

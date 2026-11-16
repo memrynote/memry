@@ -66,9 +66,66 @@ impl Breaker {
     }
 }
 
+/// `EncoderBreaker` of the audio encoder (`recordEncoderFailure`, embeddings.ts:247-254, 482-500):
+/// fed only by that encoder's faults, so a recording that crashes the worker or an audio download
+/// that keeps failing never stops text indexing. Its delay doubles from the base and stops growing
+/// after the fourth failure; it never latches.
+#[derive(Debug)]
+pub(crate) struct EncoderBreaker {
+    base: Duration,
+    pub(crate) failures: u32,
+    retry_not_before: Option<Instant>,
+}
+
+impl EncoderBreaker {
+    pub(crate) fn new(base: Duration) -> Self {
+        Self {
+            base,
+            failures: 0,
+            retry_not_before: None,
+        }
+    }
+
+    pub(crate) fn is_open(&self, now: Instant) -> bool {
+        self.retry_not_before.is_some_and(|at| now < at)
+    }
+
+    /// The delay before the next attempt.
+    pub(crate) fn record_failure(&mut self, now: Instant) -> Duration {
+        self.failures += 1;
+        let delay = self.base * 2u32.pow((self.failures - 1).min(3));
+        self.retry_not_before = Some(now + delay);
+        delay
+    }
+
+    pub(crate) fn clear(&mut self) {
+        self.failures = 0;
+        self.retry_not_before = None;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// embeddings.ts:482-485: 60 s, 2 min, 4 min, 8 min, then 8 min for good, never latched.
+    #[test]
+    fn the_encoder_delay_stops_growing_after_the_fourth_failure_and_never_latches() {
+        let start = Instant::now();
+        let mut breaker = EncoderBreaker::new(RETRY_BASE);
+        let delays: Vec<_> = (0..7).map(|_| breaker.record_failure(start)).collect();
+        let minutes = |m: u64| Duration::from_secs(60 * m);
+        assert_eq!(
+            delays,
+            [1, 2, 4, 8, 8, 8, 8].map(minutes),
+            "exponential, capped at the fourth"
+        );
+        assert!(breaker.is_open(start + minutes(8) - Duration::from_secs(1)));
+        assert!(!breaker.is_open(start + minutes(8)), "never latched");
+        breaker.clear();
+        assert!(!breaker.is_open(start));
+        assert_eq!(breaker.record_failure(start), RETRY_BASE);
+    }
 
     /// embeddings.ts:574-595: 60 s, 2 min, 4 min, 8 min, then no more attempts; never a 16 min
     /// wait.

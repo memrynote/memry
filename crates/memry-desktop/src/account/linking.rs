@@ -23,7 +23,7 @@ use zeroize::Zeroizing;
 
 use super::recovery::setup_expired;
 use super::{AccountError, AccountService};
-use crate::session::Session;
+use crate::session::{OpenVault, Session};
 
 /// The approver's code, as the QR screen shows it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -136,6 +136,23 @@ impl Linking {
             choice: Arc::default(),
         }
     }
+
+    /// Ends the new device's link and the vault choice, with their keys.
+    pub(super) async fn forget_pending(&self) {
+        *self.new_device.lock().await = None;
+        lock(&self.choice).take();
+    }
+}
+
+/// Puts back a choice a failed provisioning took, unless its session ran out meanwhile: its
+/// timer already fired, so an expired choice would keep its key in memory for good
+/// (VERIFY-4711 Low 2).
+fn restore_choice(slot: &Arc<Mutex<Option<PendingChoice>>>, choice: PendingChoice) {
+    if now_s() > choice.expires_at {
+        tracing::info!(scope = "DeviceLinking", "the vault choice expired");
+        return;
+    }
+    hold_choice(slot, choice);
 }
 
 /// Stores the choice, and forgets it (with its key) when its session expires, if the user never
@@ -221,10 +238,25 @@ impl AccountService {
 
     /// `APPROVE_LINKING` (`linking-service.ts:653-766`): core verifies the scanning device's
     /// confirm tag before it reads the master key, then seals the key and the account's vault
-    /// list for it. The pending code is gone either way.
-    pub async fn approve_linking(&self, session_id: &str) -> Result<(), AccountError> {
+    /// list for it. An account that lists no vault sends the open vault's server id instead
+    /// (`collectVaultTransfer`). The pending code is gone either way.
+    pub async fn approve_linking(
+        &self,
+        session_id: &str,
+        open: Option<&OpenVault>,
+    ) -> Result<(), AccountError> {
         self.pending_invite(session_id)?;
-        let approved = self.linking.approver.approve().await;
+        let fallback = match open.map(|open| open.vault.clone()) {
+            Some(vault) => tokio::task::spawn_blocking(move || vault.server_vault_id())
+                .await
+                .ok()
+                .and_then(Result::ok)
+                .flatten()
+                .into_iter()
+                .collect(),
+            None => Vec::new(),
+        };
+        let approved = self.linking.approver.approve_with_fallback(fallback).await;
         *lock(&self.linking.invite) = None;
         approved?;
         tracing::info!(scope = "DeviceLinking", "device linking approved");
@@ -383,7 +415,7 @@ impl AccountService {
         let folder = match vault_folder(Path::new(&choice.parent_folder), &choice.primary) {
             Ok(folder) => folder,
             Err(error) => {
-                *lock(&self.linking.choice) = Some(pending);
+                restore_choice(&self.linking.choice, pending);
                 return Err(error);
             }
         };
@@ -405,7 +437,7 @@ impl AccountService {
                     scope = "DeviceLinking",
                     "finalizeVaultChoice failed: {error}"
                 );
-                *lock(&self.linking.choice) = Some(pending);
+                restore_choice(&self.linking.choice, pending);
                 return Err(AccountError::VaultChoice(error));
             }
         };
@@ -476,68 +508,5 @@ fn lock<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// The link's store holds the master key and nothing else, and never reads one back: the
-    /// link cannot leave a device key or token in memory, nor read the keychain through it.
-    #[test]
-    fn the_held_key_takes_only_the_master_key() {
-        let held = HeldKey::default();
-        for key in [
-            SecureStoreKey::DeviceSigningKey,
-            SecureStoreKey::AccessToken,
-            SecureStoreKey::RefreshToken,
-            SecureStoreKey::SetupToken,
-        ] {
-            assert!(held.set(key, vec![1; 32]).is_err(), "{key:?}");
-        }
-        assert_eq!(held.take(), None);
-
-        held.set(SecureStoreKey::MasterKey, vec![2; 32]).unwrap();
-        assert_eq!(held.get(SecureStoreKey::MasterKey).unwrap(), None);
-        assert_eq!(
-            held.take().as_deref().map(Vec::as_slice),
-            Some(&[2; 32][..])
-        );
-        assert_eq!(held.take(), None, "taken once");
-    }
-
-    /// A choice the user never makes is forgotten, key and all, once its session expires; a
-    /// choice of a later session is not.
-    #[tokio::test(start_paused = true)]
-    async fn an_unpicked_choice_is_forgotten_when_it_expires() {
-        let slot = Arc::<Mutex<Option<PendingChoice>>>::default();
-        let choice = |id: &str, ttl: i64| PendingChoice {
-            session_id: id.into(),
-            master: Zeroizing::new(vec![1; 32]),
-            vaults: vec![],
-            expires_at: now_s() + ttl,
-        };
-        hold_choice(&slot, choice("first", 60));
-        tokio::time::sleep(Duration::from_secs(30)).await;
-        assert!(lock(&slot).is_some(), "still pending");
-        tokio::time::sleep(Duration::from_secs(40)).await;
-        assert!(lock(&slot).is_none(), "expired");
-
-        hold_choice(&slot, choice("old", 10));
-        hold_choice(&slot, choice("new", 600));
-        tokio::time::sleep(Duration::from_secs(30)).await;
-        assert_eq!(
-            lock(&slot).as_ref().map(|p| p.session_id.as_str()),
-            Some("new")
-        );
-    }
-
-    #[test]
-    fn a_vault_folder_stays_in_the_picked_folder() {
-        let parent = Path::new("/picked");
-        assert_eq!(
-            vault_folder(parent, "0b9f3c8e-5d4a-4c1e").unwrap(),
-            parent.join("memry-vault-0b9f3c8e")
-        );
-        for id in ["", "../../..", "..", "a/b", "a\\b", "x.y", " id"] {
-            assert!(vault_folder(parent, id).is_err(), "{id:?}");
-        }
-    }
-}
+#[path = "linking_tests.rs"]
+mod tests;

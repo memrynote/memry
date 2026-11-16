@@ -70,7 +70,10 @@ fn main() -> ExitCode {
             Request::EmbedLoad
             | Request::EmbedText { .. }
             | Request::EmbedImage { .. }
-            | Request::ModelManifest { .. } => {
+            | Request::ModelManifest { .. }
+            | Request::AudioOpen { .. }
+            | Request::EmbedAudioWindow { .. }
+            | Request::AudioClose { .. } => {
                 #[cfg(feature = "embed")]
                 {
                     embedder.handle(request)

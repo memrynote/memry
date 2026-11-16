@@ -11,6 +11,8 @@ use crate::registry::{AppConfig, VaultRegistry};
 use crate::session::OpenSource;
 use crate::shell::shutdown::{Deadline, ShutdownContext, ShutdownReason};
 
+mod audio;
+
 /// A hang guard, never a bound on how fast the code is.
 const HANG: Duration = Duration::from_secs(60);
 
@@ -53,12 +55,19 @@ enum Step {
     Block(Arc<Gate>),
     /// Waits for the request's abort, as a download does.
     AwaitAbort(Arc<Gate>),
+    Sleep(Duration),
 }
 
 #[derive(Default)]
 struct Script {
     loads: Mutex<VecDeque<Step>>,
     embeds: Mutex<VecDeque<Step>>,
+    /// Audio windows and audio downloads.
+    windows: Mutex<VecDeque<Step>>,
+    downloads: Mutex<VecDeque<Step>>,
+    opens: AtomicUsize,
+    /// `text` and `window`, in the order the thread served them.
+    order: Mutex<Vec<&'static str>>,
     load_calls: AtomicUsize,
     dropped: AtomicUsize,
     cancelled: AtomicUsize,
@@ -73,6 +82,10 @@ impl Script {
             Step::Panic => panic!("onnx runtime fault"),
             Step::Block(gate) => {
                 gate.wait();
+                Ok(())
+            }
+            Step::Sleep(time) => {
+                std::thread::sleep(time);
                 Ok(())
             }
             Step::AwaitAbort(gate) => {
@@ -92,10 +105,33 @@ struct FakeEngine(Arc<Script>);
 
 impl Engine for FakeEngine {
     fn embed_text(&mut self, _: &str) -> Result<Vec<f32>, EmbedError> {
+        lock(&self.0.order).push("text");
         self.0
             .play(&self.0.embeds, None)
             .map_err(EmbedError::Failed)?;
         Ok(vec![0.5; EMBEDDING_DIMENSION])
+    }
+
+    /// `unreadable.wav` is the file's fault, `short.wav` has no window, anything else three.
+    fn open_audio(&mut self, path: &std::path::Path) -> Result<AudioOpened, EmbedError> {
+        self.0.opens.fetch_add(1, Ordering::SeqCst);
+        let windows = match path.to_str() {
+            Some("unreadable.wav") => return Err(EmbedError::Input("not a WAV".to_owned())),
+            Some("short.wav") => 0,
+            _ => 3,
+        };
+        Ok(AudioOpened {
+            recording: 1,
+            windows,
+        })
+    }
+
+    fn embed_audio_window(&mut self, _: u64, _: u32) -> Result<Vec<f32>, EmbedError> {
+        lock(&self.0.order).push("window");
+        self.0
+            .play(&self.0.windows, None)
+            .map_err(EmbedError::Failed)?;
+        Ok(vec![0.25; EMBEDDING_DIMENSION])
     }
 }
 
@@ -121,6 +157,10 @@ impl ModelLoader for FakeLoader {
         ));
         self.0.play(&self.0.loads, Some(abort))?;
         Ok(Box::new(FakeEngine(self.0.clone())))
+    }
+
+    fn prepare_audio(&self, abort: &Abort) -> Result<(), String> {
+        self.0.play(&self.0.downloads, Some(abort))
     }
 }
 
@@ -163,6 +203,16 @@ impl Case {
 
     fn error(&self) -> String {
         self.service.status().error.unwrap_or_default()
+    }
+
+    fn opens(&self) -> usize {
+        self.script.opens.load(Ordering::SeqCst)
+    }
+
+    fn audio(&self, name: &str) -> Option<Vec<Vec<f32>>> {
+        let service = self.service.clone();
+        let name = name.to_owned();
+        returns(move || service.embed_audio(std::path::Path::new(&name)))
     }
 }
 

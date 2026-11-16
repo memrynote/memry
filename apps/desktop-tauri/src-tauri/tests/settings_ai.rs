@@ -19,7 +19,7 @@ use memry_desktop::i18n::{self, Args};
 use memry_desktop::registry::AppConfig;
 use memry_desktop::seams::transport::NativeTransport;
 use memry_desktop::session::OpenSource;
-use memry_desktop::session::projection::{CancelToken, ProjectionEvent, Projector};
+use memry_desktop::session::projection::{CancelToken, ProjectionEvent, Projector, Rebuilt};
 use memry_desktop::settings::SettingsService;
 use memry_desktop::telemetry::Service;
 use memry_desktop::telemetry::service::{Context, Sender};
@@ -184,8 +184,8 @@ impl Projector for Counted {
     fn project(&self, _: &ProjectionEvent, _: &CancelToken) -> Result<(), String> {
         Ok(())
     }
-    fn rebuild(&self, _: &CancelToken) -> Result<(), String> {
-        Ok(())
+    fn rebuild(&self, _: &CancelToken) -> Result<Rebuilt, String> {
+        Ok(Rebuilt::default())
     }
     fn reconcile(&self, _: &CancelToken) -> Result<(), String> {
         self.0.fetch_add(1, Ordering::SeqCst);

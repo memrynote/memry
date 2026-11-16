@@ -30,6 +30,13 @@ vi.mock('@/services/device-service', () => ({
   setupService: serviceMocks.setupService
 }))
 
+vi.mock('@/services/sync-account-service', () => ({
+  onSessionExpired: vi.fn((cb: EventCallback<{ reason: string }>) => {
+    sessionExpiredCallback = cb
+    return vi.fn()
+  })
+}))
+
 vi.mock('../../../generated/bindings', () => ({
   events: {
     authSessionRefreshedEvent: {
@@ -108,10 +115,6 @@ function wrapper({ children }: { children: ReactNode }) {
 
 function installApiHandlers(): void {
   const api = window.api as any
-  api.onSessionExpired = vi.fn((cb: EventCallback<{ reason: string }>) => {
-    sessionExpiredCallback = cb
-    return vi.fn()
-  })
   api.onSyncStatusChanged = vi.fn((cb: EventCallback<{ status: string; lastSyncAt?: number }>) => {
     syncStatusCallback = cb
     return () => {
