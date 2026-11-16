@@ -12,6 +12,7 @@ import {
 import { Container } from '@/components/layout/Container'
 import { ClipboardButton } from '@/components/download/ClipboardButton'
 import { PageHead } from '@/components/shared/PageHead'
+import { NewsletterSignup } from '@/components/site/NewsletterSignup'
 import { trackLandingEvent } from '@/lib/analytics'
 import { CHROME_WEBSTORE_URL, FIREFOX_ADDONS_URL } from '@/lib/constants'
 import {
@@ -134,6 +135,7 @@ export function DownloadPage() {
           <ClipperCard />
           <CliCard />
         </div>
+        <NewsletterSignup location="download" />
       </Container>
     </>
   )

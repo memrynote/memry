@@ -31,10 +31,16 @@ pub(super) fn insert_inline(
     }
     let (_, block) = locate(txn, block_id).ok_or_else(|| missing(block_id))?;
 
-    // The run the range falls in, and where it sits inside that run.
+    // The run the range falls in, and where it sits inside that run. A node
+    // with no text has no width here, so an empty range at its offset fits
+    // the run before it and the run after it: the run holding the character
+    // at `start` wins, which puts the node after the textless one when text
+    // follows (#4765), and the run ending at `start` is kept for when none
+    // does.
     let children: Vec<XmlOut> = block.children(txn).collect();
     let mut base = 0u32;
     let mut found: Option<(u32, XmlTextRef, u32)> = None;
+    let mut ending: Option<(u32, XmlTextRef, u32)> = None;
     for (index, child) in children.iter().enumerate() {
         let length = match child {
             XmlOut::Text(run) => run.len(txn),
@@ -45,13 +51,16 @@ pub(super) fn insert_inline(
             && start >= base
             && end <= base + length
         {
-            found = Some((index as u32, run.clone(), base));
-            break;
+            if start < base + length {
+                found = Some((index as u32, run.clone(), base));
+                break;
+            }
+            ending.get_or_insert_with(|| (index as u32, run.clone(), base));
         }
         base += length;
     }
 
-    let (index, run, base) = found.ok_or_else(|| CrdtError::Undecodable {
+    let (index, run, base) = found.or(ending).ok_or_else(|| CrdtError::Undecodable {
         doc_id: block_id.to_owned(),
         what: "that range does not fall inside one run of this block's text".to_owned(),
     })?;

@@ -137,7 +137,17 @@ enum BlockText {
         let result = NSMutableAttributedString(attributedString: text)
         let placed = NSAttributedString.Key("memry.placed")
         for span in spans {
-            let lower = utf16Offset(in: result, core: span.lowerBound)
+            var lower = utf16Offset(in: result, core: span.lowerBound)
+            // As the core's `insert_inline`: a node goes in the run holding
+            // the character at its offset, after any node of no core bytes
+            // there, so a tag picked right after a link does not cover it
+            // (VERIFY-4753) and a menu's node lands after it (#4765). An
+            // empty span with no text after those nodes stays before them.
+            var next = lower
+            var after = lower
+            while next < result.length, coreBytes(in: result, at: &next) == 0 { after = next }
+            let text = after < result.length && (result.string as NSString).character(at: after) != 0xFFFC
+            if !span.isEmpty || text { lower = after }
             let upper = max(lower, utf16Offset(in: result, core: span.upperBound))
             let range = NSRange(location: lower, length: upper - lower)
             let covered = (result.string as NSString).substring(with: range)
@@ -227,6 +237,9 @@ enum BlockText {
         /// The vault's tag colours by lowercased name, for a tag whose node
         /// carries none.
         var tagColors: [String: String] = [:]
+        /// A ticked checklist item: its text is struck through, as desktop's
+        /// `[data-checked=true]` draws it. Display only, never a `strike` mark.
+        var struck = false
     }
 
     static func attributed(_ runs: [InlineRun], style: Style) -> NSAttributedString {
@@ -306,7 +319,14 @@ enum BlockText {
 
     /// What a character typed with nothing to its left carries.
     static func baseAttributes(_ style: Style) -> [NSAttributedString.Key: Any] {
-        [.font: style.font, .foregroundColor: style.ink, .memryMarks: [String]()]
+        var attrs: [NSAttributedString.Key: Any] = [
+            .font: style.font, .foregroundColor: style.ink, .memryMarks: [String]()
+        ]
+        if style.struck {
+            attrs[.strikethroughStyle] = NSUnderlineStyle.single.rawValue
+            attrs[.strikethroughColor] = UIColor(Tokens.Text.secondary.color)
+        }
+        return attrs
     }
 
     static func attributes(_ run: InlineRun, style: Style) -> [NSAttributedString.Key: Any] {

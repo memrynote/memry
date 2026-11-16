@@ -74,10 +74,14 @@ struct EditableBlockView: UIViewRepresentable {
         let traits = view.traitCollection
         let restyled = field.style.font != Self.font(for: role) || field.alignment != alignment
             || field.style.ink.resolvedColor(with: traits) != nextInk.resolvedColor(with: traits)
+            || field.style.struck != struck
         let moved = field.block.id != block.id
         field.session = session
         field.alignment = alignment
-        field.style = BlockText.Style(font: Self.font(for: role), ink: nextInk, titleExists: session.titleExists, tagColors: session.tagColors)
+        field.style = BlockText.Style(
+            font: Self.font(for: role), ink: nextInk, titleExists: session.titleExists,
+            tagColors: session.tagColors, struck: struck
+        )
         let changed = field.receive(block, generation: session.drawnGeneration(), restyled: restyled)
         // Rows are drawn by position: a block inserted or removed above hands
         // this text view the next block, which `focus` must find it under.
@@ -100,7 +104,25 @@ struct EditableBlockView: UIViewRepresentable {
     }
 
     func makeCoordinator() -> BlockField {
-        BlockField(block: block, session: session, style: BlockText.Style(font: Self.font(for: role), ink: ink ?? Self.primaryInk, titleExists: session.titleExists, tagColors: session.tagColors), alignment: alignment)
+        let style = BlockText.Style(
+            font: Self.font(for: role), ink: ink ?? Self.primaryInk, titleExists: session.titleExists,
+            tagColors: session.tagColors, struck: struck
+        )
+        return BlockField(block: block, session: session, style: style, alignment: alignment)
+    }
+
+    /// A ticked checklist item, drawn struck through.
+    private var struck: Bool {
+        block.kind == "checkListItem" && block.props.contains { $0.name == "checked" && $0.value == "true" }
+    }
+
+    /// The text view with its first baseline where its first line's is,
+    /// for a row that aligns a marker on `.firstTextBaseline`. UIKit puts an
+    /// empty text view's baseline at its top, which drew an empty checklist
+    /// item's caret a line below its box. With no inset or padding the
+    /// first baseline is the font's ascender, empty or not.
+    var baselineAligned: some View {
+        alignmentGuide(.firstTextBaseline) { _ in Self.font(for: role).ascender }
     }
 
     static var primaryInk: UIColor { UIColor(Tokens.Text.primary.color) }

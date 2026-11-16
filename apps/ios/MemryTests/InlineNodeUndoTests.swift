@@ -454,6 +454,110 @@ struct InlineNodeUndoTests {
         #expect(try await nodes(f, "dateMention") == 0, "no node the user never had")
     }
 
+    /// The block as the core holds it, redrawn into the open field, as the
+    /// page does once a write lands.
+    private func reload(_ f: Fixture) async throws {
+        f.field.block = try #require(try await f.reader.blocks(id: f.noteId)?.first { $0.id == f.blockId })
+        f.field.render()
+    }
+
+    /// VERIFY-4753: a link picked from the menu, typing after it, then a tag
+    /// picked right after the link. Undo takes back the tag and the typing
+    /// and nothing else, and redo puts back one tag.
+    @Test(.timeLimit(.minutes(1))) func a_tag_picked_right_after_a_picked_link_is_undone_and_redone_exactly() async throws {
+        let f = try await fixture("q ")
+        type("[[Agent", in: f)
+        f.session.selectionChanged(in: f.field)
+        let row = try #require(f.session.suggestions.first { $0.kind == .note(title: "Agent Dune", alias: "") })
+        f.session.choose(row)
+        await f.session.tail?.value
+        try await reload(f)
+        #expect(f.field.textView.text == "q \u{FFFC} ")
+
+        type("z", in: f)
+        f.session.tags = ["vtag"]
+        type("#vt", at: 3, in: f)
+        f.session.selectionChanged(in: f.field)
+        f.session.chooseTag(try #require(f.session.tagSuggestions.first { $0.tag == "vtag" }))
+        await f.session.tail?.value
+        #expect(try await shown(f) == "q \u{FFFC}\u{FFFC} z")
+        #expect(try await kinds(f) == ["wikiLink", "hashTag"])
+
+        await undo(f)
+        #expect(try await shown(f) == "q \u{FFFC} ")
+        #expect(try await kinds(f) == ["wikiLink"])
+
+        await redo(f)
+        #expect(try await shown(f) == "q \u{FFFC}\u{FFFC} z")
+        #expect(try await kinds(f) == ["wikiLink", "hashTag"])
+    }
+
+    private func pickNote(_ typed: String, in f: Fixture) throws {
+        type(typed, in: f)
+        f.session.selectionChanged(in: f.field)
+        f.session.choose(try #require(f.session.suggestions.first { $0.kind == .note(title: "Agent Dune", alias: "") }))
+    }
+
+    private static let today = DateMentionValue(dateISO: "2026-06-02T09:00:00.000Z", hasTime: false)
+
+    /// #4765: a link picked from the menu, `z` typed after its space, then a
+    /// date picked with the caret right after the link. The date lands after
+    /// the link, and undo and redo take back and put back only the date.
+    @Test(.timeLimit(.minutes(1))) func a_date_picked_right_after_a_picked_link_lands_after_it() async throws {
+        let f = try await fixture("q ")
+        try pickNote("[[Agent", in: f)
+        await f.session.tail?.value
+        try await reload(f)
+        type("z", in: f)
+        f.session.commit(f.field)
+        await f.session.tail?.value
+        #expect(try await shown(f) == "q \u{FFFC} z")
+
+        type("@", at: 3, in: f)
+        f.session.insertInline(.date(Self.today), replacing: NSRange(location: 3, length: 1))
+        await f.session.tail?.value
+        #expect(try await shown(f) == "q \u{FFFC}\u{FFFC} z")
+        #expect(try await kinds(f) == ["wikiLink", "dateMention"])
+
+        await undo(f)
+        #expect(try await shown(f) == "q \u{FFFC} z")
+        #expect(try await kinds(f) == ["wikiLink"])
+
+        await redo(f)
+        #expect(try await shown(f) == "q \u{FFFC}\u{FFFC} z")
+        #expect(try await kinds(f) == ["wikiLink", "dateMention"])
+    }
+
+    /// #4765: a date picked from the menu, its space deleted, then `[[`
+    /// typed and a link picked right after the chip. The link lands after
+    /// the chip, and undo and redo take back and put back only the link.
+    @Test(.timeLimit(.minutes(1))) func a_link_picked_right_after_a_picked_date_lands_after_it() async throws {
+        let f = try await fixture("Next ")
+        type("@tom", in: f)
+        f.session.insertInline(.date(Self.today), replacing: NSRange(location: 5, length: 4))
+        await f.session.tail?.value
+        try await reload(f)
+        #expect(f.field.textView.text == "Next \u{FFFC} ")
+
+        f.field.textView.textStorage.deleteCharacters(in: NSRange(location: 6, length: 1))
+        type("[[Age", in: f)
+        f.session.commit(f.field)
+        await f.session.tail?.value
+        #expect(try await shown(f) == "Next \u{FFFC}[[Age")
+
+        try pickNote("nt", in: f)
+        await f.session.tail?.value
+        #expect(try await shown(f) == "Next \u{FFFC}\u{FFFC} ")
+        #expect(try await kinds(f) == ["dateMention", "wikiLink"])
+
+        await undo(f)
+        #expect(try await kinds(f) == ["dateMention"])
+
+        await redo(f)
+        #expect(try await shown(f) == "Next \u{FFFC}\u{FFFC} ")
+        #expect(try await kinds(f) == ["dateMention", "wikiLink"])
+    }
+
     // MARK: A date chip edited through its sheet (#4762)
 
     /// The chip's first date, with a reminder undo must bring back.

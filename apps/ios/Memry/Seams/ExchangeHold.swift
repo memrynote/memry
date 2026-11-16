@@ -20,8 +20,9 @@ struct ExchangeHold: Sendable {
     /// main actor and crosses into the core executor as a value.
     /// `beginBackgroundTask` and `endBackgroundTask` are nonisolated, so the
     /// transport calls them from whatever thread the core sends on.
+    /// `name` labels the background task, for the system's debug output.
     @MainActor
-    static func application() -> ExchangeHold {
+    static func application(named name: String = "sync-exchange") -> ExchangeHold {
         let application = UIApplication.shared
         return ExchangeHold {
             let held = OSAllocatedUnfairLock(initialState: UIBackgroundTaskIdentifier.invalid)
@@ -33,7 +34,7 @@ struct ExchangeHold: Sendable {
                 }
                 if id != .invalid { application.endBackgroundTask(id) }
             }
-            let id = application.beginBackgroundTask(withName: "sync-exchange", expirationHandler: end)
+            let id = application.beginBackgroundTask(withName: name, expirationHandler: end)
             held.withLock { $0 = id }
             return end
         }

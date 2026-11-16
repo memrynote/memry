@@ -101,6 +101,40 @@ struct JournalFirstLineTests {
         #expect(draft.text.isEmpty)
     }
 
+    /// #4781: the app keeps running until a line landed on leaving is
+    /// written, and the line's block is handed the caret.
+    @Test func leaving_holds_the_app_until_the_line_lands() async {
+        let draft = JournalFirstLineDraft()
+        draft.focused = true
+        var holds = 0
+        var releases = 0
+        draft.hold = {
+            holds += 1
+            return { releases += 1 }
+        }
+        let (gate, open) = AsyncStream.makeStream(of: Void.self)
+        var written: [(String, Bool)] = []
+        type("line", into: draft) { _, _ in true }
+
+        draft.leave { line, carrying in
+            for await _ in gate { break }
+            written.append((line, carrying === draft))
+            return true
+        }
+        #expect(draft.text.isEmpty)
+        #expect(holds == 1)
+        await Task.yield()
+        #expect(releases == 0, "the hold ended before the line landed")
+
+        open.yield()
+        await draft.landing?.value
+        for _ in 0..<100 where releases == 0 { await Task.yield() }
+        #expect(releases == 1)
+        #expect(written.count == 1)
+        #expect(written.first?.0 == "line")
+        #expect(written.first?.1 == true, "the line's block was not handed the caret")
+    }
+
     @Test func keys_stay_in_the_field_when_the_block_refuses_the_caret() {
         let draft = JournalFirstLineDraft()
         type("line\nmore", into: draft) { _, _ in true }

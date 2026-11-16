@@ -179,8 +179,9 @@ struct JournalDayReadOnlyMetadata: View {
 }
 
 /// The empty day's first line: the placeholder as an editable field.
-/// Text lands on Return, when the field loses focus, and when the page goes
-/// away, always on this field's own day; an empty field writes nothing (D2).
+/// Text lands on Return, when the field loses focus, when the page goes away
+/// and when the app leaves, always on this field's own day; an empty field
+/// writes nothing (D2).
 /// Return starts the block after the line's block, which takes the caret
 /// and the keys typed after the Return (#4705).
 struct JournalDayFirstLine: View {
@@ -188,6 +189,7 @@ struct JournalDayFirstLine: View {
     let write: JournalFirstLineDraft.Write
 
     @State private var draft = JournalFirstLineDraft()
+    @State private var place = JournalFirstLinePlace()
     @FocusState private var focused: Bool
 
     var body: some View {
@@ -216,9 +218,33 @@ struct JournalDayFirstLine: View {
             if !isFocused { draft.landAll(write: write) }
         }
         .onDisappear { draft.landAll(write: write) }
+        // #4781: leaving the app ends no edit, and iOS may end a backgrounded
+        // app before the field loses the caret. The line lands as the app
+        // resigns, as a body block commits (#2820), unless an input method
+        // composes: Control Center resigns the app too. Going to the
+        // background ends the composition as it stands and lands the line.
+        .background(JournalFirstLinePlace.Reader(place: place))
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
+            if composing == nil { draft.leave(write: write) }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
+            if let view = composing {
+                view.unmarkText()
+                draft.typed(view.text, write: write)
+            }
+            draft.leave(write: write)
+        }
         .accessibilityLabel(JournalCopy.firstLineLabel)
         .accessibilityHint(placeholder)
         .accessibilityIdentifier("journal.day.firstLine")
+    }
+
+    /// The field's text view while an input method composes in it. Only
+    /// while the field has the caret: another text view, such as a sheet's
+    /// field, may be drawn over the line.
+    private var composing: UITextView? {
+        guard draft.focused, let view = place.editing, view.markedTextRange != nil else { return nil }
+        return view
     }
 
     private var prompt: Text {
@@ -243,6 +269,8 @@ final class JournalFirstLineDraft {
     @ObservationIgnored private(set) var returned: LineReturn?
     /// The writes in flight, one after another so lines land in order.
     @ObservationIgnored private(set) var landing: Task<Void, Never>?
+    /// Keeps the app running until the call it returns: a background task.
+    @ObservationIgnored var hold: () -> () -> Void = { ExchangeHold.application(named: "journal-first-line").begin() }
 
     func typed(_ value: String, write: @escaping Write) {
         if let burst = returned {
@@ -285,6 +313,20 @@ final class JournalFirstLineDraft {
         }
     }
 
+    /// The app is leaving (#4781): the line typed so far lands now, and its
+    /// block takes the caret as a Return's does, so the keyboard stays. A
+    /// Return still landing has its line in flight already. The app keeps
+    /// running until the writes land, so suspension cannot cut them off.
+    func leave(write: @escaping Write) {
+        if returned == nil { landRest(write: write, keepingCaret: true) }
+        guard let landing else { return }
+        let release = hold()
+        Task {
+            await landing.value
+            release()
+        }
+    }
+
     /// The Return's block took the caret: the keys typed since the Return,
     /// after a Return of their own, which makes the next block as it does
     /// there, at any typing speed. `moved` false: the block refused the
@@ -297,20 +339,26 @@ final class JournalFirstLineDraft {
         return moved ? "\n" + held : nil
     }
 
-    private func landRest(write: @escaping Write) {
-        let lines = returned.map { $0.held(in: text) ?? "" } ?? text
+    /// `keepingCaret`: the last line's block takes the caret while the field
+    /// has it.
+    private func landRest(write: @escaping Write, keepingCaret: Bool = false) {
+        let lines = (returned.map { $0.held(in: text) ?? "" } ?? text).split(separator: "\n")
         returned = nil
         text = ""
-        lines.split(separator: "\n").forEach { land(String($0), returning: nil, write: write) }
+        for (index, line) in lines.enumerated() {
+            land(String(line), carrying: keepingCaret && index == lines.count - 1, write: write)
+        }
     }
 
-    private func land(_ line: String, returning burst: LineReturn?, write: @escaping Write) {
+    private func land(
+        _ line: String, returning burst: LineReturn? = nil, carrying: Bool = false, write: @escaping Write
+    ) {
         let line = line.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !line.isEmpty else { return }
         let previous = landing
         landing = Task {
             await previous?.value
-            guard !(await write(line, burst == nil ? nil : self)) else { return }
+            guard !(await write(line, burst != nil || carrying ? self : nil)) else { return }
             // A failure keeps the line in the field to try again. A Return
             // still waiting has its line in the field already, as typed.
             if let burst, returned == burst { return returned = nil }

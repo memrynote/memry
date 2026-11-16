@@ -28658,8 +28658,9 @@ public enum BlockEdit: Equatable, Hashable {
      * `text` is the whole block as the shell shows it, with every inline node
      * (a wiki link, a date, a tag, an inline image) spelled as one U+FFFC
      * OBJECT REPLACEMENT CHARACTER. The core diffs it against the block's own
-     * flattened text by common prefix and suffix and applies only the span
-     * between them, as deletes and inserts on the runs that hold it: a peer's
+     * flattened text with each node both keep as an anchor, and applies only
+     * the changed span between two anchors, as deletes and inserts on the
+     * runs that hold it, so no edit removes a node the text still has: a peer's
      * concurrent typing elsewhere in the block survives the merge, and bold,
      * colour and links outside the span are untouched. Inserted text takes the
      * formatting of the character before it, as typing does. A U+FFFC in the

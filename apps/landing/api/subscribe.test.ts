@@ -23,6 +23,7 @@ let externalCalls: ExternalCall[] = []
 let turnstilePasses = true
 let appleStatus = 201
 let existingTesterId: string | null = null
+let existingTesterState = 'INVITED'
 
 const ascKeys = generateKeyPairSync('ec', { namedCurve: 'P-256' })
 const TURNSTILE_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify'
@@ -37,10 +38,22 @@ function appleResponse(url: string, method: string): Response {
     return Response.json(status === 201 ? { data: {} } : { errors: [] }, { status })
   }
   if (url.startsWith(`${BETA_TESTERS_URL}?`)) {
-    return Response.json({ data: existingTesterId ? [{ id: existingTesterId }] : [] })
+    return Response.json({
+      data: existingTesterId
+        ? [{ id: existingTesterId, attributes: { state: existingTesterState } }]
+        : []
+    })
   }
   if (url.endsWith('/relationships/app')) {
     return Response.json({ data: { type: 'apps', id: 'app-1' } })
+  }
+  // Apple refuses to re-invite a tester who already accepted: "Tester has already accepted
+  // invitation." The handler must never reach this for one.
+  if (url === INVITATIONS_URL && existingTesterState !== 'INVITED') {
+    return Response.json(
+      { errors: [{ code: 'STATE_ERROR', detail: 'already accepted' }] },
+      { status: 409 }
+    )
   }
   if (url === INVITATIONS_URL) return Response.json({ data: { id: 'inv-1' } }, { status: 201 })
   throw new Error(`unexpected App Store Connect call: ${method} ${url}`)
@@ -130,6 +143,7 @@ describe('subscribe', () => {
     turnstilePasses = true
     appleStatus = 201
     existingTesterId = null
+    existingTesterState = 'INVITED'
     stubExternalApis()
   })
 
@@ -204,6 +218,21 @@ describe('subscribe', () => {
       }
     })
     assert.equal(calls.length, 2)
+  })
+
+  it('tells a tester who already joined the beta to open TestFlight instead of failing', async () => {
+    existingTesterId = 'tester-1'
+    for (const state of ['ACCEPTED', 'INSTALLED']) {
+      existingTesterState = state
+      const result = await post({
+        email: 'ada@example.com',
+        list: 'ios-beta',
+        turnstileToken: 'tok'
+      })
+
+      assert.deepEqual(result, { status: 200, body: { success: true, alreadyJoined: true } })
+    }
+    assert.ok(!externalCalls.some((call) => call.url === INVITATIONS_URL))
   })
 
   it('fails a 409 for an address Apple does not list in the group', async () => {
