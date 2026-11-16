@@ -21,12 +21,12 @@
 //!    device's identity ([`AccountSealer`]).
 
 use std::collections::HashMap;
-use std::sync::{Arc, LazyLock, Mutex};
+use std::sync::{Arc, LazyLock, Mutex, RwLock};
 
 use zeroize::Zeroizing;
 
 use super::VaultSync;
-use super::snapshot_fallback::PassSnapshots;
+use super::snapshot_fallback::{LastPull, PassSnapshots};
 use crate::api::errors::{StorageError, SyncError};
 use crate::crdt::SnapshotPusher;
 use crate::crypto::keys;
@@ -190,11 +190,8 @@ impl VaultSync {
             .with_vault(&self.vault_id),
             db: self.db.clone(),
             device_id: self.session.device_id()?,
-            pull_completed_clean: !pulled.has_more
-                && !pulled.refused
-                && pulled.corrupt == 0
-                && pulled.dropped_pages == 0,
-            purged_documents: pulled.purged_documents.clone(),
+            pull: Arc::new(RwLock::new(LastPull::of(&pulled, false))),
+            admission: None,
         };
         let push = PushCoordinator::new(http, self.db.clone(), self.declaration.clone(), sealer)
             .with_vault(&self.vault_id)

@@ -28,25 +28,28 @@
 //!   day past the last successful pull reads the feed from the start.
 //! - **The manifest check** ([`super::hardening::manifest`]) after a pass
 //!   whose pull reached the head of the feed, at most every 30 minutes.
-//! - **The snapshot cadence** (chapter 07 §7.13.3): which documents asked for
-//!   a snapshot, and which are due. The push itself needs the resident
-//!   document and is the supervisor's.
+//! - **The snapshots** ([`snapshots`], chapter 07 §7.13): requested for each
+//!   document the push wave stored updates of, pushed when due and at
+//!   shutdown, and behind an update too large for the incremental route. All
+//!   CRDT pushes share one [`CrdtAdmission`].
 
 mod cipher;
 pub mod observer;
 pub mod progress;
 mod repairs;
+mod snapshots;
 
-use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, RwLock};
 
 use zeroize::Zeroizing;
 
 use crate::api::auth::AuthSession;
 use crate::api::errors::{StorageError, SyncError};
+use crate::api::sync::snapshot_fallback::{LastPull, PassSnapshots};
 use crate::api::tag_hub::{TagHub, TagSeed};
-use crate::crdt::snapshots::snapshot_is_due;
+use crate::crdt::SnapshotPusher;
+use crate::crdt::snapshot_cadence::SnapshotRequests;
 use crate::crypto::agent_envelope::AtRestKey;
 use crate::crypto::keys;
 use crate::protocol::account::{AccountSealer, DeviceSigner, device_directory};
@@ -58,6 +61,7 @@ use crate::seams::transport::Transport;
 use crate::storage::Db;
 use crate::storage::repositories::sync_items;
 
+use super::admission::CrdtAdmission;
 use super::body_pull::BodyPull;
 use super::bootstrap::BootstrapClient;
 use super::engine::{PassReport, PassSeed, SyncEngine};
@@ -78,6 +82,7 @@ pub use observer::{
     Observers, SecurityWarning,
 };
 use progress::{InitialSyncPhase, InitialSyncSink, Phases, TasksPhase};
+pub use snapshots::SnapshotRound;
 
 /// How a driver syncs.
 #[derive(Debug, Clone)]
@@ -160,8 +165,10 @@ pub struct SyncDriver {
     paused: AtomicBool,
     /// The 30-minute manifest check ([`super::hardening::manifest`]).
     manifest: ManifestCheck,
-    /// Chapter 07 §7.13.3: per document, the first and last request instants.
-    snapshots: Mutex<BTreeMap<String, (i64, i64)>>,
+    /// The snapshot pusher and the gate's last pull ([`snapshots`]).
+    snapshots: Arc<PassSnapshots>,
+    snapshot_requests: Arc<SnapshotRequests>,
+    admission: Arc<CrdtAdmission>,
 }
 
 impl SyncDriver {
@@ -220,9 +227,27 @@ impl SyncDriver {
         let feed = pull_loop()
             .with_note_bodies(cipher.clone())
             .with_stale_cursor(stale_cursor);
+        let admission = Arc::new(CrdtAdmission::default());
+        let snapshot_requests = Arc::new(SnapshotRequests::default());
+        let snapshots = Arc::new(PassSnapshots {
+            pusher: SnapshotPusher::new(
+                Arc::clone(&http),
+                db.clone(),
+                sealer.clone(),
+                declaration.clone(),
+            )
+            .with_single_attempt()
+            .with_vault(&server_vault),
+            db: db.clone(),
+            device_id: device_id.clone(),
+            pull: Arc::new(RwLock::new(LastPull::default())),
+            admission: Some(Arc::clone(&admission)),
+        });
         let push = PushCoordinator::new(Arc::clone(&http), db.clone(), declaration.clone(), sealer)
             .with_at_rest_key(at_rest.clone())
-            .with_vault(&server_vault);
+            .with_vault(&server_vault)
+            .with_snapshot_fallback(Arc::clone(&snapshots) as _)
+            .with_crdt_pacing(Arc::clone(&admission), Arc::clone(&snapshot_requests));
         let bootstrap = Arc::new(BootstrapClient::new(Arc::clone(&http)).with_vault(&server_vault));
         let bodies = Arc::new(
             BodyPull::new(
@@ -242,6 +267,7 @@ impl SyncDriver {
         let tags = TagHub::over(db.clone(), &session.store)?;
         let mut engine = SyncEngine::new(Arc::new(feed), Arc::clone(&http), reachability)
             .with_push(Arc::new(push))
+            .with_pull_sink(Arc::clone(&snapshots) as _)
             .with_gate(pass_gate)
             .with_max_pages(config.max_pages_per_pass)
             .with_seed(Arc::new(TagSeed(Arc::new(tags))));
@@ -278,7 +304,9 @@ impl SyncDriver {
             tasks,
             paused: AtomicBool::new(false),
             manifest: ManifestCheck::default(),
-            snapshots: Mutex::default(),
+            snapshots,
+            snapshot_requests,
+            admission,
         };
         driver.repull_unknown_signers().await?;
         Ok(driver)
@@ -377,30 +405,6 @@ impl SyncDriver {
         self.tasks.arm(None);
         phases.emit(InitialSyncPhase::Complete, 0, 0);
         Ok(Some(FirstSyncOutcome { first_sync, passes }))
-    }
-
-    /// Records that `doc_id` changed and wants a snapshot (§7.13.3).
-    pub fn request_snapshot(&self, doc_id: &str, now_ms: i64) {
-        let mut pending = self.snapshot_lock();
-        pending
-            .entry(doc_id.to_owned())
-            .and_modify(|(_, last)| *last = now_ms)
-            .or_insert((now_ms, now_ms));
-    }
-
-    /// The documents whose snapshot is due at `now_ms`, taken off the list:
-    /// 30 s quiet, or 120 s after the first request ([`snapshot_is_due`]).
-    pub fn snapshot_due(&self, now_ms: i64) -> Vec<String> {
-        let mut pending = self.snapshot_lock();
-        let due: Vec<String> = pending
-            .iter()
-            .filter(|(_, (first, last))| snapshot_is_due(Some(*first), Some(*last), now_ms))
-            .map(|(doc_id, _)| doc_id.clone())
-            .collect();
-        for doc_id in &due {
-            pending.remove(doc_id);
-        }
-        due
     }
 
     /// Stops passes and first syncs until [`SyncDriver::resume`]. A pass
@@ -503,12 +507,6 @@ impl SyncDriver {
 
     fn is_paused(&self) -> bool {
         self.paused.load(Ordering::SeqCst)
-    }
-
-    fn snapshot_lock(&self) -> std::sync::MutexGuard<'_, BTreeMap<String, (i64, i64)>> {
-        self.snapshots
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
     /// Re-pulls, under the pass gate and over the directory `open` just

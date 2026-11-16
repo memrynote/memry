@@ -41,6 +41,14 @@ pub trait SyncPasses: Send + Sync {
     fn server_clock(&self) -> Option<ServerClock>;
     /// Hears every committed page from now on.
     fn observe(&self, observer: Arc<dyn ApplyObserver>);
+    /// Whether a requested snapshot is due (chapter 07 §7.13.3).
+    fn snapshots_due(&self, _now_ms: i64) -> bool {
+        false
+    }
+    /// Pushes the due snapshots, under the pass gate; run at the end of each pass.
+    async fn push_due_snapshots(&self, _now_ms: i64) {}
+    /// Shutdown: every pending snapshot, batch by batch until `deadline`.
+    async fn final_snapshots(&self, _deadline: tokio::time::Instant) {}
 }
 
 #[async_trait::async_trait]
@@ -81,6 +89,19 @@ impl SyncPasses for SyncDriver {
     }
     fn observe(&self, observer: Arc<dyn ApplyObserver>) {
         self.register_observer(observer);
+    }
+    fn snapshots_due(&self, now_ms: i64) -> bool {
+        SyncDriver::snapshots_due(self, now_ms)
+    }
+    async fn push_due_snapshots(&self, now_ms: i64) {
+        let round = SyncDriver::push_due_snapshots(self, now_ms).await;
+        if round != Default::default() {
+            tracing::debug!(?round, "snapshot round");
+        }
+    }
+    async fn final_snapshots(&self, deadline: tokio::time::Instant) {
+        let round = SyncDriver::final_snapshots(self, deadline).await;
+        tracing::info!(?round, "final snapshot push");
     }
 }
 

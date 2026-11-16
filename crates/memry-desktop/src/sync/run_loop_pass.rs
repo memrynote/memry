@@ -53,6 +53,10 @@ pub(super) async fn run(
         (Ok(driver), _) => driver.run_pass(trigger.pass_trigger()).await,
         (Err(_), _) => None,
     };
+    // The pass ends with the snapshots due, so their gate reads the pull it just ran.
+    if let (Ok(driver), Some(_)) = (&driver, &report) {
+        driver.push_due_snapshots(now_ms()).await;
+    }
     let pending = match blocking(&db, outbox::depth).await {
         Ok(depth) => u32::try_from(depth).ok(),
         Err(error) => {
@@ -215,6 +219,24 @@ impl Loop {
             SyncErrorCategory::KeychainUnavailable => self.keychain_failed(),
             _ => self.back_off(),
         }
+    }
+
+    /// A snapshot came due: a pass, which ends with the push ([`run`]).
+    pub(super) fn snapshot_tick(&mut self) {
+        if let Some(driver) = &self.driver
+            && driver.snapshots_due(now_ms())
+        {
+            self.request(Trigger::Push);
+        }
+    }
+
+    /// Shutdown's final snapshot push (`stop-sync-runtime`): skipped while paused or with no
+    /// driver open. Answered on every path; a dropped reply reads as done.
+    pub(super) async fn final_snapshots(&mut self, deadline: Instant, reply: oneshot::Sender<()>) {
+        if let Some(driver) = self.driver.clone().filter(|_| !self.paused) {
+            let _ = tokio::time::timeout_at(deadline, driver.final_snapshots(deadline)).await;
+        }
+        let _ = reply.send(());
     }
 
     pub(super) async fn sync_now(&mut self, reply: oneshot::Sender<TriggerSyncResult>) {

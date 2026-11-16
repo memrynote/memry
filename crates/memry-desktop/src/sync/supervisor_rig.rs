@@ -55,6 +55,11 @@ pub(crate) struct FakeDriver {
     /// Passes that ran to their end, not aborted.
     pub(crate) finished: AtomicUsize,
     pub(crate) observers: Mutex<Vec<Arc<dyn memry_core::sync::driver::ApplyObserver>>>,
+    /// A snapshot is due until a pass pushes it.
+    pub(crate) snapshot_due: AtomicBool,
+    /// Rounds of due snapshots pushed, and final rounds.
+    pub(crate) snapshot_rounds: AtomicUsize,
+    pub(crate) final_rounds: AtomicUsize,
 }
 
 impl FakeDriver {
@@ -106,6 +111,17 @@ impl SyncPasses for FakeDriver {
             pull_error: error,
             push_error: None,
         })
+    }
+    fn snapshots_due(&self, _now_ms: i64) -> bool {
+        self.snapshot_due.load(Ordering::SeqCst)
+    }
+    async fn push_due_snapshots(&self, _now_ms: i64) {
+        if self.snapshot_due.swap(false, Ordering::SeqCst) {
+            self.snapshot_rounds.fetch_add(1, Ordering::SeqCst);
+        }
+    }
+    async fn final_snapshots(&self, _deadline: tokio::time::Instant) {
+        self.final_rounds.fetch_add(1, Ordering::SeqCst);
     }
     async fn wake(&self, _cursor: Option<i64>) -> Option<PassReport> {
         self.run_pass(PassTrigger::SocketHint).await
