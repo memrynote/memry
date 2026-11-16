@@ -206,10 +206,12 @@ private final class Screen {
         }
     }
 
-    /// Lets every queued write and redraw land, then ends editing, which
-    /// commits the open block.
+    /// Lets every queued write and redraw land, and the keys held after a
+    /// Return reach their block, then ends editing, which commits the open
+    /// block. Ended sooner, the edit keeps the held keys where they were
+    /// typed (#4777).
     func finish(blocks count: Int) async throws {
-        for _ in 0 ..< 80 where editor.all.count < count || focused == nil {
+        for _ in 0 ..< 80 where editor.all.count < count || focused == nil || model.session.returnBurst != nil {
             try await Task.sleep(for: .milliseconds(25))
         }
         try await Task.sleep(for: .milliseconds(200))
@@ -450,6 +452,72 @@ struct EditorReturnBurstTests {
         #expect(blocks.map(\.kind) == ["paragraph", "paragraph"])
         #expect(blocks.map { BlockText.shown($0.inline) } == ["", "abc"])
         #expect(!steps.contains { $0.forward == $0.backward }, "no undo step that changes nothing")
+    }
+
+    /// #4777: the caret leaves the item (the keyboard hidden, Back) after a
+    /// second Return during a list exit, before the row is redrawn. That is
+    /// not the redraw taking the row's keys, so they stay in the item and
+    /// commit there, as for a paragraph's Return. They were taken out of
+    /// the row and held only in memory for a row to take the caret: what
+    /// the core held lost them (`["", ""]`).
+    @Test(.timeLimit(.minutes(1))) func leavingTheItemDuringAListExitCommitsTheKeys() async throws {
+        let shown = try await Screen.run("checkListItem", text: "") { screen in
+            _ = try await screen.start()
+            screen.keys("\n\nabc")
+            screen.focused?.resignFirstResponder()
+            // No further resign: what lands is what leaving the item committed.
+            screen.model.session.enqueue {}
+            await screen.model.session.tail?.value
+            return screen.editor.shown
+        }
+        #expect(shown == ["abc", ""], "\(shown)")
+    }
+
+    /// #4777 HID: the row a type change redrew can take the caret before
+    /// the old row is dismantled, so the old row resigns, without leaving,
+    /// while it holds keys for the second Return's block. It hands them to
+    /// the redrawn row, which holds them on: kept in the old row, they
+    /// committed there and split the burst (`- a⏎⏎⏎abc` stored `a|bc`).
+    @Test(.timeLimit(.minutes(1))) func theRedrawnRowTakingTheCaretFirstTakesTheHeldKeys() async throws {
+        let (redrawn, old, holds) = try await Screen.run("checkListItem", text: "") { screen in
+            let item = try await screen.start()
+            let field = try #require(item.delegate as? BlockField)
+            screen.keys("\n\na")
+            // The redrawn row, drawn and in the window before the old one goes.
+            let row = BlockField(block: field.block, session: screen.model.session, style: field.style, alignment: .natural)
+            row.textView.delegate = row
+            screen.window.addSubview(row.textView)
+            defer { row.textView.removeFromSuperview() }
+            screen.model.session.takeCaret(row, atEnd: false)
+            return (row.textView.text ?? "", item.text ?? "", screen.model.session.holdsKeys(row))
+        }
+        #expect(redrawn == "a", "the redrawn row has the held keys")
+        #expect(old == "", "the old row gave them up")
+        #expect(holds, "they are still held for the Return's block")
+    }
+
+    /// The row a type change redrew for another block takes the caret while
+    /// a Return's keys are held: they stay in their block, which keeps them
+    /// when the core refuses the new one. Handed over, they were held only
+    /// in memory, for a row that never takes them (REVIEW-4790 M1).
+    @Test(.timeLimit(.minutes(1))) func anotherBlocksRedrawnRowLeavesTheHeldKeys() async throws {
+        let (shown, old) = try await Screen.run(text: "", below: ["y"]) { screen in
+            screen.editor.inserts.withLock { $0 = .refuse }
+            let item = try await screen.start()
+            let other = try #require(screen.textViews().first { $0 !== item }?.delegate as? BlockField)
+            screen.model.session.shortcutField = other
+            screen.keys("\nabc")
+            let row = BlockField(block: other.block, session: screen.model.session, style: other.style, alignment: .natural)
+            row.textView.delegate = row
+            screen.window.addSubview(row.textView)
+            defer { row.textView.removeFromSuperview() }
+            screen.model.session.takeCaret(row, atEnd: false)
+            screen.model.session.enqueue {}
+            await screen.model.session.tail?.value
+            return (screen.editor.shown, item.text ?? "")
+        }
+        #expect(old == "abc", "the keys stay in their block")
+        #expect(shown == ["abc", "y"], "\(shown)")
     }
 
     /// Keys typed after the row is redrawn, and before the new block lands,
