@@ -24,8 +24,11 @@
 //! nowhere.
 //!
 //! Images (`embedImage`): the first image downloads the vision group (about 109 MB) the same way,
-//! then each image or rendered page crosses the pipe in one op (at most 30 MiB). Every failure of
-//! that op counts toward the service's vision breaker, as Electron's `embed-image` errors do.
+//! then each image or rendered page crosses the pipe in one op (at most 30 MiB). A failure of that
+//! op counts toward the service's vision breaker, as Electron's `embed-image` errors do, except an
+//! image the worker cannot decode or an input it refuses ([`WorkerError::Rejected`]): that is
+//! [`EmbedError::Input`] and counts nowhere, so one corrupt image never stops the others. A
+//! departure from Electron, which counts it (Kaan, 9 Nov).
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -246,8 +249,8 @@ impl Engine for WorkerEngine {
         })
     }
 
-    /// An image the worker cannot decode is [`EmbedError::Failed`]: Electron counts every
-    /// `embed-image` error toward the vision breaker.
+    /// An image the worker cannot decode is [`EmbedError::Input`] through `embed_error`; any
+    /// other failure of the op is [`EmbedError::Failed`].
     fn embed_image(&mut self, image: &ImageInput) -> Result<Vec<f32>, EmbedError> {
         self.shared
             .supervisor
@@ -264,6 +267,8 @@ fn embed_error(error: WorkerError) -> EmbedError {
         | WorkerError::Exited(_)
         | WorkerError::Protocol(_)
         | WorkerError::Paused => EmbedError::Crashed(error.to_string()),
+        // The file's fault, not the model's: nothing counts.
+        WorkerError::Rejected(message) => EmbedError::Input(message),
         WorkerError::Stopped | WorkerError::NotOpen | WorkerError::Failed(_) => {
             EmbedError::Failed(error.to_string())
         }

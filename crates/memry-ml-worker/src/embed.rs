@@ -78,14 +78,13 @@ impl Embedder {
                 bytes,
                 text,
                 soft_tokens,
-            } => self
-                .engine()
-                .and_then(|engine| {
-                    engine
-                        .embed_image(&bytes, text.as_deref(), soft_tokens.map(|n| n as usize))
-                        .map_err(|e| e.to_string())
-                })
-                .map(|values| Response::Embedded(values.to_vec())),
+            } => self.engine().and_then(|engine| {
+                match engine.embed_image(&bytes, text.as_deref(), soft_tokens.map(|n| n as usize)) {
+                    Ok(values) => Ok(Response::Embedded(values.to_vec())),
+                    Err(MlError::Input(message)) => Ok(Response::Rejected(message)),
+                    Err(error) => Err(error.to_string()),
+                }
+            }),
             Request::AudioOpen { path } => self.open_audio(Path::new(&path)),
             Request::EmbedAudioWindow { recording, window } => {
                 self.embed_audio_window(recording, window)

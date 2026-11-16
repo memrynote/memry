@@ -95,6 +95,9 @@ pub enum WorkerError {
     /// The [`Lease`]'s child has stopped, and the next child numbers its handles afresh.
     #[error("the handle is not open: the worker that held it has stopped")]
     NotOpen,
+    /// The op ran in a healthy worker and refused its input, such as an image it cannot decode.
+    #[error("{0}")]
+    Rejected(String),
     /// The op failed inside a healthy worker, such as a PDF that does not parse.
     #[error("{0}")]
     Failed(String),
@@ -338,6 +341,7 @@ impl Supervisor {
             }
         }
         match outcome? {
+            Response::Rejected(message) => Err(WorkerError::Rejected(message)),
             Response::Failed(message) => Err(WorkerError::Failed(message)),
             response => Ok((response, lease)),
         }

@@ -12,7 +12,7 @@
 //! | three failures in a row end the pass                    | `MAX_CONSECUTIVE_FAILURES`, :24, 140  |
 //! | the reconcile waits for the index build                 | departure: `note_files` half filled   |
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -25,9 +25,11 @@ use memry_desktop::embedding::service::{
     EMBEDDING_DIMENSION, EmbedError, EmbeddingService, Engine, ImageInput, ModelLoader,
     ModelProgress, Timing,
 };
-use memry_desktop::services::file_text::{PdfPages, PdfReader};
+use memry_desktop::embedding::worker::WorkerModel;
+use memry_desktop::services::file_text::{PdfPages, PdfReader, WorkerPaths};
 use memry_desktop::session::projection::{ProjectionEvent, feed};
 use memry_desktop::vault::consumer::Applied;
+use memry_ml_worker::MODEL_REPO;
 
 use crate::vault_env::files_too::files_too;
 use crate::vault_env::{Env, WAIT, env, indexed};
@@ -113,9 +115,13 @@ struct Lane {
 }
 
 fn lane(timing: Timing) -> Lane {
-    let mut e = env(|store| Some(files_too(store)));
     let model = Arc::new(Model::default());
-    let service = EmbeddingService::new(Arc::new(Loader(model.clone())), Arc::new(|_| {}), timing);
+    lane_over(Arc::new(Loader(model.clone())), model, timing)
+}
+
+fn lane_over(loader: Arc<dyn ModelLoader>, model: Arc<Model>, timing: Timing) -> Lane {
+    let mut e = env(|store| Some(files_too(store)));
+    let service = EmbeddingService::new(loader, Arc::new(|_| {}), timing);
     let pdf = Arc::new(FakePdf::default());
     let (on, indexing) = (
         Arc::new(AtomicBool::new(true)),
@@ -261,6 +267,29 @@ impl Lane {
             std::thread::sleep(Duration::from_millis(20));
         }
     }
+}
+
+/// The lane over the app's `WorkerModel` and a real child process, the stub worker
+/// (`memry-ml-worker/src/bin/stub.rs`), whose model cache holds its one pinned file. The default
+/// timing keeps a vision backoff in force, as in the app.
+fn stub_lane(runtime: &tokio::runtime::Runtime, cache: &tempfile::TempDir) -> Lane {
+    // The shell installs this at boot (`install_crypto_provider`); `ModelSource` needs it.
+    let _ = rustls::crypto::ring::default_provider().install_default();
+    let mut model_dir = cache.path().to_path_buf();
+    model_dir.extend(MODEL_REPO.split('/'));
+    std::fs::create_dir_all(&model_dir).expect("model dir");
+    std::fs::write(model_dir.join("config.json"), b"").expect("pinned file");
+    let paths = WorkerPaths {
+        program: PathBuf::from(env!("CARGO_BIN_EXE_memry-desktop-worker-stub")),
+        pdfium_dir: cache.path().join("pdfium"),
+    };
+    let model = WorkerModel::new(
+        &paths,
+        cache.path().to_path_buf(),
+        runtime.handle().clone(),
+        Arc::new(|_, _| {}),
+    );
+    lane_over(model, Arc::new(Model::default()), Timing::default())
 }
 
 const SHOT: &str = "Whiteboard sketch of the deploy pipeline";
@@ -450,4 +479,64 @@ fn the_reconcile_waits_for_the_index_build() {
     l.indexing.store(false, Ordering::SeqCst);
     l.reconcile();
     assert!(l.rows().is_empty(), "the built index has no such note");
+}
+
+/// An image the worker cannot decode is the file's fault, not the vision encoder's: it counts
+/// toward no breaker, so the images around it still embed. A `Failed` answer for it opened the
+/// vision breaker, and the corrupt image, first in `(note_id, source)` order among the unembedded
+/// ones every pass, kept it open for good. Departure from Electron, which counts every
+/// `embed-image` error.
+#[test]
+fn one_corrupt_image_does_not_stop_the_others_embedding() {
+    let runtime = tokio::runtime::Runtime::new().expect("runtime");
+    let cache = tempfile::tempdir().expect("cache");
+    let mut l = stub_lane(&runtime, &cache);
+    let names = ["a.png", "b.png", "c.png", "d.png"];
+    let mut ids: Vec<(String, &str)> = names
+        .iter()
+        .map(|name| (l.write(name, "png bytes"), *name))
+        .collect();
+    ids.sort();
+    let (corrupt, name) = ids[0].clone();
+    assert_eq!(l.write(name, "corrupt image"), corrupt, "the same note");
+    for (id, _) in &ids {
+        l.job(of(id, ""), "1:1", None, &[]);
+        l.finish(of(id, ""));
+    }
+    for _ in 0..4 {
+        l.reconcile();
+    }
+    let mut want: Vec<String> = ids[1..].iter().map(|(id, _)| format!("{id}/")).collect();
+    want.sort();
+    assert_eq!(l.keys(), want);
+}
+
+/// A reconcile that fails runs `rebuild` once (`start_reconcile`). With images off the rebuild
+/// refuses before it drops the vectors; it used to clear them first, so a failed pass on a vault
+/// whose index could not be read deleted every image vector of a user who had turned them off.
+#[test]
+fn a_failed_reconcile_with_images_off_keeps_the_vectors() {
+    let mut l = lane(Timing::default());
+    let id = l.write("shot.png", "png bytes");
+    l.job(of(&id, ""), "9:1", None, &[]);
+    l.finish(of(&id, ""));
+    l.extracted(&id);
+    l.until("the vector", |l| l.rows().len() == 1);
+
+    l.e.core()
+        .db_handle()
+        .call_blocking(|conn| Ok(conn.execute("DROP TABLE note_files", []).unwrap()))
+        .unwrap();
+    l.on.store(false, Ordering::SeqCst);
+    let runtime = l.e.session.projections().expect("open");
+    let failed = Arc::new(AtomicUsize::new(0));
+    let seen = failed.clone();
+    runtime
+        .start_reconcile(Arc::new(move |_, _| {
+            seen.fetch_add(1, Ordering::SeqCst);
+        }))
+        .unwrap();
+    l.settled();
+    assert!(failed.load(Ordering::SeqCst) > 0, "the reconcile failed");
+    assert_eq!(l.rows().len(), 1, "images off: the vectors stay");
 }

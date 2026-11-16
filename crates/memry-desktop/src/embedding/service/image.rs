@@ -1,8 +1,9 @@
 //! [`EmbeddingService::embed_image`]: `embedImage` (embeddings.ts:407-417, 431-469) with the
 //! vision encoder's breaker ([`super::encoder`]). The vision download (about 109 MB, on the
-//! first image only) runs on the caller's thread, then the image is one request. Any failure of
+//! first image only) runs on the caller's thread, then the image is one request. A failure of
 //! the request backs off images only, as Electron counts every `embed-image` error toward
-//! `recordEncoderFailure('vision')`; text keeps embedding.
+//! `recordEncoderFailure('vision')`; text keeps embedding. An image the worker cannot decode
+//! ([`super::EmbedError::Input`]) counts nowhere, so the images around it still embed.
 
 use std::sync::Arc;
 

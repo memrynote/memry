@@ -20,7 +20,10 @@
 //!   do: `note_files` may be half filled, and the listing would drop the vectors of every note
 //!   not yet in it. [`super::projector::drain_deferred`] runs the reconcile once it is done. A
 //!   deleted note's vectors are dropped by its id: `index.db` has no cascade from `data.db`
-//!   (Electron's state rows went with the note's `note_cache` row, :170-180).
+//!   (Electron's state rows went with the note's `note_cache` row, :170-180). An image the
+//!   worker cannot decode is [`EmbedError::Input`](super::service::EmbedError::Input) and counts
+//!   toward no breaker, so one corrupt image never stops the rest of the backfill (Electron
+//!   counts it). The rebuild refuses with images off before it clears the vectors.
 
 use std::collections::{HashMap, HashSet};
 use std::io::Read as _;
@@ -337,13 +340,18 @@ impl Projector for ImageEmbeddingProjector {
     }
 
     /// `rebuild`: every image vector dropped, then every image embedded again. Refused while
-    /// the index builds.
+    /// the index builds, and with images off, where it would delete vectors it cannot restore
+    /// (Electron clears first, then finds them off: a departure, Kaan 9 Nov).
     fn rebuild(&self, cancel: &CancelToken) -> Result<Rebuilt, String> {
         let Some(work) = self.work(cancel) else {
             return Err("Projector database is no longer current".into());
         };
         if (self.indexing)() {
             return Err("The index is building".into());
+        }
+        // Before the clear: a rebuild that cannot embed must not delete what is stored.
+        if !(self.enabled)(&work.open) {
+            return Err("image embeddings are off".into());
         }
         work.open.search.clear_image_embeddings().map_err(text)?;
         let computed = self.sync(&work, None)?;

@@ -351,6 +351,7 @@ fn response() -> impl Strategy<Value = Response> {
                     .map(|(path, size, sha256)| ManifestFile { path, size, sha256 })
                     .collect(),
             })),
+        ".{0,64}".prop_map(Response::Rejected),
         ".{0,64}".prop_map(Response::Failed),
     ]
 }
