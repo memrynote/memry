@@ -86,7 +86,7 @@ mod inbox_attachments;
 mod pass;
 pub(crate) use pass::pass_gate;
 mod realtime;
-mod snapshot_fallback;
+pub(crate) mod snapshot_fallback;
 
 pub use attachment_fetch::AttachmentRedriveSummary;
 pub use inbox_attachments::{InboxAttachmentSyncSummary, InboxFileAttachment};

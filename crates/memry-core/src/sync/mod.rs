@@ -39,6 +39,7 @@
 //! rather than a convenience.
 
 pub mod account_binding;
+pub mod admission;
 pub mod apply;
 pub mod body_debt;
 pub mod body_heal;

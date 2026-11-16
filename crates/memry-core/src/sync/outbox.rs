@@ -37,7 +37,7 @@ use crate::protocol::crdt_envelope::{MAX_REQUEST_PAYLOAD_CHARS, max_payload_char
 mod claim;
 mod collapse;
 mod probe;
-pub use claim::claim;
+pub use claim::{claim, crdt_docs};
 pub use collapse::{Collapsed, collapse_records};
 pub use probe::queued_for;
 

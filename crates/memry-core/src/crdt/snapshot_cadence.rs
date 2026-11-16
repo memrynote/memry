@@ -20,6 +20,9 @@
 /// [`super::snapshots::SnapshotGate`], which is the MUST and must still pass.
 pub const SNAPSHOT_QUIET_MS: i64 = 30_000;
 
+use std::collections::BTreeMap;
+use std::sync::{Mutex, MutexGuard, PoisonError};
+
 /// The ceiling on debouncing, measured from the **first** request in a run.
 pub const SNAPSHOT_MAX_WAIT_MS: i64 = 120_000;
 
@@ -45,6 +48,52 @@ pub fn snapshot_is_due(
     // steps backwards must not wrap into "due in 49 days".
     now_ms.saturating_sub(last) >= SNAPSHOT_QUIET_MS
         || now_ms.saturating_sub(first) >= SNAPSHOT_MAX_WAIT_MS
+}
+
+/// The documents that asked for a snapshot, each with its first and last
+/// request instant. The push wave requests one for each document whose updates
+/// the server stored (`note-body-push.ts:96`); the driver takes the due ones.
+#[derive(Default)]
+pub struct SnapshotRequests(Mutex<BTreeMap<String, (i64, i64)>>);
+
+impl SnapshotRequests {
+    /// Records that `doc_id` changed and wants a snapshot.
+    pub fn request(&self, doc_id: &str, now_ms: i64) {
+        self.lock()
+            .entry(doc_id.to_owned())
+            .and_modify(|(_, last)| *last = now_ms)
+            .or_insert((now_ms, now_ms));
+    }
+
+    /// Whether any request is due at `now_ms`; takes nothing.
+    pub fn any_due(&self, now_ms: i64) -> bool {
+        self.lock()
+            .values()
+            .any(|(first, last)| snapshot_is_due(Some(*first), Some(*last), now_ms))
+    }
+
+    /// The documents due at `now_ms`, taken off the list.
+    pub fn take_due(&self, now_ms: i64) -> Vec<String> {
+        let mut pending = self.lock();
+        let due: Vec<String> = pending
+            .iter()
+            .filter(|(_, (first, last))| snapshot_is_due(Some(*first), Some(*last), now_ms))
+            .map(|(doc_id, _)| doc_id.clone())
+            .collect();
+        for doc_id in &due {
+            pending.remove(doc_id);
+        }
+        due
+    }
+
+    /// Every pending document, due or not, taken off the list (shutdown).
+    pub fn take_all(&self) -> Vec<String> {
+        std::mem::take(&mut *self.lock()).into_keys().collect()
+    }
+
+    fn lock(&self) -> MutexGuard<'_, BTreeMap<String, (i64, i64)>> {
+        self.0.lock().unwrap_or_else(PoisonError::into_inner)
+    }
 }
 
 #[cfg(test)]

@@ -8,17 +8,20 @@
 //! The gate is closed unless this pass's pull finished cleanly, because a
 //! snapshot is destructive on the server (§7.7).
 
-use std::sync::Arc;
+use std::sync::{Arc, PoisonError, RwLock};
 
 use async_trait::async_trait;
 
 use crate::api::errors::{ApiError, StorageError};
 use crate::crdt::epoch;
 use crate::crdt::errors::CrdtError;
-use crate::crdt::registry::UpdateSink;
+use crate::crdt::registry::{Document, UpdateSink};
 use crate::crdt::snapshots::SnapshotError;
 use crate::crdt::{Refusal, SnapshotGate, SnapshotOutcome, SnapshotPusher};
 use crate::storage::Db;
+use crate::sync::admission::CrdtAdmission;
+use crate::sync::engine::PullSink;
+use crate::sync::pull::PullReport;
 use crate::sync::push::{SnapshotFallback, SnapshotFallbackOutcome};
 
 // TODO(#3664): desktop tells the user a note is too large to sync or over
@@ -26,19 +29,61 @@ use crate::sync::push::{SnapshotFallback, SnapshotFallbackOutcome};
 // `apps/desktop/src/main/sync/runtime.ts:661-671`). The core has no per-note
 // sync status to carry either yet, so the reason sits on the deferred outbox
 // row's `last_error` ([`crate::crdt::Refusal::TooLarge`]).
-pub(super) struct PassSnapshots {
-    pub(super) pusher: SnapshotPusher,
-    pub(super) db: Db,
-    pub(super) device_id: String,
-    /// §7.13.2 condition 1 for this pass: the pull ran to its end with nothing
-    /// refused, dropped or left undecoded.
-    pub(super) pull_completed_clean: bool,
-    pub(super) purged_documents: Vec<String>,
+pub(crate) struct PassSnapshots {
+    pub(crate) pusher: SnapshotPusher,
+    pub(crate) db: Db,
+    pub(crate) device_id: String,
+    /// The pull the snapshot gate reads: this pass's, set before its push
+    /// wave (on desktop's driver through [`PullSink`]).
+    pub(crate) pull: Arc<RwLock<LastPull>>,
+    /// The driver's shared CRDT admission; iOS paces nothing.
+    pub(crate) admission: Option<Arc<CrdtAdmission>>,
 }
 
-#[async_trait]
-impl SnapshotFallback for PassSnapshots {
-    async fn push_snapshot(&self, doc_id: &str) -> Result<SnapshotFallbackOutcome, ApiError> {
+/// §7.13.2 condition 1 as a pull left it.
+#[derive(Debug, Clone, Default)]
+pub(crate) struct LastPull {
+    /// The pull ran to its end with nothing refused, dropped or left undecoded.
+    pub(crate) clean: bool,
+    pub(crate) purged: Vec<String>,
+}
+
+impl LastPull {
+    /// What `pull` left; `failed` when it ended in an error.
+    pub(crate) fn of(pull: &PullReport, failed: bool) -> Self {
+        Self {
+            clean: !failed
+                && !pull.has_more
+                && !pull.refused
+                && pull.corrupt == 0
+                && pull.dropped_pages == 0,
+            purged: pull.purged_documents.clone(),
+        }
+    }
+}
+
+/// Desktop's driver: each pass's pull, before its push wave.
+impl PullSink for PassSnapshots {
+    fn pulled(&self, pull: &PullReport, failed: bool) {
+        *self.pull.write().unwrap_or_else(PoisonError::into_inner) = LastPull::of(pull, failed);
+    }
+}
+
+impl PassSnapshots {
+    /// The gate for `doc_id` from the last pull. False until a pull finished.
+    pub(crate) fn gate(&self, doc_id: &str) -> SnapshotGate {
+        let pull = self.pull.read().unwrap_or_else(PoisonError::into_inner);
+        SnapshotGate {
+            pull_completed_clean: pull.clean,
+            purged: pull.purged.iter().any(|purged| purged == doc_id),
+        }
+    }
+
+    /// The document replayed from its durable log, or the class of why not.
+    pub(crate) async fn replay(
+        &self,
+        doc_id: &str,
+    ) -> Result<Result<Arc<Document>, SnapshotFallbackOutcome>, ApiError> {
         let id = doc_id.to_owned();
         let device_id = self.device_id.clone();
         let opened = self
@@ -50,18 +95,43 @@ impl SnapshotFallback for PassSnapshots {
             })
             .await
             .map_err(local)?;
-        let document = match opened {
+        Ok(match opened {
+            Ok(document) => Ok(document),
+            Err(error) => Err(crdt_class(
+                error,
+                "could not replay the document's update log",
+            )?),
+        })
+    }
+}
+
+#[async_trait]
+impl SnapshotFallback for PassSnapshots {
+    async fn push_snapshot(&self, doc_id: &str) -> Result<SnapshotFallbackOutcome, ApiError> {
+        let document = match self.replay(doc_id).await? {
             Ok(document) => document,
-            Err(error) => return crdt_class(error, "could not replay the document's update log"),
+            Err(outcome) => return Ok(outcome),
         };
-        let gate = SnapshotGate {
-            pull_completed_clean: self.pull_completed_clean,
-            purged: self.purged_documents.iter().any(|purged| purged == doc_id),
+        let gate = self.gate(doc_id);
+        let _permit = match &self.admission {
+            Some(admission) => match admission.admit().await {
+                Ok(permit) => Some(permit),
+                Err(left) => {
+                    return Ok(SnapshotFallbackOutcome::Transient(format!(
+                        "crdt pushes are rate limited for {} ms",
+                        left.as_millis()
+                    )));
+                }
+            },
+            None => None,
         };
         let pushed = self
             .pusher
             .push(&document, gate, crate::api::tasks_write::now_ms())
             .await;
+        if let (Some(admission), Err(SnapshotError::Api { source })) = (&self.admission, &pushed) {
+            admission.note(source);
+        }
         classify(pushed)
     }
 }
@@ -73,7 +143,7 @@ impl SnapshotFallback for PassSnapshots {
 /// including one under the document's log
 /// (the database is unreadable, and the pass cannot go on without it).
 /// Everything about one document defers that document's batch alone.
-fn classify(
+pub(crate) fn classify(
     pushed: Result<SnapshotOutcome, SnapshotError>,
 ) -> Result<SnapshotFallbackOutcome, ApiError> {
     use SnapshotFallbackOutcome::{Parked, Pushed, QuotaExceeded, Rejected, Transient};
