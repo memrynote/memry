@@ -10,6 +10,7 @@ pub mod manifest;
 pub mod orphans;
 #[cfg(test)]
 mod pending_deletes;
+pub mod purged;
 pub mod quarantine;
 pub(crate) mod requeue;
 pub mod stale_cursor;

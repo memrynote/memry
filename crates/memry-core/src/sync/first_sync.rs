@@ -51,6 +51,7 @@ use std::sync::Arc;
 use serde_json::Value as Json;
 
 use crate::api::errors::StorageError;
+use crate::protocol::http::SYNC_TYPES_HEADER;
 use crate::storage::Db;
 use crate::storage::repositories::sync_items;
 
@@ -360,7 +361,18 @@ impl FirstSync {
                 path.push_str("&cursor=");
                 path.push_str(cursor);
             }
-            let request = self.elevate(self.pull.request("GET", &path)).await;
+            // Without `purged_tombstones`: this pass applies every `deleted` id
+            // untyped and cannot tell a marker's id from a signed tombstone's
+            // (chapter 05 §5.12.3). Electron's run from cursor 0 skips markers too.
+            let declared = self
+                .pull
+                .declaration()
+                .header_value_without_purged_tombstones();
+            let request = self
+                .pull
+                .request("GET", &path)
+                .header(SYNC_TYPES_HEADER, &declared);
+            let request = self.elevate(request).await;
             let body: Json = self
                 .http_send(request)
                 .await

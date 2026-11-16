@@ -83,6 +83,47 @@ pub const DESKTOP_ONLY_RECORD_ITEM_TYPES: [&str; 6] = [
     "sticky_draft",
 ];
 
+/// The twenty-seven record types in `RECORD_SYNC_ITEM_TYPES` order
+/// (`packages/contracts/src/sync-api.ts:38-66`), which is the order Electron's
+/// `SYNC_TYPES_HEADER_VALUE` sends them in (`apps/desktop/src/main/sync/http-client.ts:25`).
+/// [`Declaration::desktop`] declares them in this order so its header is
+/// byte-equal to Electron's.
+pub const RECORD_SYNC_ITEM_TYPES: [&str; 27] = [
+    "note",
+    "task",
+    "project",
+    "settings",
+    "inbox",
+    "filter",
+    "journal",
+    "tag_definition",
+    "tag_category",
+    "property_definition",
+    "folder_config",
+    "custom_icon",
+    "calendar_event",
+    "calendar_source",
+    "calendar_binding",
+    "calendar_external_event",
+    "agent_conversation",
+    "agent_message",
+    "canvas",
+    "canvas_folder",
+    "bookmark",
+    "reminder",
+    "template",
+    "task_activity",
+    "home_page",
+    "vault_lock",
+    "sticky_draft",
+];
+
+/// The feed-only token that says this client applies purged-tombstone markers
+/// (`FEED_ONLY_SYNC_TYPES`, chapter 05 §5.3, §5.12.3, #2302). Never a record
+/// type: [`Declaration::declare`] drops it like any unrecognised name, and
+/// only [`Declaration::desktop`] carries it.
+pub const PURGED_TOMBSTONES_SYNC_TYPE: &str = "purged_tombstones";
+
 /// `attachment` is a `SYNC_ITEM_TYPES` member and **not** a record type
 /// (chapter 00 §0.7, chapter 13 §13.8): attachment bytes travel their own
 /// channel and never appear as a record.
@@ -129,6 +170,8 @@ pub enum ArrivingItemType {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Declaration {
     types: Vec<String>,
+    /// Declares [`PURGED_TOMBSTONES_SYNC_TYPE`] after the types.
+    purged_tombstones: bool,
 }
 
 impl Declaration {
@@ -137,18 +180,20 @@ impl Declaration {
         Self::declare(&SUBSCRIBED_ITEM_TYPES).expect("the subscribed twenty-one are all recognised")
     }
 
-    /// Desktop's twenty-seven, chapter 13 §13.1: the twenty-one, then
-    /// [`DESKTOP_ONLY_RECORD_ITEM_TYPES`] in their order. Rust-only: desktop
-    /// passes it to `Vault::sync_with_declaration`. Only with `markdown`,
-    /// which every desktop build has: without it `vault_lock` has no merge
-    /// rule (`sync::apply`) and would apply as a plain document.
+    /// Desktop's twenty-seven, chapter 13 §13.1, in [`RECORD_SYNC_ITEM_TYPES`]
+    /// order, then [`PURGED_TOMBSTONES_SYNC_TYPE`]: byte for byte Electron's
+    /// `SYNC_TYPES_HEADER_VALUE`. The driver's pull applies the markers the
+    /// token makes visible ([`crate::sync::hardening::purged`]). Only with
+    /// `markdown`, which every desktop build has: without it `vault_lock` has
+    /// no merge rule (`sync::apply`) and would apply as a plain document.
     #[cfg(feature = "markdown")]
     pub fn desktop() -> Self {
-        let types: Vec<&str> = SUBSCRIBED_ITEM_TYPES
-            .into_iter()
-            .chain(DESKTOP_ONLY_RECORD_ITEM_TYPES)
-            .collect();
-        Self::declare(&types).expect("the twenty-seven record types are all recognised")
+        let declaration = Self::declare(&RECORD_SYNC_ITEM_TYPES)
+            .expect("the twenty-seven record types are all recognised");
+        Self {
+            purged_tombstones: true,
+            ..declaration
+        }
     }
 
     /// Resolves a declaration the way the server will resolve it.
@@ -179,12 +224,46 @@ impl Declaration {
                 declared: requested.join(","),
             });
         }
-        Ok(Self { types })
+        Ok(Self {
+            types,
+            purged_tombstones: false,
+        })
     }
 
     /// The `X-Memry-Sync-Types` value: comma-separated, **no spaces**.
     pub fn header_value(&self) -> String {
+        self.header_value_with(None)
+    }
+
+    /// [`Declaration::header_value`] with one more feed-only token (`note_body`)
+    /// before [`PURGED_TOMBSTONES_SYNC_TYPE`], in `NEGOTIABLE_SYNC_TYPES` order
+    /// (Electron's `NOTE_BODY_FEED_HEADERS`, `http-client.ts:34-36`).
+    pub fn header_value_with(&self, feed_only: Option<&str>) -> String {
+        let mut value = self.types.join(",");
+        for token in [
+            feed_only,
+            self.purged_tombstones
+                .then_some(PURGED_TOMBSTONES_SYNC_TYPE),
+        ]
+        .into_iter()
+        .flatten()
+        {
+            value.push(',');
+            value.push_str(token);
+        }
+        value
+    }
+
+    /// The header without [`PURGED_TOMBSTONES_SYNC_TYPE`], for a read that
+    /// cannot tell a marker's id in `deleted` from a signed tombstone's: the
+    /// first sync's refs pass, which applies every `deleted` id untyped.
+    pub fn header_value_without_purged_tombstones(&self) -> String {
         self.types.join(",")
+    }
+
+    /// Whether this declaration carries [`PURGED_TOMBSTONES_SYNC_TYPE`].
+    pub fn declares_purged_tombstones(&self) -> bool {
+        self.purged_tombstones
     }
 
     /// The resolved names, in the order they will be sent.
@@ -308,15 +387,58 @@ calendar_source,calendar_event,calendar_external_event,calendar_binding,bookmark
 
     #[cfg(feature = "markdown")]
     #[test]
-    fn the_desktop_declaration_is_the_twenty_one_then_the_six() {
+    fn the_desktop_declaration_is_electrons_sync_types_header_value() {
         let declaration = Declaration::desktop();
-        assert_eq!(declaration.types().len(), RECORD_SYNC_ITEM_TYPE_COUNT);
-        assert_eq!(declaration.types()[..21], SUBSCRIBED_ITEM_TYPES);
-        assert_eq!(declaration.types()[21..], DESKTOP_ONLY_RECORD_ITEM_TYPES);
-        assert!(declaration.header_value().ends_with(
-            ",canvas,agent_conversation,agent_message,canvas_folder,home_page,vault_lock,\
-sticky_draft"
-        ));
+        assert_eq!(declaration.types(), RECORD_SYNC_ITEM_TYPES);
+        assert!(declaration.declares_purged_tombstones());
+        // `SYNC_TYPES_HEADER_VALUE`, apps/desktop/src/main/sync/http-client.ts:25.
+        assert_eq!(
+            declaration.header_value(),
+            "note,task,project,settings,inbox,filter,journal,tag_definition,tag_category,\
+property_definition,folder_config,custom_icon,calendar_event,calendar_source,calendar_binding,\
+calendar_external_event,agent_conversation,agent_message,canvas,canvas_folder,bookmark,reminder,\
+template,task_activity,home_page,vault_lock,sticky_draft,purged_tombstones"
+        );
+        // `NOTE_BODY_FEED_HEADERS`: `NEGOTIABLE_SYNC_TYPES.join(',')`.
+        assert!(
+            declaration
+                .header_value_with(Some("note_body"))
+                .ends_with(",vault_lock,sticky_draft,note_body,purged_tombstones")
+        );
+        assert!(
+            declaration
+                .header_value_without_purged_tombstones()
+                .ends_with(",sticky_draft")
+        );
+    }
+
+    #[test]
+    fn the_record_types_are_the_twenty_one_and_the_six() {
+        let mut ordered = RECORD_SYNC_ITEM_TYPES.to_vec();
+        let mut known: Vec<&str> = SUBSCRIBED_ITEM_TYPES
+            .into_iter()
+            .chain(DESKTOP_ONLY_RECORD_ITEM_TYPES)
+            .collect();
+        ordered.sort_unstable();
+        known.sort_unstable();
+        assert_eq!(ordered, known);
+    }
+
+    #[test]
+    fn only_the_desktop_declares_purged_tombstones() {
+        let subscribed = Declaration::subscribed();
+        assert!(!subscribed.declares_purged_tombstones());
+        assert!(
+            !subscribed
+                .header_value()
+                .contains(PURGED_TOMBSTONES_SYNC_TYPE)
+        );
+        let declared = Declaration::declare(&["task", PURGED_TOMBSTONES_SYNC_TYPE]).unwrap();
+        assert_eq!(declared.header_value(), "task");
+        assert_eq!(
+            subscribed.header_value_with(Some("note_body")),
+            format!("{},note_body", subscribed.header_value())
+        );
     }
 
     #[test]

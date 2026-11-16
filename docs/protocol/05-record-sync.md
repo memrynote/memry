@@ -86,7 +86,8 @@ and are never in the feed (chapter 07 §7.17). Desktop declares
 (#2297) only on the `GET /sync/changes` of a pull run that starts past cursor 0,
 so a bootstrap keeps 500-row pages (`apps/desktop/src/main/sync/http-client.ts:23`,
 chapter 07 §7.17.5). `packages/sync-client` still sends `RECORD_SYNC_ITEM_TYPES`,
-which contains neither. The Rust core
+which contains neither. The Rust core's desktop declaration sends
+`purged_tombstones` as desktop does (§5.12.3). The Rust core
 appends `note_body` to its record declaration on the `GET /sync/changes` of its
 feed pull only, and records the declaration it restarts on without it, so
 declaring bodies does not re-read the record feed (chapter 07 §7.17.4, #2304).
@@ -1044,14 +1045,31 @@ keys from the local `sync_devices` cache, then `GET /auth/devices`), applies the
 local refusals in `purged-tombstone-guard.ts`, and only then maps an attested
 entry to the apply input a signed tombstone produces. It declares
 `purged_tombstones`. A corrupt-item refetch counts an unattested entry as
-`missing`, like an entry the envelope refused. The Rust core and the shared
-sync-client do not declare it (#2304), so they never see a marker; an iOS device
-that missed a delete keeps its copy locally, and the marker stops a push of it
-from reaching the server. The Rust core produces attestations on every
-attestable delete it pushes and carries the verifier
-(`crates/memry-core/src/protocol/delete_attestation.rs`), but consumes no
-purged tombstone: that would need a new delete path on iOS, and the §5.12.1
-untyped-delete behaviour stays as documented there.
+`missing`, like an entry the envelope refused.
+
+The Rust core's desktop driver declares it too (`Declaration::desktop`,
+`crates/memry-core/src/protocol/types.rs:190`, byte for byte Electron's
+`SYNC_TYPES_HEADER_VALUE`) and applies markers by the same rules in
+`crates/memry-core/src/sync/hardening/purged.rs`: admission (`:194`), the
+attestation under the signer's key from the driver's device directory,
+refetched once per run when the signer is not in it, a failed refetch failing
+the page with the cursor held (`crates/memry-core/src/sync/driver/cipher.rs:164`;
+`purged.rs:244`), the local refusals over the item's `sync_items` row
+(`purged.rs:295`), then the signed-tombstone apply. Every id a
+`purgedTombstones` entry names is kept out of the page's untyped deletes
+(`crates/memry-core/src/sync/pull.rs:404`). A run that started from cursor 0
+applies none until a page that is not refused lands at the head. The core keeps
+that state in `meta` (`sync.purged_from_zero`, `purged.rs:67`), set when a page
+is read from cursor 0 and cleared in the transaction that lands the head
+(`crates/memry-core/src/sync/note_body_feed.rs:428`), so it holds across the
+passes of a long run and across a restart. Its first
+sync's refs pass, which applies every `deleted` id untyped, reads the feed
+without the token (`crates/memry-core/src/sync/first_sync.rs:370`). iOS
+(`Declaration::subscribed`) and the shared sync-client do not declare it
+(#2304), so they never see a marker; an iOS device that missed a delete keeps
+its copy locally, and the marker stops a push of it from reaching the server.
+The Rust core produces attestations on every attestable delete it pushes
+(`crates/memry-core/src/protocol/delete_attestation.rs`).
 
 The Rust core pushes `create` only for a `property_definition` the user creates
 (`crates/memry-core/src/domain/property_admin/records.rs:117`), so the server
@@ -1174,7 +1192,7 @@ minutes (`crates/memry-core/src/sync/hardening/manifest.rs:47`), diffs on
 pulls by id a live server row it holds no row of (`manifest.rs:175-193`), and
 queues as `create` a live clocked local row the server does not list, only of
 the types in `REUPLOADED` (`manifest.rs:53`): none the server re-creates over a
-purged tombstone, since this core does not apply markers yet.
+purged tombstone. Electron re-uploads those too; the core does not yet.
 
 ## 5.16 Clock skew
 
