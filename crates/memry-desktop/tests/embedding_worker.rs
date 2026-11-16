@@ -2,7 +2,9 @@
 //! (`memry-ml-worker/src/bin/stub.rs`, built here as `memry-desktop-worker-stub`), which aborts on
 //! a text that starts with `crash`. A child that dies under an embed counts as Electron's
 //! `failProcess` does with an embed in flight (`apps/desktop/src/main/lib/embeddings.ts:820-835`):
-//! the model is no longer loaded, and five in a row stop the model for the session (#3407).
+//! the model is no longer loaded, and five in a row stop the model for the session (#3407). A
+//! recording whose worker dies under a window feeds only the audio encoder's breaker
+//! (`recordEncoderFailure('audio')`, embeddings.ts:830-832): text indexing goes on.
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -14,12 +16,13 @@ use memry_desktop::embedding::worker::WorkerModel;
 use memry_desktop::services::file_text::WorkerPaths;
 use memry_ml_worker::MODEL_REPO;
 
-#[test]
-fn a_worker_that_dies_under_each_embed_stops_the_model_for_the_session() {
+/// The service over the stub, its model cache holding the stub's one pinned file.
+fn stub_service(
+    runtime: &tokio::runtime::Runtime,
+    cache: &tempfile::TempDir,
+) -> (Arc<EmbeddingService>, Arc<WorkerModel>) {
     // The shell installs this at boot (`install_crypto_provider`); `ModelSource` needs it.
     let _ = rustls::crypto::ring::default_provider().install_default();
-    let runtime = tokio::runtime::Runtime::new().expect("runtime");
-    let cache = tempfile::tempdir().expect("cache");
     let mut model_dir = cache.path().to_path_buf();
     model_dir.extend(MODEL_REPO.split('/'));
     std::fs::create_dir_all(&model_dir).expect("model dir");
@@ -44,6 +47,14 @@ fn a_worker_that_dies_under_each_embed_stops_the_model_for_the_session() {
             ..Timing::default()
         },
     );
+    (service, model)
+}
+
+#[test]
+fn a_worker_that_dies_under_each_embed_stops_the_model_for_the_session() {
+    let runtime = tokio::runtime::Runtime::new().expect("runtime");
+    let cache = tempfile::tempdir().expect("cache");
+    let (service, model) = stub_service(&runtime, &cache);
 
     for attempt in 0..MAX_CONSECUTIVE_FAILURES {
         assert_eq!(
@@ -70,5 +81,45 @@ fn a_worker_that_dies_under_each_embed_stops_the_model_for_the_session() {
         .expect("a fresh child answers");
     assert_eq!(vector.len(), 256);
     assert!(service.status().loaded);
+    model.stop();
+}
+
+/// The stub opens any path as three windows and aborts on window 1 of `crash.wav`. A hostile
+/// recording that kills the worker every time never stops text indexing.
+#[test]
+fn a_worker_that_dies_under_each_recording_never_stops_text() {
+    let runtime = tokio::runtime::Runtime::new().expect("runtime");
+    let cache = tempfile::tempdir().expect("cache");
+    let (service, model) = stub_service(&runtime, &cache);
+    let memo = cache.path().join("memo.wav");
+
+    assert_eq!(
+        service.embed_audio(&cache.path().join("short.wav")),
+        None,
+        "a recording under one second has no window"
+    );
+    let vectors = service.embed_audio(&memo).expect("three windows");
+    assert_eq!(vectors.len(), 3);
+    assert!(vectors.iter().all(|vector| vector.len() == 256));
+
+    for attempt in 0..MAX_CONSECUTIVE_FAILURES {
+        assert_eq!(
+            service.embed_audio(&cache.path().join("crash.wav")),
+            None,
+            "attempt {attempt}"
+        );
+        let status = service.status();
+        assert!(
+            !status.loaded,
+            "attempt {attempt}: the model died with its child"
+        );
+        assert!(status.error.is_some(), "attempt {attempt}");
+    }
+    assert!(service.load(), "audio crashes never stop text loads");
+    let vector = service
+        .embed("a note long enough to embed")
+        .expect("text still embeds");
+    assert_eq!(vector.len(), 256);
+    assert_eq!(service.embed_audio(&memo).map(|v| v.len()), Some(3));
     model.stop();
 }

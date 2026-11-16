@@ -8,6 +8,9 @@
 //! to `nan` and otherwise answers an embedding whose values are the child's pid; `EmbedLoad`
 //! answers `Done`;
 //! `ModelManifest` names one empty file, `config.json`, in the app's pinned repo and revision.
+//! `AudioOpen` opens any path as recording 1 of three windows (none for a path ending in
+//! `short.wav`); `EmbedAudioWindow` answers the child's pid, except that window 1 of a path ending
+//! in `crash.wav` aborts, of `hang.wav` never answers, and of `nan.wav` answers NaNs.
 //! `--crash-before-ready` aborts before the `Ready` frame. Never bundled.
 
 use std::io::Write;
@@ -28,6 +31,7 @@ fn main() {
     if std::env::args().any(|arg| arg == "--crash-before-ready") {
         std::process::abort();
     }
+    let mut recording = String::new();
     let result = serve(
         std::io::stdin().lock(),
         std::io::stdout().lock(),
@@ -87,6 +91,26 @@ fn main() {
                 "nan" => Response::Embedded(vec![f32::NAN; EMBEDDING_DIMENSION]),
                 _ => Response::Embedded(vec![std::process::id() as f32; EMBEDDING_DIMENSION]),
             },
+            Request::AudioOpen { path } => {
+                let windows = if path.ends_with("short.wav") { 0 } else { 3 };
+                recording = path;
+                Response::AudioOpened {
+                    recording: 1,
+                    windows,
+                }
+            }
+            Request::EmbedAudioWindow { window: 1, .. } if recording.ends_with("crash.wav") => {
+                std::process::abort()
+            }
+            Request::EmbedAudioWindow { window: 1, .. } if recording.ends_with("hang.wav") => {
+                park_forever()
+            }
+            Request::EmbedAudioWindow { window: 1, .. } if recording.ends_with("nan.wav") => {
+                Response::Embedded(vec![f32::NAN; EMBEDDING_DIMENSION])
+            }
+            Request::EmbedAudioWindow { .. } => {
+                Response::Embedded(vec![std::process::id() as f32; EMBEDDING_DIMENSION])
+            }
             Request::PdfRenderPage { .. } => {
                 let mut names: Vec<_> = std::env::vars_os()
                     .map(|(name, _)| name.to_string_lossy().into_owned())

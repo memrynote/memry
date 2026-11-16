@@ -13,6 +13,15 @@
 //! downloads with one [`ModelSource`] for the whole app session (so the
 //! 207 MB hash runs once), and only then asks the worker to load them. The worker never writes to
 //! the model directory and checks the sizes alone.
+//!
+//! Audio (`embedAudio`, `apps/desktop/src/main/lib/audio-embedding.ts`): the first recording
+//! downloads the audio group (189 MB) the same way, on the caller's thread, with no progress event
+//! (the settings UI shows the text model's), then the worker reads and decodes the WAV file itself
+//! and embeds it one 30 s window per op, so neither the file nor its samples cross the pipe. A
+//! crash or a timeout on any window is [`EmbedError::Crashed`] and a window the encoder fails
+//! (its files missing or broken) [`EmbedError::Failed`], both counted by the service's audio
+//! breaker only; a file the worker cannot open or decode is [`EmbedError::Input`] and counts
+//! nowhere.
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -20,13 +29,13 @@ use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 
 use memry_ml_worker::{
-    ExitObserver, Limits, MODEL_REPO, MODEL_REVISION, Manifest, ModelGroup, Supervisor,
-    SystemClock, WorkerError,
+    AudioRecording, ExitObserver, Limits, MODEL_REPO, MODEL_REVISION, Manifest, ModelGroup,
+    Supervisor, SystemClock, WorkerError,
 };
 use tokio::runtime::Handle;
 
 use super::download::{Abort, HUB_HOST, ModelSource, PinnedFile};
-use super::service::{EmbedError, Engine, ModelLoader, ModelProgress};
+use super::service::{AudioOpened, EmbedError, Engine, ModelLoader, ModelProgress};
 use crate::services::file_text::WorkerPaths;
 use crate::session::Session;
 use crate::telemetry::events::Metrics;
@@ -38,13 +47,17 @@ const MAX_FILES: usize = 16;
 /// Larger than any pinned file (the audio weights are 189 MB).
 const MAX_FILE_SIZE: u64 = 2 << 30;
 
-pub struct WorkerModel {
-    supervisor: Arc<Supervisor>,
+pub struct WorkerModel(Arc<Shared>);
+
+/// What the loader and the engines it hands out share.
+struct Shared {
+    supervisor: Supervisor,
     /// `<app data>/models/transformers`, the transformers.js cache root of Electron.
     cache: PathBuf,
     runtime: Handle,
-    /// Built from the first manifest and kept for the app session.
-    source: OnceLock<ModelSource>,
+    /// Built from each group's first manifest and kept for the app session.
+    text: OnceLock<ModelSource>,
+    audio: OnceLock<ModelSource>,
 }
 
 impl WorkerModel {
@@ -73,17 +86,18 @@ impl WorkerModel {
             Arc::new(SystemClock),
         )
         .observing_exits(exits);
-        Arc::new(Self {
-            supervisor: Arc::new(supervisor),
+        Arc::new(Self(Arc::new(Shared {
+            supervisor,
             cache,
             runtime,
-            source: OnceLock::new(),
-        })
+            text: OnceLock::new(),
+            audio: OnceLock::new(),
+        })))
     }
 
     /// Kills the child, if one runs. The next load starts a new one.
     pub fn stop(&self) {
-        self.supervisor.stop();
+        self.0.supervisor.stop();
     }
 
     /// Every vault close stops the child with the embedding thread
@@ -92,18 +106,25 @@ impl WorkerModel {
         let model = self.clone();
         session.on_close("embedding-worker", Arc::new(move |_| model.stop()));
     }
+}
 
-    fn source(&self) -> Result<&ModelSource, String> {
-        if let Some(source) = self.source.get() {
+impl Shared {
+    /// The source of `group`'s files, kept in `cell`.
+    fn source<'a>(
+        &self,
+        group: ModelGroup,
+        cell: &'a OnceLock<ModelSource>,
+    ) -> Result<&'a ModelSource, String> {
+        if let Some(source) = cell.get() {
             return Ok(source);
         }
         let manifest = self
             .supervisor
-            .model_manifest(ModelGroup::Text)
+            .model_manifest(group)
             .map_err(worker_error)?;
         let (dir, files) = checked(&self.cache, manifest.clone())?;
         let source = ModelSource::new(HUB_HOST, &manifest.repo, &manifest.revision, dir, files);
-        Ok(self.source.get_or_init(|| source))
+        Ok(cell.get_or_init(|| source))
     }
 }
 
@@ -113,34 +134,111 @@ impl ModelLoader for WorkerModel {
         abort: &Abort,
         progress: &(dyn Fn(ModelProgress) + Sync),
     ) -> Result<Box<dyn Engine>, String> {
-        let source = self.source()?;
-        self.runtime
+        let shared = &self.0;
+        let source = shared.source(ModelGroup::Text, &shared.text)?;
+        shared
+            .runtime
             .block_on(source.ensure(abort, progress))
             .map_err(|error| error.to_string())?;
         // A thread retired between the download and here (vault close, quit) starts no child.
         if abort.cancel.is_cancelled() {
             return Err("the model load was cancelled".to_owned());
         }
-        self.supervisor.embed_load().map_err(worker_error)?;
-        Ok(Box::new(WorkerEngine(self.supervisor.clone())))
+        shared.supervisor.embed_load().map_err(worker_error)?;
+        Ok(Box::new(WorkerEngine {
+            shared: shared.clone(),
+            recording: None,
+            opened: 0,
+        }))
+    }
+
+    fn prepare_audio(&self, abort: &Abort) -> Result<(), String> {
+        let shared = &self.0;
+        let source = shared.source(ModelGroup::Audio, &shared.audio)?;
+        shared
+            .runtime
+            .block_on(source.ensure(abort, &|_| {}))
+            .map_err(|error| error.to_string())
     }
 }
 
-struct WorkerEngine(Arc<Supervisor>);
+struct WorkerEngine {
+    shared: Arc<Shared>,
+    /// The open recording and its handle, from `opened`.
+    recording: Option<(u64, AudioRecording)>,
+    opened: u64,
+}
+
+impl WorkerEngine {
+    /// Frees the decoded samples (up to 230 MB) in the worker, best effort: after a crash or a
+    /// timeout the child is gone and the lease answers at once.
+    fn close_audio(&mut self) {
+        if let Some((_, recording)) = self.recording.take()
+            && let Err(error) = self.shared.supervisor.close_audio(recording)
+        {
+            tracing::debug!(scope = "Embeddings", "closing a recording failed: {error}");
+        }
+    }
+}
 
 impl Engine for WorkerEngine {
     fn embed_text(&mut self, text: &str) -> Result<Vec<f32>, EmbedError> {
-        self.0.embed_text(text).map_err(|error| match error {
-            // The child that held the model is gone or unusable: Electron's `failProcess`.
-            WorkerError::Start(_)
-            | WorkerError::Timeout { .. }
-            | WorkerError::Exited(_)
-            | WorkerError::Protocol(_)
-            | WorkerError::Paused => EmbedError::Crashed(error.to_string()),
-            WorkerError::Stopped | WorkerError::NotOpen | WorkerError::Failed(_) => {
-                EmbedError::Failed(error.to_string())
-            }
+        self.shared.supervisor.embed_text(text).map_err(embed_error)
+    }
+
+    fn open_audio(&mut self, path: &Path) -> Result<AudioOpened, EmbedError> {
+        self.close_audio();
+        let recording = self
+            .shared
+            .supervisor
+            .open_audio(path)
+            .map_err(|error| match error {
+                // The file's fault: unreadable, over the cap, or not a WAV the worker decodes.
+                WorkerError::Failed(message) => EmbedError::Input(message),
+                other => embed_error(other),
+            })?;
+        self.opened += 1;
+        let opened = AudioOpened {
+            recording: self.opened,
+            windows: recording.windows(),
+        };
+        self.recording = Some((opened.recording, recording));
+        if opened.windows == 0 {
+            self.close_audio();
+        }
+        Ok(opened)
+    }
+
+    fn embed_audio_window(&mut self, recording: u64, window: u32) -> Result<Vec<f32>, EmbedError> {
+        let Some((_, open)) = self.recording.as_ref().filter(|(id, _)| *id == recording) else {
+            return Err(EmbedError::Input(
+                "the recording is no longer open".to_owned(),
+            ));
+        };
+        let last = window + 1 >= open.windows();
+        let result = self.shared.supervisor.embed_audio_window(open, window);
+        if last || result.is_err() {
+            self.close_audio();
+        }
+        result.map_err(|error| match error {
+            // The child that held it was replaced: neither the file's fault nor the encoder's.
+            WorkerError::NotOpen => EmbedError::Input(error.to_string()),
+            other => embed_error(other),
         })
+    }
+}
+
+fn embed_error(error: WorkerError) -> EmbedError {
+    match error {
+        // The child that held the model is gone or unusable: Electron's `failProcess`.
+        WorkerError::Start(_)
+        | WorkerError::Timeout { .. }
+        | WorkerError::Exited(_)
+        | WorkerError::Protocol(_)
+        | WorkerError::Paused => EmbedError::Crashed(error.to_string()),
+        WorkerError::Stopped | WorkerError::NotOpen | WorkerError::Failed(_) => {
+            EmbedError::Failed(error.to_string())
+        }
     }
 }
 

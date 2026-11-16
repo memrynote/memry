@@ -73,6 +73,11 @@ name = "embed"
 path = "tests/embed.rs"
 required-features = ["native"]
 
+[[test]]
+name = "embed_audio"
+path = "tests/embed_audio.rs"
+required-features = ["native"]
+
 [build-dependencies]
 static_vcruntime = "3.0.0"
 
