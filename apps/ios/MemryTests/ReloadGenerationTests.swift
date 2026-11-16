@@ -64,6 +64,8 @@ struct ReloadGenerationTests {
         struct Failed: Error {}
         let core: CoreBlockEditor
         let fails = Mutex(false)
+        /// Text writes still to fail, one each, before writes land again.
+        let failures = Mutex(0)
         /// Fails located edits, such as a date rewrite's swap, after
         /// running `afterNext`.
         let failsLocated = Mutex(false)
@@ -72,6 +74,10 @@ struct ReloadGenerationTests {
 
         func edit(noteId: String, _ edit: BlockEdit) async throws -> Bool {
             if case .replaceText = edit, fails.withLock({ $0 }) { throw Failed() }
+            if case .replaceText = edit, failures.withLock({ left in
+                defer { left = max(0, left - 1) }
+                return left > 0
+            }) { throw Failed() }
             let landed = try await core.edit(noteId: noteId, edit)
             await after()
             return landed
@@ -95,6 +101,27 @@ struct ReloadGenerationTests {
                 return run
             }
             await run?()
+        }
+    }
+
+    /// Holds the session's write queue until `open`, so commits queue up
+    /// behind it.
+    @MainActor
+    private final class Gate {
+        private var waiting: CheckedContinuation<Void, Never>?
+        private var opened = false
+
+        init(_ session: EditorSession) {
+            session.enqueue { [self] in
+                guard !opened else { return }
+                await withCheckedContinuation { waiting = $0 }
+            }
+        }
+
+        func open() {
+            opened = true
+            waiting?.resume()
+            waiting = nil
         }
     }
 
@@ -258,6 +285,116 @@ struct ReloadGenerationTests {
         #expect(try await pane.stored == "ab")
         #expect(pane.field.textView.text == "ab")
         #expect(pane.model.status == .idle)
+    }
+
+    /// #4773: `a→ab` fails while `ab→abc` is queued behind it. The queued
+    /// commit carries the failed one's typing, so the core holds `abc`,
+    /// and undo takes the one step back to `a`.
+    @Test(.timeLimit(.minutes(1))) func aCommitQueuedBehindAFailedOneCarriesItsTyping() async throws {
+        let f = try fixture("a")
+        let editor = Interposed(f.editor)
+        let pane = try await Pane(f, editor: editor)
+        pane.rereads()
+        editor.failures.withLock { $0 = 1 }
+        let gate = Gate(pane.model.session)
+
+        pane.type("ab")
+        pane.model.session.commit(pane.field)
+        pane.type("abc")
+        pane.model.session.commit(pane.field)
+        gate.open()
+        await pane.model.session.tail?.value
+
+        #expect(try await pane.stored == "abc")
+        #expect(pane.field.textView.text == "abc")
+        #expect(!pane.field.dirty)
+        #expect(pane.model.status == .idle)
+
+        pane.model.session.undo()
+        await pane.model.session.tail?.value
+        #expect(try await pane.stored == "a")
+        #expect(!pane.model.session.canUndo)
+    }
+
+    /// #4773, REVIEW-4770 Low 2: the row is taken over (a list shortcut
+    /// redrew it) before its failed commit lands. The row that took over
+    /// keeps the typing unsaved, or sends it with its own next commit.
+    @Test(.timeLimit(.minutes(1)), arguments: [false, true])
+    func aFailedCommitReachesTheRowThatTookOver(typesOn: Bool) async throws {
+        let f = try fixture("a")
+        let editor = Interposed(f.editor)
+        let old = try await Pane(f, editor: editor)
+        old.rereads()
+        let session = old.model.session
+        session.drawn(old.field)
+        editor.failures.withLock { $0 = 1 }
+        let gate = Gate(session)
+
+        old.type("ab")
+        session.commit(old.field)
+        // The row drawn anew from the core, taking over the old one's caret.
+        let style = BlockText.Style(font: .systemFont(ofSize: 17), ink: .label, titleExists: nil)
+        let block = try #require(try await f.reader.blocks(id: f.noteId)?.first { $0.id == f.blockId })
+        let row = BlockField(block: block, session: session, style: style, alignment: .natural)
+        row.render()
+        session.drawn(row)
+        session.shortcutField = old.field
+        row.textViewDidBeginEditing(row.textView)
+        #expect(row.textView.text == "ab")
+        if typesOn {
+            row.textView.text = "abc"
+            row.dirty = true
+            session.commit(row)
+        }
+        gate.open()
+        await session.tail?.value
+
+        let typed = typesOn ? "abc" : "ab"
+        if typesOn {
+            #expect(try await old.stored == "abc")
+            #expect(!row.dirty)
+        } else {
+            #expect(try await old.stored == "a")
+            #expect(row.dirty)
+            if case .failed = old.model.status {} else { Issue.record("status \(old.model.status)") }
+            session.commit(row)
+            await session.tail?.value
+            #expect(try await old.stored == typed)
+        }
+        #expect(row.textView.text == typed)
+        #expect(old.model.status == .idle)
+    }
+
+    /// #4773: `a→ab` and `ab→abc` both fail. The row keeps `abc` unsaved
+    /// over the core's `a`, says so, and the next commit lands it.
+    @Test(.timeLimit(.minutes(1))) func twoFailedCommitsInARowKeepTheTypingForTheNext() async throws {
+        let f = try fixture("a")
+        let editor = Interposed(f.editor)
+        let pane = try await Pane(f, editor: editor)
+        pane.rereads()
+        editor.failures.withLock { $0 = 2 }
+        let gate = Gate(pane.model.session)
+
+        pane.type("ab")
+        pane.model.session.commit(pane.field)
+        pane.type("abc")
+        pane.model.session.commit(pane.field)
+        gate.open()
+        await pane.model.session.tail?.value
+
+        #expect(try await pane.stored == "a")
+        #expect(pane.field.textView.text == "abc")
+        #expect(pane.field.dirty)
+        if case .failed = pane.model.status {} else { Issue.record("status \(pane.model.status)") }
+
+        await pane.commit()
+        #expect(try await pane.stored == "abc")
+        #expect(pane.field.textView.text == "abc")
+        #expect(!pane.field.dirty)
+        #expect(pane.model.status == .idle)
+        pane.model.session.undo()
+        await pane.model.session.tail?.value
+        #expect(try await pane.stored == "a")
     }
 
     /// A read taken between the writes of a commit split around a node
