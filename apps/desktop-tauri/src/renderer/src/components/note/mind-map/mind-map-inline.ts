@@ -12,6 +12,8 @@
  * than a switch over node types: it works the same for a spec added later.
  */
 
+import { linkMentionDisplayHost } from '@memry/editor-schema/inline'
+
 /**
  * Where a content-less inline spec keeps its text, best first.
  *
@@ -100,7 +102,14 @@ export function readInline(value: unknown): InlineRead {
 
     for (const key of INLINE_LABEL_PROPS) {
       const candidate = stringProp(node.props, key)
-      if (candidate !== null) return candidate
+      if (candidate === null) continue
+      // The chip's rule: a stored host shows as ASCII, never as a look-alike (#4751).
+      if (node.type === 'linkMention' && key === 'domain') {
+        const host = linkMentionDisplayHost(candidate)
+        if (host !== '') return host
+        continue
+      }
+      return candidate
     }
     return ''
   }

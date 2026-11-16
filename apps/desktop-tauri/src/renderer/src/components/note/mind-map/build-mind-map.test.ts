@@ -190,6 +190,33 @@ describe('buildMindMap — projection', () => {
     expect(childLabels(map.tree)).toEqual(['Ship v2 with care'])
   })
 
+  it('shows a link mention labelled by its stored domain as display-safe ASCII (#4751)', () => {
+    const map = buildMindMap(
+      [
+        {
+          id: 'h',
+          type: 'heading',
+          props: { level: 1 },
+          content: [
+            {
+              type: 'linkMention',
+              props: {
+                url: 'https://example.test/',
+                domain: '\u202E\u0430pple.com',
+                title: '',
+                favicon: '',
+                siteName: ''
+              }
+            }
+          ]
+        }
+      ],
+      { rootLabel: 'Note' }
+    )
+
+    expect(childLabels(map.tree)).toEqual(['xn--pple-43d.com'])
+  })
+
   it('collapses whitespace but never translates or rewrites the label', () => {
     const map = buildMindMap([heading('a', 1, '  Björk\n  &  Co  ')], { rootLabel: '  My note ' })
 

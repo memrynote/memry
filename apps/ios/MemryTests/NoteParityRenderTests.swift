@@ -69,9 +69,10 @@ struct NoteInlineLabelTests {
         #expect(NoteInlineLabel.text(of: domainOnly) == "github.com")
     }
 
-    /// Same values as `linkMentionDisplayHost` in
-    /// `packages/editor-schema/src/inline/link-mention.test.ts`: both apps
-    /// show one label for one stored domain (#4751).
+    /// Same cases as `linkMentionDisplayHost` in
+    /// `packages/editor-schema/src/inline/link-mention.test.ts` (#4751).
+    /// Pinned cases agree; invalid-IDNA output is engine-dependent but always
+    /// ASCII with controls stripped.
     @Test(
         "a link mention's host reads as display-safe ASCII",
         arguments: [

@@ -160,8 +160,10 @@ describe('parseLinkMentionToken', () => {
 /**
  * The chip label is the stored host as written (#4685), so without a
  * display-time conversion a Cyrillic look-alike reads as the real site and a
- * bidi override reorders the label (#4751). iOS pins the same values in
+ * bidi override reorders the label (#4751). iOS pins the same cases in
  * `NoteInlineLabelTests.linkMentionHostIsDisplaySafe` (apps/ios/MemryTests/NoteParityRenderTests.swift).
+ * Pinned cases agree; invalid-IDNA output is engine-dependent but always ASCII
+ * with controls stripped.
  */
 describe('linkMentionDisplayHost', () => {
   it.each([
