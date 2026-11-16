@@ -8,7 +8,16 @@ import { IosScreenshotCarousel } from '@/components/site/IosScreenshotCarousel'
 import { trackLandingEvent } from '@/lib/analytics'
 import { cn } from '@/lib/utils'
 
-type Status = 'idle' | 'loading' | 'success' | 'resent' | 'error'
+type Status = 'idle' | 'loading' | 'success' | 'resent' | 'joined' | 'error'
+
+const DONE_MESSAGE = {
+  success:
+    'You\u2019re in. Apple is sending your TestFlight invite to that address. Check your spam folder if it does not show up.',
+  resent:
+    'You were already invited, so Apple is sending your TestFlight invite again. Check your spam folder if it does not show up.',
+  joined:
+    'You already joined the beta with this address. Open the TestFlight app on your iPhone to install or update memrynote.'
+} as const
 
 const REQUIREMENTS = [
   'An iPhone on iOS 26 or later.',
@@ -134,7 +143,13 @@ export function IosBetaPage() {
 
       if (response.ok && data.success) {
         trackLandingEvent('landing_ios_beta_success', 'ios-beta')
-        setStatus(data.alreadyInvited === true ? 'resent' : 'success')
+        setStatus(
+          data.alreadyJoined === true
+            ? 'joined'
+            : data.alreadyInvited === true
+              ? 'resent'
+              : 'success'
+        )
         setEmail('')
         return
       }
@@ -164,13 +179,10 @@ export function IosBetaPage() {
         }
         sub="The iPhone beta is open on TestFlight. Leave the email you want the invite sent to, and Apple emails the TestFlight invite to that address."
         actions={
-          status === 'success' || status === 'resent' ? (
+          status === 'success' || status === 'resent' || status === 'joined' ? (
             // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- live status region; output element would change inline layout
             <p role="status" className="text-[15px] font-medium text-ink">
-              {status === 'resent'
-                ? 'You were already invited, so Apple is sending your TestFlight invite again.'
-                : 'You\u2019re in. Apple is sending your TestFlight invite to that address.'}{' '}
-              Check your spam folder if it does not show up.
+              {DONE_MESSAGE[status]}
             </p>
           ) : (
             <form
@@ -257,6 +269,25 @@ export function IosBetaPage() {
             <p className="mt-3 text-muted">
               The App Store release is planned for the end of November. Android comes after that.
             </p>
+          </section>
+
+          <section>
+            <h2 className="font-editorial text-xl font-medium tracking-[-0.02em]">
+              On another device?
+            </h2>
+            <p className="mt-3 text-muted">
+              memrynote runs on macOS, Windows and Linux today, free, with no account needed.
+            </p>
+            <Link
+              to="/download"
+              onClick={() =>
+                trackLandingEvent('landing_nav_click', 'download:all-platforms:ios-beta')
+              }
+              className="mt-3 inline-flex items-center gap-1.5 font-medium text-ink underline underline-offset-4 transition-colors hover:text-terracotta focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/60"
+            >
+              See all downloads
+              <ArrowRight className="h-4 w-4 rtl:-scale-x-100" aria-hidden />
+            </Link>
           </section>
 
           <p className="text-[13px] text-muted">

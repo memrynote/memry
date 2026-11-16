@@ -46,8 +46,10 @@ export function createAppStoreConnectToken(
   return `${signingInput}.${signature.toString('base64url')}`
 }
 
+/** `resent`: the address was in the group and got the invite again. `joined`: it already
+ *  accepted, so there is nothing to send and the visitor opens TestFlight instead. */
 export type BetaTesterResult =
-  | { ok: true; alreadyInvited: boolean }
+  | { ok: true; outcome: 'invited' | 'resent' | 'joined' }
   | { ok: false; status: number; detail: string }
 
 /** GETs `path`, or POSTs `body` to it when one is given. */
@@ -66,15 +68,31 @@ function ascRequest(
     : fetch(url, { method: 'POST', headers, body: JSON.stringify(body) })
 }
 
+function firstItem(data: unknown): unknown {
+  return data && typeof data === 'object' && 'data' in data
+    ? Array.isArray(data.data)
+      ? data.data[0]
+      : data.data
+    : null
+}
+
 function dataId(data: unknown): string | null {
-  const item: unknown =
-    data && typeof data === 'object' && 'data' in data
-      ? Array.isArray(data.data)
-        ? data.data[0]
-        : data.data
-      : null
+  const item = firstItem(data)
   return item && typeof item === 'object' && 'id' in item && typeof item.id === 'string'
     ? item.id
+    : null
+}
+
+/** A tester's TestFlight state: INVITED until they accept, then ACCEPTED or INSTALLED. */
+function testerState(data: unknown): string | null {
+  const item = firstItem(data)
+  const attributes: unknown =
+    item && typeof item === 'object' && 'attributes' in item ? item.attributes : null
+  return attributes &&
+    typeof attributes === 'object' &&
+    'state' in attributes &&
+    typeof attributes.state === 'string'
+    ? attributes.state
     : null
 }
 
@@ -87,6 +105,8 @@ async function failure(response: Response): Promise<BetaTesterResult> {
 /**
  * Apple answers 409 when the address is already in the group and sends no new email, so a
  * visitor who lost the first invite would be stuck. Send that tester the invite again.
+ * Apple refuses a new invite once the tester accepted ("Tester has already accepted
+ * invitation"), and those visitors are already in, so they are told so instead.
  */
 async function resendInvite(
   config: AppStoreConnectConfig,
@@ -96,16 +116,19 @@ async function resendInvite(
   const [testerRes, appRes] = await Promise.all([
     ascRequest(
       config,
-      `/v1/betaTesters?filter[email]=${encodeURIComponent(email)}&filter[betaGroups]=${group}&fields[betaTesters]=email&limit=1`
+      `/v1/betaTesters?filter[email]=${encodeURIComponent(email)}&filter[betaGroups]=${group}&fields[betaTesters]=email,state&limit=1`
     ),
     ascRequest(config, `/v1/betaGroups/${group}/relationships/app`)
   ])
   if (!testerRes.ok) return failure(testerRes)
   if (!appRes.ok) return failure(appRes)
 
-  const testerId = dataId(await testerRes.json())
+  const tester: unknown = await testerRes.json()
+  const testerId = dataId(tester)
   const appId = dataId(await appRes.json())
   if (!testerId || !appId) return null
+  const state = testerState(tester)
+  if (state === 'ACCEPTED' || state === 'INSTALLED') return { ok: true, outcome: 'joined' }
 
   const invitation = await ascRequest(config, '/v1/betaTesterInvitations', {
     data: {
@@ -116,7 +139,7 @@ async function resendInvite(
       }
     }
   })
-  return invitation.ok ? { ok: true, alreadyInvited: true } : failure(invitation)
+  return invitation.ok ? { ok: true, outcome: 'resent' } : failure(invitation)
 }
 
 function getAppStoreConnectErrors(data: unknown): { code: string; detail: string }[] {
@@ -151,7 +174,7 @@ export async function addExternalBetaTester(
       }
     }
   })
-  if (response.ok) return { ok: true, alreadyInvited: false }
+  if (response.ok) return { ok: true, outcome: 'invited' }
 
   const added = await failure(response)
   if (response.status !== 409) return added
