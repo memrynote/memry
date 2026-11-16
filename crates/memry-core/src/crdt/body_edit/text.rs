@@ -1,5 +1,6 @@
 //! Split from `body_edit.rs` along its existing seams; see `mod.rs`.
 
+use super::text_diff::{changed_spans, rebase};
 #[allow(unused_imports)]
 use super::*;
 
@@ -93,61 +94,6 @@ fn flatten(txn: &TransactionMut, block: &XmlElementRef) -> (Vec<char>, Vec<Unit>
     (chars, units)
 }
 
-/// The span `from` and `to` differ in, by common prefix and suffix: the start,
-/// the end of the span in `from`, and the end of the span in `to`.
-fn changed_span(from: &[char], to: &[char]) -> (usize, usize, usize) {
-    let prefix = from
-        .iter()
-        .zip(to.iter())
-        .take_while(|(a, b)| a == b)
-        .count();
-    let suffix = from[prefix..]
-        .iter()
-        .rev()
-        .zip(to[prefix..].iter().rev())
-        .take_while(|(a, b)| a == b)
-        .count();
-    (prefix, from.len() - suffix, to.len() - suffix)
-}
-
-/// The shell's edit, `base` to `wanted`, replayed on the live block `current`.
-///
-/// A shell holding unsaved typing does not see a peer's edit that merged in
-/// the meantime, so its `wanted` lacks it; diffing `wanted` against the live
-/// block would delete it. Instead the peer's span (`base` to `current`) and the
-/// user's span (`base` to `wanted`) are both taken against `base`, and the
-/// user's span is moved past the peer's. Where the two overlap the peer's new
-/// text is kept, as the CRDT merge of the two edits would keep it: the user's
-/// delete removes what it covered around the peer's text, never the text.
-fn rebase(base: &[char], current: &[char], wanted: &[char]) -> Vec<char> {
-    let (peer_start, peer_end_base, peer_end_live) = changed_span(base, current);
-    let (start, end_base, end_wanted) = changed_span(base, wanted);
-    let inserted = &wanted[start..end_wanted];
-    // A base position at or after the peer's span, in the live block.
-    let shift = |position: usize| position + peer_end_live - peer_end_base;
-    let (head, tail) = if end_base <= peer_start {
-        (current[..start].to_vec(), end_base)
-    } else if start >= peer_end_base {
-        (current[..shift(start)].to_vec(), shift(end_base))
-    } else {
-        // Overlapping: the peer's new text survives, and the user's change
-        // lands on whichever side of it the user's span started.
-        let tail = shift(end_base).max(peer_end_live);
-        if start <= peer_start {
-            let mut out = current[..start].to_vec();
-            out.extend_from_slice(inserted);
-            out.extend_from_slice(&current[peer_start..peer_end_live]);
-            out.extend_from_slice(&current[tail..]);
-            return out;
-        }
-        (current[..peer_end_live].to_vec(), tail)
-    };
-    let mut out = head;
-    out.extend_from_slice(inserted);
-    out.extend_from_slice(&current[tail..]);
-    out
-}
-
 /// Rewrites a block's text in place across its runs and inline nodes. See
 /// [`BlockEdit::ReplaceText`].
 pub(super) fn replace_text(
@@ -171,12 +117,28 @@ pub(super) fn replace_text(
             wanted = rebase(&base, &current, &wanted);
         }
     }
-    let (prefix, removed_end, inserted_end) = changed_span(&current, &wanted);
-    let removed = prefix..removed_end;
-    let inserted: String = wanted[prefix..inserted_end]
-        .iter()
-        .filter(|character| **character != INLINE_NODE_PLACEHOLDER)
-        .collect();
+    // Back to front, so each span's positions are still valid when reached:
+    // a later span only touches children and offsets after an earlier one's.
+    for (removed, inserted) in changed_spans(&current, &wanted).into_iter().rev() {
+        let inserted: String = wanted[inserted]
+            .iter()
+            .filter(|character| **character != INLINE_NODE_PLACEHOLDER)
+            .collect();
+        replace_span(txn, &block, &units, removed, &inserted)?;
+    }
+    Ok(())
+}
+
+/// Replaces the flattened characters `removed` with `inserted`, a span no
+/// kept inline node lies inside.
+fn replace_span(
+    txn: &mut TransactionMut,
+    block: &XmlElementRef,
+    units: &[Unit],
+    removed: std::ops::Range<usize>,
+    inserted: &str,
+) -> Result<(), CrdtError> {
+    let prefix = removed.start;
     if removed.is_empty() && inserted.is_empty() {
         return Ok(());
     }
@@ -220,7 +182,7 @@ pub(super) fn replace_text(
     // Removal, back to front so every earlier position stays valid: one range
     // per run, one child per node.
     let mut spans: Vec<(u32, Option<(u32, u32)>)> = Vec::new();
-    for unit in &units[removed.clone()] {
+    for unit in &units[removed] {
         match unit {
             Unit::Text { child, offset, len } => match spans.last_mut() {
                 Some((last, Some((_, length)))) if *last == *child => *length += len,
@@ -244,11 +206,11 @@ pub(super) fn replace_text(
         return Ok(());
     }
     match anchor {
-        Anchor::Run(run, offset) => run.insert(txn, offset, &inserted),
+        Anchor::Run(run, offset) => run.insert(txn, offset, inserted),
         Anchor::Fresh(node) => {
             let index = match node {
                 Some(node) => {
-                    child_index(txn, &block, &node)
+                    child_index(txn, block, &node)
                         .ok_or_else(|| unrecognised_layout("an inline node"))?
                         + 1
                 }

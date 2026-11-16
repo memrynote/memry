@@ -137,7 +137,12 @@ enum BlockText {
         let result = NSMutableAttributedString(attributedString: text)
         let placed = NSAttributedString.Key("memry.placed")
         for span in spans {
-            let lower = utf16Offset(in: result, core: span.lowerBound)
+            var lower = utf16Offset(in: result, core: span.lowerBound)
+            // A node over text starts at that text, after any node of no
+            // core bytes at the same offset: a tag picked right after a
+            // link would otherwise cover the link (VERIFY-4753).
+            var next = lower
+            while !span.isEmpty, next < result.length, coreBytes(in: result, at: &next) == 0 { lower = next }
             let upper = max(lower, utf16Offset(in: result, core: span.upperBound))
             let range = NSRange(location: lower, length: upper - lower)
             let covered = (result.string as NSString).substring(with: range)
