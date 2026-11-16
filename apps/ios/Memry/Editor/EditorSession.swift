@@ -547,7 +547,7 @@ final class EditorSession {
     /// in a code block, whose text stays literal. Answers where a UTF-16
     /// location in `field` before the commit is after it, with each such
     /// link drawn as its one-character node. `nodes` puts zero-width inline
-    /// nodes in after the typing and answers the edits it ran, which join
+    /// nodes in after the typing and answers the ones that landed, which join
     /// the typing's undo step. `over` puts nodes over text in `field`, such
     /// as a `#tag`, as the typed links go (`NoteEditorViewModel.insert`).
     /// `drawing` draws chips for the nodes in the row once the typed links
@@ -558,7 +558,7 @@ final class EditorSession {
         then: (@MainActor () async -> Void)? = nil,
         over: [EditorUndoStep.TextNode] = [],
         drawing: ((Int) -> Int) -> Void = { _ in },
-        inserting nodes: (@MainActor (NoteEditorViewModel) async -> [BlockEdit])? = nil
+        inserting nodes: (@MainActor (NoteEditorViewModel) async -> [EditorUndoStep.PlacedNode])? = nil
     ) -> (Int) -> Int {
         // Keys held for a Return's new block commit here instead (Tab, ⌘B,
         // leaving the app): moved on later, they would leave undo steps that
@@ -649,7 +649,7 @@ final class EditorSession {
             // swapped out of this text: its nodes' places count them.
             let placed = !converted.isEmpty || !added.isEmpty
             if landed, placed, sent == text {
-                let spans = converted.map { $0.start ..< $0.start + $0.literal.utf8.count } + added.compactMap(Self.span)
+                let spans = converted.map { $0.start ..< $0.start + $0.literal.utf8.count } + added.compactMap { Self.span($0.edit) }
                 self.history.record(.text(
                     blockId: blockId, from: from, typed: text, typedLength: length, overText: converted,
                     nodes: added, to: BlockText.placingNodes(spans, in: attributed),
@@ -1265,7 +1265,7 @@ final class EditorSession {
             field.drawNodes(nodes.compactMap(\.run), at: location)
             field.pendingSelection = NSRange(location: location + 2 * kinds.count, length: 0)
         }, inserting: { model in
-            var edits: [BlockEdit] = []
+            var edits: [EditorUndoStep.PlacedNode] = []
             // Last first, so each node's offset still counts only the spaces
             // before it.
             for (node, at) in zip(nodes, anchors).reversed() {

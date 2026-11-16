@@ -30,10 +30,14 @@ struct EditorUndoStep: Sendable, Equatable {
     /// The operation that does it again.
     let forward: BlockEdit
     /// Replayed after `forward`: the props an inserted block carries, which
-    /// `InsertBlock` alone cannot write, or the inline nodes typing put in,
-    /// which `ReplaceText` cannot.
+    /// `InsertBlock` alone cannot write.
     var forwardProps: [BlockEdit] = []
-    /// Replayed after `forward`, before `forwardProps`: the nodes that
+    /// Replayed after `forwardOverText`, in order: the nodes a menu or a
+    /// drop put in, which `ReplaceText` cannot. Each goes where the block
+    /// holds its anchor then (`NoteEditorViewModel.place`), not at the
+    /// pane's offsets: another pane may have typed before it since (#4794).
+    var forwardNodes: [PlacedNode] = []
+    /// Replayed after `forward`, before `forwardNodes`: the nodes that
     /// replaced text the typing wrote, a typed `[[link]]` or a `#tag`. Each
     /// goes over its literal where the block holds it once `forward` lands
     /// (`NoteEditorViewModel.insert(_:over:typedLength:)`), not at its
@@ -67,6 +71,13 @@ struct EditorUndoStep: Sendable, Equatable {
     struct TextNode: Sendable, Equatable {
         let start: Int
         let literal: String
+        let edit: BlockEdit
+    }
+
+    /// An inline node a pane put in at `anchor`: `edit` is its
+    /// `insertInline` at the pane's own offsets (`anchor.paneRange`).
+    struct PlacedNode: Sendable, Equatable {
+        let anchor: NodeAnchor
         let edit: BlockEdit
     }
 }
@@ -166,10 +177,10 @@ extension EditorUndoStep {
     /// exactly its node and never one beside it, and ends at `previous`.
     /// A U+FFFC in `ReplaceText` makes no node, so redo writes the
     /// typing, `typed` (`typedLength` core bytes), then puts `overText` back
-    /// over their literals and runs `nodes` again as they went in.
+    /// over their literals and `nodes` at their anchors, as they went in.
     static func text(
         blockId: String, from previous: String, typed: String, typedLength: Int,
-        overText: [TextNode], nodes: [BlockEdit], to next: [String], caret: Int
+        overText: [TextNode], nodes: [PlacedNode], to next: [String], caret: Int
     ) -> EditorUndoStep {
         let texts = next + [previous]
         let back = zip(texts, texts.dropFirst()).map { BlockEdit.replaceText(blockId: blockId, text: $1, base: $0) }
@@ -177,7 +188,7 @@ extension EditorUndoStep {
             name: "Typing",
             backward: back[0],
             forward: .replaceText(blockId: blockId, text: typed, base: previous),
-            forwardProps: nodes,
+            forwardNodes: nodes,
             forwardOverText: overText,
             forwardLength: typedLength,
             caret: caret,

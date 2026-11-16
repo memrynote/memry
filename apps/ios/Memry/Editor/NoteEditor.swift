@@ -401,8 +401,8 @@ final class NoteEditorViewModel {
     /// block's text instead, never over that edit and never lost (a date's
     /// reminder with it), and the status says so.
     ///
-    /// Answers the edit at the pane's own offsets, which an undo step's redo
-    /// runs again after the pane's typing, or `nil` when it did not land
+    /// Answers the node, which an undo step's redo puts back at `anchor`
+    /// after the pane's typing (`place`), or `nil` when it did not land
     /// there: a step must not redo a node the user never had.
     @discardableResult
     func insertInline(
@@ -411,7 +411,7 @@ final class NoteEditorViewModel {
         kind: String,
         text: String,
         attrs: [String: String]
-    ) async -> BlockEdit? {
+    ) async -> EditorUndoStep.PlacedNode? {
         let edit = { @Sendable (range: Range<Int>) in
             BlockEdit.insertInline(
                 blockId: blockId, start: UInt32(range.lowerBound), end: UInt32(range.upperBound),
@@ -420,7 +420,7 @@ final class NoteEditorViewModel {
         }
         switch await run(in: blockId, locating: { runs in anchor.range(in: runs).map(edit) }) {
         case .landed?:
-            return edit(anchor.paneRange)
+            return EditorUndoStep.PlacedNode(anchor: anchor, edit: edit(anchor.paneRange))
         case .notFound?:
             let moved = await run(in: blockId) { runs in NodeAnchor.textEnd(in: runs).map { edit($0 ..< $0) } }
             if case .landed? = moved { status = .failed(NodeAnchor.moved) }
@@ -443,7 +443,7 @@ final class NoteEditorViewModel {
         at anchor: NodeAnchor,
         title: String,
         alias: String? = nil
-    ) async -> BlockEdit? {
+    ) async -> EditorUndoStep.PlacedNode? {
         await insertInline(
             blockId,
             at: anchor,
@@ -507,9 +507,10 @@ final class NoteEditorViewModel {
     }
 
     /// Does `step` again: `forward`, then its nodes over text where the
-    /// block now holds their literals, then the rest. None of them when
-    /// `forward` did not land: a literal found then is another writer's
-    /// text. A failure stays the status through the edits after it.
+    /// block now holds their literals, then its other nodes at their
+    /// anchors, then the rest. None of them when `forward` did not land: a
+    /// literal found then is another writer's text. A failure stays the
+    /// status through the edits after it.
     func redo(_ step: EditorUndoStep) async {
         if let date = step.date {
             await rewriteDate(date.chip, in: date.blockId, to: date.to)
@@ -521,7 +522,26 @@ final class NoteEditorViewModel {
         if case let .replaceText(blockId, _, _) = step.forward {
             await insert(step.forwardOverText, over: blockId, typedLength: step.forwardLength)
         }
+        for node in step.forwardNodes { await place(node) }
         for edit in step.forwardProps { await run(edit) }
+    }
+
+    /// Puts `node` back where the block holds its anchor, read and written
+    /// in one core turn. One whose place is gone is not written, neither at
+    /// the pane's offsets, which may sit inside another writer's text, nor
+    /// at the end, as a first pick would: the user undid it, so nothing is
+    /// lost, and the status says so (#4794).
+    private func place(_ node: EditorUndoStep.PlacedNode) async {
+        guard case let .insertInline(blockId, _, _, kind, text, attrs) = node.edit else { return }
+        let located = await run(in: blockId) { runs in
+            node.anchor.range(in: runs).map {
+                .insertInline(
+                    blockId: blockId, start: UInt32($0.lowerBound), end: UInt32($0.upperBound),
+                    kind: kind, text: text, attrs: attrs
+                )
+            }
+        }
+        if case .notFound? = located { status = .failed(NodeAnchor.gone) }
     }
 
     /// Takes `step` back: `backward`, then the rest, in order.
@@ -560,7 +580,7 @@ final class NoteEditorViewModel {
         at anchor: NodeAnchor,
         value: DateMentionValue,
         anchorId: String? = nil
-    ) async -> BlockEdit? {
+    ) async -> EditorUndoStep.PlacedNode? {
         await insertInline(
             blockId,
             at: anchor,

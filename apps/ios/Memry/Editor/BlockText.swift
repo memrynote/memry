@@ -453,6 +453,14 @@ struct NodeAnchor: Sendable, Equatable {
         isUserVisible: true
     )
 
+    static let gone = UserFacingError(
+        code: "editor.nodeGone",
+        title: "The text around it changed in another pane, so it was not put back.",
+        guidance: "Nothing was lost. Add it again where you want it.",
+        recourse: .blocked,
+        isUserVisible: true
+    )
+
     /// The core range the node goes over in `runs`, the block as the core
     /// holds it: the pane's space carried past what changed since, or found
     /// by the text on both sides of it. `nil` when neither finds it, so a
