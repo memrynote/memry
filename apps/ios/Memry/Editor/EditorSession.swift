@@ -163,6 +163,14 @@ final class EditorSession {
     /// (`didChange`) or ends. A read taken now includes `landedWrites`.
     @ObservationIgnored private var queuedWrites = 0
     @ObservationIgnored private(set) var landedWrites = 0
+    /// Each block's last typing commit from this session that failed,
+    /// until one lands (#4773): the text it sent (`typed`), the text it
+    /// left the block at (`held`), and the runs queued by then (`queued`).
+    /// A commit queued by then on top of `typed` sends its change from
+    /// `held`, so the failed one's typing goes with it. Any other commit
+    /// was drawn or typed from what the row showed, and goes from its own
+    /// base: a clean redraw since puts the core's text there.
+    @ObservationIgnored private var unlanded: [String: (typed: String, held: String, queued: Int)] = [:]
     /// The generation the run this task is in was queued as.
     @TaskLocal private static var running: Int?
     /// The generation the page's drawn blocks include: `landedWrites` as
@@ -587,17 +595,29 @@ final class EditorSession {
         let wrote = dirty && text != base
         // The session too, so the write still schedules its sync pass.
         let generation = enqueue {
-            let landed = wrote ? await model.commit(text, for: blockId, base: base) : true
-            // Not written: the row keeps its text unsaved, so a redraw keeps
-            // it and the next commit sends it again (REVIEW-4700).
-            if !landed, field.base == text {
-                field.base = base
-                field.dirty = true
+            // Queued behind a commit that failed, `base` holds typing the
+            // core never got: the change goes from what it holds (#4773).
+            let failed = self.unlanded[blockId]
+            let carries = dirty && failed.map { $0.typed == base && (Self.running ?? 0) <= $0.queued } == true
+            let from = carries ? failed?.held ?? base : base
+            let sends = dirty && text != from
+            let (landed, held) = sends ? await model.commit(text, for: blockId, base: from) : (true, text)
+            if dirty { self.unlanded[blockId] = landed ? nil : (typed: text, held: held, queued: self.queuedWrites) }
+            // Not written: the block's row keeps its text unsaved, so a
+            // redraw keeps it and the next commit sends it again
+            // (REVIEW-4700). The row that took this one's typing over
+            // (`BlockField.takeOver`) is the block's row now. A row whose
+            // base a later commit moved on has that commit queued, which
+            // sends this typing too.
+            let row = self.drawnFields.object(forKey: blockId as NSString).flatMap { $0.blockId == blockId ? $0 : nil } ?? field
+            if !landed, row.base == text {
+                row.base = held
+                row.dirty = true
             }
             let converted = overText.isEmpty
                 ? [] : await model.insert(overText, over: blockId, typedLength: length)
             let added = await nodes?(model) ?? []
-            // From `base`, as the write: the block may hold another pane's
+            // From `from`, as the write: the block may hold another pane's
             // typing since, which undo and redo keep. To this pane's text
             // with the nodes in, so undo takes them back too. A node over
             // text, such as a `#tag`, keeps its literal for redo to find.
@@ -606,12 +626,12 @@ final class EditorSession {
             if landed, !converted.isEmpty || !added.isEmpty {
                 let spans = converted.map { $0.start ..< $0.start + $0.literal.utf8.count } + added.compactMap(Self.span)
                 self.history.record(.text(
-                    blockId: blockId, from: base, typed: text, typedLength: length, overText: converted,
+                    blockId: blockId, from: from, typed: text, typedLength: length, overText: converted,
                     nodes: added, to: BlockText.placingNodes(spans, in: attributed),
                     caret: (field.pendingSelection ?? field.textView.selectedRange).location
                 ))
-            } else if landed, wrote {
-                self.history.record(.text(blockId: blockId, from: base, to: text))
+            } else if landed, sends {
+                self.history.record(.text(blockId: blockId, from: from, to: text))
             }
             await then?()
             if dirty || !overText.isEmpty || nodes != nil || then != nil {
