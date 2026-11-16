@@ -1,0 +1,173 @@
+import MemryCore
+import SwiftUI
+import Testing
+import UIKit
+@testable import Memry
+
+/// #4781: an empty day's first line typed without Return, on a real day page
+/// in a scene window, as the app resigns and goes to the background. iOS may
+/// end a backgrounded app before the field loses the caret.
+@MainActor
+@Suite("Journal first line leaving the app", .serialized)
+struct JournalFirstLineLeavingTests {
+    private struct Fixture {
+        let vault: JournalTestVault
+        let page: JournalDayPageModel
+        let window: UIWindow
+    }
+
+    /// Opens today's empty page and puts the caret in its first line.
+    private func open() async throws -> (Fixture, UITextView) {
+        let vault = try JournalTestVault()
+        let context = JournalVaultContext(
+            reader: CoreNotesReader(vault: vault.vault, executor: CoreExecutor()),
+            filler: nil, writer: nil, editor: nil, metadataWriter: nil, search: nil, noteTasks: nil
+        )
+        vault.store.context = context
+        await vault.store.loadDay(JournalTestVault.today)
+        let page = JournalDayPageModel(store: vault.store, date: JournalTestVault.today, context: context)
+        let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
+        let window = UIWindow(windowScene: scene)
+        window.rootViewController = UIHostingController(rootView: JournalDayPage(
+            store: vault.store, date: JournalTestVault.today, model: page, isShown: true, open: { _ in },
+            titleCollapsed: .constant(false), fog: .constant(nil)
+        ))
+        window.makeKeyAndVisible()
+        await until { firstLine(in: window) != nil }
+        let field = try #require(firstLine(in: window), "the empty day drew no first line")
+        field.becomeFirstResponder()
+        await until { field.isFirstResponder }
+        await settle()
+        return (Fixture(vault: vault, page: page, window: window), field)
+    }
+
+    private func views<T: UIView>(_ type: T.Type, in window: UIWindow) -> [T] {
+        func all(_ view: UIView) -> [T] { ((view as? T).map { [$0] } ?? []) + view.subviews.flatMap(all) }
+        return window.rootViewController?.view.map(all) ?? []
+    }
+
+    /// The first line: the one text view that is not a block.
+    private func firstLine(in window: UIWindow) -> UITextView? {
+        views(UITextView.self, in: window).first { !($0 is BlockTextView) }
+    }
+
+    private func until(_ condition: () -> Bool) async {
+        for _ in 0..<300 where !condition() {
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+    }
+
+    /// Lets SwiftUI pass the typed keys to the field's binding.
+    private func settle() async {
+        for _ in 0..<10 {
+            try? await Task.sleep(for: .milliseconds(10))
+            await Task.yield()
+        }
+    }
+
+    private func stored(_ day: Fixture) async -> [String] {
+        let blocks = (try? await day.page.bridge.blocks(id: day.page.read.route.id)) ?? []
+        return blocks.map { $0.inline.map(\.text).joined() }
+    }
+
+    private func expectStored(_ day: Fixture, _ body: [String]) async {
+        for _ in 0..<300 where await stored(day) != body {
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(await stored(day) == body)
+    }
+
+    @Test(.timeLimit(.minutes(1))) func leaving_the_app_lands_a_line_typed_without_return() async throws {
+        let (day, field) = try await open()
+        defer { day.window.isHidden = true }
+
+        for key in "hello" { field.insertText(String(key)) }
+        await settle()
+        NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
+
+        await expectStored(day, ["hello"])
+        // The line's block takes the caret, as after a Return: the keyboard
+        // stays up, and typing goes on in the block on coming back.
+        await until { views(BlockTextView.self, in: day.window).first?.isFirstResponder == true }
+        let block = try #require(views(BlockTextView.self, in: day.window).first, "the line was drawn as no block")
+        #expect(block.isFirstResponder, "the caret left the line as the app resigned")
+        #expect(block.text == "hello")
+        #expect(firstLine(in: day.window) == nil, "the first line stayed after its line landed")
+
+        await settle()
+        let accepts = { (key: String) in
+            block.delegate?.textView?(block, shouldChangeTextIn: block.selectedRange, replacementText: key) != false
+        }
+        for key in " more" where accepts(String(key)) {
+            block.insertText(String(key))
+        }
+        NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
+        await expectStored(day, ["hello more"])
+    }
+
+    /// An input method's composition is not landed half-made as the app
+    /// resigns (Control Center resigns it too); going to the background ends
+    /// it as it stands and lands the line.
+    @Test(.timeLimit(.minutes(1))) func a_composing_line_lands_once_the_app_goes_to_the_background() async throws {
+        let (day, field) = try await open()
+        defer { day.window.isHidden = true }
+
+        for key in "Foo" { field.insertText(String(key)) }
+        field.setMarkedText("k", selectedRange: NSRange(location: 1, length: 0))
+        await settle()
+        NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
+        await settle()
+        #expect(field.markedTextRange != nil, "resigning ended the composition")
+        #expect(await stored(day).isEmpty, "a half-composed line landed")
+
+        NotificationCenter.default.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
+
+        await expectStored(day, ["Fook"])
+    }
+
+    /// Each first line ends only its own composition: one that kept a line
+    /// after a failed write lands that line, not the other day's text. Both
+    /// orders, as the fields hear the notification in an order of their own.
+    @Test(.timeLimit(.minutes(1)), arguments: [false, true])
+    func a_first_line_without_the_caret_lands_its_own_line(keptBelow: Bool) async throws {
+        var written: [String] = []
+        var failsFirst = true
+        let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
+        let window = UIWindow(windowScene: scene)
+        defer { window.isHidden = true }
+        window.rootViewController = UIHostingController(rootView: VStack {
+            JournalDayFirstLine(placeholder: "one") { line, _ in
+                if failsFirst, !keptBelow { failsFirst = false; return false }
+                written.append(line)
+                return true
+            }
+            JournalDayFirstLine(placeholder: "two") { line, _ in
+                if failsFirst, keptBelow { failsFirst = false; return false }
+                written.append(line)
+                return true
+            }
+        })
+        window.makeKeyAndVisible()
+        await until { views(UITextView.self, in: window).count == 2 }
+        let fields = views(UITextView.self, in: window)
+            .sorted { $0.convert($0.bounds, to: nil).minY < $1.convert($1.bounds, to: nil).minY }
+        try #require(fields.count == 2)
+        let (one, two) = keptBelow ? (fields[1], fields[0]) : (fields[0], fields[1])
+
+        one.becomeFirstResponder()
+        await settle()
+        for key in "keep" { one.insertText(String(key)) }
+        await settle()
+        // The caret moves on: the line's write fails and it stays in the field.
+        two.becomeFirstResponder()
+        await until { one.text == "keep" && !failsFirst }
+        await settle()
+        for key in "Foo" { two.insertText(String(key)) }
+        two.setMarkedText("k", selectedRange: NSRange(location: 1, length: 0))
+        await settle()
+
+        NotificationCenter.default.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
+        await until { written.count == 2 }
+        #expect(written.sorted() == ["Fook", "keep"], "\(written)")
+    }
+}
