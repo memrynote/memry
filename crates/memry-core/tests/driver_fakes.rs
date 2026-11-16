@@ -82,6 +82,7 @@ impl FakeServer {
 
     /// Sheds `id`'s payload: `POST /sync/pull` serves `entry` in
     /// `purgedTombstones` for it from now on, never in `items`.
+    #[cfg(feature = "markdown")]
     pub fn purge(&self, entry: Json) {
         let id = entry["id"].as_str().expect("an id").to_owned();
         self.records.lock().unwrap().remove(&id);
@@ -89,6 +90,7 @@ impl FakeServer {
     }
 
     /// Queues one feed page of `deleted` ids and no refs.
+    #[cfg(feature = "markdown")]
     pub fn deleted_page(&self, deleted: &[&str], next_cursor: &str, has_more: bool) {
         self.pages.lock().unwrap().push_back(
             json!({"items": [], "deleted": deleted, "hasMore": has_more,
@@ -98,6 +100,7 @@ impl FakeServer {
     }
 
     /// Registers a device after the driver opened.
+    #[cfg(feature = "markdown")]
     pub fn add_device(&self, id: &str, seed: u8) {
         self.added_devices
             .lock()
@@ -106,11 +109,13 @@ impl FakeServer {
     }
 
     /// Fails `GET /auth/devices` until called with `false`.
+    #[cfg(feature = "markdown")]
     pub fn devices_down(&self, down: bool) {
         self.devices_down.store(down, Ordering::SeqCst);
     }
 
     /// The `X-Memry-Sync-Types` of every request to `route`, in order.
+    #[cfg(feature = "markdown")]
     pub fn sync_types(&self, route: &str) -> Vec<String> {
         self.calls_to(route)
             .iter()
@@ -124,6 +129,7 @@ impl FakeServer {
     }
 
     /// How many requests went to `route`.
+    #[cfg(feature = "markdown")]
     pub fn count(&self, route: &str) -> usize {
         self.calls_to(route).len()
     }
@@ -390,6 +396,7 @@ impl Desktop {
     }
 
     /// The app restarted: a new driver over the same `data.db` and server.
+    #[cfg(feature = "markdown")]
     pub async fn reopen(self, declaration: Declaration) -> Self {
         let Self { db, server, .. } = self;
         Self::drive(db, server, declaration).await
