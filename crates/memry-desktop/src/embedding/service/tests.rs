@@ -12,6 +12,7 @@ use crate::session::OpenSource;
 use crate::shell::shutdown::{Deadline, ShutdownContext, ShutdownReason};
 
 mod audio;
+mod image;
 
 /// A hang guard, never a bound on how fast the code is.
 const HANG: Duration = Duration::from_secs(60);
@@ -62,8 +63,9 @@ enum Step {
 struct Script {
     loads: Mutex<VecDeque<Step>>,
     embeds: Mutex<VecDeque<Step>>,
-    /// Audio windows and audio downloads.
+    /// Audio windows, images, and audio and vision downloads.
     windows: Mutex<VecDeque<Step>>,
+    images: Mutex<VecDeque<Step>>,
     downloads: Mutex<VecDeque<Step>>,
     opens: AtomicUsize,
     /// `text` and `window`, in the order the thread served them.
@@ -133,6 +135,14 @@ impl Engine for FakeEngine {
             .map_err(EmbedError::Failed)?;
         Ok(vec![0.25; EMBEDDING_DIMENSION])
     }
+
+    fn embed_image(&mut self, _: &ImageInput) -> Result<Vec<f32>, EmbedError> {
+        lock(&self.0.order).push("image");
+        self.0
+            .play(&self.0.images, None)
+            .map_err(EmbedError::Failed)?;
+        Ok(vec![0.75; EMBEDDING_DIMENSION])
+    }
 }
 
 impl Drop for FakeEngine {
@@ -160,6 +170,10 @@ impl ModelLoader for FakeLoader {
     }
 
     fn prepare_audio(&self, abort: &Abort) -> Result<(), String> {
+        self.0.play(&self.0.downloads, Some(abort))
+    }
+
+    fn prepare_vision(&self, abort: &Abort) -> Result<(), String> {
         self.0.play(&self.0.downloads, Some(abort))
     }
 }
@@ -207,6 +221,17 @@ impl Case {
 
     fn opens(&self) -> usize {
         self.script.opens.load(Ordering::SeqCst)
+    }
+
+    fn image(&self) -> Option<Vec<f32>> {
+        let service = self.service.clone();
+        returns(move || {
+            service.embed_image(ImageInput {
+                bytes: vec![1, 2, 3],
+                text: None,
+                soft_tokens: None,
+            })
+        })
     }
 
     fn audio(&self, name: &str) -> Option<Vec<Vec<f32>>> {

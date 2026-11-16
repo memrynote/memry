@@ -442,13 +442,14 @@ impl Projector for NoteEmbeddingProjector {
 }
 
 /// `drainDeferredEmbeddings` (`vault/index.ts:996-1015`): once `index` has stopped indexing,
-/// the notes its build or reindex deferred are embedded, in the background. Call it on each
+/// the notes its build or reindex deferred are embedded, in the background, then the images
+/// (whose reconcile also waits for the build, see [`super::image_projector`]). Call it on each
 /// [`IndexReport::Indexing`](crate::notes::index::IndexReport::Indexing). Nothing while it
 /// still indexes, when no vault is open, or when no embedding lane runs.
 pub fn drain_deferred(session: &Session, index: &NoteIndex) {
     if index.indexing().is_none()
         && let Some(runtime) = session.projections()
-        && let Err(error) = runtime.reconcile_named(&[NAME])
+        && let Err(error) = runtime.reconcile_named(&[NAME, super::image_projector::NAME])
     {
         tracing::error!(%error, "deferred embedding drain did not start");
     }

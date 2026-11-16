@@ -8,8 +8,10 @@
 //! A note is as near as its nearest window: its head vector (`vec_notes`) or a later
 //! one (`vec_note_chunks`, `<note_id>#<n>`). Hits under the query floor are dropped.
 //!
-//! The image and voice legs (`semantic.ts:85-122`) join here when their vector
-//! stores land (Steps 24 and 25); their floors are 0.68, shifted down by 0.03.
+//! The image leg (`semantic.ts:85-99`) reads `vec_images` when image embeddings are on:
+//! an image answers for the note that owns it, at its own floor of 0.68, shifted down by
+//! the 0.03 gap to the text floor. The voice leg (`semantic.ts:106-122`) joins here when
+//! its vector store lands (Step 24).
 
 /// A note, journal day or voice memo whose vector is near the query
 /// (`search-semantic-merge.ts:17-21`).
@@ -22,6 +24,8 @@ pub struct SemanticHit {
 
 /// `EMBEDDING_QUERY_SIMILARITY_FLOOR` (`lib/embeddings-constants.ts:42`).
 pub const QUERY_SIMILARITY_FLOOR: f64 = 0.65;
+/// `EMBEDDING_IMAGE_QUERY_SIMILARITY_FLOOR` (`lib/embeddings-constants.ts:57`).
+pub const IMAGE_QUERY_SIMILARITY_FLOOR: f64 = 0.68;
 /// `MIN_QUERY_LENGTH` (`semantic.ts:26`), in UTF-16 units as JavaScript counts.
 const MIN_QUERY_LENGTH: usize = 3;
 /// `NEIGHBOURS` (`semantic.ts:28`): read before the floor applies.
@@ -51,52 +55,77 @@ fn has_operators(text: &str) -> bool {
     operator || quoted
 }
 
-/// Merges the nearest head windows (`notes`, by note id) and later windows
-/// (`chunks`, by `<note_id>#<n>`), each with its cosine distance, into one hit per
-/// note at its best cosine; drops those under the floor; best first, at most
-/// [`NEIGHBOURS`] (`semantic.ts:66-84,100-104`). Ties keep the order seen.
-pub fn best_windows(
-    notes: impl IntoIterator<Item = (String, f64)>,
-    chunks: impl IntoIterator<Item = (String, f64)>,
-) -> Vec<SemanticHit> {
-    let mut hits: Vec<SemanticHit> = Vec::new();
-    let mut consider = |id: &str, cosine: f64| match hits.iter_mut().find(|hit| hit.id == id) {
+/// A note is as near as its nearest window or image (`consider`, `semantic.ts:77-79`).
+fn consider(hits: &mut Vec<SemanticHit>, id: &str, cosine: f64) {
+    match hits.iter_mut().find(|hit| hit.id == id) {
         Some(hit) => hit.cosine = hit.cosine.max(cosine),
         None => hits.push(SemanticHit {
             id: id.to_owned(),
             cosine,
         }),
-    };
+    }
+}
+
+/// Merges the nearest head windows (`notes`, by note id) and later windows
+/// (`chunks`, by `<note_id>#<n>`), each with its cosine distance, into one hit per
+/// note at its best cosine and drops those under the floor; then each image hit
+/// (`images`, by owning note, with its cosine) at or above the image floor counts
+/// for its note, shifted down to the text floor's scale. Best first, at most
+/// [`NEIGHBOURS`] (`semantic.ts:66-104`). Ties keep the order seen.
+pub fn best_windows(
+    notes: impl IntoIterator<Item = (String, f64)>,
+    chunks: impl IntoIterator<Item = (String, f64)>,
+    images: impl IntoIterator<Item = (String, f64)>,
+) -> Vec<SemanticHit> {
+    let mut hits: Vec<SemanticHit> = Vec::new();
     for (id, distance) in notes {
-        consider(&id, 1.0 - distance);
+        consider(&mut hits, &id, 1.0 - distance);
     }
     for (id, distance) in chunks {
         let note = id.rsplit_once('#').map_or(id.as_str(), |(note, _)| note);
-        consider(note, 1.0 - distance);
+        consider(&mut hits, note, 1.0 - distance);
     }
     hits.retain(|hit| hit.cosine >= QUERY_SIMILARITY_FLOOR);
+    let shift = IMAGE_QUERY_SIMILARITY_FLOOR - QUERY_SIMILARITY_FLOOR;
+    for (note, cosine) in images {
+        if cosine >= IMAGE_QUERY_SIMILARITY_FLOOR {
+            consider(&mut hits, &note, cosine - shift);
+        }
+    }
     hits.sort_by(|a, b| b.cosine.total_cmp(&a.cosine));
     hits.truncate(NEIGHBOURS);
     hits
 }
 
 /// The notes and journal days nearest `query` (an embedded search query), best
-/// first: the [`NEIGHBOURS`] nearest of `vec_notes` and of `vec_note_chunks`, merged
-/// by [`best_windows`]. A vector store that fails is logged and answers no hits,
-/// so the search falls back to the index (`semantic.ts:126-129`).
+/// first: the [`NEIGHBOURS`] nearest of `vec_notes` and of `vec_note_chunks`, and of
+/// `vec_images` when `images` is on (`isImageEmbeddingEnabled`), merged by
+/// [`best_windows`]. A note vector store that fails is logged and answers no hits,
+/// so the search falls back to the index (`semantic.ts:126-129`); a failing image
+/// leg leaves the note hits (`semantic.ts:100-103`).
 #[cfg(feature = "vec")]
-pub fn note_hits(index: &rusqlite::Connection, query: &[f32]) -> Vec<SemanticHit> {
+pub fn note_hits(index: &rusqlite::Connection, query: &[f32], images: bool) -> Vec<SemanticHit> {
+    use crate::domain::image_embeddings::nearest_notes;
     use crate::storage::vec::{VecTable, nearest};
     let windows = nearest(index, VecTable::Notes, query, NEIGHBOURS).and_then(|notes| {
         nearest(index, VecTable::NoteChunks, query, NEIGHBOURS).map(|chunks| (notes, chunks))
     });
-    match windows {
-        Ok((notes, chunks)) => best_windows(notes, chunks),
+    let (notes, chunks) = match windows {
+        Ok(windows) => windows,
         Err(error) => {
             eprintln!("memry search: the semantic leg failed, answering from the index: {error}");
-            Vec::new()
+            return Vec::new();
         }
-    }
+    };
+    let image_hits = if images {
+        nearest_notes(index, query, NEIGHBOURS).unwrap_or_else(|error| {
+            eprintln!("memry search: image search failed, answering from note vectors: {error}");
+            Vec::new()
+        })
+    } else {
+        Vec::new()
+    };
+    best_windows(notes, chunks, image_hits)
 }
 
 #[cfg(test)]
@@ -140,6 +169,7 @@ mod tests {
         let hits = best_windows(
             [("near".to_owned(), 0.2), ("far".to_owned(), 0.4)],
             Vec::new(),
+            Vec::new(),
         );
         assert_eq!(hits.len(), 1);
         assert_eq!(hits[0].id, "near");
@@ -156,6 +186,7 @@ mod tests {
                 ("c#1".to_owned(), 0.2),
                 ("c#x#2".to_owned(), 0.15),
             ],
+            Vec::new(),
         );
         let got: Vec<(&str, f64)> = hits.iter().map(|h| (h.id.as_str(), h.cosine)).collect();
         assert_eq!(got.len(), 4);
@@ -169,7 +200,7 @@ mod tests {
     #[test]
     fn at_most_thirty_hits() {
         let notes = (0..40).map(|at| (format!("n{at}"), 0.1 + f64::from(at) / 1000.0));
-        let hits = best_windows(notes, Vec::new());
+        let hits = best_windows(notes, Vec::new(), Vec::new());
         assert_eq!(hits.len(), 30);
         assert_eq!(hits[0], hit("n0", 0.9));
         assert_eq!(hits[29].id, "n29");
@@ -212,7 +243,7 @@ mod tests {
                 put(VecTable::NoteChunks, "chunked#1", axis(4, 0.95))?;
                 let mut query = vec![0.0_f32; EMBEDDING_DIMENSION];
                 query[0] = 1.0;
-                Ok(note_hits(conn, &query))
+                Ok(note_hits(conn, &query, false))
             })
             .expect("note hits");
         let got: Vec<&str> = hits.iter().map(|hit| hit.id.as_str()).collect();
@@ -237,9 +268,86 @@ mod tests {
             .call_blocking(|conn| {
                 conn.execute_batch("DROP TABLE vec_notes;")
                     .map_err(super::super::super::failed)?;
-                Ok(note_hits(conn, &vec![1.0_f32; EMBEDDING_DIMENSION]))
+                Ok(note_hits(conn, &vec![1.0_f32; EMBEDDING_DIMENSION], true))
             })
             .expect("note hits");
         assert!(hits.is_empty());
+    }
+
+    /// `semantic.ts:85-99`: an image counts for its note at or above 0.68, shifted down by
+    /// 0.03, and lifts a note no text window found.
+    #[test]
+    fn an_image_counts_for_its_note_at_its_own_floor_shifted_down() {
+        let hits = best_windows(
+            [("a".to_owned(), 0.3)],
+            Vec::new(),
+            [
+                ("a".to_owned(), 0.80),
+                ("b".to_owned(), 0.70),
+                ("c".to_owned(), 0.6799),
+            ],
+        );
+        let got: Vec<(&str, f64)> = hits.iter().map(|h| (h.id.as_str(), h.cosine)).collect();
+        assert_eq!(got.len(), 2, "{got:?}");
+        assert_eq!(got[0].0, "a");
+        assert!(
+            (got[0].1 - 0.77).abs() < 1e-12,
+            "the image beat the text window"
+        );
+        assert_eq!(got[1].0, "b");
+        assert!((got[1].1 - 0.67).abs() < 1e-12);
+    }
+
+    /// Real vec0 tables: `vec_images` keys answer for the note before their first `/`, only
+    /// when image embeddings are on, and a broken image table leaves the note hits.
+    #[cfg(feature = "vec")]
+    #[test]
+    fn note_hits_reads_image_vectors_when_images_are_on() {
+        use crate::storage::index_db::open_or_rebuild;
+        use crate::storage::test_support::temp_dir;
+        use crate::storage::vec::{EMBEDDING_DIMENSION, to_blob};
+
+        let axis = |at: usize, weight: f32| {
+            let mut vector = vec![0.0_f32; EMBEDDING_DIMENSION];
+            vector[0] = weight;
+            vector[at] = (1.0 - weight * weight).sqrt();
+            vector
+        };
+        let dir = temp_dir("semantic-image-hits");
+        let opened = open_or_rebuild(&dir.path().join("index.db")).expect("open");
+        let (on, off, broken) = opened
+            .db
+            .call_blocking(move |conn| {
+                let put = |table: &str, column: &str, id: &str, vector: Vec<f32>| {
+                    conn.execute(
+                        &format!("INSERT INTO {table} ({column}, embedding) VALUES (?1, ?2)"),
+                        rusqlite::params![id, to_blob(&vector)],
+                    )
+                    .map(|_| ())
+                    .map_err(super::super::super::failed)
+                };
+                put("vec_notes", "note_id", "text", axis(1, 0.9))?;
+                put("vec_images", "image_key", "shot/", axis(2, 0.8))?;
+                put("vec_images", "image_key", "doc/scan.pdf#2", axis(3, 0.75))?;
+                put("vec_images", "image_key", "dim/", axis(4, 0.5))?;
+                let mut query = vec![0.0_f32; EMBEDDING_DIMENSION];
+                query[0] = 1.0;
+                let on = note_hits(conn, &query, true);
+                let off = note_hits(conn, &query, false);
+                conn.execute_batch("DROP TABLE vec_images;")
+                    .map_err(super::super::super::failed)?;
+                Ok((on, off, note_hits(conn, &query, true)))
+            })
+            .expect("note hits");
+        let ids = |hits: &[SemanticHit]| hits.iter().map(|h| h.id.clone()).collect::<Vec<_>>();
+        assert_eq!(ids(&on), ["text", "shot", "doc"]);
+        assert!((on[1].cosine - 0.77).abs() < 1e-6);
+        assert!((on[2].cosine - 0.72).abs() < 1e-6);
+        assert_eq!(ids(&off), ["text"]);
+        assert_eq!(
+            ids(&broken),
+            ["text"],
+            "the image leg failing keeps the note hits"
+        );
     }
 }

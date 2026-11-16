@@ -10,8 +10,8 @@ use std::time::{Duration, Instant};
 use tokio_util::sync::CancellationToken;
 
 use super::{
-    AudioOpened, EMBEDDING_DIMENSION, EmbedError, EmbeddingService, Engine, ModelLoader,
-    ModelProgress, Phase, lock,
+    AudioOpened, EMBEDDING_DIMENSION, EmbedError, EmbeddingService, Engine, ImageInput,
+    ModelLoader, ModelProgress, Phase, lock,
 };
 use crate::embedding::download::Abort;
 
@@ -25,6 +25,7 @@ pub(super) enum Request {
         recording: u64,
         window: u32,
     },
+    EmbedImage(Box<ImageInput>),
 }
 
 pub(super) enum Reply {
@@ -195,6 +196,7 @@ fn serve(
         Request::AudioWindow { recording, window } => loaded
             .embed_audio_window(*recording, *window)
             .map(Reply::Embedded),
+        Request::EmbedImage(image) => loaded.embed_image(image).map(Reply::Embedded),
     };
     outcome.map_err(|error| match error {
         EmbedError::Failed(message) => Fault::Inference(message),

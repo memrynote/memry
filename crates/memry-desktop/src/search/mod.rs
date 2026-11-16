@@ -242,14 +242,18 @@ impl Searcher<'_> {
         tags
     }
 
-    /// `semanticNoteHits` (`semantic.ts:50-131`): the notes near the query, best first. Empty when
-    /// the query is not worth embedding, AI is off, the app has no text model, or the model is
-    /// not loaded, in which case the load starts and this search answers from the index alone.
+    /// `semanticNoteHits` (`semantic.ts:50-131`): the notes near the query, their images
+    /// included when image embeddings are on, best first. Empty when the query is not worth
+    /// embedding, AI is off, the app has no text model, or the model is not loaded, in which case
+    /// the load starts and this search answers from the index alone.
     pub fn semantic_hits(&self, text: &str) -> Vec<SemanticHit> {
         let query = text.trim();
-        if !grouped::semantic::wants(query) || !self.ai_enabled() {
+        if !grouped::semantic::wants(query) {
             return Vec::new();
         }
+        let Some(images) = self.ai_settings() else {
+            return Vec::new();
+        };
         let Some(model) = &self.model else {
             tracing::debug!(
                 scope = "Search:Semantic",
@@ -273,20 +277,23 @@ impl Searcher<'_> {
         };
         self.vault
             .search
-            .semantic_note_hits(&vector)
+            .semantic_note_hits(&vector, images)
             .inspect_err(|error| {
                 tracing::warn!(scope = "Search:Semantic", "vector read failed: {error}")
             })
             .unwrap_or_default()
     }
 
-    fn ai_enabled(&self) -> bool {
+    /// `None` when AI is off or unreadable, else whether image embeddings are on
+    /// (`isImageEmbeddingEnabled`).
+    fn ai_settings(&self) -> Option<bool> {
         features::read(self.settings, Some(self.vault))
-            .map(|settings| settings.enabled)
             .inspect_err(|error| {
                 tracing::warn!(scope = "Search:Semantic", "AI setting unreadable: {error}")
             })
-            .unwrap_or(false)
+            .ok()
+            .filter(|settings| settings.enabled)
+            .map(|settings| settings.image_embeddings)
     }
 }
 

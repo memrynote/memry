@@ -1,9 +1,11 @@
-//! Local text embeddings: the model's owner ([`service`]), its load backoff ([`breaker`]) and
-//! the pinned model download ([`download`]), and the model in the `memry-ml-worker` sidecar
-//! ([`worker`]). Step 23 (#3540).
+//! Local embeddings: the model's owner ([`service`]), its load backoff ([`breaker`]) and
+//! the pinned model download ([`download`]), the model in the `memry-ml-worker` sidecar
+//! ([`worker`]), and the note and image lanes ([`projector`], [`image_projector`]). Step 23
+//! (#3540), Step 25 (#3542).
 
 mod breaker;
 pub mod download;
+pub mod image_projector;
 pub mod projector;
 pub mod service;
 pub mod worker;
