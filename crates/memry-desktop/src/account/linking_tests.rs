@@ -80,6 +80,7 @@ async fn a_new_sign_in_forgets_the_pending_choice() {
         "https://sync.invalid".into(),
         "desktop".into(),
         super::super::device::descriptor("1.0.0"),
+        None,
     )
     .unwrap();
     let linking = Linking::new(session.device_approver());

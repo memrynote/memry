@@ -883,8 +883,9 @@ public protocol AuthSessionProtocol: AnyObject, Sendable {
      * and a lifecycle signal that arrives twice must not be an error the shell
      * has to learn to suppress. From anything but `SignedOut` it reports the
      * state it found and touches nothing, and so it does after the user signed
-     * out in this process until a device registers: a refresh token the
-     * keychain refused to delete is not a session to restore.
+     * out, in this process or an earlier one, until a device registers: a
+     * refresh token the keychain refused to delete is not a session to
+     * restore (#4767).
      *
      * - Returns: the state after the probe.
      * - Throws: `SecureStore` when the store could not be read at all. That is
@@ -988,8 +989,11 @@ open class AuthSession: AuthSessionProtocol, @unchecked Sendable {
      * `client_platform` is `ios | android | desktop` (chapter 11 §11.2) and is
      * validated here: chapter 11 §11.3 says a malformed header opts the client
      * out of the write gate silently, so it never leaves this constructor.
+     *
+     * `sign_out_marker` is the file that keeps a sign-out across a restart (#4767), in the app's
+     * own directory and outside any vault; `None` keeps it in memory only (tests, tools).
      */
-public convenience init(transport: Transport, secureStore: SecureStore, baseUrl: String, clientPlatform: String, device: DeviceDescriptor)throws  {
+public convenience init(transport: Transport, secureStore: SecureStore, baseUrl: String, clientPlatform: String, device: DeviceDescriptor, signOutMarker: String?)throws  {
     let handle =
         try rustCallWithError(FfiConverterTypeApiError_lift) {
         uniffiCallStatus in
@@ -998,7 +1002,8 @@ public convenience init(transport: Transport, secureStore: SecureStore, baseUrl:
         FfiConverterTypeSecureStore_lower(secureStore),
         FfiConverterString.lower(baseUrl),
         FfiConverterString.lower(clientPlatform),
-        FfiConverterTypeDeviceDescriptor_lower(device),uniffiCallStatus
+        FfiConverterTypeDeviceDescriptor_lower(device),
+        FfiConverterOptionString.lower(signOutMarker),uniffiCallStatus
     )
 }
     self.init(unsafeFromHandle: handle)
@@ -1520,8 +1525,9 @@ open func completeProviderSignIn(idToken: String)async throws  -> ProviderSignIn
      * and a lifecycle signal that arrives twice must not be an error the shell
      * has to learn to suppress. From anything but `SignedOut` it reports the
      * state it found and touches nothing, and so it does after the user signed
-     * out in this process until a device registers: a refresh token the
-     * keychain refused to delete is not a session to restore.
+     * out, in this process or an earlier one, until a device registers: a
+     * refresh token the keychain refused to delete is not a session to
+     * restore (#4767).
      *
      * - Returns: the state after the probe.
      * - Throws: `SecureStore` when the store could not be read at all. That is
@@ -35867,7 +35873,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_authsession_complete_provider_sign_in() != 35896) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_authsession_restore() != 25801) {
+    if (uniffi_memry_core_checksum_method_authsession_restore() != 16335) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_authsession_billing_portal_url() != 59389) {
@@ -36956,7 +36962,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_transport_open_socket() != 58000) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_constructor_authsession_new() != 3868) {
+    if (uniffi_memry_core_checksum_constructor_authsession_new() != 14451) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_constructor_devicelink_new() != 32802) {

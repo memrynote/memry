@@ -118,6 +118,7 @@ impl Local {
                     app_version: "1.0.0".into(),
                     vault_id: None,
                 },
+                None,
             )
             .unwrap(),
         );

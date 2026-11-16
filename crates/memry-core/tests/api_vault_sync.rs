@@ -105,6 +105,7 @@ fn session(transport: Arc<FakeTransport>, unlocked: bool) -> Arc<AuthSession> {
             BASE.to_string(),
             "ios".to_string(),
             descriptor(),
+            None,
         )
         .expect("a session"),
     )

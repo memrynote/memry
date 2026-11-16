@@ -2,8 +2,6 @@
 //! answer, which says whether the account is set up and whether it still lists
 //! this device's key (Electron: `ipc/auth-device-handlers.ts:316-339`).
 
-use std::sync::atomic::Ordering;
-
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 
@@ -188,8 +186,11 @@ impl AuthSession {
                 state: state_name(&state),
             });
         };
-        self.signed_out_by_user.store(true, Ordering::SeqCst);
+        self.sign_out_marker.set();
         let cleared = self.tokens.clear();
+        if cleared.is_ok() {
+            self.sign_out_marker.store_cleared();
+        }
         *pending = PendingSignIn::default();
         *state = next.clone();
         cleared?;
@@ -200,7 +201,9 @@ impl AuthSession {
     /// the store with no edge, and [`Self::restore`] does not bring back what a
     /// refused delete left. Rust-only.
     pub fn clear_without_edge(&self) -> Result<(), AuthError> {
-        self.signed_out_by_user.store(true, Ordering::SeqCst);
-        self.tokens.clear()
+        self.sign_out_marker.set();
+        self.tokens.clear()?;
+        self.sign_out_marker.store_cleared();
+        Ok(())
     }
 }

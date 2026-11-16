@@ -52,12 +52,15 @@ enum AuthComposition {
     ///     transport. Production passes the default.
     ///   - keychainItems: substitutes the keychain under the real
     ///     `Keychain`. Production passes the default.
+    ///   - signOutMarker: the file that keeps a sign-out across a relaunch;
+    ///     `nil` keeps it in memory only.
     static func makeSession(
         environment: SyncEnvironment,
         device: DeviceDescriptor,
         emitter: CoreEventEmitter,
         transportConfiguration: URLSessionConfiguration = URLSessionTransport.defaultConfiguration(),
-        keychainItems: any KeychainItemStore = SystemKeychainItemStore()
+        keychainItems: any KeychainItemStore = SystemKeychainItemStore(),
+        signOutMarker: URL? = nil
     ) throws -> AuthSession {
         try makeGraph(
             environment: environment,
@@ -65,7 +68,8 @@ enum AuthComposition {
             emitter: emitter,
             transportConfiguration: transportConfiguration,
             keychainItems: keychainItems,
-            exchangeHold: .none
+            exchangeHold: .none,
+            signOutMarker: signOutMarker
         ).session
     }
 
@@ -81,7 +85,8 @@ enum AuthComposition {
         emitter: CoreEventEmitter,
         transportConfiguration: URLSessionConfiguration = URLSessionTransport.defaultConfiguration(),
         keychainItems: any KeychainItemStore = SystemKeychainItemStore(),
-        exchangeHold: ExchangeHold
+        exchangeHold: ExchangeHold,
+        signOutMarker: URL?
     ) throws -> AuthGraph {
         let transport = URLSessionTransport(
             emitter: emitter,
@@ -94,7 +99,8 @@ enum AuthComposition {
             secureStore: store,
             baseUrl: environment.baseURL,
             clientPlatform: clientPlatform,
-            device: device
+            device: device,
+            signOutMarker: signOutMarker?.path
         )
         // Blocking and does no I/O at all (spec-defect 90), so building it
         // beside the session costs nothing and keeps the whole graph on one

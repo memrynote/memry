@@ -210,6 +210,74 @@ async fn signing_in_again_after_a_refused_sign_out_signs_in() {
 
     assert_eq!(verified.device_id.as_deref(), Some("server-device-2"));
     assert!(s.account.info().signed_in, "account_get_info");
+    assert!(
+        relaunch(&s.script, &s.keychain, &s.config).info().signed_in,
+        "the next launch restores the new session"
+    );
+}
+
+/// The next launch's account service over the same keychain and `memry-config.json`.
+fn relaunch(
+    script: &Arc<Script>,
+    keychain: &Arc<Keychain>,
+    config: &Arc<AppConfig>,
+) -> AccountService {
+    AccountService::new(
+        script.clone(),
+        keychain.clone(),
+        "https://sync.test".into(),
+        device::descriptor("1.0.0"),
+        Arc::new(AppConfig::load(config.path().to_path_buf())),
+    )
+    .unwrap()
+}
+
+/// #4767: the refresh token a refused sign-out left behind does not sign the user back in at
+/// the next launch, and signing in again then lets the launch after it restore.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_refused_sign_out_stays_signed_out_after_a_relaunch() {
+    let s = signed_in();
+    s.script.answer(200, json!({}));
+    s.keychain
+        .refuse_delete(&[SecureStoreKey::MasterKey, SecureStoreKey::RefreshToken]);
+    s.account.sign_out(&s.session).await.unwrap();
+    assert!(s.keychain.has(SecureStoreKey::RefreshToken));
+
+    let next = relaunch(&s.script, &s.keychain, &s.config);
+
+    assert_eq!(next.session().state(), AuthState::SignedOut);
+    assert!(!next.info().signed_in, "account_get_info");
+}
+
+/// A config from before the `sync` key, and Electron's default `sync: {}`, both restore a
+/// session the keychain holds: no marker file, no refusal.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn an_install_without_a_marker_restores_whatever_its_config_holds() {
+    for config_json in ["{}", r#"{"sync":{}}"#] {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("memry-config.json");
+        std::fs::write(&path, config_json).unwrap();
+        let config = Arc::new(AppConfig::load(path));
+        let keychain = Arc::new(Keychain::holding_keys(Some(MASTER)));
+        keychain
+            .set(
+                SecureStoreKey::AccessToken,
+                access_token("server-device").into_bytes(),
+            )
+            .unwrap();
+        keychain
+            .set(SecureStoreKey::RefreshToken, b"refresh".to_vec())
+            .unwrap();
+
+        let account = relaunch(&Arc::new(Script::default()), &keychain, &config);
+
+        assert_eq!(
+            account.session().state(),
+            AuthState::Registered,
+            "{config_json}"
+        );
+        assert!(account.info().signed_in, "{config_json}");
+    }
 }
 
 struct Offline;

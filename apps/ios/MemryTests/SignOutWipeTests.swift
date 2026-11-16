@@ -426,7 +426,8 @@ struct SignOutKeptKeysTests {
     /// The real core over the real `Keychain`, whose deletes all fail. The core
     /// signs out and then reports the store's error; the shell must still
     /// remove the vault content (FR-025) and say that keys stayed, and the
-    /// refresh token left behind must not restore the session it ended.
+    /// refresh token left behind must not restore the session it ended, in
+    /// this process or the next launch's (#4767).
     @Test("a sign-out the keychain refuses still removes the files and reports the keys")
     @MainActor
     func keysThatStayStillWipeTheFiles() async throws {
@@ -441,13 +442,18 @@ struct SignOutKeptKeysTests {
         try Data("content".utf8).write(to: vault.appendingPathComponent("data.db"))
 
         let events = CoreEvents()
-        let session = try AuthComposition.makeSession(
-            environment: .staging,
-            device: AuthComposition.device(appVersion: "0.1.0+t159"),
-            emitter: events.emitter,
-            transportConfiguration: stubbedConfiguration(),
-            keychainItems: items
-        )
+        let marker = try VaultFiles(emitter: events.emitter, root: root).signOutMarker()
+        let launch = {
+            try AuthComposition.makeSession(
+                environment: .staging,
+                device: AuthComposition.device(appVersion: "0.1.0+t159"),
+                emitter: events.emitter,
+                transportConfiguration: stubbedConfiguration(),
+                keychainItems: items,
+                signOutMarker: marker
+            )
+        }
+        let session = try launch()
         #expect(try session.restore() == .registered)
         let service = SignOutService(
             session: session,
@@ -462,5 +468,7 @@ struct SignOutKeptKeysTests {
         #expect(!FileManager.default.fileExists(atPath: vault.path), "the vault content survived")
         #expect(items.has("refresh-token"))
         #expect(try session.restore() == .signedOut)
+        // The next launch builds a new session over the same keychain.
+        #expect(try launch().restore() == .signedOut, "the next launch signed the user back in")
     }
 }

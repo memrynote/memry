@@ -53,6 +53,7 @@ fn session_as(
         BASE.to_string(),
         "ios".to_string(),
         device,
+        None,
     )
     .unwrap()
 }

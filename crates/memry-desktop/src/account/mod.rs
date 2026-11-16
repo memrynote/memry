@@ -181,6 +181,10 @@ pub struct AccountService {
     oauth_start: tokio::sync::Mutex<()>,
 }
 
+/// The core's sign-out marker (#4767), beside `memry-config.json`. Electron writes no such file,
+/// so a profile it left restores as before.
+pub const SIGN_OUT_MARKER: &str = "memry-signed-out";
+
 impl AccountService {
     /// Builds the app's one session over the keychain and the transport, and restores a session
     /// the keychain still holds.
@@ -197,6 +201,13 @@ impl AccountService {
             base_url.clone(),
             "desktop".to_owned(),
             device.clone(),
+            Some(
+                config
+                    .path()
+                    .with_file_name(SIGN_OUT_MARKER)
+                    .to_string_lossy()
+                    .into_owned(),
+            ),
         )?);
         let service = Self {
             linking: linking::Linking::new(session.device_approver()),
