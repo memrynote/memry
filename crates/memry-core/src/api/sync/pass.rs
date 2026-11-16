@@ -190,13 +190,7 @@ impl VaultSync {
             .with_vault(&self.vault_id),
             db: self.db.clone(),
             device_id: self.session.device_id()?,
-            pull: Arc::new(RwLock::new(LastPull {
-                clean: !pulled.has_more
-                    && !pulled.refused
-                    && pulled.corrupt == 0
-                    && pulled.dropped_pages == 0,
-                purged: pulled.purged_documents.clone(),
-            })),
+            pull: Arc::new(RwLock::new(LastPull::of(&pulled, false))),
             admission: None,
         };
         let push = PushCoordinator::new(http, self.db.clone(), self.declaration.clone(), sealer)

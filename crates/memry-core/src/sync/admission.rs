@@ -21,14 +21,20 @@ use crate::api::errors::ApiError;
 pub const START_INTERVAL: Duration = Duration::from_millis(250);
 /// `MAX_ACTIVE`.
 pub const MAX_ACTIVE: usize = 2;
-/// The cooldown of a `429` that named no `Retry-After`.
-pub const DEFAULT_COOLDOWN: Duration = Duration::from_secs(5);
+/// The cooldown of a `429` that named no `Retry-After`
+/// (`packages/sync-client/src/http-errors.ts:51`).
+pub const DEFAULT_COOLDOWN: Duration = Duration::from_secs(60);
+/// The longest `Retry-After` honoured (`MAX_RETRY_AFTER_SECONDS`, `http-errors.ts:43`).
+pub const MAX_COOLDOWN: Duration = Duration::from_secs(300);
 
 #[derive(Default)]
 struct State {
     active: usize,
     next_start: Option<Instant>,
     cooldown_until: Option<Instant>,
+    /// A cooldown left CRDT rows queued: [`CrdtAdmission::take_resume`] says
+    /// when it ended.
+    held: bool,
 }
 
 /// One driver's admission. Cheap to share behind an `Arc`.
@@ -59,6 +65,7 @@ impl CrdtAdmission {
                 if let Some(left) = state.cooldown_until.map(|until| until - now)
                     && !left.is_zero()
                 {
+                    state.held = true;
                     return Err(left);
                 }
                 let spacing = state.next_start.map_or(Duration::ZERO, |at| at - now);
@@ -86,10 +93,34 @@ impl CrdtAdmission {
             .map_or(Duration::ZERO, |until| until - now)
     }
 
-    /// Holds every CRDT push when `error` is a `429` (`holdCrdtPushes`).
+    /// Whether a `429` cooldown holds every CRDT push now. A caller that
+    /// leaves rows queued for it gets [`Self::take_resume`] once it ends.
+    pub fn holding(&self) -> bool {
+        let now = Instant::now();
+        let mut state = self.lock();
+        let holding = state.cooldown_until.is_some_and(|until| until > now);
+        state.held |= holding;
+        holding
+    }
+
+    /// True once after a cooldown that held rows has ended: time for a push.
+    pub fn take_resume(&self) -> bool {
+        let now = Instant::now();
+        let mut state = self.lock();
+        let ended = state.held && state.cooldown_until.is_none_or(|until| until <= now);
+        if ended {
+            state.held = false;
+        }
+        ended
+    }
+
+    /// Holds every CRDT push when `error` is a `429` (`holdCrdtPushes`), for
+    /// its `Retry-After` capped at [`MAX_COOLDOWN`].
     pub fn note(&self, error: &ApiError) {
         if let ApiError::RateLimited { retry_after_s, .. } = error {
-            let wait = retry_after_s.map_or(DEFAULT_COOLDOWN, Duration::from_secs);
+            let wait = retry_after_s.map_or(DEFAULT_COOLDOWN, |s| {
+                Duration::from_secs(s).min(MAX_COOLDOWN)
+            });
             let until = Instant::now() + wait;
             let mut state = self.lock();
             state.cooldown_until = Some(state.cooldown_until.map_or(until, |at| at.max(until)));
@@ -148,6 +179,36 @@ mod tests {
         assert_eq!(admission.admit().await.err(), Some(Duration::from_secs(1)));
         tokio::time::sleep(Duration::from_secs(1)).await;
         assert!(admission.admit().await.is_ok());
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_huge_retry_after_is_capped_without_panicking() {
+        let admission = CrdtAdmission::default();
+        admission.note(&rate_limited(u64::MAX));
+        assert_eq!(admission.cooldown(), Duration::from_secs(300));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_429_without_retry_after_holds_for_a_minute() {
+        let admission = CrdtAdmission::default();
+        admission.note(&ApiError::RateLimited {
+            retry_after_s: None,
+            message: "slow down".to_owned(),
+        });
+        assert_eq!(admission.cooldown(), Duration::from_secs(60));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_cooldown_that_held_rows_asks_for_a_push_once_it_ends() {
+        let admission = CrdtAdmission::default();
+        admission.note(&rate_limited(7));
+        assert!(!admission.take_resume(), "nothing held yet");
+        assert!(admission.holding());
+        tokio::time::sleep(Duration::from_secs(6)).await;
+        assert!(!admission.take_resume(), "still cooling down");
+        tokio::time::sleep(Duration::from_secs(1)).await;
+        assert!(admission.take_resume());
+        assert!(!admission.take_resume(), "once");
     }
 
     #[tokio::test(start_paused = true)]
