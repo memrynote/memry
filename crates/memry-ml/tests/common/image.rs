@@ -3,7 +3,7 @@
 use std::io::Cursor;
 
 use image::{ImageDecoder, ImageFormat, ImageReader};
-use memry_ml::image_prep::is_cmyk_jpeg;
+use memry_media::is_cmyk_jpeg;
 
 /// The divergence class of an input, read from its bytes so the vector file cannot widen it:
 /// JPEG decoding (zune-jpeg against libjpeg-turbo), ICC conversion (moxcms against Little CMS),

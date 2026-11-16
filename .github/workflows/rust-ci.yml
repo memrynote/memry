@@ -287,7 +287,7 @@ jobs:
         if: matrix.part != 'checks'
         env:
           PARTITION: ${{ matrix.partition }}
-        run: cargo nextest run -p memry-core -p memry-desktop -p memry-tauri -p memry-test-kit --no-fail-fast --features memry-core/markdown ${PARTITION:+--partition "hash:$PARTITION"}
+        run: cargo nextest run -p memry-core -p memry-desktop -p memry-media -p memry-tauri -p memry-test-kit --no-fail-fast --features memry-core/markdown ${PARTITION:+--partition "hash:$PARTITION"}
 
       - name: Doctests
         if: matrix.part != 'tests'

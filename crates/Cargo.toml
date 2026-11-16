@@ -4,6 +4,7 @@ members = [
     "memry-core",
     "memry-cli",
     "memry-desktop",
+    "memry-media",
     "memry-ml",
     "memry-ml-worker",
     "memry-test-kit",
@@ -79,6 +80,10 @@ strip = "debuginfo"
 # vectors take minutes in the dev profile tests use. Integer and IEEE float results do not depend
 # on the optimisation level.
 [profile.dev.package.memry-ml]
+opt-level = 3
+[profile.dev.package.memry-media]
+opt-level = 3
+[profile.dev.package.image]
 opt-level = 3
 [profile.dev.package.zune-jpeg]
 opt-level = 3

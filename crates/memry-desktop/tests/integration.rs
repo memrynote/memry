@@ -149,6 +149,8 @@ mod http;
 mod i18n_vectors;
 #[path = "icons.rs"]
 mod icons;
+#[path = "image_processing.rs"]
+mod image_processing;
 #[path = "import_copy.rs"]
 mod import_copy;
 #[path = "index_tag_definitions.rs"]

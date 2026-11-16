@@ -89,7 +89,7 @@ fn limit_failures(file: &Value) -> Vec<String> {
 fn check(name: &str, case: &Value, bytes: &[u8], limits: &Value) -> Option<u8> {
     let expected = &case["expected"];
     let soft_tokens = usize_of(&case["softTokens"]);
-    let decoded = image_prep::decode(bytes).unwrap_or_else(|error| panic!("{name}: {error}"));
+    let decoded = memry_media::decode(bytes).unwrap_or_else(|error| panic!("{name}: {error}"));
     let tensor: PixelTensor = image_prep::pixel_tensor(decoded.clone(), soft_tokens)
         .unwrap_or_else(|error| panic!("{name}: {error}"));
     let want = &expected["decoded"];
