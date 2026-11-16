@@ -138,11 +138,16 @@ enum BlockText {
         let placed = NSAttributedString.Key("memry.placed")
         for span in spans {
             var lower = utf16Offset(in: result, core: span.lowerBound)
-            // A node over text starts at that text, after any node of no
-            // core bytes at the same offset: a tag picked right after a
-            // link would otherwise cover the link (VERIFY-4753).
+            // As the core's `insert_inline`: a node goes in the run holding
+            // the character at its offset, after any node of no core bytes
+            // there, so a tag picked right after a link does not cover it
+            // (VERIFY-4753) and a menu's node lands after it (#4765). An
+            // empty span with no text after those nodes stays before them.
             var next = lower
-            while !span.isEmpty, next < result.length, coreBytes(in: result, at: &next) == 0 { lower = next }
+            var after = lower
+            while next < result.length, coreBytes(in: result, at: &next) == 0 { after = next }
+            let text = after < result.length && (result.string as NSString).character(at: after) != 0xFFFC
+            if !span.isEmpty || text { lower = after }
             let upper = max(lower, utf16Offset(in: result, core: span.upperBound))
             let range = NSRange(location: lower, length: upper - lower)
             let covered = (result.string as NSString).substring(with: range)
