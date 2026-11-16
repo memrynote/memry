@@ -124,6 +124,7 @@ You can also run a check from the menu bar without opening Settings: **MemryNote
 ### Language & Region
 
 - **Language** — UI locale dropdown, 32 languages
+- **Text recognition** — the languages OCR reads in scanned PDFs, photos and screenshots, so search finds their words. English is built in and works offline. The other languages download once from Memry's server and stay on this device. While a language downloads the row shows its progress, and when a download fails it shows the reason and a **Retry** button. See [Text in PDFs and images](/user-guide/search#text-in-pdfs-and-images).
 - **Clock Format** — 12-hour or 24-hour
 - **Date Format** — how calendar dates display throughout the app (`MM/DD/YYYY`, `DD/MM/YYYY`, `YYYY-MM-DD`, or `DD.MM.YYYY`). This preference is per device and isn't synced.
 

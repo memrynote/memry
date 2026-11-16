@@ -727,6 +727,16 @@ export const commands = {
 	 *  not restart are saved and sent, and answer `vault_unwatched`.
 	 */
 	vaultUpdateConfig: (config: VaultConfigPatch) => __TAURI_INVOKE<VaultConfig>("vault_update_config", { config }),
+	/**
+	 *  `vault:delete-from-account`: removes the vault from the account and forgets its local entry;
+	 *  files stay. The open vault is refused.
+	 */
+	vaultDeleteFromAccount: (vaultUuid: string) => __TAURI_INVOKE<null>("vault_delete_from_account", { vaultUuid }),
+	/**
+	 *  `vault:list-account`: refreshes the directory (throttled), then the cached list, which is
+	 *  the last one read when offline.
+	 */
+	vaultListAccount: () => __TAURI_INVOKE<AccountVaultInfo[]>("vault_list_account"),
 	/**  Drops every retained entry, on disk too. */
 	vaultActivityClear: () => __TAURI_INVOKE<null>("vault_activity_clear"),
 	/**  The retained entries, newest first. */
@@ -858,6 +868,16 @@ export type AccountInfoView = {
 	email: string | null,
 	deviceId: string | null,
 	needsRecoveryConfirmation: boolean,
+};
+
+/**  `AccountVaultInfo` of `packages/contracts/src/vault-api.ts`. */
+export type AccountVaultInfo = {
+	vaultUuid: string,
+	name: string | null,
+	itemCount: number,
+	createdAt: number | null,
+	localPath: string | null,
+	suggestedPath: string,
 };
 
 /**  `AddReasonInput`. */

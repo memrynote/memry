@@ -32,6 +32,8 @@ pub(crate) struct Script {
     paths: Mutex<Vec<String>>,
     /// The `authorization` header of each request, by path.
     bearers: Mutex<Vec<(String, Option<String>)>>,
+    /// Method, path and JSON body of each request.
+    requests: Mutex<Vec<(String, String, Value)>>,
 }
 
 #[async_trait::async_trait]
@@ -42,6 +44,15 @@ impl Transport for Script {
             .trim_start_matches("https://sync.test")
             .to_owned();
         self.paths.lock().unwrap().push(path.clone());
+        self.requests.lock().unwrap().push((
+            request.method.clone(),
+            path.clone(),
+            request
+                .body
+                .as_deref()
+                .and_then(|b| serde_json::from_slice(b).ok())
+                .unwrap_or(Value::Null),
+        ));
         self.bearers
             .lock()
             .unwrap()
@@ -76,6 +87,11 @@ impl Script {
             .lock()
             .unwrap()
             .push_back((status, body.to_string()));
+    }
+
+    /// `(method, path, body)` of every request so far.
+    pub(crate) fn requests(&self) -> Vec<(String, String, Value)> {
+        self.requests.lock().unwrap().clone()
     }
 
     pub(crate) fn called(&self, path: &str) -> bool {

@@ -23,8 +23,9 @@ native-transport = []
 # Desktop turns it on; the iOS build keeps it off and links none of it.
 markdown = ["dep:html5ever", "dep:markup5ever", "dep:regex", "dep:url", "dep:uuid"]
 # Vector tables in index.db (`src/storage/vec.rs`), Electron's `sqlite-vec`. Desktop
-# turns it on; the iOS build keeps it off and has no vector search.
-vec = ["dep:sqlite-vec"]
+# turns it on; the iOS build keeps it off and has no vector search. Note vectors embed the
+# text read out of files (`domain::file_text`), which is desktop's, so it needs `markdown`.
+vec = ["dep:sqlite-vec", "markdown"]
 
 [dependencies]
 # Library mode: the proc-macro attributes are the only interface. `tokio` lets

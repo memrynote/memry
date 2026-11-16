@@ -14,7 +14,9 @@ const mocks = vi.hoisted(() => ({
     vaultSetIcon: vi.fn(),
     vaultReindex: vi.fn(),
     vaultGetConfig: vi.fn(),
-    vaultUpdateConfig: vi.fn()
+    vaultUpdateConfig: vi.fn(),
+    vaultListAccount: vi.fn(),
+    vaultDeleteFromAccount: vi.fn()
   },
   listeners: new Map<string, (event: { payload: unknown }) => void>(),
   unlisten: vi.fn()
@@ -144,6 +146,24 @@ describe('vault-service over the vault commands', () => {
     expect(mocks.commands.vaultClose).toHaveBeenCalled()
     expect(mocks.commands.vaultRemove).toHaveBeenCalledWith('/old')
     expect(mocks.commands.vaultSetIcon).toHaveBeenCalledWith('/v/a', 'icon:Book')
+  })
+
+  it('lists and deletes account vaults through their commands', async () => {
+    const listed = [
+      {
+        vaultUuid: 'uuid-a',
+        name: null,
+        itemCount: 3,
+        createdAt: null,
+        localPath: null,
+        suggestedPath: '/p/memry-vault-uuid-a'
+      }
+    ]
+    mocks.commands.vaultListAccount.mockResolvedValue(listed)
+    mocks.commands.vaultDeleteFromAccount.mockResolvedValue(null)
+    expect(await vaultService.listAccount()).toEqual(listed)
+    expect(await vaultService.deleteFromAccount('uuid-a')).toBeUndefined()
+    expect(mocks.commands.vaultDeleteFromAccount).toHaveBeenCalledWith('uuid-a')
   })
 
   it('reads and writes the vault config through its commands', async () => {

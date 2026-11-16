@@ -121,18 +121,50 @@ pub fn set(
         written = Some(next);
         raw
     })
-    .map_err(|error| match error {
+    .map_err(|error| icon_write_error(vault, error))?;
+    written.ok_or_else(|| IconError::Write {
+        path: vault.display().to_string(),
+        message: "the icon was not built".to_owned(),
+    })
+}
+
+/// Takes the account's copy of the icon: `value` (`None` is the default icon) at the account's
+/// change time, nothing pending (`vault-directory.ts:191`). The caller has validated `value`.
+pub fn adopt(vault: &Path, value: Option<&str>, updated_at: i64) -> Result<(), IconError> {
+    config::write_vault_icon(
+        vault,
+        |_| serde_json::json!({ "value": value, "updatedAt": updated_at, "pendingSync": false }),
+    )
+    .map_err(|error| icon_write_error(vault, error))
+}
+
+/// Clears `pendingSync` once the account holds the change made at `updated_at`. A change made
+/// since (another `updatedAt`) stays pending, and the stored value is kept as written, even one
+/// this build cannot draw (`vault-directory.ts:173-179`). Returns whether it cleared.
+pub fn clear_pending(vault: &Path, updated_at: i64) -> Result<bool, IconError> {
+    config::update(vault, |map| {
+        let Some(Value::Object(raw)) = map.get_mut(config::VAULT_ICON_KEY) else {
+            return false;
+        };
+        let same_change = stored_from(&Value::Object(raw.clone()))
+            .is_some_and(|stored| stored.updated_at == updated_at);
+        if same_change {
+            raw.insert("pendingSync".into(), Value::Bool(false));
+        }
+        same_change
+    })
+    .map_err(|error| icon_write_error(vault, error))
+}
+
+fn icon_write_error(vault: &Path, error: ConfigError) -> IconError {
+    match error {
         ConfigError::Unreadable { path, message } => IconError::Unreadable { path, message },
         ConfigError::PermissionDenied => IconError::Write {
             path: vault.display().to_string(),
             message: error.to_string(),
         },
         ConfigError::Write { path, message } => IconError::Write { path, message },
-    })?;
-    written.ok_or_else(|| IconError::Write {
-        path: vault.display().to_string(),
-        message: "the icon was not built".to_owned(),
-    })
+    }
 }
 
 #[cfg(test)]

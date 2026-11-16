@@ -20,7 +20,8 @@ use tokio::sync::broadcast::error::RecvError;
 use crate::commands::error::CommandError;
 use crate::events::{
     AuthSessionExpiredEvent, SessionExpiredReason, SyncDeviceRemovedEvent,
-    SyncLinkingApprovedEvent, SyncLinkingRequestedEvent, SyncVaultBindingChangedEvent, broadcast,
+    SyncLinkingApprovedEvent, SyncLinkingRequestedEvent, SyncVaultBindingChangedEvent,
+    VaultListChangedEvent, broadcast,
 };
 use crate::power::PowerMonitor;
 use crate::shell::services;
@@ -57,6 +58,7 @@ fn start(app: &AppHandle<Wry>) -> Result<(), CommandError> {
 
     let bindings = Arc::new(OpenVaultBinding::default());
     let binding_app = app.clone();
+    let list_app = app.clone();
     let wiring = Arc::new(SyncWiring {
         runtime,
         account,
@@ -72,6 +74,7 @@ fn start(app: &AppHandle<Wry>) -> Result<(), CommandError> {
         on_binding: Arc::new(move |state: &BindingState| {
             broadcast(&binding_app, SyncVaultBindingChangedEvent(state.into()));
         }),
+        on_vault_list_changed: Arc::new(move || broadcast(&list_app, VaultListChangedEvent)),
     });
     app.manage(bindings);
     app.manage(wiring);

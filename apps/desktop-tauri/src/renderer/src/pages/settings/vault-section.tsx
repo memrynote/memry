@@ -102,7 +102,7 @@ export function VaultSettings({ focusTarget, focusRequestId }: VaultSettingsProp
     if (!vaultToDelete) return
     setDeleting(true)
     try {
-      await window.api.vault.deleteFromAccount(vaultToDelete.uuid)
+      await vaultService.deleteFromAccount(vaultToDelete.uuid)
       setVaultToDelete(null)
       await refreshAccountVaults()
     } catch (err) {

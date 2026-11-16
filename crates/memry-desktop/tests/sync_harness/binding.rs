@@ -26,7 +26,7 @@ use super::{Online, Server, device_key};
 
 const OTHER: &str = "Harness-Other@Example.com";
 
-fn wiring(
+pub(super) fn wiring(
     account: &Arc<AccountService>,
     store: &Arc<dyn SecureStore>,
     session: &Session,
@@ -45,11 +45,12 @@ fn wiring(
         on_status: Arc::new(|_| {}),
         bindings: Arc::new(OpenVaultBinding::default()),
         on_binding: Arc::new(move |state| seen.lock().unwrap().push(state.clone())),
+        on_vault_list_changed: Arc::new(|| {}),
     });
     (wiring, changes)
 }
 
-async fn attach(session: &Session, wiring: &Arc<SyncWiring>) {
+pub(super) async fn attach(session: &Session, wiring: &Arc<SyncWiring>) {
     let session = session.clone();
     let factory = wiring.clone().factory();
     tokio::task::spawn_blocking(move || session.attach_sync(factory))
@@ -57,14 +58,14 @@ async fn attach(session: &Session, wiring: &Arc<SyncWiring>) {
         .unwrap();
 }
 
-async fn detach(session: &Session) {
+pub(super) async fn detach(session: &Session) {
     let session = session.clone();
     tokio::task::spawn_blocking(move || session.detach_sync())
         .await
         .unwrap();
 }
 
-async fn wait_for_binding(wiring: &SyncWiring, want: &BindingState) {
+pub(super) async fn wait_for_binding(wiring: &SyncWiring, want: &BindingState) {
     for _ in 0..120 {
         if wiring.bindings.state() == *want {
             return;
@@ -78,7 +79,7 @@ async fn wait_for_binding(wiring: &SyncWiring, want: &BindingState) {
 }
 
 /// A new account on `store`, set up and confirmed, on a paid plan, and its phrase.
-async fn new_account(
+pub(super) async fn new_account(
     server: &mut Server,
     store: Arc<dyn SecureStore>,
     email: &str,
@@ -100,7 +101,7 @@ async fn set_up(server: &mut Server, account: &AccountService, email: &str) -> S
     phrase
 }
 
-fn open_session(dir: &tempfile::TempDir) -> Session {
+pub(super) fn open_session(dir: &tempfile::TempDir) -> Session {
     let registry = VaultRegistry::new(Arc::new(AppConfig::load(dir.path().join("vaults.json"))));
     let session = Session::new(registry);
     session.create(dir.path(), "Mine").expect("a vault");

@@ -189,6 +189,19 @@ impl Session {
                 None
             }
         };
+        if stored.is_some() {
+            let server_id = vault.server_vault_id().unwrap_or_else(|error| {
+                tracing::warn!(%error, "the vault's server id could not be read");
+                None
+            });
+            if let Err(error) =
+                self.inner
+                    .registry
+                    .stamp_vault_uuid(&path_text, server_id.as_deref(), &vault.id())
+            {
+                tracing::warn!(%error, "the vault id was not stamped on the registry entry");
+            }
+        }
 
         let view = OpenVault {
             path: path.to_path_buf(),

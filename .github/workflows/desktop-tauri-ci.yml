@@ -385,6 +385,26 @@ jobs:
           VITE_MEMRY_E2E: '1'
         run: pnpm --filter @memry/desktop-tauri exec tauri build --debug --no-bundle --features e2e --config src-tauri/tauri.e2e.conf.json --target ${{ matrix.triple }}
 
+      # File text (#3542 Step 25): the arm64 e2e legs also build the `memry-ml-worker` sidecar (pdf
+      # and ocr, without the embedding model, so no ONNX Runtime), fetch pdfium and ship both with
+      # the app, so the Windows and Ubuntu VMs run PDF and OCR and the windows-arm64 specs read
+      # attachments. The Tesseract cmake build is cached under the key rust-ci.yml shares.
+      - name: Tesseract sources
+        if: matrix.variant == 'e2e' && contains(fromJSON('["windows-arm64","linux-arm64"]'), matrix.platform)
+        uses: ./.github/actions/tesseract-sources
+        with:
+          save: ${{ github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2') }}
+
+      - name: Build memry-ml-worker and fetch pdfium
+        if: matrix.variant == 'e2e' && contains(fromJSON('["windows-arm64","linux-arm64"]'), matrix.platform)
+        run: |
+          (cd crates && cargo build -p memry-ml-worker --bin memry-ml-worker --no-default-features --features pdf,ocr --target ${{ matrix.triple }})
+          case "${{ matrix.platform }}" in
+            windows-arm64) target=win32-arm64 ;;
+            *) target=linux-arm64 ;;
+          esac
+          node scripts/fetch-pdfium.mjs --target "$target"
+
       - name: Locate binary
         id: binary
         run: |
@@ -418,12 +438,30 @@ jobs:
         if: matrix.variant == 'debug' && contains(fromJSON('["macos-arm64","windows-x64","linux-x64"]'), matrix.platform)
         run: node apps/desktop-tauri/scripts/smoke-launch.mjs "${{ steps.binary.outputs.path }}" --expect-no-driver
 
+      # The artifact stays flat: the app and the worker at the top, `resources/pdfium` and
+      # `resources/tessdata` under it, where a debug build copied off the runner reads them
+      # (`debug_resource_dir`, ml_worker.rs).
+      - name: Stage the app with its file text files
+        id: stage
+        if: matrix.variant == 'e2e' && contains(fromJSON('["windows-arm64","linux-arm64"]'), matrix.platform)
+        run: |
+          dir="$RUNNER_TEMP/app-artifact"
+          bin="${{ steps.binary.outputs.path }}"
+          mkdir -p "$dir/resources"
+          cp "$bin" "$dir/"
+          worker=memry-ml-worker
+          if [ "${{ runner.os }}" = Windows ]; then worker=memry-ml-worker.exe; fi
+          cp "$(dirname "$bin")/$worker" "$dir/"
+          cp -R apps/desktop-tauri/src-tauri/resources/pdfium apps/desktop-tauri/src-tauri/resources/tessdata "$dir/resources/"
+          ls -R "$dir" | head -30
+          echo "dir=$dir" >> "$GITHUB_OUTPUT"
+
       - name: Upload app
         if: matrix.shard != 2
         uses: actions/upload-artifact@v4
         with:
           name: memry-tauri-${{ matrix.variant }}-${{ matrix.platform }}
-          path: ${{ steps.binary.outputs.path }}
+          path: ${{ steps.stage.outputs.dir || steps.binary.outputs.path }}
           retention-days: 14
 
       - name: Harness unit tests
@@ -451,6 +489,8 @@ jobs:
         env:
           MEMRY_E2E_BINARY: ${{ github.workspace }}/${{ steps.binary.outputs.path }}
           MEMRY_E2E_WER_DUMPS: ${{ runner.os == 'Windows' && format('{0}\wer-dumps', runner.temp) || '' }}
+          # This leg builds the worker and pdfium: a missing one fails the attachment-text specs.
+          MEMRY_E2E_FILE_TEXT: ${{ matrix.platform == 'windows-arm64' && '1' || '' }}
           # One app per vCPU: 4 on the Windows runners, 2 on the 3-vCPU macOS runner.
           MEMRY_E2E_WORKERS: ${{ runner.os == 'Windows' && '4' || '2' }}
           SHARD: ${{ matrix.shard && format('--shard={0}/2', matrix.shard) || '' }}

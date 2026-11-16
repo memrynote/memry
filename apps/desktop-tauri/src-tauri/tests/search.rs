@@ -334,7 +334,7 @@ fn garden_near_everything(f: &Fixture) -> String {
     let search = f.mocked.session().current().unwrap().search;
     let note = search.embeddable_note(&garden).unwrap().unwrap();
     search
-        .store_note_embeddings(&note, "hash", vec![unit()], unit())
+        .store_note_embeddings(&note, Some("hash"), vec![unit()], unit())
         .unwrap();
     garden
 }

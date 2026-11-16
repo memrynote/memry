@@ -103,7 +103,7 @@ function newestStatus(wire: WireStatus): VaultStatus {
 
 /**
  * Vault service for the renderer. The picker, the registry, the lifecycle and the config go
- * to the Rust `vault_*` commands; embeds, the sandbox and the account calls stay on
+ * to the Rust `vault_*` commands; embeds, the sandbox and the account vault download stay on
  * `window.api.vault` until Steps 12, 19 and 32 port them.
  */
 export const vaultService: VaultClientAPI = {
@@ -197,7 +197,7 @@ export const vaultService: VaultClientAPI = {
    * List all vaults in the signed-in account (local + cloud-only).
    */
   listAccount: (): Promise<AccountVaultInfo[]> => {
-    return window.api.vault.listAccount()
+    return commands.vaultListAccount()
   },
 
   /**
@@ -211,7 +211,7 @@ export const vaultService: VaultClientAPI = {
    * Purge a vault from the signed-in account. Never touches local files.
    */
   deleteFromAccount: (vaultUuid: string): Promise<void> => {
-    return window.api.vault.deleteFromAccount(vaultUuid)
+    return commands.vaultDeleteFromAccount(vaultUuid).then(() => undefined)
   },
 
   /**

@@ -36,11 +36,15 @@ vi.mock('@/components/settings/vault-activity', () => ({
 }))
 
 import { VaultSettings } from './vault-section'
+import { vaultService } from '@/services/vault-service'
+
+const deleteFromAccount = vi.spyOn(vaultService, 'deleteFromAccount')
 
 describe('VaultSettings account vaults', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     resetVaultSwitchState()
+    deleteFromAccount.mockResolvedValue(undefined)
     mocks.accountVaults = [
       {
         vaultUuid: 'uuid-active',
@@ -74,7 +78,7 @@ describe('VaultSettings account vaults', () => {
     render(<VaultSettings />)
     fireEvent.click(await screen.findByLabelText('Delete Old from account'))
     fireEvent.click(screen.getByText('vault.accountVaults.deleteConfirm'))
-    await waitFor(() => expect(window.api.vault.deleteFromAccount).toHaveBeenCalledWith('uuid-old'))
+    await waitFor(() => expect(deleteFromAccount).toHaveBeenCalledWith('uuid-old'))
   })
 
   it('disables delete for the active vault', async () => {
@@ -87,7 +91,7 @@ describe('VaultSettings account vaults', () => {
     render(<VaultSettings />)
     fireEvent.click(await screen.findByLabelText('Delete Old from account'))
     fireEvent.click(screen.getByText('button.cancel'))
-    expect(window.api.vault.deleteFromAccount).not.toHaveBeenCalled()
+    expect(deleteFromAccount).not.toHaveBeenCalled()
   })
 
   it('loads the account vault list on mount', async () => {
