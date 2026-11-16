@@ -129,10 +129,17 @@ const CALENDAR: &str = "
     VALUES ('src-1', 'google', 'calendar', 'work@example.com', 'tok-1');";
 
 /// A `data.db` file as a build running `list` left it at `version`, with rows in it.
+///
+/// In WAL with `synchronous` NORMAL, as every build's writer leaves `data.db`
+/// (`pragmas::configure_writer`). SQLite's default rollback journal costs about 90 ms a commit
+/// on the Windows runners, two commits a migration, which ran these tests past nextest's
+/// 300 s limit (#4768).
 fn file_at(list: &[Migration], version: u32) -> (TempDir, PathBuf, Vec<&'static str>) {
     let dir = temp_dir("numbering");
     let path = dir.path().join("data.db");
     let mut conn = Connection::open(&path).expect("create");
+    conn.execute_batch("PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;")
+        .expect("a writer's journal");
     assert_eq!(
         run(&mut conn, &list[..version as usize]).expect("migrate"),
         version
@@ -358,61 +365,4 @@ fn a_file_under_this_numbering_is_never_renumbered() {
             reopen_keeps_a_later_cursor(&path, conn, &what);
         }
     }
-}
-
-/// PROBE #4768, removed before review: where one iteration's time goes, per platform.
-#[test]
-fn probe_4768_phase_timings() {
-    use std::time::Instant;
-    let mut out = String::new();
-    let ms = |t: Instant| t.elapsed().as_secs_f64() * 1000.0;
-
-    // One commit on a bare connection, rollback journal (SQLite defaults), as `file_at` makes them.
-    for (label, setup) in [
-        ("bare default", ""),
-        (
-            "bare WAL+NORMAL",
-            "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;",
-        ),
-    ] {
-        let dir = temp_dir("probe");
-        let conn = Connection::open(dir.path().join("p.db")).expect("open");
-        conn.execute_batch(setup).expect("setup");
-        conn.execute_batch("CREATE TABLE t (x)").expect("t");
-        let t = Instant::now();
-        for i in 0..50 {
-            conn.execute_batch(&format!("INSERT INTO t VALUES ({i})"))
-                .expect("insert");
-        }
-        out += &format!("{label}: 50 commits {:.0} ms\n", ms(t));
-    }
-
-    let list = earlier_feat_list(13);
-    for version in [13u32, 17, 22] {
-        let t = Instant::now();
-        let (dir, path, seeded) = file_at(&list, version);
-        let fixture = ms(t);
-        let t = Instant::now();
-        drop(open_data(&path).expect("open"));
-        let open = ms(t);
-        let t = Instant::now();
-        let conn = Connection::open(&path).expect("a reader");
-        let _ = fresh_schema();
-        let fresh = ms(t);
-        let t = Instant::now();
-        drop(conn);
-        drop(open_data(&path).expect("reopen"));
-        let reopen = ms(t);
-        let t = Instant::now();
-        drop(dir);
-        let rm = ms(t);
-        out += &format!(
-            "v{version} ({} seeded): file_at {fixture:.0} | open_data {open:.0} | fresh_schema {fresh:.0} | reopen {reopen:.0} | rm dir {rm:.0} ms\n",
-            seeded.len()
-        );
-    }
-    let t = Instant::now();
-    earlier_feat_file_opens(&list, 13, 22, true);
-    out += &format!("one full iteration (13, 22, crashed): {:.0} ms\n", ms(t));
-    panic!("PROBE-4768\n{out}");
 }
