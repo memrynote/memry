@@ -119,7 +119,7 @@ impl PushCoordinator {
             let Some(update) = row.payload else {
                 // A CRDT row with no bytes is the one row that cannot be
                 // rebuilt from anywhere: the update is the change.
-                self.retire_one(row.id, "crdt outbox row carries no update bytes")
+                self.retire_rejected(doc_id, row.id, "crdt outbox row carries no update bytes")
                     .await?;
                 report.retired += 1;
                 continue;
@@ -140,7 +140,7 @@ impl PushCoordinator {
                     sent.push(id);
                 }
                 Err(error) => {
-                    self.retire_one(id, &error.to_string()).await?;
+                    self.retire_rejected(doc_id, id, &error.to_string()).await?;
                     report.retired += 1;
                 }
             }
@@ -148,7 +148,6 @@ impl PushCoordinator {
         if report.retired > retired_before {
             // Dropped for good: only a snapshot of the whole document carries
             // them now (`note-body-outbox.ts:323`).
-            self.mark(doc_id, PushEvent::Rejected).await?;
             if let Some(pacing) = &self.crdt_pacing {
                 pacing.requests.request(doc_id, now_ms());
             }
@@ -288,6 +287,22 @@ impl PushCoordinator {
     }
 
     /// Records what this wave did with `doc_id`'s body ([`body_state`]).
+    /// §A.2's retire for one CRDT row, and its document's refusal in the same
+    /// transaction: a refusal written after the retire commits is lost for
+    /// good when its write fails, since the row it would retry from is gone.
+    async fn retire_rejected(&self, doc_id: &str, id: i64, reason: &str) -> Result<(), PushError> {
+        let (doc, reason) = (doc_id.to_owned(), reason.to_owned());
+        self.db
+            .call(move |conn| {
+                let tx = conn.transaction().map_err(storage_failed)?;
+                outbox::retire_in(&tx, &[id], &reason)?;
+                body_state::record(&tx, &doc, PushEvent::Rejected, now_ms())?;
+                tx.commit().map_err(storage_failed)
+            })
+            .await?;
+        Ok(())
+    }
+
     async fn mark(&self, doc_id: &str, event: PushEvent) -> Result<(), PushError> {
         let doc = doc_id.to_owned();
         let at = now_ms();

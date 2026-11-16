@@ -29,7 +29,7 @@
 //! individually if the batch is rejected, and the server acks CRDT rows
 //! against the sequence it assigned to each specific update.
 
-use rusqlite::{Connection, params};
+use rusqlite::{Connection, Transaction, params};
 
 use crate::api::errors::StorageError;
 use crate::protocol::crdt_envelope::{MAX_REQUEST_PAYLOAD_CHARS, max_payload_chars};
@@ -505,19 +505,24 @@ pub fn defer(
 /// than a silent disappearance.
 pub fn retire(conn: &Connection, ids: &[i64], reason: &str) -> Result<(), StorageError> {
     let transaction = conn.unchecked_transaction().map_err(failed)?;
+    retire_in(&transaction, ids, reason)?;
+    transaction.commit().map_err(failed)?;
+    Ok(())
+}
+
+/// [`retire`] inside the caller's open transaction, for a caller that records
+/// something else about the retired rows in the same commit.
+pub fn retire_in(tx: &Transaction, ids: &[i64], reason: &str) -> Result<(), StorageError> {
     let truncated = truncate(reason);
     for id in ids {
-        transaction
-            .execute(
-                "UPDATE outbox SET last_error = ?2 WHERE id = ?1",
-                params![id, truncated],
-            )
-            .map_err(failed)?;
-        transaction
-            .execute("DELETE FROM outbox WHERE id = ?1", params![id])
+        tx.execute(
+            "UPDATE outbox SET last_error = ?2 WHERE id = ?1",
+            params![id, truncated],
+        )
+        .map_err(failed)?;
+        tx.execute("DELETE FROM outbox WHERE id = ?1", params![id])
             .map_err(failed)?;
     }
-    transaction.commit().map_err(failed)?;
     Ok(())
 }
 

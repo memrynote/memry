@@ -261,6 +261,52 @@ fn the_unsent_list_is_capped_but_keeps_the_total() {
 }
 
 #[test]
+fn a_deleted_note_or_journal_day_drops_out_of_every_read() {
+    let vault = Vault::new();
+    vault.note("gone", false);
+    vault.with(|conn| {
+        conn.execute(
+            "INSERT INTO journal_entries (id, date) VALUES ('day', '2026-01-02')",
+            [],
+        )
+        .map_err(failed)?;
+        conn.execute(
+            "INSERT INTO note_files (note_id, path, local_only, indexed_at)
+             VALUES ('day', 'journal/2026-01-02.md', 0, 0)",
+            [],
+        )
+        .map_err(failed)?;
+        Ok(())
+    });
+    for id in ["gone", "day"] {
+        vault.queue(id, BODY, T0);
+        vault.queue(id, RECORD, T0);
+        vault.record(id, PushEvent::Rejected, T0);
+    }
+    assert_eq!(
+        vault.unsent(MAX_UNSENT_NOTES).total,
+        2,
+        "both listed while live"
+    );
+    assert_eq!(vault.with(large_note_candidates).len(), 2);
+
+    vault.with(|conn| {
+        conn.execute("UPDATE notes SET deleted_at = 1 WHERE id = 'gone'", [])
+            .map_err(failed)?;
+        conn.execute(
+            "UPDATE journal_entries SET deleted_at = 1 WHERE id = 'day'",
+            [],
+        )
+        .map_err(failed)?;
+        Ok(())
+    });
+
+    assert_eq!((vault.state("gone"), vault.state("day")), (None, None));
+    assert_eq!(vault.unsent(MAX_UNSENT_NOTES).total, 0);
+    assert!(vault.with(large_note_candidates).is_empty());
+}
+
+#[test]
 fn a_record_keeps_earlier_columns() {
     let vault = Vault::new();
     vault.record("n1", PushEvent::Sent, T0);

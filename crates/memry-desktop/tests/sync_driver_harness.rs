@@ -15,6 +15,7 @@
 //! | a reconnect a day after the last pull reads the feed again | Electron `reconnectSync`, the driver's pass |
 //! | a task whose project a peer deleted is deleted and pushed | orphan repair, the driver's pass      |
 //! | a body owed a per-note pull arrives in the driver's pass | `body_step`, `note_body_sync` confirmed |
+//! | a pass whose pull failed leaves every body debt owed   | `driver/bodies.rs` skip rule          |
 
 #![cfg(feature = "harness")]
 
@@ -23,15 +24,16 @@ mod device_key;
 #[path = "harness_server/mod.rs"]
 mod harness_server;
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use harness_server::{NoPins, Online, Server};
 use memry_core::api::auth::{AuthSession, DeviceDescriptor};
-use memry_core::api::errors::{StorageError, SyncError};
+use memry_core::api::errors::{StorageError, SyncError, TransportError};
 use memry_core::api::projects::ProjectDraft;
 use memry_core::api::tasks_write::NewTaskInput;
 use memry_core::api::vault::Vault;
@@ -43,6 +45,9 @@ use memry_core::domain::{canvas_folder, home_page, sticky_draft, tag_mint};
 use memry_core::protocol::auth::DevicePlatform;
 use memry_core::seams::reachability::{Reachability, ReachabilityObserver, Reachable};
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
+use memry_core::seams::transport::{
+    HttpRequest, HttpResponse, SocketHandle, SocketListener, SocketRequest, Transport,
+};
 use memry_core::storage::Db;
 use memry_core::sync::body_debt;
 use memry_core::sync::driver::progress::{
@@ -80,6 +85,15 @@ struct Local {
 impl Local {
     /// A vault signed in as the server's device `boot` (the bootstrap's device shape).
     fn new(url: &str, boot: &Value) -> Self {
+        Self::over(
+            url,
+            boot,
+            app_transport(&["127.0.0.1".to_owned()], Arc::new(NoPins)),
+        )
+    }
+
+    /// [`Local::new`] whose session talks over `transport`.
+    fn over(url: &str, boot: &Value, transport: Arc<dyn Transport>) -> Self {
         let secret = BASE64
             .decode(boot["signingSecretKey"].as_str().unwrap())
             .unwrap();
@@ -106,7 +120,6 @@ impl Local {
             Some(core.search().unwrap()),
         ));
 
-        let transport = app_transport(&["127.0.0.1".to_owned()], Arc::new(NoPins));
         let session = Arc::new(
             AuthSession::new(
                 transport,
@@ -167,7 +180,16 @@ impl Device {
     }
 
     async fn bound(url: &str, boot: &Value, vault: &str, seeds: Vec<Arc<dyn PassSeed>>) -> Self {
-        let local = Local::new(url, boot);
+        Self::from_local(Local::new(url, boot), vault, seeds).await
+    }
+
+    /// [`Device::new`] whose session talks over `transport`.
+    async fn over(server: &Server, at: usize, transport: Arc<dyn Transport>) -> Self {
+        let local = Local::over(&server.url, &server.devices[at], transport);
+        Self::from_local(local, VAULT, Vec::new()).await
+    }
+
+    async fn from_local(local: Local, vault: &str, seeds: Vec<Arc<dyn PassSeed>>) -> Self {
         local.core.bind_server_vault(vault).unwrap();
         let driver = local.driver(seeds).await.expect("the driver");
         let Local {
@@ -1239,4 +1261,81 @@ async fn a_body_owed_a_per_note_pull_arrives_in_the_drivers_pass() {
         .unwrap();
     assert!(!owed.contains(&note), "the debt settled: {owed:?}");
     assert!(updates > 0, "the body is back on B");
+}
+
+/// The app transport, answering every `/sync/changes` with a 500 while `fail` is set and
+/// counting every body GET (`/sync/crdt/...`).
+struct FailPulls {
+    inner: Arc<dyn Transport>,
+    fail: AtomicBool,
+    body_gets: AtomicUsize,
+}
+
+#[async_trait::async_trait]
+impl Transport for FailPulls {
+    async fn send(&self, request: HttpRequest) -> Result<HttpResponse, TransportError> {
+        if self.fail.load(Ordering::SeqCst) && request.url.contains("/sync/changes") {
+            return Ok(HttpResponse {
+                status: 500,
+                headers: HashMap::new(),
+                body: br#"{"error":{"code":"INTERNAL_ERROR","message":"harness"}}"#.to_vec(),
+            });
+        }
+        if request.method == "GET" && request.url.contains("/sync/crdt/") {
+            self.body_gets.fetch_add(1, Ordering::SeqCst);
+        }
+        self.inner.send(request).await
+    }
+
+    fn open_socket(
+        &self,
+        request: SocketRequest,
+        listener: Arc<dyn SocketListener>,
+    ) -> Result<Arc<dyn SocketHandle>, TransportError> {
+        self.inner.open_socket(request, listener)
+    }
+}
+
+/// A pass whose pull failed runs no body step (`driver/bodies.rs`): no body GET and the debt
+/// stays owed. The next pass that reaches the server settles it.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_pass_whose_pull_failed_leaves_every_body_debt_owed() {
+    let server = Server::start();
+    let a = Device::new(&server, 0).await;
+    let pulls = Arc::new(FailPulls {
+        inner: app_transport(&["127.0.0.1".to_owned()], Arc::new(NoPins)),
+        fail: AtomicBool::new(false),
+        body_gets: AtomicUsize::new(0),
+    });
+    let b = Device::over(&server, 1, pulls.clone()).await;
+    let note = write_bodies(&a, 0..1).remove(0);
+    for _ in 0..3 {
+        a.sync().await;
+    }
+    b.sync().await;
+    assert!(b.stored("note", &note).is_some());
+    let owed = || b.db().call_blocking(|conn| body_debt::owed(conn)).unwrap();
+    let doc = note.clone();
+    b.db()
+        .call_blocking(move |conn| body_debt::owe(conn, &doc))
+        .unwrap();
+
+    pulls.fail.store(true, Ordering::SeqCst);
+    let before = pulls.body_gets.load(Ordering::SeqCst);
+    let pass = b.sync().await;
+    assert!(pass.pull_error.is_some(), "the pull failed: {pass:?}");
+    assert_eq!(
+        pulls.body_gets.load(Ordering::SeqCst),
+        before,
+        "no body GET"
+    );
+    assert!(owed().contains(&note), "the debt stays owed");
+
+    pulls.fail.store(false, Ordering::SeqCst);
+    b.sync().await;
+    assert!(
+        pulls.body_gets.load(Ordering::SeqCst) > before,
+        "the next pass pulls the body"
+    );
+    assert!(!owed().contains(&note), "the debt settled");
 }

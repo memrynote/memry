@@ -172,6 +172,38 @@ async fn a_dropped_row_records_a_refusal_and_asks_for_a_snapshot() {
 }
 
 #[tokio::test]
+async fn a_refusal_that_cannot_be_recorded_keeps_the_row_until_it_can() {
+    let db = scratch_db();
+    queue(&db, "n1", 16);
+    let exec = |sql: &'static str| {
+        db.call_blocking(move |conn| {
+            conn.execute_batch(sql).map_err(|e| StorageError::Failed {
+                what: e.to_string(),
+            })
+        })
+        .expect(sql);
+    };
+    exec(
+        "CREATE TRIGGER no_body_state BEFORE INSERT ON note_body_sync
+         BEGIN SELECT RAISE(ABORT, 'note_body_sync is not writable'); END",
+    );
+
+    let wave = coordinator(&db, FakeTransport::new(vec![]), Arc::new(Unsealable))
+        .drain_wave()
+        .await;
+    assert!(wave.is_err(), "the refusal could not be recorded");
+    assert_eq!(outbox_rows(&db), 1, "the row waits with its refusal");
+
+    exec("DROP TRIGGER no_body_state");
+    coordinator(&db, FakeTransport::new(vec![]), Arc::new(Unsealable))
+        .drain_wave()
+        .await
+        .expect("the wave");
+    assert!(pushes(&db).rejected.is_some());
+    assert_eq!(outbox_rows(&db), 0);
+}
+
+#[tokio::test]
 async fn an_oversized_update_records_the_snapshot_that_carried_it_or_the_failure() {
     let oversized = MAX_UPDATE_PAYLOAD_CHARS / 4 * 3 + 3;
 
