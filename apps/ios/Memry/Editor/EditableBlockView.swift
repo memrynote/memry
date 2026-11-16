@@ -72,27 +72,16 @@ struct EditableBlockView: UIViewRepresentable {
         // themselves re-renders on every update. That re-render moves the
         // caret, which reopens the `#` menu, which updates the view again.
         let traits = view.traitCollection
-        let changed = field.block != block || field.style.font != Self.font(for: role) || field.alignment != alignment
+        let restyled = field.style.font != Self.font(for: role) || field.alignment != alignment
             || field.style.ink.resolvedColor(with: traits) != nextInk.resolvedColor(with: traits)
         let moved = field.block.id != block.id
-        // The core's echo of a text this row committed before its last
-        // commit (`superseded`) is older than the row: drawn, it put that
-        // text back under the caret, and the next keys landed inside it
-        // (#4720). The echo of the last commit puts the two back in step.
-        let shown = BlockText.shown(block.inline)
-        let echo = shown != field.base && field.superseded.contains(shown)
-        if shown == field.base { field.superseded = [] }
-        field.block = block
-        // Rows are drawn by position: a block inserted or removed above hands
-        // this text view the next block, which `focus` must find it under.
-        if moved { session.drawn(field) }
         field.session = session
         field.alignment = alignment
         field.style = BlockText.Style(font: Self.font(for: role), ink: nextInk, titleExists: session.titleExists, tagColors: session.tagColors)
-        // **Only when it differs, and never over unsaved typing.** Re-rendering
-        // resets the text storage, which would move a caret mid-word or drop
-        // what the user typed since the last commit.
-        if changed || field.stale, !field.dirty, !echo { field.render() }
+        let changed = field.receive(block, restyled: restyled)
+        // Rows are drawn by position: a block inserted or removed above hands
+        // this text view the next block, which `focus` must find it under.
+        if moved { session.drawn(field) }
         // The block changed under a text view that kept the caret (a type
         // change that kept the row's shape): nothing is left to focus.
         if changed, session.pendingFocus == field.blockId, view.isFirstResponder {
@@ -437,6 +426,25 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
 
     func value(_ name: String) -> String? {
         block.props.first { $0.name == name }?.value
+    }
+
+    /// Takes the page's latest read of the block, and draws it when it or
+    /// the row's style changed. **Never over unsaved typing**: re-rendering
+    /// resets the text storage, which would move a caret mid-word or drop
+    /// what the user typed since the last commit. Nor over the core's echo
+    /// of a text this row committed before its last commit (`superseded`),
+    /// which is older than the row: drawn, it put that text back under the
+    /// caret, and the next keys landed inside it (#4720). The echo of the
+    /// last commit puts the two back in step. Answers whether it changed.
+    @discardableResult
+    func receive(_ next: Block, restyled: Bool = false) -> Bool {
+        let changed = block != next || restyled
+        let shown = BlockText.shown(next.inline)
+        let echo = shown != base && superseded.contains(shown)
+        if shown == base { superseded = [] }
+        block = next
+        if changed || stale, !dirty, !echo { render() }
+        return changed
     }
 
     /// Draws `block`. Under the caret (a peer pane's or device's edit landing

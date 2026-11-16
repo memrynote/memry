@@ -49,6 +49,18 @@ struct EditorUndoStep: Sendable, Equatable {
     /// Replayed after `backward`: a step that changed two blocks, such as a
     /// merge, puts both back.
     var backwardAfter: [BlockEdit] = []
+    /// A date chip rewritten under its anchor (#4762). Undo and redo run
+    /// this instead of `backward` and `forward`, which hold the node writes
+    /// at the pane's offsets: each finds the chip where the block holds it
+    /// then (`NoteEditorViewModel.rewriteDate`).
+    var date: DateRewrite?
+
+    struct DateRewrite: Sendable, Equatable {
+        let blockId: String
+        let chip: DateChipAnchor
+        let from: DateMentionValue
+        let to: DateMentionValue
+    }
 
     /// An inline node over text: `edit` replaced `literal`, which starts
     /// `start` core bytes into the text the typing wrote.
@@ -170,6 +182,24 @@ extension EditorUndoStep {
             forwardLength: typedLength,
             caret: caret,
             backwardAfter: Array(back.dropFirst())
+        )
+    }
+
+    /// A date chip's sheet edit: undo puts `from` back under the chip's
+    /// anchor, redo `to`.
+    static func date(
+        blockId: String, chip: DateChipAnchor, from previous: DateMentionValue, to next: DateMentionValue
+    ) -> EditorUndoStep {
+        let range = chip.place.paneRange
+        let node = { (value: DateMentionValue) in
+            BlockEdit.insertInline(
+                blockId: blockId, start: UInt32(range.lowerBound), end: UInt32(range.upperBound),
+                kind: "dateMention", text: "", attrs: value.attrs(anchorId: chip.anchorId)
+            )
+        }
+        return EditorUndoStep(
+            name: "Date", backward: node(previous), forward: node(next),
+            date: DateRewrite(blockId: blockId, chip: chip, from: previous, to: next)
         )
     }
 
