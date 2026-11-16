@@ -434,6 +434,9 @@ mod sync_first_sync;
 mod sync_hardening_ledgers;
 #[path = "sync_hardening_orphans.rs"]
 mod sync_hardening_orphans;
+#[cfg(feature = "markdown")]
+#[path = "sync_hardening_purged.rs"]
+mod sync_hardening_purged;
 #[path = "sync_hardening_repairs.rs"]
 mod sync_hardening_repairs;
 #[path = "sync_note_body_feed.rs"]

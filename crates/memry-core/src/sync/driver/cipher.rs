@@ -21,6 +21,7 @@ use crate::protocol::account::{AccountCipher, DeviceDirectory, device_directory}
 use crate::protocol::envelope::{EnvelopeError, RecordEnvelope};
 use crate::protocol::http::HttpClient;
 use crate::sync::body_pull::{CrdtCipher, PackedUpdate};
+use crate::sync::hardening::purged::SignerKeys;
 use crate::sync::pull::RecordCipher;
 
 pub(super) struct DirectoryCipher {
@@ -33,9 +34,10 @@ pub(super) struct DirectoryCipher {
     missed_records: Mutex<BTreeSet<String>>,
 }
 
-/// The cipher over one fetched directory, and that directory's signer ids.
+/// The cipher over one fetched directory, that directory, and its signer ids.
 struct Current {
     cipher: AccountCipher,
+    directory: DeviceDirectory,
     signers: HashSet<String>,
 }
 
@@ -43,7 +45,8 @@ impl Current {
     fn over(vault_key: Vec<u8>, directory: DeviceDirectory) -> Arc<Self> {
         let signers = directory.device_ids().into_iter().collect();
         Arc::new(Self {
-            cipher: AccountCipher::new(vault_key, directory),
+            cipher: AccountCipher::new(vault_key, directory.clone()),
+            directory,
             signers,
         })
     }
@@ -69,19 +72,22 @@ impl DirectoryCipher {
     /// keeps the old directory.
     pub(super) async fn refresh(&self, http: &HttpClient) -> Result<(), ApiError> {
         self.missed.store(false, Ordering::SeqCst);
-        let directory = match device_directory(http).await {
-            Ok(directory) => directory,
-            Err(error) => {
-                self.missed.store(true, Ordering::SeqCst);
-                return Err(error);
-            }
-        };
+        if let Err(error) = self.refetch(http).await {
+            self.missed.store(true, Ordering::SeqCst);
+            return Err(error);
+        }
+        Ok(())
+    }
+
+    /// Fetches the directory and makes it current, leaving the misses alone.
+    async fn refetch(&self, http: &HttpClient) -> Result<Arc<Current>, ApiError> {
+        let directory = device_directory(http).await?;
         let fresh = Current::over(self.vault_key.to_vec(), directory);
         *self
             .current
             .write()
-            .unwrap_or_else(std::sync::PoisonError::into_inner) = fresh;
-        Ok(())
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = Arc::clone(&fresh);
+        Ok(fresh)
     }
 
     /// The ids of the records that missed, taken off the list.
@@ -137,6 +143,30 @@ impl RecordCipher for DirectoryCipher {
             self.missed_records_lock().insert(envelope.id.clone());
         }
         RecordCipher::open(&current.cipher, envelope)
+    }
+}
+
+/// A purged tombstone's signer (chapter 05 §5.12.3), as Electron's
+/// `resolveDeviceKey`: the directory first, then one refetch. The refetch
+/// leaves the record misses for [`DirectoryCipher::take_missed`], and a failed
+/// one fails the page, so the cursor holds and the marker is read again.
+#[async_trait::async_trait]
+impl SignerKeys for DirectoryCipher {
+    async fn signing_key(
+        &self,
+        http: &HttpClient,
+        device_id: &str,
+    ) -> Result<Option<Vec<u8>>, ApiError> {
+        if let Some(key) = self.current().directory.signing_key(device_id) {
+            return Ok(Some(key.to_vec()));
+        }
+        let fresh = self.refetch(http).await?;
+        Ok(fresh.directory.signing_key(device_id).map(<[u8]>::to_vec))
+    }
+
+    fn known_devices(&self) -> Option<HashSet<String>> {
+        let signers = &self.current().signers;
+        (!signers.is_empty()).then(|| signers.clone())
     }
 }
 

@@ -39,7 +39,7 @@
 //! one dispatch lives there, so that a route added later cannot forget it.
 
 use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use serde_json::{Value as Json, json};
 
@@ -56,6 +56,7 @@ use super::driver::Observers;
 use super::driver::observer::AppliedFeed;
 use super::feed_restart;
 use super::hardening::orphans::OrphanRepair;
+use super::hardening::purged::{self, SignerKeys};
 use super::hardening::stale_cursor::{self, StaleCursor};
 use super::note_body_feed::{self, NOTE_BODY_SYNC_TYPE};
 
@@ -114,6 +115,11 @@ pub struct PullLoop {
     stale_cursor: Option<Arc<StaleCursor>>,
     /// The parents this loop fetched for orphan repair.
     orphans: Arc<OrphanRepair>,
+    /// The keys purged tombstones verify under ([`PullLoop::with_signer_keys`]).
+    signer_keys: Option<Arc<dyn SignerKeys>>,
+    /// Set while a run that started from cursor 0 has not reached the head:
+    /// its pages apply no purged tombstone (§5.12.3).
+    from_zero: Arc<AtomicBool>,
 }
 
 impl PullLoop {
@@ -137,7 +143,17 @@ impl PullLoop {
             eviction_logged: Arc::default(),
             stale_cursor: None,
             orphans: Arc::default(),
+            signer_keys: None,
+            from_zero: Arc::default(),
         }
+    }
+
+    /// Applies the purged tombstones the declaration makes visible, verified
+    /// under `keys` ([`super::hardening::purged`]). Without keys every marker
+    /// is refused, never applied.
+    pub fn with_signer_keys(mut self, keys: Arc<dyn SignerKeys>) -> Self {
+        self.signer_keys = Some(keys);
+        self
     }
 
     /// Runs the desktop ledgers (decision K2, #3534): a permanently
@@ -343,6 +359,9 @@ impl PullLoop {
             .call(|conn| store::read_cursor(conn, RECORD_CURSOR_SCOPE))
             .await?;
 
+        if ask_inline && cursor.as_deref().is_none_or(|cursor| cursor == "0") {
+            self.from_zero.store(true, Ordering::SeqCst);
+        }
         let inline = ask_inline && cursor.is_some();
         let mut page = self.fetch_changes(cursor.as_deref(), inline).await?;
         let mut report = PullReport {
@@ -358,8 +377,10 @@ impl PullLoop {
 
         self.take_items(std::mem::take(&mut page.inline), &mut report, &mut pending)
             .await?;
+        let mut markers = purged::Entries::default();
         for chunk in fetch.chunks(MAX_PULL_IDS) {
             let mut body = self.fetch_bodies(chunk).await?;
+            markers.read(&body, chunk);
             let Some(items) = Self::pulled_items(&mut body) else {
                 // §5.14 (#2285): not a pull envelope at all, which is a server
                 // contract regression. Nothing from the page is applied and the
@@ -372,6 +393,8 @@ impl PullLoop {
             };
             self.take_items(items, &mut report, &mut pending).await?;
         }
+        let from_zero = self.from_zero.load(Ordering::SeqCst);
+        let named = self.take_markers(markers, from_zero, &mut pending).await?;
 
         // §5.13: rank, then a **stable** sort, so two items of the same rank
         // keep the order the server sent them in. `sort_by_key` is stable.
@@ -383,7 +406,9 @@ impl PullLoop {
         let untyped: Vec<String> = page
             .deleted
             .iter()
-            .filter(|id| !page.ref_ids.contains(id) && !typed_covers(&pending, id))
+            .filter(|id| {
+                !page.ref_ids.contains(id) && !typed_covers(&pending, id) && !named.contains(*id)
+            })
             .cloned()
             .collect();
 
@@ -431,6 +456,9 @@ impl PullLoop {
         // §5.14's breaker, all three conditions or none.
         let yielded = report.applied + report.deleted + report.skipped + report.expired;
         report.refused = yielded == 0 && report.corrupt > 0 && !ids.is_empty();
+        if !report.has_more && !report.refused {
+            self.from_zero.store(false, Ordering::SeqCst);
+        }
 
         Ok(report)
     }
@@ -448,14 +476,17 @@ impl PullLoop {
         let mut report = PullReport::default();
         let mut pending: Vec<Pending> = Vec::with_capacity(ids.len());
 
+        let mut markers = purged::Entries::default();
         for chunk in ids.chunks(MAX_PULL_IDS) {
             let mut body = self.fetch_bodies(chunk).await?;
+            markers.read(&body, chunk);
             let Some(items) = Self::pulled_items(&mut body) else {
                 report.dropped_pages += 1;
                 continue;
             };
             self.take_items(items, &mut report, &mut pending).await?;
         }
+        self.take_markers(markers, false, &mut pending).await?;
 
         pending.sort_by_key(|item| apply::apply_rank(item.item_type()));
         let mut feed = AppliedFeed::default();
@@ -486,7 +517,9 @@ impl PullLoop {
         }
         let mut request = self.request("GET", &path);
         if self.bodies.is_some() {
-            let declared = format!("{},{NOTE_BODY_SYNC_TYPE}", self.declaration.header_value());
+            let declared = self
+                .declaration
+                .header_value_with(Some(NOTE_BODY_SYNC_TYPE));
             request = request.header(SYNC_TYPES_HEADER, &declared);
         }
         let body: Json = self.http.send_json(request).await?;

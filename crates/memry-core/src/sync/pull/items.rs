@@ -1,6 +1,7 @@
 //! Decoding a page's items and fetching its note bodies: the pull loop's
 //! halves that touch neither the cursor nor the apply.
 
+use std::collections::BTreeSet;
 use std::sync::Arc;
 
 use serde_json::Value as Json;
@@ -11,6 +12,7 @@ use super::{PullError, PullLoop, PullReport, now_ms};
 use crate::storage::repositories::sync_items;
 use crate::sync::apply::{self, Pending};
 use crate::sync::changes_page::ChangesPage;
+use crate::sync::hardening::purged;
 use crate::sync::hardening::quarantine::{self, SecurityWarning};
 use crate::sync::note_body_feed::{self, FeedClient, FetchedBodies};
 use crate::sync::pull_decode::{self, Undecodable, server_cursor};
@@ -51,6 +53,36 @@ impl PullLoop {
         }
         self.warn(warnings).await;
         Ok(())
+    }
+
+    /// Pushes the purged tombstones that apply onto `pending`
+    /// ([`purged::applicable`]) and answers every id an entry named, which
+    /// the page never applies untyped (§5.12.1). `from_zero` skips them all
+    /// (a run from cursor 0); a hardened pull also skips a permanently
+    /// quarantined item, as Electron's page does (`pull-coordinator.ts:813-820`).
+    pub(super) async fn take_markers(
+        &self,
+        entries: purged::Entries,
+        from_zero: bool,
+        pending: &mut Vec<Pending>,
+    ) -> Result<BTreeSet<String>, PullError> {
+        let named = entries.named.clone();
+        if entries.markers.is_empty() && entries.refused.is_empty() {
+            return Ok(named);
+        }
+        let blocked = if self.hardened && !from_zero {
+            self.db
+                .call(|conn| quarantine::blocked(conn, now_ms()))
+                .await?
+        } else {
+            BTreeSet::new()
+        };
+        let skip = |marker: &purged::Marker| {
+            from_zero || blocked.contains(&(marker.item_type.clone(), marker.item_id.clone()))
+        };
+        let keys = self.signer_keys.as_deref();
+        pending.extend(purged::applicable(entries, skip, keys, &self.http, &self.db).await?);
+        Ok(named)
     }
 
     /// Tells the observers each quarantine this pull recorded.

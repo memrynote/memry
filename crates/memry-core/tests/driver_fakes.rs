@@ -8,6 +8,7 @@
 //! an empty page at the head.
 
 use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use base64::Engine as _;
@@ -36,7 +37,9 @@ use serde_json::{Value as Json, json};
 use crate::http_fakes::{FakeSecureStore, body_json, jwt};
 
 const DEVICE: &str = "server-device-1";
-const PEER: &str = "server-device-2";
+pub const PEER: &str = "server-device-2";
+/// The seed of [`PEER`]'s signing keypair.
+pub const PEER_SEED: u8 = 12;
 const MASTER_KEY: [u8; 32] = [7u8; 32];
 
 /// The server: the records it holds, the feed pages queued, every request.
@@ -45,6 +48,12 @@ pub struct FakeServer {
     pages: Mutex<VecDeque<String>>,
     calls: Mutex<Vec<HttpRequest>>,
     peer_secret: Vec<u8>,
+    /// Purged-tombstone entries by id, served in `purgedTombstones`.
+    markers: Mutex<BTreeMap<String, Json>>,
+    /// Devices registered after the driver opened: `(id, key seed)`.
+    added_devices: Mutex<Vec<(String, u8)>>,
+    /// `GET /auth/devices` answers 503 while set.
+    devices_down: AtomicBool,
 }
 
 impl FakeServer {
@@ -69,6 +78,54 @@ impl FakeServer {
             json!({"items": listed, "deleted": [], "hasMore": false, "nextCursor": next_cursor})
                 .to_string(),
         );
+    }
+
+    /// Sheds `id`'s payload: `POST /sync/pull` serves `entry` in
+    /// `purgedTombstones` for it from now on, never in `items`.
+    pub fn purge(&self, entry: Json) {
+        let id = entry["id"].as_str().expect("an id").to_owned();
+        self.records.lock().unwrap().remove(&id);
+        self.markers.lock().unwrap().insert(id, entry);
+    }
+
+    /// Queues one feed page of `deleted` ids and no refs.
+    pub fn deleted_page(&self, deleted: &[&str], next_cursor: &str, has_more: bool) {
+        self.pages.lock().unwrap().push_back(
+            json!({"items": [], "deleted": deleted, "hasMore": has_more,
+                    "nextCursor": next_cursor})
+            .to_string(),
+        );
+    }
+
+    /// Registers a device after the driver opened.
+    pub fn add_device(&self, id: &str, seed: u8) {
+        self.added_devices
+            .lock()
+            .unwrap()
+            .push((id.to_owned(), seed));
+    }
+
+    /// Fails `GET /auth/devices` until called with `false`.
+    pub fn devices_down(&self, down: bool) {
+        self.devices_down.store(down, Ordering::SeqCst);
+    }
+
+    /// The `X-Memry-Sync-Types` of every request to `route`, in order.
+    pub fn sync_types(&self, route: &str) -> Vec<String> {
+        self.calls_to(route)
+            .iter()
+            .map(|call| {
+                call.headers
+                    .get("x-memry-sync-types")
+                    .cloned()
+                    .unwrap_or_default()
+            })
+            .collect()
+    }
+
+    /// How many requests went to `route`.
+    pub fn count(&self, route: &str) -> usize {
+        self.calls_to(route).len()
     }
 
     /// Stops serving `id` by id, as a pull whose blob went missing; a page queued
@@ -160,15 +217,21 @@ impl FakeServer {
             // No bootstrap window and no packs: a first sync reads the feed.
             "/sync/bootstrap" | "/sync/packs" => return (404, "{}".to_owned()),
             "/auth/devices" => {
+                if self.devices_down.load(Ordering::SeqCst) {
+                    return (503, "{}".to_owned());
+                }
                 let public = |seed: u8| {
                     let (public, _) = sodium::sign_seed_keypair(&[seed; 32]).expect("a keypair");
                     BASE64.encode(public)
                 };
-                json!({"devices": [
-                    {"id": DEVICE, "signingPublicKey": public(11)},
-                    {"id": PEER, "signingPublicKey": public(12)},
-                ]})
-                .to_string()
+                let mut devices = vec![
+                    json!({"id": DEVICE, "signingPublicKey": public(11)}),
+                    json!({"id": PEER, "signingPublicKey": public(PEER_SEED)}),
+                ];
+                for (id, seed) in self.added_devices.lock().unwrap().iter() {
+                    devices.push(json!({"id": id, "signingPublicKey": public(*seed)}));
+                }
+                json!({ "devices": devices }).to_string()
             }
             "/sync/status" => "{}".to_owned(),
             "/sync/changes" => self.pages.lock().unwrap().pop_front().unwrap_or_else(|| {
@@ -177,14 +240,28 @@ impl FakeServer {
             }),
             "/sync/pull" => {
                 let records = self.records.lock().unwrap();
-                let items: Vec<Json> = body_json(request)["itemIds"]
+                let markers = self.markers.lock().unwrap();
+                let asked = body_json(request)["itemIds"].clone();
+                let asked: Vec<&str> = asked
                     .as_array()
                     .into_iter()
                     .flatten()
-                    .filter_map(|id| records.get(id.as_str()?))
+                    .filter_map(Json::as_str)
+                    .collect();
+                let items: Vec<Json> = asked
+                    .iter()
+                    .filter_map(|id| records.get(*id))
                     .map(|(_, sealed, _)| sealed.clone())
                     .collect();
-                json!({ "items": items }).to_string()
+                let purged: Vec<Json> = asked
+                    .iter()
+                    .filter_map(|id| markers.get(*id).cloned())
+                    .collect();
+                if purged.is_empty() {
+                    json!({ "items": items }).to_string()
+                } else {
+                    json!({ "items": items, "purgedTombstones": purged }).to_string()
+                }
             }
             "/sync/manifest" => {
                 let records = self.records.lock().unwrap();
@@ -279,6 +356,14 @@ impl Desktop {
         types: &[&str],
         seed: impl FnOnce(&Connection) -> Result<(), StorageError> + Send + 'static,
     ) -> Self {
+        Self::open_with(Declaration::declare(types).expect("recognised"), seed).await
+    }
+
+    /// A driver sending `declaration` over a vault `seed` wrote first.
+    pub async fn open_with(
+        declaration: Declaration,
+        seed: impl FnOnce(&Connection) -> Result<(), StorageError> + Send + 'static,
+    ) -> Self {
         let dir = tempfile::Builder::new()
             .prefix("memry-driver-")
             .tempdir()
@@ -312,6 +397,9 @@ impl Desktop {
             pages: Mutex::default(),
             calls: Mutex::default(),
             peer_secret: peer_secret.to_vec(),
+            markers: Mutex::default(),
+            added_devices: Mutex::default(),
+            devices_down: AtomicBool::new(false),
         });
         let session = Arc::new(
             AuthSession::new(
@@ -337,7 +425,7 @@ impl Desktop {
             session,
             reachability: network.clone(),
             config: DriverConfig {
-                declaration: Declaration::declare(types).expect("recognised"),
+                declaration,
                 first_sync: FirstSyncLimits::ALL,
                 max_pages_per_pass: MAX_PAGES_PER_PASS,
                 pack_concurrency: 1,

@@ -213,6 +213,7 @@ impl SyncDriver {
             .with_observers(Arc::clone(&observers))
             .with_vault(&server_vault)
             .with_hardening()
+            .with_signer_keys(cipher.clone())
         };
         let stale_cursor = Arc::new(StaleCursor::default());
         reachability.observe(Arc::clone(&stale_cursor) as Arc<dyn ReachabilityObserver>);
