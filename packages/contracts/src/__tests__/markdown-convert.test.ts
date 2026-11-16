@@ -51,9 +51,9 @@ const DIGESTS: Record<string, string> = {
     'd9ce1448037baba8c72ca5bf0fc547972c65b3ba3e5dd917a92940642789be5d',
   'markdown-convert/parse.json': 'a2738ed2b4a9ad319804671d142672e6a242a91b93c82ab337ce63e55c995970',
   'markdown-convert/memry-parse.json':
-    '89f0cf6c2f053dd152f58ae56da0519daaf9245a18c2399076255e0e07ca0506',
+    '19a2f83f51c1c6d2efe29e942850338e87d9d029f4ef3f430f025802ef7633fd',
   'markdown-convert/serialize.json':
-    '3af46fddc6bebb71984fac14cb8d65fdd42f41753de8ae62d51b4ffb05d5f776',
+    '690d11fc907506b14f789e5de739003ee04a2fa9edbaf6590a355d2a45becbd9',
   'markdown-convert/layer-text.json':
     'fac18a76fd3eccbf47131e5e6d3031fbb14fe22bf513517e5906e5de4671f781',
   'markdown-convert/layer-markers.json':
@@ -67,13 +67,13 @@ const DIGESTS: Record<string, string> = {
   'markdown-convert/seed-corpus.json':
     'bbd5a8ffc5a6e114e1d6ea4a380b4223d926225a134a4c0ac047dc4d52f0d4cd',
   'markdown-convert/seed-doc.json':
-    '3060f45240a1c1ada67ab876ad463cbca02ca5c9cb95464f644284c4026311bd',
+    '4224df65a139fcfca6626aa11a521263b66bb71ead61c41e7e4cc122e4e86120',
   'markdown-convert/roundtrip.json':
-    '62e4006c1714fc49c31157769f786b7537de81769d689a5c5c3fc4b9eb85ecee',
+    '575469bf12ebd7a9ef1396ead29ab95d5b4325e0922eddada8335adff88598c7',
   'markdown-convert/blocks.json':
-    'a4f2a3e3c4d46fcb6db945f83ef101289e52d090e774a1dc98b02ff4966525a7',
+    '3744a894d999c14dc7ce772c2c0cc1ba9216d4a9c340d454f5f438ab9f42d9ac',
   'markdown-convert/serialize-doc.json':
-    '4f6d27898fe6201bbced6d5cb81a2581e3492ababcc00a8ff8a1fdb1271efec8',
+    '843b6e4ab93bbb4bbc53add2e70197ae961b592ca4c4ca4ae3acbca2b1593ef6',
   'markdown-convert/replace-body.json':
     '390ab5b912181900f9651c3cfd1c12703e656d675b05e0e517e1c898a2197db2'
 }
@@ -93,18 +93,18 @@ const OPS_PER_FILE: Record<string, Record<string, number>> = {
   'markdown-convert/md-to-html.json': { 'md-to-html': 838 },
   'markdown-convert/html-to-blocks.json': { 'html-to-blocks': 220 },
   'markdown-convert/parse.json': { 'bn-parse': 838 },
-  'markdown-convert/memry-parse.json': { 'memry-parse': 742 },
-  'markdown-convert/serialize.json': { 'serialize-blocks': 189, 'serialize-seed': 742 },
+  'markdown-convert/memry-parse.json': { 'memry-parse': 746 },
+  'markdown-convert/serialize.json': { 'serialize-blocks': 189, 'serialize-seed': 746 },
   'markdown-convert/layer-text.json': { fn: 13092 },
   'markdown-convert/layer-markers.json': { fn: 3245 },
   'markdown-convert/layer-blocks.json': { fn: 5131 },
   'markdown-convert/layer-critic.json': { fn: 2964 },
   'markdown-convert/grammar-corpus.json': { 'corpus-note': 454 },
   'markdown-convert/seed-corpus.json': { 'corpus-note': 250 },
-  'markdown-convert/seed-doc.json': { 'doc-seed': 757 },
-  'markdown-convert/roundtrip.json': { 'doc-serialize': 757 },
-  'markdown-convert/blocks.json': { 'doc-blocks': 850 },
-  'markdown-convert/serialize-doc.json': { 'doc-serialize': 539, 'doc-repair-ids': 1 },
+  'markdown-convert/seed-doc.json': { 'doc-seed': 761 },
+  'markdown-convert/roundtrip.json': { 'doc-serialize': 761 },
+  'markdown-convert/blocks.json': { 'doc-blocks': 854 },
+  'markdown-convert/serialize-doc.json': { 'doc-serialize': 541, 'doc-repair-ids': 1 },
   'markdown-convert/replace-body.json': { 'doc-replace': 44 }
 }
 

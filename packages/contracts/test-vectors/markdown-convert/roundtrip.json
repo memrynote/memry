@@ -4,7 +4,7 @@
     "oracle": "apps/desktop/scripts/markdown-oracle (Electron converter run in place; gray-matter 4.0.3, js-yaml 3.15.1)",
     "note": "Markdown seeded into a Y.Doc and read back: yDocToMarkdown (bytes and SourceRestoreOutcome), yDocToCanonicalMarkdown, serializeNoteBody (body and writing frontmatter) and findUnrepresentableNodes. markdown is compared byte for byte; it is the contract for what lands in users vault files.",
     "yamlJsonEncoding": "Numbers that JSON cannot carry are {\"$num\": \"NaN\"|\"Infinity\"|\"-Infinity\"|\"-0\"}, a Date is {\"$date\": ISO}, a Buffer is {\"$bin\": base64}, a map with a \"$\"-prefixed key is wrapped as {\"$map\": {...}}. Key order is Object.keys order.",
-    "caseCount": 757
+    "caseCount": 761
   },
   "cases": [
     {
@@ -2372,6 +2372,106 @@
           "canonical": "A ((mention:a%3A%2F%2F%40 )) B ((mention:a%3A%2F%2F%3A%40%2Fx )) C ((mention:a%3A%2F%2F%40))",
           "noteBody": {
             "markdown": "A ((mention:a%3A%2F%2F%40 )) B ((mention:a%3A%2F%2F%3A%40%2Fx )) C ((mention:a%3A%2F%2F%40))\n",
+            "writing": {
+              "alternatives": {},
+              "overflow": []
+            },
+            "outcome": "source"
+          },
+          "unrepresentable": []
+        }
+      }
+    },
+    {
+      "id": "roundtrip/doc-serialize/mention-host-rtl",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "((mention:https%3A%2F%2F%D9%A1%D9%A2%D9%A3.com%2Fx)) ((mention:https%3A%2F%2F%D9%A1%D9%A2%D9%A3.com%2Fx ))\n\n((mention:https%3A%2F%2Fshop%D9%A3.com)) ((mention:https%3A%2F%2Fshop%D9%A3.com ))\n\n((mention:https%3A%2F%2Fa%D9%80b.com)) ((mention:https%3A%2F%2Fa%D9%80b.com ))\n\n((mention:https%3A%2F%2F%D7%A9%D7%9C%D7%95%D7%9D.co.il%2F)) ((mention:https%3A%2F%2F%D7%A9%D7%9C%D7%95%D7%9D.co.il%2F ))\n\n((mention:https%3A%2F%2F%D9%85%D8%AB%D8%A7%D9%84.%D8%A7%D8%AE%D8%AA%D8%A8%D8%A7%D8%B1)) ((mention:https%3A%2F%2F%D9%85%D8%AB%D8%A7%D9%84.%D8%A7%D8%AE%D8%AA%D8%A8%D8%A7%D8%B1 ))\n\n((mention:https%3A%2F%2Fa.%D7%A9b.com)) ((mention:https%3A%2F%2Fa.%D7%A9b.com ))\n\n((mention:https%3A%2F%2FZ%D7%90.com)) ((mention:https%3A%2F%2FZ%D7%90.com ))\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "markdown": "((mention:https%3A%2F%2F%D9%A1%D9%A2%D9%A3.com%2Fx)) ((mention:https%3A%2F%2F%D9%A1%D9%A2%D9%A3.com%2Fx ))\n\n((mention:https%3A%2F%2Fshop%D9%A3.com)) ((mention:https%3A%2F%2Fshop%D9%A3.com ))\n\n((mention:https%3A%2F%2Fa%D9%80b.com)) ((mention:https%3A%2F%2Fa%D9%80b.com ))\n\n((mention:https%3A%2F%2F%D7%A9%D7%9C%D7%95%D7%9D.co.il%2F)) ((mention:https%3A%2F%2F%D7%A9%D7%9C%D7%95%D7%9D.co.il%2F ))\n\n((mention:https%3A%2F%2F%D9%85%D8%AB%D8%A7%D9%84.%D8%A7%D8%AE%D8%AA%D8%A8%D8%A7%D8%B1)) ((mention:https%3A%2F%2F%D9%85%D8%AB%D8%A7%D9%84.%D8%A7%D8%AE%D8%AA%D8%A8%D8%A7%D8%B1 ))\n\n((mention:https%3A%2F%2Fa.%D7%A9b.com)) ((mention:https%3A%2F%2Fa.%D7%A9b.com ))\n\n((mention:https%3A%2F%2FZ%D7%90.com)) ((mention:https%3A%2F%2FZ%D7%90.com ))\n",
+          "outcome": "source",
+          "canonical": "((mention:https%3A%2F%2F%D9%A1%D9%A2%D9%A3.com%2Fx)) ((mention:https%3A%2F%2F%D9%A1%D9%A2%D9%A3.com%2Fx))\n\n((mention:https%3A%2F%2Fshop%D9%A3.com)) ((mention:https%3A%2F%2Fshop%D9%A3.com))\n\n((mention:https%3A%2F%2Fa%D9%80b.com)) ((mention:https%3A%2F%2Fa%D9%80b.com))\n\n((mention:https%3A%2F%2F%D7%A9%D7%9C%D7%95%D7%9D.co.il%2F)) ((mention:https%3A%2F%2F%D7%A9%D7%9C%D7%95%D7%9D.co.il%2F))\n\n((mention:https%3A%2F%2F%D9%85%D8%AB%D8%A7%D9%84.%D8%A7%D8%AE%D8%AA%D8%A8%D8%A7%D8%B1)) ((mention:https%3A%2F%2F%D9%85%D8%AB%D8%A7%D9%84.%D8%A7%D8%AE%D8%AA%D8%A8%D8%A7%D8%B1))\n\n((mention:https%3A%2F%2Fa.%D7%A9b.com)) ((mention:https%3A%2F%2Fa.%D7%A9b.com))\n\n((mention:https%3A%2F%2FZ%D7%90.com)) ((mention:https%3A%2F%2FZ%D7%90.com))",
+          "noteBody": {
+            "markdown": "((mention:https%3A%2F%2F%D9%A1%D9%A2%D9%A3.com%2Fx)) ((mention:https%3A%2F%2F%D9%A1%D9%A2%D9%A3.com%2Fx ))\n\n((mention:https%3A%2F%2Fshop%D9%A3.com)) ((mention:https%3A%2F%2Fshop%D9%A3.com ))\n\n((mention:https%3A%2F%2Fa%D9%80b.com)) ((mention:https%3A%2F%2Fa%D9%80b.com ))\n\n((mention:https%3A%2F%2F%D7%A9%D7%9C%D7%95%D7%9D.co.il%2F)) ((mention:https%3A%2F%2F%D7%A9%D7%9C%D7%95%D7%9D.co.il%2F ))\n\n((mention:https%3A%2F%2F%D9%85%D8%AB%D8%A7%D9%84.%D8%A7%D8%AE%D8%AA%D8%A8%D8%A7%D8%B1)) ((mention:https%3A%2F%2F%D9%85%D8%AB%D8%A7%D9%84.%D8%A7%D8%AE%D8%AA%D8%A8%D8%A7%D8%B1 ))\n\n((mention:https%3A%2F%2Fa.%D7%A9b.com)) ((mention:https%3A%2F%2Fa.%D7%A9b.com ))\n\n((mention:https%3A%2F%2FZ%D7%90.com)) ((mention:https%3A%2F%2FZ%D7%90.com ))\n",
+            "writing": {
+              "alternatives": {},
+              "overflow": []
+            },
+            "outcome": "source"
+          },
+          "unrepresentable": []
+        }
+      }
+    },
+    {
+      "id": "roundtrip/doc-serialize/mention-host-ascii",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "((mention:https%3A%2F%2Fxn--bcher-kva.de%2Fa)) ((mention:https%3A%2F%2Fxn--bcher-kva.de%2Fa ))\n\n((mention:https%3A%2F%2FB%C3%BCcher.DE)) ((mention:https%3A%2F%2FB%C3%BCcher.DE ))\n\n((mention:https%3A%2F%2FWWW.Example.com%3A8080%2Fp%3Fq%23f)) ((mention:https%3A%2F%2FWWW.Example.com%3A8080%2Fp%3Fq%23f ))\n\n((mention:https%3A%2F%2Fu%3Ap%40host.test)) ((mention:https%3A%2F%2Fu%3Ap%40host.test ))\n\n((mention:http%3A%2F%2F%5B%3A%3A1%5D%3A80%2F)) ((mention:http%3A%2F%2F%5B%3A%3A1%5D%3A80%2F ))\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "markdown": "((mention:https%3A%2F%2Fxn--bcher-kva.de%2Fa)) ((mention:https%3A%2F%2Fxn--bcher-kva.de%2Fa ))\n\n((mention:https%3A%2F%2FB%C3%BCcher.DE)) ((mention:https%3A%2F%2FB%C3%BCcher.DE ))\n\n((mention:https%3A%2F%2FWWW.Example.com%3A8080%2Fp%3Fq%23f)) ((mention:https%3A%2F%2FWWW.Example.com%3A8080%2Fp%3Fq%23f ))\n\n((mention:https%3A%2F%2Fu%3Ap%40host.test)) ((mention:https%3A%2F%2Fu%3Ap%40host.test ))\n\n((mention:http%3A%2F%2F%5B%3A%3A1%5D%3A80%2F)) ((mention:http%3A%2F%2F%5B%3A%3A1%5D%3A80%2F ))\n",
+          "outcome": "source",
+          "canonical": "((mention:https%3A%2F%2Fxn--bcher-kva.de%2Fa)) ((mention:https%3A%2F%2Fxn--bcher-kva.de%2Fa))\n\n((mention:https%3A%2F%2FB%C3%BCcher.DE)) ((mention:https%3A%2F%2FB%C3%BCcher.DE))\n\n((mention:https%3A%2F%2FWWW.Example.com%3A8080%2Fp%3Fq%23f)) ((mention:https%3A%2F%2FWWW.Example.com%3A8080%2Fp%3Fq%23f))\n\n((mention:https%3A%2F%2Fu%3Ap%40host.test)) ((mention:https%3A%2F%2Fu%3Ap%40host.test))\n\n((mention:http%3A%2F%2F%5B%3A%3A1%5D%3A80%2F)) ((mention:http%3A%2F%2F%5B%3A%3A1%5D%3A80%2F))",
+          "noteBody": {
+            "markdown": "((mention:https%3A%2F%2Fxn--bcher-kva.de%2Fa)) ((mention:https%3A%2F%2Fxn--bcher-kva.de%2Fa ))\n\n((mention:https%3A%2F%2FB%C3%BCcher.DE)) ((mention:https%3A%2F%2FB%C3%BCcher.DE ))\n\n((mention:https%3A%2F%2FWWW.Example.com%3A8080%2Fp%3Fq%23f)) ((mention:https%3A%2F%2FWWW.Example.com%3A8080%2Fp%3Fq%23f ))\n\n((mention:https%3A%2F%2Fu%3Ap%40host.test)) ((mention:https%3A%2F%2Fu%3Ap%40host.test ))\n\n((mention:http%3A%2F%2F%5B%3A%3A1%5D%3A80%2F)) ((mention:http%3A%2F%2F%5B%3A%3A1%5D%3A80%2F ))\n",
+            "writing": {
+              "alternatives": {},
+              "overflow": []
+            },
+            "outcome": "source"
+          },
+          "unrepresentable": []
+        }
+      }
+    },
+    {
+      "id": "roundtrip/doc-serialize/mention-host-refused",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "((mention:mailto%3Aa%40b.test)) ((mention:mailto%3Aa%40b.test ))\n\n((mention:https%3Ax.test)) ((mention:https%3Ax.test ))\n\n((mention:https%3A%2F%2Fx.test%3A65536)) ((mention:https%3A%2F%2Fx.test%3A65536 ))\n\n((mention:https%3A%2F%2F%2541.test)) ((mention:https%3A%2F%2F%2541.test ))\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "markdown": "((mention:mailto%3Aa%40b.test)) ((mention:mailto%3Aa%40b.test ))\n\n((mention:https%3Ax.test)) ((mention:https%3Ax.test ))\n\n((mention:https%3A%2F%2Fx.test%3A65536)) ((mention:https%3A%2F%2Fx.test%3A65536 ))\n\n((mention:https%3A%2F%2F%2541.test)) ((mention:https%3A%2F%2F%2541.test ))\n",
+          "outcome": "source",
+          "canonical": "((mention:mailto%3Aa%40b.test)) ((mention:mailto%3Aa%40b.test ))\n\n((mention:https%3Ax.test)) ((mention:https%3Ax.test ))\n\n((mention:https%3A%2F%2Fx.test%3A65536)) ((mention:https%3A%2F%2Fx.test%3A65536 ))\n\n((mention:https%3A%2F%2F%2541.test)) ((mention:https%3A%2F%2F%2541.test ))",
+          "noteBody": {
+            "markdown": "((mention:mailto%3Aa%40b.test)) ((mention:mailto%3Aa%40b.test ))\n\n((mention:https%3Ax.test)) ((mention:https%3Ax.test ))\n\n((mention:https%3A%2F%2Fx.test%3A65536)) ((mention:https%3A%2F%2Fx.test%3A65536 ))\n\n((mention:https%3A%2F%2F%2541.test)) ((mention:https%3A%2F%2F%2541.test ))\n",
+            "writing": {
+              "alternatives": {},
+              "overflow": []
+            },
+            "outcome": "source"
+          },
+          "unrepresentable": []
+        }
+      }
+    },
+    {
+      "id": "roundtrip/doc-serialize/mention-underline-colour",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "A <u>((mention:https%3A%2F%2Fx.test%2Fu))</u> B <span style=\"color: red\">((mention:https%3A%2F%2Fx.test%2Fc))</span> C <span style=\"background-color: yellow\">((mention:https%3A%2F%2Fx.test%2Fb))</span> D\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "markdown": "A <u>((mention:https%3A%2F%2Fx.test%2Fu))</u> B <span style=\"color: red\">((mention:https%3A%2F%2Fx.test%2Fc))</span> C <span style=\"background-color: yellow\">((mention:https%3A%2F%2Fx.test%2Fb))</span> D\n",
+          "outcome": "source",
+          "canonical": "A <span style=\"text-decoration:underline\">((mention:https%3A%2F%2Fx.test%2Fu))</span> B <span style=\"color:red\">((mention:https%3A%2F%2Fx.test%2Fc))</span> C <span style=\"background-color:yellow\">((mention:https%3A%2F%2Fx.test%2Fb))</span> D",
+          "noteBody": {
+            "markdown": "A <u>((mention:https%3A%2F%2Fx.test%2Fu))</u> B <span style=\"color: red\">((mention:https%3A%2F%2Fx.test%2Fc))</span> C <span style=\"background-color: yellow\">((mention:https%3A%2F%2Fx.test%2Fb))</span> D\n",
             "writing": {
               "alternatives": {},
               "overflow": []

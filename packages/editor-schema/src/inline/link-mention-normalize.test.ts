@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { Block } from '@blocknote/core'
 import { normalizeLinkMentions, splitTextWithLinkMentions } from './link-mention-normalize'
-import { serializeLinkMentionToken } from './link-mention'
+import { createLinkMentionContent, serializeLinkMentionToken } from './link-mention'
 
 const url = 'https://eksisozluk.com/entry/184233570?debe=true'
 const token = serializeLinkMentionToken(url)
@@ -26,7 +26,9 @@ describe('splitTextWithLinkMentions', () => {
       { code: true },
       { italic: true },
       { bold: true },
-      { textColor: 'red' }
+      { underline: true },
+      { textColor: 'red' },
+      { backgroundColor: 'yellow' }
     ]
     for (const styles of styled) {
       const { segments, didChange } = splitTextWithLinkMentions(`a ${token}`, styles)
@@ -40,6 +42,36 @@ describe('splitTextWithLinkMentions', () => {
     const { segments, didChange } = splitTextWithLinkMentions(`a ${token}`, styles)
     expect(didChange).toBe(true)
     expect(segments[0]).toEqual({ type: 'text', text: 'a ', styles })
+  })
+
+  // Protocol 12.1.1.1's host rule, no IDNA (#4685): `new URL` and the Rust
+  // `idna` crate disagreed on every RTL row, so the two seeds diverged.
+  const hostRows: Array<[string, string | null]> = [
+    ['https://\u0661\u0662\u0663.com/x', '\u0661\u0662\u0663.com'],
+    ['https://shop\u0663.com', 'shop\u0663.com'],
+    ['https://a\u0640b.com', 'a\u0640b.com'],
+    ['https://a.\u05e9b.com', 'a.\u05e9b.com'],
+    ['https://xn--bcher-kva.de/a', 'xn--bcher-kva.de'],
+    ['https://B\u00fccher.DE', 'b\u00fccher.de'],
+    ['https://WWW.Example.com:8080/p?q#f', 'example.com'],
+    ['https://u:p@host.test', 'host.test'],
+    ['http://[::1]:80/', '[::1]'],
+    ['a://@', null],
+    ['mailto:a@b.test', null],
+    ['https:x.test', null],
+    ['https://x.test:65536', null],
+    ['https://%41.test', null]
+  ]
+
+  it.each(hostRows)('decides %s by the host rule', (rowUrl, domain) => {
+    const payload = encodeURIComponent(rowUrl)
+    const { segments } = splitTextWithLinkMentions(
+      `A ((mention:${payload})) B ((mention:${payload} )) C`
+    )
+    const chips = segments.filter((segment) => typeof segment !== 'string')
+    expect(chips).toEqual(
+      Array(domain === null ? 1 : 2).fill(createLinkMentionContent(rowUrl, domain ?? rowUrl))
+    )
   })
 
   it('is a no-op when no token is present', () => {

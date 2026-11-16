@@ -17,6 +17,13 @@ interface Extra {
 
 const FENCE = '```'
 
+function mentionRows(urls: string[]): string {
+  return urls
+    .map((url) => encodeURIComponent(url))
+    .map((payload) => `((mention:${payload})) ((mention:${payload} ))\n`)
+    .join('\n')
+}
+
 const NOTES: Record<string, string> = {
   'table-span-colspan-text': '<table><tr><td colspan="x">x</td></tr><tr><td>a</td></tr></table>',
   'table-span-rowspan-text': '<table><tr><td rowspan="x">x</td></tr><tr><td>a</td></tr></table>',
@@ -137,6 +144,33 @@ const NOTES: Record<string, string> = {
   // `a://@` and `a://:@` (credentials, no host) fail `new URL` (#4478).
   'mention-credentials-no-host':
     'A ((mention:a%3A%2F%2F%40 )) B ((mention:a%3A%2F%2F%3A%40%2Fx )) C ((mention:a%3A%2F%2F%40))\n',
+  // The host rule of protocol 12.1.1.1, no IDNA (#4685): each URL as a token and
+  // as a repaired token (`mentionRows`). Four cases keep later edit cases in phase.
+  'mention-host-rtl': mentionRows([
+    'https://\u0661\u0662\u0663.com/x',
+    'https://shop\u0663.com',
+    'https://a\u0640b.com',
+    'https://\u05e9\u05dc\u05d5\u05dd.co.il/',
+    'https://\u0645\u062b\u0627\u0644.\u0627\u062e\u062a\u0628\u0627\u0631',
+    'https://a.\u05e9b.com',
+    'https://Z\u05d0.com'
+  ]),
+  'mention-host-ascii': mentionRows([
+    'https://xn--bcher-kva.de/a',
+    'https://B\u00fccher.DE',
+    'https://WWW.Example.com:8080/p?q#f',
+    'https://u:p@host.test',
+    'http://[::1]:80/'
+  ]),
+  'mention-host-refused': mentionRows([
+    'mailto:a@b.test',
+    'https:x.test',
+    'https://x.test:65536',
+    'https://%41.test'
+  ]),
+  // A token in an underlined or coloured run stays text (#4652, #4718).
+  'mention-underline-colour':
+    'A <u>((mention:https%3A%2F%2Fx.test%2Fu))</u> B <span style="color: red">((mention:https%3A%2F%2Fx.test%2Fc))</span> C <span style="background-color: yellow">((mention:https%3A%2F%2Fx.test%2Fb))</span> D\n',
   'wiki-image-embed': '![[photo.png]]\n',
   'wiki-image-embed-sized': '![[photo.png|300]]\n',
   'wiki-image-embed-inline': 'text ![[photo.png]] more\n',

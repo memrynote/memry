@@ -4,7 +4,7 @@
     "oracle": "apps/desktop/scripts/markdown-oracle (Electron converter run in place; gray-matter 4.0.3, js-yaml 3.15.1)",
     "note": "yFragmentToBlocks (y-prosemirror read, then nodeToBlock) as canonical block JSON, ids dropped, over seeded documents and Yjs-authored ones.",
     "yamlJsonEncoding": "Numbers that JSON cannot carry are {\"$num\": \"NaN\"|\"Infinity\"|\"-Infinity\"|\"-0\"}, a Date is {\"$date\": ISO}, a Buffer is {\"$bin\": base64}, a map with a \"$\"-prefixed key is wrapped as {\"$map\": {...}}. Key order is Object.keys order.",
-    "caseCount": 850
+    "caseCount": 854
   },
   "cases": [
     {
@@ -4397,7 +4397,7 @@
                 },
                 {
                   "props": {
-                    "domain": "",
+                    "domain": "note:abc|Title",
                     "favicon": "",
                     "siteName": "",
                     "title": "",
@@ -4443,7 +4443,7 @@
                 },
                 {
                   "props": {
-                    "domain": "",
+                    "domain": "note:a_b_c|T_t",
                     "favicon": "",
                     "siteName": "",
                     "title": "",
@@ -4503,6 +4503,654 @@
                     "url": "a://@"
                   },
                   "type": "linkMention"
+                }
+              ],
+              "children": []
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "blocks/doc-blocks/mention-host-rtl",
+      "op": "doc-blocks",
+      "input": {
+        "markdown": "((mention:https%3A%2F%2F%D9%A1%D9%A2%D9%A3.com%2Fx)) ((mention:https%3A%2F%2F%D9%A1%D9%A2%D9%A3.com%2Fx ))\n\n((mention:https%3A%2F%2Fshop%D9%A3.com)) ((mention:https%3A%2F%2Fshop%D9%A3.com ))\n\n((mention:https%3A%2F%2Fa%D9%80b.com)) ((mention:https%3A%2F%2Fa%D9%80b.com ))\n\n((mention:https%3A%2F%2F%D7%A9%D7%9C%D7%95%D7%9D.co.il%2F)) ((mention:https%3A%2F%2F%D7%A9%D7%9C%D7%95%D7%9D.co.il%2F ))\n\n((mention:https%3A%2F%2F%D9%85%D8%AB%D8%A7%D9%84.%D8%A7%D8%AE%D8%AA%D8%A8%D8%A7%D8%B1)) ((mention:https%3A%2F%2F%D9%85%D8%AB%D8%A7%D9%84.%D8%A7%D8%AE%D8%AA%D8%A8%D8%A7%D8%B1 ))\n\n((mention:https%3A%2F%2Fa.%D7%A9b.com)) ((mention:https%3A%2F%2Fa.%D7%A9b.com ))\n\n((mention:https%3A%2F%2FZ%D7%90.com)) ((mention:https%3A%2F%2FZ%D7%90.com ))\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "blocks": [
+            {
+              "type": "paragraph",
+              "props": {
+                "backgroundColor": "default",
+                "textAlignment": "left",
+                "textColor": "default"
+              },
+              "content": [
+                {
+                  "props": {
+                    "domain": "١٢٣.com",
+                    "favicon": "",
+                    "siteName": "",
+                    "title": "",
+                    "url": "https://١٢٣.com/x"
+                  },
+                  "type": "linkMention"
+                },
+                {
+                  "styles": {},
+                  "text": " ",
+                  "type": "text"
+                },
+                {
+                  "props": {
+                    "domain": "١٢٣.com",
+                    "favicon": "",
+                    "siteName": "",
+                    "title": "",
+                    "url": "https://١٢٣.com/x"
+                  },
+                  "type": "linkMention"
+                }
+              ],
+              "children": []
+            },
+            {
+              "type": "paragraph",
+              "props": {
+                "backgroundColor": "default",
+                "textAlignment": "left",
+                "textColor": "default"
+              },
+              "content": [
+                {
+                  "props": {
+                    "domain": "shop٣.com",
+                    "favicon": "",
+                    "siteName": "",
+                    "title": "",
+                    "url": "https://shop٣.com"
+                  },
+                  "type": "linkMention"
+                },
+                {
+                  "styles": {},
+                  "text": " ",
+                  "type": "text"
+                },
+                {
+                  "props": {
+                    "domain": "shop٣.com",
+                    "favicon": "",
+                    "siteName": "",
+                    "title": "",
+                    "url": "https://shop٣.com"
+                  },
+                  "type": "linkMention"
+                }
+              ],
+              "children": []
+            },
+            {
+              "type": "paragraph",
+              "props": {
+                "backgroundColor": "default",
+                "textAlignment": "left",
+                "textColor": "default"
+              },
+              "content": [
+                {
+                  "props": {
+                    "domain": "aـb.com",
+                    "favicon": "",
+                    "siteName": "",
+                    "title": "",
+                    "url": "https://aـb.com"
+                  },
+                  "type": "linkMention"
+                },
+                {
+                  "styles": {},
+                  "text": " ",
+                  "type": "text"
+                },
+                {
+                  "props": {
+                    "domain": "aـb.com",
+                    "favicon": "",
+                    "siteName": "",
+                    "title": "",
+                    "url": "https://aـb.com"
+                  },
+                  "type": "linkMention"
+                }
+              ],
+              "children": []
+            },
+            {
+              "type": "paragraph",
+              "props": {
+                "backgroundColor": "default",
+                "textAlignment": "left",
+                "textColor": "default"
+              },
+              "content": [
+                {
+                  "props": {
+                    "domain": "שלום.co.il",
+                    "favicon": "",
+                    "siteName": "",
+                    "title": "",
+                    "url": "https://שלום.co.il/"
+                  },
+                  "type": "linkMention"
+                },
+                {
+                  "styles": {},
+                  "text": " ",
+                  "type": "text"
+                },
+                {
+                  "props": {
+                    "domain": "שלום.co.il",
+                    "favicon": "",
+                    "siteName": "",
+                    "title": "",
+                    "url": "https://שלום.co.il/"
+                  },
+                  "type": "linkMention"
+                }
+              ],
+              "children": []
+            },
+            {
+              "type": "paragraph",
+              "props": {
+                "backgroundColor": "default",
+                "textAlignment": "left",
+                "textColor": "default"
+              },
+              "content": [
+                {
+                  "props": {
+                    "domain": "مثال.اختبار",
+                    "favicon": "",
+                    "siteName": "",
+                    "title": "",
+                    "url": "https://مثال.اختبار"
+                  },
+                  "type": "linkMention"
+                },
+                {
+                  "styles": {},
+                  "text": " ",
+                  "type": "text"
+                },
+                {
+                  "props": {
+                    "domain": "مثال.اختبار",
+                    "favicon": "",
+                    "siteName": "",
+                    "title": "",
+                    "url": "https://مثال.اختبار"
+                  },
+                  "type": "linkMention"
+                }
+              ],
+              "children": []
+            },
+            {
+              "type": "paragraph",
+              "props": {
+                "backgroundColor": "default",
+                "textAlignment": "left",
+                "textColor": "default"
+              },
+              "content": [
+                {
+                  "props": {
+                    "domain": "a.שb.com",
+                    "favicon": "",
+                    "siteName": "",
+                    "title": "",
+                    "url": "https://a.שb.com"
+                  },
+                  "type": "linkMention"
+                },
+                {
+                  "styles": {},
+                  "text": " ",
+                  "type": "text"
+                },
+                {
+                  "props": {
+                    "domain": "a.שb.com",
+                    "favicon": "",
+                    "siteName": "",
+                    "title": "",
+                    "url": "https://a.שb.com"
+                  },
+                  "type": "linkMention"
+                }
+              ],
+              "children": []
+            },
+            {
+              "type": "paragraph",
+              "props": {
+                "backgroundColor": "default",
+                "textAlignment": "left",
+                "textColor": "default"
+              },
+              "content": [
+                {
+                  "props": {
+                    "domain": "zא.com",
+                    "favicon": "",
+                    "siteName": "",
+                    "title": "",
+                    "url": "https://Zא.com"
+                  },
+                  "type": "linkMention"
+                },
+                {
+                  "styles": {},
+                  "text": " ",
+                  "type": "text"
+                },
+                {
+                  "props": {
+                    "domain": "zא.com",
+                    "favicon": "",
+                    "siteName": "",
+                    "title": "",
+                    "url": "https://Zא.com"
+                  },
+                  "type": "linkMention"
+                }
+              ],
+              "children": []
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "blocks/doc-blocks/mention-host-ascii",
+      "op": "doc-blocks",
+      "input": {
+        "markdown": "((mention:https%3A%2F%2Fxn--bcher-kva.de%2Fa)) ((mention:https%3A%2F%2Fxn--bcher-kva.de%2Fa ))\n\n((mention:https%3A%2F%2FB%C3%BCcher.DE)) ((mention:https%3A%2F%2FB%C3%BCcher.DE ))\n\n((mention:https%3A%2F%2FWWW.Example.com%3A8080%2Fp%3Fq%23f)) ((mention:https%3A%2F%2FWWW.Example.com%3A8080%2Fp%3Fq%23f ))\n\n((mention:https%3A%2F%2Fu%3Ap%40host.test)) ((mention:https%3A%2F%2Fu%3Ap%40host.test ))\n\n((mention:http%3A%2F%2F%5B%3A%3A1%5D%3A80%2F)) ((mention:http%3A%2F%2F%5B%3A%3A1%5D%3A80%2F ))\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "blocks": [
+            {
+              "type": "paragraph",
+              "props": {
+                "backgroundColor": "default",
+                "textAlignment": "left",
+                "textColor": "default"
+              },
+              "content": [
+                {
+                  "props": {
+                    "domain": "xn--bcher-kva.de",
+                    "favicon": "",
+                    "siteName": "",
+                    "title": "",
+                    "url": "https://xn--bcher-kva.de/a"
+                  },
+                  "type": "linkMention"
+                },
+                {
+                  "styles": {},
+                  "text": " ",
+                  "type": "text"
+                },
+                {
+                  "props": {
+                    "domain": "xn--bcher-kva.de",
+                    "favicon": "",
+                    "siteName": "",
+                    "title": "",
+                    "url": "https://xn--bcher-kva.de/a"
+                  },
+                  "type": "linkMention"
+                }
+              ],
+              "children": []
+            },
+            {
+              "type": "paragraph",
+              "props": {
+                "backgroundColor": "default",
+                "textAlignment": "left",
+                "textColor": "default"
+              },
+              "content": [
+                {
+                  "props": {
+                    "domain": "bücher.de",
+                    "favicon": "",
+                    "siteName": "",
+                    "title": "",
+                    "url": "https://Bücher.DE"
+                  },
+                  "type": "linkMention"
+                },
+                {
+                  "styles": {},
+                  "text": " ",
+                  "type": "text"
+                },
+                {
+                  "props": {
+                    "domain": "bücher.de",
+                    "favicon": "",
+                    "siteName": "",
+                    "title": "",
+                    "url": "https://Bücher.DE"
+                  },
+                  "type": "linkMention"
+                }
+              ],
+              "children": []
+            },
+            {
+              "type": "paragraph",
+              "props": {
+                "backgroundColor": "default",
+                "textAlignment": "left",
+                "textColor": "default"
+              },
+              "content": [
+                {
+                  "props": {
+                    "domain": "example.com",
+                    "favicon": "",
+                    "siteName": "",
+                    "title": "",
+                    "url": "https://WWW.Example.com:8080/p?q#f"
+                  },
+                  "type": "linkMention"
+                },
+                {
+                  "styles": {},
+                  "text": " ",
+                  "type": "text"
+                },
+                {
+                  "props": {
+                    "domain": "example.com",
+                    "favicon": "",
+                    "siteName": "",
+                    "title": "",
+                    "url": "https://WWW.Example.com:8080/p?q#f"
+                  },
+                  "type": "linkMention"
+                }
+              ],
+              "children": []
+            },
+            {
+              "type": "paragraph",
+              "props": {
+                "backgroundColor": "default",
+                "textAlignment": "left",
+                "textColor": "default"
+              },
+              "content": [
+                {
+                  "props": {
+                    "domain": "host.test",
+                    "favicon": "",
+                    "siteName": "",
+                    "title": "",
+                    "url": "https://u:p@host.test"
+                  },
+                  "type": "linkMention"
+                },
+                {
+                  "styles": {},
+                  "text": " ",
+                  "type": "text"
+                },
+                {
+                  "props": {
+                    "domain": "host.test",
+                    "favicon": "",
+                    "siteName": "",
+                    "title": "",
+                    "url": "https://u:p@host.test"
+                  },
+                  "type": "linkMention"
+                }
+              ],
+              "children": []
+            },
+            {
+              "type": "paragraph",
+              "props": {
+                "backgroundColor": "default",
+                "textAlignment": "left",
+                "textColor": "default"
+              },
+              "content": [
+                {
+                  "props": {
+                    "domain": "[::1]",
+                    "favicon": "",
+                    "siteName": "",
+                    "title": "",
+                    "url": "http://[::1]:80/"
+                  },
+                  "type": "linkMention"
+                },
+                {
+                  "styles": {},
+                  "text": " ",
+                  "type": "text"
+                },
+                {
+                  "props": {
+                    "domain": "[::1]",
+                    "favicon": "",
+                    "siteName": "",
+                    "title": "",
+                    "url": "http://[::1]:80/"
+                  },
+                  "type": "linkMention"
+                }
+              ],
+              "children": []
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "blocks/doc-blocks/mention-host-refused",
+      "op": "doc-blocks",
+      "input": {
+        "markdown": "((mention:mailto%3Aa%40b.test)) ((mention:mailto%3Aa%40b.test ))\n\n((mention:https%3Ax.test)) ((mention:https%3Ax.test ))\n\n((mention:https%3A%2F%2Fx.test%3A65536)) ((mention:https%3A%2F%2Fx.test%3A65536 ))\n\n((mention:https%3A%2F%2F%2541.test)) ((mention:https%3A%2F%2F%2541.test ))\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "blocks": [
+            {
+              "type": "paragraph",
+              "props": {
+                "backgroundColor": "default",
+                "textAlignment": "left",
+                "textColor": "default"
+              },
+              "content": [
+                {
+                  "props": {
+                    "domain": "mailto:a@b.test",
+                    "favicon": "",
+                    "siteName": "",
+                    "title": "",
+                    "url": "mailto:a@b.test"
+                  },
+                  "type": "linkMention"
+                },
+                {
+                  "styles": {},
+                  "text": " ((mention:mailto%3Aa%40b.test ))",
+                  "type": "text"
+                }
+              ],
+              "children": []
+            },
+            {
+              "type": "paragraph",
+              "props": {
+                "backgroundColor": "default",
+                "textAlignment": "left",
+                "textColor": "default"
+              },
+              "content": [
+                {
+                  "props": {
+                    "domain": "https:x.test",
+                    "favicon": "",
+                    "siteName": "",
+                    "title": "",
+                    "url": "https:x.test"
+                  },
+                  "type": "linkMention"
+                },
+                {
+                  "styles": {},
+                  "text": " ((mention:https%3Ax.test ))",
+                  "type": "text"
+                }
+              ],
+              "children": []
+            },
+            {
+              "type": "paragraph",
+              "props": {
+                "backgroundColor": "default",
+                "textAlignment": "left",
+                "textColor": "default"
+              },
+              "content": [
+                {
+                  "props": {
+                    "domain": "https://x.test:65536",
+                    "favicon": "",
+                    "siteName": "",
+                    "title": "",
+                    "url": "https://x.test:65536"
+                  },
+                  "type": "linkMention"
+                },
+                {
+                  "styles": {},
+                  "text": " ((mention:https%3A%2F%2Fx.test%3A65536 ))",
+                  "type": "text"
+                }
+              ],
+              "children": []
+            },
+            {
+              "type": "paragraph",
+              "props": {
+                "backgroundColor": "default",
+                "textAlignment": "left",
+                "textColor": "default"
+              },
+              "content": [
+                {
+                  "props": {
+                    "domain": "https://%41.test",
+                    "favicon": "",
+                    "siteName": "",
+                    "title": "",
+                    "url": "https://%41.test"
+                  },
+                  "type": "linkMention"
+                },
+                {
+                  "styles": {},
+                  "text": " ((mention:https%3A%2F%2F%2541.test ))",
+                  "type": "text"
+                }
+              ],
+              "children": []
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "blocks/doc-blocks/mention-underline-colour",
+      "op": "doc-blocks",
+      "input": {
+        "markdown": "A <u>((mention:https%3A%2F%2Fx.test%2Fu))</u> B <span style=\"color: red\">((mention:https%3A%2F%2Fx.test%2Fc))</span> C <span style=\"background-color: yellow\">((mention:https%3A%2F%2Fx.test%2Fb))</span> D\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "blocks": [
+            {
+              "type": "paragraph",
+              "props": {
+                "backgroundColor": "default",
+                "textAlignment": "left",
+                "textColor": "default"
+              },
+              "content": [
+                {
+                  "styles": {},
+                  "text": "A ",
+                  "type": "text"
+                },
+                {
+                  "styles": {
+                    "underline": true
+                  },
+                  "text": "((mention:https%3A%2F%2Fx.test%2Fu))",
+                  "type": "text"
+                },
+                {
+                  "styles": {},
+                  "text": " B ",
+                  "type": "text"
+                },
+                {
+                  "styles": {
+                    "textColor": "red"
+                  },
+                  "text": "((mention:https%3A%2F%2Fx.test%2Fc))",
+                  "type": "text"
+                },
+                {
+                  "styles": {},
+                  "text": " C ",
+                  "type": "text"
+                },
+                {
+                  "styles": {
+                    "backgroundColor": "yellow"
+                  },
+                  "text": "((mention:https%3A%2F%2Fx.test%2Fb))",
+                  "type": "text"
+                },
+                {
+                  "styles": {},
+                  "text": " D",
+                  "type": "text"
                 }
               ],
               "children": []

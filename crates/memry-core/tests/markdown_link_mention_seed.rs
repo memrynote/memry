@@ -2,7 +2,8 @@
 //! accepts to a `linkMention` node, legacy ones with `_ * ! ~ '` raw included,
 //! as Electron's `prepareFragmentSeed` does since #3871 and #4478. The source
 //! record keeps a legacy token's bytes until its own paragraph is edited. A
-//! token in a styled run stays text (#4652).
+//! token in a styled run stays text (#4652). The URL check and the chip's
+//! `domain` follow one host rule with no IDNA (#4685).
 
 #![cfg(feature = "markdown")]
 
@@ -85,10 +86,9 @@ fn a_stray_space_or_backslash_is_repaired_and_a_non_url_stays_text() {
     );
 }
 
-/// Node's `new URL` fails an authority with credentials and no host; the
-/// `url` crate parses it with an empty host.
+/// An authority with credentials and no host has no host to show.
 #[test]
-fn credentials_without_a_host_fail_the_url_check_as_in_node() {
+fn credentials_without_a_host_fail_the_url_check() {
     let blocks = seed_blocks("A ((mention:a%3A%2F%2F%40 )) B ((mention:a%3A%2F%2F%3A%40%2Fx)).");
     assert_eq!(
         content(&blocks[0]),
@@ -119,18 +119,103 @@ fn a_legacy_token_in_a_fenced_code_block_or_a_link_label_stays_text() {
     assert!(label[0].to_string().contains(token), "{}", label[0]);
 }
 
+/// Every byte outside `[A-Za-z0-9.-]` percent-encoded, as the token serializer
+/// leaves a URL: the payload then decodes back to `url` exactly.
+fn encode(url: &str) -> String {
+    url.bytes()
+        .map(|b| match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'.' | b'-' => char::from(b).to_string(),
+            _ => format!("%{b:02X}"),
+        })
+        .collect()
+}
+
+/// The host rule of protocol 12.1.1.1 (#4685): `scheme://authority`, the host
+/// after the last `@` and before the port, ASCII-lowercased, with no IDNA. Node's
+/// `new URL` and the `idna` crate disagreed on the RTL rows, so Electron and the
+/// Rust seed promoted different tokens and gave different domains.
+const HOST_ROWS: [(&str, Option<&str>); 20] = [
+    (
+        "https://\u{661}\u{662}\u{663}.com/x",
+        Some("\u{661}\u{662}\u{663}.com"),
+    ),
+    ("https://shop\u{663}.com", Some("shop\u{663}.com")),
+    ("https://a\u{640}b.com", Some("a\u{640}b.com")),
+    (
+        "https://\u{5e9}\u{5dc}\u{5d5}\u{5dd}.co.il/",
+        Some("\u{5e9}\u{5dc}\u{5d5}\u{5dd}.co.il"),
+    ),
+    (
+        "https://\u{645}\u{62b}\u{627}\u{644}.\u{627}\u{62e}\u{62a}\u{628}\u{627}\u{631}",
+        Some("\u{645}\u{62b}\u{627}\u{644}.\u{627}\u{62e}\u{62a}\u{628}\u{627}\u{631}"),
+    ),
+    ("https://a.\u{5e9}b.com", Some("a.\u{5e9}b.com")),
+    ("https://Z\u{5d0}.com", Some("z\u{5d0}.com")),
+    ("https://xn--bcher-kva.de/a", Some("xn--bcher-kva.de")),
+    ("https://B\u{fc}cher.DE", Some("b\u{fc}cher.de")),
+    ("https://WWW.Example.com:8080/p?q#f", Some("example.com")),
+    ("https://u:p@host.test", Some("host.test")),
+    ("http://[::1]:80/", Some("[::1]")),
+    ("custom+x://Host", Some("host")),
+    ("a://@", None),
+    ("a://:@/x", None),
+    ("mailto:a@b.test", None),
+    ("https:x.test", None),
+    ("https://x.test:65536", None),
+    ("https://%41.test", None),
+    ("https://a^b.test", None),
+];
+
+#[test]
+fn the_host_rule_decides_promotion_and_domain_without_idna() {
+    for (url, host) in HOST_ROWS {
+        let payload = encode(url);
+        let blocks = seed_blocks(&format!(
+            "A ((mention:{payload})) B ((mention:{payload} )) C"
+        ));
+        let chips: Vec<&Json> = content(&blocks[0])
+            .as_array()
+            .expect("inline")
+            .iter()
+            .filter(|item| item["type"] == "linkMention")
+            .collect();
+        // A well-formed token is promoted whatever its URL; a repaired one only
+        // when the rule finds a host.
+        assert_eq!(chips.len(), 1 + usize::from(host.is_some()), "{url}");
+        for chip in chips {
+            assert_eq!(chip["props"]["url"], url, "{url}");
+            assert_eq!(chip["props"]["domain"], host.unwrap_or(url), "{url}");
+        }
+    }
+}
+
 const STYLED_TOKEN: &str = "((mention:https%3A%2F%2Fexample.com%2Fa%5Fb))";
 
-/// A `linkMention` node carries no styles, so a token in code or emphasis
-/// stays text and its paragraph keeps the delimiters when edited (#4652).
+/// A `linkMention` node carries no styles, so a token in code, emphasis,
+/// underline or a colour stays text and its paragraph keeps the delimiters
+/// when edited (#4652, #4718). An underline is written in house style.
 #[test]
 fn a_token_in_a_styled_run_stays_text_and_keeps_its_bytes_when_edited() {
     let converter = Converter::new(Default::default());
-    for markdown in [
-        format!("A `{STYLED_TOKEN}` b."),
-        format!("A *{STYLED_TOKEN}* b."),
-        format!("A **{STYLED_TOKEN}** b."),
-        format!("A ~~{STYLED_TOKEN}~~ b."),
+    let underline = format!("A <span style=\"text-decoration:underline\">{STYLED_TOKEN}</span> b.");
+    for (markdown, written) in [
+        (format!("A `{STYLED_TOKEN}` b."), None),
+        (format!("A *{STYLED_TOKEN}* b."), None),
+        (format!("A **{STYLED_TOKEN}** b."), None),
+        (format!("A ~~{STYLED_TOKEN}~~ b."), None),
+        (
+            format!("A <u>{STYLED_TOKEN}</u> b."),
+            Some(underline.clone()),
+        ),
+        (underline.clone(), None),
+        (
+            format!("A <span style=\"color:red\">{STYLED_TOKEN}</span> b."),
+            None,
+        ),
+        (
+            format!("A <span style=\"background-color:yellow\">{STYLED_TOKEN}</span> b."),
+            None,
+        ),
     ] {
         let doc = replica("device-a");
         assert!(converter.seed_body(&doc, &markdown, None, None, &NoEmbeds));
@@ -138,7 +223,8 @@ fn a_token_in_a_styled_run_stays_text_and_keeps_its_bytes_when_edited() {
 
         append_to_paragraph(&doc, " b.", " Edited.");
 
-        assert_eq!(body(&converter, &doc), format!("{markdown} Edited."));
+        let written = written.unwrap_or_else(|| markdown.clone());
+        assert_eq!(body(&converter, &doc), format!("{written} Edited."));
     }
 }
 

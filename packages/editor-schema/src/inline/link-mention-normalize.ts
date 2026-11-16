@@ -11,15 +11,13 @@ import type { Block } from '@blocknote/core'
 import {
   MENTION_TOKEN_REGEX,
   parseLinkMentionToken,
-  createLinkMentionContent
+  createLinkMentionContent,
+  linkMentionHost
 } from './link-mention'
 
+/** The host without its first `www.`, wherever it sits, or the URL when it has no host. */
 function extractDomain(url: string): string {
-  try {
-    return new URL(url).hostname.replace('www.', '')
-  } catch {
-    return url
-  }
+  return linkMentionHost(url)?.replace('www.', '') ?? url
 }
 
 function createStyledText(

@@ -15,7 +15,7 @@ mod content;
 mod getattrs;
 pub(crate) mod js;
 mod link;
-pub(crate) mod url;
+mod url;
 
 use super::{
     AttrsResult, ContentElement, GetAttrs, GetContent, StyleRule, StyleTarget, TagRule, Target,

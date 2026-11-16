@@ -15,7 +15,6 @@ use std::sync::LazyLock;
 use regex::Regex;
 use serde_json::{Map, Value as Json, json};
 
-use crate::markdown::bn::dom_parser::rules::url::parse_like_node;
 use crate::markdown::frontmatter::js::is_js_whitespace;
 use crate::markdown::shared::critic_markup::uri::decode_uri_component;
 
@@ -23,19 +22,54 @@ use crate::markdown::shared::critic_markup::uri::decode_uri_component;
 static MENTION_TOKEN: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\(\(mention:([^()\n\r]+)\)\)").expect("static pattern"));
 
-/// `extractDomain`: `new URL(url).hostname.replace('www.', '')`, which drops the
-/// first `www.` wherever it sits, and the URL itself when it does not parse.
+static URL_AUTHORITY: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^[A-Za-z][A-Za-z0-9+.-]*://([^/?#]*)").expect("static pattern"));
+static IP_LITERAL: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^\[[0-9A-Fa-f:.]+\]$").expect("static pattern"));
+/// Printable ASCII but `%<>[\]^|`, and every code point from U+0080.
+static REG_NAME: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^[!-$&-;=?-Z_-{}~\x{80}-\x{10FFFF}]+$").expect("static pattern"));
+
+/// `linkMentionHost`: the host of `scheme://authority`, ASCII-lowercased, with
+/// no IDNA, so this and Electron answer alike whatever ada Node ships (#4685).
+fn link_mention_host(url: &str) -> Option<String> {
+    let authority = URL_AUTHORITY.captures(url)?.get(1)?.as_str();
+    let host_port = authority
+        .rfind('@')
+        .map_or(authority, |at| &authority[at + 1..]);
+    let ip_end = if host_port.starts_with('[') {
+        host_port.find(']').map_or(0, |end| end + 1)
+    } else {
+        0
+    };
+    let (host, port) = match host_port[ip_end..].find(':') {
+        Some(colon) => (
+            &host_port[..ip_end + colon],
+            &host_port[ip_end + colon + 1..],
+        ),
+        None => (host_port, ""),
+    };
+    let digits = port.trim_start_matches('0');
+    let port_ok = port.bytes().all(|b| b.is_ascii_digit())
+        && (digits.is_empty() || digits.parse::<u32>().is_ok_and(|p| p <= 65535));
+    let host_ok = if host.starts_with('[') {
+        IP_LITERAL.is_match(host)
+    } else {
+        REG_NAME.is_match(host)
+    };
+    (port_ok && host_ok).then(|| host.to_ascii_lowercase())
+}
+
+/// `extractDomain`: the host without its first `www.`, wherever it sits, or the
+/// URL itself when it has no host.
 fn extract_domain(url: &str) -> String {
-    match parse_like_node(url) {
-        Some(parsed) => parsed.host_str().unwrap_or("").replacen("www.", "", 1),
-        None => url.to_owned(),
-    }
+    link_mention_host(url).map_or_else(|| url.to_owned(), |host| host.replacen("www.", "", 1))
 }
 
 /// `parseLinkMentionToken`. A payload without whitespace or a backslash is
 /// decoded as it is. Otherwise both are stripped, a repair older builds' remark
 /// escapes and stray spaces need, and what is left must be in the union of every
-/// token alphabet and decode to a URL.
+/// token alphabet and decode to a URL with a host.
 fn parse_link_mention_token(encoded: &str) -> Option<String> {
     let strip = |c: char| is_js_whitespace(c) || c == '\\';
     if !encoded.contains(strip) {
@@ -47,7 +81,7 @@ fn parse_link_mention_token(encoded: &str) -> Option<String> {
         return None;
     }
     let url = decode_uri_component(&repaired)?;
-    parse_like_node(&url).map(|_| url)
+    link_mention_host(&url).map(|_| url)
 }
 
 fn styled_text(text: &str, styles: Option<&Json>) -> Json {

@@ -68,14 +68,32 @@ const WELL_FORMED_PAYLOAD = /^[^\s\\]+$/
 /** Every alphabet any build of the serializer has emitted, unioned. */
 const ANY_TOKEN_ALPHABET = /^[A-Za-z0-9.%!'*~_-]+$/
 
-function isUrl(value: string): boolean {
-  try {
-    // oxlint-disable-next-line eslint/no-new -- new URL is the validity check; it throws on a malformed value
-    new URL(value)
-    return true
-  } catch {
-    return false
-  }
+const URL_AUTHORITY = /^[A-Za-z][A-Za-z0-9+.-]*:\/\/([^/?#]*)/
+const IP_LITERAL = /^\[[0-9A-Fa-f:.]+\]$/
+/** Printable ASCII but `%<>[\]^|`, and every UTF-16 unit from U+0080. */
+const REG_NAME = /^[!-$&-;=?-Z_-{}~\u0080-\uFFFF]+$/
+const PORT = /^[0-9]*$/
+
+/**
+ * The host of a mention URL, ASCII-lowercased, or null when the URL has no
+ * `scheme://` authority with a usable host (protocol 12.1.1.1). It decides both
+ * whether a repaired token is a URL and the chip's `domain`, and it applies no
+ * IDNA on purpose: `new URL` answers with the ada build of the running Node,
+ * whose bidi label check is not RFC 5893's, so Electron and the Rust core
+ * promoted different Arabic and Hebrew hosts and seeded two chips (#4685).
+ * `crates/memry-core/src/markdown/schema/link_mention_normalize.rs` ports it.
+ */
+export function linkMentionHost(url: string): string | null {
+  const authority = URL_AUTHORITY.exec(url)?.[1]
+  if (authority === undefined) return null
+  const hostPort = authority.slice(authority.lastIndexOf('@') + 1)
+  const ipEnd = hostPort.startsWith('[') ? hostPort.indexOf(']') + 1 : 0
+  const colon = hostPort.indexOf(':', ipEnd)
+  const host = colon === -1 ? hostPort : hostPort.slice(0, colon)
+  const port = colon === -1 ? '' : hostPort.slice(colon + 1)
+  if (!PORT.test(port) || Number(port) > 65535) return null
+  const valid = host.startsWith('[') ? IP_LITERAL.test(host) : REG_NAME.test(host)
+  return valid ? host.replace(/[A-Z]/g, (char) => char.toLowerCase()) : null
 }
 
 export function parseLinkMentionToken(encoded: string): string | null {
@@ -98,7 +116,7 @@ export function parseLinkMentionToken(encoded: string): string | null {
   if (!ANY_TOKEN_ALPHABET.test(repaired)) return null
   try {
     const url = decodeURIComponent(repaired)
-    return isUrl(url) ? url : null
+    return linkMentionHost(url) === null ? null : url
   } catch {
     return null
   }
