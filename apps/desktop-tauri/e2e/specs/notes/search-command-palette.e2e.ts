@@ -1,8 +1,16 @@
 // Search and the command palette (Electron `tests/e2e/search-command-palette.e2e.ts`, #3540): a
 // note is found by the `search_*` commands and the palette, a result opened from search lists in
 // the recents, and the palette's ⌘3 Tasks scope hides the note. Electron's task and inbox legs wait
-// for the tasks and inbox commands, which are not ported yet.
+// for the tasks and inbox commands, which are not ported yet. The attachment-text cases are new in
+// Tauri (#3542 lane I): a note is found by the words of a PDF or an image attached to it, which the
+// `memry-ml-worker` sidecar reads (pdfium for the text layer, Tesseract for the picture).
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+
 import { appReady } from '../../harness/app-ready'
+import { uploadAttachment } from '../../harness/attachments'
+import { FILE_TEXT_UNAVAILABLE, fileTextAvailable } from '../../harness/file-text'
+import type { Page } from '../../harness/pw-compat/page'
 import { createNote, vaultOpen } from '../../harness/notes'
 import { test, expect } from '../../harness/test'
 import { invoke } from '../../harness/vault-commands'
@@ -64,4 +72,79 @@ test('a note is found by search and the palette, and listed once opened', async 
   await expect(dialog.getByRole('button', { name: /^Remove Tasks?$/ })).toBeVisible()
   await expect(dialog.getByText(title, { exact: true })).toHaveCount(0)
   await page.keyboard.press('Escape')
+})
+
+// The worker's own fixtures: a two-page text PDF ("Alpha harbor lantern", "Beta orchard compass")
+// and a rendered line of text ("Heron count at dawn").
+const fixture = (name: string): Uint8Array =>
+  readFileSync(
+    fileURLToPath(
+      new URL(`../../../../../crates/memry-ml-worker/tests/fixtures/${name}`, import.meta.url)
+    )
+  )
+
+/**
+ * A note whose body links `bytes` as an attachment named `fileName`. The runner reads only the
+ * attachments a note's body names (`attachments/<noteId>/<file>`), and reads a note's folder when
+ * the note is indexed, so the body is written after the upload, as the editor's attach does.
+ */
+async function noteWithAttachment(
+  page: Page,
+  fileName: string,
+  bytes: Uint8Array
+): Promise<{ id: string; title: string }> {
+  const suffix = Math.random().toString(36).slice(2, 8)
+  const title = `Attachment Search ${suffix}`
+  const note = await createNote(page, { title, content: 'Body without the words.' })
+  const saved = await uploadAttachment(page, note.id, fileName, bytes)
+  await invoke(page, 'notes_update', {
+    input: { id: note.id, content: `Body without the words.\n\n[${fileName}](${saved.path})` }
+  })
+  return { id: note.id, title }
+}
+
+const foundNoteIds = async (page: Page, text: string): Promise<string[]> => {
+  const found = await invoke<Found>(page, 'search_query', {
+    input: { text, types: ['note'], limit: 10 }
+  })
+  return found.groups.flatMap((group) => group.results).map((item) => item.id)
+}
+
+async function expectPaletteFinds(page: Page, text: string, title: string): Promise<void> {
+  await page.evaluate(() => {
+    const active = document.activeElement
+    if (active instanceof HTMLElement) active.blur()
+  })
+  await page.keyboard.press(`${MOD}+k`)
+  const input = page.locator('[cmdk-input]')
+  await expect(input).toBeVisible()
+  await input.fill(text)
+  await expect(page.locator('[cmdk-root]').getByText(title, { exact: true }).first()).toBeVisible({
+    timeout: 20_000
+  })
+  await page.keyboard.press('Escape')
+}
+
+test('a note is found by the text layer of a PDF attached to it', async ({ page }) => {
+  test.skip(!fileTextAvailable(), FILE_TEXT_UNAVAILABLE)
+  test.slow()
+  await appReady(page)
+  await vaultOpen(page)
+  const note = await noteWithAttachment(page, 'two-pages.pdf', fixture('two-pages.pdf'))
+
+  // "compass" is on the second page, so the whole file is read, not only its first page.
+  await expect.poll(() => foundNoteIds(page, 'compass'), { timeout: 60_000 }).toContain(note.id)
+  expect(await foundNoteIds(page, 'lantern')).toContain(note.id)
+  await expectPaletteFinds(page, 'compass', note.title)
+})
+
+test('a note is found by the words OCR reads from an image attached to it', async ({ page }) => {
+  test.skip(!fileTextAvailable(), FILE_TEXT_UNAVAILABLE)
+  test.slow()
+  await appReady(page)
+  await vaultOpen(page)
+  const note = await noteWithAttachment(page, 'heron.png', fixture('ocr-reader.fixture.png'))
+
+  await expect.poll(() => foundNoteIds(page, 'heron'), { timeout: 90_000 }).toContain(note.id)
+  await expectPaletteFinds(page, 'heron', note.title)
 })
