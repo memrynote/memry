@@ -90,12 +90,15 @@ extension EditorSession {
                   returnBurst?.target == field.blockId || titleBurst?.target == field.blockId {
             pendingFocus = nil
             takeCaret(field)
-        } else if let old = shortcutField, old.blockId == field.blockId, pendingFocus == field.blockId || old !== field {
+        } else if let old = shortcutField, old.blockId == field.blockId,
+                  pendingFocus == field.blockId
+                  || (old !== field && pendingFocus == nil && (self.field == nil || self.field === old)) {
             // A row a type change redrew takes the caret as it appears, so
             // no key arrives while no text view holds it (#4704), also when
             // a re-read of the note drew it before the change asked for the
-            // caret (#4756). It takes the old row's caret as it begins
-            // editing (`takeOver`).
+            // caret (#4756). It leaves the caret to a block waiting for it
+            // (a Return's new block) or holding it. It takes the old row's
+            // caret as it begins editing (`takeOver`).
             pendingFocus = nil
             takeCaret(field, atEnd: false)
         } else {
