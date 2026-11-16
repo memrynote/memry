@@ -481,8 +481,9 @@ struct InlineNodeUndoTests {
             edit: .insertInline(blockId: f.blockId, start: 6, end: 6, kind: "dateMention", text: "", attrs: attrs)
         )
         let reread = { @MainActor [f] in
+            let generation = f.session.landedWrites
             let blocks = try await f.reader.blocks(id: f.noteId)
-            if let block = blocks?.first(where: { $0.id == f.blockId }) { f.field.receive(block) }
+            if let block = blocks?.first(where: { $0.id == f.blockId }) { f.field.receive(block, generation: generation) }
         }
         try await reread()
         f.session.reload = { try? await reread() }

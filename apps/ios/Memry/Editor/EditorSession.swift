@@ -158,6 +158,16 @@ final class EditorSession {
     @ObservationIgnored var pendingColumnFocus: String?
     @ObservationIgnored var keyboardHeight: CGFloat = 300
     @ObservationIgnored private(set) var tail: Task<Void, Never>?
+    /// Each run `enqueue` queues is one write generation, numbered from 1
+    /// (#4738). A run's writes count as landed once it re-reads the page
+    /// (`didChange`) or ends. A read taken now includes `landedWrites`.
+    @ObservationIgnored private var queuedWrites = 0
+    @ObservationIgnored private(set) var landedWrites = 0
+    /// The generation the run this task is in was queued as.
+    @TaskLocal private static var running: Int?
+    /// The generation the page's drawn blocks include: `landedWrites` as
+    /// they were read (`NoteReadViewModel.blocksGeneration`).
+    @ObservationIgnored var drawnGeneration: () -> Int = { 0 }
     /// The field whose editing just ended, and its selection, until the turn
     /// ends (`editingEnded`).
     @ObservationIgnored var endedField: (field: BlockField, selection: NSRange)?
@@ -497,18 +507,28 @@ final class EditorSession {
     /// Every committed write ends here: a sync pass is scheduled, then the
     /// page re-reads the document.
     func didChange() async {
+        if let generation = Self.running { landed(generation) }
         requestSync?()
         await reload()
     }
 
     /// Runs `work` after every write queued before it: a mark must land after
-    /// the commit of the text it marks.
-    func enqueue(_ work: @escaping @MainActor () async -> Void) {
+    /// the commit of the text it marks. Answers its write generation.
+    @discardableResult
+    func enqueue(_ work: @escaping @MainActor () async -> Void) -> Int {
+        queuedWrites += 1
+        let generation = queuedWrites
         let previous = tail
-        tail = Task { @MainActor in
+        tail = Task { @MainActor [weak self] in
             await previous?.value
-            await work()
+            await Self.$running.withValue(generation) { await work() }
+            self?.landed(generation)
         }
+        return generation
+    }
+
+    private func landed(_ generation: Int) {
+        landedWrites = max(landedWrites, generation)
     }
 
     /// Writes what the user typed in `field`, then turns a `[[target]]` typed
@@ -565,9 +585,15 @@ final class EditorSession {
         // would still spell a link the core already holds as a node.
         let moved = links.isEmpty ? { $0 } : field.drawLinks(links)
         // The session too, so the write still schedules its sync pass.
-        enqueue {
+        let generation = enqueue {
             let wrote = dirty && text != base
-            if wrote { await model.commit(text, for: blockId, base: base) }
+            let landed = wrote ? await model.commit(text, for: blockId, base: base) : true
+            // Not written: the row keeps its text unsaved, so a redraw keeps
+            // it and the next commit sends it again (REVIEW-4700).
+            if !landed, field.base == text {
+                field.base = base
+                field.dirty = true
+            }
             let converted = overText.isEmpty
                 ? [] : await model.insert(overText, over: blockId, typedLength: length)
             let added = await nodes?(model) ?? []
@@ -582,12 +608,13 @@ final class EditorSession {
                     nodes: added, to: BlockText.placingNodes(spans, in: attributed),
                     caret: (field.pendingSelection ?? field.textView.selectedRange).location
                 ))
-            } else if wrote {
+            } else if wrote, landed {
                 self.history.record(.text(blockId: blockId, from: base, to: text))
             }
             await then?()
             if dirty || !overText.isEmpty || nodes != nil || then != nil { await self.didChange() }
         }
+        if dirty || !overText.isEmpty || nodes != nil { field.written = generation }
         return moved
     }
 
@@ -915,7 +942,7 @@ final class EditorSession {
             anchorId: request.anchorId,
             place: NodeAnchor.at(moved(range.location), in: field.textView.attributedText ?? NSAttributedString(), replaces: true)
         )
-        enqueue { [weak self] in
+        field.written = enqueue { [weak self] in
             if await model.rewriteDate(chip, in: blockId, to: value) {
                 self?.history.record(.date(blockId: blockId, chip: chip, from: request.value, to: value))
             }

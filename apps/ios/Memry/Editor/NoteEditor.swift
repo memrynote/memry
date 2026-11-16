@@ -85,13 +85,14 @@ final class NoteEditorViewModel {
     /// on the live block, so an edit that landed since survives: a second
     /// pane on the note (#4377) can write after this page last read it. For
     /// the same reason "unchanged" means the user changed nothing, whatever
-    /// the peer did.
-    func commit(_ text: String, for blockId: String, base: String) async {
-        guard let editor else { return }
+    /// the peer did. Answers whether the text is written.
+    @discardableResult
+    func commit(_ text: String, for blockId: String, base: String) async -> Bool {
+        guard let editor else { return false }
         drafts[blockId] = text
         guard text != base else {
             status = .idle
-            return
+            return true
         }
 
         status = .saving
@@ -99,6 +100,7 @@ final class NoteEditorViewModel {
             let landed = try await send(.replaceText(blockId: blockId, text: text, base: base))
             if landed {
                 status = .idle
+                return true
             } else {
                 // The note is gone. Not an error the user caused, and not
                 // something a retry fixes. The existing copy for exactly this
@@ -110,6 +112,7 @@ final class NoteEditorViewModel {
             Log.storage.error("a block edit did not land")
             status = .failed(ErrorMapping.userFacing(error))
         }
+        return false
     }
 
     /// Inserts a paragraph after `blockId` and returns its new id.
@@ -739,10 +742,12 @@ struct NoteEditingBridge {
         linkNotes: [NoteSummary] = [],
         icons: [String: String] = [:],
         titleExists: ((String) -> Bool)? = nil,
+        drawnGeneration: @escaping () -> Int,
         didChange: @escaping () async -> Void
     ) {
         session = model.session
         session.model = model
+        session.drawnGeneration = drawnGeneration
         session.reload = didChange
         session.linkNotes = linkNotes
         session.icons = icons
