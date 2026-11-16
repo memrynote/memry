@@ -164,13 +164,16 @@ final class EditorSession {
     @ObservationIgnored private var queuedWrites = 0
     @ObservationIgnored private(set) var landedWrites = 0
     /// Each block's last typing commit from this session that failed,
-    /// until one lands (#4773): the text it sent (`typed`), the text it
-    /// left the block at (`held`), and the runs queued by then (`queued`).
-    /// A commit queued by then on top of `typed` sends its change from
-    /// `held`, so the failed one's typing goes with it. Any other commit
-    /// was drawn or typed from what the row showed, and goes from its own
-    /// base: a clean redraw since puts the core's text there.
-    @ObservationIgnored private var unlanded: [String: (typed: String, held: String, queued: Int)] = [:]
+    /// until one lands (#4773): the text it sent (`typed`), the row's base
+    /// with its chips drawn (`drawn`), the draws whose chips the core never
+    /// got (`draws`), the text it left the block at (`held`), and the runs
+    /// queued by then (`queued`). A commit queued by then on top of `typed`
+    /// or `drawn` sends its change from `held`, with those chips back to
+    /// the text they replaced, so the failed one's typing goes with it
+    /// (REVIEW-4784). Any other commit was drawn or typed from what the row
+    /// showed, and goes from its own base: a clean redraw since puts the
+    /// core's text there.
+    @ObservationIgnored private var unlanded: [String: (typed: String, drawn: String, draws: Set<Int>, held: String, queued: Int)] = [:]
     /// The generation the run this task is in was queued as.
     @TaskLocal private static var running: Int?
     /// The generation the page's drawn blocks include: `landedWrites` as
@@ -547,11 +550,14 @@ final class EditorSession {
     /// nodes in after the typing and answers the edits it ran, which join
     /// the typing's undo step. `over` puts nodes over text in `field`, such
     /// as a `#tag`, as the typed links go (`NoteEditorViewModel.insert`).
+    /// `drawing` draws chips for the nodes in the row once the typed links
+    /// are drawn, given where a location before them is after them.
     @discardableResult
     func commit(
         _ field: BlockField,
         then: (@MainActor () async -> Void)? = nil,
         over: [EditorUndoStep.TextNode] = [],
+        drawing: ((Int) -> Int) -> Void = { _ in },
         inserting nodes: (@MainActor (NoteEditorViewModel) async -> [BlockEdit])? = nil
     ) -> (Int) -> Int {
         // Keys held for a Return's new block commit here instead (Tab, ⌘B,
@@ -591,18 +597,30 @@ final class EditorSession {
         // The literal text goes now, not when the page reloads: typing that
         // lands before the reload would keep it, and the next commit's base
         // would still spell a link the core already holds as a node.
+        let draw = BlockField.beginDraw()
         let moved = links.isEmpty ? { $0 } : field.drawLinks(links)
+        drawing(moved)
+        // The row's base with this commit's chips drawn: `text` when it
+        // drew none.
+        let drawn = field.base
         let wrote = dirty && text != base
         // The session too, so the write still schedules its sync pass.
         let generation = enqueue {
             // Queued behind a commit that failed, `base` holds typing the
             // core never got: the change goes from what it holds (#4773).
-            let failed = self.unlanded[blockId]
-            let carries = dirty && failed.map { $0.typed == base && (Self.running ?? 0) <= $0.queued } == true
-            let from = carries ? failed?.held ?? base : base
-            let sends = dirty && text != from
-            let (landed, held) = sends ? await model.commit(text, for: blockId, base: from) : (true, text)
-            if dirty { self.unlanded[blockId] = landed ? nil : (typed: text, held: held, queued: self.queuedWrites) }
+            let failed = self.unlanded[blockId].flatMap {
+                dirty && ($0.typed == base || $0.drawn == base) && (Self.running ?? 0) <= $0.queued ? $0 : nil
+            }
+            let from = failed?.held ?? base
+            // Its chips the core never got go as the text they replaced.
+            let carried = failed?.draws ?? []
+            let sent = carried.isEmpty ? text : BlockField.undrawn(attributed, draws: carried)
+            let sends = dirty && sent != from
+            let (landed, held) = sends ? await model.commit(sent, for: blockId, base: from) : (true, sent)
+            if dirty {
+                self.unlanded[blockId] = landed
+                    ? nil : (typed: text, drawn: drawn, draws: carried.union([draw]), held: held, queued: self.queuedWrites)
+            }
             // Not written: the block's row keeps its text unsaved, so a
             // redraw keeps it and the next commit sends it again
             // (REVIEW-4700). The row that took this one's typing over
@@ -610,28 +628,35 @@ final class EditorSession {
             // base a later commit moved on has that commit queued, which
             // sends this typing too.
             let row = self.drawnFields.object(forKey: blockId as NSString).flatMap { $0.blockId == blockId ? $0 : nil } ?? field
-            if !landed, row.base == text {
+            // A row still on this commit's drawn chips gets back the text
+            // they replaced, and keeps it unsaved the same way (REVIEW-4784).
+            if !landed, row.base == text || (drawn != text && row.base == drawn) {
+                row.undraw(carried.union([draw]))
                 row.base = held
                 row.dirty = true
             }
-            let converted = overText.isEmpty
+            // Not after a failed write: their places hold typing the core
+            // never got, and they would go at the block's end (REVIEW-4784).
+            let converted = !landed || overText.isEmpty
                 ? [] : await model.insert(overText, over: blockId, typedLength: length)
-            let added = await nodes?(model) ?? []
+            let added = landed ? await nodes?(model) ?? [] : []
             // From `from`, as the write: the block may hold another pane's
             // typing since, which undo and redo keep. To this pane's text
             // with the nodes in, so undo takes them back too. A node over
             // text, such as a `#tag`, keeps its literal for redo to find.
             // Only over a text write that landed: undo would replay a change
-            // the core never had.
-            if landed, !converted.isEmpty || !added.isEmpty {
+            // the core never had. Nor when a failed commit's chips were
+            // swapped out of this text: its nodes' places count them.
+            let placed = !converted.isEmpty || !added.isEmpty
+            if landed, placed, sent == text {
                 let spans = converted.map { $0.start ..< $0.start + $0.literal.utf8.count } + added.compactMap(Self.span)
                 self.history.record(.text(
                     blockId: blockId, from: from, typed: text, typedLength: length, overText: converted,
                     nodes: added, to: BlockText.placingNodes(spans, in: attributed),
                     caret: (field.pendingSelection ?? field.textView.selectedRange).location
                 ))
-            } else if landed, sends {
-                self.history.record(.text(blockId: blockId, from: from, to: text))
+            } else if landed, sends, !placed {
+                self.history.record(.text(blockId: blockId, from: from, to: sent))
             }
             await then?()
             if dirty || !overText.isEmpty || nodes != nil || then != nil {
@@ -1212,33 +1237,63 @@ final class EditorSession {
             suggestions = []
         }
         let blockId = field.blockId
+        // Each node as the row draws it and the core gets it, a date under
+        // the anchor its chip carries.
+        let nodes: [(kind: EditorSuggestion.Kind, run: InlineRun?, anchorId: String?)] = kinds.map { kind in
+            switch kind {
+            case let .note(title, alias), let .create(title, alias):
+                let attrs = WikiLinkAttrs.attrs(target: title, alias: alias)
+                return (kind, Self.node("wikiLink", attrs), nil)
+            case let .date(value):
+                let anchorId = DateMentionValue.mintAnchorId()
+                return (kind, Self.node("dateMention", value.attrs(anchorId: anchorId)), anchorId)
+            case .slash:
+                return (kind, nil, nil)
+            }
+        }
         // Read once the commit has drawn a typed `[[…]]` before `range` as
         // its node, as the core holds it when the nodes go in. Each node
         // goes before its own space.
         var anchors: [NodeAnchor] = []
-        let moved = commit(field, inserting: { model in
+        commit(field, drawing: { moved in
+            let location = moved(range.location)
+            let text = textView.attributedText ?? NSAttributedString()
+            anchors = kinds.indices.map { NodeAnchor.at(location + $0, in: text, replaces: false) }
+            // Drawn now, as `commit` draws a typed `[[…]]` (#4780): keys typed
+            // before the nodes land leave the row dirty, a dirty row is never
+            // redrawn, and the chips stayed off screen until its next commit.
+            field.drawNodes(nodes.compactMap(\.run), at: location)
+            field.pendingSelection = NSRange(location: location + 2 * kinds.count, length: 0)
+        }, inserting: { model in
             var edits: [BlockEdit] = []
             // Last first, so each node's offset still counts only the spaces
             // before it.
-            for (kind, at) in zip(kinds, anchors).reversed() {
-                switch kind {
+            for (node, at) in zip(nodes, anchors).reversed() {
+                switch node.kind {
                 case let .note(title, alias):
                     if let edit = await model.insertWikiLink(in: blockId, at: at, title: title, alias: alias) { edits.append(edit) }
                 case let .create(title, alias):
                     await model.createNote(titled: title)
                     if let edit = await model.insertWikiLink(in: blockId, at: at, title: title, alias: alias) { edits.append(edit) }
                 case let .date(value):
-                    if let edit = await model.insertDateMention(in: blockId, at: at, value: value) { edits.append(edit) }
+                    if let edit = await model.insertDateMention(in: blockId, at: at, value: value, anchorId: node.anchorId) {
+                        edits.append(edit)
+                    }
                 case .slash:
                     break
                 }
             }
             return edits
         })
-        let location = moved(range.location)
-        let text = textView.attributedText ?? NSAttributedString()
-        anchors = kinds.indices.map { NodeAnchor.at(location + $0, in: text, replaces: false) }
-        field.pendingSelection = NSRange(location: location + 2 * kinds.count, length: 0)
+    }
+
+    /// An inline node run of `mark`, with `attrs` under the mark's prefix,
+    /// as the core reads it back.
+    private static func node(_ mark: String, _ attrs: [String: String]) -> InlineRun {
+        InlineRun(
+            text: "", marks: [mark],
+            markAttrs: Dictionary(uniqueKeysWithValues: attrs.map { ("\(mark).\($0.key)", $0.value) }), target: nil
+        )
     }
 
     /// A link or date at the end of `block`, followed by a space: the page
