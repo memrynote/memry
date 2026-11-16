@@ -95,6 +95,9 @@ struct NoteTitleEditor: View {
     @State private var commits = DraftCommits()
     /// The Return whose keys the title holds until the body takes the caret.
     @State private var returned: LineReturn?
+    /// An input method took a hardware Return as its own; the focus loss
+    /// that follows as the key comes up gives the caret back.
+    @State private var composedReturn = false
     @State private var pickingIcon = false
     /// A new note's title wants the caret until the user types or moves it.
     @State private var claimsFocus = false
@@ -242,7 +245,10 @@ struct NoteTitleEditor: View {
                 // block already drawn in that same turn (`returnToBody`).
                 .onKeyPress(.return, phases: .down) { _ in
                     // An input method's composition takes the Return as its own.
-                    guard titleTextView?.markedTextRange == nil else { return .ignored }
+                    guard titleTextView?.markedTextRange == nil else {
+                        composedReturn = true
+                        return .ignored
+                    }
                     guard returned == nil else { return .handled }
                     // An edit that ended under the caret (the app resumed)
                     // still moves to the body.
@@ -260,6 +266,14 @@ struct NoteTitleEditor: View {
                             draft = title
                             commits.begin(title)
                         }
+                    } else if composedReturn {
+                        // SwiftUI ends the field's editing as the input
+                        // method's Return comes up, and no text view would
+                        // take the keys after it. The caret stays in the
+                        // title, and the edit goes on; a tap that moved the
+                        // caret to a block keeps it there.
+                        composedReturn = false
+                        if titleTextView == nil { focused = true } else { commit() }
                     } else if returned != nil {
                         // The body taking the caret ends the title's focus
                         // before it takes the held keys, on the same turn.

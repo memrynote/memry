@@ -243,7 +243,10 @@ struct NoteTitleBurstTests {
     }
 
     /// #4756: a hardware Return while an input method composes in the title
-    /// is the composition's, not the move to the body.
+    /// is the composition's, not the move to the body. The caret stays in
+    /// the title, and the next key lands there: SwiftUI ends the field's
+    /// editing as the key comes up, and the key typed then reached no text
+    /// view.
     @Test(.timeLimit(.minutes(1))) func a_return_key_during_a_composition_stays_in_the_title() async throws {
         let f = try await newNote()
         let (window, field) = try await open(f)
@@ -253,11 +256,16 @@ struct NoteTitleBurstTests {
         field.setMarkedText("か", selectedRange: NSRange(location: 1, length: 0))
         let press = HardwarePress(.keyboardReturnOrEnter, "\r")
         field.pressesBegan([press], with: nil)
+        // The input method confirms its composition on the key going down.
+        field.unmarkText()
         field.pressesEnded([press], with: nil)
         try await settle(f)
 
         #expect(views(BlockTextView.self, in: window).allSatisfy { !$0.isFirstResponder }, "the body took the caret")
-        #expect(field.text == "titleか")
+        #expect(field.isFirstResponder, "the title lost the caret to no text view")
+        key("x", in: window, title: field)
+        try await settle(f)
+        #expect(field.text == "titleかx")
     }
 
     /// #4722: keys typed slowly into the block the title's Return moved the
