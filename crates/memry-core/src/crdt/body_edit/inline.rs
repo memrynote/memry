@@ -91,13 +91,13 @@ pub(super) fn insert_inline(
 
     if !tail.is_empty() {
         let rebuilt = block.insert(txn, index + 2, XmlTextPrelim::new(""));
-        let mut at = 0u32;
         for (chunk, chunk_attrs) in tail {
             // An unmarked chunk gets an explicit empty set: a plain insert
-            // after a marked one would inherit its mark.
+            // after a marked one would inherit its mark. Appended at the
+            // run's own length, in the document's offset unit (#4808).
             let attrs = chunk_attrs.map(|attrs| *attrs).unwrap_or_default();
+            let at = rebuilt.len(txn);
             rebuilt.insert_with_attributes(txn, at, &chunk, attrs);
-            at += chunk.chars().count() as u32;
         }
     }
     Ok(())
@@ -114,7 +114,10 @@ pub(super) fn element_text_len<T: ReadTxn>(txn: &T, element: &XmlElementRef) -> 
         .sum()
 }
 
-/// One run's content from `from` onward, as formatted chunks.
+/// One run's content from `from` onward, as formatted chunks. `from` is in
+/// the document's offset unit, UTF-8 bytes (`OffsetKind::Bytes`), as
+/// `run.len` is: counted in characters, text after multibyte text was
+/// dropped (#4808).
 pub(super) fn formatted_tail(
     txn: &TransactionMut,
     run: &XmlTextRef,
@@ -126,13 +129,17 @@ pub(super) fn formatted_tail(
         let yrs::Out::Any(Any::String(value)) = &chunk.insert else {
             continue;
         };
-        let length = value.chars().count() as u32;
-        let chunk_end = seen + length;
+        let chunk_end = seen + value.len() as u32;
         if chunk_end > from {
             let skip = from.saturating_sub(seen) as usize;
-            let kept: String = value.chars().skip(skip).collect();
+            // A `from` inside a character keeps that whole character.
+            let skip = (0..=skip)
+                .rev()
+                .find(|&at| value.is_char_boundary(at))
+                .unwrap_or(0);
+            let kept = &value[skip..];
             if !kept.is_empty() {
-                out.push((kept, chunk.attributes.clone()));
+                out.push((kept.to_owned(), chunk.attributes.clone()));
             }
         }
         seen = chunk_end;
