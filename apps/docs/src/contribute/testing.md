@@ -139,6 +139,11 @@ each launch gets its own `mkdtemp` user-data dir, its own `e2e-<uuid>` device id
 every keychain account), and every server the harness starts binds an ephemeral port — the simulated
 sync server included, since miniflare's default 8787 would otherwise collide between workers.
 
+A fresh profile also means every one-time prompt would open in every spec, and its overlay would
+intercept every click. Preload (`src/preload/lib/e2e-onboarding.ts`) marks the onboarding tour, the
+GitHub star card, and the iPhone beta launch prompt as seen before the renderer mounts, only when
+`TEST_VAULT_PATH` is set. A new one-time prompt adds its flag there.
+
 ### E2E Keychain Cleanup (macOS)
 
 Sync E2E launches set `MEMRY_DEVICE=e2e-<uuid>-A|B`, and every keychain account is suffixed with

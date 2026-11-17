@@ -1,5 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { suppressFirstRunPromptsInE2E } from '../../../../preload/lib/e2e-onboarding'
 
 const mocks = vi.hoisted(() => ({
   join: vi.fn()
@@ -28,6 +30,10 @@ beforeEach(() => {
   ;(window as unknown as { api: unknown }).api = { iosBeta: { join: mocks.join } }
 })
 
+afterEach(() => {
+  vi.unstubAllEnvs()
+})
+
 describe('iPhone beta launch prompt', () => {
   it('shows once; after closing it stays closed on the next launch', async () => {
     const first = await launch()
@@ -40,6 +46,24 @@ describe('iPhone beta launch prompt', () => {
 
     const second = await launch()
     render(<second.IosBetaLaunchPrompt />)
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  // #4428: every E2E launch has a fresh profile, so the prompt's overlay covered the
+  // window and intercepted every click in every Electron spec.
+  it('never opens on an E2E launch, and still opens without the E2E signal', async () => {
+    // what preload runs before the renderer mounts, in a packaged build
+    suppressFirstRunPromptsInE2E()
+    const packaged = await launch()
+    const { unmount } = render(<packaged.IosBetaLaunchPrompt />)
+    expect(screen.getByRole('dialog')).toBeTruthy()
+    unmount()
+
+    localStorage.clear()
+    vi.stubEnv('TEST_VAULT_PATH', '/tmp/e2e-vault')
+    suppressFirstRunPromptsInE2E()
+    const e2e = await launch()
+    render(<e2e.IosBetaLaunchPrompt />)
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
