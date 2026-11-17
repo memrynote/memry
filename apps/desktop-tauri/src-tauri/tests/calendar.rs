@@ -425,3 +425,103 @@ fn sources_list_filter_and_change_selection() {
     assert_eq!(missing["source"], Value::Null);
     assert!(!missing["error"].as_str().unwrap().is_empty());
 }
+
+/// The issue's perf row (#3546): `calendar_get_range` for one month, through the IPC the
+/// renderer calls, at most 50 ms p95. The month holds 200 native events, 200 events of a
+/// selected Google calendar and 150 tasks with a due date (half timed, a third with a duration),
+/// with as many of each outside it; Electron's seed vault (`seed-data/calendar.ts`) has a few
+/// dozen. Ignored by default; run it in release:
+///
+/// ```text
+/// cargo test -p memry-tauri --release --test calendar calendar_get_range_month_perf -- --ignored --nocapture
+/// ```
+///
+/// It prints p50 and p95 of 40 calls; `MEMRY_PERF_ENFORCE=1` turns a miss into a failure.
+#[test]
+#[ignore = "a timing row; run it in release"]
+fn calendar_get_range_month_perf() {
+    const BUDGET_MS: f64 = 50.0;
+    let cal = opened(&[]);
+    let mut records = google_records();
+    let mut ids = Vec::new();
+    for n in 0..400 {
+        // Days 1-28 of October 2026, then the same days of December.
+        let month = if n < 200 { 10 } else { 12 };
+        let (day, hour) = (n % 28 + 1, 7 + n % 12);
+        let start = format!("2026-{month:02}-{day:02}T{hour:02}:00:00.000Z");
+        let end = format!("2026-{month:02}-{day:02}T{hour:02}:45:00.000Z");
+        cal.ok(
+            "calendar_create_event",
+            json!({ "input": { "title": format!("Event {n}"), "startAt": start, "endAt": end }}),
+        );
+        ids.push((
+            format!("ext-p{n}"),
+            json!({
+                "id": format!("ext-p{n}"), "sourceId": SOURCE, "remoteEventId": format!("g-p{n}"),
+                "title": format!("Imported {n}"), "startAt": start, "endAt": end,
+                "isAllDay": false, "status": "confirmed", "clock": { "desktop": 1 },
+                "createdAt": "2026-09-24T08:00:00.000Z", "modifiedAt": "2026-09-24T08:00:00.000Z"
+            }),
+        ));
+    }
+    for n in 0..300 {
+        let month = if n < 150 { 10 } else { 12 };
+        let mut task = json!({
+            "id": format!("task-p{n}"), "title": format!("Task {n}"), "projectId": "proj-1",
+            "dueDate": format!("2026-{month:02}-{:02}", n % 28 + 1), "clock": { "desktop": 1 }
+        });
+        if n % 2 == 0 {
+            task["dueTime"] = json!(format!("{:02}:30", 8 + n % 10));
+        }
+        if n % 3 == 0 {
+            task["durationMinutes"] = json!(30);
+        }
+        ids.push((format!("task-p{n}"), task));
+    }
+    let external: Vec<(&str, &str, Value)> = ids
+        .iter()
+        .map(|(id, payload)| {
+            let kind = if id.starts_with("ext") {
+                "calendar_external_event"
+            } else {
+                "task"
+            };
+            (kind, id.as_str(), payload.clone())
+        })
+        .collect();
+    records.extend(external);
+    cal.apply(&records);
+    cal.heard();
+
+    let args = json!({ "input": {
+        "startAt": "2026-10-01T00:00:00.000Z", "endAt": "2026-11-01T00:00:00.000Z",
+        "includeCompletedTasks": true
+    }});
+    let items = cal.ok("calendar_get_range", args.clone())["items"]
+        .as_array()
+        .unwrap()
+        .len();
+    // 200 native, 200 imported and 150 tasks; the planning event is in September.
+    assert_eq!(items, 550, "the month's items");
+    let mut samples: Vec<std::time::Duration> = (0..40)
+        .map(|_| {
+            let started = std::time::Instant::now();
+            cal.ok("calendar_get_range", args.clone());
+            started.elapsed()
+        })
+        .collect();
+    samples.sort();
+    let (p50, p95) = (
+        samples[samples.len() / 2],
+        samples[samples.len() * 95 / 100],
+    );
+    println!(
+        "calendar_get_range, one month of {items} items: p50 {p50:?}, p95 {p95:?} (budget {BUDGET_MS} ms)"
+    );
+    if std::env::var("MEMRY_PERF_ENFORCE").is_ok_and(|v| v == "1") {
+        assert!(
+            p95.as_secs_f64() * 1000.0 <= BUDGET_MS,
+            "p95 {p95:?} over {BUDGET_MS} ms"
+        );
+    }
+}
