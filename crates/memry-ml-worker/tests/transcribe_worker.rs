@@ -1,13 +1,15 @@
 //! The transcription calls against the stub worker, which can hold an op open or abort under it:
 //! a hung transcription is killed at the op timeout (Electron's 5 min `REQUEST_TIMEOUT_MS`, short
-//! here), a crash fails only its call, and a recording over the cap never starts a child. Time is
-//! never asserted from above.
+//! here), a crash fails only its call, and a recording or a language over its cap never starts a
+//! child. Time is never asserted from above.
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 
-use memry_ml_worker::{Limits, MAX_TRANSCRIBE_BYTES, Supervisor, SystemClock, WorkerError};
+use memry_ml_worker::{
+    Limits, MAX_LANGUAGE_BYTES, MAX_TRANSCRIBE_BYTES, Supervisor, SystemClock, WorkerError,
+};
 
 fn supervisor(limits: Limits) -> Supervisor {
     Supervisor::new(
@@ -70,6 +72,17 @@ fn a_recording_over_the_cap_never_reaches_the_worker() {
     let outcome = worker.transcribe(Path::new("/models/ggml-small.bin"), "en", &wav);
     assert!(
         matches!(outcome, Err(WorkerError::Failed(_))),
+        "{outcome:?}"
+    );
+    assert_eq!(worker.pid(), None, "no child was started for it");
+}
+
+#[test]
+fn a_language_over_the_cap_never_reaches_the_worker() {
+    let worker = supervisor(Limits::default());
+    let outcome = transcribe(&worker, &"a".repeat(MAX_LANGUAGE_BYTES + 1));
+    assert!(
+        matches!(outcome, Err(WorkerError::Rejected(_))),
         "{outcome:?}"
     );
     assert_eq!(worker.pid(), None, "no child was started for it");

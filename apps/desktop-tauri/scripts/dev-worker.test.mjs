@@ -1,10 +1,13 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import { workerFeatures } from './dev-worker.mjs'
+import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+import { workerBuild, workerFeatures } from './dev-worker.mjs'
 
 describe('workerFeatures', () => {
-  it('builds the whole worker where ONNX Runtime links and cmake runs', () => {
+  it('builds the whole worker, transcription included, where ONNX Runtime links and cmake runs', () => {
     const native = ['--features', 'native']
     assert.deepEqual(
       workerFeatures({ platform: 'darwin', arch: 'arm64', env: {}, cmake: true }),
@@ -21,7 +24,7 @@ describe('workerFeatures', () => {
     )
   })
 
-  it('leaves the embedding model out without ORT_LIB_LOCATION', () => {
+  it('leaves the embedding model and transcription out without ORT_LIB_LOCATION', () => {
     for (const [platform, arch] of [
       ['linux', 'x64'],
       ['win32', 'x64'],
@@ -35,7 +38,7 @@ describe('workerFeatures', () => {
     }
   })
 
-  it('leaves OCR out without cmake', () => {
+  it('leaves OCR and transcription out without cmake', () => {
     assert.deepEqual(workerFeatures({ platform: 'darwin', arch: 'arm64', env: {}, cmake: false }), [
       '--no-default-features',
       '--features',
@@ -45,6 +48,23 @@ describe('workerFeatures', () => {
       '--no-default-features',
       '--features',
       'pdf'
+    ])
+  })
+})
+
+describe('workerBuild', () => {
+  it('runs cargo from crates/ so its .cargo/config.toml applies', () => {
+    const crates = resolve(fileURLToPath(new URL('../../../crates', import.meta.url)))
+    const build = workerBuild(['--features', 'native'])
+    assert.equal(build.cwd, crates)
+    assert.deepEqual(build.args, [
+      'build',
+      '-p',
+      'memry-ml-worker',
+      '--bin',
+      'memry-ml-worker',
+      '--features',
+      'native'
     ])
   })
 })
