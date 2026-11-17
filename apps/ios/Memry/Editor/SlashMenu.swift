@@ -45,8 +45,8 @@ enum BlockCatalog {
             /// Opens the query sheet; Done inserts a `memry-view` code block.
             case view
             /// Creates a canvas owned by the note, inserts a block naming it
-            /// and opens the board.
-            case whiteboard
+            /// and opens the board: in the drawing surface when `ink`.
+            case whiteboard(ink: Bool)
             /// A column list of `count` columns, each holding an empty
             /// paragraph (desktop's `insertColumnList`).
             case columns(count: Int)
@@ -143,7 +143,14 @@ enum BlockCatalog {
         Row(
             id: "whiteboard", title: "Whiteboard", symbol: "pencil.and.scribble",
             aliases: ["whiteboard", "canvas", "excalidraw", "draw", "sketch", "board"],
-            section: .insert, action: .whiteboard
+            section: .insert, action: .whiteboard(ink: false)
+        ),
+        // Mobile's own row (#4378): the same block and canvas, drawn with
+        // PencilKit. Desktop opens it as a whiteboard.
+        Row(
+            id: "drawing", title: "Drawing", symbol: "applepencil.and.scribble",
+            aliases: ["draw", "drawing", "sketch", "pencil", "ink", "handwriting", "whiteboard"],
+            section: .insert, action: .whiteboard(ink: true)
         ),
         // Desktop's `/view` (`getViewSlashMenuItem`).
         Row(
@@ -312,8 +319,8 @@ extension EditorSession {
             insertSource(field, kind: kind)
         case .view:
             requestView()
-        case .whiteboard:
-            insertWhiteboard(field)
+        case let .whiteboard(ink):
+            insertWhiteboard(field, ink: ink)
         case let .columns(count):
             insertColumns(field, count: count)
         case .date:
@@ -344,7 +351,7 @@ extension EditorSession {
     /// written with its id after, so a failed create adds nothing to the
     /// note. The block replaces an empty paragraph with nothing nested under
     /// it and goes after any other block, and the board opens ready to draw on.
-    private func insertWhiteboard(_ field: BlockField) {
+    private func insertWhiteboard(_ field: BlockField, ink: Bool) {
         guard let boards = whiteboards, let noteId = model?.noteId else { return }
         let blockId = field.blockId
         let blocks = blocks()
@@ -374,7 +381,7 @@ extension EditorSession {
                 await model.delete(blockId)
                 if let snapshot { self.history.record(.delete(blockId: blockId, snapshot: snapshot)) }
             }
-            self.editWhiteboard(canvasId: canvas.id, title: canvas.title ?? title)
+            self.editWhiteboard(WhiteboardEditRequest(canvasId: canvas.id, title: canvas.title ?? title, ink: ink))
         }
     }
 

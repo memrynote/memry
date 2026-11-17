@@ -1,0 +1,253 @@
+import PencilKit
+import SwiftUI
+
+// The drawing surface (#4378): PencilKit over a whiteboard's canvas, opened by
+// `/draw` and by a board holding only its ink. Full screen at regular width,
+// a sheet at compact width. The board's other elements show under the ink,
+// read only, and "Open full whiteboard" opens Excalidraw on the same canvas.
+
+enum InkCopy {
+    static let openFull = "Open full whiteboard"
+    static let openFullHint = "Opens the board in the whiteboard editor, to edit shapes and text"
+    static let saveFailedTitle = "Could not save the drawing"
+}
+
+/// Presents a note's open whiteboard: the drawing surface or the full
+/// editor, as the request says.
+struct WhiteboardPresentation: ViewModifier {
+    let session: EditorSession
+    let boards: (any WhiteboardBoards)?
+
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
+    func body(content: Content) -> some View {
+        content
+            .fullScreenCover(item: request { !$0.ink || sizeClass == .regular }) { request in
+                surface(request)
+            }
+            .sheet(item: request { $0.ink && sizeClass != .regular }) { request in
+                surface(request).presentationDetents([.large])
+            }
+    }
+
+    private func request(when shown: @escaping (WhiteboardEditRequest) -> Bool) -> Binding<WhiteboardEditRequest?> {
+        Binding(
+            get: { boards == nil ? nil : session.whiteboardEdit.flatMap { shown($0) ? $0 : nil } },
+            set: { if $0 == nil { session.finishWhiteboard() } }
+        )
+    }
+
+    @ViewBuilder
+    private func surface(_ request: WhiteboardEditRequest) -> some View {
+        if let boards {
+            if request.ink {
+                InkSurface(request: request, boards: boards)
+            } else {
+                WhiteboardEditor(request: request, boards: boards)
+            }
+        }
+    }
+}
+
+struct InkSurface: View {
+    let request: WhiteboardEditRequest
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dismiss) private var dismiss
+    @State private var board: InkBoard
+    private let boards: any WhiteboardBoards
+    @State private var full: WhiteboardEditRequest?
+
+    init(request: WhiteboardEditRequest, boards: any WhiteboardBoards) {
+        self.request = request
+        self.boards = boards
+        _board = State(initialValue: InkBoard(canvasId: request.canvasId, boards: boards))
+    }
+
+    var body: some View {
+        NavigationStack {
+            content
+                .navigationTitle(request.title)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button(InkCopy.openFull, systemImage: "rectangle.on.rectangle.angled") {
+                            Task { if await board.flush() { full = WhiteboardEditRequest(canvasId: request.canvasId, title: request.title) } }
+                        }
+                        .accessibilityHint(InkCopy.openFullHint)
+                        .disabled(board.phase != .open)
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") { Task { if await board.flush() { dismiss() } } }
+                    }
+                }
+                .alert(
+                    InkCopy.saveFailedTitle,
+                    isPresented: Binding(get: { board.saveFailure != nil }, set: { if !$0 { board.saveFailure = nil } })
+                ) {
+                    Button("OK", role: .cancel) { board.saveFailure = nil }
+                } message: {
+                    Text(board.saveFailure ?? "")
+                }
+        }
+        .interactiveDismissDisabled()
+        .task { await board.load() }
+        // A size class change can swap the presentation under the surface;
+        // what it has not saved yet still goes to the canvas.
+        .onDisappear { Task { [board] in _ = await board.flush() } }
+        .fullScreenCover(item: $full, onDismiss: { Task { await board.load() } }) { request in
+            WhiteboardEditor(request: request, boards: boards)
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        switch board.phase {
+        case .loading:
+            ProgressView(WhiteboardCopy.loading).frame(maxWidth: .infinity, maxHeight: .infinity)
+        case let .unavailable(message):
+            Text(message)
+                .font(Tokens.Typography.supporting.font)
+                .foregroundStyle(Tokens.Text.secondary.color)
+                .multilineTextAlignment(.center)
+                .padding(Tokens.Space.screenInline)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        case .open:
+            InkCanvas(board: board, dark: colorScheme == .dark, active: full == nil)
+                .background(WhiteboardInk.color(board.backgroundColor, dark: colorScheme == .dark))
+                .ignoresSafeArea(edges: .bottom)
+                .accessibilityLabel("Drawing: \(request.title)")
+        }
+    }
+}
+
+/// Once a Pencil has drawn, a finger scrolls rather than draws, as in Notes.
+/// Kept for the app's run.
+@MainActor
+enum InkInput {
+    static var pencilSeen = false
+}
+
+private struct InkCanvas: UIViewRepresentable {
+    let board: InkBoard
+    let dark: Bool
+    /// `false` while the full whiteboard is open over the surface, which
+    /// then hides the tool picker.
+    let active: Bool
+
+    func makeCoordinator() -> Coordinator { Coordinator(board: board) }
+
+    func makeUIView(context: Context) -> PKCanvasView {
+        let canvas = PKCanvasView()
+        canvas.backgroundColor = .clear
+        canvas.isOpaque = false
+        canvas.minimumZoomScale = 1
+        canvas.maximumZoomScale = 1
+        canvas.alwaysBounceVertical = true
+        canvas.drawingPolicy = InkInput.pencilSeen ? .pencilOnly : .anyInput
+        canvas.delegate = context.coordinator
+        let pencil = PencilSeen { [weak canvas] in
+            InkInput.pencilSeen = true
+            canvas?.drawingPolicy = .pencilOnly
+        }
+        canvas.addGestureRecognizer(pencil)
+        let picker = context.coordinator.picker
+        picker.setVisible(true, forFirstResponder: canvas)
+        picker.addObserver(canvas)
+        DispatchQueue.main.async { canvas.becomeFirstResponder() }
+        return canvas
+    }
+
+    func updateUIView(_ canvas: PKCanvasView, context: Context) {
+        let coordinator = context.coordinator
+        if coordinator.loads != board.loads {
+            coordinator.loads = board.loads
+            coordinator.applying = true
+            canvas.drawing = board.drawing
+            coordinator.applying = false
+        }
+        coordinator.underlay(in: canvas, scene: board.background, offset: board.offset, dark: dark)
+        coordinator.fitContent(canvas)
+        if !active, canvas.isFirstResponder {
+            canvas.resignFirstResponder()
+        } else if active, !canvas.isFirstResponder, canvas.window != nil {
+            canvas.becomeFirstResponder()
+        }
+    }
+
+    @MainActor
+    final class Coordinator: NSObject, PKCanvasViewDelegate {
+        let board: InkBoard
+        /// The tools #4378 names. The vector eraser removes whole strokes,
+        /// which Excalidraw stores as a delete; a pixel eraser would leave
+        /// masked strokes desktop cannot draw.
+        let picker = PKToolPicker(toolItems: [
+            PKToolPickerInkingItem(type: .pen),
+            PKToolPickerInkingItem(type: .marker),
+            PKToolPickerEraserItem(type: .vector),
+            PKToolPickerLassoItem(),
+            PKToolPickerRulerItem(),
+        ])
+        var loads = 0
+        var applying = false
+        private var host: UIHostingController<WhiteboardCanvas>?
+        private var drawn: (scene: WhiteboardScene?, dark: Bool)?
+        private var backgroundBox = CGRect.null
+
+        init(board: InkBoard) { self.board = board }
+
+        func canvasViewDrawingDidChange(_ canvas: PKCanvasView) {
+            fitContent(canvas)
+            guard !applying else { return }
+            board.changed(canvas.drawing)
+        }
+
+        /// The board's other elements, drawn once at scale 1 under the ink.
+        func underlay(in canvas: PKCanvasView, scene: WhiteboardScene?, offset: CGPoint, dark: Bool) {
+            guard drawn.map({ $0.scene != scene || $0.dark != dark }) ?? true else { return }
+            drawn = (scene, dark)
+            host?.view.removeFromSuperview()
+            host = nil
+            guard let scene, let bounds = scene.bounds else {
+                backgroundBox = .null
+                return
+            }
+            let box = bounds.insetBy(dx: -10, dy: -10)
+            let host = UIHostingController(rootView: WhiteboardCanvas(scene: scene, box: box, scale: 1, dark: dark))
+            host.view.backgroundColor = .clear
+            host.view.isUserInteractionEnabled = false
+            host.view.frame = box.offsetBy(dx: -offset.x, dy: -offset.y)
+            canvas.insertSubview(host.view, at: 0)
+            backgroundBox = host.view.frame
+            self.host = host
+        }
+
+        /// Room to keep drawing past the ink and the background.
+        func fitContent(_ canvas: PKCanvasView) {
+            let used = canvas.drawing.bounds.union(backgroundBox)
+            let size = CGSize(
+                width: max(canvas.bounds.width, used.isNull ? 0 : used.maxX + 40),
+                height: max(canvas.bounds.height * 1.5, used.isNull ? 0 : used.maxY + canvas.bounds.height / 2)
+            )
+            if canvas.contentSize != size { canvas.contentSize = size }
+        }
+    }
+}
+
+/// Sees a Pencil touch and never takes part in the gesture.
+private final class PencilSeen: UIGestureRecognizer {
+    private let seen: () -> Void
+
+    init(_ seen: @escaping () -> Void) {
+        self.seen = seen
+        super.init(target: nil, action: nil)
+        cancelsTouchesInView = false
+        delaysTouchesBegan = false
+        delaysTouchesEnded = false
+    }
+
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent) {
+        if touches.contains(where: { $0.type == .pencil }) { seen() }
+        state = .failed
+    }
+}

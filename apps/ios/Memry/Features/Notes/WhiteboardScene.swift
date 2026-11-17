@@ -55,6 +55,8 @@ struct WhiteboardScene: Equatable {
         let name: String?
         /// An image's file id, the key into `files`.
         let fileId: String?
+        /// Written by the drawing surface (`InkScene`).
+        var memryInk = false
     }
 
     let elements: [Element]
@@ -102,6 +104,18 @@ struct WhiteboardScene: Equatable {
         elements.map(\.bounds).reduce(nil) { $0?.union($1) ?? $1 }
     }
 
+    /// The scene without the elements `ids` names: what the drawing
+    /// surface shows under its own strokes.
+    func excluding(_ ids: Set<String>) -> WhiteboardScene {
+        WhiteboardScene(elements: elements.filter { !ids.contains($0.id) }, background: background, inlineImages: inlineImages)
+    }
+
+    /// Opens in the drawing surface rather than the full whiteboard: an
+    /// empty board, or one with the surface's ink on it, whose other
+    /// elements the surface shows under the ink. A board drawn only on
+    /// desktop opens in Excalidraw, as before.
+    var opensAsInk: Bool { elements.isEmpty || elements.contains(where: \.memryInk) }
+
     private static func element(_ raw: [String: Any]) -> Element? {
         guard let id = raw["id"] as? String, let type = raw["type"] as? String,
               (raw["isDeleted"] as? Bool) != true
@@ -138,7 +152,8 @@ struct WhiteboardScene: Equatable {
             fontSize: number("fontSize") ?? 20,
             textAlign: raw["textAlign"] as? String ?? "left",
             name: raw["name"] as? String,
-            fileId: raw["fileId"] as? String
+            fileId: raw["fileId"] as? String,
+            memryInk: (raw["customData"] as? [String: Any])?[InkScene.customKey] as? Bool == true
         )
     }
 }

@@ -131,7 +131,8 @@ final class EditorSession {
     private(set) var sourceEdit: BlockSourceRequest?
     /// A view block whose query sheet is open (`ViewQuerySheet`).
     private(set) var viewEdit: ViewQueryRequest?
-    /// A whiteboard open in its editor (`WhiteboardEditor`).
+    /// A whiteboard open in its editor (`WhiteboardEditor`) or the drawing
+    /// surface (`InkSurface`).
     private(set) var whiteboardEdit: WhiteboardEditRequest?
     /// Bumped when a whiteboard editor closes, so the block re-reads its board.
     private(set) var whiteboardRevision = 0
@@ -1127,9 +1128,9 @@ final class EditorSession {
         viewEdit = nil
     }
 
-    func editWhiteboard(canvasId: String, title: String) {
+    func editWhiteboard(_ request: WhiteboardEditRequest) {
         dismissKeyboard()
-        whiteboardEdit = WhiteboardEditRequest(canvasId: canvasId, title: title)
+        whiteboardEdit = request
     }
 
     /// The editor closed: its saves are on the canvas, which the block
