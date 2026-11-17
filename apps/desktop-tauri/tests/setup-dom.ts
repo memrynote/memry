@@ -95,6 +95,10 @@ vi.mock('../src/generated/bindings', () => {
   const vaultLocks = () =>
     (window.api as unknown as { vaultLocks: Record<string, (...args: unknown[]) => unknown> })
       .vaultLocks
+  // The sync reads are off `window.api`'s type; component tests still set `window.api.syncOps`.
+  const syncOps = () =>
+    (window.api as unknown as { syncOps: Record<string, (...args: unknown[]) => Promise<unknown>> })
+      .syncOps
   // The window functions are off `window.api`'s type; the mock below still provides them.
   const win = () => window.api as unknown as Record<string, (...args: unknown[]) => unknown>
   const definition = async (result: Promise<unknown>) => {
@@ -314,6 +318,11 @@ vi.mock('../src/generated/bindings', () => {
         return null
       },
       notesGetFolderTemplate: (folderPath: string) => notes().getFolderTemplate(folderPath),
+      // Async, so a test that sets no `window.api.syncOps` gets a rejection the component logs.
+      syncGetLargeNotes: async () => syncOps().getLargeNotes(),
+      syncGetUnsentNotes: async () => syncOps().getUnsentNotes(),
+      syncGetNoteSyncState: async ({ noteId }: { noteId: string }) =>
+        syncOps().getNoteSyncState(noteId),
       // Async, so a test that sets no `window.api.vaultLocks` gets a rejection the store logs.
       vaultLocksList: async () => vaultLocks().list(),
       vaultLocksSet: async (input: unknown) => vaultLocks().set(input),

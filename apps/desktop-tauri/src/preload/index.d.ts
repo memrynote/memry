@@ -99,18 +99,7 @@ import type {
   CertificatePinFailedEvent,
   VaultRecoveryNeededEvent
 } from '../shared/contracts/ipc-sync'
-import type {
-  RepairDeviceKeysResult,
-  ResolveVaultBindingResult,
-  SyncControlSurface,
-  SyncErrorCategory,
-  TriggerSyncResult,
-  VaultBindingChoice,
-  VaultBindingState,
-  LargeNotesResult,
-  NoteSyncState,
-  UnsentNotesResult
-} from '@memry/contracts/ipc-sync-ops'
+import type { RepairDeviceKeysResult, VaultBindingState } from '@memry/contracts/ipc-sync-ops'
 import type {
   FolderViewClientAPI as ContractFolderViewClientAPI,
   ConfigUpdatedEvent as FolderViewConfigUpdatedEvent
@@ -127,7 +116,6 @@ import type {
   StickyUndoResult,
   StickyWindowSession
 } from '@memry/contracts/sticky-api'
-import type { SyncedSettings } from '../shared/contracts/settings-sync'
 import type { RecentlyOpenedItem, RecordRecentlyOpenedInput } from '@memry/contracts/recents-api'
 
 // Vault types (mirrored from contracts for preload compatibility)
@@ -1557,15 +1545,6 @@ interface PlanChangePreview {
 
 // Sync Operations API
 interface SyncOpsClientAPI {
-  getStatus: () => Promise<{
-    status: string
-    lastSyncAt?: number
-    pendingCount: number
-    error?: string
-    errorCategory?: SyncErrorCategory
-    offlineSince?: number
-  }>
-  triggerSync: () => Promise<TriggerSyncResult>
   getHistory: (input: { limit?: number; offset?: number }) => Promise<{
     entries: Array<{
       id: string
@@ -1578,23 +1557,6 @@ interface SyncOpsClientAPI {
     }>
     total: number
   }>
-  getQueueSize: () => Promise<{
-    pending: number
-    failed: number
-  }>
-  pause: (surface: SyncControlSurface) => Promise<{
-    success: boolean
-    wasPaused: boolean
-  }>
-  resume: (surface: SyncControlSurface) => Promise<{
-    success: boolean
-    pendingCount: number
-  }>
-  updateSyncedSetting: (
-    fieldPath: string,
-    value: unknown
-  ) => Promise<{ success: boolean; error?: string }>
-  getSyncedSettings: () => Promise<SyncedSettings | null>
   getStorageBreakdown: () => Promise<{
     used: number
     limit: number
@@ -1605,11 +1567,6 @@ interface SyncOpsClientAPI {
       other: number
     }
   } | null>
-  getLargeNotes: () => Promise<LargeNotesResult>
-  getNoteSyncState: (noteId: string) => Promise<NoteSyncState | null>
-  getUnsentNotes: () => Promise<UnsentNotesResult>
-  getVaultBinding: () => Promise<VaultBindingState>
-  resolveVaultBinding: (choice: VaultBindingChoice) => Promise<ResolveVaultBindingResult>
   repairDeviceKeys: () => Promise<RepairDeviceKeysResult>
 }
 

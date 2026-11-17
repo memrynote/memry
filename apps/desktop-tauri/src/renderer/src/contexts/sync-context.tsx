@@ -19,6 +19,16 @@ import {
   onVaultBindingChanged,
   syncAccountService
 } from '@/services/sync-account-service'
+import {
+  onCertificatePinFailed,
+  onClockSkewWarning,
+  onInitialSyncProgress,
+  onItemSynced,
+  onQueueCleared,
+  onSecurityWarning,
+  onSyncStatusChanged,
+  syncService
+} from '@/services/sync-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { requestOpenSettings } from '@/lib/settings-navigation'
 import { DeviceRevokedDialog } from '@/components/sync/device-revoked-dialog'
@@ -325,7 +335,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
 
     const init = async (): Promise<void> => {
       try {
-        const status = await window.api.syncOps.getStatus()
+        const status = await syncService.getStatus()
         if (cancelled) return
         const error = status.error ? extractErrorMessage(status.error, '') : undefined
         dispatch({
@@ -369,7 +379,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     })
 
     cleanups.push(
-      window.api.onSyncStatusChanged((event) => {
+      onSyncStatusChanged((event) => {
         if (cancelled) return
         const error = event.error ? extractErrorMessage(event.error, '') : undefined
         dispatch({
@@ -469,28 +479,28 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     )
 
     cleanups.push(
-      window.api.onQueueCleared(() => {
+      onQueueCleared(() => {
         if (cancelled) return
         dispatch({ type: 'QUEUE_CLEARED' })
       })
     )
 
     cleanups.push(
-      window.api.onClockSkewWarning(() => {
+      onClockSkewWarning(() => {
         if (cancelled) return
         dispatch({ type: 'CLOCK_SKEW_WARNING' })
       })
     )
 
     cleanups.push(
-      window.api.onItemSynced((event) => {
+      onItemSynced((event) => {
         if (cancelled) return
         dispatch({ type: 'ITEM_SYNCED', lastSyncAt: Date.now(), operation: event.operation })
       })
     )
 
     cleanups.push(
-      window.api.onInitialSyncProgress((event) => {
+      onInitialSyncProgress((event) => {
         if (cancelled) return
         dispatch({
           type: 'INITIAL_SYNC_PROGRESS',
@@ -516,7 +526,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     )
 
     cleanups.push(
-      window.api.onSecurityWarning((event) => {
+      onSecurityWarning((event) => {
         if (cancelled) return
         const message = event.permanent
           ? t('sync.securityQuarantinePermanent')
@@ -526,7 +536,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     )
 
     cleanups.push(
-      window.api.onCertificatePinFailed(() => {
+      onCertificatePinFailed(() => {
         if (cancelled) return
         toast.error(t('sync.certificatePinPaused'), { duration: 15000 })
       })
@@ -559,7 +569,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
   useEffect(() => {
     if (authState.status === 'authenticated' && state.sessionExpired) {
       dispatch({ type: 'CLEAR_ERROR' })
-      void window.api.syncOps.triggerSync().catch(() => {})
+      void syncService.triggerSync().catch(() => {})
     }
   }, [authState.status, state.sessionExpired])
 
@@ -584,7 +594,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
   const triggerSync = useCallback(async (): Promise<void> => {
     if (authState.status !== 'authenticated') return
     try {
-      announceSyncNowResult(await window.api.syncOps.triggerSync(), t)
+      announceSyncNowResult(await syncService.triggerSync(), t)
     } catch (err) {
       dispatch({ type: 'SET_ERROR', error: extractErrorMessage(err, t('sync.triggerFailed')) })
     }
@@ -595,7 +605,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     async (surface: SyncControlSurface): Promise<void> => {
       if (authState.status !== 'authenticated') return
       try {
-        const result = await window.api.syncOps.pause(surface)
+        const result = await syncService.pause(surface)
         if (!result.success) toast.error(t('sync.pauseFailed'))
       } catch (err) {
         dispatch({ type: 'SET_ERROR', error: extractErrorMessage(err, t('sync.pauseFailed')) })
@@ -608,7 +618,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     async (surface: SyncControlSurface): Promise<void> => {
       if (authState.status !== 'authenticated') return
       try {
-        const result = await window.api.syncOps.resume(surface)
+        const result = await syncService.resume(surface)
         if (!result.success) toast.error(t('sync.resumeFailed'))
       } catch (err) {
         dispatch({ type: 'SET_ERROR', error: extractErrorMessage(err, t('sync.resumeFailed')) })
@@ -711,7 +721,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
   const handleVaultRecovered = useCallback(() => {
     setVaultRecovery(null)
     toast.success(t('sync.vaultRecovered'), { duration: 6000 })
-    void window.api.syncOps.triggerSync().catch(() => {})
+    void syncService.triggerSync().catch(() => {})
   }, [t])
 
   return (

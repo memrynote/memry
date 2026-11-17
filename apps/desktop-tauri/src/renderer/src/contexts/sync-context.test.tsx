@@ -96,17 +96,53 @@ vi.mock('@/services/sync-account-service', () => {
 const listenersOf = (name: string): EventCallback[] =>
   (accountEvents.get(name) ?? []) as unknown as EventCallback[]
 
-const mockSyncOps = {
-  getStatus: vi.fn().mockResolvedValue({
-    status: 'idle',
-    lastSyncAt: null,
-    pendingCount: 0,
-    error: undefined
-  }),
-  triggerSync: vi.fn().mockResolvedValue({ success: true }),
-  pause: vi.fn().mockResolvedValue({ success: true, wasPaused: false }),
-  resume: vi.fn().mockResolvedValue({ success: true, pendingCount: 0 })
-}
+const mockSyncOps = vi.hoisted(() => ({
+  getStatus: vi.fn(),
+  triggerSync: vi.fn(),
+  pause: vi.fn(),
+  resume: vi.fn()
+}))
+
+// Each subscribe reads its listener list when the provider calls it, after the lists exist.
+vi.mock('@/services/sync-service', () => {
+  const subscribe =
+    <T,>(list: () => T[], set: (next: T[]) => void) =>
+    (cb: T): (() => void) => {
+      set([...list(), cb])
+      return () => set(list().filter((l) => l !== cb))
+    }
+  return {
+    syncService: mockSyncOps,
+    onSyncStatusChanged: subscribe(
+      () => syncStatusListeners,
+      (next) => (syncStatusListeners = next)
+    ),
+    onItemSynced: subscribe(
+      () => itemSyncedListeners,
+      (next) => (itemSyncedListeners = next)
+    ),
+    onInitialSyncProgress: subscribe(
+      () => initialSyncProgressListeners,
+      (next) => (initialSyncProgressListeners = next)
+    ),
+    onQueueCleared: subscribe(
+      () => queueClearedListeners,
+      (next) => (queueClearedListeners = next)
+    ),
+    onClockSkewWarning: subscribe(
+      () => clockSkewWarningListeners,
+      (next) => (clockSkewWarningListeners = next)
+    ),
+    onSecurityWarning: subscribe(
+      () => securityWarningListeners,
+      (next) => (securityWarningListeners = next)
+    ),
+    onCertificatePinFailed: subscribe(
+      () => certificatePinFailedListeners,
+      (next) => (certificatePinFailedListeners = next)
+    )
+  }
+})
 
 beforeEach(async () => {
   i18n = await createRendererI18n({ locale: 'en' })
@@ -144,13 +180,6 @@ beforeEach(async () => {
   } as never)
 
   const api = (window as unknown as { api: Record<string, unknown> }).api
-  api.syncOps = mockSyncOps
-  api.onSyncStatusChanged = vi.fn((cb: EventCallback) => {
-    syncStatusListeners.push(cb)
-    return () => {
-      syncStatusListeners = syncStatusListeners.filter((l) => l !== cb)
-    }
-  })
   api.onUploadProgress = vi.fn((cb: EventCallback) => {
     uploadProgressListeners.push(cb)
     return () => {
@@ -167,42 +196,6 @@ beforeEach(async () => {
     attachmentUploadFailedListeners.push(cb)
     return () => {
       attachmentUploadFailedListeners = attachmentUploadFailedListeners.filter((l) => l !== cb)
-    }
-  })
-  api.onQueueCleared = vi.fn((cb: VoidCallback) => {
-    queueClearedListeners.push(cb)
-    return () => {
-      queueClearedListeners = queueClearedListeners.filter((l) => l !== cb)
-    }
-  })
-  api.onClockSkewWarning = vi.fn((cb: VoidCallback) => {
-    clockSkewWarningListeners.push(cb)
-    return () => {
-      clockSkewWarningListeners = clockSkewWarningListeners.filter((l) => l !== cb)
-    }
-  })
-  api.onItemSynced = vi.fn((cb: EventCallback) => {
-    itemSyncedListeners.push(cb)
-    return () => {
-      itemSyncedListeners = itemSyncedListeners.filter((l) => l !== cb)
-    }
-  })
-  api.onInitialSyncProgress = vi.fn((cb: EventCallback) => {
-    initialSyncProgressListeners.push(cb)
-    return () => {
-      initialSyncProgressListeners = initialSyncProgressListeners.filter((l) => l !== cb)
-    }
-  })
-  api.onSecurityWarning = vi.fn((cb: EventCallback) => {
-    securityWarningListeners.push(cb)
-    return () => {
-      securityWarningListeners = securityWarningListeners.filter((l) => l !== cb)
-    }
-  })
-  api.onCertificatePinFailed = vi.fn((cb: VoidCallback) => {
-    certificatePinFailedListeners.push(cb)
-    return () => {
-      certificatePinFailedListeners = certificatePinFailedListeners.filter((l) => l !== cb)
     }
   })
   api.onVaultRecoveryNeeded = vi.fn((cb: EventCallback) => {
