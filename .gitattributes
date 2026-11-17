@@ -30,3 +30,5 @@ packages/contracts/test-vectors/markdown-convert/corpus/** -text -whitespace
 crates/memry-core/src/storage/migrations/**/*.sql text eol=lf
 # PDF fixtures of the worker tests: the xref table ends each entry in a space by spec.
 crates/memry-ml-worker/tests/fixtures/*.pdf binary
+# Importer vector inputs (Step 32): BOM, CRLF and malformed bytes are what the importers are tested on.
+packages/contracts/test-vectors/importers/** -text -whitespace
