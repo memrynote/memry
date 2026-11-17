@@ -114,6 +114,10 @@ impl<'c> Batch<'c> {
         self.now_ms
     }
 
+    pub(super) fn device_id(&self) -> &str {
+        &self.device_id
+    }
+
     /// Edits one task: drops every change that would not change the stored
     /// value, then — when anything is left — ticks the document clock and the
     /// changed fields' clocks, merges, and queues the outbox row. Returns

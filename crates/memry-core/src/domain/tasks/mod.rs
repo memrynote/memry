@@ -80,6 +80,7 @@ pub mod fields;
 pub mod lifecycle;
 pub mod model;
 pub mod structure;
+pub mod update;
 
 pub use batch::{Prior, Removed, TaskWrite, undo, write_fields};
 pub use bulk::*;
@@ -90,6 +91,7 @@ pub use model::{StatusKind, TASK_ID_LEN, new_task_id, status_kind};
 pub use structure::{
     SubtaskDisposal, delete_with_subtasks, reorder, set_parent, set_project, set_status,
 };
+pub use update::{Patch, TaskPatch, TaskUpdate, UpdateRefusal};
 
 /// The `(type, _)` half of every key this module writes.
 pub const ITEM_TYPE: &str = "task";

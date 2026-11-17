@@ -239,6 +239,8 @@ mod domain_task_views;
 mod domain_tasks;
 #[path = "domain_tasks_lifecycle.rs"]
 mod domain_tasks_lifecycle;
+#[path = "domain_tasks_update.rs"]
+mod domain_tasks_update;
 #[path = "domain_tasks_write.rs"]
 mod domain_tasks_write;
 #[path = "domain_template_legacy.rs"]
