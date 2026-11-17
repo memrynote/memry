@@ -740,4 +740,31 @@ struct InlineNodeUndoTests {
         await undo(f)
         #expect(try await dates(f) == [[Self.due.dateISO, "1d", anchor]])
     }
+
+    /// #4764: Done with the date unchanged writes nothing and records no
+    /// step, so the next Undo takes back a real edit.
+    @Test(.timeLimit(.minutes(1))) func a_date_done_unchanged_records_no_step() async throws {
+        let f = try await fixtureWithDate()
+        try await editDate(f, to: Self.due)
+
+        #expect(try await dates(f) == [[Self.due.dateISO, "1d", "dm_due"]])
+        #expect(!f.session.history.canUndo)
+    }
+
+    /// #4810: a `#query` typed before committed text that starts with the
+    /// same characters is taken back with its tag in one Undo.
+    @Test(.timeLimit(.minutes(1))) func a_tag_query_before_matching_text_is_undone_in_one_step() async throws {
+        let f = try await fixture("#task")
+        f.session.tags = ["task"]
+        type("#ta", at: 0, in: f)
+        f.session.selectionChanged(in: f.field)
+        f.session.chooseTag(try #require(f.session.tagSuggestions.first { $0.tag == "task" }))
+        await f.session.tail?.value
+        #expect(try await shown(f) == "\u{FFFC} #task")
+        await undo(f)
+        #expect(try await shown(f) == "#task")
+        #expect(!f.session.history.canUndo)
+        await redo(f)
+        #expect(try await shown(f) == "\u{FFFC} #task")
+    }
 }

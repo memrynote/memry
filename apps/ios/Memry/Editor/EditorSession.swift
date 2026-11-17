@@ -998,6 +998,8 @@ final class EditorSession {
     }
 
     private func rewriteDate(_ request: DateMentionEditRequest, at range: NSRange, in field: BlockField, to value: DateMentionValue) {
+        // Done with nothing changed: no write, and no empty undo step (#4764).
+        guard value != request.value else { return }
         // Held now, as `commit` holds it: a page torn down drops its model.
         guard let model else {
             Log.storage.error("a date edit had no editor model")
@@ -1313,8 +1315,16 @@ final class EditorSession {
     /// its base: a pick's `typing` (`commit`).
     private static func typing(without range: NSRange, in field: BlockField) -> String {
         let text = field.textView.text ?? ""
+        let span = Self.typed(since: field.base, in: text)
+        // The prefix/suffix guess places typing that repeats the text beside
+        // it at the wrong end (`#ta` typed before `#task`). `range` itself is
+        // the typing when taking it out leaves exactly the rest (#4810).
+        let removed = (text as NSString).replacingCharacters(in: range, with: "")
+        if range.length > 0, Self.typed(since: field.base, in: removed).length == span.length - range.length {
+            return removed
+        }
         // No intersection leaves its location undefined.
-        let typed = NSIntersectionRange(range, Self.typed(since: field.base, in: text))
+        let typed = NSIntersectionRange(range, span)
         return typed.length == 0 ? text : (text as NSString).replacingCharacters(in: typed, with: "")
     }
 

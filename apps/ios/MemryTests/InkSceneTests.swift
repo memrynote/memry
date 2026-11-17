@@ -231,8 +231,12 @@ struct InkBoardSaveTests {
         PKDrawing(strokes: strokes.map { $0.ink.stroke(created: Date(timeIntervalSinceReferenceDate: $0.created), offset: board.offset) })
     }
 
+    /// The suite's own center: a post on `.default` reaches every suite
+    /// running in parallel.
+    private let notifications = NotificationCenter()
+
     private func open(_ fake: FakeInkBoards) async -> InkBoard {
-        let board = InkBoard(canvasId: "c1", boards: fake)
+        let board = InkBoard(canvasId: "c1", boards: fake, notifications: notifications)
         board.stamp = pinned()
         board.settleDelay = .seconds(3600)
         await board.load()
@@ -247,7 +251,7 @@ struct InkBoardSaveTests {
         board.endBackgroundTask = { ended.append($0) }
         board.changed(drawing(board, [(1, pen)]))
 
-        NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
+        notifications.post(name: UIApplication.willResignActiveNotification, object: nil)
         while ended.isEmpty { try? await Task.sleep(for: .milliseconds(10)) }
 
         #expect(fake.saves == 1)
@@ -393,6 +397,7 @@ struct InkBoardSaveTests {
         #expect(a == false)
         #expect(b)
         #expect(InkScene.strokes(in: fake.scene ?? "")?.count == 2)
+        #expect(board.saveFailure == nil, "the newer save landed, so no alert says it did not")
         // onDisappear after Done: nothing new to save.
         #expect(await board.flush())
         #expect(InkScene.strokes(in: fake.scene ?? "")?.count == 2, "the stroke drawn after the failed save stays")
