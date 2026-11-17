@@ -111,6 +111,7 @@ impl FakeServer {
     }
 
     /// Records every request to `route` from now on and never answers it.
+    #[cfg(feature = "markdown")]
     pub fn hang(&self, route: &'static str) {
         self.hung.lock().unwrap().push(route);
     }
