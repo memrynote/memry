@@ -4,4 +4,4 @@ pub mod dto;
 pub mod entitlement;
 pub mod service;
 
-pub use service::{BillingService, UrlOpener};
+pub use service::{BillingService, OpenFailed, UrlOpener};

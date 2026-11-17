@@ -6,21 +6,26 @@
 use std::sync::Arc;
 
 use memry_desktop::account::AccountService;
-use memry_desktop::billing::{BillingService, UrlOpener};
+use memry_desktop::billing::{BillingService, OpenFailed, UrlOpener};
 use memry_desktop::launch_env::LaunchEnv;
 use memry_desktop::registry::config::AppConfig;
 use memry_desktop::session::Session;
 use memry_desktop::shell::deep_link::DeepLink;
 use tauri::{AppHandle, Manager, Wry};
 
+use crate::commands::error::ErrorKind;
 use crate::deep_link::DeepLinkRouter;
 use crate::shell::{external, services};
 
 struct Browser(AppHandle<Wry>);
 
 impl UrlOpener for Browser {
-    fn open(&self, url: &str) -> Result<(), String> {
-        external::open_url(&self.0, url).map_err(|error| error.message)
+    /// The opener's message names the URL, which carries the checkout token: only its kind leaves.
+    fn open(&self, url: &str) -> Result<(), OpenFailed> {
+        external::open_url(&self.0, url).map_err(|error| match error.kind {
+            ErrorKind::Invalid => OpenFailed::Refused,
+            _ => OpenFailed::Failed,
+        })
     }
 }
 

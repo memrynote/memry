@@ -12,7 +12,7 @@ use memry_desktop::billing::dto::{
     PlanChangePreviewResult, PlanChangeTarget, PortalFailureReason, StartCheckoutInput,
 };
 use memry_desktop::billing::service::{RECONCILE_ATTEMPTS, RECONCILE_SPACING};
-use memry_desktop::billing::{BillingService, UrlOpener};
+use memry_desktop::billing::{BillingService, OpenFailed, UrlOpener};
 use memry_desktop::launch_env::LaunchEnv;
 use memry_desktop::registry::VaultRegistry;
 use memry_desktop::registry::config::AppConfig;
@@ -32,9 +32,9 @@ struct Browser {
 }
 
 impl UrlOpener for Browser {
-    fn open(&self, url: &str) -> Result<(), String> {
+    fn open(&self, url: &str) -> Result<(), OpenFailed> {
         if self.fail {
-            return Err("no browser".into());
+            return Err(OpenFailed::Failed);
         }
         self.opened.lock().unwrap().push(url.to_owned());
         Ok(())
@@ -46,6 +46,8 @@ struct Fixture {
     script: Arc<Script>,
     config: Arc<AppConfig>,
     browser: Arc<Browser>,
+    account: Arc<AccountService>,
+    session: Session,
     billing: Arc<BillingService>,
 }
 
@@ -80,11 +82,12 @@ fn fixture_with(signed_in: bool, browser: Browser) -> Fixture {
         .unwrap(),
     );
     let browser = Arc::new(browser);
+    let session = Session::new(VaultRegistry::new(config.clone()));
     let billing = Arc::new(BillingService::new(
-        account,
+        account.clone(),
         config.clone(),
         browser.clone(),
-        Session::new(VaultRegistry::new(config.clone())),
+        session.clone(),
         None,
         tokio::runtime::Handle::current(),
         &LaunchEnv::default(),
@@ -94,6 +97,8 @@ fn fixture_with(signed_in: bool, browser: Browser) -> Fixture {
         script,
         config,
         browser,
+        account,
+        session,
         billing,
     }
 }
@@ -457,4 +462,116 @@ async fn a_reconcile_failure_ends_the_loop_and_keeps_the_session() {
         f.billing.status().await.unwrap(),
         BillingStatusResult::Status(_)
     ));
+}
+
+/// The checkout URL carries a token valid for ten minutes and the portal URL a Paddle session:
+/// a browser that cannot open them leaves neither in the log, whatever its error says.
+#[test]
+fn a_browser_that_cannot_open_logs_neither_the_token_nor_the_portal_url() {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    let f = runtime.block_on(async {
+        fixture_with(
+            true,
+            Browser {
+                fail: true,
+                ..Browser::default()
+            },
+        )
+    });
+    f.script.answer(
+        200,
+        json!({ "checkoutToken": "tok.SECRET", "expiresAt": 9 }),
+    );
+    let portal = "https://customer-portal.paddle.com/session-SECRET";
+    f.script.answer(200, json!({ "portalUrl": portal }));
+
+    let ((checkout, opened), lines) =
+        crate::on_warning::logged("memry_desktop::billing::service", || {
+            runtime.block_on(async {
+                (
+                    f.billing.start_checkout(None).await.unwrap(),
+                    f.billing.open_portal().await.unwrap(),
+                )
+            })
+        });
+
+    assert!(!checkout.success && !opened.success);
+    assert_eq!(lines.len(), 2, "both failures are logged: {lines:?}");
+    for line in &lines {
+        assert!(
+            !line.contains("token=") && !line.contains("SECRET") && !line.contains(portal),
+            "{line}"
+        );
+    }
+}
+
+/// An unpaid status asked before the deep link's reconcile answers after it: the reconcile's
+/// paid verdict stays, in the cache and at the gate.
+#[tokio::test(start_paused = true)]
+async fn an_older_answer_landing_late_does_not_overwrite_a_newer_one() {
+    let f = fixture(true);
+    let gate = Arc::new(SyncStartGate::default());
+    let late = f.script.held_answer(200, status("free", "inactive"));
+    f.script.answer(200, status("plus", "active"));
+    f.billing.attach_gate(&gate);
+    settle().await;
+    assert_eq!(f.script.count(STATUS), 1, "the status is in flight");
+
+    f.billing.reconcile_and_start(None).await;
+    assert_eq!(gate.entitlement(), Entitlement::Entitled);
+    late.notify_one();
+    settle().await;
+
+    assert_eq!(gate.entitlement(), Entitlement::Entitled);
+    assert_eq!(f.entitlement()["isPaid"], json!(true));
+}
+
+/// Account A's status lands after A signed out: nothing of it is kept for the next account.
+#[tokio::test]
+async fn an_answer_landing_after_sign_out_is_not_kept() {
+    let f = fixture(true);
+    let late = f.script.held_answer(200, status("plus", "active"));
+    let billing = f.billing.clone();
+    let asked = tokio::spawn(async move { billing.status().await });
+    settle().await;
+    assert_eq!(f.script.count(STATUS), 1, "the status is in flight");
+
+    f.script.answer(200, json!({}));
+    f.account.sign_out(&f.session).await.unwrap();
+    f.billing.forget();
+    late.notify_one();
+    asked.await.unwrap().unwrap();
+
+    assert_eq!(f.entitlement(), Value::Null);
+    assert_eq!(f.billing.max_file_size(), None);
+}
+
+/// The server answers `409 Transaction is not completed yet` until the payment webhook lands:
+/// the loop waits it out.
+#[tokio::test(start_paused = true)]
+async fn a_transaction_not_completed_yet_is_retried() {
+    let f = fixture(true);
+    let gate = Arc::new(SyncStartGate::default());
+    f.cache(json!({ "isPaid": false, "plan": "free", "status": "inactive", "cachedAt": now_ms() }));
+    f.billing.attach_gate(&gate);
+    settle().await;
+    f.script.answer(
+        409,
+        json!({ "error": { "code": "CONFLICT", "message": "Transaction is not completed yet" } }),
+    );
+    f.script.answer(200, status("plus", "active"));
+
+    let billing = f.billing.clone();
+    let run = tokio::spawn(async move { billing.reconcile_and_start(Some("txn_1".into())).await });
+    settle().await;
+    assert_eq!(f.script.count(RECONCILE), 1);
+    assert_eq!(gate.entitlement(), Entitlement::Unentitled);
+    tokio::time::advance(RECONCILE_SPACING).await;
+    run.await.unwrap();
+
+    assert_eq!(f.script.count(RECONCILE), 2);
+    assert_eq!(gate.entitlement(), Entitlement::Entitled);
 }

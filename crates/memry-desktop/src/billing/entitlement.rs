@@ -148,6 +148,16 @@ impl EntitlementCache {
         })
     }
 
+    /// Drops the verdict (sign-out).
+    pub fn clear(&self) -> Result<(), ConfigError> {
+        self.config.update(|config| {
+            if let Some(Value::Object(sync)) = config.get_mut("sync") {
+                sync.remove("entitlement");
+            }
+            Ok::<_, ConfigError>(())
+        })
+    }
+
     /// The upload preflight's limit; `None` fails open.
     pub fn max_file_size(&self, now_ms: i64) -> Option<i64> {
         self.get()?.max_file_size(now_ms)

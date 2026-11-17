@@ -38,7 +38,17 @@ pub const RECONCILE_SPACING: Duration = Duration::from_secs(2);
 
 /// Opens a URL in the system browser (`tauri-plugin-opener` in the app).
 pub trait UrlOpener: Send + Sync {
-    fn open(&self, url: &str) -> Result<(), String>;
+    fn open(&self, url: &str) -> Result<(), OpenFailed>;
+}
+
+/// Why the browser did not open, without the URL: the opener's own error names its command line,
+/// and a checkout URL carries its token, a portal URL its Paddle session.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OpenFailed {
+    /// The app does not open this URL's scheme.
+    Refused,
+    /// The OS could not launch a browser.
+    Failed,
 }
 
 /// The checkout page: `CHECKOUT_PAGE_URL` when it is a non-empty `https:` URL, else the default.
@@ -101,8 +111,17 @@ fn verdict(cached: Option<&CachedEntitlement>) -> Entitlement {
     }
 }
 
+/// Orders the server's answers: each request takes a number before it is sent, and only an
+/// answer newer than the last one applied reaches the cache and the gate.
+#[derive(Default)]
+struct Asked {
+    issued: u64,
+    applied: u64,
+}
+
 pub struct BillingService {
     account: Arc<AccountService>,
+    asked: Mutex<Asked>,
     cache: EntitlementCache,
     opener: Arc<dyn UrlOpener>,
     session: Session,
@@ -125,6 +144,7 @@ impl BillingService {
     ) -> Self {
         Self {
             account,
+            asked: Mutex::default(),
             cache: EntitlementCache::new(config),
             opener,
             session,
@@ -144,8 +164,26 @@ impl BillingService {
         self.account.access_token_if_signed_in().await.is_none()
     }
 
-    /// Caches the server's answer and tells the open vault's gate.
-    fn remember(&self, snapshot: &BillingSnapshot) -> bool {
+    /// The number of a request about to be sent, for [`Self::remember`].
+    fn ask(&self) -> u64 {
+        let mut asked = lock(&self.asked);
+        asked.issued += 1;
+        asked.issued
+    }
+
+    /// Caches the answer to request `asked` and tells the open vault's gate whether it is paid.
+    /// `None` when a newer answer was applied first, or the account signed out since: the
+    /// answer is dropped.
+    fn remember(&self, asked: u64, snapshot: &BillingSnapshot) -> Option<bool> {
+        let mut order = lock(&self.asked);
+        if asked <= order.applied {
+            tracing::debug!(
+                scope = "Billing",
+                "dropped a billing answer older than the last one"
+            );
+            return None;
+        }
+        order.applied = asked;
         let now = now_ms();
         let paid = is_paid(snapshot, now.div_euclid(1000));
         if let Err(error) = self.cache.set_from_snapshot(snapshot, now) {
@@ -161,11 +199,25 @@ impl BillingService {
                 Entitlement::Unentitled
             });
         }
-        paid
+        Some(paid)
     }
 
-    fn status_answer(&self, snapshot: BillingSnapshot) -> BillingStatusResult {
-        self.remember(&snapshot);
+    /// Sign-out: every answer still in flight is the account's that left, so none is applied,
+    /// and the verdict goes. Cleared here too because an answer may have landed after the
+    /// teardown emptied `sync`.
+    pub fn forget(&self) {
+        let mut order = lock(&self.asked);
+        order.applied = order.issued;
+        if let Err(error) = self.cache.clear() {
+            tracing::warn!(
+                scope = "Billing",
+                "could not drop the plan verdict: {error}"
+            );
+        }
+    }
+
+    fn status_answer(&self, asked: u64, snapshot: BillingSnapshot) -> BillingStatusResult {
+        self.remember(asked, &snapshot);
         BillingStatusResult::Status(snapshot.into())
     }
 
@@ -174,8 +226,9 @@ impl BillingService {
         if self.signed_out().await {
             return Ok(signed_out("Sign in to view billing"));
         }
+        let asked = self.ask();
         let snapshot = self.account.session().billing_snapshot().await?;
-        Ok(self.status_answer(snapshot))
+        Ok(self.status_answer(asked, snapshot))
     }
 
     /// `POST /auth/billing/reconcile` (`refreshBillingStatus`), naming the checkout's
@@ -187,12 +240,13 @@ impl BillingService {
         if self.signed_out().await {
             return Ok(signed_out("Sign in to refresh billing"));
         }
+        let asked = self.ask();
         let snapshot = self
             .account
             .session()
             .reconcile_billing(transaction_id)
             .await?;
-        Ok(self.status_answer(snapshot))
+        Ok(self.status_answer(asked, snapshot))
     }
 
     /// `startBillingCheckout`: a checkout token, then the checkout page in the browser.
@@ -210,10 +264,9 @@ impl BillingService {
         let token = self.account.session().checkout_token().await?;
         let url = build_checkout_url(&self.checkout_page, &token.token, preselect);
         if let Err(error) = self.opener.open(&url) {
-            // The URL carries the token: only the fact is logged.
             tracing::warn!(
                 scope = "Billing",
-                "could not open the checkout page: {error}"
+                "could not open the checkout page: {error:?}"
             );
             return Ok(CheckoutResult {
                 success: false,
@@ -259,7 +312,7 @@ impl BillingService {
         if let Err(error) = self.opener.open(&url) {
             tracing::warn!(
                 scope = "Billing",
-                "could not open the billing portal: {error}"
+                "could not open the billing portal: {error:?}"
             );
             return Ok(failed(None, Some("The browser could not be opened".into())));
         }
@@ -296,59 +349,65 @@ impl BillingService {
         if self.signed_out().await {
             return Ok(signed_out("Sign in to change your plan"));
         }
+        let asked = self.ask();
         let snapshot = self.account.session().change_plan(target.into()).await?;
-        Ok(self.status_answer(snapshot))
+        Ok(self.status_answer(asked, snapshot))
     }
 
     /// `reconcileBillingAndSync`, run for `memry://billing/complete`: up to
     /// [`RECONCILE_ATTEMPTS`] reconciles until the account reads paid. With no vault open the
     /// cached verdict is the result (opening one starts sync); otherwise the paid verdict
-    /// reached the gate, which starts sync, and a pass runs. A failure is logged and counted,
-    /// never a sign-out.
+    /// reached the gate, which starts sync, and a pass runs. The server's `409 Transaction is
+    /// not completed yet` is not paid yet (Electron's loop ended on it, `paddle-billing.ts:155-177`);
+    /// any other failure ends the loop. A failure is logged and counted, never a sign-out.
     pub async fn reconcile_and_start(&self, transaction_id: Option<String>) {
+        let mut not_completed = None;
         for attempt in 0..RECONCILE_ATTEMPTS {
             if attempt > 0 {
                 tokio::time::sleep(RECONCILE_SPACING).await;
             }
-            let snapshot = if self.signed_out().await {
-                None
-            } else {
-                match self
-                    .account
-                    .session()
-                    .reconcile_billing(transaction_id.clone())
-                    .await
-                {
-                    Ok(snapshot) => Some(snapshot),
-                    Err(error) => {
-                        tracing::warn!(
-                            scope = "Billing",
-                            "failed to reconcile billing from the deep link: {error}"
-                        );
-                        if let Some(telemetry) = &self.telemetry {
-                            telemetry.track_main_error(
-                                "billing",
-                                "deep_link_reconcile",
-                                &failure(&error),
-                            );
+            if self.signed_out().await {
+                continue;
+            }
+            let asked = self.ask();
+            match self
+                .account
+                .session()
+                .reconcile_billing(transaction_id.clone())
+                .await
+            {
+                Ok(snapshot) => {
+                    not_completed = None;
+                    if self.remember(asked, &snapshot) == Some(true) {
+                        if self.session.current().is_some()
+                            && let Some(supervisor) = self.session.sync_supervisor()
+                        {
+                            supervisor.foreground();
                         }
                         return;
                     }
                 }
-            };
-            if snapshot.is_some_and(|snapshot| self.remember(&snapshot)) {
-                if self.session.current().is_some()
-                    && let Some(supervisor) = self.session.sync_supervisor()
-                {
-                    supervisor.foreground();
-                }
-                return;
+                Err(error @ ApiError::Status { status: 409, .. }) => not_completed = Some(error),
+                Err(error) => return self.reconcile_failed(&error),
             }
+        }
+        if let Some(error) = not_completed {
+            return self.reconcile_failed(&error);
         }
         tracing::info!(
             scope = "Billing",
             "the account did not read paid after {RECONCILE_ATTEMPTS} reconciles"
         );
+    }
+
+    fn reconcile_failed(&self, error: &ApiError) {
+        tracing::warn!(
+            scope = "Billing",
+            "failed to reconcile billing from the deep link: {error}"
+        );
+        if let Some(telemetry) = &self.telemetry {
+            telemetry.track_main_error("billing", "deep_link_reconcile", &failure(error));
+        }
     }
 
     /// `resolveEntitlementForSyncStart`: a fresh unpaid verdict without a request, else the
@@ -379,14 +438,14 @@ impl BillingService {
             }
             return verdict(cached.as_ref());
         }
+        let asked = self.ask();
         match self.account.session().billing_snapshot().await {
-            Ok(snapshot) => {
-                if self.remember(&snapshot) {
-                    Entitlement::Entitled
-                } else {
-                    Entitlement::Unentitled
-                }
-            }
+            Ok(snapshot) => match self.remember(asked, &snapshot) {
+                Some(true) => Entitlement::Entitled,
+                Some(false) => Entitlement::Unentitled,
+                // A newer answer was applied while this one was in flight.
+                None => verdict(self.cache.get().as_ref()),
+            },
             Err(error) => {
                 tracing::warn!(
                     scope = "Billing",
@@ -395,7 +454,8 @@ impl BillingService {
                 if let Some(telemetry) = &self.telemetry {
                     telemetry.track_main_error("billing", "entitlement_resolve", &failure(&error));
                 }
-                verdict(cached.as_ref())
+                // A newer answer may have landed while this request failed.
+                verdict(self.cache.get().as_ref())
             }
         }
     }
