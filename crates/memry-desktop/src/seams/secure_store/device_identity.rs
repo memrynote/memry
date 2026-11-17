@@ -44,6 +44,14 @@
 //! a keychain that locks later does not stop writes. A key served from the file is not cached,
 //! so the move is retried. Cached reads never wait behind a keychain call.
 //!
+//! **Adopt** ([`DeviceIdentityStore::adopt_electron`]) takes Electron's key, for the Step 37
+//! (#3554) import only. It writes only into a profile that has never held a key of its own (no
+//! keychain item, no file, no marker, nothing served this run): holding a key is what every write
+//! of a clock needs, and nothing tells a profile that held one but wrote nothing from one that
+//! wrote, so a profile that held one is refused and keeps its key. The same key already in the
+//! keychain is a finished earlier run (a crash before the import's marker) and answers
+//! [`Adoption::AlreadyHeld`]. Write, read back and compare, then the marker.
+//!
 //! **Delete** removes the file, then the keychain item, then the marker. A keychain that cannot
 //! be reached fails the delete and keeps the marker, so nothing is minted while the key may still
 //! be there; only a key that never moved (no marker, no keychain on the system) is deleted with
@@ -86,6 +94,24 @@ pub fn device_identity_missing() -> SecureStoreError {
 
 pub fn is_device_identity_missing(error: &SecureStoreError) -> bool {
     matches!(error, SecureStoreError::Failed { what } if what == MISSING)
+}
+
+/// What [`DeviceIdentityStore::adopt_electron`] did.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Adoption {
+    /// The key is now this profile's, written by this call.
+    Adopted,
+    /// The keychain already held this key: nothing was written.
+    AlreadyHeld,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum AdoptError {
+    /// This profile holds, or held, a device key of its own; it is kept.
+    #[error("this profile already has a device identity of its own; Electron's is not adopted")]
+    Taken,
+    #[error(transparent)]
+    Store(#[from] SecureStoreError),
 }
 
 type Key = Zeroizing<Vec<u8>>;
@@ -318,6 +344,46 @@ impl DeviceIdentityStore {
 
     fn remember(&self, key: Option<Key>) {
         *lock(&self.cache) = key;
+    }
+
+    /// Makes `key` (Electron's 64-byte device signing key) this profile's identity. See the module
+    /// doc (**Adopt**). A keychain that cannot be reached is `Store(Locked)` with nothing written;
+    /// a written key that does not read back is `Store(Failed)` and is left in place, so the next
+    /// call finds it and settles, and nothing that may be a key is deleted.
+    pub fn adopt_electron(&self, key: &[u8]) -> Result<Adoption, AdoptError> {
+        let key = checked(key.to_vec(), "Electron profile")?;
+        let _work = lock(&self.work);
+        if let Some(known) = self.cached() {
+            return if known == key {
+                Ok(Adoption::AlreadyHeld)
+            } else {
+                Err(AdoptError::Taken)
+            };
+        }
+        match self.keychain_get()? {
+            Some(held) if held == key => {
+                self.settle(&key);
+                self.remember(Some(key));
+                return Ok(Adoption::AlreadyHeld);
+            }
+            Some(_) => return Err(AdoptError::Taken),
+            None => {}
+        }
+        if self.marked() || !matches!(self.legacy(), Legacy::Absent) {
+            return Err(AdoptError::Taken);
+        }
+        self.keychain_set(&key)?;
+        match self.keychain_get()? {
+            Some(back) if back == key => {}
+            _ => {
+                return Err(AdoptError::Store(failed(
+                    "the adopted device key did not read back from the keychain",
+                )));
+            }
+        }
+        self.mark()?;
+        self.remember(Some(key));
+        Ok(Adoption::Adopted)
     }
 }
 

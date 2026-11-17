@@ -76,6 +76,8 @@ pub struct Fake {
     pub targets: Arc<Mutex<Vec<Option<String>>>>,
     /// Fails every write with this error, while reads and deletes answer.
     pub fail_writes: BuildError,
+    /// Fails every read with this error, while writes and deletes answer.
+    pub fail_reads: BuildError,
     pub writes: Arc<AtomicUsize>,
 }
 
@@ -93,6 +95,7 @@ impl Fake {
             reader_threads: Arc::default(),
             targets: Arc::default(),
             fail_writes: Arc::default(),
+            fail_reads: Arc::default(),
             writes: Arc::default(),
         }
     }
@@ -105,6 +108,7 @@ impl Fake {
             reader_threads: self.reader_threads.clone(),
             targets: self.targets.clone(),
             fail_writes: self.fail_writes.clone(),
+            fail_reads: self.fail_reads.clone(),
             writes: self.writes.clone(),
         }
     }
@@ -172,6 +176,9 @@ impl CredentialApi for FakeCred {
             .unwrap()
             .push(std::thread::current().name().map(str::to_owned));
         self.fake.act()?;
+        if let Some(error) = *self.fake.fail_reads.lock().unwrap() {
+            return Err(error());
+        }
         self.fake
             .data
             .lock()
