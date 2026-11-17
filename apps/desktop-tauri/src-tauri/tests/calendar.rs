@@ -436,7 +436,8 @@ fn sources_list_filter_and_change_selection() {
 /// cargo test -p memry-tauri --release --test calendar calendar_get_range_month_perf -- --ignored --nocapture
 /// ```
 ///
-/// It prints p50 and p95 of 40 calls; `MEMRY_PERF_ENFORCE=1` turns a miss into a failure.
+/// It prints p50 and p95 of 40 calls; `MEMRY_PERF_ENFORCE=1` turns a miss into a failure, and
+/// `MEMRY_PERF_FACTOR` scales the budget (a shared CI runner is slower).
 #[test]
 #[ignore = "a timing row; run it in release"]
 fn calendar_get_range_month_perf() {
@@ -515,13 +516,17 @@ fn calendar_get_range_month_perf() {
         samples[samples.len() / 2],
         samples[samples.len() * 95 / 100],
     );
+    let factor: f64 = std::env::var("MEMRY_PERF_FACTOR")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(1.0);
     println!(
-        "calendar_get_range, one month of {items} items: p50 {p50:?}, p95 {p95:?} (budget {BUDGET_MS} ms)"
+        "calendar_get_range, one month of {items} items: p50 {p50:?}, p95 {p95:?} (budget {BUDGET_MS} ms x {factor})"
     );
+    let over = p95.as_secs_f64() * 1000.0 > BUDGET_MS * factor;
     if std::env::var("MEMRY_PERF_ENFORCE").is_ok_and(|v| v == "1") {
-        assert!(
-            p95.as_secs_f64() * 1000.0 <= BUDGET_MS,
-            "p95 {p95:?} over {BUDGET_MS} ms"
-        );
+        assert!(!over, "p95 {p95:?} over {BUDGET_MS} ms x {factor}");
+    } else if over {
+        println!("over budget (not enforced)");
     }
 }
