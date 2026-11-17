@@ -236,7 +236,7 @@ describe('importer vectors', () => {
 
   for (const { source, importer, cases } of SOURCES) {
     it(`${source}/expected.json matches the TypeScript importer`, async () => {
-      const recorded = []
+      const recorded: unknown[] = []
       for (const c of cases) recorded.push(await runCase(source, importer, c))
       const file = path.join(VECTORS, source, 'expected.json')
       const text = vectorText(file, { source, cases: recorded })

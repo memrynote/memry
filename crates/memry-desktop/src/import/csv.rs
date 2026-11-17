@@ -26,17 +26,35 @@ thread_local! {
     static STEPS: Cell<usize> = const { Cell::new(0) };
 }
 
-/// Characters this thread's tokenizer has read: one per character of the input.
+/// Steps of this thread's tokenizer and row mapping: one per character of the input and one
+/// per cell a row has.
 #[doc(hidden)]
 pub fn steps() -> usize {
     STEPS.with(Cell::get)
 }
 
-/// `ParsedCsv`: the header names and each row by header. A repeated header keeps its last cell.
+fn step() {
+    STEPS.with(|steps| steps.set(steps.get() + 1));
+}
+
+/// `ParsedCsv`: the header names and each row's cells.
+///
+/// `parse-csv.ts` gave every row a record of every header, so a wide header over many short
+/// rows cost rows times columns. A row here keeps only the cells it has; a missing one reads as
+/// empty, as `raw[c] ?? ''` did.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ParsedCsv {
     pub headers: Vec<String>,
-    pub rows: Vec<HashMap<String, String>>,
+    pub rows: Vec<Vec<String>>,
+    /// For each column, the last column of the same name: a repeated header keeps its last cell.
+    last_column: Vec<usize>,
+}
+
+impl ParsedCsv {
+    /// `row[headers[column]]`.
+    pub fn cell<'a>(&self, row: &'a [String], column: usize) -> &'a str {
+        row.get(self.last_column[column]).map_or("", String::as_str)
+    }
 }
 
 /// The RFC 4180 tokenizer of `parse-csv.ts`: quoted fields with `""` escapes, commas and line
@@ -48,7 +66,7 @@ fn tokenize(text: &str) -> Vec<Vec<String>> {
     let mut in_quotes = false;
     let mut chars = text.chars().peekable();
     while let Some(c) = chars.next() {
-        STEPS.with(|steps| steps.set(steps.get() + 1));
+        step();
         if in_quotes {
             if c == '"' {
                 if chars.peek() == Some(&'"') {
@@ -100,15 +118,17 @@ pub fn parse_csv(text: &str) -> ParsedCsv {
         .collect();
     let rows = grid
         .filter(|cells| !cells.iter().all(|cell| js_trim(cell).is_empty()))
-        .map(|cells| {
-            headers
-                .iter()
-                .enumerate()
-                .map(|(at, header)| (header.clone(), cells.get(at).cloned().unwrap_or_default()))
-                .collect()
-        })
         .collect();
-    ParsedCsv { headers, rows }
+    let mut last_by_name = HashMap::new();
+    for (at, header) in headers.iter().enumerate() {
+        last_by_name.insert(header.as_str(), at);
+    }
+    let last_column = headers.iter().map(|h| last_by_name[h.as_str()]).collect();
+    ParsedCsv {
+        headers,
+        rows,
+        last_column,
+    }
 }
 
 /// One row's note (`CsvImportNote`).
@@ -180,12 +200,17 @@ pub fn map_rows(parsed: &ParsedCsv) -> CsvPlan {
         };
     }
     let title_column = title_column(headers);
-    let property_columns: Vec<&String> = headers.iter().filter(|h| **h != title_column).collect();
+    let title_at = headers.iter().position(|h| *h == title_column);
+    // `propertyColumns` with their keys: `None` for a column named as the title column.
+    let keys: Vec<Option<String>> = headers
+        .iter()
+        .map(|h| (*h != title_column).then(|| sanitize_key(h)))
+        .collect();
     let mut notes = Vec::new();
     let mut warnings = Vec::new();
     let mut skipped = 0;
     for row in &parsed.rows {
-        let title = js_trim(row.get(&title_column).map_or("", String::as_str));
+        let title = js_trim(title_at.map_or("", |at| parsed.cell(row, at)));
         if title.is_empty() {
             skipped += 1;
             warnings.push(
@@ -197,11 +222,15 @@ pub fn map_rows(parsed: &ParsedCsv) -> CsvPlan {
             );
             continue;
         }
+        // Only the cells the row has: a column past its end, or whose last same-named column
+        // is, reads as empty and sets nothing.
         let mut properties = YamlMap::new();
-        for column in &property_columns {
-            let value = js_trim(row.get(*column).map_or("", String::as_str));
+        for (at, key) in keys.iter().enumerate().take(row.len()) {
+            step();
+            let Some(key) = key else { continue };
+            let value = js_trim(parsed.cell(row, at));
             if !value.is_empty() {
-                properties.insert(sanitize_key(column), YamlValue::String(value.to_owned()));
+                properties.insert(key.clone(), YamlValue::String(value.to_owned()));
             }
         }
         notes.push(CsvNote {
