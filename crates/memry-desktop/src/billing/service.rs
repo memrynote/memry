@@ -149,7 +149,10 @@ impl BillingService {
         let now = now_ms();
         let paid = is_paid(snapshot, now.div_euclid(1000));
         if let Err(error) = self.cache.set_from_snapshot(snapshot, now) {
-            tracing::warn!(scope = "Billing", "could not cache the plan verdict: {error}");
+            tracing::warn!(
+                scope = "Billing",
+                "could not cache the plan verdict: {error}"
+            );
         }
         if let Some(gate) = lock(&self.gate).upgrade() {
             gate.set_entitlement(if paid {
@@ -208,7 +211,10 @@ impl BillingService {
         let url = build_checkout_url(&self.checkout_page, &token.token, preselect);
         if let Err(error) = self.opener.open(&url) {
             // The URL carries the token: only the fact is logged.
-            tracing::warn!(scope = "Billing", "could not open the checkout page: {error}");
+            tracing::warn!(
+                scope = "Billing",
+                "could not open the checkout page: {error}"
+            );
             return Ok(CheckoutResult {
                 success: false,
                 error: Some("The browser could not be opened".into()),
@@ -251,7 +257,10 @@ impl BillingService {
             Err(error) => return Err(error),
         };
         if let Err(error) = self.opener.open(&url) {
-            tracing::warn!(scope = "Billing", "could not open the billing portal: {error}");
+            tracing::warn!(
+                scope = "Billing",
+                "could not open the billing portal: {error}"
+            );
             return Ok(failed(None, Some("The browser could not be opened".into())));
         }
         Ok(PortalResult {
@@ -317,11 +326,10 @@ impl BillingService {
                             "failed to reconcile billing from the deep link: {error}"
                         );
                         if let Some(telemetry) = &self.telemetry {
-                            telemetry.track_main_warning(
+                            telemetry.track_main_error(
                                 "billing",
                                 "deep_link_reconcile",
                                 &failure(&error),
-                                Some(attempt),
                             );
                         }
                         return;
@@ -415,7 +423,10 @@ impl BillingService {
     /// The server refused an upload on its own size limit: the cached limit is wrong.
     pub fn invalidate_file_limit(&self) {
         if let Err(error) = self.cache.invalidate_limits() {
-            tracing::warn!(scope = "Billing", "could not drop the cached file limit: {error}");
+            tracing::warn!(
+                scope = "Billing",
+                "could not drop the cached file limit: {error}"
+            );
         }
     }
 }
@@ -440,12 +451,19 @@ mod tests {
     #[test]
     fn the_checkout_page_is_the_default_unless_an_https_override_is_set() {
         assert_eq!(checkout_page_url(&env(None)), DEFAULT_CHECKOUT_PAGE_URL);
-        assert_eq!(checkout_page_url(&env(Some("  "))), DEFAULT_CHECKOUT_PAGE_URL);
+        assert_eq!(
+            checkout_page_url(&env(Some("  "))),
+            DEFAULT_CHECKOUT_PAGE_URL
+        );
         assert_eq!(
             checkout_page_url(&env(Some(" https://staging.memrynote.com/account/sync "))),
             "https://staging.memrynote.com/account/sync"
         );
-        for refused in ["http://memrynote.com/account/sync", "javascript:alert(1)", "nope"] {
+        for refused in [
+            "http://memrynote.com/account/sync",
+            "javascript:alert(1)",
+            "nope",
+        ] {
             assert_eq!(
                 checkout_page_url(&env(Some(refused))),
                 DEFAULT_CHECKOUT_PAGE_URL,

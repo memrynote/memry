@@ -62,9 +62,18 @@ fn is_paid_billing_status_is_true_only_for_a_non_free_active_plan() {
 
 #[test]
 fn is_paid_billing_status_is_false_for_an_active_plan_whose_expiry_has_passed() {
-    assert!(!is_paid(&snapshot("plus", "active", Some(NOW_SECS - 60)), NOW_SECS));
-    assert!(!is_paid(&snapshot("plus", "active", Some(NOW_SECS)), NOW_SECS));
-    assert!(is_paid(&snapshot("plus", "active", Some(NOW_SECS + 3600)), NOW_SECS));
+    assert!(!is_paid(
+        &snapshot("plus", "active", Some(NOW_SECS - 60)),
+        NOW_SECS
+    ));
+    assert!(!is_paid(
+        &snapshot("plus", "active", Some(NOW_SECS)),
+        NOW_SECS
+    ));
+    assert!(is_paid(
+        &snapshot("plus", "active", Some(NOW_SECS + 3600)),
+        NOW_SECS
+    ));
 }
 
 #[test]
@@ -84,12 +93,42 @@ fn get_cached_entitlement_returns_none_when_nothing_cached() {
 fn cache_ttl_table() {
     let rows: [(&str, Option<i64>, bool, Option<i64>); 8] = [
         ("just written", Some(0), true, Some(MB5)),
-        ("unpaid fresh at 3599 s", Some(-3599 * SECOND), true, Some(MB5)),
-        ("unpaid at exactly the TTL", Some(-UNPAID_ENTITLEMENT_TTL_MS), true, Some(MB5)),
-        ("unpaid stale at 3601 s", Some(-3601 * SECOND), false, Some(MB5)),
-        ("limits fresh at 24 h less 1 s", Some(-ENTITLEMENT_LIMITS_TTL_MS + SECOND), false, Some(MB5)),
-        ("limits stale at 24 h plus 1 s", Some(-ENTITLEMENT_LIMITS_TTL_MS - SECOND), false, None),
-        ("future cachedAt fails open", Some(60 * 60 * SECOND), false, None),
+        (
+            "unpaid fresh at 3599 s",
+            Some(-3599 * SECOND),
+            true,
+            Some(MB5),
+        ),
+        (
+            "unpaid at exactly the TTL",
+            Some(-UNPAID_ENTITLEMENT_TTL_MS),
+            true,
+            Some(MB5),
+        ),
+        (
+            "unpaid stale at 3601 s",
+            Some(-3601 * SECOND),
+            false,
+            Some(MB5),
+        ),
+        (
+            "limits fresh at 24 h less 1 s",
+            Some(-ENTITLEMENT_LIMITS_TTL_MS + SECOND),
+            false,
+            Some(MB5),
+        ),
+        (
+            "limits stale at 24 h plus 1 s",
+            Some(-ENTITLEMENT_LIMITS_TTL_MS - SECOND),
+            false,
+            None,
+        ),
+        (
+            "future cachedAt fails open",
+            Some(60 * 60 * SECOND),
+            false,
+            None,
+        ),
         ("no cachedAt is stale", None, false, None),
     ];
     for (name, offset, unpaid_fresh, max_file_size) in rows {
@@ -102,25 +141,45 @@ fn cache_ttl_table() {
         }
         let f = entitlement(value);
         let cached = f.cache.get().expect(name);
-        assert_eq!(cached.is_unpaid_fresh(NOW_MS), unpaid_fresh, "{name}: unpaid fresh");
-        assert_eq!(f.cache.max_file_size(NOW_MS), max_file_size, "{name}: max file size");
+        assert_eq!(
+            cached.is_unpaid_fresh(NOW_MS),
+            unpaid_fresh,
+            "{name}: unpaid fresh"
+        );
+        assert_eq!(
+            f.cache.max_file_size(NOW_MS),
+            max_file_size,
+            "{name}: max file size"
+        );
     }
 }
 
 #[test]
 fn a_paid_verdict_is_never_unpaid_fresh() {
-    let f = entitlement(json!({ "isPaid": true, "plan": "plus", "status": "active", "cachedAt": NOW_MS }));
+    let f = entitlement(
+        json!({ "isPaid": true, "plan": "plus", "status": "active", "cachedAt": NOW_MS }),
+    );
     assert!(!f.cache.get().unwrap().is_unpaid_fresh(NOW_MS));
 }
 
 #[test]
 fn get_cached_max_file_size_fails_open_on_absent_or_non_positive_limits() {
-    for limits in [json!(null), json!({}), json!({ "maxFileSize": 0 }), json!({ "maxFileSize": -1 })] {
-        let mut value = json!({ "isPaid": true, "plan": "plus", "status": "active", "cachedAt": NOW_MS });
+    for limits in [
+        json!(null),
+        json!({}),
+        json!({ "maxFileSize": 0 }),
+        json!({ "maxFileSize": -1 }),
+    ] {
+        let mut value =
+            json!({ "isPaid": true, "plan": "plus", "status": "active", "cachedAt": NOW_MS });
         if !limits.is_null() {
             value["limits"] = limits.clone();
         }
-        assert_eq!(entitlement(value).cache.max_file_size(NOW_MS), None, "{limits}");
+        assert_eq!(
+            entitlement(value).cache.max_file_size(NOW_MS),
+            None,
+            "{limits}"
+        );
     }
 }
 
@@ -136,8 +195,7 @@ fn set_cached_entitlement_from_status_writes_electrons_shape_and_keeps_other_key
         .unwrap();
     assert!(cached.is_paid);
 
-    let on_disk: Value =
-        serde_json::from_slice(&std::fs::read(f.config.path()).unwrap()).unwrap();
+    let on_disk: Value = serde_json::from_slice(&std::fs::read(f.config.path()).unwrap()).unwrap();
     assert_eq!(
         on_disk,
         json!({
@@ -198,7 +256,10 @@ fn an_electron_written_entitlement_reads_the_same() {
     assert_eq!(cached.max_file_size(NOW_MS), Some(MB5));
 
     let older = entitlement(json!({ "isPaid": true, "plan": "pro", "status": "active" }));
-    let cached = older.cache.get().expect("a file without limits or cachedAt still loads");
+    let cached = older
+        .cache
+        .get()
+        .expect("a file without limits or cachedAt still loads");
     assert!(cached.is_paid);
     assert_eq!(cached.max_file_size(NOW_MS), None);
 }

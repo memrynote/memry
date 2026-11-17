@@ -72,9 +72,7 @@ impl CachedEntitlement {
 
 /// `None` when `cached_at` is absent or ahead of `now_ms` (the clock moved).
 fn age(cached_at: Option<i64>, now_ms: i64) -> Option<i64> {
-    cached_at
-        .map(|at| now_ms - at)
-        .filter(|age| *age >= 0)
+    cached_at.map(|at| now_ms - at).filter(|age| *age >= 0)
 }
 
 /// A JSON number as Electron wrote it; JavaScript may write an integer as `5242880.0`.

@@ -52,7 +52,11 @@ async fn a_repeated_paid_verdict_reaches_a_driver_a_402_demoted() {
     settle().await;
 
     assert_eq!(*lock(&rig.backend.driver.entitled), Some(true));
-    assert_eq!(rig.passes(), passes, "the gate did not change, so no start pass");
+    assert_eq!(
+        rig.passes(),
+        passes,
+        "the gate did not change, so no start pass"
+    );
 }
 
 /// Leading edge with a trailing guard (`push-coordinator.ts:585-609`, #2289): a push after a

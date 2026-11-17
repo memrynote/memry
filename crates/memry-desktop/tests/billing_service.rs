@@ -244,13 +244,25 @@ async fn a_refresh_names_the_transaction_and_a_plan_change_caches_its_answer() {
     assert_eq!(
         f.billing_requests(),
         vec![
-            ("POST".into(), RECONCILE.into(), json!({ "transactionId": "txn_1" })),
+            (
+                "POST".into(),
+                RECONCILE.into(),
+                json!({ "transactionId": "txn_1" })
+            ),
             ("POST".into(), RECONCILE.into(), json!({})),
-            ("POST".into(), "/auth/billing/change-plan/preview".into(), body.clone()),
+            (
+                "POST".into(),
+                "/auth/billing/change-plan/preview".into(),
+                body.clone()
+            ),
             ("POST".into(), "/auth/billing/change-plan".into(), body),
         ]
     );
-    assert_eq!(f.entitlement()["isPaid"], json!(false), "the last answer is cached");
+    assert_eq!(
+        f.entitlement()["isPaid"],
+        json!(false),
+        "the last answer is cached"
+    );
 }
 
 #[tokio::test]
@@ -320,10 +332,8 @@ async fn reports_a_missing_billing_customer_instead_of_throwing() {
 #[tokio::test]
 async fn returns_a_plain_failure_for_other_server_errors() {
     let f = fixture(true);
-    f.script.answer(
-        400,
-        json!({ "error": { "code": "BAD", "message": "bad" } }),
-    );
+    f.script
+        .answer(400, json!({ "error": { "code": "BAD", "message": "bad" } }));
     let result = f.billing.open_portal().await.unwrap();
     assert!(!result.success);
     assert_eq!((result.reason, result.error), (None, None));
@@ -362,17 +372,16 @@ async fn re_asks_the_server_when_the_cached_unpaid_verdict_is_stale_and_sees_the
 #[tokio::test]
 async fn an_unreachable_server_keeps_the_cached_verdict_and_none_leaves_it_unknown() {
     let f = fixture(true);
-    f.script.answer(
-        400,
-        json!({ "error": { "code": "BAD", "message": "bad" } }),
+    f.script
+        .answer(400, json!({ "error": { "code": "BAD", "message": "bad" } }));
+    assert_eq!(
+        f.billing.resolve_for_sync_start().await,
+        Entitlement::Unknown
     );
-    assert_eq!(f.billing.resolve_for_sync_start().await, Entitlement::Unknown);
 
     f.cache(json!({ "isPaid": true, "plan": "plus", "status": "active" }));
-    f.script.answer(
-        400,
-        json!({ "error": { "code": "BAD", "message": "bad" } }),
-    );
+    f.script
+        .answer(400, json!({ "error": { "code": "BAD", "message": "bad" } }));
     assert_eq!(
         f.billing.resolve_for_sync_start().await,
         Entitlement::Entitled,
@@ -439,10 +448,8 @@ async fn reconcile_billing_and_sync_stops_on_the_first_paid_answer() {
 #[tokio::test(start_paused = true)]
 async fn a_reconcile_failure_ends_the_loop_and_keeps_the_session() {
     let f = fixture(true);
-    f.script.answer(
-        400,
-        json!({ "error": { "code": "BAD", "message": "bad" } }),
-    );
+    f.script
+        .answer(400, json!({ "error": { "code": "BAD", "message": "bad" } }));
     f.billing.reconcile_and_start(None).await;
     assert_eq!(f.script.count(RECONCILE), 1);
     f.script.answer(200, status("plus", "active"));
