@@ -103,6 +103,8 @@ mod calendar_feeds;
 mod calendar_ical_vectors;
 #[path = "calendar_provider_push.rs"]
 mod calendar_provider_push;
+#[path = "calendar_schema.rs"]
+mod calendar_schema;
 #[path = "calendar_settings_sync.rs"]
 mod calendar_settings_sync;
 #[path = "calendar_source_purge.rs"]
