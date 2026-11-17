@@ -4,7 +4,15 @@
 // `main.log`, then quits it. No debugger attaches: every number is one the app logs itself.
 
 import { spawn, spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  statSync,
+  writeFileSync
+} from 'node:fs'
 import { open } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
 import path from 'node:path'
@@ -16,8 +24,8 @@ const IDENTIFIER = 'com.memrynote.memry'
 // A device of its own keeps every launch off the user's keychain accounts, log, data dir and
 // single-instance lock (`memry_desktop::paths::profile_identifier`).
 const BENCH_DEVICE = 'launch-bench'
-// `dev` and `dev-<8 hex>` share the dev keychain accounts (`secure_store/account.rs`).
-const DEV_DEVICE_PATTERN = /^dev(?:-[0-9a-f]{8})?$/
+// Any other device (`dev`, the `A`/`B`/`C` of `tauri:dev:a`) may hold a signed-in account.
+const BENCH_DEVICE_PATTERN = /^launch-bench(?:-[a-z0-9]+)?$/
 // A `target/debug/` build (including `tauri build --debug` bundles) logs `(packaged)` too.
 const DEBUG_BUILD_PATTERN = /[\\/]target[\\/](?:[^\\/]+[\\/])?debug[\\/]/
 const LOCK_DIR = path.join(tmpdir(), 'memry-launch-bench.lock')
@@ -184,10 +192,11 @@ export function classifyBuild(slice, executable, env) {
 
 /** The environment of every launch: a bench device on the bench profile. */
 export function benchEnv(processEnv, profile) {
-  const device = processEnv.MEMRY_DEVICE || BENCH_DEVICE
-  if (DEV_DEVICE_PATTERN.test(device)) {
+  const device =
+    processEnv.MEMRY_DEVICE === '' ? BENCH_DEVICE : (processEnv.MEMRY_DEVICE ?? BENCH_DEVICE).trim()
+  if (!BENCH_DEVICE_PATTERN.test(device)) {
     throw new Error(
-      `MEMRY_DEVICE=${device} shares the dev profile and keychain accounts; unset it or pick another name`
+      `MEMRY_DEVICE=${JSON.stringify(device)} may hold a signed-in account; unset it or use launch-bench-<a-z0-9>`
     )
   }
   return { ...processEnv, MEMRY_DEVICE: device, MEMRY_APP_DATA_DIR: profile }
@@ -205,15 +214,27 @@ function defaultDataDir(env, platform, home) {
   return path.join(env.XDG_DATA_HOME || path.join(home, '.local/share'), IDENTIFIER)
 }
 
-/** Refuses the real profile: `prepareProfile` rewrites its `memry-config.json`. */
+/**
+ * Refuses the real profile, by name or through a link, and creates the bench profile:
+ * `prepareProfile` rewrites its `memry-config.json`.
+ */
 export function checkProfile(profile, env, platform, home) {
+  const realProfile = defaultDataDir(env, platform, home)
+  const refuse = () => new Error(`${profile} is the real profile; pass a bench --profile`)
   // The default macOS and Windows file systems ignore case.
   const resolve = (dir) =>
     platform === 'linux'
       ? path.posix.resolve(dir)
       : (platform === 'win32' ? path.win32 : path.posix).resolve(dir).toLowerCase()
-  if (resolve(profile) === resolve(defaultDataDir(env, platform, home))) {
-    throw new Error(`${profile} is the real profile; pass a bench --profile`)
+  if (resolve(profile) === resolve(realProfile)) {
+    throw refuse()
+  }
+  mkdirSync(profile, { recursive: true })
+  if (
+    existsSync(realProfile) &&
+    realpathSync.native(profile) === realpathSync.native(realProfile)
+  ) {
+    throw refuse()
   }
 }
 
@@ -221,12 +242,20 @@ function hasNoteReadableMark(record) {
   return record.renderer?.noteReadableMs != null
 }
 
-/** Runs that reported no note-readable mark while another run of the bench reported one. */
-export function runsMissingNoteReadable(runs) {
+/** A failure for each run with no note-readable mark while another run of the bench had one. */
+export function noteReadableFailures(runs) {
   if (!runs.some(hasNoteReadableMark)) {
     return []
   }
-  return runs.filter((record) => !hasNoteReadableMark(record)).map((record) => record.run)
+  return runs
+    .filter((record) => !hasNoteReadableMark(record))
+    .map((record) => ({
+      run: record.run,
+      message:
+        record.renderer === null
+          ? 'no "renderer launch marks" line, while another run had a note-readable mark'
+          : 'no note-readable mark, while another run had one'
+    }))
 }
 
 export function median(numbers) {
@@ -670,9 +699,7 @@ async function runBench(options) {
     }
   }
 
-  for (const run of runsMissingNoteReadable(runs)) {
-    failures.push({ run, message: 'no note-readable mark, while another run had one' })
-  }
+  failures.push(...noteReadableFailures(runs))
   failures.sort((a, b) => a.run - b.run)
 
   const summary = summarize(runs)

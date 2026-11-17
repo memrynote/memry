@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { after, describe, it } from 'node:test'
@@ -15,11 +15,11 @@ import {
   formatMedianTable,
   logPath,
   median,
+  noteReadableFailures,
   parseLaunchTimeline,
   parseLogTimestamp,
   parseRendererMarks,
   resolveExecutable,
-  runsMissingNoteReadable,
   summarize
 } from './launch-bench.mjs'
 
@@ -291,14 +291,19 @@ describe('benchEnv', () => {
     )
   })
 
-  it('keeps a chosen device and replaces an empty one', () => {
-    assert.equal(benchEnv({ MEMRY_DEVICE: 'A' }, '/p').MEMRY_DEVICE, 'A')
+  it('keeps a launch-bench device, trimmed, and replaces an empty one', () => {
+    assert.equal(
+      benchEnv({ MEMRY_DEVICE: 'launch-bench-b2' }, '/p').MEMRY_DEVICE,
+      'launch-bench-b2'
+    )
+    assert.equal(benchEnv({ MEMRY_DEVICE: ' launch-bench ' }, '/p').MEMRY_DEVICE, 'launch-bench')
     assert.equal(benchEnv({ MEMRY_DEVICE: '' }, '/p').MEMRY_DEVICE, 'launch-bench')
   })
 
-  it('refuses the dev device, which shares the dev keychain accounts', () => {
-    assert.throws(() => benchEnv({ MEMRY_DEVICE: 'dev' }, '/p'), /MEMRY_DEVICE/)
-    assert.throws(() => benchEnv({ MEMRY_DEVICE: 'dev-0a1b2c3d' }, '/p'), /MEMRY_DEVICE/)
+  it('refuses every other device, which may hold a signed-in account', () => {
+    for (const device of ['dev', 'dev-0a1b2c3d', 'A', 'B', 'Launch-Bench', 'launch-bench-', ' ']) {
+      assert.throws(() => benchEnv({ MEMRY_DEVICE: device }, '/p'), /MEMRY_DEVICE/, device)
+    }
   })
 })
 
@@ -407,14 +412,55 @@ describe('checkProfile', () => {
     )
   })
 
-  it('accepts a bench profile', () => {
-    assert.doesNotThrow(() =>
-      checkProfile('/tmp/memry-launch-bench/profile', {}, 'darwin', '/Users/kaan')
+  it('ignores case on macOS and Windows', () => {
+    assert.throws(
+      () =>
+        checkProfile(
+          '/USERS/KAAN/Library/Application Support/COM.MEMRYNOTE.MEMRY',
+          {},
+          'darwin',
+          '/Users/kaan'
+        ),
+      /real profile/
     )
+    assert.throws(
+      () =>
+        checkProfile(
+          'c:\\users\\KAAN\\appdata\\roaming\\Com.MemryNote.Memry',
+          { APPDATA: 'C:\\Users\\kaan\\AppData\\Roaming' },
+          'win32',
+          'C:\\Users\\kaan'
+        ),
+      /real profile/
+    )
+  })
+
+  describe('on disk', () => {
+    const home = mkdtempSync(path.join(tmpdir(), 'launch-bench-home-'))
+    after(() => rmSync(home, { recursive: true, force: true }))
+    // `env` is empty, so the default data dir derives from `home` on every OS.
+    const realProfile =
+      {
+        darwin: path.join(home, 'Library/Application Support/com.memrynote.memry'),
+        win32: path.join(home, 'AppData/Roaming/com.memrynote.memry')
+      }[process.platform] ?? path.join(home, '.local/share/com.memrynote.memry')
+
+    it('creates and accepts a bench profile', () => {
+      const profile = path.join(home, 'bench', 'profile')
+      checkProfile(profile, {}, process.platform, home)
+      assert.ok(existsSync(profile))
+    })
+
+    it('refuses a link to the real profile', () => {
+      mkdirSync(realProfile, { recursive: true })
+      const link = path.join(home, 'linked-profile')
+      symlinkSync(realProfile, link, process.platform === 'win32' ? 'junction' : 'dir')
+      assert.throws(() => checkProfile(link, {}, process.platform, home), /real profile/)
+    })
   })
 })
 
-describe('runsMissingNoteReadable', () => {
+describe('noteReadableFailures', () => {
   function withMark(run, noteReadableMs) {
     return { ...makeRun(run, 'packaged', 0), renderer: { noteReadableMs } }
   }
@@ -425,11 +471,17 @@ describe('runsMissingNoteReadable', () => {
       withMark(2, 900),
       { ...makeRun(3, 'packaged', 0), renderer: null }
     ]
-    assert.deepEqual(runsMissingNoteReadable(runs), [1, 3])
+    assert.deepEqual(noteReadableFailures(runs), [
+      { run: 1, message: 'no note-readable mark, while another run had one' },
+      {
+        run: 3,
+        message: 'no "renderer launch marks" line, while another run had a note-readable mark'
+      }
+    ])
   })
 
   it('fails nothing when no run restored a note', () => {
-    assert.deepEqual(runsMissingNoteReadable([withMark(1, null), withMark(2, null)]), [])
+    assert.deepEqual(noteReadableFailures([withMark(1, null), withMark(2, null)]), [])
   })
 })
 
