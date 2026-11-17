@@ -379,36 +379,41 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     })
 
     cleanups.push(
-      onSyncStatusChanged((event) => {
-        if (cancelled) return
-        const error = event.error ? extractErrorMessage(event.error, '') : undefined
-        dispatch({
-          type: 'STATUS_CHANGED',
-          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- IPC status event type is unresolved here; main emits the SyncStatus set
-          status: event.status as SyncStatus,
-          lastSyncAt: event.lastSyncAt,
-          pendingCount: event.pendingCount,
-          error,
-          errorCategory: event.errorCategory,
-          offlineSince: event.offlineSince
-        })
-        if (event.errorCategory === 'storage_quota_exceeded') {
-          toast.error(t('sync.storageQuotaExceeded'), { duration: 10000 })
+      onSyncStatusChanged(
+        (event) => {
+          if (cancelled) return
+          const error = event.error ? extractErrorMessage(event.error, '') : undefined
+          dispatch({
+            type: 'STATUS_CHANGED',
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- IPC status event type is unresolved here; main emits the SyncStatus set
+            status: event.status as SyncStatus,
+            lastSyncAt: event.lastSyncAt,
+            pendingCount: event.pendingCount,
+            error,
+            errorCategory: event.errorCategory,
+            offlineSince: event.offlineSince
+          })
+          if (event.errorCategory === 'storage_quota_exceeded') {
+            toast.error(t('sync.storageQuotaExceeded'), { duration: 10000 })
+          }
+          if (event.errorCategory === 'file_too_large') {
+            toast.error(t('sync.fileTooLarge'), { duration: 10000 })
+          }
+          if (event.errorCategory === 'note_too_large') {
+            // An older main process sends no title; the unnamed message is the
+            // fallback, not the default.
+            toast.error(
+              event.errorNoteTitle
+                ? t('sync.noteTooLargeNamed', { title: event.errorNoteTitle })
+                : t('sync.noteTooLarge'),
+              { duration: 10000, action: activityAction() }
+            )
+          }
+        },
+        () => {
+          if (!cancelled) void init()
         }
-        if (event.errorCategory === 'file_too_large') {
-          toast.error(t('sync.fileTooLarge'), { duration: 10000 })
-        }
-        if (event.errorCategory === 'note_too_large') {
-          // An older main process sends no title; the unnamed message is the
-          // fallback, not the default.
-          toast.error(
-            event.errorNoteTitle
-              ? t('sync.noteTooLargeNamed', { title: event.errorNoteTitle })
-              : t('sync.noteTooLarge'),
-            { duration: 10000, action: activityAction() }
-          )
-        }
-      })
+      )
     )
 
     // Attachment upload failures were emitted to this channel with no listener,
@@ -538,7 +543,10 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     cleanups.push(
       onCertificatePinFailed(() => {
         if (cancelled) return
-        toast.error(t('sync.certificatePinPaused'), { duration: 15000 })
+        toast.error(t('sync.certificatePinPaused'), {
+          id: 'sync-certificate-pin-failed',
+          duration: 15000
+        })
       })
     )
 

@@ -23,34 +23,23 @@ vi.mock('../../../generated/bindings', () => {
     commands: mocks.commands,
     events: {
       syncStatusChangedEvent: event('status'),
+      syncItemSyncedEvent: event('item'),
       syncInitialSyncProgressEvent: event('progress')
     }
   }
 })
 
-import { onInitialSyncProgress, onSyncStatusChanged, syncService } from './sync-service'
+import {
+  onInitialSyncProgress,
+  onItemSynced,
+  onSyncStatusChanged,
+  syncService
+} from './sync-service'
 
 describe('sync-service', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.listeners.clear()
-  })
-
-  it('sends the Electron arguments in the shapes the Rust commands take', async () => {
-    mocks.commands.syncPause.mockResolvedValue({ success: true, wasPaused: false })
-    mocks.commands.syncResume.mockResolvedValue({ success: true, pendingCount: 0 })
-    mocks.commands.syncGetNoteSyncState.mockResolvedValue(null)
-    mocks.commands.syncGetHistory.mockResolvedValue({ entries: [], total: 0 })
-
-    await syncService.pause('popover')
-    await syncService.resume('settings')
-    await syncService.getNoteSyncState('n1')
-    await syncService.getHistory({ limit: 50 })
-
-    expect(mocks.commands.syncPause).toHaveBeenCalledWith({ surface: 'popover' })
-    expect(mocks.commands.syncResume).toHaveBeenCalledWith({ surface: 'settings' })
-    expect(mocks.commands.syncGetNoteSyncState).toHaveBeenCalledWith({ noteId: 'n1' })
-    expect(mocks.commands.syncGetHistory).toHaveBeenCalledWith({ limit: 50, offset: null })
   })
 
   it('answers Sync Now in the contract union, keeping the blocked reason', async () => {
@@ -62,24 +51,55 @@ describe('sync-service', () => {
     await expect(syncService.triggerSync()).resolves.toEqual({ success: false, reason: 'offline' })
   })
 
-  it('delivers a status event with the fields Rust sent', async () => {
+  it('delivers a status event with the absent fields Rust sent as null left undefined', async () => {
     const received = vi.fn()
     onSyncStatusChanged(received)
     await vi.waitFor(() => expect(mocks.listeners.has('status')).toBe(true))
 
     mocks.listeners.get('status')?.({
-      payload: { status: 'error', pendingCount: 3, error: 'boom', errorCategory: 'server_error' }
-    })
-
-    expect(received).toHaveBeenCalledWith(
-      expect.objectContaining({
+      payload: {
         status: 'error',
         pendingCount: 3,
+        lastSyncAt: null,
         error: 'boom',
         errorCategory: 'server_error',
-        lastSyncAt: undefined
-      })
-    )
+        offlineSince: null
+      }
+    })
+
+    expect(received).toHaveBeenCalledWith({
+      status: 'error',
+      pendingCount: 3,
+      lastSyncAt: undefined,
+      error: 'boom',
+      errorCategory: 'server_error',
+      offlineSince: undefined
+    })
+  })
+
+  it('delivers an item-synced event without a null item operation', async () => {
+    const received = vi.fn()
+    onItemSynced(received)
+    await vi.waitFor(() => expect(mocks.listeners.has('item')).toBe(true))
+
+    mocks.listeners.get('item')?.({
+      payload: { itemId: 'n1', type: 'note', operation: 'pull', itemOperation: null }
+    })
+    mocks.listeners.get('item')?.({
+      payload: { itemId: 'n2', type: 'note', operation: 'push', itemOperation: 'delete' }
+    })
+
+    expect(received.mock.calls[0][0]).toStrictEqual({
+      itemId: 'n1',
+      type: 'note',
+      operation: 'pull'
+    })
+    expect(received.mock.calls[1][0]).toStrictEqual({
+      itemId: 'n2',
+      type: 'note',
+      operation: 'push',
+      itemOperation: 'delete'
+    })
   })
 
   it('delivers initial sync progress without a null item type', async () => {

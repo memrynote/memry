@@ -2,19 +2,14 @@ import type {
   CertificatePinFailedEvent,
   ClockSkewWarningEvent,
   InitialSyncProgressEvent,
+  ItemSyncedEvent,
   QueueClearedEvent,
   SecurityWarningEvent,
   SyncStatusChangedEvent
 } from '@memry/contracts/ipc-events'
 import type { SyncControlSurface, TriggerSyncResult } from '@memry/contracts/ipc-sync-ops'
 
-import {
-  commands,
-  events,
-  type SyncItemSyncedEvent,
-  type SyncStatus,
-  type Value
-} from '../../../generated/bindings'
+import { commands, events, type SyncStatus, type Value } from '../../../generated/bindings'
 import { subscribeToEvent } from './tauri-event'
 
 /** Rust leaves an absent field off the wire; the contract types spell it optional. */
@@ -63,18 +58,24 @@ export const syncService = {
 
   getNoteSyncState: (noteId: string) => commands.syncGetNoteSyncState({ noteId }),
 
-  getUnsentNotes: () => commands.syncGetUnsentNotes(),
-
-  getQuarantinedItems: () => commands.syncGetQuarantinedItems()
+  getUnsentNotes: () => commands.syncGetUnsentNotes()
 }
 
+/** `onListening` runs once the listener is live; a status sent before then reached nobody (#4270). */
 export const onSyncStatusChanged = (
-  callback: (event: SyncStatusChangedEvent) => void
+  callback: (event: SyncStatusChangedEvent) => void,
+  onListening?: () => void
 ): (() => void) =>
-  subscribeToEvent(events.syncStatusChangedEvent, (status) => callback(toStatus(status)))
+  subscribeToEvent(
+    events.syncStatusChangedEvent,
+    (status) => callback(toStatus(status)),
+    onListening
+  )
 
-export const onItemSynced = (callback: (event: SyncItemSyncedEvent) => void): (() => void) =>
-  subscribeToEvent(events.syncItemSyncedEvent, callback)
+export const onItemSynced = (callback: (event: ItemSyncedEvent) => void): (() => void) =>
+  subscribeToEvent(events.syncItemSyncedEvent, ({ itemOperation, ...item }) =>
+    callback({ ...item, ...(itemOperation ? { itemOperation } : {}) })
+  )
 
 export const onQueueCleared = (callback: (event: QueueClearedEvent) => void): (() => void) =>
   subscribeToEvent(events.syncQueueClearedEvent, callback)
