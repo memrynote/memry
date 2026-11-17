@@ -947,7 +947,7 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
   const handleBulkExport = useCallback(async () => {
     for (const id of Array.from(selectedRowIds)) {
       const result = await notesService.exportHtml({ noteId: id })
-      if (result.error === 'Export cancelled') break
+      if (result.code === 'cancelled') break
     }
   }, [selectedRowIds])
 

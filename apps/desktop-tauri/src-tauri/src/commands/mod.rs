@@ -15,6 +15,7 @@ pub mod diagnostics;
 pub mod drop_stage;
 pub mod editor;
 pub mod error;
+pub mod export;
 pub mod fold;
 pub mod folders;
 pub mod ios_beta;

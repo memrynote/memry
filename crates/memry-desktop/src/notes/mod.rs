@@ -6,6 +6,7 @@ pub mod apply_template;
 pub mod create;
 pub mod delete;
 pub mod error;
+pub mod export;
 pub mod folder_delete;
 pub mod folder_move;
 pub mod folder_sync;

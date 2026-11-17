@@ -287,6 +287,11 @@ export const commands = {
 	 *  on the size, the type or the note id before any byte is sent. Returns the upload's id.
 	 */
 	notesUploadAttachmentBegin: (noteId: string, fileName: string, size: number) => __TAURI_INVOKE<string>("notes_upload_attachment_begin", { noteId, fileName, size }),
+	/**
+	 *  `notes:export-html`: the note as a self-contained HTML file at `outputPath`, or where the
+	 *  save dialog says.
+	 */
+	notesExportHtml: (input: ExportNoteInput) => __TAURI_INVOKE<ExportResult>("notes_export_html", { input }),
 	/**  `notes:create-folder`: the folder (vault-relative, `/`-separated) and the parents it needs. */
 	notesCreateFolder: (path: string) => __TAURI_INVOKE<null>("notes_create_folder", { path }),
 	/**
@@ -1503,6 +1508,31 @@ export type ExistingTagView = {
 	usage: number,
 };
 
+/**  Why an export wrote nothing; `cancelled` when the user dismissed the save dialog. */
+export type ExportFailure = "cancelled" | "not_found" | "failed";
+
+/**  `ExportNoteSchema` (`packages/contracts/src/notes-api.ts`). */
+export type ExportNoteInput = {
+	noteId: string,
+	/**  On when absent. */
+	includeMetadata?: boolean | null,
+	/**  The PDF page; the HTML export ignores it. */
+	pageSize?: PageSize | null,
+	/**  Off when absent. */
+	includeTaskMarkers?: boolean | null,
+	/**  Written without a save dialog (the agent API's headless export). */
+	outputPath?: string | null,
+};
+
+/**  `{ success: true, path }` or `{ success: false, code, error }`. */
+export type ExportResult = {
+	success: boolean,
+	path?: string | null,
+	code?: ExportFailure | null,
+	/**  Localized, for the failure toast. */
+	error?: string | null,
+};
+
 export type FailureDetail = {
 	httpStatus?: number | null,
 	serverCode?: string | null,
@@ -2700,6 +2730,8 @@ export type OptionInput = {
 	color: string,
 	default?: boolean | null,
 };
+
+export type PageSize = "A4" | "Letter" | "Legal";
 
 /**  `PauseSyncResult`. */
 export type PauseSyncResult = {
