@@ -96,6 +96,9 @@ pub enum AttachmentError {
     /// told immediately.
     #[error("this file needs {chunks} chunks and a session allows {cap}")]
     TooManyChunks { chunks: usize, cap: usize },
+    /// A chunk size of zero frames nothing (§14.2).
+    #[error("the chunk size is zero")]
+    ZeroChunkSize,
 }
 
 /// Maps a signer device id to its Ed25519 public key.

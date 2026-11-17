@@ -15,8 +15,6 @@
 //! | a note's reference keeps a file out of the release        | §14.7.2, filing reuse                 |
 //! | the pass only follows the capture's own folder            | §14.7.2, receiver path rule           |
 
-use std::sync::atomic::{AtomicU64, Ordering};
-
 use memry_core::domain::inbox::attachments::{
     self as files, RELEASE_GRACE_MS, UploadPlan, download_target, plan_upload,
 };
@@ -24,25 +22,18 @@ use memry_core::domain::inbox::write::{self, NewCapture};
 use memry_core::domain::inbox::{self};
 use memry_core::domain::notes::{self, NewNote};
 use memry_core::storage::repositories::sync_items::{self, InboundRecord};
-use memry_core::storage::{Db, open_data};
 use memry_core::sync::apply::apply_inbound;
 use rusqlite::Connection;
 use serde_json::{Value, json};
+
+use crate::support::{ScratchDb, scratch_data_db};
 
 const NOW: i64 = 1_790_251_200_000;
 const DEVICE: &str = "phone";
 const PATH: &str = "attachments/inbox/inbox-1/photo.png";
 
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
-
-fn open(label: &str) -> Db {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!(
-        "memry-inbox-attachments-{label}-{}-{unique}",
-        std::process::id()
-    ));
-    std::fs::create_dir_all(&dir).expect("the scratch directory");
-    open_data(&dir.join("data.db")).expect("open data.db")
+fn open(label: &str) -> ScratchDb {
+    scratch_data_db(&format!("inbox-attachments-{label}"))
 }
 
 fn payload(conn: &Connection, id: &str) -> Value {

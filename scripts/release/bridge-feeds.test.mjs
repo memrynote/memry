@@ -3,6 +3,8 @@ import { createHash } from 'node:crypto'
 import { describe, it } from 'node:test'
 
 import {
+  BRIDGES_WIN_LINUX,
+  buildBridgeFeeds,
   buildLatestLinuxYml,
   buildLatestMacYml,
   buildLatestYml,
@@ -65,11 +67,14 @@ describe('bridge feeds', () => {
     )
   })
 
-  it('writes latest-linux.yml with path and sha512 of the first listed file', () => {
+  // Shipped .deb installs update only through latest-linux.yml, so the deb is listed; the AppImage
+  // stays first because `path` names the file AppImage installs download.
+  it('writes latest-linux.yml with the AppImage first and the deb second', () => {
     const text = buildLatestLinuxYml({
       version: v,
       releaseDate,
-      files: [entry(`MemryNote-${v}-x86_64.AppImage`, 'E', 500)]
+      appImage: entry(`MemryNote-${v}-x86_64.AppImage`, 'E', 500),
+      deb: entry(`MemryNote-${v}-amd64.deb`, 'G', 700)
     })
     assert.equal(
       text,
@@ -79,6 +84,9 @@ describe('bridge feeds', () => {
         '  - url: MemryNote-2099.101.1-x86_64.AppImage',
         `    sha512: ${'E'.repeat(86)}==`,
         '    size: 500',
+        '  - url: MemryNote-2099.101.1-amd64.deb',
+        `    sha512: ${'G'.repeat(86)}==`,
+        '    size: 700',
         'path: MemryNote-2099.101.1-x86_64.AppImage',
         `sha512: ${'E'.repeat(86)}==`,
         "releaseDate: '2099-01-01T10:00:00.123Z'",
@@ -112,15 +120,74 @@ describe('bridge feeds', () => {
   })
 
   it('rejects incomplete input', () => {
-    assert.throws(() => buildLatestLinuxYml({ version: v, releaseDate, files: [] }), /files/)
+    assert.throws(() => buildLatestLinuxYml({ version: v, releaseDate }), /AppImage/)
     assert.throws(
       () =>
-        buildLatestLinuxYml({ version: v, releaseDate: '2099-01-01', files: [entry('a', 'A', 1)] }),
+        buildLatestLinuxYml({
+          version: v,
+          releaseDate: '2099-01-01',
+          appImage: entry('a', 'A', 1)
+        }),
       /releaseDate/
     )
     assert.throws(
       () => buildLatestMacYml({ version: v, releaseDate, arm64Zip: entry('a', 'A', 1) }),
       /x64 zip/
     )
+  })
+
+  const mac = {
+    arm64Zip: entry(`MemryNote-${v}-arm64.zip`, 'A', 100),
+    x64Zip: entry(`MemryNote-${v}-x64.zip`, 'C', 300)
+  }
+  const linux = { appImage: entry(`MemryNote-${v}-x86_64.AppImage`, 'E', 500) }
+  const setup = entry(setupExeName(v), 'F', 600)
+
+  it('writes all three feeds while the Windows and Linux bridge is on', () => {
+    assert.equal(BRIDGES_WIN_LINUX, true)
+    const feeds = buildBridgeFeeds({ version: v, releaseDate, mac, linux, setup })
+    assert.deepEqual(Object.keys(feeds), ['latest-mac.yml', 'latest-linux.yml', 'latest.yml'])
+    assert.equal(feeds['latest.yml'], buildLatestYml({ version: v, releaseDate, setup }))
+  })
+
+  // macOS Electron installs reach Tauri only through latest-mac.yml; no flag turns it off.
+  it('always writes latest-mac.yml and refuses to omit it', () => {
+    const feeds = buildBridgeFeeds({ version: v, releaseDate, mac, bridgesWinLinux: false })
+    assert.deepEqual(Object.keys(feeds), ['latest-mac.yml'])
+    assert.throws(
+      () => buildBridgeFeeds({ version: v, releaseDate, linux, setup }),
+      /latest-mac.yml is always published/
+    )
+  })
+
+  it('leaves out latest.yml when no Windows setup was built', () => {
+    const feeds = buildBridgeFeeds({ version: v, releaseDate, mac, linux })
+    assert.deepEqual(Object.keys(feeds), ['latest-mac.yml', 'latest-linux.yml'])
+  })
+
+  it('adds stagingPercentage only when given, and only 1 to 100', () => {
+    const plain = buildBridgeFeeds({ version: v, releaseDate, mac, linux, setup })
+    for (const text of Object.values(plain)) assert.doesNotMatch(text, /stagingPercentage/)
+    const staged = buildBridgeFeeds({
+      version: v,
+      releaseDate,
+      mac,
+      linux,
+      setup,
+      stagingPercentage: 10
+    })
+    for (const text of Object.values(staged)) assert.match(text, /\nstagingPercentage: 10\n$/)
+    assert.deepEqual(
+      validateManifest(parseManifest(staged['latest-mac.yml']), {
+        requireMinimumSystemVersion: true
+      }).errors,
+      []
+    )
+    for (const bad of [0, 101, 12.5, '10']) {
+      assert.throws(
+        () => buildBridgeFeeds({ version: v, releaseDate, mac, stagingPercentage: bad }),
+        /stagingPercentage/
+      )
+    }
   })
 })
