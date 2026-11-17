@@ -178,7 +178,7 @@ function readerVectors(): unknown {
     name,
     document,
     options,
-    out: planReaderNote(document as ReaderDocument, {
+    out: planReaderNote(document as unknown as ReaderDocument, {
       ...options,
       images: pairs(options.images),
       bookExternalIds: new Set(options.bookExternalIds ?? [])
@@ -187,7 +187,7 @@ function readerVectors(): unknown {
 }
 
 async function readerFullTextVectors(): Promise<unknown> {
-  const out = []
+  const out: unknown[] = []
   for (const { name, html, baseUrl } of READER_FULL_TEXT_CASES) {
     const text = await prepareReaderFullText(html, baseUrl)
     const saved = text.imageUrls.map((url, i): [string, string] => [
