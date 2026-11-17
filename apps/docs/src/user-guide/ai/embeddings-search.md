@@ -60,8 +60,8 @@ first search after launch starts the model and answers by keywords alone, becaus
 seconds; later searches include meaning. Queries with `AND`, `OR`, `NOT` or quoted phrases, queries
 under three characters, and searches with embeddings off are keyword-only.
 
-Intel Macs are not supported by the local model runtime; on those machines semantic features stay off
-and search is keyword-only.
+The local model runs on Intel Macs as well as Apple silicon Macs: the macOS app ships a model runtime
+built for each.
 
 ## Image Search
 
@@ -111,7 +111,7 @@ You can **Unload** the model from settings to free memory; reload as needed.
 
 ### When the Download Fails
 
-The model is fetched once (~210MB). If that download fails — you are offline, behind a proxy, or the
+The model is fetched once (207 MB). If that download fails — you are offline, behind a proxy, or the
 CDN is blocked — memrynote does **not** hammer the network. It waits before trying again, backing off
 each time (about one minute, then two, four, and eight), and after several consecutive failures it
 stops retrying for the rest of the session. Semantic search falls back to keyword-only meanwhile;

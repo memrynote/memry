@@ -201,6 +201,14 @@ function DesktopCard({ os }: { os: DetectedOS }) {
         </a>
         <span aria-hidden>·</span>
         <a
+          href={downloadHref('windows-arm64')}
+          onClick={() => trackDownload('windows-arm64')}
+          className={TEXT_LINK}
+        >
+          Windows ARM64
+        </a>
+        <span aria-hidden>·</span>
+        <a
           href={downloadHref('linux-deb')}
           onClick={() => trackDownload('linux-deb')}
           className={TEXT_LINK}
@@ -222,6 +230,12 @@ function DesktopCard({ os }: { os: DetectedOS }) {
         <Link to="/changelog" onClick={() => trackPage('changelog')} className={TEXT_LINK}>
           Release notes
         </Link>
+      </p>
+      <p className={META}>
+        <span className="sr-only">System requirements: </span>
+        <span className="whitespace-nowrap">macOS 13+</span> ·{' '}
+        <span className="whitespace-nowrap">Windows 10 1809+</span> ·{' '}
+        <span className="whitespace-nowrap">Linux x64 · glibc 2.35+</span>
       </p>
     </Card>
   )
