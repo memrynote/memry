@@ -1,8 +1,8 @@
 -- Growth · Aktivasyon (haftalık kohort)
 -- One row per complete cohort week: new engaged desktop installs and how many activated.
 -- Activation: at least 3 note_updated within 7 days of the install's first engaged event.
--- This is the `activation` query in .agents/skills/growth-review/collect.js with one change, the
--- desktop platform filter in `firsts`. Change both together, so the page and the insight agree.
+-- This is the `activation` query in .agents/skills/growth-review/collect.js, desktop platform
+-- filter included. Change both together, so the page and the insight agree.
 -- The event list is PostHog action 369611 "Desktop · Engaged use". Keep the three identical.
 WITH firsts AS (
   SELECT person_id, min(timestamp) AS first_ts FROM events

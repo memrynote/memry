@@ -38,10 +38,9 @@ Lifecycle drop anonymous persons. HogQL also lets each step use the install's ow
 - Description: "Her tamamlanmış kohort haftası için yeni masaüstü kurulumları ve ilk 7 günde en
   az 3 note_updated yapanlar (aktivasyon). growth-review'daki sorguyla aynıdır; biri değişirse
   diğeri de değişir. Sadece production ve masaüstü."
-- Agreement with the growth page: the file is `collect.js`'s `activation` query plus one filter,
-  `properties.platform IN ('darwin', 'win32', 'linux')`. On 2026-11-17 both returned identical
-  rows for every complete cohort, the latest being the week of 2026-11-01. They split from the
-  week of 2026-11-08 on unless `collect.js` gets the same filter (see below).
+- Agreement with the growth page: the file is `collect.js`'s `activation` query, desktop platform
+  filter included. On 2026-11-17 both returned identical rows for every complete cohort. Change
+  both together.
 
 ### Growth · İlk çalıştırma hunisi (platform) and (sürüm)
 
@@ -73,25 +72,23 @@ Add the three insights below the existing tiles of "Growth · Weekly Overview" (
 full width. The dashboard does not copy the growth page's bucket model, Quick Ratio or forecast.
 That follows the issue's recommendation and is still Kaan's call.
 
-## Change to growth-review before the next report
+## Platform filter
 
-`collect.js`'s activation query and action 369611 have no platform filter. iOS TestFlight installs
-reach PostHog from the week of 2026-11-01 and count as new engaged installs from the week of
-2026-11-08, where they outnumber new desktop installs. iOS installs rarely send `note_updated`, so
-from that cohort on the growth page will show activation falling, and engaged installs rising,
-for a reason unrelated to desktop. The action's own description says it backs the dashboard's
-weekly numbers, so the weekly engaged installs include iOS from that week on as well.
+iOS TestFlight installs reach PostHog from the week of 2026-11-01 and count as new engaged
+installs from the week of 2026-11-08, where they outnumber new desktop installs. iOS installs
+rarely send `note_updated`, so without a filter the growth page would show activation falling for
+a reason unrelated to desktop.
 
-Kaan's part, in one step so the page and the dashboard stay equal:
+Since 2026-11-17 the skills filter `properties.platform IN ('darwin', 'win32', 'linux')`:
+`.agents/skills/growth-review/collect.js` in its activation and retention queries, and
+`.agents/skills/inspect-users/collect.js` in its anonymous-install query.
 
-1. Add `AND properties.platform IN ('darwin', 'win32', 'linux')` to the `firsts` CTE of the
-   activation query in `.agents/skills/growth-review/collect.js`, and to the same list in
-   `inspect-users/collect.js`.
-2. Add a `platform` filter to each of the 17 steps of action 369611.
-3. Save `queries/activation-weekly.sql` as the insight above.
+Action 369611 still has no platform filter. Its own description says it backs the dashboard's
+weekly numbers, and growth-review reads its weekly engaged installs from the same source, so
+those include iOS from the week of 2026-11-08. Kaan's part:
 
-The 2026-11-08 cohort becomes complete in the week of 2026-11-22, so the report run after that
-date needs the change.
+1. Add a `platform` filter (`darwin`, `win32`, `linux`) to each of the 17 steps of action 369611.
+2. Save `queries/activation-weekly.sql` as the insight above.
 
 ## Caveats
 
