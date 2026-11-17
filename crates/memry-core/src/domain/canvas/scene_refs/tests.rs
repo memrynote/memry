@@ -291,15 +291,18 @@ fn each_read_visits_each_element_at_most_twice() {
     }
 }
 
+/// The bound counts the `elements` array only: inline image `files` past it
+/// still leave every link readable.
 #[test]
-fn a_scene_over_the_parse_bound_reads_as_empty() {
+fn only_elements_over_the_parse_bound_read_as_empty() {
     let card_json = card("A", "note", "n1").to_string();
-    let padding = " ".repeat(MAX_SCENE_BYTES);
-    let big = format!(r#"{{"elements":[{card_json}],"pad":"{padding}"}}"#);
-    assert!(big.len() > MAX_SCENE_BYTES);
-    assert!(entity_refs(&big).is_empty());
-    let at_bound = format!(r#"{{"elements":[{card_json}]}}"#);
-    assert_eq!(entity_refs(&at_bound), vec![entity("note", "n1")]);
+    let padding = "x".repeat(MAX_SCENE_BYTES);
+    let big_files =
+        format!(r#"{{"elements":[{card_json}],"files":{{"f1":{{"dataURL":"{padding}"}}}}}}"#);
+    assert!(big_files.len() > MAX_SCENE_BYTES);
+    assert_eq!(entity_refs(&big_files), vec![entity("note", "n1")]);
+    let big_elements = format!(r#"{{"elements":[{card_json},{{"pad":"{padding}"}}]}}"#);
+    assert!(entity_refs(&big_elements).is_empty());
 }
 
 fn element() -> impl Strategy<Value = Value> {

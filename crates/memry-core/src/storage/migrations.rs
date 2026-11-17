@@ -301,14 +301,14 @@ pub fn user_version(conn: &Connection) -> Result<u32, StorageError> {
 
 /// Migrates `data.db`, as every open of the file does: moves a file an earlier
 /// feat/tauri-v2 build left onto this numbering ([`legacy_numbering`]), applies
-/// [`DATA_MIGRATIONS`], then fills the projection tables a migration added
-/// from the payloads already stored ([`sync_items::reproject_pending`]). The
-/// fill runs after the last migration, with the projector of this build, so a
-/// projector written for a later schema never runs against an earlier one.
+/// [`DATA_MIGRATIONS`], then projects the stored payloads a projection table
+/// does not reflect yet ([`sync_items::heal_projections`]). That runs after the
+/// last migration, with the projector of this build, so a projector written
+/// for a later schema never runs against an earlier one.
 pub fn run_data(conn: &mut Connection) -> Result<u32, StorageError> {
     legacy_numbering::renumber(conn)?;
     let version = run(conn, DATA_MIGRATIONS)?;
-    sync_items::reproject_pending(conn)?;
+    sync_items::heal_projections(conn)?;
     Ok(version)
 }
 

@@ -10,6 +10,7 @@ use super::super::{
     canonical_scene, create, delete, duplicate, get, list, update,
 };
 use crate::api::errors::StorageError;
+use crate::protocol::envelope::{NOTE_SYNC_MAX_BYTES, check_size};
 use crate::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
 use crate::storage::{Db, open_data, test_support::temp_dir};
 use crate::sync::apply::{Pending, apply_inbound, apply_page};
@@ -444,6 +445,34 @@ fn a_delete_tombstones_the_projection_and_queues_the_delete() {
         Ok(())
     })
     .expect("delete");
+}
+
+/// The tombstone of a canvas too big to sync drops its scene, so the delete
+/// seals under the item limit instead of retiring unsent (a retired delete
+/// never reaches peers, and their next edit revives the canvas here).
+#[test]
+fn deleting_an_over_cap_canvas_queues_a_delete_that_fits_the_item_limit() {
+    let (db, _dir) = open("canvas-store-delete-over-cap");
+    db.call_blocking(|conn| {
+        let over = scene_of_len(NOTE_SYNC_MAX_BYTES + 1);
+        let id = create(
+            conn,
+            &new_canvas("Huge", Some(&over)),
+            VAULT_ID,
+            DEVICE,
+            NOW,
+        )?
+        .canvas
+        .id;
+        assert!(delete(conn, &id, DEVICE, NOW + 1)?);
+        assert_eq!(outbox(conn), [(id.clone(), "delete".to_owned())]);
+        let payload = sync_items::push_payload(conn, ITEM_TYPE, &id)?.expect("tombstone");
+        let sealable = check_size(payload.len());
+        assert!(sealable.is_ok(), "{sealable:?}");
+        assert_eq!(stored(conn, &id)["deletedAt"], json!(NOW + 1));
+        Ok(())
+    })
+    .expect("over-cap delete");
 }
 
 #[test]

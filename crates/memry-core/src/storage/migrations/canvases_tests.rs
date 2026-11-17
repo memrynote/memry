@@ -1,6 +1,8 @@
 //! Data migration 0036, `canvases` (Step 30d, #3547), through the real open of
-//! a `data.db` file: canvases a build before it synced are filled in by the
-//! projector replay, not by SQL, and survive a crash at any step.
+//! a `data.db` file: every open projects the canvas payloads that have no
+//! current `canvases` row ([`sync_items::heal_projections`]), whoever wrote
+//! them: a build before 0036, an older build opening this file, a recovery's
+//! salvage, or a crash.
 
 use rusqlite::Connection;
 
@@ -90,13 +92,6 @@ fn rows(conn: &Connection) -> Result<Vec<Row>, StorageError> {
         .map_err(failed)
 }
 
-fn pending(conn: &Connection) -> Result<i64, StorageError> {
-    conn.query_row("SELECT COUNT(*) FROM pending_reprojections", [], |row| {
-        row.get(0)
-    })
-    .map_err(failed)
-}
-
 fn expected() -> Vec<Row> {
     let row = |id: &str, title: &str, folder: Option<&str>, at: i64, deleted: Option<i64>| {
         (
@@ -122,12 +117,7 @@ fn fresh_databases_hold_the_canvas_tables() {
     for (migrations, tables) in [
         (
             DATA_MIGRATIONS,
-            &[
-                "canvases",
-                "canvas_files",
-                "canvas_assets",
-                "pending_reprojections",
-            ][..],
+            &["canvases", "canvas_files", "canvas_assets"][..],
         ),
         (
             INDEX_MIGRATIONS,
@@ -159,7 +149,6 @@ fn opening_an_older_file_projects_the_canvases_it_already_holds() {
     db.call_blocking(|conn| {
         assert_eq!(user_version(conn)?, latest_version(DATA_MIGRATIONS));
         assert_eq!(rows(conn)?, expected());
-        assert_eq!(pending(conn)?, 0, "the replay clears its marker");
         // The list keeps the order the canvases had, and reads no scene.
         let listed: Vec<String> = canvas::list(conn, "vault-1")?
             .into_iter()
@@ -176,9 +165,8 @@ fn opening_an_older_file_projects_the_canvases_it_already_holds() {
 }
 
 /// A crash after 0036 commits and before its `user_version` write re-runs the
-/// migration; a crash before the replay commits leaves the marker. Either
-/// way the next open ends with the same rows, and a later local edit is not
-/// undone by a replay.
+/// migration; a crash before the fill commits leaves no rows. Either way the
+/// next open ends with the same rows.
 #[test]
 fn a_crash_at_any_step_converges_on_the_next_open() {
     let dir = temp_dir("canvases-migration-crash");
@@ -197,13 +185,11 @@ fn a_crash_at_any_step_converges_on_the_next_open() {
             DATA_MIGRATIONS[before() - 1].version
         );
     }
-    let db = open_data(&path).expect("the re-run is a no-op that then replays");
+    let db = open_data(&path).expect("the re-run is a no-op that then fills");
     db.call_blocking(|conn| {
         assert_eq!(rows(conn)?, expected());
-        // A crash before the replay committed: the marker is back, and a
-        // second replay changes nothing.
-        conn.execute("INSERT INTO pending_reprojections VALUES ('canvas')", [])
-            .map_err(failed)?;
+        // A crash before the fill committed.
+        conn.execute("DELETE FROM canvases", []).map_err(failed)?;
         Ok(())
     })
     .expect("first open");
@@ -211,23 +197,80 @@ fn a_crash_at_any_step_converges_on_the_next_open() {
     let db = open_data(&path).expect("reopen");
     db.call_blocking(|conn| {
         assert_eq!(rows(conn)?, expected());
-        assert_eq!(pending(conn)?, 0);
+        assert_eq!(sync_items::heal_projections(conn)?, 0, "nothing left");
         Ok(())
     })
     .expect("converged");
 }
 
-/// A file a newer build wrote keeps its markers: they may name a type this
-/// build has no projector for.
+/// An older build opens a migrated file (its `run` skips every version it
+/// knows) and keeps writing canvas payloads with no projector: a new canvas
+/// and an edit of a projected one. The next open of this build shows both.
 #[test]
-fn a_newer_files_markers_are_left_for_the_newer_build() {
+fn canvases_an_older_build_wrote_into_a_migrated_file_show_on_the_next_open() {
+    let dir = temp_dir("canvases-older-build");
+    let path = dir.path().join("data.db");
+    older_file(&path);
+    drop(open_data(&path).expect("migrate"));
+    {
+        let conn = Connection::open(&path).expect("the older build");
+        conn.execute_batch(&format!(
+            "UPDATE sync_items SET payload = '{}', updated_at = 4000
+               WHERE item_type = 'canvas' AND item_id = 'old';
+             INSERT INTO sync_items (item_type, item_id, payload, payload_state, updated_at)
+               VALUES ('canvas', 'later', '{}', 'full', 5000);",
+            payload("old", "Renamed", "Work"),
+            payload("later", "Later", ""),
+        ))
+        .expect("written without a projection");
+    }
+    let db = open_data(&path).expect("reopen");
+    db.call_blocking(|conn| {
+        let listed: Vec<(String, Option<String>)> = canvas::list(conn, "vault-1")?
+            .into_iter()
+            .map(|canvas| (canvas.id, canvas.title))
+            .collect();
+        assert_eq!(
+            listed,
+            [
+                ("later".to_owned(), Some("Later".to_owned())),
+                ("old".to_owned(), Some("Renamed".to_owned())),
+                ("new".to_owned(), Some("New".to_owned())),
+            ]
+        );
+        assert!(canvas::get(conn, "later")?.is_some());
+        Ok(())
+    })
+    .expect("healed");
+}
+
+/// A recovery migrates an empty fresh file, then salvages the quarantined
+/// file's payloads into it; a quarantine from before 0036 has no `canvases`
+/// table to salvage. The open after the recovery projects them.
+#[test]
+fn a_recovery_from_an_older_file_shows_its_canvases() {
+    let dir = temp_dir("canvases-recovery");
+    let path = dir.path().join("data.db");
+    older_file(&path);
+    crate::storage::recovery::quarantine_and_rebuild(&path).expect("recover");
+    let db = open_data(&path).expect("open the recovered file");
+    db.call_blocking(|conn| {
+        assert_eq!(rows(conn)?, expected());
+        Ok(())
+    })
+    .expect("recovered");
+}
+
+/// A file a newer build wrote is left alone: its projector may differ.
+#[test]
+fn a_newer_file_is_not_filled() {
     let db = crate::storage::Db::open_in_memory().expect("open");
     db.call_blocking(|conn| {
         run(conn, DATA_MIGRATIONS)?;
-        conn.execute_batch(
-            "INSERT INTO pending_reprojections VALUES ('hologram');
-             INSERT INTO sync_items (item_type, item_id, payload, payload_state, updated_at)
-               VALUES ('hologram', 'h1', '{}', 'full', 1);",
+        conn.execute(
+            "INSERT INTO sync_items (item_type, item_id, payload, payload_state, updated_at)
+             VALUES ('canvas', 'c1', ?1, 'full', 1)",
+            [payload("c1", "Newer", "")],
         )
         .map_err(failed)?;
         conn.execute_batch(&format!(
@@ -235,17 +278,8 @@ fn a_newer_files_markers_are_left_for_the_newer_build() {
             latest_version(DATA_MIGRATIONS) + 1
         ))
         .map_err(failed)?;
-        assert_eq!(sync_items::reproject_pending(conn)?, 0);
-        // This build's own `canvas` marker stays with the newer one's.
-        assert_eq!(pending(conn)?, 2);
-        let corrupt: Option<String> = conn
-            .query_row(
-                "SELECT corrupt_reason FROM sync_items WHERE item_id = 'h1'",
-                [],
-                |row| row.get(0),
-            )
-            .map_err(failed)?;
-        assert_eq!(corrupt, None);
+        assert_eq!(sync_items::heal_projections(conn)?, 0);
+        assert!(rows(conn)?.is_empty());
         Ok(())
     })
     .expect("left alone");

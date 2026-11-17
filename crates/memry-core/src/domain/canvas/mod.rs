@@ -31,7 +31,7 @@ use serde_json::{Map, Value, json};
 use crate::api::errors::StorageError;
 
 pub use store::{
-    CanvasEdit, Saved, SyncHold, Updated, create, delete, duplicate, get, list, update,
+    CanvasEdit, Saved, SyncHold, Updated, create, delete, duplicate, get, list, sync_hold, update,
 };
 
 /// The `(type, _)` half of every key this module writes.

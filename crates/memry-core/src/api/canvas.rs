@@ -22,15 +22,25 @@ pub struct CanvasRecord {
     pub owner_note_id: Option<String>,
     /// Excalidraw JSON in desktop's canonical form.
     pub scene: String,
+    /// The scene's size in bytes when it is over the sync cap: the canvas is
+    /// saved on this device and held back from sync until it shrinks. `nil`
+    /// when it syncs.
+    #[uniffi(default = None)]
+    pub sync_held_bytes: Option<u64>,
 }
 
 impl From<canvas::Canvas> for CanvasRecord {
     fn from(canvas: canvas::Canvas) -> Self {
+        let sync_held_bytes = match canvas::sync_hold(&canvas.scene) {
+            canvas::SyncHold::Queued => None,
+            canvas::SyncHold::TooLarge { bytes } => Some(bytes as u64),
+        };
         Self {
             id: canvas.id,
             title: canvas.title,
             owner_note_id: canvas.owner_note_id,
             scene: canvas.scene,
+            sync_held_bytes,
         }
     }
 }
@@ -97,7 +107,8 @@ impl Canvases {
     }
 
     /// Replaces a canvas's scene. Fails with `NotFound` for a deleted canvas.
-    /// A scene over the sync cap is saved here and held back from sync.
+    /// A scene over the sync cap is saved here and held back from sync, and
+    /// the record names its size (`sync_held_bytes`).
     pub fn set_scene(&self, id: String, scene: String) -> Result<CanvasRecord, StorageError> {
         let device_id = self.device_id.clone();
         self.db.call_blocking(move |conn| {
@@ -128,4 +139,33 @@ fn now_ms() -> i64 {
         .duration_since(std::time::UNIX_EPOCH)
         .map(|elapsed| elapsed.as_millis() as i64)
         .unwrap_or_default()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::domain::canvas::CANVAS_SCENE_SYNC_CAP_BYTES;
+
+    fn record(scene_len: usize) -> CanvasRecord {
+        CanvasRecord::from(canvas::Canvas {
+            id: "c1".to_owned(),
+            title: None,
+            folder: None,
+            icon: None,
+            owner_note_id: None,
+            created_at: 0,
+            updated_at: 0,
+            scene: "x".repeat(scene_len),
+        })
+    }
+
+    /// The shell learns a canvas stopped syncing from the record it gets back.
+    #[test]
+    fn a_record_names_the_size_of_a_scene_held_back_from_sync() {
+        assert_eq!(record(CANVAS_SCENE_SYNC_CAP_BYTES).sync_held_bytes, None);
+        assert_eq!(
+            record(CANVAS_SCENE_SYNC_CAP_BYTES + 1).sync_held_bytes,
+            Some(CANVAS_SCENE_SYNC_CAP_BYTES as u64 + 1)
+        );
+    }
 }

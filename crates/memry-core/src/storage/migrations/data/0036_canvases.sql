@@ -13,15 +13,18 @@
 -- are device-local and never synced. No table has a foreign key: a projection
 -- row can be rebuilt, and a canvas can sync after the rows that name it.
 --
--- Existing canvases are not copied here with SQL. `pending_reprojections` names
--- the item types whose payloads the projector must replay once every migration
--- has run (`sync_items::reproject_pending`), so the projector stays the one
--- writer of `canvases`. The marker is cleared in the replay's own transaction.
+-- Existing canvases are not copied here with SQL: every open of the file
+-- projects each canvas payload that has no `canvases` row or a row older than
+-- the payload (`sync_items::heal_projections`), so the projector stays the one
+-- writer of `canvases`. That fill covers the payloads stored before this
+-- migration, those an older build writes after it, and those a recovery
+-- salvages.
 --
--- Additive only: new tables, indexes and one marker row, no existing table or
--- row touched. Every statement is re-runnable (§A.0 crash window). An older
--- build never reads these tables (its `user_version` guard leaves a newer file
--- alone).
+-- Additive only: new tables and indexes, no existing table or row touched.
+-- Every statement is re-runnable (§A.0 crash window). An older build still
+-- opens the migrated file (its `run` skips the versions it knows) and keeps
+-- writing `canvas` payloads to `sync_items` without projecting them; it never
+-- reads these tables, and the next open of this build projects what it wrote.
 CREATE TABLE IF NOT EXISTS canvases (
   id            TEXT PRIMARY KEY,
   vault_id      TEXT NOT NULL,
@@ -63,9 +66,3 @@ CREATE TABLE IF NOT EXISTS canvas_assets (
 
 CREATE INDEX IF NOT EXISTS idx_canvas_assets_dedup ON canvas_assets (vault_id, content_hash);
 CREATE INDEX IF NOT EXISTS idx_canvas_assets_attachment ON canvas_assets (attachment_id);
-
-CREATE TABLE IF NOT EXISTS pending_reprojections (
-  item_type TEXT PRIMARY KEY
-);
-
-INSERT OR IGNORE INTO pending_reprojections (item_type) VALUES ('canvas');

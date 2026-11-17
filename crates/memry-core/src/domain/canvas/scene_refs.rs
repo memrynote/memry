@@ -5,13 +5,15 @@
 //!
 //! A card is a `rectangle` whose `customData` carries `{entityType, entityId}`.
 //! A scene comes from a vault file or a peer, so every read is total: text that
-//! is not JSON, JSON nested past `serde_json`'s recursion limit, a scene over
-//! [`MAX_SCENE_BYTES`] and a scene with no `elements` array all read as empty.
+//! is not JSON, JSON nested past `serde_json`'s recursion limit, an `elements`
+//! array over [`MAX_SCENE_BYTES`] and a scene with no `elements` array all read
+//! as empty.
 //! Each read walks the elements a fixed number of times, and every output is
 //! capped or bounded by the elements it came from.
 
 use std::collections::{HashMap, HashSet};
 
+use serde_json::value::RawValue;
 use serde_json::{Map, Value};
 
 use super::folder_paths::js_trim;
@@ -20,9 +22,11 @@ use super::folder_paths::js_trim;
 /// `packages/contracts/src/canvas-api.ts:35`).
 pub const CANVAS_ENTITY_TYPES: [&str; 5] = ["note", "task", "calendar_event", "project", "file"];
 
-/// Largest scene these reads parse. Far above the sync cap, so every scene a
-/// user can draw is read; a bigger file reads as empty rather than being
-/// parsed into memory several times its size. Electron has no such bound.
+/// Largest `elements` array these reads parse, in bytes of JSON text. Far
+/// above the sync cap, so every scene a user can draw is read; a bigger array
+/// reads as empty rather than being parsed into memory several times its size.
+/// The rest of the scene (inline image `files` among it) is skipped unparsed
+/// and never counts. Electron has no such bound.
 pub const MAX_SCENE_BYTES: usize = 64 * 1024 * 1024;
 
 /// Most text elements a summary returns (`MAX_SUMMARY_TEXTS`).
@@ -298,15 +302,20 @@ fn view(
 }
 
 /// The scene's element objects. Anything that is not an object reads as an
-/// element with no fields, which every rule passes over.
+/// element with no fields, which every rule passes over. Only `elements` is
+/// parsed; every other top-level value is kept as unparsed text, and a repeated
+/// key keeps its last value, as `JSON.parse` does.
 fn scene_elements(scene: &str) -> Vec<Map<String, Value>> {
-    if scene.is_empty() || scene.len() > MAX_SCENE_BYTES {
-        return Vec::new();
-    }
-    let Ok(Value::Object(mut parsed)) = serde_json::from_str::<Value>(scene) else {
+    let Ok(fields) = serde_json::from_str::<HashMap<String, &RawValue>>(scene) else {
         return Vec::new();
     };
-    let Some(Value::Array(elements)) = parsed.remove("elements") else {
+    let Some(raw) = fields
+        .get("elements")
+        .filter(|raw| raw.get().len() <= MAX_SCENE_BYTES)
+    else {
+        return Vec::new();
+    };
+    let Ok(Value::Array(elements)) = serde_json::from_str::<Value>(raw.get()) else {
         return Vec::new();
     };
     elements

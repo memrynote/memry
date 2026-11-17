@@ -38,6 +38,16 @@ pub enum SyncHold {
     },
 }
 
+/// Whether a canvas whose payload holds `scene` is pushed: the one rule every
+/// write and every record follows.
+pub fn sync_hold(scene: &str) -> SyncHold {
+    if scene.len() > CANVAS_SCENE_SYNC_CAP_BYTES {
+        SyncHold::TooLarge { bytes: scene.len() }
+    } else {
+        SyncHold::Queued
+    }
+}
+
 /// A committed canvas write.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Saved {
@@ -191,6 +201,12 @@ pub fn update(
 /// Tombstones a live canvas and queues the delete; `false` when there was
 /// none. Its asset rows and file record stay: the shell releases the file once
 /// it is gone from disk, and asset GC decides the rest.
+///
+/// The tombstone drops the scene. No peer reads a deleted canvas's scene
+/// (Electron's `applyDelete` takes only the clock, and a revive carries its
+/// own), and a scene over the item limit would fail to seal, so the push would
+/// retire the delete unsent and the next remote edit would revive the canvas
+/// here.
 pub fn delete(
     conn: &Connection,
     canvas_id: &str,
@@ -206,7 +222,10 @@ pub fn delete(
         now_ms,
         |tx| {
             let stored = live(tx, ITEM_TYPE, canvas_id, "canvas")?;
-            let changes = vec![("deletedAt", Change::set(now_ms))];
+            let changes = vec![
+                ("deletedAt", Change::set(now_ms)),
+                ("scene", Change::Remove),
+            ];
             tombstone(
                 tx, ITEM_TYPE, canvas_id, &stored, changes, device_id, now_ms,
             )
@@ -267,12 +286,10 @@ fn commit(
     scene: &str,
     now_ms: i64,
 ) -> Result<Saved, StorageError> {
-    let sync = if scene.len() > CANVAS_SCENE_SYNC_CAP_BYTES {
-        SyncHold::TooLarge { bytes: scene.len() }
-    } else {
+    let sync = sync_hold(scene);
+    if sync == SyncHold::Queued {
         outbox::enqueue(&tx, &outbox::Change::upsert(ITEM_TYPE, canvas_id), now_ms)?;
-        SyncHold::Queued
-    };
+    }
     let canvas = get(&tx, canvas_id)?.ok_or_else(|| StorageError::Failed {
         what: format!("canvas {canvas_id} did not read back"),
     })?;

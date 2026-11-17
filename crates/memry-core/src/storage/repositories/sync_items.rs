@@ -378,61 +378,56 @@ pub fn load(
 /// of a parse" true rather than aspirational. Returns how many rows projected.
 /// A row that fails its reader is flagged and passed over, not retried.
 pub fn rebuild_projections(conn: &Connection, now_ms: i64) -> Result<usize, StorageError> {
-    replay(conn, None, Some(now_ms))
+    replay(
+        conn,
+        "SELECT item_type, item_id FROM sync_items WHERE payload IS NOT NULL
+         ORDER BY item_type, item_id",
+        Some(now_ms),
+    )
 }
 
-/// Replays the stored payloads of each item type a migration named in
-/// `pending_reprojections` (migration `0036`), then clears the names, in one
-/// transaction: a crash leaves the names for the next open, and the projector
-/// upserts make a second replay a no-op.
+/// Projects every `canvas` payload whose `canvases` row (migration `0036`) is
+/// missing or older than the payload, on every open of `data.db`, in one
+/// transaction. Payloads reach `sync_items` without this build's projector:
+/// stored before `0036`, written by an older build that opened the migrated
+/// file (its `run` skips the versions it knows, and its canvas projector is a
+/// no-op), or salvaged by a recovery into a file migrated while empty. A row
+/// the projector wrote has `synced_at` equal to its payload's `updated_at`, so
+/// only those rows match, and a crash leaves them for the next open.
 ///
 /// A replayed row takes its `sync_items.updated_at` as its apply instant, so a
-/// table listed by recency keeps the order its rows had before the migration.
-/// A database written by a newer build is left alone: its markers may name a
-/// type this build has no projector for, which would flag every such row
-/// corrupt.
-pub fn reproject_pending(conn: &Connection) -> Result<usize, StorageError> {
+/// table listed by recency keeps the order its rows had. A row held corrupt
+/// stays out, or each open would re-read and re-flag it. A database written by
+/// a newer build is left alone: its projector may differ from this one.
+pub fn heal_projections(conn: &Connection) -> Result<usize, StorageError> {
     let newer = migrations::user_version(conn)? > migrations::latest_version(DATA_MIGRATIONS);
     if newer {
         return Ok(0);
     }
     let tx = conn.unchecked_transaction().map_err(failed)?;
-    let pending: Vec<String> = {
-        let mut statement = tx
-            .prepare("SELECT item_type FROM pending_reprojections ORDER BY item_type")
-            .map_err(failed)?;
-        let mapped = statement.query_map([], |row| row.get(0)).map_err(failed)?;
-        mapped.collect::<Result<_, _>>().map_err(failed)?
-    };
-    let mut projected = 0;
-    for item_type in &pending {
-        projected += replay(&tx, Some(item_type), None)?;
-    }
-    tx.execute("DELETE FROM pending_reprojections", [])
-        .map_err(failed)?;
+    let healed = replay(
+        &tx,
+        "SELECT s.item_type, s.item_id FROM sync_items s
+         LEFT JOIN canvases c ON c.id = s.item_id
+         WHERE s.item_type = 'canvas' AND s.payload IS NOT NULL
+           AND s.corrupt_reason IS NULL
+           AND (c.id IS NULL OR c.synced_at IS NULL OR c.synced_at < s.updated_at)
+         ORDER BY s.item_id",
+        None,
+    )?;
     tx.commit().map_err(failed)?;
-    Ok(projected)
+    Ok(healed)
 }
 
-/// Projects every stored payload, or those of one type. `now_ms` is the apply
-/// instant, or `None` for each row's own `updated_at`. Keys are read first and
-/// payloads one at a time, so a vault of large canvas scenes is never held in
-/// memory at once.
-fn replay(
-    conn: &Connection,
-    item_type: Option<&str>,
-    now_ms: Option<i64>,
-) -> Result<usize, StorageError> {
+/// Projects the payloads `keys_sql` names by `(item_type, item_id)`. `now_ms`
+/// is the apply instant, or `None` for each row's own `updated_at`. Keys are
+/// read first and payloads one at a time, so a vault of large canvas scenes is
+/// never held in memory at once.
+fn replay(conn: &Connection, keys_sql: &str, now_ms: Option<i64>) -> Result<usize, StorageError> {
     let keys: Vec<(String, String)> = {
-        let mut statement = conn
-            .prepare(
-                "SELECT item_type, item_id FROM sync_items
-                 WHERE payload IS NOT NULL AND (?1 IS NULL OR item_type = ?1)
-                 ORDER BY item_type, item_id",
-            )
-            .map_err(failed)?;
+        let mut statement = conn.prepare(keys_sql).map_err(failed)?;
         let mapped = statement
-            .query_map([item_type], |row| Ok((row.get(0)?, row.get(1)?)))
+            .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
             .map_err(failed)?;
         mapped.collect::<Result<_, _>>().map_err(failed)?
     };
