@@ -166,3 +166,6 @@ fn live_titles(data: &Connection) -> Result<HashMap<String, Option<String>>, Sto
         .collect::<Result<_, _>>()
         .map_err(failed)
 }
+
+#[cfg(test)]
+mod tests;

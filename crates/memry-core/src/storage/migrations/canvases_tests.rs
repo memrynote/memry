@@ -192,7 +192,8 @@ fn a_newer_files_markers_are_left_for_the_newer_build() {
         ))
         .map_err(failed)?;
         assert_eq!(sync_items::reproject_pending(conn)?, 0);
-        assert_eq!(pending(conn)?, 1);
+        // This build's own `canvas` marker stays with the newer one's.
+        assert_eq!(pending(conn)?, 2);
         let corrupt: Option<String> = conn
             .query_row(
                 "SELECT corrupt_reason FROM sync_items WHERE item_id = 'h1'",

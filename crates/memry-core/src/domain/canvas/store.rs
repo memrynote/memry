@@ -302,3 +302,6 @@ fn scene_of(payload: &Object) -> &str {
         .and_then(Value::as_str)
         .unwrap_or_default()
 }
+
+#[cfg(test)]
+mod tests;
