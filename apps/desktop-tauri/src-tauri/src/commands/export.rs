@@ -11,6 +11,7 @@ use memry_desktop::i18n::{self, Args};
 use memry_desktop::locale::LocaleService;
 use memry_desktop::notes::export::HtmlExport;
 use memry_desktop::notes::read;
+use memry_desktop::paths::AppPaths;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, Runtime};
 
@@ -118,10 +119,15 @@ fn export_html<R: Runtime>(
     app: &AppHandle<R>,
     input: ExportNoteInput,
 ) -> Result<ExportResult, CommandError> {
-    let open = open_vault(app)?;
-    let telemetry = services::telemetry(app);
-    let note = read::get(&open, &input.note_id, telemetry.as_deref())
-        .map_err(|error| CommandError::from_core(&error))?;
+    // The open vault is not held across the save dialog: a reopen of the same vault meanwhile
+    // would fail while this call kept it.
+    let (vault_id, note) = {
+        let open = open_vault(app)?;
+        let telemetry = services::telemetry(app);
+        let note = read::get(&open, &input.note_id, telemetry.as_deref())
+            .map_err(|error| CommandError::from_core(&error))?;
+        (open.vault_id, note)
+    };
     let Some(note) = note else {
         return Ok(ExportResult::failed(
             ExportFailure::NotFound,
@@ -153,8 +159,16 @@ fn export_html<R: Runtime>(
         include_metadata: input.include_metadata.unwrap_or(true),
         include_task_markers: input.include_task_markers.unwrap_or(false),
     };
+    let open = open_vault(app)?;
+    if open.vault_id != vault_id {
+        return Ok(ExportResult::failed(
+            ExportFailure::Failed,
+            text(app, "system:dialog.exportVaultChanged"),
+        ));
+    }
+    let paths = app.state::<AppPaths>();
     service(app)?
-        .export_html(&open, &note, export, &target)
+        .export_html(&open, &note, export, &paths.data_dir, &target)
         .map_err(|error| {
             CommandError::new(ErrorKind::Internal, "export_failed", error.to_string())
         })?;

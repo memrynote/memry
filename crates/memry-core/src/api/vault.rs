@@ -374,6 +374,15 @@ impl Vault {
         self.db
             .read_blocking(crate::domain::template_admin::contents)
     }
+
+    /// This vault's custom icons, read without a device identity, for desktop's note export.
+    /// Not part of the FFI surface.
+    #[doc(hidden)]
+    pub fn custom_icon_list(
+        &self,
+    ) -> Result<crate::domain::custom_icons::CustomIcons, StorageError> {
+        self.db.read_blocking(crate::domain::custom_icons::list)
+    }
 }
 
 #[uniffi::export]

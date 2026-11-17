@@ -1,13 +1,15 @@
 //! `notes_export_html` through the IPC a renderer calls, on a mock app over a real vault, vault
 //! tier and note index (#3551 stage B): the file written at `outputPath` keeps its image after it
 //! moves (Electron's `note-export-images.e2e.ts`), the schema's defaults, and a missing note or
-//! a failed write resolving with its `code`, as Electron's handler resolves them.
+//! a failed write resolving with its `code`, as Electron's handler resolves them, and a custom
+//! icon read with no device key.
 //! The save dialog path needs a native dialog; the e2e build's dialog queue drives it.
 
 mod support;
 
 use std::fs;
 
+use memry_core::seams::secure_store::SecureStoreKey;
 use serde_json::{Value, json};
 use support::Mocked;
 use tauri_specta::collect_commands;
@@ -20,6 +22,8 @@ const PNG: &[u8] = &[
     0x1f, 0x00, 0x05, 0x00, 0x01, 0xff, 0x89, 0x99, 0x3d, 0x1d, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45,
     0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
 ];
+
+const PNG_BASE64: &str = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==";
 
 const NOTE: &str = "---\ntags: [trip]\n---\nBefore the photo.\n\n![dot](../attachments/dot.png)\n\n- [ ] Pack {task:t1}\n";
 
@@ -34,6 +38,7 @@ fn opened() -> Fixture {
         .error_handling(tauri_specta::ErrorHandlingMode::Throw)
         .commands(collect_commands![
             memry_tauri::commands::export::notes_export_html::<tauri::test::MockRuntime>,
+            memry_tauri::commands::notes::notes_create::<tauri::test::MockRuntime>,
         ]);
     let mocked = Mocked::open(&[("Trips/Lisbon.md", NOTE)], commands);
     fs::create_dir_all(mocked.vault.join("attachments")).unwrap();
@@ -105,6 +110,50 @@ fn the_switches_reach_the_document() {
     let html = fs::read_to_string(&target).unwrap();
     assert!(!html.contains("<div class=\"note-tags\">"), "{html}");
     assert!(html.contains("{task:t1}"), "{html}");
+}
+
+#[test]
+fn a_custom_icon_exports_with_no_device_key() {
+    let f = opened();
+    let icon = f
+        .mocked
+        .session()
+        .current()
+        .unwrap()
+        .vault
+        .custom_icons(f.mocked.store.clone())
+        .unwrap()
+        .create("dot", "png", PNG_BASE64, 1)
+        .unwrap();
+    let note = f
+        .mocked
+        .invoke(
+            "notes_create",
+            json!({ "input": { "title": "Iconic", "emoji": format!("custom:{icon}") } }),
+        )
+        .unwrap();
+    f.mocked
+        .store
+        .delete(SecureStoreKey::DeviceSigningKey)
+        .unwrap();
+    let target = f.out.path().join("Iconic.html");
+
+    let result = f.export(json!({
+        "noteId": note["id"],
+        "outputPath": target.to_string_lossy(),
+    }));
+
+    assert_eq!(
+        result,
+        json!({ "success": true, "path": target.to_string_lossy() })
+    );
+    let html = fs::read_to_string(&target).unwrap();
+    assert!(
+        html.contains(&format!(
+            "<img class=\"note-emoji\" src=\"data:image/png;base64,{PNG_BASE64}\""
+        )),
+        "{html}"
+    );
 }
 
 #[test]
