@@ -14,8 +14,12 @@ struct BenchArgs {
     seed: u32,
 }
 
-/// `--flag value` or `--flag=value`.
+/// `--flag value` or `--flag=value`, after the `--` that `pnpm seed1k -- ...` passes on.
 fn parse_bench(args: &[String]) -> Result<BenchArgs, String> {
+    let args = match args {
+        [first, rest @ ..] if first == "--" => rest,
+        _ => args,
+    };
     let mut parsed = BenchArgs {
         vault: None,
         count: DEFAULT_COUNT,
@@ -89,5 +93,21 @@ fn main() -> ExitCode {
             eprintln!("{message}");
             ExitCode::FAILURE
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn args(list: &[&str]) -> Vec<String> {
+        list.iter().map(|arg| (*arg).to_owned()).collect()
+    }
+
+    #[test]
+    fn a_leading_double_dash_from_pnpm_is_skipped() {
+        let parsed = parse_bench(&args(&["--", "--count=5000", "--seed", "7"])).expect("parsed");
+        assert_eq!((parsed.count, parsed.seed), (5000, 7));
+        assert!(parse_bench(&args(&["--count=5", "--"])).is_err());
     }
 }

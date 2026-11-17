@@ -1,5 +1,5 @@
 //! `cargo xtask seed bench`, ported from `apps/desktop/scripts/seed-bench-vault.ts`: wipe the
-//! vault folder, then write the generated notes through the vault file tier.
+//! vault folder (only an empty one or an earlier bench vault), then write the generated notes through the vault file tier.
 
 use std::error::Error;
 use std::fs::{self, File};
@@ -19,6 +19,9 @@ pub type SeedResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 pub const DEFAULT_COUNT: usize = 1000;
 pub const DEFAULT_SEED: u32 = 42;
 
+/// The `.memry/config.json` title [`seed_bench`] writes: the only non-empty folder it wipes.
+const BENCH_TITLE: &str = "memrynote Benchmark Vault";
+
 /// The frontmatter keys every bulk note carries, with their definitions' types and colours.
 const PROPERTY_DEFS: [(&str, &str); 4] = [
     ("status", "#6366f1"),
@@ -32,11 +35,29 @@ pub fn default_bench_vault() -> Option<PathBuf> {
     std::env::home_dir().map(|home| home.join("MemryBenchVault"))
 }
 
+/// Node's `path.resolve` without touching the disk: absolute, `.` dropped, `..` removing the
+/// folder before it, no trailing separator (so a symlink path names the link, not its target).
+fn resolve_lexically(path: &Path) -> io::Result<PathBuf> {
+    let mut resolved = PathBuf::new();
+    for component in std::path::absolute(path)?.components() {
+        match component {
+            Component::CurDir => {}
+            Component::ParentDir => {
+                resolved.pop();
+            }
+            other => resolved.push(other),
+        }
+    }
+    Ok(resolved)
+}
+
 /// `ensureSafeVaultPath` of `seed-vault/wipe.ts`: never the file system root, the home folder,
 /// its Documents or Desktop, nor a path less than two folders deep.
 fn ensure_safe_vault_path(vault: &Path) -> SeedResult<PathBuf> {
-    let absolute = std::path::absolute(vault)?;
-    let home = std::env::home_dir();
+    let absolute = resolve_lexically(vault)?;
+    let home = std::env::home_dir()
+        .map(|home| resolve_lexically(&home))
+        .transpose()?;
     let forbidden = [
         home.clone(),
         home.as_ref().map(|h| h.join("Documents")),
@@ -63,9 +84,35 @@ fn ensure_safe_vault_path(vault: &Path) -> SeedResult<PathBuf> {
     Ok(absolute)
 }
 
+/// Only a missing or empty folder, or a vault [`seed_bench`] wrote, may be wiped: anything else
+/// (a real vault, a repo, a symlink) is refused. Stricter than `wipe.ts`, which wiped any folder.
+fn ensure_wipeable(vault: &Path) -> SeedResult<()> {
+    let metadata = match fs::symlink_metadata(vault) {
+        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(()),
+        metadata => metadata?,
+    };
+    if metadata.is_dir() && (fs::read_dir(vault)?.next().is_none() || is_bench_vault(vault)) {
+        return Ok(());
+    }
+    Err(format!(
+        "Refusing to wipe {}: not an empty folder or a benchmark vault (its .memry/config.json title is not \"{BENCH_TITLE}\")",
+        vault.display()
+    )
+    .into())
+}
+
+/// An unreadable or unparsable config is not a bench vault: the caller refuses the wipe.
+fn is_bench_vault(vault: &Path) -> bool {
+    fs::read(config::config_path(vault))
+        .ok()
+        .and_then(|bytes| serde_json::from_slice::<serde_json::Value>(&bytes).ok())
+        .is_some_and(|config| config["title"] == BENCH_TITLE)
+}
+
 /// `wipeVault`: the folder removed with everything in it, then the empty layout made again.
 pub fn wipe_vault(vault: &Path) -> SeedResult<PathBuf> {
     let absolute = ensure_safe_vault_path(vault)?;
+    ensure_wipeable(&absolute)?;
     match fs::remove_dir_all(&absolute) {
         Err(error) if error.kind() != io::ErrorKind::NotFound => return Err(error.into()),
         _ => {}
@@ -126,7 +173,7 @@ pub fn seed_bench(vault: &Path, count: usize, seed: u32) -> SeedResult<BenchSumm
 
     let config = serde_json::json!({
         "version": 1,
-        "title": "memrynote Benchmark Vault",
+        "title": BENCH_TITLE,
         "excludePatterns": [".git", "node_modules", ".DS_Store"],
     });
     fs_atomic::atomic_write(
@@ -165,4 +212,71 @@ pub fn seed_bench(vault: &Path, count: usize, seed: u32) -> SeedResult<BenchSumm
         tags: generated.tags.len(),
         bytes,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn refused(path: &Path) -> bool {
+        ensure_safe_vault_path(path).is_err()
+    }
+
+    #[test]
+    fn a_dotdot_path_is_checked_where_it_resolves() {
+        let home = std::env::home_dir().expect("a home folder");
+        assert!(refused(&home.join("Documents").join("..")));
+        assert!(refused(&home.join("Desktop").join(".").join("")));
+        assert!(refused(Path::new("/a/b/../..")));
+        assert!(refused(Path::new("/a/b/..")));
+    }
+
+    #[test]
+    fn the_wipe_runs_on_the_resolved_path() {
+        let tmp = tempfile::tempdir().expect("a scratch dir");
+        let wiped = wipe_vault(&tmp.path().join("a").join("..").join("bench")).expect("wiped");
+        assert_eq!(wiped, tmp.path().join("bench"));
+        assert!(tmp.path().join("bench").join("notes").is_dir());
+        assert!(!tmp.path().join("a").exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_symlinked_vault_keeps_its_target() {
+        let tmp = tempfile::tempdir().expect("a scratch dir");
+        let real = tmp.path().join("real");
+        fs::create_dir(&real).expect("real folder");
+        fs::write(real.join("keep.md"), "keep").expect("a note");
+        std::os::unix::fs::symlink(&real, tmp.path().join("link")).expect("a symlink");
+        let mut with_slash = tmp.path().join("link").into_os_string();
+        with_slash.push("/");
+        assert!(wipe_vault(Path::new(&with_slash)).is_err());
+        assert!(wipe_vault(&tmp.path().join("link")).is_err());
+        assert!(real.join("keep.md").is_file());
+    }
+
+    #[test]
+    fn a_folder_that_is_not_a_bench_vault_is_kept() {
+        let tmp = tempfile::tempdir().expect("a scratch dir");
+        let vault = tmp.path().join("vault");
+        fs::create_dir(&vault).expect("vault folder");
+        fs::write(vault.join("note.md"), "mine").expect("a note");
+        let error = wipe_vault(&vault).expect_err("refused").to_string();
+        assert!(
+            error.contains("not an empty folder or a benchmark vault"),
+            "{error}"
+        );
+        assert!(vault.join("note.md").is_file());
+    }
+
+    #[test]
+    fn an_empty_folder_or_a_bench_vault_is_reseeded() {
+        let tmp = tempfile::tempdir().expect("a scratch dir");
+        let vault = tmp.path().join("vault");
+        fs::create_dir(&vault).expect("empty folder");
+        seed_bench(&vault, 3, 42).expect("an empty folder is seeded");
+        fs::write(vault.join("stale.md"), "old").expect("a stale file");
+        seed_bench(&vault, 3, 42).expect("a bench vault is reseeded");
+        assert!(!vault.join("stale.md").exists());
+    }
 }
