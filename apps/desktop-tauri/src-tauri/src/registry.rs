@@ -349,6 +349,13 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::vault_notices::vault_notices_delete_kept,
             crate::commands::vault_notices::vault_notices_list,
             crate::commands::vault_notices::vault_notices_restore_kept,
+            // voice
+            crate::commands::voice::settings_download_voice_model,
+            crate::commands::voice::settings_get_voice_model_status,
+            crate::commands::voice::settings_get_voice_recording_readiness,
+            crate::commands::voice::settings_get_voice_transcription_openai_key_status,
+            crate::commands::voice::settings_open_os_microphone_settings,
+            crate::commands::voice::settings_set_voice_transcription_openai_key,
             // window
             crate::commands::shell::window_close,
             crate::commands::shell::window_minimize,
@@ -449,6 +456,8 @@ pub fn builder() -> Builder<Wry> {
             // vault locks
             crate::events::VaultLocksChangedEvent,
             crate::events::VaultLocksExternalEditRestoredEvent,
+            // voice
+            crate::events::VoiceModelProgressEvent,
             // window
             crate::events::WindowCaptionHoverChangedEvent,
             crate::events::WindowCaptionPressedChangedEvent,
