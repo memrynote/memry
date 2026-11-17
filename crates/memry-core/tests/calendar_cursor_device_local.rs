@@ -7,27 +7,21 @@
 //! reads what the next pull is planned from (the `calendar_sources` column and
 //! the payload this device pushes).
 
-use std::sync::atomic::{AtomicU64, Ordering};
-
 use memry_core::api::errors::StorageError;
 use memry_core::domain::calendar_items::providers::google;
+use memry_core::storage::Db;
 use memry_core::storage::migrations::{self, DATA_MIGRATIONS};
 use memry_core::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
-use memry_core::storage::{Db, open_data};
 use memry_core::sync::apply::apply_inbound;
 use rusqlite::Connection;
 use serde_json::{Value, json};
 
+use crate::support::{ScratchDb, scratch_data_db};
+
 const NOW: i64 = 1_773_000_000_000;
 const WORK: &str = "google-calendar:work@group.calendar.google.com";
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
-
-fn open() -> Db {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir =
-        std::env::temp_dir().join(format!("memry-cal-cursor-{}-{unique}", std::process::id()));
-    std::fs::create_dir_all(&dir).expect("scratch");
-    open_data(&dir.join("data.db")).expect("open data.db")
+fn open() -> ScratchDb {
+    scratch_data_db("cal-cursor")
 }
 
 fn calendar(id: &str, title: &str, is_primary: bool) -> google::GoogleCalendar {
