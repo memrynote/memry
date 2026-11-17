@@ -11,7 +11,7 @@
 //! is read until the buffer is full or the file ends; a reader that answers
 //! with short reads cannot change where the chunks split.
 
-use std::io::{ErrorKind, Read};
+use std::io::{self, ErrorKind, Read};
 
 use sha2::{Digest, Sha256};
 use zeroize::Zeroizing;
@@ -85,29 +85,58 @@ pub struct ChunkFramer<R, N> {
     state: State,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug)]
 enum State {
     Reading,
     /// The last chunk went out; the next call answers `None`.
     Last,
     /// `None` was answered: the summary is whole.
     Done,
-    /// A read or a frame failed: no summary, ever.
-    Failed,
+    /// A read or a frame failed: every later call answers this error again,
+    /// never `None`, which a caller would read as the end of the file. No
+    /// summary, ever.
+    Failed(StreamError),
+}
+
+/// The framer's failure once more. `io::Error` is not `Clone`, so it is
+/// rebuilt with its kind and message; the framing failures carry no more.
+fn again(error: &StreamError) -> StreamError {
+    match error {
+        StreamError::Io(error) => io::Error::new(error.kind(), error.to_string()).into(),
+        StreamError::Attachment(AttachmentError::TooManyChunks { chunks, cap }) => {
+            AttachmentError::TooManyChunks {
+                chunks: *chunks,
+                cap: *cap,
+            }
+            .into()
+        }
+        StreamError::Attachment(AttachmentError::ZeroChunkSize) => {
+            AttachmentError::ZeroChunkSize.into()
+        }
+        // `frame_one` fails only as `Undecryptable`.
+        StreamError::Attachment(_) => AttachmentError::Undecryptable.into(),
+    }
 }
 
 impl<R: Read, N: FnMut(u32) -> Vec<u8>> ChunkFramer<R, N> {
+    /// A `chunk_size` of zero frames nothing: the first call answers
+    /// [`AttachmentError::ZeroChunkSize`], as `frame_chunks` does.
     pub fn new(reader: R, file_key: &[u8], chunk_size: usize, nonce_for: N) -> Self {
+        let state = if chunk_size == 0 {
+            State::Failed(AttachmentError::ZeroChunkSize.into())
+        } else {
+            State::Reading
+        };
         Self {
             reader,
             file_key: Zeroizing::new(file_key.to_vec()),
             nonce_for,
-            buffer: vec![0; chunk_size.max(1)],
+            buffer: vec![0; chunk_size],
             whole: Sha256::new(),
             size: 0,
             encrypted_size: 0,
             chunks: Vec::new(),
-            state: State::Reading,
+            state,
         }
     }
 
@@ -115,19 +144,25 @@ impl<R: Read, N: FnMut(u32) -> Vec<u8>> ChunkFramer<R, N> {
     ///
     /// An empty file is one empty chunk, as in `frame_chunks`: a manifest with
     /// no chunks has nothing to address.
+    ///
+    /// A file past [`MAX_CHUNKS_PER_SESSION`] fails only once the chunk past
+    /// the cap is read, and its `chunks` count is a lower bound (always cap +
+    /// 1). Callers compare the file size with cap × `chunk_size` before the
+    /// first read (desktop `attachments.ts:470`).
     pub fn next_chunk(&mut self) -> Result<Option<FramedChunk>, StreamError> {
-        match self.state {
+        match &self.state {
             State::Reading => {}
             State::Last => {
                 self.state = State::Done;
                 return Ok(None);
             }
-            State::Done | State::Failed => return Ok(None),
+            State::Done => return Ok(None),
+            State::Failed(error) => return Err(again(error)),
         }
         match self.frame_next() {
             Ok(chunk) => Ok(chunk),
             Err(error) => {
-                self.state = State::Failed;
+                self.state = State::Failed(again(&error));
                 Err(error)
             }
         }
@@ -164,7 +199,7 @@ impl<R: Read, N: FnMut(u32) -> Vec<u8>> ChunkFramer<R, N> {
     /// `None` while the file has not been read to its end, so a summary can
     /// never describe part of a file.
     pub fn into_summary(self) -> Option<FramerSummary> {
-        if self.state != State::Done {
+        if !matches!(self.state, State::Done) {
             return None;
         }
         Some(FramerSummary {

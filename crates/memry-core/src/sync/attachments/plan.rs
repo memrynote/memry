@@ -96,10 +96,17 @@ pub struct ChangePlan {
 impl ChangePlan {
     pub fn for_note(note: &NoteAttachments) -> Self {
         if note.deleted {
-            // `recordDeletedItemAssets` (`deleted-asset-release.ts:80-87`).
+            // `recordDeletedItemAssets` (`deleted-asset-release.ts:80-87`),
+            // plus an upload that landed after the delete: nothing else would
+            // ever release its id.
             return Self {
                 keep: note.references.clone(),
-                schedule_release: unique(note.references.iter().chain(&note.own_attachment_id)),
+                schedule_release: unique(
+                    note.references
+                        .iter()
+                        .chain(&note.uploaded)
+                        .chain(&note.own_attachment_id),
+                ),
                 ..Self::default()
             };
         }
@@ -129,10 +136,14 @@ impl ChangePlan {
         let mut plan = Self {
             keep,
             drop_gone,
-            reupload: files_of_gone(note, &gone),
             ..Self::default()
         };
         plan.backfill(note);
+        // The records after their moves: a file renamed in the same pass that
+        // its attachment went gone is found under its new name, or the record
+        // would keep the freed id and the file would never go up again.
+        let records = moved(&note.records, &plan.move_records);
+        plan.reupload = files_of_gone(note, &records, &gone);
         plan
     }
 
@@ -170,6 +181,25 @@ impl ChangePlan {
     }
 }
 
+/// `records` with each moved row at its new path, which is on disk.
+fn moved(records: &[FileRecord], moves: &[RecordMove]) -> Vec<FileRecord> {
+    let to: BTreeMap<&str, &str> = moves
+        .iter()
+        .map(|RecordMove { from, to }| (from.as_str(), to.as_str()))
+        .collect();
+    records
+        .iter()
+        .map(|record| match to.get(record.path.as_str()) {
+            Some(path) => FileRecord {
+                path: (*path).to_owned(),
+                attachment_id: record.attachment_id.clone(),
+                on_disk: true,
+            },
+            None => record.clone(),
+        })
+        .collect()
+}
+
 /// A file renamed inside the note's own folder keeps its stored prefix; a
 /// recorded file with that prefix that is gone from disk is this file under
 /// its old name (`takeOverRenamedRecord`, `attachment-files.ts:250-281`).
@@ -200,17 +230,20 @@ fn stored_prefix(name: &str) -> Option<&str> {
 /// `attachment-files.ts:330-352`, and the file note's own file,
 /// `note-attachment-revival.ts:94-96`). An id no record names can be any of
 /// the note's files not recorded under another attachment.
-fn files_of_gone(note: &NoteAttachments, gone: &BTreeSet<String>) -> Vec<String> {
+fn files_of_gone(
+    note: &NoteAttachments,
+    records: &[FileRecord],
+    gone: &BTreeSet<String>,
+) -> Vec<String> {
     if gone.is_empty() {
         return Vec::new();
     }
     let mut out: Vec<&String> = Vec::new();
-    let named: BTreeSet<&str> = note
-        .records
+    let named: BTreeSet<&str> = records
         .iter()
         .filter_map(|record| record.attachment_id.as_deref())
         .collect();
-    for record in &note.records {
+    for record in records {
         let in_gone = record
             .attachment_id
             .as_ref()
@@ -220,8 +253,7 @@ fn files_of_gone(note: &NoteAttachments, gone: &BTreeSet<String>) -> Vec<String>
         }
     }
     if gone.iter().any(|id| !named.contains(id.as_str())) {
-        let other: BTreeSet<&str> = note
-            .records
+        let other: BTreeSet<&str> = records
             .iter()
             .filter(|record| {
                 record
@@ -249,6 +281,12 @@ fn files_of_gone(note: &NoteAttachments, gone: &BTreeSet<String>) -> Vec<String>
 /// (`releaseExpiredDeletedAssets`, `deleted-asset-release.ts:317-322`).
 pub fn release_is_due(deleted_at_ms: i64, now_ms: i64) -> bool {
     deleted_at_ms <= now_ms.saturating_sub(RELEASE_GRACE_MS)
+}
+
+/// A deleted item still keeps its chunks: the exact complement of
+/// [`release_is_due`], so the two checks share one boundary.
+pub fn in_grace(deleted_at_ms: i64, now_ms: i64) -> bool {
+    !release_is_due(deleted_at_ms, now_ms)
 }
 
 /// The recorded ids of a due delete whose chunks are freed now. Nothing when

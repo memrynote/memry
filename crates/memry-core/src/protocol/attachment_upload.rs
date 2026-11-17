@@ -79,7 +79,9 @@ pub fn frame_chunks(
     chunk_size: usize,
     mut nonce_for: impl FnMut(u32) -> Vec<u8>,
 ) -> Result<Vec<FramedChunk>, AttachmentError> {
-    let chunk_size = chunk_size.max(1);
+    if chunk_size == 0 {
+        return Err(AttachmentError::ZeroChunkSize);
+    }
     // An empty file is one empty chunk rather than none: a manifest with no
     // chunks has nothing to address, and a reader assembling zero chunks
     // cannot tell it from a file that failed to upload.

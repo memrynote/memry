@@ -141,3 +141,45 @@ fn a_read_error_reaches_the_caller() {
         matches!(framer.next_chunk(), Err(StreamError::Io(error)) if error.kind() == io::ErrorKind::PermissionDenied)
     );
 }
+
+#[test]
+fn a_zero_chunk_size_is_refused_by_both_framers() {
+    let bytes = plaintext(10);
+    assert!(matches!(
+        frame_chunks(&bytes, &FILE_KEY, 0, nonce),
+        Err(AttachmentError::ZeroChunkSize)
+    ));
+    let mut framer = ChunkFramer::new(bytes.as_slice(), &FILE_KEY, 0, nonce);
+    assert!(matches!(
+        framer.next_chunk(),
+        Err(StreamError::Attachment(AttachmentError::ZeroChunkSize))
+    ));
+    assert!(framer.into_summary().is_none());
+}
+
+/// A failed framer never answers `None`, which a caller reads as the end of
+/// the file.
+#[test]
+fn a_failed_framer_keeps_returning_its_error() {
+    struct Broken;
+    impl Read for Broken {
+        fn read(&mut self, _: &mut [u8]) -> io::Result<usize> {
+            Err(io::ErrorKind::PermissionDenied.into())
+        }
+    }
+    let mut framer = ChunkFramer::new(Broken, &FILE_KEY, 4, nonce);
+    for _ in 0..2 {
+        assert!(
+            matches!(framer.next_chunk(), Err(StreamError::Io(error)) if error.kind() == io::ErrorKind::PermissionDenied)
+        );
+    }
+
+    let past_cap = plaintext(MAX_CHUNKS_PER_SESSION + 1);
+    let mut framer = ChunkFramer::new(past_cap.as_slice(), &FILE_KEY, 1, nonce);
+    while let Ok(Some(_)) = framer.next_chunk() {}
+    assert!(matches!(
+        framer.next_chunk(),
+        Err(StreamError::Attachment(AttachmentError::TooManyChunks { cap, .. }))
+            if cap == MAX_CHUNKS_PER_SESSION
+    ));
+}

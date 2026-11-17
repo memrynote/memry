@@ -5,7 +5,7 @@ use std::collections::BTreeSet;
 
 use memry_core::sync::attachments::plan::{
     COUNTED_EMPTY, ChangePlan, FileRecord, NoteAttachments, RELEASE_GRACE_MS, RecordMove,
-    attachments_to_free, release_is_due,
+    attachments_to_free, in_grace, release_is_due,
 };
 use memry_test_kit::proptest_config;
 use proptest::prelude::*;
@@ -106,6 +106,28 @@ fn a_renamed_file_takes_over_its_record() {
     assert_eq!(plan.offer, strings(&["attachments/n1/zzz999-other.png"]));
 }
 
+/// A file renamed in the note folder while its attachment is gone: the record
+/// follows the file to its new name, and the file under that name goes up again.
+#[test]
+fn a_renamed_file_whose_attachment_is_gone_is_reuploaded() {
+    let plan = ChangePlan::for_note(&NoteAttachments {
+        files: strings(&["attachments/n1/abc123-new.png"]),
+        records: vec![record("attachments/n1/abc123-old.png", Some("a"), false)],
+        references: strings(&["a"]),
+        gone: set(&["a"]),
+        ..note()
+    });
+    assert_eq!(plan.drop_gone, strings(&["a"]));
+    assert_eq!(plan.reupload, strings(&["attachments/n1/abc123-new.png"]));
+    assert_eq!(
+        plan.move_records,
+        vec![RecordMove {
+            from: "attachments/n1/abc123-old.png".to_owned(),
+            to: "attachments/n1/abc123-new.png".to_owned(),
+        }]
+    );
+}
+
 #[test]
 fn a_local_only_note_offers_nothing() {
     let plan = ChangePlan::for_note(&NoteAttachments {
@@ -184,6 +206,33 @@ fn a_deleted_note_schedules_its_ids_and_nothing_else() {
     assert!(plan.offer.is_empty() && plan.reupload.is_empty() && plan.drop_gone.is_empty());
 }
 
+/// An upload that landed after the delete is released with the note's ids.
+#[test]
+fn a_deleted_note_releases_an_upload_that_landed_after_the_delete() {
+    let plan = ChangePlan::for_note(&NoteAttachments {
+        deleted: true,
+        references: strings(&["a"]),
+        uploaded: strings(&["late", "a"]),
+        ..note()
+    });
+    assert_eq!(plan.schedule_release, strings(&["a", "late"]));
+}
+
+#[test]
+fn the_grace_period_ends_where_the_release_is_due() {
+    let deleted_at = 1_000_000;
+    for now in [
+        deleted_at,
+        deleted_at + RELEASE_GRACE_MS - 1,
+        deleted_at + RELEASE_GRACE_MS,
+        deleted_at + RELEASE_GRACE_MS + 1,
+    ] {
+        assert_eq!(in_grace(deleted_at, now), !release_is_due(deleted_at, now));
+    }
+    assert!(in_grace(deleted_at, deleted_at + RELEASE_GRACE_MS - 1));
+    assert!(!in_grace(deleted_at, deleted_at + RELEASE_GRACE_MS));
+}
+
 #[test]
 fn a_release_is_due_on_day_30_and_not_on_day_29() {
     let deleted_at = 1_000_000;
@@ -214,7 +263,7 @@ fn ids() -> impl Strategy<Value = Vec<String>> {
 fn paths() -> impl Strategy<Value = Vec<String>> {
     prop::collection::vec(
         prop_oneof![
-            "attachments/n1/[ab][0-9a-z]{5}-[xy]\\.png",
+            "attachments/n1/[ab]bc123-[xyz]\\.png",
             "attachments/n1/[xy]\\.png",
             "img/[xyz]\\.png",
         ],
@@ -260,6 +309,20 @@ fn any_note() -> impl Strategy<Value = NoteAttachments> {
         )
 }
 
+/// `any_note` plus a file renamed in the note folder whose attachment is gone,
+/// a shape the random paths reach too rarely to count on.
+fn renamed_gone_note() -> impl Strategy<Value = NoteAttachments> {
+    any_note().prop_map(|mut note| {
+        note.local_only = false;
+        note.files.push("attachments/n1/qqq999-new.png".to_owned());
+        note.records
+            .push(record("attachments/n1/qqq999-old.png", Some("a"), false));
+        note.references.push("a".to_owned());
+        note.gone.insert("a".to_owned());
+        note
+    })
+}
+
 proptest! {
     #![proptest_config(proptest_config(512))]
 
@@ -277,6 +340,38 @@ proptest! {
         }
         for id in &plan.drop_gone {
             prop_assert!(note.gone.contains(id));
+        }
+    }
+
+    /// Every file on disk whose record (after the plan's moves) names a gone
+    /// reference or the note's own gone id goes up again.
+    #[test]
+    fn every_file_of_a_gone_attachment_is_reuploaded(
+        note in prop_oneof![any_note(), renamed_gone_note()],
+    ) {
+        let plan = ChangePlan::for_note(&note);
+        let mut records = note.records.clone();
+        for RecordMove { from, to } in &plan.move_records {
+            let row = records.iter_mut().find(|r| r.path == *from).expect("moved row");
+            row.path = to.clone();
+            row.on_disk = true;
+        }
+        let named: BTreeSet<&String> = note
+            .references
+            .iter()
+            .chain(&note.uploaded)
+            .chain(&note.own_attachment_id)
+            .collect();
+        for record in records.iter().filter(|r| r.on_disk && !note.local_only) {
+            if let Some(id) = &record.attachment_id
+                && named.contains(id)
+                && note.gone.contains(id)
+            {
+                prop_assert!(
+                    plan.reupload.contains(&record.path),
+                    "{} holds gone {id} and is not reuploaded", record.path
+                );
+            }
         }
     }
 
