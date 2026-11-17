@@ -10,6 +10,8 @@
 //! Stage 36a ships the frame: staging, the preflight, the install order and the checks. The
 //! importers arrive per owner area in 36b to 36f; until a table's importer exists, a source with
 //! rows in it fails with [`ImportError::NotReady`] before anything is written.
+//!
+//! [`ProfileLock`] is a probe, not a lock: do not run two imports of one vault at once.
 
 pub mod checks;
 pub mod crash;
@@ -178,6 +180,11 @@ fn existing_core(paths: &Paths) -> Result<Option<StageOutcome>, ImportError> {
         Ok(_) => return Err(ImportError::CoreFileExists(data)),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
         Err(e) => return Err(ImportError::io(&data, e)),
+    }
+    // A native recovery moved `data.db` aside and has not opened the fresh one yet: still a
+    // native core, whose salvage would let imported rows win over native ones.
+    if memry_core::storage::recovery::pending_recovery(&data)?.is_some() {
+        return Ok(Some(StageOutcome::NativeFirst));
     }
     // A WAL with no database beside it is no leftover of ours (install never writes one); it
     // may hold a native core's last writes, so it is reported and never deleted.

@@ -534,3 +534,128 @@ fn a_run_while_electron_runs_is_never_staged() {
     assert!(!vault.core().exists());
     import(&vault);
 }
+
+/// Electron started after the copy and before the run returns: the last probe catches it, so the
+/// run writes no core file and leaves no staging directory.
+#[test]
+fn electron_started_after_the_copy_fails_the_last_probe() {
+    let vault = Vault::new();
+    let running = std::rc::Rc::new(std::cell::RefCell::new(None));
+    let holder = running.clone();
+    let lock = vault.profile.local_storage_dir().join("LOCK");
+    crash::hook("stage:writer-created", move || {
+        *holder.borrow_mut() = Some(ElectronRunning::start(&lock));
+    });
+    let outcome = stage_vault_import(vault.input());
+    assert!(running.borrow_mut().take().is_some(), "the hook ran");
+    assert!(
+        matches!(outcome, Err(ImportError::ProfileInUse(_))),
+        "{:?}",
+        outcome.as_ref().err()
+    );
+    assert!(!vault.staging().exists());
+    assert!(!vault.core().exists());
+}
+
+/// `core/` the way a native recovery leaves it between moving `data.db` aside and opening the
+/// fresh one: the quarantine, the marker naming it, the native `index.db`, and no `data.db`.
+fn native_core_mid_recovery(vault: &Vault) {
+    let core = vault.core();
+    std::fs::create_dir_all(&core).unwrap();
+    let data = core.join(DATA_FILE);
+    drop(memry_core::storage::open_data(&data).unwrap());
+    let quarantined = core.join(format!("{DATA_FILE}.corrupt-1700000000000"));
+    for suffix in ["", "-wal", "-shm"] {
+        let from = PathBuf::from(format!("{}{suffix}", data.display()));
+        if from.exists() {
+            std::fs::rename(&from, format!("{}{suffix}", quarantined.display())).unwrap();
+        }
+    }
+    std::fs::write(
+        core.join(format!("{DATA_FILE}.recovering")),
+        quarantined.display().to_string(),
+    )
+    .unwrap();
+    std::fs::write(core.join(INDEX_FILE), b"native index").unwrap();
+}
+
+/// A native core whose recovery has moved `data.db` aside and not yet opened the fresh one is a
+/// native core: install refuses it, and the next run reads it as `NativeFirst`.
+#[test]
+fn a_native_core_mid_recovery_is_never_replaced() {
+    let vault = Vault::new();
+    let staged = staged(stage_vault_import(vault.input()).unwrap());
+    native_core_mid_recovery(&vault);
+    let marker = vault.core().join(format!("{DATA_FILE}.recovering"));
+    assert!(matches!(
+        staged.install(),
+        Err(ImportError::CoreFileExists(path)) if path == marker
+    ));
+    assert_eq!(
+        std::fs::read(vault.core().join(INDEX_FILE)).unwrap(),
+        b"native index"
+    );
+    assert!(!vault.core().join(DATA_FILE).exists());
+
+    assert!(matches!(
+        stage_vault_import(vault.input()).unwrap(),
+        StageOutcome::NativeFirst
+    ));
+    assert_eq!(
+        std::fs::read(vault.core().join(INDEX_FILE)).unwrap(),
+        b"native index"
+    );
+    assert!(!vault.core().join(DATA_FILE).exists());
+    assert!(!vault.staging().exists());
+}
+
+/// A native open while install fsyncs the staged pair: the guard runs after the fsyncs, right
+/// before the first change under `core/`, so the native pair is left byte for byte.
+#[test]
+fn install_refuses_a_native_open_during_its_fsyncs() {
+    let vault = Vault::new();
+    let staged = staged(stage_vault_import(vault.input()).unwrap());
+    let core = vault.core();
+    crash::hook("install:synced", move || {
+        std::fs::write(core.join(DATA_FILE), b"native data").unwrap();
+        std::fs::write(core.join(INDEX_FILE), b"native index").unwrap();
+    });
+    let data = vault.core().join(DATA_FILE);
+    assert!(matches!(
+        staged.install(),
+        Err(ImportError::CoreFileExists(path)) if path == data
+    ));
+    assert_eq!(std::fs::read(&data).unwrap(), b"native data");
+    assert_eq!(
+        std::fs::read(vault.core().join(INDEX_FILE)).unwrap(),
+        b"native index"
+    );
+}
+
+/// A native `data.db` that appears after the index rename: the `data.db` rename refuses, and the
+/// `index.db` that was in `core/` before the install is put back with its sidecar.
+#[test]
+fn a_refused_data_rename_puts_the_previous_index_back() {
+    let vault = Vault::new();
+    let staged = staged(stage_vault_import(vault.input()).unwrap());
+    let core = vault.core();
+    std::fs::create_dir_all(&core).unwrap();
+    let index_wal = core.join(format!("{INDEX_FILE}-wal"));
+    std::fs::write(core.join(INDEX_FILE), b"native index").unwrap();
+    std::fs::write(&index_wal, b"native wal").unwrap();
+    let hooked = core.clone();
+    crash::hook("install:index-renamed", move || {
+        std::fs::write(hooked.join(DATA_FILE), b"native data").unwrap();
+    });
+    let data = core.join(DATA_FILE);
+    assert!(matches!(
+        staged.install(),
+        Err(ImportError::CoreFileExists(path)) if path == data
+    ));
+    assert_eq!(std::fs::read(&data).unwrap(), b"native data");
+    assert_eq!(
+        std::fs::read(core.join(INDEX_FILE)).unwrap(),
+        b"native index"
+    );
+    assert_eq!(std::fs::read(&index_wal).unwrap(), b"native wal");
+}

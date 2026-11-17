@@ -1,16 +1,17 @@
 //! Moving a staged pair into `<vault>/.memry/core/`.
 //!
-//! Order: fsync both staged files, rename `index.db`, fsync `core/`, rename `data.db`, fsync
-//! `core/`. Both renames stay inside `<vault>/.memry/`, so they are atomic. The `data.db` rename
-//! is the commit point:
+//! Order: fsync both staged files, refuse a native core, move a `core/index.db` into staging,
+//! rename `index.db`, fsync `core/`, rename `data.db`, fsync `core/`. Every rename stays inside
+//! `<vault>/.memry/`, so each is atomic. The `data.db` rename is the commit point:
 //! - a crash before it leaves no `core/data.db`, so the next run stages again and replaces the
 //!   `core/index.db` it may have left;
 //! - a crash after it reads as `AlreadyImported`, with `index.db` already complete.
 //!
-//! A `core/data.db` or sidecar that appeared after staging (the vault opened natively meanwhile)
-//! is refused before anything under `core/` is removed or renamed, so the native pair is left
-//! byte for byte. Both renames still refuse to replace a file ([`rename_no_replace`]), which
-//! covers a native open that races the install itself.
+//! A `core/data.db`, its sidecars or a recovery marker that appeared after staging (the vault
+//! opened natively meanwhile) is refused after the fsyncs and before anything under `core/`
+//! moves, so the native pair is left byte for byte. A native open that races the renames
+//! themselves makes the `data.db` rename fail ([`rename_no_replace`]); the install then takes
+//! its `index.db` out of `core/` and puts back the one it moved aside.
 
 use std::ffi::OsString;
 use std::fs;
@@ -18,8 +19,9 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use memry_core::storage::import::{DATA_FILE, INDEX_FILE};
+use memry_core::storage::recovery::marker_path;
 
-use super::{ImportError, StagedVault, crash, remove_staging};
+use super::{ImportError, Paths, StagedVault, crash, remove_staging};
 use crate::vault::fs_atomic::{rename_no_replace, sync_dir};
 
 /// `-wal`, `-shm` and `-journal` beside `db`.
@@ -41,12 +43,32 @@ pub(super) fn refuse_if_present(path: &Path) -> Result<(), ImportError> {
     }
 }
 
-fn remove_file(path: &Path) -> Result<(), ImportError> {
-    match fs::remove_file(path) {
-        Ok(()) => Ok(()),
-        Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(()),
-        Err(e) => Err(ImportError::io(path, e)),
+/// Where install keeps the `core/index.db` it replaces until `data.db` is in place.
+const REPLACED_INDEX_DIR: &str = "replaced-index";
+
+/// Moves each file of the `index.db` in `from_dir` that exists into `to_dir`.
+fn move_index(from_dir: &Path, to_dir: &Path) -> Result<(), ImportError> {
+    let index = from_dir.join(INDEX_FILE);
+    for from in std::iter::once(index.clone()).chain(sidecars(&index)) {
+        let Some(name) = from.file_name() else {
+            continue;
+        };
+        match rename_no_replace(&from, &to_dir.join(name)) {
+            Ok(()) => {}
+            Err(e) if e.kind() == io::ErrorKind::NotFound => {}
+            Err(e) => return Err(ImportError::io(&from, e)),
+        }
     }
+    Ok(())
+}
+
+/// Puts the `index.db` moved aside back into `core/`. A failure is logged and leaves it in
+/// staging, which the next run deletes: with no `core/data.db` beside it, it is rebuildable.
+fn restore_index(paths: &Paths, aside: &Path) {
+    if let Err(error) = move_index(aside, &paths.core) {
+        tracing::warn!(%error, "could not put the replaced core/index.db back");
+    }
+    sync_dir(&paths.core);
 }
 
 fn rename(from: &Path, to: &Path) -> Result<(), ImportError> {
@@ -62,10 +84,6 @@ impl StagedVault {
     pub fn install(self) -> Result<(), ImportError> {
         let paths = self.paths;
         let data = paths.core.join(DATA_FILE);
-        refuse_if_present(&data)?;
-        for path in sidecars(&data) {
-            refuse_if_present(&path)?;
-        }
         for name in [DATA_FILE, INDEX_FILE] {
             let path = paths.staging.join(name);
             // Opened for writing: Windows refuses `FlushFileBuffers` on a read-only handle.
@@ -79,18 +97,34 @@ impl StagedVault {
         sync_dir(&paths.memry);
         crash::point("install:synced");
 
-        // A `core/index.db` with no `core/data.db` is an earlier run's, cut off between the two
-        // renames, or a rebuildable index; either way the staged one replaces it.
-        let index = paths.core.join(INDEX_FILE);
-        for path in sidecars(&index) {
-            remove_file(&path)?;
+        refuse_if_present(&data)?;
+        for path in sidecars(&data) {
+            refuse_if_present(&path)?;
         }
-        remove_file(&index)?;
-        rename(&paths.staging.join(INDEX_FILE), &index)?;
+        refuse_if_present(&marker_path(&data))?;
+
+        // A `core/index.db` with no `core/data.db` is an earlier run's, cut off between the two
+        // renames, or a rebuildable index; the staged one replaces it once `data.db` follows.
+        let index = paths.core.join(INDEX_FILE);
+        let aside = paths.staging.join(REPLACED_INDEX_DIR);
+        fs::create_dir_all(&aside).map_err(|e| ImportError::io(&aside, e))?;
+        if let Err(error) = move_index(&paths.core, &aside)
+            .and_then(|()| rename(&paths.staging.join(INDEX_FILE), &index))
+        {
+            restore_index(&paths, &aside);
+            return Err(error);
+        }
         sync_dir(&paths.core);
         crash::point("install:index-renamed");
 
-        rename(&paths.staging.join(DATA_FILE), &data)?;
+        if let Err(error) = rename(&paths.staging.join(DATA_FILE), &data) {
+            // A native open raced the renames: the staged index leaves `core/` again.
+            match rename_no_replace(&index, &paths.staging.join(INDEX_FILE)) {
+                Ok(()) => restore_index(&paths, &aside),
+                Err(e) => tracing::warn!(%e, "could not take the staged index.db back"),
+            }
+            return Err(error);
+        }
         sync_dir(&paths.core);
         crash::point("install:data-renamed");
 
