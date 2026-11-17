@@ -69,6 +69,34 @@ struct NoteInlineLabelTests {
         #expect(NoteInlineLabel.text(of: domainOnly) == "github.com")
     }
 
+    /// Same cases as `linkMentionDisplayHost` in
+    /// `packages/editor-schema/src/inline/link-mention.test.ts` (#4751).
+    /// Pinned cases agree; invalid-IDNA output is engine-dependent but always
+    /// ASCII with controls stripped.
+    @Test(
+        "a link mention's host reads as display-safe ASCII",
+        arguments: [
+            ("\u{430}pple.com", "xn--pple-43d.com"),
+            ("evil\u{202E}com.example", "evilcom.example"),
+            ("a\u{200B}b\u{2066}c\u{85}.example", "abc.example"),
+            ("github.com", "github.com"),
+            ("xn--pple-43d.com", "xn--pple-43d.com"),
+            ("x.com/\u{15F}", "x.com/%C5%9F"),
+        ]
+    )
+    func linkMentionHostIsDisplaySafe(domain: String, label: String) {
+        let mention = run(
+            "", marks: ["linkMention"],
+            markAttrs: [
+                "linkMention.url": "https://example.test/",
+                "linkMention.domain": domain,
+                "linkMention.title": "",
+                "linkMention.siteName": "",
+            ]
+        )
+        #expect(NoteInlineLabel.text(of: mention) == label)
+    }
+
     @Test("a full-format date reads as desktop's absolute date")
     func fullDate() {
         var calendar = Calendar(identifier: .gregorian)

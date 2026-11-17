@@ -96,6 +96,38 @@ export function linkMentionHost(url: string): string | null {
   return valid ? host.replace(/[A-Z]/g, (char) => char.toLowerCase()) : null
 }
 
+const INVISIBLE_CONTROLS = /[\p{Cc}\p{Cf}]/gu
+const HOST_SHAPED = /^[^\s/?#@:%\\[\]]+$/
+
+/**
+ * The stored `domain` as the chip shows it: ASCII only, so `аpple.com` (Cyrillic
+ * `а`) reads `xn--pple-43d.com` instead of passing for apple.com, and a bidi
+ * override from a repaired token cannot reorder the label (#4751). Display only:
+ * the stored `domain` keeps the host as written (protocol 12.1.1.1), because
+ * IDNA through `new URL` differs between engines, which split chips when it ran
+ * at the seed (#4685). A label that does not convert keeps its ASCII and
+ * percent-encodes the rest. iOS ports it in `NoteInlineLabel.displayHost`.
+ */
+export function linkMentionDisplayHost(domain: string): string {
+  const visible = domain.replace(INVISIBLE_CONTROLS, '')
+  // oxlint-disable-next-line no-control-regex -- ASCII range check, not a control-character match
+  if (/^[\x00-\x7F]*$/.test(visible)) return visible
+  if (HOST_SHAPED.test(visible)) {
+    try {
+      return new URL(`http://${visible}`).hostname
+    } catch {
+      // Not convertible by this engine: fall through to the percent-encoded label.
+    }
+  }
+  // oxlint-disable-next-line no-control-regex -- ASCII range check, not a control-character match
+  return visible.replace(/[^\x00-\x7F]+/g, (run) =>
+    Array.from(
+      new TextEncoder().encode(run),
+      (byte) => `%${byte.toString(16).toUpperCase().padStart(2, '0')}`
+    ).join('')
+  )
+}
+
 export function parseLinkMentionToken(encoded: string): string | null {
   if (WELL_FORMED_PAYLOAD.test(encoded)) {
     try {
@@ -205,7 +237,7 @@ export function createLinkMentionSpec(
 
 export const LinkMention = createLinkMentionSpec((inlineContent) => {
   const { url, domain, title, favicon, siteName } = inlineContent.props
-  const siteLabel = siteName || domain || url
+  const siteLabel = siteName || (domain && linkMentionDisplayHost(domain)) || url
 
   const dom = document.createElement('a')
   dom.className = 'link-mention'
