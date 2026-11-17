@@ -23,6 +23,7 @@ on:
       - '.github/actions/free-disk/**'
       - '.github/actions/paths-changed/**'
       - '.github/actions/setup-pnpm/**'
+      - '.github/actions/tesseract-sources/**'
       - 'scripts/check-renderer-no-sync-host*.mjs'
       - 'scripts/release/**'
       - 'scripts/rehearsal/**'
@@ -116,7 +117,7 @@ jobs:
         uses: ./.github/actions/paths-changed
         with:
           token: ${{ github.token }}
-          include: '^(apps/desktop-tauri/|crates/|packages/|pnpm-lock\.yaml$|oxlint\.config\.mts$|\.github/workflows/desktop-tauri-ci\.yml$|\.github/actions/(apt-install|ci-tier|free-disk|paths-changed|setup-pnpm)/|scripts/check-renderer-no-sync-host(\.test)?\.mjs$|scripts/(release|rehearsal)/)'
+          include: '^(apps/desktop-tauri/|crates/|packages/|pnpm-lock\.yaml$|oxlint\.config\.mts$|\.github/workflows/desktop-tauri-ci\.yml$|\.github/actions/(apt-install|ci-tier|free-disk|paths-changed|setup-pnpm|tesseract-sources)/|scripts/check-renderer-no-sync-host(\.test)?\.mjs$|scripts/(release|rehearsal)/)'
 
   static:
     name: Static checks
