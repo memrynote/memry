@@ -79,8 +79,8 @@ use super::socket::{HintSink, RealtimeClient};
 use super::state::{PassTrigger, SyncState, WriteGate};
 use cipher::DirectoryCipher;
 pub use observer::{
-    AppliedFeed, AppliedOutcome, AppliedRecord, ApplyObserver, AttachmentDownload, FieldConflict,
-    Observers, SecurityWarning,
+    AppliedFeed, AppliedOutcome, AppliedRecord, ApplyObserver, AttachmentDownload, CorruptItem,
+    FieldConflict, Observers, SecurityWarning,
 };
 use progress::{InitialSyncPhase, InitialSyncSink, Phases, TasksPhase};
 pub use snapshots::SnapshotRound;

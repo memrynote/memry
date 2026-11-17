@@ -18,6 +18,7 @@ use tokio::sync::broadcast;
 use tokio::time::{Instant, sleep};
 
 use super::super::backend::{SyncBackend, SyncPasses};
+use super::super::events::SyncEvent;
 use super::super::gate::{AuthFacts, Entitlement, SyncStartGate, VaultBinding};
 use super::super::realtime::{RealtimeSocket, SocketEnd};
 use super::super::signals::AuthSignals;
@@ -54,6 +55,10 @@ pub(crate) struct FakeDriver {
     pub(crate) socket_stops: Arc<AtomicUsize>,
     /// Passes that ran to their end, not aborted.
     pub(crate) finished: AtomicUsize,
+    /// Each pass waits here before it pushes, when set.
+    pub(crate) hold: Mutex<Option<Arc<tokio::sync::Notify>>>,
+    /// Rows each pass reports pushed.
+    pub(crate) pushed_items: AtomicUsize,
     pub(crate) observers: Mutex<Vec<Arc<dyn memry_core::sync::driver::ApplyObserver>>>,
     /// A snapshot is due until a pass pushes it.
     pub(crate) snapshot_due: AtomicBool,
@@ -87,6 +92,10 @@ impl SyncPasses for FakeDriver {
                 local_ms,
             });
         }
+        let hold = lock(&self.hold).clone();
+        if let Some(hold) = hold {
+            hold.notified().await;
+        }
         tokio::time::sleep(PASS).await;
         let error = {
             let mut errors = lock(&self.errors);
@@ -106,8 +115,8 @@ impl SyncPasses for FakeDriver {
             },
             pull: PullReport::default(),
             parked: false,
-            pushed: false,
-            pushed_items: 0,
+            pushed: self.pushed_items.load(Ordering::SeqCst) > 0,
+            pushed_items: self.pushed_items.load(Ordering::SeqCst),
             pull_error: error,
             push_error: None,
         })
@@ -278,6 +287,8 @@ pub(crate) struct Rig {
     /// `KeyringStore::subscribe_recovered`'s stand-in.
     pub(crate) recovered: broadcast::Sender<()>,
     pub(crate) events: Arc<Mutex<Vec<(Instant, SyncStatus)>>>,
+    /// Every [`SyncEvent`] besides the status.
+    pub(crate) sync_events: Arc<Mutex<Vec<SyncEvent>>>,
     pub(crate) telemetry: Option<Arc<crate::telemetry::Service>>,
     /// The session's account signals, shared by every supervisor the rig starts.
     pub(crate) signals: AuthSignals,
@@ -309,6 +320,7 @@ impl Rig {
             net: Arc::default(),
             recovered: broadcast::Sender::new(4),
             events: Arc::default(),
+            sync_events: Arc::default(),
             telemetry: None,
             signals: AuthSignals::new(),
         }
@@ -316,6 +328,7 @@ impl Rig {
 
     pub(crate) async fn start(&self) -> SyncSupervisor {
         let events = Arc::clone(&self.events);
+        let sync_events = Arc::clone(&self.sync_events);
         let supervisor = SyncSupervisor::start(
             &tokio::runtime::Handle::current(),
             SupervisorParts {
@@ -330,6 +343,7 @@ impl Rig {
                 on_status: Arc::new(move |status| {
                     lock(&events).push((Instant::now(), status.clone()));
                 }),
+                on_event: Arc::new(move |event| lock(&sync_events).push(event.clone())),
             },
         );
         settle().await;

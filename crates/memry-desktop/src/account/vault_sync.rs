@@ -24,6 +24,7 @@ use crate::registry::VaultRegistry;
 use crate::session::{OpenVault, SupervisorFactory, lock};
 use crate::shell::power::PowerEvent;
 use crate::sync::backend::{SyncBackend, VaultSyncBackend};
+use crate::sync::events::OnSyncEvent;
 use crate::sync::gate::SyncStartGate;
 use crate::sync::signals::AuthSignals;
 use crate::sync::status::SyncStatus;
@@ -115,6 +116,7 @@ pub struct SyncWiring {
     pub keychain_recovered: broadcast::Sender<()>,
     pub telemetry: Option<Arc<Service>>,
     pub on_status: Arc<dyn Fn(&SyncStatus) + Send + Sync>,
+    pub on_event: OnSyncEvent,
     pub bindings: Arc<OpenVaultBinding>,
     /// Each binding change of the open vault (`sync:vault-binding-changed`).
     pub on_binding: Arc<dyn Fn(&BindingState) + Send + Sync>,
@@ -183,6 +185,7 @@ impl SyncWiring {
                 telemetry: self.telemetry.clone(),
                 signals: signals.clone(),
                 on_status: Arc::clone(&self.on_status),
+                on_event: Arc::clone(&self.on_event),
             },
         );
         self.runtime

@@ -200,6 +200,7 @@ mod tests {
                         telemetry: None,
                         signals: signals.clone(),
                         on_status: Arc::new(|_| {}),
+                        on_event: Arc::new(|_| {}),
                     },
                 ))
             })
@@ -279,6 +280,7 @@ mod tests {
                         telemetry: None,
                         signals: signals.clone(),
                         on_status: Arc::new(|_| {}),
+                        on_event: Arc::new(|_| {}),
                     },
                 ))
             })

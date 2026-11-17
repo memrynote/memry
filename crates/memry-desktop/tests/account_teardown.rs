@@ -312,6 +312,7 @@ async fn an_unknown_binding_is_checked_again_after_a_minute_and_reported_once() 
         keychain_recovered: broadcast::Sender::new(4),
         telemetry: None,
         on_status: Arc::new(|_| {}),
+        on_event: Arc::new(|_| {}),
         bindings: Arc::new(OpenVaultBinding::default()),
         on_binding: Arc::new(move |state| seen.lock().unwrap().push(state.clone())),
         on_vault_list_changed: Arc::new(|| {}),

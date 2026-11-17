@@ -4,6 +4,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use memry_core::api::errors::{ApiError, SyncError};
+use memry_core::sync::driver::ApplyObserver;
 use memry_core::sync::engine::PassReport;
 use memry_core::sync::outbox;
 use memry_core::sync::state::SyncState;
@@ -13,6 +14,7 @@ use tokio::time::Instant;
 use super::{Loop, blocking, now_ms};
 use crate::sync::backend::{SyncBackend, SyncPasses};
 use crate::sync::error_category::SyncErrorCategory;
+use crate::sync::events::{EventObserver, SyncEvent};
 use crate::sync::gate::GateDecision;
 use crate::sync::result::{SyncNowBlockedReason as Blocked, TriggerSyncResult};
 use crate::sync::telemetry::{ConflictTelemetry, sync_error_event};
@@ -30,7 +32,8 @@ pub(super) struct PassDone {
     pending: Option<u32>,
 }
 
-/// Runs one pass on `existing`, or on a driver opened for it.
+/// Runs one pass on `existing`, or on a driver opened for it, which hears `observers` from its
+/// first page on.
 pub(super) async fn run(
     id: u64,
     trigger: Trigger,
@@ -38,6 +41,7 @@ pub(super) async fn run(
     backend: Arc<dyn SyncBackend>,
     db: memry_core::storage::Db,
     entitled: bool,
+    observers: Vec<Arc<dyn ApplyObserver>>,
 ) -> PassDone {
     let started = Instant::now();
     let driver = match existing {
@@ -45,6 +49,9 @@ pub(super) async fn run(
         None => backend.open().await.inspect(|driver| {
             if entitled {
                 driver.set_entitled(true);
+            }
+            for observer in observers {
+                driver.observe(observer);
             }
         }),
     };
@@ -75,6 +82,16 @@ pub(super) async fn run(
 }
 
 impl Loop {
+    /// What a driver this loop opens hears: the shell's events and the conflict telemetry.
+    pub(super) fn observers(&self) -> Vec<Arc<dyn ApplyObserver>> {
+        let mut observers: Vec<Arc<dyn ApplyObserver>> =
+            vec![Arc::new(EventObserver(Arc::clone(&self.on_event)))];
+        if let Some(telemetry) = &self.telemetry {
+            observers.push(Arc::new(ConflictTelemetry(Arc::clone(telemetry))));
+        }
+        observers
+    }
+
     pub(super) async fn finished(&mut self, done: PassDone) {
         if let Some(pending) = done.pending {
             self.pending = pending;
@@ -96,13 +113,6 @@ impl Loop {
         };
         // The keychain answered: the open read the master key.
         self.keychain = None;
-        let fresh = !self
-            .driver
-            .as_ref()
-            .is_some_and(|d| Arc::ptr_eq(d, &driver));
-        if let Some(telemetry) = self.telemetry.as_ref().filter(|_| fresh) {
-            driver.observe(Arc::new(ConflictTelemetry(Arc::clone(telemetry))));
-        }
         if self.paused {
             driver.pause();
         }
@@ -113,7 +123,16 @@ impl Loop {
                 TriggerSyncResult::ok()
             }
             None => TriggerSyncResult::blocked(Blocked::Paused, None),
-            Some(report) => self.record(report, done.started),
+            Some(report) => {
+                if report.pushed_items > 0 && report.push_error.is_none() && done.pending == Some(0)
+                {
+                    (self.on_event)(&SyncEvent::QueueCleared {
+                        item_count: u32::try_from(report.pushed_items).unwrap_or(u32::MAX),
+                        duration_ms: done.started.elapsed().as_millis() as i64,
+                    });
+                }
+                self.record(report, done.started)
+            }
         };
         if result.success {
             self.socket_refused = false;
@@ -135,6 +154,7 @@ impl Loop {
                     Ok(()) => self.skew_paused = true,
                     Err(error) => tracing::error!(%error, "could not persist the clock-skew pause"),
                 }
+                (self.on_event)(&SyncEvent::clock_skew(clock));
             }
         }
         let result = if self.paused {

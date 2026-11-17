@@ -148,6 +148,7 @@ fn attach(mocked: &Mocked) -> SyncSupervisor {
                     telemetry: None,
                     signals: signals.clone(),
                     on_status: Arc::new(|_| {}),
+                    on_event: Arc::new(|_| {}),
                 },
             ))
         },

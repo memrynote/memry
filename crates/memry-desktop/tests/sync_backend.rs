@@ -165,6 +165,7 @@ async fn a_locked_keychain_is_only_read_again_never_written() {
             telemetry: None,
             signals: memry_desktop::sync::signals::AuthSignals::new(),
             on_status: Arc::new(|_| {}),
+            on_event: Arc::new(|_| {}),
         },
     );
     let before = store.reads.load(Ordering::SeqCst);
