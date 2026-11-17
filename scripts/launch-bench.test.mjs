@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict'
-import { describe, it } from 'node:test'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
+import { after, describe, it } from 'node:test'
 
 import {
+  benchEnv,
+  checkProfile,
+  classifyBuild,
+  collectWarnings,
   defaultAppPath,
   detectTier,
   findWindowShownAt,
@@ -11,6 +18,8 @@ import {
   parseLaunchTimeline,
   parseLogTimestamp,
   parseRendererMarks,
+  resolveExecutable,
+  runsMissingNoteReadable,
   summarize
 } from './launch-bench.mjs'
 
@@ -266,5 +275,175 @@ describe('formatMedianTable', () => {
     assert.match(table, /^runs: 1 \(#1 packaged\)$/m)
     assert.match(table, /^renderer_loaded_ms\s+-$/m)
     assert.match(table, /^click_to_shown_ms\s+1000 ms$/m)
+  })
+})
+
+describe('benchEnv', () => {
+  it('runs the app as its own device on the bench profile', () => {
+    const env = benchEnv({ HOME: '/Users/kaan' }, '/tmp/bench/profile')
+
+    assert.equal(env.MEMRY_DEVICE, 'launch-bench')
+    assert.equal(env.MEMRY_APP_DATA_DIR, '/tmp/bench/profile')
+    assert.equal(env.HOME, '/Users/kaan')
+    assert.equal(
+      logPath(env, 'darwin', '/Users/kaan'),
+      '/Users/kaan/Library/Logs/com.memrynote.memry.launch-bench/main.log'
+    )
+  })
+
+  it('keeps a chosen device and replaces an empty one', () => {
+    assert.equal(benchEnv({ MEMRY_DEVICE: 'A' }, '/p').MEMRY_DEVICE, 'A')
+    assert.equal(benchEnv({ MEMRY_DEVICE: '' }, '/p').MEMRY_DEVICE, 'launch-bench')
+  })
+
+  it('refuses the dev device, which shares the dev keychain accounts', () => {
+    assert.throws(() => benchEnv({ MEMRY_DEVICE: 'dev' }, '/p'), /MEMRY_DEVICE/)
+    assert.throws(() => benchEnv({ MEMRY_DEVICE: 'dev-0a1b2c3d' }, '/p'), /MEMRY_DEVICE/)
+  })
+})
+
+describe('classifyBuild', () => {
+  it('keeps the starting line tier for an installed build', () => {
+    assert.equal(
+      classifyBuild(SLICE, '/Applications/MemryNote.app/Contents/MacOS/MemryNote', {}),
+      'packaged'
+    )
+    assert.equal(TIER_OF(classifyBuild(SLICE, '/opt/MemryNote', {})), true)
+  })
+
+  it('marks a debug bundle or an e2e build as debug, with no valid wall clock', () => {
+    const debugBundle =
+      '/repo/crates/target/debug/bundle/macos/MemryNote.app/Contents/MacOS/MemryNote'
+    assert.equal(classifyBuild(SLICE, debugBundle, {}), 'debug')
+    assert.equal(
+      classifyBuild(
+        SLICE,
+        'C:\\repo\\crates\\target\\x86_64-pc-windows-msvc\\debug\\memry.exe',
+        {}
+      ),
+      'debug'
+    )
+    assert.equal(classifyBuild(SLICE, '/opt/MemryNote', { MEMRY_E2E: '1' }), 'debug')
+    assert.equal(TIER_OF('debug'), false)
+  })
+})
+
+function TIER_OF(tier) {
+  const runs = [{ ...makeRun(1, tier, 0) }]
+  return summarize(runs).find((row) => row.key === 'click_to_shown_ms').note === null
+}
+
+describe('resolveExecutable', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'launch-bench-test-'))
+  after(() => rmSync(root, { recursive: true, force: true }))
+
+  function makeApp(name, executable) {
+    const app = path.join(root, name)
+    mkdirSync(path.join(app, 'Contents/MacOS'), { recursive: true })
+    writeFileSync(
+      path.join(app, 'Contents/Info.plist'),
+      `<plist><dict><key>CFBundleExecutable</key>\n  <string>${executable}</string></dict></plist>`
+    )
+    return app
+  }
+
+  it('reads the executable of a Tauri bundle from Info.plist', () => {
+    const app = makeApp('Renamed.app', 'MemryNote')
+    assert.equal(resolveExecutable(app), path.join(app, 'Contents/MacOS/MemryNote'))
+  })
+
+  it('refuses an Electron bundle', () => {
+    const app = makeApp('Electron.app', 'Memry')
+    mkdirSync(path.join(app, 'Contents/Frameworks/Electron Framework.framework'), {
+      recursive: true
+    })
+    assert.throws(() => resolveExecutable(app), /Electron build/)
+  })
+
+  it('refuses an Electron executable next to resources/app.asar', () => {
+    const dir = path.join(root, 'win-unpacked')
+    mkdirSync(path.join(dir, 'resources'), { recursive: true })
+    writeFileSync(path.join(dir, 'resources', 'app.asar'), '')
+    assert.throws(() => resolveExecutable(path.join(dir, 'Memry.exe')), /Electron build/)
+  })
+
+  it('refuses an AppImage unless it is declared a Tauri build', () => {
+    const appImage = path.join(root, 'MemryNote.AppImage')
+    writeFileSync(appImage, '')
+    assert.throws(() => resolveExecutable(appImage), /--tauri-appimage/)
+    assert.equal(resolveExecutable(appImage, { tauriAppImage: true }), appImage)
+  })
+
+  it('passes a plain Tauri executable through', () => {
+    assert.equal(resolveExecutable('/opt/memry/memrynote'), '/opt/memry/memrynote')
+  })
+})
+
+describe('checkProfile', () => {
+  it('refuses the default Tauri data dir of each OS', () => {
+    assert.throws(
+      () =>
+        checkProfile(
+          '/Users/kaan/Library/Application Support/com.memrynote.memry/',
+          {},
+          'darwin',
+          '/Users/kaan'
+        ),
+      /real profile/
+    )
+    assert.throws(
+      () =>
+        checkProfile(
+          'C:\\Users\\kaan\\AppData\\Roaming\\com.memrynote.memry',
+          { APPDATA: 'C:\\Users\\kaan\\AppData\\Roaming' },
+          'win32',
+          'C:\\Users\\kaan'
+        ),
+      /real profile/
+    )
+    assert.throws(
+      () => checkProfile('/home/kaan/.local/share/com.memrynote.memry', {}, 'linux', '/home/kaan'),
+      /real profile/
+    )
+  })
+
+  it('accepts a bench profile', () => {
+    assert.doesNotThrow(() =>
+      checkProfile('/tmp/memry-launch-bench/profile', {}, 'darwin', '/Users/kaan')
+    )
+  })
+})
+
+describe('runsMissingNoteReadable', () => {
+  function withMark(run, noteReadableMs) {
+    return { ...makeRun(run, 'packaged', 0), renderer: { noteReadableMs } }
+  }
+
+  it('fails a run with no mark when another run had one, before or after it', () => {
+    const runs = [
+      withMark(1, null),
+      withMark(2, 900),
+      { ...makeRun(3, 'packaged', 0), renderer: null }
+    ]
+    assert.deepEqual(runsMissingNoteReadable(runs), [1, 3])
+  })
+
+  it('fails nothing when no run restored a note', () => {
+    assert.deepEqual(runsMissingNoteReadable([withMark(1, null), withMark(2, null)]), [])
+  })
+})
+
+describe('collectWarnings', () => {
+  it('names the 8 s wait, not a missing restore', () => {
+    const record = {
+      tier: 'packaged',
+      timeline: { rendererLoadedMs: 1 },
+      renderer: { fcpMs: 1, noteReadableMs: null }
+    }
+    assert.ok(
+      collectWarnings(record).some((warning) =>
+        warning.startsWith('no note-readable mark within 8 s of load')
+      )
+    )
   })
 })

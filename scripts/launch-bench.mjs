@@ -13,6 +13,13 @@ import { fileURLToPath } from 'node:url'
 import { CONFIG_FILE, seedVaultRegistry } from '../apps/desktop-tauri/e2e/harness/seed-registry.mjs'
 
 const IDENTIFIER = 'com.memrynote.memry'
+// A device of its own keeps every launch off the user's keychain accounts, log, data dir and
+// single-instance lock (`memry_desktop::paths::profile_identifier`).
+const BENCH_DEVICE = 'launch-bench'
+// `dev` and `dev-<8 hex>` share the dev keychain accounts (`secure_store/account.rs`).
+const DEV_DEVICE_PATTERN = /^dev(?:-[0-9a-f]{8})?$/
+// A `target/debug/` build (including `tauri build --debug` bundles) logs `(packaged)` too.
+const DEBUG_BUILD_PATTERN = /[\\/]target[\\/](?:[^\\/]+[\\/])?debug[\\/]/
 const LOCK_DIR = path.join(tmpdir(), 'memry-launch-bench.lock')
 const PERF_DIR = fileURLToPath(new URL('../.perf/', import.meta.url))
 const APP_MTIME_STAMP = path.join(PERF_DIR, 'last-app-mtime')
@@ -39,6 +46,7 @@ const RENDERER_MARKS_PREFIX = 'renderer launch marks '
 export const TIERS = {
   packaged: { label: 'packaged (tier 3)', wallClockValid: true },
   dev: { label: 'dev build', wallClockValid: false },
+  debug: { label: 'debug build', wallClockValid: false },
   unknown: { label: 'unknown', wallClockValid: false }
 }
 
@@ -166,6 +174,61 @@ export function detectTier(slice) {
   return STARTING_LINE_PATTERN.exec(slice)?.[2] ?? 'unknown'
 }
 
+/** The starting line's tier, or `debug` for a debug or e2e build, whose wall clock is not tier 3. */
+export function classifyBuild(slice, executable, env) {
+  if (DEBUG_BUILD_PATTERN.test(executable) || env.MEMRY_E2E === '1') {
+    return 'debug'
+  }
+  return detectTier(slice)
+}
+
+/** The environment of every launch: a bench device on the bench profile. */
+export function benchEnv(processEnv, profile) {
+  const device = processEnv.MEMRY_DEVICE || BENCH_DEVICE
+  if (DEV_DEVICE_PATTERN.test(device)) {
+    throw new Error(
+      `MEMRY_DEVICE=${device} shares the dev profile and keychain accounts; unset it or pick another name`
+    )
+  }
+  return { ...processEnv, MEMRY_DEVICE: device, MEMRY_APP_DATA_DIR: profile }
+}
+
+/** Tauri's `app_data_dir` of the production identifier: the user's real profile. */
+function defaultDataDir(env, platform, home) {
+  if (platform === 'darwin') {
+    return path.join(home, 'Library/Application Support', IDENTIFIER)
+  }
+  if (platform === 'win32') {
+    const appData = env.APPDATA || path.win32.join(home, 'AppData', 'Roaming')
+    return path.win32.join(appData, IDENTIFIER)
+  }
+  return path.join(env.XDG_DATA_HOME || path.join(home, '.local/share'), IDENTIFIER)
+}
+
+/** Refuses the real profile: `prepareProfile` rewrites its `memry-config.json`. */
+export function checkProfile(profile, env, platform, home) {
+  // The default macOS and Windows file systems ignore case.
+  const resolve = (dir) =>
+    platform === 'linux'
+      ? path.posix.resolve(dir)
+      : (platform === 'win32' ? path.win32 : path.posix).resolve(dir).toLowerCase()
+  if (resolve(profile) === resolve(defaultDataDir(env, platform, home))) {
+    throw new Error(`${profile} is the real profile; pass a bench --profile`)
+  }
+}
+
+function hasNoteReadableMark(record) {
+  return record.renderer?.noteReadableMs != null
+}
+
+/** Runs that reported no note-readable mark while another run of the bench reported one. */
+export function runsMissingNoteReadable(runs) {
+  if (!runs.some(hasNoteReadableMark)) {
+    return []
+  }
+  return runs.filter((record) => !hasNoteReadableMark(record)).map((record) => record.run)
+}
+
 export function median(numbers) {
   const sorted = numbers.filter((value) => Number.isFinite(value)).toSorted((a, b) => a - b)
   if (sorted.length === 0) {
@@ -248,8 +311,17 @@ export function defaultAppPath(env, platform, home) {
 }
 
 // The bundle directory can be renamed (two builds kept side by side for an A/B), so the
-// executable name comes from Info.plist rather than from the directory name.
-function resolveExecutable(appPath) {
+// executable name comes from Info.plist rather than from the directory name. An AppImage hides
+// its layout, and Electron's would run on the user's real profile, so it needs `--tauri-appimage`.
+export function resolveExecutable(appPath, { tauriAppImage = false } = {}) {
+  if (appPath.endsWith('.AppImage')) {
+    if (!tauriAppImage) {
+      throw new Error(
+        `${appPath} may be an Electron build; pass --tauri-appimage if it is the Tauri app`
+      )
+    }
+    return appPath
+  }
   if (!appPath.endsWith('.app')) {
     if (existsSync(path.join(path.dirname(appPath), 'resources', 'app.asar'))) {
       throw new Error(`${appPath} is an Electron build; this bench measures the Tauri app`)
@@ -284,7 +356,7 @@ function readPositiveInteger(raw, flag) {
 }
 
 const USAGE =
-  'Usage: node scripts/launch-bench.mjs [--runs 5] [--app <MemryNote.app | executable>] [--vault ~/MemryBenchVault] [--profile <dir>]'
+  'Usage: node scripts/launch-bench.mjs [--runs 5] [--app <MemryNote.app | executable>] [--tauri-appimage] [--vault ~/MemryBenchVault] [--profile <dir>]'
 
 function parseArgs(argv) {
   const defaultApp = defaultAppPath(process.env, process.platform, homedir())
@@ -292,12 +364,17 @@ function parseArgs(argv) {
     runs: DEFAULT_RUNS,
     appPath: defaultApp,
     vault: DEFAULT_VAULT,
-    profile: DEFAULT_PROFILE
+    profile: DEFAULT_PROFILE,
+    tauriAppImage: false
   }
   const paths = { '--app': 'appPath', '--vault': 'vault', '--profile': 'profile' }
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index]
+    if (arg === '--tauri-appimage') {
+      options.tauriAppImage = true
+      continue
+    }
     if (arg === '--runs') {
       options.runs = readPositiveInteger(readRequiredValue(argv, index, arg), arg)
     } else if (paths[arg]) {
@@ -425,11 +502,8 @@ async function waitForLog(file, anchorOffset, deadlineMs, found) {
   return null
 }
 
-function launch(executable, profile) {
-  const child = spawn(executable, [], {
-    env: { ...process.env, MEMRY_APP_DATA_DIR: profile },
-    stdio: 'ignore'
-  })
+function launch(executable, env) {
+  const child = spawn(executable, [], { env, stdio: 'ignore' })
   const exited = new Promise((resolve) => {
     child.once('exit', resolve)
     child.once('error', resolve)
@@ -478,7 +552,7 @@ function prepareProfile(profile, vault) {
   }
 }
 
-function collectWarnings(record) {
+export function collectWarnings(record) {
   const warnings = []
   if (record.tier !== 'packaged') {
     warnings.push(`tier is "${record.tier}", wall-clock metrics are not comparable`)
@@ -493,7 +567,7 @@ function collectWarnings(record) {
   }
   if (record.renderer && record.renderer.noteReadableMs == null) {
     warnings.push(
-      'no note was restored: open a note in the bench profile once, quit, and rerun for renderer_note_readable_ms'
+      'no note-readable mark within 8 s of load: with no note restored, open one in the bench profile once, quit, and rerun'
     )
   }
   if (record.quitWarning) {
@@ -502,12 +576,12 @@ function collectWarnings(record) {
   return warnings
 }
 
-async function measureRun({ run, executable, log, profile, appMtimeMs, firstRunAfterAppChange }) {
+async function measureRun({ run, executable, log, env, appMtimeMs, firstRunAfterAppChange }) {
   await delay(SETTLE_MS)
 
   const anchorOffset = logSizeOrZero(log)
   const t0 = Date.now()
-  const app = launch(executable, profile)
+  const app = launch(executable, env)
   running = app
 
   try {
@@ -528,7 +602,7 @@ async function measureRun({ run, executable, log, profile, appMtimeMs, firstRunA
       RENDERER_DEADLINE_MS,
       (text) => parseRendererMarks(text) !== null
     )
-    const tier = detectTier(slice)
+    const tier = classifyBuild(slice, executable, env)
 
     const record = {
       run,
@@ -558,8 +632,10 @@ async function measureRun({ run, executable, log, profile, appMtimeMs, firstRunA
 }
 
 async function runBench(options) {
-  const executable = resolveExecutable(options.appPath)
-  const log = logPath(process.env, process.platform, homedir())
+  const executable = resolveExecutable(options.appPath, options)
+  checkProfile(options.profile, process.env, process.platform, homedir())
+  const env = benchEnv(process.env, options.profile)
+  const log = logPath(env, process.platform, homedir())
   prepareProfile(options.profile, options.vault)
 
   const appMtimeMs = statSync(executable).mtimeMs
@@ -575,7 +651,7 @@ async function runBench(options) {
         run,
         executable,
         log,
-        profile: options.profile,
+        env,
         appMtimeMs,
         firstRunAfterAppChange
       })
@@ -593,6 +669,11 @@ async function runBench(options) {
       firstRunAfterAppChange = false
     }
   }
+
+  for (const run of runsMissingNoteReadable(runs)) {
+    failures.push({ run, message: 'no note-readable mark, while another run had one' })
+  }
+  failures.sort((a, b) => a.run - b.run)
 
   const summary = summarize(runs)
   const appVersion = runs.find((record) => record.appVersion)?.appVersion ?? 'unknown version'
