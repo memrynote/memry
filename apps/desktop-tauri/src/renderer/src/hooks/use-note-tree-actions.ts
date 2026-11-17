@@ -35,6 +35,7 @@ import { journalService } from '@/services/journal-service'
 import { useVaultConfig } from '@/hooks/use-vault-config'
 import { containsJournalFolder, journalDateForPath } from '@/lib/journal-path'
 import { BookmarkItemTypes } from '@memry/contracts/bookmark-types'
+import { bookmarksService } from '@/services/bookmarks-service'
 
 const log = createLogger('Hook:NoteTreeActions')
 
@@ -1209,7 +1210,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
     if (items.length === 0) return
     const t = getI18n().getFixedT(null, 'notes')
     try {
-      await window.api.bookmarks.bulkCreate(items)
+      await bookmarksService.bulkCreate(items)
       toast.success(t('tree.toast.selectionBookmarked', { count: items.length }))
     } catch (err) {
       log.error('Failed to bookmark selection', err)

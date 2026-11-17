@@ -81,6 +81,15 @@ vi.mock('../src/generated/bindings', () => {
       throw new Error(typeof result.error === 'string' ? result.error : '')
     return pick(result)
   }
+  // `window.api.bookmarks` and `window.api.recents` are typed as Electron's; tests set any method.
+  const bookmarks = () =>
+    window.api.bookmarks as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>
+  const recents = () =>
+    (
+      window.api as unknown as {
+        recents?: Record<string, ((...args: unknown[]) => Promise<unknown>) | undefined>
+      }
+    ).recents
   // `window.api.properties` is typed without merge and rename; component tests still set them.
   const properties = () =>
     window.api.properties as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>
@@ -400,10 +409,44 @@ vi.mock('../src/generated/bindings', () => {
       aiReindexEmbeddings: vi.fn(() => Promise.resolve({ success: true, computed: 0, skipped: 0 })),
       // Settings > General reads it on mount; the row's own test mocks the bindings.
       ocrLanguagesGetState: () =>
-        Promise.resolve({ selected: ['eng'], statuses: { eng: { state: 'ready' } } })
+        Promise.resolve({ selected: ['eng'], statuses: { eng: { state: 'ready' } } }),
+      // Bookmarks and recents (Step 30a) answer from `window.api.bookmarks` and
+      // `window.api.recents`, in the command shapes.
+      bookmarksList: async (input: unknown) => {
+        const listed = (await bookmarks().list(input)) as { bookmarks?: unknown[] } | unknown[]
+        return Array.isArray(listed)
+          ? { bookmarks: listed, total: listed.length, hasMore: false }
+          : listed
+      },
+      bookmarksListByType: (itemType: string) => bookmarks().listByType(itemType),
+      bookmarksGet: (id: string) => bookmarks().get(id),
+      bookmarksGetByItem: (input: unknown) => bookmarks().getByItem(input),
+      bookmarksIsBookmarked: async (input: unknown) =>
+        (await bookmarks().isBookmarked?.(input)) ?? false,
+      bookmarksCreate: (input: unknown) => answered(bookmarks().create(input), (r) => r.bookmark),
+      bookmarksToggle: (input: unknown) =>
+        answered(bookmarks().toggle(input), (r) => ({
+          isBookmarked: r.isBookmarked ?? false,
+          bookmark: r.bookmark ?? null
+        })),
+      bookmarksDelete: (id: string) => done(bookmarks().delete(id)),
+      bookmarksReorder: (ids: string[]) => done(bookmarks().reorder(ids)),
+      bookmarksBulkCreate: (items: unknown) =>
+        answered(bookmarks().bulkCreate(items), (r) => r.createdCount ?? 0),
+      bookmarksBulkDelete: (ids: string[]) =>
+        answered(bookmarks().bulkDelete(ids), (r) => r.deletedCount ?? 0),
+      recentsList: async (limit: number | null) =>
+        (await recents()?.list?.(limit ?? undefined)) ?? [],
+      recentsRecord: async (input: unknown) =>
+        Boolean(
+          ((await recents()?.record?.(input)) as { recorded?: boolean } | undefined)?.recorded
+        )
     },
     events: {
       vaultStatusChangedEvent: event(() => window.api.onVaultStatusChanged, revised),
+      bookmarkCreatedEvent: event(() => api().onBookmarkCreated ?? (() => () => {})),
+      bookmarkDeletedEvent: event(() => api().onBookmarkDeleted ?? (() => () => {})),
+      bookmarksReorderedEvent: event(() => api().onBookmarksReordered ?? (() => () => {})),
       vaultListChangedEvent: event(() => window.api.onVaultListChanged),
       vaultConfigChangedEvent: event(() => window.api.onVaultConfigChanged),
       vaultErrorEvent: event(

@@ -4,6 +4,7 @@
 pub mod account;
 pub mod ai;
 pub mod attachments;
+pub mod bookmarks;
 pub mod command_failure;
 pub mod config;
 pub mod e2e;
@@ -24,6 +25,7 @@ pub mod logging;
 pub mod notes;
 pub mod oauth;
 pub mod paths;
+pub mod recents;
 pub mod redact;
 pub mod registry;
 pub mod seams;

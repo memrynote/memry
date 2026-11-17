@@ -54,6 +54,18 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::ai_structured::writing_generate_assist::<Wry>,
             // app
             crate::commands::app::app_info,
+            // bookmarks
+            crate::commands::bookmarks::bookmarks_bulk_create::<Wry>,
+            crate::commands::bookmarks::bookmarks_bulk_delete::<Wry>,
+            crate::commands::bookmarks::bookmarks_create::<Wry>,
+            crate::commands::bookmarks::bookmarks_delete::<Wry>,
+            crate::commands::bookmarks::bookmarks_get::<Wry>,
+            crate::commands::bookmarks::bookmarks_get_by_item::<Wry>,
+            crate::commands::bookmarks::bookmarks_is_bookmarked::<Wry>,
+            crate::commands::bookmarks::bookmarks_list::<Wry>,
+            crate::commands::bookmarks::bookmarks_list_by_type::<Wry>,
+            crate::commands::bookmarks::bookmarks_reorder::<Wry>,
+            crate::commands::bookmarks::bookmarks_toggle::<Wry>,
             // crdt (`crdt_open_doc`, `crdt_apply_update` and the sync steps are binary commands)
             crate::commands::editor::crdt_close_doc::<Wry>,
             crate::commands::editor::crdt_get_health::<Wry>,
@@ -207,6 +219,9 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::properties::properties_rename::<Wry>,
             crate::commands::properties::properties_resolve_refs::<Wry>,
             crate::commands::properties::properties_set::<Wry>,
+            // recents
+            crate::commands::recents::recents_list::<Wry>,
+            crate::commands::recents::recents_record::<Wry>,
             // shortcut
             crate::commands::shortcuts::shortcut_register_global_capture,
             crate::commands::shortcuts::shortcut_set_global_capture,
@@ -349,6 +364,10 @@ pub fn builder() -> Builder<Wry> {
             crate::events::AiInlineSettingsChangedEvent,
             // app
             crate::events::AppNavigationRequestedEvent,
+            // bookmarks
+            crate::events::BookmarkCreatedEvent,
+            crate::events::BookmarkDeletedEvent,
+            crate::events::BookmarksReorderedEvent,
             // crdt
             crate::events::CrdtProviderReadyEvent,
             crate::events::CrdtProviderResetEvent,
