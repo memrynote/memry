@@ -155,12 +155,18 @@ impl BootstrapMetrics {
 
     /// Opens the window; a window already open keeps its earlier, truer start.
     pub fn begin(&self, source: BootstrapSource) {
+        self.begin_since(source, Instant::now());
+    }
+
+    /// [`Self::begin`] for a window that started before this supervisor existed: a vault
+    /// download starts before its folder does (`beginBootstrap` runs ahead of provisioning).
+    pub fn begin_since(&self, source: BootstrapSource, started: Instant) {
         let mut window = lock(&self.window);
         if window.is_none() {
             tracing::info!(source = source.as_str(), "bootstrap window opened");
             *window = Some(Window {
                 source,
-                started: Instant::now(),
+                started,
                 interactive_sent: false,
             });
         }
