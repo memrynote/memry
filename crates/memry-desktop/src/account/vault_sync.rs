@@ -21,7 +21,6 @@ use tokio::sync::broadcast;
 use super::binding::{Applied, BindingChoice, BindingState};
 use super::{AccountError, AccountService};
 use crate::registry::VaultRegistry;
-use crate::session::at_rest_key::AtRestKeys;
 use crate::session::{OpenVault, SupervisorFactory, lock};
 use crate::shell::power::PowerEvent;
 use crate::sync::backend::{SyncBackend, VaultSyncBackend};
@@ -114,8 +113,6 @@ pub struct SyncWiring {
     pub power: Option<broadcast::Sender<PowerEvent>>,
     /// Fired by `KeyringStore::subscribe_recovered`.
     pub keychain_recovered: broadcast::Sender<()>,
-    /// The session's at-rest key owner, shared with the agent.
-    pub at_rest_keys: Arc<AtRestKeys>,
     pub telemetry: Option<Arc<Service>>,
     pub on_status: Arc<dyn Fn(&SyncStatus) + Send + Sync>,
     pub bindings: Arc<OpenVaultBinding>,
@@ -173,7 +170,7 @@ impl SyncWiring {
             Arc::clone(&self.reachability),
             Vec::new(),
             Arc::new(move || account.sync_facts()),
-            Arc::clone(&self.at_rest_keys),
+            self.account.at_rest_keys(),
         );
         let supervisor = SyncSupervisor::start(
             &self.runtime,

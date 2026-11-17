@@ -64,6 +64,30 @@ impl Ephemeral {
     }
 }
 
+impl Ephemeral {
+    /// The live conversations, oldest first, and their messages, oldest first. A deleted
+    /// conversation and its messages were never anywhere else, so they are left out.
+    pub(super) fn live(&self) -> (Vec<Conversation>, Vec<Message>) {
+        let mut conversations: Vec<Conversation> = lock(&self.conversations)
+            .values()
+            .filter(|(_, deleted)| !deleted)
+            .map(|(conversation, _)| conversation.clone())
+            .collect();
+        conversations.sort_by(|a, b| a.created_at.cmp(&b.created_at).then(a.id.cmp(&b.id)));
+        let mut messages: Vec<Message> = lock(&self.messages)
+            .values()
+            .filter(|message| {
+                conversations
+                    .iter()
+                    .any(|conversation| conversation.id == message.conversation_id)
+            })
+            .cloned()
+            .collect();
+        messages.sort_by(|a, b| a.created_at.cmp(&b.created_at).then(a.id.cmp(&b.id)));
+        (conversations, messages)
+    }
+}
+
 impl ChatRecords for Ephemeral {
     fn create_conversation(&self, new: &NewConversation<'_>) -> Result<Conversation, AgentError> {
         let now = now_ms();

@@ -237,7 +237,10 @@ async fn a_locked_keychain_keeps_history_in_memory_until_it_recovers() {
         .records()
         .create_conversation(&new_conversation("In memory"))
         .unwrap();
-    assert_eq!(store.records().conversations("v1").unwrap(), vec![before]);
+    assert_eq!(
+        store.records().conversations("v1").unwrap(),
+        vec![before.clone()]
+    );
     assert_eq!(
         count(&f.plain(), "SELECT COUNT(*) FROM agent_conversations"),
         0
@@ -250,11 +253,96 @@ async fn a_locked_keychain_keeps_history_in_memory_until_it_recovers() {
         .records()
         .create_conversation(&new_conversation("On disk"))
         .unwrap();
-    assert_eq!(store.records().conversations("v1").unwrap(), vec![after]);
+    assert_eq!(
+        store.records().conversations("v1").unwrap(),
+        vec![after, before],
+        "the conversation kept in memory moved to disk"
+    );
     assert_eq!(
         count(&f.plain(), "SELECT COUNT(*) FROM agent_conversations"),
-        1
+        2
     );
+}
+
+/// The keychain coming back in the middle of a turn moves what the agent kept in memory to
+/// disk, ids and times kept: the streaming reply finishes, and nothing is lost or orphaned
+/// (REVIEW-4884 item 2).
+#[tokio::test(flavor = "multi_thread")]
+async fn probe_a_reply_streaming_when_the_keychain_recovers_finishes_on_disk() {
+    let f = Fixture::new(true);
+    f.keychain.locked.store(true, Ordering::SeqCst);
+    let vault = f.vault();
+    let store = f.store(&vault);
+    let conversation = store
+        .records()
+        .create_conversation(&new_conversation("Mid turn"))
+        .unwrap();
+    let gone = store
+        .records()
+        .create_conversation(&new_conversation("Deleted in memory"))
+        .unwrap();
+    assert!(store.records().delete_conversation(&gone.id).unwrap());
+    let question = json!({"role": "user", "data": {"text": "Ask"}});
+    let user = store
+        .records()
+        .append_message(&NewMessage {
+            role: "user",
+            ..message(&conversation.id, &question, "completed")
+        })
+        .unwrap();
+    let partial = reply("Half");
+    let streaming = store
+        .records()
+        .append_message(&message(&conversation.id, &partial, "streaming"))
+        .unwrap();
+
+    f.keychain.locked.store(false, Ordering::SeqCst);
+    f.recovered.send(()).unwrap();
+    eventually("history persists", || store.history_persisted()).await;
+
+    let answer = reply("Whole answer");
+    let edit = MessageEdit {
+        content: Some(&answer),
+        attachments: None,
+    };
+    let done = store
+        .records()
+        .finalize_message(&streaming.id, "completed", &edit)
+        .unwrap();
+    assert_eq!(
+        store.records().conversations("v1").unwrap(),
+        vec![conversation.clone()]
+    );
+    let mut messages = store.records().messages(&conversation.id).unwrap();
+    let mut expected = vec![user, done];
+    // Both were written within one millisecond, where the order falls to the ids.
+    messages.sort_by(|a, b| a.id.cmp(&b.id));
+    expected.sort_by(|a, b| a.id.cmp(&b.id));
+    assert_eq!(messages, expected, "ids and times kept");
+    let conn = f.plain();
+    assert_eq!(count(&conn, "SELECT COUNT(*) FROM agent_conversations"), 1);
+    assert_eq!(count(&conn, "SELECT COUNT(*) FROM agent_messages"), 2);
+    assert_eq!(
+        count(
+            &conn,
+            "SELECT COUNT(*) FROM outbox WHERE item_type LIKE 'agent_%'"
+        ),
+        3,
+        "the conversation and both final messages are queued once"
+    );
+}
+
+/// A store dropped while it waits for the keychain lets go of the vault, so it can close and
+/// reopen (REVIEW-4884 item 4).
+#[tokio::test(flavor = "multi_thread")]
+async fn probe_a_dropped_store_lets_go_of_its_vault() {
+    let f = Fixture::new(true);
+    f.keychain.locked.store(true, Ordering::SeqCst);
+    let vault = f.vault();
+    let store = f.store(&vault);
+    assert!(!store.history_persisted());
+    drop(store);
+    eventually("the vault is released", || Arc::strong_count(&vault) == 1).await;
 }
 
 #[tokio::test(flavor = "multi_thread")]

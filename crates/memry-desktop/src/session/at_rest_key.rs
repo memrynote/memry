@@ -1,9 +1,10 @@
 //! The one owner of the open vault's at-rest key (Step 28, #3545, D3): the vault key the agent
 //! conversation and message records are sealed under (`Vault::set_at_rest_key`, chapter 04
 //! §4.17). Sync and the agent each hold an [`AtRestKeyGuard`] while they need the key. The first
-//! guard installs it, and the key is removed when the last guard drops or the vault closes. Before
-//! this owner, sync removed the key whenever it stopped, which would strip it from an agent in the
-//! middle of a session.
+//! guard installs it, and the key is removed when the last guard drops, the vault closes, or the
+//! account signs out. Before this owner, sync removed the key whenever it stopped, which would
+//! strip it from an agent in the middle of a session. A closed vault gets no key again, and a
+//! vault never takes the key from another one that still has guards out.
 //!
 //! It never mints a key: the vault key is derived from the master key in the keychain, and
 //! `Vault::set_at_rest_key` refuses one that does not match the vault's stored verifier.
@@ -30,6 +31,12 @@ pub enum KeyError {
     /// The vault refused the key (its verifier differs) or could not seal pending records.
     #[error(transparent)]
     Storage(#[from] StorageError),
+    /// The vault closed; a caller that comes late gets no key for it.
+    #[error("the vault is closed")]
+    Closed,
+    /// Another vault holds the key and has guards out.
+    #[error("another vault holds the at-rest key")]
+    Busy,
 }
 
 impl From<KeyError> for SyncError {
@@ -39,6 +46,9 @@ impl From<KeyError> for SyncError {
             KeyError::SecureStore(error) => error.into(),
             KeyError::Crypto(error) => error.into(),
             KeyError::Storage(error) => error.into(),
+            // The vault is closing or another one is open: this sync session has ended, as the
+            // backend's own closed-generation check reports.
+            KeyError::Closed | KeyError::Busy => SyncError::Locked,
         }
     }
 }
@@ -50,12 +60,23 @@ pub struct AtRestKeys {
 }
 
 /// The vault the key is installed in, and how many guards hold it. `generation` changes when the
-/// vault changes or closes, so a guard of an earlier one releases nothing.
+/// vault changes, closes or the account signs out, so a guard of an earlier one releases nothing.
+/// `closed` names the vaults that closed while something still holds them.
 #[derive(Default)]
 struct Slot {
     vault: Weak<Vault>,
     holders: usize,
     generation: u64,
+    closed: Vec<Weak<Vault>>,
+}
+
+impl Slot {
+    /// Forgets the installed vault and invalidates every guard out.
+    fn reset(&mut self) {
+        self.vault = Weak::new();
+        self.holders = 0;
+        self.generation += 1;
+    }
 }
 
 /// Holds the key installed in its vault. Dropping the last one removes it.
@@ -77,16 +98,21 @@ impl AtRestKeys {
     /// Installs run one at a time, so two callers never read the keychain twice for one vault.
     pub fn acquire(self: &Arc<Self>, vault: &Arc<Vault>) -> Result<AtRestKeyGuard, KeyError> {
         let mut slot = crate::session::lock(&self.slot);
-        let held = slot.vault.upgrade();
-        if !held.as_ref().is_some_and(|held| Arc::ptr_eq(held, vault)) {
-            if let Some(previous) = held {
-                remove(&previous);
+        // A dropped vault can never be acquired again, so its entry is no longer needed.
+        slot.closed.retain(|closed| closed.strong_count() > 0);
+        let target = Arc::downgrade(vault);
+        if slot.closed.iter().any(|closed| closed.ptr_eq(&target)) {
+            return Err(KeyError::Closed);
+        }
+        if !slot.vault.ptr_eq(&target) {
+            if let Some(held) = slot.vault.upgrade() {
+                if slot.holders > 0 {
+                    return Err(KeyError::Busy);
+                }
+                remove(&held);
             }
-            *slot = Slot {
-                vault: Arc::downgrade(vault),
-                holders: 0,
-                generation: slot.generation + 1,
-            };
+            slot.reset();
+            slot.vault = target;
         }
         if slot.holders == 0 {
             self.install(vault)?;
@@ -98,20 +124,26 @@ impl AtRestKeys {
         })
     }
 
-    /// The vault closes: its key goes now, whatever guards are still out. Those release nothing.
+    /// The vault closes: its key goes now, whatever guards are still out, and it gets no key
+    /// again. Those guards release nothing.
     pub fn close(&self, vault: &Arc<Vault>) {
         let mut slot = crate::session::lock(&self.slot);
-        if slot
-            .vault
-            .upgrade()
-            .is_some_and(|held| Arc::ptr_eq(&held, vault))
-        {
+        let closed = Arc::downgrade(vault);
+        if slot.vault.ptr_eq(&closed) {
             remove(vault);
-            *slot = Slot {
-                generation: slot.generation + 1,
-                ..Slot::default()
-            };
+            slot.reset();
         }
+        slot.closed.push(closed);
+    }
+
+    /// Sign-out: the key goes now, whatever guards are still out; those release nothing. The
+    /// vault stays open, and the next [`acquire`](Self::acquire) reads the keychain again.
+    pub fn clear(&self) {
+        let mut slot = crate::session::lock(&self.slot);
+        if let Some(vault) = slot.vault.upgrade() {
+            remove(&vault);
+        }
+        slot.reset();
     }
 
     fn install(&self, vault: &Vault) -> Result<(), KeyError> {

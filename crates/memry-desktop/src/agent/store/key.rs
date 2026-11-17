@@ -1,8 +1,9 @@
 //! Opening the store on the vault key. The key comes from the session's owner
 //! ([`crate::session::at_rest_key`]), which derives it from the keychain's master key and refuses
 //! one that does not match the vault's verifier; this module never mints one. A keychain that does
-//! not answer (`Locked`, a timeout) is retried when it recovers, and new writes then go to disk.
-//! An absent master key or a refused key leaves the store in memory for the session.
+//! not answer (`Locked`, a timeout) is retried when it recovers, and the store then moves to disk
+//! with what it kept in memory. An absent master key or a refused key leaves the store in memory
+//! for the session. The retry holds neither the store nor the vault, and ends with the store.
 
 use std::sync::{Arc, Weak};
 
@@ -13,7 +14,7 @@ use tokio::sync::broadcast::error::RecvError;
 use super::ephemeral::Ephemeral;
 use super::gate::EntitlementGate;
 use super::sealed::Sealed;
-use super::{AgentStore, ChatRecords};
+use super::{AgentStore, Records};
 use crate::session::at_rest_key::{AtRestKeyGuard, AtRestKeys, KeyError};
 
 /// What [`AgentStore::open`] is built from.
@@ -39,23 +40,25 @@ impl AgentStore {
             keychain_recovered,
         } = parts;
         let sealed = SealedParts {
-            vault: Arc::clone(&vault),
+            vault: Arc::downgrade(&vault),
             device_id,
             gate,
         };
         let error = match keys.acquire(&vault) {
-            Ok(guard) => return Arc::new(Self::over(sealed.with(guard), true)),
+            Ok(guard) => return Arc::new(Self::over(Records::Disk(sealed.with(&vault, guard)))),
             Err(error) => error,
         };
-        let store = Arc::new(Self::over(Arc::new(Ephemeral::default()), false));
+        let store = Arc::new(Self::over(Records::Memory(Ephemeral::default())));
         if let KeyError::SecureStore(_) = error {
             tracing::warn!(%error, "agent chat history kept in memory until the keychain answers");
-            runtime.spawn(retry_on_recovery(
+            let retry = runtime.spawn(retry_on_recovery(
                 Arc::downgrade(&store),
                 keys,
-                sealed,
+                Arc::new(sealed),
                 keychain_recovered,
             ));
+            // Set once, here, before anyone else sees the store.
+            let _ = store.retry.set(retry.abort_handle());
         } else {
             tracing::warn!(%error, "agent chat history kept in memory: no usable vault key");
         }
@@ -65,29 +68,29 @@ impl AgentStore {
 
 /// What the on-disk records are built from once a key is held.
 struct SealedParts {
-    vault: Arc<Vault>,
+    vault: Weak<Vault>,
     device_id: String,
     gate: EntitlementGate,
 }
 
 impl SealedParts {
-    fn with(&self, guard: AtRestKeyGuard) -> Arc<dyn ChatRecords> {
-        Arc::new(Sealed {
-            db: self.vault.db_handle(),
-            key: self.vault.at_rest_key(),
+    fn with(&self, vault: &Vault, guard: AtRestKeyGuard) -> Sealed {
+        Sealed {
+            db: vault.db_handle(),
+            key: vault.at_rest_key(),
             device_id: self.device_id.clone(),
             gate: self.gate.clone(),
             _guard: guard,
-        })
+        }
     }
 }
 
-/// Waits for the keychain to recover, then moves the store to disk. Ends when the store is gone,
-/// the key is installed, or the read fails for a reason a retry does not fix.
+/// Waits for the keychain to recover, then moves the store to disk. Ends when the store or the
+/// vault is gone, the store is on disk, or the read fails for a reason a retry does not fix.
 async fn retry_on_recovery(
     store: Weak<AgentStore>,
     keys: Arc<AtRestKeys>,
-    sealed: SealedParts,
+    sealed: Arc<SealedParts>,
     mut recovered: broadcast::Receiver<()>,
 ) {
     loop {
@@ -95,31 +98,38 @@ async fn retry_on_recovery(
             Ok(()) | Err(RecvError::Lagged(_)) => {}
             Err(RecvError::Closed) => return,
         }
-        if store.strong_count() == 0 {
-            return;
-        }
-        let (keys, vault) = (Arc::clone(&keys), Arc::clone(&sealed.vault));
-        let acquired = tokio::task::spawn_blocking(move || keys.acquire(&vault)).await;
         let Some(store) = store.upgrade() else {
             return;
         };
-        match acquired {
-            Ok(Ok(guard)) => {
-                store.persist(sealed.with(guard));
-                tracing::info!("agent chat history persists again");
-                return;
-            }
-            Ok(Err(KeyError::SecureStore(error))) => {
-                tracing::warn!(%error, "the keychain still does not give the vault key");
-            }
-            Ok(Err(error)) => {
-                tracing::warn!(%error, "agent chat history stays in memory");
-                return;
-            }
+        let (keys, sealed) = (Arc::clone(&keys), Arc::clone(&sealed));
+        match tokio::task::spawn_blocking(move || move_to_disk(&store, &keys, &sealed)).await {
+            Ok(true) => {}
+            Ok(false) => return,
             Err(error) => {
                 tracing::warn!(%error, "the at-rest key task failed");
                 return;
             }
         }
     }
+}
+
+/// One attempt to move the store to disk. `true` when the keychain may answer later.
+fn move_to_disk(store: &AgentStore, keys: &Arc<AtRestKeys>, sealed: &SealedParts) -> bool {
+    let Some(vault) = sealed.vault.upgrade() else {
+        return false;
+    };
+    match keys.acquire(&vault) {
+        Ok(guard) => match store.persist(sealed.with(&vault, guard)) {
+            Ok(()) => tracing::info!("agent chat history persists again"),
+            Err(error) => {
+                tracing::warn!(%error, "agent chat history stays in memory: it could not be written");
+            }
+        },
+        Err(KeyError::SecureStore(error)) => {
+            tracing::warn!(%error, "the keychain still does not give the vault key");
+            return true;
+        }
+        Err(error) => tracing::warn!(%error, "agent chat history stays in memory"),
+    }
+    false
 }

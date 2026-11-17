@@ -96,14 +96,38 @@ pub fn create(
     device_id: &str,
     now_ms: i64,
 ) -> Result<Conversation, AgentError> {
-    let id = mint_id();
+    let conversation = Conversation {
+        id: mint_id(),
+        vault_id: new.vault_id.to_owned(),
+        title: new.title.to_owned(),
+        backend: new.backend.to_owned(),
+        backend_model: new.backend_model.map(str::to_owned),
+        trust_list: Vec::new(),
+        pinned: false,
+        created_at: now_ms,
+        updated_at: now_ms,
+    };
+    import(conn, key, &conversation, queue, device_id, now_ms)?;
+    Ok(conversation)
+}
+
+/// Stores a conversation as given, with its id and times: [`create`], and a
+/// conversation the agent kept in memory while the vault key was not readable.
+pub fn import(
+    conn: &Connection,
+    key: &AtRestKey,
+    conversation: &Conversation,
+    queue: Queue,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<(), AgentError> {
     let mut payload = object(json!({
-        "vaultId": new.vault_id,
-        "title": new.title,
-        "backend": new.backend,
-        "backendModel": new.backend_model,
-        "trustList": [],
-        "pinned": false,
+        "vaultId": conversation.vault_id,
+        "title": conversation.title,
+        "backend": conversation.backend,
+        "backendModel": conversation.backend_model,
+        "trustList": conversation.trust_list,
+        "pinned": conversation.pinned,
         "clock": next_clock(&Object::new(), device_id)?,
         "fieldClocks": next_field_clocks(
             &Object::new(),
@@ -111,20 +135,20 @@ pub fn create(
             &SYNCABLE_FIELDS,
             device_id,
         )?,
-        "createdAt": now_ms,
-        "updatedAt": now_ms,
+        "createdAt": conversation.created_at,
+        "updatedAt": conversation.updated_at,
         "deletedAt": null,
     }));
-    let conversation = from_payload(&id, &payload);
     seal_object(ITEM_TYPE, &mut payload, key)?;
+    let id = &conversation.id;
     agent_queue::commit(
         conn,
         queue,
-        &outbox::Change::upsert(ITEM_TYPE, &id),
+        &outbox::Change::upsert(ITEM_TYPE, id),
         now_ms,
-        |tx| insert_local(tx, ITEM_TYPE, &id, payload, now_ms),
+        |tx| insert_local(tx, ITEM_TYPE, id, payload, now_ms),
     )?;
-    Ok(conversation)
+    Ok(())
 }
 
 /// Changes the patched fields of a live conversation, ticks its clock and
@@ -295,3 +319,6 @@ fn from_payload(id: &str, payload: &Object) -> Conversation {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod apply_tests;

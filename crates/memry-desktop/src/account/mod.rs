@@ -38,6 +38,7 @@ use zeroize::Zeroizing;
 
 use crate::error::{CoreError, FailureKind};
 use crate::registry::config::{AppConfig, ConfigError};
+use crate::session::at_rest_key::AtRestKeys;
 
 /// Why an account call failed. Messages never carry a phrase, a key or a token.
 #[derive(Debug, thiserror::Error)]
@@ -193,6 +194,8 @@ pub struct AccountService {
     /// One vault directory refresh at a time, and when the last one read the account's list
     /// (`lastRefreshAt`, `sync/vault-directory.ts:54`).
     directory: tokio::sync::Mutex<Option<tokio::time::Instant>>,
+    /// The open vault's at-rest key, over the same keychain; sign-out clears it.
+    at_rest_keys: Arc<AtRestKeys>,
 }
 
 /// The core's sign-out marker (#4767), beside `memry-config.json`. Electron writes no such file,
@@ -223,6 +226,7 @@ impl AccountService {
                     .into_owned(),
             ),
         )?);
+        let at_rest_keys = AtRestKeys::new(Arc::clone(&store));
         let service = Self {
             linking: linking::Linking::new(session.device_approver()),
             session,
@@ -236,6 +240,7 @@ impl AccountService {
             oauth: Mutex::new(None),
             oauth_start: tokio::sync::Mutex::new(()),
             directory: tokio::sync::Mutex::new(None),
+            at_rest_keys,
         };
         service.restore();
         Ok(service)
@@ -244,6 +249,11 @@ impl AccountService {
     /// The session, for the account calls that need nothing else (devices, vaults, billing).
     pub fn session(&self) -> &AuthSession {
         &self.session
+    }
+
+    /// The session's at-rest key owner, shared by sync and the agent (#3545 D3).
+    pub fn at_rest_keys(&self) -> Arc<AtRestKeys> {
+        Arc::clone(&self.at_rest_keys)
     }
 
     /// The session shared, for the sync backend of each open vault.

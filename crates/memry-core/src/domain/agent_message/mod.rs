@@ -95,7 +95,7 @@ pub fn append(
             new.status
         )));
     }
-    insert(conn, key, new, queue, device_id, now_ms)
+    insert(conn, key, new, Some(queue), device_id, now_ms)
 }
 
 /// Stores a message that is still streaming, on this device only. A terminal
@@ -113,7 +113,7 @@ pub fn write_local(
             new.status
         )));
     }
-    insert(conn, key, new, Queue::LocalOnly, device_id, now_ms)
+    insert(conn, key, new, None, device_id, now_ms)
 }
 
 /// Replaces the content and attachments of a streaming message, on this
@@ -126,16 +126,7 @@ pub fn update_streaming(
     device_id: &str,
     now_ms: i64,
 ) -> Result<Message, AgentError> {
-    rewrite(
-        conn,
-        key,
-        id,
-        None,
-        edit,
-        Queue::LocalOnly,
-        device_id,
-        now_ms,
-    )
+    rewrite(conn, key, id, None, edit, None, device_id, now_ms)
 }
 
 /// Ends a streaming message with a terminal `status` and queues it under
@@ -156,7 +147,16 @@ pub fn finalize(
             "agent message status `{status}` is not terminal"
         )));
     }
-    rewrite(conn, key, id, Some(status), edit, queue, device_id, now_ms)
+    rewrite(
+        conn,
+        key,
+        id,
+        Some(status),
+        edit,
+        Some(queue),
+        device_id,
+        now_ms,
+    )
 }
 
 /// One live message by id, streaming or final.
@@ -171,37 +171,90 @@ pub struct MessageEdit<'a> {
     pub attachments: Option<&'a Value>,
 }
 
+/// `queue` is `None` for a streaming message.
 fn insert(
     conn: &Connection,
     key: &AtRestKey,
     new: &NewMessage<'_>,
-    queue: Queue,
+    queue: Option<Queue>,
     device_id: &str,
     now_ms: i64,
 ) -> Result<Message, AgentError> {
-    let id = new.id.map_or_else(mint_id, str::to_owned);
+    let message = Message {
+        id: new.id.map_or_else(mint_id, str::to_owned),
+        conversation_id: new.conversation_id.to_owned(),
+        role: new.role.to_owned(),
+        content: new.content.clone(),
+        attachments: new.attachments.clone(),
+        tool_call_id: new.tool_call_id.map(str::to_owned),
+        status: new.status.to_owned(),
+        created_at: now_ms,
+        updated_at: now_ms,
+    };
+    store(conn, key, &message, queue, device_id, now_ms)?;
+    Ok(message)
+}
+
+/// Stores a message the agent kept in memory while the vault key was not
+/// readable, with its id and times. A terminal one goes to `queue`, a
+/// streaming one stays on this device as [`write_local`] keeps it.
+pub fn import(
+    conn: &Connection,
+    key: &AtRestKey,
+    message: &Message,
+    queue: Queue,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<(), AgentError> {
+    let queue = is_terminal(&message.status).then_some(queue);
+    store(conn, key, message, queue, device_id, now_ms)
+}
+
+fn store(
+    conn: &Connection,
+    key: &AtRestKey,
+    message: &Message,
+    queue: Option<Queue>,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<(), AgentError> {
     let mut payload = object(json!({
-        "conversationId": new.conversation_id,
-        "role": new.role,
-        "content": new.content,
-        "attachments": new.attachments,
-        "toolCallId": new.tool_call_id,
-        "status": new.status,
+        "conversationId": message.conversation_id,
+        "role": message.role,
+        "content": message.content,
+        "attachments": message.attachments,
+        "toolCallId": message.tool_call_id,
+        "status": message.status,
         "clock": next_clock(&Object::new(), device_id)?,
-        "createdAt": now_ms,
-        "updatedAt": now_ms,
+        "createdAt": message.created_at,
+        "updatedAt": message.updated_at,
         "deletedAt": null,
     }));
-    let message = from_payload(&id, &payload);
     seal_object(ITEM_TYPE, &mut payload, key)?;
-    agent_queue::commit(
+    let id = &message.id;
+    commit(
         conn,
         queue,
-        &outbox::Change::upsert(ITEM_TYPE, &id),
+        &outbox::Change::upsert(ITEM_TYPE, id),
         now_ms,
-        |tx| insert_local(tx, ITEM_TYPE, &id, payload, now_ms),
+        |tx| insert_local(tx, ITEM_TYPE, id, payload, now_ms),
     )?;
-    Ok(message)
+    Ok(())
+}
+
+/// [`agent_queue::commit`], or for a streaming write (`None`)
+/// [`agent_queue::commit_streaming`].
+fn commit<T>(
+    conn: &Connection,
+    queue: Option<Queue>,
+    change: &outbox::Change,
+    now_ms: i64,
+    source: impl FnOnce(&Connection) -> Result<T, StorageError>,
+) -> Result<T, StorageError> {
+    match queue {
+        Some(queue) => agent_queue::commit(conn, queue, change, now_ms, source),
+        None => agent_queue::commit_streaming(conn, source),
+    }
 }
 
 /// Rewrites a message that is not terminal yet under this device's next tick.
@@ -212,7 +265,7 @@ fn rewrite(
     id: &str,
     status: Option<&str>,
     edit: &MessageEdit<'_>,
-    queue: Queue,
+    queue: Option<Queue>,
     device_id: &str,
     now_ms: i64,
 ) -> Result<Message, AgentError> {
@@ -233,7 +286,7 @@ fn rewrite(
         changed.insert("status".to_owned(), json!(status));
     }
     seal_object(ITEM_TYPE, &mut changed, key)?;
-    agent_queue::commit(
+    commit(
         conn,
         queue,
         &outbox::Change::upsert(ITEM_TYPE, id),

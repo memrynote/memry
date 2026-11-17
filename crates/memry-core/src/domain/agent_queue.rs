@@ -9,6 +9,13 @@
 //! re-upload (`sync::hardening::manifest::REUPLOADED`) names neither agent
 //! type, so a [`Queue::LocalOnly`] row stays on this device until
 //! [`backfill`] or a later queued write sends it.
+//!
+//! A push deletes the outbox rows it sent, so [`backfill`] cannot tell a sent
+//! record from one never queued. It runs only while the vault's marker says a
+//! record may be waiting: a [`Queue::LocalOnly`] write and a turn to unpaid
+//! ([`mark_backfill_pending`]) set it, and a backfill clears it in its own
+//! transaction. A vault with no marker row is pending, so the rows an Electron
+//! build wrote (it queued none) are backfilled once.
 
 use rusqlite::{Connection, OptionalExtension, params};
 
@@ -28,8 +35,12 @@ pub enum Queue {
     LocalOnly,
 }
 
+/// The `meta` row a backfill writes. Absent means a backfill is pending.
+const BACKFILL_DONE: &str = "agent.backfill_done";
+
 /// Runs `source` in one transaction and, under [`Queue::Outbox`], queues
-/// `change` in it ([`outbox::commit`]).
+/// `change` in it ([`outbox::commit`]). Under [`Queue::LocalOnly`] it marks
+/// the vault's backfill pending in the same transaction.
 pub(crate) fn commit<T>(
     conn: &Connection,
     queue: Queue,
@@ -42,8 +53,29 @@ pub(crate) fn commit<T>(
     }
     let transaction = conn.unchecked_transaction().map_err(failed)?;
     let value = source(&transaction)?;
+    mark_backfill_pending(&transaction)?;
     transaction.commit().map_err(failed)?;
     Ok(value)
+}
+
+/// Runs a streaming write in one transaction: stored on this device, never
+/// queued, and asking for no backfill, which skips a message until it is final.
+pub(crate) fn commit_streaming<T>(
+    conn: &Connection,
+    source: impl FnOnce(&Connection) -> Result<T, StorageError>,
+) -> Result<T, StorageError> {
+    let transaction = conn.unchecked_transaction().map_err(failed)?;
+    let value = source(&transaction)?;
+    transaction.commit().map_err(failed)?;
+    Ok(value)
+}
+
+/// Makes the next [`backfill`] of this vault run: the account turned unpaid,
+/// and the server may not hold what this device writes next.
+pub fn mark_backfill_pending(conn: &Connection) -> Result<(), StorageError> {
+    conn.execute("DELETE FROM meta WHERE key = ?1", params![BACKFILL_DONE])
+        .map(drop)
+        .map_err(failed)
 }
 
 /// Queues the current state of each listed record that is not queued yet, in
@@ -57,13 +89,24 @@ pub fn enqueue_existing(
     now_ms: i64,
 ) -> Result<usize, StorageError> {
     let transaction = conn.unchecked_transaction().map_err(failed)?;
+    let queued = enqueue(&transaction, item_type, ids, now_ms)?;
+    transaction.commit().map_err(failed)?;
+    Ok(queued)
+}
+
+fn enqueue(
+    conn: &Connection,
+    item_type: &str,
+    ids: &[String],
+    now_ms: i64,
+) -> Result<usize, StorageError> {
     let mut queued = 0;
     for id in ids {
-        let Some(row) = sync_items::load(&transaction, item_type, id)? else {
+        let Some(row) = sync_items::load(conn, item_type, id)? else {
             continue;
         };
-        if is_queued(&transaction, item_type, id)?
-            || (item_type == agent_message::ITEM_TYPE && !is_final(&transaction, id)?)
+        if is_queued(conn, item_type, id)?
+            || (item_type == agent_message::ITEM_TYPE && !is_final(conn, id)?)
         {
             continue;
         }
@@ -72,9 +115,8 @@ pub fn enqueue_existing(
         } else {
             Change::upsert(item_type, id)
         };
-        queued += usize::from(outbox::enqueue(&transaction, &change, now_ms)?.is_some());
+        queued += usize::from(outbox::enqueue(conn, &change, now_ms)?.is_some());
     }
-    transaction.commit().map_err(failed)?;
     Ok(queued)
 }
 
@@ -82,8 +124,21 @@ pub fn enqueue_existing(
 /// final message of those conversations, as Electron's
 /// `backfillAgentChatRows` does when the account turns paid. A deleted
 /// conversation is queued too, so one the server holds from an earlier paid
-/// period is deleted there. Returns how many it queued.
+/// period is deleted there. Runs only while the backfill is pending, and
+/// clears it in the same transaction. Returns how many it queued.
 pub fn backfill(conn: &Connection, vault_id: &str, now_ms: i64) -> Result<usize, StorageError> {
+    let transaction = conn.unchecked_transaction().map_err(failed)?;
+    let pending: bool = transaction
+        .query_row(
+            "SELECT NOT EXISTS(SELECT 1 FROM meta WHERE key = ?1)",
+            params![BACKFILL_DONE],
+            |row| row.get(0),
+        )
+        .map_err(failed)?;
+    if !pending {
+        return Ok(0);
+    }
+    let conn = &transaction;
     let conversations = ids(
         conn,
         "SELECT id FROM agent_conversations WHERE vault_id = ?1 ORDER BY created_at, id",
@@ -96,10 +151,15 @@ pub fn backfill(conn: &Connection, vault_id: &str, now_ms: i64) -> Result<usize,
          ORDER BY created_at, id",
         vault_id,
     )?;
-    Ok(
-        enqueue_existing(conn, agent_conversation::ITEM_TYPE, &conversations, now_ms)?
-            + enqueue_existing(conn, agent_message::ITEM_TYPE, &messages, now_ms)?,
+    let queued = enqueue(conn, agent_conversation::ITEM_TYPE, &conversations, now_ms)?
+        + enqueue(conn, agent_message::ITEM_TYPE, &messages, now_ms)?;
+    conn.execute(
+        "INSERT OR REPLACE INTO meta (key, value) VALUES (?1, '1')",
+        params![BACKFILL_DONE],
     )
+    .map_err(failed)?;
+    transaction.commit().map_err(failed)?;
+    Ok(queued)
 }
 
 fn ids(conn: &Connection, sql: &str, vault_id: &str) -> Result<Vec<String>, StorageError> {

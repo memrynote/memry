@@ -20,7 +20,7 @@ use crate::domain::desktop_records::testing::{
 use crate::sync::apply::{ApplyTotals, Pending, apply_page};
 use crate::sync::clock::clock_of;
 
-const NEW: NewConversation<'static> = NewConversation {
+pub(super) const NEW: NewConversation<'static> = NewConversation {
     vault_id: "vault-1",
     title: "Plan the week",
     backend: "local",
@@ -28,19 +28,19 @@ const NEW: NewConversation<'static> = NewConversation {
 };
 
 /// Whether a stored title is an envelope that opens under [`key`].
-fn sealed(value: &Value) -> bool {
+pub(super) fn sealed(value: &Value) -> bool {
     value
         .as_str()
         .is_some_and(|column| key().open(Purpose::ConversationTitle, column).is_ok())
 }
 
-fn key() -> AtRestKey {
+pub(super) fn key() -> AtRestKey {
     let key = AtRestKey::default();
     key.set(Some(Zeroizing::new([7; 32])));
     key
 }
 
-fn pull(
+pub(super) fn pull(
     conn: &Connection,
     key: &AtRestKey,
     items: Vec<Pending>,
@@ -49,7 +49,7 @@ fn pull(
 }
 
 /// The projection's title column and whether the record is sealed-pending.
-fn title_column(conn: &Connection, id: &str) -> (String, i64) {
+pub(super) fn title_column(conn: &Connection, id: &str) -> (String, i64) {
     conn.query_row(
         "SELECT title, EXISTS(SELECT 1 FROM agent_sealed_pending
                               WHERE item_type = 'agent_conversation' AND item_id = ?1)
@@ -62,7 +62,7 @@ fn title_column(conn: &Connection, id: &str) -> (String, i64) {
 
 /// A peer's version of `id`: `fields` over the created payload, under `clock`
 /// and `field_clocks`.
-fn peer(id: &str, fields: Value, clock: Value, field_clocks: Value) -> Pending {
+pub(super) fn peer(id: &str, fields: Value, clock: Value, field_clocks: Value) -> Pending {
     let mut body = json!({
         "vaultId": "vault-1", "title": "Plan the week", "backend": "local",
         "backendModel": "llama3", "trustList": [], "pinned": false,
@@ -334,7 +334,7 @@ fn a_payload_that_is_not_an_object_is_recorded_corrupt_with_no_payload() {
 
 const SHAPED: &str = r#"{"version":1,"nonce":"AAAA","ciphertext":"AAAA"}"#;
 
-fn corrupt_reason(conn: &Connection, id: &str) -> Option<String> {
+pub(super) fn corrupt_reason(conn: &Connection, id: &str) -> Option<String> {
     conn.query_row(
         "SELECT corrupt_reason FROM sync_items WHERE item_type = ?1 AND item_id = ?2",
         params![ITEM_TYPE, id],
@@ -343,7 +343,7 @@ fn corrupt_reason(conn: &Connection, id: &str) -> Option<String> {
     .expect("row")
 }
 
-fn stored_text(conn: &Connection, id: &str) -> String {
+pub(super) fn stored_text(conn: &Connection, id: &str) -> String {
     conn.query_row(
         "SELECT payload FROM sync_items WHERE item_type = ?1 AND item_id = ?2",
         params![ITEM_TYPE, id],
@@ -471,151 +471,7 @@ fn a_remote_the_schema_refuses_is_refused_and_writes_nothing() {
     .expect("refused");
 }
 
-#[test]
-fn an_equal_clock_over_the_same_payload_skips_though_the_local_title_is_sealed() {
-    let (db, _dir) = open("agent-conversation-equal");
-    db.call_blocking(|conn| {
-        let key = key();
-        let id = create(conn, &key, &NEW, Queue::Outbox, DEVICE, NOW)
-            .map_err(storage)?
-            .id;
-        let before = stored_text(conn, &id);
-        let wire = open_payload(ITEM_TYPE, &before, false, &key)
-            .unwrap()
-            .expect("opened");
-        let same = remote(ITEM_TYPE, &id, &serde_json::from_str(&wire).unwrap());
-        assert_eq!(pull(conn, &key, vec![same])?.skipped, 1);
-        assert_eq!(stored_text(conn, &id), before, "nothing is rewritten");
-        Ok(())
-    })
-    .expect("equal clock");
-}
-
-#[test]
-fn a_concurrent_merge_that_changes_no_field_stores_the_combined_clock_and_queues_nothing() {
-    let (db, _dir) = open("agent-conversation-noop-merge");
-    db.call_blocking(|conn| {
-        let key = key();
-        let id = create(conn, &key, &NEW, Queue::Outbox, DEVICE, NOW)
-            .map_err(storage)?
-            .id;
-        let patch = ConversationPatch {
-            pinned: Some(true),
-            ..ConversationPatch::default()
-        };
-        let local = update_fields(conn, &key, &id, &patch, Queue::Outbox, DEVICE, NOW + 1)
-            .map_err(storage)?;
-        let queued_before = queued(conn, ITEM_TYPE, &id);
-        let base = json!({DEVICE: 1});
-        let field_clocks = json!({
-            "title": base, "backend": base, "backendModel": base,
-            "trustList": base, "pinned": {DEVICE: 2},
-        });
-        let same_values = peer(
-            &id,
-            json!({"pinned": true, "updatedAt": NOW + 1}),
-            json!({DEVICE: 1, "peer": 1}),
-            field_clocks,
-        );
-        assert_eq!(pull(conn, &key, vec![same_values])?.applied, 1);
-        assert_eq!(
-            payload(conn, ITEM_TYPE, &id)["clock"],
-            json!({DEVICE: 2, "peer": 1})
-        );
-        assert_eq!(get(conn, &key, &id).map_err(storage)?, Some(local));
-        assert_eq!(queued(conn, ITEM_TYPE, &id), queued_before);
-        Ok(())
-    })
-    .expect("no-op merge");
-}
-
-#[test]
-fn a_concurrent_merge_with_no_key_keeps_a_sealed_title_or_stores_the_remote_one_pending() {
-    let (db, _dir) = open("agent-conversation-merge-no-key");
-    db.call_blocking(|conn| {
-        let key = key();
-        let id = create(conn, &key, &NEW, Queue::Outbox, DEVICE, NOW)
-            .map_err(storage)?
-            .id;
-        let patch = ConversationPatch {
-            title: Some("Local title"),
-            ..ConversationPatch::default()
-        };
-        update_fields(conn, &key, &id, &patch, Queue::Outbox, DEVICE, NOW + 1).map_err(storage)?;
-        let no_key = AtRestKey::default();
-        let base = json!({DEVICE: 1});
-        let mut field_clocks = json!({
-            "title": base, "backend": base, "backendModel": base,
-            "trustList": base, "pinned": {DEVICE: 1, "peer": 1},
-        });
-        let pinned = peer(
-            &id,
-            json!({"pinned": true}),
-            json!({DEVICE: 1, "peer": 1}),
-            field_clocks.clone(),
-        );
-        assert_eq!(pull(conn, &no_key, vec![pinned])?.applied, 1);
-        assert!(sealed(&payload(conn, ITEM_TYPE, &id)["title"]));
-        assert_eq!(title_column(conn, &id).1, 0, "the local title stays sealed");
-
-        field_clocks["title"] = json!({DEVICE: 2, "peer": 5});
-        let titled = peer(
-            &id,
-            json!({"title": "Peer title", "pinned": true}),
-            json!({DEVICE: 1, "peer": 5}),
-            field_clocks,
-        );
-        assert_eq!(pull(conn, &no_key, vec![titled])?.applied, 1);
-        assert_eq!(
-            title_column(conn, &id),
-            (String::new(), 1),
-            "stored pending"
-        );
-        assert_eq!(
-            seal_pending(conn, &key, NOW + 20).map_err(storage)?.records,
-            1
-        );
-        let sealed = get(conn, &key, &id).map_err(storage)?.expect("live");
-        assert_eq!((sealed.title.as_str(), sealed.pinned), ("Peer title", true));
-        Ok(())
-    })
-    .expect("merge without a key");
-}
-
-#[test]
-fn sealing_pending_records_flags_a_row_that_will_not_seal_and_seals_the_rest() {
-    let (db, _dir) = open("agent-conversation-seal-pending-flag");
-    db.call_blocking(|conn| {
-        let no_key = AtRestKey::default();
-        for id in ["c-bad", "c-good"] {
-            let pulled = peer(id, json!({}), json!({"peer": 1}), json!({}));
-            pull(conn, &no_key, vec![pulled])?;
-        }
-        conn.execute(
-            "UPDATE sync_items SET payload = '[1]' WHERE item_id = 'c-bad'",
-            [],
-        )
-        .unwrap();
-        let key = key();
-        assert_eq!(
-            seal_pending(conn, &key, NOW + 20).map_err(storage)?.records,
-            1
-        );
-        assert!(corrupt_reason(conn, "c-bad").is_some());
-        assert_eq!(title_column(conn, "c-good").1, 0);
-        assert_eq!(
-            get(conn, &key, "c-good")
-                .map_err(storage)?
-                .expect("live")
-                .title,
-            "Plan the week"
-        );
-        Ok(())
-    })
-    .expect("seal pending");
-}
-
-fn storage(error: AgentError) -> StorageError {
+pub(super) fn storage(error: AgentError) -> StorageError {
     StorageError::Failed {
         what: error.to_string(),
     }

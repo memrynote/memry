@@ -327,3 +327,67 @@ fn enqueue_existing_skips_unknown_and_already_queued_records() {
     })
     .expect("enqueue existing");
 }
+
+/// A push acknowledges what it sent by deleting its outbox rows. A backfill
+/// after that queues nothing until a write stays on this device again; the
+/// write that does makes the next backfill run (REVIEW-4884 item 1).
+#[test]
+fn probe_backfill_requeues_rows_the_push_already_sent() {
+    let (db, _dir) = open("agent-queue-sent");
+    db.call_blocking(|conn| {
+        let sent = conversation(conn, "v1", Queue::Outbox)?;
+        assert_eq!(backfill(conn, "v1", NOW + 1)?, 0, "it is queued already");
+        acknowledge_push(conn)?;
+        assert_eq!(backfill(conn, "v1", NOW + 2)?, 0, "nothing new to send");
+
+        let local = conversation(conn, "v1", Queue::LocalOnly)?;
+        assert_eq!(
+            backfill(conn, "v1", NOW + 3)?,
+            2,
+            "Electron's backfill sends all"
+        );
+        assert_eq!(queued(conn, "agent_conversation", &local), 1);
+        assert_eq!(queued(conn, "agent_conversation", &sent), 1);
+        acknowledge_push(conn)?;
+        assert_eq!(backfill(conn, "v1", NOW + 4)?, 0);
+        Ok(())
+    })
+    .expect("backfill after a push");
+}
+
+/// Rows this build never backfilled (Electron queued none) are backfilled
+/// once, and a streaming write asks for no backfill.
+#[test]
+fn rows_this_build_never_backfilled_are_queued_once() {
+    let (db, _dir) = open("agent-queue-electron-rows");
+    db.call_blocking(|conn| {
+        let electron = conversation(conn, "v1", Queue::Outbox)?;
+        acknowledge_push(conn)?;
+        assert_eq!(backfill(conn, "v1", NOW + 1)?, 1);
+        assert_eq!(queued(conn, "agent_conversation", &electron), 1);
+        acknowledge_push(conn)?;
+
+        let content = reply("partial");
+        let streaming = NewMessage {
+            conversation_id: &electron,
+            ..message("m-streaming", &content, "streaming")
+        };
+        agent_message::write_local(conn, &key(), &streaming, DEVICE, NOW + 2).map_err(storage)?;
+        assert_eq!(backfill(conn, "v1", NOW + 3)?, 0, "streaming asks for none");
+
+        mark_backfill_pending(conn)?;
+        assert_eq!(
+            backfill(conn, "v1", NOW + 4)?,
+            1,
+            "a turn to unpaid asks for one"
+        );
+        Ok(())
+    })
+    .expect("first backfill");
+}
+
+fn acknowledge_push(conn: &Connection) -> Result<(), StorageError> {
+    conn.execute("DELETE FROM outbox", [])
+        .map(drop)
+        .map_err(crate::domain::notes::failed)
+}

@@ -9,6 +9,7 @@ use memry_core::domain::{agent_conversation, agent_message};
 use memry_core::storage::Db;
 use rusqlite::Connection;
 
+use super::ephemeral::Ephemeral;
 use super::gate::EntitlementGate;
 use super::{
     AgentError, ChatRecords, Conversation, ConversationPatch, Message, MessageEdit,
@@ -57,6 +58,23 @@ impl Sealed {
         op: impl FnOnce(&Connection, &AtRestKey) -> Result<T, AgentError>,
     ) -> Result<T, AgentError> {
         flatten(self.db.read_blocking(|conn| Ok(op(conn, &self.key))))
+    }
+}
+
+impl Sealed {
+    /// Writes what the agent kept in `memory`, ids and times kept: each record is queued as a
+    /// write made now would be, and a streaming message stays on this device.
+    pub(super) fn take_over(&self, memory: &Ephemeral) -> Result<(), AgentError> {
+        let (conversations, messages) = memory.live();
+        self.write(|w| {
+            for conversation in &conversations {
+                agent_conversation::import(w.conn, w.key, conversation, w.queue, w.device, w.now)?;
+            }
+            for message in &messages {
+                agent_message::import(w.conn, w.key, message, w.queue, w.device, w.now)?;
+            }
+            Ok(())
+        })
     }
 }
 

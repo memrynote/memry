@@ -146,6 +146,41 @@ async fn sync_letting_go_keeps_the_key_another_holder_needs() {
     );
 }
 
+/// A late hold for a vault that closed gets no key, and a hold for another vault never takes
+/// the key from one that still has holders (REVIEW-4884 item 3).
+#[test]
+fn probe_a_closed_vault_never_takes_the_open_vault_key() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = device_key::with_device_key();
+    store.set(SecureStoreKey::MasterKey, vec![9u8; 32]).unwrap();
+    let keys = AtRestKeys::new(Arc::clone(&store));
+    let open = |name: &str| {
+        let data = dir.path().join(name).join(".memry").join("core");
+        std::fs::create_dir_all(&data).unwrap();
+        Arc::new(Vault::open(name.into(), data.to_string_lossy().into_owned()).unwrap())
+    };
+    let (closed, current) = (open("a"), open("b"));
+
+    let early = keys.acquire(&closed).expect("a hold of the first vault");
+    keys.close(&closed);
+    let held = keys.acquire(&current).expect("the open vault's hold");
+    drop(early);
+    assert!(keys.acquire(&closed).is_err(), "a closed vault gets no key");
+    assert!(installed(&current), "the open vault keeps its key");
+    assert!(!installed(&closed));
+
+    let other = open("c");
+    assert!(
+        keys.acquire(&other).is_err(),
+        "the key stays with the vault that holds it"
+    );
+    assert!(installed(&current));
+    drop(held);
+    assert!(!installed(&current));
+    let _later = keys.acquire(&other).expect("free once nobody holds it");
+    assert!(installed(&other));
+}
+
 /// A keychain that answers `Locked` while `locked` is set, counting every call.
 struct LockedStore {
     inner: Arc<dyn SecureStore>,
