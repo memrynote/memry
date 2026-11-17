@@ -7,6 +7,7 @@
 
 mod ai_fake;
 mod device_key;
+mod electron_profile;
 mod embedding_lane;
 mod index_support;
 mod move_tree;
@@ -119,6 +120,8 @@ mod editor_host;
 #[cfg(unix)]
 #[path = "editor_readonly.rs"]
 mod editor_readonly;
+#[path = "electron_profile_fixture.rs"]
+mod electron_profile_fixture;
 #[path = "embedding_file_text.rs"]
 mod embedding_file_text;
 #[path = "embedding_owed.rs"]
