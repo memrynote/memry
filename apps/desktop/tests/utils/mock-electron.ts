@@ -9,6 +9,10 @@ import { vi } from 'vitest'
 // BrowserWindow Mock
 // ============================================================================
 
+// Unique and increasing, like Electron's. Random ids let two windows share one
+// id, so a stream target recorded for one window also matched the other.
+let nextWindowId = 1
+
 export class MockBrowserWindow {
   id: number
   webContents: MockWebContents
@@ -20,7 +24,7 @@ export class MockBrowserWindow {
   private _bounds = { x: 0, y: 0, width: 800, height: 600 }
 
   constructor(_?: Record<string, unknown>) {
-    this.id = Math.floor(Math.random() * 10000)
+    this.id = nextWindowId++
     this.webContents = new MockWebContents(this.id)
   }
 
