@@ -1,7 +1,8 @@
 //! The account's vault directory, ported from Electron's `sync/vault-directory.ts`: the account
 //! vault list for the switcher, cached in `memry-config.json` `sync.accountVaultsCache` for
 //! offline use, the registration of every local vault this account syncs, the icon each vault
-//! carries account-wide, and deleting a vault from the account.
+//! carries account-wide, deleting a vault from the account, and making the folder of a vault
+//! only the account holds.
 //!
 //! [`AccountService::refresh_vault_directory`] holds `directory` for its whole pass, so two
 //! refreshes never interleave and one that waited behind another sees its throttle stamp.
@@ -14,6 +15,7 @@ use memry_core::seams::secure_store::SecureStoreKey;
 use serde_json::{Map, Value, json};
 use zeroize::Zeroizing;
 
+use super::linking::is_vault_id;
 use super::{AccountError, AccountService};
 use crate::registry::{VaultRegistry, vault_icon};
 use crate::session::Session;
@@ -35,6 +37,15 @@ pub struct AccountVaultInfo {
     pub local_path: Option<String>,
     /// Where a download would create the vault.
     pub suggested_path: String,
+}
+
+/// The folder [`AccountService::prepare_vault_download`] leaves for the caller to open.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DownloadTarget {
+    /// A registered vault already carries the id: it opens instead of a second download.
+    Existing(PathBuf),
+    /// A new folder, made into a vault bound to the id and registered.
+    Provisioned(PathBuf),
 }
 
 /// A cached row of `sync.accountVaultsCache.vaults`, Electron's `{vaultUuid, name, itemCount,
@@ -232,17 +243,8 @@ impl AccountService {
         registry: &VaultRegistry,
         parent: &Path,
     ) -> Vec<AccountVaultInfo> {
-        let cache = self.config.read(|config| {
-            config
-                .get("sync")
-                .and_then(|sync| sync.get(CACHE_KEY))
-                .and_then(|cache| cache.get("vaults"))
-                .and_then(Value::as_array)
-                .map(|rows| rows.iter().filter_map(from_cache).collect::<Vec<_>>())
-                .unwrap_or_default()
-        });
         let local = registry.stored();
-        cache
+        self.cached_vaults()
             .into_iter()
             .map(|v| AccountVaultInfo {
                 local_path: local
@@ -258,6 +260,56 @@ impl AccountService {
                 created_at: v.created_at,
             })
             .collect()
+    }
+
+    fn cached_vaults(&self) -> Vec<CachedVault> {
+        self.config.read(|config| {
+            config
+                .get("sync")
+                .and_then(|sync| sync.get(CACHE_KEY))
+                .and_then(|cache| cache.get("vaults"))
+                .and_then(Value::as_array)
+                .map(|rows| rows.iter().filter_map(from_cache).collect::<Vec<_>>())
+                .unwrap_or_default()
+        })
+    }
+
+    /// The folder half of `downloadRemoteVault` (`vault-directory.ts:266-318`): the registered
+    /// copy of `vault_uuid` when there is one, else a new folder under `parent`, named after the
+    /// cached name ([`suggest_vault_folder`]), made into a vault bound to `vault_uuid` and
+    /// registered under it ([`Session::provision_dormant`]). The open vault stays open; the
+    /// caller switches to the folder. Blocking.
+    pub fn prepare_vault_download(
+        &self,
+        session: &Session,
+        vault_uuid: &str,
+        parent: &Path,
+    ) -> Result<DownloadTarget, AccountError> {
+        if !is_vault_id(vault_uuid) {
+            return Err(AccountError::InvalidVaultId);
+        }
+        if let Some(local) = session
+            .registry()
+            .stored()
+            .into_iter()
+            .find(|v| v.vault_uuid.as_deref() == Some(vault_uuid))
+        {
+            return Ok(DownloadTarget::Existing(PathBuf::from(local.path)));
+        }
+        let name = self
+            .cached_vaults()
+            .into_iter()
+            .find(|v| v.vault_uuid == vault_uuid)
+            .and_then(|v| v.name);
+        let folder = suggest_vault_folder(vault_uuid, name.as_deref(), parent);
+        session
+            .provision_dormant(&folder, vault_uuid)
+            .map_err(|e| AccountError::VaultDownload(e.to_string()))?;
+        tracing::info!(
+            scope = "VaultDirectory",
+            "account vault provisioned for download"
+        );
+        Ok(DownloadTarget::Provisioned(folder))
     }
 
     /// `deleteAccountVault`: removes the vault from the account and forgets its local entry, so
