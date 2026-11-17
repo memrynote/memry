@@ -10,6 +10,7 @@ use crate::api::errors::{AuthError, StorageError};
 use crate::api::tasks::Tasks;
 use crate::api::tasks_write::now_ms;
 use crate::domain::body_tags;
+use crate::domain::folder_view;
 use crate::domain::notes::failed;
 use crate::domain::tag_admin;
 use crate::domain::tag_categories::{self, TagAssignment, TagCategory};
@@ -54,10 +55,24 @@ impl TagHub {
             .call_blocking(|conn| tag_admin::set_icon(conn, tag, icon, &self.device_id, now_ms()))
     }
 
-    /// A tag's saved folder views, whole ([`tag_admin::set_views`]).
-    pub fn set_views(&self, tag: &str, views: Vec<serde_json::Value>) -> Result<(), StorageError> {
-        self.db
-            .call_blocking(|conn| tag_admin::set_views(conn, tag, views, &self.device_id, now_ms()))
+    /// Reads a tag's saved folder views and writes what `change` makes of them, whole, in one
+    /// transaction, so a sync apply between the read and the write is never written over. A
+    /// `change` that refuses writes nothing and is the inner answer.
+    pub fn edit_views<E>(
+        &self,
+        tag: &str,
+        change: impl FnOnce(Vec<serde_json::Value>) -> Result<Vec<serde_json::Value>, E>,
+    ) -> Result<Result<(), E>, StorageError> {
+        self.db.call_blocking(|conn| {
+            let tx = conn.unchecked_transaction().map_err(failed)?;
+            let views = match change(folder_view::tag_views(&tx, tag)?.list()) {
+                Ok(views) => views,
+                Err(refused) => return Ok(Err(refused)),
+            };
+            tag_admin::set_views(&tx, tag, views, &self.device_id, now_ms())?;
+            tx.commit().map_err(failed)?;
+            Ok(Ok(()))
+        })
     }
 
     /// Pins or unpins `tag` on the note or journal day `id` ([`tags::set_pinned`]); `false`

@@ -67,22 +67,7 @@ impl Search {
     pub fn folder_note_ids(&self, folder: &str) -> Result<Vec<String>, StorageError> {
         let folder = folder.to_owned();
         self.data.read_blocking(move |data| {
-            let mut ids = Vec::new();
-            let mut offset = 0;
-            loop {
-                let query = NoteListQuery {
-                    folder: Some(folder.clone()),
-                    limit: 1000,
-                    offset,
-                    ..NoteListQuery::default()
-                };
-                let page = note_list::list(data, &query)?;
-                ids.extend(page.notes.into_iter().map(|note| note.id));
-                if !page.has_more {
-                    break;
-                }
-                offset += 1000;
-            }
+            let mut ids = note_list::ids(data, Some(folder.as_str()))?;
             ids.extend(folder_note(data, &folder)?.map(|note| note.id));
             Ok(ids)
         })
@@ -248,17 +233,15 @@ impl Search {
             }
         }
         let mut note_values = self.item_properties(picked.iter().map(|(item, _)| item))?;
-        let task_ids: Vec<&str> = picked
-            .iter()
-            .filter(|(item, _)| item.kind == ItemKind::Task)
-            .map(|(item, _)| item.id.as_str())
-            .collect();
-        let mut task_values = {
-            let ids: Vec<String> = task_ids.iter().map(|id| (*id).to_owned()).collect();
-            self.data.read_blocking(move |data| {
-                folder_view::task_fields(data, &ids.iter().map(String::as_str).collect::<Vec<_>>())
-            })?
-        };
+        let task_ids = id_list(
+            picked
+                .iter()
+                .filter(|(item, _)| item.kind == ItemKind::Task)
+                .map(|(item, _)| item.id.as_str()),
+        )?;
+        let mut task_values = self
+            .data
+            .read_blocking(move |data| folder_view::task_fields(data, &task_ids))?;
         let rows = picked
             .into_iter()
             .map(|(item, via)| {

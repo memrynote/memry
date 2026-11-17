@@ -106,6 +106,13 @@ describe('folderViewService writes', () => {
     await expect(folderViewService.deleteView(scope, 'B')).resolves.toEqual({ success: true })
   })
 
+  it('sends a key the caller cleared with undefined as null, so the file drops it', async () => {
+    commands.folderViewSetConfig.mockResolvedValueOnce(null)
+    const summaries = { title: { type: 'count' as const } }
+    await folderViewService.setConfig('A', { formulas: undefined, summaries })
+    expect(commands.folderViewSetConfig).toHaveBeenCalledWith('A', { formulas: null, summaries })
+  })
+
   it('rejects a config write that fails, so the folder view surfaces it', async () => {
     commands.folderViewSetConfig.mockRejectedValueOnce(new Error('disk full'))
     await expect(folderViewService.setConfig('A', { formulas: {} })).rejects.toThrow('disk full')

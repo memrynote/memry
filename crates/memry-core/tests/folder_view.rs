@@ -9,7 +9,7 @@ use std::collections::BTreeMap;
 
 use memry_core::api::search::Search;
 use memry_core::api::vault::Vault;
-use memry_core::domain::folder_view::{ItemKind, RowSet, tag_views};
+use memry_core::domain::folder_view::{ItemKind, RowSet, TagViews, tag_views};
 use memry_core::domain::note_stats::MeasuredFile;
 use memry_core::domain::property_values::IndexedProperty;
 use memry_core::domain::tag_schema::{DefinitionInput, PropertyInfo, StoredSchema, resolve};
@@ -231,8 +231,9 @@ fn a_tag_with_fields_lists_its_objects_or_its_mentions() {
     );
 }
 
-/// A tag's saved views read from its definition by key; a value that does not parse as a list
-/// reads as none (`readTagViews`).
+/// A tag's saved views read from its definition by key. The projection keeps only a list, so a
+/// synced value of another type reads as absent; a stored value that does not parse reads as
+/// unparsed (`readTagViews` reads both as none).
 #[test]
 fn a_tags_saved_views_read_by_key_and_bad_ones_as_none() {
     let (_dir, vault, _search) = open();
@@ -251,8 +252,21 @@ fn a_tags_saved_views_read_by_key_and_bad_ones_as_none() {
     };
     assert_eq!(
         read(" WORK "),
-        Some(vec![json!({"name": "Board", "type": "kanban"})])
+        TagViews::Saved(vec![json!({"name": "Board", "type": "kanban"})])
     );
-    assert_eq!(read("home"), None);
-    assert_eq!(read("missing"), None);
+    assert_eq!(read("home"), TagViews::Absent);
+    assert_eq!(read("missing"), TagViews::Absent);
+    vault
+        .db_handle()
+        .call_blocking(|conn| {
+            conn.execute(
+                "UPDATE tag_definitions SET views = '[' WHERE name = 'work'",
+                [],
+            )
+            .map_err(|e| memry_core::api::errors::StorageError::Failed {
+                what: e.to_string(),
+            })
+        })
+        .expect("a damaged column");
+    assert_eq!(read("work"), TagViews::Unparsed);
 }

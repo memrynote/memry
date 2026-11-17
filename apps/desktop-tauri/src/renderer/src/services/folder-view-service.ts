@@ -34,15 +34,14 @@ function toJson(value: ViewConfig | Partial<FolderViewConfig>): Record<string, V
   return value as Record<string, Value>
 }
 
-type SavedView = ViewConfig & { [key: string]: Value }
-
-/** A saved view is an object with a name; Rust refuses to save one without. */
-function isView(value: Value): value is SavedView {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    !Array.isArray(value) &&
-    typeof value.name === 'string'
+/**
+ * A config with each key the caller set to `undefined` as `null`. A caller clears a key with
+ * `{ ...config, formulas: undefined }`; JSON would drop it and keep the stored value, and `null`
+ * removes it.
+ */
+function cleared(config: Partial<FolderViewConfig>): Record<string, Value> {
+  return Object.fromEntries(
+    Object.entries(toJson(config)).map(([key, value]) => [key, value ?? null])
   )
 }
 
@@ -80,14 +79,17 @@ const ported = {
 
   /** Rejects on failure: the hook's callers read no `success` and surface the error. */
   setConfig: async (folderPath: string, config: Partial<FolderViewConfig>) => {
-    await commands.folderViewSetConfig(folderPath, toJson(config))
+    await commands.folderViewSetConfig(folderPath, cleared(config))
     return { success: true }
   },
 
   getViews: async (scope: ViewScope): Promise<GetViewsResponse> => {
     const saved = await commands.folderViewGetViews(scope)
     if (!saved.views) return { views: [defaultView(saved.fieldColumns)], defaultIndex: 0 }
-    return { views: saved.views.filter(isView), defaultIndex: saved.defaultIndex }
+    // Rust answers only the stored entries that are objects with a name, as stored.
+    const views: unknown = saved.views
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- saved views, as above
+    return { views: views as ViewConfig[], defaultIndex: saved.defaultIndex }
   },
 
   setView: (scope: ViewScope, view: ViewConfig, previousName?: string) =>

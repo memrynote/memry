@@ -10,6 +10,11 @@
 //!   counts one); a key of another type reads as absent ([`FolderFile::config`]) and, as in
 //!   Electron, is dropped by the next write. Only keys no build models survive a write as they
 //!   are;
+//! - a date inside them reads as its ISO string, as Electron hands a `Date` on, and a string
+//!   that comes back unchanged where the date was is written as the date again, so js-yaml's
+//!   round trip keeps its bytes. A modelled key holding what JSON cannot (bytes, a NaN, an
+//!   infinity) reads as absent, and a write that would change it refuses
+//!   ([`FolderFileError::Unreadable`]) instead of replacing it with what the reader saw;
 //! - a file that cannot be read is never replaced: not UTF-8, larger than
 //!   [`MAX_FOLDER_FILE_BYTES`], frontmatter that does not parse or is not a map, or aliases
 //!   that expand past [`node_budget`]. Electron reads the first ones as no file and its next
@@ -28,16 +33,20 @@
 //! two edits of one folder never lose each other. The vault watcher ignores dot files, so the
 //! own-write record is not told.
 
+use std::collections::HashMap;
 use std::io::{self, Read as _};
 use std::path::Path;
 use std::sync::Mutex;
 use std::time::Duration;
 
 use memry_core::markdown::frontmatter::{
-    Eol, YamlMap, YamlValue, gray_matter_data, gray_matter_parts, json_to_yaml,
-    stringify_frontmatter_block, yaml_to_json,
+    Eol, YamlMap, YamlValue, gray_matter_data, gray_matter_parts, stringify_frontmatter_block,
 };
 use serde_json::Value;
+
+mod json;
+
+use json::{revive, to_json};
 
 use super::fs_atomic::{self, RETRY_DELAYS_MS};
 use super::note_file::{NoteFileError, still_contained, target};
@@ -139,10 +148,10 @@ impl FolderFile {
         })
     }
 
-    /// What `parseFolderConfig` returns. A date or bytes, which JavaScript hands on as objects
-    /// and JSON cannot hold, reads as absent.
+    /// What `parseFolderConfig` returns, a date as its ISO string. A value holding what JSON
+    /// cannot (bytes, a NaN, an infinity) reads as absent.
     pub fn config(&self) -> FolderConfigView {
-        let json = |value: Option<&YamlValue>| value.and_then(yaml_to_json);
+        let json = |value: Option<&YamlValue>| value.and_then(to_json);
         FolderConfigView {
             icon: self.icon().map(str::to_owned),
             template: self.template().map(str::to_owned),
@@ -168,22 +177,51 @@ impl FolderFile {
         put(INHERIT, (!inherit).then_some(YamlValue::Bool(false)));
     }
 
-    /// The saved folder views, in their order; none when `views` is not a list.
+    /// The saved folder views, in their order; none when `views` is not a list or holds what
+    /// JSON cannot, which a write then refuses to change ([`update`]).
     pub fn view_list(&self) -> Vec<Value> {
-        match self.views().and_then(yaml_to_json) {
+        match self.views().and_then(to_json) {
             Some(Value::Array(views)) => views,
             _ => Vec::new(),
         }
     }
 
     /// The saved folder views, whole; an empty list leaves the key out, as Electron writes it.
+    /// Each view's dates come back from the stored view of its name ([`revive`]).
     pub fn set_views(&mut self, views: &[Value]) {
         if views.is_empty() {
             self.data.remove(VIEWS);
-        } else {
-            let list = Value::Array(views.to_vec());
-            self.data.insert(VIEWS.to_owned(), json_to_yaml(&list));
+            return;
         }
+        let mut stored: HashMap<&str, &YamlValue> = HashMap::new();
+        if let Some(YamlValue::Seq(items)) = self.views() {
+            for item in items.iter() {
+                if let YamlValue::Map(view) = item
+                    && let Some(YamlValue::String(name)) = view.get("name")
+                {
+                    stored.entry(name).or_insert(item);
+                }
+            }
+        }
+        let list = views
+            .iter()
+            .map(|view| {
+                let name = view.get("name").and_then(Value::as_str);
+                revive(view, name.and_then(|name| stored.get(name).copied()))
+            })
+            .collect();
+        self.data.insert(VIEWS.to_owned(), YamlValue::seq(list));
+    }
+
+    /// The modelled keys whose value JSON cannot hold, as they are: a write must not change them.
+    fn lossy(&self) -> Vec<(&'static str, YamlValue)> {
+        std::iter::once((VIEWS, self.views()))
+            .chain(OBJECTS.map(|key| (key, self.object(key))))
+            .filter_map(|(key, value)| {
+                let value = value.filter(|value| to_json(value).is_none())?;
+                Some((key, value.clone()))
+            })
+            .collect()
     }
 
     /// `folder-view:set-config`: each modelled key `config` names replaces the file's, `null`
@@ -213,8 +251,10 @@ impl FolderFile {
                 Value::Null | Value::Bool(true) => {
                     self.data.remove(key);
                 }
+                Value::Array(views) if key == VIEWS => self.set_views(views),
                 value => {
-                    self.data.insert(key.to_owned(), json_to_yaml(value));
+                    let value = revive(value, self.data.get(key));
+                    self.data.insert(key.to_owned(), value);
                 }
             }
         }
@@ -435,18 +475,30 @@ pub fn update(
     folder: &str,
     change: impl FnOnce(&mut FolderFile),
 ) -> Result<FolderFile, FolderFileError> {
+    try_update(vault, folder, |file| {
+        change(file);
+        Ok::<_, FolderFileError>(())
+    })
+}
+
+/// [`update`] with a `change` that may refuse: a refusal writes nothing and is the answer.
+pub fn try_update<E: From<FolderFileError>>(
+    vault: &Path,
+    folder: &str,
+    change: impl FnOnce(&mut FolderFile) -> Result<(), E>,
+) -> Result<FolderFile, E> {
     update_checked(vault, folder, change, &mut || {})
 }
 
-/// [`update`] with a hook that runs right before the rename's last check, so a test can change
-/// the file there as another writer would.
+/// [`try_update`] with a hook that runs right before the rename's last check, so a test can
+/// change the file there as another writer would.
 #[doc(hidden)]
-pub fn update_checked(
+pub fn update_checked<E: From<FolderFileError>>(
     vault: &Path,
     folder: &str,
-    change: impl FnOnce(&mut FolderFile),
+    change: impl FnOnce(&mut FolderFile) -> Result<(), E>,
     between: &mut dyn FnMut(),
-) -> Result<FolderFile, FolderFileError> {
+) -> Result<FolderFile, E> {
     let rel = rel_of(folder).map_err(|error| write_failed(folder, error.to_string()))?;
     let _guard = WRITE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let raw = load(vault, &rel)?;
@@ -454,7 +506,15 @@ pub fn update_checked(
         None => FolderFile::default(),
         Some(raw) => parse(raw).map_err(|message| unreadable(&rel, message))?,
     };
-    change(&mut file);
+    let lossy = file.lossy();
+    change(&mut file)?;
+    if let Some((key, _)) = lossy
+        .iter()
+        .find(|(key, stored)| file.data.get(key) != Some(stored))
+    {
+        let why = format!("its `{key}` holds what JSON cannot (bytes, a NaN, an infinity)");
+        return Err(unreadable(&rel, why).into());
+    }
     let bytes = file
         .serialize()
         .map_err(|message| write_failed(&rel, message))?;

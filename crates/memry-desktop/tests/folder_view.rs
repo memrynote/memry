@@ -243,6 +243,101 @@ fn a_folder_lists_its_rows_and_keeps_its_views_in_its_folder_file() {
     f.e.close();
 }
 
+/// What a hand-written `.folder.md` holds survives an edit: an unquoted date in a view is read as
+/// its ISO string and written back as the date (Electron's js-yaml round trip), a `null` in a
+/// config removes its key, and the default view is counted among the views the renderer gets.
+#[test]
+fn a_folder_file_edit_keeps_what_the_file_holds() {
+    let dated = "---\nviews:\n  - name: Mine\n    filters:\n      - property: due\n        value: 2024-01-15\n  - name: Other\nformulas:\n  double: x\n---\n";
+    let odd = "---\nviews:\n  - just text\n  - name: A\n  - name: B\n    default: true\n---\n";
+    let mut f = opened(&[
+        ("Work/.folder.md", dated),
+        ("Work/Note.md", "Body\n"),
+        ("Odd/.folder.md", odd),
+        (
+            "Junk/.folder.md",
+            "---\nviews:\n  - 1\n  - type: table\n---\n",
+        ),
+    ]);
+    let scope = folder("Work");
+    let date = "value: 2024-01-15T00:00:00.000Z\n";
+    assert_eq!(
+        f.views(&scope)["views"][0]["filters"][0]["value"],
+        json!("2024-01-15T00:00:00.000Z")
+    );
+
+    f.set_view(&scope, json!({"name": "New"}), None).unwrap();
+    let names = |f: &Fixture| -> Vec<String> {
+        view_names(&f.views(&scope))
+            .into_iter()
+            .map(|(name, _)| name)
+            .collect()
+    };
+    assert_eq!(names(&f), ["Mine", "Other", "New"]);
+    assert!(f.e.read("Work/.folder.md").contains(date));
+    f.delete_view(&scope, "Other");
+    assert_eq!(names(&f), ["Mine", "New"]);
+    assert!(f.e.read("Work/.folder.md").contains(date));
+
+    // The renderer writes the config back as it read it; `undefined` reaches Rust as `null`.
+    let config = json!({"views": f.views(&scope)["views"], "formulas": null});
+    folder_view::set_config(&f.open(), "Work", config.as_object().unwrap()).unwrap();
+    let written = f.e.read("Work/.folder.md");
+    assert!(written.contains(date), "{written}");
+    assert!(!written.contains("formulas"), "{written}");
+
+    let odd = f.views(&folder("Odd"));
+    assert_eq!(
+        view_names(&odd),
+        [("A".to_owned(), false), ("B".to_owned(), true)]
+    );
+    assert_eq!(odd["defaultIndex"], json!(1));
+    assert_eq!(f.views(&folder("Junk"))["views"], Value::Null);
+    f.e.close();
+}
+
+/// A write that would lose what the file holds is refused and leaves its bytes as they are: a
+/// value JSON cannot hold (a NaN, bytes), a rename onto a taken name, a key of the wrong type.
+#[test]
+fn a_refused_folder_file_edit_leaves_the_file_as_it_is() {
+    let lossy = "---\nviews:\n  - name: Mine\n    filters:\n      - value: .nan\n  - name: Other\nformulas:\n  big: !!binary aGk=\n---\n";
+    let hand = "---\nviews:\n  - {name: A}\n  - {name: B}\n---\n";
+    let mut f = opened(&[
+        ("Lossy/.folder.md", lossy),
+        ("Hand/.folder.md", hand),
+        ("Hand/Note.md", "Body\n"),
+    ]);
+    let unreadable = |error: FolderViewError| {
+        assert_eq!(error.kind_and_code().1, "folder_file_unreadable", "{error}");
+    };
+    let scope = folder("Lossy");
+    unreadable(
+        f.set_view(&scope, json!({"name": "New"}), None)
+            .unwrap_err(),
+    );
+    unreadable(
+        folder_view::edit_views(&f.open(), &scope, f.store.clone(), |views| {
+            Ok(folder_view::without_view(views, "Other"))
+        })
+        .unwrap_err(),
+    );
+    let config = json!({"formulas": null});
+    unreadable(
+        folder_view::set_config(&f.open(), "Lossy", config.as_object().unwrap()).unwrap_err(),
+    );
+    assert_eq!(f.e.read("Lossy/.folder.md"), lossy);
+
+    let scope = folder("Hand");
+    let clash = f
+        .set_view(&scope, json!({"name": "B"}), Some("A"))
+        .unwrap_err();
+    assert_eq!(clash.kind_and_code().1, "view_name_conflict");
+    let wrong = json!({"views": "not a list"});
+    assert!(folder_view::set_config(&f.open(), "Hand", wrong.as_object().unwrap()).is_err());
+    assert_eq!(f.e.read("Hand/.folder.md"), hand);
+    f.e.close();
+}
+
 /// A tag lists what carries it or a tag under it, narrowed by AND tags; a tag with fields
 /// offers them as columns before a note holds them, and a tag's views live on its definition.
 #[test]

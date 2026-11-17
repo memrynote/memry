@@ -6,15 +6,16 @@
 //! edits the saved views.
 //!
 //! A view edit reads the scope's views and writes them whole. A folder's runs under the
-//! settings file's own lock, which reads the file again; a tag's under [`TAG_VIEWS`], so two
-//! edits of one scope never lose each other.
+//! settings file's own lock, which reads the file again; a tag's in one transaction of the data
+//! database's writer, so two edits of one scope, or an edit and a sync apply, never lose each
+//! other.
 
 pub mod view;
 
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use memry_core::api::errors::StorageError;
-use memry_core::domain::folder_view::{self, RowSet};
+use memry_core::domain::folder_view::{self, RowSet, TagViews};
 pub use memry_core::domain::tag_objects::Resolved;
 use memry_core::domain::tags::tag_key;
 use memry_core::seams::secure_store::SecureStore;
@@ -34,9 +35,6 @@ use view::{
 /// The most rows one call lists (`ListWithPropertiesRequestSchema.limit`).
 pub const MAX_ROWS: u32 = 1000;
 const DEFAULT_ROWS: u32 = 500;
-
-/// Serializes the read and write of a tag's views.
-static TAG_VIEWS: Mutex<()> = Mutex::new(());
 
 #[derive(Debug, thiserror::Error)]
 pub enum FolderViewError {
@@ -215,7 +213,7 @@ pub fn available_properties(
 }
 
 /// A scope's saved views as stored: a folder's from its file (one that cannot be read has
-/// none), a tag's from its definition.
+/// none), a tag's from its definition (one that does not parse has none).
 fn stored_views(open: &OpenVault, scope: &ViewScope) -> Result<Vec<Value>, FolderViewError> {
     match scope {
         ViewScope::Folder { path } => {
@@ -235,23 +233,33 @@ fn stored_views(open: &OpenVault, scope: &ViewScope) -> Result<Vec<Value>, Folde
         ViewScope::Tag { tag, and_tags } => {
             let (tag, _) = tag_scope(tag, and_tags)?;
             let tag = tag.to_owned();
-            Ok(open
+            let views = open
                 .vault
                 .db_handle()
-                .read_blocking(move |data| folder_view::tag_views(data, &tag))?
-                .unwrap_or_default())
+                .read_blocking(move |data| folder_view::tag_views(data, &tag))?;
+            if views == TagViews::Unparsed {
+                tracing::warn!(
+                    scope = "folder_view",
+                    "a tag's saved views do not parse; read as none"
+                );
+            }
+            Ok(views.list())
         }
     }
 }
 
 /// `folder-view:get-views`: the saved views and the one shown first, the first marked
-/// `default` (else the first).
+/// `default` (else the first). An entry that is not an object with a name is no view and is
+/// left out before the default is counted.
 pub fn views(
     open: &OpenVault,
     scope: &ViewScope,
     resolved: Option<&Resolved>,
 ) -> Result<SavedViewsView, FolderViewError> {
-    let views = stored_views(open, scope)?;
+    let views: Vec<Value> = stored_views(open, scope)?
+        .into_iter()
+        .filter(|view| name_of(view).is_some())
+        .collect();
     if views.is_empty() {
         let field_columns = match (scope, resolved) {
             (ViewScope::Tag { tag, .. }, Some(resolved)) => resolved
@@ -359,19 +367,16 @@ pub fn edit_views(
     match scope {
         ViewScope::Folder { path } => {
             let folder = vault_folder(&open.path, path)?;
-            let mut outcome = Ok(());
-            folder_file::update(&open.path, &folder, |file| match change(file.view_list()) {
-                Ok(views) => file.set_views(&views),
-                Err(error) => outcome = Err(error),
+            folder_file::try_update(&open.path, &folder, |file| {
+                let views = change(file.view_list())?;
+                file.set_views(&views);
+                Ok::<_, FolderViewError>(())
             })?;
-            outcome
+            Ok(())
         }
         ViewScope::Tag { tag, and_tags } => {
             let (tag, _) = tag_scope(tag, and_tags)?;
-            let _guard = TAG_VIEWS.lock().unwrap_or_else(|e| e.into_inner());
-            let views = change(stored_views(open, scope)?)?;
-            Hub::open(open, store)?.set_views(&tag_key(tag), views)?;
-            Ok(())
+            Hub::open(open, store)?.edit_views(&tag_key(tag), change)?
         }
     }
 }
@@ -384,13 +389,10 @@ pub fn set_config(
     config: &Map<String, Value>,
 ) -> Result<(), FolderViewError> {
     let folder = vault_folder(&open.path, folder)?;
-    let mut outcome = Ok(());
-    folder_file::update(&open.path, &folder, |file| {
-        if let Err(why) = file.merge(config) {
-            outcome = Err(FolderViewError::Invalid(why));
-        }
+    folder_file::try_update(&open.path, &folder, |file| {
+        file.merge(config).map_err(FolderViewError::Invalid)
     })?;
-    outcome
+    Ok(())
 }
 
 /// `folder-view:folder-exists`: a directory at that vault path (`""`: the vault root).

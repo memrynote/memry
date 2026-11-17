@@ -10,7 +10,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use rusqlite::{Connection, params};
+use rusqlite::Connection;
 use serde_json::{Map, Value};
 
 use crate::api::errors::StorageError;
@@ -340,33 +340,55 @@ pub fn field_columns(tag: &str, resolved: &Resolved) -> Vec<(String, String)> {
         .unwrap_or_default()
 }
 
-/// The tasks among `ids` with their tag fields (`listTaskFieldsForTags`), by id.
+/// The tasks among `ids` (a JSON array) with their tag fields (`listTaskFieldsForTags`), by id.
 pub fn task_fields(
     data: &Connection,
-    ids: &[&str],
+    ids: &str,
 ) -> Result<HashMap<String, Map<String, Value>>, StorageError> {
     let mut statement = data
-        .prepare("SELECT payload FROM sync_items WHERE item_type = 'task' AND item_id = ?1")
+        .prepare(
+            "SELECT item_id, payload FROM sync_items WHERE item_type = 'task' \
+             AND item_id IN (SELECT value FROM json_each(?1))",
+        )
+        .map_err(failed)?;
+    let rows = statement
+        .query_map([ids], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, Option<String>>(1)?))
+        })
         .map_err(failed)?;
     let mut fields = HashMap::new();
-    for id in ids {
-        let payload: Option<String> = statement
-            .query_row(params![id], |row| row.get(0))
-            .or_else(|error| match error {
-                rusqlite::Error::QueryReturnedNoRows => Ok(None),
-                error => Err(error),
-            })
-            .map_err(failed)?;
+    for row in rows {
+        let (id, payload) = row.map_err(failed)?;
         let payload: Option<Value> = payload.and_then(|raw| serde_json::from_str(&raw).ok());
         let plain = versioned::plain(payload.as_ref().and_then(|p| p.get("fields")));
-        fields.insert((*id).to_owned(), plain);
+        fields.insert(id, plain);
     }
     Ok(fields)
 }
 
-/// A tag's saved views, stored on its definition (`readTagViews`); `None` when it has none or
-/// they do not parse, so a bad value never makes the tag unopenable.
-pub fn tag_views(data: &Connection, tag: &str) -> Result<Option<Vec<Value>>, StorageError> {
+/// A tag's saved views as its definition stores them (`readTagViews`).
+#[derive(Debug, Clone, PartialEq)]
+pub enum TagViews {
+    /// No definition, or one without views.
+    Absent,
+    Saved(Vec<Value>),
+    /// A value that is not a JSON list. It reads as none, so a bad value never makes the tag
+    /// unopenable, and the next edit replaces it, as Electron's does; the shell logs it.
+    Unparsed,
+}
+
+impl TagViews {
+    /// The saved views; none unless [`TagViews::Saved`].
+    pub fn list(self) -> Vec<Value> {
+        match self {
+            Self::Saved(views) => views,
+            Self::Absent | Self::Unparsed => Vec::new(),
+        }
+    }
+}
+
+/// A tag's saved views, stored on its definition.
+pub fn tag_views(data: &Connection, tag: &str) -> Result<TagViews, StorageError> {
     let key = tag_key(tag);
     let mut statement = data
         .prepare("SELECT name, views FROM tag_definitions WHERE deleted_at IS NULL")
@@ -381,16 +403,13 @@ pub fn tag_views(data: &Connection, tag: &str) -> Result<Option<Vec<Value>>, Sto
         if tag_key(&name) != key {
             continue;
         }
-        let parsed = views.and_then(|raw| match serde_json::from_str(&raw) {
-            Ok(Value::Array(views)) => Some(views),
-            _ => {
-                eprintln!("memry-core: a tag's saved views do not parse; read as none");
-                None
-            }
+        return Ok(match views.map(|raw| serde_json::from_str(&raw)) {
+            None => TagViews::Absent,
+            Some(Ok(Value::Array(views))) => TagViews::Saved(views),
+            Some(_) => TagViews::Unparsed,
         });
-        return Ok(parsed);
     }
-    Ok(None)
+    Ok(TagViews::Absent)
 }
 
 #[cfg(test)]
