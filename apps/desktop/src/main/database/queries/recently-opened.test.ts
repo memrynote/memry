@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { canvases } from '@memry/db-schema/schema/canvas'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import { recentlyOpened } from '@memry/db-schema/schema/recently-opened'
@@ -7,6 +7,12 @@ import type { TestDatabaseResult, TestDb } from '@tests/utils/test-db'
 import { createTestDatabases } from '@tests/utils/test-db'
 import type { DataDb, IndexDb } from '../types'
 import { listRecentlyOpened, recordRecentlyOpened } from './recently-opened'
+
+const logInfo = vi.hoisted(() => vi.fn())
+
+vi.mock('../../lib/logger', () => ({
+  createLogger: () => ({ info: logInfo, warn: vi.fn(), error: vi.fn(), debug: vi.fn() })
+}))
 
 function seedNote(db: TestDb, id: string, title: string): void {
   db.insert(noteCache)
@@ -118,7 +124,9 @@ describe('recently-opened queries', () => {
     expect(listRecentlyOpened(data, index, 10)[0].title).toBe('New title')
   })
 
-  it('drops rows whose note no longer exists', () => {
+  // #4236: a note opened before the first index scan reached it dropped out of the list
+  // with no trace, so the log names the dropped ids (never titles or content).
+  it('drops rows whose note no longer exists and logs their ids', () => {
     seedNote(dbs.index.db, 'n1', 'Kept')
     recordRecentlyOpened(data, {
       id: 'r1',
@@ -134,6 +142,7 @@ describe('recently-opened queries', () => {
     })
 
     expect(listRecentlyOpened(data, index, 10).map((i) => i.itemId)).toEqual(['n1'])
+    expect(logInfo).toHaveBeenCalledWith(expect.any(String), { count: 1, ids: ['gone'] })
   })
 
   it('prunes past the retention limit, keeping the newest', () => {

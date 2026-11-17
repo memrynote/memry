@@ -7,7 +7,10 @@ import {
   type RecentlyOpenedItem,
   type RecentlyOpenedItemType
 } from '@memry/contracts/recents-api'
+import { createLogger } from '../../lib/logger'
 import type { DataDb, IndexDb } from '../types'
+
+const logger = createLogger('RecentlyOpened')
 
 /**
  * Upsert the trail entry for an item and prune the tail.
@@ -108,6 +111,16 @@ export function listRecentlyOpened(
           .all()
     ).map((n) => [n.id, n] as const)
   )
+
+  // A row drops out when its note is deleted or not indexed yet. The ids are logged so a
+  // missing entry can be traced (#4236); titles and content stay out of the log.
+  const unindexed = noteIds.filter((id) => !notesById.has(id))
+  if (unindexed.length > 0) {
+    logger.info('Recently opened rows without an indexed note', {
+      count: unindexed.length,
+      ids: unindexed
+    })
+  }
 
   const canvasesById = new Map(
     (canvasIds.length === 0

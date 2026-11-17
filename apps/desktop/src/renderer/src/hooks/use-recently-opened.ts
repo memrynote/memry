@@ -17,6 +17,9 @@ import type { RecentlyOpenedItem, RecentlyOpenedItemType } from '@memry/contract
 // barrel, and reaching past it makes this hook demand a real TabProvider they
 // do not build.
 import { useActiveTab } from '@/contexts/tabs'
+import { createLogger } from '@/lib/logger'
+
+const logger = createLogger('RecentlyOpened')
 
 export const recentlyOpenedKeys = {
   all: ['recently-opened'] as const,
@@ -73,11 +76,20 @@ export function useRecordRecentlyOpened(): void {
       const now = Date.now()
       const last = lastWriteRef.current.get(key)
       if (last !== undefined && now - last < THROTTLE_MS) return
-      lastWriteRef.current.set(key, now)
 
-      void Promise.resolve(window.api.recents.record({ itemId, itemType })).then(() =>
-        queryClient.invalidateQueries({ queryKey: recentlyOpenedKeys.all })
-      )
+      // Only a stored write starts the throttle, so a failed one is retried on the next
+      // visit instead of keeping the item out of the trail for a minute (#4236).
+      const logFailure = (reason: unknown): void => {
+        logger.warn('Recording a recently opened item failed', { itemType, itemId, reason })
+      }
+      Promise.resolve(window.api.recents.record({ itemId, itemType })).then((result) => {
+        if (!result.recorded) {
+          logFailure('recorded: false')
+          return
+        }
+        lastWriteRef.current.set(key, now)
+        void queryClient.invalidateQueries({ queryKey: recentlyOpenedKeys.all })
+      }, logFailure)
     }, DWELL_MS)
 
     return () => clearTimeout(timer)
