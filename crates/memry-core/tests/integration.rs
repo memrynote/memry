@@ -49,6 +49,8 @@ mod api_sync_pass;
 mod api_task_conformance;
 #[path = "api_task_location_options.rs"]
 mod api_task_location_options;
+#[path = "api_task_store.rs"]
+mod api_task_store;
 #[path = "api_task_tree.rs"]
 mod api_task_tree;
 #[path = "api_tasks.rs"]

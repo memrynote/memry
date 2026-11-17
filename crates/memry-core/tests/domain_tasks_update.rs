@@ -14,6 +14,7 @@
 //! | `fields` patches by name; limits refuse           | `patchTaskFields`, `TASK_FIELD_LIMITS` |
 //! | undo reverts an update, `fields` with new stamps  | the registered undo, §6.11.3          |
 //! | undo of `fields` leaves later local/peer entries | the registered undo, §6.11.3          |
+//! | undo of an undo restores plain `fields` values    | the registered undo, §6.11.3          |
 //! | `repeatConfig` holds to the schema                | `RepeatConfigSchema`                  |
 //! | tags trimmed and folded; link ids deduped         | `setTaskTags`                         |
 //! | no deeper nesting with `nestedSubtasks` off       | `checkParent` (`tree.ts`)             |
@@ -610,6 +611,64 @@ fn domain_tasks_update_undo_restores_fields_with_fresh_stamps() {
         Ok(())
     })
     .expect("the undo");
+}
+
+#[test]
+fn domain_tasks_update_undo_of_an_undo_restores_plain_fields() {
+    let db = open("tu-undo-undo");
+    db.call_blocking(|conn| {
+        seed_project(conn, "pa");
+        create(conn, "t1", "pa", None);
+        let edit = update(
+            conn,
+            "t1",
+            &TaskPatch {
+                fields: fields_patch(&[("A", json!(1))]),
+                ..TaskPatch::default()
+            },
+        )?;
+        let fields_prior = |write: &tasks::TaskWrite| -> Vec<(String, Value)> {
+            write
+                .changed
+                .iter()
+                .flat_map(|prior| prior.fields.iter().cloned())
+                .filter(|(field, _)| field == "fields")
+                .collect()
+        };
+        assert_eq!(
+            fields_prior(&edit.write),
+            [("fields".to_owned(), json!({"A": null}))]
+        );
+
+        let undone = tasks::undo(conn, &edit.write, DEVICE, NOW + 2_000)?;
+        let after_undo = payload_of(conn, "t1");
+        assert_eq!(after_undo["fields"]["A"]["v"], Value::Null);
+        // The undo's own record is the same plain cut an update writes, so it
+        // is valid undo input in turn.
+        assert_eq!(
+            fields_prior(&undone),
+            [("fields".to_owned(), json!({"A": 1}))]
+        );
+
+        tasks::undo(conn, &undone, DEVICE, NOW + 3_000)?;
+        let task = payload_of(conn, "t1");
+        let entry = task["fields"]["A"].as_object().expect("an entry");
+        assert_eq!(
+            entry.get("v"),
+            Some(&json!(1)),
+            "plain value, no nested entry"
+        );
+        assert!(
+            entry["t"].as_u64().expect("a stamp")
+                > after_undo["fields"]["A"]["t"].as_u64().expect("a stamp")
+        );
+        assert_eq!(
+            Value::Object(memry_core::sync::versioned::plain(task.get("fields"))),
+            json!({"A": 1})
+        );
+        Ok(())
+    })
+    .expect("the undo of the undo");
 }
 
 #[test]

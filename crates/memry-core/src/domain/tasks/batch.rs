@@ -14,7 +14,7 @@
 use std::collections::HashMap;
 
 use rusqlite::{Connection, Transaction};
-use serde_json::Value;
+use serde_json::{Map, Value};
 
 use crate::api::errors::StorageError;
 use crate::storage::repositories::Change;
@@ -35,6 +35,8 @@ const UNCLOCKED_FIELDS: [&str; 3] = ["tags", "linkedNoteIds", "linkedCanvasIds"]
 
 /// What one task looked like before a write changed it: each changed field
 /// with its **prior** value (`null` when the key was absent or null).
+/// `fields` holds only the entries the write changed, each with its prior
+/// plain value (`null` when absent), never the stamped `{v,t}` entries.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Prior {
     pub task_id: String,
@@ -122,7 +124,9 @@ impl<'c> Batch<'c> {
     /// Edits one task: drops every change that would not change the stored
     /// value, then — when anything is left — ticks the document clock and the
     /// changed fields' clocks, merges, and queues the outbox row. Returns
-    /// whether anything was written.
+    /// whether anything was written. A `fields` change is the whole stamped
+    /// map; its record is the cut of the entries it changed ([`fields_cut`]),
+    /// so an update's and an undo's records have one shape.
     pub(super) fn edit(
         &mut self,
         task_id: &str,
@@ -140,6 +144,11 @@ impl<'c> Batch<'c> {
             if before == value {
                 continue;
             }
+            let before = if key == "fields" {
+                fields_cut(stored.object.get("fields"), &value)
+            } else {
+                before
+            };
             prior.push((key.to_owned(), before));
             effective.push((key, Change::Set(value)));
         }
@@ -316,8 +325,29 @@ pub fn write_fields(
     batch.commit()
 }
 
+/// The entries of a `fields` map an edit changes, each with its prior plain
+/// value (`null` when absent): the undo of `fields` touches only these, so it
+/// never overwrites an entry a later local or peer edit wrote (§6.11.3).
+fn fields_cut(before: Option<&Value>, after: &Value) -> Value {
+    let old = versioned::read_map(before).unwrap_or_default();
+    let new = versioned::read_map(Some(after)).unwrap_or_default();
+    let values = versioned::plain(before);
+    let cut: Map<String, Value> = old
+        .keys()
+        .chain(new.keys())
+        .filter(|name| old.get(*name) != new.get(*name))
+        .map(|name| {
+            (
+                name.clone(),
+                values.get(name).cloned().unwrap_or(Value::Null),
+            )
+        })
+        .collect();
+    Value::Object(cut)
+}
+
 /// The prior values of the `fields` entries a write changed (`null` for one
-/// that was absent), as [`super::update::apply`] cut them, laid over the
+/// that was absent), as [`Batch::edit`] recorded them, laid over the
 /// stored map as a new local edit: each of those entries that differs gets
 /// one fresh stamp, and every other entry is left alone, so a later local or
 /// peer entry survives. Writing the old entries back verbatim would restore
