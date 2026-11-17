@@ -5,6 +5,7 @@ pub mod account;
 pub mod agent;
 pub mod ai;
 pub mod attachments;
+pub mod billing;
 pub mod command_failure;
 pub mod config;
 pub mod e2e;
