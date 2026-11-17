@@ -22,14 +22,6 @@ import Observation
 // extensions built on ``perform(_:_:)`` and ``read(_:)``, so no two screens
 // edit this file.
 
-/// D5 and gate G0 (JP029): every shipped desktop empties a day's vault file
-/// when a record-only journal write (tags, properties) arrives, so the phone
-/// keeps those rows read-only until a desktop release with the fix is out.
-/// Body edits, templates and reminders are unaffected. Flip to `true` then.
-enum JournalWriteGate {
-    static let metadataWrites = false
-}
-
 /// The note-page dependencies the day page composes (JP033): a day's body,
 /// review comments, attachments and tables are read through the note reader
 /// with the day's record id, and a note opened from a day uses the same set.

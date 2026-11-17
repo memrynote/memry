@@ -9,6 +9,7 @@
 //! | the date property is reserved                      | D5                      |
 //! | a write equal to the stored value writes nothing   | no clock tick, no push  |
 //! | a retype is refused and a tombstone revives        | FR-048, D2              |
+//! | a day a tag creates reads empty, a pulled one not  | D2, body state          |
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -173,6 +174,31 @@ fn a_first_tag_creates_the_day_and_an_update_writes_content_null() {
         Ok(())
     })
     .expect("create");
+}
+
+#[test]
+fn a_day_a_tag_creates_reads_empty_and_a_synced_day_stays_not_pulled() {
+    let db = open("body-state");
+    db.call_blocking(|conn| {
+        metadata::set_tags(conn, DAY, &strings(&["morning"]), DEVICE, NOW)?;
+        let created = reads::day(conn, DAY).expect("read").expect("the day");
+        assert_eq!(created.body_state, reads::JournalBodyState::Empty);
+        assert_eq!(
+            queued(conn),
+            1,
+            "the empty body is local, only the record pushes"
+        );
+
+        let synced = "2099-06-16";
+        let older = json!({"date": synced, "content": "# body", "clock": {"device-b": 4},
+            "createdAt": "2099-06-16T08:00:00.000Z", "modifiedAt": "2099-06-16T08:00:00.000Z"});
+        sync_items::apply_remote(conn, &remote("desktop-day", older), NOW)?;
+        metadata::set_tags(conn, synced, &strings(&["inbox"]), DEVICE, NOW + 1)?;
+        let pulled = reads::day(conn, synced).expect("read").expect("the day");
+        assert_eq!(pulled.body_state, reads::JournalBodyState::NotPulled);
+        Ok(())
+    })
+    .expect("body state");
 }
 
 #[test]
