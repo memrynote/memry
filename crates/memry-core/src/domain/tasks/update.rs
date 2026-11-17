@@ -8,10 +8,15 @@
 //! - A cleared `dueTime` clears `durationMinutes` (a duration only means
 //!   something on a timed task). A cleared `dueDate` leaves `dueTime` alone.
 //! - A missing project refuses the edit (`errors:task.projectMissing`), and so
-//!   does a parent `checkParent` rejects (`errors:task.invalidParent`).
-//! - A project change files the task under the target project's status of the
-//!   same type, overriding any `statusId` in the patch. Only this task moves,
-//!   as `updateTask` writes one row.
+//!   does a parent `checkParent` rejects (`errors:task.invalidParent`). With
+//!   `allow_nested` off (the `tasks.nestedSubtasks` setting), that includes a
+//!   parent that is itself a subtask, and a task that has subtasks.
+//! - A project change files the task under the target project's
+//!   `getEquivalentStatus`, overriding any `statusId` in the patch. Only this
+//!   task moves, as `updateTask` writes one row, and a `parentId` the patch
+//!   leaves alone stays, even in another project (as `updateTask` does).
+//! - Tags are trimmed, empty ones dropped and case variants folded, keeping
+//!   the first spelling (`setTaskTags`); a repeated link id is kept once.
 //! - A `statusId` that names no status is written as `null`; a done status
 //!   stamps `completedAt` on an open task, any other status clears it on a
 //!   completed one (`completedAtOnStatus`).
@@ -21,6 +26,8 @@
 //! - `fields` is a patch: names left out keep their values, `null` removes
 //!   one, each entry stamped by chapter 06 §6.11.3.
 
+use std::collections::HashSet;
+
 use rusqlite::Connection;
 use serde_json::{Map, Value, json};
 
@@ -28,7 +35,6 @@ use crate::api::errors::StorageError;
 use crate::domain::calendar::{CivilDate, LocalDateTime};
 use crate::domain::notes::{clock_in, iso};
 use crate::domain::projects;
-use crate::domain::repeat_config::RepeatConfig;
 use crate::domain::tags::dedupe;
 use crate::sync::clock::clock_total;
 use crate::sync::versioned;
@@ -36,7 +42,9 @@ use crate::sync::versioned;
 use super::batch::{Batch, TaskWrite};
 use super::create::require_parent;
 use super::lifecycle::{NextOccurrence, series_of, spawn_next};
-use super::model::{ProjectStatuses, StatusKind, find_live, status_by_id, status_kind};
+use super::model::{
+    ProjectStatuses, StatusKind, find_live, status_by_id, status_kind, subtask_ids,
+};
 
 /// A change to a nullable field.
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -167,9 +175,9 @@ impl TaskPatch {
         if self
             .repeat_config
             .as_set()
-            .is_some_and(|config| RepeatConfig::from_wire(config).is_none())
+            .is_some_and(|config| !repeat_config_fits(config))
         {
-            return invalid("repeatConfig needs a frequency and an endType");
+            return invalid("repeatConfig does not match RepeatConfigSchema");
         }
         if self
             .repeat_from
@@ -201,6 +209,45 @@ fn units(text: &str) -> usize {
     text.encode_utf16().count()
 }
 
+/// `RepeatConfigSchema` on the keys it names. A key it does not name is a
+/// newer build's and is kept verbatim (D7), so the object is not stripped.
+fn repeat_config_fits(config: &Value) -> bool {
+    let Some(object) = config.as_object() else {
+        return false;
+    };
+    let int_in = |key: &str, min: i64, max: i64| {
+        object
+            .get(key)
+            .is_none_or(|value| value.as_i64().is_some_and(|n| (min..=max).contains(&n)))
+    };
+    let one_of = |key: &str, allowed: &[&str]| {
+        object
+            .get(key)
+            .is_none_or(|value| value.as_str().is_some_and(|text| allowed.contains(&text)))
+    };
+    object.contains_key("frequency")
+        && one_of("frequency", &["daily", "weekly", "monthly", "yearly"])
+        && int_in("interval", 1, i64::MAX)
+        && object.get("daysOfWeek").is_none_or(|days| {
+            days.as_array().is_some_and(|days| {
+                days.iter()
+                    .all(|day| day.as_i64().is_some_and(|n| (0..=6).contains(&n)))
+            })
+        })
+        && one_of("monthlyType", &["dayOfMonth", "weekPattern"])
+        && int_in("dayOfMonth", 1, 31)
+        && int_in("weekOfMonth", 1, 5)
+        && int_in("dayOfWeekForMonth", 0, 6)
+        && object.contains_key("endType")
+        && one_of("endType", &["never", "date", "count"])
+        && object
+            .get("endDate")
+            .is_none_or(|date| date.is_null() || date.is_string())
+        && int_in("endCount", 1, i64::MAX)
+        && int_in("completedCount", 0, i64::MAX)
+        && object.get("createdAt").is_some_and(Value::is_string)
+}
+
 /// `/^\d{2}:\d{2}$/`.
 fn is_hh_mm(time: &str) -> bool {
     let bytes = time.as_bytes();
@@ -223,6 +270,16 @@ fn field_value_fits(value: &Value) -> bool {
     }
 }
 
+/// `ids` with each repeat dropped, in first-seen order.
+fn once(ids: &[String]) -> Value {
+    let mut seen = HashSet::new();
+    json!(
+        ids.iter()
+            .filter(|id| seen.insert(id.as_str()))
+            .collect::<Vec<_>>()
+    )
+}
+
 fn nullable<T: Into<Value> + Clone>(patch: &Patch<T>) -> Option<Value> {
     match patch {
         Patch::Keep => None,
@@ -233,11 +290,13 @@ fn nullable<T: Into<Value> + Clone>(patch: &Patch<T>) -> Option<Value> {
 
 /// Applies `patch` to task `task_id` in one transaction. `local_now` is the
 /// device's wall clock, which a repeating series rolled here anchors on.
+/// `allow_nested` is the `tasks.nestedSubtasks` setting `checkParent` reads.
 pub fn apply(
     conn: &Connection,
     task_id: &str,
     patch: &TaskPatch,
     local_now: LocalDateTime,
+    allow_nested: bool,
     device_id: &str,
     now_ms: i64,
 ) -> Result<Result<TaskUpdate, UpdateRefusal>, StorageError> {
@@ -253,12 +312,17 @@ pub fn apply(
     }
     if let Patch::Set(parent_id) = &patch.parent_id {
         let project_id = patch.project_id.as_deref().unwrap_or(before.project_id());
-        match require_parent(batch.conn(), task_id, parent_id, project_id) {
-            Ok(_) => {}
-            Err(StorageError::Invalid { .. } | StorageError::NotFound { .. }) => {
-                return Ok(Err(UpdateRefusal::InvalidParent));
+        let too_deep = match require_parent(batch.conn(), task_id, parent_id, project_id) {
+            Ok(parent) => {
+                !allow_nested
+                    && (parent.parent_id().is_some()
+                        || !subtask_ids(batch.conn(), task_id)?.is_empty())
             }
+            Err(StorageError::Invalid { .. } | StorageError::NotFound { .. }) => true,
             Err(other) => return Err(other),
+        };
+        if too_deep {
+            return Ok(Err(UpdateRefusal::InvalidParent));
         }
     }
 
@@ -288,12 +352,12 @@ pub fn apply(
     if let Some(project_id) = patch.project_id.as_deref()
         && project_id != before.project_id()
     {
-        let source = ProjectStatuses::load(batch.conn(), before.project_id())?;
-        let kind = source
-            .kind_of(before.status_id())
-            .unwrap_or(StatusKind::Todo);
+        let source = match before.status_id() {
+            Some(id) => status_by_id(batch.conn(), id)?,
+            None => None,
+        };
         let target = ProjectStatuses::load(batch.conn(), project_id)?;
-        if let Some(status) = target.equivalent(kind) {
+        if let Some(status) = target.equivalent_to(source.as_ref()) {
             status_id = Some(json!(status.id));
         }
     }
@@ -321,14 +385,21 @@ pub fn apply(
         push("repeatConfig", Some(Value::Null));
     }
 
-    push("tags", patch.tags.clone().map(|tags| json!(dedupe(tags))));
     push(
-        "linkedNoteIds",
-        patch.linked_note_ids.clone().map(Value::from),
+        "tags",
+        patch.tags.as_ref().map(|tags| {
+            json!(dedupe(
+                tags.iter()
+                    .map(|tag| tag.trim())
+                    .filter(|tag| !tag.is_empty())
+                    .map(str::to_owned)
+            ))
+        }),
     );
+    push("linkedNoteIds", patch.linked_note_ids.as_deref().map(once));
     push(
         "linkedCanvasIds",
-        patch.linked_canvas_ids.clone().map(Value::from),
+        patch.linked_canvas_ids.as_deref().map(once),
     );
     if let Some(fields) = &patch.fields {
         let total = u64::try_from(clock_total(&clock_in(&before.object)?)).unwrap_or(0);

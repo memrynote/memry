@@ -14,15 +14,16 @@
 use std::collections::HashMap;
 
 use rusqlite::{Connection, Transaction};
-use serde_json::Value;
+use serde_json::{Map, Value};
 
 use crate::api::errors::StorageError;
 use crate::storage::repositories::Change;
 use crate::storage::repositories::schema::Object;
+use crate::sync::clock::clock_total;
 use crate::sync::field_merge::TASK_SYNCABLE_FIELDS;
-use crate::sync::outbox;
+use crate::sync::{outbox, versioned};
 
-use super::super::notes::{failed, insert_local, tombstone_local};
+use super::super::notes::{clock_in, failed, insert_local, tombstone_local};
 use super::create::seeded;
 use super::model::{find_live, new_task_id};
 use super::{ITEM_TYPE, edit_merged_in};
@@ -213,6 +214,7 @@ impl<'c> Batch<'c> {
 ///
 /// A new write, not a rollback: the clocks tick again, so the revert syncs
 /// like any other edit. A task that has since been deleted is skipped.
+/// `fields` comes back as its prior values with fresh stamps ([`restamped`]).
 ///
 /// **A deleted task returns under a new id.** A tombstone is final on the wire
 /// (a peer that saw the delete never resurrects the id), so this recreates
@@ -264,17 +266,16 @@ pub fn undo(
         batch.create(id, seeded(fields, device_id, now_ms)?)?;
     }
     for prior in write.changed.iter().rev() {
-        if find_live(batch.conn(), &prior.task_id)?.is_none() {
+        let Some(stored) = find_live(batch.conn(), &prior.task_id)? else {
             continue;
-        }
+        };
         let mut changes = Vec::new();
         for (field, value) in &prior.fields {
-            let value = if field == "parentId" {
-                remap(value)
-            } else {
-                value.clone()
-            };
-            changes.push((restorable_field(field)?, value));
+            changes.push(match field.as_str() {
+                "fields" => ("fields", restamped(&stored.object, value)?),
+                "parentId" => ("parentId", remap(value)),
+                _ => (restorable_field(field)?, value.clone()),
+            });
         }
         batch.edit(&prior.task_id, changes)?;
     }
@@ -305,6 +306,22 @@ pub fn write_fields(
     }
     batch.edit(task_id, typed)?;
     batch.commit()
+}
+
+/// The prior `fields` map's values as a new local edit of the stored map:
+/// each entry that differs gets one fresh stamp, and an entry the prior map
+/// lacks is removed. Writing the prior map back verbatim would restore its
+/// old `t` stamps, which lose to every peer that saw the edit (§6.11.3).
+fn restamped(stored: &Object, prior: &Value) -> Result<Value, StorageError> {
+    let current = stored.get("fields");
+    let mut patch: Map<String, Value> = versioned::plain(current)
+        .into_iter()
+        .map(|(name, _)| (name, Value::Null))
+        .collect();
+    patch.extend(versioned::plain(Some(prior)));
+    // `_offline` is part of the total (§6.11.3), and a total is never negative.
+    let total = u64::try_from(clock_total(&clock_in(stored)?)).unwrap_or(0);
+    Ok(versioned::stamp_map(current, &patch, total))
 }
 
 /// The static spelling of a field an undo may write, or an error for any

@@ -102,6 +102,32 @@ impl ProjectStatuses {
         self.first_of(kind).or_else(|| self.initial())
     }
 
+    /// `getEquivalentStatus` (`queries/projects.ts`), the status a project
+    /// change in `updateTask` lands in. It reads the flags, not the column: a
+    /// done source takes the first done status, a default source the default,
+    /// and anything else the first status that is neither, each falling back
+    /// to the default. No source status takes the default.
+    pub(super) fn equivalent_to(&self, source: Option<&Status>) -> Option<&Status> {
+        let default = || self.0.iter().find(|status| status.is_default);
+        let Some(source) = source else {
+            return default();
+        };
+        if source.is_done
+            && let Some(done) = self.0.iter().find(|status| status.is_done)
+        {
+            return Some(done);
+        }
+        if source.is_default
+            && let Some(status) = default()
+        {
+            return Some(status);
+        }
+        self.0
+            .iter()
+            .find(|status| !status.is_default && !status.is_done)
+            .or_else(default)
+    }
+
     /// The type of `status_id` in this project, `None` when it is not one of
     /// this project's statuses.
     pub(super) fn kind_of(&self, status_id: Option<&str>) -> Option<StatusKind> {

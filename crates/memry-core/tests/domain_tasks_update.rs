@@ -12,7 +12,11 @@
 //! | an open status reopens; an unknown one is null    | `completedAtOnStatus`, `resolveStatusId` |
 //! | refusals write nothing                            | `PROJECT_MISSING_ERROR`, `INVALID_PARENT_ERROR` |
 //! | `fields` patches by name; limits refuse           | `patchTaskFields`, `TASK_FIELD_LIMITS` |
-//! | undo reverts an update                            | the registered undo                   |
+//! | undo reverts an update, `fields` with new stamps  | the registered undo, §6.11.3          |
+//! | `repeatConfig` holds to the schema                | `RepeatConfigSchema`                  |
+//! | tags trimmed and folded; link ids deduped         | `setTaskTags`                         |
+//! | no deeper nesting with `nestedSubtasks` off       | `checkParent` (`tree.ts`)             |
+//! | the status a project change lands in              | `getEquivalentStatus`                 |
 
 use memry_core::api::errors::StorageError;
 use memry_core::domain::calendar::LocalDateTime;
@@ -62,6 +66,18 @@ fn apply(conn: &Connection, item_type: &str, item_id: &str, payload: Value) {
 
 /// A project with desktop's three default statuses.
 fn seed_project(conn: &Connection, id: &str) {
+    seed_statuses(
+        conn,
+        id,
+        json!([
+            {"id": format!("{id}-todo"), "name": "To Do", "color": "#6b7280", "position": 0, "isDefault": true},
+            {"id": format!("{id}-doing"), "name": "In Progress", "color": "#F59E0B", "position": 1},
+            {"id": format!("{id}-done"), "name": "Done", "color": "#22c55e", "position": 2, "isDone": true}
+        ]),
+    );
+}
+
+fn seed_statuses(conn: &Connection, id: &str, statuses: Value) {
     apply(
         conn,
         "project",
@@ -69,11 +85,7 @@ fn seed_project(conn: &Connection, id: &str) {
         json!({
             "name": id,
             "color": "#0ea5e9",
-            "statuses": [
-                {"id": format!("{id}-todo"), "name": "To Do", "color": "#6b7280", "position": 0, "isDefault": true},
-                {"id": format!("{id}-doing"), "name": "In Progress", "color": "#F59E0B", "position": 1},
-                {"id": format!("{id}-done"), "name": "Done", "color": "#22c55e", "position": 2, "isDone": true}
-            ],
+            "statuses": statuses,
             "clock": {"device-b": 1}
         }),
     );
@@ -122,15 +134,25 @@ fn clear_outbox(conn: &Connection) {
 }
 
 fn update(conn: &Connection, id: &str, patch: &TaskPatch) -> Result<TaskUpdate, StorageError> {
-    Ok(tasks::update::apply(
+    Ok(update_nesting(conn, id, patch, true)?.expect("an accepted update"))
+}
+
+/// `allow_nested` is desktop's `tasks.nestedSubtasks` setting (default on).
+fn update_nesting(
+    conn: &Connection,
+    id: &str,
+    patch: &TaskPatch,
+    allow_nested: bool,
+) -> Result<Result<TaskUpdate, UpdateRefusal>, StorageError> {
+    tasks::update::apply(
         conn,
         id,
         patch,
         local("2026-04-16T12:00:00"),
+        allow_nested,
         DEVICE,
         NOW + 1_000,
-    )?
-    .expect("an accepted update"))
+    )
 }
 
 fn weekly() -> Value {
@@ -406,7 +428,7 @@ fn domain_tasks_update_refusals_write_nothing() {
         clear_outbox(conn);
         let before = payload_of(conn, "t1");
         let refused = |id: &str, patch: TaskPatch| {
-            tasks::update::apply(conn, id, &patch, local("2026-04-16T12:00:00"), DEVICE, NOW)
+            update_nesting(conn, id, &patch, true)
                 .expect("no storage failure")
                 .expect_err("a refusal")
         };
@@ -520,8 +542,7 @@ fn domain_tasks_update_patches_fields_by_name_and_holds_the_limits() {
         ];
         let before = payload_of(conn, "t1");
         for case in cases {
-            let error =
-                tasks::update::apply(conn, "t1", &case, local("2026-04-16T12:00:00"), DEVICE, NOW);
+            let error = update_nesting(conn, "t1", &case, true);
             assert!(
                 matches!(error, Err(StorageError::Invalid { .. })),
                 "{case:?} gave {error:?}"
@@ -531,4 +552,229 @@ fn domain_tasks_update_patches_fields_by_name_and_holds_the_limits() {
         Ok(())
     })
     .expect("the field patches");
+}
+
+fn fields_patch(pairs: &[(&str, Value)]) -> Option<Map<String, Value>> {
+    Some(
+        pairs
+            .iter()
+            .map(|(name, value)| ((*name).to_owned(), value.clone()))
+            .collect(),
+    )
+}
+
+#[test]
+fn domain_tasks_update_undo_restores_fields_with_fresh_stamps() {
+    let db = open("tu-undo-fields");
+    db.call_blocking(|conn| {
+        seed_project(conn, "pa");
+        create(conn, "t1", "pa", None);
+        update(
+            conn,
+            "t1",
+            &TaskPatch {
+                fields: fields_patch(&[("B", json!("x"))]),
+                ..TaskPatch::default()
+            },
+        )?;
+        let edit = update(
+            conn,
+            "t1",
+            &TaskPatch {
+                title: Some("Renamed".into()),
+                fields: fields_patch(&[("A", json!(1)), ("B", Value::Null)]),
+                ..TaskPatch::default()
+            },
+        )?;
+        let edited = payload_of(conn, "t1");
+        let stamp = |task: &Value, name: &str| task["fields"][name]["t"].as_u64().expect("a stamp");
+        let edit_stamp = stamp(&edited, "A");
+        clear_outbox(conn);
+
+        let undone = tasks::undo(conn, &edit.write, DEVICE, NOW + 2_000)?;
+        let task = payload_of(conn, "t1");
+        assert_eq!(task["title"], json!("Water the plants"));
+        assert_eq!(
+            Value::Object(memry_core::sync::versioned::plain(task.get("fields"))),
+            json!({"B": "x"})
+        );
+        // A peer that saw the update must lose to the undo (§6.11.3): every
+        // restored entry carries a stamp newer than the update's, never the
+        // old one.
+        assert_eq!(task["fields"]["A"]["v"], Value::Null);
+        assert!(stamp(&task, "A") > edit_stamp);
+        assert!(stamp(&task, "B") > edit_stamp);
+        assert_eq!(undone.changed_ids(), ["t1"]);
+        assert_eq!(outbox_rows(conn), [("t1".into(), "upsert".into())]);
+        Ok(())
+    })
+    .expect("the undo");
+}
+
+#[test]
+fn domain_tasks_update_holds_repeat_config_to_the_schema() {
+    let db = open("tu-repeat");
+    db.call_blocking(|conn| {
+        seed_project(conn, "pa");
+        create(conn, "t1", "pa", None);
+        let config = |key: &str, value: Option<Value>| {
+            let mut config = weekly();
+            let object = config.as_object_mut().expect("an object");
+            match value {
+                Some(value) => object.insert(key.to_owned(), value),
+                None => object.remove(key),
+            };
+            config
+        };
+        let rejected = [
+            config("frequency", Some(json!("hourly"))),
+            config("interval", Some(json!(0))),
+            config("interval", Some(json!(1.5))),
+            config("interval", Some(Value::Null)),
+            config("daysOfWeek", Some(json!([7]))),
+            config("monthlyType", Some(json!("lastDay"))),
+            config("dayOfMonth", Some(json!(32))),
+            config("weekOfMonth", Some(json!(6))),
+            config("dayOfWeekForMonth", Some(json!(-1))),
+            config("endType", Some(json!("forever"))),
+            config("endDate", Some(json!(5))),
+            config("endCount", Some(json!(0))),
+            config("completedCount", Some(json!(-1))),
+            config("createdAt", None),
+        ];
+        let before = payload_of(conn, "t1");
+        for repeat in rejected {
+            let error = update_nesting(
+                conn,
+                "t1",
+                &TaskPatch {
+                    repeat_config: Patch::Set(repeat.clone()),
+                    ..TaskPatch::default()
+                },
+                true,
+            );
+            assert!(
+                matches!(error, Err(StorageError::Invalid { .. })),
+                "{repeat} gave {error:?}"
+            );
+        }
+        assert_eq!(payload_of(conn, "t1"), before);
+
+        // A key the schema does not name is a newer build's and stays (D7).
+        let newer = config("skipHolidays", Some(json!(true)));
+        let mut counted = config("endType", Some(json!("count")));
+        counted["endCount"] = json!(3);
+        counted["endDate"] = Value::Null;
+        for repeat in [newer, counted] {
+            update(
+                conn,
+                "t1",
+                &TaskPatch {
+                    repeat_config: Patch::Set(repeat.clone()),
+                    ..TaskPatch::default()
+                },
+            )?;
+            assert_eq!(payload_of(conn, "t1")["repeatConfig"], repeat);
+        }
+        Ok(())
+    })
+    .expect("the repeat configs");
+}
+
+#[test]
+fn domain_tasks_update_trims_and_folds_tags_and_dedupes_links() {
+    let db = open("tu-tags");
+    db.call_blocking(|conn| {
+        seed_project(conn, "pa");
+        create(conn, "t1", "pa", None);
+        update(
+            conn,
+            "t1",
+            &TaskPatch {
+                tags: Some(strings(&[" home ", "", "   ", "HOME", "pets "])),
+                linked_note_ids: Some(strings(&["n1", "n2", "n1"])),
+                linked_canvas_ids: Some(strings(&["c1", "c1"])),
+                ..TaskPatch::default()
+            },
+        )?;
+        let task = payload_of(conn, "t1");
+        assert_eq!(task["tags"], json!(["home", "pets"]));
+        assert_eq!(task["linkedNoteIds"], json!(["n1", "n2"]));
+        assert_eq!(task["linkedCanvasIds"], json!(["c1"]));
+        Ok(())
+    })
+    .expect("the tags");
+}
+
+#[test]
+fn domain_tasks_update_refuses_deeper_nesting_with_nested_subtasks_off() {
+    let db = open("tu-nesting");
+    db.call_blocking(|conn| {
+        seed_project(conn, "pa");
+        for id in ["t1", "t2", "t3", "t4"] {
+            create(conn, id, "pa", None);
+        }
+        let under = |parent: &str| TaskPatch {
+            parent_id: Patch::Set(parent.into()),
+            ..TaskPatch::default()
+        };
+        update_nesting(conn, "t2", &under("t1"), false)?.expect("one level is allowed");
+        clear_outbox(conn);
+        let before = [payload_of(conn, "t1"), payload_of(conn, "t3")];
+
+        // Under a subtask, and a task with subtasks under another task.
+        for (task, parent) in [("t3", "t2"), ("t1", "t4")] {
+            let refusal = update_nesting(conn, task, &under(parent), false)?;
+            assert_eq!(refusal.err(), Some(UpdateRefusal::InvalidParent), "{task}");
+        }
+        assert_eq!([payload_of(conn, "t1"), payload_of(conn, "t3")], before);
+        assert!(outbox_rows(conn).is_empty());
+
+        update_nesting(conn, "t3", &under("t2"), true)?.expect("nesting on");
+        assert_eq!(payload_of(conn, "t3")["parentId"], json!("t2"));
+        Ok(())
+    })
+    .expect("the nesting");
+}
+
+#[test]
+fn domain_tasks_update_maps_the_status_as_get_equivalent_status() {
+    let db = open("tu-equivalent");
+    db.call_blocking(|conn| {
+        seed_project(conn, "pa");
+        // The default status is not the first column.
+        seed_statuses(
+            conn,
+            "pc",
+            json!([
+                {"id": "pc-backlog", "name": "Backlog", "color": "#6b7280", "position": 0},
+                {"id": "pc-todo", "name": "To Do", "color": "#6b7280", "position": 1, "isDefault": true},
+                {"id": "pc-done", "name": "Done", "color": "#22c55e", "position": 2, "isDone": true}
+            ]),
+        );
+        create(conn, "t1", "pa", None);
+        create(conn, "t2", "pc", None);
+        create(conn, "t3", "pc", None);
+        let status = |id: &str| TaskPatch {
+            status_id: Patch::Set(id.into()),
+            ..TaskPatch::default()
+        };
+        update(conn, "t2", &status("pc-todo"))?;
+        update(conn, "t3", &status("pc-backlog"))?;
+        let to = |project: &str| TaskPatch {
+            project_id: Some(project.into()),
+            ..TaskPatch::default()
+        };
+
+        // A default status lands in the target's default, whatever its column.
+        update(conn, "t1", &to("pc"))?;
+        assert_eq!(payload_of(conn, "t1")["statusId"], json!("pc-todo"));
+        update(conn, "t2", &to("pa"))?;
+        assert_eq!(payload_of(conn, "t2")["statusId"], json!("pa-todo"));
+        // Neither default nor done lands in the first such status.
+        update(conn, "t3", &to("pa"))?;
+        assert_eq!(payload_of(conn, "t3")["statusId"], json!("pa-doing"));
+        Ok(())
+    })
+    .expect("the status mapping");
 }
