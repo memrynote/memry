@@ -777,3 +777,27 @@ private final class FakeBoards: WhiteboardBoards, @unchecked Sendable {
 
     func save(_ id: String, scene: String) async throws {}
 }
+
+/// #4818: the `@`, `[[` and `#` menus fit between the safe area's top and the
+/// keyboard toolbar, so every row can be scrolled to.
+struct SuggestionMenuHeightTests {
+    @Test func aPortraitPhoneKeepsFourRows() {
+        // iPhone 17 portrait: the row at 487pt, under a 62pt safe area.
+        #expect(SuggestionMenuHeight.max(rowTop: 487, safeTop: 62) == SuggestionMenuHeight.rows)
+    }
+
+    @Test func aLandscapePhoneShrinksTheMenuToTheRoomAboveTheRow() {
+        // iPhone 17 landscape with the on-screen keyboard: the row at 142pt.
+        let height = SuggestionMenuHeight.max(rowTop: 142, safeTop: 0)
+        #expect(height == 126)
+        #expect(142 - height - 16 >= 0)
+    }
+
+    @Test func noRoomStillLeavesOneRow() {
+        #expect(SuggestionMenuHeight.max(rowTop: 30, safeTop: 0) == 44)
+    }
+
+    @Test func beforeLayoutTheMenuKeepsFourRows() {
+        #expect(SuggestionMenuHeight.max(rowTop: nil, safeTop: 0) == SuggestionMenuHeight.rows)
+    }
+}
