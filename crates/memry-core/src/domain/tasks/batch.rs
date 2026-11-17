@@ -14,7 +14,7 @@
 use std::collections::HashMap;
 
 use rusqlite::{Connection, Transaction};
-use serde_json::{Map, Value};
+use serde_json::Value;
 
 use crate::api::errors::StorageError;
 use crate::storage::repositories::Change;
@@ -214,7 +214,8 @@ impl<'c> Batch<'c> {
 ///
 /// A new write, not a rollback: the clocks tick again, so the revert syncs
 /// like any other edit. A task that has since been deleted is skipped.
-/// `fields` comes back as its prior values with fresh stamps ([`restamped`]).
+/// `fields` comes back entry by entry, only the entries the write changed,
+/// with fresh stamps ([`restamped`]).
 ///
 /// **A deleted task returns under a new id.** A tombstone is final on the wire
 /// (a peer that saw the delete never resurrects the id), so this recreates
@@ -292,6 +293,8 @@ pub fn undo(
 ///
 /// Only task fields are accepted (the same list an undo may restore); a field
 /// already holding the value is skipped with no clock tick and no outbox row.
+/// `fields` is refused: its entries are stamped and undone one by one, which
+/// [`super::update::apply`] owns.
 pub fn write_fields(
     conn: &Connection,
     task_id: &str,
@@ -302,26 +305,28 @@ pub fn write_fields(
     let mut batch = Batch::open(conn, device_id, now_ms)?;
     let mut typed = Vec::new();
     for (field, value) in changes {
+        if field == "fields" {
+            return Err(StorageError::Invalid {
+                what: "`fields` is written through a task update".to_owned(),
+            });
+        }
         typed.push((restorable_field(&field)?, value));
     }
     batch.edit(task_id, typed)?;
     batch.commit()
 }
 
-/// The prior `fields` map's values as a new local edit of the stored map:
-/// each entry that differs gets one fresh stamp, and an entry the prior map
-/// lacks is removed. Writing the prior map back verbatim would restore its
-/// old `t` stamps, which lose to every peer that saw the edit (§6.11.3).
+/// The prior values of the `fields` entries a write changed (`null` for one
+/// that was absent), as [`super::update::apply`] cut them, laid over the
+/// stored map as a new local edit: each of those entries that differs gets
+/// one fresh stamp, and every other entry is left alone, so a later local or
+/// peer entry survives. Writing the old entries back verbatim would restore
+/// their old `t` stamps, which lose to every peer that saw the edit (§6.11.3).
 fn restamped(stored: &Object, prior: &Value) -> Result<Value, StorageError> {
-    let current = stored.get("fields");
-    let mut patch: Map<String, Value> = versioned::plain(current)
-        .into_iter()
-        .map(|(name, _)| (name, Value::Null))
-        .collect();
-    patch.extend(versioned::plain(Some(prior)));
+    let patch = prior.as_object().cloned().unwrap_or_default();
     // `_offline` is part of the total (§6.11.3), and a total is never negative.
     let total = u64::try_from(clock_total(&clock_in(stored)?)).unwrap_or(0);
-    Ok(versioned::stamp_map(current, &patch, total))
+    Ok(versioned::stamp_map(stored.get("fields"), &patch, total))
 }
 
 /// The static spelling of a field an undo may write, or an error for any
@@ -348,6 +353,19 @@ mod tests {
         assert_eq!(restorable_field("tags").ok(), Some("tags"));
         assert!(restorable_field("clock").is_err());
         assert!(restorable_field("fieldClocks").is_err());
+    }
+
+    #[test]
+    fn write_fields_refuses_the_fields_map() {
+        let conn = Connection::open_in_memory().expect("open");
+        let refused = write_fields(
+            &conn,
+            "t1",
+            vec![("fields".to_owned(), Value::Object(serde_json::Map::new()))],
+            "device-a",
+            0,
+        );
+        assert!(matches!(refused, Err(StorageError::Invalid { .. })));
     }
 
     #[test]
