@@ -6,15 +6,19 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { ScreenRecorder } from '../../engine/screen-rec.mjs'
 import { connect } from './pw.mjs'
-import { Recorder, installCursor, sleep } from './rec.mjs'
+import { CdpScreencast, Recorder, installCursor, sleep } from './rec.mjs'
 
 // Silence before and after each line; a scene can set its own `lead` and `tail` in narration.json
 // (the title card needs time for the logo before the first word, the end card a hold after the last).
 const LEAD = 0.5
 const TAIL = 0.7
 
-/** `page` films that page instead of the app (the social clips' terminal and diagram scenes). */
+/**
+ * `page` (a Playwright page) films that page through its screencast instead of the app (the
+ * social clips' terminal and diagram scenes); the app is filmed from the screen.
+ */
 export async function record(dir, { page: given } = {}) {
   const N = JSON.parse(fs.readFileSync(path.join(dir, 'narration.json'), 'utf8'))
   const mod = await import(pathToFileURL(path.join(dir, 'scenes.mjs')).href)
@@ -23,7 +27,11 @@ export async function record(dir, { page: given } = {}) {
 
   const { browser, page } = given ? { page: given } : await connect()
   const out = path.join(dir, 'out/take')
-  const rec = new Recorder(page, out)
+  const rec = new Recorder(
+    page,
+    out,
+    given ? new CdpScreencast(given) : new ScreenRecorder(browser)
+  )
   const timeline = []
   let scene = null
 

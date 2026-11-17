@@ -7,23 +7,26 @@
  *   node marketing/social/engine/clip.mjs <slug> --from compose   # re-cut the last take
  *   node marketing/social/engine/clip.mjs <slug> --open           # start the app on the clip's vault and leave it running
  *   node marketing/social/engine/clip.mjs <slug> --close          # stop that app
+ *   node marketing/social/engine/clip.mjs <slug> --check          # dry run: calls outside the WebDriver page
  *
  * Options: --slot N runs on its own ports and temp dir, so several agents can work at once (takes still queue one at a time)
- * (also MEMRY_SOCIAL_SLOT). --app <checkout> films that checkout's desktop build (also
+ * (also MEMRY_SOCIAL_SLOT). --app <checkout> films that checkout's test-mode build (also
  * MEMRY_SOCIAL_APP; default this checkout). --seed-base rebuilds today's base vault.
  *
  * <slug> is a folder under marketing/social/clips/ holding a silent narration.json (each scene's
  * caption and length in seconds), scenes.mjs (what happens on screen, with the tutorial engine's
  * ctx) and optionally vault.mjs (data the clip needs on top of the base vault). The recorder, the
  * app driver and the compositor are the tutorial engine's (marketing/tutorials/engine/), in its
- * silent mode. Writes clips/<slug>/out/: <slug>.mp4 (1920x1080, 60 fps, no audio), <slug>.gif,
+ * silent mode: the app is the Tauri test-mode build (pnpm --filter @memry/desktop-tauri build:e2e),
+ * filmed from the macOS screen at 1440x810. Writes clips/<slug>/out/: <slug>.mp4 (1920x1080, 60 fps, no audio), <slug>.gif,
  * <slug>.png and qa/ stills to look at. See marketing/social/README.md.
  */
 import { execFileSync } from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { query, startApp, stopApp, useApp } from '../../tutorials/engine/app.mjs'
+import { dryRun } from '../../engine/dry-run.mjs'
+import { appBuild, query, startApp, stopApp, useApp } from '../../tutorials/engine/app.mjs'
 import { encode } from '../../tutorials/engine/encode.mjs'
 import { record } from '../../tutorials/engine/record.mjs'
 import { TIMEZONE, at, cliFor, day, writer } from '../vault/cli.mjs'
@@ -46,7 +49,13 @@ const has = (name) => {
   const i = args.indexOf(`--${name}`)
   return i >= 0 && args.splice(i, 1).length > 0
 }
-const [seed, seedBaseFlag, open, close] = ['seed', 'seed-base', 'open', 'close'].map(has)
+const [seed, seedBaseFlag, open, close, check] = [
+  'seed',
+  'seed-base',
+  'open',
+  'close',
+  'check'
+].map(has)
 const from = flag('from')
 const slot = Number(flag('slot') ?? process.env.MEMRY_SOCIAL_SLOT ?? 0)
 const app = path.resolve(flag('app') ?? process.env.MEMRY_SOCIAL_APP ?? REPO)
@@ -54,16 +63,15 @@ process.env.MEMRY_SOCIAL_APP = app
 const slug = args[0]
 if (!slug || (from && !STEPS.includes(from))) {
   console.error(
-    `Usage: clip.mjs <slug> [--seed] [--from ${STEPS.join('|')}] [--open|--close] [--slot N] [--app <checkout>]`
+    `Usage: clip.mjs <slug> [--seed] [--from ${STEPS.join('|')}] [--open|--close|--check] [--slot N] [--app <checkout>]`
   )
   process.exit(1)
 }
 
-// A slot is a second (third) app: agent-app.mjs and pw.mjs read the ports, and agent-app keeps
-// its state file, user data and vault copy under the temp dir.
+// A slot is a second (third) app: agent-app.mjs and wd-page.mjs read the WebDriver port, and
+// agent-app keeps its state file, control file, user data and vault copy under the temp dir.
 if (slot) {
-  process.env.MEMRY_AGENT_CDP_PORT = String(9222 + 10 * slot)
-  process.env.MEMRY_AGENT_INSPECT_PORT = String(9229 + 10 * slot)
+  process.env.TAURI_WEBDRIVER_PORT = String(9222 + 10 * slot)
   process.env.TMPDIR = `/tmp/memry-social/slot-${slot}`
   fs.mkdirSync(process.env.TMPDIR, { recursive: true })
 }
@@ -82,6 +90,24 @@ if (/^week-\d+$/.test(slug) || fs.existsSync(path.join(dir, 'montage.json'))) {
   process.exit(0)
 }
 const N = JSON.parse(fs.readFileSync(path.join(dir, 'narration.json'), 'utf8'))
+if (check) {
+  // A page clip films its own page in Chromium through Playwright, not the app.
+  if (N.page) {
+    console.log(`${slug}: page clip (${N.page}), filmed in Chromium; not checked`)
+    process.exit(0)
+  }
+  const r = await dryRun(dir)
+  const lines = [
+    ...r.notInSubset.map((l) => `NotInSubset ${l}`),
+    ...r.outside.map((l) => `outside the film ${l}`),
+    ...r.errors.map((l) => `dry-run error ${l}`),
+    ...(r.electronMain
+      ? ['electron-main: drives the Electron main process through agent-app eval']
+      : [])
+  ]
+  console.log(`${slug}: ${lines.length ? '' : 'ok'}${lines.map((l) => `\n  ${l}`).join('')}`)
+  process.exit(r.notInSubset.length || r.outside.length ? 1 : 0)
+}
 if (!N.silent) throw new Error(`${slug}/narration.json must be a silent film ("silent": true)`)
 const out = path.join(dir, 'out')
 const film = path.join(out, `${slug}.mp4`)
@@ -139,17 +165,15 @@ async function clipVault() {
   )
 }
 
-function start(vault) {
-  const main = path.join(app, 'apps/desktop/out/main/index.js')
-  if (!fs.existsSync(main))
-    throw new Error(
-      `No desktop build in ${app}. Run there: pnpm --filter @memry/desktop exec electron-vite build`
-    )
+async function start(vault) {
+  const { binary, command } = await appBuild()
+  if (!fs.existsSync(binary))
+    throw new Error(`No test-mode build at ${binary}. Run in ${app}: ${command}`)
   const version = execFileSync('git', ['-C', app, 'describe', '--tags', '--always'], {
     encoding: 'utf8'
   }).trim()
   console.log(
-    `  filming ${app} (${version}), slot ${slot}, CDP :${process.env.MEMRY_AGENT_CDP_PORT ?? 9222}`
+    `  filming ${app} (${version}), slot ${slot}, WebDriver :${process.env.TAURI_WEBDRIVER_PORT ?? 9222}`
   )
   startApp(vault)
 }
@@ -159,7 +183,7 @@ const step = (s) => steps.includes(s) && (console.log(`\n== ${s}`), true)
 
 if (open) {
   const vault = await clipVault()
-  start(vault)
+  await start(vault)
   console.log(
     `  open on ${vault}. Explore with: node marketing/social/engine/probe.mjs --slot ${slot} ...`
   )
@@ -196,8 +220,8 @@ async function takeTurn() {
 }
 
 // A clip with `"page": "<file>.html"` or `"page": "https://..."` in narration.json films that page
-// (a terminal replay, an animated diagram, a live web page) in headless Chromium at the app's
-// size, instead of the app.
+// (a terminal replay, an animated diagram, a live web page) in headless Chromium at the size the
+// pages are laid out for (1600x900; compose.py reads it from take.json), instead of the app.
 if (N.page && step('record')) {
   const { chromium } = await import('playwright')
   // The screencast sends frames at the device scale factor only when it is forced on the command
@@ -229,7 +253,7 @@ if (N.page && step('record')) {
 
 if (!N.page && step('record')) {
   const vault = await clipVault()
-  start(vault)
+  await start(vault)
   let release = noop
   try {
     await new Promise((r) => setTimeout(r, 2500))
