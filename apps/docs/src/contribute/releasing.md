@@ -83,6 +83,33 @@ script hangs, so they never update and download it again the next session. On a 
 install the `latest.yml` NSIS installer, which carries the fixed hand-off. Releases up to
 v2026-10-25 keep the old name; the landing download and the smoke test accept both.
 
+## Downloads and the Homebrew cask
+
+Two consumers outside the app read release asset names. Both read the latest published release, so
+each one works whether that release came from the Electron or the Tauri pipeline.
+
+The landing download endpoint, `apps/landing/api/download.ts`, redirects
+`/api/download?platform=<platform>` to the matching asset. The first matcher that hits wins, and a
+platform without a match redirects to the releases page. `api/download.test.ts` pins both asset
+sets.
+
+| Platform        | Asset, in order of preference                                                                                                          |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `mac-arm64`     | `*-arm64.dmg`                                                                                                                          |
+| `mac-x64`       | `*-x64.dmg`                                                                                                                            |
+| `windows`       | `MemryNote-Setup-win-x64.exe`, then `MemryNote-win-Setup.exe` (tags up to v2026-10-25), then `*-setup.exe`                             |
+| `windows-arm64` | `MemryNote-win-arm64-Setup.exe`, then the `windows` order. Electron releases carry no ARM64 Setup, and Windows on ARM runs the x64 one |
+| `linux`         | `*.AppImage`. Only the versioned AppImage may be uploaded                                                                              |
+| `linux-deb`     | `*.deb`                                                                                                                                |
+
+`publish-homebrew-cask.yml` renders the cask with `scripts/generate-homebrew-cask.mjs` from the two
+`MemryNote-<version>-<arch>.dmg` files and pushes it to `memrynote/homebrew-tap`. The cask sets
+`depends_on macos: :ventura`, because the Tauri app needs macOS 13. Its `zap` list removes the
+Tauri app's directories (`com.memrynote.memry` under `Application Support`, `Logs` and `WebKit`,
+and Velopack's `Caches/velopack/MemryNote`) and every directory an Electron build wrote. It never
+removes the vault. The generator's self-check runs in `pnpm test:release`
+(`scripts/generate-homebrew-cask.test.mjs`).
+
 ## Windows signing
 
 Both Windows installer families are Authenticode-signed with the Certum key, which
