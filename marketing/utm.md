@@ -14,17 +14,18 @@ Every link to `memrynote.com` that we publish carries `utm_source`, `utm_medium`
 Values are lowercase. Keep a campaign value once it has shipped, so PostHog history stays in one
 row.
 
-| Where the link lives                              | `utm_source`             | `utm_medium` | `utm_campaign`                                   | PostHog channel                                |
-| ------------------------------------------------- | ------------------------ | ------------ | ------------------------------------------------ | ---------------------------------------------- |
-| Desktop app                                       | `app`                    | `desktop`    | `setup_wizard`, `update_failed`, `checkout`      | Unknown                                        |
-| iOS app                                           | `app`                    | `ios`        | `settings`, `plans`, `checkout`                  | Unknown                                        |
-| Campaign emails (`apps/marketing-emails`)         | `waitlist`               | `email`      | the id in `src/tracking-links.ts`                | Email                                          |
-| YouTube descriptions (`marketing/tutorials`)      | `youtube`                | `video`      | the topic slug                                   | Organic Video                                  |
-| X posts and first replies (`marketing/social`)    | `x`                      | `social`     | the calendar, such as `social-q4`                | Organic Social                                 |
-| Reddit and Discord posts                          | `reddit`, `discord`      | `social`     | the calendar or the email campaign it companions | Organic Social                                 |
-| GitHub README and the repo's website field        | `github`                 | `referral`   | `readme`, `repo`                                 | Referral                                       |
-| Docs site (`apps/docs`)                           | `docs`                   | `referral`   | the page, such as `install`                      | Referral                                       |
-| Profiles (X bio, Reddit sidebar, YouTube channel) | `x`, `reddit`, `youtube` | `social`     | `profile`                                        | Organic Social, or Organic Video for `youtube` |
+| Where the link lives                               | `utm_source`                     | `utm_medium` | `utm_campaign`                                   | PostHog channel                                |
+| -------------------------------------------------- | -------------------------------- | ------------ | ------------------------------------------------ | ---------------------------------------------- |
+| Desktop app                                        | `app`                            | `desktop`    | `setup_wizard`, `update_failed`, `checkout`      | Unknown                                        |
+| iOS app                                            | `app`                            | `ios`        | `settings`, `plans`, `checkout`                  | Unknown                                        |
+| Campaign emails (`apps/marketing-emails`)          | `waitlist`                       | `email`      | the id in `src/tracking-links.ts`                | Email                                          |
+| YouTube descriptions (`marketing/tutorials`)       | `youtube`                        | `video`      | the topic slug                                   | Organic Video                                  |
+| X posts and first replies (`marketing/social`)     | `x`                              | `social`     | the calendar, such as `social-q4`                | Organic Social                                 |
+| Reddit and Discord posts                           | `reddit`, `discord`              | `social`     | the calendar or the email campaign it companions | Organic Social                                 |
+| GitHub README and the repo's website field         | `github`                         | `referral`   | `readme`, `repo`                                 | Referral                                       |
+| Docs site (`apps/docs`)                            | `docs`                           | `referral`   | the page, such as `install`                      | Referral                                       |
+| Directory listings and forums (`marketing/growth`) | `alternativeto`, `privacyguides` | `referral`   | `listing`, `showcase`                            | Referral                                       |
+| Profiles (X bio, Reddit sidebar, YouTube channel)  | `x`, `reddit`, `youtube`         | `social`     | `profile`                                        | Organic Social, or Organic Video for `youtube` |
 
 Example: `https://memrynote.com/pricing?utm_source=app&utm_medium=desktop&utm_campaign=setup_wizard`.
 
