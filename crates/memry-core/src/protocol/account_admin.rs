@@ -86,12 +86,12 @@ fn malformed(path: &str, what: &str) -> ApiError {
     }
 }
 
-fn int(row: &Json, key: &str) -> Option<i64> {
+pub(crate) fn int(row: &Json, key: &str) -> Option<i64> {
     row.get(key)
         .and_then(|v| v.as_i64().or_else(|| v.as_f64().map(|f| f as i64)))
 }
 
-fn text(row: &Json, key: &str) -> Option<String> {
+pub(crate) fn text(row: &Json, key: &str) -> Option<String> {
     row.get(key).and_then(Json::as_str).map(str::to_owned)
 }
 

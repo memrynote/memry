@@ -3,7 +3,13 @@ import { useSyncExternalStore } from 'react'
 export type DesktopOS = 'mac' | 'windows' | 'linux'
 export type MobileOS = 'ios' | 'android'
 export type DetectedOS = DesktopOS | MobileOS | null
-export type DownloadPlatform = 'mac-arm64' | 'mac-x64' | 'windows' | 'linux' | 'linux-deb'
+export type DownloadPlatform =
+  | 'mac-arm64'
+  | 'mac-x64'
+  | 'windows'
+  | 'windows-arm64'
+  | 'linux'
+  | 'linux-deb'
 
 export function detectOS(): DetectedOS {
   if (typeof navigator === 'undefined') return null
