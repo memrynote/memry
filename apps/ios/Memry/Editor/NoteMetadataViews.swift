@@ -271,7 +271,6 @@ struct NoteTitleEditor: View {
                         // caret goes back to the title, and the edit goes on.
                         host.composing = false
                         host.title?.becomeFirstResponder()
-                        focused = true
                     } else if let body = host.body, body.window != nil {
                         // The newline moved the caret to the body already.
                         host.body = nil
