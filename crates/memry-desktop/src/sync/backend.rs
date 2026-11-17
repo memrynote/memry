@@ -7,7 +7,6 @@ use std::sync::{Arc, Mutex};
 use memry_core::api::auth::AuthSession;
 use memry_core::api::errors::SyncError;
 use memry_core::api::vault::Vault;
-use memry_core::crypto::keys::derive_vault_key;
 use memry_core::seams::reachability::Reachability;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_core::sync::driver::{ApplyObserver, DriverConfig, SyncDriver};
@@ -17,6 +16,8 @@ use memry_core::sync::socket::HintSink;
 use memry_core::sync::socket_run::TerminalLatch;
 use memry_core::sync::state::PassTrigger;
 use zeroize::Zeroizing;
+
+use crate::session::at_rest_key::{AtRestKeyGuard, AtRestKeys};
 
 use super::gate::AuthFacts;
 use super::realtime::{CoreSocket, PinWatch, RealtimeSocket};
@@ -115,7 +116,7 @@ pub trait SyncBackend: Send + Sync {
     /// The server refused the session's refresh token for good. Answered from the session's
     /// tokens, so a refused refresh during [`SyncBackend::open`] counts too.
     fn refresh_refused(&self) -> bool;
-    /// The driver was dropped, or never kept: forget the at-rest key.
+    /// The driver was dropped, or never kept: release sync's hold on the at-rest key.
     fn close(&self);
 }
 
@@ -127,8 +128,11 @@ pub struct VaultSyncBackend {
     reachability: Arc<dyn Reachability>,
     seeds: Vec<Arc<dyn PassSeed>>,
     account: Arc<dyn Fn() -> (bool, bool) + Send + Sync>,
-    /// Bumped by each close, under this lock: a key install that a close overtook (the pass was
-    /// aborted, its blocking install was not) installs nothing.
+    keys: Arc<AtRestKeys>,
+    /// Sync's hold on the at-rest key while a driver is open.
+    guard: Arc<Mutex<Option<AtRestKeyGuard>>>,
+    /// Bumped by each close, under this lock: a key hold that a close overtook (the pass was
+    /// aborted, its blocking acquire was not) is released at once.
     closes: Arc<Mutex<u64>>,
 }
 
@@ -142,6 +146,7 @@ impl VaultSyncBackend {
         reachability: Arc<dyn Reachability>,
         seeds: Vec<Arc<dyn PassSeed>>,
         account: Arc<dyn Fn() -> (bool, bool) + Send + Sync>,
+        keys: Arc<AtRestKeys>,
     ) -> Self {
         Self {
             vault,
@@ -150,6 +155,8 @@ impl VaultSyncBackend {
             reachability,
             seeds,
             account,
+            keys,
+            guard: Arc::default(),
             closes: Arc::default(),
         }
     }
@@ -179,26 +186,19 @@ impl SyncBackend for VaultSyncBackend {
 
     async fn open(&self) -> Result<Arc<dyn SyncPasses>, SyncError> {
         let vault = Arc::clone(&self.vault);
-        let store = Arc::clone(&self.store);
+        let keys = Arc::clone(&self.keys);
+        let held = Arc::clone(&self.guard);
         let closes = Arc::clone(&self.closes);
         let generation = *crate::session::lock(&self.closes);
-        // The at-rest key is the vault key, installed only while the master key is readable.
+        // The at-rest key is the vault key, installed only while the master key is readable. The
+        // session's owner keeps it installed while the agent holds it too.
         tokio::task::spawn_blocking(move || -> Result<(), SyncError> {
-            let master = Zeroizing::new(
-                store
-                    .get(SecureStoreKey::MasterKey)?
-                    .ok_or(SyncError::Locked)?,
-            );
-            let vault_key = derive_vault_key(&master)?;
-            let key: [u8; 32] = vault_key
-                .as_slice()
-                .try_into()
-                .map_err(|_| SyncError::Locked)?;
+            let guard = keys.acquire(&vault)?;
             let closed = crate::session::lock(&closes);
             if *closed != generation {
                 return Err(SyncError::Locked);
             }
-            vault.set_at_rest_key(Some(Zeroizing::new(key)))?;
+            *crate::session::lock(&held) = Some(guard);
             drop(closed);
             Ok(())
         })
@@ -228,8 +228,8 @@ impl SyncBackend for VaultSyncBackend {
     fn close(&self) {
         let mut closes = crate::session::lock(&self.closes);
         *closes += 1;
-        if let Err(error) = self.vault.set_at_rest_key(None) {
-            tracing::warn!(%error, "could not clear the at-rest key");
-        }
+        let guard = crate::session::lock(&self.guard).take();
+        drop(closes);
+        drop(guard);
     }
 }

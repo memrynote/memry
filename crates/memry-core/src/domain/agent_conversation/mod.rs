@@ -21,6 +21,7 @@ use serde_json::{Value, json};
 use crate::api::errors::StorageError;
 use crate::crypto::agent_envelope::AtRestKey;
 use crate::crypto::agent_payload::seal_object;
+use crate::domain::agent_queue::{self, Queue};
 use crate::domain::agent_records::{AgentError, opened};
 use crate::domain::desktop_records::{self, live};
 use crate::domain::notes::{failed, insert_local, next_clock, object};
@@ -85,11 +86,13 @@ pub struct ConversationPatch<'a> {
     pub pinned: Option<bool>,
 }
 
-/// Creates a conversation with an empty trust list, unpinned, and queues it.
+/// Creates a conversation with an empty trust list, unpinned, queued under
+/// [`Queue::Outbox`].
 pub fn create(
     conn: &Connection,
     key: &AtRestKey,
     new: &NewConversation<'_>,
+    queue: Queue,
     device_id: &str,
     now_ms: i64,
 ) -> Result<Conversation, AgentError> {
@@ -114,8 +117,9 @@ pub fn create(
     }));
     let conversation = from_payload(&id, &payload);
     seal_object(ITEM_TYPE, &mut payload, key)?;
-    outbox::commit(
+    agent_queue::commit(
         conn,
+        queue,
         &outbox::Change::upsert(ITEM_TYPE, &id),
         now_ms,
         |tx| insert_local(tx, ITEM_TYPE, &id, payload, now_ms),
@@ -124,12 +128,14 @@ pub fn create(
 }
 
 /// Changes the patched fields of a live conversation, ticks its clock and
-/// each changed field's clock, and queues it. An empty patch writes nothing.
+/// each changed field's clock, queued under [`Queue::Outbox`]. An empty patch
+/// writes nothing.
 pub fn update_fields(
     conn: &Connection,
     key: &AtRestKey,
     id: &str,
     patch: &ConversationPatch<'_>,
+    queue: Queue,
     device_id: &str,
     now_ms: i64,
 ) -> Result<Conversation, AgentError> {
@@ -160,7 +166,8 @@ pub fn update_fields(
         .filter(|field| changed.contains_key(*field))
         .collect();
     seal_object(ITEM_TYPE, &mut changed, key)?;
-    outbox::commit(conn, &outbox::Change::upsert(ITEM_TYPE, id), now_ms, |tx| {
+    let change = outbox::Change::upsert(ITEM_TYPE, id);
+    agent_queue::commit(conn, queue, &change, now_ms, |tx| {
         let stored = live(tx, ITEM_TYPE, id, "agent conversation")?;
         let mut changes: Vec<(&'static str, Change)> = SYNCABLE_FIELDS
             .into_iter()
@@ -184,19 +191,21 @@ pub fn update_fields(
     })
 }
 
-/// Deletes a conversation and queues the delete, stating `deletedAt` as
-/// Electron's soft delete does. `false` when there was none. Its messages are
-/// their own records.
+/// Deletes a conversation, stating `deletedAt` as Electron's soft delete
+/// does, and queues the delete under [`Queue::Outbox`]. `false` when there
+/// was none. Its messages are their own records.
 pub fn soft_delete(
     conn: &Connection,
     id: &str,
+    queue: Queue,
     device_id: &str,
     now_ms: i64,
 ) -> Result<bool, StorageError> {
     if !is_live(conn, id)? {
         return Ok(false);
     }
-    outbox::commit(conn, &outbox::Change::delete(ITEM_TYPE, id), now_ms, |tx| {
+    let change = outbox::Change::delete(ITEM_TYPE, id);
+    agent_queue::commit(conn, queue, &change, now_ms, |tx| {
         let stored = live(tx, ITEM_TYPE, id, "agent conversation")?;
         let changes = vec![
             ("deletedAt", Change::set(now_ms)),

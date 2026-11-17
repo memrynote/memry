@@ -40,6 +40,7 @@ use memry_core::api::vault::Vault;
 use memry_core::crdt::body_edit::BlockEdit;
 use memry_core::domain::agent_conversation::{self, NewConversation};
 use memry_core::domain::agent_message::{self, NewMessage};
+use memry_core::domain::agent_queue::Queue;
 use memry_core::domain::vault_locks::{self, TargetKind};
 use memry_core::domain::{canvas_folder, home_page, sticky_draft, tag_mint};
 use memry_core::protocol::auth::DevicePlatform;
@@ -391,7 +392,8 @@ async fn records_converge_through_the_driver() {
                 backend_model: None,
             };
             let conversation =
-                agent_conversation::create(conn, &key, &new, "a", NOW).map_err(failed)?;
+                agent_conversation::create(conn, &key, &new, Queue::Outbox, "a", NOW)
+                    .map_err(failed)?;
             let content = json!({"role": "user", "data": {"text": "what is due"}});
             let message = NewMessage {
                 id: Some("m1"),
@@ -402,7 +404,7 @@ async fn records_converge_through_the_driver() {
                 tool_call_id: None,
                 status: "completed",
             };
-            agent_message::append(conn, &key, &message, "a", NOW).map_err(failed)?;
+            agent_message::append(conn, &key, &message, Queue::Outbox, "a", NOW).map_err(failed)?;
             canvas_folder::upsert(conn, "vault-1", "Work", Some(Some("star")), "a", NOW)?;
             let board = home_page::create(
                 conn,

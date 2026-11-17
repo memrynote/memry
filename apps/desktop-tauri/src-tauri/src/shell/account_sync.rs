@@ -2,6 +2,7 @@
 //! open vault's supervisor runs while the account is signed in. Built once, after the vault boot
 //! (the `Session` exists from `VaultOpen`).
 
+use memry_desktop::session::at_rest_key::AtRestKeys;
 use std::sync::Arc;
 
 use memry_desktop::account::AccountService;
@@ -56,6 +57,17 @@ fn start(app: &AppHandle<Wry>) -> Result<(), CommandError> {
             let _ = recovered.send(());
         });
 
+    // One owner of the open vault's at-rest key, shared by sync and the agent (#3545 D3). Its
+    // close hook is registered before sync's and the agent's, so it runs after both let go.
+    let store = app.state::<Arc<DeviceIdentityStore>>().inner().clone();
+    let at_rest_keys = AtRestKeys::new(store.clone());
+    let closing = Arc::clone(&at_rest_keys);
+    session.on_close(
+        "at-rest-key",
+        Arc::new(move |open| closing.close(&open.vault)),
+    );
+    app.manage(Arc::clone(&at_rest_keys));
+
     let bindings = Arc::new(OpenVaultBinding::default());
     let binding_app = app.clone();
     let list_app = app.clone();
@@ -63,10 +75,11 @@ fn start(app: &AppHandle<Wry>) -> Result<(), CommandError> {
         runtime,
         account,
         registry: session.registry().clone(),
-        store: app.state::<Arc<DeviceIdentityStore>>().inner().clone(),
+        store,
         reachability,
         power: Some(power),
         keychain_recovered,
+        at_rest_keys,
         telemetry: services::telemetry(app),
         // The status event and its commands are Step 17 L7's; until then the log has it.
         on_status: Arc::new(|status| tracing::debug!(scope = "Sync", "status: {status:?}")),

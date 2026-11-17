@@ -1,0 +1,161 @@
+//! The one owner of the open vault's at-rest key (Step 28, #3545, D3): the vault key the agent
+//! conversation and message records are sealed under (`Vault::set_at_rest_key`, chapter 04
+//! §4.17). Sync and the agent each hold an [`AtRestKeyGuard`] while they need the key. The first
+//! guard installs it, and the key is removed when the last guard drops or the vault closes. Before
+//! this owner, sync removed the key whenever it stopped, which would strip it from an agent in the
+//! middle of a session.
+//!
+//! It never mints a key: the vault key is derived from the master key in the keychain, and
+//! `Vault::set_at_rest_key` refuses one that does not match the vault's stored verifier.
+
+use std::sync::{Arc, Mutex, Weak};
+
+use memry_core::api::errors::{CryptoError, SecureStoreError, StorageError, SyncError};
+use memry_core::api::vault::Vault;
+use memry_core::crypto::keys::derive_vault_key;
+use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
+use zeroize::Zeroizing;
+
+/// Why the at-rest key could not be installed.
+#[derive(Debug, thiserror::Error)]
+pub enum KeyError {
+    /// The keychain holds no master key: the device is not set up for this account.
+    #[error("the keychain holds no master key")]
+    Absent,
+    /// The keychain did not answer, or refused (`Locked` while a prompt is open).
+    #[error(transparent)]
+    SecureStore(#[from] SecureStoreError),
+    #[error(transparent)]
+    Crypto(#[from] CryptoError),
+    /// The vault refused the key (its verifier differs) or could not seal pending records.
+    #[error(transparent)]
+    Storage(#[from] StorageError),
+}
+
+impl From<KeyError> for SyncError {
+    fn from(error: KeyError) -> Self {
+        match error {
+            KeyError::Absent => SyncError::Locked,
+            KeyError::SecureStore(error) => error.into(),
+            KeyError::Crypto(error) => error.into(),
+            KeyError::Storage(error) => error.into(),
+        }
+    }
+}
+
+/// The session's at-rest key owner, shared by sync and the agent.
+pub struct AtRestKeys {
+    store: Arc<dyn SecureStore>,
+    slot: Mutex<Slot>,
+}
+
+/// The vault the key is installed in, and how many guards hold it. `generation` changes when the
+/// vault changes or closes, so a guard of an earlier one releases nothing.
+#[derive(Default)]
+struct Slot {
+    vault: Weak<Vault>,
+    holders: usize,
+    generation: u64,
+}
+
+/// Holds the key installed in its vault. Dropping the last one removes it.
+pub struct AtRestKeyGuard {
+    keys: Arc<AtRestKeys>,
+    generation: u64,
+}
+
+impl AtRestKeys {
+    pub fn new(store: Arc<dyn SecureStore>) -> Arc<Self> {
+        Arc::new(Self {
+            store,
+            slot: Mutex::default(),
+        })
+    }
+
+    /// Installs the key in `vault` unless a guard already holds it there. Blocking: the keychain
+    /// can wait on an access prompt, and installing seals the records a pull stored without a key.
+    /// Installs run one at a time, so two callers never read the keychain twice for one vault.
+    pub fn acquire(self: &Arc<Self>, vault: &Arc<Vault>) -> Result<AtRestKeyGuard, KeyError> {
+        let mut slot = crate::session::lock(&self.slot);
+        let held = slot.vault.upgrade();
+        if !held.as_ref().is_some_and(|held| Arc::ptr_eq(held, vault)) {
+            if let Some(previous) = held {
+                remove(&previous);
+            }
+            *slot = Slot {
+                vault: Arc::downgrade(vault),
+                holders: 0,
+                generation: slot.generation + 1,
+            };
+        }
+        if slot.holders == 0 {
+            self.install(vault)?;
+        }
+        slot.holders += 1;
+        Ok(AtRestKeyGuard {
+            keys: Arc::clone(self),
+            generation: slot.generation,
+        })
+    }
+
+    /// The vault closes: its key goes now, whatever guards are still out. Those release nothing.
+    pub fn close(&self, vault: &Arc<Vault>) {
+        let mut slot = crate::session::lock(&self.slot);
+        if slot
+            .vault
+            .upgrade()
+            .is_some_and(|held| Arc::ptr_eq(&held, vault))
+        {
+            remove(vault);
+            *slot = Slot {
+                generation: slot.generation + 1,
+                ..Slot::default()
+            };
+        }
+    }
+
+    fn install(&self, vault: &Vault) -> Result<(), KeyError> {
+        let master = Zeroizing::new(
+            self.store
+                .get(SecureStoreKey::MasterKey)?
+                .ok_or(KeyError::Absent)?,
+        );
+        let vault_key = derive_vault_key(&master)?;
+        let key: [u8; 32] = vault_key.as_slice().try_into().map_err(|_| {
+            KeyError::Crypto(CryptoError::InvalidLength {
+                what: "vault key".to_owned(),
+                expected: 32,
+                actual: vault_key.len() as u64,
+            })
+        })?;
+        let sealed = vault.set_at_rest_key(Some(Zeroizing::new(key)))?;
+        if sealed.wal_kept {
+            tracing::info!(
+                records = sealed.records,
+                "sealed pending agent records; the WAL keeps their old pages until a checkpoint"
+            );
+        }
+        Ok(())
+    }
+}
+
+impl Drop for AtRestKeyGuard {
+    fn drop(&mut self) {
+        let mut slot = crate::session::lock(&self.keys.slot);
+        if slot.generation != self.generation {
+            return;
+        }
+        slot.holders = slot.holders.saturating_sub(1);
+        if slot.holders == 0
+            && let Some(vault) = slot.vault.upgrade()
+        {
+            remove(&vault);
+        }
+    }
+}
+
+fn remove(vault: &Vault) {
+    if let Err(error) = vault.set_at_rest_key(None) {
+        tracing::warn!(%error, "could not clear the at-rest key");
+    }
+}

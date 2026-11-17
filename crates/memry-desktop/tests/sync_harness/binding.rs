@@ -4,6 +4,7 @@
 //! the account revokes stops sync and reports one event that keeps its keys
 //! (`DeviceRevokedEvent`, D7).
 
+use memry_desktop::session::at_rest_key::AtRestKeys;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -41,6 +42,7 @@ pub(super) fn wiring(
         reachability: Arc::new(Online) as Arc<dyn Reachability>,
         power: None,
         keychain_recovered: broadcast::Sender::new(4),
+        at_rest_keys: AtRestKeys::new(store.clone()),
         telemetry: None,
         on_status: Arc::new(|_| {}),
         bindings: Arc::new(OpenVaultBinding::default()),

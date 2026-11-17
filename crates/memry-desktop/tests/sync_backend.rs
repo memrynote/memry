@@ -15,6 +15,7 @@ use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_core::storage::open_data;
 use memry_desktop::seams::tls::{PinFailure, PinFailureSink};
 use memry_desktop::seams::transport::app_transport;
+use memry_desktop::session::at_rest_key::AtRestKeys;
 use memry_desktop::sync::backend::{SyncBackend, VaultSyncBackend};
 use memry_desktop::sync::error_category::SyncErrorCategory;
 use memry_desktop::sync::gate::{Entitlement, SyncStartGate, VaultBinding};
@@ -41,6 +42,16 @@ impl Reachability for Online {
 
 /// A vault bound to no server vault, over `store`: `sync_driver` fails after the key went in.
 fn unbound(dir: &std::path::Path, store: Arc<dyn SecureStore>) -> (Arc<Vault>, VaultSyncBackend) {
+    let keys = AtRestKeys::new(Arc::clone(&store));
+    unbound_with(dir, store, keys)
+}
+
+/// [`unbound`] over the session's key owner `keys`.
+fn unbound_with(
+    dir: &std::path::Path,
+    store: Arc<dyn SecureStore>,
+    keys: Arc<AtRestKeys>,
+) -> (Arc<Vault>, VaultSyncBackend) {
     let data = dir.join("vault").join(".memry").join("core");
     std::fs::create_dir_all(&data).unwrap();
     let vault =
@@ -64,10 +75,11 @@ fn unbound(dir: &std::path::Path, store: Arc<dyn SecureStore>) -> (Arc<Vault>, V
     let backend = VaultSyncBackend::new(
         Arc::clone(&vault),
         Arc::new(session),
-        store,
+        Arc::clone(&store),
         Arc::new(Online),
         Vec::new(),
         Arc::new(|| (true, true)),
+        keys,
     );
     (vault, backend)
 }
@@ -89,6 +101,48 @@ async fn a_failed_open_leaves_no_at_rest_key() {
             .seal(Purpose::MessageContent, "x")
             .is_err(),
         "the key installed for the open is gone"
+    );
+}
+
+fn installed(vault: &Vault) -> bool {
+    vault
+        .at_rest_key()
+        .seal(Purpose::MessageContent, "x")
+        .is_ok()
+}
+
+/// Sync stopping keeps the key the agent still holds (#3545 D3): the session owner removes it
+/// only when the last hold goes or the vault closes.
+#[tokio::test]
+async fn sync_letting_go_keeps_the_key_another_holder_needs() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = device_key::with_device_key();
+    store.set(SecureStoreKey::MasterKey, vec![9u8; 32]).unwrap();
+    let keys = AtRestKeys::new(Arc::clone(&store));
+    let (vault, backend) = unbound_with(dir.path(), store, Arc::clone(&keys));
+    let agent = keys.acquire(&vault).expect("the agent's hold");
+
+    assert!(
+        backend.open().await.is_err(),
+        "an unbound vault does not sync"
+    );
+    backend.close();
+    assert!(installed(&vault), "the agent's hold keeps the key");
+
+    let again = keys.acquire(&vault).expect("a second hold");
+    drop(agent);
+    assert!(installed(&vault), "one hold is left");
+    drop(again);
+    assert!(!installed(&vault), "the last hold removes the key");
+
+    let late = keys.acquire(&vault).expect("a hold after the key went");
+    assert!(installed(&vault));
+    keys.close(&vault);
+    assert!(!installed(&vault), "closing the vault removes the key");
+    drop(late);
+    assert!(
+        !installed(&vault),
+        "a hold of the closed vault installs nothing"
     );
 }
 

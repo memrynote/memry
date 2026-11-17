@@ -1,6 +1,7 @@
 //! Sign-out, revocation and the vault binding over a real vault, a real `data.db` and
 //! `memry-config.json` (#3536 A4). The server is the scripted transport of `account_service`.
 
+use memry_desktop::session::at_rest_key::AtRestKeys;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -310,6 +311,7 @@ async fn an_unknown_binding_is_checked_again_after_a_minute_and_reported_once() 
         reachability: Arc::new(Offline),
         power: None,
         keychain_recovered: broadcast::Sender::new(4),
+        at_rest_keys: AtRestKeys::new(s.keychain.clone()),
         telemetry: None,
         on_status: Arc::new(|_| {}),
         bindings: Arc::new(OpenVaultBinding::default()),

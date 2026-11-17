@@ -2,6 +2,7 @@
 //! writes and reads, and Electron's apply rules
 //! (`agent-conversation-handler.ts`) through the real pull apply step.
 
+use crate::domain::agent_queue::Queue;
 use rusqlite::{Connection, params};
 use serde_json::{Value, json};
 use zeroize::Zeroizing;
@@ -80,7 +81,7 @@ fn a_conversation_is_stored_sealed_and_reads_back_opened() {
     let (db, _dir) = open("agent-conversation-write");
     db.call_blocking(|conn| {
         let key = key();
-        let created = create(conn, &key, &NEW, DEVICE, NOW).map_err(storage)?;
+        let created = create(conn, &key, &NEW, Queue::Outbox, DEVICE, NOW).map_err(storage)?;
         assert_eq!(created.title, "Plan the week");
         let stored = payload(conn, ITEM_TYPE, &created.id);
         assert!(sealed(&stored["title"]), "the payload holds the envelope");
@@ -99,8 +100,16 @@ fn a_conversation_is_stored_sealed_and_reads_back_opened() {
             pinned: Some(true),
             ..ConversationPatch::default()
         };
-        let updated =
-            update_fields(conn, &key, &created.id, &patch, DEVICE, NOW + 1).map_err(storage)?;
+        let updated = update_fields(
+            conn,
+            &key,
+            &created.id,
+            &patch,
+            Queue::Outbox,
+            DEVICE,
+            NOW + 1,
+        )
+        .map_err(storage)?;
         assert_eq!(
             (updated.title.as_str(), updated.pinned),
             ("Plan the month", true)
@@ -110,7 +119,13 @@ fn a_conversation_is_stored_sealed_and_reads_back_opened() {
         assert_eq!(stored["fieldClocks"]["backend"], json!({DEVICE: 1}));
         assert_eq!(list(conn, &key, "vault-1").map_err(storage)?, vec![updated]);
 
-        assert!(soft_delete(conn, &created.id, DEVICE, NOW + 2)?);
+        assert!(soft_delete(
+            conn,
+            &created.id,
+            Queue::Outbox,
+            DEVICE,
+            NOW + 2
+        )?);
         assert_eq!(get(conn, &key, &created.id).map_err(storage)?, None);
         assert_eq!(
             payload(conn, ITEM_TYPE, &created.id)["deletedAt"],
@@ -125,7 +140,14 @@ fn a_conversation_is_stored_sealed_and_reads_back_opened() {
 fn without_a_key_a_conversation_write_is_refused_and_writes_nothing() {
     let (db, _dir) = open("agent-conversation-no-key");
     db.call_blocking(|conn| {
-        let refused = create(conn, &AtRestKey::default(), &NEW, DEVICE, NOW);
+        let refused = create(
+            conn,
+            &AtRestKey::default(),
+            &NEW,
+            Queue::Outbox,
+            DEVICE,
+            NOW,
+        );
         assert!(matches!(refused, Err(AgentError::SealerUnavailable)));
         let rows: i64 = conn
             .query_row("SELECT COUNT(*) FROM sync_items", [], |row| row.get(0))
@@ -141,12 +163,14 @@ fn concurrent_edits_merge_field_by_field_and_the_title_stays_sealed() {
     let (db, _dir) = open("agent-conversation-merge");
     db.call_blocking(|conn| {
         let key = key();
-        let id = create(conn, &key, &NEW, DEVICE, NOW).map_err(storage)?.id;
+        let id = create(conn, &key, &NEW, Queue::Outbox, DEVICE, NOW)
+            .map_err(storage)?
+            .id;
         let local = ConversationPatch {
             title: Some("Local title"),
             ..ConversationPatch::default()
         };
-        update_fields(conn, &key, &id, &local, DEVICE, NOW + 1).map_err(storage)?;
+        update_fields(conn, &key, &id, &local, Queue::Outbox, DEVICE, NOW + 1).map_err(storage)?;
         let queued_before = queued(conn, ITEM_TYPE, &id);
 
         // The peer saw the create, then pinned it and renamed the backend.
@@ -214,12 +238,14 @@ fn a_dominated_remote_skips_and_a_dominating_one_applies_sealed() {
     let (db, _dir) = open("agent-conversation-gate");
     db.call_blocking(|conn| {
         let key = key();
-        let id = create(conn, &key, &NEW, DEVICE, NOW).map_err(storage)?.id;
+        let id = create(conn, &key, &NEW, Queue::Outbox, DEVICE, NOW)
+            .map_err(storage)?
+            .id;
         let patch = ConversationPatch {
             title: Some("Newer here"),
             ..ConversationPatch::default()
         };
-        update_fields(conn, &key, &id, &patch, DEVICE, NOW + 1).map_err(storage)?;
+        update_fields(conn, &key, &id, &patch, Queue::Outbox, DEVICE, NOW + 1).map_err(storage)?;
 
         let stale = peer(
             &id,
@@ -255,12 +281,14 @@ fn a_delete_older_than_the_local_record_is_skipped() {
     let (db, _dir) = open("agent-conversation-delete");
     db.call_blocking(|conn| {
         let key = key();
-        let id = create(conn, &key, &NEW, DEVICE, NOW).map_err(storage)?.id;
+        let id = create(conn, &key, &NEW, Queue::Outbox, DEVICE, NOW)
+            .map_err(storage)?
+            .id;
         let patch = ConversationPatch {
             pinned: Some(true),
             ..ConversationPatch::default()
         };
-        update_fields(conn, &key, &id, &patch, DEVICE, NOW + 1).map_err(storage)?;
+        update_fields(conn, &key, &id, &patch, Queue::Outbox, DEVICE, NOW + 1).map_err(storage)?;
         let late = pull(
             conn,
             &key,
@@ -333,7 +361,9 @@ fn a_plain_title_shaped_like_an_envelope_is_sealed_read_and_pushed_as_itself() {
             title: SHAPED,
             ..NEW
         };
-        let id = create(conn, &key, &new, DEVICE, NOW).map_err(storage)?.id;
+        let id = create(conn, &key, &new, Queue::Outbox, DEVICE, NOW)
+            .map_err(storage)?
+            .id;
         assert_ne!(payload(conn, ITEM_TYPE, &id)["title"], json!(SHAPED));
         assert_eq!(
             get(conn, &key, &id).map_err(storage)?.expect("live").title,
@@ -343,7 +373,7 @@ fn a_plain_title_shaped_like_an_envelope_is_sealed_read_and_pushed_as_itself() {
             pinned: Some(true),
             ..ConversationPatch::default()
         };
-        update_fields(conn, &key, &id, &patch, DEVICE, NOW + 1).map_err(storage)?;
+        update_fields(conn, &key, &id, &patch, Queue::Outbox, DEVICE, NOW + 1).map_err(storage)?;
         assert_eq!(
             list(conn, &key, "vault-1").map_err(storage)?[0].title,
             SHAPED
@@ -388,7 +418,9 @@ fn a_remote_the_schema_refuses_is_refused_and_writes_nothing() {
     let (db, _dir) = open("agent-conversation-refused");
     db.call_blocking(|conn| {
         let key = key();
-        let id = create(conn, &key, &NEW, DEVICE, NOW).map_err(storage)?.id;
+        let id = create(conn, &key, &NEW, Queue::Outbox, DEVICE, NOW)
+            .map_err(storage)?
+            .id;
         let before = stored_text(conn, &id);
         let cases = [
             json!({"title": 5}),
@@ -444,7 +476,9 @@ fn an_equal_clock_over_the_same_payload_skips_though_the_local_title_is_sealed()
     let (db, _dir) = open("agent-conversation-equal");
     db.call_blocking(|conn| {
         let key = key();
-        let id = create(conn, &key, &NEW, DEVICE, NOW).map_err(storage)?.id;
+        let id = create(conn, &key, &NEW, Queue::Outbox, DEVICE, NOW)
+            .map_err(storage)?
+            .id;
         let before = stored_text(conn, &id);
         let wire = open_payload(ITEM_TYPE, &before, false, &key)
             .unwrap()
@@ -462,12 +496,15 @@ fn a_concurrent_merge_that_changes_no_field_stores_the_combined_clock_and_queues
     let (db, _dir) = open("agent-conversation-noop-merge");
     db.call_blocking(|conn| {
         let key = key();
-        let id = create(conn, &key, &NEW, DEVICE, NOW).map_err(storage)?.id;
+        let id = create(conn, &key, &NEW, Queue::Outbox, DEVICE, NOW)
+            .map_err(storage)?
+            .id;
         let patch = ConversationPatch {
             pinned: Some(true),
             ..ConversationPatch::default()
         };
-        let local = update_fields(conn, &key, &id, &patch, DEVICE, NOW + 1).map_err(storage)?;
+        let local = update_fields(conn, &key, &id, &patch, Queue::Outbox, DEVICE, NOW + 1)
+            .map_err(storage)?;
         let queued_before = queued(conn, ITEM_TYPE, &id);
         let base = json!({DEVICE: 1});
         let field_clocks = json!({
@@ -497,12 +534,14 @@ fn a_concurrent_merge_with_no_key_keeps_a_sealed_title_or_stores_the_remote_one_
     let (db, _dir) = open("agent-conversation-merge-no-key");
     db.call_blocking(|conn| {
         let key = key();
-        let id = create(conn, &key, &NEW, DEVICE, NOW).map_err(storage)?.id;
+        let id = create(conn, &key, &NEW, Queue::Outbox, DEVICE, NOW)
+            .map_err(storage)?
+            .id;
         let patch = ConversationPatch {
             title: Some("Local title"),
             ..ConversationPatch::default()
         };
-        update_fields(conn, &key, &id, &patch, DEVICE, NOW + 1).map_err(storage)?;
+        update_fields(conn, &key, &id, &patch, Queue::Outbox, DEVICE, NOW + 1).map_err(storage)?;
         let no_key = AtRestKey::default();
         let base = json!({DEVICE: 1});
         let mut field_clocks = json!({

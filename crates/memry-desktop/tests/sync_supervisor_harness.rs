@@ -17,6 +17,7 @@ mod device_key;
 #[path = "harness_server/mod.rs"]
 mod harness_server;
 
+use memry_desktop::session::at_rest_key::AtRestKeys;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -137,6 +138,7 @@ impl Device {
             Arc::new(Online),
             self.seeds(),
             Arc::new(|| (true, true)),
+            AtRestKeys::new(Arc::clone(&self.store)),
         )
     }
 
