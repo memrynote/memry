@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use crate::api::errors::{AuthError, StorageError};
 use crate::crypto::keys;
-use crate::domain::canvas::{self, NewCanvas};
+use crate::domain::canvas::{self, NewCanvas, SceneWrite};
 use crate::seams::secure_store::{SecureStore, SecureStoreKey};
 use crate::storage::Db;
 
@@ -31,6 +31,29 @@ impl From<canvas::Canvas> for CanvasRecord {
             title: canvas.title,
             owner_note_id: canvas.owner_note_id,
             scene: canvas.scene,
+        }
+    }
+}
+
+/// What [`Canvases::set_scene_expecting`] did.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum CanvasSceneWrite {
+    /// The new scene is stored.
+    Written { canvas: CanvasRecord },
+    /// The stored scene changed since `expected` was read (a pull landed), so
+    /// nothing was written. Re-apply the edit to `current` and write again.
+    Stale { current: CanvasRecord },
+}
+
+impl From<SceneWrite> for CanvasSceneWrite {
+    fn from(write: SceneWrite) -> Self {
+        match write {
+            SceneWrite::Written(canvas) => Self::Written {
+                canvas: canvas.into(),
+            },
+            SceneWrite::Stale(current) => Self::Stale {
+                current: current.into(),
+            },
         }
     }
 }
@@ -102,6 +125,38 @@ impl Canvases {
             Ok(canvas::set_scene(conn, &id, &scene, &device_id, now_ms())?
                 .acknowledge()
                 .into())
+        })
+    }
+
+    /// Replaces a canvas's scene only if the stored scene is still `expected`,
+    /// the `scene` of the record the edit was built on. Checked and written in
+    /// one transaction, so a pull between the caller's read and this write is
+    /// reported as `Stale` instead of being overwritten. Fails with `NotFound`
+    /// for a deleted canvas.
+    pub fn set_scene_expecting(
+        &self,
+        id: String,
+        scene: String,
+        expected: String,
+    ) -> Result<CanvasSceneWrite, StorageError> {
+        let device_id = self.device_id.clone();
+        self.db.call_blocking(move |conn| {
+            Ok(
+                canvas::set_scene_expecting(conn, &id, &scene, &expected, &device_id, now_ms())?
+                    .into(),
+            )
+        })
+    }
+
+    /// Every live canvas owned by the note `owner_note_id`, ordered by id: its
+    /// whiteboard and any "(conflict copy)" a pull made of it, which keeps the
+    /// owner. Empty when the note owns none.
+    pub fn list(&self, owner_note_id: String) -> Result<Vec<CanvasRecord>, StorageError> {
+        self.db.call_blocking(move |conn| {
+            Ok(canvas::list_owned_by(conn, &owner_note_id)?
+                .into_iter()
+                .map(CanvasRecord::from)
+                .collect())
         })
     }
 
