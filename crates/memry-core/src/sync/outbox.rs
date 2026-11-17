@@ -39,7 +39,7 @@ mod collapse;
 mod probe;
 pub use claim::{claim, crdt_docs};
 pub use collapse::{Collapsed, collapse_records};
-pub use probe::queued_for;
+pub use probe::{RecordStats, queued_for, record_stats};
 
 /// The three `op` spellings data-model §A.2 defines, and `create`.
 pub const OP_UPSERT: &str = "upsert";

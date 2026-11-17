@@ -17,11 +17,13 @@ use crate::commands::vault_locks::VaultLockStateView;
 mod account;
 mod ai;
 mod calendar;
+mod sync;
 mod tags;
 
 pub use account::*;
 pub use ai::*;
 pub use calendar::*;
+pub use sync::*;
 pub use tags::*;
 
 /// Emit `event` to every webview: the one window-wide emit (inv09#66). Each listener gets it once.

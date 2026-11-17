@@ -4208,6 +4208,7 @@ version = "0.0.0"
 dependencies = [
  "arboard",
  "arc-swap",
+ "async-trait",
  "block2",
  "crash-handler",
  "dunce",
