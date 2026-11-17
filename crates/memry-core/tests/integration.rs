@@ -215,6 +215,8 @@ mod domain_notes;
 mod domain_projects;
 #[path = "domain_projects_links.rs"]
 mod domain_projects_links;
+#[path = "domain_projects_statuses.rs"]
+mod domain_projects_statuses;
 #[path = "domain_projects_write.rs"]
 mod domain_projects_write;
 #[path = "domain_related_items.rs"]

@@ -27,6 +27,7 @@ use crate::sync::outbox::Durable;
 
 use super::super::notes::{self, failed, iso};
 use super::super::tasks::valid_item_id;
+use super::propagate::{project_names, renamed, without_name};
 use super::write::{edit_project, mint_id};
 use super::{ITEM_TYPE, require_live};
 
@@ -231,16 +232,7 @@ pub(super) fn propagate_rename(
 ) -> Result<(), StorageError> {
     for note_id in markdown_note_ids(conn, project_id)? {
         rewrite_linked_note(conn, &note_id, device_id, now_ms, |names| {
-            names
-                .into_iter()
-                .map(|name| {
-                    if name.to_lowercase() == old.to_lowercase() {
-                        new.to_owned()
-                    } else {
-                        name
-                    }
-                })
-                .collect()
+            renamed(names, old, new)
         })?;
     }
     Ok(())
@@ -299,7 +291,7 @@ fn rewrite_note_names(
             });
         }
     };
-    let names = read_project_names(properties.get(PROJECT_PROPERTY_KEY));
+    let names = project_names(properties.get(PROJECT_PROPERTY_KEY));
     let next = rewrite(names.clone());
     if next == names {
         return Ok(());
@@ -317,41 +309,6 @@ fn rewrite_note_names(
     Ok(())
 }
 
-/// Desktop's `readProjectNames`: a clean, case-insensitively unique name list
-/// from every shape a hand-edited frontmatter produces — an array, a bare
-/// string, a JSON array written as a string by an older build, or nothing.
-fn read_project_names(raw: Option<&Value>) -> Vec<String> {
-    let entries: Vec<Value> = match raw {
-        None | Some(Value::Null) => Vec::new(),
-        Some(Value::Array(entries)) => entries.clone(),
-        Some(Value::String(text)) => {
-            let trimmed = text.trim();
-            match serde_json::from_str::<Value>(trimmed) {
-                Ok(Value::Array(entries)) if trimmed.starts_with('[') => entries,
-                _ => vec![Value::String(text.clone())],
-            }
-        }
-        Some(_) => Vec::new(),
-    };
-    let mut names: Vec<String> = Vec::new();
-    for entry in entries {
-        let Some(name) = entry
-            .as_str()
-            .map(str::trim)
-            .filter(|name| !name.is_empty())
-        else {
-            continue;
-        };
-        if !names
-            .iter()
-            .any(|seen| seen.to_lowercase() == name.to_lowercase())
-        {
-            names.push(name.to_owned());
-        }
-    }
-    names
-}
-
 fn with_name(mut names: Vec<String>, name: &str) -> Vec<String> {
     if !names
         .iter()
@@ -360,13 +317,6 @@ fn with_name(mut names: Vec<String>, name: &str) -> Vec<String> {
         names.push(name.to_owned());
     }
     names
-}
-
-fn without_name(names: Vec<String>, name: &str) -> Vec<String> {
-    names
-        .into_iter()
-        .filter(|seen| seen.to_lowercase() != name.to_lowercase())
-        .collect()
 }
 
 /// Whether an entry is the link to this item. A markdown note's entry is
@@ -431,21 +381,6 @@ fn is_markdown_note(conn: &Connection, note_id: &str) -> Result<bool, StorageErr
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn project_names_read_every_shape_desktop_tolerates() {
-        assert_eq!(read_project_names(None), Vec::<String>::new());
-        assert_eq!(read_project_names(Some(&json!(""))), Vec::<String>::new());
-        assert_eq!(read_project_names(Some(&json!("Alpha"))), vec!["Alpha"]);
-        assert_eq!(
-            read_project_names(Some(&json!("[\"Alpha\",\"Beta\"]"))),
-            vec!["Alpha", "Beta"]
-        );
-        assert_eq!(
-            read_project_names(Some(&json!([" Alpha ", "alpha", null, "", "Beta"]))),
-            vec!["Alpha", "Beta"]
-        );
-    }
 
     #[test]
     fn a_name_is_added_once_and_removed_case_insensitively() {
