@@ -121,7 +121,9 @@ jobs:
       - name: Build the sidecars and fetch pdfium
         run: node apps/desktop-tauri/scripts/build-sidecars.mjs --target ${{ matrix.triple }}
       - name: Build
-        run: pnpm --filter @memry/desktop-tauri exec tauri build --no-bundle --target ${{ matrix.triple }} --config src-tauri/tauri.release.conf.json
+        run: |
+          node scripts/release/version-config.mjs $env:VERSION "$env:RUNNER_TEMP/version.conf.json"
+          pnpm --filter @memry/desktop-tauri exec tauri build --no-bundle --target ${{ matrix.triple }} --config src-tauri/tauri.release.conf.json --config "$env:RUNNER_TEMP/version.conf.json"
       - name: Stage pack dir
         run: node scripts/release/stage-payload.mjs win ${{ matrix.triple }} pack
       - name: Check the exe needs no VC++ redistributable
@@ -186,7 +188,9 @@ jobs:
       - name: Build the sidecars and fetch pdfium
         run: node apps/desktop-tauri/scripts/build-sidecars.mjs --target ${{ matrix.triple }}
       - name: Build bundle (unsigned)
-        run: pnpm --filter @memry/desktop-tauri exec tauri build --target ${{ matrix.triple }} --bundles app --config src-tauri/tauri.release.conf.json
+        run: |
+          node scripts/release/version-config.mjs "$VERSION" "$RUNNER_TEMP/version.conf.json"
+          pnpm --filter @memry/desktop-tauri exec tauri build --target ${{ matrix.triple }} --bundles app --config src-tauri/tauri.release.conf.json --config "$RUNNER_TEMP/version.conf.json"
       - name: Import signing identity
         env:
           MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
@@ -245,6 +249,7 @@ jobs:
           for attempt in 1 2 3; do
             if node scripts/release/vpk-pack.mjs ${{ matrix.target }} --version "$VERSION" \
               --pack-dir pack/MemryNote.app --output-dir out --delta "$delta" \
+              --release-notes scripts/rehearsal/release-notes.md \
               --identity "$IDENTITY" --entitlements "$RUNNER_TEMP/MemryNote.entitlements" \
               --notary-profile memry-notary --keychain "$KEYCHAIN"; then
               exit 0
@@ -312,7 +317,9 @@ jobs:
       - name: Build the sidecars and fetch pdfium
         run: node apps/desktop-tauri/scripts/build-sidecars.mjs --target x86_64-unknown-linux-gnu
       - name: Build AppImage
-        run: pnpm --filter @memry/desktop-tauri exec tauri build --bundles appimage --config src-tauri/tauri.release.conf.json
+        run: |
+          node scripts/release/version-config.mjs "$VERSION" "$RUNNER_TEMP/version.conf.json"
+          pnpm --filter @memry/desktop-tauri exec tauri build --bundles appimage --config src-tauri/tauri.release.conf.json --config "$RUNNER_TEMP/version.conf.json"
       - name: Extract AppDir
         run: |
           appimage="$(ls crates/target/release/bundle/appimage/*.AppImage)"
@@ -334,7 +341,8 @@ jobs:
           mkdir -p out
           delta=BestSpeed; [ -z "$PREVIOUS_TAG" ] && delta=None
           node scripts/release/vpk-pack.mjs linux-x64 --version "$VERSION" \
-            --pack-dir MemryNote.AppDir --output-dir out --delta "$delta"
+            --pack-dir MemryNote.AppDir --output-dir out --delta "$delta" \
+            --release-notes scripts/rehearsal/release-notes.md
       - uses: actions/upload-artifact@v4
         with:
           name: rehearsal-linux-x64
