@@ -1069,11 +1069,27 @@ describe('ci tier after a merge into feat/tauri-v2', () => {
     assert.equal(push(['apps/desktop/src/main/index.ts', ...code]).electron, true)
   })
 
+  // Schedules fire from the default branch. Were it to move off feat/tauri-v2, the cron must not run
+  // the full matrix there every 6 hours.
+  it('runs nothing on a scheduled run of another ref', () => {
+    const out = tier({
+      event: 'schedule',
+      ref: 'refs/heads/main',
+      base: '',
+      files: [],
+      listed: false
+    })
+    assert.equal(out.post_merge, 'covered')
+    assert.equal(out.macos, false)
+    assert.equal(out.rust_linux_arm64, false)
+    assert.deepEqual(rustLegs(out), [])
+    assert.deepEqual(tauriBuilds(out), [])
+  })
+
   it('applies to pushes and schedules of feat/tauri-v2 only', () => {
     for (const out of [
       tier({ event: 'merge_group', base: '', files: code, queueTested: true }),
       tier({ event: 'push', ref: 'refs/heads/main', base: '', files: code, queueTested: true }),
-      tier({ event: 'schedule', ref: 'refs/heads/main', base: '', files: [], listed: false }),
       tier({
         event: 'schedule',
         ref: 'refs/heads/feat/tauri-v2',
@@ -1116,6 +1132,7 @@ jq -r "$4" <<<"$body"
       WORKFLOW_NAME: 'Rust CI',
       SHA: 'merged',
       RUN_ID: '500',
+      RUN_ATTEMPT: '1',
       ...env
     },
     encoding: 'utf8'
@@ -1192,16 +1209,52 @@ describe('ci tier post-merge lookup', () => {
     }
   })
 
+  // A failed scheduled run re-run with "Re-run all jobs" must test again: a later run on the SHA that
+  // skipped its legs, or one that failed, does not cover it.
+  const scheduleRuns = (...runs) => ['event=schedule', { workflow_runs: runs }]
+  const rustRun = (id, conclusion) => ({ id, path: '.github/workflows/rust-ci.yml', conclusion })
+  const scheduled = (env, responses) => lookUp({ EVENT: 'schedule', ...env }, responses)
+
+  it('covers a scheduled run only when an earlier scheduled run passed the SHA', () => {
+    assert.equal(scheduled({}, [scheduleRuns(rustRun(400, 'success'))]).schedule_tested, 'true')
+    for (const responses of [
+      [scheduleRuns(rustRun(400, 'failure'))],
+      [scheduleRuns(rustRun(400, 'cancelled'))],
+      [scheduleRuns(rustRun(600, 'success'))],
+      [
+        scheduleRuns({
+          id: 400,
+          path: '.github/workflows/desktop-tauri-ci.yml',
+          conclusion: 'success'
+        })
+      ],
+      []
+    ]) {
+      assert.equal(scheduled({}, responses).schedule_tested, 'false', JSON.stringify(responses))
+    }
+  })
+
+  it('runs the legs again on a re-run attempt', () => {
+    const out = scheduled({ RUN_ATTEMPT: '2' }, [
+      scheduleRuns(rustRun(400, 'success'), rustRun(600, 'success'))
+    ])
+    assert.equal(out.schedule_tested, 'false')
+    assert.deepEqual(out.calls, [])
+  })
+
   it('asks nothing outside an opted-in push to feat/tauri-v2', () => {
     const all = [queueRuns, gate('success'), otherGate, earlier]
     for (const env of [
       { POST_MERGE: 'false' },
       { EVENT: 'merge_group' },
       { REF: 'refs/heads/main' },
-      { EVENT: 'pull_request', REF: 'refs/pull/1/merge' }
+      { EVENT: 'pull_request', REF: 'refs/pull/1/merge' },
+      { EVENT: 'schedule', REF: 'refs/heads/main' },
+      { EVENT: 'schedule', POST_MERGE: 'false' }
     ]) {
-      const out = lookUp(env, all)
+      const out = lookUp(env, [...all, scheduleRuns(rustRun(400, 'success'))])
       assert.equal(out.queue_tested, 'false')
+      assert.equal(out.schedule_tested, 'false')
       assert.deepEqual(out.calls, [])
     }
   })

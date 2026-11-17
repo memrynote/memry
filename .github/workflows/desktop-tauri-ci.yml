@@ -588,7 +588,7 @@ jobs:
       - name: Open or update the issue
         run: |
           set -euo pipefail
-          body="Desktop Tauri CI failed on the scheduled post-merge run of feat/tauri-v2 at ${{ github.sha }}: $RUN_URL. These legs (Apple Silicon, the windows-arm64 e2e specs) do not run in the merge queue (#5035)."
+          body="Desktop Tauri CI failed on the scheduled post-merge run of feat/tauri-v2 at ${{ github.sha }}: $RUN_URL. These legs (the macos-arm64 builds, the windows-arm64 e2e specs) do not run in the merge queue (#5035)."
           gh label create post-merge-ci --description "Scheduled post-merge CI failure on feat/tauri-v2" --color D93F0B 2>/dev/null || true
           existing=$(gh issue list --label post-merge-ci --state open --json number --jq '.[0].number // empty')
           if [ -n "$existing" ]; then

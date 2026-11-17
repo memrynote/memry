@@ -65,14 +65,15 @@ if [ "$EVENT" = "pull_request" ] && [ "$(printf '%s\n' "$files" | grep -c .)" -g
 # cache-key input: pushes save the caches PRs and the queue restore, and rust-cache, setup-node and
 # tesseract-sources save only under a new key. For a push the range starts at the last push run that
 # was not cancelled (post-merge.sh), so a superseded run's cache-key change counts too. The ml-worker's
-# build.rs is in the Tesseract sources key (tesseract-sources/action.yml). A scheduled run of a SHA a
-# scheduled run already finished is `covered` too.
+# build.rs is in the Tesseract sources key (tesseract-sources/action.yml). A scheduled run is `covered`
+# when a scheduled run already passed this SHA (post-merge.sh), and on any other ref: schedules fire
+# from the default branch, which is feat/tauri-v2 today.
 if [ "$EVENT" = "push" ] && [ "$REF" = "refs/heads/feat/tauri-v2" ] && [ "${QUEUE_TESTED:-false}" = true ] && [ "$LISTED" = true ] \
   && ! printf '%s\n' "$files" | grep -E '(^|/)Cargo\.(toml|lock)$|(^|/)rust-toolchain(\.toml)?$|(^|/)\.cargo/|^pnpm-lock\.yaml$|^scripts/fetch-(pdfium|tesseract-sources)\.mjs$|^crates/memry-ml-worker/build\.rs$|^\.github/(actions/|workflows/(rust-ci|desktop-tauri-ci)\.yml$)' >/dev/null; then
   emit true true false "$electron" "$intel" false none none none none false covered; exit 0
 fi
-if [ "${POST_MERGE:-false}" = true ] && [ "$EVENT" = "schedule" ] && [ "$REF" = "refs/heads/feat/tauri-v2" ]; then
-  if [ "${SCHEDULE_TESTED:-false}" = true ]; then
+if [ "${POST_MERGE:-false}" = true ] && [ "$EVENT" = "schedule" ]; then
+  if [ "$REF" != "refs/heads/feat/tauri-v2" ] || [ "${SCHEDULE_TESTED:-false}" = true ]; then
     emit true true false "$electron" "$intel" false none none none none false covered; exit 0
   fi
   emit true true true "$electron" "$intel" "$macos" tests tests tests tests false true; exit 0
