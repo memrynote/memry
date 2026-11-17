@@ -39,6 +39,7 @@ use serde_json::Value;
 use tauri::{AppHandle, Manager, Runtime, Wry};
 
 use crate::commands::error::{CommandError, ErrorKind, register_sink};
+use crate::events::{SyncCertificatePinFailedEvent, broadcast};
 use crate::shell::vault_boot::CONFIG_FILE;
 use crate::startup::{self, Stage, StartupState, node_platform};
 
@@ -131,18 +132,29 @@ fn node_arch() -> &'static str {
     }
 }
 
-/// Logs a pin mismatch. Step 17 (#3534) turns it into the `certificate_pin_failed` event.
-struct LogPinFailures;
+/// Logs a pin failure; a mismatch also reaches the renderer as `sync:certificate-pin-failed`
+/// (`certificate-pins.ts`). An unverified chain is not a pin mismatch, so it is only logged.
+struct PinFailures(AppHandle<Wry>);
 
-impl PinFailureSink for LogPinFailures {
+impl PinFailureSink for PinFailures {
     fn pin_failed(&self, failure: PinFailure) {
         match failure.reason {
-            PinFailureReason::Mismatch => tracing::error!(
-                scope = "Pinning",
-                host = failure.hostname,
-                actual = failure.actual_hash,
-                "the sync host presented a certificate none of its pins match"
-            ),
+            PinFailureReason::Mismatch => {
+                tracing::error!(
+                    scope = "Pinning",
+                    host = failure.hostname,
+                    actual = failure.actual_hash,
+                    "the sync host presented a certificate none of its pins match"
+                );
+                broadcast(
+                    &self.0,
+                    SyncCertificatePinFailedEvent {
+                        hostname: failure.hostname,
+                        actual_hash: failure.actual_hash,
+                        expected_hashes: failure.expected_hashes,
+                    },
+                );
+            }
             PinFailureReason::Unverified { what } => tracing::error!(
                 scope = "Pinning",
                 host = failure.hostname,
@@ -177,8 +189,10 @@ fn start_telemetry(app: &AppHandle<Wry>) -> Result<(), CommandError> {
         timezone_offset_minutes: -localtime::timezone_offset_minutes(),
     };
 
-    let (transport, no_redirect): (SyncTransport, NoRedirectTransport) =
-        app_transports(&runtime.loopback_hosts(), Arc::new(LogPinFailures));
+    let (transport, no_redirect): (SyncTransport, NoRedirectTransport) = app_transports(
+        &runtime.loopback_hosts(),
+        Arc::new(PinFailures(app.clone())),
+    );
     let service = Arc::new(Service::start(
         &paths.data_dir,
         context.clone(),

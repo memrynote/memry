@@ -65,6 +65,10 @@ mod attachment_cache;
 mod attachment_download;
 #[path = "attachment_manifest_vectors.rs"]
 mod attachment_manifest_vectors;
+#[path = "attachment_plan.rs"]
+mod attachment_plan;
+#[path = "attachment_stream.rs"]
+mod attachment_stream;
 #[path = "attachment_upload_wire.rs"]
 mod attachment_upload_wire;
 #[path = "auth_session.rs"]
