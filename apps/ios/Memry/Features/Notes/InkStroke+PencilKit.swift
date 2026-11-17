@@ -18,8 +18,21 @@ extension InkStroke {
     /// A marker is translucent ink: Excalidraw draws it at half opacity.
     private var fullOpacity: Double { isMarker ? 50 : 100 }
 
-    /// `stroke` in scene coordinates; `offset` is where the canvas's origin
-    /// sits in the scene.
+    /// The parts of `stroke` that show, in scene coordinates. A pixel eraser
+    /// leaves a stroke whole under a mask, which Excalidraw has no way to
+    /// draw, so each visible run is a stroke of its own.
+    static func visible(_ stroke: PKStroke, offset: CGPoint) -> [InkStroke] {
+        guard stroke.mask != nil else { return [InkStroke(stroke, offset: offset)] }
+        return stroke.maskedPathRanges.map { range in
+            let inner = stride(from: range.lowerBound.rounded(.down) + 1, to: range.upperBound, by: 1)
+            let points = ([range.lowerBound] + inner + [range.upperBound]).map { stroke.path.interpolatedPoint(at: $0) }
+            let path = PKStrokePath(controlPoints: range.lowerBound == range.upperBound ? [points[0]] : points, creationDate: stroke.path.creationDate)
+            return InkStroke(PKStroke(ink: stroke.ink, path: path, transform: stroke.transform), offset: offset)
+        }
+    }
+
+    /// `stroke` in scene coordinates, mask ignored; `offset` is where the
+    /// canvas's origin sits in the scene.
     init(_ stroke: PKStroke, offset: CGPoint) {
         let transform = stroke.transform
         let scale = sqrt(abs(transform.a * transform.d - transform.b * transform.c))
@@ -38,9 +51,23 @@ extension InkStroke {
             color: color,
             width: points.isEmpty ? 1 : (points.map(\.size.width).reduce(0, +) / Double(points.count) * scale / Self.widthScale * 100).rounded() / 100,
             opacity: 0,
-            inkType: inkType
+            inkType: inkType,
+            tilt: Self.tilt(points)
         )
         opacity = Int((alpha * fullOpacity).rounded())
+    }
+
+    private static func tilt(_ points: [PKStrokePoint]) -> InkTilt {
+        guard !points.isEmpty else { return InkTilt() }
+        let count = Double(points.count)
+        let mean = { (value: (PKStrokePoint) -> CGFloat) in points.map { Double(value($0)) }.reduce(0, +) / count }
+        let rounded = { (value: Double) in (value * 1000).rounded() / 1000 }
+        // An angle's mean is the direction of its mean unit vector.
+        return InkTilt(
+            azimuth: rounded(atan2(mean { sin($0.azimuth) }, mean { cos($0.azimuth) })),
+            altitude: rounded(mean(\.altitude)),
+            opacity: rounded(mean(\.opacity))
+        )
     }
 
     /// The stroke on a canvas whose origin sits at `offset` in the scene.
@@ -52,8 +79,8 @@ extension InkStroke {
             controlPoints: zip(points, pressures).enumerated().map { index, pair in
                 PKStrokePoint(
                     location: CGPoint(x: pair.0.x - offset.x, y: pair.0.y - offset.y),
-                    timeOffset: Double(index) / 120, size: size, opacity: 1,
-                    force: pair.1 * 2, azimuth: 0, altitude: .pi / 2
+                    timeOffset: Double(index) / 120, size: size, opacity: tilt.opacity,
+                    force: pair.1 * 2, azimuth: tilt.azimuth, altitude: tilt.altitude
                 )
             },
             creationDate: created

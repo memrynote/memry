@@ -142,7 +142,8 @@ enum BlockCatalog {
         // Desktop's `/whiteboard` (`getWhiteboardSlashMenuItem`).
         Row(
             id: "whiteboard", title: "Whiteboard", symbol: "pencil.and.scribble",
-            aliases: ["whiteboard", "canvas", "excalidraw", "draw", "sketch", "board"],
+            // `draw` and `sketch` go to the Drawing row instead (#4378).
+            aliases: ["whiteboard", "canvas", "excalidraw", "board"],
             section: .insert, action: .whiteboard(ink: false)
         ),
         // Mobile's own row (#4378): the same block and canvas, drawn with

@@ -10,8 +10,6 @@ import UIKit
 // Saves run one at a time, 800 ms after the drawing settles, as desktop's
 // whiteboard does, and Done saves what is left. The app resigning active saves
 // too, under a background task, as `EditorSession` does for typing (#2820).
-// A stroke saved before that a sync pull dropped from the stored scene (a
-// conflict copy took it) is written back with the next save.
 
 @MainActor
 @Observable
@@ -43,6 +41,11 @@ final class InkBoard {
     @ObservationIgnored private var ledger = InkLedger()
     @ObservationIgnored private var latest: PKDrawing?
     @ObservationIgnored private var saving: Task<Bool, Never>?
+    /// Saves enqueued and not yet landed.
+    @ObservationIgnored private var queued = 0
+    /// The board the surface shows, as each element's version: the scene
+    /// last read, or last written over what the surface showed.
+    @ObservationIgnored private var shown: [String: Int] = [:]
     @ObservationIgnored private var settle: Task<Void, Never>?
     @ObservationIgnored var stamp = InkStamp()
     @ObservationIgnored var settleDelay: Duration = .milliseconds(800)
@@ -104,30 +107,38 @@ final class InkBoard {
             }
             // Desktop's `unreadable` rule: no surface over a scene it cannot
             // read, or its first save would write over the drawing.
-            guard let scene = WhiteboardScene(json: record.scene), let own = InkScene.strokes(in: record.scene) else {
+            guard show(record.scene) else {
                 phase = .unavailable("\(WhiteboardCopy.unreadableTitle). \(WhiteboardCopy.unreadableBody)")
                 return
             }
-            let ownIds = Set(own.map(\.id))
-            let bounds = scene.bounds ?? .zero
-            offset = CGPoint(x: bounds.minX - Self.margin, y: bounds.minY - Self.margin)
-            background = scene.excluding(ownIds)
-            backgroundColor = scene.background
-            let strokes = own.enumerated().map { index, element in
-                element.ink.stroke(created: InkLedger.created(index: index), offset: offset)
-            }
-            ledger = InkLedger(zip(own, strokes).map { element, stroke in
-                InkLedger.Entry(created: stroke.path.creationDate.timeIntervalSinceReferenceDate, id: element.id, ink: InkStroke(stroke, offset: offset))
-            })
-            drawing = PKDrawing(strokes: strokes)
             latest = nil
-            loads += 1
             phase = .open
         } catch {
             if Task.isCancelled { return }
             Log.interface.error("drawing canvas did not load")
             phase = .unavailable(WhiteboardCopy.loadFailed)
         }
+    }
+
+    /// Puts `scene` on the surface: its ink as strokes, the rest under them.
+    private func show(_ scene: String) -> Bool {
+        guard let picture = WhiteboardScene(json: scene), let own = InkScene.strokes(in: scene),
+              let versions = InkScene.versions(in: scene)
+        else { return false }
+        let bounds = picture.bounds ?? .zero
+        offset = CGPoint(x: bounds.minX - Self.margin, y: bounds.minY - Self.margin)
+        background = picture.excluding(Set(own.map(\.id)))
+        backgroundColor = picture.background
+        let strokes = own.enumerated().map { index, element in
+            element.ink.stroke(created: InkLedger.created(index: index), offset: offset)
+        }
+        ledger = InkLedger(zip(own, strokes).map { element, stroke in
+            InkLedger.Entry(created: stroke.path.creationDate.timeIntervalSinceReferenceDate, id: element.id, ink: InkStroke(stroke, offset: offset))
+        })
+        drawing = PKDrawing(strokes: strokes)
+        shown = versions
+        loads += 1
+        return true
     }
 
     /// The canvas changed; it saves once it settles.
@@ -154,38 +165,47 @@ final class InkBoard {
 
     private func enqueue(_ drawing: PKDrawing) {
         let previous = saving
+        queued += 1
         saving = Task { [weak self] in
             _ = await previous?.value
             guard let self else { return false }
+            defer { self.queued -= 1 }
             return await self.save(drawing)
         }
     }
 
     private func save(_ drawing: PKDrawing) async -> Bool {
-        let strokes = drawing.strokes.map { stroke in
-            (created: stroke.path.creationDate.timeIntervalSinceReferenceDate, ink: InkStroke(stroke, offset: offset))
+        let strokes = drawing.strokes.flatMap { stroke in
+            InkStroke.visible(stroke, offset: offset).map { (created: stroke.path.creationDate.timeIntervalSinceReferenceDate, ink: $0) }
         }
-        var (edit, ids) = ledger.diff(strokes)
+        let (edit, ids) = ledger.diff(strokes)
         guard !edit.isEmpty else { return true }
         do {
             guard let record = try await boards.board(canvasId) else {
                 throw InkSaveError.canvasGone
             }
-            guard let stored = InkScene.elementIds(in: record.scene) else {
-                throw InkSaveError.unreadable
-            }
-            // A saved stroke whose element left the stored scene, as when a
-            // pull moved this device's scene into a conflict copy, is written
-            // back. One desktop deleted keeps its tombstone, so stays erased.
-            for (stroke, id) in zip(strokes, ids) {
-                if let id, !stored.contains(id), edit.changed[id] == nil { edit.changed[id] = stroke.ink }
-            }
-            guard let result = InkScene.apply(edit, to: record.scene, stamp: stamp) else {
+            // The iPad writes only its own changes since its last read or
+            // write. An element absent from the stored scene was removed
+            // elsewhere: a desktop erase, which leaves no tombstone, or a
+            // pull that moved this canvas into a conflict copy, which keeps
+            // it, as desktop's own whiteboard does. It is never written back.
+            guard let stored = InkScene.versions(in: record.scene),
+                  let result = InkScene.apply(edit, to: record.scene, stamp: stamp),
+                  let written = InkScene.versions(in: result.scene)
+            else {
                 throw InkSaveError.unreadable
             }
             try await boards.save(canvasId, scene: result.scene)
             ledger.commit(strokes, ids: ids, addedIds: result.addedIds)
             requestSync?()
+            if stored == shown {
+                shown = written
+            } else if latest == nil, queued == 1 {
+                // The board changed under the surface: show it as stored, so
+                // the user sees what desktop sees. With more drawing still to
+                // save, the next save does this.
+                _ = show(result.scene)
+            }
             return true
         } catch {
             Log.interface.error("drawing did not save")

@@ -186,9 +186,9 @@ private struct InkCanvas: UIViewRepresentable {
     @MainActor
     final class Coordinator: NSObject, PKCanvasViewDelegate {
         let board: InkBoard
-        /// The tools #4378 names. The vector eraser removes whole strokes,
-        /// which Excalidraw stores as a delete; a pixel eraser would leave
-        /// masked strokes desktop cannot draw.
+        /// The tools #4378 names. The eraser's popover still offers its pixel
+        /// mode, whose cut strokes save as their visible parts
+        /// (`InkStroke.visible`).
         let picker = PKToolPicker(toolItems: [
             PKToolPickerInkingItem(type: .pen),
             PKToolPickerInkingItem(type: .marker),

@@ -259,7 +259,7 @@ struct InkBoardSaveTests {
         #expect(InkScene.strokes(in: fake.scene ?? "")?.map(\.ink) == [pen])
     }
 
-    @Test func a_saved_stroke_a_pull_dropped_is_written_back_and_a_tombstone_kept() async throws {
+    @Test func desktopEraseSurvivesIPadSave() async throws {
         let fake = FakeInkBoards(scene: scene([]))
         let board = await open(fake)
         var syncs = 0
@@ -272,21 +272,81 @@ struct InkBoardSaveTests {
         board.changed(drawing(board, [(1, pen)]))
         #expect(await board.flush())
         #expect(syncs == 1, "a save asks for a sync pass")
-        // A desktop edit pulled in: this device's scene went to a conflict
-        // copy and desktop's took its place.
+        // Desktop erased the stroke and drew a shape. It saves the scene's
+        // live elements, so the erase leaves no tombstone. A pull that moved
+        // this canvas into a conflict copy leaves the same scene.
         fake.scene = scene([foreignRect])
+        let loads = board.loads
         board.changed(drawing(board, [(1, pen), (2, second)]))
         #expect(await board.flush())
         let stored = try #require(fake.scene)
         #expect(stored.contains(foreignRect))
-        #expect(try #require(InkScene.strokes(in: stored)).map(\.ink) == [pen, second])
+        #expect(try #require(InkScene.strokes(in: stored)).map(\.ink) == [second], "the erased stroke stays erased")
         #expect(syncs == 2)
+        #expect(board.loads == loads + 1, "the surface shows the board as stored")
+        #expect(board.drawing.strokes.map { InkStroke($0, offset: board.offset) } == [second])
 
-        // Desktop erased the first stroke: its tombstone stays.
-        fake.scene = try #require(InkScene.apply(InkEdit(erased: ["ink-1"]), to: stored, stamp: pinned())).scene
-        board.changed(drawing(board, [(1, pen), (2, second), (3, third)]))
+        // An erase desktop left as a tombstone stays erased too.
+        let secondId = try #require(InkScene.strokes(in: stored)?.first?.id)
+        fake.scene = try #require(InkScene.apply(InkEdit(erased: [secondId]), to: stored, stamp: pinned())).scene
+        board.changed(PKDrawing(strokes: board.drawing.strokes + [third.stroke(created: Date(timeIntervalSinceReferenceDate: 3), offset: board.offset)]))
         #expect(await board.flush())
-        #expect(try #require(InkScene.strokes(in: fake.scene ?? "")).map(\.ink) == [second, third])
+        #expect(try #require(InkScene.strokes(in: fake.scene ?? "")).map(\.ink) == [third])
+    }
+
+    @Test func a_save_over_an_unchanged_board_keeps_the_surface_as_drawn() async {
+        let fake = FakeInkBoards(scene: scene([foreignRect]))
+        let board = await open(fake)
+        let loads = board.loads
+        board.changed(drawing(board, [(1, pen)]))
+        #expect(await board.flush())
+        board.changed(drawing(board, [(1, pen), (2, pen)]))
+        #expect(await board.flush())
+        #expect(InkScene.strokes(in: fake.scene ?? "")?.count == 2)
+        #expect(board.loads == loads, "no reload while only this surface wrote")
+    }
+
+    @Test func pixelEraseSplit() async throws {
+        let fake = FakeInkBoards(scene: scene([]))
+        let board = await open(fake)
+        let line = InkStroke(
+            points: (0 ... 10).map { CGPoint(x: Double($0) * 10, y: 50) }, pressures: Array(repeating: 0.5, count: 11),
+            color: "#1e1e1e", width: 1, opacity: 100, inkType: PKInk.InkType.pen.rawValue
+        )
+        board.changed(drawing(board, [(1, line)]))
+        #expect(await board.flush())
+        // A pixel eraser through the middle leaves the stroke twice, each
+        // copy masked to one side, under the one creation date.
+        let whole = line.stroke(created: Date(timeIntervalSinceReferenceDate: 1), offset: board.offset)
+        let side = { (minX: Double, maxX: Double) in
+            PKStroke(ink: whole.ink, path: whole.path, transform: .identity, mask: UIBezierPath(rect: CGRect(
+                x: minX - board.offset.x, y: 0 - board.offset.y, width: maxX - minX, height: 100
+            )))
+        }
+        board.changed(PKDrawing(strokes: [side(62, 120), side(-20, 38)]))
+        #expect(await board.flush())
+        let stored = try #require(InkScene.strokes(in: fake.scene ?? ""))
+        #expect(stored.count == 2, "each visible part is one stroke")
+        let spans = stored.map { ($0.ink.points.map(\.x).min() ?? 0, $0.ink.points.map(\.x).max() ?? 0) }
+        #expect(spans.allSatisfy { $0.1 <= 40 || $0.0 >= 60 }, "nothing erased comes back: \(spans)")
+        #expect(spans.contains { $0.0 < 1 } && spans.contains { $0.1 > 99 })
+    }
+
+    @Test("a marker reopens with the tilt and opacity PencilKit drew it with")
+    func markerTilt() throws {
+        let points = [CGPoint(x: 0, y: 0), CGPoint(x: 40, y: 10)].map {
+            PKStrokePoint(location: $0, timeOffset: 0, size: CGSize(width: 13.75, height: 13.75), opacity: 1.5, force: 0, azimuth: 1.8157, altitude: .pi / 2)
+        }
+        let drawn = PKStroke(ink: PKInk(.marker, color: UIColor(red: 1, green: 0.8, blue: 0.2, alpha: 0.8)), path: PKStrokePath(controlPoints: points, creationDate: .now))
+        let ink = InkStroke(drawn, offset: .zero)
+        #expect(ink.tilt == InkTilt(azimuth: 1.816, altitude: 1.571, opacity: 1.5))
+        let written = try #require(InkScene.apply(InkEdit(added: [ink]), to: "", stamp: pinned()))
+        let read = try #require(InkScene.strokes(in: written.scene)?.first?.ink)
+        #expect(read == ink)
+        let reopened = read.stroke(created: .now, offset: .zero)
+        let point = try #require(reopened.path.first)
+        #expect(abs(point.azimuth - 1.816) < 0.001 && abs(point.opacity - 1.5) < 0.001)
+        #expect(abs(point.size.width - 13.75) < 0.1, "the width keeps Excalidraw's 0.01 rounding")
     }
 
     @Test func a_canvas_deleted_while_open_lets_the_surface_close() async {

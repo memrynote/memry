@@ -586,7 +586,7 @@ struct InsertGridTests {
 
     @Test func slashDrawSketchAndWhiteboardOfferTheDrawing() {
         #expect(SlashMenu.suggestions(query: "draw", attach: false).map(\.id).prefix(2) == ["slash:drawing", "slash:whiteboard"])
-        #expect(SlashMenu.suggestions(query: "sketch", attach: false).map(\.id).contains("slash:drawing"))
+        #expect(SlashMenu.suggestions(query: "sketch", attach: false).map(\.id).first == "slash:drawing")
         #expect(SlashMenu.suggestions(query: "whiteboard", attach: false).map(\.id).prefix(2) == ["slash:whiteboard", "slash:drawing"])
     }
 

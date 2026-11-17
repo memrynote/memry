@@ -32,6 +32,18 @@ struct InkStroke: Equatable {
     var opacity: Int
     /// `PKInk.InkType`'s raw value, so a marker re-opens as a marker.
     var inkType: String
+    /// The stroke's points' mean tilt, in radians, and opacity, which shape
+    /// how PencilKit draws a marker: kept so it reopens as it was drawn.
+    var tilt = InkTilt()
+}
+
+/// How a pen or finger met the screen over a stroke, PencilKit's per-point
+/// `azimuth`, `altitude` and `opacity` averaged and rounded to 0.001.
+struct InkTilt: Equatable {
+    var azimuth = 0.0
+    /// Upright: pi / 2, rounded.
+    var altitude = 1.571
+    var opacity = 1.0
 }
 
 /// What the surface changed since the scene was last read or saved.
@@ -53,6 +65,7 @@ struct InkStamp {
 enum InkScene {
     static let customKey = "memryInk"
     static let inkTypeKey = "inkType"
+    static let tiltKey = "inkTilt"
     static let defaultInk = "com.apple.ink.pen"
     /// Desktop's `EMPTY_SCENE`, what a blank scene stands for.
     static let emptyScene = #"{"type":"excalidraw","version":2,"source":"memry","elements":[],"appState":{},"files":{}}"#
@@ -67,11 +80,17 @@ enum InkScene {
         }
     }
 
-    /// Every element id in the scene, deleted ones included. `nil` when the
-    /// scene is not an Excalidraw document.
-    static func elementIds(in scene: String) -> Set<String>? {
+    /// Each element's Excalidraw version by id, deleted ones included: two
+    /// scenes with the same versions hold the same board, whatever bytes the
+    /// core stored them as. `nil` when the scene is not an Excalidraw document.
+    static func versions(in scene: String) -> [String: Int]? {
         guard let document = Document(scene) else { return nil }
-        return Set(document.elements.compactMap { object($0)?["id"] as? String })
+        var versions: [String: Int] = [:]
+        for raw in document.elements {
+            guard let element = object(raw), let id = element["id"] as? String else { continue }
+            versions[id] = (element["version"] as? NSNumber)?.intValue ?? 0
+        }
+        return versions
     }
 
     /// `scene` with `edit` applied, and the ids the added strokes got, in
@@ -102,11 +121,8 @@ enum InkScene {
                 elements.append(encode(erased))
             }
         }
-        // A changed stroke whose element is gone from the stored scene is
-        // written back rather than lost.
-        for (id, ink) in pending.sorted(by: { $0.key < $1.key }) {
-            elements.append(encode(freedraw(ink, over: ["id": id], stamp: stamp)))
-        }
+        // A changed stroke whose element is gone from the stored scene was
+        // removed elsewhere (`InkBoard.save`) and stays gone.
         var addedIds: [String] = []
         for ink in edit.added {
             let id = stamp.newId()
@@ -148,13 +164,15 @@ enum InkScene {
             ))
         }
         let pressures = (element["pressures"] as? [NSNumber])?.map(\.doubleValue) ?? []
+        let custom = element["customData"] as? [String: Any]
         return InkStroke(
             points: points,
             pressures: pressures.count == points.count ? pressures : Array(repeating: 0.5, count: points.count),
             color: element["strokeColor"] as? String ?? "#1e1e1e",
             width: number("strokeWidth") ?? 1,
             opacity: Int((number("opacity") ?? 100).rounded()),
-            inkType: (element["customData"] as? [String: Any])?[inkTypeKey] as? String ?? defaultInk
+            inkType: custom?[inkTypeKey] as? String ?? defaultInk,
+            tilt: tilt(custom?[tiltKey])
         )
     }
 
@@ -177,6 +195,7 @@ enum InkScene {
         var custom = element["customData"] as? [String: Any] ?? [:]
         custom[customKey] = true
         custom[inkTypeKey] = ink.inkType
+        custom[tiltKey] = [ink.tilt.azimuth, ink.tilt.altitude, ink.tilt.opacity]
         element.merge([
             "x": round(first.x), "y": round(first.y),
             "width": (xs.max() ?? 0) - (xs.min() ?? 0), "height": (ys.max() ?? 0) - (ys.min() ?? 0),
@@ -187,6 +206,12 @@ enum InkScene {
         ]) { _, new in new }
         bump(&element, stamp: stamp)
         return element
+    }
+
+    /// `[azimuth, altitude, opacity]`; with none, an upright, opaque tip.
+    private static func tilt(_ value: Any?) -> InkTilt {
+        guard let numbers = (value as? [NSNumber])?.map(\.doubleValue), numbers.count == 3 else { return InkTilt() }
+        return InkTilt(azimuth: numbers[0], altitude: numbers[1], opacity: numbers[2])
     }
 
     private static func bump(_ element: inout [String: Any], stamp: InkStamp) {
