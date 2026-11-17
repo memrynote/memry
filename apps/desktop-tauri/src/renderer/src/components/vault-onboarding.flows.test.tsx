@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
   selectVault: vi.fn(),
   switchVault: vi.fn(),
-  downloadVault: vi.fn(),
   auth: {
     status: 'unauthenticated',
     email: 'kaan@example.com'
@@ -24,7 +23,6 @@ vi.mock('@/hooks/use-vault', () => ({
   useVault: () => ({
     selectVault: mocks.selectVault,
     switchVault: mocks.switchVault,
-    downloadVault: mocks.downloadVault,
     isLoading: false,
     error: null
   }),
@@ -58,10 +56,10 @@ describe('VaultOnboarding flows', () => {
     vi.clearAllMocks()
     mocks.auth.status = 'unauthenticated'
     mocks.selectVault.mockResolvedValue({ success: true, vault: { path: '/x' } })
-    mocks.downloadVault.mockResolvedValue({ success: true, vault: { path: '/x' } })
     vaultApi.getDefaultParent = vi.fn().mockResolvedValue('/Users/k/Documents/Memry')
     vaultApi.create = vi.fn().mockResolvedValue({ success: true, vault: { path: '/x' } })
     vaultApi.listAccount = vi.fn().mockResolvedValue([])
+    vaultApi.downloadRemote = vi.fn().mockResolvedValue({ success: true, vault: { path: '/x' } })
     vaultApi.switch = vi.fn().mockResolvedValue({ success: true, vault: { path: '/x' } })
   })
 
@@ -170,12 +168,8 @@ describe('VaultOnboarding flows', () => {
         fireEvent.click(screen.getByRole('button', { name: /flow\.openVault/ }))
       })
 
-      expect(mocks.downloadVault).toHaveBeenCalledTimes(1)
-      expect(mocks.downloadVault).toHaveBeenCalledWith(
-        expect.objectContaining({ vaultUuid: 'uuid-work' }),
-        '/Users/k/Documents/Memry',
-        { source: 'onboarding' }
-      )
+      expect(vaultApi.downloadRemote).toHaveBeenCalledTimes(1)
+      expect(vaultApi.downloadRemote).toHaveBeenCalledWith('uuid-work', '/Users/k/Documents/Memry')
     })
 
     it('opens the local copy of a vault already on this computer', async () => {
@@ -199,7 +193,7 @@ describe('VaultOnboarding flows', () => {
       })
 
       expect(vaultApi.switch).toHaveBeenCalledWith('/Users/k/Research')
-      expect(mocks.downloadVault).not.toHaveBeenCalled()
+      expect(vaultApi.downloadRemote).not.toHaveBeenCalled()
     })
 
     it('sends a fresh account with no vaults to the create form', async () => {

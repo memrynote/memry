@@ -104,6 +104,29 @@ describe('DownloadVaultDialog', () => {
     expect(getVaultSwitchState().pending).toBeNull()
   })
 
+  // A stale suggestion can name the open vault's folder; main then makes another one. A switch to
+  // the open path would not mark the open vault as left, so none starts.
+  it('starts no switch when the suggested folder is the open vault', async () => {
+    resetVaultSwitchState()
+    window.api.vault.getStatus = vi
+      .fn()
+      .mockResolvedValue({ isOpen: true, path: '/home/user/Memry/beta' })
+    const pending: unknown[] = []
+    window.api.vault.downloadRemote = vi.fn().mockImplementation(async () => {
+      pending.push(getVaultSwitchState().pending)
+      return { success: true, vault: { path: '/home/user/Memry/beta-2' } }
+    })
+    const onClose = vi.fn()
+    render(<DownloadVaultDialog vault={vault} onClose={onClose} />)
+    await waitFor(() => expect(window.api.vault.getStatus).toHaveBeenCalled())
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    fireEvent.click(screen.getByRole('button', { name: 'phaseF.componentsVaultSwitcher.download' }))
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled())
+    expect(pending).toEqual([null])
+  })
+
   it('shows the error and stays open when the download fails', async () => {
     const onClose = vi.fn()
     window.api.vault.downloadRemote = vi

@@ -255,11 +255,12 @@ export function useVault() {
 
   /**
    * Leaves the open vault for `vaultPath` through `open`, the call after which
-   * main has closed it and opened the next.
+   * main has closed it and opened the next. With no `vaultPath` the edits are
+   * still written first, but no switch is marked.
    */
   const runSwitch = useCallback(
     async (
-      vaultPath: string,
+      vaultPath: string | null,
       options: SwitchVaultOptions,
       open: () => Promise<SelectVaultResponse>
     ): Promise<SelectVaultResponse> => {
@@ -282,15 +283,17 @@ export function useVault() {
       setError(null)
       // Marks the closed-vault gap as a switch, so App keeps the shell up instead
       // of onboarding, and the incoming vault restores its whole tab session.
-      beginVaultSwitch(
-        {
-          path: vaultPath,
-          name: options.name ?? (vaultPath.split(/[\\/]/).pop() || vaultPath),
-          accentColor: options.accentColor,
-          icon: options.icon
-        },
-        options.direction ?? null
-      )
+      if (vaultPath !== null) {
+        beginVaultSwitch(
+          {
+            path: vaultPath,
+            name: options.name ?? (vaultPath.split(/[\\/]/).pop() || vaultPath),
+            accentColor: options.accentColor,
+            icon: options.icon
+          },
+          options.direction ?? null
+        )
+      }
       let switched = false
 
       try {
@@ -324,7 +327,7 @@ export function useVault() {
         setError(message)
         return { success: false, vault: null, error: message }
       } finally {
-        endVaultSwitch(switched)
+        if (vaultPath !== null) endVaultSwitch(switched)
         setIsLoading(false)
       }
     },
@@ -344,7 +347,9 @@ export function useVault() {
    * Download an account vault into `parentPath` (default: main's choice) and
    * open it. Main closes the open vault, so this is a switch like
    * `switchVault`. The switch names the folder the download is expected to
-   * make; main takes the next free name when that one appeared meanwhile.
+   * make; main takes the next free name when that one appeared meanwhile. A
+   * stale suggestion can name the open vault itself, and a switch to the open
+   * path would not mark it as left, so that download starts no switch.
    */
   const downloadVault = useCallback(
     (
@@ -354,7 +359,8 @@ export function useVault() {
     ): Promise<SelectVaultResponse> => {
       const folder = vault.suggestedPath.split(/[\\/]/).pop() || vault.suggestedPath
       const target = parentPath ? `${parentPath}/${folder}` : vault.suggestedPath
-      return runSwitch(target, { name: vault.name ?? folder, ...options }, () =>
+      const leaving = target === latestStatusRef.current?.path ? null : target
+      return runSwitch(leaving, { name: vault.name ?? folder, ...options }, () =>
         vaultService.downloadRemote(vault.vaultUuid, parentPath)
       )
     },

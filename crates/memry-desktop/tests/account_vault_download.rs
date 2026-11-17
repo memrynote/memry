@@ -213,3 +213,54 @@ fn concurrent_downloads_of_one_vault_make_one_folder() {
         .collect();
     assert_eq!(bound.len(), 1);
 }
+
+/// A folder of that name that is there when the download makes its own is someone else's: the
+/// download takes the next free name and never binds, registers or writes into the existing one.
+#[test]
+fn an_existing_folder_is_left_alone_and_the_next_name_is_taken() {
+    let f = fixture();
+    cache(&f, json!([{ "vaultUuid": "uuid-work", "name": "Work" }]));
+    let session = with_session(&f);
+    let parent = f.dir.path().join("Memry");
+    let theirs = parent.join("work");
+    std::fs::create_dir_all(&theirs).unwrap();
+    std::fs::write(theirs.join("plan.md"), "mine").unwrap();
+
+    let target = f
+        .account
+        .prepare_vault_download(&session, "uuid-work", &parent)
+        .unwrap();
+
+    let folder = parent.join("work-2");
+    assert_eq!(target, DownloadTarget::Provisioned(folder.clone()));
+    assert!(folder.join(".memry/core/data.db").is_file());
+    let entries: Vec<_> = std::fs::read_dir(&theirs)
+        .unwrap()
+        .map(|e| e.unwrap().file_name())
+        .collect();
+    assert_eq!(entries, ["plan.md"]);
+    assert!(f.registry.get(&theirs.to_string_lossy()).is_none());
+}
+
+/// A link named like the vault whose target is gone still takes the name: `mkdir` refuses it, so
+/// the download moves on to the next name instead of retrying the same one.
+#[cfg(unix)]
+#[test]
+fn a_dangling_link_takes_the_name() {
+    let f = fixture();
+    cache(&f, json!([{ "vaultUuid": "uuid-work", "name": "Work" }]));
+    let session = with_session(&f);
+    let parent = f.dir.path().join("Memry");
+    std::fs::create_dir_all(&parent).unwrap();
+    let link = parent.join("work");
+    std::os::unix::fs::symlink(f.dir.path().join("gone"), &link).unwrap();
+
+    let target = f
+        .account
+        .prepare_vault_download(&session, "uuid-work", &parent)
+        .unwrap();
+
+    assert_eq!(target, DownloadTarget::Provisioned(parent.join("work-2")));
+    assert!(link.symlink_metadata().unwrap().file_type().is_symlink());
+    assert!(!f.dir.path().join("gone").exists());
+}
