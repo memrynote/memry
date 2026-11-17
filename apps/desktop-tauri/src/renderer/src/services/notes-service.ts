@@ -703,9 +703,16 @@ export type AppendBlocksSaveResponse = AppendBlocksResponse & { errorCode?: 'tar
  */
 export type ExportNoteResult = ExportNoteResponse & { code?: ExportFailure }
 
+// Similar notes, tag suggestions and grouping go through `similarity-service.ts`.
 type NotesServiceApi = Omit<
   NotesClientAPI,
-  PortedLargeFileMethod | 'update' | 'appendBlocks' | 'exportHtml'
+  | PortedLargeFileMethod
+  | 'update'
+  | 'appendBlocks'
+  | 'exportHtml'
+  | 'getSimilar'
+  | 'getTagSuggestions'
+  | 'cluster'
 > & {
   update: (input: NoteSaveInput) => Promise<NoteSaveResponse>
   appendBlocks: (input: AppendBlocksInput) => Promise<AppendBlocksSaveResponse>

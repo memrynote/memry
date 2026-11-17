@@ -14,9 +14,9 @@ use chrono::NaiveDate;
 use memry_core::markdown::shared::task_block::strip_task_block_suffixes;
 
 pub use icons::{IconPart, library_icon};
-#[cfg(feature = "test-hooks")]
-pub use inline_images::image_reads;
 pub use inline_images::{ImageSource, MAX_DATA_URI_LEN, inline_export_images};
+#[cfg(feature = "test-hooks")]
+pub use inline_images::{image_reads, inline_export_images_between};
 #[cfg(feature = "test-hooks")]
 pub use markdown::steps;
 
