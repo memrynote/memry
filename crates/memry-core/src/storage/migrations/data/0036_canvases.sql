@@ -1,4 +1,4 @@
--- data.db, migration 0033: the canvas tables (Step 30d, #3547).
+-- data.db, migration 0036: the canvas tables (Step 30d, #3547).
 --
 -- `canvases` caches a parse of each `canvas` payload in `sync_items`, which
 -- stays the owner (§A.4): `projectors::canvas` writes it, so listing never

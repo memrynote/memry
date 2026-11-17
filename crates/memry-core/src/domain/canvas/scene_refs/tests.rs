@@ -257,6 +257,8 @@ fn a_deeply_nested_scene_reads_as_empty_on_a_small_stack() {
     });
 }
 
+type CountedRead = fn(&str, &mut usize);
+
 /// Every read walks the elements at most twice, whatever they hold: one
 /// thousand arrows between two hundred cards cost no pairwise work.
 #[test]
@@ -273,7 +275,7 @@ fn each_read_visits_each_element_at_most_twice() {
     }));
     let text = scene(Value::Array(elements));
     let count = 1200;
-    let reads: [(&str, fn(&str, &mut usize)); 4] = [
+    let reads: [(&str, CountedRead); 4] = [
         ("refs", |s, v| drop(entity_refs_counted(s, v))),
         ("edges", |s, v| drop(entity_edges_counted(s, v))),
         ("summary", |s, v| drop(summarize_counted(s, v))),

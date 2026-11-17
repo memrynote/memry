@@ -16,7 +16,7 @@
 //!
 //! The writes live in [`store`]: each is one transaction with its outbox row,
 //! and a scene over [`CANVAS_SCENE_SYNC_CAP_BYTES`] saves without one. The
-//! `canvases` table (migration `0033`) indexes every field but the scene, which
+//! `canvases` table (migration `0036`) indexes every field but the scene, which
 //! stays in the payload; [`edges`] indexes what each scene points at, and
 //! [`folder_paths`] and [`scene_refs`] are the pure rules both build on.
 

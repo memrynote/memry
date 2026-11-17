@@ -1,5 +1,5 @@
 //! `canvas`: whiteboards (`CanvasSyncPayloadSchema`,
-//! `packages/contracts/src/sync-payloads.ts`, migration `0033`).
+//! `packages/contracts/src/sync-payloads.ts`, migration `0036`).
 //!
 //! Every field but the scene, which stays in the payload so a list never reads
 //! one ([`crate::domain::canvas::get`] reads it from `sync_items.payload`). The

@@ -382,7 +382,7 @@ pub fn rebuild_projections(conn: &Connection, now_ms: i64) -> Result<usize, Stor
 }
 
 /// Replays the stored payloads of each item type a migration named in
-/// `pending_reprojections` (migration `0033`), then clears the names, in one
+/// `pending_reprojections` (migration `0036`), then clears the names, in one
 /// transaction: a crash leaves the names for the next open, and the projector
 /// upserts make a second replay a no-op.
 ///
