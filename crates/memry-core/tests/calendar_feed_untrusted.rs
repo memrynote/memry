@@ -121,6 +121,106 @@ fn a_rule_whose_by_lists_multiply_is_refused_before_it_allocates() {
 }
 
 #[test]
+fn a_period_with_no_days_builds_no_by_list_product() {
+    // The same product, in a rule whose periods hold no day: building it once
+    // per empty period is 11 GB each time, and nothing pays for it.
+    let seconds = vec!["0"; 1_000_000].join(",");
+    let hours = (0..24).map(|h| h.to_string()).collect::<Vec<_>>().join(",");
+    let minutes = (0..60).map(|m| m.to_string()).collect::<Vec<_>>().join(",");
+    for days in ["BYMONTH=13", "BYMONTH=2;BYMONTHDAY=30"] {
+        let rule = format!(
+            "RRULE:FREQ=DAILY;{days};BYHOUR={hours};BYMINUTE={minutes};BYSECOND={seconds}\r\n"
+        );
+        let text = calendar(&event("empty", &rule));
+        let mut result = Ok(0);
+        assert_steps_at_most(days, budget::visits, 100_000, || {
+            result = read(&text).map(|feed| feed.events.len());
+        });
+        assert_eq!(result, Ok(1), "{days}: DTSTART alone");
+    }
+}
+
+#[test]
+fn occurrences_before_the_window_are_not_built() {
+    // Four daily series that end before the window, each with a 64 KiB
+    // description and 20 more properties: 46 000 occurrences each, none of
+    // which is an instance.
+    let description = "d".repeat(64 * 1024);
+    let pad = "X-P:1\r\n".repeat(20);
+    let body: String = (0..4)
+        .map(|n| {
+            format!(
+                "BEGIN:VEVENT\r\nUID:old{n}\r\nDTSTART:19000101T090000Z\r\nDURATION:PT1H\r\nRRULE:FREQ=DAILY;UNTIL=20251201T000000Z\r\nSUMMARY:old\r\nDESCRIPTION:{description}\r\n{pad}END:VEVENT\r\n"
+            )
+        })
+        .collect();
+    let text = calendar(&body);
+    let mut result = Ok(1);
+    assert_steps_at_most("past occurrences", budget::visits, 4 * 50_000 * 6, || {
+        result = read(&text).map(|feed| feed.events.len());
+    });
+    assert_eq!(result, Ok(0));
+}
+
+fn standup(uid: &str, since: &str, extra: &str) -> String {
+    // A weekday standup with the 21 properties a Google or Outlook export
+    // carries (attendees, organizer, stamps, conference fields).
+    format!(
+        "BEGIN:VEVENT\r\nUID:{uid}\r\nDTSTART:{since}T090000Z\r\nDTEND:{since}T091500Z\r\n\
+         RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR\r\nDTSTAMP:20260301T000000Z\r\n\
+         CREATED:20150101T000000Z\r\nLAST-MODIFIED:20250101T000000Z\r\nSEQUENCE:3\r\n\
+         STATUS:CONFIRMED\r\nTRANSP:OPAQUE\r\nCLASS:PUBLIC\r\nSUMMARY:Standup {uid}\r\n\
+         LOCATION:Room 4\r\nORGANIZER:mailto:lead@example.com\r\n\
+         ATTENDEE:mailto:a@example.com\r\nATTENDEE:mailto:b@example.com\r\n\
+         ATTENDEE:mailto:c@example.com\r\nATTENDEE:mailto:d@example.com\r\n\
+         X-MICROSOFT-CDO-BUSYSTATUS:BUSY\r\nX-GOOGLE-CONFERENCE:https://meet.example.com/x\r\n\
+         {extra}END:VEVENT\r\n"
+    )
+}
+
+#[test]
+fn a_team_calendar_with_long_running_standups_reads_whole() {
+    // Electron imports each of these; they are what a large shared team
+    // calendar looks like, not attacks.
+    let since_2015: String = (0..200)
+        .map(|n| standup(&format!("s{n}"), "20150105", "DESCRIPTION:daily sync\r\n"))
+        .collect();
+    let exdates: String = (0..150)
+        .map(|n| format!("EXDATE:2016{:02}{:02}T090000Z\r\n", 1 + n % 12, 1 + n % 28))
+        .collect::<String>()
+        + "DESCRIPTION:daily sync\r\n";
+    let with_exdates: String = (0..20)
+        .map(|n| standup(&format!("x{n}"), "20150105", &exdates))
+        .collect();
+    let invite = format!("DESCRIPTION:{}\r\n", "Join the meeting: ".repeat(170));
+    let invites: String = (0..128)
+        .map(|n| standup(&format!("i{n}"), "20250106", &invite))
+        .collect();
+    for (what, body) in [
+        ("200 standups since 2015", since_2015),
+        ("20 standups with 150 EXDATEs", with_exdates),
+        ("128 standups with a 3 KB invite", invites),
+    ] {
+        let feed = read(&calendar(&body));
+        assert!(feed.is_ok(), "{what}: {:?}", feed.map(|_| ()));
+    }
+}
+
+#[test]
+fn a_vtimezone_of_secondly_observances_is_refused() {
+    // 5 000 observances that each repeat every second: 2 000 onsets apiece
+    // (10 million transitions) from a 300 KiB zone no event has to use.
+    let observance = "BEGIN:STANDARD\r\nDTSTART:19700101T000000\r\nTZOFFSETFROM:+0100\r\n\
+                      TZOFFSETTO:+0000\r\nRRULE:FREQ=SECONDLY\r\nEND:STANDARD\r\n";
+    let zone = format!(
+        "BEGIN:VTIMEZONE\r\nTZID:Bomb\r\n{}END:VTIMEZONE\r\n",
+        observance.repeat(5_000)
+    );
+    let text = calendar(&(zone + &event("a", "")));
+    assert_eq!(read(&text).map(|_| ()), Err(FeedError::TooLarge));
+}
+
+#[test]
 fn long_by_lists_are_charged_per_period() {
     // One entry repeated 300 000 times: every period walks the list, and the
     // day lists walk it once per day of the month or year.
@@ -130,6 +230,7 @@ fn long_by_lists_are_charged_per_period() {
         format!("FREQ=DAILY;BYMONTH=2;BYMONTHDAY={}", list("31")),
         format!("FREQ=WEEKLY;BYDAY={}", list("MO")),
         format!("FREQ=MONTHLY;BYDAY={}", list("MO")),
+        format!("FREQ=MONTHLY;BYMONTH={}", list("13")),
         format!("FREQ=MONTHLY;BYMONTHDAY={}", list("1")),
         format!("FREQ=MONTHLY;BYDAY=MO;BYMONTHDAY={}", list("1")),
         format!("FREQ=YEARLY;BYYEARDAY={}", list("1")),

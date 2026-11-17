@@ -299,7 +299,11 @@ fn candidates(rule: &Rule, start: i64, index: i64) -> Vec<i64> {
         }
     };
     // Charged before anything is built: BYHOUR, BYMINUTE and BYSECOND lists
-    // multiply, and a hostile rule's product does not fit in memory.
+    // multiply, and a hostile rule's product does not fit in memory. A period
+    // with no day builds none, so it is charged nothing.
+    if days.is_empty() {
+        return Vec::new();
+    }
     let per_day = [&rule.by_hour, &rule.by_minute, &rule.by_second]
         .iter()
         .fold(1_usize, |n, list| n.saturating_mul(list.len().max(1)));

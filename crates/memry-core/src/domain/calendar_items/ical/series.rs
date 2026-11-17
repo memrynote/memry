@@ -223,8 +223,17 @@ pub(super) fn expand_series(
         if excluded_days.contains(&occurrence.date) || excluded_ms.contains(&rid_ms) {
             continue;
         }
+        let exception = override_by_rid.get(&rid_ms);
+        let end = occurrence.with_wall_seconds(wall + duration);
+        // An occurrence that ends before the window is never built: its text
+        // would be copied only to be dropped. An override can move into it.
+        if exception.is_none()
+            && rid_ms.max(resolver.instant_ms(&end, unresolved)) < window.start_ms
+        {
+            continue;
+        }
         let key = (context.key_for)(context.uid, Some(&iso(rid_ms)));
-        let instance = match override_by_rid.get(&rid_ms) {
+        let instance = match exception {
             Some(exception) => {
                 let Some(own_start) = exception.first("DTSTART").and_then(time_of) else {
                     continue;
@@ -232,10 +241,7 @@ pub(super) fn expand_series(
                 let end = end_of(exception, &own_start, resolver, unresolved);
                 to_instance(exception, &own_start, end.as_ref(), key, context)
             }
-            None => {
-                let end = occurrence.with_wall_seconds(wall + duration);
-                to_instance(master, &occurrence, Some(&end), key, context)
-            }
+            None => to_instance(master, &occurrence, Some(&end), key, context),
         };
         let Some(instance) = instance else { continue };
         if !overlaps(&instance, window) {

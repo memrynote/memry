@@ -13,6 +13,7 @@
 //! [`visits`] is the monotonic count the complexity tests read.
 
 use std::cell::Cell;
+use std::marker::PhantomData;
 
 /// Steps one read may take: lines parsed, rule periods and candidates,
 /// occurrences walked, properties read per instance. A large real feed
@@ -20,9 +21,11 @@ use std::cell::Cell;
 pub const MAX_STEPS: usize = 10_000_000;
 
 /// Bytes of instances one read may produce (text fields plus a fixed
-/// per-instance share). A year of daily instances of a series with a long
-/// description is a few MiB.
-pub const MAX_OUTPUT_BYTES: usize = 64 * 1024 * 1024;
+/// per-instance share). Every instance holds its own copy of its event's
+/// text, so a weekday series with a 3 KB meeting invite is about 1 MiB over
+/// the window; this holds about 250 of them, and refuses one 1 MiB
+/// description copied into a year of daily instances.
+pub const MAX_OUTPUT_BYTES: usize = 256 * 1024 * 1024;
 
 /// What one instance costs besides its text: id, dates, flags.
 pub const INSTANCE_OVERHEAD: usize = 128;
@@ -43,20 +46,28 @@ thread_local! {
 /// disarms it, so a feed read that calls the expansion stays one budget.
 pub struct Scope {
     outermost: bool,
+    /// Not `Send`: the bound lives in this thread's locals.
+    thread: PhantomData<*const ()>,
 }
 
 impl Scope {
     pub fn enter() -> Self {
         LEFT.with(|left| {
             if left.get().is_some() {
-                return Self { outermost: false };
+                return Self {
+                    outermost: false,
+                    thread: PhantomData,
+                };
             }
             left.set(Some(Left {
                 steps: MAX_STEPS,
                 bytes: MAX_OUTPUT_BYTES,
                 spent: false,
             }));
-            Self { outermost: true }
+            Self {
+                outermost: true,
+                thread: PhantomData,
+            }
         })
     }
 }
