@@ -3539,6 +3539,62 @@ public protocol InboxProtocol: AnyObject, Sendable {
     
     func setTranscription(id: String, transcription: String?, status: String) throws  -> InboxItemRecord
     
+    /**
+     * A new capture `item_id` from an article whose files the shell stored
+     * under `attachments/inbox/<item_id>/` (mint the id with `new_id`).
+     * `tags` `nil` gives `clippings`. A retry with an id already captured
+     * returns that capture unchanged with `duplicate = true`.
+     */
+    func captureArticle(itemId: String, article: InboxArticle, files: InboxArticleFiles, tags: [String]?, captureSource: String) throws  -> InboxCaptureOutcome
+    
+    /**
+     * The live capture `item_id` enriched with an article; `hero_path` is
+     * the downloaded hero under its folder, if any.
+     */
+    func enrichArticle(itemId: String, article: InboxArticle, heroPath: String?) throws  -> InboxItemRecord
+    
+    /**
+     * The earliest due job, now `running` under a new `run_id`; `nil` when
+     * none is due.
+     */
+    func claimNextJob() throws  -> InboxJob?
+    
+    /**
+     * Queues the capture's job of `job_type`, due now, attempts reset;
+     * `NotFound` when the capture is not live.
+     */
+    func enqueueJob(itemId: String, jobType: InboxJobType) throws  -> InboxJob
+    
+    /**
+     * Run `run_id` of a job failed: pending again after `retry_delay_ms`
+     * while attempts remain, else failed; `nil` when the job was queued again
+     * meanwhile and `run_id` is not its current run.
+     */
+    func failJob(jobId: String, runId: String, error: String, retryDelayMs: Int64) throws  -> InboxJob?
+    
+    /**
+     * Marks run `run_id` of a job complete; `nil` when the job was queued
+     * again meanwhile and `run_id` is not its current run.
+     */
+    func finishJob(jobId: String, runId: String) throws  -> InboxJob?
+    
+    /**
+     * Jobs of `item_ids` (every capture when empty) in `statuses` (every
+     * status when empty), soonest first.
+     */
+    func jobs(itemIds: [String], statuses: [InboxJobStatus]) throws  -> [InboxJob]
+    
+    /**
+     * When the next pending job is due (epoch ms); `nil` when none is.
+     */
+    func nextJobDue() throws  -> Int64?
+    
+    /**
+     * At vault open, before the runner starts: interrupted jobs pending
+     * again, jobs of deleted captures removed.
+     */
+    func resumePendingJobs() throws  -> InboxJobsResumed
+    
     func reviewSettings() throws  -> InboxReviewSettings
     
     /**
@@ -3913,6 +3969,143 @@ open func setTranscription(id: String, transcription: String?, status: String)th
         FfiConverterString.lower(id),
         FfiConverterOptionString.lower(transcription),
         FfiConverterString.lower(status),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * A new capture `item_id` from an article whose files the shell stored
+     * under `attachments/inbox/<item_id>/` (mint the id with `new_id`).
+     * `tags` `nil` gives `clippings`. A retry with an id already captured
+     * returns that capture unchanged with `duplicate = true`.
+     */
+open func captureArticle(itemId: String, article: InboxArticle, files: InboxArticleFiles, tags: [String]?, captureSource: String)throws  -> InboxCaptureOutcome  {
+    return try  FfiConverterTypeInboxCaptureOutcome_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_capture_article(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(itemId),
+        FfiConverterTypeInboxArticle_lower(article),
+        FfiConverterTypeInboxArticleFiles_lower(files),
+        FfiConverterOptionSequenceString.lower(tags),
+        FfiConverterString.lower(captureSource),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * The live capture `item_id` enriched with an article; `hero_path` is
+     * the downloaded hero under its folder, if any.
+     */
+open func enrichArticle(itemId: String, article: InboxArticle, heroPath: String?)throws  -> InboxItemRecord  {
+    return try  FfiConverterTypeInboxItemRecord_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_enrich_article(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(itemId),
+        FfiConverterTypeInboxArticle_lower(article),
+        FfiConverterOptionString.lower(heroPath),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * The earliest due job, now `running` under a new `run_id`; `nil` when
+     * none is due.
+     */
+open func claimNextJob()throws  -> InboxJob?  {
+    return try  FfiConverterOptionTypeInboxJob.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_claim_next_job(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Queues the capture's job of `job_type`, due now, attempts reset;
+     * `NotFound` when the capture is not live.
+     */
+open func enqueueJob(itemId: String, jobType: InboxJobType)throws  -> InboxJob  {
+    return try  FfiConverterTypeInboxJob_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_enqueue_job(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(itemId),
+        FfiConverterTypeInboxJobType_lower(jobType),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Run `run_id` of a job failed: pending again after `retry_delay_ms`
+     * while attempts remain, else failed; `nil` when the job was queued again
+     * meanwhile and `run_id` is not its current run.
+     */
+open func failJob(jobId: String, runId: String, error: String, retryDelayMs: Int64)throws  -> InboxJob?  {
+    return try  FfiConverterOptionTypeInboxJob.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_fail_job(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(jobId),
+        FfiConverterString.lower(runId),
+        FfiConverterString.lower(error),
+        FfiConverterInt64.lower(retryDelayMs),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Marks run `run_id` of a job complete; `nil` when the job was queued
+     * again meanwhile and `run_id` is not its current run.
+     */
+open func finishJob(jobId: String, runId: String)throws  -> InboxJob?  {
+    return try  FfiConverterOptionTypeInboxJob.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_finish_job(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(jobId),
+        FfiConverterString.lower(runId),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Jobs of `item_ids` (every capture when empty) in `statuses` (every
+     * status when empty), soonest first.
+     */
+open func jobs(itemIds: [String], statuses: [InboxJobStatus])throws  -> [InboxJob]  {
+    return try  FfiConverterSequenceTypeInboxJob.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_jobs(
+            self.uniffiCloneHandle(),
+        FfiConverterSequenceString.lower(itemIds),
+        FfiConverterSequenceTypeInboxJobStatus.lower(statuses),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * When the next pending job is due (epoch ms); `nil` when none is.
+     */
+open func nextJobDue()throws  -> Int64?  {
+    return try  FfiConverterOptionInt64.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_next_job_due(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * At vault open, before the runner starts: interrupted jobs pending
+     * again, jobs of deleted captures removed.
+     */
+open func resumePendingJobs()throws  -> InboxJobsResumed  {
+    return try  FfiConverterTypeInboxJobsResumed_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+        uniffiCallStatus in
+    uniffi_memry_core_fn_method_inbox_resume_pending_jobs(
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -18222,6 +18415,290 @@ public func FfiConverterTypeHttpResponse_lower(_ value: HttpResponse) -> RustBuf
 
 
 /**
+ * The part of an `ArticleCapture` the row keeps.
+ */
+public struct InboxArticle: Equatable, Hashable {
+    public var url: String
+    public var contentMarkdown: String
+    public var excerpt: String
+    public var extractionStatus: InboxExtractionStatus
+    public var properties: InboxArticleProperties
+    public var heroImage: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(url: String, contentMarkdown: String, excerpt: String, extractionStatus: InboxExtractionStatus, properties: InboxArticleProperties, heroImage: String?) {
+        self.url = url
+        self.contentMarkdown = contentMarkdown
+        self.excerpt = excerpt
+        self.extractionStatus = extractionStatus
+        self.properties = properties
+        self.heroImage = heroImage
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension InboxArticle: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInboxArticle: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InboxArticle {
+        return
+            try InboxArticle(
+                url: FfiConverterString.read(from: &buf), 
+                contentMarkdown: FfiConverterString.read(from: &buf), 
+                excerpt: FfiConverterString.read(from: &buf), 
+                extractionStatus: FfiConverterTypeInboxExtractionStatus.read(from: &buf), 
+                properties: FfiConverterTypeInboxArticleProperties.read(from: &buf), 
+                heroImage: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: InboxArticle, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.url, into: &buf)
+        FfiConverterString.write(value.contentMarkdown, into: &buf)
+        FfiConverterString.write(value.excerpt, into: &buf)
+        FfiConverterTypeInboxExtractionStatus.write(value.extractionStatus, into: &buf)
+        FfiConverterTypeInboxArticleProperties.write(value.properties, into: &buf)
+        FfiConverterOptionString.write(value.heroImage, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxArticle_lift(_ buf: RustBuffer) throws -> InboxArticle {
+    return try FfiConverterTypeInboxArticle.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxArticle_lower(_ value: InboxArticle) -> RustBuffer {
+    return FfiConverterTypeInboxArticle.lower(value)
+}
+
+
+/**
+ * What the shell stored for a new capture, each under
+ * `attachments/inbox/<id>/`. A file that failed to store is `None`: the
+ * capture degrades (no screenshot body, a link instead of a pdf), as desktop's
+ * does, rather than being lost.
+ */
+public struct InboxArticleFiles: Equatable, Hashable {
+    public var screenshotPath: String?
+    public var pdf: InboxArticlePdf?
+    /**
+     * The downloaded hero image; the screenshot wins as thumbnail.
+     */
+    public var heroPath: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(screenshotPath: String?, pdf: InboxArticlePdf?, 
+        /**
+         * The downloaded hero image; the screenshot wins as thumbnail.
+         */heroPath: String?) {
+        self.screenshotPath = screenshotPath
+        self.pdf = pdf
+        self.heroPath = heroPath
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension InboxArticleFiles: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInboxArticleFiles: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InboxArticleFiles {
+        return
+            try InboxArticleFiles(
+                screenshotPath: FfiConverterOptionString.read(from: &buf), 
+                pdf: FfiConverterOptionTypeInboxArticlePdf.read(from: &buf), 
+                heroPath: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: InboxArticleFiles, into buf: inout [UInt8]) {
+        FfiConverterOptionString.write(value.screenshotPath, into: &buf)
+        FfiConverterOptionTypeInboxArticlePdf.write(value.pdf, into: &buf)
+        FfiConverterOptionString.write(value.heroPath, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxArticleFiles_lift(_ buf: RustBuffer) throws -> InboxArticleFiles {
+    return try FfiConverterTypeInboxArticleFiles.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxArticleFiles_lower(_ value: InboxArticleFiles) -> RustBuffer {
+    return FfiConverterTypeInboxArticleFiles.lower(value)
+}
+
+
+/**
+ * The PDF the extension sent, stored by the shell.
+ */
+public struct InboxArticlePdf: Equatable, Hashable {
+    public var path: String
+    /**
+     * `pdfFilename`, or `document.pdf`.
+     */
+    public var filename: String
+    public var size: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(path: String, 
+        /**
+         * `pdfFilename`, or `document.pdf`.
+         */filename: String, size: UInt64) {
+        self.path = path
+        self.filename = filename
+        self.size = size
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension InboxArticlePdf: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInboxArticlePdf: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InboxArticlePdf {
+        return
+            try InboxArticlePdf(
+                path: FfiConverterString.read(from: &buf), 
+                filename: FfiConverterString.read(from: &buf), 
+                size: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: InboxArticlePdf, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.path, into: &buf)
+        FfiConverterString.write(value.filename, into: &buf)
+        FfiConverterUInt64.write(value.size, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxArticlePdf_lift(_ buf: RustBuffer) throws -> InboxArticlePdf {
+    return try FfiConverterTypeInboxArticlePdf.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxArticlePdf_lower(_ value: InboxArticlePdf) -> RustBuffer {
+    return FfiConverterTypeInboxArticlePdf.lower(value)
+}
+
+
+/**
+ * `ArticlePropertiesSchema`; an absent optional key stays absent in the
+ * stored metadata, as zod's output omits it.
+ */
+public struct InboxArticleProperties: Equatable, Hashable {
+    public var title: String
+    public var source: String
+    public var author: String?
+    public var published: String?
+    public var created: String
+    public var description: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(title: String, source: String, author: String?, published: String?, created: String, description: String?) {
+        self.title = title
+        self.source = source
+        self.author = author
+        self.published = published
+        self.created = created
+        self.description = description
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension InboxArticleProperties: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInboxArticleProperties: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InboxArticleProperties {
+        return
+            try InboxArticleProperties(
+                title: FfiConverterString.read(from: &buf), 
+                source: FfiConverterString.read(from: &buf), 
+                author: FfiConverterOptionString.read(from: &buf), 
+                published: FfiConverterOptionString.read(from: &buf), 
+                created: FfiConverterString.read(from: &buf), 
+                description: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: InboxArticleProperties, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterString.write(value.source, into: &buf)
+        FfiConverterOptionString.write(value.author, into: &buf)
+        FfiConverterOptionString.write(value.published, into: &buf)
+        FfiConverterString.write(value.created, into: &buf)
+        FfiConverterOptionString.write(value.description, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxArticleProperties_lift(_ buf: RustBuffer) throws -> InboxArticleProperties {
+    return try FfiConverterTypeInboxArticleProperties.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxArticleProperties_lower(_ value: InboxArticleProperties) -> RustBuffer {
+    return FfiConverterTypeInboxArticleProperties.lower(value)
+}
+
+
+/**
  * What one pass did.
  */
 public struct InboxAttachmentSyncSummary: Equatable, Hashable {
@@ -18758,6 +19235,196 @@ public func FfiConverterTypeInboxItemRecord_lift(_ buf: RustBuffer) throws -> In
 #endif
 public func FfiConverterTypeInboxItemRecord_lower(_ value: InboxItemRecord) -> RustBuffer {
     return FfiConverterTypeInboxItemRecord.lower(value)
+}
+
+
+/**
+ * One `inbox_jobs` row. Instants are epoch milliseconds.
+ */
+public struct InboxJob: Equatable, Hashable {
+    public var id: String
+    public var itemId: String
+    public var jobType: InboxJobType
+    public var status: InboxJobStatus
+    /**
+     * The current run, minted by [`claim_next`]; `None` until the first
+     * claim after a (re)queue. [`finish`] and [`fail`] must name it.
+     */
+    public var runId: String?
+    public var attempts: Int64
+    public var maxAttempts: Int64
+    public var nextRunAt: Int64
+    public var lastError: String?
+    public var startedAt: Int64?
+    public var completedAt: Int64?
+    public var createdAt: Int64
+    public var updatedAt: Int64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, itemId: String, jobType: InboxJobType, status: InboxJobStatus, 
+        /**
+         * The current run, minted by [`claim_next`]; `None` until the first
+         * claim after a (re)queue. [`finish`] and [`fail`] must name it.
+         */runId: String?, attempts: Int64, maxAttempts: Int64, nextRunAt: Int64, lastError: String?, startedAt: Int64?, completedAt: Int64?, createdAt: Int64, updatedAt: Int64) {
+        self.id = id
+        self.itemId = itemId
+        self.jobType = jobType
+        self.status = status
+        self.runId = runId
+        self.attempts = attempts
+        self.maxAttempts = maxAttempts
+        self.nextRunAt = nextRunAt
+        self.lastError = lastError
+        self.startedAt = startedAt
+        self.completedAt = completedAt
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension InboxJob: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInboxJob: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InboxJob {
+        return
+            try InboxJob(
+                id: FfiConverterString.read(from: &buf), 
+                itemId: FfiConverterString.read(from: &buf), 
+                jobType: FfiConverterTypeInboxJobType.read(from: &buf), 
+                status: FfiConverterTypeInboxJobStatus.read(from: &buf), 
+                runId: FfiConverterOptionString.read(from: &buf), 
+                attempts: FfiConverterInt64.read(from: &buf), 
+                maxAttempts: FfiConverterInt64.read(from: &buf), 
+                nextRunAt: FfiConverterInt64.read(from: &buf), 
+                lastError: FfiConverterOptionString.read(from: &buf), 
+                startedAt: FfiConverterOptionInt64.read(from: &buf), 
+                completedAt: FfiConverterOptionInt64.read(from: &buf), 
+                createdAt: FfiConverterInt64.read(from: &buf), 
+                updatedAt: FfiConverterInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: InboxJob, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.itemId, into: &buf)
+        FfiConverterTypeInboxJobType.write(value.jobType, into: &buf)
+        FfiConverterTypeInboxJobStatus.write(value.status, into: &buf)
+        FfiConverterOptionString.write(value.runId, into: &buf)
+        FfiConverterInt64.write(value.attempts, into: &buf)
+        FfiConverterInt64.write(value.maxAttempts, into: &buf)
+        FfiConverterInt64.write(value.nextRunAt, into: &buf)
+        FfiConverterOptionString.write(value.lastError, into: &buf)
+        FfiConverterOptionInt64.write(value.startedAt, into: &buf)
+        FfiConverterOptionInt64.write(value.completedAt, into: &buf)
+        FfiConverterInt64.write(value.createdAt, into: &buf)
+        FfiConverterInt64.write(value.updatedAt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxJob_lift(_ buf: RustBuffer) throws -> InboxJob {
+    return try FfiConverterTypeInboxJob.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxJob_lower(_ value: InboxJob) -> RustBuffer {
+    return FfiConverterTypeInboxJob.lower(value)
+}
+
+
+/**
+ * What [`resume`] did at vault open.
+ */
+public struct InboxJobsResumed: Equatable, Hashable {
+    /**
+     * `running` jobs a quit or crash interrupted, pending again.
+     */
+    public var requeued: UInt32
+    /**
+     * Interrupted jobs already run past their attempts, now `failed`, so a
+     * job that takes the app down cannot loop forever.
+     */
+    public var exhausted: UInt32
+    /**
+     * Jobs whose capture is deleted or gone, removed.
+     */
+    public var dropped: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * `running` jobs a quit or crash interrupted, pending again.
+         */requeued: UInt32, 
+        /**
+         * Interrupted jobs already run past their attempts, now `failed`, so a
+         * job that takes the app down cannot loop forever.
+         */exhausted: UInt32, 
+        /**
+         * Jobs whose capture is deleted or gone, removed.
+         */dropped: UInt32) {
+        self.requeued = requeued
+        self.exhausted = exhausted
+        self.dropped = dropped
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension InboxJobsResumed: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInboxJobsResumed: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InboxJobsResumed {
+        return
+            try InboxJobsResumed(
+                requeued: FfiConverterUInt32.read(from: &buf), 
+                exhausted: FfiConverterUInt32.read(from: &buf), 
+                dropped: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: InboxJobsResumed, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.requeued, into: &buf)
+        FfiConverterUInt32.write(value.exhausted, into: &buf)
+        FfiConverterUInt32.write(value.dropped, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxJobsResumed_lift(_ buf: RustBuffer) throws -> InboxJobsResumed {
+    return try FfiConverterTypeInboxJobsResumed.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxJobsResumed_lower(_ value: InboxJobsResumed) -> RustBuffer {
+    return FfiConverterTypeInboxJobsResumed.lower(value)
 }
 
 
@@ -29723,6 +30390,241 @@ public func FfiConverterTypeDevicePlatform_lower(_ value: DevicePlatform) -> Rus
 
 
 /**
+ * `ArticleCapture.extractionStatus`.
+ */
+
+public enum InboxExtractionStatus: Equatable, Hashable {
+    
+    case full
+    case partial
+    case failed
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension InboxExtractionStatus: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInboxExtractionStatus: FfiConverterRustBuffer {
+    typealias SwiftType = InboxExtractionStatus
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InboxExtractionStatus {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .full
+        
+        case 2: return .partial
+        
+        case 3: return .failed
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: InboxExtractionStatus, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .full:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .partial:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .failed:
+            writeInt(&buf, Int32(3))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxExtractionStatus_lift(_ buf: RustBuffer) throws -> InboxExtractionStatus {
+    return try FfiConverterTypeInboxExtractionStatus.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxExtractionStatus_lower(_ value: InboxExtractionStatus) -> RustBuffer {
+    return FfiConverterTypeInboxExtractionStatus.lower(value)
+}
+
+
+
+/**
+ * A job's lifecycle state (`InboxJobStatus`).
+ */
+
+public enum InboxJobStatus: Equatable, Hashable {
+    
+    case pending
+    case running
+    case complete
+    case failed
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension InboxJobStatus: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInboxJobStatus: FfiConverterRustBuffer {
+    typealias SwiftType = InboxJobStatus
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InboxJobStatus {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .pending
+        
+        case 2: return .running
+        
+        case 3: return .complete
+        
+        case 4: return .failed
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: InboxJobStatus, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .pending:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .running:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .complete:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .failed:
+            writeInt(&buf, Int32(4))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxJobStatus_lift(_ buf: RustBuffer) throws -> InboxJobStatus {
+    return try FfiConverterTypeInboxJobStatus.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxJobStatus_lower(_ value: InboxJobStatus) -> RustBuffer {
+    return FfiConverterTypeInboxJobStatus.lower(value)
+}
+
+
+
+/**
+ * A job's kind, stored as desktop's `InboxJobType` string.
+ */
+
+public enum InboxJobType: Equatable, Hashable {
+    
+    case metadataScrape
+    case articleExtract
+    case transcription
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension InboxJobType: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInboxJobType: FfiConverterRustBuffer {
+    typealias SwiftType = InboxJobType
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InboxJobType {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .metadataScrape
+        
+        case 2: return .articleExtract
+        
+        case 3: return .transcription
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: InboxJobType, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .metadataScrape:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .articleExtract:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .transcription:
+            writeInt(&buf, Int32(3))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxJobType_lift(_ buf: RustBuffer) throws -> InboxJobType {
+    return try FfiConverterTypeInboxJobType.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInboxJobType_lower(_ value: InboxJobType) -> RustBuffer {
+    return FfiConverterTypeInboxJobType.lower(value)
+}
+
+
+
+/**
  * What this device holds of a day's body.
  */
 
@@ -32502,6 +33404,30 @@ fileprivate struct FfiConverterOptionTypeCanvasRecord: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeInboxArticlePdf: FfiConverterRustBuffer {
+    typealias SwiftType = InboxArticlePdf?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeInboxArticlePdf.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeInboxArticlePdf.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeInboxItemRecord: FfiConverterRustBuffer {
     typealias SwiftType = InboxItemRecord?
 
@@ -32518,6 +33444,30 @@ fileprivate struct FfiConverterOptionTypeInboxItemRecord: FfiConverterRustBuffer
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeInboxItemRecord.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeInboxJob: FfiConverterRustBuffer {
+    typealias SwiftType = InboxJob?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeInboxJob.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeInboxJob.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -33673,6 +34623,31 @@ fileprivate struct FfiConverterSequenceTypeInboxItemRecord: FfiConverterRustBuff
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeInboxItemRecord.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeInboxJob: FfiConverterRustBuffer {
+    typealias SwiftType = [InboxJob]
+
+    public static func write(_ value: [InboxJob], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeInboxJob.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [InboxJob] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [InboxJob]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeInboxJob.read(from: &buf))
         }
         return seq
     }
@@ -34906,6 +35881,31 @@ fileprivate struct FfiConverterSequenceTypeWikiLinkCandidate: FfiConverterRustBu
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeInboxJobStatus: FfiConverterRustBuffer {
+    typealias SwiftType = [InboxJobStatus]
+
+    public static func write(_ value: [InboxJobStatus], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeInboxJobStatus.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [InboxJobStatus] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [InboxJobStatus]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeInboxJobStatus.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeSearchType: FfiConverterRustBuffer {
     typealias SwiftType = [SearchType]
 
@@ -36051,6 +37051,33 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_inbox_set_transcription() != 53737) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_capture_article() != 70) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_enrich_article() != 16052) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_claim_next_job() != 22128) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_enqueue_job() != 36935) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_fail_job() != 6955) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_finish_job() != 25171) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_jobs() != 37516) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_next_job_due() != 15759) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_memry_core_checksum_method_inbox_resume_pending_jobs() != 7670) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_inbox_review_settings() != 48359) {

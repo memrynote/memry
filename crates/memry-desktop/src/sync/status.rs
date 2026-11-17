@@ -35,6 +35,11 @@ pub struct SyncStatus {
     pub error_category: Option<SyncErrorCategory>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub offline_since: Option<i64>,
+    /// Past every gate: this install syncs (`sync-eligibility.ts`). Not on the wire; the note
+    /// sync state reads it.
+    #[serde(skip)]
+    #[specta(skip)]
+    pub sync_eligible: bool,
 }
 
 /// What the status is derived from.
@@ -57,6 +62,22 @@ pub struct StatusFacts {
 
 /// `KEYCHAIN_UNAVAILABLE_STATUS`'s message, a renderer translation key.
 pub const KEYCHAIN_UNAVAILABLE: &str = "errors:sync.keychainUnavailable";
+
+/// The status with no supervisor running: Electron's `{ status: 'idle', pendingCount: 0 }`.
+pub fn idle() -> SyncStatus {
+    derive(&StatusFacts {
+        gate: GateDecision::NotStarted(SyncNotStartedReason::Unavailable),
+        paused: false,
+        online: true,
+        syncing: false,
+        engine: None,
+        last_error: None,
+        last_sync_at: None,
+        pending: 0,
+        offline_since: None,
+        keychain_unavailable: false,
+    })
+}
 
 pub fn derive(facts: &StatusFacts) -> SyncStatus {
     use SyncStatusValue as V;
@@ -107,6 +128,7 @@ pub fn derive(facts: &StatusFacts) -> SyncStatus {
         offline_since: (status == V::Offline)
             .then_some(facts.offline_since)
             .flatten(),
+        sync_eligible: facts.gate == GateDecision::Start,
     }
 }
 
