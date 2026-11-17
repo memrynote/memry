@@ -18,7 +18,7 @@ use zeroize::Zeroizing;
 use super::linking::is_vault_id;
 use super::{AccountError, AccountService};
 use crate::registry::{VaultRegistry, vault_icon};
-use crate::session::Session;
+use crate::session::{Session, SessionError, lock};
 
 /// `REFRESH_THROTTLE_MS`: a refresh that is not forced runs at most this often.
 pub const REFRESH_THROTTLE: std::time::Duration = std::time::Duration::from_secs(30);
@@ -277,8 +277,9 @@ impl AccountService {
     /// The folder half of `downloadRemoteVault` (`vault-directory.ts:266-318`): the registered
     /// copy of `vault_uuid` when there is one, else a new folder under `parent`, named after the
     /// cached name ([`suggest_vault_folder`]), made into a vault bound to `vault_uuid` and
-    /// registered under it ([`Session::provision_dormant`]). The open vault stays open; the
-    /// caller switches to the folder. Blocking.
+    /// registered under it ([`Session::provision_new_dormant`]). A folder that appeared after the
+    /// name was picked is left alone and the next free name is tried. Holds `downloads`
+    /// throughout. The open vault stays open; the caller switches to the folder. Blocking.
     pub fn prepare_vault_download(
         &self,
         session: &Session,
@@ -288,6 +289,7 @@ impl AccountService {
         if !is_vault_id(vault_uuid) {
             return Err(AccountError::InvalidVaultId);
         }
+        let _download = lock(&self.downloads);
         if let Some(local) = session
             .registry()
             .stored()
@@ -301,10 +303,15 @@ impl AccountService {
             .into_iter()
             .find(|v| v.vault_uuid == vault_uuid)
             .and_then(|v| v.name);
-        let folder = suggest_vault_folder(vault_uuid, name.as_deref(), parent);
-        session
-            .provision_dormant(&folder, vault_uuid)
-            .map_err(|e| AccountError::VaultDownload(e.to_string()))?;
+        let mut attempt = 1;
+        let folder = loop {
+            let folder = suggest_vault_folder(vault_uuid, name.as_deref(), parent);
+            match session.provision_new_dormant(&folder, vault_uuid) {
+                Ok(()) => break folder,
+                Err(SessionError::FolderExists(_)) if attempt < FOLDER_ATTEMPTS => attempt += 1,
+                Err(e) => return Err(AccountError::VaultDownload(e.to_string())),
+            }
+        };
         tracing::info!(
             scope = "VaultDirectory",
             "account vault provisioned for download"
@@ -348,6 +355,14 @@ impl AccountService {
     }
 }
 
+/// Folder names [`AccountService::prepare_vault_download`] tries before it gives up, each one
+/// refused because the folder appeared after the name check.
+const FOLDER_ATTEMPTS: usize = 8;
+
+/// The longest slug, in bytes (a slug is ASCII): far below the 255-byte file name limit of APFS,
+/// NTFS and ext4, with room for a `-N` suffix.
+const MAX_SLUG_BYTES: usize = 64;
+
 /// `suggestVaultFolder`: `<parent>/<slug of the name>`, else `memry-vault-<first 8 of the id>`,
 /// with `-2`, `-3`, ... until the folder does not exist.
 pub fn suggest_vault_folder(vault_uuid: &str, name: Option<&str>, parent: &Path) -> PathBuf {
@@ -369,7 +384,8 @@ pub fn suggest_vault_folder(vault_uuid: &str, name: Option<&str>, parent: &Path)
     candidate
 }
 
-/// Lowercased, each run outside `[a-z0-9-_]` turned into `-`, and `-` trimmed from both ends.
+/// Lowercased, each run outside `[a-z0-9-_]` turned into `-`, `-` trimmed from both ends, and cut
+/// to [`MAX_SLUG_BYTES`].
 fn slugify(name: &str) -> String {
     let mut out = String::new();
     let mut in_run = false;
@@ -382,7 +398,10 @@ fn slugify(name: &str) -> String {
             in_run = true;
         }
     }
-    out.trim_matches('-').to_owned()
+    let slug = out.trim_matches('-');
+    slug[..slug.len().min(MAX_SLUG_BYTES)]
+        .trim_end_matches('-')
+        .to_owned()
 }
 
 fn cached(master: &[u8], row: &VaultDirectoryRow) -> CachedVault {

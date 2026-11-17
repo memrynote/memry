@@ -139,3 +139,77 @@ fn a_folder_that_cannot_be_made_fails_and_registers_nothing() {
     assert!(f.registry.stored().is_empty());
     assert_eq!(std::fs::read_to_string(&parent).unwrap(), "not a folder");
 }
+
+/// A name of 300 characters would make a folder name past the 255-byte limit of APFS, NTFS and
+/// ext4, and the download could never succeed.
+#[test]
+fn a_long_name_downloads_into_a_capped_folder() {
+    let f = fixture();
+    cache(
+        &f,
+        json!([{ "vaultUuid": "uuid-long", "name": "Quarterly planning ".repeat(16) }]),
+    );
+    let session = with_session(&f);
+    let parent = f.dir.path().join("Memry");
+
+    let target = f
+        .account
+        .prepare_vault_download(&session, "uuid-long", &parent)
+        .unwrap();
+
+    let DownloadTarget::Provisioned(folder) = target else {
+        panic!("{target:?}");
+    };
+    let name = folder.file_name().unwrap().to_str().unwrap();
+    assert!(name.len() <= 64, "{name}");
+    assert!(name.starts_with("quarterly-planning-quarterly"), "{name}");
+    assert!(!name.ends_with('-'), "{name}");
+    assert!(folder.join(".memry/core/data.db").is_file());
+}
+
+/// Two clicks, or the switcher and onboarding at once: every download of one vault ends in the
+/// same folder, the only one bound to it.
+#[test]
+fn concurrent_downloads_of_one_vault_make_one_folder() {
+    let f = fixture();
+    cache(&f, json!([{ "vaultUuid": "uuid-work", "name": "Work" }]));
+    let session = with_session(&f);
+    let parent = f.dir.path().join("Memry");
+    let start = std::sync::Barrier::new(8);
+
+    let targets: Vec<DownloadTarget> = std::thread::scope(|scope| {
+        let downloads: Vec<_> = (0..8)
+            .map(|_| {
+                scope.spawn(|| {
+                    start.wait();
+                    f.account
+                        .prepare_vault_download(&session, "uuid-work", &parent)
+                        .unwrap()
+                })
+            })
+            .collect();
+        downloads.into_iter().map(|d| d.join().unwrap()).collect()
+    });
+
+    let folder = parent.join("work");
+    let made = targets
+        .iter()
+        .filter(|t| **t == DownloadTarget::Provisioned(folder.clone()))
+        .count();
+    assert_eq!(made, 1, "{targets:?}");
+    assert!(
+        targets
+            .iter()
+            .all(|t| *t == DownloadTarget::Provisioned(folder.clone())
+                || *t == DownloadTarget::Existing(folder.clone())),
+        "{targets:?}"
+    );
+    assert_eq!(std::fs::read_dir(&parent).unwrap().count(), 1);
+    let bound: Vec<_> = f
+        .registry
+        .stored()
+        .into_iter()
+        .filter(|v| v.vault_uuid.as_deref() == Some("uuid-work"))
+        .collect();
+    assert_eq!(bound.len(), 1);
+}
