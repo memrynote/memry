@@ -109,7 +109,10 @@ impl SyncBackend for NoPasses {
             keychain_unavailable: false,
         }
     }
-    async fn open(&self) -> Result<Arc<dyn SyncPasses>, SyncError> {
+    async fn open(
+        &self,
+        _observers: Vec<Arc<dyn memry_core::sync::driver::ApplyObserver>>,
+    ) -> Result<Arc<dyn SyncPasses>, SyncError> {
         Err(SyncError::Locked)
     }
     fn refresh_refused(&self) -> bool {

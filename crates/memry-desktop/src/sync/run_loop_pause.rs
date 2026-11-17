@@ -17,7 +17,7 @@ impl Loop {
     ) {
         let resume = self.resume_trigger();
         let outcome = self.set_paused(paused).await;
-        if outcome.is_ok() && !paused {
+        if !paused {
             self.request(resume);
             self.ensure_socket();
         }
@@ -34,19 +34,23 @@ impl Loop {
         }
     }
 
-    /// Persists the pause, then tells the driver. A pause also cuts the pass in flight and
-    /// answers its Sync Now callers `paused`, as Electron's `pause` aborts its run
-    /// (`engine.ts:663-668`): the driver's own pause only stops the next pass, so without the
-    /// cut a push already under way goes on after the user paused.
+    /// Persists the pause, then holds it in memory and tells the driver, even when the write
+    /// failed, as Electron's `setPaused` does: the pause asked for holds until a restart. A pause
+    /// also cuts the pass in flight and answers its Sync Now callers `paused`, as Electron's
+    /// `pause` aborts its run (`engine.ts:663-668`). The driver makes the cut: its requests answer
+    /// `Cancelled`, and the pass ends on its own. Aborting the task instead would drop it at an
+    /// await, and with it whatever it held in memory there.
     pub(super) async fn set_paused(&mut self, paused: bool) -> Result<(), StorageError> {
         let db = self.db.clone();
         let write = move || db.call_blocking(move |conn| pause::write(conn, paused));
-        tokio::task::spawn_blocking(write)
-            .await
-            .map_err(|error| StorageError::Failed {
+        let written = match tokio::task::spawn_blocking(write).await {
+            Ok(written) => written,
+            Err(error) => Err(StorageError::Failed {
                 what: format!("the pause write task failed: {error}"),
-            })??;
+            }),
+        };
         self.paused = paused;
+        self.pause.send_replace(paused);
         self.skew_paused = false;
         if let Some(driver) = &self.driver {
             if paused {
@@ -57,17 +61,21 @@ impl Loop {
         }
         if paused {
             self.stop_socket();
-            self.abort_pass(Blocked::Paused);
+            self.release_waiters(Blocked::Paused);
         }
-        Ok(())
+        written
     }
 
-    /// Aborts a running pass, drops the trailing one and answers every Sync Now caller with
-    /// `reason`. A cut pass leaves what it committed; the rest runs again on the next pass.
+    /// Aborts a running pass, with the driver it runs on about to go, and releases its waiters.
     fn abort_pass(&mut self, reason: Blocked) {
         if let Some(running) = self.running.take() {
             running.abort();
         }
+        self.release_waiters(reason);
+    }
+
+    /// Drops the trailing pass and answers every Sync Now caller with `reason`.
+    fn release_waiters(&mut self, reason: Blocked) {
         self.trailing = None;
         for (_, reply) in self.waiters.drain(..) {
             let _ = reply.send(TriggerSyncResult::blocked(reason, None));

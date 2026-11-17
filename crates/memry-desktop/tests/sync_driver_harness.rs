@@ -158,6 +158,7 @@ impl Local {
                 Arc::new(Online),
                 DriverConfig::desktop(),
                 all,
+                Vec::new(),
             )
             .await
     }
@@ -225,6 +226,7 @@ impl Device {
                 reachability,
                 DriverConfig::desktop(),
                 seeds,
+                Vec::new(),
             )
             .await
             .expect("the driver");
@@ -695,6 +697,7 @@ async fn passes_over_one_vault_serialize() {
             Arc::clone(&a.session),
             Arc::new(Online),
             DriverConfig::desktop(),
+            Vec::new(),
             Vec::new(),
         )
         .await

@@ -77,6 +77,8 @@ pub(super) struct Loop {
     opened: bool,
     decision: GateDecision,
     paused: bool,
+    /// `paused`, for the pass in flight ([`pass::run`]).
+    pause: watch::Sender<bool>,
     online: bool,
     offline_since: Option<i64>,
     running: Option<JoinHandle<Option<PassDone>>>,
@@ -150,6 +152,7 @@ impl Loop {
             decision: GateDecision::NotStarted(gate::SyncNotStartedReason::Unavailable),
             // `run` reads the persisted pause before it handles anything.
             paused: false,
+            pause: watch::Sender::new(false),
             online,
             offline_since: (!online).then(now_ms),
             running: None,
@@ -189,7 +192,10 @@ impl Loop {
         tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
         let mut snapshots = tokio::time::interval(SNAPSHOT_TICK);
         match blocking(&self.db, pause::read).await {
-            Ok(paused) => self.paused = paused,
+            Ok(paused) => {
+                self.paused = paused;
+                self.pause.send_replace(paused);
+            }
             Err(error) => tracing::error!(%error, "could not read the sync pause; running"),
         }
         self.reevaluate().await;
@@ -419,15 +425,16 @@ impl Loop {
         let pass = pass::run(
             id,
             trigger,
-            self.driver.clone(),
+            match &self.driver {
+                Some(driver) => pass::PassDriver::Held(Arc::clone(driver)),
+                None => pass::PassDriver::Open {
+                    entitled: self.gate.entitlement() == Entitlement::Entitled,
+                    observers: self.observers(),
+                },
+            },
             Arc::clone(&self.backend),
             self.db.clone(),
-            self.gate.entitlement() == Entitlement::Entitled,
-            if self.driver.is_none() {
-                self.observers()
-            } else {
-                Vec::new()
-            },
+            self.pause.subscribe(),
         );
         let mut stopping = self.stopping.clone();
         self.running = Some(tokio::spawn(async move {

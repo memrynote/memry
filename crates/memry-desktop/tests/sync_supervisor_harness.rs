@@ -176,6 +176,7 @@ impl Device {
                 Arc::new(Online),
                 DriverConfig::desktop(),
                 self.seeds(),
+                Vec::new(),
             )
             .await
             .expect("the driver")
@@ -440,9 +441,6 @@ impl SyncPasses for Held {
     fn server_clock(&self) -> Option<ServerClock> {
         self.inner.server_clock()
     }
-    fn observe(&self, observer: Arc<dyn memry_core::sync::driver::ApplyObserver>) {
-        self.inner.observe(observer);
-    }
 }
 
 #[derive(Default)]
@@ -471,9 +469,12 @@ impl SyncBackend for HeldBackend {
     async fn auth_facts(&self) -> AuthFacts {
         self.inner.auth_facts().await
     }
-    async fn open(&self) -> Result<Arc<dyn SyncPasses>, SyncError> {
+    async fn open(
+        &self,
+        observers: Vec<Arc<dyn memry_core::sync::driver::ApplyObserver>>,
+    ) -> Result<Arc<dyn SyncPasses>, SyncError> {
         Ok(Arc::new(Held {
-            inner: self.inner.open().await?,
+            inner: self.inner.open(observers).await?,
             hold: Arc::clone(&self.hold),
             release: Arc::clone(&self.release),
             ran: Arc::clone(&self.ran),

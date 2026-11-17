@@ -90,7 +90,11 @@ async fn a_push_that_empties_the_queue_tells_queue_cleared() {
     assert!(
         matches!(
             lock(&rig.sync_events).as_slice(),
-            [SyncEvent::QueueCleared { item_count: 3, duration_ms }] if *duration_ms >= 50
+            // The push's own time (`push-coordinator.ts:531`), not the whole pass's.
+            [SyncEvent::QueueCleared {
+                item_count: 3,
+                duration_ms: 7
+            }]
         ),
         "{:?}",
         lock(&rig.sync_events)
@@ -132,8 +136,10 @@ async fn a_clock_skew_pause_tells_the_skew_in_seconds() {
     );
 }
 
-/// `engine.ts:663-668`: pausing aborts the run in flight, so nothing it would still push goes
-/// out after the user paused, and a Sync Now waiting on it hears `paused`.
+/// `engine.ts:663-668`: pausing cuts the run in flight, so nothing it would still push goes out
+/// after the user paused, and a Sync Now waiting on it hears `paused`. The cut is the driver's
+/// (its requests answer `Cancelled`), never an abort of the task: a pass dropped at an await
+/// loses whatever it held in memory there (REVIEW-4892 items 1, 2, 5).
 #[tokio::test(start_paused = true)]
 async fn a_pause_cuts_the_pass_in_flight_and_answers_its_waiters_paused() {
     let rig = Rig::new();
@@ -148,20 +154,49 @@ async fn a_pause_cuts_the_pass_in_flight_and_answers_its_waiters_paused() {
     });
     sleep(Duration::from_millis(1)).await;
     supervisor.set_paused(true).await.unwrap();
-    // Without the cut the held pass never ends, so its waiter would hang.
     let answer = tokio::time::timeout(Duration::from_secs(60), waiting)
         .await
         .expect("the pause answers the waiter")
         .unwrap();
     assert_eq!(answer.reason, Some(SyncNowBlockedReason::Paused));
 
-    hold.notify_waiters();
     settle().await;
     assert_eq!(
         rig.backend.driver.finished.load(Ordering::SeqCst),
-        0,
-        "the cut pass pushed nothing after the pause"
+        1,
+        "the cut pass ran to its end"
     );
     assert_eq!(rig.passes(), 1, "no trailing pass");
+    let status = supervisor.status();
+    assert_eq!(status.status, SyncStatusValue::Paused);
+    assert_eq!(status.error, None, "a cut is not a failure");
+    let skew = lock(&rig.sync_events).clone();
+    assert!(skew.is_empty(), "{skew:?}");
+}
+
+/// Electron's `setPaused` pauses in memory even when the write fails, so the clock-skew event
+/// and the status agree (REVIEW-4892 item 4).
+#[tokio::test(start_paused = true)]
+async fn a_clock_skew_pause_holds_when_its_write_fails() {
+    let rig = Rig::new();
+    rig.db
+        .call_blocking(|conn| {
+            conn.execute_batch(
+                "CREATE TRIGGER no_insert BEFORE INSERT ON meta BEGIN SELECT RAISE(ABORT, 'full'); END;
+                 CREATE TRIGGER no_update BEFORE UPDATE ON meta BEGIN SELECT RAISE(ABORT, 'full'); END;",
+            )
+            .map_err(|error| memry_core::api::errors::StorageError::Failed {
+                what: error.to_string(),
+            })
+        })
+        .unwrap();
+    *lock(&rig.backend.driver.skew_ms) = Some(-400_000);
+    let supervisor = rig.start().await;
+
+    assert!(matches!(
+        lock(&rig.sync_events).as_slice(),
+        [SyncEvent::ClockSkew { .. }]
+    ));
     assert_eq!(supervisor.status().status, SyncStatusValue::Paused);
+    assert!(rig.backend.driver.paused.load(Ordering::SeqCst));
 }

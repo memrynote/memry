@@ -108,6 +108,9 @@ pub struct PassReport {
     pub pushed: bool,
     /// Rows the push wave's server accepted.
     pub pushed_items: usize,
+    /// How long a push wave that ran took, from its start (Electron's
+    /// `startTime`, `push-coordinator.ts:165`); 0 when none ran.
+    pub push_ms: u64,
     /// Why the pull failed, when it did.
     pub pull_error: Option<SyncError>,
     /// Why the push failed, when it did (a mid-wave refusal that parked the
@@ -425,6 +428,7 @@ impl SyncEngine {
         let Some(push) = self.push.as_ref() else {
             return;
         };
+        let started = std::time::Instant::now();
         match push.pending().await {
             Ok(0) => return,
             Ok(_) => {}
@@ -440,6 +444,7 @@ impl SyncEngine {
                 trail.enter(SyncState::Idle);
                 done.pushed = true;
                 done.pushed_items = accepted;
+                done.push_ms = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
             }
             // §11.9: a mid-wave 403, 426 or 402 is not a sync failure the
             // user can retry. The policy tier records the fact so the next
@@ -491,6 +496,7 @@ impl SyncEngine {
             parked: done.parked,
             pushed: done.pushed,
             pushed_items: done.pushed_items,
+            push_ms: done.push_ms,
             pull_error: done.pull_error,
             push_error: done.push_error,
         }
@@ -503,6 +509,7 @@ struct Done {
     parked: bool,
     pushed: bool,
     pushed_items: usize,
+    push_ms: u64,
     pull_error: Option<SyncError>,
     push_error: Option<SyncError>,
 }
