@@ -40,6 +40,9 @@ unicode-segmentation = "1.13.3"
 # The note fold formats inline dates in the local time zone, as `Intl.DateTimeFormat` does;
 # already built for `trash`.
 chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
+# The IANA zones Readwise highlight dates are written in (`readwise::text::format_day`), as
+# Electron's `Intl.DateTimeFormat` reads them.
+chrono-tz = "0.10.4"
 # `String.prototype.normalize("NFKC")` of the MathJax glyph text in `elements/math`.
 unicode-normalization = "0.1.25"
 # Spec-conformant HTML parsing where Electron uses one: Turndown's domino and the HTML block text
@@ -147,6 +150,9 @@ harness = []
 
 [dev-dependencies]
 memry-desktop = { path = ".", features = ["test-hooks"] }
+# `readwise_vectors` reads numbers as `JSON.parse` does: correctly rounded, so a float location
+# or Unix time renders the bytes the TypeScript wrote.
+serde_json = { workspace = true, features = ["float_roundtrip"] }
 proptest = "1"
 memry-test-kit = { path = "../memry-test-kit" }
 tokio = { workspace = true, features = ["net", "io-util", "time", "macros", "rt-multi-thread", "test-util"] }
@@ -271,6 +277,10 @@ path = "tests/telemetry_vectors.rs"
 [[test]]
 name = "file_text_worker"
 path = "tests/file_text_worker.rs"
+
+[[test]]
+name = "readwise_vectors"
+path = "tests/readwise_vectors.rs"
 
 [[test]]
 name = "watch_perf"

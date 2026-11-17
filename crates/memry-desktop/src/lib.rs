@@ -24,6 +24,7 @@ pub mod logging;
 pub mod notes;
 pub mod oauth;
 pub mod paths;
+pub mod readwise;
 pub mod redact;
 pub mod registry;
 pub mod seams;
