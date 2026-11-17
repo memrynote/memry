@@ -19,3 +19,15 @@
 #
 # ORT_LIB_LOCATION stays an environment variable, not an [env] entry: an entry here would also
 # apply on the targets that link the prebuilt archive, and ort-sys would look for libraries there.
+
+# whisper.cpp for memry-ml's `whisper` feature (crates/AGENTS.md, whisper.cpp). whisper-rs-sys
+# passes every `GGML_*` and `CMAKE_*` variable to its cmake build, and nothing else reads them.
+# - `GGML_NATIVE` off: ggml's default is `-march=native`, which builds for the build machine's CPU
+#   and dies on an older one. Off, x86 builds for AVX2, FMA and F16C; ARM for the target's base.
+# - The static VC runtime, which the worker links (`static_vcruntime` in its build.rs), as the
+#   Tesseract build there sets it. The two variables do nothing outside MSVC.
+# A build run from outside `crates/` misses this file and has to set the same variables.
+[env]
+GGML_NATIVE = "OFF"
+CMAKE_POLICY_DEFAULT_CMP0091 = "NEW"
+CMAKE_MSVC_RUNTIME_LIBRARY = "MultiThreaded"

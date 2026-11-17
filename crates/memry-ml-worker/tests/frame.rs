@@ -6,8 +6,8 @@ use std::io::{Cursor, Read};
 use memry_ml_worker::frame::{HEADER_LEN, read_frame, write_frame};
 use memry_ml_worker::{
     EMBEDDING_DIMENSION, Frame, FrameError, MAX_AUDIO_WINDOWS, MAX_EMBED_IMAGE_BYTES,
-    MAX_EMBED_TEXT_BYTES, MAX_FAILED_MESSAGE, MAX_FRAME_LEN, MAX_OCR_LANGUAGES, Manifest,
-    ManifestFile, ModelGroup, OpError, Request, Response,
+    MAX_EMBED_TEXT_BYTES, MAX_FAILED_MESSAGE, MAX_FRAME_LEN, MAX_LANGUAGE_BYTES, MAX_OCR_LANGUAGES,
+    MAX_TRANSCRIBE_BYTES, Manifest, ManifestFile, ModelGroup, OpError, Request, Response,
 };
 use memry_test_kit::{output_bound, proptest_config};
 use proptest::prelude::*;
@@ -200,6 +200,28 @@ fn an_embed_image_over_its_cap_is_refused() {
     assert_eq!(Request::from_frame(&at_cap.to_frame(1)), Ok(at_cap));
 }
 
+/// A recording past its cap is refused before it is copied, and a language past its cap from its
+/// declared length.
+#[test]
+fn a_transcription_over_its_caps_is_refused() {
+    let request = |language: &str, len| Request::Transcribe {
+        model: "ggml-small.bin".into(),
+        language: language.into(),
+        wav: vec![0; len],
+    };
+    assert_eq!(
+        Request::from_frame(&request("en", MAX_TRANSCRIBE_BYTES + 1).to_frame(1)),
+        Err(OpError::TooLarge(0x19))
+    );
+    let at_cap = request("en", MAX_TRANSCRIBE_BYTES);
+    assert_eq!(Request::from_frame(&at_cap.to_frame(1)), Ok(at_cap));
+    let long = "a".repeat(MAX_LANGUAGE_BYTES + 1);
+    assert_eq!(
+        Request::from_frame(&request(&long, 0).to_frame(1)),
+        Err(OpError::TooLarge(0x19))
+    );
+}
+
 /// The app reads the worker's answers as untrusted: an embedding of any other width, a manifest
 /// listing more files than a model has, and an over-long manifest string are refused.
 #[test]
@@ -319,6 +341,17 @@ fn request() -> impl Strategy<Value = Request> {
             Just(ModelGroup::Audio)
         ]
         .prop_map(|group| Request::ModelManifest { group }),
+        ".{0,64}".prop_map(|model| Request::TranscribeLoad { model }),
+        (
+            ".{0,64}",
+            "[a-z]{0,16}",
+            proptest::collection::vec(any::<u8>(), 0..64)
+        )
+            .prop_map(|(model, language, wav)| Request::Transcribe {
+                model,
+                language,
+                wav
+            }),
     ]
 }
 

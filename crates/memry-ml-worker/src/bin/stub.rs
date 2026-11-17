@@ -18,6 +18,9 @@
 //! in `crash.wav` aborts, of `hang.wav` never answers, and of `nan.wav` answers NaNs.
 //! `Ocr`'s first language picks its behaviour: `hang` never answers, `slow:<ms>` answers `read`
 //! after that many milliseconds, anything else answers `read` at once.
+//! `TranscribeLoad` fails for a model path that ends in `missing.bin` and answers `Done` otherwise.
+//! `Transcribe`'s language picks its behaviour: `crash` aborts, `hang` never answers, `xx` answers
+//! `Rejected`, anything else answers the child's pid.
 //! `--crash-before-ready` aborts before the `Ready` frame. Never bundled.
 
 use std::io::Write;
@@ -153,6 +156,16 @@ fn main() {
                 let cwd = std::env::current_dir().unwrap_or_default();
                 Response::Text(format!("{}\t{}", names.join("\n"), cwd.display()))
             }
+            Request::TranscribeLoad { model } if model.ends_with("missing.bin") => {
+                Response::Failed("failed to load the Whisper model".into())
+            }
+            Request::TranscribeLoad { .. } => Response::Done,
+            Request::Transcribe { language, .. } => match language.as_str() {
+                "crash" => std::process::abort(),
+                "hang" => park_forever(),
+                "xx" => Response::Rejected("unknown transcription language xx".into()),
+                _ => Response::Text(std::process::id().to_string()),
+            },
             Request::Ocr { languages, .. } => {
                 let first = languages.first().map_or("", String::as_str);
                 if first == "hang" {

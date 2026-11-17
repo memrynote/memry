@@ -10,12 +10,14 @@ use sha2::{Digest, Sha256};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 
+use super::engine::{LocalEngine, limits};
 use super::key::{OpenAiKey, SERVICE};
 use super::model::{FILE, REPO, REVISION, VoiceModel, model_dir};
 use super::*;
 use crate::embedding::download::DownloadError;
 use crate::embedding::service::{ModelProgress, Phase};
 use crate::seams::secure_store::GenericSecrets;
+use crate::services::file_text::WorkerPaths;
 
 fn no_key() -> Result<bool, ()> {
     panic!("the local provider never reads the keychain")
@@ -207,6 +209,15 @@ fn recorder() -> (
 
 const BODY: &[u8] = b"ggml test model bytes, not a real model";
 
+/// An engine that never starts a child: the download tests read only its idle state.
+fn idle_engine() -> Arc<LocalEngine> {
+    let paths = WorkerPaths::new(
+        std::path::Path::new("/nonexistent"),
+        std::path::Path::new("/"),
+    );
+    LocalEngine::new(&paths, "/nonexistent/ggml-small.bin".into(), limits())
+}
+
 fn model(url: &str, dir: &std::path::Path, sha: &str) -> VoiceModel {
     let _ = rustls::crypto::ring::default_provider().install_default();
     VoiceModel::from_host(url, model_dir(dir), BODY.len() as u64, sha)
@@ -217,7 +228,7 @@ async fn the_download_verifies_the_file_then_writes_the_marker() {
     let dir = tempfile::tempdir().unwrap();
     let url = hub(BODY.to_vec()).await;
     let model = model(&url, dir.path(), &sha256(BODY));
-    assert!(!model.status().downloaded);
+    assert!(!model.status(&idle_engine()).downloaded);
 
     let (seen, sink) = recorder();
     model.download(&sink).await.unwrap();
@@ -230,7 +241,7 @@ async fn the_download_verifies_the_file_then_writes_the_marker() {
     assert_eq!(marker["model"], "ggml-small");
     assert_eq!(marker["sha256"], sha256(BODY));
     assert!(marker["downloadedAt"].as_str().unwrap().ends_with('Z'));
-    let status = model.status();
+    let status = model.status(&idle_engine());
     assert!(status.downloaded && !status.loading && !status.loaded);
     assert_eq!(status.error, None);
     assert_eq!(status.name, "Whisper Small");
@@ -271,7 +282,7 @@ async fn a_corrupted_download_is_rejected_and_removed() {
         .map(|entry| entry.unwrap().file_name())
         .collect();
     assert!(left.is_empty(), "files left behind: {left:?}");
-    let status = model.status();
+    let status = model.status(&idle_engine());
     assert!(!status.downloaded && !status.loading);
     assert_eq!(status.error, Some(error.to_string()));
     assert_eq!(seen.lock().unwrap().last().unwrap().phase, Phase::Error);
@@ -288,7 +299,7 @@ fn electrons_marker_alone_is_not_a_download() {
     )
     .unwrap();
     let model = model("http://127.0.0.1:9", dir.path(), &sha256(BODY));
-    assert!(!model.status().downloaded);
+    assert!(!model.status(&idle_engine()).downloaded);
 
     // Our marker over a missing or cut file does not count either.
     std::fs::write(folder.join("ggml-small.json"), "{}").unwrap();

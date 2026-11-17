@@ -1,12 +1,17 @@
 //! Voice transcription settings (`settings-handlers.ts:856-990`): the Whisper model's status and
 //! download, recording readiness, the OpenAI key, and the OS microphone privacy pane. The
-//! `voiceTranscription` group itself is read and written through `settings_get_group`.
+//! `voiceTranscription` group itself is read and written through `settings_get_group`. The local
+//! engine (whisper.cpp in the `memry-ml-worker` sidecar, on its own child) is managed here too, so
+//! the status reports it loaded and the `stop-utility-processes` step ends it.
 
+use std::path::Path;
 use std::sync::Arc;
 
 use memry_desktop::launch_env::LaunchEnv;
 use memry_desktop::paths::{AppPaths, DEVICE_VAR};
 use memry_desktop::seams::secure_store::KeyringStore;
+use memry_desktop::services::file_text::WorkerPaths;
+use memry_desktop::services::voice::engine::{self, LocalEngine};
 use memry_desktop::services::voice::key::OpenAiKey;
 use memry_desktop::services::voice::model::{VoiceModel, VoiceModelStatus};
 use memry_desktop::services::voice::{self, VoiceProvider, VoiceRecordingReadiness};
@@ -23,9 +28,10 @@ use crate::events::{VoiceModelProgressEvent, broadcast};
 use crate::shutdown::ShutdownService;
 use crate::startup::{self, Stage};
 
-/// The voice model and key, one per app.
+/// The voice model, its engine and the key, one per app.
 pub struct Voice {
     model: VoiceModel,
+    engine: Arc<LocalEngine>,
     key: OpenAiKey,
 }
 
@@ -37,8 +43,16 @@ pub fn register_stages() {
 fn manage(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     let device = app.state::<LaunchEnv>().get(DEVICE_VAR).map(str::to_owned);
     let keychain = app.state::<Arc<KeyringStore>>().inner().clone();
+    let model = VoiceModel::new(&app.state::<AppPaths>().data_dir);
+    // As `manage ml worker`, a path that cannot be resolved does not fail the launch: the engine
+    // then fails each transcription with the reason.
+    let paths = crate::ml_worker::worker_paths(app).unwrap_or_else(|error| {
+        tracing::error!(scope = "Voice", "no transcription worker this run: {error}");
+        WorkerPaths::new(Path::new(""), Path::new(""))
+    });
     let voice = Arc::new(Voice {
-        model: VoiceModel::new(&app.state::<AppPaths>().data_dir),
+        engine: LocalEngine::new(&paths, model.model_path(), engine::limits()),
+        model,
         key: OpenAiKey::new(keychain, device.as_deref()),
     });
     let stopping = voice.clone();
@@ -46,8 +60,14 @@ fn manage(app: &AppHandle<Wry>) -> Result<(), CommandError> {
         .register(
             "stop-utility-processes",
             Arc::new(move |_, _| {
-                stopping.model.stop();
-                Box::pin(async { Ok(()) })
+                let voice = stopping.clone();
+                voice.model.stop();
+                // Killing the child fails a transcription in flight at once.
+                Box::pin(async move {
+                    tauri::async_runtime::spawn_blocking(move || voice.engine.stop())
+                        .await
+                        .map_err(|error| error.to_string())
+                })
             }),
         )
         .map_err(|error| {
@@ -78,7 +98,7 @@ pub async fn settings_get_voice_model_status(
 ) -> Result<VoiceModelStatus, CommandError> {
     let voice = voice(&app);
     blocking("settings_get_voice_model_status", move || {
-        Ok(voice.model.status())
+        Ok(voice.model.status(&voice.engine))
     })
     .await
 }

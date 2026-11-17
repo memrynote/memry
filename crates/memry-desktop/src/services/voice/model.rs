@@ -17,6 +17,7 @@ use std::time::{Duration, Instant};
 use serde::Serialize;
 use tokio_util::sync::CancellationToken;
 
+use super::engine::LocalEngine;
 use crate::embedding::download::{Abort, DownloadError, HUB_HOST, ModelSource, PinnedFile};
 use crate::embedding::service::{ModelProgress, Phase};
 
@@ -92,19 +93,20 @@ impl VoiceModel {
             && fs::metadata(self.model_path()).is_ok_and(|meta| meta.len() == self.pin.size)
     }
 
-    /// `getVoiceModelStatus`. The engine that loads the model arrives with Stage B of Step 24,
-    /// so `loaded` stays false; `loading` covers the download, as Electron's covers its load.
-    pub fn status(&self) -> VoiceModelStatus {
+    /// `getVoiceModelStatus`: `loaded` while the worker that loaded the model runs, `loading`
+    /// during the download and the load, and the engine's last failure before the download's.
+    pub fn status(&self, engine: &LocalEngine) -> VoiceModelStatus {
         VoiceModelStatus {
             name: MODEL_NAME.to_owned(),
             downloaded: self.downloaded(),
-            loaded: false,
-            loading: self.downloading.load(Ordering::SeqCst),
-            error: self
-                .error
-                .lock()
-                .unwrap_or_else(PoisonError::into_inner)
-                .clone(),
+            loaded: engine.loaded(),
+            loading: self.downloading.load(Ordering::SeqCst) || engine.loading(),
+            error: engine.error().or_else(|| {
+                self.error
+                    .lock()
+                    .unwrap_or_else(PoisonError::into_inner)
+                    .clone()
+            }),
         }
     }
 
