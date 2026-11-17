@@ -13,6 +13,7 @@
 //! | refusals write nothing                            | `PROJECT_MISSING_ERROR`, `INVALID_PARENT_ERROR` |
 //! | `fields` patches by name; limits refuse           | `patchTaskFields`, `TASK_FIELD_LIMITS` |
 //! | undo reverts an update, `fields` with new stamps  | the registered undo, §6.11.3          |
+//! | undo of `fields` leaves later local/peer entries | the registered undo, §6.11.3          |
 //! | `repeatConfig` holds to the schema                | `RepeatConfigSchema`                  |
 //! | tags trimmed and folded; link ids deduped         | `setTaskTags`                         |
 //! | no deeper nesting with `nestedSubtasks` off       | `checkParent` (`tree.ts`)             |
@@ -606,6 +607,77 @@ fn domain_tasks_update_undo_restores_fields_with_fresh_stamps() {
         assert!(stamp(&task, "B") > edit_stamp);
         assert_eq!(undone.changed_ids(), ["t1"]);
         assert_eq!(outbox_rows(conn), [("t1".into(), "upsert".into())]);
+        Ok(())
+    })
+    .expect("the undo");
+}
+
+#[test]
+fn domain_tasks_update_undo_keeps_a_later_local_field() {
+    let db = open("tu-undo-later-local");
+    db.call_blocking(|conn| {
+        seed_project(conn, "pa");
+        create(conn, "t1", "pa", None);
+        let first = update(
+            conn,
+            "t1",
+            &TaskPatch {
+                fields: fields_patch(&[("A", json!(1))]),
+                ..TaskPatch::default()
+            },
+        )?;
+        update(
+            conn,
+            "t1",
+            &TaskPatch {
+                fields: fields_patch(&[("C", json!(5))]),
+                ..TaskPatch::default()
+            },
+        )?;
+        let c_stamp = payload_of(conn, "t1")["fields"]["C"].clone();
+
+        tasks::undo(conn, &first.write, DEVICE, NOW + 2_000)?;
+        let task = payload_of(conn, "t1");
+        assert_eq!(
+            Value::Object(memry_core::sync::versioned::plain(task.get("fields"))),
+            json!({"C": 5})
+        );
+        assert_eq!(task["fields"]["C"], c_stamp, "C is not the undo's to stamp");
+        Ok(())
+    })
+    .expect("the undo");
+}
+
+#[test]
+fn domain_tasks_update_undo_keeps_a_peer_field() {
+    let db = open("tu-undo-peer");
+    db.call_blocking(|conn| {
+        seed_project(conn, "pa");
+        create(conn, "t1", "pa", None);
+        let edit = update(
+            conn,
+            "t1",
+            &TaskPatch {
+                fields: fields_patch(&[("A", json!(1))]),
+                ..TaskPatch::default()
+            },
+        )?;
+        let mut remote = payload_of(conn, "t1");
+        remote["fields"]["C"] = json!({"v": "peer", "t": 50});
+        remote["clock"]["device-b"] = json!(1);
+        apply(conn, "task", "t1", remote);
+        assert_eq!(
+            payload_of(conn, "t1")["fields"]["C"],
+            json!({"v": "peer", "t": 50})
+        );
+
+        tasks::undo(conn, &edit.write, DEVICE, NOW + 2_000)?;
+        let task = payload_of(conn, "t1");
+        assert_eq!(task["fields"]["C"], json!({"v": "peer", "t": 50}));
+        assert_eq!(
+            Value::Object(memry_core::sync::versioned::plain(task.get("fields"))),
+            json!({"C": "peer"})
+        );
         Ok(())
     })
     .expect("the undo");
