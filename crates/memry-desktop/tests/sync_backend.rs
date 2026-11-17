@@ -181,6 +181,42 @@ fn probe_a_closed_vault_never_takes_the_open_vault_key() {
     assert!(installed(&other));
 }
 
+/// An account switch never leaves the key of the account that signed out: sign-out removes it
+/// under the agent's hold, the next acquire reads the new account's key, and the vault's
+/// verifier refuses it (VERIFY-4884 item 1).
+#[test]
+fn an_account_switch_never_keeps_the_previous_accounts_key() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = device_key::with_device_key();
+    store.set(SecureStoreKey::MasterKey, vec![9u8; 32]).unwrap();
+    let keys = AtRestKeys::new(Arc::clone(&store));
+    let data = dir.path().join("a").join(".memry").join("core");
+    std::fs::create_dir_all(&data).unwrap();
+    let vault = Arc::new(Vault::open("a".into(), data.to_string_lossy().into_owned()).unwrap());
+    let agent = keys.acquire(&vault).expect("account A's hold");
+    assert!(installed(&vault));
+
+    keys.clear();
+    assert!(!installed(&vault), "sign-out removes A's key");
+    store.set(SecureStoreKey::MasterKey, vec![7u8; 32]).unwrap();
+    assert!(
+        keys.acquire(&vault).is_err(),
+        "the verifier refuses B's key for A's vault"
+    );
+    assert!(!installed(&vault), "neither A's key nor B's is installed");
+
+    store.set(SecureStoreKey::MasterKey, vec![9u8; 32]).unwrap();
+    let again = keys.acquire(&vault).expect("A signs in again");
+    assert!(installed(&vault));
+    drop(again);
+    assert!(
+        installed(&vault),
+        "the agent's hold from before the sign-out"
+    );
+    drop(agent);
+    assert!(!installed(&vault));
+}
+
 /// A keychain that answers `Locked` while `locked` is set, counting every call.
 struct LockedStore {
     inner: Arc<dyn SecureStore>,

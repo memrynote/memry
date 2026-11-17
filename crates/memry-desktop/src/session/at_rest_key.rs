@@ -6,8 +6,14 @@
 //! strip it from an agent in the middle of a session. A closed vault gets no key again, and a
 //! vault never takes the key from another one that still has guards out.
 //!
+//! Sign-out removes the key but keeps the guards out as holders. The next acquire, after the next
+//! sign-in, reads the keychain again and installs the key for all of them, so the key of the
+//! account that signed out never outlives it. The agent's store (28d) acquires again on sign-in:
+//! sync never acquires for an account it does not start for.
+//!
 //! It never mints a key: the vault key is derived from the master key in the keychain, and
-//! `Vault::set_at_rest_key` refuses one that does not match the vault's stored verifier.
+//! `Vault::set_at_rest_key` refuses one that does not match the vault's stored verifier, so
+//! another account's key never opens this vault's records.
 
 use std::sync::{Arc, Mutex, Weak};
 
@@ -59,23 +65,35 @@ pub struct AtRestKeys {
     slot: Mutex<Slot>,
 }
 
-/// The vault the key is installed in, and how many guards hold it. `generation` changes when the
-/// vault changes, closes or the account signs out, so a guard of an earlier one releases nothing.
-/// `closed` names the vaults that closed while something still holds them.
+/// The vault the key is for, how many guards hold it, and whether it is installed (sign-out
+/// removes it under its guards). `generation` changes when the vault changes or closes, so a
+/// guard of an earlier one releases nothing. `closed` names the vaults that closed while
+/// something still holds them.
 #[derive(Default)]
 struct Slot {
     vault: Weak<Vault>,
     holders: usize,
+    installed: bool,
     generation: u64,
     closed: Vec<Weak<Vault>>,
 }
 
 impl Slot {
-    /// Forgets the installed vault and invalidates every guard out.
+    /// Forgets the vault and invalidates every guard out.
     fn reset(&mut self) {
         self.vault = Weak::new();
         self.holders = 0;
+        self.installed = false;
         self.generation += 1;
+    }
+
+    /// Removes the key from the vault, leaving the guards out.
+    fn uninstall(&mut self) {
+        if std::mem::take(&mut self.installed)
+            && let Some(vault) = self.vault.upgrade()
+        {
+            remove(&vault);
+        }
     }
 }
 
@@ -93,7 +111,7 @@ impl AtRestKeys {
         })
     }
 
-    /// Installs the key in `vault` unless a guard already holds it there. Blocking: the keychain
+    /// Installs the key in `vault` unless it is installed there. Blocking: the keychain
     /// can wait on an access prompt, and installing seals the records a pull stored without a key.
     /// Installs run one at a time, so two callers never read the keychain twice for one vault.
     pub fn acquire(self: &Arc<Self>, vault: &Arc<Vault>) -> Result<AtRestKeyGuard, KeyError> {
@@ -105,17 +123,16 @@ impl AtRestKeys {
             return Err(KeyError::Closed);
         }
         if !slot.vault.ptr_eq(&target) {
-            if let Some(held) = slot.vault.upgrade() {
-                if slot.holders > 0 {
-                    return Err(KeyError::Busy);
-                }
-                remove(&held);
+            if slot.holders > 0 && slot.vault.strong_count() > 0 {
+                return Err(KeyError::Busy);
             }
+            slot.uninstall();
             slot.reset();
             slot.vault = target;
         }
-        if slot.holders == 0 {
+        if !slot.installed {
             self.install(vault)?;
+            slot.installed = true;
         }
         slot.holders += 1;
         Ok(AtRestKeyGuard {
@@ -130,20 +147,17 @@ impl AtRestKeys {
         let mut slot = crate::session::lock(&self.slot);
         let closed = Arc::downgrade(vault);
         if slot.vault.ptr_eq(&closed) {
-            remove(vault);
+            slot.uninstall();
             slot.reset();
         }
         slot.closed.push(closed);
     }
 
-    /// Sign-out: the key goes now, whatever guards are still out; those release nothing. The
-    /// vault stays open, and the next [`acquire`](Self::acquire) reads the keychain again.
+    /// Sign-out: the key goes now, whatever guards are still out. Those stay holders: the vault
+    /// stays open, and the next [`acquire`](Self::acquire) reads the keychain again and installs
+    /// the key for every holder.
     pub fn clear(&self) {
-        let mut slot = crate::session::lock(&self.slot);
-        if let Some(vault) = slot.vault.upgrade() {
-            remove(&vault);
-        }
-        slot.reset();
+        crate::session::lock(&self.slot).uninstall();
     }
 
     fn install(&self, vault: &Vault) -> Result<(), KeyError> {
@@ -178,10 +192,8 @@ impl Drop for AtRestKeyGuard {
             return;
         }
         slot.holders = slot.holders.saturating_sub(1);
-        if slot.holders == 0
-            && let Some(vault) = slot.vault.upgrade()
-        {
-            remove(&vault);
+        if slot.holders == 0 {
+            slot.uninstall();
         }
     }
 }

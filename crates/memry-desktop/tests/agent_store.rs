@@ -345,6 +345,65 @@ async fn probe_a_dropped_store_lets_go_of_its_vault() {
     eventually("the vault is released", || Arc::strong_count(&vault) == 1).await;
 }
 
+/// A failure in the middle of the copy to disk leaves nothing on disk: the store stays in memory
+/// with everything it kept (VERIFY-4884 item 2).
+#[tokio::test(flavor = "multi_thread")]
+async fn probe_a_copy_to_disk_that_fails_halfway_writes_nothing() {
+    let f = Fixture::new(true);
+    f.keychain.locked.store(true, Ordering::SeqCst);
+    let vault = f.vault();
+    let store = f.store(&vault);
+    let kept: Vec<_> = ["First", "Second"]
+        .into_iter()
+        .map(|title| {
+            store
+                .records()
+                .create_conversation(&new_conversation(title))
+                .unwrap()
+        })
+        .collect();
+    f.plain()
+        .execute_batch(
+            "CREATE TRIGGER refuse_second BEFORE INSERT ON agent_conversations
+             WHEN (SELECT COUNT(*) FROM agent_conversations) > 0
+             BEGIN SELECT RAISE(ABORT, 'refused'); END;",
+        )
+        .unwrap();
+
+    f.keychain.locked.store(false, Ordering::SeqCst);
+    f.recovered.send(()).unwrap();
+    // The retry ends after one failed copy, which drops its receiver.
+    eventually("the retry ends", || f.recovered.receiver_count() == 0).await;
+
+    assert!(!store.history_persisted());
+    let mut listed = store.records().conversations("v1").unwrap();
+    listed.sort_by(|a, b| a.title.cmp(&b.title));
+    assert_eq!(listed, kept, "memory keeps both");
+    let conn = f.plain();
+    assert_eq!(count(&conn, "SELECT COUNT(*) FROM agent_conversations"), 0);
+    assert_eq!(count(&conn, "SELECT COUNT(*) FROM sync_items"), 0);
+    assert_eq!(count(&conn, "SELECT COUNT(*) FROM outbox"), 0);
+}
+
+/// A guard taken before a sign-out stays a holder: sync acquiring after the next sign-in and
+/// letting go again leaves the key the agent still holds (VERIFY-4884 item 1).
+#[tokio::test(flavor = "multi_thread")]
+async fn probe_sync_letting_go_after_a_sign_out_keeps_the_agents_key() {
+    let f = Fixture::new(true);
+    let vault = f.vault();
+    let store = f.store(&vault);
+    assert!(store.history_persisted());
+
+    f.keys.clear();
+    let sync = f.keys.acquire(&vault).expect("sync's hold after sign-in");
+    drop(sync);
+
+    store
+        .records()
+        .create_conversation(&new_conversation("After sign-in"))
+        .expect("the agent still writes");
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn no_master_key_keeps_history_in_memory() {
     let f = Fixture::new(true);

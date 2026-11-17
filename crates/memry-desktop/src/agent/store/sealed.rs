@@ -62,20 +62,28 @@ impl Sealed {
 }
 
 impl Sealed {
-    /// Writes what the agent kept in `memory`, ids and times kept: each record is queued as a
-    /// write made now would be, and a streaming message stays on this device.
+    /// Writes what the agent kept in `memory`, ids and times kept, in one transaction: a failure
+    /// leaves nothing on disk. Each record is queued as a write made now would be, and a
+    /// streaming message stays on this device.
     pub(super) fn take_over(&self, memory: &Ephemeral) -> Result<(), AgentError> {
         let (conversations, messages) = memory.live();
         self.write(|w| {
+            let tx = w.conn.unchecked_transaction().map_err(failed)?;
             for conversation in &conversations {
-                agent_conversation::import(w.conn, w.key, conversation, w.queue, w.device, w.now)?;
+                agent_conversation::import(&tx, w.key, conversation, w.queue, w.device, w.now)?;
             }
             for message in &messages {
-                agent_message::import(w.conn, w.key, message, w.queue, w.device, w.now)?;
+                agent_message::import(&tx, w.key, message, w.queue, w.device, w.now)?;
             }
-            Ok(())
+            tx.commit().map_err(failed)
         })
     }
+}
+
+fn failed(error: rusqlite::Error) -> AgentError {
+    AgentError::Storage(StorageError::Failed {
+        what: format!("copying the agent's records to disk: {error}"),
+    })
 }
 
 fn flatten<T>(done: Result<Result<T, AgentError>, StorageError>) -> Result<T, AgentError> {

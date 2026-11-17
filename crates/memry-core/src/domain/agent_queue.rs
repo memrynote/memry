@@ -39,7 +39,7 @@ pub enum Queue {
 const BACKFILL_DONE: &str = "agent.backfill_done";
 
 /// Runs `source` in one transaction and, under [`Queue::Outbox`], queues
-/// `change` in it ([`outbox::commit`]). Under [`Queue::LocalOnly`] it marks
+/// `change` in it ([`outbox::enqueue`]). Under [`Queue::LocalOnly`] it marks
 /// the vault's backfill pending in the same transaction.
 pub(crate) fn commit<T>(
     conn: &Connection,
@@ -48,14 +48,16 @@ pub(crate) fn commit<T>(
     now_ms: i64,
     source: impl FnOnce(&Connection) -> Result<T, StorageError>,
 ) -> Result<T, StorageError> {
-    if queue == Queue::Outbox {
-        return outbox::commit(conn, change, now_ms, source).map(outbox::Durable::acknowledge);
-    }
-    let transaction = conn.unchecked_transaction().map_err(failed)?;
-    let value = source(&transaction)?;
-    mark_backfill_pending(&transaction)?;
-    transaction.commit().map_err(failed)?;
-    Ok(value)
+    in_transaction(conn, |tx| {
+        let value = source(tx)?;
+        match queue {
+            Queue::Outbox => {
+                outbox::enqueue(tx, change, now_ms)?;
+            }
+            Queue::LocalOnly => mark_backfill_pending(tx)?,
+        }
+        Ok(value)
+    })
 }
 
 /// Runs a streaming write in one transaction: stored on this device, never
@@ -64,8 +66,21 @@ pub(crate) fn commit_streaming<T>(
     conn: &Connection,
     source: impl FnOnce(&Connection) -> Result<T, StorageError>,
 ) -> Result<T, StorageError> {
+    in_transaction(conn, source)
+}
+
+/// Runs `body` in a transaction of its own, or in the caller's when one is
+/// open, so the shell can commit several writes together: the records the
+/// agent kept in memory are copied to disk all or none (#3545).
+fn in_transaction<T>(
+    conn: &Connection,
+    body: impl FnOnce(&Connection) -> Result<T, StorageError>,
+) -> Result<T, StorageError> {
+    if !conn.is_autocommit() {
+        return body(conn);
+    }
     let transaction = conn.unchecked_transaction().map_err(failed)?;
-    let value = source(&transaction)?;
+    let value = body(&transaction)?;
     transaction.commit().map_err(failed)?;
     Ok(value)
 }

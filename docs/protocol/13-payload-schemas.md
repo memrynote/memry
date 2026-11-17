@@ -1512,11 +1512,11 @@ A message is immutable (§13.9):
    `crates/memry-core/src/domain/agent_message/mod.rs:101-117`). It is
    queued when it turns terminal while the account is paid, or later by the
    backfill (`crates/memry-core/src/domain/agent_message/mod.rs:132-160`,
-   `crates/memry-core/src/domain/agent_queue.rs:41-59`, `:123-163`). The
+   `crates/memry-core/src/domain/agent_queue.rs:41-61`, `:138-178`). The
    backfill runs only while the vault's marker says a record may be waiting:
    a write kept on the device while unpaid sets it, and a vault without the
    marker row counts as waiting (`crates/memry-core/src/domain/agent_queue.rs:38-39`,
-   `:129-140`). Electron's entitlement gate and backfill have no production
+   `:144-155`). Electron's entitlement gate and backfill have no production
    caller, so Electron queues no agent record and no live Electron build is
    an oracle for when one is queued (#3545 D1, D2)
    (`apps/desktop/src/main/agent/sync/entitlement-gate.ts:20-30`,
