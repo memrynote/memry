@@ -2371,6 +2371,38 @@
     },
     {
       "dates": {
+        "highlightedAt": "2026-11-01T08:30:00Z"
+      },
+      "timeZone": "UTC",
+      "day": "2026-11-01",
+      "instant": "2026-11-01T08:30:00.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "2026-11-01T09:30:00Z"
+      },
+      "timeZone": "UTC",
+      "day": "2026-11-01",
+      "instant": "2026-11-01T09:30:00.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "2026-04-05T02:59:59Z"
+      },
+      "timeZone": "UTC",
+      "day": "2026-04-05",
+      "instant": "2026-04-05T02:59:59.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "2026-04-05T03:30:00Z"
+      },
+      "timeZone": "UTC",
+      "day": "2026-04-05",
+      "instant": "2026-04-05T03:30:00.000Z"
+    },
+    {
+      "dates": {
         "highlightedAt": "2026-10-22T18:00:00+05:30"
       },
       "timeZone": "UTC",
@@ -2538,6 +2570,38 @@
     },
     {
       "dates": {
+        "highlightedAt": "2026-11-01T08:30:00Z"
+      },
+      "timeZone": "America/Los_Angeles",
+      "day": "2026-11-01",
+      "instant": "2026-11-01T08:30:00.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "2026-11-01T09:30:00Z"
+      },
+      "timeZone": "America/Los_Angeles",
+      "day": "2026-11-01",
+      "instant": "2026-11-01T09:30:00.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "2026-04-05T02:59:59Z"
+      },
+      "timeZone": "America/Los_Angeles",
+      "day": "2026-04-04",
+      "instant": "2026-04-05T02:59:59.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "2026-04-05T03:30:00Z"
+      },
+      "timeZone": "America/Los_Angeles",
+      "day": "2026-04-04",
+      "instant": "2026-04-05T03:30:00.000Z"
+    },
+    {
+      "dates": {
         "highlightedAt": "2026-10-22T18:00:00+05:30"
       },
       "timeZone": "America/Los_Angeles",
@@ -2702,6 +2766,38 @@
       "timeZone": "Asia/Kolkata",
       "day": "2026-03-08",
       "instant": "2026-03-08T10:00:00.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "2026-11-01T08:30:00Z"
+      },
+      "timeZone": "Asia/Kolkata",
+      "day": "2026-11-01",
+      "instant": "2026-11-01T08:30:00.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "2026-11-01T09:30:00Z"
+      },
+      "timeZone": "Asia/Kolkata",
+      "day": "2026-11-01",
+      "instant": "2026-11-01T09:30:00.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "2026-04-05T02:59:59Z"
+      },
+      "timeZone": "Asia/Kolkata",
+      "day": "2026-04-05",
+      "instant": "2026-04-05T02:59:59.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "2026-04-05T03:30:00Z"
+      },
+      "timeZone": "Asia/Kolkata",
+      "day": "2026-04-05",
+      "instant": "2026-04-05T03:30:00.000Z"
     },
     {
       "dates": {
@@ -2872,6 +2968,38 @@
     },
     {
       "dates": {
+        "highlightedAt": "2026-11-01T08:30:00Z"
+      },
+      "timeZone": "Pacific/Kiritimati",
+      "day": "2026-11-01",
+      "instant": "2026-11-01T08:30:00.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "2026-11-01T09:30:00Z"
+      },
+      "timeZone": "Pacific/Kiritimati",
+      "day": "2026-11-01",
+      "instant": "2026-11-01T09:30:00.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "2026-04-05T02:59:59Z"
+      },
+      "timeZone": "Pacific/Kiritimati",
+      "day": "2026-04-05",
+      "instant": "2026-04-05T02:59:59.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "2026-04-05T03:30:00Z"
+      },
+      "timeZone": "Pacific/Kiritimati",
+      "day": "2026-04-05",
+      "instant": "2026-04-05T03:30:00.000Z"
+    },
+    {
+      "dates": {
         "highlightedAt": "2026-10-22T18:00:00+05:30"
       },
       "timeZone": "Pacific/Kiritimati",
@@ -3036,6 +3164,38 @@
       "timeZone": "Pacific/Pago_Pago",
       "day": "2026-03-07",
       "instant": "2026-03-08T10:00:00.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "2026-11-01T08:30:00Z"
+      },
+      "timeZone": "Pacific/Pago_Pago",
+      "day": "2026-10-31",
+      "instant": "2026-11-01T08:30:00.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "2026-11-01T09:30:00Z"
+      },
+      "timeZone": "Pacific/Pago_Pago",
+      "day": "2026-10-31",
+      "instant": "2026-11-01T09:30:00.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "2026-04-05T02:59:59Z"
+      },
+      "timeZone": "Pacific/Pago_Pago",
+      "day": "2026-04-04",
+      "instant": "2026-04-05T02:59:59.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "2026-04-05T03:30:00Z"
+      },
+      "timeZone": "Pacific/Pago_Pago",
+      "day": "2026-04-04",
+      "instant": "2026-04-05T03:30:00.000Z"
     },
     {
       "dates": {
@@ -3206,6 +3366,38 @@
     },
     {
       "dates": {
+        "highlightedAt": "2026-11-01T08:30:00Z"
+      },
+      "timeZone": "Europe/Istanbul",
+      "day": "2026-11-01",
+      "instant": "2026-11-01T08:30:00.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "2026-11-01T09:30:00Z"
+      },
+      "timeZone": "Europe/Istanbul",
+      "day": "2026-11-01",
+      "instant": "2026-11-01T09:30:00.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "2026-04-05T02:59:59Z"
+      },
+      "timeZone": "Europe/Istanbul",
+      "day": "2026-04-05",
+      "instant": "2026-04-05T02:59:59.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "2026-04-05T03:30:00Z"
+      },
+      "timeZone": "Europe/Istanbul",
+      "day": "2026-04-05",
+      "instant": "2026-04-05T03:30:00.000Z"
+    },
+    {
+      "dates": {
         "highlightedAt": "2026-10-22T18:00:00+05:30"
       },
       "timeZone": "Europe/Istanbul",
@@ -3373,6 +3565,38 @@
     },
     {
       "dates": {
+        "highlightedAt": "2026-11-01T08:30:00Z"
+      },
+      "timeZone": "Australia/Lord_Howe",
+      "day": "2026-11-01",
+      "instant": "2026-11-01T08:30:00.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "2026-11-01T09:30:00Z"
+      },
+      "timeZone": "Australia/Lord_Howe",
+      "day": "2026-11-01",
+      "instant": "2026-11-01T09:30:00.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "2026-04-05T02:59:59Z"
+      },
+      "timeZone": "Australia/Lord_Howe",
+      "day": "2026-04-05",
+      "instant": "2026-04-05T02:59:59.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "2026-04-05T03:30:00Z"
+      },
+      "timeZone": "Australia/Lord_Howe",
+      "day": "2026-04-05",
+      "instant": "2026-04-05T03:30:00.000Z"
+    },
+    {
+      "dates": {
         "highlightedAt": "2026-10-22T18:00:00+05:30"
       },
       "timeZone": "Australia/Lord_Howe",
@@ -3495,6 +3719,205 @@
       },
       "timeZone": "Australia/Lord_Howe",
       "day": "2026-10-23",
+      "instant": "2026-10-22T18:00:00.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "2026-10-22T18:00:00Z",
+        "createdAt": "2026-10-22T18:05:00Z"
+      },
+      "timeZone": "America/Santiago",
+      "day": "2026-10-22",
+      "instant": "2026-10-22T18:00:00.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "2026-10-22T23:59:59.999Z"
+      },
+      "timeZone": "America/Santiago",
+      "day": "2026-10-22",
+      "instant": "2026-10-22T23:59:59.999Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "2026-10-23T00:00:00.000Z"
+      },
+      "timeZone": "America/Santiago",
+      "day": "2026-10-22",
+      "instant": "2026-10-23T00:00:00.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "2026-03-08T09:59:59Z"
+      },
+      "timeZone": "America/Santiago",
+      "day": "2026-03-08",
+      "instant": "2026-03-08T09:59:59.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "2026-03-08T10:00:00Z"
+      },
+      "timeZone": "America/Santiago",
+      "day": "2026-03-08",
+      "instant": "2026-03-08T10:00:00.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "2026-11-01T08:30:00Z"
+      },
+      "timeZone": "America/Santiago",
+      "day": "2026-11-01",
+      "instant": "2026-11-01T08:30:00.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "2026-11-01T09:30:00Z"
+      },
+      "timeZone": "America/Santiago",
+      "day": "2026-11-01",
+      "instant": "2026-11-01T09:30:00.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "2026-04-05T02:59:59Z"
+      },
+      "timeZone": "America/Santiago",
+      "day": "2026-04-04",
+      "instant": "2026-04-05T02:59:59.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "2026-04-05T03:30:00Z"
+      },
+      "timeZone": "America/Santiago",
+      "day": "2026-04-04",
+      "instant": "2026-04-05T03:30:00.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "2026-10-22T18:00:00+05:30"
+      },
+      "timeZone": "America/Santiago",
+      "day": "2026-10-22",
+      "instant": "2026-10-22T12:30:00.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "2026-10-22T18:00:00.123456Z"
+      },
+      "timeZone": "America/Santiago",
+      "day": "2026-10-22",
+      "instant": "2026-10-22T18:00:00.123Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "2026-10-22",
+        "createdAt": "2026-01-01T00:00:00Z"
+      },
+      "timeZone": "America/Santiago",
+      "day": "2026-10-21",
+      "instant": "2026-10-22T00:00:00.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "2026-10",
+        "createdAt": "2026-01-01T00:00:00Z"
+      },
+      "timeZone": "America/Santiago",
+      "day": "2026-09-30",
+      "instant": "2026-10-01T00:00:00.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "",
+        "createdAt": "2026-05-05T05:05:05Z"
+      },
+      "timeZone": "America/Santiago",
+      "day": "2026-05-05",
+      "instant": "2026-05-05T05:05:05.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": null,
+        "createdAt": "2026-05-05T05:05:05Z"
+      },
+      "timeZone": "America/Santiago",
+      "day": "2026-05-05",
+      "instant": "2026-05-05T05:05:05.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "not a date",
+        "createdAt": "2026-05-05T05:05:05Z"
+      },
+      "timeZone": "America/Santiago",
+      "day": "2026-05-05",
+      "instant": "2026-05-05T05:05:05.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": null,
+        "createdAt": null
+      },
+      "timeZone": "America/Santiago",
+      "day": null,
+      "instant": null
+    },
+    {
+      "dates": {
+        "highlightedAt": "0999-03-04T00:00:00Z"
+      },
+      "timeZone": "America/Santiago",
+      "day": "999-03-03",
+      "instant": "0999-03-04T00:00:00.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "-000005-03-04T00:00:00Z"
+      },
+      "timeZone": "America/Santiago",
+      "day": "6-03-03",
+      "instant": "-000005-03-04T00:00:00.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "+275760-09-13T00:00:00Z"
+      },
+      "timeZone": "America/Santiago",
+      "day": "275760-09-12",
+      "instant": "+275760-09-13T00:00:00.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "-271821-04-20T00:00:00Z"
+      },
+      "timeZone": "America/Santiago",
+      "day": "271822-04-19",
+      "instant": "-271821-04-20T00:00:00.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "+275760-09-13T00:00:00.001Z"
+      },
+      "timeZone": "America/Santiago",
+      "day": null,
+      "instant": null
+    },
+    {
+      "dates": {
+        "highlightedAt": "1900-01-01T00:00:00Z"
+      },
+      "timeZone": "America/Santiago",
+      "day": "1899-12-31",
+      "instant": "1900-01-01T00:00:00.000Z"
+    },
+    {
+      "dates": {
+        "highlightedAt": "Thu, 22 Oct 2026 18:00:00 GMT"
+      },
+      "timeZone": "America/Santiago",
+      "day": "2026-10-22",
       "instant": "2026-10-22T18:00:00.000Z"
     }
   ]

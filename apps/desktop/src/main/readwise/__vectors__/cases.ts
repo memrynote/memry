@@ -122,7 +122,8 @@ const TIME_ZONES = [
   'Pacific/Kiritimati',
   'Pacific/Pago_Pago',
   'Europe/Istanbul',
-  'Australia/Lord_Howe'
+  'Australia/Lord_Howe',
+  'America/Santiago'
 ]
 
 const DATES: Array<Partial<ReadwiseHighlight>> = [
@@ -131,6 +132,11 @@ const DATES: Array<Partial<ReadwiseHighlight>> = [
   { highlighted_at: '2026-10-23T00:00:00.000Z' },
   { highlighted_at: '2026-03-08T09:59:59Z' },
   { highlighted_at: '2026-03-08T10:00:00Z' },
+  // Fall-back hours: Los Angeles repeats 01:00; Santiago repeats 23:00, so 03:30Z is still the 4th.
+  { highlighted_at: '2026-11-01T08:30:00Z' },
+  { highlighted_at: '2026-11-01T09:30:00Z' },
+  { highlighted_at: '2026-04-05T02:59:59Z' },
+  { highlighted_at: '2026-04-05T03:30:00Z' },
   { highlighted_at: '2026-10-22T18:00:00+05:30' },
   { highlighted_at: '2026-10-22T18:00:00.123456Z' },
   { highlighted_at: '2026-10-22', created_at: '2026-01-01T00:00:00Z' },
@@ -279,6 +285,19 @@ export const BOOK_CASES: BookCase[] = [
   {
     name: 'locations',
     book: book(118, { highlights: numbered(LOCATIONS, 2000) }),
+    options: base
+  },
+  {
+    name: 'a book of 101 highlights',
+    book: book(128, {
+      highlights: Array.from({ length: 101 }, (_, i) =>
+        highlight(4000 + i, {
+          text: `Highlight ${i}`,
+          location: 101 - i,
+          created_at: new Date(Date.UTC(2026, 9, 22, 0, i)).toISOString()
+        })
+      )
+    }),
     options: base
   },
   ...TIME_ZONES.map((timeZone) => ({

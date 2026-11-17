@@ -369,11 +369,14 @@ fn reader_vectors() {
             full_text: opt_str(&o["fullText"]),
             book_external_ids: &external,
         };
-        let out = plan_reader_note(&document, &options).map_or(Value::Null, |plan| {
-            let mut out = note_json(&plan.note);
-            out["fullText"] = plan.full_text.map_or(Value::Null, Value::from);
-            out
-        });
+        let out =
+            plan_reader_note(&document, &options)
+                .expect("plan")
+                .map_or(Value::Null, |plan| {
+                    let mut out = note_json(&plan.note);
+                    out["fullText"] = plan.full_text.map_or(Value::Null, Value::from);
+                    out
+                });
         assert_eq!(out, case["out"], "{}", case["name"]);
         assert_key_order(
             &out["frontmatter"],

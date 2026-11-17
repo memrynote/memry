@@ -2912,6 +2912,1358 @@
     }
   },
   {
+    "name": "a book of 101 highlights",
+    "book": {
+      "user_book_id": 128,
+      "is_deleted": false,
+      "title": "Book 128",
+      "readable_title": "Book 128",
+      "author": "Cal Newport",
+      "category": "books",
+      "source": "kindle",
+      "source_url": null,
+      "readwise_url": "https://readwise.io/bookreview/128",
+      "cover_image_url": null,
+      "book_tags": [],
+      "document_note": "",
+      "summary": "",
+      "highlights": [
+        {
+          "id": 4000,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 0",
+          "note": "",
+          "tags": [],
+          "location": 101,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:00:00.000Z",
+          "readwise_url": "https://readwise.io/open/4000"
+        },
+        {
+          "id": 4001,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 1",
+          "note": "",
+          "tags": [],
+          "location": 100,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:01:00.000Z",
+          "readwise_url": "https://readwise.io/open/4001"
+        },
+        {
+          "id": 4002,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 2",
+          "note": "",
+          "tags": [],
+          "location": 99,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:02:00.000Z",
+          "readwise_url": "https://readwise.io/open/4002"
+        },
+        {
+          "id": 4003,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3",
+          "note": "",
+          "tags": [],
+          "location": 98,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:03:00.000Z",
+          "readwise_url": "https://readwise.io/open/4003"
+        },
+        {
+          "id": 4004,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 4",
+          "note": "",
+          "tags": [],
+          "location": 97,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:04:00.000Z",
+          "readwise_url": "https://readwise.io/open/4004"
+        },
+        {
+          "id": 4005,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 5",
+          "note": "",
+          "tags": [],
+          "location": 96,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:05:00.000Z",
+          "readwise_url": "https://readwise.io/open/4005"
+        },
+        {
+          "id": 4006,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 6",
+          "note": "",
+          "tags": [],
+          "location": 95,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:06:00.000Z",
+          "readwise_url": "https://readwise.io/open/4006"
+        },
+        {
+          "id": 4007,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 7",
+          "note": "",
+          "tags": [],
+          "location": 94,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:07:00.000Z",
+          "readwise_url": "https://readwise.io/open/4007"
+        },
+        {
+          "id": 4008,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 8",
+          "note": "",
+          "tags": [],
+          "location": 93,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:08:00.000Z",
+          "readwise_url": "https://readwise.io/open/4008"
+        },
+        {
+          "id": 4009,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 9",
+          "note": "",
+          "tags": [],
+          "location": 92,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:09:00.000Z",
+          "readwise_url": "https://readwise.io/open/4009"
+        },
+        {
+          "id": 4010,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 10",
+          "note": "",
+          "tags": [],
+          "location": 91,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:10:00.000Z",
+          "readwise_url": "https://readwise.io/open/4010"
+        },
+        {
+          "id": 4011,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 11",
+          "note": "",
+          "tags": [],
+          "location": 90,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:11:00.000Z",
+          "readwise_url": "https://readwise.io/open/4011"
+        },
+        {
+          "id": 4012,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 12",
+          "note": "",
+          "tags": [],
+          "location": 89,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:12:00.000Z",
+          "readwise_url": "https://readwise.io/open/4012"
+        },
+        {
+          "id": 4013,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 13",
+          "note": "",
+          "tags": [],
+          "location": 88,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:13:00.000Z",
+          "readwise_url": "https://readwise.io/open/4013"
+        },
+        {
+          "id": 4014,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 14",
+          "note": "",
+          "tags": [],
+          "location": 87,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:14:00.000Z",
+          "readwise_url": "https://readwise.io/open/4014"
+        },
+        {
+          "id": 4015,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 15",
+          "note": "",
+          "tags": [],
+          "location": 86,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:15:00.000Z",
+          "readwise_url": "https://readwise.io/open/4015"
+        },
+        {
+          "id": 4016,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 16",
+          "note": "",
+          "tags": [],
+          "location": 85,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:16:00.000Z",
+          "readwise_url": "https://readwise.io/open/4016"
+        },
+        {
+          "id": 4017,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 17",
+          "note": "",
+          "tags": [],
+          "location": 84,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:17:00.000Z",
+          "readwise_url": "https://readwise.io/open/4017"
+        },
+        {
+          "id": 4018,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 18",
+          "note": "",
+          "tags": [],
+          "location": 83,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:18:00.000Z",
+          "readwise_url": "https://readwise.io/open/4018"
+        },
+        {
+          "id": 4019,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 19",
+          "note": "",
+          "tags": [],
+          "location": 82,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:19:00.000Z",
+          "readwise_url": "https://readwise.io/open/4019"
+        },
+        {
+          "id": 4020,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 20",
+          "note": "",
+          "tags": [],
+          "location": 81,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:20:00.000Z",
+          "readwise_url": "https://readwise.io/open/4020"
+        },
+        {
+          "id": 4021,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 21",
+          "note": "",
+          "tags": [],
+          "location": 80,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:21:00.000Z",
+          "readwise_url": "https://readwise.io/open/4021"
+        },
+        {
+          "id": 4022,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 22",
+          "note": "",
+          "tags": [],
+          "location": 79,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:22:00.000Z",
+          "readwise_url": "https://readwise.io/open/4022"
+        },
+        {
+          "id": 4023,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 23",
+          "note": "",
+          "tags": [],
+          "location": 78,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:23:00.000Z",
+          "readwise_url": "https://readwise.io/open/4023"
+        },
+        {
+          "id": 4024,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 24",
+          "note": "",
+          "tags": [],
+          "location": 77,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:24:00.000Z",
+          "readwise_url": "https://readwise.io/open/4024"
+        },
+        {
+          "id": 4025,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 25",
+          "note": "",
+          "tags": [],
+          "location": 76,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:25:00.000Z",
+          "readwise_url": "https://readwise.io/open/4025"
+        },
+        {
+          "id": 4026,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 26",
+          "note": "",
+          "tags": [],
+          "location": 75,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:26:00.000Z",
+          "readwise_url": "https://readwise.io/open/4026"
+        },
+        {
+          "id": 4027,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 27",
+          "note": "",
+          "tags": [],
+          "location": 74,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:27:00.000Z",
+          "readwise_url": "https://readwise.io/open/4027"
+        },
+        {
+          "id": 4028,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 28",
+          "note": "",
+          "tags": [],
+          "location": 73,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:28:00.000Z",
+          "readwise_url": "https://readwise.io/open/4028"
+        },
+        {
+          "id": 4029,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 29",
+          "note": "",
+          "tags": [],
+          "location": 72,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:29:00.000Z",
+          "readwise_url": "https://readwise.io/open/4029"
+        },
+        {
+          "id": 4030,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 30",
+          "note": "",
+          "tags": [],
+          "location": 71,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:30:00.000Z",
+          "readwise_url": "https://readwise.io/open/4030"
+        },
+        {
+          "id": 4031,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 31",
+          "note": "",
+          "tags": [],
+          "location": 70,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:31:00.000Z",
+          "readwise_url": "https://readwise.io/open/4031"
+        },
+        {
+          "id": 4032,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 32",
+          "note": "",
+          "tags": [],
+          "location": 69,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:32:00.000Z",
+          "readwise_url": "https://readwise.io/open/4032"
+        },
+        {
+          "id": 4033,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 33",
+          "note": "",
+          "tags": [],
+          "location": 68,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:33:00.000Z",
+          "readwise_url": "https://readwise.io/open/4033"
+        },
+        {
+          "id": 4034,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 34",
+          "note": "",
+          "tags": [],
+          "location": 67,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:34:00.000Z",
+          "readwise_url": "https://readwise.io/open/4034"
+        },
+        {
+          "id": 4035,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 35",
+          "note": "",
+          "tags": [],
+          "location": 66,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:35:00.000Z",
+          "readwise_url": "https://readwise.io/open/4035"
+        },
+        {
+          "id": 4036,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 36",
+          "note": "",
+          "tags": [],
+          "location": 65,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:36:00.000Z",
+          "readwise_url": "https://readwise.io/open/4036"
+        },
+        {
+          "id": 4037,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 37",
+          "note": "",
+          "tags": [],
+          "location": 64,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:37:00.000Z",
+          "readwise_url": "https://readwise.io/open/4037"
+        },
+        {
+          "id": 4038,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 38",
+          "note": "",
+          "tags": [],
+          "location": 63,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:38:00.000Z",
+          "readwise_url": "https://readwise.io/open/4038"
+        },
+        {
+          "id": 4039,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 39",
+          "note": "",
+          "tags": [],
+          "location": 62,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:39:00.000Z",
+          "readwise_url": "https://readwise.io/open/4039"
+        },
+        {
+          "id": 4040,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 40",
+          "note": "",
+          "tags": [],
+          "location": 61,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:40:00.000Z",
+          "readwise_url": "https://readwise.io/open/4040"
+        },
+        {
+          "id": 4041,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 41",
+          "note": "",
+          "tags": [],
+          "location": 60,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:41:00.000Z",
+          "readwise_url": "https://readwise.io/open/4041"
+        },
+        {
+          "id": 4042,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 42",
+          "note": "",
+          "tags": [],
+          "location": 59,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:42:00.000Z",
+          "readwise_url": "https://readwise.io/open/4042"
+        },
+        {
+          "id": 4043,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 43",
+          "note": "",
+          "tags": [],
+          "location": 58,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:43:00.000Z",
+          "readwise_url": "https://readwise.io/open/4043"
+        },
+        {
+          "id": 4044,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 44",
+          "note": "",
+          "tags": [],
+          "location": 57,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:44:00.000Z",
+          "readwise_url": "https://readwise.io/open/4044"
+        },
+        {
+          "id": 4045,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 45",
+          "note": "",
+          "tags": [],
+          "location": 56,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:45:00.000Z",
+          "readwise_url": "https://readwise.io/open/4045"
+        },
+        {
+          "id": 4046,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 46",
+          "note": "",
+          "tags": [],
+          "location": 55,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:46:00.000Z",
+          "readwise_url": "https://readwise.io/open/4046"
+        },
+        {
+          "id": 4047,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 47",
+          "note": "",
+          "tags": [],
+          "location": 54,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:47:00.000Z",
+          "readwise_url": "https://readwise.io/open/4047"
+        },
+        {
+          "id": 4048,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 48",
+          "note": "",
+          "tags": [],
+          "location": 53,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:48:00.000Z",
+          "readwise_url": "https://readwise.io/open/4048"
+        },
+        {
+          "id": 4049,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 49",
+          "note": "",
+          "tags": [],
+          "location": 52,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:49:00.000Z",
+          "readwise_url": "https://readwise.io/open/4049"
+        },
+        {
+          "id": 4050,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 50",
+          "note": "",
+          "tags": [],
+          "location": 51,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:50:00.000Z",
+          "readwise_url": "https://readwise.io/open/4050"
+        },
+        {
+          "id": 4051,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 51",
+          "note": "",
+          "tags": [],
+          "location": 50,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:51:00.000Z",
+          "readwise_url": "https://readwise.io/open/4051"
+        },
+        {
+          "id": 4052,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 52",
+          "note": "",
+          "tags": [],
+          "location": 49,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:52:00.000Z",
+          "readwise_url": "https://readwise.io/open/4052"
+        },
+        {
+          "id": 4053,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 53",
+          "note": "",
+          "tags": [],
+          "location": 48,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:53:00.000Z",
+          "readwise_url": "https://readwise.io/open/4053"
+        },
+        {
+          "id": 4054,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 54",
+          "note": "",
+          "tags": [],
+          "location": 47,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:54:00.000Z",
+          "readwise_url": "https://readwise.io/open/4054"
+        },
+        {
+          "id": 4055,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 55",
+          "note": "",
+          "tags": [],
+          "location": 46,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:55:00.000Z",
+          "readwise_url": "https://readwise.io/open/4055"
+        },
+        {
+          "id": 4056,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 56",
+          "note": "",
+          "tags": [],
+          "location": 45,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:56:00.000Z",
+          "readwise_url": "https://readwise.io/open/4056"
+        },
+        {
+          "id": 4057,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 57",
+          "note": "",
+          "tags": [],
+          "location": 44,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:57:00.000Z",
+          "readwise_url": "https://readwise.io/open/4057"
+        },
+        {
+          "id": 4058,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 58",
+          "note": "",
+          "tags": [],
+          "location": 43,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:58:00.000Z",
+          "readwise_url": "https://readwise.io/open/4058"
+        },
+        {
+          "id": 4059,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 59",
+          "note": "",
+          "tags": [],
+          "location": 42,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T00:59:00.000Z",
+          "readwise_url": "https://readwise.io/open/4059"
+        },
+        {
+          "id": 4060,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 60",
+          "note": "",
+          "tags": [],
+          "location": 41,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:00:00.000Z",
+          "readwise_url": "https://readwise.io/open/4060"
+        },
+        {
+          "id": 4061,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 61",
+          "note": "",
+          "tags": [],
+          "location": 40,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:01:00.000Z",
+          "readwise_url": "https://readwise.io/open/4061"
+        },
+        {
+          "id": 4062,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 62",
+          "note": "",
+          "tags": [],
+          "location": 39,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:02:00.000Z",
+          "readwise_url": "https://readwise.io/open/4062"
+        },
+        {
+          "id": 4063,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 63",
+          "note": "",
+          "tags": [],
+          "location": 38,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:03:00.000Z",
+          "readwise_url": "https://readwise.io/open/4063"
+        },
+        {
+          "id": 4064,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 64",
+          "note": "",
+          "tags": [],
+          "location": 37,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:04:00.000Z",
+          "readwise_url": "https://readwise.io/open/4064"
+        },
+        {
+          "id": 4065,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 65",
+          "note": "",
+          "tags": [],
+          "location": 36,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:05:00.000Z",
+          "readwise_url": "https://readwise.io/open/4065"
+        },
+        {
+          "id": 4066,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 66",
+          "note": "",
+          "tags": [],
+          "location": 35,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:06:00.000Z",
+          "readwise_url": "https://readwise.io/open/4066"
+        },
+        {
+          "id": 4067,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 67",
+          "note": "",
+          "tags": [],
+          "location": 34,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:07:00.000Z",
+          "readwise_url": "https://readwise.io/open/4067"
+        },
+        {
+          "id": 4068,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 68",
+          "note": "",
+          "tags": [],
+          "location": 33,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:08:00.000Z",
+          "readwise_url": "https://readwise.io/open/4068"
+        },
+        {
+          "id": 4069,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 69",
+          "note": "",
+          "tags": [],
+          "location": 32,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:09:00.000Z",
+          "readwise_url": "https://readwise.io/open/4069"
+        },
+        {
+          "id": 4070,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 70",
+          "note": "",
+          "tags": [],
+          "location": 31,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:10:00.000Z",
+          "readwise_url": "https://readwise.io/open/4070"
+        },
+        {
+          "id": 4071,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 71",
+          "note": "",
+          "tags": [],
+          "location": 30,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:11:00.000Z",
+          "readwise_url": "https://readwise.io/open/4071"
+        },
+        {
+          "id": 4072,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 72",
+          "note": "",
+          "tags": [],
+          "location": 29,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:12:00.000Z",
+          "readwise_url": "https://readwise.io/open/4072"
+        },
+        {
+          "id": 4073,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 73",
+          "note": "",
+          "tags": [],
+          "location": 28,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:13:00.000Z",
+          "readwise_url": "https://readwise.io/open/4073"
+        },
+        {
+          "id": 4074,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 74",
+          "note": "",
+          "tags": [],
+          "location": 27,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:14:00.000Z",
+          "readwise_url": "https://readwise.io/open/4074"
+        },
+        {
+          "id": 4075,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 75",
+          "note": "",
+          "tags": [],
+          "location": 26,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:15:00.000Z",
+          "readwise_url": "https://readwise.io/open/4075"
+        },
+        {
+          "id": 4076,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 76",
+          "note": "",
+          "tags": [],
+          "location": 25,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:16:00.000Z",
+          "readwise_url": "https://readwise.io/open/4076"
+        },
+        {
+          "id": 4077,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 77",
+          "note": "",
+          "tags": [],
+          "location": 24,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:17:00.000Z",
+          "readwise_url": "https://readwise.io/open/4077"
+        },
+        {
+          "id": 4078,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 78",
+          "note": "",
+          "tags": [],
+          "location": 23,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:18:00.000Z",
+          "readwise_url": "https://readwise.io/open/4078"
+        },
+        {
+          "id": 4079,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 79",
+          "note": "",
+          "tags": [],
+          "location": 22,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:19:00.000Z",
+          "readwise_url": "https://readwise.io/open/4079"
+        },
+        {
+          "id": 4080,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 80",
+          "note": "",
+          "tags": [],
+          "location": 21,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:20:00.000Z",
+          "readwise_url": "https://readwise.io/open/4080"
+        },
+        {
+          "id": 4081,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 81",
+          "note": "",
+          "tags": [],
+          "location": 20,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:21:00.000Z",
+          "readwise_url": "https://readwise.io/open/4081"
+        },
+        {
+          "id": 4082,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 82",
+          "note": "",
+          "tags": [],
+          "location": 19,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:22:00.000Z",
+          "readwise_url": "https://readwise.io/open/4082"
+        },
+        {
+          "id": 4083,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 83",
+          "note": "",
+          "tags": [],
+          "location": 18,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:23:00.000Z",
+          "readwise_url": "https://readwise.io/open/4083"
+        },
+        {
+          "id": 4084,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 84",
+          "note": "",
+          "tags": [],
+          "location": 17,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:24:00.000Z",
+          "readwise_url": "https://readwise.io/open/4084"
+        },
+        {
+          "id": 4085,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 85",
+          "note": "",
+          "tags": [],
+          "location": 16,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:25:00.000Z",
+          "readwise_url": "https://readwise.io/open/4085"
+        },
+        {
+          "id": 4086,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 86",
+          "note": "",
+          "tags": [],
+          "location": 15,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:26:00.000Z",
+          "readwise_url": "https://readwise.io/open/4086"
+        },
+        {
+          "id": 4087,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 87",
+          "note": "",
+          "tags": [],
+          "location": 14,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:27:00.000Z",
+          "readwise_url": "https://readwise.io/open/4087"
+        },
+        {
+          "id": 4088,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 88",
+          "note": "",
+          "tags": [],
+          "location": 13,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:28:00.000Z",
+          "readwise_url": "https://readwise.io/open/4088"
+        },
+        {
+          "id": 4089,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 89",
+          "note": "",
+          "tags": [],
+          "location": 12,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:29:00.000Z",
+          "readwise_url": "https://readwise.io/open/4089"
+        },
+        {
+          "id": 4090,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 90",
+          "note": "",
+          "tags": [],
+          "location": 11,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:30:00.000Z",
+          "readwise_url": "https://readwise.io/open/4090"
+        },
+        {
+          "id": 4091,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 91",
+          "note": "",
+          "tags": [],
+          "location": 10,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:31:00.000Z",
+          "readwise_url": "https://readwise.io/open/4091"
+        },
+        {
+          "id": 4092,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 92",
+          "note": "",
+          "tags": [],
+          "location": 9,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:32:00.000Z",
+          "readwise_url": "https://readwise.io/open/4092"
+        },
+        {
+          "id": 4093,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 93",
+          "note": "",
+          "tags": [],
+          "location": 8,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:33:00.000Z",
+          "readwise_url": "https://readwise.io/open/4093"
+        },
+        {
+          "id": 4094,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 94",
+          "note": "",
+          "tags": [],
+          "location": 7,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:34:00.000Z",
+          "readwise_url": "https://readwise.io/open/4094"
+        },
+        {
+          "id": 4095,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 95",
+          "note": "",
+          "tags": [],
+          "location": 6,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:35:00.000Z",
+          "readwise_url": "https://readwise.io/open/4095"
+        },
+        {
+          "id": 4096,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 96",
+          "note": "",
+          "tags": [],
+          "location": 5,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:36:00.000Z",
+          "readwise_url": "https://readwise.io/open/4096"
+        },
+        {
+          "id": 4097,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 97",
+          "note": "",
+          "tags": [],
+          "location": 4,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:37:00.000Z",
+          "readwise_url": "https://readwise.io/open/4097"
+        },
+        {
+          "id": 4098,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 98",
+          "note": "",
+          "tags": [],
+          "location": 3,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:38:00.000Z",
+          "readwise_url": "https://readwise.io/open/4098"
+        },
+        {
+          "id": 4099,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 99",
+          "note": "",
+          "tags": [],
+          "location": 2,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:39:00.000Z",
+          "readwise_url": "https://readwise.io/open/4099"
+        },
+        {
+          "id": 4100,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 100",
+          "note": "",
+          "tags": [],
+          "location": 1,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T01:40:00.000Z",
+          "readwise_url": "https://readwise.io/open/4100"
+        }
+      ]
+    },
+    "options": {
+      "root": "Readwise",
+      "folderLayout": "by-category",
+      "categories": {},
+      "timeZone": "UTC"
+    },
+    "out": {
+      "folder": "Readwise/Books",
+      "title": "Book 128",
+      "frontmatter": {
+        "author": "Cal Newport",
+        "category": "books",
+        "source": "kindle",
+        "readwise_url": "https://readwise.io/bookreview/128"
+      },
+      "section": "<!-- readwise:start -->\n\n## Highlights\n\n- Highlight 100 ([Location 1](https://readwise.io/open/4100), 2026-10-22)\n- Highlight 99 ([Location 2](https://readwise.io/open/4099), 2026-10-22)\n- Highlight 98 ([Location 3](https://readwise.io/open/4098), 2026-10-22)\n- Highlight 97 ([Location 4](https://readwise.io/open/4097), 2026-10-22)\n- Highlight 96 ([Location 5](https://readwise.io/open/4096), 2026-10-22)\n- Highlight 95 ([Location 6](https://readwise.io/open/4095), 2026-10-22)\n- Highlight 94 ([Location 7](https://readwise.io/open/4094), 2026-10-22)\n- Highlight 93 ([Location 8](https://readwise.io/open/4093), 2026-10-22)\n- Highlight 92 ([Location 9](https://readwise.io/open/4092), 2026-10-22)\n- Highlight 91 ([Location 10](https://readwise.io/open/4091), 2026-10-22)\n- Highlight 90 ([Location 11](https://readwise.io/open/4090), 2026-10-22)\n- Highlight 89 ([Location 12](https://readwise.io/open/4089), 2026-10-22)\n- Highlight 88 ([Location 13](https://readwise.io/open/4088), 2026-10-22)\n- Highlight 87 ([Location 14](https://readwise.io/open/4087), 2026-10-22)\n- Highlight 86 ([Location 15](https://readwise.io/open/4086), 2026-10-22)\n- Highlight 85 ([Location 16](https://readwise.io/open/4085), 2026-10-22)\n- Highlight 84 ([Location 17](https://readwise.io/open/4084), 2026-10-22)\n- Highlight 83 ([Location 18](https://readwise.io/open/4083), 2026-10-22)\n- Highlight 82 ([Location 19](https://readwise.io/open/4082), 2026-10-22)\n- Highlight 81 ([Location 20](https://readwise.io/open/4081), 2026-10-22)\n- Highlight 80 ([Location 21](https://readwise.io/open/4080), 2026-10-22)\n- Highlight 79 ([Location 22](https://readwise.io/open/4079), 2026-10-22)\n- Highlight 78 ([Location 23](https://readwise.io/open/4078), 2026-10-22)\n- Highlight 77 ([Location 24](https://readwise.io/open/4077), 2026-10-22)\n- Highlight 76 ([Location 25](https://readwise.io/open/4076), 2026-10-22)\n- Highlight 75 ([Location 26](https://readwise.io/open/4075), 2026-10-22)\n- Highlight 74 ([Location 27](https://readwise.io/open/4074), 2026-10-22)\n- Highlight 73 ([Location 28](https://readwise.io/open/4073), 2026-10-22)\n- Highlight 72 ([Location 29](https://readwise.io/open/4072), 2026-10-22)\n- Highlight 71 ([Location 30](https://readwise.io/open/4071), 2026-10-22)\n- Highlight 70 ([Location 31](https://readwise.io/open/4070), 2026-10-22)\n- Highlight 69 ([Location 32](https://readwise.io/open/4069), 2026-10-22)\n- Highlight 68 ([Location 33](https://readwise.io/open/4068), 2026-10-22)\n- Highlight 67 ([Location 34](https://readwise.io/open/4067), 2026-10-22)\n- Highlight 66 ([Location 35](https://readwise.io/open/4066), 2026-10-22)\n- Highlight 65 ([Location 36](https://readwise.io/open/4065), 2026-10-22)\n- Highlight 64 ([Location 37](https://readwise.io/open/4064), 2026-10-22)\n- Highlight 63 ([Location 38](https://readwise.io/open/4063), 2026-10-22)\n- Highlight 62 ([Location 39](https://readwise.io/open/4062), 2026-10-22)\n- Highlight 61 ([Location 40](https://readwise.io/open/4061), 2026-10-22)\n- Highlight 60 ([Location 41](https://readwise.io/open/4060), 2026-10-22)\n- Highlight 59 ([Location 42](https://readwise.io/open/4059), 2026-10-22)\n- Highlight 58 ([Location 43](https://readwise.io/open/4058), 2026-10-22)\n- Highlight 57 ([Location 44](https://readwise.io/open/4057), 2026-10-22)\n- Highlight 56 ([Location 45](https://readwise.io/open/4056), 2026-10-22)\n- Highlight 55 ([Location 46](https://readwise.io/open/4055), 2026-10-22)\n- Highlight 54 ([Location 47](https://readwise.io/open/4054), 2026-10-22)\n- Highlight 53 ([Location 48](https://readwise.io/open/4053), 2026-10-22)\n- Highlight 52 ([Location 49](https://readwise.io/open/4052), 2026-10-22)\n- Highlight 51 ([Location 50](https://readwise.io/open/4051), 2026-10-22)\n- Highlight 50 ([Location 51](https://readwise.io/open/4050), 2026-10-22)\n- Highlight 49 ([Location 52](https://readwise.io/open/4049), 2026-10-22)\n- Highlight 48 ([Location 53](https://readwise.io/open/4048), 2026-10-22)\n- Highlight 47 ([Location 54](https://readwise.io/open/4047), 2026-10-22)\n- Highlight 46 ([Location 55](https://readwise.io/open/4046), 2026-10-22)\n- Highlight 45 ([Location 56](https://readwise.io/open/4045), 2026-10-22)\n- Highlight 44 ([Location 57](https://readwise.io/open/4044), 2026-10-22)\n- Highlight 43 ([Location 58](https://readwise.io/open/4043), 2026-10-22)\n- Highlight 42 ([Location 59](https://readwise.io/open/4042), 2026-10-22)\n- Highlight 41 ([Location 60](https://readwise.io/open/4041), 2026-10-22)\n- Highlight 40 ([Location 61](https://readwise.io/open/4040), 2026-10-22)\n- Highlight 39 ([Location 62](https://readwise.io/open/4039), 2026-10-22)\n- Highlight 38 ([Location 63](https://readwise.io/open/4038), 2026-10-22)\n- Highlight 37 ([Location 64](https://readwise.io/open/4037), 2026-10-22)\n- Highlight 36 ([Location 65](https://readwise.io/open/4036), 2026-10-22)\n- Highlight 35 ([Location 66](https://readwise.io/open/4035), 2026-10-22)\n- Highlight 34 ([Location 67](https://readwise.io/open/4034), 2026-10-22)\n- Highlight 33 ([Location 68](https://readwise.io/open/4033), 2026-10-22)\n- Highlight 32 ([Location 69](https://readwise.io/open/4032), 2026-10-22)\n- Highlight 31 ([Location 70](https://readwise.io/open/4031), 2026-10-22)\n- Highlight 30 ([Location 71](https://readwise.io/open/4030), 2026-10-22)\n- Highlight 29 ([Location 72](https://readwise.io/open/4029), 2026-10-22)\n- Highlight 28 ([Location 73](https://readwise.io/open/4028), 2026-10-22)\n- Highlight 27 ([Location 74](https://readwise.io/open/4027), 2026-10-22)\n- Highlight 26 ([Location 75](https://readwise.io/open/4026), 2026-10-22)\n- Highlight 25 ([Location 76](https://readwise.io/open/4025), 2026-10-22)\n- Highlight 24 ([Location 77](https://readwise.io/open/4024), 2026-10-22)\n- Highlight 23 ([Location 78](https://readwise.io/open/4023), 2026-10-22)\n- Highlight 22 ([Location 79](https://readwise.io/open/4022), 2026-10-22)\n- Highlight 21 ([Location 80](https://readwise.io/open/4021), 2026-10-22)\n- Highlight 20 ([Location 81](https://readwise.io/open/4020), 2026-10-22)\n- Highlight 19 ([Location 82](https://readwise.io/open/4019), 2026-10-22)\n- Highlight 18 ([Location 83](https://readwise.io/open/4018), 2026-10-22)\n- Highlight 17 ([Location 84](https://readwise.io/open/4017), 2026-10-22)\n- Highlight 16 ([Location 85](https://readwise.io/open/4016), 2026-10-22)\n- Highlight 15 ([Location 86](https://readwise.io/open/4015), 2026-10-22)\n- Highlight 14 ([Location 87](https://readwise.io/open/4014), 2026-10-22)\n- Highlight 13 ([Location 88](https://readwise.io/open/4013), 2026-10-22)\n- Highlight 12 ([Location 89](https://readwise.io/open/4012), 2026-10-22)\n- Highlight 11 ([Location 90](https://readwise.io/open/4011), 2026-10-22)\n- Highlight 10 ([Location 91](https://readwise.io/open/4010), 2026-10-22)\n- Highlight 9 ([Location 92](https://readwise.io/open/4009), 2026-10-22)\n- Highlight 8 ([Location 93](https://readwise.io/open/4008), 2026-10-22)\n- Highlight 7 ([Location 94](https://readwise.io/open/4007), 2026-10-22)\n- Highlight 6 ([Location 95](https://readwise.io/open/4006), 2026-10-22)\n- Highlight 5 ([Location 96](https://readwise.io/open/4005), 2026-10-22)\n- Highlight 4 ([Location 97](https://readwise.io/open/4004), 2026-10-22)\n- Highlight 3 ([Location 98](https://readwise.io/open/4003), 2026-10-22)\n- Highlight 2 ([Location 99](https://readwise.io/open/4002), 2026-10-22)\n- Highlight 1 ([Location 100](https://readwise.io/open/4001), 2026-10-22)\n- Highlight 0 ([Location 101](https://readwise.io/open/4000), 2026-10-22)\n\n<!-- readwise:end v1 last=2026-10-22T01:40:00.001Z hash=844c8dd7 -->",
+      "last": "2026-10-22T01:40:00.001Z",
+      "imageUrls": []
+    }
+  },
+  {
     "name": "dates in UTC",
     "book": {
       "user_book_id": 119,
@@ -3002,7 +4354,7 @@
           "tags": [],
           "location": 6,
           "location_type": "location",
-          "highlighted_at": "2026-10-22T18:00:00+05:30",
+          "highlighted_at": "2026-11-01T08:30:00Z",
           "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3005"
         },
@@ -3015,7 +4367,7 @@
           "tags": [],
           "location": 7,
           "location_type": "location",
-          "highlighted_at": "2026-10-22T18:00:00.123456Z",
+          "highlighted_at": "2026-11-01T09:30:00Z",
           "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3006"
         },
@@ -3028,8 +4380,8 @@
           "tags": [],
           "location": 8,
           "location_type": "location",
-          "highlighted_at": "2026-10-22",
-          "created_at": "2026-01-01T00:00:00Z",
+          "highlighted_at": "2026-04-05T02:59:59Z",
+          "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3007"
         },
         {
@@ -3041,8 +4393,8 @@
           "tags": [],
           "location": 9,
           "location_type": "location",
-          "highlighted_at": "2026-10",
-          "created_at": "2026-01-01T00:00:00Z",
+          "highlighted_at": "2026-04-05T03:30:00Z",
+          "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3008"
         },
         {
@@ -3054,8 +4406,8 @@
           "tags": [],
           "location": 10,
           "location_type": "location",
-          "highlighted_at": "",
-          "created_at": "2026-05-05T05:05:05Z",
+          "highlighted_at": "2026-10-22T18:00:00+05:30",
+          "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3009"
         },
         {
@@ -3067,8 +4419,8 @@
           "tags": [],
           "location": 11,
           "location_type": "location",
-          "highlighted_at": null,
-          "created_at": "2026-05-05T05:05:05Z",
+          "highlighted_at": "2026-10-22T18:00:00.123456Z",
+          "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3010"
         },
         {
@@ -3080,8 +4432,8 @@
           "tags": [],
           "location": 12,
           "location_type": "location",
-          "highlighted_at": "not a date",
-          "created_at": "2026-05-05T05:05:05Z",
+          "highlighted_at": "2026-10-22",
+          "created_at": "2026-01-01T00:00:00Z",
           "readwise_url": "https://readwise.io/open/3011"
         },
         {
@@ -3093,8 +4445,8 @@
           "tags": [],
           "location": 13,
           "location_type": "location",
-          "highlighted_at": null,
-          "created_at": null,
+          "highlighted_at": "2026-10",
+          "created_at": "2026-01-01T00:00:00Z",
           "readwise_url": "https://readwise.io/open/3012"
         },
         {
@@ -3106,8 +4458,8 @@
           "tags": [],
           "location": 14,
           "location_type": "location",
-          "highlighted_at": "0999-03-04T00:00:00Z",
-          "created_at": "2026-10-22T18:05:00Z",
+          "highlighted_at": "",
+          "created_at": "2026-05-05T05:05:05Z",
           "readwise_url": "https://readwise.io/open/3013"
         },
         {
@@ -3119,8 +4471,8 @@
           "tags": [],
           "location": 15,
           "location_type": "location",
-          "highlighted_at": "-000005-03-04T00:00:00Z",
-          "created_at": "2026-10-22T18:05:00Z",
+          "highlighted_at": null,
+          "created_at": "2026-05-05T05:05:05Z",
           "readwise_url": "https://readwise.io/open/3014"
         },
         {
@@ -3132,8 +4484,8 @@
           "tags": [],
           "location": 16,
           "location_type": "location",
-          "highlighted_at": "+275760-09-13T00:00:00Z",
-          "created_at": "2026-10-22T18:05:00Z",
+          "highlighted_at": "not a date",
+          "created_at": "2026-05-05T05:05:05Z",
           "readwise_url": "https://readwise.io/open/3015"
         },
         {
@@ -3145,8 +4497,8 @@
           "tags": [],
           "location": 17,
           "location_type": "location",
-          "highlighted_at": "-271821-04-20T00:00:00Z",
-          "created_at": "2026-10-22T18:05:00Z",
+          "highlighted_at": null,
+          "created_at": null,
           "readwise_url": "https://readwise.io/open/3016"
         },
         {
@@ -3158,7 +4510,7 @@
           "tags": [],
           "location": 18,
           "location_type": "location",
-          "highlighted_at": "+275760-09-13T00:00:00.001Z",
+          "highlighted_at": "0999-03-04T00:00:00Z",
           "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3017"
         },
@@ -3171,7 +4523,7 @@
           "tags": [],
           "location": 19,
           "location_type": "location",
-          "highlighted_at": "1900-01-01T00:00:00Z",
+          "highlighted_at": "-000005-03-04T00:00:00Z",
           "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3018"
         },
@@ -3184,9 +4536,61 @@
           "tags": [],
           "location": 20,
           "location_type": "location",
-          "highlighted_at": "Thu, 22 Oct 2026 18:00:00 GMT",
+          "highlighted_at": "+275760-09-13T00:00:00Z",
           "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3019"
+        },
+        {
+          "id": 3020,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3020",
+          "note": "",
+          "tags": [],
+          "location": 21,
+          "location_type": "location",
+          "highlighted_at": "-271821-04-20T00:00:00Z",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3020"
+        },
+        {
+          "id": 3021,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3021",
+          "note": "",
+          "tags": [],
+          "location": 22,
+          "location_type": "location",
+          "highlighted_at": "+275760-09-13T00:00:00.001Z",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3021"
+        },
+        {
+          "id": 3022,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3022",
+          "note": "",
+          "tags": [],
+          "location": 23,
+          "location_type": "location",
+          "highlighted_at": "1900-01-01T00:00:00Z",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3022"
+        },
+        {
+          "id": 3023,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3023",
+          "note": "",
+          "tags": [],
+          "location": 24,
+          "location_type": "location",
+          "highlighted_at": "Thu, 22 Oct 2026 18:00:00 GMT",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3023"
         }
       ]
     },
@@ -3205,7 +4609,7 @@
         "source": "kindle",
         "readwise_url": "https://readwise.io/bookreview/119"
       },
-      "section": "<!-- readwise:start -->\n\n## Highlights\n\n- Highlight 3000 ([Location 1](https://readwise.io/open/3000), 2026-10-22)\n- Highlight 3001 ([Location 2](https://readwise.io/open/3001), 2026-10-22)\n- Highlight 3002 ([Location 3](https://readwise.io/open/3002), 2026-10-23)\n- Highlight 3003 ([Location 4](https://readwise.io/open/3003), 2026-03-08)\n- Highlight 3004 ([Location 5](https://readwise.io/open/3004), 2026-03-08)\n- Highlight 3005 ([Location 6](https://readwise.io/open/3005), 2026-10-22)\n- Highlight 3006 ([Location 7](https://readwise.io/open/3006), 2026-10-22)\n- Highlight 3007 ([Location 8](https://readwise.io/open/3007), 2026-10-22)\n- Highlight 3008 ([Location 9](https://readwise.io/open/3008), 2026-10-01)\n- Highlight 3009 ([Location 10](https://readwise.io/open/3009), 2026-05-05)\n- Highlight 3010 ([Location 11](https://readwise.io/open/3010), 2026-05-05)\n- Highlight 3011 ([Location 12](https://readwise.io/open/3011))\n- Highlight 3012 ([Location 13](https://readwise.io/open/3012))\n- Highlight 3013 ([Location 14](https://readwise.io/open/3013), 999-03-04)\n- Highlight 3014 ([Location 15](https://readwise.io/open/3014), 6-03-04)\n- Highlight 3015 ([Location 16](https://readwise.io/open/3015), 275760-09-13)\n- Highlight 3016 ([Location 17](https://readwise.io/open/3016), 271822-04-20)\n- Highlight 3017 ([Location 18](https://readwise.io/open/3017))\n- Highlight 3018 ([Location 19](https://readwise.io/open/3018), 1900-01-01)\n- Highlight 3019 ([Location 20](https://readwise.io/open/3019), 2026-10-22)\n\n<!-- readwise:end v1 last=2026-10-22T18:05:00.001Z hash=79bbdf75 -->",
+      "section": "<!-- readwise:start -->\n\n## Highlights\n\n- Highlight 3000 ([Location 1](https://readwise.io/open/3000), 2026-10-22)\n- Highlight 3001 ([Location 2](https://readwise.io/open/3001), 2026-10-22)\n- Highlight 3002 ([Location 3](https://readwise.io/open/3002), 2026-10-23)\n- Highlight 3003 ([Location 4](https://readwise.io/open/3003), 2026-03-08)\n- Highlight 3004 ([Location 5](https://readwise.io/open/3004), 2026-03-08)\n- Highlight 3005 ([Location 6](https://readwise.io/open/3005), 2026-11-01)\n- Highlight 3006 ([Location 7](https://readwise.io/open/3006), 2026-11-01)\n- Highlight 3007 ([Location 8](https://readwise.io/open/3007), 2026-04-05)\n- Highlight 3008 ([Location 9](https://readwise.io/open/3008), 2026-04-05)\n- Highlight 3009 ([Location 10](https://readwise.io/open/3009), 2026-10-22)\n- Highlight 3010 ([Location 11](https://readwise.io/open/3010), 2026-10-22)\n- Highlight 3011 ([Location 12](https://readwise.io/open/3011), 2026-10-22)\n- Highlight 3012 ([Location 13](https://readwise.io/open/3012), 2026-10-01)\n- Highlight 3013 ([Location 14](https://readwise.io/open/3013), 2026-05-05)\n- Highlight 3014 ([Location 15](https://readwise.io/open/3014), 2026-05-05)\n- Highlight 3015 ([Location 16](https://readwise.io/open/3015))\n- Highlight 3016 ([Location 17](https://readwise.io/open/3016))\n- Highlight 3017 ([Location 18](https://readwise.io/open/3017), 999-03-04)\n- Highlight 3018 ([Location 19](https://readwise.io/open/3018), 6-03-04)\n- Highlight 3019 ([Location 20](https://readwise.io/open/3019), 275760-09-13)\n- Highlight 3020 ([Location 21](https://readwise.io/open/3020), 271822-04-20)\n- Highlight 3021 ([Location 22](https://readwise.io/open/3021))\n- Highlight 3022 ([Location 23](https://readwise.io/open/3022), 1900-01-01)\n- Highlight 3023 ([Location 24](https://readwise.io/open/3023), 2026-10-22)\n\n<!-- readwise:end v1 last=2026-10-22T18:05:00.001Z hash=be132739 -->",
       "last": "2026-10-22T18:05:00.001Z",
       "imageUrls": []
     }
@@ -3301,7 +4705,7 @@
           "tags": [],
           "location": 6,
           "location_type": "location",
-          "highlighted_at": "2026-10-22T18:00:00+05:30",
+          "highlighted_at": "2026-11-01T08:30:00Z",
           "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3005"
         },
@@ -3314,7 +4718,7 @@
           "tags": [],
           "location": 7,
           "location_type": "location",
-          "highlighted_at": "2026-10-22T18:00:00.123456Z",
+          "highlighted_at": "2026-11-01T09:30:00Z",
           "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3006"
         },
@@ -3327,8 +4731,8 @@
           "tags": [],
           "location": 8,
           "location_type": "location",
-          "highlighted_at": "2026-10-22",
-          "created_at": "2026-01-01T00:00:00Z",
+          "highlighted_at": "2026-04-05T02:59:59Z",
+          "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3007"
         },
         {
@@ -3340,8 +4744,8 @@
           "tags": [],
           "location": 9,
           "location_type": "location",
-          "highlighted_at": "2026-10",
-          "created_at": "2026-01-01T00:00:00Z",
+          "highlighted_at": "2026-04-05T03:30:00Z",
+          "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3008"
         },
         {
@@ -3353,8 +4757,8 @@
           "tags": [],
           "location": 10,
           "location_type": "location",
-          "highlighted_at": "",
-          "created_at": "2026-05-05T05:05:05Z",
+          "highlighted_at": "2026-10-22T18:00:00+05:30",
+          "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3009"
         },
         {
@@ -3366,8 +4770,8 @@
           "tags": [],
           "location": 11,
           "location_type": "location",
-          "highlighted_at": null,
-          "created_at": "2026-05-05T05:05:05Z",
+          "highlighted_at": "2026-10-22T18:00:00.123456Z",
+          "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3010"
         },
         {
@@ -3379,8 +4783,8 @@
           "tags": [],
           "location": 12,
           "location_type": "location",
-          "highlighted_at": "not a date",
-          "created_at": "2026-05-05T05:05:05Z",
+          "highlighted_at": "2026-10-22",
+          "created_at": "2026-01-01T00:00:00Z",
           "readwise_url": "https://readwise.io/open/3011"
         },
         {
@@ -3392,8 +4796,8 @@
           "tags": [],
           "location": 13,
           "location_type": "location",
-          "highlighted_at": null,
-          "created_at": null,
+          "highlighted_at": "2026-10",
+          "created_at": "2026-01-01T00:00:00Z",
           "readwise_url": "https://readwise.io/open/3012"
         },
         {
@@ -3405,8 +4809,8 @@
           "tags": [],
           "location": 14,
           "location_type": "location",
-          "highlighted_at": "0999-03-04T00:00:00Z",
-          "created_at": "2026-10-22T18:05:00Z",
+          "highlighted_at": "",
+          "created_at": "2026-05-05T05:05:05Z",
           "readwise_url": "https://readwise.io/open/3013"
         },
         {
@@ -3418,8 +4822,8 @@
           "tags": [],
           "location": 15,
           "location_type": "location",
-          "highlighted_at": "-000005-03-04T00:00:00Z",
-          "created_at": "2026-10-22T18:05:00Z",
+          "highlighted_at": null,
+          "created_at": "2026-05-05T05:05:05Z",
           "readwise_url": "https://readwise.io/open/3014"
         },
         {
@@ -3431,8 +4835,8 @@
           "tags": [],
           "location": 16,
           "location_type": "location",
-          "highlighted_at": "+275760-09-13T00:00:00Z",
-          "created_at": "2026-10-22T18:05:00Z",
+          "highlighted_at": "not a date",
+          "created_at": "2026-05-05T05:05:05Z",
           "readwise_url": "https://readwise.io/open/3015"
         },
         {
@@ -3444,8 +4848,8 @@
           "tags": [],
           "location": 17,
           "location_type": "location",
-          "highlighted_at": "-271821-04-20T00:00:00Z",
-          "created_at": "2026-10-22T18:05:00Z",
+          "highlighted_at": null,
+          "created_at": null,
           "readwise_url": "https://readwise.io/open/3016"
         },
         {
@@ -3457,7 +4861,7 @@
           "tags": [],
           "location": 18,
           "location_type": "location",
-          "highlighted_at": "+275760-09-13T00:00:00.001Z",
+          "highlighted_at": "0999-03-04T00:00:00Z",
           "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3017"
         },
@@ -3470,7 +4874,7 @@
           "tags": [],
           "location": 19,
           "location_type": "location",
-          "highlighted_at": "1900-01-01T00:00:00Z",
+          "highlighted_at": "-000005-03-04T00:00:00Z",
           "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3018"
         },
@@ -3483,9 +4887,61 @@
           "tags": [],
           "location": 20,
           "location_type": "location",
-          "highlighted_at": "Thu, 22 Oct 2026 18:00:00 GMT",
+          "highlighted_at": "+275760-09-13T00:00:00Z",
           "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3019"
+        },
+        {
+          "id": 3020,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3020",
+          "note": "",
+          "tags": [],
+          "location": 21,
+          "location_type": "location",
+          "highlighted_at": "-271821-04-20T00:00:00Z",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3020"
+        },
+        {
+          "id": 3021,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3021",
+          "note": "",
+          "tags": [],
+          "location": 22,
+          "location_type": "location",
+          "highlighted_at": "+275760-09-13T00:00:00.001Z",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3021"
+        },
+        {
+          "id": 3022,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3022",
+          "note": "",
+          "tags": [],
+          "location": 23,
+          "location_type": "location",
+          "highlighted_at": "1900-01-01T00:00:00Z",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3022"
+        },
+        {
+          "id": 3023,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3023",
+          "note": "",
+          "tags": [],
+          "location": 24,
+          "location_type": "location",
+          "highlighted_at": "Thu, 22 Oct 2026 18:00:00 GMT",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3023"
         }
       ]
     },
@@ -3504,7 +4960,7 @@
         "source": "kindle",
         "readwise_url": "https://readwise.io/bookreview/119"
       },
-      "section": "<!-- readwise:start -->\n\n## Highlights\n\n- Highlight 3000 ([Location 1](https://readwise.io/open/3000), 2026-10-22)\n- Highlight 3001 ([Location 2](https://readwise.io/open/3001), 2026-10-22)\n- Highlight 3002 ([Location 3](https://readwise.io/open/3002), 2026-10-22)\n- Highlight 3003 ([Location 4](https://readwise.io/open/3003), 2026-03-08)\n- Highlight 3004 ([Location 5](https://readwise.io/open/3004), 2026-03-08)\n- Highlight 3005 ([Location 6](https://readwise.io/open/3005), 2026-10-22)\n- Highlight 3006 ([Location 7](https://readwise.io/open/3006), 2026-10-22)\n- Highlight 3007 ([Location 8](https://readwise.io/open/3007), 2026-10-21)\n- Highlight 3008 ([Location 9](https://readwise.io/open/3008), 2026-09-30)\n- Highlight 3009 ([Location 10](https://readwise.io/open/3009), 2026-05-04)\n- Highlight 3010 ([Location 11](https://readwise.io/open/3010), 2026-05-04)\n- Highlight 3011 ([Location 12](https://readwise.io/open/3011))\n- Highlight 3012 ([Location 13](https://readwise.io/open/3012))\n- Highlight 3013 ([Location 14](https://readwise.io/open/3013), 999-03-03)\n- Highlight 3014 ([Location 15](https://readwise.io/open/3014), 6-03-03)\n- Highlight 3015 ([Location 16](https://readwise.io/open/3015), 275760-09-12)\n- Highlight 3016 ([Location 17](https://readwise.io/open/3016), 271822-04-19)\n- Highlight 3017 ([Location 18](https://readwise.io/open/3017))\n- Highlight 3018 ([Location 19](https://readwise.io/open/3018), 1899-12-31)\n- Highlight 3019 ([Location 20](https://readwise.io/open/3019), 2026-10-22)\n\n<!-- readwise:end v1 last=2026-10-22T18:05:00.001Z hash=d30c17be -->",
+      "section": "<!-- readwise:start -->\n\n## Highlights\n\n- Highlight 3000 ([Location 1](https://readwise.io/open/3000), 2026-10-22)\n- Highlight 3001 ([Location 2](https://readwise.io/open/3001), 2026-10-22)\n- Highlight 3002 ([Location 3](https://readwise.io/open/3002), 2026-10-22)\n- Highlight 3003 ([Location 4](https://readwise.io/open/3003), 2026-03-08)\n- Highlight 3004 ([Location 5](https://readwise.io/open/3004), 2026-03-08)\n- Highlight 3005 ([Location 6](https://readwise.io/open/3005), 2026-11-01)\n- Highlight 3006 ([Location 7](https://readwise.io/open/3006), 2026-11-01)\n- Highlight 3007 ([Location 8](https://readwise.io/open/3007), 2026-04-04)\n- Highlight 3008 ([Location 9](https://readwise.io/open/3008), 2026-04-04)\n- Highlight 3009 ([Location 10](https://readwise.io/open/3009), 2026-10-22)\n- Highlight 3010 ([Location 11](https://readwise.io/open/3010), 2026-10-22)\n- Highlight 3011 ([Location 12](https://readwise.io/open/3011), 2026-10-21)\n- Highlight 3012 ([Location 13](https://readwise.io/open/3012), 2026-09-30)\n- Highlight 3013 ([Location 14](https://readwise.io/open/3013), 2026-05-04)\n- Highlight 3014 ([Location 15](https://readwise.io/open/3014), 2026-05-04)\n- Highlight 3015 ([Location 16](https://readwise.io/open/3015))\n- Highlight 3016 ([Location 17](https://readwise.io/open/3016))\n- Highlight 3017 ([Location 18](https://readwise.io/open/3017), 999-03-03)\n- Highlight 3018 ([Location 19](https://readwise.io/open/3018), 6-03-03)\n- Highlight 3019 ([Location 20](https://readwise.io/open/3019), 275760-09-12)\n- Highlight 3020 ([Location 21](https://readwise.io/open/3020), 271822-04-19)\n- Highlight 3021 ([Location 22](https://readwise.io/open/3021))\n- Highlight 3022 ([Location 23](https://readwise.io/open/3022), 1899-12-31)\n- Highlight 3023 ([Location 24](https://readwise.io/open/3023), 2026-10-22)\n\n<!-- readwise:end v1 last=2026-10-22T18:05:00.001Z hash=48e88c3e -->",
       "last": "2026-10-22T18:05:00.001Z",
       "imageUrls": []
     }
@@ -3600,7 +5056,7 @@
           "tags": [],
           "location": 6,
           "location_type": "location",
-          "highlighted_at": "2026-10-22T18:00:00+05:30",
+          "highlighted_at": "2026-11-01T08:30:00Z",
           "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3005"
         },
@@ -3613,7 +5069,7 @@
           "tags": [],
           "location": 7,
           "location_type": "location",
-          "highlighted_at": "2026-10-22T18:00:00.123456Z",
+          "highlighted_at": "2026-11-01T09:30:00Z",
           "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3006"
         },
@@ -3626,8 +5082,8 @@
           "tags": [],
           "location": 8,
           "location_type": "location",
-          "highlighted_at": "2026-10-22",
-          "created_at": "2026-01-01T00:00:00Z",
+          "highlighted_at": "2026-04-05T02:59:59Z",
+          "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3007"
         },
         {
@@ -3639,8 +5095,8 @@
           "tags": [],
           "location": 9,
           "location_type": "location",
-          "highlighted_at": "2026-10",
-          "created_at": "2026-01-01T00:00:00Z",
+          "highlighted_at": "2026-04-05T03:30:00Z",
+          "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3008"
         },
         {
@@ -3652,8 +5108,8 @@
           "tags": [],
           "location": 10,
           "location_type": "location",
-          "highlighted_at": "",
-          "created_at": "2026-05-05T05:05:05Z",
+          "highlighted_at": "2026-10-22T18:00:00+05:30",
+          "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3009"
         },
         {
@@ -3665,8 +5121,8 @@
           "tags": [],
           "location": 11,
           "location_type": "location",
-          "highlighted_at": null,
-          "created_at": "2026-05-05T05:05:05Z",
+          "highlighted_at": "2026-10-22T18:00:00.123456Z",
+          "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3010"
         },
         {
@@ -3678,8 +5134,8 @@
           "tags": [],
           "location": 12,
           "location_type": "location",
-          "highlighted_at": "not a date",
-          "created_at": "2026-05-05T05:05:05Z",
+          "highlighted_at": "2026-10-22",
+          "created_at": "2026-01-01T00:00:00Z",
           "readwise_url": "https://readwise.io/open/3011"
         },
         {
@@ -3691,8 +5147,8 @@
           "tags": [],
           "location": 13,
           "location_type": "location",
-          "highlighted_at": null,
-          "created_at": null,
+          "highlighted_at": "2026-10",
+          "created_at": "2026-01-01T00:00:00Z",
           "readwise_url": "https://readwise.io/open/3012"
         },
         {
@@ -3704,8 +5160,8 @@
           "tags": [],
           "location": 14,
           "location_type": "location",
-          "highlighted_at": "0999-03-04T00:00:00Z",
-          "created_at": "2026-10-22T18:05:00Z",
+          "highlighted_at": "",
+          "created_at": "2026-05-05T05:05:05Z",
           "readwise_url": "https://readwise.io/open/3013"
         },
         {
@@ -3717,8 +5173,8 @@
           "tags": [],
           "location": 15,
           "location_type": "location",
-          "highlighted_at": "-000005-03-04T00:00:00Z",
-          "created_at": "2026-10-22T18:05:00Z",
+          "highlighted_at": null,
+          "created_at": "2026-05-05T05:05:05Z",
           "readwise_url": "https://readwise.io/open/3014"
         },
         {
@@ -3730,8 +5186,8 @@
           "tags": [],
           "location": 16,
           "location_type": "location",
-          "highlighted_at": "+275760-09-13T00:00:00Z",
-          "created_at": "2026-10-22T18:05:00Z",
+          "highlighted_at": "not a date",
+          "created_at": "2026-05-05T05:05:05Z",
           "readwise_url": "https://readwise.io/open/3015"
         },
         {
@@ -3743,8 +5199,8 @@
           "tags": [],
           "location": 17,
           "location_type": "location",
-          "highlighted_at": "-271821-04-20T00:00:00Z",
-          "created_at": "2026-10-22T18:05:00Z",
+          "highlighted_at": null,
+          "created_at": null,
           "readwise_url": "https://readwise.io/open/3016"
         },
         {
@@ -3756,7 +5212,7 @@
           "tags": [],
           "location": 18,
           "location_type": "location",
-          "highlighted_at": "+275760-09-13T00:00:00.001Z",
+          "highlighted_at": "0999-03-04T00:00:00Z",
           "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3017"
         },
@@ -3769,7 +5225,7 @@
           "tags": [],
           "location": 19,
           "location_type": "location",
-          "highlighted_at": "1900-01-01T00:00:00Z",
+          "highlighted_at": "-000005-03-04T00:00:00Z",
           "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3018"
         },
@@ -3782,9 +5238,61 @@
           "tags": [],
           "location": 20,
           "location_type": "location",
-          "highlighted_at": "Thu, 22 Oct 2026 18:00:00 GMT",
+          "highlighted_at": "+275760-09-13T00:00:00Z",
           "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3019"
+        },
+        {
+          "id": 3020,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3020",
+          "note": "",
+          "tags": [],
+          "location": 21,
+          "location_type": "location",
+          "highlighted_at": "-271821-04-20T00:00:00Z",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3020"
+        },
+        {
+          "id": 3021,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3021",
+          "note": "",
+          "tags": [],
+          "location": 22,
+          "location_type": "location",
+          "highlighted_at": "+275760-09-13T00:00:00.001Z",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3021"
+        },
+        {
+          "id": 3022,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3022",
+          "note": "",
+          "tags": [],
+          "location": 23,
+          "location_type": "location",
+          "highlighted_at": "1900-01-01T00:00:00Z",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3022"
+        },
+        {
+          "id": 3023,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3023",
+          "note": "",
+          "tags": [],
+          "location": 24,
+          "location_type": "location",
+          "highlighted_at": "Thu, 22 Oct 2026 18:00:00 GMT",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3023"
         }
       ]
     },
@@ -3803,7 +5311,7 @@
         "source": "kindle",
         "readwise_url": "https://readwise.io/bookreview/119"
       },
-      "section": "<!-- readwise:start -->\n\n## Highlights\n\n- Highlight 3000 ([Location 1](https://readwise.io/open/3000), 2026-10-22)\n- Highlight 3001 ([Location 2](https://readwise.io/open/3001), 2026-10-23)\n- Highlight 3002 ([Location 3](https://readwise.io/open/3002), 2026-10-23)\n- Highlight 3003 ([Location 4](https://readwise.io/open/3003), 2026-03-08)\n- Highlight 3004 ([Location 5](https://readwise.io/open/3004), 2026-03-08)\n- Highlight 3005 ([Location 6](https://readwise.io/open/3005), 2026-10-22)\n- Highlight 3006 ([Location 7](https://readwise.io/open/3006), 2026-10-22)\n- Highlight 3007 ([Location 8](https://readwise.io/open/3007), 2026-10-22)\n- Highlight 3008 ([Location 9](https://readwise.io/open/3008), 2026-10-01)\n- Highlight 3009 ([Location 10](https://readwise.io/open/3009), 2026-05-05)\n- Highlight 3010 ([Location 11](https://readwise.io/open/3010), 2026-05-05)\n- Highlight 3011 ([Location 12](https://readwise.io/open/3011))\n- Highlight 3012 ([Location 13](https://readwise.io/open/3012))\n- Highlight 3013 ([Location 14](https://readwise.io/open/3013), 999-03-04)\n- Highlight 3014 ([Location 15](https://readwise.io/open/3014), 6-03-04)\n- Highlight 3015 ([Location 16](https://readwise.io/open/3015), 275760-09-13)\n- Highlight 3016 ([Location 17](https://readwise.io/open/3016), 271822-04-20)\n- Highlight 3017 ([Location 18](https://readwise.io/open/3017))\n- Highlight 3018 ([Location 19](https://readwise.io/open/3018), 1900-01-01)\n- Highlight 3019 ([Location 20](https://readwise.io/open/3019), 2026-10-22)\n\n<!-- readwise:end v1 last=2026-10-22T18:05:00.001Z hash=0cec7c7e -->",
+      "section": "<!-- readwise:start -->\n\n## Highlights\n\n- Highlight 3000 ([Location 1](https://readwise.io/open/3000), 2026-10-22)\n- Highlight 3001 ([Location 2](https://readwise.io/open/3001), 2026-10-23)\n- Highlight 3002 ([Location 3](https://readwise.io/open/3002), 2026-10-23)\n- Highlight 3003 ([Location 4](https://readwise.io/open/3003), 2026-03-08)\n- Highlight 3004 ([Location 5](https://readwise.io/open/3004), 2026-03-08)\n- Highlight 3005 ([Location 6](https://readwise.io/open/3005), 2026-11-01)\n- Highlight 3006 ([Location 7](https://readwise.io/open/3006), 2026-11-01)\n- Highlight 3007 ([Location 8](https://readwise.io/open/3007), 2026-04-05)\n- Highlight 3008 ([Location 9](https://readwise.io/open/3008), 2026-04-05)\n- Highlight 3009 ([Location 10](https://readwise.io/open/3009), 2026-10-22)\n- Highlight 3010 ([Location 11](https://readwise.io/open/3010), 2026-10-22)\n- Highlight 3011 ([Location 12](https://readwise.io/open/3011), 2026-10-22)\n- Highlight 3012 ([Location 13](https://readwise.io/open/3012), 2026-10-01)\n- Highlight 3013 ([Location 14](https://readwise.io/open/3013), 2026-05-05)\n- Highlight 3014 ([Location 15](https://readwise.io/open/3014), 2026-05-05)\n- Highlight 3015 ([Location 16](https://readwise.io/open/3015))\n- Highlight 3016 ([Location 17](https://readwise.io/open/3016))\n- Highlight 3017 ([Location 18](https://readwise.io/open/3017), 999-03-04)\n- Highlight 3018 ([Location 19](https://readwise.io/open/3018), 6-03-04)\n- Highlight 3019 ([Location 20](https://readwise.io/open/3019), 275760-09-13)\n- Highlight 3020 ([Location 21](https://readwise.io/open/3020), 271822-04-20)\n- Highlight 3021 ([Location 22](https://readwise.io/open/3021))\n- Highlight 3022 ([Location 23](https://readwise.io/open/3022), 1900-01-01)\n- Highlight 3023 ([Location 24](https://readwise.io/open/3023), 2026-10-22)\n\n<!-- readwise:end v1 last=2026-10-22T18:05:00.001Z hash=bc7b5eba -->",
       "last": "2026-10-22T18:05:00.001Z",
       "imageUrls": []
     }
@@ -3899,7 +5407,7 @@
           "tags": [],
           "location": 6,
           "location_type": "location",
-          "highlighted_at": "2026-10-22T18:00:00+05:30",
+          "highlighted_at": "2026-11-01T08:30:00Z",
           "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3005"
         },
@@ -3912,7 +5420,7 @@
           "tags": [],
           "location": 7,
           "location_type": "location",
-          "highlighted_at": "2026-10-22T18:00:00.123456Z",
+          "highlighted_at": "2026-11-01T09:30:00Z",
           "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3006"
         },
@@ -3925,8 +5433,8 @@
           "tags": [],
           "location": 8,
           "location_type": "location",
-          "highlighted_at": "2026-10-22",
-          "created_at": "2026-01-01T00:00:00Z",
+          "highlighted_at": "2026-04-05T02:59:59Z",
+          "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3007"
         },
         {
@@ -3938,8 +5446,8 @@
           "tags": [],
           "location": 9,
           "location_type": "location",
-          "highlighted_at": "2026-10",
-          "created_at": "2026-01-01T00:00:00Z",
+          "highlighted_at": "2026-04-05T03:30:00Z",
+          "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3008"
         },
         {
@@ -3951,8 +5459,8 @@
           "tags": [],
           "location": 10,
           "location_type": "location",
-          "highlighted_at": "",
-          "created_at": "2026-05-05T05:05:05Z",
+          "highlighted_at": "2026-10-22T18:00:00+05:30",
+          "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3009"
         },
         {
@@ -3964,8 +5472,8 @@
           "tags": [],
           "location": 11,
           "location_type": "location",
-          "highlighted_at": null,
-          "created_at": "2026-05-05T05:05:05Z",
+          "highlighted_at": "2026-10-22T18:00:00.123456Z",
+          "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3010"
         },
         {
@@ -3977,8 +5485,8 @@
           "tags": [],
           "location": 12,
           "location_type": "location",
-          "highlighted_at": "not a date",
-          "created_at": "2026-05-05T05:05:05Z",
+          "highlighted_at": "2026-10-22",
+          "created_at": "2026-01-01T00:00:00Z",
           "readwise_url": "https://readwise.io/open/3011"
         },
         {
@@ -3990,8 +5498,8 @@
           "tags": [],
           "location": 13,
           "location_type": "location",
-          "highlighted_at": null,
-          "created_at": null,
+          "highlighted_at": "2026-10",
+          "created_at": "2026-01-01T00:00:00Z",
           "readwise_url": "https://readwise.io/open/3012"
         },
         {
@@ -4003,8 +5511,8 @@
           "tags": [],
           "location": 14,
           "location_type": "location",
-          "highlighted_at": "0999-03-04T00:00:00Z",
-          "created_at": "2026-10-22T18:05:00Z",
+          "highlighted_at": "",
+          "created_at": "2026-05-05T05:05:05Z",
           "readwise_url": "https://readwise.io/open/3013"
         },
         {
@@ -4016,8 +5524,8 @@
           "tags": [],
           "location": 15,
           "location_type": "location",
-          "highlighted_at": "-000005-03-04T00:00:00Z",
-          "created_at": "2026-10-22T18:05:00Z",
+          "highlighted_at": null,
+          "created_at": "2026-05-05T05:05:05Z",
           "readwise_url": "https://readwise.io/open/3014"
         },
         {
@@ -4029,8 +5537,8 @@
           "tags": [],
           "location": 16,
           "location_type": "location",
-          "highlighted_at": "+275760-09-13T00:00:00Z",
-          "created_at": "2026-10-22T18:05:00Z",
+          "highlighted_at": "not a date",
+          "created_at": "2026-05-05T05:05:05Z",
           "readwise_url": "https://readwise.io/open/3015"
         },
         {
@@ -4042,8 +5550,8 @@
           "tags": [],
           "location": 17,
           "location_type": "location",
-          "highlighted_at": "-271821-04-20T00:00:00Z",
-          "created_at": "2026-10-22T18:05:00Z",
+          "highlighted_at": null,
+          "created_at": null,
           "readwise_url": "https://readwise.io/open/3016"
         },
         {
@@ -4055,7 +5563,7 @@
           "tags": [],
           "location": 18,
           "location_type": "location",
-          "highlighted_at": "+275760-09-13T00:00:00.001Z",
+          "highlighted_at": "0999-03-04T00:00:00Z",
           "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3017"
         },
@@ -4068,7 +5576,7 @@
           "tags": [],
           "location": 19,
           "location_type": "location",
-          "highlighted_at": "1900-01-01T00:00:00Z",
+          "highlighted_at": "-000005-03-04T00:00:00Z",
           "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3018"
         },
@@ -4081,9 +5589,61 @@
           "tags": [],
           "location": 20,
           "location_type": "location",
-          "highlighted_at": "Thu, 22 Oct 2026 18:00:00 GMT",
+          "highlighted_at": "+275760-09-13T00:00:00Z",
           "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3019"
+        },
+        {
+          "id": 3020,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3020",
+          "note": "",
+          "tags": [],
+          "location": 21,
+          "location_type": "location",
+          "highlighted_at": "-271821-04-20T00:00:00Z",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3020"
+        },
+        {
+          "id": 3021,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3021",
+          "note": "",
+          "tags": [],
+          "location": 22,
+          "location_type": "location",
+          "highlighted_at": "+275760-09-13T00:00:00.001Z",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3021"
+        },
+        {
+          "id": 3022,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3022",
+          "note": "",
+          "tags": [],
+          "location": 23,
+          "location_type": "location",
+          "highlighted_at": "1900-01-01T00:00:00Z",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3022"
+        },
+        {
+          "id": 3023,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3023",
+          "note": "",
+          "tags": [],
+          "location": 24,
+          "location_type": "location",
+          "highlighted_at": "Thu, 22 Oct 2026 18:00:00 GMT",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3023"
         }
       ]
     },
@@ -4102,7 +5662,7 @@
         "source": "kindle",
         "readwise_url": "https://readwise.io/bookreview/119"
       },
-      "section": "<!-- readwise:start -->\n\n## Highlights\n\n- Highlight 3000 ([Location 1](https://readwise.io/open/3000), 2026-10-23)\n- Highlight 3001 ([Location 2](https://readwise.io/open/3001), 2026-10-23)\n- Highlight 3002 ([Location 3](https://readwise.io/open/3002), 2026-10-23)\n- Highlight 3003 ([Location 4](https://readwise.io/open/3003), 2026-03-08)\n- Highlight 3004 ([Location 5](https://readwise.io/open/3004), 2026-03-09)\n- Highlight 3005 ([Location 6](https://readwise.io/open/3005), 2026-10-23)\n- Highlight 3006 ([Location 7](https://readwise.io/open/3006), 2026-10-23)\n- Highlight 3007 ([Location 8](https://readwise.io/open/3007), 2026-10-22)\n- Highlight 3008 ([Location 9](https://readwise.io/open/3008), 2026-10-01)\n- Highlight 3009 ([Location 10](https://readwise.io/open/3009), 2026-05-05)\n- Highlight 3010 ([Location 11](https://readwise.io/open/3010), 2026-05-05)\n- Highlight 3011 ([Location 12](https://readwise.io/open/3011))\n- Highlight 3012 ([Location 13](https://readwise.io/open/3012))\n- Highlight 3013 ([Location 14](https://readwise.io/open/3013), 999-03-03)\n- Highlight 3014 ([Location 15](https://readwise.io/open/3014), 6-03-03)\n- Highlight 3015 ([Location 16](https://readwise.io/open/3015), 275760-09-13)\n- Highlight 3016 ([Location 17](https://readwise.io/open/3016), 271822-04-19)\n- Highlight 3017 ([Location 18](https://readwise.io/open/3017))\n- Highlight 3018 ([Location 19](https://readwise.io/open/3018), 1899-12-31)\n- Highlight 3019 ([Location 20](https://readwise.io/open/3019), 2026-10-23)\n\n<!-- readwise:end v1 last=2026-10-22T18:05:00.001Z hash=e6690029 -->",
+      "section": "<!-- readwise:start -->\n\n## Highlights\n\n- Highlight 3000 ([Location 1](https://readwise.io/open/3000), 2026-10-23)\n- Highlight 3001 ([Location 2](https://readwise.io/open/3001), 2026-10-23)\n- Highlight 3002 ([Location 3](https://readwise.io/open/3002), 2026-10-23)\n- Highlight 3003 ([Location 4](https://readwise.io/open/3003), 2026-03-08)\n- Highlight 3004 ([Location 5](https://readwise.io/open/3004), 2026-03-09)\n- Highlight 3005 ([Location 6](https://readwise.io/open/3005), 2026-11-01)\n- Highlight 3006 ([Location 7](https://readwise.io/open/3006), 2026-11-01)\n- Highlight 3007 ([Location 8](https://readwise.io/open/3007), 2026-04-05)\n- Highlight 3008 ([Location 9](https://readwise.io/open/3008), 2026-04-05)\n- Highlight 3009 ([Location 10](https://readwise.io/open/3009), 2026-10-23)\n- Highlight 3010 ([Location 11](https://readwise.io/open/3010), 2026-10-23)\n- Highlight 3011 ([Location 12](https://readwise.io/open/3011), 2026-10-22)\n- Highlight 3012 ([Location 13](https://readwise.io/open/3012), 2026-10-01)\n- Highlight 3013 ([Location 14](https://readwise.io/open/3013), 2026-05-05)\n- Highlight 3014 ([Location 15](https://readwise.io/open/3014), 2026-05-05)\n- Highlight 3015 ([Location 16](https://readwise.io/open/3015))\n- Highlight 3016 ([Location 17](https://readwise.io/open/3016))\n- Highlight 3017 ([Location 18](https://readwise.io/open/3017), 999-03-03)\n- Highlight 3018 ([Location 19](https://readwise.io/open/3018), 6-03-03)\n- Highlight 3019 ([Location 20](https://readwise.io/open/3019), 275760-09-13)\n- Highlight 3020 ([Location 21](https://readwise.io/open/3020), 271822-04-19)\n- Highlight 3021 ([Location 22](https://readwise.io/open/3021))\n- Highlight 3022 ([Location 23](https://readwise.io/open/3022), 1899-12-31)\n- Highlight 3023 ([Location 24](https://readwise.io/open/3023), 2026-10-23)\n\n<!-- readwise:end v1 last=2026-10-22T18:05:00.001Z hash=d492ce87 -->",
       "last": "2026-10-22T18:05:00.001Z",
       "imageUrls": []
     }
@@ -4198,7 +5758,7 @@
           "tags": [],
           "location": 6,
           "location_type": "location",
-          "highlighted_at": "2026-10-22T18:00:00+05:30",
+          "highlighted_at": "2026-11-01T08:30:00Z",
           "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3005"
         },
@@ -4211,7 +5771,7 @@
           "tags": [],
           "location": 7,
           "location_type": "location",
-          "highlighted_at": "2026-10-22T18:00:00.123456Z",
+          "highlighted_at": "2026-11-01T09:30:00Z",
           "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3006"
         },
@@ -4224,8 +5784,8 @@
           "tags": [],
           "location": 8,
           "location_type": "location",
-          "highlighted_at": "2026-10-22",
-          "created_at": "2026-01-01T00:00:00Z",
+          "highlighted_at": "2026-04-05T02:59:59Z",
+          "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3007"
         },
         {
@@ -4237,8 +5797,8 @@
           "tags": [],
           "location": 9,
           "location_type": "location",
-          "highlighted_at": "2026-10",
-          "created_at": "2026-01-01T00:00:00Z",
+          "highlighted_at": "2026-04-05T03:30:00Z",
+          "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3008"
         },
         {
@@ -4250,8 +5810,8 @@
           "tags": [],
           "location": 10,
           "location_type": "location",
-          "highlighted_at": "",
-          "created_at": "2026-05-05T05:05:05Z",
+          "highlighted_at": "2026-10-22T18:00:00+05:30",
+          "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3009"
         },
         {
@@ -4263,8 +5823,8 @@
           "tags": [],
           "location": 11,
           "location_type": "location",
-          "highlighted_at": null,
-          "created_at": "2026-05-05T05:05:05Z",
+          "highlighted_at": "2026-10-22T18:00:00.123456Z",
+          "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3010"
         },
         {
@@ -4276,8 +5836,8 @@
           "tags": [],
           "location": 12,
           "location_type": "location",
-          "highlighted_at": "not a date",
-          "created_at": "2026-05-05T05:05:05Z",
+          "highlighted_at": "2026-10-22",
+          "created_at": "2026-01-01T00:00:00Z",
           "readwise_url": "https://readwise.io/open/3011"
         },
         {
@@ -4289,8 +5849,8 @@
           "tags": [],
           "location": 13,
           "location_type": "location",
-          "highlighted_at": null,
-          "created_at": null,
+          "highlighted_at": "2026-10",
+          "created_at": "2026-01-01T00:00:00Z",
           "readwise_url": "https://readwise.io/open/3012"
         },
         {
@@ -4302,8 +5862,8 @@
           "tags": [],
           "location": 14,
           "location_type": "location",
-          "highlighted_at": "0999-03-04T00:00:00Z",
-          "created_at": "2026-10-22T18:05:00Z",
+          "highlighted_at": "",
+          "created_at": "2026-05-05T05:05:05Z",
           "readwise_url": "https://readwise.io/open/3013"
         },
         {
@@ -4315,8 +5875,8 @@
           "tags": [],
           "location": 15,
           "location_type": "location",
-          "highlighted_at": "-000005-03-04T00:00:00Z",
-          "created_at": "2026-10-22T18:05:00Z",
+          "highlighted_at": null,
+          "created_at": "2026-05-05T05:05:05Z",
           "readwise_url": "https://readwise.io/open/3014"
         },
         {
@@ -4328,8 +5888,8 @@
           "tags": [],
           "location": 16,
           "location_type": "location",
-          "highlighted_at": "+275760-09-13T00:00:00Z",
-          "created_at": "2026-10-22T18:05:00Z",
+          "highlighted_at": "not a date",
+          "created_at": "2026-05-05T05:05:05Z",
           "readwise_url": "https://readwise.io/open/3015"
         },
         {
@@ -4341,8 +5901,8 @@
           "tags": [],
           "location": 17,
           "location_type": "location",
-          "highlighted_at": "-271821-04-20T00:00:00Z",
-          "created_at": "2026-10-22T18:05:00Z",
+          "highlighted_at": null,
+          "created_at": null,
           "readwise_url": "https://readwise.io/open/3016"
         },
         {
@@ -4354,7 +5914,7 @@
           "tags": [],
           "location": 18,
           "location_type": "location",
-          "highlighted_at": "+275760-09-13T00:00:00.001Z",
+          "highlighted_at": "0999-03-04T00:00:00Z",
           "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3017"
         },
@@ -4367,7 +5927,7 @@
           "tags": [],
           "location": 19,
           "location_type": "location",
-          "highlighted_at": "1900-01-01T00:00:00Z",
+          "highlighted_at": "-000005-03-04T00:00:00Z",
           "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3018"
         },
@@ -4380,9 +5940,61 @@
           "tags": [],
           "location": 20,
           "location_type": "location",
-          "highlighted_at": "Thu, 22 Oct 2026 18:00:00 GMT",
+          "highlighted_at": "+275760-09-13T00:00:00Z",
           "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3019"
+        },
+        {
+          "id": 3020,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3020",
+          "note": "",
+          "tags": [],
+          "location": 21,
+          "location_type": "location",
+          "highlighted_at": "-271821-04-20T00:00:00Z",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3020"
+        },
+        {
+          "id": 3021,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3021",
+          "note": "",
+          "tags": [],
+          "location": 22,
+          "location_type": "location",
+          "highlighted_at": "+275760-09-13T00:00:00.001Z",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3021"
+        },
+        {
+          "id": 3022,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3022",
+          "note": "",
+          "tags": [],
+          "location": 23,
+          "location_type": "location",
+          "highlighted_at": "1900-01-01T00:00:00Z",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3022"
+        },
+        {
+          "id": 3023,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3023",
+          "note": "",
+          "tags": [],
+          "location": 24,
+          "location_type": "location",
+          "highlighted_at": "Thu, 22 Oct 2026 18:00:00 GMT",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3023"
         }
       ]
     },
@@ -4401,7 +6013,7 @@
         "source": "kindle",
         "readwise_url": "https://readwise.io/bookreview/119"
       },
-      "section": "<!-- readwise:start -->\n\n## Highlights\n\n- Highlight 3000 ([Location 1](https://readwise.io/open/3000), 2026-10-22)\n- Highlight 3001 ([Location 2](https://readwise.io/open/3001), 2026-10-22)\n- Highlight 3002 ([Location 3](https://readwise.io/open/3002), 2026-10-22)\n- Highlight 3003 ([Location 4](https://readwise.io/open/3003), 2026-03-07)\n- Highlight 3004 ([Location 5](https://readwise.io/open/3004), 2026-03-07)\n- Highlight 3005 ([Location 6](https://readwise.io/open/3005), 2026-10-22)\n- Highlight 3006 ([Location 7](https://readwise.io/open/3006), 2026-10-22)\n- Highlight 3007 ([Location 8](https://readwise.io/open/3007), 2026-10-21)\n- Highlight 3008 ([Location 9](https://readwise.io/open/3008), 2026-09-30)\n- Highlight 3009 ([Location 10](https://readwise.io/open/3009), 2026-05-04)\n- Highlight 3010 ([Location 11](https://readwise.io/open/3010), 2026-05-04)\n- Highlight 3011 ([Location 12](https://readwise.io/open/3011))\n- Highlight 3012 ([Location 13](https://readwise.io/open/3012))\n- Highlight 3013 ([Location 14](https://readwise.io/open/3013), 999-03-04)\n- Highlight 3014 ([Location 15](https://readwise.io/open/3014), 6-03-04)\n- Highlight 3015 ([Location 16](https://readwise.io/open/3015), 275760-09-12)\n- Highlight 3016 ([Location 17](https://readwise.io/open/3016), 271822-04-20)\n- Highlight 3017 ([Location 18](https://readwise.io/open/3017))\n- Highlight 3018 ([Location 19](https://readwise.io/open/3018), 1899-12-31)\n- Highlight 3019 ([Location 20](https://readwise.io/open/3019), 2026-10-22)\n\n<!-- readwise:end v1 last=2026-10-22T18:05:00.001Z hash=48ede8ea -->",
+      "section": "<!-- readwise:start -->\n\n## Highlights\n\n- Highlight 3000 ([Location 1](https://readwise.io/open/3000), 2026-10-22)\n- Highlight 3001 ([Location 2](https://readwise.io/open/3001), 2026-10-22)\n- Highlight 3002 ([Location 3](https://readwise.io/open/3002), 2026-10-22)\n- Highlight 3003 ([Location 4](https://readwise.io/open/3003), 2026-03-07)\n- Highlight 3004 ([Location 5](https://readwise.io/open/3004), 2026-03-07)\n- Highlight 3005 ([Location 6](https://readwise.io/open/3005), 2026-10-31)\n- Highlight 3006 ([Location 7](https://readwise.io/open/3006), 2026-10-31)\n- Highlight 3007 ([Location 8](https://readwise.io/open/3007), 2026-04-04)\n- Highlight 3008 ([Location 9](https://readwise.io/open/3008), 2026-04-04)\n- Highlight 3009 ([Location 10](https://readwise.io/open/3009), 2026-10-22)\n- Highlight 3010 ([Location 11](https://readwise.io/open/3010), 2026-10-22)\n- Highlight 3011 ([Location 12](https://readwise.io/open/3011), 2026-10-21)\n- Highlight 3012 ([Location 13](https://readwise.io/open/3012), 2026-09-30)\n- Highlight 3013 ([Location 14](https://readwise.io/open/3013), 2026-05-04)\n- Highlight 3014 ([Location 15](https://readwise.io/open/3014), 2026-05-04)\n- Highlight 3015 ([Location 16](https://readwise.io/open/3015))\n- Highlight 3016 ([Location 17](https://readwise.io/open/3016))\n- Highlight 3017 ([Location 18](https://readwise.io/open/3017), 999-03-04)\n- Highlight 3018 ([Location 19](https://readwise.io/open/3018), 6-03-04)\n- Highlight 3019 ([Location 20](https://readwise.io/open/3019), 275760-09-12)\n- Highlight 3020 ([Location 21](https://readwise.io/open/3020), 271822-04-20)\n- Highlight 3021 ([Location 22](https://readwise.io/open/3021))\n- Highlight 3022 ([Location 23](https://readwise.io/open/3022), 1899-12-31)\n- Highlight 3023 ([Location 24](https://readwise.io/open/3023), 2026-10-22)\n\n<!-- readwise:end v1 last=2026-10-22T18:05:00.001Z hash=b4d46a3e -->",
       "last": "2026-10-22T18:05:00.001Z",
       "imageUrls": []
     }
@@ -4497,7 +6109,7 @@
           "tags": [],
           "location": 6,
           "location_type": "location",
-          "highlighted_at": "2026-10-22T18:00:00+05:30",
+          "highlighted_at": "2026-11-01T08:30:00Z",
           "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3005"
         },
@@ -4510,7 +6122,7 @@
           "tags": [],
           "location": 7,
           "location_type": "location",
-          "highlighted_at": "2026-10-22T18:00:00.123456Z",
+          "highlighted_at": "2026-11-01T09:30:00Z",
           "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3006"
         },
@@ -4523,8 +6135,8 @@
           "tags": [],
           "location": 8,
           "location_type": "location",
-          "highlighted_at": "2026-10-22",
-          "created_at": "2026-01-01T00:00:00Z",
+          "highlighted_at": "2026-04-05T02:59:59Z",
+          "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3007"
         },
         {
@@ -4536,8 +6148,8 @@
           "tags": [],
           "location": 9,
           "location_type": "location",
-          "highlighted_at": "2026-10",
-          "created_at": "2026-01-01T00:00:00Z",
+          "highlighted_at": "2026-04-05T03:30:00Z",
+          "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3008"
         },
         {
@@ -4549,8 +6161,8 @@
           "tags": [],
           "location": 10,
           "location_type": "location",
-          "highlighted_at": "",
-          "created_at": "2026-05-05T05:05:05Z",
+          "highlighted_at": "2026-10-22T18:00:00+05:30",
+          "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3009"
         },
         {
@@ -4562,8 +6174,8 @@
           "tags": [],
           "location": 11,
           "location_type": "location",
-          "highlighted_at": null,
-          "created_at": "2026-05-05T05:05:05Z",
+          "highlighted_at": "2026-10-22T18:00:00.123456Z",
+          "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3010"
         },
         {
@@ -4575,8 +6187,8 @@
           "tags": [],
           "location": 12,
           "location_type": "location",
-          "highlighted_at": "not a date",
-          "created_at": "2026-05-05T05:05:05Z",
+          "highlighted_at": "2026-10-22",
+          "created_at": "2026-01-01T00:00:00Z",
           "readwise_url": "https://readwise.io/open/3011"
         },
         {
@@ -4588,8 +6200,8 @@
           "tags": [],
           "location": 13,
           "location_type": "location",
-          "highlighted_at": null,
-          "created_at": null,
+          "highlighted_at": "2026-10",
+          "created_at": "2026-01-01T00:00:00Z",
           "readwise_url": "https://readwise.io/open/3012"
         },
         {
@@ -4601,8 +6213,8 @@
           "tags": [],
           "location": 14,
           "location_type": "location",
-          "highlighted_at": "0999-03-04T00:00:00Z",
-          "created_at": "2026-10-22T18:05:00Z",
+          "highlighted_at": "",
+          "created_at": "2026-05-05T05:05:05Z",
           "readwise_url": "https://readwise.io/open/3013"
         },
         {
@@ -4614,8 +6226,8 @@
           "tags": [],
           "location": 15,
           "location_type": "location",
-          "highlighted_at": "-000005-03-04T00:00:00Z",
-          "created_at": "2026-10-22T18:05:00Z",
+          "highlighted_at": null,
+          "created_at": "2026-05-05T05:05:05Z",
           "readwise_url": "https://readwise.io/open/3014"
         },
         {
@@ -4627,8 +6239,8 @@
           "tags": [],
           "location": 16,
           "location_type": "location",
-          "highlighted_at": "+275760-09-13T00:00:00Z",
-          "created_at": "2026-10-22T18:05:00Z",
+          "highlighted_at": "not a date",
+          "created_at": "2026-05-05T05:05:05Z",
           "readwise_url": "https://readwise.io/open/3015"
         },
         {
@@ -4640,8 +6252,8 @@
           "tags": [],
           "location": 17,
           "location_type": "location",
-          "highlighted_at": "-271821-04-20T00:00:00Z",
-          "created_at": "2026-10-22T18:05:00Z",
+          "highlighted_at": null,
+          "created_at": null,
           "readwise_url": "https://readwise.io/open/3016"
         },
         {
@@ -4653,7 +6265,7 @@
           "tags": [],
           "location": 18,
           "location_type": "location",
-          "highlighted_at": "+275760-09-13T00:00:00.001Z",
+          "highlighted_at": "0999-03-04T00:00:00Z",
           "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3017"
         },
@@ -4666,7 +6278,7 @@
           "tags": [],
           "location": 19,
           "location_type": "location",
-          "highlighted_at": "1900-01-01T00:00:00Z",
+          "highlighted_at": "-000005-03-04T00:00:00Z",
           "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3018"
         },
@@ -4679,9 +6291,61 @@
           "tags": [],
           "location": 20,
           "location_type": "location",
-          "highlighted_at": "Thu, 22 Oct 2026 18:00:00 GMT",
+          "highlighted_at": "+275760-09-13T00:00:00Z",
           "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3019"
+        },
+        {
+          "id": 3020,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3020",
+          "note": "",
+          "tags": [],
+          "location": 21,
+          "location_type": "location",
+          "highlighted_at": "-271821-04-20T00:00:00Z",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3020"
+        },
+        {
+          "id": 3021,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3021",
+          "note": "",
+          "tags": [],
+          "location": 22,
+          "location_type": "location",
+          "highlighted_at": "+275760-09-13T00:00:00.001Z",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3021"
+        },
+        {
+          "id": 3022,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3022",
+          "note": "",
+          "tags": [],
+          "location": 23,
+          "location_type": "location",
+          "highlighted_at": "1900-01-01T00:00:00Z",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3022"
+        },
+        {
+          "id": 3023,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3023",
+          "note": "",
+          "tags": [],
+          "location": 24,
+          "location_type": "location",
+          "highlighted_at": "Thu, 22 Oct 2026 18:00:00 GMT",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3023"
         }
       ]
     },
@@ -4700,7 +6364,7 @@
         "source": "kindle",
         "readwise_url": "https://readwise.io/bookreview/119"
       },
-      "section": "<!-- readwise:start -->\n\n## Highlights\n\n- Highlight 3000 ([Location 1](https://readwise.io/open/3000), 2026-10-22)\n- Highlight 3001 ([Location 2](https://readwise.io/open/3001), 2026-10-23)\n- Highlight 3002 ([Location 3](https://readwise.io/open/3002), 2026-10-23)\n- Highlight 3003 ([Location 4](https://readwise.io/open/3003), 2026-03-08)\n- Highlight 3004 ([Location 5](https://readwise.io/open/3004), 2026-03-08)\n- Highlight 3005 ([Location 6](https://readwise.io/open/3005), 2026-10-22)\n- Highlight 3006 ([Location 7](https://readwise.io/open/3006), 2026-10-22)\n- Highlight 3007 ([Location 8](https://readwise.io/open/3007), 2026-10-22)\n- Highlight 3008 ([Location 9](https://readwise.io/open/3008), 2026-10-01)\n- Highlight 3009 ([Location 10](https://readwise.io/open/3009), 2026-05-05)\n- Highlight 3010 ([Location 11](https://readwise.io/open/3010), 2026-05-05)\n- Highlight 3011 ([Location 12](https://readwise.io/open/3011))\n- Highlight 3012 ([Location 13](https://readwise.io/open/3012))\n- Highlight 3013 ([Location 14](https://readwise.io/open/3013), 999-03-04)\n- Highlight 3014 ([Location 15](https://readwise.io/open/3014), 6-03-04)\n- Highlight 3015 ([Location 16](https://readwise.io/open/3015), 275760-09-13)\n- Highlight 3016 ([Location 17](https://readwise.io/open/3016), 271822-04-20)\n- Highlight 3017 ([Location 18](https://readwise.io/open/3017))\n- Highlight 3018 ([Location 19](https://readwise.io/open/3018), 1900-01-01)\n- Highlight 3019 ([Location 20](https://readwise.io/open/3019), 2026-10-22)\n\n<!-- readwise:end v1 last=2026-10-22T18:05:00.001Z hash=0cec7c7e -->",
+      "section": "<!-- readwise:start -->\n\n## Highlights\n\n- Highlight 3000 ([Location 1](https://readwise.io/open/3000), 2026-10-22)\n- Highlight 3001 ([Location 2](https://readwise.io/open/3001), 2026-10-23)\n- Highlight 3002 ([Location 3](https://readwise.io/open/3002), 2026-10-23)\n- Highlight 3003 ([Location 4](https://readwise.io/open/3003), 2026-03-08)\n- Highlight 3004 ([Location 5](https://readwise.io/open/3004), 2026-03-08)\n- Highlight 3005 ([Location 6](https://readwise.io/open/3005), 2026-11-01)\n- Highlight 3006 ([Location 7](https://readwise.io/open/3006), 2026-11-01)\n- Highlight 3007 ([Location 8](https://readwise.io/open/3007), 2026-04-05)\n- Highlight 3008 ([Location 9](https://readwise.io/open/3008), 2026-04-05)\n- Highlight 3009 ([Location 10](https://readwise.io/open/3009), 2026-10-22)\n- Highlight 3010 ([Location 11](https://readwise.io/open/3010), 2026-10-22)\n- Highlight 3011 ([Location 12](https://readwise.io/open/3011), 2026-10-22)\n- Highlight 3012 ([Location 13](https://readwise.io/open/3012), 2026-10-01)\n- Highlight 3013 ([Location 14](https://readwise.io/open/3013), 2026-05-05)\n- Highlight 3014 ([Location 15](https://readwise.io/open/3014), 2026-05-05)\n- Highlight 3015 ([Location 16](https://readwise.io/open/3015))\n- Highlight 3016 ([Location 17](https://readwise.io/open/3016))\n- Highlight 3017 ([Location 18](https://readwise.io/open/3017), 999-03-04)\n- Highlight 3018 ([Location 19](https://readwise.io/open/3018), 6-03-04)\n- Highlight 3019 ([Location 20](https://readwise.io/open/3019), 275760-09-13)\n- Highlight 3020 ([Location 21](https://readwise.io/open/3020), 271822-04-20)\n- Highlight 3021 ([Location 22](https://readwise.io/open/3021))\n- Highlight 3022 ([Location 23](https://readwise.io/open/3022), 1900-01-01)\n- Highlight 3023 ([Location 24](https://readwise.io/open/3023), 2026-10-22)\n\n<!-- readwise:end v1 last=2026-10-22T18:05:00.001Z hash=bc7b5eba -->",
       "last": "2026-10-22T18:05:00.001Z",
       "imageUrls": []
     }
@@ -4796,7 +6460,7 @@
           "tags": [],
           "location": 6,
           "location_type": "location",
-          "highlighted_at": "2026-10-22T18:00:00+05:30",
+          "highlighted_at": "2026-11-01T08:30:00Z",
           "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3005"
         },
@@ -4809,7 +6473,7 @@
           "tags": [],
           "location": 7,
           "location_type": "location",
-          "highlighted_at": "2026-10-22T18:00:00.123456Z",
+          "highlighted_at": "2026-11-01T09:30:00Z",
           "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3006"
         },
@@ -4822,8 +6486,8 @@
           "tags": [],
           "location": 8,
           "location_type": "location",
-          "highlighted_at": "2026-10-22",
-          "created_at": "2026-01-01T00:00:00Z",
+          "highlighted_at": "2026-04-05T02:59:59Z",
+          "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3007"
         },
         {
@@ -4835,8 +6499,8 @@
           "tags": [],
           "location": 9,
           "location_type": "location",
-          "highlighted_at": "2026-10",
-          "created_at": "2026-01-01T00:00:00Z",
+          "highlighted_at": "2026-04-05T03:30:00Z",
+          "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3008"
         },
         {
@@ -4848,8 +6512,8 @@
           "tags": [],
           "location": 10,
           "location_type": "location",
-          "highlighted_at": "",
-          "created_at": "2026-05-05T05:05:05Z",
+          "highlighted_at": "2026-10-22T18:00:00+05:30",
+          "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3009"
         },
         {
@@ -4861,8 +6525,8 @@
           "tags": [],
           "location": 11,
           "location_type": "location",
-          "highlighted_at": null,
-          "created_at": "2026-05-05T05:05:05Z",
+          "highlighted_at": "2026-10-22T18:00:00.123456Z",
+          "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3010"
         },
         {
@@ -4874,8 +6538,8 @@
           "tags": [],
           "location": 12,
           "location_type": "location",
-          "highlighted_at": "not a date",
-          "created_at": "2026-05-05T05:05:05Z",
+          "highlighted_at": "2026-10-22",
+          "created_at": "2026-01-01T00:00:00Z",
           "readwise_url": "https://readwise.io/open/3011"
         },
         {
@@ -4887,8 +6551,8 @@
           "tags": [],
           "location": 13,
           "location_type": "location",
-          "highlighted_at": null,
-          "created_at": null,
+          "highlighted_at": "2026-10",
+          "created_at": "2026-01-01T00:00:00Z",
           "readwise_url": "https://readwise.io/open/3012"
         },
         {
@@ -4900,8 +6564,8 @@
           "tags": [],
           "location": 14,
           "location_type": "location",
-          "highlighted_at": "0999-03-04T00:00:00Z",
-          "created_at": "2026-10-22T18:05:00Z",
+          "highlighted_at": "",
+          "created_at": "2026-05-05T05:05:05Z",
           "readwise_url": "https://readwise.io/open/3013"
         },
         {
@@ -4913,8 +6577,8 @@
           "tags": [],
           "location": 15,
           "location_type": "location",
-          "highlighted_at": "-000005-03-04T00:00:00Z",
-          "created_at": "2026-10-22T18:05:00Z",
+          "highlighted_at": null,
+          "created_at": "2026-05-05T05:05:05Z",
           "readwise_url": "https://readwise.io/open/3014"
         },
         {
@@ -4926,8 +6590,8 @@
           "tags": [],
           "location": 16,
           "location_type": "location",
-          "highlighted_at": "+275760-09-13T00:00:00Z",
-          "created_at": "2026-10-22T18:05:00Z",
+          "highlighted_at": "not a date",
+          "created_at": "2026-05-05T05:05:05Z",
           "readwise_url": "https://readwise.io/open/3015"
         },
         {
@@ -4939,8 +6603,8 @@
           "tags": [],
           "location": 17,
           "location_type": "location",
-          "highlighted_at": "-271821-04-20T00:00:00Z",
-          "created_at": "2026-10-22T18:05:00Z",
+          "highlighted_at": null,
+          "created_at": null,
           "readwise_url": "https://readwise.io/open/3016"
         },
         {
@@ -4952,7 +6616,7 @@
           "tags": [],
           "location": 18,
           "location_type": "location",
-          "highlighted_at": "+275760-09-13T00:00:00.001Z",
+          "highlighted_at": "0999-03-04T00:00:00Z",
           "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3017"
         },
@@ -4965,7 +6629,7 @@
           "tags": [],
           "location": 19,
           "location_type": "location",
-          "highlighted_at": "1900-01-01T00:00:00Z",
+          "highlighted_at": "-000005-03-04T00:00:00Z",
           "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3018"
         },
@@ -4978,9 +6642,61 @@
           "tags": [],
           "location": 20,
           "location_type": "location",
-          "highlighted_at": "Thu, 22 Oct 2026 18:00:00 GMT",
+          "highlighted_at": "+275760-09-13T00:00:00Z",
           "created_at": "2026-10-22T18:05:00Z",
           "readwise_url": "https://readwise.io/open/3019"
+        },
+        {
+          "id": 3020,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3020",
+          "note": "",
+          "tags": [],
+          "location": 21,
+          "location_type": "location",
+          "highlighted_at": "-271821-04-20T00:00:00Z",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3020"
+        },
+        {
+          "id": 3021,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3021",
+          "note": "",
+          "tags": [],
+          "location": 22,
+          "location_type": "location",
+          "highlighted_at": "+275760-09-13T00:00:00.001Z",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3021"
+        },
+        {
+          "id": 3022,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3022",
+          "note": "",
+          "tags": [],
+          "location": 23,
+          "location_type": "location",
+          "highlighted_at": "1900-01-01T00:00:00Z",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3022"
+        },
+        {
+          "id": 3023,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3023",
+          "note": "",
+          "tags": [],
+          "location": 24,
+          "location_type": "location",
+          "highlighted_at": "Thu, 22 Oct 2026 18:00:00 GMT",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3023"
         }
       ]
     },
@@ -4999,7 +6715,358 @@
         "source": "kindle",
         "readwise_url": "https://readwise.io/bookreview/119"
       },
-      "section": "<!-- readwise:start -->\n\n## Highlights\n\n- Highlight 3000 ([Location 1](https://readwise.io/open/3000), 2026-10-23)\n- Highlight 3001 ([Location 2](https://readwise.io/open/3001), 2026-10-23)\n- Highlight 3002 ([Location 3](https://readwise.io/open/3002), 2026-10-23)\n- Highlight 3003 ([Location 4](https://readwise.io/open/3003), 2026-03-08)\n- Highlight 3004 ([Location 5](https://readwise.io/open/3004), 2026-03-08)\n- Highlight 3005 ([Location 6](https://readwise.io/open/3005), 2026-10-22)\n- Highlight 3006 ([Location 7](https://readwise.io/open/3006), 2026-10-23)\n- Highlight 3007 ([Location 8](https://readwise.io/open/3007), 2026-10-22)\n- Highlight 3008 ([Location 9](https://readwise.io/open/3008), 2026-10-01)\n- Highlight 3009 ([Location 10](https://readwise.io/open/3009), 2026-05-05)\n- Highlight 3010 ([Location 11](https://readwise.io/open/3010), 2026-05-05)\n- Highlight 3011 ([Location 12](https://readwise.io/open/3011))\n- Highlight 3012 ([Location 13](https://readwise.io/open/3012))\n- Highlight 3013 ([Location 14](https://readwise.io/open/3013), 999-03-04)\n- Highlight 3014 ([Location 15](https://readwise.io/open/3014), 6-03-04)\n- Highlight 3015 ([Location 16](https://readwise.io/open/3015), 275760-09-13)\n- Highlight 3016 ([Location 17](https://readwise.io/open/3016), 271822-04-20)\n- Highlight 3017 ([Location 18](https://readwise.io/open/3017))\n- Highlight 3018 ([Location 19](https://readwise.io/open/3018), 1900-01-01)\n- Highlight 3019 ([Location 20](https://readwise.io/open/3019), 2026-10-23)\n\n<!-- readwise:end v1 last=2026-10-22T18:05:00.001Z hash=32e3efd3 -->",
+      "section": "<!-- readwise:start -->\n\n## Highlights\n\n- Highlight 3000 ([Location 1](https://readwise.io/open/3000), 2026-10-23)\n- Highlight 3001 ([Location 2](https://readwise.io/open/3001), 2026-10-23)\n- Highlight 3002 ([Location 3](https://readwise.io/open/3002), 2026-10-23)\n- Highlight 3003 ([Location 4](https://readwise.io/open/3003), 2026-03-08)\n- Highlight 3004 ([Location 5](https://readwise.io/open/3004), 2026-03-08)\n- Highlight 3005 ([Location 6](https://readwise.io/open/3005), 2026-11-01)\n- Highlight 3006 ([Location 7](https://readwise.io/open/3006), 2026-11-01)\n- Highlight 3007 ([Location 8](https://readwise.io/open/3007), 2026-04-05)\n- Highlight 3008 ([Location 9](https://readwise.io/open/3008), 2026-04-05)\n- Highlight 3009 ([Location 10](https://readwise.io/open/3009), 2026-10-22)\n- Highlight 3010 ([Location 11](https://readwise.io/open/3010), 2026-10-23)\n- Highlight 3011 ([Location 12](https://readwise.io/open/3011), 2026-10-22)\n- Highlight 3012 ([Location 13](https://readwise.io/open/3012), 2026-10-01)\n- Highlight 3013 ([Location 14](https://readwise.io/open/3013), 2026-05-05)\n- Highlight 3014 ([Location 15](https://readwise.io/open/3014), 2026-05-05)\n- Highlight 3015 ([Location 16](https://readwise.io/open/3015))\n- Highlight 3016 ([Location 17](https://readwise.io/open/3016))\n- Highlight 3017 ([Location 18](https://readwise.io/open/3017), 999-03-04)\n- Highlight 3018 ([Location 19](https://readwise.io/open/3018), 6-03-04)\n- Highlight 3019 ([Location 20](https://readwise.io/open/3019), 275760-09-13)\n- Highlight 3020 ([Location 21](https://readwise.io/open/3020), 271822-04-20)\n- Highlight 3021 ([Location 22](https://readwise.io/open/3021))\n- Highlight 3022 ([Location 23](https://readwise.io/open/3022), 1900-01-01)\n- Highlight 3023 ([Location 24](https://readwise.io/open/3023), 2026-10-23)\n\n<!-- readwise:end v1 last=2026-10-22T18:05:00.001Z hash=9f96f92f -->",
+      "last": "2026-10-22T18:05:00.001Z",
+      "imageUrls": []
+    }
+  },
+  {
+    "name": "dates in America/Santiago",
+    "book": {
+      "user_book_id": 119,
+      "is_deleted": false,
+      "title": "Book 119",
+      "readable_title": "Book 119",
+      "author": "Cal Newport",
+      "category": "books",
+      "source": "kindle",
+      "source_url": null,
+      "readwise_url": "https://readwise.io/bookreview/119",
+      "cover_image_url": null,
+      "book_tags": [],
+      "document_note": "",
+      "summary": "",
+      "highlights": [
+        {
+          "id": 3000,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3000",
+          "note": "",
+          "tags": [],
+          "location": 1,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00Z",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3000"
+        },
+        {
+          "id": 3001,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3001",
+          "note": "",
+          "tags": [],
+          "location": 2,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T23:59:59.999Z",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3001"
+        },
+        {
+          "id": 3002,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3002",
+          "note": "",
+          "tags": [],
+          "location": 3,
+          "location_type": "location",
+          "highlighted_at": "2026-10-23T00:00:00.000Z",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3002"
+        },
+        {
+          "id": 3003,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3003",
+          "note": "",
+          "tags": [],
+          "location": 4,
+          "location_type": "location",
+          "highlighted_at": "2026-03-08T09:59:59Z",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3003"
+        },
+        {
+          "id": 3004,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3004",
+          "note": "",
+          "tags": [],
+          "location": 5,
+          "location_type": "location",
+          "highlighted_at": "2026-03-08T10:00:00Z",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3004"
+        },
+        {
+          "id": 3005,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3005",
+          "note": "",
+          "tags": [],
+          "location": 6,
+          "location_type": "location",
+          "highlighted_at": "2026-11-01T08:30:00Z",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3005"
+        },
+        {
+          "id": 3006,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3006",
+          "note": "",
+          "tags": [],
+          "location": 7,
+          "location_type": "location",
+          "highlighted_at": "2026-11-01T09:30:00Z",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3006"
+        },
+        {
+          "id": 3007,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3007",
+          "note": "",
+          "tags": [],
+          "location": 8,
+          "location_type": "location",
+          "highlighted_at": "2026-04-05T02:59:59Z",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3007"
+        },
+        {
+          "id": 3008,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3008",
+          "note": "",
+          "tags": [],
+          "location": 9,
+          "location_type": "location",
+          "highlighted_at": "2026-04-05T03:30:00Z",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3008"
+        },
+        {
+          "id": 3009,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3009",
+          "note": "",
+          "tags": [],
+          "location": 10,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00+05:30",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3009"
+        },
+        {
+          "id": 3010,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3010",
+          "note": "",
+          "tags": [],
+          "location": 11,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22T18:00:00.123456Z",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3010"
+        },
+        {
+          "id": 3011,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3011",
+          "note": "",
+          "tags": [],
+          "location": 12,
+          "location_type": "location",
+          "highlighted_at": "2026-10-22",
+          "created_at": "2026-01-01T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/3011"
+        },
+        {
+          "id": 3012,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3012",
+          "note": "",
+          "tags": [],
+          "location": 13,
+          "location_type": "location",
+          "highlighted_at": "2026-10",
+          "created_at": "2026-01-01T00:00:00Z",
+          "readwise_url": "https://readwise.io/open/3012"
+        },
+        {
+          "id": 3013,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3013",
+          "note": "",
+          "tags": [],
+          "location": 14,
+          "location_type": "location",
+          "highlighted_at": "",
+          "created_at": "2026-05-05T05:05:05Z",
+          "readwise_url": "https://readwise.io/open/3013"
+        },
+        {
+          "id": 3014,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3014",
+          "note": "",
+          "tags": [],
+          "location": 15,
+          "location_type": "location",
+          "highlighted_at": null,
+          "created_at": "2026-05-05T05:05:05Z",
+          "readwise_url": "https://readwise.io/open/3014"
+        },
+        {
+          "id": 3015,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3015",
+          "note": "",
+          "tags": [],
+          "location": 16,
+          "location_type": "location",
+          "highlighted_at": "not a date",
+          "created_at": "2026-05-05T05:05:05Z",
+          "readwise_url": "https://readwise.io/open/3015"
+        },
+        {
+          "id": 3016,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3016",
+          "note": "",
+          "tags": [],
+          "location": 17,
+          "location_type": "location",
+          "highlighted_at": null,
+          "created_at": null,
+          "readwise_url": "https://readwise.io/open/3016"
+        },
+        {
+          "id": 3017,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3017",
+          "note": "",
+          "tags": [],
+          "location": 18,
+          "location_type": "location",
+          "highlighted_at": "0999-03-04T00:00:00Z",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3017"
+        },
+        {
+          "id": 3018,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3018",
+          "note": "",
+          "tags": [],
+          "location": 19,
+          "location_type": "location",
+          "highlighted_at": "-000005-03-04T00:00:00Z",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3018"
+        },
+        {
+          "id": 3019,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3019",
+          "note": "",
+          "tags": [],
+          "location": 20,
+          "location_type": "location",
+          "highlighted_at": "+275760-09-13T00:00:00Z",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3019"
+        },
+        {
+          "id": 3020,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3020",
+          "note": "",
+          "tags": [],
+          "location": 21,
+          "location_type": "location",
+          "highlighted_at": "-271821-04-20T00:00:00Z",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3020"
+        },
+        {
+          "id": 3021,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3021",
+          "note": "",
+          "tags": [],
+          "location": 22,
+          "location_type": "location",
+          "highlighted_at": "+275760-09-13T00:00:00.001Z",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3021"
+        },
+        {
+          "id": 3022,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3022",
+          "note": "",
+          "tags": [],
+          "location": 23,
+          "location_type": "location",
+          "highlighted_at": "1900-01-01T00:00:00Z",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3022"
+        },
+        {
+          "id": 3023,
+          "is_deleted": false,
+          "is_discard": false,
+          "text": "Highlight 3023",
+          "note": "",
+          "tags": [],
+          "location": 24,
+          "location_type": "location",
+          "highlighted_at": "Thu, 22 Oct 2026 18:00:00 GMT",
+          "created_at": "2026-10-22T18:05:00Z",
+          "readwise_url": "https://readwise.io/open/3023"
+        }
+      ]
+    },
+    "options": {
+      "root": "Readwise",
+      "folderLayout": "by-category",
+      "categories": {},
+      "timeZone": "America/Santiago"
+    },
+    "out": {
+      "folder": "Readwise/Books",
+      "title": "Book 119",
+      "frontmatter": {
+        "author": "Cal Newport",
+        "category": "books",
+        "source": "kindle",
+        "readwise_url": "https://readwise.io/bookreview/119"
+      },
+      "section": "<!-- readwise:start -->\n\n## Highlights\n\n- Highlight 3000 ([Location 1](https://readwise.io/open/3000), 2026-10-22)\n- Highlight 3001 ([Location 2](https://readwise.io/open/3001), 2026-10-22)\n- Highlight 3002 ([Location 3](https://readwise.io/open/3002), 2026-10-22)\n- Highlight 3003 ([Location 4](https://readwise.io/open/3003), 2026-03-08)\n- Highlight 3004 ([Location 5](https://readwise.io/open/3004), 2026-03-08)\n- Highlight 3005 ([Location 6](https://readwise.io/open/3005), 2026-11-01)\n- Highlight 3006 ([Location 7](https://readwise.io/open/3006), 2026-11-01)\n- Highlight 3007 ([Location 8](https://readwise.io/open/3007), 2026-04-04)\n- Highlight 3008 ([Location 9](https://readwise.io/open/3008), 2026-04-04)\n- Highlight 3009 ([Location 10](https://readwise.io/open/3009), 2026-10-22)\n- Highlight 3010 ([Location 11](https://readwise.io/open/3010), 2026-10-22)\n- Highlight 3011 ([Location 12](https://readwise.io/open/3011), 2026-10-21)\n- Highlight 3012 ([Location 13](https://readwise.io/open/3012), 2026-09-30)\n- Highlight 3013 ([Location 14](https://readwise.io/open/3013), 2026-05-05)\n- Highlight 3014 ([Location 15](https://readwise.io/open/3014), 2026-05-05)\n- Highlight 3015 ([Location 16](https://readwise.io/open/3015))\n- Highlight 3016 ([Location 17](https://readwise.io/open/3016))\n- Highlight 3017 ([Location 18](https://readwise.io/open/3017), 999-03-03)\n- Highlight 3018 ([Location 19](https://readwise.io/open/3018), 6-03-03)\n- Highlight 3019 ([Location 20](https://readwise.io/open/3019), 275760-09-12)\n- Highlight 3020 ([Location 21](https://readwise.io/open/3020), 271822-04-19)\n- Highlight 3021 ([Location 22](https://readwise.io/open/3021))\n- Highlight 3022 ([Location 23](https://readwise.io/open/3022), 1899-12-31)\n- Highlight 3023 ([Location 24](https://readwise.io/open/3023), 2026-10-22)\n\n<!-- readwise:end v1 last=2026-10-22T18:05:00.001Z hash=0c15d29e -->",
       "last": "2026-10-22T18:05:00.001Z",
       "imageUrls": []
     }

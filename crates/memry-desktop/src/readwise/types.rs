@@ -114,8 +114,10 @@ pub struct ReaderDocument {
     pub source: Option<String>,
     pub category: Option<String>,
     pub location: Option<String>,
-    /// An object keyed by tag name, as Reader sends it, in the order of the payload.
-    pub tags: Option<serde_json::Map<String, serde_json::Value>>,
+    /// An object keyed by tag name, as Reader sends it, in the order of the payload. Any JSON
+    /// is kept: `planReaderNote` reads it with `Object.entries`, so the planner decides which
+    /// shapes plan and which fail as TypeScript does.
+    pub tags: Option<serde_json::Value>,
     pub site_name: Option<String>,
     /// Kept as the payload's number, so frontmatter writes it unchanged.
     pub word_count: Option<serde_json::Number>,

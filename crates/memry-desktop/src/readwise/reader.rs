@@ -3,6 +3,9 @@
 
 use std::collections::HashSet;
 
+use serde_json::Value;
+
+use super::PlanError;
 use super::highlights::EPOCH;
 use super::plan_note::{NotePlan, folder_under, section_head, set_text};
 use super::section::seal_section;
@@ -80,45 +83,70 @@ fn array_index(key: &str) -> Option<u32> {
         .filter(|n| canonical && *n < u32::MAX)
 }
 
-/// `Object.entries(document.tags ?? {}).map(([key, tag]) => tag.name || key)`.
-fn tag_names(tags: Option<&serde_json::Map<String, serde_json::Value>>) -> Vec<String> {
-    let Some(tags) = tags else {
-        return Vec::new();
-    };
-    let mut indexed: Vec<(u32, &String, &serde_json::Value)> = Vec::new();
-    let mut named: Vec<(&String, &serde_json::Value)> = Vec::new();
-    for (key, tag) in tags {
-        match array_index(key) {
-            Some(index) => indexed.push((index, key, tag)),
-            None => named.push((key, tag)),
+/// `Object.entries(document.tags ?? {}).map(([key, tag]) => tag.name || key)`, then
+/// `bookTagNames`'s `name.trim()`, for every JSON shape: an array or a string has index keys, a
+/// number or boolean no entries, and a tag that is not an object no `name`.
+fn tag_names(tags: Option<&Value>) -> Result<Vec<String>, PlanError> {
+    let entries: Vec<(String, Option<&Value>)> = match tags {
+        Some(Value::Object(tags)) => {
+            let mut indexed: Vec<(u32, &String, &Value)> = Vec::new();
+            let mut named: Vec<(&String, &Value)> = Vec::new();
+            for (key, tag) in tags {
+                match array_index(key) {
+                    Some(index) => indexed.push((index, key, tag)),
+                    None => named.push((key, tag)),
+                }
+            }
+            indexed.sort_by_key(|(index, ..)| *index);
+            indexed
+                .into_iter()
+                .map(|(_, key, tag)| (key, tag))
+                .chain(named)
+                .map(|(key, tag)| (key.clone(), Some(tag)))
+                .collect()
         }
-    }
-    indexed.sort_by_key(|(index, ..)| *index);
-    indexed
+        Some(Value::Array(tags)) => tags
+            .iter()
+            .enumerate()
+            .map(|(index, tag)| (index.to_string(), Some(tag)))
+            .collect(),
+        // One entry per UTF-16 unit, each a one-unit string with no `name`.
+        Some(Value::String(text)) => (0..text.encode_utf16().count())
+            .map(|index| (index.to_string(), None))
+            .collect(),
+        _ => Vec::new(),
+    };
+    entries
         .into_iter()
-        .map(|(_, key, tag)| (key, tag))
-        .chain(named)
-        .map(
-            |(key, tag)| match tag.get("name").and_then(|n| n.as_str()) {
-                Some(name) if !name.is_empty() => name.to_string(),
-                _ => key.clone(),
-            },
-        )
+        .map(|(key, tag)| {
+            let name = match tag {
+                Some(Value::Null) => return Err(PlanError::ReaderTag),
+                Some(Value::Object(tag)) => tag.get("name"),
+                _ => None,
+            };
+            match name {
+                Some(Value::String(name)) if !name.is_empty() => Ok(name.clone()),
+                None | Some(Value::Null | Value::Bool(false) | Value::String(_)) => Ok(key),
+                Some(Value::Number(n)) if n.as_f64() == Some(0.0) => Ok(key),
+                Some(_) => Err(PlanError::ReaderTag),
+            }
+        })
         .collect()
 }
 
 /// `planReaderNote`: `None` for a document that never becomes a note: a child (`parent_id`
 /// set), a `feed` item, or one whose highlights already live in a v2 book's note. Frontmatter
-/// holds only fields that stay put.
+/// holds only fields that stay put. `Err(PlanError::ReaderTag)` where TypeScript throws on a
+/// malformed tag.
 pub fn plan_reader_note(
     document: &ReaderDocument,
     options: &PlanReaderNoteOptions,
-) -> Option<ReaderNotePlan> {
+) -> Result<Option<ReaderNotePlan>, PlanError> {
     if document.parent_id.as_deref().is_some_and(|p| !p.is_empty())
         || document.location.as_deref() == Some("feed")
         || options.book_external_ids.contains(&document.id)
     {
-        return None;
+        return Ok(None);
     }
 
     let cover_url = document.image_url.as_deref().filter(|url| !url.is_empty());
@@ -142,7 +170,7 @@ pub fn plan_reader_note(
         "readwise_url",
         FrontmatterValue::Text(reader_document_url(document)),
     ));
-    let names = tag_names(document.tags.as_ref());
+    let names = tag_names(document.tags.as_ref())?;
     let tags = book_tag_names(names.iter().map(String::as_str));
     if !tags.is_empty() {
         frontmatter.push(("tags", FrontmatterValue::List(tags)));
@@ -170,7 +198,7 @@ pub fn plan_reader_note(
 
     let title = js_trim(document.title.as_deref().unwrap_or_default());
     let full_text = js_trim(options.full_text.unwrap_or_default());
-    Some(ReaderNotePlan {
+    Ok(Some(ReaderNotePlan {
         note: NotePlan {
             folder: folder_under(options.root, options.folder_layout, READER_FOLDER),
             title: if title.is_empty() { "Untitled" } else { title }.to_string(),
@@ -180,5 +208,5 @@ pub fn plan_reader_note(
             image_urls: cover_url.map(str::to_string).into_iter().collect(),
         },
         full_text: (!full_text.is_empty()).then(|| full_text.to_string()),
-    })
+    }))
 }

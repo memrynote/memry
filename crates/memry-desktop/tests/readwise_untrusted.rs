@@ -8,18 +8,23 @@ use memry_desktop::readwise::journal::{
 };
 use memry_desktop::readwise::plan_append::{PlanAppendOptions, plan_append};
 use memry_desktop::readwise::plan_note::{BookPlan, PlanNoteOptions, plan_note};
-use memry_desktop::readwise::planner_steps;
+use memry_desktop::readwise::reader::{PlanReaderNoteOptions, plan_reader_note};
 use memry_desktop::readwise::section::{
     SECTION_START, SectionProblem, SectionRead, hash_section_body, read_section, seal_section,
 };
 use memry_desktop::readwise::text::escape_paragraphs;
+use memry_desktop::readwise::types::FrontmatterValue;
 use memry_desktop::readwise::types::{
-    CategorySwitches, FolderLayout, ReadwiseBook, ReadwiseHighlight, SavedImages,
+    CategorySwitches, FolderLayout, PublishedDate, ReaderDocument, ReadwiseBook, ReadwiseHighlight,
+    ReadwiseTag, SavedImages,
 };
+use memry_desktop::readwise::{PlanError, planner_steps};
 use memry_test_kit::{
     assert_output_bounded, assert_steps_at_most, on_small_stack, output_bound, proptest_config,
 };
 use proptest::prelude::*;
+use serde_json::json;
+use std::collections::HashSet;
 
 const END: &str = "<!-- readwise:end v1 last=2026-10-22T18:05:00.001Z hash=0badf00d -->";
 
@@ -160,12 +165,154 @@ fn marker_line() -> impl Strategy<Value = String> {
     ]
 }
 
+/// Text an untrusted payload field could hold to break out of a `[label](url)` link: line
+/// breaks, link syntax, a forged end marker, a remote image, a wiki link, a tag, a frontmatter
+/// fence.
+fn hostile() -> impl Strategy<Value = String> {
+    let piece = prop_oneof![
+        Just("\n".to_string()),
+        Just("\r\n".to_string()),
+        Just("\u{2028}".to_string()),
+        Just(")".to_string()),
+        Just("(".to_string()),
+        Just("<!--".to_string()),
+        Just(" readwise:end v1 last=x hash=0 -->".to_string()),
+        Just(format!("\n{SECTION_START}\n")),
+        Just("](http://evil.example/x)".to_string()),
+        Just("![](https://evil.example/p.png)".to_string()),
+        Just("[[Wiki]]".to_string()),
+        Just(" #tag".to_string()),
+        Just("\n---\ntitle: x\n---\n".to_string()),
+        Just("https://".to_string()),
+        Just("http://ok.example/a".to_string()),
+        "[ -~\u{a0}\t]{0,6}",
+    ];
+    prop::collection::vec(piece, 0..8).prop_map(|pieces| pieces.concat())
+}
+
+/// A book of one highlight whose Readwise link and location type are untrusted.
+fn hostile_book(readwise_url: String, location_type: String) -> ReadwiseBook {
+    ReadwiseBook {
+        user_book_id: 1,
+        highlights: Some(vec![ReadwiseHighlight {
+            readwise_url: Some(readwise_url),
+            location_type: Some(location_type),
+            ..highlight(7, "a highlight".into())
+        }]),
+        ..Default::default()
+    }
+}
+
+/// TypeScript's `HEADING_TAGS[name]` and `name in HEADING_TAGS` read `Object.prototype`, so a
+/// tag named `constructor` or `__proto__` is a heading marker to it. Here they are ordinary tags
+/// (module docs, Departures).
+#[test]
+fn prototype_named_tags_are_ordinary_tags() {
+    let mut h = highlight(1, "text".into());
+    h.tags = Some(
+        ["constructor", "__proto__"]
+            .map(|name| ReadwiseTag { name: name.into() })
+            .to_vec(),
+    );
+    let book = ReadwiseBook {
+        user_book_id: 1,
+        highlights: Some(vec![h]),
+        ..Default::default()
+    };
+    let section = plan(&book);
+    let line = section
+        .lines()
+        .find(|line| line.starts_with("- text "))
+        .expect("a list item, not a heading");
+    assert!(line.ends_with(" #constructor #proto__"), "{line}");
+}
+
+/// A decimal `serde_json`'s fast float parser rounds one ULP off: production parsing must be
+/// correctly rounded, as `JSON.parse` is (`float_roundtrip` in `[dependencies]`).
+#[test]
+fn payload_numbers_parse_correctly_rounded() {
+    const HARD: &str = "8.36705911238380268e-6";
+    let exact = HARD.parse::<f64>().unwrap().to_bits();
+    let h: ReadwiseHighlight =
+        serde_json::from_str(&format!(r#"{{"id":1,"location":{HARD}}}"#)).unwrap();
+    assert_eq!(h.location.map(f64::to_bits), Some(exact));
+    let d: ReaderDocument =
+        serde_json::from_str(&format!(r#"{{"id":"d","published_date":{HARD}}}"#)).unwrap();
+    assert!(matches!(d.published_date, Some(PublishedDate::Number(n)) if n.to_bits() == exact));
+}
+
+/// Reader tag shapes against what `planReaderNote` does with each (measured in Node on the
+/// frozen TypeScript): a `null` tag or a truthy non-string name throws `TypeError`, every other
+/// shape plans. `Ok(None)` is a note without `tags`.
+#[test]
+fn reader_tag_shapes_plan_or_fail_as_typescript_does() {
+    let cases = [
+        (json!({ "k": null }), Err(PlanError::ReaderTag)),
+        (json!({ "k": { "name": 5 } }), Err(PlanError::ReaderTag)),
+        (json!({ "k": { "name": true } }), Err(PlanError::ReaderTag)),
+        (json!({ "k": { "name": {} } }), Err(PlanError::ReaderTag)),
+        (json!({ "k": { "name": ["a"] } }), Err(PlanError::ReaderTag)),
+        (json!(["x", null]), Err(PlanError::ReaderTag)),
+        (json!({ "k": { "name": 0 } }), Ok(Some(vec!["k"]))),
+        (json!({ "k": { "name": false } }), Ok(Some(vec!["k"]))),
+        (json!({ "k": { "name": null } }), Ok(Some(vec!["k"]))),
+        (json!({ "k": "str" }), Ok(Some(vec!["k"]))),
+        (json!({ "k": 5 }), Ok(Some(vec!["k"]))),
+        (json!(["x", { "name": "y" }]), Ok(Some(vec!["0", "y"]))),
+        (json!("ab"), Ok(Some(vec!["0", "1"]))),
+        (json!([]), Ok(None)),
+        (json!(5), Ok(None)),
+        (json!(true), Ok(None)),
+        (json!(null), Ok(None)),
+    ];
+    let images = SavedImages::new();
+    let external = HashSet::new();
+    let options = PlanReaderNoteOptions {
+        root: "Readwise",
+        folder_layout: FolderLayout::Flat,
+        images: &images,
+        full_text: None,
+        book_external_ids: &external,
+    };
+    for (tags, expected) in cases {
+        let document: ReaderDocument =
+            serde_json::from_value(json!({ "id": "d", "tags": tags })).expect("document parses");
+        let planned = plan_reader_note(&document, &options).map(|plan| {
+            let plan = plan.expect("a note");
+            plan.note
+                .frontmatter
+                .into_iter()
+                .find(|(key, _)| *key == "tags")
+                .map(|(_, value)| match value {
+                    FrontmatterValue::List(names) => names,
+                    other => panic!("tags as {other:?}"),
+                })
+        });
+        let expected = expected.map(|names| {
+            names.map(|names: Vec<&str>| names.into_iter().map(String::from).collect())
+        });
+        assert_eq!(planned, expected, "tags {tags}");
+    }
+}
+
 fn exact(line: &str, marker: &str) -> bool {
     line.trim_matches(|c: char| c.is_whitespace() || c == '\u{feff}') == marker
 }
 
 proptest! {
     #![proptest_config(proptest_config(256))]
+
+    /// An untrusted `readwise_url` or `location_type` never breaks the section: it reads back
+    /// untouched, and the highlight's link is the only link in it.
+    #[test]
+    fn untrusted_link_fields_stay_inside_their_link(url in hostile(), location_type in hostile()) {
+        let section = plan(&hostile_book(url, location_type));
+        prop_assert!(
+            matches!(read_section(&section), SectionRead::Found { untouched: true, .. }),
+            "{section}"
+        );
+        prop_assert_eq!(section.matches("](http").count(), 1, "{}", section);
+    }
 
     /// The damaged-marker rules against a model that only counts marker lines.
     #[test]

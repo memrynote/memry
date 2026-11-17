@@ -9,6 +9,23 @@
 //! ordering of text run over UTF-16 code units as in JS. A Readwise payload with a lone
 //! surrogate cannot reach here (`serde_json` refuses it), so no JS string the planners see is
 //! lost.
+//!
+//! Time zones: Electron's `Intl.DateTimeFormat` reads the IANA data its ICU ships, this build
+//! the data compiled into `chrono-tz`. The vectors hold the two equal for the zones they cover;
+//! a zone whose rules change in a tzdb release one side has and the other lacks can put a
+//! highlight's day one apart until both update.
+//!
+//! Departures from the TypeScript, on purpose. Each changes only input TypeScript mishandles,
+//! so no vector changes; a vault that Electron and this build both write can see a section
+//! rewritten between the two forms, which ends when Electron is retired.
+//! - A highlight tag named `constructor` or `__proto__` is an ordinary tag. TypeScript looks
+//!   tags up in a plain object (`HEADING_TAGS`), whose prototype makes both heading markers.
+//! - `readwise_url` and `location_type` reach a `[label](url)` link. TypeScript writes them
+//!   raw, so a payload can end the link or the line and add a remote image, a wiki link, a tag,
+//!   a second end marker or a frontmatter-shaped block. Here a URL that is not `http(s)://` or
+//!   holds whitespace, `<`, `>`, `(` or `)` becomes `https://readwise.io/open/{id}`, and a
+//!   location type is one line, without `[]()`, escaped as text (`highlights::highlight_url`,
+//!   `location_label`).
 
 pub mod highlights;
 pub mod images;
@@ -28,6 +45,10 @@ use std::cell::Cell;
 pub enum PlanError {
     #[error("RangeError: Invalid time value")]
     InvalidTime,
+    /// `planReaderNote` throws `TypeError` on a `null` Reader tag, or a tag name that is truthy
+    /// and not a string.
+    #[error("TypeError: a Reader tag is null or has a name that is not a string")]
+    ReaderTag,
 }
 
 thread_local! {

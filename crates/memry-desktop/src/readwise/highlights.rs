@@ -16,11 +16,17 @@ use crate::web::extract::utils::js::{is_js_whitespace, trim as js_trim};
 
 pub const EPOCH: &str = "1970-01-01T00:00:00.000Z";
 
-/// `highlightUrl`.
+/// `highlightUrl`, which writes `readwise_url` raw into a `[label](url)` link. Here a URL
+/// that could end the link or the line (not `http(s)://`, or holding whitespace, `<`, `>`, `(`
+/// or `)`) falls back to the highlight's own Readwise link (module docs, Departures).
 pub fn highlight_url(highlight: &ReadwiseHighlight) -> String {
-    match highlight.readwise_url.as_deref() {
-        Some(url) if !url.is_empty() => url.to_string(),
-        _ => format!("https://readwise.io/open/{}", highlight.id),
+    let safe = |url: &&str| {
+        (url.starts_with("https://") || url.starts_with("http://"))
+            && !url.contains(|c: char| is_js_whitespace(c) || matches!(c, '<' | '>' | '(' | ')'))
+    };
+    match highlight.readwise_url.as_deref().filter(safe) {
+        Some(url) => url.to_string(),
+        None => format!("https://readwise.io/open/{}", highlight.id),
     }
 }
 
@@ -163,9 +169,15 @@ fn location_label(highlight: &ReadwiseHighlight) -> String {
         Some("time_offset") => format!("Time {}", clock(location)),
         Some("order") => format!("Position {at}"),
         Some("offset") => format!("Offset {at}"),
+        // TypeScript writes the payload's type raw into the link label. Here it is one line
+        // with no `[]()` and escaped as text, so it cannot close the link, start a block, or
+        // forge a marker, tag or wiki link (module docs, Departures).
         other => {
-            let name = other.unwrap_or("location").replace('_', " ");
-            format!("{} {at}", capitalize(&name))
+            let name = other
+                .unwrap_or("location")
+                .replace('_', " ")
+                .replace(['[', ']', '(', ')'], "");
+            escape_line(&format!("{} {at}", capitalize(&collapse_whitespace(&name))))
         }
     }
 }
