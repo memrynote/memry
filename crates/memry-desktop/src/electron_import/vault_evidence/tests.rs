@@ -69,6 +69,7 @@ fn reads_the_checked_values_from_a_copy_and_leaves_the_vault_byte_identical() {
         VaultEvidence {
             vault_id: Some("vault-uuid-1".to_owned()),
             key_verifier: Some("verifier=".to_owned()),
+            device_id: Some("me".to_owned()),
             device_public_key: Some("my-key=".to_owned()),
             inline_ai_reenter: true,
         }

@@ -27,7 +27,7 @@ pub use profile::{AppNameCandidates, ElectronProfile, HostOs, IdentityPin, Profi
 pub use scratch::{ProfileLock, Scratch, TornFile};
 pub use secrets::{SecretEntry, SecretsReport, UnreadableReason, UnreadableSecret};
 pub use secrets_import::{
-    SecretsError, SecretsEvidence, SecretsMode, SecretsOutcome, import_secrets,
+    SecretsError, SecretsEvidence, SecretsMode, SecretsOutcome, SecretsPhase, import_secrets,
 };
 pub use vault_evidence::{VaultEvidence, read_vault_evidence};
 pub use ystore::{SnapshotWatermark, YStoreReader};

@@ -57,14 +57,21 @@ impl KeytarSource for UnlistedKeytar {
 fn unlisted_keytar_items_stop_the_phase_and_sign_in_again_reports_them() {
     let w = world();
     let before = w.electron();
-    let report = read_all_secrets(&w.profile, &w.keys, &UnlistedKeytar).unwrap();
-    let run = |mode| import_secrets(&report, &evidence(), mode, &w.rig.store, &w.identity());
+    let inputs = || {
+        Ok((
+            read_all_secrets(&w.profile, &w.keys, &UnlistedKeytar)?,
+            evidence(),
+        ))
+    };
+    let run = |mode| w.import(inputs, mode);
     assert!(matches!(
         run(SecretsMode::Full),
         Err(SecretsError::KeytarUnlisted(_))
     ));
     assert!(w.items(true).is_empty());
-    let outcome = run(SecretsMode::SignInAgain).unwrap();
+    let Ok(SecretsPhase::Ran(outcome)) = run(SecretsMode::SignInAgain) else {
+        panic!("Sign in again runs");
+    };
     assert!(outcome.keytar_unlisted);
     assert_eq!(w.electron(), before);
 }
@@ -114,4 +121,71 @@ fn two_electron_services_with_one_target_keep_the_first_and_list_the_other() {
             reason: SkipReason::Collision,
         }]
     );
+}
+
+#[test]
+fn a_secret_the_keychain_refuses_is_skipped_and_the_rest_is_imported() {
+    let (dsk, _) = device_key(9);
+    let store = serde_json::json!({"version": 1, "entries": {
+        "com.memry.sync": {
+            "master-key": v10(&b64(&MASTER)),
+            "device-signing-key": v10(&b64(&dsk)),
+            "refresh-token": v10(&b64(b"jwt-refresh")),
+        },
+        "com.memry.import.onenote": {"profile-acc": v10(&"p".repeat(3000))},
+        "com.memry.readwise": {"readwise-token:/v": v10("rw-token")},
+    }});
+    let refused = SkippedSecret {
+        service: "com.memrynote.memry.import.onenote".to_owned(),
+        account: "profile-acc".to_owned(),
+        reason: SkipReason::WriteRefused,
+    };
+    for mode in [SecretsMode::Full, SecretsMode::SignInAgain] {
+        let w = world_with(&store, &[]);
+        *w.rig.fake.max_blob.lock().unwrap() = Some(2560);
+        let outcome = w.run(&evidence(), mode).unwrap();
+        assert!(outcome.skipped.contains(&refused), "{mode:?}");
+        assert_eq!(w.own(&refused.service, &refused.account), None);
+        assert_eq!(
+            w.own("com.memrynote.memry.readwise", "readwise-token:/v"),
+            Some(b"rw-token".to_vec())
+        );
+        if mode == SecretsMode::Full {
+            assert_eq!(outcome.written, 4, "master, refresh, readwise, device");
+            assert_eq!(outcome.device_key, DeviceKey::Adopted);
+        }
+    }
+}
+
+#[test]
+fn the_local_provider_key_of_this_device_maps_to_this_app_s_account() {
+    const LOCAL: &str = "com.memrynote.memry.agent.local-provider";
+    let store = serde_json::json!({"version": 1, "entries": {
+        "memry.agent.local-provider": {
+            "api-key": v10("k-prod"),
+            "api-key:A": v10("k-a"),
+            "api-key:dev-0123abcd": v10("k-dev"),
+        },
+    }});
+    let cases = [
+        (None, "api-key", "k-prod"),
+        (Some("A"), "api-key-A", "k-a"),
+        (Some("dev-0123abcd"), "api-key-dev", "k-dev"),
+    ];
+    for (suffix, account, value) in cases {
+        let w = world_on(suffix, &store, &[]);
+        let outcome = w
+            .run(&SecretsEvidence::default(), SecretsMode::Full)
+            .unwrap();
+        let expected: Items = [item(LOCAL, account, value.as_bytes())]
+            .into_iter()
+            .collect();
+        assert_eq!(w.items(true), expected, "{suffix:?}");
+        let others = outcome
+            .skipped
+            .iter()
+            .filter(|s| s.reason == SkipReason::OtherDevice)
+            .count();
+        assert_eq!(others, 2, "{suffix:?}");
+    }
 }

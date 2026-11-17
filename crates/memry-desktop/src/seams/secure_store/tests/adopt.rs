@@ -169,3 +169,18 @@ fn a_key_of_the_wrong_length_is_refused_before_the_keychain() {
     ));
     assert_eq!(w.rig.fake.reads.load(Ordering::SeqCst), 0);
 }
+
+#[test]
+fn adoptable_answers_as_the_adoption_would_and_writes_nothing() {
+    let w = world();
+    let writes = w.rig.fake.writes.load(Ordering::SeqCst);
+    assert_eq!(w.store().adoptable(&key(9)), Ok(Adoption::Adopted));
+    assert_eq!(w.keychain(), None);
+    assert!(!w.marker().exists());
+    assert_eq!(w.rig.fake.writes.load(Ordering::SeqCst), writes);
+
+    w.store().adopt_electron(&key(9)).unwrap();
+    assert_eq!(w.store().adoptable(&key(9)), Ok(Adoption::AlreadyHeld));
+    assert_eq!(w.store().adoptable(&key(8)), Err(AdoptError::Taken));
+    w.electron_untouched();
+}

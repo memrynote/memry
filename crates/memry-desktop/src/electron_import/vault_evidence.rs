@@ -1,5 +1,5 @@
 //! The values of an Electron vault's `.memry/data.db` the secrets phase checks against: the vault
-//! uuid, the local vault key verifier, the current device's registered public key, and whether
+//! uuid, the local vault key verifier, the current-device row's id and registered public key, and whether
 //! the inline AI row holds a key the user must enter again.
 //!
 //! The database is never opened in place: an open in WAL mode can create `-shm` and checkpoint
@@ -26,7 +26,10 @@ pub struct VaultEvidence {
     pub vault_id: Option<String>,
     /// The `vault.crypto.verifier.v1` settings row.
     pub key_verifier: Option<String>,
-    /// `sync_devices.signing_public_key` of the row with `is_current_device = 1`, base64.
+    /// `sync_devices.id` of the row with `is_current_device = 1`: a vault not open at sign-out
+    /// keeps the previous session's row (`vault-account-binding.ts:270-275`).
+    pub device_id: Option<String>,
+    /// `signing_public_key` of that row, base64.
     pub device_public_key: Option<String>,
     /// The `ai-inline` row selects Ollama and holds an `apiKey`: Step 22's `InlineAiStore::read`
     /// moves that key into the legacy entry, never into a provider's slot, so the user enters
@@ -96,15 +99,19 @@ fn read(db: &Connection) -> Result<VaultEvidence, ImportError> {
     } else {
         None
     };
-    // `signing_public_key` arrived in Electron's data migration 0012.
-    let device_public_key = if has_column(db, "sync_devices", "signing_public_key")? {
-        text(
-            "SELECT signing_public_key FROM sync_devices WHERE is_current_device = 1 \
-             AND signing_public_key IS NOT NULL LIMIT 1",
-            None,
-        )?
+    // `signing_public_key` arrived in Electron's data migration 0012. The row Electron's
+    // integrity check reads: the first current-device row (`sync-core-handlers.ts:98-102`).
+    let (device_id, device_public_key) = if has_column(db, "sync_devices", "signing_public_key")? {
+        db.query_row(
+            "SELECT id, signing_public_key FROM sync_devices WHERE is_current_device = 1 LIMIT 1",
+            [],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .optional()
+        .map_err(sqlite)?
+        .unwrap_or_default()
     } else {
-        None
+        (None, None)
     };
     let inline_ai_reenter = setting(AI_INLINE_KEY)?
         .and_then(|raw| serde_json::from_str::<Value>(&raw).ok())
@@ -118,6 +125,7 @@ fn read(db: &Connection) -> Result<VaultEvidence, ImportError> {
     Ok(VaultEvidence {
         vault_id,
         key_verifier: setting(VERIFIER_KEY)?,
+        device_id,
         device_public_key,
         inline_ai_reenter,
     })

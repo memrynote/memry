@@ -346,6 +346,34 @@ impl DeviceIdentityStore {
         *lock(&self.cache) = key;
     }
 
+    /// What [`Self::adopt_electron`] would answer now, from reads only: `Adopted` means it would
+    /// write. Under the work lock, like every device-key operation.
+    fn adoption(&self, key: &Key) -> Result<Adoption, AdoptError> {
+        if let Some(known) = self.cached() {
+            return if known == *key {
+                Ok(Adoption::AlreadyHeld)
+            } else {
+                Err(AdoptError::Taken)
+            };
+        }
+        match self.keychain_get()? {
+            Some(held) if held == *key => Ok(Adoption::AlreadyHeld),
+            Some(_) => Err(AdoptError::Taken),
+            None if self.marked() || !matches!(self.legacy(), Legacy::Absent) => {
+                Err(AdoptError::Taken)
+            }
+            None => Ok(Adoption::Adopted),
+        }
+    }
+
+    /// The answer of [`Self::adopt_electron`] for `key` without writing anything, so the import
+    /// refuses a profile that holds its own key before its first write.
+    pub fn adoptable(&self, key: &[u8]) -> Result<Adoption, AdoptError> {
+        let key = checked(key.to_vec(), "Electron profile")?;
+        let _work = lock(&self.work);
+        self.adoption(&key)
+    }
+
     /// Makes `key` (Electron's 64-byte device signing key) this profile's identity. See the module
     /// doc (**Adopt**). A keychain that cannot be reached is `Store(Locked)` with nothing written;
     /// a written key that does not read back is `Store(Failed)` and is left in place, so the next
@@ -353,24 +381,10 @@ impl DeviceIdentityStore {
     pub fn adopt_electron(&self, key: &[u8]) -> Result<Adoption, AdoptError> {
         let key = checked(key.to_vec(), "Electron profile")?;
         let _work = lock(&self.work);
-        if let Some(known) = self.cached() {
-            return if known == key {
-                Ok(Adoption::AlreadyHeld)
-            } else {
-                Err(AdoptError::Taken)
-            };
-        }
-        match self.keychain_get()? {
-            Some(held) if held == key => {
-                self.settle(&key);
-                self.remember(Some(key));
-                return Ok(Adoption::AlreadyHeld);
-            }
-            Some(_) => return Err(AdoptError::Taken),
-            None => {}
-        }
-        if self.marked() || !matches!(self.legacy(), Legacy::Absent) {
-            return Err(AdoptError::Taken);
+        if self.adoption(&key)? == Adoption::AlreadyHeld {
+            self.settle(&key);
+            self.remember(Some(key));
+            return Ok(Adoption::AlreadyHeld);
         }
         self.keychain_set(&key)?;
         match self.keychain_get()? {

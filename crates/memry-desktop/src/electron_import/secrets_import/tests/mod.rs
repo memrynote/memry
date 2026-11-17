@@ -96,7 +96,16 @@ struct World {
 }
 
 fn world_with(store: &serde_json::Value, keytar: &[(&str, &str, &str)]) -> World {
-    let rig = rig_with(None, Duration::from_secs(5), false);
+    world_on(None, store, keytar)
+}
+
+/// A world whose app runs as `MEMRY_DEVICE` `suffix`.
+fn world_on(
+    suffix: Option<&str>,
+    store: &serde_json::Value,
+    keytar: &[(&str, &str, &str)],
+) -> World {
+    let rig = rig_with(suffix, Duration::from_secs(5), false);
     let profile_dir = tempfile::tempdir().unwrap();
     fs::write(
         profile_dir.path().join("secure-secrets.json"),
@@ -144,13 +153,23 @@ fn world() -> World {
     )
 }
 
+const DEVICE_ID: &str = "device-now";
+
+/// A vault whose current-device row is `id`'s, registered with `device_key(seed)`.
+fn registered(id: &str, seed: u8) -> VaultEvidence {
+    VaultEvidence {
+        device_id: Some(id.to_owned()),
+        device_public_key: Some(device_key(seed).1),
+        ..VaultEvidence::default()
+    }
+}
+
 fn evidence() -> SecretsEvidence {
     SecretsEvidence {
         account_key_verifier: Some(keys::account_key_verifier(&MASTER).unwrap()),
-        vaults: vec![VaultEvidence {
-            device_public_key: Some(device_key(9).1),
-            ..VaultEvidence::default()
-        }],
+        device_id: Some(DEVICE_ID.to_owned()),
+        current_vault: Some(0),
+        vaults: vec![registered(DEVICE_ID, 9)],
     }
 }
 
@@ -159,14 +178,52 @@ impl World {
         DeviceIdentityStore::with_probe(&self.rig.store, self.app_dir.path(), || false)
     }
 
+    fn phase(
+        &self,
+        evidence: &SecretsEvidence,
+        mode: SecretsMode,
+    ) -> Result<SecretsPhase, SecretsError> {
+        let keytar = SharedKeytar(self.rig.fake.share());
+        let inputs = || {
+            Ok((
+                read_all_secrets(&self.profile, &self.keys, &keytar)?,
+                evidence.clone(),
+            ))
+        };
+        self.import(inputs, mode)
+    }
+
+    fn import(
+        &self,
+        inputs: impl FnOnce() -> Result<(SecretsReport, SecretsEvidence), ImportError>,
+        mode: SecretsMode,
+    ) -> Result<SecretsPhase, SecretsError> {
+        import_secrets(
+            inputs,
+            mode,
+            &self.rig.store,
+            &self.identity(),
+            self.app_dir.path(),
+        )
+    }
+
+    /// A run that is not done yet.
     fn run(
         &self,
         evidence: &SecretsEvidence,
         mode: SecretsMode,
     ) -> Result<SecretsOutcome, SecretsError> {
-        let keytar = SharedKeytar(self.rig.fake.share());
-        let report = read_all_secrets(&self.profile, &self.keys, &keytar).unwrap();
-        import_secrets(&report, evidence, mode, &self.rig.store, &self.identity())
+        self.phase(evidence, mode).map(|phase| match phase {
+            SecretsPhase::Ran(outcome) => outcome,
+            SecretsPhase::Done => panic!("the phase was already done"),
+        })
+    }
+
+    fn writes(&self) -> usize {
+        self.rig
+            .fake
+            .writes
+            .load(std::sync::atomic::Ordering::SeqCst)
     }
 
     fn items(&self, own: bool) -> Items {
@@ -228,6 +285,7 @@ fn every_secret_lands_in_this_app_s_namespace_and_electron_s_store_is_byte_ident
     assert_eq!(outcome.written, 7);
     assert_eq!(outcome.verified, Verified::AccountKeyVerifier);
     assert_eq!(outcome.device_key, DeviceKey::Adopted);
+    assert!(outcome.device_checked);
     assert!(!outcome.sign_in_required);
     assert!(outcome.skipped.is_empty(), "{:?}", outcome.skipped);
     assert_eq!(
@@ -238,22 +296,6 @@ fn every_secret_lands_in_this_app_s_namespace_and_electron_s_store_is_byte_ident
     assert_eq!(
         w.rig.store.get(SecureStoreKey::MasterKey).unwrap(),
         Some(MASTER.to_vec())
-    );
-}
-
-#[test]
-fn a_rerun_after_a_finished_run_writes_nothing() {
-    let w = world();
-    w.run(&evidence(), SecretsMode::Full).unwrap();
-    let own = w.items(true);
-    let writes = w.rig.fake.writes.load(std::sync::atomic::Ordering::SeqCst);
-    let outcome = w.run(&evidence(), SecretsMode::Full).unwrap();
-    assert_eq!((outcome.written, outcome.present), (0, 7));
-    assert_eq!(outcome.device_key, DeviceKey::AlreadyHeld);
-    assert_eq!(w.items(true), own);
-    assert_eq!(
-        w.rig.fake.writes.load(std::sync::atomic::Ordering::SeqCst),
-        writes
     );
 }
 
@@ -279,14 +321,14 @@ fn without_an_account_verifier_the_first_vault_verifier_decides() {
             keys::local_vault_key_verifier(&keys::derive_vault_key(master).unwrap(), "vault-1")
                 .unwrap(),
         ),
-        device_public_key: Some(device_key(9).1),
-        inline_ai_reenter: false,
+        ..registered(DEVICE_ID, 9)
     };
     let unbound = VaultEvidence::default();
     let w = world();
     let wrong = SecretsEvidence {
         account_key_verifier: None,
         vaults: vec![unbound.clone(), vault_row(&OTHER_MASTER)],
+        ..evidence()
     };
     assert_eq!(
         w.run(&wrong, SecretsMode::Full),
@@ -296,6 +338,7 @@ fn without_an_account_verifier_the_first_vault_verifier_decides() {
     let right = SecretsEvidence {
         account_key_verifier: None,
         vaults: vec![unbound, vault_row(&MASTER)],
+        ..evidence()
     };
     let outcome = w.run(&right, SecretsMode::Full).unwrap();
     assert_eq!(outcome.verified, Verified::VaultKeyVerifier);
@@ -306,10 +349,7 @@ fn a_device_key_that_is_not_the_registered_one_is_device_key_mismatch_and_writes
     let w = world();
     let before = w.electron();
     let mut evidence = evidence();
-    evidence.vaults.push(VaultEvidence {
-        device_public_key: Some(device_key(8).1),
-        ..VaultEvidence::default()
-    });
+    evidence.vaults.push(registered(DEVICE_ID, 8));
     assert_eq!(
         w.run(&evidence, SecretsMode::Full),
         Err(SecretsError::DeviceKeyMismatch)
@@ -319,17 +359,11 @@ fn a_device_key_that_is_not_the_registered_one_is_device_key_mismatch_and_writes
 }
 
 #[test]
-fn a_profile_with_its_own_device_key_rolls_back_only_what_this_run_wrote() {
+fn a_profile_with_its_own_device_key_is_refused_before_any_write() {
     let w = world();
     let before = w.electron();
     let own_device = device_key(5).0;
     w.rig.fake.put(SERVICE, "device-signing-key", &own_device);
-    // Found in place with Electron's value: not this run's write, so the rollback keeps it.
-    w.rig.fake.put(
-        "com.memrynote.memry.readwise",
-        "readwise-token:/v",
-        b"rw-token",
-    );
     let found = w.items(true);
 
     assert_eq!(
@@ -338,11 +372,8 @@ fn a_profile_with_its_own_device_key_rolls_back_only_what_this_run_wrote() {
             kind: "device signing key"
         })
     );
-    assert_eq!(
-        w.items(true),
-        found,
-        "the sync and generic writes were removed"
-    );
+    assert_eq!(w.writes(), 0, "refused before the first write");
+    assert_eq!(w.items(true), found);
     assert_eq!(w.electron(), before);
     assert_eq!(w.identity().get(DSK).unwrap(), Some(own_device));
 }
@@ -394,13 +425,7 @@ fn a_keychain_that_cannot_be_read_fails_before_any_write() {
     let keytar = SharedKeytar(w.rig.fake.share());
     let report = read_all_secrets(&w.profile, &w.keys, &keytar).unwrap();
     *w.rig.fake.fail_reads.lock().unwrap() = Some(|| Error::NoStorageAccess("locked".into()));
-    let result = import_secrets(
-        &report,
-        &evidence(),
-        SecretsMode::Full,
-        &w.rig.store,
-        &w.identity(),
-    );
+    let result = w.import(|| Ok((report, evidence())), SecretsMode::Full);
     assert_eq!(
         result,
         Err(SecretsError::Keychain(SecureStoreError::Locked))
@@ -408,10 +433,7 @@ fn a_keychain_that_cannot_be_read_fails_before_any_write() {
     *w.rig.fake.fail_reads.lock().unwrap() = None;
     assert!(w.items(true).is_empty());
     assert_eq!(w.electron(), before);
-    assert_eq!(
-        w.rig.fake.writes.load(std::sync::atomic::Ordering::SeqCst),
-        0
-    );
+    assert_eq!(w.writes(), 0);
 }
 
 fn locked_world() -> World {
@@ -499,4 +521,6 @@ fn sign_in_again_skips_the_sync_secrets_and_keeps_the_provider_secrets() {
     assert_eq!(services.len(), 3);
 }
 
+mod device_rows;
 mod input;
+mod reruns;
