@@ -75,8 +75,11 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
+      # The post-merge lookup of this SHA's merge_group run.
+      actions: read
     outputs:
       full: ${{ steps.tier.outputs.full }}
+      post_merge: ${{ steps.tier.outputs.post_merge }}
       tauri: ${{ steps.tier.outputs.tauri }}
       swift: ${{ steps.tier.outputs.swift }}
       intel: ${{ steps.tier.outputs.intel }}
@@ -104,8 +107,10 @@ jobs:
         with:
           token: ${{ github.token }}
           source: ${{ github.workspace }}
+          post-merge: 'true'
 
-      # The OS matrix (rules in .github/actions/ci-tier/rust-legs.jq).
+      # The OS matrix (rules in .github/actions/ci-tier/rust-legs.jq). Post-merge (a push to
+      # feat/tauri-v2 whose SHA passed this workflow in the merge queue, #5035) runs Apple Silicon only.
       - name: Build the OS matrix
         id: matrix
         env:
@@ -114,8 +119,9 @@ jobs:
           INTEL: ${{ steps.tier.outputs.intel }}
           WINDOWS_LEGS: ${{ steps.tier.outputs.rust_windows }}
           MACOS_LEGS: ${{ steps.tier.outputs.rust_macos }}
+          POST_MERGE: ${{ steps.tier.outputs.post_merge }}
         run: |
-          legs=$(jq -cn --arg full "$FULL" --arg macos "$MACOS" --arg intel "$INTEL" --arg win "$WINDOWS_LEGS" --arg mac "$MACOS_LEGS" \
+          legs=$(jq -cn --arg full "$FULL" --arg macos "$MACOS" --arg intel "$INTEL" --arg post_merge "$POST_MERGE" --arg win "$WINDOWS_LEGS" --arg mac "$MACOS_LEGS" \
             -f .github/actions/ci-tier/rust-legs.jq)
           echo "legs=$legs" >> "$GITHUB_OUTPUT"
           echo "Legs: $legs"
@@ -951,7 +957,8 @@ jobs:
   article-extract-oracle-fresh:
     name: Article-extraction vectors are current
     needs: plan
-    if: ${{ !cancelled() && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref != 'main' && github.event.label.name == 'full-ci')) }}
+    # Not post-merge: the merge queue ran it on the same SHA.
+    if: ${{ !cancelled() && needs.plan.outputs.post_merge != 'true' && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref != 'main' && github.event.label.name == 'full-ci')) }}
     runs-on: ubuntu-22.04
     timeout-minutes: 30
 

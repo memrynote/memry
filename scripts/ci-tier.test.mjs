@@ -118,7 +118,8 @@ function tier({
   files,
   patches,
   listed = true,
-  sourceRoot = source
+  sourceRoot = source,
+  queueTested = false
 }) {
   let patchPath = join(scratch, 'missing.jsonl')
   if (patches) {
@@ -140,7 +141,8 @@ function tier({
       LABELS: labels,
       LISTED: String(listed),
       PATCHES: patchPath,
-      SOURCE_ROOT: sourceRoot
+      SOURCE_ROOT: sourceRoot,
+      QUEUE_TESTED: String(queueTested)
     },
     encoding: 'utf8'
   })
@@ -193,7 +195,8 @@ describe('ci tier for a PR into feat/tauri-v2', () => {
       intel: false,
       macos: true,
       ...noOsLegs,
-      rust_linux_arm64: false
+      rust_linux_arm64: false,
+      post_merge: false
     })
   })
 
@@ -678,6 +681,9 @@ function rustLegEntries(out) {
       'intel',
       String(out.intel),
       '--arg',
+      'post_merge',
+      String(out.post_merge),
+      '--arg',
       'win',
       out.rust_windows,
       '--arg',
@@ -717,6 +723,9 @@ function tauriBuilds(out, queue = false) {
       '--arg',
       'queue',
       String(queue),
+      '--arg',
+      'post_merge',
+      String(out.post_merge),
       '--arg',
       'win',
       out.tauri_windows,
@@ -944,7 +953,77 @@ describe('ci tier outside PRs into feat/tauri-v2', () => {
       intel: true,
       macos: true,
       ...allOsLegs,
-      rust_linux_arm64: true
+      rust_linux_arm64: true,
+      post_merge: false
     })
+  })
+})
+
+// A merge-queue merge fast-forwards feat/tauri-v2 to the SHA the queue tested, so the push that follows
+// runs only what the queue skipped (#5035). Losing a leg here would leave it untested everywhere.
+describe('ci tier for a post-merge push to feat/tauri-v2', () => {
+  const push = (files, queueTested = true, listed = true) =>
+    tier({ event: 'push', ref: 'refs/heads/feat/tauri-v2', base: '', files, queueTested, listed })
+  const code = ['crates/memry-desktop/src/shell/paths.rs', 'apps/desktop-tauri/src/app.tsx']
+
+  it('runs only the legs the merge queue skips when the SHA passed the queue', () => {
+    const out = push(code)
+    assert.equal(out.post_merge, true)
+    assert.equal(out.rust_linux_arm64, false)
+    assert.deepEqual(rustLegs(out), ['macos-15 all'])
+    assert.deepEqual(modelLegs(out), ['macos-15 all'])
+    assert.deepEqual(tauriBuilds(out), [
+      'macos-arm64 debug',
+      'macos-arm64 e2e',
+      'windows-arm64 e2e'
+    ])
+  })
+
+  it('covers every leg of a full push between the merge queue and the post-merge run', () => {
+    const full = push(code, false)
+    const postMerge = push(code)
+    const queue = tier({ event: 'merge_group', base: '', files: code })
+    const sorted = (names) => [...new Set(names)].toSorted((a, b) => a.localeCompare(b))
+    assert.deepEqual(sorted([...rustLegs(queue), ...rustLegs(postMerge)]), sorted(rustLegs(full)))
+    assert.deepEqual(
+      sorted([...tauriBuilds(queue, true), ...tauriBuilds(postMerge)]),
+      sorted(tauriBuilds(full))
+    )
+    assert.equal(queue.rust_linux_arm64, true)
+  })
+
+  it('runs every leg for a SHA the queue did not pass, an unreadable list or a cache-key input', () => {
+    const cacheInputs = [
+      'crates/Cargo.lock',
+      'crates/memry-core/Cargo.toml',
+      'apps/desktop-tauri/src-tauri/Cargo.toml',
+      'crates/rust-toolchain.toml',
+      'crates/.cargo/config.toml',
+      'pnpm-lock.yaml',
+      'scripts/fetch-tesseract-sources.mjs',
+      '.github/actions/setup-pnpm/action.yml',
+      '.github/workflows/rust-ci.yml',
+      '.github/workflows/desktop-tauri-ci.yml'
+    ]
+    const outs = [
+      push(code, false),
+      push(code, true, false),
+      ...cacheInputs.map((file) => push([...code, file]))
+    ]
+    for (const out of outs) {
+      assert.equal(out.post_merge, false)
+      assert.equal(out.full, true)
+      assert.equal(out.rust_linux_arm64, true)
+    }
+  })
+
+  it('applies to pushes to feat/tauri-v2 only', () => {
+    for (const out of [
+      tier({ event: 'merge_group', base: '', files: code, queueTested: true }),
+      tier({ event: 'push', ref: 'refs/heads/main', base: '', files: code, queueTested: true }),
+      tier({ files: code, patches: {}, queueTested: true })
+    ]) {
+      assert.equal(out.post_merge, false)
+    }
   })
 })
