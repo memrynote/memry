@@ -2,8 +2,8 @@
 //! secret, no note text and no path of user content; config keys and step names only.
 //!
 //! The file is a format this and later builds read back (a deferred vault adds its section to
-//! it), so it is versioned and every field is additive: a field this build does not know is
-//! kept in [`VerificationReport::extra`] and written back unchanged.
+//! it), so it is versioned and every field is additive: a field this build does not know, at
+//! any level, is kept in that struct's `extra` and written back unchanged.
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
@@ -61,6 +61,9 @@ pub struct AppStateReport {
     pub dictionary: Option<DictionaryReport>,
     pub models: CopyReport,
     pub ocr_languages: CopyReport,
+    /// Fields of a later build, kept as they are.
+    #[serde(flatten)]
+    pub extra: Map<String, Value>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -75,10 +78,13 @@ pub struct ConfigReport {
     pub vaults_carried: usize,
     /// Entries already in the Tauri list (same path), kept as they were.
     pub vaults_already_present: usize,
-    /// Vaults inside the Electron profile directory (the sandbox vault), never carried.
-    pub vaults_inside_profile: usize,
+    /// Electron's sandbox vault (`<userData>/Sandbox`), never carried.
+    pub sandbox_vaults: usize,
     /// `vaults` entries Electron's own reader would skip (no string `path`), carried as is.
     pub vault_entries_without_path: usize,
+    /// Fields of a later build, kept as they are.
+    #[serde(flatten)]
+    pub extra: Map<String, Value>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -90,6 +96,9 @@ pub struct TelemetryReport {
     pub install_id_carried: bool,
     /// Opt-out flags (`enabled`, `autoSendDiagnostics` set to false) carried.
     pub opt_outs_carried: usize,
+    /// Fields of a later build, kept as they are.
+    #[serde(flatten)]
+    pub extra: Map<String, Value>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -100,17 +109,24 @@ pub struct LocalStorageReport {
     pub torn_files: usize,
     /// The renderer already applied an earlier copy; the file was left as it is.
     pub already_applied: bool,
+    /// Fields of a later build, kept as they are.
+    #[serde(flatten)]
+    pub extra: Map<String, Value>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct DictionaryReport {
     pub words: usize,
-    pub added: u32,
     /// False when both the file and its backup fail Chromium's checksum: Chromium drops those
     /// words, so they are not carried either.
     pub checksum_ok: bool,
     pub from_backup: bool,
+    /// The shell already applied an earlier copy; the pending-words file was left as it is.
+    pub already_applied: bool,
+    /// Fields of a later build, kept as they are.
+    #[serde(flatten)]
+    pub extra: Map<String, Value>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -125,4 +141,7 @@ pub struct CopyReport {
     pub kept_existing: usize,
     /// Symlinks and other non-regular entries, never followed or copied.
     pub skipped_non_regular: usize,
+    /// Fields of a later build, kept as they are.
+    #[serde(flatten)]
+    pub extra: Map<String, Value>,
 }

@@ -15,8 +15,26 @@ use crate::electron_import::tests::{Fixture, macos_fixture, tree_snapshot};
 
 const INSTALL_ID: &str = "4b1f0c84-8d9a-4a43-9a51-1c2c7e3b2f10";
 
-#[derive(Default)]
-struct RecordingSpell(Mutex<Vec<String>>);
+/// Records each word it is asked to add; refuses the words in `refuse`.
+struct RecordingSpell {
+    asked: Mutex<Vec<String>>,
+    refuse: Vec<String>,
+    ready: bool,
+}
+
+impl RecordingSpell {
+    fn new(refuse: &[String]) -> Self {
+        Self {
+            asked: Mutex::default(),
+            refuse: refuse.to_vec(),
+            ready: true,
+        }
+    }
+
+    fn asked(&self) -> Vec<String> {
+        self.asked.lock().unwrap().clone()
+    }
+}
 
 impl SpellBackend for RecordingSpell {
     fn check(&self, _: &str) -> bool {
@@ -26,15 +44,17 @@ impl SpellBackend for RecordingSpell {
         Vec::new()
     }
     fn add(&self, word: &str) -> bool {
-        self.0.lock().unwrap().push(word.to_owned());
-        true
+        self.asked.lock().unwrap().push(word.to_owned());
+        !self.refuse.iter().any(|w| w == word)
+    }
+    fn ready(&self) -> bool {
+        self.ready
     }
 }
 
 struct Tauri {
     dir: TempDir,
     config: AppConfig,
-    spell: RecordingSpell,
     progress: ProgressRecorder,
 }
 
@@ -45,7 +65,6 @@ impl Tauri {
         Self {
             dir,
             config,
-            spell: RecordingSpell::default(),
             progress: ProgressRecorder::default(),
         }
     }
@@ -60,7 +79,6 @@ impl Tauri {
             scratch: &f.scratch,
             tauri_data_dir: self.data(),
             config: &self.config,
-            spell: Some(&self.spell),
             progress: &self.progress,
         })
     }
@@ -165,10 +183,7 @@ fn the_profile_state_lands_in_the_tauri_data_dir_and_the_profile_is_untouched() 
     assert_eq!(vaults[0]["path"], "/Users/fixture/vault");
     assert_eq!(vaults[0]["futureVaultField"], json!({ "k": 1 }));
     let config_report = report.config.as_ref().unwrap();
-    assert_eq!(
-        config_report.vaults_inside_profile,
-        if cfg!(unix) { 2 } else { 1 }
-    );
+    assert_eq!(config_report.sandbox_vaults, if cfg!(unix) { 2 } else { 1 });
     let dropped: BTreeSet<&str> = config_report
         .dropped_keys
         .iter()
@@ -192,7 +207,16 @@ fn the_profile_state_lands_in_the_tauri_data_dir_and_the_profile_is_untouched() 
 
     let words = CustomDictionary::read(&f.profile).unwrap().unwrap().words;
     assert!(!words.is_empty());
-    assert_eq!(*tauri.spell.0.lock().unwrap(), words);
+    let pending = tauri.json(DICTIONARY_FILE);
+    assert_eq!(pending["words"], json!(words));
+    assert_eq!(pending["pending"], true);
+    let spell = RecordingSpell::new(&[]);
+    assert_eq!(
+        apply_pending_words(tauri.data(), &spell).unwrap() as usize,
+        words.len()
+    );
+    assert_eq!(spell.asked(), words);
+    assert_eq!(tauri.json(DICTIONARY_FILE)["pending"], false);
 
     for rel in [
         "models/transformers/org/model/onnx/model.onnx",
@@ -217,6 +241,7 @@ fn the_profile_state_lands_in_the_tauri_data_dir_and_the_profile_is_untouched() 
         top,
         BTreeSet::from(
             [
+                "electron-dictionary.json",
                 "electron-localstorage.json",
                 "memry-config.json",
                 "models",
@@ -290,7 +315,6 @@ fn a_corrupt_profile_fails_with_nothing_written() {
             "{what}: Tauri dir written"
         );
         assert_eq!(tree_snapshot(&f.profile.dir), before, "{what}");
-        assert!(tauri.spell.0.lock().unwrap().is_empty(), "{what}");
     }
 }
 
@@ -370,8 +394,7 @@ fn tauri_state_that_must_survive_does() {
     assert!(report.local_storage.unwrap().already_applied);
     let dictionary = report.dictionary.unwrap();
     assert!(!dictionary.checksum_ok);
-    assert_eq!(dictionary.added, 0);
-    assert!(tauri.spell.0.lock().unwrap().is_empty());
+    assert!(!tauri.data().join(DICTIONARY_FILE).exists());
 }
 
 #[test]
@@ -411,4 +434,161 @@ fn a_profile_with_only_a_config_carries_the_config() {
         "device-fixture"
     );
     assert!(!tauri.data().join(LOCAL_STORAGE_FILE).exists());
+}
+
+/// The copies run first, so a write failure there (a full disk in a multi-GB model) leaves no
+/// state file, and the rerun after it carries everything.
+#[test]
+fn a_model_copy_failure_writes_no_config() {
+    let f = full_profile();
+    let tauri = Tauri::new();
+    // A file where the copy needs a directory fails the second model file's write.
+    let blocker = tauri.data().join("models/transformers/org/model/onnx");
+    write(&blocker, b"in the way");
+
+    assert!(tauri.run(&f).is_err());
+
+    for name in [
+        "memry-config.json",
+        "telemetry.json",
+        LOCAL_STORAGE_FILE,
+        DICTIONARY_FILE,
+    ] {
+        assert!(!tauri.data().join(name).exists(), "{name} written");
+    }
+    fs::remove_file(&blocker).unwrap();
+    let report = tauri.run(&f).unwrap();
+    assert_eq!(report.models.copied + report.models.already_present, 2);
+    assert_eq!(
+        tauri.json("memry-config.json")["sync"]["deviceId"],
+        "device-fixture"
+    );
+}
+
+/// A backend that refuses a word, or is still loading, never costs a word: it stays pending.
+#[test]
+fn a_refused_word_is_not_lost() {
+    let f = full_profile();
+    let tauri = Tauri::new();
+    tauri.run(&f).unwrap();
+    let words = CustomDictionary::read(&f.profile).unwrap().unwrap().words;
+    assert!(words.len() > 1);
+    let refused = words[..1].to_vec();
+
+    let loading = RecordingSpell {
+        ready: false,
+        ..RecordingSpell::new(&[])
+    };
+    assert_eq!(apply_pending_words(tauri.data(), &loading).unwrap(), 0);
+    assert!(loading.asked().is_empty(), "a loading backend was called");
+    assert_eq!(tauri.json(DICTIONARY_FILE)["words"], json!(words));
+
+    let refusing = RecordingSpell::new(&refused);
+    let added = apply_pending_words(tauri.data(), &refusing).unwrap();
+    assert_eq!(added as usize, words.len() - 1);
+    let pending = tauri.json(DICTIONARY_FILE);
+    assert_eq!(pending["words"], json!(refused));
+    assert_eq!(pending["pending"], true);
+
+    let taking = RecordingSpell::new(&[]);
+    assert_eq!(apply_pending_words(tauri.data(), &taking).unwrap(), 1);
+    assert_eq!(taking.asked(), refused);
+    assert_eq!(tauri.json(DICTIONARY_FILE)["pending"], false);
+
+    // A rerun of the phase does not re-arm the applied words.
+    let report = tauri.run(&f).unwrap();
+    assert!(report.dictionary.unwrap().already_applied);
+    assert_eq!(tauri.json(DICTIONARY_FILE)["pending"], false);
+}
+
+/// Electron drops only `<userData>/Sandbox`; any other vault in its userData is the user's.
+#[test]
+fn a_user_vault_under_user_data_is_carried() {
+    let f = full_profile();
+    let mine = f.profile.dir.join("my-vault");
+    let nested = f.profile.dir.join("Sandbox").join("inner");
+    edit_config(&f, |c| {
+        let vaults = c["vaults"].as_array_mut().unwrap();
+        vaults.push(json!({ "path": mine.to_str().unwrap() }));
+        vaults.push(json!({ "path": nested.to_str().unwrap() }));
+    });
+    let tauri = Tauri::new();
+
+    let report = tauri.run(&f).unwrap();
+
+    let config = tauri.json("memry-config.json");
+    let paths: Vec<&str> = config["vaults"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|v| v["path"].as_str())
+        .collect();
+    assert_eq!(
+        paths,
+        [
+            "/Users/fixture/vault",
+            mine.to_str().unwrap(),
+            nested.to_str().unwrap()
+        ]
+    );
+    let config_report = report.config.unwrap();
+    assert_eq!(config_report.vaults_carried, 3);
+    assert_eq!(config_report.sandbox_vaults, 1);
+}
+
+/// A pending file that does not parse was not left by a whole write; it is never overwritten.
+#[test]
+fn an_unparseable_pending_file_is_not_rearmed() {
+    let f = full_profile();
+    let tauri = Tauri::new();
+    for name in [LOCAL_STORAGE_FILE, DICTIONARY_FILE] {
+        write(&tauri.data().join(name), b"{\"pending\": fal");
+    }
+
+    let report = tauri.run(&f).unwrap();
+
+    for name in [LOCAL_STORAGE_FILE, DICTIONARY_FILE] {
+        assert_eq!(
+            fs::read(tauri.data().join(name)).unwrap(),
+            b"{\"pending\": fal",
+            "{name}"
+        );
+    }
+    assert!(report.local_storage.unwrap().already_applied);
+    assert!(report.dictionary.unwrap().already_applied);
+}
+
+#[test]
+fn unknown_report_fields_survive_a_round_trip() {
+    use crate::electron_import::report::VerificationReport;
+    let body = json!({
+        "version": 1,
+        "later": [1],
+        "appState": {
+            "future": 1,
+            "config": { "future": 2 },
+            "telemetry": { "future": 3 },
+            "localStorage": { "future": 4 },
+            "dictionary": { "future": 5 },
+            "models": { "future": 6 },
+            "ocrLanguages": { "future": 7 }
+        }
+    });
+
+    let report = VerificationReport::parse(body.to_string().as_bytes()).unwrap();
+    let back = serde_json::to_value(&report).unwrap();
+
+    assert_eq!(back["later"], json!([1]));
+    let app = &back["appState"];
+    assert_eq!(app["future"], 1);
+    for (key, n) in [
+        ("config", 2),
+        ("telemetry", 3),
+        ("localStorage", 4),
+        ("dictionary", 5),
+        ("models", 6),
+        ("ocrLanguages", 7),
+    ] {
+        assert_eq!(app[key]["future"], n, "{key}");
+    }
 }
