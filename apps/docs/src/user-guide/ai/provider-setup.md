@@ -31,7 +31,6 @@ Best when you want privacy, no metering, and don't mind running an extra backgro
 
 ### Notes
 
-- memrynote talks to Ollama's native `/api/chat` endpoint and automatically sets `num_ctx: 8192` per request. You do not need to set `OLLAMA_CONTEXT_LENGTH` or `OLLAMA_NUM_PARALLEL` — the context window is managed for you.
 - No API key required for default local Ollama.
 - Token costs: zero, but RAM usage scales with model size.
 
@@ -138,6 +137,9 @@ URL, model name, and API key. Two controls change how a reasoning model such as 
 
 Both controls are hidden for the Ollama preset. Leave them at **Default** for a server that does not
 know these fields, since some servers reject a request with fields they do not recognise.
+
+With the Ollama preset, memrynote sets the context window for you. See
+[Agent Backends](/user-guide/ai/agent-backends#built-in-model-connection).
 
 The built-in model connection has the memrynote vault tools only: no shell, no files outside the
 vault, and no web search. [Agent Backends](/user-guide/ai/agent-backends) compares it with Claude

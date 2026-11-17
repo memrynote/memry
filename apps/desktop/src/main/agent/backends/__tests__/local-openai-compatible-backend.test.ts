@@ -434,41 +434,102 @@ describe('LocalOpenAICompatibleBackend', () => {
     })
   })
 
-  it('ollama preset uses the native /api endpoint with num_ctx 8192 and no reasoning fields', async () => {
+  // #3674: a turn with the vault tools is about 15k tokens, so a fixed 8192 window made
+  // Ollama answer 400. The window follows the model's maximum, capped at 32768, and stays
+  // at the 8192 floor (#591) when the server does not report one.
+  it.each([
+    { reported: 32768, numCtx: 32768 },
+    { reported: 131072, numCtx: 32768 },
+    { reported: undefined, numCtx: 8192 }
+  ])(
+    'ollama preset uses the native /api endpoint with num_ctx $numCtx for a model reporting $reported and no reasoning fields',
+    async ({ reported, numCtx }) => {
+      mocks.streamText.mockReturnValueOnce({
+        fullStream: (async function* () {
+          yield { type: 'text-delta', text: 'ok' }
+        })()
+      })
+
+      const backend = new LocalOpenAICompatibleBackend({
+        getSettings: async () => ({
+          preset: 'ollama',
+          baseUrl: 'http://localhost:11434/v1',
+          model: 'gemma4',
+          apiKeyConfigured: false,
+          allowNonLoopback: false,
+          thinking: 'off'
+        }),
+        getApiKey: async () => null,
+        toolBridge: { execute: vi.fn() } as never,
+        fetch: createProbeFetch({ models: ['gemma4'], contextLength: reported })
+      })
+
+      await backend.runTurn({
+        prompt: 'hi',
+        conversationId: 'c1',
+        writeGrant: TEST_GRANT,
+        windowId: 'window-1',
+        options: { backend: 'local_openai_compatible', reasoningEffort: 'max' }
+      })
+
+      expect(mocks.createOllama).toHaveBeenCalledWith(
+        expect.objectContaining({ baseURL: 'http://localhost:11434/api' })
+      )
+      expect(mocks.createOpenAICompatible).not.toHaveBeenCalled()
+      const streamArgs = mocks.streamText.mock.calls[0][0]
+      expect(streamArgs.tools).toBeDefined()
+      expect(streamArgs.providerOptions).toEqual({ ollama: { options: { num_ctx: numCtx } } })
+    }
+  )
+
+  it('fails a tool turn with an actionable error when the Ollama model context is too small', async () => {
     mocks.streamText.mockReturnValueOnce({
       fullStream: (async function* () {
-        yield { type: 'text-delta', text: 'ok' }
+        yield { type: 'text-delta', text: 'Title' }
       })()
     })
-
     const backend = new LocalOpenAICompatibleBackend({
       getSettings: async () => ({
         preset: 'ollama',
         baseUrl: 'http://localhost:11434/v1',
-        model: 'gemma4',
+        model: 'llama3.2',
         apiKeyConfigured: false,
-        allowNonLoopback: false,
-        thinking: 'off'
+        allowNonLoopback: false
       }),
       getApiKey: async () => null,
       toolBridge: { execute: vi.fn() } as never,
-      fetch: createProbeFetch()
+      fetch: createProbeFetch({ contextLength: 4096 })
     })
 
-    await backend.runTurn({
-      prompt: 'hi',
+    const run = await backend.runTurn({
+      prompt: 'User: create a task',
       conversationId: 'c1',
       writeGrant: TEST_GRANT,
       windowId: 'window-1',
-      options: { backend: 'local_openai_compatible', reasoningEffort: 'max' }
+      options: { backend: 'local_openai_compatible', toolsEnabled: true }
     })
+    const events = []
+    for await (const event of run.events) events.push(event)
 
-    expect(mocks.createOllama).toHaveBeenCalledWith(
-      expect.objectContaining({ baseURL: 'http://localhost:11434/api' })
-    )
-    expect(mocks.createOpenAICompatible).not.toHaveBeenCalled()
-    const streamArgs = mocks.streamText.mock.calls[0][0]
-    expect(streamArgs.providerOptions).toEqual({ ollama: { options: { num_ctx: 8192 } } })
+    expect(events).toEqual([
+      {
+        kind: 'error',
+        message: expect.stringMatching(/llama3\.2 has a 4096-token context window.*16384/)
+      }
+    ])
+    expect(await run.waitExit()).toBe(1)
+    expect(mocks.streamText).not.toHaveBeenCalled()
+
+    // A run without tools still goes out, and the window never drops below 8192 (#591).
+    await backend.generateTitle({
+      prompt: 'Title this',
+      conversationId: 'c1',
+      windowId: 'window-1',
+      options: { backend: 'local_openai_compatible' }
+    })
+    expect(mocks.streamText.mock.calls[0][0].providerOptions).toEqual({
+      ollama: { options: { num_ctx: 8192 } }
+    })
   })
 
   describe('capability probe caching', () => {
@@ -488,8 +549,14 @@ describe('LocalOpenAICompatibleBackend', () => {
       }))
     }
 
+    function callCount(fetchImpl: typeof fetch, endpoint: 'probe' | 'show'): number {
+      return (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls.filter(
+        ([url]) => String(url).endsWith('/api/show') === (endpoint === 'show')
+      ).length
+    }
+
     function probeCallCount(fetchImpl: typeof fetch): number {
-      return (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls.length
+      return callCount(fetchImpl, 'probe')
     }
 
     async function turn(backend: LocalOpenAICompatibleBackend): Promise<void> {
@@ -504,7 +571,7 @@ describe('LocalOpenAICompatibleBackend', () => {
 
     it('probes once and reuses the result across turns', async () => {
       alwaysStream()
-      const fetchImpl = createProbeFetch()
+      const fetchImpl = createProbeFetch({ contextLength: 32768 })
       const backend = new LocalOpenAICompatibleBackend({
         getSettings: async () => baseSettings,
         getApiKey: async () => null,
@@ -521,6 +588,8 @@ describe('LocalOpenAICompatibleBackend', () => {
       expect(mocks.streamText).toHaveBeenLastCalledWith(
         expect.objectContaining({ tools: expect.anything() })
       )
+      // The model's context length is asked once, not on every turn.
+      expect(callCount(fetchImpl, 'show')).toBe(1)
     })
 
     it('re-probes when the model, base URL, or API key changes', async () => {
@@ -659,12 +728,21 @@ function createProbeFetch(
     rejectNamedToolChoice?: boolean
     streamBody?: boolean
     models?: string[]
+    contextLength?: number
   } = {}
 ): typeof fetch {
   return vi.fn(async (url: string | URL, init?: RequestInit) => {
     const href = String(url)
     if (href.endsWith('/models')) {
       return jsonResponse({ data: (input.models ?? ['llama3.2']).map((id) => ({ id })) })
+    }
+    if (href.endsWith('/api/show')) {
+      return jsonResponse({
+        model_info:
+          input.contextLength === undefined
+            ? {}
+            : { 'general.architecture': 'llama', 'llama.context_length': input.contextLength }
+      })
     }
 
     const body = JSON.parse(typeof init?.body === 'string' ? init.body : '{}') as {

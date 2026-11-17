@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type {
   AgentAccessMode,
   AgentBackendStatus,
@@ -7,6 +7,7 @@ import type {
   AgentLocalThinking,
   AgentLocalProviderProbeResult,
   AgentLocalProviderSettings,
+  AgentLocalProviderSettingsUpdate,
   AgentPreferences,
   AgentToolApprovalMode,
   BackendStatusesResponse
@@ -36,8 +37,11 @@ import {
 } from '@/components/settings/settings-primitives'
 import { ChevronRight } from '@/lib/icons'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { createLogger } from '@/lib/logger'
 import { trackTelemetry } from '@/lib/telemetry'
 import { cn } from '@/lib/utils'
+
+const logger = createLogger('AgentProvidersSection')
 
 type Translate = (key: string, vars?: Record<string, string | number>) => string
 
@@ -91,6 +95,8 @@ export function AgentProvidersSection({
   const [busy, setBusy] = useState<string | null>(null)
   const [dirty, setDirty] = useState(false)
   const [alwaysAllowed, setAlwaysAllowed] = useState<string[]>([])
+  // The edit the debounce below has not saved yet, saved at once when the page closes.
+  const unsavedRef = useRef<AgentLocalProviderSettingsUpdate | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -128,19 +134,25 @@ export function AgentProvidersSection({
 
   // Auto-save edits (debounced), then re-check the connection and surface any error inline.
   useEffect(() => {
-    if (!dirty || !settings) return undefined
+    if (!dirty || !settings) {
+      unsavedRef.current = null
+      return undefined
+    }
+    const update: AgentLocalProviderSettingsUpdate = {
+      preset: settings.preset,
+      baseUrl: settings.baseUrl,
+      model: settings.model,
+      allowNonLoopback: settings.allowNonLoopback,
+      thinking: settings.thinking,
+      apiKey: apiKey || undefined
+    }
+    unsavedRef.current = update
     const handle = setTimeout(() => {
+      unsavedRef.current = null
       void (async () => {
         setBusy('save')
         try {
-          const saved = await window.api.agent.setLocalProviderSettings({
-            preset: settings.preset,
-            baseUrl: settings.baseUrl,
-            model: settings.model,
-            allowNonLoopback: settings.allowNonLoopback,
-            thinking: settings.thinking,
-            apiKey: apiKey || undefined
-          })
+          const saved = await window.api.agent.setLocalProviderSettings(update)
           setSettings(saved)
           setDirty(false)
           setStatus(await window.api.agent.testLocalProvider())
@@ -152,6 +164,18 @@ export function AgentProvidersSection({
     return () => clearTimeout(handle)
     // oxlint-disable-next-line react/exhaustive-effect-dependencies -- settings and apiKey are the debounce trigger; the effect reads them through the latest saved snapshot
   }, [dirty, settings, apiKey])
+
+  // Closing the page inside the debounce saves the pending edit instead of dropping it (#3674).
+  useEffect(
+    () => () => {
+      const update = unsavedRef.current
+      if (!update) return
+      window.api.agent.setLocalProviderSettings(update).catch((error: unknown) => {
+        logger.error('Saving local model settings on close failed', error)
+      })
+    },
+    []
+  )
 
   const nonLoopback = useMemo(() => {
     if (!settings) return false

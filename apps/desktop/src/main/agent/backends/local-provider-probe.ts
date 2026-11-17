@@ -336,6 +336,38 @@ export async function probeImageInput(
 }
 
 /**
+ * The model's maximum context from Ollama's native /api/show, or null when the server
+ * does not report one. The GGUF metadata key carries the architecture, such as
+ * `llama.context_length`.
+ */
+export async function probeOllamaContextLength(
+  apiBaseUrl: string,
+  model: string,
+  fetchImpl: typeof fetch,
+  apiKey: string | null
+): Promise<number | null> {
+  try {
+    const response = await fetchImpl(`${apiBaseUrl}/show`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...authHeaders(apiKey) },
+      signal: AbortSignal.timeout(PROBE_REQUEST_TIMEOUT_MS),
+      body: JSON.stringify({ model })
+    })
+    if (!response.ok) throw new Error(`/api/show returned HTTP ${response.status}`)
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse/json() returns any; this is an HTTP response from a user-configured provider; fields are optional and read defensively
+    const payload = (await response.json()) as { model_info?: Record<string, unknown> }
+    for (const [key, value] of Object.entries(payload.model_info ?? {})) {
+      if (key.endsWith('.context_length') && typeof value === 'number' && value > 0) return value
+    }
+    logger.warn(`/api/show reported no context length for model ${model}`)
+    return null
+  } catch (error) {
+    logger.warn(`Context length lookup failed for model ${model}: ${errorMessage(error)}`)
+    return null
+  }
+}
+
+/**
  * A model whose server leaves its tool call in the reply text gets that call back as a
  * structured `tool_calls` entry, which is what the chat sends after the text is parsed.
  */

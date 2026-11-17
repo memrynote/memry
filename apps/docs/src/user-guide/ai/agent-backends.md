@@ -63,6 +63,12 @@ server, or a hosted API such as DeepSeek through the Custom preset.
   Both controls are hidden for the Ollama preset.
 - Reasoning that the server returns as `reasoning_content` shows in a "Thinking" block above the
   answer.
+- With the Ollama preset, memrynote talks to Ollama's native `/api/chat` endpoint and sets the
+  context window (`num_ctx`) on every request, so you do not need to set `OLLAMA_CONTEXT_LENGTH` or
+  `OLLAMA_NUM_PARALLEL`. The window is the model's own maximum, read from Ollama's `/api/show`,
+  capped at 32768 tokens because a larger window takes more memory, and never below 8192. A turn
+  with vault tools needs about 15,000 tokens. With a model whose maximum is below 16384, that turn
+  stops with an error that names the model's window: pick a model with a larger context window.
 
 There are no plans to give the built-in backend a shell, file or web tools. If you need a command
 line, files outside the vault or web search, use Claude Code, Codex or Antigravity with

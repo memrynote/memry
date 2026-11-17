@@ -18,6 +18,7 @@ import {
   type LocalProbe,
   probeImageInput,
   probeLocalProvider,
+  probeOllamaContextLength,
   probeSettingsKey,
   testOpenAiCompatibleConnection
 } from './local-provider-probe'
@@ -33,11 +34,16 @@ import type {
 
 let nextLocalRunPid = -1
 
-// ponytail: fixed 8192-token window fixes #591. Ollama's default context is 4096
-// and OLLAMA_NUM_PARALLEL divides it across slots, so Memry's system prompt + tool
-// schemas overflow and the reply is cut to one token. Promote to a user setting only
-// if someone needs to tune it.
-const OLLAMA_NUM_CTX = 8192
+// Ollama takes the context window per request (num_ctx). Its default is 4096, divided
+// across OLLAMA_NUM_PARALLEL slots, which cut replies to one token (#591), so 8192 is
+// the floor. A turn with the vault tools measured 15,264 tokens and Ollama refused it
+// with HTTP 400 at 8192 (#3674), so the window follows the model's own maximum from
+// /api/show. The cap bounds the KV cache, which grows with the window and would not fit
+// a laptop's memory at a 128k window.
+const OLLAMA_MIN_NUM_CTX = 8192
+const OLLAMA_MAX_NUM_CTX = 32768
+// A model whose maximum is below this cannot hold a turn with the vault tools.
+const OLLAMA_TOOL_TURN_MIN_CTX = 16384
 
 // The image-input probe's answer can change when the provider swaps the model behind a
 // name, so it expires; a "no" expires faster because a provider error looks the same.
@@ -91,6 +97,14 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
     key: string
     apiKey: string | null
     accepts: boolean
+    expiresAt: number
+  } | null = null
+  // The Ollama chat model's maximum context (#3674), in the same single slot. A failed
+  // lookup is not cached, so a server started later is asked again on the next run.
+  private contextLengthCache: {
+    key: string
+    apiKey: string | null
+    contextLength: number
     expiresAt: number
   } | null = null
 
@@ -224,6 +238,33 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
     return accepts
   }
 
+  private async ollamaContextLength(
+    settings: AgentLocalProviderSettings,
+    modelName: string,
+    apiKey: string | null
+  ): Promise<number | null> {
+    const key = JSON.stringify([probeSettingsKey(settings), modelName])
+    const cached = this.contextLengthCache
+    if (cached?.key === key && cached.apiKey === apiKey && cached.expiresAt > Date.now()) {
+      return cached.contextLength
+    }
+    const contextLength = await probeOllamaContextLength(
+      toOllamaApiBaseUrl(settings.baseUrl),
+      modelName,
+      this.deps.fetch ?? fetch,
+      apiKey
+    )
+    if (contextLength !== null) {
+      this.contextLengthCache = {
+        key,
+        apiKey,
+        contextLength,
+        expiresAt: Date.now() + PROBE_TTL_MS
+      }
+    }
+    return contextLength
+  }
+
   private async run(
     input: AgentBackendRunInput & { writeGrant?: TurnWriteGrant },
     allowTools: boolean
@@ -254,6 +295,24 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
       tools?.kind === 'off'
         ? [{ kind: 'tools_unavailable', reason: tools.reason, detail: tools.detail }]
         : []
+    const contextLength = isOllama
+      ? await this.ollamaContextLength(settings, modelName, apiKey)
+      : null
+    if (
+      tools?.kind === 'on' &&
+      contextLength !== null &&
+      contextLength < OLLAMA_TOOL_TURN_MIN_CTX
+    ) {
+      return failedRun(
+        `${modelName} has a ${contextLength}-token context window, and a chat turn with vault ` +
+          `tools needs at least ${OLLAMA_TOOL_TURN_MIN_CTX}. Choose a model with a context ` +
+          `window of ${OLLAMA_TOOL_TURN_MIN_CTX} tokens or more.`
+      )
+    }
+    const numCtx = Math.max(
+      OLLAMA_MIN_NUM_CTX,
+      Math.min(contextLength ?? OLLAMA_MIN_NUM_CTX, OLLAMA_MAX_NUM_CTX)
+    )
     const result = streamText({
       model:
         tools?.kind === 'on'
@@ -278,7 +337,7 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
           }
         : {}),
       ...(isOllama
-        ? { providerOptions: { ollama: { options: { num_ctx: OLLAMA_NUM_CTX } } } }
+        ? { providerOptions: { ollama: { options: { num_ctx: numCtx } } } }
         : reasoningProviderOptions(options?.reasoningEffort, settings.thinking)),
       ...(tools?.kind === 'on' && input.writeGrant
         ? {
@@ -303,6 +362,19 @@ export class LocalOpenAICompatibleBackend implements AgentBackend {
       waitExit: async () => exitCode,
       cleanup: async () => {}
     }
+  }
+}
+
+function failedRun(message: string): BackendRunHandle {
+  return {
+    events: (async function* (): AsyncGenerator<BackendEvent> {
+      yield { kind: 'error', message }
+    })(),
+    stderr: textToStream(() => message),
+    pid: nextLocalRunPid--,
+    kill: () => {},
+    waitExit: async () => 1,
+    cleanup: async () => {}
   }
 }
 
