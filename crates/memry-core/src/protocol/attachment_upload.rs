@@ -33,6 +33,7 @@
 //! uploads cleanly and fails every reader's integrity check.
 
 use crate::protocol::attachment_manifest::{AttachmentChunkRef, AttachmentManifest};
+use crate::protocol::attachment_stream::frame_one;
 use crate::protocol::attachments::{AttachmentError, hex_sha256};
 use crate::protocol::http::{ApiRequest, Auth, HttpClient, RetryPolicy, VAULT_ID_HEADER};
 
@@ -78,7 +79,9 @@ pub fn frame_chunks(
     chunk_size: usize,
     mut nonce_for: impl FnMut(u32) -> Vec<u8>,
 ) -> Result<Vec<FramedChunk>, AttachmentError> {
-    let chunk_size = chunk_size.max(1);
+    if chunk_size == 0 {
+        return Err(AttachmentError::ZeroChunkSize);
+    }
     // An empty file is one empty chunk rather than none: a manifest with no
     // chunks has nothing to address, and a reader assembling zero chunks
     // cannot tell it from a file that failed to upload.
@@ -95,33 +98,14 @@ pub fn frame_chunks(
         });
     }
 
-    let mut out = Vec::with_capacity(slices.len());
-    for (index, slice) in slices.into_iter().enumerate() {
-        let index = index as u32;
-        let nonce = nonce_for(index);
-        let ciphertext = crate::crypto::sodium::aead_encrypt(slice, None, &nonce, file_key)
-            .map_err(|_| AttachmentError::Undecryptable)?;
-
-        let mut framed = nonce;
-        framed.extend_from_slice(&ciphertext);
-
-        out.push(FramedChunk {
-            index,
-            reference: AttachmentChunkRef {
-                index,
-                // The PLAINTEXT hash: the reader's integrity check after
-                // decrypt (§14.3).
-                hash: hex_sha256(slice),
-                // The FRAMED CIPHERTEXT hash: how R2 addresses it. Swapping
-                // these two produces a file that uploads cleanly and fails
-                // every reader.
-                encrypted_hash: hex_sha256(&framed),
-                size: slice.len() as u64,
-            },
-            framed,
-        });
-    }
-    Ok(out)
+    slices
+        .into_iter()
+        .enumerate()
+        .map(|(index, slice)| {
+            let index = index as u32;
+            frame_one(index, slice, file_key, nonce_for(index))
+        })
+        .collect()
 }
 
 /// The manifest describing a framed file (§14.4).
