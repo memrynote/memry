@@ -208,8 +208,11 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "note_body_sync",
         sql: include_str!("migrations/data/0032_note_body_sync.sql"),
     },
-    // 33 is held by an open PR (#4855 inbox jobs), which lands first: a file
-    // at 34 would never receive it.
+    Migration {
+        version: 33,
+        name: "inbox_jobs",
+        sql: include_str!("migrations/data/0033_inbox_jobs.sql"),
+    },
     Migration {
         version: 34,
         name: "attachment_sync",

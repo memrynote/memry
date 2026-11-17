@@ -11,6 +11,8 @@
 //! | 402 is PaymentRequired, 409 is success               | `routes/sync.ts:107-131`               |
 //! | no master key makes no request                       | nothing to seal the name with          |
 //! | the billing routes post their documented bodies      | `routes/auth.ts:812-867`               |
+//! | desktop's billing routes send their documented bodies | `routes/auth.ts:851-907`               |
+//! | a plan change is sent once                           | Electron `http-client.ts:197-210`      |
 
 #[allow(unused_imports)]
 use crate::http_fakes;
@@ -22,9 +24,14 @@ use base64::engine::general_purpose::STANDARD as BASE64;
 use http_fakes::*;
 use memry_core::api::auth::{AuthSession, DeviceDescriptor, ensure_device_identity};
 use memry_core::api::crypto::{decrypt_vault_icon, decrypt_vault_name, encrypt_vault_icon};
-use memry_core::api::errors::{ApiError, AuthError, SecureStoreError, StorageError};
+use memry_core::api::errors::{
+    ApiError, AuthError, SecureStoreError, StorageError, TransportError,
+};
 use memry_core::api::vault::Vault;
 use memry_core::protocol::auth::DevicePlatform;
+use memry_core::protocol::billing::{
+    PlanChangeCadence, PlanChangeEffective, PlanChangeTarget, PlanChangeTier,
+};
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_core::seams::transport::HttpResponse;
 use memry_core::storage::open_data;
@@ -32,7 +39,7 @@ use rusqlite::Connection;
 use serde_json::json;
 
 const MASTER_KEY: [u8; 32] = [11u8; 32];
-type Script = Vec<Result<HttpResponse, memry_core::api::errors::TransportError>>;
+type Script = Vec<Result<HttpResponse, TransportError>>;
 
 fn session(transport: Arc<FakeTransport>, store: Arc<FakeSecureStore>) -> AuthSession {
     let device = DeviceDescriptor {
@@ -367,4 +374,131 @@ async fn the_billing_routes_post_their_documented_bodies() {
             .ends_with("/auth/billing/portal-session")
     );
     assert_eq!(last_call(&transport).method, "POST");
+}
+
+const BELIEVER: &str = r#"{"plan":"believer","cadence":"lifetime","status":"active",
+    "limits":{"storageLimit":53687091200,"maxFileSize":209715200,"maxVaults":null,
+    "versionHistoryDays":365},"usage":{"storageUsed":3},"expiresAt":null,
+    "canManageBilling":true}"#;
+
+#[tokio::test]
+async fn desktop_billing_routes_send_their_documented_bodies() {
+    let (session, transport) = signed_in(vec![
+        response(200, BELIEVER),
+        response(200, BELIEVER),
+        response(200, BELIEVER),
+        response(
+            200,
+            r#"{"plan":"plus","cadence":"annual","isUpgrade":true,"effective":"immediate",
+            "immediateChargeAmount":"3000","recurringAmount":"4800","currencyCode":"USD",
+            "nextBilledAt":"2026-01-01T00:00:00Z"}"#,
+        ),
+        response(200, BELIEVER),
+        error_response(
+            409,
+            "BILLING_MANAGED_BY_APP_STORE",
+            "managed by the App Store",
+        ),
+    ])
+    .await;
+
+    let snapshot = session.billing_snapshot().await.unwrap();
+    assert_eq!(
+        (snapshot.plan.as_str(), snapshot.max_vaults),
+        ("believer", None)
+    );
+    assert!(snapshot.can_manage_billing);
+    let call = last_call(&transport);
+    assert_eq!(call.method, "GET");
+    assert!(call.url.ends_with("/auth/billing"));
+
+    session
+        .reconcile_billing(Some("txn_01".into()))
+        .await
+        .unwrap();
+    let call = last_call(&transport);
+    assert_eq!(call.method, "POST");
+    assert!(call.url.ends_with("/auth/billing/reconcile"));
+    assert_eq!(body_json(&call), json!({ "transactionId": "txn_01" }));
+
+    // A link without a transaction id reconciles with an empty body, as an empty id does.
+    session
+        .reconcile_billing(Some(String::new()))
+        .await
+        .unwrap();
+    assert_eq!(body_json(&last_call(&transport)), json!({}));
+
+    let annual = PlanChangeTarget {
+        plan: PlanChangeTier::Plus,
+        cadence: PlanChangeCadence::Annual,
+    };
+    let preview = session.preview_plan_change(annual).await.unwrap();
+    assert_eq!(preview.effective, PlanChangeEffective::Immediate);
+    assert_eq!(preview.immediate_charge_amount.as_deref(), Some("3000"));
+    let call = last_call(&transport);
+    assert_eq!(call.method, "POST");
+    assert!(call.url.ends_with("/auth/billing/change-plan/preview"));
+    assert_eq!(
+        body_json(&call),
+        json!({ "plan": "plus", "cadence": "annual" })
+    );
+
+    assert_eq!(session.change_plan(annual).await.unwrap().plan, "believer");
+    let call = last_call(&transport);
+    assert!(call.url.ends_with("/auth/billing/change-plan"));
+    assert_eq!(
+        body_json(&call),
+        json!({ "plan": "plus", "cadence": "annual" })
+    );
+
+    // An App Store subscription keeps its status and code, so the caller can say where to change it.
+    match session.change_plan(annual).await {
+        Err(ApiError::Status {
+            status: 409,
+            code: Some(code),
+            ..
+        }) => assert_eq!(code, "BILLING_MANAGED_BY_APP_STORE"),
+        other => panic!("expected a 409 status, got {other:?}"),
+    }
+}
+
+const ANNUAL_PLUS: PlanChangeTarget = PlanChangeTarget {
+    plan: PlanChangeTier::Plus,
+    cadence: PlanChangeCadence::Annual,
+};
+
+/// The server answers a declined charge with a 502 (`paddle-billing.ts:469-479`):
+/// a resend could charge again, so a plan change is sent once, as on Electron.
+#[tokio::test]
+async fn a_plan_change_502_is_not_resent() {
+    let (session, transport) = signed_in(vec![
+        error_response(502, "INTERNAL_ERROR", "payment failed"),
+        response(200, BELIEVER),
+    ])
+    .await;
+
+    assert!(matches!(
+        session.change_plan(ANNUAL_PLUS).await,
+        Err(ApiError::Status { status: 502, .. })
+    ));
+    assert_eq!(transport.calls_to("/auth/billing/change-plan").len(), 1);
+}
+
+/// A lost response may hide a change that went through; a resend would answer
+/// `409 Already on this plan` and hide the outcome the caller must reconcile.
+#[tokio::test]
+async fn a_plan_change_timeout_is_returned_not_resent() {
+    let (session, transport) = signed_in(vec![
+        Err(TransportError::Timeout { elapsed_ms: 30_000 }),
+        error_response(409, "CONFLICT", "Already on this plan."),
+    ])
+    .await;
+
+    assert!(matches!(
+        session.change_plan(ANNUAL_PLUS).await,
+        Err(ApiError::Transport {
+            source: TransportError::Timeout { .. }
+        })
+    ));
+    assert_eq!(transport.calls_to("/auth/billing/change-plan").len(), 1);
 }
