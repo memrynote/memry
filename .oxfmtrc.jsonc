@@ -62,6 +62,8 @@
     "crates/memrynote-cli/tests/golden/expected/",
     "crates/memrynote-cli/tests/golden/manifest.json",
     "crates/memrynote-cli/tests/golden/normalize-cases.json",
+    // Importer vectors (Step 32): inputs byte for byte (BOM, CRLF), JSON the generator writes.
+    "packages/contracts/test-vectors/importers/",
     "crates/memry-desktop/src/web/extract/elements/math/mathml/tables.json",
     "crates/memry-desktop/src/web/extract/elements/math/temml/tables.json",
 

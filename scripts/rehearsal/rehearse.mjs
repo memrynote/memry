@@ -38,9 +38,8 @@ import { fileURLToPath } from 'node:url'
 import { buildOsslsigncodeVerifyArgs, isSignatureVerified } from '../velopack-release-utils.mjs'
 import { isMain } from '../release/is-main.mjs'
 import {
-  buildLatestLinuxYml,
-  buildLatestMacYml,
-  buildLatestYml,
+  BRIDGES_WIN_LINUX,
+  buildBridgeFeeds,
   describeFile,
   setupExeName
 } from '../release/bridge-feeds.mjs'
@@ -59,6 +58,7 @@ const WORKFLOW = 'update-bridge-rehearsal.yml'
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const iconPath = path.join(repoRoot, 'apps/desktop-tauri/src-tauri/icons/icon.ico')
 const signScript = path.join(repoRoot, 'scripts/sign-windows-binary.sh')
+const releaseNotes = path.join(repoRoot, 'scripts/rehearsal/release-notes.md')
 const caPaths = ['ccsca2021.pem', 'ctnca2.pem'].map((name) =>
   path.join(repoRoot, 'scripts/certum', name)
 )
@@ -389,6 +389,7 @@ function packWindows(target, version, artifactDir, workDir, previousTag, signed)
     packDir,
     outputDir,
     iconPath,
+    releaseNotes,
     delta: previousTag ? 'BestSpeed' : 'None',
     ...(signed && { signTemplate: `${signScript} {{file}}` })
   })
@@ -493,27 +494,19 @@ function cmdAssemble(version, argv) {
   copyFileSync(path.join(assets, linux.portable), path.join(assets, linux.appImage))
 
   // Feeds hash the exact bytes that get uploaded.
-  if (windows.latestYml) {
+  const bridgeSetup = BRIDGES_WIN_LINUX && windows.latestYml
+  if (bridgeSetup) {
     const winSetup = path.join(assets, assetNames('win-x64', version).setup)
     copyFileSync(winSetup, path.join(assets, setupExeName(version)))
   }
   const entry = (name) => describeFile(path.join(assets, name))
-  const feeds = {
-    'latest-mac.yml': buildLatestMacYml({
-      version,
-      releaseDate,
-      arm64Zip: entry(squirrel('arm64')),
-      x64Zip: entry(squirrel('x64'))
-    }),
-    'latest-linux.yml': buildLatestLinuxYml({
-      version,
-      releaseDate,
-      files: [entry(linux.appImage)]
-    }),
-    ...(windows.latestYml && {
-      'latest.yml': buildLatestYml({ version, releaseDate, setup: entry(setupExeName(version)) })
-    })
-  }
+  const feeds = buildBridgeFeeds({
+    version,
+    releaseDate,
+    mac: { arm64Zip: entry(squirrel('arm64')), x64Zip: entry(squirrel('x64')) },
+    linux: { appImage: entry(linux.appImage) },
+    ...(bridgeSetup && { setup: entry(setupExeName(version)) })
+  })
   for (const [name, text] of Object.entries(feeds)) writeFileSync(path.join(assets, name), text)
 
   run('node', [
@@ -599,6 +592,7 @@ function cmdElectronBaseline(tag, argv) {
     packDir,
     outputDir,
     iconPath,
+    releaseNotes,
     delta: 'None',
     signTemplate: `${signScript} {{file}}`
   })

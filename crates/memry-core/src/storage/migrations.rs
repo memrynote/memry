@@ -208,6 +208,11 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "note_body_sync",
         sql: include_str!("migrations/data/0032_note_body_sync.sql"),
     },
+    Migration {
+        version: 33,
+        name: "inbox_jobs",
+        sql: include_str!("migrations/data/0033_inbox_jobs.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.
