@@ -663,7 +663,7 @@ describe('ci tier on the repo itself', () => {
 })
 
 // The matrices the workflows build from the tier outputs (rust-legs.jq, tauri-builds.jq).
-function rustLegs(out) {
+function rustLegEntries(out) {
   const result = spawnSync(
     'jq',
     [
@@ -689,10 +689,16 @@ function rustLegs(out) {
     { encoding: 'utf8' }
   )
   assert.equal(result.status, 0, result.stderr)
-  return JSON.parse(result.stdout).map(
-    (l) => `${l.os} ${l.part}${l.partition ? ` ${l.partition}` : ''}`
-  )
+  return JSON.parse(result.stdout)
 }
+
+const legName = (l) => `${l.os} ${l.part}${l.partition ? ` ${l.partition}` : ''}`
+const rustLegs = (out) => rustLegEntries(out).map(legName)
+// The jobs that run the ML model steps (`models: true`).
+const modelLegs = (out) =>
+  rustLegEntries(out)
+    .filter((l) => l.models)
+    .map(legName)
 
 function tauriBuilds(out, queue = false) {
   const result = spawnSync(
@@ -730,12 +736,38 @@ function tauriBuilds(out, queue = false) {
 
 const linuxRust = ['ubuntu-22.04 checks', 'ubuntu-22.04 tests 1/2', 'ubuntu-22.04 tests 2/2']
 const windowsRust = ['windows-2022 checks', 'windows-2022 tests 1/2', 'windows-2022 tests 2/2']
-const armRust = ['windows-11-arm checks', 'windows-11-arm tests 1/2', 'windows-11-arm tests 2/2']
+const armRust = [
+  'windows-11-arm checks',
+  'windows-11-arm tests 1/2',
+  'windows-11-arm tests 2/2',
+  'windows-11-arm models'
+]
 const linuxTauri = ['linux-x64 debug', 'linux-x64 e2e 1', 'linux-x64 e2e 2']
 
 describe('ci matrices', () => {
   const shell = 'crates/memry-desktop/src/shell/paths.rs'
   const pr = (...lines) => tier({ files: [shell], patches: { [shell]: hunk(...lines) } })
+
+  it('runs the model steps in one job per OS on the full tier, in their own job on windows-11-arm', () => {
+    const out = tier({ event: 'push', ref: 'refs/heads/main', base: '', listed: false, files: [] })
+    assert.deepEqual(modelLegs(out), [
+      'ubuntu-22.04 checks',
+      'macos-15 all',
+      'macos-15-intel all',
+      'windows-2022 checks',
+      'windows-11-arm models'
+    ])
+    const queue = tier({ event: 'merge_group', base: '', files: [shell] })
+    assert.deepEqual(modelLegs(queue), [
+      'ubuntu-22.04 checks',
+      'windows-2022 checks',
+      'windows-11-arm models'
+    ])
+  })
+
+  it('runs no model steps on the fast tier', () => {
+    assert.deepEqual(modelLegs(pr('+#[cfg(windows)]', '+#[test]')), [])
+  })
 
   it('builds Linux only for a fast-tier PR without OS changes', () => {
     const out = pr('+    let b = 2;')
