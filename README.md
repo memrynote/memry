@@ -64,7 +64,7 @@ Every build is also on [GitHub Releases](https://github.com/memrynote/memry/rele
 
 - The vault lives on your disk. The app works offline and without an account.
 - Sync encrypts every change on your device before upload, with XChaCha20-Poly1305. Ed25519 signatures show which device wrote it. Your master key comes from your 24-word recovery phrase through Argon2id. It passes through the server only encrypted, when you link a new device.
-- The sync server stores ciphertext and the routing metadata it needs. It holds no keys, so it cannot read your notes, titles or tags.
+- The sync server stores ciphertext and the routing metadata it needs. It holds no keys, so it cannot read your notes or their titles. Tag names, folder paths and journal dates are readable, because they form item ids.
 - The agent reaches your vault through a server on `localhost`. Your notes go to a model provider only when you pick a cloud model.
 - Anonymous usage metrics are on by default. Settings > General > Privacy turns them off.
 - No independent audit has been done yet. The sync protocol is specified in [`docs/protocol/`](docs/protocol/).
