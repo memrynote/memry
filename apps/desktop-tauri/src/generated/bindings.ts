@@ -733,6 +733,13 @@ export const commands = {
 	 */
 	vaultDeleteFromAccount: (vaultUuid: string) => __TAURI_INVOKE<null>("vault_delete_from_account", { vaultUuid }),
 	/**
+	 *  `vault:download-remote` (`vault-directory.ts:266-318`): opens the registered copy of the
+	 *  account vault, else makes its folder under `parent_path` (default: next to the current vault)
+	 *  and opens that. A download that opens arms the new vault's bootstrap window from the moment
+	 *  this call started, as `beginBootstrap` does before provisioning, and marks it interactive.
+	 */
+	vaultDownloadRemote: (vaultUuid: string, parentPath: string | null) => __TAURI_INVOKE<SelectVaultResponse>("vault_download_remote", { vaultUuid, parentPath }),
+	/**
 	 *  `vault:list-account`: refreshes the directory (throttled), then the cached list, which is
 	 *  the last one read when offline.
 	 */
