@@ -122,7 +122,10 @@ fn init_logging(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     // Taken and dropped at `RunEvent::Exit` (`shutdown::flush_log`): the process ends without
     // dropping managed state, which would lose the lines still queued for the writer thread.
     app.manage(std::sync::Mutex::new(Some(guard)));
-    logging::log_startup(env!("CARGO_PKG_VERSION"), BuildKind::current().into());
+    logging::log_startup(
+        &app.package_info().version.to_string(),
+        BuildKind::current().into(),
+    );
     Ok(())
 }
 

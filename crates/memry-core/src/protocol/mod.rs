@@ -4,6 +4,7 @@
 pub mod account;
 pub mod account_admin;
 pub mod attachment_manifest;
+pub mod attachment_stream;
 pub mod attachment_upload;
 pub mod attachments;
 pub mod auth;
