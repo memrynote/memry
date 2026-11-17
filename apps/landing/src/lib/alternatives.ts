@@ -279,10 +279,10 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       competitor: 'Subscription from ~$7/mo (no free tier for full features).'
     },
     migration: {
-      importer: null,
+      importer: 'NotePlan',
       steps: [
-        'Find your NotePlan Markdown folder (Notes and Calendar notes are plain .md files).',
-        'Point memrynote at that folder — daily notes and tasks carry over as Markdown.',
+        'Open memrynote → Settings → Import and choose the NotePlan importer.',
+        'Select your NotePlan data folder or one of its backups. Daily notes become journal entries, other notes keep their folder tree, and tasks become memrynote tasks.',
         'Enable encrypted cross-platform sync to use the same vault on Windows, macOS, and Linux.'
       ]
     },
@@ -298,9 +298,9 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
           'Yes. memrynote has the same daily-note, task-backlink, and calendar workflow, so your planning habits carry over.'
       },
       {
-        question: 'Can memrynote read my NotePlan Markdown files?',
+        question: 'Can I import my NotePlan notes into memrynote?',
         answer:
-          'Yes. NotePlan stores notes as Markdown, and memrynote opens Markdown folders directly, so you can point it at your existing notes.'
+          'Yes. memrynote has a built-in NotePlan importer. Open Settings → Import, choose NotePlan, and select your NotePlan folder. Daily notes become journal entries, notes keep their folders, and tasks arrive as memrynote tasks with their due and completed dates.'
       },
       {
         question: 'Is sync encrypted?',
@@ -1001,7 +1001,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       },
       {
         heading: 'Migrating from OneNote',
-        body: 'memrynote does not yet have a one-click OneNote importer — worth knowing before you switch. Migration is still doable: in the OneNote desktop app, export each notebook (for example as .docx or PDF), convert the pages to Markdown with a free tool such as Pandoc, then point memrynote at the folder of .md files as your vault. A native OneNote importer is on the roadmap.'
+        body: 'memrynote has a built-in OneNote importer. Open Settings → Import, choose OneNote, and sign in with your Microsoft account in the browser. Pick the notebooks and sections to bring over. Each page becomes a Markdown note in a folder per notebook and section. Images and file attachments come along, to-do tags become checkboxes, handwriting is saved as an image, and created and modified dates carry over. The importer reads notebooks stored in OneDrive. Running it again picks up only new pages.'
       }
     ],
     pricing: {
@@ -1009,18 +1009,18 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       competitor: 'Free with a Microsoft account (uses OneDrive storage).'
     },
     migration: {
-      importer: null,
+      importer: 'OneNote',
       steps: [
-        'In the OneNote desktop app, export each notebook (for example as .docx or PDF).',
-        'Convert the exported pages to Markdown with a free tool such as Pandoc.',
-        'Point memrynote at the folder of .md files as your vault — your notes are ready to read offline.'
+        'Open memrynote → Settings → Import and choose the OneNote importer.',
+        'Sign in with your Microsoft account in the browser, then pick the notebooks and sections to import.',
+        'Each page arrives as a Markdown note with its images, attachments, and dates, ready to read offline.'
       ]
     },
     faqs: [
       {
         question: 'Can I import my OneNote notebooks into memrynote?',
         answer:
-          'Not in one click yet — a native OneNote importer is on the roadmap. For now, export your notebooks from OneNote, convert the pages to Markdown with a free tool like Pandoc, and point memrynote at the resulting folder.'
+          'Yes. Open Settings → Import, choose OneNote, and sign in with your Microsoft account. Pick the notebooks and sections you want. Each page arrives as a Markdown note with its images, attachments, and created and modified dates. Running the import again picks up only new pages.'
       },
       {
         question: 'Is OneNote end-to-end encrypted?',
