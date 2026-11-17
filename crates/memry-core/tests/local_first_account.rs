@@ -11,6 +11,7 @@
 //! | 402 is PaymentRequired, 409 is success               | `routes/sync.ts:107-131`               |
 //! | no master key makes no request                       | nothing to seal the name with          |
 //! | the billing routes post their documented bodies      | `routes/auth.ts:812-867`               |
+//! | desktop's billing routes send their documented bodies | `routes/auth.ts:851-907`               |
 
 #[allow(unused_imports)]
 use crate::http_fakes;
@@ -25,6 +26,9 @@ use memry_core::api::crypto::{decrypt_vault_icon, decrypt_vault_name, encrypt_va
 use memry_core::api::errors::{ApiError, AuthError, SecureStoreError, StorageError};
 use memry_core::api::vault::Vault;
 use memry_core::protocol::auth::DevicePlatform;
+use memry_core::protocol::billing::{
+    PlanChangeCadence, PlanChangeEffective, PlanChangeTarget, PlanChangeTier,
+};
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_core::seams::transport::HttpResponse;
 use memry_core::storage::open_data;
@@ -367,4 +371,86 @@ async fn the_billing_routes_post_their_documented_bodies() {
             .ends_with("/auth/billing/portal-session")
     );
     assert_eq!(last_call(&transport).method, "POST");
+}
+
+const BELIEVER: &str = r#"{"plan":"believer","cadence":"lifetime","status":"active",
+    "limits":{"storageLimit":53687091200,"maxFileSize":209715200,"maxVaults":null,
+    "versionHistoryDays":365},"usage":{"storageUsed":3},"expiresAt":null,
+    "canManageBilling":true}"#;
+
+#[tokio::test]
+async fn desktop_billing_routes_send_their_documented_bodies() {
+    let (session, transport) = signed_in(vec![
+        response(200, BELIEVER),
+        response(200, BELIEVER),
+        response(200, BELIEVER),
+        response(
+            200,
+            r#"{"plan":"plus","cadence":"annual","isUpgrade":true,"effective":"immediate",
+            "immediateChargeAmount":"3000","recurringAmount":"4800","currencyCode":"USD",
+            "nextBilledAt":"2026-01-01T00:00:00Z"}"#,
+        ),
+        response(200, BELIEVER),
+        error_response(402, "SYNC_PAYMENT_REQUIRED", "no plan"),
+    ])
+    .await;
+
+    let snapshot = session.billing_snapshot().await.unwrap();
+    assert_eq!(
+        (snapshot.plan.as_str(), snapshot.max_vaults),
+        ("believer", None)
+    );
+    assert!(snapshot.can_manage_billing);
+    let call = last_call(&transport);
+    assert_eq!(call.method, "GET");
+    assert!(call.url.ends_with("/auth/billing"));
+
+    session
+        .reconcile_billing(Some("txn_01".into()))
+        .await
+        .unwrap();
+    let call = last_call(&transport);
+    assert_eq!(call.method, "POST");
+    assert!(call.url.ends_with("/auth/billing/reconcile"));
+    assert_eq!(body_json(&call), json!({ "transactionId": "txn_01" }));
+
+    // A link without a transaction id reconciles with an empty body, as an empty id does.
+    session
+        .reconcile_billing(Some(String::new()))
+        .await
+        .unwrap();
+    assert_eq!(body_json(&last_call(&transport)), json!({}));
+
+    let annual = PlanChangeTarget {
+        plan: PlanChangeTier::Plus,
+        cadence: PlanChangeCadence::Annual,
+    };
+    let preview = session.preview_plan_change(annual).await.unwrap();
+    assert_eq!(preview.effective, PlanChangeEffective::Immediate);
+    assert_eq!(preview.immediate_charge_amount.as_deref(), Some("3000"));
+    let call = last_call(&transport);
+    assert_eq!(call.method, "POST");
+    assert!(call.url.ends_with("/auth/billing/change-plan/preview"));
+    assert_eq!(
+        body_json(&call),
+        json!({ "plan": "plus", "cadence": "annual" })
+    );
+
+    assert_eq!(session.change_plan(annual).await.unwrap().plan, "believer");
+    let call = last_call(&transport);
+    assert!(call.url.ends_with("/auth/billing/change-plan"));
+    assert_eq!(
+        body_json(&call),
+        json!({ "plan": "plus", "cadence": "annual" })
+    );
+
+    // A 402 keeps its status and code, so the caller reads it as unpaid, not as a crash.
+    match session.change_plan(annual).await {
+        Err(ApiError::Status {
+            status: 402,
+            code: Some(code),
+            ..
+        }) => assert_eq!(code, "SYNC_PAYMENT_REQUIRED"),
+        other => panic!("expected a 402 status, got {other:?}"),
+    }
 }
