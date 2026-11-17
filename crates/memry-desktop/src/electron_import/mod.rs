@@ -6,6 +6,7 @@
 
 pub mod config;
 pub mod dictionary;
+pub mod journal_replay;
 mod leveldb_log;
 mod leveldb_manifest;
 mod leveldb_table;
@@ -14,6 +15,7 @@ pub mod profile;
 pub mod scratch;
 pub mod secrets;
 pub mod ystore;
+pub mod ystore_import;
 
 use std::path::PathBuf;
 
@@ -53,6 +55,9 @@ pub enum ImportError {
     Decrypt(&'static str),
     #[error("leveldb: {0}")]
     LevelDb(String),
+    /// Documents of a vault's CRDT store that cannot be read; the vault is not imported. Ids only.
+    #[error("unreadable CRDT documents: {}", .0.join(", "))]
+    CorruptCrdtDocument(Vec<String>),
 }
 
 impl ImportError {
