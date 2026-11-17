@@ -222,7 +222,7 @@ fn a_reconcile_while_indexing_keeps_every_vector() {
 fn a_rebuild_counts_what_it_embedded_and_a_stopped_one_fails() {
     let mut l = lane();
     l.write("a.md", ALPHA);
-    l.settled();
+    l.all_embedded();
 
     let open = l.e.session.current().expect("open");
     let notes = open.search.embeddable_notes().unwrap().len();

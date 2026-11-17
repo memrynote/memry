@@ -4,6 +4,7 @@ import { describe, it } from 'node:test'
 import handler, {
   LEGACY_VELOPACK_WINDOWS_SETUP_ASSET,
   VELOPACK_WINDOWS_SETUP_ASSET,
+  WINDOWS_ARM64_SETUP_ASSET,
   resolveAssetUrl
 } from './download.ts'
 
@@ -25,6 +26,43 @@ const ASSETS = [
 
 // Tags published before the Velopack switchover carry no Velopack installer.
 const LEGACY_ASSETS = ASSETS.filter((item) => item.name !== VELOPACK_WINDOWS_SETUP_ASSET)
+
+// A Tauri release, every uploaded asset (#3556 asset table). Payload zips, vpk Portable zips,
+// the unversioned AppImage and blockmaps are never uploaded.
+const TAURI_ASSETS = [
+  'MemryNote-1.2.3-arm64.dmg',
+  'MemryNote-1.2.3-x64.dmg',
+  'MemryNote-1.2.3-arm64.zip',
+  'MemryNote-1.2.3-x64.zip',
+  VELOPACK_WINDOWS_SETUP_ASSET,
+  'MemryNote-1.2.3-setup.exe',
+  'MemryNote-1.2.3-full.nupkg',
+  'MemryNote-1.2.3-delta.nupkg',
+  'RELEASES',
+  'releases.win.json',
+  WINDOWS_ARM64_SETUP_ASSET,
+  'MemryNote-1.2.3-win-arm64-full.nupkg',
+  'MemryNote-1.2.3-win-arm64-delta.nupkg',
+  'releases.win-arm64.json',
+  'RELEASES-win-arm64',
+  'MemryNote-1.2.3-osx-arm64-full.nupkg',
+  'MemryNote-1.2.3-osx-arm64-delta.nupkg',
+  'releases.osx-arm64.json',
+  'RELEASES-osx-arm64',
+  'MemryNote-1.2.3-osx-x64-full.nupkg',
+  'MemryNote-1.2.3-osx-x64-delta.nupkg',
+  'releases.osx-x64.json',
+  'RELEASES-osx-x64',
+  'MemryNote-1.2.3-linux-full.nupkg',
+  'MemryNote-1.2.3-linux-delta.nupkg',
+  'releases.linux.json',
+  'RELEASES-linux',
+  'MemryNote-1.2.3-x86_64.AppImage',
+  'MemryNote-1.2.3-amd64.deb',
+  'latest.yml',
+  'latest-mac.yml',
+  'latest-linux.yml'
+].map(asset)
 
 const RELEASES_PAGE_URL = 'https://github.com/memrynote/memry/releases/latest'
 
@@ -102,6 +140,41 @@ describe('download asset resolution', () => {
       resolveAssetUrl('windows', LEGACY_ASSETS),
       `${DOWNLOAD_BASE}/MemryNote-1.2.3-setup.exe`
     )
+  })
+
+  it('maps each platform to its installer in a Tauri release', () => {
+    const expected: Record<string, string> = {
+      'mac-arm64': 'MemryNote-1.2.3-arm64.dmg',
+      'mac-x64': 'MemryNote-1.2.3-x64.dmg',
+      windows: VELOPACK_WINDOWS_SETUP_ASSET,
+      'windows-arm64': WINDOWS_ARM64_SETUP_ASSET,
+      linux: 'MemryNote-1.2.3-x86_64.AppImage',
+      'linux-deb': 'MemryNote-1.2.3-amd64.deb'
+    }
+    for (const [platform, name] of Object.entries(expected)) {
+      assert.equal(resolveAssetUrl(platform, TAURI_ASSETS), `${DOWNLOAD_BASE}/${name}`, platform)
+    }
+  })
+
+  // Electron releases ship no ARM64 installer; Windows 11 on ARM runs the x64 one.
+  it('serves the x64 installer to ARM64 Windows on a release without an ARM64 Setup', () => {
+    assert.equal(
+      resolveAssetUrl('windows-arm64', ASSETS),
+      `${DOWNLOAD_BASE}/${VELOPACK_WINDOWS_SETUP_ASSET}`
+    )
+    assert.equal(
+      resolveAssetUrl('windows-arm64', LEGACY_ASSETS),
+      `${DOWNLOAD_BASE}/MemryNote-1.2.3-setup.exe`
+    )
+  })
+
+  it('never serves the ARM64 installer to x64 Windows', () => {
+    const arm64AndNsis = [asset(WINDOWS_ARM64_SETUP_ASSET), asset('MemryNote-1.2.3-setup.exe')]
+    assert.equal(
+      resolveAssetUrl('windows', arm64AndNsis),
+      `${DOWNLOAD_BASE}/MemryNote-1.2.3-setup.exe`
+    )
+    assert.equal(resolveAssetUrl('windows', [asset(WINDOWS_ARM64_SETUP_ASSET)]), null)
   })
 
   it('never resolves a blockmap sidecar', () => {
