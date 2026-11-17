@@ -797,8 +797,13 @@ final class EditorSession {
     func startTrigger(_ character: String) {
         guard let field else { return }
         let textView = field.textView
+        // Commit the composition before `show` reloads the input views. The
+        // commit writes the composed text back over its own range: with the
+        // Japanese keyboard, `unmarkText()` and the reload can both drop it.
+        if let marked = textView.markedTextRange, let composed = textView.text(in: marked) {
+            textView.replace(marked, withText: composed)
+        }
         show(.none)
-        textView.unmarkText()
         let caret = textView.selectedRange.location
         let string = textView.text as NSString
         let before = caret > 0 && caret <= string.length ? string.character(at: caret - 1) : 32
