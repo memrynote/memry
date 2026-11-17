@@ -383,6 +383,7 @@ snapshot push so `close-vault` always keeps at least 2s of the shared budget.
 | Agent chat      | `agent_chat_started`, `agent_chat_message_sent`, `ai_action_completed` (turn result + duration)                                                                                                                                  |
 | Sync health     | `sync_enabled`, `sync_run_completed`, `sync_error` (counts/status only, plus the [failure detail](#failure-detail-on-a-failed-request)); see [Sync runs](#sync-runs)                                                             |
 | Auth            | `signin_started`, `signin_succeeded`                                                                                                                                                                                             |
+| Migration       | `migration_started`, `migration_completed`, `migration_failed` — the Tauri build's first launch over an Electron install: duration, vault and deferred counts, the failing check as `errorCode`; never a path                    |
 | Diagnostics     | `app_log_recorded`, `app_error_seen`, `app_launch_phase_completed`, `app_crashed` (see [Crash & Unclean-Shutdown Detection](#crash-unclean-shutdown-detection))                                                                  |
 
 ### Sync runs

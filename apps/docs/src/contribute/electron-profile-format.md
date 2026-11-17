@@ -90,6 +90,19 @@ The pseudo document `__memry_crdt_store__` holds `syncEpoch`. A note's meta key 
 
 One word per line, then `checksum_v1 = <lowercase md5 hex of everything before that line>` (`chrome/browser/spellchecker/spellcheck_custom_dictionary.cc`). Chromium drops the words when the checksum fails, and keeps `Custom Dictionary.txt.backup`. The reader falls back to the backup on a checksum failure.
 
+## What the app-state phase carries
+
+`electron_import::app_state::import_app_state` is the first phase of the first-launch migration. It reads every input below and fails before its first write when one is corrupt or unreadable, then writes only the Tauri data dir, each file whole (temp file and rename). It reads the profile only, so a crash reruns it from the start with the same result, and a second run changes nothing.
+
+- `memry-config.json`, key by key through the app's own `AppConfig`: Electron's value wins and keys Electron alone knows survive. `crdtStore` is dropped. `vaults` is a union by `path` that keeps every Tauri entry. A vault inside the profile directory (the sandbox vault, also when reached through the legacy link) is not carried, and neither is a `currentVault` that points at one.
+- `telemetry.json`: the install id when it is a UUID, an explicit `false` for `enabled` or `autoSendDiagnostics` always, a `true` only where Tauri has no value. `lastRunVersion` and `diagnosticsSalt` stay behind. A file that is not a JSON object reads as empty, as `readTelemetryConfig` does; a file that cannot be read fails the phase, so an opt-out is never lost.
+- localStorage: written to `electron-localstorage.json` (`{version: 1, origin, pending: true, entries}`) for the first webview to apply. A file whose `pending` is already `false` is left alone, so a rerun never applies it twice.
+- `Custom Dictionary.txt`: the words go through `shell::spell::add_words`. Words whose file and backup both fail the checksum are counted and not added, as Chromium drops them.
+- `models/transformers/` and `ocr-languages/`: copied under the same paths, each file to a temp sibling, checked by size and sha256 against its source, synced, then renamed. A file the Tauri side already has is kept. Symlinks are not followed. `models/voice-transcription/` is not carried.
+- Not carried: `sync-packs/`, the sandbox vault and the updater markers `update-install-attempt.json`, `update-install-health.json` and `pending-update-install.json`.
+
+The counts land in `electron-import-report.json` (`report::VerificationReport`, version 1). It holds config key names and counts, never a value, a path or note text, and keeps fields it does not know when a later build rewrites it. Progress goes to a `ProgressSink` as `{phase, current, total, label}`, with phases `app-state`, `secrets`, `vault` and `finish`.
+
 ## How the readers stay read-only
 
 LevelDB writes when it opens a database, so no reader opens a store in the profile. It copies the directory without `LOCK` into a `Scratch` directory under the app's own data dir (never the system temp dir, since a CRDT copy holds decrypted note history) and opens the copy. Stale copies older than an hour are swept when the scratch directory is opened, and a store over 4 GiB is refused.
