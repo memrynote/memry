@@ -24,7 +24,7 @@ use crate::events::{
     VaultListChangedEvent, broadcast,
 };
 use crate::power::PowerMonitor;
-use crate::shell::services;
+use crate::shell::{billing, services};
 use crate::startup::{self, Stage};
 
 pub fn register_stages() {
@@ -56,6 +56,7 @@ fn start(app: &AppHandle<Wry>) -> Result<(), CommandError> {
             let _ = recovered.send(());
         });
 
+    let billing = billing::manage(app, runtime.clone(), account.clone(), session.clone());
     let bindings = Arc::new(OpenVaultBinding::default());
     let binding_app = app.clone();
     let list_app = app.clone();
@@ -75,6 +76,7 @@ fn start(app: &AppHandle<Wry>) -> Result<(), CommandError> {
             broadcast(&binding_app, SyncVaultBindingChangedEvent(state.into()));
         }),
         on_vault_list_changed: Arc::new(move || broadcast(&list_app, VaultListChangedEvent)),
+        on_gate: Arc::new(move |gate| billing.attach_gate(gate)),
     });
     app.manage(bindings);
     app.manage(wiring);

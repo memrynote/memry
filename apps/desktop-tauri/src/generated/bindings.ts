@@ -110,6 +110,14 @@ export const commands = {
 	 */
 	writingGenerateAssist: (input: WritingAssistInput) => __TAURI_INVOKE<WritingAssistResult>("writing_generate_assist", { input }),
 	appInfo: () => __TAURI_INVOKE<AppInfo>("app_info"),
+	accountChangePlan: (target: PlanChangeTarget) => __TAURI_INVOKE<BillingStatusResult>("account_change_plan", { target }),
+	accountGetBillingStatus: () => __TAURI_INVOKE<BillingStatusResult>("account_get_billing_status"),
+	accountOpenBillingPortal: () => __TAURI_INVOKE<PortalResult>("account_open_billing_portal"),
+	accountPreviewPlanChange: (target: PlanChangeTarget) => __TAURI_INVOKE<PlanChangePreviewResult>("account_preview_plan_change", { target }),
+	/**  Re-reads the plan from the payment provider (`POST /auth/billing/reconcile`). */
+	accountRefreshBillingStatus: (input: RefreshBillingInput | null) => __TAURI_INVOKE<BillingStatusResult>("account_refresh_billing_status", { input }),
+	/**  Opens the checkout page in the browser, with the plan picked during onboarding. */
+	accountStartCheckout: (input: StartCheckoutInput | null) => __TAURI_INVOKE<CheckoutResult>("account_start_checkout", { input }),
 	/**  The calling window closed its editor of `note_id`. */
 	crdtCloseDoc: (noteId: string) => __TAURI_INVOKE<null>("crdt_close_doc", { noteId }),
 	crdtGetHealth: () => __TAURI_INVOKE<CrdtHealth>("crdt_get_health"),
@@ -1200,6 +1208,43 @@ export type BacklinkView = {
 	via?: LinkViaView | null,
 };
 
+/**  `BillingActionResult`: the envelope of a call that did not reach the server (signed out). */
+export type BillingActionResult = {
+	success: boolean,
+	error?: string | null,
+};
+
+export type BillingLimits = {
+	storageLimit: number,
+	maxFileSize: number,
+	/**  `null` is unlimited (Believer). */
+	maxVaults: number | null,
+	versionHistoryDays: number,
+};
+
+/**
+ *  `BillingStatus` of `paddle-billing.ts`. `plan`, `cadence` and `status` stay as the server
+ *  sends them.
+ */
+export type BillingStatusDto = {
+	plan: string,
+	cadence: string | null,
+	status: string,
+	email: string | null,
+	limits: BillingLimits,
+	usage: BillingUsage,
+	/**  Epoch seconds. */
+	expiresAt: number | null,
+	canManageBilling: boolean,
+};
+
+/**  The status, or the signed-out envelope; the renderer tells them apart with `'plan' in r`. */
+export type BillingStatusResult = BillingStatusDto | BillingActionResult;
+
+export type BillingUsage = {
+	storageUsed: number,
+};
+
 export type BuildKind = "dev" | "packaged";
 
 /**  A caption button's rectangle in client coordinates, physical pixels. */
@@ -1225,6 +1270,16 @@ export type CategoryOrderInput = {
  *  - `unknown`: anything else, logged.
  */
 export type ChangeHold = { kind: "settings"; path: string } | { kind: "taken"; path: string } | { kind: "refused" } | { kind: "unknown" };
+
+export type CheckoutCadence = "monthly" | "annual" | "lifetime";
+
+export type CheckoutPlan = "plus" | "pro" | "believer";
+
+export type CheckoutResult = {
+	success: boolean,
+	error?: string | null,
+	checkoutUrl?: string | null,
+};
 
 /**
  *  What the renderer sees when a command rejects. Tauri serializes it as JSON, the shape
@@ -2611,6 +2666,38 @@ export type OptionInput = {
 	default?: boolean | null,
 };
 
+export type PlanChangePeriod = "monthly" | "annual";
+
+export type PlanChangePlan = "plus" | "pro";
+
+/**  `PlanChangePreview` of `paddle-billing.ts`. Amounts are Paddle's minor-unit strings. */
+export type PlanChangePreviewDto = {
+	plan: PlanChangePlan,
+	cadence: PlanChangePeriod,
+	isUpgrade: boolean,
+	effective: PlanChangeTiming,
+	immediateChargeAmount: string | null,
+	recurringAmount: string,
+	currencyCode: string,
+	nextBilledAt: string | null,
+};
+
+export type PlanChangePreviewResult = PlanChangePreviewDto | BillingActionResult;
+
+/**  Recurring plans only: Believer is a one-time purchase with nothing to switch. */
+export type PlanChangeTarget = {
+	plan: PlanChangePlan,
+	cadence: PlanChangePeriod,
+};
+
+export type PlanChangeTiming = "immediate" | "next_billing_period";
+
+/**
+ *  `no-billing-customer` is a `409`: the server has no billing customer for the account (never
+ *  paid, webhook pending).
+ */
+export type PortalFailureReason = "no-billing-customer";
+
 /**  `PortalHost['kind']`. */
 export type PortalHostKind = "portal" | "link";
 
@@ -2623,6 +2710,13 @@ export type PortalHostView = {
 	kind: PortalHostKind,
 	/**  A portal's first matching fence among the host's portal fences; absent for a link. */
 	ordinal?: number | null,
+};
+
+export type PortalResult = {
+	success: boolean,
+	reason?: PortalFailureReason | null,
+	portalUrl?: string | null,
+	error?: string | null,
 };
 
 /**  `PortalSearchSchema`, checked by the command. */
@@ -2753,6 +2847,11 @@ export type PropertyValueView = {
 export type QuickSearchResponse = {
 	results: SearchResultItem[],
 	queryTimeMs: number | null,
+};
+
+/**  `refreshBillingStatus(input?)`: the web checkout's transaction, when known. */
+export type RefreshBillingInput = {
+	transactionId?: string | null,
 };
 
 /**
@@ -3093,6 +3192,12 @@ export type StampAnchorView = {
 
 /**  Why a stamp was refused (`PortalStampAnchorResultSchema`'s `reason`). */
 export type StampRefusal = "missing-note" | "missing-block" | "locked";
+
+/**  The plan picked during onboarding (`StartCheckoutInput`, `ipc-channels.ts:648`). */
+export type StartCheckoutInput = {
+	plan: CheckoutPlan,
+	cadence: CheckoutCadence,
+};
 
 /**
  *  The one startup type of the epic. Steps 08 (#3525) and 09 (#3526) extend this struct in
