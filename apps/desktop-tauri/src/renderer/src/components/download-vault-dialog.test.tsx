@@ -1,6 +1,8 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DownloadVaultDialog } from './download-vault-dialog'
+import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
+import { getVaultSwitchState, resetVaultSwitchState } from '@/lib/vault-switch-state'
 import type { AccountVaultInfo } from '../../../preload/index.d'
 
 const linking = vi.hoisted(() => ({}) as Record<string, ReturnType<typeof vi.fn>>)
@@ -78,6 +80,28 @@ describe('DownloadVaultDialog', () => {
     await waitFor(() =>
       expect(window.api.vault.downloadRemote).toHaveBeenCalledWith('uuid-b', '/picked/parent')
     )
+  })
+
+  // The download closes the open vault: edits still in their debounce belong to it, and the
+  // in-between screen must hold, as for any switch.
+  it('writes pending edits and starts a switch before the download closes the vault', async () => {
+    resetVaultSwitchState()
+    const order: string[] = []
+    registerPendingSave('note-1', () => {
+      order.push('flush')
+    })
+    window.api.vault.downloadRemote = vi.fn().mockImplementation(async () => {
+      order.push(`download while switching to ${getVaultSwitchState().pending?.path}`)
+      return { success: true, vault: { path: '/home/user/Memry/beta' } }
+    })
+    render(<DownloadVaultDialog vault={vault} onClose={vi.fn()} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'phaseF.componentsVaultSwitcher.download' }))
+
+    await waitFor(() => expect(order).toHaveLength(2))
+    unregisterPendingSave('note-1')
+    expect(order).toEqual(['flush', 'download while switching to /home/user/Memry/beta'])
+    expect(getVaultSwitchState().pending).toBeNull()
   })
 
   it('shows the error and stays open when the download fails', async () => {

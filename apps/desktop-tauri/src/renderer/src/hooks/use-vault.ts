@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import type {
+  AccountVaultInfo,
   VaultStatus,
   VaultConfig,
   VaultInfo,
@@ -253,10 +254,15 @@ export function useVault() {
   }, [])
 
   /**
-   * Switch to a different vault.
+   * Leaves the open vault for `vaultPath` through `open`, the call after which
+   * main has closed it and opened the next.
    */
-  const switchVault = useCallback(
-    async (vaultPath: string, options: SwitchVaultOptions = {}): Promise<SelectVaultResponse> => {
+  const runSwitch = useCallback(
+    async (
+      vaultPath: string,
+      options: SwitchVaultOptions,
+      open: () => Promise<SelectVaultResponse>
+    ): Promise<SelectVaultResponse> => {
       log.info('Vault switch requested', {
         source: options.source ?? 'unknown',
         from: latestStatusRef.current?.path ?? null,
@@ -294,7 +300,7 @@ export function useVault() {
         // flush hands markdown to the page saves the registry then writes.
         await runVaultLeaveFlushes()
         await flushAllPendingSaves()
-        const result = await vaultService.switch(vaultPath)
+        const result = await open()
         switched = result.success
 
         if (!result.success) {
@@ -323,6 +329,36 @@ export function useVault() {
       }
     },
     []
+  )
+
+  /**
+   * Switch to a different vault.
+   */
+  const switchVault = useCallback(
+    (vaultPath: string, options: SwitchVaultOptions = {}): Promise<SelectVaultResponse> =>
+      runSwitch(vaultPath, options, () => vaultService.switch(vaultPath)),
+    [runSwitch]
+  )
+
+  /**
+   * Download an account vault into `parentPath` (default: main's choice) and
+   * open it. Main closes the open vault, so this is a switch like
+   * `switchVault`. The switch names the folder the download is expected to
+   * make; main takes the next free name when that one appeared meanwhile.
+   */
+  const downloadVault = useCallback(
+    (
+      vault: AccountVaultInfo,
+      parentPath?: string,
+      options: SwitchVaultOptions = {}
+    ): Promise<SelectVaultResponse> => {
+      const folder = vault.suggestedPath.split(/[\\/]/).pop() || vault.suggestedPath
+      const target = parentPath ? `${parentPath}/${folder}` : vault.suggestedPath
+      return runSwitch(target, { name: vault.name ?? folder, ...options }, () =>
+        vaultService.downloadRemote(vault.vaultUuid, parentPath)
+      )
+    },
+    [runSwitch]
   )
 
   /**
@@ -399,6 +435,7 @@ export function useVault() {
     selectVault,
     closeVault,
     switchVault,
+    downloadVault,
     updateConfig,
     reindex,
     clearError,

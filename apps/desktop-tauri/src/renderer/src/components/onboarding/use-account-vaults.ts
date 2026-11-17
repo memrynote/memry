@@ -3,6 +3,7 @@ import type { AccountVaultInfo } from '@memry/contracts/vault-api'
 import { useT } from '@memry/i18n/renderer'
 import { vaultService } from '@/services/vault-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { useVault } from '@/hooks/use-vault'
 
 const KEY = 'phaseF.componentsVaultOnboarding.flow'
 
@@ -44,6 +45,7 @@ interface OpenAccountVault {
 /** Open the local copy when there is one, otherwise download into `parent`. */
 export function useOpenAccountVault(onOpened: () => void): OpenAccountVault {
   const { t } = useT('common')
+  const { downloadVault } = useVault()
   const [opening, setOpening] = useState(false)
   const [openError, setOpenError] = useState<string | null>(null)
 
@@ -54,7 +56,7 @@ export function useOpenAccountVault(onOpened: () => void): OpenAccountVault {
     try {
       const result = vault.localPath
         ? await vaultService.switch(vault.localPath)
-        : await vaultService.downloadRemote(vault.vaultUuid, parent ?? undefined)
+        : await downloadVault(vault, parent ?? undefined, { source: 'onboarding' })
       if (result.success) onOpened()
       else setOpenError(extractErrorMessage(result.error, t(`${KEY}.openFailed`)))
     } catch (err) {
