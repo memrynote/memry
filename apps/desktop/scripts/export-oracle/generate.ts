@@ -42,9 +42,17 @@ const SVG_ICON =
 const HOSTILE_SVG_ICON =
   '<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"><script>alert(2)</script><circle r="4"/></svg>'
 
+// Node decodes base64 leniently: line breaks, stray characters, no padding.
+const LENIENT_SVG_ICON = Buffer.from(SVG_ICON)
+  .toString('base64')
+  .replace(/=+$/, '')
+  .replace(/(.{20})/g, '$1\n')
+  .replace(/^(.{8})/, '$1*')
+
 const CUSTOM_ICONS: Record<string, ExportCustomIcon> = {
   png: { ext: 'png', data: 'iVBORw0KGgo=' },
   svg: { ext: 'svg', data: Buffer.from(SVG_ICON).toString('base64') },
+  lenient: { ext: 'svg', data: LENIENT_SVG_ICON },
   hostile: { ext: 'svg', data: Buffer.from(HOSTILE_SVG_ICON).toString('base64') },
   gif: { ext: 'gif', data: 'R0lGODlhAQABAAAAACw=' }
 }
@@ -180,6 +188,36 @@ const BODY_CASES: Case[] = [
   },
   { name: 'footnote without definition', content: 'Plain [^x] text.' },
   {
+    name: 'footnote text is inline only',
+    content: [
+      'A[^a] B[^b] C[^c] D[^d] E[^e] F[^f] G[^g] H[^h]',
+      '',
+      '[^a]: *em* x, **bold**, ~~s~~, _u_ and ***both***',
+      '[^b]: <div>',
+      '    *a*',
+      '[^c]: [foo]: /url',
+      '[^d]: x | y',
+      '    :-- | --',
+      '[^e]: # h',
+      '    - li',
+      '    1. one',
+      '    > q',
+      '    ```',
+      '    ---',
+      '    ===',
+      '    + plus',
+      '    <p>para</p>',
+      '[^f]: `code',
+      '    span` and *a',
+      '    b*',
+      '[^g]: www.example.com and <https://e.com> and [l](https://e.com/?a&amp;quot;b)',
+      '[^h]: first',
+      '',
+      '    # after a blank',
+      '    | a |'
+    ].join('\n')
+  },
+  {
     name: 'footnote labels case-insensitive',
     content: 'One[^Note] two[^note].\n\n[^NOTE]: Shared.\n[^note]: Repeat ignored.'
   },
@@ -285,6 +323,11 @@ const BODY_CASES: Case[] = [
     content: "It's `don't` here\n\n```js\nit's \"q\" & <b>\n```\n\n```\n```"
   },
   {
+    name: 'entity references in link hrefs',
+    content:
+      '[x](https://e.com/?a&amp;quot;b) and [y](https://e.com/?a=1&b=2&c) and ![z](<a&amp;#38;b.png>)'
+  },
+  {
     name: 'link hrefs encoded',
     content:
       "[space](<https://e.com/ä b>) and [title](https://e.com/a_(b) \"It's\") and ![alt](<pic é.png> 'T')"
@@ -316,6 +359,7 @@ const META_CASES: Case[] = [
   { name: 'library icon unknown', emoji: 'icon:NoSuchIcon', content: 'Unknown library icon' },
   { name: 'custom png icon', emoji: 'custom:png', content: 'Custom png' },
   { name: 'custom svg icon', emoji: 'custom:svg', content: 'Custom svg' },
+  { name: 'custom svg icon lenient base64', emoji: 'custom:lenient', content: 'Lenient svg' },
   { name: 'custom hostile svg icon', emoji: 'custom:hostile', content: 'Sanitized svg' },
   { name: 'custom icon of other type', emoji: 'custom:gif', content: 'Unsupported type' },
   { name: 'custom icon missing', emoji: 'custom:gone', content: 'Missing custom icon' },

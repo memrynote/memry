@@ -14,6 +14,8 @@ use chrono::NaiveDate;
 use memry_core::markdown::shared::task_block::strip_task_block_suffixes;
 
 pub use icons::{IconPart, library_icon};
+#[cfg(feature = "test-hooks")]
+pub use inline_images::image_reads;
 pub use inline_images::{ImageSource, MAX_DATA_URI_LEN, inline_export_images};
 #[cfg(feature = "test-hooks")]
 pub use markdown::steps;
@@ -56,6 +58,12 @@ pub fn embedded_styles() -> String {
     format!("\n{STYLES}  ")
 }
 
+/// Keeps script in a note from running when the exported file is opened: raw
+/// HTML passes through as `marked` passes it, `<script>`, `onerror=` and
+/// `javascript:` links included. Electron's export has no such line; it is the
+/// one line `tests/export_vectors.rs` takes out before comparing.
+pub const CONTENT_SECURITY_POLICY: &str = "  <meta http-equiv=\"Content-Security-Policy\" content=\"script-src 'none'; object-src 'none'\">\n";
+
 /// `renderNoteAsHtml`: the note as a complete HTML document.
 pub fn render_note_as_html(note: &NoteExport<'_>, options: &RenderOptions<'_>) -> String {
     let content = if options.include_task_markers {
@@ -74,7 +82,7 @@ pub fn render_note_as_html(note: &NoteExport<'_>, options: &RenderOptions<'_>) -
 <html lang=\"en\">
 <head>
   <meta charset=\"utf-8\">
-  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">
+{CONTENT_SECURITY_POLICY}  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">
   <meta name=\"generator\" content=\"memrynote\">
   <title>{title}</title>
   <style>{styles}</style>

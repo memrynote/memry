@@ -77,7 +77,7 @@ fn custom_icon_data_uri(icon: &CustomIcon) -> Option<String> {
     match icon.ext.as_str() {
         "png" => Some(format!("data:image/png;base64,{}", icon.data)),
         "svg" => {
-            let bytes = STANDARD.decode(icon.data.trim()).ok()?;
+            let bytes = node_base64_decode(&icon.data);
             let svg = sanitize_svg_bytes(&bytes).ok()?;
             Some(format!(
                 "data:image/svg+xml;base64,{}",
@@ -86,6 +86,36 @@ fn custom_icon_data_uri(icon: &CustomIcon) -> Option<String> {
         }
         _ => None,
     }
+}
+
+/// `Buffer.from(data, 'base64')`: both alphabets, every other character
+/// skipped, decoding stops at the first `=`, and a lone trailing character is
+/// dropped.
+fn node_base64_decode(data: &str) -> Vec<u8> {
+    let sextets: Vec<u32> = data
+        .bytes()
+        .take_while(|&b| b != b'=')
+        .filter_map(|b| {
+            Some(u32::from(match b {
+                b'A'..=b'Z' => b - b'A',
+                b'a'..=b'z' => b - b'a' + 26,
+                b'0'..=b'9' => b - b'0' + 52,
+                b'+' | b'-' => 62,
+                b'/' | b'_' => 63,
+                _ => return None,
+            }))
+        })
+        .collect();
+    let mut out = Vec::with_capacity(sextets.len() * 3 / 4);
+    for group in sextets.chunks(4) {
+        let bits = group
+            .iter()
+            .enumerate()
+            .fold(0u32, |bits, (i, s)| bits | s << (18 - 6 * i));
+        let bytes = bits.to_be_bytes();
+        out.extend_from_slice(&bytes[1..group.len()]);
+    }
+    out
 }
 
 /// A HugeIcons glyph as inline SVG, drawn the way the renderer's

@@ -385,7 +385,7 @@ fn open_read(path: &Path) -> io::Result<File> {
 
 /// Identity of an open file: the volume and the file on it. 128 bits for the file, because
 /// ReFS and some network file systems have no 64-bit index.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FileId(u64, u128);
 
 impl FileId {

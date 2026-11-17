@@ -111,7 +111,22 @@ one-class change reviewable.
 | `markdown-convert/blocks.json`           |                                  844 | same                                                                                           | same + Rust `markdown_doc_vectors.rs`                                                |
 | `markdown-convert/serialize-doc.json`    |                                  537 | same                                                                                           | same + Rust `markdown_doc_edit_vectors.rs`                                           |
 | `markdown-convert/replace-body.json`     |                                   44 | same                                                                                           | same + Rust `markdown_doc_edit_vectors.rs`                                           |
-| **Total**                                | **32346 cases plus 6 fuzz families** |                                                                                                |                                                                                      |
+| `importers/markdown/expected.json`       |                                    6 | `apps/desktop/src/main/import/__vectors__/importer-vectors.test.ts`                            | Rust `importer_vectors.rs`                                                           |
+| `importers/csv/expected.json`            |                                    2 | same                                                                                           | same                                                                                 |
+| `importers/messages.json`                |                                    1 | same                                                                                           | same                                                                                 |
+| **Total**                                | **32355 cases plus 6 fuzz families** |                                                                                                |                                                                                      |
+
+### `importers/`: frozen at cutover
+
+The generator runs Electron's Markdown and CSV importers over the files in
+`importers/<source>/input/`, copied to a temp folder with every file modified at one instant, and
+records each sink call (`saveAttachment`, `createImportedNote`) and progress
+snapshot in order, the summary and the CSV preview. `crates/memry-desktop/tests/importer_vectors.rs`
+replays the same inputs through the Rust importers and compares the records as JSON. Without
+`MEMRY_WRITE_VECTORS=1` the generator fails on a stale file. These files are frozen at cutover:
+once the Electron importers are deleted, the files stay as committed and the Rust importers are
+held to them; a deliberate change edits the Rust and the expected file in the same change and
+says why. A difference is a bug in the Rust.
 
 ### `embeddings-text.json`: lone surrogates are a known divergence
 
