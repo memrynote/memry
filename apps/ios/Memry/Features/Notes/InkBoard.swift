@@ -209,8 +209,8 @@ final class InkBoard {
             return true
         } catch {
             Log.interface.error("drawing did not save")
-            // A later save retries the same edit against the stored scene.
-            latest = latest ?? drawing
+            // The drawing a retry saves is never older than the newest one handed to the board.
+            if queued == 1 { latest = latest ?? drawing }
             canvasLost = error is InkSaveError
             saveFailure = switch error {
             case InkSaveError.canvasGone: "\(WhiteboardCopy.missingTitle). \(WhiteboardCopy.missingBody)"

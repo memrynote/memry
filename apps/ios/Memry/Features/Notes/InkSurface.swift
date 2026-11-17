@@ -2,9 +2,10 @@ import PencilKit
 import SwiftUI
 
 // The drawing surface (#4378): PencilKit over a whiteboard's canvas, opened by
-// `/draw` and by a board holding only its ink. Full screen at regular width,
-// a sheet at compact width. The board's other elements show under the ink,
-// read only, and "Open full whiteboard" opens Excalidraw on the same canvas.
+// `/draw` (the Drawing row) and by any board with the surface's ink on it.
+// Full screen at regular width, a sheet at compact width. The board's other
+// elements show under the ink, read only, and "Open full whiteboard" opens
+// Excalidraw on the same canvas.
 
 enum InkCopy {
     static let openFull = "Open full whiteboard"

@@ -175,26 +175,6 @@ struct InkSceneTests {
         #expect(ink.inkType == InkScene.defaultInk)
     }
 
-    @Test("the ledger tells added, changed and erased strokes apart, and a lasso copy is new")
-    func ledgerDiff() {
-        var moved = pen
-        moved.width = 2
-        var ledger = InkLedger([
-            .init(created: 1, id: "a", ink: pen),
-            .init(created: 2, id: "b", ink: pen),
-            .init(created: 3, id: "c", ink: pen),
-        ])
-        let strokes: [(created: Double, ink: InkStroke)] = [(1, pen), (2, moved), (2, moved), (99, pen)]
-        let (edit, ids) = ledger.diff(strokes)
-        #expect(edit.changed == ["b": moved])
-        #expect(edit.erased == ["c"])
-        #expect(edit.added == [moved, pen])
-        #expect(ids == ["a", "b", nil, nil])
-        ledger.commit(strokes, ids: ids, addedIds: ["n1", "n2"])
-        #expect(ledger.entries.map(\.id) == ["a", "b", "n1", "n2"])
-        #expect(ledger.diff(strokes).edit.isEmpty)
-    }
-
     @Test("only a board with the surface's ink opens in the surface; an empty or desktop-only board opens Excalidraw")
     func opensAsInk() throws {
         #expect(try #require(WhiteboardScene(json: "")).opensAsInk == false)
@@ -210,8 +190,19 @@ struct InkSceneTests {
 private final class FakeInkBoards: WhiteboardBoards, @unchecked Sendable {
     var scene: String?
     var saves = 0
+    /// Saves still to fail, one each.
+    var failures = 0
+    /// While set, each save waits in `held` until `resume()`.
+    var holding = false
+    private(set) var held: [CheckedContinuation<Void, Never>] = []
 
     init(scene: String) { self.scene = scene }
+
+    func resume() {
+        holding = false
+        held.forEach { $0.resume() }
+        held = []
+    }
 
     func board(_ id: String) async throws -> CanvasRecord? {
         scene.map { CanvasRecord(id: id, title: "Drawing", ownerNoteId: "n1", scene: $0) }
@@ -222,6 +213,11 @@ private final class FakeInkBoards: WhiteboardBoards, @unchecked Sendable {
     }
 
     func save(_ id: String, scene: String) async throws {
+        if holding { await withCheckedContinuation { held.append($0) } }
+        if failures > 0 {
+            failures -= 1
+            throw URLError(.notConnectedToInternet)
+        }
         saves += 1
         self.scene = scene
     }
@@ -349,6 +345,69 @@ struct InkBoardSaveTests {
         #expect(abs(point.size.width - 13.75) < 0.1, "the width keeps Excalidraw's 0.01 rounding")
     }
 
+    @Test("a save tells added, changed and erased strokes apart, and a lasso copy is new")
+    func addedChangedErased() async throws {
+        let fake = FakeInkBoards(scene: scene([]))
+        let board = await open(fake)
+        var moved = pen
+        moved.width = 2
+        board.changed(drawing(board, [(1, pen), (2, pen), (3, pen)]))
+        #expect(await board.flush())
+        let strokes: [(created: Double, ink: InkStroke)] = [(1, pen), (2, moved), (2, moved), (99, pen)]
+        board.changed(drawing(board, strokes))
+        #expect(await board.flush())
+        let stored = try elements(try #require(fake.scene))
+        #expect(stored.map { $0["id"] as? String } == ["ink-1", "ink-2", "ink-3", "ink-4", "ink-5"])
+        #expect(stored.map { $0["isDeleted"] as? Bool } == [false, false, true, false, false])
+        #expect(stored.map { $0["version"] as? Int } == [1, 2, 2, 1, 1], "only the changed and erased strokes are rewritten")
+        #expect(try #require(InkScene.strokes(in: fake.scene ?? "")).map(\.ink) == [pen, moved, moved, pen])
+        let saves = fake.saves
+        board.changed(drawing(board, strokes))
+        #expect(await board.flush())
+        #expect(fake.saves == saves, "nothing changed, nothing saved")
+    }
+
+    /// Drawing A starts saving and waits in the store; B is handed over and
+    /// queued behind it; then the store fails the next `failures` saves.
+    private func saveAThenB(_ fake: FakeInkBoards, failures: Int) async -> (board: InkBoard, a: Bool, b: Bool) {
+        let board = await open(fake)
+        var second = pen
+        second.color = "#2f9e44"
+        fake.holding = true
+        fake.failures = failures
+        board.changed(drawing(board, [(1, pen)]))
+        let settled = Task { await board.flush() }
+        while fake.held.isEmpty { try? await Task.sleep(for: .milliseconds(10)) }
+        board.changed(drawing(board, [(1, pen), (2, second)]))
+        let done = Task { await board.flush() }
+        // Lets Done's flush queue B behind A before A's save goes on.
+        try? await Task.sleep(for: .milliseconds(10))
+        fake.resume()
+        return (board, await settled.value, await done.value)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func a_failed_save_never_brings_back_an_older_drawing_than_a_newer_save() async throws {
+        let fake = FakeInkBoards(scene: scene([]))
+        let (board, a, b) = await saveAThenB(fake, failures: 1)
+        #expect(a == false)
+        #expect(b)
+        #expect(InkScene.strokes(in: fake.scene ?? "")?.count == 2)
+        // onDisappear after Done: nothing new to save.
+        #expect(await board.flush())
+        #expect(InkScene.strokes(in: fake.scene ?? "")?.count == 2, "the stroke drawn after the failed save stays")
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func when_both_saves_fail_the_retry_saves_the_newest_drawing() async throws {
+        let fake = FakeInkBoards(scene: scene([]))
+        let (board, a, b) = await saveAThenB(fake, failures: 2)
+        #expect(a == false)
+        #expect(b == false)
+        #expect(await board.flush())
+        #expect(InkScene.strokes(in: fake.scene ?? "")?.count == 2, "the retry saves both strokes")
+    }
+
     @Test func a_canvas_deleted_while_open_lets_the_surface_close() async {
         let fake = FakeInkBoards(scene: scene([]))
         let board = await open(fake)
@@ -363,13 +422,22 @@ struct InkBoardSaveTests {
 
 @MainActor
 struct InkCanvasTests {
-    @Test func pixelEraserIsPinnedToVector() throws {
+    @Test("picking the pixel eraser leaves the canvas erasing whole strokes; other tools pass through")
+    func pixelEraserPickErasesWholeStrokes() async throws {
+        let coordinator = InkCanvas.Coordinator(board: InkBoard(canvasId: "c1", boards: FakeInkBoards(scene: scene([]))))
+        let canvas = InkCanvasView()
+        coordinator.canvas = canvas
         for type in [PKEraserTool.EraserType.bitmap, .fixedWidthBitmap] {
-            let pinned = try #require(InkCanvas.pinVectorEraser(PKEraserTool(type)) as? PKEraserTool)
-            #expect(pinned.eraserType == .vector)
+            canvas.tool = PKEraserTool(type)
+            coordinator.toolPickerSelectedToolItemDidChange(coordinator.picker)
+            await withCheckedContinuation { done in DispatchQueue.main.async { done.resume() } }
+            #expect((canvas.tool as? PKEraserTool)?.eraserType == .vector)
         }
         let pen = PKInkingTool(.pen, color: .red, width: 4)
-        #expect(InkCanvas.pinVectorEraser(pen) as? PKInkingTool == pen, "other tools pass through")
+        canvas.tool = pen
+        coordinator.toolPickerSelectedToolItemDidChange(coordinator.picker)
+        await withCheckedContinuation { done in DispatchQueue.main.async { done.resume() } }
+        #expect(canvas.tool as? PKInkingTool == pen)
     }
 
     @Test("the tool picker shows the object eraser the canvas erases with")
