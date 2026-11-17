@@ -30,6 +30,7 @@ use rusqlite::{Connection, OptionalExtension, params};
 use serde_json::Value;
 
 use crate::api::errors::StorageError;
+use crate::storage::migrations::{self, DATA_MIGRATIONS};
 
 use super::payload::{Change, StoredPayload};
 use super::projectors::{self, ItemContext, failed};
@@ -377,23 +378,74 @@ pub fn load(
 /// of a parse" true rather than aspirational. Returns how many rows projected.
 /// A row that fails its reader is flagged and passed over, not retried.
 pub fn rebuild_projections(conn: &Connection, now_ms: i64) -> Result<usize, StorageError> {
-    let rows: Vec<(String, String, String, Option<i64>)> = {
+    replay(conn, None, Some(now_ms))
+}
+
+/// Replays the stored payloads of each item type a migration named in
+/// `pending_reprojections` (migration `0033`), then clears the names, in one
+/// transaction: a crash leaves the names for the next open, and the projector
+/// upserts make a second replay a no-op.
+///
+/// A replayed row takes its `sync_items.updated_at` as its apply instant, so a
+/// table listed by recency keeps the order its rows had before the migration.
+/// A database written by a newer build is left alone: its markers may name a
+/// type this build has no projector for, which would flag every such row
+/// corrupt.
+pub fn reproject_pending(conn: &Connection) -> Result<usize, StorageError> {
+    let newer = migrations::user_version(conn)? > migrations::latest_version(DATA_MIGRATIONS);
+    if newer {
+        return Ok(0);
+    }
+    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let pending: Vec<String> = {
+        let mut statement = tx
+            .prepare("SELECT item_type FROM pending_reprojections ORDER BY item_type")
+            .map_err(failed)?;
+        let mapped = statement.query_map([], |row| row.get(0)).map_err(failed)?;
+        mapped.collect::<Result<_, _>>().map_err(failed)?
+    };
+    let mut projected = 0;
+    for item_type in &pending {
+        projected += replay(&tx, Some(item_type), None)?;
+    }
+    tx.execute("DELETE FROM pending_reprojections", [])
+        .map_err(failed)?;
+    tx.commit().map_err(failed)?;
+    Ok(projected)
+}
+
+/// Projects every stored payload, or those of one type. `now_ms` is the apply
+/// instant, or `None` for each row's own `updated_at`. Keys are read first and
+/// payloads one at a time, so a vault of large canvas scenes is never held in
+/// memory at once.
+fn replay(
+    conn: &Connection,
+    item_type: Option<&str>,
+    now_ms: Option<i64>,
+) -> Result<usize, StorageError> {
+    let keys: Vec<(String, String)> = {
         let mut statement = conn
             .prepare(
-                "SELECT item_type, item_id, payload, deleted_at FROM sync_items
-                 WHERE payload IS NOT NULL",
+                "SELECT item_type, item_id FROM sync_items
+                 WHERE payload IS NOT NULL AND (?1 IS NULL OR item_type = ?1)
+                 ORDER BY item_type, item_id",
             )
             .map_err(failed)?;
         let mapped = statement
-            .query_map([], |row| {
-                Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
-            })
+            .query_map([item_type], |row| Ok((row.get(0)?, row.get(1)?)))
             .map_err(failed)?;
         mapped.collect::<Result<_, _>>().map_err(failed)?
     };
 
     let mut projected = 0;
-    for (item_type, item_id, stored, deleted_at) in rows {
+    for (item_type, item_id) in keys {
+        let Some(row) = load(conn, &item_type, &item_id)? else {
+            continue;
+        };
+        let Some(stored) = row.payload else {
+            continue;
+        };
+        let at = now_ms.unwrap_or(row.updated_at);
         let read = StoredPayload::parse(&stored)
             .and_then(|payload| projectors::read(&item_type, payload.object()));
         match read {
@@ -403,14 +455,14 @@ pub fn rebuild_projections(conn: &Connection, now_ms: i64) -> Result<usize, Stor
                     &item_type,
                     ItemContext {
                         item_id: &item_id,
-                        synced_at: now_ms,
-                        deleted_at,
+                        synced_at: at,
+                        deleted_at: row.deleted_at,
                     },
                     &view,
                 )?;
                 projected += 1;
             }
-            Err(error) => mark_corrupt(conn, &item_type, &item_id, &error.to_string(), now_ms)?,
+            Err(error) => mark_corrupt(conn, &item_type, &item_id, &error.to_string(), at)?,
         }
     }
     Ok(projected)

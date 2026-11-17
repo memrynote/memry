@@ -24,6 +24,7 @@
 use rusqlite::Connection;
 
 use crate::api::errors::StorageError;
+use crate::storage::repositories::sync_items;
 
 /// One hand-written, forward-only step.
 pub struct Migration {
@@ -208,6 +209,11 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "note_body_sync",
         sql: include_str!("migrations/data/0032_note_body_sync.sql"),
     },
+    Migration {
+        version: 33,
+        name: "canvases",
+        sql: include_str!("migrations/data/0033_canvases.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.
@@ -272,6 +278,11 @@ pub const INDEX_MIGRATIONS: &[Migration] = &[
         name: "note_embedding_hashes",
         sql: include_str!("migrations/index/0011_note_embedding_hashes.sql"),
     },
+    Migration {
+        version: 12,
+        name: "canvas_refs",
+        sql: include_str!("migrations/index/0012_canvas_refs.sql"),
+    },
 ];
 
 /// The version a fully migrated database sits at. Zero for an empty list.
@@ -289,11 +300,16 @@ pub fn user_version(conn: &Connection) -> Result<u32, StorageError> {
 }
 
 /// Migrates `data.db`, as every open of the file does: moves a file an earlier
-/// feat/tauri-v2 build left onto this numbering ([`legacy_numbering`]), then
-/// applies [`DATA_MIGRATIONS`].
+/// feat/tauri-v2 build left onto this numbering ([`legacy_numbering`]), applies
+/// [`DATA_MIGRATIONS`], then fills the projection tables a migration added
+/// from the payloads already stored ([`sync_items::reproject_pending`]). The
+/// fill runs after the last migration, with the projector of this build, so a
+/// projector written for a later schema never runs against an earlier one.
 pub fn run_data(conn: &mut Connection) -> Result<u32, StorageError> {
     legacy_numbering::renumber(conn)?;
-    run(conn, DATA_MIGRATIONS)
+    let version = run(conn, DATA_MIGRATIONS)?;
+    sync_items::reproject_pending(conn)?;
+    Ok(version)
 }
 
 /// Applies every migration newer than the database's `user_version`, in order,
@@ -384,6 +400,8 @@ fn set_user_version(conn: &Connection, version: u32) -> Result<(), StorageError>
 
 #[cfg(test)]
 mod agent_records_tests;
+#[cfg(test)]
+mod canvases_tests;
 #[cfg(test)]
 mod desktop_record_types_tests;
 #[cfg(test)]

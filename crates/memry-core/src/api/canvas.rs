@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use crate::api::errors::{AuthError, StorageError};
 use crate::crypto::keys;
-use crate::domain::canvas::{self, NewCanvas};
+use crate::domain::canvas::{self, CanvasEdit, NewCanvas, Updated};
 use crate::seams::secure_store::{SecureStore, SecureStoreKey};
 use crate::storage::Db;
 
@@ -86,22 +86,32 @@ impl Canvases {
                 title: title.as_deref(),
                 owner_note_id: owner_note_id.as_deref(),
                 scene: scene.as_deref(),
+                ..NewCanvas::default()
             };
             Ok(
                 canvas::create(conn, &canvas, &vault_id, &device_id, now_ms())?
-                    .acknowledge()
+                    .canvas
                     .into(),
             )
         })
     }
 
     /// Replaces a canvas's scene. Fails with `NotFound` for a deleted canvas.
+    /// A scene over the sync cap is saved here and held back from sync.
     pub fn set_scene(&self, id: String, scene: String) -> Result<CanvasRecord, StorageError> {
         let device_id = self.device_id.clone();
         self.db.call_blocking(move |conn| {
-            Ok(canvas::set_scene(conn, &id, &scene, &device_id, now_ms())?
-                .acknowledge()
-                .into())
+            let edit = CanvasEdit {
+                scene: Some(&scene),
+                ..CanvasEdit::default()
+            };
+            match canvas::update(conn, &id, &edit, &device_id, now_ms())? {
+                Updated::Saved(saved) => Ok(saved.canvas.into()),
+                // Unreachable: the edit names no `expected_updated_at`.
+                Updated::Conflict => Err(StorageError::Failed {
+                    what: format!("canvas {id} reported a conflict it was not asked to check"),
+                }),
+            }
         })
     }
 
