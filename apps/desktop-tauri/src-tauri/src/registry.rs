@@ -184,6 +184,10 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::property_definitions::notes_update_option_color,
             crate::commands::property_definitions::notes_update_property_definition,
             crate::commands::unsplash::notes_download_unsplash_photo,
+            // notes: similarity
+            crate::commands::notes_similarity::notes_cluster::<Wry>,
+            crate::commands::notes_similarity::notes_get_similar::<Wry>,
+            crate::commands::notes_similarity::notes_get_tag_suggestions::<Wry>,
             // notes: versions
             crate::commands::notes_versions::notes_delete_version,
             crate::commands::notes_versions::notes_get_version,
@@ -327,6 +331,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::vault::vault_switch,
             crate::commands::vault::vault_update_config::<Wry>,
             crate::commands::vault_account::vault_delete_from_account,
+            crate::commands::vault_account::vault_download_remote,
             crate::commands::vault_account::vault_list_account,
             // vault activity
             crate::commands::vault_activity::vault_activity_clear,
@@ -344,6 +349,13 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::vault_notices::vault_notices_delete_kept,
             crate::commands::vault_notices::vault_notices_list,
             crate::commands::vault_notices::vault_notices_restore_kept,
+            // voice
+            crate::commands::voice::settings_download_voice_model,
+            crate::commands::voice::settings_get_voice_model_status,
+            crate::commands::voice::settings_get_voice_recording_readiness,
+            crate::commands::voice::settings_get_voice_transcription_openai_key_status,
+            crate::commands::voice::settings_open_os_microphone_settings,
+            crate::commands::voice::settings_set_voice_transcription_openai_key,
             // window
             crate::commands::shell::window_close,
             crate::commands::shell::window_minimize,
@@ -444,6 +456,8 @@ pub fn builder() -> Builder<Wry> {
             // vault locks
             crate::events::VaultLocksChangedEvent,
             crate::events::VaultLocksExternalEditRestoredEvent,
+            // voice
+            crate::events::VoiceModelProgressEvent,
             // window
             crate::events::WindowCaptionHoverChangedEvent,
             crate::events::WindowCaptionPressedChangedEvent,

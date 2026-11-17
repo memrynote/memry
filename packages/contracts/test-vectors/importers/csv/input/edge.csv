@@ -1,0 +1,7 @@
+﻿Id,  Name  ,,Due  Date,2nd col,Name,"Quoted ""head"""
+1,First,blank header,2024-01-01,x,Second wins,"a ""q"" b"
+2,,no title,,,,
+,,,,,,
+
+3,"Multi
+line",c,d,e,f,g
