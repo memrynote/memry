@@ -68,7 +68,7 @@ Want to run it locally, hack on it, or contribute? See **[docs/DEVELOPMENT.md](d
 
 ## Roadmap
 
-https://memrynote.com/roadmap
+https://memrynote.com/roadmap?utm_source=github&utm_medium=referral&utm_campaign=readme
 
 ## Support
 
