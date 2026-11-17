@@ -485,6 +485,24 @@ What an older build does with it depends on whether it keeps unknown keys:
   that push wins the document gate on a newer device, the absent key applies as
   `null` and the duration is lost on that task. Nothing else is corrupted.
 
+**Next occurrence id (#3538).** Completing an open repeating task creates the
+next occurrence under `sha256("<taskId> spawn <completedCount>")`, the first 21
+lowercase hex characters, where `completedCount` is the next occurrence's
+`repeatConfig.completedCount`, so two devices that complete the same occurrence
+before syncing create one task (`crates/memry-core/src/domain/tasks/lifecycle.rs`,
+`occurrence_id`). When that id already holds a live task, the completion
+creates nothing and that task is the next occurrence. When the id is a
+tombstone, local or synced, the occurrence takes a fresh random id, because
+`task` is not in `RECREATABLE_AFTER_PURGE_ITEM_TYPES` (chapter 05 §5.12.3).
+Desktop builds create the next occurrence under a random id; a receiver treats
+both as ordinary task ids. The series end date is the end **day**, compared at
+its local midnight in every time zone. Desktop reads it as UTC midnight, which
+ends the series one occurrence early west of UTC. The vectors are
+`packages/contracts/test-vectors/task-completion-spawn.json`
+(`packages/contracts/scripts/vectors/task-completion-spawn.ts`, generated under
+`TZ=UTC`), verified by `packages/contracts/src/__tests__/task-completion-spawn.test.ts`
+and `crates/memry-core/tests/task_completion_spawn_vectors.rs`.
+
 **`fields` is not one of the sixteen, and chapter 06 §6.3 never merges it.** It is a
 versioned map, joined by chapter 06 §6.11 on every apply path (§13.7.3.1).
 

@@ -63,6 +63,7 @@ import { buildSettingsGroups } from './vectors/settings-groups'
 import { buildSettingsMerge } from './vectors/settings-merge'
 import { buildTagFold } from './vectors/tag-fold'
 import { buildTagSchemaRefs } from './vectors/tag-schema-refs'
+import { buildTaskCompletionSpawn } from './vectors/task-completion-spawn'
 import { buildTaskFiltering } from './vectors/task-filtering'
 import { buildTaskParsing } from './vectors/task-parsing'
 import { buildTextExtract } from './vectors/text-extract'
@@ -143,6 +144,10 @@ const CLASSES: readonly VectorClass[] = [
   {
     name: 'task-filtering',
     files: [{ path: 'task-filtering.json', build: buildTaskFiltering }]
+  },
+  {
+    name: 'task-completion-spawn',
+    files: [{ path: 'task-completion-spawn.json', build: buildTaskCompletionSpawn }]
   },
   { name: 'journal', files: [{ path: 'journal.json', build: buildJournal }] },
   { name: 'markdown-seed', files: [{ path: 'markdown-seed.json', build: buildMarkdownSeed }] },

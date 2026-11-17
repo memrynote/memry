@@ -9,37 +9,43 @@
 //! Completing a **repeating** task (spec 004 D3) closes this occurrence —
 //! `repeatConfig` becomes `null` (desktop also clears the local-only
 //! `isRepeating`, which is not a wire field) — and creates the next one under
-//! a new id. The next due date and the series end are
-//! [`crate::domain::recurrence::complete_repeating_task`], pinned by vectors.
+//! the id [`occurrence_id`] derives (chapter 13 §13.7.3). The next due date
+//! and the series end are [`crate::domain::recurrence::complete_repeating_task`],
+//! pinned by the `task-completion-spawn` vectors.
 
 use rusqlite::Connection;
 use serde_json::{Value, json};
+use sha2::{Digest as _, Sha256};
 
 use crate::api::errors::StorageError;
+use crate::storage::repositories::sync_items;
+use crate::sync::store;
 
 use super::super::calendar::{CivilDate, LocalDateTime};
 use super::super::notes::iso;
 use super::super::recurrence::complete_repeating_task;
 use super::super::repeat_config::{RepeatConfig, with_completed_count};
+use super::ITEM_TYPE;
 use super::batch::{Batch, TaskWrite};
 use super::create::{copied, seeded};
 use super::model::{
-    ProjectStatuses, StatusKind, StoredTask, descendant_ids, load_live, new_task_id, next_position,
-    status_kind,
+    ProjectStatuses, StatusKind, StoredTask, TASK_ID_LEN, descendant_ids, find_live, load_live,
+    new_task_id, next_position, status_kind,
 };
 
 /// The fields the next occurrence copies from the one completed. Desktop
 /// spreads the whole task and re-creates it through `tasksService.create`,
 /// which carries these and not `sourceNoteId`; `dueDate`, `statusId`,
 /// `repeatConfig` and `position` are set separately, and `startDate` moves
-/// with the due date.
-const OCCURRENCE_FIELDS: [&str; 12] = [
+/// with the due date. `durationMinutes` as `rollRepeatingSeries` copies it.
+const OCCURRENCE_FIELDS: [&str; 13] = [
     "title",
     "description",
     "projectId",
     "parentId",
     "priority",
     "dueTime",
+    "durationMinutes",
     "startDate",
     "repeatFrom",
     "tags",
@@ -61,8 +67,10 @@ pub struct NextOccurrence {
 pub struct Completion {
     /// The task and every subtask completed with it (their prior `statusId`,
     /// `completedAt` and, for a repeating task, `repeatConfig`), plus the next
-    /// occurrence in `created`. Empty when the task was already complete.
-    /// [`super::undo`] reverts all of it, next occurrence included.
+    /// occurrence in `created` when this completion created it (not when a
+    /// peer's copy of it had already synced in). Empty when the task was
+    /// already complete. [`super::undo`] reverts all of it, the created next
+    /// occurrence included.
     pub write: TaskWrite,
     /// Whether the task was a repeating one (a desktop-shaped `repeatConfig`
     /// and a due date).
@@ -154,8 +162,24 @@ pub(super) fn spawn_next(
     let Some(next_due) = completion.next_due_date else {
         return Ok(None);
     };
-    let id = new_task_id();
     let due_date = next_due.key();
+    let id = match occurrence_id(batch.conn(), &task.id, completion.completed_count)? {
+        Slot::Free(id) => id,
+        Slot::Live(id) => {
+            // A peer completed this occurrence first and its next one has
+            // synced in: that is the occurrence, and creating it again would
+            // fail on the existing row.
+            let due_date = find_live(batch.conn(), &id)?
+                .and_then(|next| {
+                    next.str("dueDate")
+                        .and_then(|due| due.get(..10))
+                        .map(str::to_owned)
+                })
+                .unwrap_or(due_date);
+            return Ok(Some(NextOccurrence { id, due_date }));
+        }
+        Slot::Tombstoned => new_task_id(),
+    };
     let mut fields = copied(task, &OCCURRENCE_FIELDS);
     let status = statuses
         .default_todo()
@@ -183,6 +207,39 @@ pub(super) fn spawn_next(
     let seeded = seeded(fields, batch.device_id(), batch.now_ms())?;
     batch.create(&id, seeded)?;
     Ok(Some(NextOccurrence { id, due_date }))
+}
+
+/// Where the next occurrence of a series goes.
+enum Slot {
+    /// No row and no known tombstone: create it under this id.
+    Free(String),
+    /// A live row already holds the derived id.
+    Live(String),
+    /// The derived id was deleted (an undone completion, or a peer deleted
+    /// the occurrence). `task` is not in `RECREATABLE_AFTER_PURGE_ITEM_TYPES`
+    /// (chapter 05 §5.12.3), so a create over the tombstone would be refused
+    /// or deleted again on sync: the occurrence takes a fresh id instead.
+    Tombstoned,
+}
+
+/// §13.7.3: the occurrence after `task_id` that brings the series to
+/// `completed_count` is `sha256("<task_id> spawn <completed_count>")`, first
+/// [`TASK_ID_LEN`] lowercase hex characters, so two devices that complete the
+/// same occurrence before syncing create one task.
+fn occurrence_id(
+    conn: &Connection,
+    task_id: &str,
+    completed_count: i64,
+) -> Result<Slot, StorageError> {
+    let digest = Sha256::digest(format!("{task_id} spawn {completed_count}").as_bytes());
+    let mut id = hex::encode(digest);
+    id.truncate(TASK_ID_LEN);
+    Ok(match sync_items::load(conn, ITEM_TYPE, &id)? {
+        Some(row) if row.deleted_at.is_none() => Slot::Live(id),
+        Some(_) => Slot::Tombstoned,
+        None if store::tombstone_clock(conn, ITEM_TYPE, &id)?.is_some() => Slot::Tombstoned,
+        None => Slot::Free(id),
+    })
 }
 
 /// Reopens a task (`uncompleteTaskWithUndo`): the project's default todo

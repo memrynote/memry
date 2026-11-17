@@ -145,3 +145,7 @@ path = "tests/outbox_durability.rs"
 [[test]]
 name = "read_pool_contention"
 path = "tests/read_pool_contention.rs"
+
+[[test]]
+name = "task_completion_spawn_vectors"
+path = "tests/task_completion_spawn_vectors.rs"

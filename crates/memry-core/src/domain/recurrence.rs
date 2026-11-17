@@ -10,6 +10,12 @@
 //! Desktop's JavaScript truthiness is kept on purpose: an `endCount`,
 //! `dayOfMonth` or `weekOfMonth` of `0` counts as absent, while
 //! `dayOfWeekForMonth` only has to be present (`0` is Sunday).
+//!
+//! One deliberate fix (#3538): `endDate` is the end **day**, compared at its
+//! local midnight, so an occurrence due on the end day is inside the series
+//! in every time zone. Desktop reads the key with `new Date(key)` (UTC
+//! midnight), which ends the series one occurrence early west of UTC; under
+//! `TZ=UTC`, where the vectors are generated, the two agree.
 
 use super::calendar::{CivilDate, LocalDateTime};
 use super::repeat_config::{EndType, Frequency, MonthlyType, RepeatConfig};
@@ -86,11 +92,7 @@ pub fn calculate_next_occurrence(from: CivilDate, config: &RepeatConfig) -> Opti
         Frequency::Other(_) => return None,
     };
 
-    if config.end_type == EndType::Date
-        && config
-            .end_date
-            .is_some_and(|end| LocalDateTime::at_start_of(next) > end)
-    {
+    if config.end_type == EndType::Date && config.end_day().is_some_and(|end| next > end) {
         return None;
     }
     if config.end_type == EndType::Count
@@ -114,11 +116,7 @@ pub fn calculate_next_occurrences(
     let mut generated: usize = 1;
 
     while occurrences.len() < count && generated < MAX_GENERATED_OCCURRENCES {
-        if config.end_type == EndType::Date
-            && config
-                .end_date
-                .is_some_and(|end| LocalDateTime::at_start_of(current) > end)
-        {
+        if config.end_type == EndType::Date && config.end_day().is_some_and(|end| current > end) {
             break;
         }
         if config.end_type == EndType::Count
@@ -142,7 +140,9 @@ pub fn should_create_next_occurrence(config: &RepeatConfig, now: LocalDateTime) 
     match config.end_type {
         EndType::Never => true,
         EndType::Count => truthy(config.end_count).is_none_or(|end| config.completed_count < end),
-        EndType::Date => config.end_date.is_none_or(|end| now <= end),
+        EndType::Date => config
+            .end_day()
+            .is_none_or(|end| now <= LocalDateTime::at_start_of(end)),
         EndType::Other(_) => true,
     }
 }
@@ -301,6 +301,29 @@ mod tests {
         assert!(is_last_weekday_of_month(d("2026-01-25")));
         assert!(!is_last_weekday_of_month(d("2026-01-24")));
         assert!(is_last_weekday_of_month(d("2026-02-22")));
+    }
+
+    #[test]
+    fn a_timed_end_date_ends_at_the_local_midnight_of_its_day() {
+        let config = RepeatConfig::from_wire(&serde_json::json!({
+            "frequency": "daily", "interval": 1, "endType": "date",
+            "endDate": "2026-03-11T15:00:00.000Z", "completedCount": 0
+        }))
+        .expect("a config");
+        assert_eq!(
+            calculate_next_occurrence(d("2026-03-10"), &config),
+            Some(d("2026-03-11"))
+        );
+        assert_eq!(calculate_next_occurrence(d("2026-03-11"), &config), None);
+        let at = |text| LocalDateTime::parse(text).expect("an instant");
+        assert!(should_create_next_occurrence(
+            &config,
+            at("2026-03-11T00:00:00")
+        ));
+        assert!(!should_create_next_occurrence(
+            &config,
+            at("2026-03-11T09:00:00")
+        ));
     }
 
     #[test]
