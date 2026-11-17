@@ -14,11 +14,14 @@ vi.mock('@/contexts/ai-settings-context', () => ({
   useAISettingsContext: () => ({ enabled: mocks.aiEnabled, isLoading: false, reload: vi.fn() })
 }))
 
-vi.mock('@/services/notes-service', () => ({
-  notesService: {
+vi.mock('@/services/similarity-service', () => ({
+  similarityService: {
     getSimilar: mocks.getSimilar,
     getTagSuggestions: mocks.getTagSuggestions
-  },
+  }
+}))
+
+vi.mock('@/services/notes-service', () => ({
   onNoteUpdated: (listener: (typeof mocks.updatedListeners)[number]) => {
     mocks.updatedListeners.push(listener)
     return () => {

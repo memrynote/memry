@@ -18,7 +18,8 @@ const bindings = vi.hoisted(() => ({
   aiGetModelStatus: vi.fn(),
   aiLoadModel: vi.fn(),
   aiReindexEmbeddings: vi.fn(),
-  embeddingCallbacks: [] as Array<(event: EmbeddingProgressEvent) => void>
+  embeddingCallbacks: [] as Array<(event: EmbeddingProgressEvent) => void>,
+  voiceCallbacks: [] as Array<(event: EmbeddingProgressEvent) => void>
 }))
 
 vi.mock('../../../../generated/bindings', async (importOriginal) => ({
@@ -35,6 +36,12 @@ vi.mock('../../../../generated/bindings', async (importOriginal) => ({
     aiEmbeddingProgressEvent: {
       listen: (handler: (event: { payload: EmbeddingProgressEvent }) => void) => {
         bindings.embeddingCallbacks.push((payload) => handler({ payload }))
+        return Promise.resolve(() => {})
+      }
+    },
+    voiceModelProgressEvent: {
+      listen: (handler: (event: { payload: EmbeddingProgressEvent }) => void) => {
+        bindings.voiceCallbacks.push((payload) => handler({ payload }))
         return Promise.resolve(() => {})
       }
     }
@@ -63,20 +70,17 @@ vi.mock('./agent-mcp-section', () => ({
   AgentMcpSection: () => <div data-testid="agent-mcp-panel" />
 }))
 
-// oxlint-disable-next-line typescript/no-redundant-type-constituents -- test types come from a mock factory or an alias that tsgolint resolves to any; the declared type is intentional
-type SettingsApi = ReturnType<typeof createMockApi> & {
-  onVoiceModelProgress: (callback: (event: EmbeddingProgressEvent) => void) => () => void
-}
+type SettingsApi = ReturnType<typeof createMockApi>
 
 describe('AISettings', () => {
   let api: SettingsApi
   const embeddingCallbacks = bindings.embeddingCallbacks
-  let voiceCallbacks: Array<(event: EmbeddingProgressEvent) => void>
+  const voiceCallbacks = bindings.voiceCallbacks
 
   beforeEach(() => {
     vi.clearAllMocks()
     embeddingCallbacks.length = 0
-    voiceCallbacks = []
+    voiceCallbacks.length = 0
 
     if (!HTMLElement.prototype.hasPointerCapture) {
       HTMLElement.prototype.hasPointerCapture = vi.fn(() => false)
@@ -132,10 +136,6 @@ describe('AISettings', () => {
       hasApiKey: false
     })
     api.settings.setVoiceTranscriptionOpenAIKey = vi.fn().mockResolvedValue({ success: true })
-    api.onVoiceModelProgress = vi.fn((callback) => {
-      voiceCallbacks.push(callback)
-      return () => {}
-    })
     ;(window as Window & { api: unknown }).api = api
   })
 

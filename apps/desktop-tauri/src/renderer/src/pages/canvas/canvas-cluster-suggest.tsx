@@ -31,7 +31,7 @@ import { Input } from '@/components/ui/input'
 import { LayoutGrid } from '@/lib/icons'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
-import { notesService } from '@/services/notes-service'
+import { similarityService } from '@/services/similarity-service'
 import { getCardRefs, type CardElement } from './canvas-cards'
 import { planClusterLayout } from './canvas-cluster-layout'
 import { applyDrawPlan, applyElementEdits, planDraw } from './canvas-draw-plan'
@@ -105,7 +105,7 @@ export function CanvasClusterSuggest({
     }
     setLoading(true)
     try {
-      const result = await notesService.cluster([...byNote.keys()])
+      const result = await similarityService.cluster([...byNote.keys()])
       if (result.status === 'disabled') {
         toast.info(t('canvas.cluster.disabled'))
         return
