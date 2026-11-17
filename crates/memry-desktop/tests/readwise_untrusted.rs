@@ -2,7 +2,8 @@
 //! and note bodies are peer and vault data. Depth on a 2 MiB thread, linear step counts, output
 //! bounds, and properties of the section reader and its damaged-marker rules.
 
-use memry_desktop::readwise::highlights::LinkedIds;
+use memry_core::markdown::bn::html_to_blocks::markdown_to_blocks;
+use memry_desktop::readwise::highlights::{LinkedIds, highlight_url};
 use memry_desktop::readwise::journal::{
     JournalBook, JournalWrite, plan_journal_write, read_day_section,
 };
@@ -23,7 +24,7 @@ use memry_test_kit::{
     assert_output_bounded, assert_steps_at_most, on_small_stack, output_bound, proptest_config,
 };
 use proptest::prelude::*;
-use serde_json::json;
+use serde_json::{Value, json};
 use std::collections::HashSet;
 
 const END: &str = "<!-- readwise:end v1 last=2026-10-22T18:05:00.001Z hash=0badf00d -->";
@@ -166,8 +167,8 @@ fn marker_line() -> impl Strategy<Value = String> {
 }
 
 /// Text an untrusted payload field could hold to break out of a `[label](url)` link: line
-/// breaks, link syntax, a forged end marker, a remote image, a wiki link, a tag, a frontmatter
-/// fence.
+/// breaks, link syntax, a code span or escape, a forged end marker, a remote image, a wiki
+/// link, a tag, a frontmatter fence.
 fn hostile() -> impl Strategy<Value = String> {
     let piece = prop_oneof![
         Just("\n".to_string()),
@@ -181,6 +182,10 @@ fn hostile() -> impl Strategy<Value = String> {
         Just("](http://evil.example/x)".to_string()),
         Just("![](https://evil.example/p.png)".to_string()),
         Just("[[Wiki]]".to_string()),
+        Just("`".to_string()),
+        Just("\\".to_string()),
+        Just("[".to_string()),
+        Just("]".to_string()),
         Just(" #tag".to_string()),
         Just("\n---\ntitle: x\n---\n".to_string()),
         Just("https://".to_string()),
@@ -190,16 +195,49 @@ fn hostile() -> impl Strategy<Value = String> {
     prop::collection::vec(piece, 0..8).prop_map(|pieces| pieces.concat())
 }
 
-/// A book of one highlight whose Readwise link and location type are untrusted.
-fn hostile_book(readwise_url: String, location_type: String) -> ReadwiseBook {
-    ReadwiseBook {
-        user_book_id: 1,
-        highlights: Some(vec![ReadwiseHighlight {
-            readwise_url: Some(readwise_url),
-            location_type: Some(location_type),
-            ..highlight(7, "a highlight".into())
-        }]),
-        ..Default::default()
+/// Highlight text that pairs with a backtick or backslash in a field after it: an open code
+/// span, an escape, a wiki link. No `(`, so it holds no link of its own.
+fn hostile_text() -> impl Strategy<Value = String> {
+    let piece = prop_oneof![
+        Just("a `b".to_string()),
+        Just("`".to_string()),
+        Just("\\".to_string()),
+        Just("[[Secret]]".to_string()),
+        "[ -'*-~]{0,6}",
+    ];
+    prop::collection::vec(piece, 0..6).prop_map(|pieces| pieces.concat())
+}
+
+/// A highlight whose text, Readwise link and location type are untrusted.
+fn hostile_highlight(
+    text: String,
+    readwise_url: String,
+    location_type: String,
+) -> ReadwiseHighlight {
+    ReadwiseHighlight {
+        readwise_url: Some(readwise_url),
+        location_type: Some(location_type),
+        ..highlight(7, text)
+    }
+}
+
+/// The hrefs of the links in BlockNote blocks, and the text runs outside links and code.
+fn links_and_prose(blocks: &Value, links: &mut Vec<String>, prose: &mut Vec<String>) {
+    match blocks {
+        Value::Array(items) => items
+            .iter()
+            .for_each(|item| links_and_prose(item, links, prose)),
+        Value::Object(item) => match item.get("type").and_then(Value::as_str) {
+            Some("link") => links.push(item["href"].as_str().unwrap_or_default().to_string()),
+            Some("text") if item["styles"]["code"] != json!(true) => {
+                prose.push(item["text"].as_str().unwrap_or_default().to_string());
+            }
+            Some("text") => {}
+            _ => item
+                .values()
+                .for_each(|value| links_and_prose(value, links, prose)),
+        },
+        _ => {}
     }
 }
 
@@ -239,6 +277,22 @@ fn payload_numbers_parse_correctly_rounded() {
     let d: ReaderDocument =
         serde_json::from_str(&format!(r#"{{"id":"d","published_date":{HARD}}}"#)).unwrap();
     assert!(matches!(d.published_date, Some(PublishedDate::Number(n)) if n.to_bits() == exact));
+}
+
+/// Cargo unifies dev-dependency features into this test binary, so the test above passes with
+/// `float_roundtrip` in `[dev-dependencies]` only. This holds it on the production edge.
+#[test]
+fn float_roundtrip_is_a_production_feature() {
+    let manifest = include_str!("../Cargo.toml");
+    let dependencies = manifest
+        .split("\n[")
+        .find(|section| section.starts_with("dependencies]"))
+        .expect("a [dependencies] table");
+    let serde_json = dependencies
+        .lines()
+        .find(|line| line.starts_with("serde_json "))
+        .expect("serde_json in [dependencies]");
+    assert!(serde_json.contains("\"float_roundtrip\""), "{serde_json}");
 }
 
 /// Reader tag shapes against what `planReaderNote` does with each (measured in Node on the
@@ -302,16 +356,38 @@ fn exact(line: &str, marker: &str) -> bool {
 proptest! {
     #![proptest_config(proptest_config(256))]
 
-    /// An untrusted `readwise_url` or `location_type` never breaks the section: it reads back
-    /// untouched, and the highlight's link is the only link in it.
+    /// An untrusted `readwise_url` or `location_type`, after untrusted highlight text, never
+    /// breaks the section: it reads back untouched, and parsed as the editor parses it the
+    /// highlight's link is its only link, and no prose outside it holds a wiki link or the URL.
     #[test]
-    fn untrusted_link_fields_stay_inside_their_link(url in hostile(), location_type in hostile()) {
-        let section = plan(&hostile_book(url, location_type));
+    fn untrusted_link_fields_stay_inside_their_link(
+        text in hostile_text(),
+        url in hostile(),
+        location_type in hostile(),
+    ) {
+        let h = hostile_highlight(text.clone(), url.clone(), location_type);
+        let href = highlight_url(&h);
+        let section = plan(&ReadwiseBook {
+            user_book_id: 1,
+            highlights: Some(vec![h]),
+            ..Default::default()
+        });
         prop_assert!(
             matches!(read_section(&section), SectionRead::Found { untouched: true, .. }),
             "{section}"
         );
         prop_assert_eq!(section.matches("](http").count(), 1, "{}", section);
+        let blocks = markdown_to_blocks(&section).expect("the section parses");
+        let (mut links, mut prose) = (Vec::new(), Vec::new());
+        links_and_prose(&blocks, &mut links, &mut prose);
+        prop_assert_eq!(&links, &vec![href], "{}", section);
+        for run in &prose {
+            prop_assert!(!run.contains("[["), "wiki link in {run:?}: {section}");
+            prop_assert!(
+                !url.starts_with("http") || text.contains(&url) || !run.contains(&url),
+                "URL as prose in {run:?}: {section}"
+            );
+        }
     }
 
     /// The damaged-marker rules against a model that only counts marker lines.

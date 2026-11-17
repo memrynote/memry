@@ -17,12 +17,15 @@ use crate::web::extract::utils::js::{is_js_whitespace, trim as js_trim};
 pub const EPOCH: &str = "1970-01-01T00:00:00.000Z";
 
 /// `highlightUrl`, which writes `readwise_url` raw into a `[label](url)` link. Here a URL
-/// that could end the link or the line (not `http(s)://`, or holding whitespace, `<`, `>`, `(`
-/// or `)`) falls back to the highlight's own Readwise link (module docs, Departures).
+/// that is not `http(s)://` or holds a character outside RFC 3986 or one of `[`, `]`, `(`,
+/// `)` (which could end the link or the line, open a code span or escape what follows) falls
+/// back to the highlight's own Readwise link (module docs, Departures).
 pub fn highlight_url(highlight: &ReadwiseHighlight) -> String {
     let safe = |url: &&str| {
         (url.starts_with("https://") || url.starts_with("http://"))
-            && !url.contains(|c: char| is_js_whitespace(c) || matches!(c, '<' | '>' | '(' | ')'))
+            && url
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || "-._~:/?#@!$&'*+,;=%".contains(c))
     };
     match highlight.readwise_url.as_deref().filter(safe) {
         Some(url) => url.to_string(),
@@ -169,15 +172,17 @@ fn location_label(highlight: &ReadwiseHighlight) -> String {
         Some("time_offset") => format!("Time {}", clock(location)),
         Some("order") => format!("Position {at}"),
         Some("offset") => format!("Offset {at}"),
-        // TypeScript writes the payload's type raw into the link label. Here it is one line
-        // with no `[]()` and escaped as text, so it cannot close the link, start a block, or
-        // forge a marker, tag or wiki link (module docs, Departures).
+        // TypeScript writes the payload's type raw into the link label. Here it keeps only
+        // letters, digits and spaces, so it cannot close the link, end the line, or pair with a
+        // code span or emphasis delimiter in the highlight text (module docs, Departures).
         other => {
-            let name = other
+            let name: String = other
                 .unwrap_or("location")
                 .replace('_', " ")
-                .replace(['[', ']', '(', ')'], "");
-            escape_line(&format!("{} {at}", capitalize(&collapse_whitespace(&name))))
+                .chars()
+                .filter(|c| c.is_alphanumeric() || is_js_whitespace(*c))
+                .collect();
+            format!("{} {at}", capitalize(&collapse_whitespace(&name)))
         }
     }
 }

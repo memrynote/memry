@@ -22,9 +22,10 @@
 //!   tags up in a plain object (`HEADING_TAGS`), whose prototype makes both heading markers.
 //! - `readwise_url` and `location_type` reach a `[label](url)` link. TypeScript writes them
 //!   raw, so a payload can end the link or the line and add a remote image, a wiki link, a tag,
-//!   a second end marker or a frontmatter-shaped block. Here a URL that is not `http(s)://` or
-//!   holds whitespace, `<`, `>`, `(` or `)` becomes `https://readwise.io/open/{id}`, and a
-//!   location type is one line, without `[]()`, escaped as text (`highlights::highlight_url`,
+//!   a second end marker or a frontmatter-shaped block, or open a code span that swallows the
+//!   link. Here a URL that is not `http(s)://` or holds a character outside RFC 3986 or one of
+//!   `[`, `]`, `(`, `)` becomes `https://readwise.io/open/{id}`, and a location type keeps
+//!   only its letters, digits and spaces, on one line (`highlights::highlight_url`,
 //!   `location_label`).
 
 pub mod highlights;
