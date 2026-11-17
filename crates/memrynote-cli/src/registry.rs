@@ -179,11 +179,10 @@ fn normalize(path: &Path) -> PathBuf {
     out
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests {
     use super::*;
 
-    #[cfg(unix)]
     #[test]
     fn resolve_is_lexical_and_absolute() {
         let cwd = Path::new("/work/dir");
