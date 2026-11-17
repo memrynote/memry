@@ -209,9 +209,9 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         sql: include_str!("migrations/data/0032_note_body_sync.sql"),
     },
     Migration {
-        version: 33,
+        version: 34,
         name: "recents",
-        sql: include_str!("migrations/data/0033_recents.sql"),
+        sql: include_str!("migrations/data/0034_recents.sql"),
     },
 ];
 

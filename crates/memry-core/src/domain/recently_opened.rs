@@ -2,7 +2,7 @@
 //! (`apps/desktop/src/main/ipc/recents-handlers.ts`,
 //! `main/database/queries/recently-opened.ts`).
 //!
-//! Device-local UI state in `data.db` (migration 0033): never synced, gone
+//! Device-local UI state in `data.db` (migration 0034): never synced, gone
 //! with the vault on sign-out. A row names an item and stores no title, so
 //! [`list`] resolves each item when it reads and skips one that is gone.
 
@@ -316,7 +316,7 @@ mod tests {
         });
     }
 
-    /// 0033 adds the trail to a `data.db` an older build wrote, and it works
+    /// 0034 adds the trail to a `data.db` an older build wrote, and it works
     /// on it straight away.
     #[test]
     fn an_older_data_database_gains_an_empty_trail() {
@@ -324,7 +324,7 @@ mod tests {
         db.call_blocking(|conn| {
             run(conn, &DATA_MIGRATIONS[..32])?;
             note(conn, "a");
-            assert_eq!(run(conn, DATA_MIGRATIONS)?, 33);
+            assert_eq!(run(conn, DATA_MIGRATIONS)?, 34);
             assert!(list(conn, 50)?.is_empty());
             record(conn, "note", "a", 1)?;
             assert_eq!(ids(conn, 50), ["a"]);
