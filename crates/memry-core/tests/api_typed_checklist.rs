@@ -4,10 +4,9 @@
 
 #[allow(unused_imports)]
 use crate::http_fakes;
+use crate::support;
 
-use std::path::PathBuf;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
 
 use http_fakes::FakeSecureStore;
 use memry_core::api::tasks::Tasks;
@@ -16,7 +15,6 @@ use memry_core::crdt::body_edit::BlockEdit;
 use memry_core::crypto::sodium;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
 const NOW: &str = "2026-01-14T12:00:00";
 
 struct Fixture {
@@ -24,16 +22,12 @@ struct Fixture {
     store: Arc<dyn SecureStore>,
     tasks: Arc<Tasks>,
     note: String,
+    _dir: tempfile::TempDir,
 }
 
 fn fixture() -> Fixture {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir: PathBuf = std::env::temp_dir().join(format!(
-        "memry-typed-checklist-{}-{unique}",
-        std::process::id()
-    ));
-    std::fs::create_dir_all(&dir).expect("the scratch directory");
-    let vault = Vault::open("vault-1".to_string(), dir.display().to_string()).expect("open");
+    let dir = support::scratch_dir("typed-checklist");
+    let vault = Vault::open("vault-1".to_string(), dir.path().display().to_string()).expect("open");
     let (_public, secret) = sodium::sign_seed_keypair(&[3u8; 32]).expect("a keypair");
     let store: Arc<dyn SecureStore> = FakeSecureStore::new();
     store
@@ -51,6 +45,7 @@ fn fixture() -> Fixture {
         store,
         tasks,
         note,
+        _dir: dir,
     }
 }
 
