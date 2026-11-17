@@ -19,6 +19,7 @@ const repo = new URL('..', import.meta.url).pathname
 const tierDir = join(repo, '.github/actions/ci-tier')
 const tierScript = join(tierDir, 'tier.sh')
 const changedScript = join(repo, '.github/actions/paths-changed/changed.sh')
+const postMergeScript = join(tierDir, 'post-merge.sh')
 
 // A large PR lists thousands of files (the API stops at 3000); a match early in the list must still
 // count. 2999 files outgrow the pipe buffer that once turned a match into a miss.
@@ -1032,6 +1033,7 @@ describe('ci tier after a merge into feat/tauri-v2', () => {
       'crates/.cargo/config.toml',
       'pnpm-lock.yaml',
       'scripts/fetch-tesseract-sources.mjs',
+      'crates/memry-ml-worker/build.rs',
       '.github/actions/setup-pnpm/action.yml',
       '.github/workflows/rust-ci.yml',
       '.github/workflows/desktop-tauri-ci.yml'
@@ -1083,6 +1085,124 @@ describe('ci tier after a merge into feat/tauri-v2', () => {
       tier({ files: code, patches: {}, queueTested: true })
     ]) {
       assert.equal(out.post_merge, false)
+    }
+  })
+})
+
+// post-merge.sh asks the GitHub API through `gh`. The stub answers from canned responses, each a
+// substring of the URL and the JSON body, applies the `--jq` filter, and fails like an API error for
+// a URL with no response. A lookup that cannot prove the queue passed must run every leg.
+function lookUp(env, responses) {
+  const dir = mkdtempSync(join(scratch, 'gh-'))
+  writeFileSync(join(dir, 'responses.json'), JSON.stringify(responses))
+  writeFileSync(
+    join(dir, 'gh'),
+    `#!/usr/bin/env bash
+echo "$2" >> '${dir}/calls'
+body=$(jq -c --arg u "$2" 'first(.[] | select(.[0] as $s | $u | contains($s)) | .[1]) // empty' '${dir}/responses.json')
+[ -n "$body" ] || exit 1
+jq -r "$4" <<<"$body"
+`,
+    { mode: 0o755 }
+  )
+  const result = spawnSync('bash', [postMergeScript], {
+    env: {
+      PATH: `${dir}:${process.env.PATH}`,
+      EVENT: 'push',
+      REF: 'refs/heads/feat/tauri-v2',
+      REPO: 'memrynote/memry',
+      POST_MERGE: 'true',
+      WORKFLOW_REF: 'memrynote/memry/.github/workflows/rust-ci.yml@refs/heads/feat/tauri-v2',
+      WORKFLOW_NAME: 'Rust CI',
+      SHA: 'merged',
+      RUN_ID: '500',
+      ...env
+    },
+    encoding: 'utf8'
+  })
+  assert.equal(result.status, 0, result.stderr)
+  const out = Object.fromEntries(
+    result.stdout
+      .trim()
+      .split('\n')
+      .map((line) => line.split('='))
+  )
+  const calls = join(dir, 'calls')
+  return { ...out, calls: existsSync(calls) ? readFileSync(calls, 'utf8').trim().split('\n') : [] }
+}
+
+describe('ci tier post-merge lookup', () => {
+  const queueRuns = [
+    'event=merge_group',
+    {
+      workflow_runs: [
+        { id: 41, path: '.github/workflows/rust-ci.yml' },
+        { id: 42, path: '.github/workflows/desktop-tauri-ci.yml' }
+      ]
+    }
+  ]
+  const gate = (conclusion) => [
+    'runs/41/jobs',
+    {
+      jobs: [
+        { name: 'Rust CI gate', conclusion },
+        { name: 'Report flaky tests', conclusion: null }
+      ]
+    }
+  ]
+  const otherGate = [
+    'runs/42/jobs',
+    { jobs: [{ name: 'Desktop Tauri CI gate', conclusion: 'success' }] }
+  ]
+  const pushRuns = (...runs) => ['workflows/rust-ci.yml/runs', { workflow_runs: runs }]
+  const earlier = pushRuns(
+    { id: 600, head_sha: 'later', conclusion: 'success' },
+    { id: 499, head_sha: 'superseded', conclusion: 'cancelled' },
+    { id: 498, head_sha: 'base', conclusion: 'failure' },
+    { id: 497, head_sha: 'older', conclusion: 'success' }
+  )
+
+  it('finds the passed gate of a merge_group run that is still reporting', () => {
+    const out = lookUp({}, [queueRuns, gate('success'), otherGate, earlier])
+    assert.equal(out.queue_tested, 'true')
+    assert.equal(out.from, 'base')
+  })
+
+  it('runs every leg unless this workflow gate passed and a push run was not cancelled', () => {
+    for (const responses of [
+      [queueRuns, gate('failure'), otherGate, earlier],
+      [queueRuns, gate(null), otherGate, earlier],
+      [
+        ['event=merge_group', { workflow_runs: [queueRuns[1].workflow_runs[1]] }],
+        otherGate,
+        earlier
+      ],
+      [
+        queueRuns,
+        gate('success'),
+        pushRuns({ id: 499, head_sha: 'superseded', conclusion: 'cancelled' })
+      ],
+      [gate('success'), earlier],
+      [queueRuns, earlier],
+      [queueRuns, gate('success')]
+    ]) {
+      const out = lookUp({}, responses)
+      assert.equal(out.queue_tested, 'false', JSON.stringify(responses))
+      assert.equal(out.from, '')
+    }
+  })
+
+  it('asks nothing outside an opted-in push to feat/tauri-v2', () => {
+    const all = [queueRuns, gate('success'), otherGate, earlier]
+    for (const env of [
+      { POST_MERGE: 'false' },
+      { EVENT: 'merge_group' },
+      { REF: 'refs/heads/main' },
+      { EVENT: 'pull_request', REF: 'refs/pull/1/merge' }
+    ]) {
+      const out = lookUp(env, all)
+      assert.equal(out.queue_tested, 'false')
+      assert.deepEqual(out.calls, [])
     }
   })
 })
