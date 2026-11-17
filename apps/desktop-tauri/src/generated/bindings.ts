@@ -447,6 +447,15 @@ export const commands = {
 	 *  failed write saves nothing.
 	 */
 	notesDownloadUnsplashPhoto: (noteId: string, photo: UnsplashPhoto) => __TAURI_INVOKE<UnsplashDownloadResponse>("notes_download_unsplash_photo", { noteId, photo }),
+	/**  `notes:cluster`: proposed groups for at most 300 notes. */
+	notesCluster: (noteIds: string[]) => __TAURI_INVOKE<NoteClustersResponse>("notes_cluster", { noteIds }),
+	/**
+	 *  `notes:get-similar`: the nearest notes not linked with `note_id`, `limit` of them (5 when
+	 *  absent, 1 to 20).
+	 */
+	notesGetSimilar: (noteId: string, limit: number | null) => __TAURI_INVOKE<SimilarNotesResponse>("notes_get_similar", { noteId, limit }),
+	/**  `notes:get-tag-suggestions`: tags the nearest notes share and `note_id` lacks. */
+	notesGetTagSuggestions: (noteId: string) => __TAURI_INVOKE<NoteTagSuggestionsResponse>("notes_get_tag_suggestions", { noteId }),
 	/**  `notes:delete-version`: a version that is not there is no failure, as in Electron. */
 	notesDeleteVersion: (snapshotId: string) => __TAURI_INVOKE<null>("notes_delete_version", { snapshotId }),
 	/**  `notes:get-version`: the version and the file it restores to; `null` for none. */
@@ -756,6 +765,13 @@ export const commands = {
 	 *  files stay. The open vault is refused.
 	 */
 	vaultDeleteFromAccount: (vaultUuid: string) => __TAURI_INVOKE<null>("vault_delete_from_account", { vaultUuid }),
+	/**
+	 *  `vault:download-remote` (`vault-directory.ts:266-318`): opens the registered copy of the
+	 *  account vault, else makes its folder under `parent_path` (default: next to the current vault)
+	 *  and opens that. A download that opens arms the new vault's bootstrap window from the moment
+	 *  this call started, as `beginBootstrap` does before provisioning, and marks it interactive.
+	 */
+	vaultDownloadRemote: (vaultUuid: string, parentPath: string | null) => __TAURI_INVOKE<SelectVaultResponse>("vault_download_remote", { vaultUuid, parentPath }),
 	/**
 	 *  `vault:list-account`: refreshes the directory (throttled), then the cached list, which is
 	 *  the last one read when offline.
@@ -2362,6 +2378,21 @@ export type NoteAliasesView = {
 	aliases: string[],
 };
 
+/**  `NoteClusterGroup`. */
+export type NoteClusterGroup = {
+	noteIds: string[],
+	titles: string[],
+	suggestedName: string | null,
+};
+
+/**  `NoteClustersResponse`. */
+export type NoteClustersResponse = {
+	status: NoteSimilarityStatus,
+	groups: NoteClusterGroup[],
+	ungrouped: string[],
+	missing: string[],
+};
+
 /**
  *  `NoteCreateSchema`, without `plainChecklists` (Step 32), which the renderer's service
  *  refuses until then.
@@ -2536,6 +2567,9 @@ export type NoteResultMetadata = {
 	matchedName?: string | null,
 };
 
+/**  `NoteSimilarityStatus`. */
+export type NoteSimilarityStatus = "disabled" | "no-embedding" | "ready";
+
 /**  `NoteSyncState`. Times are epoch milliseconds. */
 export type NoteSyncState = {
 	state: NoteSyncStateValue,
@@ -2548,6 +2582,19 @@ export type NoteSyncState = {
 
 /**  `NoteSyncStateValue`. */
 export type NoteSyncStateValue = "not_syncing" | "local_only" | "pending" | "sent" | "confirmed" | "not_recorded" | "rejected";
+
+/**  `NoteTagSuggestion`. */
+export type NoteTagSuggestion = {
+	tag: string,
+	confidence: number | null,
+	support: number,
+};
+
+/**  `NoteTagSuggestionsResponse`. */
+export type NoteTagSuggestionsResponse = {
+	status: NoteSimilarityStatus,
+	tags: NoteTagSuggestion[],
+};
 
 /**
  *  Something the tag list shows changed (`notes:tags-changed`). No payload; the renderer
@@ -3173,6 +3220,22 @@ export type ShortcutStatus = "unbound" | "registered" | "in_use" | "unsupported"
 export type SignOutResult = {
 	success: boolean,
 	keychainWarning?: string | null,
+};
+
+/**  `SimilarNoteItem`. */
+export type SimilarNoteItem = {
+	id: string,
+	title: string,
+	path: string,
+	emoji: string | null,
+	snippet: string | null,
+	similarity: number | null,
+};
+
+/**  `SimilarNotesResponse`. */
+export type SimilarNotesResponse = {
+	status: NoteSimilarityStatus,
+	notes: SimilarNoteItem[],
 };
 
 /**  `NoteSizeClass`. */
