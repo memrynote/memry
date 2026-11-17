@@ -14,14 +14,16 @@ use memry_desktop::shell::shutdown::{
     ShutdownContext, ShutdownReason, ShutdownRegistry, run_shutdown_sequence,
 };
 use tokio::runtime::Handle;
+use tokio_util::sync::CancellationToken;
 
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 
 use crate::device_key::{with_device_key, without_device_key};
-use crate::unsplash_server::{Harness, Reply, Seen, serve};
+use crate::unsplash_server::{Harness, Reply, Seen, serve, serve_plain};
 
 const URL: &str = "webcal://feeds.example/team.ics";
 const SOURCE_PATH: &str = "/team.ics";
+const OTHER_URL: &str = "https://feeds.example/other.ics";
 
 fn feed() -> String {
     let day = chrono::Utc::now().format("%Y%m%d");
@@ -40,6 +42,8 @@ enum Mode {
     Missing,
     NotACalendar,
     Stall,
+    /// Answers the feed once the test notifies `Rig::release`.
+    Held,
 }
 
 struct Rig {
@@ -50,6 +54,7 @@ struct Rig {
     mode: Arc<Mutex<Mode>>,
     changes: Arc<Mutex<Vec<FeedChange>>>,
     feeds: Arc<IcsFeeds>,
+    release: Arc<tokio::sync::Notify>,
 }
 
 impl Rig {
@@ -60,15 +65,22 @@ impl Rig {
     async fn with_store(store: Arc<dyn SecureStore>) -> Self {
         let mode = Arc::new(Mutex::new(Mode::Feed));
         let answer = Arc::clone(&mode);
+        let release = Arc::new(tokio::sync::Notify::new());
+        let gate = Arc::clone(&release);
         let harness = serve(move |seen: &Seen| {
-            if seen.target != SOURCE_PATH {
+            if seen.target != SOURCE_PATH && seen.target != "/other.ics" {
                 return Reply::status(404);
             }
+            let ok = || Reply::Ok {
+                status: 200,
+                headers: vec![("etag", "\"v1\"".to_owned())],
+                body: feed().into_bytes(),
+            };
             match *answer.lock().unwrap() {
-                Mode::Feed => Reply::Ok {
-                    status: 200,
-                    headers: vec![("etag", "\"v1\"".to_owned())],
-                    body: feed().into_bytes(),
+                Mode::Feed => ok(),
+                Mode::Held => Reply::Gated {
+                    gate: Arc::clone(&gate),
+                    then: Box::new(ok()),
                 },
                 Mode::NotModified => Reply::status(304),
                 Mode::Missing => Reply::status(404),
@@ -102,6 +114,7 @@ impl Rig {
             mode,
             changes,
             feeds,
+            release,
         }
     }
 
@@ -177,7 +190,11 @@ fn state(
 async fn subscribe_mirrors_the_feed_and_a_second_subscribe_does_not_fetch() {
     let rig = Rig::new().await;
     let open = rig.open().await;
-    let subscribed = rig.feeds.subscribe(&open, URL, None).await.unwrap();
+    let subscribed = rig
+        .feeds
+        .subscribe(&rig.session, &open, URL, None)
+        .await
+        .unwrap();
     assert!(subscribed.source_id.starts_with("ics-calendar:"));
     assert_eq!(subscribed.summary.event_count, 1);
     let seen = rig.harness.seen();
@@ -189,7 +206,12 @@ async fn subscribe_mirrors_the_feed_and_a_second_subscribe_does_not_fetch() {
 
     let again = rig
         .feeds
-        .subscribe(&open, "https://feeds.example/team.ics#frag", Some("Other"))
+        .subscribe(
+            &rig.session,
+            &open,
+            "https://feeds.example/team.ics#frag",
+            Some("Other"),
+        )
         .await
         .unwrap();
     assert_eq!(again, subscribed);
@@ -219,25 +241,25 @@ async fn a_link_that_is_not_a_calendar_saves_nothing() {
     let open = rig.open().await;
     rig.set(Mode::NotACalendar);
     assert!(matches!(
-        rig.feeds.subscribe(&open, URL, None).await,
+        rig.feeds.subscribe(&rig.session, &open, URL, None).await,
         Err(FeedsError::Feed(IcsFeedCode::NotACalendar))
     ));
     rig.set(Mode::Missing);
     assert!(matches!(
-        rig.feeds.subscribe(&open, URL, None).await,
+        rig.feeds.subscribe(&rig.session, &open, URL, None).await,
         Err(FeedsError::Feed(IcsFeedCode::NotFound))
     ));
     assert!(matches!(
         rig.feeds
-            .subscribe(&open, "http://feeds.example/team.ics", None)
+            .subscribe(&rig.session, &open, "ftp://feeds.example/team.ics", None)
             .await,
         Err(FeedsError::Feed(IcsFeedCode::InvalidUrl))
     ));
     assert!(matches!(
-        rig.feeds.subscribe(&open, "  ", None).await,
+        rig.feeds.subscribe(&rig.session, &open, "  ", None).await,
         Err(FeedsError::Invalid(_))
     ));
-    assert_eq!(rig.feed_requests(), 2, "the http link was never requested");
+    assert_eq!(rig.feed_requests(), 2, "the ftp link was never requested");
     let calendar = open.vault.calendar(with_device_key()).unwrap();
     assert!(calendar.sources().unwrap().is_empty());
 }
@@ -248,13 +270,13 @@ async fn refresh_is_conditional_and_records_a_failure_on_the_source() {
     let open = rig.open().await;
     let id = rig
         .feeds
-        .subscribe(&open, URL, None)
+        .subscribe(&rig.session, &open, URL, None)
         .await
         .unwrap()
         .source_id;
 
     rig.set(Mode::NotModified);
-    rig.feeds.refresh(&open, &id).await.unwrap();
+    rig.feeds.refresh(&rig.session, &open, &id).await.unwrap();
     let seen = rig.harness.seen();
     assert_eq!(
         seen.last().unwrap().if_none_match.as_deref(),
@@ -264,7 +286,7 @@ async fn refresh_is_conditional_and_records_a_failure_on_the_source() {
 
     rig.set(Mode::Missing);
     assert!(matches!(
-        rig.feeds.refresh(&open, &id).await,
+        rig.feeds.refresh(&rig.session, &open, &id).await,
         Err(FeedsError::Feed(IcsFeedCode::NotFound))
     ));
     let failed = state(&open, &id).unwrap();
@@ -273,7 +295,9 @@ async fn refresh_is_conditional_and_records_a_failure_on_the_source() {
     assert_eq!(failed.event_count, 1, "a failed fetch keeps the mirror");
 
     assert!(matches!(
-        rig.feeds.refresh(&open, "ics-calendar:nope").await,
+        rig.feeds
+            .refresh(&rig.session, &open, "ics-calendar:nope")
+            .await,
         Err(FeedsError::NotFound(_))
     ));
 }
@@ -284,7 +308,7 @@ async fn unsubscribe_drops_the_source_and_its_mirror() {
     let open = rig.open().await;
     let id = rig
         .feeds
-        .subscribe(&open, URL, None)
+        .subscribe(&rig.session, &open, URL, None)
         .await
         .unwrap()
         .source_id;
@@ -303,7 +327,7 @@ async fn due_feed(rig: &Rig) -> String {
     let open = rig.open().await;
     let id = rig
         .feeds
-        .subscribe(&open, URL, None)
+        .subscribe(&rig.session, &open, URL, None)
         .await
         .unwrap()
         .source_id;
@@ -333,7 +357,7 @@ async fn a_device_that_never_signed_in_subscribes_and_its_feed_refreshes() {
         rig.feed_requests() == 2
     })
     .await;
-    rig.feeds.refresh(&open, &id).await.unwrap();
+    rig.feeds.refresh(&rig.session, &open, &id).await.unwrap();
     assert_eq!(rig.feed_requests(), 3);
     drop(open);
     rig.close().await;
@@ -412,7 +436,7 @@ async fn each_change_is_reported_where_electron_emits_it() {
     let open = rig.open().await;
     let id = rig
         .feeds
-        .subscribe(&open, URL, None)
+        .subscribe(&rig.session, &open, URL, None)
         .await
         .unwrap()
         .source_id;
@@ -422,7 +446,10 @@ async fn each_change_is_reported_where_electron_emits_it() {
     );
     assert_eq!(rig.take_changes(), [projection.clone(), source.clone()]);
 
-    rig.feeds.subscribe(&open, URL, None).await.unwrap();
+    rig.feeds
+        .subscribe(&rig.session, &open, URL, None)
+        .await
+        .unwrap();
     assert_eq!(
         rig.take_changes(),
         [],
@@ -430,11 +457,11 @@ async fn each_change_is_reported_where_electron_emits_it() {
     );
 
     rig.set(Mode::NotModified);
-    rig.feeds.refresh(&open, &id).await.unwrap();
+    rig.feeds.refresh(&rig.session, &open, &id).await.unwrap();
     assert_eq!(rig.take_changes(), std::slice::from_ref(&source));
 
     rig.set(Mode::Feed);
-    rig.feeds.refresh(&open, &id).await.unwrap();
+    rig.feeds.refresh(&rig.session, &open, &id).await.unwrap();
     assert_eq!(
         rig.take_changes(),
         std::slice::from_ref(&source),
@@ -442,7 +469,10 @@ async fn each_change_is_reported_where_electron_emits_it() {
     );
 
     rig.set(Mode::Missing);
-    rig.feeds.refresh(&open, &id).await.unwrap_err();
+    rig.feeds
+        .refresh(&rig.session, &open, &id)
+        .await
+        .unwrap_err();
     assert_eq!(
         rig.take_changes(),
         std::slice::from_ref(&source),
@@ -452,6 +482,105 @@ async fn each_change_is_reported_where_electron_emits_it() {
     rig.feeds.unsubscribe(&open, &id).await.unwrap();
     assert_eq!(rig.take_changes(), [projection, source]);
 
-    rig.feeds.refresh(&open, &id).await.unwrap_err();
+    rig.feeds
+        .refresh(&rig.session, &open, &id)
+        .await
+        .unwrap_err();
     assert_eq!(rig.take_changes(), [], "nothing changed for a removed feed");
+}
+
+/// Electron subscribes to `http:` links (`ics-feed.ts:50`); one synced from it keeps working.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn an_http_feed_subscribes_as_on_electron() {
+    let rig = Rig::new().await;
+    let plain = serve_plain(|_| Reply::Ok {
+        status: 200,
+        headers: Vec::new(),
+        body: feed().into_bytes(),
+    })
+    .await;
+    let open = rig.open().await;
+    let url = plain.url("/team.ics");
+    let subscribed = rig
+        .feeds
+        .subscribe(&rig.session, &open, &url, None)
+        .await
+        .unwrap();
+    assert_eq!(subscribed.summary.event_count, 1);
+    assert_eq!(plain.seen().len(), 1);
+    let sources = open
+        .vault
+        .calendar(with_device_key())
+        .unwrap()
+        .sources()
+        .unwrap();
+    assert!(
+        sources
+            .iter()
+            .any(|s| s.id == subscribed.source_id && s.remote_id == url)
+    );
+}
+
+/// `refreshDueIcsCalendars` catches per feed (`ics-subscriptions.ts:445-451`): a feed whose
+/// outcome cannot be written is logged and the next one is still fetched and recorded.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_feed_that_fails_to_record_does_not_hold_up_the_next() {
+    let rig = Rig::new().await;
+    let open = rig.open().await;
+    for url in [URL, OTHER_URL] {
+        rig.feeds
+            .subscribe(&rig.session, &open, url, None)
+            .await
+            .unwrap();
+    }
+    rig.forget_fetch_state();
+    let calendar = open.vault.calendar(with_device_key()).unwrap();
+    let due: Vec<String> = calendar
+        .feeds_due(false)
+        .unwrap()
+        .into_iter()
+        .map(|d| d.source_id)
+        .collect();
+    assert_eq!(due.len(), 2);
+    let db = rusqlite::Connection::open(rig.vault.join(".memry/core/data.db")).unwrap();
+    db.execute_batch(&format!(
+        "CREATE TRIGGER refuse_first BEFORE INSERT ON calendar_source_states \
+         WHEN NEW.source_id = '{}' BEGIN SELECT RAISE(ABORT, 'refused'); END;",
+        due[0]
+    ))
+    .unwrap();
+    let before = rig.harness.seen().len();
+    rig.feeds
+        .refresh_due(&open, &CancellationToken::new())
+        .await
+        .unwrap();
+    assert_eq!(
+        rig.harness.seen().len(),
+        before + 2,
+        "both feeds were fetched"
+    );
+    assert_eq!(state(&open, &due[1]).unwrap().sync_status, "ok");
+}
+
+/// A subscribe whose fetch outlasts the vault writes nothing into it.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_subscribe_that_outlives_its_vault_writes_nothing() {
+    let rig = Rig::new().await;
+    let open = rig.open().await;
+    rig.set(Mode::Held);
+    let subscribe = tokio::spawn({
+        let (feeds, session, open) = (rig.feeds.clone(), rig.session.clone(), open.clone());
+        async move { feeds.subscribe(&session, &open, URL, None).await }
+    });
+    eventually("the feed is requested", || rig.feed_requests() == 1).await;
+    drop(open);
+    rig.close().await;
+    rig.release.notify_one();
+    let outcome = subscribe.await.unwrap();
+    assert!(matches!(outcome, Err(FeedsError::Closed)), "{outcome:?}");
+
+    let open = rig.open().await;
+    let calendar = open.vault.calendar(with_device_key()).unwrap();
+    assert!(calendar.sources().unwrap().is_empty());
+    assert!(calendar.feed_states().unwrap().is_empty());
 }

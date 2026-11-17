@@ -1,4 +1,5 @@
-//! `IcsFetcher` against a local TLS server standing in for `feeds.example`, through the app's
+//! `IcsFetcher` against a local TLS server standing in for `feeds.example` (and a plain-HTTP one
+//! on `127.0.0.1`), through the app's
 //! own HTTP builder: the conditional GET, the status codes, the redirect checks, the size cap and
 //! the deadline of `ics/ics-fetch.ts` (`ics-fetch.test.ts`).
 
@@ -8,7 +9,8 @@ use memry_desktop::calendar_providers::ics_fetch::{
     Fetched, IcsFeedCode, IcsFetcher, MAX_FEED_BYTES, TIMEOUT,
 };
 
-use crate::unsplash_server::{Harness, Reply, Seen, serve};
+use crate::on_warning::logged;
+use crate::unsplash_server::{Harness, Reply, Seen, serve, serve_plain};
 
 const FEED: &str = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR\r\n";
 
@@ -28,11 +30,7 @@ fn hops(seen: &Seen) -> Reply {
         .and_then(|n| n.parse().ok())
         .unwrap_or(0);
     if n == 0 {
-        Reply::Ok {
-            status: 200,
-            headers: Vec::new(),
-            body: FEED.as_bytes().to_vec(),
-        }
+        feed_body()
     } else {
         redirect(&format!("/hop/{}", n - 1))
     }
@@ -139,18 +137,39 @@ async fn five_redirects_are_followed_and_a_sixth_is_refused() {
     assert_eq!(h.seen().len(), 6 + 6, "the seventh hop is never requested");
 }
 
+fn feed_body() -> Reply {
+    Reply::Ok {
+        status: 200,
+        headers: Vec::new(),
+        body: FEED.as_bytes().to_vec(),
+    }
+}
+
+/// Electron follows a redirect to `http:` (`ics-fetch.ts:43`); one off the web is refused.
 #[tokio::test]
-async fn a_redirect_off_https_is_refused_before_it_is_followed() {
-    let h = serve(|seen| match seen.target.as_str() {
-        "/to-http" => redirect("http://feeds.example/x"),
+async fn a_redirect_to_http_is_followed_and_one_off_the_web_is_refused() {
+    let plain = serve_plain(|_| feed_body()).await;
+    let to_http = plain.url("/team.ics");
+    let h = serve(move |seen| match seen.target.as_str() {
+        "/to-http" => redirect(&to_http),
         "/to-ftp" => redirect("ftp://feeds.example/x"),
+        "/to-file" => redirect("file:///etc/passwd"),
+        "/to-webcal" => redirect("webcal://feeds.example/x"),
         _ => Reply::status(302),
     })
     .await;
     let fetcher = fetcher(&h);
+    assert!(matches!(
+        fetcher
+            .fetch("https://feeds.example/to-http", None, None)
+            .await,
+        Ok(Fetched::Body(_))
+    ));
+    assert_eq!(plain.seen().len(), 1, "the http hop was requested");
     for (path, code) in [
-        ("/to-http", IcsFeedCode::UnsupportedRedirect),
         ("/to-ftp", IcsFeedCode::UnsupportedRedirect),
+        ("/to-file", IcsFeedCode::UnsupportedRedirect),
+        ("/to-webcal", IcsFeedCode::UnsupportedRedirect),
         ("/no-location", IcsFeedCode::HttpError),
     ] {
         assert_eq!(
@@ -161,18 +180,21 @@ async fn a_redirect_off_https_is_refused_before_it_is_followed() {
             "{path}"
         );
     }
-    assert_eq!(h.seen().len(), 3, "no hop after a refused redirect");
+    assert_eq!(h.seen().len(), 5, "no hop after a refused redirect");
+    assert_eq!(plain.seen().len(), 1);
 }
 
+/// Electron accepts `http:` links (`ics-feed.ts:50`).
 #[tokio::test]
-async fn an_http_link_is_refused_without_a_request() {
+async fn an_http_feed_is_fetched_and_a_link_off_the_web_is_refused_without_a_request() {
+    let plain = serve_plain(|_| feed_body()).await;
     let h = serve(|_| Reply::status(200)).await;
     let fetcher = fetcher(&h);
-    for url in [
-        "http://feeds.example/team.ics",
-        "ftp://feeds.example/x",
-        "nope",
-    ] {
+    let Ok(Fetched::Body(feed)) = fetcher.fetch(&plain.url("/team.ics"), None, None).await else {
+        panic!("an http feed is fetched");
+    };
+    assert_eq!(feed.text, FEED);
+    for url in ["ftp://feeds.example/x", "file:///etc/passwd", "nope"] {
         assert_eq!(
             fetcher.fetch(url, None, None).await,
             Err(IcsFeedCode::InvalidUrl),
@@ -180,6 +202,41 @@ async fn an_http_link_is_refused_without_a_request() {
         );
     }
     assert!(h.seen().is_empty());
+    assert_eq!(plain.seen().len(), 1);
+}
+
+/// A private feed link carries its token in the path or the query: a failed request is logged
+/// without the link.
+#[test]
+fn a_failed_request_logs_no_part_of_the_link() {
+    let closed = std::net::TcpListener::bind("127.0.0.1:0")
+        .and_then(|l| l.local_addr())
+        .expect("a free port")
+        .port();
+    let url = format!("https://127.0.0.1:{closed}/private-SECRETTOKEN/basic.ics?token=QSECRET");
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("runtime");
+    let (fetched, lines) = logged("memry_desktop::calendar_providers::ics_fetch", || {
+        runtime.block_on(async {
+            IcsFetcher::new(memry_desktop::http::builder(), TIMEOUT)
+                .expect("client")
+                .fetch(&url, None, None)
+                .await
+        })
+    });
+    assert_eq!(fetched, Err(IcsFeedCode::Unreachable));
+    assert!(
+        lines.iter().any(|l| l.contains("feed request failed")),
+        "the failure is logged: {lines:?}"
+    );
+    assert!(
+        lines
+            .iter()
+            .all(|l| !l.contains("SECRET") && !l.contains("basic.ics")),
+        "{lines:?}"
+    );
 }
 
 #[tokio::test]

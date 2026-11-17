@@ -3,9 +3,10 @@
 //! and the body read under a cap. The feed text is untrusted; the core parses it under its own
 //! bounds (`ical::budget`).
 //!
-//! Unlike Electron, only `https` is fetched: an `http://` link is refused as `invalid_url` and a
-//! redirect to `http://` as `unsupported_redirect` (`webcal(s)://` is already `https://` after
-//! `ics::normalize_url`).
+//! As in Electron, `http` and `https` are fetched, links and redirect hops alike (`ics-feed.ts:50`,
+//! `ics-fetch.ts:43`); any other scheme is refused as `invalid_url`, or `unsupported_redirect` on
+//! a hop (`webcal(s)://` is already `https://` after `ics::normalize_url`). A failed request is
+//! logged without its URL, which carries a private feed's token.
 
 use std::time::Duration;
 
@@ -127,7 +128,7 @@ impl IcsFetcher {
     ) -> Result<Fetched, IcsFeedCode> {
         let mut current = Url::parse(url)
             .ok()
-            .filter(|u| u.scheme() == "https" && u.has_host())
+            .filter(|u| web(u) && u.has_host())
             .ok_or(IcsFeedCode::InvalidUrl)?;
         let mut redirects = 0;
         let response = loop {
@@ -139,6 +140,7 @@ impl IcsFetcher {
                 request = request.header(IF_MODIFIED_SINCE, last_modified);
             }
             let response = request.send().await.map_err(|error| {
+                let error = error.without_url();
                 tracing::debug!(scope = "calendar_ics", "feed request failed: {error}");
                 IcsFeedCode::Unreachable
             })?;
@@ -193,10 +195,14 @@ fn redirect_target(headers: &HeaderMap, current: &Url) -> Result<Url, IcsFeedCod
         .ok()
         .and_then(|l| current.join(l).ok())
         .ok_or(IcsFeedCode::UnsupportedRedirect)?;
-    if next.scheme() != "https" {
+    if !web(&next) {
         return Err(IcsFeedCode::UnsupportedRedirect);
     }
     Ok(next)
+}
+
+fn web(url: &Url) -> bool {
+    matches!(url.scheme(), "https" | "http")
 }
 
 /// `TextDecoder().decode`: UTF-8 with U+FFFD for bad bytes and a leading BOM dropped.
@@ -228,7 +234,7 @@ mod tests {
     }
 
     #[test]
-    fn a_redirect_resolves_against_the_hop_and_stays_on_https() {
+    fn a_redirect_resolves_against_the_hop_and_stays_on_the_web() {
         let current = Url::parse("https://feeds.example/a/cal.ics").unwrap();
         let mut headers = HeaderMap::new();
         headers.insert(LOCATION, "../b.ics".parse().unwrap());
@@ -236,8 +242,13 @@ mod tests {
             redirect_target(&headers, &current).unwrap().as_str(),
             "https://feeds.example/b.ics"
         );
+        headers.insert(LOCATION, "http://feeds.example/x".parse().unwrap());
+        assert_eq!(
+            redirect_target(&headers, &current).unwrap().as_str(),
+            "http://feeds.example/x"
+        );
         for target in [
-            "http://feeds.example/x",
+            "file:///etc/passwd",
             "ftp://feeds.example/x",
             "webcal://x/y",
         ] {

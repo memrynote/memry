@@ -17,7 +17,7 @@ use tokio_util::sync::CancellationToken;
 use super::ics_fetch::{Fetched, IcsFeedCode, IcsFetcher};
 use super::zones::feed_zones;
 use crate::error::{CoreError, FailureKind};
-use crate::session::OpenVault;
+use crate::session::{OpenVault, Session};
 
 /// `SubscribeIcsCalendarSchema`: `url` 1 to 4096, `title` at most 200 (UTF-16 units, trimmed).
 const MAX_URL: usize = 4096;
@@ -38,6 +38,9 @@ pub enum FeedsError {
     Auth(#[from] AuthError),
     #[error("a calendar task failed: {0}")]
     Task(String),
+    /// The vault the operation started on closed during its fetch.
+    #[error("the vault closed")]
+    Closed,
 }
 
 impl CoreError for FeedsError {
@@ -49,6 +52,7 @@ impl CoreError for FeedsError {
             Self::Storage(error) => error.kind_and_code(),
             Self::Auth(error) => error.kind_and_code(),
             Self::Task(_) => (FailureKind::Internal, "task_failed"),
+            Self::Closed => (FailureKind::Invalid, "no_vault_open"),
         }
     }
 }
@@ -122,6 +126,7 @@ impl IcsFeeds {
     /// with a reason and leaves nothing behind.
     pub async fn subscribe(
         &self,
+        session: &Session,
         open: &OpenVault,
         url: &str,
         title: Option<&str>,
@@ -158,12 +163,17 @@ impl IcsFeeds {
             Ok(Fetched::NotModified) => return Err(FeedsError::Feed(IcsFeedCode::HttpError)),
             Err(code) => return Err(FeedsError::Feed(code)),
         };
-        let zones = feed_zones(&feed.text, now_ms());
+        if !still_open(session, open) {
+            return Err(FeedsError::Closed);
+        }
         let title = title.map(str::to_owned);
         let writer = calendar.clone();
-        let id = blocking(move || writer.feed_subscribe(normalized, title, feed, zones))
-            .await?
-            .map_err(refused)?;
+        let id = blocking(move || {
+            let zones = feed_zones(&feed.text, now_ms());
+            writer.feed_subscribe(normalized, title, feed, zones)
+        })
+        .await?
+        .map_err(refused)?;
         let summary = state_of(&calendar, &id)
             .await?
             .map(FeedSummary::from)
@@ -202,7 +212,12 @@ impl IcsFeeds {
 
     /// `refreshIcsCalendarSource`: re-reads one visible feed now. The outcome is recorded on the
     /// source either way; a failure is then returned so the caller can say why.
-    pub async fn refresh(&self, open: &OpenVault, source_id: &str) -> Result<(), FeedsError> {
+    pub async fn refresh(
+        &self,
+        session: &Session,
+        open: &OpenVault,
+        source_id: &str,
+    ) -> Result<(), FeedsError> {
         let calendar = self.calendar(open)?;
         let reader = calendar.clone();
         let due = blocking(move || reader.feeds_due(true))
@@ -210,14 +225,16 @@ impl IcsFeeds {
             .into_iter()
             .find(|d| d.source_id == source_id)
             .ok_or_else(|| FeedsError::NotFound(source_id.to_owned()))?;
-        self.refresh_one(&calendar, due, &CancellationToken::new())
-            .await
+        self.refresh_one(&calendar, due, &CancellationToken::new(), &|| {
+            still_open(session, open)
+        })
+        .await
     }
 
     /// `refreshDueIcsCalendars`: removed or hidden feeds lose their mirror (in `feeds_due`), the
     /// visible ones whose refresh time passed are fetched. A failed feed is logged and the pass
-    /// goes on. `cancel` ends the pass before the next fetch, or drops one in flight; a write
-    /// that started always finishes.
+    /// goes on, as `refreshDueIcsCalendars` catches per feed. `cancel` ends the pass before the
+    /// next fetch, drops one in flight, or skips its write; a write that started always finishes.
     pub async fn refresh_due(
         &self,
         open: &OpenVault,
@@ -231,15 +248,14 @@ impl IcsFeeds {
                 break;
             }
             let source_id = feed.source_id.clone();
-            match self.refresh_one(&calendar, feed, cancel).await {
-                Ok(()) => {}
-                Err(FeedsError::Feed(code)) => tracing::warn!(
+            let live = || !cancel.is_cancelled();
+            if let Err(error) = self.refresh_one(&calendar, feed, cancel, &live).await {
+                tracing::warn!(
                     scope = "calendar_ics",
                     source_id,
-                    code = code.as_str(),
-                    "calendar feed refresh failed"
-                ),
-                Err(error) => return Err(error),
+                    code = error.kind_and_code().1,
+                    "calendar feed refresh failed: {error}"
+                );
             }
         }
         Ok(())
@@ -250,24 +266,28 @@ impl IcsFeeds {
         calendar: &Arc<VaultCalendar>,
         due: CalendarFeedDue,
         cancel: &CancellationToken,
+        live: &(dyn Fn() -> bool + Sync),
     ) -> Result<(), FeedsError> {
         let fetched = tokio::select! {
             () = cancel.cancelled() => return Ok(()),
             fetched = self.fetcher.fetch(&due.url, due.etag.as_deref(), due.last_modified.as_deref()) => fetched,
         };
+        if !live() {
+            return Err(FeedsError::Closed);
+        }
         let (calendar, id) = (calendar.clone(), due.source_id.clone());
         let outcome = match fetched {
             Ok(Fetched::NotModified) => blocking(move || calendar.feed_record_not_modified(id))
                 .await?
                 .map(|()| false)
                 .map_err(refused),
-            Ok(Fetched::Body(feed)) => {
+            Ok(Fetched::Body(feed)) => blocking(move || {
                 let zones = feed_zones(&feed.text, now_ms());
-                blocking(move || calendar.feed_record_fetch(id, feed, zones))
-                    .await?
-                    .map(|changed| changed > 0)
-                    .map_err(refused)
-            }
+                calendar.feed_record_fetch(id, feed, zones)
+            })
+            .await?
+            .map(|changed| changed > 0)
+            .map_err(refused),
             Err(code) => {
                 blocking(move || calendar.feed_record_error(id, code.as_str().to_owned()))
                     .await??;
@@ -283,6 +303,14 @@ impl IcsFeeds {
         }
         outcome.map(|_| ())
     }
+}
+
+/// `ownsDatabase()`: the vault a command started on is still the open one. A fetch can outlast
+/// a close (up to [`super::ics_fetch::TIMEOUT`]), and the closed vault takes no write.
+fn still_open(session: &Session, open: &OpenVault) -> bool {
+    session
+        .current()
+        .is_some_and(|current| Arc::ptr_eq(&current.vault, &open.vault))
 }
 
 async fn state_of(

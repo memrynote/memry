@@ -149,7 +149,12 @@ pub async fn calendar_subscribe_ics(
 ) -> Result<IcsMutationView, CommandError> {
     let open = open_vault(&app)?;
     match feeds(&app)?
-        .subscribe(&open, &input.url, input.title.as_deref())
+        .subscribe(
+            &app.state::<Session>(),
+            &open,
+            &input.url,
+            input.title.as_deref(),
+        )
         .await
     {
         Ok(subscribed) => Ok(IcsMutationView {
@@ -191,7 +196,10 @@ pub async fn calendar_refresh_ics(
     input: IcsSourceInput,
 ) -> Result<IcsMutationView, CommandError> {
     let open = open_vault(&app)?;
-    match feeds(&app)?.refresh(&open, &input.source_id).await {
+    match feeds(&app)?
+        .refresh(&app.state::<Session>(), &open, &input.source_id)
+        .await
+    {
         Ok(()) => Ok(IcsMutationView::done(input.source_id)),
         Err(FeedsError::Feed(code)) => Ok(IcsMutationView::failed(Some(input.source_id), code)),
         Err(error) => Err(thrown("calendar_refresh_ics", &error)),
