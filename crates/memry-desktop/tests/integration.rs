@@ -8,6 +8,7 @@
 mod ai_fake;
 mod device_key;
 mod embedding_lane;
+mod import_support;
 mod index_support;
 mod move_tree;
 mod on_warning;
@@ -165,6 +166,12 @@ mod image_embedding_lane;
 mod image_processing;
 #[path = "import_copy.rs"]
 mod import_copy;
+#[path = "import_runner.rs"]
+mod import_runner;
+#[path = "importer_untrusted.rs"]
+mod importer_untrusted;
+#[path = "importer_vectors.rs"]
+mod importer_vectors;
 #[path = "index_tag_definitions.rs"]
 mod index_tag_definitions;
 #[path = "indexer_facts.rs"]

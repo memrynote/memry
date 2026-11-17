@@ -76,7 +76,13 @@ pub struct Fake {
     pub targets: Arc<Mutex<Vec<Option<String>>>>,
     /// Fails every write with this error, while reads and deletes answer.
     pub fail_writes: BuildError,
+    /// Fails every read with this error, while writes and deletes answer.
+    pub fail_reads: BuildError,
     pub writes: Arc<AtomicUsize>,
+    /// Refuses a longer value with `TooLong`, as Windows Credential Manager does over 2560 bytes.
+    pub max_blob: Arc<Mutex<Option<usize>>>,
+    /// Fails every write to this account with `NoStorageAccess`, while every other call answers.
+    pub locked_account: Arc<Mutex<Option<String>>>,
 }
 
 pub struct FakeCred {
@@ -93,7 +99,10 @@ impl Fake {
             reader_threads: Arc::default(),
             targets: Arc::default(),
             fail_writes: Arc::default(),
+            fail_reads: Arc::default(),
             writes: Arc::default(),
+            max_blob: Arc::default(),
+            locked_account: Arc::default(),
         }
     }
 
@@ -105,7 +114,10 @@ impl Fake {
             reader_threads: self.reader_threads.clone(),
             targets: self.targets.clone(),
             fail_writes: self.fail_writes.clone(),
+            fail_reads: self.fail_reads.clone(),
             writes: self.writes.clone(),
+            max_blob: self.max_blob.clone(),
+            locked_account: self.locked_account.clone(),
         }
     }
 
@@ -156,6 +168,14 @@ impl CredentialApi for FakeCred {
         if let Some(error) = *self.fake.fail_writes.lock().unwrap() {
             return Err(error());
         }
+        if self.fake.locked_account.lock().unwrap().as_deref() == Some(self.key.1.as_str()) {
+            return Err(Error::NoStorageAccess("locked".into()));
+        }
+        if let Some(max) = *self.fake.max_blob.lock().unwrap()
+            && secret.len() > max
+        {
+            return Err(Error::TooLong("password".to_owned(), max as u32));
+        }
         self.fake
             .data
             .lock()
@@ -172,6 +192,9 @@ impl CredentialApi for FakeCred {
             .unwrap()
             .push(std::thread::current().name().map(str::to_owned));
         self.fake.act()?;
+        if let Some(error) = *self.fake.fail_reads.lock().unwrap() {
+            return Err(error());
+        }
         self.fake
             .data
             .lock()

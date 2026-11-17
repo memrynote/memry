@@ -25,6 +25,7 @@ pub mod linking;
 pub mod locale;
 pub mod logging;
 pub mod notes;
+pub mod notes_similarity;
 pub mod notes_versions;
 pub mod ocr_languages;
 pub mod portals;
@@ -52,6 +53,7 @@ pub mod vault_files;
 pub mod vault_index;
 pub mod vault_locks;
 pub mod vault_notices;
+pub mod voice;
 
 use error::{CommandError, ErrorKind, log_failure};
 

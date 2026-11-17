@@ -15,6 +15,7 @@ pub mod fold;
 pub mod folder_view;
 pub mod http;
 pub mod i18n;
+pub mod import;
 pub mod journal;
 pub mod large_file;
 pub mod launch_env;
