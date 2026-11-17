@@ -322,7 +322,7 @@ pub fn property_counts<'a>(
             });
         }
     }
-    counts.sort_by(|a, b| b.usage_count.cmp(&a.usage_count));
+    counts.sort_by_key(|a| std::cmp::Reverse(a.usage_count));
     counts
 }
 
