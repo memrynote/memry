@@ -54,6 +54,18 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::ai_structured::writing_generate_assist::<Wry>,
             // app
             crate::commands::app::app_info,
+            // calendar
+            crate::commands::calendar::calendar_create_event::<Wry>,
+            crate::commands::calendar::calendar_delete_event::<Wry>,
+            crate::commands::calendar::calendar_get_event::<Wry>,
+            crate::commands::calendar::calendar_get_external_event::<Wry>,
+            crate::commands::calendar::calendar_get_range::<Wry>,
+            crate::commands::calendar::calendar_list_linked_notes::<Wry>,
+            crate::commands::calendar::calendar_list_sources::<Wry>,
+            crate::commands::calendar::calendar_promote_external_event::<Wry>,
+            crate::commands::calendar::calendar_search_events::<Wry>,
+            crate::commands::calendar::calendar_update_event::<Wry>,
+            crate::commands::calendar::calendar_update_source_selection::<Wry>,
             // crdt (`crdt_open_doc`, `crdt_apply_update` and the sync steps are binary commands)
             crate::commands::editor::crdt_close_doc::<Wry>,
             crate::commands::editor::crdt_get_health::<Wry>,
@@ -349,6 +361,8 @@ pub fn builder() -> Builder<Wry> {
             crate::events::AiInlineSettingsChangedEvent,
             // app
             crate::events::AppNavigationRequestedEvent,
+            // calendar
+            crate::events::CalendarChangedEvent,
             // crdt
             crate::events::CrdtProviderReadyEvent,
             crate::events::CrdtProviderResetEvent,
