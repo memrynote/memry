@@ -186,6 +186,10 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::property_definitions::notes_update_option_color,
             crate::commands::property_definitions::notes_update_property_definition,
             crate::commands::unsplash::notes_download_unsplash_photo,
+            // notes: similarity
+            crate::commands::notes_similarity::notes_cluster::<Wry>,
+            crate::commands::notes_similarity::notes_get_similar::<Wry>,
+            crate::commands::notes_similarity::notes_get_tag_suggestions::<Wry>,
             // notes: versions
             crate::commands::notes_versions::notes_delete_version,
             crate::commands::notes_versions::notes_get_version,
