@@ -58,6 +58,7 @@
     "packages/contracts/test-vectors/markdown-roundtrip/*.json",
     "packages/contracts/test-vectors/markdown-convert/*.json",
     "packages/contracts/test-vectors/article-extract/",
+    "packages/contracts/test-vectors/agent-mcp/",
     "crates/memry-desktop/src/web/extract/elements/math/mathml/tables.json",
     "crates/memry-desktop/src/web/extract/elements/math/temml/tables.json",
 
