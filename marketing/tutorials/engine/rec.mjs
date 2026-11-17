@@ -176,9 +176,8 @@ export class Recorder {
     await this.glide(c.x + dx, c.y + dy)
     await sleep(pause)
     this.mark('click')
-    await this.page.mouse.down()
-    await sleep(70)
-    await this.page.mouse.up()
+    // One press and release: over WebDriver a down and an up sent apart make no click.
+    await this.page.mouse.click(c.x + dx, c.y + dy)
   }
   async type(text, { cps = 14 } = {}) {
     this.mark('type-start', { text })

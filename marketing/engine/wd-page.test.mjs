@@ -93,6 +93,65 @@ test('pointer and key input are W3C actions in viewport CSS px', async () => {
   ])
 })
 
+/** The scripts `evaluate` ran, by the function source each holds, with their argument. */
+const evaluated = (browser) =>
+  browser.sent.scripts
+    .filter(({ script }) => script.includes('const fn = ('))
+    .map(({ script, args }) => ({ script, arg: args[1] }))
+
+test('keyboard.type in a focused contenteditable inserts each character, Enter for a newline', async () => {
+  const browser = fakeBrowser()
+  // The page answers that the focus is a contenteditable.
+  browser.executeAsync = async (script, ...args) => {
+    browser.sent.scripts.push({ script, args })
+    return { ok: true, undef: false, value: script.includes('isContentEditable === true') }
+  }
+  const page = wrapPage(browser)
+  await page.keyboard.type('a\nb')
+  const inserts = evaluated(browser).filter(({ script }) => script.includes("'keypress'"))
+  assert.deepEqual(
+    inserts.map(({ arg }) => arg),
+    ['a', 'b']
+  )
+  // WebKit's driver drops key actions' text in a contenteditable, so only the newline is one.
+  assert.deepEqual(browser.sent.actions, [
+    [
+      {
+        type: 'key',
+        id: 'keyboard',
+        actions: [
+          { type: 'keyDown', value: '\uE007' },
+          { type: 'keyUp', value: '\uE007' }
+        ]
+      }
+    ]
+  ])
+})
+
+test('keyboard.type outside a contenteditable stays key actions', async () => {
+  const browser = fakeBrowser()
+  const page = wrapPage(browser)
+  await page.keyboard.type('ab')
+  assert.equal(browser.sent.actions.length, 1)
+  assert.equal(
+    evaluated(browser).some(({ script }) => script.includes("'keypress'")),
+    false
+  )
+})
+
+test('a left click puts the caret at its point; other clicks leave it', async () => {
+  const browser = fakeBrowser()
+  const page = wrapPage(browser)
+  await page.mouse.click(40, 50)
+  await page.mouse.click(40, 50, { button: 'right' })
+  await page.mouse.click(40, 50, { clickCount: 2 })
+  const carets = evaluated(browser).filter(({ script }) => script.includes('caretRangeFromPoint'))
+  assert.deepEqual(
+    carets.map(({ arg }) => arg),
+    [{ x: 40, y: 50 }]
+  )
+})
+
 test('mouse.move with steps moves in even steps from the last position', async () => {
   const browser = fakeBrowser()
   const page = wrapPage(browser)

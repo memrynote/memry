@@ -149,10 +149,68 @@ export function guard(target, allowed, name) {
   })
 }
 
-/** pw-compat's Page with the two calls it lacks and `mouse.move`'s `steps`. */
+/**
+ * One typed character in the focused contenteditable. WebKit's driver turns key actions into
+ * synthetic key events and adds the character only to an input or textarea, so the editor gets
+ * none. The character goes in as the driver's own Element Send Keys puts it there, with the
+ * browser's insertText command, between the key events and only when the keydown is not cancelled.
+ */
+function typeInEditable(ch) {
+  const focus = document.activeElement
+  const init = { key: ch, bubbles: true, cancelable: true, composed: true }
+  if (
+    focus.dispatchEvent(new KeyboardEvent('keydown', init)) &&
+    focus.dispatchEvent(new KeyboardEvent('keypress', init))
+  ) {
+    // oxlint-disable-next-line typescript/no-deprecated -- the editing command is the only way to put text into a contenteditable from a script, and it is what the driver's Element Send Keys uses
+    document.execCommand('insertText', false, ch)
+  }
+  focus.dispatchEvent(new KeyboardEvent('keyup', init))
+}
+
+/**
+ * Puts the caret where a left click at (x, y) landed in the focused contenteditable, as a real
+ * press does. pw-compat's click only focuses the editor, which leaves the caret at its start.
+ */
+function caretAtPoint({ x, y }) {
+  const focus = document.activeElement
+  const hit = document.elementFromPoint(x, y)
+  if (!focus?.isContentEditable || !hit?.isContentEditable || !focus.contains(hit)) return
+  // oxlint-disable-next-line typescript/no-deprecated -- WKWebView before Safari 18.2 has no caretPositionFromPoint
+  const range = document.caretRangeFromPoint(x, y)
+  if (!range) return
+  getSelection().removeAllRanges()
+  getSelection().addRange(range)
+}
+
+/**
+ * pw-compat's Page with the two calls it lacks, `mouse.move`'s `steps`, and the caret and the
+ * text of a click and `keyboard.type` in a contenteditable.
+ */
 class FilmPage extends Page {
   constructor(browser) {
     super(browser)
+    const type = this.keyboard.type.bind(this.keyboard)
+    this.keyboard.type = async (text) => {
+      const editable = await this.core.evaluate(
+        () => document.activeElement?.isContentEditable === true
+      )
+      if (!editable) {
+        await type(text)
+        return
+      }
+      for (const ch of text) {
+        if (ch === '\n') await this.keyboard.press('Enter')
+        else await this.core.evaluate(typeInEditable, ch)
+      }
+    }
+    const click = this.mouse.click.bind(this.mouse)
+    this.mouse.click = async (x, y, options = {}) => {
+      await click(x, y, options)
+      if ((options.button ?? 'left') === 'left' && (options.clickCount ?? 1) === 1) {
+        await this.core.evaluate(caretAtPoint, { x, y })
+      }
+    }
     const move = this.mouse.move.bind(this.mouse)
     this.mouse.move = async (x, y, { steps = 1 } = {}) => {
       const { mouseX, mouseY } = this.core

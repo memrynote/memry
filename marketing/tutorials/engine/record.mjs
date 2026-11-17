@@ -67,7 +67,15 @@ export async function record(dir, { page: given } = {}) {
     /** Viewport position of the text caret, for zooming on what is being typed. */
     caret: () =>
       page.evaluate(() => {
-        const r = getSelection().getRangeAt(0).getBoundingClientRect()
+        const range = getSelection().getRangeAt(0)
+        let r = range.getBoundingClientRect()
+        // WebKit gives the caret in an empty block no box; the block has one.
+        if (!r.height) {
+          const node = range.startContainer
+          r = (
+            node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement
+          ).getBoundingClientRect()
+        }
         return { x: r.x, y: r.y + r.height / 2 }
       })
   }
