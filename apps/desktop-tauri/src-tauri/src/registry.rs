@@ -252,6 +252,19 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::shell::shell_open_path,
             crate::commands::shell::shell_reveal_path,
             crate::commands::shell::shell_take_crash_reload,
+            // sync
+            crate::commands::sync::sync_get_history::<Wry>,
+            crate::commands::sync::sync_get_large_notes::<Wry>,
+            crate::commands::sync::sync_get_note_sync_state::<Wry>,
+            crate::commands::sync::sync_get_quarantined_items::<Wry>,
+            crate::commands::sync::sync_get_queue_size::<Wry>,
+            crate::commands::sync::sync_get_status::<Wry>,
+            crate::commands::sync::sync_get_synced_settings::<Wry>,
+            crate::commands::sync::sync_get_unsent_notes::<Wry>,
+            crate::commands::sync::sync_pause::<Wry>,
+            crate::commands::sync::sync_resume::<Wry>,
+            crate::commands::sync::sync_trigger::<Wry>,
+            crate::commands::sync::sync_update_synced_setting::<Wry>,
             // sync account
             crate::commands::sync_account::account_sign_out,
             crate::commands::sync_account::sync_get_vault_binding,
@@ -382,6 +395,16 @@ pub fn builder() -> Builder<Wry> {
             crate::events::SettingsOpenSectionEvent,
             // menu
             crate::events::MenuCommandInvokedEvent,
+            // sync
+            crate::events::SyncCertificatePinFailedEvent,
+            crate::events::SyncClockSkewWarningEvent,
+            crate::events::SyncInitialSyncProgressEvent,
+            crate::events::SyncItemCorruptEvent,
+            crate::events::SyncItemRecoveredEvent,
+            crate::events::SyncItemSyncedEvent,
+            crate::events::SyncQueueClearedEvent,
+            crate::events::SyncSecurityWarningEvent,
+            crate::events::SyncStatusChangedEvent,
             // sync account
             crate::events::SyncDeviceRemovedEvent,
             crate::events::SyncVaultBindingChangedEvent,
