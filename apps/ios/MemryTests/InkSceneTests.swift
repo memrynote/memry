@@ -372,6 +372,13 @@ struct InkCanvasTests {
         #expect(InkCanvas.pinVectorEraser(pen) as? PKInkingTool == pen, "other tools pass through")
     }
 
+    @Test("the tool picker shows the object eraser the canvas erases with")
+    func toolPickerShowsObjectEraser() throws {
+        let picker = InkCanvas.makeToolPicker()
+        let eraser = try #require(picker.toolItems.compactMap { $0 as? PKToolPickerEraserItem }.first)
+        #expect(eraser.eraserTool.eraserType == .vector)
+    }
+
     @Test("a canvas that loads its ink before its first layout takes strokes across its whole bounds")
     func reopenedCanvasDrawsEverywhere() {
         let canvas = InkCanvasView()

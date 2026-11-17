@@ -153,6 +153,22 @@ struct InkCanvas: UIViewRepresentable {
         return PKEraserTool(.vector)
     }
 
+    /// The tools #4378 names. The eraser's popover still offers its pixel mode
+    /// (no public API hides it). The picker restores that choice and the
+    /// eraser item then reads as the pixel eraser, so the saved state stays
+    /// off and the toolbar shows the object eraser the canvas uses.
+    static func makeToolPicker() -> PKToolPicker {
+        let picker = PKToolPicker(toolItems: [
+            PKToolPickerInkingItem(type: .pen),
+            PKToolPickerInkingItem(type: .marker),
+            PKToolPickerEraserItem(type: .vector),
+            PKToolPickerLassoItem(),
+            PKToolPickerRulerItem(),
+        ])
+        picker.stateAutosaveName = nil
+        return picker
+    }
+
     func makeUIView(context: Context) -> InkCanvasView {
         let canvas = InkCanvasView()
         canvas.backgroundColor = .clear
@@ -168,6 +184,7 @@ struct InkCanvas: UIViewRepresentable {
         }
         canvas.addGestureRecognizer(pencil)
         let picker = context.coordinator.picker
+        picker.colorUserInterfaceStyle = dark ? .dark : .light
         picker.setVisible(true, forFirstResponder: canvas)
         picker.addObserver(canvas)
         picker.addObserver(context.coordinator)
@@ -185,6 +202,8 @@ struct InkCanvas: UIViewRepresentable {
             canvas.drawing = board.drawing
             coordinator.applying = false
         }
+        let style: UIUserInterfaceStyle = dark ? .dark : .light
+        if coordinator.picker.colorUserInterfaceStyle != style { coordinator.picker.colorUserInterfaceStyle = style }
         coordinator.underlay(in: canvas, scene: board.background, offset: board.offset, dark: dark)
         canvas.fitContent()
         if !active, canvas.isFirstResponder {
@@ -197,15 +216,7 @@ struct InkCanvas: UIViewRepresentable {
     @MainActor
     final class Coordinator: NSObject, PKCanvasViewDelegate, PKToolPickerObserver {
         let board: InkBoard
-        /// The tools #4378 names. The eraser's popover still offers its pixel
-        /// mode, and the picker keeps that choice across launches.
-        let picker = PKToolPicker(toolItems: [
-            PKToolPickerInkingItem(type: .pen),
-            PKToolPickerInkingItem(type: .marker),
-            PKToolPickerEraserItem(type: .vector),
-            PKToolPickerLassoItem(),
-            PKToolPickerRulerItem(),
-        ])
+        let picker = InkCanvas.makeToolPicker()
         var loads = 0
         var applying = false
         weak var canvas: InkCanvasView?
