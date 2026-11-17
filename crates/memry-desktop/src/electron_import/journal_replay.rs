@@ -127,9 +127,12 @@ impl BulkApplyJournal {
     }
 
     /// `replayBulkApplyJournal`'s parse: `{ writtenAt, entries }`, or a bare array of entries.
-    /// JSON nests at most `serde_json`'s 128 levels; deeper fails the parse.
+    /// JSON nests at most `serde_json`'s 128 levels; deeper fails the parse. A lone surrogate
+    /// escape, which `JSON.parse` accepts and `serde_json` refuses, reads as U+FFFD: Node writes
+    /// and hashes such a string as U+FFFD too.
     pub fn parse(bytes: &[u8]) -> Result<Self, ImportError> {
         let value: Value = serde_json::from_slice(bytes)
+            .or_else(|_| serde_json::from_slice(&replace_lone_surrogates(bytes)))
             .map_err(|err| ImportError::parse(WHAT, byte_offset(bytes, &err)))?;
         let (written_at, raw) = match value {
             Value::Array(entries) => (0.0, entries),
@@ -189,6 +192,40 @@ fn parse_entry(index: usize, entry: Value) -> Option<JournalEntry> {
         _ => return None,
     };
     Some(JournalEntry { index, path, op })
+}
+
+/// Every `\uD800`-`\uDFFF` escape that is not half of a high-low pair becomes `\ufffd`. Same
+/// length, so error offsets still point into `bytes`.
+fn replace_lone_surrogates(bytes: &[u8]) -> Vec<u8> {
+    let surrogate = |at: usize| -> Option<u16> {
+        let escape = bytes.get(at..at + 6)?;
+        if escape[..2] != *b"\\u" {
+            return None;
+        }
+        let unit = u16::from_str_radix(std::str::from_utf8(&escape[2..]).ok()?, 16).ok()?;
+        (0xd800..=0xdfff).contains(&unit).then_some(unit)
+    };
+    let mut out = bytes.to_vec();
+    let mut at = 0;
+    while at < bytes.len() {
+        step();
+        if bytes[at] != b'\\' {
+            at += 1;
+            continue;
+        }
+        match surrogate(at) {
+            Some(0xd800..=0xdbff) if surrogate(at + 6).is_some_and(|low| low >= 0xdc00) => {
+                at += 12;
+            }
+            Some(_) => {
+                out[at..at + 6].copy_from_slice(b"\\ufffd");
+                at += 6;
+            }
+            // Any other escape is two bytes or more; skipping two keeps `\\` from pairing up.
+            None => at += 2,
+        }
+    }
+    out
 }
 
 /// `latestOpPerPath` (`bulk-apply.ts:83`): the last op per path, ordered by where it was last
@@ -325,7 +362,8 @@ fn write(
 
 /// `Ok(Some(path))` for a file inside `vault`, `Ok(None)` for a path in another directory,
 /// `Err` for one the replay refuses: relative, with `.`, `..` or a root inside, under
-/// `.memry/`, or through a symlink.
+/// `.memry/` in any case (APFS and NTFS fold case; Windows also drops trailing dots and
+/// spaces), or through a symlink.
 fn inside(vault: &Path, path: &Path) -> Result<Option<PathBuf>, ()> {
     if !path.is_absolute() {
         return Err(());
@@ -335,7 +373,7 @@ fn inside(vault: &Path, path: &Path) -> Result<Option<PathBuf>, ()> {
     };
     let mut parts = rel.components();
     match parts.next() {
-        Some(Component::Normal(first)) if first != ".memry" => {}
+        Some(Component::Normal(first)) if !is_memry_dir(first) => {}
         _ => return Err(()),
     }
     if !parts.all(|part| matches!(part, Component::Normal(_))) {
@@ -347,6 +385,16 @@ fn inside(vault: &Path, path: &Path) -> Result<Option<PathBuf>, ()> {
     } else {
         Err(())
     }
+}
+
+fn is_memry_dir(name: &std::ffi::OsStr) -> bool {
+    let name = name.to_string_lossy();
+    let name = if cfg!(windows) {
+        name.trim_end_matches(['.', ' '])
+    } else {
+        &name
+    };
+    name.eq_ignore_ascii_case(".memry")
 }
 
 /// No existing component of `target` below `vault` is a symlink.

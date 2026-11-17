@@ -3,16 +3,23 @@
 //!
 //! Which store is read follows `crdt-store-path.ts`: the vault's own store under
 //! `crdt-stores/` (or the directory a pending rename still names, [`YStoreReader::store_dir`]).
-//! The legacy global `crdt-store/` is read only when `crdtStore.legacyStoreClaimedBy` names this
-//! vault and the vault has no store of its own: Electron's next launch would move it there
-//! (`inheritLegacyCrdtStore`, :117-155). When the vault has its own store, Electron leaves the
+//! The legacy global `crdt-store/` is read only when the vault has no store of its own and
+//! `crdtStore.legacyStoreClaimedBy` names this vault or nobody: Electron's next launch of the
+//! vault would move it there (`inheritLegacyCrdtStore`, :117-155). Taking an unclaimed store
+//! owes a partition when the profile lists more than one vault (:140-142,
+//! `legacyStoreCouldBeAnotherVaults`). When the vault has its own store, Electron leaves the
 //! legacy directory in place unread (:131-139), and so does the import.
 //!
 //! Every document is folded, deleted notes' included, except the ones listed in
 //! [`YStoreFold::skipped`]: the store's pseudo documents, the legacy partition's set-aside
-//! copies, journal days the partition still owes setting aside, and documents with no content.
-//! A document `yrs` cannot read fails the whole vault with
-//! [`ImportError::CorruptCrdtDocument`], naming every such document.
+//! copies, journal days the partition still owes setting aside, documents with no content, and
+//! documents `yrs` cannot read. Electron opens an unreadable document's note from its markdown
+//! (`crdt-provider.ts:944-950`), and the import leaves it to do the same: one damaged document
+//! never stops the vault.
+//!
+//! The import report (Step 37e) shows, per vault: `skipped` by reason, `incomplete`, `legacy`,
+//! `previous_store_unread`, `ignored_keys`, `torn_tails` and `owed_compactions`, and from the
+//! journal replay `Replay::skipped` by reason, `other_vault` and `BulkApplyJournal::unknown`.
 
 mod update_depth;
 
@@ -27,6 +34,7 @@ use super::ImportError;
 use super::config::ElectronConfig;
 use super::profile::ElectronProfile;
 use super::scratch::{Scratch, TornFile};
+use super::ystore::Lib0Any;
 use super::ystore::YStoreReader;
 
 /// Prefix of every pseudo document the Electron app writes into a store: `__memry_crdt_store__`
@@ -34,6 +42,9 @@ use super::ystore::YStoreReader;
 /// `__memry_preflight__` and `__memry_crdt_probe__` (`crdt-preflight-child.ts:36`,
 /// `crdt-persistence.ts:29`). A note id never starts with it (`crdt-legacy-partition.ts:9-16`).
 const RESERVED_PREFIX: &str = "__memry_";
+/// `OWED_COMPACTIONS_DOC` and `OWED_COMPACTIONS_KEY` (`crdt-provider.ts:59-60`).
+const OWED_COMPACTIONS_DOC: &str = "__memry_owed_compactions__";
+const OWED_COMPACTIONS_KEY: &str = "owedCompactions";
 /// `UNATTRIBUTABLE_DOC_PREFIX` (`crdt-legacy-partition.ts:17`).
 pub const UNATTRIBUTABLE_PREFIX: &str = "__memry_unattributable__/";
 /// `EMPTY_DOC_UPDATE_BYTES` (`crdt-provider.ts:73`): an encode this size holds no item and no
@@ -65,6 +76,8 @@ pub enum SkipReason {
     AmbiguousLegacy,
     /// No update, or updates that fold to an empty document.
     Empty,
+    /// Updates `yrs` cannot decode or integrate safely; the note re-seeds from its markdown.
+    Unreadable,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -77,11 +90,12 @@ pub struct SkippedDoc {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LegacyStore {
     Absent,
-    /// Read as this vault's store: claimed by it, and the vault has none of its own.
+    /// Read as this vault's store: claimed by it or unclaimed, and the vault has none of its
+    /// own.
     Read,
     /// Claimed by another vault.
     ClaimedByOther,
-    /// Present and not read: unclaimed, or claimed by this vault while its own store exists.
+    /// Present and not read: the vault has its own store.
     LeftUnread,
 }
 
@@ -101,6 +115,10 @@ pub struct YStoreFold {
     pub ignored_keys: usize,
     /// Files of the read store that end in a cut-short record.
     pub torn_tails: Vec<TornFile>,
+    /// Notes whose compaction a detached Electron provider recorded and never pushed
+    /// (`oweStoredCompactions`, `crdt-provider.ts:415-427`): Step 36 owes them again
+    /// (`extra_owed_docs`).
+    pub owed_compactions: Vec<String>,
 }
 
 /// Folds `vault_uuid`'s store. A vault with no store folds to no documents.
@@ -114,21 +132,25 @@ pub fn fold_vault_store(
     let claimed_by = config.and_then(ElectronConfig::legacy_store_claimed_by);
     let legacy_present =
         std::fs::symlink_metadata(profile.legacy_crdt_store_dir()).is_ok_and(|m| m.is_dir());
-    let (store, legacy) = match (own, legacy_present, claimed_by) {
-        (own, false, _) => (own, LegacyStore::Absent),
-        (Some(own), true, Some(claim)) if claim == vault_uuid => {
-            (Some(own), LegacyStore::LeftUnread)
-        }
-        (None, true, Some(claim)) if claim == vault_uuid => (
+    let ours = claimed_by.is_none_or(|claim| claim == vault_uuid);
+    let (store, legacy) = match (own, legacy_present) {
+        (own, false) => (own, LegacyStore::Absent),
+        (own, true) if !ours => (own, LegacyStore::ClaimedByOther),
+        (Some(own), true) => (Some(own), LegacyStore::LeftUnread),
+        (None, true) => (
             YStoreReader::open_legacy(profile, scratch)?,
             LegacyStore::Read,
         ),
-        (own, true, Some(_)) => (own, LegacyStore::ClaimedByOther),
-        (own, true, None) => (own, LegacyStore::LeftUnread),
     };
+    // `getVaults().length > 1`: every stored entry counts, readable or not.
+    let other_vaults = config.is_some_and(|c| {
+        let (vaults, unreadable) = c.vaults();
+        vaults.len() + unreadable > 1
+    });
     let partition_owed = config
         .and_then(ElectronConfig::legacy_store_partition_pending_for)
-        .is_some_and(|pending| pending == vault_uuid);
+        .is_some_and(|pending| pending == vault_uuid)
+        || (legacy == LegacyStore::Read && claimed_by.is_none() && other_vaults);
     let previous_store_unread =
         YStoreReader::unread_previous_store(profile, vault_uuid, config).is_some();
 
@@ -141,16 +163,17 @@ pub fn fold_vault_store(
             previous_store_unread,
             ignored_keys: 0,
             torn_tails: Vec::new(),
+            owed_compactions: Vec::new(),
         });
     };
-    let mut fold = fold_store(&store, partition_owed)?;
+    let mut fold = fold_store(&store, partition_owed);
     fold.legacy = legacy;
     fold.previous_store_unread = previous_store_unread;
     Ok(fold)
 }
 
 /// Folds every document of `store`. `partition_owed`: journal days are set aside.
-pub fn fold_store(store: &YStoreReader, partition_owed: bool) -> Result<YStoreFold, ImportError> {
+pub fn fold_store(store: &YStoreReader, partition_owed: bool) -> YStoreFold {
     let mut skipped = Vec::new();
     let mut jobs = Vec::new();
     for doc_id in store.doc_names() {
@@ -173,7 +196,6 @@ pub fn fold_store(store: &YStoreReader, partition_owed: bool) -> Result<YStoreFo
 
     let mut docs = Vec::with_capacity(jobs.len());
     let mut incomplete = Vec::new();
-    let mut corrupt = Vec::new();
     for (doc_id, result) in jobs.iter().zip(fold_parallel(store, &jobs)) {
         match result {
             Ok(Fold { state, .. }) if state.len() <= EMPTY_STATE_BYTES => {
@@ -198,17 +220,17 @@ pub fn fold_store(store: &YStoreReader, partition_owed: bool) -> Result<YStoreFo
                     scope = "electron_import",
                     doc_id,
                     kind,
-                    "unreadable CRDT document"
+                    "unreadable CRDT document; its note re-seeds from markdown"
                 );
-                corrupt.push(doc_id.clone());
+                skipped.push(SkippedDoc {
+                    doc_id: doc_id.clone(),
+                    reason: SkipReason::Unreadable,
+                });
             }
         }
     }
-    if !corrupt.is_empty() {
-        return Err(ImportError::CorruptCrdtDocument(corrupt));
-    }
     skipped.sort_by(|a, b| a.doc_id.cmp(&b.doc_id));
-    Ok(YStoreFold {
+    YStoreFold {
         docs,
         skipped,
         incomplete,
@@ -216,7 +238,23 @@ pub fn fold_store(store: &YStoreReader, partition_owed: bool) -> Result<YStoreFo
         previous_store_unread: false,
         ignored_keys: store.ignored_keys(),
         torn_tails: store.torn_tails().to_vec(),
-    })
+        owed_compactions: owed_compactions(store),
+    }
+}
+
+/// The note ids in the owed-compactions marker; anything else in it is ignored, as Electron
+/// ignores it (`typeof noteId === 'string'`).
+fn owed_compactions(store: &YStoreReader) -> Vec<String> {
+    match store.meta(OWED_COMPACTIONS_DOC, OWED_COMPACTIONS_KEY) {
+        Some(Lib0Any::Array(items)) => items
+            .iter()
+            .filter_map(|item| match item {
+                Lib0Any::String(id) => Some(id.clone()),
+                _ => None,
+            })
+            .collect(),
+        _ => Vec::new(),
+    }
 }
 
 /// `isCrossVaultAmbiguousDocId` (`crdt-legacy-partition.ts:30`): `^j\d{4}-\d{2}-\d{2}$`.
@@ -272,12 +310,11 @@ fn fold_parallel(store: &YStoreReader, jobs: &[String]) -> Vec<Result<Fold, &'st
 /// document as one update. A panic inside `yrs` on bytes it cannot integrate counts as an
 /// unreadable document, not a crash of the import.
 fn fold_doc(doc_id: &str, updates: &[(u32, &[u8])]) -> Result<Fold, &'static str> {
-    for (_, update) in updates {
-        update_depth::check(update).map_err(|refusal| match refusal {
-            update_depth::Refusal::TooDeep => "too_deep",
-            update_depth::Refusal::Malformed => "malformed",
-        })?;
-    }
+    let bytes: Vec<&[u8]> = updates.iter().map(|(_, update)| *update).collect();
+    update_depth::check(&bytes).map_err(|refusal| match refusal {
+        update_depth::Refusal::TooDeep => "too_deep",
+        update_depth::Refusal::Malformed => "malformed",
+    })?;
     catch_unwind(AssertUnwindSafe(|| {
         let sink: UpdateSink = Arc::new(|_, _| {});
         let document = DocumentRegistry::new(READER_DEVICE_ID, sink)

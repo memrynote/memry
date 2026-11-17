@@ -221,6 +221,61 @@ fn only_files_inside_the_vault_are_touched() {
     assert!(!w.vault.join(".memry").exists());
 }
 
+#[test]
+fn the_memry_folder_is_refused_in_any_case() {
+    let w = world();
+    let mut names = vec![".MEMRY", ".Memry"];
+    if cfg!(windows) {
+        // Windows drops trailing dots and spaces from a path component.
+        names.extend([".memry.", ".memry ", ".MEMRY. ."]);
+    }
+    let entries: Vec<Value> = names
+        .iter()
+        .map(|name| write(&w.vault.join(name).join("data.db"), "x"))
+        .collect();
+    let replay = replay(&journal(Value::Array(entries)), &w.vault);
+    assert!(replay.written.is_empty());
+    assert!(
+        replay
+            .skipped
+            .iter()
+            .all(|s| s.reason == EntrySkip::UnsafePath)
+    );
+    assert_eq!(replay.skipped.len(), names.len());
+    assert!(!w.vault.join(".memry").exists());
+}
+
+#[test]
+fn a_lone_surrogate_escape_reads_as_the_replacement_character() {
+    let w = world();
+    let path = abs(&w.vault.join("notes/a.md"));
+    let lone = format!(
+        r#"{{"writtenAt":1,"entries":[{{"absolutePath":{},"content":"x\ud800y\udc00z\ud83d\ude00\\ud800"}}]}}"#,
+        serde_json::to_string(&path).unwrap()
+    );
+    let j = BulkApplyJournal::parse(lone.as_bytes()).unwrap();
+    let JournalOp::Write { content, .. } = &j.entries[0].op else {
+        panic!("{j:?}");
+    };
+    assert_eq!(content, "x\u{fffd}y\u{fffd}z\u{1f600}\\ud800");
+}
+
+#[test]
+fn the_surrogate_rewrite_visits_each_byte_at_most_once() {
+    let n = 2_000;
+    let entry = r#"{"absolutePath":"/v/a.md","content":"\ud800\\\udc00\ud83d\ude00"}"#;
+    let bytes = format!(r#"{{"entries":[{}]}}"#, vec![entry; n].join(","));
+    assert_steps_at_most("surrogate rewrite", steps, bytes.len() + 2 * n + 10, || {
+        assert_eq!(
+            BulkApplyJournal::parse(bytes.as_bytes())
+                .unwrap()
+                .entries
+                .len(),
+            1
+        );
+    });
+}
+
 #[cfg(unix)]
 #[test]
 fn a_symlinked_folder_inside_the_vault_is_refused() {

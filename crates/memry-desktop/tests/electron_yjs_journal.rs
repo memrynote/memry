@@ -83,6 +83,8 @@ fn the_vault_store_folds_every_note_and_leaves_the_legacy_store_unread() {
         2
     );
     assert_eq!(out.legacy, LegacyStore::LeftUnread);
+    // Electron settled the marker: it holds `[]`.
+    assert!(out.owed_compactions.is_empty());
     assert!(!out.previous_store_unread);
     assert!(out.incomplete.is_empty());
     assert_eq!(f.snapshot(), before);
@@ -100,6 +102,102 @@ fn a_claimed_legacy_store_is_read_when_the_vault_has_none_of_its_own() {
     let text = body(&out.docs[0].state);
     assert!(text.contains("Written by another program."), "{text}");
     assert_eq!(f.snapshot(), before);
+}
+
+/// Rewrites the fixture's `memry-config.json` through `edit`.
+fn edit_config(f: &ElectronProfileFixture, edit: impl FnOnce(&mut serde_json::Value)) {
+    let path = f.profile.join("memry-config.json");
+    let mut config: serde_json::Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    edit(&mut config);
+    fs::write(&path, serde_json::to_vec_pretty(&config).unwrap()).unwrap();
+}
+
+/// A profile whose last Electron run predates per-vault stores: the legacy store is unclaimed
+/// and the vault has no store of its own, so Electron's next launch would hand it to this
+/// vault (`inheritLegacyCrdtStore`).
+#[test]
+fn an_unclaimed_legacy_store_is_read_when_the_vault_has_none_of_its_own() {
+    let f = ElectronProfileFixture::install();
+    fs::remove_dir_all(f.profile.join("crdt-stores").join(&f.expected.vault_uuid)).unwrap();
+    edit_config(&f, |c| {
+        c["crdtStore"]
+            .as_object_mut()
+            .unwrap()
+            .remove("legacyStoreClaimedBy");
+    });
+    let before = f.snapshot();
+    let out = fold(&f);
+    assert_eq!(out.legacy, LegacyStore::Read);
+    let ids: Vec<&str> = out.docs.iter().map(|d| d.doc_id.as_str()).collect();
+    assert_eq!(ids, [f.expected.legacy_doc_id.as_str()]);
+    assert!(
+        out.skipped
+            .iter()
+            .all(|s| s.reason != SkipReason::AmbiguousLegacy)
+    );
+    assert_eq!(f.snapshot(), before);
+}
+
+/// With more than one vault, the store Electron would inherit may hold other vaults' journal
+/// days, so it owes a partition and those days are set aside.
+#[test]
+fn an_unclaimed_legacy_store_owes_a_partition_when_there_are_other_vaults() {
+    let f = ElectronProfileFixture::install();
+    let legacy = f.profile.join("crdt-store");
+    fs::remove_dir_all(&legacy).unwrap();
+    fs::rename(
+        f.profile.join("crdt-stores").join(&f.expected.vault_uuid),
+        &legacy,
+    )
+    .unwrap();
+    edit_config(&f, |c| {
+        c["crdtStore"]
+            .as_object_mut()
+            .unwrap()
+            .remove("legacyStoreClaimedBy");
+        c["vaults"]
+            .as_array_mut()
+            .unwrap()
+            .push(serde_json::json!({ "path": "/elsewhere/Other", "name": "Other" }));
+    });
+    let out = fold(&f);
+    assert_eq!(out.legacy, LegacyStore::Read);
+    assert!(
+        out.docs
+            .iter()
+            .all(|d| d.doc_id != f.expected.journal_doc_id)
+    );
+    assert!(
+        out.skipped
+            .iter()
+            .any(|s| s.doc_id == f.expected.journal_doc_id
+                && s.reason == SkipReason::AmbiguousLegacy)
+    );
+}
+
+#[test]
+fn an_owed_partition_sets_the_journal_day_aside() {
+    let f = ElectronProfileFixture::install();
+    let uuid = f.expected.vault_uuid.clone();
+    edit_config(&f, |c| {
+        c["crdtStore"]["legacyStorePartitionPendingFor"] = serde_json::Value::String(uuid);
+    });
+    let out = fold(&f);
+    assert!(
+        out.docs
+            .iter()
+            .all(|d| d.doc_id != f.expected.journal_doc_id)
+    );
+    assert!(
+        out.skipped
+            .iter()
+            .any(|s| s.doc_id == f.expected.journal_doc_id
+                && s.reason == SkipReason::AmbiguousLegacy)
+    );
+    assert_eq!(
+        out.docs.len(),
+        fold(&ElectronProfileFixture::install()).docs.len() - 1
+    );
 }
 
 #[test]

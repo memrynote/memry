@@ -55,9 +55,6 @@ pub enum ImportError {
     Decrypt(&'static str),
     #[error("leveldb: {0}")]
     LevelDb(String),
-    /// Documents of a vault's CRDT store that cannot be read; the vault is not imported. Ids only.
-    #[error("unreadable CRDT documents: {}", .0.join(", "))]
-    CorruptCrdtDocument(Vec<String>),
 }
 
 impl ImportError {
