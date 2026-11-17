@@ -5,6 +5,8 @@
 export const PACK_ID = 'MemryNote'
 export const PACK_TITLE = 'MemryNote'
 export const PACK_AUTHORS = 'memrynote'
+// The id `shell::install_layout` reads and Electron's NSIS install used (Step 11, #3528).
+export const WINDOWS_AUMID = 'com.memrynote.memry'
 
 export const TARGETS = {
   'win-x64': {
@@ -68,15 +70,34 @@ function require(value, name) {
 }
 
 /**
+ * Whether the pack of `channel` gets a delta against the previous release, from that release's
+ * asset names. A delta needs a Tauri full package as its base. Every Tauri channel but `win`
+ * is new, so its `releases.<channel>.json` marks a Tauri predecessor; Electron already published
+ * `releases.win.json`, so for `win` the marker is `releases.osx-arm64.json`, which only Tauri
+ * releases carry. The first Tauri release packs `--delta None`.
+ */
+export function shouldPackDelta(previousAssetNames, channel) {
+  const channels = Object.values(TARGETS).map((t) => t.channel)
+  if (!channels.includes(channel)) {
+    throw new Error(`Unknown channel "${channel}". Expected one of ${channels.join(', ')}`)
+  }
+  const marker = channel === 'win' ? 'releases.osx-arm64.json' : `releases.${channel}.json`
+  return previousAssetNames.includes(marker)
+}
+
+/**
  * Arguments for `vpk`. The first Tauri pack of a channel passes `delta: 'None'`: a delta against
  * an Electron full package is as large as the full package and the client would prefer it.
+ * `releaseNotes` is the markdown file whose notes the feed carries (`NotesMarkdown`), which the
+ * update popover and the release-notes tab read.
  */
 export function buildPackArgs(name, options) {
   const t = target(name)
-  const { version, packDir, outputDir, delta = 'BestSpeed' } = options
+  const { version, packDir, outputDir, releaseNotes, delta = 'BestSpeed' } = options
   require(version, 'version')
   require(packDir, 'packDir')
   require(outputDir, 'outputDir')
+  require(releaseNotes, 'releaseNotes')
   if (!DELTA_MODES.has(delta)) {
     throw new Error(`delta must be one of ${[...DELTA_MODES].join(', ')}, got "${delta}"`)
   }
@@ -103,12 +124,22 @@ export function buildPackArgs(name, options) {
     '--outputDir',
     outputDir,
     '--delta',
-    delta
+    delta,
+    '--releaseNotes',
+    releaseNotes
   ]
 
   if (t.os === 'win') {
     require(options.iconPath, 'iconPath')
-    args.push('--icon', options.iconPath, '--framework', t.framework, '--noPortable')
+    args.push(
+      '--icon',
+      options.iconPath,
+      '--framework',
+      t.framework,
+      '--noPortable',
+      '--aumid',
+      WINDOWS_AUMID
+    )
     if (options.signTemplate) {
       args.push('--signTemplate', options.signTemplate)
     }

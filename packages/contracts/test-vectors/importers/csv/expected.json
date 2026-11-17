@@ -1,0 +1,1070 @@
+{
+  "source": "csv",
+  "cases": [
+    {
+      "name": "sample",
+      "sources": [
+        "sample.csv"
+      ],
+      "preview": {
+        "groups": [
+          {
+            "label": "sample.csv",
+            "counts": [
+              {
+                "labelKey": "import.stats.notes",
+                "value": 4
+              },
+              {
+                "labelKey": "import.stats.skipped",
+                "value": 1
+              }
+            ],
+            "sampleTitles": [
+              "Project kickoff",
+              "Buy milk, eggs",
+              "Research topic",
+              "Weekend plan"
+            ],
+            "warnings": [
+              {
+                "code": "csv.emptyTitle",
+                "message": "Skipped row with empty title (column \"Title\")",
+                "params": {
+                  "column": "Title"
+                }
+              },
+              {
+                "code": "csv.columns",
+                "message": "Columns: Title, Tags, Notes",
+                "params": {
+                  "columns": "Title, Tags, Notes"
+                }
+              },
+              {
+                "code": "csv.titleColumn",
+                "message": "Title from \"Title\"; other columns saved as properties",
+                "params": {
+                  "column": "Title"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "timeline": [
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": "",
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.csv.importing",
+            "message": "Importing CSV notes…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.csv.importing",
+            "message": "Importing CSV notes…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 4,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Project kickoff",
+            "params": {
+              "title": "Project kickoff"
+            }
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 4,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": null,
+          "title": "Project kickoff",
+          "folder": "CSV",
+          "tags": [],
+          "properties": [
+            [
+              "Tags",
+              "work"
+            ],
+            [
+              "Notes",
+              "Meeting notes, agenda items"
+            ]
+          ],
+          "created": null,
+          "modified": null,
+          "content": ""
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Project kickoff",
+            "params": {
+              "title": "Project kickoff"
+            }
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 4,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Project kickoff",
+            "params": {
+              "title": "Project kickoff"
+            }
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 4,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Buy milk, eggs",
+            "params": {
+              "title": "Buy milk, eggs"
+            }
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 4,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": null,
+          "title": "Buy milk, eggs",
+          "folder": "CSV",
+          "tags": [],
+          "properties": [
+            [
+              "Tags",
+              "home"
+            ],
+            [
+              "Notes",
+              "Quick grocery run"
+            ]
+          ],
+          "created": null,
+          "modified": null,
+          "content": ""
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Buy milk, eggs",
+            "params": {
+              "title": "Buy milk, eggs"
+            }
+          },
+          "imported": 2,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 4,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Buy milk, eggs",
+            "params": {
+              "title": "Buy milk, eggs"
+            }
+          },
+          "imported": 2,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 2,
+          "total": 4,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Research topic",
+            "params": {
+              "title": "Research topic"
+            }
+          },
+          "imported": 2,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 2,
+          "total": 4,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": null,
+          "title": "Research topic",
+          "folder": "CSV",
+          "tags": [],
+          "properties": [
+            [
+              "Tags",
+              "learning"
+            ],
+            [
+              "Notes",
+              "Multiple lines:\nline two of notes"
+            ]
+          ],
+          "created": null,
+          "modified": null,
+          "content": ""
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Research topic",
+            "params": {
+              "title": "Research topic"
+            }
+          },
+          "imported": 3,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 2,
+          "total": 4,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Research topic",
+            "params": {
+              "title": "Research topic"
+            }
+          },
+          "imported": 3,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 3,
+          "total": 4,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Weekend plan",
+            "params": {
+              "title": "Weekend plan"
+            }
+          },
+          "imported": 3,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 3,
+          "total": 4,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": null,
+          "title": "Weekend plan",
+          "folder": "CSV",
+          "tags": [],
+          "properties": [
+            [
+              "Tags",
+              "home"
+            ],
+            [
+              "Notes",
+              "Relax"
+            ]
+          ],
+          "created": null,
+          "modified": null,
+          "content": ""
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Weekend plan",
+            "params": {
+              "title": "Weekend plan"
+            }
+          },
+          "imported": 4,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 3,
+          "total": 4,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Weekend plan",
+            "params": {
+              "title": "Weekend plan"
+            }
+          },
+          "imported": 4,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 4,
+          "total": 4,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Weekend plan",
+            "params": {
+              "title": "Weekend plan"
+            }
+          },
+          "imported": 4,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 4,
+          "total": 4,
+          "done": false
+        }
+      ],
+      "summary": {
+        "imported": 4,
+        "attachments": 0,
+        "skipped": 1,
+        "failed": [],
+        "skippedReasons": [
+          {
+            "reason": "empty title",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "many",
+      "sources": [
+        "edge.csv",
+        "crlf.csv",
+        "empty.csv",
+        "keys.csv"
+      ],
+      "preview": {
+        "groups": [
+          {
+            "label": "edge.csv",
+            "counts": [
+              {
+                "labelKey": "import.stats.notes",
+                "value": 2
+              },
+              {
+                "labelKey": "import.stats.skipped",
+                "value": 1
+              }
+            ],
+            "sampleTitles": [
+              "Second wins",
+              "f"
+            ],
+            "warnings": [
+              {
+                "code": "csv.emptyTitle",
+                "message": "Skipped row with empty title (column \"Name\")",
+                "params": {
+                  "column": "Name"
+                }
+              },
+              {
+                "code": "csv.columns",
+                "message": "Columns: Id, Name, Column 3, Due  Date, 2nd col, Name, Quoted \"head\"",
+                "params": {
+                  "columns": "Id, Name, Column 3, Due  Date, 2nd col, Name, Quoted \"head\""
+                }
+              },
+              {
+                "code": "csv.titleColumn",
+                "message": "Title from \"Name\"; other columns saved as properties",
+                "params": {
+                  "column": "Name"
+                }
+              }
+            ]
+          },
+          {
+            "label": "crlf.csv",
+            "counts": [
+              {
+                "labelKey": "import.stats.notes",
+                "value": 2
+              },
+              {
+                "labelKey": "import.stats.skipped",
+                "value": 0
+              }
+            ],
+            "sampleTitles": [
+              "Hello",
+              "Bye"
+            ],
+            "warnings": [
+              {
+                "code": "csv.columns",
+                "message": "Columns: Subject, Body",
+                "params": {
+                  "columns": "Subject, Body"
+                }
+              },
+              {
+                "code": "csv.titleColumn",
+                "message": "Title from \"Subject\"; other columns saved as properties",
+                "params": {
+                  "column": "Subject"
+                }
+              }
+            ]
+          },
+          {
+            "label": "empty.csv",
+            "counts": [
+              {
+                "labelKey": "import.stats.notes",
+                "value": 0
+              },
+              {
+                "labelKey": "import.stats.skipped",
+                "value": 0
+              }
+            ],
+            "sampleTitles": [],
+            "warnings": [
+              {
+                "code": "csv.noHeaders",
+                "message": "CSV file has no headers"
+              },
+              {
+                "code": "csv.columns",
+                "message": "Columns: ",
+                "params": {
+                  "columns": ""
+                }
+              },
+              {
+                "code": "csv.titleColumn",
+                "message": "Title from \"\"; other columns saved as properties",
+                "params": {
+                  "column": ""
+                }
+              }
+            ]
+          },
+          {
+            "label": "keys.csv",
+            "counts": [
+              {
+                "labelKey": "import.stats.notes",
+                "value": 1
+              },
+              {
+                "labelKey": "import.stats.skipped",
+                "value": 0
+              }
+            ],
+            "sampleTitles": [
+              "T"
+            ],
+            "warnings": [
+              {
+                "code": "csv.columns",
+                "message": "Columns: __proto__x, title",
+                "params": {
+                  "columns": "__proto__x, title"
+                }
+              },
+              {
+                "code": "csv.titleColumn",
+                "message": "Title from \"title\"; other columns saved as properties",
+                "params": {
+                  "column": "title"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "timeline": [
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": "",
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.csv.importing",
+            "message": "Importing CSV notes…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.csv.importing",
+            "message": "Importing CSV notes…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Second wins",
+            "params": {
+              "title": "Second wins"
+            }
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": null,
+          "title": "Second wins",
+          "folder": "CSV",
+          "tags": [],
+          "properties": [
+            [
+              "Id",
+              "1"
+            ],
+            [
+              "Column_3",
+              "blank header"
+            ],
+            [
+              "Due_Date",
+              "2024-01-01"
+            ],
+            [
+              "nd_col",
+              "x"
+            ],
+            [
+              "Quoted_\"head\"",
+              "a \"q\" b"
+            ]
+          ],
+          "created": null,
+          "modified": null,
+          "content": ""
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Second wins",
+            "params": {
+              "title": "Second wins"
+            }
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Second wins",
+            "params": {
+              "title": "Second wins"
+            }
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing f",
+            "params": {
+              "title": "f"
+            }
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": null,
+          "title": "f",
+          "folder": "CSV",
+          "tags": [],
+          "properties": [
+            [
+              "Id",
+              "3"
+            ],
+            [
+              "Column_3",
+              "c"
+            ],
+            [
+              "Due_Date",
+              "d"
+            ],
+            [
+              "nd_col",
+              "e"
+            ],
+            [
+              "Quoted_\"head\"",
+              "g"
+            ]
+          ],
+          "created": null,
+          "modified": null,
+          "content": ""
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing f",
+            "params": {
+              "title": "f"
+            }
+          },
+          "imported": 2,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing f",
+            "params": {
+              "title": "f"
+            }
+          },
+          "imported": 2,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 2,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing f",
+            "params": {
+              "title": "f"
+            }
+          },
+          "imported": 2,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 2,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Hello",
+            "params": {
+              "title": "Hello"
+            }
+          },
+          "imported": 2,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 2,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": null,
+          "title": "Hello",
+          "folder": "CSV",
+          "tags": [],
+          "properties": [
+            [
+              "Body",
+              "World"
+            ]
+          ],
+          "created": null,
+          "modified": null,
+          "content": ""
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Hello",
+            "params": {
+              "title": "Hello"
+            }
+          },
+          "imported": 3,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 2,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Hello",
+            "params": {
+              "title": "Hello"
+            }
+          },
+          "imported": 3,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 3,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Bye",
+            "params": {
+              "title": "Bye"
+            }
+          },
+          "imported": 3,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 3,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": null,
+          "title": "Bye",
+          "folder": "CSV",
+          "tags": [],
+          "properties": [
+            [
+              "Body",
+              "Now"
+            ]
+          ],
+          "created": null,
+          "modified": null,
+          "content": ""
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Bye",
+            "params": {
+              "title": "Bye"
+            }
+          },
+          "imported": 4,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 3,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing Bye",
+            "params": {
+              "title": "Bye"
+            }
+          },
+          "imported": 4,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 4,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing T",
+            "params": {
+              "title": "T"
+            }
+          },
+          "imported": 4,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 4,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": null,
+          "title": "T",
+          "folder": "CSV",
+          "tags": [],
+          "properties": [
+            [
+              "__proto__x",
+              "v"
+            ]
+          ],
+          "created": null,
+          "modified": null,
+          "content": ""
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing T",
+            "params": {
+              "title": "T"
+            }
+          },
+          "imported": 5,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 4,
+          "total": 5,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing T",
+            "params": {
+              "title": "T"
+            }
+          },
+          "imported": 5,
+          "attachments": 0,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 5,
+          "total": 5,
+          "done": false
+        }
+      ],
+      "summary": {
+        "imported": 5,
+        "attachments": 0,
+        "skipped": 1,
+        "failed": [],
+        "skippedReasons": [
+          {
+            "reason": "empty title",
+            "count": 1
+          }
+        ]
+      }
+    }
+  ]
+}

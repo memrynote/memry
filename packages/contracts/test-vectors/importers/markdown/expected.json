@@ -1,0 +1,2129 @@
+{
+  "source": "markdown",
+  "cases": [
+    {
+      "name": "sample",
+      "sources": [
+        "sample"
+      ],
+      "timeline": [
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": "",
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.scanningFiles",
+            "message": "Scanning files…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.scanningFiles",
+            "message": "Scanning files…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.scanningFiles",
+            "message": "Scanning files…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing root-note",
+            "params": {
+              "title": "root-note"
+            }
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-1",
+          "name": "image.png",
+          "size": 69,
+          "sha256": "b1ff9c8ea3a780bad09b346c423d2d0e46815926879b18e841d928376a946640"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing root-note",
+            "params": {
+              "title": "root-note"
+            }
+          },
+          "imported": 0,
+          "attachments": 1,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-1",
+          "title": "Root Note",
+          "folder": "Markdown",
+          "tags": [
+            "work",
+            "home"
+          ],
+          "properties": [
+            [
+              "status",
+              "done"
+            ]
+          ],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "\nThis is the root note body.\n\nA [[wikilink]] is preserved.\n\n![image.png](attachments/note-1/image.png)\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing root-note",
+            "params": {
+              "title": "root-note"
+            }
+          },
+          "imported": 1,
+          "attachments": 1,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing root-note",
+            "params": {
+              "title": "root-note"
+            }
+          },
+          "imported": 1,
+          "attachments": 1,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing nested-note",
+            "params": {
+              "title": "nested-note"
+            }
+          },
+          "imported": 1,
+          "attachments": 1,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-2",
+          "title": "nested-note",
+          "folder": "Markdown/work",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "# Nested Note\n\nThis note lives in a subdirectory.\n\nSome content here with a [link](../root-note.md) that is relative but not an asset we track.\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing nested-note",
+            "params": {
+              "title": "nested-note"
+            }
+          },
+          "imported": 2,
+          "attachments": 1,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing nested-note",
+            "params": {
+              "title": "nested-note"
+            }
+          },
+          "imported": 2,
+          "attachments": 1,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 2,
+          "total": 2,
+          "done": false
+        }
+      ],
+      "summary": {
+        "imported": 2,
+        "attachments": 1,
+        "skipped": 0,
+        "failed": []
+      }
+    },
+    {
+      "name": "wiki-embeds",
+      "sources": [
+        "wiki-embeds"
+      ],
+      "timeline": [
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": "",
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.scanningFiles",
+            "message": "Scanning files…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.scanningFiles",
+            "message": "Scanning files…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 1,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.scanningFiles",
+            "message": "Scanning files…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 1,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing embed-note",
+            "params": {
+              "title": "embed-note"
+            }
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 1,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-1",
+          "name": "photo.png",
+          "size": 69,
+          "sha256": "b1ff9c8ea3a780bad09b346c423d2d0e46815926879b18e841d928376a946640"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing embed-note",
+            "params": {
+              "title": "embed-note"
+            }
+          },
+          "imported": 0,
+          "attachments": 1,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 1,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-1",
+          "name": "nested.png",
+          "size": 69,
+          "sha256": "b1ff9c8ea3a780bad09b346c423d2d0e46815926879b18e841d928376a946640"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing embed-note",
+            "params": {
+              "title": "embed-note"
+            }
+          },
+          "imported": 0,
+          "attachments": 2,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 1,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-1",
+          "title": "Embed Note",
+          "folder": "Markdown",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "\nAn Obsidian embed on its own line:\n\n![photo.png](attachments/note-1/photo.png)\n\nThe same asset again, with a display size: ![photo.png](attachments/note-1/photo.png)\n\nAn embed reaching into a sibling folder:\n\n![nested.png](attachments/note-1/nested.png)\n\nA [[wikilink]] is preserved, and so is a note embed like ![[Some Note]].\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing embed-note",
+            "params": {
+              "title": "embed-note"
+            }
+          },
+          "imported": 1,
+          "attachments": 2,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 1,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing embed-note",
+            "params": {
+              "title": "embed-note"
+            }
+          },
+          "imported": 1,
+          "attachments": 2,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 1,
+          "done": false
+        }
+      ],
+      "summary": {
+        "imported": 1,
+        "attachments": 2,
+        "skipped": 0,
+        "failed": []
+      }
+    },
+    {
+      "name": "nested-assets",
+      "sources": [
+        "nested-assets"
+      ],
+      "timeline": [
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": "",
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.scanningFiles",
+            "message": "Scanning files…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.scanningFiles",
+            "message": "Scanning files…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 1,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.scanningFiles",
+            "message": "Scanning files…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 1,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing person",
+            "params": {
+              "title": "person"
+            }
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 1,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-1",
+          "name": "shared.png",
+          "size": 69,
+          "sha256": "b1ff9c8ea3a780bad09b346c423d2d0e46815926879b18e841d928376a946640"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing person",
+            "params": {
+              "title": "person"
+            }
+          },
+          "imported": 0,
+          "attachments": 1,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 1,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-1",
+          "title": "Person Note",
+          "folder": "Markdown/Notes/People",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "\n# Person Note\n\nAn export whose media lives in a sibling folder, not next to the note.\n\n![shared.png](attachments/note-1/shared.png)\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing person",
+            "params": {
+              "title": "person"
+            }
+          },
+          "imported": 1,
+          "attachments": 1,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 1,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing person",
+            "params": {
+              "title": "person"
+            }
+          },
+          "imported": 1,
+          "attachments": 1,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 1,
+          "done": false
+        }
+      ],
+      "summary": {
+        "imported": 1,
+        "attachments": 1,
+        "skipped": 0,
+        "failed": []
+      }
+    },
+    {
+      "name": "single-file",
+      "sources": [
+        "sample/root-note.md"
+      ],
+      "timeline": [
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": "",
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.scanningFiles",
+            "message": "Scanning files…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.scanningFiles",
+            "message": "Scanning files…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 1,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.scanningFiles",
+            "message": "Scanning files…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 1,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing root-note",
+            "params": {
+              "title": "root-note"
+            }
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 1,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-1",
+          "name": "image.png",
+          "size": 69,
+          "sha256": "b1ff9c8ea3a780bad09b346c423d2d0e46815926879b18e841d928376a946640"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing root-note",
+            "params": {
+              "title": "root-note"
+            }
+          },
+          "imported": 0,
+          "attachments": 1,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 1,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-1",
+          "title": "Root Note",
+          "folder": "Markdown",
+          "tags": [
+            "work",
+            "home"
+          ],
+          "properties": [
+            [
+              "status",
+              "done"
+            ]
+          ],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "\nThis is the root note body.\n\nA [[wikilink]] is preserved.\n\n![image.png](attachments/note-1/image.png)\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing root-note",
+            "params": {
+              "title": "root-note"
+            }
+          },
+          "imported": 1,
+          "attachments": 1,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 1,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing root-note",
+            "params": {
+              "title": "root-note"
+            }
+          },
+          "imported": 1,
+          "attachments": 1,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 1,
+          "done": false
+        }
+      ],
+      "summary": {
+        "imported": 1,
+        "attachments": 1,
+        "skipped": 0,
+        "failed": []
+      }
+    },
+    {
+      "name": "edge",
+      "sources": [
+        "edge"
+      ],
+      "timeline": [
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": "",
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.scanningFiles",
+            "message": "Scanning files…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.scanningFiles",
+            "message": "Scanning files…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.scanningFiles",
+            "message": "Scanning files…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing UPPER",
+            "params": {
+              "title": "UPPER"
+            }
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-1",
+          "title": "UPPER",
+          "folder": "Markdown",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "Upper case extension\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing UPPER",
+            "params": {
+              "title": "UPPER"
+            }
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing UPPER",
+            "params": {
+              "title": "UPPER"
+            }
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing assets",
+            "params": {
+              "title": "assets"
+            }
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-2",
+          "name": "my pic.png",
+          "size": 69,
+          "sha256": "b1ff9c8ea3a780bad09b346c423d2d0e46815926879b18e841d928376a946640"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing assets",
+            "params": {
+              "title": "assets"
+            }
+          },
+          "imported": 1,
+          "attachments": 1,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-2",
+          "name": "report.pdf",
+          "size": 14,
+          "sha256": "9bc957703ac9aeb2174ecf08607150fa7ffa369c081f9201bdf2d27ee5fcb844"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing assets",
+            "params": {
+              "title": "assets"
+            }
+          },
+          "imported": 1,
+          "attachments": 2,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing assets",
+            "params": {
+              "title": "assets"
+            }
+          },
+          "imported": 1,
+          "attachments": 2,
+          "skipped": 1,
+          "failed": 0,
+          "completed": 1,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing assets",
+            "params": {
+              "title": "assets"
+            }
+          },
+          "imported": 1,
+          "attachments": 2,
+          "skipped": 2,
+          "failed": 0,
+          "completed": 1,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing assets",
+            "params": {
+              "title": "assets"
+            }
+          },
+          "imported": 1,
+          "attachments": 2,
+          "skipped": 3,
+          "failed": 0,
+          "completed": 1,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-2",
+          "name": "tool.bin",
+          "refused": true
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing assets",
+            "params": {
+              "title": "assets"
+            }
+          },
+          "imported": 1,
+          "attachments": 2,
+          "skipped": 4,
+          "failed": 0,
+          "completed": 1,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-2",
+          "name": "photo.png",
+          "size": 69,
+          "sha256": "b1ff9c8ea3a780bad09b346c423d2d0e46815926879b18e841d928376a946640"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing assets",
+            "params": {
+              "title": "assets"
+            }
+          },
+          "imported": 1,
+          "attachments": 3,
+          "skipped": 4,
+          "failed": 0,
+          "completed": 1,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-2",
+          "name": "{x}.pdf",
+          "size": 6,
+          "sha256": "1c775808276a155c66a8fec3010ead48f0141e41a4d82d9ceac5c08d34b63f45"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing assets",
+            "params": {
+              "title": "assets"
+            }
+          },
+          "imported": 1,
+          "attachments": 4,
+          "skipped": 4,
+          "failed": 0,
+          "completed": 1,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing assets",
+            "params": {
+              "title": "assets"
+            }
+          },
+          "imported": 1,
+          "attachments": 4,
+          "skipped": 5,
+          "failed": 0,
+          "completed": 1,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-2",
+          "name": "spaced.png",
+          "size": 69,
+          "sha256": "b1ff9c8ea3a780bad09b346c423d2d0e46815926879b18e841d928376a946640"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing assets",
+            "params": {
+              "title": "assets"
+            }
+          },
+          "imported": 1,
+          "attachments": 5,
+          "skipped": 5,
+          "failed": 0,
+          "completed": 1,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-2",
+          "title": "Assets",
+          "folder": "Markdown",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "Spaced: ![my pic.png](attachments/note-2/my%20pic.png)\nFile: <!-- file:{\"url\":\"attachments/note-2/report.pdf\",\"name\":\"report.pdf\",\"size\":14,\"mimeType\":\"application/pdf\"} -->\nMissing: ![x](missing.png)\nOutside: ![t](../outside.png)\nBad escape: ![b](bad%zz.png)\nRefused: ![e](tool.bin)\nUrl: ![u](https://example.com/y.png)\nNote link: [n](other.md)\nAlias embed: ![photo.png](attachments/note-2/photo.png)\nNote embed: ![[Some Note]]\nSpaced embed: ![[ spaced.png ]]\nTwice: ![photo.png](attachments/note-2/photo.png) and ![photo.png](attachments/note-2/photo.png)\nBraces: <!-- file:{\"url\":\"attachments/note-2/{x}.pdf\",\"name\":\"x.pdf\",\"size\":6,\"mimeType\":\"application/pdf\"} -->\nEncoded slash: ![s](%2Fetc%2Fhosts.png)\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing assets",
+            "params": {
+              "title": "assets"
+            }
+          },
+          "imported": 2,
+          "attachments": 5,
+          "skipped": 5,
+          "failed": 0,
+          "completed": 1,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing assets",
+            "params": {
+              "title": "assets"
+            }
+          },
+          "imported": 2,
+          "attachments": 5,
+          "skipped": 5,
+          "failed": 0,
+          "completed": 2,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing crlf",
+            "params": {
+              "title": "crlf"
+            }
+          },
+          "imported": 2,
+          "attachments": 5,
+          "skipped": 5,
+          "failed": 0,
+          "completed": 2,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-3",
+          "title": "CRLF note",
+          "folder": "Markdown",
+          "tags": [
+            "win"
+          ],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "Line one\r\nLine two\r\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing crlf",
+            "params": {
+              "title": "crlf"
+            }
+          },
+          "imported": 3,
+          "attachments": 5,
+          "skipped": 5,
+          "failed": 0,
+          "completed": 2,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing crlf",
+            "params": {
+              "title": "crlf"
+            }
+          },
+          "imported": 3,
+          "attachments": 5,
+          "skipped": 5,
+          "failed": 0,
+          "completed": 3,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing dashes",
+            "params": {
+              "title": "dashes"
+            }
+          },
+          "imported": 3,
+          "attachments": 5,
+          "skipped": 5,
+          "failed": 0,
+          "completed": 3,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-4",
+          "title": "dashes",
+          "folder": "Markdown",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "----\nnot: frontmatter\n----\nbody\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing dashes",
+            "params": {
+              "title": "dashes"
+            }
+          },
+          "imported": 4,
+          "attachments": 5,
+          "skipped": 5,
+          "failed": 0,
+          "completed": 3,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing dashes",
+            "params": {
+              "title": "dashes"
+            }
+          },
+          "imported": 4,
+          "attachments": 5,
+          "skipped": 5,
+          "failed": 0,
+          "completed": 4,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing nested",
+            "params": {
+              "title": "nested"
+            }
+          },
+          "imported": 4,
+          "attachments": 5,
+          "skipped": 5,
+          "failed": 0,
+          "completed": 4,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-5",
+          "title": "nested",
+          "folder": "Markdown/deep/er",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "Deep note without frontmatter.\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing nested",
+            "params": {
+              "title": "nested"
+            }
+          },
+          "imported": 5,
+          "attachments": 5,
+          "skipped": 5,
+          "failed": 0,
+          "completed": 4,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing nested",
+            "params": {
+              "title": "nested"
+            }
+          },
+          "imported": 5,
+          "attachments": 5,
+          "skipped": 5,
+          "failed": 0,
+          "completed": 5,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing empty",
+            "params": {
+              "title": "empty"
+            }
+          },
+          "imported": 5,
+          "attachments": 5,
+          "skipped": 5,
+          "failed": 0,
+          "completed": 5,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-6",
+          "title": "empty",
+          "folder": "Markdown",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": ""
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing empty",
+            "params": {
+              "title": "empty"
+            }
+          },
+          "imported": 6,
+          "attachments": 5,
+          "skipped": 5,
+          "failed": 0,
+          "completed": 5,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing empty",
+            "params": {
+              "title": "empty"
+            }
+          },
+          "imported": 6,
+          "attachments": 5,
+          "skipped": 5,
+          "failed": 0,
+          "completed": 6,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing frontmatter-types",
+            "params": {
+              "title": "frontmatter-types"
+            }
+          },
+          "imported": 6,
+          "attachments": 5,
+          "skipped": 5,
+          "failed": 0,
+          "completed": 6,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-7",
+          "title": "frontmatter-types",
+          "folder": "Markdown",
+          "tags": [
+            "solo"
+          ],
+          "properties": [
+            [
+              "2",
+              "two"
+            ],
+            [
+              "10",
+              "ten"
+            ],
+            [
+              "date",
+              {
+                "$date": "2024-01-15T00:00:00.000Z"
+              }
+            ],
+            [
+              "created",
+              {
+                "$date": "2024-01-15T10:20:30.000Z"
+              }
+            ],
+            [
+              "count",
+              3
+            ],
+            [
+              "ratio",
+              1.5
+            ],
+            [
+              "flag",
+              true
+            ],
+            [
+              "nothing",
+              null
+            ],
+            [
+              "nested",
+              {
+                "$map": [
+                  [
+                    "b",
+                    1
+                  ],
+                  [
+                    "a",
+                    2
+                  ]
+                ]
+              }
+            ],
+            [
+              "list",
+              [
+                "x",
+                2
+              ]
+            ],
+            [
+              "zeta",
+              "z"
+            ]
+          ],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "Body after frontmatter.\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing frontmatter-types",
+            "params": {
+              "title": "frontmatter-types"
+            }
+          },
+          "imported": 7,
+          "attachments": 5,
+          "skipped": 5,
+          "failed": 0,
+          "completed": 6,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing frontmatter-types",
+            "params": {
+              "title": "frontmatter-types"
+            }
+          },
+          "imported": 7,
+          "attachments": 5,
+          "skipped": 5,
+          "failed": 0,
+          "completed": 7,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing latin",
+            "params": {
+              "title": "latin"
+            }
+          },
+          "imported": 7,
+          "attachments": 5,
+          "skipped": 5,
+          "failed": 0,
+          "completed": 7,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-8",
+          "title": "latin",
+          "folder": "Markdown",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "Invalid �� bytes\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing latin",
+            "params": {
+              "title": "latin"
+            }
+          },
+          "imported": 8,
+          "attachments": 5,
+          "skipped": 5,
+          "failed": 0,
+          "completed": 7,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing latin",
+            "params": {
+              "title": "latin"
+            }
+          },
+          "imported": 8,
+          "attachments": 5,
+          "skipped": 5,
+          "failed": 0,
+          "completed": 8,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing long",
+            "params": {
+              "title": "long"
+            }
+          },
+          "imported": 8,
+          "attachments": 5,
+          "skipped": 5,
+          "failed": 0,
+          "completed": 8,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-9",
+          "title": "long",
+          "folder": "Markdown",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "Long extension\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing long",
+            "params": {
+              "title": "long"
+            }
+          },
+          "imported": 9,
+          "attachments": 5,
+          "skipped": 5,
+          "failed": 0,
+          "completed": 8,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing long",
+            "params": {
+              "title": "long"
+            }
+          },
+          "imported": 9,
+          "attachments": 5,
+          "skipped": 5,
+          "failed": 0,
+          "completed": 9,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing tags-array",
+            "params": {
+              "title": "tags-array"
+            }
+          },
+          "imported": 9,
+          "attachments": 5,
+          "skipped": 5,
+          "failed": 0,
+          "completed": 9,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-10",
+          "title": "tags-array",
+          "folder": "Markdown",
+          "tags": [
+            "a",
+            "",
+            "b"
+          ],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "\n# Heading\n\n- [ ] a checklist line stays as written\n- [x] done line\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing tags-array",
+            "params": {
+              "title": "tags-array"
+            }
+          },
+          "imported": 10,
+          "attachments": 5,
+          "skipped": 5,
+          "failed": 0,
+          "completed": 9,
+          "total": 10,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing tags-array",
+            "params": {
+              "title": "tags-array"
+            }
+          },
+          "imported": 10,
+          "attachments": 5,
+          "skipped": 5,
+          "failed": 0,
+          "completed": 10,
+          "total": 10,
+          "done": false
+        }
+      ],
+      "summary": {
+        "imported": 10,
+        "attachments": 5,
+        "skipped": 5,
+        "failed": [],
+        "skippedReasons": [
+          {
+            "reason": "Asset file not found",
+            "count": 3
+          },
+          {
+            "reason": "Path traversal outside selected folder",
+            "count": 1
+          },
+          {
+            "reason": "unsupported attachment type .bin",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "mixed-picks",
+      "sources": [
+        "edge/crlf.md",
+        "edge/ignored.txt",
+        "wiki-embeds"
+      ],
+      "timeline": [
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": "",
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.scanningFiles",
+            "message": "Scanning files…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 0,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "scanning",
+          "status": {
+            "code": "status.scanningFiles",
+            "message": "Scanning files…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.scanningFiles",
+            "message": "Scanning files…"
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing crlf",
+            "params": {
+              "title": "crlf"
+            }
+          },
+          "imported": 0,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-1",
+          "title": "CRLF note",
+          "folder": "Markdown",
+          "tags": [
+            "win"
+          ],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "Line one\r\nLine two\r\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing crlf",
+            "params": {
+              "title": "crlf"
+            }
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 0,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing crlf",
+            "params": {
+              "title": "crlf"
+            }
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing embed-note",
+            "params": {
+              "title": "embed-note"
+            }
+          },
+          "imported": 1,
+          "attachments": 0,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-2",
+          "name": "photo.png",
+          "size": 69,
+          "sha256": "b1ff9c8ea3a780bad09b346c423d2d0e46815926879b18e841d928376a946640"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing embed-note",
+            "params": {
+              "title": "embed-note"
+            }
+          },
+          "imported": 1,
+          "attachments": 1,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "saveAttachment",
+          "noteId": "note-2",
+          "name": "nested.png",
+          "size": 69,
+          "sha256": "b1ff9c8ea3a780bad09b346c423d2d0e46815926879b18e841d928376a946640"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing embed-note",
+            "params": {
+              "title": "embed-note"
+            }
+          },
+          "imported": 1,
+          "attachments": 2,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "createNote",
+          "id": "note-2",
+          "title": "Embed Note",
+          "folder": "Markdown",
+          "tags": [],
+          "properties": [],
+          "created": "<birthtime>",
+          "modified": "2026-01-14T12:00:00.000Z",
+          "content": "\nAn Obsidian embed on its own line:\n\n![photo.png](attachments/note-2/photo.png)\n\nThe same asset again, with a display size: ![photo.png](attachments/note-2/photo.png)\n\nAn embed reaching into a sibling folder:\n\n![nested.png](attachments/note-2/nested.png)\n\nA [[wikilink]] is preserved, and so is a note embed like ![[Some Note]].\n"
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing embed-note",
+            "params": {
+              "title": "embed-note"
+            }
+          },
+          "imported": 2,
+          "attachments": 2,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 1,
+          "total": 2,
+          "done": false
+        },
+        {
+          "op": "progress",
+          "importId": "vector",
+          "phase": "importing",
+          "status": {
+            "code": "status.importingItem",
+            "message": "Importing embed-note",
+            "params": {
+              "title": "embed-note"
+            }
+          },
+          "imported": 2,
+          "attachments": 2,
+          "skipped": 0,
+          "failed": 0,
+          "completed": 2,
+          "total": 2,
+          "done": false
+        }
+      ],
+      "summary": {
+        "imported": 2,
+        "attachments": 2,
+        "skipped": 0,
+        "failed": []
+      }
+    }
+  ]
+}

@@ -21,6 +21,7 @@
 
 #[allow(unused_imports)]
 use crate::http_fakes;
+use crate::support;
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -62,6 +63,7 @@ type Scripted = Result<HttpResponse, memry_core::api::errors::TransportError>;
 struct Env {
     vault: Vault,
     dir: PathBuf,
+    _scratch: tempfile::TempDir,
     store: Arc<FakeSecureStore>,
     inbox: Arc<Inbox>,
     sync: Arc<VaultSync>,
@@ -70,11 +72,8 @@ struct Env {
 
 fn env(script: Vec<Scripted>) -> Env {
     let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!(
-        "memry-api-inbox-attachments-{}-{unique}",
-        std::process::id()
-    ));
-    std::fs::create_dir_all(&dir).expect("the scratch directory");
+    let scratch = support::scratch_dir("api-inbox-attachments");
+    let dir = scratch.path().to_path_buf();
     let vault = Vault::open(format!("vault-{unique}"), dir.display().to_string()).expect("open");
     let (_public, secret) = sodium::sign_seed_keypair(&SIGNING_SEED).expect("a keypair");
     let store = FakeSecureStore::new();
@@ -114,6 +113,7 @@ fn env(script: Vec<Scripted>) -> Env {
     Env {
         vault,
         dir,
+        _scratch: scratch,
         store,
         inbox,
         sync,
