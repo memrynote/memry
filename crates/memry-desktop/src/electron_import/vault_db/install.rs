@@ -7,8 +7,10 @@
 //!   `core/index.db` it may have left;
 //! - a crash after it reads as `AlreadyImported`, with `index.db` already complete.
 //!
-//! Both renames refuse to replace a file ([`rename_no_replace`]): a `core/data.db` that appeared
-//! after staging (the vault opened natively meanwhile) is reported, never overwritten.
+//! A `core/data.db` or sidecar that appeared after staging (the vault opened natively meanwhile)
+//! is refused before anything under `core/` is removed or renamed, so the native pair is left
+//! byte for byte. Both renames still refuse to replace a file ([`rename_no_replace`]), which
+//! covers a native open that races the install itself.
 
 use std::ffi::OsString;
 use std::fs;
@@ -27,6 +29,16 @@ pub(super) fn sidecars(db: &Path) -> [PathBuf; 3] {
         name.push(suffix);
         PathBuf::from(name)
     })
+}
+
+/// [`ImportError::CoreFileExists`] when anything is at `path`, a dangling symlink included;
+/// every error other than `NotFound` is passed on.
+pub(super) fn refuse_if_present(path: &Path) -> Result<(), ImportError> {
+    match fs::symlink_metadata(path) {
+        Ok(_) => Err(ImportError::CoreFileExists(path.to_owned())),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(()),
+        Err(e) => Err(ImportError::io(path, e)),
+    }
 }
 
 fn remove_file(path: &Path) -> Result<(), ImportError> {
@@ -49,6 +61,11 @@ impl StagedVault {
     /// place, and a rerun of [`super::stage_vault_import`] repeats the import or reports it done.
     pub fn install(self) -> Result<(), ImportError> {
         let paths = self.paths;
+        let data = paths.core.join(DATA_FILE);
+        refuse_if_present(&data)?;
+        for path in sidecars(&data) {
+            refuse_if_present(&path)?;
+        }
         for name in [DATA_FILE, INDEX_FILE] {
             let path = paths.staging.join(name);
             // Opened for writing: Windows refuses `FlushFileBuffers` on a read-only handle.
@@ -73,12 +90,6 @@ impl StagedVault {
         sync_dir(&paths.core);
         crash::point("install:index-renamed");
 
-        let data = paths.core.join(DATA_FILE);
-        for path in sidecars(&data) {
-            if path.exists() {
-                return Err(ImportError::CoreFileExists(path));
-            }
-        }
         rename(&paths.staging.join(DATA_FILE), &data)?;
         sync_dir(&paths.core);
         crash::point("install:data-renamed");

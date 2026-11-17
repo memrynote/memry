@@ -10,9 +10,9 @@ use std::collections::BTreeMap;
 use rusqlite::{Connection, OptionalExtension};
 
 use super::source::{Sources, source_error};
-use super::sync_state;
+use super::sync_state::{self, KeyRule};
 use super::tables::{
-    ELECTRON_DATA_LAST_MIGRATION, ELECTRON_INDEX_LAST_MIGRATION, LEDGER_TABLE, SourceDb,
+    ELECTRON_DATA_LAST_MIGRATION, ELECTRON_INDEX_LAST_MIGRATION, Importer, LEDGER_TABLE, SourceDb,
     TableMapping, mapping,
 };
 use super::{ImportError, VaultImportInput};
@@ -30,7 +30,10 @@ pub(super) struct Preflight {
     pub dropped_keys: BTreeMap<String, u64>,
 }
 
-pub(super) fn run(sources: &Sources, input: &VaultImportInput) -> Result<Preflight, ImportError> {
+pub(super) fn run(
+    sources: &Sources,
+    input: &VaultImportInput<'_>,
+) -> Result<Preflight, ImportError> {
     for (db, last) in [
         (SourceDb::Data, ELECTRON_DATA_LAST_MIGRATION),
         (SourceDb::Index, ELECTRON_INDEX_LAST_MIGRATION),
@@ -55,12 +58,13 @@ pub(super) fn run(sources: &Sources, input: &VaultImportInput) -> Result<Preflig
     let dropped_keys = sync_state_keys(sources.conn(SourceDb::Data))?;
 
     for (table, count) in &tables {
-        if table.class.carries_rows() && table.import.is_none() && *count > 0 {
+        if let Some(Importer::Pending(stage)) = table.class.importer()
+            && *count > 0
+        {
             return Err(ImportError::NotReady(format!(
-                "{}/{} ({})",
+                "{}/{} ({stage})",
                 table.db.name(),
                 table.table,
-                table.pending.unwrap_or("?")
             )));
         }
     }
@@ -217,12 +221,13 @@ fn sync_state_keys(conn: &Connection) -> Result<BTreeMap<String, u64>, ImportErr
         let Some(rule) = sync_state::classify(&key) else {
             return Err(ImportError::UnmappedSyncStateKey(key));
         };
-        if rule.class.carries_rows() {
-            pending = pending.or(rule
-                .pending
-                .map(|stage| format!("sync_state key {key} ({stage})")));
-        } else {
-            *dropped.entry(rule.report_name()).or_default() += 1;
+        match rule.rule {
+            KeyRule::Skip { .. } => *dropped.entry(rule.report_name()).or_default() += 1,
+            KeyRule::Pending { stage, .. } => {
+                pending = pending.or(Some(format!("sync_state key {key} ({stage})")));
+            }
+            // The `sync_state` table's importer runs the handler.
+            KeyRule::Convert { .. } => {}
         }
     }
     match pending {

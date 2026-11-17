@@ -32,13 +32,24 @@ pub enum Origin {
     Code,
 }
 
+/// How the rows of a class that carries data reach the core: an importer, or the stage (`36b`
+/// ... `36f`) that writes it. A source table with rows whose importer is still pending fails
+/// the import with [`ImportError::NotReady`]. Stage 36g deletes `Pending`.
+#[derive(Debug, Clone, Copy)]
+pub enum Importer {
+    Pending(&'static str),
+    Ready(ImportFn),
+}
+
 /// `copy`: same columns and values into a core table. `convert`: a value or shape change into
 /// a core table or record type. `reseed`: rows dropped, the owner recreates them. `rebuild`:
 /// derived data the owner's projector regenerates. `skip`: nothing carried, the reason says why.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Only the two classes that carry rows hold an [`Importer`], so neither can be written without
+/// one.
+#[derive(Debug, Clone, Copy)]
 pub enum Class {
-    Copy,
-    Convert,
+    Copy(Importer),
+    Convert(Importer),
     Reseed,
     Rebuild,
     Skip,
@@ -47,17 +58,21 @@ pub enum Class {
 impl Class {
     pub fn as_str(self) -> &'static str {
         match self {
-            Self::Copy => "copy",
-            Self::Convert => "convert",
+            Self::Copy(_) => "copy",
+            Self::Convert(_) => "convert",
             Self::Reseed => "reseed",
             Self::Rebuild => "rebuild",
             Self::Skip => "skip",
         }
     }
 
-    /// Rows of a class that carries data must reach the core; the others are dropped.
-    pub fn carries_rows(self) -> bool {
-        matches!(self, Self::Copy | Self::Convert)
+    /// The importer of a class that carries rows to the core; `None` for a class whose rows are
+    /// dropped.
+    pub fn importer(self) -> Option<Importer> {
+        match self {
+            Self::Copy(importer) | Self::Convert(importer) => Some(importer),
+            Self::Reseed | Self::Rebuild | Self::Skip => None,
+        }
     }
 }
 
@@ -79,36 +94,23 @@ pub struct TableMapping {
     pub owner_step: u8,
     pub class: Class,
     pub reason: &'static str,
-    pub import: Option<ImportFn>,
-    /// The stage (`36b` ... `36f`) that writes this table's importer. A source table with rows
-    /// whose entry is still pending fails the import with [`ImportError::NotReady`]. Stage 36g
-    /// deletes this field.
-    pub pending: Option<&'static str>,
 }
 
 macro_rules! map {
     ($db:ident $origin:ident $table:literal [$owner:literal, $class:ident, $pending:literal]: $reason:literal) => {
-        TableMapping {
-            db: SourceDb::$db,
-            table: $table,
-            origin: Origin::$origin,
-            owner_step: $owner,
-            class: Class::$class,
-            reason: $reason,
-            import: None,
-            pending: Some($pending),
-        }
+        map!(@ $db $origin $table $owner, Class::$class(Importer::Pending($pending)), $reason)
     };
     ($db:ident $origin:ident $table:literal [$owner:literal, $class:ident]: $reason:literal) => {
+        map!(@ $db $origin $table $owner, Class::$class, $reason)
+    };
+    (@ $db:ident $origin:ident $table:literal $owner:literal, $class:expr, $reason:literal) => {
         TableMapping {
             db: SourceDb::$db,
             table: $table,
             origin: Origin::$origin,
             owner_step: $owner,
-            class: Class::$class,
+            class: $class,
             reason: $reason,
-            import: None,
-            pending: None,
         }
     };
 }

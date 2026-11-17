@@ -9,10 +9,12 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::{Path, PathBuf};
 
 use memry_core::storage::import::{DATA_FILE, INDEX_FILE, read_marker};
-use memry_desktop::electron_import::ImportError;
 use memry_desktop::electron_import::vault_db::{
     CORE_DIR, STAGING_DIR, StageOutcome, VaultImportInput, VaultStageReport, crash,
     stage_vault_import,
+};
+use memry_desktop::electron_import::{
+    AppNameCandidates, ElectronProfile, HostOs, ImportError, ProfileLock,
 };
 use rusqlite::Connection;
 use rusqlite::types::Value;
@@ -27,6 +29,29 @@ struct Vault {
     _dir: tempfile::TempDir,
     root: PathBuf,
     pair: electron_db::ElectronPair,
+    profile: ElectronProfile,
+    lock: ProfileLock,
+}
+
+/// An Electron profile whose localStorage store has a free LOCK file.
+fn electron_profile(dir: &Path) -> ElectronProfile {
+    let profile = ElectronProfile {
+        dir: dir.join("electron-profile"),
+        host: HostOs::current(),
+        pin: None,
+        app_names: AppNameCandidates(Vec::new()),
+        has_config: false,
+        has_secure_store: false,
+        has_local_state: false,
+        has_local_storage: true,
+        has_legacy_crdt_store: false,
+        has_custom_dictionary: false,
+        crdt_store_dirs: Vec::new(),
+        other_candidates: Vec::new(),
+    };
+    std::fs::create_dir_all(profile.local_storage_dir()).unwrap();
+    std::fs::write(profile.local_storage_dir().join("LOCK"), b"").unwrap();
+    profile
 }
 
 impl Vault {
@@ -34,15 +59,20 @@ impl Vault {
         let dir = tempfile::tempdir().unwrap();
         let root = dir.path().join("vault");
         let pair = electron_db::create_pair(&root.join(".memry"));
+        let profile = electron_profile(dir.path());
+        let lock = ProfileLock::probe(&profile).unwrap();
         Self {
             _dir: dir,
             root,
             pair,
+            profile,
+            lock,
         }
     }
 
-    fn input(&self) -> VaultImportInput {
+    fn input(&self) -> VaultImportInput<'_> {
         VaultImportInput {
+            electron_closed: &self.lock,
             vault_dir: self.root.clone(),
             vault_id: "vault-1".into(),
             electron_data_db: self.pair.data.clone(),
@@ -380,4 +410,127 @@ fn an_index_without_its_data_db_is_replaced() {
         b"stale index"
     );
     assert!(!vault.core().join(format!("{INDEX_FILE}-wal")).exists());
+}
+
+/// A vault opened natively between stage and install: install refuses before it removes or
+/// renames anything, so the native pair (index.db included) is left byte for byte.
+#[test]
+fn install_refuses_before_touching_a_native_pair() {
+    for native in [DATA_FILE.to_owned(), format!("{DATA_FILE}-wal")] {
+        let vault = Vault::new();
+        let staged = staged(stage_vault_import(vault.input()).unwrap());
+        std::fs::create_dir_all(vault.core()).unwrap();
+        let native_path = vault.core().join(&native);
+        std::fs::write(&native_path, b"native data").unwrap();
+        std::fs::write(vault.core().join(INDEX_FILE), b"native index").unwrap();
+        std::fs::write(
+            vault.core().join(format!("{INDEX_FILE}-wal")),
+            b"native wal",
+        )
+        .unwrap();
+
+        assert!(
+            matches!(staged.install(), Err(ImportError::CoreFileExists(path)) if path == native_path),
+            "{native}"
+        );
+        assert_eq!(std::fs::read(&native_path).unwrap(), b"native data");
+        assert_eq!(
+            std::fs::read(vault.core().join(INDEX_FILE)).unwrap(),
+            b"native index",
+            "{native}"
+        );
+        assert_eq!(
+            std::fs::read(vault.core().join(format!("{INDEX_FILE}-wal"))).unwrap(),
+            b"native wal"
+        );
+    }
+}
+
+/// A `core/data.db` that is a dangling symlink is a file the import must not replace, not an
+/// absent one.
+#[cfg(unix)]
+#[test]
+fn a_dangling_core_symlink_is_refused() {
+    let vault = Vault::new();
+    std::fs::create_dir_all(vault.core()).unwrap();
+    let data = vault.core().join(DATA_FILE);
+    std::os::unix::fs::symlink(vault.root.join("elsewhere.db"), &data).unwrap();
+    assert!(matches!(
+        stage_vault_import(vault.input()),
+        Err(ImportError::CoreFileExists(path)) if path == data
+    ));
+    assert!(!vault.root.join("elsewhere.db").exists());
+    assert!(!vault.staging().exists());
+}
+
+/// Holds the LOCK file the way a running Electron's LevelDB does, until dropped.
+struct ElectronRunning {
+    #[cfg(unix)]
+    holder: std::process::Child,
+    #[cfg(windows)]
+    _held: std::fs::File,
+}
+
+impl ElectronRunning {
+    #[cfg(unix)]
+    fn start(lock: &Path) -> Self {
+        use std::io::{BufRead, BufReader};
+        use std::process::{Command, Stdio};
+        // LevelDB holds an fcntl write lock, which is per process, so another process holds it
+        // here; python's lockf is the same primitive.
+        let mut holder = Command::new("python3")
+            .args([
+                "-c",
+                "import fcntl,sys,time\nf=open(sys.argv[1],'r+')\nfcntl.lockf(f,fcntl.LOCK_EX|fcntl.LOCK_NB)\nprint('locked',flush=True)\ntime.sleep(60)",
+            ])
+            .arg(lock)
+            .stdout(Stdio::piped())
+            .spawn()
+            .unwrap();
+        let mut line = String::new();
+        BufReader::new(holder.stdout.as_mut().unwrap())
+            .read_line(&mut line)
+            .unwrap();
+        assert_eq!(line.trim(), "locked");
+        Self { holder }
+    }
+
+    #[cfg(windows)]
+    fn start(lock: &Path) -> Self {
+        use std::os::windows::fs::OpenOptionsExt;
+        // LevelDB opens its LOCK with share mode 0 on Windows.
+        let held = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .share_mode(0)
+            .open(lock)
+            .unwrap();
+        Self { _held: held }
+    }
+}
+
+#[cfg(unix)]
+impl Drop for ElectronRunning {
+    fn drop(&mut self) {
+        let _ = self.holder.kill();
+        let _ = self.holder.wait();
+    }
+}
+
+/// Electron started after the caller's probe: the run never returns `Staged`, writes no core
+/// file and leaves no staging directory, and succeeds once Electron has quit.
+#[test]
+fn a_run_while_electron_runs_is_never_staged() {
+    let vault = Vault::new();
+    let running = ElectronRunning::start(&vault.profile.local_storage_dir().join("LOCK"));
+    let outcome = stage_vault_import(vault.input());
+    drop(running);
+    assert!(
+        matches!(outcome, Err(ImportError::ProfileInUse(_))),
+        "{:?}",
+        outcome.as_ref().err()
+    );
+    assert!(!vault.staging().exists());
+    assert!(!vault.core().exists());
+    import(&vault);
 }

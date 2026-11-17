@@ -64,29 +64,19 @@ fn every_drizzle_table_has_a_mapping_or_a_skip_reason() {
     assert_eq!(virtuals.len(), 8, "the eight virtual tables are listed");
     for m in virtuals {
         let expected = if m.table.starts_with("fts_") {
-            Class::Rebuild
+            "rebuild"
         } else {
-            Class::Copy
+            "copy"
         };
-        assert_eq!((m.table, m.class), (m.table, expected));
+        assert_eq!((m.table, m.class.as_str()), (m.table, expected));
         assert_eq!(m.origin, Origin::Code, "{}", m.table);
     }
 
     for m in TABLE_MAP {
-        if m.class == Class::Skip {
+        if matches!(m.class, Class::Skip) {
             assert!(m.reason.len() >= 40, "{}: skip reason too short", m.table);
         }
-        if m.class.carries_rows() {
-            assert!(
-                m.import.is_some() || m.pending.is_some(),
-                "{}: {} needs an importer or a pending stage",
-                m.table,
-                m.class.as_str()
-            );
-        } else {
-            assert!(m.import.is_none() && m.pending.is_none(), "{}", m.table);
-        }
-        if let Some(stage) = m.pending {
+        if let Some(Importer::Pending(stage)) = m.class.importer() {
             assert!(
                 ["36b", "36c", "36d1", "36d2", "36e", "36f"].contains(&stage),
                 "{}: pending names no stage ({stage})",

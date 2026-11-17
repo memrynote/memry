@@ -29,7 +29,9 @@ use serde::Serialize;
 use zeroize::Zeroizing;
 
 pub use super::ImportError;
+use super::ProfileLock;
 pub use source::read_source_id;
+use tables::Importer;
 
 /// The staging directory, beside `core/` under `<vault>/.memry/` so the install renames stay
 /// on one file system. The vault watcher ignores it with every dot folder
@@ -40,7 +42,11 @@ pub const CORE_DIR: &str = "core";
 /// The local vault key Step 37 derives from the migrated master key.
 pub type VaultKey = Zeroizing<[u8; 32]>;
 
-pub struct VaultImportInput {
+pub struct VaultImportInput<'a> {
+    /// Proof the probe found no running Electron. The run probes again before it copies the
+    /// Electron files and before it returns [`StageOutcome::Staged`], and fails with
+    /// [`ImportError::ProfileInUse`] when Electron started meanwhile.
+    pub electron_closed: &'a ProfileLock,
     pub vault_dir: PathBuf,
     /// `vault_metadata.vault_uuid`, the id the core opens the vault under.
     pub vault_id: String,
@@ -135,7 +141,7 @@ impl Paths {
 }
 
 /// Stages one vault. See the module docs; [`StageOutcome`] names the three results.
-pub fn stage_vault_import(input: VaultImportInput) -> Result<StageOutcome, ImportError> {
+pub fn stage_vault_import(input: VaultImportInput<'_>) -> Result<StageOutcome, ImportError> {
     let paths = Paths::new(&input.vault_dir);
     if let Some(outcome) = existing_core(&paths)? {
         remove_staging(&paths)?;
@@ -158,26 +164,32 @@ pub fn stage_vault_import(input: VaultImportInput) -> Result<StageOutcome, Impor
 
 fn existing_core(paths: &Paths) -> Result<Option<StageOutcome>, ImportError> {
     let data = paths.core.join(DATA_FILE);
-    if data.exists() {
-        return Ok(Some(
-            match memry_core::storage::import::read_marker(&data)? {
-                Some(_) => StageOutcome::AlreadyImported,
-                None => StageOutcome::NativeFirst,
-            },
-        ));
+    match fs::symlink_metadata(&data) {
+        // Only a regular file is opened: SQLite would follow a symlink and could create its
+        // target.
+        Ok(meta) if meta.is_file() => {
+            return Ok(Some(
+                match memry_core::storage::import::read_marker(&data)? {
+                    Some(_) => StageOutcome::AlreadyImported,
+                    None => StageOutcome::NativeFirst,
+                },
+            ));
+        }
+        Ok(_) => return Err(ImportError::CoreFileExists(data)),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+        Err(e) => return Err(ImportError::io(&data, e)),
     }
     // A WAL with no database beside it is no leftover of ours (install never writes one); it
     // may hold a native core's last writes, so it is reported and never deleted.
     for sidecar in install::sidecars(&data) {
-        if sidecar.exists() {
-            return Err(ImportError::CoreFileExists(sidecar));
-        }
+        install::refuse_if_present(&sidecar)?;
     }
     Ok(None)
 }
 
-fn stage(input: &VaultImportInput, paths: &Paths) -> Result<VaultStageReport, ImportError> {
+fn stage(input: &VaultImportInput<'_>, paths: &Paths) -> Result<VaultStageReport, ImportError> {
     memry_core::storage::vec::register()?;
+    input.electron_closed.recheck()?;
     let sources = source::copy_sources(
         &input.electron_data_db,
         &input.electron_index_db,
@@ -199,27 +211,30 @@ fn stage(input: &VaultImportInput, paths: &Paths) -> Result<VaultStageReport, Im
             target_count: 0,
             dropped: 0,
         };
-        if let Some(import) = mapping.import {
-            if let Some(progress) = &input.progress {
-                progress(ImportProgress {
-                    table: mapping.table,
-                    done,
-                    of: total,
-                });
+        match mapping.class.importer() {
+            Some(Importer::Ready(import)) => {
+                if let Some(progress) = &input.progress {
+                    progress(ImportProgress {
+                        table: mapping.table,
+                        done,
+                        of: total,
+                    });
+                }
+                let mut ctx = TableCtx {
+                    source: sources.conn(mapping.db),
+                    writer: &mut writer,
+                    now_ms: input.now_ms,
+                };
+                let stats = import(&mut ctx)?;
+                table.target_count = stats.written;
+                for (reason, count) in stats.dropped {
+                    table.dropped += count;
+                    *report.dropped.entry(reason.to_owned()).or_default() += count;
+                }
             }
-            let mut ctx = TableCtx {
-                source: sources.conn(mapping.db),
-                writer: &mut writer,
-                now_ms: input.now_ms,
-            };
-            let stats = import(&mut ctx)?;
-            table.target_count = stats.written;
-            for (reason, count) in stats.dropped {
-                table.dropped += count;
-                *report.dropped.entry(reason.to_owned()).or_default() += count;
-            }
-        } else if !mapping.class.carries_rows() {
-            table.dropped = source_count;
+            // The preflight refused a pending table with rows, so this one is empty.
+            Some(Importer::Pending(_)) => {}
+            None => table.dropped = source_count,
         }
         report
             .tables
@@ -230,6 +245,9 @@ fn stage(input: &VaultImportInput, paths: &Paths) -> Result<VaultStageReport, Im
     drop(sources);
     source::remove(&paths.staging)?;
     writer.finish(&marker(&report, input.now_ms))?;
+    // A writer that opened after the copy and has not written yet slips past the copy's
+    // fingerprint; Electron holds its locks while it runs, so this probe sees it.
+    input.electron_closed.recheck()?;
     crash::point("stage:staged");
     Ok(report)
 }
@@ -246,7 +264,7 @@ fn marker(report: &VaultStageReport, now_ms: i64) -> String {
         .collect();
     let pending: Vec<String> = tables::TABLE_MAP
         .iter()
-        .filter(|m| m.pending.is_some())
+        .filter(|m| matches!(m.class.importer(), Some(Importer::Pending(_))))
         .map(|m| format!("{}/{}", m.db.name(), m.table))
         .collect();
     serde_json::json!({

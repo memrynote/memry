@@ -3,7 +3,7 @@
 //! before anything is written. Keys come from `SYNC_STATE_KEYS` (`sync/engine/sync-context.ts`)
 //! over Electron's history, plus the per-item prefixes written outside it.
 
-use super::tables::Class;
+use super::{ImportError, TableCtx};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum KeyMatch {
@@ -12,13 +12,32 @@ pub enum KeyMatch {
     Prefix(&'static str),
 }
 
+/// Carries one key's `value` to its core destination.
+pub type KeyFn = fn(&mut TableCtx<'_>, &str, &str) -> Result<(), ImportError>;
+
+/// What the import does with a key. A key that carries data names its handler, or the stage that
+/// writes it, so a carried key without either cannot be written.
+#[derive(Debug, Clone, Copy)]
+pub enum KeyRule {
+    /// Dropped into the report.
+    Skip { reason: &'static str },
+    /// Carried by a handler the named stage writes; a source holding the key fails the import
+    /// with [`ImportError::NotReady`].
+    Pending {
+        stage: &'static str,
+        reason: &'static str,
+    },
+    /// Carried by `handler`, which the `sync_state` table's importer runs per key.
+    Convert {
+        handler: KeyFn,
+        reason: &'static str,
+    },
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct SyncStateKey {
     pub key: KeyMatch,
-    /// `Convert` carries the value to a core destination, `Skip` drops it into the report.
-    pub class: Class,
-    pub pending: Option<&'static str>,
-    pub reason: &'static str,
+    pub rule: KeyRule,
 }
 
 impl SyncStateKey {
@@ -37,21 +56,21 @@ impl SyncStateKey {
     }
 }
 
+/// A key carried to the core once stage 36c writes its handler.
 const fn convert(key: KeyMatch, reason: &'static str) -> SyncStateKey {
     SyncStateKey {
         key,
-        class: Class::Convert,
-        pending: Some("36c"),
-        reason,
+        rule: KeyRule::Pending {
+            stage: "36c",
+            reason,
+        },
     }
 }
 
 const fn skip(key: KeyMatch, reason: &'static str) -> SyncStateKey {
     SyncStateKey {
         key,
-        class: Class::Skip,
-        pending: None,
-        reason,
+        rule: KeyRule::Skip { reason },
     }
 }
 
@@ -148,7 +167,10 @@ mod tests {
         assert!(classify("lastCursor").is_some());
         assert!(classify("lastCursor ").is_none());
         assert!(classify("LASTCURSOR").is_none());
-        assert!(classify("note-cover:x").unwrap().pending.is_some());
+        assert!(matches!(
+            classify("note-cover:x").unwrap().rule,
+            KeyRule::Pending { .. }
+        ));
     }
 
     #[test]
