@@ -99,6 +99,8 @@ mod attachment_sources;
 mod attachment_uploads;
 #[path = "attachments.rs"]
 mod attachments;
+#[path = "billing_service.rs"]
+mod billing_service;
 #[path = "block_refs.rs"]
 mod block_refs;
 #[path = "byte_preservation.rs"]
