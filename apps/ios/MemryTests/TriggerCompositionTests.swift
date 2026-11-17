@@ -44,8 +44,14 @@ struct TriggerCompositionTests {
         #expect(field.textView.becomeFirstResponder())
         field.textView.selectedRange = NSRange(location: 2, length: 0)
         field.textView.setMarkedText("にほn", selectedRange: NSRange(location: 3, length: 0))
+        let keyboard = KeyboardSpy(forwardingTo: field.textView.inputDelegate)
+        field.textView.inputDelegate = keyboard
 
         model.session.startTrigger("@")
+        field.textView.inputDelegate = keyboard.keyboard
+        // Without a selection change the Japanese keyboard keeps `にほn` and
+        // composes it again into the next keys.
+        #expect(keyboard.selectionChanges > 0)
         #expect(field.textView.text == "A にほn @z")
         #expect(field.textView.markedTextRange == nil)
 
@@ -55,5 +61,27 @@ struct TriggerCompositionTests {
         await model.session.tail?.value
         let runs = try #require(try await reader.blocks(id: noteId)?.first { $0.id == blockId }).inline
         #expect(BlockText.shown(runs) == "A にほn \u{FFFC} z")
+    }
+}
+
+/// Counts the selection changes the keyboard hears and passes every call on.
+@MainActor
+private final class KeyboardSpy: NSObject, UITextInputDelegate {
+    weak var keyboard: UITextInputDelegate?
+    var selectionChanges = 0
+
+    init(forwardingTo keyboard: UITextInputDelegate?) {
+        self.keyboard = keyboard
+    }
+
+    func selectionWillChange(_ textInput: UITextInput?) { keyboard?.selectionWillChange(textInput) }
+    func selectionDidChange(_ textInput: UITextInput?) {
+        selectionChanges += 1
+        keyboard?.selectionDidChange(textInput)
+    }
+    func textWillChange(_ textInput: UITextInput?) { keyboard?.textWillChange(textInput) }
+    func textDidChange(_ textInput: UITextInput?) { keyboard?.textDidChange(textInput) }
+    func conversationContext(_ context: UIConversationContext?, didChange textInput: UITextInput?) {
+        keyboard?.conversationContext(context, didChange: textInput)
     }
 }

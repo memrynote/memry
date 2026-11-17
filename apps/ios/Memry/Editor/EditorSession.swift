@@ -802,6 +802,9 @@ final class EditorSession {
         // Japanese keyboard, `unmarkText()` and the reload can both drop it.
         if let marked = textView.markedTextRange, let composed = textView.text(in: marked) {
             textView.replace(marked, withText: composed)
+            // Ends the keyboard's composition too, or it composes `にほn` again into the next keys.
+            textView.inputDelegate?.selectionWillChange(textView)
+            textView.inputDelegate?.selectionDidChange(textView)
         }
         show(.none)
         let caret = textView.selectedRange.location
