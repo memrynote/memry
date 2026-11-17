@@ -447,6 +447,15 @@ export const commands = {
 	 *  failed write saves nothing.
 	 */
 	notesDownloadUnsplashPhoto: (noteId: string, photo: UnsplashPhoto) => __TAURI_INVOKE<UnsplashDownloadResponse>("notes_download_unsplash_photo", { noteId, photo }),
+	/**  `notes:cluster`: proposed groups for at most 300 notes. */
+	notesCluster: (noteIds: string[]) => __TAURI_INVOKE<NoteClustersResponse>("notes_cluster", { noteIds }),
+	/**
+	 *  `notes:get-similar`: the nearest notes not linked with `note_id`, `limit` of them (5 when
+	 *  absent, 1 to 20).
+	 */
+	notesGetSimilar: (noteId: string, limit: number | null) => __TAURI_INVOKE<SimilarNotesResponse>("notes_get_similar", { noteId, limit }),
+	/**  `notes:get-tag-suggestions`: tags the nearest notes share and `note_id` lacks. */
+	notesGetTagSuggestions: (noteId: string) => __TAURI_INVOKE<NoteTagSuggestionsResponse>("notes_get_tag_suggestions", { noteId }),
 	/**  `notes:delete-version`: a version that is not there is no failure, as in Electron. */
 	notesDeleteVersion: (snapshotId: string) => __TAURI_INVOKE<null>("notes_delete_version", { snapshotId }),
 	/**  `notes:get-version`: the version and the file it restores to; `null` for none. */
@@ -2285,6 +2294,21 @@ export type NoteAliasesView = {
 	aliases: string[],
 };
 
+/**  `NoteClusterGroup`. */
+export type NoteClusterGroup = {
+	noteIds: string[],
+	titles: string[],
+	suggestedName: string | null,
+};
+
+/**  `NoteClustersResponse`. */
+export type NoteClustersResponse = {
+	status: NoteSimilarityStatus,
+	groups: NoteClusterGroup[],
+	ungrouped: string[],
+	missing: string[],
+};
+
 /**
  *  `NoteCreateSchema`, without `plainChecklists` (Step 32), which the renderer's service
  *  refuses until then.
@@ -2457,6 +2481,22 @@ export type NoteResultMetadata = {
 	createdAt: string | null,
 	fileType: string,
 	matchedName?: string | null,
+};
+
+/**  `NoteSimilarityStatus`. */
+export type NoteSimilarityStatus = "disabled" | "no-embedding" | "ready";
+
+/**  `NoteTagSuggestion`. */
+export type NoteTagSuggestion = {
+	tag: string,
+	confidence: number | null,
+	support: number,
+};
+
+/**  `NoteTagSuggestionsResponse`. */
+export type NoteTagSuggestionsResponse = {
+	status: NoteSimilarityStatus,
+	tags: NoteTagSuggestion[],
 };
 
 /**
@@ -3057,6 +3097,22 @@ export type ShortcutStatus = "unbound" | "registered" | "in_use" | "unsupported"
 export type SignOutResult = {
 	success: boolean,
 	keychainWarning?: string | null,
+};
+
+/**  `SimilarNoteItem`. */
+export type SimilarNoteItem = {
+	id: string,
+	title: string,
+	path: string,
+	emoji: string | null,
+	snippet: string | null,
+	similarity: number | null,
+};
+
+/**  `SimilarNotesResponse`. */
+export type SimilarNotesResponse = {
+	status: NoteSimilarityStatus,
+	notes: SimilarNoteItem[],
 };
 
 /**  `NoteSizeClass`. */
