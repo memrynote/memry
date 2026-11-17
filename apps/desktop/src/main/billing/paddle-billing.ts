@@ -218,6 +218,9 @@ function buildCheckoutPageUrl(checkoutToken: string, preselect?: StartCheckoutIn
     url.searchParams.set('plan', preselect.plan)
     url.searchParams.set('cadence', preselect.cadence)
   }
+  url.searchParams.set('utm_source', 'app')
+  url.searchParams.set('utm_medium', 'desktop')
+  url.searchParams.set('utm_campaign', 'checkout')
   url.hash = new URLSearchParams({ token: checkoutToken }).toString()
   return url.toString()
 }

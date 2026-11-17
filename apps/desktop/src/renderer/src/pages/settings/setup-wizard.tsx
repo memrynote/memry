@@ -19,7 +19,8 @@ import { LinkingPending } from '@/components/sync/linking-pending'
 import { VaultPickerStep } from '@/components/sync/vault-picker-step'
 
 const MEMRY_ICON_SRC = new URL('../../../../../build/icon.png', import.meta.url).href
-const MEMRY_PRICING_URL = 'https://memrynote.com/pricing'
+const MEMRY_PRICING_URL =
+  'https://memrynote.com/pricing?utm_source=app&utm_medium=desktop&utm_campaign=setup_wizard'
 
 const STEP_KEYS = ['setup.steps.signIn', 'setup.steps.verify', 'setup.steps.link'] as const
 const STEP_MAP: Record<WizardStep, number> = {

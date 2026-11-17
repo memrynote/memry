@@ -136,7 +136,7 @@ describe('UpdateInstallFailedDialog', () => {
     await userEvent.click(screen.getByRole('button', { name: /download v1\.2\.7 manually/i }))
 
     expect(open).toHaveBeenCalledWith(
-      'https://memrynote.com/download/desktop',
+      'https://memrynote.com/download/desktop?utm_source=app&utm_medium=desktop&utm_campaign=update_failed',
       '_blank',
       'noopener,noreferrer'
     )
