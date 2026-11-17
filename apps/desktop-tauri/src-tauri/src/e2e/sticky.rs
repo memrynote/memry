@@ -14,3 +14,11 @@ pub fn e2e_open_sticky(app: AppHandle<Wry>, unfold: bool, draft_id: Option<Strin
     };
     crate::windows::sticky::open(&app, request);
 }
+
+/// Tucks the sticky and presses its shortcut at once, as a user can before the quit that tucking
+/// the last window started has ended.
+#[tauri::command]
+pub fn e2e_tuck_and_open_sticky(app: AppHandle<Wry>) {
+    crate::windows::sticky::tuck(&app);
+    crate::windows::sticky::open(&app, OpenRequest::Shortcut);
+}

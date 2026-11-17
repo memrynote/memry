@@ -86,6 +86,15 @@ fn latest_draft(app: &AppHandle<Wry>) -> Option<String> {
 }
 
 fn open_on_main(app: &AppHandle<Wry>, request: OpenRequest, latest: Option<String>) {
+    // Off macOS, tucking the last window started the quit, which would end a new sticky with
+    // whatever the user typed into it.
+    if startup::shutdown_started() {
+        tracing::info!(
+            scope = "StickyWindow",
+            "sticky not opened: the app is quitting"
+        );
+        return;
+    }
     let existing = app.get_webview_window(LABEL);
     let step =
         app.state::<StickyWindow>()
@@ -216,17 +225,7 @@ fn open_after_removal(app: &AppHandle<Wry>, request: OpenRequest, latest: Option
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
         let target = app.clone();
-        let scheduled = app.run_on_main_thread(move || {
-            // Destroying the last window asked the app to quit.
-            if startup::shutdown_started() {
-                tracing::info!(
-                    scope = "StickyWindow",
-                    "sticky not opened: the app is quitting"
-                );
-            } else {
-                open_on_main(&target, request, latest);
-            }
-        });
+        let scheduled = app.run_on_main_thread(move || open_on_main(&target, request, latest));
         if let Err(error) = scheduled {
             tracing::warn!(scope = "StickyWindow", "could not open the sticky: {error}");
         }

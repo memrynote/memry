@@ -190,6 +190,8 @@ driver's. `specs/editor/two-window-typing.e2e.ts` types in one window and reads 
 
 `e2e_open_sticky` (`src-tauri/src/e2e/sticky.rs`) opens the sticky window as its shortcut does
 (`unfold: false`) or as the edge tab unfolds a draft (`unfold: true`, `draftId` or null for blank).
+`e2e_tuck_and_open_sticky` tucks it and presses the shortcut in one step, the race between a tuck
+that starts the quit (Windows, Linux) and the next shortcut.
 
 ## Clipboard
 
