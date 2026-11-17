@@ -24,6 +24,7 @@ use rusqlite::{Connection, params};
 
 use crate::api::errors::StorageError;
 use crate::crdt::blocks::Block;
+use crate::domain::journal_rules::canonical_journal_id;
 use crate::domain::note_meta;
 use crate::domain::notes::names::name_key;
 use crate::domain::wiki_target::{self, WikiNames};
@@ -63,8 +64,20 @@ impl LinkChanges {
         self.sources.insert(id.to_owned());
         let moved = before.symmetric_difference(after);
         self.targets
-            .extend(moved.filter_map(|(_, target_id)| target_id.clone()));
+            .extend(moved.filter_map(|(title, target_id)| announced(title, target_id)));
     }
+}
+
+/// The note or day a row's change is announced to: its resolved target, or for a link left
+/// unresolved under a date, the unwritten day by its `j<date>` id, whose backlinks list it
+/// (`link_reads::incoming`).
+fn announced(title: &str, target_id: &Option<String>) -> Option<String> {
+    target_id
+        .clone()
+        .or_else(|| match note_meta::journal_date_of(title) {
+            Some((date, false)) => Some(canonical_journal_id(&date)),
+            _ => None,
+        })
 }
 
 /// One source's links: each target title and the id it resolved to.
@@ -186,7 +199,9 @@ pub(super) fn reresolve(
                     params![source_id, title, now],
                 )
                 .map_err(failed)?;
-            changes.targets.extend(stored.into_iter().chain(now));
+            changes
+                .targets
+                .extend(announced(&title, &stored).into_iter().chain(now));
             changes.sources.insert(source_id);
         }
     }
@@ -200,5 +215,29 @@ pub(super) fn target_id(names: &WikiNames, title: &str) -> Option<String> {
     match note_meta::journal_date_of(title) {
         Some((date, true)) => names.journal_on(&date).map(str::to_owned),
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn rows(links: &[(&str, Option<&str>)]) -> Rows {
+        links
+            .iter()
+            .map(|(title, id)| ((*title).to_owned(), id.map(str::to_owned)))
+            .collect()
+    }
+
+    #[test]
+    fn a_link_to_an_unwritten_day_names_the_day_as_a_target() {
+        let mut changes = LinkChanges::default();
+        let after = rows(&[("2036-05-08", None), ("Ghost", None)]);
+        changes.note("n1", &Rows::new(), &after);
+        assert_eq!(changes.targets, BTreeSet::from(["j2036-05-08".to_owned()]));
+
+        let mut changes = LinkChanges::default();
+        changes.note("n1", &after, &Rows::new());
+        assert_eq!(changes.targets, BTreeSet::from(["j2036-05-08".to_owned()]));
     }
 }

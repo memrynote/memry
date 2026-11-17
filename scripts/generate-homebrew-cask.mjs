@@ -9,6 +9,17 @@
 //   node scripts/generate-homebrew-cask.mjs --selfcheck
 import assert from 'node:assert/strict'
 
+import { isMain } from './release/is-main.mjs'
+
+// The Tauri app's own directories, named from the bundle identifier, and Velopack's package
+// cache (velopack 1.2.161 lib-rust/src/locator.rs: ~/Library/Caches/velopack/<app id>).
+export const TAURI_ZAP_PATHS = [
+  '~/Library/Application Support/com.memrynote.memry',
+  '~/Library/Caches/velopack/MemryNote',
+  '~/Library/Logs/com.memrynote.memry',
+  '~/Library/WebKit/com.memrynote.memry'
+]
+
 export function renderCask({ tag, appVersion, shaArm, shaX64 }) {
   for (const [field, value] of Object.entries({ tag, appVersion, shaArm, shaX64 })) {
     if (!value) throw new Error(`Missing required field: ${field}`)
@@ -47,11 +58,13 @@ export function renderCask({ tag, appVersion, shaArm, shaX64 }) {
     end
   end
 
-  depends_on macos: :monterey
+  depends_on macos: :ventura
 
   app "MemryNote.app"
 
-  # Three naming eras coexist. Today app.name is package.json "name"
+  # The com.memrynote.memry directories under Application Support, Logs and WebKit and
+  # Caches/velopack/MemryNote belong to the Tauri app. The rest belong to Electron builds.
+  # Three Electron naming eras coexist. Today app.name is package.json "name"
   # (@memry/desktop) — electron-builder never writes productName into the asar —
   # so live app state (Chromium profile, crdt-store, models, config) sits under
   # @memry/, logs under Logs/@memry, and electron-updater's cache under
@@ -65,17 +78,21 @@ export function renderCask({ tag, appVersion, shaArm, shaX64 }) {
   # (default ~/Documents/Memry) and is deliberately NOT zapped.
   zap trash: [
     "~/Library/Application Support/@memry",
+    "~/Library/Application Support/com.memrynote.memry",
     "~/Library/Application Support/MemryNote",
     "~/Library/Application Support/memrynote",
     "~/Library/Caches/@memrydesktop-updater",
     "~/Library/Caches/com.memrynote.memry",
     "~/Library/Caches/com.memrynote.memry.ShipIt",
     "~/Library/Caches/memrynote-updater",
+    "~/Library/Caches/velopack/MemryNote",
     "~/Library/HTTPStorages/com.memrynote.memry",
     "~/Library/Logs/@memry",
+    "~/Library/Logs/com.memrynote.memry",
     "~/Library/Logs/memrynote",
     "~/Library/Preferences/com.memrynote.memry.plist",
     "~/Library/Saved Application State/com.memrynote.memry.savedState",
+    "~/Library/WebKit/com.memrynote.memry",
   ]
 end
 `
@@ -95,7 +112,7 @@ function parseArgs(argv) {
   return args
 }
 
-function selfcheck() {
+export function selfcheck() {
   const out = renderCask({
     tag: 'v2026-07-01.2',
     appVersion: '2026.701.2',
@@ -120,6 +137,14 @@ function selfcheck() {
   assert.match(out, /"~\/Library\/Application Support\/memrynote"/)
   assert.match(out, /"~\/Library\/Caches\/memrynote-updater"/)
   assert.match(out, /"~\/Library\/Logs\/@memry"/)
+  // The Tauri app is built with MACOSX_DEPLOYMENT_TARGET=13.0 (macOS 13, Ventura).
+  assert.match(out, /^ {2}depends_on macos: :ventura$/m)
+  const zap = out.match(/zap trash: \[([\s\S]*?)\]/)?.[1] ?? ''
+  for (const path of TAURI_ZAP_PATHS) {
+    assert.ok(zap.includes(`    "${path}",\n`), `zap must list ${path}`)
+  }
+  // Vault content is never zapped.
+  assert.ok(!zap.includes('Documents'), 'zap must never touch the vault')
   // Regex backslashes must survive templating (JS drops unknown escapes).
   assert.match(out, /\\d\{4\}-\\d\{2\}-\\d\{2\}/)
   assert.throws(() =>
@@ -131,16 +156,18 @@ function selfcheck() {
   console.log('selfcheck ok')
 }
 
-const args = parseArgs(process.argv.slice(2))
-if (args.selfcheck) {
-  selfcheck()
-} else {
-  process.stdout.write(
-    renderCask({
-      tag: args.tag,
-      appVersion: args['app-version'],
-      shaArm: args['sha-arm'],
-      shaX64: args['sha-x64']
-    })
-  )
+if (isMain(import.meta)) {
+  const args = parseArgs(process.argv.slice(2))
+  if (args.selfcheck) {
+    selfcheck()
+  } else {
+    process.stdout.write(
+      renderCask({
+        tag: args.tag,
+        appVersion: args['app-version'],
+        shaArm: args['sha-arm'],
+        shaX64: args['sha-x64']
+      })
+    )
+  }
 }
