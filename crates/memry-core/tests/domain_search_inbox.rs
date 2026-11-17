@@ -295,14 +295,14 @@ fn an_opened_capture_is_a_recent_until_it_is_deleted() {
     reindex(&data, &index, NOW);
     let hit = inbox(&data, &index, "kestrel").remove(0);
 
-    recents::record(&data, &hit, "kestrel", NOW).expect("record");
-    let listed = recents::list(&data).expect("list");
+    recents::record(&data, &hit, "kestrel", None, 10, NOW).expect("record");
+    let listed = recents::list(&data, 10).expect("list");
     assert_eq!(listed.len(), 1);
     assert_eq!(listed[0].hit.kind, HitKind::Inbox);
     assert_eq!(listed[0].hit.id, "c1");
 
     apply(&data, "c1", "{}", Some(NOW + 1_000), NOW + 1_000);
-    assert!(recents::list(&data).expect("list").is_empty());
+    assert!(recents::list(&data, 10).expect("list").is_empty());
 }
 
 /// `fts-inbox.ts:47-81`: `insertFtsInboxItem` (delete then insert, one
