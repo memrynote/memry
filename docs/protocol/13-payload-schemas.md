@@ -495,9 +495,9 @@ the merge. An undo tombstones only the occurrence its own completion created
 
 **Series end day (#3538).** The core reads `endDate` as an end **day**. An
 occurrence due on or before that day is in the series
-(`crates/memry-core/src/domain/recurrence.rs:95`, `:119`), and a completion
+(`crates/memry-core/src/domain/recurrence.rs:97`, `:121`), and a completion
 creates the next occurrence only up to the end day's local midnight
-(`recurrence.rs:143-145`). Both rules hold in every time zone. Desktop reads
+(`recurrence.rs:145-147`). Both rules hold in every time zone. Desktop reads
 `endDate` with `new Date`, as UTC midnight of the end day
 (`packages/domain-tasks/src/repeat-completion.ts:28`), and compares local
 instants against it (`packages/domain-tasks/src/parsing/recurrence.ts:132`,
@@ -558,7 +558,7 @@ joins the map on every apply path and heals by chapter 06 §6.11
 (`crates/memry-core/src/domain/tasks/fields.rs:128`), pinned by
 `crates/memry-core/tests/task_field_values.rs`, and copies the map to a duplicate and to a next
 occurrence (`crates/memry-core/src/domain/tasks/create.rs:127`,
-`crates/memry-core/src/domain/tasks/lifecycle.rs:35`), pinned by
+`crates/memry-core/src/domain/tasks/lifecycle.rs:37`), pinned by
 `crates/memry-core/tests/versioned_keys_carry.rs`.
 
 ### 13.7.4 `project` — `:239-253`
