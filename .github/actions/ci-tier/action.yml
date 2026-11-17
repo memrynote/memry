@@ -30,8 +30,10 @@ inputs:
     default: ''
   post-merge:
     description: >-
-      'true' lets a push to feat/tauri-v2 run only the legs the merge queue skips (`post_merge`) when
-      the calling workflow's merge_group run on the same SHA succeeded. Needs `actions: read`.
+      'true' lets a push to feat/tauri-v2 skip every leg (`post_merge=covered`) when the calling
+      workflow's merge_group run on the same SHA succeeded, and a scheduled run of feat/tauri-v2 run
+      the legs the merge queue skips (`post_merge=true`) unless a scheduled run already finished on
+      that SHA. Needs `actions: read`.
     default: 'false'
 outputs:
   full:
@@ -68,7 +70,11 @@ outputs:
     description: The Linux arm64 memry-ml-worker leg runs (full tier, the merge queue included, or a fast-tier PR that touches the worker, its native inputs, the vectors and tessdata its tests read, or their CI)
     value: ${{ steps.tier.outputs.rust_linux_arm64 }}
   post_merge:
-    description: A push to feat/tauri-v2 whose SHA passed this workflow in the merge queue and changed no cache-key input; only the legs the queue skips run
+    description: >-
+      `covered` for a push to feat/tauri-v2 whose SHA passed this workflow in the merge queue and
+      changed no cache-key input (no leg runs), or for a scheduled run on a SHA a scheduled run already
+      finished; `true` for another scheduled run of feat/tauri-v2 (only the legs the queue skips);
+      `false` otherwise
     value: ${{ steps.tier.outputs.post_merge }}
 runs:
   using: composite
@@ -137,4 +143,20 @@ runs:
           echo "::warning::could not list the changed files; running the path-gated jobs"
         fi
 
-        printf '%s\n' "$files" | LISTED="$listed" PATCHES="$patches" QUEUE_TESTED="$queue_tested" bash "$GITHUB_ACTION_PATH/tier.sh" >> "$GITHUB_OUTPUT"
+        # A scheduled run skips a SHA a scheduled run of this workflow already finished, passed or failed
+        # (#5035). A failed lookup runs the legs.
+        schedule_tested=false
+        if [ "$POST_MERGE" = true ] && [ "$EVENT" = schedule ] && [ "$REF" = "refs/heads/feat/tauri-v2" ]; then
+          workflow_path=${WORKFLOW_REF#"$REPO/"}
+          workflow_path=${workflow_path%%@*}
+          if finished=$(gh api "repos/$REPO/actions/runs?head_sha=$PUSH_AFTER&event=schedule&status=completed&per_page=100" \
+              --jq "[.workflow_runs[] | select(.path == \"$workflow_path\" and .id != $RUN_ID and (.conclusion == \"success\" or .conclusion == \"failure\"))] | length"); then
+            if [ "$finished" -gt 0 ]; then schedule_tested=true; fi
+          else
+            echo "::warning::could not look up the scheduled runs of $PUSH_AFTER; running the post-merge legs"
+          fi
+          echo "finished scheduled runs at $PUSH_AFTER: ${finished:-unknown}" >&2
+        fi
+
+        printf '%s\n' "$files" | LISTED="$listed" PATCHES="$patches" QUEUE_TESTED="$queue_tested" SCHEDULE_TESTED="$schedule_tested" \
+          bash "$GITHUB_ACTION_PATH/tier.sh" >> "$GITHUB_OUTPUT"

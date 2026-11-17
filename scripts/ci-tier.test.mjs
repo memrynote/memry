@@ -119,7 +119,9 @@ function tier({
   patches,
   listed = true,
   sourceRoot = source,
-  queueTested = false
+  queueTested = false,
+  scheduleTested = false,
+  postMerge = true
 }) {
   let patchPath = join(scratch, 'missing.jsonl')
   if (patches) {
@@ -142,7 +144,9 @@ function tier({
       LISTED: String(listed),
       PATCHES: patchPath,
       SOURCE_ROOT: sourceRoot,
-      QUEUE_TESTED: String(queueTested)
+      QUEUE_TESTED: String(queueTested),
+      SCHEDULE_TESTED: String(scheduleTested),
+      POST_MERGE: String(postMerge)
     },
     encoding: 'utf8'
   })
@@ -960,15 +964,38 @@ describe('ci tier outside PRs into feat/tauri-v2', () => {
 })
 
 // A merge-queue merge fast-forwards feat/tauri-v2 to the SHA the queue tested, so the push that follows
-// runs only what the queue skipped (#5035). Losing a leg here would leave it untested everywhere.
-describe('ci tier for a post-merge push to feat/tauri-v2', () => {
+// runs nothing, and the legs the queue skips run on the 6-hourly schedule (#5035). Losing a leg here
+// would leave it untested everywhere.
+describe('ci tier after a merge into feat/tauri-v2', () => {
   const push = (files, queueTested = true, listed = true) =>
     tier({ event: 'push', ref: 'refs/heads/feat/tauri-v2', base: '', files, queueTested, listed })
+  const scheduled = (scheduleTested = false) =>
+    tier({
+      event: 'schedule',
+      ref: 'refs/heads/feat/tauri-v2',
+      base: '',
+      files: [],
+      listed: false,
+      scheduleTested
+    })
   const code = ['crates/memry-desktop/src/shell/paths.rs', 'apps/desktop-tauri/src/app.tsx']
 
-  it('runs only the legs the merge queue skips when the SHA passed the queue', () => {
+  it('runs no leg on a push the queue passed', () => {
     const out = push(code)
+    assert.equal(out.post_merge, 'covered')
+    assert.equal(out.macos, false)
+    assert.equal(out.swift, false)
+    assert.equal(out.rust_linux_arm64, false)
+    assert.deepEqual(rustLegs(out), [])
+    assert.deepEqual(tauriBuilds(out), [])
+  })
+
+  it('runs the legs the merge queue skips on the schedule, once per SHA', () => {
+    const out = scheduled()
     assert.equal(out.post_merge, true)
+    assert.equal(out.macos, true)
+    assert.equal(out.swift, true)
+    assert.equal(out.intel, false)
     assert.equal(out.rust_linux_arm64, false)
     assert.deepEqual(rustLegs(out), ['macos-15 all'])
     assert.deepEqual(modelLegs(out), ['macos-15 all'])
@@ -977,19 +1004,23 @@ describe('ci tier for a post-merge push to feat/tauri-v2', () => {
       'macos-arm64 e2e',
       'windows-arm64 e2e'
     ])
+    const again = scheduled(true)
+    assert.equal(again.post_merge, 'covered')
+    assert.deepEqual(rustLegs(again), [])
+    assert.deepEqual(tauriBuilds(again), [])
   })
 
-  it('covers every leg of a full push between the merge queue and the post-merge run', () => {
+  it('covers every leg of a full push between the merge queue and the schedule', () => {
     const full = push(code, false)
-    const postMerge = push(code)
     const queue = tier({ event: 'merge_group', base: '', files: code })
     const sorted = (names) => [...new Set(names)].toSorted((a, b) => a.localeCompare(b))
-    assert.deepEqual(sorted([...rustLegs(queue), ...rustLegs(postMerge)]), sorted(rustLegs(full)))
+    assert.deepEqual(sorted([...rustLegs(queue), ...rustLegs(scheduled())]), sorted(rustLegs(full)))
     assert.deepEqual(
-      sorted([...tauriBuilds(queue, true), ...tauriBuilds(postMerge)]),
+      sorted([...tauriBuilds(queue, true), ...tauriBuilds(scheduled())]),
       sorted(tauriBuilds(full))
     )
     assert.equal(queue.rust_linux_arm64, true)
+    assert.equal(queue.swift, true)
   })
 
   it('runs every leg for a SHA the queue did not pass, an unreadable list or a cache-key input', () => {
@@ -1013,14 +1044,42 @@ describe('ci tier for a post-merge push to feat/tauri-v2', () => {
     for (const out of outs) {
       assert.equal(out.post_merge, false)
       assert.equal(out.full, true)
+      assert.equal(out.macos, true)
       assert.equal(out.rust_linux_arm64, true)
+      assert.ok(rustLegs(out).includes('macos-15 all'))
     }
   })
 
-  it('applies to pushes to feat/tauri-v2 only', () => {
+  // Desktop CI (Electron) reads only `electron` and passes no `post-merge` input: its path must not move.
+  it('leaves the electron output as it was', () => {
+    const electronFiles = ['apps/desktop/src/main/index.ts', ...code]
+    for (const args of [
+      { event: 'push', ref: 'refs/heads/feat/tauri-v2', base: '', files: electronFiles },
+      { event: 'push', ref: 'refs/heads/feat/tauri-v2', base: '', files: code },
+      { event: 'schedule', ref: 'refs/heads/feat/tauri-v2', base: '', files: [], listed: false },
+      { event: 'merge_group', base: '', files: electronFiles },
+      { files: electronFiles, patches: {} }
+    ]) {
+      const before = tier(args).electron
+      assert.equal(tier({ ...args, queueTested: true }).electron, before)
+      assert.equal(tier({ ...args, scheduleTested: true }).electron, before)
+    }
+    assert.equal(push(['apps/desktop/src/main/index.ts', ...code]).electron, true)
+  })
+
+  it('applies to pushes and schedules of feat/tauri-v2 only', () => {
     for (const out of [
       tier({ event: 'merge_group', base: '', files: code, queueTested: true }),
       tier({ event: 'push', ref: 'refs/heads/main', base: '', files: code, queueTested: true }),
+      tier({ event: 'schedule', ref: 'refs/heads/main', base: '', files: [], listed: false }),
+      tier({
+        event: 'schedule',
+        ref: 'refs/heads/feat/tauri-v2',
+        base: '',
+        files: [],
+        listed: false,
+        postMerge: false
+      }),
       tier({ files: code, patches: {}, queueTested: true })
     ]) {
       assert.equal(out.post_merge, false)
