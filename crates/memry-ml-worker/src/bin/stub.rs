@@ -21,7 +21,9 @@
 //! `TranscribeLoad` fails for a model path that ends in `missing.bin` and answers `Done` otherwise.
 //! `Transcribe`'s language picks its behaviour: `crash` aborts, `hang` never answers, `xx` answers
 //! `Rejected`, anything else answers the child's pid.
-//! `--crash-before-ready` aborts before the `Ready` frame. Never bundled.
+//! `--crash-before-ready` aborts before the `Ready` frame. A `hold-ready` file in the directory of
+//! `--pdfium-dir` holds the `Ready` frame until it is deleted, after creating `starting` there: how
+//! a test reads the app's state while a child starts. Never bundled.
 
 use std::io::Write;
 use std::path::PathBuf;
@@ -58,6 +60,14 @@ fn main() {
     let markers = marker_dir();
     if std::env::args().any(|arg| arg == "--crash-before-ready") {
         std::process::abort();
+    }
+    if let Some(dir) = &markers
+        && dir.join("hold-ready").exists()
+    {
+        let _ = std::fs::write(dir.join("starting"), b"");
+        while dir.join("hold-ready").exists() {
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
     }
     let mut recording = String::new();
     let result = serve(

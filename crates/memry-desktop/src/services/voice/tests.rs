@@ -11,14 +11,14 @@ use sha2::{Digest, Sha256};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 
-use super::engine::{LocalEngine, limits};
+use super::engine::LocalEngine;
 use super::key::{OpenAiKey, SERVICE};
 use super::model::{FILE, REPO, REVISION, VoiceModel, model_dir};
 use super::*;
 use crate::embedding::download::DownloadError;
 use crate::embedding::service::{ModelProgress, Phase};
 use crate::seams::secure_store::GenericSecrets;
-use crate::services::file_text::WorkerPaths;
+use memry_ml_worker::WorkerError;
 
 fn no_key() -> Result<bool, ()> {
     panic!("the local provider never reads the keychain")
@@ -288,11 +288,10 @@ const BODY: &[u8] = b"ggml test model bytes, not a real model";
 
 /// An engine that never starts a child: the download tests read only its idle state.
 fn idle_engine() -> Arc<LocalEngine> {
-    let paths = WorkerPaths::new(
-        std::path::Path::new("/nonexistent"),
-        std::path::Path::new("/"),
-    );
-    LocalEngine::new(&paths, "/nonexistent/ggml-small.bin".into(), limits())
+    LocalEngine::without_worker(
+        "/nonexistent/ggml-small.bin".into(),
+        "no worker in these tests".into(),
+    )
 }
 
 fn model(url: &str, dir: &std::path::Path, sha: &str) -> VoiceModel {
@@ -303,12 +302,13 @@ fn model(url: &str, dir: &std::path::Path, sha: &str) -> VoiceModel {
 #[tokio::test]
 async fn the_download_verifies_the_file_then_writes_the_marker() {
     let dir = tempfile::tempdir().unwrap();
+    let engine = idle_engine();
     let url = Hub::start(BODY.to_vec(), Vec::new()).await.url.clone();
     let model = model(&url, dir.path(), &sha256(BODY));
     assert!(!model.status(&idle_engine()).downloaded);
 
     let (seen, sink) = recorder();
-    model.download(&sink).await.unwrap();
+    model.download(&engine, &sink).await.unwrap();
 
     assert_eq!(std::fs::read(model.model_path()).unwrap(), BODY);
     let marker: serde_json::Value = serde_json::from_slice(
@@ -341,13 +341,14 @@ async fn the_download_verifies_the_file_then_writes_the_marker() {
 #[tokio::test]
 async fn a_corrupted_download_is_rejected_and_removed() {
     let dir = tempfile::tempdir().unwrap();
+    let engine = idle_engine();
     let mut flipped = BODY.to_vec();
     flipped[3] ^= 0x01;
     let url = Hub::start(flipped, Vec::new()).await.url.clone();
     let model = model(&url, dir.path(), &sha256(BODY));
 
     let (seen, sink) = recorder();
-    let error = model.download(&sink).await.unwrap_err();
+    let error = model.download(&engine, &sink).await.unwrap_err();
 
     assert!(
         matches!(error, DownloadError::HashMismatch { .. }),
@@ -391,12 +392,13 @@ fn electrons_marker_alone_is_not_a_download() {
 #[tokio::test]
 async fn a_cut_download_is_not_downloaded_and_the_next_one_resumes_with_a_range() {
     let dir = tempfile::tempdir().unwrap();
+    let engine = idle_engine();
     let hub = Hub::start(BODY.to_vec(), vec![Answer::Short(10)]).await;
     let model = model(&hub.url, dir.path(), &sha256(BODY));
     let folder = model_dir(dir.path());
 
     let (_, sink) = recorder();
-    let error = model.download(&sink).await.unwrap_err();
+    let error = model.download(&engine, &sink).await.unwrap_err();
     assert!(matches!(error, DownloadError::Incomplete { .. }), "{error}");
     let status = model.status(&idle_engine());
     assert!(!status.downloaded && !status.loading);
@@ -407,7 +409,7 @@ async fn a_cut_download_is_not_downloaded_and_the_next_one_resumes_with_a_range(
         &BODY[..10]
     );
 
-    model.download(&sink).await.unwrap();
+    model.download(&engine, &sink).await.unwrap();
     assert_eq!(hub.ranges(), [None, Some("bytes=10-".to_owned())]);
     assert_eq!(std::fs::read(model.model_path()).unwrap(), BODY);
     let status = model.status(&idle_engine());
@@ -419,11 +421,12 @@ async fn a_cut_download_is_not_downloaded_and_the_next_one_resumes_with_a_range(
 #[tokio::test]
 async fn stop_cancels_the_download_and_keeps_the_reason() {
     let dir = tempfile::tempdir().unwrap();
+    let engine = idle_engine();
     let hub = Hub::start(BODY.to_vec(), vec![Answer::Stall]).await;
     let model = model(&hub.url, dir.path(), &sha256(BODY));
 
     let (seen, sink) = recorder();
-    let (outcome, ()) = tokio::join!(model.download(&sink), async {
+    let (outcome, ()) = tokio::join!(model.download(&engine, &sink), async {
         hub.requested(1).await;
         model.stop();
     });
@@ -440,13 +443,14 @@ async fn stop_cancels_the_download_and_keeps_the_reason() {
 #[tokio::test]
 async fn the_model_is_loading_while_any_download_is_in_flight() {
     let dir = tempfile::tempdir().unwrap();
+    let engine = idle_engine();
     let hub = Hub::start(BODY.to_vec(), vec![Answer::Short(10), Answer::Stall]).await;
     let model = model(&hub.url, dir.path(), &sha256(BODY));
     let (_, sink) = recorder();
 
     // The second download waits for the first, then stalls on the hub.
     let first_ends = async {
-        let first = model.download(&sink).await;
+        let first = model.download(&engine, &sink).await;
         assert!(
             matches!(first, Err(DownloadError::Incomplete { .. })),
             "{first:?}"
@@ -457,8 +461,43 @@ async fn the_model_is_loading_while_any_download_is_in_flight() {
     tokio::select! {
         biased;
         loading = first_ends => assert!(loading, "the second download is still in flight"),
-        second = model.download(&sink) => panic!("the stalled download ended: {second:?}"),
+        second = model.download(&engine, &sink) => panic!("the stalled download ended: {second:?}"),
     }
     // A download dropped in flight leaves no loading behind.
     assert!(!model.status(&idle_engine()).loading);
+}
+
+#[test]
+fn an_engine_without_a_worker_fails_each_call_with_the_reason() {
+    let engine = idle_engine();
+    let (seen, sink) = recorder();
+    let outcome = engine.transcribe(b"RIFF", "en", &sink);
+    assert!(
+        matches!(&outcome, Err(WorkerError::Start(reason)) if reason == "no worker in these tests"),
+        "{outcome:?}"
+    );
+    assert!(!engine.loaded() && !engine.loading());
+    assert!(
+        engine
+            .error()
+            .is_some_and(|error| error.contains("no worker in these tests"))
+    );
+    assert_eq!(
+        seen.lock().unwrap().last().map(|event| event.phase),
+        Some(Phase::Error)
+    );
+}
+
+#[tokio::test]
+async fn a_download_clears_an_earlier_load_failure() {
+    let dir = tempfile::tempdir().unwrap();
+    let engine = idle_engine();
+    let url = Hub::start(BODY.to_vec(), Vec::new()).await.url.clone();
+    let model = model(&url, dir.path(), &sha256(BODY));
+    let (_, sink) = recorder();
+    assert!(engine.transcribe(b"RIFF", "en", &sink).is_err());
+    assert!(model.status(&engine).error.is_some());
+
+    model.download(&engine, &sink).await.unwrap();
+    assert_eq!(model.status(&engine).error, None);
 }

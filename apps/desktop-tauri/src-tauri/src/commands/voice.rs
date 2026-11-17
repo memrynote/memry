@@ -4,13 +4,11 @@
 //! engine (whisper.cpp in the `memry-ml-worker` sidecar, on its own child) is managed here too, so
 //! the status reports it loaded and the `stop-utility-processes` step ends it.
 
-use std::path::Path;
 use std::sync::Arc;
 
 use memry_desktop::launch_env::LaunchEnv;
 use memry_desktop::paths::{AppPaths, DEVICE_VAR};
 use memry_desktop::seams::secure_store::KeyringStore;
-use memry_desktop::services::file_text::WorkerPaths;
 use memry_desktop::services::voice::engine::{self, LocalEngine};
 use memry_desktop::services::voice::key::OpenAiKey;
 use memry_desktop::services::voice::model::{VoiceModel, VoiceModelStatus};
@@ -45,13 +43,19 @@ fn manage(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     let keychain = app.state::<Arc<KeyringStore>>().inner().clone();
     let model = VoiceModel::new(&app.state::<AppPaths>().data_dir);
     // As `manage ml worker`, a path that cannot be resolved does not fail the launch: the engine
-    // then fails each transcription with the reason.
-    let paths = crate::ml_worker::worker_paths(app).unwrap_or_else(|error| {
-        tracing::error!(scope = "Voice", "no transcription worker this run: {error}");
-        WorkerPaths::new(Path::new(""), Path::new(""))
-    });
+    // then fails each transcription with the reason and never spawns a worker.
+    let engine = match crate::ml_worker::worker_paths(app) {
+        Ok(paths) => LocalEngine::new(&paths, model.model_path(), engine::limits()),
+        Err(error) => {
+            tracing::error!(scope = "Voice", "no transcription worker this run: {error}");
+            LocalEngine::without_worker(
+                model.model_path(),
+                format!("the transcription worker was not found: {error}"),
+            )
+        }
+    };
     let voice = Arc::new(Voice {
-        engine: LocalEngine::new(&paths, model.model_path(), engine::limits()),
+        engine,
         model,
         key: OpenAiKey::new(keychain, device.as_deref()),
     });
@@ -110,15 +114,19 @@ pub async fn settings_get_voice_model_status(
 pub async fn settings_download_voice_model(app: AppHandle<Wry>) -> Result<(), CommandError> {
     let voice = voice(&app);
     let progress = |event| broadcast(&app, VoiceModelProgressEvent::from(event));
-    voice.model.download(&progress).await.map_err(|error| {
-        let error = CommandError::new(
-            ErrorKind::Transport,
-            "voice_model_download_failed",
-            error.to_string(),
-        );
-        log_failure("settings_download_voice_model", &error);
-        error
-    })
+    voice
+        .model
+        .download(&voice.engine, &progress)
+        .await
+        .map_err(|error| {
+            let error = CommandError::new(
+                ErrorKind::Transport,
+                "voice_model_download_failed",
+                error.to_string(),
+            );
+            log_failure("settings_download_voice_model", &error);
+            error
+        })
 }
 
 /// `settings:getVoiceRecordingReadiness`.

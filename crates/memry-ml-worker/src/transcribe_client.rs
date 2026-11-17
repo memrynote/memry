@@ -21,7 +21,8 @@ impl Supervisor {
 
     /// The text Whisper hears in `wav`, a WAV file, in `language` (a Whisper code such as `en`).
     /// The worker loads `model` first when it is not loaded. A file it cannot decode and an
-    /// unknown language are [`WorkerError::Rejected`].
+    /// unknown language are [`WorkerError::Rejected`]; a language that is not ASCII letters is
+    /// rejected here, with no child started.
     pub fn transcribe(
         &self,
         model: &Path,
@@ -34,7 +35,12 @@ impl Supervisor {
                 wav.len()
             )));
         }
-        if language.len() > MAX_LANGUAGE_BYTES {
+        // Whisper's codes are ASCII letters; anything else would cost a decode and a model load
+        // before the worker refuses it.
+        if language.is_empty()
+            || language.len() > MAX_LANGUAGE_BYTES
+            || !language.bytes().all(|byte| byte.is_ascii_alphabetic())
+        {
             return Err(WorkerError::Rejected(format!(
                 "unknown transcription language {language}"
             )));

@@ -5,8 +5,10 @@
 //! every C and C++ reader does: a crash in whisper.cpp ends that child, never the app.
 //!
 //! The samples are 16 kHz mono, as `decode_wav` gives them. Greedy decoding, no translation, the
-//! language the caller names (the service applies Electron's default `en`). The text is the
-//! segments joined and trimmed, as `normalizeTranscriptionResult` trims the pipeline's text.
+//! language the caller names (the service applies Electron's default `en`), and no non-speech
+//! tokens such as `[BLANK_AUDIO]` or `(music)`, which `Xenova/whisper-small` suppresses too (the
+//! `suppress_tokens` of its `generation_config.json`). The text is the segments joined and
+//! trimmed, as `normalizeTranscriptionResult` trims the pipeline's text.
 
 use std::path::Path;
 
@@ -28,6 +30,18 @@ impl WhisperEngine {
     /// Loads the ggml model at `model`. whisper.cpp logs nothing: its log hooks are installed
     /// with no backend, so a load writes no lines to the worker's stderr.
     pub fn load(model: &Path) -> Result<Self, MlError> {
+        // ggml is built without `-march=native` for the x86 features below
+        // (`crates/.cargo/config.toml`): a CPU without them would die on an illegal instruction.
+        #[cfg(target_arch = "x86_64")]
+        if !(is_x86_feature_detected!("avx2")
+            && is_x86_feature_detected!("fma")
+            && is_x86_feature_detected!("f16c")
+            && is_x86_feature_detected!("bmi2"))
+        {
+            return Err(MlError::Load(
+                "local transcription needs a CPU with AVX2".into(),
+            ));
+        }
         whisper_rs::install_logging_hooks();
         let context = whisper_rs::WhisperContext::new_with_params(
             model,
@@ -37,14 +51,25 @@ impl WhisperEngine {
         Ok(Self { context })
     }
 
+    /// Refuses a `language` Whisper does not know, with no model loaded: [`MlError::Input`].
+    /// Whisper's codes and names are ASCII letters; anything else never reaches whisper.cpp,
+    /// whose lookup panics on a NUL byte.
+    pub fn check_language(language: &str) -> Result<(), MlError> {
+        if !language.is_empty()
+            && language.bytes().all(|byte| byte.is_ascii_alphabetic())
+            && whisper_rs::get_lang_id(language).is_some()
+        {
+            return Ok(());
+        }
+        Err(MlError::Input(format!(
+            "unknown transcription language {language}"
+        )))
+    }
+
     /// The text in `samples` (16 kHz mono). An unknown `language` and an empty recording are
     /// [`MlError::Input`].
     pub fn transcribe(&self, samples: &[f32], language: &str) -> Result<String, MlError> {
-        if whisper_rs::get_lang_id(language).is_none() {
-            return Err(MlError::Input(format!(
-                "unknown transcription language {language}"
-            )));
-        }
+        Self::check_language(language)?;
         if samples.is_empty() {
             return Err(MlError::Input("the recording holds no audio".into()));
         }
@@ -55,6 +80,7 @@ impl WhisperEngine {
         params.set_n_threads(threads());
         params.set_language(Some(language));
         params.set_translate(false);
+        params.set_suppress_nst(true);
         params.set_print_special(false);
         params.set_print_progress(false);
         params.set_print_realtime(false);
@@ -79,6 +105,11 @@ impl WhisperEngine {
         Err(MlError::Load(
             "local transcription is not available on Windows ARM64 yet".into(),
         ))
+    }
+
+    /// No language loads here; the load's reason is the one the app shows.
+    pub fn check_language(_language: &str) -> Result<(), MlError> {
+        Ok(())
     }
 
     pub fn transcribe(&self, _samples: &[f32], _language: &str) -> Result<String, MlError> {

@@ -34,7 +34,8 @@ default = ["native"]
 # without `embed` answers every embedding op with a failure: the dev loop builds one when ONNX
 # Runtime is not at hand (apps/desktop-tauri/scripts/dev-worker.mjs), and one without `ocr`, which
 # fails every OCR op, when cmake is not. whisper.cpp (`transcribe`) lives in memry-ml, so it needs
-# ONNX Runtime and cmake both; without it every transcription op fails. Releases build `native`.
+# ONNX Runtime and cmake both, and libclang for its bindgen; without it every transcription op
+# fails. Releases build `native`.
 native = ["pdf", "ocr", "embed", "transcribe"]
 pdf = ["dep:pdfium-render", "dep:image"]
 ocr = ["dep:image"]

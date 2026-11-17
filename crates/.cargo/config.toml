@@ -23,9 +23,12 @@
 # whisper.cpp for memry-ml's `whisper` feature (crates/AGENTS.md, whisper.cpp). whisper-rs-sys
 # passes every `GGML_*` and `CMAKE_*` variable to its cmake build, and nothing else reads them.
 # - `GGML_NATIVE` off: ggml's default is `-march=native`, which builds for the build machine's CPU
-#   and dies on an older one. Off, x86 builds for AVX2, FMA and F16C; ARM for the target's base.
+#   and dies on an older one. Off, x86 builds for SSE4.2, AVX, AVX2, BMI2, FMA and F16C
+#   (`WhisperEngine::load` refuses a CPU without them); ARM for the target's base.
 # - The static VC runtime, which the worker links (`static_vcruntime` in its build.rs), as the
 #   Tesseract build there sets it. The two variables do nothing outside MSVC.
+# whisper-rs-sys generates its bindings with bindgen, which needs libclang. Its bundled bindings
+# are no way around that: they hold Linux x86_64 layouts and fail to compile for Windows MSVC.
 # A build run from outside `crates/` misses this file and has to set the same variables.
 [env]
 GGML_NATIVE = "OFF"

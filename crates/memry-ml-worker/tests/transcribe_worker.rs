@@ -15,7 +15,11 @@ fn supervisor(limits: Limits) -> Supervisor {
     Supervisor::new(
         PathBuf::from(env!("CARGO_BIN_EXE_memry-ml-worker-stub")),
         Vec::new(),
-        limits,
+        Limits {
+            // A hang guard: a fresh link under load can take over the default to start.
+            start_timeout: Duration::from_secs(60),
+            ..limits
+        },
         Arc::new(SystemClock),
     )
 }
@@ -75,6 +79,19 @@ fn a_recording_over_the_cap_never_reaches_the_worker() {
         "{outcome:?}"
     );
     assert_eq!(worker.pid(), None, "no child was started for it");
+}
+
+#[test]
+fn a_language_that_is_not_letters_never_reaches_the_worker() {
+    let worker = supervisor(Limits::default());
+    for language in ["", "e\0n", "en-US", "é"] {
+        let outcome = transcribe(&worker, language);
+        assert!(
+            matches!(outcome, Err(WorkerError::Rejected(_))),
+            "{language:?}: {outcome:?}"
+        );
+    }
+    assert_eq!(worker.pid(), None, "no child was started for them");
 }
 
 #[test]

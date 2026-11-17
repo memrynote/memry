@@ -95,7 +95,8 @@ impl VoiceModel {
     }
 
     /// `getVoiceModelStatus`: `loaded` while the worker that loaded the model runs, `loading`
-    /// during the download and the load, and the engine's last failure before the download's.
+    /// during the download and the load, and the newest failure: a download clears the
+    /// engine's, as Electron's progress clears its `lastError` (`voice-model.ts:317`).
     pub fn status(&self, engine: &LocalEngine) -> VoiceModelStatus {
         VoiceModelStatus {
             name: MODEL_NAME.to_owned(),
@@ -113,8 +114,10 @@ impl VoiceModel {
 
     /// `downloadVoiceModel`: fetches and verifies the file, then writes the marker, reporting
     /// Electron's progress phases (`downloading`, `loading` at 95, then `ready` or `error`).
+    /// Success clears `engine`'s last failure.
     pub async fn download(
         &self,
+        engine: &LocalEngine,
         progress: &(dyn Fn(ModelProgress) + Sync),
     ) -> Result<(), DownloadError> {
         let in_flight = InFlight::enter(&self.downloading);
@@ -135,6 +138,7 @@ impl VoiceModel {
         match &outcome {
             Ok(()) => {
                 *last_error = None;
+                engine.clear_error();
                 progress(ModelProgress::new(
                     Phase::Ready,
                     100,

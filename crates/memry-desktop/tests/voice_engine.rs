@@ -3,7 +3,8 @@
 //! whose transcription language picks its behaviour. The model status turns `loaded` with the
 //! first transcription, as Electron's `VoiceModelBridge` does on the worker's `ready` progress
 //! (`apps/desktop/src/main/inbox/voice-model.ts:280-296`), and back when the child that loaded it
-//! ends: a crash (`failProcess`), a timeout, the idle exit (`IDLE_SHUTDOWN_MS`) and a stop.
+//! ends: a crash (`failProcess`), a timeout, the idle exit (`IDLE_SHUTDOWN_MS`) and a stop. A status
+//! read never waits on a child that is starting.
 
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -19,6 +20,11 @@ fn engine(model: &Path, limits: Limits) -> Arc<LocalEngine> {
     let paths = WorkerPaths {
         program: PathBuf::from(env!("CARGO_BIN_EXE_memry-desktop-worker-stub")),
         pdfium_dir: model.with_file_name("pdfium"),
+    };
+    let limits = Limits {
+        // A hang guard: a fresh link under load can take over the app's 10 s to start.
+        start_timeout: Duration::from_secs(60),
+        ..limits
     };
     LocalEngine::new(&paths, model.to_path_buf(), limits)
 }
@@ -140,4 +146,34 @@ fn the_idle_child_exits_and_the_model_is_no_longer_loaded() {
         std::thread::sleep(Duration::from_millis(20));
     }
     assert!(!engine.loaded(), "the idle child exited");
+}
+
+#[test]
+fn the_status_reads_while_a_child_is_starting() {
+    let dir = tempfile::tempdir().unwrap();
+    let model = voice_model(dir.path());
+    let engine = engine(&model.model_path(), limits());
+    // The stub holds its `Ready` frame while `hold-ready` is there (`stub.rs`).
+    let markers = model.model_path().with_file_name("pdfium");
+    std::fs::create_dir_all(&markers).unwrap();
+    std::fs::write(markers.join("hold-ready"), b"").unwrap();
+    let transcription = std::thread::spawn({
+        let engine = engine.clone();
+        move || {
+            let (_, sink) = recorder();
+            engine.transcribe(b"RIFF", "en", &sink)
+        }
+    });
+    let deadline = Instant::now() + Duration::from_secs(60);
+    while !markers.join("starting").exists() && Instant::now() < deadline {
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    assert!(markers.join("starting").exists(), "the child is starting");
+
+    // Waiting on the start would last until the start timeout fails the load.
+    let status = model.status(&engine);
+    std::fs::remove_file(markers.join("hold-ready")).unwrap();
+    assert!(status.loading && !status.loaded, "{status:?}");
+    transcription.join().unwrap().unwrap();
+    assert!(model.status(&engine).loaded);
 }

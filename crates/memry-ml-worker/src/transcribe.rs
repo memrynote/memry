@@ -4,9 +4,10 @@
 //! worker of their own, so this child loads no other model.
 //!
 //! The recording is untrusted: it crosses the pipe as a WAV file of at most
-//! [`memry_ml_worker::MAX_TRANSCRIBE_BYTES`] and is decoded by `memry_ml::decode_wav` (bounded,
-//! resampled to 16 kHz mono), before the model loads. A file that does not decode and an unknown
-//! language are the input's fault ([`Response::Rejected`]); a model that does not load fails.
+//! [`memry_ml_worker::MAX_TRANSCRIBE_BYTES`]. Its language is checked and it is decoded by
+//! `memry_ml::decode_wav` (bounded, resampled to 16 kHz mono) before the model loads. A file that
+//! does not decode and an unknown language are the input's fault ([`Response::Rejected`]); a model
+//! that does not load fails.
 
 use std::path::{Path, PathBuf};
 
@@ -29,13 +30,15 @@ impl Transcriber {
                 model,
                 language,
                 wav,
-            } => memry_ml::decode_wav(&wav).and_then(|samples| {
-                drop(wav);
-                let text = self
-                    .engine(Path::new(&model))?
-                    .transcribe(&samples, &language)?;
-                Ok(Response::Text(text))
-            }),
+            } => WhisperEngine::check_language(&language)
+                .and_then(|()| memry_ml::decode_wav(&wav))
+                .and_then(|samples| {
+                    drop(wav);
+                    let text = self
+                        .engine(Path::new(&model))?
+                        .transcribe(&samples, &language)?;
+                    Ok(Response::Text(text))
+                }),
             other => {
                 return Response::Failed(format!("{} is not a transcription op", other.name()));
             }

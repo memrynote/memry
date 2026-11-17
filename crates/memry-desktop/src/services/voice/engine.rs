@@ -11,7 +11,7 @@
 //! bookkeeping of its own. Transcriptions run one at a time.
 
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError, TryLockError};
 use std::time::Duration;
 
 use memry_ml_worker::{Limits, Supervisor, SystemClock, WorkerError};
@@ -32,7 +32,9 @@ pub fn limits() -> Limits {
 }
 
 pub struct LocalEngine {
-    supervisor: Supervisor,
+    /// The worker, or why this run has none (its path did not resolve): then every call fails
+    /// with that reason and no child is spawned.
+    supervisor: Result<Supervisor, String>,
     model: PathBuf,
     state: Mutex<State>,
     /// Held for a whole transcription, so two never race to load the model.
@@ -57,12 +59,27 @@ impl LocalEngine {
             limits,
             Arc::new(SystemClock),
         );
+        Self::with(Ok(supervisor), model)
+    }
+
+    /// An engine with no worker: each transcription fails with `reason`, which the status shows.
+    pub fn without_worker(model: PathBuf, reason: String) -> Arc<Self> {
+        Self::with(Err(reason), model)
+    }
+
+    fn with(supervisor: Result<Supervisor, String>, model: PathBuf) -> Arc<Self> {
         Arc::new(Self {
             supervisor,
             model,
             state: Mutex::default(),
             job: Mutex::default(),
         })
+    }
+
+    fn supervisor(&self) -> Result<&Supervisor, WorkerError> {
+        self.supervisor
+            .as_ref()
+            .map_err(|reason| WorkerError::Start(reason.clone()))
     }
 
     /// `transcribeWithLocalModel`: the text in `wav` (a WAV file) in `language`. The first call
@@ -75,10 +92,12 @@ impl LocalEngine {
         progress: &(dyn Fn(ModelProgress) + Sync),
     ) -> Result<String, WorkerError> {
         let _job = lock(&self.job);
-        if !self.loaded() {
+        if !self.child_loaded() {
             self.load(progress)?;
         }
-        let outcome = self.supervisor.transcribe(&self.model, language, wav);
+        let outcome = self
+            .supervisor()
+            .and_then(|supervisor| supervisor.transcribe(&self.model, language, wav));
         lock(&self.state).error = outcome.as_ref().err().map(ToString::to_string);
         outcome
     }
@@ -87,6 +106,7 @@ impl LocalEngine {
         {
             let mut state = lock(&self.state);
             state.loading = true;
+            state.loaded_by = None;
             state.error = None;
         }
         progress(ModelProgress::new(
@@ -94,8 +114,10 @@ impl LocalEngine {
             0,
             format!("Initializing {MODEL_NAME}..."),
         ));
-        let outcome = self.supervisor.transcribe_load(&self.model);
-        let pid = self.supervisor.pid();
+        let outcome = self
+            .supervisor()
+            .and_then(|supervisor| supervisor.transcribe_load(&self.model));
+        let pid = self.pid();
         let mut state = lock(&self.state);
         state.loading = false;
         match &outcome {
@@ -118,9 +140,29 @@ impl LocalEngine {
         outcome
     }
 
+    /// Never waits on a transcription in flight, whose child may be starting: the supervisor
+    /// holds its state through a start (up to the start timeout), so the engine's own record
+    /// answers then. Otherwise the job lock keeps a child from starting during the read.
     pub fn loaded(&self) -> bool {
-        let running = self.supervisor.pid();
+        let _job = match self.job.try_lock() {
+            Ok(job) => job,
+            Err(TryLockError::Poisoned(job)) => job.into_inner(),
+            Err(TryLockError::WouldBlock) => {
+                let state = lock(&self.state);
+                return !state.loading && state.loaded_by.is_some();
+            }
+        };
+        self.child_loaded()
+    }
+
+    /// The child that loaded the model still runs. Called with the job lock held.
+    fn child_loaded(&self) -> bool {
+        let running = self.pid();
         running.is_some() && lock(&self.state).loaded_by == running
+    }
+
+    fn pid(&self) -> Option<u32> {
+        self.supervisor.as_ref().ok().and_then(Supervisor::pid)
     }
 
     pub fn loading(&self) -> bool {
@@ -131,10 +173,17 @@ impl LocalEngine {
         lock(&self.state).error.clone()
     }
 
+    /// A newer success than the last failure: a download after a load that failed.
+    pub(super) fn clear_error(&self) {
+        lock(&self.state).error = None;
+    }
+
     /// Kills the child, if one runs, which fails a transcription in flight at once. The next
     /// call starts a new one.
     pub fn stop(&self) {
-        self.supervisor.stop();
+        if let Ok(supervisor) = &self.supervisor {
+            supervisor.stop();
+        }
     }
 }
 

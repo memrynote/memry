@@ -1,16 +1,18 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import { resolve } from 'node:path'
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { workerBuild, workerFeatures } from './dev-worker.mjs'
+import { hasLibclang, workerBuild, workerFeatures } from './dev-worker.mjs'
 
 describe('workerFeatures', () => {
   it('builds the whole worker, transcription included, where ONNX Runtime links and cmake runs', () => {
     const native = ['--features', 'native']
     assert.deepEqual(
-      workerFeatures({ platform: 'darwin', arch: 'arm64', env: {}, cmake: true }),
+      workerFeatures({ platform: 'darwin', arch: 'arm64', env: {}, cmake: true, libclang: true }),
       native
     )
     assert.deepEqual(
@@ -18,7 +20,8 @@ describe('workerFeatures', () => {
         platform: 'linux',
         arch: 'x64',
         env: { ORT_LIB_LOCATION: '/ort' },
-        cmake: true
+        cmake: true,
+        libclang: true
       }),
       native
     )
@@ -30,7 +33,7 @@ describe('workerFeatures', () => {
       ['win32', 'x64'],
       ['darwin', 'x64']
     ]) {
-      assert.deepEqual(workerFeatures({ platform, arch, env: {}, cmake: true }), [
+      assert.deepEqual(workerFeatures({ platform, arch, env: {}, cmake: true, libclang: true }), [
         '--no-default-features',
         '--features',
         'pdf,ocr'
@@ -39,16 +42,51 @@ describe('workerFeatures', () => {
   })
 
   it('leaves OCR and transcription out without cmake', () => {
-    assert.deepEqual(workerFeatures({ platform: 'darwin', arch: 'arm64', env: {}, cmake: false }), [
-      '--no-default-features',
-      '--features',
-      'pdf,embed'
-    ])
-    assert.deepEqual(workerFeatures({ platform: 'win32', arch: 'x64', env: {}, cmake: false }), [
-      '--no-default-features',
-      '--features',
-      'pdf'
-    ])
+    assert.deepEqual(
+      workerFeatures({ platform: 'darwin', arch: 'arm64', env: {}, cmake: false, libclang: true }),
+      ['--no-default-features', '--features', 'pdf,embed']
+    )
+    assert.deepEqual(
+      workerFeatures({ platform: 'win32', arch: 'x64', env: {}, cmake: false, libclang: true }),
+      ['--no-default-features', '--features', 'pdf']
+    )
+  })
+
+  it('leaves transcription out without libclang, which bindgen needs', () => {
+    assert.deepEqual(
+      workerFeatures({ platform: 'darwin', arch: 'arm64', env: {}, cmake: true, libclang: false }),
+      ['--no-default-features', '--features', 'pdf,ocr,embed']
+    )
+  })
+})
+
+describe('hasLibclang', () => {
+  const none = () => undefined
+
+  it('searches only LIBCLANG_PATH when it is set, as clang-sys does', () => {
+    const empty = mkdtempSync(join(tmpdir(), 'no-libclang-'))
+    assert.equal(
+      hasLibclang({ platform: 'darwin', env: { LIBCLANG_PATH: empty }, llvmPrefix: none }),
+      false
+    )
+    const llvm = mkdtempSync(join(tmpdir(), 'libclang-'))
+    writeFileSync(join(llvm, 'libclang.dylib'), '')
+    assert.equal(
+      hasLibclang({ platform: 'darwin', env: { LIBCLANG_PATH: llvm }, llvmPrefix: none }),
+      true
+    )
+    const file = join(llvm, 'libclang.dylib')
+    assert.equal(
+      hasLibclang({ platform: 'darwin', env: { LIBCLANG_PATH: file }, llvmPrefix: none }),
+      true
+    )
+  })
+
+  it('finds a versioned Linux libclang under llvm-config --prefix', () => {
+    const prefix = mkdtempSync(join(tmpdir(), 'llvm-prefix-'))
+    mkdirSync(join(prefix, 'lib'))
+    writeFileSync(join(prefix, 'lib', 'libclang.so.18'), '')
+    assert.equal(hasLibclang({ platform: 'linux', env: {}, llvmPrefix: () => prefix }), true)
   })
 })
 
