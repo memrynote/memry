@@ -4,6 +4,9 @@
 # Order by path class: named sidecars and the pdfium dylib under Contents/Resources/pdfium first, then
 # every other Mach-O file and framework, then the main binary, then the bundle. The script signs
 # whatever Mach-O files the bundle holds; the sidecars come from Steps 25, 29 and 35.
+# Only the main binary and the bundle carry the app's entitlements (camera, microphone, calendars,
+# network). Nested code gets none: memry-ml-worker runs pdfium and Tesseract on untrusted PDFs and
+# images, so it must not hold the app's device and personal-information grants.
 set -eu
 
 app="${1:?usage: sign-macos-bundle.sh <app> <identity> <entitlements> [keychain]}"
@@ -13,14 +16,12 @@ keychain="${4:-}"
 
 [ -d "$app" ] || { echo "not a bundle: $app" >&2; exit 1; }
 
+# sign <path> [codesign options]
 sign() {
-  if [ -n "$keychain" ]; then
-    codesign --force --timestamp --options runtime --entitlements "$entitlements" \
-      --keychain "$keychain" --sign "$identity" "$1"
-  else
-    codesign --force --timestamp --options runtime --entitlements "$entitlements" \
-      --sign "$identity" "$1"
-  fi
+  target="$1"
+  shift
+  if [ -n "$keychain" ]; then set -- "$@" --keychain "$keychain"; fi
+  codesign --force --timestamp --options runtime "$@" --sign "$identity" "$target"
 }
 
 main_bin="$app/Contents/MacOS/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Contents/Info.plist")"
@@ -57,6 +58,6 @@ for framework in $(find "$app/Contents/Frameworks" -maxdepth 1 -name '*.framewor
   sign_once "$framework"
 done
 
-sign_once "$main_bin"
-sign "$app"
+sign "$main_bin" --entitlements "$entitlements"
+sign "$app" --entitlements "$entitlements"
 codesign --verify --strict --verbose=2 "$app"

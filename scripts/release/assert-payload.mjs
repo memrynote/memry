@@ -7,9 +7,11 @@
 // shared library (the worker links all four statically); when a model file ships (whisper and
 // embedding models download on demand); when a file exceeds the manifest's size cap; when the main
 // binary or a sidecar links one of those libraries or, on Windows, the Visual C++
-// redistributable; or when the manifest lists other files than the release config bundles.
+// redistributable; when the binary dir holds an executable the manifest does not list (Tauri
+// bundles every [[bin]] of the package, dev tools included); or when the manifest lists other files
+// than the release config bundles.
 import { execFileSync } from 'node:child_process'
-import { lstatSync, readdirSync, readFileSync } from 'node:fs'
+import { closeSync, lstatSync, openSync, readdirSync, readFileSync, readSync } from 'node:fs'
 import path from 'node:path'
 
 import { isMain } from './is-main.mjs'
@@ -23,6 +25,15 @@ export const MANIFEST = JSON.parse(
 const SHARED_LIBRARY = /\.(dll|dylib|so)(\.\d+)*$/i
 const STATIC_ONLY = /onnxruntime|directml|tesseract|lept/i
 const MODEL_FILE = /^ggml-.*\.bin$|^model_q4\.onnx$/i
+// ELF, and Mach-O thin (both byte orders, 32 and 64 bit) or universal.
+const BINARY_MAGIC = new Set([
+  '7f454c46',
+  'feedface',
+  'feedfacf',
+  'cefaedfe',
+  'cffaedfe',
+  'cafebabe'
+])
 // A listing without the system C library is empty or failed and would pass every check below.
 const SYSTEM_LIBRARY = /libSystem|libc\.so|kernel32\.dll/i
 
@@ -69,6 +80,17 @@ function listFiles(root, rel = '') {
   })
 }
 
+function isExecutable(file) {
+  if (/\.exe$/i.test(file)) return true
+  const head = Buffer.alloc(4)
+  const fd = openSync(file, 'r')
+  try {
+    return BINARY_MAGIC.has(head.subarray(0, readSync(fd, head)).toString('hex'))
+  } finally {
+    closeSync(fd)
+  }
+}
+
 /** The libraries `file` links: otool on macOS, ldd on Linux, the PE import tables on Windows. */
 export function listLinks(platform, file) {
   if (platform === 'windows') return peImports(readFileSync(file)).join('\n')
@@ -98,6 +120,13 @@ export function checkPayload({ platform, root, manifest = MANIFEST, config, link
     if (size > manifest.maxFileBytes) {
       errors.push(`${rel} is ${size} bytes, over the cap of ${manifest.maxFileBytes}`)
     }
+  }
+
+  for (const rel of files) {
+    if (path.posix.dirname(rel) !== (entry.binDir || '.')) continue
+    if (entry.executables.includes(path.posix.basename(rel))) continue
+    if (isExecutable(path.join(root, rel)))
+      errors.push(`${rel} is an executable the manifest does not list`)
   }
 
   const listings = {}

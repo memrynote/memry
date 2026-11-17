@@ -1,4 +1,4 @@
-// check-glibc.sh, repack-deb.sh and make-dmg.sh against the real tools where the host has them,
+// check-glibc.sh, repack-deb.sh, make-dmg.sh and sign-macos-bundle.sh against the real tools where the host has them,
 // with stubs only for what needs Apple credentials (codesign, notarytool, stapler).
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
@@ -182,3 +182,41 @@ describe('make-dmg.sh', { skip: process.platform !== 'darwin' && 'needs hdiutil'
       assert.equal(result.status, 2)
     }))
 })
+
+describe(
+  'sign-macos-bundle.sh',
+  { skip: process.platform !== 'darwin' && 'needs PlistBuddy' },
+  () => {
+    it('gives the app entitlements to the main binary and the bundle only', () =>
+      inTemp((dir) => {
+        const app = path.join(dir, 'MemryNote.app')
+        const files = {
+          'Contents/Info.plist':
+            '<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict>' +
+            '<key>CFBundleExecutable</key><string>MemryNote</string></dict></plist>',
+          'Contents/MacOS/MemryNote': 'bin',
+          'Contents/MacOS/memry-ml-worker': 'bin',
+          'Contents/Resources/pdfium/libpdfium.dylib': 'lib'
+        }
+        for (const [rel, body] of Object.entries(files)) {
+          mkdirSync(path.dirname(path.join(app, rel)), { recursive: true })
+          writeFileSync(path.join(app, rel), body)
+        }
+        const bin = path.join(dir, 'bin')
+        const calls = path.join(dir, 'calls')
+        stub(bin, 'codesign', `echo "codesign $*" >> "${calls}"`)
+        const result = run('sign-macos-bundle.sh', [app, 'Developer ID', 'app.plist', 'kc'], {
+          binDir: bin
+        })
+        assert.equal(result.status, 0, result.stderr)
+        const signing = '--force --timestamp --options runtime'
+        assert.deepEqual(readFileSync(calls, 'utf8').trim().split('\n'), [
+          `codesign ${signing} --keychain kc --sign Developer ID ${app}/Contents/MacOS/memry-ml-worker`,
+          `codesign ${signing} --keychain kc --sign Developer ID ${app}/Contents/Resources/pdfium/libpdfium.dylib`,
+          `codesign ${signing} --entitlements app.plist --keychain kc --sign Developer ID ${app}/Contents/MacOS/MemryNote`,
+          `codesign ${signing} --entitlements app.plist --keychain kc --sign Developer ID ${app}`,
+          `codesign --verify --strict --verbose=2 ${app}`
+        ])
+      }))
+  }
+)

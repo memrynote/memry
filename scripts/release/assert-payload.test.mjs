@@ -87,6 +87,29 @@ describe('checkPayload', () => {
     ])
   })
 
+  it('fails an executable in the binary dir that the manifest does not list', () => {
+    const elf = Buffer.from('7f454c4602', 'hex')
+    const machO = Buffer.from('cffaedfe07', 'hex')
+    assert.deepEqual(check('linux', payload('linux', { 'usr/bin/export-bindings': elf })), [
+      'usr/bin/export-bindings is an executable the manifest does not list'
+    ])
+    assert.deepEqual(
+      check('macos', payload('macos', { 'Contents/MacOS/export-bindings': machO })),
+      ['Contents/MacOS/export-bindings is an executable the manifest does not list']
+    )
+    assert.deepEqual(check('windows', payload('windows', { 'export-bindings.exe': 'MZ' })), [
+      'export-bindings.exe is an executable the manifest does not list'
+    ])
+  })
+
+  it('accepts a script in the binary dir and a binary outside it', () => {
+    const root = payload('linux', {
+      'usr/bin/xdg-open': '#!/bin/sh\n',
+      'usr/lib/MemryNote/pdfium/libextra.so': Buffer.from('7f454c46', 'hex')
+    })
+    assert.deepEqual(check('linux', root), [])
+  })
+
   it('fails a file over the size cap', () => {
     const manifest = { ...MANIFEST, maxFileBytes: 4 }
     const errors = check('windows', payload('windows', { 'big.bin': '12345' }), { manifest })
