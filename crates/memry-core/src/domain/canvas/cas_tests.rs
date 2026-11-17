@@ -159,3 +159,48 @@ fn a_deleted_canvas_is_not_listed() {
     })
     .expect("deleted");
 }
+
+#[test]
+fn a_row_the_listing_cannot_parse_does_not_hide_the_valid_canvas() {
+    let (db, _dir) = open("canvas-list-corrupt");
+    db.call_blocking(|conn| {
+        seed(
+            conn,
+            "good",
+            &scene_with("note-1"),
+            json!({ "A": 1 }),
+            json!({ "ownerNoteId": "note-1" }),
+        );
+        let state: String = conn
+            .query_row(
+                "SELECT payload_state FROM sync_items WHERE item_id = 'good'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("state");
+        let valid_json_other_type = json!({ "ownerNoteId": "note-1" }).to_string();
+        for (item_type, id, payload) in [
+            (ITEM_TYPE, "bad-text", Some("{not json")),
+            (ITEM_TYPE, "bad-array", Some("[1]")),
+            (ITEM_TYPE, "metadata-only", None),
+            ("task", "not-a-canvas", Some(valid_json_other_type.as_str())),
+        ] {
+            conn.execute(
+                "INSERT INTO sync_items (item_type, item_id, payload, payload_state, updated_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5)",
+                rusqlite::params![item_type, id, payload, state, NOW],
+            )
+            .expect("insert");
+        }
+        let owned = list_owned_by(conn, "note-1")?;
+        assert_eq!(
+            owned
+                .iter()
+                .map(|canvas| canvas.id.as_str())
+                .collect::<Vec<_>>(),
+            ["good"]
+        );
+        Ok(())
+    })
+    .expect("corrupt");
+}

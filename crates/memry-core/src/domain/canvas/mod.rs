@@ -15,7 +15,9 @@
 //!   and only that. The inbound rule is [`merge`].
 //!
 //! Every write is one transaction with its outbox row, through
-//! [`outbox::commit`].
+//! [`outbox::commit`]. The one exception is [`set_scene_expecting`]: it
+//! enqueues inside its own transaction, because a `Stale` refusal must not
+//! queue an outbox row, and [`outbox::commit`] enqueues unconditionally.
 
 pub mod merge;
 
