@@ -418,6 +418,8 @@ mod recreate_clock_vectors;
 mod recurrence_vectors;
 #[path = "roundtrip_acceptance.rs"]
 mod roundtrip_acceptance;
+#[path = "scratch_dirs.rs"]
+mod scratch_dirs;
 #[path = "search_body_cache.rs"]
 mod search_body_cache;
 #[path = "session_refresh_errors.rs"]
