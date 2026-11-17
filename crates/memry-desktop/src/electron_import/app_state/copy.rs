@@ -106,7 +106,9 @@ fn copy_verified(
         if digest(&temp).map_err(|e| ImportError::io(&temp, e))? != *expected {
             return Err(ImportError::CopyMismatch(rel.to_owned()));
         }
-        // Write access: Windows' `FlushFileBuffers` refuses a read-only handle.
+        // Write access: Windows' `FlushFileBuffers` refuses a read-only handle, and `fs::copy`
+        // carries a read-only source's permissions to the temp copy.
+        make_owner_writable(&temp).map_err(|e| ImportError::io(&temp, e))?;
         OpenOptions::new()
             .write(true)
             .open(&temp)
@@ -118,6 +120,22 @@ fn copy_verified(
         let _ = fs::remove_file(&temp);
     }
     result
+}
+
+#[cfg(unix)]
+fn make_owner_writable(path: &Path) -> std::io::Result<()> {
+    use std::os::unix::fs::PermissionsExt;
+    let mut perms = fs::metadata(path)?.permissions();
+    perms.set_mode(perms.mode() | 0o200);
+    fs::set_permissions(path, perms)
+}
+
+#[cfg(not(unix))]
+#[allow(clippy::permissions_set_readonly_false)] // Windows: clears only the read-only attribute.
+fn make_owner_writable(path: &Path) -> std::io::Result<()> {
+    let mut perms = fs::metadata(path)?.permissions();
+    perms.set_readonly(false);
+    fs::set_permissions(path, perms)
 }
 
 /// Size and sha256 of a file, read in 1 MiB blocks.
@@ -135,4 +153,47 @@ fn digest(path: &Path) -> std::io::Result<FileDigest> {
         len += n as u64;
     }
     Ok((len, hasher.finalize().into()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A source tree with one read-only model file: the copy succeeds and a rerun finds it.
+    fn copies_a_read_only_file(make_read_only: impl FnOnce(&Path)) {
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("models");
+        let file = source.join("org/config.json");
+        fs::create_dir_all(file.parent().unwrap()).unwrap();
+        fs::write(&file, b"{}").unwrap();
+        fs::write(source.join("model.onnx"), [7; 64]).unwrap();
+        make_read_only(&file);
+        let dest = dir.path().join("tauri/models");
+
+        let first = run(&plan(&source).unwrap(), &dest).unwrap();
+        let rerun = run(&plan(&source).unwrap(), &dest).unwrap();
+
+        assert_eq!(first.copied, 2);
+        assert_eq!(rerun.already_present, rerun.files);
+        assert_eq!(fs::read(dest.join("org/config.json")).unwrap(), b"{}");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_read_only_source_file_is_copied() {
+        use std::os::unix::fs::PermissionsExt;
+        copies_a_read_only_file(|file| {
+            fs::set_permissions(file, fs::Permissions::from_mode(0o444)).unwrap();
+        });
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn a_read_only_source_file_is_copied() {
+        copies_a_read_only_file(|file| {
+            let mut perms = fs::metadata(file).unwrap().permissions();
+            perms.set_readonly(true);
+            fs::set_permissions(file, perms).unwrap();
+        });
+    }
 }

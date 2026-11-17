@@ -191,9 +191,10 @@ struct Sandbox<'a> {
 
 impl Sandbox<'_> {
     /// Whether `path` is `<profile>/Sandbox`, its parent compared as written and resolved (the
-    /// config may name the profile through the legacy `@memry/desktop` link). Only a path named
-    /// `Sandbox` is resolved, so other vaults, offline network ones included, are never touched
-    /// and a vault elsewhere in the profile directory is carried, as Electron keeps it.
+    /// config may name the profile through the legacy `@memry/desktop` link). Only the parent of
+    /// a path named `Sandbox` is resolved, so a vault with any other name is never touched (an
+    /// offline network one named `Sandbox` can still wait on the resolve) and a vault elsewhere
+    /// in the profile directory is carried, as Electron keeps it.
     fn is(&self, path: &str) -> bool {
         let path = Path::new(path);
         let Some(parent) = path
@@ -317,8 +318,9 @@ fn write_dictionary(
 }
 
 /// Writes a pending file unless one is there that is not `pending: true`: applied, or not ours
-/// to read (unparseable, which a whole write never leaves, or of a newer shape). Such a file
-/// stays as it is, so a rerun never applies it twice. False when it was left alone.
+/// to read (unparseable, which a whole write never leaves). Such a file stays as it is, so a
+/// rerun never applies it twice; a file of any version with `pending: true` is overwritten.
+/// False when it was left alone.
 fn write_pending(path: &Path, body: &Value) -> Result<bool, ImportError> {
     match fs::read(path) {
         Ok(bytes) => {
