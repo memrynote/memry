@@ -87,7 +87,7 @@ vi.mock('@tauri-apps/api/core', () => ({
   Channel: vi.fn()
 }))
 
-// The graph and the folder view still read through `window.api` (not ported yet).
+// The graph still reads through `window.api` (not ported yet).
 const windowApi = window.api as unknown as Record<string, Record<string, unknown>>
 
 const noteView = (title: string, id = 'n1') => ({
@@ -519,11 +519,9 @@ describe('a change made before an on-demand cache listens', () => {
 
   it("a tag's view shows a note pinned while it opened", async () => {
     let notes = [{ id: 'a', title: 'A', path: 'A.md', properties: {} }]
-    windowApi.folderView = {
-      getViews: vi.fn(async () => ({ views: [], defaultIndex: 0 })),
-      getAvailableProperties: vi.fn(async () => ({ properties: [], builtIn: [], formulas: [] })),
-      listWithProperties: vi.fn(async () => ({ notes, hasMore: false, total: notes.length }))
-    }
+    tauri.answers.folder_view_get_views = { views: null, defaultIndex: 0, fieldColumns: null }
+    tauri.answers.folder_view_available_properties = { properties: [], builtIn: [], formulas: [] }
+    tauri.answers.folder_view_list = () => ({ notes, hasMore: false, total: notes.length })
     const { result } = renderHook(() => useFolderView({ scope: { kind: 'tag', tag: 'work' } }), {
       wrapper
     })

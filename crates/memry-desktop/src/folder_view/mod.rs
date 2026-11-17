@@ -11,12 +11,13 @@
 
 pub mod view;
 
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use memry_core::api::errors::StorageError;
 use memry_core::domain::folder_view::{self, RowSet};
-use memry_core::domain::tag_objects::Resolved;
+pub use memry_core::domain::tag_objects::Resolved;
 use memry_core::domain::tags::tag_key;
+use memry_core::seams::secure_store::SecureStore;
 use serde_json::{Map, Value};
 
 use crate::error::{CoreError, FailureKind};
@@ -348,11 +349,11 @@ pub fn without_view(views: Vec<Value>, name: &str) -> Vec<Value> {
 }
 
 /// Reads the scope's views, lets `change` edit them and writes them whole. A tag's are written
-/// through `hub`, which makes its definition when it has none.
+/// through its hub under `store`'s device identity, which makes its definition when it has none.
 pub fn edit_views(
     open: &OpenVault,
     scope: &ViewScope,
-    hub: impl FnOnce() -> Result<Hub, TagsError>,
+    store: Arc<dyn SecureStore>,
     change: impl FnOnce(Vec<Value>) -> Result<Vec<Value>, FolderViewError>,
 ) -> Result<(), FolderViewError> {
     match scope {
@@ -369,7 +370,7 @@ pub fn edit_views(
             let (tag, _) = tag_scope(tag, and_tags)?;
             let _guard = TAG_VIEWS.lock().unwrap_or_else(|e| e.into_inner());
             let views = change(stored_views(open, scope)?)?;
-            hub()?.set_views(&tag_key(tag), views)?;
+            Hub::open(open, store)?.set_views(&tag_key(tag), views)?;
             Ok(())
         }
     }

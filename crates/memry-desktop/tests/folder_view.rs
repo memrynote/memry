@@ -1,0 +1,310 @@
+//! Folder views and a tag's table (#3547 30b) over a real session, tier, watcher and index task,
+//! the oracle being Electron's `folder-view-handlers.ts`: a folder's rows, columns and saved views,
+//! whose edits land in its `.folder.md`, and a tag's, whose views live on its definition.
+
+#[allow(unused_imports)]
+use crate::device_key;
+#[allow(unused_imports)]
+use crate::index_support;
+#[allow(unused_imports)]
+use crate::vault_env;
+
+use std::sync::Arc;
+
+use index_support::until;
+use memry_core::seams::secure_store::SecureStore;
+use memry_desktop::error::CoreError;
+use memry_desktop::folder_view::view::{ListInput, ViewScope};
+use memry_desktop::folder_view::{self, FolderViewError};
+use memry_desktop::notes::identity::NotesIdentity;
+use memry_desktop::notes::index::NoteIndex;
+use memry_desktop::notes::service::NotesService;
+use memry_desktop::session::OpenVault;
+use memry_desktop::tags::schema::Schemas;
+use memry_desktop::tags::schema::view::{FieldType, NewFieldSpec, TagSchemaCommand};
+use serde_json::{Value, json};
+use vault_env::{Env, env, indexed};
+
+struct Fixture {
+    e: Env,
+    store: Arc<dyn SecureStore>,
+    _index: Arc<NoteIndex>,
+}
+
+fn opened(files: &[(&str, &str)]) -> Fixture {
+    let mut kept: Option<Arc<dyn SecureStore>> = None;
+    let mut e = env(|store| {
+        kept = Some(store.clone());
+        Some(NotesIdentity::new(store))
+    });
+    for (rel, text) in files {
+        e.write(rel, text);
+    }
+    let index = NoteIndex::new(e.tier.clone(), |_| {}, |_| {}, |_| {});
+    index.register(&e.session);
+    e.open();
+    e.facts_until(indexed);
+    let f = Fixture {
+        e,
+        store: kept.expect("the store"),
+        _index: index,
+    };
+    until("every file read", || index_support::all_indexed(&f.e));
+    f
+}
+
+fn folder(path: &str) -> ViewScope {
+    ViewScope::Folder {
+        path: path.to_owned(),
+    }
+}
+
+fn tag(name: &str, and_tags: &[&str]) -> ViewScope {
+    ViewScope::Tag {
+        tag: name.to_owned(),
+        and_tags: (!and_tags.is_empty())
+            .then(|| and_tags.iter().map(|t| (*t).to_owned()).collect()),
+    }
+}
+
+impl Fixture {
+    fn open(&self) -> OpenVault {
+        self.e.session.current().expect("open")
+    }
+
+    fn schemas(&self) -> Schemas {
+        let notes = NotesService::new(self.e.tier.clone(), self.store.clone());
+        Schemas::open(&self.open(), &notes, "en").expect("schemas")
+    }
+
+    fn rows(&self, scope: ViewScope) -> Value {
+        let resolved = self.schemas().resolved_tags().unwrap();
+        let input = ListInput {
+            scope,
+            properties: None,
+            limit: None,
+            offset: None,
+            rows: None,
+        };
+        serde_json::to_value(folder_view::list(&self.open(), &input, Some(&resolved)).unwrap())
+            .unwrap()
+    }
+
+    fn views(&self, scope: &ViewScope) -> Value {
+        let resolved = self.schemas().resolved_tags().unwrap();
+        serde_json::to_value(folder_view::views(&self.open(), scope, Some(&resolved)).unwrap())
+            .unwrap()
+    }
+
+    fn set_view(
+        &self,
+        scope: &ViewScope,
+        view: Value,
+        previous: Option<&str>,
+    ) -> Result<(), FolderViewError> {
+        folder_view::edit_views(&self.open(), scope, self.store.clone(), |views| {
+            folder_view::with_view(views, view, previous)
+        })
+    }
+
+    fn delete_view(&self, scope: &ViewScope, name: &str) {
+        folder_view::edit_views(&self.open(), scope, self.store.clone(), |views| {
+            Ok(folder_view::without_view(views, name))
+        })
+        .unwrap();
+    }
+}
+
+fn titles(rows: &Value) -> Vec<String> {
+    let mut titles: Vec<String> = rows["notes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|row| row["title"].as_str().unwrap().to_owned())
+        .collect();
+    titles.sort();
+    titles
+}
+
+fn view_names(views: &Value) -> Vec<(String, bool)> {
+    views["views"]
+        .as_array()
+        .map(|views| {
+            views
+                .iter()
+                .map(|v| {
+                    (
+                        v["name"].as_str().unwrap().to_owned(),
+                        v["default"] == json!(true),
+                    )
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// A folder lists its notes at any depth and its own note beside it, never a folder that only
+/// shares its prefix; its saved views, formulas and the edits to them live in its `.folder.md`.
+#[test]
+fn a_folder_lists_its_rows_and_keeps_its_views_in_its_folder_file() {
+    let mut f = opened(&[
+        ("Projects/Alpha.md", "---\nstatus: open\n---\nAlpha body\n"),
+        (
+            "Projects/2024/Beta.md",
+            "---\nstatus: done\nowner: Ada\n---\n",
+        ),
+        ("Projects.md", "The folder's own page\n"),
+        ("Projectsx/Gamma.md", "Not in the folder\n"),
+    ]);
+    let scope = folder("Projects");
+
+    let rows = f.rows(scope.clone());
+    assert_eq!(titles(&rows), ["Alpha", "Beta", "Projects"]);
+    assert_eq!(rows["total"], json!(3));
+    let beta = rows["notes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["title"] == json!("Beta"))
+        .unwrap();
+    assert_eq!(beta["folder"], json!("/2024"));
+    assert_eq!(beta["properties"]["owner"], json!("Ada"));
+    assert!(beta["modified"].as_str().unwrap().ends_with('Z'));
+
+    let columns = folder_view::available_properties(&f.open(), &scope, None).unwrap();
+    let built_in: Vec<&str> = columns.built_in.iter().map(|c| c.id.as_str()).collect();
+    assert_eq!(
+        built_in,
+        [
+            "title",
+            "folder",
+            "tags",
+            "created",
+            "modified",
+            "wordCount"
+        ]
+    );
+    let used: Vec<(&str, u32)> = columns
+        .properties
+        .iter()
+        .map(|p| (p.name.as_str(), p.usage_count))
+        .collect();
+    assert_eq!(used, [("status", 2), ("owner", 1)]);
+
+    assert_eq!(f.views(&scope)["views"], Value::Null);
+    f.set_view(
+        &scope,
+        json!({"name": "Board", "type": "table", "default": true}),
+        None,
+    )
+    .unwrap();
+    f.set_view(
+        &scope,
+        json!({"name": "Table", "type": "table", "default": true}),
+        None,
+    )
+    .unwrap();
+    assert_eq!(
+        view_names(&f.views(&scope)),
+        [("Board".to_owned(), false), ("Table".to_owned(), true)]
+    );
+    let clash = f
+        .set_view(
+            &scope,
+            json!({"name": "Board", "type": "table"}),
+            Some("Table"),
+        )
+        .unwrap_err();
+    assert_eq!(clash.kind_and_code().1, "view_name_conflict");
+    f.set_view(
+        &scope,
+        json!({"name": "Kanban", "type": "table"}),
+        Some("Board"),
+    )
+    .unwrap();
+    assert_eq!(f.views(&scope)["defaultIndex"], json!(1));
+    f.delete_view(&scope, "Table");
+    assert_eq!(view_names(&f.views(&scope)), [("Kanban".to_owned(), true)]);
+    assert!(f.e.read("Projects/.folder.md").contains("Kanban"));
+
+    let config = json!({"formulas": {"double": "prop(\"n\") * 2"}});
+    folder_view::set_config(&f.open(), "Projects", config.as_object().unwrap()).unwrap();
+    let wrong = json!({"views": "not a list"});
+    assert!(folder_view::set_config(&f.open(), "Projects", wrong.as_object().unwrap()).is_err());
+    let columns = folder_view::available_properties(&f.open(), &scope, None).unwrap();
+    assert_eq!(columns.formulas.len(), 1);
+    assert_eq!(columns.formulas[0].id, "double");
+    assert_eq!(view_names(&f.views(&scope)), [("Kanban".to_owned(), true)]);
+
+    assert!(folder_view::folder_exists(&f.open(), "Projects/2024"));
+    assert!(folder_view::folder_exists(&f.open(), ""));
+    assert!(!folder_view::folder_exists(&f.open(), "Nope"));
+    assert!(!folder_view::folder_exists(&f.open(), "../outside"));
+    f.e.close();
+}
+
+/// A tag lists what carries it or a tag under it, narrowed by AND tags; a tag with fields
+/// offers them as columns before a note holds them, and a tag's views live on its definition.
+#[test]
+fn a_tag_table_lists_its_items_and_keeps_its_views_on_its_definition() {
+    let mut f = opened(&[
+        ("Both.md", "---\ntags: [alpha, beta]\n---\n"),
+        ("Only alpha.md", "---\ntags: [alpha]\n---\n"),
+        ("Nested.md", "---\ntags: [alpha/design]\n---\n"),
+        ("Other.md", "---\ntags: [beta]\n---\n"),
+    ]);
+
+    assert_eq!(
+        titles(&f.rows(tag("alpha", &[]))),
+        ["Both", "Nested", "Only alpha"]
+    );
+    assert_eq!(titles(&f.rows(tag("alpha", &["beta"]))), ["Both"]);
+    let blank = folder_view::views(&f.open(), &tag("", &[]), None).unwrap_err();
+    assert_eq!(blank.kind_and_code().1, "invalid");
+
+    let scope = tag("alpha", &[]);
+    let resolved = f.schemas().resolved_tags().unwrap();
+    let columns = folder_view::available_properties(&f.open(), &scope, Some(&resolved)).unwrap();
+    assert!(columns.built_in.iter().any(|c| c.id == "kind"));
+
+    f.schemas()
+        .run(
+            TagSchemaCommand::AddField {
+                tag: "alpha".to_owned(),
+                field: NewFieldSpec {
+                    name: "Stage".to_owned(),
+                    type_name: FieldType::Text,
+                    options: None,
+                    relation: None,
+                },
+                index: None,
+            },
+            &mut |_, _, _| {},
+        )
+        .unwrap();
+    let saved = f.views(&scope);
+    assert_eq!(saved["views"], Value::Null);
+    assert_eq!(saved["fieldColumns"], json!(["Stage"]));
+    let resolved = f.schemas().resolved_tags().unwrap();
+    let columns = folder_view::available_properties(&f.open(), &scope, Some(&resolved)).unwrap();
+    let stage = columns
+        .properties
+        .iter()
+        .find(|p| p.name == "Stage")
+        .unwrap();
+    assert_eq!(stage.usage_count, 0);
+
+    f.set_view(
+        &scope,
+        json!({"name": "Mine", "type": "table", "default": true}),
+        None,
+    )
+    .unwrap();
+    assert_eq!(
+        view_names(&f.views(&tag("Alpha", &[]))),
+        [("Mine".to_owned(), true)]
+    );
+    f.delete_view(&scope, "Mine");
+    assert_eq!(f.views(&scope)["views"], Value::Null);
+    f.e.close();
+}
