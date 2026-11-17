@@ -61,9 +61,10 @@ if [ "$EVENT" = "pull_request" ] && [ "$(printf '%s\n' "$files" | grep -c .)" -g
 # every leg when the SHA did not pass the queue (a bypass push) or the file list is unreadable, and when
 # the range changes a cache-key input: pushes save the caches PRs and the queue restore, and rust-cache,
 # setup-node and tesseract-sources save only under a new key. For a push the range starts at the last
-# push run that was not cancelled (action.yml), so a superseded run's cache-key change counts too.
+# push run that was not cancelled (post-merge.sh), so a superseded run's cache-key change counts too.
+# The ml-worker's build.rs is in the Tesseract sources key (tesseract-sources/action.yml).
 if [ "$EVENT" = "push" ] && [ "$REF" = "refs/heads/feat/tauri-v2" ] && [ "${QUEUE_TESTED:-false}" = true ] && [ "$LISTED" = true ] \
-  && ! printf '%s\n' "$files" | grep -E '(^|/)Cargo\.(toml|lock)$|(^|/)rust-toolchain(\.toml)?$|(^|/)\.cargo/|^pnpm-lock\.yaml$|^scripts/fetch-(pdfium|tesseract-sources)\.mjs$|^\.github/(actions/|workflows/(rust-ci|desktop-tauri-ci)\.yml$)' >/dev/null; then
+  && ! printf '%s\n' "$files" | grep -E '(^|/)Cargo\.(toml|lock)$|(^|/)rust-toolchain(\.toml)?$|(^|/)\.cargo/|^pnpm-lock\.yaml$|^scripts/fetch-(pdfium|tesseract-sources)\.mjs$|^crates/memry-ml-worker/build\.rs$|^\.github/(actions/|workflows/(rust-ci|desktop-tauri-ci)\.yml$)' >/dev/null; then
   emit true true true "$electron" "$intel" "$macos" tests tests tests tests false true; exit 0
 fi
 

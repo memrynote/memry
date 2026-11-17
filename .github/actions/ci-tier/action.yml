@@ -31,7 +31,8 @@ inputs:
   post-merge:
     description: >-
       'true' lets a push to feat/tauri-v2 run only the legs the merge queue skips (`post_merge`) when
-      the calling workflow's merge_group run on the same SHA succeeded. Needs `actions: read`.
+      the calling workflow's gate passed in a merge_group run on the same SHA (post-merge.sh). Needs
+      `actions: read`.
     default: 'false'
 outputs:
   full:
@@ -90,6 +91,7 @@ runs:
         SOURCE_ROOT: ${{ inputs.source }}
         POST_MERGE: ${{ inputs.post-merge }}
         WORKFLOW_REF: ${{ github.workflow_ref }}
+        WORKFLOW_NAME: ${{ github.workflow }}
         RUN_ID: ${{ github.run_id }}
       run: |
         set -euo pipefail
@@ -101,26 +103,15 @@ runs:
         if [ "$EVENT" = "merge_group" ]; then kind=range; from="$MQ_BASE_SHA"; to="$MQ_HEAD_SHA"; fi
         if [ "$EVENT" = "push" ] && [ "$REF" = "refs/heads/feat/tauri-v2" ]; then kind=range; from="$PUSH_BEFORE"; to="$PUSH_AFTER"; fi
 
-        # A merge-queue merge fast-forwards feat/tauri-v2 to the commit the queue tested, so the push
-        # re-tests a SHA this workflow already passed (#5035). queue_tested is true only when that
-        # merge_group success is found. The range then starts at the newest earlier push run that was
-        # not cancelled: a superseded run may not have saved its caches, so its changes count for the
-        # cache-key check in tier.sh. A failed lookup or no such run leaves queue_tested false, and the
-        # push runs every leg.
-        queue_tested=false
-        if [ "$POST_MERGE" = true ] && [ "$EVENT" = push ] && [ "$REF" = "refs/heads/feat/tauri-v2" ]; then
-          workflow_path=${WORKFLOW_REF#"$REPO/"}
-          workflow_path=${workflow_path%%@*}
-          if found=$(gh api "repos/$REPO/actions/runs?head_sha=$PUSH_AFTER&event=merge_group&status=success&per_page=100" \
-              --jq "[.workflow_runs[] | select(.path == \"$workflow_path\")] | length") \
-            && saved=$(gh api "repos/$REPO/actions/workflows/${workflow_path##*/}/runs?branch=feat/tauri-v2&event=push&per_page=50" \
-              --jq "first(.workflow_runs[] | select(.id < $RUN_ID and (.conclusion == \"success\" or .conclusion == \"failure\")) | .head_sha) // empty"); then
-            if [ "$found" -gt 0 ] && [ -n "$saved" ]; then queue_tested=true; from="$saved"; fi
-          else
-            echo "::warning::could not look up the earlier runs of $workflow_path; running every leg"
-          fi
-          echo "merge_group successes at $PUSH_AFTER: ${found:-unknown}; last push run not cancelled: ${saved:-none}" >&2
+        # Post-merge (#5035): did the merge queue pass this SHA, and where does the cache-key range
+        # start (post-merge.sh). A script that fails runs every leg.
+        if ! post=$(SHA="$PUSH_AFTER" bash "$GITHUB_ACTION_PATH/post-merge.sh"); then
+          echo "::warning::the post-merge lookup failed; running every leg"
+          post=""
         fi
+        queue_tested=$(sed -n 's/^queue_tested=//p' <<<"$post")
+        saved=$(sed -n 's/^from=//p' <<<"$post")
+        if [ "$queue_tested" = true ] && [ -n "$saved" ]; then from="$saved"; else queue_tested=false; fi
 
         files=""
         listed=false
