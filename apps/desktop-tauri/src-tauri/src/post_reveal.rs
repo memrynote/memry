@@ -35,7 +35,7 @@ impl PostReveal {
 
     /// Runs `task` once the drain has run, at once when it already has. `name` is the
     /// at-most-once key: a name that started never runs again, and registering a queued name
-    /// again replaces its task.
+    /// again replaces its task in its place (`post-reveal.ts:53`, a `Map.set`).
     pub fn register(&self, name: &str, task: impl FnOnce() + Send + 'static) {
         let mut state = self.lock();
         if state.started.contains(name) {
@@ -47,8 +47,10 @@ impl PostReveal {
             run(name, Box::new(task));
             return;
         }
-        state.queue.retain(|(queued, _)| queued != name);
-        state.queue.push((name.to_owned(), Box::new(task)));
+        match state.queue.iter_mut().find(|(queued, _)| queued == name) {
+            Some(slot) => slot.1 = Box::new(task),
+            None => state.queue.push((name.to_owned(), Box::new(task))),
+        }
     }
 
     /// Arms the drain: it runs after `delay` unless `shutting_down` is true by then. Repeat

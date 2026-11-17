@@ -68,13 +68,14 @@ fn a_registration_after_the_drain_runs_at_once() {
 }
 
 #[test]
-fn registering_a_queued_name_again_replaces_its_task() {
+fn registering_a_queued_name_again_replaces_its_task_in_its_place() {
     let queue = Arc::new(PostReveal::default());
     let (tx, rx) = recorder();
     queue.register("updater", record(&tx, "first"));
+    queue.register("ocr-languages", record(&tx, "ocr"));
     queue.register("updater", record(&tx, "second"));
     arm(&queue, false).send(()).expect("drain waiting");
-    assert_eq!(drained(&queue, &rx), ["second"]);
+    assert_eq!(drained(&queue, &rx), ["second", "ocr"]);
 }
 
 #[test]
