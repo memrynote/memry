@@ -100,6 +100,10 @@ mod attachments;
 mod block_refs;
 #[path = "byte_preservation.rs"]
 mod byte_preservation;
+#[path = "calendar_feeds.rs"]
+mod calendar_feeds;
+#[path = "calendar_ics_fetch.rs"]
+mod calendar_ics_fetch;
 #[path = "command_failure.rs"]
 mod command_failure;
 #[path = "config_compat.rs"]

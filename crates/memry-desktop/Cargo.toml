@@ -40,6 +40,9 @@ unicode-segmentation = "1.13.3"
 # The note fold formats inline dates in the local time zone, as `Intl.DateTimeFormat` does;
 # already built for `trash`.
 chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
+# Subscribed calendars resolve the IANA zones a feed names, as Electron's `Intl` did: the system
+# zoneinfo on Unix, the bundled tzdb on Windows. Already in the lockfile through `serde_with`.
+jiff = "0.2.38"
 # `String.prototype.normalize("NFKC")` of the MathJax glyph text in `elements/math`.
 unicode-normalization = "0.1.25"
 # Spec-conformant HTML parsing where Electron uses one: Turndown's domino and the HTML block text

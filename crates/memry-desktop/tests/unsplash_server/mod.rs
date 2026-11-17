@@ -1,6 +1,6 @@
 //! A local TLS server standing in for `api.unsplash.com` and the image CDN. The real `reqwest`
 //! client resolves the real host names to it, so production URLs, the host allowlist, the redirect
-//! check and the timeouts all run unchanged.
+//! check and the timeouts all run unchanged. The calendar feed tests use it for `feeds.example`.
 
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
@@ -13,11 +13,12 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 use tokio_rustls::TlsAcceptor;
 
-pub const HOSTS: [&str; 4] = [
+pub const HOSTS: [&str; 5] = [
     "api.unsplash.com",
     "images.unsplash.com",
     "plus.unsplash.com",
     "other.example",
+    "feeds.example",
 ];
 
 #[derive(Debug, Clone)]
@@ -26,6 +27,9 @@ pub struct Seen {
     pub target: String,
     pub authorization: Option<String>,
     pub accept_version: Option<String>,
+    pub accept: Option<String>,
+    pub if_none_match: Option<String>,
+    pub if_modified_since: Option<String>,
 }
 
 pub enum Reply {
@@ -36,6 +40,8 @@ pub enum Reply {
     },
     /// Closes the connection without answering.
     Hangup,
+    /// Holds the connection open without answering.
+    Stall,
     /// `head`, `bytes` bytes of `0x78`, then `tail`, with no `Content-Length`, ended by closing
     /// the connection.
     Undeclared {
@@ -149,6 +155,7 @@ pub async fn serve(respond: impl Fn(&Seen) -> Reply + Send + Sync + 'static) -> 
                 log.lock().expect("log").push(seen.clone());
                 match respond(&seen) {
                     Reply::Hangup => {}
+                    Reply::Stall => std::future::pending::<()>().await,
                     Reply::Ok {
                         status,
                         headers,
@@ -206,5 +213,8 @@ fn parse(head: &str) -> Seen {
             .to_owned(),
         authorization: header("authorization"),
         accept_version: header("accept-version"),
+        accept: header("accept"),
+        if_none_match: header("if-none-match"),
+        if_modified_since: header("if-modified-since"),
     }
 }

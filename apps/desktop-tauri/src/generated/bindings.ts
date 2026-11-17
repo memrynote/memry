@@ -110,6 +110,12 @@ export const commands = {
 	 */
 	writingGenerateAssist: (input: WritingAssistInput) => __TAURI_INVOKE<WritingAssistResult>("writing_generate_assist", { input }),
 	appInfo: () => __TAURI_INVOKE<AppInfo>("app_info"),
+	/**  `calendar:refresh-ics`: a feed failure is already recorded on the source, which shows it. */
+	calendarRefreshIcs: (input: IcsSourceInput) => __TAURI_INVOKE<IcsMutationView>("calendar_refresh_ics", { input }),
+	/**  `calendar:subscribe-ics`. */
+	calendarSubscribeIcs: (input: IcsSubscribeInput) => __TAURI_INVOKE<IcsMutationView>("calendar_subscribe_ics", { input }),
+	/**  `calendar:unsubscribe-ics`. */
+	calendarUnsubscribeIcs: (input: IcsSourceInput) => __TAURI_INVOKE<IcsMutationView>("calendar_unsubscribe_ics", { input }),
 	/**  The calling window closed its editor of `note_id`. */
 	crdtCloseDoc: (noteId: string) => __TAURI_INVOKE<null>("crdt_close_doc", { noteId }),
 	crdtGetHealth: () => __TAURI_INVOKE<CrdtHealth>("crdt_get_health"),
@@ -1476,6 +1482,13 @@ export type FailureDetail = {
 	retryable?: boolean | null,
 };
 
+/**  `IcsCalendarFeedSummary`: what this device mirrored from a feed. */
+export type FeedSummary = {
+	eventCount: number,
+	firstStartAt: string | null,
+	lastStartAt: string | null,
+};
+
 /**
  *  The user's feedback (`FeedbackSubmitSchema`): the message trimmed and 1 to 5000 characters, an
  *  optional email of at most 320 characters.
@@ -1783,6 +1796,29 @@ export type HeatmapEntryView = {
 };
 
 export type HttpMethod = "GET" | "POST";
+
+/**  `IcsFeedErrorCode` (`packages/contracts/src/calendar-api.ts`). */
+export type IcsFeedCode = "invalid_url" | "unreachable" | "timeout" | "not_found" | "unauthorized" | "http_error" | "too_large" | "not_a_calendar" | "too_many_redirects" | "unsupported_redirect";
+
+/**  `IcsCalendarMutationResponse`, with the source's id where the handlers send the whole row. */
+export type IcsMutationView = {
+	success: boolean,
+	sourceId: string | null,
+	errorCode?: IcsFeedCode | null,
+	error?: string | null,
+	summary?: FeedSummary | null,
+};
+
+/**  `IcsCalendarSourceRequestSchema`. */
+export type IcsSourceInput = {
+	sourceId: string,
+};
+
+/**  `SubscribeIcsCalendarSchema`. */
+export type IcsSubscribeInput = {
+	url: string,
+	title?: string | null,
+};
 
 /**  `ImpactQuery`. */
 export type ImpactQuery = { kind: "remove-field"; tag: string; name: string } | { kind: "rename-field"; name: string } | { kind: "delete-tag"; tag: string } | { kind: "set-extends"; tag: string; parent: string | null } | { kind: "become-objects"; tag: string };
