@@ -167,6 +167,10 @@ mod domain_file_tags;
 mod domain_folders;
 #[path = "domain_inbox_attachments.rs"]
 mod domain_inbox_attachments;
+#[path = "domain_inbox_ingest.rs"]
+mod domain_inbox_ingest;
+#[path = "domain_inbox_jobs.rs"]
+mod domain_inbox_jobs;
 #[path = "domain_inbox_queries.rs"]
 mod domain_inbox_queries;
 #[path = "domain_inbox_sync.rs"]
