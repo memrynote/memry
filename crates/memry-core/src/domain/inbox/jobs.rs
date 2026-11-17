@@ -5,16 +5,16 @@
 //! Local only: nothing here syncs. One row per (capture, type), as desktop's
 //! `upsertJob` keeps one current job per pair. The shell owns time and the
 //! work itself: it claims the next due job, runs it, then finishes or fails
-//! it. A job runs only while `running`, so a finish or failure that arrives
-//! after the job was queued again (a retry the user asked for) changes
-//! nothing.
+//! that run. Each claim mints a `run_id`, and a finish or failure names it,
+//! so the result of a run the job has moved past (queued again by a retry the
+//! user asked for, then claimed again) changes nothing.
 
 use rusqlite::{Connection, OptionalExtension as _, Row, params};
 
 use crate::api::errors::StorageError;
 use crate::domain::notes::failed;
 
-use super::write::mint_id;
+use super::write::{mint_id, require_live};
 
 /// A job's kind, stored as desktop's `InboxJobType` string.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
@@ -86,6 +86,9 @@ pub struct InboxJob {
     pub item_id: String,
     pub job_type: InboxJobType,
     pub status: InboxJobStatus,
+    /// The current run, minted by [`claim_next`]; `None` until the first
+    /// claim after a (re)queue. [`finish`] and [`fail`] must name it.
+    pub run_id: Option<String>,
     pub attempts: i64,
     pub max_attempts: i64,
     pub next_run_at: i64,
@@ -97,7 +100,7 @@ pub struct InboxJob {
 }
 
 const COLUMNS: &str = "id, item_id, type, status, attempts, max_attempts, next_run_at, \
-     last_error, started_at, completed_at, created_at, updated_at";
+     last_error, started_at, completed_at, created_at, updated_at, run_id";
 
 /// A row a newer build wrote with a type or status this build does not know
 /// is skipped rather than misread.
@@ -114,6 +117,7 @@ fn job_row(row: &Row<'_>) -> rusqlite::Result<Option<InboxJob>> {
         item_id: row.get(1)?,
         job_type,
         status,
+        run_id: row.get(12)?,
         attempts: row.get(4)?,
         max_attempts: row.get(5)?,
         next_run_at: row.get(6)?,
@@ -143,19 +147,21 @@ fn require(conn: &Connection, id: &str) -> Result<InboxJob, StorageError> {
 }
 
 /// `queueInbox*Job`: the (capture, type) job, pending and due at `now_ms`,
-/// with its attempts reset. A job already there keeps its id.
+/// with its attempts reset and no current run. A job already there keeps its
+/// id. `NotFound` when `item_id` is not a live capture.
 pub fn enqueue(
     conn: &Connection,
     item_id: &str,
     job_type: InboxJobType,
     now_ms: i64,
 ) -> Result<InboxJob, StorageError> {
+    require_live(conn, item_id)?;
     conn.execute(
         "INSERT INTO inbox_jobs (id, item_id, type, status, attempts, max_attempts,
                                  next_run_at, created_at, updated_at)
          VALUES (?1, ?2, ?3, 'pending', 0, ?4, ?5, ?5, ?5)
          ON CONFLICT (item_id, type) DO UPDATE SET
-           status = 'pending', attempts = 0, max_attempts = excluded.max_attempts,
+           status = 'pending', run_id = NULL, attempts = 0, max_attempts = excluded.max_attempts,
            next_run_at = excluded.next_run_at, last_error = NULL, started_at = NULL,
            completed_at = NULL, updated_at = excluded.updated_at",
         params![
@@ -179,7 +185,7 @@ pub fn enqueue(
 }
 
 /// The earliest pending job due at `now_ms`, marked `running` with one more
-/// attempt (`processInboxJob`); `None` when nothing is due.
+/// attempt and a new `run_id` (`processInboxJob`); `None` when nothing is due.
 pub fn claim_next(conn: &Connection, now_ms: i64) -> Result<Option<InboxJob>, StorageError> {
     let known = known_types();
     let id: Option<String> = conn
@@ -198,24 +204,30 @@ pub fn claim_next(conn: &Connection, now_ms: i64) -> Result<Option<InboxJob>, St
         return Ok(None);
     };
     conn.execute(
-        "UPDATE inbox_jobs SET status = 'running', attempts = attempts + 1,
+        "UPDATE inbox_jobs SET status = 'running', run_id = ?3, attempts = attempts + 1,
                 started_at = ?2, completed_at = NULL, last_error = NULL, updated_at = ?2
           WHERE id = ?1",
-        params![id, now_ms],
+        params![id, now_ms, mint_id()],
     )
     .map_err(failed)?;
     by_id(conn, &id)
 }
 
-/// `completeJob`. `None` when the job is no longer running (it was queued
-/// again meanwhile), and then nothing changes.
-pub fn finish(conn: &Connection, id: &str, now_ms: i64) -> Result<Option<InboxJob>, StorageError> {
+/// `completeJob` for run `run_id`. `None` when that run is no longer the
+/// job's current one (it was queued again meanwhile), and then nothing
+/// changes.
+pub fn finish(
+    conn: &Connection,
+    id: &str,
+    run_id: &str,
+    now_ms: i64,
+) -> Result<Option<InboxJob>, StorageError> {
     let changed = conn
         .execute(
             "UPDATE inbox_jobs SET status = 'complete', last_error = NULL,
                     completed_at = ?2, updated_at = ?2
-              WHERE id = ?1 AND status = 'running'",
-            params![id, now_ms],
+              WHERE id = ?1 AND run_id = ?3 AND status = 'running'",
+            params![id, now_ms, run_id],
         )
         .map_err(failed)?;
     if changed == 0 {
@@ -225,12 +237,14 @@ pub fn finish(conn: &Connection, id: &str, now_ms: i64) -> Result<Option<InboxJo
     by_id(conn, id)
 }
 
-/// A run failed with `error`: pending again `retry_delay_ms` from `now_ms`
-/// while attempts remain (`rescheduleJob`), else `failed` (`failJob`). `None`
-/// when the job is no longer running, and then nothing changes.
+/// Run `run_id` failed with `error`: pending again `retry_delay_ms` from
+/// `now_ms` while attempts remain (`rescheduleJob`), else `failed`
+/// (`failJob`). `None` when that run is no longer the job's current one, and
+/// then nothing changes.
 pub fn fail(
     conn: &Connection,
     id: &str,
+    run_id: &str,
     error: &str,
     retry_delay_ms: i64,
     now_ms: i64,
@@ -243,12 +257,13 @@ pub fn fail(
                     started_at = CASE WHEN attempts < max_attempts THEN NULL ELSE started_at END,
                     completed_at = CASE WHEN attempts < max_attempts THEN NULL ELSE ?3 END,
                     last_error = ?2, updated_at = ?3
-              WHERE id = ?1 AND status = 'running'",
+              WHERE id = ?1 AND run_id = ?5 AND status = 'running'",
             params![
                 id,
                 error,
                 now_ms,
-                now_ms.saturating_add(retry_delay_ms.max(0))
+                now_ms.saturating_add(retry_delay_ms.max(0)),
+                run_id
             ],
         )
         .map_err(failed)?;
@@ -306,8 +321,8 @@ pub struct InboxJobsResumed {
 }
 
 /// `resumeInboxJobs`, run before the runner starts: an interrupted job is
-/// pending again with its attempts kept, and a job whose capture is gone is
-/// removed.
+/// pending again with its attempts kept and no current run, and a job whose
+/// capture is gone is removed.
 ///
 /// Desktop re-runs an interrupted job however often it was interrupted. Here
 /// a quit mid-run still gets one more run past `max_attempts` (a
@@ -333,7 +348,8 @@ pub fn resume(conn: &Connection, now_ms: i64) -> Result<InboxJobsResumed, Storag
         .map_err(failed)?;
     let requeued = tx
         .execute(
-            "UPDATE inbox_jobs SET status = 'pending', started_at = NULL, updated_at = ?1
+            "UPDATE inbox_jobs SET status = 'pending', run_id = NULL, started_at = NULL,
+                    updated_at = ?1
               WHERE status = 'running'",
             params![now_ms],
         )

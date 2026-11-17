@@ -3542,9 +3542,10 @@ public protocol InboxProtocol: AnyObject, Sendable {
     /**
      * A new capture `item_id` from an article whose files the shell stored
      * under `attachments/inbox/<item_id>/` (mint the id with `new_id`).
-     * `tags` `nil` gives `clippings`.
+     * `tags` `nil` gives `clippings`. A retry with an id already captured
+     * returns that capture unchanged with `duplicate = true`.
      */
-    func captureArticle(itemId: String, article: InboxArticle, files: InboxArticleFiles, tags: [String]?, captureSource: String) throws  -> InboxItemRecord
+    func captureArticle(itemId: String, article: InboxArticle, files: InboxArticleFiles, tags: [String]?, captureSource: String) throws  -> InboxCaptureOutcome
     
     /**
      * The live capture `item_id` enriched with an article; `hero_path` is
@@ -3553,25 +3554,29 @@ public protocol InboxProtocol: AnyObject, Sendable {
     func enrichArticle(itemId: String, article: InboxArticle, heroPath: String?) throws  -> InboxItemRecord
     
     /**
-     * The earliest due job, now `running`; `nil` when none is due.
+     * The earliest due job, now `running` under a new `run_id`; `nil` when
+     * none is due.
      */
     func claimNextJob() throws  -> InboxJob?
     
     /**
-     * Queues the capture's job of `job_type`, due now, attempts reset.
+     * Queues the capture's job of `job_type`, due now, attempts reset;
+     * `NotFound` when the capture is not live.
      */
     func enqueueJob(itemId: String, jobType: InboxJobType) throws  -> InboxJob
     
     /**
-     * A running job failed: pending again after `retry_delay_ms` while
-     * attempts remain, else failed; `nil` when it was queued again meanwhile.
+     * Run `run_id` of a job failed: pending again after `retry_delay_ms`
+     * while attempts remain, else failed; `nil` when the job was queued again
+     * meanwhile and `run_id` is not its current run.
      */
-    func failJob(jobId: String, error: String, retryDelayMs: Int64) throws  -> InboxJob?
+    func failJob(jobId: String, runId: String, error: String, retryDelayMs: Int64) throws  -> InboxJob?
     
     /**
-     * Marks a running job complete; `nil` when it was queued again meanwhile.
+     * Marks run `run_id` of a job complete; `nil` when the job was queued
+     * again meanwhile and `run_id` is not its current run.
      */
-    func finishJob(jobId: String) throws  -> InboxJob?
+    func finishJob(jobId: String, runId: String) throws  -> InboxJob?
     
     /**
      * Jobs of `item_ids` (every capture when empty) in `statuses` (every
@@ -3971,10 +3976,11 @@ open func setTranscription(id: String, transcription: String?, status: String)th
     /**
      * A new capture `item_id` from an article whose files the shell stored
      * under `attachments/inbox/<item_id>/` (mint the id with `new_id`).
-     * `tags` `nil` gives `clippings`.
+     * `tags` `nil` gives `clippings`. A retry with an id already captured
+     * returns that capture unchanged with `duplicate = true`.
      */
-open func captureArticle(itemId: String, article: InboxArticle, files: InboxArticleFiles, tags: [String]?, captureSource: String)throws  -> InboxItemRecord  {
-    return try  FfiConverterTypeInboxItemRecord_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
+open func captureArticle(itemId: String, article: InboxArticle, files: InboxArticleFiles, tags: [String]?, captureSource: String)throws  -> InboxCaptureOutcome  {
+    return try  FfiConverterTypeInboxCaptureOutcome_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_inbox_capture_article(
             self.uniffiCloneHandle(),
@@ -4004,7 +4010,8 @@ open func enrichArticle(itemId: String, article: InboxArticle, heroPath: String?
 }
     
     /**
-     * The earliest due job, now `running`; `nil` when none is due.
+     * The earliest due job, now `running` under a new `run_id`; `nil` when
+     * none is due.
      */
 open func claimNextJob()throws  -> InboxJob?  {
     return try  FfiConverterOptionTypeInboxJob.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
@@ -4016,7 +4023,8 @@ open func claimNextJob()throws  -> InboxJob?  {
 }
     
     /**
-     * Queues the capture's job of `job_type`, due now, attempts reset.
+     * Queues the capture's job of `job_type`, due now, attempts reset;
+     * `NotFound` when the capture is not live.
      */
 open func enqueueJob(itemId: String, jobType: InboxJobType)throws  -> InboxJob  {
     return try  FfiConverterTypeInboxJob_lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
@@ -4030,15 +4038,17 @@ open func enqueueJob(itemId: String, jobType: InboxJobType)throws  -> InboxJob  
 }
     
     /**
-     * A running job failed: pending again after `retry_delay_ms` while
-     * attempts remain, else failed; `nil` when it was queued again meanwhile.
+     * Run `run_id` of a job failed: pending again after `retry_delay_ms`
+     * while attempts remain, else failed; `nil` when the job was queued again
+     * meanwhile and `run_id` is not its current run.
      */
-open func failJob(jobId: String, error: String, retryDelayMs: Int64)throws  -> InboxJob?  {
+open func failJob(jobId: String, runId: String, error: String, retryDelayMs: Int64)throws  -> InboxJob?  {
     return try  FfiConverterOptionTypeInboxJob.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_inbox_fail_job(
             self.uniffiCloneHandle(),
         FfiConverterString.lower(jobId),
+        FfiConverterString.lower(runId),
         FfiConverterString.lower(error),
         FfiConverterInt64.lower(retryDelayMs),uniffiCallStatus
     )
@@ -4046,14 +4056,16 @@ open func failJob(jobId: String, error: String, retryDelayMs: Int64)throws  -> I
 }
     
     /**
-     * Marks a running job complete; `nil` when it was queued again meanwhile.
+     * Marks run `run_id` of a job complete; `nil` when the job was queued
+     * again meanwhile and `run_id` is not its current run.
      */
-open func finishJob(jobId: String)throws  -> InboxJob?  {
+open func finishJob(jobId: String, runId: String)throws  -> InboxJob?  {
     return try  FfiConverterOptionTypeInboxJob.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_inbox_finish_job(
             self.uniffiCloneHandle(),
-        FfiConverterString.lower(jobId),uniffiCallStatus
+        FfiConverterString.lower(jobId),
+        FfiConverterString.lower(runId),uniffiCallStatus
     )
 })
 }
@@ -19234,6 +19246,11 @@ public struct InboxJob: Equatable, Hashable {
     public var itemId: String
     public var jobType: InboxJobType
     public var status: InboxJobStatus
+    /**
+     * The current run, minted by [`claim_next`]; `None` until the first
+     * claim after a (re)queue. [`finish`] and [`fail`] must name it.
+     */
+    public var runId: String?
     public var attempts: Int64
     public var maxAttempts: Int64
     public var nextRunAt: Int64
@@ -19245,11 +19262,16 @@ public struct InboxJob: Equatable, Hashable {
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(id: String, itemId: String, jobType: InboxJobType, status: InboxJobStatus, attempts: Int64, maxAttempts: Int64, nextRunAt: Int64, lastError: String?, startedAt: Int64?, completedAt: Int64?, createdAt: Int64, updatedAt: Int64) {
+    public init(id: String, itemId: String, jobType: InboxJobType, status: InboxJobStatus, 
+        /**
+         * The current run, minted by [`claim_next`]; `None` until the first
+         * claim after a (re)queue. [`finish`] and [`fail`] must name it.
+         */runId: String?, attempts: Int64, maxAttempts: Int64, nextRunAt: Int64, lastError: String?, startedAt: Int64?, completedAt: Int64?, createdAt: Int64, updatedAt: Int64) {
         self.id = id
         self.itemId = itemId
         self.jobType = jobType
         self.status = status
+        self.runId = runId
         self.attempts = attempts
         self.maxAttempts = maxAttempts
         self.nextRunAt = nextRunAt
@@ -19280,6 +19302,7 @@ public struct FfiConverterTypeInboxJob: FfiConverterRustBuffer {
                 itemId: FfiConverterString.read(from: &buf), 
                 jobType: FfiConverterTypeInboxJobType.read(from: &buf), 
                 status: FfiConverterTypeInboxJobStatus.read(from: &buf), 
+                runId: FfiConverterOptionString.read(from: &buf), 
                 attempts: FfiConverterInt64.read(from: &buf), 
                 maxAttempts: FfiConverterInt64.read(from: &buf), 
                 nextRunAt: FfiConverterInt64.read(from: &buf), 
@@ -19296,6 +19319,7 @@ public struct FfiConverterTypeInboxJob: FfiConverterRustBuffer {
         FfiConverterString.write(value.itemId, into: &buf)
         FfiConverterTypeInboxJobType.write(value.jobType, into: &buf)
         FfiConverterTypeInboxJobStatus.write(value.status, into: &buf)
+        FfiConverterOptionString.write(value.runId, into: &buf)
         FfiConverterInt64.write(value.attempts, into: &buf)
         FfiConverterInt64.write(value.maxAttempts, into: &buf)
         FfiConverterInt64.write(value.nextRunAt, into: &buf)
@@ -37029,22 +37053,22 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_inbox_set_transcription() != 53737) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_inbox_capture_article() != 44333) {
+    if (uniffi_memry_core_checksum_method_inbox_capture_article() != 70) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_inbox_enrich_article() != 16052) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_inbox_claim_next_job() != 55821) {
+    if (uniffi_memry_core_checksum_method_inbox_claim_next_job() != 22128) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_inbox_enqueue_job() != 57786) {
+    if (uniffi_memry_core_checksum_method_inbox_enqueue_job() != 36935) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_inbox_fail_job() != 25291) {
+    if (uniffi_memry_core_checksum_method_inbox_fail_job() != 6955) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_inbox_finish_job() != 41697) {
+    if (uniffi_memry_core_checksum_method_inbox_finish_job() != 25171) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_inbox_jobs() != 37516) {

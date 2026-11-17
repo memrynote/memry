@@ -5,13 +5,15 @@
 use crate::api::errors::StorageError;
 use crate::api::inbox::Inbox;
 use crate::api::inbox_records::InboxItemRecord;
+use crate::api::inbox_write::InboxCaptureOutcome;
 use crate::domain::inbox::ingest::{self, InboxArticle, InboxArticleFiles};
 
 #[uniffi::export]
 impl Inbox {
     /// A new capture `item_id` from an article whose files the shell stored
     /// under `attachments/inbox/<item_id>/` (mint the id with `new_id`).
-    /// `tags` `nil` gives `clippings`.
+    /// `tags` `nil` gives `clippings`. A retry with an id already captured
+    /// returns that capture unchanged with `duplicate = true`.
     pub fn capture_article(
         &self,
         item_id: String,
@@ -19,8 +21,8 @@ impl Inbox {
         files: InboxArticleFiles,
         tags: Option<Vec<String>>,
         capture_source: String,
-    ) -> Result<InboxItemRecord, StorageError> {
-        self.item(move |conn, device, now| {
+    ) -> Result<InboxCaptureOutcome, StorageError> {
+        self.write(move |conn, device, now| {
             ingest::capture_article(
                 conn,
                 &item_id,
@@ -31,6 +33,7 @@ impl Inbox {
                 device,
                 now,
             )
+            .map(Into::into)
         })
     }
 

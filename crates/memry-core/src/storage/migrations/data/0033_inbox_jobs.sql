@@ -5,12 +5,15 @@
 -- Local only: never synced, never in the outbox. One row per (capture, type),
 -- as desktop's upsert keeps one current job per pair. Instants are epoch
 -- milliseconds. No foreign key: a capture is a tombstoned sync record, so a job
--- whose capture is gone is dropped by `resume_pending`.
+-- whose capture is gone is dropped by `jobs::resume` at vault open, and
+-- `jobs::enqueue` refuses one. `run_id` names the current run: `claim_next`
+-- mints it and a finish or failure of any other run changes nothing.
 CREATE TABLE IF NOT EXISTS inbox_jobs (
   id           TEXT PRIMARY KEY,
   item_id      TEXT NOT NULL,
   type         TEXT NOT NULL,
   status       TEXT NOT NULL,
+  run_id       TEXT,
   attempts     INTEGER NOT NULL DEFAULT 0,
   max_attempts INTEGER NOT NULL,
   next_run_at  INTEGER NOT NULL,

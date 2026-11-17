@@ -8,7 +8,8 @@ use crate::domain::inbox::jobs::{self, InboxJob, InboxJobStatus, InboxJobType, I
 
 #[uniffi::export]
 impl Inbox {
-    /// Queues the capture's job of `job_type`, due now, attempts reset.
+    /// Queues the capture's job of `job_type`, due now, attempts reset;
+    /// `NotFound` when the capture is not live.
     pub fn enqueue_job(
         &self,
         item_id: String,
@@ -17,25 +18,35 @@ impl Inbox {
         self.write(move |conn, _, now| jobs::enqueue(conn, &item_id, job_type, now))
     }
 
-    /// The earliest due job, now `running`; `nil` when none is due.
+    /// The earliest due job, now `running` under a new `run_id`; `nil` when
+    /// none is due.
     pub fn claim_next_job(&self) -> Result<Option<InboxJob>, StorageError> {
         self.write(|conn, _, now| jobs::claim_next(conn, now))
     }
 
-    /// Marks a running job complete; `nil` when it was queued again meanwhile.
-    pub fn finish_job(&self, job_id: String) -> Result<Option<InboxJob>, StorageError> {
-        self.write(move |conn, _, now| jobs::finish(conn, &job_id, now))
+    /// Marks run `run_id` of a job complete; `nil` when the job was queued
+    /// again meanwhile and `run_id` is not its current run.
+    pub fn finish_job(
+        &self,
+        job_id: String,
+        run_id: String,
+    ) -> Result<Option<InboxJob>, StorageError> {
+        self.write(move |conn, _, now| jobs::finish(conn, &job_id, &run_id, now))
     }
 
-    /// A running job failed: pending again after `retry_delay_ms` while
-    /// attempts remain, else failed; `nil` when it was queued again meanwhile.
+    /// Run `run_id` of a job failed: pending again after `retry_delay_ms`
+    /// while attempts remain, else failed; `nil` when the job was queued again
+    /// meanwhile and `run_id` is not its current run.
     pub fn fail_job(
         &self,
         job_id: String,
+        run_id: String,
         error: String,
         retry_delay_ms: i64,
     ) -> Result<Option<InboxJob>, StorageError> {
-        self.write(move |conn, _, now| jobs::fail(conn, &job_id, &error, retry_delay_ms, now))
+        self.write(move |conn, _, now| {
+            jobs::fail(conn, &job_id, &run_id, &error, retry_delay_ms, now)
+        })
     }
 
     /// Jobs of `item_ids` (every capture when empty) in `statuses` (every

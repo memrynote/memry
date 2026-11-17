@@ -6,18 +6,19 @@
 //! same URL unless `force`, through [`super::duplicate_by_url`]), stores the
 //! screenshot, the PDF and the hero image under `attachments/inbox/<id>/`,
 //! then calls [`capture_article`] for a new capture or [`enrich_article`] for
-//! an existing one. Every stored path must lie in that capture's folder.
+//! an existing one. Every stored path must be a file name of desktop's
+//! sanitised shape in that capture's folder.
 
 use rusqlite::Connection;
 use serde_json::{Map, Value, json};
 
 use crate::api::errors::StorageError;
-use crate::storage::repositories::Change;
+use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox::Durable;
 
-use super::InboxItem;
 use super::attachments::capture_file_name;
-use super::write::{NewCapture, capture, edit};
+use super::write::{Captured, NewCapture, capture, edit};
+use super::{ITEM_TYPE, InboxItem};
 
 /// `ArticleCapture.extractionStatus`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
@@ -99,11 +100,23 @@ fn properties(article: &InboxArticle) -> Value {
     Value::Object(map)
 }
 
+/// `path` when it is `attachments/inbox/<item_id>/<file>` with both segments
+/// in `[A-Za-z0-9._-]`, the shape desktop's `sanitizeFilename` stores. The
+/// screenshot path goes unescaped into the markdown body, so a `(`, `]`,
+/// space or control character would break it. Sync's `capture_file_name`
+/// stays looser: captures already shipped may carry other names.
 fn own_path(item_id: &str, path: &str) -> Result<String, StorageError> {
+    let plain = |segment: &str| {
+        segment
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b"._-".contains(&b))
+    };
     match capture_file_name(item_id, path) {
-        Some(_) => Ok(path.to_owned()),
-        None => Err(StorageError::Invalid {
-            what: format!("a capture's file must lie in attachments/inbox/{item_id}/"),
+        Some(file) if plain(item_id) && plain(file) => Ok(path.to_owned()),
+        _ => Err(StorageError::Invalid {
+            what: format!(
+                "a capture's file must be a plain [A-Za-z0-9._-] name in attachments/inbox/{item_id}/"
+            ),
         }),
     }
 }
@@ -112,6 +125,11 @@ fn own_path(item_id: &str, path: &str) -> Result<String, StorageError> {
 /// `pdf` when the PDF was stored (no content, its file marked for upload),
 /// else a `link` whose content is the markdown, or the screenshot when there
 /// is one. `tags` `None` gives desktop's default `clippings`.
+///
+/// The shell mints `item_id` for this capture, so a live capture with that id
+/// is this capture written before (a retry after a lost acknowledgement): it
+/// comes back as [`Captured::Duplicate`], unchanged, and nothing is written.
+/// An id whose capture was deleted is refused (`Invalid`).
 #[allow(clippy::too_many_arguments)]
 pub fn capture_article(
     conn: &Connection,
@@ -122,7 +140,15 @@ pub fn capture_article(
     capture_source: &str,
     device_id: &str,
     now_ms: i64,
-) -> Result<Durable<InboxItem>, StorageError> {
+) -> Result<Captured, StorageError> {
+    if let Some(existing) = super::get(conn, item_id)? {
+        return Ok(Captured::Duplicate(existing));
+    }
+    if sync_items::load(conn, ITEM_TYPE, item_id)?.is_some() {
+        return Err(StorageError::Invalid {
+            what: format!("capture id {item_id} belongs to a deleted capture"),
+        });
+    }
     let screenshot = files
         .screenshot_path
         .as_deref()
@@ -163,7 +189,7 @@ pub fn capture_article(
         (None, None) => Some(article.content_markdown.clone()),
     };
     let default_tags = ["clippings".to_owned()];
-    capture(
+    let item = capture(
         conn,
         &NewCapture {
             id: Some(item_id.to_owned()),
@@ -181,7 +207,9 @@ pub fn capture_article(
         },
         device_id,
         now_ms,
-    )
+    )?
+    .acknowledge();
+    Ok(Captured::Created(item))
 }
 
 /// An existing capture enriched with an article (`ingestArticleCapture`,

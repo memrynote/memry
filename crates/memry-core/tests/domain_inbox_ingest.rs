@@ -2,11 +2,12 @@
 //! SQLite: the row desktop writes for an article, a screenshot and a PDF, the
 //! enrich path, and the folder guard on stored files.
 
+use memry_core::domain::inbox::InboxItem;
 use memry_core::domain::inbox::ingest::{
     self, InboxArticle, InboxArticleFiles, InboxArticlePdf, InboxArticleProperties,
     InboxExtractionStatus,
 };
-use memry_core::domain::inbox::write;
+use memry_core::domain::inbox::write::{self, Captured};
 use memry_core::storage::repositories::sync_items;
 use memry_core::storage::{Db, open_data};
 use rusqlite::{Connection, params};
@@ -61,6 +62,13 @@ fn tags(conn: &Connection, id: &str) -> Vec<String> {
         .expect("rows")
 }
 
+fn created(outcome: Captured) -> InboxItem {
+    match outcome {
+        Captured::Created(item) => item,
+        Captured::Duplicate(item) => panic!("{} was already captured", item.id),
+    }
+}
+
 fn upload_marked(conn: &Connection, id: &str) -> bool {
     conn.query_row(
         "SELECT count(*) FROM inbox_attachment_uploads WHERE item_id = ?1",
@@ -81,9 +89,16 @@ fn an_article_becomes_a_tagged_link_with_its_hero_as_thumbnail() {
             hero_path: Some(hero.clone()),
             ..InboxArticleFiles::default()
         };
-        let item =
-            ingest::capture_article(conn, &id, &article(), &files, None, SOURCE, DEVICE, NOW)?
-                .acknowledge();
+        let item = created(ingest::capture_article(
+            conn,
+            &id,
+            &article(),
+            &files,
+            None,
+            SOURCE,
+            DEVICE,
+            NOW,
+        )?);
         assert_eq!(item.item_type, "link");
         let p = payload(conn, &id);
         assert_eq!(p["title"], "Post");
@@ -204,7 +219,7 @@ fn a_file_outside_the_captures_folder_is_refused_and_nothing_is_written() {
         }
         assert!(sync_items::push_payload(conn, "inbox", &id)?.is_none());
         let stray = write::mint_id();
-        let item = ingest::capture_article(
+        let item = created(ingest::capture_article(
             conn,
             &stray,
             &article(),
@@ -213,8 +228,7 @@ fn a_file_outside_the_captures_folder_is_refused_and_nothing_is_written() {
             SOURCE,
             DEVICE,
             NOW,
-        )?
-        .acknowledge();
+        )?);
         assert!(
             ingest::enrich_article(
                 conn,
@@ -243,7 +257,7 @@ fn enriching_replaces_the_article_keys_and_keeps_the_rest() {
             DEVICE,
             NOW,
         )? {
-            write::Captured::Created(item) | write::Captured::Duplicate(item) => item,
+            Captured::Created(item) | Captured::Duplicate(item) => item,
         };
         let hero = format!("attachments/inbox/{}/thumbnail.png", item.id);
         let mut capture = article();
@@ -270,4 +284,54 @@ fn enriching_replaces_the_article_keys_and_keeps_the_rest() {
         Ok(())
     })
     .expect("enrich");
+}
+
+#[test]
+fn capturing_the_same_id_again_returns_the_capture_and_writes_nothing() {
+    let db = open("again");
+    db.call_blocking(|conn| {
+        let id = write::mint_id();
+        let none = InboxArticleFiles::default();
+        ingest::capture_article(conn, &id, &article(), &none, None, SOURCE, DEVICE, NOW)?;
+        let queued = |conn: &Connection| -> i64 {
+            conn.query_row("SELECT count(*) FROM outbox", [], |row| row.get(0))
+                .expect("count")
+        };
+        let before = (payload(conn, &id), queued(conn));
+
+        let again =
+            ingest::capture_article(conn, &id, &article(), &none, None, SOURCE, DEVICE, NOW + 5)?;
+        assert!(matches!(again, Captured::Duplicate(item) if item.id == id));
+        assert_eq!((payload(conn, &id), queued(conn)), before);
+
+        write::delete_permanent(conn, &id, DEVICE, NOW + 6)?;
+        assert!(matches!(
+            ingest::capture_article(conn, &id, &article(), &none, None, SOURCE, DEVICE, NOW + 7),
+            Err(memry_core::api::errors::StorageError::Invalid { .. })
+        ));
+        Ok(())
+    })
+    .expect("again");
+}
+
+#[test]
+fn a_file_name_that_would_break_the_markdown_body_is_refused() {
+    let db = open("markdown");
+    db.call_blocking(|conn| {
+        let id = write::mint_id();
+        for name in ["shot).png", "a[1].png", "a\nb.png", "a b.png", "a\u{7}.png"] {
+            let files = InboxArticleFiles {
+                screenshot_path: Some(format!("attachments/inbox/{id}/{name}")),
+                ..InboxArticleFiles::default()
+            };
+            assert!(
+                ingest::capture_article(conn, &id, &article(), &files, None, SOURCE, DEVICE, NOW)
+                    .is_err(),
+                "{name:?}"
+            );
+        }
+        assert!(sync_items::push_payload(conn, "inbox", &id)?.is_none());
+        Ok(())
+    })
+    .expect("markdown");
 }
