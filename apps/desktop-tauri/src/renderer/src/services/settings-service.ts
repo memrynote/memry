@@ -15,7 +15,7 @@ import type {
   TaskSettingsDTO,
   VoiceTranscriptionSettings
 } from '../../../preload/index.d'
-import type { GlobalCaptureResult } from '@memry/contracts/settings-schemas'
+import type { GlobalCaptureResult, StickyShortcutResult } from '@memry/contracts/settings-schemas'
 import type { CalloutTypeDefinition } from '@memry/editor-schema/callout-types'
 import { commands, events, type Value } from '../../../generated/bindings'
 import { sanitizeCalloutTypeDefinitions } from '@memry/editor-schema/callout-types'
@@ -177,6 +177,9 @@ export const settingsService = {
     commands.shortcutRegisterGlobalCapture(),
   setGlobalCapture: (binding: ShortcutBindingDTO | null): Promise<GlobalCaptureResult> =>
     commands.shortcutSetGlobalCapture(binding),
+  registerStickyShortcut: (): Promise<StickyShortcutResult> => commands.shortcutRegisterSticky(),
+  setStickyShortcut: (binding: ShortcutBindingDTO | null): Promise<StickyShortcutResult> =>
+    commands.shortcutSetSticky(binding),
   getAISettings: (): Promise<AISettings> => commands.settingsGetAi(),
   setAISettings: async (patch: Partial<AISettings>): Promise<Result> => {
     try {

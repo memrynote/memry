@@ -23,7 +23,7 @@ describe('installPortedApi', () => {
     expect(typeof api.settings.getGeneralSettings).toBe('function')
     let pending: Promise<unknown> | undefined
     expect(() => {
-      pending = api.settings.registerStickyShortcut()
+      pending = api.settings.getVoiceModelStatus()
     }).not.toThrow()
     await expect(pending).rejects.toMatchObject({
       name: 'NotPortedError'

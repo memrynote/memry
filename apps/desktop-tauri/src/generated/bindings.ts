@@ -511,6 +511,10 @@ export const commands = {
 	 *  registered again. Fails with the localized no-vault text while no vault is open.
 	 */
 	shortcutSetGlobalCapture: (binding: ShortcutBinding | null) => __TAURI_INVOKE<GlobalCaptureResult>("shortcut_set_global_capture", { binding }),
+	/**  Registers the sticky's saved binding (none while no vault is open) and says what the OS did. */
+	shortcutRegisterSticky: () => __TAURI_INVOKE<StickyShortcutResult>("shortcut_register_sticky"),
+	/**  Register first, save second, as [`shortcut_set_global_capture`]. */
+	shortcutSetSticky: (binding: ShortcutBinding | null) => __TAURI_INVOKE<StickyShortcutResult>("shortcut_set_sticky", { binding }),
 	/**  Whether `word` is misspelled, with up to eight suggestions. */
 	spellCheckWord: (word: string) => __TAURI_INVOKE<SpellResult>("spell_check_word", { word }),
 	/**
@@ -520,6 +524,15 @@ export const commands = {
 	spellAddWord: (word: string) => __TAURI_INVOKE<boolean>("spell_add_word", { word }),
 	/**  Adds each valid word and returns how many were taken (the Electron dictionary import). */
 	spellAddWords: (words: string[]) => __TAURI_INVOKE<number>("spell_add_words", { words }),
+	/**  Whether there was a draft to delete. */
+	stickyDeleteDraft: (id: string) => __TAURI_INVOKE<boolean>("sticky_delete_draft", { id }),
+	stickyGetSession: () => __TAURI_INVOKE<StickyWindowSession>("sticky_get_session"),
+	stickyListDrafts: () => __TAURI_INVOKE<StickyDraftView[]>("sticky_list_drafts"),
+	/**  The card's measured height in logical pixels; the shell clamps it to 140 to 560. */
+	stickyResize: (height: number | null) => __TAURI_INVOKE<null>("sticky_resize", { height }),
+	stickySaveDraft: (input: StickySaveDraftInput) => __TAURI_INVOKE<StickyDraftView>("sticky_save_draft", { input }),
+	/**  Closes the sticky; its renderer saved the draft before asking. */
+	stickyTuck: () => __TAURI_INVOKE<void>("sticky_tuck"),
 	/**
 	 *  Every installed font family. Enumeration touches every font file, so it runs off the async
 	 *  runtime.
@@ -828,6 +841,7 @@ export const events = {
 	propertyDefinitionChangedEvent: makeEvent<PropertyDefinitionChangedEvent, PropertyDefinitionChangedEvent>("property-definition-changed-event"),
 	settingsChangedEvent: makeEvent<SettingsChangedEvent, SettingsChangedEvent>("settings-changed-event"),
 	settingsOpenSectionEvent: makeEvent<SettingsOpenSectionEvent, SettingsOpenSectionEvent>("settings-open-section-event"),
+	stickyDraftsChangedEvent: makeEvent<StickyDraftsChangedEvent, StickyDraftsChangedEvent>("sticky-drafts-changed-event"),
 	syncDeviceRemovedEvent: makeEvent<SyncDeviceRemovedEvent, SyncDeviceRemovedEvent>("sync-device-removed-event"),
 	syncLinkingApprovedEvent: makeEvent<SyncLinkingApprovedEvent, SyncLinkingApprovedEvent>("sync-linking-approved-event"),
 	syncLinkingFinalizedEvent: makeEvent<SyncLinkingFinalizedEvent, SyncLinkingFinalizedEvent>("sync-linking-finalized-event"),
@@ -3112,6 +3126,40 @@ export type StartupState = {
 };
 
 export type StatusCategoryKey = "todo" | "in_progress" | "done";
+
+/**  `StickyDraft` of `@memry/contracts/sticky-api`. */
+export type StickyDraftView = {
+	id: string,
+	content: string,
+	/**  `note`, `task` or `journal`. */
+	kind: string,
+	createdAt: string,
+	modifiedAt: string,
+};
+
+/**
+ *  A sticky draft was written or deleted (`sticky:drafts-changed`), sent to every window; the
+ *  edge tab and the sticky read the list again.
+ */
+export type StickyDraftsChangedEvent = null;
+
+/**  `StickySaveDraftInput`: no id creates a draft. */
+export type StickySaveDraftInput = {
+	id: string | null,
+	/**  At most 100000 characters. */
+	content: string,
+	kind: string,
+};
+
+/**  `StickyShortcutResult` of `@memry/contracts/settings-schemas`. */
+export type StickyShortcutResult = {
+	status: ShortcutStatus,
+};
+
+/**  `StickyWindowSession`: the draft the open sticky shows, none for a blank one. */
+export type StickyWindowSession = {
+	draftId: string | null,
+};
 
 /**  `JournalStreak`, counted from this device's UTC date as Electron's `getJournalStreak`. */
 export type StreakView = {

@@ -13,6 +13,7 @@ mod dialog;
 mod editor;
 mod os_drag;
 mod reveal;
+mod sticky;
 mod shell;
 mod shell_integrations;
 mod updater;

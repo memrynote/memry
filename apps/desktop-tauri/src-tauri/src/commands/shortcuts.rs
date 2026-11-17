@@ -1,4 +1,5 @@
-//! The global capture shortcut commands (`registerGlobalCapture`, `setGlobalCapture`).
+//! The system-wide shortcut commands: global capture (`registerGlobalCapture`,
+//! `setGlobalCapture`) and the sticky (`registerStickyShortcut`, `setStickyShortcut`).
 
 use std::sync::Arc;
 
@@ -13,6 +14,7 @@ use tauri::{AppHandle, Manager, State, Wry};
 use super::blocking;
 use super::error::{CommandError, ErrorKind};
 use super::settings::{announce, map_error};
+use crate::shortcuts::sticky::StickyShortcutResult;
 use crate::shortcuts::{ShortcutService, read_binding};
 
 /// Registers the saved binding (or the fallback) and says what the OS did.
@@ -76,6 +78,67 @@ pub async fn shortcut_set_global_capture(
             },
         )?;
         // After the shortcut lock is released: the announce re-applies, a no-op for what is held.
+        if let Some(change) = change {
+            announce(&app, &change.group, change.fields)?;
+        }
+        Ok(result)
+    })
+    .await
+}
+
+/// Registers the sticky's saved binding (none while no vault is open) and says what the OS did.
+#[tauri::command]
+#[specta::specta]
+pub async fn shortcut_register_sticky(
+    app: AppHandle<Wry>,
+) -> Result<StickyShortcutResult, CommandError> {
+    blocking("shortcut_register_sticky", move || {
+        Ok(crate::shortcuts::sticky::apply_from_settings(&app))
+    })
+    .await
+}
+
+/// Register first, save second, as [`shortcut_set_global_capture`].
+#[tauri::command]
+#[specta::specta]
+pub async fn shortcut_set_sticky(
+    app: AppHandle<Wry>,
+    binding: Option<ShortcutBinding>,
+) -> Result<StickyShortcutResult, CommandError> {
+    blocking("shortcut_set_sticky", move || {
+        let Some(vault) = app.state::<Session>().current() else {
+            let locale = app.state::<Arc<LocaleService>>().get();
+            return Err(CommandError::new(
+                ErrorKind::Invalid,
+                "no_vault_open",
+                i18n::t(locale, "errors:ipc.noVaultOpen", &Args::new()),
+            ));
+        };
+        let settings = app.state::<SettingsService>().inner().clone();
+        let patch_value = serde_json::to_value(&binding).map_err(|error| {
+            CommandError::new(
+                ErrorKind::Invalid,
+                "settings_invalid_value",
+                error.to_string(),
+            )
+        })?;
+        let previous = read_binding(&app, "stickyShortcut");
+        let mut change = None;
+        let result = app.state::<ShortcutService>().set_sticky(
+            &app,
+            previous.as_ref(),
+            binding.as_ref(),
+            || {
+                let mut patch = Map::new();
+                patch.insert("stickyShortcut".to_owned(), patch_value);
+                change = Some(
+                    settings
+                        .write_group(Some(&vault), "keyboard", patch)
+                        .map_err(map_error)?,
+                );
+                Ok(())
+            },
+        )?;
         if let Some(change) = change {
             announce(&app, &change.group, change.fields)?;
         }

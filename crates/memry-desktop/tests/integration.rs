@@ -337,6 +337,8 @@ mod seams_tls;
 mod seams_transport;
 #[path = "settings_service.rs"]
 mod settings_service;
+#[path = "sticky_drafts.rs"]
+mod sticky_drafts;
 #[path = "sync_backend.rs"]
 mod sync_backend;
 #[path = "sync_host_clients.rs"]

@@ -186,6 +186,11 @@ app's page and answers its label, `e2e-<n>`, which is also its WebDriver window 
 config (`tauri.e2e.conf.json`) gives `e2e-*` windows the main window's permissions and the
 driver's. `specs/editor/two-window-typing.e2e.ts` types in one window and reads the other.
 
+## Sticky
+
+`e2e_open_sticky` (`src-tauri/src/e2e/sticky.rs`) opens the sticky window as its shortcut does
+(`unfold: false`) or as the edge tab unfolds a draft (`unfold: true`, `draftId` or null for blank).
+
 ## Clipboard
 
 `e2e_clipboard_read` and `e2e_clipboard_write` read and write the OS clipboard's text
