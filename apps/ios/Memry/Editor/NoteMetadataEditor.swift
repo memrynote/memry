@@ -38,8 +38,8 @@ protocol NoteMetadataWriting: Sendable {
     func ensurePropertyDefinition(name: String, typeName: String) async throws
 }
 
-/// A write this surface cannot make, such as renaming a journal day's property
-/// before its writer supports it.
+/// A write this surface cannot make, such as reordering a journal day's
+/// properties, which the core's journal API has no operation for.
 struct NoteMetadataWriteUnsupported: Error {}
 
 extension NoteMetadataWriting {

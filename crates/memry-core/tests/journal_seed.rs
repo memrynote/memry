@@ -160,7 +160,8 @@ fn a_new_day_is_created_with_the_substituted_template_and_its_document() {
             count(conn, "SELECT count(*) FROM outbox WHERE op = 'crdt-update'"),
             1
         );
-        assert_eq!(count(conn, "SELECT count(*) FROM yjs_updates"), 1);
+        // The created day's empty body row, then the seed.
+        assert_eq!(count(conn, "SELECT count(*) FROM yjs_updates"), 2);
 
         let document = body(conn, "j2099-06-15");
         let kinds: Vec<String> = extract_blocks(&document)
@@ -344,7 +345,7 @@ fn a_revived_day_that_already_has_a_body_keeps_its_document() {
 }
 
 #[test]
-fn an_empty_template_creates_the_day_without_a_document() {
+fn an_empty_template_creates_an_empty_day_and_pushes_no_body() {
     let db = open("empty");
     db.call_blocking(|conn| {
         sync_items::apply_remote(
@@ -359,7 +360,12 @@ fn an_empty_template_creates_the_day_without_a_document() {
         let outcome = open_day_from_template(conn, DAY, "tpl-empty", &formatted(), DEVICE, NOW)?;
         assert!(matches!(outcome, SeedOutcome::Seeded { .. }));
         assert_eq!(payload_of(conn, "j2099-06-15")["content"], json!(""));
-        assert_eq!(count(conn, "SELECT count(*) FROM yjs_updates"), 0);
+        assert_eq!(
+            count(conn, "SELECT count(*) FROM outbox WHERE op = 'crdt-update'"),
+            0
+        );
+        // Only the created day's local empty body row.
+        assert_eq!(count(conn, "SELECT count(*) FROM yjs_updates"), 1);
         Ok(())
     })
     .expect("the scenario");

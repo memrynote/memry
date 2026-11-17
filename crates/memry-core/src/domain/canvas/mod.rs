@@ -15,11 +15,13 @@
 //!   and only that. The inbound rule is [`merge`].
 //!
 //! Every write is one transaction with its outbox row, through
-//! [`outbox::commit`].
+//! [`outbox::commit`]. The one exception is [`set_scene_expecting`]: it
+//! enqueues inside its own transaction, because a `Stale` refusal must not
+//! queue an outbox row, and [`outbox::commit`] enqueues unconditionally.
 
 pub mod merge;
 
-use rusqlite::Connection;
+use rusqlite::{Connection, params};
 use serde_json::{Map, Value, json};
 
 use crate::api::errors::StorageError;
@@ -27,7 +29,7 @@ use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::{Change, StoredPayload, sync_items};
 use crate::sync::outbox::{self, Durable};
 
-use super::notes::{insert_local, next_clock, object, require_payload};
+use super::notes::{failed, insert_local, next_clock, object, require_payload};
 use super::saved_filters::mint_id;
 
 /// The `(type, _)` half of every key this module writes.
@@ -166,17 +168,95 @@ pub fn set_scene(
         now_ms,
         |tx| {
             let stored = live_payload(tx, canvas_id)?;
-            let changes = [
-                ("scene", Change::set(scene)),
-                (
-                    "clock",
-                    Change::Set(next_clock(stored.object(), device_id)?),
-                ),
-            ];
-            sync_items::apply_local_edit_in(tx, ITEM_TYPE, canvas_id, &changes, now_ms)?;
-            read_back(tx, canvas_id)
+            write_scene(tx, canvas_id, &stored, scene, device_id, now_ms)
         },
     )
+}
+
+/// What [`set_scene_expecting`] did.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SceneWrite {
+    /// The stored scene was the expected one; the new scene replaced it.
+    Written(Canvas),
+    /// The stored scene had changed since the caller read it, so nothing was
+    /// written. Carries the canvas as stored, for the caller to re-apply its
+    /// edit to.
+    Stale(Canvas),
+}
+
+/// [`set_scene`] guarded by the scene the caller read (#4820): a pull can land
+/// between a shell's read and its write, and an unguarded write built on the
+/// old read would erase that pull's edit under a dominating clock. `expected`
+/// is compared to the stored text exactly, in the write's own transaction.
+pub fn set_scene_expecting(
+    conn: &Connection,
+    canvas_id: &str,
+    scene: &str,
+    expected: &str,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<SceneWrite, StorageError> {
+    let scene = canonical_scene(scene)?;
+    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let stored = live_payload(&tx, canvas_id)?;
+    let current = read(canvas_id, stored.object());
+    if current.scene != expected {
+        return Ok(SceneWrite::Stale(current));
+    }
+    let written = write_scene(&tx, canvas_id, &stored, scene, device_id, now_ms)?;
+    outbox::enqueue(&tx, &outbox::Change::upsert(ITEM_TYPE, canvas_id), now_ms)?;
+    tx.commit().map_err(failed)?;
+    Ok(SceneWrite::Written(written))
+}
+
+/// Every live canvas whose `ownerNoteId` is `owner_note_id`, the note's own
+/// whiteboard and any "(conflict copy)" a pull made of it ([`merge`] gives the
+/// copy the same owner), ordered by id.
+pub fn list_owned_by(conn: &Connection, owner_note_id: &str) -> Result<Vec<Canvas>, StorageError> {
+    // `json_valid` first: `json_extract` over malformed text is an error, and
+    // one corrupt row must not hide every other canvas.
+    let mut statement = conn
+        .prepare(
+            "SELECT item_id, payload FROM sync_items
+              WHERE item_type = ?1 AND deleted_at IS NULL
+                AND CASE WHEN json_valid(payload)
+                         THEN json_extract(payload, '$.ownerNoteId') END = ?2
+              ORDER BY item_id",
+        )
+        .map_err(failed)?;
+    let rows = statement
+        .query_map(params![ITEM_TYPE, owner_note_id], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        })
+        .map_err(failed)?;
+    let mut canvases = Vec::new();
+    for row in rows {
+        let (id, raw) = row.map_err(failed)?;
+        let stored = StoredPayload::parse(&raw).map_err(|error| StorageError::Failed {
+            what: format!("canvas {id}: {error}"),
+        })?;
+        canvases.push(read(&id, stored.object()));
+    }
+    Ok(canvases)
+}
+
+fn write_scene(
+    tx: &Connection,
+    canvas_id: &str,
+    stored: &StoredPayload,
+    scene: String,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<Canvas, StorageError> {
+    let changes = [
+        ("scene", Change::set(scene)),
+        (
+            "clock",
+            Change::Set(next_clock(stored.object(), device_id)?),
+        ),
+    ];
+    sync_items::apply_local_edit_in(tx, ITEM_TYPE, canvas_id, &changes, now_ms)?;
+    read_back(tx, canvas_id)
 }
 
 fn read(canvas_id: &str, payload: &Object) -> Canvas {
@@ -205,5 +285,7 @@ fn read_back(tx: &Connection, canvas_id: &str) -> Result<Canvas, StorageError> {
     })
 }
 
+#[cfg(test)]
+mod cas_tests;
 #[cfg(test)]
 mod tests;

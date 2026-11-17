@@ -27,8 +27,11 @@
 
 use rusqlite::{Connection, OptionalExtension, params};
 use serde_json::json;
+use yrs::{Doc, ReadTxn as _, StateVector, Transact as _};
 
 use crate::api::errors::StorageError;
+use crate::crdt::errors::CrdtError;
+use crate::crdt::update_log;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox;
 
@@ -189,7 +192,21 @@ fn create_in(
     // A journal body is edited exactly as a note's is (FR-055), so it gets
     // the same materialised body row: empty text, no seed, derived from
     // the Yjs log the moment there is one.
-    seed_body(tx, id, "", now_ms)
+    seed_body(tx, id, "", now_ms)?;
+    // The body of a day created here is here, and empty. Without a log row a
+    // day created by a tag or property write reads `NotPulled`, and the shell
+    // offers a download of a body the server never had instead of the first
+    // line. Local only: an empty update carries nothing a peer needs.
+    let empty = Doc::new()
+        .transact()
+        .encode_state_as_update_v1(&StateVector::default());
+    update_log::append_local_update_in(tx, id, &empty, now_ms).map_err(|error| match error {
+        CrdtError::Storage { source } => source,
+        other => StorageError::Failed {
+            what: format!("seed the empty body of {id}: {other}"),
+        },
+    })?;
+    Ok(())
 }
 
 /// Clears the tombstone on an entry whose day is being opened again.

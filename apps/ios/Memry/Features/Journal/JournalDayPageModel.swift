@@ -29,8 +29,6 @@ final class JournalDayPageModel {
     var lastDetail: NoteDetail?
     /// Find in page (J09) is open over this page.
     var finding = false
-    /// The user tapped a disabled ghost row: say why it is disabled.
-    var explainsReadOnlyMetadata = false
     /// The first line's Return made a block that has yet to take the caret:
     /// the field stays, hidden and holding the caret, until it does.
     private(set) var handingOff = false
@@ -39,7 +37,7 @@ final class JournalDayPageModel {
     init(store: JournalStore, date: String, context: JournalVaultContext) {
         self.date = date
         let id = store.cachedDay(date)?.id ?? JournalNoteBridge.newDayId(date)
-        let bridge = JournalNoteBridge(store: store, date: date, exposesMetadata: JournalWriteGate.metadataWrites)
+        let bridge = JournalNoteBridge(store: store, date: date)
         self.bridge = bridge
         read = NoteReadViewModel(
             route: NoteRoute(id: id),
@@ -50,7 +48,7 @@ final class JournalDayPageModel {
         editor = NoteEditorViewModel(noteId: id, editor: bridge, notes: context.writer)
         metadata = NoteMetadataViewModel(
             noteId: id,
-            writer: JournalWriteGate.metadataWrites ? JournalMetadataWriter(bridge: bridge) : nil
+            writer: JournalMetadataWriter(bridge: bridge, definitions: context.metadataWriter)
         )
         composer = NoteAttachmentComposer(noteId: id, filler: context.filler)
         backlinks = BacklinksViewModel(noteId: id, search: context.search)
