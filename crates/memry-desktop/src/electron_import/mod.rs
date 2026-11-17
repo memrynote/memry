@@ -1,6 +1,7 @@
-//! Read-only readers for an installed Electron profile, consumed by the first-launch migration.
+//! Readers for an installed Electron profile, and the first-launch migration phases built on them.
 //!
-//! Nothing here writes to the Electron profile, to a keychain or to the Tauri data dir. LevelDB
+//! Nothing here writes to the Electron profile or to Electron's keychain items. The readers write
+//! nothing at all; [`secrets_import`] writes this app's own keychain entries only. LevelDB
 //! stores are only ever opened on a scratch copy ([`scratch`]); the profile itself is touched
 //! with reads and a lock probe. Errors name the failing part and never carry file content.
 
@@ -13,7 +14,9 @@ pub mod local_storage;
 pub mod profile;
 pub mod scratch;
 pub mod secrets;
+pub mod secrets_import;
 pub mod vault_db;
+pub mod vault_evidence;
 pub mod ystore;
 
 use std::path::PathBuf;
@@ -24,6 +27,10 @@ pub use local_storage::LocalStorageSnapshot;
 pub use profile::{AppNameCandidates, ElectronProfile, HostOs, IdentityPin, ProfileEnv};
 pub use scratch::{ProfileLock, Scratch, TornFile};
 pub use secrets::{SecretEntry, SecretsReport, UnreadableReason, UnreadableSecret};
+pub use secrets_import::{
+    SecretsError, SecretsEvidence, SecretsMode, SecretsOutcome, SecretsPhase, import_secrets,
+};
+pub use vault_evidence::{VaultEvidence, read_vault_evidence};
 pub use ystore::{SnapshotWatermark, YStoreReader};
 
 #[derive(Debug, thiserror::Error)]
@@ -89,6 +96,8 @@ pub enum ImportError {
     CoreFileExists(PathBuf),
     #[error(transparent)]
     Storage(#[from] memry_core::api::errors::StorageError),
+    #[error("sqlite: {0}")]
+    Sqlite(String),
 }
 
 impl ImportError {
