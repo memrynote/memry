@@ -110,6 +110,22 @@ export function parseHumanizedReleaseMarker(body = '') {
   return match ? { tag: match[1] } : null
 }
 
+/**
+ * The humanized notes of a draft body `buildHumanizedReleaseBody` wrote for `expectedTag`: the text
+ * between the marker and the `## Changelog` section, the same markdown `release-notes/<V>.md` holds.
+ */
+export function extractHumanizedReleaseNotes(body = '', expectedTag) {
+  assertHumanizedReleaseNotesForPublish({ body, draftTag: expectedTag, expectedTag })
+  const marker = new RegExp(`<!--\\s*${HUMANIZED_RELEASE_MARKER}\\s+tag=[^\\s>]+\\s*-->`).exec(body)
+  const afterMarker = body.slice(marker.index + marker[0].length)
+  const changelog = /^## Changelog\s*$/m.exec(afterMarker)
+  const notes = (changelog ? afterMarker.slice(0, changelog.index) : afterMarker).trim()
+  if (!notes) {
+    throw new Error(`The humanized release notes for ${expectedTag} are empty`)
+  }
+  return `${notes}\n`
+}
+
 export function extractPreviousTagFromReleaseBody(body = '') {
   const match = /\/compare\/(.+?)\.\.\.[^\s)]+/.exec(body)
   return match?.[1] ?? null

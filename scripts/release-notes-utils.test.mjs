@@ -8,6 +8,7 @@ import {
   buildReleaseNotesPrompt,
   buildClaudeExecArgs,
   assertHumanizedReleaseNotesForPublish,
+  extractHumanizedReleaseNotes,
   extractPreviousTagFromReleaseBody,
   extractPullRequestNumbers,
   extractReleaseNote,
@@ -212,6 +213,33 @@ describe('release notes helpers', () => {
     assert.match(body, /## New Features/)
     assert.match(body, /## Changelog/)
     assert.match(body, /#124 feat: add table of contents shortcut @kaan/)
+    assert.equal(extractHumanizedReleaseNotes(body, 'v2026-05-08'), `${humanized}\n`)
+  })
+
+  it('extracts the humanized notes only for the tag they were written for', () => {
+    const body = buildHumanizedReleaseBody({
+      compareUrl: 'https://github.com/memrynote/memry/compare/v2026-05-01...v2026-05-08',
+      finalTag: 'v2026-05-08',
+      humanizedMarkdown: '## Fixes\n- 🔗 Better Media Paths — PDF links resolve more consistently.',
+      pullRequests: []
+    })
+
+    assert.throws(
+      () => extractHumanizedReleaseNotes(body, 'v2026-05-09'),
+      /humanized for v2026-05-08, but this publish resolves to v2026-05-09/
+    )
+    assert.throws(
+      () => extractHumanizedReleaseNotes("## What's Changed\n- fix (#1)", 'v2026-05-08'),
+      /have not been humanized for v2026-05-08/
+    )
+    assert.throws(
+      () =>
+        extractHumanizedReleaseNotes(
+          '<!-- memry-humanized-release-notes tag=v2026-05-08 -->\n\n## Changelog\n',
+          'v2026-05-08'
+        ),
+      /are empty/
+    )
   })
 
   it('builds a prompt that asks the model to rewrite facts, not invent them', () => {
