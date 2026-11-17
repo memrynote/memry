@@ -20,10 +20,18 @@ struct MemoryStore(Mutex<HashMap<String, Vec<u8>>>);
 
 impl SecureStore for MemoryStore {
     fn get(&self, key: SecureStoreKey) -> Result<Option<Vec<u8>>, SecureStoreError> {
-        Ok(self.0.lock().expect("lock").get(&format!("{key:?}")).cloned())
+        Ok(self
+            .0
+            .lock()
+            .expect("lock")
+            .get(&format!("{key:?}"))
+            .cloned())
     }
     fn set(&self, key: SecureStoreKey, value: Vec<u8>) -> Result<(), SecureStoreError> {
-        self.0.lock().expect("lock").insert(format!("{key:?}"), value);
+        self.0
+            .lock()
+            .expect("lock")
+            .insert(format!("{key:?}"), value);
         Ok(())
     }
     fn delete(&self, key: SecureStoreKey) -> Result<(), SecureStoreError> {
@@ -47,7 +55,8 @@ fn registered() -> Arc<dyn SecureStore> {
 
 fn vault() -> (tempfile::TempDir, Vault) {
     let dir = tempfile::tempdir().expect("the scratch directory");
-    let opened = Vault::open("vault-1".to_string(), dir.path().display().to_string()).expect("open");
+    let opened =
+        Vault::open("vault-1".to_string(), dir.path().display().to_string()).expect("open");
     (dir, opened)
 }
 
@@ -78,17 +87,33 @@ fn a_draft_saves_updates_lists_and_deletes_with_iso_instants() {
         .expect("create");
     assert_eq!(created.kind, "note");
     assert!(is_iso_millis(&created.created_at), "{}", created.created_at);
-    assert!(is_iso_millis(&created.modified_at), "{}", created.modified_at);
+    assert!(
+        is_iso_millis(&created.modified_at),
+        "{}",
+        created.modified_at
+    );
 
     let queued = outbox_rows(dir.path());
     let unchanged = store
-        .save(Some(created.id.clone()), "Buy oat milk".into(), StickyKind::Note)
+        .save(
+            Some(created.id.clone()),
+            "Buy oat milk".into(),
+            StickyKind::Note,
+        )
         .expect("no-op save");
     assert_eq!(unchanged, created);
-    assert_eq!(outbox_rows(dir.path()), queued, "an unchanged save queues nothing");
+    assert_eq!(
+        outbox_rows(dir.path()),
+        queued,
+        "an unchanged save queues nothing"
+    );
 
     let edited = store
-        .save(Some(created.id.clone()), "Buy oat milk\nand bread".into(), StickyKind::Task)
+        .save(
+            Some(created.id.clone()),
+            "Buy oat milk\nand bread".into(),
+            StickyKind::Task,
+        )
         .expect("update");
     assert_eq!(edited.id, created.id);
     assert_eq!(edited.kind, "task");
@@ -110,6 +135,9 @@ fn content_over_the_limit_is_refused_and_writes_nothing() {
         .expect("the limit itself is fine");
     let over = "a".repeat(MAX_CONTENT_UNITS + 1);
     let refused = store.save(None, over, StickyKind::Note);
-    assert!(matches!(refused, Err(StorageError::Invalid { .. })), "{refused:?}");
+    assert!(
+        matches!(refused, Err(StorageError::Invalid { .. })),
+        "{refused:?}"
+    );
     assert_eq!(store.list().expect("list").len(), 1);
 }

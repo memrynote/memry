@@ -63,7 +63,11 @@ mod tests {
             };
             let cursor = (960.0 * scale, 540.0 * scale);
             let (x, y) = place_near_cursor(cursor, area, scale);
-            assert_eq!(x, (cursor.0 - 180.0 * scale).round() as i32, "scale {scale}");
+            assert_eq!(
+                x,
+                (cursor.0 - 180.0 * scale).round() as i32,
+                "scale {scale}"
+            );
             assert_eq!(y, (cursor.1 - 60.0 * scale).round() as i32, "scale {scale}");
         }
     }
@@ -71,7 +75,10 @@ mod tests {
     #[test]
     fn near_an_edge_the_window_stays_inside_the_work_area() {
         assert_eq!(place_near_cursor((5.0, 30.0), PRIMARY, 1.0), (0, 25));
-        assert_eq!(place_near_cursor((1439.0, 899.0), PRIMARY, 1.0), (1080, 670));
+        assert_eq!(
+            place_near_cursor((1439.0, 899.0), PRIMARY, 1.0),
+            (1080, 670)
+        );
         // 150 percent: the window is 540 by 345 physical pixels.
         assert_eq!(place_near_cursor((1439.0, 899.0), PRIMARY, 1.5), (900, 555));
     }
@@ -84,7 +91,10 @@ mod tests {
             width: 2560,
             height: 1415,
         };
-        assert_eq!(place_near_cursor((-2559.0, -199.0), left, 2.0), (-2560, -200));
+        assert_eq!(
+            place_near_cursor((-2559.0, -199.0), left, 2.0),
+            (-2560, -200)
+        );
         assert_eq!(place_near_cursor((-10.0, 1000.0), left, 2.0), (-720, 755));
     }
 

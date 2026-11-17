@@ -1,12 +1,12 @@
 //! The sticky capture window (`apps/desktop/src/main/stickies/sticky-window.ts`): frameless,
 //! transparent and always on top, opened near the pointer by its own shortcut on the latest draft,
-//! a draft the edge tab unfolds, or blank. Tucking destroys it; the draft stays. The rules are
+//! a draft the edge tab unfolds, or blank. Tucking hides it; the draft stays. The rules are
 //! `memry_desktop::sticky`; this is the window adapter.
 
 use std::sync::{Mutex, PoisonError};
 
 use memry_desktop::sticky::geometry::{self, INITIAL_HEIGHT, Rect, WIDTH};
-use memry_desktop::sticky::session::{OpenAction, OpenRequest, resolve};
+use memry_desktop::sticky::session::{OpenRequest, Step, StickySession};
 use tauri::webview::{Color, PageLoadEvent};
 use tauri::{
     AppHandle, LogicalSize, Manager, PhysicalPosition, WebviewUrl, WebviewWindow,
@@ -21,18 +21,9 @@ use crate::startup::{self, Stage};
 
 pub const LABEL: &str = "sticky";
 
-/// The draft the sticky shows, and which build of the window is on screen.
-#[derive(Default)]
-struct Session {
-    draft_id: Option<String>,
-    /// Bumped by every open, so the Destroyed event of a replaced window clears nothing.
-    generation: u64,
-    open: bool,
-}
-
 #[derive(Default)]
 pub struct StickyWindow {
-    session: Mutex<Session>,
+    session: Mutex<StickySession>,
 }
 
 pub fn register_stages() {
@@ -45,13 +36,13 @@ fn manage(app: &AppHandle<Wry>) -> Result<(), CommandError> {
 }
 
 impl StickyWindow {
-    fn lock(&self) -> std::sync::MutexGuard<'_, Session> {
+    fn lock(&self) -> std::sync::MutexGuard<'_, StickySession> {
         self.session.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
     /// The draft the open sticky shows (`sticky:get-session`).
     pub fn draft_id(&self) -> Option<String> {
-        self.lock().draft_id.clone()
+        self.lock().draft_id()
     }
 }
 
@@ -65,8 +56,7 @@ pub fn open(app: &AppHandle<Wry>, request: OpenRequest) {
             OpenRequest::Draft(_) => None,
         };
         let target = app.clone();
-        if let Err(error) = app.run_on_main_thread(move || open_on_main(&target, request, latest))
-        {
+        if let Err(error) = app.run_on_main_thread(move || open_on_main(&target, request, latest)) {
             tracing::warn!(scope = "StickyWindow", "could not open the sticky: {error}");
         }
     });
@@ -87,56 +77,35 @@ fn latest_draft(app: &AppHandle<Wry>) -> Option<String> {
 }
 
 fn open_on_main(app: &AppHandle<Wry>, request: OpenRequest, latest: Option<String>) {
-    let state = app.state::<StickyWindow>();
-    let mut session = state.lock();
-    let on_screen = session.open.then_some(session.draft_id.as_deref());
-    match resolve(request, on_screen, latest.as_deref()) {
-        OpenAction::Focus => {
-            drop(session);
-            if let Some(window) = app.get_webview_window(LABEL)
-                && let Err(error) = window.set_focus()
-            {
-                tracing::warn!(scope = "StickyWindow", "could not focus the sticky: {error}");
-            }
-        }
-        OpenAction::Open { draft_id } => {
-            session.draft_id = draft_id;
-            session.generation += 1;
-            session.open = true;
-            let generation = session.generation;
-            drop(session);
-            match app.get_webview_window(LABEL) {
-                // One that was replaced or is still closing: its label is free once the destroy
-                // has run, which is before the next turn of the main thread.
-                Some(old) => {
-                    if let Err(error) = old.destroy() {
-                        tracing::warn!(scope = "StickyWindow", "could not close the sticky: {error}");
-                    }
-                    let target = app.clone();
-                    if let Err(error) =
-                        app.run_on_main_thread(move || build_or_log(&target, generation))
-                    {
-                        tracing::warn!(scope = "StickyWindow", "could not open the sticky: {error}");
-                    }
-                }
-                None => build_or_log(app, generation),
-            }
+    let existing = app.get_webview_window(LABEL);
+    let step =
+        app.state::<StickyWindow>()
+            .lock()
+            .request(request, latest.as_deref(), existing.is_some());
+    let result = match (step, existing) {
+        (Step::Focus, Some(window)) => window.show().and_then(|()| window.set_focus()),
+        // Its page shows and focuses it once loaded.
+        (Step::Reload, Some(window)) => reload(app, &window),
+        (Step::Build, _) | (Step::Focus | Step::Reload, None) => build(app).map(drop),
+    };
+    if let Err(error) = result {
+        tracing::warn!(scope = "StickyWindow", "could not open the sticky: {error}");
+        if step != Step::Focus {
+            app.state::<StickyWindow>().lock().closed();
         }
     }
 }
 
-fn build_or_log(app: &AppHandle<Wry>, generation: u64) {
-    if let Err(error) = build(app, generation) {
-        tracing::warn!(scope = "StickyWindow", "could not build the sticky: {error}");
-        let state = app.state::<StickyWindow>();
-        let mut session = state.lock();
-        if session.generation == generation {
-            session.open = false;
-        }
+/// A fresh page on the session's draft, placed and sized as a new sticky is.
+fn reload(app: &AppHandle<Wry>, window: &WebviewWindow<Wry>) -> tauri::Result<()> {
+    window.set_size(LogicalSize::new(WIDTH, INITIAL_HEIGHT))?;
+    if let Some(position) = near_cursor(app) {
+        window.set_position(position)?;
     }
+    window.reload()
 }
 
-fn build(app: &AppHandle<Wry>, generation: u64) -> tauri::Result<WebviewWindow<Wry>> {
+fn build(app: &AppHandle<Wry>) -> tauri::Result<WebviewWindow<Wry>> {
     let origins = navigation_guard::app_origins(app);
     let off_app = navigation_guard::OffApp::default();
     let (loopback_origin, loopback_token) =
@@ -164,10 +133,10 @@ fn build(app: &AppHandle<Wry>, generation: u64) -> tauri::Result<WebviewWindow<W
             // Not at first paint: on Windows a hidden transparent window never paints, so the
             // shortcut would seem to do nothing (`af1c3517f2`).
             .on_page_load(|window, payload| {
-                if matches!(payload.event(), PageLoadEvent::Finished) {
-                    if let Err(error) = window.show().and_then(|()| window.set_focus()) {
-                        tracing::warn!(scope = "StickyWindow", "could not show the sticky: {error}");
-                    }
+                if matches!(payload.event(), PageLoadEvent::Finished)
+                    && let Err(error) = window.show().and_then(|()| window.set_focus())
+                {
+                    tracing::warn!(scope = "StickyWindow", "could not show the sticky: {error}");
                 }
             })
             .on_navigation(navigation_guard::on_navigation(
@@ -181,18 +150,19 @@ fn build(app: &AppHandle<Wry>, generation: u64) -> tauri::Result<WebviewWindow<W
                 &scripts::init_script(globals),
             ));
     let window = webview_profile(builder, app).build()?;
-    if let Some(position) = near_cursor(app) {
-        window.set_position(position)?;
+    if let Some(position) = near_cursor(app)
+        && let Err(error) = window.set_position(position)
+    {
+        tracing::warn!(
+            scope = "StickyWindow",
+            "could not place the sticky: {error}"
+        );
     }
     navigation_guard::install(app, &window);
     let handle = app.clone();
     window.on_window_event(move |event| {
         if matches!(event, WindowEvent::Destroyed) {
-            let state = handle.state::<StickyWindow>();
-            let mut session = state.lock();
-            if session.generation == generation {
-                session.open = false;
-            }
+            handle.state::<StickyWindow>().lock().closed();
         }
     });
     Ok(window)
@@ -217,12 +187,13 @@ fn near_cursor(app: &AppHandle<Wry>) -> Option<PhysicalPosition<i32>> {
     Some(PhysicalPosition::new(x, y))
 }
 
-/// Closes the sticky (`tuckStickyWindow`). It is forgotten before it finishes closing, so a
-/// shortcut in between opens a new one instead of focusing the one on its way out.
+/// Puts the sticky away (`tuckStickyWindow`): hidden, not destroyed, so the next open reuses the
+/// window (see [`StickySession`]). It is forgotten first, so a shortcut in between opens it again
+/// instead of focusing it.
 pub fn tuck(app: &AppHandle<Wry>) {
-    app.state::<StickyWindow>().lock().open = false;
+    app.state::<StickyWindow>().lock().closed();
     if let Some(window) = app.get_webview_window(LABEL)
-        && let Err(error) = window.destroy()
+        && let Err(error) = window.hide()
     {
         tracing::warn!(scope = "StickyWindow", "could not tuck the sticky: {error}");
     }

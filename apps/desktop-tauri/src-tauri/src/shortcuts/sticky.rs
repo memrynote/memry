@@ -5,7 +5,9 @@
 use std::sync::{Arc, PoisonError};
 
 use memry_desktop::session::Session;
-use memry_desktop::shell::shortcut::{OnFire, ShortcutBinding, ShortcutStatus, register_configured};
+use memry_desktop::shell::shortcut::{
+    OnFire, ShortcutBinding, ShortcutStatus, register_configured,
+};
 use memry_desktop::sticky::session::OpenRequest;
 use memry_desktop::telemetry::main_warning::Level;
 use serde::Serialize;

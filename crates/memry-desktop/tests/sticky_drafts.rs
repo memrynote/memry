@@ -29,5 +29,11 @@ fn a_profile_without_a_device_identity_saves_its_first_draft() {
     let saved = store
         .save(None, "Call the dentist".into(), StickyKind::Task)
         .expect("save");
-    assert_eq!(drafts::open(&open, identity).expect("again").list().expect("list"), vec![saved]);
+    assert_eq!(
+        drafts::open(&open, identity)
+            .expect("again")
+            .list()
+            .expect("list"),
+        vec![saved]
+    );
 }

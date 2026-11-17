@@ -154,7 +154,6 @@ pub fn sticky_resize(app: AppHandle<Wry>, height: f64) -> Result<(), CommandErro
     if !(height.is_finite() && height > 0.0) {
         return Err(invalid("sticky height must be positive"));
     }
-    sticky::resize(&app, height).map_err(|error| {
-        CommandError::new(ErrorKind::Internal, "window_failed", error.to_string())
-    })
+    sticky::resize(&app, height)
+        .map_err(|error| CommandError::new(ErrorKind::Internal, "window_failed", error.to_string()))
 }
