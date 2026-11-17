@@ -7,6 +7,8 @@
 //!   source and the target, and a read on the announcing thread already sees the change.
 //! - A link to a note that does not exist yet, then the note: the link resolves to it, and the
 //!   new note is announced as a target.
+//! - A link to a day not written yet, then its removal: the day is announced as a target by its
+//!   `j<date>` id, and its backlinks read lists the source, then not.
 //! - An edit that changes no link announces nothing.
 //! - A relation value an outside edit adds, then removes: announced with the note it links once
 //!   its property rows read back, so Linked here on that note refetches what the edit wrote.
@@ -147,6 +149,17 @@ fn the_links_an_edit_changed_are_announced_once_they_read_back() {
     let ((changes, seen), _) = announced_for(&heard, &early);
     assert!(changes.targets.contains(&ghost), "{changes:?}");
     assert_eq!(seen[&ghost], ["Early"]);
+
+    // A link to an unwritten day is stored unresolved, and names the day by its id.
+    let day = "j2036-05-08".to_owned();
+    e.write("Late.md", "Due [[2036-05-08]].\n");
+    let ((changes, seen), _) = announced_for(&heard, &late);
+    assert!(changes.targets.contains(&day), "{changes:?}");
+    assert_eq!(seen[&day], ["Late"]);
+    e.write("Late.md", "Not due.\n");
+    let ((changes, seen), _) = announced_for(&heard, &late);
+    assert!(changes.targets.contains(&day), "{changes:?}");
+    assert!(seen[&day].is_empty(), "{seen:?}");
     drop(links);
     *reader.lock().unwrap() = None;
     e.close();

@@ -94,6 +94,11 @@ pub enum AccountError {
     DeleteSignedOut,
     #[error("the vault list could not be saved: {0}")]
     VaultList(String),
+    /// A vault id that cannot name a folder (`account_admin::segment`).
+    #[error("The account vault's id is not valid")]
+    InvalidVaultId,
+    #[error("Could not create the vault folder: {0}")]
+    VaultDownload(String),
 }
 
 impl From<SecureStoreError> for AccountError {
@@ -142,6 +147,8 @@ impl CoreError for AccountError {
             Self::DeleteOpenVault => (FailureKind::Invalid, "vault_is_open"),
             Self::DeleteSignedOut => (FailureKind::Auth, "signed_out"),
             Self::VaultList(_) => (FailureKind::Storage, "vault_list_unwritable"),
+            Self::InvalidVaultId => (FailureKind::Invalid, "invalid_vault_id"),
+            Self::VaultDownload(_) => (FailureKind::Storage, "vault_download_failed"),
         }
     }
 }

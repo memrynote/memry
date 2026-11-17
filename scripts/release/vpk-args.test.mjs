@@ -10,11 +10,12 @@ import {
   TARGETS,
   assertPublishable,
   assetNames,
-  buildPackArgs
+  buildPackArgs,
+  shouldPackDelta
 } from './vpk-args.mjs'
-import { renameToPublished } from './vpk-pack.mjs'
+import { releaseNotesPath, renameToPublished } from './vpk-pack.mjs'
 
-const base = { version: '2099.101.1', packDir: 'pack', outputDir: 'out' }
+const base = { version: '2099.101.1', packDir: 'pack', outputDir: 'out', releaseNotes: 'notes.md' }
 const common = (os, exe, runtime, channel) => [
   `[${os}]`,
   'pack',
@@ -51,11 +52,15 @@ describe('buildPackArgs', () => {
         ...common('win', 'Memrynote.exe', 'win-x64', 'win'),
         '--delta',
         'None',
+        '--releaseNotes',
+        'notes.md',
         '--icon',
         'icon.ico',
         '--framework',
         'webview2',
         '--noPortable',
+        '--aumid',
+        'com.memrynote.memry',
         '--signTemplate',
         'sign {{file}}'
       ]
@@ -67,11 +72,15 @@ describe('buildPackArgs', () => {
       ...common('win', 'Memrynote.exe', 'win-arm64', 'win-arm64'),
       '--delta',
       'BestSpeed',
+      '--releaseNotes',
+      'notes.md',
       '--icon',
       'icon.ico',
       '--framework',
       'webview2',
-      '--noPortable'
+      '--noPortable',
+      '--aumid',
+      'com.memrynote.memry'
     ])
   })
 
@@ -90,6 +99,8 @@ describe('buildPackArgs', () => {
           ...common('osx', 'MemryNote', `osx-${arch}`, `osx-${arch}`),
           '--delta',
           'BestSize',
+          '--releaseNotes',
+          'notes.md',
           '--noInst',
           '--signAppIdentity',
           'Developer ID Application: X',
@@ -109,7 +120,9 @@ describe('buildPackArgs', () => {
     assert.deepEqual(buildPackArgs('linux-x64', base), [
       ...common('linux', 'memrynote', 'linux-x64', 'linux'),
       '--delta',
-      'BestSpeed'
+      'BestSpeed',
+      '--releaseNotes',
+      'notes.md'
     ])
   })
 
@@ -118,6 +131,60 @@ describe('buildPackArgs', () => {
     assert.throws(() => buildPackArgs('linux-x64', { ...base, delta: 'Fast' }), /delta/)
     assert.throws(() => buildPackArgs('osx-arm64', base), /identity is required/)
     assert.throws(() => buildPackArgs('win-x64', base), /iconPath is required/)
+  })
+
+  // Without notes the feed has no NotesMarkdown: the popover shows no lines and the
+  // release-notes tab never opens after an update (#3556, comment 6535593990).
+  it('passes release notes to every target and refuses a pack without them', () => {
+    for (const name of Object.keys(TARGETS)) {
+      const { releaseNotes: _, ...noNotes } = base
+      assert.throws(() => buildPackArgs(name, noNotes), /releaseNotes is required/, name)
+    }
+  })
+
+  it('sets the AUMID on the Windows channels only', () => {
+    const signing = {
+      iconPath: 'i.ico',
+      identity: 'I',
+      entitlements: 'e',
+      notaryProfile: 'n',
+      keychain: 'k'
+    }
+    for (const name of Object.keys(TARGETS)) {
+      const args = buildPackArgs(name, { ...base, ...signing })
+      assert.equal(args.includes('--aumid'), name.startsWith('win-'), name)
+    }
+  })
+})
+
+describe('shouldPackDelta', () => {
+  const electron = ['RELEASES', 'releases.win.json', 'MemryNote-2026.1025.1-full.nupkg']
+  const tauri = [
+    ...electron,
+    'releases.win-arm64.json',
+    'releases.osx-arm64.json',
+    'releases.osx-x64.json',
+    'releases.linux.json'
+  ]
+
+  it('packs no delta on any channel when the previous release is Electron', () => {
+    for (const channel of ['win', 'win-arm64', 'osx-arm64', 'osx-x64', 'linux']) {
+      assert.equal(shouldPackDelta(electron, channel), false, channel)
+    }
+  })
+
+  it('packs a delta on every channel after a Tauri release', () => {
+    for (const channel of ['win', 'win-arm64', 'osx-arm64', 'osx-x64', 'linux']) {
+      assert.equal(shouldPackDelta(tauri, channel), true, channel)
+    }
+  })
+
+  it('reads its own feed on the new channels and the macOS one on win', () => {
+    assert.equal(shouldPackDelta([...electron, 'releases.linux.json'], 'linux'), true)
+    assert.equal(shouldPackDelta([...electron, 'releases.linux.json'], 'osx-x64'), false)
+    assert.equal(shouldPackDelta([...electron, 'releases.linux.json'], 'win'), false)
+    assert.equal(shouldPackDelta(['releases.osx-arm64.json'], 'win'), true)
+    assert.throws(() => shouldPackDelta(tauri, 'osx'), /Unknown channel/)
   })
 })
 
@@ -213,6 +280,15 @@ describe('vpk-pack cli', () => {
       'None'
     ])
     assert.equal(target, 'linux-x64')
-    assert.deepEqual(buildPackArgs(target, options).slice(-2), ['--delta', 'None'])
+    assert.equal(options.releaseNotes, releaseNotesPath('2099.101.1'))
+    assert.match(options.releaseNotes, /release-notes[\\/]2099\.101\.1\.md$/)
+    assert.deepEqual(buildPackArgs(target, options).slice(-4), [
+      '--delta',
+      'None',
+      '--releaseNotes',
+      releaseNotesPath('2099.101.1')
+    ])
+    const flagged = parsePackCli(['linux-x64', '--version', 'v', '--release-notes', 'r.md'])
+    assert.equal(flagged.options.releaseNotes, 'r.md')
   })
 })

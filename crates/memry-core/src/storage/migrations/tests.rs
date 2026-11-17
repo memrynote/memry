@@ -42,7 +42,7 @@ fn a_fresh_data_database_reaches_the_latest_version() {
     let version = db
         .call_blocking(|conn| user_version(conn))
         .expect("user_version");
-    assert_eq!(version, 32);
+    assert_eq!(version, 33);
 
     let names = table_names(&db);
     // Source of record, §A.2.
@@ -79,6 +79,7 @@ fn a_fresh_data_database_reaches_the_latest_version() {
         "folders",
         "inbox_attachment_releases",
         "inbox_attachment_uploads",
+        "inbox_jobs",
         "inbox_item_tags",
         "inbox_items",
         "journal_aliases",
