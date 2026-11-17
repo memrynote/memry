@@ -6,7 +6,7 @@
 //! the only input. Each row's project and task are applied through the sync
 //! apply path as a peer would deliver them, the task is completed at the row's
 //! local instant, and the closed task and the next occurrence are read back
-//! from storage: the derived id (chapter 13 §13.7.3), the due date, the status,
+//! from storage: a fresh id (random, chapter 13 §13.7.3), the due date, the status,
 //! `repeatConfig` with its incremented count, and every copied field.
 //!
 //! Its own test target: the `tzSensitive` rows also run in child processes of
@@ -19,7 +19,7 @@ mod support;
 use std::process::Command;
 
 use memry_core::domain::calendar::LocalDateTime;
-use memry_core::domain::tasks;
+use memry_core::domain::tasks::{self, TASK_ID_LEN};
 use memry_core::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
 use memry_core::storage::{Db, open_data};
 use memry_core::sync::versioned;
@@ -139,10 +139,18 @@ fn run_case(vectors: &Json, case: &Json) -> Vec<String> {
         return failures;
     };
     let want = &expected["next"];
-    check("next id", &json!(occurrence.id), &want["id"]);
+    check(
+        "next id is a fresh task id",
+        &json!(occurrence.id.len() == TASK_ID_LEN && occurrence.id != task_id),
+        &json!(true),
+    );
     check("next due", &json!(occurrence.due_date), &want["dueDate"]);
     check("stored due", &payload["dueDate"], &want["dueDate"]);
-    check("created", &json!(done.write.created), &json!([want["id"]]));
+    check(
+        "created",
+        &json!(done.write.created),
+        &json!([occurrence.id]),
+    );
     check("status", &payload["statusId"], &want["statusId"]);
     check(
         "repeatConfig",
@@ -228,5 +236,5 @@ fn the_end_day_is_inclusive_in_every_time_zone() {
 fn tz_sensitive_rows_in_the_child_zone() {
     let zone = std::env::var(CHILD_ZONE).expect("started by the parent test");
     assert_eq!(std::env::var("TZ").ok().as_deref(), Some(zone.as_str()));
-    assert_eq!(run_rows(true), 2, "the two end-date rows");
+    assert_eq!(run_rows(true), 3, "the three end-date rows");
 }

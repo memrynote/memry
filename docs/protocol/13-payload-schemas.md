@@ -485,22 +485,32 @@ What an older build does with it depends on whether it keeps unknown keys:
   that push wins the document gate on a newer device, the absent key applies as
   `null` and the duration is lost on that task. Nothing else is corrupted.
 
-**Next occurrence id (#3538).** Completing an open repeating task creates the
-next occurrence under `sha256("<taskId> spawn <completedCount>")`, the first 21
-lowercase hex characters, where `completedCount` is the next occurrence's
-`repeatConfig.completedCount`, so two devices that complete the same occurrence
-before syncing create one task (`crates/memry-core/src/domain/tasks/lifecycle.rs`,
-`occurrence_id`). When that id already holds a live task, the completion
-creates nothing and that task is the next occurrence. When the id is a
-tombstone, local or synced, the occurrence takes a fresh random id, because
-`task` is not in `RECREATABLE_AFTER_PURGE_ITEM_TYPES` (chapter 05 §5.12.3).
-Desktop builds create the next occurrence under a random id; a receiver treats
-both as ordinary task ids. The series end date is the end **day**, compared at
-its local midnight in every time zone. Desktop reads it as UTC midnight, which
-ends the series one occurrence early west of UTC. The vectors are
+**Next occurrence (#3538).** Completing an open repeating task creates the
+next occurrence under a new random task id, on desktop
+(`packages/domain-tasks/src/repeat-completion.ts:96`) and in the core
+(`crates/memry-core/src/domain/tasks/lifecycle.rs:162`). Two devices that
+complete the same occurrence before syncing each create one, and both survive
+the merge. An undo tombstones only the occurrence its own completion created
+(`crates/memry-core/src/domain/tasks/batch.rs:283-285`).
+
+**Series end day (#3538).** The core reads `endDate` as an end **day**. An
+occurrence due on or before that day is in the series
+(`crates/memry-core/src/domain/recurrence.rs:95`, `:119`), and a completion
+creates the next occurrence only up to the end day's local midnight
+(`recurrence.rs:143-145`). Both rules hold in every time zone. Desktop reads
+`endDate` with `new Date`, as UTC midnight of the end day
+(`packages/domain-tasks/src/repeat-completion.ts:28`), and compares local
+instants against it (`packages/domain-tasks/src/parsing/recurrence.ts:132`,
+`:184`). West of UTC, the end day's occurrence falls after UTC midnight, so
+desktop ends the series one occurrence early. East of UTC, a completion made on
+the end day before UTC midnight still creates the next occurrence: in Auckland
+(UTC+13), completing the 03-10 occurrence of a series that ends 03-11 at 09:30
+on 03-11 creates the 03-11 occurrence, and the core creates none. Under UTC the
+two agree. The vectors are
 `packages/contracts/test-vectors/task-completion-spawn.json`
 (`packages/contracts/scripts/vectors/task-completion-spawn.ts`, generated under
-`TZ=UTC`), verified by `packages/contracts/src/__tests__/task-completion-spawn.test.ts`
+`TZ=UTC`; the `end-date-complete-on-end-day` row completes on the end day),
+verified by `packages/contracts/src/__tests__/task-completion-spawn.test.ts`
 and `crates/memry-core/tests/task_completion_spawn_vectors.rs`.
 
 **`fields` is not one of the sixteen, and chapter 06 §6.3 never merges it.** It is a

@@ -5,9 +5,9 @@
     "source": "packages/domain-tasks/src/repeat-completion.ts rollRepeatingSeries",
     "timeZone": "UTC",
     "dates": "YYYY-MM-DD local calendar keys; completedAt is local YYYY-MM-DDTHH:MM:SS",
-    "nextId": "chapter 13 §13.7.3: sha256(\"<taskId> spawn <completedCount>\") hex, first 21",
+    "nextId": "random on both sides (chapter 13 §13.7.3); not recorded",
     "fields": "plain values (desktop Task.fields); the wire carries them versioned (§13.7.3.1)",
-    "caseCount": 18
+    "caseCount": 19
   },
   "statuses": [
     {
@@ -103,7 +103,6 @@
       "expected": {
         "closedRepeatConfig": null,
         "next": {
-          "id": "c9be8c5c90bcf22d9abc6",
           "dueDate": "2026-03-11",
           "statusId": "p1-todo",
           "completedCount": 1,
@@ -187,7 +186,6 @@
       "expected": {
         "closedRepeatConfig": null,
         "next": {
-          "id": "858821692a2efa3109372",
           "dueDate": "2026-03-13",
           "statusId": "p1-todo",
           "completedCount": 1,
@@ -271,7 +269,6 @@
       "expected": {
         "closedRepeatConfig": null,
         "next": {
-          "id": "56c79d206d867dec7be87",
           "dueDate": "2026-03-12",
           "statusId": "p1-todo",
           "completedCount": 1,
@@ -360,7 +357,6 @@
       "expected": {
         "closedRepeatConfig": null,
         "next": {
-          "id": "454e3806dfe685cef6869",
           "dueDate": "2026-03-11",
           "statusId": "p1-todo",
           "completedCount": 1,
@@ -452,7 +448,6 @@
       "expected": {
         "closedRepeatConfig": null,
         "next": {
-          "id": "d787508e813f85486b952",
           "dueDate": "2026-03-24",
           "statusId": "p1-todo",
           "completedCount": 1,
@@ -539,7 +534,6 @@
       "expected": {
         "closedRepeatConfig": null,
         "next": {
-          "id": "d48bec3c99b81fe82cbc1",
           "dueDate": "2026-03-28",
           "statusId": "p1-todo",
           "completedCount": 1,
@@ -625,7 +619,6 @@
       "expected": {
         "closedRepeatConfig": null,
         "next": {
-          "id": "86972761481151d96c9b8",
           "dueDate": "2026-03-31",
           "statusId": "p1-todo",
           "completedCount": 1,
@@ -711,7 +704,6 @@
       "expected": {
         "closedRepeatConfig": null,
         "next": {
-          "id": "7339ceda638cc65c183d6",
           "dueDate": "2026-03-03",
           "statusId": "p1-todo",
           "completedCount": 1,
@@ -798,7 +790,6 @@
       "expected": {
         "closedRepeatConfig": null,
         "next": {
-          "id": "28a915369f824d8b7717e",
           "dueDate": "2026-04-14",
           "statusId": "p1-todo",
           "completedCount": 1,
@@ -888,7 +879,6 @@
       "expected": {
         "closedRepeatConfig": null,
         "next": {
-          "id": "cd4300774a478bda26afe",
           "dueDate": "2026-04-24",
           "statusId": "p1-todo",
           "completedCount": 1,
@@ -975,7 +965,6 @@
       "expected": {
         "closedRepeatConfig": null,
         "next": {
-          "id": "34991297801111ace8092",
           "dueDate": "2029-03-01",
           "statusId": "p1-todo",
           "completedCount": 1,
@@ -1109,7 +1098,6 @@
       "expected": {
         "closedRepeatConfig": null,
         "next": {
-          "id": "1f0ada144faba22a64eba",
           "dueDate": "2026-03-11",
           "statusId": "p1-todo",
           "completedCount": 2,
@@ -1195,7 +1183,6 @@
       "expected": {
         "closedRepeatConfig": null,
         "next": {
-          "id": "9ee90b7df53746075a347",
           "dueDate": "2026-03-11",
           "statusId": "p1-todo",
           "completedCount": 6,
@@ -1281,7 +1268,6 @@
       "expected": {
         "closedRepeatConfig": null,
         "next": {
-          "id": "1add2322644920ff81302",
           "dueDate": "2026-03-11",
           "statusId": "p1-todo",
           "completedCount": 1,
@@ -1370,6 +1356,55 @@
       }
     },
     {
+      "name": "end-date-complete-on-end-day",
+      "tzSensitive": true,
+      "task": {
+        "id": "spawn-end-date-complete-on-end-day",
+        "projectId": "p1",
+        "statusId": "p1-doing",
+        "parentId": null,
+        "title": "Water the plants",
+        "description": "Front porch",
+        "priority": 2,
+        "position": 0,
+        "dueDate": "2026-03-10",
+        "dueTime": "08:00",
+        "durationMinutes": 30,
+        "startDate": null,
+        "repeatConfig": {
+          "endType": "date",
+          "completedCount": 0,
+          "createdAt": "2026-01-01T00:00:00.000Z",
+          "frequency": "daily",
+          "interval": 1,
+          "endDate": "2026-03-11"
+        },
+        "repeatFrom": null,
+        "sourceNoteId": "note-src",
+        "completedAt": null,
+        "archivedAt": null,
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "modifiedAt": "2026-01-01T00:00:00.000Z",
+        "tags": [
+          "home"
+        ],
+        "linkedNoteIds": [
+          "note-1"
+        ],
+        "linkedCanvasIds": [
+          "canvas-1"
+        ],
+        "fields": {
+          "Follow up": "2026-05-14"
+        }
+      },
+      "completedAt": "2026-03-11T09:30:00",
+      "expected": {
+        "closedRepeatConfig": null,
+        "next": null
+      }
+    },
+    {
       "name": "monthly-completion-anchor",
       "tzSensitive": false,
       "task": {
@@ -1417,7 +1452,6 @@
       "expected": {
         "closedRepeatConfig": null,
         "next": {
-          "id": "c2e5b764da8e284161b6d",
           "dueDate": "2026-04-15",
           "statusId": "p1-todo",
           "completedCount": 1,
@@ -1503,7 +1537,6 @@
       "expected": {
         "closedRepeatConfig": null,
         "next": {
-          "id": "6b7d5a361c66fffac9110",
           "dueDate": "2026-03-08",
           "statusId": "p1-todo",
           "completedCount": 1,

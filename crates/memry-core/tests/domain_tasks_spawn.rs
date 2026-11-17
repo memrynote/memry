@@ -1,13 +1,11 @@
 //! The next occurrence's id (#3538, chapter 13 §13.7.3) against real SQLite:
-//! derived from the series so two devices create one task, never laid over a
-//! tombstone, and never created twice.
+//! random, as desktop's, so a completion on one device never shares an id with
+//! another device's.
 //!
-//! | Test                                                       | Rule                     |
-//! | ---------------------------------------------------------- | ------------------------ |
-//! | the next occurrence takes the derived id                   | §13.7.3                  |
-//! | a peer's synced occurrence is the next one, not a copy      | one task after merge     |
-//! | undo, then complete again, spawns a live occurrence         | tasks are not recreatable |
-//! | a tombstone known only from sync also takes a fresh id      | §5.12.3                  |
+//! | Test                                                            | Rule                     |
+//! | --------------------------------------------------------------- | ------------------------ |
+//! | two devices complete one occurrence and both occurrences survive | no loss on merge         |
+//! | undo, then complete again, spawns a live occurrence              | tasks are not recreatable |
 
 use memry_core::domain::calendar::LocalDateTime;
 use memry_core::domain::tasks::{self, NewTask, TASK_ID_LEN, TaskDetails};
@@ -15,10 +13,10 @@ use memry_core::storage::repositories::sync_items::{self, ApplyOutcome, InboundR
 use memry_core::storage::{Db, open_data};
 use rusqlite::{Connection, params};
 use serde_json::{Value, json};
-use sha2::{Digest as _, Sha256};
 
 const NOW: i64 = 1_760_000_000_000;
-const DEVICE: &str = "device-a";
+const DEVICE_A: &str = "device-a";
+const DEVICE_B: &str = "device-b";
 
 fn open(label: &str) -> Db {
     let dir = tempfile::Builder::new()
@@ -29,41 +27,47 @@ fn open(label: &str) -> Db {
     open_data(&dir.join("data.db")).expect("open data.db")
 }
 
-fn inbound(
-    item_type: &str,
-    item_id: &str,
-    payload: Value,
-    deleted_at: Option<i64>,
-) -> InboundRecord {
-    InboundRecord {
+fn apply_payload(conn: &Connection, item_type: &str, item_id: &str, payload: &str) -> ApplyOutcome {
+    let record = InboundRecord {
         item_type: item_type.to_owned(),
         item_id: item_id.to_owned(),
-        payload_json: payload.to_string(),
+        payload_json: payload.to_owned(),
         server_cursor: None,
         signer_device_id: None,
         updated_at: NOW,
-        deleted_at,
-    }
+        deleted_at: None,
+    };
+    sync_items::apply_remote(conn, &record, NOW).expect("apply")
 }
 
 fn apply(conn: &Connection, item_type: &str, item_id: &str, payload: Value) {
-    let outcome = sync_items::apply_remote(conn, &inbound(item_type, item_id, payload, None), NOW)
-        .expect("apply");
+    let outcome = apply_payload(conn, item_type, item_id, &payload.to_string());
     assert_eq!(outcome, ApplyOutcome::Applied, "{item_id}");
 }
 
-/// Project `pa` with desktop's statuses and an open daily task `t1` due
-/// 2026-04-16.
-fn seed(conn: &Connection) {
+/// What a peer receives for `task_id`: this device's push payload.
+fn pushed(conn: &Connection, task_id: &str) -> String {
+    sync_items::push_payload(conn, "task", task_id)
+        .expect("read the payload")
+        .expect("a payload")
+}
+
+fn seed_project(conn: &Connection) {
     apply(
         conn,
         "project",
         "pa",
-        json!({"name": "pa", "color": "#0ea5e9", "clock": {"device-b": 1}, "statuses": [
+        json!({"name": "pa", "color": "#0ea5e9", "clock": {"device-c": 1}, "statuses": [
             {"id": "pa-todo", "name": "To Do", "color": "#6b7280", "position": 0, "isDefault": true},
             {"id": "pa-done", "name": "Done", "color": "#22c55e", "position": 1, "isDone": true}
         ]}),
     );
+}
+
+/// Project `pa` with desktop's statuses and an open daily task `t1` due
+/// 2026-04-16, created on device A.
+fn seed(conn: &Connection) {
+    seed_project(conn);
     let repeat = json!({"frequency": "daily", "interval": 1, "endType": "never",
                         "completedCount": 0, "createdAt": "2026-04-01T09:00:00.000Z"});
     tasks::create_detailed(
@@ -79,21 +83,15 @@ fn seed(conn: &Connection) {
             tags: &[],
         },
         &TaskDetails::default(),
-        DEVICE,
+        DEVICE_A,
         NOW,
     )
     .expect("create t1");
 }
 
-fn complete(conn: &Connection, at: i64) -> tasks::Completion {
+fn complete(conn: &Connection, device_id: &str, at: i64) -> tasks::Completion {
     let local = LocalDateTime::parse("2026-04-16T12:00:00").expect("an instant");
-    tasks::complete(conn, "t1", local, DEVICE, at).expect("complete t1")
-}
-
-/// §13.7.3, written out from the chapter's sentence.
-fn derived(task_id: &str, completed_count: i64) -> String {
-    let digest = Sha256::digest(format!("{task_id} spawn {completed_count}").as_bytes());
-    hex::encode(digest)[..TASK_ID_LEN].to_owned()
+    tasks::complete(conn, "t1", local, device_id, at).expect("complete t1")
 }
 
 fn live(conn: &Connection, task_id: &str) -> bool {
@@ -107,63 +105,52 @@ fn live(conn: &Connection, task_id: &str) -> bool {
 }
 
 #[test]
-fn the_next_occurrence_takes_the_derived_id() {
-    let db = open("derived");
-    db.call_blocking(|conn| {
-        seed(conn);
-        let done = complete(conn, NOW + 1_000);
-        let next = done.next_occurrence.expect("a next occurrence");
-        assert_eq!(next.id, derived("t1", 1));
-        assert_eq!(done.write.created, std::slice::from_ref(&next.id));
-        assert!(live(conn, &next.id));
+fn two_devices_complete_one_occurrence_and_both_occurrences_survive() {
+    let a = open("device-a");
+    let b = open("device-b");
+    let t1 = a
+        .call_blocking(|conn| {
+            seed(conn);
+            Ok(pushed(conn, "t1"))
+        })
+        .expect("seed device A");
+
+    // Both devices complete t1 before either syncs.
+    let on_b = b
+        .call_blocking(|conn| {
+            seed_project(conn);
+            assert_eq!(
+                apply_payload(conn, "task", "t1", &t1),
+                ApplyOutcome::Applied
+            );
+            let done = complete(conn, DEVICE_B, NOW + 1_000);
+            let next = done.next_occurrence.expect("B's next occurrence");
+            Ok((next.id.clone(), pushed(conn, &next.id)))
+        })
+        .expect("complete on device B");
+    let (b_next, b_payload) = on_b;
+
+    a.call_blocking(|conn| {
+        let done = complete(conn, DEVICE_A, NOW + 1_000);
+        let a_next = done.next_occurrence.clone().expect("A's next occurrence");
+        assert_eq!(a_next.id.len(), TASK_ID_LEN);
+        assert_ne!(a_next.id, b_next, "each device creates its own occurrence");
+
+        // B's occurrence syncs in beside A's: nothing is lost.
+        assert_eq!(
+            apply_payload(conn, "task", &b_next, &b_payload),
+            ApplyOutcome::Applied
+        );
+        assert!(live(conn, &a_next.id) && live(conn, &b_next));
+
+        // Undo on A tombstones only the occurrence A created.
+        let undone = tasks::undo(conn, &done.write, DEVICE_A, NOW + 2_000)?;
+        assert_eq!(undone.deleted, vec![a_next.id.clone()]);
+        assert!(!live(conn, &a_next.id), "A's occurrence is undone");
+        assert!(live(conn, &b_next), "B's occurrence survives A's undo");
         Ok(())
     })
-    .expect("the completion");
-}
-
-#[test]
-fn a_peer_s_synced_occurrence_is_the_next_one_not_a_copy() {
-    let db = open("peer");
-    db.call_blocking(|conn| {
-        seed(conn);
-        // Device B completed t1 first; its next occurrence synced in before
-        // the edit that closes t1.
-        let id = derived("t1", 1);
-        apply(
-            conn,
-            "task",
-            &id,
-            json!({"title": "Water the plants", "projectId": "pa", "statusId": "pa-todo",
-                   "dueDate": "2026-04-17", "position": 1, "clock": {"device-b": 1}}),
-        );
-        let before = sync_items::push_payload(conn, "task", &id)?;
-
-        let done = complete(conn, NOW + 1_000);
-        let next = done.next_occurrence.expect("the peer's occurrence");
-        assert_eq!(
-            (next.id.as_str(), next.due_date.as_str()),
-            (id.as_str(), "2026-04-17")
-        );
-        assert!(
-            done.write.created.is_empty(),
-            "nothing created, so undo deletes nothing"
-        );
-        assert_eq!(
-            sync_items::push_payload(conn, "task", &id)?,
-            before,
-            "left as synced"
-        );
-        let count: i64 = conn
-            .query_row(
-                "SELECT count(*) FROM tasks WHERE deleted_at IS NULL",
-                [],
-                |row| row.get(0),
-            )
-            .expect("count");
-        assert_eq!(count, 2, "t1 and one next occurrence");
-        Ok(())
-    })
-    .expect("the completion");
+    .expect("merge and undo on device A");
 }
 
 #[test]
@@ -171,15 +158,15 @@ fn undo_then_complete_again_spawns_a_live_occurrence() {
     let db = open("undo");
     db.call_blocking(|conn| {
         seed(conn);
-        let done = complete(conn, NOW + 1_000);
+        let done = complete(conn, DEVICE_A, NOW + 1_000);
         let first = done.next_occurrence.clone().expect("a next occurrence");
-        tasks::undo(conn, &done.write, DEVICE, NOW + 2_000)?;
+        tasks::undo(conn, &done.write, DEVICE_A, NOW + 2_000)?;
         assert!(
             !live(conn, &first.id),
             "undo tombstones the spawned occurrence"
         );
 
-        let again = complete(conn, NOW + 3_000);
+        let again = complete(conn, DEVICE_A, NOW + 3_000);
         let second = again.next_occurrence.expect("a next occurrence again");
         assert_ne!(
             second.id, first.id,
@@ -193,30 +180,4 @@ fn undo_then_complete_again_spawns_a_live_occurrence() {
         Ok(())
     })
     .expect("undo and complete again");
-}
-
-#[test]
-fn a_tombstone_known_only_from_sync_also_takes_a_fresh_id() {
-    let db = open("remote-tombstone");
-    db.call_blocking(|conn| {
-        seed(conn);
-        // A peer spawned and deleted the occurrence; this device only ever
-        // saw the delete.
-        let id = derived("t1", 1);
-        let deleted = inbound(
-            "task",
-            &id,
-            json!({"title": "x", "projectId": "pa", "clock": {"device-b": 2},
-                   "deletedAt": "2025-10-09T08:53:20.000Z"}),
-            Some(NOW),
-        );
-        sync_items::apply_remote(conn, &deleted, NOW)?;
-
-        let done = complete(conn, NOW + 1_000);
-        let next = done.next_occurrence.expect("a next occurrence");
-        assert_ne!(next.id, id);
-        assert!(live(conn, &next.id));
-        Ok(())
-    })
-    .expect("the completion");
 }

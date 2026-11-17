@@ -14,8 +14,10 @@
 //! One deliberate fix (#3538): `endDate` is the end **day**, compared at its
 //! local midnight, so an occurrence due on the end day is inside the series
 //! in every time zone. Desktop reads the key with `new Date(key)` (UTC
-//! midnight), which ends the series one occurrence early west of UTC; under
-//! `TZ=UTC`, where the vectors are generated, the two agree.
+//! midnight), which ends the series one occurrence early west of UTC and lets
+//! a completion made on the end day before UTC midnight still create the next
+//! occurrence east of UTC; under `TZ=UTC`, where the vectors are generated,
+//! the two agree.
 
 use super::calendar::{CivilDate, LocalDateTime};
 use super::repeat_config::{EndType, Frequency, MonthlyType, RepeatConfig};

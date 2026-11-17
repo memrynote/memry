@@ -8,18 +8,14 @@
  * closed occurrence's `repeatConfig`, and the next occurrence's due date,
  * `completedCount` and copied fields.
  *
- * `nextId` has no TypeScript production path: desktop used random ids. It is
- * the chapter 13 §13.7.3 rule, `sha256("<taskId> spawn <completedCount>")`,
- * first 21 lowercase hex characters, computed here so the Rust core is held
- * to the chapter.
+ * The next occurrence's id is random on both sides (chapter 13 §13.7.3), so
+ * no row records it.
  *
  * Determinism: the process time zone is pinned to UTC for the build. Rows
- * marked `tzSensitive` give another answer under desktop west of UTC, which
+ * marked `tzSensitive` give another answer under desktop outside UTC, which
  * reads the end date as UTC midnight; the Rust core reads it as the end day's
  * local midnight in every zone (chapter 13 §13.7.3).
  */
-import { createHash } from 'node:crypto'
-
 import type { TasksCommandRepository } from '../../../domain-tasks/src/commands-types.ts'
 import { rollRepeatingSeries } from '../../../domain-tasks/src/repeat-completion.ts'
 import type { RepeatConfig, Status, Task } from '../../../domain-tasks/src/types.ts'
@@ -61,7 +57,7 @@ const counted = (endCount: number, completedCount: number): RepeatConfig => ({
   completedCount
 })
 
-/** The 18 rows of #3538's golden spawn table. Completion instants are local wall clock. */
+/** The 18 rows of #3538's golden spawn table, plus a completion on the end day. Completion instants are local wall clock. */
 const CASES: SpawnCase[] = [
   {
     name: 'daily-due-anchor',
@@ -188,6 +184,15 @@ const CASES: SpawnCase[] = [
     tzSensitive: true
   },
   {
+    // Desktop east of UTC creates the end day's occurrence here (Auckland:
+    // 09:30 on 03-11 is before UTC midnight); the core and UTC create none.
+    name: 'end-date-complete-on-end-day',
+    config: dateEnd('2026-03-11'),
+    due: '2026-03-10',
+    completedAt: '2026-03-11T09:30:00',
+    tzSensitive: true
+  },
+  {
     name: 'monthly-completion-anchor',
     config: {
       ...base,
@@ -252,16 +257,10 @@ function taskFor(c: SpawnCase): Task {
   }
 }
 
-/** §13.7.3: the id of the occurrence that brings the series to `completedCount`. */
-function nextId(taskId: string, completedCount: number): string {
-  return createHash('sha256').update(`${taskId} spawn ${completedCount}`).digest('hex').slice(0, 21)
-}
-
 /** What one production roll writes, read back from an in-memory repository. */
 function roll(before: Task, completedAt: string) {
   const tasks = new Map<string, Task>([[before.id, before]])
   const links = new Map<string, Record<keyof typeof LINKS, string[]>>([[before.id, { ...LINKS }]])
-  let spawned = ''
   const setLinks = (id: string, key: keyof typeof LINKS, ids: string[]) => {
     const current = links.get(id)
     if (current) links.set(id, { ...current, [key]: ids })
@@ -296,15 +295,7 @@ function roll(before: Task, completedAt: string) {
       throw new Error(`rollRepeatingSeries called repository.${key}, which the generator lacks`)
     }
   }) as TasksCommandRepository
-  const result = rollRepeatingSeries(
-    repository,
-    () => {
-      spawned = nextId(before.id, (before.repeatConfig?.completedCount ?? 0) + 1)
-      return spawned
-    },
-    before,
-    completedAt
-  )
+  const result = rollRepeatingSeries(repository, () => `next-${before.id}`, before, completedAt)
   const closed = tasks.get(before.id)
   const next = result.nextOccurrence ? tasks.get(result.nextOccurrence.id) : undefined
   return {
@@ -312,7 +303,6 @@ function roll(before: Task, completedAt: string) {
     next:
       next && result.nextOccurrence
         ? {
-            id: spawned,
             dueDate: result.nextOccurrence.dueDate,
             statusId: next.statusId,
             completedCount: next.repeatConfig?.completedCount ?? null,
@@ -341,7 +331,7 @@ export function buildTaskCompletionSpawn(): unknown {
         source: 'packages/domain-tasks/src/repeat-completion.ts rollRepeatingSeries',
         timeZone: 'UTC',
         dates: 'YYYY-MM-DD local calendar keys; completedAt is local YYYY-MM-DDTHH:MM:SS',
-        nextId: 'chapter 13 §13.7.3: sha256("<taskId> spawn <completedCount>") hex, first 21',
+        nextId: 'random on both sides (chapter 13 §13.7.3); not recorded',
         fields: 'plain values (desktop Task.fields); the wire carries them versioned (§13.7.3.1)',
         caseCount: CASES.length
       },

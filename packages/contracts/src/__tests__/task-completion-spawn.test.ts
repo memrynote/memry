@@ -4,12 +4,10 @@
  * The committed JSON is the input. Each row's task is completed again through
  * the production `rollRepeatingSeries` over the domain's in-memory command
  * repository, under the UTC zone the file was generated in, and the closed
- * occurrence and the next one must equal the recorded ones. `nextId` is the
- * chapter 13 §13.7.3 rule, re-derived here from its sentence. The Rust core
+ * occurrence and the next one must equal the recorded ones. The next
+ * occurrence's id is random (chapter 13 §13.7.3) and not recorded. The Rust core
  * runs the same file in `crates/memry-core/tests/task_completion_spawn_vectors.rs`.
  */
-import { createHash } from 'node:crypto'
-
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { rollRepeatingSeries } from '../../../domain-tasks/src/repeat-completion.ts'
@@ -31,7 +29,6 @@ const vectors = loadVectorFile<{
     expected: {
       closedRepeatConfig: unknown
       next: null | {
-        id: string
         dueDate: string
         statusId: string
         completedCount: number
@@ -103,17 +100,11 @@ describe('task-completion-spawn vectors', () => {
   })
 
   it.each(vectors.cases.map((c) => [c.name, c] as const))('%s', (_name, c) => {
-    const count = (c.task.repeatConfig?.completedCount ?? 0) + 1
-    const nextId = createHash('sha256')
-      .update(`${c.task.id} spawn ${count}`)
-      .digest('hex')
-      .slice(0, 21)
-    const { closed, result, next, links } = roll(c.task, c.completedAt, nextId)
+    const { closed, result, next, links } = roll(c.task, c.completedAt, `next-${c.task.id}`)
 
     expect(closed?.repeatConfig ?? null).toEqual(c.expected.closedRepeatConfig)
     const stored = new Map<string, unknown>(Object.entries(next ?? {}))
     const spawned = result.nextOccurrence && {
-      id: result.nextOccurrence.id,
       dueDate: result.nextOccurrence.dueDate,
       statusId: next?.statusId,
       completedCount: next?.repeatConfig?.completedCount ?? null,
@@ -128,6 +119,5 @@ describe('task-completion-spawn vectors', () => {
       )
     }
     expect(spawned).toEqual(c.expected.next)
-    expect(spawned === null || spawned.id === nextId).toBe(true)
   })
 })
