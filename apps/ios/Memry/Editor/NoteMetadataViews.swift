@@ -184,10 +184,11 @@ struct NoteTitleEditor: View {
         if let field = titleTextView {
             host.title = field
             // An input method confirming its composition on Return first
-            // deletes it: only a key that adds text ends the composition.
+            // deletes it, as Backspace does: marked text gone with no Return
+            // down ends the composition.
             if field.markedTextRange != nil {
                 host.composing = true
-            } else if value.count > draft.count {
+            } else if !host.returnDown {
                 host.composing = false
             }
         }
@@ -247,26 +248,30 @@ struct NoteTitleEditor: View {
                 .font(Tokens.Typography.screenTitle.font)
                 .foregroundStyle(Tokens.Text.primary.color)
                 .focused($focused)
-                // The hand-off to the body keeps one invariant (#4756): it
-                // takes the line only after every key typed before the
-                // Return has reached the title, and it has the caret in a
-                // text view again in the turn SwiftUI ends the title's
-                // editing at the key-up, so no key typed after the Return
-                // reaches none. A hardware Return's press arrives ahead of
-                // the keys the keyboard still queues, so a key-down handler
-                // cut the title short, and nothing acts on the key going
-                // down. In the queue's order, behind those keys, the Return
-                // may insert a newline, which hands off in `typed`. Its
-                // key-up, also behind them, ends the editing of every text
-                // view and then submits here, in the same turn.
+                // The hand-off to the body (#4756) acts only on what arrives
+                // in the keyboard's queue order: the newline a Return may
+                // insert, which hands off in `typed`, and the key-up, which
+                // ends the editing of every text view and then submits here,
+                // in the same turn, where a text view takes the caret again.
+                // A hardware Return's press arrives ahead of the keys the
+                // keyboard still queues, so a key-down handler cut the title
+                // short; the press only marks the Return as down. A Return
+                // held for 0.1 s or more still loses the keys queued behind
+                // it (#4823).
+                .onKeyPress(.return, phases: .down) { _ in
+                    host.returnDown = true
+                    return .ignored
+                }
                 .onSubmit {
+                    host.returnDown = false
                     guard host.window.flatMap(Self.caretHolder) == nil else { return }
                     if host.composing || returned != nil {
                         // An input method took the Return as its own, or the
                         // body has yet to take the keys held for it: the
-                        // caret goes back to the title.
+                        // caret goes back to the title, and the edit goes on.
                         host.composing = false
                         host.title?.becomeFirstResponder()
+                        focused = true
                     } else if let body = host.body, body.window != nil {
                         // The newline moved the caret to the body already.
                         host.body = nil
@@ -292,10 +297,6 @@ struct NoteTitleEditor: View {
                         if let field = titleTextView { host.title = field }
                         host.composing = titleTextView?.markedTextRange != nil
                         host.body = nil
-                    } else if host.title?.isFirstResponder == true {
-                        // The Return's key-up ended the edit, and the title
-                        // took the caret back (`onSubmit`): the edit goes on.
-                        focused = true
                     } else if returned != nil {
                         // The body taking the caret ends the title's focus
                         // before it takes the held keys, on the same turn.
@@ -392,8 +393,10 @@ private final class TitleWindow {
     /// editing.
     weak var title: UITextView?
     /// Whether an input method composes in the title: from a change with
-    /// marked text until a key adds text without.
+    /// marked text until a change without while no Return is down.
     var composing = false
+    /// A Return went down in the title and its key-up has not submitted.
+    var returnDown = false
     /// The body block a Return in the title moved the caret to, until the
     /// title takes the caret again.
     weak var body: UITextView?

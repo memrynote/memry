@@ -334,6 +334,35 @@ struct NoteTitleBurstTests {
         #expect(field.text == "titleかx")
     }
 
+    /// A composition deleted with Backspace is over: the next Return is a
+    /// plain one, saves the title and moves to the body, and the keys after
+    /// it land there.
+    @Test(.timeLimit(.minutes(1))) func a_return_after_a_deleted_composition_moves_to_the_body() async throws {
+        let f = try await newNote()
+        let (window, field) = try await open(f)
+        defer { window.isHidden = true }
+
+        for character in "title" { key(String(character), in: window, title: field) }
+        field.setMarkedText("き", selectedRange: NSRange(location: 1, length: 0))
+        try await settle(f)
+        // Backspace empties the composition, and the input method ends it.
+        field.setMarkedText("", selectedRange: NSRange(location: 0, length: 0))
+        field.unmarkText()
+        try await settle(f)
+        #expect(field.text == "title")
+
+        let press = HardwarePress(.keyboardReturnOrEnter, "\r")
+        field.pressesBegan([press], with: nil)
+        field.pressesEnded([press], with: nil)
+        await until { views(BlockTextView.self, in: window).first?.isFirstResponder == true }
+        #expect(views(BlockTextView.self, in: window).first?.isFirstResponder == true, "the Return stayed in the title")
+        for character in "mi" { key(String(character), in: window, title: field) }
+        await until { views(BlockTextView.self, in: window).first?.text == "mi" }
+        #expect(field.text == "title")
+        views(BlockTextView.self, in: window).first?.resignFirstResponder()
+        try await expectStored(f, title: "title", body: ["mi"])
+    }
+
     /// A Return press cancelled while an input method composes leaves no
     /// claim on the caret: dismissing the keyboard afterwards ends the
     /// title's edit and saves it.
