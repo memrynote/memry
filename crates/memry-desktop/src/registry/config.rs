@@ -30,6 +30,9 @@ pub enum ConfigError {
     Write { path: String, message: String },
 }
 
+/// The file name in the app data folder (`memry-config.json` of Electron).
+pub const CONFIG_FILE: &str = "memry-config.json";
+
 pub struct AppConfig {
     path: PathBuf,
     state: Mutex<State>,
@@ -145,8 +148,11 @@ fn now_ms() -> u128 {
         .map_or(0, |d| d.as_millis())
 }
 
+/// The temp file of this process's writes. The app and the command line (`memrynote-cli`)
+/// write the same file from two processes; a shared temp name would let one truncate the other's
+/// write in flight, or delete it at load, and rename a mix of both into place.
 fn temp_path(path: &Path) -> PathBuf {
-    PathBuf::from(format!("{}.tmp", path.display()))
+    PathBuf::from(format!("{}.tmp-{}", path.display(), std::process::id()))
 }
 
 fn remove_stale_temp(path: &Path) {
@@ -421,5 +427,30 @@ mod tests {
         });
         assert!(matches!(result, Err(ConfigError::Unreadable { .. })));
         assert_eq!(std::fs::read(&path).expect("read"), b"{ half written");
+    }
+
+    #[test]
+    fn another_processs_write_in_flight_is_left_alone() {
+        let dir = dir();
+        let path = dir.path().join("memry-config.json");
+        std::fs::write(&path, b"{}").expect("seed");
+        // Another process's temp files: an older build's shared name and a pid that is not ours.
+        let theirs = [
+            dir.path().join("memry-config.json.tmp"),
+            dir.path().join("memry-config.json.tmp-0"),
+        ];
+        for temp in &theirs {
+            std::fs::write(temp, b"{\"theirs\":1}").expect("their temp");
+        }
+        let config = AppConfig::load(path);
+        config
+            .update(|map| {
+                map.insert("a".into(), Value::Null);
+                Ok::<_, ConfigError>(())
+            })
+            .expect("update");
+        for temp in &theirs {
+            assert_eq!(std::fs::read(temp).expect("still there"), b"{\"theirs\":1}");
+        }
     }
 }

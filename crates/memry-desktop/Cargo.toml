@@ -23,6 +23,9 @@ tracing = { workspace = true }
 tracing-subscriber = { version = "0.3.23", default-features = false, features = ["std", "fmt", "env-filter"] }
 tracing-appender = "0.2.5"
 sha2 = { workspace = true }
+# The platform data folder of `paths::default_data_dir`: the crate and version Tauri's path
+# resolver uses, so the command line and the app agree on the app data folder.
+dirs = "7.0.0"
 # `e2e::debug` runs read-only statements on a pooled reader of the core databases.
 rusqlite = { workspace = true }
 hex = { workspace = true }

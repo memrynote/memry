@@ -18,7 +18,13 @@ fn main() {
     // Next: the installed version before an update's swap can change it under this launch.
     memry_tauri::updater::relaunch_guard::note_installed_at_start();
 
-    // Step 35 (#3552): --cli dispatch
+    // A legacy terminal shim runs `<app> [tokens] --cli <args>`: run the command line and exit
+    // before any window, tray, single-instance lock, plugin or updater starts.
+    let argv: Vec<std::ffi::OsString> = std::env::args_os().collect();
+    if let Some(args) = memrynote_cli::headless_args(&argv) {
+        memrynote_cli::console::attach_parent_console();
+        std::process::exit(memrynote_cli::run_headless(args, !tauri::is_dev()));
+    }
     if let Some(code) = memry_tauri::guards::crash_dump::monitor_entry() {
         std::process::exit(code);
     }

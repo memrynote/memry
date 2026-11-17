@@ -1,0 +1,32 @@
+{
+  "name": "locale",
+  "registry": {
+    "vaults": [
+      {
+        "path": "{vault}",
+        "name": "Vault",
+        "noteCount": 3,
+        "taskCount": 1,
+        "lastOpened": "2026-01-02T03:04:05.678Z",
+        "isDefault": false
+      }
+    ]
+  },
+  "steps": [
+    {
+      "argv": ["locale", "list"]
+    },
+    {
+      "argv": ["--json", "locale", "list"]
+    },
+    {
+      "argv": ["locale"]
+    },
+    {
+      "argv": ["locale", "bogus"]
+    },
+    {
+      "argv": ["--vault", "{vault}", "locale", "list", "--json"]
+    }
+  ]
+}
