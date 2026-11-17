@@ -23,7 +23,7 @@ use serde_json::{Value as Json, json};
 use crate::api::crypto::encrypt_vault_name;
 use crate::api::errors::ApiError;
 use crate::protocol::account_admin::{self, BillingStatus, int, segment, text};
-use crate::protocol::http::{ApiRequest, Auth, HttpClient};
+use crate::protocol::http::{ApiRequest, Auth, HttpClient, RetryPolicy};
 
 /// A signed token the web checkout trusts in place of a web session.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
@@ -318,7 +318,9 @@ pub async fn preview_plan_change(
 }
 
 /// `POST /auth/billing/change-plan`: switches the existing subscription and
-/// answers with the new billing status.
+/// answers with the new billing status. Sent once, as on Electron: the
+/// server answers a declined charge with a 502 (`paddle-billing.ts:469-479`),
+/// so a resend could charge again.
 pub async fn change_plan(
     http: &HttpClient,
     target: PlanChangeTarget,
@@ -327,7 +329,8 @@ pub async fn change_plan(
         http,
         ApiRequest::new("POST", "/auth/billing/change-plan")
             .auth(Auth::Session)
-            .json(&target),
+            .json(&target)
+            .retry(RetryPolicy::never()),
     )
     .await
 }

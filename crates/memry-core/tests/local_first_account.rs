@@ -12,6 +12,7 @@
 //! | no master key makes no request                       | nothing to seal the name with          |
 //! | the billing routes post their documented bodies      | `routes/auth.ts:812-867`               |
 //! | desktop's billing routes send their documented bodies | `routes/auth.ts:851-907`               |
+//! | a plan change is sent once                           | Electron `http-client.ts:197-210`      |
 
 #[allow(unused_imports)]
 use crate::http_fakes;
@@ -23,7 +24,9 @@ use base64::engine::general_purpose::STANDARD as BASE64;
 use http_fakes::*;
 use memry_core::api::auth::{AuthSession, DeviceDescriptor, ensure_device_identity};
 use memry_core::api::crypto::{decrypt_vault_icon, decrypt_vault_name, encrypt_vault_icon};
-use memry_core::api::errors::{ApiError, AuthError, SecureStoreError, StorageError};
+use memry_core::api::errors::{
+    ApiError, AuthError, SecureStoreError, StorageError, TransportError,
+};
 use memry_core::api::vault::Vault;
 use memry_core::protocol::auth::DevicePlatform;
 use memry_core::protocol::billing::{
@@ -36,7 +39,7 @@ use rusqlite::Connection;
 use serde_json::json;
 
 const MASTER_KEY: [u8; 32] = [11u8; 32];
-type Script = Vec<Result<HttpResponse, memry_core::api::errors::TransportError>>;
+type Script = Vec<Result<HttpResponse, TransportError>>;
 
 fn session(transport: Arc<FakeTransport>, store: Arc<FakeSecureStore>) -> AuthSession {
     let device = DeviceDescriptor {
@@ -391,7 +394,11 @@ async fn desktop_billing_routes_send_their_documented_bodies() {
             "nextBilledAt":"2026-01-01T00:00:00Z"}"#,
         ),
         response(200, BELIEVER),
-        error_response(402, "SYNC_PAYMENT_REQUIRED", "no plan"),
+        error_response(
+            409,
+            "BILLING_MANAGED_BY_APP_STORE",
+            "managed by the App Store",
+        ),
     ])
     .await;
 
@@ -444,13 +451,54 @@ async fn desktop_billing_routes_send_their_documented_bodies() {
         json!({ "plan": "plus", "cadence": "annual" })
     );
 
-    // A 402 keeps its status and code, so the caller reads it as unpaid, not as a crash.
+    // An App Store subscription keeps its status and code, so the caller can say where to change it.
     match session.change_plan(annual).await {
         Err(ApiError::Status {
-            status: 402,
+            status: 409,
             code: Some(code),
             ..
-        }) => assert_eq!(code, "SYNC_PAYMENT_REQUIRED"),
-        other => panic!("expected a 402 status, got {other:?}"),
+        }) => assert_eq!(code, "BILLING_MANAGED_BY_APP_STORE"),
+        other => panic!("expected a 409 status, got {other:?}"),
     }
+}
+
+const ANNUAL_PLUS: PlanChangeTarget = PlanChangeTarget {
+    plan: PlanChangeTier::Plus,
+    cadence: PlanChangeCadence::Annual,
+};
+
+/// The server answers a declined charge with a 502 (`paddle-billing.ts:469-479`):
+/// a resend could charge again, so a plan change is sent once, as on Electron.
+#[tokio::test]
+async fn a_plan_change_502_is_not_resent() {
+    let (session, transport) = signed_in(vec![
+        error_response(502, "INTERNAL_ERROR", "payment failed"),
+        response(200, BELIEVER),
+    ])
+    .await;
+
+    assert!(matches!(
+        session.change_plan(ANNUAL_PLUS).await,
+        Err(ApiError::Status { status: 502, .. })
+    ));
+    assert_eq!(transport.calls_to("/auth/billing/change-plan").len(), 1);
+}
+
+/// A lost response may hide a change that went through; a resend would answer
+/// `409 Already on this plan` and hide the outcome the caller must reconcile.
+#[tokio::test]
+async fn a_plan_change_timeout_is_returned_not_resent() {
+    let (session, transport) = signed_in(vec![
+        Err(TransportError::Timeout { elapsed_ms: 30_000 }),
+        error_response(409, "CONFLICT", "Already on this plan."),
+    ])
+    .await;
+
+    assert!(matches!(
+        session.change_plan(ANNUAL_PLUS).await,
+        Err(ApiError::Transport {
+            source: TransportError::Timeout { .. }
+        })
+    ));
+    assert_eq!(transport.calls_to("/auth/billing/change-plan").len(), 1);
 }
