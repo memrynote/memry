@@ -80,6 +80,7 @@ fn range_input(request: CalendarRangeRequest, zone: &CalendarZone) -> RangeInput
         start_at: request.start_at,
         end_at: request.end_at,
         include_unselected_sources: request.include_unselected_sources,
+        include_completed_tasks: false,
         include_external: true,
         external_providers: None,
         enabled_property_names: request.enabled_property_names,
