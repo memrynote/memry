@@ -7,7 +7,7 @@
 //! never leaves a partial file under the real name. Symlinks are never followed. A Tauri file
 //! already at the path is kept: byte-equal is counted as present, different as kept.
 
-use std::fs::{self, File};
+use std::fs::{self, File, OpenOptions};
 use std::io::{ErrorKind, Read};
 use std::path::{Path, PathBuf};
 
@@ -106,7 +106,10 @@ fn copy_verified(
         if digest(&temp).map_err(|e| ImportError::io(&temp, e))? != *expected {
             return Err(ImportError::CopyMismatch(rel.to_owned()));
         }
-        File::open(&temp)
+        // Write access: Windows' `FlushFileBuffers` refuses a read-only handle.
+        OpenOptions::new()
+            .write(true)
+            .open(&temp)
             .and_then(|f| f.sync_all())
             .map_err(|e| ImportError::io(&temp, e))?;
         fs::rename(&temp, dest).map_err(|e| ImportError::io(dest, e))
