@@ -9,10 +9,11 @@ use std::collections::BTreeMap;
 
 use memry_core::api::search::Search;
 use memry_core::api::vault::Vault;
-use memry_core::domain::folder_view::{ItemKind, RowSet, TagViews, tag_views};
+use memry_core::domain::folder_view::{ItemKind, RowSet};
 use memry_core::domain::note_stats::MeasuredFile;
 use memry_core::domain::property_values::IndexedProperty;
 use memry_core::domain::tag_schema::{DefinitionInput, PropertyInfo, StoredSchema, resolve};
+use memry_core::domain::tag_views::{self, TagViews};
 use serde_json::json;
 
 use crate::tag_reads::{filed, measured, note, open, record};
@@ -247,7 +248,7 @@ fn a_tags_saved_views_read_by_key_and_bad_ones_as_none() {
         let tag = tag.to_owned();
         vault
             .db_handle()
-            .read_blocking(move |conn| tag_views(conn, &tag))
+            .read_blocking(move |conn| tag_views::read(conn, &tag))
             .expect("read")
     };
     assert_eq!(

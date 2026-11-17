@@ -94,6 +94,7 @@ pub mod tag_rename;
 pub mod tag_retag;
 pub mod tag_schema;
 pub mod tag_schema_refs;
+pub mod tag_views;
 pub mod tags;
 pub mod task_activity;
 pub mod task_filter;

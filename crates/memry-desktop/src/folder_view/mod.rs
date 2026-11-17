@@ -15,8 +15,9 @@ pub mod view;
 use std::sync::Arc;
 
 use memry_core::api::errors::StorageError;
-use memry_core::domain::folder_view::{self, RowSet, TagViews};
+use memry_core::domain::folder_view::{self, RowSet};
 pub use memry_core::domain::tag_objects::Resolved;
+use memry_core::domain::tag_views::{self, TagViews};
 use memry_core::domain::tags::tag_key;
 use memry_core::seams::secure_store::SecureStore;
 use serde_json::{Map, Value};
@@ -236,7 +237,7 @@ fn stored_views(open: &OpenVault, scope: &ViewScope) -> Result<Vec<Value>, Folde
             let views = open
                 .vault
                 .db_handle()
-                .read_blocking(move |data| folder_view::tag_views(data, &tag))?;
+                .read_blocking(move |data| tag_views::read(data, &tag))?;
             if views == TagViews::Unparsed {
                 tracing::warn!(
                     scope = "folder_view",

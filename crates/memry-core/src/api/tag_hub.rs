@@ -10,13 +10,13 @@ use crate::api::errors::{AuthError, StorageError};
 use crate::api::tasks::Tasks;
 use crate::api::tasks_write::now_ms;
 use crate::domain::body_tags;
-use crate::domain::folder_view;
 use crate::domain::notes::failed;
 use crate::domain::tag_admin;
 use crate::domain::tag_categories::{self, TagAssignment, TagCategory};
 use crate::domain::tag_mint;
 use crate::domain::tag_rename::{self, Holder, RenameJob, Started};
 use crate::domain::tag_retag;
+use crate::domain::tag_views;
 use crate::domain::tags;
 use crate::seams::secure_store::SecureStore;
 use crate::storage::Db;
@@ -65,7 +65,7 @@ impl TagHub {
     ) -> Result<Result<(), E>, StorageError> {
         self.db.call_blocking(|conn| {
             let tx = conn.unchecked_transaction().map_err(failed)?;
-            let views = match change(folder_view::tag_views(&tx, tag)?.list()) {
+            let views = match change(tag_views::read(&tx, tag)?.list()) {
                 Ok(views) => views,
                 Err(refused) => return Ok(Err(refused)),
             };

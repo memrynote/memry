@@ -26,19 +26,22 @@ pub(super) fn to_json(value: &YamlValue) -> Option<Value> {
 }
 
 /// `value` as YAML, a string that is the ISO form of the date `stored` holds at the same place
-/// written as that date: Electron hands the renderer a `Date` and writes it back as one.
+/// written as that date: Electron hands the renderer a `Date` and writes it back as one. A list
+/// whose length changed is written as sent: its places no longer line up with the stored ones.
 pub(super) fn revive(value: &Value, stored: Option<&YamlValue>) -> YamlValue {
     match (value, stored) {
         (Value::String(text), Some(YamlValue::Date(ms))) if *text == iso_string(*ms) => {
             YamlValue::Date(*ms)
         }
-        (Value::Array(items), Some(YamlValue::Seq(stored))) => YamlValue::seq(
-            items
-                .iter()
-                .enumerate()
-                .map(|(at, item)| revive(item, stored.get(at)))
-                .collect(),
-        ),
+        (Value::Array(items), Some(YamlValue::Seq(stored))) if items.len() == stored.len() => {
+            YamlValue::seq(
+                items
+                    .iter()
+                    .enumerate()
+                    .map(|(at, item)| revive(item, stored.get(at)))
+                    .collect(),
+            )
+        }
         (Value::Object(object), Some(YamlValue::Map(stored))) => {
             let mut map = YamlMap::new();
             for (key, value) in object {

@@ -10,9 +10,11 @@ use crate::index_support;
 use crate::vault_env;
 
 use std::sync::Arc;
+use std::time::Duration;
 
 use index_support::until;
 use memry_core::seams::secure_store::SecureStore;
+use memry_core::storage::repositories::sync_items::{self, InboundRecord};
 use memry_desktop::error::CoreError;
 use memry_desktop::folder_view::view::{ListInput, ViewScope};
 use memry_desktop::folder_view::{self, FolderViewError};
@@ -296,6 +298,25 @@ fn a_folder_file_edit_keeps_what_the_file_holds() {
     f.e.close();
 }
 
+/// A list that lost an item is written as the renderer sent it: a date's ISO string kept as a
+/// string stays quoted, never matched against the date that sat at its place before.
+#[test]
+fn a_list_that_lost_an_item_keeps_its_strings() {
+    let dated = "---\nviews:\n  - name: Mine\n    dates:\n      - 2024-01-15\n      - '2024-01-15T00:00:00.000Z'\n---\n";
+    let mut f = opened(&[("Work/.folder.md", dated)]);
+    folder_view::edit_views(&f.open(), &folder("Work"), f.store.clone(), |mut views| {
+        views[0]["dates"].as_array_mut().unwrap().remove(0);
+        Ok(views)
+    })
+    .unwrap();
+    let written = f.e.read("Work/.folder.md");
+    assert!(
+        written.contains("- '2024-01-15T00:00:00.000Z'"),
+        "{written}"
+    );
+    f.e.close();
+}
+
 /// A write that would lose what the file holds is refused and leaves its bytes as they are: a
 /// value JSON cannot hold (a NaN, bytes), a rename onto a taken name, a key of the wrong type.
 #[test]
@@ -401,5 +422,52 @@ fn a_tag_table_lists_its_items_and_keeps_its_views_on_its_definition() {
     );
     f.delete_view(&scope, "Mine");
     assert_eq!(f.views(&scope)["views"], Value::Null);
+    f.e.close();
+}
+
+/// A sync apply that reaches the tag's definition while an edit of its views runs waits for the
+/// edit to commit, so the peer's views are never written over by views read before it landed.
+#[test]
+fn a_tag_view_edit_never_writes_over_a_sync_apply_it_raced() {
+    let mut f = opened(&[("Note.md", "---\ntags: [alpha]\n---\n")]);
+    let scope = tag("alpha", &[]);
+    f.set_view(&scope, json!({"name": "Mine"}), None).unwrap();
+    let db = f.open().vault.db_handle();
+    let peer = std::cell::RefCell::new(None);
+    folder_view::edit_views(&f.open(), &scope, f.store.clone(), |views| {
+        let (done, applied) = std::sync::mpsc::channel();
+        let db = db.clone();
+        *peer.borrow_mut() = Some(std::thread::spawn(move || {
+            let record = InboundRecord {
+                item_type: "tag_definition".to_owned(),
+                item_id: "alpha".to_owned(),
+                payload_json: json!({
+                    "name": "alpha", "color": "blue", "views": [{"name": "Remote"}],
+                    "clock": {"peer": 9},
+                })
+                .to_string(),
+                server_cursor: Some(1),
+                signer_device_id: Some("peer".to_owned()),
+                updated_at: 1_760_000_000_000,
+                deleted_at: None,
+            };
+            db.call_blocking(move |data| {
+                sync_items::apply_remote(data, &record, 1_760_000_000_000)
+            })
+            .unwrap();
+            let _ = done.send(());
+        }));
+        // An edit that does not hold the write lock lets the apply land here; the fixed one
+        // keeps it waiting, and this wait ends without it.
+        let _ = applied.recv_timeout(Duration::from_secs(2));
+        folder_view::with_view(views, json!({"name": "Second"}), None)
+    })
+    .unwrap();
+    peer.into_inner().unwrap().join().unwrap();
+    let names: Vec<String> = view_names(&f.views(&scope))
+        .into_iter()
+        .map(|(name, _)| name)
+        .collect();
+    assert_eq!(names, ["Remote"]);
     f.e.close();
 }
