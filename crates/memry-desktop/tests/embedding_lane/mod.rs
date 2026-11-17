@@ -316,6 +316,14 @@ impl Lane {
         self.until("the note owed", |l| l.owed().iter().any(|id| id == note_id));
     }
 
+    /// Every live note has its vectors. The feed publishes a fact on its own thread and the
+    /// embedding lane is a background one (`flush` skips it), so only the stored vectors show
+    /// that the events a write owed were published and embedded.
+    pub fn all_embedded(&self) {
+        self.until("every note embedded", |l| l.owed().is_empty());
+        self.settled();
+    }
+
     /// Every lane event published so far, and every reconcile pass, has run.
     pub fn settled(&self) {
         let runtime = self.e.session.projections().expect("open");

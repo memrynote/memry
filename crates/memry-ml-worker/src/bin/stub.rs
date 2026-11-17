@@ -2,7 +2,10 @@
 //! behaviour: `hang` never answers, `hang:<file>` creates `<file>` and never answers, `crash`
 //! aborts the process, `exit` exits with code 1, `oversize` writes a frame header past the cap,
 //! `log` writes a stderr line and answers; anything else answers with one page as document 1.
-//! `PdfPageText` answers the child's pid, so a test sees which child answered. `PdfRenderPage`
+//! `PdfPageText` answers the child's pid, so a test sees which child answered; it first aborts when
+//! the directory of `--pdfium-dir` holds `crash-once` (the file is deleted, so the next child
+//! answers) or `crash-always`, which is how a test kills the worker in the middle of a read of a
+//! real file, whose path the stub cannot pick a behaviour by. `PdfRenderPage`
 //! answers the names of the child's environment variables, a tab, then its cwd. `EmbedText` hangs,
 //! crashes (any text that starts with `crash`) and creates files as `PdfOpen` does, answers NaNs
 //! to `nan` and otherwise answers an embedding whose values are the child's pid; `EmbedLoad`
@@ -18,6 +21,7 @@
 //! `--crash-before-ready` aborts before the `Ready` frame. Never bundled.
 
 use std::io::Write;
+use std::path::PathBuf;
 
 use memry_ml_worker::serve::serve;
 use memry_ml_worker::{
@@ -31,7 +35,24 @@ fn park_forever() -> ! {
     }
 }
 
+/// The directory `--pdfium-dir` names, which the stub reads crash markers from.
+fn marker_dir() -> Option<PathBuf> {
+    let mut args = std::env::args_os();
+    args.by_ref().find(|arg| arg == "--pdfium-dir")?;
+    args.next()
+        .map(PathBuf::from)
+        .filter(|dir| !dir.as_os_str().is_empty())
+}
+
+fn crash_if_marked(dir: &Option<PathBuf>) {
+    let Some(dir) = dir else { return };
+    if std::fs::remove_file(dir.join("crash-once")).is_ok() || dir.join("crash-always").exists() {
+        std::process::abort();
+    }
+}
+
 fn main() {
+    let markers = marker_dir();
     if std::env::args().any(|arg| arg == "--crash-before-ready") {
         std::process::abort();
     }
@@ -72,7 +93,10 @@ fn main() {
                     page_count: 1,
                 },
             },
-            Request::PdfPageText { .. } => Response::Text(std::process::id().to_string()),
+            Request::PdfPageText { .. } => {
+                crash_if_marked(&markers);
+                Response::Text(std::process::id().to_string())
+            }
             Request::EmbedLoad => Response::Done,
             Request::ModelManifest { .. } => Response::Manifest(Manifest {
                 repo: MODEL_REPO.into(),
