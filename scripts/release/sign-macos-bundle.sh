@@ -1,7 +1,7 @@
 #!/bin/sh
 # Signs a Tauri .app inside-out with the hardened runtime, then the bundle itself.
 # Usage: sign-macos-bundle.sh <app> <identity> <entitlements> [keychain]
-# Order by path class: named sidecars and the pdfium dylib under Contents/Resources first, then
+# Order by path class: named sidecars and the pdfium dylib under Contents/Resources/pdfium first, then
 # every other Mach-O file and framework, then the main binary, then the bundle. The script signs
 # whatever Mach-O files the bundle holds; the sidecars come from Steps 25, 29 and 35.
 set -eu
@@ -40,7 +40,7 @@ for named in \
   "$app/Contents/MacOS/memry-eventkit"; do
   sign_once "$named"
 done
-for dylib in "$app"/Contents/Resources/*pdfium*.dylib; do
+for dylib in "$app"/Contents/Resources/pdfium/*.dylib; do
   sign_once "$dylib"
 done
 

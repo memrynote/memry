@@ -82,7 +82,7 @@ jobs:
     if: inputs.tauri_base == ''
     name: Windows payload (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
@@ -108,12 +108,26 @@ jobs:
           workspaces: crates
           key: ${{ matrix.os }}
       - run: pnpm install --frozen-lockfile --ignore-scripts
+      # The release bundle (#3556 S1): the memry-ml-worker sidecar links ONNX Runtime and Tesseract
+      # statically. The ONNX Runtime archives are releases of memrynote/memry, not of the repo the
+      # rehearsal runs in.
+      - uses: ./.github/actions/ort-static
+        with:
+          token: ${{ github.token }}
+          repository: memrynote/memry
+      - uses: ./.github/actions/tesseract-sources
+        with:
+          save: 'true'
+      - name: Build the sidecars and fetch pdfium
+        run: node apps/desktop-tauri/scripts/build-sidecars.mjs --target ${{ matrix.triple }}
       - name: Build
-        run: pnpm --filter @memry/desktop-tauri exec tauri build --no-bundle --target ${{ matrix.triple }}
+        run: pnpm --filter @memry/desktop-tauri exec tauri build --no-bundle --target ${{ matrix.triple }} --config src-tauri/tauri.release.conf.json
       - name: Stage pack dir
         run: node scripts/release/stage-payload.mjs win ${{ matrix.triple }} pack
       - name: Check the exe needs no VC++ redistributable
         run: node scripts/release/pe-imports.mjs pack/Memrynote.exe
+      - name: Check the payload
+        run: node scripts/release/assert-payload.mjs pack windows
       - name: Zip pack dir
         shell: pwsh
         run: Compress-Archive -Path pack/* -DestinationPath "MemryNote-$env:VERSION-${{ matrix.target }}-payload.zip"
@@ -128,7 +142,7 @@ jobs:
     if: inputs.tauri_base == ''
     name: macOS pack (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 90
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
@@ -162,8 +176,17 @@ jobs:
           dotnet tool update -g vpk --version "$VPK_VERSION"
           echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
           "$HOME/.dotnet/tools/vpk" -h | head -3 | grep -F "Velopack CLI $VPK_VERSION"
+      - uses: ./.github/actions/ort-static
+        with:
+          token: ${{ github.token }}
+          repository: memrynote/memry
+      - uses: ./.github/actions/tesseract-sources
+        with:
+          save: 'true'
+      - name: Build the sidecars and fetch pdfium
+        run: node apps/desktop-tauri/scripts/build-sidecars.mjs --target ${{ matrix.triple }}
       - name: Build bundle (unsigned)
-        run: pnpm --filter @memry/desktop-tauri exec tauri build --target ${{ matrix.triple }} --bundles app
+        run: pnpm --filter @memry/desktop-tauri exec tauri build --target ${{ matrix.triple }} --bundles app --config src-tauri/tauri.release.conf.json
       - name: Import signing identity
         env:
           MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
@@ -194,6 +217,16 @@ jobs:
           rm -f "$app/Contents/MacOS/export-bindings"
           scripts/release/sign-macos-bundle.sh "$app" "$IDENTITY" apps/desktop-tauri/src-tauri/entitlements.mac.plist "$KEYCHAIN"
           mkdir -p pack && rm -rf pack/MemryNote.app && cp -R "$app" pack/MemryNote.app
+      - name: Check the payload
+        run: node scripts/release/assert-payload.mjs pack/MemryNote.app macos
+      - name: The worker and pdfium are signed with the hardened runtime
+        run: |
+          set -euo pipefail
+          for file in pack/MemryNote.app/Contents/MacOS/memry-ml-worker pack/MemryNote.app/Contents/Resources/pdfium/libpdfium.dylib; do
+            codesign -dv --verbose=2 "$file" 2>&1 | tee "$RUNNER_TEMP/codesign.txt"
+            grep -qE '^TeamIdentifier=[A-Z0-9]{10}$' "$RUNNER_TEMP/codesign.txt" || { echo "::error::$file has no Team ID"; exit 1; }
+            grep -qE '^CodeDirectory .*flags=.*runtime' "$RUNNER_TEMP/codesign.txt" || { echo "::error::$file lacks the hardened runtime"; exit 1; }
+          done
       - name: Fetch previous full packages
         if: inputs.previous_tag != ''
         env:
@@ -238,7 +271,7 @@ jobs:
     if: inputs.tauri_base == ''
     name: Linux pack
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v6
         with:
@@ -269,8 +302,17 @@ jobs:
           dotnet tool update -g vpk --version "$VPK_VERSION"
           echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
           "$HOME/.dotnet/tools/vpk" -h | head -3 | grep -F "Velopack CLI $VPK_VERSION"
+      - uses: ./.github/actions/ort-static
+        with:
+          token: ${{ github.token }}
+          repository: memrynote/memry
+      - uses: ./.github/actions/tesseract-sources
+        with:
+          save: 'true'
+      - name: Build the sidecars and fetch pdfium
+        run: node apps/desktop-tauri/scripts/build-sidecars.mjs --target x86_64-unknown-linux-gnu
       - name: Build AppImage
-        run: pnpm --filter @memry/desktop-tauri exec tauri build --bundles appimage
+        run: pnpm --filter @memry/desktop-tauri exec tauri build --bundles appimage --config src-tauri/tauri.release.conf.json
       - name: Extract AppDir
         run: |
           appimage="$(ls crates/target/release/bundle/appimage/*.AppImage)"
@@ -280,6 +322,8 @@ jobs:
           # Tauri bundles every [[bin]] of the package; export-bindings is a dev tool.
           rm -f MemryNote.AppDir/usr/bin/export-bindings
           find MemryNote.AppDir -name '*.desktop' -exec grep -H '^Categories=' {} +
+      - name: Check the payload
+        run: node scripts/release/assert-payload.mjs MemryNote.AppDir linux
       - name: Fetch previous full packages
         if: inputs.previous_tag != ''
         env:

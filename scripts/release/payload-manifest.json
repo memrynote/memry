@@ -1,0 +1,23 @@
+{
+  "maxFileBytes": 157286400,
+  "platforms": {
+    "windows": {
+      "binDir": "",
+      "resourceDir": "",
+      "executables": ["Memrynote.exe", "memry-ml-worker.exe"],
+      "resources": ["pdfium/pdfium.dll", "pdfium/LICENSE", "tessdata/eng.traineddata.gz"]
+    },
+    "macos": {
+      "binDir": "Contents/MacOS",
+      "resourceDir": "Contents/Resources",
+      "executables": ["MemryNote", "memry-ml-worker"],
+      "resources": ["pdfium/libpdfium.dylib", "pdfium/LICENSE", "tessdata/eng.traineddata.gz"]
+    },
+    "linux": {
+      "binDir": "usr/bin",
+      "resourceDir": "usr/lib/MemryNote",
+      "executables": ["memrynote", "memry-ml-worker"],
+      "resources": ["pdfium/libpdfium.so", "pdfium/LICENSE", "tessdata/eng.traineddata.gz"]
+    }
+  }
+}
