@@ -257,6 +257,21 @@ fn a_deeply_nested_scene_reads_as_empty_on_a_small_stack() {
     });
 }
 
+/// The values beside `elements` are skipped without a parse, at any depth.
+#[test]
+fn deep_nesting_beside_the_elements_leaves_them_readable_on_a_small_stack() {
+    memry_test_kit::on_small_stack(|| {
+        let depth = 100_000;
+        let card_json = card("A", "note", "n1").to_string();
+        let nested = format!(
+            r#"{{"elements":[{card_json}],"files":{}1{}}}"#,
+            "[".repeat(depth),
+            "]".repeat(depth)
+        );
+        assert_eq!(entity_refs(&nested), vec![entity("note", "n1")]);
+    });
+}
+
 type CountedRead = fn(&str, &mut usize);
 
 /// Every read walks the elements at most twice, whatever they hold: one
