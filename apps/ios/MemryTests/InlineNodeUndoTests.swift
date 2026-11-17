@@ -767,4 +767,25 @@ struct InlineNodeUndoTests {
         await redo(f)
         #expect(try await shown(f) == "\u{FFFC} #task")
     }
+
+    /// REVIEW-4831: a date put over a selection of committed text that the
+    /// typing after it repeats (the `+` grid's Date row) keeps the typing
+    /// as its own undo step, and the selected text with the date's.
+    @Test(.timeLimit(.minutes(1))) func a_date_over_selected_committed_text_keeps_every_undo_state() async throws {
+        let f = try await fixture("hello")
+        type(" hello", in: f)
+        f.session.insertInline(.date(Self.today), replacing: NSRange(location: 0, length: 5))
+        await f.session.tail?.value
+        #expect(try await shown(f) == "\u{FFFC} hello")
+
+        await undo(f)
+        #expect(try await shown(f) == "hello hello")
+        await undo(f)
+        #expect(try await shown(f) == "hello")
+
+        await redo(f)
+        #expect(try await shown(f) == "hello hello")
+        await redo(f)
+        #expect(try await shown(f) == "\u{FFFC} hello")
+    }
 }
