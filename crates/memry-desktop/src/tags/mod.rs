@@ -143,6 +143,11 @@ impl Hub {
         Ok(self.hub.set_pinned(note_id, tag_name(tag)?, pinned)?)
     }
 
+    /// A tag's saved folder views, whole (`saveTagViews`); makes the definition when it has none.
+    pub fn set_views(&self, tag: &str, views: Vec<serde_json::Value>) -> Result<(), TagsError> {
+        Ok(self.hub.set_views(tag_name(tag)?, views)?)
+    }
+
     pub fn create_category(&self, name: &str) -> Result<TagCategoryView, TagsError> {
         Ok(self.hub.create_category(name)?.into())
     }

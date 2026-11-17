@@ -545,6 +545,19 @@ pub fn set_icon(
     )
 }
 
+/// A tag's saved folder views (`saveTagViews`), whole: an empty list is pushed, so peers clear
+/// theirs too. Creates the tag's definition when it has none.
+pub fn set_views(
+    conn: &Connection,
+    tag: &str,
+    views: Vec<Value>,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<(), StorageError> {
+    let changes = vec![("views", Change::Set(Value::Array(views)))];
+    upsert_definition(conn, tag, None, changes, device_id, now_ms)
+}
+
 #[cfg(test)]
 #[path = "tag_admin_tests.rs"]
 mod tests;

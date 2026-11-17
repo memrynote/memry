@@ -397,6 +397,8 @@ mod portal_vectors;
 #[path = "projector_null_tolerance.rs"]
 mod projector_null_tolerance;
 // `note_properties` is desktop only (`markdown`).
+#[path = "folder_view.rs"]
+mod folder_view;
 #[cfg(feature = "markdown")]
 #[path = "property_reads_load.rs"]
 mod property_reads_load;

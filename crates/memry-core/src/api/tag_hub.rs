@@ -54,6 +54,12 @@ impl TagHub {
             .call_blocking(|conn| tag_admin::set_icon(conn, tag, icon, &self.device_id, now_ms()))
     }
 
+    /// A tag's saved folder views, whole ([`tag_admin::set_views`]).
+    pub fn set_views(&self, tag: &str, views: Vec<serde_json::Value>) -> Result<(), StorageError> {
+        self.db
+            .call_blocking(|conn| tag_admin::set_views(conn, tag, views, &self.device_id, now_ms()))
+    }
+
     /// Pins or unpins `tag` on the note or journal day `id` ([`tags::set_pinned`]); `false`
     /// when it already was so.
     pub fn set_pinned(&self, id: &str, tag: &str, pinned: bool) -> Result<bool, StorageError> {

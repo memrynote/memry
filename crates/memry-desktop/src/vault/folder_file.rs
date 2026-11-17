@@ -34,8 +34,8 @@ use std::sync::Mutex;
 use std::time::Duration;
 
 use memry_core::markdown::frontmatter::{
-    Eol, YamlMap, YamlValue, gray_matter_data, gray_matter_parts, stringify_frontmatter_block,
-    yaml_to_json,
+    Eol, YamlMap, YamlValue, gray_matter_data, gray_matter_parts, json_to_yaml,
+    stringify_frontmatter_block, yaml_to_json,
 };
 use serde_json::Value;
 
@@ -166,6 +166,59 @@ impl FolderFile {
         put(ICON, icon.map(|icon| YamlValue::String(icon.to_owned())));
         put(TEMPLATE, template.map(|t| YamlValue::String(t.to_owned())));
         put(INHERIT, (!inherit).then_some(YamlValue::Bool(false)));
+    }
+
+    /// The saved folder views, in their order; none when `views` is not a list.
+    pub fn view_list(&self) -> Vec<Value> {
+        match self.views().and_then(yaml_to_json) {
+            Some(Value::Array(views)) => views,
+            _ => Vec::new(),
+        }
+    }
+
+    /// The saved folder views, whole; an empty list leaves the key out, as Electron writes it.
+    pub fn set_views(&mut self, views: &[Value]) {
+        if views.is_empty() {
+            self.data.remove(VIEWS);
+        } else {
+            let list = Value::Array(views.to_vec());
+            self.data.insert(VIEWS.to_owned(), json_to_yaml(&list));
+        }
+    }
+
+    /// `folder-view:set-config`: each modelled key `config` names replaces the file's, `null`
+    /// removing it; `inherit: true` is the default and leaves the key out. The icon stays: the
+    /// folder's record owns it (`notes:set-folder-config`). A key of the wrong type refuses the
+    /// whole change, as the handler's schema does.
+    pub fn merge(&mut self, config: &serde_json::Map<String, Value>) -> Result<(), String> {
+        for (key, value) in config {
+            let fits = match key.as_str() {
+                VIEWS => matches!(value, Value::Array(_) | Value::Null),
+                TEMPLATE => matches!(value, Value::String(_) | Value::Null),
+                INHERIT => matches!(value, Value::Bool(_) | Value::Null),
+                key if OBJECTS.contains(&key) => matches!(value, Value::Object(_) | Value::Null),
+                _ => true,
+            };
+            if !fits {
+                return Err(format!("`{key}` has the wrong type"));
+            }
+        }
+        for (key, value) in config {
+            let key = key.as_str();
+            let modelled = [VIEWS, TEMPLATE, INHERIT].contains(&key) || OBJECTS.contains(&key);
+            if !modelled {
+                continue;
+            }
+            match value {
+                Value::Null | Value::Bool(true) => {
+                    self.data.remove(key);
+                }
+                value => {
+                    self.data.insert(key.to_owned(), json_to_yaml(value));
+                }
+            }
+        }
+        Ok(())
     }
 
     /// Whether the file holds nothing but the settings a build writes: no text after the

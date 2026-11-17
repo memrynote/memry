@@ -34,6 +34,9 @@ pub mod file_text;
 // The desktop note fold cache; iOS folds no note.
 #[cfg(feature = "markdown")]
 pub mod fold_chunks;
+// Desktop's folder views and tag tables: they read the note index of files.
+#[cfg(feature = "markdown")]
+pub mod folder_view;
 pub mod folders;
 // Desktop's note edit only: iOS writes no note file, so it links none of it.
 #[cfg(feature = "markdown")]
