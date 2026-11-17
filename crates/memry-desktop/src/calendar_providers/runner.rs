@@ -115,8 +115,8 @@ impl CalendarRunner {
             loop {
                 match feeds.refresh_due(&open, &token).await {
                     Ok(()) => {}
-                    // A device without its signing key cannot write the mirror; the next pass
-                    // tries again (sign-in creates it).
+                    // A device without its signing key has subscribed to nothing (the first
+                    // subscribe mints it); the next pass tries again.
                     Err(FeedsError::Auth(error)) => {
                         tracing::debug!(scope = SCOPE, "calendar feed pass skipped: {error}");
                     }

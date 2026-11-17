@@ -5,6 +5,7 @@
 
 use std::sync::Arc;
 
+use memry_core::api::auth::ensure_device_identity;
 use memry_core::api::calendar::VaultCalendar;
 use memry_core::api::calendar_providers::{CalendarFeedDue, CalendarFeedState};
 use memry_core::api::errors::{AuthError, StorageError};
@@ -139,6 +140,10 @@ impl IcsFeeds {
         }
         let normalized =
             ics::normalize_url(url).ok_or(FeedsError::Feed(IcsFeedCode::InvalidUrl))?;
+        // Electron subscribes without an account (`accountId: null`): a device that never signed
+        // in mints its key here, as its first settings write does; sign-in reuses it.
+        let store = self.store.clone();
+        blocking(move || ensure_device_identity(store)).await??;
         let calendar = self.calendar(open)?;
         let id = ics::source_id(&normalized);
         if let Some(state) = state_of(&calendar, &id).await? {

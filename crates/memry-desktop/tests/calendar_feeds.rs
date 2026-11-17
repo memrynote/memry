@@ -15,7 +15,9 @@ use memry_desktop::shell::shutdown::{
 };
 use tokio::runtime::Handle;
 
-use crate::device_key::with_device_key;
+use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
+
+use crate::device_key::{with_device_key, without_device_key};
 use crate::unsplash_server::{Harness, Reply, Seen, serve};
 
 const URL: &str = "webcal://feeds.example/team.ics";
@@ -52,6 +54,10 @@ struct Rig {
 
 impl Rig {
     async fn new() -> Self {
+        Self::with_store(with_device_key()).await
+    }
+
+    async fn with_store(store: Arc<dyn SecureStore>) -> Self {
         let mode = Arc::new(Mutex::new(Mode::Feed));
         let answer = Arc::clone(&mode);
         let harness = serve(move |seen: &Seen| {
@@ -85,7 +91,7 @@ impl Rig {
         let sink = Arc::clone(&changes);
         let feeds = Arc::new(IcsFeeds::new(
             IcsFetcher::new(harness.builder(), TIMEOUT).unwrap(),
-            with_device_key(),
+            store,
             Arc::new(move |change| sink.lock().unwrap().push(change)),
         ));
         Self {
@@ -305,6 +311,33 @@ async fn due_feed(rig: &Rig) -> String {
     rig.close().await;
     rig.forget_fetch_state();
     id
+}
+
+/// Electron subscribes and refreshes without an account (`accountId: null`).
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_device_that_never_signed_in_subscribes_and_its_feed_refreshes() {
+    let store = without_device_key();
+    let rig = Rig::with_store(store.clone()).await;
+    let id = due_feed(&rig).await;
+    assert!(
+        store
+            .get(SecureStoreKey::DeviceSigningKey)
+            .unwrap()
+            .is_some(),
+        "the subscribe minted this device's key"
+    );
+
+    let runner = rig.runner(Duration::from_millis(20));
+    let open = rig.open().await;
+    eventually("the runner fetched the due feed", || {
+        rig.feed_requests() == 2
+    })
+    .await;
+    rig.feeds.refresh(&open, &id).await.unwrap();
+    assert_eq!(rig.feed_requests(), 3);
+    drop(open);
+    rig.close().await;
+    assert!(!runner.is_running());
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
