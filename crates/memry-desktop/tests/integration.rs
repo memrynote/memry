@@ -24,6 +24,8 @@ mod account_service;
 mod account_teardown;
 #[path = "account_vault_directory.rs"]
 mod account_vault_directory;
+#[path = "account_vault_download.rs"]
+mod account_vault_download;
 #[path = "activity_log.rs"]
 mod activity_log;
 #[path = "activity_scan.rs"]
