@@ -308,6 +308,12 @@ fn escape(context: &mut Ctx<'_, '_, '_>, text: &str) -> fmt::Result {
 /// as `?a&quot;b`; comrak has decoded it to `?a&quot;b`, which written as it is
 /// would reach the page as `?a"b`. Such an `&` is written `&amp;`, which gives
 /// `marked`'s bytes back; any other `&` stays as `marked` writes it.
+///
+/// comrak decodes `&amp;not` and leaves `&not` alike, as `&not`. The page
+/// always gets the link comrak read; `marked`'s differs where the source spells
+/// a legacy name raw (`?x&not&y`, `?x&copy`), which the page reads as `¬` and
+/// `©`, and where a decoded entity is written percent-encoded (`&quot;` as
+/// `%22`, the same link).
 fn encode_uri(url: &str) -> String {
     const KEPT: &[u8] = b";,/?:@&=+$-_.!~*'()#%";
     let mut out = String::with_capacity(url.len());
@@ -324,17 +330,38 @@ fn encode_uri(url: &str) -> String {
 }
 
 /// Whether the text after an `&` reads as a character reference in an
-/// attribute: `#`, or a name closed by `;`.
+/// attribute: `#`, a name closed by `;`, or one of HTML's legacy names, which
+/// need no `;` unless an `=` follows.
 fn starts_reference(rest: &[u8]) -> bool {
     match rest.first() {
         Some(b'#') => true,
         Some(first) if first.is_ascii_alphabetic() => {
-            let name = rest
+            let len = rest
                 .iter()
                 .take_while(|b| b.is_ascii_alphanumeric())
                 .count();
-            rest.get(name) == Some(&b';')
+            match rest.get(len) {
+                Some(b';') => true,
+                Some(b'=') => false,
+                _ => LEGACY_NAMES.contains(&&rest[..len]),
+            }
         }
         _ => false,
     }
 }
+
+/// The HTML standard's named character references that parse without a `;`.
+const LEGACY_NAMES: &[&[u8]] = &[
+    b"AElig", b"AMP", b"Aacute", b"Acirc", b"Agrave", b"Aring", b"Atilde", b"Auml", b"COPY",
+    b"Ccedil", b"ETH", b"Eacute", b"Ecirc", b"Egrave", b"Euml", b"GT", b"Iacute", b"Icirc",
+    b"Igrave", b"Iuml", b"LT", b"Ntilde", b"Oacute", b"Ocirc", b"Ograve", b"Oslash", b"Otilde",
+    b"Ouml", b"QUOT", b"REG", b"THORN", b"Uacute", b"Ucirc", b"Ugrave", b"Uuml", b"Yacute",
+    b"aacute", b"acirc", b"acute", b"aelig", b"agrave", b"amp", b"aring", b"atilde", b"auml",
+    b"brvbar", b"ccedil", b"cedil", b"cent", b"copy", b"curren", b"deg", b"divide", b"eacute",
+    b"ecirc", b"egrave", b"eth", b"euml", b"frac12", b"frac14", b"frac34", b"gt", b"iacute",
+    b"icirc", b"iexcl", b"igrave", b"iquest", b"iuml", b"laquo", b"lt", b"macr", b"micro",
+    b"middot", b"nbsp", b"not", b"ntilde", b"oacute", b"ocirc", b"ograve", b"ordf", b"ordm",
+    b"oslash", b"otilde", b"ouml", b"para", b"plusmn", b"pound", b"quot", b"raquo", b"reg",
+    b"sect", b"shy", b"sup1", b"sup2", b"sup3", b"szlig", b"thorn", b"times", b"uacute", b"ucirc",
+    b"ugrave", b"uml", b"uuml", b"yacute", b"yen", b"yuml",
+];

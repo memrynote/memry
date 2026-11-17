@@ -79,6 +79,22 @@ fn footnote_and_wiki_passes_are_linear() {
     });
 }
 
+/// A line of spaces or tabs between lone `\r`s is a blank line: it ends the
+/// run, and the footnote neither shows its hidden first line nor opens a code
+/// block.
+#[test]
+fn a_footnote_line_of_whitespace_is_blank() {
+    for blank in [" ", "\t", "  \t "] {
+        let html = render(&format!("A[^a]\n\n[^a]: one\r{blank}\rtwo"));
+        assert!(!html.contains("<p>x<br>"), "{blank:?}: {html}");
+        assert!(!html.contains("<pre>"), "{blank:?}: {html}");
+        assert!(
+            html.contains("<li id=\"fn-1\">one<br><br>two <a"),
+            "{blank:?}: {html}"
+        );
+    }
+}
+
 fn inline_in(vault: &Path, src: &str) -> String {
     inline_export_images(
         &format!("<img src=\"{src}\">"),
@@ -113,16 +129,21 @@ impl Roots {
         roots
     }
 
-    /// The `src` after inlining, from a note at the vault's root.
-    fn inline(&self, src: &str) -> String {
-        let html = inline_export_images(
-            &format!("<img src=\"{src}\">"),
+    /// The document after inlining, from a note at the vault's root.
+    fn inline_html(&self, html: &str) -> String {
+        inline_export_images(
+            html,
             ImageSource {
                 note_path: Some("Note.md"),
                 vault_path: Some(self.vault.path()),
                 app_data: Some(self.app_data.path()),
             },
-        );
+        )
+    }
+
+    /// The `src` after inlining, from a note at the vault's root.
+    fn inline(&self, src: &str) -> String {
+        let html = self.inline_html(&format!("<img src=\"{src}\">"));
         html.strip_prefix("<img src=\"")
             .and_then(|rest| rest.strip_suffix("\">"))
             .expect("one img")
@@ -175,6 +196,55 @@ fn a_link_out_of_the_vault_stays_as_written() {
     for src in ["link.png".to_owned(), text(&link)] {
         assert_eq!(roots.inline(&src), src, "{src}");
     }
+}
+
+/// The type comes from the file a link names: an image name on a link to the
+/// vault's database or the app's secrets is not an image.
+#[cfg(unix)]
+#[test]
+fn a_link_named_like_an_image_to_another_file_stays_as_written() {
+    use std::os::unix::fs::symlink;
+    let roots = Roots::new();
+    let vault = roots.vault.path();
+    std::fs::create_dir(vault.join(".memry")).expect("dot folder");
+    std::fs::write(vault.join(".memry/data.db"), b"SQLite format 3\0").expect("db");
+    std::fs::write(roots.app_data.path().join("s.json"), b"{}").expect("secrets");
+    std::fs::write(vault.join("b.jpg"), PNG).expect("jpg");
+    symlink(".memry/data.db", vault.join("db.png")).expect("db link");
+    symlink(roots.app_data.path().join("s.json"), vault.join("s.png")).expect("s link");
+    symlink("b.jpg", vault.join("photo.png")).expect("photo link");
+    for src in [
+        "db.png".to_owned(),
+        text(&vault.join("db.png")),
+        "s.png".to_owned(),
+        text(&vault.join("s.png")),
+    ] {
+        assert_eq!(roots.inline(&src), src, "{src}");
+    }
+    assert_eq!(roots.inline("photo.png"), "data:image/jpeg;base64,iVBORw==");
+}
+
+/// A hard link carries no location to check, so a file with more than one
+/// name is not read.
+#[test]
+fn a_hard_link_into_the_vault_stays_as_written() {
+    let roots = Roots::new();
+    let link = roots.vault.path().join("h.png");
+    std::fs::hard_link(roots.outside.path().join("a.png"), &link).expect("hard link");
+    for src in ["h.png".to_owned(), text(&link)] {
+        assert_eq!(roots.inline(&src), src, "{src}");
+    }
+}
+
+/// JavaScript's `/i` folds ASCII only, so `ſrc` is not a `src` to Electron.
+#[test]
+fn a_src_spelled_with_a_long_s_stays_as_written() {
+    let roots = Roots::new();
+    let html = "<img \u{17f}rc=\"a.png\"><IMG SRC=\"a.png\">";
+    assert_eq!(
+        roots.inline_html(html),
+        format!("<img \u{17f}rc=\"a.png\"><IMG SRC=\"{PNG_URI}\">")
+    );
 }
 
 /// Each form names a file inside the vault, so only the network and device

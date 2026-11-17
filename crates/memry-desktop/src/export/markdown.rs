@@ -8,8 +8,8 @@ use memry_core::markdown::shared::markdown_code::{mask_markdown_code, replace_ma
 use regex::Regex;
 
 use super::footnotes::scan_footnotes;
-use super::js_trim;
 use super::marked::render_markdown;
+use super::{escape_html, js_trim};
 
 /// Converts note markdown to the HTML of the export's `.note-content`.
 pub(super) fn markdown_to_html(markdown: &str) -> String {
@@ -32,18 +32,20 @@ pub(super) fn markdown_to_html(markdown: &str) -> String {
 /// `marked.parseInline`: the text as inline content, each line break a `<br>`.
 /// Blank lines end a paragraph in comrak but are only more breaks inline, so
 /// each run between them renders on its own. A lone `\r` ends a line in comrak,
-/// so it is one here too, where `parseInline` keeps it as text.
+/// so it is one here too, where `parseInline` keeps it as text. A line of
+/// spaces and tabs is blank to comrak, so it is blank here.
 fn render_inline(text: &str) -> String {
     let text = text.replace('\r', "\n");
+    let blank = |line: &&str| line.trim_matches([' ', '\t']).is_empty();
     let mut out = String::new();
     let mut lines = text.split('\n').peekable();
     while lines.peek().is_some() {
         let mut chunk = Vec::new();
-        while let Some(line) = lines.next_if(|line| !line.is_empty()) {
+        while let Some(line) = lines.next_if(|line| !blank(line)) {
             chunk.push(line);
         }
         out.push_str(&render_inline_run(&chunk));
-        while lines.next_if(|line| line.is_empty()).is_some() {
+        while lines.next_if(blank).is_some() {
             out.push_str("<br>");
         }
         if lines.peek().is_some() {
@@ -81,8 +83,12 @@ fn render_inline_run(lines: &[&str]) -> String {
     {
         Some(inner) => inner.to_owned(),
         None => {
-            tracing::error!("export rendered a footnote outside its paragraph");
-            html
+            tracing::error!("export rendered a footnote outside its paragraph, writing it as text");
+            lines
+                .iter()
+                .map(|line| escape_html(line))
+                .collect::<Vec<_>>()
+                .join("<br>")
         }
     }
 }

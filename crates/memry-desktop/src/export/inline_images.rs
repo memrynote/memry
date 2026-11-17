@@ -5,7 +5,8 @@
 //! Only the image extensions below are inlined. A note is data, and a synced or
 //! imported one can name any path its author liked, so without the allowlist an
 //! `<img src="file:///…/id_rsa">` would put those bytes into a document the user
-//! then sends on. The extension is the gate, as in Electron.
+//! then sends on. The extension is the gate, as in Electron, and the extension
+//! of the real file, links followed, must name an image too: it gives the type.
 //!
 //! A file is read only when its real location, links followed, is inside the open vault or the
 //! app's data folder, the two roots the `memry-file` scheme serves. Electron's comment on its
@@ -218,41 +219,47 @@ fn is_network_or_device(path: &str) -> bool {
 }
 
 /// The target opened through [`open_under_root`], which follows links and
-/// refuses a real location outside the vault or the app data folder. `None`
+/// refuses a real location outside the vault or the app data folder, with the
+/// MIME type of the real file's extension. A link named like an image to a
+/// file that is not one (`db.png` to the vault's database) is refused. `None`
 /// when the file does not exist.
-fn open_target(target: &Target, source: ImageSource<'_>) -> std::io::Result<Option<File>> {
+fn open_target(
+    target: &Target,
+    source: ImageSource<'_>,
+) -> std::io::Result<Option<(File, &'static str)>> {
     let outside = || std::io::Error::other("outside the vault and the app data folder");
+    let real = match std::fs::canonicalize(target.path()) {
+        Ok(real) => real,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => return Err(error),
+    };
+    let mime = image_mime(&extension(&real.to_string_lossy()))
+        .ok_or_else(|| std::io::Error::other("the linked file is not a known image type"))?;
     let (root, rel) = match target {
         Target::InVault { vault, rel } => (vault.clone(), rel.clone()),
-        Target::Absolute(path) => {
-            let real = match std::fs::canonicalize(path) {
-                Ok(real) => real,
-                Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-                Err(error) => return Err(error),
-            };
-            [source.vault_path, source.app_data]
-                .into_iter()
-                .filter_map(non_empty)
-                .filter_map(|root| std::fs::canonicalize(root).ok())
-                .find_map(|root| {
-                    let rel = real.strip_prefix(&root).ok()?;
-                    let parts: Option<Vec<&str>> = rel
-                        .components()
-                        .map(|part| match part {
-                            Component::Normal(name) => name.to_str(),
-                            _ => None,
-                        })
-                        .collect();
-                    let rel = parts?.join("/");
-                    (!rel.is_empty()).then_some((root, rel))
-                })
-                .ok_or_else(outside)?
-        }
+        Target::Absolute(_) => [source.vault_path, source.app_data]
+            .into_iter()
+            .filter_map(non_empty)
+            .filter_map(|root| std::fs::canonicalize(root).ok())
+            .find_map(|root| {
+                let rel = real.strip_prefix(&root).ok()?;
+                let parts: Option<Vec<&str>> = rel
+                    .components()
+                    .map(|part| match part {
+                        Component::Normal(name) => name.to_str(),
+                        _ => None,
+                    })
+                    .collect();
+                let rel = parts?.join("/");
+                (!rel.is_empty()).then_some((root, rel))
+            })
+            .ok_or_else(outside)?,
     };
-    open_under_root(&root, &rel).map_err(|error| match error {
+    let file = open_under_root(&root, &rel).map_err(|error| match error {
         OpenError::Io(error) => error,
         other => std::io::Error::other(other.to_string()),
-    })
+    })?;
+    Ok(file.map(|file| (file, mime)))
 }
 
 fn src_of<'h>(found: &Captures<'h>) -> &'h str {
@@ -291,15 +298,15 @@ impl Inliner {
     fn inline(&mut self, src: &str, source: ImageSource<'_>) -> Option<String> {
         let target = resolve_local_path(src, source)?;
         let file_path = target.path();
-        let Some(mime) = image_mime(&extension(&file_path.to_string_lossy())) else {
+        if image_mime(&extension(&file_path.to_string_lossy())).is_none() {
             tracing::warn!(
                 src,
                 file_path = %file_path.display(),
                 "Export skipped a reference that is not a known image type"
             );
             return None;
-        };
-        match self.read(&target, mime, source) {
+        }
+        match self.read(&target, source) {
             Ok(uri) => Some(uri),
             Err(error) => {
                 tracing::warn!(
@@ -316,13 +323,8 @@ impl Inliner {
     /// The file's `data:` URI. Its size is checked before reading: the open
     /// refuses anything but a regular file (a FIFO named `x.png` would block the
     /// read forever).
-    fn read(
-        &mut self,
-        target: &Target,
-        mime: &str,
-        source: ImageSource<'_>,
-    ) -> std::io::Result<String> {
-        let Some(mut file) = open_target(target, source)? else {
+    fn read(&mut self, target: &Target, source: ImageSource<'_>) -> std::io::Result<String> {
+        let Some((file, mime)) = open_target(target, source)? else {
             return Err(std::io::ErrorKind::NotFound.into());
         };
         let (id, _) = file_identity(&file)?;
@@ -336,7 +338,7 @@ impl Inliner {
             return Err(std::io::Error::other("too large to inline"));
         }
         let mut bytes = Vec::with_capacity(usize::try_from(len).unwrap_or(0));
-        file.read_to_end(&mut bytes)?;
+        file.take(len).read_to_end(&mut bytes)?;
         READS.with(|reads| reads.set(reads.get() + 1));
         let uri = prefix + &STANDARD.encode(bytes);
         self.total += uri.len() as u64;

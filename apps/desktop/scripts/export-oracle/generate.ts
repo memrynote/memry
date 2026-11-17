@@ -328,6 +328,11 @@ const BODY_CASES: Case[] = [
       '[x](https://e.com/?a&amp;quot;b) and [y](https://e.com/?a=1&b=2&c) and ![z](<a&amp;#38;b.png>)'
   },
   {
+    name: 'legacy entity names in link hrefs',
+    content:
+      '[y](https://e.com/?a=1&amp;not&b=2) and [c](https://e.com/?x=&amp;copy) and [s](https://e.com/?q&section=1&lt=2&amp;lt)'
+  },
+  {
     name: 'link hrefs encoded',
     content:
       "[space](<https://e.com/ä b>) and [title](https://e.com/a_(b) \"It's\") and ![alt](<pic é.png> 'T')"
