@@ -360,3 +360,26 @@ struct InkBoardSaveTests {
         #expect(board.canvasLost, "Done can never save, so the alert offers to close")
     }
 }
+
+@MainActor
+struct InkCanvasTests {
+    @Test func pixelEraserIsPinnedToVector() throws {
+        for type in [PKEraserTool.EraserType.bitmap, .fixedWidthBitmap] {
+            let pinned = try #require(InkCanvas.pinVectorEraser(PKEraserTool(type)) as? PKEraserTool)
+            #expect(pinned.eraserType == .vector)
+        }
+        let pen = PKInkingTool(.pen, color: .red, width: 4)
+        #expect(InkCanvas.pinVectorEraser(pen) as? PKInkingTool == pen, "other tools pass through")
+    }
+
+    @Test("a canvas that loads its ink before its first layout takes strokes across its whole bounds")
+    func reopenedCanvasDrawsEverywhere() {
+        let canvas = InkCanvasView()
+        canvas.drawing = PKDrawing(strokes: [pen.stroke(created: .now, offset: .zero)])
+        canvas.fitContent()
+        canvas.frame = CGRect(x: 0, y: 0, width: 1024, height: 1280)
+        canvas.layoutIfNeeded()
+        #expect(canvas.contentSize.width >= 1024)
+        #expect(canvas.contentSize.height >= 1280)
+    }
+}

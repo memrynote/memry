@@ -136,7 +136,7 @@ enum InkInput {
     static var pencilSeen = false
 }
 
-private struct InkCanvas: UIViewRepresentable {
+struct InkCanvas: UIViewRepresentable {
     let board: InkBoard
     let dark: Bool
     /// `false` while the full whiteboard is open over the surface, which
@@ -145,8 +145,16 @@ private struct InkCanvas: UIViewRepresentable {
 
     func makeCoordinator() -> Coordinator { Coordinator(board: board) }
 
-    func makeUIView(context: Context) -> PKCanvasView {
-        let canvas = PKCanvasView()
+    /// Desktop has no pixel eraser, so the eraser always erases whole
+    /// strokes. `InkStroke.visible` still saves a masked stroke as its
+    /// visible parts.
+    static func pinVectorEraser(_ tool: PKTool) -> PKTool {
+        guard let eraser = tool as? PKEraserTool, eraser.eraserType != .vector else { return tool }
+        return PKEraserTool(.vector)
+    }
+
+    func makeUIView(context: Context) -> InkCanvasView {
+        let canvas = InkCanvasView()
         canvas.backgroundColor = .clear
         canvas.isOpaque = false
         canvas.minimumZoomScale = 1
@@ -162,11 +170,14 @@ private struct InkCanvas: UIViewRepresentable {
         let picker = context.coordinator.picker
         picker.setVisible(true, forFirstResponder: canvas)
         picker.addObserver(canvas)
+        picker.addObserver(context.coordinator)
+        context.coordinator.canvas = canvas
+        context.coordinator.pinEraser()
         DispatchQueue.main.async { canvas.becomeFirstResponder() }
         return canvas
     }
 
-    func updateUIView(_ canvas: PKCanvasView, context: Context) {
+    func updateUIView(_ canvas: InkCanvasView, context: Context) {
         let coordinator = context.coordinator
         if coordinator.loads != board.loads {
             coordinator.loads = board.loads
@@ -175,7 +186,7 @@ private struct InkCanvas: UIViewRepresentable {
             coordinator.applying = false
         }
         coordinator.underlay(in: canvas, scene: board.background, offset: board.offset, dark: dark)
-        coordinator.fitContent(canvas)
+        canvas.fitContent()
         if !active, canvas.isFirstResponder {
             canvas.resignFirstResponder()
         } else if active, !canvas.isFirstResponder, canvas.window != nil {
@@ -184,11 +195,10 @@ private struct InkCanvas: UIViewRepresentable {
     }
 
     @MainActor
-    final class Coordinator: NSObject, PKCanvasViewDelegate {
+    final class Coordinator: NSObject, PKCanvasViewDelegate, PKToolPickerObserver {
         let board: InkBoard
         /// The tools #4378 names. The eraser's popover still offers its pixel
-        /// mode, whose cut strokes save as their visible parts
-        /// (`InkStroke.visible`).
+        /// mode, and the picker keeps that choice across launches.
         let picker = PKToolPicker(toolItems: [
             PKToolPickerInkingItem(type: .pen),
             PKToolPickerInkingItem(type: .marker),
@@ -198,26 +208,38 @@ private struct InkCanvas: UIViewRepresentable {
         ])
         var loads = 0
         var applying = false
+        weak var canvas: InkCanvasView?
         private var host: UIHostingController<WhiteboardCanvas>?
         private var drawn: (scene: WhiteboardScene?, dark: Bool)?
-        private var backgroundBox = CGRect.null
 
         init(board: InkBoard) { self.board = board }
 
         func canvasViewDrawingDidChange(_ canvas: PKCanvasView) {
-            fitContent(canvas)
+            (canvas as? InkCanvasView)?.fitContent()
             guard !applying else { return }
             board.changed(canvas.drawing)
         }
 
+        func toolPickerSelectedToolItemDidChange(_: PKToolPicker) { pinEraser() }
+        func toolPickerVisibilityDidChange(_: PKToolPicker) { pinEraser() }
+
+        /// The canvas observes the picker too and takes its tool in an order
+        /// PencilKit does not set, so the pin runs after this notification.
+        func pinEraser() {
+            DispatchQueue.main.async { [weak self] in
+                guard let canvas = self?.canvas else { return }
+                canvas.tool = InkCanvas.pinVectorEraser(canvas.tool)
+            }
+        }
+
         /// The board's other elements, drawn once at scale 1 under the ink.
-        func underlay(in canvas: PKCanvasView, scene: WhiteboardScene?, offset: CGPoint, dark: Bool) {
+        func underlay(in canvas: InkCanvasView, scene: WhiteboardScene?, offset: CGPoint, dark: Bool) {
             guard drawn.map({ $0.scene != scene || $0.dark != dark }) ?? true else { return }
             drawn = (scene, dark)
             host?.view.removeFromSuperview()
             host = nil
             guard let scene, let bounds = scene.bounds else {
-                backgroundBox = .null
+                canvas.backgroundBox = .null
                 return
             }
             let box = bounds.insetBy(dx: -10, dy: -10)
@@ -226,19 +248,33 @@ private struct InkCanvas: UIViewRepresentable {
             host.view.isUserInteractionEnabled = false
             host.view.frame = box.offsetBy(dx: -offset.x, dy: -offset.y)
             canvas.insertSubview(host.view, at: 0)
-            backgroundBox = host.view.frame
+            canvas.backgroundBox = host.view.frame
             self.host = host
         }
+    }
+}
 
-        /// Room to keep drawing past the ink and the background.
-        func fitContent(_ canvas: PKCanvasView) {
-            let used = canvas.drawing.bounds.union(backgroundBox)
-            let size = CGSize(
-                width: max(canvas.bounds.width, used.isNull ? 0 : used.maxX + 40),
-                height: max(canvas.bounds.height * 1.5, used.isNull ? 0 : used.maxY + canvas.bounds.height / 2)
-            )
-            if canvas.contentSize != size { canvas.contentSize = size }
-        }
+/// PencilKit takes no stroke outside the content size. A size set before
+/// the first layout covers only the loaded ink, so the canvas sizes its
+/// content again once it knows its bounds.
+final class InkCanvasView: PKCanvasView {
+    var backgroundBox = CGRect.null
+    private var fittedTo: CGSize?
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        if fittedTo != bounds.size { fitContent() }
+    }
+
+    /// Room to keep drawing past the ink and the background.
+    func fitContent() {
+        fittedTo = bounds.size
+        let used = drawing.bounds.union(backgroundBox)
+        let size = CGSize(
+            width: max(bounds.width, used.isNull ? 0 : used.maxX + 40),
+            height: max(bounds.height * 1.5, used.isNull ? 0 : used.maxY + bounds.height / 2)
+        )
+        if contentSize != size { contentSize = size }
     }
 }
 
