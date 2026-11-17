@@ -157,17 +157,24 @@ pub fn escape_text(value: &str) -> String {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NotACalendar;
 
+/// How deep components may nest. Real objects nest three deep (VCALENDAR,
+/// VEVENT, VALARM); the bound keeps the recursive readers and the tree's
+/// drop within a 2 MiB stack whatever a feed sends.
+pub const MAX_DEPTH: usize = 16;
+
 /// `ICAL.parse` + the `vcalendar` check: the first top-level component, which
-/// must be a VCALENDAR.
+/// must be a VCALENDAR. Nesting past [`MAX_DEPTH`] is not a calendar.
 pub fn parse_calendar(text: &str) -> Result<Component, NotACalendar> {
     let mut stack: Vec<Component> = Vec::new();
     let mut roots: Vec<Component> = Vec::new();
     for line in unfold(text) {
+        super::budget::step(1);
         if line.trim().is_empty() {
             continue;
         }
         let property = parse_line(&line).ok_or(NotACalendar)?;
         match property.name.as_str() {
+            "BEGIN" if stack.len() >= MAX_DEPTH => return Err(NotACalendar),
             "BEGIN" => stack.push(Component {
                 name: property.value.trim().to_ascii_uppercase(),
                 ..Component::default()

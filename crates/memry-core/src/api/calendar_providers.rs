@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use crate::api::calendar::VaultCalendar;
 use crate::api::calendar_records::CalendarZone;
 use crate::api::errors::StorageError;
-use crate::domain::calendar_items::ical::{self, IcalZones};
+use crate::domain::calendar_items::ical::{self, FeedError, IcalZones};
 use crate::domain::calendar_items::ics::{self, Validators};
 
 /// One subscribed feed as this device sees it.
@@ -75,20 +75,14 @@ pub fn calendar_feed_zone_ids(text: String) -> Vec<String> {
     ical::zone_ids(&text)
 }
 
-fn not_a_calendar() -> StorageError {
-    StorageError::Invalid {
-        what: "not_a_calendar".to_owned(),
-    }
-}
-
+/// `Invalid { what }` carries the feed error code (`not_a_calendar`, `too_large`).
 fn parse(
     feed: &CalendarFetchedFeed,
     zones: CalendarFeedZones,
     now_ms: i64,
-) -> Result<(ical::IcalFeed, Validators), StorageError> {
+) -> Result<(ical::IcalFeed, Validators), FeedError> {
     let zones: IcalZones = zones.into();
-    let parsed =
-        ical::parse_feed(&feed.text, ics::window(now_ms), &zones).map_err(|_| not_a_calendar())?;
+    let parsed = ical::parse_feed(&feed.text, ics::window(now_ms), &zones)?;
     Ok((
         parsed,
         Validators {
@@ -96,6 +90,12 @@ fn parse(
             last_modified: feed.last_modified.clone(),
         },
     ))
+}
+
+fn invalid(error: FeedError) -> StorageError {
+    StorageError::Invalid {
+        what: error.code().to_owned(),
+    }
 }
 
 #[uniffi::export]
@@ -114,7 +114,7 @@ impl VaultCalendar {
             what: "invalid_url".to_owned(),
         })?;
         self.write(move |conn, device, now| {
-            let (parsed, validators) = parse(&feed, zones, now)?;
+            let (parsed, validators) = parse(&feed, zones, now).map_err(invalid)?;
             ics::subscribe(
                 conn,
                 &url,
@@ -141,8 +141,8 @@ impl VaultCalendar {
                 Ok(u32::try_from(changed).unwrap_or(u32::MAX))
             }
             Err(error) => {
-                ics::record_fetch(conn, &source_id, Err("not_a_calendar"), now)?;
-                Err(error)
+                ics::record_fetch(conn, &source_id, Err(error.code()), now)?;
+                Err(invalid(error))
             }
         })
     }

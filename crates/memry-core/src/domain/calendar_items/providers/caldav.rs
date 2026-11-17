@@ -431,13 +431,16 @@ pub fn apply_pull(
         let Ok(root) = parse_calendar(&object.data) else {
             continue;
         };
-        let instances = expand_calendar_events(
+        // An object too large to expand is skipped like one that does not parse.
+        let Ok(instances) = expand_calendar_events(
             &root,
             window,
             root.text("X-WR-TIMEZONE").as_deref(),
             &key,
             zones,
-        );
+        ) else {
+            continue;
+        };
         // Objects a Memry item is bound to flow back into that item; only the
         // unbound rest of a series mirrors (`applyBoundCaldavObject`).
         let bound = bindings::for_object(conn, calendar_url, &object.href)?;

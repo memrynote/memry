@@ -4,7 +4,7 @@
 //! BYSECOND, BYSETPOS and WKST. Occurrences come out in order as wall-clock
 //! seconds; the caller turns them into instants in the event's zone.
 
-use super::rrule_days::{day_allowed, monthly_days, weekly_days, yearly_days};
+use super::rrule_days::{day_allowed, day_scan, monthly_days, weekly_days, yearly_days};
 use crate::domain::calendar::CivilDate;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -197,6 +197,10 @@ impl<'a> Occurrences<'a> {
         while self.buffer.is_empty() && !self.done {
             let set = candidates(self.rule, self.start, self.period);
             self.period += 1;
+            if !super::budget::step(1 + set.len()) {
+                self.done = true;
+                return;
+            }
             let mut any = false;
             for wall in set {
                 if wall <= self.start {
@@ -264,6 +268,9 @@ fn candidates(rule: &Rule, start: i64, index: i64) -> Vec<i64> {
         }
         Freq::Daily => {
             let day = start_date.add_days(step);
+            if !super::budget::step(day_scan(rule)) {
+                return Vec::new();
+            }
             if day_allowed(rule, day) {
                 vec![day]
             } else {
@@ -279,6 +286,11 @@ fn candidates(rule: &Rule, start: i64, index: i64) -> Vec<i64> {
             let wall = start + step * unit;
             let day = CivilDate::from_days_since_epoch(wall.div_euclid(DAY));
             let parts = split_time(wall.rem_euclid(DAY));
+            let scan =
+                day_scan(rule) + rule.by_hour.len() + rule.by_minute.len() + rule.by_second.len();
+            if !super::budget::step(scan) {
+                return Vec::new();
+            }
             let keep = day_allowed(rule, day)
                 && (rule.by_hour.is_empty() || rule.by_hour.contains(&parts.0))
                 && (rule.by_minute.is_empty() || rule.by_minute.contains(&parts.1))
@@ -286,13 +298,18 @@ fn candidates(rule: &Rule, start: i64, index: i64) -> Vec<i64> {
             return if keep { vec![wall] } else { Vec::new() };
         }
     };
+    // Charged before anything is built: BYHOUR, BYMINUTE and BYSECOND lists
+    // multiply, and a hostile rule's product does not fit in memory.
+    let per_day = [&rule.by_hour, &rule.by_minute, &rule.by_second]
+        .iter()
+        .fold(1_usize, |n, list| n.saturating_mul(list.len().max(1)));
+    if !super::budget::step(days.len().saturating_mul(per_day) + rule.by_set_pos.len()) {
+        return Vec::new();
+    }
+    let times = times(rule, time);
     let mut set: Vec<i64> = days
         .into_iter()
-        .flat_map(|day| {
-            times(rule, time)
-                .into_iter()
-                .map(move |t| day.days_since_epoch() * DAY + t)
-        })
+        .flat_map(|day| times.iter().map(move |t| day.days_since_epoch() * DAY + t))
         .collect();
     set.sort_unstable();
     set.dedup();

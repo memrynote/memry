@@ -1,9 +1,28 @@
 //! The day sets of one RRULE period (split from [`super::rrule`] at the
 //! 600-line ceiling): BYxxx expansion inside a year, month or week, and the
-//! same rules as limits on a single day.
+//! same rules as limits on a single day. A feed's BY lists can hold a million
+//! entries, so each walk over them is charged to [`super::budget`] before it
+//! runs, at what it costs, and an empty day set comes back once it is spent.
 
+use super::budget;
 use super::rrule::Rule;
 use crate::domain::calendar::{CivilDate, days_in_month, is_leap_year};
+
+/// The steps of one [`day_allowed`]: each list scanned once.
+pub(super) fn day_scan(rule: &Rule) -> usize {
+    rule.by_month.len() + rule.by_month_day.len() + rule.by_year_day.len() + rule.by_day.len()
+}
+
+/// `days` kept by BYMONTHDAY after a BYDAY expansion, charged first.
+fn retain_month_days(rule: &Rule, mut days: Vec<CivilDate>) -> Vec<CivilDate> {
+    if !rule.by_day.is_empty() && !rule.by_month_day.is_empty() {
+        if !budget::step(days.len().saturating_mul(rule.by_month_day.len())) {
+            return Vec::new();
+        }
+        days.retain(|day| matches_month_day(&rule.by_month_day, *day));
+    }
+    days
+}
 
 /// BYMONTH / BYMONTHDAY / BYYEARDAY / BYDAY as limits on one day.
 pub(super) fn day_allowed(rule: &Rule, day: CivilDate) -> bool {
@@ -78,7 +97,16 @@ pub(super) fn monthly_days(rule: &Rule, start: CivilDate, first: CivilDate) -> V
     let Some((from, to)) = month_span(first.year, first.month) else {
         return Vec::new();
     };
-    let mut days: Vec<CivilDate> = if !rule.by_day.is_empty() {
+    // One branch below runs: each BYDAY entry or each day walks the month.
+    let walk = if rule.by_day.is_empty() {
+        rule.by_month_day.len()
+    } else {
+        rule.by_day.len()
+    };
+    if !budget::step(rule.by_month.len() + 31 * walk) {
+        return Vec::new();
+    }
+    let days: Vec<CivilDate> = if !rule.by_day.is_empty() {
         rule.by_day
             .iter()
             .flat_map(|(n, wd)| nth_weekdays(from, to, *n, *wd))
@@ -98,13 +126,13 @@ pub(super) fn monthly_days(rule: &Rule, start: CivilDate, first: CivilDate) -> V
             .into_iter()
             .collect()
     };
-    if !rule.by_day.is_empty() && !rule.by_month_day.is_empty() {
-        days.retain(|day| matches_month_day(&rule.by_month_day, *day));
-    }
-    days
+    retain_month_days(rule, days)
 }
 
 pub(super) fn weekly_days(rule: &Rule, start: CivilDate, week: CivilDate) -> Vec<CivilDate> {
+    if !budget::step(7 * (1 + rule.by_day.len() + rule.by_month.len())) {
+        return Vec::new();
+    }
     (0..7)
         .map(|offset| week.add_days(offset))
         .filter(|day| {
@@ -123,7 +151,25 @@ pub(super) fn yearly_days(rule: &Rule, start: CivilDate, year: i64) -> Vec<Civil
     else {
         return Vec::new();
     };
-    let mut days: Vec<CivilDate> = if !rule.by_year_day.is_empty() {
+    // Charged per branch, at what that branch walks.
+    let walk = if !rule.by_year_day.is_empty() {
+        366 * rule.by_year_day.len()
+    } else if !rule.by_month.is_empty() {
+        let per_month = if rule.by_day.is_empty() {
+            rule.by_month_day.len()
+        } else {
+            rule.by_day.len()
+        };
+        rule.by_month.len().saturating_mul(1 + 31 * per_month)
+    } else if !rule.by_day.is_empty() {
+        366 * rule.by_day.len()
+    } else {
+        31 * rule.by_month_day.len()
+    };
+    if !budget::step(walk) {
+        return Vec::new();
+    }
+    let days: Vec<CivilDate> = if !rule.by_year_day.is_empty() {
         let mut out = Vec::new();
         let mut day = jan1;
         while day.days_since_epoch() <= dec31.days_since_epoch() {
@@ -187,8 +233,5 @@ pub(super) fn yearly_days(rule: &Rule, start: CivilDate, year: i64) -> Vec<Civil
             .into_iter()
             .collect()
     };
-    if !rule.by_day.is_empty() && !rule.by_month_day.is_empty() {
-        days.retain(|day| matches_month_day(&rule.by_month_day, *day));
-    }
-    days
+    retain_month_days(rule, days)
 }
