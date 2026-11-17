@@ -36,7 +36,7 @@ use super::ystore::YStoreReader;
 const RESERVED_PREFIX: &str = "__memry_";
 /// `UNATTRIBUTABLE_DOC_PREFIX` (`crdt-legacy-partition.ts:17`).
 pub const UNATTRIBUTABLE_PREFIX: &str = "__memry_unattributable__/";
-/// `EMPTY_DOC_UPDATE_BYTES` (`crdt-provider.ts:69`): an encode this size holds no item and no
+/// `EMPTY_DOC_UPDATE_BYTES` (`crdt-provider.ts:73`): an encode this size holds no item and no
 /// delete, and Electron seeds such a document from its markdown.
 const EMPTY_STATE_BYTES: usize = 4;
 /// The fold authors nothing; this only names the replay's client id.
