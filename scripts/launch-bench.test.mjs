@@ -2,12 +2,15 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
 import {
+  defaultAppPath,
   detectTier,
   findWindowShownAt,
   formatMedianTable,
+  logPath,
   median,
   parseLaunchTimeline,
   parseLogTimestamp,
+  parseRendererMarks,
   summarize
 } from './launch-bench.mjs'
 
@@ -27,6 +30,10 @@ const TIMELINE_BLOCK = `2026-09-04 14:13:53.759 [info]  [ (Startup)             
   vaultOpenPending: false
 }`
 
+// The line `launch_report_renderer_marks` logs (`src-tauri/src/commands/launch.rs`).
+const RENDERER_LINE =
+  '2026-09-04 14:13:54.900 [info] [Startup] renderer launch marks {"firstPaintMs":null,"fcpMs":512.5,"domInteractiveMs":301,"domContentLoadedMs":340.25,"noteReadableMs":1210}'
+
 const SLICE = `${STARTING_LINE}\n${SHOWN_LINE}\n${TIMELINE_BLOCK}\n`
 
 function makeRun(run, tier, offset) {
@@ -34,7 +41,6 @@ function makeRun(run, tier, offset) {
     run,
     tier,
     clickToShownMs: 1000 + offset,
-    cdpAttachOffsetMs: 900 + offset,
     timeline: { appReadyMs: 700 + offset, shownMs: 1076 + offset },
     renderer: { fcpMs: 756.5 + offset }
   }
@@ -75,6 +81,74 @@ describe('parseLaunchTimeline', () => {
   it('returns null while the block is still unclosed', () => {
     const truncated = SLICE.split('\n').slice(0, -2).join('\n')
     assert.equal(parseLaunchTimeline(truncated), null)
+  })
+})
+
+describe('parseRendererMarks', () => {
+  it('reads the renderer line, an absent mark as null', () => {
+    assert.deepEqual(parseRendererMarks(`${SLICE}${RENDERER_LINE}\n`), {
+      firstPaintMs: null,
+      fcpMs: 512.5,
+      domInteractiveMs: 301,
+      domContentLoadedMs: 340.25,
+      noteReadableMs: 1210
+    })
+  })
+
+  it('returns null without the line, and for a line cut mid-write', () => {
+    assert.equal(parseRendererMarks(SLICE), null)
+    assert.equal(parseRendererMarks(RENDERER_LINE.slice(0, -10)), null)
+  })
+
+  it('feeds the renderer metrics, a null mark as absent', () => {
+    const run = { ...makeRun(1, 'packaged', 0), renderer: parseRendererMarks(RENDERER_LINE) }
+    const byKey = Object.fromEntries(summarize([run]).map((row) => [row.key, row.median]))
+    assert.equal(byKey.renderer_note_readable_ms, 1210)
+    assert.equal(byKey.renderer_fcp_ms, 512.5)
+    assert.equal(byKey.renderer_first_paint_ms, null)
+  })
+})
+
+describe('logPath', () => {
+  it('follows the Tauri log dir of each OS', () => {
+    assert.equal(
+      logPath({}, 'darwin', '/Users/kaan'),
+      '/Users/kaan/Library/Logs/com.memrynote.memry/main.log'
+    )
+    assert.equal(
+      logPath({ LOCALAPPDATA: 'C:\\Users\\kaan\\AppData\\Local' }, 'win32', 'C:\\Users\\kaan'),
+      'C:\\Users\\kaan\\AppData\\Local\\com.memrynote.memry\\logs\\main.log'
+    )
+    assert.equal(
+      logPath({}, 'linux', '/home/kaan'),
+      '/home/kaan/.local/share/com.memrynote.memry/logs/main.log'
+    )
+    assert.equal(
+      logPath({ XDG_DATA_HOME: '/data' }, 'linux', '/home/kaan'),
+      '/data/com.memrynote.memry/logs/main.log'
+    )
+  })
+
+  it('follows MEMRY_DEVICE and MEMRY_TEST_LOG_DIR as the app does', () => {
+    assert.equal(
+      logPath({ MEMRY_DEVICE: 'A' }, 'darwin', '/Users/kaan'),
+      '/Users/kaan/Library/Logs/com.memrynote.memry.A/main.log'
+    )
+    assert.equal(
+      logPath({ MEMRY_TEST_LOG_DIR: '/tmp/logs', MEMRY_DEVICE: 'A' }, 'linux', '/home/kaan'),
+      '/tmp/logs/main.log'
+    )
+  })
+})
+
+describe('defaultAppPath', () => {
+  it('names the install of each OS, none on Linux', () => {
+    assert.equal(defaultAppPath({}, 'darwin', '/Users/kaan'), '/Applications/MemryNote.app')
+    assert.equal(
+      defaultAppPath({ LOCALAPPDATA: 'C:\\L' }, 'win32', 'C:\\Users\\kaan'),
+      'C:\\L\\MemryNote\\current\\Memrynote.exe'
+    )
+    assert.equal(defaultAppPath({}, 'linux', '/home/kaan'), null)
   })
 })
 
@@ -125,7 +199,6 @@ describe('summarize', () => {
     assert.equal(byKey.app_ready_ms.median, 750)
     assert.equal(byKey.app_ready_ms.note, null)
     assert.equal(byKey.renderer_fcp_ms.median, 806.5)
-    assert.equal(byKey.cdp_attach_offset_ms.median, 950)
     assert.equal(byKey.renderer_loaded_ms.median, null)
   })
 
@@ -153,7 +226,6 @@ describe('summarize', () => {
         'renderer_fcp_ms',
         'renderer_dom_interactive_ms',
         'renderer_dom_content_loaded_ms',
-        'cdp_attach_offset_ms',
         'renderer_note_readable_ms'
       ]
     )

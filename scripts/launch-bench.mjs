@@ -1,39 +1,40 @@
 #!/usr/bin/env node
+// Launch bench for the Tauri app. Each run starts the app on a bench profile, reads the shell's
+// `launch timeline {` block and the renderer's `renderer launch marks {json}` line from
+// `main.log`, then quits it. No debugger attaches: every number is one the app logs itself.
 
-import { spawnSync } from 'node:child_process'
-import { mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { spawn, spawnSync } from 'node:child_process'
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { open } from 'node:fs/promises'
-import { homedir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const LOCK_DIR = '/tmp/memry-launch-bench.lock'
-const LOG_PATH = path.join(homedir(), 'Library/Logs/memrynote/main.log')
+import { CONFIG_FILE, seedVaultRegistry } from '../apps/desktop-tauri/e2e/harness/seed-registry.mjs'
+
+const IDENTIFIER = 'com.memrynote.memry'
+const LOCK_DIR = path.join(tmpdir(), 'memry-launch-bench.lock')
 const PERF_DIR = fileURLToPath(new URL('../.perf/', import.meta.url))
 const APP_MTIME_STAMP = path.join(PERF_DIR, 'last-app-mtime')
 
 const DEFAULT_RUNS = 5
-const DEFAULT_APP = '/Applications/MemryNote.app'
-const DEFAULT_PORT = 9222
+const DEFAULT_VAULT = path.join(homedir(), 'MemryBenchVault')
+// Kept across runs and invocations: the web view profile inside it holds the tab state, so a
+// note left open in it is the note every later launch restores.
+const DEFAULT_PROFILE = path.join(tmpdir(), 'memry-launch-bench', 'profile')
 
 const SETTLE_MS = 2_000
 const QUIT_DEADLINE_MS = 20_000
-const CDP_DEADLINE_MS = 30_000
 const LOG_DEADLINE_MS = 45_000
-const FCP_DEADLINE_MS = 30_000
-// The note-readable mark lands well after FCP (vault open, note query, editor
-// mount all sit between them) and is absent entirely on a launch that restored
-// no note (home tab, no prior session). It gets its own bounded wait rather
-// than reusing FCP_DEADLINE_MS: 8s is already 5x the epic's 1.5s target, so
-// waiting longer would only delay the harness, never turn a real hit into
-// more truth. Timing out reports the metric absent, not zero.
-const NOTE_READABLE_DEADLINE_MS = 8_000
-const CDP_POLL_MS = 250
-const LOG_POLL_MS = 100
+// The renderer reports when the note-readable mark lands, or 8 s after `load` on a launch that
+// restored no note (`NOTE_READABLE_WAIT_MS`, `lib/launch-marks.ts`); this covers both.
+const RENDERER_DEADLINE_MS = 20_000
+const POLL_MS = 100
 
 const LOG_TIMESTAMP_PATTERN = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})\.(\d{3})\b/
 const STARTING_LINE_PATTERN = /MemryNote (\S+) starting \((packaged|dev)\)/
 const TIMELINE_FIELD_PATTERN = /^([A-Za-z][A-Za-z0-9]*): (.+?),?$/
+const RENDERER_MARKS_PREFIX = 'renderer launch marks '
 
 export const TIERS = {
   packaged: { label: 'packaged (tier 3)', wallClockValid: true },
@@ -62,7 +63,6 @@ export const METRICS = [
     read: (run) => run.renderer?.domContentLoadedMs,
     tier3Only: false
   },
-  { key: 'cdp_attach_offset_ms', read: (run) => run.cdpAttachOffsetMs, tier3Only: false },
   {
     key: 'renderer_note_readable_ms',
     read: (run) => run.renderer?.noteReadableMs,
@@ -136,6 +136,23 @@ export function parseLaunchTimeline(slice) {
   return null
 }
 
+/** The last `renderer launch marks {json}` line, or null when there is none or it is not JSON. */
+export function parseRendererMarks(slice) {
+  const line = slice.split('\n').findLast((candidate) => candidate.includes(RENDERER_MARKS_PREFIX))
+  if (!line) {
+    return null
+  }
+
+  try {
+    const marks = JSON.parse(
+      line.slice(line.indexOf(RENDERER_MARKS_PREFIX) + RENDERER_MARKS_PREFIX.length)
+    )
+    return marks && typeof marks === 'object' ? marks : null
+  } catch {
+    return null
+  }
+}
+
 export function findWindowShownAt(slice) {
   const lines = slice.split('\n').filter((line) => line.includes('main window shown'))
   if (lines.length === 0) {
@@ -197,8 +214,57 @@ export function formatMedianTable(summary, runs) {
   return lines.join('\n')
 }
 
-function detectAppVersion(slice) {
-  return STARTING_LINE_PATTERN.exec(slice)?.[1] ?? null
+/**
+ * `main.log` of the app's profile: Tauri's `app_log_dir` for the identifier the app derives from
+ * `MEMRY_DEVICE` (`memry_desktop::paths::profile_identifier`), unless `MEMRY_TEST_LOG_DIR`
+ * replaces the directory.
+ */
+export function logPath(env, platform, home) {
+  if (env.MEMRY_TEST_LOG_DIR) {
+    return path.join(env.MEMRY_TEST_LOG_DIR, 'main.log')
+  }
+  const identifier = env.MEMRY_DEVICE ? `${IDENTIFIER}.${env.MEMRY_DEVICE}` : IDENTIFIER
+  if (platform === 'darwin') {
+    return path.join(home, 'Library/Logs', identifier, 'main.log')
+  }
+  if (platform === 'win32') {
+    const localAppData = env.LOCALAPPDATA || path.win32.join(home, 'AppData', 'Local')
+    return path.win32.join(localAppData, identifier, 'logs', 'main.log')
+  }
+  const dataHome = env.XDG_DATA_HOME || path.join(home, '.local/share')
+  return path.join(dataHome, identifier, 'logs', 'main.log')
+}
+
+/** Where an install puts the app; Linux has no fixed place (the AppImage runs from anywhere). */
+export function defaultAppPath(env, platform, home) {
+  if (platform === 'darwin') {
+    return '/Applications/MemryNote.app'
+  }
+  if (platform === 'win32') {
+    const localAppData = env.LOCALAPPDATA || path.win32.join(home, 'AppData', 'Local')
+    return path.win32.join(localAppData, 'MemryNote', 'current', 'Memrynote.exe')
+  }
+  return null
+}
+
+// The bundle directory can be renamed (two builds kept side by side for an A/B), so the
+// executable name comes from Info.plist rather than from the directory name.
+function resolveExecutable(appPath) {
+  if (!appPath.endsWith('.app')) {
+    if (existsSync(path.join(path.dirname(appPath), 'resources', 'app.asar'))) {
+      throw new Error(`${appPath} is an Electron build; this bench measures the Tauri app`)
+    }
+    return appPath
+  }
+  if (existsSync(path.join(appPath, 'Contents/Frameworks/Electron Framework.framework'))) {
+    throw new Error(`${appPath} is an Electron build; this bench measures the Tauri app`)
+  }
+  const plist = readFileSync(path.join(appPath, 'Contents/Info.plist'), 'utf8')
+  const name = /<key>CFBundleExecutable<\/key>\s*<string>([^<]+)<\/string>/.exec(plist)?.[1]
+  if (!name) {
+    throw new Error(`no CFBundleExecutable in ${appPath}/Contents/Info.plist`)
+  }
+  return path.join(appPath, 'Contents/MacOS', name)
 }
 
 function readRequiredValue(argv, index, flag) {
@@ -217,39 +283,39 @@ function readPositiveInteger(raw, flag) {
   return value
 }
 
+const USAGE =
+  'Usage: node scripts/launch-bench.mjs [--runs 5] [--app <MemryNote.app | executable>] [--vault ~/MemryBenchVault] [--profile <dir>]'
+
 function parseArgs(argv) {
-  const options = { runs: DEFAULT_RUNS, appPath: DEFAULT_APP, port: DEFAULT_PORT }
+  const defaultApp = defaultAppPath(process.env, process.platform, homedir())
+  const options = {
+    runs: DEFAULT_RUNS,
+    appPath: defaultApp,
+    vault: DEFAULT_VAULT,
+    profile: DEFAULT_PROFILE
+  }
+  const paths = { '--app': 'appPath', '--vault': 'vault', '--profile': 'profile' }
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index]
-
     if (arg === '--runs') {
       options.runs = readPositiveInteger(readRequiredValue(argv, index, arg), arg)
-      index += 1
-      continue
+    } else if (paths[arg]) {
+      options[paths[arg]] = path.resolve(readRequiredValue(argv, index, arg))
+    } else {
+      throw new Error(`Unknown argument: ${arg}\n${USAGE}`)
     }
-
-    if (arg === '--app') {
-      options.appPath = path.resolve(readRequiredValue(argv, index, arg))
-      index += 1
-      continue
-    }
-
-    if (arg === '--port') {
-      options.port = readPositiveInteger(readRequiredValue(argv, index, arg), arg)
-      index += 1
-      continue
-    }
-
-    throw new Error(
-      `Unknown argument: ${arg}\nUsage: node scripts/launch-bench.mjs [--runs 5] [--app ${DEFAULT_APP}] [--port ${DEFAULT_PORT}]`
-    )
+    index += 1
   }
 
+  if (!options.appPath) {
+    throw new Error(`--app is required on ${process.platform}\n${USAGE}`)
+  }
   return options
 }
 
 let lockHeld = false
+let running = null
 
 function releaseLock() {
   if (!lockHeld) {
@@ -269,12 +335,13 @@ function refuseOnHeldLock() {
 
   console.error(`launch-bench: ${LOCK_DIR} is held by another run.`)
   console.error(owner)
-  console.error(`If that pid is dead, remove the lock: rm -rf ${LOCK_DIR}`)
+  console.error(`If that pid is dead, remove the lock directory: ${LOCK_DIR}`)
   process.exit(1)
 }
 
 function acquireLock() {
   try {
+    mkdirSync(path.dirname(LOCK_DIR), { recursive: true })
     mkdirSync(LOCK_DIR)
   } catch (error) {
     if (error.code === 'EEXIST') {
@@ -291,6 +358,9 @@ function acquireLock() {
 
   for (const signal of ['SIGINT', 'SIGTERM']) {
     process.on(signal, () => {
+      if (running) {
+        forceKill(running)
+      }
       releaseLock()
       process.exit(signal === 'SIGINT' ? 130 : 143)
     })
@@ -299,17 +369,6 @@ function acquireLock() {
 
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
-// The bundle directory can be renamed (two builds kept side by side for an A/B), so
-// the executable name comes from Info.plist rather than from the directory name.
-function readBundleExecutable(appPath) {
-  const plist = readFileSync(path.join(appPath, 'Contents/Info.plist'), 'utf8')
-  return /<key>CFBundleExecutable<\/key>\s*<string>([^<]+)<\/string>/.exec(plist)?.[1] ?? null
-}
-
-function readAppMtimeMs(appPath, executableName) {
-  return statSync(path.join(appPath, 'Contents/MacOS', executableName)).mtimeMs
 }
 
 function readStoredAppMtimeMs() {
@@ -321,38 +380,20 @@ function readStoredAppMtimeMs() {
   }
 }
 
-function isAppRunning(appPath) {
-  return spawnSync('pgrep', ['-f', `${appPath}/Contents/MacOS/`]).status === 0
-}
-
-async function quitApp(appPath, executableName) {
-  spawnSync('osascript', ['-e', `quit app "${executableName}"`])
-
-  const deadline = Date.now() + QUIT_DEADLINE_MS
-  while (Date.now() < deadline) {
-    if (!isAppRunning(appPath)) {
-      return
-    }
-    await delay(CDP_POLL_MS)
-  }
-
-  throw new Error(`${appPath} was still running ${QUIT_DEADLINE_MS} ms after the quit request`)
-}
-
-function logSizeOrZero() {
+function logSizeOrZero(file) {
   try {
-    return statSync(LOG_PATH).size
+    return statSync(file).size
   } catch {
     return 0
   }
 }
 
-// The log is shared by the packaged app and by any `pnpm dev` in any worktree, so the
-// byte offset taken just before launch is the only thing that makes the slice ours.
-async function readLogSlice(anchorOffset) {
+// The log is shared with any other launch of the same profile identifier, so the byte offset
+// taken just before launch is what makes the slice ours.
+async function readLogSlice(file, anchorOffset) {
   let handle
   try {
-    handle = await open(LOG_PATH, 'r')
+    handle = await open(file, 'r')
   } catch {
     return ''
   }
@@ -371,194 +412,69 @@ async function readLogSlice(anchorOffset) {
   }
 }
 
-async function fetchPageTarget(port) {
-  try {
-    const response = await fetch(`http://127.0.0.1:${port}/json/list`)
-    if (!response.ok) {
-      return null
+async function waitForLog(file, anchorOffset, deadlineMs, found) {
+  const deadline = Date.now() + deadlineMs
+  let slice = ''
+  while (Date.now() < deadline) {
+    slice = await readLogSlice(file, anchorOffset)
+    if (found(slice)) {
+      return slice
     }
-    const targets = await response.json()
-    return targets.find((target) => target.type === 'page') ?? null
-  } catch {
+    await delay(POLL_MS)
+  }
+  return null
+}
+
+function launch(executable, profile) {
+  const child = spawn(executable, [], {
+    env: { ...process.env, MEMRY_APP_DATA_DIR: profile },
+    stdio: 'ignore'
+  })
+  const exited = new Promise((resolve) => {
+    child.once('exit', resolve)
+    child.once('error', resolve)
+  })
+  return { child, exited }
+}
+
+function forceKill({ child }) {
+  if (process.platform === 'win32') {
+    spawnSync('taskkill', ['/F', '/T', '/PID', String(child.pid)], { stdio: 'ignore' })
+  } else {
+    child.kill('SIGKILL')
+  }
+}
+
+/** Asks the app to quit (SIGTERM starts its shutdown; Windows gets WM_CLOSE), then forces it. */
+async function quit(app) {
+  if (process.platform === 'win32') {
+    spawnSync('taskkill', ['/PID', String(app.child.pid)], { stdio: 'ignore' })
+  } else {
+    app.child.kill('SIGTERM')
+  }
+  const timedOut = Symbol('timeout')
+  const outcome = await Promise.race([app.exited, delay(QUIT_DEADLINE_MS).then(() => timedOut)])
+  if (outcome !== timedOut) {
     return null
   }
+  forceKill(app)
+  await app.exited
+  return `the app did not quit within ${QUIT_DEADLINE_MS} ms and was killed`
 }
 
-async function waitForPageTarget(port) {
-  const deadline = Date.now() + CDP_DEADLINE_MS
-  while (Date.now() < deadline) {
-    const target = await fetchPageTarget(port)
-    if (target) {
-      return target
-    }
-    await delay(CDP_POLL_MS)
+function prepareProfile(profile, vault) {
+  if (!existsSync(path.join(vault, '.memry'))) {
+    throw new Error(`${vault} is not a vault; seed it first (pnpm seed1k)`)
   }
-
-  throw new Error(`no CDP page target on port ${port} within ${CDP_DEADLINE_MS} ms`)
-}
-
-async function waitForLaunchRecord(anchorOffset) {
-  const deadline = Date.now() + LOG_DEADLINE_MS
-  while (Date.now() < deadline) {
-    const slice = await readLogSlice(anchorOffset)
-    const shownAt = findWindowShownAt(slice)
-    const timeline = parseLaunchTimeline(slice)
-    if (shownAt !== null && timeline) {
-      return { slice, shownAt, timeline }
-    }
-    await delay(LOG_POLL_MS)
-  }
-
-  throw new Error(
-    `log had no "main window shown" line plus a closed launch timeline block within ${LOG_DEADLINE_MS} ms`
-  )
-}
-
-function connectCdp(webSocketDebuggerUrl) {
-  return new Promise((resolve, reject) => {
-    const socket = new WebSocket(webSocketDebuggerUrl)
-    const pending = new Map()
-    let nextId = 1
-
-    const failPending = (error) => {
-      for (const entry of pending.values()) {
-        entry.reject(error)
-      }
-      pending.clear()
-    }
-
-    socket.addEventListener('message', (event) => {
-      const message = JSON.parse(event.data)
-      const entry = pending.get(message.id)
-      if (!entry) {
-        return
-      }
-      pending.delete(message.id)
-      if (message.error) {
-        entry.reject(new Error(`CDP ${message.error.message}`))
-      } else {
-        entry.resolve(message.result)
-      }
-    })
-
-    socket.addEventListener('error', () => {
-      const error = new Error(`CDP socket failed: ${webSocketDebuggerUrl}`)
-      failPending(error)
-      reject(error)
-    })
-
-    socket.addEventListener('close', () => {
-      failPending(new Error('CDP socket closed with requests in flight'))
-    })
-
-    socket.addEventListener('open', () => {
-      resolve({
-        send(method, params) {
-          return new Promise((resolveSend, rejectSend) => {
-            const id = nextId
-            nextId += 1
-            pending.set(id, { resolve: resolveSend, reject: rejectSend })
-            socket.send(JSON.stringify({ id, method, params }))
-          })
-        },
-        close() {
-          socket.close()
-        }
-      })
-    })
-  })
-}
-
-const FCP_PRESENT_EXPRESSION = `performance
-  .getEntriesByType('paint')
-  .some((entry) => entry.name === 'first-contentful-paint')`
-
-// Mirrors NOTE_READABLE_MARK in
-// apps/desktop/src/renderer/src/lib/launch-restore.ts. Not importable here —
-// that module resolves through the renderer's `@/` alias and is TypeScript —
-// so the literal is pinned in both places; keep them in sync.
-const NOTE_READABLE_MARK = 'memry:note-readable'
-
-const NOTE_READABLE_PRESENT_EXPRESSION = `performance
-  .getEntriesByName(${JSON.stringify(NOTE_READABLE_MARK)})
-  .length > 0`
-
-const NOTE_READABLE_METRIC_EXPRESSION = `(() => {
-  const round = (value) => (typeof value === 'number' ? Math.round(value * 1000) / 1000 : undefined)
-  const entry = performance.getEntriesByName(${JSON.stringify(NOTE_READABLE_MARK)})[0]
-  return round(entry?.startTime)
-})()`
-
-const RENDERER_METRICS_EXPRESSION = `(() => {
-  const round = (value) => (typeof value === 'number' ? Math.round(value * 1000) / 1000 : undefined)
-  const navigation = performance.getEntriesByType('navigation')[0]
-  const paints = performance.getEntriesByType('paint')
-  const paintAt = (name) => paints.find((entry) => entry.name === name)?.startTime
-  return {
-    firstPaintMs: round(paintAt('first-paint')),
-    fcpMs: round(paintAt('first-contentful-paint')),
-    domInteractiveMs: round(navigation?.domInteractive),
-    domContentLoadedMs: round(navigation?.domContentLoadedEventEnd),
-    loadEventMs: round(navigation?.loadEventEnd)
-  }
-})()`
-
-// Bounded poll for a mark that may legitimately never land (no note was
-// restored) or land well after FCP. Times out to `undefined` rather than 0 or
-// hanging — an absent mark must read as absent, not as a fast note.
-async function readNoteReadableMs(client) {
-  const deadline = Date.now() + NOTE_READABLE_DEADLINE_MS
-  while (Date.now() < deadline) {
-    const seen = await client.send('Runtime.evaluate', {
-      expression: NOTE_READABLE_PRESENT_EXPRESSION,
-      returnByValue: true
-    })
-    if (seen.result?.value === true) {
-      break
-    }
-    await delay(CDP_POLL_MS)
-  }
-
-  const evaluated = await client.send('Runtime.evaluate', {
-    expression: NOTE_READABLE_METRIC_EXPRESSION,
-    returnByValue: true
-  })
-
-  return evaluated.result?.value
-}
-
-async function readRendererMetrics(webSocketDebuggerUrl) {
-  const client = await connectCdp(webSocketDebuggerUrl)
-
+  let current = null
   try {
-    // This app paints its first contentful frame after the load event, so waiting on
-    // document.readyState samples only the runs whose FCP happened to land early and
-    // silently drops the slow ones. Wait for the entry itself.
-    const deadline = Date.now() + FCP_DEADLINE_MS
-    while (Date.now() < deadline) {
-      const seen = await client.send('Runtime.evaluate', {
-        expression: FCP_PRESENT_EXPRESSION,
-        returnByValue: true
-      })
-      if (seen.result?.value === true) {
-        break
-      }
-      await delay(CDP_POLL_MS)
-    }
-
-    // Screencast frame timing is not a metric here: attaching CDP perturbs the renderer,
-    // and the epic's exploratory run saw no first frame until +3.88 s. The performance
-    // entries below were recorded before the attach, so reading them after load is safe.
-    const evaluated = await client.send('Runtime.evaluate', {
-      expression: RENDERER_METRICS_EXPRESSION,
-      returnByValue: true
-    })
-
-    const noteReadableMs = await readNoteReadableMs(client)
-
-    return { ...evaluated.result?.value, noteReadableMs }
-  } finally {
-    client.close()
+    current = JSON.parse(readFileSync(path.join(profile, CONFIG_FILE), 'utf8')).currentVault
+  } catch {
+    // A fresh profile.
+  }
+  // Rewritten only when it names another vault: the app keeps its own fields in this file.
+  if (current !== vault) {
+    seedVaultRegistry(profile, vault)
   }
 }
 
@@ -570,71 +486,83 @@ function collectWarnings(record) {
   if (record.timeline.rendererLoadedMs === undefined) {
     warnings.push('launch timeline had no rendererLoadedMs field')
   }
-  if (record.renderer.fcpMs === undefined) {
+  if (!record.renderer) {
+    warnings.push('no "renderer launch marks" line')
+  } else if (record.renderer.fcpMs == null) {
     warnings.push('renderer reported no first-contentful-paint entry')
+  }
+  if (record.renderer && record.renderer.noteReadableMs == null) {
+    warnings.push(
+      'no note was restored: open a note in the bench profile once, quit, and rerun for renderer_note_readable_ms'
+    )
+  }
+  if (record.quitWarning) {
+    warnings.push(record.quitWarning)
   }
   return warnings
 }
 
-async function measureRun({
-  run,
-  appPath,
-  executableName,
-  port,
-  appMtimeMs,
-  firstRunAfterAppChange
-}) {
-  await quitApp(appPath, executableName)
+async function measureRun({ run, executable, log, profile, appMtimeMs, firstRunAfterAppChange }) {
   await delay(SETTLE_MS)
 
-  const anchorOffset = logSizeOrZero()
+  const anchorOffset = logSizeOrZero(log)
   const t0 = Date.now()
-  const launch = spawnSync('open', [
-    '-a',
-    appPath,
-    '--args',
-    `--remote-debugging-port=${port}`,
-    '--remote-allow-origins=*'
-  ])
+  const app = launch(executable, profile)
+  running = app
 
-  if (launch.status !== 0) {
-    throw new Error(
-      `open -a ${appPath} exited ${launch.status}: ${String(launch.stderr ?? '').trim()}`
+  try {
+    const slice = await waitForLog(
+      log,
+      anchorOffset,
+      LOG_DEADLINE_MS,
+      (text) => findWindowShownAt(text) !== null && parseLaunchTimeline(text) !== null
     )
+    if (slice === null) {
+      throw new Error(
+        `${log} had no "main window shown" line plus a closed launch timeline block within ${LOG_DEADLINE_MS} ms`
+      )
+    }
+    const withRenderer = await waitForLog(
+      log,
+      anchorOffset,
+      RENDERER_DEADLINE_MS,
+      (text) => parseRendererMarks(text) !== null
+    )
+    const tier = detectTier(slice)
+
+    const record = {
+      run,
+      tier,
+      tierLabel: TIERS[tier].label,
+      appMtimeMs,
+      firstRunAfterAppChange,
+      t0Iso: new Date(t0).toISOString(),
+      clickToShownMs: findWindowShownAt(slice) - t0,
+      timeline: parseLaunchTimeline(slice),
+      renderer: withRenderer === null ? null : parseRendererMarks(withRenderer),
+      warnings: [],
+      appVersion: STARTING_LINE_PATTERN.exec(slice)?.[1] ?? null
+    }
+    record.quitWarning = await quit(app)
+    record.warnings = collectWarnings(record)
+    delete record.quitWarning
+    return record
+  } catch (error) {
+    if (app.child.exitCode === null) {
+      await quit(app)
+    }
+    throw error
+  } finally {
+    running = null
   }
-
-  const target = await waitForPageTarget(port)
-  const cdpAttachOffsetMs = Date.now() - t0
-
-  const { slice, shownAt, timeline } = await waitForLaunchRecord(anchorOffset)
-  const renderer = await readRendererMetrics(target.webSocketDebuggerUrl)
-  const tier = detectTier(slice)
-
-  const record = {
-    run,
-    tier,
-    tierLabel: TIERS[tier].label,
-    appMtimeMs,
-    firstRunAfterAppChange,
-    t0Iso: new Date(t0).toISOString(),
-    clickToShownMs: shownAt - t0,
-    cdpAttachOffsetMs,
-    timeline,
-    renderer,
-    warnings: [],
-    appVersion: detectAppVersion(slice)
-  }
-  record.warnings = collectWarnings(record)
-
-  return record
 }
 
 async function runBench(options) {
-  const executableName = readBundleExecutable(options.appPath)
-  if (!executableName) {
-    throw new Error(`no CFBundleExecutable in ${options.appPath}/Contents/Info.plist`)
-  }
-  const appMtimeMs = readAppMtimeMs(options.appPath, executableName)
+  const executable = resolveExecutable(options.appPath)
+  const log = logPath(process.env, process.platform, homedir())
+  prepareProfile(options.profile, options.vault)
+
+  const appMtimeMs = statSync(executable).mtimeMs
   let firstRunAfterAppChange = readStoredAppMtimeMs() !== appMtimeMs
 
   const startedAt = new Date().toISOString()
@@ -645,9 +573,9 @@ async function runBench(options) {
     try {
       const record = await measureRun({
         run,
-        appPath: options.appPath,
-        executableName,
-        port: options.port,
+        executable,
+        log,
+        profile: options.profile,
         appMtimeMs,
         firstRunAfterAppChange
       })
