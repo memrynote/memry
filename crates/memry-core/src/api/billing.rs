@@ -7,7 +7,9 @@ use zeroize::Zeroizing;
 use crate::api::auth::AuthSession;
 use crate::api::errors::ApiError;
 use crate::protocol::account_admin::BillingStatus;
-use crate::protocol::billing::{self, CheckoutToken};
+use crate::protocol::billing::{
+    self, BillingSnapshot, CheckoutToken, PlanChangePreview, PlanChangeTarget,
+};
 
 #[uniffi::export(async_runtime = "tokio")]
 impl AuthSession {
@@ -55,5 +57,37 @@ impl AuthSession {
     /// purchase or a return from the web checkout.
     pub async fn refresh_billing(&self) -> Result<BillingStatus, ApiError> {
         billing::refresh_billing(&self.http()).await
+    }
+}
+
+/// Desktop's billing calls. Rust-only, so the UniFFI surface iOS binds is
+/// unchanged: [`BillingSnapshot`] keeps an unlimited vault count that the
+/// flat [`BillingStatus`] record cannot.
+impl AuthSession {
+    /// `GET /auth/billing`.
+    pub async fn billing_snapshot(&self) -> Result<BillingSnapshot, ApiError> {
+        billing::billing_snapshot(&self.http()).await
+    }
+
+    /// `POST /auth/billing/reconcile`, naming the web checkout's transaction
+    /// when the `memry://billing/complete` link carried one.
+    pub async fn reconcile_billing(
+        &self,
+        transaction_id: Option<String>,
+    ) -> Result<BillingSnapshot, ApiError> {
+        billing::reconcile(&self.http(), transaction_id.as_deref()).await
+    }
+
+    /// What switching the subscription to `target` would charge.
+    pub async fn preview_plan_change(
+        &self,
+        target: PlanChangeTarget,
+    ) -> Result<PlanChangePreview, ApiError> {
+        billing::preview_plan_change(&self.http(), target).await
+    }
+
+    /// Switches the subscription to `target`; answers with the new status.
+    pub async fn change_plan(&self, target: PlanChangeTarget) -> Result<BillingSnapshot, ApiError> {
+        billing::change_plan(&self.http(), target).await
     }
 }
