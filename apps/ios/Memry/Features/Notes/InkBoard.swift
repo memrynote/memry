@@ -1,13 +1,17 @@
 import MemryCore
 import Observation
 import PencilKit
+import UIKit
 
 // The drawing surface's state (#4378): the canvas's ink as PencilKit strokes,
 // its other elements as a picture under them, and the saves. A save reads the
 // canvas as stored now and applies only what changed on the surface
 // (`InkScene.apply`), so a desktop edit that synced in meanwhile is kept.
 // Saves run one at a time, 800 ms after the drawing settles, as desktop's
-// whiteboard does, and Done saves what is left.
+// whiteboard does, and Done saves what is left. The app resigning active saves
+// too, under a background task, as `EditorSession` does for typing (#2820).
+// A stroke saved before that a sync pull dropped from the stored scene (a
+// conflict copy took it) is written back with the next save.
 
 @MainActor
 @Observable
@@ -30,6 +34,11 @@ final class InkBoard {
     private(set) var drawing = PKDrawing()
     private(set) var loads = 0
     var saveFailure: String?
+    /// The canvas was deleted or is unreadable: nothing on the surface can
+    /// be saved, so it may close without saving.
+    private(set) var canvasLost = false
+    /// Schedules a vault sync pass (debounced) after each save.
+    @ObservationIgnored var requestSync: (@MainActor () -> Void)?
 
     @ObservationIgnored private var ledger = InkLedger()
     @ObservationIgnored private var latest: PKDrawing?
@@ -37,6 +46,15 @@ final class InkBoard {
     @ObservationIgnored private var settle: Task<Void, Never>?
     @ObservationIgnored var stamp = InkStamp()
     @ObservationIgnored var settleDelay: Duration = .milliseconds(800)
+    @ObservationIgnored private nonisolated(unsafe) var resignObserver: NSObjectProtocol?
+    @ObservationIgnored private var heldTasks: Set<UIBackgroundTaskIdentifier> = []
+    /// Seam for tests; the app holds tasks from `UIApplication`.
+    @ObservationIgnored var beginBackgroundTask: (@escaping () -> Void) -> UIBackgroundTaskIdentifier = {
+        UIApplication.shared.beginBackgroundTask(withName: "drawing-save", expirationHandler: $0)
+    }
+    @ObservationIgnored var endBackgroundTask: (UIBackgroundTaskIdentifier) -> Void = {
+        UIApplication.shared.endBackgroundTask($0)
+    }
 
     /// Room left around the board's drawing on screen.
     private static let margin: CGFloat = 40
@@ -44,6 +62,38 @@ final class InkBoard {
     init(canvasId: String, boards: any WhiteboardBoards) {
         self.canvasId = canvasId
         self.boards = boards
+        // A kill from the app switcher beats the settle delay, and swiping
+        // into the switcher never backgrounds the app.
+        resignObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.willResignActiveNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.saveBeforeLeaving() }
+        }
+    }
+
+    deinit {
+        if let resignObserver { NotificationCenter.default.removeObserver(resignObserver) }
+    }
+
+    /// Saves what is left, holding a background task until the save lands.
+    private func saveBeforeLeaving() {
+        guard latest != nil || saving != nil else { return }
+        var id = UIBackgroundTaskIdentifier.invalid
+        id = beginBackgroundTask {
+            MainActor.assumeIsolated { self.release(id) }
+        }
+        guard id != .invalid else { return }
+        heldTasks.insert(id)
+        Task { @MainActor in
+            _ = await self.flush()
+            self.release(id)
+        }
+    }
+
+    /// Ends `id` once, whichever of expiry or the landed save gets here first.
+    private func release(_ id: UIBackgroundTaskIdentifier) {
+        guard heldTasks.remove(id) != nil else { return }
+        endBackgroundTask(id)
     }
 
     func load() async {
@@ -115,22 +165,33 @@ final class InkBoard {
         let strokes = drawing.strokes.map { stroke in
             (created: stroke.path.creationDate.timeIntervalSinceReferenceDate, ink: InkStroke(stroke, offset: offset))
         }
-        let (edit, ids) = ledger.diff(strokes)
+        var (edit, ids) = ledger.diff(strokes)
         guard !edit.isEmpty else { return true }
         do {
             guard let record = try await boards.board(canvasId) else {
                 throw InkSaveError.canvasGone
+            }
+            guard let stored = InkScene.elementIds(in: record.scene) else {
+                throw InkSaveError.unreadable
+            }
+            // A saved stroke whose element left the stored scene, as when a
+            // pull moved this device's scene into a conflict copy, is written
+            // back. One desktop deleted keeps its tombstone, so stays erased.
+            for (stroke, id) in zip(strokes, ids) {
+                if let id, !stored.contains(id), edit.changed[id] == nil { edit.changed[id] = stroke.ink }
             }
             guard let result = InkScene.apply(edit, to: record.scene, stamp: stamp) else {
                 throw InkSaveError.unreadable
             }
             try await boards.save(canvasId, scene: result.scene)
             ledger.commit(strokes, ids: ids, addedIds: result.addedIds)
+            requestSync?()
             return true
         } catch {
             Log.interface.error("drawing did not save")
             // A later save retries the same edit against the stored scene.
             latest = latest ?? drawing
+            canvasLost = error is InkSaveError
             saveFailure = switch error {
             case InkSaveError.canvasGone: "\(WhiteboardCopy.missingTitle). \(WhiteboardCopy.missingBody)"
             case InkSaveError.unreadable: "\(WhiteboardCopy.unreadableTitle). \(WhiteboardCopy.unreadableBody)"

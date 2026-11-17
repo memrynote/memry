@@ -110,11 +110,12 @@ struct WhiteboardScene: Equatable {
         WhiteboardScene(elements: elements.filter { !ids.contains($0.id) }, background: background, inlineImages: inlineImages)
     }
 
-    /// Opens in the drawing surface rather than the full whiteboard: an
-    /// empty board, or one with the surface's ink on it, whose other
-    /// elements the surface shows under the ink. A board drawn only on
-    /// desktop opens in Excalidraw, as before.
-    var opensAsInk: Bool { elements.isEmpty || elements.contains(where: \.memryInk) }
+    /// Opens in the drawing surface rather than the full whiteboard: a board
+    /// with the surface's ink on it, whose other elements the surface shows
+    /// under the ink. An empty board opens in Excalidraw, as a `/whiteboard`
+    /// or desktop board did before; only the Drawing row opens one in the
+    /// surface.
+    var opensAsInk: Bool { elements.contains(where: \.memryInk) }
 
     private static func element(_ raw: [String: Any]) -> Element? {
         guard let id = raw["id"] as? String, let type = raw["type"] as? String,

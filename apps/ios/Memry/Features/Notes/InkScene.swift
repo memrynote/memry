@@ -67,6 +67,13 @@ enum InkScene {
         }
     }
 
+    /// Every element id in the scene, deleted ones included. `nil` when the
+    /// scene is not an Excalidraw document.
+    static func elementIds(in scene: String) -> Set<String>? {
+        guard let document = Document(scene) else { return nil }
+        return Set(document.elements.compactMap { object($0)?["id"] as? String })
+    }
+
     /// `scene` with `edit` applied, and the ids the added strokes got, in
     /// order. `nil` when the scene is not an Excalidraw document, which is
     /// never written over.

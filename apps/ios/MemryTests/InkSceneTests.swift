@@ -1,7 +1,9 @@
 import CoreGraphics
 import Foundation
+import MemryCore
 import PencilKit
 import Testing
+import UIKit
 
 @testable import Memry
 
@@ -193,11 +195,108 @@ struct InkSceneTests {
         #expect(ledger.diff(strokes).edit.isEmpty)
     }
 
-    @Test("an empty board or one with the surface's ink opens in the surface; a desktop-only board does not")
+    @Test("only a board with the surface's ink opens in the surface; an empty or desktop-only board opens Excalidraw")
     func opensAsInk() throws {
-        #expect(try #require(WhiteboardScene(json: "")).opensAsInk)
+        #expect(try #require(WhiteboardScene(json: "")).opensAsInk == false)
+        #expect(try #require(WhiteboardScene(json: scene([]))).opensAsInk == false)
         #expect(try #require(WhiteboardScene(json: scene([foreignRect]))).opensAsInk == false)
         let mixed = try #require(InkScene.apply(InkEdit(added: [pen]), to: scene([foreignRect]), stamp: pinned()))
         #expect(try #require(WhiteboardScene(json: mixed.scene)).opensAsInk)
+    }
+}
+
+/// A canvas store whose stored scene a test replaces, as a sync pull does.
+@MainActor
+private final class FakeInkBoards: WhiteboardBoards, @unchecked Sendable {
+    var scene: String?
+    var saves = 0
+
+    init(scene: String) { self.scene = scene }
+
+    func board(_ id: String) async throws -> CanvasRecord? {
+        scene.map { CanvasRecord(id: id, title: "Drawing", ownerNoteId: "n1", scene: $0) }
+    }
+
+    func create(title: String, ownerNoteId: String) async throws -> CanvasRecord {
+        CanvasRecord(id: "c1", title: title, ownerNoteId: ownerNoteId, scene: "")
+    }
+
+    func save(_ id: String, scene: String) async throws {
+        saves += 1
+        self.scene = scene
+    }
+}
+
+@MainActor
+@Suite("the drawing surface's saves")
+struct InkBoardSaveTests {
+    /// Strokes on the surface, each drawn at its own `created` date.
+    private func drawing(_ board: InkBoard, _ strokes: [(created: Double, ink: InkStroke)]) -> PKDrawing {
+        PKDrawing(strokes: strokes.map { $0.ink.stroke(created: Date(timeIntervalSinceReferenceDate: $0.created), offset: board.offset) })
+    }
+
+    private func open(_ fake: FakeInkBoards) async -> InkBoard {
+        let board = InkBoard(canvasId: "c1", boards: fake)
+        board.stamp = pinned()
+        board.settleDelay = .seconds(3600)
+        await board.load()
+        return board
+    }
+
+    @Test(.timeLimit(.minutes(1))) func resigning_active_saves_under_a_background_task() async {
+        let fake = FakeInkBoards(scene: scene([]))
+        let board = await open(fake)
+        var ended: [UIBackgroundTaskIdentifier] = []
+        board.beginBackgroundTask = { _ in UIBackgroundTaskIdentifier(rawValue: 7) }
+        board.endBackgroundTask = { ended.append($0) }
+        board.changed(drawing(board, [(1, pen)]))
+
+        NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
+        while ended.isEmpty { try? await Task.sleep(for: .milliseconds(10)) }
+
+        #expect(fake.saves == 1)
+        #expect(ended == [UIBackgroundTaskIdentifier(rawValue: 7)], "the task ends once the save lands")
+        #expect(InkScene.strokes(in: fake.scene ?? "")?.map(\.ink) == [pen])
+    }
+
+    @Test func a_saved_stroke_a_pull_dropped_is_written_back_and_a_tombstone_kept() async throws {
+        let fake = FakeInkBoards(scene: scene([]))
+        let board = await open(fake)
+        var syncs = 0
+        board.requestSync = { syncs += 1 }
+        var second = pen
+        second.color = "#2f9e44"
+        var third = pen
+        third.width = 2
+
+        board.changed(drawing(board, [(1, pen)]))
+        #expect(await board.flush())
+        #expect(syncs == 1, "a save asks for a sync pass")
+        // A desktop edit pulled in: this device's scene went to a conflict
+        // copy and desktop's took its place.
+        fake.scene = scene([foreignRect])
+        board.changed(drawing(board, [(1, pen), (2, second)]))
+        #expect(await board.flush())
+        let stored = try #require(fake.scene)
+        #expect(stored.contains(foreignRect))
+        #expect(try #require(InkScene.strokes(in: stored)).map(\.ink) == [pen, second])
+        #expect(syncs == 2)
+
+        // Desktop erased the first stroke: its tombstone stays.
+        fake.scene = try #require(InkScene.apply(InkEdit(erased: ["ink-1"]), to: stored, stamp: pinned())).scene
+        board.changed(drawing(board, [(1, pen), (2, second), (3, third)]))
+        #expect(await board.flush())
+        #expect(try #require(InkScene.strokes(in: fake.scene ?? "")).map(\.ink) == [second, third])
+    }
+
+    @Test func a_canvas_deleted_while_open_lets_the_surface_close() async {
+        let fake = FakeInkBoards(scene: scene([]))
+        let board = await open(fake)
+        #expect(board.canvasLost == false)
+        fake.scene = nil
+        board.changed(drawing(board, [(1, pen)]))
+        #expect(await board.flush() == false)
+        #expect(board.saveFailure != nil)
+        #expect(board.canvasLost, "Done can never save, so the alert offers to close")
     }
 }

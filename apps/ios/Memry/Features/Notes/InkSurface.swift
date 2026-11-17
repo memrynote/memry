@@ -10,6 +10,7 @@ enum InkCopy {
     static let openFull = "Open full whiteboard"
     static let openFullHint = "Opens the board in the whiteboard editor, to edit shapes and text"
     static let saveFailedTitle = "Could not save the drawing"
+    static let closeWithoutSaving = "Close without saving"
 }
 
 /// Presents a note's open whiteboard: the drawing surface or the full
@@ -41,7 +42,7 @@ struct WhiteboardPresentation: ViewModifier {
     private func surface(_ request: WhiteboardEditRequest) -> some View {
         if let boards {
             if request.ink {
-                InkSurface(request: request, boards: boards)
+                InkSurface(request: request, boards: boards, requestSync: session.requestSync)
             } else {
                 WhiteboardEditor(request: request, boards: boards)
             }
@@ -58,10 +59,12 @@ struct InkSurface: View {
     private let boards: any WhiteboardBoards
     @State private var full: WhiteboardEditRequest?
 
-    init(request: WhiteboardEditRequest, boards: any WhiteboardBoards) {
+    init(request: WhiteboardEditRequest, boards: any WhiteboardBoards, requestSync: (@MainActor () -> Void)?) {
         self.request = request
         self.boards = boards
-        _board = State(initialValue: InkBoard(canvasId: request.canvasId, boards: boards))
+        let board = InkBoard(canvasId: request.canvasId, boards: boards)
+        board.requestSync = requestSync
+        _board = State(initialValue: board)
     }
 
     var body: some View {
@@ -75,7 +78,7 @@ struct InkSurface: View {
                             Task { if await board.flush() { full = WhiteboardEditRequest(canvasId: request.canvasId, title: request.title) } }
                         }
                         .accessibilityHint(InkCopy.openFullHint)
-                        .disabled(board.phase != .open)
+                        .disabled(board.phase != .open || board.canvasLost)
                     }
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Done") { Task { if await board.flush() { dismiss() } } }
@@ -85,6 +88,11 @@ struct InkSurface: View {
                     InkCopy.saveFailedTitle,
                     isPresented: Binding(get: { board.saveFailure != nil }, set: { if !$0 { board.saveFailure = nil } })
                 ) {
+                    // A deleted or unreadable canvas takes no save, so Done
+                    // would fail forever: the drawing can only be left.
+                    if board.canvasLost {
+                        Button(InkCopy.closeWithoutSaving, role: .destructive) { dismiss() }
+                    }
                     Button("OK", role: .cancel) { board.saveFailure = nil }
                 } message: {
                     Text(board.saveFailure ?? "")
