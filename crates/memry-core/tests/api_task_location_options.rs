@@ -5,6 +5,7 @@
 
 #[allow(unused_imports)]
 use crate::http_fakes;
+use crate::support;
 
 use std::sync::Arc;
 
@@ -17,13 +18,6 @@ use memry_core::crypto::sodium;
 use memry_core::seams::secure_store::{SecureStore as _, SecureStoreKey};
 use memry_core::storage::repositories::sync_items::{self, InboundRecord};
 use serde_json::{Value, json};
-
-fn vault() -> Vault {
-    let dir = std::env::temp_dir().join(format!("memry-api-location-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&dir);
-    std::fs::create_dir_all(&dir).expect("the scratch directory");
-    Vault::open("vault-1".to_string(), dir.display().to_string()).expect("open")
-}
 
 fn tasks(vault: &Vault) -> Arc<Tasks> {
     let (_public, secret) = sodium::sign_seed_keypair(&[3u8; 32]).expect("a keypair");
@@ -101,7 +95,8 @@ fn rows(tasks: &Tasks, folders: &[&str], notes: &[&str], query: &str) -> Vec<Str
 
 #[test]
 fn location_options_list_the_vaults_folders_and_notes_with_task_counts() {
-    let vault = vault();
+    let dir = support::scratch_dir("api-location");
+    let vault = Vault::open("vault-1".to_string(), dir.path().display().to_string()).expect("open");
     let tasks = tasks(&vault);
     let work = tasks
         .create_project(ProjectDraft {

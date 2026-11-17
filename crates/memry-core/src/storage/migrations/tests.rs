@@ -79,6 +79,7 @@ fn a_fresh_data_database_reaches_the_latest_version() {
         "folders",
         "inbox_attachment_releases",
         "inbox_attachment_uploads",
+        "inbox_jobs",
         "inbox_item_tags",
         "inbox_items",
         "journal_aliases",
