@@ -31,8 +31,10 @@ pub(super) fn markdown_to_html(markdown: &str) -> String {
 
 /// `marked.parseInline`: the text as inline content, each line break a `<br>`.
 /// Blank lines end a paragraph in comrak but are only more breaks inline, so
-/// each run between them renders on its own.
+/// each run between them renders on its own. A lone `\r` ends a line in comrak,
+/// so it is one here too, where `parseInline` keeps it as text.
 fn render_inline(text: &str) -> String {
+    let text = text.replace('\r', "\n");
     let mut out = String::new();
     let mut lines = text.split('\n').peekable();
     while lines.peek().is_some() {
@@ -40,7 +42,7 @@ fn render_inline(text: &str) -> String {
         while let Some(line) = lines.next_if(|line| !line.is_empty()) {
             chunk.push(line);
         }
-        out.push_str(&render_inline_run(&chunk.join("\n")));
+        out.push_str(&render_inline_run(&chunk));
         while lines.next_if(|line| line.is_empty()).is_some() {
             out.push_str("<br>");
         }
@@ -51,45 +53,38 @@ fn render_inline(text: &str) -> String {
     out
 }
 
-fn render_inline_run(text: &str) -> String {
-    if text.is_empty() {
+/// The first line of the paragraph [`render_inline_run`] renders, and what it
+/// renders to.
+const SENTINEL: &str = "x";
+const SENTINEL_HTML: &str = "<p>x<br>";
+
+/// One run of non-blank lines as inline content. comrak parses only whole
+/// documents, where a line could open a block (`# a`, `- a`, `1. a`, `> a`, a
+/// fence, `---`, `===`, `<div>`, `[a]: /url`, a table's delimiter row). So the
+/// lines render as the continuation of a paragraph a sentinel line opens, each
+/// indented four spaces: such a line continues a paragraph and opens no block,
+/// and comrak drops the indent. A line's own leading whitespace goes with it,
+/// where `parseInline` keeps it after the `<br>`.
+fn render_inline_run(lines: &[&str]) -> String {
+    if lines.is_empty() {
         return String::new();
     }
-    let html = render_markdown(&escape_block_starts(text));
-    let html = html.strip_suffix('\n').unwrap_or(&html);
+    let mut source = String::from(SENTINEL);
+    for line in lines {
+        source.push_str("\n    ");
+        source.push_str(line);
+    }
+    let html = render_markdown(&source);
     match html
-        .strip_prefix("<p>")
-        .and_then(|rest| rest.strip_suffix("</p>"))
+        .strip_prefix(SENTINEL_HTML)
+        .and_then(|rest| rest.strip_suffix("</p>\n"))
     {
         Some(inner) => inner.to_owned(),
-        None => html.to_owned(),
+        None => {
+            tracing::error!("export rendered a footnote outside its paragraph");
+            html
+        }
     }
-}
-
-/// A backslash before each line's first character when it could open a block,
-/// so the text stays one paragraph as `parseInline` reads it.
-fn escape_block_starts(text: &str) -> String {
-    text.split('\n')
-        .map(|line| {
-            let indent = line.len() - line.trim_start_matches([' ', '\t']).len();
-            let (lead, rest) = line.split_at(indent);
-            let digits = rest.bytes().take_while(u8::is_ascii_digit).count();
-            let first = rest.as_bytes().get(digits).copied();
-            let opens = match first {
-                Some(b'.' | b')') => digits > 0,
-                Some(b'#' | b'>' | b'-' | b'+' | b'*' | b'=' | b'_' | b'`' | b'~' | b'|') => {
-                    digits == 0
-                }
-                _ => false,
-            };
-            if opens {
-                format!("{lead}{}\\{}", &rest[..digits], &rest[digits..])
-            } else {
-                line.to_owned()
-            }
-        })
-        .collect::<Vec<_>>()
-        .join("\n")
 }
 
 /// `maskMarkdownCode` with each code character blanked to as many spaces as

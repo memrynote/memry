@@ -1,14 +1,16 @@
 //! Note markdown is untrusted input (synced, imported, written by other apps).
 //! The export renders it on a 2 MiB stack at any nesting, applies its own
 //! footnote and wiki-link passes in linear time, and keeps its output within a
-//! fixed ratio of the note. The image inliner reads only regular files whose
-//! `data:` URI Electron could have built.
+//! fixed ratio of the note. The image inliner reads only regular files under
+//! the vault or the app data folder, links followed, never asks about a network
+//! path, and keeps one document's images within the `data:` URI Electron could
+//! have built. Script in a note is held by the document's policy.
 
 use std::path::Path;
 
 use chrono::NaiveDate;
 use memry_desktop::export::{
-    ImageSource, MAX_DATA_URI_LEN, NoteExport, RenderOptions, inline_export_images,
+    ImageSource, MAX_DATA_URI_LEN, NoteExport, RenderOptions, image_reads, inline_export_images,
     render_note_as_html, steps,
 };
 use memry_test_kit::{assert_steps_at_most, on_small_stack, proptest_config};
@@ -83,8 +85,204 @@ fn inline_in(vault: &Path, src: &str) -> String {
         ImageSource {
             note_path: Some("Note.md"),
             vault_path: Some(vault),
+            app_data: None,
         },
     )
+}
+
+const PNG: [u8; 4] = [0x89, b'P', b'N', b'G'];
+const PNG_URI: &str = "data:image/png;base64,iVBORw==";
+
+/// A vault, an app data folder and a folder outside both, each with `a.png`.
+struct Roots {
+    vault: tempfile::TempDir,
+    app_data: tempfile::TempDir,
+    outside: tempfile::TempDir,
+}
+
+impl Roots {
+    fn new() -> Self {
+        let roots = Self {
+            vault: tempfile::tempdir().expect("vault"),
+            app_data: tempfile::tempdir().expect("app data"),
+            outside: tempfile::tempdir().expect("outside"),
+        };
+        for dir in [&roots.vault, &roots.app_data, &roots.outside] {
+            std::fs::write(dir.path().join("a.png"), PNG).expect("png");
+        }
+        roots
+    }
+
+    /// The `src` after inlining, from a note at the vault's root.
+    fn inline(&self, src: &str) -> String {
+        let html = inline_export_images(
+            &format!("<img src=\"{src}\">"),
+            ImageSource {
+                note_path: Some("Note.md"),
+                vault_path: Some(self.vault.path()),
+                app_data: Some(self.app_data.path()),
+            },
+        );
+        html.strip_prefix("<img src=\"")
+            .and_then(|rest| rest.strip_suffix("\">"))
+            .expect("one img")
+            .to_owned()
+    }
+}
+
+fn text(path: &Path) -> String {
+    path.to_string_lossy().into_owned()
+}
+
+fn memry_file_url(path: &Path) -> String {
+    format!(
+        "memry-file://local/{}",
+        text(path).trim_start_matches('/').replace('\\', "/")
+    )
+}
+
+#[test]
+fn only_files_under_the_vault_or_app_data_are_inlined() {
+    let roots = Roots::new();
+    let inside = roots.vault.path().join("a.png");
+    let app_data = roots.app_data.path().join("a.png");
+    let outside = roots.outside.path().join("a.png");
+    let file_url = |path: &Path| {
+        url::Url::from_file_path(path)
+            .expect("file url")
+            .to_string()
+    };
+
+    for src in [
+        text(&inside),
+        file_url(&inside),
+        memry_file_url(&inside),
+        text(&app_data),
+    ] {
+        assert_eq!(roots.inline(&src), PNG_URI, "{src}");
+    }
+    for src in [text(&outside), file_url(&outside), memry_file_url(&outside)] {
+        assert_eq!(roots.inline(&src), src, "{src}");
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn a_link_out_of_the_vault_stays_as_written() {
+    let roots = Roots::new();
+    let link = roots.vault.path().join("link.png");
+    std::os::unix::fs::symlink(roots.outside.path().join("a.png"), &link).expect("symlink");
+    for src in ["link.png".to_owned(), text(&link)] {
+        assert_eq!(roots.inline(&src), src, "{src}");
+    }
+}
+
+/// Each form names a file inside the vault, so only the network and device
+/// check keeps it out: `//` + a POSIX path is that path, and `\\?\` + a Windows
+/// path is that path.
+#[test]
+fn a_network_or_device_path_is_refused_before_the_file_system_is_asked() {
+    let roots = Roots::new();
+    let inside = text(&roots.vault.path().join("a.png"));
+    let mut refused = vec![format!("/{inside}")];
+    if cfg!(windows) {
+        refused.extend([
+            format!(r"\\?\{inside}"),
+            format!("//?/{}", inside.replace('\\', "/")),
+            r"\\localhost\C$\a.png".to_owned(),
+            "//localhost/C$/a.png".to_owned(),
+            "file://memry-test-host/share/a.png".to_owned(),
+        ]);
+    }
+    for src in refused {
+        assert_eq!(roots.inline(&src), src, "{src}");
+    }
+}
+
+/// On Windows a `C:` segment would replace the whole path; elsewhere it is a
+/// folder name, so this is where the refusal shows.
+#[cfg(unix)]
+#[test]
+fn a_ref_segment_with_a_colon_stays_as_written() {
+    let roots = Roots::new();
+    let folder = roots.vault.path().join("a/C:");
+    std::fs::create_dir_all(&folder).expect("folder");
+    std::fs::write(folder.join("x.png"), PNG).expect("png");
+    assert_eq!(roots.inline("a/C:/x.png"), "a/C:/x.png");
+}
+
+#[test]
+fn one_file_named_many_ways_is_read_once() {
+    let roots = Roots::new();
+    let spellings = ["a.png", "./a.png", "%61.png", "x/../a.png"];
+    let html: String = spellings
+        .iter()
+        .map(|src| format!("<img src=\"{src}\">"))
+        .collect();
+    let before = image_reads();
+    let inlined = inline_export_images(
+        &html,
+        ImageSource {
+            note_path: Some("Note.md"),
+            vault_path: Some(roots.vault.path()),
+            app_data: None,
+        },
+    );
+    assert_eq!(image_reads() - before, 1);
+    assert_eq!(inlined, format!("<img src=\"{PNG_URI}\">").repeat(4));
+}
+
+/// `big.png` alone fits in a `data:` URI; after `a.png` the document does not.
+/// It is refused before it is read.
+#[test]
+fn a_documents_images_together_stay_within_the_cap() {
+    let roots = Roots::new();
+    let prefix = "data:image/png;base64,".len() as u64;
+    let len = (MAX_DATA_URI_LEN - prefix) / 4 * 3;
+    assert!(prefix + 4 * len.div_ceil(3) <= MAX_DATA_URI_LEN);
+    let big = std::fs::File::create(roots.vault.path().join("big.png")).expect("big");
+    big.set_len(len).expect("sparse length");
+    let inlined = inline_export_images(
+        "<img src=\"a.png\"><img src=\"big.png\">",
+        ImageSource {
+            note_path: Some("Note.md"),
+            vault_path: Some(roots.vault.path()),
+            app_data: None,
+        },
+    );
+    assert_eq!(
+        inlined,
+        format!("<img src=\"{PNG_URI}\"><img src=\"big.png\">")
+    );
+}
+
+/// Tests run in the crate folder, where this path names a png.
+#[test]
+fn an_empty_vault_path_is_no_vault() {
+    let src = "tests/fixtures/export/vault/attachments/dot.png";
+    assert!(Path::new(src).is_file());
+    let cwd_relative = inline_export_images(
+        &format!("<img src=\"{src}\">"),
+        ImageSource {
+            note_path: Some("Note.md"),
+            vault_path: Some(Path::new("")),
+            app_data: None,
+        },
+    );
+    assert_eq!(cwd_relative, format!("<img src=\"{src}\">"));
+}
+
+#[test]
+fn script_in_a_note_is_held_by_the_documents_policy() {
+    let html = render(
+        "<script>alert(1)</script>\n\n[x](javascript:alert(2)) <img src=\"x\" onerror=\"alert(3)\">",
+    );
+    let (head, body) = html.split_at(html.find("</head>").expect("head"));
+    assert!(head.contains(
+        r#"<meta http-equiv="Content-Security-Policy" content="script-src 'none'; object-src 'none'">"#
+    ));
+    assert!(body.contains("<script>alert(1)</script>"));
+    assert!(body.contains("href=\"javascript:alert(2)\""));
 }
 
 #[test]

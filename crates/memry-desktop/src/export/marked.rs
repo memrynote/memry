@@ -303,16 +303,38 @@ fn escape(context: &mut Ctx<'_, '_, '_>, text: &str) -> fmt::Result {
 
 /// `marked`'s `cleanUrl`: `encodeURI` with `%` kept as written. Every byte it
 /// would escape for HTML is percent-encoded, so the result goes into the
-/// attribute as it is.
+/// attribute as it is, except an `&` that starts a character reference.
+/// `marked` writes the source as spelled, so `?a&amp;quot;b` reaches the page
+/// as `?a&quot;b`; comrak has decoded it to `?a&quot;b`, which written as it is
+/// would reach the page as `?a"b`. Such an `&` is written `&amp;`, which gives
+/// `marked`'s bytes back; any other `&` stays as `marked` writes it.
 fn encode_uri(url: &str) -> String {
     const KEPT: &[u8] = b";,/?:@&=+$-_.!~*'()#%";
     let mut out = String::with_capacity(url.len());
-    for byte in url.bytes() {
-        if byte.is_ascii_alphanumeric() || KEPT.contains(&byte) {
+    for (at, byte) in url.bytes().enumerate() {
+        if byte == b'&' && starts_reference(&url.as_bytes()[at + 1..]) {
+            out.push_str("&amp;");
+        } else if byte.is_ascii_alphanumeric() || KEPT.contains(&byte) {
             out.push(char::from(byte));
         } else {
             out.push_str(&format!("%{byte:02X}"));
         }
     }
     out
+}
+
+/// Whether the text after an `&` reads as a character reference in an
+/// attribute: `#`, or a name closed by `;`.
+fn starts_reference(rest: &[u8]) -> bool {
+    match rest.first() {
+        Some(b'#') => true,
+        Some(first) if first.is_ascii_alphabetic() => {
+            let name = rest
+                .iter()
+                .take_while(|b| b.is_ascii_alphanumeric())
+                .count();
+            rest.get(name) == Some(&b';')
+        }
+        _ => false,
+    }
 }

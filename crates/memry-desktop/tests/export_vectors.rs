@@ -4,14 +4,18 @@
 //! [`DEPARTURES`] differs on purpose and is held to the same DOM instead: both
 //! bodies are parsed, whitespace-only text outside `pre` is dropped, attributes
 //! are sorted and void elements are written one way.
+//!
+//! Every document departs in one line: the Content-Security-Policy `<meta>`
+//! Electron's export lacks ([`CONTENT_SECURITY_POLICY`]). It is taken out, once,
+//! before the comparison.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, NaiveDate};
 use memry_desktop::export::{
-    CustomIcon, ImageSource, NoteExport, RenderOptions, embedded_styles, inline_export_images,
-    render_note_as_html, sanitize_filename,
+    CONTENT_SECURITY_POLICY, CustomIcon, ImageSource, NoteExport, RenderOptions, embedded_styles,
+    inline_export_images, render_note_as_html, sanitize_filename,
 };
 use memry_desktop::web::extract::dom::{Document, NodeId, NodeKind};
 use serde_json::Value;
@@ -191,6 +195,12 @@ fn exported_html_matches_electron() {
 
     let cases = vectors["cases"].as_array().expect("cases");
     assert!(cases.len() >= 60, "corpus shrank to {}", cases.len());
+    for (departure, _) in DEPARTURES {
+        assert!(
+            cases.iter().any(|case| case["name"] == *departure),
+            "DEPARTURES names {departure:?}, which is not a case"
+        );
+    }
     let mut failures = Vec::new();
     for case in cases {
         let name = case["name"].as_str().expect("name");
@@ -219,13 +229,21 @@ fn exported_html_matches_electron() {
             find_custom_icon: &find_custom_icon,
         };
         let rendered = render_note_as_html(&export, &options);
-        let actual = inline_export_images(
+        let inlined = inline_export_images(
             &rendered,
             ImageSource {
                 note_path: note["path"].as_str(),
                 vault_path: Some(&vault),
+                app_data: None,
             },
         );
+        let head = &inlined[..inlined.find("<body>").expect("body")];
+        assert_eq!(
+            head.matches(CONTENT_SECURITY_POLICY).count(),
+            1,
+            "{name}: the head carries the policy once"
+        );
+        let actual = inlined.replacen(CONTENT_SECURITY_POLICY, "", 1);
         let expected = case["html"].as_str().expect("html");
 
         let departure = DEPARTURES.iter().any(|(case, _)| *case == name);
