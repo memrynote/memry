@@ -247,7 +247,7 @@ struct NoteBlockView: View {
         case "whiteboard":
             WhiteboardBlockView(
                 canvasId: value("canvasId") ?? "",
-                edit: editing.map { editing in { editing.session.editWhiteboard(canvasId: $0, title: $1) } },
+                edit: editing.map { editing in { editing.session.editWhiteboard($0) } },
                 revision: editing?.session.whiteboardRevision ?? 0
             )
             .paneBreakout()

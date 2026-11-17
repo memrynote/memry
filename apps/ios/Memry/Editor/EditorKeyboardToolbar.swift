@@ -38,17 +38,25 @@ enum EditorToolbarItem: String, CaseIterable, Identifiable {
 struct EditorKeyboardToolbar: View {
     let session: EditorSession
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// The toolbar row's top on screen, once laid out.
+    @State private var rowTop: CGFloat?
 
     private var showsFormat: Bool { session.formatting && session.panel == .none }
+
+    private var menuHeight: CGFloat {
+        SuggestionMenuHeight.max(
+            rowTop: rowTop, safeTop: session.field?.textView.window?.safeAreaInsets.top ?? 0
+        )
+    }
 
     var body: some View {
         GlassEffectContainer(spacing: Tokens.Space.small) {
             VStack(spacing: Tokens.Space.small) {
                 if !session.suggestions.isEmpty {
-                    EditorSuggestionList(session: session)
+                    EditorSuggestionList(session: session, maxHeight: menuHeight)
                         .chromeGlass(in: .rect(cornerRadius: Tokens.Size.minimumHitArea / 2))
                 } else if !session.tagSuggestions.isEmpty {
-                    TagSuggestionList(session: session)
+                    TagSuggestionList(session: session, maxHeight: menuHeight)
                         .chromeGlass(in: .rect(cornerRadius: Tokens.Size.minimumHitArea / 2))
                 }
                 HStack(spacing: Tokens.Space.small) {
@@ -73,6 +81,7 @@ struct EditorKeyboardToolbar: View {
                             .chromeGlass(in: .circle)
                     }
                 }
+                .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minY } action: { rowTop = $0 }
             }
             .measuredColumn(Tokens.Size.reading)
             .padding(.horizontal, Tokens.Space.small)
@@ -345,9 +354,10 @@ private struct LinkMarkButton: View {
 /// The `#` menu rows: vault tags, then a create row.
 private struct TagSuggestionList: View {
     let session: EditorSession
+    let maxHeight: CGFloat
 
     var body: some View {
-        SuggestionScroll(session: session) {
+        SuggestionScroll(session: session, maxHeight: maxHeight) {
             ForEach(Array(session.tagSuggestions.enumerated()), id: \.element.id) { index, item in
                     Button {
                         session.chooseTag(item)
@@ -379,6 +389,7 @@ private struct TagSuggestionList: View {
 /// The `[[` / `@` menu rows.
 private struct EditorSuggestionList: View {
     let session: EditorSession
+    let maxHeight: CGFloat
 
     /// A note row shows the note's emoji, as the notes list does.
     private func emoji(for item: EditorSuggestion) -> String? {
@@ -388,7 +399,7 @@ private struct EditorSuggestionList: View {
     }
 
     var body: some View {
-        SuggestionScroll(session: session) {
+        SuggestionScroll(session: session, maxHeight: maxHeight) {
             ForEach(Array(session.suggestions.enumerated()), id: \.element.id) { index, item in
                     Button {
                         session.choose(item)
@@ -429,6 +440,7 @@ private struct EditorSuggestionList: View {
 /// A suggestion menu's rows, scrolled to keep the highlighted one in view.
 private struct SuggestionScroll<Rows: View>: View {
     let session: EditorSession
+    let maxHeight: CGFloat
     @ViewBuilder let rows: Rows
 
     var body: some View {
@@ -438,8 +450,25 @@ private struct SuggestionScroll<Rows: View>: View {
             }
             .onChange(of: session.highlighted) { _, row in proxy.scrollTo(row) }
         }
-        .frame(maxHeight: Tokens.Size.minimumHitArea * 4)
+        .frame(maxHeight: maxHeight)
         .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// How tall a suggestion menu may be. The menu sits above the toolbar row in
+/// the keyboard's accessory, which grows upward from the keyboard, so four
+/// rows ran off the top of a phone in landscape and its first rows could not
+/// be reached (#4818). Four rows, or the room between the safe area's top and
+/// the row, and never less than one row.
+enum SuggestionMenuHeight {
+    static let rows: CGFloat = Tokens.Size.minimumHitArea * 4
+
+    /// `rowTop` is the toolbar row's top on screen, `nil` before layout.
+    static func max(rowTop: CGFloat?, safeTop: CGFloat) -> CGFloat {
+        guard let rowTop else { return rows }
+        // The stack's spacing under the menu and the padding above it.
+        let room = rowTop - safeTop - Tokens.Space.small * 2
+        return min(rows, Swift.max(Tokens.Size.minimumHitArea, room))
     }
 }
 

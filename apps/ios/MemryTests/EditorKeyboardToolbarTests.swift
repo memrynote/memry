@@ -382,7 +382,7 @@ struct InsertGridTests {
             "paragraph", "heading", "heading_2", "heading_3", "bullet_list", "numbered_list",
             "check_list", "toggle_list", "quote", "callout", "code_block", "divider",
             "two_columns", "three_columns", "heading_4", "heading_5", "heading_6", "toggle_heading", "toggle_heading_2", "toggle_heading_3",
-            "link_to_note", "date", "remind", "table", "math", "diagram", "whiteboard", "view", "bookmark", "youtube",
+            "link_to_note", "date", "remind", "table", "math", "diagram", "whiteboard", "drawing", "view", "bookmark", "youtube",
             "image", "video", "audio", "file",
         ]
         #expect(grid == expected)
@@ -399,13 +399,13 @@ struct InsertGridTests {
             "paragraph", "heading", "heading_2", "heading_3", "bullet_list", "numbered_list",
             "check_list", "toggle_list", "quote", "callout", "code_block", "divider",
             "two_columns", "three_columns", "heading_4", "heading_5", "heading_6", "toggle_heading", "toggle_heading_2", "toggle_heading_3",
-            "table", "math", "diagram", "whiteboard", "view", "bookmark", "youtube",
+            "table", "math", "diagram", "whiteboard", "drawing", "view", "bookmark", "youtube",
         ])
         #expect(session.gridSections.map(\.section.title) == ["Basic", "Headings", "Insert"])
 
         let text = block("p")
         let paragraph = focused(text, in: [text], session: session)
-        #expect(session.gridSections.flatMap(\.rows).map(\.id).suffix(10) == ["link_to_note", "date", "remind", "table", "math", "diagram", "whiteboard", "view", "bookmark", "youtube"])
+        #expect(session.gridSections.flatMap(\.rows).map(\.id).suffix(11) == ["link_to_note", "date", "remind", "table", "math", "diagram", "whiteboard", "drawing", "view", "bookmark", "youtube"])
         withExtendedLifetime((field, paragraph)) {}
     }
 
@@ -558,6 +558,36 @@ struct InsertGridTests {
             .delete(blockId: "a"),
         ])
         #expect(session.whiteboardEdit == WhiteboardEditRequest(canvasId: "c1", title: "Trip whiteboard"))
+    }
+
+    @Test func aDrawingCreatesTheSameBlockAndOpensTheDrawingSurface() async throws {
+        let editor = ScriptedToolbarEditor()
+        let model = NoteEditorViewModel(noteId: "n1", editor: editor)
+        let session = model.session
+        session.model = model
+        let boards = FakeBoards()
+        session.whiteboards = boards
+        session.noteTitle = { "Trip" }
+        let row = try #require(BlockCatalog.rows.first { $0.id == "drawing" })
+        let field = focused(block("a"), in: [block("a")], session: session)
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            session.reload = { done.resume() }
+            session.chooseFromGrid(row)
+        }
+        withExtendedLifetime((field, model)) {}
+        #expect(boards.created == ["Trip whiteboard|n1"])
+        guard case let .insertBlock(kind, _, _, _) = editor.all.first else {
+            Issue.record("expected the block insert first, got \(editor.all)")
+            return
+        }
+        #expect(kind == "whiteboard", "no new block type: desktop reads it as a whiteboard")
+        #expect(session.whiteboardEdit == WhiteboardEditRequest(canvasId: "c1", title: "Trip whiteboard", ink: true))
+    }
+
+    @Test func slashDrawSketchAndWhiteboardOfferTheDrawing() {
+        #expect(SlashMenu.suggestions(query: "draw", attach: false).map(\.id).prefix(2) == ["slash:drawing", "slash:whiteboard"])
+        #expect(SlashMenu.suggestions(query: "sketch", attach: false).map(\.id).first == "slash:drawing")
+        #expect(SlashMenu.suggestions(query: "whiteboard", attach: false).map(\.id).prefix(2) == ["slash:whiteboard", "slash:drawing"])
     }
 
     @Test func aWhiteboardWhoseCanvasFailsAddsNothingAndSaysSo() async throws {
@@ -776,4 +806,28 @@ private final class FakeBoards: WhiteboardBoards, @unchecked Sendable {
     }
 
     func save(_ id: String, scene: String) async throws {}
+}
+
+/// #4818: the `@`, `[[` and `#` menus fit between the safe area's top and the
+/// keyboard toolbar, so every row can be scrolled to.
+struct SuggestionMenuHeightTests {
+    @Test func aPortraitPhoneKeepsFourRows() {
+        // iPhone 17 portrait: the row at 487pt, under a 62pt safe area.
+        #expect(SuggestionMenuHeight.max(rowTop: 487, safeTop: 62) == SuggestionMenuHeight.rows)
+    }
+
+    @Test func aLandscapePhoneShrinksTheMenuToTheRoomAboveTheRow() {
+        // iPhone 17 landscape with the on-screen keyboard: the row at 142pt.
+        let height = SuggestionMenuHeight.max(rowTop: 142, safeTop: 0)
+        #expect(height == 126)
+        #expect(142 - height - 16 >= 0)
+    }
+
+    @Test func noRoomStillLeavesOneRow() {
+        #expect(SuggestionMenuHeight.max(rowTop: 30, safeTop: 0) == 44)
+    }
+
+    @Test func beforeLayoutTheMenuKeepsFourRows() {
+        #expect(SuggestionMenuHeight.max(rowTop: nil, safeTop: 0) == SuggestionMenuHeight.rows)
+    }
 }

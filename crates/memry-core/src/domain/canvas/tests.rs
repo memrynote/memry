@@ -280,6 +280,38 @@ fn a_concurrent_edit_over_a_different_scene_keeps_both_drawings() {
     .expect("conflict");
 }
 
+/// The iPad's drawing surface writes back no element missing from the stored
+/// scene (#4378): ink a pull moved off the canvas lives in the conflict copy.
+#[test]
+fn ipad_ink_a_desktop_edit_displaced_stays_in_the_conflict_copy() {
+    let (db, _dir) = open("canvas-ink-conflict");
+    db.call_blocking(|conn| {
+        let ink = r#"{"type":"excalidraw","version":2,"source":"memry","elements":[{"id":"ink-1","type":"freedraw","x":10,"y":20,"points":[[0,0],[40,5]],"pressures":[0.5,0.5],"version":1,"isDeleted":false,"customData":{"memryInk":true,"inkType":"com.apple.ink.pen"}}],"appState":{},"files":{}}"#;
+        seed(conn, "c1", ink, json!({ LOCAL_DEVICE: 1 }), json!({ "ownerNoteId": "note-1" }));
+        let desktop = inbound(
+            "c1",
+            json!({ "id": "c1", "vaultId": VAULT_ID, "scene": scene_with("note-remote"),
+                    "clock": { "B": 3 } }),
+        );
+        assert_eq!(
+            apply_inbound_on(conn, &desktop, NOW, Some(LOCAL_DEVICE))?,
+            ApplyOutcome::Applied
+        );
+
+        assert_eq!(stored(conn, "c1")["scene"], json!(scene_with("note-remote")));
+        let ids = canvas_ids(conn);
+        let copy_id = ids.iter().find(|id| *id != "c1").expect("a copy");
+        let copy = stored(conn, copy_id);
+        assert_eq!(copy["title"], json!("My Canvas (conflict copy)"));
+        let scene: Value = serde_json::from_str(copy["scene"].as_str().expect("scene"))
+            .expect("scene JSON");
+        assert_eq!(scene["elements"][0]["id"], json!("ink-1"));
+        assert_eq!(scene["elements"][0]["customData"]["memryInk"], json!(true));
+        Ok(())
+    })
+    .expect("ink conflict");
+}
+
 #[test]
 fn a_concurrent_edit_over_an_identical_scene_merges_clocks_only() {
     let (db, _dir) = open("canvas-identical");

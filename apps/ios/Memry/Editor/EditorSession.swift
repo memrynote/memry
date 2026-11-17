@@ -131,7 +131,8 @@ final class EditorSession {
     private(set) var sourceEdit: BlockSourceRequest?
     /// A view block whose query sheet is open (`ViewQuerySheet`).
     private(set) var viewEdit: ViewQueryRequest?
-    /// A whiteboard open in its editor (`WhiteboardEditor`).
+    /// A whiteboard open in its editor (`WhiteboardEditor`) or the drawing
+    /// surface (`InkSurface`).
     private(set) var whiteboardEdit: WhiteboardEditRequest?
     /// Bumped when a whiteboard editor closes, so the block re-reads its board.
     private(set) var whiteboardRevision = 0
@@ -797,6 +798,15 @@ final class EditorSession {
     func startTrigger(_ character: String) {
         guard let field else { return }
         let textView = field.textView
+        // Commit the composition before `show` reloads the input views. The
+        // commit writes the composed text back over its own range: with the
+        // Japanese keyboard, `unmarkText()` and the reload can both drop it.
+        if let marked = textView.markedTextRange, let composed = textView.text(in: marked) {
+            textView.replace(marked, withText: composed)
+            // Ends the keyboard's composition too, or it composes `にほn` again into the next keys.
+            textView.inputDelegate?.selectionWillChange(textView)
+            textView.inputDelegate?.selectionDidChange(textView)
+        }
         show(.none)
         let caret = textView.selectedRange.location
         let string = textView.text as NSString
@@ -1127,9 +1137,9 @@ final class EditorSession {
         viewEdit = nil
     }
 
-    func editWhiteboard(canvasId: String, title: String) {
+    func editWhiteboard(_ request: WhiteboardEditRequest) {
         dismissKeyboard()
-        whiteboardEdit = WhiteboardEditRequest(canvasId: canvasId, title: title)
+        whiteboardEdit = request
     }
 
     /// The editor closed: its saves are on the canvas, which the block

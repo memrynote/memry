@@ -87,7 +87,7 @@ enum WhiteboardBoard: Equatable {
 struct WhiteboardBlockView: View {
     let canvasId: String
     /// Opens the editor. `nil` on a read-only page.
-    var edit: ((String, String) -> Void)?
+    var edit: ((WhiteboardEditRequest) -> Void)?
     /// Re-reads the canvas when it changes: a finished sync pass, a closed
     /// editor.
     var revision: Int = 0
@@ -139,7 +139,7 @@ struct WhiteboardBlockView: View {
             case let .ready(title, scene):
                 let name = title.flatMap { $0.isEmpty ? nil : $0 } ?? WhiteboardCopy.untitled
                 if let edit {
-                    Button { edit(canvasId, name) } label: { WhiteboardCard(title: name, scene: scene) }
+                    Button { edit(WhiteboardEditRequest(canvasId: canvasId, title: name, ink: scene.opensAsInk)) } label: { WhiteboardCard(title: name, scene: scene) }
                         .buttonStyle(.plain)
                         .accessibilityHint("Opens the board to draw")
                 } else {

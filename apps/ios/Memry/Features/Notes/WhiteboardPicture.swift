@@ -88,7 +88,9 @@ enum WhiteboardInk {
     }
 }
 
-private struct WhiteboardCanvas: View {
+/// The scene at `scale`, `box` at the top left. The drawing surface draws
+/// its read-only background with it too.
+struct WhiteboardCanvas: View {
     let scene: WhiteboardScene
     let box: CGRect
     let scale: CGFloat
