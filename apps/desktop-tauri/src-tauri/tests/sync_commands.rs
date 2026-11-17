@@ -11,17 +11,24 @@ use memry_core::api::errors::SyncError;
 use memry_core::crypto::sodium;
 use memry_core::seams::reachability::{Reachability, ReachabilityObserver, Reachable};
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
-use memry_desktop::seams::secure_store::{DeviceIdentityStore, KeyringStore, Store, StoreFactory};
+use memry_desktop::registry::AppConfig;
+use memry_desktop::seams::secure_store::{
+    DeviceIdentityStore, KeyringStore, SERVICE, Store, StoreFactory,
+};
+use memry_desktop::seams::tls::{PinFailure, PinFailureReason, PinFailureSink};
 use memry_desktop::session::Session;
+use memry_desktop::settings::SettingsService;
 use memry_desktop::sync::backend::{SyncBackend, SyncPasses};
 use memry_desktop::sync::gate::{AuthFacts, Entitlement, SyncStartGate, VaultBinding};
 use memry_desktop::sync::signals::AuthSignals;
 use memry_desktop::sync::supervisor::{SupervisorParts, SyncSupervisor};
+use memry_tauri::events::{SettingsChangedEvent, SyncCertificatePinFailedEvent};
+use memry_tauri::shell::services::PinFailures;
 use serde_json::{Value, json};
 use support::{Mocked, WAIT};
-use tauri::Manager;
 use tauri::test::MockRuntime;
-use tauri_specta::collect_commands;
+use tauri::{Listener, Manager};
+use tauri_specta::{Event, collect_commands};
 
 const NOTE: &str = "The body.\n";
 
@@ -34,6 +41,12 @@ impl StoreFactory for Keychain {
 }
 
 fn mocked(files: &[(&str, &str)]) -> Mocked {
+    mocked_over(files, false)
+}
+
+/// A mock app over a real vault, with the settings owner over the real identity store and a mock
+/// keychain. `identity_lost`: the key moved into the keychain and the keychain item is gone.
+fn mocked_over(files: &[(&str, &str)], identity_lost: bool) -> Mocked {
     let commands = tauri_specta::Builder::new()
         .error_handling(tauri_specta::ErrorHandlingMode::Throw)
         .commands(collect_commands![
@@ -51,19 +64,52 @@ fn mocked(files: &[(&str, &str)]) -> Mocked {
             memry_tauri::commands::sync::sync_update_synced_setting::<MockRuntime>,
         ]);
     let mocked = Mocked::open(files, commands);
-    let keychain = Keychain(keyring_core::mock::Store::new().unwrap());
-    let keyring = Arc::new(KeyringStore::with_factory(keychain, None, WAIT));
-    let store = Arc::new(DeviceIdentityStore::with_probe(
-        &keyring,
-        &mocked.vault,
-        || false,
+    let credentials: Store = keyring_core::mock::Store::new().unwrap();
+    let keyring = Arc::new(KeyringStore::with_factory(
+        Keychain(credentials.clone()),
+        None,
+        WAIT,
     ));
+    let identity = || {
+        Arc::new(DeviceIdentityStore::with_probe(
+            &keyring,
+            &mocked.vault,
+            || false,
+        ))
+    };
+    let mut store = identity();
     let (_, secret) = sodium::sign_seed_keypair(&[7u8; 32]).unwrap();
     store
         .set(SecureStoreKey::DeviceSigningKey, secret.to_vec())
         .unwrap();
-    mocked.webview.manage(store);
+    if identity_lost {
+        credentials
+            .build(SERVICE, "device-signing-key", None)
+            .unwrap()
+            .delete_credential()
+            .expect("the key was in the keychain");
+        store = identity();
+    }
+    let config = AppConfig::load(mocked.vault.parent().unwrap().join("app/memry-config.json"));
     mocked
+        .webview
+        .manage(SettingsService::new(store, Arc::new(config)));
+    mocked
+}
+
+/// Every `E` the app broadcasts, in order.
+fn heard<E: Event>(mocked: &Mocked) -> Arc<std::sync::Mutex<Vec<Value>>> {
+    let heard = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let sink = heard.clone();
+    mocked
+        .webview
+        .app_handle()
+        .listen_any(E::NAME, move |event| {
+            sink.lock()
+                .unwrap()
+                .push(serde_json::from_str(event.payload()).unwrap());
+        });
+    heard
 }
 
 fn session(mocked: &Mocked) -> Session {
@@ -218,9 +264,12 @@ fn pause_persists_shows_paused_and_resume_ends_it() {
             .unwrap()
     };
     assert!(paused(&mocked), "the pause is in meta");
+    // A note body row is not a record row: Electron's `getPendingCount` leaves it out.
     exec(
         &mocked,
-        "INSERT INTO outbox (item_type, item_id, op, enqueued_at) VALUES ('task', 't1', 'upsert', 1)",
+        "INSERT INTO outbox (item_type, item_id, op, enqueued_at) VALUES
+           ('task', 't1', 'upsert', 1),
+           ('note', 'n1', 'crdt-update', 1)",
     );
     assert_eq!(
         mocked.invoke("sync_resume", surface).unwrap(),
@@ -231,6 +280,33 @@ fn pause_persists_shows_paused_and_resume_ends_it() {
         mocked.invoke("sync_get_status", json!({})).unwrap()["status"],
         "paused"
     );
+    supervisor.stop_blocking();
+}
+
+/// `wasPaused` is the pause the loop replaced: of concurrent pauses, exactly one found sync
+/// running (`engine.ts:663-668` reads and writes in one turn).
+#[test]
+fn concurrent_pauses_report_one_was_running() {
+    let mocked = Arc::new(mocked(&[]));
+    let supervisor = attach(&mocked);
+    let answers: Vec<Value> = std::thread::scope(|scope| {
+        let pauses: Vec<_> = (0..8)
+            .map(|_| {
+                let mocked = mocked.clone();
+                scope.spawn(move || {
+                    mocked
+                        .invoke("sync_pause", json!({"input": {"surface": "popover"}}))
+                        .unwrap()
+                })
+            })
+            .collect();
+        pauses.into_iter().map(|p| p.join().unwrap()).collect()
+    });
+    let running = answers
+        .iter()
+        .filter(|answer| answer["wasPaused"] == false)
+        .count();
+    assert_eq!(running, 1, "{answers:?}");
     supervisor.stop_blocking();
 }
 
@@ -252,7 +328,8 @@ fn history_pages_newest_first_and_parses_details() {
         "INSERT INTO sync_history (id, kind, item_count, direction, details, duration_ms, created_at)
          VALUES ('a', 'push', 2, 'push', '{\"n\":1}', 5, 10),
                 ('b', 'error', 0, NULL, 'not json', NULL, 20),
-                ('c', 'pull', 3, 'pull', NULL, 7, 30)",
+                ('c', 'pull', 3, 'pull', NULL, 7, 30),
+                ('d', 'pull', 1, 'pull', '', 2, 5)",
     );
     let page = mocked
         .invoke(
@@ -267,13 +344,16 @@ fn history_pages_newest_first_and_parses_details() {
                 {"id": "c", "type": "pull", "itemCount": 3, "direction": "pull", "durationMs": 7, "createdAt": 30},
                 {"id": "b", "type": "error", "itemCount": 0, "details": "not json", "createdAt": 20}
             ],
-            "total": 3
+            "total": 4
         })
     );
     let rest = mocked
         .invoke("sync_get_history", json!({"input": {"offset": 2}}))
         .unwrap();
     assert_eq!(rest["entries"][0]["details"], json!({"n": 1}));
+    // Electron's `r.details ? parse : undefined`: empty text is no details.
+    assert_eq!(rest["entries"][1]["id"], "d");
+    assert!(rest["entries"][1].get("details").is_none(), "{rest}");
     let refused = mocked
         .invoke("sync_get_history", json!({"input": {"limit": 0}}))
         .unwrap_err();
@@ -305,7 +385,9 @@ fn quarantined_items_list_live_entries_only() {
             "INSERT INTO sync_quarantine
                (item_type, item_id, signer_device_id, failed_at, attempt_count, last_error)
              VALUES ('task', 'live', 'dev-b', {now}, 3, 'bad signature'),
-                    ('task', 'old', 'dev-b', 1, 1, 'bad signature')"
+                    ('task', 'old', 'dev-b', 1, 1, 'bad signature');
+             INSERT INTO sync_refused_items (item_type, item_id, refused_by_version, refused_at)
+             VALUES ('project', 'newer', '9.0.0+abc', 42)"
         )
         .into_boxed_str(),
     );
@@ -322,6 +404,15 @@ fn quarantined_items_list_live_entries_only() {
             "attemptCount": 3,
             "lastError": "bad signature",
             "permanent": true
+        }, {
+            // Electron's `SchemaInvalidLedger.quarantinedItems` (schema-invalid-ledger.ts:104-117).
+            "itemId": "newer",
+            "itemType": "project",
+            "signerDeviceId": "",
+            "failedAt": 42,
+            "attemptCount": 1,
+            "lastError": "schema_invalid:payload (app 9.0.0+abc)",
+            "permanent": false
         }])
     );
 }
@@ -433,4 +524,78 @@ fn a_synced_setting_write_is_read_back_and_queued() {
         )
         .unwrap_err();
     assert_eq!(refused["code"], "invalid_input");
+}
+
+/// The write goes through the settings owner: validated, announced as `settings-changed`.
+#[test]
+fn a_synced_setting_write_is_validated_and_announced() {
+    let mocked = mocked(&[]);
+    let changed = heard::<SettingsChangedEvent>(&mocked);
+    mocked
+        .invoke(
+            "sync_update_synced_setting",
+            json!({"input": {"fieldPath": "general.theme", "value": "dark"}}),
+        )
+        .unwrap();
+    assert_eq!(
+        *changed.lock().unwrap(),
+        vec![json!({"key": "general", "fields": ["theme"]})]
+    );
+    let refused = mocked
+        .invoke(
+            "sync_update_synced_setting",
+            json!({"input": {"fieldPath": "general.theme", "value": 42}}),
+        )
+        .unwrap_err();
+    assert_eq!(refused["code"], "settings_invalid_value", "{refused}");
+    assert_eq!(changed.lock().unwrap().len(), 1);
+}
+
+/// No device identity to tick the clock with: Electron's answer with no settings manager.
+#[test]
+fn a_synced_setting_write_with_the_identity_lost_is_not_initialized() {
+    let mocked = mocked_over(&[], true);
+    assert_eq!(
+        mocked
+            .invoke(
+                "sync_update_synced_setting",
+                json!({"input": {"fieldPath": "general.theme", "value": "dark"}}),
+            )
+            .unwrap(),
+        json!({"success": false, "error": "errors:sync.settingsNotInitialized"})
+    );
+}
+
+/// A mismatch reaches the renderer once per host and presented key, however often it repeats.
+#[test]
+fn a_pin_failure_is_announced_once_per_host_and_hash() {
+    let mocked = mocked(&[]);
+    let told = heard::<SyncCertificatePinFailedEvent>(&mocked);
+    let sink = PinFailures::new(mocked.webview.app_handle().clone());
+    let fail = |host: &str, hash: &str| {
+        sink.pin_failed(PinFailure {
+            hostname: host.to_owned(),
+            actual_hash: hash.to_owned(),
+            expected_hashes: vec!["pin".to_owned()],
+            reason: PinFailureReason::Mismatch,
+        });
+    };
+    fail("sync.memrynote.com", "a");
+    fail("sync.memrynote.com", "a");
+    fail("sync.memrynote.com", "b");
+    fail("other.memrynote.com", "a");
+    let hosts: Vec<(Value, Value)> = told
+        .lock()
+        .unwrap()
+        .iter()
+        .map(|event| (event["hostname"].clone(), event["actualHash"].clone()))
+        .collect();
+    assert_eq!(
+        hosts,
+        vec![
+            (json!("sync.memrynote.com"), json!("a")),
+            (json!("sync.memrynote.com"), json!("b")),
+            (json!("other.memrynote.com"), json!("a")),
+        ]
+    );
 }

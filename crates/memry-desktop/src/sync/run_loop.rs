@@ -459,7 +459,9 @@ impl Loop {
         }
     }
 
-    async fn set_paused(&mut self, paused: bool) -> Result<(), StorageError> {
+    /// Answers the pause it replaced.
+    async fn set_paused(&mut self, paused: bool) -> Result<bool, StorageError> {
+        let was_paused = self.paused;
         let db = self.db.clone();
         let write = move || db.call_blocking(move |conn| pause::write(conn, paused));
         tokio::task::spawn_blocking(write)
@@ -479,7 +481,7 @@ impl Loop {
         if paused {
             self.stop_socket();
         }
-        Ok(())
+        Ok(was_paused)
     }
 
     /// Aborts a running pass, answers whoever waited on it, and forgets the driver and the

@@ -132,7 +132,7 @@ impl Loop {
                     "the clock is off from the server's; sync paused"
                 );
                 match self.set_paused(true).await {
-                    Ok(()) => self.skew_paused = true,
+                    Ok(_) => self.skew_paused = true,
                     Err(error) => tracing::error!(%error, "could not persist the clock-skew pause"),
                 }
             }
