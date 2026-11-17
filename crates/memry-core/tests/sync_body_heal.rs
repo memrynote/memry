@@ -4,19 +4,15 @@
 //! one body state, and the heal must owe exactly the live notes and journals
 //! that hold no body state at all.
 
-use std::path::PathBuf;
-use std::sync::atomic::{AtomicU64, Ordering};
-
 use memry_core::api::errors::StorageError;
 use memry_core::domain::notes::{self, NewNote};
-use memry_core::storage::open_data;
 use memry_core::storage::repositories::sync_items::{self, InboundRecord};
 use memry_core::sync::body_debt;
 use memry_core::sync::body_heal::owe_unread_documents;
 use rusqlite::{Connection, params};
-use serde_json::json;
 
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
+use crate::support::scratch_data_db;
+use serde_json::json;
 
 /// The body state a document is left in before the heal runs.
 #[derive(Clone, Copy, Debug)]
@@ -115,11 +111,7 @@ fn arrange(conn: &Connection, id: &str, item_type: &str, state: State) {
 
 #[test]
 fn the_heal_owes_each_live_document_without_body_state() {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir: PathBuf =
-        std::env::temp_dir().join(format!("memry-body-heal-{}-{unique}", std::process::id()));
-    std::fs::create_dir_all(&dir).expect("create the scratch directory");
-    let db = open_data(&dir.join("data.db")).expect("open data.db");
+    let db = scratch_data_db("body-heal");
 
     let (count, owed) = db
         .call_blocking(|conn| {
@@ -146,5 +138,4 @@ fn the_heal_owes_each_live_document_without_body_state() {
     owed.sort();
     assert_eq!(owed, expected);
     assert_eq!(count, expected.len());
-    std::fs::remove_dir_all(&dir).ok();
 }

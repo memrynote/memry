@@ -179,12 +179,7 @@ fn hold_choice(slot: &Arc<Mutex<Option<PendingChoice>>>, choice: PendingChoice) 
 /// vault ids as UUIDs; this is core's id rule (`account_admin::segment`).
 fn vault_folder(parent: &Path, vault_id: &str) -> Result<PathBuf, AccountError> {
     let refused = || AccountError::VaultChoice("The account vault's id is not valid".into());
-    if vault_id.is_empty()
-        || vault_id.len() > 128
-        || !vault_id
-            .bytes()
-            .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
-    {
+    if !is_vault_id(vault_id) {
         return Err(refused());
     }
     let name = dormant_vault_folder_name(vault_id);
@@ -200,6 +195,16 @@ fn vault_folder(parent: &Path, vault_id: &str) -> Result<PathBuf, AccountError> 
         return Err(refused());
     }
     Ok(folder)
+}
+
+/// Core's id rule (`account_admin::segment`): the server's vault ids become folder names, so one
+/// like `../..` is refused before it can leave the parent folder.
+pub(super) fn is_vault_id(vault_id: &str) -> bool {
+    !vault_id.is_empty()
+        && vault_id.len() <= 128
+        && vault_id
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
 }
 
 /// `dormantVaultFolderName` (`sync/vault-provisioning.ts:16-18`).
