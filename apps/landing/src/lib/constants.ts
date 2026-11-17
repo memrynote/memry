@@ -257,7 +257,7 @@ export const FAQ_ITEMS = [
   {
     question: 'Can I import from other apps?',
     answer:
-      'Yes. memrynote imports Markdown folders (including Obsidian vaults), Notion, Evernote, Apple Notes, Apple Journal, Bear, Roam Research, Google Keep, NotePlan, Todoist, TickTick, Raindrop, and CSV.'
+      'Yes. memrynote imports Markdown folders (including Obsidian vaults), Notion, Evernote, OneNote, Apple Notes (on macOS), Apple Journal, Bear, Roam Research, Google Keep, NotePlan, Readwise, Todoist, TickTick, Raindrop, HTML files, and CSV.'
   },
   {
     question: 'Is memrynote open source?',
