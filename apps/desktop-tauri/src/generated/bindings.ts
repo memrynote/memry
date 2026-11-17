@@ -447,6 +447,15 @@ export const commands = {
 	 *  failed write saves nothing.
 	 */
 	notesDownloadUnsplashPhoto: (noteId: string, photo: UnsplashPhoto) => __TAURI_INVOKE<UnsplashDownloadResponse>("notes_download_unsplash_photo", { noteId, photo }),
+	/**  `notes:cluster`: proposed groups for at most 300 notes. */
+	notesCluster: (noteIds: string[]) => __TAURI_INVOKE<NoteClustersResponse>("notes_cluster", { noteIds }),
+	/**
+	 *  `notes:get-similar`: the nearest notes not linked with `note_id`, `limit` of them (5 when
+	 *  absent, 1 to 20).
+	 */
+	notesGetSimilar: (noteId: string, limit: number | null) => __TAURI_INVOKE<SimilarNotesResponse>("notes_get_similar", { noteId, limit }),
+	/**  `notes:get-tag-suggestions`: tags the nearest notes share and `note_id` lacks. */
+	notesGetTagSuggestions: (noteId: string) => __TAURI_INVOKE<NoteTagSuggestionsResponse>("notes_get_tag_suggestions", { noteId }),
 	/**  `notes:delete-version`: a version that is not there is no failure, as in Electron. */
 	notesDeleteVersion: (snapshotId: string) => __TAURI_INVOKE<null>("notes_delete_version", { snapshotId }),
 	/**  `notes:get-version`: the version and the file it restores to; `null` for none. */
@@ -807,6 +816,21 @@ export const commands = {
 	 *  that is not here (the note stays kept).
 	 */
 	vaultNoticesRestoreKept: (noteId: string) => __TAURI_INVOKE<null>("vault_notices_restore_kept", { noteId }),
+	/**
+	 *  `settings:downloadVoiceModel`: downloads and verifies Whisper Small, with progress on
+	 *  `VoiceModelProgressEvent`. A failure rejects with the download's reason.
+	 */
+	settingsDownloadVoiceModel: () => __TAURI_INVOKE<null>("settings_download_voice_model"),
+	/**  `settings:getVoiceModelStatus`. */
+	settingsGetVoiceModelStatus: () => __TAURI_INVOKE<VoiceModelStatus>("settings_get_voice_model_status"),
+	/**  `settings:getVoiceRecordingReadiness`. */
+	settingsGetVoiceRecordingReadiness: () => __TAURI_INVOKE<VoiceRecordingReadiness>("settings_get_voice_recording_readiness"),
+	/**  `settings:getVoiceTranscriptionOpenAIKeyStatus`. */
+	settingsGetVoiceTranscriptionOpenaiKeyStatus: () => __TAURI_INVOKE<VoiceOpenAiKeyStatus>("settings_get_voice_transcription_openai_key_status"),
+	/**  `settings:openOsMicrophoneSettings`. */
+	settingsOpenOsMicrophoneSettings: () => __TAURI_INVOKE<OpenSettingsResult>("settings_open_os_microphone_settings"),
+	/**  `settings:setVoiceTranscriptionOpenAIKey`: a blank key deletes the stored one. */
+	settingsSetVoiceTranscriptionOpenaiKey: (apiKey: string) => __TAURI_INVOKE<null>("settings_set_voice_transcription_openai_key", { apiKey }),
 	/**  Closes the calling window. The `CloseRequested` handlers (flush, tray) decide what follows. */
 	windowClose: () => __TAURI_INVOKE<null>("window_close"),
 	/**  Minimizes the calling window. */
@@ -893,6 +917,7 @@ export const events = {
 	vaultLocksExternalEditRestoredEvent: makeEvent<VaultLocksExternalEditRestoredEvent, VaultLocksExternalEditRestoredEvent>("vault-locks-external-edit-restored-event"),
 	vaultNoticesChangedEvent: makeEvent<VaultNoticesChangedEvent, VaultNoticesChangedEvent>("vault-notices-changed-event"),
 	vaultStatusChangedEvent: makeEvent<VaultStatusChangedEvent, VaultStatusChangedEvent>("vault-status-changed-event"),
+	voiceModelProgressEvent: makeEvent<VoiceModelProgressEvent, VoiceModelProgressEvent>("voice-model-progress-event"),
 	windowCaptionHoverChangedEvent: makeEvent<WindowCaptionHoverChangedEvent, WindowCaptionHoverChangedEvent>("window-caption-hover-changed-event"),
 	windowCaptionPressedChangedEvent: makeEvent<WindowCaptionPressedChangedEvent, WindowCaptionPressedChangedEvent>("window-caption-pressed-changed-event"),
 	windowChromeStateChangedEvent: makeEvent<WindowChromeStateChangedEvent, WindowChromeStateChangedEvent>("window-chrome-state-changed-event"),
@@ -2369,6 +2394,21 @@ export type NoteAliasesView = {
 	aliases: string[],
 };
 
+/**  `NoteClusterGroup`. */
+export type NoteClusterGroup = {
+	noteIds: string[],
+	titles: string[],
+	suggestedName: string | null,
+};
+
+/**  `NoteClustersResponse`. */
+export type NoteClustersResponse = {
+	status: NoteSimilarityStatus,
+	groups: NoteClusterGroup[],
+	ungrouped: string[],
+	missing: string[],
+};
+
 /**
  *  `NoteCreateSchema`, without `plainChecklists` (Step 32), which the renderer's service
  *  refuses until then.
@@ -2543,6 +2583,9 @@ export type NoteResultMetadata = {
 	matchedName?: string | null,
 };
 
+/**  `NoteSimilarityStatus`. */
+export type NoteSimilarityStatus = "disabled" | "no-embedding" | "ready";
+
 /**  `NoteSyncState`. Times are epoch milliseconds. */
 export type NoteSyncState = {
 	state: NoteSyncStateValue,
@@ -2555,6 +2598,19 @@ export type NoteSyncState = {
 
 /**  `NoteSyncStateValue`. */
 export type NoteSyncStateValue = "not_syncing" | "local_only" | "pending" | "sent" | "confirmed" | "not_recorded" | "rejected";
+
+/**  `NoteTagSuggestion`. */
+export type NoteTagSuggestion = {
+	tag: string,
+	confidence: number | null,
+	support: number,
+};
+
+/**  `NoteTagSuggestionsResponse`. */
+export type NoteTagSuggestionsResponse = {
+	status: NoteSimilarityStatus,
+	tags: NoteTagSuggestion[],
+};
 
 /**
  *  Something the tag list shows changed (`notes:tags-changed`). No payload; the renderer
@@ -2700,6 +2756,10 @@ export type OcrLanguagesChangedEvent = OcrLanguagesState;
 export type OcrLanguagesState = {
 	selected: OcrLanguage[],
 	statuses: Partial<{ [key in OcrLanguage]: OcrLanguageStatus }>,
+};
+
+export type OpenSettingsResult = {
+	success: boolean,
 };
 
 export type OptionInput = {
@@ -3180,6 +3240,22 @@ export type ShortcutStatus = "unbound" | "registered" | "in_use" | "unsupported"
 export type SignOutResult = {
 	success: boolean,
 	keychainWarning?: string | null,
+};
+
+/**  `SimilarNoteItem`. */
+export type SimilarNoteItem = {
+	id: string,
+	title: string,
+	path: string,
+	emoji: string | null,
+	snippet: string | null,
+	similarity: number | null,
+};
+
+/**  `SimilarNotesResponse`. */
+export type SimilarNotesResponse = {
+	status: NoteSimilarityStatus,
+	notes: SimilarNoteItem[],
 };
 
 /**  `NoteSizeClass`. */
@@ -4063,6 +4139,46 @@ export type VersionView = {
 	wordCount: number,
 	reason: string,
 	createdAt: string,
+};
+
+/**  `VoiceModelProgressEvent.phase`. */
+export type VoiceModelPhase = "downloading" | "loading" | "ready" | "error";
+
+/**
+ *  `{ phase, progress, status }`: `progress` 0 to 100, `status` the English line Electron shows
+ *  (or the failure's reason on `error`).
+ */
+export type VoiceModelProgressEvent = {
+	phase: VoiceModelPhase,
+	progress: number,
+	status: string,
+};
+
+/**  `VoiceModelStatus`. */
+export type VoiceModelStatus = {
+	name: string,
+	downloaded: boolean,
+	loaded: boolean,
+	loading: boolean,
+	error: string | null,
+};
+
+/**  Why a recording cannot start (`VoiceRecordingReadiness.reason`). */
+export type VoiceNotReady = "missing-model" | "missing-api-key";
+
+export type VoiceOpenAiKeyStatus = {
+	hasApiKey: boolean,
+};
+
+/**  `VoiceTranscriptionSettings.provider`. */
+export type VoiceProvider = "local" | "openai";
+
+/**  `VoiceRecordingReadiness`. `message` is English, as Electron's. */
+export type VoiceRecordingReadiness = {
+	ready: boolean,
+	provider: VoiceProvider,
+	reason?: VoiceNotReady | null,
+	message?: string | null,
 };
 
 /**  A note whose interrupted app move waits; `path` is its file's, absolute. */
