@@ -1,7 +1,7 @@
 // Search and the command palette (Electron `tests/e2e/search-command-palette.e2e.ts`, #3540): a
 // note is found by the `search_*` commands and the palette, a result opened from search lists in
-// the recents, and the palette's ⌘3 Tasks scope hides the note. Electron's task and inbox legs wait
-// for the tasks and inbox commands, which are not ported yet. The attachment-text cases are new in
+// the recents, and the palette's ⌘3 Tasks scope hides the note. Electron's task and inbox legs are
+// skipped below until the tasks and inbox commands are ported. The attachment-text cases are new in
 // Tauri (#3542 lane I): a note is found by the words of a PDF or an image attached to it, which the
 // `memry-ml-worker` sidecar reads (pdfium for the text layer, Tesseract for the picture).
 import { readFileSync } from 'node:fs'
@@ -73,6 +73,8 @@ test('a note is found by search and the palette, and listed once opened', async 
   await expect(dialog.getByText(title, { exact: true })).toHaveCount(0)
   await page.keyboard.press('Escape')
 })
+
+test.skip('a task and an inbox item are found by search and the palette: needs `tasks_create` and `inbox_capture_text` (Electron `tasks:create`, `inbox:captureText`), not ported yet', async () => {})
 
 // The worker's own fixtures: a two-page text PDF ("Alpha harbor lantern", "Beta orchard compass")
 // and a rendered line of text ("Heron count at dawn").
