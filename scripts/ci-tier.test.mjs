@@ -12,6 +12,7 @@ import {
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { after, describe, it } from 'node:test'
+import { runInNewContext } from 'node:vm'
 
 // The tier decides which CI jobs a diff skips, and a skipped job reports green. These cases pin the
 // skips: a change that can break an app must not land in a tier that never builds it.
@@ -1257,5 +1258,43 @@ describe('ci tier post-merge lookup', () => {
       assert.equal(out.schedule_tested, 'false')
       assert.deepEqual(out.calls, [])
     }
+  })
+})
+
+// A feat/tauri-v2 push run finishes: post-merge.sh starts the next push's cache-key range at the last
+// push run that was not cancelled, so a cancelled full run made the next push run every leg (#5035).
+// Every other event keeps the cancel behavior #3649 set. The expression is GitHub's, evaluated as JS:
+// it uses only ==, !=, &&, || and ! on strings.
+describe('ci concurrency of the feat/tauri-v2 push runs', () => {
+  const cancels = (workflow, [event_name, ref]) => {
+    const value = readFileSync(join(repo, workflow), 'utf8').match(
+      /^ {2}cancel-in-progress: (.+)$/m
+    )[1]
+    const expression = value.match(/^\$\{\{(.+)\}\}$/)?.[1] ?? value
+    return runInNewContext(expression, { github: { event_name, ref } })
+  }
+  const events = {
+    pushFeat: ['push', 'refs/heads/feat/tauri-v2'],
+    pushMain: ['push', 'refs/heads/main'],
+    pr: ['pull_request', 'refs/pull/1/merge'],
+    queue: ['merge_group', 'refs/heads/gh-readonly-queue/feat/tauri-v2/pr-1-abc'],
+    schedule: ['schedule', 'refs/heads/feat/tauri-v2'],
+    dispatch: ['workflow_dispatch', 'refs/heads/feat/tauri-v2']
+  }
+  const table = (workflow) =>
+    Object.fromEntries(Object.entries(events).map(([k, e]) => [k, cancels(workflow, e)]))
+
+  it('lets a feat/tauri-v2 push run finish and cancels as before everywhere else', () => {
+    const others = { pr: true, queue: true, schedule: true, dispatch: true }
+    assert.deepEqual(table('.github/workflows/rust-ci.yml'), {
+      pushFeat: false,
+      pushMain: true,
+      ...others
+    })
+    assert.deepEqual(table('.github/workflows/desktop-tauri-ci.yml'), {
+      pushFeat: false,
+      pushMain: false,
+      ...others
+    })
   })
 })
