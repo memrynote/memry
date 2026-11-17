@@ -53,7 +53,7 @@ pub struct VoiceModel {
     downloading: AtomicUsize,
     /// Ends a download in flight: the app quits.
     cancel: CancellationToken,
-    /// The last download's failure, cleared by the next success.
+    /// The last download's failure, cleared when the next download starts or succeeds.
     error: Mutex<Option<String>>,
 }
 
@@ -95,8 +95,9 @@ impl VoiceModel {
     }
 
     /// `getVoiceModelStatus`: `loaded` while the worker that loaded the model runs, `loading`
-    /// during the download and the load, and the newest failure: a download clears the
-    /// engine's, as Electron's progress clears its `lastError` (`voice-model.ts:317`).
+    /// during the download and the load, and the newest failure: a download clears every
+    /// earlier one when it starts, as each of Electron's progress phases rewrites its one
+    /// `error` (`voice-model.ts:308-318`).
     pub fn status(&self, engine: &LocalEngine) -> VoiceModelStatus {
         VoiceModelStatus {
             name: MODEL_NAME.to_owned(),
@@ -114,12 +115,15 @@ impl VoiceModel {
 
     /// `downloadVoiceModel`: fetches and verifies the file, then writes the marker, reporting
     /// Electron's progress phases (`downloading`, `loading` at 95, then `ready` or `error`).
-    /// Success clears `engine`'s last failure.
+    /// Starting clears `engine`'s last failure and the last download's; success clears both
+    /// again, since a concurrent call can fail in between.
     pub async fn download(
         &self,
         engine: &LocalEngine,
         progress: &(dyn Fn(ModelProgress) + Sync),
     ) -> Result<(), DownloadError> {
+        engine.clear_error();
+        *self.error.lock().unwrap_or_else(PoisonError::into_inner) = None;
         let in_flight = InFlight::enter(&self.downloading);
         let abort = Abort {
             cancel: self.cancel.clone(),

@@ -66,6 +66,10 @@ fn a_file_that_is_not_a_wav_is_rejected_before_the_model_loads() {
 }
 
 #[test]
+#[cfg_attr(
+    all(windows, target_arch = "aarch64"),
+    ignore = "no whisper.cpp on Windows ARM64 (#4888): the load's reason is the one shown"
+)]
 fn an_unknown_language_is_rejected_before_the_model_loads() {
     let dir = tempfile::tempdir().expect("tempdir");
     let worker = worker(dir.path());

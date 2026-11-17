@@ -501,3 +501,19 @@ async fn a_download_clears_an_earlier_load_failure() {
     model.download(&engine, &sink).await.unwrap();
     assert_eq!(model.status(&engine).error, None);
 }
+
+/// The newest failure wins, as Electron's one `error` that every progress phase rewrites
+/// (`voice-model.ts:308-318`).
+#[tokio::test]
+async fn a_failed_download_after_a_load_failure_shows_the_downloads_error() {
+    let dir = tempfile::tempdir().unwrap();
+    let engine = idle_engine();
+    let hub = Hub::start(BODY.to_vec(), vec![Answer::Short(10)]).await;
+    let model = model(&hub.url, dir.path(), &sha256(BODY));
+    let (_, sink) = recorder();
+    assert!(engine.transcribe(b"RIFF", "en", &sink).is_err());
+
+    let error = model.download(&engine, &sink).await.unwrap_err();
+    assert!(matches!(error, DownloadError::Incomplete { .. }), "{error}");
+    assert_eq!(model.status(&engine).error, Some(error.to_string()));
+}
