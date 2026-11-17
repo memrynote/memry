@@ -14,16 +14,24 @@ const RELEASE_DOWNLOAD_PREFIX = 'https://github.com/memrynote/memry/releases/dow
 // (scripts/velopack-release-utils.mjs, vpkSetupName).
 export const VELOPACK_WINDOWS_SETUP_ASSET = 'MemryNote-Setup-win-x64.exe'
 export const LEGACY_VELOPACK_WINDOWS_SETUP_ASSET = 'MemryNote-win-Setup.exe'
+// The native ARM64 Setup ships from the first Tauri release on (scripts/release/vpk-args.mjs,
+// assetNames). Electron releases carry none, so there an ARM64 visitor gets the x64 installer,
+// which Windows 11 on ARM runs under emulation. The Tauri updater moves an x64 install on an
+// ARM64 PC to the ARM64 build (apps/desktop-tauri/src-tauri/src/updater/channel.rs).
+export const WINDOWS_ARM64_SETUP_ASSET = 'MemryNote-win-arm64-Setup.exe'
+
+const WINDOWS_X64_MATCHERS: ReadonlyArray<(name: string) => boolean> = [
+  (name) => name === VELOPACK_WINDOWS_SETUP_ASSET,
+  (name) => name === LEGACY_VELOPACK_WINDOWS_SETUP_ASSET,
+  (name) => name.endsWith('-setup.exe')
+]
 
 // Matchers are ordered by preference: the first one that hits an asset wins.
 const ASSET_MATCHERS: Record<string, ReadonlyArray<(name: string) => boolean>> = {
   'mac-arm64': [(name) => name.endsWith('-arm64.dmg')],
   'mac-x64': [(name) => name.endsWith('-x64.dmg')],
-  windows: [
-    (name) => name === VELOPACK_WINDOWS_SETUP_ASSET,
-    (name) => name === LEGACY_VELOPACK_WINDOWS_SETUP_ASSET,
-    (name) => name.endsWith('-setup.exe')
-  ],
+  windows: WINDOWS_X64_MATCHERS,
+  'windows-arm64': [(name) => name === WINDOWS_ARM64_SETUP_ASSET, ...WINDOWS_X64_MATCHERS],
   linux: [(name) => name.endsWith('.AppImage')],
   'linux-deb': [(name) => name.endsWith('.deb')]
 }
