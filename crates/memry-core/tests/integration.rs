@@ -400,6 +400,8 @@ mod projector_null_tolerance;
 #[cfg(feature = "markdown")]
 #[path = "property_reads_load.rs"]
 mod property_reads_load;
+#[path = "push_body_state.rs"]
+mod push_body_state;
 #[path = "push_crdt_pacing.rs"]
 mod push_crdt_pacing;
 #[path = "push_crdt_update_cap.rs"]

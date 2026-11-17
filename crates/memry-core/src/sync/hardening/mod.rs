@@ -4,6 +4,7 @@
 //! the ledgers and repairs run only in a pull built `PullLoop::with_hardening`
 //! or from `SyncDriver`, which iOS's `sync_now` is not (decision K2).
 
+pub mod body_state;
 pub(crate) mod corrupt;
 pub mod history;
 pub mod manifest;

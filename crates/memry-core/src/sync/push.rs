@@ -414,14 +414,6 @@ impl PushCoordinator {
         Ok(())
     }
 
-    async fn retire_one(&self, id: i64, reason: &str) -> Result<(), PushError> {
-        let reason = reason.to_owned();
-        self.db
-            .call(move |conn| outbox::retire(conn, &[id], &reason))
-            .await?;
-        Ok(())
-    }
-
     /// §5.6's ladder: halve, hold the reduced size as a ceiling, and try
     /// again next iteration. At [`MIN_PUSH_BATCH_SIZE`] there is nothing left
     /// to halve, so the wave fails and §C.3 sends the pass to `Failed`.

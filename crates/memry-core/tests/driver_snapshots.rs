@@ -101,6 +101,26 @@ async fn the_fallback_gate_reads_this_passs_pull() {
 }
 
 #[tokio::test]
+async fn a_clean_waves_oversize_update_goes_out_as_a_snapshot() {
+    let desktop = Desktop::open(&["note"], |_| Ok(())).await;
+    assert!(!desktop.pass().await.pull.has_more);
+
+    queue_body_update(&desktop.db, "bigdoc000001", &noisy_text(1_500_000));
+    let pass = desktop.pass().await;
+
+    assert!(!pass.pull.has_more, "this pass read the whole feed");
+    assert!(
+        snapshots_sent(&desktop) >= 1,
+        "the fallback sent a snapshot"
+    );
+    let depth = desktop
+        .db
+        .call_blocking(|conn| outbox::depth(conn))
+        .unwrap();
+    assert_eq!(depth, 0, "the snapshot acked the large update");
+}
+
+#[tokio::test]
 async fn a_due_snapshot_after_an_unread_feed_stays_requested() {
     let desktop = Desktop::open(&["note"], |_| Ok(())).await;
     queue_body_update(&desktop.db, "doc000000001", "an edit");

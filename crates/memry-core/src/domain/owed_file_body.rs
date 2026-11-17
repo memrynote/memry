@@ -27,7 +27,7 @@
 //! ([`super::note_files::remove`]). It is harmless meanwhile: [`list`] leaves out
 //! a note that does not live, and nothing writes a deleted note's file.
 
-use rusqlite::{Connection, params};
+use rusqlite::{Connection, OptionalExtension as _, params};
 
 use crate::api::errors::StorageError;
 
@@ -63,6 +63,37 @@ pub fn owes(conn: &Connection, note_id: &str) -> Result<bool, StorageError> {
         |row| row.get(0),
     )
     .map_err(failed)
+}
+
+/// When `note_id`'s marker was recorded, or `None` without one.
+pub fn recorded_at(conn: &Connection, note_id: &str) -> Result<Option<i64>, StorageError> {
+    let value: Option<String> = conn
+        .query_row(
+            "SELECT value FROM meta WHERE key = ?1",
+            params![key(note_id)],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(failed)?;
+    Ok(value.map(|value| value.parse().unwrap_or(0)))
+}
+
+/// Every marker with the time it was recorded, deleted notes included.
+pub fn all_recorded(conn: &Connection) -> Result<Vec<(String, i64)>, StorageError> {
+    let mut statement = conn
+        .prepare("SELECT substr(key, ?1), value FROM meta WHERE key >= ?2 AND key < ?3")
+        .map_err(failed)?;
+    statement
+        .query_map(
+            params![PREFIX.chars().count() as i64 + 1, PREFIX, PREFIX_END],
+            |row| {
+                let value: String = row.get(1)?;
+                Ok((row.get(0)?, value.parse().unwrap_or(0)))
+            },
+        )
+        .map_err(failed)?
+        .collect::<Result<_, _>>()
+        .map_err(failed)
 }
 
 /// Takes the marker back. True when there was one.
