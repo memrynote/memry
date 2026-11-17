@@ -144,9 +144,12 @@ test-hooks = []
 # Tests against the real sync server on miniflare: tests/sync_harness.rs. Needs node and
 # `pnpm install` (tests/sync-harness).
 harness = []
+# Named crash points in the Electron vault import (`electron_import::vault_db::crash`): the
+# crate's own tests turn it on; no app build does.
+import-crash-points = []
 
 [dev-dependencies]
-memry-desktop = { path = ".", features = ["test-hooks"] }
+memry-desktop = { path = ".", features = ["test-hooks", "import-crash-points"] }
 proptest = "1"
 memry-test-kit = { path = "../memry-test-kit" }
 tokio = { workspace = true, features = ["net", "io-util", "time", "macros", "rt-multi-thread", "test-util"] }
@@ -183,6 +186,10 @@ doc = false
 [[test]]
 name = "integration"
 path = "tests/integration.rs"
+
+[[test]]
+name = "electron_vault_import"
+path = "tests/electron_vault_import.rs"
 
 [[test]]
 name = "activity_log_memory"

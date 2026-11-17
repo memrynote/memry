@@ -13,6 +13,7 @@ pub mod local_storage;
 pub mod profile;
 pub mod scratch;
 pub mod secrets;
+pub mod vault_db;
 pub mod ystore;
 
 use std::path::PathBuf;
@@ -53,6 +54,41 @@ pub enum ImportError {
     Decrypt(&'static str),
     #[error("leveldb: {0}")]
     LevelDb(String),
+    /// A vault database table `vault_db::tables::TABLE_MAP` does not list. Nothing was written.
+    #[error("{db} has an unmapped table {table}")]
+    UnmappedTable { db: &'static str, table: String },
+    /// A `sync_state` key `vault_db::sync_state::SYNC_STATE_KEYS` does not list. Nothing was
+    /// written.
+    #[error("sync_state has an unmapped key {0}")]
+    UnmappedSyncStateKey(String),
+    /// The source's last drizzle migration is not the frozen one the table map describes.
+    #[error("{db} is at migration {found:?}, this build reads {expected}")]
+    SourceSchema {
+        db: &'static str,
+        found: Option<i64>,
+        expected: i64,
+    },
+    /// The source holds rows whose importer this build does not have yet. Nothing was written.
+    #[error("the import of {0} is not built yet")]
+    NotReady(String),
+    #[error("{path} is {bytes} bytes, over the {max} byte limit")]
+    TooLarge { path: PathBuf, bytes: u64, max: u64 },
+    /// The source changed while it was copied: Electron was writing. Retry once it has quit.
+    #[error("{0} changed while it was copied")]
+    SourceChanged(PathBuf),
+    /// Reading the copy of a source database failed. `detail` is SQLite's message, which names
+    /// tables and columns, never values.
+    #[error("{db} copy: {detail}")]
+    Source { db: &'static str, detail: String },
+    #[error("{table} row {rowid} has an id that is not UTF-8 text")]
+    NonTextId { table: String, rowid: i64 },
+    #[error("stage check {check} failed: {detail}")]
+    CheckFailed { check: u8, detail: String },
+    /// A file under `<vault>/.memry/core/` the import must not replace.
+    #[error("{0} exists; the import does not replace it")]
+    CoreFileExists(PathBuf),
+    #[error(transparent)]
+    Storage(#[from] memry_core::api::errors::StorageError),
 }
 
 impl ImportError {

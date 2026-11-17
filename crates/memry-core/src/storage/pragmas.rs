@@ -74,6 +74,21 @@ pub fn configure_writer(conn: &Connection, profile: Profile) -> Result<(), Stora
     register_functions(conn)
 }
 
+/// Pragmas and functions for a database staged by the Electron import
+/// ([`crate::storage::import`]): no journal and no syncs, because a staged file
+/// that did not finish is deleted, never repaired. The installed file is reopened
+/// through [`configure_writer`], which sets WAL again.
+pub fn configure_staging(conn: &Connection, profile: Profile) -> Result<(), StorageError> {
+    assert_fts5(conn)?;
+    common(conn, profile)?;
+    let _mode: String = conn
+        .query_row("PRAGMA journal_mode=OFF", [], |row| row.get(0))
+        .map_err(|err| fail("journal_mode", err))?;
+    conn.pragma_update(None, "synchronous", "OFF")
+        .map_err(|err| fail("synchronous", err))?;
+    register_functions(conn)
+}
+
 /// Pragmas and functions for a pooled reader. The connection is already opened
 /// `SQLITE_OPEN_READ_ONLY`; `query_only` is the second lock on the same door.
 pub fn configure_reader(conn: &Connection, profile: Profile) -> Result<(), StorageError> {
