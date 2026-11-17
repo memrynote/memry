@@ -105,7 +105,7 @@ fn a_bare_array_journal_has_no_written_at_and_overwrites_whatever_differs() {
     let bytes = json!([write(&note, "journal body")]).to_string();
     let j = BulkApplyJournal::parse(bytes.as_bytes()).unwrap();
     assert_eq!(j.written_at, 0.0);
-    assert_eq!(replay(&j, &w.vault).written, [note.clone()]);
+    assert_eq!(replay(&j, &w.vault).written, std::slice::from_ref(&note));
     assert_eq!(read(&note), "journal body");
 }
 
@@ -124,7 +124,7 @@ fn deletes_only_a_file_not_newer_than_the_delete() {
 
     let replay = replay(&j, &w.vault);
 
-    assert_eq!(replay.deleted, [due.clone()]);
+    assert_eq!(replay.deleted, std::slice::from_ref(&due));
     assert_eq!(replay.settled, 1);
     assert_eq!(replay.skipped[0].reason, EntrySkip::NewerOnDisk);
     assert!(!due.exists() && newer.exists());
@@ -310,7 +310,7 @@ fn parse_and_replay_visit_each_entry_a_bounded_number_of_times() {
     let bytes = json!({ "writtenAt": WRITTEN_AT, "entries": entries }).to_string();
     assert_steps_at_most("journal parse and replay", steps, 2 * n + 10, || {
         let j = BulkApplyJournal::parse(bytes.as_bytes()).unwrap();
-        assert_eq!(replay(&j, &w.vault).written, [note.clone()]);
+        assert_eq!(replay(&j, &w.vault).written, std::slice::from_ref(&note));
     });
 }
 

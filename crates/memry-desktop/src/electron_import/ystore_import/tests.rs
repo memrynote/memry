@@ -105,7 +105,10 @@ fn folds_every_update_in_clock_order_into_one_state() {
     assert_eq!(fold.docs.len(), 1);
     let folded = &fold.docs[0];
     assert_eq!(folded.doc_id, "abcdefghijkl");
-    assert_eq!(doc_json(&[folded.state.clone()]), doc_json(&updates));
+    assert_eq!(
+        doc_json(std::slice::from_ref(&folded.state)),
+        doc_json(&updates)
+    );
     assert!(fold.skipped.is_empty() && fold.incomplete.is_empty());
 }
 
@@ -328,7 +331,7 @@ proptest! {
         let input: usize = updates.iter().map(Vec::len).sum();
         let fold = fold_docs(&[doc("random000001", updates.clone())], false).unwrap();
         if let Some(folded) = fold.docs.first() {
-            prop_assert_eq!(doc_json(&[folded.state.clone()]), doc_json(&updates));
+            prop_assert_eq!(doc_json(std::slice::from_ref(&folded.state)), doc_json(&updates));
             prop_assert!(folded.state.len() <= output_bound(input));
         }
     }
