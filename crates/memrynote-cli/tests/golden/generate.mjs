@@ -5,6 +5,8 @@
 //   node crates/memrynote-cli/tests/golden/generate.mjs              scenarios -> expected/
 //   node crates/memrynote-cli/tests/golden/generate.mjs --manifest   case labels -> manifest.json
 //   ... --check                                                      writes nothing, fails on a stale file
+//   node crates/memrynote-cli/tests/golden/generate.mjs --pending-base <git ref>
+//                       fails when pending.json lists an entry the ref had ported (CI, pull requests)
 //
 // better-sqlite3 must be built for Node: `pnpm --filter @memry/desktop rebuild:node`.
 
@@ -20,6 +22,7 @@ const here = path.dirname(fileURLToPath(import.meta.url))
 const repo = path.resolve(here, '../../../..')
 const args = new Set(process.argv.slice(2))
 const check = args.has('--check')
+const pendingBase = process.argv[process.argv.indexOf('--pending-base') + 1]
 let stale = 0
 
 function emit(file, value) {
@@ -140,6 +143,11 @@ function runScenario(scenario) {
     fs.mkdirSync(dirs.vault)
     fs.mkdirSync(dirs.home)
     fs.mkdirSync(path.join(tmp, 'appdata'))
+    for (const [file, text] of Object.entries(scenario.files ?? {})) {
+      const target = path.join(tmp, ...file.split('/'))
+      fs.mkdirSync(path.dirname(target), { recursive: true })
+      fs.writeFileSync(target, text)
+    }
     const config = path.join(tmp, 'appdata', 'memry-config.json')
     if (scenario.registry !== null) {
       fs.writeFileSync(config, JSON.stringify(expandTokens(scenario.registry, dirs, {}), null, 2))
@@ -188,7 +196,45 @@ function runScenario(scenario) {
   }
 }
 
-if (args.has('--manifest')) {
+// --- pending ----------------------------------------------------------------------------------
+
+/** The file at `ref`, `null` when the ref has none. */
+function showAt(ref, name) {
+  const result = spawnSync(
+    'git',
+    ['show', `${ref}:${path.relative(repo, path.join(here, name)).split(path.sep).join('/')}`],
+    { cwd: repo, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }
+  )
+  if (result.status === 0) return JSON.parse(result.stdout)
+  if (/does not exist|exists on disk, but not in/.test(result.stderr)) return null
+  throw new Error(`git show ${ref} ${name} failed:\n${result.stderr}`)
+}
+
+/** pending.json may only shrink: an entry the base ported stays ported. An entry new to the
+ *  manifest (a command the TypeScript CLI gained) may join it. */
+function checkPendingShrinks(ref) {
+  const basePending = showAt(ref, 'pending.json')
+  const baseManifest = showAt(ref, 'manifest.json')
+  if (basePending === null || baseManifest === null) {
+    console.log(`${ref} has no golden files; nothing to compare`)
+    return
+  }
+  const known = new Set(baseManifest.map((entry) => entry.key))
+  const before = new Set(basePending)
+  const pending = JSON.parse(fs.readFileSync(path.join(here, 'pending.json'), 'utf8'))
+  const regressed = pending.filter((key) => known.has(key) && !before.has(key))
+  if (regressed.length > 0) {
+    console.error(`pending.json gained entries ${ref} had ported: ${regressed.join(', ')}`)
+    process.exit(1)
+  }
+  console.log(`pending.json: ${pending.length} entries, ${basePending.length} on ${ref}`)
+}
+
+if (args.has('--pending-base')) {
+  if (!pendingBase || pendingBase.startsWith('--'))
+    throw new Error('--pending-base needs a git ref')
+  checkPendingShrinks(pendingBase)
+} else if (args.has('--manifest')) {
   const entries = manifest()
   emit(path.join(here, 'manifest.json'), entries)
   console.log(`${entries.length} entries`)

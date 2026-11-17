@@ -18,20 +18,20 @@ use crate::{CliDeps, CliError, CliIo};
 pub fn run_registry_command(
     parsed: &ParsedCli,
     io: &mut dyn CliIo,
-    registry: Option<&VaultRegistry>,
     deps: &CliDeps,
 ) -> Result<bool, CliError> {
     match parsed.subcommand.as_deref() {
         Some("list") => {
-            let vaults = require(registry)?.stored().iter().map(cli_vault).collect();
+            let vaults = deps.registry()?.stored().iter().map(cli_vault).collect();
             print(io, parsed.json, Some(&Value::Array(vaults)));
         }
         Some("current") => {
+            let registry = deps.registry()?;
             let path = match &parsed.vault_path {
                 Some(path) => path.clone(),
-                None => resolve_default_vault_path(registry)?,
+                None => resolve_default_vault_path(&registry)?,
             };
-            let vault = require(registry)?
+            let vault = registry
                 .stored()
                 .iter()
                 .find(|vault| vault.path == path)
@@ -45,8 +45,8 @@ pub fn run_registry_command(
                 .or(parsed.vault_path.as_ref())
                 .filter(|reference| !reference.is_empty())
                 .ok_or("Usage: memrynote vault use <vault-name-or-path>")?;
-            let registry = require(registry)?;
-            let path = resolve_reference(registry, reference, deps)?;
+            let registry = deps.registry()?;
+            let path = resolve_reference(&registry, reference, deps)?;
             let unknown = || CliError(format!("Unknown vault: {reference}"));
             registry.set_default(&path).map_err(|error| match error {
                 RegistryError::NotRegistered(_) => unknown(),
@@ -66,8 +66,8 @@ pub fn run_registry_command(
                     "Pass --yes to remove the vault from the list (its files are kept)".into(),
                 );
             }
-            let registry = require(registry)?;
-            let path = resolve_reference(registry, reference, deps)?;
+            let registry = deps.registry()?;
+            let path = resolve_reference(&registry, reference, deps)?;
             let vault = registry
                 .get(&path)
                 .ok_or_else(|| CliError(format!("Unknown vault: {reference}")))?;
@@ -88,8 +88,8 @@ pub fn run_registry_command(
 }
 
 /// `resolveDefaultVaultPath`: the default vault, else the only vault.
-pub fn resolve_default_vault_path(registry: Option<&VaultRegistry>) -> Result<String, CliError> {
-    let vaults = require(registry)?.stored();
+pub fn resolve_default_vault_path(registry: &VaultRegistry) -> Result<String, CliError> {
+    let vaults = registry.stored();
     if let Some(vault) = vaults.iter().find(|vault| vault.is_default) {
         return Ok(vault.path.clone());
     }
@@ -98,12 +98,6 @@ pub fn resolve_default_vault_path(registry: Option<&VaultRegistry>) -> Result<St
         [] => Err("No default vault configured. Open Memry and choose Settings > Command Line > Default vault, or run with --vault <path>.".into()),
         _ => Err("Multiple vaults found. Choose one with `memrynote vault use <vault-name-or-path>` or run with --vault <path>.".into()),
     }
-}
-
-fn require(registry: Option<&VaultRegistry>) -> Result<&VaultRegistry, CliError> {
-    registry.ok_or_else(|| {
-        "No CLI vault registry is available. Pass --vault <path> or run Memry from the desktop app command.".into()
-    })
 }
 
 /// `toCliVault`. `lastOpened` is left out when the entry has none, as `JSON.stringify` drops
@@ -164,15 +158,20 @@ fn node_resolve(cwd: &Path, path: &str) -> PathBuf {
     normalize(&cwd.join(path))
 }
 
-fn normalize(path: &Path) -> PathBuf {
+/// Node's `path.normalize`, lexically: `.` dropped, `..` taken back over a name, kept at the
+/// start of a relative path and dropped at a root or drive, as `..` at the root stays there.
+pub(crate) fn normalize(path: &Path) -> PathBuf {
     let mut out = PathBuf::new();
     for component in path.components() {
         match component {
             Component::CurDir => {}
-            // `pop` keeps a root or a drive, as `..` at the root stays there.
-            Component::ParentDir => {
-                out.pop();
-            }
+            Component::ParentDir => match out.components().next_back() {
+                Some(Component::Normal(_)) => {
+                    out.pop();
+                }
+                Some(Component::RootDir | Component::Prefix(_)) => {}
+                _ => out.push(".."),
+            },
             other => out.push(other),
         }
     }
@@ -190,5 +189,6 @@ mod tests {
         assert_eq!(node_resolve(cwd, "/x/y/.."), Path::new("/x"));
         assert_eq!(node_resolve(cwd, "/../.."), Path::new("/"));
         assert_eq!(node_resolve(cwd, ""), Path::new("/work/dir"));
+        assert_eq!(normalize(Path::new("../a/./../../b")), Path::new("../../b"));
     }
 }

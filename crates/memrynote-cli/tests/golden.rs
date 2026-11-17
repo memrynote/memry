@@ -1,8 +1,8 @@
 //! The golden scenarios: this CLI against the output the TypeScript CLI recorded
 //! (`tests/golden/generate.mjs`), plus the coverage ratchet over its case labels.
 //!
-//! `pending.json` lists the manifest entries without a Rust port. It may only shrink: lower
-//! `PENDING_MAX` with it. Every other entry needs a scenario step.
+//! `pending.json` lists the manifest entries without a Rust port. It may only shrink: CI holds it
+//! to the base branch's (`generate.mjs --pending-base`). Every other entry needs a scenario step.
 
 use std::collections::{BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
@@ -13,9 +13,6 @@ use memrynote_cli::parse::parse_cli;
 use memrynote_cli::{CliDeps, CliIo, not_ported, run_cli};
 use regex::Regex;
 use serde_json::Value;
-
-/// The length of `tests/golden/pending.json`. Each stage of #3552 lowers it.
-const PENDING_MAX: usize = 341;
 
 fn golden(name: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -104,6 +101,9 @@ static ISO: LazyLock<Regex> = LazyLock::new(|| {
 });
 static MS: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(?-u:\b)[0-9]{13}(?-u:\b)").expect("regex"));
+static BELOW_TOKEN: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#"<(?:vault|home|tmp)>(?:(?:\\\\|\\|/)[^\\/"'\s]+)+"#).expect("regex")
+});
 
 /// `normalize` of `normalize.mjs`. `ids` lives for one scenario.
 fn normalize(text: &str, dirs: &Dirs, ids: &mut HashMap<String, String>) -> String {
@@ -117,6 +117,11 @@ fn normalize(text: &str, dirs: &Dirs, ids: &mut HashMap<String, String>) -> Stri
         out = out.replace(&escaped[1..escaped.len() - 1], token);
         out = out.replace(dir.as_str(), token);
     }
+    out = BELOW_TOKEN
+        .replace_all(&out, |caps: &regex::Captures<'_>| {
+            caps[0].replace(r"\\", "/").replace('\\', "/")
+        })
+        .into_owned();
     out = UUID
         .replace_all(&out, |caps: &regex::Captures<'_>| {
             let next = format!("<id{}>", ids.len() + 1);
@@ -151,7 +156,7 @@ struct Rig {
     deps: CliDeps,
 }
 
-fn rig(registry: &Value) -> Rig {
+fn rig(registry: &Value, files: &Value) -> Rig {
     let dir = tempfile::Builder::new()
         .prefix("memrynote-golden-")
         .tempdir()
@@ -170,6 +175,13 @@ fn rig(registry: &Value) -> Rig {
     let appdata = tmp.join("appdata");
     for path in [&tmp.join("vault"), &tmp.join("home"), &appdata] {
         std::fs::create_dir(path).expect("mkdir");
+    }
+    for (file, text) in files.as_object().into_iter().flatten() {
+        let target = file
+            .split('/')
+            .fold(tmp.clone(), |path, part| path.join(part));
+        std::fs::create_dir_all(target.parent().expect("parent")).expect("mkdir");
+        std::fs::write(&target, text.as_str().expect("file text")).expect("write file");
     }
     if !registry.is_null() {
         let config = stringify(&expand(registry, &dirs, &[]), Some(2));
@@ -208,7 +220,7 @@ fn scenarios_match_the_typescript_cli() {
             expected_steps.len(),
             "{file}: expected/ is stale, run generate.mjs"
         );
-        let rig = rig(&scenario["registry"]);
+        let rig = rig(&scenario["registry"], &scenario["files"]);
         let mut aliases: Vec<(String, String)> = Vec::new();
         let mut ids = HashMap::new();
         for (index, (step, want)) in steps.iter().zip(expected_steps).enumerate() {
@@ -310,7 +322,7 @@ fn every_manifest_entry_has_a_scenario_step() {
 }
 
 #[test]
-fn pending_only_shrinks() {
+fn pending_is_sorted_and_in_the_manifest() {
     let pending = pending();
     let keys = manifest_keys();
     let mut sorted = pending.clone();
@@ -325,16 +337,11 @@ fn pending_only_shrinks() {
         unknown.is_empty(),
         "pending entries not in the manifest: {unknown:?}"
     );
-    assert_eq!(
-        pending.len(),
-        PENDING_MAX,
-        "pending.json may only shrink; after porting entries, lower PENDING_MAX to its length"
-    );
 }
 
 #[test]
 fn every_pending_entry_is_not_ported() {
-    let rig = rig(&Value::Null);
+    let rig = rig(&Value::Null, &Value::Null);
     let wrong: Vec<_> = pending()
         .into_iter()
         .filter_map(|key| {

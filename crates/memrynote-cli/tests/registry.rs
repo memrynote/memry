@@ -69,3 +69,61 @@ fn use_and_remove_keep_every_key_they_do_not_own() {
         .collect();
     assert_eq!(names, ["memry-config.json"]);
 }
+
+#[derive(Default)]
+struct Captured {
+    out: String,
+    err: String,
+}
+
+impl CliIo for Captured {
+    fn out(&mut self, line: &str) {
+        self.out.push_str(line);
+    }
+    fn err(&mut self, line: &str) {
+        self.err.push_str(line);
+    }
+}
+
+/// The app owns `memry-config.json`: a file that is not a JSON object fails the commands that
+/// read it and stays where it is, and a command that does not need the registry never reads it.
+#[test]
+fn a_bad_registry_fails_the_command_and_is_left_for_the_app() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let config = dir.path().join("memry-config.json");
+    std::fs::write(&config, b"[1, 2]").expect("seed");
+    let vault = dir.path().join("vault");
+    std::fs::create_dir(&vault).expect("vault");
+    let deps = CliDeps {
+        data_dir: Some(dir.path().to_path_buf()),
+        cwd: dir.path().to_path_buf(),
+        home: None,
+    };
+    let run = |args: &[&str]| {
+        let args: Vec<String> = args.iter().map(|arg| (*arg).to_owned()).collect();
+        let mut io = Captured::default();
+        (run_cli(&args, &mut io, &deps), io)
+    };
+
+    for args in [&["vault", "list"][..], &["locale", "list"]] {
+        let (code, io) = run(args);
+        assert_eq!(code, 1, "{args:?}");
+        assert!(io.out.is_empty(), "{args:?}: {}", io.out);
+        assert!(
+            io.err.contains("is not a JSON object"),
+            "{args:?}: {}",
+            io.err
+        );
+    }
+    let vault = vault.to_str().expect("utf-8");
+    let (code, io) = run(&["--vault", vault, "locale", "list"]);
+    assert_eq!((code, io.err.as_str()), (0, ""));
+
+    assert_eq!(std::fs::read(&config).expect("read"), b"[1, 2]");
+    let mut names: Vec<_> = std::fs::read_dir(dir.path())
+        .expect("dir")
+        .map(|entry| entry.expect("entry").file_name())
+        .collect();
+    names.sort();
+    assert_eq!(names, ["memry-config.json", "vault"]);
+}

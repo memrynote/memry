@@ -311,6 +311,22 @@ jobs:
         if: matrix.shard == 1
         run: pnpm test:cli
 
+      # The goldens of crates/memrynote-cli come from the TypeScript CLI (needs better-sqlite3
+      # built for Node, done above): a stale manifest or expected file fails here.
+      - name: memrynote goldens match the TypeScript CLI
+        if: matrix.shard == 1
+        run: |
+          node crates/memrynote-cli/tests/golden/generate.mjs --manifest --check
+          node crates/memrynote-cli/tests/golden/generate.mjs --check
+
+      - name: memrynote pending.json only shrinks
+        if: matrix.shard == 1 && github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE_REF"
+          node crates/memrynote-cli/tests/golden/generate.mjs --pending-base FETCH_HEAD
+
       - name: Run desktop tests with coverage (shard ${{ matrix.shard }}/4)
         # Threshold enforcement is deferred to the separate "Coverage thresholds"
         # job so a red badge here always means a real test failure, never a

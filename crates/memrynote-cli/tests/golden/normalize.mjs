@@ -23,9 +23,12 @@ export function expandTokens(value, dirs, aliases) {
 const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g
 const ISO = /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})/g
 const MS = /\b\d{13}\b/g
+// A path below a folder token: its Windows separators (raw or escaped inside JSON) become `/`, so
+// one expected file holds on every OS.
+const BELOW_TOKEN = /<(?:vault|home|tmp)>(?:(?:\\\\|\\|\/)[^\\/"'\s]+)+/g
 
 /** The folders of the run become `<vault>`, `<home>`, `<tmp>` (as written and as escaped inside
- *  JSON), ids `<idN>` by first appearance in `ids` (one map per scenario), ISO timestamps
+ *  JSON; separators below them `/`), ids `<idN>` by first appearance in `ids` (one map per scenario), ISO timestamps
  *  `<iso>`, 13-digit epoch milliseconds `<ms>`. */
 export function normalize(text, dirs, ids = new Map()) {
   let out = text
@@ -37,6 +40,7 @@ export function normalize(text, dirs, ids = new Map()) {
     out = out.split(JSON.stringify(dir).slice(1, -1)).join(token)
     out = out.split(dir).join(token)
   }
+  out = out.replace(BELOW_TOKEN, (run) => run.replace(/\\\\|\\/g, '/'))
   out = out.replace(UUID, (id) => {
     if (!ids.has(id)) ids.set(id, `<id${ids.size + 1}>`)
     return ids.get(id)
@@ -49,5 +53,6 @@ export const NORMALIZE_CASES = [
   '0f8fad5b-d9cb-469f-a165-70867728950e 7c9e6679-7425-40de-944b-e07fc1f90ae7 0f8fad5b-d9cb-469f-a165-70867728950e',
   '2026-01-02T03:04:05.678Z 2026-01-02T03:04:05Z 2026-01-02T03:04:05.678+03:00 2026-01-02',
   '1767225600000 12345678901234 123456789012 a1767225600000',
-  'undefined\n\n'
+  'undefined\n\n',
+  String.raw`mkdir '/tmp/x\appdata\f\.memry' "/tmp/x/vault\\a\\b" "/tmp/x/home\""`
 ]

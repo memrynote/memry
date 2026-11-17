@@ -43,5 +43,14 @@
       "home": "/tmp/x/home"
     },
     "output": "undefined\n\n"
+  },
+  {
+    "input": "mkdir '/tmp/x\\appdata\\f\\.memry' \"/tmp/x/vault\\\\a\\\\b\" \"/tmp/x/home\\\"\"",
+    "dirs": {
+      "tmp": "/tmp/x",
+      "vault": "/tmp/x/vault",
+      "home": "/tmp/x/home"
+    },
+    "output": "mkdir '<tmp>/appdata/f/.memry' \"<vault>/a/b\" \"<home>\\\"\""
   }
 ]

@@ -12,6 +12,7 @@ mod migrate_installer;
 pub mod output;
 pub mod parse;
 mod registry;
+mod vault;
 
 use std::ffi::OsString;
 use std::io::Write;
@@ -96,23 +97,28 @@ pub struct CliDeps {
 }
 
 impl CliDeps {
-    /// The process's own surroundings. `packaged` is the app's `!tauri::is_dev()`: it only
+    /// The process's surroundings under the launch switches `env` (the app's, after an e2e
+    /// build overlaid its control file). `packaged` is the app's `!tauri::is_dev()`: it only
     /// changes the profile of the `dev` device (`memry_desktop::paths::profile_identifier`).
-    pub fn from_process(packaged: bool) -> Self {
+    pub fn from_env(env: &LaunchEnv, packaged: bool) -> Self {
         Self {
-            data_dir: app_data_dir(&LaunchEnv::from_process(), packaged),
+            data_dir: app_data_dir(env, packaged),
             cwd: std::env::current_dir().unwrap_or_default(),
             home: std::env::home_dir(),
         }
     }
 
-    /// The registry the app keeps in its data folder. The TypeScript CLI had none outside
-    /// the desktop launcher (`requireVaultRegistry`).
-    fn registry(&self) -> Option<VaultRegistry> {
-        let dir = self.data_dir.as_ref()?;
-        Some(VaultRegistry::new(Arc::new(AppConfig::load(
-            dir.join(CONFIG_FILE),
-        ))))
+    /// The registry the app keeps in its data folder, read when a command first needs it, as
+    /// the TypeScript CLI reads the store. The TypeScript CLI had none outside the desktop
+    /// launcher (`requireVaultRegistry`). The app owns the file: a bad one fails the command
+    /// and is left for the app to set aside.
+    fn registry(&self) -> Result<VaultRegistry, CliError> {
+        let dir = self.data_dir.as_ref().ok_or(
+            "No CLI vault registry is available. Pass --vault <path> or run Memry from the desktop app command.",
+        )?;
+        let config = AppConfig::load_strict(dir.join(CONFIG_FILE))
+            .map_err(|error| CliError(error.to_string()))?;
+        Ok(VaultRegistry::new(Arc::new(config)))
     }
 }
 
@@ -140,16 +146,16 @@ pub fn headless_args(argv: &[OsString]) -> Option<Vec<String>> {
 
 /// A `--cli` launch of the app binary (`runHeadlessCli`): `migrate-installer` first, then the
 /// command line.
-pub fn run_headless(args: Vec<String>, packaged: bool) -> i32 {
+pub fn run_headless(args: Vec<String>, env: &LaunchEnv, packaged: bool) -> i32 {
     if args.first().map(String::as_str) == Some("migrate-installer") {
         return migrate_installer::run(&args[1..], &mut ProcessIo);
     }
-    run_process(args, packaged)
+    run_process(args, &CliDeps::from_env(env, packaged))
 }
 
 /// Runs one command line against the process's stdout and stderr and returns the exit code.
-pub fn run_process(args: Vec<String>, packaged: bool) -> i32 {
-    let code = run_cli(&args, &mut ProcessIo, &CliDeps::from_process(packaged));
+pub fn run_process(args: Vec<String>, deps: &CliDeps) -> i32 {
+    let code = run_cli(&args, &mut ProcessIo, deps);
     let _ = std::io::stdout().flush();
     code
 }
@@ -167,17 +173,18 @@ pub fn run_cli(args: &[String], io: &mut dyn CliIo, deps: &CliDeps) -> i32 {
 }
 
 fn run(parsed: &ParsedCli, io: &mut dyn CliIo, deps: &CliDeps) -> CliResult {
-    let registry = deps.registry();
     if parsed.command.as_deref() == Some("vault")
-        && registry::run_registry_command(parsed, io, registry.as_ref(), deps)?
+        && registry::run_registry_command(parsed, io, deps)?
     {
         return Ok(());
     }
-    // Resolved before any group runs, so a command fails on a missing vault the same way
-    // whether or not it is ported.
-    if parsed.vault_path.is_none() {
-        registry::resolve_default_vault_path(registry.as_ref())?;
-    }
+    // Resolved and checked before any group runs (`createMemryApp`), so a command fails on a
+    // missing or unusable vault the same way whether or not it is ported.
+    let vault = match &parsed.vault_path {
+        Some(path) => path.clone(),
+        None => registry::resolve_default_vault_path(&deps.registry()?)?,
+    };
+    vault::check_path(&vault, &deps.cwd)?;
     route(parsed, io)
 }
 

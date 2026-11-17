@@ -173,6 +173,28 @@ impl VaultRegistry {
         self.config.update(|map| upsert_in(map, stored))
     }
 
+    /// Mirrors the vault's account binding onto its entry (`writeVaultAccountBinding`). Only
+    /// `accountBinding` of the entry on disk changes: the rest of the entry, and whether it is
+    /// there at all, may have changed in another process (the command line) since the load.
+    pub fn set_account_binding(
+        &self,
+        path: &str,
+        binding: &AccountBinding,
+    ) -> Result<(), RegistryError> {
+        let value = serde_json::json!({ "userId": binding.user_id, "mode": binding.mode });
+        self.config.update(|map| {
+            if let Some(entry) = vaults_mut(map)?
+                .into_iter()
+                .flatten()
+                .filter_map(Value::as_object_mut)
+                .find(|o| path_of(o) == Some(path))
+            {
+                entry.insert("accountBinding".into(), value);
+            }
+            Ok::<_, RegistryError>(())
+        })
+    }
+
     /// A vault was opened: registers it when new (first vault becomes the default), stamps
     /// `lastOpened`, and makes it the current vault. Returns the stored entry.
     pub fn record_open(

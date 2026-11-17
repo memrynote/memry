@@ -229,3 +229,41 @@ fn the_vault_id_stamp_prefers_the_server_id_and_keeps_a_foreign_stamp() {
         .expect("no entry, no write");
     assert!(registry.get("/v/unknown").is_none());
 }
+
+#[test]
+fn the_binding_mirror_changes_only_the_binding_of_the_entry_on_disk() {
+    let dir = tempfile::tempdir().expect("dir");
+    let seed = r#"{"vaults":[
+        {"path":"/v/a","name":"a","noteCount":1,"taskCount":0,"lastOpened":"x","isDefault":true},
+        {"path":"/v/b","name":"b","noteCount":1,"taskCount":0,"lastOpened":"x","isDefault":false},
+        {"path":"/v/c","name":"c","noteCount":1,"taskCount":0,"lastOpened":"x","isDefault":false}]}"#;
+    // The app loaded the file before the command line changed it.
+    let app = registry_in(dir.path(), Some(seed));
+    let cli = registry_in(dir.path(), None);
+    cli.set_default("/v/b").expect("cli use b");
+    cli.remove("/v/c").expect("cli remove c");
+
+    let binding = AccountBinding {
+        user_id: "me".into(),
+        mode: "sync".into(),
+    };
+    app.set_account_binding("/v/c", &binding).expect("bind c");
+    app.set_account_binding("/v/a", &binding).expect("bind a");
+
+    let on_disk: Value =
+        serde_json::from_str(&std::fs::read_to_string(app.config().path()).expect("file"))
+            .expect("json");
+    let vaults = on_disk["vaults"].as_array().expect("vaults");
+    let paths: Vec<_> = vaults.iter().map(|v| v["path"].as_str()).collect();
+    assert_eq!(
+        paths,
+        [Some("/v/a"), Some("/v/b")],
+        "a removed vault stays removed"
+    );
+    assert_eq!(
+        vaults[0]["isDefault"], false,
+        "the default the CLI chose stays"
+    );
+    assert_eq!(vaults[1]["isDefault"], true);
+    assert_eq!(vaults[0]["accountBinding"]["userId"], "me");
+}
