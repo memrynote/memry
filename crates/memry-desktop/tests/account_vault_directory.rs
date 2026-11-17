@@ -19,16 +19,16 @@ use serde_json::{Value, json};
 
 use crate::account_service::{Keychain, MASTER, Script, access_token};
 
-struct Fixture {
-    dir: tempfile::TempDir,
-    script: Arc<Script>,
-    config: Arc<AppConfig>,
-    registry: VaultRegistry,
-    account: AccountService,
+pub(crate) struct Fixture {
+    pub(crate) dir: tempfile::TempDir,
+    pub(crate) script: Arc<Script>,
+    pub(crate) config: Arc<AppConfig>,
+    pub(crate) registry: VaultRegistry,
+    pub(crate) account: AccountService,
 }
 
 /// Signed in as user `u` with the master key.
-fn fixture() -> Fixture {
+pub(crate) fn fixture() -> Fixture {
     fixture_with(true)
 }
 
@@ -67,7 +67,12 @@ fn fixture_with(signed_in: bool) -> Fixture {
 
 impl Fixture {
     /// A registry entry with a real folder; `binding` is `(userId, mode)`.
-    fn local(&self, name: &str, uuid: Option<&str>, binding: Option<(&str, &str)>) -> PathBuf {
+    pub(crate) fn local(
+        &self,
+        name: &str,
+        uuid: Option<&str>,
+        binding: Option<(&str, &str)>,
+    ) -> PathBuf {
         let path = self.dir.path().join(name.to_lowercase());
         std::fs::create_dir_all(path.join(".memry")).unwrap();
         let mut entry = json!({
@@ -505,7 +510,7 @@ fn suggested_folders_slugify_fall_back_and_avoid_collisions() {
 
 // --- delete --------------------------------------------------------------------------------
 
-fn with_session(f: &Fixture) -> Session {
+pub(crate) fn with_session(f: &Fixture) -> Session {
     Session::new(VaultRegistry::new(f.config.clone()))
 }
 
