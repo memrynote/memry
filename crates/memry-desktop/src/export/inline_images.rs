@@ -25,7 +25,7 @@ use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD;
 use regex::{Captures, Regex};
 
-use crate::shell::file_open::{FileId, OpenError, file_identity, open_under_root};
+use crate::shell::file_open::{FileId, LinkPolicy, OpenError, file_identity, open_checked};
 
 /// Where an exported note's image refs resolve, and the roots a file may be read from.
 #[derive(Debug, Clone, Copy, Default)]
@@ -218,14 +218,16 @@ fn is_network_or_device(path: &str) -> bool {
     )
 }
 
-/// The target opened through [`open_under_root`], which follows links and
+/// The target opened through [`open_checked`], which follows links and
 /// refuses a real location outside the vault or the app data folder, with the
-/// MIME type of the real file's extension. A link named like an image to a
-/// file that is not one (`db.png` to the vault's database) is refused. `None`
-/// when the file does not exist.
+/// MIME type of the extension of the file it opened and checked, so a link
+/// swapped while it is opened gives the type of the file read. A link named like
+/// an image to a file that is not one (`db.png` to the vault's database) is
+/// refused. `None` when the file does not exist.
 fn open_target(
     target: &Target,
     source: ImageSource<'_>,
+    between: &mut dyn FnMut(),
 ) -> std::io::Result<Option<(File, &'static str)>> {
     let outside = || std::io::Error::other("outside the vault and the app data folder");
     let real = match std::fs::canonicalize(target.path()) {
@@ -233,8 +235,6 @@ fn open_target(
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
         Err(error) => return Err(error),
     };
-    let mime = image_mime(&extension(&real.to_string_lossy()))
-        .ok_or_else(|| std::io::Error::other("the linked file is not a known image type"))?;
     let (root, rel) = match target {
         Target::InVault { vault, rel } => (vault.clone(), rel.clone()),
         Target::Absolute(_) => [source.vault_path, source.app_data]
@@ -255,11 +255,18 @@ fn open_target(
             })
             .ok_or_else(outside)?,
     };
-    let file = open_under_root(&root, &rel).map_err(|error| match error {
-        OpenError::Io(error) => error,
-        other => std::io::Error::other(other.to_string()),
-    })?;
-    Ok(file.map(|file| (file, mime)))
+    let opened = open_checked(&root, &rel, LinkPolicy::RejectHardLinks, between).map_err(
+        |error| match error {
+            OpenError::Io(error) => error,
+            other => std::io::Error::other(other.to_string()),
+        },
+    )?;
+    let Some((file, opened_path)) = opened else {
+        return Ok(None);
+    };
+    let mime = image_mime(&extension(&opened_path.to_string_lossy()))
+        .ok_or_else(|| std::io::Error::other("the linked file is not a known image type"))?;
+    Ok(Some((file, mime)))
 }
 
 fn src_of<'h>(found: &Captures<'h>) -> &'h str {
@@ -295,7 +302,12 @@ struct Inliner {
 }
 
 impl Inliner {
-    fn inline(&mut self, src: &str, source: ImageSource<'_>) -> Option<String> {
+    fn inline(
+        &mut self,
+        src: &str,
+        source: ImageSource<'_>,
+        between: &mut dyn FnMut(),
+    ) -> Option<String> {
         let target = resolve_local_path(src, source)?;
         let file_path = target.path();
         if image_mime(&extension(&file_path.to_string_lossy())).is_none() {
@@ -306,7 +318,7 @@ impl Inliner {
             );
             return None;
         }
-        match self.read(&target, source) {
+        match self.read(&target, source, between) {
             Ok(uri) => Some(uri),
             Err(error) => {
                 tracing::warn!(
@@ -323,8 +335,13 @@ impl Inliner {
     /// The file's `data:` URI. Its size is checked before reading: the open
     /// refuses anything but a regular file (a FIFO named `x.png` would block the
     /// read forever).
-    fn read(&mut self, target: &Target, source: ImageSource<'_>) -> std::io::Result<String> {
-        let Some((file, mime)) = open_target(target, source)? else {
+    fn read(
+        &mut self,
+        target: &Target,
+        source: ImageSource<'_>,
+        between: &mut dyn FnMut(),
+    ) -> std::io::Result<String> {
+        let Some((file, mime)) = open_target(target, source, between)? else {
             return Err(std::io::ErrorKind::NotFound.into());
         };
         let (id, _) = file_identity(&file)?;
@@ -350,6 +367,21 @@ impl Inliner {
 /// Rewrites every `<img src>` in a rendered note to a `data:` URI holding the
 /// file's bytes. A src that names no readable local file is left as written.
 pub fn inline_export_images(html: &str, source: ImageSource<'_>) -> String {
+    inline_images(html, source, &mut || {})
+}
+
+/// [`inline_export_images`] with a hook that runs between each file's open and
+/// its re-check, so a test can swap the file in that window.
+#[cfg(feature = "test-hooks")]
+pub fn inline_export_images_between(
+    html: &str,
+    source: ImageSource<'_>,
+    between: &mut dyn FnMut(),
+) -> String {
+    inline_images(html, source, between)
+}
+
+fn inline_images(html: &str, source: ImageSource<'_>, between: &mut dyn FnMut()) -> String {
     let mut seen = HashSet::new();
     let refs: Vec<&str> = IMG_TAG
         .find_iter(html)
@@ -362,7 +394,7 @@ pub fn inline_export_images(html: &str, source: ImageSource<'_>) -> String {
     let mut inliner = Inliner::default();
     let inlined: HashMap<&str, String> = refs
         .into_iter()
-        .filter_map(|src| inliner.inline(src, source).map(|uri| (src, uri)))
+        .filter_map(|src| inliner.inline(src, source, between).map(|uri| (src, uri)))
         .collect();
     if inlined.is_empty() {
         return html.to_owned();

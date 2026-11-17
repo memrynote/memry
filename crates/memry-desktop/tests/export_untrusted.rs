@@ -11,7 +11,7 @@ use std::path::Path;
 use chrono::NaiveDate;
 use memry_desktop::export::{
     ImageSource, MAX_DATA_URI_LEN, NoteExport, RenderOptions, image_reads, inline_export_images,
-    render_note_as_html, steps,
+    inline_export_images_between, render_note_as_html, steps,
 };
 use memry_test_kit::{assert_steps_at_most, on_small_stack, proptest_config};
 use proptest::prelude::*;
@@ -222,6 +222,37 @@ fn a_link_named_like_an_image_to_another_file_stays_as_written() {
         assert_eq!(roots.inline(&src), src, "{src}");
     }
     assert_eq!(roots.inline("photo.png"), "data:image/jpeg;base64,iVBORw==");
+}
+
+/// The type comes from the file that was opened and checked, so a link swapped
+/// from an image to the vault's database while the export opens it is not read.
+#[cfg(unix)]
+#[test]
+fn a_link_swapped_to_another_file_during_the_open_stays_as_written() {
+    use std::os::unix::fs::symlink;
+    let roots = Roots::new();
+    let vault = roots.vault.path().to_path_buf();
+    std::fs::create_dir(vault.join(".memry")).expect("dot folder");
+    std::fs::write(vault.join(".memry/data.db"), b"SQLite format 3\0").expect("db");
+    std::fs::write(vault.join("b.jpg"), PNG).expect("jpg");
+    let link = vault.join("r.png");
+    symlink("b.jpg", &link).expect("image link");
+    let mut swapped = false;
+    let mut swap = || {
+        if !swapped {
+            swapped = true;
+            std::fs::remove_file(&link).expect("unlink");
+            symlink(".memry/data.db", &link).expect("db link");
+        }
+    };
+    let html = "<img src=\"r.png\">";
+    let source = ImageSource {
+        note_path: Some("Note.md"),
+        vault_path: Some(&vault),
+        app_data: Some(roots.app_data.path()),
+    };
+    assert_eq!(inline_export_images_between(html, source, &mut swap), html);
+    assert!(swapped);
 }
 
 /// A hard link carries no location to check, so a file with more than one

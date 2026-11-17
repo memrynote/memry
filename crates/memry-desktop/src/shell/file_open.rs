@@ -313,18 +313,19 @@ pub fn open_under_root_with(
     rel: &str,
     links: LinkPolicy,
 ) -> Result<Option<File>, OpenError> {
-    open_checked(root, rel, links, &mut || {})
+    Ok(open_checked(root, rel, links, &mut || {})?.map(|(file, _)| file))
 }
 
 /// `open_under_root_with` and a hook that runs between the open and the re-check, so a test
-/// can swap the file in that window.
+/// can swap the file in that window. Also returns the resolved path the opened file was
+/// checked against, links followed, re-rooted at `root`: its name is the opened file's.
 #[doc(hidden)]
 pub fn open_checked(
     root: &Path,
     rel: &str,
     links: LinkPolicy,
     between: &mut dyn FnMut(),
-) -> Result<Option<File>, OpenError> {
+) -> Result<Option<(File, PathBuf)>, OpenError> {
     for attempt in 1..=REPLACED_RETRIES {
         let path = match resolve_under_root(root, rel)? {
             Resolution::Outside => return Err(OpenError::Outside),
@@ -355,7 +356,7 @@ pub fn open_checked(
                 if let Ok(current) = open_read(&now)
                     && file_identity(&current)?.0 == opened
                 {
-                    return Ok(Some(file));
+                    return Ok(Some((file, now)));
                 }
             }
             Resolution::Missing => {}

@@ -33,7 +33,9 @@ pub(super) fn markdown_to_html(markdown: &str) -> String {
 /// Blank lines end a paragraph in comrak but are only more breaks inline, so
 /// each run between them renders on its own. A lone `\r` ends a line in comrak,
 /// so it is one here too, where `parseInline` keeps it as text. A line of
-/// spaces and tabs is blank to comrak, so it is blank here.
+/// spaces and tabs is blank to comrak, so it is blank here. Both depart from
+/// Electron's bytes: footnote text `one\r \rtwo` is `one\r \rtwo` there (the
+/// page shows "one two") and `one<br><br>two` here.
 fn render_inline(text: &str) -> String {
     let text = text.replace('\r', "\n");
     let blank = |line: &&str| line.trim_matches([' ', '\t']).is_empty();

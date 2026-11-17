@@ -365,3 +365,20 @@ const LEGACY_NAMES: &[&[u8]] = &[
     b"sect", b"shy", b"sup1", b"sup2", b"sup3", b"szlig", b"thorn", b"times", b"uacute", b"ucirc",
     b"ugrave", b"uml", b"uuml", b"yacute", b"yen", b"yuml",
 ];
+
+#[cfg(test)]
+mod tests {
+    use super::encode_uri;
+
+    /// The legacy-entity-name departure: comrak hands over `&not` for both
+    /// `&amp;not` and a raw `&not`, so the port writes the link comrak read,
+    /// where Electron writes a raw `?x&not&y` as spelled and the page reads
+    /// `?x¬&y`. A decoded `&quot;` is written `%22`, the same link.
+    #[test]
+    fn a_legacy_entity_name_in_a_url_is_written_as_the_link_comrak_read() {
+        assert_eq!(encode_uri("?x&not&y"), "?x&amp;not&y");
+        assert_eq!(encode_uri("?x&copy"), "?x&amp;copy");
+        assert_eq!(encode_uri("?x&copy=1"), "?x&copy=1");
+        assert_eq!(encode_uri("?a\"b"), "?a%22b");
+    }
+}
