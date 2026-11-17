@@ -74,6 +74,7 @@ describe('CRDT push admission over loopback HTTP', () => {
   })
 
   afterEach(async () => {
+    vi.useRealTimers()
     for (const response of held) reply(response)
     server.closeAllConnections()
     await new Promise<void>((resolve, reject) => {
@@ -100,6 +101,10 @@ describe('CRDT push admission over loopback HTTP', () => {
   it.each(['incremental', 'full', 'snapshot', 'batch'])(
     'shares a %s 429 cooldown before retry wrapping, without blocking batch pulls',
     async (route) => {
+      // Admission reads only Date.now(). Freezing it keeps the 1 s Retry-After
+      // window open however long a loaded host takes to reach each sibling's
+      // admission check; the window then closes only when the test advances it.
+      vi.useFakeTimers({ toFake: ['Date'] })
       rateLimitNext = true
       // The actual adapter creates the RateLimitError, and actual retry wraps it.
       const failure = await withRetry(() => push(route), { maxRetries: 0 }).catch(
@@ -108,6 +113,8 @@ describe('CRDT push admission over loopback HTTP', () => {
       expect(failure).toBeInstanceOf(DeadLetterError)
       expect(paths).toHaveLength(1)
 
+      // Past the 250 ms start interval, so only the 429 cooldown can refuse them.
+      vi.advanceTimersByTime(300)
       const siblings = await Promise.allSettled(
         ['incremental', 'full', 'snapshot', 'batch'].map(push)
       )
@@ -122,7 +129,7 @@ describe('CRDT push admission over loopback HTTP', () => {
       expect(paths).toHaveLength(2)
       expect(paths[1]).toBe('/sync/crdt/updates/batch')
 
-      await delay(1100)
+      vi.advanceTimersByTime(800)
       await expect(push('incremental')).resolves.toBeDefined()
       expect(paths).toHaveLength(3)
     }
