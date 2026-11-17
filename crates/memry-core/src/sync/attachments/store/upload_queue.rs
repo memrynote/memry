@@ -34,10 +34,15 @@ pub struct PendingUpload {
 }
 
 impl PendingUpload {
-    /// When the row may be tried again: at once for a row that never failed.
+    /// When the row may be tried again: 0 for a row that never failed, so it is
+    /// due whatever its write time (`retryOpensAt`).
     pub fn retry_opens_at(&self) -> i64 {
-        self.updated_at
-            .saturating_add(backoff_ms(self.attempts, RETRY_BASE_MS, RETRY_MAX_MS))
+        match self.attempts {
+            0 => 0,
+            n => self
+                .updated_at
+                .saturating_add(backoff_ms(n, RETRY_BASE_MS, RETRY_MAX_MS)),
+        }
     }
 }
 

@@ -94,6 +94,20 @@ fn a_failed_upload_waits_one_minute_doubling_to_six_hours_and_is_stuck_at_five()
     });
 }
 
+/// Electron's `retryOpensAt` opens a never-failed row at 0, not at its write
+/// time, so a row written ahead of this device's clock is still due.
+#[test]
+fn a_never_failed_upload_is_due_even_when_written_ahead_of_the_clock() {
+    let (_dir, db) = vault();
+    with(&db, |conn| {
+        queue::enqueue(conn, "n1", "/v/a.png", 5_000)?;
+        let due = queue::list_due(conn, 1_000)?;
+        assert_eq!(due.len(), 1);
+        assert_eq!(due[0].retry_opens_at(), 0);
+        Ok(())
+    });
+}
+
 #[test]
 fn a_failure_of_a_row_that_went_missing_queues_it_again() {
     let (_dir, db) = vault();
