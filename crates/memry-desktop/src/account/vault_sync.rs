@@ -53,6 +53,22 @@ impl OpenVaultBinding {
         }
     }
 
+    /// Sets the running supervisor's binding and entitlement as the binding task and billing
+    /// would (e2e `e2e_set_gate_inputs`, until Steps 19 and 20 own both). `false` with no
+    /// supervisor running.
+    pub fn set_gate_inputs(
+        &self,
+        binding: crate::sync::gate::VaultBinding,
+        entitlement: crate::sync::gate::Entitlement,
+    ) -> bool {
+        let Some(gate) = self.gate() else {
+            return false;
+        };
+        gate.set_binding(binding);
+        gate.set_entitlement(entitlement);
+        true
+    }
+
     /// The gate of the running supervisor.
     fn gate(&self) -> Option<Arc<SyncStartGate>> {
         lock(&self.slot)

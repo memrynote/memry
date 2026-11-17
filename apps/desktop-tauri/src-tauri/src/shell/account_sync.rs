@@ -20,8 +20,8 @@ use tokio::sync::broadcast::error::RecvError;
 use crate::commands::error::CommandError;
 use crate::events::{
     AuthSessionExpiredEvent, SessionExpiredReason, SyncDeviceRemovedEvent,
-    SyncLinkingApprovedEvent, SyncLinkingRequestedEvent, SyncVaultBindingChangedEvent,
-    VaultListChangedEvent, broadcast,
+    SyncLinkingApprovedEvent, SyncLinkingRequestedEvent, SyncStatusChangedEvent,
+    SyncVaultBindingChangedEvent, VaultListChangedEvent, broadcast,
 };
 use crate::power::PowerMonitor;
 use crate::shell::{billing, services};
@@ -47,6 +47,8 @@ fn start(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     );
 
     let reachability = Arc::new(DesktopReachability::start(&runtime));
+    // The e2e network switch (`e2e_set_network_online`) reaches it here.
+    app.manage(reachability.clone());
     let power = app.state::<PowerMonitor>().sender();
     forward_power(&runtime, power.subscribe(), reachability.clone());
     let keychain_recovered = broadcast::Sender::new(4);
@@ -59,6 +61,7 @@ fn start(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     let billing = billing::manage(app, runtime.clone(), account.clone(), session.clone());
     let bindings = Arc::new(OpenVaultBinding::default());
     let binding_app = app.clone();
+    let status_app = app.clone();
     let list_app = app.clone();
     let wiring = Arc::new(SyncWiring {
         runtime,
@@ -69,8 +72,9 @@ fn start(app: &AppHandle<Wry>) -> Result<(), CommandError> {
         power: Some(power),
         keychain_recovered,
         telemetry: services::telemetry(app),
-        // The status event and its commands are Step 17 L7's; until then the log has it.
-        on_status: Arc::new(|status| tracing::debug!(scope = "Sync", "status: {status:?}")),
+        on_status: Arc::new(move |status| {
+            broadcast(&status_app, SyncStatusChangedEvent(status.clone()));
+        }),
         bindings: bindings.clone(),
         on_binding: Arc::new(move |state: &BindingState| {
             broadcast(&binding_app, SyncVaultBindingChangedEvent(state.into()));
