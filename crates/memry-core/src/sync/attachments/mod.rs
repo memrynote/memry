@@ -3,3 +3,4 @@
 //! a note keeps, and when a deleted item's chunks are freed.
 
 pub mod plan;
+pub mod store;
