@@ -180,6 +180,9 @@ fn export_html<R: Runtime>(
     Ok(ExportResult::saved(target.to_string_lossy().into_owned()))
 }
 
+/// What a failed print tells the user; the engine's text goes to the log only.
+const PDF_FAILED: &str = "errors:note.exportPdfFailed";
+
 /// `notes:export-pdf`: the note printed in a hidden window with the page size asked for, written
 /// to `outputPath` or where the save dialog says.
 #[tauri::command]
@@ -211,11 +214,20 @@ async fn export_pdf(
         Ok(document) => document,
         Err(answer) => return Ok(answer),
     };
-    let bytes = pdf_print::print_to_pdf(app, print_document(&html), paper)
-        .await
-        .map_err(|PdfError(reason)| {
-            CommandError::new(ErrorKind::Internal, "print_failed", reason)
-        })?;
+    let bytes = match pdf_print::print_to_pdf(app, html, paper).await {
+        Ok(bytes) => bytes,
+        // The engine's text is for the log; the user reads a sentence in their language.
+        Err(PdfError(reason)) => {
+            log_failure(
+                "notes_export_pdf",
+                &CommandError::new(ErrorKind::Internal, "print_failed", reason),
+            );
+            return Ok(ExportResult::failed(
+                ExportFailure::Failed,
+                text(app, PDF_FAILED),
+            ));
+        }
+    };
     let written = target.clone();
     off_thread(move || {
         std::fs::write(&written, bytes).map_err(|error| {
@@ -236,7 +248,7 @@ async fn off_thread<T: Send + 'static>(
         .map_err(|error| CommandError::new(ErrorKind::Internal, "task_failed", error.to_string()))?
 }
 
-/// The note's export document and the file it goes to, or the answer that ends the export
+/// The note's print document and the file it goes to, or the answer that ends the export
 /// (not found, cancelled, vault changed), as `notes:export-pdf` decides them before printing.
 fn pdf_document(
     app: &AppHandle<Wry>,
@@ -286,5 +298,22 @@ fn pdf_document(
     }
     let paths = app.state::<AppPaths>();
     let html = service(app)?.note_html(&open, &note, export, &paths.data_dir);
-    Ok(Ok((html, target)))
+    Ok(Ok((print_document(html), target)))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_failed_print_reads_as_a_sentence_in_the_users_language() {
+        assert_eq!(
+            i18n::t("en", PDF_FAILED, &Args::new()),
+            "Failed to export PDF"
+        );
+        assert_ne!(
+            i18n::t("de", PDF_FAILED, &Args::new()),
+            "Failed to export PDF"
+        );
+    }
 }

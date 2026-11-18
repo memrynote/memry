@@ -66,10 +66,10 @@ pub fn register(builder: tauri::Builder<Wry>) -> tauri::Builder<Wry> {
         .register_asynchronous_uri_scheme_protocol(
             export::EXPORT_SCHEME,
             |ctx, request, responder| {
-                responder.respond(export::answer(
-                    ctx.webview_label(),
-                    &request.uri().to_string(),
-                ));
+                let label = ctx.webview_label().to_owned();
+                tauri::async_runtime::spawn_blocking(move || {
+                    responder.respond(export::answer(&label, &request.uri().to_string()));
+                });
             },
         )
 }

@@ -10,14 +10,19 @@
 //! defines it itself; otherwise the error is logged and `check_commit` is the only guard left.
 //! Being per class, it decides the main frame of every webview wry builds in this process, not
 //! only the main window's: each is an app page that must stay on the app (the sticky and quick
-//! capture windows of Steps 27 and 31 included). A webview that shows anything else is listed by
-//! [`exempt`] (the PDF export's print window), and wry's implementation, so its own
+//! capture windows of Steps 27 and 31 included). A webview that shows anything else carries
+//! [`exempt`]'s marker (the PDF export's print window), and wry's implementation, so its own
 //! `on_navigation`, decides it.
 
-use std::sync::{Mutex, OnceLock, PoisonError};
+use std::ffi::c_void;
+use std::sync::OnceLock;
 
 use block2::Block;
-use objc2::runtime::{AnyClass, AnyObject, Imp, Sel};
+use objc2::ffi::{
+    OBJC_ASSOCIATION_RETAIN_NONATOMIC, objc_getAssociatedObject, objc_setAssociatedObject,
+};
+use objc2::rc::Retained;
+use objc2::runtime::{AnyClass, AnyObject, Imp, NSObject, Sel};
 use objc2::sel;
 use objc2_foundation::NSObjectProtocol;
 use objc2_web_kit::{WKNavigationAction, WKNavigationActionPolicy, WKWebView};
@@ -26,20 +31,26 @@ use tauri::{AppHandle, WebviewWindow, Wry};
 static APP: OnceLock<AppHandle<Wry>> = OnceLock::new();
 static WRY_DECIDE: OnceLock<Imp> = OnceLock::new();
 
-/// The addresses of the live WKWebViews that show no app page.
-static EXEMPT: Mutex<Vec<usize>> = Mutex::new(Vec::new());
+/// Its address keys the marker an exempt WKWebView carries: the marker lives and dies with the
+/// view, so no list outlives a webview or names a reused address.
+static EXEMPT_KEY: u8 = 0;
 
-fn exempted() -> std::sync::MutexGuard<'static, Vec<usize>> {
-    EXEMPT.lock().unwrap_or_else(PoisonError::into_inner)
+fn exempt_key() -> *const c_void {
+    (&raw const EXEMPT_KEY).cast()
 }
 
-pub fn exempt(window: &WebviewWindow<Wry>, exempt: bool) {
-    let result = window.with_webview(move |webview| {
-        let view = webview.inner() as usize;
-        let mut list = exempted();
-        list.retain(|listed| *listed != view);
-        if exempt {
-            list.push(view);
+pub fn exempt(window: &WebviewWindow<Wry>) {
+    let result = window.with_webview(|webview| {
+        let marker = NSObject::new();
+        // SAFETY: `inner()` is the window's live WKWebView, on the main thread `with_webview` runs
+        // on; the association retains the marker and releases it with the view.
+        unsafe {
+            objc_setAssociatedObject(
+                webview.inner().cast(),
+                exempt_key(),
+                Retained::as_ptr(&marker).cast_mut().cast(),
+                OBJC_ASSOCIATION_RETAIN_NONATOMIC,
+            );
         }
     });
     if let Err(error) = result {
@@ -85,8 +96,10 @@ extern "C-unwind" fn decide_policy(
 ) {
     // SAFETY: WebKit calls the method with a live navigation action and decision handler.
     let (action_ref, handler_ref) = unsafe { (&*action, &*handler) };
+    // SAFETY: WebKit calls the method with the live webview the delegate serves.
+    let exempt = unsafe { !objc_getAssociatedObject(webview, exempt_key()).is_null() };
     if let Some(app) = APP.get()
-        && !exempted().contains(&(webview as usize))
+        && !exempt
         && targets_top_level(action_ref)
         && !is_download(action_ref)
         && !super::main_frame_may_load(app, &url_of(action_ref))

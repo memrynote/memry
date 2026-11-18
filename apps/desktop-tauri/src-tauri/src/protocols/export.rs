@@ -1,36 +1,41 @@
 //! The `memry-export` scheme: serves the PDF export's document to its print window from memory.
 //! Electron staged it in a temp file because Chromium refuses a long `data:` URL
 //! (`ipc/notes-handlers.ts:1004-1009`); a scheme URL has no length limit and writes no file.
-//! Only a `pdf-print-<n>` window is answered, and only while its export holds the page.
+//! A page is answered once, and only to the print window its export opened.
 
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::sync::{Arc, LazyLock, Mutex, PoisonError};
+use std::sync::{LazyLock, Mutex, PoisonError};
 
 use memry_desktop::notes::print::PRINT_CSP;
 use tauri::http::{Response, StatusCode, header};
 use url::Url;
 use uuid::Uuid;
 
-use crate::windows::registry::WindowKind;
-
 pub const EXPORT_SCHEME: &str = "memry-export";
 
-static STAGED: LazyLock<Mutex<HashMap<Uuid, Arc<[u8]>>>> = LazyLock::new(Mutex::default);
+/// A staged page: the window it is for, and its bytes until that window has read them.
+struct Page {
+    label: String,
+    html: Option<Vec<u8>>,
+}
 
-fn staged() -> std::sync::MutexGuard<'static, HashMap<Uuid, Arc<[u8]>>> {
+static STAGED: LazyLock<Mutex<HashMap<Uuid, Page>>> = LazyLock::new(Mutex::default);
+
+fn staged() -> std::sync::MutexGuard<'static, HashMap<Uuid, Page>> {
     STAGED.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
-/// A page the scheme serves until this is dropped.
+/// A page the scheme serves to the webview `label` until this is dropped.
 pub struct Staged {
     id: Uuid,
 }
 
 impl Staged {
-    pub fn new(html: String) -> Self {
+    pub fn new(html: String, label: String) -> Self {
         let id = Uuid::new_v4();
-        staged().insert(id, Arc::from(html.into_bytes()));
+        let html = Some(html.into_bytes());
+        staged().insert(id, Page { label, html });
         Self { id }
     }
 
@@ -52,17 +57,21 @@ impl Drop for Staged {
     }
 }
 
-/// The answer to `uri`, asked by the webview `label`: the staged page with a CSP that runs no
-/// script and loads nothing from outside the document, or 404.
+/// The answer to `uri`, asked by the webview `label`: the staged page, the first time its own
+/// print window asks, with a CSP that runs no script and loads nothing from outside the
+/// document; otherwise 404.
 pub fn answer(label: &str, uri: &str) -> Response<Cow<'static, [u8]>> {
-    let page = (WindowKind::of_label(label) == Some(WindowKind::PdfPrint))
-        .then(|| Url::parse(uri).ok())
-        .flatten()
+    let page = Url::parse(uri)
+        .ok()
         .and_then(|url| {
             let name = url.path().strip_prefix('/')?.strip_suffix(".html")?;
             Uuid::parse_str(name).ok()
         })
-        .and_then(|id| staged().get(&id).cloned());
+        .and_then(|id| {
+            let mut staged = staged();
+            let page = staged.get_mut(&id).filter(|page| page.label == label)?;
+            page.html.take()
+        });
     let Some(page) = page else {
         tracing::warn!(scope = "Export", label, "memry-export answered 404");
         return Response::builder()
@@ -75,7 +84,7 @@ pub fn answer(label: &str, uri: &str) -> Response<Cow<'static, [u8]>> {
         .header(header::CONTENT_TYPE, "text/html; charset=utf-8")
         .header(header::CONTENT_SECURITY_POLICY, PRINT_CSP)
         .header(header::CACHE_CONTROL, "no-store")
-        .body(Cow::Owned(page.to_vec()))
+        .body(Cow::Owned(page))
         .unwrap_or_else(|_| Response::new(Cow::Borrowed(&[][..])))
 }
 
@@ -83,9 +92,13 @@ pub fn answer(label: &str, uri: &str) -> Response<Cow<'static, [u8]>> {
 mod tests {
     use super::*;
 
+    fn stage(label: &str) -> Staged {
+        Staged::new("<p>hi</p>".to_owned(), label.to_owned())
+    }
+
     #[test]
-    fn a_print_window_reads_the_staged_page_with_the_print_csp() {
-        let page = Staged::new("<p>hi</p>".to_owned());
+    fn a_print_window_reads_its_page_with_the_print_csp() {
+        let page = stage("pdf-print-3");
         let response = answer("pdf-print-3", page.url().as_str());
         assert_eq!(response.status(), StatusCode::OK);
         assert_eq!(&response.body()[..], b"<p>hi</p>");
@@ -97,18 +110,41 @@ mod tests {
 
     #[test]
     fn another_window_gets_nothing() {
-        let page = Staged::new("<p>hi</p>".to_owned());
-        for label in ["main", "quick-capture", "e2e-1"] {
+        let page = stage("pdf-print-1");
+        for label in [
+            "main",
+            "quick-capture",
+            "e2e-1",
+            "pdf-print-2",
+            "pdf-print-10",
+        ] {
             assert_eq!(
                 answer(label, page.url().as_str()).status(),
                 StatusCode::NOT_FOUND
             );
         }
+        assert_eq!(
+            answer("pdf-print-1", page.url().as_str()).status(),
+            StatusCode::OK
+        );
+    }
+
+    #[test]
+    fn a_page_is_served_once() {
+        let page = stage("pdf-print-4");
+        assert_eq!(
+            answer("pdf-print-4", page.url().as_str()).status(),
+            StatusCode::OK
+        );
+        assert_eq!(
+            answer("pdf-print-4", page.url().as_str()).status(),
+            StatusCode::NOT_FOUND
+        );
     }
 
     #[test]
     fn a_page_is_gone_once_its_export_drops_it() {
-        let page = Staged::new("<p>hi</p>".to_owned());
+        let page = stage("pdf-print-1");
         let url = page.url();
         drop(page);
         assert_eq!(

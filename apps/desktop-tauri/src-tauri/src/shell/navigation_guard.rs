@@ -140,15 +140,15 @@ pub fn install(app: &AppHandle<Wry>, window: &WebviewWindow<Wry>) {
     let _ = (app, window);
 }
 
-/// Hands `window`'s navigations to its own `on_navigation`, for a window that shows no app page
-/// (the PDF export's print window), or takes that back before it closes. Only WKWebView needs it:
-/// its main-frame guard is per class (`macos`), while the other engines' guards are per window.
-/// Queued on the main thread ahead of any later navigation or destroy of the window.
-pub fn exempt(window: &WebviewWindow<Wry>, exempt: bool) {
+/// Hands `window`'s navigations to its own `on_navigation` for the webview's life, for a window
+/// that shows no app page (the PDF export's print window). Only WKWebView needs it: its main-frame
+/// guard is per class (`macos`), while the other engines' guards are per window. Queued on the
+/// main thread ahead of any later navigation of the window.
+pub fn exempt(window: &WebviewWindow<Wry>) {
     #[cfg(target_os = "macos")]
-    macos::exempt(window, exempt);
+    macos::exempt(window);
     #[cfg(not(target_os = "macos"))]
-    let _ = (window, exempt);
+    let _ = window;
 }
 
 /// `on_navigation`: true lets the webview navigate.
