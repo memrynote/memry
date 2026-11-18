@@ -111,10 +111,10 @@ never opens one. The Rust dialog wrapper (`src-tauri/src/shell/dialogs.rs`, over
 `e2e_bootstrap_sync_device { input }` (`src-tauri/src/e2e/sync.rs`, over
 `AccountService::bootstrap_e2e_device`) signs the instance into the account
 `startSharedSyncBootstrap()` (`harness/sync-backend.ts`) made on the local test server, with no
-email code or phrase, and answers `{ deviceId }`. `input` is one of its devices. It binds the open
-vault to the account's vault, registers the device with the setup token the harness signed,
-publishes the key material unless `skipSetup`, keeps the master key with a confirmed phrase and
-attaches sync. The device keeps the signing key it minted at launch; `signingSecretKeyBase64` is
+email code or phrase, and answers `{ deviceId }`. `input` is one of its devices. It registers the
+device with the setup token the harness signed, binds the open vault to the account's vault for
+this account whatever the vault holds, publishes the key material unless `skipSetup`, keeps the
+master key with a confirmed phrase and attaches sync. The device keeps the signing key it minted at launch; `signingSecretKeyBase64` is
 not read. The server is the control file's `syncServerUrl`: a fixture that sets
 `syncServerUrl` makes `fresh()` check that the app runs against it (`e2e_app_info`).
 `fixtures/sync-auth-fixtures.ts` wraps it (`bootstrapSyncDevice`, `bootstrappedSyncPair`), and

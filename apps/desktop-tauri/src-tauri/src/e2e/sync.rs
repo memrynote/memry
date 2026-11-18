@@ -84,13 +84,13 @@ pub async fn e2e_bootstrap_sync_device(
     app: AppHandle<Wry>,
     input: E2eDevice,
 ) -> Result<Bootstrapped, CommandError> {
-    let open = app
-        .state::<Session>()
+    let session = app.state::<Session>().inner().clone();
+    let open = session
         .current()
         .ok_or_else(|| invalid("e2e_no_vault", "no vault is open"))?;
     let account = app.state::<Arc<AccountService>>().inner().clone();
     let device_id = account
-        .bootstrap_e2e_device(&open, input)
+        .bootstrap_e2e_device(&open, session.registry(), input)
         .await
         .map_err(|e| invalid("e2e_bootstrap_sync_device", e))?;
     account_sync::attach_if_signed_in(app);

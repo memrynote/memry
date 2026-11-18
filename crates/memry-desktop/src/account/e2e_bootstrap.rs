@@ -10,6 +10,7 @@ use serde_json::Value;
 use zeroize::Zeroizing;
 
 use super::{AccountError, AccountService};
+use crate::registry::VaultRegistry;
 use crate::session::OpenVault;
 
 /// What the harness made for one device (`SharedSyncBootstrap.deviceA`, `harness/sync-backend.ts`).
@@ -32,14 +33,15 @@ pub struct E2eDevice {
 }
 
 impl AccountService {
-    /// Binds the open vault to the account's vault (`adoptVaultLocally`), registers this device
-    /// with its own signing key, publishes the key material unless `skip_setup`, then keeps the
-    /// master key and a confirmed phrase, as `persistKeysAndRegisterDevice`
-    /// (`sync/device-registration.ts:115-200`) does. Returns the server's device id. The caller
-    /// attaches sync.
+    /// Registers this device with its own signing key, binds the open vault to the account's
+    /// vault for this account whatever it holds (`adoptVaultLocally`), publishes the key material
+    /// unless `skip_setup`, then keeps the master key and a confirmed phrase, as
+    /// `persistKeysAndRegisterDevice` (`sync/device-registration.ts:115-200`) does. Returns the
+    /// server's device id. The caller attaches sync.
     pub async fn bootstrap_e2e_device(
         &self,
         open: &OpenVault,
+        registry: &VaultRegistry,
         device: E2eDevice,
     ) -> Result<String, AccountError> {
         let _key_op = self.key_op.lock().await;
@@ -52,16 +54,13 @@ impl AccountService {
         if !keys::account_key_verifier_matches(&verifier, &device.key_verifier) {
             return Err(AccountError::PhraseMismatch);
         }
-        let vault = open.vault.clone();
-        let vault_id = device.vault_id.clone();
-        tokio::task::spawn_blocking(move || vault.bind_server_vault(&vault_id))
-            .await
-            .map_err(|e| AccountError::VaultChoice(e.to_string()))?
-            .map_err(|e| AccountError::VaultChoice(e.to_string()))?;
-
         self.session
             .accept_e2e_setup_token(device.email.clone(), &device.setup_token)?;
         let device_id = self.register().await?;
+        let user_id = self.session.account_user_id().ok_or_else(|| {
+            AccountError::VaultChoice("the registration named no account user".into())
+        })?;
+        self.bind_for_sync(open, registry, &user_id, Some(&device.vault_id))?;
         if !device.skip_setup {
             self.session
                 .complete_account_setup(device.kdf_salt, device.key_verifier)
