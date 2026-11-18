@@ -160,13 +160,19 @@ impl State {
             (_, _, "multistatus", "response") => self.response = Some(DavResponse::default()),
             (_, _, "response", "propstat") => self.propstat = Some((DavProps::default(), None)),
             (_, _, "prop", "resourcetype") => {
-                self.props().map(|p| p.resource_types = Some(Vec::new()));
+                if let Some(p) = self.props() {
+                    p.resource_types = Some(Vec::new());
+                }
             }
             (_, _, "prop", "supported-calendar-component-set") => {
-                self.props().map(|p| p.components = Some(Vec::new()));
+                if let Some(p) = self.props() {
+                    p.components = Some(Vec::new());
+                }
             }
             (_, _, "prop", "supported-report-set") => {
-                self.props().map(|p| p.reports = Some(Vec::new()));
+                if let Some(p) = self.props() {
+                    p.reports = Some(Vec::new());
+                }
             }
             (_, "prop", "resourcetype", _) => {
                 if let Some(Some(types)) = self.props().map(|p| p.resource_types.as_mut()) {
