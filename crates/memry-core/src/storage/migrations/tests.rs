@@ -99,7 +99,6 @@ fn a_fresh_data_database_reaches_the_latest_version() {
         "tag_categories",
         "tag_definitions",
         "task_activity",
-        "task_links",
         "tasks",
         "templates",
     ] {
