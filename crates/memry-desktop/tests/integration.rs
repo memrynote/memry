@@ -171,8 +171,12 @@ mod image_processing;
 mod import_copy;
 #[path = "import_runner.rs"]
 mod import_runner;
+#[path = "importer_html_fetch.rs"]
+mod importer_html_fetch;
 #[path = "importer_untrusted.rs"]
 mod importer_untrusted;
+#[path = "importer_untrusted_html.rs"]
+mod importer_untrusted_html;
 #[path = "importer_vectors.rs"]
 mod importer_vectors;
 #[path = "index_tag_definitions.rs"]

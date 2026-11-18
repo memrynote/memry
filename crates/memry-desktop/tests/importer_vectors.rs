@@ -98,7 +98,8 @@ fn run_case(source: &str, importer: &dyn Importer, case: &Value) -> Value {
         cancel,
         Box::new(move |snapshot| record_progress(&recorder, &snapshot)),
     );
-    let sink = RecordingSink::new(Arc::clone(&timeline));
+    let mut sink = RecordingSink::new(Arc::clone(&timeline));
+    sink.exact_created = case["exactCreated"].as_bool().unwrap_or(false);
     importer.run(&input, &mut ctx, &sink).unwrap();
 
     let mut summary = serde_json::to_value(ctx.summary()).unwrap();
@@ -153,6 +154,21 @@ fn markdown_importer_matches_the_typescript_importer() {
 #[test]
 fn csv_importer_matches_the_typescript_importer() {
     assert_source("csv");
+}
+
+#[test]
+fn html_importer_matches_the_typescript_importer() {
+    assert_source("html");
+}
+
+#[test]
+fn evernote_importer_matches_the_typescript_importer() {
+    assert_source("evernote");
+}
+
+#[test]
+fn apple_journal_importer_matches_the_typescript_importer() {
+    assert_source("apple-journal");
 }
 
 #[test]

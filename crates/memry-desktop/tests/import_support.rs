@@ -18,6 +18,8 @@ pub type Timeline = Arc<Mutex<Vec<Value>>>;
 pub struct RecordingSink {
     pub timeline: Timeline,
     notes: AtomicUsize,
+    /// Record `created` as written instead of only its presence (the case's `exactCreated`).
+    pub exact_created: bool,
 }
 
 impl RecordingSink {
@@ -25,6 +27,7 @@ impl RecordingSink {
         Self {
             timeline,
             notes: AtomicUsize::new(0),
+            exact_created: false,
         }
     }
 
@@ -93,7 +96,9 @@ impl ImportSink for RecordingSink {
                 .iter()
                 .map(|(key, value)| json!([key, tag_value(value)]))
                 .collect::<Vec<_>>(),
-            "created": note.created.map(|_| "<birthtime>"),
+            "created": note.created.map(|created| {
+                if self.exact_created { created } else { "<birthtime>".to_owned() }
+            }),
             "modified": note.modified,
             "content": note.content,
         }));
