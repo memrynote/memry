@@ -212,6 +212,7 @@ fn a_record_written_without_its_unknown_fields_merge_fails_check_1() {
         writer: &mut writer,
         now_ms: 7,
         electron_device_id: None,
+        docs: &[],
     };
     assert!(matches!(
         tables::unknown_fields::import(&mut ctx),
@@ -314,6 +315,7 @@ fn only_a_queued_create_carries_the_body() {
         writer: &mut writer,
         now_ms: 7,
         electron_device_id: None,
+        docs: &[],
     };
     import(&mut ctx).unwrap();
     let payload = |item_type: &str, id: &str| -> serde_json::Value {
