@@ -21,6 +21,8 @@
 //! answer does not prove nothing was stored: absent, it is skipped and listed (`WriteRefused`);
 //! holding Electron's value, it is this run's write and goes in the ledger; anything else stops
 //! the phase with the slot in the ledger (it was empty before this run). `Locked` stops the phase.
+//! The ledger trusts that a slot found empty stays this run's alone, so [`import_secrets`] runs
+//! before any UI that writes secrets: a rollback deletes what it finds there.
 //!
 //! **Reruns.** The phase owns the marker `secrets-import.done` in this app's data dir, written
 //! after a run that ended `Ok`. A run that finds it answers [`SecretsPhase::Done`] without reading
@@ -562,8 +564,19 @@ fn write(
                     }
                     Ok(Some(held)) if held == *slot.value => ledger.0.push(written()),
                     Ok(Some(_)) => {
+                        tracing::warn!(
+                            scope = "ElectronImport",
+                            "the keychain refused the {} secret and holds another value: {what}",
+                            slot.service
+                        );
                         ledger.0.push(written());
-                        return Err(SecureStoreError::Failed { what }.into());
+                        return Err(SecureStoreError::Failed {
+                            what: format!(
+                                "the refused {} write read back another value",
+                                slot.service
+                            ),
+                        }
+                        .into());
                     }
                     Err(error) => {
                         ledger.0.push(written());

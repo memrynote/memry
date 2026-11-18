@@ -90,6 +90,8 @@ pub struct Fake {
     pub replace_writes: Arc<Mutex<Option<Vec<u8>>>>,
     /// Fails every delete with this error.
     pub fail_deletes: BuildError,
+    /// Fails every read with this error once any write was made.
+    pub fail_reads_after_a_write: BuildError,
 }
 
 pub struct FakeCred {
@@ -113,6 +115,7 @@ impl Fake {
             lost_ack_account: Arc::default(),
             replace_writes: Arc::default(),
             fail_deletes: Arc::default(),
+            fail_reads_after_a_write: Arc::default(),
         }
     }
 
@@ -131,6 +134,7 @@ impl Fake {
             lost_ack_account: self.lost_ack_account.clone(),
             replace_writes: self.replace_writes.clone(),
             fail_deletes: self.fail_deletes.clone(),
+            fail_reads_after_a_write: self.fail_reads_after_a_write.clone(),
         }
     }
 
@@ -213,6 +217,11 @@ impl CredentialApi for FakeCred {
             .push(std::thread::current().name().map(str::to_owned));
         self.fake.act()?;
         if let Some(error) = *self.fake.fail_reads.lock().unwrap() {
+            return Err(error());
+        }
+        if let Some(error) = *self.fake.fail_reads_after_a_write.lock().unwrap()
+            && self.fake.writes.load(Ordering::SeqCst) > 0
+        {
             return Err(error());
         }
         self.fake

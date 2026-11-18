@@ -158,3 +158,40 @@ fn a_refused_write_that_landed_counts_as_written() {
     );
     assert_eq!(outcome, plain);
 }
+
+#[test]
+fn a_refused_write_that_holds_another_value_stops_and_is_rolled_back() {
+    let w = world();
+    let before = w.electron();
+    *w.rig.fake.replace_writes.lock().unwrap() = Some(b"garbage".to_vec());
+    *w.rig.fake.lost_ack_account.lock().unwrap() = Some("openai".to_owned());
+
+    assert_eq!(
+        w.run(&evidence(), SecretsMode::SignInAgain),
+        Err(SecretsError::Keychain(SecureStoreError::Failed {
+            what: "the refused com.memrynote.memry.voice-transcription write read back another \
+                   value"
+                .to_owned(),
+        }))
+    );
+    assert_eq!(w.items(true), Items::new(), "the other value was removed");
+    assert_eq!(w.electron(), before);
+    assert!(!done_marker(&w).exists());
+}
+
+#[test]
+fn a_refused_write_that_cannot_be_read_back_stops_and_is_rolled_back() {
+    let w = world();
+    let before = w.electron();
+    *w.rig.fake.lost_ack_account.lock().unwrap() = Some("openai".to_owned());
+    *w.rig.fake.fail_reads_after_a_write.lock().unwrap() =
+        Some(|| Error::NoStorageAccess("locked".into()));
+
+    assert_eq!(
+        w.run(&evidence(), SecretsMode::SignInAgain),
+        Err(SecretsError::Keychain(SecureStoreError::Locked))
+    );
+    assert_eq!(w.items(true), Items::new(), "the unread write was removed");
+    assert_eq!(w.electron(), before);
+    assert!(!done_marker(&w).exists());
+}

@@ -523,6 +523,7 @@ try {
   fs.cpSync(profile, path.join(out, 'profile'), { recursive: true })
   fs.cpSync(path.join(stage, 'vault'), path.join(out, 'vault'), { recursive: true })
   fs.writeFileSync(path.join(out, '.gitattributes'), '* -text -whitespace\n')
+  const { masterKey: _m, deviceSigningKey: _d, ...ids } = cap
   writeJson(path.join(out, 'expected.json'), {
     electron: '43.1.1',
     platform: 'macos',
@@ -530,7 +531,7 @@ try {
     profilePlaceholder: PROFILE_PLACEHOLDER,
     vaultPlaceholder: VAULT_PLACEHOLDER,
     plaintexts,
-    ...cap
+    ...ids
   })
   fs.appendFileSync(path.join(out, 'expected.json'), '\n')
 } finally {
