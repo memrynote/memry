@@ -647,7 +647,11 @@ export const commands = {
 	syncResume: (input: SyncControlInput) => __TAURI_INVOKE<ResumeSyncResult>("sync_resume", { input }),
 	/**  `sync:trigger-sync` (Sync Now). */
 	syncTrigger: () => __TAURI_INVOKE<TriggerSyncResult>("sync_trigger"),
-	/**  `sync:update-synced-setting`. */
+	/**
+	 *  `sync:update-synced-setting`: written through the settings owner and announced as
+	 *  `settings-changed`. The Wry-only follow-ups of a settings write (tray, login item, menu) are
+	 *  not run: no renderer path sends a field they read through this channel.
+	 */
 	syncUpdateSyncedSetting: (input: UpdateSyncedSettingInput) => __TAURI_INVOKE<UpdateSyncedSettingResult>("sync_update_synced_setting", { input }),
 	/**  `account:sign-out`. */
 	accountSignOut: () => __TAURI_INVOKE<SignOutResult>("account_sign_out"),
@@ -3466,7 +3470,10 @@ export type SyncHistoryEntry = {
 	type: string,
 	itemCount: number,
 	direction?: string | null,
-	/**  Parsed JSON, or the stored text when it does not parse (`parseSyncHistoryDetails`). */
+	/**
+	 *  Parsed JSON, or the stored text when it does not parse (`parseSyncHistoryDetails`);
+	 *  absent for empty text, as Electron's `r.details ? ... : undefined`.
+	 */
 	details?: Value | null,
 	durationMs?: number | null,
 	createdAt: number,
