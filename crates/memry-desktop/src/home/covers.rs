@@ -272,7 +272,8 @@ impl HomeBoards {
 
     /// `reconcileHomeCovers` without the byte sync of Step 30f: deletes the
     /// files a board's cover no longer names (a cover replaced or removed on
-    /// another device), for one board or every board.
+    /// another device), for one board or every board. A folder whose named file
+    /// is not on this device is left as it is ([`prune_cover_files`]).
     pub fn reconcile(&self, board_id: Option<&str>) -> Result<(), StorageError> {
         let _guard = cover_lock();
         let boards = match board_id {

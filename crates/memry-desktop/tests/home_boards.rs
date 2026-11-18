@@ -376,3 +376,56 @@ fn reconcile_never_prunes_for_a_ref_this_build_refuses() {
     env.boards.reconcile(None).unwrap();
     assert!(names(&dir).is_empty(), "a link cover owns no file");
 }
+
+#[test]
+fn reconcile_keeps_the_folder_while_the_named_file_is_not_on_this_device() {
+    let env = env();
+    let board = create(&env, "Work");
+    let dir = folder(&env, &board.id);
+    fs::create_dir_all(&dir).unwrap();
+    // A newer cover set here and not uploaded yet; the record names an older one this device
+    // never had. Until Step 30f can download it, pruning would leave no cover at all.
+    fs::write(dir.join("new-x.png"), b"newer").unwrap();
+    let reference = format!(".memry/home-covers/{}/old-w.png", board.id);
+    set_ref(&env, &board.id, json!({ "ref": reference }));
+
+    env.boards.reconcile(Some(&board.id)).unwrap();
+
+    assert_eq!(names(&dir), vec!["new-x.png".to_owned()]);
+}
+
+#[test]
+fn a_cover_field_of_the_wrong_type_reads_as_absent() {
+    let env = env();
+    let board = create(&env, "Work");
+    // As a peer's record lands: core `update` refuses such a cover, sync apply stores it.
+    let conn = rusqlite::Connection::open(env.vault.join(".memry/core/data.db")).unwrap();
+    let cover = json!({
+        "ref": "wash:lilac",
+            "focusX": 40,
+            "zoom": "2",
+            "height": "x",
+            "attachmentId": 5,
+        "credit": ["Ada"]
+    });
+    conn.execute(
+        "UPDATE home_pages SET cover = ?1 WHERE id = ?2",
+        (cover.to_string(), &board.id),
+    )
+    .unwrap();
+
+    let cover = env
+        .boards
+        .get(board.id.clone())
+        .unwrap()
+        .expect("live")
+        .cover
+        .expect("the cover is still shown");
+
+    assert_eq!(cover.reference, "wash:lilac");
+    assert_eq!(cover.focus_x, Some(40.0));
+    assert_eq!(cover.zoom, None);
+    assert_eq!(cover.height, None);
+    assert_eq!(cover.attachment_id, None);
+    assert_eq!(cover.credit, None);
+}

@@ -15,6 +15,7 @@ use memry_core::api::home_pages::{BoardChanges, HomePages};
 use memry_core::domain::home_page::cover::FramingChanges;
 use memry_core::domain::home_page::{HomePage, widgets};
 use memry_core::seams::secure_store::SecureStore;
+use serde::de::{DeserializeOwned, Deserializer};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
@@ -37,6 +38,15 @@ pub struct WidgetView {
     pub config: Map<String, Value>,
 }
 
+/// An optional cover field of the wrong type reads as absent, as Electron's
+/// `.catch(undefined)` does, so one bad field from a peer does not hide the
+/// whole cover.
+fn lenient<'de, D: Deserializer<'de>, T: DeserializeOwned>(
+    deserializer: D,
+) -> Result<Option<T>, D::Error> {
+    Ok(T::deserialize(Value::deserialize(deserializer)?).ok())
+}
+
 /// `HomePageCoverSync`: the fields the band reads. The record keeps every
 /// other key a newer build wrote.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, specta::Type)]
@@ -44,26 +54,54 @@ pub struct WidgetView {
 pub struct HomePageCoverView {
     #[serde(rename = "ref")]
     pub reference: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[specta(optional)]
+    #[serde(
+        default,
+        deserialize_with = "lenient",
+        skip_serializing_if = "Option::is_none"
+    )]
+    #[specta(optional, type = Option<f64>)]
     pub focus: Option<f64>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[specta(optional)]
+    #[serde(
+        default,
+        deserialize_with = "lenient",
+        skip_serializing_if = "Option::is_none"
+    )]
+    #[specta(optional, type = Option<f64>)]
     pub focus_x: Option<f64>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[specta(optional)]
+    #[serde(
+        default,
+        deserialize_with = "lenient",
+        skip_serializing_if = "Option::is_none"
+    )]
+    #[specta(optional, type = Option<f64>)]
     pub zoom: Option<f64>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[specta(optional)]
+    #[serde(
+        default,
+        deserialize_with = "lenient",
+        skip_serializing_if = "Option::is_none"
+    )]
+    #[specta(optional, type = Option<f64>)]
     pub height: Option<f64>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[specta(optional)]
+    #[serde(
+        default,
+        deserialize_with = "lenient",
+        skip_serializing_if = "Option::is_none"
+    )]
+    #[specta(optional, type = Option<String>)]
     pub credit: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[specta(optional)]
+    #[serde(
+        default,
+        deserialize_with = "lenient",
+        skip_serializing_if = "Option::is_none"
+    )]
+    #[specta(optional, type = Option<String>)]
     pub credit_url: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[specta(optional)]
+    #[serde(
+        default,
+        deserialize_with = "lenient",
+        skip_serializing_if = "Option::is_none"
+    )]
+    #[specta(optional, type = Option<String>)]
     pub attachment_id: Option<String>,
 }
 

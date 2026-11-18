@@ -115,6 +115,9 @@ fn nfc_name(name: &OsStr) -> String {
 /// [`cover_file_path`]), so a replaced or removed cover leaves nothing behind. Names compare in
 /// NFC, so the live cover stays when the file and its ref differ only in normalization. A folder
 /// that is not there has nothing to delete; a file that could not go is logged and left.
+///
+/// When `keep` is not in the folder, nothing goes: the record may lag a newer cover set here and
+/// not uploaded yet, and until Step 30f downloads cover bytes, pruning would leave no cover at all.
 pub fn prune_cover_files(vault: &Path, board_id: &str, keep: Option<&Path>) {
     let Some(dir) = board_dir(vault, board_id) else {
         return;
@@ -131,6 +134,19 @@ pub fn prune_cover_files(vault: &Path, board_id: &str, keep: Option<&Path>) {
         }
     };
     let keep = keep.and_then(Path::file_name).map(nfc_name);
+    let entries: Vec<io::Result<fs::DirEntry>> = entries.collect();
+    if let Some(keep) = &keep
+        && !entries
+            .iter()
+            .flatten()
+            .any(|entry| nfc_name(&entry.file_name()) == *keep)
+    {
+        return tracing::info!(
+            scope = SCOPE,
+            board_id,
+            "the cover file is not on this device; its folder is left as it is"
+        );
+    }
     for entry in entries {
         let removed = entry.and_then(|entry| {
             if keep
