@@ -20,6 +20,8 @@ use rusqlite::Connection;
 use rusqlite::types::Value;
 use sha2::{Digest, Sha256};
 
+#[path = "electron_vault_import/calendar_push.rs"]
+mod calendar_push;
 #[path = "device_key/mod.rs"]
 mod device_key;
 #[path = "electron_vault_import/docs.rs"]

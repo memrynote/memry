@@ -275,7 +275,7 @@ fn external(conn: &Connection, id: &str, source_id: &str, extra: &[(&str, Value)
     seed(conn, "calendar_external_events", &with(values, extra));
 }
 
-fn seed_calendar(conn: &Connection) {
+pub(super) fn seed_calendar(conn: &Connection) {
     source(
         conn,
         "src-g",
