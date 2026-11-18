@@ -383,4 +383,110 @@ struct EditorDropTests {
         zip.registerDataRepresentation(for: .zip, visibility: .all) { $0(Data(), nil); return nil }
         #expect(EditorDrop.of([zip]) == .files, "any file, as Choose File takes any")
     }
+
+    /// A text document from Files, registered under its own type as Files
+    /// hands it over (`NSItemProvider(contentsOf:)`), under its name.
+    private static func documentProvider(_ filename: String, _ contents: String) throws -> NSItemProvider {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let url = dir.appendingPathComponent(filename)
+        try Data(contents.utf8).write(to: url)
+        let provider = try #require(NSItemProvider(contentsOf: url))
+        provider.suggestedName = filename
+        return provider
+    }
+
+    /// #4833: a dropped `.md`, `.csv` or `.json` file is attached, as Choose
+    /// File attaches it; it does not go in as text.
+    @Test func dropped_text_document_files_attach_like_choose_file() async throws {
+        let f = try await fixture()
+        let composer = NoteAttachmentComposer(noteId: f.source, filler: DropUploader())
+        let files = try [
+            Self.documentProvider("plan.md", "# Plan"),
+            Self.documentProvider("sheet.csv", "a,b\n1,2"),
+            Self.documentProvider("data.json", "{\"a\":1}"),
+        ]
+        for file in files {
+            #expect(EditorDrop.of([file]) == .files, "\(file.registeredContentTypes) is a file")
+        }
+
+        await composer.attachDropped(files, in: f.session, after: "p1")
+
+        let blocks = try await blocks(f)
+        #expect(blocks.map(\.kind) == ["paragraph", "file", "file", "file"])
+        #expect(BlockText.shown(blocks[0].inline) == "see ", "no file's text goes into the block")
+        let mimeTypes = blocks.dropFirst().map { $0.props.first { $0.name == "mimeType" }?.value }
+        let chooseFile = ["plan.md", "sheet.csv", "data.json"].map {
+            NoteAttachmentComposer.mimeType(for: URL(fileURLWithPath: $0))
+        }
+        #expect(mimeTypes == chooseFile, "typed as Choose File types them")
+    }
+
+    /// A provider offering `types` as data, the way an app hands over a drag
+    /// with no file behind it.
+    private static func dataProvider(_ types: [UTType]) -> NSItemProvider {
+        let provider = NSItemProvider()
+        for type in types {
+            provider.registerDataRepresentation(for: type, visibility: .all) { $0(Data("hi".utf8), nil); return nil }
+        }
+        return provider
+    }
+
+    /// Text dragged out of another app, not a file, stays the text view's
+    /// own drop, in whichever text forms the app offers it (#4833).
+    @Test func dropped_plain_text_stays_text() {
+        let drags: [(String, [UTType])] = [
+            ("one form", [.utf8PlainText]),
+            ("Safari's selection", [.webArchive, .html, .rtf, .flatRTFD, .utf8PlainText, .utf16ExternalPlainText]),
+            ("Numbers' cells", [.utf8TabSeparatedText, .utf8PlainText]),
+            ("an editor's JSON", [.json, .utf8PlainText]),
+            ("a contact", [.vCard, .utf8PlainText]),
+            ("an address", [.url]),
+        ]
+        for (name, types) in drags {
+            #expect(EditorDrop.of([Self.dataProvider(types)]) == nil, "\(name) stays text")
+        }
+    }
+
+    /// A text file from Files opened in place, with no file URL type beside
+    /// it, is a file too.
+    @Test func a_text_file_opened_in_place_attaches() {
+        let file = NSItemProvider()
+        file.registerFileRepresentation(for: .plainText, visibility: .all, openInPlace: true) { _ in nil }
+        #expect(EditorDrop.fileType(of: file) == .plainText)
+    }
+
+    /// #4833: `.md` and `.txt` dragged from Files together are both attached,
+    /// as Choose File attaches them.
+    @Test func dropped_md_and_txt_files_both_attach() async throws {
+        let f = try await fixture()
+        let filler = DropUploader()
+        let composer = NoteAttachmentComposer(noteId: f.source, filler: filler)
+        let files = try [Self.documentProvider("plan.md", "# Plan"), Self.documentProvider("notes.txt", "hi")]
+
+        await composer.attachDropped(files, in: f.session, after: "p1")
+
+        #expect(try await blocks(f).map(\.kind) == ["paragraph", "file", "file"])
+        let names = filler.uploaded.map { String($0.split(separator: "|")[0]) }
+        #expect(names.count == 2 && names[0].hasSuffix("-plan.md") && names[1].hasSuffix("-notes.txt"), "\(names)")
+        if case let .failed(error) = composer.state { Issue.record("no alert: \(error.title)") }
+    }
+
+    /// Text dragged along with a file is not attached, and the alert says so.
+    @Test func text_in_a_file_drop_is_counted_as_not_added() async throws {
+        let f = try await fixture()
+        let composer = NoteAttachmentComposer(noteId: f.source, filler: DropUploader())
+        let drag = [try Self.documentProvider("plan.md", "# Plan"), Self.dataProvider([.utf8PlainText])]
+        #expect(EditorDrop.of(drag) == .files)
+
+        await composer.attachDropped(drag, in: f.session, after: "p1")
+
+        #expect(try await blocks(f).map(\.kind) == ["paragraph", "file"])
+        guard case let .failed(error) = composer.state else {
+            Issue.record("a skipped item must not be dropped silently")
+            return
+        }
+        #expect(error.code == ErrorMapping.droppedNotFile.code)
+        #expect(error.guidance?.hasPrefix("1 of 2 files wasn't added.") == true)
+    }
 }
