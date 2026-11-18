@@ -15,8 +15,9 @@ import SwiftUI
 // **Columns (Q4, `DESIGN.md` › Tablet).** Three at 13" landscape width with
 // the page sidebar hidden, two below it (portrait, smaller iPads, the page
 // sidebar open): the list and the note, with the tree a tap away. Set on the
-// width this view gets, never the device. `NotesColumns` owns the rule: a
-// column the user shows or hides stays until they toggle again or rotate.
+// width this view gets, never the device. `NotesColumns` owns the rule,
+// including which of the split view's writes are the user's: a column the
+// user shows or hides stays until they toggle again or rotate.
 //
 // **The rails (#4347, D9, #4380).** The note inspector shows only when the
 // page holds the note column and the rail (`SideRails`, which also seats the
@@ -34,17 +35,7 @@ struct NotesSplitView: View {
     @Bindable var router: NotesSplitRouter
     @Binding var sort: BrowseSort
 
-    @State private var columns: NavigationSplitViewVisibility = .doubleColumn
     @State private var notesColumns = NotesColumns()
-    /// The split view's own writes while the layout settles are no choice of
-    /// the user's.
-    @State private var settling = false
-    @State private var holdsThreeColumns = false
-    @State private var landscape = false
-    /// 13" landscape is 1366-1376pt wide. Every smaller iPad in landscape
-    /// (at most 1210pt), 13" portrait (1024-1032pt) and 13" landscape beside
-    /// the page sidebar (about 1086pt) stay below it.
-    private static let threeColumnWidth: CGFloat = 1300
     @State private var expanded: Set<String> = []
     @Environment(SideRails.self) private var rails: SideRails?
     @State private var selectedFolder: String?
@@ -52,9 +43,11 @@ struct NotesSplitView: View {
     @Environment(\.requestVaultSync) private var requestVaultSync
 
     var body: some View {
-        NavigationSplitView(columnVisibility: Binding(get: { columns }, set: { shown in
-            columns = shown
-            if !settling { notesColumns.choose(shown) }
+        NavigationSplitView(columnVisibility: Binding(get: { notesColumns.onScreen }, set: { written in
+            notesColumns.splitViewWrote(written, at: .now)
+            // In its own turn: put back in this one, the state would not
+            // change and the split view would keep its write.
+            if notesColumns.needsPutBack { Task { notesColumns.putBack() } }
         })) {
             NotesSidebar(model: model, router: router)
         } content: {
@@ -65,26 +58,13 @@ struct NotesSplitView: View {
         .navigationSplitViewStyle(.balanced)
         // The width left beside the app's page sidebar, a safe-area inset.
         // With that sidebar open the split view keeps two columns anyway.
-        .onGeometryChange(for: Bool.self) { $0.size.width >= Self.threeColumnWidth } action: {
-            holdsThreeColumns = $0
+        .onGeometryChange(for: CGSize.self) { $0.size } action: {
+            notesColumns.splitViewResized(to: $0, at: .now)
         }
-        .onGeometryChange(for: Bool.self) { $0.size.width > $0.size.height } action: { landscape = $0 }
-        // One owner for the columns, set at once and again when the layout
-        // settles: after a width change (a rotation, the page sidebar
-        // sliding in) the split view writes its own choice over the binding
-        // about 70ms later, which would leave the list beside the rail.
-        // Keyed on the width as well: with the rail open the page sidebar
-        // sliding in still triggers that write. A reappearance (another page
-        // and back) keeps the user's columns, which `NotesColumns` holds
-        // (#4380).
-        .task(id: columnInputs) {
-            notesColumns.update(columnInputs)
-            settling = true
-            columns = notesColumns.shown
-            guard (try? await Task.sleep(for: .milliseconds(400))) != nil else { return }
-            columns = notesColumns.shown
-            settling = false
-        }
+        .background { WindowSizeReader { notesColumns.windowResized(to: $0, at: .now) } }
+        // A reappearance (another page and back) keeps the user's columns,
+        // which `NotesColumns` holds (#4380).
+        .onChange(of: columnInputs, initial: true) { _, inputs in notesColumns.update(inputs) }
         .environment(\.noteInspectorFits, rails?.inspectorFits ?? false)
         .environment(router)
         .onChange(of: rails?.pageRoom(on: .notes) ?? SideRailRoom.none, initial: true) { _, room in
@@ -119,13 +99,7 @@ struct NotesSplitView: View {
     }
 
     private var columnInputs: NotesColumns.Inputs {
-        NotesColumns.Inputs(
-            holdsThreeColumns: holdsThreeColumns,
-            landscape: landscape,
-            noteBesideRail: railShown || router.splitShown,
-            rails: rails?.open,
-            splitShown: router.splitShown
-        )
+        NotesColumns.Inputs(noteBesideRail: railShown || router.splitShown, rails: rails?.open, splitShown: router.splitShown)
     }
 
     private func open(_ id: String) { router.select(NoteRoute(id: id)) }
