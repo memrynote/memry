@@ -24,12 +24,14 @@ use crate::registry::VaultRegistry;
 use crate::session::{OpenVault, SupervisorFactory, lock};
 use crate::shell::power::PowerEvent;
 use crate::sync::backend::{SyncBackend, VaultSyncBackend};
+use crate::sync::disk::DiskObserver;
 use crate::sync::events::OnSyncEvent;
 use crate::sync::gate::SyncStartGate;
 use crate::sync::signals::AuthSignals;
 use crate::sync::status::SyncStatus;
 use crate::sync::supervisor::{SupervisorParts, SyncSupervisor};
 use crate::telemetry::Service;
+use crate::vault::consumer::VaultTier;
 
 /// `BINDING_RETRY_MS`: how long an `Unknown` binding waits before the next check.
 pub const BINDING_RETRY: Duration = Duration::from_secs(60);
@@ -122,6 +124,9 @@ pub struct SyncWiring {
     pub on_binding: Arc<dyn Fn(&BindingState) + Send + Sync>,
     /// A vault directory refresh changed a vault's icon (`vault:list-changed`).
     pub on_vault_list_changed: Arc<dyn Fn() + Send + Sync>,
+    /// The vault tier pulled bodies and locks reach the disk through (`sync::disk`); `None` in a
+    /// test that serves no vault files.
+    pub tier: Option<Arc<VaultTier>>,
 }
 
 /// The open vault without keeping it open: a closed vault ends the binding task.
@@ -173,6 +178,14 @@ impl SyncWiring {
             Vec::new(),
             Arc::new(move || account.sync_facts()),
         );
+        let backend = match &self.tier {
+            Some(tier) => backend.with_observer(Arc::new(DiskObserver::new(
+                Arc::clone(tier),
+                open.path.clone(),
+                Arc::clone(&open.vault),
+            ))),
+            None => backend,
+        };
         let supervisor = SyncSupervisor::start(
             &self.runtime,
             SupervisorParts {

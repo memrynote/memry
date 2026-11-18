@@ -316,6 +316,7 @@ async fn an_unknown_binding_is_checked_again_after_a_minute_and_reported_once() 
         bindings: Arc::new(OpenVaultBinding::default()),
         on_binding: Arc::new(move |state| seen.lock().unwrap().push(state.clone())),
         on_vault_list_changed: Arc::new(|| {}),
+        tier: None,
     });
     let start = tokio::time::Instant::now();
     let session = s.session.clone();

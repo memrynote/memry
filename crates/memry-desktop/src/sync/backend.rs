@@ -126,6 +126,8 @@ pub struct VaultSyncBackend {
     reachability: Arc<dyn Reachability>,
     seeds: Vec<Arc<dyn PassSeed>>,
     account: Arc<dyn Fn() -> (bool, bool) + Send + Sync>,
+    /// Heard by every driver this backend opens, after the supervisor's own.
+    observers: Vec<Arc<dyn ApplyObserver>>,
     /// Bumped by each close, under this lock: a key install that a close overtook (the pass was
     /// aborted, its blocking install was not) installs nothing.
     closes: Arc<Mutex<u64>>,
@@ -149,8 +151,15 @@ impl VaultSyncBackend {
             reachability,
             seeds,
             account,
+            observers: Vec::new(),
             closes: Arc::default(),
         }
+    }
+
+    /// Adds `observer` to every driver this backend opens (`sync::disk`).
+    pub fn with_observer(mut self, observer: Arc<dyn ApplyObserver>) -> Self {
+        self.observers.push(observer);
+        self
     }
 }
 
@@ -217,7 +226,10 @@ impl SyncBackend for VaultSyncBackend {
                 Arc::clone(&self.reachability),
                 DriverConfig::desktop(),
                 self.seeds.clone(),
-                observers,
+                observers
+                    .into_iter()
+                    .chain(self.observers.iter().cloned())
+                    .collect(),
             )
             .await
             .inspect_err(|_| self.close())?;

@@ -28,7 +28,11 @@ use crate::vault::watch::filter::WatchFilter;
 use crate::vault::watch::{EchoGuard, NewFiles, VaultWatcher, WatchHandle};
 use crate::vault::writeback::{Pass, WriteBack, WriteBackFailed};
 
+mod owed;
 mod writeback;
+
+use owed::OwedFiles;
+pub use owed::Taken;
 
 use writeback::after_walk;
 
@@ -92,6 +96,8 @@ struct Open {
     writeback: Arc<WriteBack>,
     /// The write-back's pass, for the reconcile that ends each walk.
     pass: Arc<Pass>,
+    /// The take of the files this vault's notes owe, swept after each walk.
+    owed: Arc<OwedFiles>,
     /// What the app asks of this open's watcher, the one a restart started last.
     watch: Mutex<WatchHandle>,
     /// Held by a restart from its stop to its start, so a close waits for it and stops what it
@@ -300,7 +306,7 @@ impl VaultTier {
             Tasks::Unwatched => {}
         }
         unwatched();
-        let after_walk = after_walk(&open.pass, &open.writeback);
+        let after_walk = after_walk(&open.pass, &open.writeback, &open.owed);
         let owned = (&open.echo, &open.writeback);
         let (watcher, consumer) = self.watch(&open.view, open.session, owned, after_walk)?;
         *lock(&open.watch) = watcher.handle();
@@ -366,11 +372,20 @@ impl VaultTier {
         let writeback = WriteBack::start(pass.clone(), self.failures.clone())
             .map(Arc::new)
             .map_err(|error| error.to_string())?;
+        let owed = Arc::new(OwedFiles {
+            root: vault.path.clone(),
+            vault: vault.vault.clone(),
+            rows: self.rows.clone(),
+            session,
+            store: self.store.clone(),
+            editor: lock(&self.editor).clone(),
+            writeback: writeback.clone(),
+        });
         let tasks = self.watch(
             vault,
             session,
             (&echo, &writeback),
-            after_walk(&pass, &writeback),
+            after_walk(&pass, &writeback, &owed),
         )?;
         Ok(Open {
             view: vault.clone(),
@@ -378,6 +393,7 @@ impl VaultTier {
             echo,
             writeback,
             pass,
+            owed,
             watch: Mutex::new(tasks.0.handle()),
             tasks: Mutex::new(Tasks::Running(tasks.0, tasks.1)),
         })
