@@ -11,7 +11,8 @@ use crate::support;
 use std::collections::BTreeSet;
 
 use memry_core::markdown::convert::roots::{
-    CRITIC_MARKUP_MARKS_ARRAY, read_array_json, read_critic_marks, write_critic_marks,
+    CRITIC_MARKUP_MARKS_ARRAY, critic_mark_array_operations, read_array_json, read_critic_marks,
+    write_critic_marks,
 };
 use memry_core::markdown::pm::model::json_to_any;
 use memry_core::markdown::schema::lift_images::lift_images_out_of_text_blocks;
@@ -29,6 +30,7 @@ use memry_core::markdown::shared::writing_tools::{
     read_writing_frontmatter, strip_writing_sentinels, to_writing_frontmatter_value,
     without_writing_sentinels, writing_frontmatter_of,
 };
+use memry_test_kit::assert_steps_at_most;
 use serde::de::DeserializeOwned;
 use serde_json::{Value as Json, json};
 use support::vector_compare::{Failures, json_equal};
@@ -269,4 +271,75 @@ fn critic_layer_vectors() {
         names.len()
     );
     failures.finish("layer-critic");
+}
+
+/// Every yrs array operation walks the array from its start, so a write of a
+/// peer-sized array stays linear only while its operation count is bounded:
+/// runs are coalesced, and past 64 operations the array is rewritten whole.
+#[test]
+fn critic_mark_writes_make_a_bounded_number_of_array_operations() {
+    let many: Vec<CriticMarkupMark> = (0..1000)
+        .map(|index| {
+            serde_json::from_value(json!({
+                "id": format!("m{index}"), "kind": "addition", "visibleText": "more",
+                "start": index * 10, "end": index * 10 + 4,
+            }))
+            .expect("mark")
+        })
+        .collect();
+    let edited = |mark: &CriticMarkupMark| CriticMarkupMark {
+        visible_text: "edit".into(),
+        ..mark.clone()
+    };
+    let cases: Vec<(&str, Vec<CriticMarkupMark>, usize)> = vec![
+        ("every mark edited", many.iter().map(edited).collect(), 2),
+        (
+            "every other mark edited",
+            many.iter()
+                .enumerate()
+                .map(|(i, m)| if i % 2 == 0 { edited(m) } else { m.clone() })
+                .collect(),
+            2,
+        ),
+        (
+            "every other mark deleted",
+            many.iter().step_by(2).cloned().collect(),
+            2,
+        ),
+        (
+            "every hundredth mark edited",
+            many.iter()
+                .enumerate()
+                .map(|(i, m)| if i % 100 == 0 { edited(m) } else { m.clone() })
+                .collect(),
+            20,
+        ),
+        (
+            "offsets moved only",
+            many.iter()
+                .map(|m| CriticMarkupMark {
+                    start: m.start + 1,
+                    end: m.end + 1,
+                    ..m.clone()
+                })
+                .collect(),
+            0,
+        ),
+    ];
+    for (what, next, bound) in cases {
+        let doc = Doc::new();
+        write_critic_marks(&mut doc.transact_mut(), &many);
+        assert_steps_at_most(what, critic_mark_array_operations, bound, || {
+            write_critic_marks(&mut doc.transact_mut(), &next);
+        });
+        let read = read_critic_marks(&doc.transact());
+        let expected: Vec<&str> = next.iter().map(|mark| mark.visible_text.as_str()).collect();
+        assert_eq!(
+            read.iter()
+                .map(|mark| mark.visible_text.as_str())
+                .collect::<Vec<_>>(),
+            expected,
+            "{what}"
+        );
+    }
 }

@@ -759,7 +759,7 @@ on create, whole-array replace on a tag edit
 
 The critic-markup reader **drops any element failing shape validation** — `id`,
 `kind`, `visibleText`, finite `start <= end`
-(`packages/shared/src/critic-markup/yjs.ts:151-159`) — so a client that rewrites
+(`packages/shared/src/critic-markup/yjs.ts:200-208`) — so a client that rewrites
 elements MUST keep that shape exactly.
 
 **Normative: each element of `criticMarkupMarks` is one mark, and its id names
@@ -771,35 +771,56 @@ two elements with one id, which Yjs orders the same on every replica.
   (`packages/shared/src/critic-markup/yjs.ts:56-64`,
   `crates/memry-core/src/markdown/convert/roots.rs:177-184`,
   `crates/memry-core/src/crdt/comments.rs:91-116`).
-- **Write: element by element** (`packages/shared/src/critic-markup/yjs.ts:73-125`,
-  `crates/memry-core/src/markdown/convert/roots.rs:190-268`). A writer deletes
+- **Write: element by element** (`packages/shared/src/critic-markup/yjs.ts:81-142`,
+  `crates/memry-core/src/markdown/convert/roots.rs:218-310`). A writer deletes
   the elements that fail validation, every element after the first valid one of
-  an id, and the ids it no longer holds. It replaces an element only when the
-  value differs; key order is not a difference. It does not move existing
-  elements, and it inserts a new id after the furthest existing element among
-  the marks that precede the new id in the writer's list. A replaced element keeps every key the writer does not know
+  an id, and the ids it no longer holds. It does not move existing elements, and
+  it inserts a new id after the furthest existing element among the marks that
+  precede the new id in the writer's list.
+- **A writer replaces an element only for an edit.** It compares the stored
+  mark, normalized as the reader normalizes it, with the mark it writes, without
+  `start` and `end` (`packages/shared/src/critic-markup/yjs.ts:157-163`,
+  `crates/memry-core/src/markdown/convert/roots.rs:329-340`). Key order is not
+  a difference either. Offsets alone are never written: the window moves them
+  with its typing (#4425), and a copy written only to move a mark would hide
+  another device's edit of that mark under first-copy-wins. A replaced element
+  keeps every top-level key the writer does not know
   (`packages/shared/src/critic-markup/yjs.ts:32-45`,
-  `crates/memry-core/src/markdown/convert/roots.rs:160-173`, `:271-284`). Two
-  devices that change different marks therefore merge without duplicates, and a
-  later write deletes the duplicates of an earlier concurrent edit.
-- **A new mark field is also written into `metadata`.** Electron builds rewrite
-  the whole array and write only the keys they know, so any other top-level key
-  is lost after they write. Every shipped build copies `metadata` unchanged, and
-  the CriticMarkup serializer keeps a `metadata` part it does not know
-  (`packages/shared/src/critic-markup/parser.ts:474-491`). A field added after
-  `formatRanges` MUST therefore also be written as a `key=value` part of
-  `metadata`, with parts separated by `;` and the value URI-encoded, as
+  `crates/memry-core/src/markdown/convert/roots.rs:160-173`, `:343-356`).
+  Two devices that change different marks therefore merge without duplicates,
+  and a later write deletes the duplicates of an earlier concurrent edit.
+- **The items of `mentions`, `attachments` and `formatRanges` take no new
+  keys.** Readers normalize them to a closed key set, and writers compare and
+  write the normalized items, so a key added inside an item is lost on the first
+  edit of its mark.
+- **A writer makes at most 64 array operations.** Deletes and replaces of
+  adjacent elements are one operation each, and the new ids after one element are
+  one insert. When a write would take more operations, the writer deletes the
+  whole array and inserts the result once, with the unknown keys kept. Each Yjs
+  and yrs array operation walks the array from its start, so this bound keeps a
+  write linear in the array's length.
+- **A new comment field is also written into `metadata`.** Electron builds
+  rewrite the whole array and write only the keys they know, so any other
+  top-level key is lost after they write. Every shipped build copies `metadata`
+  unchanged, and the CriticMarkup serializer keeps a `metadata` part it does not
+  know (`packages/shared/src/critic-markup/parser.ts:474-491`). A comment field
+  added after `formatRanges` MUST therefore also be written as a `key=value` part
+  of `metadata`, with parts separated by `;` and the value URI-encoded, as
   `mentions=` and `format=` are. The key MUST NOT be one of `id`, `type`,
   `createdAt`, `mentions`, `attachments` or `format`. The field MAY also be a
   top-level key, and a reader that finds the top-level key missing MUST read the
-  field from `metadata`.
+  field from `metadata`. This protects comments only: an addition, deletion or
+  substitution writes no metadata to the file
+  (`packages/shared/src/critic-markup/parser.ts:409-419`), so a new field on
+  those kinds is lost on an Electron write and on a reseed from the file.
 - **No new `kind`.** Every shipped reader drops an element whose `kind` it does
   not know, and every writer then deletes it.
 
 The `critic.yjsWrite` cases of
 `packages/contracts/test-vectors/markdown-convert/layer-critic.json` pin this
-behavior: unknown keys, key order, duplicate ids, inserts and deletes, and
-writers that merge concurrently. `crates/memry-core/tests/markdown_layer_critic_vectors.rs`
+behavior: unknown keys (nested ones included), key order, offset-only changes,
+duplicate ids, inserts and deletes, the whole-array rewrite, and writers that
+merge concurrently. `crates/memry-core/tests/markdown_layer_critic_vectors.rs`
 reproduces them.
 
 The frozen Electron app does not follow these write rules. It still rewrites the

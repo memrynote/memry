@@ -183,10 +183,38 @@ pub fn read_critic_marks<T: ReadTxn>(txn: &T) -> Vec<CriticMarkupMark> {
         .collect()
 }
 
+/// Past this many array operations a write rewrites the whole array: each
+/// yrs operation walks the array from its start, so the cost stays linear
+/// (`MAX_ARRAY_OPERATIONS` of `critic-markup/yjs.ts`).
+const MAX_ARRAY_OPERATIONS: usize = 64;
+
+thread_local! {
+    static ARRAY_OPERATIONS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+/// The array operations `write_critic_marks` made on this thread: the step
+/// counter of its complexity test.
+#[doc(hidden)]
+pub fn critic_mark_array_operations() -> usize {
+    ARRAY_OPERATIONS.with(std::cell::Cell::get)
+}
+
+fn remove(array: &ArrayRef, txn: &mut TransactionMut, start: usize, end: usize) {
+    ARRAY_OPERATIONS.with(|count| count.set(count.get() + 1));
+    array.remove_range(txn, start as u32, (end - start) as u32);
+}
+
+fn insert(array: &ArrayRef, txn: &mut TransactionMut, at: usize, values: Vec<Any>) {
+    ARRAY_OPERATIONS.with(|count| count.set(count.get() + 1));
+    array.insert_range(txn, at as u32, values);
+}
+
 /// `writeCriticMarkupMarksToYDoc`: deletes invalid elements, later copies of
-/// an id and ids `marks` drops; replaces an element whose value differs (Yjs
-/// maps compare without key order), keeping the keys this build does not
-/// know; inserts a new id after the furthest existing mark before it in `marks`.
+/// an id and ids `marks` drops; inserts a new id after the furthest existing
+/// mark before it in `marks`; replaces an element only when the stored mark,
+/// read as this build reads it, differs from the new one in more than its
+/// offsets (the window moves offsets with its typing and never writes them
+/// alone, #4425), keeping the keys this build does not know.
 pub fn write_critic_marks(txn: &mut TransactionMut, marks: &[CriticMarkupMark]) {
     let mut next: Vec<(String, Json)> = Vec::new();
     let mut next_ids = HashSet::new();
@@ -207,42 +235,32 @@ pub fn write_critic_marks(txn: &mut TransactionMut, marks: &[CriticMarkupMark]) 
 
     let array: ArrayRef = txn.get_or_insert_array(CRITIC_MARKUP_MARKS_ARRAY);
     let values: Vec<Out> = array.iter(txn).collect();
-    let mut kept: Vec<(String, Any)> = Vec::new();
+    let length = values.len();
+    // Each kept element: its id, what it holds, and its mark as read.
+    let mut kept: Vec<(String, Any, CriticMarkupMark)> = Vec::new();
     let mut kept_ids = HashSet::new();
-    let mut keep = Vec::with_capacity(values.len());
+    let mut keep = Vec::with_capacity(length);
     for value in values {
         let json = out_json(value.clone(), txn);
-        let id = normalize_mark(&json)
-            .map(|mark| mark.id)
-            .filter(|id| next_ids.contains(id) && kept_ids.insert(id.clone()));
-        keep.push(id.is_some());
-        if let Some(id) = id {
+        let mark = normalize_mark(&json)
+            .filter(|mark| next_ids.contains(&mark.id) && kept_ids.insert(mark.id.clone()));
+        keep.push(mark.is_some());
+        if let Some(mark) = mark {
             let stored = match value {
                 Out::Any(any) => any,
                 _ => json_to_any(&json),
             };
-            kept.push((id, stored));
+            kept.push((mark.id.clone(), stored, mark));
         }
-    }
-    let mut end = keep.len();
-    while end > 0 {
-        if keep[end - 1] {
-            end -= 1;
-            continue;
-        }
-        let mut start = end - 1;
-        while start > 0 && !keep[start - 1] {
-            start -= 1;
-        }
-        array.remove_range(txn, start as u32, (end - start) as u32);
-        end = start;
     }
 
     let index_of: HashMap<&str, usize> = kept
         .iter()
         .enumerate()
-        .map(|(index, (id, _))| (id.as_str(), index))
+        .map(|(index, (id, _, _))| (id.as_str(), index))
         .collect();
+    let mut result: Vec<Any> = kept.iter().map(|(_, stored, _)| stored.clone()).collect();
+    let mut replaced = vec![false; kept.len()];
     // New marks keyed by the kept element they follow (`None`: the start).
     let mut inserts: Vec<(Option<usize>, Vec<Any>)> = Vec::new();
     let mut anchor: Option<usize> = None;
@@ -254,17 +272,71 @@ pub fn write_critic_marks(txn: &mut TransactionMut, marks: &[CriticMarkupMark]) 
             }
             continue;
         };
-        let stored = &kept[index].1;
-        let merged = with_unknown_keys(mark, stored);
-        if merged != *stored {
-            array.remove_range(txn, index as u32, 1);
-            array.insert_range(txn, index as u32, vec![merged]);
+        let (_, stored, current) = &kept[index];
+        if !same_mark_apart_from_offsets(current, mark) {
+            result[index] = with_unknown_keys(mark, stored);
+            replaced[index] = true;
         }
         anchor = anchor.max(Some(index));
     }
-    for (after, group) in inserts.into_iter().rev() {
-        array.insert_range(txn, after.map_or(0, |index| index + 1) as u32, group);
+
+    let deletes = runs_of(keep.iter().map(|kept| !kept));
+    let replaces = runs_of(replaced.iter().copied());
+    if deletes.len() + 2 * replaces.len() + inserts.len() > MAX_ARRAY_OPERATIONS {
+        let mut groups: HashMap<Option<usize>, Vec<Any>> = inserts.into_iter().collect();
+        let mut whole = groups.remove(&None).unwrap_or_default();
+        for (index, element) in result.into_iter().enumerate() {
+            whole.push(element);
+            whole.extend(groups.remove(&Some(index)).unwrap_or_default());
+        }
+        if length > 0 {
+            remove(&array, txn, 0, length);
+        }
+        if !whole.is_empty() {
+            insert(&array, txn, 0, whole);
+        }
+        return;
     }
+    for &(start, end) in deletes.iter().rev() {
+        remove(&array, txn, start, end);
+    }
+    for (start, end) in replaces {
+        remove(&array, txn, start, end);
+        insert(&array, txn, start, result[start..end].to_vec());
+    }
+    for (after, group) in inserts.into_iter().rev() {
+        insert(&array, txn, after.map_or(0, |index| index + 1), group);
+    }
+}
+
+/// The `[start, end)` runs of `true`, in order.
+fn runs_of(flags: impl Iterator<Item = bool>) -> Vec<(usize, usize)> {
+    let mut runs: Vec<(usize, usize)> = Vec::new();
+    for (index, flag) in flags.enumerate() {
+        if !flag {
+            continue;
+        }
+        match runs.last_mut() {
+            Some((_, end)) if *end == index => *end = index + 1,
+            _ => runs.push((index, index + 1)),
+        }
+    }
+    runs
+}
+
+/// Whether the stored mark equals `mark` (as this build writes it) apart from
+/// the offsets.
+fn same_mark_apart_from_offsets(current: &CriticMarkupMark, mark: &Json) -> bool {
+    let without_offsets = |value: Json| match value {
+        Json::Object(mut fields) => {
+            fields.remove("start");
+            fields.remove("end");
+            Some(fields)
+        }
+        _ => None,
+    };
+    let current = serde_json::to_value(current).ok().and_then(without_offsets);
+    current.is_some() && current == without_offsets(mark.clone())
 }
 
 /// `mark` with the keys of `stored` that are not in `MARK_KEYS`.
