@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { ShortcutBinding } from '../settings-schemas'
+import { DEFAULT_STICKY_SHORTCUT, type ShortcutBinding } from '../settings-schemas'
 import {
   COMMANDS,
   LEGACY_SHORTCUT_IDS,
@@ -98,6 +98,35 @@ describe('COMMANDS', () => {
       expect(owners.get(key), `${id} shares ${key} with ${owners.get(key)}`).toBeUndefined()
       owners.set(key, id)
     }
+  })
+
+  it.each([true, false])(
+    'keeps app defaults off the system-wide shortcuts, which the OS takes first (mac: %s)',
+    (isMac) => {
+      // The sticky's default, and quick capture's fallback (memry-desktop `FALLBACK_ACCELERATOR`).
+      const global = [
+        DEFAULT_STICKY_SHORTCUT,
+        { key: 'Space', modifiers: { meta: true, shift: true } }
+      ]
+      for (const [id, meta] of entries) {
+        if (meta.keyboard?.owner !== 'app') continue
+        const key = chord(resolvePlatformBinding(meta.keyboard.default, isMac))
+        expect(global.map(chord), id).not.toContain(key)
+      }
+    }
+  )
+
+  it("gives today's journal ⌥⌘T, Ctrl+Alt+T off macOS, without AltGr", () => {
+    const journal = COMMANDS['go.journal'].keyboard
+    expect(resolvePlatformBinding(journal.default, true)).toEqual({
+      key: 't',
+      modifiers: { meta: true, alt: true }
+    })
+    expect(journal.skipAltGraph).toBe(true)
+    expect(COMMANDS['tabs.newTab'].keyboard.default).toEqual({
+      key: 't',
+      modifiers: { meta: true }
+    })
   })
 
   it('encodes the guard policies the hooks apply today', () => {

@@ -263,6 +263,18 @@ describe('resolveChord: platform bindings and AltGr', () => {
     expect(resolve(altGr, env())).toBeNull()
   })
 
+  it("opens today's journal on ⌥⌘T and Ctrl+Alt+T, and leaves ⌘T to the new tab", () => {
+    // Option composes ⌥T into † on macOS; the chord matches the physical key.
+    const optionT = press({ key: '†', code: 'KeyT', metaKey: true, altKey: true })
+    expect(resolve(optionT, env({ isMac: true }))).toBe('go.journal')
+    expect(resolve(press({ key: 't', ctrlKey: true, altKey: true }), env())).toBe('go.journal')
+    expect(resolve(press({ key: 't', metaKey: true }), env({ isMac: true }))).toBe('tabs.newTab')
+
+    const altGrT = press({ key: 't', ctrlKey: true, altKey: true })
+    altGrT.getModifierState = (key: string) => key === 'AltGraph'
+    expect(resolve(altGrT, env())).toBeNull()
+  })
+
   it('reads ⌘ as the Meta key on macOS and as Ctrl elsewhere', () => {
     expect(resolve(press({ key: 'w', metaKey: true }), env({ isMac: true }))).toBe('tabs.closeTab')
     expect(resolve(press({ key: 'w', metaKey: true }), env())).toBeNull()

@@ -6,7 +6,7 @@ A dated note per day. memrynote creates one on demand and remembers where you le
 
 ## Opening Today
 
-Open Journal from the sidebar, or use <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>E</kbd> if you've remapped it that way. By default memrynote opens **today's** entry.
+Open Journal from the sidebar, or press <kbd>⌘</kbd>+<kbd>⌥</kbd>+<kbd>T</kbd> (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>T</kbd> on Windows and Linux). A new Journal tab opens on **today's** entry. The sidebar brings back the Journal tab on the day you left it, while the shortcut always moves it to today's entry, even from a month or year view.
 
 If today's entry doesn't exist yet, it's created on first focus, seeded by your [default journal template](/user-guide/journal/templates-settings).
 
