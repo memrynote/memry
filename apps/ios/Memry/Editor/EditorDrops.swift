@@ -30,12 +30,6 @@ enum EditorDrop: Equatable {
         return providers.contains { fileType(of: $0) != nil } ? .files : nil
     }
 
-    /// The forms text dragged out of an app comes in. A text type with a name
-    /// of its own (`.md`, `.csv`, `.json`) is a document file instead (#4833).
-    static let textForms: [UTType] = [
-        .text, .plainText, .utf8PlainText, .utf16PlainText, .utf16ExternalPlainText, .rtf, .rtfd, .flatRTFD, .html,
-    ]
-
     /// The type a provider's file is read as: a picture, movie, recording or
     /// PDF first (an image dragged from Safari also carries its address),
     /// else any other file, text documents included, as Choose File takes
@@ -46,15 +40,15 @@ enum EditorDrop: Equatable {
         if let media = types.first(where: { type in mediaTypes.contains { type.conforms(to: $0) } }) {
             return media
         }
-        // A file from Files carries its file URL, and a bare URL beside it;
-        // a URL with no file URL is a web address, a link.
+        // Text attaches only when the drag carries its file (a file URL or opened in place), whatever its type (#4833).
+        let carriesFile = types.contains { $0.conforms(to: .fileURL) }
+            || !provider.registeredTypeIdentifiers(fileOptions: [.openInPlace]).isEmpty
         let notFile: [UTType] = [.memryNote, .memryTasks]
-        let isLink = types.contains { $0.conforms(to: .url) } && !types.contains { $0.conforms(to: .fileURL) }
+        let isLink = types.contains { $0.conforms(to: .url) } && !carriesFile
         guard !isLink, !types.contains(where: { type in notFile.contains { type.conforms(to: $0) } }) else { return nil }
-        if let document = types.first(where: { $0.conforms(to: .text) && !textForms.contains($0) }) {
-            return document
+        if let text = types.first(where: { $0.conforms(to: .text) }) {
+            return carriesFile ? text : nil
         }
-        guard !types.contains(where: { $0.conforms(to: .text) }) else { return nil }
         return types.first { $0.conforms(to: .data) && !$0.conforms(to: .url) }
     }
 }
