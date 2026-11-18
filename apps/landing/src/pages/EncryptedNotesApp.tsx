@@ -71,7 +71,7 @@ const FALLS_SHORT = [
   'The server can see tag names, folder paths, item sizes, and change times, as listed above.',
   'Sync runs only through our hosted service. A self-hosted sync server is planned, not available.',
   'Sync is paid. The local app is free, and sync starts at $5 a month.',
-  'The iPhone app is in TestFlight beta, and there is no Android, iPad, or web app. There is no sharing between accounts.'
+  'The iPhone app is in TestFlight beta; iPad support is in development. There is no Android or web app, and no sharing between accounts.'
 ] as const
 
 const ENCRYPTED_NOTES_FAQ = [
