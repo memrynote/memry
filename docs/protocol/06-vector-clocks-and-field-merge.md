@@ -538,12 +538,51 @@ homeNoteId
 ```
 
 **A field absent from the list is not merged at all** and does not appear in
-`merged` (`packages/sync-client/src/field-merge.ts:118`).
+`merged` (`packages/sync-client/src/field-merge.ts:118`). A task's three list
+fields are the one exception, unioned by §6.7.1 beside the field merge.
 
 `initAllFieldClocks(docClock, fields)` seeds **every listed field** with a copy of
 the document clock (`packages/sync-client/src/field-merge.ts:42-46`). It is what
 a client uses when a row has a document clock but no field clocks yet
 (`packages/sync-client/src/offline-clock.ts:76`, `:92`).
+
+### 6.7.1 A task's list fields are unioned on a concurrent merge
+
+**Normative.** `tags`, `linkedNoteIds` and `linkedCanvasIds` are outside
+`TASK_SYNCABLE_FIELDS` and carry no field clock. On §6.3.1's concurrent branch
+of a `task` apply, a client MUST replace each of the three lists that the remote
+payload carries with the union of the local list and the remote list
+(`apps/desktop/src/main/sync/item-handlers/task-handler.ts:221-242`):
+
+1. **Presence.** The union runs only for a list the remote carries
+   (`if (data.tags)`, `:228`, `:233`, `:238`). A remote that omits the key
+   leaves the local list unchanged. A remote empty array is present, so the
+   result is the local list.
+2. **Order.** The result starts with the local entries in their order, then
+   adds the remote entries the result does not hold yet, in the remote's order
+   (`[...new Set([...local, ...remote])]`, `:230`, `:235`, `:240`).
+3. **Tags.** `writeTags` stores the result (`:100-115`). It trims each tag with
+   JavaScript `trim`, drops an empty tag, and dedupes by `foldTag`
+   (`packages/shared/src/tag-fold.ts:25`; vector class `tag-fold`), keeping the
+   first spelling. A local `urgent` and a remote `Urgent` give `urgent`.
+4. **Links.** Note and canvas ids dedupe by exact string equality, so `n1` and
+   `N1` are two links (`:117-133`).
+5. **No removal set.** The union cannot express a removal. When one device
+   removes an entry and the other device makes any concurrent edit to the task
+   while it still holds the entry, the merge brings the entry back on every
+   device. Electron accepts this trade (`:222-227`): a stray link is visible and
+   removable, and a silently dropped link is not.
+
+The merged row is re-queued at the union clock by §6.5.2 P3, so the union
+reaches the server and the peer. A client that kept only the local lists would
+re-push them under a clock that dominates the peer's row, and an entry the peer
+added would be lost on every device. Desktop's Rust core does the union in
+`crates/memry-core/src/domain/task_merge.rs` (`union_list`), on the one apply
+path that pull, first sync and relay share (`crates/memry-core/src/sync/apply/record.rs:85`).
+
+The `field-merge` vector class does not cover this rule: the union is inline in
+the task handler and not in `mergeTaskFields`. The two-device tests in
+`crates/memry-core/tests/sync_task_list_union.rs` pin it.
 
 ## 6.8 Which types merge which way — Q06.5
 
@@ -551,7 +590,7 @@ a client uses when a row has a document clock but no field clocks yet
 
 | Type                            | Algorithm                                                                                  |
 | ------------------------------- | ------------------------------------------------------------------------------------------ |
-| `task`                          | field-level merge over `TASK_SYNCABLE_FIELDS`                                              |
+| `task`                          | field-level merge over `TASK_SYNCABLE_FIELDS`, plus the list union of §6.7.1               |
 | `project`                       | field-level merge over `PROJECT_SYNCABLE_FIELDS`                                           |
 | `calendar_event`                | field-level merge over the fourteen `CALENDAR_EVENT_SYNCABLE_FIELDS` (chapter 13 §13.7.17) |
 | `settings`                      | dotted-path field clocks, §6.9                                                             |
