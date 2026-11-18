@@ -111,10 +111,8 @@ export const scenes = {
     const b = await row.boundingBox()
     zoom(300, b.y + 110, 1.8)
     await sleep(400)
-    const expand = page
-      .getByRole('button', { name: 'Expand folder' })
-      .filter({ has: page.locator('xpath=self::*') })
-    const buttons = await expand.all()
+    const expand = page.getByRole('button', { name: 'Expand folder' })
+    const buttons = Array.from({ length: await expand.count() }, (_, i) => expand.nth(i))
     for (const e of buttons) {
       const eb = await e.boundingBox()
       if (eb && Math.abs(eb.y + eb.height / 2 - (b.y + b.height / 2)) < 10) {

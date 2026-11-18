@@ -301,9 +301,10 @@ export function onTagNotesChanged(
  * @returns Unsubscribe function
  */
 export function onPropertyDefinitionChanged(
-  callback: (event: { name: string }) => void
+  callback: (event: { name: string }) => void,
+  onListening?: () => void
 ): () => void {
-  return subscribeToEvent(events.propertyDefinitionChangedEvent, callback)
+  return subscribeToEvent(events.propertyDefinitionChangedEvent, callback, onListening)
 }
 
 /**
