@@ -73,15 +73,28 @@ pub fn is_bot_page_title(title: &str) -> bool {
     BOT_PAGE_TITLES.iter().any(|bot| lower.contains(bot))
 }
 
-/// Departure from Electron: metascraper passes any URI as `image` and `logo`
-/// (`javascript:alert(1)`, `ftp:`), and Electron stored and rendered it. Only http(s) and data
-/// URIs, which `net.fetch` downloads, are kept; the vector generator applies the same filter
-/// (`fetchableImage` in `scripts/generate-metadata-vectors.mjs`).
+/// The longest `data:` image kept: a base64 [`super::MAX_IMAGE_BYTES`] image and its header.
+const MAX_DATA_IMAGE_BYTES: usize = super::MAX_IMAGE_BYTES * 4 / 3 + 1024;
+
+fn starts_with_ignore_case(value: &str, prefix: &str) -> bool {
+    value
+        .get(..prefix.len())
+        .is_some_and(|start| start.eq_ignore_ascii_case(prefix))
+}
+
+/// Departure from Electron: metascraper passes any URI as `url`, `image` and `logo`
+/// (`javascript:alert(1)`, `vbscript:`, `file:`, `ftp:`), and Electron stored and rendered it.
+/// Only http(s) stays. The vector generator applies the same filters (`httpUrl` and
+/// `fetchableImage` in `scripts/generate-metadata-vectors.mjs`).
+fn http_url(value: &str) -> bool {
+    starts_with_ignore_case(value, "http://") || starts_with_ignore_case(value, "https://")
+}
+
+/// [`http_url`], plus a `data:image/*` URI up to [`MAX_DATA_IMAGE_BYTES`], which `net.fetch`
+/// downloads for the thumbnail.
 fn fetchable_image(value: &str) -> bool {
-    let lower = value.get(..8).unwrap_or(value).to_ascii_lowercase();
-    ["http://", "https://", "data:"]
-        .iter()
-        .any(|scheme| lower.starts_with(scheme))
+    http_url(value)
+        || (starts_with_ignore_case(value, "data:image/") && value.len() <= MAX_DATA_IMAGE_BYTES)
 }
 
 /// Metadata of the page `html` fetched from `url`, dates without a timezone read in the local one.
@@ -99,7 +112,8 @@ pub fn metascrape_at<Tz: TimeZone>(
         return Err(MetascrapeError::InvalidUrl);
     }
     let page = Page::load(html)?;
-    let items = jsonld::collection(&page).map_err(|_| MetascrapeError::GraphNotArray)?;
+    let items =
+        jsonld::collection(&page, html.len()).map_err(|_| MetascrapeError::GraphNotArray)?;
     let cx = Ctx {
         page: &page,
         items: &items,
@@ -122,6 +136,10 @@ pub fn metascrape_at<Tz: TimeZone>(
         publisher: cx.publisher(),
         date: cx.date(),
         logo: cx.logo().filter(|v| fetchable_image(v)),
-        url: cx.url(),
+        url: Some(
+            cx.url()
+                .filter(|v| http_url(v))
+                .unwrap_or_else(|| url.to_owned()),
+        ),
     })
 }

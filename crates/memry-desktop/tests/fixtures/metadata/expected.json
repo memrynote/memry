@@ -395,5 +395,9 @@
   "image-script-scheme.html": {
     "title": "Script scheme",
     "url": "https://www.example.com/scheme"
+  },
+  "image-data-not-image.html": {
+    "title": "Data not image",
+    "url": "https://www.example.com/data"
   }
 }

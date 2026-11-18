@@ -156,7 +156,7 @@ fn resolve<Tz: TimeZone>(
         LocalResult::Ambiguous(earlier, _) => Some(earlier.to_utc()),
         // A time in a spring-forward gap moves forward by the gap, as `Date` does.
         LocalResult::None => tz
-            .from_local_datetime(&(local + Duration::hours(1)))
+            .from_local_datetime(&local.checked_add_signed(Duration::hours(1))?)
             .earliest()
             .map(|d| d.to_utc()),
     }
@@ -197,6 +197,26 @@ mod tests {
         assert_eq!(at("2021").as_deref(), Some("2021-01-01T00:00:00.000Z"));
         assert_eq!(at("By Jane Doe"), None);
         assert_eq!(at("May Smith"), None);
+    }
+
+    /// chrono gives an Invalid Date past `Date`'s range, so the helpers give no date.
+    #[test]
+    fn ago_past_the_date_range_gives_no_date() {
+        for text in [
+            "300000 years ago",
+            "9999999999999 days ago",
+            "99999999999999999 seconds ago",
+            "999999999999999 hours ago",
+            "99999999999999 weeks ago",
+            "99999999999999999 months ago",
+            "9999999999999999999 minutes ago",
+        ] {
+            assert_eq!(at(text), None, "{text}");
+        }
+        assert_eq!(
+            at("3 years ago").as_deref(),
+            Some("2022-06-16T09:00:00.000Z")
+        );
     }
 
     #[test]

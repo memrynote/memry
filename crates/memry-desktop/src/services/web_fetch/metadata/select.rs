@@ -10,9 +10,9 @@
 //!
 //! Every query is one pass over the elements in document order, so a query costs the element
 //! count however deep the tree is. Text is read only from elements that hold non-whitespace
-//! text, and every node visit counts against a per-page budget: a page of nested matches whose
-//! text a rule keeps rejecting stops yielding text once the budget is spent, where cheerio's walk
-//! would be quadratic.
+//! text, and every node visit and text byte copied counts against a per-page budget: a page of
+//! nested matches whose text a rule keeps rejecting stops yielding text once the budget is spent,
+//! where cheerio's walk would be quadratic.
 
 use std::cell::Cell;
 use std::time::Duration;
@@ -36,12 +36,13 @@ pub fn parse_steps() -> usize {
     PARSE_STEPS.with(Cell::get)
 }
 
-fn step(count: usize) {
+pub(super) fn step(count: usize) {
     STEPS.with(|steps| steps.set(steps.get().saturating_add(count)));
 }
 
-/// Text node visits a page may spend reading element text, per node of the page.
-const TEXT_BUDGET_PER_NODE: usize = 16;
+/// What a page may spend reading element text: this many node visits and text bytes copied per
+/// node and per byte of the page.
+const TEXT_BUDGET_RATIO: usize = 16;
 
 /// The deepest a node of the page may nest: Blink's `kMaximumHTMLParserDOMTreeDepth`.
 pub const MAX_DEPTH: usize = 512;
@@ -166,7 +167,7 @@ impl Page {
             }
         }
         step(visits);
-        let budget = TEXT_BUDGET_PER_NODE.saturating_mul(visits);
+        let budget = TEXT_BUDGET_RATIO.saturating_mul(visits.saturating_add(html.len()));
         Ok(Page {
             dom,
             elems,
@@ -211,16 +212,25 @@ impl Page {
         let mut out = String::new();
         let mut stack = vec![elem.id];
         while let Some(node) = stack.pop() {
+            let kind = &self.dom.doc.node(node).kind;
+            let text = match kind {
+                NodeKind::Text(data) | NodeKind::CData(data) => Some(data.as_str()),
+                _ => None,
+            };
+            // A visit and the bytes it copies: nested matches each copy the text below them.
+            let cost = 1 + text.map_or(0, str::len);
             let budget = self.text_budget.get();
-            if budget == 0 {
+            if cost > budget {
+                self.text_budget.set(0);
                 return None;
             }
-            self.text_budget.set(budget - 1);
-            step(1);
-            match &self.dom.doc.node(node).kind {
-                NodeKind::Text(data) | NodeKind::CData(data) => out.push_str(data),
-                NodeKind::Comment(_) => continue,
-                _ => {}
+            self.text_budget.set(budget - cost);
+            step(cost);
+            if let Some(text) = text {
+                out.push_str(text);
+            }
+            if matches!(kind, NodeKind::Comment(_)) {
+                continue;
             }
             let mut children = Vec::new();
             if let Some(&content) = self.dom.templates.get(&node) {
