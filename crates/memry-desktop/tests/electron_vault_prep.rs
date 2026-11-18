@@ -269,3 +269,44 @@ fn the_legacy_pick_names_other_vaults_by_their_singleton() {
 }
 
 const OTHER_SINGLETON: &str = "7a9e3b1c-5d2f-4c6a-8e0b-9f1a2b3c4d5e";
+
+/// A `currentVault` the config's `vaults[]` does not list (a partial or edited config) is still
+/// imported, so it counts in the legacy pick: one listed vault plus it are two vaults, and only
+/// one of them reads the unclaimed legacy store.
+#[test]
+fn an_unlisted_current_vault_and_the_one_listed_vault_have_one_legacy_reader() {
+    let f = ElectronProfileFixture::install();
+    let other = f.vault.parent().unwrap().join("Other");
+    fs::create_dir_all(other.join(".memry")).unwrap();
+    Connection::open(other.join(".memry").join("data.db"))
+        .unwrap()
+        .execute_batch(&format!(
+            "CREATE TABLE vault_metadata (id TEXT PRIMARY KEY, vault_uuid TEXT);
+             INSERT INTO vault_metadata VALUES ('singleton', '{OTHER_SINGLETON}');"
+        ))
+        .unwrap();
+    fs::remove_dir_all(
+        f.profile
+            .join("crdt-stores")
+            .join(vault_dir_name(&f.expected.vault_uuid)),
+    )
+    .unwrap();
+    let other_path = other.to_string_lossy().into_owned();
+    edit_config(&f, |c| {
+        c["crdtStore"]
+            .as_object_mut()
+            .unwrap()
+            .remove("legacyStoreClaimedBy");
+        c["currentVault"] = other_path.into();
+    });
+    let r = run(&f);
+    let plan = r.plan();
+    assert_eq!(plan.vaults.len(), 2);
+    let mut readers = Vec::new();
+    for (name, path) in [("listed", &f.vault), ("current", &other)] {
+        if r.legacy(path, &import_ids(&plan, path)) == LegacyStore::Read {
+            readers.push(name);
+        }
+    }
+    assert_eq!(readers, ["current"]);
+}

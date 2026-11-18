@@ -501,3 +501,63 @@ fn the_folders_of_a_failed_write_are_expected_and_nothing_else_there() {
     write(&dir, "failed/deep/x.md", b"half");
     assert_eq!(vault.unexpected_changes().unwrap(), ["failed/deep/x.md"]);
 }
+
+const UUID_A: &str = "0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d";
+const UUID_B: &str = "5e6f7a8b-9c0d-4e1f-8a2b-3c4d5e6f7a8b";
+
+/// The groups of vaults the plan defers together, by their paths.
+fn deferred_together(plan: &VaultPlan) -> Vec<Vec<String>> {
+    plan.repeated_ids.iter().map(|r| r.paths.clone()).collect()
+}
+
+/// P was linked (singleton B, `pendingRenames[B] = A`, its history still under A) and Q is a
+/// copy of P's folder from before the link (singleton A): two ids, one store directory.
+#[test]
+fn vaults_that_share_a_store_through_a_pending_rename_are_flagged() {
+    let s = Setup::new();
+    let p = s.vault("P", Some(&singleton(UUID_B)));
+    let q = s.vault("Q", Some(&singleton(UUID_A)));
+    fs::create_dir_all(s.profile.crdt_store_root().join(UUID_A)).unwrap();
+    let plan = s.plan(json!({
+        "vaults": [{"path": p}, {"path": q}],
+        "crdtStore": {"pendingRenames": {UUID_B: UUID_A}},
+    }));
+    assert_eq!(deferred_together(&plan), [vec![p, q]]);
+}
+
+/// `vaultDirName` lowercases a canonical uuid: two vaults whose ids differ only in case name
+/// one store directory.
+#[test]
+fn vaults_whose_ids_differ_only_in_case_share_a_store_and_are_flagged() {
+    let s = Setup::new();
+    let upper = s.vault("Upper", Some(&singleton(&UUID_A.to_uppercase())));
+    let lower = s.vault("Lower", Some(&singleton(UUID_A)));
+    let plan = s.plan(json!({"vaults": [{"path": upper}, {"path": lower}]}));
+    assert_eq!(deferred_together(&plan), [vec![upper, lower]]);
+}
+
+/// A file the walk cannot open is one opaque entry, as a folder it cannot list is; the rest of
+/// the vault is still digested.
+#[cfg(unix)]
+#[test]
+fn an_unreadable_file_is_one_opaque_entry() {
+    use std::os::unix::fs::PermissionsExt as _;
+    let dir = tempfile::tempdir().unwrap();
+    let v = dir.path();
+    write(v, "locked.md", b"secret");
+    write(v, "open.md", b"o");
+    fs::set_permissions(v.join("locked.md"), fs::Permissions::from_mode(0o000)).unwrap();
+    if fs::File::open(v.join("locked.md")).is_ok() {
+        // Root opens every file.
+        return;
+    }
+    let tree = VaultTree::read(v);
+    fs::set_permissions(v.join("locked.md"), fs::Permissions::from_mode(0o644)).unwrap();
+    let tree = tree.unwrap();
+    assert_eq!(tree.len(), 2, "{tree:?}");
+    let readable = VaultTree::read(v).unwrap();
+    assert_eq!(
+        readable.changed_since(&tree, &ExpectedChanges::default()),
+        ["locked.md"]
+    );
+}
