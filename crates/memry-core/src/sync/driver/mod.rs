@@ -173,6 +173,8 @@ pub struct SyncDriver {
     snapshots: Arc<PassSnapshots>,
     snapshot_requests: Arc<SnapshotRequests>,
     admission: Arc<CrdtAdmission>,
+    /// The observers every pull tells, for the body step's `bodies_settled`.
+    observers: Arc<Observers>,
 }
 
 impl SyncDriver {
@@ -318,6 +320,7 @@ impl SyncDriver {
             snapshots,
             snapshot_requests,
             admission,
+            observers,
         };
         driver.repull_unknown_signers().await?;
         Ok(driver)

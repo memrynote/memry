@@ -39,6 +39,7 @@ use memry_core::sync::driver::{ApplyObserver, DriverConfig, SyncDriver};
 use memry_core::sync::state::PassTrigger;
 use memry_desktop::seams::transport::app_transport;
 use memry_desktop::sync::disk::DiskObserver;
+use memry_desktop::vault::consumer::Applied;
 use serde_json::Value;
 use vault_env::{Creates, Env, QUIET, WAIT, creates, edit_in_app, env, indexed};
 use zeroize::Zeroizing;
@@ -330,31 +331,45 @@ async fn an_owed_file_is_taken_once_and_pushed() {
     b.sync().await;
     assert!(!b.owes(), "the pull that settled the body took the file");
     assert_eq!(b.env.body(&b.note), "taken from the file");
-    let server_versions = |b: &Disk| {
-        b.env
-            .versions(&b.note)
+    let server_versions = |env: &Env, note: &str| {
+        env.versions(note)
             .iter()
             .filter(|version| version.contains("edited on A"))
             .count()
     };
-    assert_eq!(server_versions(&b), 1, "the server body is kept once");
+    assert_eq!(
+        server_versions(&b.env, &b.note),
+        1,
+        "the server body is kept once"
+    );
     b.sync().await;
 
-    // The next open sweeps again and finds nothing owed.
-    b.env.close();
-    b.env.open();
-    b.env.after_reconcile();
+    // The next open sweeps again and finds nothing owed. The app ends the vault's sync before a
+    // close, and the driver holds the vault open until it drops.
+    let Disk {
+        mut env,
+        driver,
+        note,
+        ..
+    } = b;
+    drop(driver);
+    env.close();
+    env.open();
+    // The consumer runs the open's sweep before it applies any later fact, so a file written now
+    // and seen added proves the sweep ran.
+    env.write("after-open.md", "after the open\n");
+    env.facts_until(|f| matches!(f, Applied::Added { path, .. } if path == "after-open.md"));
     assert_eq!(
-        server_versions(&b),
+        server_versions(&env, &note),
         1,
         "a second take keeps no second version"
     );
-    assert_eq!(b.env.body(&b.note), "taken from the file");
-    assert_eq!(b.env.read(FILE), "taken from the file\n");
+    assert_eq!(env.body(&note), "taken from the file");
+    assert_eq!(env.read(FILE), "taken from the file\n");
 
     a.sync().await;
     assert_eq!(
-        a.body(&b.note),
+        a.body(&note),
         "taken from the file",
         "A gets the file's text"
     );
