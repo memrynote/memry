@@ -497,7 +497,11 @@ async fn a_crash_mid_upload_restarts_cleanly_and_the_merge_keeps_every_id() {
         .expect_err("the upload dies at chunk 1");
     assert!(error.is_resumable(), "{error}");
     let sent = a.wire.sent();
-    let lost = serde_json::from_slice::<Value>(&sent[0].body).unwrap()["attachmentId"]
+    let initiate = sent
+        .iter()
+        .find(|s| s.path == "/sync/attachments/upload/initiate")
+        .expect("the upload started");
+    let lost = serde_json::from_slice::<Value>(&initiate.body).unwrap()["attachmentId"]
         .as_str()
         .unwrap()
         .to_owned();
@@ -530,7 +534,8 @@ async fn a_crash_mid_upload_restarts_cleanly_and_the_merge_keeps_every_id() {
     a.wire.cut(|_| false);
     let id = a.upload(REL, &[]).await.expect("the retry from the start");
     assert_ne!(id, lost);
-    let outbox_before = note_outbox_rows(&a).await;
+    let (rows, before) = note_record_row(&a).await;
+    assert_eq!(rows, 1, "the note's create row");
     let clock = a.clock_id.clone();
     let recorded = id.clone();
     let referenced =
@@ -539,7 +544,11 @@ async fn a_crash_mid_upload_restarts_cleanly_and_the_merge_keeps_every_id() {
             .unwrap();
     assert!(referenced);
     assert_eq!(references(&a).await, ["from-a-peer".to_owned(), id.clone()]);
-    assert!(note_outbox_rows(&a).await > outbox_before || outbox_before > 0);
+    // A record row supersedes the note's older one (`outbox::insert`): one row,
+    // newer than the create, carries the new reference to every other device.
+    let (rows, pushed) = note_record_row(&a).await;
+    assert_eq!(rows, 1);
+    assert!(pushed > before, "the new reference is queued for the push");
     assert!(!pending(&a).await, "the queue row is gone");
 
     let clock = a.clock_id.clone();
@@ -548,6 +557,11 @@ async fn a_crash_mid_upload_restarts_cleanly_and_the_merge_keeps_every_id() {
         .await
         .unwrap();
     assert_eq!(references(&a).await, ["from-a-peer".to_owned(), id.clone()]);
+    assert_eq!(
+        note_record_row(&a).await,
+        (1, pushed),
+        "a known id queues nothing"
+    );
     assert!(
         routes(&a.wire.sent())
             .iter()
@@ -596,14 +610,16 @@ async fn pending(device: &Device) -> bool {
         .unwrap()
 }
 
-async fn note_outbox_rows(device: &Device) -> i64 {
+/// The count and newest id of note-1's record (non-CRDT) outbox rows.
+async fn note_record_row(device: &Device) -> (i64, i64) {
     device
         .db
         .call(|conn| {
             conn.query_row(
-                "SELECT COUNT(*) FROM outbox WHERE item_type = 'note' AND item_id = 'note-1'",
+                "SELECT COUNT(*), COALESCE(MAX(id), 0) FROM outbox
+                  WHERE item_type = 'note' AND item_id = 'note-1' AND op <> 'crdt-update'",
                 [],
-                |row| row.get(0),
+                |row| Ok((row.get(0)?, row.get(1)?)),
             )
             .map_err(|error| memry_core::api::errors::StorageError::Failed {
                 what: error.to_string(),
