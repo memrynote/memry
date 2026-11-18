@@ -405,6 +405,7 @@ fn two_new_devices_meet_on_one_inbox() {
 
     // A pushes first; B pulls it before its own pass seeds anything.
     assert_eq!(pass_seed(&a, "device-a"), ["inbox"]);
+    assert_eq!(outbox_rows(&a, "inbox"), 1, "A queued its seed");
     pull(&b, &stored_inbox(&a), "device-a");
     assert!(
         pass_seed(&b, "device-b").is_empty(),
@@ -421,6 +422,11 @@ fn two_new_devices_meet_on_one_inbox() {
     open(&d, &fd.vault());
     pass_seed(&c, "device-c");
     pass_seed(&d, "device-d");
+    assert_eq!(
+        (outbox_rows(&c, "inbox"), outbox_rows(&d, "inbox")),
+        (1, 1),
+        "C and D queued their seeds"
+    );
     let (from_c, from_d) = (stored_inbox(&c), stored_inbox(&d));
     pull(&c, &from_d, "device-d");
     pull(&d, &from_c, "device-c");

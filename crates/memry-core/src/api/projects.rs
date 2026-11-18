@@ -464,8 +464,9 @@ impl Tasks {
 }
 
 /// The unclocked Inbox seeded by a sync pass ([`projects::seed_unclocked`]), as desktop's full
-/// sync seeds its unclocked projects between its pull and its push. The sync driver registers it
-/// for every vault, desktop's and the phone's.
+/// sync seeds its unclocked projects between its pull and its push. Desktop's sync driver
+/// registers it, and iOS's [`crate::api::sync::VaultSync::sync_now`] runs it, both through
+/// [`crate::sync::engine::seed_at_head`].
 pub(crate) struct ProjectSeed {
     db: Db,
     device_id: String,

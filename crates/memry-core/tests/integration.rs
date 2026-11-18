@@ -292,6 +292,8 @@ mod header_tags;
 mod header_tags_untrusted;
 #[path = "http_client.rs"]
 mod http_client;
+#[path = "inbox_seed_sync.rs"]
+mod inbox_seed_sync;
 #[path = "inbox_vectors.rs"]
 mod inbox_vectors;
 #[path = "journal_body.rs"]
