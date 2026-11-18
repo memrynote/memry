@@ -3,16 +3,21 @@
 //! `agent/mcp/tools/schemas.ts`), with each input schema compiled once per process.
 //!
 //! Electron parses tool input with zod, which also fills `.default(...)` values; the JSON Schema
-//! carries them as `default`, so [`ToolSpec::parse`] fills them after validating.
+//! carries them as `default`, so [`ToolSpec::parse`] fills them after validating. zod's
+//! refinements are not in the JSON Schema; [`super::refine`] checks them after the defaults.
 
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock};
 
+use jsonschema::paths::Location;
+use jsonschema::{Keyword, ValidationError};
 use rmcp::model::{JsonObject, Tool};
 use serde::Deserialize;
 use serde_json::{Map, Value};
 
-const TOOLS_JSON: &str =
+use super::refine;
+
+pub(super) const TOOLS_JSON: &str =
     include_str!("../../../../../packages/contracts/test-vectors/agent-mcp/tools.json");
 
 /// Issues named in a validation reply. Every issue of an array of thousands of wrong items would
@@ -55,31 +60,32 @@ impl ToolSpec {
 
     /// The arguments with schema defaults filled, or the validation failure text.
     pub fn parse(&self, mut args: Value) -> Result<Value, String> {
-        let mut errors = self.validator.iter_errors(&args);
-        let mut issues: Vec<String> = errors
-            .by_ref()
-            .take(MAX_ISSUES)
-            .map(|error| {
-                let path = error.instance_path().to_string();
-                let path = path.trim_start_matches('/').replace('/', ".");
-                if path.is_empty() {
-                    error.to_string()
-                } else {
-                    format!("{error} at {path}")
-                }
-            })
-            .collect();
-        if !issues.is_empty() {
-            let more = errors.count();
-            if more > 0 {
-                issues.push(format!("and {more} more"));
+        report(self.validator.iter_errors(&args).map(|error| {
+            let path = error.instance_path().to_string();
+            let path = path.trim_start_matches('/').replace('/', ".");
+            if path.is_empty() {
+                error.to_string()
+            } else {
+                format!("{error} at {path}")
             }
-            return Err(issues.join("; "));
-        }
-        drop(errors);
+        }))?;
         fill_defaults(&mut args, &self.tool.input_schema);
+        report(refine::issues(self.name(), &args).into_iter())?;
         Ok(args)
     }
+}
+
+/// The first [`MAX_ISSUES`] issues and the count of the rest, or nothing when there are none.
+fn report(mut issues: impl Iterator<Item = String>) -> Result<(), String> {
+    let mut shown: Vec<String> = issues.by_ref().take(MAX_ISSUES).collect();
+    if shown.is_empty() {
+        return Ok(());
+    }
+    let more = issues.count();
+    if more > 0 {
+        shown.push(format!("and {more} more"));
+    }
+    Err(shown.join("; "))
 }
 
 pub struct Catalog {
@@ -111,7 +117,11 @@ pub fn catalog() -> &'static Catalog {
             .map(|entry| {
                 let schema = Value::Object(entry.input_schema.clone());
                 #[allow(clippy::expect_used)] // as above
-                let validator = jsonschema::validator_for(&schema).expect("tool schema compiles");
+                let validator = jsonschema::options()
+                    .with_keyword("minLength", min_length)
+                    .with_keyword("maxLength", max_length)
+                    .build(&schema)
+                    .expect("tool schema compiles");
                 ToolSpec {
                     class: entry.class,
                     tool: Tool::new(entry.name, entry.description, Arc::new(entry.input_schema)),
@@ -127,6 +137,62 @@ pub fn catalog() -> &'static Catalog {
         Catalog { tools, by_name }
     });
     &CATALOG
+}
+
+/// `minLength` and `maxLength` as zod counts them: in UTF-16 code units, JavaScript's `length`.
+/// JSON Schema counts code points, so 33 emoji would pass a limit of 64 that zod refuses.
+struct Utf16Length {
+    limit: u64,
+    max: bool,
+}
+
+type LengthKeyword<'a> = Result<Box<dyn for<'i> Keyword<'i>>, ValidationError<'a>>;
+
+fn min_length<'a>(_: &'a Map<String, Value>, limit: &'a Value, _: Location) -> LengthKeyword<'a> {
+    utf16_length(limit, false)
+}
+
+fn max_length<'a>(_: &'a Map<String, Value>, limit: &'a Value, _: Location) -> LengthKeyword<'a> {
+    utf16_length(limit, true)
+}
+
+fn utf16_length(limit: &Value, max: bool) -> LengthKeyword<'static> {
+    let limit = limit.as_u64().ok_or_else(|| {
+        ValidationError::schema("a string length limit is a non-negative integer")
+    })?;
+    Ok(Box::new(Utf16Length { limit, max }))
+}
+
+impl<'i> Keyword<'i> for Utf16Length {
+    /// zod's issue text for the bound.
+    fn validate(&self, instance: &'i Value) -> Result<(), ValidationError<'i>> {
+        if self.is_valid(instance) {
+            return Ok(());
+        }
+        Err(ValidationError::custom(if self.max {
+            format!(
+                "Too big: expected string to have <={} characters",
+                self.limit
+            )
+        } else {
+            format!(
+                "Too small: expected string to have >={} characters",
+                self.limit
+            )
+        }))
+    }
+
+    fn is_valid(&self, instance: &'i Value) -> bool {
+        let Some(text) = instance.as_str() else {
+            return true;
+        };
+        let units = text.encode_utf16().count() as u64;
+        if self.max {
+            units <= self.limit
+        } else {
+            units >= self.limit
+        }
+    }
 }
 
 /// Inserts each absent property's `default`, through nested objects and array items, as zod's

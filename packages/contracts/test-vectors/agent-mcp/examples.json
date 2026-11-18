@@ -2701,6 +2701,196 @@
       "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_create_task: Invalid input: expected array, received object at tags"
     },
     {
+      "tool": "vault_create_task",
+      "variant": "due_date 2026-02-30",
+      "arguments": {
+        "title": "Book the launch venue",
+        "project_id": "<projectId>",
+        "due_date": "2026-02-30",
+        "priority": 2,
+        "tags": [
+          "launch"
+        ]
+      },
+      "valid": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "due_date"
+          ],
+          "message": "Date must be a real calendar date in YYYY-MM-DD form"
+        }
+      ],
+      "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_create_task: Date must be a real calendar date in YYYY-MM-DD form at due_date"
+    },
+    {
+      "tool": "vault_create_task",
+      "variant": "due_date not a date",
+      "arguments": {
+        "title": "Book the launch venue",
+        "project_id": "<projectId>",
+        "due_date": "not a date",
+        "priority": 2,
+        "tags": [
+          "launch"
+        ]
+      },
+      "valid": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "due_date"
+          ],
+          "message": "Date must be a real calendar date in YYYY-MM-DD form"
+        }
+      ],
+      "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_create_task: Date must be a real calendar date in YYYY-MM-DD form at due_date"
+    },
+    {
+      "tool": "vault_create_task",
+      "variant": "due_date with a newline",
+      "arguments": {
+        "title": "Book the launch venue",
+        "project_id": "<projectId>",
+        "due_date": "2026-10-20\n",
+        "priority": 2,
+        "tags": [
+          "launch"
+        ]
+      },
+      "valid": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "due_date"
+          ],
+          "message": "Date must be a real calendar date in YYYY-MM-DD form"
+        }
+      ],
+      "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_create_task: Date must be a real calendar date in YYYY-MM-DD form at due_date"
+    },
+    {
+      "tool": "vault_create_task",
+      "variant": "due_date 2028-02-29",
+      "arguments": {
+        "title": "Book the launch venue",
+        "project_id": "<projectId>",
+        "due_date": "2028-02-29",
+        "priority": 2,
+        "tags": [
+          "launch"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "tool": "vault_create_task",
+      "variant": "due_date null",
+      "arguments": {
+        "title": "Book the launch venue",
+        "project_id": "<projectId>",
+        "due_date": null,
+        "priority": 2,
+        "tags": [
+          "launch"
+        ]
+      },
+      "valid": true
+    },
+    {
+      "tool": "vault_create_task",
+      "variant": "due 2026-13-01",
+      "arguments": {
+        "title": "Book the launch venue",
+        "project_id": "<projectId>",
+        "due_date": "2026-10-20",
+        "priority": 2,
+        "tags": [
+          "launch"
+        ],
+        "due": "2026-13-01"
+      },
+      "valid": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "due"
+          ],
+          "message": "Date must be a real calendar date in YYYY-MM-DD form"
+        }
+      ],
+      "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_create_task: Date must be a real calendar date in YYYY-MM-DD form at due"
+    },
+    {
+      "tool": "vault_create_task",
+      "variant": "due 2100-02-29",
+      "arguments": {
+        "title": "Book the launch venue",
+        "project_id": "<projectId>",
+        "due_date": "2026-10-20",
+        "priority": 2,
+        "tags": [
+          "launch"
+        ],
+        "due": "2100-02-29"
+      },
+      "valid": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "due"
+          ],
+          "message": "Date must be a real calendar date in YYYY-MM-DD form"
+        }
+      ],
+      "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_create_task: Date must be a real calendar date in YYYY-MM-DD form at due"
+    },
+    {
+      "tool": "vault_create_task",
+      "variant": "start_date 0099-12-31",
+      "arguments": {
+        "title": "Book the launch venue",
+        "project_id": "<projectId>",
+        "due_date": "2026-10-20",
+        "priority": 2,
+        "tags": [
+          "launch"
+        ],
+        "start_date": "0099-12-31"
+      },
+      "valid": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "start_date"
+          ],
+          "message": "Date must be a real calendar date in YYYY-MM-DD form"
+        }
+      ],
+      "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_create_task: Date must be a real calendar date in YYYY-MM-DD form at start_date"
+    },
+    {
+      "tool": "vault_create_task",
+      "variant": "start_date 0100-01-01",
+      "arguments": {
+        "title": "Book the launch venue",
+        "project_id": "<projectId>",
+        "due_date": "2026-10-20",
+        "priority": 2,
+        "tags": [
+          "launch"
+        ],
+        "start_date": "0100-01-01"
+      },
+      "valid": true
+    },
+    {
       "tool": "vault_delete_task",
       "variant": "example",
       "arguments": {
@@ -5899,6 +6089,160 @@
       "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_update_task: Invalid input: expected string, received number at due_date"
     },
     {
+      "tool": "vault_update_task",
+      "variant": "due_date 2026-02-30",
+      "arguments": {
+        "id": "<taskId>",
+        "priority": 3,
+        "due_date": "2026-02-30"
+      },
+      "valid": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "due_date"
+          ],
+          "message": "Date must be a real calendar date in YYYY-MM-DD form"
+        }
+      ],
+      "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_update_task: Date must be a real calendar date in YYYY-MM-DD form at due_date"
+    },
+    {
+      "tool": "vault_update_task",
+      "variant": "due_date not a date",
+      "arguments": {
+        "id": "<taskId>",
+        "priority": 3,
+        "due_date": "not a date"
+      },
+      "valid": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "due_date"
+          ],
+          "message": "Date must be a real calendar date in YYYY-MM-DD form"
+        }
+      ],
+      "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_update_task: Date must be a real calendar date in YYYY-MM-DD form at due_date"
+    },
+    {
+      "tool": "vault_update_task",
+      "variant": "due_date with a newline",
+      "arguments": {
+        "id": "<taskId>",
+        "priority": 3,
+        "due_date": "2026-10-20\n"
+      },
+      "valid": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "due_date"
+          ],
+          "message": "Date must be a real calendar date in YYYY-MM-DD form"
+        }
+      ],
+      "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_update_task: Date must be a real calendar date in YYYY-MM-DD form at due_date"
+    },
+    {
+      "tool": "vault_update_task",
+      "variant": "due_date 2028-02-29",
+      "arguments": {
+        "id": "<taskId>",
+        "priority": 3,
+        "due_date": "2028-02-29"
+      },
+      "valid": true
+    },
+    {
+      "tool": "vault_update_task",
+      "variant": "due_date null",
+      "arguments": {
+        "id": "<taskId>",
+        "priority": 3,
+        "due_date": null
+      },
+      "valid": true
+    },
+    {
+      "tool": "vault_update_task",
+      "variant": "due 2026-13-01",
+      "arguments": {
+        "id": "<taskId>",
+        "priority": 3,
+        "due_date": "2026-10-15",
+        "due": "2026-13-01"
+      },
+      "valid": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "due"
+          ],
+          "message": "Date must be a real calendar date in YYYY-MM-DD form"
+        }
+      ],
+      "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_update_task: Date must be a real calendar date in YYYY-MM-DD form at due"
+    },
+    {
+      "tool": "vault_update_task",
+      "variant": "due 2100-02-29",
+      "arguments": {
+        "id": "<taskId>",
+        "priority": 3,
+        "due_date": "2026-10-15",
+        "due": "2100-02-29"
+      },
+      "valid": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "due"
+          ],
+          "message": "Date must be a real calendar date in YYYY-MM-DD form"
+        }
+      ],
+      "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_update_task: Date must be a real calendar date in YYYY-MM-DD form at due"
+    },
+    {
+      "tool": "vault_update_task",
+      "variant": "start_date 0099-12-31",
+      "arguments": {
+        "id": "<taskId>",
+        "priority": 3,
+        "due_date": "2026-10-15",
+        "start_date": "0099-12-31"
+      },
+      "valid": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "start_date"
+          ],
+          "message": "Date must be a real calendar date in YYYY-MM-DD form"
+        }
+      ],
+      "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_update_task: Date must be a real calendar date in YYYY-MM-DD form at start_date"
+    },
+    {
+      "tool": "vault_update_task",
+      "variant": "start_date 0100-01-01",
+      "arguments": {
+        "id": "<taskId>",
+        "priority": 3,
+        "due_date": "2026-10-15",
+        "start_date": "0100-01-01"
+      },
+      "valid": true
+    },
+    {
       "tool": "vault_add_tag",
       "variant": "example",
       "arguments": {
@@ -6474,6 +6818,60 @@
         }
       ],
       "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_bulk_tag_notes: Invalid input: expected array, received object at remove"
+    },
+    {
+      "tool": "vault_bulk_tag_notes",
+      "variant": "neither add nor remove",
+      "arguments": {
+        "ids": [
+          "<note2Id>",
+          "<bulkNoteId>"
+        ]
+      },
+      "valid": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [],
+          "message": "Give at least one tag in add or remove."
+        }
+      ],
+      "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_bulk_tag_notes: Give at least one tag in add or remove."
+    },
+    {
+      "tool": "vault_bulk_tag_notes",
+      "variant": "empty add and remove",
+      "arguments": {
+        "ids": [
+          "<note2Id>",
+          "<bulkNoteId>"
+        ],
+        "add": [],
+        "remove": []
+      },
+      "valid": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [],
+          "message": "Give at least one tag in add or remove."
+        }
+      ],
+      "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_bulk_tag_notes: Give at least one tag in add or remove."
+    },
+    {
+      "tool": "vault_bulk_tag_notes",
+      "variant": "only remove",
+      "arguments": {
+        "ids": [
+          "<note2Id>",
+          "<bulkNoteId>"
+        ],
+        "remove": [
+          "obsolete"
+        ]
+      },
+      "valid": true
     },
     {
       "tool": "vault_bulk_move_notes",
@@ -7434,6 +7832,477 @@
       "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_draw_on_canvas: Invalid input: expected array, received object at elements"
     },
     {
+      "tool": "vault_draw_on_canvas",
+      "variant": "element link javascript:",
+      "arguments": {
+        "canvas_id": "<canvasId>",
+        "elements": [
+          {
+            "ref": "idea",
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 200,
+            "height": 80,
+            "text": "Idea",
+            "backgroundColor": "#fef3c7",
+            "fillStyle": "solid"
+          },
+          {
+            "ref": "ship",
+            "type": "ellipse",
+            "x": 320,
+            "y": 0,
+            "width": 160,
+            "height": 80,
+            "text": "Ship"
+          },
+          {
+            "type": "arrow",
+            "start": {
+              "ref": "idea"
+            },
+            "end": {
+              "ref": "ship"
+            }
+          },
+          {
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "link": "javascript:alert(1)"
+          }
+        ]
+      },
+      "valid": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "elements",
+            3,
+            "link"
+          ],
+          "message": "link must be an http(s) URL"
+        }
+      ],
+      "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_draw_on_canvas: link must be an http(s) URL at elements[3].link"
+    },
+    {
+      "tool": "vault_draw_on_canvas",
+      "variant": "element url file:",
+      "arguments": {
+        "canvas_id": "<canvasId>",
+        "elements": [
+          {
+            "ref": "idea",
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 200,
+            "height": 80,
+            "text": "Idea",
+            "backgroundColor": "#fef3c7",
+            "fillStyle": "solid"
+          },
+          {
+            "ref": "ship",
+            "type": "ellipse",
+            "x": 320,
+            "y": 0,
+            "width": 160,
+            "height": 80,
+            "text": "Ship"
+          },
+          {
+            "type": "arrow",
+            "start": {
+              "ref": "idea"
+            },
+            "end": {
+              "ref": "ship"
+            }
+          },
+          {
+            "type": "embeddable",
+            "x": 0,
+            "y": 0,
+            "url": "file:///etc/passwd"
+          }
+        ]
+      },
+      "valid": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "elements",
+            3,
+            "url"
+          ],
+          "message": "link must be an http(s) URL"
+        }
+      ],
+      "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_draw_on_canvas: link must be an http(s) URL at elements[3].url"
+    },
+    {
+      "tool": "vault_draw_on_canvas",
+      "variant": "element link HTTPS",
+      "arguments": {
+        "canvas_id": "<canvasId>",
+        "elements": [
+          {
+            "ref": "idea",
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 200,
+            "height": 80,
+            "text": "Idea",
+            "backgroundColor": "#fef3c7",
+            "fillStyle": "solid"
+          },
+          {
+            "ref": "ship",
+            "type": "ellipse",
+            "x": 320,
+            "y": 0,
+            "width": 160,
+            "height": 80,
+            "text": "Ship"
+          },
+          {
+            "type": "arrow",
+            "start": {
+              "ref": "idea"
+            },
+            "end": {
+              "ref": "ship"
+            }
+          },
+          {
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "link": "HTTPS://example.com"
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "tool": "vault_draw_on_canvas",
+      "variant": "element link null",
+      "arguments": {
+        "canvas_id": "<canvasId>",
+        "elements": [
+          {
+            "ref": "idea",
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 200,
+            "height": 80,
+            "text": "Idea",
+            "backgroundColor": "#fef3c7",
+            "fillStyle": "solid"
+          },
+          {
+            "ref": "ship",
+            "type": "ellipse",
+            "x": 320,
+            "y": 0,
+            "width": 160,
+            "height": 80,
+            "text": "Ship"
+          },
+          {
+            "type": "arrow",
+            "start": {
+              "ref": "idea"
+            },
+            "end": {
+              "ref": "ship"
+            }
+          },
+          {
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "link": null
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "tool": "vault_draw_on_canvas",
+      "variant": "element url http",
+      "arguments": {
+        "canvas_id": "<canvasId>",
+        "elements": [
+          {
+            "ref": "idea",
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 200,
+            "height": 80,
+            "text": "Idea",
+            "backgroundColor": "#fef3c7",
+            "fillStyle": "solid"
+          },
+          {
+            "ref": "ship",
+            "type": "ellipse",
+            "x": 320,
+            "y": 0,
+            "width": 160,
+            "height": 80,
+            "text": "Ship"
+          },
+          {
+            "type": "arrow",
+            "start": {
+              "ref": "idea"
+            },
+            "end": {
+              "ref": "ship"
+            }
+          },
+          {
+            "type": "embeddable",
+            "x": 0,
+            "y": 0,
+            "url": "http://example.com/a"
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "tool": "vault_draw_on_canvas",
+      "variant": "arrow with ref and elementId",
+      "arguments": {
+        "canvas_id": "<canvasId>",
+        "elements": [
+          {
+            "ref": "idea",
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 200,
+            "height": 80,
+            "text": "Idea",
+            "backgroundColor": "#fef3c7",
+            "fillStyle": "solid"
+          },
+          {
+            "ref": "ship",
+            "type": "ellipse",
+            "x": 320,
+            "y": 0,
+            "width": 160,
+            "height": 80,
+            "text": "Ship"
+          },
+          {
+            "type": "arrow",
+            "start": {
+              "ref": "idea"
+            },
+            "end": {
+              "ref": "ship"
+            }
+          },
+          {
+            "type": "arrow",
+            "x": 0,
+            "y": 0,
+            "start": {
+              "ref": "idea",
+              "elementId": "element-1"
+            }
+          }
+        ]
+      },
+      "valid": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "elements",
+            3,
+            "start"
+          ],
+          "message": "exactly one of ref or elementId is required"
+        }
+      ],
+      "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_draw_on_canvas: exactly one of ref or elementId is required at elements[3].start"
+    },
+    {
+      "tool": "vault_draw_on_canvas",
+      "variant": "arrow with neither endpoint form",
+      "arguments": {
+        "canvas_id": "<canvasId>",
+        "elements": [
+          {
+            "ref": "idea",
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 200,
+            "height": 80,
+            "text": "Idea",
+            "backgroundColor": "#fef3c7",
+            "fillStyle": "solid"
+          },
+          {
+            "ref": "ship",
+            "type": "ellipse",
+            "x": 320,
+            "y": 0,
+            "width": 160,
+            "height": 80,
+            "text": "Ship"
+          },
+          {
+            "type": "arrow",
+            "start": {
+              "ref": "idea"
+            },
+            "end": {
+              "ref": "ship"
+            }
+          },
+          {
+            "type": "arrow",
+            "x": 0,
+            "y": 0,
+            "end": {}
+          }
+        ]
+      },
+      "valid": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "elements",
+            3,
+            "end"
+          ],
+          "message": "exactly one of ref or elementId is required"
+        }
+      ],
+      "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_draw_on_canvas: exactly one of ref or elementId is required at elements[3].end"
+    },
+    {
+      "tool": "vault_draw_on_canvas",
+      "variant": "element ref of 33 emoji",
+      "arguments": {
+        "canvas_id": "<canvasId>",
+        "elements": [
+          {
+            "ref": "idea",
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 200,
+            "height": 80,
+            "text": "Idea",
+            "backgroundColor": "#fef3c7",
+            "fillStyle": "solid"
+          },
+          {
+            "ref": "ship",
+            "type": "ellipse",
+            "x": 320,
+            "y": 0,
+            "width": 160,
+            "height": 80,
+            "text": "Ship"
+          },
+          {
+            "type": "arrow",
+            "start": {
+              "ref": "idea"
+            },
+            "end": {
+              "ref": "ship"
+            }
+          },
+          {
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "ref": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"
+          }
+        ]
+      },
+      "valid": false,
+      "issues": [
+        {
+          "origin": "string",
+          "code": "too_big",
+          "maximum": 64,
+          "inclusive": true,
+          "path": [
+            "elements",
+            3,
+            "ref"
+          ],
+          "message": "Too big: expected string to have <=64 characters"
+        }
+      ],
+      "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_draw_on_canvas: Too big: expected string to have <=64 characters at elements[3].ref"
+    },
+    {
+      "tool": "vault_draw_on_canvas",
+      "variant": "element ref of 32 emoji",
+      "arguments": {
+        "canvas_id": "<canvasId>",
+        "elements": [
+          {
+            "ref": "idea",
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "width": 200,
+            "height": 80,
+            "text": "Idea",
+            "backgroundColor": "#fef3c7",
+            "fillStyle": "solid"
+          },
+          {
+            "ref": "ship",
+            "type": "ellipse",
+            "x": 320,
+            "y": 0,
+            "width": 160,
+            "height": 80,
+            "text": "Ship"
+          },
+          {
+            "type": "arrow",
+            "start": {
+              "ref": "idea"
+            },
+            "end": {
+              "ref": "ship"
+            }
+          },
+          {
+            "type": "rectangle",
+            "x": 0,
+            "y": 0,
+            "ref": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
       "tool": "vault_edit_canvas_elements",
       "variant": "example",
       "arguments": {
@@ -7564,6 +8433,86 @@
         }
       ],
       "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_edit_canvas_elements: Invalid input: expected array, received object at edits"
+    },
+    {
+      "tool": "vault_edit_canvas_elements",
+      "variant": "edit link javascript:",
+      "arguments": {
+        "canvas_id": "<canvasId>",
+        "edits": [
+          {
+            "elementId": "element-1",
+            "link": "javascript:alert(1)"
+          }
+        ]
+      },
+      "valid": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "edits",
+            0,
+            "link"
+          ],
+          "message": "link must be an http(s) URL"
+        }
+      ],
+      "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_edit_canvas_elements: link must be an http(s) URL at edits[0].link"
+    },
+    {
+      "tool": "vault_edit_canvas_elements",
+      "variant": "edit link file:",
+      "arguments": {
+        "canvas_id": "<canvasId>",
+        "edits": [
+          {
+            "elementId": "element-1",
+            "link": "file:///etc/passwd"
+          }
+        ]
+      },
+      "valid": false,
+      "issues": [
+        {
+          "code": "custom",
+          "path": [
+            "edits",
+            0,
+            "link"
+          ],
+          "message": "link must be an http(s) URL"
+        }
+      ],
+      "errorText": "MCP error -32602: Input validation error: Invalid arguments for tool vault_edit_canvas_elements: link must be an http(s) URL at edits[0].link"
+    },
+    {
+      "tool": "vault_edit_canvas_elements",
+      "variant": "edit link https",
+      "arguments": {
+        "canvas_id": "<canvasId>",
+        "edits": [
+          {
+            "elementId": "element-1",
+            "link": "https://example.com"
+          }
+        ]
+      },
+      "valid": true
+    },
+    {
+      "tool": "vault_edit_canvas_elements",
+      "variant": "edit link null",
+      "arguments": {
+        "canvas_id": "<canvasId>",
+        "edits": [
+          {
+            "elementId": "element-1",
+            "link": null
+          }
+        ]
+      },
+      "valid": true
     },
     {
       "tool": "vault_desktop_write",

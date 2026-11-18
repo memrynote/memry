@@ -11,7 +11,7 @@ use serde_json::{Map, Value};
 
 use super::errors::{ToolError, ToolErrorCode, error_text};
 use super::reply_cap::{ReplyCap, cap_reply};
-use super::schemas::{Catalog, ToolClass, catalog};
+use super::schemas::{Catalog, ToolClass, ToolSpec, catalog};
 use super::session::CallContext;
 
 const NO_GATE: &str =
@@ -128,7 +128,7 @@ impl ToolRegistry {
         };
         let args = match spec.class {
             ToolClass::Read => args,
-            ToolClass::Write => match self.approve(name, args, ctx).await {
+            ToolClass::Write => match self.approve(spec, args, ctx).await {
                 Ok(args) => args,
                 Err(error) => return error.to_result(),
             },
@@ -148,12 +148,15 @@ impl ToolRegistry {
         }
     }
 
+    /// The user's edit is held to the tool's input rules like the call itself; Electron runs it
+    /// unchecked.
     async fn approve(
         &self,
-        tool: &str,
+        spec: &ToolSpec,
         args: Value,
         ctx: &CallContext,
     ) -> Result<Value, ToolError> {
+        let tool = spec.name();
         let denied = |message: &str| ToolError::new(ToolErrorCode::PermissionDenied, message);
         let gate = self
             .gate
@@ -173,7 +176,13 @@ impl ToolRegistry {
             args: &args,
         };
         match gate.decide(request).await {
-            GateDecision::Approved { args: edited } => Ok(edited.unwrap_or(args)),
+            GateDecision::Approved { args: None } => Ok(args),
+            GateDecision::Approved { args: Some(edited) } => spec.parse(edited).map_err(|issues| {
+                ToolError::new(
+                    ToolErrorCode::Validation,
+                    format!("The edited arguments are invalid: {issues}"),
+                )
+            }),
             GateDecision::Denied { reason } => Err(denied(reason.as_deref().unwrap_or(DENIED))),
         }
     }

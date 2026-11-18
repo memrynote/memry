@@ -4,6 +4,7 @@
 //! Tool handlers live behind [`VaultToolHost`]; writes pass the [`WriteGate`] first.
 
 pub mod errors;
+mod refine;
 pub mod registry;
 pub mod reply_cap;
 pub mod schemas;

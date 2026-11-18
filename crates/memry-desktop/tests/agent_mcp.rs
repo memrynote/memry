@@ -141,7 +141,8 @@ fn the_catalogue_is_electrons_tools_list() {
 }
 
 /// Every example of `examples.json` runs its handler, and every invalid variant is refused before
-/// the handler (and before the gate), with the SDK's error frame.
+/// the handler (and before the gate), with the SDK's error frame. A variant that breaks only zod
+/// refinements gets the SDK's whole text.
 #[tokio::test]
 async fn every_example_call_gets_electrons_verdict() {
     let file: Value = serde_json::from_str(EXAMPLES).unwrap();
@@ -171,6 +172,14 @@ async fn every_example_call_gets_electrons_verdict() {
                 "{label}: {}",
                 text(&result)
             );
+            let issues = case["issues"].as_array().unwrap();
+            if issues.iter().all(|issue| issue["code"] == "custom") {
+                assert_eq!(
+                    text(&result),
+                    case["errorText"].as_str().unwrap(),
+                    "{label}"
+                );
+            }
         }
     }
 }
@@ -298,6 +307,22 @@ mod gate {
             )
         );
         assert_eq!(host.calls.lock().unwrap()[0].1, json!({ "id": "note-2" }));
+    }
+
+    /// The user's edit goes through the same validation as the call; Electron runs it unchecked.
+    #[tokio::test]
+    async fn an_edit_that_breaks_the_input_rules_is_refused() {
+        let host = Arc::new(FakeHost::default());
+        let registry = registry(host.clone());
+        registry.set_write_gate(Some(Arc::new(FakeGate {
+            decision: || GateDecision::Approved {
+                args: Some(json!({ "id": "note-1", "memry_unknown_key": true })),
+            },
+            seen: Mutex::default(),
+        })));
+        let reply = refused(&registry, &turn()).await;
+        assert_eq!(reply["code"], "VALIDATION");
+        assert!(host.calls.lock().unwrap().is_empty());
     }
 
     #[tokio::test]

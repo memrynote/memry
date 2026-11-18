@@ -94,13 +94,17 @@ uuid = { workspace = true }
 tokio = { workspace = true, features = ["time", "sync", "net", "fs", "io-util"] }
 # The loopback media server (`shell/loopback.rs`): HTTP/1 on 127.0.0.1, streamed bodies.
 axum = { version = "0.8.9", default-features = false, features = ["http1", "tokio"] }
-tokio-util = { version = "0.7.19", features = ["io"] }
+tokio-util = { version = "0.7.19", features = ["io", "rt"] }
 # The sign-in loopback compares `state` in constant time; already in the lockfile.
 subtle = "2.6.1"
 # The agent MCP server (`agent/mcp`, Step 28 #3545): streamable HTTP on the loopback axum router,
 # stateless, and the tool input schemas of packages/contracts/test-vectors/agent-mcp/tools.json.
 rmcp = { version = "=3.11.0", default-features = false, features = ["server", "transport-streamable-http-server"] }
 jsonschema = { version = "=0.61.2", default-features = false }
+# Its accept loop serves each connection itself, for the header read timeout and to drop the
+# connections still open at stop; both are already in the lockfile through axum.
+hyper = { version = "1.11.1", features = ["server", "http1"] }
+hyper-util = { version = "0.1.20", features = ["tokio", "service"] }
 icu_plurals = "2.4.0"
 icu_locale = "2.4.0"
 icu_decimal = "2.4.0"
