@@ -424,10 +424,11 @@ fn schema_invalid_items(plan: &mut SyncStatePlan, value: &str) -> Carried {
             unreadable += 1;
             continue;
         };
-        let kind = match e.kind.as_str() {
-            Some(kind @ ("payload" | "envelope" | "blob_missing" | "pending_intent")) => kind,
-            _ => "payload",
-        };
+        let kind = e
+            .kind
+            .as_str()
+            .filter(|kind| ["payload", "envelope", "blob_missing", "pending_intent"].contains(kind))
+            .unwrap_or("payload");
         kept.insert(
             (e.item_type.clone(), e.id.clone()),
             ImportRefused {
