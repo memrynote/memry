@@ -559,3 +559,5 @@ fn pending_notes_salvage_a_torn_write() {
         ["note-a", "note-\"b"]
     );
 }
+
+mod guards;
