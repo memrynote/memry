@@ -15,14 +15,12 @@ use super::marker::{MARKER_FILE, Marker};
 use super::*;
 use crate::electron_import::progress::ProgressRecorder;
 use crate::electron_import::secrets::{FixedKeySource, NoKeytar};
+use crate::electron_import::vault_db::electron_db;
 use crate::electron_import::{HostOs, vault_db};
 use crate::registry::VaultRegistry;
 use crate::seams::secure_store::tests::fake::{Rig, rig};
 use crate::session::{OpenSource, Session, SessionError};
 
-#[path = "../../../tests/support/electron_db.rs"]
-#[allow(dead_code)]
-mod electron_db;
 
 #[derive(Default)]
 struct Telemetry(Mutex<Vec<MigrationEvent>>);

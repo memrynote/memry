@@ -342,6 +342,6 @@ fn remove_staging(paths: &Paths) -> Result<(), ImportError> {
 
 #[cfg(test)]
 #[path = "../../../tests/support/electron_db.rs"]
-mod electron_db;
+pub(crate) mod electron_db;
 #[cfg(test)]
 mod tests;
