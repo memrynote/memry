@@ -1,17 +1,21 @@
 //! Stage 36c2: what Electron would queue at its next sync start. Its pending deletes
-//! (`flushPendingLocalDeletes`), the dirty sweeps of `dirty-recovery.ts`, and the seed of rows
-//! that never had a clock (`seedUnclocked`) each reach the core outbox as Electron queues them.
+//! (`flushPendingLocalDeletes`) and the dirty sweeps of `dirty-recovery.ts` reach the core outbox
+//! as Electron queues them. The rows that never had a clock are staged unclocked and unqueued,
+//! and the core pass seeds them after its pull (`seedUnclocked`, `unclocked_seed`).
 
+use memry_core::domain::unclocked_seed;
 use memry_core::storage::import::DATA_FILE;
+use memry_core::storage::open_data;
 use memry_desktop::electron_import::ImportError;
 use rusqlite::Connection;
 use rusqlite::types::Value;
 
-use super::queue::{rows, seed_folder, text};
-use super::{ELECTRON_DEVICE, Vault, assert_refused, electron_db, import};
+use super::queue::{queue, rows, seed_folder, text};
+use super::{ELECTRON_DEVICE, NOW_MS, Vault, assert_refused, electron_db, import};
 
 const CREATED: &str = "2026-01-05T08:00:00.000Z";
 const MODIFIED: &str = "2026-01-05T09:00:00.000Z";
+const CORE_DEVICE: &str = "device-core";
 
 fn core(vault: &Vault) -> Connection {
     Connection::open(vault.core().join(DATA_FILE)).unwrap()
@@ -438,41 +442,66 @@ fn a_never_synced_template_goes_out_as_a_create_with_a_ticked_clock() {
     );
 }
 
-/// `seedUnclocked`: a re-creatable type mints past its delete clock (`nextLocalClock`), the
-/// others from nothing (`increment({}, deviceId)`). The clock takes the slot Electron's payload
-/// builder gives it, and the projection carries it.
+/// The core sync pass's seed over the installed vault, under the core's device id.
+fn core_seed(vault: &Vault) -> Vec<(String, String)> {
+    let db = open_data(&vault.core().join(DATA_FILE)).unwrap();
+    db.call_blocking(|conn| unclocked_seed::seed(conn, CORE_DEVICE, NOW_MS))
+        .unwrap()
+}
+
+fn owned_ids(rows: &[(&str, &str)]) -> Vec<(String, String)> {
+    rows.iter()
+        .map(|(a, b)| ((*a).to_owned(), (*b).to_owned()))
+        .collect()
+}
+
+/// Electron seeds its unclocked rows in its full sync, after the pull, so a version another
+/// device pushed first wins. The import stages them with no clock and queues nothing; the core
+/// pass's seed (`seedUnclocked`) then mints a re-creatable type's clock past its delete clock
+/// (`nextLocalClock`), the others' from nothing (`increment({}, deviceId)`), keeps a `relation`
+/// property definition local (`isPersistableDefinitionType`), and runs once.
 #[test]
-fn an_unclocked_record_is_seeded_with_a_clock_past_its_delete() {
+fn an_unclocked_record_is_staged_unclocked_and_seeded_by_the_core_pass() {
     let vault = Vault::new();
     let data = vault.data_conn();
     seed_unclocked_folder(&data, "Again");
     delete_clock(&data, "folder_config", "Again", r#"{"dev-B":7}"#);
     seed_unclocked_folder(&data, "Fresh");
     seed_tag_category(&data, "cat-u", None);
+    seed_property(&data, "rel", "relation");
+    seed_property(&data, "sel", "select");
     drop(data);
 
     let report = import(&vault);
     assert_eq!(report.checks_passed, vec![1, 2, 4, 5, 6]);
-    assert_eq!(report.queued.get("unclockedRecordsSeeded"), Some(&3));
+    assert!(report.queued.is_empty(), "{:?}", report.queued);
     let core = core(&vault);
+    assert_eq!(outbox(&core), owned(&[]));
+    assert_eq!(item(&core, "folder_config", "Again").1, None);
+    assert_eq!(item(&core, "tag_category", "cat-u").1, None);
+
+    assert_eq!(
+        core_seed(&vault),
+        owned_ids(&[
+            ("folder_config", "Again"),
+            ("folder_config", "Fresh"),
+            ("property_definition", "sel"),
+            ("tag_category", "cat-u"),
+        ])
+    );
     assert_eq!(
         outbox(&core),
         owned(&[
             ("folder_config", "Again", "create"),
             ("folder_config", "Fresh", "create"),
+            ("property_definition", "sel", "create"),
             ("tag_category", "cat-u", "create"),
         ])
     );
-    let past = r#"{"dev-B":7,"device-electron":1}"#;
+    let past = r#"{"dev-B":7,"device-core":1}"#;
     assert_eq!(
-        item(&core, "folder_config", "Again"),
-        (
-            format!(
-                r#"{{"icon":null,"clock":{past},"createdAt":"{CREATED}","modifiedAt":"{MODIFIED}"}}"#
-            ),
-            Some(past.to_owned()),
-            None
-        )
+        item(&core, "folder_config", "Again").1.as_deref(),
+        Some(past)
     );
     let projected: String = core
         .query_row("SELECT clock FROM folders WHERE path = 'Again'", [], |r| {
@@ -480,50 +509,35 @@ fn an_unclocked_record_is_seeded_with_a_clock_past_its_delete() {
         })
         .unwrap();
     assert_eq!(projected, past);
-    let first = r#"{"device-electron":1}"#;
+    let first = r#"{"device-core":1}"#;
     assert_eq!(
         item(&core, "folder_config", "Fresh").1.as_deref(),
         Some(first)
     );
     assert_eq!(
-        item(&core, "tag_category", "cat-u").0,
-        format!(
-            r#"{{"name":"Work","sortOrder":0,"deletedAt":null,"clock":{first},"createdAt":"{CREATED}","updatedAt":"{MODIFIED}"}}"#
-        )
-    );
-}
-
-/// `isPersistableDefinitionType`: older builds wrote unclocked `relation` rows that stay local.
-#[test]
-fn relation_property_definitions_are_never_seeded() {
-    let vault = Vault::new();
-    let data = vault.data_conn();
-    seed_property(&data, "rel", "relation");
-    seed_property(&data, "sel", "select");
-    drop(data);
-
-    let report = import(&vault);
-    assert_eq!(report.checks_passed, vec![1, 2, 4, 5, 6]);
-    let core = core(&vault);
-    assert_eq!(
-        outbox(&core),
-        owned(&[("property_definition", "sel", "create")])
+        item(&core, "tag_category", "cat-u").1.as_deref(),
+        Some(first)
     );
     assert_eq!(item(&core, "property_definition", "rel").1, None);
+    assert!(core_seed(&vault).is_empty(), "seeded once");
 }
 
-/// `seedSkipsDeletedNote`: an unclocked note with a delete clock is a leftover of the delete
-/// and is not pushed, unless this device's pending delete of it was retired because the note
-/// is live again (`pushClocklessContentRecreate`), which re-creates it past the delete.
+/// `seedSkipsDeletedNote`: an unclocked note with a delete clock is a leftover of the delete and
+/// the seed holds it back. When this device's pending delete of it is retired because the note
+/// is live again, the runtime start re-creates it past the delete
+/// (`pushClocklessContentRecreate`), under the Electron device, at import. A local-only note
+/// stays local; an unclocked journal day is seeded.
 #[test]
 fn an_unclocked_deleted_note_is_held_back_unless_its_delete_was_superseded() {
     let vault = Vault::new();
-    for id in ["held", "back"] {
+    for id in ["held", "back", "solo", "day"] {
         seed_note(
             &vault,
             &Note {
                 clock: None,
                 synced_at: None,
+                local_only: id == "solo",
+                journal_date: (id == "day").then_some("2026-01-05"),
                 ..note(id)
             },
         );
@@ -536,9 +550,8 @@ fn an_unclocked_deleted_note_is_held_back_unless_its_delete_was_superseded() {
 
     let report = import(&vault);
     assert_eq!(report.checks_passed, vec![1, 2, 4, 5, 6]);
-    assert_eq!(report.notices.get("deletedNotesHeldBack"), Some(&1));
     assert_eq!(report.dropped.get("stalePendingDeletes"), Some(&1));
-    assert_eq!(report.queued.get("unclockedRecordsSeeded"), Some(&1));
+    assert_eq!(report.queued.get("deletedNotesRecreated"), Some(&1));
     let core = core(&vault);
     assert_eq!(outbox(&core), owned(&[("note", "back", "create")]));
     assert_eq!(
@@ -546,12 +559,136 @@ fn an_unclocked_deleted_note_is_held_back_unless_its_delete_was_superseded() {
         Some(r#"{"dev-A":3,"device-electron":1}"#)
     );
     assert_eq!(item(&core, "note", "held").1, None);
+
+    assert_eq!(core_seed(&vault), owned_ids(&[("journal", "day")]));
+    assert_eq!(item(&core, "note", "held").1, None);
+    assert_eq!(item(&core, "note", "solo").1, None);
 }
 
+/// A vault that never signed in (the free plan never syncs) has no device and no clock on any
+/// row, or an `_offline` one. Electron's runtime never starts without a session, so nothing is
+/// queued and every row keeps what it has, for the core pass to seed once signed in.
 #[test]
-fn an_unclocked_record_without_an_electron_device_is_refused() {
+fn a_never_signed_in_vault_imports_with_nothing_queued() {
     let mut vault = Vault::new();
     vault.device_id = None;
-    seed_unclocked_folder(&vault.data_conn(), "Fresh");
-    assert_refused(&vault, |e| matches!(e, ImportError::ClockWithoutDevice));
+    for id in ["n-1", "n-2"] {
+        seed_note(
+            &vault,
+            &Note {
+                clock: None,
+                synced_at: None,
+                ..note(id)
+            },
+        );
+    }
+    let data = vault.data_conn();
+    seed_unclocked_folder(&data, "Fresh");
+    seed_template(&data, "t-off", Some(r#"{"_offline":2}"#), None);
+    drop(data);
+
+    let report = import(&vault);
+    assert_eq!(report.checks_passed, vec![1, 2, 4, 5, 6]);
+    assert!(report.queued.is_empty(), "{:?}", report.queued);
+    let core = core(&vault);
+    assert_eq!(outbox(&core), owned(&[]));
+    assert_eq!(item(&core, "note", "n-1").1, None);
+    assert_eq!(item(&core, "folder_config", "Fresh").1, None);
+    assert_eq!(
+        item(&core, "template", "t-off").1.as_deref(),
+        Some(r#"{"_offline":2}"#)
+    );
+}
+
+/// REVIEW-5139 finding 2: Electron's `tag_definitions.name` is `NOCASE`, so its
+/// `isSupersededByLiveRow` finds live "work" for a pending delete of "Work" and retires the
+/// delete. Replayed, the core delete would tombstone "work" in the NOCASE projection, and every
+/// peer's NOCASE apply would remove it.
+#[test]
+fn a_pending_tag_delete_never_removes_a_live_tag_of_another_case() {
+    let vault = Vault::new();
+    let data = vault.data_conn();
+    electron_db::seed(
+        &data,
+        "tag_definitions",
+        &[
+            ("name", text("work")),
+            ("color", text("teal")),
+            ("clock", text(r#"{"dev-A":2}"#)),
+            ("created_at", text(CREATED)),
+        ],
+    );
+    pending(
+        &data,
+        "tag_definition",
+        "Work",
+        r#"{"name":"Work","color":"rose","clock":{"dev-A":1}}"#,
+        300,
+    );
+    drop(data);
+
+    let report = import(&vault);
+    assert_eq!(report.checks_passed, vec![1, 2, 4, 5, 6]);
+    assert_eq!(report.dropped.get("stalePendingDeletes"), Some(&1));
+    let core = core(&vault);
+    assert_eq!(outbox(&core), owned(&[]));
+    assert_eq!(item(&core, "tag_definition", "work").2, None);
+    let live: i64 = core
+        .query_row(
+            "SELECT count(*) FROM tag_definitions WHERE name = 'work' AND deleted_at IS NULL",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(live, 1);
+}
+
+/// REVIEW-5139 M1 (departure 6): a dirty row whose pending delete made it a tombstone is not
+/// pushed again; the delete Electron replays after the sweeps wins.
+#[test]
+fn a_dirty_row_with_a_pending_delete_stays_deleted() {
+    let vault = Vault::new();
+    let data = vault.data_conn();
+    seed_template(
+        &data,
+        "t-gone",
+        Some(r#"{"dev-A":4}"#),
+        Some("2026-01-05T08:30:00.000Z"),
+    );
+    pending(
+        &data,
+        "template",
+        "t-gone",
+        r#"{"id":"t-gone","clock":{"dev-A":4}}"#,
+        300,
+    );
+    drop(data);
+
+    let report = import(&vault);
+    assert_eq!(report.checks_passed, vec![1, 2, 4, 5, 6]);
+    assert_eq!(report.queued.get("dirtyRecordsQueued"), None);
+    let core = core(&vault);
+    assert_eq!(outbox(&core), owned(&[("template", "t-gone", "delete")]));
+    assert!(item(&core, "template", "t-gone").2.is_some());
+}
+
+/// REVIEW-5139 M2: a note created while its push was queued and never synced is both a queued
+/// `create` and a dirty row. The outbox keeps the create (`coalesceSyncOperations`), and check 4
+/// expects exactly that.
+#[test]
+fn a_dirty_note_over_its_queued_create_stays_a_create() {
+    let vault = Vault::new();
+    seed_note(
+        &vault,
+        &Note {
+            synced_at: None,
+            ..note("new")
+        },
+    );
+    queue(&vault.data_conn(), "note", "new", "create", "{}", 100);
+
+    let report = import(&vault);
+    assert_eq!(report.checks_passed, vec![1, 2, 4, 5, 6]);
+    assert_eq!(report.queued.get("dirtyRecordsQueued"), Some(&1));
+    assert_eq!(outbox(&core(&vault)), owned(&[("note", "new", "create")]));
 }

@@ -1,16 +1,17 @@
 //! What Electron would queue at its next sync runtime start (`recoverDirtyItems`,
-//! `apps/desktop/src/main/sync/dirty-recovery.ts`) and its next full sync (`runInitialSeed`,
-//! `sync/initial-seed.ts`), for the record types imported so far:
+//! `apps/desktop/src/main/sync/dirty-recovery.ts`), for the record types imported so far:
 //!
 //! - the deletes it still owes the server (`sync_pending_deletes`, `flushPendingLocalDeletes` in
-//!   `sync/local-mutations.ts`);
-//! - the clocked rows edited since their last push (the dirty sweeps);
-//! - the rows that never had a clock (`seedUnclocked` of each item handler).
+//!   `sync/local-mutations.ts`), and the re-create of a note whose delete that replay retires;
+//! - the clocked rows edited since their last push (the dirty sweeps).
 //!
 //! Each becomes the core outbox row Electron would queue, so no change it owes the server is lost
-//! and no delete comes back. A later stage adds its types to [`delete_rule`] and [`KINDS`].
+//! and no delete comes back. The rows that never had a clock are staged with none and no outbox
+//! row: Electron seeds them in its full sync, after the pull, and so does the core's sync pass
+//! ([`memry_core::domain::unclocked_seed`], [`memry_core::domain::tag_mint`]). A later stage adds
+//! its types to [`delete_rule`] and [`KINDS`].
 
-use std::collections::{BTreeMap, HashSet};
+use std::collections::BTreeMap;
 
 use memry_core::storage::import::{
     ImportDeleted, ImportQueued, ImportTombstoneClock, ImportWriter,
@@ -224,147 +225,67 @@ pub fn sync_pending_deletes(ctx: &mut TableCtx<'_>) -> Result<TableStats, Import
     Ok(stats)
 }
 
-/// How a type's first clock is minted.
-#[derive(Debug, Clone, Copy)]
-enum Mint {
-    /// `nextLocalClock(.., 'create')` (`packages/sync-client/src/tombstone-clocks.ts`): past the
-    /// id's delete clock, for the re-creatable types.
-    AfterTombstone,
-    /// `increment({}, deviceId)`.
-    First,
-}
-
 /// A dirty sweep of `dirty-recovery.ts`: clocked rows never pushed or `modified` since.
 struct Dirty {
+    item_type: &'static str,
+    table: &'static str,
+    id: &'static str,
     rows: &'static str,
-    modified: Option<&'static str>,
+    modified: &'static str,
     /// `enqueueCreateOrRecoveredUpdate`: a never-synced row goes out as a create, which ticks its
     /// clock. Without it every dirty row is a recovered update at its stored clock.
     create_never_synced: bool,
 }
 
-/// One record type of the runtime-start pass.
-struct Kind {
-    item_type: &'static str,
-    table: &'static str,
-    id: &'static str,
-    /// `seedUnclocked`'s filter of unclocked rows.
-    seed: &'static str,
-    mint: Mint,
-    /// `seedSkipsDeletedNote`: an unclocked row with a delete clock is a leftover of the delete,
-    /// unless this device's own pending delete of it was retired as superseded
-    /// (`pushClocklessContentRecreate`).
-    held_back_if_deleted: bool,
-    /// `None`: exempt in `DIRTY_RECOVERY`.
-    dirty: Option<Dirty>,
-}
-
-const NOTE_DIRTY: &str = "journal_date IS NULL AND local_only IS NOT 1";
-const JOURNAL_DIRTY: &str = "journal_date IS NOT NULL AND local_only IS NOT 1";
-
-const KINDS: &[Kind] = &[
-    Kind {
+const KINDS: &[Dirty] = &[
+    Dirty {
         item_type: "note",
         table: "note_metadata",
         id: "id",
-        seed: NOTE_DIRTY,
-        mint: Mint::AfterTombstone,
-        held_back_if_deleted: true,
-        dirty: Some(Dirty {
-            rows: NOTE_DIRTY,
-            modified: Some("modified_at"),
-            create_never_synced: false,
-        }),
+        rows: "journal_date IS NULL AND local_only IS NOT 1",
+        modified: "modified_at",
+        create_never_synced: false,
     },
-    Kind {
+    Dirty {
         item_type: "journal",
         table: "note_metadata",
         id: "id",
-        seed: "journal_date IS NOT NULL",
-        mint: Mint::AfterTombstone,
-        held_back_if_deleted: true,
-        dirty: Some(Dirty {
-            rows: JOURNAL_DIRTY,
-            modified: Some("modified_at"),
-            create_never_synced: false,
-        }),
+        rows: "journal_date IS NOT NULL AND local_only IS NOT 1",
+        modified: "modified_at",
+        create_never_synced: false,
     },
-    Kind {
-        item_type: "folder_config",
-        table: "folder_configs",
-        id: "path",
-        seed: "1",
-        mint: Mint::AfterTombstone,
-        held_back_if_deleted: false,
-        dirty: None,
-    },
-    // `isPersistableDefinitionType`: older builds wrote unclocked `relation` rows that stay local.
-    Kind {
-        item_type: "property_definition",
-        table: "property_definitions",
-        id: "name",
-        seed: "type IS NOT 'relation'",
-        mint: Mint::AfterTombstone,
-        held_back_if_deleted: false,
-        dirty: None,
-    },
-    Kind {
-        item_type: "tag_definition",
-        table: "tag_definitions",
-        id: "name",
-        seed: "1",
-        mint: Mint::AfterTombstone,
-        held_back_if_deleted: false,
-        dirty: None,
-    },
-    Kind {
-        item_type: "tag_category",
-        table: "tag_categories",
-        id: "id",
-        seed: "1",
-        mint: Mint::First,
-        held_back_if_deleted: false,
-        dirty: None,
-    },
-    Kind {
+    Dirty {
         item_type: "template",
         table: "templates",
         id: "id",
-        seed: "1",
-        mint: Mint::First,
-        held_back_if_deleted: false,
-        dirty: Some(Dirty {
-            rows: "1",
-            modified: Some("modified_at"),
-            create_never_synced: true,
-        }),
+        rows: "1",
+        modified: "modified_at",
+        create_never_synced: true,
     },
-    Kind {
+    Dirty {
         item_type: "custom_icon",
         table: "custom_icons",
         id: "id",
-        seed: "1",
-        mint: Mint::First,
-        held_back_if_deleted: false,
-        dirty: Some(Dirty {
-            rows: "1",
-            modified: Some("updated_at"),
-            create_never_synced: true,
-        }),
+        rows: "1",
+        modified: "updated_at",
+        create_never_synced: true,
     },
 ];
 
-/// The dirty sweeps, then the seed of unclocked rows, in Electron's order.
+/// The dirty sweeps, then the re-creates of the retired note deletes, in Electron's order.
 #[derive(Default)]
 pub struct RuntimeStart {
     pub queued: Vec<ImportQueued>,
     /// The clock text each minted record carries, by `(type, id)`, for stage check 5.
     pub minted: BTreeMap<(String, String), String>,
     pub dirty: u64,
-    pub seeded: u64,
-    pub held_back: u64,
+    pub recreated: u64,
 }
 
+/// What Electron's runtime start (`recoverDirtyItems`) queues. Without a device Electron has no
+/// session and its runtime never starts, so nothing is queued: the rows wait, as they do there.
+/// The one exception is a note re-created after its delete, which no later pass would push
+/// ([`plan_recreates`]).
 pub fn plan_runtime_start(
     source: &Connection,
     writer: &ImportWriter,
@@ -372,15 +293,16 @@ pub fn plan_runtime_start(
     now_ms: i64,
 ) -> Result<RuntimeStart, ImportError> {
     let mut plan = RuntimeStart::default();
-    for kind in KINDS {
-        if let Some(dirty) = &kind.dirty {
-            plan_dirty(&mut plan, kind, dirty, source, writer, device_id, now_ms)?;
+    let Some(device_id) = device_id else {
+        if !retired_note_deletes(source, writer)?.is_empty() {
+            return Err(ImportError::ClockWithoutDevice);
         }
+        return Ok(plan);
+    };
+    for dirty in KINDS {
+        plan_dirty(&mut plan, dirty, source, writer, device_id, now_ms)?;
     }
-    let retired = retired_note_deletes(source, writer)?;
-    for kind in KINDS {
-        plan_seed(&mut plan, kind, &retired, source, writer, device_id, now_ms)?;
-    }
+    plan_recreates(&mut plan, source, writer, device_id, now_ms)?;
     Ok(plan)
 }
 
@@ -393,27 +315,25 @@ pub fn runtime_start(ctx: &mut TableCtx<'_>) -> Result<RuntimeStart, ImportError
 
 fn plan_dirty(
     plan: &mut RuntimeStart,
-    kind: &Kind,
     dirty: &Dirty,
     source: &Connection,
     writer: &ImportWriter,
-    device_id: Option<&str>,
+    device_id: &str,
     now_ms: i64,
 ) -> Result<(), ImportError> {
-    let since = dirty.modified.map_or(String::new(), |modified| {
-        format!(" OR {modified} > synced_at")
-    });
     let sql = format!(
         "SELECT rowid, {id} AS id, clock, synced_at IS NULL AS never FROM {table} \
-         WHERE clock IS NOT NULL AND {rows} AND (synced_at IS NULL{since}) ORDER BY rowid",
-        id = kind.id,
-        table = kind.table,
+         WHERE clock IS NOT NULL AND {rows} AND (synced_at IS NULL OR {modified} > synced_at) \
+         ORDER BY rowid",
+        id = dirty.id,
+        table = dirty.table,
         rows = dirty.rows,
+        modified = dirty.modified,
     );
     for_each_row(source, &sql, |row, rowid| {
-        let id = read_source_id(row, SourceDb::Data, kind.table, "id")?;
+        let id = read_source_id(row, SourceDb::Data, dirty.table, "id")?;
         // A pending delete made it a tombstone, and Electron's later delete wins the fold.
-        if writer.live_record_type(&id, &[kind.item_type])?.is_none() {
+        if writer.live_record_type(&id, &[dirty.item_type])?.is_none() {
             return Ok(());
         }
         let never: bool = row
@@ -421,80 +341,71 @@ fn plan_dirty(
             .map_err(|e| source_error(SourceDb::Data, e))?;
         plan.dirty += 1;
         if dirty.create_never_synced && never {
-            let device_id = device_id.ok_or(ImportError::ClockWithoutDevice)?;
-            let stored = parse_clock(text(row, "clock")?.as_deref(), kind.table, rowid)?
-                .map(|clock| vector_clock(clock, kind.table, rowid))
+            let stored = parse_clock(text(row, "clock")?.as_deref(), dirty.table, rowid)?
+                .map(|clock| vector_clock(clock, dirty.table, rowid))
                 .transpose()?
                 .unwrap_or_default();
             // `recoverPendingChange` rebinds `_offline` ticks, then `applyLocalChange` ticks.
             let minted =
                 clock::increment(&clock::rebind_clock_device(&stored, device_id), device_id);
-            push_minted(plan, kind, id, minted, writer, now_ms)
+            push_minted(plan, dirty.item_type, id, minted, writer, now_ms)
         } else {
             // `enqueueRecoveredUpdate` at the stored clock; the core push rebinds `_offline`
             // under the same device (`seal.rs` `wire_clock`).
             plan.queued
-                .push(queued(kind.item_type, id, RecordOp::Upsert, None, now_ms));
+                .push(queued(dirty.item_type, id, RecordOp::Upsert, None, now_ms));
             Ok(())
         }
     })
 }
 
-fn plan_seed(
+/// `pushClocklessContentRecreate`: a note or journal day re-created with no clock after this
+/// device deleted it is pushed past its delete when the replay retires the delete. The seed holds
+/// such a row back (`seedSkipsDeletedNote`, [`memry_core::domain::unclocked_seed`]), so this
+/// create is its only push. A local-only note stays local.
+fn plan_recreates(
     plan: &mut RuntimeStart,
-    kind: &Kind,
-    retired: &HashSet<String>,
     source: &Connection,
     writer: &ImportWriter,
-    device_id: Option<&str>,
+    device_id: &str,
     now_ms: i64,
 ) -> Result<(), ImportError> {
-    let sql = format!(
-        "SELECT rowid, {id} AS id FROM {table} WHERE clock IS NULL AND {seed} ORDER BY rowid",
-        id = kind.id,
-        table = kind.table,
-        seed = kind.seed,
-    );
-    for_each_row(source, &sql, |row, _| {
-        let id = read_source_id(row, SourceDb::Data, kind.table, "id")?;
-        if writer.live_record_type(&id, &[kind.item_type])?.is_none() {
-            return Ok(());
+    for (item_type, id) in retired_note_deletes(source, writer)? {
+        if item_type == "note" && writer.is_local_only_note(&id)? {
+            continue;
         }
-        let tombstone = writer.tombstone_clock(kind.item_type, &id)?;
-        if kind.held_back_if_deleted && tombstone.is_some() && !retired.contains(&id) {
-            plan.held_back += 1;
-            return Ok(());
-        }
-        let device_id = device_id.ok_or(ImportError::ClockWithoutDevice)?;
-        let base = match kind.mint {
-            Mint::AfterTombstone => tombstone.unwrap_or_default(),
-            Mint::First => VectorClock::new(),
-        };
-        plan.seeded += 1;
+        let base = writer.tombstone_clock(&item_type, &id)?.unwrap_or_default();
+        plan.recreated += 1;
         push_minted(
             plan,
-            kind,
+            &item_type,
             id,
             clock::increment(&base, device_id),
             writer,
             now_ms,
-        )
-    })
+        )?;
+    }
+    Ok(())
 }
 
-/// The note-family ids whose pending delete the replay retires because the id is live again.
+/// `(type, id)` of each unclocked note or journal day whose pending delete the replay retires
+/// because the id is live again, in the pending deletes' order.
 fn retired_note_deletes(
     source: &Connection,
     writer: &ImportWriter,
-) -> Result<HashSet<String>, ImportError> {
-    let mut retired = HashSet::new();
+) -> Result<Vec<(String, String)>, ImportError> {
+    let mut retired = Vec::new();
     for_each_row(
         source,
-        "SELECT rowid, item_id FROM sync_pending_deletes WHERE type IN ('note', 'journal')",
+        "SELECT p.rowid, p.item_id FROM sync_pending_deletes p \
+         JOIN note_metadata n ON n.id = p.item_id \
+         WHERE p.type IN ('note', 'journal') AND n.clock IS NULL ORDER BY p.rowid",
         |row, _| {
             let id = read_source_id(row, SourceDb::Data, PENDING, "item_id")?;
-            if writer.live_record_type(&id, &NOTE_TYPES)?.is_some() {
-                retired.insert(id);
+            if let Some(item_type) = writer.live_record_type(&id, &NOTE_TYPES)?
+                && !retired.iter().any(|(_, known)| *known == id)
+            {
+                retired.push((item_type, id));
             }
             Ok(())
         },
@@ -509,27 +420,25 @@ fn retired_note_deletes(
 /// that leaves out an unset clock (`clock ?? undefined`) writes it.
 fn push_minted(
     plan: &mut RuntimeStart,
-    kind: &Kind,
+    item_type: &str,
     id: String,
     minted: VectorClock,
     writer: &ImportWriter,
     now_ms: i64,
 ) -> Result<(), ImportError> {
-    let stored = writer
-        .record_payload(kind.item_type, &id)?
-        .unwrap_or_default();
+    let stored = writer.record_payload(item_type, &id)?.unwrap_or_default();
     let payload: Map<String, Value> = match serde_json::from_str(&stored) {
         Ok(Value::Object(payload)) => payload,
         _ => {
             return Err(ImportError::CheckFailed {
                 check: 4,
-                detail: format!("{}: a staged record is no JSON object", kind.table),
+                detail: format!("{item_type}: a staged record is no JSON object"),
             });
         }
     };
     let text = serde_json::to_string(&minted).map_err(|e| ImportError::CheckFailed {
         check: 4,
-        detail: format!("{}: a minted clock will not serialise: {e}", kind.table),
+        detail: format!("{item_type}: a minted clock will not serialise: {e}"),
     })?;
     let had_clock = payload.contains_key("clock");
     let mut placed = Map::with_capacity(payload.len() + 1);
@@ -539,15 +448,14 @@ fn push_minted(
         }
         placed.insert(key, value);
     }
-    // A payload with neither key (none of the eight types builds one) takes it last.
+    // A payload with neither key (none of these types builds one) takes it last.
     placed
         .entry("clock")
         .and_modify(|clock| *clock = json!(minted))
         .or_insert_with(|| json!(minted));
-    plan.minted
-        .insert((kind.item_type.to_owned(), id.clone()), text);
+    plan.minted.insert((item_type.to_owned(), id.clone()), text);
     plan.queued.push(queued(
-        kind.item_type,
+        item_type,
         id,
         RecordOp::Create,
         Some(js_json::stringify(&Value::Object(placed))),

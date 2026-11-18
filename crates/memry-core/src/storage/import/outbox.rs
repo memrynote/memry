@@ -6,6 +6,7 @@ use rusqlite::{Connection, OptionalExtension, params};
 
 use super::{ImportWriter, failed};
 use crate::api::errors::StorageError;
+use crate::domain::tag_admin::DEFINITION_TYPE;
 use crate::storage::repositories::StoredPayload;
 use crate::storage::repositories::projectors::{self, ItemContext};
 use crate::storage::repositories::sync_items::PAYLOAD_STATE_FULL;
@@ -90,18 +91,28 @@ impl ImportWriter {
         Ok(queued)
     }
 
-    /// The first of `types` holding a live (not deleted) record `item_id`.
+    /// The first of `types` holding a live (not deleted) record `item_id`. A tag definition's
+    /// name matches without ASCII case: Electron's `tag_definitions.name` is `NOCASE`
+    /// (`drizzle-data/0034_tag_nocase.sql`), and so is the core's projection of it, so "Work" is
+    /// live while "work" is.
     pub fn live_record_type(
         &self,
         item_id: &str,
         types: &[&str],
     ) -> Result<Option<String>, StorageError> {
         for item_type in types {
+            let collate = if *item_type == DEFINITION_TYPE {
+                " COLLATE NOCASE"
+            } else {
+                ""
+            };
             let live = self
                 .data
                 .query_row(
-                    "SELECT 1 FROM sync_items
-                      WHERE item_type = ?1 AND item_id = ?2 AND deleted_at IS NULL",
+                    &format!(
+                        "SELECT 1 FROM sync_items
+                          WHERE item_type = ?1 AND item_id = ?2{collate} AND deleted_at IS NULL"
+                    ),
                     [item_type, &item_id],
                     |_| Ok(()),
                 )

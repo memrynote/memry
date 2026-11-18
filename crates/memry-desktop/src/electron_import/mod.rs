@@ -87,12 +87,13 @@ pub enum ImportError {
     /// as Electron's push does. Staging it would let the core push retire it unsent.
     #[error(
         "A delete in this vault has not synced yet, and MemryNote cannot send it without the \
-         previous app's sync device. Nothing was changed. Open the previous MemryNote app, let \
-         it finish syncing, then quit it and try again."
+         previous app's sync device. Nothing was changed. Open the previous MemryNote app, sign \
+         in and let it finish syncing, then quit it and try again."
     )]
     DeleteWithoutDevice,
-    /// A record that never had a clock, or a never-synced one, needs its first clock minted as
-    /// Electron's next sync would, and `memry-config.json` names no device to mint it under.
+    /// A note re-created after this device deleted it needs its first clock minted as Electron's
+    /// next runtime start would (`pushClocklessContentRecreate`), and `memry-config.json` names
+    /// no device to mint it under. A pending delete is only ever recorded under a device.
     #[error(
         "Changes in this vault have not synced yet, and MemryNote cannot send them without the \
          previous app's sync device. Nothing was changed. Open the previous MemryNote app, sign \

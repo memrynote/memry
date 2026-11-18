@@ -123,7 +123,7 @@ pub struct VaultStageReport {
     /// Source rows carried over with less than the source held, by named reason.
     pub notices: BTreeMap<String, u64>,
     /// Pushes queued by Electron's runtime-start replays ([`tables::replay::runtime_start`]),
-    /// by rule: `dirtyRecordsQueued`, `unclockedRecordsSeeded`.
+    /// by rule: `dirtyRecordsQueued`, `deletedNotesRecreated`.
     pub queued: BTreeMap<String, u64>,
     pub merged_tables: Vec<String>,
     pub checks_passed: Vec<u8>,
@@ -308,16 +308,11 @@ fn stage(input: &VaultImportInput<'_>, paths: &Paths) -> Result<VaultStageReport
     })?;
     for (rule, count) in [
         ("dirtyRecordsQueued", replayed.dirty),
-        ("unclockedRecordsSeeded", replayed.seeded),
+        ("deletedNotesRecreated", replayed.recreated),
     ] {
         if count > 0 {
             report.queued.insert(rule.to_owned(), count);
         }
-    }
-    if replayed.held_back > 0 {
-        report
-            .notices
-            .insert("deletedNotesHeldBack".to_owned(), replayed.held_back);
     }
     docs::import_documents(
         input,
