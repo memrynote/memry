@@ -682,7 +682,19 @@ element of each id. `writeCriticMarkupMarksToYDoc` and `write_critic_marks` chan
 elements that differ, ignoring key order. They delete removed ids, invalid elements, and
 later copies of an id, and they insert new ids in place. A rewritten element keeps the keys
 the writer does not know, so a field added by a newer build survives an older build that
-follows these rules. The frozen Electron app still rewrites the whole array. For that reason,
+follows these rules.
+
+The writers compare the stored mark, read as this build reads it, with the new mark and
+ignore `start` and `end`. An element that differs only in its offsets stays untouched. The
+window moves offsets as the user types and recomputes them from the text, so an offset-only
+write would replace a comment another device edited and lose that edit. Both writers own
+this rule, so the desktop editor and the Rust apply path follow it alike. As a result, the
+stored offsets of an untouched element can lag behind the text.
+
+A write coalesces adjacent deletes and adjacent replacements into runs. When the plan needs
+more than 64 array operations, the writer deletes the whole array and inserts the result in
+one operation, still keeping each element's unknown keys. Each Yjs operation walks the array
+from its start, so this bound keeps a write over a large array linear. The frozen Electron app still rewrites the whole array. For that reason,
 a new mark field is also written into the mark's `metadata` string, which every shipped
 build copies unchanged (protocol §12.5.1).
 
