@@ -223,10 +223,19 @@ pub fn builder() -> Builder<Wry> {
             // shortcut
             crate::commands::shortcuts::shortcut_register_global_capture,
             crate::commands::shortcuts::shortcut_set_global_capture,
+            crate::commands::shortcuts::shortcut_register_sticky,
+            crate::commands::shortcuts::shortcut_set_sticky,
             // spell
             crate::commands::spell::spell_check_word,
             crate::commands::spell::spell_add_word,
             crate::commands::spell::spell_add_words,
+            // stickies
+            crate::commands::stickies::sticky_delete_draft,
+            crate::commands::stickies::sticky_get_session,
+            crate::commands::stickies::sticky_list_drafts,
+            crate::commands::stickies::sticky_resize,
+            crate::commands::stickies::sticky_save_draft,
+            crate::commands::stickies::sticky_tuck,
             // fonts
             crate::fonts::system_fonts_list,
             // log
@@ -412,6 +421,8 @@ pub fn builder() -> Builder<Wry> {
             crate::events::SettingsOpenSectionEvent,
             // menu
             crate::events::MenuCommandInvokedEvent,
+            // stickies
+            crate::events::StickyDraftsChangedEvent,
             // sync
             crate::events::SyncCertificatePinFailedEvent,
             crate::events::SyncClockSkewWarningEvent,
