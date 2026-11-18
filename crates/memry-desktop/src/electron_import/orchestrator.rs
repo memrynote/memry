@@ -18,30 +18,31 @@
 //! **One import at a time.** [`ProfileLock`] only probes for a running Electron; the imports of
 //! this process serialize on one lock, and the app runs as a single instance.
 
+mod deferred;
+mod error;
 pub mod marker;
 pub mod preflight;
+mod secrets;
 mod vault;
+
+pub use self::deferred::migrate_vault;
+pub use self::error::RunError;
 
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, PoisonError};
 use std::time::Instant;
 
-use serde_json::{Value, json};
-
 use self::marker::{Marker, MarkerVault, write_json};
-use self::vault::{VaultPhase, settled_section, source_fingerprint, store_name};
+use self::vault::{VaultPhase, settled_section, source_fingerprint};
 use super::app_state::{AppStateInput, import_app_state};
 use super::journal_replay::BulkApplyJournal;
 use super::profile::locate_profile;
 use super::progress::{Phase, ProgressSink, ProgressUpdate};
 use super::report::{Failure, REPORT_FILE, VaultSection, VaultStatus, VerificationReport};
-use super::secrets::{ChromiumKeySource, KeytarSource, read_all_secrets};
-use super::secrets_import::{SecretsError, SecretsEvidence, SecretsMode, SecretsPhase};
-use super::vault_prep::{DeferReason, Disposition, PlannedVault, plan_vaults};
-use super::{
-    ElectronConfig, ElectronProfile, ImportError, ProfileEnv, ProfileLock, Scratch, import_secrets,
-    read_vault_evidence,
-};
+use super::secrets::{ChromiumKeySource, KeytarSource};
+use super::secrets_import::SecretsMode;
+use super::vault_prep::{Disposition, PlannedVault, plan_vaults};
+use super::{ElectronConfig, ElectronProfile, ImportError, ProfileEnv, ProfileLock, Scratch};
 use crate::launch_env::LaunchEnv;
 use crate::registry::AppConfig;
 use crate::seams::secure_store::{DeviceIdentityStore, KeyringStore};
@@ -155,107 +156,6 @@ pub enum FirstLaunch {
     /// The marker is present: an earlier run finished.
     AlreadyDone,
     Migrated(Box<VerificationReport>),
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum RunError {
-    #[error("Quit the previous MemryNote app, then start MemryNote again.")]
-    ElectronRunning,
-    #[error(
-        "There is not enough free space on {}: moving your data needs {needed} bytes and \
-         {available} are free. Free some space and try again.",
-        volume.display()
-    )]
-    DiskSpace {
-        volume: PathBuf,
-        needed: u64,
-        available: u64,
-    },
-    /// The vault's `data.db` is not at the schema of the last Electron release.
-    #[error(
-        "The previous MemryNote app has not finished updating the vault at {vault}. Update the \
-         previous app, open the vault in it once, quit it, then start MemryNote again."
-    )]
-    ElectronSchema {
-        vault: String,
-        found: Option<i64>,
-        expected: i64,
-    },
-    #[error(
-        "These vaults share one sync history, so MemryNote cannot move them: {}. Nothing was \
-         changed. Keep using the previous MemryNote app for them.",
-        paths.join(", ")
-    )]
-    SharedStore { paths: Vec<String> },
-    #[error(
-        "The vault at {vault} cannot be read now. Check that its drive is connected and try again."
-    )]
-    VaultUnreachable { vault: String },
-    #[error(transparent)]
-    Secrets(SecretsError),
-    #[error("{vault}: {source}")]
-    Vault {
-        vault: String,
-        #[source]
-        source: ImportError,
-    },
-    #[error(transparent)]
-    Import(#[from] ImportError),
-}
-
-impl RunError {
-    /// The failing check or error kind: the report's `failure.check` and telemetry's
-    /// `errorCode`. Never a path.
-    pub fn check(&self) -> String {
-        match self {
-            Self::ElectronRunning => "electron-running".into(),
-            Self::DiskSpace { .. } => "disk-space".into(),
-            Self::ElectronSchema { .. } => "electron-schema".into(),
-            Self::SharedStore { .. } => "shared-store".into(),
-            Self::VaultUnreachable { .. } => "vault-unreachable".into(),
-            Self::Secrets(error) => format!("secrets:{}", secrets_code(error)),
-            Self::Vault { source, .. } | Self::Import(source) => import_code(source),
-        }
-    }
-
-    fn vault(&self) -> Option<String> {
-        match self {
-            Self::ElectronSchema { vault, .. }
-            | Self::VaultUnreachable { vault }
-            | Self::Vault { vault, .. } => Some(vault.clone()),
-            _ => None,
-        }
-    }
-}
-
-fn secrets_code(error: &SecretsError) -> &'static str {
-    match error {
-        SecretsError::Read(_) => "read",
-        SecretsError::DoneMarker(_) => "done-marker",
-        SecretsError::Unreadable(_) => "unreadable",
-        SecretsError::KeytarUnlisted(_) => "keytar-unlisted",
-        SecretsError::Malformed { .. } => "malformed",
-        SecretsError::DeviceKeyMismatch => "device_key_mismatch",
-        SecretsError::KeyVerifierMismatch => "KeyVerifierMismatch",
-        SecretsError::TargetOccupied { .. } => "target-occupied",
-        SecretsError::Keychain(_) => "keychain",
-        SecretsError::RollbackIncomplete { cause, .. } => secrets_code(cause),
-    }
-}
-
-fn import_code(error: &ImportError) -> String {
-    match error {
-        ImportError::CheckFailed { check, .. } => format!("check-{check}"),
-        ImportError::NotReady { .. } => "not-ready".into(),
-        ImportError::ProfileInUse(_) => "electron-running".into(),
-        ImportError::SourceSchema { .. } => "electron-schema".into(),
-        ImportError::DeleteWithoutDevice => "delete-without-device".into(),
-        ImportError::MalformedRow { .. } | ImportError::NonTextId { .. } => "malformed-row".into(),
-        ImportError::CoreFileExists(_) => "core-file-exists".into(),
-        ImportError::SourceChanged(_) => "source-changed".into(),
-        ImportError::Io { .. } => "io".into(),
-        _ => "import".into(),
-    }
 }
 
 /// The report of the run in progress, saved after every step that changed it.
@@ -408,7 +308,7 @@ fn phases(
 
     if run.report.secrets.is_none() {
         ctx.progress(Phase::Secrets, 0, 1, "secrets");
-        run.report.secrets = Some(secrets(
+        run.report.secrets = Some(secrets::run(
             input,
             profile,
             config.as_ref(),
@@ -493,260 +393,6 @@ fn marker_vault(section: &VaultSection) -> Result<MarkerVault, RunError> {
         shared_with: section.shared_with.clone(),
         extra: serde_json::Map::new(),
     })
-}
-
-/// The secrets phase (Step 37c's [`import_secrets`]) with this run's inputs, as the report's
-/// `secrets` section.
-fn secrets(
-    input: &FirstLaunchInput<'_>,
-    profile: &ElectronProfile,
-    config: Option<&ElectronConfig>,
-    scratch: &Scratch,
-    data_dir: &Path,
-) -> Result<Value, RunError> {
-    let mut inline_ai_reenter = Vec::new();
-    let inputs = || -> Result<_, ImportError> {
-        let report = read_all_secrets(profile, input.key_source, input.keytar)?;
-        let evidence = match input.secrets_mode {
-            // Sign in again skips every check the evidence feeds.
-            SecretsMode::SignInAgain => SecretsEvidence::default(),
-            SecretsMode::Full => evidence(config, scratch, &mut inline_ai_reenter)?,
-        };
-        Ok((report, evidence))
-    };
-    let phase = import_secrets(
-        inputs,
-        input.secrets_mode,
-        input.keyring,
-        input.identity,
-        data_dir,
-    )
-    .map_err(RunError::Secrets)?;
-    Ok(match phase {
-        SecretsPhase::Done => json!({ "done": true }),
-        SecretsPhase::Ran(outcome) => json!({
-            "mode": format!("{:?}", input.secrets_mode),
-            "written": outcome.written,
-            "present": outcome.present,
-            "verified": format!("{:?}", outcome.verified),
-            "deviceKey": format!("{:?}", outcome.device_key),
-            "deviceChecked": outcome.device_checked,
-            "signInRequired": outcome.sign_in_required,
-            "keytarUnlisted": outcome.keytar_unlisted,
-            "skipped": outcome.skipped.iter().map(|s| json!({
-                "service": s.service,
-                "account": s.account,
-                "reason": format!("{:?}", s.reason),
-            })).collect::<Vec<_>>(),
-            "inlineAiReenter": inline_ai_reenter,
-        }),
-    })
-}
-
-/// One evidence slot per config entry, in config order, so `current_vault` indexes its own
-/// vault. A vault without a folder or a `data.db` fills its slot empty, which every check
-/// skips. A `data.db` SQLite refuses does too when the config holds the account verifier; with
-/// none, its verifier may be the only one, and the phase stops (Retry).
-fn evidence(
-    config: Option<&ElectronConfig>,
-    scratch: &Scratch,
-    inline_ai_reenter: &mut Vec<String>,
-) -> Result<SecretsEvidence, ImportError> {
-    let Some(config) = config else {
-        return Ok(SecretsEvidence::default());
-    };
-    let account_key_verifier = config.account_key_verifier().map(str::to_owned);
-    let (stored, _) = config.vaults();
-    let mut vaults = Vec::with_capacity(stored.len());
-    for vault in &stored {
-        let dir = Path::new(&vault.path);
-        let read = if dir.is_dir() {
-            read_vault_evidence(dir, scratch.root())
-        } else {
-            Ok(None)
-        };
-        let evidence = match read {
-            Ok(evidence) => evidence.unwrap_or_default(),
-            Err(ImportError::Sqlite(_)) if account_key_verifier.is_some() => Default::default(),
-            Err(error) => return Err(error),
-        };
-        if evidence.inline_ai_reenter && !inline_ai_reenter.contains(&vault.path) {
-            inline_ai_reenter.push(vault.path.clone());
-        }
-        vaults.push(evidence);
-    }
-    let current_vault = config
-        .current_vault()
-        .and_then(|current| stored.iter().position(|v| v.path == current));
-    Ok(SecretsEvidence {
-        account_key_verifier,
-        device_id: config.device_id().map(str::to_owned),
-        current_vault,
-        vaults,
-    })
-}
-
-/// Imports a vault the first-launch run deferred, when the session first opens it. Reads only
-/// the marker when there is nothing to do: no marker (no migration on this install), a path the
-/// marker does not list, or a vault already settled.
-pub fn migrate_vault(ctx: &ImportContext<'_>, vault: &Path) -> Result<(), RunError> {
-    let path = vault.to_string_lossy();
-    let pending = |marker: &Marker| {
-        marker.vaults.iter().find(|v| v.path == path).and_then(|v| {
-            matches!(v.status, VaultStatus::Deferred | VaultStatus::Unreadable).then(|| v.clone())
-        })
-    };
-    let Some(marker) = Marker::read(&ctx.tauri_data_dir)? else {
-        return Ok(());
-    };
-    if pending(&marker).is_none() {
-        return Ok(());
-    }
-    let _one = IMPORT_LOCK.lock().unwrap_or_else(PoisonError::into_inner);
-    // Read again under the lock: another open may have imported it meanwhile.
-    let Some(mut marker) = Marker::read(&ctx.tauri_data_dir)? else {
-        return Ok(());
-    };
-    let Some(entry) = pending(&marker) else {
-        return Ok(());
-    };
-    if entry.reason.as_deref() == Some(vault::defer_reason(DeferReason::SharedStore)) {
-        return Err(shared_store(&entry.path, &entry.shared_with));
-    }
-    let started = Instant::now();
-    let mut run = Run::load(&ctx.tauri_data_dir);
-    run.report.failure = None;
-    emit(ctx, MigrationEventName::Started, started, (1, 0), None);
-    match deferred_import(ctx, &mut marker, &mut run, &entry.path) {
-        Ok(()) => {
-            emit(ctx, MigrationEventName::Completed, started, (1, 0), None);
-            Ok(())
-        }
-        Err(error) => {
-            run.fail(&error);
-            emit(
-                ctx,
-                MigrationEventName::Failed,
-                started,
-                (1, 0),
-                Some(error.check()),
-            );
-            Err(error)
-        }
-    }
-}
-
-fn shared_store(path: &str, others: &[String]) -> RunError {
-    RunError::SharedStore {
-        paths: std::iter::once(path.to_owned())
-            .chain(others.iter().cloned())
-            .collect(),
-    }
-}
-
-fn deferred_import(
-    ctx: &ImportContext<'_>,
-    marker: &mut Marker,
-    run: &mut Run<'_>,
-    path: &str,
-) -> Result<(), RunError> {
-    let profile = locate_profile(&ctx.env)?.ok_or(ImportError::ProfileNotFound)?;
-    let lock = probe(&profile)?;
-    let config = ElectronConfig::read(&profile)?;
-    let scratch = Scratch::new(ctx.tauri_data_dir.join(SCRATCH_DIR))?;
-    let plan = plan_vaults(&profile, config.as_ref(), &scratch);
-    let Some(planned) = plan.vaults.iter().find(|v| v.path == path) else {
-        // The previous app's config no longer names it: nothing to import from.
-        return settle(
-            ctx,
-            marker,
-            run,
-            VaultSection::new(path, VaultStatus::NoData),
-        );
-    };
-    let phase = VaultPhase {
-        profile: &profile,
-        config: config.as_ref(),
-        plan: &plan,
-        journal: None,
-        pending_notes: &[],
-        scratch: &scratch,
-        lock: &lock,
-        now_ms: (ctx.now_ms)(),
-    };
-    let section = match &planned.disposition {
-        Disposition::Import(id) => {
-            let store = store_name(&phase, id);
-            let others: Vec<String> = marker
-                .vaults
-                .iter()
-                .filter(|v| v.path != path && v.store.as_deref() == Some(store.as_str()))
-                .map(|v| v.path.clone())
-                .collect();
-            if !others.is_empty() {
-                if let Some(entry) = marker.vault_mut(path) {
-                    entry.reason = Some(vault::defer_reason(DeferReason::SharedStore).into());
-                    entry.shared_with.clone_from(&others);
-                }
-                marker.write(&ctx.tauri_data_dir)?;
-                return Err(shared_store(path, &others));
-            }
-            preflight::run(
-                &profile,
-                config.as_ref(),
-                &[planned],
-                &ctx.tauri_data_dir,
-                ctx.free_space,
-            )?;
-            // The journal replay is the first launch's: its entries name the vaults present then.
-            vault::import(run, &phase, planned, id)?
-        }
-        Disposition::Deferred(DeferReason::DataDbMissing) => {
-            VaultSection::new(path, VaultStatus::NoData)
-        }
-        Disposition::Deferred(DeferReason::SharedStore) => {
-            let section = settled_section(&phase, planned).unwrap_or_else(|| unreachable!());
-            let error = shared_store(path, &section.shared_with);
-            if let Some(entry) = marker.vault_mut(path) {
-                entry.reason.clone_from(&section.reason);
-                entry.shared_with.clone_from(&section.shared_with);
-            }
-            marker.write(&ctx.tauri_data_dir)?;
-            return Err(error);
-        }
-        Disposition::Deferred(_) => {
-            return Err(RunError::VaultUnreachable {
-                vault: path.to_owned(),
-            });
-        }
-        // The plan's error is SQLite's, which names the row, never a value.
-        Disposition::Unreadable(error) => {
-            return Err(RunError::Vault {
-                vault: path.to_owned(),
-                source: ImportError::Sqlite(error.to_string()),
-            });
-        }
-        Disposition::Sandbox | Disposition::SameFolder(_) => {
-            settled_section(&phase, planned).unwrap_or_else(|| unreachable!())
-        }
-    };
-    settle(ctx, marker, run, section)
-}
-
-/// Saves a vault's final section, then its marker entry.
-fn settle(
-    ctx: &ImportContext<'_>,
-    marker: &mut Marker,
-    run: &mut Run<'_>,
-    section: VaultSection,
-) -> Result<(), RunError> {
-    let entry = marker_vault(&section)?;
-    run.save_section(section)?;
-    match marker.vault_mut(&entry.path) {
-        Some(slot) => *slot = entry,
-        None => marker.vaults.push(entry),
-    }
-    Ok(marker.write(&ctx.tauri_data_dir)?)
 }
 
 #[cfg(test)]

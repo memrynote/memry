@@ -406,12 +406,13 @@ fn fold_parallel(store: &YStoreReader, jobs: &[String]) -> Vec<Result<Fold, &'st
 /// within [`update_depth::MAX_ANY_DEPTH`], plus one level of `yrs`'s recursive type delete and
 /// GC per type item. Measured per level (macOS arm64, 18 Nov, 10,000 and 40,000 nested arrays
 /// deleted) at 1,376 bytes in a debug build and 352 in release; these leave about three times
-/// that. The stack is reserved, not committed, so a large one costs address space only.
+/// that in debug and about six in release, whose frames x64 builds were not measured for (#3554
+/// C6). The stack is reserved, not committed, so a large one costs address space only.
 const FOLD_STACK_BASE: usize = 2 << 20;
 const FOLD_STACK_PER_TYPE: usize = if cfg!(debug_assertions) {
     4 << 10
 } else {
-    1 << 10
+    2 << 10
 };
 
 /// `getYDoc` in y-leveldb: every update in clock order into one document, then the whole
