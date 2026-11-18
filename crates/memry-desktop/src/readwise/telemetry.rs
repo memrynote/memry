@@ -94,3 +94,56 @@ pub fn sync_completed(
     event.metrics = Some(metrics);
     event
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::readwise::run_state::RunCounts;
+
+    #[test]
+    fn every_event_is_on_the_allowlist_and_carries_counts_and_codes_only() {
+        let result = RunResult {
+            counts: RunCounts {
+                added: 1,
+                updated: 2,
+                appended: 3,
+                highlights: 7,
+                failed: 1,
+                ..RunCounts::default()
+            },
+            documents: 4,
+            ..RunResult::default()
+        };
+        let run = sync_completed(Origin::Scheduled, 1200, Ok(&result));
+        assert!(run.is_known());
+        assert_eq!(run.result.as_deref(), Some("failed"));
+        let metrics = run.metrics.unwrap();
+        assert_eq!(metrics.item_count, Some(10.0));
+        assert_eq!(
+            (metrics.result_count, metrics.value),
+            (Some(7.0), Some(1.0))
+        );
+
+        let cancelled = RunResult {
+            cancelled: true,
+            ..RunResult::default()
+        };
+        let stopped = sync_completed(Origin::Manual, 5, Ok(&cancelled));
+        assert_eq!(stopped.result.as_deref(), Some("canceled"));
+
+        let token = RunError::Readwise(ReadwiseError::InvalidToken { status: 401 });
+        let failed = sync_completed(Origin::Manual, 5, Err(&token));
+        assert!(failed.is_known());
+        assert_eq!(failed.error_code.as_deref(), Some("invalid-token"));
+        let unexpected = RunError::Failed("https://readwise.io/secret path".to_owned());
+        assert_eq!(error_code(&unexpected), "unexpected");
+
+        for event in [connected(ConnectSource::Takeover, None), disconnected()] {
+            assert!(event.is_known(), "{}", event.name);
+            assert_eq!(event.result.as_deref(), Some("success"));
+        }
+        let refused = ReadwiseError::InvalidToken { status: 401 };
+        let refused = connected(ConnectSource::Token, Some(&refused));
+        assert_eq!(refused.error_code.as_deref(), Some("invalid-token"));
+    }
+}

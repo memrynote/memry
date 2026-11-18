@@ -395,3 +395,67 @@ fn flush_day(
     let day: Vec<JournalBook> = day.into_values().collect();
     write_day(library, date, &day, &arrivals)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::super::types::ReadwiseHighlight;
+    use super::*;
+
+    fn highlight(id: i64, at: &str) -> ReadwiseHighlight {
+        ReadwiseHighlight {
+            id,
+            highlighted_at: Some(at.to_owned()),
+            ..ReadwiseHighlight::default()
+        }
+    }
+
+    #[test]
+    fn a_later_book_overrides_a_highlight_and_a_deleted_book_deletes_all() {
+        let partial = ReadwiseBook {
+            user_book_id: 1,
+            highlights: Some(vec![highlight(5, "2026-01-02T10:00:00Z")]),
+            ..ReadwiseBook::default()
+        };
+        let full = ReadwiseBook {
+            user_book_id: 1,
+            is_deleted: Some(true),
+            highlights: Some(vec![
+                highlight(6, "not a date"),
+                highlight(5, "2026-01-03T10:00:00Z"),
+            ]),
+            ..ReadwiseBook::default()
+        };
+        let rows = index_rows(&[&partial, &full]);
+        let ids: Vec<i64> = rows.iter().map(|row| row.highlight_id).collect();
+        assert_eq!(ids, [5, 6]);
+        assert_eq!(
+            rows[0].highlighted_at.as_deref(),
+            Some("2026-01-03T10:00:00.000Z")
+        );
+        assert_eq!(rows[1].highlighted_at, None);
+        assert!(rows.iter().all(|row| row.deleted));
+    }
+
+    #[test]
+    fn a_day_window_spans_every_zone_and_a_bad_date_has_none() {
+        let window = day_window("2026-01-02").unwrap();
+        assert_eq!(
+            window,
+            (
+                "2026-01-01T10:00:00.000Z".to_owned(),
+                "2026-01-03T12:00:00.000Z".to_owned()
+            )
+        );
+        assert_eq!(day_window("2026-02-30"), None);
+    }
+
+    #[test]
+    fn a_pending_list_with_a_count_below_one_reads_as_empty() {
+        let good = r#"{"2026-01-02":{"7":2}}"#;
+        assert_eq!(parse_journal_pending(Some(good))["2026-01-02"]["7"], 2);
+        for bad in [r#"{"2026-01-02":{"7":0}}"#, r#"{"d":{"7":-1}}"#, "[]", "{"] {
+            assert!(parse_journal_pending(Some(bad)).is_empty(), "{bad}");
+        }
+        assert_eq!(journal_pending_text(&JournalPending::new()), None);
+    }
+}

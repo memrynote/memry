@@ -143,3 +143,68 @@ impl RunStatus {
         self.notify();
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::sync::atomic::{AtomicI64, AtomicUsize, Ordering};
+
+    use super::*;
+    use crate::readwise::client::ReadwiseError;
+
+    #[test]
+    fn a_tick_waits_for_the_notice_interval_and_a_stage_change_does_not() {
+        let now = Arc::new(AtomicI64::new(1_000));
+        let clock = Arc::clone(&now);
+        let status = RunStatus::new(Arc::new(move || clock.load(Ordering::SeqCst)));
+        let notices = Arc::new(AtomicUsize::new(0));
+        let counted = Arc::clone(&notices);
+        status.on_change(move || {
+            counted.fetch_add(1, Ordering::SeqCst);
+        });
+        let writing = |done| RunProgress {
+            stage: Stage::Writing,
+            planned: Some(9),
+            done,
+        };
+        status.set_progress(Some(writing(0)), false);
+        status.set_progress(Some(writing(1)), true);
+        assert_eq!(notices.load(Ordering::SeqCst), 1);
+        assert_eq!(
+            status.progress(),
+            Some(writing(1)),
+            "stored without a notice"
+        );
+        now.store(1_000 + PROGRESS_NOTIFY_MS, Ordering::SeqCst);
+        status.set_progress(Some(writing(2)), true);
+        status.set_progress(None, false);
+        assert_eq!(notices.load(Ordering::SeqCst), 3);
+    }
+
+    #[test]
+    fn a_failure_is_its_contract_code_and_clearing_nothing_tells_no_one() {
+        let status = RunStatus::new(Arc::new(|| 0));
+        let notices = Arc::new(AtomicUsize::new(0));
+        let counted = Arc::clone(&notices);
+        status.on_change(move || {
+            counted.fetch_add(1, Ordering::SeqCst);
+        });
+        status.clear_failure();
+        status.record_failure(&RunError::AlreadyRunning);
+        assert_eq!(notices.load(Ordering::SeqCst), 0);
+        let expired = ReadwiseError::SubscriptionExpired { status: 403 };
+        status.record_failure(&RunError::Readwise(expired));
+        assert_eq!(
+            status.failure().map(|f| f.kind),
+            Some("subscription-expired")
+        );
+        status.record_failure(&RunError::Failed("disk full".to_owned()));
+        let failure = status.failure().unwrap();
+        assert_eq!(
+            (failure.kind, failure.detail.as_deref()),
+            ("unexpected", Some("disk full"))
+        );
+        status.clear_failure();
+        assert_eq!(status.failure(), None);
+        assert_eq!(notices.load(Ordering::SeqCst), 3);
+    }
+}
