@@ -158,7 +158,10 @@ jobs:
   codeql:
     name: CodeQL
     needs: changes
-    if: ${{ !cancelled() && (needs.changes.outputs.run == 'true' || needs.changes.result == 'failure') }}
+    # Not in the merge queue: the PR head was analysed already, nothing requires a merge-group
+    # analysis and the gate does not wait for this job (#5035). The weekly schedule analyses the
+    # default branch.
+    if: ${{ !cancelled() && github.event_name != 'merge_group' && (needs.changes.outputs.run == 'true' || needs.changes.result == 'failure') }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     permissions:
