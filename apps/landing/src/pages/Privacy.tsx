@@ -162,7 +162,8 @@ export function PrivacyPage() {
           how the site is used and diagnose problems. Every form field value is masked in the replay
           by default, and pages that can show your email address (sign-in, account settings) mask
           that text specifically as well, so it is never captured. PostHog sets cookies to keep
-          track of your session.
+          track of your session. PostHog uses the IP address your browser connects from to look up
+          an approximate location (country and city), then discards the address. We do not store it.
         </p>
         <p>
           If you contact us or sign up for an account, we store the email address you submit so we

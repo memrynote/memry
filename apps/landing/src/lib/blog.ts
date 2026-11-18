@@ -80,6 +80,8 @@ export interface BlogPost {
     href: string
     description: string
   }
+  // Slugs shown under "Related Guides"; posts without it show the first posts in the list.
+  relatedSlugs?: readonly string[]
 }
 
 const DEFAULT_AUTHOR: BlogAuthor = {
@@ -1147,6 +1149,730 @@ Referenced in [[Q3 Roadmap]] and [[Security Whitepaper]].`
       description:
         'Daily entries with templates, day context, highlights, and revisit reminders, stored as Markdown.'
     }
+  },
+  {
+    slug: 'best-journaling-apps',
+    pageKey: 'blogBestJournalingApps',
+    title: 'The best journaling apps in 2026',
+    description:
+      'Day One, Apple Journal, Journey, Diarium, Obsidian daily notes, and memrynote compared: platforms, privacy, where entries live, price, and where each falls short.',
+    summary:
+      'Six journaling apps checked the same way: which devices they run on, who can read your entries, where the entries are stored, what they cost, and what each one does worse than the others.',
+    datePublished: '2026-11-18T08:00:00.000Z',
+    dateModified: '2026-11-18T08:00:00.000Z',
+    author: DEFAULT_AUTHOR,
+    byline: 'Kaan, founder of memrynote',
+    readingTime: '11 min read',
+    category: 'Philosophy & Workflows',
+    heroTint: 'sand',
+    tags: ['Journaling', 'Comparison', 'Privacy', 'Local-First'],
+    featured: false,
+    lead: 'The best journaling app is the one you open every day, so start with where you write. If you write on your phone, an app with a mature phone app wins. If you write at a computer, or you want entries you can still open in twenty years, the choice changes. We make memrynote, one of the six apps below. Every entry has the same parts, including what each app does better than ours, and the last section explains how we made the list.',
+    shortAnswer: [
+      {
+        situation:
+          'Write mostly on an iPhone or Android phone and want photos, prompts, and printed books',
+        pick: 'Day One',
+        anchor: 'day-one'
+      },
+      {
+        situation:
+          'Use only Apple devices and want a free journal that suggests what to write about',
+        pick: 'Apple Journal',
+        anchor: 'apple-journal'
+      },
+      {
+        situation: 'Need one journal on every platform, including Windows, Linux, and the web',
+        pick: 'Journey',
+        anchor: 'journey'
+      },
+      {
+        situation: 'Want no subscription and no account, with sync through your own cloud storage',
+        pick: 'Diarium',
+        anchor: 'diarium'
+      },
+      {
+        situation: 'Already keep notes in Obsidian and like building your own setup',
+        pick: 'Obsidian daily notes',
+        anchor: 'obsidian'
+      },
+      {
+        situation:
+          'Want your journal next to your notes, tasks, and calendar, as Markdown files on your computer',
+        pick: 'memrynote',
+        anchor: 'memrynote'
+      }
+    ],
+    sections: [
+      {
+        heading: 'We make memrynote. Here is where it falls short.',
+        slug: 'where-memrynote-falls-short',
+        paragraphs: [
+          'memrynote is our app, so read this list knowing that. It is on the list because it is the journal we recommend to people who already plan their day at a computer. For phone-first journaling, other apps on this list are better today. These are its gaps:'
+        ],
+        bullets: [
+          'The iPhone app is in TestFlight beta. It has a Journal tab that reads and writes the same days as the desktop app. iPad support is in development, and there is no Android or web app.',
+          'There are no writing prompts beyond the templates you pick or write. Day One, Apple Journal, and Journey suggest what to write about.',
+          'It is not a photo journal. You can attach photos to an entry, but there is no map view, photo timeline, or printed book.',
+          'Sync is paid. Journaling on one computer is free, and syncing between devices starts at $5 a month.',
+          'The whole app is in beta and built by one founder, so expect rough edges and frequent releases.'
+        ]
+      },
+      {
+        heading: 'What to check in a journaling app',
+        slug: 'what-to-check',
+        paragraphs: [
+          'Where you write. A journal you have to walk to a computer for is a journal you skip. Check that the app runs well on the device you have with you at night.',
+          'Who can read your entries. If the app syncs, entries should be end-to-end encrypted, so the company cannot read them. A good test: if support can restore your entries after you forget your password, the company holds a key that can read them.',
+          'Where the entries live. Most journaling apps keep entries in their own database and offer an export. A few keep plain files on your disk that any editor can open. For a record you want to read in twenty years, that difference matters more than any feature.',
+          'What you pay for. Several apps are free on one device and charge for sync, photos, or AI features. Check which part of the app you would pay for before you write a year of entries in it.'
+        ]
+      },
+      {
+        heading: 'Day One',
+        slug: 'day-one',
+        paragraphs: [
+          'Day One is the best-known journaling app and the most polished on a phone. It handles photos, video, and audio, offers a daily prompt and a prompt library, shows On This Day memories, and can print your journal as a book. It runs on iPhone, iPad, Mac, Android, and Apple Watch, and in a browser.',
+          'New journals are end-to-end encrypted by default. The key stays on your devices and can be backed up to iCloud. Older journals created with standard encryption stay that way until you move their entries into a new journal.'
+        ],
+        facts: [
+          {
+            label: 'Platforms',
+            value: 'iPhone, iPad, Mac, Android, Apple Watch, and the web. No Windows or Linux app.'
+          },
+          {
+            label: 'Privacy',
+            value:
+              'End-to-end encrypted by default for new journals. If you lose the key, Day One cannot decrypt synced entries.'
+          },
+          {
+            label: 'Where entries live',
+            value: "In Day One's own storage, with exports available."
+          },
+          {
+            label: 'Price',
+            value:
+              'Free Basic plan with unlimited text entries and one photo per entry. Syncing across devices needs the paid Silver plan, and Gold adds AI features.'
+          },
+          {
+            label: 'Better than memrynote at',
+            value:
+              'The phone app, photos and media, prompts, and printed journals. It is the safer pick if you journal on your phone.'
+          },
+          {
+            label: 'Where it falls short',
+            value:
+              'Sync across devices is a paid feature. Entries are not plain files, and there is no native Windows or Linux app.'
+          }
+        ]
+      },
+      {
+        heading: 'Apple Journal',
+        slug: 'apple-journal',
+        paragraphs: [
+          'Apple Journal is built into iPhone, iPad, and Mac, so there is nothing to install or pay for. Its main idea is suggestions: it offers moments to write about from your photos, the places you went, and your workouts, and you can turn those into an entry.',
+          'Apple lists Journal data among the iCloud categories that are always end-to-end encrypted, even without Advanced Data Protection. You can also lock the app with Face ID or your passcode.'
+        ],
+        facts: [
+          {
+            label: 'Platforms',
+            value: 'iPhone, iPad, and Mac.'
+          },
+          {
+            label: 'Privacy',
+            value: 'Journal data in iCloud is end-to-end encrypted by default.'
+          },
+          {
+            label: 'Where entries live',
+            value: "In Apple's Journal storage and iCloud, with an export to HTML files."
+          },
+          {
+            label: 'Price',
+            value: 'Free with an Apple device.'
+          },
+          {
+            label: 'Better than memrynote at',
+            value:
+              'Suggestions drawn from your day, and zero setup. If you only use Apple devices, it is the easiest way to start.'
+          },
+          {
+            label: 'Where it falls short',
+            value:
+              'It is Apple-only, so a Windows or Linux computer cannot open your journal. Entries live in the app, not as files you control.'
+          }
+        ]
+      },
+      {
+        heading: 'Journey',
+        slug: 'journey',
+        paragraphs: [
+          'Journey covers more platforms than any other app here: Android, iPhone, iPad, Mac, Windows, Linux, the web, Wear OS, and Apple Watch. It supports photos, video, and audio, shared journals, journal templates, and an AI companion you can talk to about your entries.',
+          'Journey Cloud Sync supports end-to-end encryption with a passphrase you choose. Sync across platforms, end-to-end encryption, and shared journals are listed as part of the paid membership.'
+        ],
+        facts: [
+          {
+            label: 'Platforms',
+            value: 'Android, iOS, iPadOS, macOS, Windows, Linux, web, Wear OS, and Apple Watch.'
+          },
+          {
+            label: 'Privacy',
+            value: 'End-to-end encryption for Journey Cloud Sync, set up with your own passphrase.'
+          },
+          {
+            label: 'Where entries live',
+            value: "In Journey's own storage and its cloud sync."
+          },
+          {
+            label: 'Price',
+            value: 'Free app. Membership is $4.17 a month, billed yearly.'
+          },
+          {
+            label: 'Better than memrynote at',
+            value:
+              'Platform coverage, including Android and the web, plus shared journals and media.'
+          },
+          {
+            label: 'Where it falls short',
+            value:
+              'Encryption and cross-platform sync come with the membership. Entries are not plain files on your disk.'
+          }
+        ]
+      },
+      {
+        heading: 'Diarium',
+        slug: 'diarium',
+        paragraphs: [
+          'Diarium is a journal for Windows, Android, iPhone, iPad, and Mac that needs no account. It shows context next to each day, such as the photos you took, your calendar appointments, the weather, and fitness data, and it has map, gallery, and timeline views.',
+          'Sync is optional and runs through cloud storage you already have: OneDrive, Google Drive, Dropbox, iCloud, or WebDAV. Diarium compresses and encrypts the data it uploads there. Pro is a one-time purchase, not a subscription, bought once per platform.'
+        ],
+        facts: [
+          {
+            label: 'Platforms',
+            value: 'Windows, Android, iPhone, iPad, and Mac.'
+          },
+          {
+            label: 'Privacy',
+            value:
+              'No account. Entries stay on your device unless you turn on sync, and the app can be locked with a password, PIN, or biometrics.'
+          },
+          {
+            label: 'Where entries live',
+            value:
+              "In Diarium's own database, with exports to PDF, Word, plain text, HTML, and JSON."
+          },
+          {
+            label: 'Price',
+            value: 'Free version. Pro, which sync needs, is a one-time purchase per platform.'
+          },
+          {
+            label: 'Better than memrynote at',
+            value:
+              'No subscription at all, sync through your own cloud, and automatic day context from photos, calendars, and fitness apps.'
+          },
+          {
+            label: 'Where it falls short',
+            value:
+              'No Linux app, and you buy Pro again on each platform you use. Entries are in a database, not plain files.'
+          }
+        ]
+      },
+      {
+        heading: 'Obsidian daily notes',
+        slug: 'obsidian',
+        paragraphs: [
+          "Obsidian is a notes app, not a journal, but its Daily notes core plugin turns it into one. A command opens today's note, named by date, and creates it from a template if it does not exist yet. Community plugins add calendars, periodic notes, and trackers.",
+          'Your journal is a folder of Markdown files on your disk. Obsidian runs on macOS, Windows, Linux, iOS, and Android. Obsidian Sync, the paid add-on, encrypts your remote vault end to end by default.'
+        ],
+        facts: [
+          {
+            label: 'Platforms',
+            value: 'macOS, Windows, Linux, iOS, and Android.'
+          },
+          {
+            label: 'Privacy',
+            value:
+              'Files stay on your devices. Obsidian Sync encrypts end to end by default; other sync methods depend on how you set them up.'
+          },
+          {
+            label: 'Where entries live',
+            value: 'Plain Markdown files in a folder you choose.'
+          },
+          {
+            label: 'Price',
+            value: 'Free app. Obsidian Sync is $4 a month (Standard), billed yearly.'
+          },
+          {
+            label: 'Better than memrynote at',
+            value:
+              'Mature mobile apps and thousands of community plugins, if you want to build your own journaling system.'
+          },
+          {
+            label: 'Where it falls short',
+            value:
+              'Journaling features come from plugins you choose and maintain. There are no built-in prompts beyond templates, and the app is not open source.'
+          }
+        ]
+      },
+      {
+        heading: 'memrynote',
+        slug: 'memrynote',
+        paragraphs: [
+          'memrynote is our app: one local-first workspace for notes, tasks, a daily journal, and a calendar. Each journal day is a Markdown file in a folder you choose, so the journal opens in any text editor, with or without memrynote installed.',
+          'A day can start from a template, and you can set a different template for each weekday. Below the entry, On this day lists the same date from earlier years. A property you fill in every day, such as sleep or mood, can be charted over the last 13 weeks. The day also shows the tasks due that day, you can link to it from any note with [[2026-05-07]], and you can set a reminder to read it again later.',
+          'Journaling needs no account. If you turn on sync, every entry is encrypted on your device with XChaCha20-Poly1305 before upload, and the server stores it only as ciphertext. The desktop app runs on macOS, Windows, and Linux, and the iPhone app in TestFlight beta has its own Journal tab. memrynote can import an Apple Journal export, which arrives as notes.'
+        ],
+        facts: [
+          {
+            label: 'Platforms',
+            value:
+              'macOS, Windows, and Linux. iPhone in TestFlight beta (iOS 26 or later). iPad support in development. No Android or web app.'
+          },
+          {
+            label: 'Privacy',
+            value:
+              'Local by default with no account. Sync is always end-to-end encrypted, and the open source code is under AGPL-3.0.'
+          },
+          {
+            label: 'Where entries live',
+            value: 'One plain Markdown file per day, in a vault folder you choose.'
+          },
+          {
+            label: 'Price',
+            value:
+              'Free for local use. Encrypted sync is $5 a month or $48 a year (Plus), $10 a month (Pro), or $500 once (Believer).'
+          },
+          {
+            label: 'Best for',
+            value:
+              'People who plan their day at a computer and want the journal next to their notes, tasks, and calendar.'
+          },
+          {
+            label: 'Where it falls short',
+            value:
+              'The iPhone app is a beta, there are no prompts beyond templates, and it is not a photo journal. The full list is at the top of this page.'
+          }
+        ]
+      },
+      {
+        heading: 'How we made this list',
+        slug: 'how-we-made-this-list',
+        paragraphs: [
+          "We make memrynote, and it is on this list because it is what we recommend for a journal that lives next to the rest of your day. Every other app here is one we would point a friend to for the situation in its row of the short answer. We read each app's own pricing page, help center, and security documentation in November 2026, and used what each company says rather than third-party reviews. memrynote's claims were checked against its source code and user guide.",
+          'Prices are in US dollars and change often, so check before you buy. The date at the top is the last full review. If something here is wrong, email support@memrynote.com and we will fix it.'
+        ]
+      }
+    ],
+    faqs: [
+      {
+        question: 'What is the best journaling app?',
+        answer:
+          'It depends on where you write. Day One is the most complete app for phone journaling. Apple Journal is the easiest free start on Apple devices. Journey covers the most platforms, and Diarium has no subscription. Obsidian daily notes and memrynote keep entries as plain Markdown files on your computer.'
+      },
+      {
+        question: 'What is the most private journaling app?',
+        answer:
+          'Day One, Apple Journal, Journey, and memrynote all offer end-to-end encryption for synced entries, so the company cannot read them. Diarium and memrynote work with no account at all. For a longer look at privacy, read our guide to the most private journaling apps.'
+      },
+      {
+        question: 'Is there a free journaling app with no subscription?',
+        answer:
+          'Apple Journal is free on Apple devices. Diarium has a free version and sells Pro as a one-time purchase. Day One, Journey, and Obsidian are free to start and charge for sync. memrynote is free on one computer and charges for encrypted sync.'
+      },
+      {
+        question: 'Which journaling apps run on Windows and Linux?',
+        answer:
+          'Journey, Obsidian, and memrynote run on Windows and Linux. Diarium runs on Windows but not Linux. Day One is available on Windows and Linux only through its web app, and Apple Journal is Apple-only.'
+      },
+      {
+        question: 'Does memrynote have a journaling app for iPhone?',
+        answer:
+          'Yes, in beta. The memrynote iPhone app is in TestFlight and has a Journal tab that syncs the same days, templates, and reminders as the desktop app. It needs iOS 26 or later. There is no Android app yet.'
+      }
+    ],
+    takeaways: [
+      'Pick the app that runs best on the device you actually write on.',
+      'If the app syncs, check that entries are end-to-end encrypted and that the company cannot restore them for you.',
+      'Obsidian and memrynote keep entries as plain Markdown files; the others keep their own storage and offer exports.',
+      'memrynote fits if you plan your day at a computer and want the journal next to your notes and tasks, and can live with an iPhone app still in beta.'
+    ],
+    relatedFeature: {
+      label: 'Explore memrynote Journal',
+      href: '/features/journal',
+      description:
+        'One Markdown file per day, with templates per weekday, On this day, tracked properties, and revisit reminders.'
+    },
+    relatedSlugs: [
+      'most-private-journaling-apps',
+      'how-to-keep-a-plain-text-daily-journal-that-outlives-any-app'
+    ]
+  },
+  {
+    slug: 'open-source-note-taking-apps',
+    pageKey: 'blogOpenSourceNoteApps',
+    title: 'The best open source note-taking apps in 2026',
+    description:
+      'Joplin, Logseq, Standard Notes, Notesnook, Trilium, SiYuan, and memrynote compared: license, platforms, where notes live, encryption, and what sync costs.',
+    summary:
+      'Seven open source note-taking apps checked the same way: the license, the platforms, the storage format, the encryption, what sync costs, and where each falls short.',
+    datePublished: '2026-11-18T09:00:00.000Z',
+    dateModified: '2026-11-18T09:00:00.000Z',
+    author: DEFAULT_AUTHOR,
+    byline: 'Kaan, founder of memrynote',
+    readingTime: '12 min read',
+    category: 'Philosophy & Workflows',
+    heroTint: 'mint',
+    tags: ['Open Source', 'Comparison', 'Markdown', 'Local-First'],
+    featured: false,
+    lead: 'An open source note-taking app publishes its code under a license that lets anyone read, change, and share it. That matters for notes because you can check what the app does with your data, and the code outlives the company. The seven apps below are all open source. They differ in where your notes live, how they sync, and what sync costs. We make memrynote, one of the seven, and every entry, ours included, says where the app falls short.',
+    shortAnswer: [
+      {
+        situation:
+          'Want a free app that syncs through Dropbox, OneDrive, Nextcloud, or your own server',
+        pick: 'Joplin',
+        anchor: 'joplin'
+      },
+      {
+        situation: 'Think in outlines and daily pages with links between blocks',
+        pick: 'Logseq',
+        anchor: 'logseq'
+      },
+      {
+        situation: 'Want a simple encrypted notes app with a long track record',
+        pick: 'Standard Notes',
+        anchor: 'standard-notes'
+      },
+      {
+        situation: 'Want free encrypted notes on every platform, including Android and the web',
+        pick: 'Notesnook',
+        anchor: 'notesnook'
+      },
+      {
+        situation: 'Run your own server and want a deep tree of notes with scripting',
+        pick: 'Trilium Notes',
+        anchor: 'trilium'
+      },
+      {
+        situation: 'Want block-level references, databases, and flashcards in one app',
+        pick: 'SiYuan',
+        anchor: 'siyuan'
+      },
+      {
+        situation:
+          'Want notes, tasks, journal, and calendar in one app, as Markdown files with encrypted sync',
+        pick: 'memrynote',
+        anchor: 'memrynote'
+      }
+    ],
+    sections: [
+      {
+        heading: 'We make memrynote. Here is where it falls short.',
+        slug: 'where-memrynote-falls-short',
+        paragraphs: [
+          'memrynote is our app, released under AGPL-3.0 with its code on GitHub. It is on this list because it is what we recommend to people who want their notes, tasks, journal, and calendar in one local-first app. It is not the right pick for everyone. These are its gaps today:'
+        ],
+        bullets: [
+          'It is a desktop app first. It runs on macOS, Windows, and Linux. The iPhone app is in TestFlight beta, iPad support is in development, and there is no Android or web app.',
+          'You cannot choose your own sync backend. Sync runs through our hosted, end-to-end encrypted service, and a self-hosted sync server is planned, not available. Joplin and Trilium sync to servers you run today.',
+          'Sync is paid. The local app is free, and syncing between devices starts at $5 a month. Joplin, Standard Notes, and Notesnook sync for free.',
+          'There is no sharing or collaboration. A vault syncs across your own devices only.',
+          'It is in beta and built by one founder, so expect rough edges and frequent releases.'
+        ]
+      },
+      {
+        heading: 'What to check in an open source notes app',
+        slug: 'what-to-check',
+        paragraphs: [
+          'The license. Copyleft licenses such as AGPL-3.0 and GPL-3.0 require anyone who ships a changed version to publish their changes too. Some projects license parts differently, for example the sync server, so check which parts you would run.',
+          'Where notes live. Some apps keep plain Markdown files in a folder, which any editor can open. Others keep a database or their own file format, and Markdown is an export. Both are open source; only the first lets you read your notes with no app at all.',
+          'How sync works and what it costs. Open source code does not mean free sync. Some apps sync through storage you already have or a server you run. Others sell a hosted service. Check whether that service encrypts your notes end to end.',
+          'Who maintains it. A notes app is a long commitment. Look at how often it ships and whether one company, a foundation, or volunteers keep it going.'
+        ],
+        table: {
+          headers: ['App', 'License', 'Where notes live'],
+          rows: [
+            ['Joplin', 'AGPL-3.0-or-later', 'Local database, Markdown export'],
+            ['Logseq', 'AGPL-3.0', 'Markdown files, or a database in the new version'],
+            ['Standard Notes', 'AGPL-3.0', 'Encrypted app storage'],
+            ['Notesnook', 'GPL-3.0', 'Encrypted app database'],
+            ['Trilium Notes', 'AGPL-3.0', 'SQLite database'],
+            ['SiYuan', 'AGPL-3.0', 'JSON documents in a workspace folder'],
+            ['memrynote', 'AGPL-3.0', 'Plain Markdown files']
+          ]
+        }
+      },
+      {
+        heading: 'Joplin',
+        slug: 'joplin',
+        paragraphs: [
+          'Joplin is the best-known open source notes app, with Markdown notes, notebooks, tags, to-dos, and a web clipper. It runs on Windows, macOS, Linux, iOS, Android, and in a terminal.',
+          'Its sync is the most flexible here: Joplin Cloud, Dropbox, OneDrive, Nextcloud, WebDAV, S3, or a local folder. End-to-end encryption works with all of them, but it is off until you turn it on.'
+        ],
+        facts: [
+          {
+            label: 'License',
+            value: 'AGPL-3.0-or-later for the apps. Joplin Server has its own license.'
+          },
+          {
+            label: 'Platforms',
+            value: 'Windows, macOS, Linux, iOS, Android, and a terminal app.'
+          },
+          {
+            label: 'Encryption',
+            value: 'Optional end-to-end encryption with a master password, off by default.'
+          },
+          {
+            label: 'Sync and cost',
+            value:
+              'Free through Dropbox, OneDrive, Nextcloud, WebDAV, S3, or your own Joplin Server. Joplin Cloud starts at €2.99 a month, or €2.40 a month billed yearly.'
+          },
+          {
+            label: 'Where it falls short',
+            value:
+              'You must remember to turn on encryption. Notes live in a database, with Markdown files only through export, and there is no calendar or task manager beyond to-do notes.'
+          }
+        ]
+      },
+      {
+        heading: 'Logseq',
+        slug: 'logseq',
+        paragraphs: [
+          'Logseq is an outliner: every line is a block you can link to, and a daily journal page is the default place to write. It runs on macOS, Windows, Linux, iOS, and Android.',
+          'Logseq is in the middle of a large change. The original version keeps your graph as Markdown files in a folder. The new database version stores the graph in SQLite; it is in beta, and its new mobile app and real-time sync are in alpha.'
+        ],
+        facts: [
+          {
+            label: 'License',
+            value: 'AGPL-3.0.'
+          },
+          {
+            label: 'Platforms',
+            value: 'macOS, Windows, Linux, iOS, and Android.'
+          },
+          {
+            label: 'Encryption',
+            value:
+              'Markdown graphs are plain files on your disk, so encryption in transit depends on the tool you sync the folder with.'
+          },
+          {
+            label: 'Sync and cost',
+            value:
+              'Free app. You can sync a Markdown graph folder with a tool you already use. Sync for the database version is in alpha.'
+          },
+          {
+            label: 'Where it falls short',
+            value:
+              'The move to the database version means two formats and an alpha sync for now. The outliner model suits some people and gets in the way of long-form writing for others.'
+          }
+        ]
+      },
+      {
+        heading: 'Standard Notes',
+        slug: 'standard-notes',
+        paragraphs: [
+          'Standard Notes launched in 2017 and joined Proton, the company behind Proton Mail, in 2024. It focuses on encrypted notes and runs on the web, Windows, macOS, Linux, iOS, and Android.',
+          'The free plan syncs encrypted notes across unlimited devices. Paid plans add the Super editor for Markdown and rich text, folders, Daily Notebooks for journaling, longer revision history, and encrypted file storage.'
+        ],
+        facts: [
+          {
+            label: 'License',
+            value: 'AGPL-3.0.'
+          },
+          {
+            label: 'Platforms',
+            value: 'Web, Windows, macOS, Linux, iOS, and Android.'
+          },
+          {
+            label: 'Encryption',
+            value: 'End-to-end by default, with XChaCha20-Poly1305.'
+          },
+          {
+            label: 'Sync and cost',
+            value:
+              'Free sync on the Standard plan. Productivity and Professional are paid plans; check the Standard Notes plans page for current prices.'
+          },
+          {
+            label: 'Where it falls short',
+            value:
+              "The better editors and journaling are on paid plans. Notes live in the app's storage, with plain files through export, and there is no task manager or calendar."
+          }
+        ]
+      },
+      {
+        heading: 'Notesnook',
+        slug: 'notesnook',
+        paragraphs: [
+          'Notesnook encrypts every note by default and runs on Windows, macOS, Linux, iOS, Android, and the web, with notebooks, tags, reminders, and a rich-text editor.',
+          'Its free plan syncs unlimited notes across unlimited devices, end-to-end encrypted, with 50 MB of attachment uploads a month. Paid plans add attachment storage and larger files.'
+        ],
+        facts: [
+          {
+            label: 'License',
+            value: 'GPL-3.0.'
+          },
+          {
+            label: 'Platforms',
+            value: 'Windows, macOS, Linux, iOS, Android, and the web.'
+          },
+          {
+            label: 'Encryption',
+            value: 'End-to-end by default, with XChaCha20-Poly1305.'
+          },
+          {
+            label: 'Sync and cost',
+            value:
+              'Free sync. Essential is $19.99 a year, Pro $69.99 a year, and Believer $89.99 a year.'
+          },
+          {
+            label: 'Where it falls short',
+            value:
+              "Notes live in the app's own database, so you get files only through export. There is no task manager, calendar, or journal beyond notes and reminders."
+          }
+        ]
+      },
+      {
+        heading: 'Trilium Notes',
+        slug: 'trilium',
+        paragraphs: [
+          'Trilium Notes organizes notes in a tree of any depth, where one note can sit in several places. It adds note types for canvases, mind maps, relation maps, and code, plus scripting and a REST API. The community TriliumNext project maintains it today.',
+          'The desktop app runs on Windows, macOS, and Linux. To sync, you run a Trilium server yourself or pay a third-party host, and that server also gives you a web app with a mobile layout.'
+        ],
+        facts: [
+          {
+            label: 'License',
+            value: 'AGPL-3.0.'
+          },
+          {
+            label: 'Platforms',
+            value:
+              'Windows, macOS, and Linux, plus a web and mobile web interface from your own server. No native mobile app.'
+          },
+          {
+            label: 'Encryption',
+            value: 'Protected notes are encrypted one note at a time, with a password you set.'
+          },
+          {
+            label: 'Sync and cost',
+            value: 'Free. Sync goes through a server you run or a third-party host you pay.'
+          },
+          {
+            label: 'Where it falls short',
+            value:
+              'Sync needs a server you maintain. Notes live in a SQLite database, not as files, and there is no native phone app.'
+          }
+        ]
+      },
+      {
+        heading: 'SiYuan',
+        slug: 'siyuan',
+        paragraphs: [
+          'SiYuan is a block-based notes app with block references, database tables, flashcards with spaced repetition, and OCR. It runs on Windows, macOS, Linux, iOS, Android, and HarmonyOS, and can run in Docker.',
+          'Your notes are JSON documents in a workspace folder, and notebooks can be encrypted. Sync is a paid feature: the annual subscription includes 8 GB of official cloud storage, and paid PRO features let you sync through your own S3 or WebDAV storage instead.'
+        ],
+        facts: [
+          {
+            label: 'License',
+            value: 'AGPL-3.0.'
+          },
+          {
+            label: 'Platforms',
+            value: 'Windows, macOS, Linux, iOS, Android, HarmonyOS, and Docker.'
+          },
+          {
+            label: 'Encryption',
+            value: 'Encrypted notebooks, and a data repo key for synced data.'
+          },
+          {
+            label: 'Sync and cost',
+            value:
+              'Free app. Sync needs the annual subscription or the paid PRO features; see the SiYuan pricing page for current prices.'
+          },
+          {
+            label: 'Where it falls short',
+            value:
+              'Sync is paid, and SiYuan warns against syncing its folder through Dropbox or similar tools. The working format is JSON, with Markdown through export.'
+          }
+        ]
+      },
+      {
+        heading: 'memrynote',
+        slug: 'memrynote',
+        paragraphs: [
+          'memrynote is our app: one local-first workspace for notes, tasks, a daily journal, a calendar, and a capture inbox. Your vault is a folder you choose, and notes and journal entries are plain Markdown files with YAML frontmatter.',
+          'When you turn on sync, every note, task, journal entry, and attachment is encrypted on your device with XChaCha20-Poly1305 before upload, and each device signs its changes with its own Ed25519 key. The code is on GitHub under AGPL-3.0, and the sync protocol is documented in the repository.'
+        ],
+        facts: [
+          {
+            label: 'License',
+            value: 'AGPL-3.0.'
+          },
+          {
+            label: 'Platforms',
+            value:
+              'macOS, Windows, and Linux. iPhone in TestFlight beta. iPad support in development. No Android or web app.'
+          },
+          {
+            label: 'Encryption',
+            value: 'End-to-end, always on for sync.'
+          },
+          {
+            label: 'Sync and cost',
+            value:
+              'Free for local use. Encrypted sync is $5 a month or $48 a year (Plus), $10 a month (Pro), or $500 once (Believer).'
+          },
+          {
+            label: 'Where it falls short',
+            value:
+              'Sync is paid and runs only through our hosted service, the iPhone app is a beta, and there is no sharing. The full list is at the top of this page.'
+          }
+        ]
+      },
+      {
+        heading: 'How we made this list',
+        slug: 'how-we-made-this-list',
+        paragraphs: [
+          "We make memrynote, and it is on this list because it is what we recommend for a private, local-first workspace that covers notes, tasks, and journaling. Every other app here is one we would point a friend to for the situation in its row of the short answer. An app had to publish its client code under an OSI-approved license and be in active development. We took each license from the project's repository and the rest from each project's own site, README, and pricing page in November 2026.",
+          'Prices change, so check before you buy. If something here is wrong, email support@memrynote.com and we will fix it.'
+        ]
+      }
+    ],
+    faqs: [
+      {
+        question: 'What is the best open source note-taking app?',
+        answer:
+          'Joplin is the most established, with free sync through storage you already have. Notesnook and Standard Notes are the simplest encrypted options. Logseq and SiYuan suit block-based thinking, Trilium suits people who run their own server, and memrynote suits people who want notes, tasks, and a journal in one app as Markdown files.'
+      },
+      {
+        question: 'Which open source note apps store notes as Markdown files?',
+        answer:
+          'memrynote and the original Markdown version of Logseq keep notes as plain Markdown files in a folder. Joplin, Standard Notes, Notesnook, Trilium, and SiYuan keep notes in their own storage and export Markdown.'
+      },
+      {
+        question: 'Which open source note apps have free sync?',
+        answer:
+          'Joplin syncs for free through Dropbox, OneDrive, Nextcloud, WebDAV, or your own server. Standard Notes and Notesnook include free encrypted sync. Trilium syncs through a server you run. SiYuan and memrynote charge for sync.'
+      },
+      {
+        question: 'Is memrynote open source?',
+        answer:
+          'Yes. memrynote is released under AGPL-3.0, with the desktop app, the iPhone app, the shared Rust core, and the sync server in one public repository at github.com/memrynote/memry.'
+      }
+    ],
+    takeaways: [
+      'Open source lets you read what an app does with your notes, but it does not make sync free.',
+      'Check where notes live: plain Markdown files open without the app, while a database needs an export.',
+      'Joplin, Standard Notes, and Notesnook sync for free; Trilium syncs through your own server.',
+      'memrynote fits if you want notes, tasks, journal, and calendar as Markdown files with encrypted sync, and can live with paid, hosted sync.'
+    ],
+    relatedFeature: {
+      label: 'Read the security architecture',
+      href: '/security',
+      description:
+        'How memrynote encrypts your notes on your device, what the sync server can still see, and why it cannot read your notes.'
+    },
+    relatedSlugs: [
+      'best-end-to-end-encrypted-notes-apps',
+      'local-first-vs-cloud-first-note-taking-apps'
+    ]
   }
 ]
 
@@ -1159,6 +1885,8 @@ export function getPostBySlug(slug: string): BlogPost | undefined {
 }
 
 export function getRelatedPosts(currentSlug: string, limit = 2): readonly BlogPost[] {
+  const picked = getPostBySlug(currentSlug)?.relatedSlugs
+  if (picked) return BLOG_POSTS.filter((post) => picked.includes(post.slug)).slice(0, limit)
   return BLOG_POSTS.filter((post) => post.slug !== currentSlug).slice(0, limit)
 }
 

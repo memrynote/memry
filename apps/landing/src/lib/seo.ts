@@ -217,6 +217,24 @@ export const PAGE_META: Record<string, PageMeta> = {
       'What makes a journaling app private: encryption, local storage, and files you can read without the app. memrynote, Day One, and Apple Journal compared.',
     path: '/blog/most-private-journaling-apps'
   },
+  blogBestJournalingApps: {
+    title: 'The best journaling apps in 2026 — memrynote',
+    description:
+      'Day One, Apple Journal, Journey, Diarium, Obsidian daily notes, and memrynote compared: platforms, privacy, where entries live, price, and where each falls short.',
+    path: '/blog/best-journaling-apps'
+  },
+  blogOpenSourceNoteApps: {
+    title: 'The best open source note-taking apps in 2026 — memrynote',
+    description:
+      'Joplin, Logseq, Standard Notes, Notesnook, Trilium, SiYuan, and memrynote compared: license, platforms, where notes live, encryption, and what sync costs.',
+    path: '/blog/open-source-note-taking-apps'
+  },
+  encryptedNotesApp: {
+    title: 'Encrypted notes app for private, secure notes — memrynote',
+    description:
+      'memrynote is an end-to-end encrypted notes app. Notes stay on your device as Markdown files, and sync uploads only ciphertext the server cannot read. Free locally.',
+    path: '/encrypted-notes-app'
+  },
   compare: {
     title: 'Compare memrynote — how it stacks up',
     description:

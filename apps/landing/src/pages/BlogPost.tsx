@@ -486,6 +486,18 @@ export function PrivateJournalingAppsPostPage() {
   return <BlogPostView post={post} />
 }
 
+export function BestJournalingAppsPostPage() {
+  const post = getPostBySlug('best-journaling-apps')
+  if (!post) return <NotFound />
+  return <BlogPostView post={post} />
+}
+
+export function OpenSourceNoteAppsPostPage() {
+  const post = getPostBySlug('open-source-note-taking-apps')
+  if (!post) return <NotFound />
+  return <BlogPostView post={post} />
+}
+
 // Generalized dynamic client route fallback
 export function DynamicBlogPostPage() {
   const { slug } = useParams<{ slug: string }>()
