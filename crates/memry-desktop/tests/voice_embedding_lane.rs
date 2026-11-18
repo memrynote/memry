@@ -8,6 +8,9 @@
 //! | audio search off, a webm memo, a pending memo: none   | `isAudioEmbeddingEnabled`, `wait`   |
 //! | AI off and a deleted memo drop the vectors            | `project`, :145-153                 |
 //! | the reconcile embeds owed memos and prunes gone ones  | `reconcile`, :170-197               |
+//! | a second reconcile embeds nothing already embedded    | `reconcile`, :186-191               |
+//! | an upper-case `.WAV` name is embedded from its audio  | `readRecording`, :96                |
+//! | the worker gets the recording's real path, no link    | departure: path handed to a child   |
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
@@ -26,7 +29,7 @@ use memry_desktop::embedding::service::{
     ModelProgress, Timing,
 };
 use memry_desktop::embedding::voice_projector::{self, VoiceEmbeddingProjector, notify_voice};
-use memry_desktop::session::projection::{ProjectionEvent, feed};
+use memry_desktop::session::projection::{CancelToken, ProjectionEvent, Projector, feed};
 
 use crate::device_key::with_device_key;
 use crate::vault_env::{Env, WAIT, env};
@@ -75,6 +78,7 @@ impl ModelLoader for Loader {
 
 struct Lane {
     e: Env,
+    projector: Arc<VoiceEmbeddingProjector>,
     model: Arc<Model>,
     ai: Arc<AtomicBool>,
     audio: Arc<AtomicBool>,
@@ -106,12 +110,13 @@ fn lane() -> Lane {
             Arc::new(move |_| ai.load(Ordering::SeqCst) && audio.load(Ordering::SeqCst))
         },
     );
-    e.session.register_projector(projector);
+    e.session.register_projector(projector.clone());
     service.register(&e.session);
     e.open();
     let inbox = e.core.as_ref().unwrap().inbox(with_device_key()).unwrap();
     Lane {
         e,
+        projector,
         model,
         ai,
         audio,
@@ -123,7 +128,16 @@ impl Lane {
     /// A voice memo with its recording in the vault, its transcription `pending`.
     fn memo(&self, ext: &str) -> String {
         let id = self.inbox.new_id();
-        let rel = format!("attachments/inbox/{id}/voice-memo.{ext}");
+        self.memo_at(
+            &id,
+            &format!("attachments/inbox/{id}/voice-memo.{ext}"),
+            ext,
+        )
+    }
+
+    fn memo_at(&self, id: &str, rel: &str, ext: &str) -> String {
+        let id = id.to_owned();
+        let rel = rel.to_owned();
         self.e.write(&rel, "RIFF");
         self.inbox
             .capture_voice(
@@ -230,7 +244,8 @@ fn a_failed_memo_is_embedded_from_its_recording_and_found_by_search() {
     );
     let recordings = l.model.recordings.lock().unwrap().clone();
     assert_eq!(recordings.len(), 1);
-    assert!(recordings[0].starts_with(&l.e.vault), "{recordings:?}");
+    let vault = std::fs::canonicalize(&l.e.vault).unwrap();
+    assert!(recordings[0].starts_with(&vault), "{recordings:?}");
     assert!(recordings[0].ends_with(format!("{id}/voice-memo.wav")));
 
     // The search's voice leg reads what the lane stored: the third window answers.
@@ -318,4 +333,63 @@ fn the_reconcile_embeds_owed_memos_and_prunes_gone_ones() {
             && l.row(&stale)
                 .is_some_and(|row| row.input_version == EMBEDDING_INPUT_VERSION)
     });
+}
+
+/// `reconcile` skips a memo whose state row names the source its plan picks at the current
+/// input version: neither the transcript nor the three audio windows are embedded again.
+#[test]
+fn a_second_reconcile_embeds_nothing_already_embedded() {
+    let l = lane();
+    l.model.windows.store(3, Ordering::SeqCst);
+    let (spoken, recorded) = (l.transcribed("buy oat milk today"), l.failed("wav"));
+    l.after(&[&spoken, &recorded]);
+    assert_eq!(l.row(&spoken).unwrap().source, "transcript");
+    assert_eq!(l.row(&recorded).unwrap().chunks, 3);
+    l.model.texts.lock().unwrap().clear();
+    l.model.recordings.lock().unwrap().clear();
+
+    // On the test's thread, so the pass is over when it returns; the lane is idle.
+    l.projector.reconcile(&CancelToken::default()).unwrap();
+    assert!(l.model.texts.lock().unwrap().is_empty());
+    assert!(l.model.recordings.lock().unwrap().is_empty());
+}
+
+/// `readRecording` lower-cases the name before the `.wav` check.
+#[test]
+fn an_upper_case_wav_name_is_embedded_from_its_audio() {
+    let l = lane();
+    let id = l.inbox.new_id();
+    l.memo_at(
+        &id,
+        &format!("attachments/inbox/{id}/voice-memo.WAV"),
+        "wav",
+    );
+    l.inbox
+        .fail_transcription(id.clone(), "Rate limit exceeded".into())
+        .unwrap();
+    l.notify(&id);
+    l.until("the audio vectors", |l| l.row(&id).is_some());
+    assert_eq!(l.row(&id).unwrap().source, "audio");
+}
+
+/// The worker opens the recording by path, so it gets the canonical target: a link inside the
+/// vault is resolved before the check, not left for the worker to follow afterwards.
+#[cfg(unix)]
+#[test]
+fn the_worker_gets_the_recordings_real_path() {
+    let l = lane();
+    let id = l.inbox.new_id();
+    let real = l.e.vault.join("attachments/real");
+    std::fs::create_dir_all(&real).unwrap();
+    std::fs::create_dir_all(l.e.vault.join("attachments/inbox")).unwrap();
+    std::os::unix::fs::symlink(&real, l.e.vault.join("attachments/inbox/linked")).unwrap();
+    l.memo_at(&id, "attachments/inbox/linked/voice-memo.wav", "wav");
+    l.inbox
+        .fail_transcription(id.clone(), "Rate limit exceeded".into())
+        .unwrap();
+    l.notify(&id);
+    l.until("the audio vectors", |l| l.row(&id).is_some());
+    let recordings = l.model.recordings.lock().unwrap().clone();
+    let expected = std::fs::canonicalize(real.join("voice-memo.wav")).unwrap();
+    assert_eq!(recordings, [expected]);
 }

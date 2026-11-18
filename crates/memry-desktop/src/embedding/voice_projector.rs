@@ -16,8 +16,9 @@
 //!   (:170-197). Old vectors keep answering until replaced. A failed embed stores nothing and is
 //!   tried again on the next event or vault open; the service's breakers back off a failing
 //!   model.
-//! - **Departures.** The recording path is confined to the vault before the worker opens it
-//!   (Electron's `openVaultFile` does the same in-process). The rebuild refuses with AI off,
+//! - **Departures.** The recording path is confined to the vault and made canonical, with no
+//!   link left in it, before the worker opens it by path; a link swapped in between the check
+//!   and the open is still followed (Electron's `openVaultFile` opens it in-process). The rebuild refuses with AI off,
 //!   where it would delete vectors it cannot restore (as the image lane, Kaan 9 Nov).
 
 use std::path::Path;
@@ -30,8 +31,7 @@ use super::projector::AiEnabled;
 use super::service::EmbeddingService;
 use crate::session::projection::{CancelToken, ProjectionEvent, Projector, Rebuilt, feed};
 use crate::session::{OpenVault, Session};
-use crate::shell::file_open::Resolution;
-use crate::vault::paths::resolve_vault_file;
+use crate::shell::file_open::{Resolution, resolve_real_under_root};
 
 /// The lane's name (`embedding::PROJECTORS[2]`).
 pub const NAME: &str = "voice-embedding";
@@ -141,10 +141,11 @@ impl VoiceEmbeddingProjector {
     }
 
     /// `readRecording` and `embedAudio`: the recording's window vectors, `None` when it is outside
-    /// the vault, missing, under a second, unreadable, or any window failed.
+    /// the vault, missing, under a second, unreadable, or any window failed. The worker gets the
+    /// canonical target, so no link is left in the path it follows.
     fn recording(&self, vault: &Path, rel: &str) -> Result<Option<Vec<Vec<f32>>>, String> {
         let Resolution::Inside(path) =
-            resolve_vault_file(vault, rel).map_err(|error| error.to_string())?
+            resolve_real_under_root(vault, rel).map_err(|error| error.to_string())?
         else {
             return Ok(None);
         };

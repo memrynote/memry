@@ -252,11 +252,13 @@ pub fn replace(
     transaction.commit().map_err(failed)
 }
 
-/// The voice projector's `rebuild`: every voice vector and state row.
+/// The voice projector's `rebuild`: every voice vector and state row, in one transaction.
 pub fn clear(index: &Connection) -> Result<(), StorageError> {
-    index
+    let transaction = index.unchecked_transaction().map_err(failed)?;
+    transaction
         .execute_batch("DELETE FROM vec_voice; DELETE FROM voice_embedding_state;")
-        .map_err(failed)
+        .map_err(failed)?;
+    transaction.commit().map_err(failed)
 }
 
 /// `nearestVoiceItems`: the memos whose windows lie nearest `query`, best first, one hit per
