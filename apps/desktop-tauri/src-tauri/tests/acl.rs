@@ -11,8 +11,9 @@ use serde_json::Value;
 use specta_typescript::Typescript;
 use tauri::ipc::{CallbackFn, InvokeBody};
 use tauri::test::{INVOKE_KEY, MockRuntime, get_ipc_response, mock_builder};
+use tauri::utils::config::CapabilityEntry;
 use tauri::webview::InvokeRequest;
-use tauri::{App, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
+use tauri::{App, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 
 #[cfg(windows)]
 const LOCAL_ORIGIN: &str = "http://tauri.localhost";
@@ -178,36 +179,113 @@ fn call(window: &WebviewWindow<MockRuntime>, command: &str) -> Result<(), String
     .map_err(|error| error.to_string())
 }
 
-#[test]
-fn the_main_window_may_call_every_app_command() {
+/// App commands the tables expect a window without `app-all` to be refused.
+const APP_SAMPLE: [&str; 4] = ["app_info", "log_write", "account_get_info", "crdt_open_doc"];
+
+/// Labels no capability names in either config.
+const NO_CAPABILITY: [&str; 6] = [
+    "preboot",
+    "pdf-print-1",
+    "sticky",
+    "sticky-tab",
+    "quick-capture",
+    "unknown",
+];
+
+/// Each window label with the commands it must reach and the commands it must be refused.
+fn table(e2e: bool) -> Vec<(&'static str, Vec<String>, Vec<String>)> {
+    let permissions = permissions();
+    let app_all: Vec<String> = permissions["app-all"].iter().cloned().collect();
+    let e2e_all: Vec<String> = permissions["e2e-all"].iter().cloned().collect();
+    let names = |names: &[&str]| {
+        names
+            .iter()
+            .map(|name| (*name).to_owned())
+            .collect::<Vec<_>>()
+    };
+    let none_of_them = [names(&APP_SAMPLE), names(&["e2e_app_info"])].concat();
+    let mut rows = if e2e {
+        let everything = [app_all, e2e_all.clone()].concat();
+        vec![
+            ("main", everything.clone(), names(&["not_a_command"])),
+            ("e2e-1", everything, names(&["not_a_command"])),
+            // `startup-recovery.e2e.ts` drives the startup-error window through `e2e_*` calls.
+            ("startup-error", e2e_all, names(&APP_SAMPLE)),
+        ]
+    } else {
+        vec![
+            (
+                "main",
+                app_all,
+                names(&["e2e_app_info", "e2e_vault_write_outside", "not_a_command"]),
+            ),
+            ("startup-error", Vec::new(), none_of_them.clone()),
+            ("e2e-1", Vec::new(), none_of_them.clone()),
+        ]
+    };
+    for label in NO_CAPABILITY {
+        rows.push((label, Vec::new(), none_of_them.clone()));
+    }
+    rows
+}
+
+/// The inline capabilities of `tauri.e2e.conf.json`, without the `wdio` plugin permissions: the
+/// plugin, and so its ACL manifest, exists only in an `e2e` build, and they grant no app command.
+fn e2e_capabilities() -> Vec<String> {
+    read_json("tauri.e2e.conf.json")["app"]["security"]["capabilities"]
+        .as_array()
+        .expect("e2e capabilities")
+        .iter()
+        .filter(|capability| capability.is_object())
+        .map(|capability| {
+            let mut capability = capability.clone();
+            capability["permissions"]
+                .as_array_mut()
+                .expect("permissions")
+                .retain(|permission| !permission.as_str().is_some_and(|p| p.starts_with("wdio")));
+            capability.to_string()
+        })
+        .collect()
+}
+
+/// Checks every row of the table on the resolved ACL. The e2e config's capabilities are added at
+/// run time unless the build already has them (`--features e2e` with the e2e `TAURI_CONFIG`, as
+/// `pnpm build:e2e` passes); such a build checks the e2e table in both tests.
+fn check_table(e2e: bool) {
     let app = app();
-    let main = window(&app, "main");
-    for command in &permissions()["app-all"] {
-        assert_eq!(call(&main, command), Ok(()), "{command}");
+    let built_in = app.config().app.security.capabilities.iter().any(
+        |entry| matches!(entry, CapabilityEntry::Inlined(capability) if capability.identifier == "e2e"),
+    );
+    if e2e && !built_in {
+        for capability in e2e_capabilities() {
+            app.add_capability(capability).expect("e2e capability");
+        }
+    }
+    let refused = |result: Result<(), String>| result.is_err_and(|e| e.contains("not allowed"));
+    for (label, reaches, refuses) in table(e2e || built_in) {
+        let window = window(&app, label);
+        for command in &reaches {
+            assert_eq!(
+                call(&window, command),
+                Ok(()),
+                "{label} must reach {command}"
+            );
+        }
+        for command in &refuses {
+            assert!(
+                refused(call(&window, command)),
+                "{label} must not reach {command}"
+            );
+        }
     }
 }
 
 #[test]
-fn other_windows_and_e2e_commands_are_refused() {
-    let app = app();
-    let main = window(&app, "main");
-    let refused = |result: Result<(), String>| result.is_err_and(|e| e.contains("not allowed"));
-    for command in ["e2e_app_info", "e2e_vault_write_outside", "not_a_command"] {
-        assert!(refused(call(&main, command)), "main: {command}");
-    }
-    for label in [
-        "preboot",
-        "startup-error",
-        "pdf-print-1",
-        "sticky",
-        "sticky-tab",
-        "quick-capture",
-        "e2e-1",
-        "unknown",
-    ] {
-        let other = window(&app, label);
-        for command in ["app_info", "log_write", "account_get_info", "crdt_open_doc"] {
-            assert!(refused(call(&other, command)), "{label}: {command}");
-        }
-    }
+fn each_window_reaches_only_its_commands_in_a_release_build() {
+    check_table(false);
+}
+
+#[test]
+fn each_window_reaches_only_its_commands_in_an_e2e_build() {
+    check_table(true);
 }

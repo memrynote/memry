@@ -7,7 +7,7 @@
         "main",
         {
           "identifier": "e2e",
-          "windows": ["main", "e2e-*"],
+          "windows": ["main", "e2e-*", "startup-error"],
           "permissions": ["wdio:default", "wdio-webdriver:default", "e2e-all"]
         },
         {
