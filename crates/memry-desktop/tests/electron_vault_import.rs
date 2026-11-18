@@ -26,6 +26,8 @@ mod device_key;
 mod docs;
 #[path = "support/electron_db.rs"]
 mod electron_db;
+#[path = "electron_vault_import/inbox_calendar.rs"]
+mod inbox_calendar;
 #[path = "electron_vault_import/notes.rs"]
 mod notes;
 #[path = "electron_vault_import/queue.rs"]

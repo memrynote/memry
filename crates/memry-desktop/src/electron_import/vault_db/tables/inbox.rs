@@ -56,10 +56,14 @@ pub(super) fn payload(
     Ok(payload)
 }
 
-/// `SELECT rowid, <columns> FROM <table>`, `extra` appended.
+/// `SELECT rowid, id, synced_at, <columns> FROM <table>`, `extra` appended. A handler payload
+/// without them still names the record and its projection time by them.
 pub(super) fn select(table: &str, columns: Columns, extra: &str) -> String {
     let names: Vec<&str> = columns.iter().map(|(_, column, _)| *column).collect();
-    format!("SELECT rowid, {} FROM {table} {extra}", names.join(", "))
+    format!(
+        "SELECT rowid, id, synced_at, {} FROM {table} {extra}",
+        names.join(", ")
+    )
 }
 
 /// Every record of `table`: the payload of `columns`, stringified as V8 does.
