@@ -9,7 +9,7 @@ use crate::domain::task_merge::{self, Gate};
 use crate::domain::tasks::Inbound;
 use crate::domain::{
     agent_conversation, agent_message, calendar_items, canvas, canvas_folder, home_page, inbox,
-    journal, projects, settings, sticky_draft, tasks,
+    journal, notes, projects, settings, sticky_draft, tasks,
 };
 // Desktop only, like the locks themselves: iOS never declares `vault_lock`.
 #[cfg(feature = "markdown")]
@@ -84,6 +84,8 @@ pub(super) fn apply_record(
     let merged = match record.item_type.as_str() {
         tasks::ITEM_TYPE => tasks::apply_remote(conn, record, now_ms, clock_device),
         projects::ITEM_TYPE => projects::apply_remote(conn, record, now_ms),
+        // §6.3.1, then §6.8.1's union of `attachmentReferences` (note-handler.ts).
+        notes::ITEM_TYPE => notes::merge::apply_remote(conn, record, now_ms),
         settings::SETTINGS_ITEM_TYPE => settings_merge::apply_remote_merged(conn, record, now_ms),
         // "absent key keeps, explicit null clears" (desktop's inbox handler).
         inbox::ITEM_TYPE => inbox::merge::apply_remote(conn, record, now_ms),

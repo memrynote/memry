@@ -463,6 +463,9 @@ mod sync_hardening_orphans;
 mod sync_hardening_purged;
 #[path = "sync_hardening_repairs.rs"]
 mod sync_hardening_repairs;
+#[cfg(feature = "markdown")]
+#[path = "sync_note_attachment_union.rs"]
+mod sync_note_attachment_union;
 #[path = "sync_note_body_feed.rs"]
 mod sync_note_body_feed;
 #[path = "sync_outbox.rs"]
