@@ -524,6 +524,8 @@ pub(crate) fn canonical(path: &Path) -> PathBuf {
 #[cfg(test)]
 mod fixture;
 #[cfg(test)]
+mod headless_tests;
+#[cfg(test)]
 mod identity;
 #[cfg(test)]
 mod lifecycle;

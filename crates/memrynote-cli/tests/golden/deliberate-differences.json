@@ -7,10 +7,10 @@
     "test": "crates/memrynote-cli/tests/context.rs a_bad_registry_fails_the_command_and_stays_as_it_is"
   },
   {
-    "case": "the app or the vault still holds Electron data the import has not brought over, or the app is recovering the vault's data.db",
-    "typescript": "The TypeScript CLI opened Electron's .memry/data.db and ran the command.",
-    "rust": "Every command but `vault list|current|use|remove` exits 1 and creates nothing: `MemryNote has not finished updating your data. Open MemryNote once, then run this command again.` (import pending), `This vault still holds data of the previous MemryNote that was never brought over, so the command line cannot use it. Use this vault in MemryNote.` (core created over Electron's data.db), or `MemryNote is repairing this vault's database. Open MemryNote and let it finish, then run this command again.` (data.db.recovering present).",
+    "case": "the app or the vault still holds Electron data the import has not brought over, the app is recovering the vault's data.db, or the vault's data.db is damaged",
+    "typescript": "The TypeScript CLI opened Electron's .memry/data.db and ran the command; it switches a damaged data.db to WAL and migrates it with no integrity check (apps/cli/src/app-core/database.ts:111-115, 172-188).",
+    "rust": "Every command but `vault list|current|use|remove` exits 1 and creates nothing: `MemryNote has not finished updating your data. Open MemryNote once, then run this command again.` (import pending), `This vault still holds data of the previous MemryNote that was never brought over, so the command line cannot use it. Use this vault in MemryNote.` (core created over Electron's data.db), or `MemryNote is repairing this vault's database. Open MemryNote and let it finish, then run this command again.` (data.db.recovering present), or `This vault's database is damaged. Open MemryNote and choose Repair, then run this command again.` (quick_check(1) finds damage; the file is left as found).",
     "approval": "#3552 Design, Opening a vault, as amended on #3552 (FIX-5055).",
-    "test": "crates/memrynote-cli/tests/context.rs an_unmigrated_vault_fails_every_vault_command_and_creates_nothing, a_core_created_over_electron_refuses_with_its_own_message, a_recovery_in_progress_is_left_to_the_app"
+    "test": "crates/memrynote-cli/tests/context.rs an_unmigrated_vault_fails_every_vault_command_and_creates_nothing, a_core_created_over_electron_refuses_with_its_own_message, a_recovery_in_progress_is_left_to_the_app, a_damaged_database_is_left_to_the_app"
   }
 ]
