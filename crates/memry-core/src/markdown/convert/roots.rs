@@ -3,7 +3,10 @@
 //! source record (`markdown-source.ts`), CriticMarkup marks
 //! (`critic-markup/yjs.ts`) and link reference definitions and usages
 //! (`link-references.ts`). Reads normalize every entry and drop what is
-//! malformed; writes replace a root only when its content changed.
+//! malformed; writes replace a root only when its content changed, except the
+//! marks, which are written one element at a time (protocol 12.5.1).
+
+use std::collections::{HashMap, HashSet};
 
 use serde_json::Value as Json;
 use yrs::{Any, Array as _, ArrayRef, Map as _, MapRef, Out, ReadTxn, TransactionMut, WriteTxn};
@@ -152,24 +155,113 @@ fn normalize_mark(value: &Json) -> Option<CriticMarkupMark> {
     })
 }
 
-/// `readCriticMarkupMarksFromYDoc`.
+/// The element keys this build writes. Any other key belongs to a newer build
+/// and is kept (`MARK_KEYS` of `critic-markup/yjs.ts`).
+const MARK_KEYS: [&str; 12] = [
+    "id",
+    "kind",
+    "visibleText",
+    "start",
+    "end",
+    "originalText",
+    "body",
+    "metadata",
+    "createdAt",
+    "mentions",
+    "attachments",
+    "formatRanges",
+];
+
+/// `readCriticMarkupMarksFromYDoc`: the valid marks in array order, one per
+/// id, the first copy winning (protocol 12.5.1).
 pub fn read_critic_marks<T: ReadTxn>(txn: &T) -> Vec<CriticMarkupMark> {
+    let mut seen = HashSet::new();
     read_array_json(txn, CRITIC_MARKUP_MARKS_ARRAY)
         .iter()
         .filter_map(normalize_mark)
+        .filter(|mark| seen.insert(mark.id.clone()))
         .collect()
 }
 
-/// `writeCriticMarkupMarksToYDoc`.
+/// `writeCriticMarkupMarksToYDoc`: deletes invalid elements, later copies of
+/// an id and ids `marks` drops; replaces an element whose value differs (Yjs
+/// maps compare without key order), keeping the keys this build does not
+/// know; inserts a new id after the mark before it in `marks`.
 pub fn write_critic_marks(txn: &mut TransactionMut, marks: &[CriticMarkupMark]) {
-    let next: Vec<Json> = marks
-        .iter()
-        .filter_map(|mark| {
-            let json = serde_json::to_value(mark).ok()?;
-            normalize_mark(&json).map(|m| serde_json::to_value(m).unwrap_or(Json::Null))
-        })
-        .collect();
-    replace_array(txn, CRITIC_MARKUP_MARKS_ARRAY, &next);
+    let mut next: Vec<(String, Json)> = Vec::new();
+    let mut next_ids = HashSet::new();
+    for mark in marks {
+        let normalized = serde_json::to_value(mark)
+            .ok()
+            .and_then(|json| normalize_mark(&json));
+        let Some(normalized) = normalized else {
+            continue;
+        };
+        if !next_ids.insert(normalized.id.clone()) {
+            continue;
+        }
+        if let Ok(json) = serde_json::to_value(&normalized) {
+            next.push((normalized.id, json));
+        }
+    }
+
+    let array: ArrayRef = txn.get_or_insert_array(CRITIC_MARKUP_MARKS_ARRAY);
+    let values: Vec<Out> = array.iter(txn).collect();
+    let mut kept: Vec<(String, Any)> = Vec::new();
+    let mut kept_ids = HashSet::new();
+    let mut keep = Vec::with_capacity(values.len());
+    for value in values {
+        let json = out_json(value.clone(), txn);
+        let id = normalize_mark(&json)
+            .map(|mark| mark.id)
+            .filter(|id| next_ids.contains(id) && kept_ids.insert(id.clone()));
+        keep.push(id.is_some());
+        if let Some(id) = id {
+            let stored = match value {
+                Out::Any(any) => any,
+                _ => json_to_any(&json),
+            };
+            kept.push((id, stored));
+        }
+    }
+    for (index, keep) in keep.iter().enumerate().rev() {
+        if !keep {
+            array.remove_range(txn, index as u32, 1);
+        }
+    }
+
+    let mut position = 0;
+    for (id, mark) in next {
+        let Some(index) = kept.iter().position(|(kept_id, _)| *kept_id == id) else {
+            let element = json_to_any(&mark);
+            array.insert_range(txn, position as u32, vec![element.clone()]);
+            kept.insert(position, (id, element));
+            position += 1;
+            continue;
+        };
+        let merged = with_unknown_keys(&mark, &kept[index].1);
+        if merged != kept[index].1 {
+            array.remove_range(txn, index as u32, 1);
+            array.insert_range(txn, index as u32, vec![merged]);
+        }
+        position = position.max(index + 1);
+    }
+}
+
+/// `mark` with the keys of `stored` that are not in `MARK_KEYS`.
+fn with_unknown_keys(mark: &Json, stored: &Any) -> Any {
+    let mut fields: HashMap<String, Any> = match json_to_any(mark) {
+        Any::Map(known) => (*known).clone(),
+        other => return other,
+    };
+    if let Any::Map(stored) = stored {
+        for (key, value) in stored.iter() {
+            if !MARK_KEYS.contains(&key.as_str()) {
+                fields.insert(key.clone(), value.clone());
+            }
+        }
+    }
+    Any::from(fields)
 }
 
 fn normalize_definition(value: &Json) -> Option<LinkReferenceDefinition> {

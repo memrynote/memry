@@ -1,6 +1,7 @@
 //! The `markdown-convert/layer-critic.json` conformance file: CriticMarkup
-//! parsing and transforms, the writing tools marker codec and frontmatter, and
-//! the image lift of editor-schema, against the TypeScript they port.
+//! parsing and transforms, the per-id write of the `criticMarkupMarks` root,
+//! the writing tools marker codec and frontmatter, and the image lift of
+//! editor-schema, against the TypeScript they port.
 
 #![cfg(feature = "markdown")]
 
@@ -9,6 +10,10 @@ use crate::support;
 
 use std::collections::BTreeSet;
 
+use memry_core::markdown::convert::roots::{
+    CRITIC_MARKUP_MARKS_ARRAY, read_array_json, read_critic_marks, write_critic_marks,
+};
+use memry_core::markdown::pm::model::json_to_any;
 use memry_core::markdown::schema::lift_images::lift_images_out_of_text_blocks;
 use memry_core::markdown::shared::critic_markup::{
     CriticMarkupMark, ParsedCriticMarkup, TransformResult, accept_critic_mark,
@@ -28,6 +33,8 @@ use serde::de::DeserializeOwned;
 use serde_json::{Value as Json, json};
 use support::vector_compare::{Failures, json_equal};
 use support::vector_file;
+use yrs::updates::decoder::Decode;
+use yrs::{Any, Array as _, Doc, ReadTxn, StateVector, Transact, Update};
 
 fn arg<T: DeserializeOwned>(args: &[Json], index: usize) -> Result<T, String> {
     let value = args.get(index).ok_or(format!("missing argument {index}"))?;
@@ -70,6 +77,51 @@ fn pick_mark(args: &[Json]) -> Result<CriticMarkupMark, String> {
 
 fn marks_of(args: &[Json], index: usize) -> Result<Vec<CriticMarkupMark>, String> {
     arg(args, index)
+}
+
+fn full_update(doc: &Doc) -> Vec<u8> {
+    doc.transact()
+        .encode_state_as_update_v1(&StateVector::default())
+}
+
+fn apply(doc: &Doc, update: &[u8]) -> Result<(), String> {
+    let update = Update::decode_v1(update).map_err(|e| e.to_string())?;
+    doc.transact_mut()
+        .apply_update(update)
+        .map_err(|e| e.to_string())
+}
+
+/// `yjsWrite` of the oracle (`critic-fns.ts`): each writer writes on its own
+/// replica of `base` (client id `10 + i`), and one document merges them all.
+fn yjs_write(args: &[Json]) -> Result<Json, String> {
+    let base: Vec<Json> = arg(args, 0)?;
+    let writes: Vec<Vec<CriticMarkupMark>> = arg(args, 1)?;
+    let origin = Doc::with_client_id(1);
+    let array = origin.get_or_insert_array(CRITIC_MARKUP_MARKS_ARRAY);
+    array.insert_range(
+        &mut origin.transact_mut(),
+        0,
+        base.iter().map(json_to_any).collect::<Vec<Any>>(),
+    );
+    let start = full_update(&origin);
+    let merged = Doc::with_client_id(2);
+    apply(&merged, &start)?;
+    let mut changed = Vec::new();
+    for (index, marks) in writes.iter().enumerate() {
+        let replica = Doc::with_client_id(10 + index as u64);
+        apply(&replica, &start)?;
+        let before = full_update(&replica);
+        write_critic_marks(&mut replica.transact_mut(), marks);
+        let after = full_update(&replica);
+        apply(&merged, &after)?;
+        changed.push(Json::Bool(before != after));
+    }
+    let txn = merged.transact();
+    Ok(json!({
+        "changed": changed,
+        "elements": read_array_json(&txn, CRITIC_MARKUP_MARKS_ARRAY),
+        "marks": to_json(&read_critic_marks(&txn))?,
+    }))
 }
 
 /// `None` when the function name has no Rust dispatch.
@@ -119,6 +171,8 @@ fn dispatch(name: &str, args: &[Json], expected: &Json) -> Option<Result<Json, S
                 _ => delete_critic_mark(&plain, &marks, &id),
             })
         })(),
+
+        "critic.yjsWrite" => yjs_write(args),
 
         "writing.decodeWritingMarkers" => text(args, 0).and_then(|m| {
             let decoded = decode_writing_markers(&m);
