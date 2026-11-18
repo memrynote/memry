@@ -533,6 +533,57 @@ struct NoteTitleBurstTests {
         #expect(field.text == "titleかx")
     }
 
+    /// #4798: romaji `kana`, then a hardware Return. The input method
+    /// confirms by replacing its composition with `かな` while the key is
+    /// down, and drops the composition when the field refuses that. The
+    /// title keeps `かな` and the caret, and the next Return moves to the
+    /// body.
+    @Test(.timeLimit(.minutes(1))) func a_return_confirming_a_composition_keeps_the_composed_text() async throws {
+        let f = try await newNote()
+        let (window, field) = try await open(f)
+        defer { window.isHidden = true }
+
+        for character in "title" { key(String(character), in: window, title: field) }
+        field.setMarkedText("かな", selectedRange: NSRange(location: 2, length: 0))
+        try await settle(f)
+        let press = HardwarePress(.keyboardReturnOrEnter, "\r")
+        field.pressesBegan([press], with: nil)
+        confirm(in: field)
+        try await settle(f)
+        #expect(field.text == "titleかな", "the Return's confirm dropped the composition while the key was down")
+        field.pressesEnded([press], with: nil)
+        try await settle(f)
+
+        #expect(field.isFirstResponder, "the title lost the caret")
+        #expect(field.text == "titleかな")
+        key("x", in: window, title: field)
+        try await settle(f)
+        #expect(field.text == "titleかなx")
+
+        field.pressesBegan([press], with: nil)
+        field.pressesEnded([press], with: nil)
+        await until { views(BlockTextView.self, in: window).first?.isFirstResponder == true }
+        #expect(views(BlockTextView.self, in: window).first?.isFirstResponder == true, "the plain Return stayed in the title")
+        try await expectTitle(f, "titleかなx")
+    }
+
+    /// An input method's confirm as the keyboard runs it: it asks the
+    /// field's delegate to replace the composition with its text, and drops
+    /// the composition when the delegate refuses.
+    private func confirm(in field: UITextView) {
+        guard let marked = field.markedTextRange, let text = field.text(in: marked) else { return }
+        let range = NSRange(
+            location: field.offset(from: field.beginningOfDocument, to: marked.start),
+            length: field.offset(from: marked.start, to: marked.end)
+        )
+        if field.delegate?.textView?(field, shouldChangeTextInRanges: [NSValue(range: range)], replacementText: text) != false {
+            field.insertText(text)
+        } else {
+            field.setMarkedText("", selectedRange: NSRange(location: 0, length: 0))
+        }
+        field.unmarkText()
+    }
+
     /// A composition deleted with Backspace is over: the next Return is a
     /// plain one, saves the title and moves to the body, and the keys after
     /// it land there.

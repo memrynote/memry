@@ -193,11 +193,26 @@ struct NoteTitleEditor: View {
             // An input method confirming its composition on Return first
             // deletes it, as Backspace does: marked text gone with no Return
             // down ends the composition.
-            if field.markedTextRange != nil {
+            if let marked = field.markedTextRange {
                 host.composing = true
+                host.composition = (value, NSRange(
+                    location: field.offset(from: field.beginningOfDocument, to: marked.start),
+                    length: field.offset(from: marked.start, to: marked.end)
+                ))
                 host.keys.reset()
             } else if !host.returnDown {
                 host.composing = false
+                host.composition = nil
+            } else if let (text, range) = host.composition,
+                      value == (text as NSString).replacingCharacters(in: range, with: "") {
+                // An input method confirms on Return by replacing its
+                // composition with its text, and SwiftUI's field refuses
+                // every edit while the key is down. The input method then
+                // drops the composition (#4798). The composed text is the
+                // confirmed text: the title keeps it.
+                draft = text
+                DispatchQueue.main.async(execute: showComposition)
+                return
             }
         }
         // The text view reports the text it showed at the hand-off again
@@ -233,6 +248,16 @@ struct NoteTitleEditor: View {
         }
         if value != draft { claimsFocus = false }
         draft = value
+    }
+
+    /// Shows the composition the input method dropped at a Return again,
+    /// with the caret after it, unless keys typed since changed the field.
+    private func showComposition() {
+        guard let field = host.title, field.markedTextRange == nil, let (text, range) = host.composition,
+              field.text == (text as NSString).replacingCharacters(in: range, with: "")
+        else { return }
+        field.text = text
+        field.selectedRange = NSRange(location: range.upperBound, length: 0)
     }
 
     var body: some View {
@@ -307,6 +332,7 @@ struct NoteTitleEditor: View {
                         // body has yet to take the keys held for it: the
                         // caret goes back to the title, and the edit goes on.
                         host.composing = false
+                        showComposition()
                         host.title?.becomeFirstResponder()
                     } else if let body = host.body, body.window != nil {
                         // The newline moved the caret to the body already.
@@ -435,6 +461,9 @@ private final class TitleWindow {
     /// Whether an input method composes in the title: from a change with
     /// marked text until a change without while no Return is down.
     var composing = false
+    /// The title's text while an input method composed in it last, and
+    /// where the composition is in it.
+    var composition: (text: String, range: NSRange)?
     /// A Return went down in the title and its key-up has not submitted.
     var returnDown = false
     /// The keys pressed in the title that the keyboard has not inserted.
