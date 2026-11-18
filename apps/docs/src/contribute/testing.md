@@ -102,6 +102,26 @@ or an earlier benchmark vault (`.memry/config.json` title `memrynote Benchmark V
 any other folder. It writes only vault files: the app assigns note ids when it first indexes the
 vault, and tags get default colours.
 
+### Memory and Query Benchmarks
+
+`pnpm bench:memory` (`cargo xtask measure-memory`) measures the idle memory of a Tauri build and
+its web view processes. Each run starts the app on a fresh profile in the temp folder
+(`MEMRY_APP_DATA_DIR`, `MEMRY_TEST_LOG_DIR`, and `MEMRY_DEVICE=memory-bench`, so the user's
+profile, log and keychain accounts stay untouched), waits for the `launch mark vault_open_ready`
+line in `main.log`, idles, then sums the processes the app owns: its process tree, plus on macOS
+the WebKit XPC services the system holds it responsible for. The metric is the one each OS
+charges: `ri_phys_footprint` on macOS, `PrivateUsage` on Windows, `Pss` on Linux. Electron builds
+are refused.
+
+```bash
+pnpm seed1k --vault=/tmp/bench
+pnpm bench:memory -- --app <MemryNote.app | memry-tauri | .exe> --vault /tmp/bench --runs 3 --idle 60 --out /tmp/memory.json
+```
+
+`pnpm bench:queries` (`crates/memry-desktop/benches/vault_queries.rs`) writes 15,000 notes,
+5,000 tasks and 2,000 inbox items through a session wired as the app wires it, then prints the
+p50 and p95 of the full-text search, the Tasks page's `all` view and the inbox list.
+
 ### Key Rules
 
 - Real SQLite (not mocked) for database tests — uses an in-memory DB per test.

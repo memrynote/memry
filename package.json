@@ -33,6 +33,8 @@
     "sandbox": "pnpm --filter @memry/cli sandbox",
     "seed": "pnpm --filter @memry/desktop seed:vault",
     "seed1k": "cd crates && cargo xtask seed bench",
+    "bench:memory": "cd crates && cargo xtask measure-memory",
+    "bench:queries": "cd crates && cargo bench -p memry-desktop --bench vault_queries",
     "seed:1": "pnpm --filter @memry/desktop seed:small --variant=1",
     "seed:2": "pnpm --filter @memry/desktop seed:small --variant=2",
     "release:humanize": "node scripts/humanize-release-notes.mjs",

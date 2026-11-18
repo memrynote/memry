@@ -88,3 +88,13 @@ describe('seed scripts', () => {
     )
   })
 })
+
+describe('bench scripts', () => {
+  it('measures memory through cargo xtask and query latency through the criterion bench', () => {
+    assert.equal(rootPackage.scripts['bench:memory'], 'cd crates && cargo xtask measure-memory')
+    assert.equal(
+      rootPackage.scripts['bench:queries'],
+      'cd crates && cargo bench -p memry-desktop --bench vault_queries'
+    )
+  })
+})
