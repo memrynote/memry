@@ -102,6 +102,23 @@ export function clearStepsFrom(state, step) {
   }
 }
 
+// The steps after `download`. A finished pack or bridge is kept on resume; verify, upload and
+// publish always run, since they check the staged bytes and the remote draft as they are now.
+const finishSteps = ['pack-windows', 'bridge', 'verify', 'upload', 'publish']
+const alwaysRun = new Set(['verify', 'upload', 'publish'])
+
+/**
+ * What `pnpm release` does after the download step, in order, and the state to continue from. A
+ * fresh download replaced the assets, so the packs and the feeds staged into them are redone.
+ */
+export function planFinishSteps(state, { downloaded }) {
+  const next = markStepDone(downloaded ? clearStepsFrom(state, 'download') : state, 'download')
+  return {
+    state: next,
+    steps: finishSteps.filter((step) => alwaysRun.has(step) || !isStepDone(next, step))
+  }
+}
+
 export function decideWorkflowAction({ state, run }) {
   if (!state.runId) {
     return { action: 'dispatch', reason: 'no recorded workflow run' }

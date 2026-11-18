@@ -15,6 +15,7 @@ import {
   parseReleaseMetadata,
   parseReleaseState,
   payloadZipName,
+  planFinishSteps,
   releaseStepOrder,
   selectRunArtifacts,
   selectPreviousFullNupkgAsset,
@@ -256,6 +257,42 @@ describe('release state', () => {
       'upload'
     ])
     assert.deepEqual(clearStepsFrom(state, 'dispatch').completed, [])
+  })
+})
+
+describe('finish steps', () => {
+  const stateWith = (completed) => ({ ...createReleaseState({ draftTag: 'vnext' }), completed })
+
+  it('redoes the packs and the bridge after a fresh download, then verify, upload, publish', () => {
+    const plan = planFinishSteps(
+      stateWith(['dispatch', 'build', 'download', 'pack-windows', 'bridge', 'verify']),
+      { downloaded: true }
+    )
+
+    assert.deepEqual(plan.steps, ['pack-windows', 'bridge', 'verify', 'upload', 'publish'])
+    assert.deepEqual(plan.state.completed, ['dispatch', 'build', 'download'])
+  })
+
+  it('resumes after the last finished pack step and always reruns verify, upload, publish', () => {
+    for (const [completed, steps] of [
+      [
+        ['dispatch', 'build', 'download'],
+        ['pack-windows', 'bridge', 'verify', 'upload', 'publish']
+      ],
+      [
+        ['dispatch', 'build', 'download', 'pack-windows'],
+        ['bridge', 'verify', 'upload', 'publish']
+      ],
+      [
+        ['dispatch', 'build', 'download', 'pack-windows', 'bridge', 'verify', 'upload'],
+        ['verify', 'upload', 'publish']
+      ]
+    ]) {
+      const plan = planFinishSteps(stateWith(completed), { downloaded: false })
+
+      assert.deepEqual(plan.steps, steps)
+      assert.deepEqual(plan.state.completed, completed)
+    }
   })
 })
 

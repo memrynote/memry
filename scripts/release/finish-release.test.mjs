@@ -18,6 +18,7 @@ import { crc32 } from 'node:zlib'
 import { setupExeName, writeBridgeFeeds } from './bridge-feeds.mjs'
 import {
   bridgeRelease,
+  draftProblems,
   feedProblems,
   isPortableExecutable,
   listPortableExecutables,
@@ -26,7 +27,8 @@ import {
   requiredWindowsBinaries,
   signaturePlan,
   stagePackOutputs,
-  unpackPayload
+  unpackPayload,
+  uploadVerifiedAssets
 } from './finish-release.mjs'
 import { ciAssets } from './required-assets.mjs'
 import { assetNames } from './vpk-args.mjs'
@@ -176,7 +178,8 @@ describe('feed check', () => {
 
       assert.deepEqual(feedProblems(assets, V), [
         `latest.yml: sha512 of ${setupExeName(V)} differs`,
-        `latest.yml: size of ${setupExeName(V)} differs`
+        `latest.yml: size of ${setupExeName(V)} differs`,
+        `latest.yml: ${setupExeName(V)} is not a copy of MemryNote-Setup-win-x64.exe`
       ])
     }))
 
@@ -190,6 +193,31 @@ describe('feed check', () => {
       assert.deepEqual(feedProblems(assets, V), [
         `latest-linux.yml: MemryNote-${V}-amd64.deb is not staged`,
         `latest-mac.yml: version 2026.1119.1, expected ${V}`
+      ])
+    }))
+
+  it('reports a latest.yml that lists any file but the Setup copy', () =>
+    withDir((dir) => {
+      const assets = finishedRelease(dir)
+      const feed = path.join(assets, 'latest.yml')
+      writeFileSync(
+        feed,
+        readFileSync(feed, 'utf8').replaceAll(setupExeName(V), 'MemryNote-Setup-win-x64.exe')
+      )
+
+      assert.deepEqual(feedProblems(assets, V), [
+        `latest.yml: lists MemryNote-Setup-win-x64.exe, expected only ${setupExeName(V)}`
+      ])
+    }))
+
+  it('reports a Setup copy whose bytes are not the signed x64 Setup', () =>
+    withDir((dir) => {
+      const assets = finishedRelease(dir)
+      write(path.join(assets, setupExeName(V)), 'a Setup of another build')
+      writeBridgeFeeds(assets, { version: V })
+
+      assert.deepEqual(feedProblems(assets, V), [
+        `latest.yml: ${setupExeName(V)} is not a copy of MemryNote-Setup-win-x64.exe`
       ])
     }))
 
@@ -211,13 +239,13 @@ describe('feed check', () => {
 /**
  * A stored (uncompressed) zip. `madeBy` is the host byte of "version made by": 0 is what .NET's
  * ZipArchive, which `Compress-Archive` uses, writes on Windows; 3 is Unix. Entries ending in a
- * separator are directories.
+ * separator are directories. An entry's optional `mode` sets Unix file type and permissions.
  */
 function zipOf(entries, { madeBy }) {
   const locals = []
   const centrals = []
   let offset = 0
-  for (const [name, content = ''] of entries) {
+  for (const [name, content = '', { mode } = {}] of entries) {
     const nameBytes = Buffer.from(name, 'latin1')
     const data = Buffer.from(content)
     const crc = crc32(data)
@@ -238,7 +266,10 @@ function zipOf(entries, { madeBy }) {
     central.writeUInt32LE(data.length, 20)
     central.writeUInt32LE(data.length, 24)
     central.writeUInt16LE(nameBytes.length, 28)
-    central.writeUInt32LE(/[\\/]$/.test(name) ? 0x10 : 0x20, 38)
+    central.writeUInt32LE(
+      mode === undefined ? (/[\\/]$/.test(name) ? 0x10 : 0x20) : (mode << 16) >>> 0,
+      38
+    )
     central.writeUInt32LE(offset, 42)
     locals.push(local, nameBytes, data)
     centrals.push(central, nameBytes)
@@ -309,6 +340,51 @@ describe('payload unpack', () => {
       )
     }))
 
+  for (const [label, name, madeBy] of [
+    ['a parent segment', '../escape.txt', 3],
+    ['a nested parent segment', 'pdfium/../../escape.txt', 3],
+    ['a backslash parent segment', 'pdfium\\..\\..\\escape.txt', 0],
+    ['an absolute path', '/tmp/escape.txt', 3],
+    ['a backslash root', '\\escape.txt', 0],
+    ['a drive letter', 'C:/escape.txt', 0]
+  ]) {
+    it(`refuses an entry with ${label} before unpacking anything`, () =>
+      withDir((dir) => {
+        const bytes = zipOf([...payload('/'), [name, 'outside']], { madeBy })
+        const zip = path.join(dir, 'payload.zip')
+        writeFileSync(zip, bytes)
+        const pack = path.join(dir, 'pack')
+        mkdirSync(pack)
+
+        assert.throws(
+          () => unpackPayload(zip, pack, sha256(bytes)),
+          (error) => error.message === `payload.zip holds entries outside the pack dir: ${name}`
+        )
+        assert.deepEqual(readdirSync(pack), [])
+      }))
+  }
+
+  it('refuses a zip that unpacks a symbolic link', () =>
+    withDir((dir) => {
+      const modes = payload('/').map(([name, content]) => [
+        name,
+        content,
+        { mode: name.endsWith('/') ? 0o40755 : 0o100644 }
+      ])
+      const bytes = zipOf([...modes, ['pdfium/link.dll', '/etc/hosts', { mode: 0o120777 }]], {
+        madeBy: 3
+      })
+      const zip = path.join(dir, 'payload.zip')
+      writeFileSync(zip, bytes)
+      const pack = path.join(dir, 'pack')
+      mkdirSync(pack)
+
+      assert.throws(
+        () => unpackPayload(zip, pack, sha256(bytes)),
+        /payload\.zip unpacked to symbolic links: pdfium\/link\.dll$/
+      )
+    }))
+
   it('refuses a zip other than the one the build checked, before unpacking it', () =>
     withDir((dir) => {
       const bytes = zipOf(payload('/'), { madeBy: 0 })
@@ -359,6 +435,43 @@ describe('PE files and signers', () => {
       ])
     }))
 
+  it('finds a PE file whose header sits past the first 4 KiB', () =>
+    withDir((dir) => {
+      const image = Buffer.alloc(0x2100)
+      image.write('MZ', 0, 'latin1')
+      image.writeUInt32LE(0x2000, 0x3c)
+      image.write('PE\0\0', 0x2000, 'latin1')
+      write(path.join(dir, 'late-header.dll'), image)
+
+      assert.deepEqual(listPortableExecutables(dir), ['late-header.dll'])
+    }))
+
+  it('refuses an MZ file without a PE signature, which the sign script would skip', () =>
+    withDir((dir) => {
+      const dos = peBytes()
+      dos.write('XX', 0x80, 'latin1')
+      write(path.join(dir, 'tools/legacy.com'), dos)
+
+      assert.throws(
+        () => listPortableExecutables(dir),
+        /start with MZ but hold no PE signature: tools\/legacy\.com$/
+      )
+    }))
+
+  it('refuses an archive no signature check opens, except the allow-listed OCR data', () =>
+    withDir((dir) => {
+      write(path.join(dir, 'Memrynote.exe'), peBytes())
+      write(path.join(dir, 'tessdata/eng.traineddata.gz'), Buffer.from([0x1f, 0x8b, 8, 0]))
+      assert.deepEqual(listPortableExecutables(dir), ['Memrynote.exe'])
+
+      write(path.join(dir, 'resources/bundle.dat'), zipOf([['inner.exe', 'MZ']], { madeBy: 3 }))
+      write(path.join(dir, 'resources/data.gz'), Buffer.from([0x1f, 0x8b, 8, 0]))
+      assert.throws(
+        () => listPortableExecutables(dir),
+        /holds archives no signature check opens: resources\/bundle\.dat, resources\/data\.gz$/
+      )
+    }))
+
   it('requires the payload manifest binaries and the WebView2 bootstrapper', () => {
     assert.deepEqual(requiredWindowsBinaries(), [
       'Memrynote.exe',
@@ -386,6 +499,19 @@ describe('PE files and signers', () => {
     ])
   })
 
+  it('checks a near-name of a third-party file against Certum', () => {
+    assert.deepEqual(
+      signaturePlan(
+        ['webview2/xMicrosoftEdgeWebview2Setup.exe', 'webview2/MicrosoftEdgeWebview2Setup.exe.exe'],
+        { required: [] }
+      ),
+      [
+        { file: 'webview2/xMicrosoftEdgeWebview2Setup.exe', signer: 'certum' },
+        { file: 'webview2/MicrosoftEdgeWebview2Setup.exe.exe', signer: 'certum' }
+      ]
+    )
+  })
+
   it('refuses a pack without a required binary', () => {
     const files = requiredWindowsBinaries().filter((file) => file !== 'memry-ml-worker.exe')
 
@@ -402,6 +528,94 @@ describe('PE files and signers', () => {
       /No signature check for vendor\.dll, signed by Vendor Inc/
     )
   })
+})
+
+/**
+ * A gh that holds the draft's assets the way GitHub lists them: `release upload` replaces by name
+ * and records GitHub's sha256 digest, and `DELETE releases/assets/<id>` removes one.
+ */
+function fakeGh(initial = []) {
+  const draft = new Map(initial.map((asset) => [asset.name, asset]))
+  const calls = []
+  let nextId = 1000
+  return {
+    calls,
+    draft,
+    json(args) {
+      calls.push(args)
+      assert.deepEqual(args, [
+        'api',
+        '--paginate',
+        '--slurp',
+        'repos/o/r/releases/99/assets?per_page=100'
+      ])
+      return [[...draft.values()]]
+    },
+    run(args) {
+      calls.push(args)
+      if (args[0] === 'api' && args[2] === 'DELETE') {
+        const id = Number(args[3].split('/').at(-1))
+        for (const [name, asset] of draft) if (asset.id === id) draft.delete(name)
+        return
+      }
+      assert.deepEqual(args.slice(0, 3), ['release', 'upload', 'vnext'])
+      for (const file of args.filter((arg) => path.isAbsolute(arg))) {
+        const bytes = readFileSync(file)
+        draft.set(path.basename(file), remoteAsset(path.basename(file), bytes, nextId++))
+      }
+    }
+  }
+}
+
+const remoteAsset = (name, bytes, id) => ({
+  digest: `sha256:${sha256(bytes)}`,
+  id,
+  name,
+  size: bytes.length
+})
+const draftOf = (assets) =>
+  readdirSync(assets).map((name, id) =>
+    remoteAsset(name, readFileSync(path.join(assets, name)), id + 1)
+  )
+const target = { draftTag: 'vnext', releaseId: '99', repo: 'o/r' }
+
+describe('draft upload and publish check', () => {
+  it('deletes draft assets outside the verified set before it uploads, and then matches', () =>
+    withDir((dir) => {
+      const assets = finishedRelease(dir)
+      const gh = fakeGh([
+        remoteAsset('MemryNote-win-Setup.exe', Buffer.from('retired'), 1),
+        remoteAsset('MemryNote-2026.1119.1-amd64.deb', Buffer.from('old'), 2),
+        remoteAsset('latest.yml', Buffer.from('old feed'), 3)
+      ])
+
+      uploadVerifiedAssets({ assetDir: assets, gh, ...target })
+
+      const deletes = gh.calls.filter((args) => args[2] === 'DELETE').map((args) => args[3])
+      assert.deepEqual(deletes, ['repos/o/r/releases/assets/1', 'repos/o/r/releases/assets/2'])
+      assert.equal(gh.calls.at(-1)[1], 'upload')
+      assert.deepEqual(draftProblems({ assetDir: assets, gh, ...target }), [])
+    }))
+
+  it('names each missing, unexpected, resized and changed asset on the draft', () =>
+    withDir((dir) => {
+      const assets = finishedRelease(dir)
+      const remote = draftOf(assets)
+      const byName = (name) => remote.find((asset) => asset.name === name)
+      remote.splice(remote.indexOf(byName('RELEASES')), 1)
+      remote.push(remoteAsset('MemryNote-2026.1119.1-amd64.deb', Buffer.from('old'), 900))
+      byName('latest.yml').size += 1
+      byName('latest-mac.yml').digest = `sha256:${'0'.repeat(64)}`
+      byName('releases.win.json').digest = null
+
+      assert.deepEqual(draftProblems({ assetDir: assets, gh: fakeGh(remote), ...target }), [
+        'missing on the draft: RELEASES',
+        'latest-mac.yml: sha256 on the draft differs from the verified file',
+        `latest.yml: size ${byName('latest.yml').size} on the draft, ${byName('latest.yml').size - 1} verified`,
+        'releases.win.json: the draft lists no sha256 digest',
+        'unexpected on the draft: MemryNote-2026.1119.1-amd64.deb'
+      ])
+    }))
 })
 
 describe('sign-windows-binary.sh', { skip: !hasFile() && 'needs file(1)' }, () => {
@@ -427,13 +641,17 @@ describe('sign-windows-binary.sh', { skip: !hasFile() && 'needs file(1)' }, () =
         assert.equal(result.status, 0, result.stderr)
         assert.match(result.stdout, /skip third-party-signed/)
       }
-      const ours = path.join(dir, 'memry-ml-worker.exe')
-      write(ours, peBytes())
-      assert.equal(sign(ours).status, 0)
+      const ours = ['memry-ml-worker.exe', ...listed.map(({ name }) => `x${name}`)]
+      for (const name of ours) {
+        write(path.join(dir, name), peBytes())
+        assert.equal(sign(path.join(dir, name)).status, 0)
+      }
 
       const signed = readFileSync(calls, 'utf8').trim().split('\n')
-      assert.equal(signed.length, 1)
-      assert.match(signed[0], /memry-ml-worker\.exe$/)
+      assert.deepEqual(
+        signed.map((line) => path.basename(line.split(' ').at(-1))),
+        ours
+      )
     }))
 })
 

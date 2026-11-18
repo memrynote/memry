@@ -56,14 +56,14 @@ The script runs these steps in order:
 2. Humanizes the draft release notes.
 3. Dispatches `publish-release.yml` and watches the run (`dispatch`, `build`).
 4. Downloads the staged assets, the release metadata, the release inputs and both Windows payload zips (`download`).
-5. Packs and signs the Windows x64 and arm64 Velopack packages (`pack-windows`). Each payload zip must match the sha256 that `release-metadata.json` records for it. The packs use the notes and the `--delta` from `release-inputs-<version>`, the same ones macOS and Linux used. A delta pack downloads the previous release's full package of its own channel.
+5. Packs and signs the Windows x64 and arm64 Velopack packages (`pack-windows`). Each payload zip must match the sha256 that `release-metadata.json` records for it. It must not name a path outside its pack dir, and it must not unpack a symbolic link. The packs use the notes and the `--delta` from `release-inputs-<version>`, the same ones macOS and Linux used. A delta pack downloads the previous release's full package of its own channel. If `delta.json` asks for a delta and that package is missing from the previous release, the step stops before it signs anything. To recover, upload the missing `-full.nupkg` to the previous release (`gh release upload <previous tag> <file>`), then rerun `pnpm release`. If you still have that release's `.release-state/<draft>/assets`, the file is there. `--restart` does not help, because CI picks the delta from the previous release's `releases.<channel>.json`, not from its full package.
 6. Copies the signed `MemryNote-Setup-win-x64.exe` to `MemryNote-<version>-setup.exe` and writes the three bridge feeds from the staged bytes (`bridge`).
 7. Verifies the release before anything is uploaded (`verify`):
    - The staged files are exactly the release asset set (`required-assets.mjs --set release`).
-   - Every file each feed lists matches its `sha512` and `size`.
-   - Both Setups, the `-setup.exe` copy and every PE file in both full packages pass `osslsigncode` against the Certum chain. The exception is `third-party-signed.json`: the WebView2 bootstrapper must keep its pinned bytes and Microsoft's signature.
-8. Uploads every asset to the draft release (`upload`).
-9. Publishes the draft release (`publish`).
+   - Every file each feed lists matches its `sha512` and `size`. `latest.yml` lists only `MemryNote-<version>-setup.exe`, and that file is byte for byte the x64 Setup.
+   - Both Setups, the `-setup.exe` copy and every PE file in both full packages pass `osslsigncode` against the Certum chain. The exception is `third-party-signed.json`: the WebView2 bootstrapper must keep its pinned bytes and Microsoft's signature. Every file that starts with `MZ` must be a PE file. An archive under `lib/app` fails the step unless `finish-release.mjs` allow-lists it (`archivesWithoutCode`), because no check reads the PE files inside it.
+8. Deletes each draft asset that is not in the verified set, then uploads every verified asset (`upload`).
+9. Publishes the draft release (`publish`). Before it does, the draft's asset names, sizes and GitHub sha256 digests must equal the verified files.
 10. Dispatches the Homebrew cask bump.
 
 After the release is published, run `pnpm release:reddit -- --tag <tag>`. It prints a copy/paste-ready Reddit title and body.
