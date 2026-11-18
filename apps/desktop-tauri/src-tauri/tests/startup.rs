@@ -129,6 +129,55 @@ fn nothing_runs_after_a_registration_halts_the_boot() {
     assert_eq!(ORDER.lock().expect("lock").as_slice(), ["relaunch guard"]);
 }
 
+fn suspending(_: &AppHandle<MockRuntime>) -> Result<(), CommandError> {
+    record("migration");
+    SUSPENDED.store(true, Ordering::SeqCst);
+    Ok(())
+}
+
+static SUSPENDED: AtomicBool = AtomicBool::new(false);
+
+/// The first-launch migration suspends the boot in its stage; once the import succeeds the
+/// boot resumes at the next registration and runs each later one exactly once.
+#[test]
+fn a_suspended_boot_resumes_after_the_suspending_registration() {
+    let _turn = TURN
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let app = mock_app();
+    let mut stages = Stages::<MockRuntime>::default();
+    stages.register(Stage::Paths, "b", b);
+    stages.register(Stage::Migration, "migration", suspending);
+    stages.register(Stage::Window, "a", a);
+    stages.register(Stage::Schedulers, "d", d);
+    ORDER.lock().expect("lock").clear();
+    SUSPENDED.store(false, Ordering::SeqCst);
+
+    let resume_at = stages
+        .run_from(
+            app.handle(),
+            0,
+            || false,
+            || SUSPENDED.load(Ordering::SeqCst),
+        )
+        .expect("a suspension is not a failure");
+    assert_eq!(
+        ORDER.lock().expect("lock").as_slice(),
+        ["paths", "migration"]
+    );
+
+    SUSPENDED.store(false, Ordering::SeqCst);
+    let end = stages
+        .run_from(app.handle(), resume_at, || false, || false)
+        .expect("the rest passes");
+
+    assert_eq!(end, 4);
+    assert_eq!(
+        ORDER.lock().expect("lock").as_slice(),
+        ["paths", "migration", "window-a", "schedulers"]
+    );
+}
+
 #[test]
 fn startup_script_freezes_the_state_and_never_closes_a_script_tag() {
     let state = StartupState {
