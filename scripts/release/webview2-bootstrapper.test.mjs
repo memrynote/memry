@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync
+} from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
@@ -192,4 +199,15 @@ test('--update pins only a Microsoft-signed file, at the address the fwlink led 
     () => updatePin({ get: serve(BYTES), verify: () => {}, pinFile: kept }),
     /did not lead to a file address/
   )
+})
+
+// sign-windows-binary.sh skips the files listed here (Step 39 S4), so the packed bootstrapper keeps
+// Microsoft's signature; the list must name the file the pack ships.
+test('third-party-signed.json lists the packed bootstrapper with its Microsoft signer', () => {
+  const listed = JSON.parse(
+    readFileSync(new URL('./third-party-signed.json', import.meta.url), 'utf8')
+  )
+  assert.deepEqual(listed, [
+    { name: path.basename(BOOTSTRAPPER_PATH), signer: 'Microsoft Corporation' }
+  ])
 })

@@ -136,7 +136,7 @@ pub(crate) fn default_parent(session: &Session, documents: &Path) -> PathBuf {
 }
 
 /// Opens `path` through `open`, offering repair once when its database is damaged.
-fn open_offering_repair(
+pub(crate) fn open_offering_repair(
     app: &AppHandle<Wry>,
     path: &std::path::Path,
     open: impl Fn(

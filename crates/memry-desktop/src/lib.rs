@@ -4,6 +4,7 @@
 pub mod account;
 pub mod ai;
 pub mod attachments;
+pub mod billing;
 pub mod command_failure;
 pub mod config;
 pub mod e2e;
@@ -14,6 +15,7 @@ pub mod error;
 pub mod fold;
 pub mod http;
 pub mod i18n;
+pub mod import;
 pub mod journal;
 pub mod large_file;
 pub mod launch_env;

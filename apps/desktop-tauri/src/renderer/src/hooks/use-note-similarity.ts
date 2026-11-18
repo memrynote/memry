@@ -11,7 +11,8 @@ import { useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { NoteTagSuggestion, SimilarNoteItem } from '@memry/contracts/notes-api'
 import { useAISettingsContext } from '@/contexts/ai-settings-context'
-import { notesService, onNoteUpdated } from '@/services/notes-service'
+import { onNoteUpdated } from '@/services/notes-service'
+import { similarityService } from '@/services/similarity-service'
 
 // Under the `notes` root (notesKeys.all) so a blanket notes invalidation refreshes them too.
 export const similarityKeys = {
@@ -45,7 +46,7 @@ export function useSimilarNotes(noteId: string | null): SimilarNoteItem[] {
   const { data } = useQuery({
     queryKey: similarityKeys.similar(noteId ?? ''),
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- queryFn only runs when enabled, which requires a noteId
-    queryFn: () => notesService.getSimilar(noteId as string),
+    queryFn: () => similarityService.getSimilar(noteId as string),
     enabled,
     staleTime: STALE_TIME
   })
@@ -64,7 +65,7 @@ export function useTagSuggestions(
   const { data } = useQuery({
     queryKey: similarityKeys.tagSuggestions(noteId ?? ''),
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- queryFn only runs when enabled, which requires a noteId
-    queryFn: () => notesService.getTagSuggestions(noteId as string),
+    queryFn: () => similarityService.getTagSuggestions(noteId as string),
     enabled,
     staleTime: STALE_TIME
   })

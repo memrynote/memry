@@ -1,7 +1,8 @@
 //! The account's vault directory, ported from Electron's `sync/vault-directory.ts`: the account
 //! vault list for the switcher, cached in `memry-config.json` `sync.accountVaultsCache` for
 //! offline use, the registration of every local vault this account syncs, the icon each vault
-//! carries account-wide, and deleting a vault from the account.
+//! carries account-wide, deleting a vault from the account, and making the folder of a vault
+//! only the account holds.
 //!
 //! [`AccountService::refresh_vault_directory`] holds `directory` for its whole pass, so two
 //! refreshes never interleave and one that waited behind another sees its throttle stamp.
@@ -14,9 +15,10 @@ use memry_core::seams::secure_store::SecureStoreKey;
 use serde_json::{Map, Value, json};
 use zeroize::Zeroizing;
 
+use super::linking::is_vault_id;
 use super::{AccountError, AccountService};
 use crate::registry::{VaultRegistry, vault_icon};
-use crate::session::Session;
+use crate::session::{Session, SessionError, lock};
 
 /// `REFRESH_THROTTLE_MS`: a refresh that is not forced runs at most this often.
 pub const REFRESH_THROTTLE: std::time::Duration = std::time::Duration::from_secs(30);
@@ -35,6 +37,15 @@ pub struct AccountVaultInfo {
     pub local_path: Option<String>,
     /// Where a download would create the vault.
     pub suggested_path: String,
+}
+
+/// The folder [`AccountService::prepare_vault_download`] leaves for the caller to open.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DownloadTarget {
+    /// A registered vault already carries the id: it opens instead of a second download.
+    Existing(PathBuf),
+    /// A new folder, made into a vault bound to the id and registered.
+    Provisioned(PathBuf),
 }
 
 /// A cached row of `sync.accountVaultsCache.vaults`, Electron's `{vaultUuid, name, itemCount,
@@ -232,17 +243,8 @@ impl AccountService {
         registry: &VaultRegistry,
         parent: &Path,
     ) -> Vec<AccountVaultInfo> {
-        let cache = self.config.read(|config| {
-            config
-                .get("sync")
-                .and_then(|sync| sync.get(CACHE_KEY))
-                .and_then(|cache| cache.get("vaults"))
-                .and_then(Value::as_array)
-                .map(|rows| rows.iter().filter_map(from_cache).collect::<Vec<_>>())
-                .unwrap_or_default()
-        });
         let local = registry.stored();
-        cache
+        self.cached_vaults()
             .into_iter()
             .map(|v| AccountVaultInfo {
                 local_path: local
@@ -258,6 +260,65 @@ impl AccountService {
                 created_at: v.created_at,
             })
             .collect()
+    }
+
+    fn cached_vaults(&self) -> Vec<CachedVault> {
+        self.config.read(|config| {
+            config
+                .get("sync")
+                .and_then(|sync| sync.get(CACHE_KEY))
+                .and_then(|cache| cache.get("vaults"))
+                .and_then(Value::as_array)
+                .map(|rows| rows.iter().filter_map(from_cache).collect::<Vec<_>>())
+                .unwrap_or_default()
+        })
+    }
+
+    /// The folder half of `downloadRemoteVault` (`vault-directory.ts:266-318`): the registered
+    /// copy of `vault_uuid` when there is one, else a new folder under `parent`, named after the
+    /// cached name as [`suggest_vault_folder`] names it, made into a vault bound to `vault_uuid`
+    /// and registered under it ([`Session::provision_new_dormant`]). Each name is tried by making
+    /// its folder, with no check before it, so a folder or link that holds the name is left alone
+    /// and the next name is tried. Holds `downloads` throughout. The open vault stays open; the caller switches to the folder. Blocking.
+    pub fn prepare_vault_download(
+        &self,
+        session: &Session,
+        vault_uuid: &str,
+        parent: &Path,
+    ) -> Result<DownloadTarget, AccountError> {
+        if !is_vault_id(vault_uuid) {
+            return Err(AccountError::InvalidVaultId);
+        }
+        let _download = lock(&self.downloads);
+        if let Some(local) = session
+            .registry()
+            .stored()
+            .into_iter()
+            .find(|v| v.vault_uuid.as_deref() == Some(vault_uuid))
+        {
+            return Ok(DownloadTarget::Existing(PathBuf::from(local.path)));
+        }
+        let name = self
+            .cached_vaults()
+            .into_iter()
+            .find(|v| v.vault_uuid == vault_uuid)
+            .and_then(|v| v.name);
+        let base = folder_base(vault_uuid, name.as_deref());
+        let mut names = folder_names(parent, &base);
+        let folder = loop {
+            // Endless: each refused name is an entry of `parent`, and those run out.
+            let folder = names.next().expect("folder names never run out");
+            match session.provision_new_dormant(&folder, vault_uuid) {
+                Ok(()) => break folder,
+                Err(SessionError::FolderExists(_)) => {}
+                Err(e) => return Err(AccountError::VaultDownload(e.to_string())),
+            }
+        };
+        tracing::info!(
+            scope = "VaultDirectory",
+            "account vault provisioned for download"
+        );
+        Ok(DownloadTarget::Provisioned(folder))
     }
 
     /// `deleteAccountVault`: removes the vault from the account and forgets its local entry, so
@@ -296,28 +357,39 @@ impl AccountService {
     }
 }
 
+/// The longest slug, in bytes (a slug is ASCII): far below the 255-byte file name limit of APFS,
+/// NTFS and ext4, with room for a `-N` suffix.
+const MAX_SLUG_BYTES: usize = 64;
+
 /// `suggestVaultFolder`: `<parent>/<slug of the name>`, else `memry-vault-<first 8 of the id>`,
-/// with `-2`, `-3`, ... until the folder does not exist.
+/// with `-2`, `-3`, ... until nothing has the name, a link whose target is gone included.
 pub fn suggest_vault_folder(vault_uuid: &str, name: Option<&str>, parent: &Path) -> PathBuf {
+    folder_names(parent, &folder_base(vault_uuid, name))
+        .find(|candidate| candidate.symlink_metadata().is_err())
+        .expect("folder names never run out")
+}
+
+/// The slug of `name`, else `memry-vault-<first 8 of the id>`.
+fn folder_base(vault_uuid: &str, name: Option<&str>) -> String {
     let slug = name.map(slugify).unwrap_or_default();
-    let base = if slug.is_empty() {
+    if slug.is_empty() {
         format!(
             "memry-vault-{}",
             vault_uuid.chars().take(8).collect::<String>()
         )
     } else {
         slug
-    };
-    let mut candidate = parent.join(&base);
-    let mut suffix = 2;
-    while candidate.exists() {
-        candidate = parent.join(format!("{base}-{suffix}"));
-        suffix += 1;
     }
-    candidate
 }
 
-/// Lowercased, each run outside `[a-z0-9-_]` turned into `-`, and `-` trimmed from both ends.
+/// `<parent>/<base>`, then `<parent>/<base>-2`, `-3`, ... without end.
+fn folder_names<'a>(parent: &'a Path, base: &'a str) -> impl Iterator<Item = PathBuf> + 'a {
+    std::iter::once(parent.join(base))
+        .chain((2u64..).map(move |suffix| parent.join(format!("{base}-{suffix}"))))
+}
+
+/// Lowercased, each run outside `[a-z0-9-_]` turned into `-`, `-` trimmed from both ends, and cut
+/// to [`MAX_SLUG_BYTES`].
 fn slugify(name: &str) -> String {
     let mut out = String::new();
     let mut in_run = false;
@@ -330,7 +402,10 @@ fn slugify(name: &str) -> String {
             in_run = true;
         }
     }
-    out.trim_matches('-').to_owned()
+    let slug = out.trim_matches('-');
+    slug[..slug.len().min(MAX_SLUG_BYTES)]
+        .trim_end_matches('-')
+        .to_owned()
 }
 
 fn cached(master: &[u8], row: &VaultDirectoryRow) -> CachedVault {
