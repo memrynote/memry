@@ -393,3 +393,7 @@ fn body_is_file(doc: &FoldedDoc, path: &str, text: &str) -> bool {
     let text = text.strip_prefix('\u{feff}').unwrap_or(text);
     same_text(&body.markdown, split_frontmatter_block(text).body)
 }
+
+#[cfg(test)]
+#[path = "docs_tests.rs"]
+mod tests;

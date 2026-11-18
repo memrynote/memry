@@ -1,0 +1,275 @@
+//! Stage 36c4 end to end: an Electron vault whose Yjs store is ahead of a note's file, imported,
+//! installed, then opened in a real session until the consumer and the write-back settle.
+//! Electron's store wins over the file (`crdt-provider.ts:1853-1855`) and its next write-back
+//! writes the body over a file whose hash is the cached one, keeping the file as a version
+//! (`crdt-writeback.ts:827-878`); the first session after the import does the same.
+
+use std::path::PathBuf;
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+
+use memry_desktop::electron_import::ProfileLock;
+use memry_desktop::electron_import::vault_db::{VaultImportInput, stage_vault_import};
+use memry_desktop::vault::hash::content_hash;
+use rusqlite::Connection;
+use rusqlite::types::Value;
+
+use super::docs::folded;
+use super::queue::text;
+use super::vault_env::{Env, QUIET, WAIT, creates, env, indexed};
+use super::{ELECTRON_DEVICE, electron_db, electron_hashes, electron_profile, staged};
+
+const NOTE: &str = "Settle-note1";
+const PATH: &str = "n.md";
+
+struct Fixture {
+    /// The text of the file Electron last read (`note_cache.content_hash`).
+    read: &'static str,
+    /// The file on disk at the import.
+    file: &'static str,
+    /// The body in Electron's Yjs store.
+    body: &'static str,
+    owed_file_body: bool,
+    queued_push: bool,
+}
+
+const AHEAD: Fixture = Fixture {
+    read: "A\n",
+    file: "A\n",
+    body: "B\n",
+    owed_file_body: false,
+    queued_push: false,
+};
+
+struct Settled {
+    e: Env,
+    electron: [PathBuf; 2],
+    before: (
+        std::collections::BTreeMap<&'static str, String>,
+        std::collections::BTreeMap<&'static str, String>,
+    ),
+}
+
+impl Settled {
+    fn electron_unchanged(&self) {
+        assert_eq!(
+            (
+                electron_hashes(&self.electron[0]),
+                electron_hashes(&self.electron[1])
+            ),
+            self.before,
+            "the Electron databases are byte for byte as before the import"
+        );
+    }
+
+    fn until_file(&self, text: &str) {
+        let deadline = Instant::now() + WAIT;
+        while self.e.read(PATH) != text {
+            assert!(Instant::now() < deadline, "{PATH}: {:?}", self.e.read(PATH));
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    }
+
+    /// The file after the session has settled and stayed quiet.
+    fn quiet_file(&self) -> String {
+        std::thread::sleep(QUIET);
+        self.e.read(PATH)
+    }
+}
+
+/// Imports the fixture's Electron vault, installs it and opens it in a session that runs until
+/// the open's reconcile (the write-back's first pass) has run.
+fn import_and_open(fixture: &Fixture) -> Settled {
+    let mut e = env(|store| Some(creates(store)));
+    let pair = electron_db::create_pair(&e.vault.join(".memry"));
+    let data = Connection::open(&pair.data).unwrap();
+    electron_db::seed(
+        &data,
+        "note_metadata",
+        &[
+            ("id", text(NOTE)),
+            ("path", text(PATH)),
+            ("title", text("n")),
+            ("file_type", text("markdown")),
+            ("local_only", Value::Integer(0)),
+            ("clock", text(r#"{"dev-A":2}"#)),
+            ("synced_at", text("2026-01-04T00:00:00.000Z")),
+            ("created_at", text("2026-01-02T03:04:05.000Z")),
+            ("modified_at", text("2026-01-03T03:04:05.000Z")),
+        ],
+    );
+    if fixture.owed_file_body {
+        electron_db::seed(
+            &data,
+            "crdt_owed_file_bodies",
+            &[("note_id", text(NOTE)), ("created_at", Value::Integer(5))],
+        );
+    }
+    let doc = folded(NOTE, fixture.body, Some(7));
+    if fixture.queued_push {
+        super::queue::queue(&data, "note_body", NOTE, "update", "", 10);
+    }
+    drop(data);
+    electron_db::seed(
+        &Connection::open(&pair.index).unwrap(),
+        "note_cache",
+        &[
+            ("id", text(NOTE)),
+            ("path", text(PATH)),
+            ("content_hash", text(&content_hash(fixture.read))),
+        ],
+    );
+    e.write(PATH, fixture.file);
+
+    let profile = electron_profile(e._dir.path());
+    let lock = ProfileLock::probe(&profile).unwrap();
+    let before = (electron_hashes(&pair.data), electron_hashes(&pair.index));
+    let now_ms = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as i64;
+    let input = VaultImportInput {
+        electron_closed: &lock,
+        vault_dir: e.vault.clone(),
+        vault_id: "vault-1".into(),
+        electron_data_db: pair.data.clone(),
+        electron_index_db: pair.index.clone(),
+        docs: vec![doc],
+        extra_owed_docs: Vec::new(),
+        vault_key: None,
+        electron_device_id: Some(ELECTRON_DEVICE.into()),
+        now_ms,
+        progress: None,
+    };
+    staged(stage_vault_import(input).unwrap()).install().unwrap();
+    assert_eq!(e.read(PATH), fixture.file, "the import writes no vault file");
+    drop(lock);
+
+    e.open();
+    e.facts_until(indexed);
+    e.after_reconcile();
+    Settled {
+        e,
+        electron: [pair.data, pair.index],
+        before,
+    }
+}
+
+/// The RCA case: Yjs "B", file "A", cached hash of "A". The first session writes the body over
+/// the file and keeps the file as a version.
+#[test]
+fn a_body_ahead_of_its_file_reaches_the_file_in_the_first_session() {
+    let s = import_and_open(&AHEAD);
+    s.until_file("B\n");
+    assert_eq!(s.e.body(NOTE), "B");
+    assert!(
+        s.e.versions(NOTE).iter().any(|v| v.contains('A')),
+        "{:?}",
+        s.e.versions(NOTE)
+    );
+    s.electron_unchanged();
+}
+
+/// Electron's write-back failed (or the app was killed before it ran) with the body push still
+/// queued: the body reaches the file and the push stays owed.
+#[test]
+fn a_failed_write_back_reaches_the_file_and_keeps_its_push() {
+    let s = import_and_open(&Fixture {
+        queued_push: true,
+        ..AHEAD
+    });
+    s.until_file("B\n");
+    assert!(s.e.versions(NOTE).iter().any(|v| v.contains('A')));
+    let pushes: i64 = s
+        .e
+        .core()
+        .db_handle()
+        .call_blocking(|conn| {
+            Ok(conn
+                .query_row(
+                    "SELECT count(*) FROM outbox WHERE item_id = ?1 AND op = 'crdt-update'",
+                    [NOTE],
+                    |row| row.get(0),
+                )
+                .unwrap())
+        })
+        .unwrap();
+    assert!(pushes >= 1);
+    s.electron_unchanged();
+}
+
+/// The file owes its body to the document: it is never written over.
+#[test]
+fn a_file_that_owes_its_body_is_never_written_over() {
+    let s = import_and_open(&Fixture {
+        owed_file_body: true,
+        ..AHEAD
+    });
+    assert_eq!(s.quiet_file(), "A\n");
+    assert_eq!(s.e.versions(NOTE), Vec::<String>::new());
+    s.electron_unchanged();
+}
+
+/// The file was edited while Electron was closed and the body was not ahead of what Electron
+/// last read: the edit wins and reaches the body.
+#[test]
+fn an_outside_edit_after_quit_reaches_the_body() {
+    let s = import_and_open(&Fixture {
+        read: "A\n",
+        file: "C\n",
+        body: "A\n",
+        ..AHEAD
+    });
+    let deadline = Instant::now() + WAIT;
+    while s.e.body(NOTE) != "C" {
+        assert!(Instant::now() < deadline, "body {:?}", s.e.body(NOTE));
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    assert_eq!(s.quiet_file(), "C\n");
+    s.electron_unchanged();
+}
+
+/// Departure (known limit): the body was ahead and the file was also edited while Electron was
+/// closed. The body wins and the outside edit is kept as a version; nothing is lost.
+#[test]
+fn an_outside_edit_beside_a_body_ahead_is_kept_as_a_version() {
+    let s = import_and_open(&Fixture {
+        read: "A\n",
+        file: "C\n",
+        body: "B\n",
+        ..AHEAD
+    });
+    s.until_file("B\n");
+    assert!(
+        s.e.versions(NOTE).iter().any(|v| v.contains('C')),
+        "{:?}",
+        s.e.versions(NOTE)
+    );
+    s.electron_unchanged();
+}
+
+/// The body is its file: the row records the file's hash and nothing is written.
+#[test]
+fn a_body_equal_to_its_file_is_not_rewritten() {
+    let s = import_and_open(&Fixture {
+        body: "A\n",
+        ..AHEAD
+    });
+    assert_eq!(s.quiet_file(), "A\n");
+    assert_eq!(s.e.versions(NOTE), Vec::<String>::new());
+    let hash: Option<String> = s
+        .e
+        .core()
+        .db_handle()
+        .call_blocking(|conn| {
+            Ok(conn
+                .query_row(
+                    "SELECT content_hash FROM note_files WHERE note_id = ?1",
+                    [NOTE],
+                    |row| row.get(0),
+                )
+                .unwrap())
+        })
+        .unwrap();
+    assert_eq!(hash, Some(content_hash("A\n")));
+    s.electron_unchanged();
+}
