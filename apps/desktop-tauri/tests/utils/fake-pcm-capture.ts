@@ -20,7 +20,7 @@ export function fakeAudioBuffer(duration: number): AudioBuffer {
 export const fakePcm = {
   sessions: [] as FakePcmSession[],
   /** Thrown by the next `startPcmCapture`, then cleared. */
-  nextFailure: null as unknown,
+  nextFailure: null as Error | null,
   /** Holds the next `startPcmCapture` until the returned function is called. */
   gate: null as Promise<void> | null,
   /** What `stop()` resolves with; null is an empty recording. */

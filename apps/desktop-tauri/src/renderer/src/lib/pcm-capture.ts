@@ -33,7 +33,7 @@ export async function startPcmCapture(
       numberOfOutputs: 1,
       outputChannelCount: [1]
     })
-    const chunks: Float32Array[] = []
+    const chunks: Float32Array<ArrayBuffer>[] = []
     let finish: ((audio: AudioBuffer | null) => void) | null = null
     let closed = false
 

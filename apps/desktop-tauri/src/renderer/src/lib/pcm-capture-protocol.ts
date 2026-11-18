@@ -8,4 +8,6 @@ export const PCM_CAPTURE_CHUNK_FRAMES = 4096
 export type PcmCaptureCommand = { type: 'stop' }
 
 /** Worklet to main thread: mono samples in capture order, then `done` once after `stop`. */
-export type PcmCaptureMessage = { type: 'samples'; samples: Float32Array } | { type: 'done' }
+export type PcmCaptureMessage =
+  | { type: 'samples'; samples: Float32Array<ArrayBuffer> }
+  | { type: 'done' }

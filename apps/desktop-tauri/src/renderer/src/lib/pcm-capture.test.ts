@@ -42,7 +42,7 @@ class FakeWorkletNode {
 
 class FakeAudioContext {
   static instances: FakeAudioContext[] = []
-  static addModuleFailure: unknown = null
+  static addModuleFailure: Error | null = null
   static initialState: AudioContextState = 'running'
   sampleRate = SAMPLE_RATE
   state: AudioContextState = FakeAudioContext.initialState
@@ -154,6 +154,9 @@ describe('startPcmCapture', () => {
 
     const stopping = capture.stop()
     capture.cancel()
+    // The graph goes at once, not when the worklet's late `done` arrives.
+    expect(context.close).toHaveBeenCalledTimes(1)
+    expect(node.disconnect).toHaveBeenCalledTimes(1)
 
     await expect(stopping).resolves.toBeNull()
     await expect(capture.stop()).resolves.toBeNull()
