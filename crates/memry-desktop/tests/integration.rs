@@ -321,6 +321,8 @@ mod notes_update_critic_marks;
 mod notes_writes;
 #[path = "oauth_loopback.rs"]
 mod oauth_loopback;
+#[path = "obsidian_task_import.rs"]
+mod obsidian_task_import;
 #[path = "ocr_languages.rs"]
 mod ocr_languages;
 #[path = "path_collision.rs"]

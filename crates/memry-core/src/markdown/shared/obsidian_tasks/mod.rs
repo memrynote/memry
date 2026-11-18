@@ -5,6 +5,9 @@
 mod recurrence;
 mod rules;
 
+use std::cell::Cell;
+use std::collections::HashSet;
+
 use serde_json::{Map, Value as Json, json};
 
 pub use recurrence::{Frequency, ObsidianRecurrence};
@@ -161,17 +164,32 @@ impl ObsidianTaskLine {
     }
 }
 
+thread_local! {
+    static PARSE_STEPS: Cell<usize> = const { Cell::new(0) };
+}
+
+/// Steps the field parse took on this thread: one per rule the strip loop scans and one per tag
+/// key the dedupe examines. The untrusted-input tests bound it by the input.
+#[doc(hidden)]
+pub fn parse_steps() -> usize {
+    PARSE_STEPS.with(Cell::get)
+}
+
+fn step() {
+    PARSE_STEPS.with(|steps| steps.set(steps.get() + 1));
+}
+
 fn extract_tags(description: &str) -> Vec<String> {
     let mut tags: Vec<String> = Vec::new();
-    let mut seen: Vec<String> = Vec::new();
+    // A set, as the TypeScript's: a scan of the keys seen so far is quadratic in a line of
+    // many distinct tags.
+    let mut seen: HashSet<String> = HashSet::new();
     for found in hash_tags().find_iter(description) {
         let tag = js_trim(found.as_str());
-        let key = fold(tag);
-        if seen.contains(&key) {
-            continue;
+        step();
+        if seen.insert(fold(tag)) {
+            tags.push(tag.to_owned());
         }
-        seen.push(key);
-        tags.push(tag.to_owned());
     }
     tags
 }
