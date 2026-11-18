@@ -208,11 +208,20 @@ final class NotesLinks {
     /// ⌘N asked the Notes page for a new note, which it makes with its own
     /// model so its list shows the row.
     private(set) var newNoteRequested = false
+    /// The keys typed since ⌘N, held from the command on (#4787).
+    @ObservationIgnored private var keys: NewNoteKeys?
 
-    func requestNewNote() { newNoteRequested = true }
+    /// A ⌘N the page has not taken yet keeps its hold: one note, one hold.
+    func requestNewNote(window: UIWindow?) {
+        if keys == nil { keys = NewNoteKeys(window: window) }
+        newNoteRequested = true
+    }
 
-    func takeNewNote() -> Bool {
-        defer { newNoteRequested = false }
-        return newNoteRequested
+    func takeNewNote() -> NewNoteKeys? {
+        defer {
+            newNoteRequested = false
+            keys = nil
+        }
+        return newNoteRequested ? keys : nil
     }
 }

@@ -8,7 +8,10 @@
 //  nowhere once that page left the window (iPad HID at high load: 30 of 30
 //  runs lost them, 5 into the old note). From ⌘N on, a hidden text view
 //  holds the keys. The body resigns as it would for any other field, so its
-//  own typing commits.
+//  own typing commits. The hold starts in the ⌘N command itself
+//  (`NotesLinks.requestNewNote`): the Notes page takes the request on a
+//  later SwiftUI update, and keys already queued reached the old note
+//  before it (iPad HID: 2 of 30 runs, and the old title on a relaunch).
 //
 //  Invariant: the new note's title editor is the one owner of the keys held
 //  for it. The hold never types them into a text input, whichever one takes
@@ -34,21 +37,16 @@ import UIKit
 final class NewNoteKeys {
     private var holder: KeyHolder?
     private let seeds: NewNoteSeeds
-    private let keep: NewNoteSeeds.Keep
+    private var keep: NewNoteSeeds.Keep?
     private let log: Log
     /// The new note, once the core holds it.
     fileprivate private(set) var noteId: String?
     /// The keys of a hold that ended before the core made the note.
     private var waiting = ""
 
-    /// ⌘N: holds the keys typed from now on in `window`. `keep` writes a
-    /// seed no title editor took as the note's title.
-    init(
-        window: UIWindow?, seeds: NewNoteSeeds = .shared, log: Log = .interface,
-        keep: @escaping NewNoteSeeds.Keep
-    ) {
+    /// ⌘N: holds the keys typed from now on in `window`.
+    init(window: UIWindow?, seeds: NewNoteSeeds = .shared, log: Log = .interface) {
         self.seeds = seeds
-        self.keep = keep
         self.log = log
         guard let window else { return }
         let holder = KeyHolder(frame: CGRect(x: 0, y: 0, width: 1, height: 1))
@@ -63,9 +61,11 @@ final class NewNoteKeys {
         seeds.holding(self)
     }
 
-    /// The core made the note the keys are held for.
-    func made(_ noteId: String) {
+    /// The core made the note the keys are held for. `keep` writes a seed no
+    /// title editor took as the note's title.
+    func made(_ noteId: String, keep: @escaping NewNoteSeeds.Keep) {
         self.noteId = noteId
+        self.keep = keep
         let keys = waiting
         waiting = ""
         seed(keys)
@@ -99,7 +99,7 @@ final class NewNoteKeys {
     }
 
     private func seed(_ keys: String) {
-        guard let noteId, !keys.isEmpty else { return }
+        guard let noteId, let keep, !keys.isEmpty else { return }
         seeds.put(keys, for: noteId, keep: keep)
         // The note was made after the app left: no title editor will run.
         if UIApplication.shared.applicationState == .background { seeds.flush() }

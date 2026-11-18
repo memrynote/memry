@@ -193,14 +193,11 @@ struct NotesListView: View {
         }
         // ⌘N (#4355): the "+"'s create, opened the way a search hit opens.
         .onChange(of: notesLinks.newNoteRequested, initial: true) {
-            guard notesLinks.takeNewNote() else { return }
-            // The keys typed meanwhile wait for the new note (#4787).
-            let keys = NewNoteKeys(window: PresentingWindow.resolve()) { id, text in
-                Task { await model.renameNote(id: id, to: text) }
-            }
+            // The keys typed since ⌘N wait for the new note (#4787).
+            guard let keys = notesLinks.takeNewNote() else { return }
             Task {
                 guard let id = await model.createNote(in: nil) else { return keys.failed() }
-                keys.made(id)
+                keys.made(id) { id, text in Task { await model.renameNote(id: id, to: text) } }
                 notesLinks.open(id)
             }
         }

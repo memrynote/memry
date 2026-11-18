@@ -41,9 +41,9 @@ struct NewNoteKeysTests {
         body.text = "body line two"
         body.becomeFirstResponder()
 
-        let keys = NewNoteKeys(window: window, seeds: seeds) { _, _ in Issue.record("no page left") }
+        let keys = NewNoteKeys(window: window, seeds: seeds)
         try type("milk")
-        keys.made("new")
+        keys.made("new") { _, _ in Issue.record("no page left") }
         #expect(seeds.take("new") == nil, "the hold still has the caret")
         let other = textView()
         other.becomeFirstResponder()
@@ -57,12 +57,12 @@ struct NewNoteKeysTests {
         let seeds = NewNoteSeeds()
         textView().becomeFirstResponder()
 
-        let keys = NewNoteKeys(window: window, seeds: seeds) { _, _ in Issue.record("no page left") }
+        let keys = NewNoteKeys(window: window, seeds: seeds)
         try type("milk")
         let search = textView()
         search.becomeFirstResponder()
         try type("q")
-        keys.made("new")
+        keys.made("new") { _, _ in Issue.record("no page left") }
 
         #expect(search.text == "q")
         #expect(seeds.take("new") == "milk")
@@ -77,9 +77,9 @@ struct NewNoteKeysTests {
         body.becomeFirstResponder()
         let before = window.subviews.count
 
-        let keys = NewNoteKeys(window: window, seeds: seeds, log: lines.log) { _, _ in Issue.record("nothing was held") }
+        let keys = NewNoteKeys(window: window, seeds: seeds, log: lines.log)
         try type("x")
-        keys.made("new")
+        keys.made("new") { _, _ in Issue.record("nothing was held") }
 
         #expect(window.subviews.count == before)
         #expect(body.text == "x")
@@ -93,7 +93,7 @@ struct NewNoteKeysTests {
         let lines = LogLines()
         textView().becomeFirstResponder()
 
-        let keys = NewNoteKeys(window: window, seeds: seeds, log: lines.log) { _, _ in Issue.record("no note was made") }
+        let keys = NewNoteKeys(window: window, seeds: seeds, log: lines.log)
         try type("milk")
         keys.failed()
         seeds.flush()
@@ -110,11 +110,11 @@ struct NewNoteKeysTests {
         textView().becomeFirstResponder()
         var kept: [String: String] = [:]
 
-        let keys = NewNoteKeys(window: window, seeds: seeds) { kept[$0] = $1 }
+        let keys = NewNoteKeys(window: window, seeds: seeds)
         try type("milk\tlist\nbuy")
         seeds.flush()
         #expect(kept.isEmpty)
-        keys.made("new")
+        keys.made("new") { kept[$0] = $1 }
         seeds.flush()
 
         #expect(kept == ["new": "milk list buy"])
@@ -126,16 +126,38 @@ struct NewNoteKeysTests {
         let seeds = NewNoteSeeds()
         textView().becomeFirstResponder()
 
-        let first = NewNoteKeys(window: window, seeds: seeds) { _, _ in Issue.record("no page left") }
+        let first = NewNoteKeys(window: window, seeds: seeds)
         try type("one")
-        let second = NewNoteKeys(window: window, seeds: seeds) { _, _ in Issue.record("no page left") }
+        let second = NewNoteKeys(window: window, seeds: seeds)
         try type("two")
-        first.made("first")
-        second.made("second")
+        first.made("first") { _, _ in Issue.record("no page left") }
+        second.made("second") { _, _ in Issue.record("no page left") }
         textView().becomeFirstResponder()
 
         #expect(seeds.take("first") == "one")
         #expect(seeds.take("second") == "two")
+    }
+
+    /// The Notes page takes ⌘N's request on a later SwiftUI update; keys
+    /// queued behind ⌘N reached the open note before it (iPad HID).
+    @Test("⌘N holds the keys at once, before the Notes page takes its request, and a second ⌘N joins the first")
+    func commandHoldsBeforeThePageTakesIt() throws {
+        let links = NotesLinks()
+        let body = textView()
+        body.becomeFirstResponder()
+        let noteId = UUID().uuidString
+
+        links.requestNewNote(window: window)
+        try type("mi")
+        links.requestNewNote(window: window)
+        try type("lk")
+        let keys = try #require(links.takeNewNote())
+        keys.made(noteId) { _, _ in Issue.record("no page left") }
+        textView().becomeFirstResponder()
+
+        #expect(body.text.isEmpty)
+        #expect(links.takeNewNote() == nil)
+        #expect(NewNoteSeeds.shared.take(noteId) == "milk")
     }
 
     @Test("the title appearing takes the keys held so far, and the hold keeps the caret until its field takes it")
@@ -143,9 +165,9 @@ struct NewNoteKeysTests {
         let seeds = NewNoteSeeds()
         textView().becomeFirstResponder()
 
-        let keys = NewNoteKeys(window: window, seeds: seeds) { _, _ in Issue.record("the title is on screen") }
+        let keys = NewNoteKeys(window: window, seeds: seeds)
         try type("milk")
-        keys.made("new")
+        keys.made("new") { _, _ in Issue.record("the title is on screen") }
         #expect(seeds.attach("new") { _ in Issue.record("nothing was left") } == "milk")
         try type("s")
         textView().becomeFirstResponder()
@@ -159,8 +181,8 @@ struct NewNoteKeysTests {
         textView().becomeFirstResponder()
         var absorbed: [String] = []
 
-        let keys = NewNoteKeys(window: window, seeds: seeds) { _, _ in Issue.record("the title is on screen") }
-        keys.made("new")
+        let keys = NewNoteKeys(window: window, seeds: seeds)
+        keys.made("new") { _, _ in Issue.record("the title is on screen") }
         _ = seeds.attach("new") { _ in Issue.record("the page before was redrawn") }
         _ = seeds.attach("new") { absorbed.append($0) }
         seeds.detach("new")
@@ -189,12 +211,12 @@ struct NewNoteKeysTests {
         window.rootViewController?.view.addSubview(old)
         old.becomeFirstResponder()
 
-        let keys = NewNoteKeys(window: window) { _, _ in Issue.record("the page took no seed") }
+        let keys = NewNoteKeys(window: window)
         try type(typed, in: window)
         let vault = try TasksTestVault()
         let noteId = try await CoreNotesWriter(vault: vault.vault, store: TaskTestKeychain(), executor: .shared)
             .create(title: "", folderPath: nil)
-        keys.made(noteId)
+        keys.made(noteId) { _, _ in Issue.record("the page took no seed") }
         let reader = CoreNotesReader(vault: vault.vault, executor: .shared)
         window.rootViewController = UIHostingController(rootView: NoteReadView(
             route: NoteRoute(id: noteId), reader: reader, filler: NoBodies(),
