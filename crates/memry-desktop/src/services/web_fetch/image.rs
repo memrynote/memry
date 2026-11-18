@@ -1,16 +1,16 @@
-//! `downloadImage` (`metadata.ts:291-357`): a link's hero image, saved as `thumbnail.<ext>` in the
+//! `downloadImage` (`metadata.ts:310-360`): a link's hero image, saved as `thumbnail.<ext>` in the
 //! item's attachment folder.
 
-use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
-use wreq::header::{ACCEPT, CONTENT_TYPE, USER_AGENT};
+use wreq::header::{ACCEPT, CONTENT_TYPE};
 
-use super::{CHROME_USER_AGENT, WebFetch, WebFetchError, header_text, read_capped, send, within};
+use super::{WebFetch, WebFetchError, header_text, read_capped, send, within};
+use crate::vault::fs_atomic::atomic_write;
 
 const IMAGE_EXTENSIONS: [&str; 6] = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"];
 
-/// `getImageExtension` (`metadata.ts:259-283`): by content type, then by the URL path, then
+/// `getImageExtension` (`metadata.ts:274-301`): by content type, then by the URL path, then
 /// `.jpg`.
 pub fn image_extension(image_url: &str, content_type: Option<&str>) -> &'static str {
     let by_type =
@@ -53,11 +53,7 @@ impl WebFetch {
     /// returns that file name, or `None` on any failure, which the caller treats as "no
     /// thumbnail". The file appears whole or not at all.
     pub async fn download_image(&self, image_url: &str, dest_dir: &Path) -> Option<String> {
-        let request = self
-            .client
-            .get(image_url)
-            .header(USER_AGENT, CHROME_USER_AGENT)
-            .header(ACCEPT, "image/*");
+        let request = self.client.get(image_url).header(ACCEPT, "image/*");
         let cap = self.limits.max_image_bytes;
         let fetched = within(self.limits.image_timeout, async move {
             let response = send(request).await?;
@@ -82,7 +78,11 @@ impl WebFetch {
         );
         let dest_dir = dest_dir.to_path_buf();
         let target = dest_dir.join(&file_name);
-        match tokio::task::spawn_blocking(move || write_whole(&dest_dir, &target, &body)).await {
+        let written = tokio::task::spawn_blocking(move || {
+            std::fs::create_dir_all(&dest_dir).map_err(|error| error.to_string())?;
+            atomic_write(&target, &body).map_err(|error| error.to_string())
+        });
+        match written.await {
             Ok(Ok(())) => Some(file_name),
             Ok(Err(error)) => {
                 tracing::warn!(%error, "Image download error: the file could not be written");
@@ -94,14 +94,6 @@ impl WebFetch {
             }
         }
     }
-}
-
-fn write_whole(dest_dir: &Path, target: &PathBuf, body: &[u8]) -> std::io::Result<()> {
-    std::fs::create_dir_all(dest_dir)?;
-    let mut file = tempfile::NamedTempFile::new_in(dest_dir)?;
-    file.write_all(body)?;
-    file.persist(target).map_err(|error| error.error)?;
-    Ok(())
 }
 
 #[cfg(test)]

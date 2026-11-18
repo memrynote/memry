@@ -61,6 +61,16 @@ fn listing() -> Value {
     }}]}}])
 }
 
+/// 64 KiB of zeros, a few hundred bytes on the wire: the cap counts what the body decodes to.
+fn gzip_bomb() -> Vec<u8> {
+    use std::io::Write;
+    let mut encoder = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::best());
+    encoder.write_all(&[0u8; 64 * 1024]).unwrap();
+    let bomb = encoder.finish().unwrap();
+    assert!(bomb.len() < SMALL.max_html_bytes);
+    bomb
+}
+
 async fn route(method: Method, uri: Uri, headers: HeaderMap, body: Bytes) -> Response {
     let path = uri.path().to_owned();
     match path.as_str() {
@@ -77,6 +87,12 @@ async fn route(method: Method, uri: Uri, headers: HeaderMap, body: Bytes) -> Res
         }
         "/stall" => std::future::pending().await,
         "/redirect" => (StatusCode::FOUND, [("location", "/page")]).into_response(),
+        "/loop" => (StatusCode::FOUND, [("location", "/loop")]).into_response(),
+        "/gzip-bomb" => (
+            [("content-encoding", "gzip"), ("content-type", "text/html")],
+            gzip_bomb(),
+        )
+            .into_response(),
         "/echo" => (
             StatusCode::CREATED,
             format!(
@@ -169,6 +185,64 @@ async fn article_html_sends_electrons_headers_and_decodes_the_declared_charset()
         "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
     );
     assert_eq!(headers["accept-language"], "en-US,en;q=0.5");
+}
+
+/// Electron's `net.fetch` ran in the main process, with no frame to attach UA client hints to:
+/// the requests carry its User-Agent and Chrome's Accept-Encoding, and no `sec-ch-ua*` or
+/// `sec-fetch-*` header that would disagree with that User-Agent.
+fn assert_electron_headers(seen: &Seen) {
+    assert_eq!(
+        seen.headers["user-agent"], CHROME_USER_AGENT,
+        "{}",
+        seen.target
+    );
+    assert_eq!(
+        seen.headers["accept-encoding"], "gzip, deflate, br, zstd",
+        "{}",
+        seen.target
+    );
+    let hints: Vec<_> = seen
+        .headers
+        .keys()
+        .filter(|name| {
+            name.as_str().starts_with("sec-ch-") || name.as_str().starts_with("sec-fetch-")
+        })
+        .collect();
+    assert!(hints.is_empty(), "{}: {hints:?}", seen.target);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn every_request_sends_one_consistent_header_set() {
+    let server = start().await;
+    let web = client(&server);
+    let port = server.addr.port();
+    web.article_html(&server.url("/page")).await.unwrap();
+    web.metadata_page(&server.url("/page")).await.unwrap();
+    web.reddit_metadata(&format!(
+        "http://www.reddit.com:{port}/r/rust/comments/abc/title/"
+    ))
+    .await
+    .unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    web.download_image(&server.url("/hero.png"), dir.path())
+        .await
+        .unwrap();
+    let fetcher = BlockingFetcher::new(web, tokio::runtime::Handle::current());
+    let echo = server.url("/echo");
+    tokio::task::spawn_blocking(move || {
+        fetcher.fetch(FetchRequest {
+            url: echo,
+            method: "GET".into(),
+            headers: Vec::new(),
+            body: None,
+        })
+    })
+    .await
+    .unwrap()
+    .unwrap();
+    let seen = server.seen();
+    assert_eq!(seen.len(), 5);
+    seen.iter().for_each(assert_electron_headers);
 }
 
 #[tokio::test]
@@ -418,6 +492,36 @@ async fn the_blocking_fetcher_serves_extraction_from_a_blocking_thread() {
     assert_eq!((absent.status, absent.ok), (404, false));
     assert_eq!(server.seen()[0].method, "POST");
     assert_eq!(server.seen()[0].body, b"payload");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn the_blocking_fetcher_keeps_the_cap_the_deadline_and_the_redirect_limit() {
+    let server = start().await;
+    let fetcher = BlockingFetcher::new(client(&server), tokio::runtime::Handle::current());
+    let urls = ["/streamed-big", "/gzip-bomb", "/stall", "/loop"].map(|path| server.url(path));
+    let outcomes = tokio::task::spawn_blocking(move || {
+        urls.map(|url| {
+            fetcher
+                .fetch(FetchRequest {
+                    url,
+                    method: "GET".into(),
+                    headers: Vec::new(),
+                    body: None,
+                })
+                .map(|response| response.status)
+        })
+    })
+    .await
+    .unwrap();
+    assert_eq!(
+        outcomes,
+        [
+            Err(WebFetchError::TooLarge(1024).to_string()),
+            Err(WebFetchError::TooLarge(1024).to_string()),
+            Err(WebFetchError::Timeout.to_string()),
+            Err(WebFetchError::Network("redirect").to_string()),
+        ]
+    );
 }
 
 #[test]

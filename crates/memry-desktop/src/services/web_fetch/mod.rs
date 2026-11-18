@@ -2,13 +2,13 @@
 //! article extraction. Port of `apps/desktop/src/main/inbox/metadata.ts`.
 //!
 //! Electron fetched through `net.fetch`, Chromium's own stack, because Cloudflare and similar bot
-//! walls answer a non-browser TLS fingerprint with a 403 challenge (`metadata.ts:66-91`,
+//! walls answer a non-browser TLS fingerprint with a 403 challenge (`metadata.ts:66-96`,
 //! eksisozluk.com). This client is wreq (BoringSSL) with the Chrome 149 emulation for the same
 //! TLS and HTTP/2 fingerprint. It serves only these fetches: every other HTTP client of the app
 //! stays on the shared `ring` rustls stack (`crate::http`).
 //!
 //! Error messages carry the status code only, never the URL: they reach telemetry as the job's
-//! error (`metadata.ts:216-222`, `:236-241`).
+//! error (`metadata.ts:202-205`, `:251-255`).
 
 mod fetcher;
 mod image;
@@ -19,7 +19,9 @@ use std::sync::OnceLock;
 use std::time::Duration;
 
 use futures_util::StreamExt;
-use wreq::header::{ACCEPT, ACCEPT_LANGUAGE, CONTENT_TYPE, USER_AGENT};
+use wreq::header::{
+    ACCEPT, ACCEPT_ENCODING, ACCEPT_LANGUAGE, CONTENT_TYPE, HeaderMap, HeaderValue, USER_AGENT,
+};
 use wreq::tls::trust::CertStore;
 
 pub use fetcher::BlockingFetcher;
@@ -33,15 +35,17 @@ pub use reddit::{
 pub const PAGE_TIMEOUT: Duration = Duration::from_secs(10);
 /// `IMAGE_DOWNLOAD_TIMEOUT` (`metadata.ts:54`).
 pub const IMAGE_TIMEOUT: Duration = Duration::from_secs(5);
-/// `MAX_HTML_SIZE` (`metadata.ts:63`).
+/// `MAX_HTML_SIZE` (`metadata.ts:64`).
 pub const MAX_HTML_BYTES: usize = 10 * 1024 * 1024;
-/// `MAX_IMAGE_SIZE` (`metadata.ts:60`).
+/// `MAX_IMAGE_SIZE` (`metadata.ts:61`).
 pub const MAX_IMAGE_BYTES: usize = 5 * 1024 * 1024;
 
-/// The User-Agent Electron sent (`metadata.ts:56-57`).
+/// The User-Agent Electron sent (`metadata.ts:57-58`), on every request.
 pub const CHROME_USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 const ACCEPT_HTML: &str = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
 const ACCEPT_LANGUAGE_VALUE: &str = "en-US,en;q=0.5";
+/// What Chromium's network stack, and so `net.fetch`, advertises.
+const ACCEPT_ENCODING_VALUE: &str = "gzip, deflate, br, zstd";
 /// The redirect limit of WHATWG fetch, which `net.fetch` follows.
 const MAX_REDIRECTS: usize = 20;
 
@@ -68,13 +72,13 @@ impl Default for Limits {
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum WebFetchError {
-    /// A metadata page answered outside 200-299 (`metadata.ts:220`).
+    /// A metadata page answered outside 200-299 (`metadata.ts:205`).
     #[error("HTTP {0}")]
     Status(u16),
-    /// An article page answered outside 200-299 (`metadata.ts:241`).
+    /// An article page answered outside 200-299 (`metadata.ts:255`).
     #[error("Failed to fetch article HTML: {0}")]
     ArticleStatus(u16),
-    /// `Content-Length` above the cap (`metadata.ts:244`).
+    /// `Content-Length` above the cap (`metadata.ts:258-260`).
     #[error("Response too large: {0} bytes")]
     DeclaredTooLarge(u64),
     /// The body grew past the cap while streaming.
@@ -117,8 +121,22 @@ impl WebFetch {
         system_proxy: bool,
         resolve: &[(&str, SocketAddr)],
     ) -> Result<Self, WebFetchError> {
+        // The Chrome 149 TLS and HTTP/2 fingerprint without its default headers: those carry
+        // `sec-ch-ua` client hints for Chrome 149, which `net.fetch` never sent (a main-process
+        // request has no frame) and which would contradict the Chrome 120 User-Agent.
+        let emulation = wreq_util::Emulation::builder()
+            .profile(wreq_util::Profile::Chrome149)
+            .headers(false)
+            .build();
+        let mut headers = HeaderMap::new();
+        headers.insert(USER_AGENT, HeaderValue::from_static(CHROME_USER_AGENT));
+        headers.insert(
+            ACCEPT_ENCODING,
+            HeaderValue::from_static(ACCEPT_ENCODING_VALUE),
+        );
         let mut builder = wreq::Client::builder()
-            .emulation(wreq_util::Emulation::Chrome149)
+            .emulation(emulation)
+            .default_headers(headers)
             .tls_cert_store(roots().clone())
             .redirect(wreq::redirect::Policy::limited(MAX_REDIRECTS));
         if !system_proxy {
@@ -139,12 +157,12 @@ impl WebFetch {
     }
 
     /// The page of a link for metadata scraping: the fetch half of `fetchUrlMetadata`
-    /// (`metadata.ts:184-224`), after the Reddit JSON rule declined.
+    /// (`metadata.ts:181-234`), after the Reddit JSON rule declined.
     pub async fn metadata_page(&self, url: &str) -> Result<String, WebFetchError> {
         self.html(url, WebFetchError::Status).await
     }
 
-    /// `fetchUrlHtml` (`metadata.ts:226-251`): the HTML the article extractor reads.
+    /// `fetchUrlHtml` (`metadata.ts:236-265`): the HTML the article extractor reads.
     pub async fn article_html(&self, url: &str) -> Result<String, WebFetchError> {
         self.html(url, WebFetchError::ArticleStatus).await
     }
@@ -157,7 +175,6 @@ impl WebFetch {
         let request = self
             .client
             .get(rewrite_url_for_fetch(url))
-            .header(USER_AGENT, CHROME_USER_AGENT)
             .header(ACCEPT, ACCEPT_HTML)
             .header(ACCEPT_LANGUAGE, ACCEPT_LANGUAGE_VALUE);
         let cap = self.limits.max_html_bytes;

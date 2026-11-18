@@ -1,4 +1,4 @@
-//! The Reddit rule of `fetchUrlMetadata` (`metadata.ts:100-175`): a post's metadata comes from its
+//! The Reddit rule of `fetchUrlMetadata` (`metadata.ts:114-179`): a post's metadata comes from its
 //! `.json` listing, and when that fails the HTML is fetched from `old.reddit.com`, whose server
 //! rendered page carries the metadata the new site builds in script.
 
@@ -6,16 +6,15 @@ use std::sync::LazyLock;
 
 use regex::Regex;
 use serde_json::Value;
-use wreq::header::USER_AGENT;
 
-use super::{CHROME_USER_AGENT, WebFetch, read_capped, send, within};
+use super::{WebFetch, read_capped, send, within};
 
 const REDDIT_LOGO: &str = "https://www.redditstatic.com/desktop2x/img/favicon/favicon-32x32.png";
 const SELFTEXT_UTF16_UNITS: usize = 300;
 /// `TimeClip`'s range: a `Date` further from the epoch is invalid and `toISOString` throws.
 const MAX_DATE_MS: f64 = 8.64e15;
 
-/// `UrlMetadata` (`metadata.ts:36-45`): what a link's page says about itself.
+/// `UrlMetadata` (`metadata.ts:35-44`): what a link's page says about itself.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct UrlMetadata {
     pub title: Option<String>,
@@ -32,7 +31,7 @@ fn reddit_host(url: &str) -> Option<String> {
     url::Url::parse(url).ok()?.host_str().map(str::to_owned)
 }
 
-/// `isRedditUrl` (`metadata.ts:111-118`).
+/// `isRedditUrl` (`metadata.ts:114-121`).
 pub fn is_reddit_url(url: &str) -> bool {
     reddit_host(url).is_some_and(|host| {
         matches!(
@@ -42,7 +41,7 @@ pub fn is_reddit_url(url: &str) -> bool {
     })
 }
 
-/// `rewriteUrlForFetch` (`metadata.ts:120-131`): `reddit.com` and `www.reddit.com` become
+/// `rewriteUrlForFetch` (`metadata.ts:123-134`): `reddit.com` and `www.reddit.com` become
 /// `old.reddit.com`; any other URL, or one that does not parse, is returned as is.
 pub fn rewrite_url_for_fetch(url: &str) -> String {
     let Ok(mut parsed) = url::Url::parse(url) else {
@@ -56,7 +55,7 @@ pub fn rewrite_url_for_fetch(url: &str) -> String {
     url.to_owned()
 }
 
-/// `url.replace(/\/?(\?.*)?$/, '.json$1')` (`metadata.ts:138`). JS `.` stops at any line
+/// `url.replace(/\/?(\?.*)?$/, '.json$1')` (`metadata.ts:141`). JS `.` stops at any line
 /// terminator, hence the class.
 pub fn reddit_json_url(url: &str) -> String {
     static TAIL: LazyLock<Regex> =
@@ -65,13 +64,10 @@ pub fn reddit_json_url(url: &str) -> String {
 }
 
 impl WebFetch {
-    /// `fetchRedditMetadata` (`metadata.ts:133-175`). `None` sends the caller to the HTML path:
+    /// `fetchRedditMetadata` (`metadata.ts:136-179`). `None` sends the caller to the HTML path:
     /// a status outside 200-299, a body that is not JSON, a listing without a post, a timeout.
     pub async fn reddit_metadata(&self, url: &str) -> Option<UrlMetadata> {
-        let request = self
-            .client
-            .get(reddit_json_url(url))
-            .header(USER_AGENT, CHROME_USER_AGENT);
+        let request = self.client.get(reddit_json_url(url));
         let cap = self.limits.max_html_bytes;
         let body = within(self.limits.page_timeout, async move {
             let response = send(request).await?;

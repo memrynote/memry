@@ -349,6 +349,12 @@ jobs:
           toolchain: '1.98.1'
           targets: ${{ matrix.triple }}
 
+      # BoringSSL (btls-sys, under the Inbox web fetch's wreq client) assembles its x86 code with NASM
+      # when it builds natively on Windows.
+      - name: Install NASM
+        if: runner.os == 'Windows'
+        uses: ilammy/setup-nasm@72793074d3c8cdda771dba85f6deafe00623038b # v1.5.2
+
       # Saves only on push, dispatch and PRs into main. A tiered PR (base not main) and a merge-queue run
       # restore what the push to feat/tauri-v2 saved and write nothing (a save is 2-4 GB per job).
       - name: Cache cargo
