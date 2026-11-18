@@ -166,6 +166,12 @@ impl NoteFiles {
             .read_blocking(move |conn| note_files::unfiled(conn, &id))
     }
 
+    /// Whether a day's file must wait to be named ([`note_files::days_wait`]).
+    #[cfg(feature = "markdown")]
+    pub fn days_wait(&self) -> Result<bool, StorageError> {
+        self.db.read_blocking(note_files::days_wait)
+    }
+
     /// [`note_files::mark_unmarked`], once the vault opened.
     pub fn mark_unmarked(&self) -> Result<usize, StorageError> {
         self.db

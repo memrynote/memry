@@ -131,6 +131,57 @@ pub fn cover_sync(frontmatter: &Map<String, Value>) -> Option<Map<String, Value>
     Some(out)
 }
 
+/// The frontmatter keys a pulled cover writes into a file that has none
+/// (`applyNoteCoverToFrontmatter`, `sync/item-handlers/note-cover-sync.ts`, over a frontmatter
+/// with no cover key): the ref, its focus, the later framing keys unless they are at their
+/// default, and the credit, each through its gate and clamp. Nothing for a ref this build does not
+/// read as a cover, since it would land as a user property.
+pub fn cover_frontmatter(cover: &Map<String, Value>) -> Vec<(&'static str, Value)> {
+    let Some(reference) = cover.get("ref").filter(|value| is_cover_value(value)) else {
+        return Vec::new();
+    };
+    let mut out = vec![(COVER_FRONTMATTER_KEY, reference.clone())];
+    let gated = |field: &str, key: &str| {
+        cover
+            .get(field)
+            .filter(|value| is_cover_key_value(key, value))
+            .and_then(Value::as_f64)
+    };
+    if let Some(focus) = gated("focus", COVER_FOCUS_FRONTMATTER_KEY) {
+        out.push((COVER_FOCUS_FRONTMATTER_KEY, js_number(focus.round())));
+    }
+    // `LATER_FRAMING_KEYS`: field, key, clamp, and the default that is not written.
+    let framing: [(&str, &'static str, fn(f64) -> f64, f64); 3] = [
+        ("focusX", COVER_FOCUS_X_FRONTMATTER_KEY, f64::round, 50.0),
+        (
+            "zoom",
+            COVER_ZOOM_FRONTMATTER_KEY,
+            |x| (x * 100.0).round() / 100.0,
+            1.0,
+        ),
+        ("height", COVER_HEIGHT_FRONTMATTER_KEY, f64::round, 200.0),
+    ];
+    for (field, key, clamp, fallback) in framing {
+        if let Some(value) = gated(field, key).map(clamp)
+            && value != fallback
+        {
+            out.push((key, js_number(value)));
+        }
+    }
+    for (field, key) in [
+        ("credit", COVER_CREDIT_FRONTMATTER_KEY),
+        ("creditUrl", COVER_CREDIT_URL_FRONTMATTER_KEY),
+    ] {
+        if let Some(value) = cover
+            .get(field)
+            .filter(|value| is_cover_key_value(key, value))
+        {
+            out.push((key, value.clone()));
+        }
+    }
+    out
+}
+
 /// A number as JavaScript writes it in JSON: an integral value without a fraction.
 fn js_number(x: f64) -> Value {
     #[allow(
@@ -168,6 +219,43 @@ mod tests {
         assert!(is_cover_key_value("coverCreditUrl", &json!("http://x")));
         assert!(!is_cover_key_value("coverCreditUrl", &json!("ftp://x")));
         assert!(!is_cover_key_value("status", &json!("wash:sage")));
+    }
+
+    /// `applyNoteCoverToFrontmatter({}, cover)`'s answers, from Electron (`npx tsx`, #3534 L5b).
+    #[test]
+    fn a_pulled_cover_writes_the_keys_electron_writes() {
+        let cases = json!([
+            [{"ref": "Hardback", "focus": 30}, {}],
+            [
+                {"ref": "wash:sage", "focus": 30.4, "focusX": 20, "zoom": 2, "height": 300,
+                 "credit": "Ann", "creditUrl": "https://u.test/a"},
+                {"cover": "wash:sage", "coverFocus": 30, "coverFocusX": 20, "coverZoom": 2,
+                 "coverHeight": 300, "coverCredit": "Ann", "coverCreditUrl": "https://u.test/a"}
+            ],
+            [
+                {"ref": "attachments/n1/a.png", "focusX": 50, "zoom": 1, "height": 200},
+                {"cover": "attachments/n1/a.png"}
+            ],
+            [
+                {"ref": "https://images.test/x", "focus": 33.6, "focusX": 12.4, "zoom": 1.255,
+                 "height": 300.6, "credit": "  Bo ", "creditUrl": "HTTPS://u.test/b"},
+                {"cover": "https://images.test/x", "coverFocus": 34, "coverFocusX": 12,
+                 "coverZoom": 1.25, "coverHeight": 301, "coverCredit": "  Bo ",
+                 "coverCreditUrl": "HTTPS://u.test/b"}
+            ],
+            [
+                {"ref": "img/a.JPG?v=1", "focus": 140, "focusX": -1, "zoom": 4, "height": 90,
+                 "credit": "   ", "creditUrl": "ftp://x"},
+                {"cover": "img/a.JPG?v=1"}
+            ],
+        ]);
+        for case in cases.as_array().unwrap() {
+            let written: Map<String, Value> = cover_frontmatter(case[0].as_object().unwrap())
+                .into_iter()
+                .map(|(key, value)| (key.to_owned(), value))
+                .collect();
+            assert_eq!(Value::Object(written), case[1], "{}", case[0]);
+        }
     }
 
     /// `noteCoverFromFrontmatter`'s answers, from Electron (`npx tsx`, 13q-2).

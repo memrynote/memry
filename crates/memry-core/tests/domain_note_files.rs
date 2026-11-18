@@ -681,15 +681,16 @@ fn unfiled_lists_live_notes_and_days_no_row_names() {
     let files = vault.note_files();
     exec(
         &vault,
-        "INSERT INTO notes (id, title, folder_path, file_type, deleted_at) VALUES
-           ('n-pulled', 'Remote plan', 'Work', 'markdown', NULL),
-           ('n-filed', 'Filed', NULL, 'markdown', NULL),
-           ('n-deleted', 'Gone', NULL, 'markdown', 5),
-           ('n-image', 'Photo', NULL, 'image', NULL);
+        "INSERT INTO notes (id, title, folder_path, file_type, deleted_at, aliases) VALUES
+           ('n-pulled', 'Remote plan', 'Work', 'markdown', NULL, '[\"PM\",\"Roadmap\"]'),
+           ('n-filed', 'Filed', NULL, 'markdown', NULL, NULL),
+           ('n-deleted', 'Gone', NULL, 'markdown', 5, NULL),
+           ('n-image', 'Photo', NULL, 'image', NULL, NULL);
          INSERT INTO journal_entries (id, date, deleted_at) VALUES
            ('d-pulled', '2026-11-02', NULL),
            ('d-owed', '2026-11-03', NULL),
            ('d-deleted', '2026-11-04', 5);
+         INSERT INTO journal_aliases (journal_id, aliases) VALUES ('d-pulled', '[\"Launch\"]');
          INSERT INTO note_place_owed (note_id, from_path, marked_at) VALUES
            ('d-owed', 'journal/2026-11-03.md', 1);",
     );
@@ -701,9 +702,35 @@ fn unfiled_lists_live_notes_and_days_no_row_names() {
         (note.title.as_str(), note.folder_path.as_deref(), note.date),
         ("Remote plan", Some("Work"), None)
     );
+    assert_eq!(note.aliases, ["PM", "Roadmap"]);
     let day = files.unfiled("d-pulled").unwrap().expect("unfiled");
     assert_eq!(day.date.as_deref(), Some("2026-11-02"));
+    assert_eq!(day.aliases, ["Launch"]);
+    assert_eq!(day.cover, None);
     for id in ["n-filed", "n-deleted", "n-image", "d-owed", "d-deleted"] {
         assert_eq!(files.unfiled(id).unwrap(), None, "{id}");
     }
+}
+
+/// A day's file waits while a moved journal folder's day is held, and not for a hold whose owed
+/// move names another path (desktop `create_day_now`, #3534 L5b).
+#[cfg(feature = "markdown")]
+#[test]
+fn days_wait_while_a_day_is_held() {
+    let Fixture { vault, .. } = fixture();
+    let files = vault.note_files();
+    assert!(!files.days_wait().unwrap());
+    exec(
+        &vault,
+        "INSERT INTO note_place_owed (note_id, from_path, marked_at) VALUES
+           ('d-held', 'journal/2026-11-03.md', 1);
+         INSERT INTO meta (key, value) VALUES
+           ('notes.place_held.v1:d-held', 'journal/old.md');",
+    );
+    assert!(!files.days_wait().unwrap(), "a stale hold");
+    exec(
+        &vault,
+        "UPDATE meta SET value = 'journal/2026-11-03.md' WHERE key = 'notes.place_held.v1:d-held'",
+    );
+    assert!(files.days_wait().unwrap());
 }

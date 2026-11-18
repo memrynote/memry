@@ -7,6 +7,8 @@ use serde_json::{Map, Value};
 
 use super::failed;
 use crate::api::errors::StorageError;
+use crate::domain::note_meta::note_payload;
+use crate::domain::notes::names;
 use crate::domain::{journal, notes, properties, tags};
 
 /// What a new file for an unfiled record is made of.
@@ -18,15 +20,22 @@ pub struct Unfiled {
     /// The day's date, `None` for a note.
     pub date: Option<String>,
     pub tags: Vec<String>,
+    /// The other names the record holds.
+    pub aliases: Vec<String>,
     pub properties: Map<String, Value>,
+    /// A note's `cover` as its payload carries it (protocol 13.7.1.1), unchecked: the writer
+    /// gates each key as Electron's `applyNoteCoverToFrontmatter` does. `None` for a day.
+    pub cover: Option<Map<String, Value>>,
 }
 
 /// A live markdown note, or a live day not owed a move of its file, that no row names.
-const UNFILED: &str = "SELECT id, title, folder_path, 0 AS is_day FROM notes n
+const UNFILED: &str = "SELECT id, title, folder_path, 0 AS is_day, aliases FROM notes n
   WHERE n.deleted_at IS NULL AND n.file_type = 'markdown'
     AND NOT EXISTS (SELECT 1 FROM note_files f WHERE f.note_id = n.id)
  UNION ALL
- SELECT id, date, NULL, 1 FROM journal_entries j
+ SELECT id, date, NULL, 1,
+        (SELECT aliases FROM journal_aliases a WHERE a.journal_id = j.id)
+   FROM journal_entries j
   WHERE j.deleted_at IS NULL
     AND NOT EXISTS (SELECT 1 FROM note_files f WHERE f.note_id = j.id)
     AND NOT EXISTS (SELECT 1 FROM note_place_owed o WHERE o.note_id = j.id)";
@@ -45,23 +54,25 @@ pub fn unfiled_bodies(conn: &Connection) -> Result<Vec<String>, StorageError> {
         .map_err(failed)
 }
 
-/// The record `id` when it is unfiled, with the tags and properties its new file carries.
+/// The record `id` when it is unfiled, with the tags, other names, properties and cover its new
+/// file carries.
 pub fn unfiled(conn: &Connection, id: &str) -> Result<Option<Unfiled>, StorageError> {
     let found = conn
         .query_row(
-            &format!("SELECT title, folder_path, is_day FROM ({UNFILED}) WHERE id = ?1"),
+            &format!("SELECT title, folder_path, is_day, aliases FROM ({UNFILED}) WHERE id = ?1"),
             params![id],
             |row| {
                 Ok((
                     row.get::<_, String>(0)?,
                     row.get::<_, Option<String>>(1)?,
                     row.get::<_, bool>(2)?,
+                    row.get::<_, Option<String>>(3)?,
                 ))
             },
         )
         .optional()
         .map_err(failed)?;
-    let Some((title, folder_path, is_day)) = found else {
+    let Some((title, folder_path, is_day, aliases)) = found else {
         return Ok(None);
     };
     let item_type = if is_day {
@@ -69,11 +80,35 @@ pub fn unfiled(conn: &Connection, id: &str) -> Result<Option<Unfiled>, StorageEr
     } else {
         notes::ITEM_TYPE
     };
+    let aliases = names::parse_stored(aliases).map_err(|error| StorageError::Failed {
+        what: format!("{id} aliases: {error}"),
+    })?;
+    let cover = match is_day {
+        true => None,
+        false => note_payload(conn, id)?.and_then(|mut payload| match payload.remove("cover") {
+            Some(Value::Object(cover)) => Some(cover),
+            _ => None,
+        }),
+    };
     Ok(Some(Unfiled {
         date: is_day.then(|| title.clone()),
         title,
         folder_path,
         tags: tags::list(conn, item_type, id)?,
+        aliases,
         properties: properties::values(conn, item_type, id)?,
+        cover,
     }))
+}
+
+/// Whether a day's file must not be named now: a journal setting change is recorded, or days
+/// moved with the journal folder are held until the setting follows them. A day named under
+/// the saved setting meanwhile would land where the settled journal does not read it, or make
+/// the old folder again so the setting never follows (desktop `create_day_now`).
+#[cfg(feature = "markdown")]
+pub fn days_wait(conn: &Connection) -> Result<bool, StorageError> {
+    Ok(
+        crate::domain::notes::journal_change::pending(conn)?.is_some()
+            || crate::domain::notes::place_held::any_held(conn)?,
+    )
 }
