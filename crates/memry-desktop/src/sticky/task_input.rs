@@ -6,8 +6,9 @@ use memry_core::api::tasks_write::NewTaskInput;
 use memry_core::domain::calendar::LocalDateTime;
 use memry_core::domain::task_parse::quick_add::{QuickAddProject, parse_quick_add};
 
-use super::text::split;
+use super::text::{cut_utf16, split};
 
+/// UTF-16 units, as `TaskCreateSchema` counts them.
 const TITLE_LIMIT: usize = 500;
 const TAG_LIMIT: usize = 20;
 
@@ -30,7 +31,7 @@ pub fn task_input(text: &str, context: &TaskContext<'_>) -> NewTaskInput {
         title => title,
     };
     NewTaskInput {
-        title: title.chars().take(TITLE_LIMIT).collect(),
+        title: cut_utf16(title, TITLE_LIMIT).to_owned(),
         project_id: parsed
             .project_id
             .or_else(|| context.default_project_id.map(str::to_owned))
@@ -121,8 +122,13 @@ mod tests {
     #[test]
     fn the_title_and_tags_are_capped() {
         let tags: String = (0..25).map(|n| format!(" #t{n}")).collect();
-        let input = task_input(&format!("{}{tags}", "x".repeat(600)), &context(&[], None));
-        assert_eq!(input.title.chars().count(), 500);
+        // 300 emoji are 600 UTF-16 units: 250 of them fill the 500.
+        let input = task_input(
+            &format!("{}{tags}", "\u{1F600}".repeat(300)),
+            &context(&[], None),
+        );
+        assert_eq!(input.title.encode_utf16().count(), 500);
+        assert_eq!(input.title.chars().count(), 250);
         assert_eq!(input.tags.len(), 20);
     }
 }

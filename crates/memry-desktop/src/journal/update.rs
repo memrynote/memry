@@ -96,7 +96,29 @@ impl NotesService {
     ) -> Result<DayUpdated, NotesError> {
         let date = valid_date(&update.date)?.to_owned();
         self.order.run(&order_key(&date), |_| {
-            self.update_day_now(open, &date, update)
+            self.update_day_now(open, &date, update, false)
+        })
+    }
+
+    /// `appendToJournalEntry`: `markdown`, trimmed, as its own paragraph after the day's text
+    /// (the text with its trailing whitespace cut, a blank line, then `markdown`); a day with no
+    /// file is made with it. The day's text is the one the save reads in its write turn, so a
+    /// save or another append that lands first is kept. An editor's typing not written back yet
+    /// is the caller's to flush first. The caller sends non-blank text.
+    pub fn append_to_day(
+        &self,
+        open: &OpenVault,
+        date: &str,
+        markdown: &str,
+    ) -> Result<DayUpdated, NotesError> {
+        let date = valid_date(date)?.to_owned();
+        let update = DayUpdate {
+            date: date.clone(),
+            content: Some(markdown.trim().to_owned()),
+            ..DayUpdate::default()
+        };
+        self.order.run(&order_key(&date), |_| {
+            self.update_day_now(open, &date, update, true)
         })
     }
 
@@ -105,6 +127,7 @@ impl NotesService {
         open: &OpenVault,
         date: &str,
         update: DayUpdate,
+        append: bool,
     ) -> Result<DayUpdated, NotesError> {
         let journal = open.vault.journal(self.store.clone())?;
         if entry(open, &journal, date)?.is_none() {
@@ -120,7 +143,7 @@ impl NotesService {
             let made = self.create_day_now(open, date, day, &mut || Ok(()))?;
             // A held text the user's differs from is kept as a version by that save.
             let entry = match held {
-                true => self.save_day(open, &journal, date, update)?,
+                true => self.save_day(open, &journal, date, update, append)?,
                 false => made,
             };
             return Ok(DayUpdated {
@@ -129,7 +152,7 @@ impl NotesService {
             });
         }
         Ok(DayUpdated {
-            entry: self.save_day(open, &journal, date, update)?,
+            entry: self.save_day(open, &journal, date, update, append)?,
             created: false,
         })
     }
@@ -141,6 +164,7 @@ impl NotesService {
         journal: &Journal,
         date: &str,
         update: DayUpdate,
+        append: bool,
     ) -> Result<JournalEntryView, NotesError> {
         let unheld = || NotesError::DayTextUnwritable("the file is not the day's yet".to_owned());
         let stamp = journal.stamp(date)?.ok_or_else(unheld)?;
@@ -189,6 +213,7 @@ impl NotesService {
         let change = FileChange {
             date,
             content: update.content.as_deref(),
+            append,
             properties: properties.as_ref(),
             mirrored: RefCell::new(None),
         };
@@ -272,6 +297,8 @@ fn next_tags(
 struct FileChange<'a> {
     date: &'a str,
     content: Option<&'a str>,
+    /// `content` goes after the text read, as its own paragraph ([`NotesService::append_to_day`]).
+    append: bool,
     /// The given properties, and each defined property's type.
     properties: Option<&'a (YamlMap, HashMap<String, String>)>,
     /// What the record takes once the file holds the text ([`edited_values`]), set by
@@ -291,8 +318,11 @@ impl FileChange<'_> {
         // A body equal once trimmed keeps its bytes (`editJournalFile`).
         let body = self
             .content
-            .map(trimmed)
-            .filter(|content| *content != parsed.content.trim());
+            .map(|content| match (self.append, parsed.content.trim_end()) {
+                (true, head) if !head.is_empty() => format!("{}\n\n{content}", trimmed(head)),
+                _ => trimmed(content).to_owned(),
+            })
+            .filter(|content| content != parsed.content.trim());
         let frontmatter = self.next_frontmatter(&parsed)?;
         let output = match (frontmatter, body) {
             (None, None) => return Ok(None),

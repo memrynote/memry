@@ -9,9 +9,31 @@ pub fn split(text: &str) -> (&str, &str) {
     }
 }
 
+/// The longest start of `text` within `max` UTF-16 units (what zod's `.max()` counts) that
+/// ends on a character boundary.
+pub fn cut_utf16(text: &str, max: usize) -> &str {
+    let mut units = 0;
+    for (at, character) in text.char_indices() {
+        units += character.len_utf16();
+        if units > max {
+            return &text[..at];
+        }
+    }
+    text
+}
+
 #[cfg(test)]
 mod tests {
-    use super::split;
+    use super::{cut_utf16, split};
+
+    #[test]
+    fn a_cut_counts_utf16_units_and_never_splits_a_character() {
+        assert_eq!(cut_utf16("abc", 3), "abc");
+        assert_eq!(cut_utf16("abc", 2), "ab");
+        // An emoji is two units: one unit of room is no room for it.
+        assert_eq!(cut_utf16("a\u{1F600}b", 2), "a");
+        assert_eq!(cut_utf16("a\u{1F600}b", 3), "a\u{1F600}");
+    }
 
     #[test]
     fn the_first_line_is_the_title_and_the_rest_the_body() {

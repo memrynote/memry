@@ -66,7 +66,7 @@ pub(crate) fn store<R: Runtime>(app: &AppHandle<R>) -> Result<StickyStore, Comma
     drafts::open(&open, identity).map_err(|error| CommandError::from_core(&error))
 }
 
-pub(super) fn invalid(message: &str) -> CommandError {
+fn invalid(message: &str) -> CommandError {
     CommandError::new(ErrorKind::Invalid, "invalid", message.to_owned())
 }
 

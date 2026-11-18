@@ -1,23 +1,20 @@
 //! The sticky's send, undo and open-target commands (`sticky:send`, `sticky:undo-send`,
-//! `sticky:open-target` of `ipc/sticky-handlers.ts`). Where the text lands and the undo window
-//! are `memry_desktop::sticky::send`; this adapter gates the kinds on the feature settings,
-//! deletes the sent draft, remembers the kind for `defaultKind: 'last'` and tells the windows.
+//! `sticky:open-target` of `ipc/sticky-handlers.ts`). The send and the undo are
+//! `memry_desktop::sticky::send::StickySend`; this adapter tells the windows what changed. A
+//! refusal rejects with its `sticky_*` code, which the renderer translates.
 
-use memry_desktop::i18n;
-use memry_desktop::locale::LocaleService;
-use memry_desktop::session::OpenVault;
-use memry_desktop::settings::SettingsService;
-use memry_desktop::sticky::drafts::StickyKind;
-use memry_desktop::sticky::send::{Sent, UndoLedger, local_now};
-use serde::{Deserialize, Serialize};
-use serde_json::{Map, Value, json};
 use std::sync::Arc;
+
+use memry_desktop::settings::SettingsService;
+use memry_desktop::sticky::send::{SendError, SendInput, StickySend, UndoLedger, local_now};
+use memry_desktop::vault::config::settings::vault_settings;
+use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, Wry};
 
 use super::blocking;
 use super::error::{CommandError, ErrorKind};
 use super::notes::{self, open_vault};
-use super::stickies::{StickyDraftView, invalid, kind, non_empty, store};
+use super::stickies::{StickyDraftView, kind, non_empty, store};
 use crate::events::{StickyOpenTargetRequestedEvent, send_to};
 use crate::windows::registry::WindowRegistry;
 use crate::windows::{edge_tab, sticky};
@@ -46,152 +43,19 @@ pub struct StickySent {
     pub undo_token: Option<String>,
 }
 
-const CONTENT_LIMIT: usize = 100_000;
-
 fn now_ms() -> i64 {
     i64::try_from(memry_desktop::telemetry::time::now_ms()).unwrap_or(i64::MAX)
 }
 
-/// A refusal the user reads, in the app's language (`sticky.errors.<key>` of `inbox`).
-fn refused(app: &AppHandle<Wry>, code: &str, key: &str) -> CommandError {
-    let locale = app.state::<Arc<LocaleService>>().get();
-    let message = i18n::t(
-        locale,
-        &format!("inbox:sticky.errors.{key}"),
-        &Default::default(),
-    );
-    CommandError::new(ErrorKind::Invalid, code, message)
-}
-
-fn group(app: &AppHandle<Wry>, open: &OpenVault, name: &str) -> Map<String, Value> {
-    match app.state::<SettingsService>().read_group(Some(open), name) {
-        Ok(read) => read.value,
-        Err(error) => {
-            tracing::warn!(
-                scope = "StickySend",
-                "could not read the {name} settings: {error}"
-            );
-            Map::new()
+fn failed(error: &SendError, what: &str) -> CommandError {
+    match (error, error.code()) {
+        (SendError::Notes(error), _) => {
+            tracing::error!(scope = "StickySend", "sticky {what} failed: {error}");
+            notes::failed(error)
         }
+        (refusal, Some(code)) => CommandError::new(ErrorKind::Invalid, code, refusal.to_string()),
+        (refusal, None) => CommandError::new(ErrorKind::Internal, "internal", refusal.to_string()),
     }
-}
-
-/// `assertKindEnabled`: a task or journal send needs its feature on.
-fn enabled(app: &AppHandle<Wry>, open: &OpenVault, kind: StickyKind) -> Result<(), CommandError> {
-    let (feature, code, key) = match kind {
-        StickyKind::Task => ("tasks", "sticky_tasks_off", "tasksOff"),
-        StickyKind::Journal => ("journal", "sticky_journal_off", "journalOff"),
-        StickyKind::Note => return Ok(()),
-    };
-    let on = group(app, open, "features")
-        .get(feature)
-        .and_then(Value::as_bool)
-        .unwrap_or(true);
-    match on {
-        true => Ok(()),
-        false => Err(refused(app, code, key)),
-    }
-}
-
-/// `rememberStickyKind`: the kind a send used, for `defaultKind: 'last'`. A failure is logged;
-/// the send already landed.
-fn remember(app: &AppHandle<Wry>, open: &OpenVault, kind: StickyKind) {
-    if group(app, open, "sticky")
-        .get("lastKind")
-        .and_then(Value::as_str)
-        == Some(kind.as_str())
-    {
-        return;
-    }
-    let mut patch = Map::new();
-    patch.insert("lastKind".to_owned(), json!(kind.as_str()));
-    let written = app
-        .state::<SettingsService>()
-        .write_group(Some(open), "sticky", patch)
-        .map_err(super::settings::map_error)
-        .and_then(|change| super::settings::announce(app, &change.group, change.fields));
-    if let Err(error) = written {
-        tracing::warn!(
-            scope = "StickySend",
-            "could not remember the sticky kind: {error:?}"
-        );
-    }
-}
-
-fn send(app: &AppHandle<Wry>, input: StickySendInput) -> Result<StickySent, CommandError> {
-    if let Some(id) = &input.draft_id {
-        non_empty(id)?;
-    }
-    let kind = kind(&input.kind)?;
-    if input.content.chars().count() > CONTENT_LIMIT {
-        return Err(invalid("sticky text takes at most 100000 characters"));
-    }
-    let content = input.content.trim();
-    if content.is_empty() {
-        return Err(refused(app, "sticky_empty", "empty"));
-    }
-    let open = open_vault(app)?;
-    enabled(app, &open, kind)?;
-    let service = notes::service(app)?;
-    let now = local_now();
-    let sent = match kind {
-        StickyKind::Note => service
-            .send_sticky_note(&open, content)
-            .map_err(|error| notes::failed(&error)),
-        StickyKind::Task => {
-            let tasks = group(app, &open, "tasks");
-            let default = tasks.get("defaultProjectId").and_then(Value::as_str);
-            service
-                .send_sticky_task(&open, content, default, now)
-                .map_err(|error| notes::failed(&error))
-        }
-        StickyKind::Journal => {
-            let today = now.date().key();
-            super::journal::landed(app, &open, true, || {
-                service.send_sticky_journal(&open, content, &today)
-            })
-            .map(|_| Sent {
-                target_id: today.clone(),
-                title: today,
-            })
-        }
-    }
-    .inspect_err(|error| {
-        tracing::error!(
-            scope = "StickySend",
-            kind = kind.as_str(),
-            "sticky send failed: {error:?}"
-        );
-    })?;
-
-    // The text now lives in its target; only then does the draft go. A draft that stays is
-    // logged, not a failed send: the user would send the text twice.
-    if let Some(id) = input.draft_id {
-        match store(app).and_then(|drafts| {
-            drafts
-                .delete(id)
-                .map_err(|error| CommandError::from_core(&error))
-        }) {
-            Ok(true) => edge_tab::drafts_changed(app),
-            Ok(false) => {}
-            Err(error) => {
-                tracing::warn!(
-                    scope = "StickySend",
-                    "the sent draft could not be deleted: {error:?}"
-                );
-            }
-        }
-    }
-    remember(app, &open, kind);
-    let undo_token = app
-        .state::<UndoLedger>()
-        .record(kind, &sent, content, now_ms());
-    Ok(StickySent {
-        kind: kind.as_str().to_owned(),
-        target_id: sent.target_id,
-        title: sent.title,
-        undo_token,
-    })
 }
 
 /// Sends the text to a note, a task or today's journal entry, and deletes its draft.
@@ -201,7 +65,51 @@ pub async fn sticky_send(
     app: AppHandle<Wry>,
     input: StickySendInput,
 ) -> Result<StickySent, CommandError> {
-    blocking("sticky_send", move || send(&app, input)).await
+    blocking("sticky_send", move || {
+        if let Some(id) = &input.draft_id {
+            non_empty(id)?;
+        }
+        let kind = kind(&input.kind)?;
+        let open = open_vault(&app)?;
+        let (notes, drafts) = (notes::service(&app)?, store(&app)?);
+        let before = vault_settings(Some(&open.path));
+        let flow = StickySend {
+            notes: &notes,
+            open: &open,
+            settings: &app.state::<SettingsService>(),
+            drafts: &drafts,
+            ledger: &app.state::<Arc<UndoLedger>>(),
+        };
+        let input = SendInput {
+            draft_id: input.draft_id,
+            content: input.content,
+            kind,
+        };
+        let landed = flow
+            .send(input, local_now(), now_ms())
+            .map_err(|error| failed(&error, "send"))?;
+        if let Some(day) = &landed.day {
+            super::journal::told(&app, &open, &before, true, day);
+        }
+        if landed.draft_deleted {
+            edge_tab::drafts_changed(&app);
+        }
+        if let Some(change) = landed.remembered
+            && let Err(error) = super::settings::announce(&app, &change.group, change.fields)
+        {
+            tracing::warn!(
+                scope = "StickySend",
+                "the remembered sticky kind was not announced: {error:?}"
+            );
+        }
+        Ok(StickySent {
+            kind: landed.kind.as_str().to_owned(),
+            target_id: landed.sent.target_id,
+            title: landed.sent.title,
+            undo_token: landed.undo_token,
+        })
+    })
+    .await
 }
 
 /// Takes a note or task send back within its minute and answers the draft it restores.
@@ -213,23 +121,18 @@ pub async fn sticky_undo_send(
 ) -> Result<StickyDraftView, CommandError> {
     blocking("sticky_undo_send", move || {
         non_empty(&undo_token)?;
-        let Some(undo) = app.state::<UndoLedger>().take(&undo_token, now_ms()) else {
-            return Err(refused(&app, "sticky_undo_expired", "undoExpired"));
-        };
         let open = open_vault(&app)?;
-        notes::service(&app)?
-            .undo_sticky_send(&open, &undo)
-            .map_err(|error| {
-                tracing::error!(
-                    scope = "StickySend",
-                    kind = undo.kind.as_str(),
-                    "sticky undo failed: {error}"
-                );
-                notes::failed(&error)
-            })?;
-        let draft = store(&app)?
-            .save(None, undo.content, undo.kind)
-            .map_err(|error| CommandError::from_core(&error))?;
+        let (notes, drafts) = (notes::service(&app)?, store(&app)?);
+        let flow = StickySend {
+            notes: &notes,
+            open: &open,
+            settings: &app.state::<SettingsService>(),
+            drafts: &drafts,
+            ledger: &app.state::<Arc<UndoLedger>>(),
+        };
+        let draft = flow
+            .undo(&undo_token, now_ms())
+            .map_err(|error| failed(&error, "undo"))?;
         edge_tab::drafts_changed(&app);
         Ok(draft.into())
     })
