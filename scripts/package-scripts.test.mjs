@@ -34,6 +34,12 @@ describe('environment scripts', () => {
   })
 })
 
+describe('bench scripts', () => {
+  it('runs the launch bench against the Tauri app', () => {
+    assert.equal(rootPackage.scripts['bench:launch'], 'node scripts/launch-bench.mjs')
+  })
+})
+
 describe('sandbox vault script', () => {
   it('runs the CLI generator under Electron so the shared better-sqlite3 build stays put', () => {
     const cliPackage = JSON.parse(

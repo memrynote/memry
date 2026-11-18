@@ -18,11 +18,13 @@ mod account;
 mod ai;
 mod sync;
 mod tags;
+mod voice;
 
 pub use account::*;
 pub use ai::*;
 pub use sync::*;
 pub use tags::*;
+pub use voice::*;
 
 /// Emit `event` to every webview: the one window-wide emit (inv09#66). Each listener gets it once.
 /// The generated `listen` registers for any target, and Tauri hands every such listener each

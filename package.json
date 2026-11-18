@@ -37,6 +37,7 @@
     "bench:queries": "cd crates && cargo bench -p memry-desktop --bench vault_queries",
     "seed:1": "pnpm --filter @memry/desktop seed:small --variant=1",
     "seed:2": "pnpm --filter @memry/desktop seed:small --variant=2",
+    "bench:launch": "node scripts/launch-bench.mjs",
     "release:humanize": "node scripts/humanize-release-notes.mjs",
     "release:reddit": "node scripts/build-reddit-release-post.mjs",
     "docs:impact": "node scripts/docs-impact.mjs",
