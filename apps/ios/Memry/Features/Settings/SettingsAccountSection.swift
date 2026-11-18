@@ -40,6 +40,7 @@ struct SettingsAccountSection: View {
                 NavigationLink(value: SettingsRoute.account) {
                     SettingsAccountCard(email: email, line: BillingCopy.needsPlanLine, dot: .offline)
                 }
+                .settingsRowSelection(.account)
                 .accessibilityIdentifier("settings.row.account")
             } footer: {
                 SettingsFooter(BillingCopy.needsPlanDetail)
@@ -50,6 +51,7 @@ struct SettingsAccountSection: View {
                 NavigationLink(value: SettingsRoute.account) {
                     SettingsAccountCard(email: email, line: BillingCopy.freeLine, dot: .offline)
                 }
+                .settingsRowSelection(.account)
                 .accessibilityIdentifier("settings.row.account")
             }
             unlockSection
@@ -62,6 +64,7 @@ struct SettingsAccountSection: View {
                         dot: SyncStatusText.dot(context)
                     )
                 }
+                .settingsRowSelection(.account)
                 .accessibilityIdentifier("settings.row.account")
             }
         }
