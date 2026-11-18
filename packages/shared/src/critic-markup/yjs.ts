@@ -67,8 +67,8 @@ export function readCriticMarkupMarksFromYDoc(doc: YDocLike): CriticMarkupMark[]
  * Makes the root hold `marks`, touching only the elements that change
  * (protocol 12.5.1): it deletes invalid elements, later copies of an id and
  * ids `marks` drops, replaces an element whose value differs (key order aside),
- * and inserts a new id after the mark before it in `marks`. A replaced element
- * keeps the keys this build does not know.
+ * and inserts a new id after the furthest existing mark before it in `marks`.
+ * A replaced element keeps the keys this build does not know.
  */
 export function writeCriticMarkupMarksToYDoc(doc: YDocLike, marks: CriticMarkupMark[]): void {
   const array = doc.getArray(CRITIC_MARKUP_MARKS_ARRAY)
@@ -88,20 +88,28 @@ export function writeCriticMarkupMarksToYDoc(doc: YDocLike, marks: CriticMarkupM
     keptIds.add(id)
     return true
   })
-  for (let index = values.length - 1; index >= 0; index--) {
-    if (!keep[index]) array.delete(index, 1)
+  for (let end = values.length; end > 0;) {
+    if (keep[end - 1]) {
+      end--
+      continue
+    }
+    let start = end - 1
+    while (start > 0 && !keep[start - 1]) start--
+    array.delete(start, end - start)
+    end = start
   }
 
   const stored = values.filter((_, index) => keep[index])
-  const ids = [...keptIds]
-  let position = 0
+  const indexOf = new Map([...keptIds].map((id, index) => [id, index]))
+  // New marks keyed by the kept element they follow (-1: the start).
+  const inserts = new Map<number, Record<string, unknown>[]>()
+  let anchor = -1
   for (const [id, mark] of next) {
-    const index = ids.indexOf(id)
-    if (index === -1) {
-      array.insert(position, [mark])
-      ids.splice(position, 0, id)
-      stored.splice(position, 0, mark)
-      position++
+    const index = indexOf.get(id)
+    if (index === undefined) {
+      const group = inserts.get(anchor)
+      if (group) group.push(mark)
+      else inserts.set(anchor, [mark])
       continue
     }
     const merged = { ...mark, ...unknownKeys(stored[index]) }
@@ -109,7 +117,10 @@ export function writeCriticMarkupMarksToYDoc(doc: YDocLike, marks: CriticMarkupM
       array.delete(index, 1)
       array.insert(index, [merged])
     }
-    position = Math.max(position, index + 1)
+    anchor = Math.max(anchor, index)
+  }
+  for (const [after, group] of [...inserts].toSorted(([a], [b]) => b - a)) {
+    array.insert(after + 1, group)
   }
 }
 

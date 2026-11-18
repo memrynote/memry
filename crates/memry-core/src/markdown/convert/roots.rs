@@ -186,7 +186,7 @@ pub fn read_critic_marks<T: ReadTxn>(txn: &T) -> Vec<CriticMarkupMark> {
 /// `writeCriticMarkupMarksToYDoc`: deletes invalid elements, later copies of
 /// an id and ids `marks` drops; replaces an element whose value differs (Yjs
 /// maps compare without key order), keeping the keys this build does not
-/// know; inserts a new id after the mark before it in `marks`.
+/// know; inserts a new id after the furthest existing mark before it in `marks`.
 pub fn write_critic_marks(txn: &mut TransactionMut, marks: &[CriticMarkupMark]) {
     let mut next: Vec<(String, Json)> = Vec::new();
     let mut next_ids = HashSet::new();
@@ -224,27 +224,46 @@ pub fn write_critic_marks(txn: &mut TransactionMut, marks: &[CriticMarkupMark]) 
             kept.push((id, stored));
         }
     }
-    for (index, keep) in keep.iter().enumerate().rev() {
-        if !keep {
-            array.remove_range(txn, index as u32, 1);
+    let mut end = keep.len();
+    while end > 0 {
+        if keep[end - 1] {
+            end -= 1;
+            continue;
         }
+        let mut start = end - 1;
+        while start > 0 && !keep[start - 1] {
+            start -= 1;
+        }
+        array.remove_range(txn, start as u32, (end - start) as u32);
+        end = start;
     }
 
-    let mut position = 0;
-    for (id, mark) in next {
-        let Some(index) = kept.iter().position(|(kept_id, _)| *kept_id == id) else {
-            let element = json_to_any(&mark);
-            array.insert_range(txn, position as u32, vec![element.clone()]);
-            kept.insert(position, (id, element));
-            position += 1;
+    let index_of: HashMap<&str, usize> = kept
+        .iter()
+        .enumerate()
+        .map(|(index, (id, _))| (id.as_str(), index))
+        .collect();
+    // New marks keyed by the kept element they follow (`None`: the start).
+    let mut inserts: Vec<(Option<usize>, Vec<Any>)> = Vec::new();
+    let mut anchor: Option<usize> = None;
+    for (id, mark) in &next {
+        let Some(&index) = index_of.get(id.as_str()) else {
+            match inserts.last_mut() {
+                Some((after, group)) if *after == anchor => group.push(json_to_any(mark)),
+                _ => inserts.push((anchor, vec![json_to_any(mark)])),
+            }
             continue;
         };
-        let merged = with_unknown_keys(&mark, &kept[index].1);
-        if merged != kept[index].1 {
+        let stored = &kept[index].1;
+        let merged = with_unknown_keys(mark, stored);
+        if merged != *stored {
             array.remove_range(txn, index as u32, 1);
             array.insert_range(txn, index as u32, vec![merged]);
         }
-        position = position.max(index + 1);
+        anchor = anchor.max(Some(index));
+    }
+    for (after, group) in inserts.into_iter().rev() {
+        array.insert_range(txn, after.map_or(0, |index| index + 1) as u32, group);
     }
 }
 
