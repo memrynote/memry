@@ -875,8 +875,10 @@ struct NoteTitleBurstTests {
     /// selection, and the keys typed while the row held it were lost. While
     /// the title claims the caret, the list's selection does not follow
     /// focus, so a mirrored selection moves none; once the user moved the
-    /// caret, it does again.
-    @Test(.timeLimit(.minutes(1))) func the_notes_list_moves_no_focus_while_a_new_title_claims_it() async throws {
+    /// caret, it does again: also when the caret reaches the body from no
+    /// focused item, so arrow keys in the list select again.
+    @Test(.timeLimit(.minutes(1)), arguments: [true, false])
+    func the_notes_list_moves_no_focus_while_a_new_title_claims_it(fromTitle: Bool) async throws {
         let f = try await newNote()
         let router = NotesSplitRouter()
         router.select(NoteRoute(id: f.noteId))
@@ -906,11 +908,14 @@ struct NoteTitleBurstTests {
         #expect(!list.selectionFollowsFocus, "the list's selection still moves the focus from the claiming title")
 
         // The user moves the caret to the body: the claim ends.
+        await until { !views(BlockTextView.self, in: window).isEmpty }
         let block = try #require(views(BlockTextView.self, in: window).first, "the body has no block")
         block.becomeFirstResponder()
         NotificationCenter.default.post(
             name: UIFocusSystem.didUpdateNotification, object: UIFocusSystem.focusSystem(for: window),
-            userInfo: [UIFocusSystem.focusUpdateContextUserInfoKey: FocusUpdate.make(previous: field, next: block)]
+            userInfo: [UIFocusSystem.focusUpdateContextUserInfoKey: FocusUpdate.make(
+                previous: fromTitle ? field : nil, next: block
+            )]
         )
         await until { list.selectionFollowsFocus }
         #expect(list.selectionFollowsFocus, "the list kept its selection from following focus after the claim ended")

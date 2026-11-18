@@ -408,12 +408,18 @@ struct NoteTitleEditor: View {
                 .onReceive(NotificationCenter.default.publisher(for: UIFocusSystem.didUpdateNotification)) { note in
                     guard claim.holds, let window = host.window,
                           note.object as? UIFocusSystem === UIFocusSystem.focusSystem(for: window),
-                          let context = note.userInfo?[UIFocusSystem.focusUpdateContextUserInfoKey] as? UIFocusUpdateContext,
-                          let previous = context.previouslyFocusedItem, host.isTitle(previous)
+                          let context = note.userInfo?[UIFocusSystem.focusUpdateContextUserInfoKey] as? UIFocusUpdateContext
                     else { return }
-                    _ = claim.takesBack(after: TitleFocusMove(
-                        to: focusTarget(context.nextFocusedItem), byKey: !context.focusHeading.isEmpty
-                    ))
+                    let next = focusTarget(context.nextFocusedItem)
+                    if let previous = context.previouslyFocusedItem, host.isTitle(previous) {
+                        _ = claim.takesBack(after: TitleFocusMove(to: next, byKey: !context.focusHeading.isEmpty))
+                    } else if next == .text {
+                        // #5100: the user put the caret in the body from no
+                        // focused item, or from the row. That move is theirs:
+                        // the claim ends, and the list's selection follows
+                        // focus again.
+                        claim.end()
+                    }
                 }
                 // Saved as the app resigns, as a body block is (#2820). Not
                 // while an input method composes: Control Center resigns the
