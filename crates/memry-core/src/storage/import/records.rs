@@ -39,14 +39,18 @@ impl ImportWriter {
         tx.commit().map_err(failed)
     }
 
-    /// `(item_id, clock)` of every staged record of `item_type`, for stage checks 2 and 5.
+    /// `(item_id, clock)` of every live staged record of `item_type`, for stage checks 2 and 5. A
+    /// queued delete's tombstone has no source row.
     pub fn record_clocks(
         &self,
         item_type: &str,
     ) -> Result<Vec<(String, Option<String>)>, StorageError> {
         let mut stmt = self
             .data
-            .prepare("SELECT item_id, clock FROM sync_items WHERE item_type = ?1 ORDER BY item_id")
+            .prepare(
+                "SELECT item_id, clock FROM sync_items
+                  WHERE item_type = ?1 AND deleted_at IS NULL ORDER BY item_id",
+            )
             .map_err(failed)?;
         stmt.query_map([item_type], |row| Ok((row.get(0)?, row.get(1)?)))
             .map_err(failed)?

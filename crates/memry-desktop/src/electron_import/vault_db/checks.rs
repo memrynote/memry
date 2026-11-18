@@ -1,8 +1,9 @@
 //! The stage checks a staged pair passes before [`super::stage_vault_import`] returns `Staged`.
 //! Numbering follows Step 37's report: 3, 7 and 8 are Step 37's. Check 1 covers every table
 //! the report lists; checks 2 (id sets) and 5 (byte-equal ids, clocks and cursor) cover the
-//! record tables imported so far ([`RECORD_TABLES`]) and the vault id; check 4 (outbox rows)
-//! arrives with 36c. Details name tables and counts, never ids or values.
+//! record tables imported so far ([`RECORD_TABLES`]) and the vault id; check 4 holds the staged
+//! outbox to the source's queued record pushes. Details name tables and counts, never ids or
+//! values.
 
 use std::collections::BTreeMap;
 
@@ -10,6 +11,7 @@ use memry_core::storage::import::ImportWriter;
 
 use super::source::{Sources, source_error};
 use super::tables::SourceDb;
+use super::tables::queue::{self, Disposition};
 use super::tables::records::parse_clock;
 use super::{ImportError, VaultStageReport, read_source_id};
 
@@ -66,6 +68,8 @@ pub(super) fn run(
         }
     }
     report.checks_passed.push(2);
+    outbox(source, writer)?;
+    report.checks_passed.push(4);
     if source_vault_id(source)? != writer.vault_id()? {
         clock_mismatches.push("vault_metadata: the core vault id is not the source uuid".into());
     }
@@ -84,6 +88,35 @@ pub(super) fn run(
         });
     }
     report.checks_passed.push(6);
+    Ok(())
+}
+
+/// Check 4: the staged outbox holds exactly one row per queued push the plan keeps, with its
+/// type and op, and nothing else. A local-only note's push is withheld by the outbox itself.
+fn outbox(source: &rusqlite::Connection, writer: &ImportWriter) -> Result<(), ImportError> {
+    let mut expected = Vec::new();
+    for (_, disposition) in queue::plan(source, writer)? {
+        let Disposition::Enqueue(item) = disposition else {
+            continue;
+        };
+        if item.item_type == "note" && writer.is_local_only_note(&item.item_id)? {
+            continue;
+        }
+        expected.push((item.item_type, item.item_id, item.op.as_str().to_owned()));
+    }
+    let mut staged = writer.outbox_rows()?;
+    expected.sort();
+    staged.sort();
+    if expected != staged {
+        let missing = expected.iter().filter(|row| !staged.contains(row)).count();
+        let extra = staged.iter().filter(|row| !expected.contains(row)).count();
+        return Err(ImportError::CheckFailed {
+            check: 4,
+            detail: format!(
+                "outbox: {missing} queued pushes missing, {extra} rows not in the source queue"
+            ),
+        });
+    }
     Ok(())
 }
 

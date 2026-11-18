@@ -76,8 +76,13 @@ pub enum ImportError {
         expected: i64,
     },
     /// The source holds rows whose importer this build does not have yet. Nothing was written.
-    #[error("the import of {0} is not built yet")]
-    NotReady(String),
+    /// The source holds data whose importer a later build brings. The message is the user's:
+    /// `area` in their words, and what to do. `detail` names the table or key, for logs.
+    #[error(
+        "This version of MemryNote cannot move this vault's {area} yet. Nothing was changed. \
+         Keep using the previous MemryNote app for this vault, and update MemryNote to try again."
+    )]
+    NotReady { area: &'static str, detail: String },
     #[error("{path} is {bytes} bytes, over the {max} byte limit")]
     TooLarge { path: PathBuf, bytes: u64, max: u64 },
     /// The source changed while it was copied: Electron was writing. Retry once it has quit.

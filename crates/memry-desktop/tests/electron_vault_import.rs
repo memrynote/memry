@@ -24,6 +24,8 @@ use sha2::{Digest, Sha256};
 mod electron_db;
 #[path = "electron_vault_import/notes.rs"]
 mod notes;
+#[path = "electron_vault_import/queue.rs"]
+mod queue;
 #[path = "electron_vault_import/records.rs"]
 mod records;
 #[path = "electron_vault_import/tag_template_records.rs"]
@@ -154,7 +156,7 @@ fn installed_marker(vault: &Vault) -> Option<String> {
 fn an_empty_electron_pair_installs_a_core_pair_that_opens() {
     let vault = Vault::new();
     let report = import(&vault);
-    assert_eq!(report.checks_passed, vec![1, 2, 5, 6]);
+    assert_eq!(report.checks_passed, vec![1, 2, 4, 5, 6]);
     assert!(report.tables.values().all(|t| t.source_count == 0));
     assert!(!vault.staging().exists(), "staging removed after install");
 
@@ -285,7 +287,7 @@ fn rows_whose_importer_is_pending_abort_before_any_write() {
     );
     assert_refused(
         &vault,
-        |e| matches!(e, ImportError::NotReady(what) if what.contains("data.db/settings")),
+        |e| matches!(e, ImportError::NotReady { detail, .. } if detail.contains("data.db/settings")),
     );
 
     let vault = Vault::new();
@@ -296,7 +298,7 @@ fn rows_whose_importer_is_pending_abort_before_any_write() {
     );
     assert_refused(
         &vault,
-        |e| matches!(e, ImportError::NotReady(what) if what.contains("lastCursor")),
+        |e| matches!(e, ImportError::NotReady { detail, .. } if detail.contains("lastCursor")),
     );
 }
 
