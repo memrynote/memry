@@ -45,6 +45,8 @@ fn main() {
     // Rehearsal builds bake their feed in (`updater/velopack_backend.rs`, `option_env!`).
     println!("cargo:rerun-if-env-changed={}", build_env::UPDATE_FEED);
 
+    // The default app manifest reads `permissions/`, whose files turn on the app-command ACL: a
+    // window calls only the app commands its capability grants (`tests/acl.rs`).
     tauri_build::build();
 }
 
