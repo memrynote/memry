@@ -49,10 +49,12 @@ fn within_domain(host: &str, domain: &str) -> bool {
 }
 
 /// `createCredentialScope`: the origins that may receive the account's credentials. The exact
-/// origin the user connected to (scheme, host and port), plus, for a known multi-host provider,
-/// the rest of that provider's own domain over HTTPS on 443; never a parent domain in general
-/// (`myname.synology.me` must not reach `other.synology.me`). Electron matched the host alone for
-/// HTTPS, so another port or an upgrade from plain HTTP kept the credentials; here they do not.
+/// origin the user connected to (scheme, host and port); for `http://` on port 80, also HTTPS on
+/// the same host and 443 (a server that forces TLS, as Electron allowed); for a known multi-host
+/// provider, the rest of that provider's own domain over HTTPS on 443. Never a parent domain in
+/// general (`myname.synology.me` must not reach `other.synology.me`). Electron matched the host
+/// alone for HTTPS, so another port, or an upgrade from a non-default HTTP port, kept the
+/// credentials; here they do not.
 #[derive(Debug, Clone)]
 pub struct CredentialScope {
     scheme: String,
@@ -85,12 +87,17 @@ impl CredentialScope {
             && target.scheme() == self.scheme
             && host == self.host
             && port == self.port;
+        let tls_upgrade = self.scheme == "http"
+            && self.port == Some(80)
+            && target.scheme() == "https"
+            && host == self.host
+            && port == Some(443);
         let provider_host = target.scheme() == "https"
             && port == Some(443)
             && self
                 .provider_domain
                 .is_some_and(|domain| within_domain(&host, domain));
-        same_origin || provider_host
+        same_origin || tls_upgrade || provider_host
     }
 }
 
@@ -437,8 +444,15 @@ mod tests {
         assert!(!allows(&lan, "http://192.168.1.6:5232/"));
         assert!(
             !allows(&lan, "https://192.168.1.5/"),
-            "another scheme is another origin"
+            "an upgrade from a non-default port keeps nothing"
         );
+        let cloud = scope("http://cloud.example/");
+        assert!(
+            allows(&cloud, "https://CLOUD.example/remote.php/dav/"),
+            "a server that forces TLS on the same host keeps them"
+        );
+        assert!(!allows(&cloud, "https://cloud.example:8443/"));
+        assert!(!allows(&cloud, "https://other.example/"));
         let tls = scope("https://dav.example.com/");
         assert!(!allows(&tls, "http://dav.example.com/"));
         assert!(!allows(&tls, "ftp://dav.example.com/"));

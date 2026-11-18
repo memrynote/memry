@@ -195,9 +195,16 @@ impl Dav {
     }
 }
 
-/// The OS keychain's stand-in: `(service, account)` to bytes.
+/// What a [`Secrets`] runs once, after its next write.
+pub type AfterSet = Box<dyn FnOnce() + Send>;
+
+/// The OS keychain's stand-in: `(service, account)` to bytes, and a step to run after the next
+/// write.
 #[derive(Default)]
-pub struct Secrets(pub Mutex<HashMap<(String, String), Vec<u8>>>);
+pub struct Secrets(
+    pub Mutex<HashMap<(String, String), Vec<u8>>>,
+    pub Mutex<Option<AfterSet>>,
+);
 
 impl Secrets {
     pub fn get(&self, service: &str, account: &str) -> Option<Vec<u8>> {
@@ -232,6 +239,9 @@ impl GenericSecrets for Secrets {
             .lock()
             .unwrap()
             .insert((service.to_owned(), account.to_owned()), value.to_vec());
+        if let Some(after) = self.1.lock().unwrap().take() {
+            after();
+        }
         Ok(())
     }
 

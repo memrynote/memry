@@ -358,6 +358,22 @@ async fn the_writer_check_holds_a_connect_until_old_devices_are_acknowledged() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_vault_closed_after_the_keychain_write_takes_the_password_back() {
+    let rig = Rig::new().await;
+    let open = rig.open().await;
+    let session = rig.session.clone();
+    *rig.secrets.1.lock().unwrap() = Some(Box::new(move || session.close()));
+    let closed = rig
+        .connect(&open, &form(SERVER), &Devices::signed_out())
+        .await;
+    assert!(matches!(closed, Err(CaldavError::Closed)), "{closed:?}");
+    assert_eq!(rig.secrets.len(), 0, "the password it wrote is gone");
+    drop(open);
+    let reopened = rig.open().await;
+    assert!(caldav_sources(&reopened).is_empty());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn a_vault_closed_during_discovery_takes_no_write() {
     let rig = Rig::new().await;
     let open = rig.open().await;
