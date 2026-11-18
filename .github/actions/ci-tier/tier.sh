@@ -8,7 +8,9 @@
 # GitHub API returns them; unset or missing when they could not be read, which fails the OS legs
 # open), SOURCE_ROOT (a checkout holding the PR's Rust sources, read by os-modules.sh; unset fails
 # the OS legs open), QUEUE_TESTED (true when this push's SHA passed the calling workflow's merge_group
-# run; anything else runs every leg).
+# run; anything else runs every leg), POST_MERGE (true when the caller opts in to the post-merge
+# schedule), SCHEDULE_TESTED (true when a scheduled run of the calling workflow already finished on
+# this SHA).
 # scripts/ci-tier.test.mjs runs this file with the diffs it protects.
 set -euo pipefail
 
@@ -30,12 +32,11 @@ emit() {
 tiered=false
 if [ "$EVENT" = "pull_request" ] && [ "$BASE_REF" != "main" ]; then tiered=true; fi
 
-# Intel Macs run on main and on workflow_dispatch only. A tiered PR, the merge queue and a push to
-# feat/tauri-v2 skip them (a scheduled run cannot target feat/tauri-v2: schedules fire from the
-# default branch's workflow files).
+# Intel Macs run on main and on workflow_dispatch only. A tiered PR, the merge queue, and a push or
+# scheduled run of feat/tauri-v2 skip them (Nightly proptest runs the Intel leg).
 intel=true
 if [ "$EVENT" = "merge_group" ] || [ "$tiered" = true ] \
-  || { [ "$EVENT" = "push" ] && [ "$REF" = "refs/heads/feat/tauri-v2" ]; }; then
+  || { { [ "$EVENT" = "push" ] || [ "$EVENT" = "schedule" ]; } && [ "$REF" = "refs/heads/feat/tauri-v2" ]; }; then
   intel=false
 fi
 
@@ -56,15 +57,25 @@ fi
 # The pull request files API stops at 3000 files, so a list that long may be cut short.
 if [ "$EVENT" = "pull_request" ] && [ "$(printf '%s\n' "$files" | grep -c .)" -ge 3000 ]; then LISTED=false; fi
 
-# Post-merge: a push to feat/tauri-v2 re-tests the SHA the merge queue passed, so it runs only the legs
-# the queue skips (Apple Silicon, the windows-arm64 e2e specs; rust-legs.jq, tauri-builds.jq). It runs
-# every leg when the SHA did not pass the queue (a bypass push) or the file list is unreadable, and when
-# the range changes a cache-key input: pushes save the caches PRs and the queue restore, and rust-cache,
-# setup-node and tesseract-sources save only under a new key. For a push the range starts at the last
-# push run that was not cancelled (post-merge.sh), so a superseded run's cache-key change counts too.
-# The ml-worker's build.rs is in the Tesseract sources key (tesseract-sources/action.yml).
+# Post-merge (#5035). A push to feat/tauri-v2 re-tests the SHA the merge queue passed, and the legs the
+# queue skips (Apple Silicon, the windows-arm64 e2e specs; rust-legs.jq, tauri-builds.jq) run on the
+# 6-hourly schedule of feat/tauri-v2 (`post_merge=true`). So a push that passed the queue runs nothing
+# (`covered`, which also turns off the macOS-only jobs: macos=false). It runs every leg when the SHA did
+# not pass the queue (a bypass push) or the file list is unreadable, and when the range changes a
+# cache-key input: pushes save the caches PRs and the queue restore, and rust-cache, setup-node and
+# tesseract-sources save only under a new key. For a push the range starts at the last push run that
+# was not cancelled (post-merge.sh), so a superseded run's cache-key change counts too. The ml-worker's
+# build.rs is in the Tesseract sources key (tesseract-sources/action.yml). A scheduled run is `covered`
+# when a scheduled run already passed this SHA (post-merge.sh), and on any other ref: schedules fire
+# from the default branch, which is feat/tauri-v2 today.
 if [ "$EVENT" = "push" ] && [ "$REF" = "refs/heads/feat/tauri-v2" ] && [ "${QUEUE_TESTED:-false}" = true ] && [ "$LISTED" = true ] \
   && ! printf '%s\n' "$files" | grep -E '(^|/)Cargo\.(toml|lock)$|(^|/)rust-toolchain(\.toml)?$|(^|/)\.cargo/|^pnpm-lock\.yaml$|^scripts/fetch-(pdfium|tesseract-sources)\.mjs$|^crates/memry-ml-worker/build\.rs$|^\.github/(actions/|workflows/(rust-ci|desktop-tauri-ci)\.yml$)' >/dev/null; then
+  emit true true false "$electron" "$intel" false none none none none false covered; exit 0
+fi
+if [ "${POST_MERGE:-false}" = true ] && [ "$EVENT" = "schedule" ]; then
+  if [ "$REF" != "refs/heads/feat/tauri-v2" ] || [ "${SCHEDULE_TESTED:-false}" = true ]; then
+    emit true true false "$electron" "$intel" false none none none none false covered; exit 0
+  fi
   emit true true true "$electron" "$intel" "$macos" tests tests tests tests false true; exit 0
 fi
 

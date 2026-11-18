@@ -30,9 +30,10 @@ inputs:
     default: ''
   post-merge:
     description: >-
-      'true' lets a push to feat/tauri-v2 run only the legs the merge queue skips (`post_merge`) when
-      the calling workflow's gate passed in a merge_group run on the same SHA (post-merge.sh). Needs
-      `actions: read`.
+      'true' lets a push to feat/tauri-v2 skip every leg (`post_merge=covered`) when the calling
+      workflow's gate passed in a merge_group run on the same SHA, and a scheduled run of
+      feat/tauri-v2 run the legs the merge queue skips (`post_merge=true`) unless a scheduled run
+      already passed that SHA (post-merge.sh). Needs `actions: read`.
     default: 'false'
 outputs:
   full:
@@ -69,7 +70,11 @@ outputs:
     description: The Linux arm64 memry-ml-worker leg runs (full tier, the merge queue included, or a fast-tier PR that touches the worker, its native inputs, the vectors and tessdata its tests read, or their CI)
     value: ${{ steps.tier.outputs.rust_linux_arm64 }}
   post_merge:
-    description: A push to feat/tauri-v2 whose SHA passed this workflow in the merge queue and changed no cache-key input; only the legs the queue skips run
+    description: >-
+      `covered` for a push to feat/tauri-v2 whose SHA passed this workflow in the merge queue and
+      changed no cache-key input (no leg runs), for a first-attempt scheduled run on a SHA a scheduled
+      run already passed, and for a scheduled run of any other ref; `true` for another scheduled run
+      of feat/tauri-v2 (only the legs the queue skips); `false` otherwise
     value: ${{ steps.tier.outputs.post_merge }}
 runs:
   using: composite
@@ -93,6 +98,7 @@ runs:
         WORKFLOW_REF: ${{ github.workflow_ref }}
         WORKFLOW_NAME: ${{ github.workflow }}
         RUN_ID: ${{ github.run_id }}
+        RUN_ATTEMPT: ${{ github.run_attempt }}
       run: |
         set -euo pipefail
 
@@ -103,8 +109,8 @@ runs:
         if [ "$EVENT" = "merge_group" ]; then kind=range; from="$MQ_BASE_SHA"; to="$MQ_HEAD_SHA"; fi
         if [ "$EVENT" = "push" ] && [ "$REF" = "refs/heads/feat/tauri-v2" ]; then kind=range; from="$PUSH_BEFORE"; to="$PUSH_AFTER"; fi
 
-        # Post-merge (#5035): did the merge queue pass this SHA, and where does the cache-key range
-        # start (post-merge.sh). A script that fails runs every leg.
+        # Post-merge (#5035): did the merge queue pass this SHA and where does the cache-key range start,
+        # or did a scheduled run already pass it (post-merge.sh). A script that fails runs every leg.
         if ! post=$(SHA="$PUSH_AFTER" bash "$GITHUB_ACTION_PATH/post-merge.sh"); then
           echo "::warning::the post-merge lookup failed; running every leg"
           post=""
@@ -112,6 +118,7 @@ runs:
         queue_tested=$(sed -n 's/^queue_tested=//p' <<<"$post")
         saved=$(sed -n 's/^from=//p' <<<"$post")
         if [ "$queue_tested" = true ] && [ -n "$saved" ]; then from="$saved"; else queue_tested=false; fi
+        schedule_tested=$(sed -n 's/^schedule_tested=//p' <<<"$post")
 
         files=""
         listed=false
@@ -128,4 +135,5 @@ runs:
           echo "::warning::could not list the changed files; running the path-gated jobs"
         fi
 
-        printf '%s\n' "$files" | LISTED="$listed" PATCHES="$patches" QUEUE_TESTED="$queue_tested" bash "$GITHUB_ACTION_PATH/tier.sh" >> "$GITHUB_OUTPUT"
+        printf '%s\n' "$files" | LISTED="$listed" PATCHES="$patches" QUEUE_TESTED="$queue_tested" SCHEDULE_TESTED="$schedule_tested" \
+          bash "$GITHUB_ACTION_PATH/tier.sh" >> "$GITHUB_OUTPUT"
