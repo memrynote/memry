@@ -168,11 +168,23 @@ pub fn due_window(
 /// A snoozed reminder fires at `snoozedUntil` (desktop's due query); one
 /// without a usable `snoozedUntil` falls back to `remindAt`.
 fn fire_at_ms(reminder: &Reminder) -> Option<i64> {
-    let snoozed = (reminder.status == STATUS_SNOOZED)
-        .then_some(reminder.snoozed_until.as_deref())
+    fire_instant(
+        &reminder.status,
+        &reminder.remind_at,
+        reminder.snoozed_until.as_deref(),
+    )
+}
+
+pub(super) fn fire_instant(
+    status: &str,
+    remind_at: &str,
+    snoozed_until: Option<&str>,
+) -> Option<i64> {
+    let snoozed = (status == STATUS_SNOOZED)
+        .then_some(snoozed_until)
         .flatten()
         .and_then(instants::to_epoch_ms);
-    snoozed.or_else(|| instants::to_epoch_ms(&reminder.remind_at))
+    snoozed.or_else(|| instants::to_epoch_ms(remind_at))
 }
 
 struct Target {
@@ -250,7 +262,7 @@ fn reminder_row(row: &Row<'_>) -> rusqlite::Result<Reminder> {
     })
 }
 
-fn failed(error: rusqlite::Error) -> StorageError {
+pub(super) fn failed(error: rusqlite::Error) -> StorageError {
     StorageError::Failed {
         what: error.to_string(),
     }

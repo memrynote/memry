@@ -218,6 +218,14 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "attachment_sync",
         sql: include_str!("migrations/data/0034_attachment_sync.sql"),
     },
+    // 40 waits for 35-39, which open PRs hold (#4879, #4891, #5069, #5090 and
+    // S14-5's). 40 must not land before 35-39: the runner applies only
+    // `version > user_version`, so a file already at 40 would never run them.
+    Migration {
+        version: 40,
+        name: "reminder_fires",
+        sql: include_str!("migrations/data/0040_reminder_fires.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.
