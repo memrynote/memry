@@ -117,7 +117,7 @@ fn a_png_profile_that_unpacks_past_10_mib_is_refused_before_decoding() {
 
 #[test]
 fn a_progressive_jpegs_coefficient_buffers_count_toward_the_allocation_cap() {
-    // 10000x10000: 300 MB of RGB fits the cap, the 602 MB of coefficients a progressive
+    // 10000x10000: 300 MB of RGB fits the cap, the 604 MB of coefficients a progressive
     // decode holds besides it do not.
     let mut bytes = fixture("jpeg progressive @140");
     let sof = bytes
@@ -127,7 +127,7 @@ fn a_progressive_jpegs_coefficient_buffers_count_toward_the_allocation_cap() {
     bytes[sof + 5..sof + 9].copy_from_slice(&[0x27, 0x10, 0x27, 0x10]);
     assert_eq!(
         message(decode(&bytes)),
-        "image needs 901921536 bytes to decode, over the 536870912-byte limit"
+        "image needs 903725766 bytes to decode, over the 536870912-byte limit"
     );
 }
 
@@ -147,7 +147,7 @@ fn a_fill_byte_before_the_frame_header_does_not_hide_a_progressive_jpegs_coeffic
     bytes.extend([0xFF, 0xDA, 0x00, 0x02, 0xFF, 0xD9]);
     assert_eq!(
         message(decode(&bytes)),
-        "image needs 1524747456 bytes to decode, over the 536870912-byte limit"
+        "image needs 1525841766 bytes to decode, over the 536870912-byte limit"
     );
 }
 
@@ -356,4 +356,24 @@ proptest! {
             assert_eq!(data.len(), len);
         });
     }
+}
+
+#[test]
+fn a_progressive_jpeg_sampled_by_three_is_charged_its_whole_mcu_grid() {
+    // Every component sampled 1x3 (zune-jpeg refuses a horizontal 3): it pads the height to a
+    // multiple of 24 (250 to 264) and the width to a multiple of 8, and holds one i16 per padded
+    // pixel of each component.
+    let mut bytes = fixture("jpeg progressive @140");
+    let sof = bytes
+        .windows(2)
+        .position(|pair| pair == [0xFF, 0xC2])
+        .expect("SOF2");
+    assert_eq!(bytes[sof + 9], 3, "three components");
+    bytes[sof + 5..sof + 9].copy_from_slice(&[0x00, 0xFA, 0x01, 0x00]);
+    for component in 0..3 {
+        bytes[sof + 11 + component * 3] = 0x13;
+    }
+    let held = 3 * 2 * 264 * 256;
+    let charged = jpeg_coefficient_bytes(&bytes).expect("headers");
+    assert!(charged >= held, "charged {charged}, zune-jpeg holds {held}");
 }
