@@ -338,7 +338,7 @@ jobs:
           gh release download "$UPDATE_TAG" --repo "$GITHUB_REPOSITORY" -D assets -p "MemryNote-$TO_VERSION-x86_64.AppImage"
           chmod +x "assets/MemryNote-$TO_VERSION-x86_64.AppImage"
           sudo apt-get update
-          sudo apt-get install -y libfuse2 xvfb libwebkit2gtk-4.1-0 libayatana-appindicator3-1
+          sudo apt-get install -y dbus libfuse2 xvfb libwebkit2gtk-4.1-0 libayatana-appindicator3-1
 
       - name: The AppImage carries the Velopack version
         run: |
@@ -351,7 +351,8 @@ jobs:
       - name: App launches
         run: |
           set -euo pipefail
-          xvfb-run -a "assets/MemryNote-$TO_VERSION-x86_64.AppImage" > "$RUNNER_TEMP/app.out" 2>&1 &
+          # A desktop session has a session bus; the single-instance check talks D-Bus before setup.
+          dbus-run-session -- xvfb-run -a "assets/MemryNote-$TO_VERSION-x86_64.AppImage" > "$RUNNER_TEMP/app.out" 2>&1 &
           sleep 25
           pgrep -x memrynote || { tail -40 "$RUNNER_TEMP/app.out"; echo '::error::memrynote exited within 25s of launch'; exit 1; }
           grep -hF "MemryNote $TO_VERSION starting (packaged)" "$MEMRY_TEST_LOG_DIR"/*.log
