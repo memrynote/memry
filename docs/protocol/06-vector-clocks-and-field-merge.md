@@ -582,7 +582,7 @@ path that pull, first sync and relay share (`crates/memry-core/src/sync/apply/re
 
 The `field-merge` vector class does not cover this rule: the union is inline in
 the task handler and not in `mergeTaskFields`. The two-device tests in
-`crates/memry-core/tests/sync_task_list_union.rs` pin it.
+`crates/memry-core/tests/sync_list_fields_union.rs` pin it.
 
 ## 6.8 Which types merge which way — Q06.5
 

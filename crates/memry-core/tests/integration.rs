@@ -463,6 +463,9 @@ mod sync_hardening_orphans;
 mod sync_hardening_purged;
 #[path = "sync_hardening_repairs.rs"]
 mod sync_hardening_repairs;
+#[cfg(feature = "markdown")]
+#[path = "sync_list_fields_union.rs"]
+mod sync_list_fields_union;
 #[path = "sync_note_body_feed.rs"]
 mod sync_note_body_feed;
 #[path = "sync_outbox.rs"]
@@ -483,9 +486,6 @@ mod sync_requeue_convergence;
 mod sync_requeue_delete;
 #[path = "sync_requeue_pass.rs"]
 mod sync_requeue_pass;
-#[cfg(feature = "markdown")]
-#[path = "sync_task_list_union.rs"]
-mod sync_task_list_union;
 #[path = "tag_fields.rs"]
 mod tag_fields;
 #[path = "tag_fold_vectors.rs"]
