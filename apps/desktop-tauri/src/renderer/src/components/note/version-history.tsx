@@ -380,8 +380,7 @@ function VersionHistorySession({
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-medium truncate">{version.title}</span>
-                              {/* An outside write holds text the file no longer has. */}
-                              {index === 0 && !version.outsideWrite && (
+                              {index === 0 && (
                                 <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">
                                   {t('versionHistory.latest')}
                                 </span>

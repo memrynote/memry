@@ -39,8 +39,7 @@ use crate::vault::note_file::read_note;
 const SCOPE: &str = "versions";
 
 /// `SnapshotListItem`. `reason` is the stored column, which the renderer reads as
-/// `SnapshotReason`; `outside_write` tells an outside-write version from the other
-/// `significant` ones, which Electron never did ([`Listed::outside_write`]).
+/// `SnapshotReason`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct VersionView {
@@ -50,7 +49,6 @@ pub struct VersionView {
     pub word_count: u32,
     pub reason: String,
     pub created_at: String,
-    pub outside_write: bool,
 }
 
 /// `SnapshotDetail`: the version and what a restore puts in the note, which the panel previews:
@@ -65,7 +63,6 @@ pub struct VersionDetailView {
     pub word_count: u32,
     pub reason: String,
     pub created_at: String,
-    pub outside_write: bool,
     pub file_content: String,
 }
 
@@ -78,7 +75,6 @@ impl From<Listed> for VersionView {
             title: listed.title,
             reason: listed.reason,
             created_at: listed.created_at,
-            outside_write: listed.outside_write,
         }
     }
 }
@@ -92,7 +88,6 @@ impl From<Kept> for VersionDetailView {
             word_count,
             reason,
             created_at,
-            outside_write,
         } = kept.listed.into();
         Self {
             id,
@@ -101,7 +96,6 @@ impl From<Kept> for VersionDetailView {
             word_count,
             reason,
             created_at,
-            outside_write,
             file_content: restore_body(&kept.content).to_owned(),
         }
     }

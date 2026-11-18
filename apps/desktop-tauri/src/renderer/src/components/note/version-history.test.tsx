@@ -116,32 +116,6 @@ describe('VersionHistory', () => {
     mocks.deleteVersion.mockResolvedValue({ success: true })
   })
 
-  // S14-5: a locked note's revert keeps the outside edit as the newest version; the file holds
-  // the restored text, so that version is not the latest.
-  it('does not call an outside-write version the latest', async () => {
-    mocks.getVersions.mockResolvedValueOnce([
-      {
-        id: 'version-1',
-        title: 'Outside edit',
-        reason: 'significant',
-        outsideWrite: true,
-        wordCount: 3,
-        createdAt: '2026-05-10T09:00:00Z'
-      },
-      {
-        id: 'version-2',
-        title: 'Older draft',
-        reason: 'manual',
-        outsideWrite: false,
-        wordCount: 20,
-        createdAt: '2026-05-09T09:00:00Z'
-      }
-    ])
-    renderHistory()
-    expect(await screen.findByText('Outside edit')).toBeInTheDocument()
-    expect(screen.queryByText('versionHistory.latest')).not.toBeInTheDocument()
-  })
-
   it('renders empty, error, and closed states', async () => {
     const closed = renderHistory({ open: false })
     expect(closed.container).toBeEmptyDOMElement()
