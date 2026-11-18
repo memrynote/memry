@@ -1806,6 +1806,35 @@ fn a_node_after_multibyte_text_keeps_the_text_after_it() {
     assert_eq!(spelled(&document), ["A にほn ", "dateMention", " z"]);
 }
 
+/// #4398: an offset inside a character is refused, and the block is left as
+/// it was. yrs underflowed on it: a panic in debug, a wrapped length in
+/// release.
+#[test]
+fn a_node_inside_a_character_is_refused() {
+    let document = opened(&body(&[("a", "paragraph", "A 語 z")]));
+    for (start, end) in [(3, 3), (2, 3), (3, 5)] {
+        let refused = apply(
+            &document,
+            &BlockEdit::InsertInline {
+                block_id: "a".to_owned(),
+                start,
+                end,
+                kind: "dateMention".to_owned(),
+                text: String::new(),
+                attrs: inline_attrs(&[("date", "2026-01-01")]),
+            },
+        );
+        assert!(
+            matches!(
+                refused,
+                Err(memry_core::crdt::CrdtError::Undecodable { .. })
+            ),
+            "{start}..{end}: {refused:?}"
+        );
+        assert_eq!(spelled(&document), ["A 語 z"]);
+    }
+}
+
 /// #4808: a multibyte tail with a mark in it comes back whole and with the
 /// mark where it was.
 #[test]

@@ -16,7 +16,8 @@ struct JournalSameDayEntry: Equatable, Identifiable {
 extension JournalStore {
     /// The same day in every other year, later ones included, newest first,
     /// each with the core's preview (`Journal.sameDayEntries`, desktop
-    /// `getJournalSameDayEntries`). `nil` when the read failed (already reported).
+    /// `getJournalSameDayEntries`). `nil` when the read failed (already
+    /// reported) or was cancelled.
     func sameDayEntries(_ date: String) async -> [JournalSameDayEntry]? {
         let today = today
         return await read { core in
