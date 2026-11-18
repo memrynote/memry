@@ -1341,6 +1341,39 @@ describe('ContentArea', () => {
     expect(windowMarks()).toEqual([['c-1', 16, 20]])
   })
 
+  it("takes the device's offsets when the window's no longer cover the quote", async () => {
+    const doc = new Y.Doc()
+    const plain = 'beta and beta.'
+    const comment: CriticMarkupMark = {
+      id: 'c-1',
+      kind: 'comment',
+      visibleText: 'beta',
+      start: 9,
+      end: 13,
+      body: 'the second beta'
+    }
+    const { shown, liveText, windowMarks } = bindReviewWindow(
+      doc,
+      serializeCriticMarkup(plain, [comment])
+    )
+    await waitFor(() => expect(docMarks(doc)).toEqual([['c-1', 9, 13]]))
+
+    // The other device typed before the comment, then edited it: its write carries its offsets.
+    liveText(`Intro. ${plain}`, false)
+    act(() =>
+      doc.transact(
+        () =>
+          writeCriticMarkupMarksToYDoc(doc, [
+            { ...comment, start: 16, end: 20, body: 'edited there' }
+          ]),
+        'remote'
+      )
+    )
+
+    await waitFor(() => expect(shown.review!.marks[0]?.body).toBe('edited there'))
+    expect(windowMarks()).toEqual([['c-1', 16, 20]])
+  })
+
   it('leaves a comment another device resolved out after typing here, with one copy of each other', async () => {
     const here = new Y.Doc()
     const plain = 'alpha and gamma.'

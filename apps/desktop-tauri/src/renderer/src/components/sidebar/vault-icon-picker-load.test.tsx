@@ -8,6 +8,7 @@ import {
   type RenderResult
 } from '@testing-library/react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
+import * as PopoverPrimitive from '@radix-ui/react-popover'
 import type { ReactElement } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -123,7 +124,8 @@ describe('VaultIconPicker when its chunk does not load', () => {
     const onOpenChange = vi.fn()
     const onDialogOpenChange = vi.fn()
 
-    render(
+    const view = render(pickerElement(onOpenChange))
+    view.rerender(
       <>
         {pickerElement(onOpenChange)}
         <DialogPrimitive.Root open onOpenChange={onDialogOpenChange}>
@@ -139,5 +141,30 @@ describe('VaultIconPicker when its chunk does not load', () => {
 
     expect(onOpenChange).not.toHaveBeenCalled()
     expect(onDialogOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  it('still closes on Escape when a popover elsewhere was open before it', () => {
+    chunk.mode = 'hang'
+    const onOpenChange = vi.fn()
+
+    const popover = (
+      <PopoverPrimitive.Root open>
+        <PopoverPrimitive.Anchor />
+        <PopoverPrimitive.Portal>
+          <PopoverPrimitive.Content>Calendar filters</PopoverPrimitive.Content>
+        </PopoverPrimitive.Portal>
+      </PopoverPrimitive.Root>
+    )
+    const view = render(popover)
+    expect(screen.getByRole('dialog')).toHaveTextContent('Calendar filters')
+    view.rerender(
+      <>
+        {popover}
+        {pickerElement(onOpenChange)}
+      </>
+    )
+    fireEvent.keyDown(document.body, { key: 'Escape' })
+
+    expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 })
