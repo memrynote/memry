@@ -17,10 +17,14 @@ use crate::api::errors::StorageError;
 use crate::storage::migrations::{self, INDEX_MIGRATIONS};
 use crate::storage::pragmas::{self, Profile};
 
+mod crdt;
 mod notes;
 mod outbox;
 mod records;
 
+pub use crdt::{
+    DocumentState, ImportBodyPush, ImportBodySync, ImportDocument, ImportFileHash, document_state,
+};
 pub use notes::{ImportNoteFile, ImportNoteSnapshot};
 pub use outbox::{ImportDeleted, ImportQueued, ImportTombstoneClock};
 pub use records::ImportRecord;

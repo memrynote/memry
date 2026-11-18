@@ -11,7 +11,6 @@ use rusqlite::{Connection, OptionalExtension};
 
 use super::source::{Sources, source_error};
 use super::sync_state::{self, KeyRule};
-use super::tables::queue::NOTE_BODY_TYPE;
 use super::tables::{
     ELECTRON_DATA_LAST_MIGRATION, ELECTRON_INDEX_LAST_MIGRATION, Importer, LEDGER_TABLE, SourceDb,
     TableMapping, mapping, pending_area,
@@ -33,7 +32,7 @@ pub(super) struct Preflight {
 
 pub(super) fn run(
     sources: &Sources,
-    input: &VaultImportInput<'_>,
+    _input: &VaultImportInput<'_>,
 ) -> Result<Preflight, ImportError> {
     for (db, last) in [
         (SourceDb::Data, ELECTRON_DATA_LAST_MIGRATION),
@@ -68,21 +67,6 @@ pub(super) fn run(
             ));
         }
     }
-    if let Some((_, rows)) = tables.iter().find(|(m, _)| m.table == "sync_queue")
-        && *rows > 0
-        && note_body_rows(sources.conn(SourceDb::Data))? > 0
-    {
-        return Err(not_ready(
-            "36c4",
-            format!("data.db/sync_queue {NOTE_BODY_TYPE} rows (36c4)"),
-        ));
-    }
-    if !input.docs.is_empty() {
-        return Err(not_ready("36c4", "documents (36c4)".into()));
-    }
-    if !input.extra_owed_docs.is_empty() {
-        return Err(not_ready("36c4", "owed documents (36c4)".into()));
-    }
     Ok(Preflight {
         tables,
         dropped_keys,
@@ -96,15 +80,6 @@ fn not_ready(stage: &str, detail: String) -> ImportError {
         area: pending_area(stage).unwrap_or("data"),
         detail,
     }
-}
-
-fn note_body_rows(conn: &Connection) -> Result<i64, ImportError> {
-    conn.query_row(
-        "SELECT count(*) FROM sync_queue WHERE type = ?1",
-        [NOTE_BODY_TYPE],
-        |row| row.get(0),
-    )
-    .map_err(|e| source_error(SourceDb::Data, e))
 }
 
 /// The newest `__drizzle_migrations.created_at` must be the frozen journal's last `when`. An

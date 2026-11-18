@@ -14,7 +14,7 @@ use super::source::{Sources, source_error};
 use super::tables::SourceDb;
 use super::tables::queue::{self, Disposition, QueueItem};
 use super::tables::records::parse_clock;
-use super::{ImportError, VaultStageReport, read_source_id};
+use super::{FoldedDoc, ImportError, VaultStageReport, docs, read_source_id};
 
 /// `(source table, id column, core item type, rows of the type)` of every imported record table
 /// with a clock. `note_metadata` holds notes and journal days in one table.
@@ -34,6 +34,7 @@ pub(super) fn run(
     sources: &Sources,
     writer: &ImportWriter,
     device_id: Option<&str>,
+    folded: &[FoldedDoc],
 ) -> Result<(), ImportError> {
     row_counts(report)?;
     report.checks_passed.push(1);
@@ -84,7 +85,8 @@ pub(super) fn run(
         }
     }
     report.checks_passed.push(2);
-    outbox(plan, writer)?;
+    let bodies = docs::planned_body_pushes(source, folded)?;
+    outbox(plan, bodies, writer)?;
     report.checks_passed.push(4);
     if source_vault_id(source)? != writer.vault_id()? {
         clock_mismatches.push("vault_metadata: the core vault id is not the source uuid".into());
@@ -108,8 +110,36 @@ pub(super) fn run(
 }
 
 /// Check 4: the staged outbox holds exactly one row per queued push the plan keeps, with its
-/// type and op, and nothing else. A local-only note's push is withheld by the outbox itself.
-fn outbox(plan: Vec<(QueueItem, Disposition)>, writer: &ImportWriter) -> Result<(), ImportError> {
+/// type and op, one CRDT row per body push (`docs`), and nothing else. A local-only note's push
+/// is withheld by the outbox itself.
+fn outbox(
+    plan: Vec<(QueueItem, Disposition)>,
+    bodies: Vec<memry_core::storage::import::ImportBodyPush>,
+    writer: &ImportWriter,
+) -> Result<(), ImportError> {
+    let mut expected_bodies = Vec::new();
+    for push in bodies {
+        if !writer.is_local_only_note(&push.doc_id)? {
+            expected_bodies.push(push.doc_id);
+        }
+    }
+    let (mut staged_bodies, mut staged): (Vec<_>, Vec<_>) = writer
+        .outbox_rows()?
+        .into_iter()
+        .partition(|(_, _, op)| op == memry_core::sync::outbox::OP_CRDT_UPDATE);
+    let mut staged_bodies: Vec<String> = staged_bodies.drain(..).map(|(_, id, _)| id).collect();
+    expected_bodies.sort();
+    staged_bodies.sort();
+    if expected_bodies != staged_bodies {
+        return Err(ImportError::CheckFailed {
+            check: 4,
+            detail: format!(
+                "outbox: {} body pushes queued, {} expected",
+                staged_bodies.len(),
+                expected_bodies.len()
+            ),
+        });
+    }
     let mut expected = Vec::new();
     for (_, disposition) in plan {
         let Disposition::Enqueue(item) = disposition else {
@@ -120,7 +150,6 @@ fn outbox(plan: Vec<(QueueItem, Disposition)>, writer: &ImportWriter) -> Result<
         }
         expected.push((item.item_type, item.item_id, item.op.as_str().to_owned()));
     }
-    let mut staged = writer.outbox_rows()?;
     expected.sort();
     staged.sort();
     if expected != staged {

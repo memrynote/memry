@@ -15,6 +15,7 @@
 
 pub mod checks;
 pub mod crash;
+mod docs;
 mod install;
 mod preflight;
 mod source;
@@ -25,7 +26,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use memry_core::storage::import::{DATA_FILE, ImportWriter};
+use memry_core::storage::import::{DATA_FILE, DocumentState, ImportWriter};
 use rusqlite::Connection;
 use serde::Serialize;
 use zeroize::Zeroizing;
@@ -99,6 +100,15 @@ impl StagedVault {
     pub fn report(&self) -> &VaultStageReport {
         &self.report
     }
+
+    /// The staged document `doc_id` (state vector and canonical body text), for Step 37's check
+    /// 3 against the folded Electron state; `None` when the import wrote no log for it.
+    pub fn document_state(&self, doc_id: &str) -> Result<Option<DocumentState>, ImportError> {
+        Ok(memry_core::storage::import::document_state(
+            &self.paths.staging.join(DATA_FILE),
+            doc_id,
+        )?)
+    }
 }
 
 /// What a run read and wrote. No secrets and no note text: counts and table names only.
@@ -137,6 +147,8 @@ pub struct TableCtx<'a> {
     pub now_ms: i64,
     /// [`VaultImportInput::electron_device_id`].
     pub electron_device_id: Option<&'a str>,
+    /// [`VaultImportInput::docs`].
+    pub docs: &'a [FoldedDoc],
 }
 
 #[derive(Debug, Clone)]
@@ -256,6 +268,7 @@ fn stage(input: &VaultImportInput<'_>, paths: &Paths) -> Result<VaultStageReport
                     writer: &mut writer,
                     now_ms: input.now_ms,
                     electron_device_id: input.electron_device_id.as_deref(),
+                    docs: &input.docs,
                 };
                 let stats = import(&mut ctx)?;
                 table.target_count = stats.written;
@@ -276,11 +289,18 @@ fn stage(input: &VaultImportInput<'_>, paths: &Paths) -> Result<VaultStageReport
             .insert(format!("{}/{}", mapping.db.name(), mapping.table), table);
     }
 
+    docs::import_documents(
+        input,
+        sources.conn(tables::SourceDb::Data),
+        sources.conn(tables::SourceDb::Index),
+        &mut writer,
+    )?;
     checks::run(
         &mut report,
         &sources,
         &writer,
         input.electron_device_id.as_deref(),
+        &input.docs,
     )?;
     drop(sources);
     source::remove(&paths.staging)?;
