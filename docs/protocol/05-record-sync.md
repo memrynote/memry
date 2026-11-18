@@ -1079,7 +1079,7 @@ property type's promotion included
 (`crates/memry-core/src/domain/property_admin/learned.rs:103`). The server
 refuses that promotion over a marker with `SYNC_DELETE_WINS`, and the core
 tombstones the local record in the same transaction as the ack
-(`crates/memry-core/src/sync/push.rs:314-320`, `:338`), unless a newer local change is
+(`crates/memry-core/src/sync/push.rs:313-318`, `:334-336`), unless a newer local change is
 queued for it. A learned name therefore never brings back a deleted definition
 (#4025).
 
@@ -1189,16 +1189,17 @@ paths (chapter 13 §13.6). An id-only key made a project and a tag both named
 
 The Rust core's desktop driver runs the manifest check at most every 30
 minutes (`crates/memry-core/src/sync/hardening/manifest.rs:51`), diffs on
-`(type, id)` with a note and a journal of one id as one item (`manifest.rs:165`),
-pulls by id a live server row it holds no row of (`manifest.rs:182-200`), and
+`(type, id)` with a note and a journal of one id as one item (`manifest.rs:162`),
+pulls by id a live server row it holds no row of (`manifest.rs:179-197`), and
 queues as `create` a live clocked local row the server does not list, only of
-the types in `REUPLOADED` (`manifest.rs:57`). Notes, journals and bookmarks are
-among them, as in Electron; a local-only note and a large-file note are not
-(`manifest.rs:214`). Of the other types the server re-creates over a purged
-tombstone, Electron re-uploads tag and property definitions and canvas folders;
-the core does not yet. A `SYNC_DELETE_WINS` refusal of a re-uploaded note,
-journal or bookmark is acked and the item left to the pulled tombstone, as
-Electron leaves every one (`crates/memry-core/src/sync/push.rs:314-320`).
+the types in `REUPLOADED` (`manifest.rs:57`): none the server re-creates over a
+purged tombstone. A marker the pull skipped (a run from cursor 0, §5.12.3) or
+refused leaves no trace, so a note still live here can be one another device
+deleted, and the server would re-create it over the marker on every device.
+Electron re-uploads those types and has that hole
+(`apps/desktop/src/main/sync/engine/pull-coordinator.ts:312`, `:816`,
+`apps/desktop/src/main/sync/manifest-check.ts:179-224`); the core does not yet
+(#4785).
 
 ## 5.16 Clock skew
 

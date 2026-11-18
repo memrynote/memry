@@ -56,7 +56,6 @@ mod crdt;
 use super::crypto_batch::off_runtime;
 use super::engine::PushWave;
 use super::hardening::manifest;
-use super::hardening::purged::RECREATABLE_AFTER_PURGE_ITEM_TYPES;
 use super::outbox::{self, Batch, Collapsed, OutboxRow};
 use super::store;
 use crdt::BatchEnd;
@@ -313,9 +312,7 @@ impl PushCoordinator {
                 let (item_type, op) = (item.row.item_type.as_str(), item.row.op.as_str());
                 if reason == REASON_DELETE_WINS
                     && ((item_type == property_admin::ITEM_TYPE && op == outbox::OP_UPSERT)
-                        || (op == outbox::OP_CREATE
-                            && manifest::REUPLOADED.contains(&item_type)
-                            && !RECREATABLE_AFTER_PURGE_ITEM_TYPES.contains(&item_type)))
+                        || (op == outbox::OP_CREATE && manifest::REUPLOADED.contains(&item_type)))
                 {
                     deleted_there.push((item.row.item_type.clone(), key));
                 }
@@ -486,11 +483,7 @@ fn local_failure(error: StorageError) -> ApiError {
 /// and this refusal is the only delete it will ever see. A user's create is a `create`, which the
 /// server re-creates over the marker. And for the manifest check's re-upload, a `create` of a
 /// [`manifest::REUPLOADED`] type: kept live, the row would be re-pushed every 30 minutes for
-/// ever. Not for a type the server re-creates over a purged tombstone (a note, a journal, a
-/// bookmark): its delete has its own rules (`delete_keep`, the body purge), which only the
-/// pulled tombstone applies, so the refusal is acked and the delete left to the pull, as
-/// Electron leaves every one (`push-coordinator.ts:428-439`). Acked in the same transaction,
-/// so the local record never outlives its outbox row.
+/// ever. Acked in the same transaction, so the local record never outlives its outbox row.
 ///
 /// A change queued while the refused push was in flight is the user's newer edit, create or
 /// delete: the record stays as it is and that row is pushed next.
