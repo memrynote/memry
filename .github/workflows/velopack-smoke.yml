@@ -119,7 +119,7 @@ jobs:
             Write-Output "::warning::$env:RELEASE_TAG has no $env:FEED; installing $env:UPDATE_TAG ($env:TO_VERSION) without an update"
             $baseTag = $env:UPDATE_TAG; $baseVersion = $env:TO_VERSION; $apply = 'false'
           }
-          "BASE_VERSION=$baseVersion", "APPLY=$apply", "MEMRY_TEST_LOG_DIR=$env:RUNNER_TEMP\memry-logs" |
+          "BASE_VERSION=$baseVersion", "APPLY=$apply", "MEMRY_TEST_LOG_DIR=$PWD\memry-logs" |
             Out-File -FilePath $env:GITHUB_ENV -Append
           New-Item -ItemType Directory -Force assets | Out-Null
           $patterns = @('--pattern', $env:SETUP)
@@ -237,7 +237,7 @@ jobs:
           path: |
             setup.log
             ${{ env.LOCALAPPDATA }}\MemryNote\*.log
-            ${{ env.MEMRY_TEST_LOG_DIR }}\*.log
+            memry-logs\*.log
           if-no-files-found: ignore
 
   smoke-macos:
