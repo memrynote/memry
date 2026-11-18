@@ -8,6 +8,7 @@ import {
   ensureSyncVaultAllowed
 } from '../services/entitlements'
 import type { AppContext } from '../types'
+import { isReadRequest } from './client-gate'
 
 const VAULT_ID_PATTERN = /^[a-zA-Z0-9_-]{1,128}$/
 
@@ -70,8 +71,8 @@ const paidSync =
     // The header is the only source. The device row's vault_id is where the
     // device registered, 'default' for a client that sent none (iOS), and
     // reading it here bypassed the resolver and minted that phantom vault.
-    const vaultId =
-      c.req.header('X-Memry-Vault-Id') ?? (await resolveVaultIdWithoutHeader(c.env.DB, userId))
+    const headerVaultId = c.req.header('X-Memry-Vault-Id')
+    const vaultId = headerVaultId ?? (await resolveVaultIdWithoutHeader(c.env.DB, userId))
 
     if (!VAULT_ID_PATTERN.test(vaultId)) {
       throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid vault id', 400)
@@ -84,7 +85,13 @@ const paidSync =
       c.env.LOCAL_ADMIN_SYNC_EMAILS
     )
     const entitlement = await assertPaidSyncAccess(c.env.DB, userId)
-    if (upsertVault) {
+    // A header-less request on an empty account resolves to `default`. Only a
+    // write may create it, because a legacy build's first push needs it. A read
+    // that created it spent a Plus account's only vault before the client
+    // registered its real one, which then got a 402 (#4278).
+    const createsVault =
+      upsertVault && (headerVaultId !== undefined || !isReadRequest(c.req.method, c.req.path))
+    if (createsVault) {
       await ensureSyncVaultAllowed(c.env.DB, userId, vaultId, entitlement)
     } else {
       await assertSyncVaultAllowed(c.env.DB, userId, vaultId, entitlement)

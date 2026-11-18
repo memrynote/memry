@@ -39,7 +39,7 @@ export const clientGateMiddleware: MiddlewareHandler<AppContext> = async (c, nex
   if (identity) c.set('client', identity)
 
   const { method, path } = c.req
-  if (READ_METHODS.has(method) || (method === 'POST' && READ_POST_PATHS.has(path))) return next()
+  if (isReadRequest(method, path)) return next()
 
   // No header = legacy desktop = full access. This is the branch every
   // currently-shipped build takes, and it must stay free of DB work.
@@ -71,4 +71,9 @@ export const clientGateMiddleware: MiddlewareHandler<AppContext> = async (c, nex
     },
     426 as ContentfulStatusCode
   )
+}
+
+/** The read classification above, shared so paid-sync never creates a vault on a read. */
+export function isReadRequest(method: string, path: string): boolean {
+  return READ_METHODS.has(method) || (method === 'POST' && READ_POST_PATHS.has(path))
 }

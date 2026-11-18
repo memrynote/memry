@@ -50,12 +50,17 @@ case-insensitive, so this is cosmetic, but a client that string-matches its own
 constants must match the right spelling.
 
 **Normative.** A vault-scoped request with no `X-Memry-Vault-Id` never creates
-a vault. It resolves to `default` when the account has no vaults or already
-holds `default`, to the only vault when it has one, and to
+a second vault. It resolves to `default` when the account has no vaults or
+already holds `default`, to the only vault when it has one, and to
 `400 VALIDATION_ERROR` when it has several
-(`apps/sync-server/src/middleware/paid-sync.ts:36`). The vault id a device
+(`apps/sync-server/src/middleware/paid-sync.ts:38`). Only a header-less write
+creates `default`, on an account with no vaults, because a build that predates
+the header needs it on its first push. A header-less read, as classified in
+§11.4 (`apps/sync-server/src/middleware/client-gate.ts:77`), creates no vault
+and answers from an empty one
+(`apps/sync-server/src/middleware/paid-sync.ts:92`). The vault id a device
 registered with plays no part: iOS registers with none, which the server stores
-as `default` (`apps/sync-server/src/middleware/paid-sync.ts:64`).
+as `default` (`apps/sync-server/src/middleware/paid-sync.ts:71`).
 
 ## 5.3 Type negotiation
 
