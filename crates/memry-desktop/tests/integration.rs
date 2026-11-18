@@ -60,6 +60,8 @@ mod app_edit;
 mod article_constants;
 #[path = "article_dom.rs"]
 mod article_dom;
+#[path = "article_guards.rs"]
+mod article_guards;
 #[path = "article_map.rs"]
 mod article_map;
 #[path = "article_markdown.rs"]
@@ -175,6 +177,8 @@ mod import_runner;
 mod importer_untrusted;
 #[path = "importer_vectors.rs"]
 mod importer_vectors;
+#[path = "inbox_jobs.rs"]
+mod inbox_jobs;
 #[path = "index_tag_definitions.rs"]
 mod index_tag_definitions;
 #[path = "indexer_facts.rs"]
@@ -382,6 +386,8 @@ mod templates_legacy;
 #[cfg(windows)]
 #[path = "trash_held.rs"]
 mod trash_held;
+#[path = "turndown_guards.rs"]
+mod turndown_guards;
 #[path = "typing_barrier.rs"]
 mod typing_barrier;
 #[path = "unsplash.rs"]

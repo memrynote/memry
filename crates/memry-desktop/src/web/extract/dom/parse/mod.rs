@@ -15,6 +15,7 @@ use super::node::{Attribute, DoctypeData, NodeId, NodeKind};
 use super::serialize::is_text_element;
 use super::tree::Document;
 use crate::web::extract::error::ExtractError;
+use crate::web::extract::markdown::turndown::parse::{CapHit, PAGE_MAX_DEPTH};
 use crate::web::extract::utils::js::{is_js_whitespace, trim};
 
 /// The doctype grammar of linkedom's `document.doctype` setter:
@@ -80,6 +81,12 @@ struct Builder<'d> {
     node: Option<NodeId>,
     /// The outermost `<svg>` while inside one.
     owner_svg: Option<NodeId>,
+    /// The depth below `container` of the node being filled: htmlparser2's stack, plus a void
+    /// element while it is open.
+    depth: usize,
+    /// Departure: an element opened past [`PAGE_MAX_DEPTH`]. linkedom nests without bound, and
+    /// cloning and serializing recurse once per level, so the parse builds nothing more and fails.
+    too_deep: bool,
 }
 
 impl Builder<'_> {
@@ -92,7 +99,7 @@ impl Builder<'_> {
 
 impl TreeHandler for Builder<'_> {
     fn processing_instruction(&mut self, name: &str, data: &str) {
-        if name.to_lowercase() != "!doctype" {
+        if self.too_deep || name.to_lowercase() != "!doctype" {
             return;
         }
         let name_len = name.chars().count();
@@ -106,6 +113,13 @@ impl TreeHandler for Builder<'_> {
     }
 
     fn open_tag(&mut self, name: &str, attributes: Vec<(String, String)>) {
+        if self.depth == PAGE_MAX_DEPTH {
+            self.too_deep = true;
+        }
+        if self.too_deep {
+            return;
+        }
+        self.depth += 1;
         let element = if self.owner_svg.is_some() {
             self.doc.create_svg_element(name)
         } else if name == "svg" {
@@ -134,16 +148,26 @@ impl TreeHandler for Builder<'_> {
     }
 
     fn comment(&mut self, data: &str) {
+        if self.too_deep {
+            return;
+        }
         let id = self.doc.create_comment(data);
         self.append(id);
     }
 
     fn text(&mut self, data: &str) {
+        if self.too_deep {
+            return;
+        }
         let id = self.doc.create_text_node(data);
         self.append(id);
     }
 
     fn close_tag(&mut self) {
+        if self.too_deep {
+            return;
+        }
+        self.depth = self.depth.saturating_sub(1);
         if self.node.is_some() && self.node == self.owner_svg {
             self.owner_svg = None;
         }
@@ -153,31 +177,39 @@ impl TreeHandler for Builder<'_> {
 
 impl Document {
     /// `parseHTML(html).document`.
-    pub fn parse_html(html: &str) -> Document {
+    pub fn parse_html(html: &str) -> Result<Document, ExtractError> {
         let mut doc = Document::new();
         let root = doc.root();
-        doc.parse_into(root, html);
-        doc
+        doc.parse_into(root, html)?;
+        Ok(doc)
     }
 
-    fn parse_into(&mut self, container: NodeId, html: &str) {
+    /// Fails with `TooLarge(TooDeep)` when an element would open past [`PAGE_MAX_DEPTH`]
+    /// below `container`.
+    fn parse_into(&mut self, container: NodeId, html: &str) -> Result<(), ExtractError> {
         let mut builder = Builder {
             doc: self,
             container,
             node: Some(container),
             owner_svg: None,
+            depth: 0,
+            too_deep: false,
         };
         parser::parse(html, &mut builder);
+        if builder.too_deep {
+            return Err(ExtractError::TooLarge(CapHit::TooDeep));
+        }
+        Ok(())
     }
 
     /// `parseHTML(doc, html)` of `dist/utils/dom.js`: a template's `innerHTML = html` and its
     /// `content` fragment, which linkedom fills with deep copies of the parsed children.
-    pub fn parse_fragment(&mut self, html: &str) -> NodeId {
+    pub fn parse_fragment(&mut self, html: &str) -> Result<NodeId, ExtractError> {
         let fragment = self.create_document_fragment();
         if !html.is_empty() {
-            self.parse_into(fragment, html);
+            self.parse_into(fragment, html)?;
         }
-        fragment
+        Ok(fragment)
     }
 
     /// `element.innerHTML = html`. The text elements (script, style, textarea, title) keep it as
@@ -187,7 +219,7 @@ impl Document {
             NodeKind::Element(ref e) if is_text_element(e) => self.set_text_content(node, html),
             NodeKind::Element(_) => {
                 let fragment = self.create_document_fragment();
-                self.parse_into(fragment, html);
+                self.parse_into(fragment, html)?;
                 let children = self.child_nodes(fragment);
                 self.replace_children(node, &children)
             }

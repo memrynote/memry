@@ -60,3 +60,28 @@ impl Inbox {
         })
     }
 }
+
+impl Inbox {
+    /// [`Inbox::complete_link`] with the hero image the desktop metadata job
+    /// stored under `attachments/inbox/<id>/` as the thumbnail, in one write.
+    /// Rust only: iOS stores its hero before the capture exists.
+    pub fn complete_link_with_thumbnail(
+        &self,
+        id: String,
+        title: Option<String>,
+        description: Option<String>,
+        metadata_json: String,
+        thumbnail_path: Option<String>,
+    ) -> Result<InboxItemRecord, StorageError> {
+        let patch = metadata_object(Some(&metadata_json))?;
+        self.item(move |conn, device, now| {
+            let preview = write::LinkPreview {
+                title: title.as_deref(),
+                description: description.as_deref(),
+                patch: &patch,
+                thumbnail_path: thumbnail_path.as_deref(),
+            };
+            write::complete_link_preview(conn, &id, &preview, device, now)
+        })
+    }
+}

@@ -392,7 +392,10 @@ pub fn builder() -> Builder<Wry> {
             // flush
             crate::events::FlushRequestedEvent,
             // inbox
+            crate::events::InboxMetadataCompleteEvent,
             crate::events::InboxOpenItemEvent,
+            crate::events::InboxProcessingErrorEvent,
+            crate::events::InboxUpdatedEvent,
             // journal
             crate::events::JournalEntryCreatedEvent,
             crate::events::JournalEntryDeletedEvent,

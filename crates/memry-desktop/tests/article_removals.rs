@@ -79,7 +79,7 @@ fn snapshot(doc: &Document, clone: NodeId, main: NodeId) -> (String, usize) {
 fn check(html: &str, variant: &Value) -> Vec<String> {
     let input = &variant["input"];
     let url = input["url"].as_str().unwrap();
-    let mut doc = Document::parse_html(html);
+    let mut doc = Document::parse_html(html).expect("parse");
     let meta_tags = collect_meta_tags(&doc).unwrap();
     let schema = extract_schema_org_data(&doc).unwrap();
     let metadata = extract(&mut doc, &schema, &meta_tags).unwrap();
@@ -257,7 +257,7 @@ fn element_scores_match() {
     }));
     let mut failures = Vec::new();
     for (name, html) in pages {
-        let doc = Document::parse_html(&html);
+        let doc = Document::parse_html(&html).expect("parse");
         let expected = strings(&scores[&name]);
         let elements: Vec<NodeId> = doc
             .descendants(doc.root())
@@ -293,7 +293,8 @@ fn element_scores_match() {
 fn content_start_is_reachable_from_the_removals_module() {
     let doc = Document::parse_html(
         "<article><p>one two three four five six seven eight nine.</p></article>",
-    );
+    )
+    .expect("parse");
     let main = doc.query_selector(doc.root(), "article").unwrap().unwrap();
     assert!(find_content_start(&doc, main, "").unwrap().is_some());
 }
