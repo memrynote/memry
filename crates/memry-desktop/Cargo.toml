@@ -221,6 +221,10 @@ name = "sync_harness"
 path = "tests/sync_harness.rs"
 
 [[test]]
+name = "attachments_harness"
+path = "tests/attachments_harness.rs"
+
+[[test]]
 name = "sync_driver_harness"
 path = "tests/sync_driver_harness.rs"
 
