@@ -185,6 +185,28 @@ export const commands = {
 	 *  has written yet queued.
 	 */
 	foldRun: (noteId: string, level: FoldLevel) => __TAURI_INVOKE<FoldLayers>("fold_run", { noteId, level }),
+	homePagesCreate: (input: HomePageCreateInput) => __TAURI_INVOKE<HomePageView>("home_pages_create", { input }),
+	/**  `false` when there was no such board. */
+	homePagesDelete: (id: string) => __TAURI_INVOKE<boolean>("home_pages_delete", { id }),
+	homePagesGet: (id: string) => __TAURI_INVOKE<HomePageView | null>("home_pages_get", { id }),
+	/**  Every live board in the order every device agrees on. */
+	homePagesList: () => __TAURI_INVOKE<HomePageView[]>("home_pages_list"),
+	/**
+	 *  Brings the board's cover files in line with its cover. Until Step 30f syncs cover bytes,
+	 *  this only prunes files the cover no longer names.
+	 */
+	homePagesMaterializeCover: (id: string) => __TAURI_INVOKE<null>("home_pages_materialize_cover", { id }),
+	homePagesRemoveCover: (id: string) => __TAURI_INVOKE<HomePageView>("home_pages_remove_cover", { id }),
+	/**  Puts the boards in the order of `ids`. */
+	homePagesReorder: (ids: string[]) => __TAURI_INVOKE<null>("home_pages_reorder", { ids }),
+	/**
+	 *  A board's new banner from a wash, a link, Unsplash or an image already in the vault. Every
+	 *  image is copied into the board's own folder and the board saved in the same call.
+	 */
+	homePagesSetCover: (id: string, source: HomePageCoverSourceInput) => __TAURI_INVOKE<SetCoverOutcome>("home_pages_set_cover", { id, source }),
+	/**  Saves how the cover sits in its band; only the fields that changed are sent. */
+	homePagesSetCoverFraming: (id: string, changes: CoverFramingInput) => __TAURI_INVOKE<HomePageView>("home_pages_set_cover_framing", { id, changes }),
+	homePagesUpdate: (input: HomePageUpdateInput) => __TAURI_INVOKE<HomePageView>("home_pages_update", { input }),
 	/**  With the account's token when signed in. */
 	iosBetaJoin: (input: IosBetaJoinInput) => __TAURI_INVOKE<IosBetaJoinResult>("ios_beta_join", { input }),
 	/**
@@ -868,6 +890,9 @@ export const events = {
 	customIconsUpdatedEvent: makeEvent<CustomIconsUpdatedEvent, CustomIconsUpdatedEvent>("custom-icons-updated-event"),
 	flushRequestedEvent: makeEvent<FlushRequestedEvent, FlushRequestedEvent>("flush-requested-event"),
 	folderConfigUpdatedEvent: makeEvent<FolderConfigUpdatedEvent, FolderConfigUpdatedEvent>("folder-config-updated-event"),
+	homePageCreatedEvent: makeEvent<HomePageCreatedEvent, HomePageCreatedEvent>("home-page-created-event"),
+	homePageDeletedEvent: makeEvent<HomePageDeletedEvent, HomePageDeletedEvent>("home-page-deleted-event"),
+	homePageUpdatedEvent: makeEvent<HomePageUpdatedEvent, HomePageUpdatedEvent>("home-page-updated-event"),
 	inboxOpenItemEvent: makeEvent<InboxOpenItemEvent, InboxOpenItemEvent>("inbox-open-item-event"),
 	journalEntryCreatedEvent: makeEvent<JournalEntryCreatedEvent, JournalEntryCreatedEvent>("journal-entry-created-event"),
 	journalEntryDeletedEvent: makeEvent<JournalEntryDeletedEvent, JournalEntryDeletedEvent>("journal-entry-deleted-event"),
@@ -1369,6 +1394,20 @@ export type ContextMenuItem = {
 	accelerator?: string | null,
 	disabled?: boolean | null,
 	type?: ItemKind | null,
+};
+
+/**
+ *  `HomePageCoverFailure`: why a picked cover was not set. Each picker tab
+ *  shows the ones it knows.
+ */
+export type CoverFailure = "not-configured" | "offline" | "rate-limited" | "failed" | "write-failed" | "not-an-image" | "too-large";
+
+/**  `HomePageSetCoverFramingSchema.changes`: only the fields that changed. */
+export type CoverFramingInput = {
+	focusX?: number | null,
+	focusY?: number | null,
+	zoom?: number | null,
+	height?: number | null,
 };
 
 /**
@@ -1923,6 +1962,66 @@ export type HeatmapEntryView = {
 	date: string,
 	characterCount: number,
 	level: number,
+};
+
+/**  `HomePageCoverSource` less `upload`, which is the binary command. */
+export type HomePageCoverSourceInput = { kind: "wash"; id: string } | { kind: "url"; url: string } | { kind: "unsplash"; photo: UnsplashPhoto } | { kind: "vaultFile"; ownerNoteId: string; filename: string };
+
+/**
+ *  `HomePageCoverSync`: the fields the band reads. The record keeps every
+ *  other key a newer build wrote.
+ */
+export type HomePageCoverView = {
+	ref: string,
+	focus?: number | null,
+	focusX?: number | null,
+	zoom?: number | null,
+	height?: number | null,
+	credit?: string | null,
+	creditUrl?: string | null,
+	attachmentId?: string | null,
+};
+
+/**  `HomePageCreateSchema`. */
+export type HomePageCreateInput = {
+	name: string,
+	icon?: string | null,
+	position?: number | null,
+	widgets?: WidgetInput[] | null,
+};
+
+/**  A board was made (`home-pages:created`). */
+export type HomePageCreatedEvent = {
+	id: string,
+};
+
+/**  A board was deleted (`home-pages:deleted`). */
+export type HomePageDeletedEvent = {
+	id: string,
+};
+
+/**  `HomePageUpdateSchema`: an absent field stays as it is. */
+export type HomePageUpdateInput = {
+	id: string,
+	name?: string | null,
+	icon?: string | null,
+	position?: number | null,
+	widgets?: WidgetInput[] | null,
+};
+
+/**  A board's name, widgets, position or cover changed (`home-pages:updated`). */
+export type HomePageUpdatedEvent = {
+	id: string,
+};
+
+/**  `HomePage`. */
+export type HomePageView = {
+	id: string,
+	name: string,
+	icon?: string | null,
+	position: number | null,
+	widgets: WidgetView[],
+	cover?: HomePageCoverView | null,
 };
 
 export type HttpMethod = "GET" | "POST";
@@ -3300,6 +3399,9 @@ export type SelectVaultResponse = {
 /**  Why the session ended (`SessionExpiredReason`); sync reports only a refused refresh. */
 export type SessionExpiredReason = "refresh_rejected";
 
+/**  What a set-cover call came to: `HomePageSetCoverResult`. */
+export type SetCoverOutcome = { status: "saved"; page: HomePageView } | { status: "failed"; reason: CoverFailure };
+
 /**
  *  A set's or a merge's answer (`SetPropertiesResponse` on success): the values as stored, and
  *  the names the edit removed.
@@ -4290,6 +4392,34 @@ export type VoiceRecordingReadiness = {
 export type WaitingMove = {
 	noteId: string,
 	path: string,
+};
+
+/**
+ *  `WidgetInstanceSchema`. Written back in its key order, which is the order
+ *  `JSON.stringify` gives the parsed object in Electron.
+ */
+export type WidgetInput = {
+	id: string,
+	type: string,
+	x: number,
+	y: number,
+	w: number,
+	h: number,
+	config?: { [key in string]: Value },
+};
+
+/**
+ *  `WidgetInstance` as the grid reads it. A widget of a type this build does
+ *  not know comes through like any other.
+ */
+export type WidgetView = {
+	id: string,
+	type: string,
+	x: number | null,
+	y: number | null,
+	w: number | null,
+	h: number | null,
+	config: { [key in string]: Value },
 };
 
 /**  `WikiLinkPreview`, with the body in place of `bodyText`. */

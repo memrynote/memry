@@ -155,6 +155,8 @@ mod folder_file;
 mod folder_prune;
 #[path = "fs_atomic.rs"]
 mod fs_atomic;
+#[path = "home_boards.rs"]
+mod home_boards;
 #[path = "home_covers.rs"]
 mod home_covers;
 #[path = "http.rs"]

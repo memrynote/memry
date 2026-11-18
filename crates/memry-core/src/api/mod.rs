@@ -20,6 +20,7 @@ pub mod errors;
 pub mod excluded_paths;
 #[cfg(feature = "markdown")]
 pub mod external_feed;
+pub mod home_pages;
 pub mod inbox;
 pub mod inbox_conformance;
 pub mod inbox_enrich;

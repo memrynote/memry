@@ -13,6 +13,7 @@ pub mod electron_import;
 pub mod embedding;
 pub mod error;
 pub mod fold;
+pub mod home;
 pub mod http;
 pub mod i18n;
 pub mod import;

@@ -95,6 +95,17 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::fold::fold_get_last_run::<Wry>,
             crate::commands::fold::fold_retry::<Wry>,
             crate::commands::fold::fold_run::<Wry>,
+            // home pages (`home_pages_set_cover_upload` is a binary command)
+            crate::commands::home_pages::home_pages_create::<Wry>,
+            crate::commands::home_pages::home_pages_delete::<Wry>,
+            crate::commands::home_pages::home_pages_get::<Wry>,
+            crate::commands::home_pages::home_pages_list::<Wry>,
+            crate::commands::home_pages::home_pages_materialize_cover::<Wry>,
+            crate::commands::home_pages::home_pages_remove_cover::<Wry>,
+            crate::commands::home_pages::home_pages_reorder::<Wry>,
+            crate::commands::home_pages::home_pages_set_cover::<Wry>,
+            crate::commands::home_pages::home_pages_set_cover_framing::<Wry>,
+            crate::commands::home_pages::home_pages_update::<Wry>,
             // ios beta
             crate::commands::ios_beta::ios_beta_join,
             // journal
@@ -389,6 +400,10 @@ pub fn builder() -> Builder<Wry> {
             crate::events::CustomIconsUpdatedEvent,
             // flush
             crate::events::FlushRequestedEvent,
+            // home pages
+            crate::events::HomePageCreatedEvent,
+            crate::events::HomePageDeletedEvent,
+            crate::events::HomePageUpdatedEvent,
             // inbox
             crate::events::InboxOpenItemEvent,
             // journal
