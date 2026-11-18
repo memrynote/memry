@@ -56,12 +56,18 @@ const LIBCLANG_DIRS = {
   win32: ['C:\\Program Files*\\LLVM\\bin', 'C:\\LLVM\\bin']
 }
 
+/** The regex for one segment of a `LIBCLANG_DIRS` pattern: `*` matches within the segment and every other character matches itself. */
+export function segmentPattern(/** @type {string} */ segment) {
+  const literal = segment.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replaceAll('\\*', '.*')
+  return new RegExp(`^${literal}$`, 'i')
+}
+
 /** The dirs `pattern` names, each `*` matched against the entries of its parent. */
 function expand(/** @type {string} */ pattern) {
   const [root, ...segments] = pattern.split(/[\\/]/)
   let dirs = [root === '' ? '/' : `${root}\\`]
   for (const segment of segments) {
-    const name = new RegExp(`^${segment.replace(/[.+()]/g, '\\$&').replaceAll('*', '.*')}$`, 'i')
+    const name = segmentPattern(segment)
     dirs = dirs.flatMap((dir) =>
       segment.includes('*')
         ? entries(dir)

@@ -5,6 +5,8 @@
 
 use std::time::Duration;
 
+use crate::http::{ReadError, read_capped};
+
 /// The model is `whisper-1` unless this launch variable names another (`env-config.ts:41`).
 pub const MODEL_VAR: &str = "OPENAI_WHISPER_MODEL";
 pub const ENDPOINT: &str = "https://api.openai.com/v1/audio/transcriptions";
@@ -15,6 +17,13 @@ const FORMATS: [&str; 7] = ["mp3", "mp4", "mpeg", "mpga", "m4a", "wav", "webm"];
 /// The OpenAI SDK's default request timeout, which Electron uses.
 const TIMEOUT: Duration = Duration::from_secs(10 * 60);
 
+/// The most of a transcript this app keeps: about an hour of speech at most, far past 25 MB of
+/// audio. A longer answer is refused, never written as the synced transcription.
+pub const MAX_TEXT_BYTES: usize = 4 << 20;
+/// The most of an error body read to find its code and message.
+const MAX_ERROR_BYTES: usize = 64 << 10;
+
+pub const TOO_LARGE: &str = "The transcription is too long to keep.";
 pub const RATE_LIMITED: &str = "Rate limit exceeded. Please try again later.";
 pub const INVALID_KEY: &str = "Invalid OpenAI API key. Please check your settings.";
 pub const NO_QUOTA: &str = "OpenAI quota exceeded. Please check your billing.";
@@ -86,11 +95,21 @@ impl OpenAi {
                 "Connection error.".to_owned()
             })?;
         let status = response.status();
-        let body = response.text().await.map_err(|error| error.to_string())?;
         if status.is_success() {
-            return Ok(body);
+            return match read_capped(response, MAX_TEXT_BYTES).await {
+                Ok(body) => Ok(String::from_utf8_lossy(&body).into_owned()),
+                Err(ReadError::TooLarge { .. }) => Err(TOO_LARGE.to_owned()),
+                Err(ReadError::Transport(error)) => {
+                    tracing::warn!(scope = "Voice", "the OpenAI answer was cut off: {error}");
+                    Err("Connection error.".to_owned())
+                }
+            };
         }
-        Err(api_error(status.as_u16(), &body))
+        // An error body past the cap or cut off still maps by its status.
+        let body = read_capped(response, MAX_ERROR_BYTES)
+            .await
+            .unwrap_or_default();
+        Err(api_error(status.as_u16(), &String::from_utf8_lossy(&body)))
     }
 }
 
@@ -117,9 +136,13 @@ fn multipart(boundary: &str, fields: &[(&str, &str)], audio: &[u8], ext: &str) -
     body
 }
 
-/// `normalizeTranscriptionError` over the API's error body (`{"error":{"message","code"}}`): an
-/// exhausted quota (which OpenAI answers with a 429 too), then a rate limit, then a bad key;
-/// anything else is the SDK's `<status> <message>`.
+/// The user-facing reason of a failed request, read from its status and the API's error code
+/// (`{"error":{"message","code"}}`): an exhausted quota (which OpenAI answers with a 429 too),
+/// then a rate limit, then a bad key, each with `normalizeTranscriptionError`'s string; anything
+/// else is the SDK's `<status> <message>`. Electron matches those words in the SDK's message
+/// instead, which seldom holds them, so a 401 reaches it as `Incorrect API key provided:
+/// sk-...abcd`. Mapping by status and code is deliberate: that masked key fragment would be
+/// stored as the memo's synced `processingError` and reach telemetry.
 fn api_error(status: u16, body: &str) -> String {
     let error = serde_json::from_str::<serde_json::Value>(body)
         .ok()

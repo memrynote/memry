@@ -99,7 +99,8 @@ export type {
 const transcription = {
   transcribeAudio: (input: TranscribeAudioInput): Promise<TranscribeAudioResponse> =>
     invokeBinary<TranscribeAudioResponse>('inbox_transcribe_audio', new Uint8Array(input.data), {
-      format: input.format
+      format: input.format,
+      duration: input.duration
     }),
   retryTranscription: async (itemId: string): Promise<{ success: boolean; error?: string }> => {
     const { success, error } = await commands.inboxRetryTranscription(itemId)

@@ -7,6 +7,7 @@
 
 mod ai_fake;
 mod device_key;
+mod electron_profile;
 mod embedding_lane;
 mod import_support;
 mod index_support;
@@ -99,6 +100,8 @@ mod attachment_sources;
 mod attachment_uploads;
 #[path = "attachments.rs"]
 mod attachments;
+#[path = "billing_service.rs"]
+mod billing_service;
 #[path = "block_refs.rs"]
 mod block_refs;
 #[path = "byte_preservation.rs"]
@@ -122,6 +125,8 @@ mod editor_host;
 #[cfg(unix)]
 #[path = "editor_readonly.rs"]
 mod editor_readonly;
+#[path = "electron_profile_fixture.rs"]
+mod electron_profile_fixture;
 #[path = "embedding_file_text.rs"]
 mod embedding_file_text;
 #[path = "embedding_owed.rs"]
