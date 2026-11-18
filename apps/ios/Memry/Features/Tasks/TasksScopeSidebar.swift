@@ -100,7 +100,7 @@ struct TasksScopeSidebar: View {
                 }
             }
         }
-        .listRowBackground(selected ? Tokens.Canvas.surfaceActive.color : nil)
+        .selectedRowBackground(selected)
         .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
         .accessibilityIdentifier(identifier)
     }
