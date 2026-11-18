@@ -219,6 +219,12 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "canvases",
         sql: include_str!("migrations/data/0036_canvases.sql"),
     },
+    // Must not land before 0035-0041 (open PRs); see the file's header.
+    Migration {
+        version: 42,
+        name: "graph_layouts",
+        sql: include_str!("migrations/data/0042_graph_layouts.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.

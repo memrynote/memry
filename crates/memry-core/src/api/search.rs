@@ -48,6 +48,7 @@ mod embeddings;
 mod file_text;
 #[cfg(feature = "markdown")]
 mod fold;
+mod graph;
 #[cfg(feature = "vec")]
 mod grouped;
 #[cfg(feature = "vec")]
