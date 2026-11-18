@@ -30,6 +30,11 @@ on:
   # The merge queue (feat/tauri-v2) runs the full matrix on the merge-group commit; `paths` do not apply.
   merge_group:
   workflow_dispatch:
+  # Every 6 hours: the legs the merge queue skips (Apple Silicon, the windows-arm64 e2e specs) on the
+  # head of feat/tauri-v2, the default branch, where schedules fire (#5035). A push the queue passed runs
+  # none of them; a SHA a scheduled run already finished is skipped.
+  schedule:
+    - cron: '41 */6 * * *'
 
 permissions:
   contents: read
@@ -38,10 +43,13 @@ concurrency:
   # One group per workflow and ref; a PR with `full-ci` and the noop runs keep their own groups. A
   # workflow_dispatch on feat/tauri-v2 gets its own group so a manual Intel run is neither cancelled
   # by a push nor cancels one.
-  group: desktop-tauri-ci-${{ github.workflow }}-${{ github.ref }}${{ ((github.event.action == 'labeled' && !(github.base_ref != 'main' && github.event.label.name == 'full-ci')) || (github.event.action == 'opened' && github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) && format('-noop-{0}', github.run_id) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/feat/tauri-v2' && format('-dispatch-{0}', github.run_id) || (github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci') && '-full' || '')) }}
-  # A burst of merges into feat/tauri-v2 checks only the newest head: a push there cancels the run
-  # of the previous head. main pushes keep running to completion, as before.
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  group: desktop-tauri-ci-${{ github.workflow }}-${{ github.ref }}${{ ((github.event.action == 'labeled' && !(github.base_ref != 'main' && github.event.label.name == 'full-ci')) || (github.event.action == 'opened' && github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) && format('-noop-{0}', github.run_id) || (github.event_name == 'schedule' && '-schedule') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/feat/tauri-v2' && format('-dispatch-{0}', github.run_id) || (github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci') && '-full' || '')) }}
+  # A push run of feat/tauri-v2 finishes (#5035): after a merge the queue tested it runs only plan and
+  # gate (post-merge.sh), and a full run, after a cache-key change, saves the caches PRs restore. A
+  # cancelled one saved none, and the next push had to run every leg again. A burst stays bounded: a
+  # newer push waits as the one pending run and replaces an older pending one. main pushes keep
+  # running to completion, as before; every other event and ref still cancels.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && !(github.event_name == 'push' && github.ref == 'refs/heads/feat/tauri-v2') }}
 
 env:
   CI: true
@@ -65,8 +73,11 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
+      # The post-merge lookup of this SHA's merge_group run.
+      actions: read
     outputs:
       full: ${{ steps.tier.outputs.full }}
+      post_merge: ${{ steps.tier.outputs.post_merge }}
       tauri: ${{ steps.tier.outputs.tauri }}
       swift: ${{ steps.tier.outputs.swift }}
       intel: ${{ steps.tier.outputs.intel }}
@@ -93,8 +104,11 @@ jobs:
         with:
           token: ${{ github.token }}
           source: ${{ github.workspace }}
+          post-merge: 'true'
 
-      # The build matrix (rules in .github/actions/ci-tier/tauri-builds.jq).
+      # The build matrix (rules in .github/actions/ci-tier/tauri-builds.jq). Post-merge (#5035): the
+      # scheduled run of feat/tauri-v2 builds only macos-arm64 and the windows-arm64 e2e specs, a push
+      # the merge queue passed builds nothing.
       - name: Build the build matrix
         id: matrix
         env:
@@ -104,8 +118,9 @@ jobs:
           WINDOWS_LEGS: ${{ steps.tier.outputs.tauri_windows }}
           MACOS_LEGS: ${{ steps.tier.outputs.tauri_macos }}
           QUEUE: ${{ github.event_name == 'merge_group' }}
+          POST_MERGE: ${{ steps.tier.outputs.post_merge }}
         run: |
-          matrix=$(jq -cn --arg full "$FULL" --arg macos "$MACOS" --arg intel "$INTEL" --arg queue "$QUEUE" --arg win "$WINDOWS_LEGS" --arg mac "$MACOS_LEGS" \
+          matrix=$(jq -cn --arg full "$FULL" --arg macos "$MACOS" --arg intel "$INTEL" --arg queue "$QUEUE" --arg post_merge "$POST_MERGE" --arg win "$WINDOWS_LEGS" --arg mac "$MACOS_LEGS" \
             -f .github/actions/ci-tier/tauri-builds.jq)
           echo "build=$matrix" >> "$GITHUB_OUTPUT"
           echo "Build matrix: $matrix"
@@ -122,7 +137,8 @@ jobs:
   static:
     name: Static checks
     needs: plan
-    if: ${{ !cancelled() && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref != 'main' && github.event.label.name == 'full-ci')) }}
+    # Not post-merge: the merge queue ran it on the same SHA (as for renderer-tests).
+    if: ${{ !cancelled() && (needs.plan.outputs.post_merge || 'false') == 'false' && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref != 'main' && github.event.label.name == 'full-ci')) }}
     runs-on: ubuntu-22.04
     timeout-minutes: 40
     steps:
@@ -246,7 +262,7 @@ jobs:
   renderer-tests:
     name: Renderer tests (${{ matrix.shard }}/3)
     needs: plan
-    if: ${{ !cancelled() && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref != 'main' && github.event.label.name == 'full-ci')) }}
+    if: ${{ !cancelled() && (needs.plan.outputs.post_merge || 'false') == 'false' && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref != 'main' && github.event.label.name == 'full-ci')) }}
     runs-on: ubuntu-22.04
     timeout-minutes: 40
     strategy:
@@ -292,7 +308,7 @@ jobs:
   build:
     name: Build ${{ matrix.variant }}${{ matrix.shard && format(' {0}/2', matrix.shard) || '' }} (${{ matrix.platform }})
     needs: plan
-    if: ${{ !cancelled() && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') && (needs.plan.result == 'failure' || needs.plan.outputs.full == 'true' || needs.plan.outputs.tauri == 'true') }}
+    if: ${{ !cancelled() && needs.plan.outputs.post_merge != 'covered' && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') && (needs.plan.result == 'failure' || needs.plan.outputs.full == 'true' || needs.plan.outputs.tauri == 'true') }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     strategy:
@@ -556,3 +572,30 @@ jobs:
           # A skipped detection job (a noop `labeled` or `opened` run) must not read as a pass.
           if [ "$DETECT_RESULT" != success ]; then echo "::error::plan job result was $DETECT_RESULT"; exit 1; fi
           case " $RESULTS " in *" failure "*|*" cancelled "*) exit 1 ;; esac
+
+  # A failed scheduled run opens (or comments on) one issue: nothing else reads its result. Write access
+  # to issues only, and no checkout, so nothing from the repo runs with it.
+  report:
+    name: Report a scheduled failure
+    needs: gate
+    if: ${{ always() && github.event_name == 'schedule' && needs.gate.result == 'failure' }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Open or update the issue
+        run: |
+          set -euo pipefail
+          body="Desktop Tauri CI failed on the scheduled post-merge run of feat/tauri-v2 at ${{ github.sha }}: $RUN_URL. These legs (the macos-arm64 builds, the windows-arm64 e2e specs) do not run in the merge queue (#5035)."
+          gh label create post-merge-ci --description "Scheduled post-merge CI failure on feat/tauri-v2" --color D93F0B 2>/dev/null || true
+          existing=$(gh issue list --label post-merge-ci --state open --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "$body"
+          else
+            gh issue create --label post-merge-ci --title "Scheduled post-merge CI failure on feat/tauri-v2" --body "$body"
+          fi
