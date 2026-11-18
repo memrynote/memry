@@ -158,9 +158,16 @@ fn parse_with(language: Option<&str>, matter: &str) -> Result<Option<YamlValue>,
             "js" | "javascript" => Err(engine_error(format!(
                 "gray-matter engine \"{name}\" evaluates code; the frontmatter is not evaluated"
             ))),
-            _ => Err(engine_error(format!(
-                "gray-matter engine \"{name}\" is not registered"
-            ))),
+            _ => {
+                // The name is the file's first line, so the message shows at most 64 chars.
+                let mut shown: String = name.chars().take(64).collect();
+                if shown.len() < name.len() {
+                    shown.push('…');
+                }
+                Err(engine_error(format!(
+                    "gray-matter engine \"{shown}\" is not registered"
+                )))
+            }
         },
     }
 }

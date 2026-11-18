@@ -471,7 +471,15 @@ mod tests {
     #[test]
     fn a_wide_header_gives_a_bounded_columns_warning() {
         let wide: Vec<String> = (0..5_000).map(|i| format!("column_{i}")).collect();
-        for header in [wide.join(","), "x".repeat(1 << 20)] {
+        // Multi-byte names put the byte cap inside a character: `€` (3 bytes) and `aé` (1 + 2)
+        // do at 1,000, `😀` (4) does not.
+        for header in [
+            wide.join(","),
+            "x".repeat(1 << 20),
+            "€".repeat(400),
+            "😀".repeat(300),
+            "aé".repeat(400),
+        ] {
             let warning = columns_warning(&header);
             let columns = warning.params.as_ref().unwrap()["columns"]
                 .as_str()

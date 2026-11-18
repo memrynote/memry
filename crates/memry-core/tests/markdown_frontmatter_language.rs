@@ -78,6 +78,15 @@ fn an_unknown_language_is_not_registered_unless_the_block_is_blank() {
         "{error}"
     );
     assert!(gray_matter_data("---coffee\na: 1\n---\n").is_err());
+    // A long token is clipped in the message.
+    let long = "x".repeat(100_000);
+    let error = gray_matter_data(&format!("---{long}\na = 1\n---\n")).unwrap_err();
+    assert!(error.message.len() < 200, "{} bytes", error.message.len());
+    assert!(
+        error
+            .message
+            .contains(&format!("\"{}…\" is not registered", "x".repeat(64)))
+    );
     // A blank block is empty data before any engine is looked up.
     assert_eq!(
         gray_matter_data("---toml\n  # note\n---\nbody").unwrap(),
