@@ -172,6 +172,51 @@ fn check_1_fails_when_a_table_wrote_fewer_rows_than_it_read() {
     checks::row_counts(&report).unwrap();
 }
 
+/// A record importer that skipped `merge_into` leaves a stored payload the merge still changes,
+/// and `sync_unknown_fields` fails check 1 instead of counting the row as merged.
+#[test]
+fn a_record_written_without_its_unknown_fields_merge_fails_check_1() {
+    let dir = tempfile::tempdir().unwrap();
+    let pair = electron_db::create_pair(&dir.path().join(".memry"));
+    electron_db::seed(
+        &rusqlite::Connection::open(&pair.data).unwrap(),
+        "sync_unknown_fields",
+        &[
+            ("type", Value::Text("folder_config".into())),
+            ("item_id", Value::Text("f".into())),
+            ("fields", Value::Text(r#"{"x":1}"#.into())),
+            ("nested_fields", Value::Null),
+        ],
+    );
+    let sources = copy_sources(&pair.data, &pair.index, &dir.path().join("staging")).unwrap();
+    let staged = dir.path().join("staged");
+    std::fs::create_dir_all(&staged).unwrap();
+    let mut writer = memry_core::storage::import::ImportWriter::create(&staged).unwrap();
+    writer
+        .put_records(
+            &[memry_core::storage::import::ImportRecord {
+                item_type: "folder_config",
+                item_id: "f".into(),
+                payload: r#"{"icon":null}"#.into(),
+                synced_at: None,
+            }],
+            7,
+        )
+        .unwrap();
+    let mut ctx = TableCtx {
+        source: sources.conn(SourceDb::Data),
+        index: sources.conn(SourceDb::Index),
+        vault_dir: dir.path(),
+        vault_id: "vault-1",
+        writer: &mut writer,
+        now_ms: 7,
+    };
+    assert!(matches!(
+        tables::unknown_fields::import(&mut ctx),
+        Err(ImportError::CheckFailed { check: 1, .. })
+    ));
+}
+
 /// The clock cap is the size guard: a well-formed clock over it is refused, one under it reads.
 #[test]
 fn a_clock_over_the_cap_is_refused_before_the_parse() {
