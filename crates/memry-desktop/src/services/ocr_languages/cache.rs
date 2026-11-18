@@ -59,7 +59,7 @@ fn unpack_within(
             .is_some_and(|(pack, _)| pack == sha256)
     {
         let entry = (target.clone(), seen);
-        if checked(&entry) {
+        if checked(&entry) && target.is_file() {
             return Ok(());
         }
         let unpacked_sha = entry.1.split_once('\n').map(|(_, unpacked)| unpacked);
