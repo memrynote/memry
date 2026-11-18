@@ -5,7 +5,7 @@
 
 use chrono_tz::Tz;
 use memry_core::domain::readwise::{LinkKey, LinkState, ReadwiseItem, parse_readwise_url};
-use serde_json::{Map, Value};
+use serde_json::Map;
 
 use super::highlights::{image_highlight_url, linked_highlight_ids};
 use super::images::resolve_images;
@@ -17,7 +17,10 @@ use super::section::{
     EndMarker, SectionProblem, SectionRead, hash_section_body, read_section, write_end_marker,
 };
 use super::steps;
-use super::types::{CategorySwitches, FolderLayout, FrontmatterValue, ReadwiseBook, SavedImages};
+use super::types::{
+    CategorySwitches, FolderLayout, FrontmatterValue, ReadwiseBook, SavedImages, json_value,
+    split_frontmatter,
+};
 use crate::notes::create::NewNoteFile;
 use crate::notes::update::NoteUpdateInput;
 use crate::notes::view::NoteView;
@@ -573,32 +576,4 @@ pub fn strip_stray_markers(body: &str) -> String {
     }
     out.push_str(&body[copied..]);
     out
-}
-
-pub(super) fn json_value(value: &FrontmatterValue) -> Value {
-    match value {
-        FrontmatterValue::Text(text) => Value::String(text.clone()),
-        FrontmatterValue::List(items) => {
-            Value::Array(items.iter().cloned().map(Value::String).collect())
-        }
-        FrontmatterValue::Number(number) => Value::Number(number.clone()),
-    }
-}
-
-/// The plan's `tags` apart from its other properties, in order.
-pub(super) fn split_frontmatter(
-    frontmatter: &[(&'static str, FrontmatterValue)],
-) -> (Vec<String>, Map<String, Value>) {
-    let mut tags = Vec::new();
-    let mut properties = Map::new();
-    for (key, value) in frontmatter {
-        match (*key, value) {
-            ("tags", FrontmatterValue::List(list)) => tags.clone_from(list),
-            ("tags", _) => {}
-            (key, value) => {
-                properties.insert(key.to_owned(), json_value(value));
-            }
-        }
-    }
-    (tags, properties)
 }
