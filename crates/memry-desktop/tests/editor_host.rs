@@ -750,3 +750,39 @@ fn a_window_edit_waiting_for_an_outside_edit_reaches_the_other_windows_after_it(
 
     assert_eq!(kinds(&side_frames), [(2, None), (0, None)]);
 }
+
+/// Readwise's busy check (`note-writer.ts:223`): open in a window or closed within the grace
+/// period, or a server update less than the window ago.
+#[test]
+fn a_note_is_busy_while_a_window_holds_it_and_after_a_server_update() {
+    let env = env();
+    let note = env.note();
+    let quiet = env.note();
+    let window = Duration::from_secs(60);
+    assert!(!env.host.is_busy(&note, window));
+
+    let (main, frames) = env.open(&note, "main");
+    assert!(env.host.is_busy(&note, Duration::ZERO));
+    assert!(!env.host.took_remote_update(&note, window));
+
+    let update = main.type_text("from the server");
+    let db = env.session.current().unwrap().vault.db_handle();
+    let id = note.clone();
+    db.call_blocking(move |conn| {
+        update_log::append_server_update(conn, &id, 1, &update, 1).map_err(|error| {
+            StorageError::Failed {
+                what: error.to_string(),
+            }
+        })
+    })
+    .unwrap();
+    assert_eq!(kinds(&frames), [(1, None)]);
+    assert!(env.host.took_remote_update(&note, window));
+    assert!(!env.host.took_remote_update(&note, Duration::ZERO));
+
+    // Closed: held within the grace period, and the server update still counts.
+    env.host.close(&note, "main");
+    assert!(env.host.is_busy(&note, Duration::ZERO));
+    assert!(env.host.took_remote_update(&note, window));
+    assert!(!env.host.is_busy(&quiet, window));
+}

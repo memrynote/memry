@@ -286,6 +286,10 @@ name = "readwise_untrusted"
 path = "tests/readwise_untrusted.rs"
 
 [[test]]
+name = "readwise_client"
+path = "tests/readwise_client.rs"
+
+[[test]]
 name = "watch_perf"
 path = "tests/watch_perf.rs"
 
