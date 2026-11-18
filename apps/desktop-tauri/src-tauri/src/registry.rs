@@ -407,6 +407,9 @@ pub fn builder() -> Builder<Wry> {
             crate::events::SyncLinkingRequestedEvent,
             // ocr languages
             crate::events::OcrLanguagesChangedEvent,
+            // reminders
+            crate::events::ReminderClickedEvent,
+            crate::events::ReminderDueEvent,
             // settings
             crate::events::SettingsChangedEvent,
             crate::events::SettingsOpenSectionEvent,
