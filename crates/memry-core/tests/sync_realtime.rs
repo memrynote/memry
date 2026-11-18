@@ -593,7 +593,10 @@ async fn a_first_sync_that_outlives_the_session_drops_the_header_mid_run() {
 
     let opened = client.open(1_000).await;
     assert!(opened.elevated());
-    assert_eq!(opened.tail_cursor, 9_001, "§10.4: MAX(server_cursor) at open");
+    assert_eq!(
+        opened.tail_cursor, 9_001,
+        "§10.4: MAX(server_cursor) at open"
+    );
     assert_eq!(
         client.header(1_000),
         Some((BOOTSTRAP_TOKEN_HEADER, "tok-1".to_owned()))
