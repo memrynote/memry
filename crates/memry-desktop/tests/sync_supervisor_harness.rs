@@ -10,6 +10,7 @@
 //! | wait_for_pull and outbox_count follow real passes      | L4b test hooks: a pull counted, `synced_settings` 1 then 0 |
 //! | ten hints during a held pass give one trailing pass    | chapter 09 hints coalesce into one wake |
 //! | real passes tell item-synced and queue-cleared         | L7 events through the real driver      |
+//! | a fresh device's supervisor runs the first sync        | #4893: progress, every body, then passes |
 
 #![cfg(feature = "harness")]
 
@@ -29,9 +30,11 @@ use harness_server::{NoPins, Online, Server};
 use memry_core::api::auth::{AuthSession, DeviceDescriptor};
 use memry_core::api::errors::{StorageError, SyncError};
 use memry_core::api::vault::Vault;
+use memry_core::crdt::body_edit::BlockEdit;
 use memry_core::crypto::keys::derive_vault_key;
 use memry_core::protocol::auth::DevicePlatform;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
+use memry_core::sync::driver::progress::{InitialSyncPhase, InitialSyncSink};
 use memry_core::sync::driver::{DriverConfig, SyncDriver};
 use memry_core::sync::engine::{PassReport, PassSeed};
 use memry_core::sync::policy::ServerClock;
@@ -421,6 +424,15 @@ impl SyncPasses for Held {
         self.gate(PassTrigger::SocketHint).await;
         self.inner.wake(cursor).await
     }
+    async fn needs_first_sync(&self) -> Result<bool, SyncError> {
+        self.inner.needs_first_sync().await
+    }
+    async fn first_sync(
+        &self,
+        progress: Arc<dyn InitialSyncSink>,
+    ) -> Result<Option<PassReport>, SyncError> {
+        self.inner.first_sync(progress).await
+    }
     fn realtime(
         &self,
         _sink: Arc<dyn HintSink>,
@@ -562,10 +574,20 @@ async fn real_passes_tell_item_synced_and_queue_cleared() {
     a.write_note("Pushed");
     supervisor_a.request_push();
     until("A's push", || a.outbox() == 0).await;
-    until("queue-cleared", || !events_a.lock().unwrap().is_empty()).await;
+    // A's start pass was its first sync, which told its progress.
+    let told = || -> Vec<SyncEvent> {
+        events_a
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|event| !matches!(event, SyncEvent::InitialSyncProgress(_)))
+            .cloned()
+            .collect()
+    };
+    until("queue-cleared", || !told().is_empty()).await;
     assert!(
         matches!(
-            events_a.lock().unwrap().as_slice(),
+            told().as_slice(),
             [SyncEvent::QueueCleared { item_count: 1, .. }]
         ),
         "{events_a:?}"
@@ -592,6 +614,112 @@ async fn real_passes_tell_item_synced_and_queue_cleared() {
     );
     supervisor_a.stop().await;
     supervisor_b.stop().await;
+}
+
+/// A fresh device's supervisor runs the driver's first sync (#4893): the renderer hears `notes`
+/// then one `complete`, every note arrives with its body, `first_sync.completed` is written, and
+/// the next Sync Now is an ordinary pass that tells no progress.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_fresh_devices_supervisor_runs_the_first_sync_then_ordinary_passes() {
+    let server = Server::start();
+    let a = Device::new(&server, 0);
+    let b = Device::new(&server, 1);
+    let writer = a.core.notes_writer(a.store.clone()).unwrap();
+    let mut notes = Vec::new();
+    for i in 0..3 {
+        let id = writer.create(format!("Note {i}"), None).unwrap();
+        let edit = BlockEdit::InsertParagraph {
+            after_block_id: None,
+            text: format!("body {i}"),
+            new_block_id: format!("b-{i}"),
+        };
+        assert!(writer.edit_block(id.clone(), edit).unwrap());
+        notes.push(id);
+    }
+    let driver_a = a.driver().await;
+    for _ in 0..10 {
+        pass(&driver_a).await;
+        if a.outbox() == 0 {
+            break;
+        }
+    }
+    assert_eq!(a.outbox(), 0, "A pushed the seed");
+
+    let events: Arc<Mutex<Vec<SyncEvent>>> = Arc::default();
+    let recorded = Arc::clone(&events);
+    let progress = move || -> Vec<(InitialSyncPhase, u64, u64)> {
+        recorded
+            .lock()
+            .unwrap()
+            .iter()
+            .filter_map(|event| match event {
+                SyncEvent::InitialSyncProgress(p) => {
+                    Some((p.phase, p.processed_items, p.total_items))
+                }
+                _ => None,
+            })
+            .collect()
+    };
+    let gate = Arc::new(SyncStartGate::default());
+    gate.set_binding(VaultBinding::Bound);
+    let sink = Arc::clone(&events);
+    let supervisor = b.supervisor_over(
+        &gate,
+        Arc::new(b.backend()),
+        Arc::new(move |event| sink.lock().unwrap().push(event.clone())),
+    );
+    until("the first sync's complete", || {
+        progress()
+            .iter()
+            .any(|(phase, ..)| *phase == InitialSyncPhase::Complete)
+    })
+    .await;
+    until("the first pass answered", || {
+        supervisor.status().last_sync_at.is_some()
+    })
+    .await;
+
+    let seen = progress();
+    assert!(
+        seen.iter().all(|(_, done, total)| done <= total),
+        "{seen:?}"
+    );
+    let notes_at = seen
+        .iter()
+        .position(|(phase, ..)| *phase == InitialSyncPhase::Notes)
+        .expect("notes");
+    assert!(
+        seen[notes_at..].iter().any(|(_, _, total)| *total >= 3),
+        "{seen:?}"
+    );
+    assert_eq!(seen.last().map(|p| p.0), Some(InitialSyncPhase::Complete));
+    assert_eq!(b.notes(), 3);
+    let reader = b.core.notes_writer(b.store.clone()).unwrap();
+    for (i, id) in notes.iter().enumerate() {
+        let block = reader
+            .block_snapshot(id.clone(), format!("b-{i}"))
+            .unwrap()
+            .expect("the note is live on B");
+        assert!(block.contains(&format!("body {i}")), "{block}");
+    }
+    assert_eq!(
+        b.count("SELECT COUNT(*) FROM meta WHERE key = 'first_sync.completed'"),
+        1
+    );
+
+    // The pass loop has taken over: A's next note arrives through an ordinary pass.
+    a.write_note("After");
+    pass(&driver_a).await;
+    let before = seen.len();
+    let result = supervisor.sync_now().await;
+    assert!(result.success, "{result:?}");
+    assert_eq!(b.notes(), 4);
+    assert_eq!(
+        progress().len(),
+        before,
+        "an ordinary pass tells no progress"
+    );
+    supervisor.stop().await;
 }
 
 /// Polls `done` every 50 ms, at most 600 times.

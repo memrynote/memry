@@ -3,6 +3,8 @@
 
 use std::sync::Arc;
 
+use memry_core::sync::driver::progress::InitialSyncSink;
+pub use memry_core::sync::driver::progress::{InitialSyncPhase, InitialSyncProgress};
 use memry_core::sync::driver::{
     AppliedOutcome, AppliedRecord, ApplyObserver, CorruptItem, SecurityWarning,
 };
@@ -38,6 +40,8 @@ pub enum SyncEvent {
     },
     /// A row held corrupt was refetched and applied (`item-recovery.ts:78`).
     Recovered { item_type: String, item_id: String },
+    /// The first sync of this vault on this device moved on (`full-sync-runner.ts:447,536`).
+    InitialSyncProgress(InitialSyncProgress),
 }
 
 /// What a pulled record did to the local row.
@@ -59,6 +63,15 @@ impl SyncEvent {
             server_s,
             skew_s: (local_s - server_s).abs(),
         }
+    }
+}
+
+/// Tells the shell the first sync's progress.
+pub(super) struct ProgressEvents(pub(super) OnSyncEvent);
+
+impl InitialSyncSink for ProgressEvents {
+    fn progress(&self, progress: InitialSyncProgress) {
+        (self.0)(&SyncEvent::InitialSyncProgress(progress));
     }
 }
 

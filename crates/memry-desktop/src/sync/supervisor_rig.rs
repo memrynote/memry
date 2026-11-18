@@ -8,6 +8,7 @@ use std::time::Duration;
 use memry_core::api::errors::{ApiError, SyncError, TransportError};
 use memry_core::seams::reachability::{Reachability, ReachabilityObserver, Reachable};
 use memry_core::storage::{Db, open_data};
+use memry_core::sync::driver::progress::{InitialSyncPhase, InitialSyncProgress, InitialSyncSink};
 use memry_core::sync::engine::PassReport;
 use memry_core::sync::policy::ServerClock;
 use memry_core::sync::pull::PullReport;
@@ -67,6 +68,11 @@ pub(crate) struct FakeDriver {
     /// Rounds of due snapshots pushed, and final rounds.
     pub(crate) snapshot_rounds: AtomicUsize,
     pub(crate) final_rounds: AtomicUsize,
+    /// The vault has not finished a first sync: the next pass is one.
+    pub(crate) fresh: AtomicBool,
+    pub(crate) first_syncs: AtomicUsize,
+    /// The next first sync fails with this after its first progress.
+    pub(crate) first_sync_error: Mutex<Option<SyncError>>,
 }
 
 impl FakeDriver {
@@ -156,6 +162,36 @@ impl SyncPasses for FakeDriver {
             pull_error: error,
             push_error: None,
         })
+    }
+    async fn needs_first_sync(&self) -> Result<bool, SyncError> {
+        Ok(self.fresh.load(Ordering::SeqCst))
+    }
+    /// One page of notes, then a pass to the head, then `complete`; as the driver, `None`
+    /// while paused.
+    async fn first_sync(
+        &self,
+        progress: Arc<dyn InitialSyncSink>,
+    ) -> Result<Option<PassReport>, SyncError> {
+        if self.paused.load(Ordering::SeqCst) {
+            return Ok(None);
+        }
+        self.first_syncs.fetch_add(1, Ordering::SeqCst);
+        progress.progress(InitialSyncProgress {
+            phase: InitialSyncPhase::Notes,
+            processed_items: 1,
+            total_items: 2,
+        });
+        if let Some(error) = lock(&self.first_sync_error).take() {
+            return Err(error);
+        }
+        self.fresh.store(false, Ordering::SeqCst);
+        let report = self.run_pass(PassTrigger::Explicit).await;
+        progress.progress(InitialSyncProgress {
+            phase: InitialSyncPhase::Complete,
+            processed_items: 0,
+            total_items: 0,
+        });
+        Ok(report)
     }
     fn snapshots_due(&self, _now_ms: i64) -> bool {
         self.snapshot_due.load(Ordering::SeqCst)

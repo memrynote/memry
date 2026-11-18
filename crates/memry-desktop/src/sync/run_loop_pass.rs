@@ -5,6 +5,7 @@ use std::time::Duration;
 
 use memry_core::api::errors::{ApiError, SyncError};
 use memry_core::sync::driver::ApplyObserver;
+use memry_core::sync::driver::progress::InitialSyncSink;
 use memry_core::sync::engine::PassReport;
 use memry_core::sync::outbox;
 use memry_core::sync::state::SyncState;
@@ -28,7 +29,8 @@ pub(super) struct PassDone {
     started: Instant,
     /// The driver the pass ran on, or why it could not be opened.
     driver: Result<Arc<dyn SyncPasses>, SyncError>,
-    report: Option<PassReport>,
+    /// `Err`: the first sync failed before its passes ran.
+    report: Result<Option<PassReport>, SyncError>,
     pending: Option<u32>,
 }
 
@@ -43,7 +45,8 @@ pub(super) enum PassDriver {
     },
 }
 
-/// Runs one pass. `pause` is the loop's: it reaches the driver while the pass holds it.
+/// Runs one pass, or the first sync with its progress to `progress` while the vault has not
+/// finished one. `pause` is the loop's: it reaches the driver while the pass holds it.
 pub(super) async fn run(
     id: u64,
     trigger: Trigger,
@@ -51,6 +54,7 @@ pub(super) async fn run(
     backend: Arc<dyn SyncBackend>,
     db: memry_core::storage::Db,
     pause: watch::Receiver<bool>,
+    progress: Arc<dyn InitialSyncSink>,
 ) -> PassDone {
     let started = Instant::now();
     let driver = match driver {
@@ -67,10 +71,10 @@ pub(super) async fn run(
     let report = match &driver {
         Ok(driver) => tokio::select! {
             biased;
-            report = pass_on(driver.as_ref(), trigger) => report,
-            () = follow_pause(driver.as_ref(), pause) => None,
+            report = pass_on(driver.as_ref(), trigger, progress) => report,
+            () = follow_pause(driver.as_ref(), pause) => Ok(None),
         },
-        Err(_) => None,
+        Err(_) => Ok(None),
     };
     let pending = match blocking(&db, outbox::depth).await {
         Ok(depth) => u32::try_from(depth).ok(),
@@ -89,16 +93,27 @@ pub(super) async fn run(
     }
 }
 
-async fn pass_on(driver: &dyn SyncPasses, trigger: Trigger) -> Option<PassReport> {
-    let report = match trigger {
-        Trigger::Hint { cursor } => driver.wake(cursor).await,
-        _ => driver.run_pass(trigger.pass_trigger()).await,
+/// A fresh device's first pass, whatever asked for it, is the first sync (`full-sync-runner.ts`
+/// `isFreshDevice`): it pulls every live body, which the feed alone does not serve (#2297). A
+/// first sync cut short resumes from what it wrote at the next pass.
+async fn pass_on(
+    driver: &dyn SyncPasses,
+    trigger: Trigger,
+    progress: Arc<dyn InitialSyncSink>,
+) -> Result<Option<PassReport>, SyncError> {
+    let report = if driver.needs_first_sync().await? {
+        driver.first_sync(progress).await?
+    } else {
+        match trigger {
+            Trigger::Hint { cursor } => driver.wake(cursor).await,
+            _ => driver.run_pass(trigger.pass_trigger()).await,
+        }
     };
     // The pass ends with the snapshots due, so their gate reads the pull it just ran.
     if report.is_some() {
         driver.push_due_snapshots(now_ms()).await;
     }
-    report
+    Ok(report)
 }
 
 /// Pauses and resumes `driver` with the loop. The loop does so for the driver it holds; a driver
@@ -157,21 +172,9 @@ impl Loop {
         }
         self.driver = Some(Arc::clone(&driver));
         let result = match &done.report {
-            // A hint the engine dropped: this device already holds its change.
-            None if matches!(done.trigger, Trigger::Hint { .. }) && !self.paused => {
-                TriggerSyncResult::ok()
-            }
-            None => TriggerSyncResult::blocked(Blocked::Paused, None),
-            Some(report) => {
-                if report.pushed_items > 0 && report.push_error.is_none() && done.pending == Some(0)
-                {
-                    (self.on_event)(&SyncEvent::QueueCleared {
-                        item_count: u32::try_from(report.pushed_items).unwrap_or(u32::MAX),
-                        duration_ms: i64::try_from(report.push_ms).unwrap_or(i64::MAX),
-                    });
-                }
-                self.record(report, done.started)
-            }
+            Err(error) if error.is_cancelled() => TriggerSyncResult::blocked(Blocked::Paused, None),
+            Err(error) => self.pass_failed(error, false),
+            Ok(report) => self.reported(report.as_ref(), done.trigger, done.started, done.pending),
         };
         if result.success {
             self.socket_refused = false;
@@ -206,6 +209,31 @@ impl Loop {
         self.answer(done.id, result);
     }
 
+    fn reported(
+        &mut self,
+        report: Option<&PassReport>,
+        trigger: Trigger,
+        started: Instant,
+        pending: Option<u32>,
+    ) -> TriggerSyncResult {
+        match report {
+            // A hint the engine dropped: this device already holds its change.
+            None if matches!(trigger, Trigger::Hint { .. }) && !self.paused => {
+                TriggerSyncResult::ok()
+            }
+            None => TriggerSyncResult::blocked(Blocked::Paused, None),
+            Some(report) => {
+                if report.pushed_items > 0 && report.push_error.is_none() && pending == Some(0) {
+                    (self.on_event)(&SyncEvent::QueueCleared {
+                        item_count: u32::try_from(report.pushed_items).unwrap_or(u32::MAX),
+                        duration_ms: i64::try_from(report.push_ms).unwrap_or(i64::MAX),
+                    });
+                }
+                self.record(report, started)
+            }
+        }
+    }
+
     /// Takes in what one pass did and says how a Sync Now caller sees it.
     fn record(&mut self, report: &PassReport, started: Instant) -> TriggerSyncResult {
         if report.transitions.contains(&SyncState::Applying) {
@@ -218,22 +246,7 @@ impl Loop {
         }
         self.engine = Some(report.final_state);
         match report.error() {
-            Some(error) => {
-                self.report(error);
-                let category = SyncErrorCategory::of(error);
-                self.last_error = Some((error.to_string(), category));
-                if let Some(retry_after) = rate_limited(error) {
-                    self.rate_failures += 1;
-                    let wait = rate_limit_backoff(retry_after, self.rate_failures);
-                    self.blocked_until = Some(Instant::now() + wait);
-                } else if report.final_state != SyncState::Offline {
-                    self.failed(category);
-                }
-                if report.final_state == SyncState::Offline {
-                    return TriggerSyncResult::blocked(Blocked::Offline, None);
-                }
-                TriggerSyncResult::blocked(Blocked::Failed, Some(error.clone()))
-            }
+            Some(error) => self.pass_failed(error, report.final_state == SyncState::Offline),
             None if report.final_state == SyncState::Offline => {
                 TriggerSyncResult::blocked(Blocked::Offline, None)
             }
@@ -262,6 +275,24 @@ impl Loop {
 }
 
 impl Loop {
+    /// A pass or a first sync that failed: told, shown, and backed off (`429`: its window).
+    fn pass_failed(&mut self, error: &SyncError, offline: bool) -> TriggerSyncResult {
+        self.report(error);
+        let category = SyncErrorCategory::of(error);
+        self.last_error = Some((error.to_string(), category));
+        if let Some(retry_after) = rate_limited(error) {
+            self.rate_failures += 1;
+            let wait = rate_limit_backoff(retry_after, self.rate_failures);
+            self.blocked_until = Some(Instant::now() + wait);
+        } else if !offline {
+            self.failed(category);
+        }
+        if offline {
+            return TriggerSyncResult::blocked(Blocked::Offline, None);
+        }
+        TriggerSyncResult::blocked(Blocked::Failed, Some(error.clone()))
+    }
+
     /// `sync_error`, redacted by the service; dropped by it while telemetry is off.
     fn report(&self, error: &memry_core::api::errors::SyncError) {
         if let Some(telemetry) = &self.telemetry {

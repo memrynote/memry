@@ -4,6 +4,8 @@ use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use std::time::Duration;
 
+use memry_core::api::errors::{ApiError, SyncError, TransportError};
+use memry_core::sync::driver::progress::{InitialSyncPhase, InitialSyncProgress};
 use memry_core::sync::driver::{AppliedOutcome, AppliedRecord, CorruptItem, SecurityWarning};
 use tokio::time::sleep;
 
@@ -199,4 +201,82 @@ async fn a_clock_skew_pause_holds_when_its_write_fails() {
     ));
     assert_eq!(supervisor.status().status, SyncStatusValue::Paused);
     assert!(rig.backend.driver.paused.load(Ordering::SeqCst));
+}
+
+fn progress(phase: InitialSyncPhase, processed_items: u64, total_items: u64) -> SyncEvent {
+    SyncEvent::InitialSyncProgress(InitialSyncProgress {
+        phase,
+        processed_items,
+        total_items,
+    })
+}
+
+/// A vault with no finished first sync runs the driver's first sync, not a pass, and tells its
+/// progress (#4893); the passes after it are ordinary ones.
+#[tokio::test(start_paused = true)]
+async fn a_fresh_vault_runs_the_first_sync_with_its_progress_then_passes() {
+    let rig = Rig::new();
+    rig.backend.driver.fresh.store(true, Ordering::SeqCst);
+    let supervisor = rig.start().await;
+    let driver = &rig.backend.driver;
+    assert_eq!(driver.first_syncs.load(Ordering::SeqCst), 1);
+    assert_eq!(
+        *lock(&rig.sync_events),
+        [
+            progress(InitialSyncPhase::Notes, 1, 2),
+            progress(InitialSyncPhase::Complete, 0, 0),
+        ]
+    );
+    assert!(supervisor.status().last_sync_at.is_some());
+
+    let (result, ()) = tokio::join!(supervisor.sync_now(), settle());
+    assert!(result.success, "{result:?}");
+    assert_eq!(driver.first_syncs.load(Ordering::SeqCst), 1);
+    assert_eq!(rig.passes(), 2, "the first sync's pass, then Sync Now's");
+    assert_eq!(
+        lock(&rig.sync_events).len(),
+        2,
+        "an ordinary pass tells no progress"
+    );
+}
+
+/// A first sync that fails is shown and backed off like a failed pass; the next pass runs the
+/// first sync again, which resumes from what it wrote.
+#[tokio::test(start_paused = true)]
+async fn a_failed_first_sync_is_shown_and_the_next_pass_runs_it_again() {
+    let rig = Rig::new();
+    let driver = &rig.backend.driver;
+    driver.fresh.store(true, Ordering::SeqCst);
+    *lock(&driver.first_sync_error) = Some(SyncError::Api {
+        source: ApiError::Status {
+            status: 503,
+            code: None,
+            message: "unavailable".into(),
+        },
+    });
+    let supervisor = rig.start().await;
+    let status = supervisor.status();
+    assert_eq!(status.status, SyncStatusValue::Error, "{status:?}");
+    assert_eq!(rig.passes(), 0, "no pass ran past the failed first sync");
+    assert!(status.last_sync_at.is_none());
+
+    let (result, ()) = tokio::join!(supervisor.sync_now(), settle());
+    assert!(result.success, "{result:?}");
+    assert_eq!(driver.first_syncs.load(Ordering::SeqCst), 2);
+    assert_eq!(supervisor.status().status, SyncStatusValue::Idle);
+}
+
+/// A pause that cuts the first sync records no failure: the status shows no error.
+#[tokio::test(start_paused = true)]
+async fn a_first_sync_the_pause_cut_records_no_failure() {
+    let rig = Rig::new();
+    let driver = &rig.backend.driver;
+    driver.fresh.store(true, Ordering::SeqCst);
+    *lock(&driver.first_sync_error) = Some(SyncError::from(ApiError::Transport {
+        source: TransportError::Cancelled,
+    }));
+    let supervisor = rig.start().await;
+    let status = supervisor.status();
+    assert_eq!(status.error, None, "{status:?}");
+    assert_ne!(status.status, SyncStatusValue::Error);
 }
