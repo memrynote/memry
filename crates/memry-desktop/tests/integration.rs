@@ -367,6 +367,8 @@ mod tag_objects;
 mod tag_schema;
 #[path = "tags.rs"]
 mod tags;
+#[path = "task_defaults.rs"]
+mod task_defaults;
 #[path = "telemetry_flush.rs"]
 mod telemetry_flush;
 #[path = "telemetry_report_posts.rs"]

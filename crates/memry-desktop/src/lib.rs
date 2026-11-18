@@ -37,6 +37,7 @@ pub mod shell;
 pub mod startup_values;
 pub mod sync;
 pub mod tags;
+pub mod tasks;
 pub mod telemetry;
 pub mod templates;
 pub mod updater;
