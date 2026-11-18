@@ -182,13 +182,14 @@ impl Engine {
         }
         let signal = cancel.child_token();
         *self.stop.lock().unwrap_or_else(|e| e.into_inner()) = Some(signal.clone());
+        let state = RunState::new(library.store());
         let mut run = Run {
             engine: self,
             library,
             token,
             observer,
             signal,
-            state: RunState::new(library.store()),
+            state: &state,
             result: RunResult::default(),
             claim_moved: false,
         };
@@ -251,7 +252,7 @@ struct Run<'a> {
     token: &'a str,
     observer: &'a dyn RunObserver,
     signal: CancellationToken,
-    state: RunState,
+    state: &'a RunState,
     result: RunResult,
     claim_moved: bool,
 }
@@ -402,7 +403,7 @@ impl Run<'_> {
 
         let writer = Writer {
             library: self.library,
-            state: &self.state,
+            state: self.state,
             base: &base,
         };
         for book in &retry_books {
