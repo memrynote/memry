@@ -64,11 +64,19 @@ export function readCriticMarkupMarksFromYDoc(doc: YDocLike): CriticMarkupMark[]
 }
 
 /**
+ * Past this many array operations a write rewrites the whole array: each Yjs
+ * operation walks the array from its start, so the cost stays linear.
+ */
+const MAX_ARRAY_OPERATIONS = 64
+
+/**
  * Makes the root hold `marks`, touching only the elements that change
  * (protocol 12.5.1): it deletes invalid elements, later copies of an id and
- * ids `marks` drops, replaces an element whose value differs (key order aside),
- * and inserts a new id after the furthest existing mark before it in `marks`.
- * A replaced element keeps the keys this build does not know.
+ * ids `marks` drops, and inserts a new id after the furthest existing mark
+ * before it in `marks`. It replaces an element only when the stored mark, read
+ * as this build reads it, differs from the new one in more than its offsets:
+ * the window moves offsets with its typing and never writes them alone
+ * (#4425). A replaced element keeps the keys this build does not know.
  */
 export function writeCriticMarkupMarksToYDoc(doc: YDocLike, marks: CriticMarkupMark[]): void {
   const array = doc.getArray(CRITIC_MARKUP_MARKS_ARRAY)
@@ -88,18 +96,10 @@ export function writeCriticMarkupMarksToYDoc(doc: YDocLike, marks: CriticMarkupM
     keptIds.add(id)
     return true
   })
-  for (let end = values.length; end > 0;) {
-    if (keep[end - 1]) {
-      end--
-      continue
-    }
-    let start = end - 1
-    while (start > 0 && !keep[start - 1]) start--
-    array.delete(start, end - start)
-    end = start
-  }
 
   const stored = values.filter((_, index) => keep[index])
+  const result = [...stored]
+  const replaced = stored.map(() => false)
   const indexOf = new Map([...keptIds].map((id, index) => [id, index]))
   // New marks keyed by the kept element they follow (-1: the start).
   const inserts = new Map<number, Record<string, unknown>[]>()
@@ -112,16 +112,54 @@ export function writeCriticMarkupMarksToYDoc(doc: YDocLike, marks: CriticMarkupM
       else inserts.set(anchor, [mark])
       continue
     }
-    const merged = { ...mark, ...unknownKeys(stored[index]) }
-    if (!sameValue(stored[index], merged)) {
-      array.delete(index, 1)
-      array.insert(index, [merged])
+    if (!sameMarkApartFromOffsets(stored[index], mark)) {
+      result[index] = { ...mark, ...unknownKeys(stored[index]) }
+      replaced[index] = true
     }
     anchor = Math.max(anchor, index)
+  }
+
+  const deletes = runsOf(keep.map((kept) => !kept))
+  const replaces = runsOf(replaced)
+  const operations = deletes.length + 2 * replaces.length + inserts.size
+  if (operations > MAX_ARRAY_OPERATIONS) {
+    const whole = [
+      ...(inserts.get(-1) ?? []),
+      ...result.flatMap((element, index) => [element, ...(inserts.get(index) ?? [])])
+    ]
+    if (values.length > 0) array.delete(0, values.length)
+    if (whole.length > 0) array.insert(0, whole)
+    return
+  }
+  for (const [start, end] of deletes.toReversed()) array.delete(start, end - start)
+  for (const [start, end] of replaces) {
+    array.delete(start, end - start)
+    array.insert(start, result.slice(start, end))
   }
   for (const [after, group] of [...inserts].toSorted(([a], [b]) => b - a)) {
     array.insert(after + 1, group)
   }
+}
+
+/** The `[start, end)` runs of `true`, in order. */
+function runsOf(flags: boolean[]): Array<[number, number]> {
+  const runs: Array<[number, number]> = []
+  flags.forEach((flag, index) => {
+    if (!flag) return
+    const last = runs.at(-1)
+    if (last && last[1] === index) last[1] = index + 1
+    else runs.push([index, index + 1])
+  })
+  return runs
+}
+
+/** Whether `stored`, read as this build reads it, equals `mark` apart from the offsets. */
+function sameMarkApartFromOffsets(stored: unknown, mark: Record<string, unknown>): boolean {
+  const current = normalizeCriticMarkupMark(stored)
+  if (!current) return false
+  const { start: _start, end: _end, ...rest } = toSerializableMark(current)
+  const { start: _nextStart, end: _nextEnd, ...nextRest } = mark
+  return sameValue(rest, nextRest)
 }
 
 function unknownKeys(element: unknown): Record<string, unknown> {

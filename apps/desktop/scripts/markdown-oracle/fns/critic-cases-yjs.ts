@@ -35,6 +35,18 @@ const rich: CriticMarkupMark = {
   formatRanges: [{ start: 0, end: 3, marks: ['bold'] }]
 }
 const future = { flag: true, nested: { v: 2, list: [1, 'x', null] } }
+const many = Array.from({ length: 70 }, (_, index) => ({
+  ...c3,
+  id: `m${index}`,
+  start: index * 10,
+  end: index * 10 + 4
+}))
+const edited = (mark: CriticMarkupMark): CriticMarkupMark => ({ ...mark, visibleText: 'edit' })
+const moved = (mark: CriticMarkupMark): CriticMarkupMark => ({
+  ...mark,
+  start: mark.start + 7,
+  end: mark.end + 7
+})
 const reversed = (mark: CriticMarkupMark): Record<string, unknown> =>
   Object.fromEntries(Object.entries(mark).toReversed())
 
@@ -100,6 +112,47 @@ const CASES: Record<string, [unknown[], CriticMarkupMark[][]]> = {
   'three-writers-same-mark': [
     [c1],
     [[{ ...c1, body: 'a' }], [{ ...c1, body: 'b' }], [{ ...c1, body: 'c' }]]
+  ],
+  'offset-only': [[c1, c2], [[moved(c1), moved(c2)]]],
+  'offset-and-edit': [[c1], [[{ ...moved(c1), body: 'edited' }]]],
+  'nested-unknown-keys-untouched': [
+    [
+      {
+        ...rich,
+        mentions: [{ kind: 'note', refId: 'n1', label: 'Plan', future: 1 }],
+        formatRanges: [{ start: 0, end: 3, marks: ['bold'], future: 1 }]
+      }
+    ],
+    [[rich]]
+  ],
+  'nested-unknown-keys-dropped-on-edit': [
+    [{ ...rich, mentions: [{ kind: 'note', refId: 'n1', label: 'Plan', future: 1 }] }],
+    [[{ ...rich, body: 'see that' }]]
+  ],
+  'two-writers-offset-only-and-edit': [
+    [c1, c2],
+    [
+      [moved(c1), { ...moved(c2), visibleText: 'edited here' }],
+      [{ ...c1, body: 'edited there' }, c2]
+    ]
+  ],
+  'two-writers-offset-only-and-edit-reversed': [
+    [c1, c2],
+    [
+      [{ ...c1, body: 'edited there' }, c2],
+      [moved(c1), { ...moved(c2), visibleText: 'edited here' }]
+    ]
+  ],
+  'many-contiguous-edits-coalesced': [many, [many.map((m, i) => (i < 50 ? edited(m) : m))]],
+  'many-scattered-edits-rewrite': [many, [many.map((m, i) => (i % 2 ? m : edited(m)))]],
+  'many-scattered-deletes': [many, [many.filter((_, i) => i % 2)]],
+  'many-scattered-inserts': [
+    many,
+    [many.flatMap((m, i) => (i % 2 ? [m] : [m, { ...c3, id: `new${i}` }]))]
+  ],
+  'rewrite-keeps-unknown-keys': [
+    many.map((m, i) => (i === 1 ? { ...m, future } : m)),
+    [many.map((m, i) => (i % 2 ? m : edited(m)))]
   ],
   'duplicates-repaired-by-later-write': [
     [c1, { ...c1, body: 'second', future }, c2],

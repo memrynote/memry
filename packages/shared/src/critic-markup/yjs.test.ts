@@ -100,6 +100,122 @@ describe('critic markup marks across builds and devices (protocol 12.5.1)', () =
     expect(elementsOf(doc)).toEqual([c1, c2])
   })
 
+  it('writes nothing when only the offsets differ', () => {
+    const doc = docWith([c1, c2])
+    const before = Y.encodeStateAsUpdate(doc)
+
+    writeCriticMarkupMarksToYDoc(doc, [
+      { ...c1, start: 7, end: 12 },
+      { ...c2, start: 7, end: 12 }
+    ])
+
+    expect(Y.encodeStateAsUpdate(doc)).toEqual(before)
+  })
+
+  it("keeps another device's edit when this one only moved the mark", () => {
+    for (const [here, there] of [
+      [10, 11],
+      [11, 10]
+    ]) {
+      const base = docWith([c1, c2])
+      const a = fork(base, here)
+      const b = fork(base, there)
+      writeCriticMarkupMarksToYDoc(a, [
+        { ...c1, start: 7, end: 12 },
+        { ...c2, body: 'edited here' }
+      ])
+      writeCriticMarkupMarksToYDoc(b, [{ ...c1, body: 'edited there' }, c2])
+      Y.applyUpdate(a, Y.encodeStateAsUpdate(b))
+
+      expect(readCriticMarkupMarksFromYDoc(a).map((mark) => mark.body)).toEqual([
+        'edited there',
+        'edited here'
+      ])
+    }
+  })
+
+  it('writes nothing back over unknown keys nested in known arrays', () => {
+    const doc = docWith([
+      {
+        ...c1,
+        mentions: [{ kind: 'note', refId: 'n1', label: 'Plan', future: 1 }],
+        formatRanges: [{ start: 0, end: 2, marks: ['bold'], future: 1 }]
+      }
+    ])
+    const before = Y.encodeStateAsUpdate(doc)
+
+    writeCriticMarkupMarksToYDoc(doc, readCriticMarkupMarksFromYDoc(doc))
+
+    expect(Y.encodeStateAsUpdate(doc)).toEqual(before)
+  })
+
+  it('inserts a new mark first, or right after the existing mark before it', () => {
+    const c0 = { ...c1, id: 'c0', metadata: 'id=c0;type=comment' }
+    const c3 = { ...c1, id: 'c3', metadata: 'id=c3;type=comment' }
+    const doc = docWith([c1, c2])
+
+    writeCriticMarkupMarksToYDoc(doc, [c0, c1, c3, c2])
+
+    expect(elementsOf(doc).map((element) => (element as CriticMarkupMark).id)).toEqual([
+      'c0',
+      'c1',
+      'c3',
+      'c2'
+    ])
+  })
+
+  it('bounds the array operations of a write', () => {
+    const many = Array.from({ length: 1000 }, (_, index) => ({
+      ...c1,
+      id: `m${index}`,
+      metadata: `id=m${index};type=comment`
+    }))
+    const count = (marks: CriticMarkupMark[], next: CriticMarkupMark[]) => {
+      const array = docWith(marks).getArray<unknown>(CRITIC_MARKUP_MARKS_ARRAY)
+      let ops = 0
+      const counted = {
+        get length() {
+          return array.length
+        },
+        get: (index: number) => array.get(index),
+        toArray: () => array.toArray(),
+        delete: (index: number, length: number) => {
+          ops++
+          array.delete(index, length)
+        },
+        insert: (index: number, values: unknown[]) => {
+          ops++
+          array.insert(index, values)
+        }
+      }
+      writeCriticMarkupMarksToYDoc({ getArray: () => counted }, next)
+      expect(readCriticMarkupMarksFromYDoc({ getArray: () => counted })).toEqual(next)
+      return ops
+    }
+    const edited = (mark: CriticMarkupMark) => ({ ...mark, body: 'edited' })
+
+    expect(count(many, many.map(edited))).toBe(2)
+    expect(
+      count(
+        many,
+        many.filter((_, index) => index % 2 === 0)
+      )
+    ).toBe(2)
+    expect(
+      count(
+        many,
+        many.map((mark, index) => (index % 2 ? mark : edited(mark)))
+      )
+    ).toBe(2)
+    expect(count(many, [...many.slice(0, 500), c1, ...many.slice(500)])).toBe(1)
+    expect(
+      count(
+        many,
+        many.map((mark, index) => (index % 100 ? mark : edited(mark)))
+      )
+    ).toBe(20)
+  })
+
   it('deletes a removed mark and inserts a new one after its predecessor', () => {
     const c3 = { ...c1, id: 'c3', metadata: 'id=c3;type=comment' }
     const doc = docWith([c1, c2])
