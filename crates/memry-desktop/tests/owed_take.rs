@@ -24,6 +24,8 @@ use crate::notes_outside_tags::{measured, opened, record_tags};
 use crate::vault_env::{Creates, Env, QUIET, WAIT, creates, edit_in_app, env, indexed};
 
 type Hook = Box<dyn FnOnce() -> Result<(), IdentityError> + Send>;
+/// What a window runs, once, at its next typing barrier.
+type AtBarrier = Arc<Mutex<Option<Box<dyn FnOnce() + Send>>>>;
 
 /// [`Creates`], whose `on_changed` runs the hook set last, once, and records each note it heard.
 struct Told {
@@ -81,7 +83,7 @@ struct Owed {
     told: Arc<Told>,
     id: String,
     barriers: Arc<AtomicUsize>,
-    hook: Arc<Mutex<Option<Box<dyn FnOnce() + Send>>>>,
+    hook: AtBarrier,
 }
 
 fn owed() -> Owed {
@@ -107,7 +109,7 @@ fn owed() -> Owed {
     e.watcher_live();
 
     let barriers = Arc::new(AtomicUsize::new(0));
-    let hook: Arc<Mutex<Option<Box<dyn FnOnce() + Send>>>> = Arc::default();
+    let hook: AtBarrier = Arc::default();
     let (count, run, answer) = (barriers.clone(), hook.clone(), host.clone());
     let window = Subscriber {
         window_label: "main".into(),
