@@ -22,10 +22,6 @@
 //! second, and CI's quiet disk measured 496). The slow rows take 40 samples, so p95 is the
 //! second-largest and not the maximum. Edits are a keystroke apart
 //! ([`KEYSTROKE`]); `apply_update`'s p95 is its commit's WAL write, which a busy disk stretches.
-//! The bridge includes that commit (the fan-out runs on the writing thread after it), and its p99
-//! of 200 is the second-largest sample, so two stalled writes on a shared runner miss it (25 ms
-//! once on CI at p50 0.4 ms): a missed bridge row is measured again and only the second run
-//! counts. A regression misses both runs.
 //! The test prints p50 and p95 and only reports a miss; `MEMRY_PERF_ENFORCE=1` turns a miss into
 //! a failure, and `MEMRY_PERF_FACTOR` scales every budget (a shared CI runner is slower).
 //!
@@ -200,34 +196,11 @@ impl Report {
         println!(
             "{what}: p50 {p50:?}, p{quantile} {at:?}, n {count} (budget {budget_ms} ms x {factor})"
         );
-        if self.misses(at, budget_ms) {
+        if at.as_secs_f64() * 1000.0 > budget_ms * factor {
             self.failures.push(format!(
                 "{what}: p{quantile} {at:?} over {budget_ms} ms x {factor}"
             ));
         }
-    }
-
-    /// [`Self::row_at`] of `measure`'s samples, measured again once when the first run misses.
-    fn row_at_remeasured(
-        &mut self,
-        what: &str,
-        quantile: usize,
-        budget_ms: f64,
-        mut measure: impl FnMut() -> Vec<Duration>,
-    ) {
-        let samples = measure();
-        let (_, at) = percentiles(samples.clone(), quantile);
-        let samples = if self.misses(at, budget_ms) {
-            println!("{what}: p{quantile} {at:?} over budget, measuring again");
-            measure()
-        } else {
-            samples
-        };
-        self.row_at(what, samples, quantile, budget_ms);
-    }
-
-    fn misses(&self, at: Duration, budget_ms: f64) -> bool {
-        at.as_secs_f64() * 1000.0 > budget_ms * self.factor
     }
 
     fn finish(self) {
@@ -312,27 +285,25 @@ fn editor_perf_budget() {
         .host
         .open(&note, Some(&bench.env.vault), other)
         .unwrap();
-    report.row_at_remeasured("bridge to the other window, 200 B, 12 KB", 99, 5.0, || {
-        arrivals.lock().unwrap().clear();
-        (0..200)
-            .map(|i| {
-                std::thread::sleep(KEYSTROKE);
-                let update = window.type_text(TYPED);
-                let sent = Instant::now();
-                bench.host.apply_update(&note, &update, WINDOW).unwrap();
-                loop {
-                    if let Some(at) = arrivals.lock().unwrap().get(i) {
-                        break *at - sent;
-                    }
-                    assert!(
-                        sent.elapsed() < DELIVERY_WAIT,
-                        "edit {i} never reached the other window"
-                    );
-                    std::thread::yield_now();
+    let samples = (0..200)
+        .map(|i| {
+            std::thread::sleep(KEYSTROKE);
+            let update = window.type_text(TYPED);
+            let sent = Instant::now();
+            bench.host.apply_update(&note, &update, WINDOW).unwrap();
+            loop {
+                if let Some(at) = arrivals.lock().unwrap().get(i) {
+                    break *at - sent;
                 }
-            })
-            .collect()
-    });
+                assert!(
+                    sent.elapsed() < DELIVERY_WAIT,
+                    "edit {i} never reached the other window"
+                );
+                std::thread::yield_now();
+            }
+        })
+        .collect();
+    report.row_at("bridge to the other window, 200 B, 12 KB", samples, 99, 5.0);
     assert_eq!(arrivals.lock().unwrap().len(), 200, "one delivery per edit");
     bench.host.close(&note, WINDOW);
     bench.host.close(&note, OTHER_WINDOW);
