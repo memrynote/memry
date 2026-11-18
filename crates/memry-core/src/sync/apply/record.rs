@@ -46,7 +46,8 @@ pub fn apply_inbound(
 ///   ([`apply_document`]). It is *not* an unconditional wholesale store: a
 ///   stale remote `note` record used to overwrite a newer local one, and a
 ///   rename made on this device vanished the moment a peer that had not seen
-///   it pushed anything. `inbox`, the calendar types, `canvas`,
+///   it pushed anything. `note` (the same gate plus §6.8.1's reference
+///   union), `inbox`, the calendar types, `canvas`,
 ///   `vault_lock`, `canvas_folder`, `home_page`, `sticky_draft` and the two
 ///   agent types are named
 ///   because each runs its desktop handler's rule instead.

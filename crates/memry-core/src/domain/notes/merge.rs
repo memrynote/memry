@@ -1,7 +1,7 @@
 //! A remote `note` record: §6.3.1's document gate, then chapter 06 §6.8.1's
 //! union of `attachmentReferences`, as Electron's note handler runs it
 //! (`apps/desktop/src/main/sync/item-handlers/note-handler.ts:135-145`,
-//! `:532-552`).
+//! `:537-553`).
 //!
 //! The union runs on every apply over a live local note: the concurrent
 //! branch, whose merged row is re-queued with the union in it (§6.5.2 P3), and

@@ -1,7 +1,7 @@
 //! Chapter 06 §6.8.1 between two core vaults and one relay server: a remote
 //! `note` apply unions `attachmentReferences` as Electron's note handler does
 //! (`apps/desktop/src/main/sync/item-handlers/note-handler.ts:135-145`,
-//! `:532-552`), so an attachment one device uploaded survives the other
+//! `:537-553`), so an attachment one device uploaded survives the other
 //! device's concurrent edit and its union-clock re-push (§6.5.2 P3).
 //!
 //! | Test                                                   | Rule              |
@@ -151,7 +151,7 @@ async fn a_removal_concurrent_with_an_upload_comes_back_as_electron_brings_it_ba
 }
 
 /// The union runs on every apply over an existing note, not only a concurrent
-/// one (`note-handler.ts:532-552` sits after both branches): a peer whose
+/// one (`note-handler.ts:537-553` sits after both branches): a peer whose
 /// clock dominates and that removed an id does not remove it here.
 #[tokio::test]
 async fn a_removal_from_a_dominating_peer_keeps_the_id_here() {
@@ -240,7 +240,7 @@ async fn an_absent_null_or_empty_remote_list_keeps_the_local_list() {
     }
 }
 
-/// `pruneUnresolvableReferences` (`:544-546`): an id this device has watched
+/// `pruneUnresolvableReferences` (`:541-543`): an id this device has watched
 /// the server 404 on its last probe is dropped from the union.
 #[tokio::test]
 async fn an_id_the_server_proved_gone_is_pruned_from_the_union() {
@@ -271,7 +271,7 @@ async fn an_id_the_server_proved_gone_is_pruned_from_the_union() {
     );
 }
 
-/// `buildNotePushPayload` (`note-handler-sync-helpers.ts:64-90`) for a
+/// `buildNotePushPayload` (`note-handler-sync-helpers.ts:66-90`) for a
 /// markdown note.
 fn electron_note(references: Json, clock: Json) -> Json {
     json!({

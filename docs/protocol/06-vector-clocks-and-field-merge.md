@@ -556,6 +556,7 @@ a client uses when a row has a document clock but no field clocks yet
 | `calendar_event`                | field-level merge over the fourteen `CALENDAR_EVENT_SYNCABLE_FIELDS` (chapter 13 §13.7.17) |
 | `settings`                      | dotted-path field clocks, §6.9                                                             |
 | `canvas`                        | the document-level resolver of §6.3.1, plus a conflict copy (chapter 13 §13.7.21)          |
+| `note`                          | the document-level resolver of §6.3.1, plus the reference union of §6.8.1                  |
 | **every other subscribed type** | the document-level resolver of §6.3.1                                                      |
 
 The field-level path exists only where a payload carries `fieldClocks`
@@ -573,6 +574,49 @@ above is the enumeration.
 whatever the row's algorithm decided.
 
 **Disposition of Q06.5: answered** (this section).
+
+### 6.8.1 A note's attachment references are unioned on apply
+
+**Normative.** `attachmentReferences` (chapter 14 §14.7) carries no field
+clock. When a client applies a remote `note` over a live local note, on
+§6.3.1's concurrent branch and on its apply branch alike, it MUST store the
+union of the local list and the remote list in place of the remote list
+(`apps/desktop/src/main/sync/item-handlers/note-handler.ts:135-145`, `:537-553`):
+
+1. **Presence.** A remote list that is absent, `null` or `[]` leaves the local
+   list unchanged (`if (!remote?.length) return undefined`, `:139`). Desktop
+   pushes the key only when the list is non-empty
+   (`apps/desktop/src/main/sync/item-handlers/note-handler-sync-helpers.ts:79-81`),
+   so a peer that removed its last reference sends no key.
+2. **Order.** The result starts with the local entries in their order, local
+   duplicates kept, then adds each remote id the result does not hold yet, in
+   the remote's order (`:140-144`). Ids compare by exact string equality.
+3. **Prune.** The client then drops each id it has itself proved gone: the
+   server answered 404 on its last probe and the note has no upload queued
+   (`pruneUnresolvableReferences`,
+   `packages/sync-client/src/attachment-download-state.ts:324-366`; `:541-543`).
+4. **No removal set.** The union cannot express a removal. An id one device
+   removes stays on every device that still holds it, whichever clock wins, and
+   that device's next push of the note brings it back everywhere. Only the
+   prune of rule 3 drops an id for good.
+5. **Scope.** A new note, a tombstone and a skip store the remote's value
+   unchanged (`:702-704`). Desktop leaves the list of a local binary note
+   untouched (`:255-342`); desktop pushes no list for one (`:40-52`), so a
+   remote binary note carries none and rule 1 gives the same result.
+
+On the concurrent branch the union is part of the merged row that §6.5.2 P3
+re-queues at the union clock, so it reaches the server and the peer. A client
+that stored the remote list there would re-push it under a clock that
+dominates the local row, and the id only this device held would be lost on
+every device. The two devices of a concurrent upload can hold the same ids in
+different orders: the merging device keeps its own first, and the other device
+unions the merged row over its own list on the apply branch.
+
+The Rust core runs the union in `crates/memry-core/src/domain/notes/merge.rs`,
+on the one apply path that pull, first sync and relay share
+(`crates/memry-core/src/sync/apply/record.rs:89`). No vector class covers this
+rule. The two-device tests in
+`crates/memry-core/tests/sync_note_attachment_union.rs` pin it.
 
 ## 6.9 Settings use a third shape
 
