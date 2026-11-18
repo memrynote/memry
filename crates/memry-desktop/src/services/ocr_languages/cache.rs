@@ -1,9 +1,14 @@
 //! The plain `.traineddata` Tesseract reads, unpacked from the gzip packs. tesseract.js read the
-//! packs gzipped; native Tesseract does not. Each entry records the sha256 of the pack it came
-//! from, so a pack that changes is unpacked again and an unchanged one is never unpacked twice.
+//! packs gzipped; native Tesseract does not. Each entry's marker records the sha256 of the pack it
+//! came from and of the unpacked bytes: a pack that changes is unpacked again, and an entry whose
+//! bytes changed on disk is unpacked again the first time a run uses it. A marker without the
+//! unpacked sha256 (written by builds before #3542 FIX-LOWS-25) is a miss: the entry is unpacked
+//! once more and the marker rewritten, and those builds unpack again on seeing a new marker.
 
+use std::collections::HashSet;
 use std::io::{self, Read};
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::sync::{Mutex, PoisonError};
 
 use flate2::read::GzDecoder;
 use sha2::{Digest, Sha256};
@@ -15,6 +20,22 @@ pub const CACHE_DIR: &str = "ocr-cache";
 
 /// Far above the largest unpacked language (a few MiB): a pack that unpacks past it is refused.
 const MAX_UNPACKED: u64 = 64 * 1024 * 1024;
+
+/// The entries this run hashed or wrote, with their marker: each is hashed once per run.
+static CHECKED: Mutex<Option<HashSet<(PathBuf, String)>>> = Mutex::new(None);
+
+fn checked(entry: &(PathBuf, String)) -> bool {
+    let checked = CHECKED.lock().unwrap_or_else(PoisonError::into_inner);
+    checked.as_ref().is_some_and(|set| set.contains(entry))
+}
+
+fn mark_checked(entry: (PathBuf, String)) {
+    CHECKED
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .get_or_insert_default()
+        .insert(entry);
+}
 
 /// Unpacks the gzip pack at `source`, which must hash to `sha256`, to
 /// `<cache>/<lang>.traineddata`, unless the cache already holds the unpacking of those bytes.
@@ -32,8 +53,22 @@ fn unpack_within(
 ) -> io::Result<()> {
     let target = cache.join(lang.file_name());
     let marker = cache.join(format!("{}.source-sha256", lang.code()));
-    if target.is_file() && std::fs::read_to_string(&marker).is_ok_and(|seen| seen == sha256) {
-        return Ok(());
+    if let Ok(seen) = std::fs::read_to_string(&marker)
+        && seen
+            .split_once('\n')
+            .is_some_and(|(pack, _)| pack == sha256)
+    {
+        let entry = (target.clone(), seen);
+        if checked(&entry) {
+            return Ok(());
+        }
+        let unpacked_sha = entry.1.split_once('\n').map(|(_, unpacked)| unpacked);
+        if std::fs::read(&target)
+            .is_ok_and(|bytes| Some(hex::encode(Sha256::digest(&bytes)).as_str()) == unpacked_sha)
+        {
+            mark_checked(entry);
+            return Ok(());
+        }
     }
     let packed = std::fs::read(source)?;
     if hex::encode(Sha256::digest(&packed)) != sha256 {
@@ -53,13 +88,21 @@ fn unpack_within(
         ));
     }
     std::fs::create_dir_all(cache)?;
+    let seen = format!("{sha256}\n{}", hex::encode(Sha256::digest(&unpacked)));
+    replace(cache, lang, &target, &unpacked)?;
+    replace(cache, lang, &marker, seen.as_bytes())?;
+    mark_checked((target, seen));
+    Ok(())
+}
+
+/// Writes `bytes` to a `.part` file in `cache`, then moves it over `target`.
+fn replace(cache: &Path, lang: OcrLanguage, target: &Path, bytes: &[u8]) -> io::Result<()> {
     let temp = cache.join(format!("{}.{}.part", lang.code(), uuid::Uuid::new_v4()));
-    let written = std::fs::write(&temp, &unpacked).and_then(|()| std::fs::rename(&temp, &target));
-    if let Err(error) = written {
+    let written = std::fs::write(&temp, bytes).and_then(|()| std::fs::rename(&temp, target));
+    if written.is_err() {
         let _ = std::fs::remove_file(&temp);
-        return Err(error);
     }
-    std::fs::write(marker, sha256)
+    written
 }
 
 #[cfg(test)]
@@ -109,6 +152,28 @@ mod tests {
         assert_eq!(
             std::fs::read_to_string(cache.join("deu.traineddata")).expect("unpacked"),
             "a".repeat(17)
+        );
+    }
+
+    #[test]
+    fn an_entry_an_earlier_run_left_is_unpacked_again_when_its_bytes_changed() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let earlier = dir.path().join("earlier");
+        let (source, sha) = pack(dir.path(), "deu data");
+        unpack(&earlier, OcrLanguage::Deu, &source, &sha).expect("unpack");
+        // This run has not seen the copy: its bytes changed on disk, its marker did not.
+        let cache = dir.path().join(CACHE_DIR);
+        std::fs::create_dir_all(&cache).expect("cache dir");
+        for name in names(&earlier) {
+            std::fs::copy(earlier.join(&name), cache.join(&name)).expect("copy");
+        }
+        std::fs::write(cache.join("deu.traineddata"), "deu dat4").expect("damage");
+
+        unpack(&cache, OcrLanguage::Deu, &source, &sha).expect("unpack");
+
+        assert_eq!(
+            std::fs::read_to_string(cache.join("deu.traineddata")).expect("unpacked"),
+            "deu data"
         );
     }
 
