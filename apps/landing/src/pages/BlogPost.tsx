@@ -99,14 +99,8 @@ function ComparisonTableView({ table }: { table: NonNullable<BlogSection['table'
       <table className="w-full text-start text-sm md:text-base">
         <thead>
           <tr className="border-b border-border bg-paper-alt">
-            {table.headers.map((header, idx) => (
-              <th
-                key={header}
-                className={cn(
-                  'px-4 py-3.5 font-serif font-medium text-ink',
-                  idx === 0 ? 'text-start' : 'text-start'
-                )}
-              >
+            {table.headers.map((header) => (
+              <th key={header} className="px-4 py-3.5 text-start font-serif font-medium text-ink">
                 {header}
               </th>
             ))}
@@ -115,9 +109,21 @@ function ComparisonTableView({ table }: { table: NonNullable<BlogSection['table'
         <tbody className="divide-y divide-border/60">
           {table.rows.map((row) => (
             <tr key={row[0]} className="hover:bg-paper-alt/50 transition-colors">
-              <td className="px-4 py-3.5 font-medium text-ink">{row[0]}</td>
-              <td className="px-4 py-3.5 text-muted">{row[1]}</td>
-              <td className="px-4 py-3.5 text-muted font-medium text-terracotta">{row[2]}</td>
+              {row.map((cell, idx) => (
+                <td
+                  key={table.headers[idx]}
+                  className={cn(
+                    'px-4 py-3.5',
+                    idx === 0
+                      ? 'font-medium text-ink'
+                      : idx === row.length - 1
+                        ? 'font-medium text-terracotta'
+                        : 'text-muted'
+                  )}
+                >
+                  {cell}
+                </td>
+              ))}
             </tr>
           ))}
         </tbody>
@@ -236,6 +242,26 @@ function SectionView({ section }: { section: BlogSection }) {
         />
       )}
       {section.table && <ComparisonTableView table={section.table} />}
+      {section.links && (
+        <ul className="my-6 space-y-3">
+          {section.links.map((link) => (
+            <li key={link.href}>
+              <Link
+                to={link.href}
+                className="group block rounded-2xl border border-border bg-card px-5 py-4 transition-colors hover:border-terracotta/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/60"
+              >
+                <span className="inline-flex items-center gap-1.5 font-serif text-lg text-ink group-hover:text-terracotta">
+                  {link.label}
+                  <ArrowRight className="h-4 w-4 shrink-0 rtl:rotate-180" aria-hidden />
+                </span>
+                <span className="mt-1 block text-sm leading-relaxed text-muted">
+                  {link.description}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   )
 }
