@@ -38,7 +38,7 @@ pub(crate) fn apply_remote(
             ) else {
                 return task_merge::wholesale(conn, record, now_ms);
             };
-            let Some(union) = union(conn, &record.item_id, local.object(), remote.object())? else {
+            let Some(union) = union(conn, record, local.object(), remote.object()) else {
                 return task_merge::wholesale(conn, record, now_ms);
             };
             let merged = InboundRecord {
@@ -58,7 +58,7 @@ pub(crate) fn apply_remote(
                     what: error.to_string(),
                 })?;
             let mut changes = vec![("clock", Change::Set(clock))];
-            if let Some(union) = union(conn, &record.item_id, local.object(), remote.object())? {
+            if let Some(union) = union(conn, record, local.object(), remote.object()) {
                 changes.push((REFERENCES, Change::set(union)));
             }
             let merged = InboundRecord {
@@ -85,30 +85,32 @@ fn live_local(
     Ok(row.payload.and_then(|raw| StoredPayload::parse(&raw).ok()))
 }
 
-/// The list to store, or `None` to store the remote's value as it came.
+/// The list to store, or `None` to store the remote's value as it came. A
+/// tombstone record keeps its own payload: no union is written into it.
 ///
 /// `mergeAttachmentReferences`: a remote list that is absent, `null` or empty
 /// keeps the local list. Otherwise the local entries in their order (local
 /// duplicates kept), then each remote id the result does not hold yet, in
 /// the remote's order. `pruneUnresolvableReferences` then drops the ids the
-/// server proved gone. A remote value that is not an array of strings is left
+/// server proved gone; a prune that fails is logged and keeps every id, as
+/// its try/catch does. A remote value that is not an array of strings is left
 /// for the projector to refuse, as `NoteSyncPayloadSchema` refuses it.
 fn union(
     conn: &Connection,
-    note_id: &str,
+    record: &InboundRecord,
     local: &Object,
     remote: &Object,
-) -> Result<Option<Vec<String>>, StorageError> {
+) -> Option<Vec<String>> {
+    if record.deleted_at.is_some() {
+        return None;
+    }
     let remote = match remote.get(REFERENCES) {
         None | Some(Value::Null) => Vec::new(),
-        Some(value) => match strings(value) {
-            Some(ids) => ids,
-            None => return Ok(None),
-        },
+        Some(value) => strings(value)?,
     };
     let local = local.get(REFERENCES).and_then(strings);
     if remote.is_empty() {
-        return Ok(local);
+        return local;
     }
     let mut merged = local.unwrap_or_default();
     let mut seen: HashSet<String> = merged.iter().cloned().collect();
@@ -117,9 +119,14 @@ fn union(
             merged.push(id);
         }
     }
-    let gone = download_failures::proven_gone(conn, note_id, &merged)?;
-    merged.retain(|id| !gone.contains(id));
-    Ok(Some(merged))
+    match download_failures::proven_gone(conn, &record.item_id, &merged) {
+        Ok(gone) => merged.retain(|id| !gone.contains(id)),
+        Err(error) => eprintln!(
+            "memry-core: could not prune attachment references of note {}: {error}",
+            record.item_id
+        ),
+    }
+    Some(merged)
 }
 
 fn strings(value: &Value) -> Option<Vec<String>> {

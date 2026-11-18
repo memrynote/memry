@@ -12,10 +12,14 @@
 //! | an Electron peer's row merges local-first, deduped     | §6.8.1 order      |
 //! | an absent, null or empty remote list keeps the local   | §6.8.1, §14.7     |
 //! | an id the server proved gone is pruned from the union  | §6.8.1 prune      |
+//! | a prune that fails keeps the union and applies         | §6.8.1 prune      |
+//! | a tombstone stores its own payload, no union           | §6.8.1 scope      |
 
 use crate::desktop_relay::{Device, NOW, Relay, failed};
 
 use memry_core::domain::notes::{self, NewNote};
+use memry_core::storage::repositories::InboundRecord;
+use memry_core::sync::apply::apply_inbound;
 use memry_core::sync::attachments::store::download_failures::{
     self as failures, FailureReason, MISSING_PROBE_LIMIT,
 };
@@ -137,17 +141,23 @@ async fn two_devices_uploading_at_once_keep_both_ids_on_both_devices() {
 }
 
 /// Electron's union has no removal set: an id one side removed while the other
-/// side still holds it comes back on every device.
+/// side still holds it comes back on every device. `mine`, which only a holds
+/// when it merges, survives a's concurrent-branch union.
 #[tokio::test]
 async fn a_removal_concurrent_with_an_upload_comes_back_as_electron_brings_it_back() {
     let (a, b, relay) = synced_pair(&["keep", "drop"]).await;
-    remove(&a, "drop", NOW + 1);
+    upload(&a, "mine", NOW + 1);
+    remove(&a, "drop", NOW + 2);
     upload(&b, "new", NOW + 2);
 
     let [on_a, on_b, on_server] = round_trip(&a, &b, &relay).await;
-    assert_eq!(on_a, json!(["keep", "drop", "new"]), "on a");
-    assert_eq!(on_server, json!(["keep", "drop", "new"]), "on the server");
-    assert_eq!(on_b, json!(["keep", "drop", "new"]), "on b");
+    assert_eq!(on_a, json!(["keep", "mine", "drop", "new"]), "on a");
+    assert_eq!(
+        on_server,
+        json!(["keep", "mine", "drop", "new"]),
+        "on the server"
+    );
+    assert_eq!(on_b, json!(["keep", "drop", "new", "mine"]), "on b");
 }
 
 /// The union runs on every apply over an existing note, not only a concurrent
@@ -240,8 +250,9 @@ async fn an_absent_null_or_empty_remote_list_keeps_the_local_list() {
     }
 }
 
-/// `pruneUnresolvableReferences` (`:541-543`): an id this device has watched
-/// the server 404 on its last probe is dropped from the union.
+/// `pruneUnresolvableReferences` (`:541-543`): an id this device recorded
+/// `MISSING_PROBE_LIMIT` missing failures for (no retry left), on a note with
+/// no upload queued, is dropped from the union.
 #[tokio::test]
 async fn an_id_the_server_proved_gone_is_pruned_from_the_union() {
     let (a, relay) = (Device::bare("a"), Relay::default());
@@ -269,6 +280,60 @@ async fn an_id_the_server_proved_gone_is_pruned_from_the_union() {
         refs(&a.stored("note", NOTE)),
         json!(["att-a", "att-c", "att-b"])
     );
+}
+
+/// `pruneUnresolvableReferences`' catch (`attachment-download-state.ts:362-364`):
+/// a prune that cannot read its table keeps every id and the note applies.
+#[tokio::test]
+async fn a_prune_that_fails_keeps_the_union_and_the_note_applies() {
+    let (a, relay) = (Device::bare("a"), Relay::default());
+    create(&a);
+    upload(&a, "att-a", NOW);
+    relay.sync(&a).await;
+    upload(&a, "att-c", NOW + 1);
+    a.db()
+        .call_blocking(|conn| {
+            conn.execute_batch("DROP TABLE attachment_download_failures")
+                .map_err(failed)
+        })
+        .expect("break the prune source");
+
+    relay.put(
+        "note",
+        NOTE,
+        &electron_note(json!(["att-b"]), json!({"a": 2, "peer": 1})).to_string(),
+    );
+    let report = relay.pull(&a).await;
+
+    assert_eq!(report.corrupt, 0, "nothing refused");
+    let stored = a.stored("note", NOTE);
+    assert_eq!(field(&stored, "title"), json!("From peer"));
+    assert_eq!(refs(&stored), json!(["att-a", "att-c", "att-b"]));
+}
+
+/// A tombstone over a live note stores the remote's payload as it came: no
+/// union is written into it (§6.8.1 rule 5).
+#[tokio::test]
+async fn a_tombstone_stores_its_own_payload_without_a_union() {
+    let (a, relay) = (Device::bare("a"), Relay::default());
+    create(&a);
+    upload(&a, "att-a", NOW);
+    relay.sync(&a).await;
+
+    let record = InboundRecord {
+        item_type: "note".to_owned(),
+        item_id: NOTE.to_owned(),
+        payload_json: electron_note(json!(["att-b"]), json!({"a": 9, "peer": 1})).to_string(),
+        server_cursor: None,
+        signer_device_id: None,
+        updated_at: NOW + 5,
+        deleted_at: Some(NOW + 5),
+    };
+    a.db()
+        .call_blocking(move |conn| apply_inbound(conn, &record, NOW + 5).map_err(failed))
+        .expect("apply the tombstone");
+
+    assert_eq!(refs(&a.stored("note", NOTE)), json!(["att-b"]));
 }
 
 /// `buildNotePushPayload` (`note-handler-sync-helpers.ts:66-90`) for a

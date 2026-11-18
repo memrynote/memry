@@ -591,10 +591,27 @@ union of the local list and the remote list in place of the remote list
 2. **Order.** The result starts with the local entries in their order, local
    duplicates kept, then adds each remote id the result does not hold yet, in
    the remote's order (`:140-144`). Ids compare by exact string equality.
-3. **Prune.** The client then drops each id it has itself proved gone: the
-   server answered 404 on its last probe and the note has no upload queued
+3. **Prune.** The client then drops each id it has itself proved gone, and
+   only when all three of these hold
    (`pruneUnresolvableReferences`,
-   `packages/sync-client/src/attachment-download-state.ts:324-366`; `:541-543`).
+   `packages/sync-client/src/attachment-download-state.ts:324-366`; `:541-543`;
+   `crates/memry-core/src/sync/attachments/store/download_failures.rs:213-246`):
+   - this device recorded `MISSING_PROBE_LIMIT` (3) failures of reason
+     `missing` for the id under this note, each probe at least 24 h after the
+     one before (`attachment-download-state.ts:26-34`, `:205-210`;
+     `download_failures.rs:24-27`, `:133-135`). A 404 or 410 counts as
+     missing, and so does a manifest signature that does not verify
+     (`attachment-download-state.ts:108-118`; `download_failures.rs:9-11`);
+   - the failure has no retry left: `next_attempt_at IS NULL`, which the
+     third missing record sets (`attachment-download-state.ts:346`;
+     `download_failures.rs:229-230`);
+   - no `attachment_upload_queue` row is queued for the note
+     (`attachment-download-state.ts:331-337`; `download_failures.rs:222`).
+
+   One 404, a transient failure, or an id never probed drops nothing, so a
+   slow upload is never pruned. A prune that fails keeps every id, and the
+   note still applies (`attachment-download-state.ts:362-364`).
+
 4. **No removal set.** The union cannot express a removal. An id one device
    removes stays on every device that still holds it, whichever clock wins, and
    that device's next push of the note brings it back everywhere. Only the
