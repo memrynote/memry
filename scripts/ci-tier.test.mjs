@@ -120,7 +120,9 @@ function tier({
   patches,
   listed = true,
   sourceRoot = source,
-  queueTested = false
+  queueTested = false,
+  scheduleTested = false,
+  postMerge = true
 }) {
   let patchPath = join(scratch, 'missing.jsonl')
   if (patches) {
@@ -143,7 +145,9 @@ function tier({
       LISTED: String(listed),
       PATCHES: patchPath,
       SOURCE_ROOT: sourceRoot,
-      QUEUE_TESTED: String(queueTested)
+      QUEUE_TESTED: String(queueTested),
+      SCHEDULE_TESTED: String(scheduleTested),
+      POST_MERGE: String(postMerge)
     },
     encoding: 'utf8'
   })
@@ -997,15 +1001,38 @@ describe('ci tier outside PRs into feat/tauri-v2', () => {
 })
 
 // A merge-queue merge fast-forwards feat/tauri-v2 to the SHA the queue tested, so the push that follows
-// runs only what the queue skipped (#5035). Losing a leg here would leave it untested everywhere.
-describe('ci tier for a post-merge push to feat/tauri-v2', () => {
+// runs nothing, and the legs the queue skips run on the 6-hourly schedule (#5035). Losing a leg here
+// would leave it untested everywhere.
+describe('ci tier after a merge into feat/tauri-v2', () => {
   const push = (files, queueTested = true, listed = true) =>
     tier({ event: 'push', ref: 'refs/heads/feat/tauri-v2', base: '', files, queueTested, listed })
+  const scheduled = (scheduleTested = false) =>
+    tier({
+      event: 'schedule',
+      ref: 'refs/heads/feat/tauri-v2',
+      base: '',
+      files: [],
+      listed: false,
+      scheduleTested
+    })
   const code = ['crates/memry-desktop/src/shell/paths.rs', 'apps/desktop-tauri/src/app.tsx']
 
-  it('runs only the legs the merge queue skips when the SHA passed the queue', () => {
+  it('runs no leg on a push the queue passed', () => {
     const out = push(code)
+    assert.equal(out.post_merge, 'covered')
+    assert.equal(out.macos, false)
+    assert.equal(out.swift, false)
+    assert.equal(out.rust_linux_arm64, false)
+    assert.deepEqual(rustLegs(out), [])
+    assert.deepEqual(tauriBuilds(out), [])
+  })
+
+  it('runs the legs the merge queue skips on the schedule, once per SHA', () => {
+    const out = scheduled()
     assert.equal(out.post_merge, true)
+    assert.equal(out.macos, true)
+    assert.equal(out.swift, true)
+    assert.equal(out.intel, false)
     assert.equal(out.rust_linux_arm64, false)
     assert.deepEqual(rustLegs(out), ['macos-15 all'])
     assert.deepEqual(modelLegs(out), ['macos-15 all'])
@@ -1014,19 +1041,23 @@ describe('ci tier for a post-merge push to feat/tauri-v2', () => {
       'macos-arm64 e2e',
       'windows-arm64 e2e'
     ])
+    const again = scheduled(true)
+    assert.equal(again.post_merge, 'covered')
+    assert.deepEqual(rustLegs(again), [])
+    assert.deepEqual(tauriBuilds(again), [])
   })
 
-  it('covers every leg of a full push between the merge queue and the post-merge run', () => {
+  it('covers every leg of a full push between the merge queue and the schedule', () => {
     const full = push(code, false)
-    const postMerge = push(code)
     const queue = tier({ event: 'merge_group', base: '', files: code })
     const sorted = (names) => [...new Set(names)].toSorted((a, b) => a.localeCompare(b))
-    assert.deepEqual(sorted([...rustLegs(queue), ...rustLegs(postMerge)]), sorted(rustLegs(full)))
+    assert.deepEqual(sorted([...rustLegs(queue), ...rustLegs(scheduled())]), sorted(rustLegs(full)))
     assert.deepEqual(
-      sorted([...tauriBuilds(queue, true), ...tauriBuilds(postMerge)]),
+      sorted([...tauriBuilds(queue, true), ...tauriBuilds(scheduled())]),
       sorted(tauriBuilds(full))
     )
     assert.equal(queue.rust_linux_arm64, true)
+    assert.equal(queue.swift, true)
   })
 
   it('runs every leg for a SHA the queue did not pass, an unreadable list or a cache-key input', () => {
@@ -1051,14 +1082,58 @@ describe('ci tier for a post-merge push to feat/tauri-v2', () => {
     for (const out of outs) {
       assert.equal(out.post_merge, false)
       assert.equal(out.full, true)
+      assert.equal(out.macos, true)
       assert.equal(out.rust_linux_arm64, true)
+      assert.ok(rustLegs(out).includes('macos-15 all'))
     }
   })
 
-  it('applies to pushes to feat/tauri-v2 only', () => {
+  // Desktop CI (Electron) reads only `electron` and passes no `post-merge` input: its path must not move.
+  it('leaves the electron output as it was', () => {
+    const electronFiles = ['apps/desktop/src/main/index.ts', ...code]
+    for (const args of [
+      { event: 'push', ref: 'refs/heads/feat/tauri-v2', base: '', files: electronFiles },
+      { event: 'push', ref: 'refs/heads/feat/tauri-v2', base: '', files: code },
+      { event: 'schedule', ref: 'refs/heads/feat/tauri-v2', base: '', files: [], listed: false },
+      { event: 'merge_group', base: '', files: electronFiles },
+      { files: electronFiles, patches: {} }
+    ]) {
+      const before = tier(args).electron
+      assert.equal(tier({ ...args, queueTested: true }).electron, before)
+      assert.equal(tier({ ...args, scheduleTested: true }).electron, before)
+    }
+    assert.equal(push(['apps/desktop/src/main/index.ts', ...code]).electron, true)
+  })
+
+  // Schedules fire from the default branch. Were it to move off feat/tauri-v2, the cron must not run
+  // the full matrix there every 6 hours.
+  it('runs nothing on a scheduled run of another ref', () => {
+    const out = tier({
+      event: 'schedule',
+      ref: 'refs/heads/main',
+      base: '',
+      files: [],
+      listed: false
+    })
+    assert.equal(out.post_merge, 'covered')
+    assert.equal(out.macos, false)
+    assert.equal(out.rust_linux_arm64, false)
+    assert.deepEqual(rustLegs(out), [])
+    assert.deepEqual(tauriBuilds(out), [])
+  })
+
+  it('applies to pushes and schedules of feat/tauri-v2 only', () => {
     for (const out of [
       tier({ event: 'merge_group', base: '', files: code, queueTested: true }),
       tier({ event: 'push', ref: 'refs/heads/main', base: '', files: code, queueTested: true }),
+      tier({
+        event: 'schedule',
+        ref: 'refs/heads/feat/tauri-v2',
+        base: '',
+        files: [],
+        listed: false,
+        postMerge: false
+      }),
       tier({ files: code, patches: {}, queueTested: true })
     ]) {
       assert.equal(out.post_merge, false)
@@ -1093,6 +1168,7 @@ jq -r "$4" <<<"$body"
       WORKFLOW_NAME: 'Rust CI',
       SHA: 'merged',
       RUN_ID: '500',
+      RUN_ATTEMPT: '1',
       ...env
     },
     encoding: 'utf8'
@@ -1169,16 +1245,52 @@ describe('ci tier post-merge lookup', () => {
     }
   })
 
+  // A failed scheduled run re-run with "Re-run all jobs" must test again: a later run on the SHA that
+  // skipped its legs, or one that failed, does not cover it.
+  const scheduleRuns = (...runs) => ['event=schedule', { workflow_runs: runs }]
+  const rustRun = (id, conclusion) => ({ id, path: '.github/workflows/rust-ci.yml', conclusion })
+  const scheduled = (env, responses) => lookUp({ EVENT: 'schedule', ...env }, responses)
+
+  it('covers a scheduled run only when an earlier scheduled run passed the SHA', () => {
+    assert.equal(scheduled({}, [scheduleRuns(rustRun(400, 'success'))]).schedule_tested, 'true')
+    for (const responses of [
+      [scheduleRuns(rustRun(400, 'failure'))],
+      [scheduleRuns(rustRun(400, 'cancelled'))],
+      [scheduleRuns(rustRun(600, 'success'))],
+      [
+        scheduleRuns({
+          id: 400,
+          path: '.github/workflows/desktop-tauri-ci.yml',
+          conclusion: 'success'
+        })
+      ],
+      []
+    ]) {
+      assert.equal(scheduled({}, responses).schedule_tested, 'false', JSON.stringify(responses))
+    }
+  })
+
+  it('runs the legs again on a re-run attempt', () => {
+    const out = scheduled({ RUN_ATTEMPT: '2' }, [
+      scheduleRuns(rustRun(400, 'success'), rustRun(600, 'success'))
+    ])
+    assert.equal(out.schedule_tested, 'false')
+    assert.deepEqual(out.calls, [])
+  })
+
   it('asks nothing outside an opted-in push to feat/tauri-v2', () => {
     const all = [queueRuns, gate('success'), otherGate, earlier]
     for (const env of [
       { POST_MERGE: 'false' },
       { EVENT: 'merge_group' },
       { REF: 'refs/heads/main' },
-      { EVENT: 'pull_request', REF: 'refs/pull/1/merge' }
+      { EVENT: 'pull_request', REF: 'refs/pull/1/merge' },
+      { EVENT: 'schedule', REF: 'refs/heads/main' },
+      { EVENT: 'schedule', POST_MERGE: 'false' }
     ]) {
-      const out = lookUp(env, all)
+      const out = lookUp(env, [...all, scheduleRuns(rustRun(400, 'success'))])
       assert.equal(out.queue_tested, 'false')
+      assert.equal(out.schedule_tested, 'false')
       assert.deepEqual(out.calls, [])
     }
   })
