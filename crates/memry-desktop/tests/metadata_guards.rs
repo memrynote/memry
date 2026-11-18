@@ -12,6 +12,7 @@ use memry_desktop::services::web_fetch::{
 use memry_desktop::web::extract::markdown::turndown::parse::{
     CapHit, Caps, FEED_CHUNK, parse_page,
 };
+use memry_desktop::web::extract::utils::json;
 use memry_test_kit::{on_small_stack, output_bound, proptest_config};
 use proptest::prelude::*;
 
@@ -269,6 +270,33 @@ fn json_ld_graph_props_copy_within_the_budget() {
     );
     let bound = 64 * html.len();
     assert!(run.steps <= bound, "{} steps, bound {bound}", run.steps);
+}
+
+/// One JSON-LD object of 50,000 distinct keys: each key is looked up once among the earlier ones,
+/// on the plain parse and on the repair path (a trailing comma fails the first parse after every
+/// key, so the keys are read twice).
+#[test]
+fn json_ld_with_many_distinct_keys_parses_in_linear_steps() {
+    let keys = 50_000;
+    let body: Vec<String> = (0..keys).map(|i| format!("\"k{i}\":{i}")).collect();
+    let body = body.join(",");
+    for (json, parses) in [
+        (format!(r#"{{"description":"Keys",{body}}}"#), 1),
+        (format!(r#"{{"description":"Keys",{body},}}"#), 2),
+    ] {
+        let html = format!("<title>T</title>{}", json_ld(&json));
+        let (description, steps) = on_small_stack(move || {
+            let before = json::steps();
+            let meta = scrape(&html).result.expect("scrape");
+            (meta.description, json::steps() - before)
+        });
+        assert_eq!(description.as_deref(), Some("Keys"), "{parses} parses");
+        let bound = 2 * parses * (keys + 1);
+        assert!(
+            steps <= bound,
+            "{parses} parses: {steps} steps, bound {bound}"
+        );
+    }
 }
 
 /// `data:` images stay when they are images within a base64 `MAX_IMAGE_BYTES` and its header.
