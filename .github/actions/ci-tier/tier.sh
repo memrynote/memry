@@ -7,7 +7,8 @@
 # request's files as JSON lines `{"filename", "previous_filename", "patch", "changes"}`, as the
 # GitHub API returns them; unset or missing when they could not be read, which fails the OS legs
 # open), SOURCE_ROOT (a checkout holding the PR's Rust sources, read by os-modules.sh; unset fails
-# the OS legs open).
+# the OS legs open), QUEUE_TESTED (true when this push's SHA passed the calling workflow's merge_group
+# run; anything else runs every leg).
 # scripts/ci-tier.test.mjs runs this file with the diffs it protects.
 set -euo pipefail
 
@@ -19,8 +20,9 @@ files=$(cat)
 
 emit() {
   { echo "full=$1"; echo "tauri=$2"; echo "swift=$3"; echo "electron=$4"; echo "intel=$5"; echo "macos=$6"
-    echo "rust_windows=$7"; echo "rust_macos=$8"; echo "tauri_windows=$9"; echo "tauri_macos=${10}"; echo "rust_linux_arm64=${11}"; }
-  echo "tier: full=$1 tauri=$2 swift=$3 electron=$4 intel=$5 macos=$6 rust_windows=$7 rust_macos=$8 tauri_windows=$9 tauri_macos=${10} rust_linux_arm64=${11}" >&2
+    echo "rust_windows=$7"; echo "rust_macos=$8"; echo "tauri_windows=$9"; echo "tauri_macos=${10}"; echo "rust_linux_arm64=${11}"
+    echo "post_merge=${12}"; }
+  echo "tier: full=$1 tauri=$2 swift=$3 electron=$4 intel=$5 macos=$6 rust_windows=$7 rust_macos=$8 tauri_windows=$9 tauri_macos=${10} rust_linux_arm64=${11} post_merge=${12}" >&2
 }
 
 # A tiered PR is any PR whose base is not main: one into feat/tauri-v2, or one stacked on another PR's
@@ -54,9 +56,21 @@ fi
 # The pull request files API stops at 3000 files, so a list that long may be cut short.
 if [ "$EVENT" = "pull_request" ] && [ "$(printf '%s\n' "$files" | grep -c .)" -ge 3000 ]; then LISTED=false; fi
 
+# Post-merge: a push to feat/tauri-v2 re-tests the SHA the merge queue passed, so it runs only the legs
+# the queue skips (Apple Silicon, the windows-arm64 e2e specs; rust-legs.jq, tauri-builds.jq). It runs
+# every leg when the SHA did not pass the queue (a bypass push) or the file list is unreadable, and when
+# the range changes a cache-key input: pushes save the caches PRs and the queue restore, and rust-cache,
+# setup-node and tesseract-sources save only under a new key. For a push the range starts at the last
+# push run that was not cancelled (post-merge.sh), so a superseded run's cache-key change counts too.
+# The ml-worker's build.rs is in the Tesseract sources key (tesseract-sources/action.yml).
+if [ "$EVENT" = "push" ] && [ "$REF" = "refs/heads/feat/tauri-v2" ] && [ "${QUEUE_TESTED:-false}" = true ] && [ "$LISTED" = true ] \
+  && ! printf '%s\n' "$files" | grep -E '(^|/)Cargo\.(toml|lock)$|(^|/)rust-toolchain(\.toml)?$|(^|/)\.cargo/|^pnpm-lock\.yaml$|^scripts/fetch-(pdfium|tesseract-sources)\.mjs$|^crates/memry-ml-worker/build\.rs$|^\.github/(actions/|workflows/(rust-ci|desktop-tauri-ci)\.yml$)' >/dev/null; then
+  emit true true true "$electron" "$intel" "$macos" tests tests tests tests false true; exit 0
+fi
+
 # Untiered runs, `full-ci` and an unreadable file list run every leg.
 if [ "$tiered" != true ] || [[ ",$LABELS," == *",full-ci,"* ]] || [ "$LISTED" != true ]; then
-  emit true true true "$electron" "$intel" "$macos" tests tests tests tests true; exit 0
+  emit true true true "$electron" "$intel" "$macos" tests tests tests tests true false; exit 0
 fi
 
 # A fast-tier PR adds the Linux arm64 worker leg when it changes the worker or the crates it links
@@ -102,4 +116,4 @@ else
   legs="tests tests tests tests"
 fi
 read -r rust_windows rust_macos tauri_windows tauri_macos <<< "$legs"
-emit false "$tauri" "$swift" "$electron" "$intel" "$macos" "$rust_windows" "$rust_macos" "$tauri_windows" "$tauri_macos" "$linux_arm64"
+emit false "$tauri" "$swift" "$electron" "$intel" "$macos" "$rust_windows" "$rust_macos" "$tauri_windows" "$tauri_macos" "$linux_arm64" false
