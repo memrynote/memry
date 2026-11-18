@@ -48,6 +48,7 @@ pub(super) fn wiring(
         on_binding: Arc::new(move |state| seen.lock().unwrap().push(state.clone())),
         on_vault_list_changed: Arc::new(|| {}),
         tier: None,
+        on_gate: Arc::new(|_| {}),
     });
     (wiring, changes)
 }

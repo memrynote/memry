@@ -204,11 +204,11 @@ export function AISettings({
   }, [t])
 
   useEffect(() => {
-    const unsubscribe = window.api.onVoiceModelProgress((event) => {
+    const unsubscribe = subscribeToEvent(events.voiceModelProgressEvent, (event) => {
       if (event.phase === 'downloading' || event.phase === 'loading') {
         setIsDownloadingVoiceModel(true)
         setVoiceModelProgress({
-          progress: event.progress ?? event.current ?? 0,
+          progress: event.progress,
           phase: event.phase,
           status: event.status
         })
@@ -226,7 +226,7 @@ export function AISettings({
         setIsDownloadingVoiceModel(false)
         setVoiceModelProgress(null)
         setVoiceModelStatus((prev) =>
-          prev ? { ...prev, error: event.status ?? t('ai.unknownError') } : null
+          prev ? { ...prev, error: event.status || t('ai.unknownError') } : null
         )
       }
     })

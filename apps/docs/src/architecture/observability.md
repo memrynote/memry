@@ -1553,8 +1553,10 @@ capture and PostHog Logs pushes both run in `waitUntil` so neither can block the
 `renderer/src/lib/launch-restore.ts` stamps a `performance.mark('memry:note-readable')`
 when the note a launch restored has actually rendered its block tree, hooked to
 BlockNote's `onEditorReady` rather than to component mount, because mount only proves the
-CRDT binding started. `scripts/launch-bench.mjs` reads it over CDP and reports it as
-`renderer_note_readable_ms`.
+CRDT binding started. In the Tauri app, `renderer/src/lib/launch-marks.ts` sends it with the
+paint and navigation timings to `launch_report_renderer_marks`, which logs one
+`renderer launch marks {json}` line to `main.log`. `scripts/launch-bench.mjs` reads that line
+and reports the mark as `renderer_note_readable_ms`.
 
 The mark is deliberately narrow. It fires only for the note the launch restored, only
 once, and never for a note opened later in the session, so the metric cannot be inflated
