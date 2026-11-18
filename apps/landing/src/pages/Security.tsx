@@ -1,4 +1,5 @@
 import { motion } from 'motion/react'
+import { Link } from 'react-router'
 import { PageHead } from '@/components/shared/PageHead'
 import {
   HardDrive,
@@ -294,6 +295,17 @@ export function SecurityPage() {
               attacker would get is encrypted blobs and signed metadata — not your notes. Local use
               never touches a server at all: notes, tasks, calendar, and journal all work fully
               offline, with sync as something you turn on, not something the app depends on.
+            </p>
+            <p className="mt-4 text-lg text-muted leading-relaxed">
+              For the full list of what the server can and cannot see, and what happens if you lose
+              your recovery phrase, read{' '}
+              <Link
+                to="/encrypted-notes-app"
+                className="rounded-sm font-medium text-terracotta hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/60"
+              >
+                how memrynote encrypts your notes
+              </Link>
+              .
             </p>
           </motion.div>
         </Container>

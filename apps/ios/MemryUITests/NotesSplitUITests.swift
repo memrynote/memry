@@ -438,6 +438,103 @@ final class NotesSplitUITests: XCTestCase {
         deleteNotes([title])
     }
 
+    /// #4832 (#4543 L2): the list the user brings back beside the rail stays
+    /// through note picks until they toggle again. A
+    /// rail toggle or a rotation gives the columns back to the width.
+    func testAListShownBesideTheRailStaysUntilTheUserTogglesAgain() throws {
+        try openNotes()
+        let first = "[agent] \(run) first"
+        let second = "[agent] \(run) second"
+        addNote(first)
+        addNote(second)
+        try showInspector()
+        let list = app.buttons["notes.addButton"].firstMatch
+        XCTAssertTrue(list.wait(for: \.isHittable, toEqual: false, timeout: 5), "opening the rail left the list beside it")
+        toggleNotesSidebar()
+        XCTAssertTrue(list.wait(for: \.isHittable, toEqual: true, timeout: 5), "the split view's button did not bring the list back")
+        attach("list-back-beside-rail")
+
+        row(first).tap()
+        XCTAssertTrue(page(first).waitForExistence(timeout: 10))
+        Thread.sleep(forTimeInterval: 1)
+        XCTAssertTrue(list.isHittable, "picking a note collapsed the list the user brought back")
+        // The open note deleted, then another picked: the note goes from
+        // none to one beside the rail.
+        deleteNotes([first])
+        row(second).tap()
+        XCTAssertTrue(page(second).waitForExistence(timeout: 10))
+        Thread.sleep(forTimeInterval: 1)
+        XCTAssertTrue(list.isHittable, "picking a note after the open one went collapsed the list the user brought back")
+        attach("list-kept-beside-rail")
+
+        // Closing and opening the rail is the newer toggle: the note stands
+        // alone again.
+        hideInspector()
+        row(second).tap()
+        try showInspector()
+        XCTAssertTrue(list.wait(for: \.isHittable, toEqual: false, timeout: 5), "reopening the rail left the list beside it")
+        toggleNotesSidebar()
+        XCTAssertTrue(list.wait(for: \.isHittable, toEqual: true, timeout: 5), "the split view's button did not bring the list back")
+        XCUIDevice.shared.orientation = .portrait
+        XCTAssertTrue(page(second).waitForExistence(timeout: 10))
+        XCUIDevice.shared.orientation = .landscapeLeft
+        XCTAssertTrue(app.descendants(matching: .any)["note.inspector"].waitForExistence(timeout: 10), "the rail did not come back")
+        Thread.sleep(forTimeInterval: 1)
+        XCTAssertFalse(list.isHittable, "a rotation kept the list beside the rail")
+        attach("list-collapsed-after-rotation")
+
+        hideInspector()
+        deleteNotes([second])
+    }
+
+    /// #5059: the software keyboard is no rotation. A rotation with the
+    /// caret in the body hands the tree the user showed back to the width,
+    /// and the keyboard showing in portrait keeps it.
+    func testTheKeyboardIsNoRotation() throws {
+        try openNotes()
+        let title = "[agent] \(run) keyboard"
+        addNote(title)
+        firstBlock.tap()
+        let keyboard = app.keyboards.firstMatch
+        XCTAssertTrue(keyboard.waitForExistence(timeout: 10), "the body took no keyboard")
+        XCUIDevice.shared.orientation = .portrait
+        XCTAssertTrue(page(title).waitForExistence(timeout: 10))
+        Thread.sleep(forTimeInterval: 2)
+        toggleTree()
+        XCTAssertTrue(app.descendants(matching: .any)["notes.sidebar.root"].waitForExistence(timeout: 5))
+        Thread.sleep(forTimeInterval: 1)
+        XCTAssertTrue(treeShown(), "the split view's button did not show the tree")
+        attach("tree-shown-portrait-keyboard-up")
+        XCUIDevice.shared.orientation = .landscapeLeft
+        XCTAssertTrue(page(title).waitForExistence(timeout: 10))
+        Thread.sleep(forTimeInterval: 2)
+        XCTAssertTrue(keyboard.exists, "the keyboard went down through the rotation")
+        XCTAssertFalse(treeShown(), "a rotation with the keyboard up kept the tree beside the page sidebar")
+        attach("columns-back-after-rotation-keyboard-up")
+
+        // A relaunch lowers the keyboard: show the tree in portrait, then
+        // the caret into the body.
+        app.terminate()
+        try openNotes()
+        XCUIDevice.shared.orientation = .portrait
+        row(title).tap()
+        XCTAssertTrue(page(title).waitForExistence(timeout: 10))
+        Thread.sleep(forTimeInterval: 2)
+        XCTAssertFalse(keyboard.exists, "the note opened with the keyboard up")
+        toggleTree()
+        XCTAssertTrue(app.descendants(matching: .any)["notes.sidebar.root"].waitForExistence(timeout: 5))
+        Thread.sleep(forTimeInterval: 1)
+        XCTAssertTrue(treeShown(), "the split view's button did not show the tree")
+        firstBlock.tap()
+        XCTAssertTrue(keyboard.waitForExistence(timeout: 10), "the body took no keyboard")
+        Thread.sleep(forTimeInterval: 2)
+        XCTAssertTrue(treeShown(), "the keyboard showing took the tree the user showed")
+        attach("tree-kept-keyboard-up")
+
+        XCUIDevice.shared.orientation = .landscapeLeft
+        deleteNotes([title])
+    }
+
     /// #4347: a backlink in the inspector opens its note in the detail column.
     func testABacklinkInTheInspectorOpensInTheDetailColumn() throws {
         try openNotes()
@@ -712,6 +809,18 @@ final class NotesSplitUITests: XCTestCase {
         toggles.last?.tap()
     }
 
+    /// The split view's sidebar button on the list column's toolbar row, in
+    /// either orientation (portrait hides the page sidebar's button).
+    private func toggleTree() {
+        let add = app.buttons["notes.addButton"].firstMatch
+        XCTAssertTrue(add.waitForExistence(timeout: 5))
+        let toggles = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'sidebar'")).allElementsBoundByIndex
+            .filter(\.isHittable)
+        let toggle = toggles.min { abs($0.frame.midY - add.frame.midY) < abs($1.frame.midY - add.frame.midY) }
+        XCTAssertNotNil(toggle, "no split view sidebar button")
+        toggle?.tap()
+    }
+
     private var firstBlock: XCUIElement {
         app.textViews.matching(NSPredicate(format: "identifier BEGINSWITH 'note.block.'")).firstMatch
     }
@@ -764,6 +873,18 @@ final class NotesSplitUITests: XCTestCase {
         XCTAssertTrue(firstBlock.waitForExistence(timeout: 10))
         XCTAssertTrue(row(title).waitForExistence(timeout: 10), "the new note has no row in the list")
         return firstBlock
+    }
+
+    /// A new note titled `title`, with no claim about where the caret lands.
+    private func addNote(_ title: String) {
+        let add = app.buttons["notes.addButton"].firstMatch
+        XCTAssertTrue(add.waitForExistence(timeout: 10))
+        add.tap()
+        let field = app.textFields["Title"]
+        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        if !matches(NSPredicate(format: "hasKeyboardFocus == true"), field) { field.tap() }
+        field.typeText("\(title)\n")
+        XCTAssertTrue(row(title).waitForExistence(timeout: 10), "the new note has no row in the list")
     }
 
     private func deleteNotes(_ titles: [String]) {
