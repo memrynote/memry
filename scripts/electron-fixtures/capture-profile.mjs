@@ -337,34 +337,37 @@ function captureVault(stage) {
 /** Electron 43.1.1 writes its own formats into a scratch userData; the profile takes them. */
 function captureElectronFormats(profile, plaintexts) {
   const userData = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-profile-electron-'))
-  const plaintextsPath = path.join(userData, '.plaintexts.json')
-  fs.writeFileSync(plaintextsPath, JSON.stringify(plaintexts))
-  const run = spawnSync(
-    require('electron'),
-    [
-      '--no-sandbox',
-      '--use-mock-keychain',
-      path.join(here, 'electron-main.cjs'),
-      FIXTURE_APP_NAME,
-      userData,
-      plaintextsPath,
-      path.join(here, 'storage.html')
-    ],
-    { stdio: 'inherit', timeout: 120_000 }
-  )
-  fs.rmSync(plaintextsPath)
-  if (run.status !== 0) throw new Error(`electron exited ${run.status}`)
-  for (const entry of [
-    'secure-secrets.json',
-    'Local State',
-    'Local Storage',
-    'Custom Dictionary.txt',
-    'Custom Dictionary.txt.backup'
-  ]) {
-    const from = path.join(userData, entry)
-    if (fs.existsSync(from)) fs.cpSync(from, path.join(profile, entry), { recursive: true })
+  try {
+    const plaintextsPath = path.join(userData, '.plaintexts.json')
+    fs.writeFileSync(plaintextsPath, JSON.stringify(plaintexts))
+    const run = spawnSync(
+      require('electron'),
+      [
+        '--no-sandbox',
+        '--use-mock-keychain',
+        path.join(here, 'electron-main.cjs'),
+        FIXTURE_APP_NAME,
+        userData,
+        plaintextsPath,
+        path.join(here, 'storage.html')
+      ],
+      { stdio: 'inherit', timeout: 120_000 }
+    )
+    fs.rmSync(plaintextsPath)
+    if (run.status !== 0) throw new Error(`electron exited ${run.status}`)
+    for (const entry of [
+      'secure-secrets.json',
+      'Local State',
+      'Local Storage',
+      'Custom Dictionary.txt',
+      'Custom Dictionary.txt.backup'
+    ]) {
+      const from = path.join(userData, entry)
+      if (fs.existsSync(from)) fs.cpSync(from, path.join(profile, entry), { recursive: true })
+    }
+  } finally {
+    fs.rmSync(userData, { recursive: true, force: true })
   }
-  fs.rmSync(userData, { recursive: true, force: true })
 }
 
 const writeJson = (file, value) => {
@@ -520,7 +523,6 @@ try {
   fs.cpSync(profile, path.join(out, 'profile'), { recursive: true })
   fs.cpSync(path.join(stage, 'vault'), path.join(out, 'vault'), { recursive: true })
   fs.writeFileSync(path.join(out, '.gitattributes'), '* -text -whitespace\n')
-  const { masterKey: _m, deviceSigningKey: _d, ...ids } = cap
   writeJson(path.join(out, 'expected.json'), {
     electron: '43.1.1',
     platform: 'macos',
@@ -528,7 +530,7 @@ try {
     profilePlaceholder: PROFILE_PLACEHOLDER,
     vaultPlaceholder: VAULT_PLACEHOLDER,
     plaintexts,
-    ...ids
+    ...cap
   })
   fs.appendFileSync(path.join(out, 'expected.json'), '\n')
 } finally {

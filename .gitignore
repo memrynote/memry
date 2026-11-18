@@ -127,3 +127,4 @@ apps/desktop/native/eventkit/bin/
 
 # Captured Electron profiles read byte for byte by electron_import tests (LevelDB write-ahead logs).
 !crates/memry-desktop/tests/fixtures/electron/**
+!crates/memry-desktop/tests/fixtures/electron-profile/**
