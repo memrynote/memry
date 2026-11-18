@@ -110,6 +110,8 @@ pub mod unlinked_mentions;
 // Desktop's read-only locks: iOS keeps no vault files to lock.
 #[cfg(feature = "markdown")]
 pub mod vault_locks;
+#[cfg(feature = "vec")]
+pub mod voice_embeddings;
 pub mod wiki_suggest;
 pub mod wiki_target;
 #[cfg(feature = "markdown")]
