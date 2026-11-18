@@ -91,6 +91,30 @@ test('hovering fans the draft list out and leaving folds it', async ({ app }) =>
   await until(app, 'sticky-tab', (w) => w?.width === 44 && w.height === 84)
 })
 
+// The tab's page hears drafts-changed only when its capability is enabled (tauri.conf.json).
+test('the shown tab counts a draft saved after it appeared', async ({ app }) => {
+  const windows = app.executor as unknown as WindowSwitcher
+  const count = async (expected: string): Promise<void> => {
+    await windows.switchToWindow('sticky-tab')
+    const reached = await pollUntil(
+      async () =>
+        (await app.executor.executeAsync(
+          `const done = arguments[arguments.length - 1]
+           done(document.querySelector('button span')?.textContent ?? null)`
+        )) === expected || undefined,
+      { timeoutMs: 30_000, intervalMs: 100 }
+    )
+    await windows.switchToWindow('main')
+    expect(reached).toBe(true)
+  }
+  await saveDraft(app, 'First')
+  await until(app, 'sticky-tab', shown)
+  await count('1')
+
+  await saveDraft(app, 'Second')
+  await count('2')
+})
+
 test('deleting the last draft hides the tab', async ({ app }) => {
   const draft = await saveDraft(app, 'Only one')
   await until(app, 'sticky-tab', shown)

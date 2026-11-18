@@ -6,9 +6,10 @@
       "capabilities": [
         "main",
         "sticky",
+        "sticky-tab",
         {
           "identifier": "e2e",
-          "windows": ["main", "e2e-*", "sticky"],
+          "windows": ["main", "e2e-*", "sticky", "sticky-tab"],
           "permissions": ["wdio:default", "wdio-webdriver:default"]
         },
         {
