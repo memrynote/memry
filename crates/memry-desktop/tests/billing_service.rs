@@ -465,7 +465,8 @@ async fn a_reconcile_failure_ends_the_loop_and_keeps_the_session() {
 }
 
 /// The checkout URL carries a token valid for ten minutes and the portal URL a Paddle session:
-/// a browser that cannot open them leaves neither in the log, whatever its error says.
+/// a browser that cannot open them leaves neither in the log. This holds the log lines; an
+/// opener's own error cannot name the URL because `OpenFailed` carries no text.
 #[test]
 fn a_browser_that_cannot_open_logs_neither_the_token_nor_the_portal_url() {
     let runtime = tokio::runtime::Builder::new_current_thread()
