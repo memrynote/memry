@@ -449,8 +449,9 @@ impl AppEdit {
         landed()?;
         // The file holds the save's marks, which may be older than the document's: the
         // write-back writes the document's over them. A save the document did not take (a
-        // large file, an owed or refused body, a feed error) schedules nothing: the watcher feeds the file as
-        // written, its marks `FromMarkdown`, so there an older save's marks still win.
+        // large file, an owed or refused body, a feed error) schedules nothing: the watcher
+        // feeds the file as written, its marks `FromMarkdown`, so there an older save's marks
+        // still win.
         if takes && critic_marks == CriticMarks::Kept {
             self.tier.schedule(note_id);
         }
