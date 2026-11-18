@@ -2,9 +2,9 @@
   "meta": {
     "spec": "tauri-v2-3522-markdown-convert",
     "oracle": "apps/desktop/scripts/markdown-oracle (Electron converter run in place; gray-matter 4.0.3, js-yaml 3.15.1)",
-    "note": "Function-level cases of CriticMarkup parsing and writing tools marker decoding (packages/shared critic-markup and writing-tools).",
+    "note": "Function-level cases of CriticMarkup parsing, the per-id write and first-copy-wins read of the criticMarkupMarks root (critic.yjsWrite, protocol 12.5.1), and writing tools marker decoding (packages/shared critic-markup and writing-tools).",
     "yamlJsonEncoding": "Numbers that JSON cannot carry are {\"$num\": \"NaN\"|\"Infinity\"|\"-Infinity\"|\"-0\"}, a Date is {\"$date\": ISO}, a Buffer is {\"$bin\": base64}, a map with a \"$\"-prefixed key is wrapped as {\"$map\": {...}}. Key order is Object.keys order.",
-    "caseCount": 2964
+    "caseCount": 2997
   },
   "cases": [
     {
@@ -91840,6 +91840,3305 @@
         "output": {
           "html": "<p>a   <img src=\"u.png\" alt=\"x\" title=\"t\">   b</p>",
           "lifted": "<p>a b</p><img src=\"u.png\" alt=\"x\" title=\"t\">"
+        }
+      }
+    },
+    {
+      "id": "critic-yjs/fn/000-empty-to-one",
+      "op": "fn",
+      "input": {
+        "fn": "critic.yjsWrite",
+        "args": [
+          [],
+          [
+            [
+              {
+                "id": "c1",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "one",
+                "metadata": "id=c1;type=comment",
+                "start": 0,
+                "end": 5
+              }
+            ]
+          ]
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "changed": [
+            true
+          ],
+          "elements": [
+            {
+              "body": "one",
+              "end": 5,
+              "id": "c1",
+              "kind": "comment",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "visibleText": "alpha"
+            }
+          ],
+          "marks": [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "critic-yjs/fn/001-empty-to-empty",
+      "op": "fn",
+      "input": {
+        "fn": "critic.yjsWrite",
+        "args": [
+          [],
+          [
+            []
+          ]
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "changed": [
+            false
+          ],
+          "elements": [],
+          "marks": []
+        }
+      }
+    },
+    {
+      "id": "critic-yjs/fn/002-one-to-empty",
+      "op": "fn",
+      "input": {
+        "fn": "critic.yjsWrite",
+        "args": [
+          [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            }
+          ],
+          [
+            []
+          ]
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "changed": [
+            true
+          ],
+          "elements": [],
+          "marks": []
+        }
+      }
+    },
+    {
+      "id": "critic-yjs/fn/003-same-marks",
+      "op": "fn",
+      "input": {
+        "fn": "critic.yjsWrite",
+        "args": [
+          [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            },
+            {
+              "id": "c2",
+              "kind": "substitution",
+              "visibleText": "new",
+              "originalText": "old",
+              "start": 10,
+              "end": 13
+            }
+          ],
+          [
+            [
+              {
+                "id": "c1",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "one",
+                "metadata": "id=c1;type=comment",
+                "start": 0,
+                "end": 5
+              },
+              {
+                "id": "c2",
+                "kind": "substitution",
+                "visibleText": "new",
+                "originalText": "old",
+                "start": 10,
+                "end": 13
+              }
+            ]
+          ]
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "changed": [
+            false
+          ],
+          "elements": [
+            {
+              "body": "one",
+              "end": 5,
+              "id": "c1",
+              "kind": "comment",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "visibleText": "alpha"
+            },
+            {
+              "end": 13,
+              "id": "c2",
+              "kind": "substitution",
+              "originalText": "old",
+              "start": 10,
+              "visibleText": "new"
+            }
+          ],
+          "marks": [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            },
+            {
+              "id": "c2",
+              "kind": "substitution",
+              "visibleText": "new",
+              "originalText": "old",
+              "start": 10,
+              "end": 13
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "critic-yjs/fn/004-same-rich-mark",
+      "op": "fn",
+      "input": {
+        "fn": "critic.yjsWrite",
+        "args": [
+          [
+            {
+              "id": "rich",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "see this",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5,
+              "createdAt": 1748254022000.5,
+              "mentions": [
+                {
+                  "kind": "note",
+                  "refId": "n1",
+                  "label": "Plan"
+                }
+              ],
+              "attachments": [
+                {
+                  "id": "a",
+                  "name": "n",
+                  "path": "p",
+                  "size": 5,
+                  "mimeType": "m",
+                  "type": "image"
+                }
+              ],
+              "formatRanges": [
+                {
+                  "start": 0,
+                  "end": 3,
+                  "marks": [
+                    "bold"
+                  ]
+                }
+              ]
+            }
+          ],
+          [
+            [
+              {
+                "id": "rich",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "see this",
+                "metadata": "id=c1;type=comment",
+                "start": 0,
+                "end": 5,
+                "createdAt": 1748254022000.5,
+                "mentions": [
+                  {
+                    "kind": "note",
+                    "refId": "n1",
+                    "label": "Plan"
+                  }
+                ],
+                "attachments": [
+                  {
+                    "id": "a",
+                    "name": "n",
+                    "path": "p",
+                    "size": 5,
+                    "mimeType": "m",
+                    "type": "image"
+                  }
+                ],
+                "formatRanges": [
+                  {
+                    "start": 0,
+                    "end": 3,
+                    "marks": [
+                      "bold"
+                    ]
+                  }
+                ]
+              }
+            ]
+          ]
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "changed": [
+            false
+          ],
+          "elements": [
+            {
+              "attachments": [
+                {
+                  "id": "a",
+                  "mimeType": "m",
+                  "name": "n",
+                  "path": "p",
+                  "size": 5,
+                  "type": "image"
+                }
+              ],
+              "body": "see this",
+              "createdAt": 1748254022000.5,
+              "end": 5,
+              "formatRanges": [
+                {
+                  "end": 3,
+                  "marks": [
+                    "bold"
+                  ],
+                  "start": 0
+                }
+              ],
+              "id": "rich",
+              "kind": "comment",
+              "mentions": [
+                {
+                  "kind": "note",
+                  "label": "Plan",
+                  "refId": "n1"
+                }
+              ],
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "visibleText": "alpha"
+            }
+          ],
+          "marks": [
+            {
+              "id": "rich",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "see this",
+              "metadata": "id=c1;type=comment",
+              "createdAt": 1748254022000.5,
+              "mentions": [
+                {
+                  "kind": "note",
+                  "refId": "n1",
+                  "label": "Plan"
+                }
+              ],
+              "attachments": [
+                {
+                  "id": "a",
+                  "name": "n",
+                  "path": "p",
+                  "size": 5,
+                  "mimeType": "m",
+                  "type": "image"
+                }
+              ],
+              "formatRanges": [
+                {
+                  "start": 0,
+                  "end": 3,
+                  "marks": [
+                    "bold"
+                  ]
+                }
+              ],
+              "start": 0,
+              "end": 5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "critic-yjs/fn/005-key-order-only",
+      "op": "fn",
+      "input": {
+        "fn": "critic.yjsWrite",
+        "args": [
+          [
+            {
+              "end": 5,
+              "start": 0,
+              "metadata": "id=c1;type=comment",
+              "body": "one",
+              "visibleText": "alpha",
+              "kind": "comment",
+              "id": "c1"
+            },
+            {
+              "formatRanges": [
+                {
+                  "start": 0,
+                  "end": 3,
+                  "marks": [
+                    "bold"
+                  ]
+                }
+              ],
+              "attachments": [
+                {
+                  "id": "a",
+                  "name": "n",
+                  "path": "p",
+                  "size": 5,
+                  "mimeType": "m",
+                  "type": "image"
+                }
+              ],
+              "mentions": [
+                {
+                  "kind": "note",
+                  "refId": "n1",
+                  "label": "Plan"
+                }
+              ],
+              "createdAt": 1748254022000.5,
+              "end": 5,
+              "start": 0,
+              "metadata": "id=c1;type=comment",
+              "body": "see this",
+              "visibleText": "alpha",
+              "kind": "comment",
+              "id": "rich"
+            }
+          ],
+          [
+            [
+              {
+                "id": "c1",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "one",
+                "metadata": "id=c1;type=comment",
+                "start": 0,
+                "end": 5
+              },
+              {
+                "id": "rich",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "see this",
+                "metadata": "id=c1;type=comment",
+                "start": 0,
+                "end": 5,
+                "createdAt": 1748254022000.5,
+                "mentions": [
+                  {
+                    "kind": "note",
+                    "refId": "n1",
+                    "label": "Plan"
+                  }
+                ],
+                "attachments": [
+                  {
+                    "id": "a",
+                    "name": "n",
+                    "path": "p",
+                    "size": 5,
+                    "mimeType": "m",
+                    "type": "image"
+                  }
+                ],
+                "formatRanges": [
+                  {
+                    "start": 0,
+                    "end": 3,
+                    "marks": [
+                      "bold"
+                    ]
+                  }
+                ]
+              }
+            ]
+          ]
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "changed": [
+            false
+          ],
+          "elements": [
+            {
+              "body": "one",
+              "end": 5,
+              "id": "c1",
+              "kind": "comment",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "visibleText": "alpha"
+            },
+            {
+              "attachments": [
+                {
+                  "id": "a",
+                  "mimeType": "m",
+                  "name": "n",
+                  "path": "p",
+                  "size": 5,
+                  "type": "image"
+                }
+              ],
+              "body": "see this",
+              "createdAt": 1748254022000.5,
+              "end": 5,
+              "formatRanges": [
+                {
+                  "end": 3,
+                  "marks": [
+                    "bold"
+                  ],
+                  "start": 0
+                }
+              ],
+              "id": "rich",
+              "kind": "comment",
+              "mentions": [
+                {
+                  "kind": "note",
+                  "label": "Plan",
+                  "refId": "n1"
+                }
+              ],
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "visibleText": "alpha"
+            }
+          ],
+          "marks": [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            },
+            {
+              "id": "rich",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "see this",
+              "metadata": "id=c1;type=comment",
+              "createdAt": 1748254022000.5,
+              "mentions": [
+                {
+                  "kind": "note",
+                  "refId": "n1",
+                  "label": "Plan"
+                }
+              ],
+              "attachments": [
+                {
+                  "id": "a",
+                  "name": "n",
+                  "path": "p",
+                  "size": 5,
+                  "mimeType": "m",
+                  "type": "image"
+                }
+              ],
+              "formatRanges": [
+                {
+                  "start": 0,
+                  "end": 3,
+                  "marks": [
+                    "bold"
+                  ]
+                }
+              ],
+              "start": 0,
+              "end": 5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "critic-yjs/fn/006-key-order-nested",
+      "op": "fn",
+      "input": {
+        "fn": "critic.yjsWrite",
+        "args": [
+          [
+            {
+              "id": "rich",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "see this",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5,
+              "createdAt": 1748254022000.5,
+              "mentions": [
+                {
+                  "label": "Plan",
+                  "refId": "n1",
+                  "kind": "note"
+                }
+              ],
+              "attachments": [
+                {
+                  "id": "a",
+                  "name": "n",
+                  "path": "p",
+                  "size": 5,
+                  "mimeType": "m",
+                  "type": "image"
+                }
+              ],
+              "formatRanges": [
+                {
+                  "start": 0,
+                  "end": 3,
+                  "marks": [
+                    "bold"
+                  ]
+                }
+              ]
+            }
+          ],
+          [
+            [
+              {
+                "id": "rich",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "see this",
+                "metadata": "id=c1;type=comment",
+                "start": 0,
+                "end": 5,
+                "createdAt": 1748254022000.5,
+                "mentions": [
+                  {
+                    "kind": "note",
+                    "refId": "n1",
+                    "label": "Plan"
+                  }
+                ],
+                "attachments": [
+                  {
+                    "id": "a",
+                    "name": "n",
+                    "path": "p",
+                    "size": 5,
+                    "mimeType": "m",
+                    "type": "image"
+                  }
+                ],
+                "formatRanges": [
+                  {
+                    "start": 0,
+                    "end": 3,
+                    "marks": [
+                      "bold"
+                    ]
+                  }
+                ]
+              }
+            ]
+          ]
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "changed": [
+            false
+          ],
+          "elements": [
+            {
+              "attachments": [
+                {
+                  "id": "a",
+                  "mimeType": "m",
+                  "name": "n",
+                  "path": "p",
+                  "size": 5,
+                  "type": "image"
+                }
+              ],
+              "body": "see this",
+              "createdAt": 1748254022000.5,
+              "end": 5,
+              "formatRanges": [
+                {
+                  "end": 3,
+                  "marks": [
+                    "bold"
+                  ],
+                  "start": 0
+                }
+              ],
+              "id": "rich",
+              "kind": "comment",
+              "mentions": [
+                {
+                  "kind": "note",
+                  "label": "Plan",
+                  "refId": "n1"
+                }
+              ],
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "visibleText": "alpha"
+            }
+          ],
+          "marks": [
+            {
+              "id": "rich",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "see this",
+              "metadata": "id=c1;type=comment",
+              "createdAt": 1748254022000.5,
+              "mentions": [
+                {
+                  "kind": "note",
+                  "refId": "n1",
+                  "label": "Plan"
+                }
+              ],
+              "attachments": [
+                {
+                  "id": "a",
+                  "name": "n",
+                  "path": "p",
+                  "size": 5,
+                  "mimeType": "m",
+                  "type": "image"
+                }
+              ],
+              "formatRanges": [
+                {
+                  "start": 0,
+                  "end": 3,
+                  "marks": [
+                    "bold"
+                  ]
+                }
+              ],
+              "start": 0,
+              "end": 5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "critic-yjs/fn/007-unknown-key-kept-unchanged",
+      "op": "fn",
+      "input": {
+        "fn": "critic.yjsWrite",
+        "args": [
+          [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5,
+              "future": {
+                "flag": true,
+                "nested": {
+                  "v": 2,
+                  "list": [
+                    1,
+                    "x",
+                    null
+                  ]
+                }
+              }
+            }
+          ],
+          [
+            [
+              {
+                "id": "c1",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "one",
+                "metadata": "id=c1;type=comment",
+                "start": 0,
+                "end": 5
+              }
+            ]
+          ]
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "changed": [
+            false
+          ],
+          "elements": [
+            {
+              "body": "one",
+              "end": 5,
+              "future": {
+                "flag": true,
+                "nested": {
+                  "list": [
+                    1,
+                    "x",
+                    null
+                  ],
+                  "v": 2
+                }
+              },
+              "id": "c1",
+              "kind": "comment",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "visibleText": "alpha"
+            }
+          ],
+          "marks": [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "critic-yjs/fn/008-unknown-key-kept-on-edit",
+      "op": "fn",
+      "input": {
+        "fn": "critic.yjsWrite",
+        "args": [
+          [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5,
+              "future": {
+                "flag": true,
+                "nested": {
+                  "v": 2,
+                  "list": [
+                    1,
+                    "x",
+                    null
+                  ]
+                }
+              }
+            }
+          ],
+          [
+            [
+              {
+                "id": "c1",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "edited",
+                "metadata": "id=c1;type=comment",
+                "start": 0,
+                "end": 5
+              }
+            ]
+          ]
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "changed": [
+            true
+          ],
+          "elements": [
+            {
+              "body": "edited",
+              "end": 5,
+              "future": {
+                "flag": true,
+                "nested": {
+                  "list": [
+                    1,
+                    "x",
+                    null
+                  ],
+                  "v": 2
+                }
+              },
+              "id": "c1",
+              "kind": "comment",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "visibleText": "alpha"
+            }
+          ],
+          "marks": [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "edited",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "critic-yjs/fn/009-unknown-key-kept-on-move",
+      "op": "fn",
+      "input": {
+        "fn": "critic.yjsWrite",
+        "args": [
+          [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5,
+              "future": {
+                "flag": true,
+                "nested": {
+                  "v": 2,
+                  "list": [
+                    1,
+                    "x",
+                    null
+                  ]
+                }
+              }
+            }
+          ],
+          [
+            [
+              {
+                "id": "c1",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "one",
+                "metadata": "id=c1;type=comment",
+                "start": 1,
+                "end": 6
+              }
+            ]
+          ]
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "changed": [
+            true
+          ],
+          "elements": [
+            {
+              "body": "one",
+              "end": 6,
+              "future": {
+                "flag": true,
+                "nested": {
+                  "list": [
+                    1,
+                    "x",
+                    null
+                  ],
+                  "v": 2
+                }
+              },
+              "id": "c1",
+              "kind": "comment",
+              "metadata": "id=c1;type=comment",
+              "start": 1,
+              "visibleText": "alpha"
+            }
+          ],
+          "marks": [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 1,
+              "end": 6
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "critic-yjs/fn/010-unknown-key-dropped-with-mark",
+      "op": "fn",
+      "input": {
+        "fn": "critic.yjsWrite",
+        "args": [
+          [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5,
+              "future": {
+                "flag": true,
+                "nested": {
+                  "v": 2,
+                  "list": [
+                    1,
+                    "x",
+                    null
+                  ]
+                }
+              }
+            },
+            {
+              "id": "c2",
+              "kind": "substitution",
+              "visibleText": "new",
+              "originalText": "old",
+              "start": 10,
+              "end": 13
+            }
+          ],
+          [
+            [
+              {
+                "id": "c2",
+                "kind": "substitution",
+                "visibleText": "new",
+                "originalText": "old",
+                "start": 10,
+                "end": 13
+              }
+            ]
+          ]
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "changed": [
+            true
+          ],
+          "elements": [
+            {
+              "end": 13,
+              "id": "c2",
+              "kind": "substitution",
+              "originalText": "old",
+              "start": 10,
+              "visibleText": "new"
+            }
+          ],
+          "marks": [
+            {
+              "id": "c2",
+              "kind": "substitution",
+              "visibleText": "new",
+              "originalText": "old",
+              "start": 10,
+              "end": 13
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "critic-yjs/fn/011-known-key-removed",
+      "op": "fn",
+      "input": {
+        "fn": "critic.yjsWrite",
+        "args": [
+          [
+            {
+              "id": "rich",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "see this",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5,
+              "createdAt": 1748254022000.5,
+              "mentions": [
+                {
+                  "kind": "note",
+                  "refId": "n1",
+                  "label": "Plan"
+                }
+              ],
+              "attachments": [
+                {
+                  "id": "a",
+                  "name": "n",
+                  "path": "p",
+                  "size": 5,
+                  "mimeType": "m",
+                  "type": "image"
+                }
+              ],
+              "formatRanges": [
+                {
+                  "start": 0,
+                  "end": 3,
+                  "marks": [
+                    "bold"
+                  ]
+                }
+              ]
+            }
+          ],
+          [
+            [
+              {
+                "id": "rich",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "see this",
+                "metadata": "id=c1;type=comment",
+                "start": 0,
+                "end": 5,
+                "createdAt": 1748254022000.5,
+                "attachments": [
+                  {
+                    "id": "a",
+                    "name": "n",
+                    "path": "p",
+                    "size": 5,
+                    "mimeType": "m",
+                    "type": "image"
+                  }
+                ]
+              }
+            ]
+          ]
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "changed": [
+            true
+          ],
+          "elements": [
+            {
+              "attachments": [
+                {
+                  "id": "a",
+                  "mimeType": "m",
+                  "name": "n",
+                  "path": "p",
+                  "size": 5,
+                  "type": "image"
+                }
+              ],
+              "body": "see this",
+              "createdAt": 1748254022000.5,
+              "end": 5,
+              "id": "rich",
+              "kind": "comment",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "visibleText": "alpha"
+            }
+          ],
+          "marks": [
+            {
+              "id": "rich",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "see this",
+              "metadata": "id=c1;type=comment",
+              "createdAt": 1748254022000.5,
+              "attachments": [
+                {
+                  "id": "a",
+                  "name": "n",
+                  "path": "p",
+                  "size": 5,
+                  "mimeType": "m",
+                  "type": "image"
+                }
+              ],
+              "start": 0,
+              "end": 5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "critic-yjs/fn/012-known-key-invalid-dropped",
+      "op": "fn",
+      "input": {
+        "fn": "critic.yjsWrite",
+        "args": [
+          [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5,
+              "mentions": "x"
+            }
+          ],
+          [
+            [
+              {
+                "id": "c1",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "one",
+                "metadata": "id=c1;type=comment",
+                "start": 0,
+                "end": 5
+              }
+            ]
+          ]
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "changed": [
+            true
+          ],
+          "elements": [
+            {
+              "body": "one",
+              "end": 5,
+              "id": "c1",
+              "kind": "comment",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "visibleText": "alpha"
+            }
+          ],
+          "marks": [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "critic-yjs/fn/013-edit-middle",
+      "op": "fn",
+      "input": {
+        "fn": "critic.yjsWrite",
+        "args": [
+          [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            },
+            {
+              "id": "c2",
+              "kind": "substitution",
+              "visibleText": "new",
+              "originalText": "old",
+              "start": 10,
+              "end": 13
+            },
+            {
+              "id": "c3",
+              "kind": "addition",
+              "visibleText": "more",
+              "start": 20,
+              "end": 24
+            }
+          ],
+          [
+            [
+              {
+                "id": "c1",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "one",
+                "metadata": "id=c1;type=comment",
+                "start": 0,
+                "end": 5
+              },
+              {
+                "id": "c2",
+                "kind": "substitution",
+                "visibleText": "newer",
+                "originalText": "old",
+                "start": 10,
+                "end": 15
+              },
+              {
+                "id": "c3",
+                "kind": "addition",
+                "visibleText": "more",
+                "start": 20,
+                "end": 24
+              }
+            ]
+          ]
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "changed": [
+            true
+          ],
+          "elements": [
+            {
+              "body": "one",
+              "end": 5,
+              "id": "c1",
+              "kind": "comment",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "visibleText": "alpha"
+            },
+            {
+              "end": 15,
+              "id": "c2",
+              "kind": "substitution",
+              "originalText": "old",
+              "start": 10,
+              "visibleText": "newer"
+            },
+            {
+              "end": 24,
+              "id": "c3",
+              "kind": "addition",
+              "start": 20,
+              "visibleText": "more"
+            }
+          ],
+          "marks": [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            },
+            {
+              "id": "c2",
+              "kind": "substitution",
+              "visibleText": "newer",
+              "originalText": "old",
+              "start": 10,
+              "end": 15
+            },
+            {
+              "id": "c3",
+              "kind": "addition",
+              "visibleText": "more",
+              "start": 20,
+              "end": 24
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "critic-yjs/fn/014-delete-middle",
+      "op": "fn",
+      "input": {
+        "fn": "critic.yjsWrite",
+        "args": [
+          [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            },
+            {
+              "id": "c2",
+              "kind": "substitution",
+              "visibleText": "new",
+              "originalText": "old",
+              "start": 10,
+              "end": 13
+            },
+            {
+              "id": "c3",
+              "kind": "addition",
+              "visibleText": "more",
+              "start": 20,
+              "end": 24
+            }
+          ],
+          [
+            [
+              {
+                "id": "c1",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "one",
+                "metadata": "id=c1;type=comment",
+                "start": 0,
+                "end": 5
+              },
+              {
+                "id": "c3",
+                "kind": "addition",
+                "visibleText": "more",
+                "start": 20,
+                "end": 24
+              }
+            ]
+          ]
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "changed": [
+            true
+          ],
+          "elements": [
+            {
+              "body": "one",
+              "end": 5,
+              "id": "c1",
+              "kind": "comment",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "visibleText": "alpha"
+            },
+            {
+              "end": 24,
+              "id": "c3",
+              "kind": "addition",
+              "start": 20,
+              "visibleText": "more"
+            }
+          ],
+          "marks": [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            },
+            {
+              "id": "c3",
+              "kind": "addition",
+              "visibleText": "more",
+              "start": 20,
+              "end": 24
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "critic-yjs/fn/015-insert-first",
+      "op": "fn",
+      "input": {
+        "fn": "critic.yjsWrite",
+        "args": [
+          [
+            {
+              "id": "c2",
+              "kind": "substitution",
+              "visibleText": "new",
+              "originalText": "old",
+              "start": 10,
+              "end": 13
+            },
+            {
+              "id": "c3",
+              "kind": "addition",
+              "visibleText": "more",
+              "start": 20,
+              "end": 24
+            }
+          ],
+          [
+            [
+              {
+                "id": "c1",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "one",
+                "metadata": "id=c1;type=comment",
+                "start": 0,
+                "end": 5
+              },
+              {
+                "id": "c2",
+                "kind": "substitution",
+                "visibleText": "new",
+                "originalText": "old",
+                "start": 10,
+                "end": 13
+              },
+              {
+                "id": "c3",
+                "kind": "addition",
+                "visibleText": "more",
+                "start": 20,
+                "end": 24
+              }
+            ]
+          ]
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "changed": [
+            true
+          ],
+          "elements": [
+            {
+              "body": "one",
+              "end": 5,
+              "id": "c1",
+              "kind": "comment",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "visibleText": "alpha"
+            },
+            {
+              "end": 13,
+              "id": "c2",
+              "kind": "substitution",
+              "originalText": "old",
+              "start": 10,
+              "visibleText": "new"
+            },
+            {
+              "end": 24,
+              "id": "c3",
+              "kind": "addition",
+              "start": 20,
+              "visibleText": "more"
+            }
+          ],
+          "marks": [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            },
+            {
+              "id": "c2",
+              "kind": "substitution",
+              "visibleText": "new",
+              "originalText": "old",
+              "start": 10,
+              "end": 13
+            },
+            {
+              "id": "c3",
+              "kind": "addition",
+              "visibleText": "more",
+              "start": 20,
+              "end": 24
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "critic-yjs/fn/016-insert-middle",
+      "op": "fn",
+      "input": {
+        "fn": "critic.yjsWrite",
+        "args": [
+          [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            },
+            {
+              "id": "c3",
+              "kind": "addition",
+              "visibleText": "more",
+              "start": 20,
+              "end": 24
+            }
+          ],
+          [
+            [
+              {
+                "id": "c1",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "one",
+                "metadata": "id=c1;type=comment",
+                "start": 0,
+                "end": 5
+              },
+              {
+                "id": "c2",
+                "kind": "substitution",
+                "visibleText": "new",
+                "originalText": "old",
+                "start": 10,
+                "end": 13
+              },
+              {
+                "id": "c3",
+                "kind": "addition",
+                "visibleText": "more",
+                "start": 20,
+                "end": 24
+              }
+            ]
+          ]
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "changed": [
+            true
+          ],
+          "elements": [
+            {
+              "body": "one",
+              "end": 5,
+              "id": "c1",
+              "kind": "comment",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "visibleText": "alpha"
+            },
+            {
+              "end": 13,
+              "id": "c2",
+              "kind": "substitution",
+              "originalText": "old",
+              "start": 10,
+              "visibleText": "new"
+            },
+            {
+              "end": 24,
+              "id": "c3",
+              "kind": "addition",
+              "start": 20,
+              "visibleText": "more"
+            }
+          ],
+          "marks": [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            },
+            {
+              "id": "c2",
+              "kind": "substitution",
+              "visibleText": "new",
+              "originalText": "old",
+              "start": 10,
+              "end": 13
+            },
+            {
+              "id": "c3",
+              "kind": "addition",
+              "visibleText": "more",
+              "start": 20,
+              "end": 24
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "critic-yjs/fn/017-insert-last",
+      "op": "fn",
+      "input": {
+        "fn": "critic.yjsWrite",
+        "args": [
+          [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            },
+            {
+              "id": "c2",
+              "kind": "substitution",
+              "visibleText": "new",
+              "originalText": "old",
+              "start": 10,
+              "end": 13
+            }
+          ],
+          [
+            [
+              {
+                "id": "c1",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "one",
+                "metadata": "id=c1;type=comment",
+                "start": 0,
+                "end": 5
+              },
+              {
+                "id": "c2",
+                "kind": "substitution",
+                "visibleText": "new",
+                "originalText": "old",
+                "start": 10,
+                "end": 13
+              },
+              {
+                "id": "c3",
+                "kind": "addition",
+                "visibleText": "more",
+                "start": 20,
+                "end": 24
+              }
+            ]
+          ]
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "changed": [
+            true
+          ],
+          "elements": [
+            {
+              "body": "one",
+              "end": 5,
+              "id": "c1",
+              "kind": "comment",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "visibleText": "alpha"
+            },
+            {
+              "end": 13,
+              "id": "c2",
+              "kind": "substitution",
+              "originalText": "old",
+              "start": 10,
+              "visibleText": "new"
+            },
+            {
+              "end": 24,
+              "id": "c3",
+              "kind": "addition",
+              "start": 20,
+              "visibleText": "more"
+            }
+          ],
+          "marks": [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            },
+            {
+              "id": "c2",
+              "kind": "substitution",
+              "visibleText": "new",
+              "originalText": "old",
+              "start": 10,
+              "end": 13
+            },
+            {
+              "id": "c3",
+              "kind": "addition",
+              "visibleText": "more",
+              "start": 20,
+              "end": 24
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "critic-yjs/fn/018-insert-after-reordered",
+      "op": "fn",
+      "input": {
+        "fn": "critic.yjsWrite",
+        "args": [
+          [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            },
+            {
+              "id": "c2",
+              "kind": "substitution",
+              "visibleText": "new",
+              "originalText": "old",
+              "start": 10,
+              "end": 13
+            }
+          ],
+          [
+            [
+              {
+                "id": "c2",
+                "kind": "substitution",
+                "visibleText": "new",
+                "originalText": "old",
+                "start": 10,
+                "end": 13
+              },
+              {
+                "id": "c3",
+                "kind": "addition",
+                "visibleText": "more",
+                "start": 20,
+                "end": 24
+              },
+              {
+                "id": "c1",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "one",
+                "metadata": "id=c1;type=comment",
+                "start": 0,
+                "end": 5
+              }
+            ]
+          ]
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "changed": [
+            true
+          ],
+          "elements": [
+            {
+              "body": "one",
+              "end": 5,
+              "id": "c1",
+              "kind": "comment",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "visibleText": "alpha"
+            },
+            {
+              "end": 13,
+              "id": "c2",
+              "kind": "substitution",
+              "originalText": "old",
+              "start": 10,
+              "visibleText": "new"
+            },
+            {
+              "end": 24,
+              "id": "c3",
+              "kind": "addition",
+              "start": 20,
+              "visibleText": "more"
+            }
+          ],
+          "marks": [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            },
+            {
+              "id": "c2",
+              "kind": "substitution",
+              "visibleText": "new",
+              "originalText": "old",
+              "start": 10,
+              "end": 13
+            },
+            {
+              "id": "c3",
+              "kind": "addition",
+              "visibleText": "more",
+              "start": 20,
+              "end": 24
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "critic-yjs/fn/019-reorder-only",
+      "op": "fn",
+      "input": {
+        "fn": "critic.yjsWrite",
+        "args": [
+          [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            },
+            {
+              "id": "c2",
+              "kind": "substitution",
+              "visibleText": "new",
+              "originalText": "old",
+              "start": 10,
+              "end": 13
+            },
+            {
+              "id": "c3",
+              "kind": "addition",
+              "visibleText": "more",
+              "start": 20,
+              "end": 24
+            }
+          ],
+          [
+            [
+              {
+                "id": "c3",
+                "kind": "addition",
+                "visibleText": "more",
+                "start": 20,
+                "end": 24
+              },
+              {
+                "id": "c1",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "one",
+                "metadata": "id=c1;type=comment",
+                "start": 0,
+                "end": 5
+              },
+              {
+                "id": "c2",
+                "kind": "substitution",
+                "visibleText": "new",
+                "originalText": "old",
+                "start": 10,
+                "end": 13
+              }
+            ]
+          ]
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "changed": [
+            false
+          ],
+          "elements": [
+            {
+              "body": "one",
+              "end": 5,
+              "id": "c1",
+              "kind": "comment",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "visibleText": "alpha"
+            },
+            {
+              "end": 13,
+              "id": "c2",
+              "kind": "substitution",
+              "originalText": "old",
+              "start": 10,
+              "visibleText": "new"
+            },
+            {
+              "end": 24,
+              "id": "c3",
+              "kind": "addition",
+              "start": 20,
+              "visibleText": "more"
+            }
+          ],
+          "marks": [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            },
+            {
+              "id": "c2",
+              "kind": "substitution",
+              "visibleText": "new",
+              "originalText": "old",
+              "start": 10,
+              "end": 13
+            },
+            {
+              "id": "c3",
+              "kind": "addition",
+              "visibleText": "more",
+              "start": 20,
+              "end": 24
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "critic-yjs/fn/020-duplicate-ids-repaired",
+      "op": "fn",
+      "input": {
+        "fn": "critic.yjsWrite",
+        "args": [
+          [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            },
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "second",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            },
+            {
+              "id": "c2",
+              "kind": "substitution",
+              "visibleText": "new",
+              "originalText": "old",
+              "start": 10,
+              "end": 13
+            }
+          ],
+          [
+            [
+              {
+                "id": "c1",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "one",
+                "metadata": "id=c1;type=comment",
+                "start": 0,
+                "end": 5
+              },
+              {
+                "id": "c2",
+                "kind": "substitution",
+                "visibleText": "new",
+                "originalText": "old",
+                "start": 10,
+                "end": 13
+              }
+            ]
+          ]
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "changed": [
+            true
+          ],
+          "elements": [
+            {
+              "body": "one",
+              "end": 5,
+              "id": "c1",
+              "kind": "comment",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "visibleText": "alpha"
+            },
+            {
+              "end": 13,
+              "id": "c2",
+              "kind": "substitution",
+              "originalText": "old",
+              "start": 10,
+              "visibleText": "new"
+            }
+          ],
+          "marks": [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            },
+            {
+              "id": "c2",
+              "kind": "substitution",
+              "visibleText": "new",
+              "originalText": "old",
+              "start": 10,
+              "end": 13
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "critic-yjs/fn/021-duplicate-ids-first-invalid",
+      "op": "fn",
+      "input": {
+        "fn": "critic.yjsWrite",
+        "args": [
+          [
+            {
+              "id": "c1",
+              "kind": "highlight",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            },
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "valid",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            }
+          ],
+          [
+            [
+              {
+                "id": "c1",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "valid",
+                "metadata": "id=c1;type=comment",
+                "start": 0,
+                "end": 5
+              }
+            ]
+          ]
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "changed": [
+            true
+          ],
+          "elements": [
+            {
+              "body": "valid",
+              "end": 5,
+              "id": "c1",
+              "kind": "comment",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "visibleText": "alpha"
+            }
+          ],
+          "marks": [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "valid",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "critic-yjs/fn/022-duplicate-ids-in-marks",
+      "op": "fn",
+      "input": {
+        "fn": "critic.yjsWrite",
+        "args": [
+          [],
+          [
+            [
+              {
+                "id": "c1",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "one",
+                "metadata": "id=c1;type=comment",
+                "start": 0,
+                "end": 5
+              },
+              {
+                "id": "c1",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "second",
+                "metadata": "id=c1;type=comment",
+                "start": 0,
+                "end": 5
+              }
+            ]
+          ]
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "changed": [
+            true
+          ],
+          "elements": [
+            {
+              "body": "one",
+              "end": 5,
+              "id": "c1",
+              "kind": "comment",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "visibleText": "alpha"
+            }
+          ],
+          "marks": [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "critic-yjs/fn/023-invalid-elements-deleted",
+      "op": "fn",
+      "input": {
+        "fn": "critic.yjsWrite",
+        "args": [
+          [
+            null,
+            "x",
+            3,
+            [
+              {
+                "id": "c1",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "one",
+                "metadata": "id=c1;type=comment",
+                "start": 0,
+                "end": 5
+              }
+            ],
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": -1
+            },
+            {
+              "id": "c2",
+              "kind": "note",
+              "visibleText": "new",
+              "originalText": "old",
+              "start": 10,
+              "end": 13
+            },
+            {
+              "id": "c3",
+              "kind": "addition",
+              "visibleText": "more",
+              "start": 20,
+              "end": 24
+            }
+          ],
+          [
+            [
+              {
+                "id": "c3",
+                "kind": "addition",
+                "visibleText": "more",
+                "start": 20,
+                "end": 24
+              }
+            ]
+          ]
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "changed": [
+            true
+          ],
+          "elements": [
+            {
+              "end": 24,
+              "id": "c3",
+              "kind": "addition",
+              "start": 20,
+              "visibleText": "more"
+            }
+          ],
+          "marks": [
+            {
+              "id": "c3",
+              "kind": "addition",
+              "visibleText": "more",
+              "start": 20,
+              "end": 24
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "critic-yjs/fn/024-invalid-mark-not-written",
+      "op": "fn",
+      "input": {
+        "fn": "critic.yjsWrite",
+        "args": [
+          [],
+          [
+            [
+              {
+                "id": "c1",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "one",
+                "metadata": "id=c1;type=comment",
+                "start": 4,
+                "end": 2
+              },
+              {
+                "id": "c2",
+                "kind": "substitution",
+                "visibleText": "new",
+                "originalText": "old",
+                "start": 10,
+                "end": 13
+              }
+            ]
+          ]
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "changed": [
+            true
+          ],
+          "elements": [
+            {
+              "end": 13,
+              "id": "c2",
+              "kind": "substitution",
+              "originalText": "old",
+              "start": 10,
+              "visibleText": "new"
+            }
+          ],
+          "marks": [
+            {
+              "id": "c2",
+              "kind": "substitution",
+              "visibleText": "new",
+              "originalText": "old",
+              "start": 10,
+              "end": 13
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "critic-yjs/fn/025-two-writers-same-mark",
+      "op": "fn",
+      "input": {
+        "fn": "critic.yjsWrite",
+        "args": [
+          [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            }
+          ],
+          [
+            [
+              {
+                "id": "c1",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "from a",
+                "metadata": "id=c1;type=comment",
+                "start": 0,
+                "end": 5
+              }
+            ],
+            [
+              {
+                "id": "c1",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "from b",
+                "metadata": "id=c1;type=comment",
+                "start": 0,
+                "end": 5
+              }
+            ]
+          ]
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "changed": [
+            true,
+            true
+          ],
+          "elements": [
+            {
+              "body": "from a",
+              "end": 5,
+              "id": "c1",
+              "kind": "comment",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "visibleText": "alpha"
+            },
+            {
+              "body": "from b",
+              "end": 5,
+              "id": "c1",
+              "kind": "comment",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "visibleText": "alpha"
+            }
+          ],
+          "marks": [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "from a",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "critic-yjs/fn/026-two-writers-different-marks",
+      "op": "fn",
+      "input": {
+        "fn": "critic.yjsWrite",
+        "args": [
+          [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            },
+            {
+              "id": "c2",
+              "kind": "substitution",
+              "visibleText": "new",
+              "originalText": "old",
+              "start": 10,
+              "end": 13
+            }
+          ],
+          [
+            [
+              {
+                "id": "c1",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "from a",
+                "metadata": "id=c1;type=comment",
+                "start": 0,
+                "end": 5
+              },
+              {
+                "id": "c2",
+                "kind": "substitution",
+                "visibleText": "new",
+                "originalText": "old",
+                "start": 10,
+                "end": 13
+              }
+            ],
+            [
+              {
+                "id": "c1",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "one",
+                "metadata": "id=c1;type=comment",
+                "start": 0,
+                "end": 5
+              },
+              {
+                "id": "c2",
+                "kind": "substitution",
+                "visibleText": "from b",
+                "originalText": "old",
+                "start": 10,
+                "end": 16
+              }
+            ]
+          ]
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "changed": [
+            true,
+            true
+          ],
+          "elements": [
+            {
+              "body": "from a",
+              "end": 5,
+              "id": "c1",
+              "kind": "comment",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "visibleText": "alpha"
+            },
+            {
+              "end": 16,
+              "id": "c2",
+              "kind": "substitution",
+              "originalText": "old",
+              "start": 10,
+              "visibleText": "from b"
+            }
+          ],
+          "marks": [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "from a",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            },
+            {
+              "id": "c2",
+              "kind": "substitution",
+              "visibleText": "from b",
+              "originalText": "old",
+              "start": 10,
+              "end": 16
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "critic-yjs/fn/027-two-writers-delete-and-edit",
+      "op": "fn",
+      "input": {
+        "fn": "critic.yjsWrite",
+        "args": [
+          [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            },
+            {
+              "id": "c2",
+              "kind": "substitution",
+              "visibleText": "new",
+              "originalText": "old",
+              "start": 10,
+              "end": 13
+            }
+          ],
+          [
+            [
+              {
+                "id": "c2",
+                "kind": "substitution",
+                "visibleText": "new",
+                "originalText": "old",
+                "start": 10,
+                "end": 13
+              }
+            ],
+            [
+              {
+                "id": "c1",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "kept",
+                "metadata": "id=c1;type=comment",
+                "start": 0,
+                "end": 5
+              },
+              {
+                "id": "c2",
+                "kind": "substitution",
+                "visibleText": "new",
+                "originalText": "old",
+                "start": 10,
+                "end": 13
+              }
+            ]
+          ]
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "changed": [
+            true,
+            true
+          ],
+          "elements": [
+            {
+              "body": "kept",
+              "end": 5,
+              "id": "c1",
+              "kind": "comment",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "visibleText": "alpha"
+            },
+            {
+              "end": 13,
+              "id": "c2",
+              "kind": "substitution",
+              "originalText": "old",
+              "start": 10,
+              "visibleText": "new"
+            }
+          ],
+          "marks": [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "kept",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            },
+            {
+              "id": "c2",
+              "kind": "substitution",
+              "visibleText": "new",
+              "originalText": "old",
+              "start": 10,
+              "end": 13
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "critic-yjs/fn/028-two-writers-both-insert",
+      "op": "fn",
+      "input": {
+        "fn": "critic.yjsWrite",
+        "args": [
+          [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            }
+          ],
+          [
+            [
+              {
+                "id": "c1",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "one",
+                "metadata": "id=c1;type=comment",
+                "start": 0,
+                "end": 5
+              },
+              {
+                "id": "c2",
+                "kind": "substitution",
+                "visibleText": "new",
+                "originalText": "old",
+                "start": 10,
+                "end": 13
+              }
+            ],
+            [
+              {
+                "id": "c1",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "one",
+                "metadata": "id=c1;type=comment",
+                "start": 0,
+                "end": 5
+              },
+              {
+                "id": "c3",
+                "kind": "addition",
+                "visibleText": "more",
+                "start": 20,
+                "end": 24
+              }
+            ]
+          ]
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "changed": [
+            true,
+            true
+          ],
+          "elements": [
+            {
+              "body": "one",
+              "end": 5,
+              "id": "c1",
+              "kind": "comment",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "visibleText": "alpha"
+            },
+            {
+              "end": 13,
+              "id": "c2",
+              "kind": "substitution",
+              "originalText": "old",
+              "start": 10,
+              "visibleText": "new"
+            },
+            {
+              "end": 24,
+              "id": "c3",
+              "kind": "addition",
+              "start": 20,
+              "visibleText": "more"
+            }
+          ],
+          "marks": [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            },
+            {
+              "id": "c2",
+              "kind": "substitution",
+              "visibleText": "new",
+              "originalText": "old",
+              "start": 10,
+              "end": 13
+            },
+            {
+              "id": "c3",
+              "kind": "addition",
+              "visibleText": "more",
+              "start": 20,
+              "end": 24
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "critic-yjs/fn/029-two-writers-insert-same-id",
+      "op": "fn",
+      "input": {
+        "fn": "critic.yjsWrite",
+        "args": [
+          [],
+          [
+            [
+              {
+                "id": "c1",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "one",
+                "metadata": "id=c1;type=comment",
+                "start": 0,
+                "end": 5
+              }
+            ],
+            [
+              {
+                "id": "c1",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "other",
+                "metadata": "id=c1;type=comment",
+                "start": 0,
+                "end": 5
+              }
+            ]
+          ]
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "changed": [
+            true,
+            true
+          ],
+          "elements": [
+            {
+              "body": "one",
+              "end": 5,
+              "id": "c1",
+              "kind": "comment",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "visibleText": "alpha"
+            },
+            {
+              "body": "other",
+              "end": 5,
+              "id": "c1",
+              "kind": "comment",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "visibleText": "alpha"
+            }
+          ],
+          "marks": [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "critic-yjs/fn/030-two-writers-one-unchanged",
+      "op": "fn",
+      "input": {
+        "fn": "critic.yjsWrite",
+        "args": [
+          [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5,
+              "future": {
+                "flag": true,
+                "nested": {
+                  "v": 2,
+                  "list": [
+                    1,
+                    "x",
+                    null
+                  ]
+                }
+              }
+            }
+          ],
+          [
+            [
+              {
+                "id": "c1",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "one",
+                "metadata": "id=c1;type=comment",
+                "start": 0,
+                "end": 5
+              }
+            ],
+            [
+              {
+                "id": "c1",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "edit",
+                "metadata": "id=c1;type=comment",
+                "start": 0,
+                "end": 5
+              }
+            ]
+          ]
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "changed": [
+            false,
+            true
+          ],
+          "elements": [
+            {
+              "body": "edit",
+              "end": 5,
+              "future": {
+                "flag": true,
+                "nested": {
+                  "list": [
+                    1,
+                    "x",
+                    null
+                  ],
+                  "v": 2
+                }
+              },
+              "id": "c1",
+              "kind": "comment",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "visibleText": "alpha"
+            }
+          ],
+          "marks": [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "edit",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "critic-yjs/fn/031-three-writers-same-mark",
+      "op": "fn",
+      "input": {
+        "fn": "critic.yjsWrite",
+        "args": [
+          [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            }
+          ],
+          [
+            [
+              {
+                "id": "c1",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "a",
+                "metadata": "id=c1;type=comment",
+                "start": 0,
+                "end": 5
+              }
+            ],
+            [
+              {
+                "id": "c1",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "b",
+                "metadata": "id=c1;type=comment",
+                "start": 0,
+                "end": 5
+              }
+            ],
+            [
+              {
+                "id": "c1",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "c",
+                "metadata": "id=c1;type=comment",
+                "start": 0,
+                "end": 5
+              }
+            ]
+          ]
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "changed": [
+            true,
+            true,
+            true
+          ],
+          "elements": [
+            {
+              "body": "a",
+              "end": 5,
+              "id": "c1",
+              "kind": "comment",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "visibleText": "alpha"
+            },
+            {
+              "body": "b",
+              "end": 5,
+              "id": "c1",
+              "kind": "comment",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "visibleText": "alpha"
+            },
+            {
+              "body": "c",
+              "end": 5,
+              "id": "c1",
+              "kind": "comment",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "visibleText": "alpha"
+            }
+          ],
+          "marks": [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "a",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "critic-yjs/fn/032-duplicates-repaired-by-later-write",
+      "op": "fn",
+      "input": {
+        "fn": "critic.yjsWrite",
+        "args": [
+          [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            },
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "second",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5,
+              "future": {
+                "flag": true,
+                "nested": {
+                  "v": 2,
+                  "list": [
+                    1,
+                    "x",
+                    null
+                  ]
+                }
+              }
+            },
+            {
+              "id": "c2",
+              "kind": "substitution",
+              "visibleText": "new",
+              "originalText": "old",
+              "start": 10,
+              "end": 13
+            }
+          ],
+          [
+            [
+              {
+                "id": "c1",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "one",
+                "metadata": "id=c1;type=comment",
+                "start": 0,
+                "end": 5
+              },
+              {
+                "id": "c2",
+                "kind": "substitution",
+                "visibleText": "new",
+                "originalText": "old",
+                "start": 10,
+                "end": 13
+              }
+            ],
+            [
+              {
+                "id": "c1",
+                "kind": "comment",
+                "visibleText": "alpha",
+                "body": "one",
+                "metadata": "id=c1;type=comment",
+                "start": 0,
+                "end": 5
+              },
+              {
+                "id": "c2",
+                "kind": "substitution",
+                "visibleText": "new",
+                "originalText": "old",
+                "start": 10,
+                "end": 13
+              }
+            ]
+          ]
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "changed": [
+            true,
+            true
+          ],
+          "elements": [
+            {
+              "body": "one",
+              "end": 5,
+              "id": "c1",
+              "kind": "comment",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "visibleText": "alpha"
+            },
+            {
+              "end": 13,
+              "id": "c2",
+              "kind": "substitution",
+              "originalText": "old",
+              "start": 10,
+              "visibleText": "new"
+            }
+          ],
+          "marks": [
+            {
+              "id": "c1",
+              "kind": "comment",
+              "visibleText": "alpha",
+              "body": "one",
+              "metadata": "id=c1;type=comment",
+              "start": 0,
+              "end": 5
+            },
+            {
+              "id": "c2",
+              "kind": "substitution",
+              "visibleText": "new",
+              "originalText": "old",
+              "start": 10,
+              "end": 13
+            }
+          ]
         }
       }
     }
