@@ -132,6 +132,20 @@ fn read(db: &Connection) -> Result<VaultEvidence, ImportError> {
     })
 }
 
+/// The uuid Electron names a vault by, for its core id and its CRDT store alike: the
+/// `vault_metadata` singleton's (`resolveVaultCrdtStore` -> `getOrCreateVaultUuid`,
+/// `crdt-store-path.ts:51-57`), else the config entry's `vaultUuid`, a best-effort copy that an
+/// adoption whose device registration failed leaves stale (`vault-adoption.ts:35-60`). A blank
+/// value names nothing; any other is kept as written. Every reader of a vault's uuid in the
+/// import resolves it here, so no two of them can name one vault differently.
+pub fn electron_vault_uuid(singleton: Option<&str>, config: Option<&str>) -> Option<String> {
+    [singleton, config]
+        .into_iter()
+        .flatten()
+        .find(|uuid| !uuid.trim().is_empty())
+        .map(str::to_owned)
+}
+
 /// The uuid of the `vault_metadata` row Electron reads, `id = 'singleton'`
 /// (`agent/storage/vault-id.ts:7`, `sync/vault-adoption.ts:24-28`); other rows are never read.
 /// A value that is not UTF-8 text fails with the row named: it is the vault's identity, so no

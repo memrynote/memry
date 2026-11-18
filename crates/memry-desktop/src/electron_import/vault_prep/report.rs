@@ -4,14 +4,14 @@
 
 use serde::Serialize;
 
-use super::{PreparedVault, VaultIds, tree};
+use super::{PreparedVault, VaultId, tree};
 use crate::electron_import::journal_replay::EntrySkip;
 use crate::electron_import::ystore_import::{LegacyStore, SkipReason};
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VaultPrepReport {
-    pub ids: VaultIds,
+    pub id: VaultId,
     pub replay: ReplayReport,
     pub fold: FoldReport,
 }
@@ -79,7 +79,7 @@ pub(super) fn of(vault: &PreparedVault) -> VaultPrepReport {
     let replay = &vault.replay;
     let fold = &vault.fold;
     VaultPrepReport {
-        ids: vault.ids.clone(),
+        id: vault.id.clone(),
         replay: ReplayReport {
             written: rel(&replay.written),
             deleted: rel(&replay.deleted),

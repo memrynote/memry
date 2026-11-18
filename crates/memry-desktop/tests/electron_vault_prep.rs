@@ -8,7 +8,7 @@ use std::path::Path;
 use memry_desktop::electron_import::journal_replay::{BulkApplyJournal, EntrySkip};
 use memry_desktop::electron_import::profile::{locate_profile, vault_dir_name};
 use memry_desktop::electron_import::vault_prep::{
-    CANVAS_LIBRARY, Disposition, VaultIds, VaultPlan, plan_vaults, prepare_vault,
+    CANVAS_LIBRARY, Disposition, VaultId, VaultPlan, plan_vaults, prepare_vault,
 };
 use memry_desktop::electron_import::ystore_import::LegacyStore;
 use memry_desktop::electron_import::{ElectronConfig, ElectronProfile, Scratch};
@@ -37,7 +37,7 @@ impl Run {
         plan_vaults(&self.profile, Some(&self.config), &self.scratch)
     }
 
-    fn legacy(&self, path: &Path, ids: &VaultIds) -> LegacyStore {
+    fn legacy(&self, path: &Path, ids: &VaultId) -> LegacyStore {
         let path = path.to_string_lossy();
         prepare_vault(
             &self.profile,
@@ -53,7 +53,7 @@ impl Run {
     }
 }
 
-fn import_ids(plan: &VaultPlan, path: &Path) -> VaultIds {
+fn import_ids(plan: &VaultPlan, path: &Path) -> VaultId {
     let path = path.to_string_lossy();
     match &plan
         .vaults
@@ -77,7 +77,6 @@ fn the_fixture_vault_is_planned_and_prepared_and_electron_is_untouched() {
     assert!(plan.vaults[0].current);
     let ids = import_ids(&plan, &f.vault);
     assert_eq!(ids.vault_id, f.expected.vault_uuid, "the data.db singleton");
-    assert_eq!(ids.store_uuid, f.expected.vault_uuid);
     assert!(!ids.minted);
 
     let journal = BulkApplyJournal::read(&r.profile).unwrap().unwrap();
@@ -178,3 +177,95 @@ fn planned_ids_give_an_unclaimed_legacy_store_to_exactly_one_vault() {
         assert_eq!(readers, [reader]);
     }
 }
+
+const CONFIG_ONLY: &str = "2f6a1c3e-0d4b-4e8a-9c7f-1b2d3e4f5a60";
+
+fn edit_config(f: &ElectronProfileFixture, edit: impl FnOnce(&mut serde_json::Value)) {
+    let path = f.profile.join("memry-config.json");
+    let mut c: serde_json::Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    edit(&mut c);
+    fs::write(&path, serde_json::to_vec_pretty(&c).unwrap()).unwrap();
+}
+
+/// Electron names the store by the `vault_metadata` singleton (`crdt-store-path.ts:51-57`); a
+/// config `vaultUuid` left behind by an adoption whose registration failed names nothing.
+#[test]
+fn the_store_read_is_the_one_the_singleton_names_over_the_config_uuid() {
+    let f = ElectronProfileFixture::install();
+    edit_config(&f, |c| c["vaults"][0]["vaultUuid"] = CONFIG_ONLY.into());
+    let r = run(&f);
+    let ids = import_ids(&r.plan(), &f.vault);
+    assert_eq!(ids.vault_id, f.expected.vault_uuid);
+    let path = f.vault.to_string_lossy();
+    let vault = prepare_vault(&r.profile, Some(&r.config), &path, &ids, None, &r.scratch).unwrap();
+    assert!(
+        vault
+            .fold
+            .docs
+            .iter()
+            .any(|d| d.doc_id == f.expected.offline_doc_id)
+    );
+    assert_eq!(vault.fold.legacy, LegacyStore::LeftUnread);
+}
+
+/// `recordCrdtStoreRename` moves `legacyStoreClaimedBy` to the new singleton: the claim names
+/// the singleton, and the vault without its own store reads the legacy store.
+#[test]
+fn a_legacy_claim_naming_the_singleton_is_this_vault_s() {
+    let f = ElectronProfileFixture::install();
+    fs::remove_dir_all(
+        f.profile
+            .join("crdt-stores")
+            .join(vault_dir_name(&f.expected.vault_uuid)),
+    )
+    .unwrap();
+    edit_config(&f, |c| c["vaults"][0]["vaultUuid"] = CONFIG_ONLY.into());
+    let r = run(&f);
+    let ids = import_ids(&r.plan(), &f.vault);
+    assert_eq!(r.legacy(&f.vault, &ids), LegacyStore::Read);
+}
+
+/// The legacy pick names the other vaults the same way: `Other`'s config uuid is stale, its
+/// singleton names a store, so `Other` (current) has a store and the fixture vault inherits.
+#[test]
+fn the_legacy_pick_names_other_vaults_by_their_singleton() {
+    let f = ElectronProfileFixture::install();
+    let other = f.vault.parent().unwrap().join("Other");
+    fs::create_dir_all(other.join(".memry")).unwrap();
+    Connection::open(other.join(".memry").join("data.db"))
+        .unwrap()
+        .execute_batch(&format!(
+            "CREATE TABLE vault_metadata (id TEXT PRIMARY KEY, vault_uuid TEXT);
+             INSERT INTO vault_metadata VALUES ('singleton', '{OTHER_SINGLETON}');"
+        ))
+        .unwrap();
+    fs::create_dir_all(
+        f.profile
+            .join("crdt-stores")
+            .join(vault_dir_name(OTHER_SINGLETON)),
+    )
+    .unwrap();
+    fs::remove_dir_all(
+        f.profile
+            .join("crdt-stores")
+            .join(vault_dir_name(&f.expected.vault_uuid)),
+    )
+    .unwrap();
+    let other_path = other.to_string_lossy().into_owned();
+    edit_config(&f, |c| {
+        c["crdtStore"]
+            .as_object_mut()
+            .unwrap()
+            .remove("legacyStoreClaimedBy");
+        c["currentVault"] = other_path.clone().into();
+        c["vaults"]
+            .as_array_mut()
+            .unwrap()
+            .push(serde_json::json!({ "path": other_path, "vaultUuid": CONFIG_ONLY }));
+    });
+    let r = run(&f);
+    let ids = import_ids(&r.plan(), &f.vault);
+    assert_eq!(r.legacy(&f.vault, &ids), LegacyStore::Read);
+}
+
+const OTHER_SINGLETON: &str = "7a9e3b1c-5d2f-4c6a-8e0b-9f1a2b3c4d5e";

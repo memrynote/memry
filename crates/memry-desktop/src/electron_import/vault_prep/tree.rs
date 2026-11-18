@@ -12,17 +12,33 @@ use crate::electron_import::ImportError;
 use crate::electron_import::journal_replay::is_memry_dir;
 
 /// `vault-relative path -> entry` of everything in a vault but its top-level `.memry/`.
-/// Symlinks are recorded by their target and never followed, and the walk keeps its own
-/// stack, so a link loop or a deep tree cannot recurse. Keys use `/` on every OS; a name that
-/// is not UTF-8 reads lossily.
+/// Only regular files are opened and hashed. Symlinks are recorded by their target and never
+/// followed; other file types (FIFO, socket, device) and folders that cannot be listed are
+/// opaque entries, never opened. The walk keeps its own stack, so a deep tree cannot recurse.
+/// Keys use `/` on every OS; a name that is not UTF-8 reads lossily.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct VaultTree(BTreeMap<String, Entry>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Entry {
     Dir,
-    File { len: u64, sha256: [u8; 32] },
+    /// A folder whose listing failed: its content is unknown, so it compares as itself.
+    UnreadableDir,
+    File {
+        len: u64,
+        sha256: [u8; 32],
+    },
     Link(PathBuf),
+    /// Neither file, folder nor link.
+    Other,
+}
+
+/// The changes check 7 expects: any change at `files`, and at `folders` only a folder that
+/// appeared or stayed a folder.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ExpectedChanges {
+    pub files: BTreeSet<String>,
+    pub folders: BTreeSet<String>,
 }
 
 impl VaultTree {
@@ -31,7 +47,15 @@ impl VaultTree {
         let mut stack = vec![PathBuf::new()];
         while let Some(rel_dir) = stack.pop() {
             let dir = vault.join(&rel_dir);
-            for entry in fs::read_dir(&dir).map_err(|e| ImportError::io(&dir, e))? {
+            let listing = match fs::read_dir(&dir) {
+                Ok(listing) => listing,
+                Err(_) if !rel_dir.as_os_str().is_empty() => {
+                    out.insert(key(&rel_dir), Entry::UnreadableDir);
+                    continue;
+                }
+                Err(e) => return Err(ImportError::io(&dir, e)),
+            };
+            for entry in listing {
                 let entry = entry.map_err(|e| ImportError::io(&dir, e))?;
                 let name = entry.file_name();
                 if rel_dir.as_os_str().is_empty() && is_memry_dir(&name) {
@@ -45,8 +69,10 @@ impl VaultTree {
                 } else if kind.is_dir() {
                     stack.push(rel.clone());
                     Entry::Dir
-                } else {
+                } else if kind.is_file() {
                     file_entry(&path).map_err(|e| ImportError::io(&path, e))?
+                } else {
+                    Entry::Other
                 };
                 out.insert(key(&rel), digest);
             }
@@ -54,12 +80,18 @@ impl VaultTree {
         Ok(Self(out))
     }
 
-    /// Paths added, removed or changed since `before`, minus those in `expected`, sorted.
-    pub fn changed_since(&self, before: &Self, expected: &BTreeSet<String>) -> Vec<String> {
+    /// Paths added, removed or changed since `before` that `expected` does not cover, sorted.
+    pub fn changed_since(&self, before: &Self, expected: &ExpectedChanges) -> Vec<String> {
         let paths: BTreeSet<&String> = before.0.keys().chain(self.0.keys()).collect();
         paths
             .into_iter()
-            .filter(|path| before.0.get(*path) != self.0.get(*path) && !expected.contains(*path))
+            .filter(|path| {
+                let (was, is) = (before.0.get(*path), self.0.get(*path));
+                let folder = matches!(was, None | Some(Entry::Dir))
+                    && is == Some(&Entry::Dir)
+                    && expected.folders.contains(*path);
+                was != is && !folder && !expected.files.contains(*path)
+            })
             .cloned()
             .collect()
     }
@@ -73,8 +105,17 @@ impl VaultTree {
     }
 }
 
+/// Hashes a regular file. Opened non-blocking on Unix and checked again once open, so a file
+/// swapped for a FIFO after the listing cannot block the read.
 fn file_entry(path: &Path) -> io::Result<Entry> {
-    let mut file = fs::File::open(path)?;
+    let mut options = fs::OpenOptions::new();
+    options.read(true);
+    #[cfg(unix)]
+    std::os::unix::fs::OpenOptionsExt::custom_flags(&mut options, libc::O_NONBLOCK);
+    let mut file = options.open(path)?;
+    if !file.metadata()?.is_file() {
+        return Ok(Entry::Other);
+    }
     let mut hasher = Sha256::new();
     let mut buf = vec![0; 64 * 1024];
     let mut len = 0;

@@ -71,7 +71,7 @@ fn singleton(uuid: &str) -> String {
     format!("INSERT INTO vault_metadata VALUES ('singleton', '{uuid}', 1, 1);")
 }
 
-fn ids(plan: &VaultPlan, path: &str) -> VaultIds {
+fn ids(plan: &VaultPlan, path: &str) -> VaultId {
     match &plan
         .vaults
         .iter()
@@ -165,10 +165,10 @@ fn an_unreadable_vault_id_names_the_row_and_leaves_the_others_planned() {
     assert_eq!(ids(&plan, &good).vault_id, "uuid-good");
 }
 
-/// The core id is the singleton's (Step 36 imports that row byte for byte); the store is the
-/// one Electron opened, named by the config uuid first (`fold_vault_store`'s contract).
+/// One id per vault, for its core id and its store alike: the singleton's
+/// (`crdt-store-path.ts:51-57`), else the config `vaultUuid`, else minted.
 #[test]
-fn each_vault_resolves_its_core_id_and_its_store_uuid_once() {
+fn each_vault_resolves_one_id_singleton_first() {
     let s = Setup::new();
     let both = s.vault("Both", Some(&singleton("from-db")));
     let config_only = s.vault("ConfigOnly", Some(""));
@@ -181,21 +181,40 @@ fn each_vault_resolves_its_core_id_and_its_store_uuid_once() {
         {"path": neither},
     ]}));
     let pair = |path: &str| {
-        let ids = ids(&plan, path);
-        (ids.vault_id, ids.store_uuid, ids.minted)
+        let id = ids(&plan, path);
+        (id.vault_id, id.minted)
     };
-    assert_eq!(pair(&both), ("from-db".into(), "from-config".into(), false));
-    assert_eq!(
-        pair(&config_only),
-        ("config-only".into(), "config-only".into(), false)
-    );
-    assert_eq!(pair(&db_only), ("db-only".into(), "db-only".into(), false));
-    let (vault_id, store_uuid, minted) = pair(&neither);
+    assert_eq!(pair(&both), ("from-db".into(), false));
+    assert_eq!(pair(&config_only), ("config-only".into(), false));
+    assert_eq!(pair(&db_only), ("db-only".into(), false));
+    let (vault_id, minted) = pair(&neither);
     assert!(minted);
-    assert_eq!(vault_id, store_uuid);
     let parsed = uuid::Uuid::parse_str(&vault_id).unwrap();
     assert_eq!(parsed.get_version_num(), 4);
     assert_eq!(vault_id, parsed.to_string(), "lowercase, as randomUUID");
+    assert!(plan.repeated_ids.is_empty());
+}
+
+/// A copied vault folder carries its singleton: both copies resolve to one id, which the plan
+/// flags so the caller imports neither under it.
+#[test]
+fn vaults_that_resolve_to_one_id_are_flagged() {
+    let s = Setup::new();
+    let original = s.vault("Original", Some(&singleton("shared")));
+    let copy = s.vault("Copy", Some(&singleton("shared")));
+    let by_config = s.vault("ByConfig", Some(""));
+    let own = s.vault("Own", Some(&singleton("own")));
+    let plan = s.plan(json!({"vaults": [
+        {"path": original}, {"path": own}, {"path": copy},
+        {"path": by_config, "vaultUuid": "shared"},
+    ]}));
+    assert_eq!(
+        plan.repeated_ids,
+        [RepeatedId {
+            vault_id: "shared".into(),
+            paths: vec![original, copy, by_config],
+        }]
+    );
 }
 
 #[test]
@@ -229,7 +248,10 @@ fn the_tree_sees_every_change_outside_memry_and_the_expected_paths() {
     write(v, "c.md", b"c");
     write(v, "replayed/e.md", b"e");
     let after = VaultTree::read(v).unwrap();
-    let expected: BTreeSet<String> = ["replayed".to_owned(), "replayed/e.md".to_owned()].into();
+    let expected = ExpectedChanges {
+        files: ["replayed/e.md".to_owned()].into(),
+        folders: ["replayed".to_owned()].into(),
+    };
     assert_eq!(
         after.changed_since(&before, &expected),
         ["new", "new/d.md", "notes/a.md", "notes/b.md"]
@@ -249,11 +271,18 @@ fn the_tree_records_a_link_and_never_follows_it() {
     assert_eq!(before.len(), 2);
     write(outside.path(), "big.bin", b"changed");
     let after = VaultTree::read(v).unwrap();
-    assert!(after.changed_since(&before, &BTreeSet::new()).is_empty());
+    assert!(
+        after
+            .changed_since(&before, &ExpectedChanges::default())
+            .is_empty()
+    );
     fs::remove_file(v.join("out")).unwrap();
     std::os::unix::fs::symlink(dir.path().join("elsewhere"), v.join("out")).unwrap();
     let moved = VaultTree::read(v).unwrap();
-    assert_eq!(moved.changed_since(&before, &BTreeSet::new()), ["out"]);
+    assert_eq!(
+        moved.changed_since(&before, &ExpectedChanges::default()),
+        ["out"]
+    );
 }
 
 fn journal(entries: serde_json::Value) -> BulkApplyJournal {
@@ -296,17 +325,17 @@ fn prepare_digests_the_vault_before_the_replay_and_expects_only_its_writes() {
 
     assert_eq!(fs::read(&replayed).unwrap(), b"body");
     assert_eq!(vault.tree_before.len(), 2, "notes/ and notes/kept.md only");
+    let expected = vault.expected_changes();
     assert_eq!(
-        vault.expected_changes(),
-        [
-            "canvases",
-            CANVAS_LIBRARY,
-            "notes",
-            "notes/sub",
-            "notes/sub/replayed.md"
-        ]
-        .map(str::to_owned)
-        .into()
+        expected.files,
+        BTreeSet::from([
+            CANVAS_LIBRARY.to_owned(),
+            "notes/sub/replayed.md".to_owned()
+        ])
+    );
+    assert_eq!(
+        expected.folders,
+        BTreeSet::from(["canvases", "notes", "notes/sub"].map(str::to_owned))
     );
     write(&dir, ".memry/core/data.db", b"core");
     write(&dir, CANVAS_LIBRARY, b"{}");
@@ -318,7 +347,7 @@ fn prepare_digests_the_vault_before_the_replay_and_expects_only_its_writes() {
     assert_eq!(
         report,
         json!({
-            "ids": {"vaultId": "uuid-v", "storeUuid": "uuid-v", "minted": false},
+            "id": {"vaultId": "uuid-v", "minted": false},
             "replay": {
                 "written": ["notes/sub/replayed.md"],
                 "deleted": [],
@@ -334,4 +363,135 @@ fn prepare_digests_the_vault_before_the_replay_and_expects_only_its_writes() {
             },
         })
     );
+}
+
+/// A blank uuid names nothing, in `data.db` or in the config; any other value is the id as
+/// written, case and spaces included.
+#[test]
+fn a_blank_uuid_counts_as_absent_and_any_other_is_kept_verbatim() {
+    let s = Setup::new();
+    let blank_db = s.vault("BlankDb", Some(&singleton("")));
+    let blank_config = s.vault("BlankConfig", Some(""));
+    let verbatim = s.vault("Verbatim", Some(&singleton(" Mixed-Case ")));
+    let plan = s.plan(json!({"vaults": [
+        {"path": blank_db, "vaultUuid": "cfg-1"},
+        {"path": blank_config, "vaultUuid": "  "},
+        {"path": verbatim},
+    ]}));
+    assert_eq!(ids(&plan, &blank_db).vault_id, "cfg-1");
+    assert!(ids(&plan, &blank_config).minted);
+    assert_eq!(ids(&plan, &verbatim).vault_id, " Mixed-Case ");
+}
+
+/// Only a database that reads wrong is `Unreadable`; one that cannot be reached right now (a
+/// copy that fails) waits for the vault's first open.
+#[test]
+fn a_data_db_that_cannot_be_copied_is_deferred_not_unreadable() {
+    let s = Setup::new();
+    let path = s.vault("DirDb", None);
+    fs::create_dir_all(Path::new(&path).join(".memry/data.db")).unwrap();
+    let plan = s.plan(json!({"vaults": [{"path": path}]}));
+    assert!(
+        matches!(plan.vaults[0].disposition, Disposition::Deferred(_)),
+        "{:?}",
+        plan.vaults[0].disposition
+    );
+}
+
+/// The written comparison alone: the sandbox folder does not exist, so nothing resolves.
+#[test]
+fn the_sandbox_is_recognised_by_its_written_path_when_it_does_not_exist() {
+    let s = Setup::new();
+    let sandbox = s.profile.dir.join("Sandbox").to_string_lossy().into_owned();
+    let plan = s.plan(json!({"vaults": [{"path": sandbox}]}));
+    assert!(matches!(plan.vaults[0].disposition, Disposition::Sandbox));
+}
+
+#[test]
+fn only_the_top_level_memry_folder_is_left_out_of_the_tree() {
+    let dir = tempfile::tempdir().unwrap();
+    let v = dir.path();
+    write(v, "notes/.memry/x.md", b"x");
+    let before = VaultTree::read(v).unwrap();
+    assert_eq!(before.len(), 3, "{before:?}");
+    write(v, "notes/.memry/x.md", b"changed");
+    let after = VaultTree::read(v).unwrap();
+    assert_eq!(
+        after.changed_since(&before, &ExpectedChanges::default()),
+        ["notes/.memry/x.md"]
+    );
+}
+
+/// A FIFO is recorded without being opened: opening one for reading waits for a writer forever.
+#[cfg(unix)]
+#[test]
+fn a_fifo_is_recorded_without_opening_it() {
+    let dir = tempfile::tempdir().unwrap();
+    let v = dir.path();
+    let fifo = std::ffi::CString::new(v.join("pipe").to_string_lossy().as_bytes()).unwrap();
+    assert_eq!(unsafe { libc::mkfifo(fifo.as_ptr(), 0o600) }, 0);
+    let before = VaultTree::read(v).unwrap();
+    assert_eq!(before.len(), 1);
+    fs::remove_file(v.join("pipe")).unwrap();
+    write(v, "pipe", b"");
+    let after = VaultTree::read(v).unwrap();
+    assert_eq!(
+        after.changed_since(&before, &ExpectedChanges::default()),
+        ["pipe"]
+    );
+}
+
+/// A folder the walk cannot list is one opaque entry; the rest of the vault is still read.
+#[cfg(unix)]
+#[test]
+fn an_unreadable_folder_is_one_opaque_entry() {
+    use std::os::unix::fs::PermissionsExt as _;
+    let dir = tempfile::tempdir().unwrap();
+    let v = dir.path();
+    write(v, "locked/a.md", b"a");
+    write(v, "open.md", b"o");
+    fs::set_permissions(v.join("locked"), fs::Permissions::from_mode(0o000)).unwrap();
+    if fs::read_dir(v.join("locked")).is_ok() {
+        // Root reads every folder.
+        fs::set_permissions(v.join("locked"), fs::Permissions::from_mode(0o755)).unwrap();
+        return;
+    }
+    let tree = VaultTree::read(v);
+    fs::set_permissions(v.join("locked"), fs::Permissions::from_mode(0o755)).unwrap();
+    let tree = tree.unwrap();
+    assert_eq!(tree.len(), 2, "{tree:?}");
+    let readable = VaultTree::read(v).unwrap();
+    assert_eq!(
+        readable.changed_since(&tree, &ExpectedChanges::default()),
+        ["locked", "locked/a.md"]
+    );
+}
+
+/// A write that failed may have left the folders above its file; those are expected, a file
+/// at the failed path is not.
+#[test]
+fn the_folders_of_a_failed_write_are_expected_and_nothing_else_there() {
+    let s = Setup::new();
+    let path = s.vault("V", Some(&singleton("uuid-v")));
+    let dir = PathBuf::from(&path);
+    let config =
+        ElectronConfig::parse(json!({"vaults": [{"path": path}]}).to_string().as_bytes()).unwrap();
+    let plan = plan_vaults(&s.profile, Some(&config), &s.scratch);
+    let ids = ids(&plan, &path);
+    let mut vault =
+        prepare_vault(&s.profile, Some(&config), &path, &ids, None, &s.scratch).unwrap();
+    vault
+        .replay
+        .skipped
+        .push(crate::electron_import::journal_replay::SkippedEntry {
+            index: 0,
+            path: dir.join("failed/deep/x.md").to_string_lossy().into_owned(),
+            reason: crate::electron_import::journal_replay::EntrySkip::WriteFailed(
+                std::io::ErrorKind::StorageFull,
+            ),
+        });
+    fs::create_dir_all(dir.join("failed/deep")).unwrap();
+    assert_eq!(vault.unexpected_changes().unwrap(), Vec::<String>::new());
+    write(&dir, "failed/deep/x.md", b"half");
+    assert_eq!(vault.unexpected_changes().unwrap(), ["failed/deep/x.md"]);
 }

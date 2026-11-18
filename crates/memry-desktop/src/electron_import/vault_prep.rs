@@ -1,5 +1,5 @@
 //! The vault phase's preparation (Step 37e1, #3554), before Step 36 (#3553) stages a vault:
-//! which of the Electron config's vaults are imported and under which ids, then per vault a
+//! which of the Electron config's vaults are imported and under which id, then per vault a
 //! digest of the vault tree (the baseline of verification check 7), the bulk-apply journal
 //! replay and the Yjs fold, in that order. A [`PreparedVault`] carries what
 //! `stage_vault_import` takes from this step (`vault_id`, `docs`, `extra_owed_docs`) and the
@@ -11,18 +11,19 @@
 pub mod report;
 pub mod tree;
 
-use std::collections::{BTreeSet, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 
-use super::journal_replay::{BulkApplyJournal, Replay, replay};
+use super::journal_replay::{BulkApplyJournal, EntrySkip, Replay, replay};
+use super::vault_evidence::electron_vault_uuid;
 use super::ystore_import::{YStoreFold, fold_vault_store};
 use super::{ElectronConfig, ElectronProfile, ImportError, Scratch, read_vault_evidence};
 pub use report::VaultPrepReport;
-pub use tree::VaultTree;
+pub use tree::{ExpectedChanges, VaultTree};
 
 /// Electron's sandbox vault, `<userData>/Sandbox` (`vault/sandbox.ts:12` `SANDBOX_FOLDER`).
 const SANDBOX_DIR: &str = "Sandbox";
@@ -38,6 +39,18 @@ pub struct VaultPlan {
     pub duplicate_entries: usize,
     /// `vaults[]` entries without a string `path`.
     pub unreadable_entries: usize,
+    /// Ids that more than one [`Disposition::Import`] vault resolves to: a copied vault folder
+    /// carries its `data.db` singleton along. Importing both would give two core vaults one
+    /// sync identity and one store; the caller defers them.
+    pub repeated_ids: Vec<RepeatedId>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RepeatedId {
+    pub vault_id: String,
+    /// In plan order.
+    pub paths: Vec<String>,
 }
 
 #[derive(Debug)]
@@ -55,10 +68,10 @@ pub enum Disposition {
     Sandbox,
     /// Imported by `migrate_vault` when the session first opens it.
     Deferred(DeferReason),
-    /// The vault has a `data.db` whose id cannot be read: not imported. The error names the
-    /// row; the Electron files stay as they are.
+    /// The vault's `data.db` reads wrong (SQLite refuses it, or its id is not text): not
+    /// imported. The error names the row; the Electron files stay as they are.
     Unreadable(ImportError),
-    Import(VaultIds),
+    Import(VaultId),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -67,41 +80,34 @@ pub enum DeferReason {
     /// The folder is missing or cannot be reached (an unmounted drive, a denied folder).
     FolderMissing,
     DataDbMissing,
+    /// `data.db` exists and could not be copied now (I/O error, denied, no scratch space).
+    DataDbUnreachable,
 }
 
-/// The two ids a vault is imported under, resolved once per vault through one reader
-/// ([`read_vault_evidence`]), which the fold's legacy store pick also reads the other vaults
-/// with (`fold_vault_store`'s caller contract).
+/// The one id a vault is imported under: its core vault id (Step 36's
+/// `VaultImportInput::vault_id`) and the name of its CRDT store, as one id serves both in
+/// Electron. Resolved once per vault by [`electron_vault_uuid`], which the fold's legacy store
+/// pick also names the other vaults with (`fold_vault_store`'s caller contract).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct VaultIds {
-    /// The core vault id, Step 36's `VaultImportInput::vault_id`: the `vault_metadata`
-    /// singleton's uuid (`agent/storage/vault-id.ts:39-48`), else the config `vaultUuid`, else
-    /// minted.
+pub struct VaultId {
     pub vault_id: String,
-    /// The uuid Electron names the vault's CRDT store by: the config `vaultUuid`, else the
-    /// singleton's uuid, else the same minted uuid.
-    pub store_uuid: String,
-    /// Neither the config nor `data.db` names the vault: a fresh v4 uuid, as Electron's
-    /// `getOrCreateVaultUuid` mints one (`vault-id.ts:50`).
+    /// Neither `data.db` nor the config names the vault: a fresh v4 uuid, as Electron's
+    /// `getOrCreateVaultUuid` mints one (`agent/storage/vault-id.ts:50`).
     pub minted: bool,
 }
 
-impl VaultIds {
-    fn resolve(config_uuid: Option<&str>, singleton: Option<String>) -> Self {
-        let (vault_id, store_uuid, minted) = match (config_uuid, singleton) {
-            (Some(config), Some(singleton)) => (singleton, config.to_owned(), false),
-            (Some(config), None) => (config.to_owned(), config.to_owned(), false),
-            (None, Some(singleton)) => (singleton.clone(), singleton, false),
-            (None, None) => {
-                let uuid = uuid::Uuid::new_v4().to_string();
-                (uuid.clone(), uuid, true)
-            }
-        };
-        Self {
-            vault_id,
-            store_uuid,
-            minted,
+impl VaultId {
+    fn resolve(singleton: Option<&str>, config_uuid: Option<&str>) -> Self {
+        match electron_vault_uuid(singleton, config_uuid) {
+            Some(vault_id) => Self {
+                vault_id,
+                minted: false,
+            },
+            None => Self {
+                vault_id: uuid::Uuid::new_v4().to_string(),
+                minted: true,
+            },
         }
     }
 }
@@ -124,7 +130,7 @@ pub fn plan_vaults(
         resolved: fs::canonicalize(&profile.dir).ok(),
     };
     let mut seen = HashSet::new();
-    let vaults = current
+    let vaults: Vec<PlannedVault> = current
         .into_iter()
         .chain(stored.iter().map(|v| v.path.as_str()))
         .filter(|path| seen.insert(*path))
@@ -141,10 +147,28 @@ pub fn plan_vaults(
             }
         })
         .collect();
+    let mut by_id: BTreeMap<&str, Vec<String>> = BTreeMap::new();
+    for vault in &vaults {
+        if let Disposition::Import(id) = &vault.disposition {
+            by_id
+                .entry(&id.vault_id)
+                .or_default()
+                .push(vault.path.clone());
+        }
+    }
+    let repeated_ids = by_id
+        .into_iter()
+        .filter(|(_, paths)| paths.len() > 1)
+        .map(|(vault_id, paths)| RepeatedId {
+            vault_id: vault_id.to_owned(),
+            paths,
+        })
+        .collect();
     VaultPlan {
         vaults,
         duplicate_entries: stored.len() - distinct.len(),
         unreadable_entries,
+        repeated_ids,
     }
 }
 
@@ -164,9 +188,17 @@ fn disposition(
     match read_vault_evidence(dir, scratch.root()) {
         Ok(None) => Disposition::Deferred(DeferReason::DataDbMissing),
         Ok(Some(evidence)) => {
-            Disposition::Import(VaultIds::resolve(config_uuid, evidence.vault_id))
+            Disposition::Import(VaultId::resolve(evidence.vault_id.as_deref(), config_uuid))
         }
-        Err(error) => Disposition::Unreadable(error),
+        Err(error @ ImportError::Sqlite(_)) => Disposition::Unreadable(error),
+        Err(error) => {
+            tracing::warn!(
+                scope = "electron_import",
+                error = %error,
+                "vault data.db cannot be reached; the vault is imported when it is first opened"
+            );
+            Disposition::Deferred(DeferReason::DataDbUnreachable)
+        }
     }
 }
 
@@ -199,7 +231,7 @@ impl Sandbox<'_> {
 #[derive(Debug)]
 pub struct PreparedVault {
     pub dir: PathBuf,
-    pub ids: VaultIds,
+    pub id: VaultId,
     /// The vault tree before the replay: check 7 compares the tree after install with it.
     pub tree_before: VaultTree,
     pub replay: Replay,
@@ -211,22 +243,22 @@ pub struct PreparedVault {
 }
 
 /// Digests the vault, replays the journal into it, then folds its Yjs store. `path` is the
-/// planned vault's config path, `ids` its [`Disposition::Import`] ids.
+/// planned vault's config path, `id` its [`Disposition::Import`] id.
 pub fn prepare_vault(
     profile: &ElectronProfile,
     config: Option<&ElectronConfig>,
     path: &str,
-    ids: &VaultIds,
+    id: &VaultId,
     journal: Option<&BulkApplyJournal>,
     scratch: &Scratch,
 ) -> Result<PreparedVault, ImportError> {
     let dir = PathBuf::from(path);
     let tree_before = VaultTree::read(&dir)?;
     let replay = journal.map(|j| replay(j, &dir)).unwrap_or_default();
-    let fold = fold_vault_store(profile, path, &ids.store_uuid, config, scratch)?;
+    let fold = fold_vault_store(profile, path, &id.vault_id, config, scratch)?;
     Ok(PreparedVault {
         dir,
-        ids: ids.clone(),
+        id: id.clone(),
         tree_before,
         replay,
         journal_unknown: journal.map_or(0, |j| j.unknown.len()),
@@ -235,28 +267,38 @@ pub fn prepare_vault(
 }
 
 impl PreparedVault {
-    /// The vault-relative paths check 7 lets differ: what the replay wrote or deleted and the
-    /// canvas library, with the folders above them (the replay creates missing ones).
-    pub fn expected_changes(&self) -> BTreeSet<String> {
-        let mut out = BTreeSet::new();
-        let paths = self.replay.written.iter().chain(&self.replay.deleted);
-        for rel in paths
-            .filter_map(|p| p.strip_prefix(&self.dir).ok())
-            .map(tree::key)
+    /// What check 7 lets differ: the files the replay wrote or deleted and the canvas library,
+    /// and as folders only, the folders above them and above a write that failed (the writer
+    /// creates missing folders before it writes).
+    pub fn expected_changes(&self) -> ExpectedChanges {
+        let rel = |path: &Path| path.strip_prefix(&self.dir).ok().map(tree::key);
+        let files: BTreeSet<String> = self
+            .replay
+            .written
+            .iter()
+            .chain(&self.replay.deleted)
+            .filter_map(|p| rel(p))
             .chain([CANVAS_LIBRARY.to_owned()])
-        {
-            let mut at = rel.as_str();
+            .collect();
+        let failed = self
+            .replay
+            .skipped
+            .iter()
+            .filter(|s| matches!(s.reason, EntrySkip::WriteFailed(_)))
+            .filter_map(|s| rel(Path::new(&s.path)));
+        let mut folders = BTreeSet::new();
+        for file in files.iter().cloned().chain(failed) {
+            let mut at = file.as_str();
             while let Some((parent, _)) = at.rsplit_once('/') {
-                out.insert(parent.to_owned());
+                folders.insert(parent.to_owned());
                 at = parent;
             }
-            out.insert(rel);
         }
-        out
+        ExpectedChanges { files, folders }
     }
 
     /// Verification check 7 after install: every path of the vault (`.memry/` aside) that
-    /// differs from [`Self::tree_before`] and is not an [`Self::expected_changes`] path.
+    /// differs from [`Self::tree_before`] and is not an [`Self::expected_changes`] change.
     pub fn unexpected_changes(&self) -> Result<Vec<String>, ImportError> {
         let after = VaultTree::read(&self.dir)?;
         Ok(after.changed_since(&self.tree_before, &self.expected_changes()))
