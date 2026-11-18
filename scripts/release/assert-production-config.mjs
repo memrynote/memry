@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Production configuration guards of a release build.
-//   pre                 before the build: SYNC_SERVER_URL is an https URL of the production host
+//   pre                 before the build: SYNC_SERVER_URL is the production sync origin
+//                       (PRODUCTION_SYNC_URL in crates/memry-desktop/src/config.rs)
 //   post <payload-dir>  after the build: the executables of the payload carry the production sync
 //                       URL and update feed, and no staging sync URL or rehearsal feed
 // `build_env.rs` already refuses a production release build without the required values or with a
@@ -20,7 +21,25 @@ export const PRODUCTION_FEED = 'https://github.com/memrynote/memry'
  */
 export const FORBIDDEN = ['://sync-staging', 'memry-update-rehearsal']
 
-/** Port of `assertProductionSyncServerUrl` (`apps/desktop/scripts/build-packaged-app-utils.cjs`). */
+/**
+ * The production sync origin, read from `PRODUCTION_SYNC_URL` in memry-desktop's config.rs, which
+ * owns it.
+ */
+export const PRODUCTION_SYNC_ORIGIN = (() => {
+  const configRs = path.join(import.meta.dirname, '../../crates/memry-desktop/src/config.rs')
+  const match = /pub const PRODUCTION_SYNC_URL: &str = "([^"]+)";/.exec(
+    readFileSync(configRs, 'utf8')
+  )
+  if (!match) throw new Error(`no PRODUCTION_SYNC_URL in ${configRs}`)
+  return new URL(match[1]).origin
+})()
+
+/**
+ * `assertProductionSyncServerUrl` of `apps/desktop/scripts/build-packaged-app-utils.cjs`, with an
+ * allowlist: the URL must be `PRODUCTION_SYNC_ORIGIN`, not merely not local or staging. The app
+ * uses the trimmed value with a trailing `/` stripped as its sync base (`RuntimeConfig::resolve`),
+ * so a port, path, credentials, query or fragment would reach every sync request.
+ */
 export function assertProductionSyncServerUrl(syncServerUrl) {
   const value = syncServerUrl?.trim()
   if (!value) {
@@ -38,10 +57,17 @@ export function assertProductionSyncServerUrl(syncServerUrl) {
     throw new Error('production SYNC_SERVER_URL must use HTTPS')
   }
 
-  const hostname = parsed.hostname.toLowerCase()
-  const localHosts = new Set(['localhost', '127.0.0.1', '::1', '[::1]'])
-  if (localHosts.has(hostname) || hostname.includes('sync-staging')) {
-    throw new Error('production SYNC_SERVER_URL must point to the production sync host')
+  if (
+    parsed.origin !== PRODUCTION_SYNC_ORIGIN ||
+    parsed.pathname !== '/' ||
+    parsed.username ||
+    parsed.password ||
+    parsed.search ||
+    parsed.hash
+  ) {
+    throw new Error(
+      `production SYNC_SERVER_URL must be ${PRODUCTION_SYNC_ORIGIN}, the production sync host, with no port, path, credentials, query or fragment`
+    )
   }
   return value
 }

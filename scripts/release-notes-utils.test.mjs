@@ -225,8 +225,10 @@ describe('release notes helpers', () => {
     })
 
     assert.throws(
-      () => extractHumanizedReleaseNotes(body, 'v2026-05-09'),
-      /humanized for v2026-05-08, but this publish resolves to v2026-05-09/
+      () => extractHumanizedReleaseNotes(body, 'v2026-05-09', 'untagged-abc'),
+      (error) =>
+        /humanized for v2026-05-08, but this publish resolves to v2026-05-09/.test(error.message) &&
+        error.message.includes('pnpm release:humanize -- --tag untagged-abc')
     )
     assert.throws(
       () => extractHumanizedReleaseNotes("## What's Changed\n- fix (#1)", 'v2026-05-08'),

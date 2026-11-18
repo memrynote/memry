@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
+import { buildHumanizedReleaseMarker } from './release-notes-utils.mjs'
 import {
+  assertDraftReadyForDispatch,
   buildDateReleaseVersion,
   buildHumanizeReleaseArgs,
   extractWorkflowRunId,
@@ -95,9 +97,9 @@ describe('release helpers', () => {
 
   it('parses release launcher flags', () => {
     assert.deepEqual(
-      parseReleaseArgs(['--', '--tag', 'vnext', '--dry-run', '--humanize', '--no-watch', '--yes']),
+      parseReleaseArgs(['--', '--tag', 'vnext', '--humanize', '--no-watch', '--yes']),
       {
-        dryRun: true,
+        dryRun: false,
         help: false,
         humanize: true,
         restart: false,
@@ -107,6 +109,54 @@ describe('release helpers', () => {
         yes: true
       }
     )
+  })
+
+  it('rejects --dry-run with --humanize, which can never pass the draft check', () => {
+    for (const argv of [
+      ['--dry-run', '--humanize'],
+      ['--humanize', '--tag', 'vnext', '--dry-run']
+    ]) {
+      assert.throws(
+        () => parseReleaseArgs(argv),
+        /--dry-run cannot be combined with --humanize.*pnpm release:humanize/
+      )
+    }
+    assert.equal(parseReleaseArgs(['--dry-run']).dryRun, true)
+  })
+
+  it('requires humanized notes for the resolved tag before dispatch, dry runs included', () => {
+    for (const dryRun of [true, false]) {
+      assert.throws(
+        () =>
+          assertDraftReadyForDispatch({
+            body: '## Changelog\n- a change',
+            draftTag: 'vnext',
+            dryRun,
+            expectedTag: 'v2026-11-18'
+          }),
+        /not been humanized for v2026-11-18[\s\S]*--tag vnext/,
+        `dryRun ${dryRun}`
+      )
+      assert.throws(
+        () =>
+          assertDraftReadyForDispatch({
+            body: `${buildHumanizedReleaseMarker('v2026-11-17')}\n## Fixes`,
+            draftTag: 'vnext',
+            dryRun,
+            expectedTag: 'v2026-11-18'
+          }),
+        /humanized for v2026-11-17/,
+        `dryRun ${dryRun}`
+      )
+      assert.doesNotThrow(() =>
+        assertDraftReadyForDispatch({
+          body: `${buildHumanizedReleaseMarker('v2026-11-18')}\n## Fixes`,
+          draftTag: 'vnext',
+          dryRun,
+          expectedTag: 'v2026-11-18'
+        })
+      )
+    }
   })
 
   it('parses the local pipeline flags', () => {
