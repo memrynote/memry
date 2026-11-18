@@ -277,11 +277,11 @@ fn notes_and_journal_days_import_as_electron_pushes_them() {
 
     let core = installed(&vault);
     assert_eq!(payload(&core, "note", PLAN), ELECTRON_PLAN);
-    // An unclocked row: Electron's seed queues a `create`, so the body rides along.
-    // Departure 1: no `clock` key where Electron writes `{}`.
+    // An unclocked row: Electron's seed mints its first clock and queues a `create`, so the
+    // body rides along.
     assert_eq!(
         payload(&core, "note", IDEA),
-        ELECTRON_IDEA.replace(r#""clock":{},"#, "")
+        ELECTRON_IDEA.replace(r#""clock":{}"#, r#""clock":{"device-electron":1}"#)
     );
     assert_eq!(payload(&core, "note", GONE), ELECTRON_GONE);
     assert_eq!(payload(&core, "journal", DAY), ELECTRON_DAY);
@@ -449,7 +449,7 @@ fn hostile_note_files_take_electrons_paths() {
     let core = installed(&vault);
     assert_eq!(
         payload(&core, "note", BAD_YAML),
-        ELECTRON_BAD_YAML.replace(r#""clock":{},"#, "")
+        ELECTRON_BAD_YAML.replace(r#""clock":{}"#, r#""clock":{"device-electron":1}"#)
     );
     // `extractAliases` prints a number with `String(n)`.
     assert_eq!(payload(&core, "note", NUM_ALIASES), ELECTRON_NUM_ALIASES);

@@ -502,8 +502,11 @@ fn retired_note_deletes(
     Ok(retired)
 }
 
-/// A create carrying `minted` as the record's clock: the staged payload with its `clock` key
-/// replaced in place or appended, as `JSON.stringify({ ...item, clock })`.
+/// A create carrying `minted` as the record's clock: the payload Electron's push rebuilds from the
+/// row once it holds the clock (`resolvePushPayload`). The staged payload is that builder's
+/// output, so the clock takes the builder's slot: a `clock` key is replaced in place (`clock:
+/// null` of templates and icons), else the clock goes before `createdAt`, where every builder
+/// that leaves out an unset clock (`clock ?? undefined`) writes it.
 fn push_minted(
     plan: &mut RuntimeStart,
     kind: &Kind,
@@ -515,7 +518,7 @@ fn push_minted(
     let stored = writer
         .record_payload(kind.item_type, &id)?
         .unwrap_or_default();
-    let mut payload: Map<String, Value> = match serde_json::from_str(&stored) {
+    let payload: Map<String, Value> = match serde_json::from_str(&stored) {
         Ok(Value::Object(payload)) => payload,
         _ => {
             return Err(ImportError::CheckFailed {
@@ -528,14 +531,26 @@ fn push_minted(
         check: 4,
         detail: format!("{}: a minted clock will not serialise: {e}", kind.table),
     })?;
-    payload.insert("clock".to_owned(), json!(minted));
+    let had_clock = payload.contains_key("clock");
+    let mut placed = Map::with_capacity(payload.len() + 1);
+    for (key, value) in payload {
+        if !had_clock && key == "createdAt" {
+            placed.insert("clock".to_owned(), json!(minted));
+        }
+        placed.insert(key, value);
+    }
+    // A payload with neither key (none of the eight types builds one) takes it last.
+    placed
+        .entry("clock")
+        .and_modify(|clock| *clock = json!(minted))
+        .or_insert_with(|| json!(minted));
     plan.minted
         .insert((kind.item_type.to_owned(), id.clone()), text);
     plan.queued.push(queued(
         kind.item_type,
         id,
         RecordOp::Create,
-        Some(js_json::stringify(&Value::Object(payload))),
+        Some(js_json::stringify(&Value::Object(placed))),
         now_ms,
     ));
     Ok(())

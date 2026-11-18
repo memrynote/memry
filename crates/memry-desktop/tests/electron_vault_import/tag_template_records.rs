@@ -201,7 +201,7 @@ fn records_carry_the_payload_electron_pushes_with_its_kept_keys() {
             "tag_category",
             "cat-2",
             format!(
-                r#"{{"name":"Work","sortOrder":0,"deletedAt":"2026-01-05T00:00:00.000Z","createdAt":"{CREATED}","updatedAt":"{MODIFIED}"}}"#
+                r#"{{"name":"Work","sortOrder":0,"deletedAt":"2026-01-05T00:00:00.000Z","clock":{{"device-electron":1}},"createdAt":"{CREATED}","updatedAt":"{MODIFIED}"}}"#
             ),
         ),
         (
@@ -215,14 +215,14 @@ fn records_carry_the_payload_electron_pushes_with_its_kept_keys() {
             "tag_definition",
             "home",
             format!(
-                r##"{{"name":"home","color":"#ff0000","colorAuthored":false,"icon":null,"categoryId":null,"sortOrder":0,"createdAt":"{CREATED}"}}"##
+                r##"{{"name":"home","color":"#ff0000","colorAuthored":false,"icon":null,"categoryId":null,"sortOrder":0,"clock":{{"device-electron":1}},"createdAt":"{CREATED}"}}"##
             ),
         ),
         (
             "tag_definition",
             "odd",
             format!(
-                r##"{{"name":"odd","color":"#ff0000","colorAuthored":false,"icon":null,"categoryId":null,"sortOrder":0,"createdAt":"{CREATED}"}}"##
+                r##"{{"name":"odd","color":"#ff0000","colorAuthored":false,"icon":null,"categoryId":null,"sortOrder":0,"clock":{{"device-electron":1}},"createdAt":"{CREATED}"}}"##
             ),
         ),
         (
@@ -236,14 +236,14 @@ fn records_carry_the_payload_electron_pushes_with_its_kept_keys() {
             "template",
             "tpl-2",
             format!(
-                r##"{{"futureKey":{{"x":1}},"id":"tpl-2","name":"Meeting","description":null,"icon":"📝","tags":[],"properties":[],"content":"# Hi\n","clock":null,"syncedAt":null,"createdAt":"{CREATED}","modifiedAt":"{MODIFIED}"}}"##
+                r##"{{"futureKey":{{"x":1}},"id":"tpl-2","name":"Meeting","description":null,"icon":"📝","tags":[],"properties":[],"content":"# Hi\n","clock":{{"device-electron":1}},"syncedAt":null,"createdAt":"{CREATED}","modifiedAt":"{MODIFIED}"}}"##
             ),
         ),
         (
             "custom_icon",
             "icon-1",
             format!(
-                r#"{{"id":"icon-1","name":"Logo","ext":"png","data":"iVBORw0KGgo=","createdAt":"{CREATED}","updatedAt":"{MODIFIED}","clock":null,"syncedAt":null}}"#
+                r#"{{"id":"icon-1","name":"Logo","ext":"png","data":"iVBORw0KGgo=","createdAt":"{CREATED}","updatedAt":"{MODIFIED}","clock":{{"device-electron":1}},"syncedAt":null}}"#
             ),
         ),
         (

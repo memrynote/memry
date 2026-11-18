@@ -34,6 +34,8 @@ mod queue;
 mod queue_deletes;
 #[path = "electron_vault_import/records.rs"]
 mod records;
+#[path = "electron_vault_import/replay.rs"]
+mod replay;
 #[path = "electron_vault_import/settle.rs"]
 mod settle;
 #[path = "electron_vault_import/tag_template_records.rs"]

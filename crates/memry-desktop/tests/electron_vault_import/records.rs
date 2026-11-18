@@ -154,12 +154,14 @@ fn records_and_the_vault_id_import_byte_for_byte() {
             |row| row.get(0),
         )
         .unwrap();
+    // A `'null'` text clock is no SQL NULL, so Electron's seed skips the row too.
     assert_eq!(unclocked, None);
-    // `clock ?? undefined`: an unclocked row carries no `clock` key, `null` included.
+    // `clock ?? undefined`: an unclocked row carries no `clock` key, `null` included. The
+    // folder's clock is NULL, so the seed mints one where the builder writes it.
     for (item_type, expected) in [
         (
             "folder_config",
-            r#"{"icon":"star","createdAt":"2026-01-02T03:04:05.000Z","modifiedAt":"2026-01-03T03:04:05.000Z"}"#,
+            r#"{"icon":"star","clock":{"device-electron":1},"createdAt":"2026-01-02T03:04:05.000Z","modifiedAt":"2026-01-03T03:04:05.000Z"}"#,
         ),
         (
             "property_definition",
