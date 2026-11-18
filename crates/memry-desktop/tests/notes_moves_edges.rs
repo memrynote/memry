@@ -241,3 +241,21 @@ fn a_moved_note_whose_refs_edit_is_refused_keeps_them_and_says_so() {
     assert!(log.contains(NOT_REPOINTED), "{log}");
     assert!(e.read("archive/Plan.md").contains("](img/other.png)"));
 }
+
+/// A ref only the open document holds, its write-back still scheduled, follows the move: the
+/// stale file is not read as "no refs" before the write-back ran (#5079 review).
+#[test]
+fn a_moved_note_whose_document_alone_holds_a_ref_has_it_follow() {
+    let (mut e, notes, store) = opened();
+    let open = e.session.current().unwrap();
+    let made = notes.create(&open, note("Plan", "work")).unwrap();
+    e.drain();
+    e.edit_in_app(&store, &made.id, "see ![o](img/other.png)");
+    e.tier.schedule(&made.id);
+
+    let moved = notes.move_to_folder(&open, &made.id, "archive").unwrap();
+
+    assert_eq!(moved.refs_kept, None);
+    let file = e.read("archive/Plan.md");
+    assert!(file.contains("](../work/img/other.png)"), "{file}");
+}

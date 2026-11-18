@@ -70,6 +70,20 @@ use crate::vault::consumer::ChangeSource;
 /// How long a moved note's refs wait for the write-back before their second try.
 const SETTLE: Duration = Duration::from_secs(2);
 
+/// How a moved note's own refs are re-pointed: its mobile vault-root refs stay.
+fn own_ref_options(note_id: &str) -> NoteRefsOptions<'_> {
+    NoteRefsOptions {
+        source_note_id: Some(note_id),
+        preserve_root_relative_attachments: true,
+    }
+}
+
+/// A refused refs edit: what the move answers, and why, for the log.
+struct Refused {
+    kept: RefsKept,
+    why: Result<Kept, NotesError>,
+}
+
 impl NotesService {
     /// Re-points the relative refs of `note_id`, a markdown note moved from `from` to `to`, and
     /// answers why they were left when they were. Never fails the move: see the module comment.
@@ -83,15 +97,41 @@ impl NotesService {
         if !from.link.markdown || from.link.folder == to.link.folder {
             return None;
         }
-        match self.try_own_refs(open, note_id, from, to)? {
-            // A refusal wrote nothing, so one more try is safe; the flush writes a document
-            // that is ahead of its file out first.
-            RefsKept::Changing => {
-                self.tier.flush(SETTLE);
-                self.try_own_refs(open, note_id, from, to)
-            }
-            RefsKept::Unreadable => Some(RefsKept::Unreadable),
+        let mut refused = self.try_own_refs(open, note_id, from, to)?;
+        // A refusal wrote nothing, so one more try is safe; the flush writes a document that is
+        // ahead of its file out first.
+        if refused.kept == RefsKept::Changing {
+            self.tier.flush(SETTLE);
+            refused = self.try_own_refs(open, note_id, from, to)?;
         }
+        // A file with no relative ref to re-point kept nothing, when the file is what the note
+        // holds: not before the retry, nor when the document holds what its file does not.
+        let file_is_the_note = !matches!(
+            refused.why,
+            Ok(Kept::BodyAhead | Kept::BodyNotPulled | Kept::NoBody)
+        );
+        if file_is_the_note
+            && std::fs::read_to_string(open.path.join(&to.path)).is_ok_and(|text| {
+                rewrite_note_refs_for_move(&text, &from.path, &to.path, own_ref_options(note_id))
+                    .is_none()
+            })
+        {
+            return None;
+        }
+        match refused.why {
+            Ok(kept) => tracing::warn!(
+                scope = SCOPE,
+                note_id,
+                kept = ?kept,
+                "a moved note's relative refs were not re-pointed"
+            ),
+            Err(error) => tracing::warn!(
+                scope = SCOPE,
+                note_id,
+                "a moved note's relative refs were not re-pointed: {error}"
+            ),
+        }
+        Some(refused.kept)
     }
 
     fn try_own_refs(
@@ -100,11 +140,7 @@ impl NotesService {
         note_id: &str,
         from: &Named,
         to: &Named,
-    ) -> Option<RefsKept> {
-        let options = NoteRefsOptions {
-            source_note_id: Some(note_id),
-            preserve_root_relative_attachments: true,
-        };
+    ) -> Option<Refused> {
         let held = Precondition::HeldAt(&from.path);
         let rewritten = AppEdit::new(&self.tier, &self.store, open)
             .map_err(NotesError::from)
@@ -116,7 +152,10 @@ impl NotesService {
                 self.order.run(note_id, |turn| {
                     edit.run(turn, held, ChangeSource::LinkRewrite, |text| {
                         Ok::<_, NotesError>(rewrite_note_refs_for_move(
-                            text, &from.path, &to.path, options,
+                            text,
+                            &from.path,
+                            &to.path,
+                            own_ref_options(note_id),
                         ))
                     })
                 })
@@ -124,31 +163,15 @@ impl NotesService {
         let kept = match rewritten {
             // A write the document did not take is the watcher's to bring in.
             Ok(Edited::Wrote { .. } | Edited::Unchanged { .. }) => return None,
-            // A file with no relative ref to re-point kept nothing. One that does not read
-            // may hold some: the refusal stands.
-            _ if std::fs::read_to_string(open.path.join(&to.path)).is_ok_and(|text| {
-                rewrite_note_refs_for_move(&text, &from.path, &to.path, options).is_none()
-            }) =>
-            {
-                return None;
-            }
             Ok(Edited::Kept(kept)) => kept,
             Err(error) => {
-                tracing::warn!(
-                    scope = SCOPE,
-                    note_id,
-                    "a moved note's relative refs were not re-pointed: {error}"
-                );
-                return Some(RefsKept::Changing);
+                return Some(Refused {
+                    kept: RefsKept::Changing,
+                    why: Err(error),
+                });
             }
         };
-        tracing::warn!(
-            scope = SCOPE,
-            note_id,
-            kept = ?kept,
-            "a moved note's relative refs were not re-pointed"
-        );
-        Some(match kept {
+        let answer = match kept {
             Kept::FrontmatterUnreadable
             | Kept::FrontmatterBroken
             | Kept::NotRepresentable
@@ -163,6 +186,10 @@ impl NotesService {
             | Kept::FileAhead
             | Kept::BodyNotPulled
             | Kept::NoBody => RefsKept::Changing,
+        };
+        Some(Refused {
+            kept: answer,
+            why: Ok(kept),
         })
     }
 
