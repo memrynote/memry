@@ -1,0 +1,113 @@
+{
+  "name": "vault-config",
+  "steps": [
+    {
+      "argv": [
+        "vault",
+        "config"
+      ],
+      "exit": 0,
+      "stdout": "{\n  \"defaultNoteFolder\": \"\",\n  \"journalFolder\": \"journal\",\n  \"journalDateFormat\": \"YYYY-MM-DD\",\n  \"attachmentsFolder\": \"attachments\",\n  \"excludePatterns\": [\n    \".git\",\n    \"node_modules\",\n    \".trash\",\n    \".obsidian\",\n    \".memry\"\n  ],\n  \"journalShowInSidebar\": false,\n  \"theme\": \"kept\"\n}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "--json",
+        "vault",
+        "config"
+      ],
+      "exit": 0,
+      "stdout": "{\"defaultNoteFolder\":\"\",\"journalFolder\":\"journal\",\"journalDateFormat\":\"YYYY-MM-DD\",\"attachmentsFolder\":\"attachments\",\"excludePatterns\":[\".git\",\"node_modules\",\".trash\",\".obsidian\",\".memry\"],\"journalShowInSidebar\":false,\"theme\":\"kept\"}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "vault",
+        "update-config",
+        "{\"journalFolder\":\" daily/ \",\"custom\":1,\"journalShowInSidebar\":true}"
+      ],
+      "exit": 0,
+      "stdout": "{\n  \"defaultNoteFolder\": \"\",\n  \"journalFolder\": \" daily/ \",\n  \"journalDateFormat\": \"YYYY-MM-DD\",\n  \"attachmentsFolder\": \"attachments\",\n  \"excludePatterns\": [\n    \".git\",\n    \"node_modules\",\n    \".trash\",\n    \".obsidian\",\n    \".memry\"\n  ],\n  \"journalShowInSidebar\": true,\n  \"theme\": \"kept\",\n  \"custom\": 1\n}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "vault",
+        "config"
+      ],
+      "exit": 0,
+      "stdout": "{\n  \"defaultNoteFolder\": \"\",\n  \"journalFolder\": \"daily\",\n  \"journalDateFormat\": \"YYYY-MM-DD\",\n  \"attachmentsFolder\": \"attachments\",\n  \"excludePatterns\": [\n    \".git\",\n    \"node_modules\",\n    \".trash\",\n    \".obsidian\",\n    \".memry\"\n  ],\n  \"journalShowInSidebar\": true,\n  \"theme\": \"kept\",\n  \"custom\": 1\n}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "--json",
+        "vault",
+        "update-config",
+        "{\"excludePatterns\":[\"a\",1,\"b\"],\"defaultNoteFolder\":\"notes/inbox\"}"
+      ],
+      "exit": 0,
+      "stdout": "{\"defaultNoteFolder\":\"notes/inbox\",\"journalFolder\":\"daily\",\"journalDateFormat\":\"YYYY-MM-DD\",\"attachmentsFolder\":\"attachments\",\"excludePatterns\":[\"a\",\"b\"],\"journalShowInSidebar\":true,\"theme\":\"kept\",\"custom\":1}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "--json",
+        "vault",
+        "config"
+      ],
+      "exit": 0,
+      "stdout": "{\"defaultNoteFolder\":\"notes/inbox\",\"journalFolder\":\"daily\",\"journalDateFormat\":\"YYYY-MM-DD\",\"attachmentsFolder\":\"attachments\",\"excludePatterns\":[\"a\",\"b\"],\"journalShowInSidebar\":true,\"theme\":\"kept\",\"custom\":1}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "vault",
+        "update-config",
+        "{\"defaultNoteFolder\":\"../outside\"}"
+      ],
+      "exit": 0,
+      "stdout": "{\n  \"defaultNoteFolder\": \"../outside\",\n  \"journalFolder\": \"daily\",\n  \"journalDateFormat\": \"YYYY-MM-DD\",\n  \"attachmentsFolder\": \"attachments\",\n  \"excludePatterns\": [\n    \"a\",\n    \"b\"\n  ],\n  \"journalShowInSidebar\": true,\n  \"theme\": \"kept\",\n  \"custom\": 1\n}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "vault",
+        "update-config"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "vault config must be a JSON object\n"
+    },
+    {
+      "argv": [
+        "vault",
+        "update-config",
+        "[1]"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "vault config must be a JSON object\n"
+    },
+    {
+      "argv": [
+        "vault",
+        "update-config",
+        "3"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "vault config must be a JSON object\n"
+    },
+    {
+      "argv": [
+        "vault",
+        "update-config",
+        "not json"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "vault config must be a JSON object\n"
+    }
+  ]
+}

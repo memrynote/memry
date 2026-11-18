@@ -297,3 +297,73 @@ fn concurrent_first_opens_leave_a_usable_vault() {
     }
     assert_eq!(rig.vault_status(), rig_ok(&rig));
 }
+
+/// `vault reindex` beside a running app never sets a damaged index aside: the app's open handles
+/// would lose their file. The command fails and the file stays byte for byte.
+#[test]
+fn a_reindex_refuses_a_damaged_index_and_leaves_it() {
+    let rig = Rig::new();
+    assert_eq!(rig.vault_status().0, 0);
+    let core = rig.path("vault/.memry/core");
+    write(&core.join("index.db"), b"damaged index");
+
+    let vault = rig.path("vault");
+    let (code, out, err) = rig.run(&[
+        "--vault",
+        vault.to_str().expect("utf-8"),
+        "vault",
+        "reindex",
+    ]);
+    assert_eq!((code, out.as_str()), (1, ""), "{err}");
+    assert!(
+        err.starts_with("The search index cannot be updated here"),
+        "{err}"
+    );
+    assert_eq!(
+        std::fs::read(core.join("index.db")).expect("index"),
+        b"damaged index"
+    );
+    let siblings: Vec<_> = std::fs::read_dir(&core)
+        .expect("core")
+        .filter_map(|entry| entry.ok()?.file_name().into_string().ok())
+        .filter(|name| name.starts_with("index.db") && name != "index.db")
+        .collect();
+    assert!(siblings.is_empty(), "set aside: {siblings:?}");
+}
+
+/// `vault update-config` never creates a folder outside the vault, while it still writes the key.
+#[test]
+fn update_config_creates_no_folder_outside_the_vault() {
+    let rig = Rig::new();
+    write(&rig.path("vault/.memry/config.json"), b"{}");
+    let vault = rig.path("vault");
+    let (code, _, err) = rig.run(&[
+        "--vault",
+        vault.to_str().expect("utf-8"),
+        "vault",
+        "update-config",
+        r#"{"defaultNoteFolder":"../outside"}"#,
+    ]);
+    assert_eq!(code, 0, "{err}");
+    assert!(!rig.path("outside").exists(), "a folder outside the vault");
+    let file = std::fs::read_to_string(vault.join(".memry/config.json")).expect("config");
+    assert!(
+        file.contains(r#""defaultNoteFolder": "../outside""#),
+        "{file}"
+    );
+}
+
+/// `vault config` is a read: a config without the default keys stays as it is.
+#[test]
+fn vault_config_leaves_a_partial_config_as_it_is() {
+    let rig = Rig::new();
+    let partial = br#"{"theme":"kept","excludePatterns":["x"]}"#;
+    write(&rig.path("vault/.memry/config.json"), partial);
+    let vault = rig.path("vault");
+    let (code, _, err) = rig.run(&["--vault", vault.to_str().expect("utf-8"), "vault", "config"]);
+    assert_eq!(code, 0, "{err}");
+    assert_eq!(
+        std::fs::read(vault.join(".memry/config.json")).expect("config"),
+        partial
+    );
+}

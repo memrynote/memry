@@ -116,7 +116,6 @@ impl Search {
         Self::over_reporting(data, directory).map(|(search, _)| search)
     }
 
-    /// [`Search::over`] plus the reason `index.db` was rebuilt, when it was.
     /// [`Search::over`] over [`crate::storage::index_db::open_keeping`]: never sets
     /// `index.db` aside.
     pub(crate) fn over_keeping(data: Db, directory: &str) -> Result<Self, StorageError> {
@@ -128,6 +127,7 @@ impl Search {
         })
     }
 
+    /// [`Search::over`] plus the reason `index.db` was rebuilt, when it was.
     pub(crate) fn over_reporting(
         data: Db,
         directory: &str,
