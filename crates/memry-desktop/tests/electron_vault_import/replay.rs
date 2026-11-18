@@ -566,10 +566,13 @@ fn an_unclocked_deleted_note_is_held_back_unless_its_delete_was_superseded() {
 }
 
 /// A vault that never signed in (the free plan never syncs) has no device and no clock on any
-/// row, or an `_offline` one. Electron's runtime never starts without a session, so nothing is
-/// queued and every row keeps what it has, for the core pass to seed once signed in.
+/// row, or an `_offline` one. Electron's sign-in starts its runtime, whose dirty sweep creates
+/// the `_offline` templates and icons; the core has no such sweep, so the import queues them at
+/// their stored clock (the push rebinds `_offline`). Electron's sweep exempts property
+/// definitions, so an `_offline` one stays unqueued there and here. The unclocked rows wait for
+/// the core pass's seed.
 #[test]
-fn a_never_signed_in_vault_imports_with_nothing_queued() {
+fn a_never_signed_in_vault_queues_only_its_offline_templates_and_icons() {
     let mut vault = Vault::new();
     vault.device_id = None;
     for id in ["n-1", "n-2"] {
@@ -585,13 +588,27 @@ fn a_never_signed_in_vault_imports_with_nothing_queued() {
     let data = vault.data_conn();
     seed_unclocked_folder(&data, "Fresh");
     seed_template(&data, "t-off", Some(r#"{"_offline":2}"#), None);
+    electron_db::seed(
+        &data,
+        "property_definitions",
+        &[
+            ("name", text("mood")),
+            ("type", text("text")),
+            ("clock", text(r#"{"_offline":1}"#)),
+            ("created_at", text(CREATED)),
+        ],
+    );
     drop(data);
 
     let report = import(&vault);
     assert_eq!(report.checks_passed, vec![1, 2, 4, 5, 6]);
-    assert!(report.queued.is_empty(), "{:?}", report.queued);
+    assert_eq!(report.queued.get("dirtyRecordsQueued"), Some(&1));
     let core = core(&vault);
-    assert_eq!(outbox(&core), owned(&[]));
+    assert_eq!(outbox(&core), owned(&[("template", "t-off", "create")]));
+    assert_eq!(
+        item(&core, "property_definition", "mood").1.as_deref(),
+        Some(r#"{"_offline":1}"#)
+    );
     assert_eq!(item(&core, "note", "n-1").1, None);
     assert_eq!(item(&core, "folder_config", "Fresh").1, None);
     assert_eq!(

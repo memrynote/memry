@@ -3,7 +3,8 @@
 //!
 //! - the deletes it still owes the server (`sync_pending_deletes`, `flushPendingLocalDeletes` in
 //!   `sync/local-mutations.ts`), and the re-create of a note whose delete that replay retires;
-//! - the clocked rows edited since their last push (the dirty sweeps).
+//! - the clocked rows edited since their last push (the dirty sweeps), `_offline`-clocked ones
+//!   of a vault that never signed in included: Electron's sweep pushes those at sign-in.
 //!
 //! Each becomes the core outbox row Electron would queue, so no change it owes the server is lost
 //! and no delete comes back. The rows that never had a clock are staged with none and no outbox
@@ -282,27 +283,27 @@ pub struct RuntimeStart {
     pub recreated: u64,
 }
 
-/// What Electron's runtime start (`recoverDirtyItems`) queues. Without a device Electron has no
-/// session and its runtime never starts, so nothing is queued: the rows wait, as they do there.
-/// The one exception is a note re-created after its delete, which no later pass would push
-/// ([`plan_recreates`]).
+/// What Electron's runtime start (`recoverDirtyItems`) queues. Without a device Electron's
+/// runtime starts at sign-in (`device-registration.ts` restarts it), and its sweep then pushes
+/// the rows edited without a session, `_offline`-clocked; the core has no such sweep, so the
+/// dirty rows are queued here either way. A note re-created after its delete needs a device to
+/// mint its clock under ([`plan_recreates`]).
 pub fn plan_runtime_start(
     source: &Connection,
     writer: &ImportWriter,
     device_id: Option<&str>,
     now_ms: i64,
 ) -> Result<RuntimeStart, ImportError> {
+    if device_id.is_none() && !retired_note_deletes(source, writer)?.is_empty() {
+        return Err(ImportError::ClockWithoutDevice);
+    }
     let mut plan = RuntimeStart::default();
-    let Some(device_id) = device_id else {
-        if !retired_note_deletes(source, writer)?.is_empty() {
-            return Err(ImportError::ClockWithoutDevice);
-        }
-        return Ok(plan);
-    };
     for dirty in KINDS {
         plan_dirty(&mut plan, dirty, source, writer, device_id, now_ms)?;
     }
-    plan_recreates(&mut plan, source, writer, device_id, now_ms)?;
+    if let Some(device_id) = device_id {
+        plan_recreates(&mut plan, source, writer, device_id, now_ms)?;
+    }
     Ok(plan)
 }
 
@@ -318,7 +319,7 @@ fn plan_dirty(
     dirty: &Dirty,
     source: &Connection,
     writer: &ImportWriter,
-    device_id: &str,
+    device_id: Option<&str>,
     now_ms: i64,
 ) -> Result<(), ImportError> {
     let sql = format!(
@@ -340,7 +341,10 @@ fn plan_dirty(
             .get("never")
             .map_err(|e| source_error(SourceDb::Data, e))?;
         plan.dirty += 1;
-        if dirty.create_never_synced && never {
+        let create = dirty.create_never_synced && never;
+        if let Some(device_id) = device_id
+            && create
+        {
             let stored = parse_clock(text(row, "clock")?.as_deref(), dirty.table, rowid)?
                 .map(|clock| vector_clock(clock, dirty.table, rowid))
                 .transpose()?
@@ -350,10 +354,16 @@ fn plan_dirty(
                 clock::increment(&clock::rebind_clock_device(&stored, device_id), device_id);
             push_minted(plan, dirty.item_type, id, minted, writer, now_ms)
         } else {
-            // `enqueueRecoveredUpdate` at the stored clock; the core push rebinds `_offline`
-            // under the same device (`seal.rs` `wire_clock`).
-            plan.queued
-                .push(queued(dirty.item_type, id, RecordOp::Upsert, None, now_ms));
+            // `enqueueRecoveredUpdate` at the stored clock, or with no device a never-synced
+            // create at it: the core push rebinds `_offline` under its own device (`seal.rs`
+            // `wire_clock`). Such a create skips Electron's extra tick, which orders nothing, as
+            // the server holds no version of an id never synced.
+            let op = if create {
+                RecordOp::Create
+            } else {
+                RecordOp::Upsert
+            };
+            plan.queued.push(queued(dirty.item_type, id, op, None, now_ms));
             Ok(())
         }
     })
