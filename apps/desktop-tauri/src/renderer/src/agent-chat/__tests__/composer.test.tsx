@@ -40,34 +40,13 @@ vi.mock('@/lib/voice-memo-audio', () => ({
   prepareVoiceMemoAudio: mockPrepareVoiceMemoAudio
 }))
 
+vi.mock(
+  '@/lib/pcm-capture',
+  async () => (await import('@tests/utils/fake-pcm-capture')).pcmCaptureModule
+)
+
 import { SettingsModalProvider } from '@/contexts/settings-modal-context'
 import { Composer, type ComposerHandle } from '../composer'
-
-class MockMediaRecorder {
-  static isTypeSupported = vi.fn(() => true)
-
-  state: 'inactive' | 'recording' = 'inactive'
-  ondataavailable: ((event: { data: Blob }) => void) | null = null
-  onstop: (() => void) | null = null
-  onerror: ((event: unknown) => void) | null = null
-
-  constructor(
-    public stream: MediaStream,
-    public options: MediaRecorderOptions
-  ) {}
-
-  start(): void {
-    this.state = 'recording'
-  }
-
-  stop(): void {
-    this.state = 'inactive'
-    queueMicrotask(() => {
-      this.ondataavailable?.({ data: new Blob(['voice'], { type: 'audio/webm' }) })
-      this.onstop?.()
-    })
-  }
-}
 
 const mockSendTurn = vi.fn()
 const mockCancelTurn = vi.fn()
@@ -154,10 +133,6 @@ describe('Composer', () => {
     Object.defineProperty(navigator, 'mediaDevices', {
       configurable: true,
       value: { getUserMedia: mockGetUserMedia }
-    })
-    Object.defineProperty(globalThis, 'MediaRecorder', {
-      configurable: true,
-      value: MockMediaRecorder
     })
     mockPrepareVoiceMemoAudio.mockReset()
     mockPrepareVoiceMemoAudio.mockResolvedValue({

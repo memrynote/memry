@@ -1,41 +1,14 @@
 import { act, render } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { fakePcm } from '@tests/utils/fake-pcm-capture'
+
 import { useVoiceCapture, type VoiceCapture } from './use-voice-capture'
 
-/**
- * Mirrors real browser ordering: `MediaRecorder` is started without a timeslice,
- * so the whole recording arrives as a single `dataavailable` fired *after*
- * `stop()` returns, immediately followed by `onstop`.
- */
-class MockMediaRecorder {
-  static isTypeSupported = vi.fn(() => true)
-  static instances: MockMediaRecorder[] = []
-
-  state: 'inactive' | 'recording' = 'inactive'
-  ondataavailable: ((event: { data: Blob }) => void) | null = null
-  onstop: (() => void) | null = null
-  onerror: ((event: unknown) => void) | null = null
-
-  constructor(
-    public stream: MediaStream,
-    public options: MediaRecorderOptions
-  ) {
-    MockMediaRecorder.instances.push(this)
-  }
-
-  start(): void {
-    this.state = 'recording'
-  }
-
-  stop(): void {
-    this.state = 'inactive'
-    queueMicrotask(() => {
-      this.ondataavailable?.({ data: new Blob(['voice-audio'], { type: 'audio/webm' }) })
-      this.onstop?.()
-    })
-  }
-}
+vi.mock(
+  '@/lib/pcm-capture',
+  async () => (await import('@tests/utils/fake-pcm-capture')).pcmCaptureModule
+)
 
 describe('useVoiceCapture cancel', () => {
   const prepareVoiceMemoAudio = vi.fn()
@@ -45,11 +18,11 @@ describe('useVoiceCapture cancel', () => {
   const trackStop = vi.fn()
   const getUserMedia = vi.fn()
 
-  // Stands in for what every voice surface does with a delivered blob: decode +
+  // Stands in for what every voice surface does with a delivered recording: resample +
   // WAV encode, then the vault write and the transcription request.
-  const onComplete = vi.fn((audioBlob: Blob, duration: number) => {
+  const onComplete = vi.fn((audio: AudioBuffer, duration: number) => {
     void (async () => {
-      const prepared = await prepareVoiceMemoAudio(audioBlob)
+      const prepared = await prepareVoiceMemoAudio(audio)
       await captureVoice({ ...prepared, duration, transcribe: true })
       await transcribeAudio(prepared)
     })()
@@ -65,16 +38,12 @@ describe('useVoiceCapture cancel', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    MockMediaRecorder.instances = []
+    fakePcm.reset()
     capture.current = null
 
     Object.defineProperty(navigator, 'mediaDevices', {
       configurable: true,
       value: { getUserMedia }
-    })
-    Object.defineProperty(globalThis, 'MediaRecorder', {
-      configurable: true,
-      value: MockMediaRecorder
     })
 
     getUserMedia.mockResolvedValue({ getTracks: () => [{ stop: trackStop }] })
@@ -95,7 +64,7 @@ describe('useVoiceCapture cancel', () => {
     return view
   }
 
-  /** Lets the queued `dataavailable`/`onstop` callbacks run. */
+  /** Lets the capture's pending `stop()` settle. */
   async function flushRecorder(): Promise<void> {
     await act(async () => {
       await Promise.resolve()
@@ -158,7 +127,7 @@ describe('useVoiceCapture cancel', () => {
     await flushRecorder()
 
     expect(onComplete).toHaveBeenCalledTimes(1)
-    expect(onComplete.mock.calls[0][0]).toBeInstanceOf(Blob)
+    expect(onComplete.mock.calls[0][0]).toBe(fakePcm.recording)
     expect(prepareVoiceMemoAudio).toHaveBeenCalled()
     expect(captureVoice).toHaveBeenCalled()
     expect(transcribeAudio).toHaveBeenCalled()
@@ -178,5 +147,54 @@ describe('useVoiceCapture cancel', () => {
     await flushRecorder()
 
     expect(onComplete).toHaveBeenCalledTimes(1)
+  })
+
+  it('drops the capture and keeps the mic off when cancel lands while the graph is being built', async () => {
+    const open = fakePcm.holdNextStart()
+    render(<Harness />)
+
+    let starting: Promise<void> | undefined
+    act(() => {
+      starting = capture.current?.start()
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+    act(() => capture.current?.cancel())
+    await act(async () => {
+      open()
+      await starting
+    })
+
+    expect(trackStop).toHaveBeenCalled()
+    expect(fakePcm.sessions).toHaveLength(1)
+    expect(fakePcm.sessions[0].cancelled).toBe(true)
+    expect(capture.current?.state).toBe('idle')
+    expect(capture.current?.stream).toBeNull()
+  })
+
+  it('reports a processor error as recorder-failed and releases the microphone', async () => {
+    await startRecording()
+
+    const cause = new Event('processorerror')
+    act(() => fakePcm.sessions[0].fail(cause))
+    await flushRecorder()
+
+    expect(onError).toHaveBeenCalledWith({ kind: 'recorder-failed', cause })
+    expect(trackStop).toHaveBeenCalled()
+    expect(fakePcm.sessions[0].cancelled).toBe(true)
+    expect(onComplete).not.toHaveBeenCalled()
+    expect(capture.current?.state).toBe('idle')
+  })
+
+  it('delivers nothing for a recording with no samples', async () => {
+    fakePcm.recording = null
+    await startRecording()
+
+    act(() => capture.current?.stop())
+    await flushRecorder()
+
+    expect(onComplete).not.toHaveBeenCalled()
+    expect(capture.current?.state).toBe('idle')
   })
 })

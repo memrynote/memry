@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { prepareVoiceMemoAudio } from './voice-memo-audio'
@@ -27,10 +30,17 @@ function readAscii(buffer: ArrayBuffer, offset: number, length: number): string 
 }
 
 function makeBlob(bytes: ArrayBuffer = new ArrayBuffer(8)): Blob {
-  return {
-    arrayBuffer: vi.fn(async () => bytes)
-  } as unknown as Blob
+  // jsdom's Blob has no `arrayBuffer`; the instance still passes `instanceof Blob`.
+  const blob = new Blob()
+  Object.defineProperty(blob, 'arrayBuffer', { value: vi.fn(async () => bytes) })
+  return blob
 }
+
+/** The PCM16 mono 16 kHz memo the worker's whisper test transcribes (`memry-ml-worker/tests/transcribe.rs`). */
+const RUST_VOICE_FIXTURE = resolve(
+  import.meta.dirname,
+  '../../../../../../crates/memry-ml-worker/tests/fixtures/voice/quick-brown-fox.wav'
+)
 
 /**
  * Byte-for-byte copy of the pcm16 WAV encoder as it stood before the allocation fix,
@@ -312,5 +322,47 @@ describe('prepareVoiceMemoAudio', () => {
 
     expect(result.data.byteLength).toBe(44 + samples.length * 2)
     expect(new Uint8Array(result.data)).toEqual(new Uint8Array(expected))
+  })
+
+  it('encodes a recorded AudioBuffer without decoding it', async () => {
+    const recorded = makeAudioBuffer({
+      sampleRate: 16_000,
+      numberOfChannels: 1,
+      duration: 0.25,
+      samples: [0.5, -0.5]
+    })
+    const AudioContextMock = vi.fn()
+    vi.stubGlobal('AudioContext', AudioContextMock)
+    vi.stubGlobal('OfflineAudioContext', vi.fn())
+
+    const result = await prepareVoiceMemoAudio(recorded)
+
+    expect(AudioContextMock).not.toHaveBeenCalled()
+    expect(result.duration).toBe(0.25)
+    expect(new DataView(result.data).getUint32(40, true)).toBe(4)
+  })
+
+  it('writes the exact bytes of the WAV the Rust transcription path reads', async () => {
+    const fixture = new Uint8Array(readFileSync(RUST_VOICE_FIXTURE))
+    const view = new DataView(fixture.buffer, fixture.byteOffset, fixture.byteLength)
+    // Half a step past each stored value, so the encoder's float-to-int16 truncation lands
+    // back on it (full scale clamps to the same end values).
+    const samples: number[] = []
+    for (let offset = 44; offset < fixture.byteLength; offset += 2) {
+      const value = view.getInt16(offset, true)
+      samples.push(value < 0 ? (value - 0.5) / 0x8000 : (value + 0.5) / 0x7fff)
+    }
+    const recorded = makeAudioBuffer({
+      sampleRate: 16_000,
+      numberOfChannels: 1,
+      duration: samples.length / 16_000,
+      samples
+    })
+    vi.stubGlobal('AudioContext', vi.fn())
+    vi.stubGlobal('OfflineAudioContext', vi.fn())
+
+    const result = await prepareVoiceMemoAudio(recorded)
+
+    expect(new Uint8Array(result.data)).toEqual(fixture)
   })
 })
