@@ -13,7 +13,9 @@
 //! Here a mint is a `tag_definition` record with no clock and no outbox row ([`define_used`]),
 //! and the sync pass seeds it ([`seed`]) once its pull reached the feed head
 //! ([`crate::sync::engine::PassSeed`]). A tag with a record of any spelling, live or deleted, is
-//! never minted: a deletion stays deleted while a file still carries the tag.
+//! never minted: a deletion stays deleted while a file still carries the tag. A corrupt record
+//! (`corrupt_at`) counts too, though it projects no row: its tag stays undefined until a pull
+//! repairs the record.
 
 use std::collections::BTreeSet;
 
@@ -123,9 +125,15 @@ pub fn seed(conn: &Connection, device_id: &str, now_ms: i64) -> Result<Vec<Strin
     Ok(seeded)
 }
 
-/// Every `tag_definition` record's id: live, deleted, or not yet fetched.
+/// Every `tag_definition` record's id: live, deleted, corrupt, or not yet fetched. Deleted ones
+/// come first: [`seed`] projects the records of one key in this order into their one row (the
+/// projection folds case), so a live record, projected last, leaves the row live.
 fn records(conn: &Connection) -> Result<Vec<String>, StorageError> {
-    ids(conn, "SELECT item_id FROM sync_items WHERE item_type = ?1")
+    ids(
+        conn,
+        "SELECT item_id FROM sync_items WHERE item_type = ?1
+          ORDER BY deleted_at IS NULL, rowid",
+    )
 }
 
 /// The live mints: records this device wrote with no clock, which no pull touched.

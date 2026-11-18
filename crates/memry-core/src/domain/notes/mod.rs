@@ -18,7 +18,10 @@
 //!   [`outbox::enqueue`] commit together. [`outbox::commit`] is that
 //!   transaction for a write that queues exactly one change, and the
 //!   [`outbox::Durable`] it hands back is minted only after `COMMIT` returned
-//!   (§C.4, durable before acknowledged).
+//!   (§C.4, durable before acknowledged). One write is exempt by design: a tag
+//!   definition the note index mints ([`crate::domain::tag_mint::define_used`])
+//!   takes no clock and no outbox row, as Electron's `getOrCreateTag` does, and
+//!   the sync pass seeds and queues it after its pull ([`crate::domain::tag_mint::seed`]).
 //! - **One set of payload bytes.** A create serialises the object it was given
 //!   and stores *that*; an edit merges into the parsed copy and stores *that*
 //!   (§13.2 rule 3). No projection row is ever an input (§13.2 rule 4), and
