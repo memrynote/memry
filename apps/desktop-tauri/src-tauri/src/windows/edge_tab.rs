@@ -248,7 +248,10 @@ fn build(app: &AppHandle<Wry>) -> tauri::Result<()> {
         })
         .build()?;
     #[cfg(target_os = "macos")]
-    super::mac_window::float_on_every_space(&window);
+    {
+        super::mac_window::float_on_every_space(&window);
+        super::mac_window::track_pointer_unfocused(&window);
+    }
     {
         let tab = app.state::<EdgeTab>();
         let state = tab.lock();
