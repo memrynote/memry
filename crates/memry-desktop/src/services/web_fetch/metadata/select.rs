@@ -225,8 +225,10 @@ impl Page {
                 return None;
             }
             self.text_budget.set(budget - cost);
-            step(cost);
+            // The work done, counted apart from what the budget charges.
+            step(1);
             if let Some(text) = text {
+                step(text.len());
                 out.push_str(text);
             }
             if matches!(kind, NodeKind::Comment(_)) {

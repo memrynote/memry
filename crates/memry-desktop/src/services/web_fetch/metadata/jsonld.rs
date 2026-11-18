@@ -17,8 +17,10 @@ const SCRIPT: Sel = Sel(&[Compound(
 /// rule, so metascraper and the whole metadata fetch fail with it.
 pub const GRAPH_NOT_ARRAY: &str = "graph.map is not a function";
 
-/// What a value costs in [`weight`] on top of its bytes: about its size in memory.
-const VALUE_COST: usize = 16;
+/// What a value costs in [`weight`] on top of its bytes: a `JsValue` (32 bytes) and the heap
+/// block behind it, or a key's `String` and its block. [`weight`] stays an approximation of the
+/// memory a spread takes.
+const VALUE_COST: usize = 64;
 
 /// Departure: the most the `@graph` spreads of a page may copy, in [`weight`], per byte of the
 /// page. `{ ...props, ...item }` copies the document's other properties into every item, so 1 MB
@@ -173,6 +175,8 @@ fn spread(props: &[(String, JsValue)], slots: &HashMap<&str, usize>, item: &JsVa
         _ => Vec::new(),
     };
     for (key, value) in own {
+        // One step per key looked up, so a scan over `out` here shows as steps.
+        step(1);
         match slots.get(key.as_str()) {
             Some(&slot) => out[slot].1 = value,
             None => out.push((key, value)),
@@ -227,9 +231,12 @@ pub fn get<'a>(object: &'a JsValue, path: &str) -> Option<&'a JsValue> {
 
 /// `parseJSON`: `JSON.parse`, then `JSON.parse(jsonrepair(text))`, else nothing.
 fn parse_json(text: &str) -> Option<JsValue> {
-    json::parse(text)
-        .ok()
-        .or_else(|| json::parse(&repair(text)?).ok())
+    match json::parse(text) {
+        Ok(value) => Some(value),
+        // The parse failed inside a valid prefix that `repair` keeps, so it would fail again.
+        Err(error) if error == json::NESTING_TOO_DEEP => None,
+        Err(_) => json::parse(&repair(text)?).ok(),
+    }
 }
 
 /// The repairs of `jsonrepair` 3.13.2 that JSON-LD on web pages needs: comments (which also
