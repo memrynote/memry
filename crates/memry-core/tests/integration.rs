@@ -51,6 +51,8 @@ mod api_sync_pass;
 mod api_task_conformance;
 #[path = "api_task_location_options.rs"]
 mod api_task_location_options;
+#[path = "api_task_store.rs"]
+mod api_task_store;
 #[path = "api_task_tree.rs"]
 mod api_task_tree;
 #[path = "api_tasks.rs"]
@@ -249,6 +251,8 @@ mod domain_task_views;
 mod domain_tasks;
 #[path = "domain_tasks_lifecycle.rs"]
 mod domain_tasks_lifecycle;
+#[path = "domain_tasks_update.rs"]
+mod domain_tasks_update;
 #[path = "domain_tasks_write.rs"]
 mod domain_tasks_write;
 #[path = "domain_template_legacy.rs"]

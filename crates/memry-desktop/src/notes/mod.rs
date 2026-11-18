@@ -29,6 +29,7 @@ pub mod properties;
 pub mod property_definitions;
 pub mod read;
 pub mod service;
+pub mod similarity;
 pub mod tag_rename;
 pub mod tag_rename_unfinished;
 pub mod tag_retag;
