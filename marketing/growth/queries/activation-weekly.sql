@@ -4,6 +4,7 @@
 -- This is the `activation` query in .agents/skills/growth-review/collect.js, desktop platform
 -- filter included. Change both together, so the page and the insight agree.
 -- The event list is PostHog action 369611 "Desktop · Engaged use". Keep the three identical.
+-- Like the action, a setting_changed for general.onboardingCompleted is not engaged use.
 WITH firsts AS (
   SELECT person_id, min(timestamp) AS first_ts FROM events
   WHERE timestamp >= toDateTime('2026-06-01 00:00:00') AND properties.environment = 'production'
@@ -12,6 +13,8 @@ WITH firsts AS (
       'journal_updated','search_performed','command_palette_opened','task_created','task_updated',
       'task_completed','canvas_opened','graph_opened','project_opened','inbox_captured',
       'agent_chat_message_sent','setting_changed')
+    AND NOT (event = 'setting_changed'
+      AND ifNull(properties.setting = 'general.onboardingCompleted', 0))
   GROUP BY person_id
 ),
 cohort AS (
