@@ -29,7 +29,8 @@ pub const FIREFOX: &str = "moz-extension://5f2c8f9e-6a1b-4b8e-9d3a-0c1e2f3a4b5c"
 /// How long a test waits for the consent prompt to be shown: a hang guard, not a bound.
 const WAIT: Duration = Duration::from_secs(20);
 
-/// An in-memory keychain that can be locked and counts writes.
+/// An in-memory keychain that counts writes. `locked` makes reads fail as a locked keychain's
+/// do while writes still succeed, as an item another process holds reads on Windows and Linux.
 #[derive(Default)]
 pub struct Keychain {
     entries: Mutex<HashMap<(String, String), Vec<u8>>>,
@@ -50,13 +51,6 @@ impl Keychain {
             .get(&key)
             .map(|v| String::from_utf8(v.clone()).unwrap())
     }
-
-    fn check(&self) -> Result<(), SecureStoreError> {
-        match self.locked.load(Ordering::SeqCst) {
-            true => Err(SecureStoreError::Locked),
-            false => Ok(()),
-        }
-    }
 }
 
 impl GenericSecrets for Keychain {
@@ -65,7 +59,9 @@ impl GenericSecrets for Keychain {
         service: &str,
         account: &str,
     ) -> Result<Option<Vec<u8>>, SecureStoreError> {
-        self.check()?;
+        if self.locked.load(Ordering::SeqCst) {
+            return Err(SecureStoreError::Locked);
+        }
         let key = (service.to_owned(), account.to_owned());
         Ok(self.entries.lock().unwrap().get(&key).cloned())
     }
@@ -76,14 +72,12 @@ impl GenericSecrets for Keychain {
         account: &str,
         value: &[u8],
     ) -> Result<(), SecureStoreError> {
-        self.check()?;
         self.writes.fetch_add(1, Ordering::SeqCst);
         self.put(service, account, value);
         Ok(())
     }
 
     fn delete_secret(&self, service: &str, account: &str) -> Result<(), SecureStoreError> {
-        self.check()?;
         let key = (service.to_owned(), account.to_owned());
         self.entries.lock().unwrap().remove(&key);
         Ok(())
@@ -157,7 +151,11 @@ pub fn env_with_config(config: Option<&str>) -> Env {
     let answers_rx = Mutex::new(answers_rx);
     let consent: capture::Consent = Arc::new(move |origin: &str| {
         asked_tx.send(origin.to_owned()).unwrap();
-        answers_rx.lock().unwrap().recv().unwrap_or(false)
+        answers_rx
+            .lock()
+            .unwrap()
+            .recv_timeout(WAIT)
+            .unwrap_or(false)
     });
     Env {
         _dir: dir,
@@ -218,12 +216,31 @@ pub async fn busy_port() -> (tokio::net::TcpListener, u16) {
     }
 }
 
-/// A multi-threaded runtime, so the blocking session calls of a test never run on it.
-pub fn runtime() -> tokio::runtime::Runtime {
-    tokio::runtime::Builder::new_multi_thread()
+/// A multi-threaded runtime, so the blocking session calls of a test never run on it. Dropping
+/// it does not wait for blocking work, so a failed assert ends the test instead of hanging on
+/// a consent prompt nobody answers.
+pub struct Runtime(Option<tokio::runtime::Runtime>);
+
+pub fn runtime() -> Runtime {
+    let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
-        .unwrap()
+        .unwrap();
+    Runtime(Some(runtime))
+}
+
+impl Runtime {
+    pub fn block_on<F: std::future::Future>(&self, future: F) -> F::Output {
+        self.0.as_ref().unwrap().block_on(future)
+    }
+}
+
+impl Drop for Runtime {
+    fn drop(&mut self) {
+        if let Some(runtime) = self.0.take() {
+            runtime.shutdown_background();
+        }
+    }
 }
 
 /// A request built byte for byte. `Host: 127.0.0.1:<port>` comes first unless `no_host`.
