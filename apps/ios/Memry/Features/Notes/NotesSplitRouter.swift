@@ -100,6 +100,19 @@ final class NotesSplitRouter {
     /// Set by the split view: its width holds two panes.
     var splitFits = false
 
+    /// The note whose new title claims the keyboard focus
+    /// (`TitleFocusClaim`). The list moves no keyboard focus to its row
+    /// meanwhile (`NotesListFocusGate`, #5100).
+    private(set) var titleClaim: String?
+
+    func claimTitle(of noteId: String, _ holds: Bool) {
+        if holds {
+            titleClaim = noteId
+        } else if titleClaim == noteId {
+            titleClaim = nil
+        }
+    }
+
     /// The last link each pane followed, and the note it was followed from:
     /// what `⌘\` opens beside that note. Not saved.
     @ObservationIgnored private var lastLinks: [NotesPaneSlot: (from: NoteRoute, to: NoteRoute)] = [:]
@@ -358,6 +371,9 @@ private struct NotesRowSelection: ViewModifier {
         if let split, case let .note(note) = row.kind {
             content.background {
                 if split.selected?.id == note.id { SelectedRowFill() }
+                // #5100: no focus moves to this row while its new note's
+                // title claims the caret.
+                if split.titleClaim == note.id { NotesListFocusGate() }
             }
         } else {
             content

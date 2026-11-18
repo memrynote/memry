@@ -10,9 +10,11 @@
 //  list, and with a hardware keyboard the focus moves to the selected row.
 //  After New note that happens twice or more, a few hundred milliseconds
 //  apart, and the keys typed next went to the list: the note stayed
-//  "Untitled note". The app cannot turn the mirror off, so the title, which
-//  owns the new note's first caret, takes every such move back until the
-//  user moves the caret.
+//  "Untitled note". While the claim holds, the list's selection does not
+//  follow focus (`NotesListFocusGate`, #5100), so the mirror moves nothing:
+//  keys typed while the row held the focus were lost. The title, which owns
+//  the new note's first caret, still takes back any move to the selected
+//  row until the user moves the caret.
 //
 //  Invariant: the claim only ever returns the caret to the title while the
 //  user has made no move of their own, and a take-back never ends the edit.

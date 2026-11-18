@@ -869,6 +869,52 @@ struct NoteTitleBurstTests {
         #expect(seen.1.title == "title", "\(seen.1)")
         #expect(seen.1.body == ["body"], "\(seen.1)")
     }
+
+    /// #5100: the split view's notes list moved the focus to the new note's
+    /// selected row up to six times after New note, each time it mirrored its
+    /// selection, and the keys typed while the row held it were lost. While
+    /// the title claims the caret, the list's selection does not follow
+    /// focus, so a mirrored selection moves none; once the user moved the
+    /// caret, it does again.
+    @Test(.timeLimit(.minutes(1))) func the_notes_list_moves_no_focus_while_a_new_title_claims_it() async throws {
+        let f = try await newNote()
+        let router = NotesSplitRouter()
+        router.select(NoteRoute(id: f.noteId))
+        let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
+        let window = UIWindow(windowScene: scene)
+        defer { window.isHidden = true }
+        let writer = CoreNoteMetadataWriter(vault: f.vault.vault, store: TaskTestKeychain(), executor: .shared)
+        let note = NoteSummary(
+            id: f.noteId, title: "", folderPath: nil, emoji: nil, createdAt: nil, modifiedAt: nil, aliases: []
+        )
+        window.rootViewController = UIHostingController(rootView: HStack {
+            NotesList {
+                NavigationLink(value: NoteRoute(id: f.noteId)) { Text("Untitled note") }
+                    .notesSelection(.note(note))
+            }
+            NoteReadView(
+                route: NoteRoute(id: f.noteId), reader: f.reader, filler: QuietFiller(),
+                editor: CoreBlockEditor(vault: f.vault.vault, store: TaskTestKeychain(), executor: .shared),
+                metadataWriter: writer
+            )
+        }.environment(router))
+        window.makeKeyAndVisible()
+        await until { title(in: window)?.isFirstResponder == true }
+        let field = try #require(title(in: window), "the title field was not drawn")
+        let list = try #require(views(UICollectionView.self, in: window).first, "the list was not drawn")
+        await until { !list.selectionFollowsFocus }
+        #expect(!list.selectionFollowsFocus, "the list's selection still moves the focus from the claiming title")
+
+        // The user moves the caret to the body: the claim ends.
+        let block = try #require(views(BlockTextView.self, in: window).first, "the body has no block")
+        block.becomeFirstResponder()
+        NotificationCenter.default.post(
+            name: UIFocusSystem.didUpdateNotification, object: UIFocusSystem.focusSystem(for: window),
+            userInfo: [UIFocusSystem.focusUpdateContextUserInfoKey: FocusUpdate.make(previous: field, next: block)]
+        )
+        await until { list.selectionFollowsFocus }
+        #expect(list.selectionFollowsFocus, "the list kept its selection from following focus after the claim ended")
+    }
 }
 
 /// A focus update as UIKit hands it to the notification's observers.

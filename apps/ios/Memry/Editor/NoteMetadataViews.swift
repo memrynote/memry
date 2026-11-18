@@ -99,6 +99,7 @@ struct NoteTitleEditor: View {
     @State private var claim = TitleFocusClaim()
     @State private var host = TitleWindow()
     @FocusState private var focused: Bool
+    @Environment(NotesSplitRouter.self) private var split: NotesSplitRouter?
 
     private func commit() {
         guard commits.editing else { return }
@@ -430,11 +431,15 @@ struct NoteTitleEditor: View {
                     save()
                 }
                 .background(TitleWindowReader(host: host))
+                // The notes list moves no focus to the note's row while the
+                // claim holds (`NotesListFocusGate`, #5100).
+                .onChange(of: claim.holds) { _, holds in split?.claimTitle(of: noteId, holds) }
                 // Leaving the page, or the page reloading under the field,
                 // ends the edit without a focus change; the typed title
                 // still lands (#2680).
                 .onDisappear {
                     claim.end()
+                    split?.claimTitle(of: noteId, false)
                     keepHeld()
                     commit()
                     draftChanged?(nil)
