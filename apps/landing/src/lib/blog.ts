@@ -501,7 +501,7 @@ memry agenda --today`
         heading: 'Why export formats matter: The ENEX and HTML trap',
         paragraphs: [
           'Proprietary note tools intentionally make data export cumbersome to discourage churn. Evernote exports notebooks to `.enex` files — an archaic XML format containing escaped HTML entities, custom XML tags (`<en-note>`), and binary attachments encoded as giant base64 blocks.',
-          'Notion’s export produces zip archives with random 32-character hexadecimal UUID hashes appended to every single file and folder name (for example, `Project Roadmap 8f4a1c2b91d442eaa813c91834e9d012.md`). These hash suffixes break internal page cross-links, rendering wiki-links useless in standard Markdown editors.',
+          'Notion’s export produces zip archives with random 32-character hexadecimal UUID hashes appended to every single file and folder name (for example, `Project Roadmap 8f4a1c2b91d442eaa813c91834e9d012.html`). These hash suffixes break internal page cross-links, rendering wiki-links useless in standard Markdown editors.',
           'A successful, loss-free migration must systematically clean up these artifacts, standardize metadata into standard YAML frontmatter, preserve folder structures, and convert internal URL references into standard `[[Wiki links]]`.'
         ]
       },
@@ -509,16 +509,16 @@ memry agenda --today`
         heading: 'Migrating from Notion to clean Markdown',
         paragraphs: [
           'To migrate a multi-year Notion workspace to an open, local Markdown vault, follow this structured four-step methodology:',
-          '1. Export Workspace Package: In Notion, navigate to Settings & Members → Settings → Export all workspace content. Select "Markdown & CSV" and ensure the "Include subpages" toggle is enabled.',
-          '2. Unzip and Inspect: Extract the archive onto your local drive. Observe how Notion creates nested directories matching your page tree, but litters filenames with hexadecimal UUID hashes.',
-          '3. Automated Hash Stripping & Link Rewriting: Using an automated tool like memrynote’s built-in Notion importer, the system scans the directory tree, strips the 32-character UUID suffixes from file and directory names, translates Notion database properties into clean YAML frontmatter arrays, and rewrites Notion page links into standard `[[Page Name]]` wiki-links.',
-          '4. Attachment Verification: Verify that embedded screenshots, diagrams, and PDF attachments are extracted to relative `./attachments/` paths, ensuring notes render correctly offline in any Markdown editor.'
+          '1. Export from Notion: choose Export, then pick the HTML format with all content and subpages included. The importer reads only the HTML export, not the Markdown & CSV export. Notion produces a .zip, and splits a large export into several parts.',
+          '2. Run the importer: open memrynote → Settings → Import, choose the Notion importer, and select the exported .zip. Leave it zipped, and pick every part of a split export.',
+          '3. What the importer does: it strips the 32-character ID from page and folder names, mirrors your page tree under a Notion folder, rewrites links between pages as `[[Page Name]]` wiki-links, and turns database properties into note properties in YAML frontmatter.',
+          '4. Check attachments: images and files are copied into your vault’s attachments folder and relinked from each note. Open a few notes with images to confirm they render.'
         ],
         bullets: [
-          'Step 1: In Notion, go to Settings & Members → Settings → Export content → Select "Markdown & CSV" with "Include subpages" enabled.',
-          'Step 2: Unzip the export package. Notice that Notion generates hash suffixes on file and folder names.',
-          'Step 3: Use an automated importer (like memrynote’s built-in Notion importer) that automatically strips UUID hashes, converts Notion relation properties to YAML frontmatter, and rewrites Notion page links into `[[Note Name]]` wiki-links.',
-          'Step 4: Verify image and PDF attachments: ensure relative links like `./attachments/diagram.png` point to the local media directory.'
+          'Step 1: In Notion, choose Export, then pick the HTML format with all content and subpages included.',
+          'Step 2: Open memrynote → Settings → Import, choose the Notion importer, and select the exported .zip.',
+          'Step 3: Pages arrive as Markdown notes in a Notion folder, with page links as wiki-links and database properties as note properties.',
+          'Step 4: Open a few notes with images to check that attachments came across.'
         ]
       },
       {
@@ -986,7 +986,7 @@ Referenced in [[Q3 Roadmap]] and [[Security Whitepaper]].`
       {
         question: 'Does MemryNote have a mobile app?',
         answer:
-          'The iPhone app is in TestFlight beta. MemryNote runs on macOS, Windows, and Linux today. There is no Android, iPad, or web app yet.'
+          'MemryNote runs on macOS, Windows, and Linux today. The iPhone app is in TestFlight beta; iPad support is in development. There is no Android or web app yet.'
       }
     ],
     takeaways: [
@@ -999,7 +999,7 @@ Referenced in [[Q3 Roadmap]] and [[Security Whitepaper]].`
       label: 'Read the Security Architecture',
       href: '/security',
       description:
-        'How MemryNote derives keys, encrypts every item, and keeps the sync server blind to your content.'
+        'How MemryNote derives keys, encrypts every item, and what the sync server can still see: item IDs, sizes, change times, and your tag names and folder paths.'
     }
   },
   {
@@ -1034,7 +1034,7 @@ Referenced in [[Q3 Roadmap]] and [[Security Whitepaper]].`
         paragraphs: [
           'memrynote keeps the parts of Notion most people use daily, notes, tasks, and planning, and runs them locally. Notes are Markdown files with frontmatter properties in a vault folder you choose. Tasks live in projects with custom statuses, subtasks, and Kanban, list, and calendar views. A daily journal and a capture inbox sit in the same workspace.',
           'Everything works offline with no account. When you turn on sync, each item is encrypted on your device with XChaCha20-Poly1305 and the server stores your notes only as ciphertext. Local use is free and sync starts at $5 a month. The app is open source and runs on macOS, Windows, and Linux.',
-          'Switching is built in. Export your Notion workspace as Markdown & CSV, then use the Notion importer in memrynote settings. Pages become Markdown notes and databases become structured notes in your vault.'
+          'Switching is built in. Export your Notion workspace as HTML, then use the Notion importer in memrynote → Settings → Import. Pages become Markdown notes in your vault, links between pages become wiki-links, and database properties become note properties. The importer does not read Notion’s Markdown & CSV export.'
         ],
         callout: {
           type: 'note',
