@@ -154,8 +154,12 @@ struct TitleFocusClaimTests {
 struct PressedKeysTests {
     /// `presses` go down, a Return goes down after the first `beforeReturn`,
     /// and the keyboard turns `previous` into each of `texts` in turn.
-    private func keys(_ presses: String, returnAfter beforeReturn: Int, texts: [String], from previous: String = "") -> PressedKeys {
+    private func keys(
+        _ presses: String, returnAfter beforeReturn: Int, texts: [String], from previous: String = "",
+        locale: Locale = Locale(identifier: "en_US")
+    ) -> PressedKeys {
         var keys = PressedKeys()
+        keys.locale = locale
         for (index, key) in presses.enumerated() {
             if index == beforeReturn { keys.returnPressed() }
             keys.pressed(String(key))
@@ -196,6 +200,52 @@ struct PressedKeysTests {
     @Test func a_rewrite_of_a_word_cut_by_the_return_gives_way_to_the_keys_pressed() {
         let keys = keys("title", returnAfter: 5, texts: ["T", "Ti", "To"])
         #expect(keys.restoring("To", end: 2) == "Title")
+    }
+
+    /// A key pressed after the Return that reaches the field before the
+    /// Return comes up lands after the keys the rewrite cut, as it does
+    /// without a rewrite.
+    @Test func a_key_after_a_rewrite_still_lands_in_the_line() {
+        let keys = keys("titlea", returnAfter: 5, texts: ["T", "Ti", "To", "Toa"])
+        #expect(keys.restoring("Toa", end: 3) == "Titlea")
+    }
+
+    /// A Turkish keyboard capitalizes `i` as `İ`.
+    @Test func a_key_capitalized_by_the_keyboards_language_is_its_key() {
+        let keys = keys("istanbul", returnAfter: 8, texts: ["İ", "İs", "İst"], locale: Locale(identifier: "tr_TR"))
+        #expect(keys.restoring("İst", end: 3) == "İstanbul")
+    }
+
+    /// The keyboard delivered the keys the line put back after all, into the
+    /// field while it holds the keys after the Return: they are counted, so
+    /// the field drops them.
+    @Test func keys_the_line_put_back_that_arrive_late_are_counted_once() {
+        var keys = keys("titlex", returnAfter: 5, texts: ["T", "Ti", "Tit", "Tit\n"])
+        #expect(keys.restoring("Tit", end: 3) == "Title")
+        keys.handOff()
+        keys.changed(from: "Tit\n", to: "Tit\nl")
+        keys.changed(from: "Tit\nl", to: "Tit\nle")
+        keys.changed(from: "Tit\nle", to: "Tit\nlex")
+        let taken = keys.takeLate()
+        #expect(taken.arrived == 2)
+        #expect(taken.late == nil)
+        #expect(LineReturn(previous: "Tit", value: "Tit\n")?.kept(in: "Tit\nlex", dropping: 2) == "Titx")
+    }
+
+    @Test func late_keys_wait_only_for_keys_never_pressed_since() {
+        var late = LateKeys(keys: ["l", "e"], presses: [], locale: Locale(identifier: "en_US"))
+        let l = late.arrived("L")
+        #expect(l)
+        #expect(late.waiting)
+        late.pressed("e")
+        let e = late.arrived("e")
+        #expect(!e, "a key pressed since the Return is that key")
+        #expect(!late.waiting)
+        var ended = LateKeys(keys: ["l"], presses: [], locale: Locale(identifier: "en_US"))
+        let x = ended.arrived("x")
+        let after = ended.arrived("l")
+        #expect(!x)
+        #expect(!after, "a late key arrives ahead of every other key")
     }
 
     @Test func keys_pressed_after_the_return_are_not_the_lines() {
@@ -470,6 +520,41 @@ struct NoteTitleBurstTests {
         #expect(seen.3.title == "title", "\(seen.3)")
         #expect(seen.3.body == ["milk"], "\(seen.3)")
         #expect(seen.4 == ["checkListItem"], "\(seen.4 ?? [])")
+    }
+
+    /// #4823: the keyboard delivers `le`, which the title's line put back,
+    /// late into the body after the hand-off: the body drops them, as the
+    /// title has them. Keys the body heard pressed are the user's, typed
+    /// again: those stay.
+    @Test(.timeLimit(.minutes(2)), arguments: [false, true])
+    func keys_the_titles_line_put_back_reach_the_note_once(pressedInBody: Bool) async throws {
+        let seen = try await uninterrupted { f, window, field in
+            for character in "title" { field.next?.pressesBegan([HardwarePress(character)], with: nil) }
+            for character in "tit" { key(String(character), in: window, title: field) }
+            let press = HardwarePress(.keyboardReturnOrEnter, "\r")
+            field.next?.pressesBegan([press], with: nil)
+            field.pressesBegan([press], with: nil)
+            field.pressesEnded([press], with: nil)
+            await until { views(BlockTextView.self, in: window).first?.isFirstResponder == true }
+            let block = views(BlockTextView.self, in: window).first
+            for character in "lex" {
+                if pressedInBody { block?.keyWentDown?(String(character)) }
+                key(String(character), in: window, title: field)
+            }
+            let body = block?.text
+            block?.resignFirstResponder()
+            let expected = pressedInBody ? ["lex"] : ["x"]
+            for _ in 0..<300 {
+                let now = try await stored(f)
+                if now.title == "title", now.body == expected { break }
+                try await Task.sleep(for: .milliseconds(20))
+            }
+            return (body, try await stored(f))
+        }
+        let expected = pressedInBody ? "lex" : "x"
+        #expect(seen.0 == expected, "the body shows \(seen.0 ?? "nil")")
+        #expect(seen.1.title == "title", "\(seen.1)")
+        #expect(seen.1.body == [expected], "\(seen.1)")
     }
 
     /// Runs `scenario` on a new note until no other suite made its window

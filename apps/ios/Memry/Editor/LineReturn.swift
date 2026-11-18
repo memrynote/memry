@@ -64,9 +64,10 @@ struct LineReturn: Equatable {
     }
 
     /// The field showing `text` as one line: `line` with the keys typed
-    /// since the Return in the Return's place, or `nil` as for `held`.
-    func kept(in text: String) -> String? {
-        guard let held = held(in: text) else { return nil }
+    /// since the Return in the Return's place, but the first `dropping`, or
+    /// `nil` as for `held`.
+    func kept(in text: String, dropping: Int = 0) -> String? {
+        guard let held = held(in: text)?.dropFirst(dropping) else { return nil }
         let tail = shown.firstIndex(of: "\n").map { shown.distance(from: $0, to: shown.endIndex) - 1 } ?? 0
         return String(line.dropLast(tail)) + held + String(line.suffix(tail))
     }
@@ -99,19 +100,25 @@ struct PressedKeys {
     /// land.
     private var caret: Int?
     /// The text as the keyboard rewrote it while keys pressed before the
-    /// Return were still queued, with the skipped keys put back, and its
-    /// caret. The rewrite saw part of a word, so the presses hold the line
-    /// from here on.
+    /// Return were still queued, with the skipped keys put back and the
+    /// keys inserted at its caret since, and that caret. The rewrite saw
+    /// part of a word, so the presses hold the line from here on.
     private var rewritten: (text: String, caret: Int)?
+    /// The keys the last Return's line put back, while they may still
+    /// arrive, and how many arrived in the field since that Return.
+    private var late = LateKeys()
+    private var lateArrived = 0
+    /// The keyboard's language, which decides a key's case: `i` is `İ` in
+    /// Turkish.
+    var locale = Locale.current
 
     /// A key that types `characters` went down. A key with no text of its
     /// own (an arrow, Backspace, Tab, Escape) is an edit the presses cannot
     /// follow.
     mutating func pressed(_ characters: String) {
-        guard characters.count == 1, let key = characters.first,
-              key.unicodeScalars.allSatisfy({ ![.control, .privateUse].contains($0.properties.generalCategory) })
-        else { return reset() }
+        guard let key = LateKeys.key(characters) else { return reset() }
         queued.append((key, false))
+        late.pressed(characters)
     }
 
     /// A Return went down: the keys queued so far belong to its line.
@@ -121,7 +128,6 @@ struct PressedKeys {
 
     /// The field's text went from `previous` to `value`.
     mutating func changed(from previous: String, to value: String) {
-        guard rewritten == nil else { return }
         let old = Array(previous)
         let new = Array(value)
         guard old != new else { return }
@@ -132,10 +138,12 @@ struct PressedKeys {
               old[old.count - 1 - suffix] == new[new.count - 1 - suffix] { suffix += 1 }
         // Only keys inserted at one place, as the keyboard inserts them.
         guard prefix + suffix == old.count else {
+            late = LateKeys()
+            guard rewritten == nil else { return }
             // An autocorrection that the key it inserts last triggered, as
             // Space does.
             if let trigger = new[..<(new.count - suffix)].last, let first = queued.first,
-               first.key.lowercased() == trigger.lowercased(), skipped.allSatisfy({ $0.offset <= prefix }) {
+               same(first.key, trigger), skipped.allSatisfy({ $0.offset <= prefix }) {
                 queued.removeFirst()
                 caret = new.count - suffix
                 return
@@ -146,18 +154,42 @@ struct PressedKeys {
             }
             return reset()
         }
-        for (index, key) in new[prefix ..< new.count - suffix].enumerated() {
-            let offset = prefix + index
+        var inserted = new[prefix ..< new.count - suffix]
+        // Keys the last Return's line put back, delivered after all.
+        while let key = inserted.first, late.arrived(key) {
+            inserted = inserted.dropFirst()
+            lateArrived += 1
+        }
+        if let rewritten { return insert(inserted, into: rewritten, tail: suffix) }
+        for (index, key) in zip(inserted.indices, inserted) {
             // The Return's own newline is no pressed key.
             if key == "\n" { continue }
             // Autocapitalization changes the case of a pressed key.
-            guard let match = queued.firstIndex(where: { $0.key.lowercased() == key.lowercased() }),
+            guard let match = queued.firstIndex(where: { same($0.key, key) }),
                   queued[..<match].allSatisfy(\.beforeReturn)
             else { return reset() }
-            skipped += queued[..<match].map { (offset, $0.key) }
+            skipped += queued[..<match].map { (index, $0.key) }
             queued.removeFirst(match + 1)
-            caret = offset + 1
+            caret = index + 1
         }
+    }
+
+    /// Keys inserted after a rewrite go into it when they land at its caret,
+    /// after the keys pressed before them.
+    private mutating func insert(_ keys: ArraySlice<Character>, into rewritten: (text: String, caret: Int), tail: Int) {
+        var chars = Array(rewritten.text)
+        var at = rewritten.caret
+        guard tail == chars.count - at else { return }
+        for key in keys where key != "\n" {
+            var typed = [key]
+            if let match = queued.firstIndex(where: { same($0.key, key) }), queued[..<match].allSatisfy(\.beforeReturn) {
+                typed = queued[..<match].map(\.key) + typed
+                queued.removeFirst(match + 1)
+            }
+            chars.insert(contentsOf: typed, at: at)
+            at += typed.count
+        }
+        self.rewritten = (String(chars), at)
     }
 
     /// `text`, the field's text as a Return ends the line, with the keys
@@ -172,6 +204,27 @@ struct PressedKeys {
         return String(chars)
     }
 
+    /// The line went to its Return: the keys `restoring` put back in it may
+    /// still arrive, ahead of the keys pressed since.
+    mutating func handOff() {
+        let back = queued.prefix(while: \.beforeReturn).map(\.key)
+        let since = queued.dropFirst(back.count).map(\.key)
+        reset()
+        late = LateKeys(keys: back, presses: since, locale: locale)
+        lateArrived = 0
+    }
+
+    /// How many of the keys the last Return's line put back arrived in the
+    /// field since, and the ones that may still arrive, wherever the caret
+    /// goes. The field stops waiting for them.
+    mutating func takeLate() -> (arrived: Int, late: LateKeys?) {
+        defer {
+            late = LateKeys()
+            lateArrived = 0
+        }
+        return (lateArrived, late.waiting ? late : nil)
+    }
+
     /// `text` with the skipped keys back in their places.
     private func restored(_ text: String) -> String {
         var chars = Array(text)
@@ -182,10 +235,77 @@ struct PressedKeys {
         return String(chars)
     }
 
+    private func same(_ a: Character, _ b: Character) -> Bool {
+        LateKeys.same(a, b, in: locale)
+    }
+
     mutating func reset() {
         queued = []
         skipped = []
         caret = nil
         rewritten = nil
+        late = LateKeys()
+    }
+}
+
+/// Keys a Return's line put back that the keyboard had not inserted
+/// (`PressedKeys`). Had it only delayed them, they arrive after the Return,
+/// in press order and ahead of every key pressed since: in the field while
+/// it holds the keys after the Return, or in the block that took the caret.
+/// Such a key is dropped there, so the note does not get it twice. A key
+/// pressed since the Return can be the same key: one that arrives while a
+/// press of it is pending is kept, as a key typed twice is visible and a
+/// key lost is not.
+struct LateKeys {
+    private var keys: [Character] = []
+    /// Keys pressed since the Return.
+    private var presses: [Character] = []
+    private var locale = Locale.current
+
+    init() {}
+
+    init(keys: [Character], presses: [Character], locale: Locale) {
+        self.keys = keys
+        self.presses = presses
+        self.locale = locale
+    }
+
+    /// Whether a key may still arrive.
+    var waiting: Bool { !keys.isEmpty }
+
+    /// A key that types `characters` went down. A key with no text of its
+    /// own is an edit the keys cannot follow: none of them is awaited after
+    /// it.
+    mutating func pressed(_ characters: String) {
+        guard waiting, !characters.isEmpty else { return }
+        guard let key = Self.key(characters) else { return keys = [] }
+        presses.append(key)
+    }
+
+    /// `key` was inserted: whether it is the next of the keys put back. Any
+    /// other key ends the wait, as they would have arrived before it.
+    mutating func arrived(_ key: Character) -> Bool {
+        guard let next = keys.first else { return false }
+        guard Self.same(next, key, in: locale), !presses.contains(where: { Self.same($0, key, in: locale) }) else {
+            keys = []
+            return false
+        }
+        keys.removeFirst()
+        return true
+    }
+
+    /// The text key typing `characters`, or `nil` for a key with no text of
+    /// its own.
+    static func key(_ characters: String) -> Character? {
+        guard characters.count == 1, let key = characters.first,
+              key.unicodeScalars.allSatisfy({ ![.control, .privateUse].contains($0.properties.generalCategory) })
+        else { return nil }
+        return key
+    }
+
+    /// Whether `a` and `b` are one key in either case: autocapitalization
+    /// changes the case of a pressed key, by the keyboard's language.
+    static func same(_ a: Character, _ b: Character, in locale: Locale) -> Bool {
+        String(a).compare(String(b), options: .caseInsensitive, locale: locale) == .orderedSame
     }
 }

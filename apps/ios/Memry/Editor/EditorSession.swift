@@ -153,6 +153,9 @@ final class EditorSession {
     @ObservationIgnored var returnBurst: ReturnBurst?
     /// Keys typed after the title's Return, held for the body (#4705).
     @ObservationIgnored var titleBurst: TitleBurst?
+    /// The keys the title's Return put back in its line that the keyboard
+    /// may still deliver to the block that took the caret (#4823).
+    @ObservationIgnored var lateKeys: (blockId: String, keys: LateKeys)?
     /// A column list just inserted, by its `id` prop: the caret goes to its
     /// first block once a redraw shows the ids the core minted for it
     /// (`resolveColumnFocus`).
@@ -823,7 +826,7 @@ final class EditorSession {
         guard let field, let tagTrigger else { return }
         let textView = field.textView
         let range = tagTrigger.range
-        let typing = Self.typing(without: range, in: field)
+        let typing = Self.typing(without: range, in: field, query: true)
         let after = NSMaxRange(range)
         let string = textView.text as NSString
         if after >= string.length || string.character(at: after) != 32 {
@@ -998,6 +1001,8 @@ final class EditorSession {
     }
 
     private func rewriteDate(_ request: DateMentionEditRequest, at range: NSRange, in field: BlockField, to value: DateMentionValue) {
+        // Done with nothing changed: no write, and no empty undo step (#4764).
+        guard value != request.value else { return }
         // Held now, as `commit` holds it: a page torn down drops its model.
         guard let model else {
             Log.storage.error("a date edit had no editor model")
@@ -1221,8 +1226,8 @@ final class EditorSession {
     /// as desktop's menus insert it.
     func choose(_ suggestion: EditorSuggestion) {
         if case let .slash(row) = suggestion.kind { return chooseSlash(row) }
-        guard let trigger else { return }
-        insertInline(suggestion.kind, replacing: trigger.range)
+        guard let field, let trigger else { return }
+        insertInline([suggestion.kind], replacing: trigger.range, in: field, query: true)
     }
 
     /// `range` of the focused block replaced with a link or date node and a
@@ -1237,10 +1242,13 @@ final class EditorSession {
     /// committed in `field` is written first, so the nodes land in it, as
     /// its own undo step: undo takes back the nodes and not the typing
     /// before them (#4796). The part of `range` that typing wrote goes with
-    /// that step, and a part already committed with the nodes'.
-    func insertInline(_ kinds: [EditorSuggestion.Kind], replacing range: NSRange, in field: BlockField) {
+    /// that step, and a part already committed with the nodes'. `query`:
+    /// `range` is a typed trigger query, not a selection or a drop point.
+    func insertInline(
+        _ kinds: [EditorSuggestion.Kind], replacing range: NSRange, in field: BlockField, query: Bool = false
+    ) {
         let textView = field.textView
-        let typing = Self.typing(without: range, in: field)
+        let typing = Self.typing(without: range, in: field, query: query)
         textView.textStorage.deleteCharacters(in: range)
         field.dirty = true
         // The trailing spaces go in as text first, so each node lands before
@@ -1311,10 +1319,20 @@ final class EditorSession {
 
     /// `field`'s text without the part of `range` that typing wrote since
     /// its base: a pick's `typing` (`commit`).
-    private static func typing(without range: NSRange, in field: BlockField) -> String {
+    private static func typing(without range: NSRange, in field: BlockField, query: Bool) -> String {
         let text = field.textView.text ?? ""
+        let span = Self.typed(since: field.base, in: text)
+        // The prefix/suffix guess places typing that repeats the text beside
+        // it at the wrong end (`#ta` typed before `#task`). `range` itself is
+        // the typing when taking it out leaves exactly the rest (#4810). Only
+        // a query is known to be typed: a selection can cover committed text
+        // the typing repeats (REVIEW-4831).
+        let removed = (text as NSString).replacingCharacters(in: range, with: "")
+        if query, range.length > 0, Self.typed(since: field.base, in: removed).length == span.length - range.length {
+            return removed
+        }
         // No intersection leaves its location undefined.
-        let typed = NSIntersectionRange(range, Self.typed(since: field.base, in: text))
+        let typed = NSIntersectionRange(range, span)
         return typed.length == 0 ? text : (text as NSString).replacingCharacters(in: typed, with: "")
     }
 

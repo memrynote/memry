@@ -98,6 +98,7 @@ final class JournalStore {
             days[date] = .some(day)
             return day
         } catch {
+            guard !Task.isCancelled else { return nil }
             report(error)
             return nil
         }
@@ -143,6 +144,7 @@ final class JournalStore {
             streak = record.streak
             return record
         } catch {
+            guard !Task.isCancelled else { return nil }
             report(error)
             return nil
         }
