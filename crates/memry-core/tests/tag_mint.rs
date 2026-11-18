@@ -209,7 +209,16 @@ fn a_dropped_mint_leaves_the_tag_live_when_a_live_spelling_survives() {
             .call_blocking(|conn| seed(conn, "desk", 6))
             .expect("seeded");
         assert!(seeded.is_empty(), "the mint is dropped");
-        let live: Vec<String> = colors(&vault).into_iter().map(|(_, color)| color).collect();
-        assert_eq!(live, ["teal"], "deleted pulled first: {deleted_first}");
+        assert_eq!(
+            colors(&vault),
+            [("IDEA".to_owned(), "teal".to_owned())],
+            "deleted pulled first: {deleted_first}"
+        );
+        // The row is the live record's, so a recolour reaches it.
+        vault
+            .db_handle()
+            .call_blocking(|conn| set_color(conn, "idea", "red", "desk", 7))
+            .expect("recoloured");
+        assert_eq!(colors(&vault), [("IDEA".to_owned(), "red".to_owned())]);
     }
 }

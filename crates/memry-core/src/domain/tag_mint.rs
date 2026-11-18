@@ -45,7 +45,7 @@ const PALETTE: [&str; 24] = [
 pub fn define_used(conn: &Connection, tags: &[String], now_ms: i64) -> Result<usize, StorageError> {
     // Read and written in one transaction: a record that lands meanwhile is never minted over.
     let tx = conn.unchecked_transaction().map_err(failed)?;
-    let mut known: BTreeSet<String> = records(&tx)?.iter().map(|id| tag_key(id)).collect();
+    let mut known: BTreeSet<String> = records(&tx)?.iter().map(|(id, _)| tag_key(id)).collect();
     known.extend(definitions(&tx)?.into_keys());
     // Named by the tag's key, as `ensureTagDefinitions` hands `getOrCreateTag` `tagKey(tag)`.
     let missing: Vec<String> = tags
@@ -88,9 +88,9 @@ pub fn seed(conn: &Connection, device_id: &str, now_ms: i64) -> Result<Vec<Strin
     let mut seeded = Vec::new();
     for id in mints(&tx)? {
         let key = tag_key(&id);
-        let others: Vec<&String> = records
+        let others: Vec<&(String, bool)> = records
             .iter()
-            .filter(|other| **other != id && tag_key(other) == key)
+            .filter(|(other, _)| *other != id && tag_key(other) == key)
             .collect();
         if others.is_empty() {
             let clock = next_clock(
@@ -115,25 +115,33 @@ pub fn seed(conn: &Connection, device_id: &str, now_ms: i64) -> Result<Vec<Strin
         .map_err(failed)?;
         // The projection keys names without ASCII case, so the mint's row is the one the other
         // spelling projected into, under the mint's name: it is made again from the records.
+        // The row keeps the name of the record that made it, so only the live records make it
+        // when one is live: a recolour or a delete by name then reaches a live record.
         tx.execute("DELETE FROM tag_definitions WHERE name = ?1", [&id])
             .map_err(failed)?;
-        for other in others {
-            project(&tx, other, now_ms)?;
+        let live = others.iter().any(|(_, deleted)| !deleted);
+        for (other, deleted) in others {
+            if !(live && *deleted) {
+                project(&tx, other, now_ms)?;
+            }
         }
     }
     tx.commit().map_err(failed)?;
     Ok(seeded)
 }
 
-/// Every `tag_definition` record's id: live, deleted, corrupt, or not yet fetched. Deleted ones
-/// come first: [`seed`] projects the records of one key in this order into their one row (the
-/// projection folds case), so a live record, projected last, leaves the row live.
-fn records(conn: &Connection) -> Result<Vec<String>, StorageError> {
-    ids(
-        conn,
-        "SELECT item_id FROM sync_items WHERE item_type = ?1
-          ORDER BY deleted_at IS NULL, rowid",
-    )
+/// Every `tag_definition` record's id, and whether it is deleted: live, deleted, corrupt, or not
+/// yet fetched.
+fn records(conn: &Connection) -> Result<Vec<(String, bool)>, StorageError> {
+    let mut statement = conn
+        .prepare("SELECT item_id, deleted_at IS NOT NULL FROM sync_items WHERE item_type = ?1")
+        .map_err(failed)?;
+    let records = statement
+        .query_map([DEFINITION_TYPE], |row| Ok((row.get(0)?, row.get(1)?)))
+        .map_err(failed)?
+        .collect::<Result<_, _>>()
+        .map_err(failed)?;
+    Ok(records)
 }
 
 /// The live mints: records this device wrote with no clock, which no pull touched.
