@@ -108,12 +108,12 @@ pub fn preview_kind_for_tool(tool: &str) -> PreviewKind {
         .map_or(PreviewKind::None, |(_, kind)| *kind)
 }
 
-/// What each `vault_desktop_write` operation does, so "always allow" on the tool never covers a
-/// delete. `Loss` destroys something the app offers no way back to (no archive, no version), or
-/// overwrites a file outside the vault (the exports' `outputPath`). Everything else is `Fields`:
-/// creates, updates, moves, archives, toggles, settings writes, tag and link removal (as
-/// `vault_remove_tag`), and `notes.restoreVersion`, which snapshots the current body first.
-/// Electron classifies the whole tool as `fields`; this split is a Tauri-only departure (#5143).
+/// What each `vault_desktop_write` operation does, so neither "always allow" on the tool nor
+/// auto-accept covers a delete. `Loss` destroys something the app offers no way back to (no
+/// archive, no version). Everything else is `Fields`: creates, updates, moves, archives,
+/// toggles, settings writes, exports, tag and link removal (as `vault_remove_tag`), and
+/// `notes.restoreVersion`, which snapshots the current body first. Electron classifies the
+/// whole tool as `fields`; this split is a Tauri-only departure (#5143).
 const DESKTOP_WRITE_KINDS: [(&str, PreviewKind); 165] = {
     use PreviewKind::{Fields, Loss};
     [
@@ -144,8 +144,8 @@ const DESKTOP_WRITE_KINDS: [(&str, PreviewKind); 165] = {
         ("notes.setLocalOnly", Fields),
         ("notes.setCalendarPropertyVisibility", Fields),
         ("notes.applyTemplate", Fields),
-        ("notes.exportPdf", Loss),  // overwrites the file at `outputPath`
-        ("notes.exportHtml", Loss), // overwrites the file at `outputPath`
+        ("notes.exportPdf", Fields),
+        ("notes.exportHtml", Fields),
         ("tasks.create", Fields),
         ("tasks.update", Fields),
         ("tasks.delete", Loss), // the task
@@ -347,13 +347,15 @@ pub enum Gate {
 
 /// `decideToolGate` without `pendingDecision`, which Electron's gate always passes as null.
 pub fn decide_tool_gate(input: &GateInput<'_>) -> Gate {
-    if input.mode == ToolApprovalMode::AlwaysAccept {
+    let preview_kind = preview_kind_for_call(input.tool, input.args);
+    // Tauri-only (#5143): a delete through the desktop API asks even in auto-accept mode.
+    let desktop_delete = input.tool == "vault_desktop_write" && preview_kind == PreviewKind::Loss;
+    if input.mode == ToolApprovalMode::AlwaysAccept && !desktop_delete {
         return Gate::AutoApprove;
     }
     if catalog().get(input.tool).map(|spec| spec.class) == Some(ToolClass::Read) {
         return Gate::AutoApprove;
     }
-    let preview_kind = preview_kind_for_call(input.tool, input.args);
     let await_user = Gate::AwaitUser {
         requires_diff: preview_kind != PreviewKind::None,
         preview_kind,

@@ -166,6 +166,32 @@ async fn allow_always_on_desktop_writes_never_covers_a_delete() {
     }
 }
 
+/// Departure from Electron (#5143): auto-accept writes a desktop rename with no card, but a
+/// delete through the desktop API still asks.
+#[tokio::test]
+async fn auto_accept_never_covers_a_desktop_delete() {
+    let mut vault = vault();
+    *vault.host.mode.lock().unwrap() = ToolApprovalMode::AlwaysAccept;
+    let grant = vault.gate.mint_turn_write_grant("conversation-1");
+    assert_eq!(
+        refusal(&vault.call(DESKTOP_RENAME, grant.secret()).await),
+        None
+    );
+    let mut call = vault.spawn(DESKTOP_DELETE, grant.secret());
+    let card = vault.card(&mut call).await;
+    assert_eq!(card.preview_kind, PreviewKind::Loss);
+    vault
+        .gate
+        .resolve_approval(&card.tool_call_id, ApproveToolDecision::Allow);
+    assert_eq!(refusal(&call.await.unwrap()), None);
+    let operations: Vec<_> = vault
+        .written()
+        .into_iter()
+        .map(|(_, args)| args["operation"].clone())
+        .collect();
+    assert_eq!(operations, ["notes.rename", "notes.delete"]);
+}
+
 #[tokio::test(start_paused = true)]
 async fn an_unanswered_approval_expires_after_30_minutes_and_writes_nothing() {
     let mut vault = vault();

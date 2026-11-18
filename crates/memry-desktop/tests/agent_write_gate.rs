@@ -330,8 +330,9 @@ mod order {
         );
     }
 
-    /// Departure from Electron (#5143): "always allow" on `vault_desktop_write` never covers a
-    /// delete, at either scope.
+    /// Departure from Electron (#5143): neither "always allow" on `vault_desktop_write`, at either
+    /// scope, nor auto-accept covers a delete through it. Exports and settings writes are no
+    /// deletes.
     #[test]
     fn a_desktop_delete_asks_whatever_was_trusted() {
         let tool = "vault_desktop_write";
@@ -344,7 +345,7 @@ mod order {
             "journal.deleteEntry",
             "notes.deleteVersion",
         ];
-        for operation in deletes.into_iter().chain(["notes.exportPdf", "unknown.op"]) {
+        for operation in deletes.into_iter().chain(["unknown.op"]) {
             for (trust, vault) in [(&[tool][..], &[][..]), (&[][..], &[tool][..])] {
                 assert_eq!(
                     decide_call(tool, &call(operation), trust, vault, Ask),
@@ -352,18 +353,33 @@ mod order {
                     "{operation} was trusted"
                 );
             }
+            assert_eq!(
+                decide_call(tool, &call(operation), &[], &[], AlwaysAccept),
+                asks(PreviewKind::Loss),
+                "{operation} was auto-accepted"
+            );
         }
-        let rename = call("notes.rename");
+        for operation in ["notes.rename", "notes.exportPdf", "settings.set"] {
+            let fields = call(operation);
+            assert_eq!(
+                decide_call(tool, &fields, &[], &[], Ask),
+                asks(PreviewKind::Fields)
+            );
+            for (trust, vault, mode) in [
+                (&[tool][..], &[][..], Ask),
+                (&[][..], &[tool][..], Ask),
+                (&[][..], &[][..], AlwaysAccept),
+            ] {
+                assert_eq!(
+                    decide_call(tool, &fields, trust, vault, mode),
+                    Gate::AutoApprove,
+                    "{operation}"
+                );
+            }
+        }
+        // Only the desktop API's deletes ask in auto-accept mode; Electron's rule stays for the rest.
         assert_eq!(
-            decide_call(tool, &rename, &[], &[], Ask),
-            asks(PreviewKind::Fields)
-        );
-        assert_eq!(
-            decide_call(tool, &rename, &[tool], &[], Ask),
-            Gate::AutoApprove
-        );
-        assert_eq!(
-            decide_call(tool, &rename, &[], &[tool], Ask),
+            decide("vault_delete_note", &[], &[], AlwaysAccept),
             Gate::AutoApprove
         );
     }
@@ -389,7 +405,7 @@ mod order {
                 preview_kind_for_call("vault_desktop_write", &call) == PreviewKind::Loss
             })
             .count();
-        assert_eq!(losses, 29);
+        assert_eq!(losses, 27);
     }
 
     #[test]
