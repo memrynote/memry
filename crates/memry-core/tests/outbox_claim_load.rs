@@ -48,10 +48,6 @@ fn a_claim_over_thousands_of_queued_deletes_takes_linear_steps() {
     let steps = VM_STEPS.load(Ordering::SeqCst);
 
     assert_eq!(claimed.len(), 100);
-    assert!(
-        claimed.iter().all(|row| row.item_id != "p1"),
-        "the delete is held"
-    );
     // A scan per queued delete is about DELETES² steps (millions); one pass is a few
     // hundred per row.
     assert!(

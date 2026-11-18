@@ -221,7 +221,7 @@ plaintext in `data.db`. The exception is bounded:
   (`crates/memry-core/src/domain/agent_conversation/merge.rs:69-70`,
   `:137-164`). A push holds the row in the outbox with a backoff, never sends
   it sealed and never retires it, as it does with no key installed
-  (`crates/memry-core/src/sync/push.rs:248-260`, `:338-369`). Electron
+  (`crates/memry-core/src/sync/push.rs:249-261`, `:341-372`). Electron
   likewise never reinterprets such a row: when the vault key changes it
   deletes the agent rows (`apps/desktop/src/main/crypto/vault-key-state.ts:35-62`,
   `:95-99`, `:150-162`).
@@ -230,7 +230,7 @@ plaintext in `data.db`. The exception is bounded:
   rules 3 and 4 hold for what leaves the device. A pending record is already
   the wire value and goes as stored, with or without a key
   (`crates/memry-core/src/crypto/agent_payload.rs:99-121`,
-  `crates/memry-core/src/sync/push.rs:365`).
+  `crates/memry-core/src/sync/push.rs:368`).
 - **Installing a key** through `Vault::set_at_rest_key` binds the vault's local
   key verifier (chapter 01 §1.4.2, `meta` key `vault.crypto.verifier.v1`) to
   the first key installed when none is stored, in the same call that checks

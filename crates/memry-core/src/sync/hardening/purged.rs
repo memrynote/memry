@@ -76,7 +76,7 @@ pub(crate) fn cursor_and_from_zero(
 }
 
 /// Ends a run from cursor 0: called in the transaction that lands a page at
-/// the head that was not refused.
+/// the head, a refused one included, since the cursor moves past it.
 pub(crate) fn end_from_zero(conn: &Connection) -> Result<(), StorageError> {
     conn.execute("DELETE FROM meta WHERE key = ?1", params![META_FROM_ZERO])
         .map_err(|error| StorageError::Failed {

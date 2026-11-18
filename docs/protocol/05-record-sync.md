@@ -1058,7 +1058,8 @@ the page with the cursor held (`crates/memry-core/src/sync/driver/cipher.rs:164`
 (`purged.rs:295`), then the signed-tombstone apply. Every id a
 `purgedTombstones` entry names is kept out of the page's untyped deletes
 (`crates/memry-core/src/sync/pull.rs:404`). A run that started from cursor 0
-applies none until a page that is not refused lands at the head. The core keeps
+applies none until a page lands at the head, a refused one included, since the
+cursor moves past it (`crates/memry-core/src/sync/pull.rs:429`). The core keeps
 that state in `meta` (`sync.purged_from_zero`, `purged.rs:67`), set when a page
 is read from cursor 0 and cleared in the transaction that lands the head
 (`crates/memry-core/src/sync/note_body_feed.rs:428`), so it holds across the
@@ -1078,7 +1079,7 @@ property type's promotion included
 (`crates/memry-core/src/domain/property_admin/learned.rs:103`). The server
 refuses that promotion over a marker with `SYNC_DELETE_WINS`, and the core
 tombstones the local record in the same transaction as the ack
-(`crates/memry-core/src/sync/push.rs:305-309`), unless a newer local change is
+(`crates/memry-core/src/sync/push.rs:314-320`, `:338`), unless a newer local change is
 queued for it. A learned name therefore never brings back a deleted definition
 (#4025).
 
@@ -1187,12 +1188,17 @@ paths (chapter 13 §13.6). An id-only key made a project and a tag both named
 (`apps/desktop/src/main/sync/engine/sync-context.ts:118-124`).
 
 The Rust core's desktop driver runs the manifest check at most every 30
-minutes (`crates/memry-core/src/sync/hardening/manifest.rs:47`), diffs on
-`(type, id)` with a note and a journal of one id as one item (`manifest.rs:158`),
-pulls by id a live server row it holds no row of (`manifest.rs:175-193`), and
+minutes (`crates/memry-core/src/sync/hardening/manifest.rs:51`), diffs on
+`(type, id)` with a note and a journal of one id as one item (`manifest.rs:165`),
+pulls by id a live server row it holds no row of (`manifest.rs:182-200`), and
 queues as `create` a live clocked local row the server does not list, only of
-the types in `REUPLOADED` (`manifest.rs:53`): none the server re-creates over a
-purged tombstone. Electron re-uploads those too; the core does not yet.
+the types in `REUPLOADED` (`manifest.rs:57`). Notes, journals and bookmarks are
+among them, as in Electron; a local-only note and a large-file note are not
+(`manifest.rs:214`). Of the other types the server re-creates over a purged
+tombstone, Electron re-uploads tag and property definitions and canvas folders;
+the core does not yet. A `SYNC_DELETE_WINS` refusal of a re-uploaded note,
+journal or bookmark is acked and the item left to the pulled tombstone, as
+Electron leaves every one (`crates/memry-core/src/sync/push.rs:314-320`).
 
 ## 5.16 Clock skew
 

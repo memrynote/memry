@@ -260,7 +260,7 @@ updated (`apps/desktop/src/main/sync/websocket.ts:181-203`, where 4004 clears
 `shouldBeConnected` and 4009 sets `versionRejected`). The Rust core keeps the
 latch on `VaultSync`, which outlives the per-foreground socket the shell mints
 and is dropped on sign-out (`crates/memry-core/src/api/sync/mod.rs:298`,
-`crates/memry-core/src/sync/socket_run.rs:128`).
+`crates/memry-core/src/sync/socket_run.rs:133`).
 
 ## 9.10 Reconnect and backoff — Q09.4
 
@@ -278,28 +278,29 @@ adopts it:
 delay = min(BASE * 2^attempt + random()*JITTER, MAX)
 ```
 
-(`apps/desktop/src/main/sync/websocket.ts:348-352`), with `attempt` incremented
-per scheduled reconnect (`:354`) and **reset to zero on a successful open**.
+(`apps/desktop/src/main/sync/websocket.ts:349-353`), with `attempt` incremented
+per scheduled reconnect (`:355`) and **reset to zero on a successful open**.
 
 A reconnect MUST NOT be scheduled when any of these latches is set:
 the client no longer wants a connection, the handshake was rejected `401` or
 `403`, the version was rejected (a `426` handshake or a 4009 close), or
-transport pinning failed (`apps/desktop/src/main/sync/websocket.ts:344`; the handshake
-statuses set their latches at `:211-238`).
-A `403` handshake is §9.9's 4004 met before the upgrade: an unknown or revoked
-device (§9.2), which reconnecting cannot fix. A reconnect MUST only fire when
-the device believes it is online (`:358`).
+transport pinning failed (`apps/desktop/src/main/sync/websocket.ts:344-346`; the handshake
+statuses set their latches at `:212-239`).
+A `403` handshake is an unknown or revoked device (§9.2), or an edge in front
+of the server refusing the upgrade; reconnecting fixes neither, so it latches,
+but it is not §9.9's 4004 (below). A reconnect MUST only fire when the device
+believes it is online (`:359`).
 
 The Rust core learns the handshake's status from the shell as
-`TransportError::HandshakeRejected` (`crates/memry-core/src/api/errors.rs:179`).
+`TransportError::HandshakeRejected` (`crates/memry-core/src/api/errors.rs:183`).
 It latches `403` and `426` like their in-socket counterparts 4004 and 4009, and
 ends the run on `401` without latching, so the next foreground tries again
-(`crates/memry-core/src/sync/socket.rs:349`, `:366`). It reports a `403` as
+(`crates/memry-core/src/sync/socket.rs:346-351`, `:364`). It reports a `403` as
 `Terminal::HandshakeForbidden`, apart from 4004's `Terminal::DeviceRevoked`
-(`:350`): an edge in front of the server can refuse a handshake `403` too, so
+(`:347-348`): an edge in front of the server can refuse a handshake `403` too, so
 a client MUST NOT treat it as a revoked device. Desktop turns the socket off and
 leaves revocation to the HTTP path's `403 AUTH_DEVICE_REVOKED`
-(`apps/desktop/src/main/sync/websocket.ts:218-224`). A handshake with neither
+(`apps/desktop/src/main/sync/websocket.ts:219-224`). A handshake with neither
 an open nor an error after `HANDSHAKE_TIMEOUT_MS` (15 000) is dropped and
 retried along the ladder (`crates/memry-core/src/sync/socket_run.rs:39`,
 `:166`).

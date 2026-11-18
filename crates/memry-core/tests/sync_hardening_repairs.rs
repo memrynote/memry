@@ -3,9 +3,10 @@
 //!
 //! - The manifest check pulls a live server row this device holds no row of,
 //!   by id, and queues a live clocked local row the server does not list as
-//!   `create`; never a row held here in any state, a refused or permanently
-//!   quarantined one, `task_activity`, or a type the server re-creates over a
-//!   purged tombstone (notes among them). At most once per 30 minutes.
+//!   `create`, notes, journals and bookmarks included (#4785); never a row
+//!   held here in any state, a refused or permanently quarantined one,
+//!   `task_activity`, a local-only note or a large-file note. At most once per
+//!   30 minutes. A lost create goes out again through the driver's passes.
 //! - A reconnect more than a day after the last successful pull reads the
 //!   record feed from the start; less than a day keeps the cursor. Through the
 //!   desktop driver's pass, on `driver_fakes`'s server.
@@ -30,7 +31,7 @@ use memry_core::protocol::types::Declaration;
 use memry_core::storage::{Db, open_data};
 use memry_core::sync::driver::progress::SilentInitialSync;
 use memry_core::sync::first_sync_store::read_meta;
-use memry_core::sync::hardening::manifest::{ManifestCheck, ManifestOutcome};
+use memry_core::sync::hardening::manifest::ManifestCheck;
 use memry_core::sync::pull::{PullLoop, RecordCipher};
 use memry_core::sync::store::{self, RECORD_CURSOR_SCOPE};
 use serde_json::{Value as Json, json};
@@ -202,10 +203,26 @@ async fn a_live_server_row_held_nowhere_here_is_pulled_by_id() {
 }
 
 #[tokio::test]
-async fn a_live_clocked_task_the_server_lacks_is_queued_as_create_and_a_note_is_not() {
+async fn a_live_clocked_row_the_server_lacks_is_queued_as_create_unless_it_stays_here() {
     let db = scratch_db();
-    pull_live(&db, vec![envelope("t1", "task"), envelope("n1", "note")]).await;
+    pull_live(
+        &db,
+        vec![
+            envelope("t1", "task"),
+            envelope("n1", "note"),
+            envelope("j1", "journal"),
+            envelope("n2", "note"),
+            envelope("n3", "note"),
+        ],
+    )
+    .await;
     assert!(queued(&db).is_empty(), "pulled rows owe nothing");
+    exec(
+        &db,
+        "INSERT INTO note_files (note_id, path, local_only, indexed_at)
+         VALUES ('n2', 'n2.md', 1, 0);
+         INSERT INTO note_large_files (note_id) VALUES ('n3');",
+    );
     let transport = FakeTransport::new(vec![response(200, &manifest(&[]))]);
 
     let outcome = ManifestCheck::default()
@@ -214,17 +231,72 @@ async fn a_live_clocked_task_the_server_lacks_is_queued_as_create_and_a_note_is_
         .expect("the check")
         .expect("not throttled");
 
-    assert_eq!(
-        outcome,
-        ManifestOutcome {
-            server_only: Vec::new(),
-            reuploaded: vec![pair("task", "t1")],
-        }
-    );
+    let creates = |pairs: &[(&str, &str)]| -> Vec<(String, String, String)> {
+        pairs
+            .iter()
+            .map(|(item_type, id)| {
+                (
+                    (*item_type).to_owned(),
+                    (*id).to_owned(),
+                    "create".to_owned(),
+                )
+            })
+            .collect()
+    };
+    let expected = [("journal", "j1"), ("note", "n1"), ("task", "t1")];
     assert_eq!(
         queued(&db),
-        vec![("task".to_owned(), "t1".to_owned(), "create".to_owned())],
-        "a note is re-created over a purged tombstone by the server, so it stays local"
+        creates(&expected),
+        "the local-only note and the large-file note stay here"
+    );
+    let mut reuploaded = outcome.reuploaded;
+    reuploaded.sort();
+    assert_eq!(
+        reuploaded,
+        expected
+            .iter()
+            .map(|(t, id)| pair(t, id))
+            .collect::<Vec<_>>()
+    );
+    assert!(outcome.server_only.is_empty());
+}
+
+/// A note, journal and bookmark whose `create` the server lost (it accepted the push and
+/// never stored it) go out again as `create` through the driver's passes (#4785,
+/// `manifest-check.ts:180-224`).
+#[tokio::test]
+async fn a_lost_create_is_pushed_again_by_the_next_pass() {
+    let desktop = Desktop::open(&["note", "journal", "bookmark"], |conn| {
+        conn.execute_batch(
+            "INSERT INTO sync_items (item_type, item_id, payload, payload_state, clock, updated_at)
+             VALUES ('note', 'n1', '{\"title\":\"one\",\"clock\":{\"a\":1}}', 'full',
+                     '{\"a\":1}', 1),
+                    ('journal', 'j1', '{\"date\":\"2026-11-17\",\"clock\":{\"a\":1}}', 'full',
+                     '{\"a\":1}', 1),
+                    ('bookmark', 'b1', '{\"url\":\"https://a.example\",\"clock\":{\"a\":1}}',
+                     'full', '{\"a\":1}', 1);",
+        )
+        .map_err(failed)
+    })
+    .await;
+    desktop.server.page(&[], "10");
+    desktop.pass().await;
+    assert!(desktop.server.pushed().is_empty(), "nothing was queued");
+
+    desktop.server.page(&[], "11");
+    desktop.pass().await;
+
+    let mut pushed = desktop.server.pushed();
+    pushed.sort();
+    let create =
+        |item_type: &str, id: &str| (item_type.to_owned(), id.to_owned(), "create".to_owned());
+    assert_eq!(
+        pushed,
+        vec![
+            create("bookmark", "b1"),
+            create("journal", "j1"),
+            create("note", "n1")
+        ]
     );
 }
 
@@ -287,6 +359,49 @@ async fn a_refused_or_permanently_quarantined_item_is_not_pulled() {
         .expect("not throttled");
 
     assert!(outcome.server_only.is_empty(), "{outcome:?}");
+}
+
+/// Every envelope fails to open: a page of only corruption, which the pull refuses (§5.14).
+struct Refusing;
+
+impl RecordCipher for Refusing {
+    fn open(&self, _envelope: &RecordEnvelope) -> Result<Vec<u8>, EnvelopeError> {
+        Err(EnvelopeError::SignatureInvalid)
+    }
+}
+
+/// A run from cursor 0 whose head page is refused still reached the head: the cursor moved
+/// past that page, so the next run's markers apply (§5.12.3). Before, the flag stayed set and
+/// the next run skipped every marker on its pages.
+#[tokio::test]
+async fn a_refused_page_at_the_head_ends_a_run_from_cursor_zero() {
+    let db = scratch_db();
+    let transport = FakeTransport::new(vec![
+        response(200, &changes(&[("x1", "task")], "10")),
+        response(
+            200,
+            &json!({ "items": [envelope("x1", "task")] }).to_string(),
+        ),
+    ]);
+    let http = HttpClient::new(
+        transport,
+        "https://sync.example",
+        ClientIdentity::new("desktop", "1.0.0").expect("a valid identity"),
+    );
+    let pull = PullLoop::new(
+        Arc::new(http),
+        db.clone(),
+        declaration(),
+        Arc::new(Refusing),
+    );
+
+    let report = pull.run(1).await.expect("the run");
+
+    assert!(report.refused && !report.has_more, "{report:?}");
+    let from_zero = db
+        .call_blocking(|conn| read_meta(conn, "sync.purged_from_zero"))
+        .expect("read");
+    assert_eq!(from_zero, None);
 }
 
 #[tokio::test]

@@ -19,16 +19,20 @@
 //!   pass (`reuploadLocalOnly`, `:63-70`), which is when the driver calls it.
 //!   A row with anything already queued is left to that push.
 //!
-//! **Not re-uploaded: the types the server re-creates over a purged
-//! tombstone** (`RECREATABLE_AFTER_PURGE_ITEM_TYPES`, §5.12.3), notes and
-//! journals among them. The server accepts their `create` over a marker, and
-//! this core does not apply markers yet, so a re-upload of one would bring a
-//! deleted item back on every device. [`REUPLOADED`] is Electron's
-//! `REUPLOADABLE_TYPES` (`:268-288`) without them, without `task_activity`,
-//! whose retention this core does not track, and without `settings`, the one
-//! clock-exempt type (chapter 05 §5.4): the server's delete-wins check needs a
-//! clock to refuse a `create` over a purged tombstone, so a `settings` create
-//! is re-created over one just as the re-creatable types are.
+//! [`REUPLOADED`] is Electron's `REUPLOADABLE_TYPES` (`:293-313`) less the
+//! types below. Notes, journals and bookmarks are in it, though the server
+//! re-creates them over a purged tombstone (`RECREATABLE_AFTER_PURGE_ITEM_TYPES`,
+//! §5.12.3): the pull that runs first in the pass applies a marker for them
+//! ([`super::purged`]), so a row still live here is one this device holds, and
+//! its lost `create` goes out again, as Electron's does (`:180-224`). Not
+//! re-uploaded, as in Electron: a note
+//! that stays on this device (`note_files.local_only`, `buildRefPayload`'s
+//! `localOnly`), and a large-file note (`note_large_files`), whose record
+//! Electron never syncs and whose body never comes. Left out, as before:
+//! `task_activity`, whose retention this core does not track; `settings`, the
+//! one clock-exempt type (chapter 05 §5.4), since the server's delete-wins
+//! check needs a clock to refuse a `create` over a purged tombstone; and the
+//! other re-creatable types, which have no driver test here yet.
 
 use std::collections::BTreeSet;
 use std::sync::Mutex;
@@ -50,7 +54,7 @@ pub const MIN_INTERVAL_MS: i64 = 30 * 60 * 1000;
 const PAGE_LIMIT: u32 = 1000;
 
 /// The types a local-only row of is queued as `create`.
-pub const REUPLOADED: [&str; 11] = [
+pub const REUPLOADED: [&str; 14] = [
     "task",
     "project",
     "inbox",
@@ -62,6 +66,9 @@ pub const REUPLOADED: [&str; 11] = [
     "sticky_draft",
     "reminder",
     "canvas",
+    "bookmark",
+    "note",
+    "journal",
 ];
 
 /// What one check found.
@@ -203,7 +210,13 @@ pub(crate) fn diff(
             AND corrupt_at IS NULL
             AND NOT EXISTS (SELECT 1 FROM outbox
                              WHERE outbox.item_type = sync_items.item_type
-                               AND outbox.item_id = sync_items.item_id)",
+                               AND outbox.item_id = sync_items.item_id)
+            AND NOT (item_type IN ('note', 'journal')
+                     AND (EXISTS (SELECT 1 FROM note_files
+                                   WHERE note_files.note_id = sync_items.item_id
+                                     AND note_files.local_only <> 0)
+                          OR EXISTS (SELECT 1 FROM note_large_files
+                                      WHERE note_large_files.note_id = sync_items.item_id)))",
     )?;
     let reuploaded: Vec<(String, String)> = local
         .into_iter()
