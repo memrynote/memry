@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { getI18n } from 'react-i18next'
 import { toast } from 'sonner'
 import { foldTag } from '@memry/shared/tag-fold'
@@ -18,6 +18,12 @@ import { subscribeToEvents } from '@/services/tauri-event'
 const log = createLogger('Page:FolderView')
 
 export function useTagScopeActions(tag: string | null, totalNotes: number, closeTab: () => void) {
+  // The listeners and the re-check run once per tag: a new `closeTab` must not ask again.
+  const closeTabRef = useRef(closeTab)
+  useEffect(() => {
+    closeTabRef.current = closeTab
+  }, [closeTab])
+
   const handleTagIconChange = useCallback(
     async (icon: string | null) => {
       if (tag === null) return
@@ -92,17 +98,17 @@ export function useTagScopeActions(tag: string | null, totalNotes: number, close
       [
         (listening) =>
           onTagRenamed((event) => {
-            if (foldTag(event.oldName) === key) closeTab()
+            if (foldTag(event.oldName) === key) closeTabRef.current()
           }, listening),
         (listening) =>
           onTagDeleted((event) => {
-            if (foldTag(event.tag) === key) closeTab()
+            if (foldTag(event.tag) === key) closeTabRef.current()
           }, listening)
       ],
       () => {
         isTagGone(tag)
           .then((gone) => {
-            if (gone && live) closeTab()
+            if (gone && live) closeTabRef.current()
           })
           .catch((error: unknown) => log.warn('the tag was not checked again', error))
       }
@@ -111,7 +117,7 @@ export function useTagScopeActions(tag: string | null, totalNotes: number, close
       live = false
       stop()
     }
-  }, [tag, closeTab])
+  }, [tag])
 
   return { handleTagIconChange, handleTagRenameSubmit, handleTagDeleteConfirm }
 }

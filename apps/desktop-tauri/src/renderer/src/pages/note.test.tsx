@@ -117,6 +117,7 @@ const mocks = vi.hoisted(() => ({
   /** The page's delete and rename listeners went live (`onListening`). */
   deletedListening: undefined as (() => void) | undefined,
   renamedListening: undefined as (() => void) | undefined,
+  movedListening: undefined as (() => void) | undefined,
   getListItem: vi.fn(),
   droppedHandler: null as (() => void) | null,
   outsideKeptHandler: null as ((event: { id: string }) => void) | null,
@@ -322,6 +323,10 @@ vi.mock('@/services/notes-service', async (importOriginal) => {
       mocks.renamedHandler = handler
       mocks.renamedListening = listening
       mocks.onRenamed(handler)
+      return vi.fn()
+    },
+    onNoteMoved: (_handler: unknown, listening?: () => void) => {
+      mocks.movedListening = listening
       return vi.fn()
     }
   }
@@ -2841,6 +2846,7 @@ describe('NotePage', () => {
     act(() => {
       mocks.deletedListening?.()
       mocks.renamedListening?.()
+      mocks.movedListening?.()
     })
 
     await waitFor(() => expect(mocks.setTabDeleted).toHaveBeenCalledWith('note-1', true))
@@ -2856,12 +2862,41 @@ describe('NotePage', () => {
     act(() => {
       mocks.deletedListening?.()
       mocks.renamedListening?.()
+      mocks.movedListening?.()
     })
 
     await waitFor(() =>
       expect(mocks.updateTabTitleByEntityId).toHaveBeenCalledWith('note-1', 'Remote title')
     )
     expect(mocks.setTabDeleted).not.toHaveBeenCalled()
+  })
+
+  it('drops a re-read that a rename overtook', async () => {
+    renderWithProviders(<NotePage noteId="note-1" />)
+    await screen.findByRole('button', { name: 'Test Note' })
+    let answer = (_item: { id: string; title: string; path: string }): void => undefined
+    mocks.getListItem.mockReturnValueOnce(
+      new Promise((resolve) => {
+        answer = resolve
+      })
+    )
+    act(() => {
+      mocks.deletedListening?.()
+      mocks.renamedListening?.()
+      mocks.movedListening?.()
+    })
+    await waitFor(() => expect(mocks.getListItem).toHaveBeenCalledWith('note-1'))
+
+    act(() => {
+      mocks.renamedHandler?.({ id: 'note-1', newTitle: 'Newer title' })
+    })
+    await act(async () => {
+      answer({ id: 'note-1', title: 'Older title', path: 'x.md' })
+      await Promise.resolve()
+    })
+
+    expect(mocks.updateTabTitleByEntityId).toHaveBeenLastCalledWith('note-1', 'Newer title')
+    expect(mocks.updateTabTitleByEntityId).not.toHaveBeenCalledWith('note-1', 'Older title')
   })
 
   it('blocks mutations after the note is deleted', async () => {

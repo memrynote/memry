@@ -88,6 +88,7 @@ import {
   getNoteListItem,
   notesService,
   onNoteDeleted,
+  onNoteMoved,
   onNoteRenamed,
   type Note
 } from '@/services/notes-service'
@@ -644,9 +645,11 @@ export function NotePage({ noteId }: NotePageProps) {
   // A deleted note marks its tab (strikethrough); a renamed one retitles it. A delete or rename
   // before the listeners went live sent its event to nobody: once they are live, the note's
   // row is read again, which opens nothing (`notes_get` would count another `note_opened`).
+  // A delete, rename or move that arrives during the read is newer than its answer.
   useEffect(() => {
     if (!noteId) return undefined
     let live = true
+    let changes = 0
     const markDeleted = (): void => {
       setIsDeleted(true)
       setTabDeleted(noteId, true)
@@ -655,17 +658,26 @@ export function NotePage({ noteId }: NotePageProps) {
       [
         (listening) =>
           onNoteDeleted((event) => {
-            if (event.id === noteId) markDeleted()
+            if (event.id !== noteId) return
+            changes += 1
+            markDeleted()
           }, listening),
         (listening) =>
           onNoteRenamed((event) => {
-            if (event.id === noteId) updateTabTitleByEntityId(noteId, event.newTitle)
+            if (event.id !== noteId) return
+            changes += 1
+            updateTabTitleByEntityId(noteId, event.newTitle)
+          }, listening),
+        (listening) =>
+          onNoteMoved((event) => {
+            if (event.id === noteId) changes += 1
           }, listening)
       ],
       () => {
+        const asked = changes
         getNoteListItem(noteId)
           .then((item) => {
-            if (!live) return
+            if (!live || changes !== asked) return
             if (!item) return markDeleted()
             updateTabTitleByEntityId(noteId, item.title)
             queryClient.setQueryData<Note | null>(notesKeys.note(noteId), (cached) =>

@@ -230,8 +230,8 @@ export function stopTagRename(): Promise<boolean> {
  * Whether `tag` was renamed away or deleted (`tags::gone`): its definition is deleted and no
  * note carries it. A tag whose notes all let go of it is not gone.
  */
-export function isTagGone(tag: string): Promise<boolean> {
-  return commands.tagsIsGone(tag)
+export async function isTagGone(tag: string): Promise<boolean> {
+  return await commands.tagsIsGone(tag)
 }
 
 /** The tag methods served from Rust; `window.api.tags` is typed without them. */

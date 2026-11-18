@@ -1,5 +1,6 @@
-import { renderHook, waitFor } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { act, renderHook, waitFor } from '@testing-library/react'
+import { useCallback, useState } from 'react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { commands, events } from '../../../../generated/bindings'
 import { useTagScopeActions } from './use-tag-scope-actions'
@@ -15,6 +16,16 @@ vi.mock('sonner', () => ({
     dismiss: vi.fn()
   }
 }))
+
+// Every mounted hook asks `tags_is_gone` once its listeners are live. `tests/setup-dom.ts`'s
+// bindings mock has no `tagsIsGone`, so `vi.spyOn` cannot wrap it: each test gets its own.
+const tagsIsGone = commands.tagsIsGone
+beforeEach(() => {
+  commands.tagsIsGone = vi.fn(async () => false)
+})
+afterEach(() => {
+  commands.tagsIsGone = tagsIsGone
+})
 
 const left = { oldName: 'old', newName: 'new', left: 1, notes: [{ id: 'n1', title: 'Plan' }] }
 
@@ -95,10 +106,8 @@ describe('useTagScopeActions delete', () => {
 
 // S14-1: a rename or delete sent before the tab's listeners went live reached nobody.
 describe('useTagScopeActions after its listeners go live', () => {
-  const original = commands.tagsIsGone
   afterEach(() => {
     vi.restoreAllMocks()
-    commands.tagsIsGone = original
   })
 
   /** Holds both tag listeners back until the returned function lets them go live. */
@@ -132,5 +141,28 @@ describe('useTagScopeActions after its listeners go live', () => {
     await waitFor(() => expect(isGone).toHaveBeenCalledWith('work'))
     await Promise.resolve()
     expect(closeTab).toHaveBeenCalledTimes(closes)
+  })
+
+  // Split view: the page's close changes with the tabs it closes, which must not ask again
+  // and close the next tab, and the next.
+  it('asks once per tag and closes once while the close it is given changes', async () => {
+    const isGone = vi.fn(async () => true)
+    commands.tagsIsGone = isGone
+    const release = holdListeners()
+    const { result } = renderHook(() => {
+      const [closes, setCloses] = useState(0)
+      const closeTab = useCallback(() => setCloses(closes + 1), [closes])
+      useTagScopeActions('work', 0, closeTab)
+      return closes
+    })
+
+    release()
+
+    await waitFor(() => expect(result.current).toBe(1))
+    for (let turn = 0; turn < 5; turn += 1) {
+      await act(() => new Promise((resolve) => setTimeout(resolve, 0)))
+    }
+    expect(result.current).toBe(1)
+    expect(isGone).toHaveBeenCalledTimes(1)
   })
 })
