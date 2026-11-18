@@ -2,9 +2,12 @@
 //! real calendar dates on tasks, http(s)-only canvas links (Electron's guard against `file:` and
 //! `javascript:` links in agent-drawn canvases), one endpoint form per arrow end, and a bulk tag
 //! call that adds or removes something. `tools.json` lists them under `refinements`; the test
-//! below holds this table to that list.
+//! below holds this table to that list. The zod walk ([`super::zod`]) runs them as zod runs a
+//! `.refine`: after the checks of the value at their path, unless one of those stopped the parse.
 
 use serde_json::Value;
+
+use super::zod::Seg;
 
 const CALENDAR_DATE: &str = "Date must be a real calendar date in YYYY-MM-DD form";
 const HTTP_LINK: &str = "link must be an http(s) URL";
@@ -12,8 +15,8 @@ const ONE_ENDPOINT: &str = "exactly one of ref or elementId is required";
 const SOME_TAG: &str = "Give at least one tag in add or remove.";
 
 /// The value at `path` (`[]` is every item of an array) satisfies `holds`, or the call is refused
-/// with `message`. An absent or null value is not checked, as zod's `.nullish()` wraps the check.
-struct Refinement {
+/// with `message`.
+pub(super) struct Refinement {
     tool: &'static str,
     path: &'static [&'static str],
     message: &'static str,
@@ -94,46 +97,23 @@ const REFINEMENTS: &[Refinement] = &[
     ),
 ];
 
-/// The refinements `args` (valid against the tool's JSON Schema) breaks, in the SDK's issue text:
-/// the message, then ` at ` and the path (`elements[3].link`) unless it is the root.
-pub(super) fn issues(tool: &str, args: &Value) -> Vec<String> {
-    let mut issues = Vec::new();
-    for refinement in REFINEMENTS
+/// The refinements of `tool`.
+pub(super) fn for_tool(tool: &str) -> Vec<&'static Refinement> {
+    REFINEMENTS
         .iter()
         .filter(|refinement| refinement.tool == tool)
-    {
-        visit(args, refinement.path, String::new(), &mut |value, at| {
-            if value.is_null() || (refinement.holds)(value) {
-                return;
-            }
-            issues.push(if at.is_empty() {
-                refinement.message.to_owned()
-            } else {
-                format!("{} at {at}", refinement.message)
-            });
-        });
-    }
-    issues
+        .collect()
 }
 
-fn visit(value: &Value, path: &[&str], at: String, found: &mut impl FnMut(&Value, &str)) {
-    match path.split_first() {
-        None => found(value, &at),
-        Some((&"[]", rest)) => {
-            for (index, item) in value.as_array().into_iter().flatten().enumerate() {
-                visit(item, rest, format!("{at}[{index}]"), found);
-            }
-        }
-        Some((key, rest)) => {
-            if let Some(child) = value.get(key) {
-                let at = if at.is_empty() {
-                    (*key).to_owned()
-                } else {
-                    format!("{at}.{key}")
-                };
-                visit(child, rest, at, found);
-            }
-        }
+impl Refinement {
+    /// The message, when `value` sits at this refinement's path and breaks it.
+    pub(super) fn broken_by(&self, path: &[Seg], value: &Value) -> Option<&'static str> {
+        let here = self.path.len() == path.len()
+            && self.path.iter().zip(path).all(|(want, seg)| match seg {
+                Seg::Index(_) => *want == "[]",
+                Seg::Key(key) => want == key,
+            });
+        (here && !(self.holds)(value)).then_some(self.message)
     }
 }
 
