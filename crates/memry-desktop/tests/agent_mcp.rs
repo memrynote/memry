@@ -194,7 +194,7 @@ async fn every_desktop_operation_case_gets_electrons_verdict() {
     let gate = FakeGate::approving();
     registry.set_write_gate(Some(gate.clone()));
     let cases = file["operations"].as_array().unwrap();
-    assert_eq!(cases.len(), 893);
+    assert_eq!(cases.len(), 929);
     for case in cases {
         let operation = case["operation"].as_str().unwrap();
         let tool = tool_of(operation);

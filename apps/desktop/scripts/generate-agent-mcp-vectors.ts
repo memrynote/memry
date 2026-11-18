@@ -30,7 +30,8 @@ import { z } from 'zod'
 
 import {
   desktopArgsItemSchemas,
-  desktopOperationArgsSchema
+  desktopOperationArgsSchema,
+  type DesktopArgsJsonSchema
 } from '@memry/contracts/agent-desktop-api-args'
 
 import { AgentMcpDesktopOperations } from '@memry/contracts/agent-mcp-channels'
@@ -285,7 +286,8 @@ function takeChecks(node: unknown, at: string, out: OperationCheck[]): void {
     for (const check of marked as Array<Omit<OperationCheck, 'at'>>) out.push({ at, ...check })
     delete node[CHECKS_MARK]
   }
-  for (const [key, child] of Object.entries(node)) takeChecks(child, `${at}/${pointerSegment(key)}`, out)
+  for (const [key, child] of Object.entries(node))
+    takeChecks(child, `${at}/${pointerSegment(key)}`, out)
 }
 
 /**
@@ -293,7 +295,10 @@ function takeChecks(node: unknown, at: string, out: OperationCheck[]): void {
  * schema: zod's printer marks the nodes, and the marked print must equal `argsSchema`'s items
  * and `$defs`, so every pointer resolves to the node it names.
  */
-function operationChecks(operation: AgentMcpDesktopOperation, argsSchema: JsonObject): Json {
+function operationChecks(
+  operation: AgentMcpDesktopOperation,
+  argsSchema: DesktopArgsJsonSchema
+): Json {
   const schema = desktopOperationArgsSchema(operation)
   const marked = z.toJSONSchema(schema, {
     io: 'input',
@@ -305,13 +310,13 @@ function operationChecks(operation: AgentMcpDesktopOperation, argsSchema: JsonOb
   })
   const checks: OperationCheck[] = []
   takeChecks(marked, '', checks)
-  const items = toJson(desktopArgsItemSchemas(argsSchema as never))
+  const items = toJson(desktopArgsItemSchemas(argsSchema))
   const printed = toJson(marked)
   const printedItems = isObject(printed) ? (printed.prefixItems ?? []) : []
   const printedDefs = isObject(printed) ? (printed.$defs ?? null) : null
   if (
     JSON.stringify(printedItems) !== JSON.stringify(items) ||
-    JSON.stringify(printedDefs) !== JSON.stringify(argsSchema.$defs ?? null)
+    JSON.stringify(printedDefs) !== JSON.stringify(toJson(argsSchema.$defs ?? null))
   ) {
     throw new Error(`${operation}: the marked print differs from argsSchema`)
   }
@@ -334,7 +339,7 @@ function desktopOpsFile(): JsonObject {
         call: description.call,
         params: toJson(description.params),
         argsSchema: toJson(argsSchema),
-        checks: operationChecks(operation, argsSchema)
+        checks: operationChecks(operation, description.args_schema)
       }
     })
   }
@@ -559,7 +564,11 @@ function assertEveryCheckBroken(opsFile: JsonObject, cases: Json[]): void {
           item.error !== undefined &&
           JSON.stringify(item.error).includes(message)
       )
-      if (!broken) throw new Error(`no case of ${String(entry.operation)} breaks ${JSON.stringify(check)}`)
+      if (!broken) {
+        throw new Error(
+          `no case of ${JSON.stringify(entry.operation)} breaks ${JSON.stringify(check)}`
+        )
+      }
     }
   }
 }

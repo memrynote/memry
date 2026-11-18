@@ -106,7 +106,8 @@ impl<'s> Walker<'s> {
                 !(integer && bound.as_f64().is_some_and(|b| b.abs() == MAX_SAFE_INTEGER))
             })
         };
-        let checks: [(&str, fn(f64, f64) -> bool, Code, &str); 4] = [
+        type Bound = (&'static str, fn(f64, f64) -> bool, Code, &'static str);
+        let checks: [Bound; 4] = [
             (
                 "minimum",
                 |n, b| n < b,

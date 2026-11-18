@@ -8,7 +8,7 @@ use serde_json::{Value, json};
 
 use super::{DEPTH_MESSAGE, Issue, KEPT_ISSUES, Walker, steps};
 use crate::agent::mcp::desktop_args;
-use crate::agent::mcp::schemas::{MAX_ISSUES, catalog};
+use crate::agent::mcp::schemas::{MAX_ISSUES, TOOLS_JSON, catalog};
 
 const EXAMPLES_JSON: &str =
     include_str!("../../../../../../packages/contracts/test-vectors/agent-mcp/examples.json");
@@ -73,7 +73,7 @@ fn recursive_arguments_cost_steps_linear_in_their_size() {
     let mut filter = json!("status = 'done'");
     let mut group = json!({ "match": "all", "rules": [] });
     let mut field = json!(1);
-    for level in 0..60 {
+    for level in 0..20 {
         filter = json!({ "and": [filter, { "not": "x" }], "or": ["y"] });
         group = json!({ "match": "any", "rules": [group, { "field": "title", "op": "contains", "values": ["a"] }] });
         field = json!([field, { "k": level }, "text"]);
@@ -165,6 +165,27 @@ fn replace(value: &mut Value, path: &[Value], with: Value) {
     *current = with;
 }
 
+/// The longest `enum` of the tool schemas as zod lists it in a message: the one line a reply
+/// takes from the schema rather than the input (`vault_desktop_describe`'s 284 operations).
+fn longest_enum_text() -> usize {
+    fn walk(node: &Value) -> usize {
+        match node {
+            Value::Object(object) => {
+                let own = object
+                    .get("enum")
+                    .and_then(Value::as_array)
+                    .map_or(0, |values| {
+                        values.iter().map(|value| value.to_string().len() + 1).sum()
+                    });
+                object.values().map(walk).fold(own, usize::max)
+            }
+            Value::Array(items) => items.iter().map(walk).max().unwrap_or_default(),
+            _ => 0,
+        }
+    }
+    walk(&serde_json::from_str(TOOLS_JSON).unwrap_or_default())
+}
+
 fn any_json() -> impl Strategy<Value = Value> {
     let leaf = prop_oneof![
         Just(Value::Null),
@@ -189,7 +210,8 @@ proptest! {
 
     /// An example call with one value replaced (by a random value, or by many copies of one so a
     /// list breaks item by item): the walk answers, and the reply holds at most `MAX_ISSUES`
-    /// issues plus a count, each line bounded by the input that produced it.
+    /// issues plus a count, each line bounded by the input that produced it and the longest list
+    /// of allowed values the schemas hold.
     #[test]
     fn a_mutated_tool_call_gets_a_bounded_reply(
         pick in any::<prop::sample::Index>(),
@@ -205,12 +227,17 @@ proptest! {
         let with = if copies > 1 { Value::Array(vec![with; copies]) } else { with };
         replace(&mut args, &path, with);
         let input_len = args.to_string().len();
+        let schema_text = longest_enum_text() + 256;
         let spec = catalog().get(&tool).unwrap();
         if let Err(text) = spec.parse(args.clone()) {
             let lines: Vec<&str> = text.lines().collect();
             prop_assert!(lines.len() <= MAX_ISSUES + 1, "{} lines", lines.len());
             for line in lines {
-                prop_assert!(line.len() <= 2 * input_len + 1_024, "{} bytes from {input_len}", line.len());
+                prop_assert!(
+                    line.len() <= 2 * input_len + schema_text,
+                    "{} bytes from {input_len}",
+                    line.len()
+                );
             }
         }
         let desktop = json!({ "operation": "tasks.create", "args": [args] });

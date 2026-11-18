@@ -218,7 +218,7 @@ impl<'s> Walker<'s> {
         for extra in self.extras_at(node) {
             if let Extra::Refine(message, holds) = extra
                 && !out.aborted()
-                && !value.is_some_and(|value| holds(value))
+                && !value.is_some_and(*holds)
             {
                 out.push(self.issue(Code::Custom, message.clone(), true));
             }

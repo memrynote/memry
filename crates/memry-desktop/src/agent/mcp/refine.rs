@@ -103,7 +103,9 @@ const REFINEMENTS: &[Refinement] = &[
 
 /// The refinements of the desktop API arguments, by message: `desktop-ops.json` `checks` names
 /// the schema node each applies to, and the test below holds this table to that list.
-const DESKTOP_REFINEMENTS: &[(&str, fn(&Value) -> bool)] = &[
+type Holds = fn(&Value) -> bool;
+
+const DESKTOP_REFINEMENTS: &[(&str, Holds)] = &[
     (CALENDAR_DATE, calendar_date),
     (BINARY_DATA, binary_data),
     (TASK_FIELDS, |value| own_keys(value) <= 100),
@@ -111,7 +113,7 @@ const DESKTOP_REFINEMENTS: &[(&str, fn(&Value) -> bool)] = &[
 ];
 
 /// The desktop API refinement whose message is `message`.
-pub(super) fn desktop_refinement(message: &str) -> Option<fn(&Value) -> bool> {
+pub(super) fn desktop_refinement(message: &str) -> Option<Holds> {
     DESKTOP_REFINEMENTS
         .iter()
         .find(|(known, _)| *known == message)
