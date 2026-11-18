@@ -2,9 +2,9 @@
 //! Numbering follows Step 37's report: 3, 7 and 8 are Step 37's. Check 1 covers every table
 //! the report lists; checks 2 (id sets) and 5 (byte-equal ids, clocks and cursor) cover the
 //! record tables imported so far ([`RECORD_TABLES`]) and the vault id, less the source rows a
-//! queued delete made tombstones; check 4 holds the staged
-//! outbox to the source's queued record pushes. Details name tables and counts, never ids or
-//! values.
+//! queued or pending delete made tombstones, with the clocks the runtime-start replays minted;
+//! check 4 holds the staged outbox to the source's queued record pushes and Electron's
+//! runtime-start replays ([`replay`]). Details name tables and counts, never ids or values.
 
 use std::collections::{BTreeMap, HashSet};
 

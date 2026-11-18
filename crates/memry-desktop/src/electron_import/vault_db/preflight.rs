@@ -3,7 +3,8 @@
 //!
 //! In order: the drizzle ledger ends at the frozen migration `TABLE_MAP` describes; every table
 //! is mapped (shadow tables of a mapped virtual table excepted); every `sync_state` key is
-//! mapped; no table or key whose importer is still pending holds rows.
+//! mapped; no table or key whose importer is still pending holds rows, and no pending delete
+//! is of a type a later stage imports.
 
 use std::collections::BTreeMap;
 
