@@ -112,6 +112,14 @@ impl NoteFiles {
             .read_blocking(move |conn| owed_file_body::owes(conn, &note_id))
     }
 
+    /// Whether the note's server body is still to be pulled ([`crate::sync::body_debt`]): a file
+    /// it owes cannot be taken before.
+    pub fn server_body_owed(&self, note_id: &str) -> Result<bool, StorageError> {
+        let note_id = note_id.to_owned();
+        self.db
+            .read_blocking(move |conn| crate::sync::body_debt::is_owed(conn, &note_id))
+    }
+
     /// Every live note that owes its file body, in id order.
     pub fn owed_file_bodies(&self) -> Result<Vec<String>, StorageError> {
         self.db.read_blocking(owed_file_body::list)

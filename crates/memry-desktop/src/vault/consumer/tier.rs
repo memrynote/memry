@@ -375,11 +375,15 @@ impl VaultTier {
         let owed = Arc::new(OwedFiles {
             root: vault.path.clone(),
             vault: vault.vault.clone(),
+            search: vault.search.clone(),
+            identity: identity.clone(),
+            own_files: self.own_files.clone(),
             rows: self.rows.clone(),
             session,
             store: self.store.clone(),
             editor: lock(&self.editor).clone(),
             writeback: writeback.clone(),
+            refused: Mutex::default(),
         });
         let tasks = self.watch(
             vault,

@@ -391,6 +391,25 @@ pub fn write_baseline(
     .map_err(failed)
 }
 
+/// Makes `content` the note's baseline only when it has none; true when it did. A writer that
+/// recorded one meanwhile wrote newer text through the lock, which stays.
+pub fn insert_baseline(
+    conn: &Connection,
+    note_id: &str,
+    content: &str,
+    content_hash: &str,
+    now_ms: i64,
+) -> Result<bool, StorageError> {
+    conn.execute(
+        "INSERT INTO vault_lock_baselines (note_id, content_hash, content, updated_at)
+         VALUES (?1, ?2, ?3, ?4)
+         ON CONFLICT (note_id) DO NOTHING",
+        params![note_id, content_hash, content, now_ms],
+    )
+    .map(|inserted| inserted > 0)
+    .map_err(failed)
+}
+
 /// Drops the note's baseline: its lock is gone, or the note is.
 pub fn delete_baseline(conn: &Connection, note_id: &str) -> Result<(), StorageError> {
     conn.execute(
