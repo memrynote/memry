@@ -806,6 +806,12 @@ private final class FakeBoards: WhiteboardBoards, @unchecked Sendable {
     }
 
     func save(_ id: String, scene: String) async throws {}
+
+    func save(_ id: String, scene: String, expected: String) async throws -> CanvasSceneWrite {
+        .written(canvas: CanvasRecord(id: id, title: nil, ownerNoteId: nil, scene: scene))
+    }
+
+    func boards(ownedBy noteId: String) async throws -> [CanvasRecord] { [] }
 }
 
 /// #4818: the `@`, `[[` and `#` menus fit between the safe area's top and the
