@@ -88,6 +88,10 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::fold::fold_get_last_run::<Wry>,
             crate::commands::fold::fold_retry::<Wry>,
             crate::commands::fold::fold_run::<Wry>,
+            // graph (`graph_get_graph_data` and `graph_get_local_graph` are binary commands)
+            crate::commands::graph::graph_clear_layout::<Wry>,
+            crate::commands::graph::graph_get_layout::<Wry>,
+            crate::commands::graph::graph_save_layout::<Wry>,
             // ios beta
             crate::commands::ios_beta::ios_beta_join,
             // journal

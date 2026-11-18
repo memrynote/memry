@@ -17,6 +17,7 @@ pub mod editor;
 pub mod error;
 pub mod fold;
 pub mod folders;
+pub mod graph;
 pub mod ios_beta;
 pub mod journal;
 pub mod large_file;

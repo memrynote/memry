@@ -213,7 +213,9 @@ try {
   }
   const fixture = `${JSON.stringify({ graph: normalize(getGraphData(index.db, data.db)), local }, null, 2)}\n`
   if (process.argv.includes('--check')) {
-    if (readFileSync(OUT, 'utf8') !== fixture) {
+    // oxfmt rewraps the committed file, so the check compares values, not bytes.
+    const committed: unknown = JSON.parse(readFileSync(OUT, 'utf8'))
+    if (JSON.stringify(committed) !== JSON.stringify(JSON.parse(fixture))) {
       console.error(`${OUT} differs from what Electron returns; rerun without --check`)
       process.exit(1)
     }

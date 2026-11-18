@@ -177,6 +177,12 @@ export const commands = {
 	 *  has written yet queued.
 	 */
 	foldRun: (noteId: string, level: FoldLevel) => __TAURI_INVOKE<FoldLayers>("fold_run", { noteId, level }),
+	/**  `graph:clear-layout`: forgets the view's layout. */
+	graphClearLayout: (viewKey: string) => __TAURI_INVOKE<null>("graph_clear_layout", { viewKey }),
+	/**  `graph:get-layout`: the layout saved for the view, `null` when none reads. */
+	graphGetLayout: (viewKey: string) => __TAURI_INVOKE<GraphLayoutView | null>("graph_get_layout", { viewKey }),
+	/**  `graph:save-layout`: replaces the view's layout. */
+	graphSaveLayout: (viewKey: string, layout: GraphLayoutView) => __TAURI_INVOKE<null>("graph_save_layout", { viewKey, layout }),
 	/**  With the account's token when signed in. */
 	iosBetaJoin: (input: IosBetaJoinInput) => __TAURI_INVOKE<IosBetaJoinResult>("ios_beta_join", { input }),
 	/**
@@ -1816,6 +1822,19 @@ export type GlobalCaptureResult = {
 	status: ShortcutStatus,
 	/**  Whether the built-in fallback holds quick capture. */
 	fallbackRegistered: boolean,
+};
+
+/**  `GraphLayoutNodeSchema`. */
+export type GraphLayoutNodeView = {
+	x: number | null,
+	y: number | null,
+	pinned?: boolean | null,
+};
+
+/**  `GraphLayoutSchema`. */
+export type GraphLayoutView = {
+	version: number,
+	nodes: { [key in string]: GraphLayoutNodeView },
 };
 
 export type HeaderPair = {

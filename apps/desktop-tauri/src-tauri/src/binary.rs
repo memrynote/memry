@@ -23,6 +23,8 @@ pub const COMMANDS: &[&str] = &[
     "crdt_sync_step_2",
     "custom_icons_add",
     "drop_stage_chunk",
+    "graph_get_graph_data",
+    "graph_get_local_graph",
     "notes_upload_attachment",
     "notes_upload_attachment_chunk",
 ];
@@ -38,6 +40,8 @@ pub fn handler<R: Runtime>() -> impl Fn(Invoke<R>) -> bool + Send + Sync + 'stat
         crate::commands::editor::crdt_sync_step_2,
         crate::commands::custom_icons::custom_icons_add,
         crate::commands::drop_stage::drop_stage_chunk,
+        crate::commands::graph::graph_get_graph_data,
+        crate::commands::graph::graph_get_local_graph,
         crate::commands::attachments::notes_upload_attachment,
         crate::commands::attachments::notes_upload_attachment_chunk
     ]
