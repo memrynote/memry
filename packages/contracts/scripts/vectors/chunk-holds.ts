@@ -9,6 +9,11 @@
  * another. The probe ids are local to one device, but a probe left held by
  * Electron is released by the next probe of the same pair, so they are pinned
  * too. Each request case records the bodies in send order and the outcome.
+ *
+ * Verified in Rust only (`crates/memry-core/tests/attachment_holds.rs`), like
+ * `note-fold-text`: the TypeScript side is Electron's own module, the oracle
+ * this generator runs, so a `src/__tests__/` verifier would check it against
+ * itself.
  */
 // A namespace import: desktop's sources are CommonJS to Node, and the ESM
 // loader cannot see their named exports statically.

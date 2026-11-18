@@ -102,7 +102,10 @@ impl PrePushHooks {
 
 impl PushCoordinator {
     /// Runs `hook` before every non-delete push of an `item_type` record (§14.8.1). One hook
-    /// per type; a later registration replaces the earlier one.
+    /// per type; a later registration replaces the earlier one. Register it only on a
+    /// coordinator that lives across waves, the driver's (`sync/driver/mod.rs`): the deferral
+    /// counts live here, so on a per-pass coordinator (`api/sync/pass.rs`) they never reach
+    /// [`MAX_HOLD_DEFERRALS`] and the item waits for ever.
     pub fn with_pre_push_hook(mut self, item_type: &str, hook: Arc<dyn PrePushHook>) -> Self {
         self.pre_push.hooks.insert(item_type.to_owned(), hook);
         self
