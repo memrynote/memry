@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { PCM_CAPTURE_PROCESSOR, type PcmCaptureMessage } from './pcm-capture-protocol'
-import { startPcmCapture } from './pcm-capture'
+import { PCM_CAPTURE_STOP_DEADLINE_MS, startPcmCapture } from './pcm-capture'
 
 vi.mock('./pcm-capture-worklet.ts?worker&url', () => ({
   default: '/assets/pcm-capture-worklet.js'
@@ -13,6 +13,8 @@ const SAMPLE_RATE = 48_000
 class FakeWorkletNode {
   static instances: FakeWorkletNode[] = []
   pending: Float32Array[] = []
+  /** A dead audio thread: `stop` is never answered. */
+  silent = false
   connect = vi.fn()
   disconnect = vi.fn()
   listeners = new Map<string, (event: Event) => void>()
@@ -22,7 +24,7 @@ class FakeWorkletNode {
   port = {
     onmessage: null as ((event: { data: PcmCaptureMessage }) => void) | null,
     postMessage: vi.fn((command: { type: string }) => {
-      if (command.type !== 'stop') return
+      if (command.type !== 'stop' || this.silent) return
       queueMicrotask(() => {
         for (const samples of this.pending)
           this.port.onmessage?.({ data: { type: 'samples', samples } })
@@ -107,6 +109,7 @@ describe('startPcmCapture', () => {
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     vi.unstubAllGlobals()
   })
 
@@ -125,6 +128,26 @@ describe('startPcmCapture', () => {
     const { context } = await start()
 
     expect(context.resume).toHaveBeenCalledTimes(1)
+  })
+
+  it('reports a refused resume without holding the start', async () => {
+    FakeAudioContext.initialState = 'suspended'
+    const refusal = new DOMException('resume refused', 'NotAllowedError')
+    const resume = vi.fn(async () => {
+      throw refusal
+    })
+    vi.stubGlobal(
+      'AudioContext',
+      class extends FakeAudioContext {
+        resume = resume
+      }
+    )
+
+    const { onFailure } = await start()
+    await Promise.resolve()
+
+    expect(resume).toHaveBeenCalledTimes(1)
+    expect(onFailure).toHaveBeenCalledWith(refusal)
   })
 
   it('joins the chunks in capture order into one mono buffer at the context rate', async () => {
@@ -160,6 +183,23 @@ describe('startPcmCapture', () => {
 
     await expect(stopping).resolves.toBeNull()
     await expect(capture.stop()).resolves.toBeNull()
+    expect(context.close).toHaveBeenCalledTimes(1)
+  })
+
+  it('ends the recording with the samples received when the worklet never answers stop', async () => {
+    vi.useFakeTimers()
+    const { capture, context, node } = await start()
+    node.silent = true
+    node.port.onmessage?.({ data: { type: 'samples', samples: Float32Array.of(0.25, -0.25) } })
+
+    let settled: AudioBuffer | null | undefined
+    void capture.stop().then((audio) => (settled = audio))
+    await vi.advanceTimersByTimeAsync(PCM_CAPTURE_STOP_DEADLINE_MS - 1)
+    expect(settled).toBeUndefined()
+
+    await vi.advanceTimersByTimeAsync(1)
+
+    expect(Array.from((settled as unknown as FakeAudioBuffer).data)).toEqual([0.25, -0.25])
     expect(context.close).toHaveBeenCalledTimes(1)
   })
 
