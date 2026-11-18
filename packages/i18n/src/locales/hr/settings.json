@@ -2431,7 +2431,8 @@
         "vault-binding": "Ključevi ovog uređaja su vraćeni, ali ovaj trezor još nije postavljen za sinkronizaciju s vašim računom. Odaberite kako ga sinkronizirati iz izbornika sinkronizacije.",
         "vault-foreign": "Ključevi ovog uređaja su vraćeni, ali ovaj trezor pripada drugom računu. Ostaje lokalan na ovom uređaju.",
         "entitlement": "Ključevi ovog uređaja su vraćeni, ali sinkronizacija zahtijeva aktivan plan Sync.",
-        "unavailable": "Ključevi ovog uređaja su vraćeni, ali se sinkronizacija nije mogla pokrenuti. Ponovno pokrenite Memry; ako se sinkronizacija ni tada ne pokrene, odjavite se i ponovno prijavite."
+        "unavailable": "Ključevi ovog uređaja su vraćeni, ali se sinkronizacija nije mogla pokrenuti. Pokušat će ponovno; ponovno pokrenite Memry ako ne uspije.",
+        "unavailable-restart": "Ključevi ovog uređaja su vraćeni, ali se sinkronizacija nije mogla pokrenuti. Ponovno pokrenite Memry; ako se sinkronizacija ni tada ne pokrene, odjavite se i ponovno prijavite."
       }
     },
     "pagesSettingsAiInlineSection": {

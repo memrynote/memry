@@ -174,6 +174,20 @@ describe('SyncStatus with device keys missing', () => {
     expect(onOpenSettings).not.toHaveBeenCalled()
   })
 
+  it('tells the user to restart when sync could not start after the repair', async () => {
+    repairDeviceKeys.mockResolvedValue({ status: 'sync-not-started', reason: 'unavailable' })
+    const user = await openPopover()
+
+    await user.click(
+      screen.getByRole('button', { name: 'phaseF.componentsSyncSyncStatus.repairDeviceKeys' })
+    )
+
+    expect(toast.info).toHaveBeenCalledWith(
+      'phaseF.componentsSyncSyncStatus.syncNotStarted.unavailable-restart',
+      expect.anything()
+    )
+  })
+
   it('sends the user to sign in when main signed the device out', async () => {
     repairDeviceKeys.mockResolvedValue({ status: 'sign-in-required' })
     const onOpenSettings = vi.fn()

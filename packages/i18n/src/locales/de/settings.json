@@ -2431,7 +2431,8 @@
         "vault-binding": "Die Schlüssel dieses Geräts sind wiederhergestellt, aber dieser Tresor ist noch nicht für die Synchronisierung mit deinem Konto eingerichtet. Wähle im Synchronisierungsmenü, wie er synchronisiert werden soll.",
         "vault-foreign": "Die Schlüssel dieses Geräts sind wiederhergestellt, aber dieser Tresor gehört zu einem anderen Konto. Er bleibt lokal auf diesem Gerät.",
         "entitlement": "Die Schlüssel dieses Geräts sind wiederhergestellt, aber die Synchronisierung benötigt einen aktiven Sync-Tarif.",
-        "unavailable": "Die Schlüssel dieses Geräts sind wiederhergestellt, aber die Synchronisierung konnte nicht starten. Starte Memry neu; falls die Synchronisierung dann immer noch nicht startet, melde dich ab und wieder an."
+        "unavailable": "Die Schlüssel dieses Geräts sind wiederhergestellt, aber die Synchronisierung konnte nicht starten. Sie versucht es erneut; starte Memry neu, falls nicht.",
+        "unavailable-restart": "Die Schlüssel dieses Geräts sind wiederhergestellt, aber die Synchronisierung konnte nicht starten. Starte Memry neu; falls die Synchronisierung dann immer noch nicht startet, melde dich ab und wieder an."
       }
     },
     "pagesSettingsAiInlineSection": {

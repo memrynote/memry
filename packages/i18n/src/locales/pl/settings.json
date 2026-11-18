@@ -2431,7 +2431,8 @@
         "vault-binding": "Klucze tego urządzenia zostały przywrócone, ale ten sejf nie jest jeszcze ustawiony na synchronizację z Twoim kontem. Wybierz sposób synchronizacji z menu synchronizacji.",
         "vault-foreign": "Klucze tego urządzenia zostały przywrócone, ale ten sejf należy do innego konta. Pozostaje lokalny na tym urządzeniu.",
         "entitlement": "Klucze tego urządzenia zostały przywrócone, ale synchronizacja wymaga aktywnego planu Sync.",
-        "unavailable": "Klucze tego urządzenia zostały przywrócone, ale nie udało się uruchomić synchronizacji. Uruchom Memry ponownie; jeśli synchronizacja nadal się nie uruchomi, wyloguj się i zaloguj ponownie."
+        "unavailable": "Klucze tego urządzenia zostały przywrócone, ale nie udało się uruchomić synchronizacji. Zostanie ponowiona; jeśli nie ruszy, uruchom Memry ponownie.",
+        "unavailable-restart": "Klucze tego urządzenia zostały przywrócone, ale nie udało się uruchomić synchronizacji. Uruchom Memry ponownie; jeśli synchronizacja nadal się nie uruchomi, wyloguj się i zaloguj ponownie."
       }
     },
     "pagesSettingsAiInlineSection": {
