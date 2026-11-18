@@ -4,15 +4,19 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use memry_core::api::errors::TransportError;
+use memry_core::api::errors::{ApiError, TransportError};
 use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
 use memry_core::protocol::types::Declaration;
+use memry_core::seams::reachability::{Reachability, ReachabilityObserver, Reachable};
 use memry_core::seams::transport::{
     HttpRequest, HttpResponse, SocketHandle, SocketListener, SocketRequest, Transport,
 };
 use memry_core::storage::import::DATA_FILE;
+use memry_core::sync::engine::{PushWave, SyncEngine};
+use memry_core::sync::hardening::history;
 use memry_core::sync::pull::{PullLoop, RecordCipher};
+use memry_core::sync::state::PassTrigger;
 use memry_desktop::electron_import::ImportError;
 use rusqlite::Connection;
 use rusqlite::types::Value;
@@ -90,28 +94,71 @@ impl RecordCipher for NoRecords {
     }
 }
 
-/// The URL of the first request a desktop core pull of the installed vault sends.
-fn first_pull_url(vault: &Vault) -> String {
-    let server = Arc::new(Server::default());
+/// A push wave with one row queued that logs its drain among the server's URLs.
+struct Wave(Arc<Server>);
+
+#[async_trait::async_trait]
+impl PushWave for Wave {
+    async fn pending(&self) -> Result<usize, ApiError> {
+        Ok(1)
+    }
+
+    async fn drain(&self) -> Result<usize, ApiError> {
+        self.0.urls.lock().unwrap().push("push wave".into());
+        Ok(1)
+    }
+}
+
+struct Online;
+
+impl Reachability for Online {
+    fn current(&self) -> Reachable {
+        Reachable::Wifi
+    }
+    fn observe(&self, _observer: Arc<dyn ReachabilityObserver>) {}
+}
+
+/// A desktop core pull of the installed vault against `server`.
+fn core_pull(vault: &Vault, server: &Arc<Server>) -> (Arc<HttpClient>, PullLoop) {
     let db = memry_core::storage::open_data(&vault.core().join(DATA_FILE)).unwrap();
-    let http = HttpClient::new(
-        Arc::clone(&server) as Arc<dyn Transport>,
+    let http = Arc::new(HttpClient::new(
+        Arc::clone(server) as Arc<dyn Transport>,
         "https://sync.example",
         ClientIdentity::new("desktop", "1.0.0").unwrap(),
-    );
+    ));
     let pull = PullLoop::new(
-        Arc::new(http),
+        Arc::clone(&http),
         db,
         Declaration::desktop(),
         Arc::new(NoRecords),
     );
+    (http, pull)
+}
+
+fn block_on<F: std::future::Future>(future: F) -> F::Output {
     tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
         .unwrap()
-        .block_on(pull.run(1))
-        .unwrap();
+        .block_on(future)
+}
+
+/// The URL of the first request a desktop core pull of the installed vault sends.
+fn first_pull_url(vault: &Vault) -> String {
+    let server = Arc::new(Server::default());
+    let (_, pull) = core_pull(vault, &server);
+    block_on(pull.run(1)).unwrap();
     server.urls.lock().unwrap()[0].clone()
+}
+
+/// The requests and the push of the first core sync pass over the installed vault, in order.
+fn first_pass(vault: &Vault) -> Vec<String> {
+    let server = Arc::new(Server::default());
+    let (http, pull) = core_pull(vault, &server);
+    let engine = SyncEngine::new(Arc::new(pull), http, Arc::new(Online))
+        .with_push(Arc::new(Wave(Arc::clone(&server))));
+    block_on(engine.run_pass(PassTrigger::Explicit));
+    server.urls.lock().unwrap().clone()
 }
 
 #[test]
@@ -275,6 +322,7 @@ fn schema_invalid_items_are_refetched_and_keep_their_kind() {
           "task:t-1":{"id":"t-1","type":"task","kind":"payload","lastRefusedByVersion":"1.4.0","failedAt":1700000000000},
           "note:n-1":{"id":"n-1","type":"note","kind":"newer","lastRefusedByVersion":"1.4.0","failedAt":1700000000001},
           "inbox:i-1":{"id":"i-1","type":"inbox","kind":"pending_intent","lastRefusedByVersion":"1.5.0","failedAt":1700000000002},
+          "note_body:n-1":{"id":"n-1","type":"note_body","kind":"envelope","lastRefusedByVersion":"1.5.0","failedAt":1700000000003},
           "bad":{"id":"x"}
         }"#,
     );
@@ -291,6 +339,8 @@ fn schema_invalid_items_are_refetched_and_keep_their_kind() {
         .unwrap()
         .collect::<Result<_, _>>()
         .unwrap();
+    // `refused_at` 0: no entry waits out the core's cooldown. The `note_body` entry is owed as a
+    // body debt instead.
     assert_eq!(
         rows,
         [
@@ -298,24 +348,74 @@ fn schema_invalid_items_are_refetched_and_keep_their_kind() {
                 "inbox".into(),
                 "i-1".into(),
                 "electron 1.5.0 pending_intent".into(),
-                1_700_000_000_002
+                0
             ),
             // An older build reads a kind it does not know as `payload`.
             (
                 "note".into(),
                 "n-1".into(),
                 "electron 1.4.0 payload".into(),
-                1_700_000_000_001
+                0
             ),
             (
                 "task".into(),
                 "t-1".into(),
                 "electron 1.4.0 payload".into(),
-                1_700_000_000_000
+                0
             ),
         ]
     );
     assert_eq!(report.notices["unreadableSchemaInvalidEntries"], 1);
+    assert_eq!(report.notices["schemaInvalidNoteBodies"], 1);
+}
+
+/// A peer's edit refused a minute before the import, behind this device's unsettled intent:
+/// the first pass refetches it by id before it pushes the local edit, as Electron's next pull
+/// start retries every entry another app version wrote (`schema-invalid-ledger.ts` `retryable`).
+/// Waiting out the core's cooldown would push the local edit over the peer's unmerged version.
+#[test]
+fn a_recent_refusal_is_refetched_before_the_first_push() {
+    let vault = Vault::new();
+    seed_key(&vault, "lastCursor", "4200");
+    seed_key(&vault, "cursorSkipRepair", "done");
+    seed_key(
+        &vault,
+        "schemaInvalidItems",
+        &format!(
+            r#"{{"task:t-1":{{"id":"t-1","type":"task","kind":"pending_intent","lastRefusedByVersion":"1.5.0","failedAt":{}}}}}"#,
+            NOW_MS - 60_000
+        ),
+    );
+    import(&vault);
+    let pass = first_pass(&vault);
+    let at = |what: &str| pass.iter().position(|request| request == what);
+    let (refetch, push) = (at("https://sync.example/sync/pull"), at("push wave"));
+    assert!(
+        matches!((refetch, push), (Some(refetch), Some(push)) if refetch < push),
+        "{pass:?}"
+    );
+}
+
+#[test]
+fn sync_history_rows_of_one_second_keep_their_order() {
+    let vault = Vault::new();
+    let conn = vault.data_conn();
+    for id in ["h-earlier", "h-later"] {
+        electron_db::seed(
+            &conn,
+            "sync_history",
+            &[
+                ("id", text(id)),
+                ("type", text("pull")),
+                ("item_count", Value::Integer(1)),
+                ("created_at", Value::Integer(1_700_000_000)),
+            ],
+        );
+    }
+    import(&vault);
+    let (rows, _) = history::entries(&core_conn(&vault), 10, 0).unwrap();
+    let ids: Vec<&str> = rows.iter().map(|row| row.id.as_str()).collect();
+    assert_eq!(ids, ["h-later", "h-earlier"]);
 }
 
 #[test]

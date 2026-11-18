@@ -1,8 +1,9 @@
-//! Every Electron `sync_state` key and where it goes. A key the list does not match is a key of
-//! a newer Electron: Electron never refuses one, so the import reports it
-//! (`unknownSyncStateKeys`) and carries on. Keys come from `SYNC_STATE_KEYS`
-//! (`sync/engine/sync-context.ts`) over Electron's history, plus the per-item prefixes written
-//! outside it.
+//! Every Electron `sync_state` key and where it goes. Keys come from `SYNC_STATE_KEYS`
+//! (`sync/engine/sync-context.ts`) over Electron's history, plus the keys and per-item prefixes
+//! written outside it; a test pins the list against Electron's current writers. A key the list
+//! does not match is reported (`unknownSyncStateKeys`) and the import carries on, as Electron
+//! ignores a key it does not read: it can come from a newer Electron, or from a writer the list
+//! missed.
 //!
 //! The `sync_state` table's importer ([`import`]) reads every row: a carried key's handler
 //! parses its value as Electron reads it into [`ImportSyncState`], which the core writes in one
@@ -186,6 +187,12 @@ pub const SYNC_STATE_KEYS: &[SyncStateKey] = &[
     skip(
         Exact("lastCrdtSweepAt"),
         "retired in #2421; the row stays only for older Electron builds",
+    ),
+    skip(
+        Exact("declinedSyncRefs"),
+        "server items Electron declined as duplicates of a local row \
+         (packages/sync-client/src/declined-refs.ts); the core keeps no decline set yet, so its \
+         manifest check pulls them again (follow-up on #3553)",
     ),
     document(
         Prefix("journalDayMerge:"),
@@ -406,24 +413,33 @@ struct LedgerEntry {
     #[serde(default)]
     kind: Value,
     last_refused_by_version: String,
-    failed_at: i64,
+    /// Required, as Electron's schema requires it; the core's cooldown does not read it.
+    #[serde(rename = "failedAt")]
+    _failed_at: i64,
 }
 
 /// `SchemaInvalidLedger.read`: a JSON object of entries; one that does not parse is dropped, and
 /// a kind it does not know reads as `payload`. The refusing version names Electron's app and the
-/// kind, so the core build never matches it and the first pull past the cooldown refetches the
-/// item, as Electron does once another app version runs.
+/// kind, so the core build never matches it. `refused_at` is 0, so the core's cooldown never
+/// holds an entry back: the first pull refetches every one before the first push, as
+/// Electron's `retryable` does at the next pull start for entries another app version wrote.
+/// A `note_body` entry is dropped: Electron's `refuse` also owes the note a body debt
+/// (`note-body-feed.ts`), imported with `crdt_body_debts`, and the core refetches records only.
 fn schema_invalid_items(plan: &mut SyncStatePlan, value: &str) -> Carried {
     let Ok(Value::Object(entries)) = serde_json::from_str::<Value>(value) else {
         return Carried::Dropped("unreadableSchemaInvalidState");
     };
     let mut kept = BTreeMap::new();
-    let mut unreadable: u64 = 0;
+    let (mut unreadable, mut note_bodies): (u64, u64) = (0, 0);
     for (_, entry) in entries {
         let Ok(e) = serde_json::from_value::<LedgerEntry>(entry) else {
             unreadable += 1;
             continue;
         };
+        if e.item_type == "note_body" {
+            note_bodies += 1;
+            continue;
+        }
         let kind = e
             .kind
             .as_str()
@@ -435,14 +451,17 @@ fn schema_invalid_items(plan: &mut SyncStatePlan, value: &str) -> Carried {
                 item_type: e.item_type,
                 item_id: e.id,
                 refused_by_version: format!("electron {} {kind}", e.last_refused_by_version),
-                refused_at: e.failed_at,
+                refused_at: 0,
             },
         );
     }
-    if unreadable > 0 {
-        plan.stats
-            .notices
-            .push(("unreadableSchemaInvalidEntries", unreadable));
+    for (notice, count) in [
+        ("unreadableSchemaInvalidEntries", unreadable),
+        ("schemaInvalidNoteBodies", note_bodies),
+    ] {
+        if count > 0 {
+            plan.stats.notices.push((notice, count));
+        }
     }
     plan.state.refused = kept.into_values().collect();
     Carried::Written
