@@ -236,6 +236,8 @@ export const commands = {
 	 *  ([`announce_followed`]).
 	 */
 	journalUpdateEntry: (input: JournalUpdateInput) => __TAURI_INVOKE<JournalEntryView>("journal_update_entry", { input }),
+	/**  Logs `renderer launch marks {json}`, the line the launch bench parses. */
+	launchReportRendererMarks: (marks: RendererLaunchMarks) => __TAURI_INVOKE<null>("launch_report_renderer_marks", { marks }),
 	localeGet: () => __TAURI_INVOKE<string>("locale_get"),
 	localeList: () => __TAURI_INVOKE<string[]>("locale_list"),
 	/**
@@ -3093,6 +3095,16 @@ export type RenamedAttachment = {
 export type RenamedDay = {
 	noteId: string,
 	path: string,
+};
+
+/**  Milliseconds since navigation start; a field is absent when the web view never recorded it. */
+export type RendererLaunchMarks = {
+	firstPaintMs: number | null,
+	fcpMs: number | null,
+	domInteractiveMs: number | null,
+	domContentLoadedMs: number | null,
+	/**  `memry:note-readable`, set only when the note the launch restored rendered. */
+	noteReadableMs: number | null,
 };
 
 /**  `tags:reorder`'s payload. */
