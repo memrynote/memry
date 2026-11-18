@@ -72,6 +72,19 @@ impl Settled {
         }
     }
 
+    fn until_body(&self, text: &str) {
+        let deadline = Instant::now() + WAIT;
+        while self.e.body(NOTE) != text {
+            assert!(Instant::now() < deadline, "body {:?}", self.e.body(NOTE));
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    }
+
+    fn has_version(&self, text: char) {
+        let versions = self.e.versions(NOTE);
+        assert!(versions.iter().any(|v| v.contains(text)), "{versions:?}");
+    }
+
     /// The file once the write-back's debounce and a quiet spell have passed with no write of
     /// the app's to the note. The over-Electron vault mints no note for a new file, so the
     /// reconcile barrier of `vault_env` (a probe file seen added) is not available here; the
@@ -242,22 +255,53 @@ fn an_outside_edit_after_quit_reaches_the_body() {
     s.electron_unchanged();
 }
 
-/// Departure (known limit): the body was ahead and the file was also edited while Electron was
-/// closed. The body wins and the outside edit is kept as a version; nothing is lost.
+/// The body was ahead and the file was also edited while Electron was closed: the file wins,
+/// as Electron's cached-hash guard feeds it (`crdt-writeback.ts:827-878`), and the body is kept
+/// as a version first, so neither text is lost.
 #[test]
-fn an_outside_edit_beside_a_body_ahead_is_kept_as_a_version() {
-    let s = import_and_open(&Fixture {
+fn an_outside_edit_beside_a_body_ahead_is_fed_and_the_body_kept() {
+    let mut s = import_and_open(&Fixture {
         read: "A\n",
         file: "C\n",
         body: "B\n",
         ..AHEAD
     });
-    s.until_file("B\n");
-    assert!(
-        s.e.versions(NOTE).iter().any(|v| v.contains('C')),
-        "{:?}",
-        s.e.versions(NOTE)
-    );
+    s.until_body("C");
+    assert_eq!(s.quiet_file(), "C\n");
+    s.has_version('B');
+    s.electron_unchanged();
+}
+
+/// An outside edit made while Electron was closed that also changed the frontmatter (a tag
+/// added): the edit reaches the body, the file stays, and the body it replaced is a version.
+#[test]
+fn an_outside_edit_that_changed_the_frontmatter_reaches_the_body() {
+    const FILE: &str = "---\ntags: [a, b]\n---\n\nC\n";
+    let mut s = import_and_open(&Fixture {
+        read: "---\ntags: [a]\n---\n\nA\n",
+        file: FILE,
+        body: "A\n",
+        ..AHEAD
+    });
+    s.until_body("C");
+    assert_eq!(s.quiet_file(), FILE);
+    s.has_version('A');
+    s.electron_unchanged();
+}
+
+/// The same edit saved by an editor that writes CRLF line ends.
+#[test]
+fn an_outside_edit_in_another_spelling_reaches_the_body() {
+    const FILE: &str = "---\r\ntags: [a, b]\r\n---\r\n\r\nC\r\n";
+    let mut s = import_and_open(&Fixture {
+        read: "---\ntags: [a]\n---\n\nA\n",
+        file: FILE,
+        body: "A\n",
+        ..AHEAD
+    });
+    s.until_body("C");
+    assert_eq!(s.quiet_file(), FILE);
+    s.has_version('A');
     s.electron_unchanged();
 }
 
