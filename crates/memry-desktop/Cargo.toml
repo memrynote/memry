@@ -97,6 +97,10 @@ axum = { version = "0.8.9", default-features = false, features = ["http1", "toki
 tokio-util = { version = "0.7.19", features = ["io"] }
 # The sign-in loopback compares `state` in constant time; already in the lockfile.
 subtle = "2.6.1"
+# The agent MCP server (`agent/mcp`, Step 28 #3545): streamable HTTP on the loopback axum router,
+# stateless, and the tool input schemas of packages/contracts/test-vectors/agent-mcp/tools.json.
+rmcp = { version = "=3.11.0", default-features = false, features = ["server", "transport-streamable-http-server"] }
+jsonschema = { version = "=0.61.2", default-features = false }
 icu_plurals = "2.4.0"
 icu_locale = "2.4.0"
 icu_decimal = "2.4.0"
@@ -215,6 +219,12 @@ path = "tests/extract_bench.rs"
 [[test]]
 name = "model_download_proxy"
 path = "tests/model_download_proxy.rs"
+
+# The official TypeScript MCP client against the agent MCP server. Needs node and
+# `pnpm install --filter @memry/agent-mcp-client`; ignored by default, rust-ci runs it.
+[[test]]
+name = "agent_mcp_client"
+path = "tests/agent_mcp_client.rs"
 
 [[test]]
 name = "sync_harness"
