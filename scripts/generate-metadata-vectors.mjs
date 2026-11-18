@@ -12,6 +12,10 @@
 // Dates without a timezone are local in metascraper, so this runs in UTC, the
 // timezone the Rust test reads them in.
 //
+// The root package.json pins the nine metascraper packages to exactly 5.49.21 for this script,
+// so the vectors record one version. Electron (`apps/desktop/package.json`) takes `^5.49.15`
+// and may resolve a newer 5.x; the Rust port follows 5.49.21.
+//
 // Usage: node scripts/generate-metadata-vectors.mjs [--check]
 import { readFileSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
@@ -62,9 +66,17 @@ function decode(bytes, contentType) {
   }
 }
 
-// Departure from Electron (Rust `fetchable_image` in `metadata/mod.rs`): metascraper passes any
-// URI as `image` and `logo` (`javascript:alert(1)`, `ftp:`); only http(s) and data URIs stay.
-const fetchableImage = (value) => (/^(?:https?:\/\/|data:)/i.test(value ?? '') ? value : undefined)
+// Departures from Electron (Rust `http_url` and `fetchable_image` in `metadata/mod.rs`):
+// metascraper passes any URI as `url`, `image` and `logo` (`javascript:alert(1)`, `vbscript:`,
+// `file:`, `ftp:`). Only http(s) stays, plus a `data:image/*` image up to a base64
+// `MAX_IMAGE_BYTES` (5 MiB) image and its header.
+const MAX_DATA_IMAGE_BYTES = Math.floor((5 * 1024 * 1024 * 4) / 3) + 1024
+const httpUrl = (value) => (/^https?:\/\//i.test(value ?? '') ? value : undefined)
+const fetchableImage = (value) =>
+  httpUrl(value) ??
+  (/^data:image\//i.test(value ?? '') && Buffer.byteLength(value) <= MAX_DATA_IMAGE_BYTES
+    ? value
+    : undefined)
 
 async function fetchUrlMetadata(html, url) {
   const metadata = await scraper({ html, url })
@@ -77,7 +89,7 @@ async function fetchUrlMetadata(html, url) {
     publisher: metadata.publisher || undefined,
     date: metadata.date || undefined,
     logo: fetchableImage(metadata.logo) || undefined,
-    url: metadata.url || url
+    url: httpUrl(metadata.url) || url
   }
   return Object.fromEntries(Object.entries(out).filter(([, v]) => v !== undefined))
 }

@@ -299,16 +299,20 @@ fn collect<Tz: TimeZone>(text: &str, now: &DateTime<Tz>) -> Vec<Hit> {
         });
         let Some(n) = n else { continue };
         let unit = caps[3].to_ascii_lowercase();
+        // Past chrono's range chrono-node gives an Invalid Date, so no date.
         let back = match unit.chars().next() {
-            Some('s') => Duration::seconds(n),
-            Some('h') => Duration::hours(n),
-            Some('d') => Duration::days(n),
-            Some('w') => Duration::weeks(n),
-            Some('y') => Duration::days(365 * n),
-            _ if unit.starts_with("mo") => Duration::days(30 * n),
-            _ => Duration::minutes(n),
+            Some('s') => Duration::try_seconds(n),
+            Some('h') => Duration::try_hours(n),
+            Some('d') => Duration::try_days(n),
+            Some('w') => Duration::try_weeks(n),
+            Some('y') => n.checked_mul(365).and_then(Duration::try_days),
+            _ if unit.starts_with("mo") => n.checked_mul(30).and_then(Duration::try_days),
+            _ => Duration::try_minutes(n),
         };
-        push(start, end, Found::Relative(instant - back), None);
+        let Some(then) = back.and_then(|back| instant.checked_sub_signed(back)) else {
+            continue;
+        };
+        push(start, end, Found::Relative(then), None);
     }
     for caps in TIME.captures_iter(text) {
         let (start, end) = span(&caps);

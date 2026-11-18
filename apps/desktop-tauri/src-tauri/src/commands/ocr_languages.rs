@@ -1,7 +1,7 @@
 //! The OCR languages row of Settings > General (`ocr-languages-handlers.ts`): read, choose and
-//! retry, over `memry_desktop::services::ocr_languages`. The service starts converging once the
-//! main window shows and again on every UI language change (`startOcrLanguages`, Electron
-//! `index.ts:1677`).
+//! retry, over `memry_desktop::services::ocr_languages`. The service starts converging after the
+//! main window shows (`post_reveal`) and again on every UI language change (`startOcrLanguages`,
+//! Electron `index.ts:1677`).
 
 use std::sync::{Arc, Mutex, PoisonError};
 
@@ -58,6 +58,10 @@ fn manage(app: &AppHandle<Wry>) -> Result<(), CommandError> {
         <LocaleChangedEvent as tauri_specta::Event>::NAME,
         move |_| on_locale.locale_changed(),
     );
+    // Downloads what the app language needs once the main window shows (Electron
+    // `index.ts:1677`).
+    let start = service.clone();
+    crate::post_reveal::once_window_shown("ocr-languages", move || start.start());
     app.manage(service);
     Ok(())
 }
@@ -66,13 +70,6 @@ fn manage(app: &AppHandle<Wry>) -> Result<(), CommandError> {
 fn active_key(state: &OcrLanguagesState) -> String {
     let codes: Vec<&str> = state.ready().into_iter().map(OcrLanguage::code).collect();
     codes.join("+")
-}
-
-/// Called once the main window shows: downloads what the app language needs.
-pub fn on_window_shown(app: &AppHandle<Wry>) {
-    if let Some(service) = app.try_state::<Arc<OcrLanguages>>() {
-        service.start();
-    }
 }
 
 fn service(app: &AppHandle<Wry>) -> Arc<OcrLanguages> {
