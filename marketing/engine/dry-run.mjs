@@ -86,6 +86,13 @@ function stubPage(onPoint) {
 const ELECTRON_MAIN = /process\.mainModule|apps\/desktop\/scripts\/agent-app\.mjs/
 
 /**
+ * Whether `--check` fails: a call outside the subset, a point outside the film, or a scene that
+ * drives Electron's main process (the Tauri app has none). Errors of the stand-in page do not count.
+ */
+export const checkFails = (report) =>
+  report.notInSubset.length > 0 || report.outside.length > 0 || report.electronMain
+
+/**
  * @returns {Promise<{ notInSubset: string[], outside: string[], errors: string[], electronMain: boolean }>}
  */
 export async function dryRun(dir, film = FILM) {
@@ -151,11 +158,17 @@ export async function dryRun(dir, film = FILM) {
       else report.errors.push(`${scene}: ${String(error?.message ?? error).split('\n')[0]}`)
     }
   }
-  // Scenes that read agent-app's state or write scratch files do so under an empty temp dir.
-  const previousTmp = process.env.TMPDIR
+  // Scenes that read agent-app's state or write scratch files do so under an empty temp dir, with
+  // no app checkout to drive.
+  const previous = { TMPDIR: process.env.TMPDIR, MEMRY_SOCIAL_APP: process.env.MEMRY_SOCIAL_APP }
   process.env.TMPDIR = mkdtempSync(path.join(tmpdir(), 'memry-film-check-'))
+  delete process.env.MEMRY_SOCIAL_APP
   try {
-    const mod = await import(pathToFileURL(path.join(dir, 'scenes.mjs')).href)
+    // A fresh module instance: a take in the same process keeps its own, and module-level state
+    // of an earlier dry run does not carry over.
+    const url = pathToFileURL(path.join(dir, 'scenes.mjs'))
+    url.searchParams.set('dry-run', `${Date.now()}-${Math.random()}`)
+    const mod = await import(url.href)
     await run(mod.setup)
     for (const s of N.scenes) {
       scene = s.id
@@ -165,8 +178,10 @@ export async function dryRun(dir, film = FILM) {
     }
   } finally {
     fs.rmSync(process.env.TMPDIR, { recursive: true, force: true })
-    if (previousTmp === undefined) delete process.env.TMPDIR
-    else process.env.TMPDIR = previousTmp
+    for (const [name, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[name]
+      else process.env[name] = value
+    }
   }
   return report
 }

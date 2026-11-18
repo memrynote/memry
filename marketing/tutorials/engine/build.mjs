@@ -20,7 +20,7 @@ import { execFileSync, spawnSync } from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { dryRun } from '../../engine/dry-run.mjs'
+import { checkFails, dryRun } from '../../engine/dry-run.mjs'
 import { appBuild, query, startApp, stopApp, useApp } from './app.mjs'
 import { renderCards } from './card.mjs'
 import { quota } from './eleven.mjs'
@@ -88,8 +88,11 @@ if (steps.includes('check') || steps.includes('record')) {
     )
   const subset = await dryRun(dir)
   for (const line of [...subset.notInSubset, ...subset.outside]) console.error(`  ${line}`)
-  if (subset.notInSubset.length || subset.outside.length)
-    throw new Error('scenes.mjs makes calls the WebDriver page lacks or points outside the film')
+  if (subset.electronMain) console.error('  electron-main: drives the Electron main process')
+  if (checkFails(subset))
+    throw new Error(
+      'scenes.mjs makes calls the WebDriver page lacks, points outside the film or drives Electron'
+    )
   const q = await quota()
   console.log(`  ElevenLabs ${q.tier}: ${q.used}/${q.limit} characters used`)
 }

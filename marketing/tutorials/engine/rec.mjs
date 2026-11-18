@@ -82,6 +82,9 @@ export class CdpScreencast {
     await this.cdp.send('Page.stopScreencast')
     await this.cdp.detach()
   }
+  async abort() {
+    if (this.cdp) await this.stop()
+  }
 }
 
 export class Recorder {
@@ -113,6 +116,10 @@ export class Recorder {
     this.size = await this.backend.start(this.dir)
     this.t0 = Date.now() / 1000
     await this.page.mouse.move(this.mouse.x, this.mouse.y)
+  }
+  /** Ends a failed take: the backend stops recording and keeps no file. */
+  abort() {
+    return this.backend.abort()
   }
   now() {
     return Date.now() / 1000 - this.t0

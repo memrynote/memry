@@ -25,7 +25,8 @@ import { execFileSync } from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { dryRun } from '../../engine/dry-run.mjs'
+import { checkFails, dryRun } from '../../engine/dry-run.mjs'
+import { takeRecordLock } from '../../engine/screen-rec.mjs'
 import { appBuild, query, startApp, stopApp, useApp } from '../../tutorials/engine/app.mjs'
 import { encode } from '../../tutorials/engine/encode.mjs'
 import { record } from '../../tutorials/engine/record.mjs'
@@ -106,7 +107,7 @@ if (check) {
       : [])
   ]
   console.log(`${slug}: ${lines.length ? '' : 'ok'}${lines.map((l) => `\n  ${l}`).join('')}`)
-  process.exit(r.notInSubset.length || r.outside.length ? 1 : 0)
+  process.exit(checkFails(r) ? 1 : 0)
 }
 if (!N.silent) throw new Error(`${slug}/narration.json must be a silent film ("silent": true)`)
 const out = path.join(dir, 'out')
@@ -189,36 +190,6 @@ if (open) {
   )
 }
 
-// One take at a time across slots: two screencasts at once each get fewer frames, and a choppy
-// cursor is the first thing a viewer notices.
-const LOCK = '/tmp/memry-social/record.lock'
-async function takeTurn() {
-  for (let waited = 0; ; waited += 2) {
-    try {
-      fs.mkdirSync(LOCK)
-      fs.writeFileSync(path.join(LOCK, 'owner'), `${process.pid} ${slug}`)
-      let held = true
-      return () => {
-        if (held) fs.rmSync(LOCK, { recursive: true, force: true })
-        held = false
-      }
-    } catch {
-      const [pid, who] = (
-        fs.existsSync(path.join(LOCK, 'owner'))
-          ? fs.readFileSync(path.join(LOCK, 'owner'), 'utf8')
-          : ''
-      ).split(' ')
-      let alive = false
-      try {
-        alive = !!pid && process.kill(Number(pid), 0)
-      } catch {}
-      if (pid && !alive) fs.rmSync(LOCK, { recursive: true, force: true })
-      else if (waited % 30 === 0) console.log(`  waiting for ${who ?? 'another'} take to finish...`)
-      await new Promise((r) => setTimeout(r, 2000))
-    }
-  }
-}
-
 // A clip with `"page": "<file>.html"` or `"page": "https://..."` in narration.json films that page
 // (a terminal replay, an animated diagram, a live web page) in headless Chromium at the size the
 // pages are laid out for (1600x900; compose.py reads it from take.json), instead of the app.
@@ -240,7 +211,10 @@ if (N.page && step('record')) {
     await page.evaluate(() => document.fonts.ready)
     // Scenes that replay real commands run them on this vault.
     process.env.MEMRY_SOCIAL_VAULT = await clipVault()
-    release = await takeTurn()
+    // One take at a time across slots: two screencasts at once each get fewer frames, and a
+    // choppy cursor is the first thing a viewer notices. The app's screen recorder takes the lock
+    // itself.
+    release = await takeRecordLock(slug)
     const timeline = await record(dir, { page })
     release()
     const total = timeline.at(-1).end + 0.3
@@ -254,12 +228,9 @@ if (N.page && step('record')) {
 if (!N.page && step('record')) {
   const vault = await clipVault()
   await start(vault)
-  let release = noop
   try {
     await new Promise((r) => setTimeout(r, 2500))
-    release = await takeTurn()
     const timeline = await record(dir)
-    release()
     const total = timeline.at(-1).end + 0.3
     console.log(`  ${encode(path.join(out, 'take'), total)} frames, ${total.toFixed(1)}s`)
     const { checks = [] } = await import(pathToFileURL(path.join(dir, 'scenes.mjs')).href)
@@ -270,7 +241,6 @@ if (!N.page && step('record')) {
     })
     if (failed.length) throw new Error(`Recording checks failed:\n${failed.join('\n')}`)
   } finally {
-    release()
     stopApp()
   }
 }

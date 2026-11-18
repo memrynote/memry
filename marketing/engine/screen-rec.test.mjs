@@ -1,15 +1,24 @@
 import assert from 'node:assert/strict'
+import { spawn } from 'node:child_process'
+import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import * as path from 'node:path'
 import { test } from 'node:test'
 
 import { segments, screenFilter } from '../tutorials/engine/encode.mjs'
+import { record } from '../tutorials/engine/record.mjs'
 import {
   CALIBRATION_LIMIT,
+  ScreenRecorder,
+  TILE_LIMIT,
   checkCalibration,
   contentRegion,
   cropFilter,
   meanAbsDiff,
   pickScreen,
-  placeWindow
+  placeWindow,
+  takeRecordLock,
+  worstTileDiff
 } from './screen-rec.mjs'
 
 const LISTING = `[AVFoundation indev @ 0x1] AVFoundation video devices:
@@ -93,4 +102,62 @@ test('fast-forward spans are cut from the raw recording and retimed', () => {
       '[a2]trim=start=2.0000,setpts=(PTS-STARTPTS)/1[s2];' +
       '[s0][s1][s2]concat=n=3:v=1:a=0,fps=60,format=yuv420p[v]'
   )
+})
+
+test('a notification banner fails calibration though the whole-frame mean passes', () => {
+  const frame = Uint8Array.from({ length: 160 * 90 }, (_, i) => (i % 160 < 80 ? 30 : 220))
+  // A banner in the top right corner: 20x12 probe px, about 1.7% of the frame.
+  const banner = frame.map((v, i) => (i % 160 >= 140 && Math.floor(i / 160) < 12 ? 120 : v))
+  assert.ok(meanAbsDiff(frame, banner) < CALIBRATION_LIMIT)
+  assert.ok(worstTileDiff(frame, banner) > TILE_LIMIT)
+  assert.throws(() => checkCalibration(frame, banner), /worst tile/)
+})
+
+test('the record lock serializes takes and takes over a dead owner', async () => {
+  const lock = path.join(mkdtempSync(path.join(tmpdir(), 'film-lock-')), 'record.lock')
+  const release = await takeRecordLock('first', lock)
+  let second = false
+  const waiting = takeRecordLock('second', lock).then((r) => ((second = true), r))
+  await new Promise((done) => setTimeout(done, 100))
+  assert.equal(second, false)
+  release()
+  ;(await waiting)()
+  assert.equal(second, true)
+  // An owner process that is gone does not hold the lock.
+  mkdirSync(lock)
+  writeFileSync(path.join(lock, 'owner'), '999999 crashed')
+  ;(await takeRecordLock('third', lock))()
+  assert.equal(existsSync(lock), false)
+})
+
+test('a throwing scene aborts the take: the recording child is killed, its file and the lock are gone', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'film-take-'))
+  const lock = path.join(dir, 'record.lock')
+  writeFileSync(
+    path.join(dir, 'narration.json'),
+    JSON.stringify({ silent: true, scenes: [{ id: 'boom', dur: 1 }] })
+  )
+  writeFileSync(
+    path.join(dir, 'scenes.mjs'),
+    "export const scenes = { boom: async () => { throw new Error('scene failed') } }"
+  )
+  // The real screen backend, with ffmpeg replaced by a child that, like ffmpeg, keeps going after
+  // its stdin ends and ignores `q`.
+  const backend = new ScreenRecorder(null, { lock })
+  backend.start = async function (out) {
+    this.release = await takeRecordLock('test', this.lock)
+    this.raw = path.join(out, 'raw.mkv')
+    writeFileSync(this.raw, 'frames')
+    this.watch(
+      spawn(process.execPath, ['-e', 'process.stdin.resume(); setInterval(() => {}, 1000)'], {
+        stdio: ['pipe', 'ignore', 'pipe']
+      })
+    )
+    return { width: 1440, height: 810, scale: 2 }
+  }
+  const page = { evaluate: async () => undefined, mouse: { move: async () => undefined } }
+  await assert.rejects(record(dir, { page, backend }), /scene failed/)
+  assert.ok(backend.ffmpeg.exitCode !== null || backend.ffmpeg.signalCode !== null)
+  assert.equal(existsSync(backend.raw), false)
+  assert.equal(existsSync(lock), false)
 })

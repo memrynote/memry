@@ -19,7 +19,7 @@ const TAIL = 0.7
  * `page` (a Playwright page) films that page through its screencast instead of the app (the
  * social clips' terminal and diagram scenes); the app is filmed from the screen.
  */
-export async function record(dir, { page: given } = {}) {
+export async function record(dir, { page: given, backend } = {}) {
   const N = JSON.parse(fs.readFileSync(path.join(dir, 'narration.json'), 'utf8'))
   const mod = await import(pathToFileURL(path.join(dir, 'scenes.mjs')).href)
   const missing = N.scenes.filter((s) => !mod.scenes[s.id]).map((s) => s.id)
@@ -30,7 +30,7 @@ export async function record(dir, { page: given } = {}) {
   const rec = new Recorder(
     page,
     out,
-    given ? new CdpScreencast(given) : new ScreenRecorder(browser)
+    backend ?? (given ? new CdpScreencast(given) : new ScreenRecorder(browser))
   )
   const timeline = []
   let scene = null
@@ -80,37 +80,50 @@ export async function record(dir, { page: given } = {}) {
       })
   }
 
-  await installCursor(page)
-  await mod.setup?.(ctx)
-  await rec.start()
-  for (const s of N.scenes) {
-    const a = N.silent
-      ? null
-      : JSON.parse(fs.readFileSync(path.join(dir, 'vo', `${s.id}.json`), 'utf8')).alignment
-    scene = {
-      id: s.id,
-      t: rec.now(),
-      vo: rec.now() + (s.lead ?? (N.silent ? 0 : LEAD)),
-      tail: s.tail ?? (N.silent ? 0 : TAIL),
-      dur: a ? a.character_end_times_seconds.at(-1) : s.dur,
-      chars: a ? a.characters.join('') : '',
-      a
+  try {
+    await installCursor(page)
+    await mod.setup?.(ctx)
+    try {
+      await rec.start()
+      for (const s of N.scenes) {
+        const a = N.silent
+          ? null
+          : JSON.parse(fs.readFileSync(path.join(dir, 'vo', `${s.id}.json`), 'utf8')).alignment
+        scene = {
+          id: s.id,
+          t: rec.now(),
+          vo: rec.now() + (s.lead ?? (N.silent ? 0 : LEAD)),
+          tail: s.tail ?? (N.silent ? 0 : TAIL),
+          dur: a ? a.character_end_times_seconds.at(-1) : s.dur,
+          chars: a ? a.characters.join('') : '',
+          a
+        }
+        rec.mark('scene', { id: s.id })
+        timeline.push(scene)
+        await mod.scenes[s.id](ctx)
+        await ctx.end()
+        if (mod.after?.[s.id]) await mod.after[s.id](ctx)
+      }
+    } catch (error) {
+      // A failed take leaves no recording running and no file behind.
+      try {
+        await rec.abort()
+      } catch (abortError) {
+        console.error(`  the recorder did not end cleanly: ${abortError.message}`)
+      }
+      throw error
     }
-    rec.mark('scene', { id: s.id })
-    timeline.push(scene)
-    await mod.scenes[s.id](ctx)
-    await ctx.end()
-    if (mod.after?.[s.id]) await mod.after[s.id](ctx)
+    await rec.stop()
+    const film = timeline.map(({ id, t, vo, dur, end }) => ({
+      id,
+      t: rec.remap(t),
+      vo: rec.remap(vo),
+      dur,
+      end: rec.remap(end)
+    }))
+    fs.writeFileSync(path.join(out, 'timeline.json'), JSON.stringify(film, null, 1))
+    return film
+  } finally {
+    await browser?.close()
   }
-  await rec.stop()
-  const film = timeline.map(({ id, t, vo, dur, end }) => ({
-    id,
-    t: rec.remap(t),
-    vo: rec.remap(vo),
-    dur,
-    end: rec.remap(end)
-  }))
-  fs.writeFileSync(path.join(out, 'timeline.json'), JSON.stringify(film, null, 1))
-  await browser?.close()
-  return film
 }
