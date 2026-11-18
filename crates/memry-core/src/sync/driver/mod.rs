@@ -53,6 +53,7 @@ use crate::crdt::SnapshotPusher;
 use crate::crdt::snapshot_cadence::SnapshotRequests;
 use crate::crypto::agent_envelope::AtRestKey;
 use crate::crypto::keys;
+use crate::domain::task_activity::superseded::SupersededObserver;
 use crate::protocol::account::{AccountSealer, DeviceSigner, device_directory};
 use crate::protocol::auth::TokenManager;
 use crate::protocol::http::{HttpClient, TokenProvider};
@@ -286,6 +287,7 @@ impl SyncDriver {
         }
         let tasks = Arc::new(TasksPhase::new(db.clone()));
         engine = engine.with_seed(Arc::clone(&tasks) as Arc<dyn PassSeed>);
+        observers.register(SupersededObserver::new(db.clone(), device_id.clone()));
 
         let driver = Self {
             engine,

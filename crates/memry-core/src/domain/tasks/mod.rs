@@ -34,10 +34,10 @@
 //! merged row at the union clock, untouched, so it dominates the server's row
 //! ([`crate::sync::hardening::requeue`]).
 //!
-//! It also does not write `task_activity`. Desktop mints a `superseded` row per
-//! conflict; nothing in chapter 06 makes that an obligation on this core, and
-//! those rows sync to every device, so the conflicts are **returned** to the
-//! caller and written nowhere.
+//! It also does not write `task_activity`. The conflicts are **returned** to
+//! the applied-record feed, and the desktop driver's observer writes the
+//! `superseded` rows after the page commits
+//! ([`crate::domain::task_activity::superseded`]).
 //!
 //! `_offline` never reaches a payload written here:
 //! `notes::next_clock` and `task_merge::next_field_clocks` both
@@ -140,8 +140,7 @@ pub enum Inbound {
     /// conflict (§6.5.4).
     ///
     /// `conflicts` carries those fields' values for the applied-record feed
-    /// ([`crate::sync::driver::observer`]). `task` and `project` leave it
-    /// empty until Step 21 (#3538).
+    /// ([`crate::sync::driver::observer`]).
     Merged {
         conflicted_fields: Vec<String>,
         conflicts: Vec<crate::sync::field_merge::FieldConflict>,

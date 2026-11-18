@@ -175,10 +175,9 @@ fn apply_versioned(
 
 /// The merge's own vocabulary, in the pull's.
 ///
-/// `Merged`'s conflict set is deliberately dropped here. §6.5.3 and §6.5.4
-/// make the conflicts something a *caller* may show a user; §6.3.1's core
-/// obligation is that the core writes them nowhere, because desktop's
-/// `superseded` rows sync to every device as `task_activity`.
+/// `Merged`'s conflict set is dropped here; [`apply_record`] hands it to the
+/// applied-record feed instead, whose observers act on it after the page
+/// commits.
 pub(super) fn outcome(inbound: Inbound) -> ApplyOutcome {
     match inbound {
         Inbound::Applied | Inbound::Merged { .. } => ApplyOutcome::Applied,

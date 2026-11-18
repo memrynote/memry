@@ -39,13 +39,17 @@ pub enum AppliedOutcome {
 }
 
 /// One field a concurrent merge decided (chapter 06 §6.5), for the
-/// `conflict_resolved` telemetry and the conflict report.
+/// `conflict_resolved` telemetry, the conflict report and a task's
+/// `superseded` row.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FieldConflict {
     pub field: String,
     pub losing: Json,
     pub winning: Json,
     pub merged_clock: Json,
+    /// This device's value lost, so `losing` is the value it held. False when
+    /// it won (§6.3's `_offline` tie rule), and `losing` is the remote's.
+    pub local_lost: bool,
 }
 
 /// One record of a committed page. Ids, the outcome and the conflicts only:
