@@ -450,7 +450,16 @@ export function useCriticMarkupReview({
     marksDocBoundRef.current = bound
   }, [])
 
-  const replaceMarksFromYjs = useCallback((nextMarks: CriticMarkupMark[]) => {
+  // The doc's offsets are not the window's: the window moves its marks with its own typing and
+  // never writes them back (#4425). A mark whose words are unchanged keeps the window's offsets.
+  const replaceMarksFromYjs = useCallback((docMarks: CriticMarkupMark[]) => {
+    const held = new Map(marksRef.current.map((mark) => [mark.id, mark]))
+    const nextMarks = docMarks.map((mark) => {
+      const local = held.get(mark.id)
+      return local && local.visibleText === mark.visibleText
+        ? { ...mark, start: local.start, end: local.end }
+        : mark
+    })
     if (areCriticMarkupMarksEqual(marksRef.current, nextMarks)) return
     marksRef.current = nextMarks
     setMarks(nextMarks)

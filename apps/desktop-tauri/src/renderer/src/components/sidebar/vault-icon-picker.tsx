@@ -16,6 +16,10 @@ const loadEmojiPicker = async () => {
   emojiPickerLoaded = true
   return module
 }
+const OPEN_LAYER = ['dialog', 'alertdialog', 'menu']
+  .map((role) => `[role="${role}"][data-state="open"]`)
+  .join(', ')
+
 const LazyEmojiPicker = lazy(async () => ({
   default: (await loadEmojiPicker()).EmojiPicker
 }))
@@ -103,11 +107,13 @@ export function VaultIconPicker({
   // While the chunk is out there is no popover to take Escape: a slow load must not leave the
   // picker open with nothing on screen and no way to dismiss it. The key is this picker's, so it
   // is marked taken (capture runs before the window's other listeners, which check
-  // `defaultPrevented`) and does not also go back a level in the sidebar.
+  // `defaultPrevented`) and does not also go back a level in the sidebar. A dialog or menu opened
+  // over the invisible picker owns the key: Radix dismisses only when nothing prevented it.
   useEffect(() => {
     if (!open || ready) return undefined
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.key !== 'Escape') return
+      if (document.querySelector(OPEN_LAYER)) return
       event.preventDefault()
       close()
     }

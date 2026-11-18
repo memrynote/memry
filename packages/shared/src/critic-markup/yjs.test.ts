@@ -125,4 +125,44 @@ describe('critic markup Yjs helpers', () => {
       { start: 4, end: 8, marks: ['bold'] }
     ])
   })
+
+  it('keeps a mark field a newer build wrote when this build rewrites the array', () => {
+    const doc = new FakeYDoc()
+    doc.array.values = [
+      {
+        id: 'c1',
+        kind: 'comment',
+        visibleText: 'alpha',
+        start: 0,
+        end: 5,
+        body: 'one',
+        pinned: true
+      },
+      { id: 'c2', kind: 'comment', visibleText: 'beta', start: 6, end: 10, body: 'two' }
+    ]
+
+    // This build resolves c2: it writes back the marks it read, which lack `pinned`.
+    writeCriticMarkupMarksToYDoc(doc, [readCriticMarkupMarksFromYDoc(doc)[0]])
+
+    expect(doc.array.toArray()).toEqual([
+      {
+        id: 'c1',
+        kind: 'comment',
+        visibleText: 'alpha',
+        start: 0,
+        end: 5,
+        body: 'one',
+        pinned: true
+      }
+    ])
+  })
+
+  it('reads a mark once when two devices pushed it concurrently', () => {
+    const doc = new FakeYDoc()
+    const mark = { id: 'c1', kind: 'comment', visibleText: 'alpha', start: 0, end: 5, body: 'one' }
+    // Two devices each deleted the array and pushed its marks: the merge keeps both pushes.
+    doc.array.values = [mark, { ...mark, start: 7, end: 12 }]
+
+    expect(readCriticMarkupMarksFromYDoc(doc)).toEqual([mark])
+  })
 })

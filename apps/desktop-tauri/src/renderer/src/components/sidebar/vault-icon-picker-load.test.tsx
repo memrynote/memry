@@ -7,6 +7,7 @@ import {
   waitFor,
   type RenderResult
 } from '@testing-library/react'
+import * as DialogPrimitive from '@radix-ui/react-dialog'
 import type { ReactElement } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -96,5 +97,47 @@ describe('VaultIconPicker when its chunk does not load', () => {
     const notPrevented = fireEvent.keyDown(window, { key: 'Escape' })
 
     expect(notPrevented).toBe(false)
+  })
+
+  it('takes the Escape before a window listener registered ahead of it, as the sidebar drill-down is', () => {
+    chunk.mode = 'hang'
+    // The drill-down provider sits above the picker, so its bubble-phase window listener is
+    // registered first and runs first unless the picker listens in the capture phase.
+    let sawPrevented: boolean | null = null
+    const goBack = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') sawPrevented = event.defaultPrevented
+    }
+    window.addEventListener('keydown', goBack)
+    try {
+      renderPicker(vi.fn())
+      fireEvent.keyDown(document.body, { key: 'Escape' })
+    } finally {
+      window.removeEventListener('keydown', goBack)
+    }
+
+    expect(sawPrevented).toBe(true)
+  })
+
+  it('leaves the Escape to a dialog opened over it while the chunk is still out', () => {
+    chunk.mode = 'hang'
+    const onOpenChange = vi.fn()
+    const onDialogOpenChange = vi.fn()
+
+    render(
+      <>
+        {pickerElement(onOpenChange)}
+        <DialogPrimitive.Root open onOpenChange={onDialogOpenChange}>
+          <DialogPrimitive.Portal>
+            <DialogPrimitive.Content aria-describedby={undefined}>
+              <DialogPrimitive.Title>Rename vault</DialogPrimitive.Title>
+            </DialogPrimitive.Content>
+          </DialogPrimitive.Portal>
+        </DialogPrimitive.Root>
+      </>
+    )
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+
+    expect(onOpenChange).not.toHaveBeenCalled()
+    expect(onDialogOpenChange).toHaveBeenCalledWith(false)
   })
 })

@@ -32,22 +32,43 @@ function isCriticMarkupKind(value: unknown): value is CriticMarkupKind {
   return VALID_KINDS.has(value)
 }
 
+/**
+ * Each mark once, by id: two devices that rewrote the array concurrently leave both pushes in the
+ * merged doc. The first copy wins.
+ */
 export function readCriticMarkupMarksFromYDoc(doc: YDocLike): CriticMarkupMark[] {
   const array = doc.getArray(CRITIC_MARKUP_MARKS_ARRAY)
   const values = array.toArray ? array.toArray() : readArrayLike(array)
+  const seen = new Set<string>()
   return values.flatMap((value) => {
     const mark = normalizeCriticMarkupMark(value)
-    return mark ? [mark] : []
+    if (!mark || seen.has(mark.id)) return []
+    seen.add(mark.id)
+    return [mark]
   })
 }
 
+/**
+ * Rewrites the array. A field this build does not know, which a newer build wrote on a mark, is
+ * carried over from the mark of the same id in the doc: devices on different versions share it.
+ */
 export function writeCriticMarkupMarksToYDoc(doc: YDocLike, marks: CriticMarkupMark[]): void {
   const array = doc.getArray(CRITIC_MARKUP_MARKS_ARRAY)
+  const current = array.toArray ? array.toArray() : readArrayLike(array)
+  const unknownFieldsById = new Map<string, Record<string, unknown>>()
+  for (const value of current) {
+    if (!isObject(value) || typeof value.id !== 'string' || unknownFieldsById.has(value.id))
+      continue
+    unknownFieldsById.set(
+      value.id,
+      Object.fromEntries(Object.entries(value).filter(([key]) => !KNOWN_FIELDS.has(key)))
+    )
+  }
   const next = marks.flatMap((mark) => {
     const normalized = normalizeCriticMarkupMark(mark)
-    return normalized ? [toSerializableMark(normalized)] : []
+    if (!normalized) return []
+    return [{ ...toSerializableMark(normalized), ...unknownFieldsById.get(normalized.id) }]
   })
-  const current = array.toArray ? array.toArray() : readArrayLike(array)
   if (JSON.stringify(current) === JSON.stringify(next)) return
 
   if (array.length > 0) array.delete(0, array.length)
@@ -96,6 +117,23 @@ function normalizeCriticMarkupMark(value: unknown): CriticMarkupMark | null {
     ...(formatRanges ? { formatRanges } : {})
   }
 }
+
+// Every field of a mark: a record, so a field added to the type must be listed here.
+const KNOWN_FIELD_RECORD: Record<keyof CriticMarkupMark, true> = {
+  id: true,
+  kind: true,
+  visibleText: true,
+  start: true,
+  end: true,
+  originalText: true,
+  body: true,
+  metadata: true,
+  createdAt: true,
+  mentions: true,
+  attachments: true,
+  formatRanges: true
+}
+const KNOWN_FIELDS: ReadonlySet<string> = new Set(Object.keys(KNOWN_FIELD_RECORD))
 
 function toSerializableMark(mark: CriticMarkupMark): Record<string, unknown> {
   return {
