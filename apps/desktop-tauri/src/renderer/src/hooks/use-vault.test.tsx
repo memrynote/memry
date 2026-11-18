@@ -336,26 +336,31 @@ describe('useVault during a vault switch', () => {
     expect(getVaultSwitchState().pending?.path).toBe('/b')
   })
 
-  it('writes pending edits before main closes the vault', async () => {
+  // Open vault and Open folder as vault reach main as `selectVault()` (#5132).
+  it.each([
+    ['a switch', 'switch', (vault: ReturnType<typeof useVault>) => vault.switchVault('/b')],
+    ['Open vault', 'select', (vault: ReturnType<typeof useVault>) => vault.selectVault()],
+    ['a close', 'close', (vault: ReturnType<typeof useVault>) => vault.closeVault()]
+  ] as const)('writes pending edits before %s closes the vault', async (_, command, leave) => {
     const api = vaultApi()
     const order: string[] = []
     registerPendingSave('note-1', () => {
       order.push('flush')
     })
     // oxlint-disable-next-line typescript/no-misused-promises -- vaultApi() types the mock as a bare vi.fn() whose implementation is void-returning
-    api.vault.switch.mockImplementation(async () => {
-      order.push('switch')
+    api.vault[command].mockImplementation(async () => {
+      order.push(command)
       return { success: true, vault: { path: '/b' } }
     })
 
     const { result } = renderHook(() => useVault())
     await waitFor(() => expect(result.current.vaultPath).toBe('/a'))
     await act(async () => {
-      await result.current.switchVault('/b')
+      await leave(result.current)
     })
 
     unregisterPendingSave('note-1')
-    expect(order).toEqual(['flush', 'switch'])
+    expect(order).toEqual(['flush', command])
   })
 })
 
