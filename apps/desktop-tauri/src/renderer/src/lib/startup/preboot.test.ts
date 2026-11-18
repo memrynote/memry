@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { runInThisContext } from 'node:vm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // `public/preboot.html`, `public/preboot.js` and the main window's localStorage import script
@@ -51,12 +52,17 @@ function loadPage(view: string, invoke: Invoke): void {
   document.body.innerHTML = parsed.body.innerHTML
   document.documentElement.dataset.view = view
   testWindow.__TAURI_INTERNALS__ = { invoke }
-  new Function(SCRIPT)()
+  runScript(SCRIPT)
 }
 
 const slot = (name: string): HTMLElement =>
   document.querySelector<HTMLElement>(`.migration [data-slot='${name}']`)!
 const bar = (): HTMLElement => document.querySelector<HTMLElement>('.migration .bar')!
+// Runs a shipped script against the test's window, as the webview runs it against the page's.
+// A script element would run in a jsdom realm of its own.
+function runScript(source: string): void {
+  runInThisContext(source)
+}
 const flush = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0))
 
 afterEach(() => {
@@ -146,7 +152,7 @@ describe('migration view', () => {
 
   it('Show details says so when there is no report', async () => {
     const invoke = vi.fn(async () =>
-      Promise.reject({ kind: 'notFound', code: 'migration_report_missing' })
+      Promise.reject(Object.assign(new Error('no report'), { code: 'migration_report_missing' }))
     )
     loadPage('migration', invoke)
     testWindow.memryMigration!.update(status(1, FAILED))
@@ -169,7 +175,7 @@ describe('migration view', () => {
 
 describe('localStorage import script', () => {
   const run = (entries: Record<string, string>): void =>
-    new Function(IMPORT.replace('__MEMRY_ENTRIES__', JSON.stringify(entries)))()
+    runScript(IMPORT.replace('__MEMRY_ENTRIES__', JSON.stringify(entries)))
 
   beforeEach(() => window.localStorage.clear())
 

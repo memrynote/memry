@@ -9,7 +9,7 @@
       if (localStorage.getItem(key) === null) localStorage.setItem(key, value)
     }
   } catch (error) {
-    console.warn('[migration] localStorage import stopped:', error && error.name)
+    console.warn('[migration] localStorage import stopped:', error?.name)
     return
   }
   if (window.__TAURI_INTERNALS__) markApplied()
