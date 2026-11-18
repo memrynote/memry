@@ -20,7 +20,6 @@ import type {
   NoteCreateInput,
   NoteCreateResponse,
   NoteDeletedEvent,
-  NoteExternalChangeEvent,
   NoteLinksResponse,
   NoteListItem,
   NoteListOptions,
@@ -98,7 +97,6 @@ export type {
   NoteCreateInput,
   NoteCreateResponse,
   NoteDeletedEvent,
-  NoteExternalChangeEvent,
   NoteLinksResponse,
   NoteListItem,
   NoteListOptions,
@@ -805,12 +803,6 @@ export function onNoteMoved(
   onListening?: () => void
 ): () => void {
   return subscribeToEvent(events.noteMovedEvent, callback, onListening)
-}
-
-export function onNoteExternalChange(
-  callback: (event: NoteExternalChangeEvent) => void
-): () => void {
-  return window.api.onNoteExternalChange(callback)
 }
 
 /** Something the tag list shows changed (`commands/tags.rs`); the payload is empty. */
