@@ -56,6 +56,7 @@ final class InkBoard {
     @ObservationIgnored var stamp = InkStamp()
     @ObservationIgnored var settleDelay: Duration = .milliseconds(800)
     @ObservationIgnored private nonisolated(unsafe) var resignObserver: NSObjectProtocol?
+    private nonisolated let notifications: NotificationCenter
     @ObservationIgnored private var heldTasks: Set<UIBackgroundTaskIdentifier> = []
     /// Seam for tests; the app holds tasks from `UIApplication`.
     @ObservationIgnored var beginBackgroundTask: (@escaping () -> Void) -> UIBackgroundTaskIdentifier = {
@@ -72,12 +73,15 @@ final class InkBoard {
     /// Room left around the board's drawing on screen.
     private static let margin: CGFloat = 40
 
-    init(canvasId: String, boards: any WhiteboardBoards) {
+    /// `notifications` is a seam for tests: the app-wide center reaches every
+    /// suite running in parallel.
+    init(canvasId: String, boards: any WhiteboardBoards, notifications: NotificationCenter = .default) {
         self.canvasId = canvasId
         self.boards = boards
+        self.notifications = notifications
         // A kill from the app switcher beats the settle delay, and swiping
         // into the switcher never backgrounds the app.
-        resignObserver = NotificationCenter.default.addObserver(
+        resignObserver = notifications.addObserver(
             forName: UIApplication.willResignActiveNotification, object: nil, queue: .main
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.saveBeforeLeaving() }
@@ -85,7 +89,7 @@ final class InkBoard {
     }
 
     deinit {
-        if let resignObserver { NotificationCenter.default.removeObserver(resignObserver) }
+        if let resignObserver { notifications.removeObserver(resignObserver) }
     }
 
     /// Saves what is left, holding a background task until the save lands.
@@ -229,6 +233,9 @@ final class InkBoard {
                     continue
                 }
                 ledger.commit(strokes, ids: ids, addedIds: result.addedIds)
+                // This save holds every stroke an earlier failed one held.
+                saveFailure = nil
+                canvasLost = false
                 requestSync?()
                 if stored == shown {
                     shown = written

@@ -264,8 +264,12 @@ struct InkBoardSaveTests {
         PKDrawing(strokes: strokes.map { $0.ink.stroke(created: Date(timeIntervalSinceReferenceDate: $0.created), offset: board.offset) })
     }
 
+    /// The suite's own center: a post on `.default` reaches every suite
+    /// running in parallel.
+    private let notifications = NotificationCenter()
+
     private func open(_ fake: FakeInkBoards) async -> InkBoard {
-        let board = InkBoard(canvasId: "c1", boards: fake)
+        let board = InkBoard(canvasId: "c1", boards: fake, notifications: notifications)
         board.stamp = pinned()
         board.settleDelay = .seconds(3600)
         await board.load()
@@ -280,7 +284,7 @@ struct InkBoardSaveTests {
         board.endBackgroundTask = { ended.append($0) }
         board.changed(drawing(board, [(1, pen)]))
 
-        NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
+        notifications.post(name: UIApplication.willResignActiveNotification, object: nil)
         while ended.isEmpty { try? await Task.sleep(for: .milliseconds(10)) }
 
         #expect(fake.saves == 1)
@@ -426,6 +430,7 @@ struct InkBoardSaveTests {
         #expect(a == false)
         #expect(b)
         #expect(InkScene.strokes(in: fake.scene ?? "")?.count == 2)
+        #expect(board.saveFailure == nil, "the newer save landed, so no alert says it did not")
         // onDisappear after Done: nothing new to save.
         #expect(await board.flush())
         #expect(InkScene.strokes(in: fake.scene ?? "")?.count == 2, "the stroke drawn after the failed save stays")
@@ -482,6 +487,20 @@ struct InkBoardSaveTests {
         let stored = try #require(fake.scene)
         #expect(try #require(InkScene.strokes(in: stored)).map(\.ink) == [pen])
         #expect(stored.contains("rect-0") && stored.contains("rect-2"))
+    }
+
+    @Test func a_save_landing_after_a_stale_retry_clears_an_earlier_failure() async throws {
+        let fake = FakeInkBoards(scene: scene([]))
+        let board = await open(fake)
+        fake.failures = 1
+        board.changed(drawing(board, [(1, pen)]))
+        #expect(await board.flush() == false)
+        #expect(board.saveFailure != nil)
+        fake.pulls = [pull(foreignRect)]
+        #expect(await board.flush())
+        #expect(try #require(InkScene.strokes(in: fake.scene ?? "")).map(\.ink) == [pen])
+        #expect(board.saveFailure == nil, "the retried save landed, so no alert says it did not")
+        #expect(board.canvasLost == false)
     }
 
     @Test func the_boards_conflict_copy_is_listed_and_another_whiteboard_is_not() async {
