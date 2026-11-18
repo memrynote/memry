@@ -170,6 +170,7 @@ fn show(
     let fill = PageFill {
         view: "error",
         slots,
+        then: "",
     };
     let built = preboot::build(app, WindowKind::StartupError, fill, None, |builder| {
         builder.inner_size(460.0, 320.0).visible(true)

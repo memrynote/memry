@@ -89,5 +89,44 @@
     },
     "logFolder": "Nhật ký: {path}",
     "reloaded": "MemryNote đã tải lại sau sự cố. Các chỉnh sửa gần đây có thể đã bị mất."
+  },
+  "migration": {
+    "running": {
+      "title": "Đang chuyển dữ liệu của bạn",
+      "note": "Việc này chỉ diễn ra một lần. Hãy để MemryNote mở cho đến khi xong."
+    },
+    "phase": {
+      "preparing": "Đang chuẩn bị…",
+      "secrets": "Đang chuyển các bí mật của bạn…",
+      "vault": "Đang chuyển kho {current}/{total}…",
+      "checking": "Đang kiểm tra dữ liệu của bạn…"
+    },
+    "failed": {
+      "title": "Dữ liệu của bạn chưa được chuyển",
+      "note": "Không có gì bị mất. Ứng dụng MemryNote trước và dữ liệu của nó vẫn nguyên vẹn.",
+      "check": "Bước kiểm tra không đạt: {check}",
+      "electronRunning": "Ứng dụng MemryNote trước vẫn đang mở. Hãy thoát nó rồi thử lại.",
+      "diskSpace": "Không đủ dung lượng đĩa trống để chuyển dữ liệu. Hãy giải phóng dung lượng rồi thử lại.",
+      "electronSchema": "Ứng dụng MemryNote trước chưa cập nhật xong một kho. Hãy cập nhật ứng dụng đó, mở kho trong đó một lần, thoát rồi thử lại.",
+      "sharedStore": "Một số kho dùng chung một lịch sử đồng bộ nên không thể chuyển. Hãy tiếp tục dùng ứng dụng MemryNote trước cho các kho đó.",
+      "vaultUnreachable": "Hiện không đọc được một kho. Hãy kiểm tra ổ đĩa của nó đã được kết nối rồi thử lại.",
+      "secrets": "Không đọc được một số thông tin đăng nhập đã lưu. Hãy thử lại. Nếu vẫn xảy ra, hãy kiểm tra chuỗi khóa đã được mở khóa.",
+      "verification": "Một bước kiểm tra dữ liệu đã chuyển không đạt, nên MemryNote giữ mọi thứ như cũ."
+    },
+    "done": {
+      "title": "Dữ liệu của bạn đã sẵn sàng",
+      "body": "Đang mở MemryNote…"
+    },
+    "retry": "Thử lại",
+    "showDetails": "Hiện chi tiết",
+    "reportMissing": "Chưa có báo cáo.",
+    "completed": {
+      "title": "Dữ liệu của bạn đã ở phiên bản này",
+      "body": "Ghi chú, cài đặt và đăng nhập của bạn giờ nằm trong phiên bản MemryNote này. Dữ liệu của ứng dụng trước vẫn nguyên vẹn tại {path}."
+    },
+    "notice": {
+      "title": "Thay đổi trong ứng dụng trước",
+      "body": "Một kho đã thay đổi trong ứng dụng MemryNote trước sau khi được chuyển sang phiên bản này. Những thay đổi đó không có ở đây: chúng nằm trong dữ liệu của ứng dụng trước tại {path}. Các thay đổi đã đồng bộ sẽ đến qua đồng bộ."
+    }
   }
 }

@@ -89,5 +89,44 @@
     },
     "logFolder": "日志：{path}",
     "reloaded": "MemryNote 在崩溃后已重新加载。最近的编辑可能已丢失。"
+  },
+  "migration": {
+    "running": {
+      "title": "正在迁移你的数据",
+      "note": "此过程只进行一次。完成前请保持 MemryNote 打开。"
+    },
+    "phase": {
+      "preparing": "正在准备…",
+      "secrets": "正在迁移你的密钥…",
+      "vault": "正在迁移仓库 {current}/{total}…",
+      "checking": "正在检查你的数据…"
+    },
+    "failed": {
+      "title": "你的数据未迁移",
+      "note": "没有丢失任何内容。之前的 MemryNote 应用及其数据保持不变。",
+      "check": "未通过的检查：{check}",
+      "electronRunning": "之前的 MemryNote 应用仍在运行。请退出它，然后重试。",
+      "diskSpace": "磁盘可用空间不足，无法迁移你的数据。请释放一些空间，然后重试。",
+      "electronSchema": "之前的 MemryNote 应用尚未完成仓库更新。请更新该应用，在其中打开一次该仓库，退出后重试。",
+      "sharedStore": "部分仓库共用同一份同步记录，因此无法迁移。请继续使用之前的 MemryNote 应用打开它们。",
+      "vaultUnreachable": "暂时无法读取某个仓库。请确认其所在磁盘已连接，然后重试。",
+      "secrets": "无法读取部分已保存的登录信息。请重试。如果问题持续，请确认钥匙串已解锁。",
+      "verification": "迁移后的数据未通过检查，因此 MemryNote 保持了原样。"
+    },
+    "done": {
+      "title": "你的数据已就绪",
+      "body": "正在打开 MemryNote…"
+    },
+    "retry": "重试",
+    "showDetails": "显示详情",
+    "reportMissing": "暂无报告。",
+    "completed": {
+      "title": "你的数据已迁移到此版本",
+      "body": "你的笔记、设置和登录现在都在此版本的 MemryNote 中。之前应用的数据完好保留在 {path}。"
+    },
+    "notice": {
+      "title": "在之前应用中所做的更改",
+      "body": "某个仓库在迁移到此版本后，又在之前的 MemryNote 应用中被更改。这些更改不在这里，而是保留在之前应用的数据中（{path}）。已同步的更改会通过同步送达。"
+    }
   }
 }

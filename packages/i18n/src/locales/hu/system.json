@@ -89,5 +89,44 @@
     },
     "logFolder": "Naplók: {path}",
     "reloaded": "A MemryNote egy összeomlás után újratöltődött. A legutóbbi módosítások elveszhettek."
+  },
+  "migration": {
+    "running": {
+      "title": "Az adatok áthelyezése",
+      "note": "Ez csak egyszer történik meg. Hagyd nyitva a MemryNote-ot, amíg be nem fejeződik."
+    },
+    "phase": {
+      "preparing": "Előkészítés…",
+      "secrets": "A titkaid áthelyezése…",
+      "vault": "{current}. széf áthelyezése (összesen {total})…",
+      "checking": "Az adatok ellenőrzése…"
+    },
+    "failed": {
+      "title": "Az adataid nem lettek áthelyezve",
+      "note": "Semmi nem veszett el. Az előző MemryNote-alkalmazás és az adatai változatlanok.",
+      "check": "Sikertelen ellenőrzés: {check}",
+      "electronRunning": "Az előző MemryNote-alkalmazás még nyitva van. Lépj ki belőle, majd próbáld újra.",
+      "diskSpace": "Nincs elég szabad lemezterület az adatok áthelyezéséhez. Szabadíts fel helyet, majd próbáld újra.",
+      "electronSchema": "Az előző MemryNote-alkalmazás még nem fejezte be egy széf frissítését. Frissítsd azt az alkalmazást, nyisd meg benne egyszer a széfet, lépj ki, majd próbáld újra.",
+      "sharedStore": "Néhány széf ugyanazon a szinkronizálási előzményen osztozik, ezért nem helyezhetők át. Ezekhez továbbra is az előző MemryNote-alkalmazást használd.",
+      "vaultUnreachable": "Egy széf most nem olvasható. Ellenőrizd, hogy a meghajtója csatlakoztatva van-e, majd próbáld újra.",
+      "secrets": "Néhány mentett bejelentkezési adatot nem sikerült beolvasni. Próbáld újra. Ha továbbra is előfordul, ellenőrizd, hogy a kulcskarika fel van-e oldva.",
+      "verification": "Az áthelyezett adatok egyik ellenőrzése nem sikerült, ezért a MemryNote mindent úgy hagyott, ahogy volt."
+    },
+    "done": {
+      "title": "Az adataid készen állnak",
+      "body": "A MemryNote megnyitása…"
+    },
+    "retry": "Újrapróbálás",
+    "showDetails": "Részletek megjelenítése",
+    "reportMissing": "Még nincs jelentés.",
+    "completed": {
+      "title": "Az adataid ebben a verzióban vannak",
+      "body": "A jegyzeteid, beállításaid és a bejelentkezésed most a MemryNote ezen verziójában vannak. Az előző alkalmazás adatai érintetlenül maradnak itt: {path}."
+    },
+    "notice": {
+      "title": "Módosítások az előző alkalmazásban",
+      "body": "Egy széf megváltozott az előző MemryNote-alkalmazásban, miután átkerült ebbe a verzióba. Ezek a módosítások nincsenek itt: az előző alkalmazás adataiban maradnak itt: {path}. A szinkronizált módosítások a szinkronizálással érkeznek."
+    }
   }
 }

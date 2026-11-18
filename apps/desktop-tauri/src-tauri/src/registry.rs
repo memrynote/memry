@@ -6,7 +6,9 @@ use tauri::{Runtime, Wry};
 use tauri_specta::{Builder, ErrorHandlingMode, collect_commands, collect_events};
 
 use crate::binary;
+use crate::commands::error::{CommandError, ErrorKind};
 use crate::startup::StartupState;
+use crate::windows::registry::WindowKind;
 
 pub fn builder() -> Builder<Wry> {
     Builder::<Wry>::new()
@@ -234,6 +236,11 @@ pub fn builder() -> Builder<Wry> {
             // menu
             crate::commands::shell::menu_hide_alt,
             crate::commands::shell::menu_toggle_alt,
+            // migration
+            crate::commands::migration::migration_localstorage_applied::<Wry>,
+            crate::commands::migration::migration_open_report::<Wry>,
+            crate::commands::migration::migration_retry::<Wry>,
+            crate::commands::migration::migration_status::<Wry>,
             // search
             crate::commands::search::search_add_reason::<Wry>,
             crate::commands::search::search_clear_reasons::<Wry>,
@@ -494,12 +501,53 @@ pub fn dispatcher<R: Runtime>(
     }
 }
 
+/// The commands of the preboot window's migration view (`crate::migration`).
+pub const PREBOOT_COMMANDS: [&str; 3] = [
+    "migration_status",
+    "migration_retry",
+    "migration_open_report",
+];
+
+/// Whether the window labelled `label` may call the app command `command`: the `preboot`
+/// window only [`PREBOOT_COMMANDS`], the `startup-error` window none, and every other window
+/// all but those. Tauri checks app commands against the capability files only once the app
+/// declares an app manifest, which would have to list every command, so this gate keeps the
+/// preboot page to what it needs instead.
+pub fn window_allows(label: &str, command: &str) -> bool {
+    match WindowKind::of_label(label) {
+        Some(WindowKind::Preboot) => PREBOOT_COMMANDS.contains(&command),
+        Some(WindowKind::StartupError) => false,
+        _ => !PREBOOT_COMMANDS.contains(&command),
+    }
+}
+
+/// Rejects a call [`window_allows`] refuses, before `handler` sees it.
+pub fn window_gate<R: Runtime>(
+    handler: impl Fn(Invoke<R>) -> bool + Send + Sync + 'static,
+) -> impl Fn(Invoke<R>) -> bool + Send + Sync + 'static {
+    move |invoke| {
+        let label = invoke.message.webview_ref().label();
+        let command = invoke.message.command();
+        if window_allows(label, command) {
+            return handler(invoke);
+        }
+        let error = CommandError::new(
+            ErrorKind::Invalid,
+            "window_not_allowed",
+            format!("{command} is not available in the {label} window"),
+        );
+        crate::commands::error::log_failure(command, &error);
+        invoke.resolver.reject(error);
+        true
+    }
+}
+
 pub fn invoke_handler(
     builder: &Builder<Wry>,
 ) -> impl Fn(Invoke<Wry>) -> bool + Send + Sync + 'static {
-    dispatcher(
+    window_gate(dispatcher(
         binary::COMMANDS,
         binary::handler(),
         builder.invoke_handler(),
-    )
+    ))
 }

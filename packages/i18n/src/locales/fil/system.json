@@ -89,5 +89,44 @@
     },
     "logFolder": "Mga log: {path}",
     "reloaded": "Nag-reload ang MemryNote pagkatapos ng crash. Maaaring nawala ang mga kamakailang pagbabago."
+  },
+  "migration": {
+    "running": {
+      "title": "Inililipat ang iyong data",
+      "note": "Isang beses lang ito mangyayari. Panatilihing bukas ang MemryNote hanggang matapos."
+    },
+    "phase": {
+      "preparing": "Naghahanda…",
+      "secrets": "Inililipat ang iyong mga sikreto…",
+      "vault": "Inililipat ang vault {current} sa {total}…",
+      "checking": "Sinusuri ang iyong data…"
+    },
+    "failed": {
+      "title": "Hindi nailipat ang iyong data",
+      "note": "Walang nawala. Hindi nagbago ang dating MemryNote app at ang data nito.",
+      "check": "Pagsusuring hindi pumasa: {check}",
+      "electronRunning": "Bukas pa ang dating MemryNote app. Isara ito, pagkatapos ay subukang muli.",
+      "diskSpace": "Kulang ang libreng espasyo sa disk para mailipat ang iyong data. Magbakante ng espasyo, pagkatapos ay subukang muli.",
+      "electronSchema": "Hindi pa tapos ang dating MemryNote app sa pag-update ng isang vault. I-update ang app na iyon, buksan doon ang vault nang isang beses, isara ito, pagkatapos ay subukang muli.",
+      "sharedStore": "May mga vault na iisa ang history ng sync, kaya hindi sila mailipat. Patuloy na gamitin ang dating MemryNote app para sa mga ito.",
+      "vaultUnreachable": "Hindi mabasa ang isang vault ngayon. Tiyaking nakakonekta ang drive nito, pagkatapos ay subukang muli.",
+      "secrets": "Hindi nabasa ang ilang naka-save na detalye sa pag-sign in. Subukang muli. Kung patuloy itong mangyari, tiyaking naka-unlock ang iyong keychain.",
+      "verification": "Hindi pumasa ang isang pagsusuri sa nailipat na data, kaya iniwan ng MemryNote ang lahat gaya ng dati."
+    },
+    "done": {
+      "title": "Handa na ang iyong data",
+      "body": "Binubuksan ang MemryNote…"
+    },
+    "retry": "Subukang muli",
+    "showDetails": "Ipakita ang mga detalye",
+    "reportMissing": "Wala pang ulat.",
+    "completed": {
+      "title": "Nasa bersyong ito na ang iyong data",
+      "body": "Nasa bersyong ito ng MemryNote na ang iyong mga tala, setting at pag-sign in. Nananatiling buo ang data ng dating app sa {path}."
+    },
+    "notice": {
+      "title": "Mga pagbabago sa dating app",
+      "body": "May vault na nagbago sa dating MemryNote app matapos itong mailipat sa bersyong ito. Wala rito ang mga pagbabagong iyon: nananatili sila sa data ng dating app sa {path}. Darating sa pamamagitan ng sync ang mga pagbabagong na-sync."
+    }
   }
 }

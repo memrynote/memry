@@ -89,5 +89,44 @@
     },
     "logFolder": "Loggar: {path}",
     "reloaded": "MemryNote lästes in igen efter en krasch. Senaste ändringar kan ha gått förlorade."
+  },
+  "migration": {
+    "running": {
+      "title": "Dina data flyttas",
+      "note": "Det här händer bara en gång. Låt MemryNote vara öppet tills det är klart."
+    },
+    "phase": {
+      "preparing": "Förbereder…",
+      "secrets": "Dina hemligheter flyttas…",
+      "vault": "Valv {current} av {total} flyttas…",
+      "checking": "Dina data kontrolleras…"
+    },
+    "failed": {
+      "title": "Dina data flyttades inte",
+      "note": "Inget har gått förlorat. Den tidigare MemryNote-appen och dess data är oförändrade.",
+      "check": "Kontroll som misslyckades: {check}",
+      "electronRunning": "Den tidigare MemryNote-appen är fortfarande öppen. Avsluta den och försök igen.",
+      "diskSpace": "Det finns inte tillräckligt med ledigt diskutrymme för att flytta dina data. Frigör utrymme och försök igen.",
+      "electronSchema": "Den tidigare MemryNote-appen har inte uppdaterat ett valv klart. Uppdatera den appen, öppna valvet i den en gång, avsluta den och försök igen.",
+      "sharedStore": "Vissa valv delar samma synkhistorik och kan därför inte flyttas. Fortsätt använda den tidigare MemryNote-appen för dem.",
+      "vaultUnreachable": "Ett valv kan inte läsas just nu. Kontrollera att dess enhet är ansluten och försök igen.",
+      "secrets": "Vissa sparade inloggningsuppgifter kunde inte läsas. Försök igen. Om det fortsätter, kontrollera att nyckelringen är upplåst.",
+      "verification": "En kontroll av dina flyttade data godkändes inte, så MemryNote lät allt vara som det var."
+    },
+    "done": {
+      "title": "Dina data är klara",
+      "body": "MemryNote öppnas…"
+    },
+    "retry": "Försök igen",
+    "showDetails": "Visa detaljer",
+    "reportMissing": "Det finns ingen rapport än.",
+    "completed": {
+      "title": "Dina data finns nu i den här versionen",
+      "body": "Dina anteckningar, inställningar och din inloggning finns nu i den här versionen av MemryNote. Den tidigare appens data ligger orörda i {path}."
+    },
+    "notice": {
+      "title": "Ändringar i den tidigare appen",
+      "body": "Ett valv ändrades i den tidigare MemryNote-appen efter att det flyttats till den här versionen. De ändringarna finns inte här: de ligger kvar i den tidigare appens data i {path}. Synkade ändringar kommer via synkningen."
+    }
   }
 }

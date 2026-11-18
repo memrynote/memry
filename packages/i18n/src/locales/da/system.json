@@ -89,5 +89,44 @@
     },
     "logFolder": "Logfiler: {path}",
     "reloaded": "MemryNote blev genindlæst efter et nedbrud. De seneste ændringer kan være gået tabt."
+  },
+  "migration": {
+    "running": {
+      "title": "Dine data flyttes",
+      "note": "Det sker kun én gang. Lad MemryNote være åben, til det er færdigt."
+    },
+    "phase": {
+      "preparing": "Forbereder…",
+      "secrets": "Dine hemmeligheder flyttes…",
+      "vault": "Boks {current} af {total} flyttes…",
+      "checking": "Dine data kontrolleres…"
+    },
+    "failed": {
+      "title": "Dine data blev ikke flyttet",
+      "note": "Intet er gået tabt. Den tidligere MemryNote-app og dens data er uændrede.",
+      "check": "Mislykket kontrol: {check}",
+      "electronRunning": "Den tidligere MemryNote-app er stadig åben. Luk den, og prøv igen.",
+      "diskSpace": "Der er ikke nok ledig diskplads til at flytte dine data. Frigør plads, og prøv igen.",
+      "electronSchema": "Den tidligere MemryNote-app er ikke færdig med at opdatere en boks. Opdater den app, åbn boksen i den én gang, luk den, og prøv igen.",
+      "sharedStore": "Nogle bokse deler én synkroniseringshistorik og kan derfor ikke flyttes. Bliv ved med at bruge den tidligere MemryNote-app til dem.",
+      "vaultUnreachable": "En boks kan ikke læses lige nu. Kontrollér, at dens drev er tilsluttet, og prøv igen.",
+      "secrets": "Nogle gemte loginoplysninger kunne ikke læses. Prøv igen. Hvis det bliver ved, så kontrollér, at din nøglering er låst op.",
+      "verification": "En kontrol af dine flyttede data bestod ikke, så MemryNote lod alt være, som det var."
+    },
+    "done": {
+      "title": "Dine data er klar",
+      "body": "Åbner MemryNote…"
+    },
+    "retry": "Prøv igen",
+    "showDetails": "Vis detaljer",
+    "reportMissing": "Der er ingen rapport endnu.",
+    "completed": {
+      "title": "Dine data er nu i denne version",
+      "body": "Dine noter, indstillinger og dit login er nu i denne version af MemryNote. Den tidligere apps data ligger urørt i {path}."
+    },
+    "notice": {
+      "title": "Ændringer i den tidligere app",
+      "body": "En boks blev ændret i den tidligere MemryNote-app, efter den blev flyttet til denne version. Ændringerne er ikke her: de ligger i den tidligere apps data i {path}. Synkroniserede ændringer kommer via synkroniseringen."
+    }
   }
 }

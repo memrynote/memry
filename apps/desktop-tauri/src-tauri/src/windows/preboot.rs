@@ -1,9 +1,11 @@
-//! The preboot and startup-error windows share `preboot.html`, a bundled page with no script.
-//! No capability names their labels, so they reach no plugin command, and the page has nothing
-//! that calls one anyway. The shell fills the page with `eval` once it has loaded, and the copy
-//! lands in `textContent` only. Script the host evaluates runs outside the page's CSP, so the
-//! app CSP needs no exception for them. The preboot window itself is shown by the updater
-//! (Step 38, #3555).
+//! The preboot and startup-error windows share `preboot.html`. The shell fills the page with
+//! `eval` once it has loaded, and the copy lands in `textContent` only. Script the host evaluates
+//! runs outside the page's CSP, so the app CSP needs no exception for them. The preboot window is
+//! shown by the updater (Step 38, #3555) and by the first-launch migration (`crate::migration`).
+//! No capability names either label, so they reach no plugin command. The page's own script,
+//! `preboot.js`, calls app commands in the migration view only, and the window gate of
+//! `registry::invoke_handler` lets the `preboot` window reach the `migration_*` commands of
+//! that view and nothing else, and the `startup-error` window no command at all.
 
 use std::sync::Arc;
 
@@ -21,6 +23,8 @@ const BACKGROUND: Color = Color(246, 245, 240, 255);
 pub(super) struct PageFill {
     pub view: &'static str,
     pub slots: Vec<(&'static str, String)>,
+    /// Script run after the slots are filled.
+    pub then: &'static str,
 }
 
 /// The locale of the native copy: the live one, or the OS one when startup failed before the
@@ -53,6 +57,7 @@ fn fill_script(fill: &PageFill, locale: &str) -> String {
             json(value),
         ));
     }
+    script.push_str(fill.then);
     script.push_str("})()");
     script
 }
@@ -117,6 +122,7 @@ pub fn show_preboot(
     let fill = PageFill {
         view: "preboot",
         slots: vec![("title", copy.title), ("subtitle", copy.subtitle)],
+        then: "",
     };
     build(
         app,
@@ -133,6 +139,26 @@ pub fn show_preboot(
     )
 }
 
+/// Shows the first-launch migration view once its page is filled: a framed window, so the user
+/// can always close it and quit. The page then asks `migration_status` for the state to show.
+pub fn show_migration(
+    app: &AppHandle<Wry>,
+    slots: Vec<(&'static str, String)>,
+) -> tauri::Result<WebviewWindow<Wry>> {
+    let fill = PageFill {
+        view: "migration",
+        slots,
+        then: "window.memryMigration.start();",
+    };
+    build(
+        app,
+        WindowKind::Preboot,
+        fill,
+        Some(Box::new(|| {})),
+        |builder| builder.inner_size(480.0, 320.0).visible(false),
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -145,6 +171,7 @@ mod tests {
                 "details",
                 "</div><img src=x onerror=alert(1)>\"'\n".to_owned(),
             )],
+            then: "",
         };
         let script = fill_script(&fill, "ar");
         assert!(script.contains("root.dir=\"rtl\""));

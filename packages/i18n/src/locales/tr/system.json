@@ -89,5 +89,44 @@
     },
     "logFolder": "Günlükler: {path}",
     "reloaded": "MemryNote bir çökmenin ardından yeniden yüklendi. Son düzenlemeler kaybolmuş olabilir."
+  },
+  "migration": {
+    "running": {
+      "title": "Verileriniz taşınıyor",
+      "note": "Bu yalnızca bir kez olur. Bitene kadar MemryNote'u açık tutun."
+    },
+    "phase": {
+      "preparing": "Hazırlanıyor…",
+      "secrets": "Gizli bilgileriniz taşınıyor…",
+      "vault": "Kasa {current}/{total} taşınıyor…",
+      "checking": "Verileriniz kontrol ediliyor…"
+    },
+    "failed": {
+      "title": "Verileriniz taşınmadı",
+      "note": "Hiçbir şey kaybolmadı. Önceki MemryNote uygulaması ve verileri değişmedi.",
+      "check": "Başarısız kontrol: {check}",
+      "electronRunning": "Önceki MemryNote uygulaması hâlâ açık. Kapatın, sonra yeniden deneyin.",
+      "diskSpace": "Verilerinizi taşımak için yeterli boş disk alanı yok. Biraz yer açın, sonra yeniden deneyin.",
+      "electronSchema": "Önceki MemryNote uygulaması bir kasayı güncellemeyi bitirmedi. O uygulamayı güncelleyin, kasayı onda bir kez açın, uygulamayı kapatın, sonra yeniden deneyin.",
+      "sharedStore": "Bazı kasalar aynı eşitleme geçmişini paylaştığı için taşınamıyor. Onlar için önceki MemryNote uygulamasını kullanmaya devam edin.",
+      "vaultUnreachable": "Bir kasa şu anda okunamıyor. Sürücüsünün bağlı olduğunu kontrol edin, sonra yeniden deneyin.",
+      "secrets": "Kayıtlı bazı oturum açma bilgileri okunamadı. Yeniden deneyin. Bu sürerse anahtar zincirinizin kilidinin açık olduğunu kontrol edin.",
+      "verification": "Taşınan verilerinizin bir kontrolü geçmedi, bu yüzden MemryNote her şeyi olduğu gibi bıraktı."
+    },
+    "done": {
+      "title": "Verileriniz hazır",
+      "body": "MemryNote açılıyor…"
+    },
+    "retry": "Yeniden dene",
+    "showDetails": "Ayrıntıları göster",
+    "reportMissing": "Henüz rapor yok.",
+    "completed": {
+      "title": "Verileriniz bu sürüme taşındı",
+      "body": "Notlarınız, ayarlarınız ve oturumunuz artık MemryNote'un bu sürümünde. Önceki uygulamanın verileri {path} konumunda olduğu gibi duruyor."
+    },
+    "notice": {
+      "title": "Önceki uygulamada yapılan değişiklikler",
+      "body": "Bir kasa, bu sürüme taşındıktan sonra önceki MemryNote uygulamasında değişti. Bu değişiklikler burada yok: önceki uygulamanın {path} konumundaki verilerinde duruyor. Eşitlenmiş değişiklikler eşitleme ile gelir."
+    }
   }
 }

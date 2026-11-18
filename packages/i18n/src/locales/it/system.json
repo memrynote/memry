@@ -89,5 +89,44 @@
     },
     "logFolder": "Log: {path}",
     "reloaded": "MemryNote è stato ricaricato dopo un arresto anomalo. Le modifiche recenti potrebbero essere andate perse."
+  },
+  "migration": {
+    "running": {
+      "title": "Trasferimento dei tuoi dati",
+      "note": "Succede una sola volta. Tieni aperto MemryNote finché non ha finito."
+    },
+    "phase": {
+      "preparing": "Preparazione…",
+      "secrets": "Trasferimento dei tuoi segreti…",
+      "vault": "Trasferimento del vault {current} di {total}…",
+      "checking": "Controllo dei tuoi dati…"
+    },
+    "failed": {
+      "title": "I tuoi dati non sono stati trasferiti",
+      "note": "Non è andato perso nulla. La precedente app MemryNote e i suoi dati sono invariati.",
+      "check": "Controllo non superato: {check}",
+      "electronRunning": "La precedente app MemryNote è ancora aperta. Chiudila, poi riprova.",
+      "diskSpace": "Lo spazio libero su disco non basta per trasferire i tuoi dati. Libera un po' di spazio, poi riprova.",
+      "electronSchema": "La precedente app MemryNote non ha finito di aggiornare un vault. Aggiorna quell'app, apri il vault al suo interno una volta, chiudila, poi riprova.",
+      "sharedStore": "Alcuni vault condividono la stessa cronologia di sincronizzazione, quindi non possono essere trasferiti. Continua a usare la precedente app MemryNote per questi.",
+      "vaultUnreachable": "Al momento non è possibile leggere un vault. Controlla che la sua unità sia collegata, poi riprova.",
+      "secrets": "Non è stato possibile leggere alcuni dati di accesso salvati. Riprova. Se continua a succedere, controlla che il portachiavi sia sbloccato.",
+      "verification": "Un controllo dei dati trasferiti non è stato superato, quindi MemryNote ha lasciato tutto com'era."
+    },
+    "done": {
+      "title": "I tuoi dati sono pronti",
+      "body": "Apertura di MemryNote…"
+    },
+    "retry": "Riprova",
+    "showDetails": "Mostra dettagli",
+    "reportMissing": "Non c'è ancora un rapporto.",
+    "completed": {
+      "title": "I tuoi dati sono in questa versione",
+      "body": "Le tue note, le impostazioni e l'accesso ora si trovano in questa versione di MemryNote. I dati della precedente app restano intatti in {path}."
+    },
+    "notice": {
+      "title": "Modifiche fatte nella precedente app",
+      "body": "Un vault è stato modificato nella precedente app MemryNote dopo il trasferimento in questa versione. Quelle modifiche non sono qui: restano nei dati della precedente app, in {path}. Le modifiche sincronizzate arrivano tramite la sincronizzazione."
+    }
   }
 }

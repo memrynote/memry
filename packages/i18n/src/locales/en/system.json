@@ -89,5 +89,44 @@
     },
     "logFolder": "Logs: {path}",
     "reloaded": "MemryNote reloaded after a crash. Recent edits may be lost."
+  },
+  "migration": {
+    "running": {
+      "title": "Moving your data",
+      "note": "This happens once. Keep MemryNote open until it's done."
+    },
+    "phase": {
+      "preparing": "Preparing…",
+      "secrets": "Moving your secrets…",
+      "vault": "Moving vault {current} of {total}…",
+      "checking": "Checking your data…"
+    },
+    "failed": {
+      "title": "Your data wasn't moved",
+      "note": "Nothing was lost. The previous MemryNote app and its data are unchanged.",
+      "check": "Failed check: {check}",
+      "electronRunning": "The previous MemryNote app is still open. Quit it, then try again.",
+      "diskSpace": "There isn't enough free disk space to move your data. Free some space, then try again.",
+      "electronSchema": "The previous MemryNote app hasn't finished updating a vault. Update that app, open the vault in it once, quit it, then try again.",
+      "sharedStore": "Some vaults share one sync history, so they can't be moved. Keep using the previous MemryNote app for them.",
+      "vaultUnreachable": "A vault can't be read right now. Check that its drive is connected, then try again.",
+      "secrets": "Some saved sign-in details couldn't be read. Try again. If it keeps happening, check that your keychain is unlocked.",
+      "verification": "A check of your moved data didn't pass, so MemryNote kept everything as it was."
+    },
+    "done": {
+      "title": "Your data is ready",
+      "body": "Opening MemryNote…"
+    },
+    "retry": "Try again",
+    "showDetails": "Show details",
+    "reportMissing": "There's no report yet.",
+    "completed": {
+      "title": "Your data moved to this version",
+      "body": "Your notes, settings and sign-in now live in this version of MemryNote. The previous app's data stays untouched at {path}."
+    },
+    "notice": {
+      "title": "Changes made in the previous app",
+      "body": "A vault changed in the previous MemryNote app after it moved to this version. Those changes aren't here: they stay in the previous app's data at {path}. Changes that were synced arrive through sync."
+    }
   }
 }

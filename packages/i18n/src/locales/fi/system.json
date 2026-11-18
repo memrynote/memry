@@ -89,5 +89,44 @@
     },
     "logFolder": "Lokit: {path}",
     "reloaded": "MemryNote ladattiin uudelleen kaatumisen jälkeen. Viimeisimmät muokkaukset ovat voineet kadota."
+  },
+  "migration": {
+    "running": {
+      "title": "Tietojasi siirretään",
+      "note": "Tämä tapahtuu vain kerran. Pidä MemryNote auki, kunnes siirto on valmis."
+    },
+    "phase": {
+      "preparing": "Valmistellaan…",
+      "secrets": "Salaisuuksiasi siirretään…",
+      "vault": "Siirretään holvia {current}/{total}…",
+      "checking": "Tietojasi tarkistetaan…"
+    },
+    "failed": {
+      "title": "Tietojasi ei siirretty",
+      "note": "Mitään ei menetetty. Aiempi MemryNote-sovellus ja sen tiedot ovat ennallaan.",
+      "check": "Epäonnistunut tarkistus: {check}",
+      "electronRunning": "Aiempi MemryNote-sovellus on yhä auki. Sulje se ja yritä uudelleen.",
+      "diskSpace": "Vapaata levytilaa ei ole tarpeeksi tietojesi siirtämiseen. Vapauta tilaa ja yritä uudelleen.",
+      "electronSchema": "Aiempi MemryNote-sovellus ei ole saanut holvin päivitystä valmiiksi. Päivitä se sovellus, avaa holvi siinä kerran, sulje se ja yritä uudelleen.",
+      "sharedStore": "Joillakin holveilla on yhteinen synkronointihistoria, joten niitä ei voi siirtää. Käytä niille edelleen aiempaa MemryNote-sovellusta.",
+      "vaultUnreachable": "Holvia ei voi lukea juuri nyt. Tarkista, että sen asema on liitetty, ja yritä uudelleen.",
+      "secrets": "Joitakin tallennettuja kirjautumistietoja ei voitu lukea. Yritä uudelleen. Jos tämä toistuu, tarkista, että avainnippusi on avattu.",
+      "verification": "Siirrettyjen tietojesi tarkistus ei mennyt läpi, joten MemryNote jätti kaiken ennalleen."
+    },
+    "done": {
+      "title": "Tietosi ovat valmiina",
+      "body": "Avataan MemryNote…"
+    },
+    "retry": "Yritä uudelleen",
+    "showDetails": "Näytä tiedot",
+    "reportMissing": "Raporttia ei ole vielä.",
+    "completed": {
+      "title": "Tietosi ovat nyt tässä versiossa",
+      "body": "Muistiinpanosi, asetuksesi ja kirjautumisesi ovat nyt tässä MemryNote-versiossa. Aiemman sovelluksen tiedot säilyvät koskemattomina kohteessa {path}."
+    },
+    "notice": {
+      "title": "Muutokset aiemmassa sovelluksessa",
+      "body": "Holvia muutettiin aiemmassa MemryNote-sovelluksessa sen jälkeen, kun se siirrettiin tähän versioon. Ne muutokset eivät ole täällä: ne säilyvät aiemman sovelluksen tiedoissa kohteessa {path}. Synkronoidut muutokset saapuvat synkronoinnin kautta."
+    }
   }
 }

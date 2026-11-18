@@ -89,5 +89,44 @@
     },
     "logFolder": "Zapisnici: {path}",
     "reloaded": "MemryNote se ponovno učitao nakon rušenja. Nedavne izmjene možda su izgubljene."
+  },
+  "migration": {
+    "running": {
+      "title": "Premještanje vaših podataka",
+      "note": "Ovo se događa samo jednom. Ostavite MemryNote otvoren dok ne završi."
+    },
+    "phase": {
+      "preparing": "Priprema…",
+      "secrets": "Premještanje vaših tajni…",
+      "vault": "Premještanje trezora {current} od {total}…",
+      "checking": "Provjera vaših podataka…"
+    },
+    "failed": {
+      "title": "Vaši podaci nisu premješteni",
+      "note": "Ništa nije izgubljeno. Prethodna aplikacija MemryNote i njezini podaci nisu promijenjeni.",
+      "check": "Neuspjela provjera: {check}",
+      "electronRunning": "Prethodna aplikacija MemryNote još je otvorena. Zatvorite je pa pokušajte ponovno.",
+      "diskSpace": "Nema dovoljno slobodnog prostora na disku za premještanje podataka. Oslobodite prostor pa pokušajte ponovno.",
+      "electronSchema": "Prethodna aplikacija MemryNote nije dovršila ažuriranje trezora. Ažurirajte tu aplikaciju, jednom otvorite trezor u njoj, zatvorite je pa pokušajte ponovno.",
+      "sharedStore": "Neki trezori dijele istu povijest sinkronizacije pa se ne mogu premjestiti. Za njih i dalje koristite prethodnu aplikaciju MemryNote.",
+      "vaultUnreachable": "Trezor se trenutačno ne može pročitati. Provjerite je li njegov disk povezan pa pokušajte ponovno.",
+      "secrets": "Neki spremljeni podaci za prijavu nisu se mogli pročitati. Pokušajte ponovno. Ako se to nastavi, provjerite je li privjesak ključeva otključan.",
+      "verification": "Provjera premještenih podataka nije prošla pa je MemryNote sve ostavio kako je bilo."
+    },
+    "done": {
+      "title": "Vaši podaci su spremni",
+      "body": "Otvaranje MemryNotea…"
+    },
+    "retry": "Pokušaj ponovno",
+    "showDetails": "Prikaži pojedinosti",
+    "reportMissing": "Izvješća još nema.",
+    "completed": {
+      "title": "Vaši podaci su u ovoj verziji",
+      "body": "Vaše bilješke, postavke i prijava sada su u ovoj verziji MemryNotea. Podaci prethodne aplikacije ostaju netaknuti u {path}."
+    },
+    "notice": {
+      "title": "Promjene u prethodnoj aplikaciji",
+      "body": "Trezor je promijenjen u prethodnoj aplikaciji MemryNote nakon premještanja u ovu verziju. Te promjene nisu ovdje: ostaju u podacima prethodne aplikacije u {path}. Sinkronizirane promjene stižu sinkronizacijom."
+    }
   }
 }

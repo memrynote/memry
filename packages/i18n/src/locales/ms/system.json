@@ -89,5 +89,44 @@
     },
     "logFolder": "Log: {path}",
     "reloaded": "MemryNote dimuat semula selepas ranap. Suntingan terkini mungkin hilang."
+  },
+  "migration": {
+    "running": {
+      "title": "Memindahkan data anda",
+      "note": "Ini berlaku sekali sahaja. Biarkan MemryNote terbuka sehingga selesai."
+    },
+    "phase": {
+      "preparing": "Menyediakan…",
+      "secrets": "Memindahkan rahsia anda…",
+      "vault": "Memindahkan bilik kebal {current} daripada {total}…",
+      "checking": "Menyemak data anda…"
+    },
+    "failed": {
+      "title": "Data anda tidak dipindahkan",
+      "note": "Tiada apa-apa yang hilang. Apl MemryNote sebelumnya dan datanya tidak berubah.",
+      "check": "Semakan yang gagal: {check}",
+      "electronRunning": "Apl MemryNote sebelumnya masih terbuka. Keluar daripadanya, kemudian cuba lagi.",
+      "diskSpace": "Ruang cakera kosong tidak mencukupi untuk memindahkan data anda. Kosongkan sedikit ruang, kemudian cuba lagi.",
+      "electronSchema": "Apl MemryNote sebelumnya belum selesai mengemas kini sebuah bilik kebal. Kemas kini apl itu, buka bilik kebal di dalamnya sekali, keluar, kemudian cuba lagi.",
+      "sharedStore": "Sesetengah bilik kebal berkongsi satu sejarah penyegerakan, jadi ia tidak boleh dipindahkan. Teruskan menggunakan apl MemryNote sebelumnya untuknya.",
+      "vaultUnreachable": "Sebuah bilik kebal tidak dapat dibaca sekarang. Pastikan pemacunya disambungkan, kemudian cuba lagi.",
+      "secrets": "Sesetengah butiran log masuk yang disimpan tidak dapat dibaca. Cuba lagi. Jika ia berterusan, pastikan rantai kunci anda tidak berkunci.",
+      "verification": "Semakan data yang dipindahkan tidak lulus, jadi MemryNote membiarkan semuanya seperti asal."
+    },
+    "done": {
+      "title": "Data anda sudah sedia",
+      "body": "Membuka MemryNote…"
+    },
+    "retry": "Cuba lagi",
+    "showDetails": "Tunjukkan butiran",
+    "reportMissing": "Belum ada laporan.",
+    "completed": {
+      "title": "Data anda kini dalam versi ini",
+      "body": "Nota, tetapan dan log masuk anda kini berada dalam versi MemryNote ini. Data apl sebelumnya kekal tidak disentuh di {path}."
+    },
+    "notice": {
+      "title": "Perubahan dalam apl sebelumnya",
+      "body": "Sebuah bilik kebal berubah dalam apl MemryNote sebelumnya selepas dipindahkan ke versi ini. Perubahan itu tiada di sini: ia kekal dalam data apl sebelumnya di {path}. Perubahan yang telah disegerakkan tiba melalui penyegerakan."
+    }
   }
 }

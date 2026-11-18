@@ -25,6 +25,7 @@ pub mod launch;
 pub mod linking;
 pub mod locale;
 pub mod logging;
+pub mod migration;
 pub mod notes;
 pub mod notes_similarity;
 pub mod notes_versions;
