@@ -44,6 +44,8 @@ extension EnvironmentValues {
     /// Which page the shell builds `MoreTabView` for: `.calendar` for the
     /// Calendar page, anything else for Settings.
     @Entry var shellPage: VaultTab = .more
+    /// The split view's selected root row (#4348); `nil` in a stack.
+    @Entry var settingsSelection: SettingsRoute?
 }
 
 /// The pages built over the Settings context: Settings (Menu › Settings,
@@ -110,10 +112,11 @@ private struct SettingsSplitView: View {
         NavigationSplitView(columnVisibility: $columns) {
             Group {
                 if let context {
-                    // The selected row is neutral (`--surface-active`), not
-                    // the tint: the rows' own text colours stay legible on it.
+                    // The list's keyboard focus ring follows the tint, and a
+                    // focus ring derives from ink (`DESIGN.md` › Tint).
                     SettingsRootScreen(context: context, selection: page)
-                        .tint(Tokens.Canvas.surfaceActive.color)
+                        .environment(\.settingsSelection, shown)
+                        .tint(Tokens.Line.focus.color)
                 } else {
                     ProgressView(SettingsCopy.loading)
                 }
