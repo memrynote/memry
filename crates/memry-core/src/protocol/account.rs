@@ -251,6 +251,30 @@ pub async fn device_directory(http: &HttpClient) -> Result<DeviceDirectory, ApiE
     })
 }
 
+/// The id of the device the server lists, not revoked, under `public_key`; `None` when no live
+/// device holds that key (`DeviceKeySchema`, `revokedAt` null, `sync/device-registration.ts:419-428`).
+pub async fn active_device_with_key(
+    http: &HttpClient,
+    public_key: &[u8],
+) -> Result<Option<String>, ApiError> {
+    let body: Json = http
+        .send_json(ApiRequest::get(DEVICES_PATH).auth(Auth::Session))
+        .await?;
+    let rows = rows(&body, "devices").ok_or_else(|| ApiError::MalformedResponse {
+        path: DEVICES_PATH.to_string(),
+        what: "expected an array of devices, or an object carrying one".to_string(),
+    })?;
+    Ok(rows
+        .iter()
+        .filter(|row| row.get("revokedAt").is_none_or(Json::is_null))
+        .find(|row| {
+            text(row, &["signingPublicKey"])
+                .and_then(|encoded| keys::base64_decode(&encoded).ok())
+                .is_some_and(|key| key == public_key)
+        })
+        .and_then(|row| text(row, &["id", "deviceId"])))
+}
+
 fn read_key_material(body: &Json) -> Option<KeyMaterial> {
     Some(KeyMaterial {
         kdf_salt: body.get("kdfSalt")?.as_str()?.to_string(),
