@@ -297,7 +297,7 @@ async fn tags(shared: &Shared, asked: &Asked) -> Reply {
         .await?
         .map_err(|e| e.to_string())?;
     // `toSorted((a, b) => b.count - a.count)`: stable.
-    tags.sort_by(|a, b| b.count.cmp(&a.count));
+    tags.sort_by_key(|tag| std::cmp::Reverse(tag.count));
     let names: Vec<String> = tags.into_iter().map(|tag| tag.name).collect();
     Ok(reply(StatusCode::OK, &json!({ "tags": names })))
 }
