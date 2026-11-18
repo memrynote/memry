@@ -289,5 +289,9 @@
   {
     "file": "image-script-scheme.html",
     "url": "https://www.example.com/scheme"
+  },
+  {
+    "file": "image-data-not-image.html",
+    "url": "https://www.example.com/data"
   }
 ]

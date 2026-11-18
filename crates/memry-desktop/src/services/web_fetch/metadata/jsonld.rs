@@ -2,7 +2,9 @@
 //! `script[type="application/ld+json"]` parsed (with `jsonrepair` as the fallback), `@graph`
 //! items spread over their document's other properties, and lodash `get` over the result.
 
-use super::select::{Attr, Compound, Page, Sel};
+use std::collections::HashMap;
+
+use super::select::{Attr, Compound, Page, Sel, step};
 use crate::web::extract::dom::decode_html;
 use crate::web::extract::utils::json::{self, JsValue};
 
@@ -15,8 +17,23 @@ const SCRIPT: Sel = Sel(&[Compound(
 /// rule, so metascraper and the whole metadata fetch fail with it.
 pub const GRAPH_NOT_ARRAY: &str = "graph.map is not a function";
 
-/// The JSON-LD items of a page in document order.
-pub fn collection(page: &Page) -> Result<Vec<JsValue>, &'static str> {
+/// What a value costs in [`weight`] on top of its bytes: a `JsValue` (32 bytes) and the heap
+/// block behind it, or a key's `String` and its block. [`weight`] stays an approximation of the
+/// memory a spread takes.
+const VALUE_COST: usize = 64;
+
+/// Departure: the most the `@graph` spreads of a page may copy, in [`weight`], per byte of the
+/// page. `{ ...props, ...item }` copies the document's other properties into every item, so 1 MB
+/// of properties over 50,000 items asks for 50 GB; V8 runs out of memory there too. The items
+/// past the budget are dropped, the ones before it kept.
+const GRAPH_BUDGET_PER_BYTE: usize = 8;
+const GRAPH_BUDGET_SLACK: usize = 1 << 20;
+
+/// The JSON-LD items of a page in document order. `html_len` sizes the `@graph` budget.
+pub fn collection(page: &Page, html_len: usize) -> Result<Vec<JsValue>, &'static str> {
+    let mut budget = GRAPH_BUDGET_PER_BYTE
+        .saturating_mul(html_len)
+        .saturating_add(GRAPH_BUDGET_SLACK);
     let mut items = Vec::new();
     for script in page.select(SCRIPT) {
         let Some(text) = page.text(script) else {
@@ -45,12 +62,7 @@ pub fn collection(page: &Page) -> Result<Vec<JsValue>, &'static str> {
                     .filter(|(k, _)| k != "@graph")
                     .cloned()
                     .collect();
-                JsValue::Array(
-                    graph_items
-                        .iter()
-                        .map(|item| spread(&props, item))
-                        .collect(),
-                )
+                JsValue::Array(spread_graph(&props, graph_items, &mut budget))
             }
             _ => json,
         };
@@ -64,8 +76,84 @@ pub fn collection(page: &Page) -> Result<Vec<JsValue>, &'static str> {
     Ok(items)
 }
 
-/// `({ ...props, ...item })`.
-fn spread(props: &[(String, JsValue)], item: &JsValue) -> JsValue {
+/// `graph.map(item => ({ ...props, ...item }))` for the items that fit in `budget`.
+fn spread_graph(
+    props: &[(String, JsValue)],
+    graph_items: &[JsValue],
+    budget: &mut usize,
+) -> Vec<JsValue> {
+    let slots: HashMap<&str, usize> = props
+        .iter()
+        .enumerate()
+        .map(|(i, (key, _))| (key.as_str(), i))
+        .collect();
+    let props_weight: usize = props.iter().map(|(k, v)| entry_weight(k, v)).sum();
+    let mut out = Vec::new();
+    for item in graph_items {
+        let cost = props_weight.saturating_add(own_weight(item));
+        if cost > *budget {
+            tracing::warn!(
+                kept = out.len(),
+                dropped = graph_items.len() - out.len(),
+                "JSON-LD @graph past its copy budget"
+            );
+            break;
+        }
+        *budget -= cost;
+        step(cost);
+        out.push(spread(props, &slots, item));
+    }
+    out
+}
+
+/// What `{ ...item }` copies, before it is built: a string spreads one key per UTF-16 unit.
+fn own_weight(item: &JsValue) -> usize {
+    let index_key = |i: usize| VALUE_COST + i.checked_ilog10().unwrap_or(0) as usize + 1;
+    match item {
+        JsValue::Object(entries) => entries.iter().map(|(k, v)| entry_weight(k, v)).sum(),
+        JsValue::Array(values) => values
+            .iter()
+            .enumerate()
+            .map(|(i, v)| index_key(i) + weight(v))
+            .sum(),
+        JsValue::String(s) => s
+            .encode_utf16()
+            .enumerate()
+            .map(|(i, _)| index_key(i) + VALUE_COST + 3)
+            .sum(),
+        _ => 0,
+    }
+}
+
+fn entry_weight(key: &str, value: &JsValue) -> usize {
+    VALUE_COST + key.len() + weight(value)
+}
+
+/// The size of a value in memory, roughly: its bytes and [`VALUE_COST`] per value.
+fn weight(value: &JsValue) -> usize {
+    let mut total = 0usize;
+    let mut stack = vec![value];
+    while let Some(value) = stack.pop() {
+        total = total.saturating_add(VALUE_COST);
+        match value {
+            JsValue::String(s) => total = total.saturating_add(s.len()),
+            JsValue::Array(values) => stack.extend(values),
+            JsValue::Object(entries) => {
+                for (key, value) in entries {
+                    total = total.saturating_add(key.len());
+                    stack.push(value);
+                }
+            }
+            _ => {}
+        }
+    }
+    step(total);
+    total
+}
+
+/// `({ ...props, ...item })`. The keys of one item are distinct, so each one only looks for a
+/// key of `props` to replace.
+fn spread(props: &[(String, JsValue)], slots: &HashMap<&str, usize>, item: &JsValue) -> JsValue {
     let mut out = props.to_vec();
     let own: Vec<(String, JsValue)> = match item {
         JsValue::Object(entries) => entries.clone(),
@@ -87,8 +175,10 @@ fn spread(props: &[(String, JsValue)], item: &JsValue) -> JsValue {
         _ => Vec::new(),
     };
     for (key, value) in own {
-        match out.iter_mut().find(|(k, _)| *k == key) {
-            Some(slot) => slot.1 = value,
+        // One step per key looked up, so a scan over `out` here shows as steps.
+        step(1);
+        match slots.get(key.as_str()) {
+            Some(&slot) => out[slot].1 = value,
             None => out.push((key, value)),
         }
     }
@@ -100,12 +190,12 @@ fn spread(props: &[(String, JsValue)], item: &JsValue) -> JsValue {
 pub fn lookup(items: &[JsValue], path: &str) -> Option<JsValue> {
     let mut value = None;
     for item in items {
-        value = get(item, path).cloned();
-        if value.as_ref().is_some_and(|v| !lodash_is_empty(v)) {
+        value = get(item, path);
+        if value.is_some_and(|v| !lodash_is_empty(v)) {
             break;
         }
     }
-    match value {
+    match value.cloned() {
         Some(JsValue::String(s)) => Some(JsValue::String(decode_html(&s))),
         other => other,
     }
@@ -141,9 +231,12 @@ pub fn get<'a>(object: &'a JsValue, path: &str) -> Option<&'a JsValue> {
 
 /// `parseJSON`: `JSON.parse`, then `JSON.parse(jsonrepair(text))`, else nothing.
 fn parse_json(text: &str) -> Option<JsValue> {
-    json::parse(text)
-        .ok()
-        .or_else(|| json::parse(&repair(text)?).ok())
+    match json::parse(text) {
+        Ok(value) => Some(value),
+        // The parse failed inside a valid prefix that `repair` keeps, so it would fail again.
+        Err(error) if error == json::NESTING_TOO_DEEP => None,
+        Err(_) => json::parse(&repair(text)?).ok(),
+    }
 }
 
 /// The repairs of `jsonrepair` 3.13.2 that JSON-LD on web pages needs: comments (which also

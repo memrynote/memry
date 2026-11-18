@@ -6,12 +6,13 @@ use std::time::Duration;
 
 use chrono::{TimeZone, Utc};
 use memry_desktop::services::web_fetch::{
-    METASCRAPE_MAX_DEPTH as MAX_DEPTH, MetascrapeError, UrlMetadata, metascrape_at,
-    metascrape_parse_steps, metascrape_steps,
+    MAX_IMAGE_BYTES, METASCRAPE_MAX_DEPTH as MAX_DEPTH, MetascrapeError, UrlMetadata,
+    metascrape_at, metascrape_parse_steps, metascrape_steps,
 };
 use memry_desktop::web::extract::markdown::turndown::parse::{
     CapHit, Caps, FEED_CHUNK, parse_page,
 };
+use memry_desktop::web::extract::utils::json;
 use memry_test_kit::{on_small_stack, output_bound, proptest_config};
 use proptest::prelude::*;
 
@@ -174,8 +175,8 @@ fn an_attribute_flood_stops_at_the_deadline() {
 /// The author rule's `$filter` over nested `.byline` elements reads each one's text and rejects
 /// a text that is a date. Every byline here reads as the one date below 20,000 blank elements:
 /// cheerio walks the subtree below each match, which is quadratic.
-/// Here the byline matches cost at most the text budget (16 visits per node) more than the same
-/// page without the class.
+/// Here the byline matches cost at most the text budget (16 per node and per byte of the page)
+/// more than the same page without the class.
 #[test]
 fn nested_bylines_read_text_within_the_budget() {
     let page = |class: &str| {
@@ -184,16 +185,135 @@ fn nested_bylines_read_text_within_the_budget() {
         let open = format!("<div class=\"{class}\">").repeat(depth);
         format!("<title>T</title>{open}{leaves}{}", "</div>".repeat(depth))
     };
+    let len = page("byline").len();
     let plain = scrape_on_small_stack(page("plain"));
     let byline = scrape_on_small_stack(page("byline"));
     assert!(byline.result.is_ok() && plain.result.is_ok());
     let nodes = 2 * 20_000 + MAX_DEPTH;
     assert!(
-        byline.steps <= plain.steps + 16 * nodes + 4 * MAX_DEPTH,
+        byline.steps <= plain.steps + 16 * (nodes + len) + 4 * MAX_DEPTH,
         "{} steps, {} without bylines",
         byline.steps,
         plain.steps
     );
+}
+
+/// Text reads charge the bytes they copy: 500 nested `.byline` elements around one date padded
+/// with 2 MB of spaces would copy 2 MB per byline (a gigabyte) while visiting few nodes. Here the
+/// bylines cost at most the text budget more than the same page without the class.
+#[test]
+fn nested_bylines_around_long_text_read_within_the_byte_budget() {
+    let page = |class: &str| {
+        let open = format!("<div class=\"{class}\">").repeat(500);
+        let text = format!("March 4, 2024{}", " ".repeat(2 << 20));
+        format!("<title>T</title>{open}{text}{}", "</div>".repeat(500))
+    };
+    let len = page("byline").len();
+    let plain = scrape_on_small_stack(page("plain"));
+    let byline = scrape_on_small_stack(page("byline"));
+    assert!(byline.result.is_ok() && plain.result.is_ok());
+    assert!(
+        byline.steps <= plain.steps + 16 * (len + 1_000) + 4 * MAX_DEPTH,
+        "{} steps, {} without bylines",
+        byline.steps,
+        plain.steps
+    );
+}
+
+fn json_ld(json: &str) -> String {
+    format!("<script type=\"application/ld+json\">{json}</script>")
+}
+
+/// `{ ...props, ...item }` over a string spreads one key per UTF-16 unit, and each key looks for
+/// a key of `props` to replace. A 50,000-unit string within the page's copy budget spreads in
+/// linear steps; a 1 MB string is past the budget and dropped.
+#[test]
+fn json_ld_graph_strings_spread_in_linear_steps() {
+    for (units, padding, kept) in [(50_000, 4 << 20, true), (1 << 20, 0, false)] {
+        let item = "a".repeat(units);
+        let html = format!(
+            "<title>T</title><!--{}-->{}",
+            " ".repeat(padding),
+            json_ld(&format!(
+                r#"{{"description":"From props","@graph":["{item}"]}}"#
+            ))
+        );
+        let run = scrape_on_small_stack(html.clone());
+        let meta = run.result.expect("scrape");
+        let want = kept.then_some("From props");
+        assert_eq!(meta.description.as_deref(), want, "{units} units");
+        let bound = 64 * html.len();
+        assert!(
+            run.steps <= bound,
+            "{units} units: {} steps, bound {bound}",
+            run.steps
+        );
+    }
+}
+
+/// 1 MB of other properties over 50,000 `@graph` items asks for 50 GB of copies. The items past
+/// the page's copy budget are dropped, the first ones kept.
+#[test]
+fn json_ld_graph_props_copy_within_the_budget() {
+    let pad = "p".repeat(1 << 20);
+    let items = vec!["{}"; 50_000].join(",");
+    let html = format!(
+        "<title>T</title>{}",
+        json_ld(&format!(
+            r#"{{"description":"From props","pad":"{pad}","@graph":[{items}]}}"#
+        ))
+    );
+    let run = scrape_on_small_stack(html.clone());
+    assert_eq!(
+        run.result.expect("scrape").description.as_deref(),
+        Some("From props")
+    );
+    let bound = 64 * html.len();
+    assert!(run.steps <= bound, "{} steps, bound {bound}", run.steps);
+}
+
+/// One JSON-LD object of 50,000 distinct keys: each key is looked up once among the earlier ones,
+/// on the plain parse and on the repair path (a trailing comma fails the first parse after every
+/// key, so the keys are read twice).
+#[test]
+fn json_ld_with_many_distinct_keys_parses_in_linear_steps() {
+    let keys = 50_000;
+    let body: Vec<String> = (0..keys).map(|i| format!("\"k{i}\":{i}")).collect();
+    let body = body.join(",");
+    for (json, parses) in [
+        (format!(r#"{{"description":"Keys",{body}}}"#), 1),
+        (format!(r#"{{"description":"Keys",{body},}}"#), 2),
+    ] {
+        let html = format!("<title>T</title>{}", json_ld(&json));
+        let (description, steps) = on_small_stack(move || {
+            let before = json::steps();
+            let meta = scrape(&html).result.expect("scrape");
+            (meta.description, json::steps() - before)
+        });
+        assert_eq!(description.as_deref(), Some("Keys"), "{parses} parses");
+        let bound = 2 * parses * (keys + 1);
+        assert!(
+            steps <= bound,
+            "{parses} parses: {steps} steps, bound {bound}"
+        );
+    }
+}
+
+/// `data:` images stay when they are images within a base64 `MAX_IMAGE_BYTES` and its header.
+#[test]
+fn data_images_stay_only_as_images_within_the_size_cap() {
+    let max = MAX_IMAGE_BYTES * 4 / 3 + 1024;
+    let image = |uri: &str| {
+        let html = format!("<meta property=\"og:image\" content=\"{uri}\">");
+        scrape(&html).result.expect("scrape").image
+    };
+    let header = "data:image/png;base64,";
+    let at_cap = format!("{header}{}", "A".repeat(max - header.len()));
+    assert_eq!(image(&at_cap).map(|v| v.len()), Some(max));
+    let past_cap = format!("{at_cap}A");
+    assert_eq!(image(&past_cap), None);
+    assert_eq!(image("data:text/html;base64,PGI+"), None);
+    assert!(image("DATA:IMAGE/GIF;base64,R0lGODlhAQABAAAAACw=").is_some());
 }
 
 /// The largest field a page of `len` bytes may give.
@@ -232,6 +352,10 @@ const FRAGMENTS: &[&str] = &[
     "2024-03-04T10:00:00Z",
     "March 4, 2024",
     "javascript:alert(1)",
+    "<meta property=\"og:url\" content=\"vbscript:x\">",
+    "<span class=\"byline\">300000 years ago</span>",
+    "9999999999999 days ago",
+    "99999999999999999 seconds ago",
     "data:image/gif;base64,R0lG",
     "/a/../b?x=1#y",
     "'",

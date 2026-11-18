@@ -17,7 +17,9 @@ on:
       - feat/tauri-v2
     paths:
       - 'crates/**'
-      - 'apps/desktop-tauri/**'
+      # The Rust side of the Tauri app; its TS side is Desktop Tauri CI's (#5035).
+      - 'apps/desktop-tauri/src-tauri/**'
+      - 'apps/desktop-tauri/scripts/**'
       - 'tests/sync-harness/scripts/serve.ts'
       - 'tests/sync-harness/src/**'
       - 'apps/sync-server/**'
@@ -40,6 +42,11 @@ on:
   # The merge queue (feat/tauri-v2) runs the full matrix on the merge-group commit; `paths` do not apply.
   merge_group:
   workflow_dispatch:
+  # Every 6 hours: the legs the merge queue skips (Apple Silicon, the windows-arm64 e2e specs) on the
+  # head of feat/tauri-v2, the default branch, where schedules fire (#5035). A push the queue passed runs
+  # none of them; a SHA a scheduled run already finished is skipped.
+  schedule:
+    - cron: '41 */6 * * *'
 
 permissions:
   contents: read
@@ -48,10 +55,13 @@ concurrency:
   # One group per workflow and ref; a PR with `full-ci` and the noop runs keep their own groups. A
   # workflow_dispatch on feat/tauri-v2 gets its own group so a manual Intel run is neither cancelled
   # by a push nor cancels one.
-  group: rust-ci-${{ github.workflow }}-${{ github.ref }}${{ ((github.event.action == 'labeled' && !(github.base_ref != 'main' && github.event.label.name == 'full-ci')) || (github.event.action == 'opened' && github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) && format('-noop-{0}', github.run_id) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/feat/tauri-v2' && format('-dispatch-{0}', github.run_id) || (github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci') && '-full' || '')) }}
-  # A burst of merges into feat/tauri-v2 checks only the newest head: a push there cancels the run
-  # of the previous head. Every other ref behaves as before (main pushes cancelled before this change).
-  cancel-in-progress: true
+  group: rust-ci-${{ github.workflow }}-${{ github.ref }}${{ ((github.event.action == 'labeled' && !(github.base_ref != 'main' && github.event.label.name == 'full-ci')) || (github.event.action == 'opened' && github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) && format('-noop-{0}', github.run_id) || (github.event_name == 'schedule' && '-schedule') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/feat/tauri-v2' && format('-dispatch-{0}', github.run_id) || (github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci') && '-full' || '')) }}
+  # A push run of feat/tauri-v2 finishes (#5035): after a merge the queue tested it runs only plan and
+  # gate (post-merge.sh), and a full run, after a cache-key change, saves the caches PRs restore. A
+  # cancelled one saved none, and the next push had to run every leg again. A burst stays bounded: a
+  # newer push waits as the one pending run and replaces an older pending one. Every other event and
+  # ref still cancels (main pushes included, as before #3649).
+  cancel-in-progress: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/feat/tauri-v2') }}
 
 env:
   CARGO_TERM_COLOR: always
@@ -75,8 +85,11 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
+      # The post-merge lookup of this SHA's merge_group run.
+      actions: read
     outputs:
       full: ${{ steps.tier.outputs.full }}
+      post_merge: ${{ steps.tier.outputs.post_merge }}
       tauri: ${{ steps.tier.outputs.tauri }}
       swift: ${{ steps.tier.outputs.swift }}
       intel: ${{ steps.tier.outputs.intel }}
@@ -104,8 +117,10 @@ jobs:
         with:
           token: ${{ github.token }}
           source: ${{ github.workspace }}
+          post-merge: 'true'
 
-      # The OS matrix (rules in .github/actions/ci-tier/rust-legs.jq).
+      # The OS matrix (rules in .github/actions/ci-tier/rust-legs.jq). Post-merge (#5035): the scheduled
+      # run of feat/tauri-v2 runs Apple Silicon only, a push the merge queue passed runs nothing.
       - name: Build the OS matrix
         id: matrix
         env:
@@ -114,25 +129,28 @@ jobs:
           INTEL: ${{ steps.tier.outputs.intel }}
           WINDOWS_LEGS: ${{ steps.tier.outputs.rust_windows }}
           MACOS_LEGS: ${{ steps.tier.outputs.rust_macos }}
+          POST_MERGE: ${{ steps.tier.outputs.post_merge }}
         run: |
-          legs=$(jq -cn --arg full "$FULL" --arg macos "$MACOS" --arg intel "$INTEL" --arg win "$WINDOWS_LEGS" --arg mac "$MACOS_LEGS" \
+          legs=$(jq -cn --arg full "$FULL" --arg macos "$MACOS" --arg intel "$INTEL" --arg post_merge "$POST_MERGE" --arg win "$WINDOWS_LEGS" --arg mac "$MACOS_LEGS" \
             -f .github/actions/ci-tier/rust-legs.jq)
           echo "legs=$legs" >> "$GITHUB_OUTPUT"
           echo "Legs: $legs"
 
       # Replaces the `pull_request.paths` filter: a filtered workflow never runs, so its required gate
-      # would never report. Pushes keep their own `paths`; every other event outputs true.
+      # would never report. Pushes keep their own `paths`; every other event outputs true. Of
+      # apps/desktop-tauri only src-tauri/ (and the scripts/ that generate into it) reach a Rust job: the
+      # renderer and its tests belong to Desktop Tauri CI, which also checks the generated bindings (#5035).
       - name: Detect changed paths
         id: paths
         uses: ./.github/actions/paths-changed
         with:
           token: ${{ github.token }}
-          include: '^(crates/|apps/desktop-tauri/|tests/sync-harness/scripts/serve\.ts$|tests/sync-harness/src/|apps/sync-server/|pnpm-lock\.yaml$|packages/swift/|packages/contracts/test-vectors/|packages/article-extract/|scripts/check-line-ceilings\.mjs$|scripts/check-test-timing(\.test)?\.mjs$|scripts/fetch-pdfium\.mjs$|scripts/fetch-tesseract-sources\.mjs$|\.github/workflows/rust-ci\.yml$|\.github/actions/(apt-install|ci-tier|free-disk|ort-static|paths-changed|setup-pnpm|tesseract-sources)/)'
+          include: '^(crates/|apps/desktop-tauri/(src-tauri|scripts)/|tests/sync-harness/scripts/serve\.ts$|tests/sync-harness/src/|apps/sync-server/|pnpm-lock\.yaml$|packages/swift/|packages/contracts/test-vectors/|packages/article-extract/|scripts/check-line-ceilings\.mjs$|scripts/check-test-timing(\.test)?\.mjs$|scripts/fetch-pdfium\.mjs$|scripts/fetch-tesseract-sources\.mjs$|\.github/workflows/rust-ci\.yml$|\.github/actions/(apt-install|ci-tier|free-disk|ort-static|paths-changed|setup-pnpm|tesseract-sources)/)'
 
   lint-and-test:
     name: Rust ${{ matrix.part }}${{ matrix.partition && format(' {0}', matrix.partition) || '' }} (${{ matrix.os }})
     needs: plan
-    if: ${{ !cancelled() && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') }}
+    if: ${{ !cancelled() && needs.plan.outputs.post_merge != 'covered' && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') }}
     runs-on: ${{ matrix.os }}
     # Each macOS leg runs every step in one job. With a cold cargo cache the Intel leg ran past 65
     # minutes (run 43392998324), and so does Apple Silicon: about 71 minutes of work, of which the
@@ -957,7 +975,8 @@ jobs:
   article-extract-oracle-fresh:
     name: Article-extraction vectors are current
     needs: plan
-    if: ${{ !cancelled() && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref != 'main' && github.event.label.name == 'full-ci')) }}
+    # Not post-merge: the merge queue ran it on the same SHA.
+    if: ${{ !cancelled() && (needs.plan.outputs.post_merge || 'false') == 'false' && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref != 'main' && github.event.label.name == 'full-ci')) }}
     runs-on: ubuntu-22.04
     timeout-minutes: 30
 
@@ -983,6 +1002,9 @@ jobs:
 
       - name: Entity table is current
         run: pnpm --filter @memry/article-extract entities --check
+
+      - name: Inbox metadata vectors are current
+        run: node scripts/generate-metadata-vectors.mjs --check
 
   swift-bindings-fresh:
     name: Generated Swift bindings are current
@@ -1178,3 +1200,31 @@ jobs:
           # A skipped detection job (a noop `labeled` or `opened` run) must not read as a pass.
           if [ "$DETECT_RESULT" != success ]; then echo "::error::plan job result was $DETECT_RESULT"; exit 1; fi
           case " $RESULTS " in *" failure "*|*" cancelled "*) exit 1 ;; esac
+
+  # A failed scheduled run opens (or comments on) one issue: nothing else reads its result. Write access
+  # to issues only, and no checkout, so nothing from the repo runs with it.
+  report:
+    name: Report a scheduled failure
+    # The gate does not need iOS unit tests, so they are listed here.
+    needs: [gate, ios-unit-tests]
+    if: ${{ always() && github.event_name == 'schedule' && contains(needs.*.result, 'failure') }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Open or update the issue
+        run: |
+          set -euo pipefail
+          body="Rust CI failed on the scheduled post-merge run of feat/tauri-v2 at ${{ github.sha }}: $RUN_URL. These legs (Rust all on macos-15, the Swift bindings check, the iOS unit tests) do not run in the merge queue (#5035)."
+          gh label create post-merge-ci --description "Scheduled post-merge CI failure on feat/tauri-v2" --color D93F0B 2>/dev/null || true
+          existing=$(gh issue list --label post-merge-ci --state open --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "$body"
+          else
+            gh issue create --label post-merge-ci --title "Scheduled post-merge CI failure on feat/tauri-v2" --body "$body"
+          fi
