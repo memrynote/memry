@@ -7,9 +7,11 @@
 //! A status is an entry of its project's nested `statuses` array, so each
 //! command is a project edit, which is what desktop pushes too (`project`
 //! update with `['statuses']`, `apps/desktop/src/main/tasks/sync-intents.ts:52-66`).
-//! The array is read from the stored payload inside the write's transaction,
-//! changed, and written back with one outbox row; every key of an entry this
-//! build does not model is kept (§13.2 rule 3).
+//! The array is read from the stored payload, changed, and written back through
+//! `write::edit_project` with one outbox row; every key of an entry this build
+//! does not model is kept (§13.2 rule 3). An unchanged array writes nothing
+//! (desktop pushes those no-ops; see `edit_project` for why core must not),
+//! and a stored `statuses` that is not an array is refused, never replaced.
 //!
 //! Desktop's rules, kept: a new status is never the default and goes after the
 //! last position; an update sets the two flags without clearing them on the
@@ -23,13 +25,11 @@ use serde_json::{Map, Value, json};
 
 use crate::api::errors::StorageError;
 use crate::storage::repositories::Change;
-use crate::sync::field_merge::PROJECT_SYNCABLE_FIELDS;
-use crate::sync::outbox::{self, Durable};
+use crate::sync::outbox::Durable;
 
 use super::super::notes::{self, iso};
-use super::super::tasks;
 use super::status_list::valid_status_name;
-use super::write::{mint_id, valid_color};
+use super::write::{edit_project_then, mint_id, valid_color};
 use super::{ITEM_TYPE, Status, require_live, status_by_id};
 
 /// `StatusCreateSchema`'s colour default (`packages/contracts/src/tasks-api.ts:214`).
@@ -93,18 +93,22 @@ pub fn create_status(
             Ok(())
         },
         |tx| read_back(tx, &id),
-    )
+    )?
+    .ok_or_else(|| StorageError::Failed {
+        what: format!("status {id} was not added to project {}", status.project_id),
+    })
 }
 
-/// Edits one status (`updateStatus`) and returns it. An id no live project
-/// holds is `NotFound`, desktop's `Status not found`.
+/// Edits one status (`updateStatus`) and returns it, or `None` when every
+/// field already held its value. An id no live project holds is `NotFound`,
+/// desktop's `Status not found`.
 pub fn update_status(
     conn: &Connection,
     status_id: &str,
     patch: &StatusPatch<'_>,
     device_id: &str,
     now_ms: i64,
-) -> Result<Durable<Status>, StorageError> {
+) -> Result<Option<Durable<Status>>, StorageError> {
     let status = status_by_id(conn, status_id)?.ok_or_else(|| not_found(status_id))?;
     if let Some(name) = patch.name {
         valid_status_name(name)?;
@@ -164,13 +168,13 @@ pub fn delete_status(
         },
         |_| Ok(project_id.clone()),
     )
-    .map(Some)
 }
 
 /// Sets `positions[i]` on `status_ids[i]` (`reorderStatuses`): one write per
 /// project the ids belong to, in the order each project is first named, each
 /// returning its moved statuses in input order. Ids no live project holds are
-/// skipped; a repeated id takes its last position.
+/// skipped; a repeated id takes its last position; a project whose positions
+/// already hold is not written and is absent from the result.
 ///
 /// Desktop runs every update in one transaction. Here each project is its own
 /// commit (one outbox row per project), so a crash between two leaves each
@@ -205,40 +209,40 @@ pub fn reorder_statuses(
         moves.push((status_id, *position));
     }
 
-    by_project
-        .iter()
-        .map(|(project_id, moves)| {
-            write(
-                conn,
-                project_id,
-                device_id,
-                now_ms,
-                |entries| {
-                    for (status_id, position) in moves {
-                        let entry = entries
-                            .iter_mut()
-                            .filter_map(Value::as_object_mut)
-                            .find(|entry| entry_id(entry) == Some(*status_id));
-                        if let Some(entry) = entry {
-                            entry.insert("position".to_owned(), json!(position));
-                        }
+    let mut written = Vec::new();
+    for (project_id, moves) in &by_project {
+        written.extend(write(
+            conn,
+            project_id,
+            device_id,
+            now_ms,
+            |entries| {
+                for (status_id, position) in moves {
+                    let entry = entries
+                        .iter_mut()
+                        .filter_map(Value::as_object_mut)
+                        .find(|entry| entry_id(entry) == Some(*status_id));
+                    if let Some(entry) = entry {
+                        entry.insert("position".to_owned(), json!(position));
                     }
-                    Ok(())
-                },
-                |tx| {
-                    moves
-                        .iter()
-                        .map(|(status_id, _)| read_back(tx, status_id))
-                        .collect()
-                },
-            )
-        })
-        .collect()
+                }
+                Ok(())
+            },
+            |tx| {
+                moves
+                    .iter()
+                    .map(|(status_id, _)| read_back(tx, status_id))
+                    .collect()
+            },
+        )?);
+    }
+    Ok(written)
 }
 
-/// One project edit of the `statuses` array: read from the stored payload in
-/// the transaction, changed by `edit`, written with one outbox row, and `read`
-/// after the projection caught up.
+/// One project edit of the `statuses` array: read from the stored payload,
+/// changed by `edit`, and written through `edit_project_then`, which skips an
+/// unchanged array (`None`); `read` runs in the write's transaction after the
+/// projection caught up.
 fn write<T>(
     conn: &Connection,
     project_id: &str,
@@ -246,29 +250,26 @@ fn write<T>(
     now_ms: i64,
     edit: impl FnOnce(&mut Vec<Value>) -> Result<(), StorageError>,
     read: impl FnOnce(&Connection) -> Result<T, StorageError>,
-) -> Result<Durable<T>, StorageError> {
-    outbox::commit(
+) -> Result<Option<Durable<T>>, StorageError> {
+    let stored = notes::require_payload(conn, ITEM_TYPE, project_id)?;
+    let mut entries = match stored.object().get("statuses") {
+        None | Some(Value::Null) => Vec::new(),
+        Some(Value::Array(entries)) => entries.clone(),
+        // A newer build's shape: writing a list over it would destroy it.
+        Some(_) => {
+            return Err(StorageError::Invalid {
+                what: format!("project {project_id} has a `statuses` value that is not a list"),
+            });
+        }
+    };
+    edit(&mut entries)?;
+    edit_project_then(
         conn,
-        &outbox::Change::upsert(ITEM_TYPE, project_id),
+        project_id,
+        vec![("statuses", Change::Set(Value::Array(entries)))],
+        device_id,
         now_ms,
-        |tx| {
-            let stored = notes::require_payload(tx, ITEM_TYPE, project_id)?;
-            let mut entries = match stored.object().get("statuses") {
-                Some(Value::Array(entries)) => entries.clone(),
-                _ => Vec::new(),
-            };
-            edit(&mut entries)?;
-            tasks::edit_merged_in(
-                tx,
-                ITEM_TYPE,
-                &PROJECT_SYNCABLE_FIELDS,
-                project_id,
-                vec![("statuses", Change::Set(Value::Array(entries)))],
-                device_id,
-                now_ms,
-            )?;
-            read(tx)
-        },
+        |tx, _| read(tx),
     )
 }
 

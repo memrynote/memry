@@ -14,8 +14,9 @@
 //! So every status or link edit is a project edit: it rebuilds the whole array
 //! from the **stored payload** (never from the projection, §13.2 rule 4),
 //! keeps every key of an entry this build does not model, and lands through
-//! [`crate::domain::tasks::edit_merged`] — one transaction, one outbox row, the
-//! document clock and `modifiedAt`'s field clock ticked.
+//! `write::edit_project` — one transaction, one outbox row, the document clock
+//! and `modifiedAt`'s field clock ticked — and writes nothing when the array
+//! did not change.
 //!
 //! Neither array is one of `PROJECT_SYNCABLE_FIELDS` (§6.7), so an edit to one
 //! ticks no field clock of its own. That is desktop's shape too: its field

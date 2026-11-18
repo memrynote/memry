@@ -190,8 +190,9 @@ fn an_update_sets_only_the_named_fields_and_keeps_unknown_keys() {
             is_done: Some(true),
             ..StatusPatch::default()
         };
-        let updated =
-            projects::update_status(conn, "proj-u-todo", &patch, DEVICE, NOW)?.acknowledge();
+        let updated = projects::update_status(conn, "proj-u-todo", &patch, DEVICE, NOW)?
+            .expect("a change")
+            .acknowledge();
         assert_eq!(updated.name, "Backlog");
         assert!(updated.is_done && updated.is_default);
 
@@ -475,8 +476,12 @@ fn targets_are_the_name_and_linked_markdown_notes_before_a_delete() {
         projects::create(conn, &project, DEVICE, NOW)?.acknowledge();
         seed_note(conn, "note-md", "Md", "markdown");
         seed_note(conn, "img-1", "Image", "image");
-        projects::link(conn, "proj-t", LinkItemType::Note, "note-md", DEVICE, NOW)?.acknowledge();
-        projects::link(conn, "proj-t", LinkItemType::File, "img-1", DEVICE, NOW)?.acknowledge();
+        projects::link(conn, "proj-t", LinkItemType::Note, "note-md", DEVICE, NOW)?
+            .expect("a new link")
+            .acknowledge();
+        projects::link(conn, "proj-t", LinkItemType::File, "img-1", DEVICE, NOW)?
+            .expect("a new link")
+            .acknowledge();
 
         let targets = projects::targets(conn, "proj-t")?.expect("targets");
         assert_eq!(targets.name, "Agent Test Targets");
@@ -487,4 +492,128 @@ fn targets_are_the_name_and_linked_markdown_notes_before_a_delete() {
         Ok(())
     })
     .expect("the targets");
+}
+
+/// What a write stamps: the document clock, the field clocks, `modifiedAt`
+/// and the queued rows.
+fn stamp(conn: &Connection, project_id: &str) -> (Value, Value, Value, i64) {
+    let payload = payload_of(conn, "project", project_id);
+    (
+        payload["clock"].clone(),
+        payload["fieldClocks"].clone(),
+        payload["modifiedAt"].clone(),
+        outbox_count(conn, project_id),
+    )
+}
+
+#[test]
+fn a_no_op_status_update_or_reorder_writes_nothing() {
+    let db = open("status-noop");
+    db.call_blocking(|conn| {
+        seed_project(conn, "proj-n", "Agent Test Noop", json!([]));
+        let before = stamp(conn, "proj-n");
+        let same = StatusPatch {
+            name: Some("To Do"),
+            color: Some("#6b7280"),
+            position: Some(0),
+            is_default: Some(true),
+            is_done: Some(false),
+        };
+        let _ = projects::update_status(conn, "proj-n-todo", &same, DEVICE, NOW + 1)?;
+        let _ = projects::reorder_statuses(
+            conn,
+            &["proj-n-todo", "proj-n-done"],
+            &[0, 4],
+            DEVICE,
+            NOW + 1,
+        )?;
+        assert_eq!(stamp(conn, "proj-n"), before);
+        Ok(())
+    })
+    .expect("the no-op");
+}
+
+#[test]
+fn a_status_write_refuses_a_stored_list_that_is_not_an_array() {
+    let db = open("status-not-array");
+    db.call_blocking(|conn| {
+        seed_project(conn, "proj-x", "Agent Test Shape", json!([]));
+        conn.execute(
+            "UPDATE sync_items SET payload = json_set(payload, '$.statuses', 'newer shape')
+              WHERE item_type = 'project' AND item_id = 'proj-x'",
+            [],
+        )
+        .expect("reshape the stored list");
+        let status = NewStatus {
+            project_id: "proj-x",
+            name: "Review",
+            color: None,
+            is_done: false,
+        };
+        assert!(projects::create_status(conn, &status, DEVICE, NOW).is_err());
+        assert_eq!(
+            payload_of(conn, "project", "proj-x")["statuses"],
+            json!("newer shape")
+        );
+        assert_eq!(outbox_count(conn, "proj-x"), 0);
+        Ok(())
+    })
+    .expect("the refusal");
+}
+
+/// RCA-STATUSNOOP's trace: device A adds a status while this device (B)
+/// issues a no-op. B's clock must stay `before` A's, so pulling A's row
+/// applies A's list whole instead of merging (which keeps B's list).
+#[test]
+fn after_a_local_no_op_a_pulled_row_applies_whole() {
+    let db = open("status-noop-sync");
+    db.call_blocking(|conn| {
+        let todo = json!({"id": "s-todo", "projectId": "proj-s", "name": "To Do",
+                          "color": "#6b7280", "position": 0, "isDefault": true,
+                          "isDone": false});
+        let review = json!({"id": "s-review", "projectId": "proj-s", "name": "Review",
+                            "color": "#F59E0B", "position": 1, "isDefault": false,
+                            "isDone": false});
+        let done = json!({"id": "s-done", "projectId": "proj-s", "name": "Done",
+                          "color": "#22c55e", "position": 2, "isDefault": false,
+                          "isDone": true});
+        let mut base = json!({
+            "name": "Agent Test Trace", "color": "#6366f1", "position": 0,
+            "statuses": [todo, done], "links": [],
+            "clock": {"device-a": 5, "device-b": 3},
+            "modifiedAt": "2026-01-01T00:00:00.000Z"
+        });
+        seed(conn, "project", "proj-s", base.clone());
+
+        let same = StatusPatch {
+            name: Some("To Do"),
+            ..StatusPatch::default()
+        };
+        let _ = projects::update_status(conn, "s-todo", &same, "device-b", NOW)?;
+
+        base["statuses"] = json!([todo, review, done]);
+        base["clock"] = json!({"device-a": 6, "device-b": 3});
+        base["modifiedAt"] = json!("2026-01-02T00:00:00.000Z");
+        let pulled = InboundRecord {
+            item_type: "project".to_owned(),
+            item_id: "proj-s".to_owned(),
+            payload_json: serde_json::to_string(&base).expect("serialise"),
+            server_cursor: Some(8),
+            signer_device_id: Some("device-a".to_owned()),
+            updated_at: NOW + 1,
+            deleted_at: None,
+        };
+        projects::apply_remote(conn, &pulled, NOW + 1)?;
+
+        let payload = payload_of(conn, "project", "proj-s");
+        assert_eq!(payload["statuses"], base["statuses"], "A's list, whole");
+        assert_eq!(payload["clock"], json!({"device-a": 6, "device-b": 3}));
+        let names: Vec<String> = projects::statuses(conn, "proj-s")?
+            .into_iter()
+            .map(|status| status.name)
+            .collect();
+        assert_eq!(names, vec!["To Do", "Review", "Done"]);
+        Ok(())
+    })
+    .expect("the trace");
 }

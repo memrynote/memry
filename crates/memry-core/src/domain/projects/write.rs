@@ -5,7 +5,8 @@
 //! Every project write is one [`crate::sync::outbox::commit`] with its outbox
 //! row; a create seeds all nine field clocks from its first document tick
 //! (§6.7) and an edit ticks the document clock and each changed field's clock
-//! through [`crate::domain::tasks::edit_merged`].
+//! through [`crate::domain::tasks::edit_merged_in`]. An edit that changes no
+//! field writes nothing and returns `None` (see [`edit_project`]).
 
 use rusqlite::{Connection, params};
 use serde_json::{Value, json};
@@ -179,7 +180,8 @@ pub fn ensure_inbox(conn: &Connection, device_id: &str, now_ms: i64) -> Result<b
 }
 
 /// Edits name, description, colour, icon and statuses in one write
-/// (`updateProject` + `reconcileProjectStatuses`), returning the payload.
+/// (`updateProject` + `reconcileProjectStatuses`), returning the payload, or
+/// `None` when every field already held its value.
 ///
 /// A rename then rewrites the `project` property of every linked markdown note
 /// (`propagateProjectRename`), after the project write, each note with its own
@@ -190,7 +192,7 @@ pub fn update(
     edit: &ProjectEdit<'_>,
     device_id: &str,
     now_ms: i64,
-) -> Result<Durable<String>, StorageError> {
+) -> Result<Option<Durable<String>>, StorageError> {
     let before = require_live(conn, project_id)?;
     let mut changes: Vec<(&'static str, Change)> = Vec::new();
     if let Some(name) = edit.name {
@@ -229,14 +231,15 @@ pub fn update(
 }
 
 /// Archives the project, or unarchives it with `false` (`archiveProject`,
-/// `unarchiveProject`). The Inbox cannot be archived.
+/// `unarchiveProject`). The Inbox cannot be archived. `None` when the project
+/// is already in that state.
 pub fn set_archived(
     conn: &Connection,
     project_id: &str,
     archived: bool,
     device_id: &str,
     now_ms: i64,
-) -> Result<Durable<String>, StorageError> {
+) -> Result<Option<Durable<String>>, StorageError> {
     let project = require_live(conn, project_id)?;
     if archived && project.is_inbox {
         return Err(StorageError::Invalid {
@@ -245,7 +248,7 @@ pub fn set_archived(
     }
     // Archiving an archived project keeps its first `archivedAt`.
     if archived == project.archived_at.is_some() {
-        return edit_project(conn, project_id, Vec::new(), device_id, now_ms);
+        return Ok(None);
     }
     let at = archived.then(|| iso(now_ms)).transpose()?;
     edit_project(
@@ -261,7 +264,8 @@ pub fn set_archived(
 /// outbox row per project, as desktop publishes one update per project.
 ///
 /// Every id is checked before the first write, so an unknown id changes
-/// nothing.
+/// nothing. A project already at its position is not written, and is absent
+/// from the result.
 pub fn reorder(
     conn: &Connection,
     positions: &[(&str, i64)],
@@ -271,18 +275,17 @@ pub fn reorder(
     for (project_id, _) in positions {
         require_live(conn, project_id)?;
     }
-    positions
-        .iter()
-        .map(|(project_id, position)| {
-            edit_project(
-                conn,
-                project_id,
-                vec![("position", Change::set(*position))],
-                device_id,
-                now_ms,
-            )
-        })
-        .collect()
+    let mut written = Vec::new();
+    for (project_id, position) in positions {
+        written.extend(edit_project(
+            conn,
+            project_id,
+            vec![("position", Change::set(*position))],
+            device_id,
+            now_ms,
+        )?);
+    }
+    Ok(written)
 }
 
 /// Sets or clears (`None`) the project's home note (`setProjectHomeNote`).
@@ -292,7 +295,7 @@ pub fn set_home_note(
     note_id: Option<&str>,
     device_id: &str,
     now_ms: i64,
-) -> Result<Durable<String>, StorageError> {
+) -> Result<Option<Durable<String>>, StorageError> {
     require_live(conn, project_id)?;
     edit_project(
         conn,
@@ -362,18 +365,45 @@ pub fn delete(
     Ok(deleted)
 }
 
-/// One local edit to one project, over `PROJECT_SYNCABLE_FIELDS`.
+/// One local edit to one project, over `PROJECT_SYNCABLE_FIELDS`, returning
+/// the payload.
+///
+/// A field already holding the value is not a change: writing it would tick
+/// its field clock and let an unchanged value beat a concurrent edit made on
+/// another device (a phone rename re-sending the old description would win
+/// over desktop's new one). When nothing is left the write is skipped whole,
+/// with `None`: no `modifiedAt`, no document clock tick, no outbox row. A
+/// ticked document clock alone would make a concurrent edit from another
+/// device merge instead of apply, and the merge keeps this device's
+/// `statuses` and `links` arrays, which have no field clock (RCA-STATUSNOOP).
+/// Desktop writes these no-ops; skipping one is invisible on the wire.
 pub(super) fn edit_project(
     conn: &Connection,
     project_id: &str,
     changes: Vec<(&'static str, Change)>,
     device_id: &str,
     now_ms: i64,
-) -> Result<Durable<String>, StorageError> {
-    // A field already holding the value is not a change: writing it would
-    // tick its field clock and let an unchanged value beat a concurrent edit
-    // made on another device (a phone rename re-sending the old description
-    // would win over desktop's new one). Only `modifiedAt` then moves.
+) -> Result<Option<Durable<String>>, StorageError> {
+    edit_project_then(
+        conn,
+        project_id,
+        changes,
+        device_id,
+        now_ms,
+        |_, payload| Ok(payload),
+    )
+}
+
+/// [`edit_project`] with `then` run on the new payload inside the write's
+/// transaction, after the projection caught up.
+pub(super) fn edit_project_then<T>(
+    conn: &Connection,
+    project_id: &str,
+    changes: Vec<(&'static str, Change)>,
+    device_id: &str,
+    now_ms: i64,
+    then: impl FnOnce(&Connection, String) -> Result<T, StorageError>,
+) -> Result<Option<Durable<T>>, StorageError> {
     let stored = notes::require_payload(conn, ITEM_TYPE, project_id)?;
     let changes: Vec<(&'static str, Change)> = changes
         .into_iter()
@@ -382,15 +412,27 @@ pub(super) fn edit_project(
             Change::Remove => stored.object().contains_key(*key),
         })
         .collect();
-    tasks::edit_merged(
+    if changes.is_empty() {
+        return Ok(None);
+    }
+    outbox::commit(
         conn,
-        ITEM_TYPE,
-        &PROJECT_SYNCABLE_FIELDS,
-        project_id,
-        changes,
-        device_id,
+        &outbox::Change::upsert(ITEM_TYPE, project_id),
         now_ms,
+        |tx| {
+            let payload = tasks::edit_merged_in(
+                tx,
+                ITEM_TYPE,
+                &PROJECT_SYNCABLE_FIELDS,
+                project_id,
+                changes,
+                device_id,
+                now_ms,
+            )?;
+            then(tx, payload)
+        },
     )
+    .map(Some)
 }
 
 /// A fresh nanoid: 21 symbols of `[A-Za-z0-9_-]`, desktop's id shape.

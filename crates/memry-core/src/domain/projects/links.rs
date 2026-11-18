@@ -95,7 +95,8 @@ pub fn links(conn: &Connection, project_id: &str) -> Result<Vec<ProjectLink>, St
 }
 
 /// Links an item to the project (`linkProjectItem`), returning the project
-/// payload. Linking an item already linked adds no second entry.
+/// payload. Linking an item already linked adds no second entry and writes no
+/// project (`None`).
 pub fn link(
     conn: &Connection,
     project_id: &str,
@@ -103,7 +104,7 @@ pub fn link(
     item_id: &str,
     device_id: &str,
     now_ms: i64,
-) -> Result<Durable<String>, StorageError> {
+) -> Result<Option<Durable<String>>, StorageError> {
     let project = require_live(conn, project_id)?;
     valid_item_id(item_id)?;
     let markdown = item_type == LinkItemType::Note && is_markdown_note(conn, item_id)?;
@@ -138,7 +139,7 @@ pub fn link(
 }
 
 /// Unlinks an item from the project (`unlinkProjectItem`), returning the
-/// project payload.
+/// project payload; `None` when the item was not linked.
 pub fn unlink(
     conn: &Connection,
     project_id: &str,
@@ -146,7 +147,7 @@ pub fn unlink(
     item_id: &str,
     device_id: &str,
     now_ms: i64,
-) -> Result<Durable<String>, StorageError> {
+) -> Result<Option<Durable<String>>, StorageError> {
     let project = require_live(conn, project_id)?;
     let markdown = item_type == LinkItemType::Note && is_markdown_note(conn, item_id)?;
     if markdown {
@@ -169,8 +170,9 @@ pub fn unlink(
 /// Pins or unpins a linked item (`setProjectLinkPinned`), matched by item id
 /// alone as desktop matches it. Unpinning keeps the link.
 ///
-/// An item with no link is an error rather than desktop's silent no-op write:
-/// a write that changes nothing would still tick the clock and push.
+/// An item with no link is an error rather than desktop's silent no-op write,
+/// and a pin that already holds is `None`: a write that changes nothing must
+/// not tick the clock and push (see `write::edit_project`).
 pub fn set_link_pinned(
     conn: &Connection,
     project_id: &str,
@@ -178,7 +180,7 @@ pub fn set_link_pinned(
     pinned: bool,
     device_id: &str,
     now_ms: i64,
-) -> Result<Durable<String>, StorageError> {
+) -> Result<Option<Durable<String>>, StorageError> {
     require_live(conn, project_id)?;
     let mut entries = stored_links(conn, project_id)?;
     let mut found = false;
