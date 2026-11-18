@@ -555,12 +555,22 @@ payload carries with the union of the local list and the remote list
 (`apps/desktop/src/main/sync/item-handlers/task-handler.ts:221-242`):
 
 1. **Presence.** The union runs only for a list the remote carries
-   (`if (data.tags)`, `:228`, `:233`, `:238`). A remote that omits the key
-   leaves the local list unchanged. A remote empty array is present, so the
-   result is the local list.
-2. **Order.** The result starts with the local entries in their order, then
-   adds the remote entries the result does not hold yet, in the remote's order
-   (`[...new Set([...local, ...remote])]`, `:230`, `:235`, `:240`).
+   (`if (data.tags)`, `:228`, `:233`, `:238`). A remote that omits the key or
+   carries `null` leaves the local list unchanged. A remote empty array is
+   present, so the result is the local list. A remote list of any other shape
+   is refused: `TaskSyncPayloadSchema` accepts only an array of strings
+   (`packages/contracts/src/sync-payloads.ts:56-58`), and the core flags the
+   record corrupt with the item id and list name
+   (`crates/memry-core/src/domain/task_merge.rs:248-279`).
+2. **Order.** Order is not part of the rule, and a reader MUST NOT depend on
+   it. Electron builds the union as the local entries, then the remote's new
+   ones (`[...new Set([...local, ...remote])]`, `:230`, `:235`, `:240`), but
+   stores it in junction tables and reads it back in index order: `task_tags`
+   has the primary key `(task_id, tag)` on a `NOCASE` column
+   (`packages/db-schema/src/schema/task-relations.ts:35-44`), and `queryTags`
+   has no `ORDER BY` (`task-handler.ts:69-76`). Electron stores
+   `["Alpha", "beta", "gamma", "zeta"]` where the core stores
+   `["zeta", "Alpha", "beta", "gamma"]`. Both hold the same set.
 3. **Tags.** `writeTags` stores the result (`:100-115`). It trims each tag with
    JavaScript `trim`, drops an empty tag, and dedupes by `foldTag`
    (`packages/shared/src/tag-fold.ts:25`; vector class `tag-fold`), keeping the
@@ -572,6 +582,19 @@ payload carries with the union of the local list and the remote list
    while it still holds the entry, the merge brings the entry back on every
    device. Electron accepts this trade (`:222-227`): a stray link is visible and
    removable, and a silently dropped link is not.
+6. **Wholesale branch.** On §6.3.1's apply branch (the remote dominates, or
+   there is nothing to compare), a client MUST keep each of the three lists
+   that the remote omits or carries as `null` at its local value. Electron
+   writes a junction list only when the remote carries it
+   (`task-handler.ts:312-321`). Electron builds from before #1879
+   (2026-08-28) push no `linkedCanvasIds`, builds from before 2026-03-19 push
+   no `tags` or `linkedNoteIds` either, and the write floor (chapter 11
+   §11.11) lets them push. A client that stored such a row verbatim would drop
+   the local list and push the shorter list with its next edit. The core copies
+   the local value into the remote payload before it stores the row
+   (`crates/memry-core/src/domain/task_merge.rs:281-326`, called at `:184-187`).
+   A tombstone, a remote that will not parse, and a deleted or corrupt local
+   row keep nothing.
 
 The merged row is re-queued at the union clock by §6.5.2 P3, so the union
 reaches the server and the peer. A client that kept only the local lists would
