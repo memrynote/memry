@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { hasLibclang, workerBuild, workerFeatures } from './dev-worker.mjs'
+import { hasLibclang, segmentPattern, workerBuild, workerFeatures } from './dev-worker.mjs'
 
 describe('workerFeatures', () => {
   it('builds the whole worker, transcription included, where ONNX Runtime links and cmake runs', () => {
@@ -87,6 +87,18 @@ describe('hasLibclang', () => {
     mkdirSync(join(prefix, 'lib'))
     writeFileSync(join(prefix, 'lib', 'libclang.so.18'), '')
     assert.equal(hasLibclang({ platform: 'linux', env: {}, llvmPrefix: () => prefix }), true)
+  })
+})
+
+describe('segmentPattern', () => {
+  it('matches regex special characters literally and `*` as the only wildcard', () => {
+    const pattern = segmentPattern('C:\\Program Files (x86).[a]*')
+    assert.equal(pattern.test('C:\\Program Files (x86).[a]'), true)
+    assert.equal(pattern.test('c:\\program files (x86).[A]-18'), true)
+    assert.equal(pattern.test('C:\\Program Files x86.[a]'), false)
+    assert.equal(pattern.test('C:\\Program Files (x86)X[a]'), false)
+    assert.equal(pattern.test('C:\\Program Files (x86).a'), false)
+    assert.equal(pattern.test('C:Program Files (x86).[a]'), false)
   })
 })
 
