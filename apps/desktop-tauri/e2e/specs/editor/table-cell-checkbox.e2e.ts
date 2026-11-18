@@ -6,8 +6,8 @@
 import { expectSuggestionMenuOpen, typeInEditor } from '../../harness/editor'
 import { NOTE_EDITOR, vaultOpen } from '../../harness/notes'
 import type { Page } from '../../harness/pw-compat/page'
-import { waitForWritebackToSettle, writebackDebug } from '../../harness/seeded-note'
-import { blockTypes, openTableNote, tableLines, vaultBody } from '../../harness/table'
+import { writebackDebug } from '../../harness/seeded-note'
+import { blockTypes, cellByText, openTableNote, tableLines, vaultBody } from '../../harness/table'
 import { test, expect } from '../../harness/test'
 
 const cellCheckbox = (page: Page) =>
@@ -86,10 +86,26 @@ test('a checkbox written into a cell on disk opens as one and is not rewritten',
   // edits no contenteditable in WKWebView; the browser's delete command is the `beforeinput` a
   // Backspace makes. The spec waits for the pass that saved it, not a fixed time.
   const performed = (await writebackDebug(app, note.id))?.performedCount ?? 0
+  const header = cellByText(page, 'Item')
   await page.locator(NOTE_EDITOR).getByText('Item', { exact: true }).click()
   await typeInEditor(page, 'x')
+  // The edit landed before it is taken back, so the re-save below has something to undo.
+  await expect.poll(() => header.textContent()).toContain('x')
   await page.evaluate(() => document.execCommand('delete'))
-  await waitForWritebackToSettle(app, note.id, performed)
+  await expect.poll(() => header.textContent()).not.toContain('x')
+  await expect
+    .poll(
+      async () => {
+        const debug = await writebackDebug(app, note.id)
+        return (
+          (debug?.performedCount ?? 0) > performed &&
+          debug?.pending === false &&
+          !vaultBody(testVaultPath, note.path).includes('x')
+        )
+      },
+      { timeout: 30_000 }
+    )
+    .toBe(true)
   expect((await writebackDebug(app, note.id))?.lastError ?? null).toBeNull()
 
   await expect(cellCheckbox(page)).toBeVisible()

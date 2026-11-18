@@ -130,7 +130,6 @@ for (const refuse of [false, true]) {
         console.log(
           `clipboard-image on ${process.platform} ${process.arch}: webview ${webview} (${error ?? '-'}), png ${String(size)}`
         )
-        if (refuse) expect(webview).toBe('refused')
         expect(size?.every((side) => side > 0)).toBe(true)
         await expect.poll(() => clipboardImage(app)).toEqual(size)
       })

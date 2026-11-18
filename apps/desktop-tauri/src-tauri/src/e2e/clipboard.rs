@@ -173,7 +173,7 @@ fn send_keys(
 }
 
 /// WebView2 has no paste call; CDP's `commands` runs the editing command a key binding runs.
-/// `done` resolves when the `keyUp` completes.
+/// `done` resolves when the last key event completes.
 #[cfg(windows)]
 fn paste(webview: tauri::webview::PlatformWebview, done: PasteDone) {
     let done = SharedDone::new(std::cell::Cell::new(Some(done)));
