@@ -1,6 +1,7 @@
 # Desktop Tauri CI's build matrix, from the plan job's tier outputs ($full, $macos, $intel, $queue,
-# and $win and $mac, the tauri_windows and tauri_macos legs). scripts/ci-tier.test.mjs runs it for
-# each event.
+# $post_merge, and $win and $mac, the tauri_windows and tauri_macos legs). scripts/ci-tier.test.mjs
+# runs it for each event. Post-merge (a push to feat/tauri-v2 whose SHA passed the merge queue) keeps
+# only the legs the queue skips: macos-arm64 and the windows-arm64 e2e specs.
 #
 # Fast tier: linux-x64, plus windows-x64 and macos-arm64 when the diff can break them (`checks` adds
 # that platform's debug build and launch smoke, `tests` its e2e specs too). Full: every platform,
@@ -24,5 +25,6 @@
     | select($full == "true" or $p.pr == "tests" or $variant == "debug")
     | select($p.platform != "macos-x64" or $variant != "e2e")
     | select($queue != "true" or $p.platform != "windows-arm64" or $variant != "e2e")
+    | select($post_merge != "true" or $p.platform == "macos-arm64" or ($p.platform == "windows-arm64" and $variant == "e2e"))
     | $p + {variant: $variant} | del(.pr)
     | if .variant == "e2e" and (.platform == "linux-x64" or .platform == "windows-x64") then (. + {shard: 1}), (. + {shard: 2}) else . end]}
