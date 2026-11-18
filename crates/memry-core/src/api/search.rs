@@ -56,6 +56,8 @@ mod image_embeddings;
 #[cfg(feature = "markdown")]
 mod objects;
 mod results;
+#[cfg(feature = "vec")]
+mod similarity;
 #[cfg(feature = "markdown")]
 mod tags;
 

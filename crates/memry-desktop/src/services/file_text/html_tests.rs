@@ -191,6 +191,10 @@ fn the_walk_is_linear_in_the_nodes() {
     });
 }
 
+/// For tests of the node budget: the wall-clock deadline must never be the cap that trips, however
+/// loaded the host. `an_attribute_flood_stops_at_the_deadline` keeps the production guard's test.
+const NO_DEADLINE: Duration = Duration::MAX;
+
 /// Formatting reconstruction clones every open formatting element for each run of text:
 /// 500 distinct `<b>` closed by `</div>` and then 20,000 paragraphs ask for 10 million
 /// elements from 170 KB. The budget stops the parse within one chunk of the budget, where at
@@ -210,7 +214,13 @@ fn formatting_reconstruction_stops_at_the_node_budget() {
         "formatting reconstruction",
         html_steps,
         node_budget(len) * (MAX_DEPTH + 3) + FEED_CHUNK * len / 16,
-        || result = Some(read_html_text(html.as_bytes())),
+        || {
+            result = Some(read_html_text_within(
+                html.as_bytes(),
+                &|| false,
+                NO_DEADLINE,
+            ))
+        },
     );
     assert_eq!(
         result,
@@ -233,7 +243,7 @@ fn the_node_budget_counts_bytes_not_decoded_text() {
     html.extend_from_slice(b"</div>");
     html.extend_from_slice("<p>x</p>".repeat(20_000).as_bytes());
     assert_eq!(
-        read_html_text(&html),
+        read_html_text_within(&html, &|| false, NO_DEADLINE),
         Err(HtmlTextError::TooManyNodes {
             limit: node_budget(html.len())
         })
