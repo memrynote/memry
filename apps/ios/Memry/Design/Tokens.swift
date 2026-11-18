@@ -233,6 +233,11 @@ enum Tokens {
         /// it clears 1.4.11's 3:1 against every surface — which is why it is
         /// ink-derived and not the tint. See the note on `Tint.base`.
         static let focus = AdaptiveColor(light: 0x6F_6C_66, dark: 0x96_93_8D)
+        /// The selected row's edge (`SelectedRowFill`). A state cue too: the
+        /// `surfaceActive` fill alone is about 1.16:1 on the canvas, so this
+        /// edge carries the selection at 3:1 or more on every surface. The
+        /// focus boundary's ink, which already clears that.
+        static let selected = focus
     }
 
     // MARK: Semantic interaction
