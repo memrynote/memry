@@ -1,9 +1,10 @@
-//! Readers for an installed Electron profile and the first-launch migration built on them.
+//! Readers for an installed Electron profile, and the first-launch migration phases built on them.
 //!
-//! Nothing here writes to the Electron profile. The readers write nothing at all; LevelDB
-//! stores are only ever opened on a scratch copy ([`scratch`]), and the profile itself is
-//! touched with reads and a lock probe. The migration phases ([`app_state`]) write only the
-//! Tauri data dir. Errors name the failing part and never carry file content.
+//! Nothing here writes to the Electron profile or to Electron's keychain items. The readers write
+//! nothing at all; [`secrets_import`] writes this app's own keychain entries only. LevelDB
+//! stores are only ever opened on a scratch copy ([`scratch`]); the profile itself is touched
+//! with reads and a lock probe. The migration phases ([`app_state`]) write only the Tauri data
+//! dir. Errors name the failing part and never carry file content.
 
 pub mod app_state;
 pub mod config;
@@ -17,6 +18,8 @@ pub mod progress;
 pub mod report;
 pub mod scratch;
 pub mod secrets;
+pub mod secrets_import;
+pub mod vault_evidence;
 pub mod ystore;
 
 use std::path::PathBuf;
@@ -27,6 +30,10 @@ pub use local_storage::LocalStorageSnapshot;
 pub use profile::{AppNameCandidates, ElectronProfile, HostOs, IdentityPin, ProfileEnv};
 pub use scratch::{ProfileLock, Scratch, TornFile};
 pub use secrets::{SecretEntry, SecretsReport, UnreadableReason, UnreadableSecret};
+pub use secrets_import::{
+    SecretsError, SecretsEvidence, SecretsMode, SecretsOutcome, SecretsPhase, import_secrets,
+};
+pub use vault_evidence::{VaultEvidence, read_vault_evidence};
 pub use ystore::{SnapshotWatermark, YStoreReader};
 
 #[derive(Debug, thiserror::Error)]
@@ -66,6 +73,8 @@ pub enum ImportError {
     /// A value written to the Tauri data dir did not read back as written.
     #[error("{0} did not read back as written")]
     ReadBack(&'static str),
+    #[error("sqlite: {0}")]
+    Sqlite(String),
 }
 
 impl ImportError {
