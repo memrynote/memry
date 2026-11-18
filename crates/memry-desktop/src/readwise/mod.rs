@@ -43,6 +43,7 @@ pub mod plan_append;
 pub mod plan_note;
 pub mod reader;
 pub mod run_state;
+pub mod run_types;
 pub mod section;
 pub mod text;
 pub mod token;

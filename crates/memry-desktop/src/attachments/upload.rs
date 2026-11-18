@@ -21,7 +21,7 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
 use super::{
-    AttachmentError, SavedAttachment, check, create_dir, inside_vault, store, writable_note,
+    AttachmentError, Name, SavedAttachment, check, create_dir, inside_vault, store, writable_note,
 };
 use crate::session::{OpenStage, OpenVault, Session};
 use crate::shell::file_open::{Resolution, resolve_under_root};
@@ -274,9 +274,8 @@ fn commit(
         &upload.vault,
         &upload.note_id,
         note_path.as_deref(),
-        &upload.file_name,
+        Name::Fresh(&upload.file_name),
         usize::try_from(upload.written).unwrap_or(usize::MAX),
-        false,
         before_recheck,
         &mut |target, recheck| move_into(&temp, target, recheck),
     )

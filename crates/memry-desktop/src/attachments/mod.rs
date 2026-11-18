@@ -57,7 +57,8 @@ pub use references::{
     Incomplete, ReferenceScan, filenames, find_references, names_file, scan_steps,
 };
 pub use remote::{
-    FetchedImage, MAX_REMOTE_BYTES, RemoteFailure, RemoteImages, image_file_name, save_fetched,
+    FetchedImage, MAX_REMOTE_BYTES, RemoteFailure, RemoteImages, image_file_name, save_exact,
+    save_fetched,
 };
 #[cfg(feature = "test-hooks")]
 pub use rename::rename_checked;
@@ -403,36 +404,8 @@ pub fn save(
         vault,
         note_id,
         note_path,
-        file_name,
+        Name::Fresh(file_name),
         bytes,
-        false,
-        &mut |_| {},
-    )
-}
-
-/// `saveAttachment(..., { exactFilename: true })`: stores the file under `file_name` itself, so
-/// a caller finds it again by name (Readwise's `rw-<hash>.<ext>` images). Refuses a name that
-/// is not `[A-Za-z0-9_-][A-Za-z0-9_.-]*`, and a name already taken.
-pub fn save_exact(
-    vault: &Path,
-    note_id: &str,
-    note_path: Option<&str>,
-    file_name: &str,
-    bytes: &[u8],
-) -> Result<SavedAttachment, AttachmentError> {
-    let word = |b: u8| b.is_ascii_alphanumeric() || b == b'_' || b == b'-';
-    let plain = file_name.bytes().next().is_some_and(word)
-        && file_name.bytes().all(|b| word(b) || b == b'.');
-    if !plain {
-        return Err(AttachmentError::NotPlainName);
-    }
-    save_with(
-        vault,
-        note_id,
-        note_path,
-        file_name,
-        bytes,
-        true,
         &mut |_| {},
     )
 }
@@ -454,20 +427,26 @@ pub fn save_checked(
         vault,
         note_id,
         note_path,
-        file_name,
+        Name::Fresh(file_name),
         bytes,
-        false,
         before_recheck,
     )
+}
+
+/// The name a stored file takes: the given one behind a fresh random prefix, or exactly the
+/// given one ([`save_exact`]), never replacing a file there.
+#[derive(Clone, Copy)]
+enum Name<'a> {
+    Fresh(&'a str),
+    Exact(&'a str),
 }
 
 fn save_with(
     vault: &Path,
     note_id: &str,
     note_path: Option<&str>,
-    file_name: &str,
+    name: Name<'_>,
     bytes: &[u8],
-    exact: bool,
     before_recheck: &mut dyn FnMut(&Path),
 ) -> Result<SavedAttachment, AttachmentError> {
     let delays = RETRY_DELAYS_MS.map(Duration::from_millis);
@@ -478,9 +457,8 @@ fn save_with(
         vault,
         note_id,
         note_path,
-        file_name,
+        name,
         bytes.len(),
-        exact,
         before_recheck,
         &mut write,
     )
@@ -512,12 +490,12 @@ fn store(
     vault: &Path,
     note_id: &str,
     note_path: Option<&str>,
-    file_name: &str,
+    name: Name<'_>,
     size: usize,
-    exact: bool,
     before_recheck: &mut dyn FnMut(&Path),
     place: &mut dyn FnMut(&Path, BeforeCommit<'_>) -> Result<(), WriteError>,
 ) -> Result<SavedAttachment, AttachmentError> {
+    let (Name::Fresh(file_name) | Name::Exact(file_name)) = name;
     check(note_id, file_name, size)?;
     // One level at a time, each checked before the next is made through it.
     create_dir(&vault.join(ATTACHMENTS_DIR))?;
@@ -528,9 +506,9 @@ fn store(
     inside_vault(vault, &folder_rel)?;
     let mut attempt = 0;
     let stored = loop {
-        let stored = match exact {
-            true => file_name.to_owned(),
-            false => stored_name(&random_prefix(), file_name),
+        let stored = match name {
+            Name::Exact(_) => file_name.to_owned(),
+            Name::Fresh(_) => stored_name(&random_prefix(), file_name),
         };
         let target = folder.join(&stored);
         let mut recheck = || {
@@ -542,7 +520,11 @@ fn store(
         };
         match place(&target, &mut recheck) {
             Ok(()) => break stored,
-            Err(error) if error.already_exists() && !exact && attempt + 1 < NAME_ATTEMPTS => {
+            Err(error)
+                if error.already_exists()
+                    && matches!(name, Name::Fresh(_))
+                    && attempt + 1 < NAME_ATTEMPTS =>
+            {
                 attempt += 1
             }
             Err(error) => return Err(error.into()),
