@@ -691,10 +691,15 @@ write would replace a comment another device edited and lose that edit. Both wri
 this rule, so the desktop editor and the Rust apply path follow it alike. As a result, the
 stored offsets of an untouched element can lag behind the text.
 
-A write coalesces adjacent deletes and adjacent replacements into runs. When the plan needs
-more than 64 array operations, the writer deletes the whole array and inserts the result in
-one operation, still keeping each element's unknown keys. Each Yjs operation walks the array
-from its start, so this bound keeps a write over a large array linear. The frozen Electron app still rewrites the whole array. For that reason,
+A write coalesces adjacent deletes and adjacent replacements into runs. It never deletes and
+re-inserts an element it does not change: the stale copy would come before another device's
+concurrent copy of that id, so first-copy-wins would lose that device's edit or undo its
+delete. This has a known performance limit. Each Yjs operation walks the array from its
+start, so a write that changes `k` separate runs of an `n`-element array costs O(k·n). Only
+many scattered changes in one write reach it, and the marks come from the user's own
+devices.
+
+Shipped Electron builds still rewrite the whole array. For that reason,
 a new mark field is also written into the mark's `metadata` string, which every shipped
 build copies unchanged (protocol §12.5.1).
 

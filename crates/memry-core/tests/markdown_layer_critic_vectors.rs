@@ -273,11 +273,11 @@ fn critic_layer_vectors() {
     failures.finish("layer-critic");
 }
 
-/// Every yrs array operation walks the array from its start, so a write of a
-/// peer-sized array stays linear only while its operation count is bounded:
-/// runs are coalesced, and past 64 operations the array is rewritten whole.
+/// Every yrs array operation walks the array from its start, so a write
+/// coalesces runs: one operation per run of deletes, two per run of
+/// replacements, and none for an untouched element.
 #[test]
-fn critic_mark_writes_make_a_bounded_number_of_array_operations() {
+fn critic_mark_writes_make_one_array_operation_per_changed_run() {
     let many: Vec<CriticMarkupMark> = (0..1000)
         .map(|index| {
             serde_json::from_value(json!({
@@ -299,12 +299,12 @@ fn critic_mark_writes_make_a_bounded_number_of_array_operations() {
                 .enumerate()
                 .map(|(i, m)| if i % 2 == 0 { edited(m) } else { m.clone() })
                 .collect(),
-            2,
+            1000,
         ),
         (
             "every other mark deleted",
             many.iter().step_by(2).cloned().collect(),
-            2,
+            500,
         ),
         (
             "every hundredth mark edited",

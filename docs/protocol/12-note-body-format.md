@@ -793,12 +793,16 @@ two elements with one id, which Yjs orders the same on every replica.
   keys.** Readers normalize them to a closed key set, and writers compare and
   write the normalized items, so a key added inside an item is lost on the first
   edit of its mark.
-- **A writer makes at most 64 array operations.** Deletes and replaces of
-  adjacent elements are one operation each, and the new ids after one element are
-  one insert. When a write would take more operations, the writer deletes the
-  whole array and inserts the result once, with the unknown keys kept. Each Yjs
-  and yrs array operation walks the array from its start, so this bound keeps a
-  write linear in the array's length.
+- **A writer never deletes and re-inserts an element it does not change.** A
+  re-inserted stale copy would precede another device's concurrent copy of that
+  id, so first-copy-wins would hide that device's edit, and a re-inserted mark
+  would undo its delete. Deletes and replaces of adjacent elements are one
+  operation each, and the new ids after one element are one insert.
+- **Known performance limit.** Each Yjs and yrs array operation walks the array
+  from its start, so a write that changes `k` separate runs of an array of `n`
+  elements costs O(k·n). Only many scattered changes in one write reach this
+  worst case, and the marks come from the user's own devices. Data safety takes
+  priority over this cost.
 - **A new comment field is also written into `metadata`.** Electron builds
   rewrite the whole array and write only the keys they know, so any other
   top-level key is lost after they write. Every shipped build copies `metadata`
@@ -819,11 +823,12 @@ two elements with one id, which Yjs orders the same on every replica.
 The `critic.yjsWrite` cases of
 `packages/contracts/test-vectors/markdown-convert/layer-critic.json` pin this
 behavior: unknown keys (nested ones included), key order, offset-only changes,
-duplicate ids, inserts and deletes, the whole-array rewrite, and writers that
-merge concurrently. `crates/memry-core/tests/markdown_layer_critic_vectors.rs`
+duplicate ids, inserts and deletes, many scattered changes, and writers that
+merge concurrently, including a large write concurrent with another device's
+edit, large write or delete. `crates/memry-core/tests/markdown_layer_critic_vectors.rs`
 reproduces them.
 
-The frozen Electron app does not follow these write rules. It still rewrites the
+Shipped Electron builds do not follow these write rules. It still rewrites the
 whole array, which drops the top-level keys it does not know and duplicates
 marks that are edited concurrently. Readers that follow §12.5.1 show one copy of
 each id, and the next write by a build that follows §12.5.1 deletes the

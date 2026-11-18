@@ -183,11 +183,6 @@ pub fn read_critic_marks<T: ReadTxn>(txn: &T) -> Vec<CriticMarkupMark> {
         .collect()
 }
 
-/// Past this many array operations a write rewrites the whole array: each
-/// yrs operation walks the array from its start, so the cost stays linear
-/// (`MAX_ARRAY_OPERATIONS` of `critic-markup/yjs.ts`).
-const MAX_ARRAY_OPERATIONS: usize = 64;
-
 thread_local! {
     static ARRAY_OPERATIONS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
@@ -214,7 +209,10 @@ fn insert(array: &ArrayRef, txn: &mut TransactionMut, at: usize, values: Vec<Any
 /// mark before it in `marks`; replaces an element only when the stored mark,
 /// read as this build reads it, differs from the new one in more than its
 /// offsets (the window moves offsets with its typing and never writes them
-/// alone, #4425), keeping the keys this build does not know.
+/// alone, #4425), keeping the keys this build does not know. Adjacent deletes
+/// and adjacent replacements are one operation each. Untouched elements are
+/// never deleted and inserted again: a stale copy would precede a concurrent
+/// device's copy of that id and hide its change.
 pub fn write_critic_marks(txn: &mut TransactionMut, marks: &[CriticMarkupMark]) {
     let mut next: Vec<(String, Json)> = Vec::new();
     let mut next_ids = HashSet::new();
@@ -280,27 +278,10 @@ pub fn write_critic_marks(txn: &mut TransactionMut, marks: &[CriticMarkupMark]) 
         anchor = anchor.max(Some(index));
     }
 
-    let deletes = runs_of(keep.iter().map(|kept| !kept));
-    let replaces = runs_of(replaced.iter().copied());
-    if deletes.len() + 2 * replaces.len() + inserts.len() > MAX_ARRAY_OPERATIONS {
-        let mut groups: HashMap<Option<usize>, Vec<Any>> = inserts.into_iter().collect();
-        let mut whole = groups.remove(&None).unwrap_or_default();
-        for (index, element) in result.into_iter().enumerate() {
-            whole.push(element);
-            whole.extend(groups.remove(&Some(index)).unwrap_or_default());
-        }
-        if length > 0 {
-            remove(&array, txn, 0, length);
-        }
-        if !whole.is_empty() {
-            insert(&array, txn, 0, whole);
-        }
-        return;
-    }
-    for &(start, end) in deletes.iter().rev() {
+    for (start, end) in runs_of(keep.iter().map(|kept| !kept)).into_iter().rev() {
         remove(&array, txn, start, end);
     }
-    for (start, end) in replaces {
+    for (start, end) in runs_of(replaced.iter().copied()) {
         remove(&array, txn, start, end);
         insert(&array, txn, start, result[start..end].to_vec());
     }
