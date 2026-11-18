@@ -1,5 +1,6 @@
 //! Note export (`notes:export-html` of `ipc/notes-handlers.ts:1066-1112`) through
-//! `NotesService::export_html`. Every outcome after the input parses resolves as an
+//! `NotesService::export_html`, and `notes:export-pdf` (`:983-1064`) through the print window
+//! (`windows::pdf_print`). Every outcome after the input parses resolves as an
 //! [`ExportResult`], as Electron's `withErrorHandler` resolves a throw as `{ success: false }`;
 //! the renderer tells a cancel from a failure by `code`, never by the localized text.
 
@@ -10,15 +11,18 @@ use memry_desktop::export::sanitize_filename;
 use memry_desktop::i18n::{self, Args};
 use memry_desktop::locale::LocaleService;
 use memry_desktop::notes::export::HtmlExport;
+use memry_desktop::notes::print::print_document;
 use memry_desktop::notes::read;
 use memry_desktop::paths::AppPaths;
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Manager, Runtime};
+use tauri::{AppHandle, Manager, Runtime, Wry};
 
 use super::blocking;
 use super::error::{CommandError, ErrorKind, log_failure};
 use super::notes::{open_vault, service, track};
+use crate::shell::pdf::Paper;
 use crate::shell::{dialogs, services};
+use crate::windows::pdf_print::{self, PdfError};
 
 /// `ExportNoteSchema` (`packages/contracts/src/notes-api.ts`).
 #[derive(Debug, Clone, Deserialize, specta::Type)]
@@ -174,4 +178,113 @@ fn export_html<R: Runtime>(
         })?;
     track(app, "note_exported", "html");
     Ok(ExportResult::saved(target.to_string_lossy().into_owned()))
+}
+
+/// `notes:export-pdf`: the note printed in a hidden window with the page size asked for, written
+/// to `outputPath` or where the save dialog says.
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_export_pdf(
+    app: AppHandle<Wry>,
+    input: ExportNoteInput,
+) -> Result<ExportResult, CommandError> {
+    Ok(export_pdf(&app, input).await.unwrap_or_else(|error| {
+        log_failure("notes_export_pdf", &error);
+        ExportResult::failed(ExportFailure::Failed, error.message)
+    }))
+}
+
+async fn export_pdf(
+    app: &AppHandle<Wry>,
+    input: ExportNoteInput,
+) -> Result<ExportResult, CommandError> {
+    let paper = match input.page_size.unwrap_or(PageSize::A4) {
+        PageSize::A4 => Paper::A4,
+        PageSize::Letter => Paper::Letter,
+        PageSize::Legal => Paper::Legal,
+    };
+    let document = {
+        let app = app.clone();
+        off_thread(move || pdf_document(&app, input)).await?
+    };
+    let (html, target) = match document {
+        Ok(document) => document,
+        Err(answer) => return Ok(answer),
+    };
+    let bytes = pdf_print::print_to_pdf(app, print_document(&html), paper)
+        .await
+        .map_err(|PdfError(reason)| {
+            CommandError::new(ErrorKind::Internal, "print_failed", reason)
+        })?;
+    let written = target.clone();
+    off_thread(move || {
+        std::fs::write(&written, bytes).map_err(|error| {
+            CommandError::new(ErrorKind::Internal, "export_failed", error.to_string())
+        })
+    })
+    .await?;
+    track(app, "note_exported", "pdf");
+    Ok(ExportResult::saved(target.to_string_lossy().into_owned()))
+}
+
+/// Blocking work off the async runtime; its error is logged once, by the command.
+async fn off_thread<T: Send + 'static>(
+    work: impl FnOnce() -> Result<T, CommandError> + Send + 'static,
+) -> Result<T, CommandError> {
+    tauri::async_runtime::spawn_blocking(work)
+        .await
+        .map_err(|error| CommandError::new(ErrorKind::Internal, "task_failed", error.to_string()))?
+}
+
+/// The note's export document and the file it goes to, or the answer that ends the export
+/// (not found, cancelled, vault changed), as `notes:export-pdf` decides them before printing.
+fn pdf_document(
+    app: &AppHandle<Wry>,
+    input: ExportNoteInput,
+) -> Result<Result<(String, PathBuf), ExportResult>, CommandError> {
+    let (vault_id, note) = {
+        let open = open_vault(app)?;
+        let telemetry = services::telemetry(app);
+        let note = read::get(&open, &input.note_id, telemetry.as_deref())
+            .map_err(|error| CommandError::from_core(&error))?;
+        (open.vault_id, note)
+    };
+    let Some(note) = note else {
+        return Ok(Err(ExportResult::failed(
+            ExportFailure::NotFound,
+            text(app, "system:error.noteNotFound"),
+        )));
+    };
+    let target = match input.output_path {
+        Some(path) => PathBuf::from(path),
+        None => {
+            let chosen = dialogs::save_file(
+                app,
+                &text(app, "system:dialog.exportPdf.title"),
+                &format!("{}.pdf", sanitize_filename(&note.title)),
+                (&text(app, "system:dialog.exportPdf.filterName"), &["pdf"]),
+            );
+            let Some(chosen) = chosen else {
+                return Ok(Err(ExportResult::failed(
+                    ExportFailure::Cancelled,
+                    text(app, "system:dialog.exportCancelled"),
+                )));
+            };
+            chosen
+        }
+    };
+    let export = HtmlExport {
+        include_metadata: input.include_metadata.unwrap_or(true),
+        include_task_markers: input.include_task_markers.unwrap_or(false),
+    };
+    let open = open_vault(app)?;
+    if open.vault_id != vault_id {
+        return Ok(Err(ExportResult::failed(
+            ExportFailure::Failed,
+            text(app, "system:dialog.exportVaultChanged"),
+        )));
+    }
+    let paths = app.state::<AppPaths>();
+    let html = service(app)?.note_html(&open, &note, export, &paths.data_dir);
+    Ok(Ok((html, target)))
 }

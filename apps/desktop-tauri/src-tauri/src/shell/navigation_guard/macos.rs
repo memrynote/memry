@@ -10,10 +10,11 @@
 //! defines it itself; otherwise the error is logged and `check_commit` is the only guard left.
 //! Being per class, it decides the main frame of every webview wry builds in this process, not
 //! only the main window's: each is an app page that must stay on the app (the sticky and quick
-//! capture windows of Steps 27 and 31 included). A webview that should show anything else needs a
-//! check of `webview` here before `decide_main`.
+//! capture windows of Steps 27 and 31 included). A webview that shows anything else is listed by
+//! [`exempt`] (the PDF export's print window), and wry's implementation, so its own
+//! `on_navigation`, decides it.
 
-use std::sync::OnceLock;
+use std::sync::{Mutex, OnceLock, PoisonError};
 
 use block2::Block;
 use objc2::runtime::{AnyClass, AnyObject, Imp, Sel};
@@ -24,6 +25,27 @@ use tauri::{AppHandle, WebviewWindow, Wry};
 
 static APP: OnceLock<AppHandle<Wry>> = OnceLock::new();
 static WRY_DECIDE: OnceLock<Imp> = OnceLock::new();
+
+/// The addresses of the live WKWebViews that show no app page.
+static EXEMPT: Mutex<Vec<usize>> = Mutex::new(Vec::new());
+
+fn exempted() -> std::sync::MutexGuard<'static, Vec<usize>> {
+    EXEMPT.lock().unwrap_or_else(PoisonError::into_inner)
+}
+
+pub fn exempt(window: &WebviewWindow<Wry>, exempt: bool) {
+    let result = window.with_webview(move |webview| {
+        let view = webview.inner() as usize;
+        let mut list = exempted();
+        list.retain(|listed| *listed != view);
+        if exempt {
+            list.push(view);
+        }
+    });
+    if let Err(error) = result {
+        tracing::warn!(scope = "Navigation", "the webview was not reached: {error}");
+    }
+}
 
 type Decide = unsafe extern "C-unwind" fn(
     *mut AnyObject,
@@ -64,6 +86,7 @@ extern "C-unwind" fn decide_policy(
     // SAFETY: WebKit calls the method with a live navigation action and decision handler.
     let (action_ref, handler_ref) = unsafe { (&*action, &*handler) };
     if let Some(app) = APP.get()
+        && !exempted().contains(&(webview as usize))
         && targets_top_level(action_ref)
         && !is_download(action_ref)
         && !super::main_frame_may_load(app, &url_of(action_ref))

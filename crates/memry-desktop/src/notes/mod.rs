@@ -26,6 +26,7 @@ pub mod moves;
 pub(crate) mod owed_moves;
 pub mod portals;
 pub mod positions;
+pub mod print;
 pub mod properties;
 pub mod property_definitions;
 pub mod read;

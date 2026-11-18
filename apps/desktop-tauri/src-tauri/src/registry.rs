@@ -129,6 +129,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::attachments::notes_upload_attachment_abort::<Wry>,
             crate::commands::attachments::notes_upload_attachment_begin::<Wry>,
             crate::commands::export::notes_export_html::<Wry>,
+            crate::commands::export::notes_export_pdf,
             crate::commands::folders::notes_create_folder::<Wry>,
             crate::commands::folders::notes_delete_folder::<Wry>,
             crate::commands::folders::notes_get_folder_config::<Wry>,

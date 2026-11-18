@@ -292,6 +292,11 @@ export const commands = {
 	 *  save dialog says.
 	 */
 	notesExportHtml: (input: ExportNoteInput) => __TAURI_INVOKE<ExportResult>("notes_export_html", { input }),
+	/**
+	 *  `notes:export-pdf`: the note printed in a hidden window with the page size asked for, written
+	 *  to `outputPath` or where the save dialog says.
+	 */
+	notesExportPdf: (input: ExportNoteInput) => __TAURI_INVOKE<ExportResult>("notes_export_pdf", { input }),
 	/**  `notes:create-folder`: the folder (vault-relative, `/`-separated) and the parents it needs. */
 	notesCreateFolder: (path: string) => __TAURI_INVOKE<null>("notes_create_folder", { path }),
 	/**
