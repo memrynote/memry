@@ -4,7 +4,7 @@
 //!
 //! Every read skips tombstoned rows. Desktop hard-deletes a reminder; the core
 //! keeps a tombstone until it is purged, and a tombstone is not a reminder.
-//! Every read also joins this device's `reminder_fires` row, so a reminder
+//! Every read also reads this device's `reminder_fires` rows, so a reminder
 //! fired here for its current instant reads as [`STATUS_TRIGGERED`] through
 //! [`Reminder::shown_status`] while its synced `status` stays untouched.
 
@@ -43,6 +43,11 @@ pub struct Reminder {
     /// When this device fired the reminder for its current fire instant
     /// (`reminder_fires`); `None` when it has not, or fired an earlier instant.
     pub fired_at_ms: Option<i64>,
+    /// Desktop's `triggeredAt`: the last time this device fired the reminder
+    /// for its `remindAt` or its `snoozedUntil`. Desktop stamps it at a fire,
+    /// keeps it through a dismiss and a snooze, and clears it when a new
+    /// `remindAt` re-arms the reminder; a new `remindAt` here matches no fire.
+    pub triggered_at_ms: Option<i64>,
 }
 
 impl Reminder {
@@ -85,9 +90,9 @@ pub struct DueReminder {
 const COLUMNS: &str = "r.id, r.target_type, r.target_id, r.remind_at, r.title, r.note, \
                        r.highlight_text, r.status, r.dismissed_at, r.snoozed_until, r.anchor_id, \
                        r.highlight_start, r.highlight_end, r.created_at, r.modified_at, \
-                       f.fired_for_ms, f.fired_at_ms";
-/// `reminders` with this device's fire bookkeeping.
-const FROM: &str = "reminders r LEFT JOIN reminder_fires f ON f.reminder_id = r.id";
+                       (SELECT json_group_array(json_array(f.fired_for_ms, f.fired_at_ms)) \
+                        FROM reminder_fires f WHERE f.reminder_id = r.id)";
+const FROM: &str = "reminders r";
 
 /// One live reminder by id, or `None`.
 pub fn get(conn: &Connection, id: &str) -> Result<Option<Reminder>, StorageError> {
@@ -362,11 +367,27 @@ fn reminder_row(row: &Row<'_>) -> rusqlite::Result<Reminder> {
         created_at_ms: row.get(13)?,
         modified_at_ms: row.get(14)?,
         fired_at_ms: None,
+        triggered_at_ms: None,
     };
-    let fired_for: Option<i64> = row.get(15)?;
-    if fired_for.is_some() && fired_for == fire_at_ms(&reminder) {
-        reminder.fired_at_ms = row.get(16)?;
-    }
+    // `[[fired_for_ms, fired_at_ms], ...]`: one row per instant fired here.
+    let fires: String = row.get(15)?;
+    let fires: Vec<(i64, i64)> = serde_json::from_str(&fires).map_err(|error| {
+        rusqlite::Error::FromSqlConversionFailure(15, rusqlite::types::Type::Text, error.into())
+    })?;
+    let fired_for = |instant: Option<i64>| {
+        fires
+            .iter()
+            .filter(|(fired_for, _)| Some(*fired_for) == instant)
+            .map(|(_, fired_at)| *fired_at)
+            .max()
+    };
+    reminder.fired_at_ms = fired_for(fire_at_ms(&reminder));
+    let remind_at = instants::to_epoch_ms(&reminder.remind_at);
+    let snoozed_until = reminder
+        .snoozed_until
+        .as_deref()
+        .and_then(instants::to_epoch_ms);
+    reminder.triggered_at_ms = fired_for(remind_at).max(fired_for(snoozed_until));
     Ok(reminder)
 }
 

@@ -164,8 +164,7 @@ pub struct NewReminder<'a> {
 /// The payload is the whole row desktop pushes (`toOutboundReminderPayload`):
 /// every nullable column present, the ones the target does not use as explicit
 /// `null`. `remindAt` is rewritten in `toISOString` form so that text order
-/// is instant order, which desktop's `ORDER BY remind_at` relies on. A fire
-/// this device recorded under the same id is forgotten: the reminder is new.
+/// is instant order, which desktop's `ORDER BY remind_at` relies on.
 pub fn create_reminder(
     conn: &Connection,
     reminder: &NewReminder<'_>,
@@ -238,7 +237,6 @@ pub fn create_reminder(
                 "modifiedAt": at,
             }));
             insert_local(tx, ITEM_TYPE, &id, payload, now_ms)?;
-            fire::forget(tx, &id)?;
             Ok(id.clone())
         },
     )
@@ -282,9 +280,8 @@ pub fn update(
 }
 
 /// Deletes a reminder: a tombstone with its `delete` outbox row, which is
-/// what desktop's `deleteReminder` sends. This device's fire record goes with
-/// it, so a reminder created again under the same id (`rem_note_<noteId>`)
-/// fires again.
+/// what desktop's `deleteReminder` sends. This device's fire records go with
+/// it: nothing reads them once the reminder is gone.
 pub fn delete(
     conn: &Connection,
     id: &str,
