@@ -15,9 +15,6 @@ import type {
 import type * as TasksRpc from '@memry/rpc/tasks'
 import type { StartCheckoutInput } from '@memry/contracts/ipc-channels'
 import type { AgentMcpStatus } from '@memry/contracts/agent-mcp-channels'
-import type { HomePageCoverSource, HomePageSetCoverResult } from '@memry/contracts/home-page-api'
-import type { HomePageCoverSync } from '@memry/contracts/sync-payloads'
-import type { CoverFraming } from '@memry/shared/cover-image'
 import type {
   ImpactQuery,
   ImpactResult,
@@ -593,26 +590,6 @@ export interface JournalClientAPI {
   getPropertyRows(from: string, to: string): Promise<GetPropertyRowsOutput>
 }
 
-// Home Page types
-export interface WidgetInstance {
-  id: string
-  type: string
-  x: number
-  y: number
-  w: number
-  h: number
-  config: Record<string, unknown>
-}
-
-export interface HomePage {
-  id: string
-  name: string
-  icon?: string
-  position: number
-  widgets: WidgetInstance[]
-  cover?: HomePageCoverSync
-}
-
 export interface StickyClientAPI {
   listDrafts(): Promise<StickyDraft[]>
   saveDraft(input: StickySaveDraftInput): Promise<StickyDraft>
@@ -633,30 +610,6 @@ export interface OnboardingClientAPI {
   detectAgents: () => Promise<OnboardingAgentStatus[]>
   detectSources: () => Promise<OnboardingSources>
   isMemryVault: (path: string) => Promise<boolean>
-}
-
-export interface HomePagesClientAPI {
-  list(): Promise<HomePage[]>
-  get(id: string): Promise<HomePage | null>
-  create(input: {
-    name: string
-    icon?: string
-    position?: number
-    widgets?: WidgetInstance[]
-  }): Promise<HomePage>
-  update(input: {
-    id: string
-    name?: string
-    icon?: string
-    position?: number
-    widgets?: WidgetInstance[]
-  }): Promise<HomePage>
-  delete(id: string): Promise<{ success: boolean }>
-  reorder(ids: string[]): Promise<{ success: boolean }>
-  setCover(id: string, source: HomePageCoverSource): Promise<HomePageSetCoverResult>
-  setCoverFraming(id: string, changes: Partial<CoverFraming>): Promise<HomePage>
-  removeCover(id: string): Promise<HomePage>
-  materializeCover(id: string): Promise<{ success: boolean }>
 }
 
 // Bookmark types
@@ -1803,7 +1756,6 @@ interface API
   syncOps: SyncOpsClientAPI
   crypto: CryptoClientAPI
   syncAttachments: SyncAttachmentsClientAPI
-  homePages: HomePagesClientAPI
   sticky: StickyClientAPI
   onboarding: OnboardingClientAPI
   agentMcp: AgentMcpClientAPI
@@ -1851,10 +1803,6 @@ interface API
   onSavedFilterUpdated: (callback: (event: SavedFilterUpdatedEvent) => void) => () => void
   onSavedFilterDeleted: (callback: (event: SavedFilterDeletedEvent) => void) => () => void
   // Templates event subscriptions
-  // Home boards event subscriptions (local writes and remote applies both emit)
-  onHomePageCreated: (callback: (event: { id: string }) => void) => () => void
-  onHomePageUpdated: (callback: (event: { id: string }) => void) => () => void
-  onHomePageDeleted: (callback: (event: { id: string }) => void) => () => void
   // Journal event subscriptions
   onJournalEntryUpdated: (callback: (event: JournalEntryUpdatedEvent) => void) => () => void
   onJournalExternalChange: (callback: (event: JournalExternalChangeEvent) => void) => () => void
