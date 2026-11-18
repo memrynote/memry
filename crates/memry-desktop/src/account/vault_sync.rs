@@ -105,6 +105,9 @@ impl OpenVaultBinding {
     }
 }
 
+/// Told each new gate before its supervisor starts.
+pub type GateHook = Arc<dyn Fn(&Arc<SyncStartGate>) + Send + Sync>;
+
 /// What a supervisor of the app is built from, beyond the open vault.
 pub struct SyncWiring {
     pub runtime: tokio::runtime::Handle,
@@ -127,6 +130,9 @@ pub struct SyncWiring {
     /// The vault tier pulled bodies and locks reach the disk through (`sync::disk`); `None` in a
     /// test that serves no vault files.
     pub tier: Option<Arc<VaultTier>>,
+    /// Each new gate, before its supervisor starts: billing tells it the plan
+    /// (`BillingService::attach_gate`).
+    pub on_gate: GateHook,
 }
 
 /// The open vault without keeping it open: a closed vault ends the binding task.
@@ -169,6 +175,7 @@ impl SyncWiring {
     fn start(self: &Arc<Self>, open: &OpenVault, signals: &AuthSignals) -> SyncSupervisor {
         let gate = Arc::new(SyncStartGate::default());
         self.bindings.track(&gate);
+        (self.on_gate)(&gate);
         let account = Arc::clone(&self.account);
         let backend = VaultSyncBackend::new(
             Arc::clone(&open.vault),

@@ -10,6 +10,8 @@ const mocks = vi.hoisted(() => ({
     settingsResetKeyboard: vi.fn(),
     settingsGetAi: vi.fn(),
     settingsSetAi: vi.fn(),
+    settingsDownloadVoiceModel: vi.fn(),
+    settingsSetVoiceTranscriptionOpenaiKey: vi.fn(),
     logWrite: vi.fn()
   },
   listeners: new Map<string, (event: { payload: unknown }) => void>()
@@ -97,6 +99,29 @@ describe('settingsService', () => {
       success: false,
       error: 'settings_invalid_value'
     })
+  })
+
+  it('answers the voice model download and key writes in the Electron result shape', async () => {
+    mocks.commands.settingsDownloadVoiceModel.mockResolvedValueOnce(null)
+    await expect(settingsService.downloadVoiceModel()).resolves.toEqual({ success: true })
+    mocks.commands.settingsDownloadVoiceModel.mockRejectedValueOnce({
+      kind: 'transport',
+      code: 'voice_model_download_failed',
+      message: 'ggml-small.bin does not match its pinned SHA-256'
+    })
+    await expect(settingsService.downloadVoiceModel()).resolves.toEqual({
+      success: false,
+      error: 'ggml-small.bin does not match its pinned SHA-256'
+    })
+
+    mocks.commands.settingsSetVoiceTranscriptionOpenaiKey.mockRejectedValueOnce({
+      message: 'Failed to store voice transcription API key: locked'
+    })
+    await expect(settingsService.setVoiceTranscriptionOpenAIKey('sk-1')).resolves.toEqual({
+      success: false,
+      error: 'Failed to store voice transcription API key: locked'
+    })
+    expect(mocks.commands.settingsSetVoiceTranscriptionOpenaiKey).toHaveBeenCalledWith('sk-1')
   })
 
   it('reads callout types as a list and writes only the changed entries, null for a removal', async () => {

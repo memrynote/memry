@@ -26,9 +26,12 @@ use serde_json::{Value, json};
 
 pub(crate) const MASTER: [u8; 32] = [9; 32];
 
+/// A status, a body, and the release a held answer waits for.
+type Answer = (u16, String, Option<Arc<tokio::sync::Notify>>);
+
 #[derive(Default)]
 pub(crate) struct Script {
-    answers: Mutex<VecDeque<(u16, String)>>,
+    answers: Mutex<VecDeque<Answer>>,
     paths: Mutex<Vec<String>>,
     /// The `authorization` header of each request, by path.
     bearers: Mutex<Vec<(String, Option<String>)>>,
@@ -57,12 +60,15 @@ impl Transport for Script {
             .lock()
             .unwrap()
             .push((path.clone(), request.headers.get("authorization").cloned()));
-        let (status, body) = self
+        let (status, body, held) = self
             .answers
             .lock()
             .unwrap()
             .pop_front()
             .unwrap_or_else(|| panic!("no answer scripted for {path}"));
+        if let Some(held) = held {
+            held.notified().await;
+        }
         Ok(HttpResponse {
             status,
             headers: HashMap::new(),
@@ -86,7 +92,17 @@ impl Script {
         self.answers
             .lock()
             .unwrap()
-            .push_back((status, body.to_string()));
+            .push_back((status, body.to_string(), None));
+    }
+
+    /// An answer that reaches its request only once the returned handle's `notify_one` runs.
+    pub(crate) fn held_answer(&self, status: u16, body: Value) -> Arc<tokio::sync::Notify> {
+        let held = Arc::new(tokio::sync::Notify::new());
+        self.answers
+            .lock()
+            .unwrap()
+            .push_back((status, body.to_string(), Some(held.clone())));
+        held
     }
 
     /// `(method, path, body)` of every request so far.
@@ -233,10 +249,11 @@ impl Fixture {
             .extend(verify.as_object().unwrap().clone());
         {
             let mut answers = self.script.answers.lock().unwrap();
-            answers.push_front((200, answer.to_string()));
+            answers.push_front((200, answer.to_string(), None));
             answers.push_front((
                 200,
                 json!({ "success": true, "expiresIn": 600 }).to_string(),
+                None,
             ));
         }
         self.service

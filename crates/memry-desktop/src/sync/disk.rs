@@ -7,8 +7,10 @@
 //!   outside the app since its last read is kept, and a file it replaces is kept as a version
 //!   first. A crash before the schedule loses nothing: the next open's reconcile writes every
 //!   file left behind its body.
-//! - **Owed files.** When a body pull settles, every owed file is taken
-//!   ([`VaultTier::take_owed_file`]), which schedules its write-back.
+//! - **Owed files.** When the pass's body step settled its debts (`bodies_settled`), every owed
+//!   file is taken ([`VaultTier::take_owed_file`]), which schedules its write-back. Not on
+//!   `bodies_applied`: the core tells that one before the pulled document's debt settles, so the
+//!   take would still find the body owed.
 //! - **Locks.** A pulled `vault_lock` record brings the disk in line with the locks
 //!   ([`Locks::reconcile`], Electron's `onRemoteVaultLockApplied`). The reconcile takes no rows'
 //!   lane and no editor lock, so it cannot wait on a writer that waits on this pass.
@@ -16,7 +18,6 @@
 //! Every call runs on the driver's blocking pool after its page committed, under the pass gate;
 //! nothing here awaits a pass.
 
-use std::collections::BTreeSet;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -24,7 +25,7 @@ use memry_core::api::vault::Vault;
 use memry_core::sync::driver::{AppliedOutcome, AppliedRecord, ApplyObserver};
 
 use crate::locks::Locks;
-use crate::vault::consumer::{Taken, VaultTier};
+use crate::vault::consumer::VaultTier;
 
 const SCOPE: &str = "sync_disk";
 
@@ -42,24 +43,6 @@ pub struct DiskObserver {
 impl DiskObserver {
     pub fn new(tier: Arc<VaultTier>, root: PathBuf, vault: Arc<Vault>) -> Self {
         Self { tier, root, vault }
-    }
-
-    /// Takes every owed file of the vault; `None` when listing them failed.
-    fn take_owed(&self) -> Option<BTreeSet<String>> {
-        let owed = match self.vault.note_files().owed_file_bodies() {
-            Ok(owed) => owed,
-            Err(error) => {
-                tracing::error!(scope = SCOPE, "the owed files were not listed: {error}");
-                return None;
-            }
-        };
-        let mut taken = BTreeSet::new();
-        for note_id in owed {
-            if self.tier.take_owed_file(&self.vault, &note_id) == Taken::Took {
-                taken.insert(note_id);
-            }
-        }
-        Some(taken)
     }
 }
 
@@ -88,9 +71,21 @@ impl ApplyObserver for DiskObserver {
     }
 
     fn bodies_applied(&self, doc_ids: &[String]) {
-        let taken = self.take_owed().unwrap_or_default();
-        for doc_id in doc_ids.iter().filter(|id| !taken.contains(*id)) {
+        for doc_id in doc_ids {
             self.tier.schedule(doc_id);
+        }
+    }
+
+    fn bodies_settled(&self) {
+        let owed = match self.vault.note_files().owed_file_bodies() {
+            Ok(owed) => owed,
+            Err(error) => {
+                tracing::error!(scope = SCOPE, "the owed files were not listed: {error}");
+                return;
+            }
+        };
+        for note_id in owed {
+            self.tier.take_owed_file(&self.vault, &note_id);
         }
     }
 }

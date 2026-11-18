@@ -105,11 +105,21 @@ pub fn read_html_text_until(
     bytes: &[u8],
     stopped: &dyn Fn() -> bool,
 ) -> Result<String, HtmlTextError> {
+    read_html_text_within(bytes, stopped, PARSE_DEADLINE)
+}
+
+/// [`read_html_text_until`] with the parse deadline as an argument, so a test of another cap can
+/// give it a deadline it never reaches on a loaded host.
+fn read_html_text_within(
+    bytes: &[u8],
+    stopped: &dyn Fn() -> bool,
+    deadline: Duration,
+) -> Result<String, HtmlTextError> {
     if bytes.len() > HTML_TEXT_MAX_BYTES {
         return Err(HtmlTextError::TooLarge { size: bytes.len() });
     }
     let html = String::from_utf8_lossy(bytes);
-    let tree = parse(&html, node_budget(bytes.len()), PARSE_DEADLINE, stopped)?;
+    let tree = parse(&html, node_budget(bytes.len()), deadline, stopped)?;
     let mut out = String::new();
     let mut stack = vec![Item::Node(tree.document_element())];
     while let Some(item) = stack.pop() {
