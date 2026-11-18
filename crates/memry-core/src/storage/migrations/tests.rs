@@ -42,7 +42,7 @@ fn a_fresh_data_database_reaches_the_latest_version() {
     let version = db
         .call_blocking(|conn| user_version(conn))
         .expect("user_version");
-    assert_eq!(version, 33);
+    assert_eq!(version, 37);
 
     let names = table_names(&db);
     // Source of record, §A.2.
@@ -99,6 +99,7 @@ fn a_fresh_data_database_reaches_the_latest_version() {
         "tag_categories",
         "tag_definitions",
         "task_activity",
+        "task_links",
         "tasks",
         "templates",
     ] {

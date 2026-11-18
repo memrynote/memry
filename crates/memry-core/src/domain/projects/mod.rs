@@ -53,6 +53,7 @@
 
 mod contents;
 mod links;
+mod note_property;
 mod propagate;
 mod status_list;
 mod statuses;
@@ -72,7 +73,10 @@ use super::tasks::Inbound;
 pub use contents::{
     LinkedEvent, LinkedFile, LinkedNote, ProjectContents, ProjectRef, contents, projects_for_item,
 };
-pub use links::{LinkItemType, ProjectLink, link, links, set_link_pinned, unlink};
+pub use links::{
+    LinkItemType, PROJECT_PROPERTY_KEY, ProjectLink, link, links, set_link_pinned, unlink,
+};
+pub use note_property::sync_links_from_property;
 pub use propagate::{PropagationTargets, project_names, renamed, targets, without_name};
 pub use status_list::{StatusInput, StatusType};
 pub use statuses::{

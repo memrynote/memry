@@ -213,6 +213,11 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "inbox_jobs",
         sql: include_str!("migrations/data/0033_inbox_jobs.sql"),
     },
+    Migration {
+        version: 37,
+        name: "task_links",
+        sql: include_str!("migrations/data/0037_task_links.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.
@@ -404,6 +409,8 @@ mod numbering_tests;
 mod saved_filter_inbox_tests;
 #[cfg(test)]
 mod sequence_tests;
+#[cfg(test)]
+mod task_links_tests;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
