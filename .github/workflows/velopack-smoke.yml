@@ -8,9 +8,10 @@ name: Velopack smoke
 # marker line.
 #
 # A job installs `release_tag` and updates it to `to_version` only when
-# `release_tag` carries a Velopack feed of the job's channel. Otherwise (the
-# first Tauri release follows Electron releases, which ship a Velopack feed for
-# Windows x64 only) it installs `update_tag` itself and applies nothing.
+# `release_tag` carries a Velopack feed of the job's channel. When `release_tag`
+# is an Electron release (the first Tauri release follows Electron releases,
+# which ship a Velopack feed for Windows x64 only), it installs `update_tag`
+# itself and applies nothing. A Tauri `release_tag` without the feed fails.
 #
 # The second job proves the NSIS -> Velopack hand-off: an install made by the
 # older NSIS installer is removed and replaced by the Velopack install without
@@ -115,8 +116,11 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "cannot list $env:RELEASE_TAG" }
           if ($names -contains $env:FEED) {
             $baseTag = $env:RELEASE_TAG; $baseVersion = $env:FROM_VERSION; $apply = 'true'
+          } elseif ($names -contains 'releases.osx-arm64.json') {
+            # Only Tauri releases carry it (shouldPackDelta in scripts/release/vpk-args.mjs).
+            throw "$env:RELEASE_TAG is a Tauri release without $env:FEED"
           } else {
-            Write-Output "::warning::$env:RELEASE_TAG has no $env:FEED; installing $env:UPDATE_TAG ($env:TO_VERSION) without an update"
+            Write-Output "::warning::$env:RELEASE_TAG is an Electron release without $env:FEED; installing $env:UPDATE_TAG ($env:TO_VERSION) without an update"
             $baseTag = $env:UPDATE_TAG; $baseVersion = $env:TO_VERSION; $apply = 'false'
           }
           "BASE_VERSION=$baseVersion", "APPLY=$apply", "MEMRY_TEST_LOG_DIR=$PWD\memry-logs" |
@@ -256,10 +260,12 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name' | grep -qx 'releases.osx-arm64.json'; then
+          names=$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name')
+          # The feed is also the Tauri marker (shouldPackDelta in scripts/release/vpk-args.mjs).
+          if grep -qxF releases.osx-arm64.json <<<"$names"; then
             base_tag=$RELEASE_TAG base_version=$FROM_VERSION apply=true
           else
-            echo "::warning::$RELEASE_TAG has no releases.osx-arm64.json; installing $UPDATE_TAG ($TO_VERSION) without an update"
+            echo "::warning::$RELEASE_TAG is an Electron release without releases.osx-arm64.json; installing $UPDATE_TAG ($TO_VERSION) without an update"
             base_tag=$UPDATE_TAG base_version=$TO_VERSION apply=false
           fi
           printf 'BASE_VERSION=%s\nAPPLY=%s\nMEMRY_TEST_LOG_DIR=%s\n' "$base_version" "$apply" "$RUNNER_TEMP/memry-logs" >> "$GITHUB_ENV"
