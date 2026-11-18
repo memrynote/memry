@@ -6,6 +6,7 @@ import { resolveChord, resolveFolderChord, type KeydownEnv } from './resolve-cho
 // Off macOS `meta` is Ctrl, so a default of ⌘W is a Ctrl+W keystroke here.
 const env = (overrides: Partial<KeydownEnv> = {}): KeydownEnv => ({
   isMac: false,
+  isLinux: false,
   isRecording: false,
   isBlocked: false,
   isInInput: false,
@@ -273,6 +274,13 @@ describe('resolveChord: platform bindings and AltGr', () => {
     const altGrT = press({ key: 't', ctrlKey: true, altKey: true })
     altGrT.getModifierState = (key: string) => key === 'AltGraph'
     expect(resolve(altGrT, env())).toBeNull()
+  })
+
+  it("opens today's journal on Ctrl+Alt+J on Linux, where GNOME takes Ctrl+Alt+T", () => {
+    const linux = env({ isLinux: true })
+    expect(resolve(press({ key: 'j', ctrlKey: true, altKey: true }), linux)).toBe('go.journal')
+    expect(resolve(press({ key: 't', ctrlKey: true, altKey: true }), linux)).toBeNull()
+    expect(resolve(press({ key: 'j', ctrlKey: true, altKey: true }), env())).toBeNull()
   })
 
   it('reads ⌘ as the Meta key on macOS and as Ctrl elsewhere', () => {

@@ -53,6 +53,8 @@ export type ShortcutConflict =
 export const isMac =
   typeof navigator !== 'undefined' && navigator.platform.toUpperCase().includes('MAC')
 
+const isLinux = typeof navigator !== 'undefined' && navigator.platform.includes('Linux')
+
 function toEntry(id: ShortcutId): ShortcutEntry {
   const { keyboard, group, i18nKey } = COMMANDS[id]
   const editorOwned = keyboard.owner === 'editor'
@@ -62,7 +64,8 @@ function toEntry(id: ShortcutId): ShortcutEntry {
     group,
     defaultBinding: resolvePlatformBinding(
       editorOwned ? keyboard.display : keyboard.default,
-      isMac
+      isMac,
+      isLinux
     ),
     rebindable: !editorOwned
   }

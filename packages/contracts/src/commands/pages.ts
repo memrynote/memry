@@ -26,9 +26,14 @@ export const PAGE_COMMANDS = {
     group: 'navigation',
     i18nKey: 'nav.todayJournal',
     // ⌥⌘T: ⌘T is `tabs.newTab` (the iPad's journal page takes ⌘T). Ctrl+Alt is AltGr on Windows.
+    // GNOME and Ubuntu open a terminal on Ctrl+Alt+T before the app sees it, so Linux gets J.
     keyboard: {
       owner: 'app',
-      default: { key: 't', modifiers: { meta: true, alt: true } },
+      default: {
+        mac: { key: 't', modifiers: { meta: true, alt: true } },
+        other: { key: 't', modifiers: { meta: true, alt: true } },
+        linux: { key: 'j', modifiers: { meta: true, alt: true } }
+      },
       skipAltGraph: true
     }
   },

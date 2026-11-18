@@ -23,7 +23,7 @@ Default shortcuts. Navigation, tab, split-view (except the <kbd>⌘</kbd>+<kbd>K
 
 > **Switch vault** opens the vault switcher at the top of the sidebar panel from anywhere — if the sidebar is hidden it slides open for the duration, and <kbd>Esc</kbd> closes the switcher and puts the sidebar back without changing vaults. It opens on the vault you are in: <kbd>↓</kbd> and <kbd>↑</kbd> move through the list (wrapping at either end) and <kbd>Enter</kbd> switches to the highlighted vault, so a switch never needs the mouse. It works from anywhere, including while you are typing in a field or in the note editor.
 
-> **Today's journal** opens the Journal on today's entry, from anywhere in the app (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>T</kbd> on Windows and Linux). On Ubuntu and other GNOME desktops <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>T</kbd> opens a terminal before memrynote sees it, so rebind the shortcut there. <kbd>⌘</kbd>+<kbd>T</kbd> stays **New tab**.
+> **Today's journal** opens the Journal on today's entry, from anywhere in the app (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>T</kbd> on Windows, <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>J</kbd> on Linux, where Ubuntu and other GNOME desktops open a terminal on <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>T</kbd>). <kbd>⌘</kbd>+<kbd>T</kbd> stays **New tab**.
 
 > **Next / previous vault** moves the sidebar to the neighbouring vault with the same slide as a trackpad swipe (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+arrow on Windows and Linux). The arrows follow the page layout, so in right-to-left languages the next vault is to the left. See [Switching vaults](/guide/tour#switching-vaults).
 
