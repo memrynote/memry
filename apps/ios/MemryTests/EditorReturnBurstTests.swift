@@ -411,6 +411,39 @@ struct EditorReturnBurstTests {
         #expect(shown == ["hello\(later)world"], "\(shown)")
     }
 
+    /// The same Backspace, then the core refuses the split: the Backspace
+    /// already put the text back, so it comes back once, and nothing waits
+    /// to merge the next Return's block away.
+    @Test(.timeLimit(.minutes(1))) func aRefusedSplitTakenBackKeepsTheTextOnce() async throws {
+        let (shown, withdrawn) = try await Screen.run(text: "helloworld") { screen in
+            screen.editor.inserts.withLock { $0 = .refuse }
+            _ = try await screen.start(caret: 5)
+            screen.keys("\n")
+            screen.backspace()
+            try await screen.finish(blocks: 1)
+            return (screen.editor.shown, screen.model.session.withdrawnReturn)
+        }
+        #expect(shown == ["helloworld"], "\(shown)")
+        #expect(withdrawn == nil)
+    }
+
+    /// After that refusal, the next Return in the block still splits it.
+    @Test(.timeLimit(.minutes(1))) func theReturnAfterARefusedTakenBackSplitSplits() async throws {
+        let shown = try await Screen.run(text: "helloworld") { screen in
+            screen.editor.inserts.withLock { $0 = .refuse }
+            _ = try await screen.start(caret: 5)
+            screen.keys("\n")
+            screen.backspace()
+            try await screen.finish(blocks: 1)
+            screen.editor.inserts.withLock { $0 = .land }
+            _ = try await screen.start(caret: 5)
+            screen.keys("\n")
+            try await screen.finish(blocks: 2)
+            return screen.editor.shown
+        }
+        #expect(shown == ["hello", "world"], "\(shown)")
+    }
+
     /// The same Backspace once the new block holds the caret: it merges back.
     @Test(.timeLimit(.minutes(1))) func backspaceAtTheSplitBlocksStartMergesItBack() async throws {
         let shown = try await Screen.run(text: "helloworld") { screen in
@@ -426,6 +459,68 @@ struct EditorReturnBurstTests {
             return screen.editor.shown
         }
         #expect(shown == ["helloXworld"], "\(shown)")
+    }
+
+    /// VERIFY-5122: keys typed at once after that Backspace go at the join,
+    /// on screen and in the store, while the merge is on its way. The row
+    /// above showed only its own text until the merge redrew it, so the keys
+    /// went after `hello`, and the commit's rebase put them after `world`.
+    @Test(.timeLimit(.minutes(1))) func keysAfterTheMergingBackspaceGoAtTheJoin() async throws {
+        let (seen, shown) = try await Screen.run(text: "helloworld") { screen in
+            let first = try await screen.start(caret: 5)
+            screen.keys("\n")
+            for _ in 0 ..< 80 where screen.focused == nil || screen.focused === first || screen.model.session.returnBurst != nil {
+                try await Task.sleep(for: .milliseconds(25))
+            }
+            screen.model.session.blocks = { screen.editor.all }
+            screen.backspace()
+            screen.keys("xy")
+            for _ in 0 ..< 80 where screen.editor.all.count > 1 { try await Task.sleep(for: .milliseconds(25)) }
+            try await Task.sleep(for: .milliseconds(200))
+            let seen = screen.focused?.text
+            try await screen.finish(blocks: 1)
+            return (seen, screen.editor.shown)
+        }
+        #expect(seen == "helloxyworld", "\(String(describing: seen))")
+        #expect(shown == ["helloxyworld"], "\(shown)")
+    }
+
+    /// A Backspace UIKit hands the old row as it gives up the caret to the
+    /// new block is that block's Backspace at its start: it takes the
+    /// Return back, and the next keys go at the join. It deleted the old
+    /// block's last character.
+    @Test(.timeLimit(.minutes(1))) func aBackspaceQueuedForTheResigningRowTakesTheReturnBack() async throws {
+        let (late, seen, shown) = try await Screen.run(text: "helloworld") { screen in
+            let first = try await screen.start(caret: 5)
+            var late = false
+            let observer = NotificationCenter.default.addObserver(
+                forName: UITextView.textDidEndEditingNotification, object: first, queue: nil
+            ) { _ in
+                MainActor.assumeIsolated {
+                    guard !late, screen.model.session.returnBurst?.ended == true else { return }
+                    late = true
+                    let range = NSRange(location: first.selectedRange.location - 1, length: 1)
+                    if first.delegate?.textView?(first, shouldChangeTextIn: range, replacementText: "") != false {
+                        first.deleteBackward()
+                    }
+                }
+            }
+            defer { NotificationCenter.default.removeObserver(observer) }
+            screen.model.session.blocks = { screen.editor.all }
+            screen.keys("\n")
+            for _ in 0 ..< 80 where !late || screen.focused == nil || screen.model.session.returnBurst != nil {
+                try await Task.sleep(for: .milliseconds(25))
+            }
+            screen.keys("xy")
+            for _ in 0 ..< 80 where screen.editor.all.count > 1 { try await Task.sleep(for: .milliseconds(25)) }
+            try await Task.sleep(for: .milliseconds(200))
+            let seen = screen.focused?.text
+            try await screen.finish(blocks: 1)
+            return (late, seen, screen.editor.shown)
+        }
+        #expect(late, "a Backspace reached the old row after it gave up the caret")
+        #expect(seen == "helloxyworld", "\(String(describing: seen))")
+        #expect(shown == ["helloxyworld"], "\(shown)")
     }
 
     /// The core refuses the split: the moved text comes back after the keys

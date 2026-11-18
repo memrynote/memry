@@ -66,6 +66,13 @@ pub(super) fn split_block(
             "only inline content splits, into a block that holds it",
         ));
     }
+    if kind.is_some_and(|kind| {
+        node_shapes::holds_plain_text(kind) && !node_shapes::holds_plain_text(&source_kind)
+    }) {
+        return Err(refused(
+            "marks and inline nodes do not split into plain text",
+        ));
+    }
     let (_, units) = flatten(txn, &source);
     // The first child that moves, and where in it: a run splits at the
     // character the caret is before, a node moves whole.

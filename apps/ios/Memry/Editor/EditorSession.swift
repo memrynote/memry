@@ -397,14 +397,18 @@ final class EditorSession {
         drawnFields.setObject(field, forKey: field.blockId as NSString)
     }
 
+    /// The row drawing `blockId` now, if any.
+    func drawnRow(_ blockId: String) -> BlockField? {
+        drawnFields.object(forKey: blockId as NSString).flatMap { $0.blockId == blockId ? $0 : nil }
+    }
+
     /// Puts the caret at the end of `blockId`: now when its row is on
     /// screen, else once it is drawn (`pendingFocus`). A row the page drew
     /// before the request (a reload that raced the write) never reads
     /// `pendingFocus` again. A field that has since moved on to another
     /// block is not this block's.
     func focus(_ blockId: String) {
-        guard let field = drawnFields.object(forKey: blockId as NSString), field.blockId == blockId,
-              field.textView.window != nil
+        guard let field = drawnRow(blockId), field.textView.window != nil
         else {
             pendingFocus = blockId
             return

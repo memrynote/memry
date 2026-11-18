@@ -850,7 +850,12 @@ extension EditorSession {
         } else {
             made = await model.split(blockId, typed: pressed.typed, at: pressed.caret, kind: pressed.next)
         }
-        guard var made else { return splitRefused(in: field, putting: cut, typed: pressed.typed) }
+        guard var made else {
+            // A Backspace took the Return back first (`takeBack`): the cut
+            // text and `field.base` are already restored.
+            guard withdrawnReturn == blockId else { return splitRefused(in: field, putting: cut, typed: pressed.typed) }
+            return withdrawnReturn = nil
+        }
         if pressed.plain {
             await model.setProp(made.id, "plain", "true")
             made.step.forwardProps = [.setProp(blockId: made.id, name: "plain", value: "true")]
@@ -924,13 +929,41 @@ extension EditorSession {
             return runner(for: blocks, at: index - 1).delete()
         }
         let blockId = field.blockId
-        commit(field) { [weak self] in
+        let moved = field.textView.attributedText ?? NSAttributedString()
+        commit(field)
+        let merged = enqueue { [weak self] in
             guard let self, let model = self.model else { return }
             if let step = await model.merge(blockId, into: previousId) { self.history.record(step) }
+            await self.didChange()
         }
-        // The caret goes now, so the keyboard stays up: at the end of the
-        // block above, which is the join once the merge redraws it.
-        focus(previousId)
+        // The caret goes now, so the keyboard stays up.
+        guard let above = drawnRow(previousId), above.textView.window != nil else { return focus(previousId) }
+        join(moved, from: field, into: above, merged: merged)
+    }
+
+    /// Draws the merge of `field` into `above` before it lands, with the
+    /// caret at the join. Until the merge (`merged`) lands, `above`'s text
+    /// is the block's: keys typed meanwhile go at the join, and no read from
+    /// before the merge is drawn over it (`written`). Drawn only once the
+    /// merge redrew it, the row showed its own text with the caret at its
+    /// end, and keys typed there went after the merged text (VERIFY-5122).
+    private func join(_ moved: NSAttributedString, from field: BlockField, into above: BlockField, merged: Int) {
+        let text = NSMutableAttributedString(attributedString: moved)
+        let whole = NSRange(location: 0, length: text.length)
+        text.enumerateAttribute(.font, in: whole) { value, range, _ in
+            if (value as? UIFont) == field.style.font { text.addAttribute(.font, value: above.style.font, range: range) }
+        }
+        text.enumerateAttribute(.foregroundColor, in: whole) { value, range, _ in
+            if (value as? UIColor) == field.style.ink { text.addAttribute(.foregroundColor, value: above.style.ink, range: range) }
+        }
+        let view = above.textView
+        let join = view.textStorage.length
+        view.textStorage.append(text)
+        view.forgetTyping()
+        above.base += moved.string
+        above.written = max(above.written, merged)
+        view.selectedRange = NSRange(location: join, length: 0)
+        takeCaret(above, atEnd: false)
     }
 
     private func runner(for blocks: [Block], at index: Int) -> BlockActionRunner {

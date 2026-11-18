@@ -259,3 +259,23 @@ fn a_block_with_nested_blocks_or_an_offset_past_its_end_is_refused() {
     assert!(apply(&document, &split("c", 1, Some("divider"))).is_err());
     assert_eq!(canonical_fragment(&document).expect("canonical"), before);
 }
+
+#[test]
+fn a_block_with_marks_or_inline_nodes_does_not_split_into_plain_text() {
+    let document = opened(&[("a", "paragraph", "ab cd")]);
+    edit(
+        &document,
+        BlockEdit::SetMark {
+            block_id: "a".to_owned(),
+            start: 0,
+            end: 2,
+            mark: "bold".to_owned(),
+            value: None,
+        },
+    );
+    edit(&document, tag("a", 3));
+    let before = canonical_fragment(&document).expect("canonical");
+    assert!(apply(&document, &split("a", 1, Some("codeBlock"))).is_err());
+    assert!(apply(&document, &split("a", 4, Some("diagram"))).is_err());
+    assert_eq!(canonical_fragment(&document).expect("canonical"), before);
+}

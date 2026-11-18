@@ -47,6 +47,10 @@ struct ReturnBurst {
     var cut: NSAttributedString?
     /// A Backspace turned that block into a paragraph.
     var backspaced = false
+    /// A Backspace reached the source after it gave up the caret, with no
+    /// key carried: the made block's Backspace at its start, which it takes
+    /// as it takes the caret (`carriesEdit`).
+    var withdrawn = false
 }
 
 /// The block a Return in a one-line field (the note's title, a journal
@@ -212,8 +216,10 @@ extension EditorSession {
     /// such a key came out after the carried keys but ahead of the caret,
     /// so the next keys landed before it (`milk⏎eggs⏎` stored as
     /// `milk|egs|g`, #4737). A key typed at the caret joins the carried
-    /// keys, and a Backspace takes back the last of them. Any other text
-    /// (an autocorrection) is refused.
+    /// keys, and a Backspace takes back the last of them, or with none
+    /// carried is the made block's Backspace at its start (`withdrawn`): it
+    /// deleted the source's last character. Any other text (an
+    /// autocorrection) is refused.
     func carriesEdit(_ range: NSRange, _ text: String, in field: BlockField) -> Bool {
         guard let burst = returnBurst, burst.source === field, burst.ended,
               field.textView.text == burst.head + burst.tail
@@ -224,7 +230,11 @@ extension EditorSession {
             return true
         }
         if !text.isEmpty { return true }
-        guard range.length > 0, NSMaxRange(range) == head, var carried = burst.carried else { return false }
+        guard range.length > 0, NSMaxRange(range) == head else { return false }
+        guard var carried = burst.carried else {
+            returnBurst?.withdrawn = true
+            return true
+        }
         carried.removeLast()
         returnBurst?.carried = carried.isEmpty ? nil : carried
         return true
@@ -307,6 +317,17 @@ extension EditorSession {
         }
         // A source that was not editing never resigned: its keys come now.
         let held = burst.ended ? burst.carried : heldKeys(burst)
+        if burst.withdrawn {
+            // The keys carried after it go at the join: typed at the made
+            // block's start, they merge back with its text, and the caret
+            // follows them.
+            if let held { type(held, into: field) }
+            backspaceAtStart(field)
+            guard let held, let joined = self.field, joined.blockId == burst.blockId else { return }
+            let caret = joined.textView.selectedRange.location + (held as NSString).length
+            joined.textView.selectedRange = NSRange(location: min(caret, joined.textView.textStorage.length), length: 0)
+            return
+        }
         guard let held else { return }
         if !burst.ended { removeHeldKeys(burst, held) }
         type(held, into: field)
