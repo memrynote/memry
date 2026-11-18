@@ -276,7 +276,9 @@ struct NoteReadView: View {
                 case let .ready(detail):
                     NotePageTitle(
                         model: model, detail: detail, metadataModel: metadataModel,
-                        returnToBody: editorModel.canEdit ? { held in Task { await focusBody(atEnd: false, carrying: held) } } : nil
+                        // Immediate: a drawn first block takes the caret in
+                        // the Return's own turn, before the title lets go.
+                        returnToBody: editorModel.canEdit ? { held in Task.immediate { await focusBody(atEnd: false, carrying: held) } } : nil
                     )
                     NotePageContent(
                         model: model,

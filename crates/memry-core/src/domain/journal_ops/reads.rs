@@ -257,7 +257,7 @@ pub fn same_day_entries(
     let (date, today) = (journal::valid_date(date)?, journal::valid_date(today)?);
     let month_days = same_day_month_days(date);
     // At most two month-days; a single one is bound twice.
-    let (first, second) = (month_days[0], *month_days.last().unwrap_or(&month_days[0]));
+    let (first, second) = (month_days[0], month_days[month_days.len() - 1]);
     let mut statement = conn
         .prepare(
             "SELECT id, date FROM journal_entries

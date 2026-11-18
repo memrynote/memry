@@ -2,9 +2,8 @@ import MemryCore
 import SwiftUI
 
 // JP040. The Day page's own parts above the note page content: the date
-// header over its time-of-day fog (J01, J10), the read-only tags and
-// properties with the ghost row while the metadata gate is off (D5), and the
-// editable placeholder line of an empty day (J01, J10).
+// header over its time-of-day fog (J01, J10) and the editable placeholder
+// line of an empty day (J01, J10).
 
 /// Weekday line, TODAY badge and the serif date title (Paper "Date title").
 struct JournalDayHeader: View {
@@ -121,60 +120,6 @@ struct JournalFog: View {
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
-    }
-}
-
-/// The tags and properties while the phone may not write them (D5, G0): the
-/// note page's read-only rows, the ghost row drawn disabled, and the one
-/// limitation line when the day carries metadata or a ghost was tapped.
-struct JournalDayReadOnlyMetadata: View {
-    let metadata: NoteMetadata
-    @Binding var explains: Bool
-
-    private var hasMetadata: Bool {
-        !metadata.tags.isEmpty || !metadata.properties.isEmpty || !metadata.aliases.isEmpty
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Tokens.Space.small) {
-            NoteNamesLine(names: metadata.aliases, write: nil, adding: .constant(false))
-            NoteMetaView(metadata: metadata)
-            // Side by side, stacked when the two do not fit (AX sizes, JP057)
-            // rather than hyphenating a word across lines.
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: Tokens.Space.medium) { ghosts }
-                VStack(alignment: .leading, spacing: 0) { ghosts }
-            }
-            if hasMetadata || explains {
-                Text(JournalCopy.metadataReadOnly)
-                    .font(Tokens.Typography.caption.font)
-                    .foregroundStyle(Tokens.Text.tertiary.color)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityIdentifier("journal.day.metadataReadOnly")
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    @ViewBuilder private var ghosts: some View {
-        ghost(JournalCopy.ghostTag, label: JournalCopy.addTag, id: "journal.day.addTag")
-        ghost(JournalCopy.ghostProperty, label: JournalCopy.addProperty, id: "journal.day.addProperty")
-    }
-
-    private func ghost(_ title: String, label: String, id: String) -> some View {
-        Button {
-            explains = true
-        } label: {
-            Label(title, systemImage: "plus")
-                .font(Tokens.Typography.supporting.font)
-                .foregroundStyle(Tokens.Text.tertiary.color)
-                .frame(minHeight: Tokens.Size.minimumHitArea)
-                .contentShape(.rect)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(label)
-        .accessibilityValue(JournalCopy.metadataReadOnlyHint)
-        .accessibilityIdentifier(id)
     }
 }
 
