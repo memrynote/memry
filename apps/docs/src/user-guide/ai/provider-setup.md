@@ -47,7 +47,7 @@ Best when you want privacy, no metering, and don't mind running an extra backgro
 
 ### Notes
 
-- Keys are stored locally in the vault (encrypted at rest).
+- Keys are stored locally in the vault's settings database, which is not encrypted.
 - Keys are never sent to the memrynote sync server.
 - Each AI call hits OpenAI directly from your device.
 
