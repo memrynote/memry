@@ -383,4 +383,50 @@ struct EditorDropTests {
         zip.registerDataRepresentation(for: .zip, visibility: .all) { $0(Data(), nil); return nil }
         #expect(EditorDrop.of([zip]) == .files, "any file, as Choose File takes any")
     }
+
+    /// A text document from Files, registered under its own type as Files
+    /// hands it over (`NSItemProvider(contentsOf:)`).
+    private static func documentProvider(_ filename: String, _ contents: String) throws -> NSItemProvider {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let url = dir.appendingPathComponent(filename)
+        try Data(contents.utf8).write(to: url)
+        return try #require(NSItemProvider(contentsOf: url))
+    }
+
+    /// #4833: a dropped `.md`, `.csv` or `.json` file is attached, as Choose
+    /// File attaches it; it does not go in as text.
+    @Test func dropped_text_document_files_attach_like_choose_file() async throws {
+        let f = try await fixture()
+        let composer = NoteAttachmentComposer(noteId: f.source, filler: DropUploader())
+        let files = try [
+            Self.documentProvider("plan.md", "# Plan"),
+            Self.documentProvider("sheet.csv", "a,b\n1,2"),
+            Self.documentProvider("data.json", "{\"a\":1}"),
+        ]
+        for file in files {
+            #expect(EditorDrop.of([file]) == .files, "\(file.registeredContentTypes) is a file")
+        }
+
+        await composer.attachDropped(files, in: f.session, after: "p1")
+
+        let blocks = try await blocks(f)
+        #expect(blocks.map(\.kind) == ["paragraph", "file", "file", "file"])
+        #expect(BlockText.shown(blocks[0].inline) == "see ", "no file's text goes into the block")
+        let mimeTypes = blocks.dropFirst().map { $0.props.first { $0.name == "mimeType" }?.value }
+        let chooseFile = ["plan.md", "sheet.csv", "data.json"].map {
+            NoteAttachmentComposer.mimeType(for: URL(fileURLWithPath: $0))
+        }
+        #expect(mimeTypes == chooseFile, "typed as Choose File types them")
+    }
+
+    /// Text dragged out of another app, not a file, stays the text view's
+    /// own drop, in whichever text form the app offers it.
+    @Test func dropped_plain_text_stays_text() {
+        for type in [UTType.utf8PlainText, .plainText, .rtf, .html] {
+            let text = NSItemProvider()
+            text.registerDataRepresentation(for: type, visibility: .all) { $0(Data("hi".utf8), nil); return nil }
+            #expect(EditorDrop.of([text]) == nil, "\(type.identifier) stays text")
+        }
+    }
 }

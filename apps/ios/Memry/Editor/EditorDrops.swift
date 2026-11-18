@@ -4,7 +4,8 @@
 //  becomes a wiki link at the caret under the drop, through the `[[` menu's
 //  insert. Files, pictures and PDFs from another app go through the
 //  attachment pickers' upload, each into a block after the block under the
-//  drop. Text and links keep the text view's own drop.
+//  drop, text documents too (#4833). Text and links keep the text view's
+//  own drop.
 //
 
 import MemryCore
@@ -29,20 +30,31 @@ enum EditorDrop: Equatable {
         return providers.contains { fileType(of: $0) != nil } ? .files : nil
     }
 
+    /// The forms text dragged out of an app comes in. A text type with a name
+    /// of its own (`.md`, `.csv`, `.json`) is a document file instead (#4833).
+    static let textForms: [UTType] = [
+        .text, .plainText, .utf8PlainText, .utf16PlainText, .utf16ExternalPlainText, .rtf, .rtfd, .flatRTFD, .html,
+    ]
+
     /// The type a provider's file is read as: a picture, movie, recording or
     /// PDF first (an image dragged from Safari also carries its address),
-    /// else any other file, as Choose File takes any. Nothing for text, a
-    /// link or a Memry drag, which are not files to attach.
+    /// else any other file, text documents included, as Choose File takes
+    /// any. Nothing for text, a link or a Memry drag, which are not files to
+    /// attach.
     static func fileType(of provider: NSItemProvider) -> UTType? {
         let types = provider.registeredContentTypes
         if let media = types.first(where: { type in mediaTypes.contains { type.conforms(to: $0) } }) {
             return media
         }
-        // A file from Files may carry its file URL too; a web address is a link.
-        let notFile: [UTType] = [.text, .memryNote, .memryTasks]
-        guard !types.contains(where: { type in
-            notFile.contains { type.conforms(to: $0) } || type.conforms(to: .url) && !type.conforms(to: .fileURL)
-        }) else { return nil }
+        // A file from Files carries its file URL, and a bare URL beside it;
+        // a URL with no file URL is a web address, a link.
+        let notFile: [UTType] = [.memryNote, .memryTasks]
+        let isLink = types.contains { $0.conforms(to: .url) } && !types.contains { $0.conforms(to: .fileURL) }
+        guard !isLink, !types.contains(where: { type in notFile.contains { type.conforms(to: $0) } }) else { return nil }
+        if let document = types.first(where: { $0.conforms(to: .text) && !textForms.contains($0) }) {
+            return document
+        }
+        guard !types.contains(where: { $0.conforms(to: .text) }) else { return nil }
         return types.first { $0.conforms(to: .data) && !$0.conforms(to: .url) }
     }
 }
