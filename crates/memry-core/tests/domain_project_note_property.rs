@@ -6,7 +6,9 @@ use memry_core::domain::projects::{self, LinkItemType, NewProject};
 use memry_core::domain::properties;
 use memry_core::storage::repositories::sync_items::{self, InboundRecord};
 use memry_core::storage::{Db, open_data};
-use rusqlite::{Connection, params};
+use std::process::Command;
+
+use rusqlite::{Connection, params, types::Value as Sql};
 use serde_json::{Map, Value, json};
 
 const NOW: i64 = 1_760_000_000_000;
@@ -252,6 +254,94 @@ fn a_damaged_project_never_fails_the_notes_property_write() {
         .expect("the scenario");
     }
     assert!(failures.is_empty(), "{failures:#?}");
+}
+
+/// Every column of every row `sql` returns for `id`.
+fn rows(conn: &Connection, sql: &str, id: &str) -> Vec<Vec<Sql>> {
+    let mut statement = conn.prepare(sql).expect("the query");
+    let width = statement.column_count();
+    statement
+        .query_map([id], |row| {
+            (0..width).map(|i| row.get::<_, Sql>(i)).collect()
+        })
+        .expect("the rows")
+        .collect::<Result<_, _>>()
+        .expect("the values")
+}
+
+/// `pa`'s payload, projection and queued change.
+fn project_state(conn: &Connection) -> [Vec<Vec<Sql>>; 3] {
+    [
+        "SELECT * FROM sync_items WHERE item_type = 'project' AND item_id = ?1",
+        "SELECT * FROM projects WHERE id = ?1",
+        "SELECT * FROM outbox WHERE item_id = ?1",
+    ]
+    .map(|sql| rows(conn, sql, "pa"))
+}
+
+/// A project that fails after its payload was rewritten (here its projection
+/// upsert) is rolled back whole: its payload, clock, projection and outbox
+/// stay as they were, the other project still links, and the note's write
+/// commits. Runs as [`child_a_project_failing_after_its_write`] in a child
+/// process, whose stderr carries the log line.
+#[test]
+fn a_project_failing_after_its_write_is_rolled_back_logged_and_skipped() {
+    let test = module_path!()
+        .split_once("::")
+        .map_or(module_path!(), |(_, path)| path);
+    let output = Command::new(std::env::current_exe().expect("this test binary"))
+        .args([
+            "--exact",
+            &format!("{test}::child_a_project_failing_after_its_write"),
+            "--ignored",
+            "--nocapture",
+            "--test-threads",
+            "1",
+        ])
+        .output()
+        .expect("run the child");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        output.status.success() && stdout.contains("1 passed"),
+        "{stdout}\n{stderr}"
+    );
+    assert!(
+        stderr.contains(
+            "project links of pa not synced from note n1's project property: \
+             storage failure: late"
+        ),
+        "{stderr}"
+    );
+}
+
+#[test]
+#[ignore = "run by a_project_failing_after_its_write_is_rolled_back_logged_and_skipped"]
+fn child_a_project_failing_after_its_write() {
+    let db = open("late-failure");
+    db.call_blocking(|conn| {
+        create_project(conn, "pa", "Alpha", NOW);
+        create_project(conn, "pb", "Beta", NOW);
+        seed_note(conn, "n1", "markdown");
+        drain(conn);
+        // Test only: fails `pa`'s projection upsert, which runs after the
+        // edit rewrote its `sync_items` payload and clock.
+        conn.execute_batch(
+            "CREATE TEMP TRIGGER fail_pa BEFORE UPDATE ON projects WHEN old.id = 'pa'
+             BEGIN SELECT RAISE(ABORT, 'late'); END",
+        )
+        .expect("the failing trigger");
+        let before = project_state(conn);
+
+        set_projects(conn, "n1", json!(["Alpha", "Beta"]), NOW + 1);
+
+        assert_eq!(project_state(conn), before);
+        assert_eq!(linked(conn, "pb"), [note_link("note", false, 0)]);
+        let values = properties::values(conn, "note", "n1")?;
+        assert_eq!(values.get("project"), Some(&json!(["Alpha", "Beta"])));
+        Ok(())
+    })
+    .expect("the scenario");
 }
 
 /// Desktop matches SQLite's `lower(name)`, which folds ASCII only, against the
