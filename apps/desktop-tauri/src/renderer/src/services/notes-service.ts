@@ -133,6 +133,11 @@ function toListItem(view: NoteListItemView): NoteListItem {
  */
 export type NoteVersion = SnapshotListItem & { outsideWrite: boolean }
 
+/** The notes service, whose versions carry their outside-write mark. */
+type NotesServiceWithVersions = Omit<NotesServiceApi, 'getVersions'> & {
+  getVersions: (noteId: string) => Promise<NoteVersion[]>
+}
+
 /** Rust sends the stored reason, which only Memry writes. */
 function toVersion(view: VersionView): NoteVersion {
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
@@ -701,21 +706,14 @@ export type AppendBlocksSaveResponse = AppendBlocksResponse & { errorCode?: 'tar
 // Similar notes, tag suggestions and grouping go through `similarity-service.ts`.
 type NotesServiceApi = Omit<
   NotesClientAPI,
-  | PortedLargeFileMethod
-  | 'update'
-  | 'appendBlocks'
-  | 'getVersions'
-  | 'getSimilar'
-  | 'getTagSuggestions'
-  | 'cluster'
+  PortedLargeFileMethod | 'update' | 'appendBlocks' | 'getSimilar' | 'getTagSuggestions' | 'cluster'
 > & {
   update: (input: NoteSaveInput) => Promise<NoteSaveResponse>
   appendBlocks: (input: AppendBlocksInput) => Promise<AppendBlocksSaveResponse>
-  getVersions: (noteId: string) => Promise<NoteVersion[]>
 }
 
-export const notesService: NotesServiceApi = createWindowApiForwarder<
-  NotesServiceApi,
+export const notesService: NotesServiceWithVersions = createWindowApiForwarder<
+  NotesServiceWithVersions,
   PortedNoteMethod
 >(() => window.api.notes, ported)
 
