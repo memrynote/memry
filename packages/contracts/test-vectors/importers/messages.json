@@ -1,0 +1,148 @@
+{
+  "codes": {
+    "readFileFailed": "readFileFailed",
+    "appleNotesLockedNote": "appleNotes.lockedNote",
+    "appleNotesLockedWrongPassword": "appleNotes.lockedWrongPassword",
+    "appleNotesLockedUnreadable": "appleNotes.lockedUnreadable",
+    "appleNotesLockedAttachment": "appleNotes.lockedAttachment",
+    "csvNoHeaders": "csv.noHeaders",
+    "csvEmptyTitle": "csv.emptyTitle",
+    "csvColumns": "csv.columns",
+    "csvTitleColumn": "csv.titleColumn",
+    "raindropCsvEmpty": "raindrop.csvEmpty",
+    "raindropHeaderNotFound": "raindrop.headerNotFound",
+    "raindropRowNoUrl": "raindrop.rowNoUrl",
+    "ticktickHeaderNotFound": "ticktick.headerNotFound",
+    "ticktickFoldersDropped": "ticktick.foldersDropped",
+    "ticktickSubtaskParentMissing": "ticktick.subtaskParentMissing",
+    "ticktickUnknownPriority": "ticktick.unknownPriority",
+    "ticktickUnsupportedRepeat": "ticktick.unsupportedRepeat",
+    "ticktickReminderNoAnchor": "ticktick.reminderNoAnchor",
+    "todoistHeaderNotFound": "todoist.headerNotFound",
+    "todoistSectionFlattened": "todoist.sectionFlattened",
+    "todoistOrphanComment": "todoist.orphanComment",
+    "todoistEmptyTitle": "todoist.emptyTitle",
+    "todoistUnknownPriority": "todoist.unknownPriority",
+    "todoistUnparsedDate": "todoist.unparsedDate",
+    "todoistSubtaskNoParent": "todoist.subtaskNoParent",
+    "readwiseTokenMissing": "readwise.tokenMissing",
+    "readwiseTokenInvalid": "readwise.tokenInvalid",
+    "readwiseUnreachable": "readwise.unreachable",
+    "readwiseCategoryOff": "readwise.categoryOff",
+    "readwiseUnchanged": "readwise.unchanged",
+    "readwiseSourceDeleted": "readwise.sourceDeleted",
+    "readwiseNoteDeleted": "readwise.noteDeleted",
+    "readwiseBusy": "readwise.busy"
+  },
+  "statusCodes": {
+    "scanningFiles": "status.scanningFiles",
+    "scanningExport": "status.scanningExport",
+    "importingItem": "status.importingItem",
+    "appleNotesCopyingDatabase": "status.appleNotes.copyingDatabase",
+    "bearScanning": "status.bear.scanning",
+    "csvImporting": "status.csv.importing",
+    "evernoteScanning": "status.evernote.scanning",
+    "htmlScanning": "status.html.scanning",
+    "notePlanScanning": "status.noteplan.scanning",
+    "onenoteLoadingNotebooks": "status.onenote.loadingNotebooks",
+    "onenoteRateLimited": "status.onenote.rateLimited",
+    "onenoteDownloadingAttachment": "status.onenote.downloadingAttachment",
+    "raindropImporting": "status.raindrop.importing",
+    "roamReading": "status.roam.reading",
+    "ticktickImporting": "status.ticktick.importing",
+    "todoistImporting": "status.todoist.importing",
+    "readwiseFetching": "status.readwise.fetching"
+  },
+  "status": [
+    [
+      "scanningFiles",
+      "status.scanningFiles",
+      "Scanning files…"
+    ],
+    [
+      "scanningExport",
+      "status.scanningExport",
+      "Scanning export…"
+    ],
+    [
+      "appleNotesCopyingDatabase",
+      "status.appleNotes.copyingDatabase",
+      "Copying Apple Notes database…"
+    ],
+    [
+      "bearScanning",
+      "status.bear.scanning",
+      "Scanning Bear export…"
+    ],
+    [
+      "csvImporting",
+      "status.csv.importing",
+      "Importing CSV notes…"
+    ],
+    [
+      "evernoteScanning",
+      "status.evernote.scanning",
+      "Scanning .enex files…"
+    ],
+    [
+      "htmlScanning",
+      "status.html.scanning",
+      "Scanning HTML files…"
+    ],
+    [
+      "notePlanScanning",
+      "status.noteplan.scanning",
+      "Scanning NotePlan folder…"
+    ],
+    [
+      "onenoteLoadingNotebooks",
+      "status.onenote.loadingNotebooks",
+      "Loading OneNote notebooks…"
+    ],
+    [
+      "onenoteRateLimited",
+      "status.onenote.rateLimited",
+      "OneNote is rate-limiting; waiting before retrying…"
+    ],
+    [
+      "raindropImporting",
+      "status.raindrop.importing",
+      "Importing Raindrop bookmarks…"
+    ],
+    [
+      "roamReading",
+      "status.roam.reading",
+      "Reading Roam export…"
+    ],
+    [
+      "ticktickImporting",
+      "status.ticktick.importing",
+      "Importing TickTick tasks…"
+    ],
+    [
+      "todoistImporting",
+      "status.todoist.importing",
+      "Importing Todoist tasks…"
+    ],
+    [
+      "readwiseFetching",
+      "status.readwise.fetching",
+      "Reading your Readwise library…"
+    ]
+  ],
+  "importingItem": {
+    "code": "status.importingItem",
+    "message": "Importing T",
+    "params": {
+      "title": "T"
+    }
+  },
+  "onenoteDownloadingAttachment": {
+    "code": "status.onenote.downloadingAttachment",
+    "message": "Downloading attachment N",
+    "params": {
+      "name": "N"
+    }
+  },
+  "maxSkippedReasonGroups": 8
+}

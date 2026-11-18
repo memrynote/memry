@@ -1,0 +1,10 @@
+{
+  "excludePatterns": [
+    ".git",
+    "node_modules",
+    ".trash"
+  ],
+  "defaultNoteFolder": "notes",
+  "journalFolder": "journal",
+  "attachmentsFolder": "attachments"
+}
