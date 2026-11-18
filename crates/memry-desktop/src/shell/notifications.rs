@@ -67,6 +67,14 @@ impl LiveNotifications {
             .map(|(_, _, route)| route.clone())
     }
 
+    /// The key notification `id` was shown under, `None` when it is no longer remembered.
+    pub fn key_of(&self, id: i32) -> Option<String> {
+        self.live
+            .iter()
+            .find(|(existing, _, _)| *existing == id)
+            .map(|(_, key, _)| key.clone())
+    }
+
     pub fn len(&self) -> usize {
         self.live.len()
     }
@@ -132,6 +140,8 @@ mod tests {
         );
         assert_eq!(live.route_of(b), Some(Route::Focus));
         assert_eq!(live.route_of(999), None);
+        assert_eq!(live.key_of(a).as_deref(), Some("reminder:1"));
+        assert_eq!(live.key_of(999), None);
     }
 
     #[test]

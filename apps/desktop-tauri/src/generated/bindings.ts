@@ -891,6 +891,8 @@ export const events = {
 	ocrLanguagesChangedEvent: makeEvent<OcrLanguagesChangedEvent, OcrLanguagesChangedEvent>("ocr-languages-changed-event"),
 	portalsUsageChangedEvent: makeEvent<PortalsUsageChangedEvent, PortalsUsageChangedEvent>("portals-usage-changed-event"),
 	propertyDefinitionChangedEvent: makeEvent<PropertyDefinitionChangedEvent, PropertyDefinitionChangedEvent>("property-definition-changed-event"),
+	reminderClickedEvent: makeEvent<ReminderClickedEvent, ReminderClickedEvent>("reminder-clicked-event"),
+	reminderDueEvent: makeEvent<ReminderDueEvent, ReminderDueEvent>("reminder-due-event"),
 	settingsChangedEvent: makeEvent<SettingsChangedEvent, SettingsChangedEvent>("settings-changed-event"),
 	settingsOpenSectionEvent: makeEvent<SettingsOpenSectionEvent, SettingsOpenSectionEvent>("settings-open-section-event"),
 	syncCertificatePinFailedEvent: makeEvent<SyncCertificatePinFailedEvent, SyncCertificatePinFailedEvent>("sync-certificate-pin-failed-event"),
@@ -3053,6 +3055,23 @@ export type RelationView = {
 	target: string | null,
 	many: boolean,
 	inverse: string | null,
+};
+
+/**  The user clicked a reminder notification. */
+export type ReminderClickedEvent = {
+	reminder: ReminderHint,
+};
+
+/**  One scheduler tick fired these reminders. */
+export type ReminderDueEvent = {
+	reminders: ReminderHint[],
+};
+
+/**  The reminder an event is about. */
+export type ReminderHint = {
+	id: string,
+	targetType: string,
+	targetId: string,
 };
 
 /**  Why a link produced no attachment: `DownloadAttachmentFromUrlFailure`. */

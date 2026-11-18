@@ -16,12 +16,14 @@ use crate::commands::vault_locks::VaultLockStateView;
 
 mod account;
 mod ai;
+mod reminders;
 mod sync;
 mod tags;
 mod voice;
 
 pub use account::*;
 pub use ai::*;
+pub use reminders::*;
 pub use sync::*;
 pub use tags::*;
 pub use voice::*;

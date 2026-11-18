@@ -11,7 +11,7 @@ use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
 use memry_core::api::errors::StorageError;
-use memry_core::domain::reminders::{DueReminder, fire};
+use memry_core::domain::reminders::{self, DueReminder, Reminder, fire};
 use memry_core::seams::secure_store::SecureStore;
 use memry_core::storage::Db;
 use tokio::runtime::Handle;
@@ -74,6 +74,12 @@ pub fn tick(db: &Db, device_id: &str, now_ms: i64) -> Result<TickReport, Storage
             pending: fire::pending_count(conn)?,
         })
     })
+}
+
+/// One live reminder by id, read from the pool (a notification click names it).
+pub fn get(db: &Db, id: &str) -> Result<Option<Reminder>, StorageError> {
+    let id = id.to_owned();
+    db.read_blocking(move |conn| reminders::get(conn, &id))
 }
 
 /// A reminder notification's title and body (`showDesktopNotification`): the reminder's title,
