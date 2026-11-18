@@ -17,6 +17,7 @@ name = "memrynote-cli"
 path = "src/main.rs"
 
 [dependencies]
+memry-core = { path = "../memry-core", default-features = false, features = ["markdown", "vec"] }
 memry-desktop = { path = "../memry-desktop" }
 serde_json = { workspace = true }
 
@@ -27,5 +28,6 @@ windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Syste
 serde_json = { workspace = true }
 
 [dev-dependencies]
+rusqlite = { workspace = true }
 regex = "1"
 tempfile = "3"

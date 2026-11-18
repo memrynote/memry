@@ -1,1 +1,16 @@
-[]
+[
+  {
+    "case": "memry-config.json exists and is not a JSON object, or cannot be read",
+    "typescript": "The desktop store falls back to defaults (apps/desktop/src/main/store.ts:303-318): every command runs on an empty registry.",
+    "rust": "Every command that reads the registry exits 1 with `the config file <path> could not be read: <reason>` and leaves the file as it is (AppConfig::load_strict). The app owns the file and sets a bad one aside at its next launch.",
+    "approval": "#4278 (Step 35 follow-up 3, VERIFY-4885): safer than acting on an empty registry; recorded here.",
+    "test": "crates/memrynote-cli/tests/context.rs a_bad_registry_fails_the_command_and_stays_as_it_is"
+  },
+  {
+    "case": "the app or the vault still holds Electron data the import has not brought over",
+    "typescript": "The TypeScript CLI opened Electron's .memry/data.db and ran the command.",
+    "rust": "Every command but `vault list|current|use|remove` exits 1 with `MemryNote has not finished updating your data. Open MemryNote once, then run this command again.` and creates nothing.",
+    "approval": "#3552 Design, Opening a vault (the migration guard).",
+    "test": "crates/memrynote-cli/tests/context.rs an_unmigrated_vault_fails_every_vault_command_and_creates_nothing"
+  }
+]
