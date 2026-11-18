@@ -20,7 +20,7 @@ use zeroize::Zeroizing;
 use super::linking::is_vault_id;
 use super::{AccountError, AccountService};
 use crate::registry::{VaultRegistry, vault_icon};
-use crate::session::Session;
+use crate::session::{Session, SessionError, lock};
 
 /// `REFRESH_THROTTLE_MS`: a refresh that is not forced runs at most this often.
 pub const REFRESH_THROTTLE: std::time::Duration = std::time::Duration::from_secs(30);
@@ -295,9 +295,10 @@ impl AccountService {
 
     /// The folder half of `downloadRemoteVault` (`vault-directory.ts:266-318`): the registered
     /// copy of `vault_uuid` when there is one, else a new folder under `parent`, named after the
-    /// cached name ([`suggest_vault_folder`]), made into a vault bound to `vault_uuid` and
-    /// registered under it ([`Session::provision_dormant`]). The open vault stays open; the
-    /// caller switches to the folder. Blocking.
+    /// cached name as [`suggest_vault_folder`] names it, made into a vault bound to `vault_uuid`
+    /// and registered under it ([`Session::provision_new_dormant`]). Each name is tried by making
+    /// its folder, with no check before it, so a folder or link that holds the name is left alone
+    /// and the next name is tried. Holds `downloads` throughout. The open vault stays open; the caller switches to the folder. Blocking.
     pub fn prepare_vault_download(
         &self,
         session: &Session,
@@ -307,6 +308,7 @@ impl AccountService {
         if !is_vault_id(vault_uuid) {
             return Err(AccountError::InvalidVaultId);
         }
+        let _download = lock(&self.downloads);
         if let Some(local) = session
             .registry()
             .stored()
@@ -320,10 +322,17 @@ impl AccountService {
             .into_iter()
             .find(|v| v.vault_uuid == vault_uuid)
             .and_then(|v| v.name);
-        let folder = suggest_vault_folder(vault_uuid, name.as_deref(), parent);
-        session
-            .provision_dormant(&folder, vault_uuid)
-            .map_err(|e| AccountError::VaultDownload(e.to_string()))?;
+        let base = folder_base(vault_uuid, name.as_deref());
+        let mut names = folder_names(parent, &base);
+        let folder = loop {
+            // Endless: each refused name is an entry of `parent`, and those run out.
+            let folder = names.next().expect("folder names never run out");
+            match session.provision_new_dormant(&folder, vault_uuid) {
+                Ok(()) => break folder,
+                Err(SessionError::FolderExists(_)) => {}
+                Err(e) => return Err(AccountError::VaultDownload(e.to_string())),
+            }
+        };
         tracing::info!(
             scope = "VaultDirectory",
             "account vault provisioned for download"
@@ -369,28 +378,39 @@ impl AccountService {
     }
 }
 
+/// The longest slug, in bytes (a slug is ASCII): far below the 255-byte file name limit of APFS,
+/// NTFS and ext4, with room for a `-N` suffix.
+const MAX_SLUG_BYTES: usize = 64;
+
 /// `suggestVaultFolder`: `<parent>/<slug of the name>`, else `memry-vault-<first 8 of the id>`,
-/// with `-2`, `-3`, ... until the folder does not exist.
+/// with `-2`, `-3`, ... until nothing has the name, a link whose target is gone included.
 pub fn suggest_vault_folder(vault_uuid: &str, name: Option<&str>, parent: &Path) -> PathBuf {
+    folder_names(parent, &folder_base(vault_uuid, name))
+        .find(|candidate| candidate.symlink_metadata().is_err())
+        .expect("folder names never run out")
+}
+
+/// The slug of `name`, else `memry-vault-<first 8 of the id>`.
+fn folder_base(vault_uuid: &str, name: Option<&str>) -> String {
     let slug = name.map(slugify).unwrap_or_default();
-    let base = if slug.is_empty() {
+    if slug.is_empty() {
         format!(
             "memry-vault-{}",
             vault_uuid.chars().take(8).collect::<String>()
         )
     } else {
         slug
-    };
-    let mut candidate = parent.join(&base);
-    let mut suffix = 2;
-    while candidate.exists() {
-        candidate = parent.join(format!("{base}-{suffix}"));
-        suffix += 1;
     }
-    candidate
 }
 
-/// Lowercased, each run outside `[a-z0-9-_]` turned into `-`, and `-` trimmed from both ends.
+/// `<parent>/<base>`, then `<parent>/<base>-2`, `-3`, ... without end.
+fn folder_names<'a>(parent: &'a Path, base: &'a str) -> impl Iterator<Item = PathBuf> + 'a {
+    std::iter::once(parent.join(base))
+        .chain((2u64..).map(move |suffix| parent.join(format!("{base}-{suffix}"))))
+}
+
+/// Lowercased, each run outside `[a-z0-9-_]` turned into `-`, `-` trimmed from both ends, and cut
+/// to [`MAX_SLUG_BYTES`].
 fn slugify(name: &str) -> String {
     let mut out = String::new();
     let mut in_run = false;
@@ -403,7 +423,10 @@ fn slugify(name: &str) -> String {
             in_run = true;
         }
     }
-    out.trim_matches('-').to_owned()
+    let slug = out.trim_matches('-');
+    slug[..slug.len().min(MAX_SLUG_BYTES)]
+        .trim_end_matches('-')
+        .to_owned()
 }
 
 fn cached(master: &[u8], row: &VaultDirectoryRow) -> CachedVault {
