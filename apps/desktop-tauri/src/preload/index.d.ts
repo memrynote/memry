@@ -1036,14 +1036,6 @@ export interface SettingsChangedEvent {
   value: unknown
 }
 
-export interface VoiceModelProgressEvent {
-  current?: number
-  total?: number
-  progress?: number
-  phase: 'downloading' | 'loading' | 'ready' | 'error'
-  status?: string
-}
-
 // Reminder types
 export type ReminderTargetType = 'note' | 'journal' | 'highlight' | 'task' | 'note_date'
 export type ReminderStatus = 'pending' | 'triggered' | 'dismissed' | 'snoozed'

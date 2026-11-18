@@ -49,6 +49,8 @@ mod api_sync_pass;
 mod api_task_conformance;
 #[path = "api_task_location_options.rs"]
 mod api_task_location_options;
+#[path = "api_task_store.rs"]
+mod api_task_store;
 #[path = "api_task_tree.rs"]
 mod api_task_tree;
 #[path = "api_tasks.rs"]
@@ -65,6 +67,10 @@ mod attachment_cache;
 mod attachment_download;
 #[path = "attachment_manifest_vectors.rs"]
 mod attachment_manifest_vectors;
+#[path = "attachment_plan.rs"]
+mod attachment_plan;
+#[path = "attachment_stream.rs"]
+mod attachment_stream;
 #[path = "attachment_upload_wire.rs"]
 mod attachment_upload_wire;
 #[path = "auth_session.rs"]
@@ -167,6 +173,10 @@ mod domain_file_tags;
 mod domain_folders;
 #[path = "domain_inbox_attachments.rs"]
 mod domain_inbox_attachments;
+#[path = "domain_inbox_ingest.rs"]
+mod domain_inbox_ingest;
+#[path = "domain_inbox_jobs.rs"]
+mod domain_inbox_jobs;
 #[path = "domain_inbox_queries.rs"]
 mod domain_inbox_queries;
 #[path = "domain_inbox_sync.rs"]
@@ -239,6 +249,8 @@ mod domain_task_views;
 mod domain_tasks;
 #[path = "domain_tasks_lifecycle.rs"]
 mod domain_tasks_lifecycle;
+#[path = "domain_tasks_update.rs"]
+mod domain_tasks_update;
 #[path = "domain_tasks_write.rs"]
 mod domain_tasks_write;
 #[path = "domain_template_legacy.rs"]
@@ -418,6 +430,8 @@ mod recreate_clock_vectors;
 mod recurrence_vectors;
 #[path = "roundtrip_acceptance.rs"]
 mod roundtrip_acceptance;
+#[path = "scratch_dirs.rs"]
+mod scratch_dirs;
 #[path = "search_body_cache.rs"]
 mod search_body_cache;
 #[path = "session_refresh_errors.rs"]

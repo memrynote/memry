@@ -16,7 +16,8 @@ const mocks = vi.hoisted(() => ({
     vaultGetConfig: vi.fn(),
     vaultUpdateConfig: vi.fn(),
     vaultListAccount: vi.fn(),
-    vaultDeleteFromAccount: vi.fn()
+    vaultDeleteFromAccount: vi.fn(),
+    vaultDownloadRemote: vi.fn()
   },
   listeners: new Map<string, (event: { payload: unknown }) => void>(),
   unlisten: vi.fn()
@@ -164,6 +165,23 @@ describe('vault-service over the vault commands', () => {
     expect(await vaultService.listAccount()).toEqual(listed)
     expect(await vaultService.deleteFromAccount('uuid-a')).toBeUndefined()
     expect(mocks.commands.vaultDeleteFromAccount).toHaveBeenCalledWith('uuid-a')
+  })
+
+  it('downloads an account vault through its command, the default parent as null', async () => {
+    mocks.commands.vaultDownloadRemote.mockResolvedValue({
+      success: false,
+      vault: null,
+      error: 'Could not create the vault folder'
+    })
+    expect(await vaultService.downloadRemote('uuid-a')).toEqual({
+      success: false,
+      vault: null,
+      error: 'Could not create the vault folder'
+    })
+    expect(mocks.commands.vaultDownloadRemote).toHaveBeenCalledWith('uuid-a', null)
+
+    await vaultService.downloadRemote('uuid-a', '/picked')
+    expect(mocks.commands.vaultDownloadRemote).toHaveBeenLastCalledWith('uuid-a', '/picked')
   })
 
   it('reads and writes the vault config through its commands', async () => {
