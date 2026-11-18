@@ -147,7 +147,7 @@ function runsOf(flags: boolean[]): Array<[number, number]> {
   flags.forEach((flag, index) => {
     if (!flag) return
     const last = runs.at(-1)
-    if (last && last[1] === index) last[1] = index + 1
+    if (last?.[1] === index) last[1] = index + 1
     else runs.push([index, index + 1])
   })
   return runs
