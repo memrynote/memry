@@ -49,7 +49,7 @@ use zeroize::Zeroizing;
 
 pub use account::{KEYS, SERVICE, STORE_KEYS, account, device_account};
 pub use device_identity::{
-    DeviceIdentityStore, device_identity_missing, is_device_identity_missing,
+    AdoptError, Adoption, DeviceIdentityStore, device_identity_missing, is_device_identity_missing,
 };
 pub use generic::GenericSecrets;
 pub use keyring_backend::{Native, Store, StoreFactory};
@@ -150,6 +150,11 @@ impl KeyringStore {
         Ok(account(key, self.device_suffix.as_deref()))
     }
 
+    /// The `MEMRY_DEVICE` value the accounts are named with.
+    pub(crate) fn device_suffix(&self) -> Option<&str> {
+        self.device_suffix.as_deref()
+    }
+
     /// The account of this device's signing key under [`SERVICE`].
     pub(crate) fn identity_account(&self) -> String {
         account(
@@ -215,4 +220,4 @@ impl SecureStore for KeyringStore {
 }
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

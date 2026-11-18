@@ -200,6 +200,9 @@ pub struct AccountService {
     /// One vault directory refresh at a time, and when the last one read the account's list
     /// (`lastRefreshAt`, `sync/vault-directory.ts:54`).
     directory: tokio::sync::Mutex<Option<tokio::time::Instant>>,
+    /// One vault download at a time, from the registry lookup to the registered folder: two
+    /// downloads of one vault would both miss the registry and make two folders bound to it.
+    downloads: Mutex<()>,
 }
 
 /// The core's sign-out marker (#4767), beside `memry-config.json`. Electron writes no such file,
@@ -243,6 +246,7 @@ impl AccountService {
             oauth: Mutex::new(None),
             oauth_start: tokio::sync::Mutex::new(()),
             directory: tokio::sync::Mutex::new(None),
+            downloads: Mutex::new(()),
         };
         service.restore();
         Ok(service)
