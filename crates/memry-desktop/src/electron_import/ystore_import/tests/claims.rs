@@ -22,8 +22,10 @@ fn var(mut n: usize, out: &mut Vec<u8>) {
 /// The review's repro (VERIFY-5034): client 7's clock 0 is first claimed by a string whose
 /// origin `(8, 0)` never arrives, so `yrs` never integrates it and gives the clock to the root
 /// array of the second update, under which 20,000 arrays nest; the third deletes that array.
-/// Red without the duplicate-claim refusal and the sized stack: the tracker follows the first
-/// claimant, passes the document, and `yrs`'s recursive delete aborts the binary.
+/// Refused as too deep: `Tree::insert` lets the later chain replace the earlier claimant, so the
+/// tracker follows it. Red on the tracker before VERIFY-5034 (it followed the first claimant,
+/// passed the document, and `yrs`'s recursive delete aborted the binary);
+/// `a_clock_two_different_items_claim_is_refused` guards the duplicate-claim rule.
 #[test]
 fn a_never_integrated_first_claimant_does_not_hide_a_deep_chain() {
     let blocker = vec![1, 1, 7, 0, 0x84, 8, 0, 1, b'x', 0];

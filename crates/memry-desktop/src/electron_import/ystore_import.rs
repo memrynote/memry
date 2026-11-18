@@ -8,9 +8,11 @@
 //! one [`fold_vault_store`] picks to inherit it: Electron's next launch of a vault without a
 //! store moves it there (`inheritLegacyCrdtStore`, :117-155). Electron gives an unclaimed store
 //! to the next vault the user opens, which the import cannot know, so it picks `currentVault`
-//! when that vault has no store of its own, else the first vault in config order without one
-//! (a departure from Electron); every other vault gets [`LegacyStore::LeftUnread`], so no
-//! legacy document lands in two vaults. Taking an unclaimed store owes a partition when the
+//! (by path) when that vault has no store of its own, else the first vault in config order
+//! without one (a departure from Electron); every other vault gets [`LegacyStore::LeftUnread`],
+//! so no legacy document lands in two vaults. A vault's store is named by its config
+//! `vaultUuid`, else its `data.db` `vault_metadata.vault_uuid`; a vault with neither (last
+//! opened before #510 and before 05-10) never had one. Taking an unclaimed store owes a partition when the
 //! profile lists more than one vault (:140-142, `legacyStoreCouldBeAnotherVaults`). When the
 //! vault has its own store, Electron leaves the legacy directory in place unread (:131-139),
 //! and so does the import.
@@ -29,6 +31,7 @@
 mod update_depth;
 
 use std::panic::{AssertUnwindSafe, catch_unwind};
+use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -39,6 +42,7 @@ use super::ImportError;
 use super::config::ElectronConfig;
 use super::profile::ElectronProfile;
 use super::scratch::{Scratch, TornFile};
+use super::vault_evidence::read_vault_evidence;
 use super::ystore::Lib0Any;
 use super::ystore::YStoreReader;
 
@@ -127,10 +131,13 @@ pub struct YStoreFold {
     pub owed_compactions: Vec<String>,
 }
 
-/// Folds `vault_uuid`'s store. A vault with no store folds to no documents. Called once per
-/// vault of one profile, an unclaimed legacy store is `Read` by at most one of them.
+/// Folds the store of the vault whose config entry records `vault_path`, named `vault_uuid`:
+/// its config `vaultUuid`, else its `data.db` `vault_metadata.vault_uuid`, else the uuid the
+/// import mints for it. A vault with no store folds to no documents. Called once per vault of
+/// one profile, an unclaimed legacy store is `Read` by at most one of them.
 pub fn fold_vault_store(
     profile: &ElectronProfile,
+    vault_path: &str,
     vault_uuid: &str,
     config: Option<&ElectronConfig>,
     scratch: &Scratch,
@@ -143,7 +150,9 @@ pub fn fold_vault_store(
         (own, false, _) => (own, LegacyStore::Absent),
         (own, true, Some(claim)) if claim != vault_uuid => (own, LegacyStore::ClaimedByOther),
         (Some(own), true, _) => (Some(own), LegacyStore::LeftUnread),
-        (None, true, None) if !inherits_unclaimed_legacy(profile, vault_uuid, config) => {
+        (None, true, None)
+            if !inherits_unclaimed_legacy(profile, vault_path, vault_uuid, config, scratch) =>
+        {
             (None, LegacyStore::LeftUnread)
         }
         (None, true, _) => (
@@ -182,13 +191,15 @@ pub fn fold_vault_store(
 }
 
 /// Whether this vault, which has no store, is the one vault the unclaimed legacy store goes to:
-/// `currentVault` when it has no store, else the first vault in config order without one. A
-/// config entry without a `vaultUuid` cannot be named, so it is passed over; a profile of one
-/// vault (or no config) gives the store to the vault being imported.
+/// `currentVault` when it has no store, else the first vault in config order without one,
+/// compared by path. A vault whose folder is gone is passed over: Electron cannot open it. A
+/// profile of one vault (or no config) gives the store to the vault being imported.
 fn inherits_unclaimed_legacy(
     profile: &ElectronProfile,
+    vault_path: &str,
     vault_uuid: &str,
     config: Option<&ElectronConfig>,
+    scratch: &Scratch,
 ) -> bool {
     let Some(config) = config else {
         return true;
@@ -197,18 +208,42 @@ fn inherits_unclaimed_legacy(
     if vaults.len() + unreadable <= 1 {
         return true;
     }
-    let has_store = |uuid: &str| {
-        std::fs::symlink_metadata(YStoreReader::store_dir(profile, uuid, Some(config)))
-            .is_ok_and(|m| m.is_dir())
+    let is_dir = |path: &Path| std::fs::symlink_metadata(path).is_ok_and(|m| m.is_dir());
+    let has_store = |path: &str| {
+        let uuid = if path == vault_path {
+            Some(vault_uuid.to_owned())
+        } else {
+            vaults
+                .iter()
+                .find(|v| v.path == path)
+                .and_then(|v| v.vault_uuid.clone())
+                .or_else(|| data_db_vault_uuid(Path::new(path), scratch))
+        };
+        uuid.is_some_and(|uuid| is_dir(&YStoreReader::store_dir(profile, &uuid, Some(config))))
     };
-    let current = config.current_vault();
-    vaults
-        .iter()
-        .filter(|v| Some(v.path.as_str()) == current)
-        .chain(&vaults)
-        .filter_map(|v| v.vault_uuid.as_deref())
-        .find(|uuid| !has_store(uuid))
-        == Some(vault_uuid)
+    config
+        .current_vault()
+        .into_iter()
+        .chain(vaults.iter().map(|v| v.path.as_str()))
+        .filter(|path| *path == vault_path || is_dir(Path::new(path)))
+        .find(|path| !has_store(path))
+        == Some(vault_path)
+}
+
+/// `vault_metadata.vault_uuid` of the vault's `data.db`. A database that cannot be read counts
+/// as no uuid, and is logged.
+fn data_db_vault_uuid(vault: &Path, scratch: &Scratch) -> Option<String> {
+    match read_vault_evidence(vault, scratch.root()) {
+        Ok(evidence) => evidence?.vault_id,
+        Err(error) => {
+            tracing::warn!(
+                scope = "electron_import",
+                error = %error,
+                "unreadable vault data.db; its legacy store claim is judged without its uuid"
+            );
+            None
+        }
+    }
 }
 
 /// Folds every document of `store`. `partition_owed`: journal days are set aside.

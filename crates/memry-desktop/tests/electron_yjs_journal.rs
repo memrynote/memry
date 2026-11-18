@@ -5,6 +5,7 @@
 
 use std::collections::BTreeSet;
 use std::fs;
+use std::path::{Path, PathBuf};
 
 use memry_desktop::electron_import::journal_replay::{BulkApplyJournal, EntrySkip, replay};
 use memry_desktop::electron_import::profile::{locate_profile, vault_dir_name};
@@ -25,14 +26,16 @@ fn located(f: &ElectronProfileFixture) -> ElectronProfile {
 }
 
 fn fold(f: &ElectronProfileFixture) -> YStoreFold {
-    fold_as(f, &f.expected.vault_uuid)
+    fold_as(f, &f.vault, &f.expected.vault_uuid)
 }
 
-fn fold_as(f: &ElectronProfileFixture, vault_uuid: &str) -> YStoreFold {
+/// Folds the vault at `vault`, the path its config entry records, named `vault_uuid`.
+fn fold_as(f: &ElectronProfileFixture, vault: &Path, vault_uuid: &str) -> YStoreFold {
     let profile = located(f);
     let config = ElectronConfig::read(&profile).unwrap().unwrap();
     let scratch = Scratch::new(f.scratch_root()).unwrap();
-    fold_vault_store(&profile, vault_uuid, Some(&config), &scratch).unwrap()
+    let path = vault.to_string_lossy();
+    fold_vault_store(&profile, &path, vault_uuid, Some(&config), &scratch).unwrap()
 }
 
 /// The body of a folded document, as the editor reads it.
@@ -179,41 +182,91 @@ fn an_unclaimed_legacy_store_owes_a_partition_when_there_are_other_vaults() {
     );
 }
 
+/// The fixture vault without its own store plus a second vault `Other` (an empty folder, no
+/// store), and a legacy store nobody claimed. `stamp_ours`: the fixture's config entry keeps its
+/// `vaultUuid` (its `data.db` holds the uuid either way). Returns `Other`'s path.
+fn two_vaults_without_stores(
+    f: &ElectronProfileFixture,
+    other_uuid: Option<&str>,
+    stamp_ours: bool,
+) -> PathBuf {
+    let other = f.vault.parent().unwrap().join("Other");
+    fs::create_dir_all(&other).unwrap();
+    fs::remove_dir_all(
+        f.profile
+            .join("crdt-stores")
+            .join(vault_dir_name(&f.expected.vault_uuid)),
+    )
+    .unwrap();
+    edit_config(f, |c| {
+        c["crdtStore"]
+            .as_object_mut()
+            .unwrap()
+            .remove("legacyStoreClaimedBy");
+        if !stamp_ours {
+            c["vaults"][0].as_object_mut().unwrap().remove("vaultUuid");
+        }
+        let mut entry = serde_json::json!({ "path": other.to_string_lossy(), "name": "Other" });
+        if let Some(uuid) = other_uuid {
+            entry["vaultUuid"] = uuid.into();
+        }
+        c["vaults"].as_array_mut().unwrap().push(entry);
+    });
+    other
+}
+
+const OTHER: &str = "0b5b6f39-8d0e-4c51-9a57-3f1f2b7c9d10";
+/// The uuid the import mints for a vault that has none anywhere.
+const MINTED: &str = "5d0c7a52-61f4-4b0e-8a6c-0f3e9b2d7c41";
+
+fn set_current_vault(f: &ElectronProfileFixture, path: &Path) {
+    let path = path.to_string_lossy().into_owned();
+    edit_config(f, |c| c["currentVault"] = path.into());
+}
+
 /// Electron hands an unclaimed legacy store to the next vault the user opens, which the import
 /// cannot know: it picks `currentVault` when that vault has no store, else the first vault in
 /// config order without one, so no legacy document lands in two vaults.
 #[test]
 fn an_unclaimed_legacy_store_is_read_by_exactly_one_vault() {
-    const OTHER: &str = "0b5b6f39-8d0e-4c51-9a57-3f1f2b7c9d10";
     let f = ElectronProfileFixture::install();
     let ours = f.expected.vault_uuid.clone();
-    let stores = f.profile.join("crdt-stores");
-    fs::remove_dir_all(stores.join(vault_dir_name(&ours))).unwrap();
-    edit_config(&f, |c| {
-        c["crdtStore"]
-            .as_object_mut()
-            .unwrap()
-            .remove("legacyStoreClaimedBy");
-        c["vaults"].as_array_mut().unwrap().push(serde_json::json!({
-            "path": "/elsewhere/Other", "name": "Other", "vaultUuid": OTHER
-        }));
-    });
-    let readers = |f: &ElectronProfileFixture| -> Vec<String> {
-        [ours.as_str(), OTHER]
-            .into_iter()
-            .filter(|uuid| fold_as(f, uuid).legacy == LegacyStore::Read)
-            .map(str::to_owned)
-            .collect()
-    };
-    assert_eq!(readers(&f), std::slice::from_ref(&ours));
-    assert_eq!(fold_as(&f, OTHER).legacy, LegacyStore::LeftUnread);
+    let other = two_vaults_without_stores(&f, Some(OTHER), true);
+    assert_eq!(fold(&f).legacy, LegacyStore::Read);
+    assert_eq!(fold_as(&f, &other, OTHER).legacy, LegacyStore::LeftUnread);
 
-    edit_config(&f, |c| c["currentVault"] = "/elsewhere/Other".into());
-    assert_eq!(readers(&f), [OTHER]);
+    set_current_vault(&f, &other);
+    assert_eq!(fold(&f).legacy, LegacyStore::LeftUnread);
+    assert_eq!(fold_as(&f, &other, OTHER).legacy, LegacyStore::Read);
 
     // The current vault has a store of its own: the first vault in config order without one.
-    fs::create_dir_all(stores.join(vault_dir_name(OTHER))).unwrap();
+    fs::create_dir_all(f.profile.join("crdt-stores").join(vault_dir_name(OTHER))).unwrap();
+    assert_eq!(fold_as(&f, &f.vault, &ours).legacy, LegacyStore::Read);
+}
+
+/// A profile whose last Electron run predates config `vaultUuid` (#510): `currentVault` is
+/// picked by its path, and each vault is named by its `data.db` uuid or the one the import
+/// mints.
+#[test]
+fn without_any_config_uuid_the_current_vault_reads_the_legacy_store() {
+    let f = ElectronProfileFixture::install();
+    let other = two_vaults_without_stores(&f, None, false);
     assert_eq!(fold(&f).legacy, LegacyStore::Read);
+    assert_eq!(fold_as(&f, &other, MINTED).legacy, LegacyStore::LeftUnread);
+
+    set_current_vault(&f, &other);
+    assert_eq!(fold_as(&f, &other, MINTED).legacy, LegacyStore::Read);
+    assert_eq!(fold(&f).legacy, LegacyStore::LeftUnread);
+}
+
+/// `currentVault`'s stamp failed (`vault/index.ts:972-980` logs and goes on) while another
+/// vault has a uuid and no store: the current vault still reads it.
+#[test]
+fn a_current_vault_missing_its_stamp_still_reads_the_legacy_store() {
+    let f = ElectronProfileFixture::install();
+    let other = two_vaults_without_stores(&f, Some(OTHER), false);
+    assert_eq!(fold(&f).legacy, LegacyStore::Read);
+    assert_eq!(fold_as(&f, &other, OTHER).legacy, LegacyStore::LeftUnread);
 }
 
 #[test]
