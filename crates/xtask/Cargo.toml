@@ -16,12 +16,17 @@ serde_json = { workspace = true }
 chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
 # `measure-memory`: the app's process tree (pid, parent, name) on every OS.
 sysinfo = { version = "0.39.6", default-features = false, features = ["system"] }
+# `measure-memory`: one temp profile per run, removed when the run ends.
+tempfile = "3"
 
 [target.'cfg(unix)'.dependencies]
 # `measure-memory`: `proc_pid_rusage` (macOS footprint) and `dlsym` (the responsibility API).
 libc = "0.2"
 
+[target.'cfg(windows)'.dependencies]
+# `measure-memory`: the Ctrl-C handler (`SetConsoleCtrlHandler`); the version memry-desktop builds.
+windows = { version = "0.62.2", features = ["Win32_System_Console"] }
+
 [dev-dependencies]
 sha2 = { workspace = true }
 hex = { workspace = true }
-tempfile = "3"

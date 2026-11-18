@@ -110,8 +110,12 @@ its web view processes. Each run starts the app on a fresh profile in the temp f
 profile, log and keychain accounts stay untouched), waits for the `launch mark vault_open_ready`
 line in `main.log`, idles, then sums the processes the app owns: its process tree, plus on macOS
 the WebKit XPC services the system holds it responsible for. The metric is the one each OS
-charges: `ri_phys_footprint` on macOS, `PrivateUsage` on Windows, `Pss` on Linux. Electron builds
-are refused.
+charges: `ri_phys_footprint` on macOS, `PrivateUsage` on Windows, `Pss` on Linux. Each run has
+its own temp profile with telemetry off (`telemetry.json`), removed when the run ends, Ctrl-C
+included. Only a benchmark vault from `pnpm seed1k` is accepted, and Electron builds are refused.
+A run fails rather than undercount: when a process cannot be read or no web view process is
+found. On macOS 13 WKWebView has no per-instance store, so a run there shares web storage
+(localStorage) with an installed app of the same bundle id.
 
 ```bash
 pnpm seed1k --vault=/tmp/bench
@@ -120,7 +124,8 @@ pnpm bench:memory -- --app <MemryNote.app | memry-tauri | .exe> --vault /tmp/ben
 
 `pnpm bench:queries` (`crates/memry-desktop/benches/vault_queries.rs`) writes 15,000 notes,
 5,000 tasks and 2,000 inbox items through a session wired as the app wires it, then prints the
-p50 and p95 of the full-text search, the Tasks page's `all` view and the inbox list.
+p50 and p95 of the full-text search, the Tasks page's `all` view and the inbox list, over every
+timed call (criterion's warm-up included).
 
 ### Key Rules
 

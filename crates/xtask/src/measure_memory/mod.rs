@@ -5,6 +5,7 @@
 //! idles, then sums the processes the app owns ([`processes`]): app, web view, GPU and helper
 //! subtotals and the total, in MiB.
 
+pub mod interrupt;
 pub mod launch;
 pub mod processes;
 
@@ -105,36 +106,41 @@ impl Sample {
     }
 }
 
-/// The processes `root` owns in `procs`, each with its kind and charge. A process that exited
-/// between the snapshot and its read is left out with a warning.
+/// The processes `root` owns in `procs`, each with its kind and charge. An undercount fails the
+/// run rather than entering the median: a process that cannot be read, or no web view process
+/// at all (with `NoResponsibleApi`, the macOS XPC services were not found).
 pub fn measure(
     procs: &[Proc],
     root: u32,
     attribution: processes::Attribution,
     charged: impl Fn(&Proc) -> Option<u64>,
-) -> Sample {
-    let mut warnings: Vec<String> = attribution.error.iter().map(|e| e.to_string()).collect();
+) -> Result<Sample, String> {
     let mut measured = Vec::new();
     for pid in attribution.pids {
         let Some(proc) = procs.iter().find(|p| p.pid == pid) else {
             continue;
         };
-        match charged(proc) {
-            Some(bytes) => measured.push(Measured {
-                pid,
-                name: proc.name.clone(),
-                kind: processes::classify(root, proc),
-                bytes,
-            }),
-            None => warnings.push(format!("pid {pid} ({}) was not readable", proc.name)),
-        }
+        let bytes =
+            charged(proc).ok_or_else(|| format!("pid {pid} ({}) could not be read", proc.name))?;
+        measured.push(Measured {
+            pid,
+            name: proc.name.clone(),
+            kind: processes::classify(root, proc),
+            bytes,
+        });
     }
-    Sample {
+    if !measured.iter().any(|p| p.kind == Kind::WebView) {
+        return Err(match attribution.error {
+            Some(error) => error.to_string(),
+            None => "no web view process was attributed to the app".to_owned(),
+        });
+    }
+    Ok(Sample {
         processes: measured,
         method: attribution.method,
-        warnings,
+        warnings: Vec::new(),
         ready_ms: 0,
-    }
+    })
 }
 
 fn mib(bytes: u64) -> f64 {
@@ -210,17 +216,17 @@ fn run_once(
     device: &str,
     idle: Duration,
 ) -> Result<Sample, String> {
+    // Removed when this returns, after the quit, on success and failure alike.
     let profile = launch::fresh_profile(vault).map_err(|e| format!("profile: {e}"))?;
-    let mut app = launch::launch(executable, &profile, device)?;
+    let mut app = launch::launch(executable, profile.path(), device)?;
     let sampled = (|| -> Result<Sample, String> {
         let ready = app.wait_ready()?;
-        std::thread::sleep(idle);
-        app.ensure_alive()?;
+        app.idle(idle)?;
         let root = app.pid();
         let procs = processes::snapshot();
         let attribution =
             processes::with_responsibility(|source| processes::attribute(&procs, root, source));
-        let mut sample = measure(&procs, root, attribution, processes::charged_bytes);
+        let mut sample = measure(&procs, root, attribution, processes::charged_bytes)?;
         sample.ready_ms = ready.as_millis();
         Ok(sample)
     })();
@@ -240,12 +246,14 @@ pub fn run(args: &[String]) -> Result<(), String> {
         .or_else(crate::seed::default_bench_vault)
         .ok_or("no home folder: pass --vault")?;
     let vault = std::path::absolute(&vault).map_err(|e| format!("{}: {e}", vault.display()))?;
-    if !vault.join(".memry").is_dir() {
+    // The app writes the vault's `.memry/` databases: never a real vault.
+    if !crate::seed::is_bench_vault(&vault) {
         return Err(format!(
-            "{} is not a vault; seed one first (cargo xtask seed bench --vault <dir>)",
+            "{} is not a benchmark vault; seed one first (cargo xtask seed bench --vault <dir>)",
             vault.display()
         ));
     }
+    interrupt::install();
     println!(
         "measure-memory: {} on {}, {} run(s), {} s idle, metric {METRIC}",
         executable.display(),
@@ -300,6 +308,26 @@ mod tests {
     }
 
     #[test]
+    fn a_vault_that_is_not_a_bench_vault_is_refused() {
+        let dir = tempfile::tempdir().expect("dir");
+        std::fs::create_dir_all(dir.path().join(".memry")).expect(".memry");
+        std::fs::write(
+            dir.path().join(".memry/config.json"),
+            r#"{"title":"Kaan's notes"}"#,
+        )
+        .expect("config");
+        let vault = dir.path().to_string_lossy().into_owned();
+        let error = run(&strings(&[
+            "--app",
+            "/nonexistent/memry-tauri",
+            "--vault",
+            &vault,
+        ]))
+        .expect_err("refused");
+        assert!(error.contains("not a benchmark vault"), "{error}");
+    }
+
+    #[test]
     fn the_flags_take_both_spellings_and_the_app_is_required() {
         let args = parse_args(&strings(&[
             "--",
@@ -320,7 +348,7 @@ mod tests {
     }
 
     #[test]
-    fn subtotals_sum_by_kind_and_a_vanished_process_is_a_warning() {
+    fn subtotals_sum_by_kind_and_an_undercount_fails_the_run() {
         let proc = |pid, name: &str| Proc {
             pid,
             parent: Some(1),
@@ -334,15 +362,14 @@ mod tests {
             proc(21, "com.apple.WebKit.Networking"),
             proc(22, "com.apple.WebKit.GPU"),
         ];
-        let attribution = Attribution {
+        let all = |error| Attribution {
             pids: vec![10, 20, 21, 22],
-            method: "tree",
-            error: Some(AttributionError::NoResponsibleApi),
+            method: "tree+responsibility",
+            error,
         };
         let mib = 1024 * 1024;
-        let sample = measure(&procs, 10, attribution, |p| {
-            (p.pid != 22).then_some(u64::from(p.pid) * mib)
-        });
+        let charge = |p: &Proc| Some(u64::from(p.pid) * mib);
+        let sample = measure(&procs, 10, all(None), charge).expect("sample");
         assert_eq!(
             (
                 sample.subtotal(Kind::App),
@@ -351,9 +378,24 @@ mod tests {
                 sample.subtotal(Kind::Gpu),
                 sample.total(),
             ),
-            (10 * mib, 20 * mib, 21 * mib, 0, 51 * mib)
+            (10 * mib, 20 * mib, 21 * mib, 22 * mib, 73 * mib)
         );
-        assert_eq!(sample.warnings.len(), 2);
-        assert!(sample.warnings[0].starts_with("NoResponsibleApi"));
+
+        let unreadable = measure(&procs, 10, all(None), |p| (p.pid != 22).then_some(mib));
+        assert!(unreadable.is_err_and(|e| e.contains("pid 22")));
+
+        let tree_only = Attribution {
+            pids: vec![10],
+            method: "tree",
+            error: Some(AttributionError::NoResponsibleApi),
+        };
+        let error = measure(&procs, 10, tree_only, charge).expect_err("no web view");
+        assert!(error.starts_with("NoResponsibleApi"), "{error}");
+        let no_webview = Attribution {
+            pids: vec![10, 21],
+            method: "tree",
+            error: None,
+        };
+        assert!(measure(&procs, 10, no_webview, charge).is_err());
     }
 }

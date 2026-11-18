@@ -9706,6 +9706,7 @@ dependencies = [
  "sha2 0.11.0",
  "sysinfo",
  "tempfile",
+ "windows",
 ]
 
 [[package]]

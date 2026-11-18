@@ -1,17 +1,25 @@
 //! Starts the app on a throwaway profile, waits for its vault, and stops it.
 //!
-//! Isolation, as `scripts/launch-bench.mjs` does it: a `MEMRY_DEVICE` of its own keeps the run
-//! off the user's keychain accounts, log and single-instance lock
-//! (`memry_desktop::paths::profile_identifier`); `MEMRY_APP_DATA_DIR` and `MEMRY_TEST_LOG_DIR`
-//! put the profile and `main.log` in a fresh temp folder.
+//! Isolation: a `MEMRY_DEVICE` of its own keeps the run off the user's keychain accounts, log
+//! and single-instance lock (`memry_desktop::paths::profile_identifier`); `MEMRY_APP_DATA_DIR`
+//! and `MEMRY_TEST_LOG_DIR` put the profile and `main.log` in a temp folder of the run, which
+//! names the vault the way `apps/desktop-tauri/e2e/harness/seed-registry.mjs` does and turns
+//! telemetry off. macOS 13 has no per-instance WKWebView store (`AppPaths::webview_store_id`),
+//! so there the run shares web storage with an installed app of the same bundle id.
 
+use std::collections::BTreeMap;
+use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
 #[cfg(not(target_os = "macos"))]
 use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
 
+use memry_desktop::telemetry::config::FILE_NAME as TELEMETRY_FILE;
 use serde_json::json;
+use tempfile::TempDir;
+
+use super::interrupt;
 
 /// Any other device (`dev`, the `A`/`B`/`C` of `tauri:dev:a`) may hold a signed-in account.
 pub const DEVICE: &str = "memory-bench";
@@ -91,21 +99,19 @@ pub fn resolve_executable(app: &Path, tauri_appimage: bool) -> Result<PathBuf, S
     }
 }
 
-/// `<temp>/memry-measure-memory/profile`, emptied before each run.
-pub fn profile_dir() -> PathBuf {
-    std::env::temp_dir()
-        .join("memry-measure-memory")
-        .join("profile")
-}
+/// Replaces the file log level (`memry_desktop::logging::init`): a `RUST_LOG=warn` in the shell
+/// would hide [`READY_LINE`].
+const DROPPED_VARS: [&str; 1] = ["RUST_LOG"];
 
-/// An empty [`profile_dir`] whose `memry-config.json` names `vault` as the current vault
-/// (`apps/desktop-tauri/e2e/harness/seed-registry.mjs`).
-pub fn fresh_profile(vault: &Path) -> std::io::Result<PathBuf> {
-    let profile = profile_dir();
-    if profile.exists() {
-        fs::remove_dir_all(&profile)?;
-    }
-    fs::create_dir_all(profile.join("logs"))?;
+/// A new temp folder for one run, removed when dropped: `memry-config.json` names `vault` as the
+/// current vault, and `telemetry.json` turns telemetry off, so no run reports itself as a new
+/// install (the stored flag beats `MEMRY_TELEMETRY_ENABLED` and the production default,
+/// `RuntimeConfig::telemetry_enabled`).
+pub fn fresh_profile(vault: &Path) -> std::io::Result<TempDir> {
+    let profile = tempfile::Builder::new()
+        .prefix("memry-measure-memory-")
+        .tempdir()?;
+    fs::create_dir_all(profile.path().join("logs"))?;
     let name = vault
         .file_name()
         .map(|name| name.to_string_lossy().into_owned())
@@ -122,8 +128,33 @@ pub fn fresh_profile(vault: &Path) -> std::io::Result<PathBuf> {
             "isDefault": true,
         }],
     });
-    fs::write(profile.join("memry-config.json"), config.to_string())?;
+    fs::write(profile.path().join("memry-config.json"), config.to_string())?;
+    fs::write(
+        profile.path().join(TELEMETRY_FILE),
+        json!({ "enabled": false }).to_string(),
+    )?;
     Ok(profile)
+}
+
+/// The app's environment: this process's, without [`DROPPED_VARS`], with the profile's paths and
+/// the bench device.
+pub fn child_env(
+    parent: impl IntoIterator<Item = (OsString, OsString)>,
+    profile: &Path,
+    device: &str,
+) -> BTreeMap<OsString, OsString> {
+    let mut env: BTreeMap<OsString, OsString> = parent
+        .into_iter()
+        .filter(|(key, _)| !DROPPED_VARS.iter().any(|dropped| key == dropped))
+        .collect();
+    for (key, value) in [
+        ("MEMRY_DEVICE", OsString::from(device)),
+        ("MEMRY_APP_DATA_DIR", profile.as_os_str().to_owned()),
+        ("MEMRY_TEST_LOG_DIR", profile.join("logs").into_os_string()),
+    ] {
+        env.insert(OsString::from(key), value);
+    }
+    env
 }
 
 pub struct Running {
@@ -168,16 +199,12 @@ impl Started for Child {
 }
 
 pub fn launch(executable: &Path, profile: &Path, device: &str) -> Result<Running, String> {
-    let log_dir = profile.join("logs");
-    let env = [
-        ("MEMRY_DEVICE", device.as_ref()),
-        ("MEMRY_APP_DATA_DIR", profile.as_os_str()),
-        ("MEMRY_TEST_LOG_DIR", log_dir.as_os_str()),
-    ];
+    let env = child_env(std::env::vars_os(), profile, device);
     #[cfg(target_os = "macos")]
     let process = disclaimed::spawn(executable, &env);
     #[cfg(not(target_os = "macos"))]
     let process = Command::new(executable)
+        .env_clear()
         .envs(env)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
@@ -187,7 +214,7 @@ pub fn launch(executable: &Path, profile: &Path, device: &str) -> Result<Running
     let process = process.map_err(|error| format!("{}: {error}", executable.display()))?;
     Ok(Running {
         process,
-        log: log_dir.join("main.log"),
+        log: profile.join("logs").join("main.log"),
     })
 }
 
@@ -205,6 +232,7 @@ impl Running {
                 return Ok(started.elapsed());
             }
             self.ensure_alive()?;
+            interrupt::check()?;
             if started.elapsed() > READY_DEADLINE {
                 return Err(format!(
                     "no {READY_LINE:?} in {} within {} s",
@@ -214,6 +242,17 @@ impl Running {
             }
             std::thread::sleep(POLL);
         }
+    }
+
+    /// Lets the app idle for `idle`; fails when it exits or the user interrupts.
+    pub fn idle(&mut self, idle: Duration) -> Result<(), String> {
+        let started = Instant::now();
+        while started.elapsed() < idle {
+            self.ensure_alive()?;
+            interrupt::check()?;
+            std::thread::sleep(POLL);
+        }
+        self.ensure_alive()
     }
 
     pub fn ensure_alive(&mut self) -> Result<(), String> {
@@ -263,7 +302,7 @@ impl Running {
 #[cfg(target_os = "macos")]
 mod disclaimed {
     use std::collections::BTreeMap;
-    use std::ffi::{CString, OsStr, OsString, c_char, c_int};
+    use std::ffi::{CString, OsString, c_char, c_int};
     use std::os::unix::ffi::OsStrExt;
     use std::path::Path;
     use std::ptr::null_mut;
@@ -279,13 +318,9 @@ mod disclaimed {
         CString::new(bytes).map_err(|_| "a NUL byte in the path or environment".to_owned())
     }
 
-    pub fn spawn(executable: &Path, env: &[(&str, &OsStr)]) -> Result<Spawned, String> {
+    pub fn spawn(executable: &Path, env: &BTreeMap<OsString, OsString>) -> Result<Spawned, String> {
         let path = c_string(executable.as_os_str().as_bytes())?;
-        let mut vars: BTreeMap<OsString, OsString> = std::env::vars_os().collect();
-        for (key, value) in env {
-            vars.insert(OsString::from(key), value.to_os_string());
-        }
-        let env: Vec<CString> = vars
+        let env: Vec<CString> = env
             .iter()
             .map(|(key, value)| c_string(&[key.as_bytes(), b"=", value.as_bytes()].concat()))
             .collect::<Result<_, _>>()?;
@@ -300,14 +335,12 @@ mod disclaimed {
         let mut pid: libc::pid_t = 0;
         // SAFETY: the attributes and file actions are initialised before use and destroyed after;
         // `argv` and `envp` are NUL-terminated arrays of C strings that outlive the call.
-        let status = unsafe {
+        let (disclaim, status) = unsafe {
             let mut attr: libc::posix_spawnattr_t = null_mut();
             let mut actions: libc::posix_spawn_file_actions_t = null_mut();
             libc::posix_spawnattr_init(&mut attr);
             libc::posix_spawn_file_actions_init(&mut actions);
-            if let Some(set_disclaim) = set_disclaim {
-                set_disclaim(&mut attr, 1);
-            }
+            let disclaim = set_disclaim.map_or(0, |set_disclaim| set_disclaim(&mut attr, 1));
             for (fd, flags) in [
                 (0, libc::O_RDONLY),
                 (1, libc::O_WRONLY),
@@ -321,18 +354,28 @@ mod disclaimed {
                     0,
                 );
             }
-            let status = libc::posix_spawn(
-                &mut pid,
-                path.as_ptr(),
-                &actions,
-                &attr,
-                argv.as_ptr(),
-                envp.as_ptr(),
-            );
+            // Not started when the disclaim failed: its web view would be charged to the terminal.
+            let status = if disclaim == 0 {
+                libc::posix_spawn(
+                    &mut pid,
+                    path.as_ptr(),
+                    &actions,
+                    &attr,
+                    argv.as_ptr(),
+                    envp.as_ptr(),
+                )
+            } else {
+                0
+            };
             libc::posix_spawn_file_actions_destroy(&mut actions);
             libc::posix_spawnattr_destroy(&mut attr);
-            status
+            (disclaim, status)
         };
+        if disclaim != 0 {
+            return Err(format!(
+                "responsibility_spawnattrs_setdisclaim failed ({disclaim}): the web view processes would be charged to the terminal"
+            ));
+        }
         if status != 0 {
             return Err(std::io::Error::from_raw_os_error(status).to_string());
         }
@@ -375,6 +418,37 @@ mod disclaimed {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_profile_turns_telemetry_off() {
+        let profile = fresh_profile(Path::new("/tmp/bench")).expect("profile");
+        let dir = profile.path().to_owned();
+        let telemetry = fs::read_to_string(dir.join("telemetry.json")).expect("telemetry.json");
+        let telemetry: serde_json::Value = serde_json::from_str(&telemetry).expect("json");
+        assert_eq!(telemetry["enabled"], false);
+        drop(profile);
+        assert!(!dir.exists(), "the profile outlives its run");
+    }
+
+    #[test]
+    fn the_app_gets_the_profile_and_no_log_level_override() {
+        let parent = [
+            ("RUST_LOG", "warn"),
+            ("PATH", "/bin"),
+            ("MEMRY_DEVICE", "dev"),
+        ]
+        .map(|(key, value)| (OsString::from(key), OsString::from(value)));
+        let env = child_env(parent, Path::new("/p"), DEVICE);
+        let get = |key: &str| env.get(&OsString::from(key)).and_then(|v| v.to_str());
+        assert_eq!(get("RUST_LOG"), None);
+        assert_eq!(get("PATH"), Some("/bin"));
+        assert_eq!(get("MEMRY_DEVICE"), Some(DEVICE));
+        assert_eq!(get("MEMRY_APP_DATA_DIR"), Some("/p"));
+        assert_eq!(
+            env.get(&OsString::from("MEMRY_TEST_LOG_DIR")),
+            Some(&Path::new("/p").join("logs").into_os_string())
+        );
+    }
 
     #[test]
     fn only_a_memory_bench_device_runs() {

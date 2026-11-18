@@ -60,12 +60,13 @@ fn note_text(i: usize) -> String {
     text
 }
 
+/// Fields drop in order: the session and its handles close before the folder is removed.
 struct Vault {
-    _dir: tempfile::TempDir,
-    _session: Session,
     open: OpenVault,
     tasks: Arc<memry_core::api::tasks::Tasks>,
     inbox: Arc<memry_core::api::inbox::Inbox>,
+    _session: Session,
+    _dir: tempfile::TempDir,
 }
 
 fn wait(what: &str, started: Instant, mut done: impl FnMut() -> bool) {
@@ -106,7 +107,11 @@ fn build() -> Vault {
     wait("the open walk", started, || {
         loop {
             match facts.try_recv() {
-                Ok(Applied::Indexed { .. }) => return true,
+                Ok(Applied::Indexed { complete: true }) => return true,
+                // Hit its caps or did not finish clean: fewer notes than the header prints.
+                Ok(Applied::Indexed { complete: false }) => {
+                    panic!("the open walk did not complete")
+                }
                 Ok(_) | Err(TryRecvError::Lagged(_)) => {}
                 Err(_) => return false,
             }
@@ -172,11 +177,11 @@ fn build() -> Vault {
         started.elapsed().as_secs_f64()
     );
     Vault {
-        _dir: dir,
-        _session: session,
         open,
         tasks,
         inbox,
+        _session: session,
+        _dir: dir,
     }
 }
 
@@ -273,7 +278,9 @@ fn main() {
     }
     criterion.final_summary();
 
-    println!("\nvault_queries: {NOTES} notes, {TASKS} tasks, {INBOX} inbox items");
+    println!(
+        "\nvault_queries: {NOTES} notes, {TASKS} tasks, {INBOX} inbox items (p50 and p95 over every timed call, criterion's warm-up and cold-cache first calls included)"
+    );
     println!(
         "{:<20} {:>8} {:>10} {:>10}",
         "query", "calls", "p50 ms", "p95 ms"
