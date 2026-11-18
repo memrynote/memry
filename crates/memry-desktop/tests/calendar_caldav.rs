@@ -71,6 +71,9 @@ async fn code(accounts: &CaldavAccounts, server: &str) -> ConnectCode {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+/// iCloud's shape (a well-known redirect to a per-account partition host) on another
+/// multi-host provider domain: macOS pins `*.icloud.com` to Apple's certificates, so no local
+/// server can stand in for it there.
 async fn icloud_discovery_follows_the_partition_host_with_credentials_and_skips_task_lists() {
     let dav = Dav::new(
         "/123",
@@ -84,27 +87,27 @@ async fn icloud_discovery_follows_the_partition_host_with_credentials_and_skips_
     );
     let harness = serve(
         move |seen| match (seen.host.as_str(), seen.target.as_str()) {
-            ("caldav.icloud.com", "/.well-known/caldav") => {
-                Reply::redirect(301, "https://p67-caldav.icloud.com/123/")
+            ("caldav.fastmail.com", "/.well-known/caldav") => {
+                Reply::redirect(301, "https://p67-caldav.fastmail.com/123/")
             }
-            ("p67-caldav.icloud.com", _) => dav.answer(seen),
+            ("p67-caldav.fastmail.com", _) => dav.answer(seen),
             _ => Reply::status(404),
         },
     )
     .await;
     let found = accounts(&harness, TIMEOUT, Arc::default())
-        .discover(&form("caldav.icloud.com"))
+        .discover(&form("caldav.fastmail.com"))
         .await
         .unwrap();
-    assert_eq!(found.server_url, "https://caldav.icloud.com/");
+    assert_eq!(found.server_url, "https://caldav.fastmail.com/");
     let info = &found.info;
     assert_eq!(
         info.principal_url,
-        "https://p67-caldav.icloud.com/123/principal/"
+        "https://p67-caldav.fastmail.com/123/principal/"
     );
     assert_eq!(
         info.home_url,
-        "https://p67-caldav.icloud.com/123/calendars/"
+        "https://p67-caldav.fastmail.com/123/calendars/"
     );
     let calendars = info
         .calendars
@@ -114,7 +117,7 @@ async fn icloud_discovery_follows_the_partition_host_with_credentials_and_skips_
     assert_eq!(
         calendars,
         [(
-            "https://p67-caldav.icloud.com/123/calendars/work/",
+            "https://p67-caldav.fastmail.com/123/calendars/work/",
             "Work",
             Some("#ff2968")
         )],
@@ -123,7 +126,7 @@ async fn icloud_discovery_follows_the_partition_host_with_credentials_and_skips_
     let partition = harness
         .seen()
         .into_iter()
-        .filter(|s| s.host == "p67-caldav.icloud.com")
+        .filter(|s| s.host == "p67-caldav.fastmail.com")
         .collect::<Vec<_>>();
     let basic = basic_header(USER, PASS);
     assert_eq!(partition.len(), 3, "principal, home, listing");

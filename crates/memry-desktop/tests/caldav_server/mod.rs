@@ -1,5 +1,5 @@
-//! A local TLS server standing in for CalDAV servers (iCloud's discovery host and partition
-//! host, a self-hosted server, two hosts under one dynamic-DNS suffix, and a host off the
+//! A local TLS server standing in for CalDAV servers (an iCloud-shaped discovery host and
+//! partition host, a self-hosted server, two hosts under one dynamic-DNS suffix, and a host off the
 //! account). The real `reqwest` client resolves those names to it, so the transport's redirect
 //! and credential rules run unchanged. Unlike `unsplash_server`, it records each request's method,
 //! `Depth` and body, which tell the WebDAV steps apart.
@@ -16,8 +16,8 @@ use tokio::net::TcpListener;
 use tokio_rustls::TlsAcceptor;
 
 pub const HOSTS: [&str; 6] = [
-    "caldav.icloud.com",
-    "p67-caldav.icloud.com",
+    "caldav.fastmail.com",
+    "p67-caldav.fastmail.com",
     "dav.example",
     "evil.example",
     "myname.synology.me",

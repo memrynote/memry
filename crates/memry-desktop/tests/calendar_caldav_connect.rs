@@ -386,6 +386,7 @@ async fn a_vault_closed_during_discovery_takes_no_write() {
     rig.gate.notify_one();
     assert!(matches!(connect.await.unwrap(), Err(CaldavError::Closed)));
     assert_eq!(rig.secrets.len(), 0);
+    drop(open);
     let reopened = rig.open().await;
     assert!(caldav_sources(&reopened).is_empty());
 }
