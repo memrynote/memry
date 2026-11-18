@@ -116,7 +116,7 @@ pub fn try_extract_article(
     fetcher: &dyn Fetcher,
 ) -> Result<ArticleCapture, ExtractError> {
     let mut response = run_defuddle(html, url, fetcher)?;
-    response.content = markdown::create_markdown_content(&response.content);
+    response.content = markdown::create_markdown_content(&response.content)?;
     Ok(to_article_capture(&response.to_map_input(), url, now))
 }
 

@@ -22,7 +22,7 @@ fn run_sync(html: &str, url: &str) -> Result<DefuddleResponse, ExtractError> {
 
 fn sync_capture(html: &str, url: &str, now: &str) -> Result<ArticleCapture, ExtractError> {
     let mut response = run_sync(html, url)?;
-    response.content = create_markdown_content(&response.content);
+    response.content = create_markdown_content(&response.content).expect("within the caps");
     Ok(to_article_capture(&response.to_map_input(), url, now))
 }
 
