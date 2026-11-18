@@ -67,6 +67,7 @@ pub mod property_admin;
 #[cfg(feature = "markdown")]
 pub mod property_values;
 pub mod reads;
+pub mod readwise;
 mod recreate;
 pub mod recurrence;
 pub mod related_items;

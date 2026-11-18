@@ -39,6 +39,7 @@ pub mod note_positions;
 pub mod notes;
 pub mod notes_write;
 pub mod projects;
+pub mod readwise;
 pub mod relation_targets;
 pub mod runtime;
 pub mod search;
