@@ -15,18 +15,25 @@
 //! would be quadratic.
 
 use std::cell::Cell;
+use std::time::Duration;
 
 use crate::web::extract::dom::{NodeId, NodeKind};
-use crate::web::extract::markdown::turndown::parse::{Dom, parse_document_with};
+use crate::web::extract::markdown::turndown::parse::{CapHit, Caps, Dom, parse_page};
 use crate::web::extract::utils::js::is_js_whitespace;
 
 thread_local! {
     static STEPS: Cell<usize> = const { Cell::new(0) };
+    static PARSE_STEPS: Cell<usize> = const { Cell::new(0) };
 }
 
 /// Node visits the queries and text reads of this thread made so far (the complexity guard).
 pub fn steps() -> usize {
     STEPS.with(Cell::get)
+}
+
+/// Nodes the page parses of this thread created and parent links they followed, so far.
+pub fn parse_steps() -> usize {
+    PARSE_STEPS.with(Cell::get)
 }
 
 fn step(count: usize) {
@@ -35,6 +42,22 @@ fn step(count: usize) {
 
 /// Text node visits a page may spend reading element text, per node of the page.
 const TEXT_BUDGET_PER_NODE: usize = 16;
+
+/// The deepest a node of the page may nest: Blink's `kMaximumHTMLParserDOMTreeDepth`.
+pub const MAX_DEPTH: usize = 512;
+
+/// The most nodes any page builds.
+const MAX_NODES: usize = 1 << 22;
+
+/// The longest a parse may run. A chunk of input costs at most a fraction of a second.
+const PARSE_DEADLINE: Duration = Duration::from_secs(10);
+
+/// The most nodes `len` bytes of HTML may build: a tag, text run or comment takes at least one
+/// byte, and the elements the parser adds itself (`html`, `tbody`, a reconstructed `b`) stay
+/// within a second one per byte on any page a person writes.
+fn node_budget(len: usize) -> usize {
+    (2 * len + 64).min(MAX_NODES)
+}
 
 /// One attribute test of a compound selector.
 #[derive(Clone, Copy)]
@@ -80,9 +103,17 @@ pub struct Page {
 }
 
 impl Page {
-    /// `cheerio.load(html)`: parse5 with scripting on.
-    pub fn load(html: &str) -> Page {
-        let dom = parse_document_with(html, true);
+    /// `cheerio.load(html)`: parse5 with scripting on, within the depth, node and time caps.
+    pub fn load(html: &str) -> Result<Page, CapHit> {
+        let caps = Caps {
+            max_depth: MAX_DEPTH,
+            max_nodes: node_budget(html.len()),
+            deadline: PARSE_DEADLINE,
+        };
+        let (dom, steps) = parse_page(html, caps).inspect_err(|hit| {
+            tracing::warn!(?hit, "metadata page parse stopped at a cap");
+        })?;
+        PARSE_STEPS.with(|count| count.set(count.get().saturating_add(steps)));
         let mut elems: Vec<Elem> = Vec::new();
         // (node, element parent for selectors, element ancestor for text)
         let mut stack = vec![(dom.doc.root(), None::<u32>, None::<u32>)];
@@ -136,11 +167,11 @@ impl Page {
         }
         step(visits);
         let budget = TEXT_BUDGET_PER_NODE.saturating_mul(visits);
-        Page {
+        Ok(Page {
             dom,
             elems,
             text_budget: Cell::new(budget),
-        }
+        })
     }
 
     /// `$(selector)`: the matching elements in document order.

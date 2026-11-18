@@ -391,5 +391,9 @@
   "charset-shift-jis.html": {
     "title": "ニュース",
     "url": "https://www.example.jp/news/1"
+  },
+  "image-script-scheme.html": {
+    "title": "Script scheme",
+    "url": "https://www.example.com/scheme"
   }
 }

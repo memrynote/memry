@@ -285,5 +285,9 @@
     "file": "charset-shift-jis.html",
     "url": "https://www.example.jp/news/1",
     "contentType": "text/html; charset=Shift_JIS"
+  },
+  {
+    "file": "image-script-scheme.html",
+    "url": "https://www.example.com/scheme"
   }
 ]

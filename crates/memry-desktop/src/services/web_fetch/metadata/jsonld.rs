@@ -180,8 +180,7 @@ fn repair(text: &str) -> Option<String> {
             }
             ',' => {
                 after_value = false;
-                let next = chars[i + 1..].iter().find(|c| !c.is_whitespace()).copied();
-                if !matches!(next, Some('}' | ']') | None) {
+                if !matches!(next_token(&chars, i + 1), Some('}' | ']') | None) {
                     out.push(',');
                 }
                 i += 1;
@@ -250,6 +249,30 @@ fn repair(text: &str) -> Option<String> {
         out.push(closer);
     }
     Some(out)
+}
+
+/// The first character from `i` on that is neither whitespace nor in a comment. It stops at the
+/// next token, so the lookaheads of a text cover it once.
+fn next_token(chars: &[char], mut i: usize) -> Option<char> {
+    while let Some(&c) = chars.get(i) {
+        match c {
+            c if c.is_whitespace() => i += 1,
+            '/' if chars.get(i + 1) == Some(&'/') => {
+                while i < chars.len() && chars[i] != '\n' {
+                    i += 1;
+                }
+            }
+            '/' if chars.get(i + 1) == Some(&'*') => {
+                i += 2;
+                while i < chars.len() && !(chars[i] == '*' && chars.get(i + 1) == Some(&'/')) {
+                    i += 1;
+                }
+                i += 2;
+            }
+            c => return Some(c),
+        }
+    }
+    None
 }
 
 /// Copies the string starting at `chars[start]` as a JSON string; returns the index after it.

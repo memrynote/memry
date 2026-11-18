@@ -62,17 +62,21 @@ function decode(bytes, contentType) {
   }
 }
 
+// Departure from Electron (Rust `fetchable_image` in `metadata/mod.rs`): metascraper passes any
+// URI as `image` and `logo` (`javascript:alert(1)`, `ftp:`); only http(s) and data URIs stay.
+const fetchableImage = (value) => (/^(?:https?:\/\/|data:)/i.test(value ?? '') ? value : undefined)
+
 async function fetchUrlMetadata(html, url) {
   const metadata = await scraper({ html, url })
   if (metadata.title && isBotPageTitle(metadata.title)) return { url }
   const out = {
     title: metadata.title || undefined,
     description: metadata.description || undefined,
-    image: metadata.image || undefined,
+    image: fetchableImage(metadata.image) || undefined,
     author: metadata.author || undefined,
     publisher: metadata.publisher || undefined,
     date: metadata.date || undefined,
-    logo: metadata.logo || undefined,
+    logo: fetchableImage(metadata.logo) || undefined,
     url: metadata.url || url
   }
   return Object.fromEntries(Object.entries(out).filter(([, v]) => v !== undefined))

@@ -233,6 +233,10 @@ mod lock_service;
 mod lock_set;
 #[path = "logship.rs"]
 mod logship;
+#[path = "metadata_guards.rs"]
+mod metadata_guards;
+#[path = "metadata_vectors.rs"]
+mod metadata_vectors;
 #[path = "move_dir.rs"]
 mod move_dir;
 #[path = "move_journal.rs"]
