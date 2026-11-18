@@ -533,6 +533,10 @@ export const commands = {
 	stickySaveDraft: (input: StickySaveDraftInput) => __TAURI_INVOKE<StickyDraftView>("sticky_save_draft", { input }),
 	/**  Closes the sticky; its renderer saved the draft before asking. */
 	stickyTuck: () => __TAURI_INVOKE<void>("sticky_tuck"),
+	/**  The edge tab unfolds the sticky on a draft, or blank for none (`sticky:unfold`). */
+	stickyUnfold: (draftId: string | null) => __TAURI_INVOKE<null>("sticky_unfold", { draftId }),
+	/**  The pointer entered (`true`) or left the edge tab: it fans the draft list out or folds it. */
+	stickyPeek: (open: boolean) => __TAURI_INVOKE<null>("sticky_peek", { open }),
 	/**
 	 *  Every installed font family. Enumeration touches every font file, so it runs off the async
 	 *  runtime.

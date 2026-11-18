@@ -1,10 +1,14 @@
 //! Windows of the app: the registry that names them, the main window and its bounds, the one
-//! window-event dispatcher, first-paint reveal, zoom, and the preboot and startup-error windows.
+//! window-event dispatcher, first-paint reveal, zoom, the preboot and startup-error windows, and
+//! the sticky and its edge tab.
 
 pub mod bounds_store;
 pub mod chrome;
 pub mod close;
+pub mod edge_tab;
 pub mod events;
+#[cfg(target_os = "macos")]
+pub mod mac_window;
 pub mod main_window;
 pub mod nav_input;
 pub mod preboot;
