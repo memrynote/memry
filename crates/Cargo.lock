@@ -4101,6 +4101,7 @@ dependencies = [
  "pbkdf2",
  "percent-encoding",
  "proptest",
+ "quick-xml 0.42.0",
  "rcgen",
  "regex",
  "reqwest",

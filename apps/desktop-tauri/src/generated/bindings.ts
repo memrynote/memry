@@ -116,6 +116,14 @@ export const commands = {
 	calendarSubscribeIcs: (input: IcsSubscribeInput) => __TAURI_INVOKE<IcsMutationView>("calendar_subscribe_ics", { input }),
 	/**  `calendar:unsubscribe-ics`. */
 	calendarUnsubscribeIcs: (input: IcsSourceInput) => __TAURI_INVOKE<IcsMutationView>("calendar_unsubscribe_ics", { input }),
+	/**  `calendar:check-provider-writer-compat`. */
+	calendarCheckProviderWriterCompat: (input: WriterCompatInput) => __TAURI_INVOKE<WriterCompat>("calendar_check_provider_writer_compat", { input }),
+	/**  `calendar:connect-provider`. */
+	calendarConnectProvider: (input: ProviderRequestInput) => __TAURI_INVOKE<ProviderMutationView>("calendar_connect_provider", { input }),
+	/**  `calendar:disconnect-provider`. */
+	calendarDisconnectProvider: (input: ProviderRequestInput) => __TAURI_INVOKE<ProviderMutationView>("calendar_disconnect_provider", { input }),
+	/**  `calendar:discover-provider-calendars`: the form's "Test connection"; saves nothing. */
+	calendarDiscoverProviderCalendars: (input: DiscoverProviderInput) => __TAURI_INVOKE<DiscoverView>("calendar_discover_provider_calendars", { input }),
 	/**  The calling window closed its editor of `note_id`. */
 	crdtCloseDoc: (noteId: string) => __TAURI_INVOKE<null>("crdt_close_doc", { noteId }),
 	crdtGetHealth: () => __TAURI_INVOKE<CrdtHealth>("crdt_get_health"),
@@ -865,6 +873,9 @@ export const events = {
 };
 
 /* Types */
+/**  `CalendarProviderAccountConnectionStatus` (`disconnected` is never built, as in Electron). */
+export type AccountConnection = "connected" | "reconnect_required" | "error";
+
 export type AccountDevice = {
 	deviceId: string,
 };
@@ -874,6 +885,20 @@ export type AccountInfoView = {
 	email: string | null,
 	deviceId: string | null,
 	needsRecoveryConfirmation: boolean,
+};
+
+/**  `CalendarProviderAccountStatus`. */
+export type AccountStatus = {
+	accountId: string,
+	email: string,
+	status: AccountConnection,
+	lastSyncedAt: string | null,
+	lastError: string | null,
+	reconnectReason?: ReconnectReason | null,
+	/**  Basic-auth accounts only: what a reconnect form prefills. Never a password. */
+	serverUrl?: string | null,
+	username?: string | null,
+	preset?: string | null,
 };
 
 /**  `AccountVaultInfo` of `packages/contracts/src/vault-api.ts`. */
@@ -1206,7 +1231,23 @@ export type BacklinkView = {
 	via?: LinkViaView | null,
 };
 
+/**  `kind: 'basic'`. No `Debug`: it carries the password. */
+export type BasicConnectionInput = {
+	serverUrl: string,
+	username: string,
+	password: string,
+	preset?: string | null,
+	selectedCalendarIds?: string[] | null,
+	acknowledgeOutdatedDevices?: boolean | null,
+};
+
 export type BuildKind = "dev" | "packaged";
+
+export type CalendarCounts = {
+	total: number,
+	selected: number,
+	memryManaged: number,
+};
 
 /**  A caption button's rectangle in client coordinates, physical pixels. */
 export type CaptionRect = {
@@ -1241,6 +1282,9 @@ export type CommandError = {
 	code: string,
 	message: string,
 };
+
+/**  `CaldavConnectErrorCode`. */
+export type ConnectCode = "invalid_url" | "unauthorized" | "unreachable" | "not_caldav" | "no_calendars" | "outdated_devices";
 
 /**  `ContentType`. */
 export type ContentType = "note" | "journal" | "task" | "inbox";
@@ -1457,6 +1501,28 @@ export type DiagnosticTrigger = {
 	source: string,
 	errorCode?: string | null,
 	stack?: string | null,
+};
+
+/**  `DiscoverProviderCalendarsSchema`. */
+export type DiscoverProviderInput = {
+	provider: string,
+	connection: ProviderConnectionInput,
+};
+
+/**  `DiscoverProviderCalendarsResponse`. */
+export type DiscoverView = {
+	success: boolean,
+	calendars: DiscoveredCalendarView[],
+	errorCode?: ConnectCode | null,
+	error?: string | null,
+};
+
+/**  `DiscoveredProviderCalendar`. */
+export type DiscoveredCalendarView = {
+	/**  The collection URL. */
+	id: string,
+	title: string,
+	color: string | null,
 };
 
 /**  The types `notes:ensure-property-definition` creates. */
@@ -2785,11 +2851,53 @@ export type PropertyValueView = {
 	type: string,
 };
 
+/**  `CalendarProviderConnectionSchema`. */
+export type ProviderConnectionInput = {
+	kind: "url",
+} & UrlConnectionInput | {
+	kind: "basic",
+} & BasicConnectionInput;
+
+/**  `CalendarProviderMutationResponse`. */
+export type ProviderMutationView = {
+	success: boolean,
+	status: ProviderStatus,
+	error?: string | null,
+	errorCode?: ConnectCode | null,
+};
+
+/**  `CalendarProviderRequestSchema`. */
+export type ProviderRequestInput = {
+	provider: string,
+	accountId?: string | null,
+	sourceId?: string | null,
+	connection?: ProviderConnectionInput | null,
+	/**  Read by `get-provider-status` only. */
+	includeCapabilities?: boolean | null,
+};
+
+/**  `CalendarProviderStatus`, without `capabilities` (only `get-provider-status` attaches them). */
+export type ProviderStatus = {
+	provider: string,
+	connected: boolean,
+	hasLocalAuth: boolean,
+	account: StatusAccount | null,
+	accounts: AccountStatus[],
+	calendars: CalendarCounts,
+	lastSyncedAt: string | null,
+};
+
 /**  `QuickSearchResponse`. */
 export type QuickSearchResponse = {
 	results: SearchResultItem[],
 	queryTimeMs: number | null,
 };
+
+/**
+ *  Why a `reconnect_required` account needs attention on this device. `rejected` comes with the
+ *  sync pass's auth-failure marker (29e2).
+ */
+export type ReconnectReason = "missing";
 
 /**
  *  Why a moved note's relative refs were left as they were: `changing`, the note changed while
@@ -3145,6 +3253,11 @@ export type StartupState = {
 	/**  `ltr` or `rtl`, from the locale. */
 	direction: string,
 	startupVault: string | null,
+};
+
+export type StatusAccount = {
+	id: string,
+	title: string,
 };
 
 export type StatusCategoryKey = "todo" | "in_progress" | "done";
@@ -3539,6 +3652,12 @@ export type UpdaterStateChangedEvent = AppUpdateState;
 
 export type UpdaterStatus = "unavailable" | "idle" | "checking" | "available" | "downloading" | "downloaded" | "installing" | "up-to-date" | "error";
 
+/**  `kind: 'url'` of `CalendarProviderConnectionSchema`. */
+export type UrlConnectionInput = {
+	url: string,
+	title?: string | null,
+};
+
 /**  What a URL download came to: `DownloadAttachmentFromUrlResult` without its `ok` flag. */
 export type UrlDownload = { status: "saved"; ref: string } | { status: "failed"; reason: RemoteFailure };
 
@@ -3884,6 +4003,29 @@ export type WindowChromeStateChangedEvent = {
  *  alone until it is fixed).
  */
 export type WriteBackFailureReason = "write" | "frontmatter";
+
+/**  `CalendarWriterCompatResponse`. */
+export type WriterCompat = {
+	/**  `false` when connecting this provider adds no second writer. */
+	required: boolean,
+	/**  `false` when the device list could not be read; the user must acknowledge blind. */
+	verified: boolean,
+	minVersion: string,
+	outdatedDevices: WriterCompatDevice[],
+};
+
+/**  `CalendarWriterCompatDevice`. */
+export type WriterCompatDevice = {
+	id: string,
+	name: string,
+	platform: string,
+	appVersion: string | null,
+};
+
+/**  `CheckProviderWriterCompatSchema`. */
+export type WriterCompatInput = {
+	provider: string,
+};
 
 /**  `WritingAssistInput` of `@memry/contracts/writing-tools-api`. */
 export type WritingAssistInput = { kind: "alternatives"; text: string; context: string };

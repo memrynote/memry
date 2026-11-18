@@ -58,6 +58,11 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::calendar_ics::calendar_refresh_ics,
             crate::commands::calendar_ics::calendar_subscribe_ics,
             crate::commands::calendar_ics::calendar_unsubscribe_ics,
+            // calendar providers
+            crate::commands::calendar_providers::calendar_check_provider_writer_compat,
+            crate::commands::calendar_providers::calendar_connect_provider,
+            crate::commands::calendar_providers::calendar_disconnect_provider,
+            crate::commands::calendar_providers::calendar_discover_provider_calendars,
             // crdt (`crdt_open_doc`, `crdt_apply_update` and the sync steps are binary commands)
             crate::commands::editor::crdt_close_doc::<Wry>,
             crate::commands::editor::crdt_get_health::<Wry>,
