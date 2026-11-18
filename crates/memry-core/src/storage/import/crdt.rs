@@ -12,6 +12,7 @@ use crate::api::errors::StorageError;
 use crate::crdt::errors::CrdtError;
 use crate::crdt::{DocumentRegistry, canonical_fragment, update_log};
 use crate::domain::note_files::{self, NoteFileStat, StampMark};
+use crate::domain::note_snapshots::{self, Reason, Version};
 use crate::domain::owed_file_body;
 use crate::sync::{body_debt, outbox, store};
 
@@ -21,6 +22,21 @@ pub struct ImportDocument {
     pub doc_id: String,
     pub state: Vec<u8>,
     pub watermark: Option<u64>,
+    /// The stamp of the imported log entry: delete-keep rule 3 reads it as this device's last
+    /// own body text (`sync::delete_keep`), and [`note_files::behind_bodies`] compares it with
+    /// the row's stamp.
+    pub created_at: i64,
+}
+
+/// A body kept as a version before the file's outside edit replaces it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ImportBodyVersion {
+    pub note_id: String,
+    /// The whole file the version restores to.
+    pub content: String,
+    /// The body within `content`.
+    pub body: String,
+    pub title: String,
 }
 
 /// One body update Electron still owes the server.
@@ -64,9 +80,9 @@ pub struct DocumentState {
 }
 
 impl ImportWriter {
-    /// Writes each document as local update 1 (`local.<docId>`) stored at `now_ms`, and its
-    /// `crdt:<docId>` cursor when it has a watermark. No epoch row: a document this device never
-    /// purged is at epoch 0, as a new one is.
+    /// Writes each document as local update 1 (`local.<docId>`) stored at its `created_at`, and
+    /// its `crdt:<docId>` cursor (written at `now_ms`) when it has a watermark. No epoch row: a
+    /// document this device never purged is at epoch 0, as a new one is.
     pub fn put_documents(
         &mut self,
         docs: &[ImportDocument],
@@ -74,7 +90,7 @@ impl ImportWriter {
     ) -> Result<(), StorageError> {
         let tx = self.data.transaction().map_err(failed)?;
         for doc in docs {
-            update_log::append_local_update_in(&tx, &doc.doc_id, &doc.state, now_ms)
+            update_log::append_local_update_in(&tx, &doc.doc_id, &doc.state, doc.created_at)
                 .map_err(crdt_failed)?;
             if let Some(watermark) = doc.watermark {
                 let scope = format!("crdt:{}", doc.doc_id);
@@ -103,14 +119,13 @@ impl ImportWriter {
 
     /// Gives each row its hashes. Runs after [`Self::put_documents`] with the same `now_ms`.
     ///
-    /// A row whose body is `ahead` is stamped `now_ms - 1`, before the document's log entry,
-    /// with no log mark: the note is behind its body by the clock
-    /// ([`note_files::behind_bodies`]), so the first write-back writes the body over the file
-    /// and keeps the file as a version. With no mark, an outside edit is compared through the
-    /// file the row names (`text_moved_since_stamp` answers `None`), so a body that was not
-    /// ahead of that file takes the edit. Any other row is stamped `now_ms` with the log as it
-    /// is now: the document holds the file, and nothing is written. A row that is missing or
-    /// not markdown is an error.
+    /// A row whose body is `ahead` (its file is the one the row names) is stamped `now_ms - 1`,
+    /// before the document's log entry (stored at `now_ms`), with no log mark: the note is
+    /// behind its body by the clock ([`note_files::behind_bodies`]), so the first write-back
+    /// writes the body over the file and keeps the file as a version. Any other row is stamped
+    /// `now_ms` with the log as it is now: the body holds the file the row names, so a file
+    /// that is that one is left alone, and a file edited since is an outside edit the consumer
+    /// feeds into the body. A row that is missing or not markdown is an error.
     pub fn put_file_hashes(
         &mut self,
         rows: &[ImportFileHash],
@@ -179,6 +194,33 @@ impl ImportWriter {
         tx.commit().map_err(failed)
     }
 
+    /// Keeps each body as a version ([`note_snapshots::keep`], an outside write's reason), at
+    /// `now_ms`.
+    pub fn put_body_versions(
+        &mut self,
+        versions: &[ImportBodyVersion],
+        now_ms: i64,
+    ) -> Result<(), StorageError> {
+        let tx = self.data.transaction().map_err(failed)?;
+        for version in versions {
+            let version = Version {
+                note_id: &version.note_id,
+                content: &version.content,
+                body: &version.body,
+                title: &version.title,
+                reason: Reason::OutsideWrite,
+            };
+            note_snapshots::keep(&tx, version, now_ms)?;
+        }
+        tx.commit().map_err(failed)
+    }
+
+    /// The item type a body's outbox rows go under ([`body_owner`]); `None` when no note,
+    /// journal day or synced item owns it.
+    pub fn body_owner(&self, doc_id: &str) -> Result<Option<&'static str>, StorageError> {
+        body_owner(&self.data, doc_id)
+    }
+
     /// Marks each document owed a body pull ([`body_debt::owe`]).
     pub fn put_body_debts(&mut self, doc_ids: &[String]) -> Result<(), StorageError> {
         let tx = self.data.transaction().map_err(failed)?;
@@ -208,6 +250,12 @@ impl ImportWriter {
 /// else the type of its `sync_items` row (a note deleted after the push was queued). A body of
 /// no known item is an error: queued under a guessed type, it would reach the wrong owner.
 fn body_item_type(conn: &Connection, doc_id: &str) -> Result<&'static str, StorageError> {
+    body_owner(conn, doc_id)?.ok_or_else(|| StorageError::NotFound {
+        what: format!("the note or journal day of document {doc_id}"),
+    })
+}
+
+fn body_owner(conn: &Connection, doc_id: &str) -> Result<Option<&'static str>, StorageError> {
     let found: Option<String> = conn
         .query_row(
             "SELECT 'note' FROM notes WHERE id = ?1 AND deleted_at IS NULL
@@ -220,13 +268,11 @@ fn body_item_type(conn: &Connection, doc_id: &str) -> Result<&'static str, Stora
         )
         .optional()
         .map_err(failed)?;
-    match found.as_deref() {
-        Some("note") => Ok("note"),
-        Some("journal") => Ok("journal"),
-        _ => Err(StorageError::NotFound {
-            what: format!("the note or journal day of document {doc_id}"),
-        }),
-    }
+    Ok(match found.as_deref() {
+        Some("note") => Some("note"),
+        Some("journal") => Some("journal"),
+        _ => None,
+    })
 }
 
 /// The staged document `doc_id` of a staged `data.db`, read through a read-only connection;

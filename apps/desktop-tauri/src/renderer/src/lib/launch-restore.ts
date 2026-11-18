@@ -13,7 +13,7 @@ import type { TabType } from '@/contexts/tabs/types'
 import { vaultService } from '@/services/vault-service'
 import { trackNoteReadable } from './telemetry-diagnostics'
 
-/** Read by `scripts/launch-bench.mjs` over CDP; renaming it breaks that bench. */
+/** Reported to `scripts/launch-bench.mjs`; renaming it breaks that bench. */
 export const NOTE_READABLE_MARK = 'memry:note-readable'
 
 const readTabState = (key: string): Partial<PersistedTabState> | null => {

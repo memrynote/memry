@@ -396,7 +396,7 @@ pub(super) fn vector_clock(
 }
 
 /// A drizzle `mode: 'timestamp'` column: epoch seconds, as ms.
-pub(super) fn seconds_ms(
+pub(crate) fn seconds_ms(
     row: &rusqlite::Row<'_>,
     column: &str,
     table: &'static str,

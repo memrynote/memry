@@ -259,10 +259,20 @@ fn queued_body_pushes_become_crdt_outbox_rows_in_order() {
             payload.to_vec(),
         )
     };
+    let core = installed(&vault);
     assert_eq!(
-        outbox(&installed(&vault)),
+        outbox(&core),
         vec![crdt(&update), crdt(&full), crdt(&update)]
     );
+    // `sync_queue.created_at` is epoch seconds; the outbox keeps ms.
+    let enqueued: Vec<i64> = core
+        .prepare("SELECT enqueued_at FROM outbox ORDER BY id")
+        .unwrap()
+        .query_map([], |row| row.get(0))
+        .unwrap()
+        .collect::<Result<_, _>>()
+        .unwrap();
+    assert_eq!(enqueued, [10_000, 11_000, 12_000]);
 }
 
 /// A push sent and never confirmed is queued again as the whole state; the table is copied and
@@ -395,4 +405,131 @@ fn a_body_payload_that_is_not_strict_base64_is_refused() {
         assert!(!vault.staging().exists());
         assert!(!vault.core().exists());
     }
+}
+
+/// Electron's sync row outlives the note it pushed for: an in-flight push of a gone note is
+/// skipped and counted, and the vault imports.
+#[test]
+fn an_in_flight_push_of_a_gone_note_is_skipped_and_counted() {
+    let vault = Vault::new();
+    electron_db::seed(
+        &vault.data_conn(),
+        "note_body_sync",
+        &[
+            ("note_id", text("Gone-note001")),
+            ("last_sent_at", Value::Integer(200)),
+            ("updated_at", Value::Integer(300)),
+        ],
+    );
+    let report = import_docs(&vault, vec![folded("Gone-note001", "Gone.\n", None)]);
+    assert_eq!(report.notices.get("goneInFlightBodyPushes"), Some(&1));
+    assert_eq!(report.notices.get("inFlightBodyPushes"), None);
+    assert_eq!(outbox(&installed(&vault)), Vec::new());
+}
+
+/// The file changed since Electron read it: the row names the file Electron read, stamped as
+/// holding the body, so the consumer feeds the edit; the body is a version first.
+#[test]
+fn a_file_edited_since_electron_read_it_is_fed_with_the_body_kept() {
+    let vault = Vault::new();
+    seed_note(&vault, NOTE, PATH, None, false);
+    cache(&vault, NOTE, PATH, "---\ntags: [a]\n---\n\nYesterday.\n");
+    import_docs(&vault, vec![folded(NOTE, "Yesterday.\n", None)]);
+    let core = installed(&vault);
+    assert_eq!(
+        hashes(&core, NOTE),
+        (
+            Some(content_hash("---\ntags: [a]\n---\n\nYesterday.\n")),
+            Some(content_hash(FILE)),
+            NOW_MS
+        )
+    );
+    let versions: Vec<(String, String)> = core
+        .prepare("SELECT content, reason FROM note_snapshots WHERE note_id = ?1")
+        .unwrap()
+        .query_map([NOTE], |row| Ok((row.get(0)?, row.get(1)?)))
+        .unwrap()
+        .collect::<Result<_, _>>()
+        .unwrap();
+    assert_eq!(versions.len(), 1, "{versions:?}");
+    assert!(
+        versions[0].0.starts_with("---\ntags: daily\n---\n"),
+        "{versions:?}"
+    );
+    assert!(versions[0].0.contains("Yesterday."), "{versions:?}");
+    assert_eq!(versions[0].1, "significant");
+    assert_eq!(
+        memry_core::domain::note_files::behind_bodies(&core).unwrap(),
+        Vec::<String>::new()
+    );
+}
+
+/// The newest stamp of the note's own body log, as delete-keep rule 3 reads it.
+fn last_local_body_at(core: &Connection, id: &str) -> Option<i64> {
+    core.query_row(
+        "SELECT MAX(at) FROM (
+           SELECT MAX(created_at) AS at FROM yjs_updates WHERE doc_id = ?1
+           UNION ALL SELECT compacted_at FROM yjs_snapshots WHERE doc_id = ?1)",
+        [format!("local.{id}")],
+        |row| row.get(0),
+    )
+    .unwrap()
+}
+
+/// A remote delete made a day before the import, of a note whose body holds no text the file
+/// lacks, is applied and not kept: the imported body is stamped at Electron's
+/// `last_confirmed_at`, or before every delete when Electron confirmed none
+/// (`keep-unseen-text.ts:65`). A body ahead of its file is this device's unseen text.
+#[test]
+fn a_remote_delete_before_the_import_is_applied_not_kept() {
+    const DAY_MS: i64 = 24 * 60 * 60 * 1000;
+    let vault = Vault::new();
+    for (id, path) in [
+        (NOTE, PATH),
+        ("Never-conf01", "Never.md"),
+        ("Ahead-note01", "Ahead.md"),
+    ] {
+        seed_note(&vault, id, path, None, false);
+        std::fs::write(vault.root.join(path), "Today.\n").unwrap();
+        cache(&vault, id, path, "Today.\n");
+    }
+    electron_db::seed(
+        &vault.data_conn(),
+        "note_body_sync",
+        &[
+            ("note_id", text(NOTE)),
+            ("last_sent_at", Value::Integer(NOW_MS - 3 * DAY_MS)),
+            ("last_confirmed_at", Value::Integer(NOW_MS - 2 * DAY_MS)),
+            ("updated_at", Value::Integer(NOW_MS - 2 * DAY_MS)),
+        ],
+    );
+    import_docs(
+        &vault,
+        vec![
+            folded(NOTE, "Today.\n", None),
+            folded("Never-conf01", "Today.\n", None),
+            folded("Ahead-note01", "Tomorrow.\n", None),
+        ],
+    );
+    let core = installed(&vault);
+    let keeps = |id: &str| {
+        memry_core::sync::delete_keep::keeps_unseen_text(
+            &memry_core::sync::delete_keep::UnseenTextFacts {
+                body_blank: false,
+                waiting_changes: false,
+                local_clock: None,
+                tombstone_clock: None,
+                deleted_at: Some((NOW_MS - DAY_MS) / 1000),
+                last_local_body_at: last_local_body_at(&core, id),
+                deleter_body_state_vector: None,
+                local_body_state_vector: None,
+            },
+        )
+    };
+    assert_eq!(last_local_body_at(&core, NOTE), Some(NOW_MS - 2 * DAY_MS));
+    assert!(!keeps(NOTE));
+    assert_eq!(last_local_body_at(&core, "Never-conf01"), Some(0));
+    assert!(!keeps("Never-conf01"));
+    assert_eq!(last_local_body_at(&core, "Ahead-note01"), Some(NOW_MS));
+    assert!(keeps("Ahead-note01"));
 }
