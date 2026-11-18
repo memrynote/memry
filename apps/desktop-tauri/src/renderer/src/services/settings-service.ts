@@ -15,7 +15,11 @@ import type {
   TaskSettingsDTO,
   VoiceTranscriptionSettings
 } from '../../../preload/index.d'
-import type { GlobalCaptureResult } from '@memry/contracts/settings-schemas'
+import type {
+  CalendarGoogleSettings,
+  CalendarProviderSettings,
+  GlobalCaptureResult
+} from '@memry/contracts/settings-schemas'
 import type { CalloutTypeDefinition } from '@memry/editor-schema/callout-types'
 import {
   commands,
@@ -129,6 +133,7 @@ const keyboard = group<KeyboardShortcutsDTO>('keyboard')
 const sync = group<SyncSettingsDTO>('sync')
 const backup = group<BackupSettingsDTO>('backup')
 const calendar = group<Record<string, unknown>>('calendar')
+const calendarGoogle = group<CalendarGoogleSettings>('calendar.google')
 const features = group<Record<string, unknown>>('features')
 const inbox = group<Record<string, unknown>>('inbox')
 const sticky = group<Record<string, unknown>>('sticky')
@@ -140,9 +145,8 @@ const voice = group<VoiceTranscriptionSettings>('voiceTranscription')
 
 /**
  * The `window.api.settings` functions Step 09 owns: every group and flat key core stores. The
- * voice model, readiness, OpenAI key and microphone pane are Step 24's (#3541). The rest of the
- * Electron surface (calendar providers, the terminal command) belongs to the steps that port
- * those features.
+ * voice model, readiness, OpenAI key and microphone pane are Step 24's (#3541); the calendar
+ * provider groups are Step 29's (#3546). The terminal command belongs to the step that ports it.
  */
 export const settingsService = {
   getGeneralSettings: general.get,
@@ -167,6 +171,32 @@ export const settingsService = {
   setBackupSettings: backup.set,
   getCalendarSettings: calendar.get,
   setCalendarSettings: calendar.set,
+  getCalendarGoogleSettings: calendarGoogle.get,
+  setCalendarGoogleSettings: calendarGoogle.set,
+  getCalendarProviderSettings: async ({
+    provider
+  }: {
+    provider: string
+  }): Promise<CalendarProviderSettings | null> => {
+    const value = await commands.settingsGetCalendarProvider(provider)
+    return value === null ? null : asShape<CalendarProviderSettings>(value)
+  },
+  setCalendarProviderSettings: async ({
+    provider,
+    updates
+  }: {
+    provider: string
+    updates: Record<string, unknown>
+  }): Promise<Result> => {
+    try {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the updates are a JSON object built by the settings UI
+      await commands.settingsSetCalendarProvider(provider, updates as Value)
+      return { success: true }
+    } catch (error) {
+      log.warn(`write of the ${provider} calendar settings failed`, error)
+      return failure(error)
+    }
+  },
   getFeaturesSettings: features.get,
   setFeaturesSettings: features.set,
   getInboxSettings: inbox.get,

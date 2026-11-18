@@ -574,6 +574,11 @@ export const commands = {
 	appSetZoomFactor: (factor: number | null) => __TAURI_INVOKE<null>("app_set_zoom_factor", { factor }),
 	/**  `settings:getAISettings`: the AI switches of the open vault, or their defaults. */
 	settingsGetAi: () => __TAURI_INVOKE<AiSettings>("settings_get_ai"),
+	/**
+	 *  A calendar provider's `calendar.<provider>` group with its defaults, `null` for a provider
+	 *  this build does not know (`settings:getCalendarProviderSettings`).
+	 */
+	settingsGetCalendarProvider: (provider: string) => __TAURI_INVOKE<Value | null>("settings_get_calendar_provider", { provider }),
 	/**  A group of the open vault, or its defaults while no vault is open. */
 	settingsGetGroup: (group: string) => __TAURI_INVOKE<Value>("settings_get_group", { group }),
 	/**  A flat device-local key (`tagSearches`, `graphViews`). */
@@ -594,6 +599,12 @@ export const commands = {
 	 *  projectors; turning it off stops the model (ai-settings.ts:72-74, :105-119).
 	 */
 	settingsSetAi: (patch: AiSettingsPatch) => __TAURI_INVOKE<null>("settings_set_ai", { patch }),
+	/**
+	 *  Writes the fields a provider's group declares; the rest of `updates` is dropped. An unknown
+	 *  provider rejects with `Unsupported calendar provider: <id>`, a wrong type with
+	 *  `settings_invalid_value`, and nothing is written.
+	 */
+	settingsSetCalendarProvider: (provider: string, updates: Value) => __TAURI_INVOKE<null>("settings_set_calendar_provider", { provider, updates }),
 	/**
 	 *  Merges `patch` into a group. A value the group refuses rejects with `settings_invalid_value`
 	 *  and nothing is written.

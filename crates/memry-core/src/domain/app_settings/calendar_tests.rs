@@ -40,6 +40,19 @@ fn blob(app: &AppSettings, group: &str) -> Option<Value> {
         .map(|raw| serde_json::from_str(&raw).expect("a JSON blob"))
 }
 
+fn settings_outbox_rows(app: &AppSettings) -> i64 {
+    app.db
+        .read_blocking(|conn| {
+            conn.query_row(
+                "SELECT count(*) FROM outbox WHERE item_type = 'settings'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(failed)
+        })
+        .expect("outbox")
+}
+
 fn plant_blob(app: &AppSettings, group: &str, value: &Value) {
     app.db
         .call_blocking(|conn| {
@@ -91,6 +104,8 @@ fn every_synced_calendar_leaf_takes_its_own_clock_and_the_rest_stays_local() {
             "{group}: nothing synced in the blob"
         );
     }
+    let published = settings_outbox_rows(&app);
+    assert!(published > 0, "the synced writes reach the outbox");
 
     let local = [
         (
@@ -111,6 +126,11 @@ fn every_synced_calendar_leaf_takes_its_own_clock_and_the_rest_stays_local() {
         }
         assert_eq!(blob(&app, group).as_ref(), Some(values));
     }
+    assert_eq!(
+        settings_outbox_rows(&app),
+        published,
+        "local writes publish nothing"
+    );
 }
 
 #[test]
