@@ -509,6 +509,16 @@ fn suggested_folders_slugify_fall_back_and_avoid_collisions() {
     assert_eq!(suggest_vault_folder("u", Some("Work"), p), p.join("work-3"));
 }
 
+/// The name of a link whose target is gone is taken, though the path does not resolve.
+#[cfg(unix)]
+#[test]
+fn a_dangling_link_is_not_a_free_folder() {
+    let dir = tempfile::tempdir().unwrap();
+    let p = dir.path();
+    std::os::unix::fs::symlink(p.join("gone"), p.join("work")).unwrap();
+    assert_eq!(suggest_vault_folder("u", Some("Work"), p), p.join("work-2"));
+}
+
 // --- delete --------------------------------------------------------------------------------
 
 pub(crate) fn with_session(f: &Fixture) -> Session {

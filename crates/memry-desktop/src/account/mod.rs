@@ -204,6 +204,9 @@ pub struct AccountService {
     directory: tokio::sync::Mutex<Option<tokio::time::Instant>>,
     /// Which signed-in account a write that waits on the network started under.
     epoch: AccountEpoch,
+    /// One vault download at a time, from the registry lookup to the registered folder: two
+    /// downloads of one vault would both miss the registry and make two folders bound to it.
+    downloads: Mutex<()>,
 }
 
 /// The signed-in account's term on this install, ended by each sign-out (#4783). A write that
@@ -302,6 +305,7 @@ impl AccountService {
             oauth_cancels: std::sync::atomic::AtomicU64::new(0),
             directory: tokio::sync::Mutex::new(None),
             epoch: AccountEpoch::default(),
+            downloads: Mutex::new(()),
         };
         service.restore();
         Ok(service)
