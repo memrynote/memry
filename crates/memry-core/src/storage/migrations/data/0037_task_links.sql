@@ -18,10 +18,15 @@
 -- first drops the task's rows (an `INSERT OR REPLACE` fires no delete trigger
 -- for the row it replaces), then inserts the distinct targets, so its
 -- insert never meets a key it has not just cleared and no conflict clause of
--- the writer's statement can make it fail. Values that are not JSON, not an
--- array, or not a non-empty string are skipped, never an error: a nested
--- `CASE` runs `json_type` only on valid JSON, because SQLite does not promise
--- to short-circuit `AND`, and `json_each(NULL)` yields no row.
+-- the writer's statement can make it fail. The dedupe cannot be `OR IGNORE`:
+-- an upsert or an `OR` clause on the writer's statement overrides the
+-- trigger's own. One `UNION` dedupes notes and canvases in a single insert.
+-- Values that are not JSON, not an array, or not a non-empty string are
+-- skipped, never an error: a nested `CASE` runs `json_type` only on valid
+-- JSON, because SQLite does not promise to short-circuit `AND`, and
+-- `json_each(NULL)` yields no row. `json_type` and `json_extract` reuse the parse
+-- `json_valid` caches, so `json_each` parses only the extracted array;
+-- `json_each(payload, path)` would parse the whole payload a second time.
 CREATE TABLE IF NOT EXISTS task_links (
   task_id     TEXT NOT NULL,
   target_type TEXT NOT NULL,
@@ -34,13 +39,13 @@ CREATE TRIGGER IF NOT EXISTS task_links_task_insert AFTER INSERT ON tasks
 BEGIN
   DELETE FROM task_links WHERE task_id = new.id;
   INSERT INTO task_links (task_id, target_type, target_id)
-  SELECT DISTINCT new.id, 'note', j.value
+  SELECT new.id, 'note', j.value
     FROM json_each(CASE WHEN new.deleted_at IS NULL AND json_valid(new.linked_note_ids) THEN
                   CASE WHEN json_type(new.linked_note_ids) = 'array'
                        THEN new.linked_note_ids END END) AS j
-   WHERE j.type = 'text' AND j.value <> '';
-  INSERT INTO task_links (task_id, target_type, target_id)
-  SELECT DISTINCT new.id, 'canvas', j.value
+   WHERE j.type = 'text' AND j.value <> ''
+  UNION
+  SELECT new.id, 'canvas', j.value
     FROM sync_items AS s,
          json_each(CASE WHEN new.deleted_at IS NULL AND json_valid(s.payload) THEN
                   CASE WHEN json_type(s.payload, '$.linkedCanvasIds') = 'array'
@@ -53,13 +58,13 @@ CREATE TRIGGER IF NOT EXISTS task_links_task_update AFTER UPDATE ON tasks
 BEGIN
   DELETE FROM task_links WHERE task_id = old.id OR task_id = new.id;
   INSERT INTO task_links (task_id, target_type, target_id)
-  SELECT DISTINCT new.id, 'note', j.value
+  SELECT new.id, 'note', j.value
     FROM json_each(CASE WHEN new.deleted_at IS NULL AND json_valid(new.linked_note_ids) THEN
                   CASE WHEN json_type(new.linked_note_ids) = 'array'
                        THEN new.linked_note_ids END END) AS j
-   WHERE j.type = 'text' AND j.value <> '';
-  INSERT INTO task_links (task_id, target_type, target_id)
-  SELECT DISTINCT new.id, 'canvas', j.value
+   WHERE j.type = 'text' AND j.value <> ''
+  UNION
+  SELECT new.id, 'canvas', j.value
     FROM sync_items AS s,
          json_each(CASE WHEN new.deleted_at IS NULL AND json_valid(s.payload) THEN
                   CASE WHEN json_type(s.payload, '$.linkedCanvasIds') = 'array'

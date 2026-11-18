@@ -159,6 +159,47 @@ fn every_write_to_tasks_keeps_the_links_exact_whoever_writes_it() {
     );
 }
 
+/// A target listed twice is one link. The projector's upsert and a writer's
+/// `OR` clause override a trigger's conflict clause, so only the trigger's own
+/// dedupe keeps such a write from failing.
+#[test]
+fn a_target_listed_twice_never_fails_a_write_whatever_its_conflict_clause() {
+    let db = Db::open_in_memory().expect("open");
+    db.call_blocking(|conn| run(conn, DATA_MIGRATIONS).map(drop))
+        .expect("migrate");
+    let rows = db
+        .call_blocking(|conn| {
+            let notes = r#"["n1","n1"]"#;
+            let payload = r#"{"linkedCanvasIds":["c1","c1"]}"#;
+            // The upsert's insert, then its update.
+            write_task(conn, "t1", notes, payload);
+            write_task(conn, "t1", notes, payload);
+            for clause in ["OR ROLLBACK", "OR ABORT", "OR FAIL"] {
+                conn.execute(
+                    &format!("UPDATE {clause} tasks SET title = 'u' WHERE id = 't1'"),
+                    [],
+                )
+                .map_err(failed)?;
+            }
+            conn.execute(
+                "INSERT OR ROLLBACK INTO tasks (id, title, project_id, linked_note_ids)
+                 VALUES ('t2', 't', 'p', '[\"n2\",\"n2\"]')",
+                [],
+            )
+            .map_err(failed)?;
+            links(conn)
+        })
+        .expect("every write");
+    assert_eq!(
+        rows,
+        vec![
+            row("t1", "canvas", "c1"),
+            row("t1", "note", "n1"),
+            row("t2", "note", "n2"),
+        ]
+    );
+}
+
 #[test]
 fn a_lookup_by_target_seeks_the_index() {
     let db = Db::open_in_memory().expect("open");
