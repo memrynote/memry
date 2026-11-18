@@ -472,6 +472,9 @@ mod sync_note_body_feed;
 mod sync_outbox;
 #[path = "sync_pack_bootstrap.rs"]
 mod sync_pack_bootstrap;
+#[cfg(feature = "markdown")]
+#[path = "sync_project_nested_arrays.rs"]
+mod sync_project_nested_arrays;
 #[path = "sync_realtime.rs"]
 mod sync_realtime;
 #[path = "sync_realtime_run.rs"]

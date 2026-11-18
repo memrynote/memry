@@ -18,7 +18,8 @@
 //! **The merge rule itself is [`crate::sync::field_merge`] and is not restated
 //! here**: it is pinned byte for byte by the `field-merge` vector class, and a
 //! second copy of the rule is a second thing to get wrong. What this module
-//! adds is the storage around it.
+//! adds is the storage around it, and the keys each type carries beside its
+//! field list ([`carried`], §6.7.1 and §6.7.2).
 //!
 //! Three obligations, and the first is the load-bearing one.
 //!
@@ -38,15 +39,15 @@
 //!   `next_field_clocks` refuses the reserved device id outright, which is
 //!   §6.6 made structural rather than remembered.
 
-use std::collections::{BTreeMap, HashSet};
+mod carried;
+
+use std::collections::BTreeMap;
 
 use rusqlite::{Connection, params};
 use serde_json::Value;
 
 use crate::api::errors::StorageError;
 use crate::domain::notes::failed;
-use crate::domain::notes::names::js_trim;
-use crate::domain::tags;
 use crate::domain::tasks::Inbound;
 use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::sync_items::InboundRecord;
@@ -57,6 +58,8 @@ use crate::sync::field_merge::{
     resolve_clock_conflict,
 };
 use crate::sync::hardening::requeue;
+
+pub(crate) use carried::Carry;
 
 /// What §6.3.1's document-level gate decided about one inbound record.
 ///
@@ -161,29 +164,20 @@ pub(crate) fn with_clock(
     Ok(payload.merge(&[("clock", Change::Set(as_json(clock)?))]))
 }
 
-/// [`apply_remote`] for either field-merged type (§6.8).
+/// [`apply_remote`] for either field-merged type (§6.8): `fields` by §6.3,
+/// and `carried`, the keys outside the field list, by `carry` on both of
+/// §6.3.1's branches (a task's lists §6.7.1, a project's arrays §6.7.2).
 pub(crate) fn apply_remote_merged(
     conn: &Connection,
     record: &InboundRecord,
     fields: &[&str],
-    now_ms: i64,
-) -> Result<Inbound, StorageError> {
-    apply_remote_merged_with_lists(conn, record, fields, &[], now_ms)
-}
-
-/// [`apply_remote_merged`] that also unions `lists` on the concurrent branch
-/// and keeps a local list the remote omits on the wholesale one (§6.7.1).
-/// Only `task` has lists; `project` has none.
-pub(crate) fn apply_remote_merged_with_lists(
-    conn: &Connection,
-    record: &InboundRecord,
-    fields: &[&str],
-    lists: &[&str],
+    carried: &[&str],
+    carry: Carry,
     now_ms: i64,
 ) -> Result<Inbound, StorageError> {
     let (local, remote, merged_clock) = match document_gate(conn, record)? {
         Gate::Wholesale => {
-            let kept = keep_local_lists(conn, record, lists)?;
+            let kept = carried::keep_local(conn, record, carried, carry)?;
             return wholesale(conn, kept.as_ref().unwrap_or(record), now_ms);
         }
         Gate::Skip => return Ok(Inbound::Skipped),
@@ -204,7 +198,7 @@ pub(crate) fn apply_remote_merged_with_lists(
 
     // §6.3 step 8: a winner of `undefined` leaves the column untouched, which
     // a missing key in `merged` expresses. A field outside `fields` and
-    // `lists` is not merged at all (§6.7), so the local value survives.
+    // `carried` is not merged at all (§6.7), so the local value survives.
     let mut changes: Vec<(&str, Change)> = fields
         .iter()
         .filter_map(|field| {
@@ -214,11 +208,13 @@ pub(crate) fn apply_remote_merged_with_lists(
                 .map(|value| (*field, Change::Set(value.clone())))
         })
         .collect();
-    for list in lists {
-        if let Some(union) = union_list(&record.item_id, list, local.object(), remote.object())? {
-            changes.push((list, Change::set(union)));
-        }
-    }
+    changes.extend(carried::concurrent_changes(
+        record,
+        carried,
+        carry,
+        local.object(),
+        remote.object(),
+    )?);
     changes.push(("clock", Change::Set(as_json(&merged_clock)?)));
     changes.push((
         "fieldClocks",
@@ -230,107 +226,6 @@ pub(crate) fn apply_remote_merged_with_lists(
         conflicted_fields: result.conflicted_fields,
         conflicts: Vec::new(),
     })
-}
-
-/// §6.7.1: Electron's union of one junction list on a concurrent task merge
-/// (`apps/desktop/src/main/sync/item-handlers/task-handler.ts:221-242`): the
-/// local entries in their order, then the remote's new ones. `tags` then go
-/// through `writeTags` (`:100-115`): trimmed as JS trims, empty ones dropped, deduped by
-/// [`tags::fold`] keeping the first spelling. Link ids dedupe exactly. There
-/// is no removal set, so an entry one side removed comes back while the other
-/// side still holds it.
-///
-/// `None` leaves the local list as it is: the remote omits the list or carries
-/// `null` (`if (data.tags)`, `:228`), or the local one is not an array of
-/// strings. A remote list of any other shape is an `Err`, so the record is
-/// flagged corrupt as the wholesale path flags it; `TaskSyncPayloadSchema`
-/// refuses it on Electron.
-fn union_list(
-    item_id: &str,
-    list: &str,
-    local: &Object,
-    remote: &Object,
-) -> Result<Option<Vec<String>>, StorageError> {
-    let remote = match remote.get(list) {
-        None | Some(Value::Null) => return Ok(None),
-        Some(value) => strings(value).ok_or_else(|| StorageError::Failed {
-            what: format!(
-                "task {item_id}: remote `{list}` is not an array of strings (chapter 06 §6.7.1)"
-            ),
-        })?,
-    };
-    let local = match local.get(list) {
-        None | Some(Value::Null) => Vec::new(),
-        Some(value) => match strings(value) {
-            Some(local) => local,
-            None => return Ok(None),
-        },
-    };
-    let joined = local.into_iter().chain(remote);
-    if list == "tags" {
-        return Ok(Some(tags::dedupe(
-            joined
-                .map(|tag| js_trim(&tag).to_owned())
-                .filter(|tag| !tag.is_empty()),
-        )));
-    }
-    let mut seen = HashSet::new();
-    Ok(Some(joined.filter(|id| seen.insert(id.clone())).collect()))
-}
-
-/// §6.7.1's wholesale rule: the remote with each of `lists` it omits or nulls
-/// copied from the live local row. Electron writes a junction list only when
-/// the remote carries it (`task-handler.ts:319-321`), and Electron builds from
-/// before #1879 push no `linkedCanvasIds` (before 2026-03-19 no `tags` or
-/// `linkedNoteIds` either), so a verbatim store would drop the local list and
-/// the next local edit would push the shorter one.
-///
-/// `None` stores the remote as received: a tombstone, a remote the wholesale
-/// store flags, no list missing, or no live, uncorrupted local row.
-fn keep_local_lists(
-    conn: &Connection,
-    record: &InboundRecord,
-    lists: &[&str],
-) -> Result<Option<InboundRecord>, StorageError> {
-    if lists.is_empty() || record.deleted_at.is_some() {
-        return Ok(None);
-    }
-    let Ok(remote) = StoredPayload::parse(&record.payload_json) else {
-        return Ok(None);
-    };
-    let missing: Vec<&str> = lists
-        .iter()
-        .copied()
-        .filter(|list| remote.object().get(*list).is_none_or(Value::is_null))
-        .collect();
-    if missing.is_empty() {
-        return Ok(None);
-    }
-    let Some((local, true)) = live_payload(conn, record)? else {
-        return Ok(None);
-    };
-    let kept: Vec<(&str, Change)> = missing
-        .into_iter()
-        .filter_map(|list| {
-            let value = local.object().get(list).filter(|value| !value.is_null())?;
-            Some((list, Change::Set(value.clone())))
-        })
-        .collect();
-    if kept.is_empty() {
-        return Ok(None);
-    }
-    Ok(Some(InboundRecord {
-        payload_json: remote.merge(&kept),
-        ..record.clone()
-    }))
-}
-
-fn strings(value: &Value) -> Option<Vec<String>> {
-    value
-        .as_array()?
-        .iter()
-        .map(|entry| entry.as_str().map(str::to_owned))
-        .collect()
 }
 
 /// Writes a concurrent branch's merged `changes` over the stored payload, and

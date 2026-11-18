@@ -19,7 +19,10 @@
 //!
 //! Neither array is one of `PROJECT_SYNCABLE_FIELDS` (§6.7), so an edit to one
 //! ticks no field clock of its own. That is desktop's shape too: its field
-//! merge covers the nine scalar fields and the arrays ride beside them.
+//! merge covers the nine scalar fields and the arrays ride beside them: an
+//! inbound record that carries an array replaces the local one, on a
+//! concurrent merge too, and one that omits it keeps the local one (chapter 06
+//! §6.7.2).
 //!
 //! ## Writes that touch other items
 //!
@@ -313,13 +316,26 @@ pub fn summaries(
     Ok(summaries)
 }
 
-/// Applies an inbound `project` record through §6.3.1 and §6.3.
+/// The two nested arrays a project carries beside its field list. They tick
+/// no field clock; an inbound record takes the remote's when it has one
+/// (chapter 06 §6.7.2).
+const NESTED_ARRAYS: [&str; 2] = ["statuses", "links"];
+
+/// Applies an inbound `project` record through §6.3.1 and §6.3, with the
+/// nested arrays by §6.7.2.
 pub fn apply_remote(
     conn: &Connection,
     record: &InboundRecord,
     now_ms: i64,
 ) -> Result<Inbound, StorageError> {
-    task_merge::apply_remote_merged(conn, record, &PROJECT_SYNCABLE_FIELDS, now_ms)
+    task_merge::apply_remote_merged(
+        conn,
+        record,
+        &PROJECT_SYNCABLE_FIELDS,
+        &NESTED_ARRAYS,
+        task_merge::Carry::Remote,
+        now_ms,
+    )
 }
 
 /// One live status by id, in any project.
