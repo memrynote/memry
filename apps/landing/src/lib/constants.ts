@@ -115,7 +115,8 @@ export const FOOTER_LINKS = {
     { label: 'Pricing', href: '/pricing' },
     { label: 'FAQ', href: '/faq' },
     { label: 'Changelog', href: '/changelog' },
-    { label: 'Security', href: '/security' }
+    { label: 'Security', href: '/security' },
+    { label: 'Encrypted notes', href: '/encrypted-notes-app' }
   ],
   // Footer shows only marquee competitors; the long tail lives on the /compare hub.
   compare: [
