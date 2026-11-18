@@ -6,6 +6,7 @@ use rusqlite::{Connection, OptionalExtension, params};
 
 use super::{ImportWriter, failed};
 use crate::api::errors::StorageError;
+use crate::storage::repositories::StoredPayload;
 use crate::storage::repositories::projectors;
 use crate::storage::repositories::sync_items::PAYLOAD_STATE_FULL;
 use crate::sync::clock::VectorClock;
@@ -29,6 +30,10 @@ pub struct ImportQueued {
     /// For a delete: its tombstone row, written from the payload Electron froze when the delete
     /// was queued. It replaces a staged row the delete supersedes (a soft-deleted tag category).
     pub tombstone: Option<ImportDeleted>,
+    /// For a create or upsert that minted the record's first clock (Electron's seed of unclocked
+    /// rows, a never-synced row's create): the live record's payload carrying that clock, written
+    /// over the staged one before the row is queued. Its `clock` fills the `clock` column.
+    pub minted: Option<String>,
     pub enqueued_at: i64,
 }
 
@@ -71,6 +76,9 @@ impl ImportWriter {
             if let Some(deleted) = &item.tombstone {
                 put_deleted(&tx, item, deleted)?;
             }
+            if let Some(payload) = &item.minted {
+                put_minted(&tx, item, payload)?;
+            }
             let change = Change::Record {
                 item_type: item.item_type.clone(),
                 item_id: item.item_id.clone(),
@@ -106,6 +114,15 @@ impl ImportWriter {
         Ok(None)
     }
 
+    /// The staged delete clock of `(item_type, item_id)`, which a re-create's first clock absorbs.
+    pub fn tombstone_clock(
+        &self,
+        item_type: &str,
+        item_id: &str,
+    ) -> Result<Option<VectorClock>, StorageError> {
+        crate::sync::store::tombstone_clock(&self.data, item_type, item_id)
+    }
+
     /// `(item_type, item_id, op)` of every staged outbox row, for stage check 4.
     pub fn outbox_rows(&self) -> Result<Vec<(String, String, String)>, StorageError> {
         let mut stmt = self
@@ -121,6 +138,36 @@ impl ImportWriter {
     /// Whether the staged note `id` is local-only, so the outbox withholds its pushes.
     pub fn is_local_only_note(&self, id: &str) -> Result<bool, StorageError> {
         crate::domain::note_files::is_local_only(&self.data, id)
+    }
+}
+
+/// Writes the minted payload over the live record and its clock into the `clock` column. A
+/// payload the type's reader refuses, or no live record, fails the call: a create is never queued
+/// for a record the core push would retire.
+fn put_minted(tx: &Connection, item: &ImportQueued, payload: &str) -> Result<(), StorageError> {
+    let refused = |what: String| StorageError::Failed {
+        what: format!(
+            "import record {}/{} {what}",
+            item.item_type, item.item_id
+        ),
+    };
+    let parsed = StoredPayload::parse(payload).map_err(|e| refused(format!("is unreadable: {e}")))?;
+    let view = projectors::read(&item.item_type, parsed.object())
+        .map_err(|e| refused(format!("is unreadable: {e}")))?;
+    let Some(clock) = projectors::clock_text(&view) else {
+        return Err(refused("has no minted clock".into()));
+    };
+    let updated = tx
+        .execute(
+            "UPDATE sync_items SET payload = ?3, clock = ?4
+              WHERE item_type = ?1 AND item_id = ?2 AND deleted_at IS NULL",
+            params![item.item_type, item.item_id, payload, clock],
+        )
+        .map_err(failed)?;
+    if updated == 1 {
+        Ok(())
+    } else {
+        Err(refused("has no live record to mint a clock on".into()))
     }
 }
 
