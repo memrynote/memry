@@ -151,6 +151,7 @@ struct NoteTitleEditor: View {
             draft = draft.replacingOccurrences(of: "\n", with: "")
             return commit()
         }
+        host.keys.reset()
         returned = burst
         if let text = commits.take(burst.line, explicit: true), text != title { rename(text) }
         returnToBody(takeHeld)
@@ -166,6 +167,7 @@ struct NoteTitleEditor: View {
         guard let burst = returned else { return nil }
         returned = nil
         host.body = host.window.flatMap(Self.caretHolder)
+        host.handedOff = draft
         let held = burst.held(in: draft)
         draft = burst.line
         return held?.isEmpty == false ? held : nil
@@ -177,7 +179,7 @@ struct NoteTitleEditor: View {
         guard let burst = returned else { return }
         returned = nil
         commits.begin(burst.line)
-        draft = draft.replacingOccurrences(of: "\n", with: "")
+        draft = burst.kept(in: draft) ?? draft.replacingOccurrences(of: "\n", with: "")
     }
 
     private func typed(_ value: String) {
@@ -188,9 +190,20 @@ struct NoteTitleEditor: View {
             // down ends the composition.
             if field.markedTextRange != nil {
                 host.composing = true
+                host.keys.reset()
             } else if !host.returnDown {
                 host.composing = false
             }
+        }
+        // The text view reports the text it showed at the hand-off again
+        // before it shows the line: no new Return, and no edit over the
+        // keys the line put back.
+        if returned == nil, let shown = host.handedOff {
+            if value == shown { return }
+            host.handedOff = nil
+        }
+        if !host.composing {
+            host.keys.changed(from: commits.editing || returned != nil ? draft : title, to: value)
         }
         if let burst = returned {
             draft = value
@@ -207,8 +220,10 @@ struct NoteTitleEditor: View {
         }
         // A vertical field takes Return as a newline rather than a submit; a
         // title is one line, so Return ends it.
-        if let burst = LineReturn(previous: draft, value: value) {
+        if var burst = LineReturn(previous: draft, value: value) {
             draft = value
+            let newline = value.firstIndex(of: "\n").map { value.distance(from: value.startIndex, to: $0) } ?? value.count
+            burst.line = host.keys.restoring(burst.line, end: newline)
             return returnPressed(burst)
         }
         if value != draft { claimsFocus = false }
@@ -255,11 +270,26 @@ struct NoteTitleEditor: View {
                 // in the same turn, where a text view takes the caret again.
                 // A hardware Return's press arrives ahead of the keys the
                 // keyboard still queues, so a key-down handler cut the title
-                // short; the press only marks the Return as down. A Return
-                // held for 0.1 s or more still loses the keys queued behind
-                // it (#4823).
-                .onKeyPress(.return, phases: .down) { _ in
-                    host.returnDown = true
+                // short; the press only marks the Return as down.
+                //
+                // The line the Return ends holds every key pressed before the
+                // Return went down (#4823, #4815). The keyboard can drop keys
+                // it still queues as the Return goes down, so the presses,
+                // heard here in press order, decide the line rather than the
+                // text that arrived (`PressedKeys`): both hand-offs put back a
+                // key pressed before the Return that the text skipped or
+                // never got.
+                .onKeyPress(phases: [.down, .repeat]) { press in
+                    if press.key == .return {
+                        if press.phase == .down {
+                            host.returnDown = true
+                            host.keys.returnPressed()
+                        }
+                    } else if press.modifiers.isDisjoint(with: [.command, .control]) {
+                        host.keys.pressed(press.characters)
+                    } else {
+                        host.keys.reset()
+                    }
                     return .ignored
                 }
                 .onSubmit {
@@ -283,11 +313,15 @@ struct NoteTitleEditor: View {
                             commits.begin(title)
                         }
                         if let text = host.title?.text { draft = text }
-                        returnPressed(LineReturn(submitted: draft))
+                        var burst = LineReturn(submitted: draft)
+                        burst.line = host.keys.restoring(draft, end: draft.count)
+                        returnPressed(burst)
                     }
                 }
                 .onChange(of: focused) { _, isFocused in
                     if isFocused {
+                        host.keys.reset()
+                        host.handedOff = nil
                         EditorFocusMemory.shared.forget()
                         if !commits.editing, returned == nil {
                             draft = title
@@ -396,6 +430,11 @@ private final class TitleWindow {
     var composing = false
     /// A Return went down in the title and its key-up has not submitted.
     var returnDown = false
+    /// The keys pressed in the title that the keyboard has not inserted.
+    var keys = PressedKeys()
+    /// The title's text as the body took the caret after a Return, until
+    /// the text view shows something else.
+    var handedOff: String?
     /// The body block a Return in the title moved the caret to, until the
     /// title takes the caret again.
     weak var body: UITextView?
