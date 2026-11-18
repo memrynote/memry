@@ -7,9 +7,13 @@
 //!   `<title>.md`, then `<title> 1.md` and on ([`free_path`]). A day goes at its day's path; a
 //!   day path that is taken keeps the day unfiled ([`Keep::PathTaken`]), since what stands there
 //!   is the identity's to adopt.
-//! - **What.** The frontmatter a local create writes (the tags and properties, a day's date
-//!   first), then the body as the pass writes it ([`output_over`]). A body not pulled yet writes
-//!   nothing: the pull that brings it schedules the note again.
+//! - **What.** The frontmatter Electron's pull writes (the tags, other names and properties, a
+//!   day's date first and its reserved keys left out, then a note's cover keys), then the body
+//!   as the pass writes it ([`output_over`]). A body not pulled yet writes nothing: the pull that
+//!   brings it schedules the note again.
+//! - **A day waits**, as a local day create refuses, while the vault's settings cannot be read
+//!   (their defaults do not say where the journal is) or a journal setting change or a moved
+//!   journal folder holds the days ([`Keep::DayWaits`]); the next open lists it again.
 //! - **Order**, as a local create's, under the rows' lane: the row with no hash, the write told
 //!   to the own-write record, the file created and never written over, then the row's hashes
 //!   stamped as a pass stamps them.
@@ -17,14 +21,16 @@
 //!   reconcile after the walk lists every unfiled note again.
 
 use memry_core::domain::note_files::{StampMark, Unfiled};
-use memry_core::markdown::frontmatter::write_markdown_note;
+use memry_core::markdown::frontmatter::{YamlMap, YamlValue, json_to_yaml, write_markdown_note};
+use memry_core::markdown::shared::cover_image::{COVER_FRONTMATTER_KEY, cover_frontmatter};
 
 use super::pass::output_over;
 use super::{Keep, Outcome, Pass};
-use crate::journal::day_path;
 use crate::journal::write::{day_file, day_frontmatter};
+use crate::journal::{day_path_in, is_reserved_day_key};
 use crate::notes::create::{free_path, remove_row};
-use crate::notes::frontmatter::new_file_frontmatter;
+use crate::notes::frontmatter::{is_reserved_key, new_file_frontmatter};
+use crate::vault::config::read_vault_config_strict;
 use crate::vault::consumer::rows::{Lane, RowStat};
 use crate::vault::consumer::{Applied, ChangeSource};
 use crate::vault::file_types::FileType;
@@ -40,6 +46,7 @@ impl Pass {
         lane: &mut Lane<'_>,
         note_id: &str,
         stamp: (i64, StampMark),
+        between: &mut dyn FnMut(),
     ) -> Outcome {
         if !self.rows.walked(&self.vault) {
             return Outcome::Kept(Keep::NoRow);
@@ -73,6 +80,7 @@ impl Pass {
             return Outcome::Failed(format!("the new file's row: {error}"));
         }
         self.echo.will_write(&rel, &hash);
+        between();
         if let Err(error) = write_new_text(&self.root, &rel, &output) {
             // Not this pass's file: what stands there now is someone else's.
             self.echo.cancel_write(&rel);
@@ -119,14 +127,27 @@ impl Pass {
         let root = self.root.as_path();
         let (rel, written) = match &unfiled.date {
             Some(date) => {
-                let rel = day_path(root, date)
+                match self.vault.note_files().days_wait() {
+                    Ok(false) => {}
+                    Ok(true) => return Err(Outcome::Kept(Keep::DayWaits)),
+                    Err(error) => return Err(Outcome::Failed(format!("the held days: {error}"))),
+                }
+                let Ok(config) = read_vault_config_strict(root) else {
+                    return Err(Outcome::Kept(Keep::DayWaits));
+                };
+                let rel = day_path_in(&config, date)
                     .map_err(|error| Outcome::Failed(format!("the day's path: {error}")))?;
                 let taken =
                     lane.check_free(&rel).is_err() || root.join(&rel).symlink_metadata().is_ok();
                 if taken {
                     return Err(Outcome::Kept(Keep::PathTaken));
                 }
-                let frontmatter = day_frontmatter(date, &unfiled.tags, &unfiled.properties);
+                let mut properties = unfiled.properties.clone();
+                properties.retain(|name, value| {
+                    !is_reserved_day_key(name) && !is_reserved_key(name, value)
+                });
+                let mut frontmatter = day_frontmatter(date, &unfiled.tags, &properties);
+                with_aliases(&mut frontmatter, &unfiled.aliases);
                 (rel, day_file(&frontmatter, ""))
             }
             None => {
@@ -136,12 +157,29 @@ impl Pass {
                     .filter(|folder| !folder.is_empty());
                 let rel = free_path(lane, root, root, &unfiled.title, folder)
                     .map_err(|error| Outcome::Failed(format!("no path for the note: {error}")))?;
-                let frontmatter = new_file_frontmatter(&unfiled.tags, &unfiled.properties);
+                let mut frontmatter = new_file_frontmatter(&unfiled.tags, &unfiled.properties);
+                with_aliases(&mut frontmatter, &unfiled.aliases);
+                // A `cover` property that is no cover is the user's; a remote cover never
+                // replaces it (`applyNoteCoverToFrontmatter`).
+                let cover = unfiled.cover.as_ref().map(cover_frontmatter);
+                if !frontmatter.contains_key(COVER_FRONTMATTER_KEY) {
+                    for (key, value) in cover.into_iter().flatten() {
+                        frontmatter.insert(key.to_owned(), json_to_yaml(&value));
+                    }
+                }
                 (rel, write_markdown_note(&frontmatter, ""))
             }
         };
         let written =
             written.map_err(|error| Outcome::Failed(format!("the frontmatter: {error}")))?;
         Ok((rel, written))
+    }
+}
+
+/// The record's other names, as a kept note's file holds them (`notes::kept` `file_text`).
+fn with_aliases(frontmatter: &mut YamlMap, aliases: &[String]) {
+    if !aliases.is_empty() {
+        let items = aliases.iter().cloned().map(YamlValue::String);
+        frontmatter.insert("aliases".to_owned(), YamlValue::seq(items.collect()));
     }
 }
