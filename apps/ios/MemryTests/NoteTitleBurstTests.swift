@@ -64,6 +64,14 @@ struct NoteTitleBurstTests {
         return Fixture(vault: vault, noteId: noteId, reader: CoreNotesReader(vault: vault.vault, executor: .shared))
     }
 
+    /// A new note as the app makes it, on one empty paragraph.
+    private func newNote() async throws -> Fixture {
+        let vault = try TasksTestVault()
+        let noteId = try await CoreNotesWriter(vault: vault.vault, store: TaskTestKeychain(), executor: .shared)
+            .create(title: "", folderPath: nil)
+        return Fixture(vault: vault, noteId: noteId, reader: CoreNotesReader(vault: vault.vault, executor: .shared))
+    }
+
     /// Opens the new note's page in a scene window; its title takes the caret.
     private func open(_ f: Fixture) async throws -> (UIWindow, UITextView) {
         let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
@@ -161,6 +169,248 @@ struct NoteTitleBurstTests {
         try await expectBody(in: window, f)
     }
 
+    /// A key as the keyboard delivers it: to the text view that has the
+    /// caret, through its delegate as UIKit asks it (the ranges form where
+    /// the delegate has it, as the title's does). With no text view holding
+    /// the caret the key reaches nothing, as on a device.
+    private func key(_ key: String, in window: UIWindow, title: UITextView) {
+        guard let view = title.isFirstResponder ? title : views(BlockTextView.self, in: window).first(where: \.isFirstResponder)
+        else { return }
+        let ranges = [NSValue(range: view.selectedRange)]
+        let allowed = view.delegate?.textView?(view, shouldChangeTextInRanges: ranges, replacementText: key)
+            ?? view.delegate?.textView?(view, shouldChangeTextIn: view.selectedRange, replacementText: key)
+        if allowed != false { view.insertText(key) }
+    }
+
+    /// #4756: `title⏎[] milk` typed as a hardware burst. The Return is the
+    /// hardware key, which the title's text view takes as a press (a submit,
+    /// #4705) rather than as text; the keys after it arrive `gap` run-loop
+    /// turns apart while the body's row is drawn and takes the caret. Every
+    /// key lands once, in order: the title gave up the caret as Return
+    /// submitted it, before the body took it, and the keys typed meanwhile
+    /// reached no text view (`] milk`, the `[` lost).
+    @Test(.timeLimit(.minutes(2)), arguments: [0, 1, 3, 100])
+    func a_burst_through_the_titles_return_key_into_a_checklist_keeps_every_key(gap: Int) async throws {
+        try await expectChecklistBurst(gap: gap)
+    }
+
+    /// The keyboard queues keys, and the Return's press arrives ahead of
+    /// keys typed before it that it still queues: `le` reaches the title
+    /// after the Return went down. A hand-off as the key went down saved
+    /// `tit` and moved `le` to the body.
+    @Test(.timeLimit(.minutes(2)), arguments: [0, 3])
+    func keys_typed_before_the_return_but_inserted_after_its_press_stay_in_the_title(gap: Int) async throws {
+        try await expectChecklistBurst(late: "le", gap: gap)
+    }
+
+    /// The keyboard may insert the Return's newline, in its place among the
+    /// keys, before the key comes up: the newline hands off, and the key-up
+    /// ends the editing of every text view. The body keeps the caret, and
+    /// the keys after the Return land in it.
+    @Test(.timeLimit(.minutes(2)), arguments: [0, 3])
+    func a_return_whose_newline_arrives_before_its_key_up_keeps_the_caret_in_the_body(gap: Int) async throws {
+        try await expectChecklistBurst(newline: true, gap: gap)
+    }
+
+    /// Types `title⏎[] milk` through the hardware Return, with the `late`
+    /// tail of `title` reaching the title after the Return went down, and
+    /// with the Return's newline inserted before it comes up when `newline`.
+    /// Expects `title` stored over a `milk` checklist item.
+    private func expectChecklistBurst(late: String = "", newline: Bool = false, gap: Int) async throws {
+        let seen = try await uninterrupted { f, window, field in
+            for character in "title".dropLast(late.count) { key(String(character), in: window, title: field) }
+            let press = HardwarePress(.keyboardReturnOrEnter, "\r")
+            // The page's key handlers hear the press as it goes down, ahead
+            // of the keys the keyboard still queues; the text view takes it
+            // in its place in that queue, after `late`.
+            if !late.isEmpty { field.next?.pressesBegan([press], with: nil) }
+            for character in late { key(String(character), in: window, title: field) }
+            // The newline lands ahead of the key-up. The text view takes no
+            // insert from a test while it holds a press.
+            if newline { key("\n", in: window, title: field) }
+            field.pressesBegan([press], with: nil)
+            field.pressesEnded([press], with: nil)
+            for character in "[] milk" {
+                for _ in 0 ..< gap { try await Task.sleep(for: .milliseconds(1)) }
+                key(String(character), in: window, title: field)
+            }
+
+            await until { views(BlockTextView.self, in: window).first?.text == "milk" }
+            let block = views(BlockTextView.self, in: window).first
+            let body = block?.text
+            let shown = field.text
+            await until { field.text == "title" }
+            let title = field.text
+            block?.resignFirstResponder()
+            for _ in 0..<300 {
+                let now = try await stored(f)
+                if now.title == "title", now.body == ["milk"] { break }
+                try await Task.sleep(for: .milliseconds(20))
+            }
+            let kinds = try await f.reader.blocks(id: f.noteId)?.map(\.kind)
+            return (body, shown, title, try await stored(f), kinds)
+        }
+        #expect(seen.0 == "milk", "the body shows \(seen.0 ?? "nil")")
+        #expect(seen.2 == "title", "the title shows \(seen.2 ?? "nil"), at first \(seen.1 ?? "nil")")
+        #expect(seen.3.title == "title", "\(seen.3)")
+        #expect(seen.3.body == ["milk"], "\(seen.3)")
+        #expect(seen.4 == ["checkListItem"], "\(seen.4 ?? [])")
+    }
+
+    /// Runs `scenario` on a new note until no other suite made its window
+    /// key meanwhile, and returns what it saw. Suites run in parallel in this
+    /// process, and a window made key elsewhere takes the caret mid-burst:
+    /// such a run proves nothing either way (as in `EditorReturnBurstTests`).
+    private func uninterrupted<T>(_ scenario: (Fixture, UIWindow, UITextView) async throws -> T) async throws -> T {
+        var attempt = 0
+        while true {
+            attempt += 1
+            let f = try await newNote()
+            let (window, field) = try await open(f)
+            let resigned = Resigned(window)
+            let seen = try await scenario(f, window, field)
+            resigned.stop()
+            window.isHidden = true
+            if !resigned.happened || attempt == 10 { return seen }
+            try await Task.sleep(for: .milliseconds(200 * attempt))
+        }
+    }
+
+    /// #4756: a hardware Return while an input method composes in the title
+    /// is the composition's, not the move to the body. The caret stays in
+    /// the title, and the next key lands there: SwiftUI ends the field's
+    /// editing as the key comes up, and the key typed then reached no text
+    /// view.
+    @Test(.timeLimit(.minutes(1))) func a_return_key_during_a_composition_stays_in_the_title() async throws {
+        let f = try await newNote()
+        let (window, field) = try await open(f)
+        defer { window.isHidden = true }
+
+        for character in "title" { key(String(character), in: window, title: field) }
+        field.setMarkedText("か", selectedRange: NSRange(location: 1, length: 0))
+        let press = HardwarePress(.keyboardReturnOrEnter, "\r")
+        field.pressesBegan([press], with: nil)
+        // The input method confirms its composition on the key going down.
+        field.unmarkText()
+        field.pressesEnded([press], with: nil)
+        try await settle(f)
+
+        #expect(views(BlockTextView.self, in: window).allSatisfy { !$0.isFirstResponder }, "the body took the caret")
+        #expect(field.isFirstResponder, "the title lost the caret to no text view")
+        key("x", in: window, title: field)
+        try await settle(f)
+        #expect(field.text == "titleかx")
+
+        // The next Return, with nothing composing, moves to the body.
+        field.pressesBegan([press], with: nil)
+        field.pressesEnded([press], with: nil)
+        await until { views(BlockTextView.self, in: window).first?.isFirstResponder == true }
+        #expect(views(BlockTextView.self, in: window).first?.isFirstResponder == true, "the plain Return stayed in the title")
+        try await expectTitle(f, "titleかx")
+    }
+
+    /// Romaji typed fast and then Return: the page's key handlers hear the
+    /// press go down before the queued keys compose `か` in the title, and
+    /// the input method takes the Return as it reaches the text view, to
+    /// confirm. The caret stays in the title with `か`.
+    @Test(.timeLimit(.minutes(1))) func a_return_confirming_a_composition_still_queued_at_its_press_stays_in_the_title() async throws {
+        let f = try await newNote()
+        let (window, field) = try await open(f)
+        defer { window.isHidden = true }
+
+        for character in "title" { key(String(character), in: window, title: field) }
+        let press = HardwarePress(.keyboardReturnOrEnter, "\r")
+        field.next?.pressesBegan([press], with: nil)
+        field.setMarkedText("か", selectedRange: NSRange(location: 1, length: 0))
+        field.pressesBegan([press], with: nil)
+        field.unmarkText()
+        field.pressesEnded([press], with: nil)
+        try await settle(f)
+
+        #expect(views(BlockTextView.self, in: window).allSatisfy { !$0.isFirstResponder }, "the body took the caret")
+        #expect(field.isFirstResponder, "the title lost the caret")
+        key("x", in: window, title: field)
+        try await settle(f)
+        #expect(field.text == "titleかx")
+    }
+
+    /// A composition deleted with Backspace is over: the next Return is a
+    /// plain one, saves the title and moves to the body, and the keys after
+    /// it land there.
+    @Test(.timeLimit(.minutes(1))) func a_return_after_a_deleted_composition_moves_to_the_body() async throws {
+        let f = try await newNote()
+        let (window, field) = try await open(f)
+        defer { window.isHidden = true }
+
+        for character in "title" { key(String(character), in: window, title: field) }
+        field.setMarkedText("き", selectedRange: NSRange(location: 1, length: 0))
+        try await settle(f)
+        // Backspace empties the composition, and the input method ends it.
+        field.setMarkedText("", selectedRange: NSRange(location: 0, length: 0))
+        field.unmarkText()
+        try await settle(f)
+        #expect(field.text == "title")
+
+        let press = HardwarePress(.keyboardReturnOrEnter, "\r")
+        field.pressesBegan([press], with: nil)
+        field.pressesEnded([press], with: nil)
+        await until { views(BlockTextView.self, in: window).first?.isFirstResponder == true }
+        #expect(views(BlockTextView.self, in: window).first?.isFirstResponder == true, "the Return stayed in the title")
+        for character in "mi" { key(String(character), in: window, title: field) }
+        await until { views(BlockTextView.self, in: window).first?.text == "mi" }
+        #expect(field.text == "title")
+        views(BlockTextView.self, in: window).first?.resignFirstResponder()
+        try await expectStored(f, title: "title", body: ["mi"])
+    }
+
+    /// A Return press cancelled while an input method composes leaves no
+    /// claim on the caret: dismissing the keyboard afterwards ends the
+    /// title's edit and saves it.
+    @Test(.timeLimit(.minutes(1))) func a_cancelled_return_during_a_composition_leaves_no_claim_on_the_caret() async throws {
+        let f = try await newNote()
+        let (window, field) = try await open(f)
+        defer { window.isHidden = true }
+
+        for character in "title" { key(String(character), in: window, title: field) }
+        field.setMarkedText("か", selectedRange: NSRange(location: 1, length: 0))
+        let press = HardwarePress(.keyboardReturnOrEnter, "\r")
+        field.pressesBegan([press], with: nil)
+        field.pressesCancelled([press], with: nil)
+        field.unmarkText()
+        try await settle(f)
+        #expect(field.isFirstResponder)
+
+        field.resignFirstResponder()
+        try await settle(f)
+        #expect(!field.isFirstResponder, "the title took the caret back")
+        try await expectTitle(f, "titleか")
+    }
+
+    /// A cancelled Return press is no Return: the caret stays in the title,
+    /// the next key lands there, and the next Return moves to the body.
+    @Test(.timeLimit(.minutes(1))) func a_cancelled_return_press_keeps_the_caret_in_the_title() async throws {
+        let f = try await newNote()
+        let (window, field) = try await open(f)
+        defer { window.isHidden = true }
+
+        for character in "title" { key(String(character), in: window, title: field) }
+        // The page's key handlers hear the press go down and be cancelled.
+        let press = HardwarePress(.keyboardReturnOrEnter, "\r")
+        field.next?.pressesBegan([press], with: nil)
+        field.next?.pressesCancelled([press], with: nil)
+        try await settle(f)
+        #expect(field.isFirstResponder, "the cancelled Return moved the caret")
+        key("x", in: window, title: field)
+        try await settle(f)
+        #expect(field.text == "titlex")
+
+        field.pressesBegan([press], with: nil)
+        field.pressesEnded([press], with: nil)
+        await until { views(BlockTextView.self, in: window).first?.isFirstResponder == true }
+        #expect(views(BlockTextView.self, in: window).first?.isFirstResponder == true, "the Return stayed in the title")
+        try await expectTitle(f, "titlex")
+    }
+
     /// #4722: keys typed slowly into the block the title's Return moved the
     /// caret to are stored as the app leaves, with the block still focused.
     @Test(.timeLimit(.minutes(1))) func leaving_the_app_stores_the_keys_typed_after_the_titles_return() async throws {
@@ -234,5 +484,57 @@ struct NoteTitleBurstTests {
         try await expectTitle(f, "Fook")
         #expect(field.markedTextRange == nil)
         #expect(field.text == "Fook")
+    }
+}
+
+/// A hardware key press, as a keyboard delivers it to the first responder's
+/// `pressesBegan`.
+private final class HardwarePress: UIPress {
+    private let hardwareKey: UIKey
+
+    init(_ code: UIKeyboardHIDUsage, _ characters: String) {
+        hardwareKey = HardwareKey(code, characters)
+        super.init()
+    }
+
+    override var key: UIKey? { hardwareKey }
+    override var phase: UIPress.Phase { .began }
+}
+
+private final class HardwareKey: UIKey {
+    private let code: UIKeyboardHIDUsage
+    private let text: String
+
+    init(_ code: UIKeyboardHIDUsage, _ text: String) {
+        self.code = code
+        self.text = text
+        super.init()
+    }
+
+    required init?(coder: NSCoder) { nil }
+
+    override var keyCode: UIKeyboardHIDUsage { code }
+    override var characters: String { text }
+    override var charactersIgnoringModifiers: String { text }
+    override var modifierFlags: UIKeyModifierFlags { [] }
+}
+
+/// Whether `window` stopped being the key window while watched.
+@MainActor
+private final class Resigned {
+    private(set) var happened = false
+    private var observer: NSObjectProtocol?
+
+    init(_ window: UIWindow) {
+        observer = NotificationCenter.default.addObserver(
+            forName: UIWindow.didResignKeyNotification, object: window, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.happened = true }
+        }
+    }
+
+    func stop() {
+        observer.map(NotificationCenter.default.removeObserver)
+        observer = nil
     }
 }

@@ -210,7 +210,8 @@ extension EditorSession {
             for (name, value) in props.sorted(by: { $0.key < $1.key }) {
                 await model.setProp(blockId, name, value)
             }
-            self.pendingFocus = blockId
+            // A row redrawn meanwhile has taken the caret already.
+            if self.shortcutField === field { self.pendingFocus = blockId }
         }
     }
 

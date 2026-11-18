@@ -129,17 +129,19 @@ struct NoteTitleEditor: View {
     /// a turn late.
     private var titleTextView: UITextView? {
         guard commits.editing else { return nil }
-        func editing(in view: UIView) -> UITextView? {
-            if let text = view as? UITextView, text.isFirstResponder { return text }
-            // A plain loop: a lazy `compactMap(...).first` maps each level
-            // again for every level above it, which hung the app on a page's
-            // deep view tree.
-            for subview in view.subviews {
-                if let text = editing(in: subview) { return text }
-            }
-            return nil
+        return host.window.flatMap(Self.caretHolder)
+    }
+
+    /// The text view with the caret in `view`, if any.
+    private static func caretHolder(in view: UIView) -> UITextView? {
+        if let text = view as? UITextView, text.isFirstResponder { return text }
+        // A plain loop: a lazy `compactMap(...).first` maps each level again
+        // for every level above it, which hung the app on a page's deep view
+        // tree.
+        for subview in view.subviews {
+            if let text = caretHolder(in: subview) { return text }
         }
-        return host.window.flatMap(editing)
+        return nil
     }
 
     /// Return: saves the title before it and keeps the caret, holding the
@@ -163,6 +165,7 @@ struct NoteTitleEditor: View {
         }
         guard let burst = returned else { return nil }
         returned = nil
+        host.body = host.window.flatMap(Self.caretHolder)
         let held = burst.held(in: draft)
         draft = burst.line
         return held?.isEmpty == false ? held : nil
@@ -178,6 +181,17 @@ struct NoteTitleEditor: View {
     }
 
     private func typed(_ value: String) {
+        if let field = titleTextView {
+            host.title = field
+            // An input method confirming its composition on Return first
+            // deletes it, as Backspace does: marked text gone with no Return
+            // down ends the composition.
+            if field.markedTextRange != nil {
+                host.composing = true
+            } else if !host.returnDown {
+                host.composing = false
+            }
+        }
         if let burst = returned {
             draft = value
             if burst.held(in: value) == nil { keepHeld() }
@@ -234,15 +248,43 @@ struct NoteTitleEditor: View {
                 .font(Tokens.Typography.screenTitle.font)
                 .foregroundStyle(Tokens.Text.primary.color)
                 .focused($focused)
+                // The hand-off to the body (#4756) acts only on what arrives
+                // in the keyboard's queue order: the newline a Return may
+                // insert, which hands off in `typed`, and the key-up, which
+                // ends the editing of every text view and then submits here,
+                // in the same turn, where a text view takes the caret again.
+                // A hardware Return's press arrives ahead of the keys the
+                // keyboard still queues, so a key-down handler cut the title
+                // short; the press only marks the Return as down. A Return
+                // held for 0.1 s or more still loses the keys queued behind
+                // it (#4823).
+                .onKeyPress(.return, phases: .down) { _ in
+                    host.returnDown = true
+                    return .ignored
+                }
                 .onSubmit {
-                    guard returned == nil else { return }
-                    // An edit that ended under the caret (the app resumed)
-                    // still moves to the body.
-                    if !commits.editing {
-                        draft = title
-                        commits.begin(title)
+                    host.returnDown = false
+                    guard host.window.flatMap(Self.caretHolder) == nil else { return }
+                    if host.composing || returned != nil {
+                        // An input method took the Return as its own, or the
+                        // body has yet to take the keys held for it: the
+                        // caret goes back to the title, and the edit goes on.
+                        host.composing = false
+                        host.title?.becomeFirstResponder()
+                    } else if let body = host.body, body.window != nil {
+                        // The newline moved the caret to the body already.
+                        host.body = nil
+                        body.becomeFirstResponder()
+                    } else {
+                        // An edit that ended under the caret (the app
+                        // resumed) still moves to the body.
+                        if !commits.editing {
+                            draft = title
+                            commits.begin(title)
+                        }
+                        if let text = host.title?.text { draft = text }
+                        returnPressed(LineReturn(submitted: draft))
                     }
-                    returnPressed(LineReturn(submitted: draft))
                 }
                 .onChange(of: focused) { _, isFocused in
                     if isFocused {
@@ -251,6 +293,9 @@ struct NoteTitleEditor: View {
                             draft = title
                             commits.begin(title)
                         }
+                        if let field = titleTextView { host.title = field }
+                        host.composing = titleTextView?.markedTextRange != nil
+                        host.body = nil
                     } else if returned != nil {
                         // The body taking the caret ends the title's focus
                         // before it takes the held keys, on the same turn.
@@ -343,6 +388,17 @@ struct NoteTitleEditor: View {
 /// The window a title is drawn in, read without redrawing the title.
 private final class TitleWindow {
     weak var window: UIWindow?
+    /// The title's text view, which keeps no caret once SwiftUI ends its
+    /// editing.
+    weak var title: UITextView?
+    /// Whether an input method composes in the title: from a change with
+    /// marked text until a change without while no Return is down.
+    var composing = false
+    /// A Return went down in the title and its key-up has not submitted.
+    var returnDown = false
+    /// The body block a Return in the title moved the caret to, until the
+    /// title takes the caret again.
+    weak var body: UITextView?
 }
 
 private struct TitleWindowReader: UIViewRepresentable {
