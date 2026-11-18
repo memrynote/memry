@@ -119,6 +119,17 @@ pub fn pending_count(conn: &Connection) -> Result<u32, StorageError> {
     Ok(count)
 }
 
+/// Forgets this device's fire record of `reminder_id`, inside the caller's
+/// transaction: the reminder was deleted or created anew under its id.
+pub(super) fn forget(tx: &Connection, reminder_id: &str) -> Result<(), StorageError> {
+    tx.execute(
+        "DELETE FROM reminder_fires WHERE reminder_id = ?1",
+        [reminder_id],
+    )
+    .map_err(failed)?;
+    Ok(())
+}
+
 fn fired_instants(conn: &Connection) -> Result<HashMap<String, i64>, StorageError> {
     let mut statement = conn
         .prepare("SELECT reminder_id, fired_for_ms FROM reminder_fires")
