@@ -22,6 +22,7 @@ pub mod home_pages;
 pub mod ios_beta;
 pub mod journal;
 pub mod large_file;
+pub mod launch;
 pub mod linking;
 pub mod locale;
 pub mod logging;
