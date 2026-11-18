@@ -202,7 +202,7 @@ impl Importer for AppleJournalImporter {
 
 fn import_entry(path: &Path, sink: &dyn ImportSink) -> Result<(), String> {
     let html = read_source_text(path).map_err(|e| e.to_string())?;
-    let doc = parse_html(&html);
+    let doc = parse_html(&html).map_err(|e| e.to_string())?;
     let date = parse_journal_date(&class_text(&doc, "pageHeader").unwrap_or_default());
     let reflection = class_text(&doc, "reflectionPrompt");
     // `.p2, .p3` in one pass, so the entry keeps its order: Apple assigns the classes by

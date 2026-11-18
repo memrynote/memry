@@ -29,18 +29,25 @@ import {
   onenoteDownloadingAttachmentStatus
 } from '@memry/importers/messages'
 import type { NoteCreateInput } from '../../vault/notes-crud'
+import type { AttachmentResult } from '../../vault/attachments'
 import type * as IdModule from '../../lib/id'
 import type * as AttachmentsModule from '../../vault/attachments'
 import type * as FsPromises from 'fs/promises'
 import type { Importer, ImportInput } from '../types'
 import { createImportContext } from '../import-context'
+import { attachmentMarkdown } from '../_shared/attachment-markdown'
 import { markdownImporter } from '../markdown/markdown-importer'
 import { csvImporter } from '../csv/csv-importer'
 import { htmlImporter } from '../html/html-importer'
 import { evernoteImporter } from '../evernote/evernote-importer'
 import { appleJournalImporter } from '../apple-journal/apple-journal-importer'
 
-const rec = vi.hoisted(() => ({ timeline: [] as unknown[], noteCounter: 0 }))
+const rec = vi.hoisted(() => ({
+  timeline: [] as unknown[],
+  noteCounter: 0,
+  /** Each saved file's result by the MD5 of its bytes, which is an Evernote resource's hash. */
+  savedByMd5: new Map<string, AttachmentResult>()
+}))
 
 vi.mock('../../lib/window-broadcast', () => ({
   broadcastToAllWindows: (_channel: string, payload: unknown) => {
@@ -74,7 +81,7 @@ vi.mock('../../vault/attachments', async (importOriginal) => {
       }
       const sha256 = createHash('sha256').update(data).digest('hex')
       rec.timeline.push({ op: 'saveAttachment', noteId, name, size: data.length, sha256 })
-      return {
+      const result = {
         success: true,
         path: `attachments/${noteId}/${name}`,
         name,
@@ -82,6 +89,8 @@ vi.mock('../../vault/attachments', async (importOriginal) => {
         mimeType: actual.getMimeType(name),
         type: actual.getFileType(name)
       }
+      rec.savedByMd5.set(createHash('md5').update(data).digest('hex'), result)
+      return result
     }
   }
 })
@@ -113,7 +122,29 @@ interface VectorCase {
   exactCreated?: boolean
 }
 
-const SOURCES: { source: string; importer: Importer; cases: VectorCase[] }[] = [
+/**
+ * An Electron bug the Rust importer fixes, listed in #3549's Departures: it rewrites the body
+ * the TypeScript importer wrote, so the vector holds the fixed output.
+ */
+type Departure = (content: string) => string
+
+/**
+ * Evernote: a non-image attachment's placeholder `[[attachment]](memry-enex:H)` has brackets in
+ * its label, so neither the rewrite nor the strip regex matched it and the note kept the internal
+ * link. Fixed, it becomes the saved file's block, or nothing.
+ */
+const enexAttachmentLink: Departure = (content) =>
+  content.replace(/\[\[attachment\]\]\(memry-enex:([^)]*)\)/g, (_match, hash: string) => {
+    const saved = rec.savedByMd5.get(hash)
+    return (saved && attachmentMarkdown(saved)) ?? ''
+  })
+
+const SOURCES: {
+  source: string
+  importer: Importer
+  cases: VectorCase[]
+  departures?: Departure[]
+}[] = [
   {
     source: 'markdown',
     importer: markdownImporter,
@@ -149,6 +180,7 @@ const SOURCES: { source: string; importer: Importer; cases: VectorCase[] }[] = [
   {
     source: 'evernote',
     importer: evernoteImporter,
+    departures: [enexAttachmentLink],
     cases: [
       {
         name: 'sample',
@@ -182,7 +214,11 @@ function tagValue(value: unknown): unknown {
   return value
 }
 
-function noteRecord(input: NoteCreateInput, exactCreated: boolean): unknown {
+function noteRecord(
+  input: NoteCreateInput,
+  exactCreated: boolean,
+  departures: Departure[]
+): unknown {
   return {
     op: 'createNote',
     id: input.id ?? null,
@@ -196,7 +232,7 @@ function noteRecord(input: NoteCreateInput, exactCreated: boolean): unknown {
     // The birth time cannot be set on a copied file; only its presence is compared.
     created: input.created ? (exactCreated ? input.created : '<birthtime>') : null,
     modified: input.modified ?? null,
-    content: input.content ?? ''
+    content: departures.reduce((content, fix) => fix(content), input.content ?? '')
   }
 }
 
@@ -208,7 +244,12 @@ function setTimes(dir: string): void {
   }
 }
 
-async function runCase(source: string, importer: Importer, c: VectorCase): Promise<unknown> {
+async function runCase(
+  source: string,
+  importer: Importer,
+  c: VectorCase,
+  departures: Departure[]
+): Promise<unknown> {
   const work = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-import-vectors-'))
   try {
     fs.cpSync(path.join(VECTORS, source, 'input'), work, { recursive: true })
@@ -223,6 +264,7 @@ async function runCase(source: string, importer: Importer, c: VectorCase): Promi
 
     rec.timeline = []
     rec.noteCounter = 0
+    rec.savedByMd5.clear()
     const controller = new AbortController()
     const input: ImportInput = { sourcePaths: c.sources.map((s) => path.join(work, s)) }
     const preview = c.preview ? await importer.preview?.(input, controller.signal) : undefined
@@ -235,7 +277,7 @@ async function runCase(source: string, importer: Importer, c: VectorCase): Promi
       timeline: rec.timeline.map((entry) => {
         const e = entry as { op: string; input?: NoteCreateInput }
         return e.op === 'createNote' && e.input
-          ? noteRecord(e.input, c.exactCreated ?? false)
+          ? noteRecord(e.input, c.exactCreated ?? false, departures)
           : entry
       }),
       summary: {
@@ -271,10 +313,10 @@ describe('importer vectors', () => {
     expect(fs.readFileSync(file, 'utf8'), STALE).toBe(text)
   })
 
-  for (const { source, importer, cases } of SOURCES) {
+  for (const { source, importer, cases, departures = [] } of SOURCES) {
     it(`${source}/expected.json matches the TypeScript importer`, async () => {
       const recorded: unknown[] = []
-      for (const c of cases) recorded.push(await runCase(source, importer, c))
+      for (const c of cases) recorded.push(await runCase(source, importer, c, departures))
       const file = path.join(VECTORS, source, 'expected.json')
       const text = vectorText(file, { source, cases: recorded })
       expect(fs.readFileSync(file, 'utf8'), STALE).toBe(text)

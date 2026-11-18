@@ -159,7 +159,10 @@ fn resource_file_name(mime: &str, hash: &str) -> String {
     format!("{}.{ext}", &hash[..hash.len().min(8)])
 }
 
-/// Collects the `memry-enex:` refs and keeps their placeholder tokens.
+/// Collects the `memry-enex:` refs and keeps their placeholder tokens. A link's token has an
+/// empty label: `[[attachment]](memry-enex:H)`, Electron's, matched neither its rewrite nor its
+/// strip regex, so the note kept the internal link. The label never reaches the note: the
+/// token becomes the attachment or nothing.
 #[derive(Default)]
 struct EnexHooks {
     refs: Vec<String>,
@@ -172,11 +175,10 @@ impl HtmlHooks for EnexHooks {
         Some(format!("![]({src})"))
     }
 
-    fn anchor(&mut self, href: &str, text: &str, _assets: &mut Vec<String>) -> Option<String> {
+    fn anchor(&mut self, href: &str, _text: &str, _assets: &mut Vec<String>) -> Option<String> {
         let hash = href.strip_prefix(ENEX_SCHEME)?;
         self.refs.push(hash.to_owned());
-        let label = if text.is_empty() { "attachment" } else { text };
-        Some(format!("[{label}]({href})"))
+        Some(format!("[]({href})"))
     }
 }
 
@@ -283,7 +285,7 @@ fn import_note(
     }
     let media = substitute_en_media(&prepare_enml(&note.content_html));
     let html = format!("<html><body>{media}</body></html>");
-    let mut doc = parse_html(&html);
+    let mut doc = parse_html(&html).map_err(|e| e.to_string())?;
     let nodes = doc.body().map(|b| doc.child_nodes(b)).unwrap_or_default();
     let mut hooks = EnexHooks::default();
     let converted =

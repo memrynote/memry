@@ -1,6 +1,6 @@
 //! Guards of the HTML, Evernote and Apple Journal importers, which read other apps' exports:
-//! nesting fails the note instead of the stack, conversion work and the ENEX scan stay
-//! bounded by the input (counted in steps), a file or image too large is refused from its size,
+//! nesting fails the note instead of the stack or a parse that takes minutes, conversion work,
+//! the nesting scan and the ENEX scan stay bounded by the input (counted in steps), a file or image too large is refused from its size,
 //! a remote image never reaches a private address, a link never leaves the page's folder, and
 //! properties over arbitrary input neither panic nor outgrow the budget.
 
@@ -8,16 +8,16 @@ use std::fs;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 
+use memry_desktop::import::MAX_SOURCE_BYTES;
 use memry_desktop::import::apple_journal::parse_journal_date;
 use memry_desktop::import::enex::{bytes_scanned, parse_enex};
 use memry_desktop::import::evernote::{EvernoteImporter, MAX_ENEX_BYTES};
 use memry_desktop::import::html::{HtmlImporter, MAX_ASSET_BYTES};
 use memry_desktop::import::html_md::{
-    BASE_STEPS, HtmlMdError, MAX_DEPTH, NoHooks, STEPS_PER_INPUT_BYTE, html_to_markdown,
-    parse_html, steps_taken,
+    BASE_STEPS, HtmlMdError, MAX_DEPTH, MAX_PARSE_DEPTH, NoHooks, STEPS_PER_INPUT_BYTE,
+    html_to_markdown, nesting_scan_steps, parse_html, steps_taken,
 };
 use memry_desktop::import::remote::{RemoteAssets, RemoteError, safe_remote_asset_url};
-use memry_desktop::import::{Importer, MAX_SOURCE_BYTES};
 use memry_test_kit::{assert_steps_at_most, on_small_stack, proptest_config};
 use proptest::prelude::*;
 use url::Url;
@@ -26,7 +26,7 @@ use crate::importer_untrusted::{ops, run, sparse};
 
 /// Converts the body of `html` without hooks.
 fn convert(html: &str) -> Result<String, HtmlMdError> {
-    let mut doc = parse_html(html);
+    let mut doc = parse_html(html)?;
     let nodes = doc.body().map(|b| doc.child_nodes(b)).unwrap_or_default();
     html_to_markdown(&doc, &nodes, html.len(), &mut NoHooks).map(|md| md.markdown)
 }
@@ -58,16 +58,67 @@ fn nesting_up_to_the_cap_converts_and_deeper_fails_on_a_small_stack() {
             let md = convert(html).unwrap_or_else(|e| panic!("{e}: {}", &html[..40]));
             assert!(md.contains('x'), "{md}");
         }
+        // Deeper than the converter follows, within what the nesting scan lets the parser see.
+        let parsed = nested("<div>", "</div>", MAX_PARSE_DEPTH, "x");
+        assert_eq!(convert(&parsed), Err(HtmlMdError::TooDeep));
+        // html5ever's time grows with the square of the nesting: without the scan each of these
+        // parses for many minutes, and nextest's per-test timeout fails the test.
         for (open, close) in [
             ("<div>", "</div>"),
             ("<ul><li>", ""),
             ("<b>", ""),
             ("<span>", ""),
+            ("<table><tr><td>", ""),
         ] {
             let html = nested(open, close, 100_000, "x");
             assert_eq!(convert(&html), Err(HtmlMdError::TooDeep), "{open}");
         }
     });
+}
+
+/// The scan stops at the depth the parser would reach and passes over each byte at most once.
+/// Tags the parser closes by themselves, void and raw-text elements, comments and stray end
+/// tags never count, so wide pages that leave them unclosed still parse.
+#[test]
+fn the_nesting_scan_counts_only_what_the_parser_keeps_open() {
+    let deep = MAX_PARSE_DEPTH + 1;
+    for html in [
+        "<div>".repeat(deep),
+        "<b></span>".repeat(deep),
+        "<em x=\"1\">".repeat(deep),
+    ] {
+        assert_eq!(
+            parse_html(&html).err(),
+            Some(HtmlMdError::TooDeep),
+            "{}",
+            &html[..12]
+        );
+    }
+    let wide = [
+        "<p>x".repeat(5_000),
+        "<li>x".repeat(5_000),
+        "<a name=\"n\">x".repeat(5_000),
+        "<tr><td>x".repeat(5_000),
+        "<br><img src=\"a.png\"><input>".repeat(5_000),
+        format!("<script>{}</script>", "'<div>' + ".repeat(5_000)),
+        format!("<style>{}</style>", "<i>".repeat(5_000)),
+        "<!-- <div> -->".repeat(5_000),
+        "<!doctype html><div>x</div></div></div>".repeat(5_000),
+    ];
+    for html in wide {
+        assert_steps_at_most("nesting scan", nesting_scan_steps, html.len(), || {
+            assert!(parse_html(&html).is_ok(), "{}", &html[..20]);
+        });
+    }
+    for hostile in [
+        "<!--".repeat(100_000),
+        "<".repeat(100_000),
+        "<script>".repeat(100_000),
+    ] {
+        assert_steps_at_most("nesting scan", nesting_scan_steps, hostile.len(), || {
+            let _ = parse_html(&hostile);
+        });
+    }
 }
 
 #[test]
@@ -143,6 +194,35 @@ fn files_and_images_over_their_caps_are_refused_before_they_are_read() {
 
     let (summary, _) = run(&EvernoteImporter, &[&big_enex]);
     assert_eq!(summary.failed[0].error, "File is larger than 512 MB");
+}
+
+/// A non-image attachment becomes its file block when its resource is saved and nothing when
+/// it is missing: the internal `memry-enex:` link never reaches the note.
+#[test]
+fn an_enex_attachment_link_never_reaches_the_note() {
+    let dir = tempfile::tempdir().unwrap();
+    let enex = dir.path().join("n.enex");
+    let pdf = "JVBERi0xLjQK"; // "%PDF-1.4\n"
+    fs::write(
+        &enex,
+        format!(
+            concat!(
+                "<en-export><note><title>t</title><content><![CDATA[<en-note>",
+                r#"<en-media hash="5f2ba3e7a3a54ee8b8ed1d1c1b5a5d8b" type="application/pdf"/>"#,
+                r#"<en-media hash="{hash}" type="application/pdf"/>"#,
+                "</en-note>]]></content><resource><data>{data}</data>",
+                "<mime>application/pdf</mime></resource></note></en-export>"
+            ),
+            hash = "6446a98080f5e51ab7f0abc0e8eda635",
+            data = pdf
+        ),
+    )
+    .unwrap();
+    let (_, calls) = run(&EvernoteImporter, &[&enex]);
+    let created = calls.iter().find(|c| c["op"] == "createNote").unwrap();
+    let content = created["content"].as_str().unwrap();
+    assert!(!content.contains("memry-enex:"), "{content}");
+    assert!(content.starts_with("<!-- file:{"), "{content}");
 }
 
 #[test]

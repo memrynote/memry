@@ -175,8 +175,12 @@ impl Importer for HtmlImporter {
                 continue;
             }
             match read_source_text(path) {
+                // A page too deep to parse keeps its file name and fails when it is imported.
                 Ok(html) => plan.push(Planned {
-                    title: extract_title(&parse_html(&html), path),
+                    title: parse_html(&html).map_or_else(
+                        |_| stem(&path.to_string_lossy()),
+                        |doc| extract_title(&doc, path),
+                    ),
                     path: path.to_path_buf(),
                 }),
                 Err(error) => ctx.report_failed(source, &error.to_string()),
@@ -237,7 +241,7 @@ impl HtmlImporter {
         sink: &dyn ImportSink,
     ) -> Result<(), String> {
         let html = read_source_text(&page.path).map_err(|e| e.to_string())?;
-        let mut doc = parse_html(&html);
+        let mut doc = parse_html(&html).map_err(|e| e.to_string())?;
         let nodes = doc.body().map(|b| doc.child_nodes(b)).unwrap_or_default();
         let converted = html_to_markdown(&doc, &nodes, html.len(), &mut PageHooks { titles })
             .map_err(|e| e.to_string())?;

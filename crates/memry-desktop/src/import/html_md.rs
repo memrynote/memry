@@ -6,7 +6,10 @@
 //! the trees agree. The input is an untrusted file, so the walk is bounded twice: nesting past
 //! [`MAX_DEPTH`] fails the note instead of the thread's stack, and the work (nodes visited plus
 //! bytes produced) is capped at a multiple of the input's size, so a list nested hundreds deep
-//! around a large text cannot re-indent it hundreds of times.
+//! around a large text cannot re-indent it hundreds of times. Parsing itself is guarded by a
+//! nesting scan ([`nesting`]), since html5ever's time grows with the square of the nesting.
+
+mod nesting;
 
 use std::cell::Cell;
 
@@ -15,6 +18,8 @@ use memry_core::markdown::frontmatter::js_trim;
 use super::assets::percent_decode_ref;
 use crate::web::extract::dom::{Document, NodeId, NodeKind};
 use crate::web::extract::markdown::turndown::parse;
+
+pub use nesting::{MAX_PARSE_DEPTH, nesting_scan_steps};
 
 /// Element nesting the converter follows. Electron recursed until V8's stack ran out.
 pub const MAX_DEPTH: usize = 256;
@@ -64,9 +69,11 @@ pub trait HtmlHooks {
 pub struct NoHooks;
 impl HtmlHooks for NoHooks {}
 
-/// `new JSDOM(html).window.document`.
-pub fn parse_html(html: &str) -> Document {
-    parse::parse(html).doc
+/// `new JSDOM(html).window.document`, for a page whose open tags nest at most
+/// [`MAX_PARSE_DEPTH`] deep.
+pub fn parse_html(html: &str) -> Result<Document, HtmlMdError> {
+    nesting::check_nesting(html)?;
+    Ok(parse::parse(html).doc)
 }
 
 /// `htmlToMarkdown(root, hooks)` for a root whose child nodes are `nodes`: the root's own tag
