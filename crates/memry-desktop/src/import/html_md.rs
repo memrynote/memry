@@ -6,10 +6,8 @@
 //! the trees agree. The input is an untrusted file, so the walk is bounded twice: nesting past
 //! [`MAX_DEPTH`] fails the note instead of the thread's stack, and the work (nodes visited plus
 //! bytes produced) is capped at a multiple of the input's size, so a list nested hundreds deep
-//! around a large text cannot re-indent it hundreds of times. Parsing itself is guarded by a
-//! nesting scan ([`nesting`]), since html5ever's time grows with the square of the nesting.
-
-mod nesting;
+//! around a large text cannot re-indent it hundreds of times. Parsing stops past
+//! [`MAX_PARSE_DEPTH`], since html5ever's time grows with the square of the nesting.
 
 use std::cell::Cell;
 
@@ -19,10 +17,12 @@ use super::assets::percent_decode_ref;
 use crate::web::extract::dom::{Document, NodeId, NodeKind};
 use crate::web::extract::markdown::turndown::parse;
 
-pub use nesting::{MAX_PARSE_DEPTH, nesting_scan_steps};
-
 /// Element nesting the converter follows. Electron recursed until V8's stack ran out.
 pub const MAX_DEPTH: usize = 256;
+/// Element depth the parser builds before it gives up. A table level is four elements deep
+/// (`table`, `tbody`, `tr`, `td`) for one converter level, so every page the converter accepts
+/// parses.
+pub const MAX_PARSE_DEPTH: usize = 4 * MAX_DEPTH + 8;
 /// Work allowed per byte of input, plus [`BASE_STEPS`]: a byte is charged once for every level
 /// that returns it, so ordinary pages stay far below it.
 pub const STEPS_PER_INPUT_BYTE: usize = 256;
@@ -69,11 +69,12 @@ pub trait HtmlHooks {
 pub struct NoHooks;
 impl HtmlHooks for NoHooks {}
 
-/// `new JSDOM(html).window.document`, for a page whose open tags nest at most
+/// `new JSDOM(html).window.document`, for a page whose elements nest at most
 /// [`MAX_PARSE_DEPTH`] deep.
 pub fn parse_html(html: &str) -> Result<Document, HtmlMdError> {
-    nesting::check_nesting(html)?;
-    Ok(parse::parse(html).doc)
+    parse::parse_bounded(html, MAX_PARSE_DEPTH)
+        .map(|dom| dom.doc)
+        .ok_or(HtmlMdError::TooDeep)
 }
 
 /// `htmlToMarkdown(root, hooks)` for a root whose child nodes are `nodes`: the root's own tag
@@ -184,6 +185,11 @@ fn decode_ref(reference: &str) -> String {
         rest = stripped;
     }
     percent_decode_ref(rest)
+}
+
+/// A `ul` or `ol` child of `li`: one of the sub-lists `renderList` renders on its own.
+fn is_sub_list(doc: &Document, li: NodeId, node: NodeId) -> bool {
+    doc.parent_node(node) == Some(li) && matches!(tag(doc, node).as_deref(), Some("ul" | "ol"))
 }
 
 fn quote_lines(inner: &str) -> String {
@@ -340,8 +346,8 @@ impl Converter<'_> {
             let mut lines = Vec::new();
             for (i, li) in c.element_children(list, &["li"]).into_iter().enumerate() {
                 let nested = c.element_children(li, &["ul", "ol"]);
-                let text = js_trim(&c.inline_except(li, &nested)?).to_owned();
-                let todo = c.todo(li, &nested)?;
+                let text = js_trim(&c.inline_except(li, true)?).to_owned();
+                let todo = c.todo(li)?;
                 let marker = match todo {
                     Some(true) => "- [x]".to_owned(),
                     Some(false) => "- [ ]".to_owned(),
@@ -365,11 +371,15 @@ impl Converter<'_> {
 
     /// `parseTodo`: `Some(checked)` for a checkbox item. A match inside one of the item's own
     /// sub-lists belongs to the child item.
-    fn todo(&mut self, li: NodeId, nested: &[NodeId]) -> Result<Option<bool>, HtmlMdError> {
+    fn todo(&mut self, li: NodeId) -> Result<Option<bool>, HtmlMdError> {
         let doc = self.doc;
-        let (mut input, mut boxed, mut visited) = (None, None, 0);
-        walk(doc, li, &mut |n| nested.contains(&n), &mut |n| {
-            visited += 1;
+        let (mut input, mut boxed, visited) = (None, None, Cell::new(0));
+        let mut own_list = |n| {
+            visited.set(visited.get() + 1);
+            is_sub_list(doc, li, n)
+        };
+        walk(doc, li, &mut own_list, &mut |n| {
+            visited.set(visited.get() + 1);
             if input.is_none()
                 && tag(doc, n).as_deref() == Some("input")
                 && doc
@@ -383,7 +393,7 @@ impl Converter<'_> {
             }
             input.is_some() && boxed.is_some()
         });
-        self.charge(visited)?;
+        self.charge(visited.get())?;
         let is_todo = input.is_some()
             || boxed.is_some()
             || has_class(doc, li, "to-do")
@@ -487,15 +497,16 @@ impl Converter<'_> {
     }
 
     fn inline(&mut self, el: NodeId) -> Out {
-        self.inline_except(el, &[])
+        self.inline_except(el, false)
     }
 
-    /// `renderInlineExcept`: the children of `el` inline, without those in `skip`.
-    fn inline_except(&mut self, el: NodeId, skip: &[NodeId]) -> Out {
+    /// `renderInlineExcept`: the children of `el` inline, without its own sub-lists when
+    /// `skip_lists`.
+    fn inline_except(&mut self, el: NodeId, skip_lists: bool) -> Out {
         let mut out = String::new();
         for node in self.doc.child_nodes(el) {
             self.charge(1)?;
-            if skip.contains(&node) {
+            if skip_lists && is_sub_list(self.doc, el, node) {
                 continue;
             }
             out.push_str(&self.inline_node(node)?);

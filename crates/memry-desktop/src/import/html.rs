@@ -254,6 +254,10 @@ impl HtmlImporter {
         let mut rewrites: Vec<(String, Rewrite)> = Vec::new();
         let mut seen = HashSet::new();
         for reference in converted.assets {
+            // `if (ctx.isCancelled()) break`: the note is written with the refs saved so far.
+            if ctx.is_cancelled() {
+                break;
+            }
             if !seen.insert(reference.clone()) {
                 continue;
             }

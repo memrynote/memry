@@ -35,8 +35,10 @@ static DOCTYPE: LazyLock<Regex> =
 static EN_NOTE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"(?i)<en-note(?:\s[^>]*)?>([\s\S]*?)</en-note>").expect("valid regex")
 });
+/// `checked` is optional: ENML's default is unchecked. Electron's regex required it, and a
+/// bare `<en-todo/>` stayed an unknown element that html5ever nests every later todo inside.
 static TODO: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r#"(?i)<en-todo\s+checked="(true|false)"\s*/>"#).expect("valid regex")
+    Regex::new(r#"(?i)<en-todo(?:\s+checked="(true|false)")?\s*/>"#).expect("valid regex")
 });
 /// Where a todo's label ends: the lookahead of `convertTodos`.
 static TODO_END: LazyLock<Regex> =
@@ -71,7 +73,11 @@ fn convert_todos(html: &str) -> String {
             .find_at(html, head.end())
             .map_or(html.len(), |m| m.start());
         out.push_str(&html[pos..head.start()]);
-        let checked = if &caps[1] == "true" { " checked" } else { "" };
+        let checked = if caps.get(1).is_some_and(|c| c.as_str() == "true") {
+            " checked"
+        } else {
+            ""
+        };
         let label = js_trim(&html[head.end()..end]);
         out.push_str(&format!(
             r#"<ul><li><input type="checkbox"{checked}>{label}</li></ul>"#

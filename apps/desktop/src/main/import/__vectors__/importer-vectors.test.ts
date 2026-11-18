@@ -128,6 +128,9 @@ interface VectorCase {
  */
 type Departure = (content: string) => string
 
+/** Note bodies each departure changed, so a fix that stops matching fails the test. */
+const departureHits = new Map<Departure, number>()
+
 /**
  * Evernote: a non-image attachment's placeholder `[[attachment]](memry-enex:H)` has brackets in
  * its label, so neither the rewrite nor the strip regex matched it and the note kept the internal
@@ -232,7 +235,11 @@ function noteRecord(
     // The birth time cannot be set on a copied file; only its presence is compared.
     created: input.created ? (exactCreated ? input.created : '<birthtime>') : null,
     modified: input.modified ?? null,
-    content: departures.reduce((content, fix) => fix(content), input.content ?? '')
+    content: departures.reduce((content, fix) => {
+      const fixed = fix(content)
+      if (fixed !== content) departureHits.set(fix, (departureHits.get(fix) ?? 0) + 1)
+      return fixed
+    }, input.content ?? '')
   }
 }
 
@@ -320,6 +327,9 @@ describe('importer vectors', () => {
       const file = path.join(VECTORS, source, 'expected.json')
       const text = vectorText(file, { source, cases: recorded })
       expect(fs.readFileSync(file, 'utf8'), STALE).toBe(text)
+      for (const fix of departures) {
+        expect(departureHits.get(fix) ?? 0, `${fix.name} changed no note`).toBeGreaterThan(0)
+      }
     })
   }
 })

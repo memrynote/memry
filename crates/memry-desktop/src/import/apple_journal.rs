@@ -6,6 +6,7 @@
 //! its header. The body is its paragraphs, the reflection prompt a closing quote, and the asset
 //! grid's labels become properties; photos and videos are not imported.
 
+use std::cell::Cell;
 use std::path::Path;
 use std::sync::LazyLock;
 
@@ -14,7 +15,8 @@ use regex::Regex;
 
 use super::html::stem;
 use super::html_md::{
-    NoHooks, has_class, html_to_markdown, parse_html, select, text_content, walk,
+    BASE_STEPS, HtmlMdError, NoHooks, has_class, html_to_markdown, parse_html, select,
+    text_content, walk,
 };
 use super::messages::{ImportText, importing_item};
 use super::{
@@ -108,31 +110,50 @@ fn class_text(doc: &Document, name: &str) -> Option<String> {
         .map(|&n| js_trim(&text_content(doc, n)).to_owned())
 }
 
-/// `collectTokens`: the overlay labels of every non-media item of the asset grid.
-fn collect_tokens(doc: &Document) -> Vec<String> {
+/// Work [`collect_tokens`] may do per byte of the entry: nodes visited plus token bytes. Grid
+/// items or overlays nested inside each other repeat their subtree once per level.
+const TOKEN_STEPS_PER_INPUT_BYTE: usize = 8;
+
+/// `collectTokens`: the overlay labels of every non-media item of the asset grid. Fails with
+/// `TooComplex` past [`TOKEN_STEPS_PER_INPUT_BYTE`] times `input_len` plus [`BASE_STEPS`].
+fn collect_tokens(doc: &Document, input_len: usize) -> Result<Vec<String>, HtmlMdError> {
+    let budget = input_len
+        .saturating_mul(TOKEN_STEPS_PER_INPUT_BYTE)
+        .saturating_add(BASE_STEPS);
+    let steps = Cell::new(0usize);
+    let charge = |n: usize| steps.set(steps.get().saturating_add(n));
+    let over = || steps.get() > budget;
     let items: Vec<NodeId> = select(doc, doc.root(), |n| {
         has_class(doc, n, "gridItem") && has_ancestor_class(doc, n, "assetGrid")
     });
     let mut tokens = Vec::new();
     for item in items {
-        let kind = select(doc, item, |n| has_class(doc, n, "activityType"))
-            .first()
-            .map(|&n| js_trim(&text_content(doc, n)).to_owned())
-            .unwrap_or_default();
+        let kind = select(doc, item, |n| {
+            charge(1);
+            has_class(doc, n, "activityType")
+        })
+        .first()
+        .map(|&n| js_trim(&text_content(doc, n)).to_owned())
+        .unwrap_or_default();
         if IGNORED_TYPES.contains(&kind.as_str()) {
             continue;
         }
-        walk(doc, item, &mut |_| false, &mut |n| {
+        walk(doc, item, &mut |_| over(), &mut |n| {
+            charge(1);
             if OVERLAY_CLASSES.iter().any(|c| has_class(doc, n, c)) {
                 let text = js_trim(&text_content(doc, n)).to_owned();
+                charge(text.len());
                 if !text.is_empty() {
                     tokens.push(text);
                 }
             }
-            false
+            over()
         });
+        if over() {
+            return Err(HtmlMdError::TooComplex);
+        }
     }
-    tokens
+    Ok(tokens)
 }
 
 fn has_ancestor_class(doc: &Document, node: NodeId, name: &str) -> bool {
@@ -212,7 +233,7 @@ fn import_entry(path: &Path, sink: &dyn ImportSink) -> Result<(), String> {
     });
     let body =
         html_to_markdown(&doc, &paragraphs, html.len(), &mut NoHooks).map_err(|e| e.to_string())?;
-    let tokens = collect_tokens(&doc);
+    let tokens = collect_tokens(&doc, html.len()).map_err(|e| e.to_string())?;
     sink.create_note(ImportedNote {
         id: None,
         title: date

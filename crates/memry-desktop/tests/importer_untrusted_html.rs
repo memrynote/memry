@@ -1,6 +1,6 @@
 //! Guards of the HTML, Evernote and Apple Journal importers, which read other apps' exports:
 //! nesting fails the note instead of the stack or a parse that takes minutes, conversion work,
-//! the nesting scan and the ENEX scan stay bounded by the input (counted in steps), a file or image too large is refused from its size,
+//! journal tokens and the ENEX scan stay bounded by the input (counted in steps), a file or image too large is refused from its size,
 //! a remote image never reaches a private address, a link never leaves the page's folder, and
 //! properties over arbitrary input neither panic nor outgrow the budget.
 
@@ -9,13 +9,13 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use memry_desktop::import::MAX_SOURCE_BYTES;
-use memry_desktop::import::apple_journal::parse_journal_date;
+use memry_desktop::import::apple_journal::{AppleJournalImporter, parse_journal_date};
 use memry_desktop::import::enex::{bytes_scanned, parse_enex};
-use memry_desktop::import::evernote::{EvernoteImporter, MAX_ENEX_BYTES};
+use memry_desktop::import::evernote::{EvernoteImporter, MAX_ENEX_BYTES, prepare_enml};
 use memry_desktop::import::html::{HtmlImporter, MAX_ASSET_BYTES};
 use memry_desktop::import::html_md::{
     BASE_STEPS, HtmlMdError, MAX_DEPTH, MAX_PARSE_DEPTH, NoHooks, STEPS_PER_INPUT_BYTE,
-    html_to_markdown, nesting_scan_steps, parse_html, steps_taken,
+    html_to_markdown, parse_html, steps_taken,
 };
 use memry_desktop::import::remote::{RemoteAssets, RemoteError, safe_remote_asset_url};
 use memry_test_kit::{assert_steps_at_most, on_small_stack, proptest_config};
@@ -58,11 +58,11 @@ fn nesting_up_to_the_cap_converts_and_deeper_fails_on_a_small_stack() {
             let md = convert(html).unwrap_or_else(|e| panic!("{e}: {}", &html[..40]));
             assert!(md.contains('x'), "{md}");
         }
-        // Deeper than the converter follows, within what the nesting scan lets the parser see.
-        let parsed = nested("<div>", "</div>", MAX_PARSE_DEPTH, "x");
+        // Deeper than the converter follows, within what the parser builds.
+        let parsed = nested("<div>", "</div>", MAX_PARSE_DEPTH / 2, "x");
         assert_eq!(convert(&parsed), Err(HtmlMdError::TooDeep));
-        // html5ever's time grows with the square of the nesting: without the scan each of these
-        // parses for many minutes, and nextest's per-test timeout fails the test.
+        // Past what the parser builds: without its bound each parses for many minutes, and
+        // nextest's per-test timeout fails the test.
         for (open, close) in [
             ("<div>", "</div>"),
             ("<ul><li>", ""),
@@ -76,49 +76,88 @@ fn nesting_up_to_the_cap_converts_and_deeper_fails_on_a_small_stack() {
     });
 }
 
-/// The scan stops at the depth the parser would reach and passes over each byte at most once.
-/// Tags the parser closes by themselves, void and raw-text elements, comments and stray end
-/// tags never count, so wide pages that leave them unclosed still parse.
+/// html5ever's time grows with the square of the nesting however the markup spells it, so the
+/// depth of the tree it builds stops the parse. Without the bound each case parses for minutes
+/// and nextest's per-test timeout fails the test.
 #[test]
-fn the_nesting_scan_counts_only_what_the_parser_keeps_open() {
-    let deep = MAX_PARSE_DEPTH + 1;
-    for html in [
-        "<div>".repeat(deep),
-        "<b></span>".repeat(deep),
-        "<em x=\"1\">".repeat(deep),
+fn a_deep_tree_stops_the_parse_whatever_the_markup() {
+    let divs = "<div>".repeat(100_000);
+    for prefix in [
+        "",
+        "<svg><title>",
+        "<svg><style>",
+        "<!-->",
+        "<!-- --!>",
+        "<p a=\"><!--\">",
+        "<math><plaintext>",
     ] {
+        let html = format!("{prefix}{divs}");
         assert_eq!(
             parse_html(&html).err(),
             Some(HtmlMdError::TooDeep),
-            "{}",
-            &html[..12]
+            "{prefix}"
         );
     }
-    let wide = [
-        "<p>x".repeat(5_000),
+}
+
+/// Markup the parser keeps shallow converts however many tags it has.
+#[test]
+fn wide_pages_that_close_their_tags_implicitly_convert() {
+    let pages = [
+        format!("<svg>{}</svg><p>x</p>", "<path d=\"M0 0\"/>".repeat(1_100)),
+        "<p><span>x".repeat(1_100),
+        "<div><font>x</div>".repeat(1_100),
+        "<h3>x".repeat(1_100),
+        prepare_enml(&"<en-todo/>x<br/>".repeat(1_100)),
         "<li>x".repeat(5_000),
         "<a name=\"n\">x".repeat(5_000),
-        "<tr><td>x".repeat(5_000),
-        "<br><img src=\"a.png\"><input>".repeat(5_000),
-        format!("<script>{}</script>", "'<div>' + ".repeat(5_000)),
-        format!("<style>{}</style>", "<i>".repeat(5_000)),
-        "<!-- <div> -->".repeat(5_000),
-        "<!doctype html><div>x</div></div></div>".repeat(5_000),
+        format!("<script>{}</script>x", "'<div>' + ".repeat(5_000)),
+        "<!-- <div> -->x".repeat(5_000),
     ];
-    for html in wide {
-        assert_steps_at_most("nesting scan", nesting_scan_steps, html.len(), || {
-            assert!(parse_html(&html).is_ok(), "{}", &html[..20]);
+    on_small_stack(move || {
+        for html in &pages {
+            let md = convert(html).unwrap_or_else(|e| panic!("{e}: {}", &html[..30]));
+            assert!(md.contains('x'), "{}", &html[..30]);
+        }
+        let todos = convert(&pages[4]).unwrap();
+        assert_eq!(todos.matches("- [ ] x").count(), 1_100);
+    });
+}
+
+/// Each sub-list of an item is found by its parent, not by a search of the item's sub-lists.
+#[test]
+fn a_list_item_with_many_sub_lists_converts_in_linear_steps() {
+    let html = format!(
+        "<ul><li>a{}</li></ul>",
+        "<ul><li>x</li></ul>".repeat(20_000)
+    );
+    let bound = 8 * html.len();
+    on_small_stack(move || {
+        assert_steps_at_most("sub-lists", steps_taken, bound, || {
+            assert!(convert(&html).unwrap().contains("  - x"));
         });
-    }
-    for hostile in [
-        "<!--".repeat(100_000),
-        "<".repeat(100_000),
-        "<script>".repeat(100_000),
-    ] {
-        assert_steps_at_most("nesting scan", nesting_scan_steps, hostile.len(), || {
-            let _ = parse_html(&hostile);
-        });
-    }
+    });
+}
+
+/// Overlays nested in each other repeat their text once per level (Electron's
+/// `querySelectorAll`): past the budget the entry fails instead of holding hundreds of MB.
+#[test]
+fn nested_journal_overlays_fail_the_entry_instead_of_repeating_their_text() {
+    let dir = tempfile::tempdir().unwrap();
+    let entry = dir.path().join("entry.html");
+    let html = format!(
+        "<div class=\"assetGrid\"><div class=\"gridItem\">{}{}</div></div>",
+        "<div class=\"gridItemOverlayText\">".repeat(1_000),
+        "x".repeat(200_000)
+    );
+    fs::write(&entry, html).unwrap();
+    let (summary, calls) = run(&AppleJournalImporter, &[&entry]);
+    assert_eq!(summary.failed.len(), 1, "{summary:?}");
+    assert_eq!(
+        summary.failed[0].error,
+        "The HTML is too complex to convert"
+    );
+    assert_eq!(ops(&calls, "createNote"), 0);
 }
 
 #[test]
@@ -267,6 +306,14 @@ fn only_https_to_public_hosts_is_fetched() {
         "https://[fe80::1]/a.png",
         "https://[fd00::1]/a.png",
         "https://[::ffff:127.0.0.1]/a.png",
+        "https://198.18.0.1/a.png",
+        "https://198.19.255.1/a.png",
+        "https://[64:ff9b::7f00:1]/a.png",
+        "https://[64:ff9b::808:808]/a.png",
+        "https://[64:ff9b:1::a00:1]/a.png",
+        "https://[2002:7f00:1::]/a.png",
+        "https://[2002:c0a8:101::1]/a.png",
+        "https://[100::1]/a.png",
         "file:///etc/passwd",
     ] {
         assert!(safe_remote_asset_url(refused).is_none(), "{refused}");
@@ -275,6 +322,9 @@ fn only_https_to_public_hosts_is_fetched() {
         "https://example.com/a.png",
         "https://8.8.8.8/a.png",
         "https://[2606:4700::1]/a",
+        "https://198.20.0.1/a.png",
+        "https://[2002:808:808::1]/a.png",
+        "https://[100:0:0:1::1]/a.png",
     ] {
         assert!(safe_remote_asset_url(allowed).is_some(), "{allowed}");
     }

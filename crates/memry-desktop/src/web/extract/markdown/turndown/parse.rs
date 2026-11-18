@@ -7,7 +7,7 @@
 //! fragment beside the template, as in domino, so it is neither a child nor part of `textContent`.
 
 use std::borrow::Cow;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
@@ -43,9 +43,34 @@ struct Sink {
     templates: RefCell<HashMap<NodeId, NodeId>>,
     /// `annotation-xml` elements whose `encoding` makes them HTML integration points.
     integration_points: RefCell<HashSet<NodeId>>,
+    /// Each element's depth below the document, recorded where the tree is built.
+    depths: RefCell<HashMap<NodeId, usize>>,
+    deepest: Rc<Cell<usize>>,
 }
 
 impl Sink {
+    fn new() -> Self {
+        Self {
+            doc: RefCell::new(Document::new()),
+            templates: RefCell::new(HashMap::new()),
+            integration_points: RefCell::new(HashSet::new()),
+            depths: RefCell::new(HashMap::new()),
+            deepest: Rc::new(Cell::new(0)),
+        }
+    }
+
+    /// `node` now sits under `parent`. A template's content fragment takes the template's
+    /// depth, so the template's children are one level below it.
+    fn note_depth(&self, node: NodeId, parent: NodeId) {
+        let mut depths = self.depths.borrow_mut();
+        let depth = depths.get(&parent).copied().unwrap_or(0) + 1;
+        depths.insert(node, depth);
+        if let Some(&content) = self.templates.borrow().get(&node) {
+            depths.insert(content, depth);
+        }
+        self.deepest.set(self.deepest.get().max(depth));
+    }
+
     fn handle(&self, id: NodeId, name: QualName) -> Ref {
         Rc::new(Handle { id, name })
     }
@@ -80,6 +105,8 @@ impl Sink {
                     None => doc.append_child(parent, node.id),
                 }
                 .expect("the tree builder only builds acyclic trees");
+                drop(doc);
+                self.note_depth(node.id, parent);
             }
         }
     }
@@ -241,18 +268,44 @@ impl TreeSink for Sink {
         while let Some(child) = doc.first_child(node.id) {
             doc.append_child(new_parent.id, child)
                 .expect("the tree builder only builds acyclic trees");
+            self.note_depth(child, new_parent.id);
         }
     }
 }
 
-/// `domino.createDocument('<x-turndown id="turndown-root">' + input + '</x-turndown>')`.
-pub fn parse(html: &str) -> Dom {
-    let sink = Sink {
-        doc: RefCell::new(Document::new()),
-        templates: RefCell::new(HashMap::new()),
-        integration_points: RefCell::new(HashSet::new()),
-    };
+/// Bytes fed to html5ever between depth checks in [`parse_bounded`].
+const CHUNK_BYTES: usize = 8 * 1024;
+
+fn opts() -> ParseOpts {
     let mut opts = ParseOpts::default();
     opts.tree_builder.scripting_enabled = false;
-    parse_document(sink, opts).one(StrTendril::from(html))
+    opts
+}
+
+/// `domino.createDocument('<x-turndown id="turndown-root">' + input + '</x-turndown>')`.
+pub fn parse(html: &str) -> Dom {
+    parse_document(Sink::new(), opts()).one(StrTendril::from(html))
+}
+
+/// [`parse`] for untrusted input: `None` once an element lies more than `max_depth` below the
+/// document. html5ever's tree builder scans its stack of open elements for most tags, so its
+/// time grows with the square of the nesting; the input is fed in chunks and the depth checked
+/// after each, so the stack never grows more than one chunk's tags past `max_depth`.
+pub fn parse_bounded(html: &str, max_depth: usize) -> Option<Dom> {
+    let sink = Sink::new();
+    let deepest = Rc::clone(&sink.deepest);
+    let mut parser = parse_document(sink, opts());
+    let mut rest = html;
+    while !rest.is_empty() {
+        let mut end = rest.len().min(CHUNK_BYTES);
+        while !rest.is_char_boundary(end) {
+            end += 1;
+        }
+        parser.process(StrTendril::from(&rest[..end]));
+        if deepest.get() > max_depth {
+            return None;
+        }
+        rest = &rest[end..];
+    }
+    Some(parser.finish())
 }

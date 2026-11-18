@@ -57,7 +57,8 @@ pub fn safe_remote_asset_url(reference: &str) -> Option<Url> {
 }
 
 /// An address on the public internet: not loopback, private, link-local, shared (CGNAT),
-/// multicast, unspecified, reserved or documentation space, in either family.
+/// benchmarking, multicast, unspecified, reserved, discard or documentation space, in either
+/// family, nor a NAT64 or 6to4 address that reaches one.
 pub fn is_public(ip: IpAddr) -> bool {
     match ip {
         IpAddr::V4(v4) => is_public_v4(v4),
@@ -80,12 +81,20 @@ fn is_public_v4(ip: Ipv4Addr) -> bool {
         || a == 0
         || a >= 240
         || (a == 100 && (64..128).contains(&b))
+        || (a == 198 && b & 0xfe == 18)
         || (a == 192 && b == 0 && ip.octets()[2] == 0))
 }
 
 fn is_public_v6(ip: Ipv6Addr) -> bool {
-    let first = ip.segments()[0];
+    let seg = ip.segments();
+    let first = seg[0];
+    // 6to4 (`2002::/16`) carries the IPv4 address it reaches in its next 32 bits.
+    let six_to_four = Ipv4Addr::from((u32::from(seg[1]) << 16) | u32::from(seg[2]));
     !(ip.is_loopback()
+        // NAT64: `64:ff9b::/96` and the local-use `64:ff9b:1::/48` reach any IPv4 address.
+        || (first == 0x0064 && seg[1] == 0xff9b)
+        || (first == 0x2002 && !is_public_v4(six_to_four))
+        || (first == 0x0100 && seg[1..4] == [0, 0, 0])
         || ip.is_unspecified()
         || ip.is_multicast()
         || first & 0xfe00 == 0xfc00
@@ -120,29 +129,39 @@ pub struct HttpRemoteAssets {
 }
 
 impl HttpRemoteAssets {
+    /// The importer's policy over `base` instead of [`crate::http::builder`]: tests pass one
+    /// that trusts a local TLS server.
+    #[doc(hidden)]
+    pub fn with_builder(base: reqwest::ClientBuilder) -> Self {
+        Self {
+            client: OnceLock::from(build(base)),
+        }
+    }
+
     fn client(&self) -> Result<&reqwest::Client, RemoteError> {
         self.client
-            .get_or_init(|| {
-                crate::http::builder()
-                    .no_proxy()
-                    .dns_resolver(Arc::new(PublicOnly))
-                    .redirect(redirect::Policy::custom(|attempt| {
-                        if attempt.previous().len() >= MAX_REDIRECTS {
-                            attempt.error("too many redirects")
-                        } else if safe_remote_asset_url(attempt.url().as_str()).is_some() {
-                            attempt.follow()
-                        } else {
-                            attempt.error("redirect to an unsafe URL")
-                        }
-                    }))
-                    .read_timeout(READ_TIMEOUT)
-                    .timeout(TOTAL_TIMEOUT)
-                    .build()
-                    .map_err(|error| error.to_string())
-            })
+            .get_or_init(|| build(crate::http::builder()))
             .as_ref()
             .map_err(|error| RemoteError::Unreachable(error.clone()))
     }
+}
+
+fn build(base: reqwest::ClientBuilder) -> Result<reqwest::Client, String> {
+    base.no_proxy()
+        .dns_resolver(Arc::new(PublicOnly))
+        .redirect(redirect::Policy::custom(|attempt| {
+            if attempt.previous().len() >= MAX_REDIRECTS {
+                attempt.error("too many redirects")
+            } else if safe_remote_asset_url(attempt.url().as_str()).is_some() {
+                attempt.follow()
+            } else {
+                attempt.error("redirect to an unsafe URL")
+            }
+        }))
+        .read_timeout(READ_TIMEOUT)
+        .timeout(TOTAL_TIMEOUT)
+        .build()
+        .map_err(|error| error.to_string())
 }
 
 impl RemoteAssets for HttpRemoteAssets {
@@ -172,5 +191,21 @@ impl RemoteAssets for HttpRemoteAssets {
                     }
                 })
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_resolver_refuses_a_name_with_only_private_addresses() {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        let name: Name = "localhost".parse().unwrap();
+        let resolved = runtime.block_on(PublicOnly.resolve(name));
+        assert!(resolved.is_err());
     }
 }
