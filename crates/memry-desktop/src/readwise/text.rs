@@ -107,7 +107,15 @@ pub fn escape_line(line: &str) -> String {
             a.push(ZWSP);
         }
     }
-    // `/\[\[/g` -> `[\u200b[`, left to right without overlap.
+    // `/\[\[/g` -> `[\u200b[`, left to right without overlap. That leaves `[[` in an odd run
+    // (`[[[x]]`), and `[\[`, which the markdown parser reads as `[[`. When one of them has a
+    // `]` after it, which could close a wiki link, every `[` before a `[` or `\[` takes the
+    // space instead (module docs, Departures).
+    let opens = |s: &[char], i: usize| {
+        s[i] == '['
+            && (s.get(i + 1) == Some(&'[')
+                || (s.get(i + 1) == Some(&'\\') && s.get(i + 2) == Some(&'[')))
+    };
     let mut b = Vec::with_capacity(a.len() + 8);
     let mut i = 0;
     while i < a.len() {
@@ -117,6 +125,16 @@ pub fn escape_line(line: &str) -> String {
         } else {
             b.push(a[i]);
             i += 1;
+        }
+    }
+    let close = b.iter().rposition(|c| *c == ']');
+    if (0..b.len()).any(|i| close.is_some_and(|close| close > i) && opens(&b, i)) {
+        b.clear();
+        for (i, &c) in a.iter().enumerate() {
+            b.push(c);
+            if opens(&a, i) {
+                b.push(ZWSP);
+            }
         }
     }
     // `/\[(?=[ xX]\])/g` -> `[\u200b`

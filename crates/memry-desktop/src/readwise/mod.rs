@@ -27,6 +27,11 @@
 //!   `[`, `]`, `(`, `)` becomes `https://readwise.io/open/{id}`, and a location type keeps
 //!   only its letters, digits and spaces, on one line (`highlights::highlight_url`,
 //!   `location_label`).
+//! - `escapeLine` breaks `[[` with `/\[\[/g`, which replaces without overlap and skips `[\[`,
+//!   so highlight text such as `[[[x]]` or `[\[x]]` (which the markdown parser reads as
+//!   `[[x]]`) keeps a wiki link. Here a line where such an opener has a `]` after it puts the
+//!   zero-width space after every `[` that a `[` or `\[` follows; any other line keeps
+//!   TypeScript's bytes (`text::escape_line`).
 
 pub mod highlights;
 pub mod images;
