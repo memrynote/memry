@@ -120,6 +120,10 @@ pub struct TableReport {
 /// What an importer of [`tables::TABLE_MAP`] reads from and writes to.
 pub struct TableCtx<'a> {
     pub source: &'a Connection,
+    /// The Electron `index.db` copy, which the note payload reads as Electron's push does.
+    pub index: &'a Connection,
+    /// The vault, whose note files the note payload reads as Electron's push does.
+    pub vault_dir: &'a Path,
     /// [`VaultImportInput::vault_id`].
     pub vault_id: &'a str,
     pub writer: &'a mut ImportWriter,
@@ -237,6 +241,8 @@ fn stage(input: &VaultImportInput<'_>, paths: &Paths) -> Result<VaultStageReport
                 }
                 let mut ctx = TableCtx {
                     source: sources.conn(mapping.db),
+                    index: sources.conn(tables::SourceDb::Index),
+                    vault_dir: &input.vault_dir,
                     vault_id: &input.vault_id,
                     writer: &mut writer,
                     now_ms: input.now_ms,

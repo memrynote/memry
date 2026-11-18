@@ -202,7 +202,7 @@ pub fn json_visits() -> usize {
 
 /// The value as the renderer reads it over IPC: a YAML date is its ISO text, bytes and a
 /// number that is not finite are `null`.
-fn to_json(value: &YamlValue) -> Value {
+pub(crate) fn to_json(value: &YamlValue) -> Value {
     VISITS.with(|visits| visits.set(visits.get() + 1));
     match value {
         YamlValue::Null | YamlValue::Binary(_) => Value::Null,
