@@ -55,7 +55,6 @@ fn a_fresh_data_database_reaches_the_latest_version() {
         "note_body_tags",
         "note_positions",
         "outbox",
-        "reminder_fires",
         "sync_cursors",
         "sync_history",
         "sync_items",
