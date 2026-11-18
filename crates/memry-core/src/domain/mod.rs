@@ -68,6 +68,7 @@ pub mod property_admin;
 pub mod property_values;
 pub mod reads;
 pub mod readwise;
+pub mod readwise_highlights;
 mod recreate;
 pub mod recurrence;
 pub mod related_items;
