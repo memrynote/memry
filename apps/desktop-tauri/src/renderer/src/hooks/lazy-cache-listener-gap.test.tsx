@@ -31,7 +31,7 @@ import { useGraphData, useGraphReactivity } from './use-graph-data'
 import { useNoteMetadataEvents } from './use-note-metadata-events'
 import { useNote, useNoteLinksQuery } from './use-notes-query'
 import { useProperties } from './use-properties'
-import { useTagSchemas } from '@/features/tag-fields/use-tag-schemas'
+import { tagSchemaQueryKey, useTagSchemas } from '@/features/tag-fields/use-tag-schemas'
 import { useTags } from './use-tags'
 
 type Handler = (event: { payload: unknown }) => void
@@ -586,5 +586,37 @@ describe('a change made before an on-demand cache listens', () => {
 
     await waitFor(() => expect(result.current.propertiesRecord).toEqual({ status: 'done' }))
     expect(countOf('properties_get')).toBe(1)
+  })
+  it('two portals of one note read it once when their listeners go live in two batches', async () => {
+    tauri.answers.notes_get = noteView('Source')
+    const { result } = renderHook(
+      () => [usePortalSourceNote('n1'), usePortalSourceNote('n1')] as const,
+      { wrapper }
+    )
+    await settle()
+
+    // Main answers the first portal's `listen` calls, then the second's.
+    const half = tauri.pending.length / 2
+    await act(async () => {
+      for (const call of tauri.pending.splice(0, half)) call.register()
+    })
+    await settle()
+    await act(async () => tauri.goLive())
+
+    await waitFor(() => expect(result.current[1].note?.title).toBe('Source'))
+    await settle()
+    expect(countOf('notes_get')).toBe(1)
+  })
+
+  it('tag schemas a tab icon read at startup take a tag change made before they listened', async () => {
+    const schema = (preset: string | null) => ({ tags: { person: { name: 'Person', preset } } })
+    // What `useOptionalTagSchemaSnapshot` prefetches for the tab icons, with no listeners.
+    queryClient.setQueryData(tagSchemaQueryKey, schema(null))
+    tauri.answers.tags_get_schema_snapshot = schema('meeting')
+    const { result } = renderHook(() => useTagSchemas(), { wrapper })
+    tauri.emit('note-tags-changed-event', null)
+    await act(async () => tauri.goLive())
+
+    await waitFor(() => expect(result.current.data).toEqual(schema('meeting')))
   })
 })

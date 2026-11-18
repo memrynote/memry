@@ -5,7 +5,7 @@
  * @module hooks/use-notes-query
  */
 
-import { useEffect, useCallback, useMemo } from 'react'
+import { useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   useQuery,
   useMutation,
@@ -195,11 +195,21 @@ export function useNote(id: string | null, options: UseNoteOptions = {}): UseNot
     staleTime: readOnMount ? 0 : NOTE_STALE_TIME,
     gcTime: NOTE_GC_TIME
   })
+  const enabledRef = useRef(enabled)
+  useEffect(() => {
+    enabledRef.current = enabled
+  })
 
   useEffect(() => {
     if (!id) return undefined
     const key = notesKeys.note(id)
-    const mountedAt = Date.now()
+    // What this mount read before its listeners went live: a read it started, or one under way.
+    // An observer disabled at mount reads once its caller says so (a portal waits for its own
+    // listeners), never before these.
+    const readsAtMount = enabledRef.current
+    const atMount = queryClient.getQueryState(key)
+    const fetchingAtMount = atMount?.fetchStatus === 'fetching'
+    const updatesAtMount = atMount?.dataUpdateCount ?? 0
     const invalidate = (): void => void queryClient.invalidateQueries({ queryKey: key })
     return subscribeToEvents(
       [
@@ -233,9 +243,10 @@ export function useNote(id: string | null, options: UseNoteOptions = {}): UseNot
       // mount's listeners. The note page reads again itself (`useNoteBody`, `startup-gap`): a
       // second read here would race it and count another `note_opened`.
       () => {
-        if (readOnMount) return
+        if (readOnMount || !readsAtMount) return
         const state = queryClient.getQueryState(key)
-        if (state?.fetchStatus === 'fetching' || (state?.dataUpdatedAt ?? 0) >= mountedAt) {
+        const fetching = state?.fetchStatus === 'fetching'
+        if (fetchingAtMount || fetching || (state?.dataUpdateCount ?? 0) > updatesAtMount) {
           rereadQueries(queryClient, key)
         }
       }

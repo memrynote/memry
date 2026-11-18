@@ -10,6 +10,7 @@ import type {
 import { onPropertyDefinitionChanged, tagsService } from '@/services/tags-service'
 import { onTagsChanged } from '@/services/notes-service'
 import { subscribeToEvents } from '@/services/tauri-event'
+import { rereadQueries } from '@/hooks/use-notes-query'
 
 export const tagSchemaQueryKey = ['tags', 'schema-snapshot'] as const
 
@@ -40,6 +41,11 @@ function subscribeInvalidation(queryClient: QueryClient, onListening: () => void
       ],
       () => {
         listening = true
+        // A snapshot cached before then (the tab icons prefetch one, `use-optional-object-identity`)
+        // may predate a change whose event went to nobody (#4270).
+        if (queryClient.getQueryData(tagSchemaQueryKey) !== undefined) {
+          rereadQueries(queryClient, tagSchemaQueryKey)
+        }
         for (const notify of waiting) notify()
         waiting.clear()
       }
