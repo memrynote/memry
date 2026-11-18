@@ -9,9 +9,11 @@ use std::fs;
 use std::path::Path;
 
 use memry_core::domain::notes::app_move::{PendingMove, Recorded};
+use memry_desktop::notes::create::NewNoteFile;
 use memry_desktop::notes::error::NotesError;
 use memry_desktop::notes::moves::MoveTo;
 use memry_desktop::notes::service::NotesService;
+use memry_desktop::notes::view::RefsKept;
 use memry_desktop::session::OpenVault;
 use unicode_normalization::UnicodeNormalization;
 use vault_env::indexed;
@@ -19,6 +21,9 @@ use vault_env::indexed;
 use crate::notes_moves::{
     file_note, names_in, note, note_count, opened, pending, record, row_facts,
 };
+use crate::vault_app_move_open::logged;
+
+const NOT_REPOINTED: &str = "a moved note's relative refs were not re-pointed";
 
 /// A folder named in another case or Unicode form than one its parent holds is that folder,
 /// on every volume: the note lands in it, and its record and row name the folder as the disk
@@ -174,4 +179,65 @@ fn a_note_whose_file_cannot_go_back_stays_one_note_until_the_open_finishes_its_m
     assert_eq!(pending(&e, &store), []);
     assert_eq!(note_count(&e), 2);
     assert!(!record(&e, &markdown).2 && !record(&e, &pdf).2);
+}
+
+/// A moved note whose refs edit is refused (an outside edit the row has not taken) with no
+/// relative ref to re-point kept nothing: the move answers no refusal and logs none (#4278;
+/// the Windows soak logged 38 of these).
+#[test]
+fn a_moved_note_with_no_relative_refs_keeps_none_when_its_edit_is_refused() {
+    let (e, notes, _) = opened();
+    let open = e.session.current().unwrap();
+    let made = notes.create(&open, note("Plan", "work")).unwrap();
+    e.core()
+        .note_files()
+        .set_hash(&made.id, Some("not-the-file"))
+        .unwrap();
+
+    let mut kept = None;
+    let log = logged(tracing::Level::WARN, || {
+        kept = Some(
+            notes
+                .move_to_folder(&open, &made.id, "archive")
+                .unwrap()
+                .refs_kept,
+        );
+    });
+
+    assert_eq!(kept, Some(None));
+    assert!(!log.contains(NOT_REPOINTED), "{log}");
+}
+
+/// The same refusal of a note that has a relative ref keeps it, and says so.
+#[test]
+fn a_moved_note_whose_refs_edit_is_refused_keeps_them_and_says_so() {
+    let (e, notes, _) = opened();
+    let open = e.session.current().unwrap();
+    let made = notes
+        .create(
+            &open,
+            NewNoteFile {
+                content: "![o](img/other.png)".into(),
+                ..note("Plan", "work")
+            },
+        )
+        .unwrap();
+    e.core()
+        .note_files()
+        .set_hash(&made.id, Some("not-the-file"))
+        .unwrap();
+
+    let mut kept = None;
+    let log = logged(tracing::Level::WARN, || {
+        kept = Some(
+            notes
+                .move_to_folder(&open, &made.id, "archive")
+                .unwrap()
+                .refs_kept,
+        );
+    });
+
+    assert_eq!(kept, Some(Some(RefsKept::Changing)));
+    assert!(log.contains(NOT_REPOINTED), "{log}");
+    assert!(e.read("archive/Plan.md").contains("](img/other.png)"));
 }

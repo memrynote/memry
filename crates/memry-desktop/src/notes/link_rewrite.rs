@@ -124,6 +124,14 @@ impl NotesService {
         let kept = match rewritten {
             // A write the document did not take is the watcher's to bring in.
             Ok(Edited::Wrote { .. } | Edited::Unchanged { .. }) => return None,
+            // A file with no relative ref to re-point kept nothing. One that does not read
+            // may hold some: the refusal stands.
+            _ if std::fs::read_to_string(open.path.join(&to.path)).is_ok_and(|text| {
+                rewrite_note_refs_for_move(&text, &from.path, &to.path, options).is_none()
+            }) =>
+            {
+                return None;
+            }
             Ok(Edited::Kept(kept)) => kept,
             Err(error) => {
                 tracing::warn!(
