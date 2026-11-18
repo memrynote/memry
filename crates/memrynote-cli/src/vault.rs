@@ -9,9 +9,11 @@
 
 use std::path::{Component, Path, PathBuf};
 
+use memry_desktop::shell::file_open::Resolution;
 use memry_desktop::vault::config::{self, ConfigError};
 use memry_desktop::vault::journal_format::normalize_journal_folder;
 use memry_desktop::vault::layout::DEFAULT_EXCLUDE_PATTERNS;
+use memry_desktop::vault::paths::resolve_vault_file;
 use serde_json::{Map, Value, json};
 
 use crate::context::VaultContext;
@@ -36,7 +38,12 @@ pub fn run(parsed: &ParsedCli, io: &mut dyn CliIo, vault: &VaultContext) -> CliR
             Ok(())
         }
         Some("config") => {
-            print(io, parsed.json, Some(&Value::Object(config_view(vault))));
+            let file = config::read_map(&vault.root).unwrap_or_default();
+            print(
+                io,
+                parsed.json,
+                Some(&Value::Object(config_view(vault, &file))),
+            );
             Ok(())
         }
         Some("update-config") => {
@@ -53,33 +60,42 @@ pub fn run(parsed: &ParsedCli, io: &mut dyn CliIo, vault: &VaultContext) -> CliR
     }
 }
 
-/// The config `createMemryApp` holds (`ensureVaultLayout`, `apps/cli/src/app-core/paths.ts:209-247`):
-/// `{ ...defaults without excludePatterns, ...file, excludePatterns, journalFolder normalized,
-/// journalShowInSidebar === true }`, so every key of the file is shown. A missing or unusable
-/// file reads as `{}`.
-fn config_view(vault: &VaultContext) -> Map<String, Value> {
-    let file = config::read_map(&vault.root).unwrap_or_default();
-    let mut view = Map::new();
-    for (key, value) in [
-        ("defaultNoteFolder", ""),
-        ("journalFolder", "journal"),
-        ("journalDateFormat", "YYYY-MM-DD"),
-        ("attachmentsFolder", "attachments"),
-    ] {
-        view.insert(key.into(), value.into());
-    }
+/// The defaults of `ensureVaultLayout` (`defaultVaultConfig` without `excludePatterns`,
+/// `apps/cli/src/app-core/paths.ts:28-34`).
+const DEFAULTS: [(&str, &str); 4] = [
+    ("defaultNoteFolder", ""),
+    ("journalFolder", "journal"),
+    ("journalDateFormat", "YYYY-MM-DD"),
+    ("attachmentsFolder", "attachments"),
+];
+
+/// The config `createMemryApp` holds (`ensureVaultLayout`, `apps/cli/src/app-core/paths.ts:209-247`)
+/// over `file`: `{ ...defaults without excludePatterns, ...file, excludePatterns, journalFolder
+/// normalized, journalShowInSidebar === true }`, so every key of the file is shown. A missing or
+/// unusable file reads as `{}`.
+fn config_view(vault: &VaultContext, file: &Map<String, Value>) -> Map<String, Value> {
+    let mut view: Map<String, Value> = DEFAULTS
+        .iter()
+        .map(|(key, value)| ((*key).to_owned(), (*value).into()))
+        .collect();
     view.extend(file.clone());
     view.insert(
         "excludePatterns".into(),
-        exclude_patterns(vault, &file).into(),
+        exclude_patterns(vault, file).into(),
     );
-    if let Some(Value::String(folder)) = view.get("journalFolder") {
-        let folder = normalize_journal_folder(folder);
-        view.insert("journalFolder".into(), folder.into());
-    }
-    let sidebar = view.get("journalShowInSidebar") == Some(&Value::Bool(true));
-    view.insert("journalShowInSidebar".into(), sidebar.into());
+    normalize_held(&mut view);
     view
+}
+
+/// The two values `ensureVaultLayout` normalizes in the config it holds: `journalFolder`, and
+/// `journalShowInSidebar === true`.
+fn normalize_held(config: &mut Map<String, Value>) {
+    if let Some(Value::String(folder)) = config.get("journalFolder") {
+        let folder = normalize_journal_folder(folder);
+        config.insert("journalFolder".into(), folder.into());
+    }
+    let sidebar = config.get("journalShowInSidebar") == Some(&Value::Bool(true));
+    config.insert("journalShowInSidebar".into(), sidebar.into());
 }
 
 /// `resolveExcludePatterns` (`paths.ts:159-180`): a list in the file is the user's (strings only);
@@ -111,19 +127,20 @@ fn exclude_patterns(vault: &VaultContext, file: &Map<String, Value>) -> Vec<Stri
 
 /// `updateVaultConfig` (`paths.ts:107-126`): writes `{ ...file, ...config without excludePatterns,
 /// ...updates }` through the config's one owner, creates the folders it names, and returns the
-/// config with the updates and the exclude patterns the written file gives.
+/// config with the updates and the exclude patterns the written file gives. The whole merge runs
+/// on the file as read under the config's lock, so a key the app wrote while this command waited
+/// for the lock survives: the held config is the file's keys, the defaults it lacks, and the two
+/// normalized values.
 fn update_config(
     vault: &VaultContext,
     updates: &Map<String, Value>,
 ) -> Result<Map<String, Value>, CliError> {
-    let mut view = config_view(vault);
     let written = config::update(&vault.root, |file| {
-        for (key, value) in view.iter().filter(|(key, _)| *key != "excludePatterns") {
-            file.insert(key.clone(), value.clone());
+        for (key, value) in DEFAULTS {
+            file.entry(key).or_insert_with(|| value.into());
         }
-        for (key, value) in updates {
-            file.insert(key.clone(), value.clone());
-        }
+        normalize_held(file);
+        file.extend(updates.clone());
         file.clone()
     })
     .map_err(|error| match error {
@@ -132,6 +149,8 @@ fn update_config(
         )),
         other => CliError(other.to_string()),
     })?;
+    let mut view = config_view(vault, &written);
+    // `Object.assign(config, updates, ...)`: the updates as given, not normalized.
     view.extend(updates.clone());
     create_folders(&vault.root, &view)?;
     view.insert(
@@ -157,25 +176,31 @@ fn create_folders(root: &Path, config: &Map<String, Value>) -> CliResult {
     Ok(())
 }
 
-/// `root` joined with the relative `folder`, or `None` when `folder` is absolute or climbs out.
+/// `path.join(root, folder)` while it stays in the vault: an absolute `folder` is joined inside
+/// it as Node joins it, and `None` when `..` climbs out, a drive prefix names another root, or the
+/// nearest existing folder on the way resolves outside the vault through a link (the app's
+/// `resolve_vault_file`).
 fn inside(root: &Path, folder: &str) -> Option<PathBuf> {
-    let mut path = root.to_path_buf();
-    let mut depth = 0usize;
+    let mut parts: Vec<&str> = Vec::new();
     for part in Path::new(folder).components() {
         match part {
-            Component::Normal(name) => {
-                path.push(name);
-                depth += 1;
+            Component::Normal(name) => parts.push(name.to_str()?),
+            Component::CurDir | Component::RootDir => {}
+            Component::ParentDir => {
+                parts.pop()?;
             }
-            Component::CurDir => {}
-            Component::ParentDir if depth > 0 => {
-                path.pop();
-                depth -= 1;
-            }
-            Component::ParentDir | Component::RootDir | Component::Prefix(_) => return None,
+            Component::Prefix(_) => return None,
         }
     }
-    Some(path)
+    if parts.is_empty() {
+        return Some(root.to_path_buf());
+    }
+    let rel = parts.join("/");
+    match resolve_vault_file(root, &rel) {
+        Ok(Resolution::Inside(path)) => Some(path),
+        Ok(Resolution::Missing) => Some(root.join(&rel)),
+        Ok(Resolution::Outside) | Err(_) => None,
+    }
 }
 
 /// Fails as Node's recursive `mkdir` of `<vault>/.memry` fails (`MKDirpSync`/`MKDirpAsync` of

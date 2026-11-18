@@ -89,3 +89,89 @@ fn a_lock_held_past_the_wait_fails_the_write() {
     assert!(error.to_string().contains("held the lock"), "{error}");
     assert!(!super::config_path(vault).exists(), "nothing written");
 }
+
+/// Root ignores file modes, so these tests mean nothing as root.
+#[cfg(unix)]
+fn as_root() -> bool {
+    // SAFETY: geteuid has no preconditions and cannot fail.
+    unsafe { libc::geteuid() == 0 }
+}
+
+#[cfg(unix)]
+fn set_mode(path: &Path, mode: u32) {
+    use std::os::unix::fs::PermissionsExt;
+    std::fs::set_permissions(path, std::fs::Permissions::from_mode(mode)).expect("chmod");
+}
+
+/// A lock file this user may only read (another user's, left by `sudo memrynote`) still locks:
+/// the lock is taken on a read-only handle, and the write goes ahead.
+#[cfg(unix)]
+#[test]
+fn a_read_only_lock_file_still_locks_the_write() {
+    if as_root() {
+        return;
+    }
+    let dir = tempfile::tempdir().expect("tempdir");
+    let vault = dir.path();
+    std::fs::create_dir(vault.join(".memry")).expect("memry");
+    let lock = vault.join(".memry/config.json.lock");
+    std::fs::write(&lock, b"").expect("lock file");
+    set_mode(&lock, 0o444);
+    super::update(vault, |map| {
+        map.insert("a".into(), Value::from(1));
+    })
+    .expect("written");
+    // The read-only handle holds a real lock: a holder makes the write wait, then fail.
+    let held = std::fs::File::open(&lock).expect("read-only handle");
+    held.lock().expect("hold");
+    let error = super::update(vault, |map| {
+        map.insert("b".into(), Value::Null);
+    })
+    .expect_err("held");
+    assert!(error.to_string().contains("held the lock"), "{error}");
+    assert_eq!(super::read_map(vault).expect("config").len(), 1);
+}
+
+/// A lock file this user cannot open at all: the write goes ahead unlocked, as on a file system
+/// without locks, instead of failing every config write of the app.
+#[cfg(unix)]
+#[test]
+fn a_lock_file_that_cannot_be_opened_writes_unlocked() {
+    if as_root() {
+        return;
+    }
+    let dir = tempfile::tempdir().expect("tempdir");
+    let vault = dir.path();
+    std::fs::create_dir(vault.join(".memry")).expect("memry");
+    let lock = vault.join(".memry/config.json.lock");
+    std::fs::write(&lock, b"").expect("lock file");
+    set_mode(&lock, 0o000);
+    super::update(vault, |map| {
+        map.insert("a".into(), Value::from(1));
+    })
+    .expect("written");
+    assert_eq!(super::read_map(vault).expect("config")["a"], 1);
+}
+
+/// A `.memry` folder that refuses the lock file refuses the config write too: the error is
+/// the localised permission one.
+#[cfg(unix)]
+#[test]
+fn a_folder_that_refuses_the_lock_file_is_permission_denied() {
+    if as_root() {
+        return;
+    }
+    let dir = tempfile::tempdir().expect("tempdir");
+    let vault = dir.path();
+    let memry = vault.join(".memry");
+    std::fs::create_dir(&memry).expect("memry");
+    set_mode(&memry, 0o555);
+    let result = super::update(vault, |map| {
+        map.insert("a".into(), Value::Null);
+    });
+    set_mode(&memry, 0o755);
+    assert!(
+        matches!(result, Err(super::ConfigError::PermissionDenied)),
+        "{result:?}"
+    );
+}

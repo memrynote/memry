@@ -12,8 +12,10 @@
 //! - writes are serialized by one process-wide lock, so the preferences, the icon and the
 //!   vault settings never interleave, and across processes by the advisory lock on
 //!   `.memry/config.json.lock` ([`crate::registry::config_lock`]), which the command line
-//!   (`memrynote-cli`) takes too. An Electron build open on the same vault takes no lock: a
-//!   write of theirs between our read and our rename can be lost;
+//!   (`memrynote-cli`) takes too. No lock is taken when `.memry` is missing (no other process
+//!   has written the file yet) or is a link (it may lead out of the vault, where no lock file is
+//!   created; the write itself refuses that path). An Electron build open on the same vault
+//!   takes no lock: a write of theirs between our read and our rename can be lost;
 //! - the bytes go through [`fs_atomic`](crate::vault::fs_atomic) (temp file, sync, rename), keep
 //!   the mode of the file they replace (0600 for a new one), and a path that resolves outside
 //!   the vault is never written.
@@ -196,9 +198,18 @@ fn hold_across_processes(vault: &Path) -> Result<Option<File>, ConfigError> {
     if !std::fs::symlink_metadata(&memry).is_ok_and(|meta| meta.is_dir()) {
         return Ok(None);
     }
-    crate::registry::config_lock::hold(&config_path(vault)).map_err(|error| ConfigError::Write {
-        path: error.path.display().to_string(),
-        message: error.message,
+    crate::registry::config_lock::hold(&config_path(vault)).map_err(|error| {
+        if error.kind == std::io::ErrorKind::PermissionDenied {
+            tracing::warn!(
+                scope = "vault_config",
+                "the vault config lock is not writable"
+            );
+            return ConfigError::PermissionDenied;
+        }
+        ConfigError::Write {
+            path: error.path.display().to_string(),
+            message: error.message,
+        }
     })
 }
 

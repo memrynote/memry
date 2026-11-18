@@ -16,16 +16,16 @@
   {
     "case": "`vault reindex`: the counts it prints, and an index.db that needs a rebuild",
     "typescript": "Dropped and refilled the Electron search tables and printed the totals of that rebuild ({notes,tasks,inbox,skipped,durationMs}).",
-    "rust": "Runs the app's own incremental pass (core Search::reindex) in one index.db transaction, so it never races the app's pass, and prints what this pass indexed: a second run right after the first prints 0 notes. An index.db that is damaged or newer than this build exits 1 with `The search index cannot be updated here (<reason>). Open MemryNote, which repairs it, then run this command again.` and stays byte for byte; only the app sets an index aside, because its open handles would lose the file.",
+    "rust": "Runs the app's own incremental pass (core Search::reindex), whose index.db writes are one transaction, and prints what this pass indexed: a second run right after the first prints 0 notes. When the app holds or has just committed an index write, the pass fails without committing to index.db (at once on SQLITE_BUSY_SNAPSHOT, at most after the busy timeout otherwise) and exits 1 with `The search index is busy: MemryNote is updating it. Run this command again in a moment.` The data.db rows the pass derives (wiki name keys, body tags) are written outside that transaction; each is derived from the note and the same on every pass. The app is not told of them, so a panel it has open (links) can show the earlier state until it reads again. An index.db that is damaged or newer than this build exits 1 with `The search index cannot be updated here (<reason>). Open MemryNote, which repairs it, then run this command again.` and stays byte for byte; only the app sets an index aside, because its open handles would lose the file.",
     "approval": "Pending Kaan's review on the Step 35 B2a PR (#3552); conservative default meanwhile.",
-    "test": "crates/memrynote-cli/tests/context.rs a_reindex_refuses_a_damaged_index_and_leaves_it; crates/memry-core/tests/domain_search.rs a_second_pass_touches_only_what_moved"
+    "test": "crates/memrynote-cli/tests/context.rs a_reindex_refuses_a_damaged_index_and_leaves_it, a_reindex_beside_a_writer_says_the_index_is_busy; crates/memry-core/tests/domain_search.rs a_second_pass_touches_only_what_moved"
   },
   {
-    "case": "`vault update-config` with a defaultNoteFolder or journalFolder that leads outside the vault (`../outside`, an absolute path)",
-    "typescript": "ensureVaultFolders created that folder wherever it pointed, outside the vault included.",
-    "rust": "Writes the key as given and prints the same config, but creates no folder outside the vault (a lexical check of the relative path).",
+    "case": "`vault update-config` with a defaultNoteFolder or journalFolder that leads outside the vault (`..` that climbs out, a link out of the vault)",
+    "typescript": "ensureVaultFolders created path.join(vaultPath, folder) wherever it led: `..` could climb out of the vault and a symlinked folder could lead out. An absolute folder was joined inside the vault (`/abs` became `<vault>/abs`).",
+    "rust": "Writes the key as given and prints the same config. Folders are joined as Node joins them (an absolute folder lands inside the vault), but none is created when `..` climbs out, a drive prefix names another root, or the nearest existing folder on the way resolves outside the vault through a link (the app's resolve_vault_file).",
     "approval": "Pending Kaan's review on the Step 35 B2a PR (#3552); conservative default meanwhile.",
-    "test": "crates/memrynote-cli/tests/context.rs update_config_creates_no_folder_outside_the_vault"
+    "test": "crates/memrynote-cli/tests/context.rs update_config_creates_no_folder_outside_the_vault, update_config_creates_no_folder_through_a_link_out_of_the_vault, update_config_puts_an_absolute_folder_inside_the_vault"
   },
   {
     "case": "the .memry/config.json that `vault config`, `vault update-config` and `vault set-icon` leave on disk",

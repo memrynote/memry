@@ -27,21 +27,25 @@ pub fn run(parsed: &ParsedCli, io: &mut dyn CliIo, vault: &VaultContext) -> CliR
     }
 }
 
-/// The app's search index pass (core `Search::reindex`), from this process. Two processes never
-/// race on the index: the pass runs in one `index.db` transaction that SQLite serialises with the
-/// app's own pass (a writer waits on the other for the 5 s busy timeout, then fails and commits
-/// nothing), and it is idempotent and incremental, so whichever runs second indexes only what is
-/// left. The command line never sets a damaged index aside under a running app: that is the
-/// app's open ([`memry_core::api::vault::Vault::search_keeping_index`]).
+/// The app's search index pass (core `Search::reindex`), from this process. The pass writes
+/// `index.db` in one transaction, so it never interleaves with the app's own pass: when the app
+/// holds or has just committed a write, this pass fails (at once on `SQLITE_BUSY_SNAPSHOT`, at
+/// most after SQLite's busy timeout otherwise), commits nothing to the index, and the command
+/// says the index is busy. The `data.db` rows the pass derives (wiki name keys, body tags) are written outside that transaction and are the same
+/// on every pass. The command line never sets a damaged index aside under a running app: that is
+/// the app's open ([`memry_core::api::vault::Vault::search_keeping_index`]).
 fn reindex(parsed: &ParsedCli, io: &mut dyn CliIo, vault: &VaultContext) -> CliResult {
     let started = Instant::now();
-    let refused = |error: memry_core::api::errors::StorageError| {
-        CliError(format!(
-            "The search index cannot be updated here ({error}). Open MemryNote, which repairs it, then run this command again."
-        ))
-    };
-    let search = vault.vault.search_keeping_index().map_err(refused)?;
-    let done = search.reindex_counts().map_err(refused)?;
+    let search = vault.vault.search_keeping_index().map_err(|error| {
+        reindex_error(
+            &error,
+            "cannot be updated here",
+            "Open MemryNote, which repairs it, then run this command again.",
+        )
+    })?;
+    let done = search
+        .reindex_counts()
+        .map_err(|error| reindex_error(&error, "was not updated", "Run this command again."))?;
     let output = json!({
         "notes": done.notes_indexed,
         "tasks": done.tasks_indexed,
@@ -51,6 +55,23 @@ fn reindex(parsed: &ParsedCli, io: &mut dyn CliIo, vault: &VaultContext) -> CliR
     });
     print(io, parsed.json, Some(&output));
     Ok(())
+}
+
+/// The message of a reindex that failed: a busy index (another process writing it; core reports
+/// SQLite's own text, which reads `database is locked` for `SQLITE_BUSY` and each of its extended
+/// codes) is said to be busy, whatever the phase.
+fn reindex_error(
+    error: &memry_core::api::errors::StorageError,
+    what: &str,
+    then: &str,
+) -> CliError {
+    if error.to_string().contains("database is locked") {
+        return CliError(
+            "The search index is busy: MemryNote is updating it. Run this command again in a moment."
+                .into(),
+        );
+    }
+    CliError(format!("The search index {what} ({error}). {then}"))
 }
 
 /// `setIcon` (`apps/cli/src/app-core/vault-admin.ts:92-118`) over the app's icon rules.
