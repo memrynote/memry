@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { createMockApi } from '@tests/setup-dom'
+
+const commands = vi.hoisted(() => ({ inboxRetryTranscription: vi.fn() }))
+vi.mock('../../../generated/bindings', () => ({ commands }))
+const invokeBinary = vi.hoisted(() => vi.fn())
+vi.mock('../lib/ipc-binary', () => ({ invokeBinary }))
 import {
   inboxService,
   onInboxCaptured,
@@ -51,6 +56,36 @@ describe('inbox-service', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+  })
+
+  it('sends dictation audio as the raw body of inbox_transcribe_audio', async () => {
+    api.inbox.transcribeAudio = vi.fn()
+    invokeBinary.mockResolvedValueOnce({ success: true, text: 'Call the bank.' })
+    const wav = new Uint8Array([82, 73, 70, 70]).buffer
+
+    const result = await inboxService.transcribeAudio({ data: wav, format: 'wav', duration: 2 })
+
+    expect(result).toEqual({ success: true, text: 'Call the bank.' })
+    const [command, body, meta] = invokeBinary.mock.calls[0]
+    expect(command).toBe('inbox_transcribe_audio')
+    expect(Array.from(body as Uint8Array)).toEqual([82, 73, 70, 70])
+    expect(meta).toEqual({ format: 'wav' })
+    expect(api.inbox.transcribeAudio).not.toHaveBeenCalled()
+  })
+
+  it('retries a transcription through inbox_retry_transcription', async () => {
+    api.inbox.retryTranscription = vi.fn()
+    commands.inboxRetryTranscription.mockResolvedValueOnce({
+      success: false,
+      error: 'Item not found'
+    })
+
+    await expect(inboxService.retryTranscription('missing')).resolves.toEqual({
+      success: false,
+      error: 'Item not found'
+    })
+    expect(commands.inboxRetryTranscription).toHaveBeenCalledWith('missing')
+    expect(api.inbox.retryTranscription).not.toHaveBeenCalled()
   })
 
   it('exposes inbox RPC methods directly from window.api.inbox', () => {

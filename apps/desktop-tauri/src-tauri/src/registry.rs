@@ -350,6 +350,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::vault_notices::vault_notices_list,
             crate::commands::vault_notices::vault_notices_restore_kept,
             // voice
+            crate::commands::voice::inbox_retry_transcription,
             crate::commands::voice::settings_download_voice_model,
             crate::commands::voice::settings_get_voice_model_status,
             crate::commands::voice::settings_get_voice_recording_readiness,
