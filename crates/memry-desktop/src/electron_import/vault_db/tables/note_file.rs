@@ -45,12 +45,24 @@ pub struct JournalFields {
 /// `readVaultFileSync` (`lib/paths.ts:299`): the file under the vault, links refused, read as
 /// UTF-8 with replacement. A missing, refused or unreadable file is `None`, which Electron's
 /// push catches and logs.
-fn read_text(vault: &Path, rel: &str) -> Option<String> {
+fn read_text(vault: &Path, note_id: &str, rel: &str) -> Option<String> {
     let file = match open_vault_file(vault, rel) {
         Ok(Some(file)) => file,
-        Ok(None) => return None,
+        Ok(None) => {
+            tracing::warn!(
+                note_id,
+                path = rel,
+                "electron import: a note file is missing"
+            );
+            return None;
+        }
         Err(error) => {
-            tracing::warn!(?error, "electron import: a note file could not be opened");
+            tracing::warn!(
+                note_id,
+                path = rel,
+                ?error,
+                "electron import: a note file could not be opened"
+            );
             return None;
         }
     };
@@ -59,16 +71,24 @@ fn read_text(vault: &Path, rel: &str) -> Option<String> {
         .metadata()
         .is_ok_and(|meta| meta.len() > MAX_FILE_BYTES)
     {
-        tracing::warn!("electron import: a note file is longer than Electron can read");
+        tracing::warn!(
+            note_id,
+            path = rel,
+            "electron import: a note file is longer than Electron can read"
+        );
         return None;
     }
     let mut bytes = Vec::new();
     if let Err(error) = file.take(MAX_FILE_BYTES + 1).read_to_end(&mut bytes) {
-        tracing::warn!(%error, "electron import: a note file could not be read");
+        tracing::warn!(note_id, path = rel, %error, "electron import: a note file could not be read");
         return None;
     }
     if bytes.len() as u64 > MAX_FILE_BYTES {
-        tracing::warn!("electron import: a note file is longer than Electron can read");
+        tracing::warn!(
+            note_id,
+            path = rel,
+            "electron import: a note file is longer than Electron can read"
+        );
         return None;
     }
     Some(String::from_utf8_lossy(&bytes).into_owned())
@@ -95,15 +115,21 @@ fn as_map(value: &YamlValue) -> Option<&YamlMap> {
 }
 
 /// `readNoteFileFields(note, operation)` for a markdown note at `rel`.
-pub fn note_fields(vault: &Path, rel: &str, title: &str, create: bool) -> Option<NoteFields> {
-    let raw = read_text(vault, rel)?;
+pub fn note_fields(
+    vault: &Path,
+    note_id: &str,
+    rel: &str,
+    title: &str,
+    create: bool,
+) -> Option<NoteFields> {
+    let raw = read_text(vault, note_id, rel)?;
     let split = split_frontmatter_block(&raw);
     // A block that does not parse reads as no frontmatter, and the body stays (`parseNote`).
     let data = match split.block.map(gray_matter_data).transpose() {
         Ok(Some(data)) => data,
         Ok(None) => YamlValue::map(YamlMap::new()),
         Err(error) => {
-            tracing::warn!(%error, "electron import: a note's frontmatter does not parse");
+            tracing::warn!(note_id, path = rel, %error, "electron import: a note's frontmatter does not parse");
             YamlValue::map(YamlMap::new())
         }
     };
@@ -119,13 +145,19 @@ pub fn note_fields(vault: &Path, rel: &str, title: &str, create: bool) -> Option
 }
 
 /// The journal handler's read of the day file at `rel` for `date`.
-pub fn journal_fields(vault: &Path, rel: &str, date: &str, create: bool) -> Option<JournalFields> {
-    let raw = read_text(vault, rel)?;
+pub fn journal_fields(
+    vault: &Path,
+    note_id: &str,
+    rel: &str,
+    date: &str,
+    create: bool,
+) -> Option<JournalFields> {
+    let raw = read_text(vault, note_id, rel)?;
     // `matter(rawContent)` over the whole file, which throws on a block that does not parse.
     let data = match gray_matter_data(&raw) {
         Ok(data) => data,
         Err(error) => {
-            tracing::warn!(%error, "electron import: a day file's frontmatter does not parse");
+            tracing::warn!(note_id, path = rel, %error, "electron import: a day file's frontmatter does not parse");
             return None;
         }
     };

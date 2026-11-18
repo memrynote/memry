@@ -90,6 +90,8 @@ pub struct TableStats {
     pub written: u64,
     /// Source rows not written, by named reason (`staleQueueRows`, `snapshotsWithoutNote`, ...).
     pub dropped: Vec<(&'static str, u64)>,
+    /// Source rows written with less than the source held, by named reason (`unreadNoteFiles`).
+    pub notices: Vec<(&'static str, u64)>,
 }
 
 pub type ImportFn = fn(&mut TableCtx<'_>) -> Result<TableStats, ImportError>;

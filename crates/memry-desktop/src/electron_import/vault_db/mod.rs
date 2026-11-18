@@ -104,6 +104,8 @@ pub struct VaultStageReport {
     pub tables: BTreeMap<String, TableReport>,
     /// Source rows or keys not carried over, by named reason.
     pub dropped: BTreeMap<String, u64>,
+    /// Source rows carried over with less than the source held, by named reason.
+    pub notices: BTreeMap<String, u64>,
     pub merged_tables: Vec<String>,
     pub checks_passed: Vec<u8>,
 }
@@ -252,6 +254,9 @@ fn stage(input: &VaultImportInput<'_>, paths: &Paths) -> Result<VaultStageReport
                 for (reason, count) in stats.dropped {
                     table.dropped += count;
                     *report.dropped.entry(reason.to_owned()).or_default() += count;
+                }
+                for (reason, count) in stats.notices {
+                    *report.notices.entry(reason.to_owned()).or_default() += count;
                 }
             }
             // The preflight refused a pending table with rows, so this one is empty.

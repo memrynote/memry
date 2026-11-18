@@ -24,19 +24,22 @@ const DAY: &str = "j2026-01-05";
 const BAD_YAML: &str = "Bad-yaml0001";
 const NUM_TAGS: &str = "Num-tags0001";
 const BIG: &str = "Big-file0001";
+const NUM_ALIASES: &str = "Num-alias001";
 
 const PLAN_FILE: &str = "---\ntags: [a, b]\naliases: [Alt, Plan]\ncover: wash:sage\nstatus: draft\n---\n# Plan\n\nBody \u{2028} \"quoted\" \u{e9}\n";
 const IDEA_FILE: &str = "Just a thought \u{2028} \"q\" \u{e9}\r\n";
 const DAY_FILE: &str = "---\ntags: daily\nmood: good\naliases: x\n---\n\nToday.\n\n";
 
 const ELECTRON_PLAN: &str = "{\"title\":\"Plan\",\"content\":null,\"tags\":[\"a\",\"b\"],\"aliases\":[\"Alt\"],\"properties\":{\"status\":\"draft\",\"count\":3},\"pinnedTags\":[\"a\"],\"emoji\":\"\u{1f5c2}\",\"fileType\":\"markdown\",\"folderPath\":\"Projects\",\"cover\":{\"ref\":\"wash:sage\"},\"clock\":{\"dev-A\":3,\"dev-B\":1},\"createdAt\":\"2026-01-02T03:04:05.000Z\",\"modifiedAt\":\"2026-01-03T03:04:05.000Z\"}";
-const ELECTRON_IDEA: &str = "{\"title\":\"Idea\",\"content\":\"Just a thought \u{2028} \\\"q\\\" \u{e9}\\r\\n\",\"tags\":[],\"aliases\":[],\"properties\":{},\"pinnedTags\":[],\"emoji\":null,\"fileType\":\"markdown\",\"folderPath\":null,\"attachmentReferences\":[\"att-1\"],\"clock\":{\"dev-A\":1},\"createdAt\":\"2026-01-02T03:04:05.000Z\",\"modifiedAt\":\"2026-01-03T03:04:05.000Z\"}";
+const ELECTRON_IDEA: &str = "{\"title\":\"Idea\",\"content\":\"Just a thought \u{2028} \\\"q\\\" \u{e9}\\r\\n\",\"tags\":[],\"aliases\":[],\"properties\":{},\"pinnedTags\":[],\"emoji\":null,\"fileType\":\"markdown\",\"folderPath\":null,\"attachmentReferences\":[\"att-1\"],\"clock\":{},\"createdAt\":\"2026-01-02T03:04:05.000Z\",\"modifiedAt\":\"2026-01-03T03:04:05.000Z\"}";
 /// Electron builds no payload for a local-only row; this is the binary branch's output.
 const ELECTRON_PDF: &str = "{\"title\":\"doc\",\"emoji\":null,\"fileType\":\"pdf\",\"mimeType\":\"application/pdf\",\"attachmentId\":\"att-pdf\",\"folderPath\":\"Files\",\"clock\":{},\"createdAt\":\"2026-01-02T03:04:05.000Z\",\"modifiedAt\":\"2026-01-03T03:04:05.000Z\"}";
 const ELECTRON_GONE: &str = "{\"title\":\"Gone\",\"content\":null,\"tags\":[],\"properties\":{},\"pinnedTags\":[],\"emoji\":null,\"fileType\":\"markdown\",\"folderPath\":null,\"clock\":{\"dev-A\":2},\"createdAt\":\"2026-01-02T03:04:05.000Z\",\"modifiedAt\":\"2026-01-03T03:04:05.000Z\"}";
-const ELECTRON_DAY: &str = "{\"date\":\"2026-01-05\",\"content\":\"Today.\",\"tags\":[\"daily\"],\"properties\":{\"mood\":\"good\",\"aliases\":\"x\"},\"aliases\":[],\"clock\":{\"dev-A\":5},\"createdAt\":\"2026-01-05T08:00:00.000Z\",\"modifiedAt\":\"2026-01-05T09:00:00.000Z\"}";
-const ELECTRON_BAD_YAML: &str = "{\"title\":\"Bad\",\"content\":\"Body\\n\",\"tags\":[],\"aliases\":[],\"properties\":{},\"pinnedTags\":[],\"emoji\":null,\"fileType\":\"markdown\",\"folderPath\":null,\"clock\":{\"dev-A\":1},\"createdAt\":\"2026-01-02T03:04:05.000Z\",\"modifiedAt\":\"2026-01-03T03:04:05.000Z\"}";
+/// A clocked day with no queued `create` is pushed as an update: no body.
+const ELECTRON_DAY: &str = "{\"date\":\"2026-01-05\",\"content\":null,\"tags\":[\"daily\"],\"properties\":{\"mood\":\"good\",\"aliases\":\"x\"},\"aliases\":[],\"clock\":{\"dev-A\":5},\"createdAt\":\"2026-01-05T08:00:00.000Z\",\"modifiedAt\":\"2026-01-05T09:00:00.000Z\"}";
+const ELECTRON_BAD_YAML: &str = "{\"title\":\"Bad\",\"content\":\"Body\\n\",\"tags\":[],\"aliases\":[],\"properties\":{},\"pinnedTags\":[],\"emoji\":null,\"fileType\":\"markdown\",\"folderPath\":null,\"clock\":{},\"createdAt\":\"2026-01-02T03:04:05.000Z\",\"modifiedAt\":\"2026-01-03T03:04:05.000Z\"}";
 const ELECTRON_NUM_TAGS: &str = "{\"title\":\"Num\",\"content\":null,\"tags\":[2024,\"x\"],\"aliases\":[],\"properties\":{},\"pinnedTags\":[],\"emoji\":null,\"fileType\":\"markdown\",\"folderPath\":null,\"clock\":{\"dev-A\":1},\"createdAt\":\"2026-01-02T03:04:05.000Z\",\"modifiedAt\":\"2026-01-03T03:04:05.000Z\"}";
+const ELECTRON_NUM_ALIASES: &str = "{\"title\":\"Alias\",\"content\":null,\"tags\":[],\"aliases\":[\"Infinity\",\"12345678901234567000\"],\"properties\":{},\"pinnedTags\":[],\"emoji\":null,\"fileType\":\"markdown\",\"folderPath\":null,\"clock\":{\"dev-A\":1},\"createdAt\":\"2026-01-02T03:04:05.000Z\",\"modifiedAt\":\"2026-01-03T03:04:05.000Z\"}";
 
 /// V8's `String::kMaxLength` in UTF-16 units, the import's byte cap.
 const MAX_FILE_BYTES: u64 = (1 << 29) - 24;
@@ -157,7 +160,7 @@ fn notes_and_journal_days_import_as_electron_pushes_them() {
         &data,
         &Note {
             synced: false,
-            ..note(IDEA, "Idea.md", "Idea", Some(r#"{"dev-A":1}"#))
+            ..note(IDEA, "Idea.md", "Idea", None)
         },
         &[("attachment_references", Value::Text(r#"["att-1"]"#.into()))],
     );
@@ -264,6 +267,8 @@ fn notes_and_journal_days_import_as_electron_pushes_them() {
     assert_eq!(report.tables["index.db/note_snapshots"].target_count, 1);
     assert_eq!(report.tables["index.db/note_snapshots"].dropped, 1);
     assert_eq!(report.dropped.get("snapshotsWithoutNote"), Some(&1));
+    // The missing file is carried over with Electron's unread payload, and counted.
+    assert_eq!(report.notices.get("unreadNoteFiles"), Some(&1));
     assert_eq!(
         vault_files(&vault.root),
         files_before,
@@ -272,7 +277,12 @@ fn notes_and_journal_days_import_as_electron_pushes_them() {
 
     let core = installed(&vault);
     assert_eq!(payload(&core, "note", PLAN), ELECTRON_PLAN);
-    assert_eq!(payload(&core, "note", IDEA), ELECTRON_IDEA);
+    // An unclocked row: Electron's seed queues a `create`, so the body rides along.
+    // Departure 1: no `clock` key where Electron writes `{}`.
+    assert_eq!(
+        payload(&core, "note", IDEA),
+        ELECTRON_IDEA.replace(r#""clock":{},"#, "")
+    );
     assert_eq!(payload(&core, "note", GONE), ELECTRON_GONE);
     assert_eq!(payload(&core, "journal", DAY), ELECTRON_DAY);
     // Departure 1: an unclocked row stores no `clock` key where Electron writes `{}`.
@@ -393,7 +403,7 @@ fn hostile_note_files_take_electrons_paths() {
         &data,
         &Note {
             synced: false,
-            ..note(BAD_YAML, "Bad.md", "Bad", Some(r#"{"dev-A":1}"#))
+            ..note(BAD_YAML, "Bad.md", "Bad", None)
         },
         &[],
     );
@@ -407,9 +417,19 @@ fn hostile_note_files_take_electrons_paths() {
         &note(BIG, "Big.md", "Big", Some(r#"{"dev-A":2}"#)),
         &[],
     );
+    seed_note(
+        &data,
+        &note(NUM_ALIASES, "Alias.md", "Alias", Some(r#"{"dev-A":1}"#)),
+        &[],
+    );
     drop(data);
     write_file(&vault, "Bad.md", "---\ntags: [a\n---\nBody\n");
     write_file(&vault, "Num.md", "---\ntags: [2024, x]\n---\n");
+    write_file(
+        &vault,
+        "Alias.md",
+        "---\naliases: [.inf, 12345678901234567890]\n---\n",
+    );
     // A sparse file one byte past the cap: read whole, it would carry `tags: [a]`.
     write_file(&vault, "Big.md", "---\ntags: [a]\n---\n");
     std::fs::OpenOptions::new()
@@ -421,8 +441,18 @@ fn hostile_note_files_take_electrons_paths() {
 
     let report = import(&vault);
     assert_eq!(report.checks_passed, vec![1, 2, 5, 6]);
+    assert_eq!(
+        report.notices.get("unreadNoteFiles"),
+        Some(&1),
+        "only Big.md"
+    );
     let core = installed(&vault);
-    assert_eq!(payload(&core, "note", BAD_YAML), ELECTRON_BAD_YAML);
+    assert_eq!(
+        payload(&core, "note", BAD_YAML),
+        ELECTRON_BAD_YAML.replace(r#""clock":{},"#, "")
+    );
+    // `extractAliases` prints a number with `String(n)`.
+    assert_eq!(payload(&core, "note", NUM_ALIASES), ELECTRON_NUM_ALIASES);
     // Departure 2: the core reads `tags` as strings only, so the list keeps its strings.
     assert_eq!(
         payload(&core, "note", NUM_TAGS),

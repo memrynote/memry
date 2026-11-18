@@ -36,8 +36,7 @@ struct NoteRow {
     title: String,
     file_type: String,
     journal_date: Option<String>,
-    /// No `synced_at`: the server never confirmed the note, and Electron's next push of it is
-    /// the queued `create`, whose payload carries the body.
+    /// Electron's next push of the row is a queued `create`, whose payload carries the body.
     create: bool,
 }
 
@@ -45,23 +44,37 @@ pub fn note_metadata(ctx: &mut TableCtx<'_>) -> Result<TableStats, ImportError> 
     let (data, index, vault) = (ctx.source, ctx.index, ctx.vault_dir);
     let mut files = Vec::new();
     let mut pins = Vec::new();
-    let stats = records(
+    let mut unread = 0u64;
+    let mut stats = records(
         ctx,
         "SELECT rowid, id, path, title, emoji, file_type, mime_type, file_size, attachment_id, \
          attachment_references, local_only, journal_date, clock, synced_at, created_at, \
          modified_at FROM note_metadata",
         |row, rowid| {
-            let note = NoteRow {
-                id: read_source_id(row, SourceDb::Data, TABLE, "id")?,
-                path: required_text(row, "path", rowid)?,
-                title: required_text(row, "title", rowid)?,
-                file_type: required_text(row, "file_type", rowid)?,
-                journal_date: text(row, "journal_date")?,
-                create: text(row, "synced_at")?.is_none(),
-            };
             let local_only = match column(row, "local_only", TABLE, rowid)? {
                 Value::Number(n) => n.as_i64() != Some(0),
                 _ => return Err(malformed(TABLE, rowid, "local_only is not an integer")),
+            };
+            let id = read_source_id(row, SourceDb::Data, TABLE, "id")?;
+            let journal_date = text(row, "journal_date")?;
+            // Electron's push sends the body only for a queued `create`: the one its seed of
+            // unclocked rows queues (`seedUnclockedNotes`, `journal-handler.ts:299-317`), or one
+            // still in `sync_queue`. `synced_at` does not say: a day pushed from this device is
+            // never marked synced, and an offline edit clears it on a row the server holds.
+            let seeded = text(row, "clock")?.is_none() && (journal_date.is_some() || !local_only);
+            let item_type = if journal_date.is_some() {
+                "journal"
+            } else {
+                "note"
+            };
+            let create = seeded || queued_create(data, item_type, &id)?;
+            let note = NoteRow {
+                id,
+                path: required_text(row, "path", rowid)?,
+                title: required_text(row, "title", rowid)?,
+                file_type: required_text(row, "file_type", rowid)?,
+                journal_date,
+                create,
             };
             files.push(ImportNoteFile {
                 note_id: note.id.clone(),
@@ -74,7 +87,7 @@ pub fn note_metadata(ctx: &mut TableCtx<'_>) -> Result<TableStats, ImportError> 
                 local_only,
             });
             let (item_type, mut payload) = match &note.journal_date {
-                Some(date) => ("journal", journal_payload(vault, &note, date)?),
+                Some(date) => ("journal", journal_payload(vault, &note, date, &mut unread)?),
                 None if note.file_type != "markdown" => {
                     ("note", binary_payload(row, &note, rowid)?)
                 }
@@ -82,7 +95,7 @@ pub fn note_metadata(ctx: &mut TableCtx<'_>) -> Result<TableStats, ImportError> 
                     pins.extend(pinned_at(index, &note.id)?);
                     (
                         "note",
-                        note_payload(row, (data, index, vault), &note, rowid)?,
+                        note_payload(row, (data, index, vault), &note, rowid, &mut unread)?,
                     )
                 }
             };
@@ -106,7 +119,20 @@ pub fn note_metadata(ctx: &mut TableCtx<'_>) -> Result<TableStats, ImportError> 
     )?;
     ctx.writer.put_note_files(&files, ctx.now_ms)?;
     ctx.writer.put_pinned_at(&pins)?;
+    if unread > 0 {
+        stats.notices.push(("unreadNoteFiles", unread));
+    }
     Ok(stats)
+}
+
+/// Whether Electron's `sync_queue` holds a `create` of the item.
+fn queued_create(data: &Connection, item_type: &str, id: &str) -> Result<bool, ImportError> {
+    data.prepare_cached(
+        "SELECT EXISTS(SELECT 1 FROM sync_queue \
+         WHERE type = ?1 AND item_id = ?2 AND operation = 'create')",
+    )
+    .and_then(|mut stmt| stmt.query_row([item_type, id], |row| row.get(0)))
+    .map_err(|e| source_error(SourceDb::Data, e))
 }
 
 fn required_text(row: &Row<'_>, name: &str, rowid: i64) -> Result<String, ImportError> {
@@ -145,14 +171,16 @@ fn binary_payload(
 }
 
 /// The payload of a markdown note (`note-handler-sync-helpers.ts:54-90`), without its clock
-/// and instants.
+/// and instants. A file that could not be read adds one to `unread`.
 fn note_payload(
     row: &Row<'_>,
     (data, index, vault): (&Connection, &Connection, &Path),
     note: &NoteRow,
     rowid: i64,
+    unread: &mut u64,
 ) -> Result<Map<String, Value>, ImportError> {
-    let fields = note_fields(vault, &note.path, &note.title, note.create);
+    let fields = note_fields(vault, &note.id, &note.path, &note.title, note.create);
+    *unread += u64::from(fields.is_none());
     let mut payload = Map::new();
     payload.insert("title".into(), Value::from(note.title.clone()));
     let (content, tags) = fields
@@ -203,15 +231,22 @@ fn note_payload(
 }
 
 /// The day's payload (`journal-handler.ts:257-293`), without its clock and instants. The file is
-/// the one Electron reads, at the vault config's path for the day.
+/// the one Electron reads, at the vault config's path for the day. A file that could not be read
+/// adds one to `unread`.
 fn journal_payload(
     vault: &Path,
     note: &NoteRow,
     date: &str,
+    unread: &mut u64,
 ) -> Result<Map<String, Value>, ImportError> {
-    let fields = crate::journal::day_path(vault, date)
-        .ok()
-        .and_then(|rel| journal_fields(vault, &rel, date, note.create));
+    let fields = match crate::journal::day_path(vault, date) {
+        Ok(rel) => journal_fields(vault, &note.id, &rel, date, note.create),
+        Err(error) => {
+            tracing::warn!(note_id = %note.id, %error, "electron import: a day has no file path");
+            None
+        }
+    };
+    *unread += u64::from(fields.is_none());
     let mut payload = Map::new();
     payload.insert("date".into(), Value::from(date));
     match &fields {
@@ -292,9 +327,11 @@ fn pinned_at(index: &Connection, note_id: &str) -> Result<Vec<(String, String, i
         let (tag, at) = row.map_err(index_error)?;
         match to_epoch_ms(&at) {
             Some(ms) => out.push((note_id.to_owned(), tag, ms)),
-            None => {
-                tracing::warn!("electron import: a pinned tag's instant is not ISO; kept as now")
-            }
+            None => tracing::warn!(
+                note_id,
+                tag,
+                "electron import: a pinned tag's instant is not ISO; kept as now"
+            ),
         }
     }
     Ok(out)
@@ -349,6 +386,7 @@ pub fn note_positions(ctx: &mut TableCtx<'_>) -> Result<TableStats, ImportError>
     Ok(TableStats {
         written: rows.len() as u64,
         dropped: Vec::new(),
+        notices: Vec::new(),
     })
 }
 
@@ -401,5 +439,6 @@ pub fn note_snapshots(ctx: &mut TableCtx<'_>) -> Result<TableStats, ImportError>
             0 => Vec::new(),
             n => vec![("snapshotsWithoutNote", n)],
         },
+        notices: Vec::new(),
     })
 }

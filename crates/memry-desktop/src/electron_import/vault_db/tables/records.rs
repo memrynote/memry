@@ -77,6 +77,7 @@ pub(super) fn records(
     Ok(TableStats {
         written: records.len() as u64,
         dropped: Vec::new(),
+        notices: Vec::new(),
     })
 }
 

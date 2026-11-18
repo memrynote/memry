@@ -7,7 +7,7 @@ use std::cell::Cell;
 
 use memry_core::domain::note_stats::header_tags;
 use memry_core::domain::property_values::expands_within_alias_budget;
-use memry_core::markdown::frontmatter::{YamlMap, YamlValue, json_to_yaml};
+use memry_core::markdown::frontmatter::{YamlMap, YamlValue, json_to_yaml, number_to_string};
 use memry_core::markdown::shared::cover_image::{
     COVER_CREDIT_FRONTMATTER_KEY, COVER_CREDIT_URL_FRONTMATTER_KEY, COVER_FOCUS_FRONTMATTER_KEY,
     COVER_FOCUS_X_FRONTMATTER_KEY, COVER_FRONTMATTER_KEY, COVER_HEIGHT_FRONTMATTER_KEY,
@@ -126,7 +126,7 @@ pub fn file_fields(yaml: &YamlValue) -> FileFields {
 
 /// `extractAliases` of the frontmatter `parseNote` reads, before it is normalized: a lone value
 /// as a one-item list (`stringifyScalar`), and each item of a list that is a string or a number
-/// as its text, any other as `""`, which `normalize_aliases` drops. A list's items are read
+/// as its text (`String(n)`), any other as `""`, which `normalize_aliases` drops. A list's items are read
 /// without converting them, so nested aliases under one cost nothing.
 pub fn aliases(frontmatter: &YamlMap) -> Vec<String> {
     match frontmatter.get("aliases") {
@@ -135,10 +135,15 @@ pub fn aliases(frontmatter: &YamlMap) -> Vec<String> {
             .iter()
             .map(|item| match item {
                 YamlValue::String(text) => text.clone(),
-                YamlValue::Number(x) => number(*x).to_string(),
+                YamlValue::Number(x) => number_to_string(*x),
                 _ => String::new(),
             })
             .collect(),
+        // `stringifyScalar` of a truthy number is `String(n)`; JSON has no `Infinity`.
+        Some(YamlValue::Number(x)) => match *x != 0.0 && !x.is_nan() {
+            true => vec![number_to_string(*x)],
+            false => Vec::new(),
+        },
         Some(value) => {
             let value = match expands_within_alias_budget(value) {
                 true => to_json(value),
@@ -272,6 +277,15 @@ mod tests {
         assert_eq!(aliases(&list), ["AI", "3", "", "", "", ""]);
         assert_eq!(aliases(&map("---\naliases: Solo\n---\n")), ["Solo"]);
         assert_eq!(aliases(&map("---\naliases: 7\n---\n")), ["7"]);
+        // `String(n)`: no JSON `null` for `Infinity`, no exponent below 1e21.
+        assert_eq!(aliases(&map("---\naliases: .inf\n---\n")), ["Infinity"]);
+        assert_eq!(
+            aliases(&map(
+                "---\naliases: [.inf, -.inf, 12345678901234567890, 1e21]\n---\n"
+            )),
+            ["Infinity", "-Infinity", "12345678901234567000", "1e+21"]
+        );
+        assert!(aliases(&map("---\naliases: 0\n---\n")).is_empty());
         assert!(aliases(&map("---\naliases: false\n---\n")).is_empty());
         assert!(aliases(&map("---\ntitle: x\n---\n")).is_empty());
     }
