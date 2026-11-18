@@ -16,7 +16,7 @@ use super::projection::{CancelToken, DEFAULT_QUEUE_LIMIT, ProjectionRuntime};
 use super::response::MovesRecovered;
 use super::{
     Open, OpenSource, OpenStage, OpenVault, Session, SessionError, SessionEvent, SessionStatus,
-    VaultOpened, lock,
+    VaultMigrator, VaultOpened, lock,
 };
 use crate::registry::vaults::basename;
 use crate::vault::config::{applied_exclude_patterns, invalidate_vault_config_cache};
@@ -43,11 +43,18 @@ fn now_ms() -> i64 {
 /// `initVault` for a folder with no `.memry` yet, then `.memry/core/` (mode 0700 on Unix),
 /// which proves the folder is writable. The init comes first: afterwards `.memry` exists and
 /// the folder would read as initialised.
-pub(super) fn prepare_core_dir(path: &Path) -> Result<PathBuf, SessionError> {
+pub(super) fn prepare_core_dir(
+    path: &Path,
+    migrate: Option<&VaultMigrator>,
+) -> Result<PathBuf, SessionError> {
     if !path.is_dir() {
         return Err(SessionError::Invalid(
             "Selected path is not a valid directory".into(),
         ));
+    }
+    // The previous app's data moves in before anything creates a core over it (Step 37).
+    if let Some(migrate) = migrate {
+        migrate(path).map_err(SessionError::Invalid)?;
     }
     if !is_vault_initialized(path) {
         init_vault(path).map_err(|err| match err.kind() {
@@ -110,7 +117,7 @@ impl Session {
         let started = Instant::now();
         // Start from disk, never from what the previously open vault left in the cache.
         invalidate_vault_config_cache();
-        let core = prepare_core_dir(path)?;
+        let core = prepare_core_dir(path, self.vault_migrator().as_ref())?;
         let path_text = path.to_string_lossy().into_owned();
 
         let data_db = core.join("data.db");

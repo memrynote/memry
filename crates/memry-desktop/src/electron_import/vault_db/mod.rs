@@ -68,11 +68,7 @@ pub struct VaultImportInput<'a> {
 }
 
 /// One Yjs document Step 37 read from the Electron store and folded to a single state.
-pub struct FoldedDoc {
-    pub doc_id: String,
-    pub state: Vec<u8>,
-    pub watermark: Option<u64>,
-}
+pub use super::ystore_import::FoldedDoc;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ImportProgress {

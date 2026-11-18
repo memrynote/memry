@@ -39,7 +39,7 @@ use memry_core::api::errors::StorageError;
 use memry_core::api::search::Search;
 use memry_core::api::vault::Vault;
 
-pub use hooks::{BackgroundHook, CloseHook, OpenHook, OpenStage};
+pub use hooks::{BackgroundHook, CloseHook, OpenHook, OpenStage, VaultMigrator};
 use hooks::{Hooks, run_with_deadline};
 use projection::{ProjectionRuntime, Projector};
 pub use repair::{CreateOrOpenError, RepairOutcome};
@@ -311,6 +311,15 @@ impl Session {
     /// The `Vault` is dropped only after all of them returned or overran.
     pub fn on_close(&self, name: &str, hook: CloseHook) {
         lock(&self.inner.hooks).close.push((name.to_owned(), hook));
+    }
+
+    /// Runs before every open creates `.memry/core` ([`VaultMigrator`]).
+    pub fn set_vault_migrator(&self, migrate: VaultMigrator) {
+        lock(&self.inner.hooks).migrate = Some(migrate);
+    }
+
+    fn vault_migrator(&self) -> Option<VaultMigrator> {
+        lock(&self.inner.hooks).migrate.clone()
     }
 
     /// Registered before a vault opens; each open starts a lane for it.

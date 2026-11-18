@@ -38,12 +38,17 @@ pub type OpenHook = Arc<dyn Fn(&OpenVault) -> Result<(), String> + Send + Sync>;
 /// return at once, having let go of what its open hook set up.
 pub type BackgroundHook = Arc<dyn Fn(&OpenVault, &CancelToken) -> Result<(), String> + Send + Sync>;
 pub type CloseHook = Arc<dyn Fn(&OpenVault) + Send + Sync>;
+/// Imports the vault at the path from the previous app before the open creates `.memry/core`
+/// (Step 37's `migrate_vault`, installed by the Tauri shell). An error stops the open: a vault
+/// whose previous data was not moved never opens empty.
+pub type VaultMigrator = Arc<dyn Fn(&std::path::Path) -> Result<(), String> + Send + Sync>;
 
 pub(super) struct Hooks {
     pub open: Vec<(String, OpenStage, OpenHook)>,
     pub close: Vec<(String, CloseHook)>,
     /// The background index build (Step 13), spawned after the vault is open.
     pub background: Vec<(String, BackgroundHook)>,
+    pub migrate: Option<VaultMigrator>,
 }
 
 impl Hooks {
@@ -52,6 +57,7 @@ impl Hooks {
             open: Vec::new(),
             close: Vec::new(),
             background: Vec::new(),
+            migrate: None,
         }
     }
 }

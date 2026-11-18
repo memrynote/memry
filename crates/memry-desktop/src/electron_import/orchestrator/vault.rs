@@ -1,0 +1,327 @@
+//! One planned vault of the vault phase: preparation (37e1), Step 36's stage, checks 3, 7 and 8,
+//! `.memry/core` and the install. The report section is saved after the preparation and after
+//! the stage, so a run cut off later finds what the first attempt reported.
+
+use std::fs;
+use std::io::Read;
+use std::path::Path;
+use std::sync::Arc;
+
+use memry_core::crdt::{DocumentRegistry, canonical_fragment};
+use memry_core::storage::import::DocumentState;
+use serde_json::Value;
+use sha2::{Digest, Sha256};
+
+use super::{Run, RunError};
+use crate::electron_import::journal_replay::BulkApplyJournal;
+use crate::electron_import::report::{VaultSection, VaultStatus};
+use crate::electron_import::vault_db::{
+    StageOutcome, StagedVault, VaultImportInput, stage_vault_import,
+};
+use crate::electron_import::vault_prep::{
+    DeferReason, Disposition, PlannedVault, VaultId, VaultPlan, prepare_vault,
+};
+use crate::electron_import::{
+    ElectronConfig, ElectronProfile, ImportError, ProfileLock, Scratch, YStoreReader,
+};
+
+/// What every vault of one run shares.
+pub(super) struct VaultPhase<'a> {
+    pub profile: &'a ElectronProfile,
+    pub config: Option<&'a ElectronConfig>,
+    pub plan: &'a VaultPlan,
+    pub journal: Option<&'a BulkApplyJournal>,
+    /// `crdt-pending-notes.json` ids, owed to the current vault only (Electron imports the
+    /// file into the first vault it opens).
+    pub pending_notes: &'a [String],
+    pub scratch: &'a Scratch,
+    pub lock: &'a ProfileLock,
+    pub now_ms: i64,
+}
+
+/// The section of a vault that needs no import, or `None` for an importable one.
+pub(super) fn settled_section(
+    phase: &VaultPhase<'_>,
+    vault: &PlannedVault,
+) -> Option<VaultSection> {
+    let mut section = VaultSection::new(&vault.path, VaultStatus::Deferred);
+    match &vault.disposition {
+        Disposition::Import(_) => return None,
+        Disposition::Sandbox => section.status = VaultStatus::Sandbox,
+        Disposition::SameFolder(first) => {
+            section.status = VaultStatus::SameFolder;
+            section.shared_with = vec![first.clone()];
+        }
+        Disposition::Unreadable(error) => {
+            section.status = VaultStatus::Unreadable;
+            section.detail = Some(error.to_string());
+        }
+        Disposition::Deferred(reason) => {
+            section.reason = Some(defer_reason(*reason).to_owned());
+            if *reason == DeferReason::SharedStore {
+                section.shared_with = phase
+                    .plan
+                    .shared_stores
+                    .iter()
+                    .filter(|g| g.paths.contains(&vault.path))
+                    .flat_map(|g| g.paths.iter().filter(|p| **p != vault.path).cloned())
+                    .collect();
+            }
+        }
+    }
+    Some(section)
+}
+
+pub(super) fn defer_reason(reason: DeferReason) -> &'static str {
+    match reason {
+        DeferReason::FolderMissing => "folder-missing",
+        DeferReason::DataDbMissing => "data-db-missing",
+        DeferReason::DataDbUnreachable => "data-db-unreachable",
+        DeferReason::SharedStore => "shared-store",
+    }
+}
+
+pub(super) fn store_name(phase: &VaultPhase<'_>, id: &VaultId) -> String {
+    YStoreReader::store_dir(phase.profile, &id.vault_id, phase.config)
+        .file_name()
+        .map_or_else(String::new, |n| n.to_string_lossy().into_owned())
+}
+
+/// Imports one vault, saving its section into `run` as it goes. `previous` is the section an
+/// earlier, cut-off attempt saved.
+pub(super) fn import(
+    run: &mut Run<'_>,
+    phase: &VaultPhase<'_>,
+    vault: &PlannedVault,
+    id: &VaultId,
+) -> Result<VaultSection, RunError> {
+    let path = vault.path.as_str();
+    let fail = |source: ImportError| RunError::Vault {
+        vault: path.to_owned(),
+        source,
+    };
+    let previous = run.section(path).cloned();
+    let mut prepared = prepare_vault(
+        phase.profile,
+        phase.config,
+        path,
+        id,
+        phase.journal,
+        phase.scratch,
+    )
+    .map_err(fail)?;
+    let mut section = VaultSection::new(path, VaultStatus::Prepared);
+    section.vault_id = Some(id.vault_id.clone());
+    section.store = Some(store_name(phase, id));
+    // A rerun's replay reads the first attempt's writes as settled: the first report stands.
+    section.prep = match previous.as_ref().and_then(|s| s.prep.clone()) {
+        Some(prep) => Some(prep),
+        None => Some(serde_json::to_value(prepared.report()).map_err(|_| fail(report_error()))?),
+    };
+    run.save_section(section.clone())?;
+
+    let expected = prepared
+        .fold
+        .docs
+        .iter()
+        .map(|doc| Ok((doc.doc_id.clone(), folded_state(&doc.doc_id, &doc.state)?)))
+        .collect::<Result<Vec<_>, ImportError>>()
+        .map_err(fail)?;
+    let mut owed = prepared.fold.owed_compactions.clone();
+    if vault.current {
+        owed.extend(phase.pending_notes.iter().cloned());
+    }
+    owed.sort();
+    owed.dedup();
+    let memry = prepared.dir.join(".memry");
+    let input = VaultImportInput {
+        electron_closed: phase.lock,
+        vault_dir: prepared.dir.clone(),
+        vault_id: id.vault_id.clone(),
+        electron_data_db: memry.join("data.db"),
+        electron_index_db: memry.join("index.db"),
+        docs: std::mem::take(&mut prepared.fold.docs),
+        extra_owed_docs: owed,
+        vault_key: None,
+        electron_device_id: phase
+            .config
+            .and_then(ElectronConfig::device_id)
+            .map(str::to_owned),
+        now_ms: phase.now_ms,
+        progress: None,
+    };
+    let staged = match stage_vault_import(input).map_err(fail)? {
+        StageOutcome::Staged(staged) => staged,
+        StageOutcome::AlreadyImported => {
+            // Cut off during the install after the commit rename: the staged report stands.
+            return Ok(match previous.filter(|s| s.status == VaultStatus::Staged) {
+                Some(mut staged) => {
+                    staged.status = VaultStatus::Imported;
+                    staged
+                }
+                None => {
+                    section.status = VaultStatus::AlreadyImported;
+                    section
+                }
+            });
+        }
+        StageOutcome::NativeFirst => {
+            section.status = VaultStatus::NativeFirst;
+            return Ok(section);
+        }
+    };
+    if let Err(error) = checks(&staged, &expected, &prepared, &mut section) {
+        if let Err(discard) = staged.discard() {
+            tracing::warn!(%discard, "could not remove the import staging directory");
+        }
+        return Err(fail(error));
+    }
+    section.stage = Some(serde_json::to_value(staged.report()).map_err(|_| fail(report_error()))?);
+    section.status = VaultStatus::Staged;
+    run.save_section(section.clone())?;
+
+    create_core_dir(&memry).map_err(fail)?;
+    staged.install().map_err(fail)?;
+    section.status = VaultStatus::Imported;
+    Ok(section)
+}
+
+fn report_error() -> ImportError {
+    ImportError::parse("electron-import-report.json", 0)
+}
+
+/// Checks 3, 7 and 8 (1, 2, 4, 5 and 6 are Step 36's), all before install so a failure leaves
+/// `core/` as it was. Check 7 runs here too: install writes only under `.memry/`, which the
+/// digest leaves out.
+fn checks(
+    staged: &StagedVault,
+    expected: &[(String, DocumentState)],
+    prepared: &crate::electron_import::vault_prep::PreparedVault,
+    section: &mut VaultSection,
+) -> Result<(), ImportError> {
+    for (doc_id, folded) in expected {
+        let check3 = |detail: String| ImportError::CheckFailed { check: 3, detail };
+        match staged.document_state(doc_id)? {
+            Some(state)
+                if state.state_vector == folded.state_vector && state.text == folded.text => {}
+            Some(_) => return Err(check3(format!("document {doc_id} differs from Electron's"))),
+            None => return Err(check3(format!("document {doc_id} was not imported"))),
+        }
+    }
+    let changed = prepared.unexpected_changes()?;
+    if let Some(first) = changed.first() {
+        return Err(ImportError::CheckFailed {
+            check: 7,
+            detail: format!("{} vault files changed, first {first}", changed.len()),
+        });
+    }
+    let mut passed = staged.report().checks_passed.clone();
+    passed.extend([3, 7]);
+    // Check 8 decrypts an agent conversation with the migrated key through Step 28's envelope
+    // reader, which is not merged (#3545). The rows are copied byte for byte (check 5) and the
+    // master key passed the verifier in the secrets phase; the check is recorded as not run.
+    let agent_rows = staged
+        .report()
+        .tables
+        .get("data/agent_conversations")
+        .is_some_and(|t| t.target_count > 0);
+    if agent_rows {
+        section.checks_not_run.insert(
+            "8".into(),
+            Value::String("the Step 28 envelope reader is not merged (#3545)".into()),
+        );
+    } else {
+        passed.push(8);
+    }
+    passed.sort_unstable();
+    passed.dedup();
+    section.checks_passed = passed;
+    Ok(())
+}
+
+/// The state vector and canonical text of a folded document, read the way Step 36's
+/// `document_state` reads the staged one.
+fn folded_state(doc_id: &str, state: &[u8]) -> Result<DocumentState, ImportError> {
+    let failed = |e: memry_core::crdt::CrdtError| ImportError::CheckFailed {
+        check: 3,
+        detail: format!("document {doc_id} cannot be read: {e}"),
+    };
+    let document = DocumentRegistry::new("import", Arc::new(|_: &str, _: &[u8]| {}))
+        .get_or_open(doc_id)
+        .map_err(failed)?;
+    document.apply_durable_update(state).map_err(failed)?;
+    Ok(DocumentState {
+        state_vector: document.state_vector().map_err(failed)?,
+        text: canonical_fragment(&document).map_err(failed)?,
+    })
+}
+
+/// `<vault>/.memry/core`, mode 0700 on Unix, as the session creates it.
+fn create_core_dir(memry: &Path) -> Result<(), ImportError> {
+    let core = memry.join(crate::electron_import::vault_db::CORE_DIR);
+    let mut builder = fs::DirBuilder::new();
+    builder.recursive(true);
+    #[cfg(unix)]
+    std::os::unix::fs::DirBuilderExt::mode(&mut builder, 0o700);
+    builder.create(&core).map_err(|e| ImportError::io(&core, e))
+}
+
+/// sha256 over the Electron `data.db` and its WAL, hex: the marker's downgrade fingerprint.
+pub(super) fn source_fingerprint(vault: &Path) -> Result<String, ImportError> {
+    let mut hasher = Sha256::new();
+    for name in ["data.db", "data.db-wal"] {
+        let path = vault.join(".memry").join(name);
+        let mut file = match fs::File::open(&path) {
+            Ok(file) => file,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(e) => return Err(ImportError::io(&path, e)),
+        };
+        hasher.update(name.as_bytes());
+        let mut buf = vec![0_u8; 1 << 16];
+        loop {
+            let n = file.read(&mut buf).map_err(|e| ImportError::io(&path, e))?;
+            if n == 0 {
+                break;
+            }
+            hasher.update(&buf[..n]);
+        }
+    }
+    Ok(hex::encode(hasher.finalize()))
+}
+
+/// The `crdt-pending-notes.json` ids an Electron build before #2298 left in userData, read as
+/// `parseLegacyPendingNoteIds` does (`sync/note-body-outbox.ts`): a JSON array of ids, else
+/// every complete string token of a torn write.
+pub(super) fn pending_notes(profile: &ElectronProfile) -> Result<Vec<String>, ImportError> {
+    let path = profile.dir.join("crdt-pending-notes.json");
+    let raw = match fs::read(&path) {
+        Ok(bytes) => String::from_utf8_lossy(&bytes).into_owned(),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+        Err(e) => return Err(ImportError::io(&path, e)),
+    };
+    if let Ok(Value::Array(ids)) = serde_json::from_str::<Value>(&raw) {
+        return Ok(ids
+            .into_iter()
+            .filter_map(|id| id.as_str().filter(|s| !s.is_empty()).map(str::to_owned))
+            .collect());
+    }
+    let mut ids = Vec::new();
+    let mut rest = raw.as_str();
+    while let Some(start) = rest.find('"') {
+        let mut escaped = false;
+        let end = rest[start + 1..].char_indices().find_map(|(i, c)| {
+            let close = c == '"' && !escaped;
+            escaped = c == '\\' && !escaped;
+            close.then_some(start + 1 + i)
+        });
+        let Some(end) = end else { break };
+        if let Ok(Value::String(id)) = serde_json::from_str::<Value>(&rest[start..=end])
+            && !id.is_empty()
+            && !ids.contains(&id)
+        {
+            ids.push(id);
+        }
+        rest = &rest[end + 1..];
+    }
+    Ok(ids)
+}

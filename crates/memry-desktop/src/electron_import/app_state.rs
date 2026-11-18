@@ -11,7 +11,6 @@
 
 mod copy;
 
-use std::ffi::OsStr;
 use std::fs;
 use std::path::Path;
 
@@ -27,6 +26,7 @@ use super::report::{
     AppStateReport, ConfigReport, DictionaryReport, LocalStorageReport, TelemetryReport,
 };
 use super::scratch::Scratch;
+use super::vault_prep::Sandbox;
 use crate::registry::AppConfig;
 use crate::shell::spell::{SpellBackend, add_word, normalize_word};
 use crate::telemetry::TelemetryConfig;
@@ -41,8 +41,6 @@ const LOCAL_STORAGE_VERSION: u64 = 1;
 /// `{version, pending, words}`; [`apply_pending_words`] adds them once the backend is ready.
 pub const DICTIONARY_FILE: &str = "electron-dictionary.json";
 const DICTIONARY_VERSION: u64 = 1;
-/// Electron's sandbox vault, `<userData>/Sandbox` (`vault/sandbox.ts` `SANDBOX_FOLDER`).
-const SANDBOX_DIR: &str = "Sandbox";
 /// `crdtStore` names Electron's CRDT store directories, which the Tauri build does not have.
 const DROPPED_CONFIG_KEYS: [&str; 1] = ["crdtStore"];
 /// Copied under the same relative path. `models/voice-transcription` is not: its marker never
@@ -124,10 +122,7 @@ fn merge_config(
     electron: &ElectronConfig,
     profile_dir: &Path,
 ) -> Result<ConfigReport, ImportError> {
-    let sandbox = Sandbox {
-        profile_dir,
-        resolved: fs::canonicalize(profile_dir).ok(),
-    };
+    let sandbox = Sandbox::new(profile_dir);
     config.update(|map| -> Result<ConfigReport, ImportError> {
         let mut report = ConfigReport::default();
         for (key, value) in &electron.raw {
@@ -155,7 +150,7 @@ fn merge_config(
 fn merge_vaults(
     tauri: Option<&Value>,
     electron: &Value,
-    sandbox: &Sandbox<'_>,
+    sandbox: &Sandbox,
     report: &mut ConfigReport,
 ) -> Option<Value> {
     let electron = electron.as_array()?;
@@ -181,34 +176,6 @@ fn merge_vaults(
         }
     }
     Some(Value::Array(list))
-}
-
-struct Sandbox<'a> {
-    profile_dir: &'a Path,
-    /// The profile directory with links resolved, once per merge.
-    resolved: Option<std::path::PathBuf>,
-}
-
-impl Sandbox<'_> {
-    /// Whether `path` is `<profile>/Sandbox`, its parent compared as written and resolved (the
-    /// config may name the profile through the legacy `@memry/desktop` link). Only the parent of
-    /// a path named `Sandbox` is resolved, so a vault with any other name is never touched (an
-    /// offline network one named `Sandbox` can still wait on the resolve) and a vault elsewhere
-    /// in the profile directory is carried, as Electron keeps it.
-    fn is(&self, path: &str) -> bool {
-        let path = Path::new(path);
-        let Some(parent) = path
-            .parent()
-            .filter(|_| path.file_name() == Some(OsStr::new(SANDBOX_DIR)))
-        else {
-            return false;
-        };
-        parent == self.profile_dir
-            || self
-                .resolved
-                .as_deref()
-                .is_some_and(|dir| fs::canonicalize(parent).is_ok_and(|p| p == dir))
-    }
 }
 
 /// Electron's `telemetry.json`. A file that is not a JSON object reads as empty, as

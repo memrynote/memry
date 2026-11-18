@@ -14,6 +14,7 @@ mod leveldb_log;
 mod leveldb_manifest;
 mod leveldb_table;
 pub mod local_storage;
+pub mod orchestrator;
 pub mod profile;
 pub mod progress;
 pub mod report;

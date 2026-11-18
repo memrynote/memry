@@ -41,11 +41,12 @@ pub struct VaultPlan {
     pub duplicate_entries: usize,
     /// `vaults[]` entries without a string `path`.
     pub unreadable_entries: usize,
-    /// Store directories that more than one [`Disposition::Import`] vault resolves to
+    /// Store directories that more than one importable vault resolves to
     /// ([`YStoreReader::store_dir`]): a copied vault folder carries its `data.db` singleton
     /// along, a pending rename points one vault at another's store, and `vaultDirName`
     /// lowercases a canonical uuid. Importing any of them would fold one store into several
-    /// core vaults, so the caller defers every vault of a group (Step 37e2).
+    /// core vaults, so every vault of a group is [`DeferReason::SharedStore`] (Kaan, #3554:
+    /// defer them all and list their paths).
     pub shared_stores: Vec<SharedStore>,
 }
 
@@ -66,6 +67,9 @@ pub struct PlannedVault {
     pub path: String,
     pub current: bool,
     pub disposition: Disposition,
+    /// The newest `__drizzle_migrations.created_at` of the vault's `data.db`, read with the
+    /// plan's copy; `None` when it has no ledger or the vault is not importable.
+    pub source_ledger: Option<i64>,
 }
 
 #[derive(Debug)]
@@ -78,6 +82,10 @@ pub enum Disposition {
     /// The vault's `data.db` reads wrong (SQLite refuses it, or its id is not text): not
     /// imported. The error names the row; the Electron files stay as they are.
     Unreadable(ImportError),
+    /// The folder an earlier entry names under another path string (a trailing slash, another
+    /// case on a case-insensitive volume, another Unicode normalisation): one `.memry/core`
+    /// serves both, so it is imported once, under the earlier entry.
+    SameFolder(String),
     Import(VaultId),
 }
 
@@ -89,6 +97,9 @@ pub enum DeferReason {
     DataDbMissing,
     /// `data.db` exists and could not be copied now (I/O error, denied, no scratch space).
     DataDbUnreachable,
+    /// The vault resolves to a CRDT store another planned vault resolves to
+    /// ([`VaultPlan::shared_stores`]). Never imported automatically.
+    SharedStore,
 }
 
 /// The one id a vault is imported under: its core vault id (Step 36's
@@ -132,12 +143,9 @@ pub fn plan_vaults(
     let (stored, unreadable_entries) = config.vaults();
     let distinct: HashSet<&str> = stored.iter().map(|v| v.path.as_str()).collect();
     let current = config.current_vault();
-    let sandbox = Sandbox {
-        profile_dir: &profile.dir,
-        resolved: fs::canonicalize(&profile.dir).ok(),
-    };
+    let sandbox = Sandbox::new(&profile.dir);
     let mut seen = HashSet::new();
-    let vaults: Vec<PlannedVault> = current
+    let mut vaults: Vec<PlannedVault> = current
         .into_iter()
         .chain(stored.iter().map(|v| v.path.as_str()))
         .filter(|path| seen.insert(*path))
@@ -147,13 +155,16 @@ pub fn plan_vaults(
                 .iter()
                 .find(|v| v.path == path)
                 .and_then(|v| v.vault_uuid.as_deref());
+            let (disposition, source_ledger) = disposition(path, config_uuid, &sandbox, scratch);
             PlannedVault {
                 path: path.to_owned(),
                 current: Some(path) == current,
-                disposition: disposition(path, config_uuid, &sandbox, scratch),
+                disposition,
+                source_ledger,
             }
         })
         .collect();
+    collapse_same_folders(&mut vaults);
     let mut by_store: BTreeMap<String, SharedStore> = BTreeMap::new();
     for vault in &vaults {
         if let Disposition::Import(id) = &vault.disposition {
@@ -172,10 +183,16 @@ pub fn plan_vaults(
             group.paths.push(vault.path.clone());
         }
     }
-    let shared_stores = by_store
+    let shared_stores: Vec<SharedStore> = by_store
         .into_values()
         .filter(|group| group.paths.len() > 1)
         .collect();
+    for vault in &mut vaults {
+        if shared_stores.iter().any(|g| g.paths.contains(&vault.path)) {
+            vault.disposition = Disposition::Deferred(DeferReason::SharedStore);
+            vault.source_ledger = None;
+        }
+    }
     VaultPlan {
         vaults,
         duplicate_entries: stored.len() - distinct.len(),
@@ -187,43 +204,93 @@ pub fn plan_vaults(
 fn disposition(
     path: &str,
     config_uuid: Option<&str>,
-    sandbox: &Sandbox<'_>,
+    sandbox: &Sandbox,
     scratch: &Scratch,
-) -> Disposition {
+) -> (Disposition, Option<i64>) {
     if sandbox.is(path) {
-        return Disposition::Sandbox;
+        return (Disposition::Sandbox, None);
     }
     let dir = Path::new(path);
     if !fs::metadata(dir).is_ok_and(|m| m.is_dir()) {
-        return Disposition::Deferred(DeferReason::FolderMissing);
+        return (Disposition::Deferred(DeferReason::FolderMissing), None);
     }
     match read_vault_evidence(dir, scratch.root()) {
-        Ok(None) => Disposition::Deferred(DeferReason::DataDbMissing),
-        Ok(Some(evidence)) => {
-            Disposition::Import(VaultId::resolve(evidence.vault_id.as_deref(), config_uuid))
-        }
-        Err(error @ ImportError::Sqlite(_)) => Disposition::Unreadable(error),
+        Ok(None) => (Disposition::Deferred(DeferReason::DataDbMissing), None),
+        Ok(Some(evidence)) => (
+            Disposition::Import(VaultId::resolve(evidence.vault_id.as_deref(), config_uuid)),
+            evidence.ledger,
+        ),
+        Err(error @ ImportError::Sqlite(_)) => (Disposition::Unreadable(error), None),
         Err(error) => {
             tracing::warn!(
                 scope = "electron_import",
                 error = %error,
                 "vault data.db cannot be reached; the vault is imported when it is first opened"
             );
-            Disposition::Deferred(DeferReason::DataDbUnreachable)
+            (Disposition::Deferred(DeferReason::DataDbUnreachable), None)
         }
     }
 }
 
-/// The rule of the app-state phase's config merge (Step 37b): `path` is `<profile>/Sandbox`,
-/// its parent compared as written and resolved, so a vault elsewhere in the profile directory
-/// is still imported, as Electron keeps it.
-struct Sandbox<'a> {
-    profile_dir: &'a Path,
+/// Marks every importable entry whose folder an earlier importable entry names
+/// [`Disposition::SameFolder`]. Folders compare by identity, not by path string: the volume
+/// decides whether case or normalisation tell two names apart.
+fn collapse_same_folders(vaults: &mut [PlannedVault]) {
+    let mut seen: Vec<(FolderId, String)> = Vec::new();
+    for vault in vaults.iter_mut() {
+        if !matches!(vault.disposition, Disposition::Import(_)) {
+            continue;
+        }
+        let Some(id) = folder_id(Path::new(&vault.path)) else {
+            continue;
+        };
+        match seen.iter().find(|(seen_id, _)| *seen_id == id) {
+            Some((_, first)) => {
+                vault.disposition = Disposition::SameFolder(first.clone());
+                vault.source_ledger = None;
+            }
+            None => seen.push((id, vault.path.clone())),
+        }
+    }
+}
+
+#[cfg(unix)]
+type FolderId = (u64, u64);
+#[cfg(not(unix))]
+type FolderId = PathBuf;
+
+/// Device and inode on Unix; elsewhere the resolved path, which Windows returns in the
+/// volume's own case.
+#[cfg(unix)]
+fn folder_id(dir: &Path) -> Option<FolderId> {
+    use std::os::unix::fs::MetadataExt;
+    fs::metadata(dir).ok().map(|m| (m.dev(), m.ino()))
+}
+
+#[cfg(not(unix))]
+fn folder_id(dir: &Path) -> Option<FolderId> {
+    fs::canonicalize(dir).ok()
+}
+
+/// Electron's sandbox vault rule, shared by the app-state phase's config merge (Step 37b) and
+/// the plan: `path` is `<profile>/Sandbox`, its parent compared as written and resolved (the
+/// config may name the profile through the legacy `@memry/desktop` link). Only the parent of a
+/// path named `Sandbox` is resolved, so a vault with any other name is never touched and a
+/// vault elsewhere in the profile directory is still imported, as Electron keeps it.
+pub(crate) struct Sandbox {
+    profile_dir: PathBuf,
     resolved: Option<PathBuf>,
 }
 
-impl Sandbox<'_> {
-    fn is(&self, path: &str) -> bool {
+impl Sandbox {
+    pub(crate) fn new(profile_dir: &Path) -> Self {
+        Self {
+            profile_dir: profile_dir.to_owned(),
+            resolved: fs::canonicalize(profile_dir).ok(),
+        }
+    }
+
+    pub(crate) fn is(&self, path: &str) -> bool {
         let path = Path::new(path);
         let Some(parent) = path
             .parent()
