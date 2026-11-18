@@ -191,10 +191,10 @@ in one transaction, and records `done` after a run that was not refused and
 reached `hasMore: false` (`crates/memry-core/src/sync/feed_restart.rs`,
 #2304). A first sync runs both feed-restart rules before its refs pass, so a
 fresh device records its declaration and `done` and its next pass keeps the
-cursor the first sync stored (`crates/memry-core/src/sync/first_sync.rs:298-304`).
+cursor the first sync stored (`crates/memry-core/src/sync/first_sync.rs:294-300`).
 When its metadata pass leaves rows `metadata-only` that are not held corrupt or
 refused, it removes the repair marker again, so the next pass reads the feed from
-the start once and fills them (`first_sync.rs:308-319`, `feed_restart.rs`).
+the start once and fills them (`first_sync.rs:304-315`, `feed_restart.rs`).
 
 **Acks are per item id.** Two queued rows sharing an id cannot be told apart in a
 mixed response, so **a client MUST collapse to one push item per id before
@@ -1064,7 +1064,7 @@ is read from cursor 0 and cleared in the transaction that lands the head
 (`crates/memry-core/src/sync/note_body_feed.rs:428`), so it holds across the
 passes of a long run and across a restart. Its first
 sync's refs pass, which applies every `deleted` id untyped, reads the feed
-without the token (`crates/memry-core/src/sync/first_sync.rs:370`). iOS
+without the token (`crates/memry-core/src/sync/first_sync.rs:362`). iOS
 (`Declaration::subscribed`) and the shared sync-client do not declare it
 (#2304), so they never see a marker; an iOS device that missed a delete keeps
 its copy locally, and the marker stops a push of it from reaching the server.

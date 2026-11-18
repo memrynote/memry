@@ -1113,7 +1113,7 @@ names the documents whose log grew.
     metadata pass (`crates/memry-core/src/sync/pull.rs:349`) applies is owed
     in a transaction just before the one that applies it, inside the same
     writer call. The first sync's bodies pass owes every live document before
-    its first pull (`crates/memry-core/src/sync/first_sync.rs:415`) and
+    its first pull (`crates/memry-core/src/sync/first_sync.rs:489`) and
     settles a window document by the rule above
     (`crates/memry-core/src/sync/first_sync/body_pass.rs:183`), so a run that
     dies, or a window pull that stops, leaves the document owed for the body
