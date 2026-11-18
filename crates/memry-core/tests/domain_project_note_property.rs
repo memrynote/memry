@@ -199,3 +199,76 @@ fn an_edit_of_the_notes_file_links_like_an_edit_in_the_app() {
     })
     .expect("the scenario");
 }
+
+/// A project payload this build cannot read or edit (an inbound record applied
+/// as corrupt still replaces it) never fails the note's own property write:
+/// desktop's `reconcileNoteLinks` catches and logs.
+#[test]
+fn a_damaged_project_never_fails_the_notes_property_write() {
+    let mut failures: Vec<String> = Vec::new();
+    for (label, damaged) in [
+        ("not-json", "{not json".to_owned()),
+        ("name", json!({"name": 5, "color": "#0ea5e9"}).to_string()),
+        (
+            "clock",
+            json!({"name": "Alpha", "color": "#0ea5e9", "clock": "zzz"}).to_string(),
+        ),
+    ] {
+        let failures = &mut failures;
+        let db = open(&format!("damaged-{label}"));
+        db.call_blocking(|conn| {
+            create_project(conn, "pa", "Alpha", NOW);
+            create_project(conn, "pb", "Beta", NOW);
+            seed(
+                conn,
+                "note",
+                "n1",
+                json!({"title": "n1", "fileType": "markdown", "folderPath": "",
+                       "properties": {"project": ["Alpha", "Beta"]}, "clock": {"device-b": 1}}),
+            );
+            let record = InboundRecord {
+                item_type: "project".to_owned(),
+                item_id: "pa".to_owned(),
+                payload_json: damaged.clone(),
+                server_cursor: Some(8),
+                signer_device_id: Some("device-b".to_owned()),
+                updated_at: NOW,
+                deleted_at: None,
+            };
+            sync_items::apply_remote(conn, &record, NOW).expect("the inbound apply");
+
+            if let Err(error) =
+                properties::set(conn, "note", "n1", "area", json!("work"), DEVICE, NOW + 1)
+            {
+                failures.push(format!("{label}: {error}"));
+                return Ok(());
+            }
+            let values = properties::values(conn, "note", "n1")?;
+            assert_eq!(values.get("area"), Some(&json!("work")), "{label}");
+            // The project that reads still follows the property.
+            assert_eq!(linked(conn, "pb"), [note_link("note", false, 0)], "{label}");
+            Ok(())
+        })
+        .expect("the scenario");
+    }
+    assert!(failures.is_empty(), "{failures:#?}");
+}
+
+/// Desktop matches SQLite's `lower(name)`, which folds ASCII only, against the
+/// name JavaScript lowercased: a project spelled with a non-ASCII capital is
+/// never matched, one spelled in lower case matches any case.
+#[test]
+fn a_project_name_folds_ascii_only_as_desktop_matches_it() {
+    let db = open("fold");
+    db.call_blocking(|conn| {
+        create_project(conn, "upper", "Über", NOW);
+        create_project(conn, "lower", "über plan", NOW);
+        seed_note(conn, "n1", "markdown");
+
+        set_projects(conn, "n1", json!(["Über", "ÜBER PLAN"]), NOW + 1);
+        assert!(linked(conn, "upper").is_empty());
+        assert_eq!(linked(conn, "lower"), [note_link("note", false, 0)]);
+        Ok(())
+    })
+    .expect("the scenario");
+}

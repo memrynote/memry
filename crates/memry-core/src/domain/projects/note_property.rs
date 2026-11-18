@@ -35,12 +35,15 @@ use super::write::mint_id;
 /// wrote, each with its own outbox row. Runs inside the caller's transaction.
 ///
 /// A name resolves case-insensitively to the oldest live project of that name,
-/// archived ones included; a name that resolves to nothing links nothing. A
+/// archived ones included, folding case as desktop does ([`resolve`]); a name
+/// that resolves to nothing links nothing. A
 /// project gaining the note gets a `note` entry (position 0, unpinned); a
 /// project losing it drops every entry for the note, whatever its item type (a
 /// hub import may hold a markdown note as `file`). An entry that stays is left
 /// as it is, so its `position` and `pinned` survive. A note that is not a live
-/// markdown note changes nothing.
+/// markdown note changes nothing. A project whose payload this build cannot
+/// read or edit is rolled back to its savepoint and logged, never an error,
+/// so the note's own write still commits.
 pub fn sync_links_from_property(
     tx: &Connection,
     note_id: &str,
@@ -61,44 +64,81 @@ pub fn sync_links_from_property(
 
     let mut written = Vec::new();
     for project_id in candidates {
-        let mut entries = stored_links(tx, &project_id)?;
-        let names_note =
-            |entry: &Value| entry.get("itemId").and_then(Value::as_str) == Some(note_id);
-        let linked = entries.iter().any(names_note);
-        let wanted = desired.contains(&project_id);
-        if wanted == linked {
-            continue;
+        tx.execute_batch("SAVEPOINT note_project_links")
+            .map_err(failed)?;
+        let outcome = sync_project(tx, &project_id, note_id, &desired, device_id, now_ms);
+        let end = match &outcome {
+            Ok(_) => "RELEASE note_project_links",
+            Err(_) => "ROLLBACK TO note_project_links; RELEASE note_project_links",
+        };
+        tx.execute_batch(end).map_err(failed)?;
+        match outcome {
+            Ok(true) => written.push(project_id),
+            Ok(false) => {}
+            // Desktop's projector catches and logs a failed reconcile
+            // (`note-project-links-projector.ts`): a project this build cannot
+            // read or edit must not fail the note's own write, and the other
+            // projects still follow the property.
+            Err(error) => eprintln!(
+                "memry-core: project links of {project_id} not synced from note {note_id}'s \
+                 project property: {error}"
+            ),
         }
-        if wanted {
-            entries.push(json!({
-                "id": mint_id(),
-                "projectId": project_id,
-                "itemType": "note",
-                "itemId": note_id,
-                "position": 0,
-                "pinned": 0,
-                "createdAt": iso(now_ms)?,
-            }));
-        } else {
-            entries.retain(|entry| !names_note(entry));
-        }
-        edit_merged_in(
-            tx,
-            ITEM_TYPE,
-            &PROJECT_SYNCABLE_FIELDS,
-            &project_id,
-            vec![("links", Change::Set(Value::Array(entries)))],
-            device_id,
-            now_ms,
-        )?;
-        outbox::enqueue(tx, &outbox::Change::upsert(ITEM_TYPE, &project_id), now_ms)?;
-        written.push(project_id);
     }
     Ok(written)
 }
 
+/// Adds or drops the note's entries in one project's `links` when they
+/// disagree with `desired`; `Ok(true)` when it wrote the project.
+fn sync_project(
+    tx: &Connection,
+    project_id: &str,
+    note_id: &str,
+    desired: &[String],
+    device_id: &str,
+    now_ms: i64,
+) -> Result<bool, StorageError> {
+    let mut entries = stored_links(tx, project_id)?;
+    let names_note = |entry: &Value| entry.get("itemId").and_then(Value::as_str) == Some(note_id);
+    let linked = entries.iter().any(names_note);
+    let wanted = desired.iter().any(|id| id == project_id);
+    if wanted == linked {
+        return Ok(false);
+    }
+    if wanted {
+        entries.push(json!({
+            "id": mint_id(),
+            "projectId": project_id,
+            "itemType": "note",
+            "itemId": note_id,
+            "position": 0,
+            "pinned": 0,
+            "createdAt": iso(now_ms)?,
+        }));
+    } else {
+        entries.retain(|entry| !names_note(entry));
+    }
+    edit_merged_in(
+        tx,
+        ITEM_TYPE,
+        &PROJECT_SYNCABLE_FIELDS,
+        project_id,
+        vec![("links", Change::Set(Value::Array(entries)))],
+        device_id,
+        now_ms,
+    )?;
+    outbox::enqueue(tx, &outbox::Change::upsert(ITEM_TYPE, project_id), now_ms)?;
+    Ok(true)
+}
+
 /// The project ids `names` resolve to, in name order, each once
 /// (`resolveNamedProjects`: oldest first, so a later duplicate name loses).
+///
+/// Desktop's `listProjectsByNames` (`queries/projects.ts:917`) matches SQLite's
+/// `lower(name)`, which folds ASCII only, against each name JavaScript's
+/// `toLowerCase` folded; the match it keeps is then keyed by the project
+/// name's full fold. So a project named with a non-ASCII capital ("Über")
+/// never matches, and "über" matches "Über" in the property.
 fn resolve(conn: &Connection, names: &[String]) -> Result<Vec<String>, StorageError> {
     if names.is_empty() {
         return Ok(Vec::new());
@@ -114,14 +154,17 @@ fn resolve(conn: &Connection, names: &[String]) -> Result<Vec<String>, StorageEr
             Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
         })
         .map_err(failed)?;
+    let requested: Vec<String> = names.iter().map(|name| name.to_lowercase()).collect();
     let mut by_name: HashMap<String, String> = HashMap::new();
     for row in rows {
         let (id, name) = row.map_err(failed)?;
-        by_name.entry(name.to_lowercase()).or_insert(id);
+        if requested.contains(&name.to_ascii_lowercase()) {
+            by_name.entry(name.to_lowercase()).or_insert(id);
+        }
     }
     let mut ids: Vec<String> = Vec::new();
-    for name in names {
-        if let Some(id) = by_name.get(&name.to_lowercase())
+    for name in &requested {
+        if let Some(id) = by_name.get(name)
             && !ids.contains(id)
         {
             ids.push(id.clone());

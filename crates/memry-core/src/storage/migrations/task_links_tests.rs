@@ -186,3 +186,41 @@ fn a_lookup_by_target_seeks_the_index() {
         "{plan:?}"
     );
 }
+
+/// The triggers skip what will not read on every write, so no task write
+/// fails on a stored value, in this build or an older one.
+#[test]
+fn a_task_write_with_values_that_will_not_read_adds_no_link_and_never_fails() {
+    let db = Db::open_in_memory().expect("open");
+    db.call_blocking(|conn| run(conn, DATA_MIGRATIONS).map(drop))
+        .expect("migrate");
+    let rows = db
+        .call_blocking(|conn| {
+            for (id, note_ids, payload) in [
+                ("t1", "not json", "not json either"),
+                ("t2", r#""n1""#, r#"{"linkedCanvasIds":"c1"}"#),
+                ("t3", r#"[1,null,""]"#, r#"{"linkedCanvasIds":[1,null,""]}"#),
+                ("t4", "[", "{"),
+            ] {
+                // Insert, then the projector's upsert update.
+                write_task(conn, id, note_ids, payload);
+                write_task(conn, id, note_ids, payload);
+                conn.execute(
+                    "INSERT OR REPLACE INTO tasks (id, title, project_id, linked_note_ids)
+                     VALUES (?1, 't', 'p', ?2)",
+                    rusqlite::params![id, note_ids],
+                )
+                .map_err(failed)?;
+                conn.execute(
+                    "UPDATE tasks SET title = 'u', deleted_at = NULL WHERE id = ?1",
+                    [id],
+                )
+                .map_err(failed)?;
+            }
+            let rows = links(conn)?;
+            conn.execute("DELETE FROM tasks", []).map_err(failed)?;
+            Ok(rows)
+        })
+        .expect("every write");
+    assert!(rows.is_empty(), "{rows:?}");
+}
