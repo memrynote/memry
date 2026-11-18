@@ -26,7 +26,8 @@ pub fn start(webview: &PlatformWebview, paper: Paper, target: &Path, done: Done)
     let handler = PrintToPdfCompletedHandler::create(Box::new(move |result, ok| {
         finish(match result {
             Err(error) => Err(error.to_string()),
-            Ok(()) if ok.as_bool() => Ok(()),
+            // webview2-com hands the `BOOL` over as `bool` (`ClosureArg for BOOL`).
+            Ok(()) if ok => Ok(()),
             Ok(()) => Err("WebView2 did not write the PDF".to_owned()),
         });
         Ok(())
