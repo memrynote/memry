@@ -371,9 +371,10 @@ fn an_open_document_keeps_the_worker_from_idling_out() {
 }
 
 #[test]
-fn a_hung_op_is_killed_while_a_large_request_waits_on_the_pipe() {
-    // The hung child reads nothing more, so a request larger than the pipe buffer blocks in its
-    // write. The hung op's timeout must still kill the child, which also ends that write.
+fn a_large_request_behind_a_hung_op_runs_on_the_next_child() {
+    // The hung child reads nothing more, so a request larger than the pipe buffer would block in
+    // its write. It waits for its turn instead: the hung op's timeout kills the child, and the
+    // large request goes to a new one.
     let dir = tempfile::tempdir().expect("temp dir");
     let signal = dir.path().join("hung");
     let worker = Arc::new(supervisor(Limits {
@@ -414,7 +415,7 @@ fn a_hung_op_is_killed_while_a_large_request_waits_on_the_pipe() {
         outcomes["hung"],
         Err(WorkerError::Timeout { op: "pdf-open" })
     );
-    assert!(outcomes["large"].is_err(), "{:?}", outcomes["large"]);
+    assert_eq!(outcomes["large"], Ok(opened()), "not failed with the hung op");
     assert_eq!(
         worker.call(&open("ok")),
         Ok(opened()),
@@ -479,4 +480,148 @@ fn a_request_over_the_frame_cap_fails_only_its_call() {
     assert_eq!(worker.pid(), Some(pid), "the healthy child keeps running");
     assert_eq!(worker.call(&open("ok")), Ok(opened()), "not paused");
     assert_eq!(worker.pid(), Some(pid), "the same child answers");
+}
+
+#[test]
+fn a_call_queued_behind_a_slow_op_gets_its_own_full_timeout() {
+    // The child answers in order, so the second read waits in the child while the first runs.
+    // Its timeout counts from when the first one is answered, and the healthy child survives.
+    let worker = Arc::new(supervisor(Limits {
+        ocr_timeout: Duration::from_secs(3),
+        ..limits()
+    }));
+    let read = |worker: &Supervisor| {
+        worker.recognize(Path::new("tessdata"), &["slow:2000".into()], Vec::new())
+    };
+    assert_eq!(
+        read(&worker),
+        Ok("read".into()),
+        "one read fits the timeout"
+    );
+    let pid = worker.pid().expect("running");
+    let first = {
+        let worker = worker.clone();
+        thread::spawn(move || read(&worker))
+    };
+    let second = {
+        let worker = worker.clone();
+        thread::spawn(move || read(&worker))
+    };
+    assert_eq!(first.join().expect("first"), Ok("read".into()));
+    assert_eq!(second.join().expect("second"), Ok("read".into()));
+    assert_eq!(
+        worker.pid(),
+        Some(pid),
+        "the healthy child was never killed"
+    );
+}
+
+/// Never writes a `Ready` frame.
+#[cfg(unix)]
+fn silent(limits: Limits, clock: Arc<dyn Clock>) -> Supervisor {
+    Supervisor::new("/bin/sleep".into(), vec!["600".into()], limits, clock)
+}
+
+#[cfg(unix)]
+#[test]
+fn a_child_that_never_gets_ready_counts_as_a_crash() {
+    let clock = Arc::new(FakeClock(Mutex::new(Instant::now())));
+    let worker = silent(
+        Limits {
+            start_timeout: Duration::from_millis(100),
+            ..limits()
+        },
+        clock,
+    );
+    for _ in 0..3 {
+        let error = worker.call(&open("ok")).expect_err("never ready");
+        assert!(matches!(error, WorkerError::Start(_)), "{error:?}");
+    }
+    assert_eq!(worker.call(&open("ok")), Err(WorkerError::Paused));
+}
+
+#[cfg(unix)]
+#[test]
+fn stop_ends_a_start_that_waits_for_ready() {
+    let worker = Arc::new(silent(
+        Limits {
+            start_timeout: Duration::from_secs(120),
+            ..limits()
+        },
+        Arc::new(SystemClock),
+    ));
+    let caller = {
+        let worker = worker.clone();
+        thread::spawn(move || worker.call(&open("ok")))
+    };
+    let deadline = Instant::now() + Duration::from_secs(30);
+    while worker.pid().is_none() && Instant::now() < deadline {
+        thread::sleep(Duration::from_millis(10));
+    }
+    let pid = worker.pid().expect("the starting child is in the state");
+    worker.stop();
+    assert_eq!(caller.join().expect("caller"), Err(WorkerError::Stopped));
+    assert!(!alive(pid), "the starting child was killed and reaped");
+}
+
+/// Set in the copy of this test binary that plays the app: the file it writes its child's pid to.
+#[cfg(unix)]
+const APP_PIDFILE: &str = "MEMRY_TEST_APP_PIDFILE";
+
+#[cfg(unix)]
+#[test]
+fn the_worker_exits_when_the_app_dies() {
+    if let Some(pidfile) = std::env::var_os(APP_PIDFILE) {
+        let worker = Arc::new(supervisor(limits()));
+        let caller = worker.clone();
+        thread::spawn(move || caller.call(&open("hang")));
+        let deadline = Instant::now() + Duration::from_secs(30);
+        while worker.pid().is_none() && Instant::now() < deadline {
+            thread::sleep(Duration::from_millis(10));
+        }
+        let pid = worker.pid().expect("running");
+        std::fs::write(&pidfile, pid.to_string()).expect("write pid");
+        loop {
+            thread::park();
+        }
+    }
+    let dir = tempfile::tempdir().expect("temp dir");
+    let pidfile = dir.path().join("pid");
+    let mut app = std::process::Command::new(std::env::current_exe().expect("test binary"))
+        .args([
+            "--exact",
+            "the_worker_exits_when_the_app_dies",
+            "--nocapture",
+        ])
+        .env(APP_PIDFILE, &pidfile)
+        .stdout(std::process::Stdio::null())
+        .spawn()
+        .expect("start the app");
+    let deadline = Instant::now() + Duration::from_secs(60);
+    let child = loop {
+        let pid = std::fs::read_to_string(&pidfile)
+            .ok()
+            .and_then(|s| s.parse::<u32>().ok());
+        if let Some(pid) = pid {
+            break pid;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "the app never started its worker"
+        );
+        thread::sleep(Duration::from_millis(20));
+    };
+    // The child is inside a hung op, so it never reads the stdin the app's death closes.
+    app.kill().expect("kill the app");
+    app.wait().expect("reap the app");
+    let deadline = Instant::now() + Duration::from_secs(30);
+    while alive(child) && Instant::now() < deadline {
+        thread::sleep(Duration::from_millis(50));
+    }
+    let survived = alive(child);
+    if survived {
+        // SAFETY: kills the orphan this test caused.
+        unsafe { libc::kill(child as libc::pid_t, libc::SIGKILL) };
+    }
+    assert!(!survived, "the worker outlived the app");
 }
