@@ -4,7 +4,7 @@
 //! [`ExportResult`], as Electron's `withErrorHandler` resolves a throw as `{ success: false }`;
 //! the renderer tells a cancel from a failure by `code`, never by the localized text.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use memry_desktop::export::sanitize_filename;
@@ -24,9 +24,13 @@ use crate::shell::pdf::Paper;
 use crate::shell::{dialogs, services};
 use crate::windows::pdf_print::{self, PdfError};
 
-/// `ExportNoteSchema` (`packages/contracts/src/notes-api.ts`).
+/// `ExportNoteSchema` (`packages/contracts/src/notes-api.ts`) without its `outputPath`: a
+/// webview never names the file to write, so the command always asks the user through the save
+/// dialog. `deny_unknown_fields` rejects a call that still carries one (a departure from
+/// Electron, whose handler writes to the renderer's `outputPath`). The headless export is
+/// [`export_html_to`], reachable in process only.
 #[derive(Debug, Clone, Deserialize, specta::Type)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ExportNoteInput {
     pub note_id: String,
     /// On when absent.
@@ -38,9 +42,6 @@ pub struct ExportNoteInput {
     /// Off when absent.
     #[serde(default)]
     pub include_task_markers: Option<bool>,
-    /// Written without a save dialog (the agent API's headless export).
-    #[serde(default)]
-    pub output_path: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, specta::Type)]
@@ -101,8 +102,7 @@ fn text<R: Runtime>(app: &AppHandle<R>, key: &str) -> String {
     i18n::t(locale, key, &Args::new())
 }
 
-/// `notes:export-html`: the note as a self-contained HTML file at `outputPath`, or where the
-/// save dialog says.
+/// `notes:export-html`: the note as a self-contained HTML file where the save dialog says.
 // Generic over the runtime so a test drives it on a mock app (`tests/notes_export.rs`).
 #[tauri::command]
 #[specta::specta]
@@ -111,17 +111,43 @@ pub async fn notes_export_html<R: Runtime>(
     input: ExportNoteInput,
 ) -> Result<ExportResult, CommandError> {
     blocking("notes_export_html", move || {
-        Ok(export_html(&app, input).unwrap_or_else(|error| {
-            log_failure("notes_export_html", &error);
-            ExportResult::failed(ExportFailure::Failed, error.message)
-        }))
+        Ok(resolve(export_html(&app, input, |title| {
+            dialogs::save_file(
+                &app,
+                &text(&app, "system:dialog.exportHtml.title"),
+                &format!("{}.html", sanitize_filename(title)),
+                (
+                    &text(&app, "system:dialog.exportHtml.filterName"),
+                    &["html", "htm"],
+                ),
+            )
+        })))
     })
     .await
 }
 
+/// The headless export: the note at `target`, with no dialog. In-process only (tests and the
+/// agent API's future port); it is not a command, so no webview reaches it.
+pub fn export_html_to<R: Runtime>(
+    app: &AppHandle<R>,
+    input: ExportNoteInput,
+    target: &Path,
+) -> ExportResult {
+    resolve(export_html(app, input, |_| Some(target.to_path_buf())))
+}
+
+fn resolve(outcome: Result<ExportResult, CommandError>) -> ExportResult {
+    outcome.unwrap_or_else(|error| {
+        log_failure("notes_export_html", &error);
+        ExportResult::failed(ExportFailure::Failed, error.message)
+    })
+}
+
+/// `choose` names the file from the note's title, or `None` for a cancel.
 fn export_html<R: Runtime>(
     app: &AppHandle<R>,
     input: ExportNoteInput,
+    choose: impl FnOnce(&str) -> Option<PathBuf>,
 ) -> Result<ExportResult, CommandError> {
     // The open vault is not held across the save dialog: a reopen of the same vault meanwhile
     // would fail while this call kept it.
@@ -138,26 +164,11 @@ fn export_html<R: Runtime>(
             text(app, "system:error.noteNotFound"),
         ));
     };
-    let target = match input.output_path {
-        Some(path) => PathBuf::from(path),
-        None => {
-            let chosen = dialogs::save_file(
-                app,
-                &text(app, "system:dialog.exportHtml.title"),
-                &format!("{}.html", sanitize_filename(&note.title)),
-                (
-                    &text(app, "system:dialog.exportHtml.filterName"),
-                    &["html", "htm"],
-                ),
-            );
-            let Some(chosen) = chosen else {
-                return Ok(ExportResult::failed(
-                    ExportFailure::Cancelled,
-                    text(app, "system:dialog.exportCancelled"),
-                ));
-            };
-            chosen
-        }
+    let Some(target) = choose(&note.title) else {
+        return Ok(ExportResult::failed(
+            ExportFailure::Cancelled,
+            text(app, "system:dialog.exportCancelled"),
+        ));
     };
     let export = HtmlExport {
         include_metadata: input.include_metadata.unwrap_or(true),
