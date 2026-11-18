@@ -836,6 +836,39 @@ struct NoteTitleBurstTests {
         #expect(!field.isFirstResponder)
         try await expectTitle(f, "tit")
     }
+
+    /// #5081 over #5083: the list took the caret mid-burst, after `title`
+    /// went down and only `tit` arrived, and the title took it back. Then a
+    /// held Return dropped `le`. The take-back keeps the presses, so the
+    /// line puts `le` back, and `le` delivered late into the body is
+    /// dropped there: no key is lost or typed twice.
+    @Test(.timeLimit(.minutes(2)), arguments: [false, true])
+    func a_steal_mid_burst_then_return_keeps_every_key_once(lateIntoBody: Bool) async throws {
+        let seen = try await uninterrupted { f, window, field in
+            for character in "title" { field.next?.pressesBegan([HardwarePress(character)], with: nil) }
+            for character in "tit" { key(String(character), in: window, title: field) }
+            listSteals(from: field, in: window)
+            await until { field.isFirstResponder }
+            let press = HardwarePress(.keyboardReturnOrEnter, "\r")
+            field.next?.pressesBegan([press], with: nil)
+            field.pressesBegan([press], with: nil)
+            field.pressesEnded([press], with: nil)
+            await until { views(BlockTextView.self, in: window).first?.isFirstResponder == true }
+            let block = views(BlockTextView.self, in: window).first
+            for character in (lateIntoBody ? "le" : "") + "body" { key(String(character), in: window, title: field) }
+            let body = block?.text
+            block?.resignFirstResponder()
+            for _ in 0..<300 {
+                let now = try await stored(f)
+                if now.title == "title", now.body == ["body"] { break }
+                try await Task.sleep(for: .milliseconds(20))
+            }
+            return (body, try await stored(f))
+        }
+        #expect(seen.0 == "body", "the body shows \(seen.0 ?? "nil")")
+        #expect(seen.1.title == "title", "\(seen.1)")
+        #expect(seen.1.body == ["body"], "\(seen.1)")
+    }
 }
 
 /// A focus update as UIKit hands it to the notification's observers.
