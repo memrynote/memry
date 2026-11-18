@@ -133,8 +133,9 @@ fn common(from: &[char], to: &[char]) -> Vec<(usize, usize)> {
 /// A shell holding unsaved typing does not see a peer's edit that merged in
 /// the meantime, so its `wanted` lacks it; diffing `wanted` against the live
 /// block would delete it. So this is a three-way merge: each live character
-/// is traced to the `base` character it is (`changed_spans`, so a peer's
-/// node is never confused with one beside it) or marked the peer's, and the
+/// is traced to the `base` character it is (`changed_spans`) or marked the
+/// peer's (two nodes beside each other cannot be told apart: a placeholder
+/// carries no id, so a stale delete of one may take its neighbour), and the
 /// user's own edit, `base` to `wanted` as its smallest set of deletes and
 /// inserts, is replayed on those. The peer's text and nodes stay where the
 /// peer put them, even inside text the user retyped: `hello world` typed to

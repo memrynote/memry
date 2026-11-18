@@ -68,6 +68,19 @@ pub(super) fn insert_inline(
     let local_start = start - base;
     let local_end = end - base;
 
+    // An offset inside a character is refused here: yrs underflows on it.
+    let plain: String = formatted_tail(txn, &run, 0)
+        .into_iter()
+        .map(|(chunk, _)| chunk)
+        .collect();
+    if !plain.is_char_boundary(local_start as usize) || !plain.is_char_boundary(local_end as usize)
+    {
+        return Err(CrdtError::Undecodable {
+            doc_id: block_id.to_owned(),
+            what: "that range splits a character".to_owned(),
+        });
+    }
+
     // The tail, with its formatting, before anything is removed.
     let tail = formatted_tail(txn, &run, local_end);
 
@@ -117,7 +130,7 @@ pub(super) fn element_text_len<T: ReadTxn>(txn: &T, element: &XmlElementRef) -> 
 /// One run's content from `from` onward, as formatted chunks. `from` is in
 /// the document's offset unit, UTF-8 bytes (`OffsetKind::Bytes`), as
 /// `run.len` is: counted in characters, text after multibyte text was
-/// dropped (#4808).
+/// dropped (#4808). `from` is a character boundary.
 pub(super) fn formatted_tail(
     txn: &TransactionMut,
     run: &XmlTextRef,
@@ -132,11 +145,6 @@ pub(super) fn formatted_tail(
         let chunk_end = seen + value.len() as u32;
         if chunk_end > from {
             let skip = from.saturating_sub(seen) as usize;
-            // A `from` inside a character keeps that whole character.
-            let skip = (0..=skip)
-                .rev()
-                .find(|&at| value.is_char_boundary(at))
-                .unwrap_or(0);
             let kept = &value[skip..];
             if !kept.is_empty() {
                 out.push((kept.to_owned(), chunk.attributes.clone()));
