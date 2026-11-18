@@ -61,7 +61,11 @@ pub enum Outcome {
 pub enum Keep {
     /// The vault session of this pass is over.
     Closed,
+    /// No row names the note's file, and none was made: the note is gone, or the open walk
+    /// has not ended (`unfiled`).
     NoRow,
+    /// The path of a day's first file is taken (`unfiled`).
+    PathTaken,
     NotMarkdown,
     /// The row names a file that is not there.
     NoFile,
@@ -89,7 +93,7 @@ pub struct Pass {
     pub(crate) settings: Option<AppSettings>,
     /// What the write-back and the app's other writers wrote this run, and the outside edits the
     /// consumer read.
-    own_files: Arc<OwnFiles>,
+    pub(super) own_files: Arc<OwnFiles>,
 }
 
 impl Pass {
@@ -134,7 +138,7 @@ impl Pass {
         };
         let row = match lane.files().by_id(note_id) {
             Ok(Some(row)) => row,
-            Ok(None) => return Outcome::Kept(Keep::NoRow),
+            Ok(None) => return self.file_unfiled(&mut lane, note_id, (read_at, read_mark)),
             Err(error) => return Outcome::Failed(format!("note_files: {error}")),
         };
         if row.file_type != FileType::Markdown.as_str() {

@@ -259,16 +259,24 @@ fn until_holds(env: &Env, rel: &str, text: &str) -> String {
     }
 }
 
-/// The row of `id` names `rel` and has a hash, and the notes list shows the note.
+/// The row of `id` names `rel` and gets a hash: the file is written, then its row stamped.
 fn filed(env: &Env, id: &str, rel: &str) {
     let files = env.core().note_files();
-    let row = files.by_id(id).unwrap().expect("a row");
-    assert_eq!(row.path, rel);
-    assert!(row.content_hash.is_some(), "the row holds a hash");
-    assert!(
-        files.listed_by_id(id).unwrap().is_some(),
-        "the notes list shows it"
-    );
+    let deadline = Instant::now() + WAIT;
+    loop {
+        let row = files.by_id(id).unwrap().expect("a row");
+        assert_eq!(row.path, rel);
+        if row.content_hash.is_some() {
+            return;
+        }
+        assert!(Instant::now() < deadline, "the row never got a hash");
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+}
+
+fn listed(env: &Env, id: &str) {
+    let listed = env.core().note_files().listed_by_id(id).unwrap();
+    assert!(listed.is_some(), "the notes list shows it");
 }
 
 /// B's note and its body reach A, which then edits the first block and pushes the edit.
@@ -474,6 +482,7 @@ async fn a_note_created_on_a_gets_its_file_on_b() {
     }
     until_holds(&b.env, "Work/Remote plan.md", "from A");
     filed(&b.env, &id, "Work/Remote plan.md");
+    listed(&b.env, &id);
 }
 
 /// An outside file already at the note's name stays byte for byte; the note gets the next
@@ -494,6 +503,7 @@ async fn an_outside_file_at_the_name_stays_and_the_note_is_numbered() {
     }
     until_holds(&b.env, "Work/Remote plan 1.md", "from A");
     filed(&b.env, &id, "Work/Remote plan 1.md");
+    listed(&b.env, &id);
     assert_eq!(b.env.read("Work/Remote plan.md"), outside);
 }
 
@@ -520,7 +530,10 @@ async fn a_journal_day_created_on_a_gets_its_day_file_on_b() {
     }
     let rel = "journal/2026-11-02.md";
     let file = until_holds(&b.env, rel, "day from A");
-    assert!(file.contains("date: '2026-11-02'"), "the day's date: {file:?}");
+    assert!(
+        file.contains("date: '2026-11-02'"),
+        "the day's date: {file:?}"
+    );
     filed(&b.env, &id, rel);
 }
 
@@ -558,4 +571,5 @@ async fn a_note_with_no_file_at_open_gets_its_file() {
     env.facts_until(indexed);
     until_holds(&env, "Work/Remote plan.md", "from A");
     filed(&env, &id, "Work/Remote plan.md");
+    listed(&env, &id);
 }

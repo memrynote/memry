@@ -173,7 +173,12 @@ impl NotesService {
         let writer = open.vault.notes_writer(self.store.clone())?;
         let feed = open.vault.external_feed(self.store.clone())?;
         let mut lane = rows.lane_of(session)?;
-        let rel = free_path(&lane, root, &note)?;
+        let folder = note.folder.as_deref().filter(|folder| !folder.is_empty());
+        let notes_dir = match folder {
+            Some(_) => root.to_path_buf(),
+            None => root.join(read_vault_config(root).default_note_folder),
+        };
+        let rel = free_path(&lane, root, &notes_dir, &note.title, folder)?;
         let folder = rel.rsplit_once('/').map(|(folder, _)| folder);
         // The folder the file lands in, the default note folder too (`assertFolderWritable` and
         // Electron's file guard on the new path), as the disk spells it: `ARCHIVE` names a
@@ -328,16 +333,18 @@ fn new_note_view(id: String, path: String, note: NewNoteFile, output: &str) -> N
     view
 }
 
-/// The first name for the note that no note holds and nothing stands at, vault-relative with
-/// `/`. The folder is resolved through links and must stay inside the vault; at the name, any
-/// entry takes it: a file, a folder, a link, a dangling one included.
-fn free_path(lane: &Lane<'_>, root: &Path, note: &NewNoteFile) -> Result<String, NotesError> {
-    let folder = note.folder.as_deref().filter(|folder| !folder.is_empty());
-    let notes_dir = match folder {
-        Some(_) => root.to_path_buf(),
-        None => root.join(read_vault_config(root).default_note_folder),
-    };
-    let base = generate_note_path(&notes_dir, &note.title, folder);
+/// The first name for the note `title` in `folder` under `notes_dir` that no note holds and
+/// nothing stands at, vault-relative with `/`. The folder is resolved through links and must
+/// stay inside the vault; at the name, any entry takes it: a file, a folder, a link, a
+/// dangling one included. A local create and a pulled note's first file both name it so.
+pub(crate) fn free_path(
+    lane: &Lane<'_>,
+    root: &Path,
+    notes_dir: &Path,
+    title: &str,
+    folder: Option<&str>,
+) -> Result<String, NotesError> {
+    let base = generate_note_path(notes_dir, title, folder);
     let Some(base_rel) = vault_relative(root, &base) else {
         return Err(NotesError::Outside);
     };
