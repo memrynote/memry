@@ -68,9 +68,13 @@ struct Seen {
 }
 
 /// A loopback fake of `POST /v1/audio/transcriptions` answering from `script`, in order.
-async fn openai_host(script: Vec<(u16, &'static str)>) -> (String, Arc<Mutex<Vec<Seen>>>) {
+async fn openai_host<S: Into<String>>(script: Vec<(u16, S)>) -> (String, Arc<Mutex<Vec<Seen>>>) {
     let seen = Arc::new(Mutex::new(Vec::new()));
-    let script = Arc::new(Mutex::new(VecDeque::from(script)));
+    let script: VecDeque<(u16, String)> = script
+        .into_iter()
+        .map(|(status, body)| (status, body.into()))
+        .collect();
+    let script = Arc::new(Mutex::new(script));
     let record = seen.clone();
     let app = axum::Router::new().route(
         "/v1/audio/transcriptions",
@@ -252,7 +256,7 @@ async fn openai_failures_read_as_electrons_messages() {
 #[tokio::test(flavor = "multi_thread")]
 async fn openai_refusals_send_nothing() {
     let dir = tempfile::tempdir().unwrap();
-    let (endpoint, seen) = openai_host(vec![]).await;
+    let (endpoint, seen) = openai_host::<&str>(vec![]).await;
     let openai = settings(VoiceProvider::OpenAi, MemoNameMode::Transcript, None);
     let voice = service(dir.path(), &endpoint, Some("sk-test"), None);
 
@@ -502,7 +506,7 @@ async fn a_retry_refuses_a_memo_that_is_not_voice_and_an_unknown_item() {
 #[tokio::test(flavor = "multi_thread")]
 async fn a_memo_whose_file_is_outside_the_vault_fails_without_reading_it() {
     let dir = tempfile::tempdir().unwrap();
-    let (endpoint, seen) = openai_host(vec![]).await;
+    let (endpoint, seen) = openai_host::<&str>(vec![]).await;
     let voice = service(dir.path(), &endpoint, Some("sk-test"), None);
     let memo = memo(b"RIFF", "wav");
     let outside = dir.path().join("secret.wav");
@@ -565,4 +569,62 @@ fn the_settings_group_reads_with_electrons_defaults() {
         group(json!({ "memoNameMode": "none" })).memo_name_mode,
         MemoNameMode::None
     );
+}
+
+/// A response past the cap is refused, and nothing of it becomes the synced transcription.
+#[tokio::test(flavor = "multi_thread")]
+async fn an_openai_answer_past_the_cap_is_refused_and_never_written() {
+    let dir = tempfile::tempdir().unwrap();
+    let huge = "a".repeat(openai::MAX_TEXT_BYTES + 1);
+    let (endpoint, _) = openai_host(vec![(200, huge)]).await;
+    let voice = service(dir.path(), &endpoint, Some("sk-test"), None);
+    let memo = memo(b"RIFFaudio", "wav");
+    let openai = settings(VoiceProvider::OpenAi, MemoNameMode::Transcript, None);
+
+    let result = memo.transcribe(&voice, openai).await;
+    assert_eq!(result.error.as_deref(), Some(openai::TOO_LARGE));
+    let payload = memo.payload();
+    assert_eq!(payload["transcription"], Value::Null);
+    assert_eq!(payload["transcriptionStatus"], "failed");
+    assert_eq!(payload["title"], "Voice memo (0:07)");
+}
+
+/// `titleFromTimestamp` names the memo in local time. A child of this test binary runs with
+/// `TZ=IST-5:30` (UTC+05:30, no zone files needed), where a UTC title would read 5:30 earlier.
+/// Unix only: chrono reads `TZ` there.
+#[cfg(unix)]
+#[test]
+fn a_timestamp_name_is_the_creation_time_in_local_time() {
+    const DONE: &str = "MEMRY_VOICE_TZ_DONE";
+    let Some(done) = std::env::var_os(DONE) else {
+        let dir = tempfile::tempdir().unwrap();
+        let done = dir.path().join("done");
+        let status = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "voice_service::a_timestamp_name_is_the_creation_time_in_local_time",
+                "--test-threads=1",
+            ])
+            .env(DONE, &done)
+            .env("TZ", "IST-5:30")
+            .status()
+            .unwrap();
+        assert!(status.success());
+        // The child ran the check, not zero tests.
+        assert_eq!(std::fs::read_to_string(&done).unwrap(), "checked");
+        return;
+    };
+    let runtime = tokio::runtime::Runtime::new().unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let voice = service(dir.path(), "http://127.0.0.1:9/none", None, None);
+    let memo = memo(b"RIFF", "wav");
+    let local = settings(VoiceProvider::Local, MemoNameMode::Timestamp, None);
+    let result = runtime.block_on(memo.transcribe(&voice, local));
+    assert!(result.success, "{result:?}");
+    voice.engine().stop();
+    let item = memo.inbox.get(memo.id.clone()).unwrap().unwrap();
+    let ist = FixedOffset::east_opt(5 * 3600 + 30 * 60).unwrap();
+    let expected = memo_name(MemoNameMode::Timestamp, item.created_at_ms, &ist);
+    assert_eq!(VoiceMemoName::Title(item.title), expected);
+    std::fs::write(done, "checked").unwrap();
 }

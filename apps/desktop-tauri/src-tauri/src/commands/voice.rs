@@ -18,7 +18,9 @@ use memry_desktop::services::voice::engine::{self, LocalEngine};
 use memry_desktop::services::voice::key::OpenAiKey;
 use memry_desktop::services::voice::model::{VoiceModel, VoiceModelStatus};
 use memry_desktop::services::voice::openai::{self, OpenAi};
-use memry_desktop::services::voice::service::{Progress, TranscriptionResult, VoiceService};
+use memry_desktop::services::voice::service::{
+    MAX_AUDIO_BYTES, Progress, TranscriptionResult, VoiceService,
+};
 use memry_desktop::services::voice::{self, VoiceProvider, VoiceRecordingReadiness, VoiceSettings};
 use memry_desktop::session::Session;
 use memry_desktop::settings::SettingsService;
@@ -279,6 +281,37 @@ async fn voice_settings<R: Runtime>(
 #[derive(Deserialize)]
 struct TranscribeMeta {
     format: String,
+    duration: Option<f64>,
+}
+
+/// Why a dictation request is refused before its body is copied: `TranscribeAudioSchema`'s
+/// format and `duration` (0 to 300 s, the recorder's limit), and a body no engine takes.
+fn refusal(meta: &TranscribeMeta, len: usize) -> Option<CommandError> {
+    let (code, message) = if !matches!(meta.format.as_str(), "webm" | "mp3" | "wav") {
+        (
+            "voice_format_invalid",
+            format!("Unsupported audio format: {}", meta.format),
+        )
+    } else if meta
+        .duration
+        .is_some_and(|duration| !(0.0..=300.0).contains(&duration))
+    {
+        (
+            "voice_duration_invalid",
+            "A recording lasts at most 300 seconds.".to_owned(),
+        )
+    } else if len > MAX_AUDIO_BYTES {
+        (
+            "voice_audio_too_large",
+            format!(
+                "Audio file too large. Maximum size is {}MB.",
+                MAX_AUDIO_BYTES >> 20
+            ),
+        )
+    } else {
+        return None;
+    };
+    Some(CommandError::new(ErrorKind::Invalid, code, message))
 }
 
 /// `TranscribeAudioResponse`.
@@ -300,16 +333,11 @@ pub async fn inbox_transcribe_audio<R: Runtime>(
     request: Request<'_>,
 ) -> Result<TranscribeAudioResponse, CommandError> {
     let meta: TranscribeMeta = binary::meta(&request)?;
-    if !matches!(meta.format.as_str(), "webm" | "mp3" | "wav") {
-        let error = CommandError::new(
-            ErrorKind::Invalid,
-            "voice_format_invalid",
-            format!("Unsupported audio format: {}", meta.format),
-        );
+    let body = binary::raw_body(&request)?;
+    if let Some(error) = refusal(&meta, body.len()) {
         log_failure("inbox_transcribe_audio", &error);
         return Err(error);
     }
-    let body = binary::raw_body(&request)?;
     if body.is_empty() {
         return Ok(TranscribeAudioResponse {
             success: false,
@@ -368,4 +396,41 @@ pub async fn inbox_retry_transcription(
         .service
         .retry_transcription(inbox, vault, settings, item_id, progress(&app))
         .await)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn meta(format: &str, duration: Option<f64>) -> TranscribeMeta {
+        TranscribeMeta {
+            format: format.to_owned(),
+            duration,
+        }
+    }
+
+    /// `TranscribeAudioSchema`: the formats, a duration in 0..=300 when given, and a body no
+    /// engine takes is refused before it is copied.
+    #[test]
+    fn dictation_refuses_what_the_schema_and_the_engines_refuse() {
+        assert!(refusal(&meta("wav", Some(300.0)), MAX_AUDIO_BYTES).is_none());
+        assert!(refusal(&meta("webm", None), 1).is_none());
+        let refused = |meta: TranscribeMeta, len| refusal(&meta, len).map(|error| error.code);
+        assert_eq!(
+            refused(meta("flac", None), 1).as_deref(),
+            Some("voice_format_invalid")
+        );
+        assert_eq!(
+            refused(meta("wav", Some(300.5)), 1).as_deref(),
+            Some("voice_duration_invalid")
+        );
+        assert_eq!(
+            refused(meta("wav", Some(-1.0)), 1).as_deref(),
+            Some("voice_duration_invalid")
+        );
+        assert_eq!(
+            refused(meta("wav", None), MAX_AUDIO_BYTES + 1).as_deref(),
+            Some("voice_audio_too_large")
+        );
+    }
 }
