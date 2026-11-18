@@ -44,9 +44,12 @@ concurrency:
   # workflow_dispatch on feat/tauri-v2 gets its own group so a manual Intel run is neither cancelled
   # by a push nor cancels one.
   group: desktop-tauri-ci-${{ github.workflow }}-${{ github.ref }}${{ ((github.event.action == 'labeled' && !(github.base_ref != 'main' && github.event.label.name == 'full-ci')) || (github.event.action == 'opened' && github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) && format('-noop-{0}', github.run_id) || (github.event_name == 'schedule' && '-schedule') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/feat/tauri-v2' && format('-dispatch-{0}', github.run_id) || (github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci') && '-full' || '')) }}
-  # A burst of merges into feat/tauri-v2 checks only the newest head: a push there cancels the run
-  # of the previous head. main pushes keep running to completion, as before.
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  # A push run of feat/tauri-v2 finishes (#5035): after a merge the queue tested it runs only plan and
+  # gate (post-merge.sh), and a full run, after a cache-key change, saves the caches PRs restore. A
+  # cancelled one saved none, and the next push had to run every leg again. A burst stays bounded: a
+  # newer push waits as the one pending run and replaces an older pending one. main pushes keep
+  # running to completion, as before; every other event and ref still cancels.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && !(github.event_name == 'push' && github.ref == 'refs/heads/feat/tauri-v2') }}
 
 env:
   CI: true
