@@ -90,9 +90,13 @@ fn is_public_v6(ip: Ipv6Addr) -> bool {
     let first = seg[0];
     // 6to4 (`2002::/16`) carries the IPv4 address it reaches in its next 32 bits.
     let six_to_four = Ipv4Addr::from((u32::from(seg[1]) << 16) | u32::from(seg[2]));
+    let nat64 = Ipv4Addr::from((u32::from(seg[6]) << 16) | u32::from(seg[7]));
     !(ip.is_loopback()
-        // NAT64: `64:ff9b::/96` and the local-use `64:ff9b:1::/48` reach any IPv4 address.
-        || (first == 0x0064 && seg[1] == 0xff9b)
+        // NAT64: `64:ff9b::/96` reaches the IPv4 address in its last 32 bits; the rest of
+        // `64:ff9b::/32`, the local-use `64:ff9b:1::/48` included, holds no public host.
+        || (first == 0x0064
+            && seg[1] == 0xff9b
+            && !(seg[2..6] == [0, 0, 0, 0] && is_public_v4(nat64)))
         || (first == 0x2002 && !is_public_v4(six_to_four))
         || (first == 0x0100 && seg[1..4] == [0, 0, 0])
         || ip.is_unspecified()
@@ -130,8 +134,9 @@ pub struct HttpRemoteAssets {
 
 impl HttpRemoteAssets {
     /// The importer's policy over `base` instead of [`crate::http::builder`]: tests pass one
-    /// that trusts a local TLS server.
-    #[doc(hidden)]
+    /// that trusts a local TLS server. A base with `resolve` overrides skips [`PublicOnly`], so
+    /// test builds only.
+    #[cfg(feature = "test-hooks")]
     pub fn with_builder(base: reqwest::ClientBuilder) -> Self {
         Self {
             client: OnceLock::from(build(base)),

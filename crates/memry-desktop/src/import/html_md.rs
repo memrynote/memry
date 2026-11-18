@@ -6,16 +6,21 @@
 //! the trees agree. The input is an untrusted file, so the walk is bounded twice: nesting past
 //! [`MAX_DEPTH`] fails the note instead of the thread's stack, and the work (nodes visited plus
 //! bytes produced) is capped at a multiple of the input's size, so a list nested hundreds deep
-//! around a large text cannot re-indent it hundreds of times. Parsing stops past
-//! [`MAX_PARSE_DEPTH`], since html5ever's time grows with the square of the nesting.
+//! around a large text cannot re-indent it hundreds of times. Parsing runs within
+//! `turndown::parse::parse_import`'s caps (depth, nodes, deadline).
 
 use std::cell::Cell;
+use std::time::Duration;
 
 use memry_core::markdown::frontmatter::js_trim;
 
+mod tree;
+
 use super::assets::percent_decode_ref;
 use crate::web::extract::dom::{Document, NodeId, NodeKind};
-use crate::web::extract::markdown::turndown::parse;
+use crate::web::extract::markdown::turndown::parse::{CapHit, Caps, parse_import};
+
+pub use tree::{select, walk};
 
 /// Element nesting the converter follows. Electron recursed until V8's stack ran out.
 pub const MAX_DEPTH: usize = 256;
@@ -23,6 +28,10 @@ pub const MAX_DEPTH: usize = 256;
 /// (`table`, `tbody`, `tr`, `td`) for one converter level, so every page the converter accepts
 /// parses.
 pub const MAX_PARSE_DEPTH: usize = 4 * MAX_DEPTH + 8;
+/// Parse time one page may take. One tag with many attributes costs html5ever time quadratic in
+/// their number before the tree sees any of it; ordinary pages of the 100 MB source cap parse
+/// well inside it.
+pub const PARSE_DEADLINE: Duration = Duration::from_secs(60);
 /// Work allowed per byte of input, plus [`BASE_STEPS`]: a byte is charged once for every level
 /// that returns it, so ordinary pages stay far below it.
 pub const STEPS_PER_INPUT_BYTE: usize = 256;
@@ -70,11 +79,19 @@ pub struct NoHooks;
 impl HtmlHooks for NoHooks {}
 
 /// `new JSDOM(html).window.document`, for a page whose elements nest at most
-/// [`MAX_PARSE_DEPTH`] deep.
+/// [`MAX_PARSE_DEPTH`] deep, with at most two nodes per input byte, parsed within
+/// [`PARSE_DEADLINE`].
 pub fn parse_html(html: &str) -> Result<Document, HtmlMdError> {
-    parse::parse_bounded(html, MAX_PARSE_DEPTH)
-        .map(|dom| dom.doc)
-        .ok_or(HtmlMdError::TooDeep)
+    let caps = Caps {
+        max_depth: MAX_PARSE_DEPTH,
+        max_nodes: 2 * html.len() + 64,
+        deadline: PARSE_DEADLINE,
+    };
+    match parse_import(html, caps) {
+        Ok((dom, _)) => Ok(dom.doc),
+        Err(CapHit::TooDeep) => Err(HtmlMdError::TooDeep),
+        Err(CapHit::TooManyNodes | CapHit::TooSlow) => Err(HtmlMdError::TooComplex),
+    }
 }
 
 /// `htmlToMarkdown(root, hooks)` for a root whose child nodes are `nodes`: the root's own tag
@@ -115,51 +132,6 @@ pub fn has_class(doc: &Document, id: NodeId, name: &str) -> bool {
             .split([' ', '\t', '\n', '\u{c}', '\r'])
             .any(|token| token == name)
     })
-}
-
-/// Pre-order walk of the descendants of `root`, not entering a node `skip` accepts. Stops when
-/// `visit` returns true. Iterative, so depth costs no stack.
-pub fn walk(
-    doc: &Document,
-    root: NodeId,
-    skip: &mut dyn FnMut(NodeId) -> bool,
-    visit: &mut dyn FnMut(NodeId) -> bool,
-) {
-    let mut current = doc.first_child(root);
-    while let Some(node) = current {
-        let skipped = skip(node);
-        if !skipped && visit(node) {
-            return;
-        }
-        current = match doc.first_child(node) {
-            Some(child) if !skipped => Some(child),
-            _ => next_in_order(doc, node, root),
-        };
-    }
-}
-
-fn next_in_order(doc: &Document, mut node: NodeId, root: NodeId) -> Option<NodeId> {
-    loop {
-        if let Some(next) = doc.next_sibling(node) {
-            return Some(next);
-        }
-        node = doc.parent_node(node)?;
-        if node == root {
-            return None;
-        }
-    }
-}
-
-/// `querySelectorAll` for a predicate: matching descendants in document order.
-pub fn select(doc: &Document, root: NodeId, mut test: impl FnMut(NodeId) -> bool) -> Vec<NodeId> {
-    let mut found = Vec::new();
-    walk(doc, root, &mut |_| false, &mut |n| {
-        if test(n) {
-            found.push(n);
-        }
-        false
-    });
-    found
 }
 
 /// `textContent` of an element or a text node.

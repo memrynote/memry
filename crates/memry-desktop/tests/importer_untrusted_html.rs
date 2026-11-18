@@ -7,6 +7,7 @@
 use std::fs;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use memry_desktop::import::MAX_SOURCE_BYTES;
 use memry_desktop::import::apple_journal::{AppleJournalImporter, parse_journal_date};
@@ -18,6 +19,7 @@ use memry_desktop::import::html_md::{
     html_to_markdown, parse_html, steps_taken,
 };
 use memry_desktop::import::remote::{RemoteAssets, RemoteError, safe_remote_asset_url};
+use memry_desktop::web::extract::markdown::turndown::parse::{CapHit, Caps, parse_import};
 use memry_test_kit::{assert_steps_at_most, on_small_stack, proptest_config};
 use proptest::prelude::*;
 use url::Url;
@@ -98,6 +100,48 @@ fn a_deep_tree_stops_the_parse_whatever_the_markup() {
             "{prefix}"
         );
     }
+}
+
+/// The adoption agency moves whole subtrees: misnested formatting around blocks builds a tree
+/// whose depth only its parent links show (`n` repeats are `3n` deep).
+#[test]
+fn misnested_formatting_around_blocks_is_measured_by_its_real_depth() {
+    on_small_stack(|| {
+        let shallow = "<b><div><i><div></b>".repeat(200);
+        assert_eq!(convert(&shallow), Err(HtmlMdError::TooDeep));
+        let deep = "<b><div><i><div></b>".repeat(10_000);
+        assert_eq!(parse_html(&deep).err(), Some(HtmlMdError::TooDeep));
+    });
+}
+
+/// Formatting reconstruction clones every open formatting element for each run of text: 1,000
+/// closed `<b>` and 2,000 paragraphs would build two million nodes from 30 KB.
+#[test]
+fn reconstructed_formatting_stops_at_the_node_cap() {
+    // `</div>` closes the `<b>` elements, which stay in the list of active formatting elements.
+    let open: String = (0..1_000).map(|i| format!("<b id={i}>")).collect();
+    let html = format!("<div>{open}</div>{}", "<p>x</p>".repeat(2_000));
+    assert_eq!(parse_html(&html).err(), Some(HtmlMdError::TooComplex));
+}
+
+/// One tag with 400,000 distinct attributes builds one node, while html5ever compares each
+/// attribute with every earlier one inside the tokenizer. The deadline stops it.
+#[test]
+fn an_attribute_flood_stops_at_the_deadline() {
+    let mut html = String::from("<p ");
+    for i in 0..400_000_u32 {
+        for place in [17_576, 676, 26, 1] {
+            html.push(char::from(b'a' + (i / place % 26) as u8));
+        }
+        html.push(' ');
+    }
+    html.push('>');
+    let caps = Caps {
+        max_depth: MAX_PARSE_DEPTH,
+        max_nodes: 2 * html.len() + 64,
+        deadline: Duration::from_secs(1),
+    };
+    assert!(matches!(parse_import(&html, caps), Err(CapHit::TooSlow)));
 }
 
 /// Markup the parser keeps shallow converts however many tags it has.
@@ -309,7 +353,8 @@ fn only_https_to_public_hosts_is_fetched() {
         "https://198.18.0.1/a.png",
         "https://198.19.255.1/a.png",
         "https://[64:ff9b::7f00:1]/a.png",
-        "https://[64:ff9b::808:808]/a.png",
+        "https://[64:ff9b::a00:1]/a.png",
+        "https://[64:ff9b:2::808:808]/a.png",
         "https://[64:ff9b:1::a00:1]/a.png",
         "https://[2002:7f00:1::]/a.png",
         "https://[2002:c0a8:101::1]/a.png",
@@ -324,6 +369,7 @@ fn only_https_to_public_hosts_is_fetched() {
         "https://[2606:4700::1]/a",
         "https://198.20.0.1/a.png",
         "https://[2002:808:808::1]/a.png",
+        "https://[64:ff9b::808:808]/a.png",
         "https://[100:0:0:1::1]/a.png",
     ] {
         assert!(safe_remote_asset_url(allowed).is_some(), "{allowed}");
