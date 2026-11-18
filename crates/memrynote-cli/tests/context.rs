@@ -268,11 +268,12 @@ fn a_recovery_in_progress_is_left_to_the_app() {
     assert_eq!(std::fs::read(&db).expect("db"), before);
 }
 
-/// Several commands that create a vault's core at once (a script, a running app). Core's
-/// migration runner does not serialise two processes migrating one new `data.db`, so some of
-/// them can fail with `database is locked` (a departure the PR records; the fix belongs in
-/// `memry_core::storage::migrations::run`). None of them may leave the vault half migrated: the
-/// next command opens it.
+/// Several commands that create a vault's core at once (a script, a running app). Some of them
+/// can fail with `database is locked`: a migration's deferred transaction that read before
+/// another process committed cannot upgrade to a write, and the switch to WAL
+/// (`memry_core::storage::pragmas::configure_writer`) needs the database to itself. Both are
+/// core's opener to fix (a core follow-up the PR names); the PR records the departure. None of
+/// them may leave the vault half migrated: the next command opens it.
 #[test]
 fn concurrent_first_opens_leave_a_usable_vault() {
     let rig = Rig::new();

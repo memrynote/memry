@@ -17,8 +17,7 @@ const POLL: Duration = Duration::from_millis(10);
 /// Holds the lock on `<config>.lock` until the returned file is dropped. The file is never
 /// removed: a process that removes it could leave two holders of two different files.
 ///
-/// `Ok(None)` where the file system has no locks (`ENOLCK` on an NFS or SMB home, or no lock
-/// support at all): the write goes ahead unlocked, as before, with a warning, because refusing
+/// `Ok(None)` where the file system has no locks ([`unsupported`]: an NFS or SMB home): the write goes ahead unlocked, as before, with a warning, because refusing
 /// would stop every config write of the app there. A lock still held after [`WAIT`] is an error.
 pub(super) fn hold(config: &Path) -> Result<Option<File>, ConfigError> {
     let path = PathBuf::from(format!("{}.lock", config.display()));
@@ -56,9 +55,13 @@ pub(super) fn hold(config: &Path) -> Result<Option<File>, ConfigError> {
     }
 }
 
+/// A file system that has no locks: `ENOLCK` (NFS without a lock daemon), `ENOTSUP` and
+/// `EOPNOTSUPP` (macOS SMB and some FUSE mounts; one value on Linux), or no lock support at all.
 fn unsupported(error: &std::io::Error) -> bool {
     #[cfg(unix)]
-    if error.raw_os_error() == Some(libc::ENOLCK) {
+    if let Some(errno) = error.raw_os_error()
+        && [libc::ENOLCK, libc::ENOTSUP, libc::EOPNOTSUPP].contains(&errno)
+    {
         return true;
     }
     error.kind() == std::io::ErrorKind::Unsupported
@@ -139,6 +142,27 @@ mod tests {
                     Ok::<_, ConfigError>(())
                 })
                 .expect("update");
+        }
+    }
+
+    /// The errors of a file system without locks: the write goes ahead unlocked. Any other
+    /// error refuses it.
+    #[cfg(unix)]
+    #[test]
+    fn a_file_system_without_locks_is_told_from_other_errors() {
+        use std::io::{Error, ErrorKind};
+        for errno in [libc::ENOLCK, libc::ENOTSUP, libc::EOPNOTSUPP] {
+            assert!(
+                super::unsupported(&Error::from_raw_os_error(errno)),
+                "errno {errno}"
+            );
+        }
+        assert!(super::unsupported(&Error::from(ErrorKind::Unsupported)));
+        for errno in [libc::EACCES, libc::EIO, libc::EBADF] {
+            assert!(
+                !super::unsupported(&Error::from_raw_os_error(errno)),
+                "errno {errno}"
+            );
         }
     }
 
