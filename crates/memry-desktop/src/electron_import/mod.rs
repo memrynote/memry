@@ -89,6 +89,14 @@ pub enum ImportError {
     Source { db: &'static str, detail: String },
     #[error("{table} row {rowid} has an id that is not UTF-8 text")]
     NonTextId { table: String, rowid: i64 },
+    /// A source value the import cannot carry over as Electron reads it. `what` names the
+    /// column and the fault, never the value.
+    #[error("{table} row {rowid}: {what}")]
+    MalformedRow {
+        table: &'static str,
+        rowid: i64,
+        what: &'static str,
+    },
     #[error("stage check {check} failed: {detail}")]
     CheckFailed { check: u8, detail: String },
     /// A file under `<vault>/.memry/core/` the import must not replace.
