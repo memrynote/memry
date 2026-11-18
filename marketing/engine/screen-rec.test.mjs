@@ -113,22 +113,26 @@ test('a notification banner fails calibration though the whole-frame mean passes
   assert.throws(() => checkCalibration(frame, banner), /worst tile/)
 })
 
-test('the record lock serializes takes and takes over a dead owner', async () => {
-  const lock = path.join(mkdtempSync(path.join(tmpdir(), 'film-lock-')), 'record.lock')
-  const release = await takeRecordLock('first', lock)
-  let second = false
-  const waiting = takeRecordLock('second', lock).then((r) => ((second = true), r))
-  await new Promise((done) => setTimeout(done, 100))
-  assert.equal(second, false)
-  release()
-  ;(await waiting)()
-  assert.equal(second, true)
-  // An owner process that is gone does not hold the lock.
-  mkdirSync(lock)
-  writeFileSync(path.join(lock, 'owner'), '999999 crashed')
-  ;(await takeRecordLock('third', lock))()
-  assert.equal(existsSync(lock), false)
-})
+test(
+  'the record lock serializes takes and takes over a dead owner',
+  { timeout: 30_000 },
+  async () => {
+    const lock = path.join(mkdtempSync(path.join(tmpdir(), 'film-lock-')), 'record.lock')
+    const release = await takeRecordLock('first', lock)
+    let second = false
+    const waiting = takeRecordLock('second', lock).then((r) => ((second = true), r))
+    await new Promise((done) => setTimeout(done, 100))
+    assert.equal(second, false)
+    release()
+    ;(await waiting)()
+    assert.equal(second, true)
+    // An owner process that is gone does not hold the lock.
+    mkdirSync(lock)
+    writeFileSync(path.join(lock, 'owner'), '999999 crashed')
+    ;(await takeRecordLock('third', lock))()
+    assert.equal(existsSync(lock), false)
+  }
+)
 
 const STUBBORN = 'process.stdin.resume(); setInterval(() => {}, 1000)'
 
@@ -192,52 +196,142 @@ test('a recording that never starts fails with its own message, not EPIPE', asyn
 })
 
 const SCREEN_REC = new URL('./screen-rec.mjs', import.meta.url).href
+const PROBE_SIZE = 160 * 90
+
+/**
+ * A node process holding a take whose ffmpeg is a stubborn child. Resolves to the recording
+ * child's pid; `ended` resolves to the signal that ended the process.
+ */
+async function filmingProcess(t, lock) {
+  const script = `
+    import { spawn } from 'node:child_process'
+    import { ScreenRecorder, takeRecordLock } from ${JSON.stringify(SCREEN_REC)}
+    const rec = new ScreenRecorder(null, { lock: ${JSON.stringify(lock)} })
+    rec.release = await takeRecordLock('signal', rec.lock)
+    rec.watch(spawn(process.execPath, ['-e', ${JSON.stringify(STUBBORN)}], { stdio: ['pipe', 'ignore', 'pipe'] }))
+    console.log(rec.ffmpeg.pid)
+    setInterval(() => {}, 1000)`
+  const node = spawn(process.execPath, ['--input-type=module', '-e', script], {
+    stdio: ['ignore', 'pipe', 'inherit']
+  })
+  const ended = new Promise((done) => node.once('exit', (code, sig) => done(sig)))
+  const pid = Number(await new Promise((done) => node.stdout.once('data', done)))
+  // A failed run must not leave processes behind.
+  t.after(() => {
+    for (const p of [node.pid, pid]) {
+      try {
+        process.kill(p, 'SIGKILL')
+      } catch {
+        // Already gone.
+      }
+    }
+  })
+  return { node, pid, ended }
+}
+
+async function assertGone(pid) {
+  for (;;) {
+    try {
+      process.kill(pid, 0)
+    } catch {
+      return
+    }
+    await new Promise((done) => setTimeout(done, 20))
+  }
+}
 
 for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
-  test(`${signal} to the filming process kills the recording child and frees the lock`, async () => {
-    const lock = path.join(mkdtempSync(path.join(tmpdir(), 'film-signal-')), 'record.lock')
-    const script = `
-      import { spawn } from 'node:child_process'
-      import { ScreenRecorder, takeRecordLock } from ${JSON.stringify(SCREEN_REC)}
-      const rec = new ScreenRecorder(null, { lock: ${JSON.stringify(lock)} })
-      rec.release = await takeRecordLock('signal', rec.lock)
-      rec.watch(spawn(process.execPath, ['-e', ${JSON.stringify(STUBBORN)}], { stdio: ['pipe', 'ignore', 'pipe'] }))
-      console.log(rec.ffmpeg.pid)
-      setInterval(() => {}, 1000)`
-    const node = spawn(process.execPath, ['--input-type=module', '-e', script], {
-      stdio: ['ignore', 'pipe', 'inherit']
-    })
-    const pid = Number(await new Promise((done) => node.stdout.once('data', done)))
-    const ended = new Promise((done) => node.once('exit', (code, sig) => done(sig)))
-    node.kill(signal)
-    assert.equal(await ended, signal)
-    assert.equal(existsSync(lock), false)
-    let alive = true
-    for (let i = 0; i < 100 && alive; i += 1) {
+  test(
+    `${signal} to the filming process kills the recording child and frees the lock`,
+    { timeout: 30_000 },
+    async (t) => {
+      const lock = path.join(mkdtempSync(path.join(tmpdir(), 'film-signal-')), 'record.lock')
+      const { node, pid, ended } = await filmingProcess(t, lock)
+      node.kill(signal)
+      assert.equal(await ended, signal)
+      assert.equal(existsSync(lock), false)
+      await assertGone(pid)
+    }
+  )
+}
+
+test(
+  'the same signal twice in a row still kills the recording child',
+  { timeout: 90_000 },
+  async (t) => {
+    // The race needs the second signal inside the handling of the first, so try many times: with
+    // `once` this test failed in 1 of 3 runs, with `on` never.
+    for (let run = 0; run < 30; run += 1) {
+      const lock = path.join(mkdtempSync(path.join(tmpdir(), 'film-signal-')), 'record.lock')
+      const { node, pid, ended } = await filmingProcess(t, lock)
+      node.kill('SIGTERM')
+      node.kill('SIGTERM')
+      assert.equal(await ended, 'SIGTERM')
+      let alive = true
       try {
         process.kill(pid, 0)
-        await new Promise((done) => setTimeout(done, 20))
+        await new Promise((done) => setTimeout(done, 200))
+        process.kill(pid, 0)
       } catch {
         alive = false
       }
+      assert.equal(alive, false, `run ${run}: the recording child outlived the filming process`)
+      assert.equal(existsSync(lock), false, `run ${run}: the lock was left behind`)
     }
-    assert.equal(alive, false, 'the recording child outlived the filming process')
-  })
+  }
+)
+
+test('stop reports the exit code of an ffmpeg that died mid-take, not EPIPE', async () => {
+  const rec = new ScreenRecorder(null)
+  rec.driverProbe = async () => new Uint8Array(PROBE_SIZE)
+  rec.watch(
+    spawn(process.execPath, ['-e', 'process.exit(3)'], { stdio: ['pipe', 'ignore', 'pipe'] })
+  )
+  // ffmpeg is dead before this process has handled its exit, so `q` hits a closed pipe.
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 500)
+  await assert.rejects(rec.stop(), /ffmpeg ended the recording with code 3/)
+})
+
+/** A lock dir under a missing parent dir; a wait a failed test leaves behind is ended. */
+function tmpLock(t) {
+  const lock = path.join(mkdtempSync(path.join(tmpdir(), 'film-lock-')), 'missing', 'record.lock')
+  t.after(() => rmSync(lock, { recursive: true, force: true }))
+  return lock
 }
 
-test('a lock with no owner file is taken once it is older than a crash; a parent dir is made', async () => {
-  const lock = path.join(mkdtempSync(path.join(tmpdir(), 'film-lock-')), 'missing', 'record.lock')
-  ;(await takeRecordLock('first', lock))()
-  mkdirSync(lock)
+/** Makes `lock` look created a minute ago, longer than any owner write takes. */
+function ageLock(lock) {
   const old = new Date(Date.now() - 60_000)
   utimesSync(lock, old, old)
+}
+
+test(
+  'a lock with no owner file is taken once it is older than a crash; a parent dir is made',
+  { timeout: 30_000 },
+  async (t) => {
+    const lock = tmpLock(t)
+    ;(await takeRecordLock('first', lock))()
+    mkdirSync(lock)
+    ageLock(lock)
+    ;(await takeRecordLock('second', lock))()
+    assert.equal(existsSync(lock), false)
+  }
+)
+
+test('an empty owner file is no owner', { timeout: 30_000 }, async (t) => {
+  // A crash inside the owner write. Read as pid 0 it would match this process's own group and
+  // hold the lock forever.
+  const lock = tmpLock(t)
+  mkdirSync(lock, { recursive: true })
+  writeFileSync(path.join(lock, 'owner'), '')
+  ageLock(lock)
   ;(await takeRecordLock('second', lock))()
   assert.equal(existsSync(lock), false)
 })
 
-test('an owner the check may not signal (EPERM) holds the lock', async () => {
-  const lock = path.join(mkdtempSync(path.join(tmpdir(), 'film-lock-')), 'record.lock')
-  mkdirSync(lock)
+test('an owner the check may not signal (EPERM) holds the lock', { timeout: 30_000 }, async (t) => {
+  const lock = tmpLock(t)
+  mkdirSync(lock, { recursive: true })
   // launchd (pid 1) runs as root: signal 0 to it fails with EPERM.
   writeFileSync(path.join(lock, 'owner'), '1 root-take')
   let taken = false

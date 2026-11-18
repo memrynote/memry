@@ -171,10 +171,15 @@ export async function takeRecordLock(owner, lock = RECORD_LOCK) {
 
 /**
  * The take holding `lock`, or undefined when the lock is stale: its owner process is gone, or it
- * has no owner file and is older than a crash between creating it and naming the owner.
+ * names no owner and is older than a crash between creating it and naming the owner.
  */
 function lockHolder(lock, ownerFile) {
-  if (!existsSync(ownerFile)) {
+  const [pid, who = 'another'] = existsSync(ownerFile)
+    ? readFileSync(ownerFile, 'utf8').split(' ')
+    : []
+  // No pid, or an empty owner file (a crash inside its write). Not 0 either: signal 0 to pid 0
+  // reaches this process's own group and always succeeds.
+  if (!/^[1-9]\d*$/.test(pid ?? '')) {
     let age = 0
     try {
       age = Date.now() - statSync(lock).mtimeMs
@@ -184,7 +189,6 @@ function lockHolder(lock, ownerFile) {
     }
     return age > OWNERLESS_LOCK_MS ? undefined : 'another'
   }
-  const [pid, who = 'another'] = readFileSync(ownerFile, 'utf8').split(' ')
   try {
     process.kill(Number(pid), 0)
     return who
@@ -364,7 +368,9 @@ export class ScreenRecorder {
       for (const signal of STOP_SIGNALS) process.off(signal, onSignal)
     }
     process.once('exit', kill)
-    for (const signal of STOP_SIGNALS) process.once(signal, onSignal)
+    // `on`, not `once`: with no listener left, a second signal before this one is handled would
+    // take the default action and end this process with ffmpeg still filming. unwatch removes them.
+    for (const signal of STOP_SIGNALS) process.on(signal, onSignal)
     this.exited = new Promise((done) =>
       child.once('exit', (code) => {
         unwatch()
@@ -416,7 +422,7 @@ export class ScreenRecorder {
     try {
       const child = this.ffmpeg
       if (child?.exitCode === null && child.signalCode === null) {
-        if (!child.killed && child.stdin.writable) child.stdin.end('q')
+        if (child.stdin.writable) child.stdin.end('q')
         const timer = setTimeout(() => child.kill('SIGKILL'), ABORT_GRACE_MS)
         await this.exited
         clearTimeout(timer)
