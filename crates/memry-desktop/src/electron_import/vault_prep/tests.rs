@@ -398,13 +398,19 @@ fn a_data_db_that_cannot_be_copied_is_deferred_not_unreadable() {
     );
 }
 
-/// The written comparison alone: the sandbox folder does not exist, so nothing resolves.
+/// The written comparison alone: the profile folder (as the config names it) does not
+/// resolve, so only the string comparison can recognise the sandbox in it.
 #[test]
-fn the_sandbox_is_recognised_by_its_written_path_when_it_does_not_exist() {
-    let s = Setup::new();
+fn the_sandbox_is_recognised_by_its_written_path_when_nothing_resolves() {
+    let mut s = Setup::new();
+    s.profile.dir = s.root.path().join("unmounted").join("memrynote");
     let sandbox = s.profile.dir.join("Sandbox").to_string_lossy().into_owned();
     let plan = s.plan(json!({"vaults": [{"path": sandbox}]}));
-    assert!(matches!(plan.vaults[0].disposition, Disposition::Sandbox));
+    assert!(
+        matches!(plan.vaults[0].disposition, Disposition::Sandbox),
+        "{:?}",
+        plan.vaults[0].disposition
+    );
 }
 
 #[test]
