@@ -26,12 +26,15 @@ mod electron_db;
 mod notes;
 #[path = "electron_vault_import/queue.rs"]
 mod queue;
+#[path = "electron_vault_import/queue_deletes.rs"]
+mod queue_deletes;
 #[path = "electron_vault_import/records.rs"]
 mod records;
 #[path = "electron_vault_import/tag_template_records.rs"]
 mod tag_template_records;
 
 const NOW_MS: i64 = 1_800_000_000_000;
+const ELECTRON_DEVICE: &str = "device-electron";
 
 struct Vault {
     _dir: tempfile::TempDir,
@@ -39,6 +42,8 @@ struct Vault {
     pair: electron_db::ElectronPair,
     profile: ElectronProfile,
     lock: ProfileLock,
+    /// `memry-config.json` `sync.deviceId`.
+    device_id: Option<&'static str>,
 }
 
 /// An Electron profile whose localStorage store has a free LOCK file.
@@ -75,6 +80,7 @@ impl Vault {
             pair,
             profile,
             lock,
+            device_id: Some(ELECTRON_DEVICE),
         }
     }
 
@@ -88,6 +94,7 @@ impl Vault {
             docs: Vec::new(),
             extra_owed_docs: Vec::new(),
             vault_key: None,
+            electron_device_id: self.device_id.map(str::to_owned),
             now_ms: NOW_MS,
             progress: None,
         }

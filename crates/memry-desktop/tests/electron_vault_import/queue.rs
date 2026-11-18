@@ -7,11 +7,11 @@ use rusqlite::types::Value;
 
 use super::{Vault, assert_refused, electron_db, import};
 
-fn text(value: &str) -> Value {
+pub(super) fn text(value: &str) -> Value {
     Value::Text(value.into())
 }
 
-fn seed_folder(conn: &Connection, path: &str) {
+pub(super) fn seed_folder(conn: &Connection, path: &str) {
     electron_db::seed(
         conn,
         "folder_configs",
@@ -24,7 +24,13 @@ fn seed_folder(conn: &Connection, path: &str) {
     );
 }
 
-fn seed_note(vault: &Vault, id: &str, path: &str, journal_date: Option<&str>, local_only: bool) {
+pub(super) fn seed_note(
+    vault: &Vault,
+    id: &str,
+    path: &str,
+    journal_date: Option<&str>,
+    local_only: bool,
+) {
     electron_db::seed(
         &vault.data_conn(),
         "note_metadata",
@@ -46,11 +52,18 @@ fn seed_note(vault: &Vault, id: &str, path: &str, journal_date: Option<&str>, lo
 }
 
 /// One `sync_queue` row, `created_at` in epoch seconds.
-fn queue(conn: &Connection, item_type: &str, id: &str, op: &str, payload: &str, at: i64) {
+pub(super) fn queue(
+    conn: &Connection,
+    item_type: &str,
+    id: &str,
+    op: &str,
+    payload: &str,
+    at: i64,
+) {
     queue_with(conn, item_type, id, op, payload, at, 0);
 }
 
-fn queue_with(
+pub(super) fn queue_with(
     conn: &Connection,
     item_type: &str,
     id: &str,
@@ -73,7 +86,10 @@ fn queue_with(
     );
 }
 
-fn rows<T: rusqlite::types::FromSql>(conn: &Connection, sql: &str) -> Vec<(String, String, T)> {
+pub(super) fn rows<T: rusqlite::types::FromSql>(
+    conn: &Connection,
+    sql: &str,
+) -> Vec<(String, String, T)> {
     let mut stmt = conn.prepare(sql).unwrap();
     stmt.query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))
         .unwrap()
@@ -105,8 +121,10 @@ fn queued_pushes_become_one_outbox_row_each_and_deletes_keep_their_tombstone() {
     queue(&data, "folder_config", "Created", "update", "{}", 103);
     queue(&data, "folder_config", "Gone", "update", "{}", 104);
     queue(&data, "folder_config", "Gone", "delete", GONE, 105);
+    // A folder config is re-creatable (#2423): its live row supersedes the delete.
     queue(&data, "folder_config", "Revived", "delete", GONE, 106);
-    queue(&data, "folder_config", "Missing", "update", "{}", 107);
+    // Dead-lettered too: the notice counts it although the item is dropped.
+    queue_with(&data, "folder_config", "Missing", "update", "{}", 107, 5);
     // Queued as a note, a journal day now.
     queue(&data, "note", "j2026-01-05", "create", "{}", 108);
     queue(&data, "note", "Local-note-1", "update", "{}", 109);
@@ -142,7 +160,7 @@ fn queued_pushes_become_one_outbox_row_each_and_deletes_keep_their_tombstone() {
     assert_eq!(report.dropped["staleQueueDeletes"], 1);
     assert_eq!(report.dropped["queueRowsWithoutRecord"], 1);
     assert_eq!(report.dropped["localOnlyQueueRows"], 1);
-    assert_eq!(report.notices["deadLetterQueueRows"], 1);
+    assert_eq!(report.notices["deadLetterQueueRows"], 2);
     assert_eq!(
         report.tables["data.db/sync_tombstone_clocks"].target_count,
         2
@@ -222,21 +240,6 @@ fn a_note_body_queue_row_is_refused_with_a_message_the_user_can_act_on() {
     });
 }
 
-#[test]
-fn a_delete_payload_that_is_not_an_object_fails_naming_the_row() {
-    let vault = Vault::new();
-    queue(&vault.data_conn(), "task", "task-1", "delete", "[1]", 100);
-    assert_refused(&vault, |e| {
-        matches!(
-            e,
-            ImportError::MalformedRow {
-                table: "sync_queue",
-                ..
-            }
-        )
-    });
-}
-
 /// Red without the size cap in `queue::delete_clock`: the padded body parses, and the import
 /// stages.
 #[test]
@@ -258,10 +261,11 @@ fn a_delete_payload_over_the_cap_fails_before_it_is_parsed() {
     });
 }
 
-/// A delete body nested far past serde_json's recursion limit (128) fails the import naming the
-/// row, on a 2 MiB thread. The limit is the dependency's, so it cannot be shown red here.
+/// A delete body nested far past serde_json's recursion limit (128) does not parse, on a 2 MiB
+/// thread, so it is rebuilt around a first clock as Electron rebuilds an unreadable one. The
+/// limit is the dependency's, so it cannot be shown red here.
 #[test]
-fn a_deeply_nested_delete_payload_fails_on_a_small_stack() {
+fn a_deeply_nested_delete_payload_is_rebuilt_on_a_small_stack() {
     std::thread::Builder::new()
         .stack_size(2 * 1024 * 1024)
         .spawn(|| {
@@ -275,15 +279,16 @@ fn a_deeply_nested_delete_payload_fails_on_a_small_stack() {
                 &payload,
                 100,
             );
-            assert_refused(&vault, |e| {
-                matches!(
-                    e,
-                    ImportError::MalformedRow {
-                        table: "sync_queue",
-                        ..
-                    }
+            import(&vault);
+            let core = Connection::open(vault.core().join(DATA_FILE)).unwrap();
+            let staged: String = core
+                .query_row(
+                    "SELECT payload FROM sync_items WHERE item_id = 'task-1'",
+                    [],
+                    |r| r.get(0),
                 )
-            });
+                .unwrap();
+            assert_eq!(staged, r#"{"id":"task-1","clock":{"device-electron":1}}"#);
         })
         .unwrap()
         .join()

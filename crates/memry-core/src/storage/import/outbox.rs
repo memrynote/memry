@@ -6,6 +6,7 @@ use rusqlite::{Connection, OptionalExtension, params};
 
 use super::{ImportWriter, failed};
 use crate::api::errors::StorageError;
+use crate::storage::repositories::projectors;
 use crate::storage::repositories::sync_items::PAYLOAD_STATE_FULL;
 use crate::sync::clock::VectorClock;
 use crate::sync::outbox::{self, Change, RecordOp};
@@ -25,18 +26,19 @@ pub struct ImportQueued {
     pub item_type: String,
     pub item_id: String,
     pub op: RecordOp,
-    /// For a delete: the record is gone locally, so its tombstone row is written from the
-    /// payload Electron froze when the delete was queued.
+    /// For a delete: its tombstone row, written from the payload Electron froze when the delete
+    /// was queued. It replaces a staged row the delete supersedes (a soft-deleted tag category).
     pub tombstone: Option<ImportDeleted>,
     pub enqueued_at: i64,
 }
 
 /// The `sync_items` tombstone of a queued delete. `payload` is the delete body Electron pushes,
-/// stored verbatim; `clock` is the clock it carries.
+/// stored verbatim; `clock` is the clock it carries. The core push retires a delete without a
+/// clock, so one is required.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImportDeleted {
     pub payload: String,
-    pub clock: Option<VectorClock>,
+    pub clock: VectorClock,
     pub deleted_at: i64,
 }
 
@@ -122,25 +124,24 @@ impl ImportWriter {
     }
 }
 
-/// The tombstone a core delete pushes from: the frozen delete body, its clock, `deleted_at`, and
-/// no projection, as the record is gone.
+/// The tombstone a core delete pushes from: the frozen delete body, its clock and `deleted_at`.
+/// A staged row of the id becomes it, and its projection is marked deleted.
 fn put_deleted(
     tx: &Connection,
     item: &ImportQueued,
     deleted: &ImportDeleted,
 ) -> Result<(), StorageError> {
-    let clock = deleted
-        .clock
-        .as_ref()
-        .map(serde_json::to_string)
-        .transpose()
-        .map_err(|error| StorageError::Failed {
-            what: format!("tombstone clock will not serialise: {error}"),
-        })?;
+    let clock = serde_json::to_string(&deleted.clock).map_err(|error| StorageError::Failed {
+        what: format!("tombstone clock will not serialise: {error}"),
+    })?;
     tx.execute(
         "INSERT INTO sync_items (
              item_type, item_id, payload, payload_state, clock, updated_at, deleted_at
-         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6)",
+         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6)
+         ON CONFLICT (item_type, item_id) DO UPDATE SET
+             payload = excluded.payload, payload_state = excluded.payload_state,
+             clock = excluded.clock, field_clocks = NULL,
+             updated_at = excluded.updated_at, deleted_at = excluded.deleted_at",
         params![
             item.item_type,
             item.item_id,
@@ -151,5 +152,5 @@ fn put_deleted(
         ],
     )
     .map_err(failed)?;
-    Ok(())
+    projectors::delete(tx, &item.item_type, &item.item_id, deleted.deleted_at)
 }

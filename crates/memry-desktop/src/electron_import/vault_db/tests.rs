@@ -39,6 +39,7 @@ fn input<'a>(
         docs: Vec::new(),
         extra_owed_docs: Vec::new(),
         vault_key: None,
+        electron_device_id: Some("device-electron".into()),
         now_ms: 1_800_000_000_000,
         progress: None,
     }

@@ -1,17 +1,18 @@
 //! The stage checks a staged pair passes before [`super::stage_vault_import`] returns `Staged`.
 //! Numbering follows Step 37's report: 3, 7 and 8 are Step 37's. Check 1 covers every table
 //! the report lists; checks 2 (id sets) and 5 (byte-equal ids, clocks and cursor) cover the
-//! record tables imported so far ([`RECORD_TABLES`]) and the vault id; check 4 holds the staged
+//! record tables imported so far ([`RECORD_TABLES`]) and the vault id, less the source rows a
+//! queued delete made tombstones; check 4 holds the staged
 //! outbox to the source's queued record pushes. Details name tables and counts, never ids or
 //! values.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 
-use memry_core::storage::import::ImportWriter;
+use memry_core::storage::import::{ImportQueued, ImportWriter};
 
 use super::source::{Sources, source_error};
 use super::tables::SourceDb;
-use super::tables::queue::{self, Disposition};
+use super::tables::queue::{self, Disposition, QueueItem};
 use super::tables::records::parse_clock;
 use super::{ImportError, VaultStageReport, read_source_id};
 
@@ -32,13 +33,28 @@ pub(super) fn run(
     report: &mut VaultStageReport,
     sources: &Sources,
     writer: &ImportWriter,
+    device_id: Option<&str>,
 ) -> Result<(), ImportError> {
     row_counts(report)?;
     report.checks_passed.push(1);
     let source = sources.conn(SourceDb::Data);
+    let plan = queue::plan(source, writer, device_id)?;
+    let tombstoned: HashSet<(&str, &str)> = plan
+        .iter()
+        .filter_map(|(_, disposition)| match disposition {
+            Disposition::Enqueue(ImportQueued {
+                item_type,
+                item_id,
+                tombstone: Some(_),
+                ..
+            }) => Some((item_type.as_str(), item_id.as_str())),
+            _ => None,
+        })
+        .collect();
     let mut clock_mismatches = Vec::new();
     for (table, id_column, item_type, rows) in RECORD_TABLES {
-        let expected = source_clocks(source, table, id_column, rows)?;
+        let mut expected = source_clocks(source, table, id_column, rows)?;
+        expected.retain(|id, _| !tombstoned.contains(&(*item_type, id.as_str())));
         let staged: BTreeMap<String, Option<String>> =
             writer.record_clocks(item_type)?.into_iter().collect();
         if !expected.keys().eq(staged.keys()) {
@@ -68,7 +84,7 @@ pub(super) fn run(
         }
     }
     report.checks_passed.push(2);
-    outbox(source, writer)?;
+    outbox(plan, writer)?;
     report.checks_passed.push(4);
     if source_vault_id(source)? != writer.vault_id()? {
         clock_mismatches.push("vault_metadata: the core vault id is not the source uuid".into());
@@ -93,9 +109,9 @@ pub(super) fn run(
 
 /// Check 4: the staged outbox holds exactly one row per queued push the plan keeps, with its
 /// type and op, and nothing else. A local-only note's push is withheld by the outbox itself.
-fn outbox(source: &rusqlite::Connection, writer: &ImportWriter) -> Result<(), ImportError> {
+fn outbox(plan: Vec<(QueueItem, Disposition)>, writer: &ImportWriter) -> Result<(), ImportError> {
     let mut expected = Vec::new();
-    for (_, disposition) in queue::plan(source, writer)? {
+    for (_, disposition) in plan {
         let Disposition::Enqueue(item) = disposition else {
             continue;
         };

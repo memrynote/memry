@@ -83,6 +83,14 @@ pub enum ImportError {
          Keep using the previous MemryNote app for this vault, and update MemryNote to try again."
     )]
     NotReady { area: &'static str, detail: String },
+    /// A queued delete has no clock, and `memry-config.json` names no device to stamp one with
+    /// as Electron's push does. Staging it would let the core push retire it unsent.
+    #[error(
+        "A delete in this vault has not synced yet, and MemryNote cannot send it without the \
+         previous app's sync device. Nothing was changed. Open the previous MemryNote app, let \
+         it finish syncing, then quit it and try again."
+    )]
+    DeleteWithoutDevice,
     #[error("{path} is {bytes} bytes, over the {max} byte limit")]
     TooLarge { path: PathBuf, bytes: u64, max: u64 },
     /// The source changed while it was copied: Electron was writing. Retry once it has quit.

@@ -12,10 +12,11 @@ use std::collections::{BTreeMap, HashSet};
 use memry_core::storage::import::{
     ImportDeleted, ImportQueued, ImportTombstoneClock, ImportWriter,
 };
-use memry_core::sync::clock::VectorClock;
+use memry_core::sync::clock::{OFFLINE_CLOCK_DEVICE_ID, VectorClock};
+use memry_core::sync::hardening::purged::RECREATABLE_AFTER_PURGE_ITEM_TYPES;
 use memry_core::sync::outbox::RecordOp;
 use rusqlite::Connection;
-use serde_json::Value;
+use serde_json::{Map, Value, json};
 
 use super::records::{malformed, parse_clock, text};
 use super::{SourceDb, TableStats};
@@ -120,24 +121,29 @@ enum Folded {
 /// Every queued record push of the source with what the import does with it, in Electron's
 /// push order (`priority DESC, created_at ASC`). Stage check 4 runs the same plan against the
 /// staged outbox.
+/// `device_id` is Electron's, which stamps a delete without a clock.
 pub fn plan(
     source: &Connection,
     writer: &ImportWriter,
+    device_id: Option<&str>,
 ) -> Result<Vec<(QueueItem, Disposition)>, ImportError> {
     fold(source)?
         .into_iter()
         .map(|item| {
-            let disposition = dispose(writer, &item)?;
+            let disposition = dispose(writer, &item, device_id)?;
             Ok((item, disposition))
         })
         .collect()
 }
 
 pub fn sync_queue(ctx: &mut TableCtx<'_>) -> Result<TableStats, ImportError> {
-    let plan = plan(ctx.source, ctx.writer)?;
+    let plan = plan(ctx.source, ctx.writer, ctx.electron_device_id)?;
     let mut stats = TableStats::default();
     let mut dropped: BTreeMap<&'static str, u64> = BTreeMap::new();
     let mut queued = Vec::new();
+    // Electron's `dequeue` skips these rows; the core outbox has no attempt cap, so a kept item
+    // is pushed again. Counted over every item, dropped or kept.
+    let dead_letters: u64 = plan.iter().map(|(item, _)| item.dead_letters).sum();
     for (item, disposition) in &plan {
         match disposition {
             Disposition::Enqueue(change) => queued.push((item, change.clone())),
@@ -145,11 +151,9 @@ pub fn sync_queue(ctx: &mut TableCtx<'_>) -> Result<TableStats, ImportError> {
         }
     }
     let changes: Vec<ImportQueued> = queued.iter().map(|(_, change)| change.clone()).collect();
-    let mut dead_letters = 0;
     for ((item, _), was_queued) in queued.iter().zip(ctx.writer.put_outbox(&changes)?) {
         if was_queued {
             stats.written += item.rows;
-            dead_letters += item.dead_letters;
         } else {
             *dropped.entry("localOnlyQueueRows").or_default() += item.rows;
         }
@@ -286,7 +290,11 @@ struct QueueRow {
     payload: Option<String>,
 }
 
-fn dispose(writer: &ImportWriter, item: &QueueItem) -> Result<Disposition, ImportError> {
+fn dispose(
+    writer: &ImportWriter,
+    item: &QueueItem,
+    device_id: Option<&str>,
+) -> Result<Disposition, ImportError> {
     let types: Vec<&str> = if NOTE_TYPES.contains(&item.item_type.as_str()) {
         NOTE_TYPES.to_vec()
     } else {
@@ -303,18 +311,27 @@ fn dispose(writer: &ImportWriter, item: &QueueItem) -> Result<Disposition, Impor
         })
     };
     Ok(match (&item.op, live) {
-        // #2423 (`pending-deletes.ts` `isSupersededByLiveRow`): the id is live here again, and
-        // the row is what the user has.
-        (Folded::Delete { .. }, Some(_)) => Disposition::Drop("staleQueueDeletes"),
-        (Folded::Delete { rowid, payload, at }, None) => queued(
-            item.item_type.clone(),
-            RecordOp::Delete,
-            Some(ImportDeleted {
-                payload: payload.clone(),
-                clock: delete_clock(payload, *rowid)?,
-                deleted_at: *at,
-            }),
-        ),
+        // #2423 (`pending-deletes.ts` `isSupersededByLiveRow`): the id of a re-creatable type is
+        // live here again, and the row is what the user has. Another type keeps a soft-deleted
+        // row under its id (`deleteTagCategory`), which says nothing about a re-create.
+        (Folded::Delete { .. }, Some(item_type))
+            if RECREATABLE_AFTER_PURGE_ITEM_TYPES.contains(&item_type.as_str()) =>
+        {
+            Disposition::Drop("staleQueueDeletes")
+        }
+        // A staged row of another type becomes the tombstone.
+        (Folded::Delete { rowid, payload, at }, _) => {
+            let (payload, clock) = delete_body(&item.item_id, payload, *rowid, device_id)?;
+            queued(
+                item.item_type.clone(),
+                RecordOp::Delete,
+                Some(ImportDeleted {
+                    payload,
+                    clock,
+                    deleted_at: *at,
+                }),
+            )
+        }
         // The push coordinator would send the frozen payload of a row gone locally; the core
         // outbox retires such a row unsent ("no live sync_items row at send time").
         (_, None) => Disposition::Drop("queueRowsWithoutRecord"),
@@ -323,23 +340,36 @@ fn dispose(writer: &ImportWriter, item: &QueueItem) -> Result<Disposition, Impor
     })
 }
 
-/// The `clock` of a frozen delete body. The body must be a JSON object, as Electron's
-/// `ensureRequiredClock` reads it; an absent or `null` clock is none.
-fn delete_clock(payload: &str, rowid: i64) -> Result<Option<VectorClock>, ImportError> {
+/// The body and clock a frozen delete is pushed with, as Electron's `ensureRequiredClock`
+/// (`sync/engine/push-coordinator.ts`) sends it: a body that is no JSON object is rebuilt as
+/// `{id, clock}`, and one without a clock the core push could send is stamped `{deviceId: 1}`.
+fn delete_body(
+    item_id: &str,
+    payload: &str,
+    rowid: i64,
+    device_id: Option<&str>,
+) -> Result<(String, VectorClock), ImportError> {
     if payload.len() > MAX_DELETE_PAYLOAD_BYTES {
         return Err(malformed(QUEUE, rowid, "a delete payload is over 8 MiB"));
     }
-    let Ok(Value::Object(mut body)) = serde_json::from_str::<Value>(payload) else {
-        return Err(malformed(
-            QUEUE,
-            rowid,
-            "a delete payload is not a JSON object",
-        ));
+    let mut body = match serde_json::from_str::<Value>(payload) {
+        Ok(Value::Object(body)) => body,
+        _ => Map::from_iter([("id".to_owned(), Value::from(item_id))]),
     };
-    match body.remove("clock") {
-        None | Some(Value::Null) => Ok(None),
-        Some(clock) => vector_clock(clock, QUEUE, rowid).map(Some),
+    if let Some(clock @ Value::Object(_)) = body.get("clock") {
+        let clock = vector_clock(clock.clone(), QUEUE, rowid)?;
+        // The core push drops `_offline: 0` and sends no clock for an empty one (§6.6).
+        if clock
+            .iter()
+            .any(|(device, ticks)| device != OFFLINE_CLOCK_DEVICE_ID || *ticks > 0)
+        {
+            return Ok((payload.to_owned(), clock));
+        }
     }
+    let device_id = device_id.ok_or(ImportError::DeleteWithoutDevice)?;
+    let clock = VectorClock::from([(device_id.to_owned(), 1)]);
+    body.insert("clock".to_owned(), json!(clock));
+    Ok((Value::Object(body).to_string(), clock))
 }
 
 fn vector_clock(clock: Value, table: &'static str, rowid: i64) -> Result<VectorClock, ImportError> {

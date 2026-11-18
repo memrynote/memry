@@ -91,6 +91,7 @@ pub(super) fn run(
 
 /// [`ImportError::NotReady`] for a pending stage, in the user's words.
 fn not_ready(stage: &str, detail: String) -> ImportError {
+    tracing::warn!(%detail, "the vault import is not built for this data yet");
     ImportError::NotReady {
         area: pending_area(stage).unwrap_or("data"),
         detail,

@@ -58,7 +58,8 @@ impl ImportWriter {
             .map_err(failed)
     }
 
-    /// The staged payload of one record, for the `sync_unknown_fields` importer.
+    /// The staged payload of one live record, for the `sync_unknown_fields` importer. A queued
+    /// delete's tombstone is pushed as frozen, so it takes no kept fields.
     pub fn record_payload(
         &self,
         item_type: &str,
@@ -66,7 +67,8 @@ impl ImportWriter {
     ) -> Result<Option<String>, StorageError> {
         self.data
             .query_row(
-                "SELECT payload FROM sync_items WHERE item_type = ?1 AND item_id = ?2",
+                "SELECT payload FROM sync_items
+                  WHERE item_type = ?1 AND item_id = ?2 AND deleted_at IS NULL",
                 [item_type, item_id],
                 |row| row.get(0),
             )

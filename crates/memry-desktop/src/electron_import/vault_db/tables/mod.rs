@@ -243,7 +243,10 @@ pub const TABLE_MAP: &[TableMapping] = &[
 pub fn pending_area(stage: &str) -> Option<&'static str> {
     Some(match stage {
         "36b" => "settings, vault locks, AI chats or canvas folders",
-        "36c2" => "deletes and edits made while sync was off",
+        // `sync_pending_deletes` holds every local delete until the manifest check sees the
+        // server no longer lists it, so a synced vault nearly always has rows; `sync_intents`
+        // holds local changes still owed to the server.
+        "36c2" => "deletes the sync server has not confirmed yet, or changes waiting to sync",
         "36c3" => "sync progress",
         "36c4" => "note edit history",
         "36d1" => "inbox items, calendars or bookmarks",
