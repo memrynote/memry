@@ -151,7 +151,7 @@ struct NoteTitleEditor: View {
             draft = draft.replacingOccurrences(of: "\n", with: "")
             return commit()
         }
-        host.keys.reset()
+        host.keys.handOff()
         returned = burst
         if let text = commits.take(burst.line, explicit: true), text != title { rename(text) }
         returnToBody(takeHeld)
@@ -159,18 +159,21 @@ struct NoteTitleEditor: View {
 
     /// The body took the caret: the keys typed since the Return go to it.
     /// It refused the caret: they stay in the title (`TitleBurst.Take`).
-    private func takeHeld(_ moved: Bool) -> String? {
+    /// The keys the line put back that arrived since go to neither, and the
+    /// ones still to come are the body's to drop (`LateKeys`).
+    private func takeHeld(_ moved: Bool) -> TitleBurst.Taken {
         guard moved else {
             keepHeld()
-            return nil
+            return (nil, nil)
         }
-        guard let burst = returned else { return nil }
+        guard let burst = returned else { return (nil, nil) }
         returned = nil
         host.body = host.window.flatMap(Self.caretHolder)
         host.handedOff = draft
-        let held = burst.held(in: draft)
+        let (arrived, late) = host.keys.takeLate()
+        let held = burst.held(in: draft).map { String($0.dropFirst(arrived)) }
         draft = burst.line
-        return held?.isEmpty == false ? held : nil
+        return (held?.isEmpty == false ? held : nil, late)
     }
 
     /// The caret left the title before the body took it, or an edit reached
@@ -179,12 +182,14 @@ struct NoteTitleEditor: View {
         guard let burst = returned else { return }
         returned = nil
         commits.begin(burst.line)
-        draft = burst.kept(in: draft) ?? draft.replacingOccurrences(of: "\n", with: "")
+        draft = burst.kept(in: draft, dropping: host.keys.takeLate().arrived)
+            ?? draft.replacingOccurrences(of: "\n", with: "")
     }
 
     private func typed(_ value: String) {
         if let field = titleTextView {
             host.title = field
+            host.keys.locale = field.textInputMode?.primaryLanguage.map(Locale.init) ?? .current
             // An input method confirming its composition on Return first
             // deletes it, as Backspace does: marked text gone with no Return
             // down ends the composition.
@@ -278,7 +283,9 @@ struct NoteTitleEditor: View {
                 // heard here in press order, decide the line rather than the
                 // text that arrived (`PressedKeys`): both hand-offs put back a
                 // key pressed before the Return that the text skipped or
-                // never got.
+                // never got, unless an edit the presses cannot explain stopped
+                // the matching, in which case the line is the text that
+                // arrived.
                 .onKeyPress(phases: [.down, .repeat]) { press in
                     if press.key == .return {
                         if press.phase == .down {

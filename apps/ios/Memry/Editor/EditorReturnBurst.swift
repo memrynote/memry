@@ -44,10 +44,12 @@ struct ReturnBurst {
 /// day's first line) moves the caret to, and the way to take the keys the
 /// field held for it meanwhile (`LineReturn`).
 struct TitleBurst {
-    /// Takes the keys the field held. `moved` is false when the block
-    /// refused the caret: the field keeps its keys, stops holding them so
-    /// its Return works again, and answers `nil`.
-    typealias Take = @MainActor (_ moved: Bool) -> String?
+    /// Takes the keys the field held, and the keys its line put back that
+    /// the keyboard may still deliver to the block (`LateKeys`). `moved` is
+    /// false when the block refused the caret: the field keeps its keys,
+    /// stops holding them so its Return works again, and answers neither.
+    typealias Take = @MainActor (_ moved: Bool) -> Taken
+    typealias Taken = (held: String?, late: LateKeys?)
 
     let target: String
     let take: Take
@@ -229,9 +231,12 @@ extension EditorSession {
         if fromTitle, let burst = titleBurst {
             titleBurst = nil
             // The field kept the caret, so its keys stay with it.
-            guard let held = burst.take(took) else { return }
-            type(held, into: field)
-            if !textView.isFirstResponder, field.dirty { commit(field) }
+            let (held, late) = burst.take(took)
+            if let held {
+                type(held, into: field)
+                if !textView.isFirstResponder, field.dirty { commit(field) }
+            }
+            lateKeys = late.map { (field.blockId, $0) }
             return
         }
         guard handing, let burst = returnBurst else { return }
@@ -249,6 +254,25 @@ extension EditorSession {
         type(held, into: field)
         // Typing commits as editing ends, which never began here.
         if !textView.isFirstResponder, field.dirty { commit(field) }
+    }
+
+    /// Whether `text`, about to be typed into `field`, is only keys the
+    /// title's Return put back in its line that the keyboard delivered
+    /// after all: they are dropped (`LateKeys`). Any other edit, in any
+    /// block, ends the wait for them.
+    func dropsLateKeys(_ text: String, in field: BlockField) -> Bool {
+        guard var late = lateKeys else { return false }
+        lateKeys = nil
+        guard late.blockId == field.blockId, !text.isEmpty, text.allSatisfy({ late.keys.arrived($0) }) else { return false }
+        if late.keys.waiting { lateKeys = late }
+        return true
+    }
+
+    /// A hardware key went down in `field`: a key it types later is that
+    /// key, not a late one.
+    func keyWentDown(_ characters: String, in field: BlockField) {
+        guard lateKeys?.blockId == field.blockId else { return }
+        lateKeys?.keys.pressed(characters)
     }
 
     /// `field` is not in a window yet, and takes the caret as it moves in
