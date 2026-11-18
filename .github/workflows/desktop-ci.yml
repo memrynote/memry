@@ -8,9 +8,16 @@ on:
   push:
     branches:
       - main
+    # A push to main runs the full Electron matrix, e2e included. Skip it when
+    # every changed file sits in a tree the Electron app neither bundles nor tests:
+    # the iOS app, the Rust core and its generated Swift bindings. Anything else,
+    # including a path nobody listed here, still runs everything.
     paths-ignore:
       - 'apps/docs/**'
       - 'apps/landing/**'
+      - 'apps/ios/**'
+      - 'crates/**'
+      - 'packages/swift/**'
   workflow_dispatch:
 
 permissions:
