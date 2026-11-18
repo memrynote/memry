@@ -108,7 +108,8 @@ struct NoteTitleEditor: View {
         // model: the model's `current` reads "Untitled note" while the page
         // reloads. Emptying a title is an edit on any end, so every end is
         // explicit.
-        if let text = commits.take(draft, explicit: true), text != title { rename(text) }
+        // A Return held after ⌘N that never reached the field is a space.
+        if let text = commits.take(NewNoteSeeds.title(draft), explicit: true), text != title { rename(text) }
         // Only the title's own focus: when a tap in a block ended the edit,
         // that block is already first responder and keeps its caret.
         focused = false
@@ -120,6 +121,7 @@ struct NoteTitleEditor: View {
     /// saved, so its end writes only what changes after this.
     private func save() {
         guard returned == nil, commits.editing else { return }
+        draft = NewNoteSeeds.title(draft)
         if let text = commits.take(draft, explicit: true), text != title { rename(text) }
         commits.begin(draft)
     }
@@ -178,6 +180,42 @@ struct NoteTitleEditor: View {
         returned = nil
         commits.begin(burst.line)
         draft = draft.replacingOccurrences(of: "\n", with: "")
+    }
+
+    /// The keys typed after ⌘N for this new note (#4787, `NewNoteSeeds`),
+    /// read as it appears: its edit starts with them before its field takes
+    /// the caret, so the keys typed in the field follow them.
+    private func attachSeed() {
+        guard let keys = NewNoteSeeds.shared.attach(noteId, absorb: absorbSeed) else { return }
+        if !commits.editing {
+            draft = title
+            commits.begin(title)
+        }
+        draft += keys
+    }
+
+    /// The title has the caret: the keys held since it appeared join the
+    /// draft, and a Return among them moves the rest to the body.
+    private func takeSeed() {
+        guard commits.editing, returned == nil else { return }
+        if let keys = NewNoteSeeds.shared.take(noteId) {
+            draft += keys
+            if let field = titleTextView, field.text != draft { field.text = draft }
+        }
+        if draft.contains(where: \.isNewline), let burst = LineReturn(previous: title, value: draft) {
+            returnPressed(burst)
+        }
+    }
+
+    /// Keys held for this title that it never took the caret for: its edit
+    /// ends with them (the page leaving, the app going to the background).
+    private func absorbSeed(_ keys: String) {
+        if !commits.editing {
+            draft = title
+            commits.begin(title)
+        }
+        draft += keys
+        save()
     }
 
     private func typed(_ value: String) {
@@ -296,6 +334,7 @@ struct NoteTitleEditor: View {
                         if let field = titleTextView { host.title = field }
                         host.composing = titleTextView?.markedTextRange != nil
                         host.body = nil
+                        takeSeed()
                     } else if returned != nil {
                         // The body taking the caret ends the title's focus
                         // before it takes the held keys, on the same turn.
@@ -317,6 +356,7 @@ struct NoteTitleEditor: View {
                     if commits.editing { draft = commits.follow(draft, stored: new) }
                 }
                 .onChange(of: commits.editing ? draft : nil) { _, pending in draftChanged?(pending) }
+                .onAppear(perform: attachSeed)
                 // A note with no title (a new one) opens with the caret in
                 // its title, as desktop does. Not when the page is drawn
                 // again under a block that had the caret (#4457).
@@ -365,6 +405,16 @@ struct NoteTitleEditor: View {
                 .onDisappear {
                     claimsFocus = false
                     keepHeld()
+                    // Keys held after ⌘N that this title never took are
+                    // its edit, stored with it (#4787).
+                    if let keys = NewNoteSeeds.shared.take(noteId) {
+                        if !commits.editing {
+                            draft = title
+                            commits.begin(title)
+                        }
+                        draft += keys
+                    }
+                    NewNoteSeeds.shared.detach(noteId)
                     commit()
                     draftChanged?(nil)
                 }

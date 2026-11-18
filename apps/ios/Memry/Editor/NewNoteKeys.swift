@@ -8,102 +8,179 @@
 //  nowhere once that page left the window (iPad HID at high load: 30 of 30
 //  runs lost them, 5 into the old note). From ⌘N on, a hidden text view
 //  holds the keys. The body resigns as it would for any other field, so its
-//  own typing commits. The first text input to begin editing after it,
-//  which is the new title taking the caret, gets the held keys typed in, in
-//  order and ahead of any later key. When the hold ends with no text input
-//  taking the caret, the keys become the new note's title, so none is
-//  dropped.
+//  own typing commits.
+//
+//  Invariant: the new note's title editor is the one owner of the keys held
+//  for it. The hold never types them into a text input, whichever one takes
+//  the caret from the holder (the title, the search palette, another note).
+//  The title editor reads them outside its field's own edit callbacks,
+//  where SwiftUI would draw its stale text over them: as it appears, before
+//  its field takes the caret (the hold is drained then and keeps holding
+//  until the field has the caret), and as its edit begins (whatever the
+//  holder took meanwhile, `NewNoteSeeds`). A Return among them ends the
+//  title there and the rest goes to the body, as a Return typed in the
+//  title does. Nothing outside the page writes the title while the page is
+//  on screen: the store hands a mounted title its seed and writes a seed as
+//  the stored title only for a note whose page is not on screen, as the
+//  page leaves or as the app goes to the background. A failed create
+//  discards the keys with a log line next to the failure's alert.
 //
 
 import UIKit
 
-/// One ⌘N's keys, held until its note's title takes the caret.
+/// One ⌘N's keys, held until the core makes its note and its title takes
+/// the caret.
 @MainActor
 final class NewNoteKeys {
-    /// Writes held keys as `noteId`'s title.
-    typealias Keep = @MainActor (_ noteId: String, _ text: String) -> Void
-
     private var holder: KeyHolder?
-    private var keep: Keep?
+    private let seeds: NewNoteSeeds
+    private let keep: NewNoteSeeds.Keep
+    private let log: Log
     /// The new note, once the core holds it.
-    private var noteId: String?
-    /// The holder lost the caret with no text input taking it.
-    private var resigned = false
-    /// The holder is resigning: a text input that begins editing in this
-    /// turn is the one taking the caret.
-    private var handing = false
-    private var observers: [NSObjectProtocol] = []
+    fileprivate private(set) var noteId: String?
+    /// The keys of a hold that ended before the core made the note.
+    private var waiting = ""
 
-    /// ⌘N: holds the keys typed from now on in `window`. The holder keeps
-    /// this hold alive until the keys are handed on.
-    init(window: UIWindow?, keep: @escaping Keep) {
+    /// ⌘N: holds the keys typed from now on in `window`. `keep` writes a
+    /// seed no title editor took as the note's title.
+    init(
+        window: UIWindow?, seeds: NewNoteSeeds = .shared, log: Log = .interface,
+        keep: @escaping NewNoteSeeds.Keep
+    ) {
+        self.seeds = seeds
+        self.keep = keep
+        self.log = log
         guard let window else { return }
         let holder = KeyHolder(frame: CGRect(x: 0, y: 0, width: 1, height: 1))
-        holder.hold = self
         window.addSubview(holder)
-        self.holder = holder
-        self.keep = keep
-        for name in [UITextView.textDidBeginEditingNotification, UITextField.textDidBeginEditingNotification] {
-            observers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: nil) { [weak self] note in
-                let input = note.object as? UIKeyInput
-                MainActor.assumeIsolated { self?.began(input) }
-            })
+        guard holder.becomeFirstResponder() else {
+            holder.removeFromSuperview()
+            log.error("the keys typed after a new note could not be held")
+            return
         }
-        holder.becomeFirstResponder()
+        holder.hold = self
+        self.holder = holder
+        seeds.holding(self)
     }
 
     /// The core made the note the keys are held for.
     func made(_ noteId: String) {
-        guard holder != nil else { return }
         self.noteId = noteId
-        if resigned { end() }
+        let keys = waiting
+        waiting = ""
+        seed(keys)
     }
 
-    /// The core made no note: the failure is on screen, and the hold ends.
+    /// The core made no note: its alert is on screen, and the keys go.
     func failed() {
-        noteId = nil
-        end()
-    }
-
-    fileprivate func holderResigned() {
-        guard holder != nil else { return }
-        // A text input taking the caret begins editing in this same turn.
-        handing = true
-        DispatchQueue.main.async { [self] in
-            guard handing else { return }
-            handing = false
-            resigned = true
-            if noteId != nil { end() }
+        let keys = waiting + (holder?.text ?? "")
+        waiting = ""
+        finish()
+        if !keys.isEmpty {
+            log.error("the keys typed after a new note were discarded: it was not created", .count(keys.count))
         }
     }
 
-    /// `input` took the caret from the holder: it gets the held keys. A
-    /// later ⌘N's holder is not a taker: this hold's note keeps its keys.
-    private func began(_ input: UIKeyInput?) {
-        guard handing, let input, !(input is KeyHolder), let holder else { return }
-        handing = false
-        let text = holder.text ?? ""
-        finish()
-        if !text.isEmpty { input.insertText(text) }
+    /// The keys held so far, for the note's title as it appears. The holder
+    /// keeps the caret until the title's field takes it.
+    fileprivate func drain() -> String {
+        let keys = holder?.text ?? ""
+        holder?.text = ""
+        return keys
     }
 
-    /// Ends the hold. Keys no text input took become the new note's title.
-    private func end() {
+    /// The holder let go of the caret, or the app left: the keys wait for
+    /// the note's title.
+    fileprivate func end() {
         guard let holder else { return }
-        let text = holder.text ?? ""
-        let keep = keep
+        let keys = holder.text ?? ""
         finish()
-        holder.resignFirstResponder()
-        if let noteId, !text.isEmpty { keep?(noteId, text) }
+        if noteId == nil { waiting += keys } else { seed(keys) }
+    }
+
+    private func seed(_ keys: String) {
+        guard let noteId, !keys.isEmpty else { return }
+        seeds.put(keys, for: noteId, keep: keep)
+        // The note was made after the app left: no title editor will run.
+        if UIApplication.shared.applicationState == .background { seeds.flush() }
     }
 
     private func finish() {
-        observers.forEach(NotificationCenter.default.removeObserver)
-        observers = []
         holder?.hold = nil
         holder?.removeFromSuperview()
         holder = nil
-        keep = nil
+    }
+}
+
+/// The keys held after ⌘N, by note, until the note's title editor takes
+/// them (`NoteTitleEditor`).
+@MainActor
+final class NewNoteSeeds {
+    /// Writes `title` as `noteId`'s stored title.
+    typealias Keep = @MainActor (_ noteId: String, _ title: String) -> Void
+    /// A mounted title editor takes `keys` into its edit and saves it.
+    typealias Absorb = @MainActor (_ keys: String) -> Void
+
+    static let shared = NewNoteSeeds()
+
+    private var seeds: [String: (keys: String, keep: Keep)] = [:]
+    private let holds = NSHashTable<NewNoteKeys>.weakObjects()
+    /// The title editors on screen, by note: a redrawn page's title appears
+    /// before the old one leaves, and the latest takes the keys.
+    private var titles: [String: (count: Int, absorb: Absorb)] = [:]
+
+    init() {
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: nil
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.flush() }
+        }
+    }
+
+    fileprivate func holding(_ hold: NewNoteKeys) {
+        holds.add(hold)
+    }
+
+    /// Tabs become spaces: a title holds none.
+    fileprivate func put(_ keys: String, for noteId: String, keep: @escaping Keep) {
+        let keys = keys.replacingOccurrences(of: "\t", with: " ")
+        seeds[noteId] = ((seeds[noteId]?.keys ?? "") + keys, keep)
+    }
+
+    /// `noteId`'s title editor appeared: it alone writes the note's title
+    /// until it leaves. Returns the keys held for the note so far.
+    func attach(_ noteId: String, absorb: @escaping Absorb) -> String? {
+        titles[noteId] = ((titles[noteId]?.count ?? 0) + 1, absorb)
+        let live = holds.allObjects.filter { $0.noteId == noteId }.map { $0.drain() }.joined()
+        let keys = (take(noteId) ?? "") + live.replacingOccurrences(of: "\t", with: " ")
+        return keys.isEmpty ? nil : keys
+    }
+
+    func detach(_ noteId: String) {
+        guard let title = titles[noteId] else { return }
+        titles[noteId] = title.count > 1 ? (title.count - 1, title.absorb) : nil
+    }
+
+    /// `noteId`'s title editor begins an edit: the keys go on its draft.
+    func take(_ noteId: String) -> String? {
+        seeds.removeValue(forKey: noteId)?.keys
+    }
+
+    /// Ends every hold and writes each seed: into its title editor when one
+    /// is on screen, as the stored title otherwise.
+    func flush() {
+        holds.allObjects.forEach { $0.end() }
+        let pending = seeds
+        seeds = [:]
+        for (noteId, seed) in pending {
+            if let absorb = titles[noteId]?.absorb { absorb(seed.keys) } else { seed.keep(noteId, Self.title(seed.keys)) }
+        }
+    }
+
+    /// The keys as one title line. With no page to take the caret there is
+    /// no body to hand the text after a Return to, so it stays in the title.
+    static func title(_ keys: String) -> String {
+        keys.split(whereSeparator: \.isNewline).joined(separator: " ")
     }
 }
 
@@ -126,9 +203,10 @@ private final class KeyHolder: UITextView {
     @available(*, unavailable)
     required init?(coder: NSCoder) { nil }
 
+    /// Before the input taking the caret begins editing, in the same turn.
     override func resignFirstResponder() -> Bool {
         let resigned = super.resignFirstResponder()
-        if resigned { hold?.holderResigned() }
+        if resigned { hold?.end() }
         return resigned
     }
 }
