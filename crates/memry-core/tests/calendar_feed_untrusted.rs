@@ -6,7 +6,9 @@
 use std::collections::HashMap;
 
 use memry_core::api::calendar_records::CalendarZone;
-use memry_core::domain::calendar_items::ical::budget::{self, MAX_OUTPUT_BYTES, MAX_STEPS};
+use memry_core::domain::calendar_items::ical::budget::{
+    self, MAX_INSTANCES_PER_READ, MAX_OUTPUT_BYTES, MAX_STEPS,
+};
 use memry_core::domain::calendar_items::ical::parse::parse_calendar;
 use memry_core::domain::calendar_items::ical::{
     FeedError, IcalFeed, IcalWindow, IcalZones, parse_feed, zone_ids,
@@ -193,13 +195,14 @@ fn a_team_calendar_with_long_running_standups_reads_whole() {
         .map(|n| standup(&format!("x{n}"), "20150105", &exdates))
         .collect();
     let invite = format!("DESCRIPTION:{}\r\n", "Join the meeting: ".repeat(170));
-    let invites: String = (0..128)
+    // 81 000 instances, under both the instance and the byte bound.
+    let invites: String = (0..250)
         .map(|n| standup(&format!("i{n}"), "20250106", &invite))
         .collect();
     for (what, body) in [
         ("200 standups since 2015", since_2015),
         ("20 standups with 150 EXDATEs", with_exdates),
-        ("128 standups with a 3 KB invite", invites),
+        ("250 standups with a 3 KB invite", invites),
     ] {
         let feed = read(&calendar(&body));
         assert!(feed.is_ok(), "{what}: {:?}", feed.map(|_| ()));
@@ -251,10 +254,29 @@ fn long_by_lists_are_charged_per_period() {
 }
 
 #[test]
-fn properties_read_per_instance_count_toward_the_bound() {
-    // 100 000 properties read again by each of a year of daily instances.
+fn an_event_s_properties_are_read_once_not_per_instance() {
+    // 100 000 properties, which a year of daily instances would each read again.
     let pad = "X-P:1\r\n".repeat(100_000);
     let text = calendar(&event("wide", &format!("RRULE:FREQ=DAILY\r\n{pad}")));
+    let mut result = Ok(0);
+    assert_steps_at_most("wide event", budget::visits, 1_000_000, || {
+        result = read(&text).map(|feed| feed.events.len());
+    });
+    assert!(result.is_ok_and(|n| n > 300), "{result:?}");
+}
+
+#[test]
+fn a_small_feed_of_many_hourly_series_is_refused() {
+    // 200 hourly series in 20 KiB: 5 000 instances each, a million rows.
+    let body: String = (0..200)
+        .map(|n| {
+            format!(
+                "BEGIN:VEVENT\r\nUID:h{n}\r\nDTSTART:20251201T000000Z\r\nRRULE:FREQ=HOURLY\r\nSUMMARY:x\r\nEND:VEVENT\r\n"
+            )
+        })
+        .collect();
+    let text = calendar(&body);
+    assert!(text.len() < 20 * 1024);
     assert_eq!(read(&text).map(|_| ()), Err(FeedError::TooLarge));
 }
 
@@ -320,12 +342,13 @@ proptest! {
         let text = calendar(&(lines.join("\r\n") + "\r\n"));
         let (outcome, steps) = on_small_stack(move || {
             let before = budget::visits();
-            let outcome = read(&text).map(|feed| text_bytes(&feed));
+            let outcome = read(&text).map(|feed| (text_bytes(&feed), feed.events.len()));
             (outcome, budget::visits() - before)
         });
         prop_assert!(steps <= MAX_STEPS, "{steps} steps");
-        if let Ok(bytes) = outcome {
+        if let Ok((bytes, rows)) = outcome {
             prop_assert!(bytes <= MAX_OUTPUT_BYTES);
+            prop_assert!(rows <= MAX_INSTANCES_PER_READ);
         }
     }
 }
