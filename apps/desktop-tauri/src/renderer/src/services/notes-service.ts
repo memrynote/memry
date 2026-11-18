@@ -127,8 +127,14 @@ function toListItem(view: NoteListItemView): NoteListItem {
   return { ...view, created: new Date(view.created), modified: new Date(view.modified) }
 }
 
-/** A version as the history lists it. Rust sends the stored reason, which only Memry writes. */
-function toVersion(view: VersionView): SnapshotListItem {
+/**
+ * A version as the history lists it. `outsideWrite` marks text the app wrote over (a locked
+ * note's revert keeps the outside edit), which the file no longer holds; Electron had no mark.
+ */
+export type NoteVersion = SnapshotListItem & { outsideWrite: boolean }
+
+/** Rust sends the stored reason, which only Memry writes. */
+function toVersion(view: VersionView): NoteVersion {
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
   return { ...view, reason: view.reason as SnapshotListItem['reason'] }
 }
@@ -528,7 +534,7 @@ const ported = {
     return { success: true }
   },
   getCalendarPropertyNames: (): Promise<string[]> => commands.notesGetCalendarPropertyNames(),
-  getVersions: async (noteId: string): Promise<SnapshotListItem[]> =>
+  getVersions: async (noteId: string): Promise<NoteVersion[]> =>
     (await commands.notesGetVersions(noteId)).map(toVersion),
   getVersion: async (snapshotId: string): Promise<SnapshotDetail | null> => {
     const version = await commands.notesGetVersion(snapshotId)
@@ -695,16 +701,30 @@ export type AppendBlocksSaveResponse = AppendBlocksResponse & { errorCode?: 'tar
 // Similar notes, tag suggestions and grouping go through `similarity-service.ts`.
 type NotesServiceApi = Omit<
   NotesClientAPI,
-  PortedLargeFileMethod | 'update' | 'appendBlocks' | 'getSimilar' | 'getTagSuggestions' | 'cluster'
+  | PortedLargeFileMethod
+  | 'update'
+  | 'appendBlocks'
+  | 'getVersions'
+  | 'getSimilar'
+  | 'getTagSuggestions'
+  | 'cluster'
 > & {
   update: (input: NoteSaveInput) => Promise<NoteSaveResponse>
   appendBlocks: (input: AppendBlocksInput) => Promise<AppendBlocksSaveResponse>
+  getVersions: (noteId: string) => Promise<NoteVersion[]>
 }
 
 export const notesService: NotesServiceApi = createWindowApiForwarder<
   NotesServiceApi,
   PortedNoteMethod
 >(() => window.api.notes, ported)
+
+/** The note's list row, `null` once it is gone; unlike `notesService.get`, it counts no
+ * `note_opened`. Not an Electron method: Electron's listeners were live at once. */
+export async function getNoteListItem(id: string): Promise<NoteListItem | null> {
+  const item = await commands.notesGetListItem(id)
+  return item ? toListItem(item) : null
+}
 
 /**
  * Note events were dropped (`shell/note_events.rs`): whatever the app shows of notes may be

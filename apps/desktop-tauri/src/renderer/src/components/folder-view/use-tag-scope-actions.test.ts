@@ -1,7 +1,7 @@
-import { renderHook } from '@testing-library/react'
+import { renderHook, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { commands } from '../../../../generated/bindings'
+import { commands, events } from '../../../../generated/bindings'
 import { useTagScopeActions } from './use-tag-scope-actions'
 
 const toasts = vi.hoisted(() => ({ warning: vi.fn(), error: vi.fn(), success: vi.fn() }))
@@ -90,5 +90,47 @@ describe('useTagScopeActions delete', () => {
       expect.objectContaining({ description: 'Plan' })
     )
     expect(toasts.error).not.toHaveBeenCalled()
+  })
+})
+
+// S14-1: a rename or delete sent before the tab's listeners went live reached nobody.
+describe('useTagScopeActions after its listeners go live', () => {
+  const original = commands.tagsIsGone
+  afterEach(() => {
+    vi.restoreAllMocks()
+    commands.tagsIsGone = original
+  })
+
+  /** Holds both tag listeners back until the returned function lets them go live. */
+  function holdListeners(): () => void {
+    let release = (): void => undefined
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    for (const event of [events.tagRenamedEvent, events.tagDeletedEvent]) {
+      vi.spyOn(event, 'listen').mockImplementation(async () => {
+        await held
+        return () => undefined
+      })
+    }
+    return release
+  }
+
+  it.each([
+    [true, 1],
+    [false, 0]
+  ])('asks whether the tag is gone and closes the tab when it is (%s)', async (gone, closes) => {
+    const isGone = vi.fn(async () => gone)
+    commands.tagsIsGone = isGone
+    const release = holdListeners()
+    const closeTab = vi.fn()
+    renderHook(() => useTagScopeActions('work', 0, closeTab))
+    expect(isGone).not.toHaveBeenCalled()
+
+    release()
+
+    await waitFor(() => expect(isGone).toHaveBeenCalledWith('work'))
+    await Promise.resolve()
+    expect(closeTab).toHaveBeenCalledTimes(closes)
   })
 })
