@@ -31,7 +31,6 @@ import {
   onNoteLinksChanged,
   onNoteRenamed,
   onNoteMoved,
-  onNoteExternalChange,
   onNoteEventsDropped
 } from '@/services/notes-service'
 import {
@@ -197,61 +196,51 @@ export function useNote(id: string | null, options: UseNoteOptions = {}): UseNot
     gcTime: NOTE_GC_TIME
   })
 
-  // Subscribe to note events for cache invalidation
   useEffect(() => {
     if (!id) return undefined
-
-    const unsubUpdated = onNoteUpdated((event) => {
-      if (event.id === id) {
-        // Invalidate this specific note
-        void queryClient.invalidateQueries({ queryKey: notesKeys.note(id) })
+    const key = notesKeys.note(id)
+    const mountedAt = Date.now()
+    const invalidate = (): void => void queryClient.invalidateQueries({ queryKey: key })
+    return subscribeToEvents(
+      [
+        (live) =>
+          onNoteUpdated((event) => {
+            if (event.id === id) invalidate()
+          }, live),
+        (live) =>
+          onNoteRenamed((event) => {
+            if (event.id === id) invalidate()
+          }, live),
+        // A folder rename or move sends no rename event for the notes inside it, only this one.
+        (live) =>
+          onNoteMoved((event) => {
+            if (event.id !== id) return
+            queryClient.setQueryData<Note | null>(key, (cached) =>
+              cached ? { ...cached, path: event.newPath } : cached
+            )
+            // A read in flight began before the move and would answer the old path: read again.
+            if (queryClient.isFetching({ queryKey: key }) > 0) rereadQueries(queryClient, key)
+          }, live),
+        (live) =>
+          onNoteDeleted((event) => {
+            if (event.id === id) queryClient.removeQueries({ queryKey: key })
+          }, live),
+        // A dropped event may have been this note's.
+        (live) => onNoteEventsDropped(invalidate, live)
+      ],
+      // A read this mount made may have missed a change between it and these listeners going
+      // live, whose event went to nobody (#4270). A fresh cached answer was read under another
+      // mount's listeners. The note page reads again itself (`useNoteBody`, `startup-gap`): a
+      // second read here would race it and count another `note_opened`.
+      () => {
+        if (readOnMount) return
+        const state = queryClient.getQueryState(key)
+        if (state?.fetchStatus === 'fetching' || (state?.dataUpdatedAt ?? 0) >= mountedAt) {
+          rereadQueries(queryClient, key)
+        }
       }
-    })
-
-    const unsubRenamed = onNoteRenamed((event) => {
-      if (event.id === id) {
-        void queryClient.invalidateQueries({ queryKey: notesKeys.note(id) })
-      }
-    })
-
-    // A folder rename or move sends no rename event for the notes inside it, only this one.
-    const unsubMoved = onNoteMoved((event) => {
-      if (event.id !== id) return
-      const key = notesKeys.note(id)
-      queryClient.setQueryData<Note | null>(key, (cached) =>
-        cached ? { ...cached, path: event.newPath } : cached
-      )
-      // A read in flight began before the move and would answer the old path: read again.
-      if (queryClient.isFetching({ queryKey: key }) > 0) rereadQueries(queryClient, key)
-    })
-
-    const unsubDeleted = onNoteDeleted((event) => {
-      if (event.id === id) {
-        // Remove from cache
-        queryClient.removeQueries({ queryKey: notesKeys.note(id) })
-      }
-    })
-
-    const unsubExternal = onNoteExternalChange((event) => {
-      if (event.id === id) {
-        void queryClient.invalidateQueries({ queryKey: notesKeys.note(id) })
-      }
-    })
-
-    // A dropped event may have been this note's.
-    const unsubDropped = onNoteEventsDropped(() => {
-      void queryClient.invalidateQueries({ queryKey: notesKeys.note(id) })
-    })
-
-    return () => {
-      unsubUpdated()
-      unsubRenamed()
-      unsubMoved()
-      unsubDeleted()
-      unsubExternal()
-      unsubDropped()
-    }
-  }, [id, queryClient])
+    )
+  }, [id, queryClient, readOnMount])
 
   return {
     note: query.data ?? null,

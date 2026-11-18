@@ -53,6 +53,7 @@ import {
 import { cn } from '@/lib/utils'
 import { blockNoteShadCNComponents } from '@/lib/blocknote-shadcn-components'
 import { notesService, onNoteMoved, onNoteRenamed } from '@/services/notes-service'
+import { subscribeToEvents } from '@/services/tauri-event'
 import { useYjsCollaboration } from '@/sync/use-yjs-collaboration'
 import { typingHoldOf } from '@/sync/typing-hold'
 import { isLocalCrdtDocLive } from '@/sync/collaboration-status'
@@ -683,8 +684,13 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     const forget = (event: { id: string }): void => {
       if (noteLookupRef.current?.noteId === event.id) noteLookupRef.current = null
     }
-    const offs = [onNoteMoved(forget), onNoteRenamed(forget)]
-    return () => offs.forEach((off) => off())
+    // A lookup made before these listen may hold a path or title changed before they went live.
+    return subscribeToEvents(
+      [(live) => onNoteMoved(forget, live), (live) => onNoteRenamed(forget, live)],
+      () => {
+        noteLookupRef.current = null
+      }
+    )
   }, [])
 
   // oxlint-disable-next-line react/refs -- latest-value ref written during render so stable callbacks read current props; an effect would leave a stale window
