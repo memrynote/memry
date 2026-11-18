@@ -77,9 +77,11 @@ impl OpenVaultBinding {
     }
 
     fn track(&self, gate: &Arc<SyncStartGate>) {
+        // Electron's neutral state until the first decision, as with no supervisor: a read right
+        // after sign-in is not `unknown`.
         *lock(&self.slot) = Some(Slot {
             gate: Arc::downgrade(gate),
-            state: BindingState::Unknown,
+            state: BindingState::Bound,
         });
     }
 
@@ -279,8 +281,9 @@ mod tests {
         let open = Arc::new(SyncStartGate::default());
         bindings.track(&open);
 
+        assert_eq!(bindings.state(), BindingState::Bound, "before any decision");
         assert!(!bindings.publish(&closed, &BindingState::Foreign));
-        assert_eq!(bindings.state(), BindingState::Unknown);
+        assert_eq!(bindings.state(), BindingState::Bound);
         assert!(bindings.publish(&open, &BindingState::LocalOnly));
         assert!(
             !bindings.publish(&open, &BindingState::LocalOnly),

@@ -596,3 +596,77 @@ async fn a_failed_delete_keeps_the_local_entry() {
     );
     assert_eq!(f.registry.stored().len(), 1);
 }
+
+/// #4783: a refresh that a sign-out overtakes while the list is on its way caches nothing, so
+/// the next account never sees this one's vault names.
+#[tokio::test]
+async fn a_refresh_a_sign_out_overtakes_caches_nothing() {
+    let f = fixture();
+    let session = with_session(&f);
+    let held = f.script.held_answer(
+        200,
+        json!({ "vaults": [server_vault("uuid-a", Some("Alpha"), 1)] }),
+    );
+    f.script.answer(200, json!({}));
+
+    let signing_out = async {
+        while f.script.count("/sync/vaults") == 0 {
+            tokio::task::yield_now().await;
+        }
+        f.account.sign_out(&session).await.unwrap();
+        held.notify_one();
+    };
+    tokio::join!(f.refresh(), signing_out);
+
+    assert_eq!(f.cache(), Value::Null);
+    assert!(
+        f.account
+            .list_account_vaults(&f.registry, f.dir.path())
+            .is_empty()
+    );
+}
+
+/// A delete while a refresh is registering waits for it, so the refresh never registers the
+/// deleted vault again after the delete.
+#[tokio::test]
+async fn a_delete_during_a_refresh_is_never_undone_by_it() {
+    let f = fixture();
+    let session = with_session(&f);
+    f.local("Alpha", Some("uuid-a"), Some(("u", "sync")));
+    f.local("Beta", Some("uuid-b"), Some(("u", "sync")));
+    f.script.answer(200, json!({ "vaults": [] }));
+    let held = f.script.held_answer(200, json!({ "success": true }));
+    f.script.answer(200, json!({ "success": true }));
+    f.script.answer(200, json!({ "success": true }));
+
+    let deleting = async {
+        while f.posts().is_empty() {
+            tokio::task::yield_now().await;
+        }
+        let (deleted, ()) =
+            tokio::join!(f.account.delete_account_vault(&session, "uuid-b"), async {
+                for _ in 0..20 {
+                    tokio::task::yield_now().await;
+                }
+                held.notify_one();
+            });
+        deleted.unwrap();
+    };
+    tokio::join!(f.refresh(), deleting);
+
+    let order: Vec<String> = f
+        .script
+        .requests()
+        .into_iter()
+        .filter(|(method, path, _)| path.starts_with("/sync/vaults") && method != "GET")
+        .map(|(method, path, body)| match body["vaultUuid"].as_str() {
+            Some(uuid) => format!("{method} {uuid}"),
+            None => format!("{method} {path}"),
+        })
+        .collect();
+    assert_eq!(
+        order.last().map(String::as_str),
+        Some("DELETE /sync/vaults/uuid-b"),
+        "{order:?}"
+    );
+}

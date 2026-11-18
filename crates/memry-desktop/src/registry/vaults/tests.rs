@@ -193,11 +193,14 @@ fn a_pipe_as_config_json_cannot_stall_the_list_or_the_registry() {
 /// server id always wins; the vault's own id only fills an empty entry, so an id another build
 /// stamped stays until this build binds the vault.
 #[test]
-fn the_vault_id_stamp_prefers_the_server_id_and_keeps_a_foreign_stamp() {
+fn the_vault_id_stamp_prefers_the_server_id_and_replaces_an_unbound_stamp() {
     let dir = tempfile::tempdir().expect("dir");
     let registry = registry_in(
         dir.path(),
-        Some(r#"{"vaults":[{"path":"/v/b","name":"b","vaultUuid":"electron-id"}]}"#),
+        Some(
+            r#"{"vaults":[{"path":"/v/b","name":"b","vaultUuid":"electron-id"},
+            {"path":"/v/c","name":"c","vaultUuid":"bound-id","accountBinding":{"userId":"u","mode":"sync"}}]}"#,
+        ),
     );
     registry.record_open("/v/a", 1, 0).expect("a");
     let uuid = |path: &str| registry.get(path).and_then(|v| v.vault_uuid);
@@ -211,14 +214,18 @@ fn the_vault_id_stamp_prefers_the_server_id_and_keeps_a_foreign_stamp() {
         .expect("stamp");
     assert_eq!(
         uuid("/v/a").as_deref(),
-        Some("own-a"),
-        "an empty entry only"
+        Some("other"),
+        "a new vault at a registered path"
     );
 
     registry
         .stamp_vault_uuid("/v/b", None, "own-b")
         .expect("stamp");
-    assert_eq!(uuid("/v/b").as_deref(), Some("electron-id"));
+    assert_eq!(uuid("/v/b").as_deref(), Some("own-b"));
+    registry
+        .stamp_vault_uuid("/v/c", None, "own-c")
+        .expect("stamp");
+    assert_eq!(uuid("/v/c").as_deref(), Some("bound-id"), "a bound entry");
     registry
         .stamp_vault_uuid("/v/b", Some("server-b"), "own-b")
         .expect("stamp");

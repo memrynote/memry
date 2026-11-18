@@ -5,7 +5,9 @@
 //! only the account holds.
 //!
 //! [`AccountService::refresh_vault_directory`] holds `directory` for its whole pass, so two
-//! refreshes never interleave and one that waited behind another sees its throttle stamp.
+//! refreshes never interleave and one that waited behind another sees its throttle stamp. A
+//! delete holds it too, so a refresh never registers a vault the delete removes. A refresh that
+//! a sign-out overtakes caches nothing: the next account never sees this one's vault names.
 
 use std::path::{Path, PathBuf};
 
@@ -61,7 +63,8 @@ impl AccountService {
     /// `refreshVaultDirectory`: reads the account's vaults, caches them with their names, and
     /// registers each local vault this account syncs that the server lacks or knows by another
     /// name, then reconciles its icon. Signed out, without the master key, or within
-    /// [`REFRESH_THROTTLE`] of the last read (unless `force`), it does nothing. Failures are
+    /// [`REFRESH_THROTTLE`] of the last read (unless `force`), it does nothing; after a sign-out
+    /// that overtook it, it stops before the cache. Failures are
     /// logged and retried on the next refresh. Returns whether a vault's icon changed here, for
     /// the caller's `VaultListChangedEvent`.
     pub async fn refresh_vault_directory(&self, registry: &VaultRegistry, force: bool) -> bool {
@@ -69,6 +72,9 @@ impl AccountService {
         if !force && last.is_some_and(|at| at.elapsed() < REFRESH_THROTTLE) {
             return false;
         }
+        let Some(epoch) = self.signed_in_epoch() else {
+            return false;
+        };
         if !matches!(self.session.valid_access_token().await, Ok(Some(_))) {
             return false;
         }
@@ -96,13 +102,17 @@ impl AccountService {
         *last = Some(tokio::time::Instant::now());
 
         let remote: Vec<CachedVault> = rows.iter().map(|row| cached(&master, row)).collect();
-        if let Err(error) = self.write_sync(|sync| {
-            sync.insert(CACHE_KEY.into(), cache_json(&remote));
+        match self.epoch.write_if(epoch, || {
+            self.write_sync(|sync| {
+                sync.insert(CACHE_KEY.into(), cache_json(&remote));
+            })
         }) {
-            tracing::warn!(
+            None => return false,
+            Some(Err(error)) => tracing::warn!(
                 scope = "VaultDirectory",
                 "the vault list was not cached: {error}"
-            );
+            ),
+            Some(Ok(())) => {}
         }
 
         let Some(user_id) = self.session.account_user_id() else {
@@ -314,11 +324,13 @@ impl AccountService {
 
     /// `deleteAccountVault`: removes the vault from the account and forgets its local entry, so
     /// the next refresh cannot register it again. Never touches files. Refuses the open vault.
+    /// Waits for a refresh in flight, which could otherwise register the vault after the delete.
     pub async fn delete_account_vault(
         &self,
         session: &Session,
         vault_uuid: &str,
     ) -> Result<(), AccountError> {
+        let _directory = self.directory.lock().await;
         let local = session
             .registry()
             .stored()

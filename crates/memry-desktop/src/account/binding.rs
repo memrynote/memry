@@ -169,10 +169,13 @@ pub fn read_binding(vault: &Vault) -> Result<Option<StoredBinding>, AccountError
 
 /// Writes the binding into the vault and mirrors it onto the registry entry
 /// (`writeVaultAccountBinding`), which the account vault directory reads for closed vaults.
+/// `server_vault` is the id a sync binding binds to; the registry entry takes it in the same
+/// write as the binding mirror, so no crash between two writes leaves a stale `vaultUuid`.
 pub fn write_binding(
     open: &OpenVault,
     registry: &VaultRegistry,
     binding: &StoredBinding,
+    server_vault: Option<&str>,
 ) -> Result<(), AccountError> {
     let json =
         serde_json::to_string(binding).map_err(|e| AccountError::VaultChoice(e.to_string()))?;
@@ -187,6 +190,9 @@ pub fn write_binding(
             }
             .to_owned(),
         });
+        if let Some(id) = server_vault {
+            stored.vault_uuid = Some(id.to_owned());
+        }
         if let Err(error) = registry.upsert(&stored) {
             tracing::warn!(
                 scope = "Binding",
@@ -253,12 +259,14 @@ pub enum Applied {
 
 impl AccountService {
     /// `applyOpenVaultBinding`: decide for the open vault, bind when that is the answer. The
-    /// network is asked only for an unbound vault with content. Signed out holds as `Unknown`.
+    /// network is asked only for an unbound vault with content. Signed out holds as `Unknown`, and
+    /// so does a sign-out that overtakes the server's answer: it binds nothing.
     pub async fn apply_open_vault_binding(
         &self,
         open: &OpenVault,
         registry: &VaultRegistry,
     ) -> Result<Applied, AccountError> {
+        let epoch = self.epoch.current();
         let Some(user_id) = self.session.account_user_id() else {
             return Ok(Applied::Held(BindingState::Unknown));
         };
@@ -291,11 +299,15 @@ impl AccountService {
         });
         match decision {
             Decision::Hold(state) => Ok(Applied::Held(state)),
-            Decision::Start { bind } => {
-                if bind {
-                    self.bind_for_sync(open, registry, &user_id, None)?;
+            Decision::Start { bind: false } => Ok(Applied::Start),
+            Decision::Start { bind: true } => {
+                match self
+                    .epoch
+                    .write_if(epoch, || self.bind_for_sync(open, registry, &user_id, None))
+                {
+                    Some(bound) => bound.map(|()| Applied::Start),
+                    None => Ok(Applied::Held(BindingState::Unknown)),
                 }
-                Ok(Applied::Start)
             }
         }
     }
@@ -327,6 +339,7 @@ impl AccountService {
                         user_id,
                         mode: BindingMode::Local,
                     },
+                    None,
                 )?;
                 Ok(BindingState::LocalOnly)
             }
@@ -364,16 +377,10 @@ impl AccountService {
                 user_id: user_id.to_owned(),
                 mode: BindingMode::Sync,
             },
+            // The account vault directory registers the vault under this id (a merge changes
+            // it, `vault-binding-resolve.ts:44-47`).
+            Some(&id),
         )?;
-        // The account vault directory registers the vault under this id (a merge changes it,
-        // `vault-binding-resolve.ts:44-47`).
-        if let Err(error) = registry.stamp_vault_uuid(&open.path.to_string_lossy(), Some(&id), &id)
-        {
-            tracing::warn!(
-                scope = "Binding",
-                "the vault id was not stamped on the registry entry: {error}"
-            );
-        }
         Ok(())
     }
 

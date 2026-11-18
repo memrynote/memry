@@ -13,7 +13,7 @@ use memry_core::api::auth::{AuthSession, AuthState, DeviceDescriptor};
 use memry_core::api::errors::AuthError;
 use memry_core::api::errors::TransportError;
 use memry_core::protocol::auth::{DeviceFormFactor, DevicePlatform};
-use memry_core::seams::secure_store::SecureStoreKey;
+use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_core::seams::transport::HttpResponse;
 use serde_json::json;
 
@@ -148,4 +148,99 @@ async fn a_clean_sign_out_leaves_no_marker() {
     assert_eq!(session.sign_out().await.unwrap(), AuthState::SignedOut);
 
     assert!(!marker.exists());
+}
+
+/// #4766: a sign-out the keychain refused leaves the device key behind. The next sign-in, of any
+/// account, deletes it first and registers a new one, so the next account never signs as this
+/// device's last account.
+#[tokio::test]
+async fn a_new_sign_in_never_reuses_the_device_key_a_refused_sign_out_kept() {
+    let dir = tempfile::tempdir().unwrap();
+    let marker = dir.path().join("signed-out");
+    let (session, _transport, store) = refused_sign_out(&marker, sign_in_script("jti-2")).await;
+    let kept = store.get(SecureStoreKey::DeviceSigningKey).unwrap();
+    assert!(kept.is_some(), "the refused sign-out kept the device key");
+
+    session
+        .request_email_code("next@example.com".to_string())
+        .await
+        .unwrap();
+    assert_eq!(store.get(SecureStoreKey::DeviceSigningKey).unwrap(), None);
+    assert_eq!(store.text(SecureStoreKey::RefreshToken), None);
+    session
+        .verify_email_code("123456".to_string())
+        .await
+        .unwrap();
+    session.register_device().await.unwrap();
+
+    let registered = store.get(SecureStoreKey::DeviceSigningKey).unwrap();
+    assert!(registered.is_some());
+    assert_ne!(registered, kept);
+}
+
+/// A sign-out the keychain carried out keeps the device key a later local write mints: only a
+/// refused one sends the next sign-in through the delete.
+#[tokio::test]
+async fn a_clean_sign_out_keeps_the_key_minted_after_it() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut script = sign_in_script("jti-1");
+    script.push(response(200, "{}"));
+    script.push(response(200, r#"{"success":true,"expiresIn":600}"#));
+    let store = FakeSecureStore::new();
+    let session = launch(
+        FakeTransport::new(script),
+        store.clone(),
+        &dir.path().join("signed-out"),
+    );
+    sign_in(&session).await;
+    session.sign_out().await.unwrap();
+    memry_core::api::auth::ensure_device_identity(store.clone()).unwrap();
+    let minted = store.get(SecureStoreKey::DeviceSigningKey).unwrap();
+
+    session
+        .request_email_code("next@example.com".to_string())
+        .await
+        .unwrap();
+
+    assert!(minted.is_some());
+    assert_eq!(store.get(SecureStoreKey::DeviceSigningKey).unwrap(), minted);
+}
+
+/// A marker path whose existence cannot be read counts as a sign-out (the fail-closed side), and
+/// the failure reaches the shell.
+#[cfg(unix)]
+#[tokio::test]
+async fn an_unreadable_marker_refuses_the_restore_and_reports_why() {
+    let dir = tempfile::tempdir().unwrap();
+    let file = dir.path().join("not-a-dir");
+    std::fs::write(&file, b"").unwrap();
+    let store = FakeSecureStore::new();
+    store.put_text(SecureStoreKey::RefreshToken, "refresh-from-the-last-run");
+
+    let session = launch(
+        FakeTransport::new(Vec::new()),
+        store,
+        &file.join("signed-out"),
+    );
+
+    assert_eq!(session.restore().unwrap(), AuthState::SignedOut);
+    assert!(session.take_sign_out_marker_fault().is_some());
+}
+
+/// A sign-out from a state with no edge, whose clear the keychain refused, is not restored after
+/// a relaunch either.
+#[tokio::test]
+async fn a_refused_clear_without_an_edge_is_not_restored_after_a_relaunch() {
+    let dir = tempfile::tempdir().unwrap();
+    let marker = dir.path().join("signed-out");
+    let store = FakeSecureStore::new();
+    store.put_text(SecureStoreKey::RefreshToken, "refresh-from-the-last-run");
+    store.fail_clear();
+    let session = launch(FakeTransport::new(Vec::new()), store.clone(), &marker);
+
+    session.clear_without_edge().unwrap_err();
+    drop(session);
+    let relaunched = launch(FakeTransport::new(Vec::new()), store, &marker);
+
+    assert_eq!(relaunched.restore().unwrap(), AuthState::SignedOut);
 }

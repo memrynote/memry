@@ -197,9 +197,37 @@ pub struct AccountService {
     oauth: Mutex<Option<oauth::OAuthAttempt>>,
     /// One Google start or Cancel at a time: a start ends the attempt before it.
     oauth_start: tokio::sync::Mutex<()>,
+    /// Cancels asked for, counted before each waits for `oauth_start`.
+    oauth_cancels: std::sync::atomic::AtomicU64,
     /// One vault directory refresh at a time, and when the last one read the account's list
     /// (`lastRefreshAt`, `sync/vault-directory.ts:54`).
     directory: tokio::sync::Mutex<Option<tokio::time::Instant>>,
+    /// Which signed-in account a write that waits on the network started under.
+    epoch: AccountEpoch,
+}
+
+/// The signed-in account's term on this install, ended by each sign-out (#4783). A write that
+/// started under one account and waited on the network across a sign-out (the vault list cache,
+/// a binding) lands nowhere, so the next account never sees the last one's data. The keychain
+/// cannot tell: a refused sign-out leaves the last account's tokens behind.
+#[derive(Clone, Default)]
+struct AccountEpoch(Arc<Mutex<u64>>);
+
+impl AccountEpoch {
+    fn current(&self) -> u64 {
+        *crate::session::lock(&self.0)
+    }
+
+    /// Sign-out: waits for a write in progress, so it lands before the teardown clears.
+    fn end(&self) {
+        *crate::session::lock(&self.0) += 1;
+    }
+
+    /// Runs `write` while `epoch` is still current, `None` after a sign-out ended it.
+    fn write_if<T>(&self, epoch: u64, write: impl FnOnce() -> T) -> Option<T> {
+        let current = crate::session::lock(&self.0);
+        (*current == epoch).then(write)
+    }
 }
 
 /// The core's sign-out marker (#4767), beside `memry-config.json`. Electron writes no such file,
@@ -242,7 +270,9 @@ impl AccountService {
             key_op: tokio::sync::Mutex::new(()),
             oauth: Mutex::new(None),
             oauth_start: tokio::sync::Mutex::new(()),
+            oauth_cancels: std::sync::atomic::AtomicU64::new(0),
             directory: tokio::sync::Mutex::new(None),
+            epoch: AccountEpoch::default(),
         };
         service.restore();
         Ok(service)
@@ -266,6 +296,22 @@ impl AccountService {
                 "the session could not be restored: {error}"
             );
         }
+        // A marker that cannot be read refuses the restore; one a sign-in could not remove
+        // refuses the next launch's.
+        if let Some(fault) = self.session.take_sign_out_marker_fault() {
+            tracing::warn!(scope = "Account", "{fault}");
+        }
+    }
+
+    /// The account's term when signed in, read before the state so a sign-out between the two
+    /// ends it; `None` signed out.
+    fn signed_in_epoch(&self) -> Option<u64> {
+        let epoch = self.epoch.current();
+        matches!(
+            self.session.state(),
+            AuthState::Registered | AuthState::Refreshing | AuthState::SessionExpired
+        )
+        .then_some(epoch)
     }
 
     /// `POST /auth/otp/request`, then the code's lifetime in seconds. A sign-in in flight ends
