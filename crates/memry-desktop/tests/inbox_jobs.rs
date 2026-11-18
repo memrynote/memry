@@ -6,14 +6,16 @@
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::{Receiver, channel};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Condvar, Mutex};
 use std::time::Duration;
 
 use axum::http::{StatusCode, Uri};
 use axum::response::{IntoResponse, Response};
+use memry_core::api::errors::SecureStoreError;
 use memry_core::api::inbox::Inbox;
 use memry_core::api::inbox_records::InboxItemRecord;
 use memry_core::domain::inbox::jobs::{InboxJobStatus, InboxJobType};
+use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_core::storage::repositories::sync_items;
 use memry_desktop::registry::{AppConfig, VaultRegistry};
 use memry_desktop::services::inbox_jobs::{
@@ -112,10 +114,10 @@ struct World {
 }
 
 fn world() -> World {
-    world_with(PARSE_DEADLINE)
+    world_with(PARSE_DEADLINE, with_device_key())
 }
 
-fn world_with(parse_deadline: Duration) -> World {
+fn world_with(parse_deadline: Duration, store: Arc<dyn SecureStore>) -> World {
     let dir = tempfile::tempdir().expect("tmp");
     let app = dir.path().join("app");
     let vault_dir = dir.path().join("vault");
@@ -136,7 +138,7 @@ fn world_with(parse_deadline: Duration) -> World {
     let jobs = InboxJobs::with_parse_deadline(
         web,
         runtime.handle().clone(),
-        with_device_key(),
+        store,
         Box::new(move |notice| {
             let _ = sent.lock().unwrap().send(notice);
         }),
@@ -392,14 +394,9 @@ fn a_close_stops_the_runner_mid_fetch_and_the_next_open_resumes_the_job() {
     }
     w.session.close();
     let inbox = w.inbox(&open);
-    // `Running`, or `Pending` when the runner's own start queued and claimed the capture before
-    // the enqueue above, which requeues it (`ON CONFLICT ... status = 'pending'`).
-    let after_close = statuses(&inbox, &id);
-    assert!(
-        [InboxJobStatus::Running, InboxJobStatus::Pending]
-            .map(|status| vec![(InboxJobType::MetadataScrape, status)])
-            .contains(&after_close),
-        "{after_close:?}"
+    assert_eq!(
+        statuses(&inbox, &id),
+        vec![(InboxJobType::MetadataScrape, InboxJobStatus::Running)]
     );
     assert_eq!(
         w.item(&open, &id).processing_status.as_deref(),
@@ -455,8 +452,7 @@ fn a_failed_rerun_leaves_a_complete_link_complete() {
     until("the job never failed", || {
         statuses(&inbox, &id) == vec![(InboxJobType::MetadataScrape, InboxJobStatus::Failed)]
     });
-    // Three when the runner's own start ran the capture once before the enqueue requeued it.
-    assert!(w.server.hits("/down") >= 2, "two attempts");
+    assert_eq!(w.server.hits("/down"), 2, "two attempts");
     let item = w.item(&open, &id);
     assert_eq!(item.processing_status.as_deref(), Some("complete"));
     assert_eq!(item.title, "Linear Method");
@@ -468,7 +464,7 @@ fn a_failed_rerun_leaves_a_complete_link_complete() {
 /// deadline here is zero, so the first check after the parse thread starts is past it.
 #[test]
 fn a_parse_past_the_deadline_fails_its_job() {
-    let w = world_with(Duration::ZERO);
+    let w = world_with(Duration::ZERO, with_device_key());
     let open = w.open();
     let id = w.capture(&open, "/post");
     w.jobs
@@ -495,4 +491,89 @@ fn a_parse_past_the_deadline_fails_its_job() {
         Some("pending"),
         "nothing written"
     );
+}
+
+/// Holds the runner's background thread (`open-inbox-jobs`, named by the session) at its first
+/// key read while armed, so whatever an open does before it returns is all that has run.
+struct HeldRunner {
+    inner: Arc<dyn SecureStore>,
+    armed: Mutex<bool>,
+    released: Condvar,
+}
+
+impl HeldRunner {
+    fn set(&self, armed: bool) {
+        *self.armed.lock().unwrap() = armed;
+        self.released.notify_all();
+    }
+}
+
+impl SecureStore for HeldRunner {
+    fn get(&self, key: SecureStoreKey) -> Result<Option<Vec<u8>>, SecureStoreError> {
+        if std::thread::current().name() == Some("open-inbox-jobs") {
+            let armed = self.armed.lock().unwrap();
+            drop(self.released.wait_while(armed, |armed| *armed).unwrap());
+        }
+        self.inner.get(key)
+    }
+
+    fn set(&self, key: SecureStoreKey, value: Vec<u8>) -> Result<(), SecureStoreError> {
+        self.inner.set(key, value)
+    }
+
+    fn delete(&self, key: SecureStoreKey) -> Result<(), SecureStoreError> {
+        self.inner.delete(key)
+    }
+
+    fn clear(&self) -> Result<(), SecureStoreError> {
+        self.inner.clear()
+    }
+}
+
+/// Lets the held runner go before the world closes the vault, which joins it.
+struct Release(Arc<HeldRunner>);
+
+impl Drop for Release {
+    fn drop(&mut self) {
+        self.0.set(false);
+    }
+}
+
+/// The open resumes jobs and queues unfetched links before it returns, however late the runner
+/// thread starts. When that pass ran on the runner thread, it could claim a link captured right
+/// after the open, and the capture's own enqueue then requeued the running job, which ran twice.
+#[test]
+fn the_startup_pass_finishes_before_the_open_returns() {
+    let held = Arc::new(HeldRunner {
+        inner: with_device_key(),
+        armed: Mutex::new(false),
+        released: Condvar::new(),
+    });
+    let w = world_with(PARSE_DEADLINE, held.clone());
+    let release = Release(held.clone());
+    let open = w.open();
+    let id = w.capture(&open, "/post");
+    w.session.close();
+    assert_eq!(
+        statuses(&w.inbox(&open), &id),
+        Vec::new(),
+        "nothing queued it"
+    );
+    drop(open);
+
+    held.set(true);
+    let open = w.open();
+    assert_eq!(
+        statuses(&w.inbox(&open), &id),
+        vec![(InboxJobType::MetadataScrape, InboxJobStatus::Pending)],
+        "queued inside the open"
+    );
+    drop(release);
+    assert!(matches!(w.next(), InboxJobNotice::Updated { .. }));
+    assert!(matches!(w.next(), InboxJobNotice::MetadataComplete { .. }));
+    assert!(
+        matches!(w.next(), InboxJobNotice::Updated { .. }),
+        "the article"
+    );
+    assert_eq!(w.server.hits("/post"), 2, "one preview, one article");
 }

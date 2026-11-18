@@ -2,10 +2,11 @@
 //! its readable article, fetched and written back onto the capture (Step 27, #3544).
 //!
 //! Core owns the queue (`Inbox::{claim_next_job, finish_job, fail_job, ..}`, local only); this
-//! service owns time and the work. One runner thread per open vault (a session background
-//! task) resumes interrupted jobs, queues links an older build left unfetched, then claims the
-//! next due job, runs it and finishes or fails that run, and sleeps until the next one is due or
-//! [`InboxJobs::enqueue`] wakes it. Jobs run one at a time.
+//! service owns time and the work. Each open (an open hook) resumes interrupted jobs and queues
+//! links an older build left unfetched before it returns. Then one runner thread per open vault
+//! (a session background task) claims the next due job, runs it and finishes or fails that run,
+//! and sleeps until the next one is due or [`InboxJobs::enqueue`] wakes it. Jobs run one at a
+//! time.
 //!
 //! A vault close or [`InboxJobs::stop`] (the `stop-schedulers` quit step) stops the runner
 //! within [`POLL`]: a fetch is dropped, and a parse in flight is left to finish on its own
@@ -31,7 +32,7 @@ use memry_core::seams::secure_store::SecureStore;
 use tokio::runtime::Handle;
 
 use crate::services::web_fetch::WebFetch;
-use crate::session::{OpenVault, Session, lock};
+use crate::session::{OpenStage, OpenVault, Session, lock};
 
 /// How often a waiting or working runner checks whether it must stop.
 pub const POLL: Duration = Duration::from_millis(100);
@@ -134,8 +135,15 @@ impl InboxJobs {
         })
     }
 
-    /// Runs the job runner in the background of every open (`resumeInboxJobs` at vault open).
+    /// Resumes and queues jobs inside every open (`resumeInboxJobs` at vault open), then runs
+    /// the job runner in its background.
     pub fn register(self: &Arc<Self>, session: &Session) {
+        let starting = Arc::clone(self);
+        session.on_open(
+            "inbox-jobs",
+            OpenStage::Defaults,
+            Arc::new(move |open| run::start(&starting, open)),
+        );
         let jobs = Arc::clone(self);
         let owner = session.clone();
         session.on_background(

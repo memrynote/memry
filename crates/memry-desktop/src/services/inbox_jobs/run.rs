@@ -158,6 +158,22 @@ impl Ctx<'_> {
     }
 }
 
+/// The open's pass over the queue: interrupted jobs resumed and unfetched links queued. It runs
+/// inside the open, so a capture made after the open returns is never claimed by it and then
+/// requeued by its own enqueue (which resets a running job, so the job would run twice).
+pub(super) fn start(jobs: &InboxJobs, open: &OpenVault) -> Result<(), String> {
+    let inbox = open
+        .vault
+        .inbox(jobs.store.clone())
+        .map_err(|error| format!("inbox jobs were not resumed: {error}"))?;
+    match inbox.resume_pending_jobs() {
+        Ok(resumed) => tracing::info!(scope = "Inbox:Jobs", ?resumed, "inbox jobs resumed"),
+        Err(error) => tracing::warn!(scope = "Inbox:Jobs", %error, "inbox jobs were not resumed"),
+    }
+    queue_unfetched_links(&inbox);
+    Ok(())
+}
+
 /// The runner of one open vault, until it closes or the app quits.
 pub(super) fn run(
     jobs: &Arc<InboxJobs>,
@@ -169,11 +185,6 @@ pub(super) fn run(
         .vault
         .inbox(jobs.store.clone())
         .map_err(|error| format!("the inbox job runner did not start: {error}"))?;
-    match inbox.resume_pending_jobs() {
-        Ok(resumed) => tracing::info!(scope = "Inbox:Jobs", ?resumed, "inbox jobs resumed"),
-        Err(error) => tracing::warn!(scope = "Inbox:Jobs", %error, "inbox jobs were not resumed"),
-    }
-    queue_unfetched_links(&inbox);
     let ctx = Ctx {
         jobs,
         session,
