@@ -22,7 +22,7 @@ use memry_desktop::sync::signals::AuthSignal;
 use serde_json::{Value, json};
 use tokio::sync::broadcast;
 
-use crate::account_service::{Keychain, MASTER, Script, access_token, setup_token};
+use crate::account_service::{Keychain, MASTER, Script, access_token, jwt, setup_token};
 
 const ALL: [SecureStoreKey; 5] = [
     SecureStoreKey::MasterKey,
@@ -638,4 +638,26 @@ async fn a_failing_device_list_deletes_nothing() {
         s.config
             .read(|c| c.get("sync").and_then(|s| s.get("deviceId")).is_some())
     );
+}
+
+/// An expired access token with no refresh token is a session that cannot come back: the device
+/// signs out the `integrity` way without asking the server.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_session_that_cannot_refresh_signs_out_keeping_the_master_key() {
+    let s = signed_in();
+    s.keychain
+        .set(
+            SecureStoreKey::AccessToken,
+            jwt(json!({ "sub": "u", "device_id": "server-device", "exp": 1 })).into_bytes(),
+        )
+        .unwrap();
+    s.keychain.delete(SecureStoreKey::RefreshToken).unwrap();
+
+    let repaired = s.account.repair_device_keys(&s.session).await.unwrap();
+
+    assert_eq!(repaired, KeyRepair::SignInRequired);
+    assert!(s.keychain.has(SecureStoreKey::MasterKey));
+    assert!(!s.keychain.has(SecureStoreKey::DeviceSigningKey));
+    assert!(s.script.requests().is_empty());
+    assert_eq!(count(&s.open, "outbox"), 2);
 }

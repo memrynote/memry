@@ -95,19 +95,21 @@ pub async fn sync_repair_device_keys(
 ) -> Result<RepairDeviceKeysResult, CommandError> {
     let account = app.state::<Arc<AccountService>>().inner().clone();
     let session = app.state::<Session>().inner().clone();
-    let repaired = account
-        .repair_device_keys(&session)
-        .await
-        .map_err(|error| {
-            let mapped = CommandError::from_core(&error);
-            log_failure("sync_repair_device_keys", &mapped);
-            mapped
-        })?;
-    if repaired == KeyRepair::SignInRequired {
+    let repaired = account.repair_device_keys(&session).await;
+    // A teardown that failed after the keychain step still signed the account out: its billing
+    // answer and binding go as for a finished one.
+    if !account.info().signed_in {
         if let Some(billing) = app.try_state::<Arc<BillingService>>() {
             billing.forget();
         }
         report_binding(&app);
+    }
+    let repaired = repaired.map_err(|error| {
+        let mapped = CommandError::from_core(&error);
+        log_failure("sync_repair_device_keys", &mapped);
+        mapped
+    })?;
+    if repaired == KeyRepair::SignInRequired {
         return Ok(RepairDeviceKeysResult::SignInRequired);
     }
     let wiring = app

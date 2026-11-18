@@ -205,7 +205,7 @@ impl Keychain {
     }
 }
 
-fn jwt(payload: Value) -> String {
+pub(crate) fn jwt(payload: Value) -> String {
     let header = URL_SAFE_NO_PAD.encode(br#"{"alg":"EdDSA","typ":"JWT"}"#);
     let body = URL_SAFE_NO_PAD.encode(serde_json::to_vec(&payload).unwrap());
     format!("{header}.{body}.c2ln")

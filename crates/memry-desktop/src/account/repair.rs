@@ -52,17 +52,15 @@ impl AccountService {
         Ok(KeyRepair::SignInRequired)
     }
 
-    /// The server's id for this install's device key; `None` with no session, a session the
-    /// server refused for good, no device key, or a key no live device holds.
+    /// The server's id for this install's device key; `None` with no session, a session that
+    /// cannot be refreshed, no device key, or a key no live device holds. A 401 on the device list
+    /// itself is an error, as Electron's `getFromServer` throws.
     async fn listed_device(&self) -> Result<Option<String>, AccountError> {
         match self.session.valid_access_token().await {
             Ok(Some(_)) => {}
             Ok(None) | Err(AuthError::SessionExpired) => return Ok(None),
             Err(error) => return Err(error.into()),
         }
-        match self.session.listed_device_id().await {
-            Err(AuthError::SessionExpired) => Ok(None),
-            listed => Ok(listed?),
-        }
+        Ok(self.session.listed_device_id().await?)
     }
 }
