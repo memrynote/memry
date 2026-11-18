@@ -190,6 +190,11 @@ struct InkSceneTests {
 private final class FakeInkBoards: WhiteboardBoards, @unchecked Sendable {
     var scene: String?
     var saves = 0
+    /// Pulls that land after a save read the board and before it writes,
+    /// one per write, each changing the stored scene.
+    var pulls: [(String) -> String] = []
+    /// The note's other canvases, as `boards(ownedBy:)` lists them.
+    var others: [CanvasRecord] = []
     /// Saves still to fail, one each.
     var failures = 0
     /// While set, each save waits in `held` until `resume()`.
@@ -213,13 +218,41 @@ private final class FakeInkBoards: WhiteboardBoards, @unchecked Sendable {
     }
 
     func save(_ id: String, scene: String) async throws {
+        try await land()
+        saves += 1
+        self.scene = scene
+    }
+
+    func save(_ id: String, scene: String, expected: String) async throws -> CanvasSceneWrite {
+        try await land()
+        guard let stored = self.scene, let current = try await board(id) else { throw StorageError.NotFound(what: id) }
+        guard stored == expected else { return .stale(current: current) }
+        saves += 1
+        self.scene = scene
+        return .written(canvas: CanvasRecord(id: id, title: "Drawing", ownerNoteId: "n1", scene: scene))
+    }
+
+    func boards(ownedBy noteId: String) async throws -> [CanvasRecord] {
+        let own = try await board("c1").map { [$0] } ?? []
+        return own + others.filter { $0.ownerNoteId == noteId }
+    }
+
+    /// What happens to a write before it reaches the store.
+    private func land() async throws {
         if holding { await withCheckedContinuation { held.append($0) } }
         if failures > 0 {
             failures -= 1
             throw URLError(.notConnectedToInternet)
         }
-        saves += 1
-        self.scene = scene
+        if !pulls.isEmpty, let stored = scene { scene = pulls.removeFirst()(stored) }
+    }
+}
+
+/// A pull that stores a desktop shape in the scene.
+private func pull(_ element: String) -> (String) -> String {
+    { stored in
+        let empty = stored.contains(##""elements":[]"##)
+        return stored.replacingOccurrences(of: ##""elements":["##, with: ##""elements":["## + element + (empty ? "" : ","))
     }
 }
 
@@ -406,6 +439,61 @@ struct InkBoardSaveTests {
         #expect(b == false)
         #expect(await board.flush())
         #expect(InkScene.strokes(in: fake.scene ?? "")?.count == 2, "the retry saves both strokes")
+    }
+
+    @Test func a_pull_landing_between_the_read_and_the_write_is_kept() async throws {
+        // #4820: the save read the board, then a pull stored a desktop shape.
+        let fake = FakeInkBoards(scene: scene([]))
+        let board = await open(fake)
+        fake.pulls = [pull(foreignRect)]
+        board.changed(drawing(board, [(1, pen)]))
+        #expect(await board.flush())
+        let stored = try #require(fake.scene)
+        #expect(stored.contains(foreignRect), "the pulled desktop shape stays")
+        #expect(try #require(InkScene.strokes(in: stored)).map(\.ink) == [pen])
+        #expect(board.background?.elements.map(\.id) == ["rect-1"], "the surface shows the board as stored")
+    }
+
+    @Test func a_save_that_keeps_meeting_pulls_retries_and_keeps_every_stroke() async throws {
+        let fake = FakeInkBoards(scene: scene([]))
+        let board = await open(fake)
+        var second = pen
+        second.color = "#2f9e44"
+        let rect2 = foreignRect.replacingOccurrences(of: "rect-1", with: "rect-2")
+        fake.pulls = [pull(foreignRect), pull(rect2)]
+        board.changed(drawing(board, [(1, pen), (2, second)]))
+        #expect(await board.flush())
+        let stored = try #require(fake.scene)
+        #expect(stored.contains(foreignRect) && stored.contains(rect2))
+        #expect(try #require(InkScene.strokes(in: stored)).map(\.ink) == [pen, second], "each stroke written once")
+        #expect(fake.saves == 1)
+    }
+
+    @Test func a_save_that_never_lands_keeps_the_strokes_for_the_next_one() async throws {
+        let fake = FakeInkBoards(scene: scene([]))
+        let board = await open(fake)
+        fake.pulls = (0 ..< InkBoard.saveAttempts).map { pull(foreignRect.replacingOccurrences(of: "rect-1", with: "rect-\($0)")) }
+        board.changed(drawing(board, [(1, pen)]))
+        #expect(await board.flush() == false)
+        #expect(board.saveFailure != nil)
+        #expect(board.canvasLost == false, "the canvas is still there: Done tries again")
+        #expect(try #require(InkScene.strokes(in: fake.scene ?? "")).isEmpty)
+        #expect(await board.flush())
+        let stored = try #require(fake.scene)
+        #expect(try #require(InkScene.strokes(in: stored)).map(\.ink) == [pen])
+        #expect(stored.contains("rect-0") && stored.contains("rect-2"))
+    }
+
+    @Test func the_boards_conflict_copy_is_listed_and_another_whiteboard_is_not() async {
+        let fake = FakeInkBoards(scene: scene([]))
+        fake.others = [CanvasRecord(id: "c3", title: "Sketches", ownerNoteId: "n1", scene: scene([]))]
+        let board = await open(fake)
+        #expect(board.conflictCopy == nil)
+        // A pull moved this board's iPad ink into a copy while it was open.
+        fake.others.append(CanvasRecord(id: "c2", title: "Drawing (conflict copy)", ownerNoteId: "n1", scene: scene([])))
+        fake.others.append(CanvasRecord(id: "c4", title: "Drawing (conflict copy)", ownerNoteId: "n9", scene: scene([])))
+        await board.findCopies()
+        #expect(board.conflictCopy?.id == "c2")
     }
 
     @Test func a_canvas_deleted_while_open_lets_the_surface_close() async {

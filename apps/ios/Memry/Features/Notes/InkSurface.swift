@@ -1,3 +1,4 @@
+import MemryCore
 import PencilKit
 import SwiftUI
 
@@ -12,6 +13,9 @@ enum InkCopy {
     static let openFullHint = "Opens the board in the whiteboard editor, to edit shapes and text"
     static let saveFailedTitle = "Could not save the drawing"
     static let closeWithoutSaving = "Close without saving"
+    static let conflictCopy = "A conflicting copy of this drawing exists"
+    static let openCopy = "Open"
+    static let openCopyHint = "Opens the copy in the whiteboard editor"
 }
 
 /// Presents a note's open whiteboard: the drawing surface or the full
@@ -56,6 +60,7 @@ struct InkSurface: View {
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.vaultSyncPasses) private var syncPasses
     @State private var board: InkBoard
     private let boards: any WhiteboardBoards
     @State private var full: WhiteboardEditRequest?
@@ -101,6 +106,8 @@ struct InkSurface: View {
         }
         .interactiveDismissDisabled()
         .task { await board.load() }
+        // A pull that moves this board's ink into a copy ends a sync pass.
+        .task(id: syncPasses) { await board.findCopies() }
         // A size class change can swap the presentation under the surface;
         // what it has not saved yet still goes to the canvas.
         .onDisappear { Task { [board] in _ = await board.flush() } }
@@ -126,7 +133,40 @@ struct InkSurface: View {
                 .background(WhiteboardInk.color(board.backgroundColor, dark: colorScheme == .dark))
                 .ignoresSafeArea(edges: .bottom)
                 .accessibilityLabel("Drawing: \(request.title)")
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    if let copy = board.conflictCopy {
+                        InkCopyNotice {
+                            Task {
+                                if await board.flush() {
+                                    full = WhiteboardEditRequest(canvasId: copy.id, title: copy.title ?? WhiteboardCopy.untitled)
+                                }
+                            }
+                        }
+                    }
+                }
         }
+    }
+}
+
+/// A pull kept another device's version of this board as a copy (#4828):
+/// said over the drawing, without blocking it.
+private struct InkCopyNotice: View {
+    let open: () -> Void
+
+    var body: some View {
+        HStack(spacing: Tokens.Space.small) {
+            Label(InkCopy.conflictCopy, systemImage: "doc.on.doc")
+                .font(Tokens.Typography.supporting.font)
+                .foregroundStyle(Tokens.Text.secondary.color)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button(InkCopy.openCopy, action: open)
+                .font(Tokens.Typography.supporting.font)
+                .frame(minHeight: 44)
+                .accessibilityHint(InkCopy.openCopyHint)
+        }
+        .padding(.horizontal, Tokens.Space.inset)
+        .background(Tokens.Canvas.surface.color)
+        .overlay(alignment: .bottom) { Tokens.Line.border.color.frame(height: 1) }
     }
 }
 
