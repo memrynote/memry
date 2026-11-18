@@ -25,6 +25,7 @@ row.
 | GitHub README and the repo's website field         | `github`                         | `referral`   | `readme`, `repo`                                 | Referral                                       |
 | Docs site (`apps/docs`)                            | `docs`                           | `referral`   | the page, such as `install`                      | Referral                                       |
 | Directory listings and forums (`marketing/growth`) | `alternativeto`, `privacyguides` | `referral`   | `listing`, `showcase`                            | Referral                                       |
+| Launch posts (`marketing/growth/launch.md`)        | `hackernews`, `producthunt`      | `referral`   | `launch`                                         | Referral                                       |
 | Profiles (X bio, Reddit sidebar, YouTube channel)  | `x`, `reddit`, `youtube`         | `social`     | `profile`                                        | Organic Social, or Organic Video for `youtube` |
 
 Example: `https://memrynote.com/pricing?utm_source=app&utm_medium=desktop&utm_campaign=setup_wizard`.
