@@ -17,17 +17,10 @@
   },
   "steps": [
     {
-      "argv": [
-        "vault",
-        "config"
-      ]
+      "argv": ["vault", "config"]
     },
     {
-      "argv": [
-        "--json",
-        "vault",
-        "config"
-      ]
+      "argv": ["--json", "vault", "config"]
     },
     {
       "argv": [
@@ -37,10 +30,7 @@
       ]
     },
     {
-      "argv": [
-        "vault",
-        "config"
-      ]
+      "argv": ["vault", "config"]
     },
     {
       "argv": [
@@ -51,45 +41,22 @@
       ]
     },
     {
-      "argv": [
-        "--json",
-        "vault",
-        "config"
-      ]
+      "argv": ["--json", "vault", "config"]
     },
     {
-      "argv": [
-        "vault",
-        "update-config",
-        "{\"defaultNoteFolder\":\"../outside\"}"
-      ]
+      "argv": ["vault", "update-config", "{\"defaultNoteFolder\":\"../outside\"}"]
     },
     {
-      "argv": [
-        "vault",
-        "update-config"
-      ]
+      "argv": ["vault", "update-config"]
     },
     {
-      "argv": [
-        "vault",
-        "update-config",
-        "[1]"
-      ]
+      "argv": ["vault", "update-config", "[1]"]
     },
     {
-      "argv": [
-        "vault",
-        "update-config",
-        "3"
-      ]
+      "argv": ["vault", "update-config", "3"]
     },
     {
-      "argv": [
-        "vault",
-        "update-config",
-        "not json"
-      ]
+      "argv": ["vault", "update-config", "not json"]
     }
   ]
 }

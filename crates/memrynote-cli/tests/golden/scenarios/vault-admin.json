@@ -18,198 +18,79 @@
   },
   "steps": [
     {
-      "argv": [
-        "vault",
-        "reindex"
-      ]
+      "argv": ["vault", "reindex"]
     },
     {
-      "argv": [
-        "--json",
-        "vault",
-        "reindex"
-      ]
+      "argv": ["--json", "vault", "reindex"]
     },
     {
-      "argv": [
-        "vault",
-        "set-icon"
-      ]
+      "argv": ["vault", "set-icon"]
     },
     {
-      "argv": [
-        "vault",
-        "set-icon",
-        "icon:Bad-Name"
-      ]
+      "argv": ["vault", "set-icon", "icon:Bad-Name"]
     },
     {
-      "argv": [
-        "vault",
-        "set-icon",
-        "custom:x"
-      ]
+      "argv": ["vault", "set-icon", "custom:x"]
     },
     {
-      "argv": [
-        "vault",
-        "set-icon",
-        "icon:Star"
-      ]
+      "argv": ["vault", "set-icon", "icon:Star"]
     },
     {
-      "argv": [
-        "--json",
-        "vault",
-        "set-icon",
-        "null"
-      ]
+      "argv": ["--json", "vault", "set-icon", "null"]
     },
     {
-      "argv": [
-        "vault",
-        "activity"
-      ]
+      "argv": ["vault", "activity"]
     },
     {
-      "argv": [
-        "vault",
-        "activity",
-        "bogus"
-      ]
+      "argv": ["vault", "activity", "bogus"]
     },
     {
-      "argv": [
-        "--json",
-        "vault",
-        "activity",
-        "list"
-      ]
+      "argv": ["--json", "vault", "activity", "list"]
     },
     {
-      "argv": [
-        "--json",
-        "vault",
-        "activity",
-        "list",
-        "--problems"
-      ]
+      "argv": ["--json", "vault", "activity", "list", "--problems"]
     },
     {
-      "argv": [
-        "--json",
-        "vault",
-        "activity",
-        "list",
-        "--limit",
-        "1"
-      ]
+      "argv": ["--json", "vault", "activity", "list", "--limit", "1"]
     },
     {
-      "argv": [
-        "vault",
-        "activity",
-        "list",
-        "--limit",
-        "2"
-      ]
+      "argv": ["vault", "activity", "list", "--limit", "2"]
     },
     {
-      "argv": [
-        "vault",
-        "activity",
-        "list",
-        "--limit",
-        "0"
-      ]
+      "argv": ["vault", "activity", "list", "--limit", "0"]
     },
     {
-      "argv": [
-        "vault",
-        "activity",
-        "list",
-        "--limit",
-        "1.5"
-      ]
+      "argv": ["vault", "activity", "list", "--limit", "1.5"]
     },
     {
-      "argv": [
-        "vault",
-        "activity",
-        "list",
-        "--limit",
-        "abc"
-      ]
+      "argv": ["vault", "activity", "list", "--limit", "abc"]
     },
     {
-      "argv": [
-        "vault",
-        "activity",
-        "list",
-        "--limit",
-        "1001"
-      ]
+      "argv": ["vault", "activity", "list", "--limit", "1001"]
     },
     {
-      "argv": [
-        "vault",
-        "activity",
-        "clear"
-      ]
+      "argv": ["vault", "activity", "clear"]
     },
     {
-      "argv": [
-        "vault",
-        "activity",
-        "clear",
-        "--yes"
-      ]
+      "argv": ["vault", "activity", "clear", "--yes"]
     },
     {
-      "argv": [
-        "--json",
-        "vault",
-        "activity",
-        "list"
-      ]
+      "argv": ["--json", "vault", "activity", "list"]
     },
     {
-      "argv": [
-        "--json",
-        "vault",
-        "activity",
-        "clear",
-        "--yes"
-      ]
+      "argv": ["--json", "vault", "activity", "clear", "--yes"]
     },
     {
-      "argv": [
-        "vault",
-        "locks"
-      ]
+      "argv": ["vault", "locks"]
     },
     {
-      "argv": [
-        "vault",
-        "locks",
-        "list"
-      ]
+      "argv": ["vault", "locks", "list"]
     },
     {
-      "argv": [
-        "--json",
-        "vault",
-        "locks",
-        "list"
-      ]
+      "argv": ["--json", "vault", "locks", "list"]
     },
     {
-      "argv": [
-        "vault",
-        "locks",
-        "set",
-        "x"
-      ]
+      "argv": ["vault", "locks", "set", "x"]
     }
   ]
 }
