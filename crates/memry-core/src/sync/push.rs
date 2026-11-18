@@ -52,6 +52,7 @@ use crate::storage::repositories::projectors::agent::is_sealed_pending;
 use crate::storage::repositories::sync_items::{self, SyncItemRow};
 
 mod crdt;
+mod pre_push_hook;
 
 use super::crypto_batch::off_runtime;
 use super::engine::PushWave;
@@ -60,6 +61,7 @@ use super::outbox::{self, Batch, Collapsed, OutboxRow};
 use super::store;
 use crdt::BatchEnd;
 pub use crdt::{SnapshotFallback, SnapshotFallbackOutcome};
+pub use pre_push_hook::{HoldDecision, MAX_HOLD_DEFERRALS, PrePushHook};
 
 /// Chapter 05 §5.6, `apps/desktop/src/main/sync/engine/sync-context.ts:126-132`.
 pub const PUSH_BATCH_SIZE: usize = 100;
@@ -157,6 +159,7 @@ pub struct PushCoordinator {
     /// §5.6's ceiling. Lowered by a 5xx and **never raised**.
     ceiling: AtomicUsize,
     halvings: AtomicUsize,
+    pre_push: pre_push_hook::PrePushHooks,
 }
 
 impl PushCoordinator {
@@ -177,6 +180,7 @@ impl PushCoordinator {
             at_rest: AtRestKey::default(),
             ceiling: AtomicUsize::new(PUSH_BATCH_SIZE),
             halvings: AtomicUsize::new(0),
+            pre_push: Default::default(),
         }
     }
 
@@ -211,13 +215,16 @@ impl PushCoordinator {
         let mut report = PushReport::default();
         // Documents whose batch was deferred in this wave: one try per wave.
         let mut deferred_docs: Vec<String> = Vec::new();
+        // Record rows a pre-push hook deferred in this wave: one try per wave.
+        let mut waiting: Vec<i64> = Vec::new();
         for _ in 0..MAX_PUSH_ITERATIONS {
             let ceiling = self.batch_ceiling();
             let now = now_ms();
             let skip = self.skipped_docs(&deferred_docs).await?;
+            let rows = waiting.clone();
             let Some(batch) = self
                 .db
-                .call(move |conn| outbox::next_batch(conn, now, ceiling, &skip))
+                .call(move |conn| outbox::next_batch(conn, now, ceiling, &skip, &rows))
                 .await?
             else {
                 break;
@@ -229,7 +236,10 @@ impl PushCoordinator {
                         deferred_docs.push(doc_id);
                     }
                 }
-                Batch::Records { items } => self.push_records(items, &mut report).await?,
+                Batch::Records { items } => {
+                    let items = self.pre_push.admit(items, &mut waiting).await;
+                    self.push_records(items, &mut report).await?
+                }
             }
         }
         report.batch_ceiling = self.batch_ceiling();
