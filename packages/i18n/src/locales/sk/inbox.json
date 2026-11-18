@@ -579,7 +579,10 @@
       "journalOff": "Denník je vypnutý v Nastaveniach.",
       "sendFailed": "Sticky sa nepodarilo odoslať.",
       "undoExpired": "Na vrátenie je už neskoro.",
-      "undoFailed": "Odoslanie sa nepodarilo vrátiť späť."
+      "undoFailed": "Odoslanie sa nepodarilo vrátiť späť.",
+      "journalBusy": "Dnešný záznam v denníku sa ešte ukladá. Skúste to znova o chvíľu.",
+      "folderExcluded": "Priečinok Sticky je vylúčený. Odstráňte ho z vylúčených priečinkov v Nastaveniach, aby ste mohli odosielať poznámky.",
+      "projectMissing": "Projekt tejto úlohy neexistuje. Vyberte predvolený projekt v Nastaveniach alebo to odošlite ako poznámku."
     },
     "inputLabel": "Text Sticky",
     "dismissError": "Zavrieť"

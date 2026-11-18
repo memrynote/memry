@@ -579,7 +579,10 @@
       "journalOff": "Le journal est désactivé dans les paramètres.",
       "sendFailed": "Impossible d'envoyer le Sticky.",
       "undoExpired": "Il est trop tard pour annuler.",
-      "undoFailed": "Impossible d'annuler l'envoi."
+      "undoFailed": "Impossible d'annuler l'envoi.",
+      "journalBusy": "L'entrée du journal d'aujourd'hui est encore en cours d'enregistrement. Réessayez dans un instant.",
+      "folderExcluded": "Le dossier Sticky est exclu. Retirez-le des dossiers exclus dans les paramètres pour envoyer des notes.",
+      "projectMissing": "Le projet de cette tâche n'existe pas. Choisissez un projet par défaut dans les paramètres, ou envoyez-la comme note."
     },
     "inputLabel": "Texte du Sticky",
     "dismissError": "Ignorer"
