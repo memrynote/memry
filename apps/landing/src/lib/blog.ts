@@ -633,7 +633,7 @@ Referenced in [[Q3 Roadmap]] and [[Security Whitepaper]].`
           'MemryNote is our app, so read this list knowing that. It is on the list because it is what we recommend to people who want their notes, tasks, journal, and calendar in one encrypted place. It is not the right pick for everyone. These are its gaps today:'
         ],
         bullets: [
-          'It is a desktop app first. MemryNote runs on macOS, Windows, and Linux. The iPhone app is in TestFlight beta, and there is no Android app, iPad layout, or web app yet.',
+          'It is a desktop app first. MemryNote runs on macOS, Windows, and Linux. The iPhone app is in TestFlight beta; iPad support is in development. There is no Android app or web app yet.',
           'It is in beta. The app is young and built by one founder, so expect rough edges and frequent releases.',
           'AI features are early. Agent Chat is available in the desktop app, while AI search and suggestions are still listed as coming soon.',
           'There is no sharing or collaboration. A vault syncs across your own devices only. Shared vaults and publishing are on the roadmap.',
@@ -931,7 +931,7 @@ Referenced in [[Q3 Roadmap]] and [[Security Whitepaper]].`
           {
             label: 'Where it falls short',
             value:
-              'The iPhone app is in TestFlight beta, and there is no Android, iPad, or web app. The whole app is in beta, there is no sharing or self-hosted sync, and AI features are early. The full list is at the top of this page.'
+              'The iPhone app is in TestFlight beta; iPad support is in development. There is no Android or web app. The whole app is in beta, there is no sharing or self-hosted sync, and AI features are early. The full list is at the top of this page.'
           }
         ]
       },

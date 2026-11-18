@@ -51,4 +51,4 @@ Version history is local to the device — versions don't currently sync. If you
 
 ## Privacy
 
-Version content lives in the data DB and is encrypted at rest along with everything else.
+Version content lives in the data DB as plain text, like the notes themselves. The local databases are not encrypted, so use full-disk encryption (FileVault, BitLocker, or LUKS) to protect them.
