@@ -110,6 +110,14 @@ export const commands = {
 	 */
 	writingGenerateAssist: (input: WritingAssistInput) => __TAURI_INVOKE<WritingAssistResult>("writing_generate_assist", { input }),
 	appInfo: () => __TAURI_INVOKE<AppInfo>("app_info"),
+	accountChangePlan: (target: PlanChangeTarget) => __TAURI_INVOKE<BillingStatusResult>("account_change_plan", { target }),
+	accountGetBillingStatus: () => __TAURI_INVOKE<BillingStatusResult>("account_get_billing_status"),
+	accountOpenBillingPortal: () => __TAURI_INVOKE<PortalResult>("account_open_billing_portal"),
+	accountPreviewPlanChange: (target: PlanChangeTarget) => __TAURI_INVOKE<PlanChangePreviewResult>("account_preview_plan_change", { target }),
+	/**  Re-reads the plan from the payment provider (`POST /auth/billing/reconcile`). */
+	accountRefreshBillingStatus: (input: RefreshBillingInput | null) => __TAURI_INVOKE<BillingStatusResult>("account_refresh_billing_status", { input }),
+	/**  Opens the checkout page in the browser, with the plan picked during onboarding. */
+	accountStartCheckout: (input: StartCheckoutInput | null) => __TAURI_INVOKE<CheckoutResult>("account_start_checkout", { input }),
 	/**  The calling window closed its editor of `note_id`. */
 	crdtCloseDoc: (noteId: string) => __TAURI_INVOKE<null>("crdt_close_doc", { noteId }),
 	crdtGetHealth: () => __TAURI_INVOKE<CrdtHealth>("crdt_get_health"),
@@ -228,6 +236,8 @@ export const commands = {
 	 *  ([`announce_followed`]).
 	 */
 	journalUpdateEntry: (input: JournalUpdateInput) => __TAURI_INVOKE<JournalEntryView>("journal_update_entry", { input }),
+	/**  Logs `renderer launch marks {json}`, the line the launch bench parses. */
+	launchReportRendererMarks: (marks: RendererLaunchMarks) => __TAURI_INVOKE<null>("launch_report_renderer_marks", { marks }),
 	localeGet: () => __TAURI_INVOKE<string>("locale_get"),
 	localeList: () => __TAURI_INVOKE<string[]>("locale_list"),
 	/**
@@ -447,6 +457,15 @@ export const commands = {
 	 *  failed write saves nothing.
 	 */
 	notesDownloadUnsplashPhoto: (noteId: string, photo: UnsplashPhoto) => __TAURI_INVOKE<UnsplashDownloadResponse>("notes_download_unsplash_photo", { noteId, photo }),
+	/**  `notes:cluster`: proposed groups for at most 300 notes. */
+	notesCluster: (noteIds: string[]) => __TAURI_INVOKE<NoteClustersResponse>("notes_cluster", { noteIds }),
+	/**
+	 *  `notes:get-similar`: the nearest notes not linked with `note_id`, `limit` of them (5 when
+	 *  absent, 1 to 20).
+	 */
+	notesGetSimilar: (noteId: string, limit: number | null) => __TAURI_INVOKE<SimilarNotesResponse>("notes_get_similar", { noteId, limit }),
+	/**  `notes:get-tag-suggestions`: tags the nearest notes share and `note_id` lacks. */
+	notesGetTagSuggestions: (noteId: string) => __TAURI_INVOKE<NoteTagSuggestionsResponse>("notes_get_tag_suggestions", { noteId }),
 	/**  `notes:delete-version`: a version that is not there is no failure, as in Electron. */
 	notesDeleteVersion: (snapshotId: string) => __TAURI_INVOKE<null>("notes_delete_version", { snapshotId }),
 	/**  `notes:get-version`: the version and the file it restores to; `null` for none. */
@@ -807,6 +826,21 @@ export const commands = {
 	 *  that is not here (the note stays kept).
 	 */
 	vaultNoticesRestoreKept: (noteId: string) => __TAURI_INVOKE<null>("vault_notices_restore_kept", { noteId }),
+	/**
+	 *  `settings:downloadVoiceModel`: downloads and verifies Whisper Small, with progress on
+	 *  `VoiceModelProgressEvent`. A failure rejects with the download's reason.
+	 */
+	settingsDownloadVoiceModel: () => __TAURI_INVOKE<null>("settings_download_voice_model"),
+	/**  `settings:getVoiceModelStatus`. */
+	settingsGetVoiceModelStatus: () => __TAURI_INVOKE<VoiceModelStatus>("settings_get_voice_model_status"),
+	/**  `settings:getVoiceRecordingReadiness`. */
+	settingsGetVoiceRecordingReadiness: () => __TAURI_INVOKE<VoiceRecordingReadiness>("settings_get_voice_recording_readiness"),
+	/**  `settings:getVoiceTranscriptionOpenAIKeyStatus`. */
+	settingsGetVoiceTranscriptionOpenaiKeyStatus: () => __TAURI_INVOKE<VoiceOpenAiKeyStatus>("settings_get_voice_transcription_openai_key_status"),
+	/**  `settings:openOsMicrophoneSettings`. */
+	settingsOpenOsMicrophoneSettings: () => __TAURI_INVOKE<OpenSettingsResult>("settings_open_os_microphone_settings"),
+	/**  `settings:setVoiceTranscriptionOpenAIKey`: a blank key deletes the stored one. */
+	settingsSetVoiceTranscriptionOpenaiKey: (apiKey: string) => __TAURI_INVOKE<null>("settings_set_voice_transcription_openai_key", { apiKey }),
 	/**  Closes the calling window. The `CloseRequested` handlers (flush, tray) decide what follows. */
 	windowClose: () => __TAURI_INVOKE<null>("window_close"),
 	/**  Minimizes the calling window. */
@@ -893,6 +927,7 @@ export const events = {
 	vaultLocksExternalEditRestoredEvent: makeEvent<VaultLocksExternalEditRestoredEvent, VaultLocksExternalEditRestoredEvent>("vault-locks-external-edit-restored-event"),
 	vaultNoticesChangedEvent: makeEvent<VaultNoticesChangedEvent, VaultNoticesChangedEvent>("vault-notices-changed-event"),
 	vaultStatusChangedEvent: makeEvent<VaultStatusChangedEvent, VaultStatusChangedEvent>("vault-status-changed-event"),
+	voiceModelProgressEvent: makeEvent<VoiceModelProgressEvent, VoiceModelProgressEvent>("voice-model-progress-event"),
 	windowCaptionHoverChangedEvent: makeEvent<WindowCaptionHoverChangedEvent, WindowCaptionHoverChangedEvent>("window-caption-hover-changed-event"),
 	windowCaptionPressedChangedEvent: makeEvent<WindowCaptionPressedChangedEvent, WindowCaptionPressedChangedEvent>("window-caption-pressed-changed-event"),
 	windowChromeStateChangedEvent: makeEvent<WindowChromeStateChangedEvent, WindowChromeStateChangedEvent>("window-chrome-state-changed-event"),
@@ -1240,6 +1275,43 @@ export type BacklinkView = {
 	via?: LinkViaView | null,
 };
 
+/**  `BillingActionResult`: the envelope of a call that did not reach the server (signed out). */
+export type BillingActionResult = {
+	success: boolean,
+	error?: string | null,
+};
+
+export type BillingLimits = {
+	storageLimit: number,
+	maxFileSize: number,
+	/**  `null` is unlimited (Believer). */
+	maxVaults: number | null,
+	versionHistoryDays: number,
+};
+
+/**
+ *  `BillingStatus` of `paddle-billing.ts`. `plan`, `cadence` and `status` stay as the server
+ *  sends them.
+ */
+export type BillingStatusDto = {
+	plan: string,
+	cadence: string | null,
+	status: string,
+	email: string | null,
+	limits: BillingLimits,
+	usage: BillingUsage,
+	/**  Epoch seconds. */
+	expiresAt: number | null,
+	canManageBilling: boolean,
+};
+
+/**  The status, or the signed-out envelope; the renderer tells them apart with `'plan' in r`. */
+export type BillingStatusResult = BillingStatusDto | BillingActionResult;
+
+export type BillingUsage = {
+	storageUsed: number,
+};
+
 export type BuildKind = "dev" | "packaged";
 
 /**  A caption button's rectangle in client coordinates, physical pixels. */
@@ -1265,6 +1337,16 @@ export type CategoryOrderInput = {
  *  - `unknown`: anything else, logged.
  */
 export type ChangeHold = { kind: "settings"; path: string } | { kind: "taken"; path: string } | { kind: "refused" } | { kind: "unknown" };
+
+export type CheckoutCadence = "monthly" | "annual" | "lifetime";
+
+export type CheckoutPlan = "plus" | "pro" | "believer";
+
+export type CheckoutResult = {
+	success: boolean,
+	error?: string | null,
+	checkoutUrl?: string | null,
+};
 
 /**
  *  What the renderer sees when a command rejects. Tauri serializes it as JSON, the shape
@@ -2369,6 +2451,21 @@ export type NoteAliasesView = {
 	aliases: string[],
 };
 
+/**  `NoteClusterGroup`. */
+export type NoteClusterGroup = {
+	noteIds: string[],
+	titles: string[],
+	suggestedName: string | null,
+};
+
+/**  `NoteClustersResponse`. */
+export type NoteClustersResponse = {
+	status: NoteSimilarityStatus,
+	groups: NoteClusterGroup[],
+	ungrouped: string[],
+	missing: string[],
+};
+
 /**
  *  `NoteCreateSchema`, without `plainChecklists` (Step 32), which the renderer's service
  *  refuses until then.
@@ -2543,6 +2640,9 @@ export type NoteResultMetadata = {
 	matchedName?: string | null,
 };
 
+/**  `NoteSimilarityStatus`. */
+export type NoteSimilarityStatus = "disabled" | "no-embedding" | "ready";
+
 /**  `NoteSyncState`. Times are epoch milliseconds. */
 export type NoteSyncState = {
 	state: NoteSyncStateValue,
@@ -2555,6 +2655,19 @@ export type NoteSyncState = {
 
 /**  `NoteSyncStateValue`. */
 export type NoteSyncStateValue = "not_syncing" | "local_only" | "pending" | "sent" | "confirmed" | "not_recorded" | "rejected";
+
+/**  `NoteTagSuggestion`. */
+export type NoteTagSuggestion = {
+	tag: string,
+	confidence: number | null,
+	support: number,
+};
+
+/**  `NoteTagSuggestionsResponse`. */
+export type NoteTagSuggestionsResponse = {
+	status: NoteSimilarityStatus,
+	tags: NoteTagSuggestion[],
+};
 
 /**
  *  Something the tag list shows changed (`notes:tags-changed`). No payload; the renderer
@@ -2702,6 +2815,10 @@ export type OcrLanguagesState = {
 	statuses: Partial<{ [key in OcrLanguage]: OcrLanguageStatus }>,
 };
 
+export type OpenSettingsResult = {
+	success: boolean,
+};
+
 export type OptionInput = {
 	value: string,
 	color: string,
@@ -2713,6 +2830,38 @@ export type PauseSyncResult = {
 	success: boolean,
 	wasPaused: boolean,
 };
+
+export type PlanChangePeriod = "monthly" | "annual";
+
+export type PlanChangePlan = "plus" | "pro";
+
+/**  `PlanChangePreview` of `paddle-billing.ts`. Amounts are Paddle's minor-unit strings. */
+export type PlanChangePreviewDto = {
+	plan: PlanChangePlan,
+	cadence: PlanChangePeriod,
+	isUpgrade: boolean,
+	effective: PlanChangeTiming,
+	immediateChargeAmount: string | null,
+	recurringAmount: string,
+	currencyCode: string,
+	nextBilledAt: string | null,
+};
+
+export type PlanChangePreviewResult = PlanChangePreviewDto | BillingActionResult;
+
+/**  Recurring plans only: Believer is a one-time purchase with nothing to switch. */
+export type PlanChangeTarget = {
+	plan: PlanChangePlan,
+	cadence: PlanChangePeriod,
+};
+
+export type PlanChangeTiming = "immediate" | "next_billing_period";
+
+/**
+ *  `no-billing-customer` is a `409`: the server has no billing customer for the account (never
+ *  paid, webhook pending).
+ */
+export type PortalFailureReason = "no-billing-customer";
 
 /**  `PortalHost['kind']`. */
 export type PortalHostKind = "portal" | "link";
@@ -2726,6 +2875,13 @@ export type PortalHostView = {
 	kind: PortalHostKind,
 	/**  A portal's first matching fence among the host's portal fences; absent for a link. */
 	ordinal?: number | null,
+};
+
+export type PortalResult = {
+	success: boolean,
+	reason?: PortalFailureReason | null,
+	portalUrl?: string | null,
+	error?: string | null,
 };
 
 /**  `PortalSearchSchema`, checked by the command. */
@@ -2869,6 +3025,11 @@ export type QuickSearchResponse = {
 	queryTimeMs: number | null,
 };
 
+/**  `refreshBillingStatus(input?)`: the web checkout's transaction, when known. */
+export type RefreshBillingInput = {
+	transactionId?: string | null,
+};
+
 /**
  *  Why a moved note's relative refs were left as they were: `changing`, the note changed while
  *  it moved (an outside edit or a sync merge not written yet); `unreadable`, the app cannot edit
@@ -2934,6 +3095,16 @@ export type RenamedAttachment = {
 export type RenamedDay = {
 	noteId: string,
 	path: string,
+};
+
+/**  Milliseconds since navigation start; a field is absent when the web view never recorded it. */
+export type RendererLaunchMarks = {
+	firstPaintMs: number | null,
+	fcpMs: number | null,
+	domInteractiveMs: number | null,
+	domContentLoadedMs: number | null,
+	/**  `memry:note-readable`, set only when the note the launch restored rendered. */
+	noteReadableMs: number | null,
 };
 
 /**  `tags:reorder`'s payload. */
@@ -3182,6 +3353,22 @@ export type SignOutResult = {
 	keychainWarning?: string | null,
 };
 
+/**  `SimilarNoteItem`. */
+export type SimilarNoteItem = {
+	id: string,
+	title: string,
+	path: string,
+	emoji: string | null,
+	snippet: string | null,
+	similarity: number | null,
+};
+
+/**  `SimilarNotesResponse`. */
+export type SimilarNotesResponse = {
+	status: NoteSimilarityStatus,
+	notes: SimilarNoteItem[],
+};
+
 /**  `NoteSizeClass`. */
 export type SizeClass = "note" | "large-file";
 
@@ -3216,6 +3403,12 @@ export type StampAnchorView = {
 
 /**  Why a stamp was refused (`PortalStampAnchorResultSchema`'s `reason`). */
 export type StampRefusal = "missing-note" | "missing-block" | "locked";
+
+/**  The plan picked during onboarding (`StartCheckoutInput`, `ipc-channels.ts:648`). */
+export type StartCheckoutInput = {
+	plan: CheckoutPlan,
+	cadence: CheckoutCadence,
+};
 
 /**
  *  The one startup type of the epic. Steps 08 (#3525) and 09 (#3526) extend this struct in
@@ -4063,6 +4256,46 @@ export type VersionView = {
 	wordCount: number,
 	reason: string,
 	createdAt: string,
+};
+
+/**  `VoiceModelProgressEvent.phase`. */
+export type VoiceModelPhase = "downloading" | "loading" | "ready" | "error";
+
+/**
+ *  `{ phase, progress, status }`: `progress` 0 to 100, `status` the English line Electron shows
+ *  (or the failure's reason on `error`).
+ */
+export type VoiceModelProgressEvent = {
+	phase: VoiceModelPhase,
+	progress: number,
+	status: string,
+};
+
+/**  `VoiceModelStatus`. */
+export type VoiceModelStatus = {
+	name: string,
+	downloaded: boolean,
+	loaded: boolean,
+	loading: boolean,
+	error: string | null,
+};
+
+/**  Why a recording cannot start (`VoiceRecordingReadiness.reason`). */
+export type VoiceNotReady = "missing-model" | "missing-api-key";
+
+export type VoiceOpenAiKeyStatus = {
+	hasApiKey: boolean,
+};
+
+/**  `VoiceTranscriptionSettings.provider`. */
+export type VoiceProvider = "local" | "openai";
+
+/**  `VoiceRecordingReadiness`. `message` is English, as Electron's. */
+export type VoiceRecordingReadiness = {
+	ready: boolean,
+	provider: VoiceProvider,
+	reason?: VoiceNotReady | null,
+	message?: string | null,
 };
 
 /**  A note whose interrupted app move waits; `path` is its file's, absolute. */
