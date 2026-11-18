@@ -373,7 +373,11 @@ fn a_crash_at_any_point_then_a_rerun_installs_the_same_import() {
     let clean_report = import(&clean);
     let clean_marker = installed_marker(&clean).unwrap();
 
-    for point in crash::POINTS {
+    // A `native-first:` point fires only on a rerun of a cut-off install (its own test).
+    for point in crash::POINTS
+        .iter()
+        .filter(|p| !p.starts_with("native-first:"))
+    {
         let vault = Vault::new();
         crash::arm(point);
         let crashed = catch_unwind(AssertUnwindSafe(|| {
@@ -709,4 +713,54 @@ fn a_stale_recovery_marker_stops_before_staging() {
         Err(ImportError::CoreFileExists(path)) if path == marker
     ));
     assert!(!vault.staging().exists());
+}
+
+/// A rerun that reads `NativeFirst` and is itself cut off between taking the imported index out
+/// of `core/` and putting the replaced one back, then a native open that creates a fresh
+/// `core/index.db`: the next rerun still puts the replaced index back.
+#[test]
+fn a_cut_off_index_take_back_is_finished_by_the_next_rerun() {
+    let vault = Vault::new();
+    let core = vault.core();
+    std::fs::create_dir_all(&core).unwrap();
+    std::fs::write(core.join(INDEX_FILE), b"native index").unwrap();
+    crash::arm("install:index-renamed");
+    let crashed = catch_unwind(AssertUnwindSafe(|| {
+        staged(stage_vault_import(vault.input()).unwrap())
+            .install()
+            .unwrap();
+    }));
+    assert!(crashed.is_err());
+    drop(memry_core::storage::open_data(&core.join(DATA_FILE)).unwrap());
+
+    crash::arm("native-first:index-taken-out");
+    assert!(catch_unwind(AssertUnwindSafe(|| stage_vault_import(vault.input()))).is_err());
+    std::fs::write(core.join(INDEX_FILE), b"fresh native index").unwrap();
+
+    assert!(matches!(
+        stage_vault_import(vault.input()).unwrap(),
+        StageOutcome::NativeFirst
+    ));
+    assert_eq!(
+        std::fs::read(core.join(INDEX_FILE)).unwrap(),
+        b"native index"
+    );
+    assert!(!vault.staging().exists());
+}
+
+/// A take-back of the staged index out of `core/` that fails part way (its WAL cannot move)
+/// leaves `index.db` in `core/` beside the WAL, never a WAL without its database.
+#[test]
+fn a_partial_take_back_never_leaves_a_wal_without_its_index() {
+    let vault = Vault::new();
+    let staged = staged(stage_vault_import(vault.input()).unwrap());
+    let (core, staging) = (vault.core(), vault.staging());
+    crash::hook("install:index-renamed", move || {
+        std::fs::write(core.join(DATA_FILE), b"native data").unwrap();
+        std::fs::write(core.join(format!("{INDEX_FILE}-wal")), b"native wal").unwrap();
+        std::fs::write(staging.join(format!("{INDEX_FILE}-wal")), b"occupied").unwrap();
+    });
+    assert!(staged.install().is_err());
+    assert!(vault.core().join(format!("{INDEX_FILE}-wal")).exists());
+    assert!(vault.core().join(INDEX_FILE).exists());
 }
