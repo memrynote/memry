@@ -98,7 +98,7 @@ pub async fn sync_repair_device_keys(
     let repaired = account.repair_device_keys(&session).await;
     // A teardown that failed after the keychain step still signed the account out: its billing
     // answer and binding go as for a finished one.
-    if !account.info().signed_in {
+    if account.is_signed_out() {
         if let Some(billing) = app.try_state::<Arc<BillingService>>() {
             billing.forget();
         }
@@ -116,14 +116,13 @@ pub async fn sync_repair_device_keys(
         .try_state::<Arc<SyncWiring>>()
         .map(|w| w.inner().clone());
     // Read off the running gate, whose binding is decided, before the restart replaces it. The
-    // keychain read and the stop block: off the async workers.
+    // keychain read blocks: off the async workers. `attach_sync` rebuilds a running supervisor
+    // and starts none while signed out.
     let decision = tauri::async_runtime::spawn_blocking(move || {
-        let decision = wiring.map_or(
+        wiring.map_or(
             GateDecision::NotStarted(SyncNotStartedReason::Unavailable),
             |wiring| wiring.start_decision(),
-        );
-        session.detach_sync();
-        decision
+        )
     })
     .await
     .map_err(|e| CommandError::new(ErrorKind::Internal, "repair_device_keys", e.to_string()))?;

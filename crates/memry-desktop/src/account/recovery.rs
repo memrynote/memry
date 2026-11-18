@@ -23,6 +23,12 @@ impl AccountService {
         let salt = keys::generate_kdf_salt();
         let master = derive(phrase.to_string(), salt.clone()).await?;
         let verifier = keys::account_key_verifier(&master).map_err(|_| AccountError::Derive)?;
+        // A new account owns no master key yet. One left in the keychain is the last account's
+        // (the integrity sign-out keeps it), and a setup the server refuses would leave this
+        // device registered and signed in with it.
+        self.store
+            .delete(SecureStoreKey::MasterKey)
+            .map_err(AuthError::from)?;
         let device_id = self.register().await?;
         // Electron logs a failed `/auth/setup` and goes on (`device-registration.ts:160-171`).
         // A 409 is the one answer that is not "retry later": another device published first,

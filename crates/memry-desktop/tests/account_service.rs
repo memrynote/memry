@@ -130,7 +130,7 @@ pub(crate) struct Keychain {
     items: Mutex<HashMap<SecureStoreKey, Vec<u8>>>,
     master_locked: bool,
     pub(crate) access_locked: AtomicBool,
-    undeletable: Mutex<Vec<SecureStoreKey>>,
+    pub(crate) undeletable: Mutex<Vec<SecureStoreKey>>,
     unsettable: Mutex<Vec<SecureStoreKey>>,
     /// The next `clear` fails and removes nothing; per-entry deletes still work.
     clear_refused: AtomicBool,
@@ -452,6 +452,26 @@ fn account_phrase() -> (String, Value) {
         "keyVerifier": keys::account_key_verifier(&master).unwrap(),
     });
     (phrase, material)
+}
+
+/// The master key an integrity sign-out kept is the last account's: a new account's setup that
+/// the server refuses leaves the device without it, never signed in with it.
+#[tokio::test]
+async fn a_refused_setup_never_signs_in_with_the_last_accounts_master_key() {
+    let keychain = Keychain::default();
+    keychain
+        .set(SecureStoreKey::MasterKey, MASTER.to_vec())
+        .unwrap();
+    let f = fixture(keychain);
+    f.verify(json!({ "needsSetup": true })).await.unwrap();
+    f.answer_registration("server-device-1");
+    f.script.answer(409, json!({ "error": "ALREADY_SET_UP" }));
+
+    let error = f.service.setup_new_account().await.unwrap_err();
+
+    assert!(matches!(error, AccountError::SetupConflict), "{error:?}");
+    assert!(!f.keychain.has(SecureStoreKey::MasterKey));
+    assert!(!f.service.info().signed_in);
 }
 
 /// A 409 on `/auth/setup` leaves this device registered with no master key: it is not signed in,

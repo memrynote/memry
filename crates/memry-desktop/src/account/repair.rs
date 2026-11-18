@@ -15,6 +15,7 @@ use serde_json::Value;
 use super::teardown::Reason;
 use super::{AccountError, AccountService};
 use crate::session::Session;
+use memry_core::api::auth::AuthState;
 use memry_core::api::errors::AuthError;
 
 /// What a repair found, before sync restarts.
@@ -50,6 +51,13 @@ impl AccountService {
             tracing::warn!(scope = "Sync", "{warning}");
         }
         Ok(KeyRepair::SignInRequired)
+    }
+
+    /// The session's own state, read in memory: a repair's teardown signed it out even when a later
+    /// step failed. Unlike `info().signed_in`, a device registered without a master key is not
+    /// signed out.
+    pub fn is_signed_out(&self) -> bool {
+        self.session.state() == AuthState::SignedOut
     }
 
     /// The server's id for this install's device key; `None` with no session, a session that

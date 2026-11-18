@@ -264,7 +264,7 @@ pub async fn active_device_with_key(
         path: DEVICES_PATH.to_string(),
         what: "expected an array of devices, or an object carrying one".to_string(),
     })?;
-    Ok(rows
+    let Some(row) = rows
         .iter()
         .filter(|row| row.get("revokedAt").is_none_or(Json::is_null))
         .find(|row| {
@@ -272,7 +272,15 @@ pub async fn active_device_with_key(
                 .and_then(|encoded| keys::base64_decode(&encoded).ok())
                 .is_some_and(|key| key == public_key)
         })
-        .and_then(|row| text(row, &["id", "deviceId"])))
+    else {
+        return Ok(None);
+    };
+    text(row, &["id", "deviceId"])
+        .map(Some)
+        .ok_or_else(|| ApiError::MalformedResponse {
+            path: DEVICES_PATH.to_string(),
+            what: "the device holding this key has no id".to_string(),
+        })
 }
 
 fn read_key_material(body: &Json) -> Option<KeyMaterial> {

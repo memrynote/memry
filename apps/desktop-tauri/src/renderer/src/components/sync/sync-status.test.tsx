@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from 'sonner'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { VaultBindingState } from '@memry/contracts/ipc-sync-ops'
 
@@ -165,6 +166,10 @@ describe('SyncStatus with device keys missing', () => {
       screen.getByRole('button', { name: 'phaseF.componentsSyncSyncStatus.repairDeviceKeys' })
     )
 
+    expect(toast.info).toHaveBeenCalledWith(
+      'phaseF.componentsSyncSyncStatus.syncNotStarted.entitlement',
+      expect.anything()
+    )
     expect(auth.resetAuthState).not.toHaveBeenCalled()
     expect(onOpenSettings).not.toHaveBeenCalled()
   })

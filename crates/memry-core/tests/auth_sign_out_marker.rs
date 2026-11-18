@@ -439,3 +439,13 @@ async fn no_device_key_lists_nothing_and_mints_none() {
     assert_eq!(transport.call_count(), 0);
     assert_eq!(store.get(SecureStoreKey::DeviceSigningKey).unwrap(), None);
 }
+
+/// A live device holding this key with no id is an answer the client cannot use, not "not listed".
+#[tokio::test]
+async fn a_listed_device_without_an_id_is_a_malformed_answer() {
+    let (session, transport, public, _dir) = holding_a_device_key();
+    let rows = json!([{ "signingPublicKey": public, "revokedAt": null }]);
+    transport.push(response(200, &rows.to_string()));
+
+    assert!(session.listed_device_id().await.is_err());
+}

@@ -2431,7 +2431,7 @@
         "vault-binding": "De sleutels van dit apparaat zijn hersteld, maar deze kluis is nog niet ingesteld om met je account te synchroniseren. Kies in het synchronisatiemenu hoe je hem wilt synchroniseren.",
         "vault-foreign": "De sleutels van dit apparaat zijn hersteld, maar deze kluis hoort bij een ander account. Hij blijft lokaal op dit apparaat.",
         "entitlement": "De sleutels van dit apparaat zijn hersteld, maar synchroniseren vereist een actief Sync-abonnement.",
-        "unavailable": "De sleutels van dit apparaat zijn hersteld, maar synchroniseren kon niet starten. Het wordt opnieuw geprobeerd; herstart Memry als dat niet lukt."
+        "unavailable": "De sleutels van dit apparaat zijn hersteld, maar synchroniseren kon niet starten. Herstart Memry; als synchroniseren dan nog steeds niet start, meld je af en weer aan."
       }
     },
     "pagesSettingsAiInlineSection": {

@@ -2431,7 +2431,7 @@
         "vault-binding": "Khóa của thiết bị này đã được khôi phục, nhưng kho này chưa được đặt để đồng bộ với tài khoản của bạn. Hãy chọn cách đồng bộ từ menu đồng bộ.",
         "vault-foreign": "Khóa của thiết bị này đã được khôi phục, nhưng kho này thuộc về tài khoản khác. Kho vẫn chỉ nằm trên thiết bị này.",
         "entitlement": "Khóa của thiết bị này đã được khôi phục, nhưng đồng bộ cần một gói Sync đang hoạt động.",
-        "unavailable": "Khóa của thiết bị này đã được khôi phục, nhưng đồng bộ không thể bắt đầu. Nó sẽ thử lại; hãy khởi động lại Memry nếu không được."
+        "unavailable": "Khóa của thiết bị này đã được khôi phục, nhưng đồng bộ không thể bắt đầu. Hãy khởi động lại Memry; nếu đồng bộ vẫn không bắt đầu, hãy đăng xuất rồi đăng nhập lại."
       }
     },
     "pagesSettingsAiInlineSection": {

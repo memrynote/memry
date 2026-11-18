@@ -2431,7 +2431,7 @@
         "vault-binding": "Naibalik na ang mga key ng device na ito, pero hindi pa naka-set ang vault na ito na mag-sync sa iyong account. Piliin sa sync menu kung paano ito isi-sync.",
         "vault-foreign": "Naibalik na ang mga key ng device na ito, pero sa ibang account ang vault na ito. Mananatili itong lokal sa device na ito.",
         "entitlement": "Naibalik na ang mga key ng device na ito, pero kailangan ng sync ng aktibong Sync plan.",
-        "unavailable": "Naibalik na ang mga key ng device na ito, pero hindi nagsimula ang sync. Susubukan itong ulitin; i-restart ang Memry kung hindi."
+        "unavailable": "Naibalik na ang mga key ng device na ito, pero hindi nagsimula ang sync. I-restart ang Memry; kung hindi pa rin magsimula ang sync, mag-sign out at mag-sign in ulit."
       }
     },
     "pagesSettingsAiInlineSection": {

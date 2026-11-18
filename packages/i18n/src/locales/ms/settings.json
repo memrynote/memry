@@ -2431,7 +2431,7 @@
         "vault-binding": "Kunci peranti ini telah dipulihkan, tetapi peti besi ini belum ditetapkan untuk disegerakkan dengan akaun anda. Pilih cara menyegerakkannya daripada menu penyegerakan.",
         "vault-foreign": "Kunci peranti ini telah dipulihkan, tetapi peti besi ini milik akaun lain. Ia kekal setempat pada peranti ini.",
         "entitlement": "Kunci peranti ini telah dipulihkan, tetapi penyegerakan memerlukan pelan Sync yang aktif.",
-        "unavailable": "Kunci peranti ini telah dipulihkan, tetapi penyegerakan tidak dapat dimulakan. Ia akan mencuba lagi; mulakan semula Memry jika tidak."
+        "unavailable": "Kunci peranti ini telah dipulihkan, tetapi penyegerakan tidak dapat dimulakan. Mulakan semula Memry; jika penyegerakan masih tidak bermula, log keluar dan log masuk semula."
       }
     },
     "pagesSettingsAiInlineSection": {

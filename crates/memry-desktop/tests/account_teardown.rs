@@ -661,3 +661,83 @@ async fn a_session_that_cannot_refresh_signs_out_keeping_the_master_key() {
     assert!(s.script.requests().is_empty());
     assert_eq!(count(&s.open, "outbox"), 2);
 }
+
+/// A refresh token the keychain refused to delete in an integrity sign-out does not sign the
+/// device back in at the next launch, and the next account's sign-in removes what stayed.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_refused_delete_in_a_repair_stays_signed_out_after_a_relaunch() {
+    let s = signed_in();
+    s.script
+        .answer(200, devices("server-device", json!(1_700_000_000)));
+    s.keychain.refuse_delete(&[SecureStoreKey::RefreshToken]);
+
+    s.account.repair_device_keys(&s.session).await.unwrap();
+    assert!(s.keychain.has(SecureStoreKey::RefreshToken));
+    let next = relaunch(&s.script, &s.keychain, &s.config);
+
+    assert_eq!(next.session().state(), AuthState::SignedOut);
+    s.keychain.undeletable.lock().unwrap().clear();
+    s.script
+        .answer(200, json!({ "success": true, "expiresIn": 600 }));
+    next.request_otp("b@example.com".into()).await.unwrap();
+    assert!(!s.keychain.has(SecureStoreKey::RefreshToken));
+}
+
+/// A repair that signs out ends the account's term: an adoption waiting on the vault list binds
+/// nothing.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_repair_that_signs_out_during_adoption_binds_nothing() {
+    let s = signed_in();
+    let open = &s.open;
+    open.vault
+        .db_handle()
+        .call_blocking(|conn| {
+            conn.execute_batch("DELETE FROM outbox; DELETE FROM sync_history;")
+                .unwrap();
+            Ok(())
+        })
+        .unwrap();
+    let held = s.script.held_answer(
+        200,
+        json!({ "vaults": [{ "vaultUuid": "server-vault-a", "itemCount": 3, "createdAt": 1 }] }),
+    );
+    s.script
+        .answer(200, devices("server-device", json!(1_700_000_000)));
+
+    let repairing = async {
+        while s.script.count("/sync/vaults") == 0 {
+            tokio::task::yield_now().await;
+        }
+        let repaired = s.account.repair_device_keys(&s.session).await.unwrap();
+        held.notify_one();
+        repaired
+    };
+    let (adopted, repaired) =
+        tokio::join!(s.account.adopt_account_vault_if_absent(open), repairing);
+
+    assert_eq!(repaired, KeyRepair::SignInRequired);
+    assert_eq!(adopted.unwrap(), None);
+    assert_eq!(open.vault.server_vault_id().unwrap(), None);
+}
+
+/// A refresh the server refused once is held back for a while, not ended: the repair is an error
+/// the user retries, and nothing is deleted.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_held_back_refresh_never_signs_out() {
+    let s = signed_in();
+    s.keychain
+        .set(
+            SecureStoreKey::AccessToken,
+            jwt(json!({ "sub": "u", "device_id": "server-device", "exp": 1 })).into_bytes(),
+        )
+        .unwrap();
+    s.script
+        .answer(401, json!({ "error": "INVALID_REFRESH_TOKEN" }));
+
+    s.account.repair_device_keys(&s.session).await.unwrap_err();
+
+    for key in ALL {
+        assert!(s.keychain.has(key), "{key:?} was deleted");
+    }
+    assert_eq!(s.script.count("/auth/devices"), 0);
+}

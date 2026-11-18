@@ -2431,7 +2431,7 @@
         "vault-binding": "Cheile acestui dispozitiv au fost restaurate, dar acest seif nu este încă setat să se sincronizeze cu contul tău. Alege cum să-l sincronizezi din meniul de sincronizare.",
         "vault-foreign": "Cheile acestui dispozitiv au fost restaurate, dar acest seif aparține altui cont. Rămâne local pe acest dispozitiv.",
         "entitlement": "Cheile acestui dispozitiv au fost restaurate, dar sincronizarea necesită un plan Sync activ.",
-        "unavailable": "Cheile acestui dispozitiv au fost restaurate, dar sincronizarea nu a putut porni. Va reîncerca; repornește Memry dacă nu reușește."
+        "unavailable": "Cheile acestui dispozitiv au fost restaurate, dar sincronizarea nu a putut porni. Repornește Memry; dacă sincronizarea tot nu pornește, deconectează-te și conectează-te din nou."
       }
     },
     "pagesSettingsAiInlineSection": {
