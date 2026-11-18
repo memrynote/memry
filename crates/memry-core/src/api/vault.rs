@@ -304,16 +304,6 @@ impl Vault {
         crate::api::vault_locks::LockStore::over(self.db.clone())
     }
 
-    /// Whether the Electron import brought this vault's data into the core
-    /// ([`crate::domain::notes::identity::electron_imported`]). Not part of the
-    /// FFI surface: the desktop command line is its only caller.
-    #[cfg(feature = "markdown")]
-    #[doc(hidden)]
-    pub fn electron_imported(&self) -> Result<bool, StorageError> {
-        self.db
-            .read_blocking(crate::domain::notes::identity::electron_imported)
-    }
-
     /// Records what this vault's core database was created over, once (desktop
     /// Step 13d): each open says whether Electron's `data.db` is beside it, and
     /// the first answer recorded stays. See

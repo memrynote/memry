@@ -7,6 +7,8 @@ use memry_desktop::electron_import::profile::{HostOs, ProfileEnv};
 use memrynote_cli::{CliDeps, CliIo, run_cli};
 
 const NOT_MIGRATED: &str = "MemryNote has not finished updating your data. Open MemryNote once, then run this command again.\n";
+const OVER_ELECTRON: &str = "This vault still holds data of the previous MemryNote that was never brought over, so the command line cannot use it. Use this vault in MemryNote.\n";
+const RECOVERING: &str = "MemryNote is repairing this vault's database. Open MemryNote and let it finish, then run this command again.\n";
 
 #[derive(Default)]
 struct Captured {
@@ -87,7 +89,12 @@ fn an_unmigrated_app_fails_every_vault_command_and_creates_nothing() {
     assert_eq!(rig.vault_status().2, NOT_MIGRATED);
     assert!(!vault.join(".memry").exists(), "nothing created");
 
-    // The import's marker, or the app's own config, ends the guard.
+    // The app's own config does not end it: the app writes that before its import ran.
+    write(&rig.path("appdata/memry-config.json"), b"{}");
+    assert_eq!(rig.vault_status().2, NOT_MIGRATED);
+    assert!(!vault.join(".memry").exists(), "nothing created");
+
+    // The import's marker does.
     write(&rig.path("appdata/electron-import.json"), b"{}");
     assert_eq!(rig.vault_status().0, 0);
     assert!(vault.join(".memry/core/data.db").is_file());
@@ -170,4 +177,122 @@ fn an_open_never_touches_the_index() {
 
     assert_eq!(rig.vault_status().0, 0);
     assert_eq!(std::fs::read(&index).expect("index"), b"damaged index");
+}
+
+/// A profile the app has nothing to import from (no config, no secrets) does not block.
+#[test]
+fn a_profile_without_config_or_secrets_does_not_block() {
+    let rig = Rig::new();
+    write(&rig.path("profile/Local State"), b"{}");
+    assert_eq!(rig.vault_status().0, 0);
+}
+
+#[test]
+fn a_profile_with_only_secrets_blocks() {
+    let rig = Rig::new();
+    write(&rig.path("profile/secure-secrets.json"), b"{}");
+    assert_eq!(rig.vault_status(), (1, String::new(), NOT_MIGRATED.into()));
+}
+
+/// A profile search that fails blocks: what it could not read may be the user's data.
+#[test]
+fn a_profile_search_that_fails_blocks() {
+    let rig = Rig::new();
+    write(&rig.path("profile/memry-config.json"), b"{}");
+    write(
+        &rig.path("profile/app-identity.json"),
+        br#"{"version":2,"appName":"memrynote"}"#,
+    );
+    write(&rig.path("appdata/memry-config.json"), b"{}");
+    assert_eq!(rig.vault_status(), (1, String::new(), NOT_MIGRATED.into()));
+}
+
+/// A vault this core created (origin native) that Electron opened later: the core is the
+/// vault's database, and the command line keeps working on it.
+#[test]
+fn a_native_vault_electron_opened_later_stays_open() {
+    let rig = Rig::new();
+    assert_eq!(rig.vault_status().0, 0);
+    write(&rig.path("vault/.memry/data.db"), b"electron data");
+    assert_eq!(rig.vault_status(), rig_ok(&rig));
+}
+
+fn rig_ok(rig: &Rig) -> (i32, String, String) {
+    let vault = rig.path("vault");
+    (
+        0,
+        format!(
+            "{{\n  \"isOpen\": true,\n  \"path\": \"{}\"\n}}\n",
+            vault.display()
+        ),
+        String::new(),
+    )
+}
+
+/// A core the app created over Electron's database without importing it: the command line
+/// refuses with its own message, which does not promise that opening the app fixes it.
+#[test]
+fn a_core_created_over_electron_refuses_with_its_own_message() {
+    let rig = Rig::new();
+    write(&rig.path("vault/.memry/data.db"), b"electron data");
+    let core = rig.path("vault/.memry/core");
+    std::fs::create_dir(&core).expect("mkdir core");
+    let vault = memry_core::api::vault::Vault::open_with(
+        core.to_string_lossy().into_owned(),
+        memry_core::storage::OpenOptions::default(),
+    )
+    .expect("core");
+    vault
+        .record_origin(memry_core::domain::notes::identity::Origin::OverElectron)
+        .expect("origin");
+    drop(vault);
+    let (code, out, err) = rig.vault_status();
+    assert_eq!((code, out.as_str()), (1, ""));
+    assert_eq!(err, OVER_ELECTRON);
+}
+
+/// The app's recovery of a damaged `data.db` is under way: the command line neither runs it nor
+/// touches its files.
+#[test]
+fn a_recovery_in_progress_is_left_to_the_app() {
+    let rig = Rig::new();
+    assert_eq!(rig.vault_status().0, 0);
+    let db = rig.path("vault/.memry/core/data.db");
+    let marker = rig.path("vault/.memry/core/data.db.recovering");
+    write(&marker, b"");
+    let before = std::fs::read(&db).expect("db");
+
+    let (code, out, err) = rig.vault_status();
+    assert_eq!((code, out.as_str(), err.as_str()), (1, "", RECOVERING));
+    assert!(marker.exists(), "the marker is the app's");
+    assert_eq!(std::fs::read(&db).expect("db"), before);
+}
+
+/// Several commands that create a vault's core at once (a script, a running app). Core's
+/// migration runner does not serialise two processes migrating one new `data.db`, so some of
+/// them can fail with `database is locked` (a departure the PR records; the fix belongs in
+/// `memry_core::storage::migrations::run`). None of them may leave the vault half migrated: the
+/// next command opens it.
+#[test]
+fn concurrent_first_opens_leave_a_usable_vault() {
+    let rig = Rig::new();
+    let barrier = std::sync::Barrier::new(16);
+    let results: Vec<_> = std::thread::scope(|scope| {
+        let handles: Vec<_> = (0..16)
+            .map(|_| {
+                scope.spawn(|| {
+                    barrier.wait();
+                    rig.vault_status()
+                })
+            })
+            .collect();
+        handles
+            .into_iter()
+            .map(|h| h.join().expect("join"))
+            .collect()
+    });
+    for (code, _, err) in &results {
+        assert!(*code == 0 || err.contains("database is locked"), "{err}");
+    }
+    assert_eq!(rig.vault_status(), rig_ok(&rig));
 }

@@ -106,7 +106,9 @@ fn describe(tables: &[TableSalvage], salvage_error: Option<&str>, vault_id_lost:
     parts.join("; ")
 }
 
-pub(crate) fn marker_path(path: &Path) -> PathBuf {
+/// `<data.db>.recovering`: written before a recovery starts, removed after it settled. A
+/// process that must not run the recovery (the desktop command line) refuses while it is there.
+pub fn marker_path(path: &Path) -> PathBuf {
     PathBuf::from(format!("{}.recovering", path.display()))
 }
 

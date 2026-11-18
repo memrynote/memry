@@ -349,17 +349,6 @@ pub fn mints_beside_electron(conn: &Connection) -> Result<bool, StorageError> {
     .map_err(failed)
 }
 
-/// Whether the Electron import (Step 36, #3553) brought this vault's data
-/// into the core: its proof row [`ELECTRON_IMPORT_META_KEY`] is there.
-pub fn electron_imported(conn: &Connection) -> Result<bool, StorageError> {
-    conn.query_row(
-        "SELECT EXISTS (SELECT 1 FROM meta WHERE key = ?1)",
-        params![ELECTRON_IMPORT_META_KEY],
-        |row| row.get(0),
-    )
-    .map_err(failed)
-}
-
 /// Where a moved file now is.
 #[derive(Debug, Clone, Copy)]
 pub struct Moved<'a> {
