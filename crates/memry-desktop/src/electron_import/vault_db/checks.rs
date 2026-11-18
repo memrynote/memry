@@ -91,6 +91,7 @@ pub(super) fn run(
     if source_vault_id(source)? != writer.vault_id()? {
         clock_mismatches.push("vault_metadata: the core vault id is not the source uuid".into());
     }
+    clock_mismatches.extend(super::sync_state::mismatches(source, writer)?);
     if !clock_mismatches.is_empty() {
         return Err(ImportError::CheckFailed {
             check: 5,

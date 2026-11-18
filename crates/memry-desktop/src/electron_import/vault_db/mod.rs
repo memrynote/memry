@@ -240,7 +240,6 @@ fn stage(input: &VaultImportInput<'_>, paths: &Paths) -> Result<VaultStageReport
     crash::point("stage:writer-created");
 
     let mut report = VaultStageReport {
-        dropped: preflight.dropped_keys,
         ..VaultStageReport::default()
     };
     let total = preflight.tables.len();
