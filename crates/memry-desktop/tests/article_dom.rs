@@ -73,6 +73,7 @@ fn error_value(e: ExtractError) -> Value {
         ExtractError::Selector(m) | ExtractError::Dom(m) | ExtractError::Js(m) => {
             json!({ "error": m })
         }
+        ExtractError::TooLarge(hit) => json!({ "error": format!("{hit:?}") }),
     }
 }
 

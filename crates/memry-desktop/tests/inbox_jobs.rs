@@ -49,7 +49,7 @@ struct Server {
 
 impl Server {
     fn url(&self, path: &str) -> String {
-        format!("http://news.test:{}{path}", self.addr.port())
+        format!("http://news.example.com:{}{path}", self.addr.port())
     }
 
     fn hits(&self, path: &str) -> usize {
@@ -67,7 +67,7 @@ async fn start() -> Server {
     let slow_calls = Arc::new(AtomicUsize::new(0));
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
-    let base = format!("http://news.test:{}", addr.port());
+    let base = format!("http://news.example.com:{}", addr.port());
     let record = seen.clone();
     let app = axum::Router::new().fallback(move |uri: Uri| {
         let (record, slow_calls, base) = (record.clone(), slow_calls.clone(), base.clone());
@@ -87,7 +87,7 @@ async fn route(path: &str, base: &str, slow_calls: &AtomicUsize) -> Response {
         "/post" => html(&format!("{base}/hero.png")),
         "/hero.png" => ([("content-type", "image/png")], PNG).into_response(),
         "/data-hero" => html("data:image/png;base64,iVBORw0KGgo="),
-        "/ftp-hero" => html("ftp://news.test/hero.png"),
+        "/ftp-hero" => html("ftp://news.example.com/hero.png"),
         "/down" => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
         "/slow" => {
             if slow_calls.fetch_add(1, Ordering::SeqCst) == 0 {
@@ -102,7 +102,7 @@ async fn route(path: &str, base: &str, slow_calls: &AtomicUsize) -> Response {
 struct World {
     _dir: tempfile::TempDir,
     vault_dir: std::path::PathBuf,
-    runtime: tokio::runtime::Runtime,
+    _runtime: tokio::runtime::Runtime,
     server: Server,
     session: Session,
     jobs: Arc<InboxJobs>,
@@ -121,7 +121,7 @@ fn world() -> World {
         .build()
         .expect("runtime");
     let server = runtime.block_on(start());
-    let web = WebFetch::for_tests(Limits::default(), &[("news.test", server.addr)]).expect("web");
+    let web = WebFetch::for_tests(Limits::default(), &[("news.example.com", server.addr)]).expect("web");
     let config = Arc::new(AppConfig::load(app.join("memry-config.json")));
     let session = Session::new(VaultRegistry::new(config));
     let (sent, notices) = channel();
@@ -138,7 +138,7 @@ fn world() -> World {
     World {
         _dir: dir,
         vault_dir,
-        runtime,
+        _runtime: runtime,
         server,
         session,
         jobs,
