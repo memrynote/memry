@@ -22,6 +22,7 @@
 //! Not here yet: the journal folder following a move of the folder (13m-7); until then a day
 //! the folder carries is held ([`folder_follow`]).
 
+pub mod append;
 pub mod calendar;
 pub mod cross;
 pub mod day_context;
