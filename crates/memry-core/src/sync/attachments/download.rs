@@ -14,10 +14,15 @@
 //! A rename that fails (the destination open in another process on Windows)
 //! keeps the fully verified partial too, where Electron discards it: the retry
 //! then only renames.
+//!
+//! One download runs per destination at a time ([`AttachmentTransfer::hold`]);
+//! a second one for the same file waits for it, then finds the file in place
+//! (a `Dir` target) or lands it again (a `Path` target).
 
 use std::fs::{self, File};
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
+use std::pin::pin;
 
 use sha2::{Digest, Sha256};
 use zeroize::Zeroizing;
@@ -90,6 +95,7 @@ impl AttachmentTransfer {
             // the vault's file-name rules.
             DownloadTarget::Dir(dir) => dir.join((self.sanitize)(base_name(&manifest.filename))),
         };
+        let _held = self.hold(&dest).await;
         if matches!(target, DownloadTarget::Dir(_))
             && fs::metadata(&dest).is_ok_and(|meta| meta.is_file() && meta.len() == manifest.size)
         {
@@ -125,6 +131,31 @@ impl AttachmentTransfer {
             manifest,
             already_present: false,
         })
+    }
+
+    /// Waits until no other download of this transfer lands at `dest`, then
+    /// holds it until the returned guard drops.
+    async fn hold(&self, dest: &Path) -> Held<'_> {
+        loop {
+            // Registered before the check, so a release between the check and
+            // the wait still wakes this one.
+            let mut released = pin!(self.landed.notified());
+            released.as_mut().enable();
+            if self.in_flight().insert(dest.to_path_buf()) {
+                return Held {
+                    transfer: self,
+                    dest: dest.to_path_buf(),
+                };
+            }
+            released.await;
+        }
+    }
+
+    fn in_flight(&self) -> std::sync::MutexGuard<'_, std::collections::HashSet<PathBuf>> {
+        // A poisoned lock only means a panic elsewhere; the set is valid.
+        self.landing
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
     /// Fetches, checks and appends every chunk the partial does not hold yet.
@@ -226,6 +257,19 @@ impl AttachmentTransfer {
             .window(&self.http, &self.vault_id, pending, now)
             .await;
         direct.window.as_ref()?.urls.get(hash).cloned()
+    }
+}
+
+/// A destination held by one download; dropping it lets the next one in.
+struct Held<'a> {
+    transfer: &'a AttachmentTransfer,
+    dest: PathBuf,
+}
+
+impl Drop for Held<'_> {
+    fn drop(&mut self) {
+        self.transfer.in_flight().remove(&self.dest);
+        self.transfer.landed.notify_waiters();
     }
 }
 

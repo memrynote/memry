@@ -13,6 +13,7 @@ use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
+use crate::crypto::sodium;
 use crate::protocol::attachment_manifest::{AttachmentChunkRef, AttachmentManifest};
 
 use super::transfer::SanitizeName;
@@ -105,16 +106,23 @@ pub fn load(partial: &Path, state_path: &Path, manifest: &AttachmentManifest) ->
     }
 }
 
-/// `persistResumeState`: temp file, fsync, rename.
+/// `persistResumeState`: temp file, fsync, rename. The temp name is unique
+/// (Electron's is `<sidecar>.tmp`), so no two writers ever share one.
 pub fn persist(state_path: &Path, state: &ResumeState) -> io::Result<()> {
     let mut tmp = state_path.as_os_str().to_owned();
-    tmp.push(".tmp");
+    tmp.push(format!(".{}.tmp", hex::encode(sodium::random_bytes(8))));
     let tmp = PathBuf::from(tmp);
-    let mut file = private_file(&tmp, false)?;
+    let written = write_synced(&tmp, state).and_then(|()| fs::rename(&tmp, state_path));
+    if written.is_err() {
+        let _ = fs::remove_file(&tmp);
+    }
+    written
+}
+
+fn write_synced(path: &Path, state: &ResumeState) -> io::Result<()> {
+    let mut file = private_file(path, false)?;
     file.write_all(&serde_json::to_vec(state).map_err(io::Error::other)?)?;
-    file.sync_all()?;
-    drop(file);
-    fs::rename(&tmp, state_path)
+    file.sync_all()
 }
 
 /// Removes the partial and its sidecar. A file that will not go stays

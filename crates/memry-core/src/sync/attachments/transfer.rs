@@ -8,9 +8,12 @@
 //! of them is written to disk: the download sidecar ([`super::resume`]) holds
 //! only Electron's six progress fields.
 
+use std::collections::HashSet;
 use std::io;
-use std::sync::Arc;
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 
+use tokio::sync::Notify;
 use zeroize::Zeroizing;
 
 use super::presign::Presigner;
@@ -33,6 +36,12 @@ pub struct AttachmentTransfer {
     pub(super) signers: Arc<dyn SignerResolver>,
     pub(super) sanitize: SanitizeName,
     pub(super) presign: Presigner,
+    /// Destinations with a download running. One download per destination
+    /// (`DownloadQueue.keyOf`, `download-queue.ts:199-215`): two would share
+    /// the partial, its sidecar and the final rename.
+    pub(super) landing: Mutex<HashSet<PathBuf>>,
+    /// Wakes the downloads waiting for a destination to free up.
+    pub(super) landed: Notify,
 }
 
 impl AttachmentTransfer {
@@ -54,6 +63,8 @@ impl AttachmentTransfer {
             signers,
             sanitize,
             presign: Presigner::default(),
+            landing: Mutex::default(),
+            landed: Notify::new(),
         }
     }
 }

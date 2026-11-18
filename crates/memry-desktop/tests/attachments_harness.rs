@@ -9,6 +9,9 @@
 //! | an interrupted download resumes at chunk 2 after a restart    | `DownloadResumeState`, #1829           |
 //! | a partial Electron left resumes; a stale one starts over      | `loadResumableState`                   |
 //! | a crash mid-upload restarts cleanly; the merge keeps every id | `onSaved`, `recordUploadedAttachment`  |
+//! | a file changed between the passes never leaves the device     | `upload::reframe`                      |
+//! | a tampered partial never replaces the good file               | the whole-file checksum before rename  |
+//! | two downloads to one destination land it once                 | `DownloadQueue.keyOf`                  |
 
 #![cfg(feature = "harness")]
 
@@ -18,6 +21,7 @@ mod device_key;
 mod harness_server;
 
 use std::collections::BTreeSet;
+use std::io::{Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
@@ -246,15 +250,30 @@ fn content(len: usize, seed: u64) -> Vec<u8> {
 
 /// Asserts no request body carries a 48-byte window of `plain`, one window per 64 KiB.
 fn assert_only_ciphertext(sent: &[Sent], plain: &[u8]) {
-    for at in (0..plain.len().saturating_sub(48)).step_by(64 * 1024) {
-        let window = &plain[at..at + 48];
-        for request in sent {
-            assert!(
-                !request.body.windows(48).any(|w| w == window),
-                "{} {} carries plaintext from offset {at}",
-                request.method,
-                request.path
-            );
+    let head = |bytes: &[u8]| u64::from_le_bytes(bytes[..8].try_into().unwrap()) as usize & 0xFFFF;
+    let offsets: Vec<usize> = (0..plain.len().saturating_sub(48))
+        .step_by(64 * 1024)
+        .collect();
+    // Each window's first 8 bytes, hashed down to 16 bits: a body is scanned once, and a full
+    // compare runs only where a window could start.
+    let mut could_start = vec![false; 1 << 16];
+    for &at in &offsets {
+        could_start[head(&plain[at..])] = true;
+    }
+    for request in sent {
+        for start in 0..request.body.len().saturating_sub(47) {
+            let candidate = &request.body[start..start + 48];
+            if !could_start[head(candidate)] {
+                continue;
+            }
+            for &at in &offsets {
+                assert!(
+                    candidate != &plain[at..at + 48],
+                    "{} {} carries plaintext from offset {at}",
+                    request.method,
+                    request.path
+                );
+            }
         }
     }
 }
@@ -576,6 +595,160 @@ async fn a_crash_mid_upload_restarts_cleanly_and_the_merge_keeps_every_id() {
         .await
         .unwrap();
     assert!(std::fs::read(landed.path).unwrap() == plain);
+}
+
+/// The file changes while `initiate` is on the wire, after the pass that hashed it: rewritten
+/// inside chunk 1, grown by an append (chunk 2 grows), or cut to two chunks (only the end-of-file
+/// summary sees that). No chunk from the first changed one on leaves, no manifest is sent, the
+/// session is cancelled, and neither version's plaintext is on the wire.
+#[tokio::test(flavor = "multi_thread")]
+async fn file_changed_between_passes() {
+    let server = Server::start();
+    let a = Device::new(&server, 0);
+    let plain = content(2 * CHUNK + MIB, 19);
+    let variants = [
+        ("rewrite", 1, content(MIB, 23)),
+        ("append", 2, content(MIB, 29)),
+        ("truncate", 2, Vec::new()),
+    ];
+    for (how, first_changed, new_bytes) in variants {
+        let rel = format!("attachments/note-1/{how}.bin");
+        let path = a.write(&rel, &plain);
+        let bytes = new_bytes.clone();
+        a.wire.cut(move |request| {
+            if request.url.ends_with("/upload/initiate") {
+                change(how, &path, &bytes);
+            }
+            false
+        });
+        a.wire.clear();
+
+        let error = a.upload(&rel, &[]).await.expect_err(how);
+
+        assert!(
+            matches!(error, TransferError::FileChanged),
+            "{how}: {error}"
+        );
+        let sent = a.wire.sent();
+        let routes = routes(&sent);
+        for index in first_changed..3 {
+            let put = format!("/chunk/{index}");
+            assert!(
+                routes.iter().all(|r| !r.ends_with(&put)),
+                "{how}: chunk {index} left the device"
+            );
+        }
+        assert!(
+            routes.iter().all(|r| !r.ends_with("/complete")),
+            "{how}: a manifest was sent"
+        );
+        assert!(
+            routes
+                .iter()
+                .any(|r| r.starts_with("DELETE /sync/attachments/upload/")),
+            "{how}: the session is cancelled"
+        );
+        assert_only_ciphertext(&sent, &plain);
+        assert_only_ciphertext(&sent, &new_bytes);
+    }
+}
+
+fn change(how: &str, path: &Path, bytes: &[u8]) {
+    let mut file = std::fs::OpenOptions::new().write(true).open(path).unwrap();
+    match how {
+        "rewrite" => {
+            file.seek(SeekFrom::Start(CHUNK as u64)).unwrap();
+            file.write_all(bytes).unwrap();
+        }
+        "append" => {
+            file.seek(SeekFrom::End(0)).unwrap();
+            file.write_all(bytes).unwrap();
+        }
+        _ => file.set_len(2 * CHUNK as u64).unwrap(),
+    }
+    file.sync_all().unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn tampered_partial_with_valid_sidecar() {
+    let server = Server::start();
+    let (a, b) = (Device::new(&server, 0), Device::new(&server, 1));
+    let plain = content(CHUNK + MIB, 31);
+    a.write(REL, &plain);
+    let id = a.upload(REL, &[]).await.unwrap();
+    let good = b"the good file this device already has";
+    let dest = b.write(REL, good);
+    let partial = dest.with_file_name(format!(".{id}.big.bin.mrypart"));
+    let sidecar = dest.with_file_name(format!(".{id}.big.bin.mrypart.json"));
+    // A sidecar that agrees with the manifest and the partial's length, over bytes that do not.
+    let mut tampered = plain[..CHUNK].to_vec();
+    tampered[4096] ^= 0xff;
+    std::fs::write(&partial, &tampered).unwrap();
+    let checksum = hex_sha256(&plain);
+    std::fs::write(
+        &sidecar,
+        format!(
+            r#"{{"version":1,"attachmentId":"{id}","checksum":"{checksum}","chunkCount":2,"chunksDone":1,"bytesWritten":{CHUNK}}}"#
+        ),
+    )
+    .unwrap();
+
+    let error = b
+        .transfer()
+        .await
+        .download_to_file(&id, DownloadTarget::Path(dest.clone()))
+        .await
+        .expect_err("the whole-file checksum fails");
+
+    assert!(
+        matches!(
+            error,
+            TransferError::Attachment(AttachmentError::ChecksumMismatch)
+        ),
+        "{error}"
+    );
+    assert_eq!(std::fs::read(&dest).unwrap(), good, "the good file stays");
+    assert!(
+        !partial.exists() && !sidecar.exists(),
+        "the next try starts clean"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn two_downloads_to_one_destination_land_once() {
+    let server = Server::start();
+    let (a, b) = (Device::new(&server, 0), Device::new(&server, 1));
+    let plain = content(CHUNK + MIB, 37);
+    a.write(REL, &plain);
+    let id = a.upload(REL, &[]).await.unwrap();
+    let hashes = chunk_hashes(&b, &id).await;
+    let dir = b.vault.join("attachments/note-1");
+    let transfer = b.transfer().await;
+    b.wire.clear();
+
+    let (first, second) = tokio::join!(
+        transfer.download_to_file(&id, DownloadTarget::Dir(dir.clone())),
+        transfer.download_to_file(&id, DownloadTarget::Dir(dir.clone())),
+    );
+
+    let (first, second) = (first.expect("the first"), second.expect("the second"));
+    assert_eq!(first.path, second.path);
+    assert_eq!(
+        u8::from(first.already_present) + u8::from(second.already_present),
+        1,
+        "the second waits, then finds the file in place"
+    );
+    assert_eq!(
+        chunk_gets(&b.wire.sent()),
+        hashes,
+        "each chunk is fetched once"
+    );
+    assert!(std::fs::read(&first.path).unwrap() == plain);
+    let left: Vec<_> = std::fs::read_dir(&dir)
+        .unwrap()
+        .map(|e| e.unwrap().file_name())
+        .collect();
+    assert_eq!(left, ["big.bin"], "no partial, sidecar or temp file stays");
 }
 
 async fn chunk_hashes(device: &Device, id: &str) -> Vec<String> {
