@@ -20,14 +20,23 @@ pub const TOKEN_SERVICE: &str = "com.memrynote.memry.readwise";
 
 /// `readwiseTokenAccountKey`: `token-<first 16 hex of sha256(vault path)>`, plus
 /// `-<MEMRY_DEVICE>` when that is set, so two dev devices on one machine keep their own entry.
-pub fn token_account(vault_path: &Path, device: Option<&str>) -> String {
-    let hash = Sha256::digest(vault_path.to_string_lossy().as_bytes());
+/// The path is hashed as given, never canonicalized. A blank path is refused, as in Electron.
+pub fn token_account(vault_path: &Path, device: Option<&str>) -> Result<String, NoVaultPath> {
+    let path = vault_path.to_string_lossy();
+    if path.trim().is_empty() {
+        return Err(NoVaultPath);
+    }
+    let hash = Sha256::digest(path.as_bytes());
     let base = format!("token-{}", &hex::encode(hash)[..16]);
-    match device {
+    Ok(match device {
         Some(device) if !device.is_empty() => format!("{base}-{device}"),
         _ => base,
-    }
+    })
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+#[error("the Readwise token needs a vault path")]
+pub struct NoVaultPath;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ConnectError {
@@ -47,16 +56,21 @@ pub struct ReadwiseToken {
 
 impl ReadwiseToken {
     /// `device` is the `MEMRY_DEVICE` value.
-    pub fn new(secrets: Arc<dyn GenericSecrets>, vault_path: &Path, device: Option<&str>) -> Self {
-        Self {
+    pub fn new(
+        secrets: Arc<dyn GenericSecrets>,
+        vault_path: &Path,
+        device: Option<&str>,
+    ) -> Result<Self, NoVaultPath> {
+        Ok(Self {
             secrets,
-            account: token_account(vault_path, device),
-        }
+            account: token_account(vault_path, device)?,
+        })
     }
 
     /// The stored token. Bytes that are not UTF-8 (no build writes them) read as absent, so a
     /// reconnect replaces them, as Electron's unreadable entry does. A locked keychain is an
-    /// error, never "not connected".
+    /// error, never "not connected". Blocking (the keychain worker, up to its deadline): call
+    /// it off the async runtime.
     pub fn read(&self) -> Result<Option<String>, SecureStoreError> {
         let Some(bytes) = self.secrets.get_secret(TOKEN_SERVICE, &self.account)? else {
             return Ok(None);
@@ -96,7 +110,8 @@ impl ReadwiseToken {
         Ok(())
     }
 
-    /// Deletes the token. Notes, options and run state are the caller's.
+    /// Deletes the token. Notes, options and run state are the caller's. Blocking, as
+    /// [`Self::read`].
     pub fn disconnect(&self) -> Result<(), SecureStoreError> {
         self.secrets.delete_secret(TOKEN_SERVICE, &self.account)
     }

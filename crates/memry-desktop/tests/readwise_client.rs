@@ -12,7 +12,9 @@ use memry_desktop::readwise::client::{
     MAX_PAGE_BYTES, ReadwiseClient, ReadwiseError, ReadwiseErrorKind,
 };
 use memry_desktop::readwise::limiter::RequestLimiter;
-use memry_desktop::readwise::token::{ConnectError, ReadwiseToken, TOKEN_SERVICE, token_account};
+use memry_desktop::readwise::token::{
+    ConnectError, NoVaultPath, ReadwiseToken, TOKEN_SERVICE, token_account,
+};
 use memry_desktop::seams::secure_store::GenericSecrets;
 use memry_test_kit::on_small_stack;
 use serde_json::{Value, json};
@@ -56,6 +58,8 @@ enum Reply {
     Hangup,
     /// Declares a body of this many bytes and closes the connection without sending it.
     Declared(usize),
+    /// Reads the request and never answers, holding the connection.
+    Stall,
 }
 
 impl Reply {
@@ -138,6 +142,10 @@ impl Server {
                     };
                     let response = match script(&seen, n) {
                         Reply::Hangup => return,
+                        Reply::Stall => {
+                            tokio::time::sleep(Duration::from_secs(3600)).await;
+                            return;
+                        }
                         Reply::Declared(len) => format!(
                             "HTTP/1.1 200 OK\r\ncontent-length: {len}\r\nconnection: close\r\n\r\n"
                         )
@@ -242,6 +250,8 @@ async fn each_failure_has_its_kind() {
     ));
     let hung = kind("hang").await;
     assert_eq!(hung.kind(), Some(ReadwiseErrorKind::Network));
+    // A token no header can carry fails at send, as Electron's `fetch` throws.
+    assert_eq!(kind("a\nb").await.kind(), Some(ReadwiseErrorKind::Network));
     assert_eq!(
         ReadwiseError::Status { status: 502 }.kind(),
         Some(ReadwiseErrorKind::Server)
@@ -295,6 +305,8 @@ async fn a_repeated_cursor_ends_the_paging_after_handing_out_its_page() {
     assert!(pages.next(&never()).await.unwrap().is_some());
     let error = pages.next(&never()).await.unwrap_err();
     assert!(matches!(error, ReadwiseError::RepeatedCursor), "{error:?}");
+    // The error ends the stream: no restart from page 1 past the guard.
+    assert!(pages.next(&never()).await.unwrap().is_none());
     assert_eq!(server.seen().len(), 2);
 }
 
@@ -404,6 +416,43 @@ async fn an_oversized_retry_after_is_reported_capped_at_120_s() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn a_request_with_no_answer_times_out_as_a_network_failure() {
+    let server = Server::start(|_, _| Reply::Stall).await;
+    let client = server
+        .client()
+        .with_request_timeout(Duration::from_millis(200));
+    let error = client.verify_token("t", &never()).await.unwrap_err();
+    assert!(
+        matches!(&error, ReadwiseError::Network(source) if source.is_timeout()),
+        "{error:?}"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn the_throttle_is_awaited_before_every_attempt_a_retry_included() {
+    let server = Server::start(|_, n| match n {
+        0 | 1 => Reply::retry_after(Some("0")),
+        _ => Reply::page(json!([{ "id": "d" }]), None),
+    })
+    .await;
+    let limiter = Arc::new(RequestLimiter::new(2, Duration::from_secs(3600)));
+    let cancel = CancellationToken::new();
+    let call = {
+        let (client, cancel) = (server.client(), cancel.clone());
+        tokio::spawn(async move {
+            client
+                .reader_document("t", "d", false, limiter, &cancel)
+                .await
+        })
+    };
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    cancel.cancel();
+    let error = call.await.unwrap().unwrap_err();
+    assert!(matches!(error, ReadwiseError::Cancelled), "{error:?}");
+    assert_eq!(server.seen().len(), 2);
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn a_cancel_during_the_retry_after_wait_ends_the_call_with_no_second_request() {
     let asked = Arc::new(Notify::new());
     let heard = Arc::clone(&asked);
@@ -508,6 +557,8 @@ async fn a_reader_page_with_a_tag_electrons_schema_refuses_is_an_unknown_shape()
         .reader_documents("t", None, false, reader_limiter());
     let error = documents.next(&never()).await.unwrap_err();
     assert!(matches!(error, ReadwiseError::UnknownShape), "{error:?}");
+    assert!(documents.next(&never()).await.unwrap().is_none());
+    assert_eq!(server.seen().len(), 1);
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -629,12 +680,27 @@ impl GenericSecrets for Keychain {
 fn the_token_account_is_electrons_derivation() {
     // `readwiseTokenAccountKey` in Node: sha256 of the path's UTF-8, first 16 hex digits.
     let notes = Path::new("/Users/kaan/Notes");
-    assert_eq!(token_account(notes, None), "token-0bcb62358ecbb0c9");
-    assert_eq!(token_account(notes, Some("")), "token-0bcb62358ecbb0c9");
-    assert_eq!(token_account(notes, Some("b")), "token-0bcb62358ecbb0c9-b");
+    assert_eq!(
+        token_account(notes, None).unwrap(),
+        "token-0bcb62358ecbb0c9"
+    );
+    assert_eq!(
+        token_account(notes, Some("")).unwrap(),
+        "token-0bcb62358ecbb0c9"
+    );
+    assert_eq!(
+        token_account(notes, Some("b")).unwrap(),
+        "token-0bcb62358ecbb0c9-b"
+    );
     let turkish = Path::new("C:\\Users\\Kağan\\Notlar");
-    assert_eq!(token_account(turkish, None), "token-57c3935ae14d51af");
+    assert_eq!(
+        token_account(turkish, None).unwrap(),
+        "token-57c3935ae14d51af"
+    );
     assert_eq!(TOKEN_SERVICE, "com.memrynote.memry.readwise");
+    // A blank path is refused, as `readwiseTokenAccountKey` throws.
+    assert_eq!(token_account(Path::new(""), None), Err(NoVaultPath));
+    assert_eq!(token_account(Path::new(" \t"), Some("b")), Err(NoVaultPath));
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -647,7 +713,7 @@ async fn connect_stores_the_trimmed_token_only_after_readwise_accepts_it() {
     let client = server.client();
     let keychain = Arc::new(Keychain::default());
     let vault = Path::new("/Users/kaan/Notes");
-    let token = ReadwiseToken::new(keychain.clone(), vault, Some("a"));
+    let token = ReadwiseToken::new(keychain.clone(), vault, Some("a")).unwrap();
 
     let refused = token
         .connect(&client, "  wrong \n", &never())
@@ -690,10 +756,15 @@ fn a_stored_token_that_is_not_utf8_reads_as_absent() {
     let keychain = Arc::new(Keychain::default());
     let vault = Path::new("/v");
     keychain
-        .set_secret(TOKEN_SERVICE, &token_account(vault, None), &[0xff, 0xfe])
+        .set_secret(
+            TOKEN_SERVICE,
+            &token_account(vault, None).unwrap(),
+            &[0xff, 0xfe],
+        )
         .unwrap();
     assert!(
         ReadwiseToken::new(keychain, vault, None)
+            .unwrap()
             .read()
             .unwrap()
             .is_none()

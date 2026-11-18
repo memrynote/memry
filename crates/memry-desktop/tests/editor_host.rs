@@ -759,11 +759,11 @@ fn a_note_is_busy_while_a_window_holds_it_and_after_a_server_update() {
     let note = env.note();
     let quiet = env.note();
     let window = Duration::from_secs(60);
-    assert!(!env.host.is_busy(&note, window));
+    assert!(!env.host.is_busy(&env.vault, &note, window));
 
     let (main, frames) = env.open(&note, "main");
-    assert!(env.host.is_busy(&note, Duration::ZERO));
-    assert!(!env.host.took_remote_update(&note, window));
+    assert!(env.host.is_busy(&env.vault, &note, Duration::ZERO));
+    assert!(!env.host.took_remote_update(&env.vault, &note, window));
 
     let update = main.type_text("from the server");
     let db = env.session.current().unwrap().vault.db_handle();
@@ -777,12 +777,23 @@ fn a_note_is_busy_while_a_window_holds_it_and_after_a_server_update() {
     })
     .unwrap();
     assert_eq!(kinds(&frames), [(1, None)]);
-    assert!(env.host.took_remote_update(&note, window));
-    assert!(!env.host.took_remote_update(&note, Duration::ZERO));
+    assert!(env.host.took_remote_update(&env.vault, &note, window));
+    assert!(
+        !env.host
+            .took_remote_update(&env.vault, &note, Duration::ZERO)
+    );
 
     // Closed: held within the grace period, and the server update still counts.
     env.host.close(&note, "main");
-    assert!(env.host.is_busy(&note, Duration::ZERO));
-    assert!(env.host.took_remote_update(&note, window));
-    assert!(!env.host.is_busy(&quiet, window));
+    assert!(env.host.is_busy(&env.vault, &note, Duration::ZERO));
+    assert!(env.host.took_remote_update(&env.vault, &note, window));
+    assert!(!env.host.is_busy(&env.vault, &quiet, window));
+
+    // A run that outlived its vault leaves every note alone.
+    let elsewhere = env.vault.with_file_name("another-vault");
+    assert!(env.host.is_busy(&elsewhere, &quiet, window));
+    assert!(
+        env.host
+            .took_remote_update(&elsewhere, &quiet, Duration::ZERO)
+    );
 }

@@ -12,7 +12,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use reqwest::StatusCode;
-use reqwest::header::{AUTHORIZATION, RETRY_AFTER};
+use reqwest::header::{AUTHORIZATION, HeaderValue, RETRY_AFTER};
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
@@ -111,6 +111,7 @@ type Query = Vec<(&'static str, String)>;
 pub struct ReadwiseClient {
     http: reqwest::Client,
     origin: Url,
+    timeout: Duration,
 }
 
 impl Default for ReadwiseClient {
@@ -128,7 +129,18 @@ impl ReadwiseClient {
 
     /// Another origin: the e2e fake server and the tests. The token goes only to `origin`.
     pub fn with_origin(http: reqwest::Client, origin: Url) -> Self {
-        Self { http, origin }
+        Self {
+            http,
+            origin,
+            timeout: REQUEST_TIMEOUT,
+        }
+    }
+
+    /// Each request's deadline, 30 s unless a test shortens it.
+    #[doc(hidden)]
+    pub fn with_request_timeout(mut self, timeout: Duration) -> Self {
+        self.timeout = timeout;
+        self
     }
 
     /// `GET /api/v2/auth/`: a 2xx means the token is valid.
@@ -253,12 +265,18 @@ impl ReadwiseClient {
             if let Some(limiter) = throttle {
                 limiter.acquire(cancel).await?;
             }
-            let sent = self
-                .http
-                .get(url.clone())
-                .header(AUTHORIZATION, format!("Token {token}"))
-                .timeout(REQUEST_TIMEOUT)
-                .send();
+            let request = self.http.get(url.clone()).timeout(self.timeout);
+            let auth = format!("Token {token}");
+            let sent = match HeaderValue::from_str(&auth) {
+                Ok(mut value) => {
+                    value.set_sensitive(true);
+                    request.header(AUTHORIZATION, value)
+                }
+                // reqwest refuses the same value at `send`, as a builder error: `network`, as
+                // Electron's `fetch` throws on it.
+                Err(_) => request.header(AUTHORIZATION, auth),
+            }
+            .send();
             let response = cancellable(cancel, sent).await?.map_err(|error| {
                 tracing::warn!(
                     path,
@@ -379,9 +397,28 @@ enum Cursor {
     Repeated,
 }
 
+impl<T> Pages<T> {
+    /// No more pages: an error ends the stream, as Electron's generator is done once it throws.
+    fn end(&mut self) {
+        self.queries.clear();
+        self.cursor = None;
+    }
+}
+
 impl<T: DeserializeOwned> Pages<T> {
-    /// The next page, or `None` after the last.
+    /// The next page, or `None` after the last. After an error, `None`.
     pub async fn next(
+        &mut self,
+        cancel: &CancellationToken,
+    ) -> Result<Option<Vec<T>>, ReadwiseError> {
+        let page = self.advance(cancel).await;
+        if page.is_err() {
+            self.end();
+        }
+        page
+    }
+
+    async fn advance(
         &mut self,
         cancel: &CancellationToken,
     ) -> Result<Option<Vec<T>>, ReadwiseError> {
@@ -435,7 +472,10 @@ impl ReaderDocuments {
         let Some(page) = self.0.next(cancel).await? else {
             return Ok(None);
         };
-        check_reader_page(&page)?;
+        if let Err(error) = check_reader_page(&page) {
+            self.0.end();
+            return Err(error);
+        }
         let documents: Vec<ReaderDocument> = page.into_iter().filter(top_level).collect();
         Ok(Some(documents))
     }

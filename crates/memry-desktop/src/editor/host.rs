@@ -285,20 +285,32 @@ impl EditorHost {
         })
     }
 
-    /// Readwise leaves a note alone while it is busy (`note-writer.ts:223` `isBusy`): a window
-    /// has it open or closed it within the editor's grace period (its last save may still be on
-    /// the way), or it took a server update less than `within` ago. False with no vault served.
-    pub fn is_busy(&self, note_id: &str, within: Duration) -> bool {
-        self.live().is_ok_and(|live| {
+    /// Readwise leaves a note of `vault_path` alone while it is busy (`note-writer.ts:223`
+    /// `isBusy`): a window has it open or closed it within the editor's grace period (its last
+    /// save may still be on the way), or it took a server update less than `within` ago. Busy
+    /// too when `vault_path` is not the vault served (a run that outlived its vault writes
+    /// nothing).
+    pub fn is_busy(&self, vault_path: &Path, note_id: &str, within: Duration) -> bool {
+        self.serving(vault_path).is_none_or(|live| {
             live.editor.held_lately(note_id) || recent(&live.remote, note_id, within)
         })
     }
 
-    /// Whether a document a window opened took a server update less than `within` ago
-    /// (`wasRecentNetworkUpdate`). A command the user started checks only this.
-    pub fn took_remote_update(&self, note_id: &str, within: Duration) -> bool {
+    /// Whether a document of `vault_path` a window opened took a server update less than
+    /// `within` ago (`wasRecentNetworkUpdate`); true when `vault_path` is not the vault served.
+    /// Departure: Electron's user-started writes (re-import, reset) skip both checks
+    /// (`note-writer.ts:244-245`); here a user-started command still checks this one, so it never
+    /// writes over a server update the note file has not caught up with.
+    pub fn took_remote_update(&self, vault_path: &Path, note_id: &str, within: Duration) -> bool {
+        self.serving(vault_path)
+            .is_none_or(|live| recent(&live.remote, note_id, within))
+    }
+
+    /// The served vault's editor, if `vault_path` is that vault.
+    fn serving(&self, vault_path: &Path) -> Option<Live> {
         self.live()
-            .is_ok_and(|live| recent(&live.remote, note_id, within))
+            .ok()
+            .filter(|live| canonical(vault_path) == live.path)
     }
 
     fn live(&self) -> Result<Live, EditorHostError> {
