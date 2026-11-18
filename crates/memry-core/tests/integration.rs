@@ -262,6 +262,8 @@ mod domain_templates;
 #[cfg(feature = "markdown")]
 #[path = "driver_snapshots.rs"]
 mod driver_snapshots;
+#[path = "driver_vault_header.rs"]
+mod driver_vault_header;
 #[path = "dryoc_parity.rs"]
 mod dryoc_parity;
 #[path = "editor_compaction.rs"]

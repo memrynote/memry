@@ -150,6 +150,19 @@ impl FakeServer {
             .collect()
     }
 
+    /// The route and the `X-Memry-Vault-Id` of every request, in order.
+    pub fn vault_headers(&self) -> Vec<(String, Option<String>)> {
+        self.calls
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|call| {
+                let vault = call.headers.get("x-memry-vault-id").cloned();
+                (route_of(&call.url).to_owned(), vault)
+            })
+            .collect()
+    }
+
     /// The ids of each `POST /sync/pull`, in order.
     pub fn pulled_ids(&self) -> Vec<Json> {
         self.calls_to("/sync/pull")

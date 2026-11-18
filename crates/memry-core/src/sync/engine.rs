@@ -469,7 +469,9 @@ impl SyncEngine {
             return self.write_gate();
         }
 
-        super::policy::poll(&self.http, &self.policy, now_ms).await
+        // The feed's vault: a headerless poll on an account with no vault yet
+        // makes the server create a `default` vault (§5.2).
+        super::policy::poll(&self.http, &self.policy, self.pull.vault_id(), now_ms).await
     }
 
     fn finish(
