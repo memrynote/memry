@@ -22,7 +22,7 @@ use tokio_util::sync::CancellationToken;
 use super::client::{ReadwiseClient, ReadwiseError, ReadwiseErrorKind};
 use super::cursor::{iso, next_cursor};
 use super::highlights::is_live_highlight;
-use super::journal_sync::{RecordOptions, journal_highlights_on};
+use super::journal_sync::{RecordOptions, journal_switch};
 use super::library::Library;
 use super::limiter::RequestLimiter;
 use super::options::ReadwiseOptions;
@@ -297,7 +297,7 @@ impl Run<'_> {
         // highlight counts as a new arrival (D17, no backfill).
         let index_ready = self.state.highlight_index_ready().map_err(failed)?;
         let count_arrivals = cursor.is_some() && index_ready && !full_pending;
-        let journal_on = journal_highlights_on(self.library, options.journal_highlights);
+        let journal = journal_switch(self.library, options.journal_highlights);
         let full = cursor.is_none()
             || !index_ready
             || full_pending
@@ -454,7 +454,7 @@ impl Run<'_> {
         let record = RecordOptions {
             rebuild: full,
             count_arrivals,
-            enabled: journal_on,
+            journal,
             time_zone: base.time_zone,
         };
         self.record_journal(&seen, &record)?;

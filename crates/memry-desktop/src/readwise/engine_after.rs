@@ -4,7 +4,9 @@
 use std::collections::HashSet;
 
 use super::super::client::ReadwiseErrorKind;
-use super::super::journal_sync::{FlushOptions, RecordOptions, flush_journal, record_highlights};
+use super::super::journal_sync::{
+    FlushOptions, JournalSwitch, RecordOptions, flush_journal, record_highlights,
+};
 use super::super::options::ReadwiseOptions;
 use super::super::reader_sync::{PassError, ReaderPass, run_reader_pass};
 use super::super::run_types::{BookEvent, BookResult, failed};
@@ -22,7 +24,7 @@ impl Run<'_> {
         record: &RecordOptions,
     ) -> Result<(), Stop> {
         record_highlights(self.state, books, record).map_err(failed)?;
-        if !record.enabled {
+        if record.journal != JournalSwitch::On {
             return Ok(());
         }
         let retry: HashSet<i64> = (self.state.retry_list().map_err(failed)?)

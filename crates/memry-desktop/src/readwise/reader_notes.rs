@@ -106,14 +106,14 @@ fn write(
 
     let named = parse_readwise_url(&reader_document_url(document));
     if let Some(existing) = named
-        .map(|item| library.note_naming(&item))
+        .map(|item| library.note_id_naming(&item))
         .transpose()?
         .flatten()
     {
         store
-            .upsert_link(None, Some(&document.id), &existing.id, LinkState::Linked)
+            .upsert_link(None, Some(&document.id), &existing, LinkState::Linked)
             .map_err(text)?;
-        return Ok(ReaderOutcome::Unchanged(existing.id));
+        return Ok(ReaderOutcome::Unchanged(existing));
     }
 
     // Departure: the article text (`readerFullText`) waits for Step 32's HTML converter.
@@ -144,6 +144,9 @@ fn write(
         .upsert_link(None, Some(&document.id), &created.id, LinkState::Linked)
         .map_err(text)?;
 
+    // The note as written, read back as `latest` is below: `create` answers the text without
+    // the newline the file ends with.
+    let before = read::get(&library.open, &created.id, None).map_err(text)?;
     // Images need the note to exist (D14): download them, then plan again with the refs.
     let images = resolve_images(library, &created.id, &created.path, &first.note.image_urls);
     if images.is_empty() {
@@ -153,7 +156,7 @@ fn write(
     // Edited meanwhile, open in an editor, or just synced in (D6): leave it, the images stay
     // attachments.
     let latest = read::get(&library.open, &created.id, None).map_err(text)?;
-    let unchanged = latest.is_some_and(|latest| latest.content == created.content);
+    let unchanged = matches!((before, latest), (Some(b), Some(l)) if b.content == l.content);
     let (Some(with_images), true, false) =
         (with_images, unchanged, library.busy(&created.id, false))
     else {

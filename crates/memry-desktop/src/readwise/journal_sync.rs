@@ -26,11 +26,22 @@ use crate::web::extract::utils::js::{is_js_whitespace, trim as js_trim};
 
 const SCOPE: &str = "ReadwiseJournal";
 
-/// `journalHighlightsOn`: the Readwise switch and the journal feature are both on. A features
-/// group that cannot be read counts as off: nothing is written.
-pub fn journal_highlights_on(library: &Library, switch_on: bool) -> bool {
+/// Whether the run writes journal days (`journalHighlightsOn`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum JournalSwitch {
+    On,
+    /// The Readwise switch or the journal feature is off: the owed days are dropped.
+    Off,
+    /// The features group could not be read: no day is written, and the owed days are kept and
+    /// still gain this run's arrivals, so a later run that can read it writes them.
+    Unknown,
+}
+
+/// `journalHighlightsOn`: the Readwise switch and the journal feature are both on. Electron
+/// reads the features group without failing; here a failed read is [`JournalSwitch::Unknown`].
+pub fn journal_switch(library: &Library, switch_on: bool) -> JournalSwitch {
     if !switch_on {
-        return false;
+        return JournalSwitch::Off;
     }
     let store = library.notes.store.clone();
     let features = library
@@ -40,10 +51,16 @@ pub fn journal_highlights_on(library: &Library, switch_on: bool) -> bool {
         .map_err(|error| error.to_string())
         .and_then(|settings| (settings.get_group("features")).map_err(|error| error.to_string()));
     match features {
-        Ok(read) => read.value.get("journal").and_then(|on| on.as_bool()) != Some(false),
+        Ok(read) if read.value.get("journal").and_then(|on| on.as_bool()) == Some(false) => {
+            JournalSwitch::Off
+        }
+        Ok(_) => JournalSwitch::On,
         Err(error) => {
-            tracing::warn!(scope = SCOPE, "could not read the journal feature: {error}");
-            false
+            tracing::warn!(
+                scope = SCOPE,
+                "could not read the journal feature; the owed days wait: {error}"
+            );
+            JournalSwitch::Unknown
         }
     }
 }
@@ -55,8 +72,8 @@ pub struct RecordOptions {
     /// Highlights new to the index are new arrivals. False for the first import, a takeover's
     /// first run and a category full pass, which only fill the index (D17, no backfill).
     pub count_arrivals: bool,
-    /// The switch and the journal feature are on. Off clears what was pending.
-    pub enabled: bool,
+    /// Off clears what was pending; on and unknown keep it and add the arrivals.
+    pub journal: JournalSwitch,
     pub time_zone: Tz,
 }
 
@@ -109,7 +126,7 @@ pub fn record_highlights(
         pending_key: JOURNAL_PENDING,
     };
     state.store().record_highlights(&record, |known, stored| {
-        if !options.enabled {
+        if options.journal == JournalSwitch::Off {
             return None;
         }
         let mut pending = parse_journal_pending(stored.as_deref());

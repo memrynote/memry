@@ -13,7 +13,10 @@
 //! | a start marker without its end marker stays touched                | `note-writer.ts` append, D5           |
 //! | an append trims JavaScript white space only                        | `note-writer.ts` `trimEnd`            |
 //! | a note that names a document is adopted                            | `reader-notes.ts`, D11                |
-//! | a document a large note names fails and holds the Reader cursor    | `sync-service.ts` step 4              |
+//! | a large note that names a document is adopted; the cursor moves    | `reader-notes.ts`, D11                |
+//! | a failed Reader document holds the Reader cursor                   | `sync-service.ts` step 4              |
+//! | a Reader article gets its cover image                              | `reader-notes.ts`, D14                |
+//! | an unreadable features setting keeps the owed journal days         | `journal-sync.ts` `flushJournal`      |
 
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::atomic::AtomicUsize;
@@ -234,8 +237,8 @@ fn the_status_follows_changes_and_the_token_error() {
     *v.fail.lock().unwrap() = None;
     v.run();
     assert_eq!(
-        v.status_group()["error"],
-        Value::Null,
+        v.status_group().get("error"),
+        Some(&Value::Null),
         "a cleared error is an explicit null"
     );
     assert_eq!(v.engine.status().failure(), None);
@@ -367,10 +370,10 @@ fn a_note_that_names_a_document_is_adopted() {
     assert_eq!(fs::read_to_string(&path).unwrap(), mine);
 }
 
-/// A note that names the document arrives after the first run (no link row) and grows large:
-/// the writer cannot read it, so the document fails and the Reader cursor holds.
+/// A note that names the document arrives after the first run (no link row) and grows large.
+/// Adoption only links it and never writes it, so its size does not matter: the cursor moves.
 #[test]
-fn a_document_a_large_note_names_fails_and_holds_the_reader_cursor() {
+fn a_large_note_that_names_a_document_is_adopted_and_the_cursor_moves() {
     let v = reader_vault(&[]);
     let docs = std::mem::take(&mut *v.docs.lock().unwrap());
     v.run();
@@ -389,17 +392,87 @@ fn a_document_a_large_note_names_fails_and_holds_the_reader_cursor() {
             .is_some_and(|note| note.content_omitted)
     });
 
-    // Saved after the first run's cursor, so a pass that moved past the failure would move it.
-    let mut docs = docs;
+    *v.docs.lock().unwrap() = later(docs);
+    let run = v.run();
+    assert_eq!((run.documents, run.counts.failed), (0, 0));
+    assert_ne!(v.state().reader_cursor().unwrap(), held);
+    let link = v.library.store().link_by_reader_document("doc1").unwrap();
+    assert_eq!(link.unwrap().note_id, id);
+    assert_eq!(v.markdown_files(), 2);
+    assert_eq!(fs::read_to_string(&path).unwrap(), big);
+}
+
+/// Saved after the first run's cursor, so a pass that moved past them would move it.
+fn later(mut docs: Vec<Value>) -> Vec<Value> {
     for doc in &mut docs {
         doc["updated_at"] = json!("2030-01-01T10:00:00.000Z");
     }
-    *v.docs.lock().unwrap() = docs;
+    docs
+}
+
+/// A file where the Reader folder goes: the note cannot be created, so the document fails and
+/// the Reader cursor holds until a pass writes it.
+#[test]
+fn a_failed_reader_document_holds_the_reader_cursor() {
+    let v = reader_vault(&[]);
+    let docs = std::mem::take(&mut *v.docs.lock().unwrap());
+    v.run();
+    let held = v.state().reader_cursor().unwrap();
+    assert!(held.is_some());
+
+    let blocker = v.e.vault.join("Readwise/Reader");
+    fs::write(&blocker, "not a folder").unwrap();
+    *v.docs.lock().unwrap() = later(docs);
     for _ in 0..2 {
         let run = v.run();
         assert_eq!((run.documents, run.counts.failed), (0, 1));
         assert_eq!(v.state().reader_cursor().unwrap(), held);
     }
-    assert_eq!(v.markdown_files(), 2);
-    assert_eq!(fs::read_to_string(&path).unwrap(), big);
+
+    fs::remove_file(&blocker).unwrap();
+    assert_eq!(v.run().documents, 1);
+    assert_ne!(v.state().reader_cursor().unwrap(), held);
+}
+
+#[test]
+fn a_reader_article_gets_its_cover_image() {
+    let v = reader_vault(&[]);
+    v.docs.lock().unwrap()[0]["image_url"] = json!(format!("{}/img/cover.png", v.server_url));
+    assert_eq!(v.run().documents, 1);
+    let link = v.library.store().link_by_reader_document("doc1").unwrap();
+    let note = read::get(&v.library.open, &link.unwrap().note_id, None)
+        .unwrap()
+        .expect("the Reader note");
+    let file = String::from_utf8(v.file(&note)).unwrap();
+    assert!(file.contains("\ncover: "), "{file}");
+}
+
+/// The features group cannot be read: the journal is neither on nor off. The day is not
+/// written, and the arrival stays owed until a run can read the setting.
+#[test]
+fn an_unreadable_features_setting_keeps_the_owed_journal_days() {
+    let v = journal_vault();
+    let data = v.e.vault.join(".memry/core/data.db");
+    let rename = |from: &str, to: &str| {
+        let flags = rusqlite::OpenFlags::SQLITE_OPEN_READ_WRITE;
+        let conn = rusqlite::Connection::open_with_flags(&data, flags).unwrap();
+        conn.execute_batch(&format!("ALTER TABLE {from} RENAME TO {to}"))
+            .unwrap();
+    };
+
+    v.add_highlight(13, "Third idea", "2026-10-23T09:00:00.000Z");
+    rename("local_settings", "local_settings_away");
+    v.run();
+    rename("local_settings_away", "local_settings");
+    assert!(v.day(DAY).is_none());
+    assert!(v.state().journal_pending().unwrap().contains_key(DAY));
+
+    v.run();
+    let day = v.day(DAY).expect("the day's entry");
+    assert!(
+        day.content.contains("- [[Book 1]]: 1 highlight"),
+        "{}",
+        day.content
+    );
+    assert!(v.state().journal_pending().unwrap().is_empty());
 }
