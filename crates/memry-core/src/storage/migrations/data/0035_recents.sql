@@ -10,10 +10,16 @@
 -- (Electron's `search_reasons.item_icon`), one row per `search_recents` row
 -- that has one. A table rather than a column on `search_recents`, because
 -- `ALTER TABLE ... ADD COLUMN` has no `IF NOT EXISTS` (see 0005).
+--
+-- `recorded_at` is the `visited_at` of the visit the icon was recorded with.
+-- A build that predates this table (0017 only) bumps `visited_at` when it
+-- reopens an item and leaves the icon behind, so a reader shows an icon only
+-- while `recorded_at` equals its recent's `visited_at`.
 CREATE TABLE IF NOT EXISTS search_recent_icons (
-  item_type TEXT NOT NULL,
-  item_id   TEXT NOT NULL,
-  icon      TEXT NOT NULL,
+  item_type   TEXT NOT NULL,
+  item_id     TEXT NOT NULL,
+  icon        TEXT NOT NULL,
+  recorded_at INTEGER NOT NULL,
   PRIMARY KEY (item_type, item_id)
 );
 
