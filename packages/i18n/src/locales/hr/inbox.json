@@ -579,7 +579,10 @@
       "journalOff": "Dnevnik je isključen u Postavkama.",
       "sendFailed": "Nije moguće poslati sticky.",
       "undoExpired": "Prekasno je za poništavanje.",
-      "undoFailed": "Nije moguće poništiti slanje."
+      "undoFailed": "Nije moguće poništiti slanje.",
+      "journalBusy": "Današnji unos u dnevnik još se sprema. Pokušajte ponovno za trenutak.",
+      "folderExcluded": "Mapa Sticky je isključena. Uklonite je s popisa isključenih mapa u Postavkama da biste slali bilješke.",
+      "projectMissing": "Projekt ovog zadatka ne postoji. Odaberite zadani projekt u Postavkama ili ga pošaljite kao bilješku."
     },
     "inputLabel": "Tekst stickyja",
     "dismissError": "Odbaci"

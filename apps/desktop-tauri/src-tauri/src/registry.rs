@@ -236,6 +236,9 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::stickies::sticky_tuck,
             crate::commands::stickies::sticky_unfold,
             crate::commands::stickies::sticky_peek,
+            crate::commands::sticky_send::sticky_open_target,
+            crate::commands::sticky_send::sticky_send,
+            crate::commands::sticky_send::sticky_undo_send,
             // fonts
             crate::fonts::system_fonts_list,
             // log
@@ -423,6 +426,7 @@ pub fn builder() -> Builder<Wry> {
             crate::events::MenuCommandInvokedEvent,
             // stickies
             crate::events::StickyDraftsChangedEvent,
+            crate::events::StickyOpenTargetRequestedEvent,
             // sync
             crate::events::SyncCertificatePinFailedEvent,
             crate::events::SyncClockSkewWarningEvent,

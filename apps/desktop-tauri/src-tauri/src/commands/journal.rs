@@ -18,8 +18,10 @@ use memry_desktop::journal::update::{DayUpdate, DayUpdated, InlineTags};
 use memry_desktop::journal::write::NewDay;
 use memry_desktop::journal::{self, JournalEntryView};
 use memry_desktop::notes::error::NotesError;
+use memry_desktop::session::OpenVault;
 use memry_desktop::telemetry::Service;
 use memry_desktop::telemetry::time::now_ms;
+use memry_desktop::vault::config::VaultConfig;
 use memry_desktop::vault::config::settings::vault_settings;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
@@ -201,7 +203,6 @@ pub async fn journal_update_entry<R: Runtime>(
 ) -> Result<JournalEntryView, CommandError> {
     blocking("journal_update_entry", move || {
         let open = notes::open_vault(&app)?;
-        let before = vault_settings(Some(&open.path));
         // A tags-only update writes the record alone: the file, and so its counts, stay.
         let rewrites_file = input.content.is_some() || input.properties.is_some();
         let update = DayUpdate {
@@ -214,17 +215,46 @@ pub async fn journal_update_entry<R: Runtime>(
             }),
             properties: input.properties,
         };
-        let updated = notes::service(&app)?.update_day(&open, update);
-        announce_followed(&app, &open.path, &before);
-        let updated =
-            updated.map_err(|error| settings_or_failed(&app, &error, Refused::JournalDay))?;
-        if rewrites_file || updated.created {
-            journal_events::measure(&app, &updated.entry.id, &updated.entry.date);
-        }
-        announce(&app, Landed::Saved(&updated));
-        Ok(updated.entry)
+        let service = notes::service(&app)?;
+        landed(&app, &open, rewrites_file, || {
+            service.update_day(&open, update)
+        })
     })
     .await
+}
+
+/// A day update told as `journal:updateEntry` tells it ([`told`]).
+fn landed<R: Runtime>(
+    app: &AppHandle<R>,
+    open: &OpenVault,
+    rewrites_file: bool,
+    update: impl FnOnce() -> Result<DayUpdated, NotesError>,
+) -> Result<JournalEntryView, CommandError> {
+    let before = vault_settings(Some(&open.path));
+    let updated = update();
+    if updated.is_err() {
+        announce_followed(app, &open.path, &before);
+    }
+    let updated = updated.map_err(|error| settings_or_failed(app, &error, Refused::JournalDay))?;
+    told(app, open, &before, rewrites_file, &updated);
+    Ok(updated.entry)
+}
+
+/// What a day update that landed tells: a journal setting that followed its folder since
+/// `before` ([`announce_followed`]), the day's measures when its file changed or was made, and
+/// the entry event. The sticky's journal send (`super::sticky_send`) is told through it too.
+pub(crate) fn told<R: Runtime>(
+    app: &AppHandle<R>,
+    open: &OpenVault,
+    before: &VaultConfig,
+    rewrites_file: bool,
+    updated: &DayUpdated,
+) {
+    announce_followed(app, &open.path, before);
+    if rewrites_file || updated.created {
+        journal_events::measure(app, &updated.entry.id, &updated.entry.date);
+    }
+    announce(app, Landed::Saved(updated));
 }
 
 /// `success` is whether the day had an entry to delete. A kept day's text the trash cannot take

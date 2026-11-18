@@ -478,6 +478,16 @@ pub struct FlushRequestedEvent {
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
 pub struct StickyDraftsChangedEvent;
 
+/// The sticky asks the main window to open what a send made (`sticky:open-target-requested`).
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct StickyOpenTargetRequestedEvent {
+    /// `note`, `task` or `journal`.
+    pub kind: String,
+    /// A note id, a task id, or the journal day (`YYYY-MM-DD`).
+    pub target_id: String,
+}
+
 /// Open an inbox item (`inbox-open-item-event`): `memry://open?item=<id>` and, with Step 27
 /// (#3544), a clicked inbox notification.
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
