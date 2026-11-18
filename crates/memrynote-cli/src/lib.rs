@@ -13,7 +13,9 @@ mod migrate_installer;
 pub mod output;
 pub mod parse;
 mod registry;
+mod values;
 mod vault;
+mod vault_admin;
 
 use std::ffi::OsString;
 use std::io::Write;

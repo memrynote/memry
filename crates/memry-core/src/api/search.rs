@@ -117,6 +117,17 @@ impl Search {
     }
 
     /// [`Search::over`] plus the reason `index.db` was rebuilt, when it was.
+    /// [`Search::over`] over [`crate::storage::index_db::open_keeping`]: never sets
+    /// `index.db` aside.
+    pub(crate) fn over_keeping(data: Db, directory: &str) -> Result<Self, StorageError> {
+        let opened =
+            crate::storage::index_db::open_keeping(&PathBuf::from(directory).join("index.db"))?;
+        Ok(Self {
+            data,
+            index: opened.db,
+        })
+    }
+
     pub(crate) fn over_reporting(
         data: Db,
         directory: &str,
@@ -146,6 +157,16 @@ impl Search {
             index.call_blocking(|index| {
                 Ok(search::reindex_until(data, index, now_ms(), stop)?.map(|done| done.links))
             })
+        })
+    }
+
+    /// [`Search::reindex`] with every count of the pass, inbox items included. For the command
+    /// line's `vault reindex`. Not on the FFI surface.
+    #[doc(hidden)]
+    pub fn reindex_counts(&self) -> Result<search::Reindexed, StorageError> {
+        let index = self.index.clone();
+        self.data.call_blocking(move |data| {
+            index.call_blocking(|index| search::reindex(data, index, now_ms()))
         })
     }
 

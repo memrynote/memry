@@ -7,7 +7,7 @@
 //! `secure-secrets.json`. Vault level: [`memry_desktop::session::open_headless`] decides.
 //! Either fails every command but the four registry ones.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use memry_core::api::vault::Vault;
 use memry_desktop::electron_import::profile::locate_profile;
@@ -23,13 +23,11 @@ pub const RECOVERING: &str = "MemryNote is repairing this vault's database. Open
 /// Written last by the app's Electron import (Step 37, #3554) into its data folder.
 pub const IMPORT_MARKER: &str = "electron-import.json";
 
-/// An open vault. `path` is the vault as the command line named it (`vaultPath`).
+/// An open vault. `path` is the vault as the command line named it (`vaultPath`), `root` the
+/// folder it resolves to.
 pub struct VaultContext {
     pub path: String,
-    #[expect(
-        dead_code,
-        reason = "held open for the command; the groups of stages C to E read it"
-    )]
+    pub root: PathBuf,
     pub vault: Vault,
 }
 
@@ -57,6 +55,7 @@ pub fn open(vault: &str, deps: &CliDeps) -> Result<VaultContext, CliError> {
     match open_headless(&root).map_err(|error| CliError(error.to_string()))? {
         HeadlessOpen::Opened(opened) => Ok(VaultContext {
             path: vault.to_owned(),
+            root,
             vault: opened,
         }),
         HeadlessOpen::NotMigrated => Err(NOT_MIGRATED.into()),

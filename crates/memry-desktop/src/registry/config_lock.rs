@@ -1,13 +1,19 @@
-//! The advisory lock that serialises every write of `memry-config.json` across processes: the
-//! app and the command line (`memrynote-cli`) both write it. [`super::config::AppConfig::update`]
-//! re-reads the file before each write, but between that read and the rename another process
+//! The advisory lock that serialises every write of a shared config file across processes: the
+//! app and the command line (`memrynote-cli`) both write `memry-config.json` and each vault's
+//! `.memry/config.json`. [`super::config::AppConfig::update`] and [`crate::vault::config::update`]
+//! re-read the file before each write, but between that read and the rename another process
 //! could write a key that this rename then drops (#4278).
 
 use std::fs::{File, OpenOptions, TryLockError};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-use super::config::ConfigError;
+/// Why the lock was not taken: the lock file and the reason.
+#[derive(Debug)]
+pub(crate) struct LockError {
+    pub path: PathBuf,
+    pub message: String,
+}
 
 /// How long a write waits for another process's write. A write holds the lock for one read,
 /// write and rename, well under a second.
@@ -19,10 +25,10 @@ const POLL: Duration = Duration::from_millis(10);
 ///
 /// `Ok(None)` where the file system has no locks ([`unsupported`]: an NFS or SMB home): the write goes ahead unlocked, as before, with a warning, because refusing
 /// would stop every config write of the app there. A lock still held after [`WAIT`] is an error.
-pub(super) fn hold(config: &Path) -> Result<Option<File>, ConfigError> {
+pub(crate) fn hold(config: &Path) -> Result<Option<File>, LockError> {
     let path = PathBuf::from(format!("{}.lock", config.display()));
-    let fail = |message: String| ConfigError::Write {
-        path: path.display().to_string(),
+    let fail = |message: String| LockError {
+        path: path.clone(),
         message,
     };
     let file = OpenOptions::new()

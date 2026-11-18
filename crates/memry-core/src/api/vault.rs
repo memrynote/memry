@@ -111,6 +111,17 @@ impl Vault {
         })
     }
 
+    /// [`Vault::search`] for a process that is not the index's owner (the command line beside
+    /// a running app): an `index.db` that needs a rebuild is an error and stays in place, so
+    /// only the app ever sets it aside. Not on the FFI surface.
+    #[doc(hidden)]
+    pub fn search_keeping_index(&self) -> Result<Arc<Search>, StorageError> {
+        Ok(Arc::new(Search::over_keeping(
+            self.db.clone(),
+            &self.directory,
+        )?))
+    }
+
     /// [`Vault::search`] that also says why `index.db` was rebuilt (`None` when the file
     /// was reused or migrated in place). Not on the FFI surface.
     pub fn search_reporting(&self) -> Result<(Arc<Search>, Option<String>), StorageError> {
