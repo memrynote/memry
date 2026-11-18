@@ -27,6 +27,7 @@ pub mod inbox_ingest;
 pub mod inbox_jobs;
 pub mod inbox_records;
 pub mod inbox_settings;
+pub mod inbox_suggest;
 pub mod inbox_write;
 pub mod journal;
 pub mod journal_conformance;
