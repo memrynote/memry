@@ -1,0 +1,767 @@
+{
+  "scores": [
+    {
+      "name": "cluster beats a fluke",
+      "hits": [
+        {
+          "folder": "recipes",
+          "similarity": 0.6
+        },
+        {
+          "folder": "recipes",
+          "similarity": 0.6
+        },
+        {
+          "folder": "recipes",
+          "similarity": 0.6
+        },
+        {
+          "folder": "misc",
+          "similarity": 0.7
+        }
+      ],
+      "expected": [
+        {
+          "path": "recipes",
+          "confidence": 0.54,
+          "support": 3,
+          "components": {
+            "sim": 0.54,
+            "name": 0,
+            "tag": 0
+          }
+        },
+        {
+          "path": "misc",
+          "confidence": 0.4899999999999999,
+          "support": 1,
+          "components": {
+            "sim": 0.48999999999999994,
+            "name": 0,
+            "tag": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "volume does not beat a strong cluster",
+      "hits": [
+        {
+          "folder": "archive",
+          "similarity": 0.45
+        },
+        {
+          "folder": "archive",
+          "similarity": 0.45
+        },
+        {
+          "folder": "archive",
+          "similarity": 0.45
+        },
+        {
+          "folder": "archive",
+          "similarity": 0.45
+        },
+        {
+          "folder": "archive",
+          "similarity": 0.45
+        },
+        {
+          "folder": "archive",
+          "similarity": 0.45
+        },
+        {
+          "folder": "archive",
+          "similarity": 0.45
+        },
+        {
+          "folder": "archive",
+          "similarity": 0.45
+        },
+        {
+          "folder": "archive",
+          "similarity": 0.45
+        },
+        {
+          "folder": "archive",
+          "similarity": 0.45
+        },
+        {
+          "folder": "recipes",
+          "similarity": 0.75
+        },
+        {
+          "folder": "recipes",
+          "similarity": 0.72
+        },
+        {
+          "folder": "recipes",
+          "similarity": 0.7
+        }
+      ],
+      "expected": [
+        {
+          "path": "recipes",
+          "confidence": 0.6509999999999999,
+          "support": 3,
+          "components": {
+            "sim": 0.6509999999999999,
+            "name": 0,
+            "tag": 0
+          }
+        },
+        {
+          "path": "archive",
+          "confidence": 0.405,
+          "support": 10,
+          "components": {
+            "sim": 0.405,
+            "name": 0,
+            "tag": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "siblings roll up to their parent",
+      "hits": [
+        {
+          "folder": "projects/ProjectA/sub1",
+          "similarity": 0.6
+        },
+        {
+          "folder": "projects/ProjectA/sub2",
+          "similarity": 0.6
+        },
+        {
+          "folder": "projects/ProjectA/sub3",
+          "similarity": 0.6
+        }
+      ],
+      "expected": [
+        {
+          "path": "projects/ProjectA",
+          "confidence": 0.432,
+          "support": 3,
+          "components": {
+            "sim": 0.432,
+            "name": 0,
+            "tag": 0
+          }
+        },
+        {
+          "path": "projects/ProjectA/sub1",
+          "confidence": 0.42000000000000004,
+          "support": 1,
+          "components": {
+            "sim": 0.42,
+            "name": 0,
+            "tag": 0
+          }
+        },
+        {
+          "path": "projects/ProjectA/sub2",
+          "confidence": 0.42000000000000004,
+          "support": 1,
+          "components": {
+            "sim": 0.42,
+            "name": 0,
+            "tag": 0
+          }
+        },
+        {
+          "path": "projects/ProjectA/sub3",
+          "confidence": 0.42000000000000004,
+          "support": 1,
+          "components": {
+            "sim": 0.42,
+            "name": 0,
+            "tag": 0
+          }
+        },
+        {
+          "path": "projects",
+          "confidence": 0.3456000000000001,
+          "support": 3,
+          "components": {
+            "sim": 0.3456000000000001,
+            "name": 0,
+            "tag": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "no rollup into the root",
+      "hits": [
+        {
+          "folder": "recipes",
+          "similarity": 0.6
+        },
+        {
+          "folder": "travel",
+          "similarity": 0.6
+        }
+      ],
+      "expected": [
+        {
+          "path": "recipes",
+          "confidence": 0.42000000000000004,
+          "support": 1,
+          "components": {
+            "sim": 0.42,
+            "name": 0,
+            "tag": 0
+          }
+        },
+        {
+          "path": "travel",
+          "confidence": 0.42000000000000004,
+          "support": 1,
+          "components": {
+            "sim": 0.42,
+            "name": 0,
+            "tag": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "name only",
+      "hits": [],
+      "nameMatches": [["recipes", 0.9]],
+      "expected": [
+        {
+          "path": "recipes",
+          "confidence": 0.9,
+          "support": 0,
+          "components": {
+            "sim": 0,
+            "name": 0.9,
+            "tag": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "name lifts a tie",
+      "hits": [
+        {
+          "folder": "recipes",
+          "similarity": 0.5
+        },
+        {
+          "folder": "misc",
+          "similarity": 0.5
+        }
+      ],
+      "nameMatches": [["recipes", 0.9]],
+      "expected": [
+        {
+          "path": "recipes",
+          "confidence": 0.5117647058823529,
+          "support": 1,
+          "components": {
+            "sim": 0.35,
+            "name": 0.9,
+            "tag": 0
+          }
+        },
+        {
+          "path": "misc",
+          "confidence": 0.35,
+          "support": 1,
+          "components": {
+            "sim": 0.35,
+            "name": 0,
+            "tag": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "tag only",
+      "hits": [],
+      "tagMatches": [["cooking", 0.8]],
+      "expected": [
+        {
+          "path": "cooking",
+          "confidence": 0.8,
+          "support": 0,
+          "components": {
+            "sim": 0,
+            "name": 0,
+            "tag": 0.8
+          }
+        }
+      ]
+    },
+    {
+      "name": "exclude",
+      "hits": [
+        {
+          "folder": "recipes",
+          "similarity": 0.6
+        },
+        {
+          "folder": "current",
+          "similarity": 0.9
+        }
+      ],
+      "exclude": ["current"],
+      "expected": [
+        {
+          "path": "recipes",
+          "confidence": 0.42000000000000004,
+          "support": 1,
+          "components": {
+            "sim": 0.42,
+            "name": 0,
+            "tag": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "limit",
+      "hits": [
+        {
+          "folder": "a",
+          "similarity": 0.6
+        },
+        {
+          "folder": "b",
+          "similarity": 0.55
+        },
+        {
+          "folder": "c",
+          "similarity": 0.5
+        }
+      ],
+      "limit": 2,
+      "expected": [
+        {
+          "path": "a",
+          "confidence": 0.42000000000000004,
+          "support": 1,
+          "components": {
+            "sim": 0.42,
+            "name": 0,
+            "tag": 0
+          }
+        },
+        {
+          "path": "b",
+          "confidence": 0.385,
+          "support": 1,
+          "components": {
+            "sim": 0.385,
+            "name": 0,
+            "tag": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "best note title",
+      "hits": [
+        {
+          "folder": "recipes",
+          "similarity": 0.6,
+          "noteTitle": "Pasta"
+        },
+        {
+          "folder": "recipes",
+          "similarity": 0.8,
+          "noteTitle": "Risotto"
+        }
+      ],
+      "expected": [
+        {
+          "path": "recipes",
+          "confidence": 0.595,
+          "support": 2,
+          "topNoteTitle": "Risotto",
+          "components": {
+            "sim": 0.595,
+            "name": 0,
+            "tag": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "minimum confidence",
+      "hits": [
+        {
+          "folder": "strong",
+          "similarity": 0.8
+        },
+        {
+          "folder": "strong",
+          "similarity": 0.8
+        },
+        {
+          "folder": "strong",
+          "similarity": 0.8
+        },
+        {
+          "folder": "weak",
+          "similarity": 0.5
+        }
+      ],
+      "minConfidence": 0.5,
+      "expected": [
+        {
+          "path": "strong",
+          "confidence": 0.7200000000000002,
+          "support": 3,
+          "components": {
+            "sim": 0.7200000000000002,
+            "name": 0,
+            "tag": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "no signals",
+      "hits": [],
+      "expected": []
+    },
+    {
+      "name": "deep ancestors decay per level",
+      "hits": [
+        {
+          "folder": "a/b/c/d",
+          "similarity": 0.9,
+          "noteTitle": "Deep"
+        },
+        {
+          "folder": "a/b/x",
+          "similarity": 0.7,
+          "noteTitle": "Mid"
+        },
+        {
+          "folder": "a/y",
+          "similarity": 0.5
+        }
+      ],
+      "expected": [
+        {
+          "path": "a/b/c/d",
+          "confidence": 0.63,
+          "support": 1,
+          "topNoteTitle": "Deep",
+          "components": {
+            "sim": 0.63,
+            "name": 0,
+            "tag": 0
+          }
+        },
+        {
+          "path": "a/b/c",
+          "confidence": 0.504,
+          "support": 1,
+          "topNoteTitle": "Deep",
+          "components": {
+            "sim": 0.504,
+            "name": 0,
+            "tag": 0
+          }
+        },
+        {
+          "path": "a/b/x",
+          "confidence": 0.4899999999999999,
+          "support": 1,
+          "topNoteTitle": "Mid",
+          "components": {
+            "sim": 0.48999999999999994,
+            "name": 0,
+            "tag": 0
+          }
+        },
+        {
+          "path": "a/b",
+          "confidence": 0.4828000000000001,
+          "support": 2,
+          "topNoteTitle": "Deep",
+          "components": {
+            "sim": 0.48280000000000006,
+            "name": 0,
+            "tag": 0
+          }
+        },
+        {
+          "path": "a",
+          "confidence": 0.3926400000000001,
+          "support": 3,
+          "topNoteTitle": "Deep",
+          "components": {
+            "sim": 0.3926400000000001,
+            "name": 0,
+            "tag": 0
+          }
+        },
+        {
+          "path": "a/y",
+          "confidence": 0.35,
+          "support": 1,
+          "components": {
+            "sim": 0.35,
+            "name": 0,
+            "tag": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "support caps at three and two hits are discounted",
+      "hits": [
+        {
+          "folder": "two",
+          "similarity": 0.9
+        },
+        {
+          "folder": "two",
+          "similarity": 0.8
+        },
+        {
+          "folder": "four",
+          "similarity": 0.9
+        },
+        {
+          "folder": "four",
+          "similarity": 0.85
+        },
+        {
+          "folder": "four",
+          "similarity": 0.1
+        },
+        {
+          "folder": "four",
+          "similarity": 0.95
+        }
+      ],
+      "expected": [
+        {
+          "path": "four",
+          "confidence": 0.81,
+          "support": 4,
+          "components": {
+            "sim": 0.81,
+            "name": 0,
+            "tag": 0
+          }
+        },
+        {
+          "path": "two",
+          "confidence": 0.7225,
+          "support": 2,
+          "components": {
+            "sim": 0.7225,
+            "name": 0,
+            "tag": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "equal confidence keeps candidate order",
+      "hits": [
+        {
+          "folder": "z",
+          "similarity": 0.6
+        },
+        {
+          "folder": "y",
+          "similarity": 0.6
+        }
+      ],
+      "nameMatches": [["x", 0.6]],
+      "tagMatches": [["w", 0.6]],
+      "expected": [
+        {
+          "path": "x",
+          "confidence": 0.6,
+          "support": 0,
+          "components": {
+            "sim": 0,
+            "name": 0.6,
+            "tag": 0
+          }
+        },
+        {
+          "path": "w",
+          "confidence": 0.6,
+          "support": 0,
+          "components": {
+            "sim": 0,
+            "name": 0,
+            "tag": 0.6
+          }
+        },
+        {
+          "path": "z",
+          "confidence": 0.42000000000000004,
+          "support": 1,
+          "components": {
+            "sim": 0.42,
+            "name": 0,
+            "tag": 0
+          }
+        },
+        {
+          "path": "y",
+          "confidence": 0.42000000000000004,
+          "support": 1,
+          "components": {
+            "sim": 0.42,
+            "name": 0,
+            "tag": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "all three signals blend",
+      "hits": [
+        {
+          "folder": "food/italian",
+          "similarity": 0.7,
+          "noteTitle": "Carbonara"
+        },
+        {
+          "folder": "food/italian",
+          "similarity": 0.65,
+          "noteTitle": "Lasagne"
+        }
+      ],
+      "nameMatches": [
+        ["food/italian", 0.5],
+        ["food", 1]
+      ],
+      "tagMatches": [
+        ["food/italian", 1],
+        ["wine", 0.5]
+      ],
+      "minConfidence": 0.45,
+      "limit": 3,
+      "expected": [
+        {
+          "path": "food/italian",
+          "confidence": 0.61925,
+          "support": 2,
+          "topNoteTitle": "Carbonara",
+          "components": {
+            "sim": 0.57375,
+            "name": 0.5,
+            "tag": 1
+          }
+        },
+        {
+          "path": "food",
+          "confidence": 0.6181176470588235,
+          "support": 2,
+          "topNoteTitle": "Carbonara",
+          "components": {
+            "sim": 0.459,
+            "name": 1,
+            "tag": 0
+          }
+        },
+        {
+          "path": "wine",
+          "confidence": 0.5,
+          "support": 0,
+          "components": {
+            "sim": 0,
+            "name": 0,
+            "tag": 0.5
+          }
+        }
+      ]
+    },
+    {
+      "name": "floor sits on the confidence",
+      "hits": [],
+      "nameMatches": [
+        ["exact", 0.45],
+        ["under", 0.44999999999999996]
+      ],
+      "minConfidence": 0.45,
+      "expected": [
+        {
+          "path": "exact",
+          "confidence": 0.45,
+          "support": 0,
+          "components": {
+            "sim": 0,
+            "name": 0.45,
+            "tag": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "zero name and tag scores are not signals",
+      "hits": [],
+      "nameMatches": [["zero", 0]],
+      "tagMatches": [["zero", 0]],
+      "expected": []
+    },
+    {
+      "name": "root hit",
+      "hits": [
+        {
+          "folder": "",
+          "similarity": 0.7,
+          "noteTitle": "Inbox"
+        },
+        {
+          "folder": "",
+          "similarity": 0.6
+        }
+      ],
+      "expected": [
+        {
+          "path": "",
+          "confidence": 0.5524999999999999,
+          "support": 2,
+          "topNoteTitle": "Inbox",
+          "components": {
+            "sim": 0.5524999999999999,
+            "name": 0,
+            "tag": 0
+          }
+        }
+      ]
+    }
+  ],
+  "corroboration": [
+    {
+      "sims": [],
+      "expected": 0
+    },
+    {
+      "sims": [0.9],
+      "expected": 0.63
+    },
+    {
+      "sims": [0.9, 0.5],
+      "expected": 0.595
+    },
+    {
+      "sims": [0.9, 0.5, 0.7],
+      "expected": 0.6300000000000001
+    },
+    {
+      "sims": [0.1, 0.9, 0.5, 0.7, 0.95],
+      "expected": 0.765
+    },
+    {
+      "sims": [0.3333, 0.6667],
+      "expected": 0.425
+    }
+  ]
+}

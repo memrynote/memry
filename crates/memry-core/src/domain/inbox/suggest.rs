@@ -135,10 +135,10 @@ fn aggregate(hits: &[FolderHit]) -> Vec<(String, SimAggregate)> {
             let list = &contribs[&folder];
             let sims: Vec<f64> = list.iter().map(|(s, _)| *s).collect();
             // `reduce` keeps the first of equal bests.
-            let top =
-                list.iter()
-                    .skip(1)
-                    .fold(&list[0], |best, c| if c.0 > best.0 { c } else { best });
+            let top = list
+                .iter()
+                .skip(1)
+                .fold(&list[0], |best, c| if c.0 > best.0 { c } else { best });
             let aggregate = SimAggregate {
                 score: corroborated_similarity(&sims),
                 support: list.len(),
