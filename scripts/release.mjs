@@ -1,15 +1,7 @@
 #!/usr/bin/env node
 
 import { execFileSync, spawnSync } from 'node:child_process'
-import {
-  cpSync,
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  readFileSync,
-  rmSync,
-  writeFileSync
-} from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { createInterface } from 'node:readline/promises'
@@ -22,21 +14,37 @@ import {
   extractWorkflowRunId,
   getReleaseListFields,
   parseReleaseArgs,
-  rewriteWindowsUpdateManifest,
   selectDispatchedWorkflowRun,
   selectDraftRelease
 } from './release-utils.mjs'
 import { assertHumanizedReleaseNotesForPublish } from './release-notes-utils.mjs'
-import { assertPublishable, RETIRED_SETUP_NAME } from './release/vpk-args.mjs'
-import { renameToPublished } from './release/vpk-pack.mjs'
+import {
+  bridgeRelease,
+  feedProblems,
+  listPortableExecutables,
+  releaseSetProblems,
+  signaturePlan,
+  stagePackOutputs,
+  unpackPayload
+} from './release/finish-release.mjs'
+import { setupExeName } from './release/bridge-feeds.mjs'
+import {
+  assertPublishable,
+  assetNames,
+  buildPackArgs,
+  RETIRED_SETUP_NAME
+} from './release/vpk-args.mjs'
+import { assertPackable, renameToPublished } from './release/vpk-pack.mjs'
+import {
+  checkPinned,
+  fetchBootstrapper,
+  verifyBootstrapper
+} from './release/webview2-bootstrapper.mjs'
 import {
   buildKeytoolListArgs,
   buildOsslsigncodeVerifyArgs,
   buildSmokeDispatchArgs,
-  buildVelopackAssetNames,
-  buildVpkPackArgs,
   clearStepsFrom,
-  collectUploadAssets,
   decideSigningSession,
   decideWorkflowAction,
   isSignatureVerified,
@@ -44,10 +52,11 @@ import {
   markStepDone,
   parseReleaseMetadata,
   parseReleaseState,
-  resolveUnpackedDir,
+  payloadZipName,
   selectPreviousFullNupkgAsset,
   selectPreviousPublishedRelease,
-  selectRunArtifacts
+  selectRunArtifacts,
+  windowsTargets
 } from './velopack-release-utils.mjs'
 
 const workflowFile = 'publish-release.yml'
@@ -57,7 +66,7 @@ const releaseTimeZone = process.env.RELEASE_TIME_ZONE || 'Europe/Istanbul'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const stateRoot = path.join(repoRoot, '.release-state')
-const iconPath = path.join(repoRoot, 'apps/desktop/build/icon.ico')
+const iconPath = path.join(repoRoot, 'apps/desktop-tauri/src-tauri/icons/icon.ico')
 const signTemplateScript = path.join(repoRoot, 'scripts/sign-windows-binary.sh')
 const certumCaPaths = [
   path.join(repoRoot, 'scripts/certum/ccsca2021.pem'),
@@ -68,11 +77,6 @@ const certumChainPath = path.join(os.homedir(), '.config/memrynote/certum-chain.
 const simplySignLibraryPath = '/usr/local/lib/libSimplySignPKCS.dylib'
 const signingAlias = '57D2B94F4B6C4356BD26F757F3855C1F'
 const keychainService = 'memry-sign-pin'
-
-// Velopack refuses to pack an app that never calls VelopackApp.build().run().
-// The app-side updater ships in its own change; flip this to false in the same
-// release that ships it.
-const skipVeloAppCheck = false
 
 async function runCli() {
   const options = parseReleaseArgs(process.argv.slice(2))
@@ -126,8 +130,15 @@ async function runCli() {
 
   state = readState(workDir, draftTag, draftCreatedAt)
 
-  const { assetDir, metadata } = downloadRunArtifacts({ runId, state, workDir })
-  state = markStepDone(readState(workDir, draftTag, draftCreatedAt), 'download', {
+  const { assetDir, downloaded, inputsDir, metadata, payloadDir } = downloadRunArtifacts({
+    runId,
+    state,
+    workDir
+  })
+  // A fresh download replaced the assets, so the Windows packs and the feeds staged into them are
+  // gone and must be redone.
+  const current = readState(workDir, draftTag, draftCreatedAt)
+  state = markStepDone(downloaded ? clearStepsFrom(current, 'download') : current, 'download', {
     appVersion: metadata.appVersion,
     tag: metadata.tag
   })
@@ -135,25 +146,28 @@ async function runCli() {
 
   if (options.dryRun) {
     console.log('')
-    console.log(`Dry run: artifacts are in ${path.relative(repoRoot, assetDir)}`)
+    console.log(`Dry run: artifacts are in ${path.relative(repoRoot, workDir)}`)
     console.log('Nothing was signed, uploaded or published.')
     return
   }
 
-  if (!isStepDone(state, 'sign-nsis')) {
-    await signNsisInstaller({ assetDir })
-    state = markStepDone(readState(workDir, draftTag, draftCreatedAt), 'sign-nsis')
+  if (!isStepDone(state, 'pack-windows')) {
+    await packWindows({ assetDir, inputsDir, metadata, payloadDir, workDir })
+    state = markStepDone(readState(workDir, draftTag, draftCreatedAt), 'pack-windows')
     writeState(workDir, state)
   }
 
-  const velopackDir = await packVelopack({ assetDir, metadata, releases, state, workDir })
-  state = markStepDone(readState(workDir, draftTag, draftCreatedAt), 'pack')
-  writeState(workDir, state)
-  verifyWindowsSignatures({ assetDir, metadata, velopackDir, workDir })
+  if (!isStepDone(state, 'bridge')) {
+    console.log(`Bridge feeds: ${bridgeRelease(assetDir, metadata.appVersion).join(', ')}`)
+    state = markStepDone(readState(workDir, draftTag, draftCreatedAt), 'bridge')
+    writeState(workDir, state)
+  }
+
+  verifyRelease({ assetDir, metadata, workDir })
   state = markStepDone(readState(workDir, draftTag, draftCreatedAt), 'verify')
   writeState(workDir, state)
 
-  uploadReleaseAssets({ assetDir, draftTag, metadata, velopackDir })
+  uploadReleaseAssets({ assetDir, draftTag })
   state = markStepDone(readState(workDir, draftTag, draftCreatedAt), 'upload')
   writeState(workDir, state)
 
@@ -305,9 +319,12 @@ async function ensureWorkflowRun({ draftTag, options, state, workDir }) {
 function downloadRunArtifacts({ runId, state, workDir }) {
   const assetDir = path.join(workDir, 'assets')
   const metadataDir = path.join(workDir, 'metadata')
+  const inputsDir = path.join(workDir, 'inputs')
+  const payloadDir = path.join(workDir, 'payloads')
   const metadataFile = path.join(metadataDir, 'release-metadata.json')
+  const downloaded = !isStepDone(state, 'download') || !existsSync(metadataFile)
 
-  if (!isStepDone(state, 'download') || !existsSync(metadataFile)) {
+  if (downloaded) {
     const artifactNames = readGhJson([
       'api',
       `repos/${repoSlug()}/actions/runs/${runId}/artifacts`,
@@ -315,285 +332,217 @@ function downloadRunArtifacts({ runId, state, workDir }) {
       '[.artifacts[].name]'
     ])
     const artifacts = selectRunArtifacts(artifactNames)
+    const downloads = [
+      [artifacts.assetsArtifact, assetDir],
+      [artifacts.metadataArtifact, metadataDir],
+      [artifacts.inputsArtifact, inputsDir],
+      ...Object.entries(artifacts.payloadArtifacts).map(([target, artifact]) => [
+        artifact,
+        path.join(payloadDir, target)
+      ])
+    ]
 
-    rmSync(assetDir, { force: true, recursive: true })
-    rmSync(metadataDir, { force: true, recursive: true })
-    mkdirSync(assetDir, { recursive: true })
-    mkdirSync(metadataDir, { recursive: true })
+    for (const dir of [assetDir, metadataDir, inputsDir, payloadDir]) {
+      rmSync(dir, { force: true, recursive: true })
+    }
 
-    console.log(`Downloading ${artifacts.assetsArtifact}`)
-    runGh(['run', 'download', String(runId), '-n', artifacts.assetsArtifact, '-D', assetDir], {
-      stdio: 'inherit'
-    })
-    runGh(['run', 'download', String(runId), '-n', artifacts.metadataArtifact, '-D', metadataDir], {
-      stdio: 'inherit'
-    })
+    for (const [artifact, dir] of downloads) {
+      mkdirSync(dir, { recursive: true })
+      console.log(`Downloading ${artifact}`)
+      runGh(['run', 'download', String(runId), '-n', artifact, '-D', dir], { stdio: 'inherit' })
+    }
   }
 
   const metadata = parseReleaseMetadata(readJsonOrNull(metadataFile))
   console.log(`Build: ${metadata.releaseName} (${metadata.appVersion}) at ${metadata.commitSha}`)
 
-  return { assetDir, metadata }
-}
-
-async function packVelopack({ assetDir, metadata, releases, state, workDir }) {
-  const velopackDir = path.join(workDir, 'velopack')
-  const names = buildVelopackAssetNames(metadata.appVersion)
-
-  if (isStepDone(state, 'pack') && existsSync(path.join(velopackDir, names.full))) {
-    console.log(`Velopack: reusing ${path.relative(repoRoot, velopackDir)}`)
-    renameToPublished(velopackDir)
-    return velopackDir
-  }
-
-  const packDir = extractWindowsPayload({ assetDir, workDir })
-  const previousDir = downloadPreviousFullPackage({ metadata, releases, workDir })
-
-  rmSync(velopackDir, { force: true, recursive: true })
-  mkdirSync(velopackDir, { recursive: true })
-
-  if (previousDir) {
-    for (const name of readdirSync(previousDir)) {
-      cpSync(path.join(previousDir, name), path.join(velopackDir, name))
-    }
-  }
-
-  // Sessions last about two hours and the CI build can outlive one.
-  await requireSigningSession()
-
-  const args = buildVpkPackArgs({
-    iconPath,
-    outputDir: velopackDir,
-    packDir,
-    packVersion: metadata.appVersion,
-    releaseNotesPath: findReleaseNotesFile(metadata.appVersion),
-    signTemplate: `${signTemplateScript} {{file}}`,
-    skipVeloAppCheck
-  })
-
-  console.log(`vpk ${args.join(' ')}`)
-  const result = spawnSync(resolveVpkBinary(), args, {
-    env: { ...process.env, MEMRY_SIGN_PIN: readSigningPin() },
-    stdio: 'inherit'
-  })
-
-  if (result.error) {
-    throw result.error
-  }
-
-  if (result.status !== 0) {
-    throw new Error(`vpk pack failed with exit code ${result.status}`)
-  }
-
-  renameToPublished(velopackDir)
-  return velopackDir
-}
-
-function extractWindowsPayload({ assetDir, workDir }) {
-  const zipName = readdirSync(assetDir).find((name) => name.endsWith('-win.zip'))
-
-  if (!zipName) {
-    throw new Error(`No *-win.zip in ${assetDir}. The Windows build job did not stage its payload.`)
-  }
-
-  const zipPath = path.join(assetDir, zipName)
-  const extractDir = path.join(workDir, 'win-unpacked')
-  const archivePaths = capture('unzip', ['-Z1', zipPath]).stdout.split('\n').filter(Boolean)
-  const unpackedDir = resolveUnpackedDir(archivePaths)
-
-  rmSync(extractDir, { force: true, recursive: true })
-  mkdirSync(extractDir, { recursive: true })
-  console.log(`Extracting ${zipName}`)
-  run('unzip', ['-q', zipPath, '-d', extractDir])
-
-  return path.join(extractDir, unpackedDir)
-}
-
-function downloadPreviousFullPackage({ metadata, releases, workDir }) {
-  const previousTag = selectPreviousPublishedRelease(releases, { excludeTag: metadata.tag })
-
-  if (!previousTag) {
-    console.log('Velopack: no previous release, packing without a delta')
-    return null
-  }
-
-  const previousAssets = readGhJson([
-    'release',
-    'view',
-    previousTag,
-    '--json',
-    'assets'
-  ]).assets.map((asset) => asset.name)
-  const previous = selectPreviousFullNupkgAsset(previousAssets)
-
-  if (!previous) {
-    console.log(`Velopack: ${previousTag} has no full nupkg, packing without a delta`)
-    return null
-  }
-
-  const previousDir = path.join(workDir, 'previous')
-  mkdirSync(previousDir, { recursive: true })
-
-  if (!existsSync(path.join(previousDir, previous.name))) {
-    console.log(`Velopack: downloading ${previous.name} from ${previousTag} for the delta`)
-    runGh(
-      [
-        'release',
-        'download',
-        previousTag,
-        '--pattern',
-        previous.name,
-        '--dir',
-        previousDir,
-        '--clobber'
-      ],
-      { stdio: 'inherit' }
-    )
-  }
-
-  return previousDir
+  return { assetDir, downloaded, inputsDir, metadata, payloadDir }
 }
 
 /**
- * Authenticode-sign the electron-builder NSIS installer.
- *
- * CI builds it on a Windows runner that cannot reach the Certum key, so it used to
- * ship unsigned: Windows then refused to unblock it, and Defender could stop the
- * silent install the hand-off falls back to.
- *
- * Signing rewrites the file, which invalidates both the `.blockmap` and the
- * `sha512`/`size` in `latest.yml`. electron-updater checks that digest before it
- * installs anything, so all three have to move together or every remaining NSIS
- * install stops updating. `buildBlockMap` regenerates the blockmap and returns the
- * digest of the file as it exists after signing, which is exactly what the
- * manifest needs.
+ * Packs and signs both Windows targets from the CI payload zips with the notes and the `--delta`
+ * the CI run used for macOS and Linux (`release-inputs-<version>`), then stages their release
+ * assets next to the CI ones.
  */
-async function signNsisInstaller({ assetDir }) {
-  const setupName = readdirSync(assetDir).find((name) => name.toLowerCase().endsWith('-setup.exe'))
+async function packWindows({ assetDir, inputsDir, metadata, payloadDir, workDir }) {
+  const version = metadata.appVersion
+  const releaseNotes = path.join(inputsDir, 'release-notes.md')
+  const { delta, previousTag } = readJsonOrNull(path.join(inputsDir, 'delta.json')) ?? {}
+  const previousAssets = previousTag ? listReleaseAssets(previousTag) : []
 
-  if (!setupName) {
-    throw new Error(`No NSIS installer in ${assetDir}. The Windows build job staged nothing.`)
+  if (!existsSync(releaseNotes) || !delta) {
+    throw new Error(`${path.relative(repoRoot, inputsDir)} lacks release-notes.md or delta.json`)
   }
 
-  const setupPath = path.join(assetDir, setupName)
-  const manifestPath = path.join(assetDir, 'latest.yml')
+  // Every payload is checked and prepared before the first pack signs anything.
+  for (const target of windowsTargets()) {
+    if (!delta[target]) {
+      throw new Error(`delta.json has no --delta for ${target}`)
+    }
 
-  // Read it now rather than probe for it: this still refuses before anything is
-  // signed, and there is no window between the check and the read in which the
-  // manifest could change underneath us.
-  let manifest
-  try {
-    manifest = readFileSync(manifestPath, 'utf8')
-  } catch (error) {
-    throw new Error(
-      `No readable latest.yml next to ${setupName}; refusing to sign a manifest-less installer. ${error.message}`,
-      { cause: error }
-    )
+    for (const dir of [packDirOf(workDir, target), outputDirOf(workDir, target)]) {
+      rmSync(dir, { force: true, recursive: true })
+      mkdirSync(dir, { recursive: true })
+    }
+
+    const zip = path.join(payloadDir, target, payloadZipName(target, version))
+    console.log(`Extracting ${path.basename(zip)}`)
+    unpackPayload(zip, packDirOf(workDir, target), metadata.windowsPayloads[target])
+    fetchBootstrapper(packDirOf(workDir, target))
+    assertPackable(target, packDirOf(workDir, target))
+
+    if (delta[target] !== 'None') {
+      downloadPreviousFull({
+        outputDir: outputDirOf(workDir, target),
+        previousAssets,
+        previousTag,
+        target
+      })
+    }
   }
 
-  // Sessions last about two hours and the CI build can outlive one.
-  await requireSigningSession()
+  for (const target of windowsTargets()) {
+    const outputDir = outputDirOf(workDir, target)
 
-  console.log(`Signing ${setupName}`)
-  const result = spawnSync(signTemplateScript, [setupPath], {
-    env: { ...process.env, MEMRY_SIGN_PIN: readSigningPin() },
-    stdio: 'inherit'
-  })
+    // Sessions last about two hours and each pack signs every PE file it holds.
+    await requireSigningSession()
 
-  if (result.error) {
-    throw result.error
+    const args = buildPackArgs(target, {
+      delta: delta[target],
+      iconPath,
+      outputDir,
+      packDir: packDirOf(workDir, target),
+      releaseNotes,
+      signTemplate: `${signTemplateScript} {{file}}`,
+      version
+    })
+
+    console.log(`vpk ${args.join(' ')}`)
+    const result = spawnSync(resolveVpkBinary(), args, {
+      env: { ...process.env, MEMRY_SIGN_PIN: readSigningPin() },
+      stdio: 'inherit'
+    })
+
+    if (result.error) {
+      throw result.error
+    }
+
+    if (result.status !== 0) {
+      throw new Error(`vpk pack ${target} failed with exit code ${result.status}`)
+    }
+
+    renameToPublished(outputDir)
+    const staged = stagePackOutputs(target, version, outputDir, assetDir)
+    console.log(`Velopack ${target}: staged ${staged.join(', ')}`)
   }
-
-  if (result.status !== 0) {
-    throw new Error(`Signing ${setupName} failed with exit code ${result.status}`)
-  }
-
-  // Deep import: electron-builder does not re-export this. It is the same builder
-  // that produced the blockmap on CI, so the regenerated one stays byte-compatible
-  // with what electron-updater expects.
-  let buildBlockMap
-  try {
-    ;({ buildBlockMap } = await import('app-builder-lib/out/targets/blockmap/blockmap.js'))
-  } catch (error) {
-    throw new Error(
-      `Could not load app-builder-lib's blockmap builder, so the signed installer's ` +
-        `blockmap and latest.yml cannot be regenerated. Nothing was uploaded.\n${error.message}`,
-      { cause: error }
-    )
-  }
-
-  const { sha512, size } = await buildBlockMap(setupPath, 'gzip', `${setupPath}.blockmap`)
-
-  writeFileSync(manifestPath, rewriteWindowsUpdateManifest(manifest, { sha512, size }))
-
-  console.log(`Rewrote latest.yml and the blockmap for the signed installer (${size} bytes)`)
 }
 
-function verifyWindowsSignatures({ assetDir, metadata, velopackDir, workDir }) {
-  const names = buildVelopackAssetNames(metadata.appVersion)
+const packDirOf = (workDir, target) => path.join(workDir, `pack-${target}`)
+const outputDirOf = (workDir, target) => path.join(workDir, `vpk-${target}`)
+
+// vpk builds the delta against the previous full package of the channel in its output dir. Only
+// that channel's full goes there: a foreign one would be listed in this channel's feed.
+function downloadPreviousFull({ outputDir, previousAssets, previousTag, target }) {
+  const previous = selectPreviousFullNupkgAsset(previousAssets, target)
+
+  if (!previous) {
+    throw new Error(
+      `delta.json asks for a ${target} delta, but ${previousTag || 'no previous release'} has no full package of its channel`
+    )
+  }
+
+  console.log(`Velopack: downloading ${previous.name} from ${previousTag} for the ${target} delta`)
+  runGh(
+    [
+      'release',
+      'download',
+      previousTag,
+      '--pattern',
+      previous.name,
+      '--dir',
+      outputDir,
+      '--clobber'
+    ],
+    { stdio: 'inherit' }
+  )
+}
+
+/**
+ * The last gate before upload: the exact release asset set, every bridge feed entry against the
+ * staged bytes, and Authenticode on both Setups, the bridge Setup copy and every PE file of both
+ * full packages. Our files must verify against the Certum chain; the third-party-signed ones keep
+ * their vendor's signature and the pinned bytes.
+ */
+function verifyRelease({ assetDir, metadata, workDir }) {
+  const version = metadata.appVersion
+  const problems = [...releaseSetProblems(assetDir, version), ...feedProblems(assetDir, version)]
+
+  if (problems.length > 0) {
+    throw new Error(`The release is not ready. Nothing was uploaded.\n${problems.join('\n')}`)
+  }
+
+  assertPublishable(readdirSync(assetDir))
+
   const caFile = path.join(workDir, 'certum-ca-bundle.pem')
   writeFileSync(caFile, certumCaPaths.map((file) => readFileSync(file, 'utf8')).join(''))
 
-  const inspectDir = path.join(workDir, 'verify')
-  rmSync(inspectDir, { force: true, recursive: true })
-  mkdirSync(inspectDir, { recursive: true })
-  run('unzip', [
-    '-q',
-    '-o',
-    path.join(velopackDir, names.full),
-    'lib/app/Memrynote.exe',
-    '-d',
-    inspectDir
-  ])
-
-  const nsisSetup = readdirSync(assetDir).find((name) => name.toLowerCase().endsWith('-setup.exe'))
-
-  for (const file of [
-    path.join(velopackDir, names.setup),
-    path.join(inspectDir, 'lib/app/Memrynote.exe'),
-    // The NSIS installer is signed here too now, so it is verified like the rest
-    // rather than uploaded on trust.
-    path.join(assetDir, nsisSetup)
-  ]) {
-    const result = capture('osslsigncode', buildOsslsigncodeVerifyArgs({ caFile, filePath: file }))
-
-    if (!isSignatureVerified(result.stdout)) {
-      console.error(result.stdout)
-      console.error(result.stderr)
-      throw new Error(
-        `Authenticode verification failed for ${path.basename(file)}. Nothing was uploaded.`
-      )
+  const setups = windowsTargets().map((target) => assetNames(target, version).setup)
+  for (const name of [...setups, setupExeName(version)]) {
+    const file = path.join(assetDir, name)
+    if (existsSync(file)) {
+      verifyCertumSignature(caFile, file, name)
     }
+  }
 
-    console.log(`Signature verification: ok  ${path.basename(file)}`)
+  for (const target of windowsTargets()) {
+    const inspectDir = path.join(workDir, `verify-${target}`)
+    rmSync(inspectDir, { force: true, recursive: true })
+    mkdirSync(inspectDir, { recursive: true })
+    const full = assetNames(target, version).full
+    run('unzip', ['-q', '-o', path.join(assetDir, full), 'lib/app/*', '-d', inspectDir])
+    const appDir = path.join(inspectDir, 'lib/app')
+
+    for (const { file, signer } of signaturePlan(listPortableExecutables(appDir))) {
+      const label = `${full}:${file}`
+
+      if (signer === 'certum') {
+        verifyCertumSignature(caFile, path.join(appDir, file), label)
+        continue
+      }
+
+      checkPinned(path.join(appDir, file))
+      verifyBootstrapper(path.join(appDir, file))
+      console.log(`Signature verification: ok  ${label} (pinned, ${signer})`)
+    }
   }
 }
 
-function uploadReleaseAssets({ assetDir, draftTag, metadata, velopackDir }) {
-  const names = buildVelopackAssetNames(metadata.appVersion)
-  const { assets, missing } = collectUploadAssets({
-    appVersion: metadata.appVersion,
-    ciAssetNames: readdirSync(assetDir),
-    velopackAssetNames: readdirSync(velopackDir)
-  })
+function verifyCertumSignature(caFile, file, label) {
+  const result = capture('osslsigncode', buildOsslsigncodeVerifyArgs({ caFile, filePath: file }))
 
-  if (missing.length > 0) {
-    throw new Error(`Release assets are incomplete: ${missing.join(', ')}`)
+  if (!isSignatureVerified(result.stdout)) {
+    console.error(result.stdout)
+    console.error(result.stderr)
+    throw new Error(`Authenticode verification failed for ${label}. Nothing was uploaded.`)
   }
 
-  if (!assets.some((asset) => asset.name === names.delta)) {
-    console.log('Upload: no delta package in this release')
-  }
+  console.log(`Signature verification: ok  ${label}`)
+}
 
-  const files = assets.map((asset) =>
-    path.join(asset.source === 'ci' ? assetDir : velopackDir, asset.name)
-  )
+function uploadReleaseAssets({ assetDir, draftTag }) {
+  const files = readdirSync(assetDir, { withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => path.join(assetDir, entry.name))
 
   assertPublishable(files.map((file) => path.basename(file)))
   console.log(`Uploading ${files.length} assets to ${draftTag}`)
   runGh(['release', 'upload', draftTag, ...files, '--repo', repoSlug(), '--clobber'], {
     stdio: 'inherit'
   })
+}
+
+function listReleaseAssets(tag) {
+  return readGhJson(['release', 'view', tag, '--json', 'assets']).assets.map((asset) => asset.name)
 }
 
 function publishRelease(metadata) {
@@ -672,15 +621,9 @@ function dispatchSmokeTest({ metadata, releases }) {
     return
   }
 
-  const previousAssets = readGhJson([
-    'release',
-    'view',
-    previousTag,
-    '--json',
-    'assets'
-  ]).assets.map((asset) => asset.name)
-  const previous = selectPreviousFullNupkgAsset(previousAssets)
-  const names = buildVelopackAssetNames(metadata.appVersion)
+  const previousAssets = listReleaseAssets(previousTag)
+  const previous = selectPreviousFullNupkgAsset(previousAssets, 'win-x64')
+  const names = assetNames('win-x64', metadata.appVersion)
 
   // The runner installs the previous release's Setup.exe and applies this
   // release's package on top, which is the upgrade the migration exists to fix.
@@ -831,11 +774,6 @@ function resolveVpkBinary() {
   return existsSync(toolPath) ? toolPath : null
 }
 
-function findReleaseNotesFile(appVersion) {
-  const file = path.join(repoRoot, 'release-notes', `${appVersion}.md`)
-  return existsSync(file) ? file : undefined
-}
-
 function hasCommand(command) {
   return spawnSync('command', ['-v', command], { shell: true, stdio: 'ignore' }).status === 0
 }
@@ -887,7 +825,7 @@ function printPlan({ draft, dryRun, preview }) {
   console.log(`  Final tag: ${preview.tag}`)
   console.log(`  App version: ${preview.appVersion}`)
   console.log(`  Release name: ${preview.releaseName}`)
-  console.log(`  Windows: signed NSIS setup.exe plus signed Velopack packages`)
+  console.log('  Windows: x64 and arm64 Velopack packs, packed and signed on this Mac')
   console.log('')
 }
 
@@ -1065,13 +1003,10 @@ function errorMessage(error) {
 function printHelp() {
   console.log(`Usage: pnpm release -- [options]
 
-Builds every platform in GitHub Actions, then on this Mac signs the Windows NSIS
-installer and packs and signs the Velopack packages with the Certum SimplySign
-key, uploads everything to the draft release and publishes it.
-
-Signing the NSIS installer rewrites it, so its blockmap and the sha512 in
-latest.yml are regenerated in the same step; electron-updater rejects a download
-that does not match that digest.
+Builds every platform in GitHub Actions, then on this Mac packs and signs the
+Windows x64 and arm64 Velopack packages with the Certum SimplySign key, writes
+latest.yml for the signed Setup, verifies every asset and signature, uploads
+everything to the draft release and publishes it.
 
 Logging in to SimplySign Desktop with the OTP from your phone is the only manual
 step. --yes does not skip it.
