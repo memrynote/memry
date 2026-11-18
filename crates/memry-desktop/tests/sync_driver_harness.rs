@@ -518,6 +518,11 @@ async fn the_drivers_seeds_carry_definitions_tags_locks_and_the_inbox() {
     assert!(pushed.pushed, "{pushed:?}");
     b.sync().await;
     assert_eq!(b.ids("project"), ["inbox"]);
+    let inbox: Value = serde_json::from_str(&b.stored("project", "inbox").unwrap()).unwrap();
+    assert!(
+        inbox["clock"].is_object(),
+        "B holds the Inbox A's pass clocked and pushed: {inbox}"
+    );
     assert_eq!(b.queued("project"), 0, "B's seed was replaced, not pushed");
     assert_eq!(b.ids("property_definition"), ["rating"]);
     assert_eq!(
