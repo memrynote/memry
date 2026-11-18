@@ -231,17 +231,15 @@ fn the_list_resolves_each_item_pages_and_follows_a_reorder() {
 
     // The header tags reach the search index after the open walk, from the note index's pass.
     let deadline = std::time::Instant::now() + WAIT;
-    let all = loop {
-        let all = f.ok("bookmarks_list", json!({ "input": {} }));
-        if all["bookmarks"][0]["itemMeta"].get("tags").is_some() {
-            break all;
-        }
+    let mut all = f.ok("bookmarks_list", json!({ "input": {} }));
+    while all["bookmarks"][0]["itemMeta"].get("tags").is_none() {
         assert!(
             std::time::Instant::now() < deadline,
             "Plan's tags never reached the index"
         );
         std::thread::sleep(std::time::Duration::from_millis(50));
-    };
+        all = f.ok("bookmarks_list", json!({ "input": {} }));
+    }
     assert_eq!(all["total"], 4);
     assert_eq!(all["hasMore"], false);
     let rows = all["bookmarks"].as_array().unwrap();
