@@ -36,6 +36,9 @@ import type { Importer, ImportInput } from '../types'
 import { createImportContext } from '../import-context'
 import { markdownImporter } from '../markdown/markdown-importer'
 import { csvImporter } from '../csv/csv-importer'
+import { htmlImporter } from '../html/html-importer'
+import { evernoteImporter } from '../evernote/evernote-importer'
+import { appleJournalImporter } from '../apple-journal/apple-journal-importer'
 
 const rec = vi.hoisted(() => ({ timeline: [] as unknown[], noteCounter: 0 }))
 
@@ -106,6 +109,8 @@ interface VectorCase {
   /** Picked paths, relative to the source's `input/` folder. */
   sources: string[]
   preview?: boolean
+  /** Record `created` as written: it comes from the source, not from the file's birth time. */
+  exactCreated?: boolean
 }
 
 const SOURCES: { source: string; importer: Importer; cases: VectorCase[] }[] = [
@@ -132,6 +137,36 @@ const SOURCES: { source: string; importer: Importer; cases: VectorCase[] }[] = [
         preview: true
       }
     ]
+  },
+  {
+    source: 'html',
+    importer: htmlImporter,
+    cases: [
+      { name: 'sample', sources: ['site/page-one.html', 'site/page-two.htm', 'site/notes.txt'] },
+      { name: 'empty-body', sources: ['site/empty.html'] }
+    ]
+  },
+  {
+    source: 'evernote',
+    importer: evernoteImporter,
+    cases: [
+      {
+        name: 'sample',
+        sources: ['My   Notebook .enex', '.enex', 'empty.enex', 'bad-date.enex'],
+        exactCreated: true
+      }
+    ]
+  },
+  {
+    source: 'apple-journal',
+    importer: appleJournalImporter,
+    cases: [
+      {
+        name: 'sample',
+        sources: ['entry-1.html', 'index.html', 'entry-2.html', 'no-date.html'],
+        exactCreated: true
+      }
+    ]
   }
 ]
 
@@ -147,7 +182,7 @@ function tagValue(value: unknown): unknown {
   return value
 }
 
-function noteRecord(input: NoteCreateInput): unknown {
+function noteRecord(input: NoteCreateInput, exactCreated: boolean): unknown {
   return {
     op: 'createNote',
     id: input.id ?? null,
@@ -159,7 +194,7 @@ function noteRecord(input: NoteCreateInput): unknown {
       tagValue(value)
     ]),
     // The birth time cannot be set on a copied file; only its presence is compared.
-    created: input.created ? '<birthtime>' : null,
+    created: input.created ? (exactCreated ? input.created : '<birthtime>') : null,
     modified: input.modified ?? null,
     content: input.content ?? ''
   }
@@ -199,7 +234,9 @@ async function runCase(source: string, importer: Importer, c: VectorCase): Promi
       ...(preview ? { preview } : {}),
       timeline: rec.timeline.map((entry) => {
         const e = entry as { op: string; input?: NoteCreateInput }
-        return e.op === 'createNote' && e.input ? noteRecord(e.input) : entry
+        return e.op === 'createNote' && e.input
+          ? noteRecord(e.input, c.exactCreated ?? false)
+          : entry
       }),
       summary: {
         ...summary,

@@ -22,6 +22,9 @@ impl Registry {
         for importer in [
             Arc::new(super::markdown::MarkdownImporter) as Arc<dyn Importer>,
             Arc::new(super::csv::CsvImporter),
+            Arc::new(super::html::HtmlImporter::default()),
+            Arc::new(super::evernote::EvernoteImporter),
+            Arc::new(super::apple_journal::AppleJournalImporter),
         ] {
             registry
                 .register(importer)
