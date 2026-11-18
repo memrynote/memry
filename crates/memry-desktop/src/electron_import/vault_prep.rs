@@ -21,7 +21,9 @@ use serde::Serialize;
 use super::journal_replay::{BulkApplyJournal, EntrySkip, Replay, replay};
 use super::vault_evidence::electron_vault_uuid;
 use super::ystore_import::{YStoreFold, fold_vault_store};
-use super::{ElectronConfig, ElectronProfile, ImportError, Scratch, read_vault_evidence};
+use super::{
+    ElectronConfig, ElectronProfile, ImportError, Scratch, YStoreReader, read_vault_evidence,
+};
 pub use report::VaultPrepReport;
 pub use tree::{ExpectedChanges, VaultTree};
 
@@ -39,16 +41,21 @@ pub struct VaultPlan {
     pub duplicate_entries: usize,
     /// `vaults[]` entries without a string `path`.
     pub unreadable_entries: usize,
-    /// Ids that more than one [`Disposition::Import`] vault resolves to: a copied vault folder
-    /// carries its `data.db` singleton along. Importing both would give two core vaults one
-    /// sync identity and one store; the caller defers them.
-    pub repeated_ids: Vec<RepeatedId>,
+    /// Store directories that more than one [`Disposition::Import`] vault resolves to
+    /// ([`YStoreReader::store_dir`]): a copied vault folder carries its `data.db` singleton
+    /// along, a pending rename points one vault at another's store, and `vaultDirName`
+    /// lowercases a canonical uuid. Importing any of them would fold one store into several
+    /// core vaults, so the caller defers every vault of a group (Step 37e2).
+    pub shared_stores: Vec<SharedStore>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct RepeatedId {
-    pub vault_id: String,
+pub struct SharedStore {
+    /// The store directory's name under `crdt-stores/`, without the profile path.
+    pub store: String,
+    /// Each vault's id, in plan order, aligned with `paths`.
+    pub vault_ids: Vec<String>,
     /// In plan order.
     pub paths: Vec<String>,
 }
@@ -147,28 +154,33 @@ pub fn plan_vaults(
             }
         })
         .collect();
-    let mut by_id: BTreeMap<&str, Vec<String>> = BTreeMap::new();
+    let mut by_store: BTreeMap<String, SharedStore> = BTreeMap::new();
     for vault in &vaults {
         if let Disposition::Import(id) = &vault.disposition {
-            by_id
-                .entry(&id.vault_id)
-                .or_default()
-                .push(vault.path.clone());
+            let dir = YStoreReader::store_dir(profile, &id.vault_id, Some(config));
+            let store = dir
+                .file_name()
+                .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
+            let group = by_store
+                .entry(store.clone())
+                .or_insert_with(|| SharedStore {
+                    store,
+                    vault_ids: Vec::new(),
+                    paths: Vec::new(),
+                });
+            group.vault_ids.push(id.vault_id.clone());
+            group.paths.push(vault.path.clone());
         }
     }
-    let repeated_ids = by_id
-        .into_iter()
-        .filter(|(_, paths)| paths.len() > 1)
-        .map(|(vault_id, paths)| RepeatedId {
-            vault_id: vault_id.to_owned(),
-            paths,
-        })
+    let shared_stores = by_store
+        .into_values()
+        .filter(|group| group.paths.len() > 1)
         .collect();
     VaultPlan {
         vaults,
         duplicate_entries: stored.len() - distinct.len(),
         unreadable_entries,
-        repeated_ids,
+        shared_stores,
     }
 }
 

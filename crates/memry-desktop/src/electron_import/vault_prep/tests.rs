@@ -192,7 +192,7 @@ fn each_vault_resolves_one_id_singleton_first() {
     let parsed = uuid::Uuid::parse_str(&vault_id).unwrap();
     assert_eq!(parsed.get_version_num(), 4);
     assert_eq!(vault_id, parsed.to_string(), "lowercase, as randomUUID");
-    assert!(plan.repeated_ids.is_empty());
+    assert!(plan.shared_stores.is_empty());
 }
 
 /// A copied vault folder carries its singleton: both copies resolve to one id, which the plan
@@ -209,9 +209,10 @@ fn vaults_that_resolve_to_one_id_are_flagged() {
         {"path": by_config, "vaultUuid": "shared"},
     ]}));
     assert_eq!(
-        plan.repeated_ids,
-        [RepeatedId {
-            vault_id: "shared".into(),
+        plan.shared_stores,
+        [SharedStore {
+            store: crate::electron_import::profile::vault_dir_name("shared"),
+            vault_ids: vec!["shared".into(); 3],
             paths: vec![original, copy, by_config],
         }]
     );
@@ -507,7 +508,7 @@ const UUID_B: &str = "5e6f7a8b-9c0d-4e1f-8a2b-3c4d5e6f7a8b";
 
 /// The groups of vaults the plan defers together, by their paths.
 fn deferred_together(plan: &VaultPlan) -> Vec<Vec<String>> {
-    plan.repeated_ids.iter().map(|r| r.paths.clone()).collect()
+    plan.shared_stores.iter().map(|g| g.paths.clone()).collect()
 }
 
 /// P was linked (singleton B, `pendingRenames[B] = A`, its history still under A) and Q is a

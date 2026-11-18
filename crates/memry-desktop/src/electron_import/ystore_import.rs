@@ -30,6 +30,7 @@
 
 mod update_depth;
 
+use std::collections::HashSet;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::Path;
 use std::sync::Arc;
@@ -203,7 +204,9 @@ pub fn fold_vault_store(
 /// compared by exact path string, as Electron compares them. A vault whose folder (followed
 /// through a symlink) is gone is passed over: Electron cannot open it. Every vault's import
 /// applies this rule to the same list, the vault being imported included, so at most one
-/// passes. A profile of one vault (or no config) gives the store to the vault being imported.
+/// passes. A profile of one vault (or no config) gives the store to the vault being imported;
+/// `currentVault` counts as a vault here even when `vaults[]` does not list it, as the plan
+/// imports it.
 /// Each other vault is named by [`electron_vault_uuid`] (its singleton, then its config
 /// `vaultUuid`), the order the caller names the vault being imported by.
 fn inherits_unclaimed_legacy(
@@ -217,7 +220,12 @@ fn inherits_unclaimed_legacy(
         return true;
     };
     let (vaults, unreadable) = config.vaults();
-    if vaults.len() + unreadable <= 1 {
+    let distinct: HashSet<&str> = config
+        .current_vault()
+        .into_iter()
+        .chain(vaults.iter().map(|v| v.path.as_str()))
+        .collect();
+    if distinct.len() + unreadable <= 1 {
         return true;
     }
     let is_dir = |path: &Path| std::fs::symlink_metadata(path).is_ok_and(|m| m.is_dir());

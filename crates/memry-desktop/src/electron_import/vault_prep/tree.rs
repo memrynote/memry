@@ -13,8 +13,8 @@ use crate::electron_import::journal_replay::is_memry_dir;
 
 /// `vault-relative path -> entry` of everything in a vault but its top-level `.memry/`.
 /// Only regular files are opened and hashed. Symlinks are recorded by their target and never
-/// followed; other file types (FIFO, socket, device) and folders that cannot be listed are
-/// opaque entries, never opened. The walk keeps its own stack, so a deep tree cannot recurse.
+/// followed; other file types (FIFO, socket, device) are opaque entries, never opened, and so
+/// are folders that cannot be listed and regular files that cannot be opened or read. The walk keeps its own stack, so a deep tree cannot recurse.
 /// Keys use `/` on every OS; a name that is not UTF-8 reads lossily.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct VaultTree(BTreeMap<String, Entry>);
@@ -22,8 +22,9 @@ pub struct VaultTree(BTreeMap<String, Entry>);
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Entry {
     Dir,
-    /// A folder whose listing failed: its content is unknown, so it compares as itself.
-    UnreadableDir,
+    /// A folder whose listing failed, or a regular file that could not be opened or read: its
+    /// content is unknown, so it compares as itself.
+    Unreadable,
     File {
         len: u64,
         sha256: [u8; 32],
@@ -50,7 +51,7 @@ impl VaultTree {
             let listing = match fs::read_dir(&dir) {
                 Ok(listing) => listing,
                 Err(_) if !rel_dir.as_os_str().is_empty() => {
-                    out.insert(key(&rel_dir), Entry::UnreadableDir);
+                    out.insert(key(&rel_dir), Entry::Unreadable);
                     continue;
                 }
                 Err(e) => return Err(ImportError::io(&dir, e)),
@@ -70,7 +71,7 @@ impl VaultTree {
                     stack.push(rel.clone());
                     Entry::Dir
                 } else if kind.is_file() {
-                    file_entry(&path).map_err(|e| ImportError::io(&path, e))?
+                    file_entry(&path).unwrap_or(Entry::Unreadable)
                 } else {
                     Entry::Other
                 };
@@ -106,7 +107,8 @@ impl VaultTree {
 }
 
 /// Hashes a regular file. Opened non-blocking on Unix and checked again once open, so a file
-/// swapped for a FIFO after the listing cannot block the read.
+/// swapped for a FIFO after the listing cannot block the open; once `fstat` confirms a regular
+/// file the read is blocking again, so FUSE or a held write lease cannot fail it with `EAGAIN`.
 fn file_entry(path: &Path) -> io::Result<Entry> {
     let mut options = fs::OpenOptions::new();
     options.read(true);
@@ -116,6 +118,8 @@ fn file_entry(path: &Path) -> io::Result<Entry> {
     if !file.metadata()?.is_file() {
         return Ok(Entry::Other);
     }
+    #[cfg(unix)]
+    clear_nonblocking(&file)?;
     let mut hasher = Sha256::new();
     let mut buf = vec![0; 64 * 1024];
     let mut len = 0;
@@ -131,6 +135,18 @@ fn file_entry(path: &Path) -> io::Result<Entry> {
         len,
         sha256: hasher.finalize().into(),
     })
+}
+
+#[cfg(unix)]
+fn clear_nonblocking(file: &fs::File) -> io::Result<()> {
+    use std::os::fd::AsRawFd;
+    let fd = file.as_raw_fd();
+    // SAFETY: `fd` belongs to `file`, which stays open for both calls; neither touches memory.
+    let flags = unsafe { libc::fcntl(fd, libc::F_GETFL) };
+    if flags < 0 || unsafe { libc::fcntl(fd, libc::F_SETFL, flags & !libc::O_NONBLOCK) } < 0 {
+        return Err(io::Error::last_os_error());
+    }
+    Ok(())
 }
 
 /// A vault-relative path as a tree key: its components joined by `/`.
