@@ -85,6 +85,90 @@ struct TitleFocusClaimTests {
     }
 }
 
+/// #4823, #4815: the keys pressed before a Return belong to its line, also
+/// the ones the keyboard dropped.
+@Suite("Pressed keys")
+struct PressedKeysTests {
+    /// `presses` go down, a Return goes down after the first `beforeReturn`,
+    /// and the keyboard turns `previous` into each of `texts` in turn.
+    private func keys(_ presses: String, returnAfter beforeReturn: Int, texts: [String], from previous: String = "") -> PressedKeys {
+        var keys = PressedKeys()
+        for (index, key) in presses.enumerated() {
+            if index == beforeReturn { keys.returnPressed() }
+            keys.pressed(String(key))
+        }
+        if beforeReturn == presses.count { keys.returnPressed() }
+        var last = previous
+        for text in texts {
+            keys.changed(from: last, to: text)
+            last = text
+        }
+        return keys
+    }
+
+    @Test func keys_that_all_arrived_are_left_alone() {
+        let keys = keys("title", returnAfter: 5, texts: ["T", "Ti", "Tit", "Titl", "Title"])
+        #expect(keys.restoring("Title", end: 5) == "Title")
+    }
+
+    @Test func keys_pressed_before_the_return_that_never_arrived_follow_the_last_that_did() {
+        let keys = keys("title", returnAfter: 5, texts: ["T", "Ti", "Tit"])
+        #expect(keys.restoring("Tit", end: 3) == "Title")
+    }
+
+    @Test func a_key_the_text_skipped_goes_back_in_its_place() {
+        let keys = keys("title", returnAfter: 5, texts: ["T", "Ti", "Tit", "Tite"])
+        #expect(keys.restoring("Tite", end: 4) == "Title")
+    }
+
+    /// Space autocorrects the word before it, and the line keeps the
+    /// correction.
+    @Test func an_autocorrection_its_key_triggered_stays() {
+        let keys = keys("teh x", returnAfter: 5, texts: ["T", "Te", "Teh", "The "])
+        #expect(keys.restoring("The ", end: 4) == "The x")
+    }
+
+    /// The keyboard autocorrected the part of the word it saw as the Return
+    /// made it drop the rest: the keys pressed hold the line.
+    @Test func a_rewrite_of_a_word_cut_by_the_return_gives_way_to_the_keys_pressed() {
+        let keys = keys("title", returnAfter: 5, texts: ["T", "Ti", "To"])
+        #expect(keys.restoring("To", end: 2) == "Title")
+    }
+
+    @Test func keys_pressed_after_the_return_are_not_the_lines() {
+        let keys = keys("titleabc", returnAfter: 5, texts: ["T", "Ti", "Tit", "Titl", "Title"])
+        #expect(keys.restoring("Title", end: 5) == "Title")
+    }
+
+    @Test func the_returns_newline_matches_no_key() {
+        let keys = keys("title", returnAfter: 5, texts: ["T", "Ti", "Tit", "Tite", "Tite\n"])
+        #expect(keys.restoring("Tite\n", end: 4) == "Title\n")
+    }
+
+    @Test func keys_typed_into_the_middle_go_back_there() {
+        let keys = keys("ab", returnAfter: 2, texts: ["Faoo"], from: "Foo")
+        #expect(keys.restoring("Faoo", end: 4) == "Faboo")
+    }
+
+    @Test func an_edit_the_presses_cannot_explain_puts_nothing_back() {
+        // Backspace.
+        var deleted = keys("tit", returnAfter: 3, texts: ["T", "Ti"])
+        deleted.pressed("\u{7F}")
+        deleted.changed(from: "Ti", to: "T")
+        #expect(deleted.restoring("T", end: 1) == "T")
+        // A key with no text of its own, an arrow.
+        var moved = keys("tit", returnAfter: 3, texts: ["T"])
+        moved.pressed("\u{F702}")
+        #expect(moved.restoring("T", end: 1) == "T")
+        // Text no key typed, such as a paste.
+        let pasted = keys("ab", returnAfter: 2, texts: ["xy"])
+        #expect(pasted.restoring("xy", end: 2) == "xy")
+        // A skip of a key pressed after the Return.
+        let early = keys("ab", returnAfter: 0, texts: ["b"])
+        #expect(early.restoring("b", end: 1) == "b")
+    }
+}
+
 /// #4705: keys typed into a note's title as one burst, the way a hardware
 /// keyboard or a text expander delivers them, before the page draws again.
 @Suite("Note title bursts", .serialized)
@@ -250,19 +334,49 @@ struct NoteTitleBurstTests {
         try await expectChecklistBurst(newline: true, gap: gap)
     }
 
+    /// #4823: a Return held as long as a real keypress. The keyboard drops
+    /// the keys it still queues as the Return goes down: `le`, pressed
+    /// before it, never reaches the title, which stored `tit`.
+    @Test(.timeLimit(.minutes(2)), arguments: [0, 3])
+    func keys_pressed_before_a_held_return_that_the_keyboard_drops_stay_in_the_title(gap: Int) async throws {
+        try await expectChecklistBurst(late: "le", delivered: "", gap: gap)
+    }
+
+    /// #4815: the keyboard drops one queued key as the Return goes down and
+    /// inserts the next: `e` arrives without `l`, which stored `tite`.
+    @Test(.timeLimit(.minutes(2)), arguments: [0, 3])
+    func a_key_the_keyboard_skips_at_the_returns_press_goes_back_in_its_place(gap: Int) async throws {
+        try await expectChecklistBurst(late: "le", delivered: "e", gap: gap)
+    }
+
+    /// The same skipped key, with the Return's newline inserted before its
+    /// key-up: the newline's hand-off puts it back too.
+    @Test(.timeLimit(.minutes(2)), arguments: [0, 3])
+    func a_key_skipped_before_the_returns_newline_goes_back_in_its_place(gap: Int) async throws {
+        try await expectChecklistBurst(late: "le", delivered: "e", newline: true, gap: gap)
+    }
+
     /// Types `title⏎[] milk` through the hardware Return, with the `late`
     /// tail of `title` reaching the title after the Return went down, and
     /// with the Return's newline inserted before it comes up when `newline`.
-    /// Expects `title` stored over a `milk` checklist item.
-    private func expectChecklistBurst(late: String = "", newline: Bool = false, gap: Int) async throws {
+    /// With `delivered`, the page's key handlers hear every key of `title`
+    /// go down first, as from a keyboard, and the keyboard inserts only
+    /// `delivered` of `late`. Expects `title` stored over a `milk` checklist
+    /// item.
+    private func expectChecklistBurst(
+        late: String = "", delivered: String? = nil, newline: Bool = false, gap: Int
+    ) async throws {
         let seen = try await uninterrupted { f, window, field in
+            if delivered != nil {
+                for character in "title" { field.next?.pressesBegan([HardwarePress(character)], with: nil) }
+            }
             for character in "title".dropLast(late.count) { key(String(character), in: window, title: field) }
             let press = HardwarePress(.keyboardReturnOrEnter, "\r")
             // The page's key handlers hear the press as it goes down, ahead
             // of the keys the keyboard still queues; the text view takes it
             // in its place in that queue, after `late`.
             if !late.isEmpty { field.next?.pressesBegan([press], with: nil) }
-            for character in late { key(String(character), in: window, title: field) }
+            for character in delivered ?? late { key(String(character), in: window, title: field) }
             // The newline lands ahead of the key-up. The text view takes no
             // insert from a test while it holds a press.
             if newline { key("\n", in: window, title: field) }
@@ -533,6 +647,12 @@ private final class HardwarePress: UIPress {
     init(_ code: UIKeyboardHIDUsage, _ characters: String) {
         hardwareKey = HardwareKey(code, characters)
         super.init()
+    }
+
+    /// The key of a lowercase ASCII letter.
+    convenience init(_ letter: Character) {
+        let code = UIKeyboardHIDUsage(rawValue: UIKeyboardHIDUsage.keyboardA.rawValue + Int(letter.asciiValue! - 97))!
+        self.init(code, String(letter))
     }
 
     override var key: UIKey? { hardwareKey }
