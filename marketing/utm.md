@@ -25,6 +25,7 @@ row.
 | GitHub README and the repo's website field         | `github`                         | `referral`   | `readme`, `repo`                                 | Referral                                       |
 | Docs site (`apps/docs`)                            | `docs`                           | `referral`   | the page, such as `install`                      | Referral                                       |
 | Directory listings and forums (`marketing/growth`) | `alternativeto`, `privacyguides` | `referral`   | `listing`, `showcase`                            | Referral                                       |
+| List articles (`marketing/growth/outreach.md`)     | the site, such as `itsfoss`      | `referral`   | `listing`                                        | Referral                                       |
 | Launch posts (`marketing/growth/launch.md`)        | `hackernews`, `producthunt`      | `referral`   | `launch`                                         | Referral                                       |
 | Profiles (X bio, Reddit sidebar, YouTube channel)  | `x`, `reddit`, `youtube`         | `social`     | `profile`                                        | Organic Social, or Organic Video for `youtube` |
 
