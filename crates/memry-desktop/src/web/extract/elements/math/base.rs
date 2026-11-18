@@ -109,7 +109,7 @@ pub fn get_mathml_from_element(
         }));
     }
     if let Some(mathml) = attr(doc, el, "data-mathml").filter(|m| !m.is_empty()) {
-        let fragment = doc.parse_fragment(&mathml);
+        let fragment = doc.parse_fragment(&mathml)?;
         if let Some(math) = doc.query_selector(fragment, "math")? {
             return Ok(Some(MathData {
                 is_block: attr(doc, math, "display").as_deref() == Some("block"),

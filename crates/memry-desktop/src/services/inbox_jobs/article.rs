@@ -36,10 +36,13 @@ fn extract(ctx: &Ctx<'_>, url: &str) -> Result<ArticleCapture, Halt> {
     let html = ctx
         .block(web.article_html(url))?
         .map_err(|error| Halt::Failed(error.to_string()))?;
-    let fetcher = BlockingFetcher::new(web.clone(), ctx.jobs.runtime.clone());
+    let (web, runtime) = (web.clone(), ctx.jobs.runtime.clone());
     let page_url = url.to_owned();
     let now = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
-    ctx.off_thread(move || extract_article(&html, &page_url, &now, &fetcher))
+    ctx.off_thread(move |abandoned| {
+        let fetcher = BlockingFetcher::new(web, runtime, abandoned);
+        extract_article(&html, &page_url, &now, &fetcher)
+    })
 }
 
 fn store(ctx: &Ctx<'_>, job: &InboxJob, capture: ArticleCapture) -> Result<(), Halt> {

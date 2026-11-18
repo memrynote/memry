@@ -35,7 +35,7 @@ fn fetch(ctx: &Ctx<'_>, url: &str) -> Result<UrlMetadata, Halt> {
         .block(web.metadata_page(url))?
         .map_err(|error| Halt::Failed(error.to_string()))?;
     let page_url = url.to_owned();
-    ctx.off_thread(move || metascrape(&html, &page_url))?
+    ctx.off_thread(move |_| metascrape(&html, &page_url))?
         .map_err(|error| Halt::Failed(error.to_string()))
 }
 
@@ -109,14 +109,29 @@ fn preview(url: &str, metadata: &UrlMetadata) -> Value {
     Value::Object(map)
 }
 
+/// An earlier run of this job stored the preview and stopped before it finished (`store`
+/// queues the article first), so a failed rerun leaves the complete link alone.
+fn preview_stored(ctx: &Ctx<'_>, item_id: &str) -> bool {
+    match ctx.inbox.get(item_id.to_owned()) {
+        Ok(item) => item
+            .and_then(|item| item.metadata_json)
+            .and_then(|raw| serde_json::from_str::<Value>(&raw).ok())
+            .is_some_and(|meta| meta["fetchStatus"] == "complete"),
+        Err(error) => {
+            tracing::warn!(scope = "Inbox:Jobs", %error, "the capture could not be read");
+            false
+        }
+    }
+}
+
 /// The failure half: retried after a delay while attempts remain; the last one marks the
 /// capture failed with the URL-derived title it already has.
 fn failed(ctx: &Ctx<'_>, job: &InboxJob, url: &str, error: &str) {
-    if job.attempts < job.max_attempts {
+    let item_id = job.item_id.as_str();
+    if job.attempts < job.max_attempts || preview_stored(ctx, item_id) {
         ctx.fail(job, error);
         return;
     }
-    let item_id = job.item_id.as_str();
     let patch = json!({ "url": url, "fetchStatus": "failed", "error": error });
     match ctx
         .inbox

@@ -19,8 +19,9 @@ pub enum ExtractError {
     #[error("js error: {0}")]
     Js(String),
     /// Departure: Turndown's parse of the page went past a cap of [`Caps::for_page`] (too deep,
-    /// too many nodes, too slow). JS has no such bound; the extraction fails instead of running
-    /// html5ever's quadratic cases on a hostile page.
+    /// too many nodes, too slow), or Defuddle's parse nested past its depth cap. JS has no such
+    /// bound; the extraction fails instead of running html5ever's quadratic cases or
+    /// overflowing the stack on a hostile page.
     ///
     /// [`Caps::for_page`]: crate::web::extract::markdown::turndown::parse::Caps::for_page
     #[error("the page is too large to convert: {0:?}")]

@@ -121,7 +121,7 @@ fn dom_matches_linkedom_on_every_fixture() {
         let name = fixture["name"].as_str().unwrap();
         let expected = read(&format!("dom/{name}.json"));
         let html = fixture_html(name);
-        let doc = Document::parse_html(&html);
+        let doc = Document::parse_html(&html).expect("parse");
         let order = elements(&doc);
 
         let tree: Vec<Value> = dump_children(&doc, doc.root());
@@ -214,7 +214,7 @@ fn dom_matches_linkedom_on_every_fixture() {
             "{name}: closest"
         );
 
-        let mut fresh = Document::parse_html(&html);
+        let mut fresh = Document::parse_html(&html).expect("parse");
         let head_body = if fresh.head().is_some() && fresh.body().is_some() {
             json!(fresh.serialize(fresh.root()))
         } else {
@@ -248,7 +248,7 @@ fn parser_matches_linkedom_on_random_markup() {
     assert!(cases.len() >= 600);
     for (i, case) in cases.iter().enumerate() {
         let html = case["html"].as_str().unwrap();
-        let doc = Document::parse_html(html);
+        let doc = Document::parse_html(html).expect("parse");
         let tree = Value::Array(dump_children(&doc, doc.root()));
         assert_eq!(tree, case["tree"], "case {i}: {html:?}");
         assert_eq!(

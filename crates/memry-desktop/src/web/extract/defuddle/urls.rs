@@ -181,7 +181,7 @@ impl Defuddle {
             return Ok(html.to_string());
         }
         let container = self.doc.create_element("div");
-        let fragment = self.doc.parse_fragment(html);
+        let fragment = self.doc.parse_fragment(html)?;
         self.doc.append_child(container, fragment)?;
         self.resolve_relative_urls(container)?;
         Ok(self.doc.inner_html(container))

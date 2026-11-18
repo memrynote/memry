@@ -16,7 +16,9 @@ use memry_core::api::inbox_records::InboxItemRecord;
 use memry_core::domain::inbox::jobs::{InboxJobStatus, InboxJobType};
 use memry_core::storage::repositories::sync_items;
 use memry_desktop::registry::{AppConfig, VaultRegistry};
-use memry_desktop::services::inbox_jobs::{InboxJobNotice, InboxJobs, ItemChanges};
+use memry_desktop::services::inbox_jobs::{
+    InboxJobNotice, InboxJobs, ItemChanges, PARSE_DEADLINE, PARSE_TIMED_OUT,
+};
 use memry_desktop::services::web_fetch::{Limits, WebFetch};
 use memry_desktop::session::{OpenSource, OpenVault, Session};
 use serde_json::Value;
@@ -110,6 +112,10 @@ struct World {
 }
 
 fn world() -> World {
+    world_with(PARSE_DEADLINE)
+}
+
+fn world_with(parse_deadline: Duration) -> World {
     let dir = tempfile::tempdir().expect("tmp");
     let app = dir.path().join("app");
     let vault_dir = dir.path().join("vault");
@@ -127,13 +133,14 @@ fn world() -> World {
     let session = Session::new(VaultRegistry::new(config));
     let (sent, notices) = channel();
     let sent = Mutex::new(sent);
-    let jobs = InboxJobs::new(
+    let jobs = InboxJobs::with_parse_deadline(
         web,
         runtime.handle().clone(),
         with_device_key(),
         Box::new(move |notice| {
             let _ = sent.lock().unwrap().send(notice);
         }),
+        parse_deadline,
     );
     jobs.register(&session);
     World {
@@ -201,6 +208,18 @@ fn pushed(open: &OpenVault, id: &str) -> Value {
         })
         .expect("payload");
     serde_json::from_str(&raw).expect("json")
+}
+
+/// Polls `done` until it holds, failing the test rather than hanging it.
+fn until(what: &str, mut done: impl FnMut() -> bool) {
+    let step = Duration::from_millis(50);
+    for _ in 0..PATIENCE.as_millis() / step.as_millis() {
+        if done() {
+            return;
+        }
+        std::thread::sleep(step);
+    }
+    panic!("{what}");
 }
 
 fn statuses(inbox: &Inbox, id: &str) -> Vec<(InboxJobType, InboxJobStatus)> {
@@ -373,9 +392,14 @@ fn a_close_stops_the_runner_mid_fetch_and_the_next_open_resumes_the_job() {
     }
     w.session.close();
     let inbox = w.inbox(&open);
-    assert_eq!(
-        statuses(&inbox, &id),
-        vec![(InboxJobType::MetadataScrape, InboxJobStatus::Running)]
+    // `Running`, or `Pending` when the runner's own start queued and claimed the capture before
+    // the enqueue above, which requeues it (`ON CONFLICT ... status = 'pending'`).
+    let after_close = statuses(&inbox, &id);
+    assert!(
+        [InboxJobStatus::Running, InboxJobStatus::Pending]
+            .map(|status| vec![(InboxJobType::MetadataScrape, status)])
+            .contains(&after_close),
+        "{after_close:?}"
     );
     assert_eq!(
         w.item(&open, &id).processing_status.as_deref(),
@@ -387,6 +411,8 @@ fn a_close_stops_the_runner_mid_fetch_and_the_next_open_resumes_the_job() {
     assert_eq!(w.item(&open, &id).title, "Linear Method");
 }
 
+/// The vault stays open for five runner polls after the enqueue, so a runner that ignored the
+/// stop would have fetched the page.
 #[test]
 fn stop_schedulers_leaves_queued_jobs_for_the_next_launch() {
     let w = world();
@@ -396,10 +422,77 @@ fn stop_schedulers_leaves_queued_jobs_for_the_next_launch() {
     w.jobs
         .enqueue(&open, &id, InboxJobType::MetadataScrape)
         .expect("enqueue");
-    w.session.close();
+    std::thread::sleep(Duration::from_millis(500));
     assert_eq!(w.server.hits("/post"), 0);
     assert_eq!(
         statuses(&w.inbox(&open), &id),
         vec![(InboxJobType::MetadataScrape, InboxJobStatus::Pending)]
+    );
+    w.session.close();
+}
+
+/// A crash between queuing the article and finishing the metadata job leaves a complete link
+/// whose metadata job reruns. When that rerun fails for good, the link keeps its preview.
+#[test]
+fn a_failed_rerun_leaves_a_complete_link_complete() {
+    let w = world();
+    let open = w.open();
+    let id = w.capture(&open, "/down");
+    let inbox = w.inbox(&open);
+    let preview = serde_json::json!({ "url": w.server.url("/down"), "fetchStatus": "complete" });
+    inbox
+        .complete_link_with_thumbnail(
+            id.clone(),
+            Some("Linear Method".into()),
+            None,
+            preview.to_string(),
+            None,
+        )
+        .expect("complete");
+    w.jobs
+        .enqueue(&open, &id, InboxJobType::MetadataScrape)
+        .expect("enqueue");
+    until("the job never failed", || {
+        statuses(&inbox, &id) == vec![(InboxJobType::MetadataScrape, InboxJobStatus::Failed)]
+    });
+    // Three when the runner's own start ran the capture once before the enqueue requeued it.
+    assert!(w.server.hits("/down") >= 2, "two attempts");
+    let item = w.item(&open, &id);
+    assert_eq!(item.processing_status.as_deref(), Some("complete"));
+    assert_eq!(item.title, "Linear Method");
+    assert_eq!(metadata(&item)["fetchStatus"], "complete");
+    assert!(w.notices.try_recv().is_err(), "no failure notice");
+}
+
+/// A parse still running at the deadline fails its job instead of holding the queue. The
+/// deadline here is zero, so the first check after the parse thread starts is past it.
+#[test]
+fn a_parse_past_the_deadline_fails_its_job() {
+    let w = world_with(Duration::ZERO);
+    let open = w.open();
+    let id = w.capture(&open, "/post");
+    w.jobs
+        .enqueue(&open, &id, InboxJobType::ArticleExtract)
+        .expect("enqueue");
+    let inbox = w.inbox(&open);
+    let article = || {
+        inbox
+            .jobs(vec![id.clone()], Vec::new())
+            .expect("jobs")
+            .into_iter()
+            .find(|job| job.job_type == InboxJobType::ArticleExtract)
+            .expect("the article job")
+    };
+    until("the article job never ran", || {
+        let job = article();
+        job.last_error.is_some() || job.status == InboxJobStatus::Complete
+    });
+    let job = article();
+    assert_eq!(job.last_error.as_deref(), Some(PARSE_TIMED_OUT));
+    assert_ne!(job.status, InboxJobStatus::Complete);
+    assert_eq!(
+        w.item(&open, &id).processing_status.as_deref(),
+        Some("pending"),
+        "nothing written"
     );
 }

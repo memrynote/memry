@@ -10,7 +10,8 @@
 //! A vault close or [`InboxJobs::stop`] (the `stop-schedulers` quit step) stops the runner
 //! within [`POLL`]: a fetch is dropped, and a parse in flight is left to finish on its own
 //! thread with nothing written. The interrupted job stays `running` and the next open resumes
-//! it (`Inbox::resume_pending_jobs`).
+//! it (`Inbox::resume_pending_jobs`). A parse that runs past [`PARSE_DEADLINE`] is left the same
+//! way and fails its job, and the extractors' requests on its thread are refused from then on.
 //!
 //! Every write the runner makes reaches the projectors (`InboxUpserted`), asks the sync
 //! supervisor for a push (so peers stop showing the capture as fetching, #4155), and is
@@ -34,6 +35,13 @@ use crate::session::{OpenVault, Session, lock};
 
 /// How often a waiting or working runner checks whether it must stop.
 pub const POLL: Duration = Duration::from_millis(100);
+
+/// The longest one page parse may run before its job fails: one hostile page must not stall
+/// the serial queue (1,000 nested `<div>` take about 25 s in a debug build).
+pub const PARSE_DEADLINE: Duration = Duration::from_secs(60);
+
+/// The error of a job whose page parse ran past its deadline.
+pub const PARSE_TIMED_OUT: &str = "The page parse timed out";
 
 /// What a job changed, for the shell's renderer events (`inbox:*` channels of `jobs.ts`).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -90,6 +98,8 @@ pub struct InboxJobs {
     wake: Condvar,
     /// The app is quitting: no runner claims another job.
     stopped: AtomicBool,
+    /// [`PARSE_DEADLINE`] outside tests.
+    parse_deadline: Duration,
 }
 
 impl InboxJobs {
@@ -101,6 +111,17 @@ impl InboxJobs {
         store: Arc<dyn SecureStore>,
         notify: Notify,
     ) -> Arc<Self> {
+        Self::with_parse_deadline(web, runtime, store, notify, PARSE_DEADLINE)
+    }
+
+    /// [`InboxJobs::new`] with a page parse failing its job after `parse_deadline`.
+    pub fn with_parse_deadline(
+        web: WebFetch,
+        runtime: Handle,
+        store: Arc<dyn SecureStore>,
+        notify: Notify,
+        parse_deadline: Duration,
+    ) -> Arc<Self> {
         Arc::new(Self {
             web,
             runtime,
@@ -109,6 +130,7 @@ impl InboxJobs {
             woken: Mutex::new(false),
             wake: Condvar::new(),
             stopped: AtomicBool::new(false),
+            parse_deadline,
         })
     }
 

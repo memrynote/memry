@@ -5,13 +5,14 @@
 use std::collections::HashSet;
 use std::future::Future;
 use std::sync::Arc;
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{RecvTimeoutError, channel};
+use std::time::Instant;
 
 use memry_core::api::inbox::Inbox;
 use memry_core::domain::inbox::jobs::{InboxJob, InboxJobType};
 
-use super::{InboxJobNotice, InboxJobs, POLL, article, metadata};
+use super::{InboxJobNotice, InboxJobs, PARSE_TIMED_OUT, POLL, article, metadata};
 use crate::session::projection::{CancelToken, ProjectionEvent, feed};
 use crate::session::{OpenVault, Session, lock};
 
@@ -57,30 +58,44 @@ impl Ctx<'_> {
         })
     }
 
-    /// CPU-bound `work` (a page parse) on its own thread, so a stop never waits for it: a parse
-    /// still running then finishes alone and its result is dropped.
+    /// CPU-bound `work` (a page parse) on its own thread, so neither a stop nor a page that
+    /// parses past the jobs' parse deadline holds up the queue: a parse still running then
+    /// finishes alone, its result is dropped, and the flag `work` gets is set, so it fetches
+    /// nothing more.
     pub fn off_thread<T: Send + 'static>(
         &self,
-        work: impl FnOnce() -> T + Send + 'static,
+        work: impl FnOnce(Arc<AtomicBool>) -> T + Send + 'static,
     ) -> Result<T, Halt> {
+        let abandoned = Arc::new(AtomicBool::new(false));
+        let flag = Arc::clone(&abandoned);
         let (done, result) = channel();
         std::thread::Builder::new()
             .name("inbox-job-parse".into())
             .spawn(move || {
-                let _ = done.send(work());
+                let _ = done.send(work(flag));
             })
             .map_err(|_| Halt::Failed("The page could not be processed.".to_owned()))?;
-        loop {
-            match result.recv_timeout(POLL) {
-                Ok(out) => return Ok(out),
-                Err(RecvTimeoutError::Timeout) if self.stopping() => return Err(Halt::Stopped),
+        let deadline = Instant::now() + self.jobs.parse_deadline;
+        let outcome = loop {
+            let left = deadline.saturating_duration_since(Instant::now());
+            match result.recv_timeout(POLL.min(left)) {
+                Ok(out) => break Ok(out),
+                Err(RecvTimeoutError::Timeout) if self.stopping() => break Err(Halt::Stopped),
+                Err(RecvTimeoutError::Timeout) if left.is_zero() => {
+                    tracing::warn!(scope = "Inbox:Jobs", "an inbox page parse timed out");
+                    break Err(Halt::Failed(PARSE_TIMED_OUT.to_owned()));
+                }
                 Err(RecvTimeoutError::Timeout) => {}
                 Err(RecvTimeoutError::Disconnected) => {
                     tracing::error!(scope = "Inbox:Jobs", "an inbox page parse panicked");
-                    return Err(Halt::Failed("The page could not be processed.".to_owned()));
+                    break Err(Halt::Failed("The page could not be processed.".to_owned()));
                 }
             }
+        };
+        if outcome.is_err() {
+            abandoned.store(true, Ordering::SeqCst);
         }
+        outcome
     }
 
     /// The capture's source URL; `None` when it is gone or has none.

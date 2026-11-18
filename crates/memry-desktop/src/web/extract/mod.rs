@@ -104,7 +104,7 @@ pub fn run_defuddle(
     fetcher: &dyn Fetcher,
 ) -> Result<DefuddleResponse, ExtractError> {
     let page_url = if url.is_empty() { "about:blank" } else { url };
-    Defuddle::new(dom::Document::parse_html(html), page_url).parse_async(fetcher)
+    Defuddle::new(dom::Document::parse_html(html)?, page_url).parse_async(fetcher)
 }
 
 /// `extractFromHtml(html, url, { now })` of `packages/article-extract/src/node.ts`, with the

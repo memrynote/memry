@@ -60,6 +60,8 @@ mod app_edit;
 mod article_constants;
 #[path = "article_dom.rs"]
 mod article_dom;
+#[path = "article_guards.rs"]
+mod article_guards;
 #[path = "article_map.rs"]
 mod article_map;
 #[path = "article_markdown.rs"]
