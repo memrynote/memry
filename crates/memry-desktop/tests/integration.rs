@@ -323,6 +323,8 @@ mod notes_writes;
 mod oauth_loopback;
 #[path = "ocr_languages.rs"]
 mod ocr_languages;
+#[path = "owed_take.rs"]
+mod owed_take;
 #[path = "path_collision.rs"]
 mod path_collision;
 #[path = "paths.rs"]
