@@ -83,6 +83,13 @@ pub struct Fake {
     pub max_blob: Arc<Mutex<Option<usize>>>,
     /// Fails every write to this account with `NoStorageAccess`, while every other call answers.
     pub locked_account: Arc<Mutex<Option<String>>>,
+    /// Stores every write to this account, then fails it with `TooLong`: a write whose outcome
+    /// the caller cannot tell from the answer.
+    pub lost_ack_account: Arc<Mutex<Option<String>>>,
+    /// Stores these bytes in place of every written value.
+    pub replace_writes: Arc<Mutex<Option<Vec<u8>>>>,
+    /// Fails every delete with this error.
+    pub fail_deletes: BuildError,
 }
 
 pub struct FakeCred {
@@ -103,6 +110,9 @@ impl Fake {
             writes: Arc::default(),
             max_blob: Arc::default(),
             locked_account: Arc::default(),
+            lost_ack_account: Arc::default(),
+            replace_writes: Arc::default(),
+            fail_deletes: Arc::default(),
         }
     }
 
@@ -118,6 +128,9 @@ impl Fake {
             writes: self.writes.clone(),
             max_blob: self.max_blob.clone(),
             locked_account: self.locked_account.clone(),
+            lost_ack_account: self.lost_ack_account.clone(),
+            replace_writes: self.replace_writes.clone(),
+            fail_deletes: self.fail_deletes.clone(),
         }
     }
 
@@ -176,11 +189,18 @@ impl CredentialApi for FakeCred {
         {
             return Err(Error::TooLong("password".to_owned(), max as u32));
         }
+        let stored = match &*self.fake.replace_writes.lock().unwrap() {
+            Some(replacement) => replacement.clone(),
+            None => secret.to_vec(),
+        };
         self.fake
             .data
             .lock()
             .unwrap()
-            .insert(self.key.clone(), secret.to_vec());
+            .insert(self.key.clone(), stored);
+        if self.fake.lost_ack_account.lock().unwrap().as_deref() == Some(self.key.1.as_str()) {
+            return Err(Error::TooLong("password".to_owned(), 0));
+        }
         Ok(())
     }
 
@@ -206,6 +226,9 @@ impl CredentialApi for FakeCred {
 
     fn delete_credential(&self) -> keyring_core::Result<()> {
         self.fake.act()?;
+        if let Some(error) = *self.fake.fail_deletes.lock().unwrap() {
+            return Err(error());
+        }
         match self.fake.data.lock().unwrap().remove(&self.key) {
             Some(_) => Ok(()),
             None => Err(Error::NoEntry),
