@@ -18,7 +18,10 @@ import { FONT_SIZE_PX_MAX, FONT_SIZE_PX_MIN } from '../../src/font-size'
 import { GRAPH_SETTINGS_DEFAULTS } from '../../src/graph-api'
 import {
   BACKUP_SETTINGS_DEFAULTS,
+  CALENDAR_GOOGLE_SETTINGS_DEFAULTS,
+  CALENDAR_PROVIDER_BASE_SETTINGS_DEFAULTS,
   CALENDAR_SETTINGS_DEFAULTS,
+  CALENDAR_WRITABLE_PROVIDER_SETTINGS_DEFAULTS,
   EDITOR_SETTINGS_DEFAULTS,
   EDITOR_SYNCABLE_FIELDS,
   FEATURES_SETTINGS_DEFAULTS,
@@ -53,6 +56,11 @@ interface GroupSpec {
 
 const SETTINGS_SCHEMAS = 'packages/contracts/src/settings-schemas.ts'
 const HANDLERS = 'apps/desktop/src/main/ipc/settings-handlers.ts'
+// The calendar leaves desktop mirrors into settings sync are private to this
+// module (`CALENDAR_KEYS`, `GOOGLE_KEYS`, `PROVIDER_KEYS`, and the whole-value
+// `calendar.defaultWriteTarget`); This Mac's group (`apple-eventkit`) stays local.
+const CALENDAR_SYNC = 'apps/desktop/src/main/calendar/calendar-settings-sync.ts'
+const CALENDAR_PROVIDER_KEYS = ['agentReadEventsConsent', 'pushEventsToProvider']
 
 // Keys of `journal.weekdayTemplates`: JS `getDay()`, `isWeekdayKey` in
 // apps/desktop/src/main/settings/journal-template-keys.ts.
@@ -106,9 +114,39 @@ const GROUPS: Record<string, GroupSpec> = {
   },
   calendar: {
     defaults: { ...CALENDAR_SETTINGS_DEFAULTS },
+    syncable: ['weekStartDay', 'showNotesOnCalendar', 'defaultWriteTarget'],
+    maps: [],
+    source: CALENDAR_SYNC
+  },
+  'calendar.google': {
+    defaults: { ...CALENDAR_GOOGLE_SETTINGS_DEFAULTS },
+    syncable: [
+      'defaultTargetCalendarId',
+      'onboardingCompleted',
+      'promoteConfirmDismissed',
+      'pushEventsToGoogle',
+      'agentReadEventsConsent'
+    ],
+    maps: [],
+    source: CALENDAR_SYNC
+  },
+  'calendar.caldav': {
+    defaults: { ...CALENDAR_WRITABLE_PROVIDER_SETTINGS_DEFAULTS },
+    syncable: CALENDAR_PROVIDER_KEYS,
+    maps: [],
+    source: CALENDAR_SYNC
+  },
+  'calendar.ics': {
+    defaults: { ...CALENDAR_PROVIDER_BASE_SETTINGS_DEFAULTS },
+    syncable: CALENDAR_PROVIDER_KEYS,
+    maps: [],
+    source: CALENDAR_SYNC
+  },
+  'calendar.apple-eventkit': {
+    defaults: { ...CALENDAR_PROVIDER_BASE_SETTINGS_DEFAULTS },
     syncable: [],
     maps: [],
-    source: SETTINGS_SCHEMAS
+    source: CALENDAR_SYNC
   },
   features: {
     defaults: { ...FEATURES_SETTINGS_DEFAULTS },

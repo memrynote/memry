@@ -66,7 +66,34 @@ pub(super) const GROUPS: &[Group] = &[
     local("keyboard", defaults::keyboard),
     local("sync", defaults::sync),
     local("backup", defaults::backup),
-    local("calendar", defaults::calendar),
+    Group {
+        name: "calendar",
+        defaults: defaults::calendar,
+        syncable: syncable::CALENDAR,
+        maps: &[],
+    },
+    // One group per calendar provider (`calendar.<providerId>`), so a known
+    // provider is one with a group. This Mac's events never leave the Mac, so
+    // its group stays local.
+    Group {
+        name: "calendar.google",
+        defaults: defaults::calendar_google,
+        syncable: syncable::CALENDAR_GOOGLE,
+        maps: &[],
+    },
+    Group {
+        name: "calendar.caldav",
+        defaults: defaults::calendar_writable_provider,
+        syncable: syncable::CALENDAR_PROVIDER,
+        maps: &[],
+    },
+    Group {
+        name: "calendar.ics",
+        defaults: defaults::calendar_provider,
+        syncable: syncable::CALENDAR_PROVIDER,
+        maps: &[],
+    },
+    local("calendar.apple-eventkit", defaults::calendar_provider),
     Group {
         name: "features",
         defaults: defaults::features,
