@@ -170,3 +170,48 @@ describe.each([
     expect(vaultIds()).toEqual([REAL_VAULT])
   })
 })
+
+// #4816 review: the read middleware keeps every vault answer the upserting one
+// gives, it only skips the insert.
+describe('the status read on an account that already holds vaults', () => {
+  const addVault = (vaultId: string): void => {
+    harness.raw
+      .prepare(
+        `INSERT INTO sync_vaults (id, user_id, vault_id, created_at, updated_at) VALUES (?, ?, ?, 1, 1)`
+      )
+      .run(`row-${vaultId}`, USER_ID, vaultId)
+  }
+
+  it('serves a legacy `default` vault next to another one, creating nothing', async () => {
+    grant('believer', null)
+    addVault('default')
+
+    const res = await request('/sync/status')
+
+    expect(res.status).toBe(200)
+    expect(vaultIds()).toEqual(['default', REAL_VAULT])
+  })
+
+  it('refuses a header-less read when two vaults could answer, creating nothing', async () => {
+    grant('believer', null)
+    addVault('vault-other')
+
+    const res = await request('/sync/status')
+
+    expect(res.status).toBe(400)
+    const body = (await res.json()) as { error: { code: string } }
+    expect(body.error.code).toBe('VALIDATION_ERROR')
+    expect(vaultIds()).toEqual(['vault-other', REAL_VAULT])
+  })
+
+  it('refuses a second vault on Plus with 402, creating nothing', async () => {
+    grant('plus', 1)
+
+    const res = await request('/sync/status', { headers: { 'X-Memry-Vault-Id': 'vault-new' } })
+
+    expect(res.status).toBe(402)
+    const body = (await res.json()) as { error: { code: string } }
+    expect(body.error.code).toBe('SYNC_VAULT_LIMIT_EXCEEDED')
+    expect(vaultIds()).toEqual([REAL_VAULT])
+  })
+})

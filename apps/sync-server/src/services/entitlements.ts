@@ -195,6 +195,12 @@ export async function assertFileSizeAllowed(
   }
 }
 
+const findExistingVault = (db: D1Database, userId: string, vaultId: string) =>
+  db
+    .prepare('SELECT vault_id FROM sync_vaults WHERE user_id = ? AND vault_id = ?')
+    .bind(userId, vaultId)
+    .first<{ vault_id: string }>()
+
 /**
  * Read-only half of {@link ensureSyncVaultAllowed}: the same 402 when the vault
  * is new and the plan's vault allowance is used up, but nothing is inserted.
@@ -206,13 +212,7 @@ export async function assertSyncVaultAllowed(
   vaultId: string,
   entitlement: SyncEntitlement
 ): Promise<boolean> {
-  const findExistingVault = () =>
-    db
-      .prepare('SELECT vault_id FROM sync_vaults WHERE user_id = ? AND vault_id = ?')
-      .bind(userId, vaultId)
-      .first<{ vault_id: string }>()
-
-  if (await findExistingVault()) return true
+  if (await findExistingVault(db, userId, vaultId)) return true
 
   if (entitlement.max_vaults !== null) {
     const count = await db
@@ -221,7 +221,7 @@ export async function assertSyncVaultAllowed(
       .first<{ cnt: number }>()
 
     if ((count?.cnt ?? 0) >= entitlement.max_vaults) {
-      if (await findExistingVault()) return true
+      if (await findExistingVault(db, userId, vaultId)) return true
 
       throw new AppError(
         ErrorCodes.SYNC_VAULT_LIMIT_EXCEEDED,
@@ -241,12 +241,6 @@ export async function ensureSyncVaultAllowed(
   entitlement: SyncEntitlement
 ): Promise<void> {
   if (await assertSyncVaultAllowed(db, userId, vaultId, entitlement)) return
-
-  const findExistingVault = () =>
-    db
-      .prepare('SELECT vault_id FROM sync_vaults WHERE user_id = ? AND vault_id = ?')
-      .bind(userId, vaultId)
-      .first<{ vault_id: string }>()
 
   const now = Math.floor(Date.now() / 1000)
   let insertResult: D1Result
@@ -274,7 +268,7 @@ export async function ensureSyncVaultAllowed(
 
   if ((insertResult.meta.changes ?? 0) > 0) return
 
-  const insertedByRace = await findExistingVault()
+  const insertedByRace = await findExistingVault(db, userId, vaultId)
 
   if (insertedByRace) return
 
