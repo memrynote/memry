@@ -82,8 +82,10 @@ fn store(ctx: &Ctx<'_>, job: &InboxJob, url: &str, metadata: UrlMetadata) -> Res
         image: metadata.image,
         thumbnail_path,
     });
-    ctx.finish(job);
+    // Queued before the finish: a crash between the two reruns the preview (its write is
+    // idempotent) instead of leaving a complete link that never gets its article.
     ctx.enqueue(item_id, InboxJobType::ArticleExtract);
+    ctx.finish(job);
     Ok(())
 }
 
