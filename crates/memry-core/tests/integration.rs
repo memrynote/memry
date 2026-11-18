@@ -483,6 +483,9 @@ mod sync_requeue_convergence;
 mod sync_requeue_delete;
 #[path = "sync_requeue_pass.rs"]
 mod sync_requeue_pass;
+#[cfg(feature = "markdown")]
+#[path = "sync_task_list_union.rs"]
+mod sync_task_list_union;
 #[path = "tag_fields.rs"]
 mod tag_fields;
 #[path = "tag_fold_vectors.rs"]

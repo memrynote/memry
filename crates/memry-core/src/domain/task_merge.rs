@@ -38,13 +38,15 @@
 //!   `next_field_clocks` refuses the reserved device id outright, which is
 //!   §6.6 made structural rather than remembered.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 
 use rusqlite::{Connection, params};
 use serde_json::Value;
 
 use crate::api::errors::StorageError;
 use crate::domain::notes::failed;
+use crate::domain::notes::names::js_trim;
+use crate::domain::tags;
 use crate::domain::tasks::Inbound;
 use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::sync_items::InboundRecord;
@@ -166,6 +168,18 @@ pub(crate) fn apply_remote_merged(
     fields: &[&str],
     now_ms: i64,
 ) -> Result<Inbound, StorageError> {
+    apply_remote_merged_with_lists(conn, record, fields, &[], now_ms)
+}
+
+/// [`apply_remote_merged`] that also unions `lists` on the concurrent branch
+/// (§6.7.1). Only `task` has lists to union; `project` has none.
+pub(crate) fn apply_remote_merged_with_lists(
+    conn: &Connection,
+    record: &InboundRecord,
+    fields: &[&str],
+    lists: &[&str],
+    now_ms: i64,
+) -> Result<Inbound, StorageError> {
     let (local, remote, merged_clock) = match document_gate(conn, record)? {
         Gate::Wholesale => return wholesale(conn, record, now_ms),
         Gate::Skip => return Ok(Inbound::Skipped),
@@ -185,9 +199,8 @@ pub(crate) fn apply_remote_merged(
     );
 
     // §6.3 step 8: a winner of `undefined` leaves the column untouched, which
-    // a missing key in `merged` expresses. A field outside `fields` is not
-    // merged at all (§6.7), so the local value survives — including `tags` and
-    // the two link arrays on a task.
+    // a missing key in `merged` expresses. A field outside `fields` and
+    // `lists` is not merged at all (§6.7), so the local value survives.
     let mut changes: Vec<(&str, Change)> = fields
         .iter()
         .filter_map(|field| {
@@ -197,6 +210,11 @@ pub(crate) fn apply_remote_merged(
                 .map(|value| (*field, Change::Set(value.clone())))
         })
         .collect();
+    for list in lists {
+        if let Some(union) = union_list(list, local.object(), remote.object()) {
+            changes.push((list, Change::set(union)));
+        }
+    }
     changes.push(("clock", Change::Set(as_json(&merged_clock)?)));
     changes.push((
         "fieldClocks",
@@ -208,6 +226,43 @@ pub(crate) fn apply_remote_merged(
         conflicted_fields: result.conflicted_fields,
         conflicts: Vec::new(),
     })
+}
+
+/// §6.7.1: Electron's union of one junction list on a concurrent task merge
+/// (`apps/desktop/src/main/sync/item-handlers/task-handler.ts:221-242`): the
+/// local entries in their order, then the remote's new ones. `tags` then go
+/// through `writeTags` (`:100-115`): trimmed as JS trims, empty ones dropped, deduped by
+/// [`tags::fold`] keeping the first spelling. Link ids dedupe exactly. There
+/// is no removal set, so an entry one side removed comes back while the other
+/// side still holds it.
+///
+/// `None` leaves the local list as it is: the remote does not carry the list
+/// as an array of strings (`if (data.tags)`, `:228`; `TaskSyncPayloadSchema`
+/// refuses any other shape), or the local one is not one.
+fn union_list(list: &str, local: &Object, remote: &Object) -> Option<Vec<String>> {
+    let remote = strings(remote.get(list)?)?;
+    let local = match local.get(list) {
+        None | Some(Value::Null) => Vec::new(),
+        Some(value) => strings(value)?,
+    };
+    let joined = local.into_iter().chain(remote);
+    if list == "tags" {
+        return Some(tags::dedupe(
+            joined
+                .map(|tag| js_trim(&tag).to_owned())
+                .filter(|tag| !tag.is_empty()),
+        ));
+    }
+    let mut seen = HashSet::new();
+    Some(joined.filter(|id| seen.insert(id.clone())).collect())
+}
+
+fn strings(value: &Value) -> Option<Vec<String>> {
+    value
+        .as_array()?
+        .iter()
+        .map(|entry| entry.as_str().map(str::to_owned))
+        .collect()
 }
 
 /// Writes a concurrent branch's merged `changes` over the stored payload, and
@@ -423,7 +478,7 @@ mod tests {
         let parsed = clocks.as_object().expect("an object");
         assert_eq!(parsed["title"], json!({"device-a": 1, "device-b": 1}));
         // `modifiedAt` and `tags` are outside `TASK_SYNCABLE_FIELDS` (§6.7),
-        // so neither gets a clock — and an unlisted field is not merged at all.
+        // so neither gets a clock.
         assert!(!parsed.contains_key("modifiedAt"));
         assert!(!parsed.contains_key("tags"));
     }
