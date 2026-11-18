@@ -9,7 +9,7 @@ use crate::domain::task_merge::{self, Gate};
 use crate::domain::tasks::Inbound;
 use crate::domain::{
     agent_conversation, agent_message, calendar_items, canvas, canvas_folder, home_page, inbox,
-    journal, projects, settings, sticky_draft, tasks,
+    journal, projects, settings, sticky_draft, task_activity, tasks,
 };
 // Desktop only, like the locks themselves: iOS never declares `vault_lock`.
 #[cfg(feature = "markdown")]
@@ -80,6 +80,15 @@ pub(super) fn apply_record(
         && let Some(outcome) = journal_day_merge::plan_inbound(conn, record)?
     {
         return Ok((outcome, None));
+    }
+    // Activity rows are append-only: a live id is skipped, never merged
+    // (desktop's task-activity-handler.ts:55-56, chapter 06 §6.6.3), so a
+    // peer's copy of a `superseded` row this device holds is not re-queued.
+    if record.item_type == task_activity::ITEM_TYPE
+        && sync_items::load(conn, &record.item_type, &record.item_id)?
+            .is_some_and(|row| row.deleted_at.is_none() && row.payload.is_some())
+    {
+        return Ok((ApplyOutcome::Skipped, None));
     }
     let merged = match record.item_type.as_str() {
         tasks::ITEM_TYPE => tasks::apply_remote(conn, record, now_ms, clock_device),

@@ -11,6 +11,15 @@
 //! clock, which is the same on both devices (merge is commutative). When both
 //! lose (chapter 06 §6.6.2's mirrored state), insert-if-absent collapses the
 //! two rows into one.
+//!
+//! Electron writes the row inside the merge; this core writes it after the
+//! page commits, so three cases lose the row (the task's merge itself is
+//! intact in all three):
+//! - the process dies between the page commit and the observer;
+//! - a pause cuts the pass in flight (#4892) after the page commits and before
+//!   the feed reaches the observer;
+//! - a tombstone for the same task later in the same page: the observer finds
+//!   the task deleted and writes nothing, where Electron already wrote it.
 
 use std::sync::Arc;
 
@@ -41,11 +50,13 @@ pub struct LostField<'a> {
     pub merged_clock: &'a Value,
 }
 
-/// `taskSupersededActivityId`: `tac_` and the first 20 hex characters of
-/// sha256 over `<taskId> <field> <canonical merged clock>`.
+/// `taskSupersededActivityId` (`activity-log.ts:391-400`): `tac_` and the
+/// first 20 hex characters of sha256 over `<taskId> NUL <field> NUL
+/// <canonical merged clock>` (chapter 06 §6.6.3,
+/// `test-vectors/task-superseded-id.json`).
 pub fn superseded_id(task_id: &str, field: &str, merged_clock: &Value) -> String {
     let digest = Sha256::digest(format!(
-        "{task_id} {field} {}",
+        "{task_id}\0{field}\0{}",
         canonical_json(merged_clock)
     ));
     format!("tac_{}", &hex::encode(digest)[..20])

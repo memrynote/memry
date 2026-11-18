@@ -8,6 +8,7 @@
 //! | a tied edit is superseded on the losing device    | ch. 06 §6.3 step 6, one row, synced     |
 //! | both devices lose the mirrored merge              | §6.6.2: one id, insert-if-absent        |
 //! | an edit that loses on clock totals                | §6.5.4: no row                          |
+//! | a tie this device won under `_offline`            | §6.3's `_offline` tie-break: no row     |
 //! | a local delete meets a concurrent edit            | no row for a task deleted here          |
 //! | the desktop driver records it                     | the driver registers the observer       |
 
@@ -215,6 +216,33 @@ async fn an_edit_that_loses_on_clock_totals_writes_no_row() {
     assert_eq!(superseded_rows(&a.db()), []);
     assert_eq!(superseded_rows(&b.db()), []);
     assert_eq!(title(&b), json!("From a again"));
+}
+
+/// An older Electron peer's offline retitle reaches A at `{a:1,_offline:1}`
+/// (this core never mints `_offline`, chapter 06 §6.6.1), and B's retitle at
+/// `{a:1,b:1}` ties it. §6.3's `_offline` tie-break keeps A's value: A pulls a
+/// conflict it won, and B then takes A's merge outright, so neither device
+/// lost an edit and neither writes a row.
+#[tokio::test]
+async fn a_tie_this_device_won_under_offline_writes_no_row() {
+    let relay = Relay::default();
+    let (a, b) = shared(&relay).await;
+    let mut offline: Json = serde_json::from_str(&a.stored("task", TASK)).expect("json");
+    let clock = json!({"a": 1, "_offline": 1});
+    offline["title"] = json!("From e");
+    offline["clock"] = clock.clone();
+    offline["fieldClocks"]["title"] = clock;
+    relay.put("task", TASK, &offline.to_string());
+    pull(&relay, &a).await;
+    retitle(&b, "From b");
+    relay.push(&b).await;
+
+    sync(&relay, &a).await;
+    sync(&relay, &b).await;
+
+    assert_eq!(superseded_rows(&a.db()), [], "a won the tie");
+    assert_eq!(superseded_rows(&b.db()), [], "b took a's merge outright");
+    assert_eq!((title(&a), title(&b)), (json!("From e"), json!("From e")));
 }
 
 /// A edits and then deletes the task; B's tied edit reaches A first. Desktop

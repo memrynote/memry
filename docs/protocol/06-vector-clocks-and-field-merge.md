@@ -496,8 +496,7 @@ Pinned by `apps/desktop/src/main/sync/engine/conflict-report.test.ts` and
 `packages/sync-client/src/item-handlers/types.test.ts`.
 
 **Residual, cosmetic.** Both devices also write a `superseded` activity row with
-the **same id**, minted from `mergedClock`
-(`apps/desktop/src/main/tasks/activity-log.ts:385`), carrying opposite
+the **same id**, minted from `mergedClock` (§6.6.3), carrying opposite
 `winningValue`s. One overwrites the other on the server (P1), so an activity
 entry can name as "winning" the value that the convergence step then discarded.
 The task itself is not affected.
@@ -505,6 +504,30 @@ The task itself is not affected.
 **Core obligation.** Implement P3 and P4. A core that merges without re-queueing,
 or that treats an equal clock with a different payload as a no-op, turns this race back into the
 permanent divergence this section once described.
+
+### 6.6.3 The `superseded` activity id
+
+A task field this device lost in a merge (`mergedValue` differs from
+`localValue`, `apps/desktop/src/main/sync/item-handlers/task-handler.ts:250-258`)
+is written as one `task_activity` row with `action: 'superseded'`
+(`apps/desktop/src/main/tasks/activity-log.ts:409-448`). Its id is
+
+```
+"tac_" + hex(sha256(taskId + "\0" + field + "\0" + canonicalJson(mergedClock)))[0..20]
+```
+
+(`apps/desktop/src/main/tasks/activity-log.ts:391-400`). The separators are
+U+0000 bytes, not spaces. `canonicalJson` writes object keys sorted by UTF-16
+code unit, with no whitespace (`apps/desktop/src/main/tasks/activity-log.ts:372-380`).
+`mergedClock` is the field's merged clock, which both devices of one conflict
+compute alike, so both mint the same id. Inbound, a `task_activity` id that is
+already present is skipped, never merged
+(`packages/sync-client/src/item-handlers/task-activity-handler.ts:55-56`), which
+keeps one row per conflict.
+
+**Core obligation.** Mint the id byte for byte as above; vectors:
+`packages/contracts/test-vectors/task-superseded-id.json`. An id that differs
+writes a second row for the same conflict on every device.
 
 ## 6.7 Field lists
 
