@@ -106,6 +106,21 @@ never opens one. The Rust dialog wrapper (`src-tauri/src/shell/dialogs.rs`, over
 - With an open gate `vault_reveal` and `vault_activity_reveal` record the path instead of
   opening a file manager; `e2e_revealed_paths` reads it back.
 
+## Sync sign-in
+
+`e2e_bootstrap_sync_device { input }` (`src-tauri/src/e2e/sync.rs`, over
+`AccountService::bootstrap_e2e_device`) signs the instance into the account
+`startSharedSyncBootstrap()` (`harness/sync-backend.ts`) made on the local test server, with no
+email code or phrase, and answers `{ deviceId }`. `input` is one of its devices. It binds the open
+vault to the account's vault, registers the device with the setup token the harness signed,
+publishes the key material unless `skipSetup`, keeps the master key with a confirmed phrase and
+attaches sync. The device keeps the signing key it minted at launch; `signingSecretKeyBase64` is
+not read. The server is the control file's `syncServerUrl`: a fixture that sets
+`syncServerUrl` makes `fresh()` check that the app runs against it (`e2e_app_info`).
+`fixtures/sync-auth-fixtures.ts` wraps it (`bootstrapSyncDevice`, `bootstrappedSyncPair`), and
+`specs/sync/sync-bootstrap.e2e.ts` waits for the first sync pass after it. The sign-in exists
+only in the e2e build (`memry-core` and `memry-desktop` feature `e2e`).
+
 ## Spelling
 
 `specs/shell/spellcheck.e2e.ts` uses two commands (`src-tauri/src/e2e/shell_integrations.rs`):

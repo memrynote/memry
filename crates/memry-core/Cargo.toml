@@ -19,6 +19,9 @@ default = []
 # enables it: on device the transport is a foreign trait the Swift side fills in
 # (Constitution I, no Rust networking on device).
 native-transport = []
+# `AuthSession::accept_e2e_setup_token`, the desktop e2e build's sign-in (`e2e_bootstrap_sync_device`).
+# memry-desktop's `e2e` feature turns it on; the iOS build and every release build keep it off.
+e2e = []
 # The markdown converter (`src/markdown`), the Rust port of the Electron one.
 # Desktop turns it on; the iOS build keeps it off and links none of it.
 markdown = ["dep:html5ever", "dep:markup5ever", "dep:regex", "dep:url", "dep:uuid"]

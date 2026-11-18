@@ -56,7 +56,11 @@ e2e_commands! {
         e2e_menu_activate,
         e2e_menu_bar_visible
     ],
-    sync => [e2e_set_gate_inputs, e2e_set_network_online],
+    sync => [
+        e2e_bootstrap_sync_device,
+        e2e_set_gate_inputs,
+        e2e_set_network_online
+    ],
     updater => [e2e_updater_script, e2e_updater_hook_calls],
     vault_writeback => [
         e2e_app_terminate,

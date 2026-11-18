@@ -30,6 +30,8 @@ use crate::protocol::http::{ClientIdentity, HttpClient};
 use crate::seams::secure_store::{SecureStore, SecureStoreKey};
 use crate::seams::transport::Transport;
 
+#[cfg(feature = "e2e")]
+mod e2e;
 mod identity;
 mod oauth;
 mod otp;
