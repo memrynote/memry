@@ -6,6 +6,7 @@
 import { expectSuggestionMenuOpen, typeInEditor } from '../../harness/editor'
 import { NOTE_EDITOR, vaultOpen } from '../../harness/notes'
 import type { Page } from '../../harness/pw-compat/page'
+import { waitForWritebackToSettle, writebackDebug } from '../../harness/seeded-note'
 import { blockTypes, openTableNote, tableLines, vaultBody } from '../../harness/table'
 import { test, expect } from '../../harness/test'
 
@@ -68,6 +69,7 @@ test('typing `[ ] task` in a cell makes a checkbox that ticks and reaches disk',
 })
 
 test('a checkbox written into a cell on disk opens as one and is not rewritten', async ({
+  app,
   page,
   testVaultPath
 }) => {
@@ -80,12 +82,20 @@ test('a checkbox written into a cell on disk opens as one and is not rewritten',
   await expect(cellCheckbox(page)).not.toBeChecked()
 
   // Write-back byte-compares, so drift here would rewrite every such note on every open. An edit
-  // elsewhere, undone, makes the editor serialize the document again.
+  // elsewhere, undone, makes the editor serialize the document again. A WebDriver Backspace
+  // edits no contenteditable in WKWebView; the browser's delete command is the `beforeinput` a
+  // Backspace makes. The spec waits for the pass that saved it, not a fixed time.
+  const performed = (await writebackDebug(app, note.id))?.performedCount ?? 0
   await page.locator(NOTE_EDITOR).getByText('Item', { exact: true }).click()
   await typeInEditor(page, 'x')
-  await page.keyboard.press('Backspace')
-  await page.waitForTimeout(2500)
+  await page.evaluate(() => document.execCommand('delete'))
+  await waitForWritebackToSettle(app, note.id, performed)
+  expect((await writebackDebug(app, note.id))?.lastError ?? null).toBeNull()
+
+  await expect(cellCheckbox(page)).toBeVisible()
+  await expect(cellCheckbox(page)).not.toBeChecked()
   const saved = vaultBody(testVaultPath, note.path)
+  expect(saved).not.toContain('x')
   expect(saved).toMatch(/\|\s*ship\s*\|\s*\[ ] task\s*\|/)
   expect(saved).not.toContain('<input')
   expect(tableLines(saved)).toHaveLength(3)

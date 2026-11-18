@@ -259,21 +259,6 @@ export async function getNoteFileBodyById(page: Page, noteId: string): Promise<s
   return body === null ? null : normalizeBodyText(body)
 }
 
-export async function getCrdtDocBodyByTitle(
-  page: Page,
-  app: TauriApp,
-  title: string
-): Promise<string | null> {
-  const note = await getNoteHandleByTitle(page, title)
-  return getCrdtDocBodyById(app, note.id)
-}
-
-export async function getCrdtDocBodyById(app: TauriApp, noteId: string): Promise<string | null> {
-  const body = await invokeTest<string | null>(app, 'e2e_crdt_doc_markdown', { noteId })
-
-  return body === null ? null : normalizeBodyText(body)
-}
-
 export async function getWritebackDebugByTitle(
   page: Page,
   app: TauriApp,
@@ -287,21 +272,6 @@ export async function getWritebackDebugByTitle(
 } | null> {
   const note = await getNoteHandleByTitle(page, title)
   return getWritebackDebugById(app, note.id)
-}
-
-/**
- * The author's bytes kept beside the open doc (#1915) and the house style the
- * doc serializes to now, or null when no record exists.
- */
-export async function getCrdtMarkdownSourceById(
-  app: TauriApp,
-  noteId: string
-): Promise<{ source: string; current: string | null } | null> {
-  return invokeTest<{ source: string; current: string | null } | null>(
-    app,
-    'e2e_crdt_markdown_source_state',
-    { noteId }
-  )
 }
 
 export async function getWritebackDebugById(

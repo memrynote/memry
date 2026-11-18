@@ -155,17 +155,20 @@ test.describe('Note open byte stability', () => {
     await openInEditor(page, title)
     await expect(page.locator(NOTE_EDITOR).first()).toContainText('Tagged')
 
-    // #then a hash tag is never promoted, so the open changes nothing in the document. Electron
-    // asserted that no write-back pass ran; on WebKitGTK the editor's open sends the document an
-    // update and one pass runs, which finds the file already holding the body. The claim that
-    // survives every engine is the one asserted below: the file is never rewritten.
-    expect((await writebackDebug(app, baseline.id))?.lastError ?? null).toBeNull()
-
     // #and the note really does carry the tag, through the index (#1454), so this is not a lost
     // feature. The index projects it on its own schedule, so it is polled.
     await expect
       .poll(async () => (await getNote(page, baseline.id))?.tags ?? [])
       .toContain('hashtag')
+
+    // #then a hash tag is never promoted, so the open changed nothing in the document and no
+    // write-back pass ran, as Electron asserts. Read after the index caught up, so an open that
+    // sent the document an update has had time to schedule its pass. WebKitGTK is the exception
+    // (#4278 S14-7, open): its open sends the document an update and one pass runs, which finds
+    // the file already holding the body. The claim every engine holds is the byte check below.
+    const debug = await writebackDebug(app, baseline.id)
+    expect(debug?.lastError ?? null).toBeNull()
+    if (process.platform !== 'linux') expect(debug?.performedCount ?? 0).toBe(0)
 
     // #and after closing it and quitting, the whole file is byte-identical and never rewritten:
     // the tag stays where the user put it
