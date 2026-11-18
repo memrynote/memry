@@ -6,7 +6,8 @@
 //! open hooks. A second process doing any of that would act under a running app (put back a
 //! folder the app is moving, rebuild the index it searches, salvage a database it is
 //! salvaging), so this open does only what reading and writing the core needs: the core
-//! databases, migrated, and the vault's origin.
+//! databases, migrated, and the vault's origin. A damaged `data.db` it leaves as found for the
+//! app's Repair.
 //!
 //! Beside Electron's `.memry/data.db` it opens the core only where the core may mint note ids
 //! ([`mints_beside_electron`]: the import brought Electron's data over, or the core was created
@@ -38,12 +39,16 @@ pub enum HeadlessOpen {
     OverElectron,
     /// A recovery of the core's `data.db` is under way or was interrupted: the app finishes it.
     Recovering,
+    /// `data.db` is damaged: it is left as found, and the app's Repair is the way out.
+    Damaged,
 }
 
 /// Opens the vault at `path` (an existing folder) for the command line. A folder with no
-/// `.memry` is initialised as the app initialises it. `data.db` is opened without the integrity
-/// probe: only the app offers the way out of a damaged database, so the command line reports
-/// the error a read reaches instead of refusing every command.
+/// `.memry` is initialised as the app initialises it. `data.db` is opened as the app opens it,
+/// behind the integrity probe (one `quick_check(1)`): a damaged file, or one an unfinished
+/// recovery left, is [`HeadlessOpen::Damaged`] before anything writes to it, so the app's
+/// Repair salvages it as it was found. The verified open never runs that rescue, which also
+/// covers a Repair the app starts after the marker check below.
 pub fn open_headless(path: &Path) -> Result<HeadlessOpen, SessionError> {
     let data_db = core_dir(path).join("data.db");
     if marker_path(&data_db).exists() {
@@ -60,12 +65,15 @@ pub fn open_headless(path: &Path) -> Result<HeadlessOpen, SessionError> {
         }
     }
     let core = prepare_core_dir(path)?;
-    let vault = Vault::open_with(
+    let vault = match Vault::open_with(
         core.to_string_lossy().into_owned(),
         OpenOptions {
-            verify_integrity: false,
+            verify_integrity: true,
         },
-    )?;
+    ) {
+        Err(StorageError::Corrupt { .. }) => return Ok(HeadlessOpen::Damaged),
+        opened => opened?,
+    };
     record_origin(path, &vault);
     Ok(HeadlessOpen::Opened(vault))
 }

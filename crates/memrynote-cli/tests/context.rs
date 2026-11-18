@@ -9,6 +9,7 @@ use memrynote_cli::{CliDeps, CliIo, run_cli};
 const NOT_MIGRATED: &str = "MemryNote has not finished updating your data. Open MemryNote once, then run this command again.\n";
 const OVER_ELECTRON: &str = "This vault still holds data of the previous MemryNote that was never brought over, so the command line cannot use it. Use this vault in MemryNote.\n";
 const RECOVERING: &str = "MemryNote is repairing this vault's database. Open MemryNote and let it finish, then run this command again.\n";
+const DAMAGED: &str = "This vault's database is damaged. Open MemryNote and choose Repair, then run this command again.\n";
 
 #[derive(Default)]
 struct Captured {
@@ -266,6 +267,26 @@ fn a_recovery_in_progress_is_left_to_the_app() {
     assert_eq!((code, out.as_str(), err.as_str()), (1, "", RECOVERING));
     assert!(marker.exists(), "the marker is the app's");
     assert_eq!(std::fs::read(&db).expect("db"), before);
+}
+
+/// A damaged `data.db` the app has not repaired: the command line refuses and leaves it as found
+/// (no migration, no journal), so the app's salvage gets every row the damage left.
+#[test]
+fn a_damaged_database_is_left_to_the_app() {
+    let rig = Rig::new();
+    assert_eq!(rig.vault_status().0, 0);
+    let db = rig.path("vault/.memry/core/data.db");
+    for side in ["data.db-wal", "data.db-shm"] {
+        let _ = std::fs::remove_file(rig.path("vault/.memry/core").join(side));
+    }
+    let mut bytes = std::fs::read(&db).expect("db");
+    bytes[..64].copy_from_slice(&[0xAB; 64]);
+    std::fs::write(&db, &bytes).expect("damage");
+
+    let (code, out, err) = rig.vault_status();
+    assert_eq!((code, out.as_str(), err.as_str()), (1, "", DAMAGED));
+    assert_eq!(std::fs::read(&db).expect("db"), bytes);
+    assert!(!rig.path("vault/.memry/core/data.db-wal").exists());
 }
 
 /// Several commands that create a vault's core at once (a script, a running app). Some of them
