@@ -151,7 +151,8 @@ pub fn cover_frontmatter(cover: &Map<String, Value>) -> Vec<(&'static str, Value
         out.push((COVER_FOCUS_FRONTMATTER_KEY, js_number(focus.round())));
     }
     // `LATER_FRAMING_KEYS`: field, key, clamp, and the default that is not written.
-    let framing: [(&str, &'static str, fn(f64) -> f64, f64); 3] = [
+    type Framing = (&'static str, &'static str, fn(f64) -> f64, f64);
+    let framing: [Framing; 3] = [
         ("focusX", COVER_FOCUS_X_FRONTMATTER_KEY, f64::round, 50.0),
         (
             "zoom",
