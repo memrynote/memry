@@ -158,6 +158,14 @@ pub fn sync_queue(ctx: &mut TableCtx<'_>) -> Result<TableStats, ImportError> {
             *dropped.entry("localOnlyQueueRows").or_default() += item.rows;
         }
     }
+    // Body pushes (36c4): one outbox row per `note_body` row, never collapsed.
+    let pushes = crate::electron_import::vault_db::docs::queued_body_pushes(ctx.source, ctx.docs)?;
+    for was_queued in ctx.writer.put_body_pushes(&pushes)? {
+        match was_queued {
+            true => stats.written += 1,
+            false => *dropped.entry("localOnlyBodyRows").or_default() += 1,
+        }
+    }
     stats.dropped = dropped.into_iter().collect();
     if dead_letters > 0 {
         stats.notices.push(("deadLetterQueueRows", dead_letters));
