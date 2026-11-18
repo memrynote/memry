@@ -2,6 +2,10 @@ import {
   parseStickyKind,
   type StickyDraft,
   type StickyKind,
+  type StickyOpenTargetInput,
+  type StickySendInput,
+  type StickySendResult,
+  type StickyUndoResult,
   type StickyWindowSession
 } from '@memry/contracts/sticky-api'
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
@@ -12,10 +16,14 @@ function toDraft(view: StickyDraftView): StickyDraft {
   return { ...view, kind: parseStickyKind(view.kind) }
 }
 
-/**
- * The sticky and edge tab windows' drafts and window calls over their Rust commands. Send, undo and
- * open-target still go through `window.api.sticky` until they are ported (#3548 stage 31c).
- */
+/** The rejected command's message, which main writes for the user (`sticky.errors.*`). */
+function message(error: unknown): string {
+  return typeof error === 'object' && error !== null && 'message' in error
+    ? String(error.message)
+    : String(error)
+}
+
+/** The sticky and edge tab windows' drafts, sends and window calls over their Rust commands. */
 export const stickyService = {
   getSession: (): Promise<StickyWindowSession> => commands.stickyGetSession(),
   listDrafts: async (): Promise<StickyDraft[]> => (await commands.stickyListDrafts()).map(toDraft),
@@ -28,6 +36,31 @@ export const stickyService = {
   unfold: (draftId: string | null): Promise<null> => commands.stickyUnfold(draftId),
   /** The edge tab: fan the draft list out, or fold it back. */
   peek: (open: boolean): Promise<null> => commands.stickyPeek(open),
+  /** Sends the text where its kind says; a refusal resolves as `{ success: false }`, as in Electron. */
+  send: async (input: StickySendInput): Promise<StickySendResult> => {
+    try {
+      const sent = await commands.stickySend(input)
+      return { success: true, ...sent, kind: parseStickyKind(sent.kind) }
+    } catch (error) {
+      return { success: false, error: message(error) }
+    }
+  },
+  undoSend: async (undoToken: string): Promise<StickyUndoResult> => {
+    try {
+      return { success: true, draft: toDraft(await commands.stickyUndoSend(undoToken)) }
+    } catch (error) {
+      return { success: false, error: message(error) }
+    }
+  },
+  /** Main shows its window on what a send made and tucks the sticky. */
+  openTarget: (target: StickyOpenTargetInput): Promise<null> =>
+    commands.stickyOpenTarget(target.kind, target.targetId),
+  /** The main window: the sticky asked it to open what a send made. Listened on this webview only. */
+  onOpenTargetRequested: (callback: (target: StickyOpenTargetInput) => void): (() => void) =>
+    subscribeToEvent(
+      events.stickyOpenTargetRequestedEvent(getCurrentWebviewWindow()),
+      ({ kind, targetId }) => callback({ kind: parseStickyKind(kind), targetId })
+    ),
   onDraftsChanged: (callback: () => void): (() => void) =>
     subscribeToEvent(events.stickyDraftsChangedEvent, callback),
   /**

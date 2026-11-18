@@ -353,6 +353,8 @@ mod seams_transport;
 mod settings_service;
 #[path = "sticky_drafts.rs"]
 mod sticky_drafts;
+#[path = "sticky_send.rs"]
+mod sticky_send;
 #[path = "sync_backend.rs"]
 mod sync_backend;
 #[path = "sync_host_clients.rs"]

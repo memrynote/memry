@@ -2,7 +2,7 @@
 //! `memry_core::api::sticky_store`; the windows are `crate::windows::{sticky, edge_tab}`. Every
 //! draft write sends `StickyDraftsChangedEvent` to every window and refreshes the edge tab, as
 //! `drafts-changed.ts` does.
-//! Send, undo and open-target arrive with stage 31c of Step 31 (#3548).
+//! Send, undo and open-target are `super::sticky_send`.
 
 use std::sync::Arc;
 
@@ -66,19 +66,19 @@ pub(crate) fn store<R: Runtime>(app: &AppHandle<R>) -> Result<StickyStore, Comma
     drafts::open(&open, identity).map_err(|error| CommandError::from_core(&error))
 }
 
-fn invalid(message: &str) -> CommandError {
+pub(super) fn invalid(message: &str) -> CommandError {
     CommandError::new(ErrorKind::Invalid, "invalid", message.to_owned())
 }
 
 /// `STICKY_KINDS`: the zod enum refuses any other.
-fn kind(kind: &str) -> Result<StickyKind, CommandError> {
+pub(super) fn kind(kind: &str) -> Result<StickyKind, CommandError> {
     match kind {
         "note" | "task" | "journal" => Ok(StickyKind::parse(kind)),
         _ => Err(invalid("sticky kind must be note, task or journal")),
     }
 }
 
-fn non_empty(id: &str) -> Result<(), CommandError> {
+pub(super) fn non_empty(id: &str) -> Result<(), CommandError> {
     if id.is_empty() {
         return Err(invalid("sticky draft id must not be empty"));
     }

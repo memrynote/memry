@@ -38,6 +38,7 @@ pub mod shell_integrations;
 pub mod shortcuts;
 pub mod spell;
 pub mod stickies;
+pub mod sticky_send;
 pub mod sync;
 pub mod sync_account;
 pub mod tag_schema;
