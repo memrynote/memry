@@ -119,7 +119,8 @@ fn outbox(
 ) -> Result<(), ImportError> {
     let mut expected_bodies = Vec::new();
     for push in bodies {
-        if !writer.is_local_only_note(&push.doc_id)? {
+        // An in-flight push of a gone note is skipped (`docs::note_body_sync`).
+        if writer.body_owner(&push.doc_id)?.is_some() && !writer.is_local_only_note(&push.doc_id)? {
             expected_bodies.push(push.doc_id);
         }
     }

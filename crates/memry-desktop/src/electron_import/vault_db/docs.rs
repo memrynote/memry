@@ -8,10 +8,12 @@
 //! (`keepVersionBeforeWriteback`). A body ahead of its file at rest (a crash before the write-back,
 //! a failed write-back) reaches the file at the next write-back. The import keeps that: a body
 //! the file does not hold gets a row stamped before its log entry, and the first session's
-//! write-back writes it ([`ImportWriter::put_file_hashes`]). The Electron files and the vault
-//! files are never written here.
+//! write-back writes it ([`ImportWriter::put_file_hashes`]). A file edited since Electron read
+//! it is fed into the body, as Electron's cached-hash guard does (`crdt-writeback.ts:827-878`),
+//! with the body kept as a version first. The Electron files and the vault files are never
+//! written here.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::io::Read;
 use std::path::Path;
 use std::sync::Arc;
@@ -25,13 +27,13 @@ use memry_core::markdown::convert::restore::SerializeOptions;
 use memry_core::markdown::frontmatter::split_frontmatter_block;
 use memry_core::markdown::schema::callout_types::CalloutTypes;
 use memry_core::storage::import::{
-    ImportBodyPush, ImportBodySync, ImportDocument, ImportFileHash, ImportWriter,
+    ImportBodyPush, ImportBodySync, ImportBodyVersion, ImportDocument, ImportFileHash, ImportWriter,
 };
 use rusqlite::{Connection, OptionalExtension};
 
 use super::source::source_error;
 use super::tables::note_file::MAX_FILE_BYTES;
-use super::tables::queue::NOTE_BODY_TYPE;
+use super::tables::queue::{NOTE_BODY_TYPE, seconds_ms};
 use super::tables::records::malformed;
 use super::tables::{SourceDb, TableStats};
 use super::{FoldedDoc, ImportError, TableCtx, VaultImportInput, read_source_id};
@@ -40,6 +42,12 @@ use crate::vault::paths::open_vault_file;
 
 /// `NOTE_BODY_FULL_STATE_PAYLOAD` (`sync-client/queue.ts`): the document's whole state is owed.
 const FULL_STATE_PAYLOAD: &str = "";
+
+/// The log stamp of a document whose body holds no text the file lacks and that Electron never
+/// had confirmed: Electron's rule 3 reads its missing `lastConfirmedAt` as no own body text
+/// (`keep-unseen-text.ts:65`, `note-sync-state.ts:207`), and a stamp before every delete does
+/// the same in the core's (`sync/delete_keep.rs`).
+const NO_OWN_BODY_AT: i64 = 0;
 
 /// The longest `note_body` payload read, in base64 characters. A body update past it is far
 /// beyond what the server takes in one push, so the row is refused rather than decoded.
@@ -69,9 +77,8 @@ pub fn queued_body_pushes(
         let payload: Option<String> = row
             .get("payload")
             .map_err(|_| malformed("sync_queue", rowid, "a note_body payload is not text"))?;
-        let created_at: i64 = row
-            .get("created_at")
-            .map_err(|_| malformed("sync_queue", rowid, "created_at is not an integer"))?;
+        // Electron queues with `mode: 'timestamp'`: epoch seconds.
+        let created_at = seconds_ms(row, "created_at", "sync_queue", rowid)?;
         let Some(doc) = docs.iter().find(|doc| doc.doc_id == doc_id) else {
             orphans.push(doc_id);
             continue;
@@ -170,11 +177,20 @@ fn body_sync(
 }
 
 /// The `note_body_sync` importer: the rows as stored, `pushed_state_vector` dropped (the core
-/// keeps none), plus the full-state pushes of [`body_sync`].
+/// keeps none), plus the full-state pushes of [`body_sync`]. A push whose note or journal day is
+/// gone is skipped and counted: Electron's sync row outlives the item it pushed for.
 pub fn note_body_sync(ctx: &mut TableCtx<'_>) -> Result<TableStats, ImportError> {
     let (rows, pushes, vectors) = body_sync(ctx.source, ctx.docs)?;
     ctx.writer.put_note_body_sync(&rows)?;
-    let queued = ctx.writer.put_body_pushes(&pushes)?;
+    let mut owned = Vec::with_capacity(pushes.len());
+    let mut gone = 0u64;
+    for push in pushes {
+        match ctx.writer.body_owner(&push.doc_id)? {
+            Some(_) => owned.push(push),
+            None => gone += 1,
+        }
+    }
+    let queued = ctx.writer.put_body_pushes(&owned)?;
     let mut stats = TableStats {
         written: rows.len() as u64,
         ..TableStats::default()
@@ -185,6 +201,9 @@ pub fn note_body_sync(ctx: &mut TableCtx<'_>) -> Result<TableStats, ImportError>
     let in_flight = queued.iter().filter(|queued| **queued).count() as u64;
     if in_flight > 0 {
         stats.notices.push(("inFlightBodyPushes", in_flight));
+    }
+    if gone > 0 {
+        stats.notices.push(("goneInFlightBodyPushes", gone));
     }
     Ok(stats)
 }
@@ -269,52 +288,91 @@ fn note_ids(source: &Connection, table: &'static str) -> Result<Vec<String>, Imp
     Ok(ids)
 }
 
-/// Writes the documents, their cursors, the extra owed documents' debts and the hash of each
-/// document's file. Runs after every table, so the `note_files` rows and the owed markers it
-/// reads are staged.
+/// Writes the documents, their cursors, the extra owed documents' debts, the bodies an outside
+/// edit replaces and the hash of each document's file. Runs after every table, so the
+/// `note_files` rows and the owed markers it reads are staged.
+///
+/// A document whose body is ahead of its file is stored at `now_ms`, after its row's stamp, so
+/// the first write-back writes it. Any other is stored at Electron's `last_confirmed_at`, the
+/// instant its delete-keep rule reads as this device's last own body text
+/// (`keep-unseen-text.ts:65`), or at [`NO_OWN_BODY_AT`].
 pub(super) fn import_documents(
     input: &VaultImportInput<'_>,
     source: &Connection,
     index: &Connection,
     writer: &mut ImportWriter,
 ) -> Result<(), ImportError> {
-    let docs: Vec<ImportDocument> = input
-        .docs
-        .iter()
-        .map(|doc| ImportDocument {
-            doc_id: doc.doc_id.clone(),
-            state: doc.state.clone(),
-            watermark: doc.watermark,
-        })
-        .collect();
-    writer.put_documents(&docs, input.now_ms)?;
-    writer.put_body_debts(&input.extra_owed_docs)?;
     let owed: HashSet<String> = owed_file_bodies(source)?
         .into_iter()
         .map(|(id, _)| id)
         .collect();
-    let mut hashes = Vec::new();
+    let confirmed = confirmed_at(source)?;
+    let (mut docs, mut hashes, mut versions) = (Vec::new(), Vec::new(), Vec::new());
     for doc in &input.docs {
-        if owed.contains(&doc.doc_id) {
-            continue;
-        }
-        if let Some(hash) = file_hash(input.vault_dir.as_path(), index, writer, doc)? {
+        let found = match owed.contains(&doc.doc_id) {
+            true => None,
+            false => file_hash(input.vault_dir.as_path(), source, index, writer, doc)?,
+        };
+        let ahead = found.as_ref().is_some_and(|(hash, _)| hash.ahead);
+        docs.push(ImportDocument {
+            doc_id: doc.doc_id.clone(),
+            state: doc.state.clone(),
+            watermark: doc.watermark,
+            created_at: match ahead {
+                true => input.now_ms,
+                false => confirmed
+                    .get(&doc.doc_id)
+                    .copied()
+                    .unwrap_or(NO_OWN_BODY_AT),
+            },
+        });
+        if let Some((hash, version)) = found {
             hashes.push(hash);
+            versions.extend(version);
         }
     }
+    writer.put_documents(&docs, input.now_ms)?;
+    writer.put_body_debts(&input.extra_owed_docs)?;
+    writer.put_body_versions(&versions, input.now_ms)?;
     writer.put_file_hashes(&hashes, input.now_ms)?;
     Ok(())
 }
 
+/// `note_body_sync.last_confirmed_at` (epoch ms) by note, where Electron recorded one.
+fn confirmed_at(source: &Connection) -> Result<HashMap<String, i64>, ImportError> {
+    let err = |e| source_error(SourceDb::Data, e);
+    let mut stmt = source
+        .prepare(
+            "SELECT note_id, last_confirmed_at FROM note_body_sync
+              WHERE typeof(last_confirmed_at) = 'integer'",
+        )
+        .map_err(err)?;
+    let mut rows = stmt.query([]).map_err(err)?;
+    let mut confirmed = HashMap::new();
+    while let Some(row) = rows.next().map_err(err)? {
+        let id = read_source_id(row, SourceDb::Data, "note_body_sync", "note_id")?;
+        confirmed.insert(id, row.get("last_confirmed_at").map_err(err)?);
+    }
+    Ok(confirmed)
+}
+
 /// The hashes of `doc`'s markdown file, when Electron read it (`note_cache.content_hash`; a
-/// file it never read is never written over, `crdt-writeback.ts:827-832`). The body is `ahead`
-/// unless its text is the file's now, as the feed reads them (`same_text`).
+/// file it never read is never written over, `crdt-writeback.ts:827-832`), and the body kept as
+/// a version when an outside edit replaces it.
+///
+/// - The body serializes to the file's text (`same_text`): the row holds the file.
+/// - The file is the one Electron read, or is missing, or the body cannot be serialized: the
+///   body is `ahead`, and the first write-back writes it, keeping the file as a version.
+/// - The file changed since Electron read it: an outside edit made while Electron was closed.
+///   The row names the file Electron read and holds the body, so the consumer feeds the edit
+///   into the body as Electron's write-back guard would; the body is kept as a version first.
 fn file_hash(
     vault: &Path,
+    source: &Connection,
     index: &Connection,
     writer: &ImportWriter,
     doc: &FoldedDoc,
-) -> Result<Option<ImportFileHash>, ImportError> {
+) -> Result<Option<(ImportFileHash, Option<ImportBodyVersion>)>, ImportError> {
     let Some(row) = writer.note_file(&doc.doc_id)? else {
         return Ok(None);
     };
@@ -333,29 +391,42 @@ fn file_hash(
     let Some(cached) = cached else {
         return Ok(None);
     };
+    let row_of = |content_hash: String, file_hash: Option<String>, ahead: bool| ImportFileHash {
+        note_id: doc.doc_id.clone(),
+        content_hash,
+        file_hash,
+        ahead,
+    };
     let Some(text) = read_file(vault, &row.path) else {
-        return Ok(Some(ImportFileHash {
-            note_id: doc.doc_id.clone(),
-            content_hash: cached,
-            file_hash: None,
-            ahead: true,
-        }));
+        return Ok(Some((row_of(cached, None, true), None)));
     };
     let on_disk = content_hash(&text);
-    if body_is_file(doc, &row.path, &text) {
-        return Ok(Some(ImportFileHash {
-            note_id: doc.doc_id.clone(),
-            content_hash: on_disk.clone(),
-            file_hash: Some(on_disk),
-            ahead: false,
-        }));
+    let split = split_frontmatter_block(text.strip_prefix('\u{feff}').unwrap_or(&text));
+    let body = serialized_body(doc, &row.path);
+    if body
+        .as_deref()
+        .is_some_and(|body| same_text(body, split.body))
+    {
+        return Ok(Some((row_of(on_disk.clone(), Some(on_disk), false), None)));
     }
-    Ok(Some(ImportFileHash {
+    let Some(body) = body.filter(|_| on_disk != cached) else {
+        return Ok(Some((row_of(cached, Some(on_disk), true), None)));
+    };
+    let title: Option<String> = source
+        .query_row(
+            "SELECT title FROM note_metadata WHERE id = ?1",
+            [&doc.doc_id],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(|e| source_error(SourceDb::Data, e))?;
+    let version = ImportBodyVersion {
         note_id: doc.doc_id.clone(),
-        content_hash: cached,
-        file_hash: Some(on_disk),
-        ahead: true,
-    }))
+        content: format!("{}{body}", split.block.unwrap_or("")),
+        body,
+        title: title.unwrap_or_default(),
+    };
+    Ok(Some((row_of(cached, Some(on_disk), false), Some(version))))
 }
 
 /// The file's text, read as Node reads it (UTF-8 with replacement); `None` for a file that is
@@ -370,28 +441,21 @@ fn read_file(vault: &Path, rel: &str) -> Option<String> {
     Some(String::from_utf8_lossy(&bytes).into_owned())
 }
 
-/// Whether the folded body serializes to the text of the file's body, by the default converter.
-/// A body this cannot tell (one it cannot serialize, a custom callout the settings would name)
-/// counts as ahead: the write-back compares again with the vault's converter and writes nothing
-/// when the file is the body's.
-fn body_is_file(doc: &FoldedDoc, path: &str, text: &str) -> bool {
-    let document = match DocumentRegistry::new("import", Arc::new(|_: &str, _: &[u8]| {}))
+/// The folded body as markdown, by the default converter; `None` for a body it cannot
+/// serialize. A custom callout the settings would name may serialize differently here: such a
+/// body counts as not the file's, and the write-back compares again with the vault's converter.
+fn serialized_body(doc: &FoldedDoc, path: &str) -> Option<String> {
+    let document = DocumentRegistry::new("import", Arc::new(|_: &str, _: &[u8]| {}))
         .get_or_open(&doc.doc_id)
         .and_then(|document| document.apply_durable_update(&doc.state).map(|()| document))
-    {
-        Ok(document) => document,
-        Err(_) => return false,
-    };
+        .ok()?;
     let options = SerializeOptions {
         note_path: Some(path),
         ..SerializeOptions::default()
     };
-    let converter = Converter::new(CalloutTypes::new(Vec::new()));
-    let Some(body) = converter.serialize_note_body(&document, BODY_FRAGMENT, &options) else {
-        return false;
-    };
-    let text = text.strip_prefix('\u{feff}').unwrap_or(text);
-    same_text(&body.markdown, split_frontmatter_block(text).body)
+    Converter::new(CalloutTypes::new(Vec::new()))
+        .serialize_note_body(&document, BODY_FRAGMENT, &options)
+        .map(|body| body.markdown)
 }
 
 #[cfg(test)]

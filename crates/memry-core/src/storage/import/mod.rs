@@ -23,7 +23,8 @@ mod outbox;
 mod records;
 
 pub use crdt::{
-    DocumentState, ImportBodyPush, ImportBodySync, ImportDocument, ImportFileHash, document_state,
+    DocumentState, ImportBodyPush, ImportBodySync, ImportBodyVersion, ImportDocument,
+    ImportFileHash, document_state,
 };
 pub use notes::{ImportNoteFile, ImportNoteSnapshot};
 pub use outbox::{ImportDeleted, ImportQueued, ImportTombstoneClock};
