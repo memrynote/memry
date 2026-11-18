@@ -12,7 +12,7 @@ use super::approvals::{
     AlwaysAllowScope, Approvals, ApproveToolDecision, Outcome, PendingApproval,
 };
 use super::gate::{
-    Gate, GateInput, ToolApprovalMode, decide_tool_gate, is_in_page_review_tool,
+    Gate, GateInput, PreviewKind, ToolApprovalMode, decide_tool_gate, is_in_page_review_tool,
     review_target_for_tool,
 };
 use super::grants::{TurnGrant, TurnGrants};
@@ -117,10 +117,12 @@ impl AgentWriteGate {
         &self,
         conversation_id: &str,
         tool: &str,
+        preview_kind: PreviewKind,
         scope: AlwaysAllowScope,
     ) -> Result<(), String> {
-        // The gate ignores a standing approval for in-page review tools, so none is recorded.
-        if is_in_page_review_tool(tool) {
+        // The gate ignores a standing approval for a loss and an in-page review, so none is
+        // recorded. For `vault_desktop_write` one would also trust the tool's other operations.
+        if preview_kind == PreviewKind::Loss || is_in_page_review_tool(tool) {
             return Ok(());
         }
         match scope {
@@ -156,6 +158,7 @@ impl WriteGate for AgentWriteGate {
         };
         let gate = decide_tool_gate(&GateInput {
             tool: request.tool,
+            args: request.args,
             trust_list: &trust_list,
             vault_trust_list: &self.host.vault_trust_list(),
             mode: self.host.approval_mode(),
@@ -186,7 +189,8 @@ impl WriteGate for AgentWriteGate {
             return denied(NO_TURN);
         }
         if let ApproveToolDecision::AllowAlways { scope } = decision
-            && let Err(error) = self.record_standing_approval(&conversation_id, request.tool, scope)
+            && let Err(error) =
+                self.record_standing_approval(&conversation_id, request.tool, preview_kind, scope)
         {
             tracing::error!(
                 scope = "AgentRuntime",

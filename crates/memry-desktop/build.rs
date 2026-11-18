@@ -2,6 +2,10 @@
 //! `notes`) from `packages/i18n/src/locales`. Each locale becomes one text blob of
 //! `key US value RS` records (`key` is `ns:dotted.path`, sorted); `i18n::catalog` indexes a
 //! blob on first use. Renderer-only namespaces are not embedded.
+//!
+//! It also counts the `vault_desktop_write` operations of the agent MCP vectors into
+//! `MEMRY_DESKTOP_WRITE_OPERATIONS`, so the write gate fails the build until it classifies a new
+//! one (`agent::runtime::gate`).
 
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
@@ -34,9 +38,24 @@ fn flatten(prefix: &str, value: &Value, out: &mut BTreeMap<String, String>) {
     }
 }
 
+fn count_desktop_writes(manifest: &Path) {
+    let path = manifest.join("../../packages/contracts/test-vectors/agent-mcp/desktop-ops.json");
+    println!("cargo:rerun-if-changed={}", path.display());
+    let file: Value = serde_json::from_str(&read(&path))
+        .unwrap_or_else(|error| panic!("{}: {error}", path.display()));
+    let count = file["operations"]
+        .as_array()
+        .expect("desktop-ops.json lists operations")
+        .iter()
+        .filter(|op| op["tool"] == "vault_desktop_write")
+        .count();
+    println!("cargo:rustc-env=MEMRY_DESKTOP_WRITE_OPERATIONS={count}");
+}
+
 fn main() {
-    let root = PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("manifest dir"))
-        .join("../../packages/i18n/src/locales");
+    let manifest = PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("manifest dir"));
+    count_desktop_writes(&manifest);
+    let root = manifest.join("../../packages/i18n/src/locales");
     let out_dir = PathBuf::from(env::var("OUT_DIR").expect("out dir"));
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed={}", root.display());

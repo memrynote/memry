@@ -23,6 +23,12 @@ pub const APPROVAL_EXPIRED_MESSAGE: &str = "Approval request expired after 30 mi
                                             ask again if it is still needed.";
 pub const APPROVAL_EXPIRED_CODE: &str = "APPROVAL_EXPIRED";
 
+/// Clears the card of a request that went away unanswered (tool timeout, disconnect, server
+/// stop). Nobody denied it, so it never reads as a denial.
+pub const APPROVAL_ABANDONED_MESSAGE: &str =
+    "The tool call ended before an answer. Nothing was written.";
+pub const APPROVAL_ABANDONED_CODE: &str = "APPROVAL_ABANDONED";
+
 /// How far a standing "always allow" reaches (`AlwaysAllowScopeSchema`).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -174,8 +180,8 @@ impl Drop for Abandoned<'_> {
         if let Some(entry) = entry {
             self.host.approval_failed(
                 &entry.approval,
-                "PERMISSION_DENIED",
-                super::write_gate::CANCELLED,
+                APPROVAL_ABANDONED_CODE,
+                APPROVAL_ABANDONED_MESSAGE,
             );
         }
     }

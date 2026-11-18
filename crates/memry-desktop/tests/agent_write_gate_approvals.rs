@@ -93,13 +93,22 @@ async fn allow_always_trusts_the_tool_at_its_scope_but_never_an_in_page_edit() {
     // Trusted now: no second card.
     assert_eq!(refusal(&vault.call(TASK, grant.secret()).await), None);
 
+    let mut call = vault.spawn(DESKTOP_RENAME, grant.secret());
+    let card = vault.card(&mut call).await;
+    vault
+        .gate
+        .resolve_approval(&card.tool_call_id, always(AlwaysAllowScope::Vault));
+    assert_eq!(refusal(&call.await.unwrap()), None);
+    assert_eq!(vault.host.vault_trust_list(), ["vault_desktop_write"]);
+
+    // The gate never trusts a delete, so allowing one "always" records nothing.
     let mut call = vault.spawn(DELETE, grant.secret());
     let card = vault.card(&mut call).await;
     vault
         .gate
         .resolve_approval(&card.tool_call_id, always(AlwaysAllowScope::Vault));
     assert_eq!(refusal(&call.await.unwrap()), None);
-    assert_eq!(vault.host.vault_trust_list(), ["vault_delete_note"]);
+    assert_eq!(vault.host.vault_trust_list(), ["vault_desktop_write"]);
 
     let mut call = vault.spawn(NOTE_EDIT, grant.secret());
     let card = vault.card(&mut call).await;
@@ -107,8 +116,8 @@ async fn allow_always_trusts_the_tool_at_its_scope_but_never_an_in_page_edit() {
         .gate
         .resolve_approval(&card.tool_call_id, always(AlwaysAllowScope::Vault));
     assert_eq!(refusal(&call.await.unwrap()), None);
-    assert_eq!(vault.host.vault_trust_list(), ["vault_delete_note"]);
-    assert_eq!(vault.written().len(), 4);
+    assert_eq!(vault.host.vault_trust_list(), ["vault_desktop_write"]);
+    assert_eq!(vault.written().len(), 5);
 
     // A delete asks again even though it was "always" allowed.
     let mut call = vault.spawn(DELETE, grant.secret());
@@ -117,6 +126,44 @@ async fn allow_always_trusts_the_tool_at_its_scope_but_never_an_in_page_edit() {
         .gate
         .resolve_approval(&card.tool_call_id, ApproveToolDecision::Deny);
     assert_eq!(refusal(&call.await.unwrap()), denied_with(DENIED));
+}
+
+/// Departure from Electron (#5143): "always allow" on `vault_desktop_write` trusts its
+/// non-destructive operations only; a delete through it shows a card at either scope.
+#[tokio::test]
+async fn allow_always_on_desktop_writes_never_covers_a_delete() {
+    for scope in [AlwaysAllowScope::Conversation, AlwaysAllowScope::Vault] {
+        let mut vault = vault();
+        let grant = vault.gate.mint_turn_write_grant("conversation-1");
+        let mut call = vault.spawn(DESKTOP_RENAME, grant.secret());
+        let card = vault.card(&mut call).await;
+        assert_eq!(card.preview_kind, PreviewKind::Fields);
+        vault.gate.resolve_approval(
+            &card.tool_call_id,
+            ApproveToolDecision::AllowAlways { scope },
+        );
+        assert_eq!(refusal(&call.await.unwrap()), None);
+        // Trusted now: the next rename writes with no card.
+        assert_eq!(
+            refusal(&vault.call(DESKTOP_RENAME, grant.secret()).await),
+            None
+        );
+
+        let mut call = vault.spawn(DESKTOP_DELETE, grant.secret());
+        let card = vault.card(&mut call).await;
+        assert_eq!(card.preview_kind, PreviewKind::Loss, "{scope:?}");
+        vault
+            .gate
+            .resolve_approval(&card.tool_call_id, ApproveToolDecision::Deny);
+        assert_eq!(refusal(&call.await.unwrap()), denied_with(DENIED));
+        let written: Vec<_> = vault.written().into_iter().map(|(_, args)| args).collect();
+        assert_eq!(written.len(), 2);
+        assert!(
+            written
+                .iter()
+                .all(|args| args["operation"] == "notes.rename")
+        );
+    }
 }
 
 #[tokio::test(start_paused = true)]
@@ -233,7 +280,15 @@ async fn an_abandoned_request_clears_its_card() {
     call.abort();
     let _ = call.await;
     assert_eq!(vault.gate.pending_approval(&card.tool_call_id), None);
-    assert_eq!(vault.failed().len(), 1);
+    // Nobody denied it: the card clears with its own code, never as a denial.
+    assert_eq!(
+        vault.failed(),
+        [(
+            card.tool_call_id.clone(),
+            APPROVAL_ABANDONED_CODE.to_owned(),
+            APPROVAL_ABANDONED_MESSAGE.to_owned()
+        )]
+    );
     assert!(
         !vault
             .gate

@@ -12,10 +12,12 @@ use memry_desktop::agent::mcp::{
     CallContext, ToolClass, ToolError, ToolRegistry, ToolReply, VaultToolHost, catalog,
 };
 use memry_desktop::agent::runtime::{
-    APPROVAL_EXPIRED_CODE, APPROVAL_EXPIRED_MESSAGE, APPROVAL_TIMEOUT, AgentWriteGate,
-    AlwaysAllowScope, ApproveToolDecision, CANCELLED, DENIED, Gate, GateHost, GateInput, NO_TURN,
-    PendingApproval, PreviewKind, ReviewTarget, ToolApprovalMode, TurnGrants, UNKNOWN_CONVERSATION,
-    decide_tool_gate, preview_kind_for_tool, previewed_tools, review_target_for_tool,
+    APPROVAL_ABANDONED_CODE, APPROVAL_ABANDONED_MESSAGE, APPROVAL_EXPIRED_CODE,
+    APPROVAL_EXPIRED_MESSAGE, APPROVAL_TIMEOUT, AgentWriteGate, AlwaysAllowScope,
+    ApproveToolDecision, CANCELLED, DENIED, Gate, GateHost, GateInput, NO_TURN, PendingApproval,
+    PreviewKind, ReviewTarget, ToolApprovalMode, TurnGrants, UNKNOWN_CONVERSATION,
+    classified_desktop_writes, decide_tool_gate, preview_kind_for_call, preview_kind_for_tool,
+    previewed_tools, review_target_for_tool,
 };
 use rmcp::model::{CallToolResult, JsonObject};
 use serde_json::{Value, json};
@@ -23,6 +25,8 @@ use tokio::sync::mpsc;
 
 const EXAMPLES: &str =
     include_str!("../../../packages/contracts/test-vectors/agent-mcp/examples.json");
+const DESKTOP_OPS: &str =
+    include_str!("../../../packages/contracts/test-vectors/agent-mcp/desktop-ops.json");
 
 #[derive(Default)]
 struct Writes(Mutex<Vec<(String, Value)>>);
@@ -116,6 +120,14 @@ const NOTE_EDIT: (&str, &str) = (
     r#"{"id":"note-1","mode":"replace","content_markdown":"B"}"#,
 );
 const DELETE: (&str, &str) = ("vault_delete_note", r#"{"id":"note-1"}"#);
+const DESKTOP_RENAME: (&str, &str) = (
+    "vault_desktop_write",
+    r#"{"operation":"notes.rename","args":["note-1","Renamed"]}"#,
+);
+const DESKTOP_DELETE: (&str, &str) = (
+    "vault_desktop_write",
+    r#"{"operation":"notes.delete","args":["note-1"]}"#,
+);
 
 fn object(json: &str) -> Option<JsonObject> {
     serde_json::from_str(json).ok()
@@ -233,6 +245,16 @@ mod order {
     use super::*;
 
     fn decide(tool: &str, trust: &[&str], vault: &[&str], mode: ToolApprovalMode) -> Gate {
+        decide_call(tool, &json!({}), trust, vault, mode)
+    }
+
+    fn decide_call(
+        tool: &str,
+        args: &Value,
+        trust: &[&str],
+        vault: &[&str],
+        mode: ToolApprovalMode,
+    ) -> Gate {
         let owned = |list: &[&str]| {
             list.iter()
                 .map(|tool| (*tool).to_owned())
@@ -240,6 +262,7 @@ mod order {
         };
         decide_tool_gate(&GateInput {
             tool,
+            args,
             trust_list: &owned(trust),
             vault_trust_list: &owned(vault),
             mode,
@@ -305,6 +328,68 @@ mod order {
             decide("vault_delete_task", &[], &[], Ask),
             asks(PreviewKind::Loss)
         );
+    }
+
+    /// Departure from Electron (#5143): "always allow" on `vault_desktop_write` never covers a
+    /// delete, at either scope.
+    #[test]
+    fn a_desktop_delete_asks_whatever_was_trusted() {
+        let tool = "vault_desktop_write";
+        let call = |operation: &str| json!({ "operation": operation, "args": [] });
+        let deletes = [
+            "notes.delete",
+            "notes.deleteFolder",
+            "tasks.bulkDelete",
+            "inbox.deletePermanent",
+            "journal.deleteEntry",
+            "notes.deleteVersion",
+        ];
+        for operation in deletes.into_iter().chain(["notes.exportPdf", "unknown.op"]) {
+            for (trust, vault) in [(&[tool][..], &[][..]), (&[][..], &[tool][..])] {
+                assert_eq!(
+                    decide_call(tool, &call(operation), trust, vault, Ask),
+                    asks(PreviewKind::Loss),
+                    "{operation} was trusted"
+                );
+            }
+        }
+        let rename = call("notes.rename");
+        assert_eq!(
+            decide_call(tool, &rename, &[], &[], Ask),
+            asks(PreviewKind::Fields)
+        );
+        assert_eq!(
+            decide_call(tool, &rename, &[tool], &[], Ask),
+            Gate::AutoApprove
+        );
+        assert_eq!(
+            decide_call(tool, &rename, &[], &[tool], Ask),
+            Gate::AutoApprove
+        );
+    }
+
+    #[test]
+    fn every_desktop_write_operation_is_classified_once() {
+        let file: Value = serde_json::from_str(DESKTOP_OPS).unwrap();
+        let mut operations: Vec<_> = file["operations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|op| op["tool"] == "vault_desktop_write")
+            .map(|op| op["operation"].as_str().unwrap())
+            .collect();
+        let mut classified: Vec<_> = classified_desktop_writes().collect();
+        operations.sort_unstable();
+        classified.sort_unstable();
+        assert_eq!(classified, operations);
+        let losses = classified
+            .iter()
+            .filter(|op| {
+                let call = json!({ "operation": op });
+                preview_kind_for_call("vault_desktop_write", &call) == PreviewKind::Loss
+            })
+            .count();
+        assert_eq!(losses, 29);
     }
 
     #[test]
