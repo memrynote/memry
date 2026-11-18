@@ -2,6 +2,7 @@
 //! (desktop's `CALENDAR_*_SETTINGS_DEFAULTS`), the provider groups' sanitizing and the
 //! unsupported-provider text. Which leaves sync is core's (`app_settings/calendar_tests.rs`).
 
+use memry_core::domain::settings;
 use memry_desktop::settings::SettingsError;
 use serde_json::{Value, json};
 
@@ -151,5 +152,50 @@ fn an_unknown_provider_gets_desktops_unsupported_text() {
             patch(json!({ "agentReadEventsConsent": true }))
         )),
         "Unsupported calendar provider: outlook"
+    );
+}
+
+#[test]
+fn opening_a_vault_promotes_a_calendar_leaf_an_earlier_build_kept_local() {
+    let w = world();
+    let vault = w.open("calendar-promote-on-open");
+    let db = vault.vault.db_handle();
+    db.call_blocking(|conn| {
+        conn.execute(
+            "INSERT INTO local_settings (key, value, updated_at) VALUES ('calendar', ?1, 1)",
+            [r#"{"weekStartDay":"sunday"}"#],
+        )
+        .unwrap();
+        Ok(())
+    })
+    .expect("plant the blob");
+
+    w.service.on_open(&vault).expect("open");
+
+    let synced = db
+        .call_blocking(|conn| settings::read(conn, "calendar.weekStartDay"))
+        .expect("synced");
+    assert_eq!(synced, Some(json!("sunday")));
+    let blob: String = db
+        .call_blocking(|conn| {
+            Ok(conn
+                .query_row(
+                    "SELECT value FROM local_settings WHERE key = 'calendar'",
+                    [],
+                    |row| row.get(0),
+                )
+                .unwrap())
+        })
+        .expect("blob");
+    assert_eq!(
+        serde_json::from_str::<Value>(&blob).expect("json"),
+        json!({})
+    );
+    assert_eq!(
+        w.service
+            .read_group(Some(&vault), "calendar")
+            .expect("read")
+            .value["weekStartDay"],
+        "sunday"
     );
 }

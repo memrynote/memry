@@ -288,3 +288,72 @@ fn a_stranded_leaf_some_device_already_clocked_is_dropped_not_promoted() {
     );
     assert_eq!(blob(&app, "calendar.google"), Some(json!({})));
 }
+
+#[test]
+fn a_calendar_leaf_write_is_taken_exactly_when_desktops_sync_schema_takes_it() {
+    let file: Value = serde_json::from_str(include_str!(
+        "../../../../../packages/contracts/test-vectors/settings-groups.json"
+    ))
+    .expect("the committed vector file");
+    let probes = file["calendarLeaves"].as_array().expect("calendarLeaves");
+    assert!(!probes.is_empty());
+    let (app, _dir) = open("calendar-leaf-types");
+    for probe in probes {
+        let path = probe["path"].as_str().expect("path");
+        let value = probe["value"].clone();
+        let accepted = probe["accepted"].as_bool().expect("accepted");
+        let (group, field, _) = split_path(path).expect("a calendar path");
+        assert_eq!(value_ok(group, field, &value), accepted, "{path} = {value}");
+        let queued = settings_outbox_rows(&app);
+        let clocked_before = clocked(&app, path);
+        let written = app.set_path(path, value.clone());
+        assert_eq!(written.is_ok(), accepted, "{path} = {value}");
+        if !accepted {
+            assert_eq!(
+                settings_outbox_rows(&app),
+                queued,
+                "{path} = {value} queued"
+            );
+            assert_eq!(
+                clocked(&app, path),
+                clocked_before,
+                "{path} = {value} stamped"
+            );
+        }
+    }
+}
+
+#[test]
+fn a_stranded_leaf_whose_path_is_clocked_without_a_value_is_dropped_not_promoted() {
+    let (app, _dir) = open("calendar-promote-removed");
+    app.db
+        .call_blocking(|conn| {
+            settings::set(
+                conn,
+                "calendar.weekStartDay",
+                json!("monday"),
+                "device-a",
+                1,
+            )?;
+            settings::remove(conn, "calendar.weekStartDay", "device-a", 2)?;
+            Ok(())
+        })
+        .expect("a removed leaf");
+    assert!(clocked(&app, "calendar.weekStartDay"));
+    assert_eq!(synced(&app, "calendar.weekStartDay"), None);
+    let queued = settings_outbox_rows(&app);
+    plant_blob(
+        &app,
+        "calendar",
+        &json!({ "weekStartDay": "sunday", "dayCellClickBehavior": "calendar" }),
+    );
+
+    assert_eq!(app.promote_stranded("calendar").expect("promote"), 0);
+    assert_eq!(synced(&app, "calendar.weekStartDay"), None);
+    assert_eq!(settings_outbox_rows(&app), queued, "nothing published");
+    assert_eq!(
+        blob(&app, "calendar"),
+        Some(json!({ "dayCellClickBehavior": "calendar" })),
+        "the drop-only rewrite"
+    );
+}

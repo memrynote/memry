@@ -107,6 +107,13 @@ pub fn group_defaults(name: &str) -> Option<Value> {
     groups::find(name).map(|group| Value::Object(spec_defaults(group)))
 }
 
+/// Whether a group write takes `value` for `group.field`: the check of every write and of the
+/// promotion, for a shell that filters a patch before writing it.
+pub fn value_ok(group: &str, field: &str, value: &Value) -> bool {
+    groups::find(group)
+        .is_some_and(|spec| validate(group, field, value, spec_defaults(spec).get(field)).is_ok())
+}
+
 /// A flat device-local key (`tagSearches`, `graphViews`): not a group, never synced.
 fn local_key_ok(key: &str) -> bool {
     let bytes = key.as_bytes();
@@ -399,9 +406,9 @@ fn spec_defaults(spec: &Group) -> Map<String, Value> {
     }
 }
 
-/// Type and range checks. A `null` default means "any value": the field is
-/// nullable and its other type is not recorded. A field with no default is
-/// unknown to this build and is kept as written.
+/// Type and range checks. A field with a [`groups::shape`] must match it. Otherwise a `null`
+/// default means "any value": the field is nullable and its other type is not recorded. A
+/// field with no default is unknown to this build and is kept as written.
 fn validate(
     group: &str,
     field: &str,
@@ -409,6 +416,11 @@ fn validate(
     default: Option<&Value>,
 ) -> Result<(), StorageError> {
     let refuse = |why: &str| invalid(format!("settings `{group}.{field}`: {why}"));
+    if let Some(ok) = groups::shape(group, field)
+        && !ok(value)
+    {
+        return Err(refuse("not a value desktop's settings sync takes"));
+    }
     let Some(default) = default else {
         return Ok(());
     };

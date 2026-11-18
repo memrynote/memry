@@ -4,7 +4,7 @@
 
 use serde_json::{Map, Value};
 
-use memry_core::domain::app_settings::{AppSettings, SettingsChange, group_defaults};
+use memry_core::domain::app_settings::{AppSettings, SettingsChange, group_defaults, value_ok};
 
 use super::{Read, SettingsError, SettingsService};
 use crate::session::OpenVault;
@@ -33,15 +33,6 @@ fn provider_group(provider: &str) -> Option<String> {
         .then_some(group)
 }
 
-/// The field types of `CalendarGoogleSettingsSchema` and the provider schemas.
-fn type_ok(field: &str, value: &Value) -> bool {
-    match field {
-        "defaultTargetCalendarId" => value.is_string() || value.is_null(),
-        "agentReadEventsConsent" => value.is_boolean() || value.is_null(),
-        _ => value.is_boolean(),
-    }
-}
-
 /// `sanitizeCalendarProviderSettingsUpdates`: only the fields the group declares survive, and
 /// one of the wrong type refuses the whole update.
 fn sanitize(group: &str, updates: Map<String, Value>) -> Result<Map<String, Value>, SettingsError> {
@@ -53,7 +44,7 @@ fn sanitize(group: &str, updates: Map<String, Value>) -> Result<Map<String, Valu
         if !defaults.contains_key(&field) {
             continue;
         }
-        if !type_ok(&field, &value) {
+        if !value_ok(group, &field, &value) {
             return Err(SettingsError::Invalid(INVALID_PROVIDER_SETTINGS.to_owned()));
         }
         clean.insert(field, value);

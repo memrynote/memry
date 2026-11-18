@@ -35,6 +35,7 @@ import {
   TASK_SETTINGS_DEFAULTS,
   VOICE_TRANSCRIPTION_SETTINGS_DEFAULTS
 } from '../../src/settings-schemas'
+import { SettingsSyncPayloadSchema } from '../../src/settings-sync'
 import { SIDEBAR_SORT_SURFACES } from '../../src/sidebar-sort'
 import { meta } from './shared'
 
@@ -244,6 +245,40 @@ const GROUPS: Record<string, GroupSpec> = {
   }
 }
 
+// Synced calendar leaves and values a write may carry. `accepted` is what desktop's
+// `SettingsSyncPayloadSchema` says of a payload holding that one leaf: the core must take a
+// value exactly when desktop does, or one bad leaf holds back every synced setting there.
+const TARGET = { provider: 'google', remoteCalendarId: 'primary' }
+const CALENDAR_LEAF_PROBES: Array<[string, unknown[]]> = [
+  ['calendar.weekStartDay', ['sunday', 'monday', 'tuesday', 'Sunday', null, 0]],
+  ['calendar.showNotesOnCalendar', [true, false, 'true', null]],
+  [
+    'calendar.defaultWriteTarget',
+    [TARGET, null, 'garbage', {}, { provider: 'google' }, { ...TARGET, provider: 1 }]
+  ],
+  ['calendar.google.defaultTargetCalendarId', ['primary', null, 5, true]],
+  ['calendar.google.onboardingCompleted', [true, null, 'yes']],
+  ['calendar.google.promoteConfirmDismissed', [false, 1]],
+  ['calendar.google.pushEventsToGoogle', [false, null, 'no']],
+  ['calendar.google.agentReadEventsConsent', [true, null, 'yes']],
+  ['calendar.caldav.agentReadEventsConsent', [false, null, 'yes']],
+  ['calendar.caldav.pushEventsToProvider', [false, null, 'no']],
+  ['calendar.ics.agentReadEventsConsent', [true, null, 1]],
+  ['calendar.ics.pushEventsToProvider', [true, null, 'no']]
+]
+
+function calendarLeaves(): Array<{ path: string; value: unknown; accepted: boolean }> {
+  return CALENDAR_LEAF_PROBES.flatMap(([path, values]) =>
+    values.map((value) => {
+      const settings = path
+        .split('.')
+        .reduceRight<unknown>((inner, key) => ({ [key]: inner }), value)
+      const accepted = SettingsSyncPayloadSchema.safeParse({ settings, fieldClocks: {} }).success
+      return { path, value, accepted }
+    })
+  )
+}
+
 export function buildSettingsGroups(): Record<string, unknown> {
   return {
     meta: meta({
@@ -255,6 +290,7 @@ export function buildSettingsGroups(): Record<string, unknown> {
       'general.fontSizePx': { min: FONT_SIZE_PX_MIN, max: FONT_SIZE_PX_MAX },
       'general.zoomFactor': { min: ZOOM_FACTOR_MIN, max: ZOOM_FACTOR_MAX }
     },
-    groups: GROUPS
+    groups: GROUPS,
+    calendarLeaves: calendarLeaves()
   }
 }
