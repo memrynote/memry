@@ -109,10 +109,12 @@ const alwaysRun = new Set(['verify', 'upload', 'publish'])
 
 /**
  * What `pnpm release` does after the download step, in order, and the state to continue from. A
- * fresh download replaced the assets, so the packs and the feeds staged into them are redone.
+ * fresh download replaced the assets, so the packs and the feeds staged into them are redone. A
+ * release already published (a run that stopped after the publish call) is only marked done.
  */
-export function planFinishSteps(state, { downloaded }) {
+export function planFinishSteps(state, { downloaded, published }) {
   const next = markStepDone(downloaded ? clearStepsFrom(state, 'download') : state, 'download')
+  if (published) return { state: markStepDone(next, 'publish'), steps: [] }
   return {
     state: next,
     steps: finishSteps.filter((step) => alwaysRun.has(step) || !isStepDone(next, step))

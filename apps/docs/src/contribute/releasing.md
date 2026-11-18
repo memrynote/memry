@@ -63,8 +63,9 @@ The script runs these steps in order:
    - Every file each feed lists matches its `sha512` and `size`. `latest.yml` lists only `MemryNote-<version>-setup.exe`, and that file is byte for byte the x64 Setup.
    - Both Setups, the `-setup.exe` copy and every PE file in both full packages pass `osslsigncode` against the Certum chain. The exception is `third-party-signed.json`: the WebView2 bootstrapper must keep its pinned bytes and Microsoft's signature. Every file that starts with `MZ` must be a PE file. An archive under `lib/app` fails the step unless `finish-release.mjs` allow-lists it (`archivesWithoutCode`), because no check reads the PE files inside it.
 8. Deletes each draft asset that is not in the verified set, then uploads every verified asset (`upload`).
-9. Publishes the draft release (`publish`). Before it does, the draft's asset names, sizes and GitHub sha256 digests must equal the verified files.
-10. Dispatches the Homebrew cask bump.
+9. Publishes the draft release (`publish`). Before it does, the draft's asset names, sizes and GitHub sha256 digests must equal the verified files. The rename from the draft tag to the release tag happens in the same call that publishes. If the release is already published, because a run stopped right after publishing, a rerun only marks it done.
+
+If publish refuses, the draft keeps its tag and stays a draft. Rerun `pnpm release`. It verifies again, deletes the stray assets, uploads the verified set to the same release (by id) and repeats the check. If the refusal says `the draft lists no sha256 digest`, GitHub omitted `digest` for that asset, and every rerun refuses the same way. In that case, compare each draft asset with `.release-state/<draft>/assets` by hand (`gh release download <draft tag> --dir <dir>` and `shasum -a 256`). Then publish with the values from `.release-state/<draft>/metadata/release-metadata.json`: `gh api --method PATCH repos/memrynote/memry/releases/<releaseId> -f tag_name=<tag> -f target_commitish=<commitSha> -f name=<releaseName> -F draft=false -f make_latest=true`. Rerun `pnpm release` after that: it sees the published release, marks it done and dispatches the Homebrew cask bump. 10. Dispatches the Homebrew cask bump.
 
 After the release is published, run `pnpm release:reddit -- --tag <tag>`. It prints a copy/paste-ready Reddit title and body.
 

@@ -20,9 +20,10 @@ import {
 } from './release-utils.mjs'
 import {
   bridgeRelease,
-  draftProblems,
   feedProblems,
+  isReleasePublished,
   listPortableExecutables,
+  publishVerifiedRelease,
   releaseSetProblems,
   signaturePlan,
   stagePackOutputs,
@@ -138,7 +139,12 @@ async function runCli() {
     state,
     workDir
   })
-  const plan = planFinishSteps(readState(workDir, draftTag, draftCreatedAt), { downloaded })
+  const draft = { gh: ghRunner, releaseId: metadata.releaseId, repo: repoSlug() }
+  const published = isReleasePublished(draft)
+  const plan = planFinishSteps(readState(workDir, draftTag, draftCreatedAt), {
+    downloaded,
+    published
+  })
   state = { ...plan.state, appVersion: metadata.appVersion, tag: metadata.tag }
   writeState(workDir, state)
 
@@ -149,14 +155,22 @@ async function runCli() {
     return
   }
 
-  const draft = { gh: ghRunner, releaseId: metadata.releaseId, repo: repoSlug() }
+  if (published) {
+    console.log(`Release ${metadata.tag} was already published; marked done.`)
+  }
+
   const runStep = {
     'pack-windows': () => packWindows({ assetDir, inputsDir, metadata, payloadDir, workDir }),
     bridge: () =>
       console.log(`Bridge feeds: ${bridgeRelease(assetDir, metadata.appVersion).join(', ')}`),
     verify: () => verifyRelease({ assetDir, metadata, workDir }),
-    upload: () => uploadVerifiedAssets({ assetDir, draftTag, ...draft }),
-    publish: () => publishRelease({ assetDir, draft, metadata })
+    upload: () => uploadVerifiedAssets({ assetDir, ...draft }),
+    publish: () => {
+      publishVerifiedRelease({ assetDir, gh: ghRunner, metadata, repo: repoSlug() })
+      console.log(
+        `Published ${metadata.tag} with the ${readdirSync(assetDir).length} verified assets`
+      )
+    }
   }
 
   for (const step of plan.steps) {
@@ -523,54 +537,6 @@ const ghRunner = { json: readGhJson, run: (args) => runGh(args, { stdio: 'inheri
 
 function listReleaseAssets(tag) {
   return readGhJson(['release', 'view', tag, '--json', 'assets']).assets.map((asset) => asset.name)
-}
-
-function publishRelease({ assetDir, draft, metadata }) {
-  runGh(
-    [
-      'api',
-      '--method',
-      'PATCH',
-      `repos/${repoSlug()}/releases/${metadata.releaseId}`,
-      '-f',
-      `tag_name=${metadata.tag}`,
-      '-f',
-      `target_commitish=${metadata.commitSha}`,
-      '-f',
-      `name=${metadata.releaseName}`,
-      '-F',
-      'draft=true',
-      '-F',
-      'prerelease=false'
-    ],
-    { stdio: 'ignore' }
-  )
-
-  const problems = draftProblems({ assetDir, ...draft })
-
-  if (problems.length > 0) {
-    throw new Error(
-      `The draft does not hold the verified files. Refusing to publish ${metadata.tag}.\n${problems.join('\n')}`
-    )
-  }
-
-  runGh(
-    [
-      'api',
-      '--method',
-      'PATCH',
-      `repos/${repoSlug()}/releases/${metadata.releaseId}`,
-      '-F',
-      'draft=false',
-      '-F',
-      'prerelease=false',
-      '-f',
-      'make_latest=true'
-    ],
-    { stdio: 'ignore' }
-  )
-
-  console.log(`Published ${metadata.tag} with the ${readdirSync(assetDir).length} verified assets`)
 }
 
 function dispatchHomebrewCask(metadata) {

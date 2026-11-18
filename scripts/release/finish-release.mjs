@@ -25,6 +25,13 @@ const readJson = (url) => JSON.parse(readFileSync(url, 'utf8'))
 
 const sha256Of = (file) => createHash('sha256').update(readFileSync(file)).digest('hex')
 
+/** The path a zip entry unpacks to here: Info-ZIP drops `.` segments and turns `\` into `/`. */
+const unpackedPath = (name) =>
+  name
+    .split(/[\\/]/)
+    .filter((segment) => segment !== '' && segment !== '.')
+    .join('/')
+
 /** A zip entry name that would land outside the dir it is unpacked into, on Windows or here. */
 const escapesDir = (name) =>
   /^[\\/]/.test(name) || /^[A-Za-z]:/.test(name) || name.split(/[\\/]/).includes('..')
@@ -57,9 +64,25 @@ export function unpackPayload(zip, packDir, sha256) {
       `${name} has sha256 ${actual}; release-metadata.json records ${sha256}. It is not the zip the build checked.`
     )
   }
-  const escaping = runZipTool('zipinfo', ['-1', zip], zip).split('\n').filter(escapesDir)
+  const entryNames = runZipTool('zipinfo', ['-1', zip], zip).split('\n').filter(Boolean)
+  const escaping = entryNames.filter(escapesDir)
   if (escaping.length > 0) {
     throw new Error(`${name} holds entries outside the pack dir: ${escaping.join(', ')}`)
+  }
+  // The payload's names are ASCII (payload-manifest.json). Any other name could be the NFC or NFD
+  // twin of another, and zipinfo prints some of its bytes as `?`, so no check here could compare it.
+  const nonAscii = entryNames.filter((entry) => !/^[\x20-\x7e]+$/.test(entry))
+  if (nonAscii.length > 0) {
+    throw new Error(`${name} holds entry names outside printable ASCII: ${nonAscii.join(', ')}`)
+  }
+  // unzip keeps the first of two entries with one path and drops the other without an error.
+  const seen = new Map()
+  for (const entry of entryNames) {
+    const first = seen.get(unpackedPath(entry))
+    if (first !== undefined) {
+      throw new Error(`${name} holds entries that unpack to one path: ${first}, ${entry}`)
+    }
+    seen.set(unpackedPath(entry), entry)
   }
   runZipTool('unzip', ['-q', zip, '-d', packDir], zip)
   const entries = readdirSync(packDir, { recursive: true, withFileTypes: true })
@@ -323,28 +346,75 @@ const stagedNames = (assetDir) =>
     .map((entry) => entry.name)
     .toSorted()
 
+const readRelease = ({ gh, releaseId, repo }) =>
+  gh.json(['api', `repos/${repo}/releases/${releaseId}`])
+
+/** Whether the release `pnpm release` finishes is no longer a draft. */
+export function isReleasePublished(release) {
+  return readRelease(release).draft === false
+}
+
 /**
  * Makes the draft hold the verified files of `assetDir` and nothing else. Each draft asset outside
  * that set, such as one an earlier run uploaded or one added by hand, is deleted first; the upload
- * then replaces the rest by name. `gh` is `{ json(args), run(args) }` over the gh CLI.
+ * then replaces the rest by name. `gh release upload` takes a tag, so it is read from the release
+ * id: once release-drafter's `vnext` is published, the next cycle's draft takes that tag. `gh` is
+ * `{ json(args), run(args) }` over the gh CLI.
  */
-export function uploadVerifiedAssets({ assetDir, draftTag, gh, releaseId, repo }) {
+export function uploadVerifiedAssets({ assetDir, gh, releaseId, repo }) {
+  const { draft, tag_name: tag } = readRelease({ gh, releaseId, repo })
+  if (draft !== true) {
+    throw new Error(`Release ${tag} (id ${releaseId}) is already published. Nothing was uploaded.`)
+  }
   const names = stagedNames(assetDir)
   assertPublishable(names)
   for (const asset of listDraftAssets({ gh, releaseId, repo })) {
     if (names.includes(asset.name)) continue
-    console.log(`Deleting ${asset.name} from ${draftTag}: it is not in the verified set`)
-    gh.run(['api', '--method', 'DELETE', `repos/${repo}/releases/assets/${asset.id}`])
+    console.log(`Deleting ${asset.name} from ${tag}: it is not in the verified set`)
+    gh.run(['api', '--method', 'DELETE', '--silent', `repos/${repo}/releases/assets/${asset.id}`])
   }
-  console.log(`Uploading ${names.length} assets to ${draftTag}`)
+  console.log(`Uploading ${names.length} assets to ${tag}`)
   gh.run([
     'release',
     'upload',
-    draftTag,
+    tag,
     ...names.map((name) => path.join(assetDir, name)),
     '--repo',
     repo,
     '--clobber'
+  ])
+}
+
+/**
+ * Publishes the draft once its assets equal the verified files. The rename to the release tag goes
+ * in the same call as `draft=false`, so a refused publish leaves the draft as release-drafter made
+ * it and a rerun finishes it.
+ */
+export function publishVerifiedRelease({ assetDir, gh, metadata, repo }) {
+  const problems = draftProblems({ assetDir, gh, releaseId: metadata.releaseId, repo })
+  if (problems.length > 0) {
+    throw new Error(
+      `The draft does not hold the verified files. Refusing to publish ${metadata.tag}.\n${problems.join('\n')}`
+    )
+  }
+  gh.run([
+    'api',
+    '--method',
+    'PATCH',
+    '--silent',
+    `repos/${repo}/releases/${metadata.releaseId}`,
+    '-f',
+    `tag_name=${metadata.tag}`,
+    '-f',
+    `target_commitish=${metadata.commitSha}`,
+    '-f',
+    `name=${metadata.releaseName}`,
+    '-F',
+    'draft=false',
+    '-F',
+    'prerelease=false',
+    '-f',
+    'make_latest=true'
   ])
 }
 

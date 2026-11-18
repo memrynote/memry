@@ -266,7 +266,7 @@ describe('finish steps', () => {
   it('redoes the packs and the bridge after a fresh download, then verify, upload, publish', () => {
     const plan = planFinishSteps(
       stateWith(['dispatch', 'build', 'download', 'pack-windows', 'bridge', 'verify']),
-      { downloaded: true }
+      { downloaded: true, published: false }
     )
 
     assert.deepEqual(plan.steps, ['pack-windows', 'bridge', 'verify', 'upload', 'publish'])
@@ -288,11 +288,23 @@ describe('finish steps', () => {
         ['verify', 'upload', 'publish']
       ]
     ]) {
-      const plan = planFinishSteps(stateWith(completed), { downloaded: false })
+      const plan = planFinishSteps(stateWith(completed), { downloaded: false, published: false })
 
       assert.deepEqual(plan.steps, steps)
       assert.deepEqual(plan.state.completed, completed)
     }
+  })
+
+  // A crash after the publish call and before the state write: rerunning upload would clobber the
+  // live release and publish would turn it back into a draft.
+  it('only marks publish done when the release is already published', () => {
+    const plan = planFinishSteps(
+      stateWith(['dispatch', 'build', 'download', 'pack-windows', 'bridge', 'verify', 'upload']),
+      { downloaded: false, published: true }
+    )
+
+    assert.deepEqual(plan.steps, [])
+    assert.deepEqual(plan.state.completed, releaseStepOrder)
   })
 })
 

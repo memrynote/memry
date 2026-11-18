@@ -15,14 +15,16 @@ import path from 'node:path'
 import { describe, it } from 'node:test'
 import { crc32 } from 'node:zlib'
 
-import { setupExeName, writeBridgeFeeds } from './bridge-feeds.mjs'
+import { describeFile, setupExeName, writeBridgeFeeds } from './bridge-feeds.mjs'
 import {
   bridgeRelease,
   draftProblems,
   feedProblems,
   isPortableExecutable,
+  isReleasePublished,
   listPortableExecutables,
   packReleaseAssets,
+  publishVerifiedRelease,
   releaseSetProblems,
   requiredWindowsBinaries,
   signaturePlan,
@@ -210,6 +212,21 @@ describe('feed check', () => {
       ])
     }))
 
+  it('reports a latest.yml that lists the Setup copy and a second file', () =>
+    withDir((dir) => {
+      const assets = finishedRelease(dir)
+      const { sha512, size } = describeFile(path.join(assets, 'MemryNote-Setup-win-x64.exe'))
+      const feed = path.join(assets, 'latest.yml')
+      writeFileSync(
+        feed,
+        `${readFileSync(feed, 'utf8')}  - url: MemryNote-Setup-win-x64.exe\n    sha512: ${sha512}\n    size: ${size}\n`
+      )
+
+      assert.deepEqual(feedProblems(assets, V), [
+        `latest.yml: lists ${setupExeName(V)}, MemryNote-Setup-win-x64.exe, expected only ${setupExeName(V)}`
+      ])
+    }))
+
   it('reports a Setup copy whose bytes are not the signed x64 Setup', () =>
     withDir((dir) => {
       const assets = finishedRelease(dir)
@@ -246,12 +263,15 @@ function zipOf(entries, { madeBy }) {
   const centrals = []
   let offset = 0
   for (const [name, content = '', { mode } = {}] of entries) {
-    const nameBytes = Buffer.from(name, 'latin1')
+    const nameBytes = Buffer.from(name, 'utf8')
+    // General purpose bit 11: the name is UTF-8.
+    const flags = /[^\x20-\x7e]/.test(name) ? 0x800 : 0
     const data = Buffer.from(content)
     const crc = crc32(data)
     const local = Buffer.alloc(30)
     local.writeUInt32LE(0x04034b50, 0)
     local.writeUInt16LE(20, 4)
+    local.writeUInt16LE(flags, 6)
     local.writeUInt16LE(0x21, 12)
     local.writeUInt32LE(crc, 14)
     local.writeUInt32LE(data.length, 18)
@@ -261,6 +281,7 @@ function zipOf(entries, { madeBy }) {
     central.writeUInt32LE(0x02014b50, 0)
     central.writeUInt16LE((madeBy << 8) | 20, 4)
     central.writeUInt16LE(20, 6)
+    central.writeUInt16LE(flags, 8)
     central.writeUInt16LE(0x21, 14)
     central.writeUInt32LE(crc, 16)
     central.writeUInt32LE(data.length, 20)
@@ -364,6 +385,49 @@ describe('payload unpack', () => {
       }))
   }
 
+  for (const [label, first, second] of [
+    ['a ./ prefix', 'pdfium/LICENSE', './pdfium/LICENSE'],
+    ['separator', 'pdfium/LICENSE', 'pdfium\\LICENSE']
+  ]) {
+    it(`refuses two entries that differ only by ${label}, since unzip keeps one`, () =>
+      withDir((dir) => {
+        const bytes = zipOf([...payload('/'), [first, 'one'], [second, 'two']], { madeBy: 0 })
+        const zip = path.join(dir, 'payload.zip')
+        writeFileSync(zip, bytes)
+        const pack = path.join(dir, 'pack')
+        mkdirSync(pack)
+
+        assert.throws(
+          () => unpackPayload(zip, pack, sha256(bytes)),
+          (error) =>
+            error.message ===
+            `payload.zip holds entries that unpack to one path: ${first}, ${second}`
+        )
+        assert.deepEqual(readdirSync(pack), [])
+      }))
+  }
+
+  // NFC and NFD twins unpack to one path on APFS and NTFS; Info-ZIP reads a Windows-made zip's
+  // names in an OEM code page, so this zip comes from a Unix host.
+  it('refuses entry names outside printable ASCII, such as NFC and NFD twins', () =>
+    withDir((dir) => {
+      const twins = [
+        ['notes/caf\u00e9.txt', 'one'],
+        ['notes/cafe\u0301.txt', 'two']
+      ]
+      const bytes = zipOf([...payload('/'), ...twins], { madeBy: 3 })
+      const zip = path.join(dir, 'payload.zip')
+      writeFileSync(zip, bytes)
+      const pack = path.join(dir, 'pack')
+      mkdirSync(pack)
+
+      assert.throws(
+        () => unpackPayload(zip, pack, sha256(bytes)),
+        /^Error: payload\.zip holds entry names outside printable ASCII: notes\/caf/
+      )
+      assert.deepEqual(readdirSync(pack), [])
+    }))
+
   it('refuses a zip that unpacks a symbolic link', () =>
     withDir((dir) => {
       const modes = payload('/').map(([name, content]) => [
@@ -466,9 +530,10 @@ describe('PE files and signers', () => {
 
       write(path.join(dir, 'resources/bundle.dat'), zipOf([['inner.exe', 'MZ']], { madeBy: 3 }))
       write(path.join(dir, 'resources/data.gz'), Buffer.from([0x1f, 0x8b, 8, 0]))
+      write(path.join(dir, 'other/eng.traineddata.gz'), Buffer.from([0x1f, 0x8b, 8, 0]))
       assert.throws(
         () => listPortableExecutables(dir),
-        /holds archives no signature check opens: resources\/bundle\.dat, resources\/data\.gz$/
+        /holds archives no signature check opens: other\/eng\.traineddata\.gz, resources\/bundle\.dat, resources\/data\.gz$/
       )
     }))
 
@@ -531,37 +596,58 @@ describe('PE files and signers', () => {
 })
 
 /**
- * A gh that holds the draft's assets the way GitHub lists them: `release upload` replaces by name
- * and records GitHub's sha256 digest, and `DELETE releases/assets/<id>` removes one.
+ * A gh over releases the way GitHub serves them: `release upload <tag>` replaces assets by name on
+ * the release holding that tag and records GitHub's sha256 digest, `DELETE releases/assets/<id>`
+ * removes one, and `PATCH releases/<id>` sets fields.
  */
-function fakeGh(initial = []) {
-  const draft = new Map(initial.map((asset) => [asset.name, asset]))
+function fakeGh(releases) {
   const calls = []
+  const byId = (id) => releases.find((release) => release.id === Number(id))
   let nextId = 1000
   return {
     calls,
-    draft,
     json(args) {
       calls.push(args)
-      assert.deepEqual(args, [
-        'api',
-        '--paginate',
-        '--slurp',
-        'repos/o/r/releases/99/assets?per_page=100'
-      ])
-      return [[...draft.values()]]
+      const assetList = /^repos\/o\/r\/releases\/(\d+)\/assets\?per_page=100$/.exec(args.at(-1))
+      if (assetList && args.includes('--paginate') && args.includes('--slurp')) {
+        return [byId(assetList[1]).assets]
+      }
+      const one = /^repos\/o\/r\/releases\/(\d+)$/.exec(args[1])
+      assert.ok(args.length === 2 && one, `unexpected gh ${args.join(' ')}`)
+      const { assets: _assets, ...release } = byId(one[1])
+      return release
     },
     run(args) {
       calls.push(args)
-      if (args[0] === 'api' && args[2] === 'DELETE') {
-        const id = Number(args[3].split('/').at(-1))
-        for (const [name, asset] of draft) if (asset.id === id) draft.delete(name)
+      if (args[0] === 'api' && args.includes('DELETE')) {
+        const id = Number(args.at(-1).split('/').at(-1))
+        for (const release of releases) {
+          release.assets = release.assets.filter((asset) => asset.id !== id)
+        }
         return
       }
-      assert.deepEqual(args.slice(0, 3), ['release', 'upload', 'vnext'])
+      if (args[0] === 'api' && args.includes('PATCH')) {
+        const release = byId(
+          /releases\/(\d+)$/.exec(args.find((arg) => arg.startsWith('repos/')))[1]
+        )
+        for (const [index, arg] of args.entries()) {
+          if (args[index - 1] !== '-f' && args[index - 1] !== '-F') continue
+          const [key, value] = arg.split(/=(.*)/s)
+          release[key] = args[index - 1] === '-F' ? JSON.parse(value) : value
+        }
+        return
+      }
+      assert.deepEqual(
+        [args[0], args[1], args.at(-3), args.at(-2), args.at(-1)],
+        ['release', 'upload', '--repo', 'o/r', '--clobber']
+      )
+      const release = releases.find((candidate) => candidate.tag_name === args[2])
+      assert.ok(release, `no release tagged ${args[2]}`)
       for (const file of args.filter((arg) => path.isAbsolute(arg))) {
-        const bytes = readFileSync(file)
-        draft.set(path.basename(file), remoteAsset(path.basename(file), bytes, nextId++))
+        const name = path.basename(file)
+        release.assets = release.assets
+          .filter((asset) => asset.name !== name)
+          .concat(remoteAsset(name, readFileSync(file), nextId++))
       }
     }
   }
@@ -577,21 +663,31 @@ const draftOf = (assets) =>
   readdirSync(assets).map((name, id) =>
     remoteAsset(name, readFileSync(path.join(assets, name)), id + 1)
   )
-const target = { draftTag: 'vnext', releaseId: '99', repo: 'o/r' }
+const draftRelease = (assets = []) => ({ assets, draft: true, id: 99, tag_name: 'vnext' })
+const target = { releaseId: '99', repo: 'o/r' }
+const metadata = {
+  commitSha: 'f'.repeat(40),
+  releaseId: '99',
+  releaseName: 'MemryNote v2026-11-20',
+  tag: 'v2026-11-20'
+}
+const patches = (gh) => gh.calls.filter((args) => args.includes('PATCH'))
 
-describe('draft upload and publish check', () => {
+describe('draft upload and publish', () => {
   it('deletes draft assets outside the verified set before it uploads, and then matches', () =>
     withDir((dir) => {
       const assets = finishedRelease(dir)
       const gh = fakeGh([
-        remoteAsset('MemryNote-win-Setup.exe', Buffer.from('retired'), 1),
-        remoteAsset('MemryNote-2026.1119.1-amd64.deb', Buffer.from('old'), 2),
-        remoteAsset('latest.yml', Buffer.from('old feed'), 3)
+        draftRelease([
+          remoteAsset('MemryNote-win-Setup.exe', Buffer.from('retired'), 1),
+          remoteAsset('MemryNote-2026.1119.1-amd64.deb', Buffer.from('old'), 2),
+          remoteAsset('latest.yml', Buffer.from('old feed'), 3)
+        ])
       ])
 
       uploadVerifiedAssets({ assetDir: assets, gh, ...target })
 
-      const deletes = gh.calls.filter((args) => args[2] === 'DELETE').map((args) => args[3])
+      const deletes = gh.calls.filter((args) => args.includes('DELETE')).map((args) => args.at(-1))
       assert.deepEqual(deletes, ['repos/o/r/releases/assets/1', 'repos/o/r/releases/assets/2'])
       assert.equal(gh.calls.at(-1)[1], 'upload')
       assert.deepEqual(draftProblems({ assetDir: assets, gh, ...target }), [])
@@ -608,13 +704,85 @@ describe('draft upload and publish check', () => {
       byName('latest-mac.yml').digest = `sha256:${'0'.repeat(64)}`
       byName('releases.win.json').digest = null
 
-      assert.deepEqual(draftProblems({ assetDir: assets, gh: fakeGh(remote), ...target }), [
-        'missing on the draft: RELEASES',
-        'latest-mac.yml: sha256 on the draft differs from the verified file',
-        `latest.yml: size ${byName('latest.yml').size} on the draft, ${byName('latest.yml').size - 1} verified`,
-        'releases.win.json: the draft lists no sha256 digest',
-        'unexpected on the draft: MemryNote-2026.1119.1-amd64.deb'
+      assert.deepEqual(
+        draftProblems({ assetDir: assets, gh: fakeGh([draftRelease(remote)]), ...target }),
+        [
+          'missing on the draft: RELEASES',
+          'latest-mac.yml: sha256 on the draft differs from the verified file',
+          `latest.yml: size ${byName('latest.yml').size} on the draft, ${byName('latest.yml').size - 1} verified`,
+          'releases.win.json: the draft lists no sha256 digest',
+          'unexpected on the draft: MemryNote-2026.1119.1-amd64.deb'
+        ]
+      )
+    }))
+
+  // The draft keeps release-drafter's tag until it is published: a refused publish that renamed it
+  // would send the rerun's upload to a missing tag, or to the next cycle's draft.
+  it('leaves a refused draft as it was, and the rerun uploads to it and publishes it', () =>
+    withDir((dir) => {
+      const assets = finishedRelease(dir)
+      const release = draftRelease()
+      const gh = fakeGh([release])
+      uploadVerifiedAssets({ assetDir: assets, gh, ...target })
+      release.assets.find((asset) => asset.name === 'latest.yml').digest =
+        `sha256:${'0'.repeat(64)}`
+
+      assert.throws(
+        () => publishVerifiedRelease({ assetDir: assets, gh, metadata, repo: 'o/r' }),
+        /Refusing to publish v2026-11-20\.\nlatest\.yml: sha256 on the draft differs/
+      )
+      assert.deepEqual(patches(gh), [])
+      assert.equal(release.tag_name, 'vnext')
+
+      uploadVerifiedAssets({ assetDir: assets, gh, ...target })
+      publishVerifiedRelease({ assetDir: assets, gh, metadata, repo: 'o/r' })
+
+      assert.equal(patches(gh).length, 1)
+      assert.deepEqual(
+        { ...release, assets: release.assets.length },
+        {
+          assets: readdirSync(assets).length,
+          draft: false,
+          id: 99,
+          make_latest: 'true',
+          name: 'MemryNote v2026-11-20',
+          prerelease: false,
+          tag_name: 'v2026-11-20',
+          target_commitish: 'f'.repeat(40)
+        }
+      )
+    }))
+
+  it('uploads to the release of the recorded id, whatever tag it holds now', () =>
+    withDir((dir) => {
+      const assets = finishedRelease(dir)
+      const renamed = { ...draftRelease(), tag_name: 'v2026-11-20' }
+      const nextCycle = { ...draftRelease(), id: 100 }
+      const gh = fakeGh([renamed, nextCycle])
+
+      uploadVerifiedAssets({ assetDir: assets, gh, ...target })
+
+      assert.equal(renamed.assets.length, readdirSync(assets).length)
+      assert.deepEqual(nextCycle.assets, [])
+    }))
+
+  it('sees a published release, and refuses to upload to it', () =>
+    withDir((dir) => {
+      const assets = finishedRelease(dir)
+      const gh = fakeGh([
+        { ...draftRelease(draftOf(assets)), draft: false, tag_name: 'v2026-11-20' }
       ])
+
+      assert.equal(isReleasePublished({ gh, ...target }), true)
+      assert.equal(isReleasePublished({ gh: fakeGh([draftRelease()]), ...target }), false)
+      assert.throws(
+        () => uploadVerifiedAssets({ assetDir: assets, gh, ...target }),
+        /Release v2026-11-20 \(id 99\) is already published/
+      )
+      assert.equal(
+        gh.calls.filter((args) => args[0] === 'release' || args.includes('DELETE')).length,
+        0
+      )
     }))
 })
 
