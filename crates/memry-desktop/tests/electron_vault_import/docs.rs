@@ -92,7 +92,8 @@ fn outbox(core: &Connection) -> Vec<(String, String, String, Vec<u8>)> {
 /// `(content_hash, file_hash, indexed_at)` of the note's row.
 fn hashes(core: &Connection, id: &str) -> (Option<String>, Option<String>, i64) {
     core.query_row(
-        "SELECT content_hash, file_hash, indexed_at FROM note_files WHERE note_id = ?1",
+        "SELECT f.content_hash, h.file_hash, f.indexed_at
+           FROM note_files f LEFT JOIN note_file_hashes h USING (note_id) WHERE f.note_id = ?1",
         [id],
         |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
     )
@@ -118,7 +119,7 @@ fn a_document_imports_as_local_update_one_with_its_cursor() {
     let state = doc.state.clone();
     let staged = staged(stage_vault_import(input(&vault, vec![doc])).unwrap());
     let read = staged.document_state(NOTE).unwrap().unwrap();
-    assert_eq!(read.text.trim(), "Today.");
+    assert!(read.text.contains("text \"Today.\""), "{}", read.text);
     assert_eq!(staged.document_state("no-such-doc").unwrap(), None);
     staged.install().unwrap();
 
@@ -148,10 +149,11 @@ fn a_document_imports_as_local_update_one_with_its_cursor() {
 fn a_body_equal_to_its_file_records_the_file_hash() {
     let vault = Vault::new();
     seed_note(&vault, NOTE, PATH, None, false);
-    cache(&vault, NOTE, PATH, FILE);
+    std::fs::write(vault.root.join(PATH), "Today.\r\n\n").unwrap();
+    cache(&vault, NOTE, PATH, "Today.\r\n\n");
     import_docs(&vault, vec![folded(NOTE, "Today.\n", None)]);
     let core = installed(&vault);
-    let on_disk = content_hash(FILE);
+    let on_disk = content_hash("Today.\r\n\n");
     assert_eq!(hashes(&core, NOTE), (Some(on_disk.clone()), Some(on_disk), NOW_MS));
     assert_eq!(
         memry_core::domain::note_files::behind_bodies(&core).unwrap(),

@@ -15,6 +15,9 @@ use rusqlite::types::Value;
 
 use super::docs::folded;
 use super::queue::text;
+use memry_desktop::vault::consumer::{Applied, ChangeSource};
+use memry_desktop::vault::writeback::DEBOUNCE;
+
 use super::vault_env::{Env, QUIET, WAIT, creates, env, indexed};
 use super::{ELECTRON_DEVICE, electron_db, electron_hashes, electron_profile, staged};
 
@@ -69,15 +72,22 @@ impl Settled {
         }
     }
 
-    /// The file after the session has settled and stayed quiet.
-    fn quiet_file(&self) -> String {
-        std::thread::sleep(QUIET);
+    /// The file once the write-back's debounce and a quiet spell have passed with no write of
+    /// the app's to the note. The over-Electron vault mints no note for a new file, so the
+    /// reconcile barrier of `vault_env` (a probe file seen added) is not available here; the
+    /// positive cases above show the same open writes within this window.
+    fn quiet_file(&mut self) -> String {
+        std::thread::sleep(DEBOUNCE + QUIET);
+        let wrote = self.e.drain().into_iter().any(|fact| {
+            matches!(fact, Applied::Changed { note_id, source: ChangeSource::App, .. } if note_id == NOTE)
+        });
+        assert!(!wrote, "the app wrote {PATH}");
         self.e.read(PATH)
     }
 }
 
 /// Imports the fixture's Electron vault, installs it and opens it in a session that runs until
-/// the open's reconcile (the write-back's first pass) has run.
+/// the open walk is done; its reconcile (the write-back's first pass) runs right after.
 fn import_and_open(fixture: &Fixture) -> Settled {
     let mut e = env(|store| Some(creates(store)));
     let pair = electron_db::create_pair(&e.vault.join(".memry"));
@@ -146,7 +156,6 @@ fn import_and_open(fixture: &Fixture) -> Settled {
 
     e.open();
     e.facts_until(indexed);
-    e.after_reconcile();
     Settled {
         e,
         electron: [pair.data, pair.index],
@@ -200,7 +209,7 @@ fn a_failed_write_back_reaches_the_file_and_keeps_its_push() {
 /// The file owes its body to the document: it is never written over.
 #[test]
 fn a_file_that_owes_its_body_is_never_written_over() {
-    let s = import_and_open(&Fixture {
+    let mut s = import_and_open(&Fixture {
         owed_file_body: true,
         ..AHEAD
     });
@@ -213,7 +222,7 @@ fn a_file_that_owes_its_body_is_never_written_over() {
 /// last read: the edit wins and reaches the body.
 #[test]
 fn an_outside_edit_after_quit_reaches_the_body() {
-    let s = import_and_open(&Fixture {
+    let mut s = import_and_open(&Fixture {
         read: "A\n",
         file: "C\n",
         body: "A\n",
@@ -250,7 +259,7 @@ fn an_outside_edit_beside_a_body_ahead_is_kept_as_a_version() {
 /// The body is its file: the row records the file's hash and nothing is written.
 #[test]
 fn a_body_equal_to_its_file_is_not_rewritten() {
-    let s = import_and_open(&Fixture {
+    let mut s = import_and_open(&Fixture {
         body: "A\n",
         ..AHEAD
     });
@@ -271,5 +280,21 @@ fn a_body_equal_to_its_file_is_not_rewritten() {
         })
         .unwrap();
     assert_eq!(hash, Some(content_hash("A\n")));
+    s.electron_unchanged();
+}
+
+/// A file in Electron's spelling (frontmatter, a blank line, the body) whose body the document
+/// holds: the first session writes nothing and keeps no version.
+#[test]
+fn a_file_with_frontmatter_whose_body_is_the_documents_is_not_rewritten() {
+    const FILE: &str = "---\ntags: [a]\n---\n\nA\n";
+    let mut s = import_and_open(&Fixture {
+        read: FILE,
+        file: FILE,
+        body: "A\n",
+        ..AHEAD
+    });
+    assert_eq!(s.quiet_file(), FILE);
+    assert_eq!(s.e.versions(NOTE), Vec::<String>::new());
     s.electron_unchanged();
 }
