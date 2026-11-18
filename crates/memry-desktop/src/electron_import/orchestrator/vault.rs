@@ -101,6 +101,14 @@ pub(super) fn import(
         source,
     };
     let previous = run.section(path).cloned();
+    // An id minted by a cut-off attempt stays the vault's id.
+    let id = &match previous.as_ref().and_then(|s| s.vault_id.clone()) {
+        Some(vault_id) if id.minted => VaultId {
+            vault_id,
+            minted: true,
+        },
+        _ => id.clone(),
+    };
     let mut prepared = prepare_vault(
         phase.profile,
         phase.config,
