@@ -98,6 +98,15 @@ pub enum ImportError {
          it finish syncing, then quit it and try again."
     )]
     DeleteWithoutDevice,
+    /// Queued note body pushes whose Yjs document the store copy does not hold. Staged
+    /// without one, the push of an empty payload would have no state to send.
+    #[error(
+        "Changes to {} notes in this vault have not synced yet, and their edit history is \
+         missing from the previous app's data. Nothing was changed. Open the previous MemryNote \
+         app, let it finish syncing, then quit it and try again.",
+        doc_ids.len()
+    )]
+    OrphanBodyQueueRow { doc_ids: Vec<String> },
     #[error("{path} is {bytes} bytes, over the {max} byte limit")]
     TooLarge { path: PathBuf, bytes: u64, max: u64 },
     /// The source changed while it was copied: Electron was writing. Retry once it has quit.
