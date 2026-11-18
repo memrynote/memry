@@ -68,6 +68,7 @@ use super::notes::failed;
 use super::task_merge;
 use super::tasks::Inbound;
 
+pub(crate) use links::keep_markdown_members;
 pub use links::{LinkItemType, ProjectLink, link, links, set_link_pinned, unlink};
 pub use status_list::{StatusInput, StatusType};
 pub use write::{

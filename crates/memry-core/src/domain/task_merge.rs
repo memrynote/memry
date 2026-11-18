@@ -209,6 +209,7 @@ pub(crate) fn apply_remote_merged(
         })
         .collect();
     changes.extend(carried::concurrent_changes(
+        conn,
         record,
         carried,
         carry,

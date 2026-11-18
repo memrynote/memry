@@ -10,14 +10,18 @@
 //! | a remote without `statuses` or `links` keeps the local | §6.7.2 absent key |
 //! | an Electron peer's row round-trips its arrays          | §6.7.2            |
 //! | a malformed remote array flags the record corrupt      | §6.7.2 shape      |
+//! | a markdown note's link survives a concurrent retitle   | §6.7.2 markdown   |
 //!
 //! The first and third fail with the concurrent branch keeping the local
 //! arrays (the rule before Kaan's decision of 18 Nov), the second with the
-//! wholesale branch storing the remote verbatim.
+//! wholesale branch storing the remote verbatim, the fifth with the remote's
+//! `links` replacing the local markdown-note entries.
 
 use crate::desktop_relay::{Device, NOW, Relay, failed};
 
+use memry_core::domain::note_tasks;
 use memry_core::domain::projects::{self, LinkItemType, NewProject, ProjectEdit, StatusInput};
+use memry_core::storage::repositories::sync_items::{self, InboundRecord};
 use serde_json::{Value as Json, json};
 
 const PROJECT: &str = "proj-1";
@@ -288,36 +292,136 @@ async fn an_electron_peers_arrays_round_trip_through_a_core_merge() {
     assert!(linked[0].pinned && linked[0].item_id == "event-9");
 }
 
-/// A concurrent remote whose `statuses` is not an array is refused, as
+/// A concurrent remote whose `statuses` or `links` is not an array, or holds an
+/// entry `StatusSyncSchema` / `ProjectLinkSyncSchema` refuses, is refused, as
 /// `ProjectSyncPayloadSchema` refuses it on Electron and the projector refuses
-/// it on the wholesale path. The local row is left as it was.
+/// a non-array on the wholesale path. The local row is left as it was.
 #[tokio::test]
 async fn a_malformed_remote_array_flags_the_record_corrupt() {
-    let (a, relay) = (Device::bare("a"), Relay::default());
-    create(&a);
-    relay.sync(&a).await;
-    retitle(&a, "From a");
-    let local = a.stored("project", PROJECT);
-
-    relay.put(
-        "project",
-        PROJECT,
-        &json!({
-            "id": PROJECT, "name": "From peer", "clock": {"a": 1, "peer": 1},
-            "fieldClocks": {"name": {"a": 1, "peer": 1}}, "statuses": "todo",
-        })
-        .to_string(),
-    );
-    relay.pull(&a).await;
-
-    assert_eq!(
-        a.count(
-            "SELECT COUNT(*) FROM sync_items WHERE item_type = 'project' AND item_id = 'proj-1'
-             AND corrupt_reason LIKE '%project proj-1: remote `statuses` is not an array%'"
+    let cases = [
+        (
+            "statuses",
+            json!("todo"),
+            "remote `statuses` is not an array",
         ),
-        1
-    );
-    let stored = a.stored("project", PROJECT);
-    assert_eq!(field(&stored, "name"), json!("From a"));
-    assert_eq!(field(&stored, "statuses"), field(&local, "statuses"));
+        (
+            "statuses",
+            json!([42]),
+            "remote `statuses` entry 0 is malformed",
+        ),
+        (
+            "statuses",
+            json!([{"id": "s1", "name": "Todo", "color": "#888", "position": 0},
+                   {"id": "s2", "name": "Done", "position": 1}]),
+            "remote `statuses` entry 1 is malformed",
+        ),
+        (
+            "links",
+            json!([{"id": "l1", "itemType": "file", "itemId": "f1", "position": 0,
+                    "pinned": true}]),
+            "remote `links` entry 0 is malformed",
+        ),
+    ];
+    for (key, value, reason) in cases {
+        let (a, relay) = (Device::bare("a"), Relay::default());
+        create(&a);
+        relay.sync(&a).await;
+        retitle(&a, "From a");
+        let local = a.stored("project", PROJECT);
+
+        let mut remote = json!({
+            "id": PROJECT, "name": "From peer", "clock": {"a": 1, "peer": 1},
+            "fieldClocks": {"name": {"a": 1, "peer": 1}},
+        });
+        remote[key] = value;
+        relay.put("project", PROJECT, &remote.to_string());
+        relay.pull(&a).await;
+
+        let sql = format!(
+            "SELECT COUNT(*) FROM sync_items WHERE item_type = 'project' AND item_id = 'proj-1'
+             AND corrupt_reason LIKE '%project proj-1: {reason}%'"
+        );
+        assert_eq!(a.count(leak(&sql)), 1, "{reason}");
+        let stored = a.stored("project", PROJECT);
+        assert_eq!(field(&stored, "name"), json!("From a"), "{reason}");
+        assert_eq!(field(&stored, key), field(&local, key), "{reason}");
+    }
+}
+
+/// A markdown note the peer wrote, on `device` as its pull would store it.
+fn seed_markdown_note(device: &Device) {
+    device
+        .db()
+        .call_blocking(|conn| {
+            let record = InboundRecord {
+                item_type: "note".to_owned(),
+                item_id: "note-1".to_owned(),
+                payload_json: json!({
+                    "title": "Plan", "fileType": "markdown", "folderPath": "",
+                    "properties": {}, "clock": {"peer": 1},
+                })
+                .to_string(),
+                server_cursor: None,
+                signer_device_id: Some("peer".to_owned()),
+                updated_at: NOW,
+                deleted_at: None,
+            };
+            sync_items::apply_remote(conn, &record, NOW)
+                .map(drop)
+                .map_err(failed)
+        })
+        .expect("seed the note");
+}
+
+/// REVIEW-5156 finding 1. A markdown note's membership is its `project`
+/// property: `reconcileLinks` (`:116-137`) deletes only table-owned rows, so
+/// Electron keeps the note in the hub whatever `links` a concurrent remote
+/// carries. A links the note, B concurrently retitles the project with
+/// `links: []`; whichever device merges keeps the entry, and both devices end
+/// with the hub entry and the note's project chip.
+#[tokio::test]
+async fn a_markdown_notes_link_survives_a_concurrent_retitle_on_both_devices() {
+    for linker_pushes_first in [false, true] {
+        let (a, b, relay) = synced_pair().await;
+        seed_markdown_note(&a);
+        seed_markdown_note(&b);
+        a.db()
+            .call_blocking(|conn| {
+                projects::link(conn, PROJECT, LinkItemType::Note, "note-1", "a", NOW + 1)
+                    .map(drop)
+                    .map_err(failed)
+            })
+            .expect("link the note");
+        retitle(&b, "From b");
+
+        let (pusher, merger) = if linker_pushes_first {
+            (&a, &b)
+        } else {
+            (&b, &a)
+        };
+        relay.push(pusher).await;
+        relay.pull(merger).await;
+        relay.push(merger).await;
+        relay.pull(pusher).await;
+
+        for (who, device) in [("a", &a), ("b", &b)] {
+            let case = format!("{who}, linker pushes first: {linker_pushes_first}");
+            let stored = device.stored("project", PROJECT);
+            assert_eq!(field(&stored, "name"), json!("From b"), "{case}");
+            let (hub, chips) = device
+                .db()
+                .call_blocking(|conn| {
+                    let hub: Vec<String> = projects::links(conn, PROJECT)
+                        .map_err(failed)?
+                        .into_iter()
+                        .map(|link| link.item_id)
+                        .collect();
+                    let chips = note_tasks::note_project_ids(conn, "note-1").map_err(failed)?;
+                    Ok((hub, chips))
+                })
+                .expect("the hub and the chip");
+            assert_eq!(hub, ["note-1"], "{case}");
+            assert_eq!(chips, [PROJECT], "{case}");
+        }
+    }
 }

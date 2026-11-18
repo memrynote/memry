@@ -13,6 +13,11 @@
 //!   `task-handler.ts:221-242`). A project replaces its `statuses` and `links`
 //!   with the remote's ([`Carry::Remote`], `project-handler.ts:259-265` runs
 //!   after the merge at `:204-238` exactly as after the apply branch).
+//!
+//! On both branches a project keeps this device's markdown-note `links`
+//! entries the remote omits while the note's `project` property names the
+//! project ([`markdown_members`]): `reconcileLinks` deletes only table-owned
+//! rows (`project-handler.ts:116-137`).
 
 use std::collections::HashSet;
 
@@ -21,7 +26,7 @@ use serde_json::Value;
 
 use crate::api::errors::StorageError;
 use crate::domain::notes::names::js_trim;
-use crate::domain::tags;
+use crate::domain::{projects, tags};
 use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::sync_items::InboundRecord;
 use crate::storage::repositories::{Change, StoredPayload};
@@ -36,9 +41,10 @@ pub(crate) enum Carry {
     /// A remote `null` leaves the local list (`if (data.tags)`).
     Union,
     /// §6.7.2, a project's nested arrays: the remote's array replaces the
-    /// local one. A remote `null` is §13.4's clear (the projector's rule,
-    /// `projectors/projects.rs` `nested`), so only an absent key keeps the
-    /// local array.
+    /// local one, except for the local markdown-note `links` entries
+    /// [`markdown_members`] keeps. A remote `null` is §13.4's clear (the
+    /// projector's rule, `projectors/projects.rs` `nested`), so only an absent
+    /// key keeps the local array.
     Remote,
 }
 
@@ -55,6 +61,7 @@ impl Carry {
 /// The concurrent branch's change to each of `keys`. A key with no change
 /// keeps the local value.
 pub(super) fn concurrent_changes<'k>(
+    conn: &Connection,
     record: &InboundRecord,
     keys: &[&'k str],
     carry: Carry,
@@ -68,7 +75,14 @@ pub(super) fn concurrent_changes<'k>(
         }
         let value = match carry {
             Carry::Union => union_list(record, key, local, remote)?.map(Change::set),
-            Carry::Remote => Some(Change::Set(remote_array(record, key, remote)?)),
+            Carry::Remote => {
+                let value = remote_array(record, key, remote)?;
+                Some(Change::Set(if *key == "links" {
+                    markdown_members(conn, local, remote, value)?
+                } else {
+                    value
+                }))
+            }
         };
         if let Some(change) = value {
             changes.push((*key, change));
@@ -77,20 +91,98 @@ pub(super) fn concurrent_changes<'k>(
     Ok(changes)
 }
 
-/// §6.7.2: the remote's `statuses` or `links`, an array or `null`. Any other
-/// shape is an `Err`, so the record is flagged corrupt as the wholesale path's
-/// projector flags it (`Kind::Array`); `ProjectSyncPayloadSchema` refuses it
-/// on Electron.
+/// §6.7.2: the remote's `links` with the local markdown-note entries
+/// [`projects::keep_markdown_members`] keeps. The note's property may name the
+/// project as this device knows it or under the remote's name.
+fn markdown_members(
+    conn: &Connection,
+    local: &Object,
+    remote: &Object,
+    links: Value,
+) -> Result<Value, StorageError> {
+    let names: Vec<&str> = [local, remote]
+        .iter()
+        .filter_map(|side| side.get("name").and_then(Value::as_str))
+        .collect();
+    projects::keep_markdown_members(conn, &names, local.get("links"), links)
+}
+
+/// §6.7.2: the remote's `statuses` or `links`, an array or `null`, each entry
+/// as `StatusSyncSchema` or `ProjectLinkSyncSchema` requires. Any other shape
+/// is an `Err`, so the record is flagged corrupt as the wholesale path's
+/// projector flags a non-array (`Kind::Array`); `ProjectSyncPayloadSchema`
+/// refuses either on Electron. Stored, a bad entry would be re-pushed at the
+/// union clock (§6.5.2 P3) and Electron would refuse every later copy.
 fn remote_array(record: &InboundRecord, key: &str, remote: &Object) -> Result<Value, StorageError> {
+    let refuse = |what: String| StorageError::Failed {
+        what: format!(
+            "{} {}: remote `{key}` {what} (chapter 06 §6.7.2)",
+            record.item_type, record.item_id
+        ),
+    };
     match remote.get(key) {
-        Some(value @ (Value::Null | Value::Array(_))) => Ok(value.clone()),
-        _ => Err(StorageError::Failed {
-            what: format!(
-                "{} {}: remote `{key}` is not an array (chapter 06 §6.7.2)",
-                record.item_type, record.item_id
-            ),
-        }),
+        Some(Value::Null) => Ok(Value::Null),
+        Some(value @ Value::Array(entries)) => {
+            let schema = entry_schema(key);
+            match entries.iter().position(|entry| !valid_entry(entry, schema)) {
+                Some(index) => Err(refuse(format!("entry {index} is malformed"))),
+                None => Ok(value.clone()),
+            }
+        }
+        _ => Err(refuse("is not an array".to_owned())),
     }
+}
+
+#[derive(Clone, Copy)]
+enum Want {
+    Text,
+    Number,
+    Flag,
+}
+
+/// `StatusSyncSchema` and `ProjectLinkSyncSchema`
+/// (`packages/contracts/src/sync-payloads.ts:227-247`): each key, its type,
+/// and whether it is required. Unknown keys pass, as zod strips them.
+fn entry_schema(key: &str) -> &'static [(&'static str, Want, bool)] {
+    match key {
+        "statuses" => &[
+            ("id", Want::Text, true),
+            ("name", Want::Text, true),
+            ("color", Want::Text, true),
+            ("position", Want::Number, true),
+            ("isDefault", Want::Flag, false),
+            ("isDone", Want::Flag, false),
+            ("createdAt", Want::Text, false),
+        ],
+        "links" => &[
+            ("id", Want::Text, true),
+            ("projectId", Want::Text, false),
+            ("itemType", Want::Text, true),
+            ("itemId", Want::Text, true),
+            ("position", Want::Number, true),
+            ("pinned", Want::Number, false),
+            ("createdAt", Want::Text, false),
+        ],
+        _ => &[],
+    }
+}
+
+/// An object whose keys match `schema`. An optional key is absent or of its
+/// type: zod's `.optional()` refuses `null`.
+fn valid_entry(entry: &Value, schema: &[(&str, Want, bool)]) -> bool {
+    let Some(entry) = entry.as_object() else {
+        return false;
+    };
+    schema
+        .iter()
+        .all(|(name, want, required)| match entry.get(*name) {
+            None => !required,
+            Some(value) => match want {
+                Want::Text => value.is_string(),
+                Want::Number => value.is_number(),
+                Want::Flag => value.is_boolean(),
+            },
+        })
 }
 
 /// §6.7.1: Electron's union of one junction list on a concurrent task merge
@@ -141,7 +233,8 @@ fn union_list(
 
 /// The wholesale rule of §6.7.1 and §6.7.2: the remote with each of `keys` it
 /// leaves to the local row ([`Carry::keeps_local`]) copied from the live local
-/// row. Electron builds from before #1879 push no `linkedCanvasIds` (before
+/// row, and under [`Carry::Remote`] the local markdown-note `links` entries
+/// [`markdown_members`] keeps. Electron builds from before #1879 push no `linkedCanvasIds` (before
 /// 2026-03-19 no `tags` or `linkedNoteIds` either), and any build may push a
 /// project without `statuses` or `links`.
 ///
@@ -165,19 +258,34 @@ pub(super) fn keep_local(
         .copied()
         .filter(|key| carry.keeps_local(remote.object().get(*key)))
         .collect();
-    if missing.is_empty() {
+    // A non-array `links` is left to the projector, which flags it.
+    let remote_links = match remote.object().get("links") {
+        Some(links @ (Value::Null | Value::Array(_)))
+            if carry == Carry::Remote && keys.contains(&"links") =>
+        {
+            Some(links)
+        }
+        _ => None,
+    };
+    if missing.is_empty() && remote_links.is_none() {
         return Ok(None);
     }
     let Some((local, true)) = live_payload(conn, record)? else {
         return Ok(None);
     };
-    let kept: Vec<(&str, Change)> = missing
+    let mut kept: Vec<(&str, Change)> = missing
         .into_iter()
         .filter_map(|key| {
             let value = local.object().get(key).filter(|value| !value.is_null())?;
             Some((key, Change::Set(value.clone())))
         })
         .collect();
+    if let Some(links) = remote_links {
+        let joined = markdown_members(conn, local.object(), remote.object(), links.clone())?;
+        if &joined != links {
+            kept.push(("links", Change::Set(joined)));
+        }
+    }
     if kept.is_empty() {
         return Ok(None);
     }
