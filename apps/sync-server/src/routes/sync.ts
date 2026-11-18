@@ -20,7 +20,7 @@ import {
   snapshotClaimsEnabled,
   toPolicySnapshot
 } from '../services/client-policies'
-import { paidSyncMiddleware } from '../middleware/paid-sync'
+import { paidSyncMiddleware, paidSyncReadMiddleware } from '../middleware/paid-sync'
 import { createRateLimiter, deviceIdentifier } from '../middleware/rate-limit'
 import { bootstrapRateLimitElevation } from '../services/bootstrap-session'
 import { syncTypesMiddleware } from '../middleware/sync-types'
@@ -221,6 +221,39 @@ sync.get('/storage', storageRateLimit, async (c) => {
   return c.json(breakdown)
 })
 
+const statusRateLimit = createRateLimiter({
+  keyPrefix: 'sync_status',
+  maxRequests: 60,
+  windowSeconds: 60
+})
+
+const handleRecordStatus = async (c: Context<AppContext>): Promise<Response> => {
+  const userId = c.get('userId')!
+  const deviceId = c.get('deviceId')!
+  const vaultId = c.get('vaultId')!
+  const status = await getSyncStatus(c.env.DB, userId, deviceId, vaultId)
+
+  // Status is what a client polls on startup and on foreground, so it is where
+  // a flipped kill switch reaches a device WITHOUT the device first attempting
+  // a write and eating a 403 (contract §2, last bullet). Only clients that
+  // identified themselves get the field: a header-less desktop build receives
+  // byte-for-byte the response it received before this shipped, and pays no
+  // extra query for it.
+  const client = c.get('client')
+  if (!client) return c.json(status)
+
+  const policy = await getClientPolicy(c.env.DB, client.platform)
+  return c.json({ ...status, clientPolicy: toPolicySnapshot(client.platform, policy) })
+}
+
+// Above paidSyncMiddleware, which UPSERTS the request's vault: memry-core polls
+// status with no X-Memry-Vault-Id at the start of a pass, racing vault
+// registration, and on an account with no vaults that poll minted a phantom
+// `default` (#3967). paidSyncReadMiddleware resolves the vault and returns the
+// same 400/402s, but never inserts.
+sync.get('/status', paidSyncReadMiddleware, statusRateLimit, handleRecordStatus)
+sync.get('/records/status', paidSyncReadMiddleware, statusRateLimit, handleRecordStatus)
+
 sync.use('*', paidSyncMiddleware)
 sync.use('*', syncTypesMiddleware)
 
@@ -318,12 +351,6 @@ const manifestRateLimit = createRateLimiter({
   getElevatedLimits: bootstrapRateLimitElevation
 })
 
-const statusRateLimit = createRateLimiter({
-  keyPrefix: 'sync_status',
-  maxRequests: 60,
-  windowSeconds: 60
-})
-
 const wsRateLimit = createRateLimiter({
   keyPrefix: 'sync_ws',
   maxRequests: 15,
@@ -346,25 +373,6 @@ sync.get('/ws', wsRateLimit, async (c) => {
     })
   )
 })
-
-const handleRecordStatus = async (c: Context<AppContext>): Promise<Response> => {
-  const userId = c.get('userId')!
-  const deviceId = c.get('deviceId')!
-  const vaultId = c.get('vaultId')!
-  const status = await getSyncStatus(c.env.DB, userId, deviceId, vaultId)
-
-  // Status is what a client polls on startup and on foreground, so it is where
-  // a flipped kill switch reaches a device WITHOUT the device first attempting
-  // a write and eating a 403 (contract §2, last bullet). Only clients that
-  // identified themselves get the field: a header-less desktop build receives
-  // byte-for-byte the response it received before this shipped, and pays no
-  // extra query for it.
-  const client = c.get('client')
-  if (!client) return c.json(status)
-
-  const policy = await getClientPolicy(c.env.DB, client.platform)
-  return c.json({ ...status, clientPolicy: toPolicySnapshot(client.platform, policy) })
-}
 
 const handleRecordManifest = async (c: Context<AppContext>): Promise<Response> => {
   const userId = c.get('userId')!
@@ -707,7 +715,6 @@ const handleListPacks = async (c: Context<AppContext>): Promise<Response> => {
 
 const recordSync = new Hono<AppContext>()
 
-recordSync.get('/status', statusRateLimit, handleRecordStatus)
 recordSync.get('/manifest', manifestRateLimit, handleRecordManifest)
 recordSync.get('/changes', changesRateLimit, handleRecordChanges)
 recordSync.post('/push', pushRateLimit, handleRecordPush)
@@ -717,7 +724,6 @@ recordSync.get('/packs', packsRateLimit, handleListPacks)
 
 sync.route('/records', recordSync)
 
-sync.get('/status', statusRateLimit, handleRecordStatus)
 sync.get('/manifest', manifestRateLimit, handleRecordManifest)
 sync.get('/changes', changesRateLimit, handleRecordChanges)
 sync.post('/push', pushRateLimit, handleRecordPush)
