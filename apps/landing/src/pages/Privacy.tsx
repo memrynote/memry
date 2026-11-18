@@ -145,7 +145,8 @@ export function PrivacyPage() {
           </li>
           <li>
             <strong>Account identifiers.</strong> Your email address, the one-time codes we email
-            you to sign in, and the devices you linked.
+            you to sign in, your Google account ID if you sign in with Google, and the devices you
+            linked.
           </li>
         </ul>
         <p>
