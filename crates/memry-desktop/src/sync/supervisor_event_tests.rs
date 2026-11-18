@@ -257,13 +257,75 @@ async fn a_failed_first_sync_is_shown_and_the_next_pass_runs_it_again() {
     let supervisor = rig.start().await;
     let status = supervisor.status();
     assert_eq!(status.status, SyncStatusValue::Error, "{status:?}");
-    assert_eq!(rig.passes(), 0, "no pass ran past the failed first sync");
+    assert_eq!(
+        rig.passes(),
+        1,
+        "a pass drained the outbox after the failed first sync"
+    );
     assert!(status.last_sync_at.is_none());
 
     let (result, ()) = tokio::join!(supervisor.sync_now(), settle());
     assert!(result.success, "{result:?}");
     assert_eq!(driver.first_syncs.load(Ordering::SeqCst), 2);
     assert_eq!(supervisor.status().status, SyncStatusValue::Idle);
+}
+
+/// A first sync that keeps failing (one body the server keeps refusing) does not hold the
+/// outbox back: a pass after each failure pushes, as Electron's full sync seeds and pushes on
+/// every run while the device is fresh (`full-sync-runner.ts:400-455`). The vault stays fresh,
+/// the failure stays shown, and its backoff still doubles.
+#[tokio::test(start_paused = true)]
+async fn a_first_sync_that_keeps_failing_still_pushes_and_stays_fresh() {
+    let rig = Rig::new();
+    let driver = &rig.backend.driver;
+    driver.fresh.store(true, Ordering::SeqCst);
+    driver.pushed_items.store(2, Ordering::SeqCst);
+    driver
+        .first_sync_keeps_failing
+        .store(true, Ordering::SeqCst);
+    *lock(&driver.first_sync_error) = Some(SyncError::Api {
+        source: ApiError::Status {
+            status: 502,
+            code: None,
+            message: "bad gateway".into(),
+        },
+    });
+    let supervisor = rig.start().await;
+    sleep(Duration::from_secs(40 * 60)).await;
+    let first_syncs = driver.first_syncs.load(Ordering::SeqCst);
+    assert!(rig.passes() >= 1, "no push in 40 minutes");
+    assert_eq!(
+        rig.passes(),
+        first_syncs,
+        "one draining pass per failed first sync"
+    );
+    // 5 s doubling to 5 min, not a retry every 5 s.
+    assert!(first_syncs <= 16, "{first_syncs} first syncs in 40 minutes");
+    assert!(driver.fresh.load(Ordering::SeqCst));
+    assert_eq!(supervisor.status().status, SyncStatusValue::Error);
+    let cleared = lock(&rig.sync_events)
+        .iter()
+        .filter(|event| matches!(event, SyncEvent::QueueCleared { item_count: 2, .. }))
+        .count();
+    assert!(cleared >= 1, "the draining pass tells queue-cleared");
+}
+
+/// An offline first sync answers offline and does not back off, as an offline pass does; no
+/// pass runs after it, which would fail the same way.
+#[tokio::test(start_paused = true)]
+async fn an_offline_first_sync_answers_offline_without_a_backoff() {
+    let rig = Rig::new();
+    let driver = &rig.backend.driver;
+    driver.fresh.store(true, Ordering::SeqCst);
+    *lock(&driver.first_sync_error) = Some(SyncError::from(ApiError::Transport {
+        source: TransportError::Offline,
+    }));
+    let supervisor = rig.start().await;
+    assert_eq!(rig.passes(), 0);
+    // An automatic trigger waits out a backoff; with none it runs at once.
+    supervisor.request_push();
+    settle().await;
+    assert_eq!(driver.first_syncs.load(Ordering::SeqCst), 2);
 }
 
 /// A pause that cuts the first sync records no failure: the status shows no error.
@@ -279,4 +341,37 @@ async fn a_first_sync_the_pause_cut_records_no_failure() {
     let status = supervisor.status();
     assert_eq!(status.error, None, "{status:?}");
     assert_ne!(status.status, SyncStatusValue::Error);
+}
+
+/// The first sync's answer carries every catch-up pass's pushed rows and push time, so
+/// queue-cleared counts what the whole first sync sent; the rest is the last pass's.
+#[test]
+fn a_first_sync_answers_its_last_pass_with_every_push() {
+    use memry_core::sync::engine::PassReport;
+    use memry_core::sync::pull::PullReport;
+    use memry_core::sync::state::{PassTrigger, SyncState};
+
+    let pass = |pushed_items: usize, push_ms: u64, final_state| PassReport {
+        trigger: PassTrigger::Explicit,
+        transitions: vec![SyncState::Pulling, final_state],
+        final_state,
+        pull: PullReport::default(),
+        parked: false,
+        pushed: pushed_items > 0,
+        pushed_items,
+        push_ms,
+        pull_error: None,
+        push_error: None,
+    };
+    let folded = super::super::backend::last_with_every_push(vec![
+        pass(3, 20, SyncState::Applying),
+        pass(2, 5, SyncState::Applying),
+        pass(0, 0, SyncState::Idle),
+    ])
+    .expect("passes ran");
+    assert_eq!(folded.pushed_items, 5);
+    assert_eq!(folded.push_ms, 25);
+    assert!(folded.pushed);
+    assert_eq!(folded.final_state, SyncState::Idle, "the last pass's state");
+    assert!(super::super::backend::last_with_every_push(Vec::new()).is_none());
 }

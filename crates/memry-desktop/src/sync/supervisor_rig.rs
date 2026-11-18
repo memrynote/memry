@@ -73,6 +73,8 @@ pub(crate) struct FakeDriver {
     pub(crate) first_syncs: AtomicUsize,
     /// The next first sync fails with this after its first progress.
     pub(crate) first_sync_error: Mutex<Option<SyncError>>,
+    /// Every first sync fails with `first_sync_error`, as one body the server keeps refusing.
+    pub(crate) first_sync_keeps_failing: AtomicBool,
 }
 
 impl FakeDriver {
@@ -181,7 +183,12 @@ impl SyncPasses for FakeDriver {
             processed_items: 1,
             total_items: 2,
         });
-        if let Some(error) = lock(&self.first_sync_error).take() {
+        let error = if self.first_sync_keeps_failing.load(Ordering::SeqCst) {
+            lock(&self.first_sync_error).clone()
+        } else {
+            lock(&self.first_sync_error).take()
+        };
+        if let Some(error) = error {
             return Err(error);
         }
         self.fresh.store(false, Ordering::SeqCst);

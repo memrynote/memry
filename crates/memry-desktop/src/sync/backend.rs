@@ -73,19 +73,9 @@ impl SyncPasses for SyncDriver {
         &self,
         progress: Arc<dyn InitialSyncSink>,
     ) -> Result<Option<PassReport>, SyncError> {
-        let Some(outcome) = SyncDriver::first_sync(self, progress).await? else {
-            return Ok(None);
-        };
-        // Electron's full sync pushes once and tells queue-cleared with every row it sent
-        // (`full-sync-runner.ts:453`).
-        let pushed_items = outcome.passes.iter().map(|pass| pass.pushed_items).sum();
-        let push_ms = outcome.passes.iter().map(|pass| pass.push_ms).sum();
-        Ok(outcome.passes.into_iter().last().map(|mut last| {
-            last.pushed |= pushed_items > 0;
-            last.pushed_items = pushed_items;
-            last.push_ms = push_ms;
-            last
-        }))
+        Ok(SyncDriver::first_sync(self, progress)
+            .await?
+            .and_then(|outcome| last_with_every_push(outcome.passes)))
     }
     fn realtime(
         &self,
@@ -128,6 +118,20 @@ impl SyncPasses for SyncDriver {
         let round = SyncDriver::final_snapshots(self, deadline).await;
         tracing::info!(?round, "final snapshot push");
     }
+}
+
+/// The first sync's last catch-up pass, with the rows and push time of all of them: Electron's
+/// full sync pushes once and tells queue-cleared with every row it sent
+/// (`full-sync-runner.ts:453`).
+pub(super) fn last_with_every_push(passes: Vec<PassReport>) -> Option<PassReport> {
+    let pushed_items = passes.iter().map(|pass| pass.pushed_items).sum();
+    let push_ms = passes.iter().map(|pass| pass.push_ms).sum();
+    passes.into_iter().last().map(|mut last| {
+        last.pushed |= pushed_items > 0;
+        last.pushed_items = pushed_items;
+        last.push_ms = push_ms;
+        last
+    })
 }
 
 #[async_trait::async_trait]

@@ -594,14 +594,25 @@ async fn real_passes_tell_item_synced_and_queue_cleared() {
     );
 
     let supervisor_b = b.supervisor_over(&gate, Arc::new(b.backend()), recorder(&events_b));
-    until("B pulled the note", || b.notes() == 1).await;
-    let pulled: Vec<SyncEvent> = events_b
-        .lock()
-        .unwrap()
-        .iter()
-        .filter(|event| matches!(event, SyncEvent::Pulled { item_type, .. } if item_type == "note"))
-        .cloned()
-        .collect();
+    let pulled = || -> Vec<SyncEvent> {
+        events_b
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(
+                |event| matches!(event, SyncEvent::Pulled { item_type, .. } if item_type == "note"),
+            )
+            .cloned()
+            .collect()
+    };
+    // B is fresh: its first sync's refs pass records the note metadata-only before the
+    // metadata pass applies it and tells `Pulled`.
+    until("B pulled the note", || !pulled().is_empty()).await;
+    until("B's first sync ended", || {
+        supervisor_b.status().last_sync_at.is_some()
+    })
+    .await;
+    let pulled = pulled();
     assert!(
         matches!(
             pulled.as_slice(),
