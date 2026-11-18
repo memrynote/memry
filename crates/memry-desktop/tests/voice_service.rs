@@ -473,7 +473,7 @@ async fn a_failure_is_stored_on_the_memo_and_a_retry_completes_it() {
     let payload = memo.payload();
     assert_eq!(payload["transcriptionStatus"], "failed");
     assert_eq!(payload["processingError"], openai::RATE_LIMITED);
-    assert_eq!(*notified.lock().unwrap(), [memo.id.clone()]);
+    assert_eq!(*notified.lock().unwrap(), std::slice::from_ref(&memo.id));
 
     let retried = voice
         .retry_transcription(
