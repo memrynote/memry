@@ -54,6 +54,14 @@ fn read_text(vault: &Path, rel: &str) -> Option<String> {
             return None;
         }
     };
+    // Checked before the read allocates; the bounded read covers a file that grows meanwhile.
+    if file
+        .metadata()
+        .is_ok_and(|meta| meta.len() > MAX_FILE_BYTES)
+    {
+        tracing::warn!("electron import: a note file is longer than Electron can read");
+        return None;
+    }
     let mut bytes = Vec::new();
     if let Err(error) = file.take(MAX_FILE_BYTES + 1).read_to_end(&mut bytes) {
         tracing::warn!(%error, "electron import: a note file could not be read");
