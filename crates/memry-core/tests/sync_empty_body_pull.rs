@@ -12,9 +12,9 @@
 //! as the plaintext.
 
 use crate::http_fakes;
+use crate::support;
 
-use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use base64::Engine as _;
@@ -44,16 +44,9 @@ const JOURNAL: &str = "j2026-11-10";
 const NOTE: &str = "laternote123";
 const WORD: &str = "zephyrjournal";
 
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
-
-fn scratch(label: &str) -> (PathBuf, Db) {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir: PathBuf = std::env::temp_dir().join(format!(
-        "memry-empty-body-pull-{label}-{}-{unique}",
-        std::process::id()
-    ));
-    std::fs::create_dir_all(&dir).expect("create the scratch directory");
-    let db = open_data(&dir.join("data.db")).expect("open data.db");
+fn scratch(label: &str) -> (tempfile::TempDir, Db) {
+    let dir = support::scratch_dir(&format!("empty-body-pull-{label}"));
+    let db = open_data(&dir.path().join("data.db")).expect("open data.db");
     (dir, db)
 }
 
@@ -249,7 +242,7 @@ async fn typed_after_an_empty_pull(id: &str, item_type: &str) {
     .expect("the body page");
 
     assert_eq!(report.advanced_documents, [id], "the feed landed the body");
-    assert_eq!(reindexed_hits(&dir, WORD), [id]);
+    assert_eq!(reindexed_hits(dir.path(), WORD), [id]);
 }
 
 #[tokio::test]
@@ -287,7 +280,7 @@ async fn an_install_left_without_body_state_heals_on_the_next_pass() {
         Ok::<_, StorageError>(())
     })
     .expect("the broken install");
-    assert_eq!(reindexed_hits(&dir, WORD), Vec::<String>::new());
+    assert_eq!(reindexed_hits(dir.path(), WORD), Vec::<String>::new());
 
     let typed = body_update(&format!("I jotted down the router password {WORD} here."));
     let mut script = Vec::new();
@@ -309,7 +302,7 @@ async fn an_install_left_without_body_state_heals_on_the_next_pass() {
             .expect("owed")
             .is_empty()
     );
-    assert_eq!(reindexed_hits(&dir, WORD), [JOURNAL]);
+    assert_eq!(reindexed_hits(dir.path(), WORD), [JOURNAL]);
 
     let again = body_step::run(&db, &body_pull(&db, FakeTransport::new(Vec::new())))
         .await
@@ -376,7 +369,7 @@ async fn an_existing_note_edited_on_desktop(
     .await
     .expect("the body step");
     assert_eq!(
-        reindexed_hits(&dir, "draft"),
+        reindexed_hits(dir.path(), "draft"),
         [NOTE],
         "indexed before the edit"
     );
@@ -412,7 +405,7 @@ async fn an_existing_note_edited_on_desktop(
         [NOTE],
         "the feed landed the edit"
     );
-    assert_eq!(reindexed_hits(&dir, WORD), [NOTE]);
+    assert_eq!(reindexed_hits(dir.path(), WORD), [NOTE]);
 }
 
 #[tokio::test]

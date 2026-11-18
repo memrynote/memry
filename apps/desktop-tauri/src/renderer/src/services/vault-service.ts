@@ -204,7 +204,7 @@ export const vaultService: VaultClientAPI = {
    * Provision + open a cloud-only vault locally.
    */
   downloadRemote: (vaultUuid: string, parentPath?: string): Promise<SelectVaultResponse> => {
-    return window.api.vault.downloadRemote(vaultUuid, parentPath)
+    return commands.vaultDownloadRemote(vaultUuid, parentPath ?? null).then(toSelectResponse)
   },
 
   /**

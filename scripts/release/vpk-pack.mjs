@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 // Runs `vpk pack` for one target with the argument list of vpk-args.mjs.
 // Usage: node scripts/release/vpk-pack.mjs <target> --version V --pack-dir D --output-dir O
-//        [--delta None|BestSpeed|BestSize] [--icon P] [--sign-template T]
+//        [--release-notes P] [--delta None|BestSpeed|BestSize] [--icon P] [--sign-template T]
 //        [--identity I --entitlements P --notary-profile N --keychain K]
 import { spawnSync } from 'node:child_process'
-import { readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { parseArgs } from 'node:util'
 
@@ -12,6 +12,13 @@ import { isMain } from './is-main.mjs'
 import { assertNoRedist } from './pe-imports.mjs'
 import { buildPackArgs, publishedName, TARGETS } from './vpk-args.mjs'
 import { assertBootstrapperPacked } from './webview2-bootstrapper.mjs'
+
+const repoRoot = path.resolve(import.meta.dirname, '../..')
+
+/** The humanized notes of a release, as `pnpm release:humanize` writes them. */
+export function releaseNotesPath(version) {
+  return path.join(repoRoot, 'release-notes', `${version}.md`)
+}
 
 /**
  * Throws when `packDir` cannot become a `target` pack: a Windows one ships the pinned WebView2
@@ -52,6 +59,7 @@ export function parsePackCli(argv) {
       version: { type: 'string' },
       'pack-dir': { type: 'string' },
       'output-dir': { type: 'string' },
+      'release-notes': { type: 'string' },
       delta: { type: 'string' },
       icon: { type: 'string' },
       'sign-template': { type: 'string' },
@@ -67,6 +75,7 @@ export function parsePackCli(argv) {
       version: values.version,
       packDir: values['pack-dir'],
       outputDir: values['output-dir'],
+      releaseNotes: values['release-notes'] ?? releaseNotesPath(values.version),
       delta: values.delta,
       iconPath: values.icon,
       signTemplate: values['sign-template'],
@@ -81,6 +90,11 @@ export function parsePackCli(argv) {
 if (isMain(import.meta)) {
   const { target, options } = parsePackCli(process.argv.slice(2))
   assertPackable(target, options.packDir)
+  if (!existsSync(options.releaseNotes)) {
+    throw new Error(
+      `No release notes at ${options.releaseNotes}. Run pnpm release:humanize, or pass --release-notes.`
+    )
+  }
   const args = buildPackArgs(target, options)
   console.log(`vpk ${args.join(' ')}`)
   const result = spawnSync(process.env.VPK_BIN ?? 'vpk', args, { stdio: 'inherit' })

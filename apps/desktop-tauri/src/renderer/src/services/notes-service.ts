@@ -692,7 +692,11 @@ export type NoteSaveResponse = NoteUpdateResponse &
  */
 export type AppendBlocksSaveResponse = AppendBlocksResponse & { errorCode?: 'target_not_taken' }
 
-type NotesServiceApi = Omit<NotesClientAPI, PortedLargeFileMethod | 'update' | 'appendBlocks'> & {
+// Similar notes, tag suggestions and grouping go through `similarity-service.ts`.
+type NotesServiceApi = Omit<
+  NotesClientAPI,
+  PortedLargeFileMethod | 'update' | 'appendBlocks' | 'getSimilar' | 'getTagSuggestions' | 'cluster'
+> & {
   update: (input: NoteSaveInput) => Promise<NoteSaveResponse>
   appendBlocks: (input: AppendBlocksInput) => Promise<AppendBlocksSaveResponse>
 }
