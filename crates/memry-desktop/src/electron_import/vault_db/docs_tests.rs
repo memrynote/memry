@@ -63,7 +63,10 @@ proptest! {
         match decode_payload(&text, 1) {
             Ok(Some(decoded)) => prop_assert!(decoded.len() <= output_bound(text.len())),
             Ok(None) => prop_assert!(text.is_empty()),
-            Err(error) => prop_assert!(matches!(error, ImportError::MalformedRow { .. })),
+            Err(error) => {
+                let typed = matches!(error, ImportError::MalformedRow { .. });
+                prop_assert!(typed);
+            }
         }
         let encoded = STANDARD.encode(&bytes);
         let expected = (!bytes.is_empty()).then(|| bytes.clone());
