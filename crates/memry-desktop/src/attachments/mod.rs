@@ -94,6 +94,9 @@ pub enum AttachmentError {
     /// The note id is not of the minted shape, or names a device on Windows.
     #[error("invalid note id for an attachment")]
     InvalidNote,
+    /// An exact file name that is not a plain one ([`save_exact`]).
+    #[error("an exact attachment filename must be a plain file name")]
+    NotPlainName,
     #[error("attachment type .{0} is not allowed")]
     UnsupportedType(String),
     #[error("attachment of {size} bytes is over the {limit} byte limit")]
@@ -396,7 +399,26 @@ pub fn save(
     file_name: &str,
     bytes: &[u8],
 ) -> Result<SavedAttachment, AttachmentError> {
-    save_with(vault, note_id, note_path, file_name, bytes, &mut |_| {})
+    save_with(vault, note_id, note_path, file_name, bytes, false, &mut |_| {})
+}
+
+/// `saveAttachment(..., { exactFilename: true })`: stores the file under `file_name` itself, so
+/// a caller finds it again by name (Readwise's `rw-<hash>.<ext>` images). Refuses a name that
+/// is not `[A-Za-z0-9_-][A-Za-z0-9_.-]*`, and a name already taken.
+pub fn save_exact(
+    vault: &Path,
+    note_id: &str,
+    note_path: Option<&str>,
+    file_name: &str,
+    bytes: &[u8],
+) -> Result<SavedAttachment, AttachmentError> {
+    let word = |b: u8| b.is_ascii_alphanumeric() || b == b'_' || b == b'-';
+    let plain = file_name.bytes().next().is_some_and(word)
+        && file_name.bytes().all(|b| word(b) || b == b'.');
+    if !plain {
+        return Err(AttachmentError::NotPlainName);
+    }
+    save_with(vault, note_id, note_path, file_name, bytes, true, &mut |_| {})
 }
 
 /// Test hook: [`save`] with `before_recheck` run with the target right before the last check of
@@ -412,7 +434,7 @@ pub fn save_checked(
     bytes: &[u8],
     before_recheck: &mut dyn FnMut(&Path),
 ) -> Result<SavedAttachment, AttachmentError> {
-    save_with(vault, note_id, note_path, file_name, bytes, before_recheck)
+    save_with(vault, note_id, note_path, file_name, bytes, false, before_recheck)
 }
 
 fn save_with(
@@ -421,6 +443,7 @@ fn save_with(
     note_path: Option<&str>,
     file_name: &str,
     bytes: &[u8],
+    exact: bool,
     before_recheck: &mut dyn FnMut(&Path),
 ) -> Result<SavedAttachment, AttachmentError> {
     let delays = RETRY_DELAYS_MS.map(Duration::from_millis);
@@ -433,6 +456,7 @@ fn save_with(
         note_path,
         file_name,
         bytes.len(),
+        exact,
         before_recheck,
         &mut write,
     )
@@ -466,6 +490,7 @@ fn store(
     note_path: Option<&str>,
     file_name: &str,
     size: usize,
+    exact: bool,
     before_recheck: &mut dyn FnMut(&Path),
     place: &mut dyn FnMut(&Path, BeforeCommit<'_>) -> Result<(), WriteError>,
 ) -> Result<SavedAttachment, AttachmentError> {
@@ -479,7 +504,10 @@ fn store(
     inside_vault(vault, &folder_rel)?;
     let mut attempt = 0;
     let stored = loop {
-        let stored = stored_name(&random_prefix(), file_name);
+        let stored = match exact {
+            true => file_name.to_owned(),
+            false => stored_name(&random_prefix(), file_name),
+        };
         let target = folder.join(&stored);
         let mut recheck = || {
             before_recheck(&target);
@@ -490,7 +518,9 @@ fn store(
         };
         match place(&target, &mut recheck) {
             Ok(()) => break stored,
-            Err(error) if error.already_exists() && attempt + 1 < NAME_ATTEMPTS => attempt += 1,
+            Err(error) if error.already_exists() && !exact && attempt + 1 < NAME_ATTEMPTS => {
+                attempt += 1
+            }
             Err(error) => return Err(error.into()),
         }
     };

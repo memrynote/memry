@@ -32,17 +32,22 @@
 //!   `location_label`).
 
 pub mod client;
+pub mod engine;
 pub mod highlights;
 pub mod images;
 pub mod journal;
+pub mod library;
 pub mod limiter;
+pub mod options;
 pub mod plan_append;
 pub mod plan_note;
 pub mod reader;
+pub mod run_state;
 pub mod section;
 pub mod text;
 pub mod token;
 pub mod types;
+pub mod writer;
 
 use std::cell::Cell;
 

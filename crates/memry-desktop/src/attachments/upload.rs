@@ -276,6 +276,7 @@ fn commit(
         note_path.as_deref(),
         &upload.file_name,
         usize::try_from(upload.written).unwrap_or(usize::MAX),
+        false,
         before_recheck,
         &mut |target, recheck| move_into(&temp, target, recheck),
     )

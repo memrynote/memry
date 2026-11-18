@@ -4,8 +4,11 @@
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use serde_json::Value;
+
 use crate::api::errors::StorageError;
 use crate::domain::readwise::{self, Link, LinkKey, LinkState, UpsertLink};
+use crate::domain::settings;
 use crate::storage::Db;
 
 fn now_ms() -> i64 {
@@ -111,6 +114,16 @@ impl ReadwiseStore {
         let (key, value) = (key.to_owned(), value.map(str::to_owned));
         self.db.call_blocking(move |conn| {
             readwise::set_run_state(conn, &key, value.as_deref(), now_ms())
+        })
+    }
+
+    /// The synced `readwise` settings group as stored, `{}` when no device set one.
+    pub fn settings_group(&self) -> Result<Value, StorageError> {
+        self.db.read_blocking(|conn| {
+            Ok(settings::all(conn)?
+                .remove("readwise")
+                .filter(Value::is_object)
+                .unwrap_or_else(|| Value::Object(serde_json::Map::new())))
         })
     }
 }
