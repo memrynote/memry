@@ -868,7 +868,10 @@ export const events = {
 	customIconsUpdatedEvent: makeEvent<CustomIconsUpdatedEvent, CustomIconsUpdatedEvent>("custom-icons-updated-event"),
 	flushRequestedEvent: makeEvent<FlushRequestedEvent, FlushRequestedEvent>("flush-requested-event"),
 	folderConfigUpdatedEvent: makeEvent<FolderConfigUpdatedEvent, FolderConfigUpdatedEvent>("folder-config-updated-event"),
+	inboxMetadataCompleteEvent: makeEvent<InboxMetadataCompleteEvent, InboxMetadataCompleteEvent>("inbox-metadata-complete-event"),
 	inboxOpenItemEvent: makeEvent<InboxOpenItemEvent, InboxOpenItemEvent>("inbox-open-item-event"),
+	inboxProcessingErrorEvent: makeEvent<InboxProcessingErrorEvent, InboxProcessingErrorEvent>("inbox-processing-error-event"),
+	inboxUpdatedEvent: makeEvent<InboxUpdatedEvent, InboxUpdatedEvent>("inbox-updated-event"),
 	journalEntryCreatedEvent: makeEvent<JournalEntryCreatedEvent, JournalEntryCreatedEvent>("journal-entry-created-event"),
 	journalEntryDeletedEvent: makeEvent<JournalEntryDeletedEvent, JournalEntryDeletedEvent>("journal-entry-deleted-event"),
 	journalEntryUpdatedEvent: makeEvent<JournalEntryUpdatedEvent, JournalEntryUpdatedEvent>("journal-entry-updated-event"),
@@ -1934,11 +1937,46 @@ export type ImpactQuery = { kind: "remove-field"; tag: string; name: string } | 
 export type ImpactView = { kind: "remove-field"; filled: number; empty: number } | { kind: "rename-field"; notes: number; tasks: number; tags: string[] } | { kind: "delete-tag"; notes: number; tasks: number; values: number; fields: number; templateName: string | null } | { kind: "set-extends"; notes: number; gained: string[]; lost: string[] } | { kind: "become-objects"; notes: number };
 
 /**
+ *  The capture fields a job wrote (`Partial<InboxItem>`). A field the job did not write is
+ *  absent; Electron sent `processingError: null` and `thumbnailPath: null` on a success.
+ */
+export type InboxItemChanges = {
+	processingStatus?: string | null,
+	processingError?: string | null,
+	thumbnailPath?: string | null,
+	content?: string | null,
+};
+
+/**  The link preview `inbox:metadata-complete` carries. */
+export type InboxLinkPreview = {
+	title: string | null,
+	description: string | null,
+	image: string | null,
+	thumbnailPath: string | null,
+};
+
+/**  `InboxMetadataCompleteEvent`: the link preview of capture `id` is stored. */
+export type InboxMetadataCompleteEvent = {
+	id: string,
+	metadata: InboxLinkPreview,
+};
+
+/**
  *  Open an inbox item (`inbox-open-item-event`): `memry://open?item=<id>` and, with Step 27
  *  (#3544), a clicked inbox notification.
  */
 export type InboxOpenItemEvent = {
 	itemId: string,
+};
+
+/**
+ *  `InboxProcessingErrorEvent`: a job's last attempt failed. `operation` is one of
+ *  `transcription`, `metadata`, `pdf` and `ocr`; the runner sends `metadata`.
+ */
+export type InboxProcessingErrorEvent = {
+	id: string,
+	operation: string,
+	error: string,
 };
 
 /**  `InboxResultMetadata`. `itemType` is the stored text; the renderer narrows it. */
@@ -1947,6 +1985,12 @@ export type InboxResultMetadata = {
 	sourceUrl: string | null,
 	sourceTitle: string | null,
 	filedAt: string | null,
+};
+
+/**  `InboxUpdatedEvent`: a job wrote these fields of capture `id`. */
+export type InboxUpdatedEvent = {
+	id: string,
+	changes: InboxItemChanges,
 };
 
 export type InheritedFieldsView = {

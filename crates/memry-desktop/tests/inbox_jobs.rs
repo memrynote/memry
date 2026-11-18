@@ -121,7 +121,8 @@ fn world() -> World {
         .build()
         .expect("runtime");
     let server = runtime.block_on(start());
-    let web = WebFetch::for_tests(Limits::default(), &[("news.example.com", server.addr)]).expect("web");
+    let web =
+        WebFetch::for_tests(Limits::default(), &[("news.example.com", server.addr)]).expect("web");
     let config = Arc::new(AppConfig::load(app.join("memry-config.json")));
     let session = Session::new(VaultRegistry::new(config));
     let (sent, notices) = channel();

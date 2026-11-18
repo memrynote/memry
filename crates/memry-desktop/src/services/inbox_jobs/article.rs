@@ -7,7 +7,7 @@ use memry_core::domain::inbox::ingest::{
 };
 use memry_core::domain::inbox::jobs::InboxJob;
 
-use super::metadata::{MISSING_LINK, is_http};
+use super::metadata::MISSING_LINK;
 use super::run::{Ctx, Halt};
 use super::{InboxJobNotice, ItemChanges};
 use crate::services::web_fetch::BlockingFetcher;
@@ -49,7 +49,7 @@ fn store(ctx: &Ctx<'_>, job: &InboxJob, capture: ArticleCapture) -> Result<(), H
         return Ok(());
     }
     let item_id = job.item_id.as_str();
-    let hero_path = match capture.hero_image.as_deref().filter(|hero| is_http(hero)) {
+    let hero_path = match capture.hero_image.as_deref() {
         Some(hero) => {
             let dir = ctx.open.path.join("attachments/inbox").join(item_id);
             ctx.block(ctx.jobs.web.download_image(hero, &dir))?

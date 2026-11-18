@@ -42,7 +42,7 @@ fn fetch(ctx: &Ctx<'_>, url: &str) -> Result<UrlMetadata, Halt> {
 /// The success half of `processMetadataJob`: hero downloaded, preview written, article queued.
 fn store(ctx: &Ctx<'_>, job: &InboxJob, url: &str, metadata: UrlMetadata) -> Result<(), Halt> {
     let item_id = job.item_id.as_str();
-    let thumbnail_path = match metadata.image.as_deref().filter(|image| is_http(image)) {
+    let thumbnail_path = match metadata.image.as_deref() {
         Some(image) => {
             let dir = ctx.open.path.join("attachments/inbox").join(item_id);
             ctx.block(ctx.jobs.web.download_image(image, &dir))?
@@ -141,10 +141,4 @@ fn failed(ctx: &Ctx<'_>, job: &InboxJob, url: &str, error: &str) {
         error: error.to_owned(),
     });
     ctx.fail(job, error);
-}
-
-/// Only http(s) heroes are downloaded. A `data:` image (which metascrape keeps) gives no
-/// thumbnail, and no other scheme reaches the client.
-pub(super) fn is_http(url: &str) -> bool {
-    url::Url::parse(url).is_ok_and(|url| matches!(url.scheme(), "http" | "https"))
 }
