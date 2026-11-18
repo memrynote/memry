@@ -40,6 +40,8 @@ mod agent_mcp_http;
 mod agent_mcp_parts;
 #[path = "agent_store.rs"]
 mod agent_store;
+#[path = "agent_write_gate.rs"]
+mod agent_write_gate;
 #[path = "ai_catalog.rs"]
 mod ai_catalog;
 #[path = "ai_features.rs"]
