@@ -12834,7 +12834,8 @@ public protocol VaultCalendarProtocol: AnyObject, Sendable {
     
     /**
      * A 200 for a refresh: the mirror follows the feed. A body that does
-     * not parse is recorded as `not_a_calendar` and returned as that error.
+     * not parse (`not_a_calendar`) or is too large to read (`too_large`) is
+     * recorded as that code and returned as that error.
      */
     func feedRecordFetch(sourceId: String, feed: CalendarFetchedFeed, zones: CalendarFeedZones) throws  -> UInt32
     
@@ -13311,7 +13312,8 @@ open func feedRecordError(sourceId: String, code: String)throws   {try rustCallW
     
     /**
      * A 200 for a refresh: the mirror follows the feed. A body that does
-     * not parse is recorded as `not_a_calendar` and returned as that error.
+     * not parse (`not_a_calendar`) or is too large to read (`too_large`) is
+     * recorded as that code and returned as that error.
      */
 open func feedRecordFetch(sourceId: String, feed: CalendarFetchedFeed, zones: CalendarFeedZones)throws  -> UInt32  {
     return try  FfiConverterUInt32.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
@@ -36978,7 +36980,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_vaultcalendar_feed_record_error() != 19564) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_vaultcalendar_feed_record_fetch() != 28465) {
+    if (uniffi_memry_core_checksum_method_vaultcalendar_feed_record_fetch() != 25321) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vaultcalendar_feed_record_not_modified() != 41963) {
