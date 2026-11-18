@@ -39,6 +39,7 @@ pub mod review;
 pub mod states;
 pub mod stats;
 pub mod suggest;
+pub mod suggest_history;
 pub mod urls;
 pub mod write;
 
