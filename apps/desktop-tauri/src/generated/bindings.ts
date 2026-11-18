@@ -110,6 +110,14 @@ export const commands = {
 	 */
 	writingGenerateAssist: (input: WritingAssistInput) => __TAURI_INVOKE<WritingAssistResult>("writing_generate_assist", { input }),
 	appInfo: () => __TAURI_INVOKE<AppInfo>("app_info"),
+	accountChangePlan: (target: PlanChangeTarget) => __TAURI_INVOKE<BillingStatusResult>("account_change_plan", { target }),
+	accountGetBillingStatus: () => __TAURI_INVOKE<BillingStatusResult>("account_get_billing_status"),
+	accountOpenBillingPortal: () => __TAURI_INVOKE<PortalResult>("account_open_billing_portal"),
+	accountPreviewPlanChange: (target: PlanChangeTarget) => __TAURI_INVOKE<PlanChangePreviewResult>("account_preview_plan_change", { target }),
+	/**  Re-reads the plan from the payment provider (`POST /auth/billing/reconcile`). */
+	accountRefreshBillingStatus: (input: RefreshBillingInput | null) => __TAURI_INVOKE<BillingStatusResult>("account_refresh_billing_status", { input }),
+	/**  Opens the checkout page in the browser, with the plan picked during onboarding. */
+	accountStartCheckout: (input: StartCheckoutInput | null) => __TAURI_INVOKE<CheckoutResult>("account_start_checkout", { input }),
 	/**  The calling window closed its editor of `note_id`. */
 	crdtCloseDoc: (noteId: string) => __TAURI_INVOKE<null>("crdt_close_doc", { noteId }),
 	crdtGetHealth: () => __TAURI_INVOKE<CrdtHealth>("crdt_get_health"),
@@ -228,6 +236,8 @@ export const commands = {
 	 *  ([`announce_followed`]).
 	 */
 	journalUpdateEntry: (input: JournalUpdateInput) => __TAURI_INVOKE<JournalEntryView>("journal_update_entry", { input }),
+	/**  Logs `renderer launch marks {json}`, the line the launch bench parses. */
+	launchReportRendererMarks: (marks: RendererLaunchMarks) => __TAURI_INVOKE<null>("launch_report_renderer_marks", { marks }),
 	localeGet: () => __TAURI_INVOKE<string>("locale_get"),
 	localeList: () => __TAURI_INVOKE<string[]>("locale_list"),
 	/**
@@ -447,6 +457,15 @@ export const commands = {
 	 *  failed write saves nothing.
 	 */
 	notesDownloadUnsplashPhoto: (noteId: string, photo: UnsplashPhoto) => __TAURI_INVOKE<UnsplashDownloadResponse>("notes_download_unsplash_photo", { noteId, photo }),
+	/**  `notes:cluster`: proposed groups for at most 300 notes. */
+	notesCluster: (noteIds: string[]) => __TAURI_INVOKE<NoteClustersResponse>("notes_cluster", { noteIds }),
+	/**
+	 *  `notes:get-similar`: the nearest notes not linked with `note_id`, `limit` of them (5 when
+	 *  absent, 1 to 20).
+	 */
+	notesGetSimilar: (noteId: string, limit: number | null) => __TAURI_INVOKE<SimilarNotesResponse>("notes_get_similar", { noteId, limit }),
+	/**  `notes:get-tag-suggestions`: tags the nearest notes share and `note_id` lacks. */
+	notesGetTagSuggestions: (noteId: string) => __TAURI_INVOKE<NoteTagSuggestionsResponse>("notes_get_tag_suggestions", { noteId }),
 	/**  `notes:delete-version`: a version that is not there is no failure, as in Electron. */
 	notesDeleteVersion: (snapshotId: string) => __TAURI_INVOKE<null>("notes_delete_version", { snapshotId }),
 	/**  `notes:get-version`: the version and the file it restores to; `null` for none. */
@@ -608,6 +627,30 @@ export const commands = {
 	 *  tells the user that recent edits may be lost.
 	 */
 	shellTakeCrashReload: () => __TAURI_INVOKE<boolean>("shell_take_crash_reload"),
+	/**  `sync:get-history`. */
+	syncGetHistory: (input: GetHistoryInput) => __TAURI_INVOKE<GetHistoryResult>("sync_get_history", { input }),
+	/**  `sync:get-large-notes`. */
+	syncGetLargeNotes: () => __TAURI_INVOKE<LargeNotesResult>("sync_get_large_notes"),
+	/**  `sync:get-note-sync-state`: `null` for an unknown note. */
+	syncGetNoteSyncState: (input: GetNoteSyncStateInput) => __TAURI_INVOKE<NoteSyncState | null>("sync_get_note_sync_state", { input }),
+	/**  `sync:get-quarantined-items`. */
+	syncGetQuarantinedItems: () => __TAURI_INVOKE<QuarantinedItemInfo[]>("sync_get_quarantined_items"),
+	/**  `sync:get-queue-size`. */
+	syncGetQueueSize: () => __TAURI_INVOKE<GetQueueSizeResult>("sync_get_queue_size"),
+	/**  `sync:get-status`. */
+	syncGetStatus: () => __TAURI_INVOKE<SyncStatus>("sync_get_status"),
+	/**  `sync:get-synced-settings`: `null` with no vault open. */
+	syncGetSyncedSettings: () => __TAURI_INVOKE<{ [key in string]: Value } | null>("sync_get_synced_settings"),
+	/**  `sync:get-unsent-notes`. */
+	syncGetUnsentNotes: () => __TAURI_INVOKE<UnsentNotesResult>("sync_get_unsent_notes"),
+	/**  `sync:pause`. */
+	syncPause: (input: SyncControlInput) => __TAURI_INVOKE<PauseSyncResult>("sync_pause", { input }),
+	/**  `sync:resume`. */
+	syncResume: (input: SyncControlInput) => __TAURI_INVOKE<ResumeSyncResult>("sync_resume", { input }),
+	/**  `sync:trigger-sync` (Sync Now). */
+	syncTrigger: () => __TAURI_INVOKE<TriggerSyncResult>("sync_trigger"),
+	/**  `sync:update-synced-setting`. */
+	syncUpdateSyncedSetting: (input: UpdateSyncedSettingInput) => __TAURI_INVOKE<UpdateSyncedSettingResult>("sync_update_synced_setting", { input }),
 	/**  `account:sign-out`. */
 	accountSignOut: () => __TAURI_INVOKE<SignOutResult>("account_sign_out"),
 	/**  `sync:get-vault-binding`: `bound` while no supervisor runs (signed out, no vault). */
@@ -733,6 +776,13 @@ export const commands = {
 	 */
 	vaultDeleteFromAccount: (vaultUuid: string) => __TAURI_INVOKE<null>("vault_delete_from_account", { vaultUuid }),
 	/**
+	 *  `vault:download-remote` (`vault-directory.ts:266-318`): opens the registered copy of the
+	 *  account vault, else makes its folder under `parent_path` (default: next to the current vault)
+	 *  and opens that. A download that opens arms the new vault's bootstrap window from the moment
+	 *  this call started, as `beginBootstrap` does before provisioning, and marks it interactive.
+	 */
+	vaultDownloadRemote: (vaultUuid: string, parentPath: string | null) => __TAURI_INVOKE<SelectVaultResponse>("vault_download_remote", { vaultUuid, parentPath }),
+	/**
 	 *  `vault:list-account`: refreshes the directory (throttled), then the cached list, which is
 	 *  the last one read when offline.
 	 */
@@ -776,6 +826,21 @@ export const commands = {
 	 *  that is not here (the note stays kept).
 	 */
 	vaultNoticesRestoreKept: (noteId: string) => __TAURI_INVOKE<null>("vault_notices_restore_kept", { noteId }),
+	/**
+	 *  `settings:downloadVoiceModel`: downloads and verifies Whisper Small, with progress on
+	 *  `VoiceModelProgressEvent`. A failure rejects with the download's reason.
+	 */
+	settingsDownloadVoiceModel: () => __TAURI_INVOKE<null>("settings_download_voice_model"),
+	/**  `settings:getVoiceModelStatus`. */
+	settingsGetVoiceModelStatus: () => __TAURI_INVOKE<VoiceModelStatus>("settings_get_voice_model_status"),
+	/**  `settings:getVoiceRecordingReadiness`. */
+	settingsGetVoiceRecordingReadiness: () => __TAURI_INVOKE<VoiceRecordingReadiness>("settings_get_voice_recording_readiness"),
+	/**  `settings:getVoiceTranscriptionOpenAIKeyStatus`. */
+	settingsGetVoiceTranscriptionOpenaiKeyStatus: () => __TAURI_INVOKE<VoiceOpenAiKeyStatus>("settings_get_voice_transcription_openai_key_status"),
+	/**  `settings:openOsMicrophoneSettings`. */
+	settingsOpenOsMicrophoneSettings: () => __TAURI_INVOKE<OpenSettingsResult>("settings_open_os_microphone_settings"),
+	/**  `settings:setVoiceTranscriptionOpenAIKey`: a blank key deletes the stored one. */
+	settingsSetVoiceTranscriptionOpenaiKey: (apiKey: string) => __TAURI_INVOKE<null>("settings_set_voice_transcription_openai_key", { apiKey }),
 	/**  Closes the calling window. The `CloseRequested` handlers (flush, tray) decide what follows. */
 	windowClose: () => __TAURI_INVOKE<null>("window_close"),
 	/**  Minimizes the calling window. */
@@ -828,10 +893,19 @@ export const events = {
 	propertyDefinitionChangedEvent: makeEvent<PropertyDefinitionChangedEvent, PropertyDefinitionChangedEvent>("property-definition-changed-event"),
 	settingsChangedEvent: makeEvent<SettingsChangedEvent, SettingsChangedEvent>("settings-changed-event"),
 	settingsOpenSectionEvent: makeEvent<SettingsOpenSectionEvent, SettingsOpenSectionEvent>("settings-open-section-event"),
+	syncCertificatePinFailedEvent: makeEvent<SyncCertificatePinFailedEvent, SyncCertificatePinFailedEvent>("sync-certificate-pin-failed-event"),
+	syncClockSkewWarningEvent: makeEvent<SyncClockSkewWarningEvent, SyncClockSkewWarningEvent>("sync-clock-skew-warning-event"),
 	syncDeviceRemovedEvent: makeEvent<SyncDeviceRemovedEvent, SyncDeviceRemovedEvent>("sync-device-removed-event"),
+	syncInitialSyncProgressEvent: makeEvent<SyncInitialSyncProgressEvent, SyncInitialSyncProgressEvent>("sync-initial-sync-progress-event"),
+	syncItemCorruptEvent: makeEvent<SyncItemCorruptEvent, SyncItemCorruptEvent>("sync-item-corrupt-event"),
+	syncItemRecoveredEvent: makeEvent<SyncItemRecoveredEvent, SyncItemRecoveredEvent>("sync-item-recovered-event"),
+	syncItemSyncedEvent: makeEvent<SyncItemSyncedEvent, SyncItemSyncedEvent>("sync-item-synced-event"),
 	syncLinkingApprovedEvent: makeEvent<SyncLinkingApprovedEvent, SyncLinkingApprovedEvent>("sync-linking-approved-event"),
 	syncLinkingFinalizedEvent: makeEvent<SyncLinkingFinalizedEvent, SyncLinkingFinalizedEvent>("sync-linking-finalized-event"),
 	syncLinkingRequestedEvent: makeEvent<SyncLinkingRequestedEvent, SyncLinkingRequestedEvent>("sync-linking-requested-event"),
+	syncQueueClearedEvent: makeEvent<SyncQueueClearedEvent, SyncQueueClearedEvent>("sync-queue-cleared-event"),
+	syncSecurityWarningEvent: makeEvent<SyncSecurityWarningEvent, SyncSecurityWarningEvent>("sync-security-warning-event"),
+	syncStatusChangedEvent: makeEvent<SyncStatusChangedEvent, SyncStatusChangedEvent>("sync-status-changed-event"),
 	syncVaultBindingChangedEvent: makeEvent<SyncVaultBindingChangedEvent, SyncVaultBindingChangedEvent>("sync-vault-binding-changed-event"),
 	tagCategoriesChangedEvent: makeEvent<TagCategoriesChangedEvent, TagCategoriesChangedEvent>("tag-categories-changed-event"),
 	tagColorUpdatedEvent: makeEvent<TagColorUpdatedEvent, TagColorUpdatedEvent>("tag-color-updated-event"),
@@ -853,6 +927,7 @@ export const events = {
 	vaultLocksExternalEditRestoredEvent: makeEvent<VaultLocksExternalEditRestoredEvent, VaultLocksExternalEditRestoredEvent>("vault-locks-external-edit-restored-event"),
 	vaultNoticesChangedEvent: makeEvent<VaultNoticesChangedEvent, VaultNoticesChangedEvent>("vault-notices-changed-event"),
 	vaultStatusChangedEvent: makeEvent<VaultStatusChangedEvent, VaultStatusChangedEvent>("vault-status-changed-event"),
+	voiceModelProgressEvent: makeEvent<VoiceModelProgressEvent, VoiceModelProgressEvent>("voice-model-progress-event"),
 	windowCaptionHoverChangedEvent: makeEvent<WindowCaptionHoverChangedEvent, WindowCaptionHoverChangedEvent>("window-caption-hover-changed-event"),
 	windowCaptionPressedChangedEvent: makeEvent<WindowCaptionPressedChangedEvent, WindowCaptionPressedChangedEvent>("window-caption-pressed-changed-event"),
 	windowChromeStateChangedEvent: makeEvent<WindowChromeStateChangedEvent, WindowChromeStateChangedEvent>("window-chrome-state-changed-event"),
@@ -1200,6 +1275,43 @@ export type BacklinkView = {
 	via?: LinkViaView | null,
 };
 
+/**  `BillingActionResult`: the envelope of a call that did not reach the server (signed out). */
+export type BillingActionResult = {
+	success: boolean,
+	error?: string | null,
+};
+
+export type BillingLimits = {
+	storageLimit: number,
+	maxFileSize: number,
+	/**  `null` is unlimited (Believer). */
+	maxVaults: number | null,
+	versionHistoryDays: number,
+};
+
+/**
+ *  `BillingStatus` of `paddle-billing.ts`. `plan`, `cadence` and `status` stay as the server
+ *  sends them.
+ */
+export type BillingStatusDto = {
+	plan: string,
+	cadence: string | null,
+	status: string,
+	email: string | null,
+	limits: BillingLimits,
+	usage: BillingUsage,
+	/**  Epoch seconds. */
+	expiresAt: number | null,
+	canManageBilling: boolean,
+};
+
+/**  The status, or the signed-out envelope; the renderer tells them apart with `'plan' in r`. */
+export type BillingStatusResult = BillingStatusDto | BillingActionResult;
+
+export type BillingUsage = {
+	storageUsed: number,
+};
+
 export type BuildKind = "dev" | "packaged";
 
 /**  A caption button's rectangle in client coordinates, physical pixels. */
@@ -1225,6 +1337,16 @@ export type CategoryOrderInput = {
  *  - `unknown`: anything else, logged.
  */
 export type ChangeHold = { kind: "settings"; path: string } | { kind: "taken"; path: string } | { kind: "refused" } | { kind: "unknown" };
+
+export type CheckoutCadence = "monthly" | "annual" | "lifetime";
+
+export type CheckoutPlan = "plus" | "pro" | "believer";
+
+export type CheckoutResult = {
+	success: boolean,
+	error?: string | null,
+	checkoutUrl?: string | null,
+};
 
 /**
  *  What the renderer sees when a command rejects. Tauri serializes it as JSON, the shape
@@ -1736,10 +1858,33 @@ export type FolderView = {
 /**  Chapter 02 §2.3.4: `None` is unknown and the device list falls back to `platform`. */
 export type FormFactor = "phone" | "tablet";
 
+/**  `GetHistoryInput`. */
+export type GetHistoryInput = {
+	limit: number | null,
+	offset: number | null,
+};
+
+/**  `GetHistoryResult`. */
+export type GetHistoryResult = {
+	entries: SyncHistoryEntry[],
+	total: number,
+};
+
 /**  `GetLinkedHereSchema`. */
 export type GetLinkedHereInput = {
 	noteId: string,
 	limitPerGroup?: number | null,
+};
+
+/**  `sync:get-note-sync-state` input. */
+export type GetNoteSyncStateInput = {
+	noteId: string,
+};
+
+/**  `GetQueueSizeResult`. */
+export type GetQueueSizeResult = {
+	pending: number,
+	failed: number,
 };
 
 export type GetVaultsResponse = {
@@ -1810,6 +1955,9 @@ export type InheritedFieldsView = {
 	from: string,
 	fields: ResolvedFieldView[],
 };
+
+/**  `InitialSyncPhase`. */
+export type InitialSyncPhase = "manifest" | "packs" | "notes" | "tasks" | "attachments" | "complete";
 
 /**
  *  `AIInlineSettings` of `@memry/contracts/ai-inline-channels`. Outside Rust `api_key` is
@@ -2070,6 +2218,24 @@ export type LargeFileSearchProgress = {
  */
 export type LargeFileSearchResult = { status: "complete"; query: string; hits: LargeFileHit[]; total: number; limited: boolean } | { status: "cancelled"; query: string };
 
+/**  `LargeNoteEntry`. */
+export type LargeNoteEntry = {
+	id: string,
+	title: string,
+	path: string,
+	sizeBytes: number,
+	status: LargeNoteStatus,
+};
+
+/**  `LargeNoteEntry.status`. */
+export type LargeNoteStatus = "approaching" | "over";
+
+/**  `LargeNotesResult`. */
+export type LargeNotesResult = {
+	maxBytes: number,
+	notes: LargeNoteEntry[],
+};
+
 export type LastRunStatus = "idle" | "writing" | "failed";
 
 export type LevelWords = {
@@ -2285,6 +2451,21 @@ export type NoteAliasesView = {
 	aliases: string[],
 };
 
+/**  `NoteClusterGroup`. */
+export type NoteClusterGroup = {
+	noteIds: string[],
+	titles: string[],
+	suggestedName: string | null,
+};
+
+/**  `NoteClustersResponse`. */
+export type NoteClustersResponse = {
+	status: NoteSimilarityStatus,
+	groups: NoteClusterGroup[],
+	ungrouped: string[],
+	missing: string[],
+};
+
 /**
  *  `NoteCreateSchema`, without `plainChecklists` (Step 32), which the renderer's service
  *  refuses until then.
@@ -2459,6 +2640,35 @@ export type NoteResultMetadata = {
 	matchedName?: string | null,
 };
 
+/**  `NoteSimilarityStatus`. */
+export type NoteSimilarityStatus = "disabled" | "no-embedding" | "ready";
+
+/**  `NoteSyncState`. Times are epoch milliseconds. */
+export type NoteSyncState = {
+	state: NoteSyncStateValue,
+	waitingSince: number | null,
+	lastSentAt: number | null,
+	bodyConfirmedAt: number | null,
+	lastFailedAt: number | null,
+	lastRejectedAt: number | null,
+};
+
+/**  `NoteSyncStateValue`. */
+export type NoteSyncStateValue = "not_syncing" | "local_only" | "pending" | "sent" | "confirmed" | "not_recorded" | "rejected";
+
+/**  `NoteTagSuggestion`. */
+export type NoteTagSuggestion = {
+	tag: string,
+	confidence: number | null,
+	support: number,
+};
+
+/**  `NoteTagSuggestionsResponse`. */
+export type NoteTagSuggestionsResponse = {
+	status: NoteSimilarityStatus,
+	tags: NoteTagSuggestion[],
+};
+
 /**
  *  Something the tag list shows changed (`notes:tags-changed`). No payload; the renderer
  *  refetches.
@@ -2605,11 +2815,53 @@ export type OcrLanguagesState = {
 	statuses: Partial<{ [key in OcrLanguage]: OcrLanguageStatus }>,
 };
 
+export type OpenSettingsResult = {
+	success: boolean,
+};
+
 export type OptionInput = {
 	value: string,
 	color: string,
 	default?: boolean | null,
 };
+
+/**  `PauseSyncResult`. */
+export type PauseSyncResult = {
+	success: boolean,
+	wasPaused: boolean,
+};
+
+export type PlanChangePeriod = "monthly" | "annual";
+
+export type PlanChangePlan = "plus" | "pro";
+
+/**  `PlanChangePreview` of `paddle-billing.ts`. Amounts are Paddle's minor-unit strings. */
+export type PlanChangePreviewDto = {
+	plan: PlanChangePlan,
+	cadence: PlanChangePeriod,
+	isUpgrade: boolean,
+	effective: PlanChangeTiming,
+	immediateChargeAmount: string | null,
+	recurringAmount: string,
+	currencyCode: string,
+	nextBilledAt: string | null,
+};
+
+export type PlanChangePreviewResult = PlanChangePreviewDto | BillingActionResult;
+
+/**  Recurring plans only: Believer is a one-time purchase with nothing to switch. */
+export type PlanChangeTarget = {
+	plan: PlanChangePlan,
+	cadence: PlanChangePeriod,
+};
+
+export type PlanChangeTiming = "immediate" | "next_billing_period";
+
+/**
+ *  `no-billing-customer` is a `409`: the server has no billing customer for the account (never
+ *  paid, webhook pending).
+ */
+export type PortalFailureReason = "no-billing-customer";
 
 /**  `PortalHost['kind']`. */
 export type PortalHostKind = "portal" | "link";
@@ -2623,6 +2875,13 @@ export type PortalHostView = {
 	kind: PortalHostKind,
 	/**  A portal's first matching fence among the host's portal fences; absent for a link. */
 	ordinal?: number | null,
+};
+
+export type PortalResult = {
+	success: boolean,
+	reason?: PortalFailureReason | null,
+	portalUrl?: string | null,
+	error?: string | null,
 };
 
 /**  `PortalSearchSchema`, checked by the command. */
@@ -2749,10 +3008,26 @@ export type PropertyValueView = {
 	type: string,
 };
 
+/**  `QuarantinedItemInfo`. */
+export type QuarantinedItemInfo = {
+	itemId: string,
+	itemType: string,
+	signerDeviceId: string,
+	failedAt: number,
+	attemptCount: number,
+	lastError: string,
+	permanent: boolean,
+};
+
 /**  `QuickSearchResponse`. */
 export type QuickSearchResponse = {
 	results: SearchResultItem[],
 	queryTimeMs: number | null,
+};
+
+/**  `refreshBillingStatus(input?)`: the web checkout's transaction, when known. */
+export type RefreshBillingInput = {
+	transactionId?: string | null,
 };
 
 /**
@@ -2822,6 +3097,16 @@ export type RenamedDay = {
 	path: string,
 };
 
+/**  Milliseconds since navigation start; a field is absent when the web view never recorded it. */
+export type RendererLaunchMarks = {
+	firstPaintMs: number | null,
+	fcpMs: number | null,
+	domInteractiveMs: number | null,
+	domContentLoadedMs: number | null,
+	/**  `memry:note-readable`, set only when the note the launch restored rendered. */
+	noteReadableMs: number | null,
+};
+
 /**  `tags:reorder`'s payload. */
 export type ReorderInput = {
 	tags?: TagAssignmentInput[] | null,
@@ -2888,6 +3173,12 @@ export type ResolvedTemplateView = {
 	id: string,
 	autofill: boolean,
 	inheritedFrom: string | null,
+};
+
+/**  `ResumeSyncResult`. */
+export type ResumeSyncResult = {
+	success: boolean,
+	pendingCount: number,
 };
 
 /**  `SameDayEntry` (`packages/contracts/src/journal-api.ts`). */
@@ -3000,6 +3291,9 @@ export type SearchStats = {
 	lastIndexedAt: string | null,
 };
 
+/**  `SecurityWarningEvent.reason`. */
+export type SecurityWarningReason = "signature_verification_failed";
+
 /**  `SelectOption`. */
 export type SelectOptionView = {
 	value: string,
@@ -3059,6 +3353,22 @@ export type SignOutResult = {
 	keychainWarning?: string | null,
 };
 
+/**  `SimilarNoteItem`. */
+export type SimilarNoteItem = {
+	id: string,
+	title: string,
+	path: string,
+	emoji: string | null,
+	snippet: string | null,
+	similarity: number | null,
+};
+
+/**  `SimilarNotesResponse`. */
+export type SimilarNotesResponse = {
+	status: NoteSimilarityStatus,
+	notes: SimilarNoteItem[],
+};
+
 /**  `NoteSizeClass`. */
 export type SizeClass = "note" | "large-file";
 
@@ -3094,6 +3404,12 @@ export type StampAnchorView = {
 /**  Why a stamp was refused (`PortalStampAnchorResultSchema`'s `reason`). */
 export type StampRefusal = "missing-note" | "missing-block" | "locked";
 
+/**  The plan picked during onboarding (`StartCheckoutInput`, `ipc-channels.ts:648`). */
+export type StartCheckoutInput = {
+	plan: CheckoutPlan,
+	cadence: CheckoutCadence,
+};
+
 /**
  *  The one startup type of the epic. Steps 08 (#3525) and 09 (#3526) extend this struct in
  *  place; no second startup type exists. The renderer reads it from `window.__MEMRY_STARTUP__`
@@ -3120,12 +3436,84 @@ export type StreakView = {
 	lastEntryDate: string | null,
 };
 
+/**  `sync:certificate-pin-failed`: the sync host's certificate matches none of its pins. */
+export type SyncCertificatePinFailedEvent = {
+	hostname: string,
+	actualHash: string,
+	expectedHashes: string[],
+};
+
+/**  `sync:clock-skew-warning`: the local clock is off from the server's; sync paused. */
+export type SyncClockSkewWarningEvent = {
+	localTime: number,
+	serverTime: number,
+	skewSeconds: number,
+};
+
+/**  `sync:pause`. */
+export type SyncControlInput = {
+	surface: SyncControlSurface,
+};
+
+/**  `SyncControlSchema.surface`: where the user paused or resumed. */
+export type SyncControlSurface = "popover" | "settings" | "command_palette";
+
 /**
  *  This device was revoked (`sync:device-removed`, `DeviceRevokedEvent`). Sync stopped; every
  *  secret and queued edit stays, `unsynced_count` of them in the open vault.
  */
 export type SyncDeviceRemovedEvent = {
 	unsyncedCount: number,
+};
+
+/**  `ItemSyncedEvent.operation`. */
+export type SyncDirection = "push" | "pull";
+
+/**  `packages/contracts/src/ipc-sync-ops.ts` `SyncErrorCategory`, every member. */
+export type SyncErrorCategory = "network_offline" | "network_timeout" | "server_error" | "auth_expired" | "device_revoked" | "rate_limited" | "crypto_failure" | "version_incompatible" | "storage_quota_exceeded" | "file_too_large" | "note_too_large" | "sync_payment_required" | "sync_vault_limit_exceeded" | "certificate_pin_failed" | "device_key_mismatch" | "device_keys_missing" | "keychain_unavailable" | "unknown";
+
+/**  `SyncHistoryEntry`. `type` is the stored text, so a kind a newer build wrote still reads. */
+export type SyncHistoryEntry = {
+	id: string,
+	type: string,
+	itemCount: number,
+	direction?: string | null,
+	/**  Parsed JSON, or the stored text when it does not parse (`parseSyncHistoryDetails`). */
+	details?: Value | null,
+	durationMs?: number | null,
+	createdAt: number,
+};
+
+/**  `sync:initial-sync-progress`. */
+export type SyncInitialSyncProgressEvent = {
+	phase: InitialSyncPhase,
+	totalItems: number,
+	processedItems: number,
+	currentItemType?: string | null,
+};
+
+/**  `sync:item-corrupt`. */
+export type SyncItemCorruptEvent = {
+	itemId: string,
+	type: string,
+	error: string,
+};
+
+/**  `ItemSyncedEvent.itemOperation`. */
+export type SyncItemOperation = "create" | "update" | "delete";
+
+/**  `sync:item-recovered`. */
+export type SyncItemRecoveredEvent = {
+	itemId: string,
+	type: string,
+};
+
+/**  `sync:item-synced`: one item went up or came down. */
+export type SyncItemSyncedEvent = {
+	itemId: string,
+	type: string,
+	operation: SyncDirection,
+	itemOperation?: SyncItemOperation | null,
 };
 
 /**  A link this device started was approved (`sync:linking-approved`). */
@@ -3148,6 +3536,48 @@ export type SyncLinkingRequestedEvent = {
 	newDeviceName: string,
 	newDevicePlatform: string,
 };
+
+/**
+ *  Why Sync Now sent and received nothing. `busy` is in the contract and never produced here:
+ *  the engine queues a pass behind the running one instead of refusing it.
+ */
+export type SyncNowBlockedReason = "offline" | "signed_out" | "busy" | "paused" | "failed" | "unavailable";
+
+/**  `sync:queue-cleared`: a push emptied the queue. */
+export type SyncQueueClearedEvent = {
+	itemCount: number,
+	/**  Milliseconds the push took. */
+	duration: number,
+};
+
+/**  `sync:security-warning`: a pulled item failed its signature check and was quarantined. */
+export type SyncSecurityWarningEvent = {
+	itemId: string,
+	itemType: string,
+	signerDeviceId: string,
+	reason: SecurityWarningReason,
+	attemptCount: number,
+	permanent: boolean,
+};
+
+/**  `GetSyncStatusResult`. */
+export type SyncStatus = {
+	status: SyncStatusValue,
+	lastSyncAt?: number | null,
+	pendingCount: number,
+	error?: string | null,
+	errorCategory?: SyncErrorCategory | null,
+	offlineSince?: number | null,
+};
+
+/**
+ *  `sync:status-changed`, the shape of `SyncStatusChangedEvent` (and of `sync_get_status`).
+ *  At most one per 100 ms, the latest winning (the supervisor's throttle).
+ */
+export type SyncStatusChangedEvent = SyncStatus;
+
+/**  `SyncStatusValue`. */
+export type SyncStatusValue = "idle" | "syncing" | "offline" | "error" | "local_only" | "paused";
 
 /**  The open vault's binding changed (`sync:vault-binding-changed`). */
 export type SyncVaultBindingChangedEvent = VaultBindingState;
@@ -3415,6 +3845,12 @@ export type TitleMatchView = {
 /**  `FileMetadata.transcriptionStatus`. */
 export type TranscriptionStatus = "pending" | "processing" | "complete" | "failed";
 
+export type TriggerSyncResult = {
+	success: boolean,
+	reason?: SyncNowBlockedReason | null,
+	error?: string | null,
+};
+
 /**  `UndoTagTemplateResponse.status`. */
 export type UndoStatus = "restored" | "stale";
 
@@ -3461,6 +3897,25 @@ export type UnlinkedMentionView = {
 	truncated: boolean,
 };
 
+/**  `UnsentNoteEntry`. */
+export type UnsentNoteEntry = {
+	id: string,
+	title: string,
+	path: string,
+	state: NoteSyncStateValue,
+	waitingSince: number | null,
+	reasons: UnsentNoteReason[],
+};
+
+/**  `UnsentNoteReason`. */
+export type UnsentNoteReason = "body" | "record" | "file_not_taken" | "rejected";
+
+/**  `UnsentNotesResult`. */
+export type UnsentNotesResult = {
+	total: number,
+	notes: UnsentNoteEntry[],
+};
+
 /**  What a photo download came to: `UnsplashDownloadResult` without its `ok` flag. */
 export type UnsplashDownloadResponse = { status: "saved"; ref: string; credit: Credit } | { status: "unavailable"; reason: UnsplashFailure } | { status: "writeFailed" };
 
@@ -3494,6 +3949,18 @@ export type UnsplashPhoto = {
  *  Photos tab on `notConfigured`), so it is a variant here and not a rejected call.
  */
 export type UnsplashSearchResponse = { status: "photos"; photos: UnsplashPhoto[]; rateLimitRemaining: number | null } | { status: "unavailable"; reason: UnsplashFailure };
+
+/**  `sync:update-synced-setting` input. */
+export type UpdateSyncedSettingInput = {
+	fieldPath: string,
+	value: Value,
+};
+
+/**  `UpdateSyncedSettingResult`. */
+export type UpdateSyncedSettingResult = {
+	success: boolean,
+	error?: string | null,
+};
 
 /**
  *  The updater state changed (`updater:state-changed`). The whole state, which the renderer
@@ -3789,6 +4256,46 @@ export type VersionView = {
 	wordCount: number,
 	reason: string,
 	createdAt: string,
+};
+
+/**  `VoiceModelProgressEvent.phase`. */
+export type VoiceModelPhase = "downloading" | "loading" | "ready" | "error";
+
+/**
+ *  `{ phase, progress, status }`: `progress` 0 to 100, `status` the English line Electron shows
+ *  (or the failure's reason on `error`).
+ */
+export type VoiceModelProgressEvent = {
+	phase: VoiceModelPhase,
+	progress: number,
+	status: string,
+};
+
+/**  `VoiceModelStatus`. */
+export type VoiceModelStatus = {
+	name: string,
+	downloaded: boolean,
+	loaded: boolean,
+	loading: boolean,
+	error: string | null,
+};
+
+/**  Why a recording cannot start (`VoiceRecordingReadiness.reason`). */
+export type VoiceNotReady = "missing-model" | "missing-api-key";
+
+export type VoiceOpenAiKeyStatus = {
+	hasApiKey: boolean,
+};
+
+/**  `VoiceTranscriptionSettings.provider`. */
+export type VoiceProvider = "local" | "openai";
+
+/**  `VoiceRecordingReadiness`. `message` is English, as Electron's. */
+export type VoiceRecordingReadiness = {
+	ready: boolean,
+	provider: VoiceProvider,
+	reason?: VoiceNotReady | null,
+	message?: string | null,
 };
 
 /**  A note whose interrupted app move waits; `path` is its file's, absolute. */

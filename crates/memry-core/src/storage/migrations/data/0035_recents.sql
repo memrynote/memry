@@ -1,4 +1,4 @@
--- data.db, migration 0034: the recently opened trail and the icon of a search
+-- data.db, migration 0035: the recently opened trail and the icon of a search
 -- recent (desktop Step 30a, #3547).
 --
 -- Additive only: two new tables and one index, no existing table or row

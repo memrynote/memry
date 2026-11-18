@@ -52,7 +52,7 @@ fn failed(error: rusqlite::Error) -> StorageError {
 }
 
 /// A random UUID v4, as `crypto.randomUUID()` gives Electron's ids.
-fn uuid_v4() -> String {
+pub(crate) fn uuid_v4() -> String {
     let mut bytes = random_bytes(16);
     bytes[6] = (bytes[6] & 0x0f) | 0x40;
     bytes[8] = (bytes[8] & 0x3f) | 0x80;

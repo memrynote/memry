@@ -1,7 +1,7 @@
 //! The search sheet's recently opened results (#4322), desktop's
 //! `search_reasons`.
 //!
-//! Device-local UI state in `data.db` (migrations 0017 and 0034): never
+//! Device-local UI state in `data.db` (migrations 0017 and 0035): never
 //! synced, never logged, gone with the vault on sign-out. A recent names an
 //! item, so it can outlive it: [`list`] checks every row against `data.db` the
 //! way a search hit is checked, and skips an item deleted since it was opened.
@@ -325,7 +325,7 @@ mod tests {
             .expect("recents");
     }
 
-    /// 0017 and 0034 add the tables to a `data.db` an older build wrote,
+    /// 0017 and 0035 add the tables to a `data.db` an older build wrote,
     /// leaving its rows alone, and recents work on it straight away.
     #[test]
     fn an_older_data_database_gains_an_empty_recents_table() {

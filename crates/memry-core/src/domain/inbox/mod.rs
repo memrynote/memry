@@ -29,6 +29,8 @@ pub mod attachments;
 pub mod convert;
 pub mod enrich;
 pub mod filing;
+pub mod ingest;
+pub mod jobs;
 pub mod merge;
 pub mod panel;
 pub mod queries;
