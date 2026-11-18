@@ -5,9 +5,12 @@
 //! free. A failing or busy book goes on the retry list and never stops the run. A cancelled
 //! run writes nothing further and leaves the cursor where it was.
 //!
+//! After the books: the highlight index and the journal days (`journal_sync`), the cursor, then
+//! the Reader pass (`reader_sync`). The end of a run (`run_end`) publishes the status and writes
+//! the activity line.
+//!
 //! Blocking: the run lives on a blocking thread, and reaches Readwise through the library's
-//! runtime handle. The journal, the Reader pass and the status publish are stage 33d2; the
-//! claim and the pull gate (33d3) plug in through [`RunGate`] (`run_types`).
+//! runtime handle. The claim and the pull gate (33d3) plug in through [`RunGate`] (`run_types`).
 
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -17,26 +20,30 @@ use chrono_tz::Tz;
 use tokio_util::sync::CancellationToken;
 
 use super::client::{ReadwiseClient, ReadwiseError, ReadwiseErrorKind};
+use super::cursor::{iso, next_cursor};
 use super::highlights::is_live_highlight;
+use super::journal_sync::{RecordOptions, journal_highlights_on};
 use super::library::Library;
+use super::limiter::RequestLimiter;
 use super::options::ReadwiseOptions;
 use super::plan_note::{BookPlan, default_category_switch};
-use super::run_state::{Attention, LastRun, RunCounts, RunState};
+use super::run_end::{Running, end_run};
+use super::run_state::{Attention, LastRun, RunState};
+use super::run_status::{RunProgress, RunStatus, Stage};
 use super::run_types::{BookEvent, BookResult, RunError, RunGate, RunObserver, RunResult, failed};
 use super::text::parse_ms;
 use super::types::{ReadwiseBook, ReadwiseCategory, SavedImages};
 use super::writer::{Outcome, PlanBase, SkipReason, UpsertOptions, Writer};
-use crate::vault::activity::{ActivityInput, ActivityKind, ActivitySource};
-use crate::web::extract::utils::date::iso_string;
 use crate::web::extract::utils::js::trim as js_trim;
 
 const SCOPE: &str = "Readwise:Sync";
 
+#[path = "engine_after.rs"]
+mod after;
+
 /// A run reads the whole export once a day: a book-level edit (a new `document_note`) does not
 /// move `updatedAfter`. Untouched sections come out identical and cost no write (D5).
 pub const FULL_READ_INTERVAL_MS: i64 = 24 * 60 * 60 * 1000;
-/// A cursor with no highlight to anchor on starts this far before the run, for clock skew.
-const EMPTY_LIBRARY_CURSOR_MARGIN_MS: i64 = 5 * 60 * 1000;
 
 const CATEGORIES: [ReadwiseCategory; 5] = [
     ReadwiseCategory::Books,
@@ -49,11 +56,13 @@ const CATEGORIES: [ReadwiseCategory; 5] = [
 /// The process's run engine. Runs never overlap.
 pub struct Engine {
     client: ReadwiseClient,
+    reader_limiter: Arc<RequestLimiter>,
     gate: Arc<dyn RunGate>,
     clock: Arc<dyn Fn() -> i64 + Send + Sync>,
     time_zone: Arc<dyn Fn() -> Result<Tz, String> + Send + Sync>,
-    running: AtomicBool,
-    stop: Mutex<Option<CancellationToken>>,
+    pub(super) running: AtomicBool,
+    pub(super) stop: Mutex<Option<CancellationToken>>,
+    status: RunStatus,
 }
 
 impl Engine {
@@ -65,12 +74,25 @@ impl Engine {
     ) -> Self {
         Self {
             client,
+            reader_limiter: RequestLimiter::reader(),
             gate,
+            status: RunStatus::new(Arc::clone(&clock)),
             clock,
             time_zone,
             running: AtomicBool::new(false),
             stop: Mutex::new(None),
         }
+    }
+
+    /// The Reader request budget; Reader's own (20 a minute) unless a test lifts it.
+    pub fn with_reader_limiter(mut self, limiter: Arc<RequestLimiter>) -> Self {
+        self.reader_limiter = limiter;
+        self
+    }
+
+    /// The run in progress and the last failure, for the status IPC.
+    pub fn status(&self) -> &RunStatus {
+        &self.status
     }
 
     pub fn is_running(&self) -> bool {
@@ -95,8 +117,12 @@ impl Engine {
         if self.running.swap(true, Ordering::SeqCst) {
             return Err(RunError::AlreadyRunning);
         }
+        // Resets `running`, the stop token and the progress however the run ends, a panic too.
+        let _running = Running(self);
         let signal = cancel.child_token();
         *self.stop.lock().unwrap_or_else(|e| e.into_inner()) = Some(signal.clone());
+        self.status
+            .set_progress(Some(progress(Stage::WaitingForSync, None, 0)), false);
         let state = RunState::new(library.store());
         let mut run = Run {
             engine: self,
@@ -107,40 +133,48 @@ impl Engine {
             state: &state,
             result: RunResult::default(),
             claim_moved: false,
+            done: 0,
         };
         let outcome = run.go();
         let (result, claim_moved) = (run.result.clone(), run.claim_moved);
-        *self.stop.lock().unwrap_or_else(|e| e.into_inner()) = None;
-        self.running.store(false, Ordering::SeqCst);
+        match &outcome {
+            Err(error) => self.status.record_failure(error),
+            Ok(result) if !result.cancelled => self.status.clear_failure(),
+            Ok(_) => {}
+        }
         if claim_moved {
             self.gate.on_claim_lost();
         }
-        // Also for a cancelled or failed run: the notes it wrote did change.
-        let changed = result.counts.added + result.counts.updated + result.counts.appended;
-        if changed > 0 && observer.log_activity() {
-            record_activity(library, changed, &result.counts);
-        }
+        end_run(
+            library,
+            &state,
+            observer,
+            &result,
+            claim_moved,
+            (self.clock)(),
+        );
         outcome
     }
 }
 
-fn record_activity(library: &Library, changed: u64, counts: &RunCounts) {
-    let plural = |count: u64, noun: &str| match count {
-        1 => format!("{count} {noun}"),
-        _ => format!("{count} {noun}s"),
-    };
-    let mut input = ActivityInput::new(ActivityKind::Import, ActivitySource::Import);
-    input.importer = Some("readwise".to_owned());
-    input.message = Some(format!(
-        "Readwise: {}, {}",
-        plural(changed, "book"),
-        plural(counts.highlights, "highlight")
-    ));
-    input.counts = Some(vec![
-        ("imported".to_owned(), changed),
-        ("failed".to_owned(), counts.failed),
-    ]);
-    library.activity.record(&library.open.path, input);
+fn progress(stage: Stage, planned: Option<u64>, done: u64) -> RunProgress {
+    RunProgress {
+        stage,
+        planned,
+        done,
+    }
+}
+
+/// [`Run::stopped`] over the fields it reads, for a closure beside another borrow of the run.
+fn is_stopped(signal: &CancellationToken, gate: &dyn RunGate, claim_moved: &mut bool) -> bool {
+    if signal.is_cancelled() {
+        return true;
+    }
+    if gate.claim_lost() {
+        *claim_moved = true;
+        return true;
+    }
+    false
 }
 
 /// `!error` means stop the run with it; `None` means cancelled.
@@ -170,6 +204,8 @@ struct Run<'a> {
     state: &'a RunState,
     result: RunResult,
     claim_moved: bool,
+    /// Books done, for the progress.
+    done: u64,
 }
 
 impl Run<'_> {
@@ -187,14 +223,11 @@ impl Run<'_> {
 
     /// Re-read before each book: cancelled, or another device holds the claim now (D8).
     fn stopped(&mut self) -> bool {
-        if self.signal.is_cancelled() {
-            return true;
-        }
-        if self.engine.gate.claim_lost() {
-            self.claim_moved = true;
-            return true;
-        }
-        false
+        is_stopped(
+            &self.signal,
+            self.engine.gate.as_ref(),
+            &mut self.claim_moved,
+        )
     }
 
     fn check(&mut self) -> Result<(), Stop> {
@@ -255,8 +288,16 @@ impl Run<'_> {
         let cursor = self.state.cursor().map_err(failed)?;
         let last_full = self.state.last_full_read().map_err(failed)?;
         let last_full = parse_ms(last_full.as_deref()).map(|ms| ms as i64);
+        let full_pending = self.state.full_pass_pending().map_err(failed)?;
+        // The highlight index (#3476) is filled by a full export. Until then, and on the first
+        // import, a takeover's first run and a category full pass, the run only fills it: no
+        // highlight counts as a new arrival (D17, no backfill).
+        let index_ready = self.state.highlight_index_ready().map_err(failed)?;
+        let count_arrivals = cursor.is_some() && index_ready && !full_pending;
+        let journal_on = journal_highlights_on(self.library, options.journal_highlights);
         let full = cursor.is_none()
-            || self.state.full_pass_pending().map_err(failed)?
+            || !index_ready
+            || full_pending
             || last_full.is_none_or(|at| {
                 // A clock set back leaves a time in the future: read, rather than wait for it.
                 started - at >= FULL_READ_INTERVAL_MS || at > started
@@ -271,6 +312,7 @@ impl Run<'_> {
             );
         }
 
+        (self.engine.status).set_progress(Some(progress(Stage::Reading, None, 0)), false);
         // 1. The retry list, as full books.
         let retry_ids: Vec<i64> = (self.state.retry_list().map_err(failed)?)
             .iter()
@@ -321,6 +363,8 @@ impl Run<'_> {
         let total = retry_books.len() + changed.len();
         self.result.counts.books = total as u64;
         self.observer.planned(total);
+        let writing = progress(Stage::Writing, Some(total as u64), 0);
+        self.engine.status.set_progress(Some(writing), false);
 
         let writer = Writer {
             library: self.library,
@@ -342,6 +386,7 @@ impl Run<'_> {
         }
 
         // 3. The full books a render needs.
+        let mut full_fetched: Vec<ReadwiseBook> = Vec::new();
         if !need_full.is_empty() {
             let mut payloads: HashMap<i64, &ReadwiseBook> = need_full
                 .iter()
@@ -377,6 +422,7 @@ impl Run<'_> {
                 self.finish(written, payload);
             }
             let mut gone: Vec<&ReadwiseBook> = payloads.into_values().collect();
+            full_fetched = full_books;
             gone.sort_by_key(|book| book.user_book_id);
             for book in gone {
                 // Missing from `ids=` after the export named it: the next run's retry fetch
@@ -397,9 +443,30 @@ impl Run<'_> {
             }
         }
 
+        // Later books win: a full fetch overrides the export's partial payload.
+        let seen: Vec<&ReadwiseBook> = (exported.iter())
+            .chain(&retry_books)
+            .chain(&full_fetched)
+            .collect();
+        let record = RecordOptions {
+            rebuild: full,
+            count_arrivals,
+            enabled: journal_on,
+            time_zone: base.time_zone,
+        };
+        self.record_journal(&seen, &record)?;
+        let times = (exported.iter())
+            .flat_map(|book| book.highlights.iter().flatten())
+            .map(|highlight| highlight.updated_at.as_deref());
         self.state
-            .set_cursor(&next_cursor(&exported, cursor.as_deref(), started)?)
+            .set_cursor(&next_cursor(times, cursor.as_deref(), started)?)
             .map_err(failed)?;
+        // 4. Saved Reader documents, only when the user asked for them (D11). The v2 work is
+        // done and its cursor kept, so a Reader failure never undoes it.
+        if options.reader_documents {
+            let books: Vec<&ReadwiseBook> = retry_books.iter().chain(&exported).collect();
+            self.reader_pass(&options, &books, started)?;
+        }
         if full {
             self.state
                 .set_last_full_read(&iso(started)?)
@@ -519,6 +586,10 @@ impl Run<'_> {
             BookResult::Skipped(SkipReason::Busy) => counts.deferred += 1,
             _ => {}
         }
+        self.done += 1;
+        let ticked = progress(Stage::Writing, Some(self.result.counts.books), self.done);
+        self.engine.status.set_progress(Some(ticked), true);
+        let counts = &mut self.result.counts;
         if matches!(
             event.result,
             BookResult::Created | BookResult::Updated | BookResult::Appended
@@ -557,30 +628,4 @@ pub fn book_title(book: &ReadwiseBook) -> String {
         "" => "Untitled".to_owned(),
         title => title.to_owned(),
     }
-}
-
-fn iso(ms: i64) -> Result<String, RunError> {
-    iso_string(Some(ms as f64)).map_err(failed)
-}
-
-/// `nextCursor`: the newest highlight `updated_at` the export held, minus one second, in
-/// Readwise's time. Never moves back, and stays put when the export held no highlight.
-fn next_cursor(
-    books: &[ReadwiseBook],
-    previous: Option<&str>,
-    started: i64,
-) -> Result<String, RunError> {
-    let newest = books
-        .iter()
-        .flat_map(|book| book.highlights.iter().flatten())
-        .filter_map(|highlight| parse_ms(highlight.updated_at.as_deref()))
-        .fold(f64::NEG_INFINITY, f64::max);
-    let kept = parse_ms(previous);
-    let at = match (newest.is_finite(), kept) {
-        (false, Some(kept)) => kept,
-        (false, None) => (started - EMPTY_LIBRARY_CURSOR_MARGIN_MS) as f64,
-        (true, Some(kept)) => kept.max(newest - 1000.0),
-        (true, None) => newest - 1000.0,
-    };
-    iso_string(Some(at)).map_err(failed)
 }
