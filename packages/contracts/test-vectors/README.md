@@ -113,8 +113,8 @@ one-class change reviewable.
 | `importers/markdown/expected.json`       |                                    6 | `apps/desktop/src/main/import/__vectors__/importer-vectors.test.ts`                            | Rust `importer_vectors.rs`                                                           |
 | `importers/csv/expected.json`            |                                    2 | same                                                                                           | same                                                                                 |
 | `importers/messages.json`                |                                    1 | same                                                                                           | same                                                                                 |
-| `importers/obsidian-tasks.json`          |                                  126 | `apps/desktop/src/main/import/__vectors__/obsidian-task-import-vectors.test.ts`                | Rust `obsidian_task_import.rs`                                                       |
-| **Total**                                | **32481 cases plus 6 fuzz families** |                                                                                                |                                                                                      |
+| `importers/obsidian-tasks.json`          |                                  139 | `apps/desktop/src/main/import/__vectors__/obsidian-task-import-vectors.test.ts`                | Rust `obsidian_task_import.rs`                                                       |
+| **Total**                                | **32494 cases plus 6 fuzz families** |                                                                                                |                                                                                      |
 
 ### `importers/`: frozen at cutover
 
@@ -129,8 +129,8 @@ held to them; a deliberate change edits the Rust and the expected file in the sa
 says why. A difference is a bug in the Rust.
 
 `obsidian-tasks.json` records `buildObsidianTaskImport` (`packages/shared/src/obsidian-task-import.ts`)
-for 84 lines in UTC with each done date in two fixed-offset zones, 6 done dates around
-America/Santiago's 2024 transitions, and the 36 lines of the Obsidian Tasks plugin's fixtures
+for 84 lines in UTC with each done date in two fixed-offset zones, 19 done dates around midnight
+transitions in five real zones (`chrono::Local` replays them with `TZ` set, unix only), and the 36 lines of the Obsidian Tasks plugin's fixtures
 (`packages/shared/src/obsidian-tasks-fixtures`) through `parseObsidianTaskLine` and the import.
 The same freeze applies.
 

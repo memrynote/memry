@@ -2,7 +2,7 @@
   "meta": {
     "spec": "tauri-v2-3549-obsidian-task-import",
     "oracle": "apps/desktop/src/main/import/__vectors__/obsidian-task-import-vectors.test.ts (buildObsidianTaskImport of packages/shared/src/obsidian-task-import.ts, parseObsidianTaskLine of obsidian-tasks.ts)",
-    "note": "`import` is built in UTC; `completedAt` names the other zones. `dst` is built in America/Santiago."
+    "note": "`import` is built in UTC; `completedAt` names the other zones. `localZones` builds done dates in real zones."
   },
   "now": "2026-03-04T09:30:00.000Z",
   "zones": [
@@ -1558,35 +1558,109 @@
       }
     }
   ],
-  "dst": {
-    "zone": "America/Santiago",
-    "cases": [
-      {
-        "text": "x ✅ 2024-04-06",
-        "completedAt": "2024-04-06T03:00:00.000Z"
-      },
-      {
-        "text": "x ✅ 2024-04-07",
-        "completedAt": "2024-04-07T04:00:00.000Z"
-      },
-      {
-        "text": "x ✅ 2024-04-08",
-        "completedAt": "2024-04-08T04:00:00.000Z"
-      },
-      {
-        "text": "x ✅ 2024-09-07",
-        "completedAt": "2024-09-07T04:00:00.000Z"
-      },
-      {
-        "text": "x ✅ 2024-09-08",
-        "completedAt": "2024-09-08T04:00:00.000Z"
-      },
-      {
-        "text": "x ✅ 2024-09-09",
-        "completedAt": "2024-09-09T03:00:00.000Z"
-      }
-    ]
-  },
+  "localZones": [
+    {
+      "zone": "America/Santiago",
+      "cases": [
+        {
+          "text": "x ✅ 2024-04-06",
+          "completedAt": "2024-04-06T03:00:00.000Z"
+        },
+        {
+          "text": "x ✅ 2024-04-07",
+          "completedAt": "2024-04-07T04:00:00.000Z"
+        },
+        {
+          "text": "x ✅ 2024-04-08",
+          "completedAt": "2024-04-08T04:00:00.000Z"
+        },
+        {
+          "text": "x ✅ 2024-09-07",
+          "completedAt": "2024-09-07T04:00:00.000Z"
+        },
+        {
+          "text": "x ✅ 2024-09-08",
+          "completedAt": "2024-09-08T04:00:00.000Z"
+        },
+        {
+          "text": "x ✅ 2024-09-09",
+          "completedAt": "2024-09-09T03:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "zone": "America/Havana",
+      "cases": [
+        {
+          "text": "x ✅ 2018-03-11",
+          "completedAt": "2018-03-11T05:00:00.000Z"
+        },
+        {
+          "text": "x ✅ 2018-11-03",
+          "completedAt": "2018-11-03T04:00:00.000Z"
+        },
+        {
+          "text": "x ✅ 2018-11-04",
+          "completedAt": "2018-11-04T04:00:00.000Z"
+        },
+        {
+          "text": "x ✅ 2018-11-05",
+          "completedAt": "2018-11-05T05:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "zone": "Asia/Amman",
+      "cases": [
+        {
+          "text": "x ✅ 2021-10-28",
+          "completedAt": "2021-10-27T21:00:00.000Z"
+        },
+        {
+          "text": "x ✅ 2021-10-29",
+          "completedAt": "2021-10-28T21:00:00.000Z"
+        },
+        {
+          "text": "x ✅ 2021-10-30",
+          "completedAt": "2021-10-29T22:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "zone": "Pacific/Apia",
+      "cases": [
+        {
+          "text": "x ✅ 2011-12-29",
+          "completedAt": "2011-12-29T10:00:00.000Z"
+        },
+        {
+          "text": "x ✅ 2011-12-30",
+          "completedAt": null
+        },
+        {
+          "text": "x ✅ 2011-12-31",
+          "completedAt": "2011-12-30T10:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "zone": "Pacific/Kiritimati",
+      "cases": [
+        {
+          "text": "x ✅ 1994-12-30",
+          "completedAt": "1994-12-30T10:00:00.000Z"
+        },
+        {
+          "text": "x ✅ 1994-12-31",
+          "completedAt": null
+        },
+        {
+          "text": "x ✅ 1995-01-01",
+          "completedAt": "1994-12-31T10:00:00.000Z"
+        }
+      ]
+    }
+  ],
   "fixtures": [
     {
       "file": "Dates_dataview.approved.md",

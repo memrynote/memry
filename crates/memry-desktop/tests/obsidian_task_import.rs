@@ -1,16 +1,14 @@
 //! `import::obsidian_tasks` against `packages/contracts/test-vectors/importers/obsidian-tasks.json`,
 //! which `buildObsidianTaskImport` recorded
 //! (`apps/desktop/src/main/import/__vectors__/obsidian-task-import-vectors.test.ts`): every line
-//! in UTC and its done date in the other recorded zones, the done dates around America/Santiago's
-//! 2024 transitions, and every line of the Obsidian Tasks plugin's own fixtures through both the
-//! line parser and the import. Then the untrusted-input guards of the line parser the import
+//! in UTC and its done date in the other recorded zones, and every line of the Obsidian Tasks
+//! plugin's own fixtures through both the line parser and the import (the real-zone done dates
+//! run in `obsidian_task_local_zone.rs`, a process of their own). Then the untrusted-input guards of the line parser the import
 //! reads through: a hostile line stays linear in steps and bounded in output on a small stack.
 
 use std::fs;
 
-use chrono::{
-    DateTime, FixedOffset, MappedLocalTime, NaiveDate, NaiveDateTime, TimeDelta, TimeZone, Utc,
-};
+use chrono::{DateTime, FixedOffset, TimeZone, Utc};
 use memry_core::markdown::shared::obsidian_tasks::{parse_obsidian_task_line, parse_steps};
 use memry_desktop::import::obsidian_tasks::build_obsidian_task_import;
 use memry_test_kit::{
@@ -78,78 +76,6 @@ fn every_line_matches_the_typescript() {
         }
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));
-}
-
-/// America/Santiago in 2024: UTC-3 until 2024-04-07T03:00Z, UTC-4 until 2024-09-08T04:00Z, then
-/// UTC-3 again. Local midnight on 2024-09-08 falls in the gap.
-#[derive(Debug, Clone, Copy)]
-struct Santiago2024;
-
-impl Santiago2024 {
-    fn summer() -> FixedOffset {
-        FixedOffset::west_opt(3 * 3600).unwrap()
-    }
-
-    fn winter() -> FixedOffset {
-        FixedOffset::west_opt(4 * 3600).unwrap()
-    }
-}
-
-impl TimeZone for Santiago2024 {
-    type Offset = FixedOffset;
-
-    fn from_offset(_: &FixedOffset) -> Self {
-        Self
-    }
-
-    fn offset_from_local_date(&self, local: &NaiveDate) -> MappedLocalTime<FixedOffset> {
-        self.offset_from_local_datetime(&local.and_hms_opt(0, 0, 0).unwrap())
-    }
-
-    fn offset_from_local_datetime(&self, local: &NaiveDateTime) -> MappedLocalTime<FixedOffset> {
-        // Summer first: the larger offset gives the earlier instant, as `Ambiguous` wants.
-        let fits: Vec<FixedOffset> = [Self::summer(), Self::winter()]
-            .into_iter()
-            .filter(|offset| {
-                let utc = *local - TimeDelta::seconds(i64::from(offset.local_minus_utc()));
-                self.offset_from_utc_datetime(&utc) == *offset
-            })
-            .collect();
-        match fits[..] {
-            [] => MappedLocalTime::None,
-            [one] => MappedLocalTime::Single(one),
-            [earlier, later] => MappedLocalTime::Ambiguous(earlier, later),
-            _ => unreachable!(),
-        }
-    }
-
-    fn offset_from_utc_date(&self, utc: &NaiveDate) -> FixedOffset {
-        self.offset_from_utc_datetime(&utc.and_hms_opt(0, 0, 0).unwrap())
-    }
-
-    fn offset_from_utc_datetime(&self, utc: &NaiveDateTime) -> FixedOffset {
-        let at = |text: &str| text.parse::<NaiveDateTime>().unwrap();
-        if *utc >= at("2024-04-07T03:00:00") && *utc < at("2024-09-08T04:00:00") {
-            Self::winter()
-        } else {
-            Self::summer()
-        }
-    }
-}
-
-#[test]
-fn a_done_date_on_a_dst_change_takes_the_offset_javascript_takes() {
-    let vectors = vectors();
-    let now = now(&vectors);
-    assert_eq!(vectors["dst"]["zone"], "America/Santiago");
-    for case in vectors["dst"]["cases"].as_array().unwrap() {
-        let text = case["text"].as_str().unwrap();
-        assert_eq!(
-            completed_at(text, now, &Santiago2024),
-            case["completedAt"],
-            "{text}"
-        );
-    }
 }
 
 /// Core's line JSON writes a JS number as an f64 (`1.0`), which `JSON.stringify` writes as `1`.

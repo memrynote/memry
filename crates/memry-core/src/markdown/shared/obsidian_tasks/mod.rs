@@ -7,6 +7,7 @@ mod rules;
 
 use std::cell::Cell;
 use std::collections::HashSet;
+use std::hash::{Hash, Hasher};
 
 use serde_json::{Map, Value as Json, json};
 
@@ -169,7 +170,7 @@ thread_local! {
 }
 
 /// Steps the field parse took on this thread: one per rule the strip loop scans and one per tag
-/// key the dedupe examines. The untrusted-input tests bound it by the input.
+/// key comparison the dedupe makes. The untrusted-input tests bound it by the input.
 #[doc(hidden)]
 pub fn parse_steps() -> usize {
     PARSE_STEPS.with(Cell::get)
@@ -179,15 +180,33 @@ fn step() {
     PARSE_STEPS.with(|steps| steps.set(steps.get() + 1));
 }
 
+/// A folded tag key whose comparisons are parse steps, so the dedupe's work is counted whatever
+/// holds the keys: a set compares a new key with about none of them, a scan with every one.
+struct TagKey(String);
+
+impl PartialEq for TagKey {
+    fn eq(&self, other: &Self) -> bool {
+        step();
+        self.0 == other.0
+    }
+}
+
+impl Eq for TagKey {}
+
+impl Hash for TagKey {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.hash(state);
+    }
+}
+
 fn extract_tags(description: &str) -> Vec<String> {
     let mut tags: Vec<String> = Vec::new();
     // A set, as the TypeScript's: a scan of the keys seen so far is quadratic in a line of
     // many distinct tags.
-    let mut seen: HashSet<String> = HashSet::new();
+    let mut seen: HashSet<TagKey> = HashSet::new();
     for found in hash_tags().find_iter(description) {
         let tag = js_trim(found.as_str());
-        step();
-        if seen.insert(fold(tag)) {
+        if seen.insert(TagKey(fold(tag))) {
             tags.push(tag.to_owned());
         }
     }

@@ -7,8 +7,8 @@
  *
  * `completedAt` is the instant local midnight starts on the plugin's done date, so it depends on
  * the process time zone. This project runs in forks, where assigning `process.env.TZ` takes
- * effect: each line is built in fixed-offset zones on both sides of UTC, and the done dates
- * around one midnight DST gap and one fall-back are built in America/Santiago.
+ * effect: each line is built in fixed-offset zones on both sides of UTC, and done dates around
+ * real midnight transitions (a skipped midnight, a repeated one, a skipped day) in their zones.
  *
  * `MEMRY_WRITE_VECTORS=1` rewrites the committed file; without it the test fails when it
  * differs. The vectors freeze when the TypeScript is deleted: fix the Rust, not the vector.
@@ -125,15 +125,20 @@ const TEXTS = [
   '日本語 😀 #tag 📅 2026-01-01'
 ]
 
-/** America/Santiago: midnight 2024-09-08 does not exist; 2024-04-06 23:00-24:00 repeats. */
-const DST_ZONE = 'America/Santiago'
-const DST_TEXTS = [
-  'x ✅ 2024-04-06',
-  'x ✅ 2024-04-07',
-  'x ✅ 2024-04-08',
-  'x ✅ 2024-09-07',
-  'x ✅ 2024-09-08',
-  'x ✅ 2024-09-09'
+/**
+ * Done dates around real zone transitions at midnight: a skipped midnight (Santiago 2024-09-08,
+ * Havana 2018-03-11), a repeated one (Havana 2018-11-04, Amman 2021-10-29) and a skipped day
+ * (Apia 2011-12-30, Kiritimati 1994-12-31). The Rust replays them through `chrono::Local`.
+ */
+const LOCAL_ZONES: { zone: string; dates: string[] }[] = [
+  {
+    zone: 'America/Santiago',
+    dates: ['2024-04-06', '2024-04-07', '2024-04-08', '2024-09-07', '2024-09-08', '2024-09-09']
+  },
+  { zone: 'America/Havana', dates: ['2018-03-11', '2018-11-03', '2018-11-04', '2018-11-05'] },
+  { zone: 'Asia/Amman', dates: ['2021-10-28', '2021-10-29', '2021-10-30'] },
+  { zone: 'Pacific/Apia', dates: ['2011-12-29', '2011-12-30', '2011-12-31'] },
+  { zone: 'Pacific/Kiritimati', dates: ['1994-12-30', '1994-12-31', '1995-01-01'] }
 ]
 
 function inZone<T>(zone: string, run: () => T): T {
@@ -192,18 +197,18 @@ function render(): string {
       spec: 'tauri-v2-3549-obsidian-task-import',
       oracle:
         'apps/desktop/src/main/import/__vectors__/obsidian-task-import-vectors.test.ts (buildObsidianTaskImport of packages/shared/src/obsidian-task-import.ts, parseObsidianTaskLine of obsidian-tasks.ts)',
-      note: '`import` is built in UTC; `completedAt` names the other zones. `dst` is built in America/Santiago.'
+      note: '`import` is built in UTC; `completedAt` names the other zones. `localZones` builds done dates in real zones.'
     },
     now: NOW.toISOString(),
     zones: ZONES,
     cases: TEXTS.map(textCase),
-    dst: {
-      zone: DST_ZONE,
-      cases: DST_TEXTS.map((text) => ({
-        text,
-        completedAt: inZone(DST_ZONE, () => build(text)?.completedAt ?? null)
-      }))
-    },
+    localZones: LOCAL_ZONES.map(({ zone, dates }) => ({
+      zone,
+      cases: dates.map((date) => {
+        const text = `x ✅ ${date}`
+        return { text, completedAt: inZone(zone, () => build(text)?.completedAt ?? null) }
+      })
+    })),
     fixtures: fixtureCases()
   }
   return `${JSON.stringify(document, null, 2)}\n`
@@ -214,7 +219,7 @@ describe('obsidian task import vectors', () => {
     for (const { zone, offset } of ZONES) {
       expect(inZone(zone, () => new Date(2026, 0, 1).getTimezoneOffset())).toBe(offset)
     }
-    expect(inZone(DST_ZONE, () => new Date(2024, 8, 8).toISOString())).toBe(
+    expect(inZone('America/Santiago', () => new Date(2024, 8, 8).toISOString())).toBe(
       '2024-09-08T04:00:00.000Z'
     )
   })

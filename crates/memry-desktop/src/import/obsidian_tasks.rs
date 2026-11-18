@@ -98,7 +98,8 @@ fn js_iso(instant: DateTime<Utc>) -> String {
 
 /// `localMidnight`: the instant local midnight starts on `date` (`YYYY-MM-DD`), or `None` for a
 /// date the calendar does not have. JS `new Date(year, month - 1, day)` reads a year below 100
-/// as 19xx, so its round-trip check refuses those too.
+/// as 19xx, so its round-trip check refuses those too, and a day a zone skipped whole
+/// (Pacific/Apia 2011-12-30).
 fn local_midnight<Tz: TimeZone>(date: &str, tz: &Tz) -> Option<String> {
     let mut parts = date.split('-').map(|part| part.parse::<u32>().ok());
     let (year, month, day) = (parts.next()??, parts.next()??, parts.next()??);
@@ -109,8 +110,19 @@ fn local_midnight<Tz: TimeZone>(date: &str, tz: &Tz) -> Option<String> {
         NaiveDate::from_ymd_opt(i32::try_from(year).ok()?, month, day)?.and_hms_opt(0, 0, 0)?;
     let instant = match tz.from_local_datetime(&midnight) {
         MappedLocalTime::Single(at) => at.with_timezone(&Utc),
-        // JS takes the earlier of two instants a repeated wall time names.
-        MappedLocalTime::Ambiguous(earlier, _) => earlier.with_timezone(&Utc),
+        // JS takes the earlier of two instants a repeated wall time names. chrono's unix `Local`
+        // orders the pair by offset, not by instant, and at a fall-back's own boundary offers an
+        // instant whose clock already reads the day before (Santiago 2024-04-07 00:00 -03:00);
+        // keep the ones that read back as midnight, then the earlier.
+        MappedLocalTime::Ambiguous(first, second) => {
+            let first = first.with_timezone(&Utc);
+            let second = second.with_timezone(&Utc);
+            [first, second]
+                .into_iter()
+                .filter(|at| at.with_timezone(tz).naive_local() == midnight)
+                .min()
+                .unwrap_or(first.min(second))
+        }
         // In a gap JS reads the wall time with the offset in force before it, which lands
         // after the gap: Santiago's 2024-09-08 00:00 is 04:00Z, the -04:00 reading.
         MappedLocalTime::None => {
@@ -121,7 +133,7 @@ fn local_midnight<Tz: TimeZone>(date: &str, tz: &Tz) -> Option<String> {
             Utc.from_utc_datetime(&utc)
         }
     };
-    Some(js_iso(instant))
+    (instant.with_timezone(tz).date_naive() == midnight.date()).then(|| js_iso(instant))
 }
 
 /// `buildObsidianTaskImport`, with local time read in `tz` (`chrono::Local` in the app). `None`

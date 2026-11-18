@@ -185,6 +185,10 @@ name = "integration"
 path = "tests/integration.rs"
 
 [[test]]
+name = "obsidian_task_local_zone"
+path = "tests/obsidian_task_local_zone.rs"
+
+[[test]]
 name = "activity_log_memory"
 path = "tests/activity_log_memory.rs"
 
