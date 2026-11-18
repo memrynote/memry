@@ -1,0 +1,66 @@
+{
+  "electron": "43.1.1",
+  "platform": "macos",
+  "macosPassword": "mock_password",
+  "profilePlaceholder": "/memry-fixture/profile",
+  "vaultPlaceholder": "/memry-fixture/vault",
+  "plaintexts": {
+    "com.memry.sync": {
+      "master-key": "1AhiL7jqznvG9xz00qy95Ie8odFwpliSwbkqtggDDRo=",
+      "device-signing-key": "1MEiYshi4PMSr3OIO8F+xSVbvG7DXlRDaLZS6yZc01OZeqddfUV6mW43xWJf0r4X33MonIGwNqmNFOFcJu/imQ==",
+      "access-token": "fixture.access.token",
+      "refresh-token": "fixture-refresh-token-0123456789abcdef",
+      "setup-token": "fixture-setup-token"
+    },
+    "com.memry.calendar.google": {
+      "refresh": "fixture-google-refresh"
+    },
+    "com.memry.readwise": {
+      "token": "fixture-readwise-token"
+    }
+  },
+  "vaultUuid": "ec702321-d1e4-4ea9-b780-502cefefedc5",
+  "deviceId": "7c1e0c55-6f2b-4a8e-9d0b-2f1a3c4d5e6f",
+  "accountKeyVerifier": "t/sdyPS5evyVQ+34zGEVejz7WXk6w0bVJkOu5rdeDps=",
+  "notes": [
+    {
+      "id": "j2025-01-01",
+      "path": "journal/2025-01-01.md",
+      "title": "2025-01-01"
+    },
+    {
+      "id": "933f4f8v0z11",
+      "path": "notes/Getting Started.md",
+      "title": "Getting Started"
+    },
+    {
+      "id": "o3zznzl13lct",
+      "path": "notes/Offline edits.md",
+      "title": "Offline edits"
+    },
+    {
+      "id": "7xcjee57y9q1",
+      "path": "notes/Tagged.md",
+      "title": "Tagged"
+    },
+    {
+      "id": "hlh8xj8j9v3q",
+      "path": "notes/outside.md",
+      "title": "outside"
+    },
+    {
+      "id": "0ofveqd7odxs",
+      "path": "projects/2025/Plan.md",
+      "title": "Plan"
+    }
+  ],
+  "offlineDocId": "o3zznzl13lct",
+  "watermark": {
+    "appliedSequence": 7,
+    "snapshotRevision": "rev-fixture-7"
+  },
+  "deletedDocId": "k3v9deletedx",
+  "legacyDocId": "hlh8xj8j9v3q",
+  "journalDocId": "j2025-01-01",
+  "unattributableDocId": "__memry_unattributable__/933f4f8v0z11"
+}
