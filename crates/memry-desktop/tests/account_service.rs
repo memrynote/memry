@@ -129,7 +129,7 @@ impl Script {
 pub(crate) struct Keychain {
     items: Mutex<HashMap<SecureStoreKey, Vec<u8>>>,
     master_locked: bool,
-    access_locked: AtomicBool,
+    pub(crate) access_locked: AtomicBool,
     undeletable: Mutex<Vec<SecureStoreKey>>,
     unsettable: Mutex<Vec<SecureStoreKey>>,
     /// The next `clear` fails and removes nothing; per-entry deletes still work.

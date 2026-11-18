@@ -13,7 +13,8 @@ use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_desktop::account::binding::{Applied, BindingState};
 use memry_desktop::account::session_events::AccountEvent;
 use memry_desktop::account::vault_sync::{BINDING_RETRY, OpenVaultBinding, SyncWiring};
-use memry_desktop::account::{AccountService, device};
+use memry_desktop::account::{AccountService, KeyRepair, device};
+use memry_desktop::error::CoreError;
 use memry_desktop::registry::VaultRegistry;
 use memry_desktop::registry::config::AppConfig;
 use memry_desktop::session::{OpenSource, OpenVault, Session};
@@ -542,4 +543,99 @@ async fn a_sign_out_whose_keychain_kept_the_tokens_binds_nothing() {
 
     assert_eq!(applied, Applied::Held(BindingState::Unknown));
     assert_eq!(s.open.vault.server_vault_id().unwrap(), None);
+}
+
+/// `GET /auth/devices` with this install's device key (`Keychain::holding_keys`) under `id`.
+fn devices(id: &str, revoked_at: Value) -> Value {
+    let (public, _) = memry_core::crypto::sodium::sign_seed_keypair(&[7; 32]).unwrap();
+    json!({ "devices": [{ "id": id, "signingPublicKey": keys::base64_encode(&public), "revokedAt": revoked_at }] })
+}
+
+/// The account still lists this install's key: only `sync.deviceId` was lost, and it comes back.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_listed_device_key_restores_the_device_id_and_keeps_every_secret() {
+    let s = signed_in();
+    s.config
+        .update(|c| {
+            c.insert("sync".into(), json!({ "email": "a@b.c" }));
+            Ok::<_, memry_desktop::registry::config::ConfigError>(())
+        })
+        .unwrap();
+    s.script
+        .answer(200, devices("server-device-7", Value::Null));
+
+    let repaired = s.account.repair_device_keys(&s.session).await.unwrap();
+
+    assert_eq!(repaired, KeyRepair::Listed);
+    let device_id = s
+        .config
+        .read(|c| c.get("sync").and_then(|s| s.get("deviceId")).cloned());
+    assert_eq!(device_id, Some(json!("server-device-7")));
+    for key in ALL {
+        assert!(s.keychain.has(key), "{key:?} was deleted");
+    }
+    assert_eq!(s.account.session().state(), AuthState::Registered);
+}
+
+/// A key only a revoked device holds cannot sign again: the device signs out keeping its master
+/// key, its queue, its sync state and its history, and revokes no server session.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn an_unlisted_device_key_signs_out_keeping_the_master_key_and_the_queue() {
+    let s = signed_in();
+    s.script
+        .answer(200, devices("server-device", json!(1_700_000_000)));
+
+    let repaired = s.account.repair_device_keys(&s.session).await.unwrap();
+
+    assert_eq!(repaired, KeyRepair::SignInRequired);
+    assert!(s.keychain.has(SecureStoreKey::MasterKey));
+    for key in ALL.into_iter().filter(|k| *k != SecureStoreKey::MasterKey) {
+        assert!(!s.keychain.has(key), "{key:?} remains");
+    }
+    assert_eq!(s.account.session().state(), AuthState::SignedOut);
+    assert!(!s.script.called("/auth/logout"));
+    assert_eq!(count(&s.open, "outbox"), 2, "queued edits stay");
+    assert_eq!(count(&s.open, "sync_history"), 1, "history stays");
+    let sync = s.config.read(|c| c.get("sync").cloned());
+    assert_eq!(sync, Some(Value::Object(Default::default())));
+}
+
+/// A keychain that does not answer is not a lost key: nothing is deleted and nothing is asked.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_locked_keychain_is_keychain_unavailable_and_deletes_nothing() {
+    let s = signed_in();
+    s.keychain
+        .access_locked
+        .store(true, std::sync::atomic::Ordering::SeqCst);
+
+    let error = s.account.repair_device_keys(&s.session).await.unwrap_err();
+
+    assert_eq!(error.kind_and_code().1, "keychain_unavailable");
+    s.keychain
+        .access_locked
+        .store(false, std::sync::atomic::Ordering::SeqCst);
+    for key in ALL {
+        assert!(s.keychain.has(key), "{key:?} was deleted");
+    }
+    assert!(s.script.requests().is_empty());
+}
+
+/// A server that cannot answer is not a revoked device: the user retries, nothing is deleted.
+#[tokio::test(start_paused = true)]
+async fn a_failing_device_list_deletes_nothing() {
+    let s = signed_in();
+    for _ in 0..4 {
+        s.script.answer(500, json!({ "error": "INTERNAL" }));
+    }
+
+    s.account.repair_device_keys(&s.session).await.unwrap_err();
+
+    for key in ALL {
+        assert!(s.keychain.has(key), "{key:?} was deleted");
+    }
+    assert_eq!(s.account.session().state(), AuthState::Registered);
+    assert!(
+        s.config
+            .read(|c| c.get("sync").and_then(|s| s.get("deviceId")).is_some())
+    );
 }

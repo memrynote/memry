@@ -14,9 +14,13 @@ const sync = vi.hoisted(() => ({
 
 const status = vi.hoisted(() => ({ overrides: {} as Record<string, unknown> }))
 const auth = vi.hoisted(() => ({ resetAuthState: vi.fn() }))
-const repairDeviceKeys = vi.fn()
+const repairDeviceKeys = vi.hoisted(() => vi.fn())
 
 vi.mock('sonner', () => ({ toast: { info: vi.fn(), error: vi.fn() } }))
+
+vi.mock('@/services/sync-account-service', () => ({
+  syncAccountService: { repairDeviceKeys }
+}))
 
 vi.mock('@/contexts/auth-context', () => ({
   useAuth: () => auth
@@ -110,9 +114,6 @@ describe('SyncStatus with device keys missing', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     sync.vaultBinding = { status: 'bound' }
-    ;(
-      window as unknown as { api: { syncOps: { repairDeviceKeys: typeof repairDeviceKeys } } }
-    ).api = { syncOps: { repairDeviceKeys } }
     status.overrides = {
       status: 'error',
       label: 'account.sync.statuses.deviceKeysMissing',

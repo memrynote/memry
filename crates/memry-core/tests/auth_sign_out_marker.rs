@@ -318,3 +318,124 @@ async fn a_marker_fault_at_sign_in_is_dropped_once_registration_finds_no_marker(
 
     assert_eq!(session.take_sign_out_marker_fault(), None);
 }
+
+const DELETED_BY_INTEGRITY: [SecureStoreKey; 4] = [
+    SecureStoreKey::AccessToken,
+    SecureStoreKey::RefreshToken,
+    SecureStoreKey::SetupToken,
+    SecureStoreKey::DeviceSigningKey,
+];
+
+/// The `integrity` sign-out keeps the master key, deletes the other four secrets, asks the
+/// server nothing, and the next launch restores nothing.
+#[tokio::test]
+async fn the_integrity_sign_out_keeps_only_the_master_key_and_is_not_restored() {
+    let dir = tempfile::tempdir().unwrap();
+    let marker = dir.path().join("signed-out");
+    let transport = FakeTransport::new(sign_in_script("jti-1"));
+    let store = FakeSecureStore::new();
+    let session = launch(transport.clone(), store.clone(), &marker);
+    sign_in(&session).await;
+    store.put_text(SecureStoreKey::MasterKey, "master");
+    store.put_text(SecureStoreKey::SetupToken, "setup");
+
+    let kept = session.sign_out_keeping_master_key();
+
+    assert!(kept.is_empty(), "{kept:?}");
+    assert_eq!(session.state(), AuthState::SignedOut);
+    assert_eq!(
+        store.text(SecureStoreKey::MasterKey).as_deref(),
+        Some("master")
+    );
+    for key in DELETED_BY_INTEGRITY {
+        assert_eq!(store.get(key).unwrap(), None, "{key:?} remains");
+    }
+    assert!(transport.calls_to("/auth/logout").is_empty());
+    drop(session);
+    let relaunched = launch(transport, store, &marker);
+    assert_eq!(relaunched.restore().unwrap(), AuthState::SignedOut);
+}
+
+/// A code in flight ends with the sign-in: the state has no sign-out edge, only a failed one.
+#[tokio::test]
+async fn the_integrity_sign_out_ends_a_code_in_flight() {
+    let dir = tempfile::tempdir().unwrap();
+    let session = launch(
+        FakeTransport::new(sign_in_script("jti-1")),
+        FakeSecureStore::new(),
+        &dir.path().join("signed-out"),
+    );
+    session
+        .request_email_code("kaan@example.com".to_string())
+        .await
+        .unwrap();
+
+    assert!(session.sign_out_keeping_master_key().is_empty());
+
+    assert_eq!(session.state(), AuthState::SignedOut);
+}
+
+/// A session over a device key this install holds and an access token far from expiry.
+fn holding_a_device_key() -> (AuthSession, Arc<FakeTransport>, String, tempfile::TempDir) {
+    let dir = tempfile::tempdir().unwrap();
+    let store = FakeSecureStore::new();
+    memry_core::api::auth::ensure_device_identity(store.clone()).unwrap();
+    let secret = store
+        .get(SecureStoreKey::DeviceSigningKey)
+        .unwrap()
+        .unwrap();
+    let public = memry_core::crypto::keys::base64_encode(&secret[32..]);
+    store.put_text(
+        SecureStoreKey::AccessToken,
+        &jwt(json!({ "sub": "user-1", "device_id": "device-1", "exp": 4_102_444_800u64 })),
+    );
+    let transport = FakeTransport::new(Vec::new());
+    let session = launch(transport.clone(), store, &dir.path().join("signed-out"));
+    (session, transport, public, dir)
+}
+
+#[tokio::test]
+async fn a_device_key_only_a_revoked_device_holds_is_not_listed() {
+    let (session, transport, public, _dir) = holding_a_device_key();
+    let rows = json!({ "devices": [
+        { "id": "device-1", "signingPublicKey": public, "revokedAt": 1_700_000_000 },
+        { "id": "device-2", "signingPublicKey": "AAAA", "revokedAt": null },
+    ] });
+    transport.push(response(200, &rows.to_string()));
+
+    assert_eq!(session.listed_device_id().await.unwrap(), None);
+}
+
+#[tokio::test]
+async fn a_device_key_a_live_device_holds_is_listed_under_its_id() {
+    let (session, transport, public, _dir) = holding_a_device_key();
+    let rows = json!([
+        { "id": "device-0", "signingPublicKey": public, "revokedAt": 1_700_000_000 },
+        { "id": "device-1", "signingPublicKey": public, "revokedAt": null },
+    ]);
+    transport.push(response(200, &rows.to_string()));
+
+    assert_eq!(
+        session.listed_device_id().await.unwrap().as_deref(),
+        Some("device-1")
+    );
+}
+
+/// No device key: nothing is listed, no request is made, and no key is minted (a minted key
+/// would be one the server never saw).
+#[tokio::test]
+async fn no_device_key_lists_nothing_and_mints_none() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = FakeSecureStore::new();
+    let transport = FakeTransport::new(Vec::new());
+    let session = launch(
+        transport.clone(),
+        store.clone(),
+        &dir.path().join("signed-out"),
+    );
+
+    assert_eq!(session.listed_device_id().await.unwrap(), None);
+
+    assert_eq!(transport.call_count(), 0);
+    assert_eq!(store.get(SecureStoreKey::DeviceSigningKey).unwrap(), None);
+}
