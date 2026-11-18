@@ -16,6 +16,7 @@ pub mod instance;
 pub mod menu;
 pub mod ml_worker;
 pub mod notifications;
+pub mod post_reveal;
 pub mod power;
 pub mod protocols;
 pub mod registry;
@@ -88,6 +89,7 @@ fn register_stages() {
     shell::account_sync::register_stages();
     shutdown::register_stages();
     ml_worker::register_stages();
+    commands::voice::register_stages();
     tray::register_stages();
     windows::close::register_stages();
     deep_link::register_stages();
