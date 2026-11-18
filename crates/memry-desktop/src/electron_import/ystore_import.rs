@@ -134,7 +134,15 @@ pub struct YStoreFold {
 /// Folds the store of the vault whose config entry records `vault_path`, named `vault_uuid`:
 /// its config `vaultUuid`, else its `data.db` `vault_metadata.vault_uuid`, else the uuid the
 /// import mints for it. A vault with no store folds to no documents. Called once per vault of
-/// one profile, an unclaimed legacy store is `Read` by at most one of them.
+/// one profile, an unclaimed legacy store is `Read` by at most one of them, provided the caller:
+/// - resolves every `vault_uuid` in that order with one reader (config `vaultUuid`, then
+///   [`read_vault_evidence`]'s `vault_id`, then a minted uuid), as the pick names the other
+///   vaults; a vault judged differently by itself and by the others can make two readers;
+/// - imports each config entry once, deduplicated by exact path string (no normalizing:
+///   Electron's identity is the exact string).
+///
+/// Each call reads the other vaults' `data.db` again (n calls, n reads each); a caller with
+/// many vaults may cache them per import.
 pub fn fold_vault_store(
     profile: &ElectronProfile,
     vault_path: &str,
@@ -192,8 +200,10 @@ pub fn fold_vault_store(
 
 /// Whether this vault, which has no store, is the one vault the unclaimed legacy store goes to:
 /// `currentVault` when it has no store, else the first vault in config order without one,
-/// compared by path. A vault whose folder is gone is passed over: Electron cannot open it. A
-/// profile of one vault (or no config) gives the store to the vault being imported.
+/// compared by exact path string, as Electron compares them. A vault whose folder (followed
+/// through a symlink) is gone is passed over: Electron cannot open it. Every vault's import
+/// applies this rule to the same list, the vault being imported included, so at most one
+/// passes. A profile of one vault (or no config) gives the store to the vault being imported.
 fn inherits_unclaimed_legacy(
     profile: &ElectronProfile,
     vault_path: &str,
@@ -225,7 +235,7 @@ fn inherits_unclaimed_legacy(
         .current_vault()
         .into_iter()
         .chain(vaults.iter().map(|v| v.path.as_str()))
-        .filter(|path| *path == vault_path || is_dir(Path::new(path)))
+        .filter(|path| std::fs::metadata(path).is_ok_and(|m| m.is_dir()))
         .find(|path| !has_store(path))
         == Some(vault_path)
 }

@@ -269,6 +269,43 @@ fn a_current_vault_missing_its_stamp_still_reads_the_legacy_store() {
     assert_eq!(fold_as(&f, &other, OTHER).legacy, LegacyStore::LeftUnread);
 }
 
+/// The vaults among the fixture's and `Other` whose import reads the legacy store.
+fn legacy_readers(f: &ElectronProfileFixture, other: &Path) -> Vec<&'static str> {
+    let mut readers = Vec::new();
+    if fold(f).legacy == LegacyStore::Read {
+        readers.push("fixture");
+    }
+    if fold_as(f, other, OTHER).legacy == LegacyStore::Read {
+        readers.push("other");
+    }
+    readers
+}
+
+/// Electron records whatever path the user opened, a symlink included: every vault's import
+/// follows it, so `currentVault` behind a symlink is the one reader.
+#[cfg(unix)]
+#[test]
+fn a_symlinked_current_vault_is_the_one_legacy_reader() {
+    let f = ElectronProfileFixture::install();
+    let other = two_vaults_without_stores(&f, Some(OTHER), true);
+    let real = other.with_file_name("Other real");
+    fs::rename(&other, &real).unwrap();
+    std::os::unix::fs::symlink(&real, &other).unwrap();
+    set_current_vault(&f, &other);
+    assert_eq!(legacy_readers(&f, &other), ["other"]);
+}
+
+/// `currentVault`'s folder is gone: Electron cannot open it, so the next vault in config order
+/// reads the store, and the gone vault's own import does not read it too.
+#[test]
+fn a_removed_current_vault_folder_leaves_one_legacy_reader() {
+    let f = ElectronProfileFixture::install();
+    let other = two_vaults_without_stores(&f, Some(OTHER), true);
+    fs::remove_dir(&other).unwrap();
+    set_current_vault(&f, &other);
+    assert_eq!(legacy_readers(&f, &other), ["fixture"]);
+}
+
 #[test]
 fn an_owed_partition_sets_the_journal_day_aside() {
     let f = ElectronProfileFixture::install();
