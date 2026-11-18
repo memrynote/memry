@@ -229,6 +229,11 @@ impl PullLoop {
         self
     }
 
+    /// The vault [`PullLoop::with_vault`] selected.
+    pub fn vault_id(&self) -> Option<&str> {
+        self.vault_id.as_deref()
+    }
+
     /// Drains up to `max_pages` pages, stopping at the end of the feed or at
     /// the first refusal.
     ///
