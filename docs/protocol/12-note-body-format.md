@@ -691,7 +691,7 @@ on a throwaway `Y.Doc` under `PERSISTENCE_PROBE_KEY`
 | `markdownSource`           | Map (`record: {source, htmlComments?}`) | `packages/shared/src/markdown-source.ts:182-191` via `apps/desktop/src/main/sync/blocknote-converter.ts:517-541`, `apps/desktop/src/main/sync/crdt-feed.ts:80`                                                                                                                                     | `apps/desktop/src/main/sync/blocknote-converter.ts:156`, `:161`                                             | foreign-vault bytes are re-spelled to house style on the next write-back: a `git diff` across the user's file, violating FR-041's "change only the edited region" |
 | `linkReferenceDefinitions` | Array                                   | `packages/shared/src/link-references.ts:178` via `apps/desktop/src/main/sync/blocknote-converter.ts:470-471`                                                                                                                                                                                       | `packages/shared/src/link-references.ts:187`, `apps/desktop/src/main/sync/blocknote-converter.ts:237-238`   | reference-link definitions are deleted and `[docs][d]` is inlined                                                                                                 |
 | `linkReferenceUsages`      | Array                                   | same (`packages/shared/src/link-references.ts:179`)                                                                                                                                                                                                                                                | same (`:191`)                                                                                               | same                                                                                                                                                              |
-| `criticMarkupMarks`        | Array                                   | `packages/shared/src/critic-markup/yjs.ts:73-125` via `apps/desktop/src/main/sync/blocknote-converter.ts:469`; renderer `apps/desktop/src/renderer/src/components/note/content-area/ContentArea.tsx:602`                                                                                           | `apps/desktop/src/main/sync/crdt-writeback.ts:466`, `apps/desktop/src/main/sync/blocknote-converter.ts:158` | **every suggestion and comment is deleted from the file on the next write-back, and source restoration flips back on, so the body is additionally re-spelled**    |
+| `criticMarkupMarks`        | Array                                   | `packages/shared/src/critic-markup/yjs.ts:78-129` via `apps/desktop/src/main/sync/blocknote-converter.ts:469`; renderer `apps/desktop/src/renderer/src/components/note/content-area/ContentArea.tsx:602`                                                                                           | `apps/desktop/src/main/sync/crdt-writeback.ts:466`, `apps/desktop/src/main/sync/blocknote-converter.ts:158` | **every suggestion and comment is deleted from the file on the next write-back, and source restoration flips back on, so the body is additionally re-spelled**    |
 
 Root name constants:
 `CRITIC_MARKUP_MARKS_ARRAY = 'criticMarkupMarks'`
@@ -771,22 +771,22 @@ two elements with one id, which Yjs orders the same on every replica.
   (`packages/shared/src/critic-markup/yjs.ts:56-64`,
   `crates/memry-core/src/markdown/convert/roots.rs:177-184`,
   `crates/memry-core/src/crdt/comments.rs:91-116`).
-- **Write: element by element** (`packages/shared/src/critic-markup/yjs.ts:81-142`,
-  `crates/memry-core/src/markdown/convert/roots.rs:218-310`). A writer deletes
+- **Write: element by element** (`packages/shared/src/critic-markup/yjs.ts:78-129`,
+  `crates/memry-core/src/markdown/convert/roots.rs:216-291`). A writer deletes
   the elements that fail validation, every element after the first valid one of
   an id, and the ids it no longer holds. It does not move existing elements, and
   it inserts a new id after the furthest existing element among the marks that
   precede the new id in the writer's list.
 - **A writer replaces an element only for an edit.** It compares the stored
   mark, normalized as the reader normalizes it, with the mark it writes, without
-  `start` and `end` (`packages/shared/src/critic-markup/yjs.ts:157-163`,
-  `crates/memry-core/src/markdown/convert/roots.rs:329-340`). Key order is not
+  `start` and `end` (`packages/shared/src/critic-markup/yjs.ts:144-150`,
+  `crates/memry-core/src/markdown/convert/roots.rs:310-321`). Key order is not
   a difference either. Offsets alone are never written: the window moves them
   with its typing (#4425), and a copy written only to move a mark would hide
   another device's edit of that mark under first-copy-wins. A replaced element
   keeps every top-level key the writer does not know
   (`packages/shared/src/critic-markup/yjs.ts:32-45`,
-  `crates/memry-core/src/markdown/convert/roots.rs:160-173`, `:343-356`).
+  `crates/memry-core/src/markdown/convert/roots.rs:160-173`, `:324-337`).
   Two devices that change different marks therefore merge without duplicates,
   and a later write deletes the duplicates of an earlier concurrent edit.
 - **The items of `mentions`, `attachments` and `formatRanges` take no new
