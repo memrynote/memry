@@ -1398,6 +1398,7 @@
       "selectModel": "Odaberite model",
       "apiKey": "API ključ",
       "apiKeyDescription": "Pohranjuje se lokalno, šalje se samo pružatelju usluge",
+      "apiKeyKeychainDescription": "Pohranjuje se u privjesak ključeva sustava, šalje se samo pružatelju usluge",
       "apiKeyPlaceholder": "Unesite API ključ za {provider}",
       "ollamaUrl": "Ollama URL",
       "ollamaUrlDescription": "Adresa lokalnog poslužitelja",

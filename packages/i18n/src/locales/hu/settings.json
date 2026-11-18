@@ -1398,6 +1398,7 @@
       "selectModel": "Modell kiválasztása",
       "apiKey": "API-kulcs",
       "apiKeyDescription": "Helyben tárolva, csak a szolgáltatónak küldjük",
+      "apiKeyKeychainDescription": "Az operációs rendszer kulcskarikájában tárolva, csak a szolgáltatónak küldjük",
       "apiKeyPlaceholder": "{provider} API-kulcs megadása",
       "ollamaUrl": "Ollama URL",
       "ollamaUrlDescription": "Helyi szerver címe",

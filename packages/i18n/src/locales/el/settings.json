@@ -1398,6 +1398,7 @@
       "selectModel": "Επιλέξτε ένα μοντέλο",
       "apiKey": "Κλειδί API",
       "apiKeyDescription": "Αποθηκεύεται τοπικά, αποστέλλεται μόνο στον πάροχο",
+      "apiKeyKeychainDescription": "Αποθηκεύεται στην κλειδοθήκη του λειτουργικού συστήματος, αποστέλλεται μόνο στον πάροχο",
       "apiKeyPlaceholder": "Κλειδί API {provider}",
       "ollamaUrl": "Διεύθυνση URL Ollama",
       "ollamaUrlDescription": "Διεύθυνση τοπικού διακομιστή",

@@ -1398,6 +1398,7 @@
       "selectModel": "Selecteer een model",
       "apiKey": "API-sleutel",
       "apiKeyDescription": "Lokaal opgeslagen, alleen verzonden naar de aanbieder",
+      "apiKeyKeychainDescription": "Opgeslagen in de sleutelhanger van je besturingssysteem, alleen verzonden naar de aanbieder",
       "apiKeyPlaceholder": "API-sleutel voor {provider} invoeren",
       "ollamaUrl": "Ollama-URL",
       "ollamaUrlDescription": "Lokaal serveradres",

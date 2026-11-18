@@ -1398,6 +1398,7 @@
       "selectModel": "Selecione um modelo",
       "apiKey": "Chave de API",
       "apiKeyDescription": "Armazenada localmente, enviada apenas ao provedor",
+      "apiKeyKeychainDescription": "Armazenada no chaveiro do sistema, enviada apenas ao provedor",
       "apiKeyPlaceholder": "Digite a chave de API de {provider}",
       "ollamaUrl": "URL do Ollama",
       "ollamaUrlDescription": "Endereço do servidor local",

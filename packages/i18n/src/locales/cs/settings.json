@@ -1398,6 +1398,7 @@
       "selectModel": "Vyberte model",
       "apiKey": "Klíč API",
       "apiKeyDescription": "Uložen místně, odesílán pouze poskytovateli",
+      "apiKeyKeychainDescription": "Uložen v úložišti klíčů systému, odesílán pouze poskytovateli",
       "apiKeyPlaceholder": "Zadejte klíč API pro {provider}",
       "ollamaUrl": "URL serveru Ollama",
       "ollamaUrlDescription": "Adresa místního serveru",

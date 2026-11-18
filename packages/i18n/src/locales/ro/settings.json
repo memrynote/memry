@@ -1398,6 +1398,7 @@
       "selectModel": "Selectați un model",
       "apiKey": "Cheia API",
       "apiKeyDescription": "Stocată local, trimisă numai furnizorului",
+      "apiKeyKeychainDescription": "Stocată în depozitul de chei al sistemului, trimisă numai furnizorului",
       "apiKeyPlaceholder": "Introduceți cheia API {provider}",
       "ollamaUrl": "URL Ollama",
       "ollamaUrlDescription": "Adresa serverului local",

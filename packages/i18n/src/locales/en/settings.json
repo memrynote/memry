@@ -1398,6 +1398,7 @@
       "selectModel": "Select a model",
       "apiKey": "API Key",
       "apiKeyDescription": "Stored locally, sent only to the provider",
+      "apiKeyKeychainDescription": "Stored in your OS keychain, sent only to the provider",
       "apiKeyPlaceholder": "Enter {provider} API key",
       "ollamaUrl": "Ollama URL",
       "ollamaUrlDescription": "Local server address",

@@ -1398,6 +1398,7 @@
       "selectModel": "Valitse malli",
       "apiKey": "API-avain",
       "apiKeyDescription": "Tallennetaan paikallisesti, lähetetään vain palveluntarjoajalle",
+      "apiKeyKeychainDescription": "Tallennetaan käyttöjärjestelmän avainnippuun, lähetetään vain palveluntarjoajalle",
       "apiKeyPlaceholder": "Anna palvelun {provider} API-avain",
       "ollamaUrl": "Ollaman URL-osoite",
       "ollamaUrlDescription": "Paikallisen palvelimen osoite",

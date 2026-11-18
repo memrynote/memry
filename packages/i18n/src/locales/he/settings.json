@@ -1398,6 +1398,7 @@
       "selectModel": "בחירת מודל",
       "apiKey": "מפתח API",
       "apiKeyDescription": "מאוחסן באופן מקומי, נשלח רק לספק",
+      "apiKeyKeychainDescription": "מאוחסן במחזיק מפתחות מערכת ההפעלה שלך, נשלח רק לספק",
       "apiKeyPlaceholder": "הזנת מפתח API של {provider}",
       "ollamaUrl": "כתובת URL של Ollama",
       "ollamaUrlDescription": "כתובת שרת מקומי",

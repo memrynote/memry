@@ -1398,6 +1398,7 @@
       "selectModel": "選擇模型",
       "apiKey": "API 金鑰",
       "apiKeyDescription": "儲存在本機，只會傳送給供應商",
+      "apiKeyKeychainDescription": "儲存在作業系統的鑰匙圈中，只會傳送給供應商",
       "apiKeyPlaceholder": "輸入 {provider} API 金鑰",
       "ollamaUrl": "Ollama URL",
       "ollamaUrlDescription": "本機伺服器位址",

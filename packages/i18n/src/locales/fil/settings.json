@@ -1398,6 +1398,7 @@
       "selectModel": "Pumili ng modelo",
       "apiKey": "API key",
       "apiKeyDescription": "Nakaimbak nang lokal, ipinapadala lang sa provider",
+      "apiKeyKeychainDescription": "Naka-store sa iyong OS keychain, ipinapadala lang sa provider",
       "apiKeyPlaceholder": "Ilagay ang API key ng {provider}",
       "ollamaUrl": "Ollama URL",
       "ollamaUrlDescription": "Lokal na address ng server",

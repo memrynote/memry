@@ -1398,6 +1398,7 @@
       "selectModel": "Chọn một mô hình",
       "apiKey": "Khóa API",
       "apiKeyDescription": "Lưu cục bộ, chỉ gửi đến nhà cung cấp",
+      "apiKeyKeychainDescription": "Lưu trong chuỗi khóa của hệ điều hành, chỉ gửi đến nhà cung cấp",
       "apiKeyPlaceholder": "Nhập khóa API {provider}",
       "ollamaUrl": "URL Ollama",
       "ollamaUrlDescription": "Địa chỉ máy chủ cục bộ",

@@ -1398,6 +1398,7 @@
       "selectModel": "Modell auswählen",
       "apiKey": "API-Schlüssel",
       "apiKeyDescription": "Lokal gespeichert, nur an den Anbieter gesendet",
+      "apiKeyKeychainDescription": "Im Schlüsselbund deines Betriebssystems gespeichert, nur an den Anbieter gesendet",
       "apiKeyPlaceholder": "API-Schlüssel für {provider} eingeben",
       "ollamaUrl": "Ollama-URL",
       "ollamaUrlDescription": "Lokale Serveradresse",

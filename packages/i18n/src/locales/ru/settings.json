@@ -1398,6 +1398,7 @@
       "selectModel": "Выберите модель",
       "apiKey": "API-ключ",
       "apiKeyDescription": "Хранится локально, отправляется только провайдеру",
+      "apiKeyKeychainDescription": "Хранится в связке ключей вашей ОС, отправляется только провайдеру",
       "apiKeyPlaceholder": "Введите API-ключ {provider}",
       "ollamaUrl": "URL Ollama",
       "ollamaUrlDescription": "Адрес локального сервера",
