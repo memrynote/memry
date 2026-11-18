@@ -122,6 +122,8 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::journal::journal_get_streak::<Wry>,
             crate::commands::journal::journal_get_year_stats::<Wry>,
             crate::commands::journal::journal_update_entry::<Wry>,
+            // launch
+            crate::commands::launch::launch_report_renderer_marks,
             // locale
             crate::commands::locale::locale_get,
             crate::commands::locale::locale_list,
