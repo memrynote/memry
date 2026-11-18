@@ -13,6 +13,10 @@ const CALENDAR_DATE: &str = "Date must be a real calendar date in YYYY-MM-DD for
 const HTTP_LINK: &str = "link must be an http(s) URL";
 const ONE_ENDPOINT: &str = "exactly one of ref or elementId is required";
 const SOME_TAG: &str = "Give at least one tag in add or remove.";
+const BINARY_DATA: &str =
+    "Must be binary data (Buffer, Uint8Array, ArrayBuffer, or serialized buffer)";
+const TASK_FIELDS: &str = "At most 100 fields";
+const TASK_FIELD_KEYS: &str = "At most 50 keys";
 
 /// The value at `path` (`[]` is every item of an array) satisfies `holds`, or the call is refused
 /// with `message`.
@@ -97,6 +101,23 @@ const REFINEMENTS: &[Refinement] = &[
     ),
 ];
 
+/// The refinements of the desktop API arguments, by message: `desktop-ops.json` `checks` names
+/// the schema node each applies to, and the test below holds this table to that list.
+const DESKTOP_REFINEMENTS: &[(&str, fn(&Value) -> bool)] = &[
+    (CALENDAR_DATE, calendar_date),
+    (BINARY_DATA, binary_data),
+    (TASK_FIELDS, |value| own_keys(value) <= 100),
+    (TASK_FIELD_KEYS, |value| own_keys(value) <= 50),
+];
+
+/// The desktop API refinement whose message is `message`.
+pub(super) fn desktop_refinement(message: &str) -> Option<fn(&Value) -> bool> {
+    DESKTOP_REFINEMENTS
+        .iter()
+        .find(|(known, _)| *known == message)
+        .map(|(_, holds)| *holds)
+}
+
 /// The refinements of `tool`.
 pub(super) fn for_tool(tool: &str) -> Vec<&'static Refinement> {
     REFINEMENTS
@@ -172,6 +193,24 @@ fn one_endpoint(value: &Value) -> bool {
     truthy("ref") != truthy("elementId")
 }
 
+/// `binaryDataSchema` of `inbox-api.ts` over JSON: a non-empty object or array whose values are
+/// all numbers (the IPC form of a buffer).
+fn binary_data(value: &Value) -> bool {
+    match value {
+        Value::Array(items) => !items.is_empty() && items.iter().all(Value::is_number),
+        Value::Object(object) => !object.is_empty() && object.values().all(Value::is_number),
+        _ => false,
+    }
+}
+
+/// `Object.keys(value).length` of `tasks-api.ts`'s field refinements, run on zod's record output,
+/// which leaves out `__proto__`.
+fn own_keys(value: &Value) -> usize {
+    value.as_object().map_or(0, |object| {
+        object.keys().filter(|key| *key != "__proto__").count()
+    })
+}
+
 /// `(add?.length ?? 0) + (remove?.length ?? 0) > 0` of `note-action-schemas.ts`.
 fn some_tag(value: &Value) -> bool {
     let count = |key: &str| value.get(key).and_then(Value::as_array).map_or(0, Vec::len);
@@ -182,8 +221,31 @@ fn some_tag(value: &Value) -> bool {
 mod tests {
     use serde_json::Value;
 
-    use super::REFINEMENTS;
+    use std::collections::BTreeSet;
+
+    use super::{DESKTOP_REFINEMENTS, REFINEMENTS};
+    use crate::agent::mcp::desktop_args::DESKTOP_OPS_JSON;
     use crate::agent::mcp::schemas::TOOLS_JSON;
+
+    /// A desktop refinement Electron adds or drops changes `desktop-ops.json`, and the table must
+    /// follow: a listed one without a Rust check fails the catalogue load, an unlisted one here.
+    #[test]
+    fn the_desktop_table_is_electrons_list_of_refinements() {
+        let file: Value = serde_json::from_str(DESKTOP_OPS_JSON).unwrap();
+        let listed: BTreeSet<&str> = file["operations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .flat_map(|operation| operation["checks"].as_array().unwrap())
+            .filter(|check| check["check"] == "custom")
+            .map(|check| check["message"].as_str().unwrap())
+            .collect();
+        let table: BTreeSet<&str> = DESKTOP_REFINEMENTS
+            .iter()
+            .map(|(message, _)| *message)
+            .collect();
+        assert_eq!(table, listed);
+    }
 
     /// A refinement Electron adds or drops changes `tools.json`, and this table must follow.
     #[test]

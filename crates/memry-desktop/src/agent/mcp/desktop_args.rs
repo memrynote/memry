@@ -2,7 +2,9 @@
 //! `assertDesktopApiArgs` (`agent/mcp/tools/desktop-api-params.ts`) with the refusal text of
 //! `desktop-api-issues.ts`. Each operation's arguments are a zod tuple whose JSON Schema is in
 //! `packages/contracts/test-vectors/agent-mcp/desktop-ops.json`; the zod walk parses them, and a
-//! refusal names each field, the type it takes and what was sent. It runs before the write gate,
+//! refusal names each field, the type it takes and what was sent. The file's `checks` carry what
+//! that JSON Schema leaves out (custom messages, refinements, `z.instanceof`) as [`Extra`]s at the
+//! nodes they apply to. The check runs before the write gate,
 //! so the user is never asked to approve a call that cannot run.
 
 use std::collections::HashMap;
@@ -12,11 +14,13 @@ use serde::Deserialize;
 use serde_json::{Map, Value, json};
 
 use super::errors::{ToolError, ToolErrorCode};
+use super::refine;
 use super::zod::{
-    self, Code, Issue, Seg, Walker, js_json, js_number, js_prefix, js_quoted_prefix, resolve_ref,
+    self, Check, Code, Extra, Issue, Seg, Walker, js_json, js_number, js_prefix, js_quoted_prefix,
+    resolve_ref,
 };
 
-const DESKTOP_OPS_JSON: &str =
+pub(super) const DESKTOP_OPS_JSON: &str =
     include_str!("../../../../../packages/contracts/test-vectors/agent-mcp/desktop-ops.json");
 
 const EXPECTED_MAX_CHARS: usize = 400;
@@ -34,6 +38,44 @@ struct OpEntry {
     operation: String,
     params: Vec<ParamEntry>,
     args_schema: Map<String, Value>,
+    checks: Vec<CheckEntry>,
+}
+
+/// One of `desktop-ops.json`'s `checks`: zod's check name, at a JSON Pointer into the schema.
+#[derive(Deserialize)]
+struct CheckEntry {
+    at: String,
+    check: String,
+    format: Option<String>,
+    expected: Option<String>,
+    message: Option<String>,
+}
+
+impl CheckEntry {
+    /// The check as the walk runs it; a check it cannot run is a build defect.
+    fn extra(self, tuple: &Value) -> Result<(String, Extra), String> {
+        let where_ = format!("{} at {}", self.check, self.at);
+        if tuple.pointer(&self.at).is_none() {
+            return Err(format!("{where_}: the pointer names no schema node"));
+        }
+        let message = self.message.ok_or_else(|| format!("{where_}: no message"));
+        let extra = match (self.check.as_str(), self.format.as_deref()) {
+            ("min_length", None) => Extra::Message(Check::MinLength, message?),
+            ("max_length", None) => Extra::Message(Check::MaxLength, message?),
+            ("string_format", Some("regex")) => Extra::Message(Check::Pattern, message?),
+            ("custom", None) => {
+                let message = message?;
+                let holds = refine::desktop_refinement(&message)
+                    .ok_or_else(|| format!("{where_}: no Rust check for {message:?}"))?;
+                Extra::Refine(message, holds)
+            }
+            ("instanceof", None) => {
+                Extra::InstanceOf(self.expected.ok_or_else(|| format!("{where_}: no class"))?)
+            }
+            _ => return Err(format!("{where_}: a check the walk does not run")),
+        };
+        Ok((self.at, extra))
+    }
 }
 
 #[derive(Deserialize)]
@@ -46,6 +88,7 @@ struct ParamEntry {
 pub(super) struct Operation {
     params: Vec<String>,
     tuple: Value,
+    extras: Vec<(String, Extra)>,
 }
 
 fn operations() -> &'static HashMap<String, Operation> {
@@ -80,8 +123,22 @@ fn operations() -> &'static HashMap<String, Operation> {
                 let tuple = Value::Object(tuple);
                 #[allow(clippy::expect_used)] // as above
                 zod::lint(&tuple).expect("desktop argument schema is one the zod walk reads");
+                #[allow(clippy::expect_used)] // as above
+                let extras = entry
+                    .checks
+                    .into_iter()
+                    .map(|check| check.extra(&tuple))
+                    .collect::<Result<_, _>>()
+                    .expect("every desktop argument check is one the zod walk runs");
                 let params = entry.params.into_iter().map(|param| param.name).collect();
-                (entry.operation, Operation { params, tuple })
+                (
+                    entry.operation,
+                    Operation {
+                        params,
+                        tuple,
+                        extras,
+                    },
+                )
             })
             .collect()
     });
@@ -127,7 +184,9 @@ fn assert_args(operation: &str, op: &'static Operation, args: &Value) -> Result<
             json!({ "operation": operation, "params": params, "received": sent }),
         );
     }
-    let outcome = Walker::new(&op.tuple, None).check(&op.tuple, Some(args));
+    let outcome = Walker::new(&op.tuple, None)
+        .with_extras(&op.extras)
+        .check(&op.tuple, Some(args));
     if outcome.is_ok() {
         return Ok(());
     }

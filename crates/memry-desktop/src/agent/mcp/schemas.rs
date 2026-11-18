@@ -21,7 +21,7 @@ pub(super) const TOOLS_JSON: &str =
 /// Issues named in a validation reply, where the SDK names all of them. Every issue of an array of
 /// thousands of wrong items would grow the reply past its input; the agent needs the first ones
 /// to fix the call.
-const MAX_ISSUES: usize = 20;
+pub(super) const MAX_ISSUES: usize = 20;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "lowercase")]
