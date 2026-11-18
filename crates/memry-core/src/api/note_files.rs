@@ -154,6 +154,18 @@ impl NoteFiles {
         self.db.read_blocking(note_files::behind_bodies)
     }
 
+    /// Every live note and day no row names ([`note_files::unfiled_bodies`]).
+    pub fn unfiled_bodies(&self) -> Result<Vec<String>, StorageError> {
+        self.db.read_blocking(note_files::unfiled_bodies)
+    }
+
+    /// The record `id` when no row names it ([`note_files::unfiled`]).
+    pub fn unfiled(&self, id: &str) -> Result<Option<note_files::Unfiled>, StorageError> {
+        let id = id.to_owned();
+        self.db
+            .read_blocking(move |conn| note_files::unfiled(conn, &id))
+    }
+
     /// [`note_files::mark_unmarked`], once the vault opened.
     pub fn mark_unmarked(&self) -> Result<usize, StorageError> {
         self.db

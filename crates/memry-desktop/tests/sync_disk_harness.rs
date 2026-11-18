@@ -10,6 +10,10 @@
 //! | an outside edit is never lost to a pulled body           | the write-back's hash rule, versions  |
 //! | an owed file is taken once and pushed                    | `takeOwedFile`, the open sweep        |
 //! | a pulled lock reaches the file while the lane is held    | lock observer, no rows' lane          |
+//! | a note created on A gets its file on B                   | the write-back files an unfiled note  |
+//! | an outside file at that name stays, the note is numbered | `free_path`, create-new only          |
+//! | a journal day created on A gets its day file on B        | the write-back files an unfiled day   |
+//! | a note with no file at open gets its file                | the open reconcile lists it           |
 
 #![cfg(feature = "harness")]
 
@@ -139,6 +143,19 @@ impl Peer {
         pass(&self.driver).await;
     }
 
+    /// A note made on A in `folder` with `body` as its one paragraph.
+    fn create(&self, title: &str, folder: Option<&str>, body: &str) -> String {
+        let writer = self.core.notes_writer(self.store.clone()).unwrap();
+        let id = writer.create_with(title, folder, &[], None, None).unwrap();
+        let typed = BlockEdit::InsertParagraph {
+            after_block_id: None,
+            text: body.into(),
+            new_block_id: "a-first".into(),
+        };
+        assert!(writer.edit_block(id.clone(), typed).unwrap());
+        id
+    }
+
     fn body(&self, id: &str) -> String {
         let blocks = self.core.notes().blocks(id.to_owned()).unwrap();
         let blocks = blocks.expect("A holds the body");
@@ -224,6 +241,34 @@ impl Disk {
             .owes_file_body(&self.note)
             .unwrap()
     }
+}
+
+/// Waits until the file at `rel` holds `text`.
+fn until_holds(env: &Env, rel: &str, text: &str) -> String {
+    let deadline = Instant::now() + WAIT;
+    loop {
+        let file = std::fs::read_to_string(env.vault.join(rel)).unwrap_or_default();
+        if file.contains(text) {
+            return file;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "{rel} never took {text:?}: {file:?}"
+        );
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+}
+
+/// The row of `id` names `rel` and has a hash, and the notes list shows the note.
+fn filed(env: &Env, id: &str, rel: &str) {
+    let files = env.core().note_files();
+    let row = files.by_id(id).unwrap().expect("a row");
+    assert_eq!(row.path, rel);
+    assert!(row.content_hash.is_some(), "the row holds a hash");
+    assert!(
+        files.listed_by_id(id).unwrap().is_some(),
+        "the notes list shows it"
+    );
 }
 
 /// B's note and its body reach A, which then edits the first block and pushes the edit.
@@ -411,4 +456,106 @@ async fn a_pulled_lock_reaches_the_file_while_the_lane_is_held() {
         .permissions()
         .readonly();
     assert!(!readonly, "the pulled unlock made B's file writable");
+}
+
+/// A note A creates in `Work` reaches B as `Work/Remote plan.md` with A's body, a row with a
+/// hash, and a place in the notes list. Red without the fix: the pass keeps `NoRow`, so no file.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_note_created_on_a_gets_its_file_on_b() {
+    let server = Server::start();
+    let b = Disk::new(&server).await;
+    b.sync().await;
+    let a = Peer::new(&server).await;
+    let id = a.create("Remote plan", Some("Work"), "from A");
+    a.sync().await;
+
+    for _ in 0..2 {
+        b.sync().await;
+    }
+    until_holds(&b.env, "Work/Remote plan.md", "from A");
+    filed(&b.env, &id, "Work/Remote plan.md");
+}
+
+/// An outside file already at the note's name stays byte for byte; the note gets the next
+/// numbered name, as Electron's `generateUniquePathSync` gives it.
+#[tokio::test(flavor = "multi_thread")]
+async fn an_outside_file_at_the_name_stays_and_the_note_is_numbered() {
+    let server = Server::start();
+    let b = Disk::new(&server).await;
+    b.sync().await;
+    let outside = "outside words\n";
+    b.env.write("Work/Remote plan.md", outside);
+    let a = Peer::new(&server).await;
+    let id = a.create("Remote plan", Some("Work"), "from A");
+    a.sync().await;
+
+    for _ in 0..2 {
+        b.sync().await;
+    }
+    until_holds(&b.env, "Work/Remote plan 1.md", "from A");
+    filed(&b.env, &id, "Work/Remote plan 1.md");
+    assert_eq!(b.env.read("Work/Remote plan.md"), outside);
+}
+
+/// A journal day A writes reaches B's day file, at the path B's config gives the day.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_journal_day_created_on_a_gets_its_day_file_on_b() {
+    let server = Server::start();
+    let b = Disk::new(&server).await;
+    b.sync().await;
+    let a = Peer::new(&server).await;
+    let date = "2026-11-02";
+    let typed = BlockEdit::InsertParagraph {
+        after_block_id: None,
+        text: "day from A".into(),
+        new_block_id: "a-day".into(),
+    };
+    let journal = a.core.journal(a.store.clone()).unwrap();
+    journal.edit_day(date.into(), typed).unwrap();
+    let id = journal.entry_id(date.into()).unwrap().expect("A's day");
+    a.sync().await;
+
+    for _ in 0..2 {
+        b.sync().await;
+    }
+    let rel = "journal/2026-11-02.md";
+    let file = until_holds(&b.env, rel, "day from A");
+    assert!(file.contains("date: '2026-11-02'"), "the day's date: {file:?}");
+    filed(&b.env, &id, rel);
+}
+
+/// A note pulled by a driver that writes no file (a crash before the pass, a build before L5)
+/// gets its file at the next open: the reconcile lists notes with no row.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_note_with_no_file_at_open_gets_its_file() {
+    let server = Server::start();
+    let Disk {
+        mut env,
+        store,
+        driver: observed,
+        ..
+    } = Disk::new(&server).await;
+    // Its disk observer holds the vault, which a reopen waits out.
+    drop(observed);
+    let plain = driver(&env.core(), &auth(&server, 1, &store), Vec::new()).await;
+    pass(&plain).await;
+    let a = Peer::new(&server).await;
+    let id = a.create("Remote plan", Some("Work"), "from A");
+    a.sync().await;
+
+    for _ in 0..2 {
+        pass(&plain).await;
+    }
+    assert!(
+        env.core().note_files().by_id(&id).unwrap().is_none(),
+        "no file without the observer"
+    );
+    drop(plain);
+
+    env.close();
+    env.open();
+    // The reconcile runs on the consumer's thread once the open walk is indexed.
+    env.facts_until(indexed);
+    until_holds(&env, "Work/Remote plan.md", "from A");
+    filed(&env, &id, "Work/Remote plan.md");
 }
