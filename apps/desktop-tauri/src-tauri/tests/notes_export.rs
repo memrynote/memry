@@ -1,17 +1,21 @@
-//! `notes_export_html` through the IPC a renderer calls, on a mock app over a real vault, vault
-//! tier and note index (#3551 stage B): the file written at `outputPath` keeps its image after it
+//! The note export on a mock app over a real vault, vault tier and note index (#3551 stage B):
+//! the headless `export_html_to` (in process only) writes a file that keeps its image after it
 //! moves (Electron's `note-export-images.e2e.ts`), the schema's defaults, and a missing note or
 //! a failed write resolving with its `code`, as Electron's handler resolves them, and a custom
-//! icon read with no device key.
-//! The save dialog path needs a native dialog; the e2e build's dialog queue drives it.
+//! icon read with no device key. The command itself takes no path: a call carrying `outputPath`
+//! is rejected and writes nothing. Its save dialog needs a native dialog; the e2e build's dialog
+//! queue drives it.
 
 mod support;
 
 use std::fs;
+use std::path::Path;
 
 use memry_core::seams::secure_store::SecureStoreKey;
+use memry_tauri::commands::export::{ExportNoteInput, export_html_to};
 use serde_json::{Value, json};
 use support::Mocked;
+use tauri::Manager;
 use tauri_specta::collect_commands;
 
 /// A 1x1 PNG.
@@ -61,22 +65,25 @@ fn opened() -> Fixture {
 }
 
 impl Fixture {
-    fn export(&self, input: Value) -> Value {
-        self.mocked
-            .invoke("notes_export_html", json!({ "input": input }))
-            .unwrap()
+    /// The headless export of `input` to `target`, as the result a webview would see.
+    fn export(&self, input: Value, target: &Path) -> Value {
+        let input: ExportNoteInput = serde_json::from_value(input).unwrap();
+        let app = self.mocked.webview.app_handle();
+        serde_json::to_value(export_html_to(app, input, target)).unwrap()
     }
 }
 
 #[test]
-fn the_file_at_output_path_carries_its_image_after_it_moves() {
+fn the_exported_file_carries_its_image_after_it_moves() {
     let f = opened();
     let target = f.out.path().join("Lisbon.html");
 
-    let result = f.export(json!({
-        "noteId": f.id,
-        "outputPath": target.to_string_lossy(),
-    }));
+    let result = f.export(
+        json!({
+            "noteId": f.id,
+        }),
+        &target,
+    );
 
     assert_eq!(
         result,
@@ -98,13 +105,15 @@ fn the_switches_reach_the_document() {
     let f = opened();
     let target = f.out.path().join("bare.html");
 
-    let result = f.export(json!({
-        "noteId": f.id,
-        "includeMetadata": false,
-        "includeTaskMarkers": true,
-        "pageSize": "Letter",
-        "outputPath": target.to_string_lossy(),
-    }));
+    let result = f.export(
+        json!({
+            "noteId": f.id,
+            "includeMetadata": false,
+            "includeTaskMarkers": true,
+            "pageSize": "Letter",
+        }),
+        &target,
+    );
 
     assert_eq!(result["success"], json!(true));
     let html = fs::read_to_string(&target).unwrap();
@@ -138,10 +147,12 @@ fn a_custom_icon_exports_with_no_device_key() {
         .unwrap();
     let target = f.out.path().join("Iconic.html");
 
-    let result = f.export(json!({
-        "noteId": note["id"],
-        "outputPath": target.to_string_lossy(),
-    }));
+    let result = f.export(
+        json!({
+            "noteId": note["id"],
+        }),
+        &target,
+    );
 
     assert_eq!(
         result,
@@ -161,10 +172,12 @@ fn a_missing_note_resolves_not_found_and_writes_nothing() {
     let f = opened();
     let target = f.out.path().join("none.html");
 
-    let result = f.export(json!({
-        "noteId": "no-such-note",
-        "outputPath": target.to_string_lossy(),
-    }));
+    let result = f.export(
+        json!({
+            "noteId": "no-such-note",
+        }),
+        &target,
+    );
 
     assert_eq!(
         result,
@@ -178,13 +191,29 @@ fn a_failed_write_resolves_failed_with_the_reason() {
     let f = opened();
     let target = f.out.path().join("missing-dir/Lisbon.html");
 
-    let result = f.export(json!({
-        "noteId": f.id,
-        "outputPath": target.to_string_lossy(),
-    }));
+    let result = f.export(
+        json!({
+            "noteId": f.id,
+        }),
+        &target,
+    );
 
     assert_eq!(result["success"], json!(false));
     assert_eq!(result["code"], json!("failed"));
     assert!(!result["error"].as_str().unwrap().is_empty(), "{result}");
     assert!(result.get("path").is_none(), "{result}");
+}
+
+#[test]
+fn a_call_carrying_an_output_path_is_rejected_and_writes_nothing() {
+    let f = opened();
+    let target = f.out.path().join("planted.html");
+
+    let answer = f.mocked.invoke(
+        "notes_export_html",
+        json!({ "input": { "noteId": f.id, "outputPath": target.to_string_lossy() } }),
+    );
+
+    assert!(answer.is_err(), "{answer:?}");
+    assert!(!target.exists());
 }
