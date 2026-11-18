@@ -31,6 +31,8 @@ export type AlternativeConfig = {
   migration: { importer: string | null; steps: readonly string[] }
   faqs: readonly { question: string; answer: string }[]
   footnote: string
+  // Internal links shown after the deep-dive sections.
+  related?: readonly { label: string; href: string; description: string }[]
 }
 
 const COMPARISON_FOOTNOTE =
@@ -137,7 +139,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
     intro:
       'memrynote is a private, end-to-end encrypted alternative to Notion. Where Notion stores your pages on its servers — where staff can technically access them — memrynote keeps every note as a plain Markdown file on your own device and encrypts sync with XChaCha20-Poly1305, so the server only ever holds your notes as ciphertext. It combines notes, tasks, a calendar, and a daily journal in one offline-first workspace, runs on macOS, Windows, and Linux, and needs no account to get started. It is open source and free for local use, so your second brain stays yours even if the company disappears.',
     rows: [
-      { feature: 'Local-first & offline', memry: true, competitor: false },
+      { feature: 'Notes stored on your own device', memry: true, competitor: false },
       { feature: 'End-to-end encryption', memry: true, competitor: false },
       { feature: 'Plain Markdown files', memry: true, competitor: false },
       { feature: 'Works offline', memry: true, competitor: 'partial' },
@@ -145,7 +147,9 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       { feature: 'Daily journal', memry: true, competitor: 'partial' },
       { feature: 'No vendor access to your data', memry: true, competitor: false },
       { feature: 'Open source', memry: true, competitor: false },
-      { feature: 'Free tier', memry: true, competitor: 'partial' }
+      { feature: 'Free tier', memry: true, competitor: 'partial' },
+      { feature: 'Sharing & real-time collaboration', memry: false, competitor: true },
+      { feature: 'Mobile & web apps', memry: 'partial', competitor: true }
     ],
     reasons: [
       {
@@ -181,6 +185,14 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       {
         heading: 'Works offline, no account required',
         body: 'Notion is cloud-first and degrades without a connection. memrynote is offline-first: the entire workspace — notes, tasks, calendar, journal, search — runs locally with no login. Sync is an option you switch on, not a requirement for opening your own notes.'
+      },
+      {
+        heading: 'Moving your Notion workspace',
+        body: 'memrynote imports Notion’s HTML export. In Notion, choose Export with the HTML format, all content, and subpages included, then open memrynote → Settings → Import → Notion and pick the .zip. Large exports that Notion splits into several parts import in one run. Each page becomes a Markdown note under a Notion folder that mirrors your page tree. Links between pages become [[wiki-links]], images and files are copied into your vault, and database properties become note properties. Database views, such as boards and timelines, do not come across. Your Notion workspace stays as it is while you compare.'
+      },
+      {
+        heading: 'Where Notion is still the better pick',
+        body: 'Notion is built for teams. It has shared pages with comments and permissions, real-time editing, relational databases with formulas and many views, web publishing, and apps for iPhone, Android, and the web. memrynote is a private workspace for one person, synced across your own devices. It has no sharing, no web app, and no Android app, and its iPhone app is in beta on TestFlight. If your team plans its work together in Notion, keep Notion for that work and use memrynote for what is yours alone.'
       }
     ],
     pricing: {
@@ -190,16 +202,16 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
     migration: {
       importer: 'Notion',
       steps: [
-        'In Notion, export your workspace as “Markdown & CSV”.',
-        'Open memrynote → Settings → Import and choose the Notion importer.',
-        'Pages import as Markdown notes and databases as structured notes, landing in a folder you own.'
+        'In Notion, choose Export, then pick the HTML format with all content and subpages included.',
+        'Open memrynote → Settings → Import, choose the Notion importer, and select the exported .zip.',
+        'Pages arrive as Markdown notes in a Notion folder, with page links as wiki-links and database properties as note properties.'
       ]
     },
     faqs: [
       {
         question: 'Can I import my Notion workspace?',
         answer:
-          'Yes. Export your Notion workspace as Markdown & CSV, then use memrynote’s built-in Notion importer. Pages become Markdown notes and databases become structured notes in your local vault.'
+          'Yes. Export your Notion workspace as HTML, then use the Notion importer in memrynote → Settings → Import. Pages become Markdown notes in your vault, links between pages become wiki-links, and database properties become note properties. The importer does not read Notion’s Markdown & CSV export.'
       },
       {
         question: 'Is memrynote end-to-end encrypted? Is Notion?',
@@ -215,9 +227,32 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
         question: 'Is memrynote free?',
         answer:
           'Yes — local use is free forever and open source. Optional encrypted sync starts at $5/mo.'
+      },
+      {
+        question: 'Can memrynote replace Notion for a team?',
+        answer:
+          'Not today. A memrynote vault syncs across one person’s devices, and there is no sharing or real-time collaboration. Shared vaults are on the roadmap. memrynote replaces Notion for personal notes, tasks, planning, and journaling.'
       }
     ],
-    footnote: COMPARISON_FOOTNOTE
+    footnote: COMPARISON_FOOTNOTE,
+    related: [
+      {
+        label: 'Notion alternatives compared',
+        href: '/blog/private-notion-alternatives-that-work-offline',
+        description:
+          'memrynote, AppFlowy, AFFiNE, Anytype, and Obsidian: license, where your notes live, and offline use.'
+      },
+      {
+        label: 'Open source note-taking apps',
+        href: '/blog/open-source-note-taking-apps',
+        description: 'Seven open source note apps compared on license, platforms, and sync.'
+      },
+      {
+        label: 'How memrynote encrypts your notes',
+        href: '/encrypted-notes-app',
+        description: 'What the sync server can and cannot see, and what happens without your keys.'
+      }
+    ]
   },
   {
     pageKey: 'noteplanAlternative',
@@ -279,11 +314,11 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       competitor: 'Subscription from ~$7/mo (no free tier for full features).'
     },
     migration: {
-      importer: null,
+      importer: 'NotePlan',
       steps: [
-        'Find your NotePlan Markdown folder (Notes and Calendar notes are plain .md files).',
-        'Point memrynote at that folder — daily notes and tasks carry over as Markdown.',
-        'Enable encrypted cross-platform sync to use the same vault on Windows, macOS, and Linux.'
+        'Open memrynote → Settings → Import and choose the NotePlan importer.',
+        'Pick the NotePlan data folder (the picker opens there on macOS) or one of its backups.',
+        'Daily notes become journal entries, other notes become Markdown notes, and NotePlan tasks become real tasks with their due dates.'
       ]
     },
     faqs: [
@@ -300,7 +335,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       {
         question: 'Can memrynote read my NotePlan Markdown files?',
         answer:
-          'Yes. NotePlan stores notes as Markdown, and memrynote opens Markdown folders directly, so you can point it at your existing notes.'
+          'Yes. The NotePlan importer in Settings → Import reads your NotePlan folder or a backup of it. Daily notes become journal entries, folders and #tags carry over, and tasks become real tasks that link back to the note they came from.'
       },
       {
         question: 'Is sync encrypted?',
@@ -417,7 +452,10 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       { feature: 'Built-in tasks, projects & calendar', memry: true, competitor: 'partial' },
       { feature: 'Daily journal', memry: true, competitor: false },
       { feature: 'Mobile apps (iOS & Android)', memry: 'partial', competitor: true },
-      { feature: 'Web clipper & OCR', memry: 'partial', competitor: true },
+      { feature: 'Web clipper', memry: true, competitor: true },
+      { feature: 'Search text inside PDFs & images', memry: true, competitor: true },
+      { feature: 'Web app', memry: false, competitor: true },
+      { feature: 'Shared notebooks & collaboration', memry: false, competitor: true },
       { feature: 'Open source', memry: true, competitor: false }
     ],
     reasons: [
@@ -449,23 +487,36 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       },
       {
         heading: 'Notes, tasks, and calendar in one app',
-        body: 'Evernote is built around note capture; task management is a limited add-on and there is no built-in calendar or daily journal. memrynote ships tasks with projects, custom statuses, subtasks, recurring tasks, and Kanban, list, and calendar views as native features. A daily journal and an inbox with web clips, voice capture, and PDF extraction are built in too.'
+        body: 'Evernote has tasks with due dates and reminders, and a calendar that connects to Google or Microsoft calendars. It has no projects with custom statuses, no Kanban board, and no daily journal. memrynote ships tasks with projects, custom statuses, subtasks, recurring tasks, and Kanban, list, and calendar views. A daily journal and an inbox for web clips, voice notes, and PDFs are built in too.'
       },
       {
         heading: 'End-to-end encryption Evernote doesn’t offer',
         body: 'Evernote encrypts data at rest and in transit, but it is not end-to-end encrypted — Evernote can read your notes. memrynote encrypts every note on your device with XChaCha20-Poly1305 before sync, using zero-knowledge keys that never reach the server. Local use needs no account, no subscription, and no connection to any server.'
+      },
+      {
+        heading: 'Search, clipping, and scanned documents',
+        body: 'Two Evernote habits carry over. The memrynote web clipper for Chrome, Edge, and Firefox saves a page as a readable article, a selection, a full-page screenshot, or the PDF itself, straight into your inbox. Search reads the text inside PDFs, photos, and scans in your vault, so a receipt or a whiteboard photo turns up by what is written on it. Text recognition runs on your computer and the files never leave it. The clipper sends clips to the desktop app, so it needs memrynote installed on that computer.'
+      },
+      {
+        heading: 'Importing your Evernote notes',
+        body: 'Export each notebook from Evernote as an .enex file, then open memrynote → Settings → Import → Evernote and select the files. Each .enex file becomes a folder under Evernote in your vault. Notes turn into Markdown, attachments are saved and embedded where they appeared, checklists become checkboxes, tags stay tags, and created and updated dates carry over. A few things do not survive: links between Evernote notes do not become wiki-links, handwriting is saved as a file but not shown, and sections you encrypted inside Evernote are skipped.'
+      },
+      {
+        heading: 'Where Evernote is still the better pick',
+        body: 'Evernote has mature apps for iPhone, iPad, Android, Windows, Mac, and the web, so you can reach your notes from any browser. You can share notes and notebooks with other people, and it connects to Gmail, Outlook, and Slack. memrynote runs on macOS, Windows, and Linux, its iPhone app is in beta on TestFlight, and there is no Android or web app yet. A vault syncs across your own devices only. If you rely on shared notebooks or Android, Evernote still fits that better.'
       }
     ],
     pricing: {
       memry: 'Free, local-first forever. Encrypted sync from $5/mo.',
-      competitor: 'Free (50 notes, 1 device); paid plans from ~$8.25/mo annually (as of mid-2026).'
+      competitor:
+        'Free plan with 50 notes, 1 notebook, and 1 device. Starter and Advanced plans raise the limits; check Evernote’s plans page for current prices.'
     },
     migration: {
       importer: 'Evernote',
       steps: [
-        'In Evernote, choose File → Export and export your notes as Evernote XML (.enex).',
-        'Open memrynote → Settings → Import, choose the Evernote importer, and select your .enex file.',
-        'Notes land as plain Markdown files in your local vault with attachments preserved, ready to read offline.'
+        'In Evernote, export each notebook as an .enex file (File → Export Notes → ENEX).',
+        'Open memrynote → Settings → Import, choose the Evernote importer, and select one or more .enex files.',
+        'Each file becomes a folder of Markdown notes, with attachments, tags, checklists, and dates kept.'
       ]
     },
     faqs: [
@@ -488,9 +539,36 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
         question: 'Does memrynote limit how many notes I can store for free?',
         answer:
           'No. memrynote’s local vault is free forever with no note limit. Evernote’s free tier caps you at 50 notes on one device, as of mid-2026.'
+      },
+      {
+        question: 'What is the best Evernote alternative?',
+        answer:
+          'It depends on what you used Evernote for. If you want notes you own as Markdown files, end-to-end encrypted sync, and tasks, a calendar, and a journal in one desktop app, memrynote fits. If you need Android or a web app, choose an app that has them today, such as Notesnook, which encrypts by default. If you share notebooks with other people, pick an app built for sharing.'
+      },
+      {
+        question: 'What does not carry over from Evernote?',
+        answer:
+          'Links between Evernote notes do not become wiki-links, handwriting is saved as a file but not displayed, and sections you encrypted inside Evernote are skipped. Notes, attachments, tags, checklists, and dates all import.'
       }
     ],
-    footnote: COMPARISON_FOOTNOTE
+    footnote: COMPARISON_FOOTNOTE,
+    related: [
+      {
+        label: 'Migrating from Evernote to Markdown',
+        href: '/blog/migrating-from-evernote-notion-to-markdown',
+        description: 'A step-by-step guide to moving .enex exports into plain Markdown files.'
+      },
+      {
+        label: 'Open source note-taking apps',
+        href: '/blog/open-source-note-taking-apps',
+        description: 'Joplin, Notesnook, Standard Notes, and more compared on license and sync.'
+      },
+      {
+        label: 'How memrynote encrypts your notes',
+        href: '/encrypted-notes-app',
+        description: 'What the sync server can and cannot see, and what happens without your keys.'
+      }
+    ]
   },
   {
     pageKey: 'logseqAlternative',
@@ -966,7 +1044,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       { feature: 'Free tier', memry: true, competitor: true },
       { feature: 'Mobile apps (iOS & Android)', memry: 'partial', competitor: true },
       { feature: 'Real-time collaboration', memry: false, competitor: true },
-      { feature: 'Freeform canvas & ink / handwriting', memry: false, competitor: true }
+      { feature: 'Freeform canvas & ink / handwriting', memry: 'partial', competitor: true }
     ],
     reasons: [
       {
@@ -1000,8 +1078,12 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
         body: 'OneNote gives you freeform notebook pages and basic checkboxes; a real task system, calendar, or daily journal means adding Microsoft To Do, Outlook, or another app. memrynote builds all four into one offline-first workspace: Markdown notes with wiki-links and backlinks, projects with custom statuses and subtasks, a calendar that surfaces due dates and journal entries, and a quick-capture inbox.'
       },
       {
-        heading: 'Migrating from OneNote',
-        body: 'memrynote does not yet have a one-click OneNote importer — worth knowing before you switch. Migration is still doable: in the OneNote desktop app, export each notebook (for example as .docx or PDF), convert the pages to Markdown with a free tool such as Pandoc, then point memrynote at the folder of .md files as your vault. A native OneNote importer is on the roadmap.'
+        heading: 'Import your OneNote notebooks',
+        body: 'memrynote imports OneNote directly. Open Settings → Import → OneNote, sign in with your Microsoft account in the browser, and pick the notebooks, section groups, and sections to bring over. Each page becomes a Markdown note in a OneNote folder that mirrors your notebooks, and subpages nest under their parent page. Headings, lists, tables, to-do tags, images, and file attachments carry over, along with created and modified dates. Handwriting and drawings arrive as an image at the end of the note, not as editable ink. Running the import again picks up only new pages. Microsoft limits how fast its OneNote service answers, so a large import may pause for up to a minute at a time before it continues.'
+      },
+      {
+        heading: 'Where OneNote is still the better pick',
+        body: 'OneNote pages are freeform: you click anywhere to type, and you write with a pen right inside the page. Notes in memrynote are documents, and ink lives on separate canvas boards. OneNote also lets several people edit a shared notebook at once, runs on iPhone, iPad, Android, and the web, and ties into Outlook and Teams. memrynote syncs your own devices only, its iPhone app is in beta on TestFlight, and there is no Android or web app yet. If you take handwritten notes with a stylus or share notebooks with a class or team, OneNote still fits that better.'
       }
     ],
     pricing: {
@@ -1009,18 +1091,18 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       competitor: 'Free with a Microsoft account (uses OneDrive storage).'
     },
     migration: {
-      importer: null,
+      importer: 'OneNote',
       steps: [
-        'In the OneNote desktop app, export each notebook (for example as .docx or PDF).',
-        'Convert the exported pages to Markdown with a free tool such as Pandoc.',
-        'Point memrynote at the folder of .md files as your vault — your notes are ready to read offline.'
+        'Open memrynote → Settings → Import and click Import next to OneNote.',
+        'Sign in with your Microsoft account in the browser, then pick the notebooks and sections to import.',
+        'Pages land as Markdown notes in a OneNote folder, with subpages, images, attachments, and to-do checkboxes.'
       ]
     },
     faqs: [
       {
         question: 'Can I import my OneNote notebooks into memrynote?',
         answer:
-          'Not in one click yet — a native OneNote importer is on the roadmap. For now, export your notebooks from OneNote, convert the pages to Markdown with a free tool like Pandoc, and point memrynote at the resulting folder.'
+          'Yes. Open Settings → Import → OneNote and sign in with your Microsoft account. memrynote lists your notebooks and sections, and you choose which to import. Each page becomes a Markdown note, and running the import again only adds pages that are new since the last run.'
       },
       {
         question: 'Is OneNote end-to-end encrypted?',
@@ -1030,7 +1112,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       {
         question: 'Does memrynote need a Microsoft account?',
         answer:
-          'No. memrynote works fully offline with no account at all. Optional encrypted sync uses your own memrynote account and is independent of Microsoft.'
+          'No. memrynote works fully offline with no account at all. Optional encrypted sync uses your own memrynote account and is independent of Microsoft. You sign in to Microsoft only to run the OneNote import, and Switch account in the import dialog forgets that sign-in.'
       },
       {
         question: 'Does memrynote have mobile apps like OneNote?',
@@ -1038,7 +1120,24 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
           'An iPhone app is in beta on TestFlight, on the same vault as your desktop: notes, tasks, journal, calendar, and search. Join the beta at memrynote.com/ios-beta. Canvases, the graph, and home boards are not on the phone yet, and there is no Android app yet.'
       }
     ],
-    footnote: COMPARISON_FOOTNOTE
+    footnote: COMPARISON_FOOTNOTE,
+    related: [
+      {
+        label: 'How memrynote encrypts your notes',
+        href: '/encrypted-notes-app',
+        description: 'What the sync server can and cannot see, and what happens without your keys.'
+      },
+      {
+        label: 'Open source note-taking apps',
+        href: '/blog/open-source-note-taking-apps',
+        description: 'Seven open source note apps compared on license, platforms, and sync.'
+      },
+      {
+        label: 'Markdown notes in memrynote',
+        href: '/features/notes',
+        description: 'Wiki-links, backlinks, properties, and version history on plain .md files.'
+      }
+    ]
   },
   {
     pageKey: 'upnoteAlternative',
