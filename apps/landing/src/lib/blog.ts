@@ -251,12 +251,12 @@ Energy remained high throughout the afternoon. Taking walks between coding block
       {
         heading: 'How genuine zero-knowledge E2EE works under the hood',
         paragraphs: [
-          'In a genuine zero-knowledge architecture like memrynote, cryptographic operations occur strictly on your physical machine before any byte touches the network wire. The sync server acts as a blind relay for encrypted binary chunks.',
+          'In a genuine zero-knowledge architecture like memrynote, cryptographic operations occur strictly on your physical machine before your notes touch the network. The sync server stores and relays encrypted payloads it cannot read.',
           'Here is the step-by-step cryptographic pipeline that ensures mathematical confidentiality:',
-          '1. Key Derivation: When you create a vault, your device derives a 256-bit master key using Argon2id with memory-hard parameters, making brute-force dictionary attacks computationally infeasible.',
+          '1. Key Derivation: When you set up sync, your device derives a 256-bit master key from your 24-word recovery phrase using Argon2id with memory-hard parameters, making brute-force dictionary attacks computationally infeasible.',
           '2. Symmetric Payload Encryption: Every note, journal entry, and task payload is encrypted locally using libsodium’s authenticated XChaCha20-Poly1305 cipher with random 192-bit nonces, ensuring both privacy and tamper-proofing.',
           '3. Device Identity & Signing: Each authorized device generates an Ed25519 asymmetric keypair. Sync requests and CRDT vector updates are cryptographically signed by the device private key to prevent replay attacks.',
-          '4. Storage Separation: Encrypted payload blobs reside in Cloudflare R2 object storage, while opaque item IDs and version vectors reside in D1. The server coordinates sync routing but possesses zero capability to decrypt note text, filenames, or tag properties.'
+          '4. Storage Separation: Encrypted payload blobs reside in Cloudflare R2 object storage, while item metadata (IDs, types, sizes, and change times) resides in D1. Most item IDs are random, but a tag’s ID is its name and a folder’s ID is its path, so the server can read tag names and folder paths. It cannot decrypt note titles, bodies, or properties.'
         ],
         code: {
           language: 'typescript',
@@ -911,7 +911,7 @@ Referenced in [[Q3 Roadmap]] and [[Security Whitepaper]].`
           {
             label: 'What the server sees',
             value:
-              'Your account email, your devices, and for each item an ID, its type, its size, and when it changed. Titles, bodies, properties, task fields, and attachments are ciphertext.'
+              'Your account email, your devices, and for each item an ID, its type, its size, and when it changed. Tag names and folder paths are visible too, because sync uses them as item IDs. Titles, bodies, properties, task fields, and attachments are ciphertext.'
           },
           {
             label: 'Local-first',
@@ -1029,7 +1029,7 @@ Referenced in [[Q3 Roadmap]] and [[Security Whitepaper]].`
         heading: 'memrynote: the Notion workflow, on your own disk',
         paragraphs: [
           'memrynote keeps the parts of Notion most people use daily, notes, tasks, and planning, and runs them locally. Notes are Markdown files with frontmatter properties in a vault folder you choose. Tasks live in projects with custom statuses, subtasks, and Kanban, list, and calendar views. A daily journal and a capture inbox sit in the same workspace.',
-          'Everything works offline with no account. When you turn on sync, each item is encrypted on your device with XChaCha20-Poly1305 and the server stores only ciphertext. Local use is free and sync starts at $5 a month. The app is open source and runs on macOS, Windows, and Linux.',
+          'Everything works offline with no account. When you turn on sync, each item is encrypted on your device with XChaCha20-Poly1305 and the server stores your notes only as ciphertext. Local use is free and sync starts at $5 a month. The app is open source and runs on macOS, Windows, and Linux.',
           'Switching is built in. Export your Notion workspace as Markdown & CSV, then use the Notion importer in memrynote settings. Pages become Markdown notes and databases become structured notes in your vault.'
         ],
         callout: {
@@ -1104,9 +1104,9 @@ Referenced in [[Q3 Roadmap]] and [[Security Whitepaper]].`
         heading: 'memrynote: a daily journal as encrypted Markdown',
         paragraphs: [
           'memrynote stores one journal entry per day as a plain Markdown file in your vault, beside your notes and tasks. Each entry can start from your own templates and prompts, and a side panel shows the schedule, tasks, and linked notes for that date. Highlights and revisit reminders bring past entries back when they are relevant.',
-          'Entries never need to leave your device. If you sync, each one is encrypted on your machine with XChaCha20-Poly1305 and the server stores only ciphertext. No company account is needed to journal locally, and local use is free.',
+          'Entries never need to leave your device. If you sync, each one is encrypted on your machine with XChaCha20-Poly1305 and the server stores it only as ciphertext. No company account is needed to journal locally, and local use is free.',
           'Because entries are Markdown files, your journal opens in any text editor and survives any app, including memrynote. You can bring an existing journal with you: memrynote imports Apple Journal, Markdown folders, and other note apps.',
-          'memrynote runs on macOS, Windows, and Linux today. Mobile apps are planned, so if you journal mainly on your phone, check the roadmap first.'
+          'memrynote runs on macOS, Windows, and Linux. The iPhone app is in beta on TestFlight (join at memrynote.com/ios-beta), and there is no Android app yet, so if you journal mainly on Android, look elsewhere for now.'
         ],
         callout: {
           type: 'tip',
@@ -1211,7 +1211,7 @@ Referenced in [[Q3 Roadmap]] and [[Security Whitepaper]].`
           'memrynote is our app, so read this list knowing that. It is on the list because it is the journal we recommend to people who already plan their day at a computer. For phone-first journaling, other apps on this list are better today. These are its gaps:'
         ],
         bullets: [
-          'The iPhone app is in TestFlight beta. It has a Journal tab that reads and writes the same days as the desktop app, but there is no Android, iPad, or web app.',
+          'The iPhone app is in TestFlight beta. It has a Journal tab that reads and writes the same days as the desktop app. iPad support is in development, and there is no Android or web app.',
           'There are no writing prompts beyond the templates you pick or write. Day One, Apple Journal, and Journey suggest what to write about.',
           'It is not a photo journal. You can attach photos to an entry, but there is no map view, photo timeline, or printed book.',
           'Sync is paid. Journaling on one computer is free, and syncing between devices starts at $5 a month.',
@@ -1419,13 +1419,13 @@ Referenced in [[Q3 Roadmap]] and [[Security Whitepaper]].`
         paragraphs: [
           'memrynote is our app: one local-first workspace for notes, tasks, a daily journal, and a calendar. Each journal day is a Markdown file in a folder you choose, so the journal opens in any text editor, with or without memrynote installed.',
           'A day can start from a template, and you can set a different template for each weekday. Below the entry, On this day lists the same date from earlier years. A property you fill in every day, such as sleep or mood, can be charted over the last 13 weeks. The day also shows the tasks due that day, you can link to it from any note with [[2026-05-07]], and you can set a reminder to read it again later.',
-          'Journaling needs no account. If you turn on sync, every entry is encrypted on your device with XChaCha20-Poly1305 before upload, and the server stores only ciphertext. The desktop app runs on macOS, Windows, and Linux, and the iPhone app in TestFlight beta has its own Journal tab. memrynote can import an Apple Journal export, which arrives as notes.'
+          'Journaling needs no account. If you turn on sync, every entry is encrypted on your device with XChaCha20-Poly1305 before upload, and the server stores it only as ciphertext. The desktop app runs on macOS, Windows, and Linux, and the iPhone app in TestFlight beta has its own Journal tab. memrynote can import an Apple Journal export, which arrives as notes.'
         ],
         facts: [
           {
             label: 'Platforms',
             value:
-              'macOS, Windows, and Linux. iPhone in TestFlight beta (iOS 26 or later). No Android, iPad, or web app.'
+              'macOS, Windows, and Linux. iPhone in TestFlight beta (iOS 26 or later). iPad support in development. No Android or web app.'
           },
           {
             label: 'Privacy',
@@ -1571,7 +1571,7 @@ Referenced in [[Q3 Roadmap]] and [[Security Whitepaper]].`
           'memrynote is our app, released under AGPL-3.0 with its code on GitHub. It is on this list because it is what we recommend to people who want their notes, tasks, journal, and calendar in one local-first app. It is not the right pick for everyone. These are its gaps today:'
         ],
         bullets: [
-          'It is a desktop app first. It runs on macOS, Windows, and Linux. The iPhone app is in TestFlight beta, and there is no Android, iPad, or web app.',
+          'It is a desktop app first. It runs on macOS, Windows, and Linux. The iPhone app is in TestFlight beta, iPad support is in development, and there is no Android or web app.',
           'You cannot choose your own sync backend. Sync runs through our hosted, end-to-end encrypted service, and a self-hosted sync server is planned, not available. Joplin and Trilium sync to servers you run today.',
           'Sync is paid. The local app is free, and syncing between devices starts at $5 a month. Joplin, Standard Notes, and Notesnook sync for free.',
           'There is no sharing or collaboration. A vault syncs across your own devices only.',
@@ -1808,7 +1808,7 @@ Referenced in [[Q3 Roadmap]] and [[Security Whitepaper]].`
           {
             label: 'Platforms',
             value:
-              'macOS, Windows, and Linux. iPhone in TestFlight beta. No Android, iPad, or web app.'
+              'macOS, Windows, and Linux. iPhone in TestFlight beta. iPad support in development. No Android or web app.'
           },
           {
             label: 'Encryption',
@@ -1867,7 +1867,7 @@ Referenced in [[Q3 Roadmap]] and [[Security Whitepaper]].`
       label: 'Read the security architecture',
       href: '/security',
       description:
-        'How memrynote encrypts every item on your device and keeps the sync server unable to read your notes.'
+        'How memrynote encrypts your notes on your device, what the sync server can still see, and why it cannot read your notes.'
     },
     relatedSlugs: [
       'best-end-to-end-encrypted-notes-apps',

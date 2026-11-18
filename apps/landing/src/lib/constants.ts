@@ -248,7 +248,7 @@ export const FAQ_ITEMS = [
   {
     question: 'Which platforms are supported?',
     answer:
-      'macOS, Windows, and Linux today. Mobile apps for iPhone, iPad, and Android are planned and targeting late 2026. A command-line tool ships with the desktop app, and a web clipper is available for Chrome and Firefox.'
+      'macOS, Windows, and Linux. An iPhone app is in beta on TestFlight (join at memrynote.com/ios-beta), and there is no Android app yet. A command-line tool ships with the desktop app, and a web clipper is available for Chrome and Firefox.'
   },
   {
     question: 'What file format does memrynote use?',
@@ -818,7 +818,7 @@ export const PRICING_FAQ_ITEMS = [
   {
     question: 'You store my data, but you cannot read it. What does that actually mean?',
     answer:
-      'Every byte is encrypted on your device with XChaCha20-Poly1305 before it leaves. The keys live in your password manager and never touch our servers. We hold ciphertext, count bytes for billing, and that is the limit of what we see.'
+      'Your notes, tasks, journal entries, and attachments are encrypted on your device with XChaCha20-Poly1305 before upload. The keys come from a recovery phrase only you hold, and we never receive it. We store the ciphertext and count bytes for billing. We can see routing metadata: item IDs, sizes, change times, and your tag names and folder paths, because sync uses them as item IDs.'
   },
   {
     question: 'How does the refund policy work?',
