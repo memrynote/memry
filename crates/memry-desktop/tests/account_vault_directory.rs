@@ -5,6 +5,7 @@
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use memry_core::api::crypto::{decrypt_vault_icon, encrypt_vault_icon, encrypt_vault_name};
@@ -668,5 +669,79 @@ async fn a_delete_during_a_refresh_is_never_undone_by_it() {
         order.last().map(String::as_str),
         Some("DELETE /sync/vaults/uuid-b"),
         "{order:?}"
+    );
+}
+
+/// VERIFY-5060 P4: a refresh that starts while a sign-out waits on `/auth/logout` (the session
+/// still reads `Registered`; offline, until the transport times out) caches nothing, so the
+/// emptied config never gets this account's vault names back.
+#[tokio::test]
+async fn a_refresh_started_during_a_slow_logout_caches_nothing() {
+    let f = fixture();
+    let session = with_session(&f);
+    let logout = f.script.held_answer(200, json!({}));
+    let list = f.script.held_answer(
+        200,
+        json!({ "vaults": [server_vault("uuid-a", Some("Alpha"), 1)] }),
+    );
+    let signed_out = AtomicBool::new(false);
+    let refreshed = AtomicBool::new(false);
+
+    let signing_out = async {
+        f.account.sign_out(&session).await.unwrap();
+        signed_out.store(true, Ordering::SeqCst);
+    };
+    let racing = async {
+        while f.script.count("/auth/logout") == 0 {
+            tokio::task::yield_now().await;
+        }
+        let refreshing = async {
+            f.refresh().await;
+            refreshed.store(true, Ordering::SeqCst);
+        };
+        let releasing = async {
+            while f.script.count("/sync/vaults") == 0 && !refreshed.load(Ordering::SeqCst) {
+                tokio::task::yield_now().await;
+            }
+            logout.notify_one();
+            while !signed_out.load(Ordering::SeqCst) {
+                tokio::task::yield_now().await;
+            }
+            list.notify_one();
+        };
+        tokio::join!(refreshing, releasing);
+    };
+    tokio::join!(signing_out, racing);
+
+    assert_eq!(f.cache(), Value::Null);
+    assert_eq!(f.config.read(|c| c.get("sync").cloned()), Some(json!({})));
+}
+
+/// A sign-out that lands while a vault registers stops that vault's icon push too, and the
+/// change stays pending.
+#[tokio::test]
+async fn a_sign_out_during_a_registration_pushes_no_icon() {
+    let f = fixture();
+    let session = with_session(&f);
+    let vault = synced(&f);
+    write_icon(&vault, &icon(Some("icon:Book01Icon"), 500, true));
+    f.script.answer(200, json!({ "vaults": [] }));
+    let registering = f.script.held_answer(200, json!({ "success": true }));
+    f.script.answer(200, json!({}));
+    f.script.answer(200, json!({ "applied": true }));
+
+    let signing_out = async {
+        while f.posts().is_empty() {
+            tokio::task::yield_now().await;
+        }
+        f.account.sign_out(&session).await.unwrap();
+        registering.notify_one();
+    };
+    tokio::join!(f.refresh(), signing_out);
+
+    assert!(f.requests("PUT", "/sync/vaults/uuid-a/icon").is_empty());
+    assert_eq!(
+        vault_icon::read(&vault),
+        Some(icon(Some("icon:Book01Icon"), 500, true))
     );
 }

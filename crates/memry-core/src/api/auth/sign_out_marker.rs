@@ -49,13 +49,9 @@ impl SignOutMarker {
         self.latched.store(true, Ordering::SeqCst);
         let Some(path) = &self.path else { return };
         match write(path) {
-            Ok(()) => {
-                let mut fault = self.fault.lock().unwrap_or_else(|e| e.into_inner());
-                if fault.as_ref().is_some_and(|f| f.write) {
-                    *fault = None;
-                }
-            }
-            Err(error) => self.record(true, "could not be written", &error),
+            // The file is there, as a sign-out wants: every earlier fault is moot.
+            Ok(()) => self.settle(|_| true),
+            Err(error) => self.record(Op::Write, "could not be written", &error),
         }
     }
 
@@ -80,11 +76,13 @@ impl SignOutMarker {
     /// A file that stays makes the next launch ask for a sign-in instead of restoring, the
     /// fail-closed side.
     fn remove_file(&self) {
-        if let Some(path) = &self.path
-            && let Err(error) = fs::remove_file(path)
-            && error.kind() != io::ErrorKind::NotFound
-        {
-            self.record(false, "could not be removed", &error);
+        let Some(path) = &self.path else { return };
+        match fs::remove_file(path) {
+            Err(error) if error.kind() != io::ErrorKind::NotFound => {
+                self.record(Op::Remove, "could not be removed", &error);
+            }
+            // The file is gone: an earlier failed removal or read is moot.
+            _ => self.settle(|op| op != Op::Write),
         }
     }
 
@@ -103,22 +101,33 @@ impl SignOutMarker {
         self.path
             .as_ref()
             .is_some_and(|path| match path.try_exists() {
-                Ok(present) => present,
+                Ok(present) => {
+                    self.settle(|op| op == Op::Read);
+                    present
+                }
                 Err(error) => {
-                    self.record(false, "could not be read", &error);
+                    self.record(Op::Read, "could not be read", &error);
                     true
                 }
             })
     }
 
-    fn record(&self, write: bool, what: &str, error: &io::Error) {
+    fn record(&self, op: Op, what: &str, error: &io::Error) {
         *self.fault.lock().unwrap_or_else(|e| e.into_inner()) = Some(Fault {
-            write,
+            op,
             message: format!("the sign-out marker {what}: {error}"),
         });
     }
 
-    /// The last failed file operation, once. A later write that succeeds clears a failed one.
+    /// Drops the recorded fault when the file's state now makes it moot.
+    fn settle(&self, moot: impl Fn(Op) -> bool) {
+        let mut fault = self.fault.lock().unwrap_or_else(|e| e.into_inner());
+        if fault.as_ref().is_some_and(|f| moot(f.op)) {
+            *fault = None;
+        }
+    }
+
+    /// The last failed file operation, once, unless a later operation made it moot.
     pub(super) fn take_fault(&self) -> Option<String> {
         self.fault
             .lock()
@@ -129,9 +138,18 @@ impl SignOutMarker {
 }
 
 struct Fault {
-    /// A failed write, which a later successful write makes moot.
-    write: bool,
+    op: Op,
     message: String,
+}
+
+/// The file operation that failed. A later write makes any fault moot, a later removal (or a
+/// file already gone) a failed removal or read, and a later read a failed read. Only a write
+/// makes a failed write moot: it matters when the store kept a secret.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Op {
+    Write,
+    Remove,
+    Read,
 }
 
 fn write(path: &Path) -> io::Result<()> {

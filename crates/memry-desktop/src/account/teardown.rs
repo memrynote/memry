@@ -60,8 +60,9 @@ impl AccountService {
     /// `sync:auth-logout` and `account:signOut`, one teardown. Runs after any key-changing
     /// operation in flight, never beside one.
     pub async fn sign_out(&self, session: &Session) -> Result<SignedOut, AccountError> {
-        // First: a write that started under this account and waits on the network lands nowhere.
-        self.epoch.end();
+        // First: a write that started under this account and waits on the network lands nowhere,
+        // and none starts until the teardown is done (the guard ends the term again on drop).
+        let _term = self.epoch.end();
         let _op = self.key_op.lock().await;
         tracing::info!(scope = "SessionTeardown", "session teardown started");
         let stopping = session.clone();

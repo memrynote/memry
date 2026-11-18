@@ -244,3 +244,77 @@ async fn a_refused_clear_without_an_edge_is_not_restored_after_a_relaunch() {
 
     assert_eq!(relaunched.restore().unwrap(), AuthState::SignedOut);
 }
+
+/// A marker write that fails and a later one that succeeds leave nothing to report: the file is
+/// there, so the next launch refuses the restore.
+#[tokio::test]
+async fn a_marker_written_after_a_failed_write_reports_nothing() {
+    let dir = tempfile::tempdir().unwrap();
+    let parent = dir.path().join("app");
+    std::fs::write(&parent, b"").unwrap();
+    let marker = parent.join("signed-out");
+    let store = FakeSecureStore::new();
+    store.put_text(SecureStoreKey::RefreshToken, "refresh-from-the-last-run");
+    store.fail_clear();
+    let session = launch(FakeTransport::new(Vec::new()), store, &marker);
+    session.clear_without_edge().unwrap_err();
+
+    std::fs::remove_file(&parent).unwrap();
+    session.clear_without_edge().unwrap_err();
+
+    assert!(marker.exists());
+    assert_eq!(session.take_sign_out_marker_fault(), None);
+}
+
+/// A marker that registration could not remove (the folder refused it) is moot once the next
+/// refused sign-out writes it again: that sign-out reports no restore risk.
+#[cfg(unix)]
+#[tokio::test]
+async fn a_failed_removal_at_registration_is_moot_once_the_next_sign_out_writes_the_marker() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let dir = tempfile::tempdir().unwrap();
+    let parent = dir.path().join("app");
+    let marker = parent.join("signed-out");
+    let mut extra = sign_in_script("jti-2");
+    extra.push(response(200, "{}"));
+    let (session, _transport, _store) = refused_sign_out(&marker, extra).await;
+    assert_eq!(session.take_sign_out_marker_fault(), None);
+    std::fs::set_permissions(&parent, std::fs::Permissions::from_mode(0o555)).unwrap();
+
+    sign_in(&session).await;
+    let refused = session.sign_out().await;
+    std::fs::set_permissions(&parent, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+    assert!(matches!(refused, Err(AuthError::SecureStore { .. })));
+    assert!(marker.exists());
+    assert_eq!(session.take_sign_out_marker_fault(), None);
+}
+
+/// A marker path that could not be read or cleared at sign-in, and holds no file by the time
+/// the device registers, leaves nothing to report.
+#[cfg(unix)]
+#[tokio::test]
+async fn a_marker_fault_at_sign_in_is_dropped_once_registration_finds_no_marker() {
+    let dir = tempfile::tempdir().unwrap();
+    let parent = dir.path().join("app");
+    std::fs::write(&parent, b"").unwrap();
+    let session = launch(
+        FakeTransport::new(sign_in_script("jti-1")),
+        FakeSecureStore::new(),
+        &parent.join("signed-out"),
+    );
+    session
+        .request_email_code("kaan@example.com".to_string())
+        .await
+        .unwrap();
+
+    std::fs::remove_file(&parent).unwrap();
+    session
+        .verify_email_code("123456".to_string())
+        .await
+        .unwrap();
+    session.register_device().await.unwrap();
+
+    assert_eq!(session.take_sign_out_marker_fault(), None);
+}

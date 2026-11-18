@@ -153,7 +153,7 @@ impl AccountService {
             }
             let server = rows.iter().map(|r| &r.summary).find(|s| s.id == uuid);
             if self
-                .sync_vault_icon(Path::new(&local.path), uuid, server, &master)
+                .sync_vault_icon(Path::new(&local.path), uuid, server, &master, epoch)
                 .await
             {
                 icons_changed = true;
@@ -164,13 +164,14 @@ impl AccountService {
 
     /// `syncVaultIcon`: last writer wins on the change time. A local change the account lacks is
     /// pushed; a newer account copy is adopted. Returns whether the local icon changed. A failed
-    /// push keeps the change pending for the next refresh.
+    /// push keeps the change pending for the next refresh, and so does a sign-out since `epoch`.
     async fn sync_vault_icon(
         &self,
         vault: &Path,
         uuid: &str,
         server: Option<&VaultSummary>,
         master: &[u8],
+        epoch: u64,
     ) -> bool {
         if !vault.is_dir() {
             return false;
@@ -193,6 +194,10 @@ impl AccountService {
                     return false;
                 }
             };
+            // A sign-out during this vault's registration: nothing more goes to the server.
+            if self.epoch.current() != epoch {
+                return false;
+            }
             if let Err(error) = self
                 .session
                 .set_vault_icon(uuid, sealed.as_ref(), local.updated_at)

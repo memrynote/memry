@@ -211,22 +211,51 @@ pub struct AccountService {
 /// a binding) lands nowhere, so the next account never sees the last one's data. The keychain
 /// cannot tell: a refused sign-out leaves the last account's tokens behind.
 #[derive(Clone, Default)]
-struct AccountEpoch(Arc<Mutex<u64>>);
+struct AccountEpoch(Arc<Mutex<Term>>);
+
+#[derive(Default)]
+struct Term {
+    id: u64,
+    /// Sign-outs running. The session reads `Registered` until `/auth/logout` returns (offline:
+    /// until the transport times out), so no new term starts before the teardown is done.
+    sign_outs: u32,
+}
 
 impl AccountEpoch {
     fn current(&self) -> u64 {
-        *crate::session::lock(&self.0)
+        crate::session::lock(&self.0).id
     }
 
-    /// Sign-out: waits for a write in progress, so it lands before the teardown clears.
-    fn end(&self) {
-        *crate::session::lock(&self.0) += 1;
+    /// The term a new write starts under; `None` while a sign-out runs.
+    fn open(&self) -> Option<u64> {
+        let term = crate::session::lock(&self.0);
+        (term.sign_outs == 0).then_some(term.id)
+    }
+
+    /// Sign-out: waits for a write in progress, so it lands before the teardown clears, and
+    /// refuses new terms until the returned guard drops, which ends the term again.
+    fn end(&self) -> SignOutTerm {
+        let mut term = crate::session::lock(&self.0);
+        term.id += 1;
+        term.sign_outs += 1;
+        SignOutTerm(self.clone())
     }
 
     /// Runs `write` while `epoch` is still current, `None` after a sign-out ended it.
     fn write_if<T>(&self, epoch: u64, write: impl FnOnce() -> T) -> Option<T> {
         let current = crate::session::lock(&self.0);
-        (*current == epoch).then(write)
+        (current.id == epoch).then(write)
+    }
+}
+
+/// A running sign-out ([`AccountEpoch::end`]).
+struct SignOutTerm(AccountEpoch);
+
+impl Drop for SignOutTerm {
+    fn drop(&mut self) {
+        let mut term = crate::session::lock(&self.0.0);
+        term.id += 1;
+        term.sign_outs -= 1;
     }
 }
 
@@ -304,9 +333,9 @@ impl AccountService {
     }
 
     /// The account's term when signed in, read before the state so a sign-out between the two
-    /// ends it; `None` signed out.
+    /// ends it; `None` signed out or while a sign-out runs.
     fn signed_in_epoch(&self) -> Option<u64> {
-        let epoch = self.epoch.current();
+        let epoch = self.epoch.open()?;
         matches!(
             self.session.state(),
             AuthState::Registered | AuthState::Refreshing | AuthState::SessionExpired
