@@ -4,25 +4,26 @@
 //! Desktop marks a fired reminder `status = 'triggered'`, a status it never
 //! sends, and its reminder handler keeps a peer's `pending` copy from un-firing
 //! it (`a4e8920c55`). Here the synced row is never touched. `reminder_fires`
-//! (data migration 0040, device-local) records the fire instant each reminder
-//! was shown for, and a reminder is due when no row matches its current
-//! instant: `snoozedUntil` when snoozed, else `remindAt`. A pulled copy with
-//! the same instant cannot refire it; a new `remindAt` or a snooze moves the
-//! instant and fires it again, as desktop's reschedule and snooze do. Instants
-//! are compared as epoch milliseconds, so the same moment written in another
-//! offset (a peer in another timezone) is the same instant.
+//! (data migration 0040, device-local) records every fire instant each
+//! reminder was shown for, and a reminder is due when its current instant
+//! (`snoozedUntil` when snoozed, else `remindAt`) is not among them. A pulled
+//! copy with an instant already shown cannot refire it, even one that turns a
+//! snooze back into `pending` at its old `remindAt`; a new `remindAt` or a
+//! snooze is a new instant and fires it again, as desktop's reschedule and
+//! snooze do. Instants are compared as epoch milliseconds, so the same moment
+//! written in another offset (a peer in another timezone) is the same instant.
 
-use std::collections::HashMap;
+use std::collections::HashSet;
 
 use rusqlite::{Connection, OptionalExtension as _, params};
 use serde_json::{Map, Value, json};
 
 use crate::api::errors::StorageError;
 use crate::domain::inbox;
-use crate::domain::notes::{insert_local, iso, next_clock, object};
+use crate::domain::notes::{insert_local, iso, object};
 
-use super::queries::{failed, fire_instant};
-use super::{DueReminder, STATUS_PENDING, STATUS_SNOOZED, due_window};
+use super::queries::{due_unless, failed, fire_instant};
+use super::{DueReminder, STATUS_PENDING, STATUS_SNOOZED};
 
 /// Desktop's `inboxItemType.REMINDER`.
 const INBOX_TYPE: &str = "reminder";
@@ -42,44 +43,36 @@ pub struct Fired {
 /// the app was closed fires at the next open, once.
 pub fn due(conn: &Connection, now_ms: i64) -> Result<Vec<DueReminder>, StorageError> {
     let fired = fired_instants(conn)?;
-    Ok(due_window(conn, Some(now_ms))?
-        .into_iter()
-        .filter(|due| fired.get(&due.reminder.id) != Some(&due.fire_at_ms))
-        .collect())
+    due_unless(conn, Some(now_ms), |id, at| {
+        fired.contains(&(id.to_owned(), at))
+    })
 }
 
 /// Records `due` as fired for its instant and files its inbox item, in one
 /// transaction. `None` when it was already fired for that instant, so a second
 /// call (a racing tick, a restart) files nothing.
 ///
-/// The inbox item has no outbox row, as desktop's insert queues none.
+/// The inbox item has no clock and no outbox row, as desktop's insert writes
+/// neither: each device files its own, and the manifest check re-uploads only
+/// clocked rows, so it never reaches another device.
 pub fn fire(
     conn: &Connection,
     due: &DueReminder,
-    device_id: &str,
     now_ms: i64,
 ) -> Result<Option<Fired>, StorageError> {
     let tx = conn.unchecked_transaction().map_err(failed)?;
-    let fired_for: Option<i64> = tx
-        .query_row(
-            "SELECT fired_for_ms FROM reminder_fires WHERE reminder_id = ?1",
-            [&due.reminder.id],
-            |row| row.get(0),
+    let recorded = tx
+        .execute(
+            "INSERT INTO reminder_fires (reminder_id, fired_for_ms, fired_at_ms) VALUES (?1, ?2, ?3)
+             ON CONFLICT (reminder_id, fired_for_ms) DO NOTHING",
+            params![due.reminder.id, due.fire_at_ms, now_ms],
         )
-        .optional()
         .map_err(failed)?;
-    if fired_for == Some(due.fire_at_ms) {
+    if recorded == 0 {
         return Ok(None);
     }
-    tx.execute(
-        "INSERT INTO reminder_fires (reminder_id, fired_for_ms, fired_at_ms) VALUES (?1, ?2, ?3)
-         ON CONFLICT (reminder_id) DO UPDATE
-         SET fired_for_ms = excluded.fired_for_ms, fired_at_ms = excluded.fired_at_ms",
-        params![due.reminder.id, due.fire_at_ms, now_ms],
-    )
-    .map_err(failed)?;
     let inbox_id = format!("inbox_rem_{}", inbox::write::mint_id());
-    let payload = inbox_payload(&tx, due, &inbox_id, device_id, now_ms)?;
+    let payload = inbox_payload(&tx, due, &inbox_id, now_ms)?;
     insert_local(&tx, inbox::ITEM_TYPE, &inbox_id, payload, now_ms)?;
     tx.commit().map_err(failed)?;
     Ok(Some(Fired {
@@ -93,21 +86,21 @@ pub fn fire(
 /// instant: desktop's `countPendingReminders`, which counts those statuses
 /// after a fire has moved the reminder to `triggered`. The badge shows it.
 pub fn pending_count(conn: &Connection) -> Result<u32, StorageError> {
+    let fired = fired_instants(conn)?;
     let mut statement = conn
         .prepare(
-            "SELECT r.status, r.remind_at, r.snoozed_until, f.fired_for_ms
-             FROM reminders r LEFT JOIN reminder_fires f ON f.reminder_id = r.id
-             WHERE r.deleted_at IS NULL AND r.status IN (?1, ?2)",
+            "SELECT id, status, remind_at, snoozed_until FROM reminders
+             WHERE deleted_at IS NULL AND status IN (?1, ?2)",
         )
         .map_err(failed)?;
     let rows = statement
         .query_map(params![STATUS_PENDING, STATUS_SNOOZED], |row| {
-            let status: String = row.get(0)?;
-            let remind_at: String = row.get(1)?;
-            let snoozed_until: Option<String> = row.get(2)?;
-            let fired_for: Option<i64> = row.get(3)?;
+            let id: String = row.get(0)?;
+            let status: String = row.get(1)?;
+            let remind_at: String = row.get(2)?;
+            let snoozed_until: Option<String> = row.get(3)?;
             let instant = fire_instant(&status, &remind_at, snoozed_until.as_deref());
-            Ok(fired_for.is_none() || instant != fired_for)
+            Ok(instant.is_none_or(|at| !fired.contains(&(id, at))))
         })
         .map_err(failed)?;
     let mut count = 0u32;
@@ -119,12 +112,20 @@ pub fn pending_count(conn: &Connection) -> Result<u32, StorageError> {
     Ok(count)
 }
 
-fn fired_instants(conn: &Connection) -> Result<HashMap<String, i64>, StorageError> {
+/// The instants shown for live `pending` and `snoozed` reminders, the only ones
+/// a tick can fire.
+fn fired_instants(conn: &Connection) -> Result<HashSet<(String, i64)>, StorageError> {
     let mut statement = conn
-        .prepare("SELECT reminder_id, fired_for_ms FROM reminder_fires")
+        .prepare(
+            "SELECT f.reminder_id, f.fired_for_ms FROM reminder_fires f
+             JOIN reminders r ON r.id = f.reminder_id
+             WHERE r.deleted_at IS NULL AND r.status IN (?1, ?2)",
+        )
         .map_err(failed)?;
     statement
-        .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
+        .query_map(params![STATUS_PENDING, STATUS_SNOOZED], |row| {
+            Ok((row.get(0)?, row.get(1)?))
+        })
         .map_err(failed)?
         .collect::<Result<_, _>>()
         .map_err(failed)
@@ -136,7 +137,6 @@ fn inbox_payload(
     tx: &Connection,
     due: &DueReminder,
     inbox_id: &str,
-    device_id: &str,
     now_ms: i64,
 ) -> Result<Map<String, Value>, StorageError> {
     let reminder = &due.reminder;
@@ -220,7 +220,6 @@ fn inbox_payload(
         "sourceTitle": null,
         "captureSource": null,
         "archivedAt": null,
-        "clock": next_clock(&Map::new(), device_id)?,
         "localOnly": false,
     })))
 }

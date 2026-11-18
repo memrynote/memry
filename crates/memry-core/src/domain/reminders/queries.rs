@@ -127,6 +127,16 @@ pub fn due_window(
     conn: &Connection,
     until_ms: Option<i64>,
 ) -> Result<Vec<DueReminder>, StorageError> {
+    due_unless(conn, until_ms, |_, _| false)
+}
+
+/// [`due_window`] without the reminders `skip` names by id and fire instant,
+/// dropped before their target is looked up.
+pub(super) fn due_unless(
+    conn: &Connection,
+    until_ms: Option<i64>,
+    skip: impl Fn(&str, i64) -> bool,
+) -> Result<Vec<DueReminder>, StorageError> {
     let mut statement = conn
         .prepare(&format!(
             "SELECT {COLUMNS} FROM reminders \
@@ -145,7 +155,7 @@ pub fn due_window(
         let Some(fire_at_ms) = fire_at_ms(&reminder) else {
             continue;
         };
-        if until_ms.is_some_and(|until| fire_at_ms > until) {
+        if until_ms.is_some_and(|until| fire_at_ms > until) || skip(&reminder.id, fire_at_ms) {
             continue;
         }
         let Some(fire_at) = instants::to_iso8601(fire_at_ms) else {
