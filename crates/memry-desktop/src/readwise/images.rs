@@ -32,20 +32,31 @@ pub(crate) fn resolve_images(
         return resolved;
     }
     let existing = attachments::list(&library.open, note_id).unwrap_or_else(|error| {
-        tracing::warn!(scope = SCOPE, note_id, "the note's attachments could not be listed: {error}");
+        tracing::warn!(
+            scope = SCOPE,
+            note_id,
+            "the note's attachments could not be listed: {error}"
+        );
         Vec::new()
     });
     for url in urls {
         let stem = image_file_stem(url);
         let prefix = format!("{stem}.");
-        if let Some(present) = existing.iter().find(|file| file.filename.starts_with(&prefix)) {
+        if let Some(present) = existing
+            .iter()
+            .find(|file| file.filename.starts_with(&prefix))
+        {
             let target = format!("{ATTACHMENTS_DIR}/{note_id}/{}", present.filename);
             resolved.insert(url.clone(), relative_ref(note_path, &target));
             continue;
         }
         let lower = url.get(..8).unwrap_or(url).to_ascii_lowercase();
         if !lower.starts_with("http://") && !lower.starts_with("https://") {
-            tracing::warn!(scope = SCOPE, note_id, "skipping a Readwise image that is not an http(s) URL");
+            tracing::warn!(
+                scope = SCOPE,
+                note_id,
+                "skipping a Readwise image that is not an http(s) URL"
+            );
             continue;
         }
         match save_image(library, note_id, url, &stem) {

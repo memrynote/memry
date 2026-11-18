@@ -16,12 +16,13 @@ use super::run_state::RunState;
 use super::section::{
     EndMarker, SectionProblem, SectionRead, hash_section_body, read_section, write_end_marker,
 };
-use super::step;
+use super::steps;
 use super::types::{CategorySwitches, FolderLayout, FrontmatterValue, ReadwiseBook, SavedImages};
 use crate::notes::create::NewNoteFile;
 use crate::notes::update::NoteUpdateInput;
 use crate::notes::view::NoteView;
 use crate::web::extract::utils::date::iso_string;
+use crate::web::extract::utils::js::is_js_whitespace;
 
 const SCOPE: &str = "ReadwiseWriter";
 
@@ -125,12 +126,20 @@ impl Writer<'_> {
             }) => self.state.add_retry(id, "note-open"),
             Ok(_) => self.state.remove_retry(id),
             Err(reason) => {
-                tracing::warn!(scope = SCOPE, book_id = id, "a Readwise book could not be written: {reason}");
+                tracing::warn!(
+                    scope = SCOPE,
+                    book_id = id,
+                    "a Readwise book could not be written: {reason}"
+                );
                 self.state.add_retry(id, reason)
             }
         };
         if let Err(error) = kept {
-            tracing::error!(scope = SCOPE, book_id = id, "the Readwise retry list could not be updated: {error}");
+            tracing::error!(
+                scope = SCOPE,
+                book_id = id,
+                "the Readwise retry list could not be updated: {error}"
+            );
         }
         outcome.unwrap_or_else(Outcome::Failed)
     }
@@ -321,7 +330,12 @@ impl Writer<'_> {
         let external = book.external_id.as_deref().filter(|id| !id.is_empty());
         self.library
             .store()
-            .upsert_link(Some(book.user_book_id), external, &created.id, LinkState::Linked)
+            .upsert_link(
+                Some(book.user_book_id),
+                external,
+                &created.id,
+                LinkState::Linked,
+            )
             .map_err(text)?;
         // Images need the note to exist (D14): write the section again with them, and an
         // article's cover through `frontmatter`, the key the cover band owns.
@@ -388,9 +402,7 @@ impl Writer<'_> {
                 let start = body[..range.end].rfind('\n').map_or(0, |at| at + 1);
                 (Some(start..range.end), marker, false)
             }
-            SectionRead::Missing {
-                end: Some(end), ..
-            } => (Some(end.range), end.marker, false),
+            SectionRead::Missing { end: Some(end), .. } => (Some(end.range), end.marker, false),
             SectionRead::Missing { problem, end: None } => {
                 // Without a readable end marker the state has nowhere to live: a missing one gets
                 // a new marker, an inline or duplicated one is left alone.
@@ -431,7 +443,11 @@ impl Writer<'_> {
             Some(end_line) => {
                 let before = body[..end_line.start].trim_end();
                 let last_line = &before[before.rfind('\n').map_or(0, |at| at + 1)..];
-                let gap = if is_list_item(last_line) { "\n" } else { "\n\n" };
+                let gap = if is_list_item(last_line) {
+                    "\n"
+                } else {
+                    "\n\n"
+                };
                 let end_marker = match &marker {
                     Some(marker) => write_end_marker(&EndMarker {
                         last: append.last.clone(),
@@ -492,7 +508,7 @@ fn touched_hash(build: &dyn Fn(&str) -> String) -> String {
 
 /// `LIST_ITEM`: `^\s*(?:[-*+]|\d{1,9}[.)])\s`.
 fn is_list_item(line: &str) -> bool {
-    let rest = line.trim_start_matches(is_js_space);
+    let rest = line.trim_start_matches(is_js_whitespace);
     let after = match rest.as_bytes().first() {
         Some(b'-' | b'*' | b'+') => &rest[1..],
         _ => {
@@ -503,27 +519,24 @@ fn is_list_item(line: &str) -> bool {
             }
         }
     };
-    after.chars().next().is_some_and(is_js_space)
-}
-
-/// JS `\s`.
-fn is_js_space(c: char) -> bool {
-    c.is_whitespace() || c == '\u{feff}'
+    after.chars().next().is_some_and(is_js_whitespace)
 }
 
 /// `STRAY_MARKERS` removed: every `<!--\s*readwise:(?:start|end)[^>]*-->`. One pass: the only
 /// `>` a match can end on is the first one after its keyword, found by a cursor that only moves
-/// forward.
+/// forward. Each byte scanned is a planner step.
 pub fn strip_stray_markers(body: &str) -> String {
     let mut out = String::with_capacity(body.len());
     let mut copied = 0;
     let mut at = 0;
     let mut next_gt = 0;
     while let Some(found) = body[at..].find("<!--") {
-        step();
+        steps(found + 1);
         let open = at + found;
         let after = &body[open + 4..];
-        let keyword_at = open + 4 + (after.len() - after.trim_start_matches(is_js_space).len());
+        let space = after.len() - after.trim_start_matches(is_js_whitespace).len();
+        steps(space);
+        let keyword_at = open + 4 + space;
         let rest = &body[keyword_at..];
         let keyword = ["readwise:start", "readwise:end"]
             .into_iter()
@@ -535,8 +548,12 @@ pub fn strip_stray_markers(body: &str) -> String {
         let from = keyword_at + keyword.len();
         if next_gt < from {
             next_gt = body[from..].find('>').map_or(body.len(), |gt| from + gt);
+            steps(next_gt - from);
         }
-        if next_gt < body.len() && next_gt >= from + 2 && &body[next_gt - 2..next_gt] == "--" {
+        if next_gt < body.len()
+            && next_gt >= from + 2
+            && body.as_bytes()[next_gt - 2..next_gt] == *b"--"
+        {
             out.push_str(&body[copied..open]);
             copied = next_gt + 1;
             at = copied;

@@ -82,7 +82,11 @@ impl RunState {
         match serde_json::from_str(&raw) {
             Ok(value) => Ok(Some(value)),
             Err(error) => {
-                tracing::warn!(scope = SCOPE, key, "dropping an unreadable Readwise {key}: {error}");
+                tracing::warn!(
+                    scope = SCOPE,
+                    key,
+                    "dropping an unreadable Readwise {key}: {error}"
+                );
                 Ok(None)
             }
         }
@@ -120,7 +124,10 @@ impl RunState {
     /// `addRetry`: lists the book, or bumps its attempts and reason when it is listed.
     pub fn add_retry(&self, book_id: i64, reason: &str) -> Result<(), StorageError> {
         let mut list = self.retry_list()?;
-        match list.iter_mut().find(|entry| entry.readwise_book_id == book_id) {
+        match list
+            .iter_mut()
+            .find(|entry| entry.readwise_book_id == book_id)
+        {
             Some(entry) => {
                 entry.reason = reason.to_owned();
                 entry.attempts = entry.attempts.saturating_add(1);

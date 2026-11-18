@@ -72,6 +72,11 @@ pub(crate) fn step() {
     STEPS.with(|steps| steps.set(steps.get() + 1));
 }
 
+/// `n` units of planner work: the bytes a scan passed over.
+pub(crate) fn steps(n: usize) {
+    STEPS.with(|steps| steps.set(steps.get() + n));
+}
+
 /// Steps the planners took on this thread, for the complexity tests (`memry-test-kit`).
 #[doc(hidden)]
 pub fn planner_steps() -> usize {

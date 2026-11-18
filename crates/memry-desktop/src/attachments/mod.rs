@@ -399,7 +399,15 @@ pub fn save(
     file_name: &str,
     bytes: &[u8],
 ) -> Result<SavedAttachment, AttachmentError> {
-    save_with(vault, note_id, note_path, file_name, bytes, false, &mut |_| {})
+    save_with(
+        vault,
+        note_id,
+        note_path,
+        file_name,
+        bytes,
+        false,
+        &mut |_| {},
+    )
 }
 
 /// `saveAttachment(..., { exactFilename: true })`: stores the file under `file_name` itself, so
@@ -418,7 +426,15 @@ pub fn save_exact(
     if !plain {
         return Err(AttachmentError::NotPlainName);
     }
-    save_with(vault, note_id, note_path, file_name, bytes, true, &mut |_| {})
+    save_with(
+        vault,
+        note_id,
+        note_path,
+        file_name,
+        bytes,
+        true,
+        &mut |_| {},
+    )
 }
 
 /// Test hook: [`save`] with `before_recheck` run with the target right before the last check of
@@ -434,7 +450,15 @@ pub fn save_checked(
     bytes: &[u8],
     before_recheck: &mut dyn FnMut(&Path),
 ) -> Result<SavedAttachment, AttachmentError> {
-    save_with(vault, note_id, note_path, file_name, bytes, false, before_recheck)
+    save_with(
+        vault,
+        note_id,
+        note_path,
+        file_name,
+        bytes,
+        false,
+        before_recheck,
+    )
 }
 
 fn save_with(

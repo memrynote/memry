@@ -350,7 +350,10 @@ impl Run<'_> {
             && let Err(error) = self.library.rebuild_links()
         {
             // The writer also finds a book's note by `readwise_url`: no duplicate follows.
-            tracing::warn!(scope = SCOPE, "could not rebuild the Readwise links: {error}");
+            tracing::warn!(
+                scope = SCOPE,
+                "could not rebuild the Readwise links: {error}"
+            );
         }
 
         // 1. The retry list, as full books.
@@ -363,7 +366,10 @@ impl Run<'_> {
             Err(error) => {
                 let error = self.readwise_failure(error)?;
                 // The books stay on the list for the next run.
-                tracing::warn!(scope = SCOPE, "the Readwise retry list could not be fetched: {error}");
+                tracing::warn!(
+                    scope = SCOPE,
+                    "the Readwise retry list could not be fetched: {error}"
+                );
                 (Vec::new(), false)
             }
         };
@@ -422,8 +428,10 @@ impl Run<'_> {
 
         // 3. The full books a render needs.
         if !need_full.is_empty() {
-            let mut payloads: HashMap<i64, &ReadwiseBook> =
-                need_full.iter().map(|book| (book.user_book_id, *book)).collect();
+            let mut payloads: HashMap<i64, &ReadwiseBook> = need_full
+                .iter()
+                .map(|book| (book.user_book_id, *book))
+                .collect();
             let ids: Vec<i64> = need_full.iter().map(|book| book.user_book_id).collect();
             let full_books = match self.read_books(&ids) {
                 Ok(books) => books,
@@ -432,7 +440,9 @@ impl Run<'_> {
                     // Rate limit or network: each book is asked for again next run.
                     let reason = error.to_string();
                     for book in &need_full {
-                        self.state.add_retry(book.user_book_id, &reason).map_err(failed)?;
+                        self.state
+                            .add_retry(book.user_book_id, &reason)
+                            .map_err(failed)?;
                         let event = BookEvent {
                             title: book_title(book),
                             result: BookResult::Failed(reason.clone()),
@@ -459,7 +469,11 @@ impl Run<'_> {
                 self.state
                     .add_retry(book.user_book_id, "Missing from the full fetch")
                     .map_err(failed)?;
-                tracing::info!(scope = SCOPE, book_id = book.user_book_id, "a Readwise book vanished between the export and its full fetch");
+                tracing::info!(
+                    scope = SCOPE,
+                    book_id = book.user_book_id,
+                    "a Readwise book vanished between the export and its full fetch"
+                );
                 let event = BookEvent {
                     title: book_title(book),
                     result: BookResult::Unchanged,
@@ -472,7 +486,9 @@ impl Run<'_> {
             .set_cursor(&next_cursor(&exported, cursor.as_deref(), started)?)
             .map_err(failed)?;
         if full {
-            self.state.set_last_full_read(&iso(started)?).map_err(failed)?;
+            self.state
+                .set_last_full_read(&iso(started)?)
+                .map_err(failed)?;
             // A category switched on while this run was reading keeps its flag.
             let now = ReadwiseOptions::from_group(&store.settings_group().map_err(failed)?);
             let on = |options: &ReadwiseOptions, category: ReadwiseCategory| {
@@ -504,9 +520,17 @@ impl Run<'_> {
             Err(reason) => {
                 // The writer reports its own failures. This catches the planner and the link
                 // bookkeeping: the cursor moves on without this book, so it goes on the list.
-                tracing::warn!(scope = SCOPE, book_id = book.user_book_id, "a Readwise book could not be processed: {reason}");
+                tracing::warn!(
+                    scope = SCOPE,
+                    book_id = book.user_book_id,
+                    "a Readwise book could not be processed: {reason}"
+                );
                 if let Err(error) = writer.state.add_retry(book.user_book_id, &reason) {
-                    tracing::error!(scope = SCOPE, book_id = book.user_book_id, "the Readwise retry list could not be updated: {error}");
+                    tracing::error!(
+                        scope = SCOPE,
+                        book_id = book.user_book_id,
+                        "the Readwise retry list could not be updated: {error}"
+                    );
                 }
                 BookResult::Failed(reason)
             }
@@ -526,7 +550,10 @@ impl Run<'_> {
         let external = book.external_id.as_deref().filter(|id| !id.is_empty());
         // Before any skip: a deleted or category-off book still tells which Reader document it
         // covers (D11).
-        if let Some(link) = store.link_for_book(id, external).map_err(|e| e.to_string())? {
+        if let Some(link) = store
+            .link_for_book(id, external)
+            .map_err(|e| e.to_string())?
+        {
             store
                 .complete_link(&link, id, external)
                 .map_err(|e| e.to_string())?;

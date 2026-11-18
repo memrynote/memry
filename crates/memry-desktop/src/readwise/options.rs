@@ -25,7 +25,11 @@ impl ReadwiseOptions {
         let field = |name: &str| group.get(name);
         let flag = |name: &str| field(name).and_then(Value::as_bool).unwrap_or(false);
         let categories = field("categories");
-        let category = |name: &str| categories.and_then(|c| c.get(name)).and_then(Value::as_bool);
+        let category = |name: &str| {
+            categories
+                .and_then(|c| c.get(name))
+                .and_then(Value::as_bool)
+        };
         Self {
             root_folder: field("rootFolder")
                 .and_then(Value::as_str)
