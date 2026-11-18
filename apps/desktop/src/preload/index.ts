@@ -19,7 +19,7 @@ import {
 import { applyZoomFactor, getStartupZoomFactor } from './lib/startup-zoom'
 import { applyStartupColorTheme } from './lib/startup-color-theme'
 import { applyStartupPlatform } from './lib/startup-platform'
-import { suppressFirstRunPromptsInE2E } from './lib/e2e-onboarding'
+import { suppressFirstRunOnboardingInE2E } from './lib/e2e-onboarding'
 import { createGeneratedRpcApi } from './generated-rpc'
 import { windowApi, getFileDropPaths, contextMenuApi, quickCaptureApi, flushApi } from './api/core'
 import { vaultApi, vaultEvents } from './api/vault'
@@ -69,7 +69,7 @@ export interface MainInvokePayload {
 }
 
 if (typeof globalThis.window !== 'undefined') {
-  suppressFirstRunPromptsInE2E()
+  suppressFirstRunOnboardingInE2E()
 
   const startupTheme = getStartupThemeSync()
   try {
