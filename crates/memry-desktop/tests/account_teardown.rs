@@ -741,3 +741,22 @@ async fn a_held_back_refresh_never_signs_out() {
     }
     assert_eq!(s.script.count("/auth/devices"), 0);
 }
+
+/// A setup call on a device that is already signed in is refused, and the account's master key
+/// stays: only a device that needs setup drops a kept key.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_setup_on_a_signed_in_device_is_refused_and_keeps_the_master_key() {
+    let s = signed_in();
+
+    s.account.setup_new_account().await.unwrap_err();
+
+    assert_eq!(
+        s.keychain
+            .get(SecureStoreKey::MasterKey)
+            .unwrap()
+            .as_deref(),
+        Some(&MASTER[..])
+    );
+    assert_eq!(s.account.session().state(), AuthState::Registered);
+    assert!(s.account.info().signed_in);
+}
