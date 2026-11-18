@@ -143,14 +143,39 @@ struct NoteTitleEditor: View {
         return nil
     }
 
-    /// Where `context` took the focus from the title.
-    private func focusMove(_ context: UIFocusUpdateContext) -> TitleFocusMove {
-        guard let next = context.nextFocusedItem else { return .toNothing }
-        if !context.focusHeading.isEmpty { return .byKey }
-        if next === host.title { return .intoTitle }
-        if next is UITextInput { return .intoText }
-        if (next as? UICollectionViewCell)?.isSelected == true { return .toSelectedRow }
-        return .elsewhere
+    /// What UIKit's focus `item` is to the title.
+    private func focusTarget(_ item: UIFocusItem?) -> TitleFocusTarget {
+        guard let item else { return .nothing }
+        if host.isTitle(item) { return .title }
+        if item is UITextInput { return .text }
+        if (item as? UICollectionViewCell)?.isSelected == true { return .selectedRow }
+        return .other
+    }
+
+    /// The list took the caret and the claim takes it back, once the focus
+    /// state has followed the loss. Never from a text view the user moved
+    /// to meanwhile: then the loss ends the edit after all.
+    private func retake() {
+        let caret = host.window.flatMap(Self.caretHolder)
+        if claim.retakes(caretInOtherText: caret.map { !host.isTitle($0) } ?? false) {
+            focused = true
+        } else if !focused {
+            focusLost()
+        }
+    }
+
+    /// The title lost the caret: the edit ends.
+    private func focusLost() {
+        if returned != nil {
+            // The body taking the caret ends the title's focus before it
+            // takes the held keys, on the same turn.
+            DispatchQueue.main.async {
+                keepHeld()
+                commit()
+            }
+        } else {
+            commit()
+        }
     }
 
     /// Return: saves the title before it and keeps the caret, holding the
@@ -328,6 +353,8 @@ struct NoteTitleEditor: View {
                 }
                 .onChange(of: focused) { _, isFocused in
                     if isFocused {
+                        // A take-back goes on with the edit it interrupted.
+                        if claim.refocused() { return }
                         host.keys.reset()
                         host.handedOff = nil
                         EditorFocusMemory.shared.forget()
@@ -338,15 +365,10 @@ struct NoteTitleEditor: View {
                         if let field = titleTextView { host.title = field }
                         host.composing = titleTextView?.markedTextRange != nil
                         host.body = nil
-                    } else if returned != nil {
-                        // The body taking the caret ends the title's focus
-                        // before it takes the held keys, on the same turn.
-                        DispatchQueue.main.async {
-                            keepHeld()
-                            commit()
-                        }
+                    } else if claim.retaking {
+                        Task { retake() }
                     } else {
-                        commit()
+                        focusLost()
                     }
                 }
                 // A draft the user has not changed follows the saved title.
@@ -372,14 +394,18 @@ struct NoteTitleEditor: View {
                 // the focus to the new note's selected row each time it
                 // mirrors its selection (`TitleFocusClaim`), which can land
                 // after the request above and after the first keys. Each such
-                // move in this title's window is taken back, a turn later
-                // once the focus state has followed it.
+                // move from this title is taken back, a turn after the focus
+                // state follows it (`retake`). A move counts from the title by
+                // UIKit's previous item, not by `focused`, which lags.
                 .onReceive(NotificationCenter.default.publisher(for: UIFocusSystem.didUpdateNotification)) { note in
-                    guard claim.holds, focused, let window = host.window,
+                    guard claim.holds, let window = host.window,
                           note.object as? UIFocusSystem === UIFocusSystem.focusSystem(for: window),
-                          let context = note.userInfo?[UIFocusSystem.focusUpdateContextUserInfoKey] as? UIFocusUpdateContext
+                          let context = note.userInfo?[UIFocusSystem.focusUpdateContextUserInfoKey] as? UIFocusUpdateContext,
+                          let previous = context.previouslyFocusedItem, host.isTitle(previous)
                     else { return }
-                    if claim.takesBack(after: focusMove(context)) { Task { focused = true } }
+                    _ = claim.takesBack(after: TitleFocusMove(
+                        to: focusTarget(context.nextFocusedItem), byKey: !context.focusHeading.isEmpty
+                    ))
                 }
                 // Saved as the app resigns, as a body block is (#2820). Not
                 // while an input method composes: Control Center resigns the
@@ -442,6 +468,18 @@ private final class TitleWindow {
     /// The body block a Return in the title moved the caret to, until the
     /// title takes the caret again.
     weak var body: UITextView?
+    /// The view drawn behind the title, with its frame.
+    weak var probe: UIView?
+
+    /// Whether `item` is the title's text view: the one drawn where the
+    /// title is, so neither when it was first seen nor a page that drew a
+    /// new one matters.
+    func isTitle(_ item: UIFocusItem) -> Bool {
+        guard let text = item as? UITextView, let probe, let window = probe.window, text.window === window
+        else { return false }
+        let center = text.convert(CGPoint(x: text.bounds.midX, y: text.bounds.midY), to: nil)
+        return probe.convert(probe.bounds, to: nil).contains(center)
+    }
 }
 
 private struct TitleWindowReader: UIViewRepresentable {
@@ -450,12 +488,14 @@ private struct TitleWindowReader: UIViewRepresentable {
     func makeUIView(context: Context) -> Probe {
         let probe = Probe()
         probe.host = host
+        host.probe = probe
         probe.isUserInteractionEnabled = false
         return probe
     }
 
     func updateUIView(_ probe: Probe, context: Context) {
         probe.host = host
+        host.probe = probe
     }
 
     final class Probe: UIView {
