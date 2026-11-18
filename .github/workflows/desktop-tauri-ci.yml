@@ -65,8 +65,11 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
+      # The post-merge lookup of this SHA's merge_group run.
+      actions: read
     outputs:
       full: ${{ steps.tier.outputs.full }}
+      post_merge: ${{ steps.tier.outputs.post_merge }}
       tauri: ${{ steps.tier.outputs.tauri }}
       swift: ${{ steps.tier.outputs.swift }}
       intel: ${{ steps.tier.outputs.intel }}
@@ -93,8 +96,11 @@ jobs:
         with:
           token: ${{ github.token }}
           source: ${{ github.workspace }}
+          post-merge: 'true'
 
-      # The build matrix (rules in .github/actions/ci-tier/tauri-builds.jq).
+      # The build matrix (rules in .github/actions/ci-tier/tauri-builds.jq). Post-merge (a push to
+      # feat/tauri-v2 whose SHA passed this workflow in the merge queue, #5035) builds only macos-arm64
+      # and the windows-arm64 e2e specs.
       - name: Build the build matrix
         id: matrix
         env:
@@ -104,8 +110,9 @@ jobs:
           WINDOWS_LEGS: ${{ steps.tier.outputs.tauri_windows }}
           MACOS_LEGS: ${{ steps.tier.outputs.tauri_macos }}
           QUEUE: ${{ github.event_name == 'merge_group' }}
+          POST_MERGE: ${{ steps.tier.outputs.post_merge }}
         run: |
-          matrix=$(jq -cn --arg full "$FULL" --arg macos "$MACOS" --arg intel "$INTEL" --arg queue "$QUEUE" --arg win "$WINDOWS_LEGS" --arg mac "$MACOS_LEGS" \
+          matrix=$(jq -cn --arg full "$FULL" --arg macos "$MACOS" --arg intel "$INTEL" --arg queue "$QUEUE" --arg post_merge "$POST_MERGE" --arg win "$WINDOWS_LEGS" --arg mac "$MACOS_LEGS" \
             -f .github/actions/ci-tier/tauri-builds.jq)
           echo "build=$matrix" >> "$GITHUB_OUTPUT"
           echo "Build matrix: $matrix"
@@ -122,7 +129,8 @@ jobs:
   static:
     name: Static checks
     needs: plan
-    if: ${{ !cancelled() && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref != 'main' && github.event.label.name == 'full-ci')) }}
+    # Not post-merge: the merge queue ran it on the same SHA (as for renderer-tests).
+    if: ${{ !cancelled() && needs.plan.outputs.post_merge != 'true' && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref != 'main' && github.event.label.name == 'full-ci')) }}
     runs-on: ubuntu-22.04
     timeout-minutes: 40
     steps:
@@ -246,7 +254,7 @@ jobs:
   renderer-tests:
     name: Renderer tests (${{ matrix.shard }}/3)
     needs: plan
-    if: ${{ !cancelled() && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref != 'main' && github.event.label.name == 'full-ci')) }}
+    if: ${{ !cancelled() && needs.plan.outputs.post_merge != 'true' && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref != 'main' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref != 'main' && github.event.label.name == 'full-ci')) }}
     runs-on: ubuntu-22.04
     timeout-minutes: 40
     strategy:
