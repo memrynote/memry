@@ -25,8 +25,10 @@ use memry_test_kit::{
     assert_output_bounded, assert_steps_at_most, on_small_stack, output_bound, proptest_config,
 };
 use proptest::prelude::*;
+use regex::Regex;
 use serde_json::{Value, json};
 use std::collections::HashSet;
+use std::sync::LazyLock;
 
 const END: &str = "<!-- readwise:end v1 last=2026-10-22T18:05:00.001Z hash=0badf00d -->";
 
@@ -204,6 +206,8 @@ fn hostile_text() -> impl Strategy<Value = String> {
         Just("`".to_string()),
         Just("\\".to_string()),
         Just("[[Secret]]".to_string()),
+        Just("[".to_string()),
+        Just("&#91;".to_string()),
         "[ -'*-~]{0,6}",
     ];
     prop::collection::vec(piece, 0..6).prop_map(|pieces| pieces.concat())
@@ -350,6 +354,115 @@ fn reader_tag_shapes_plan_or_fail_as_typescript_does() {
     }
 }
 
+/// A wiki link as Memry reads one in markdown or in editor text, widened to every target the
+/// editor's patterns take (`wiki-link-utils.ts`, `wiki-link-edit-plugin.ts`, `wiki-target.ts`).
+static WIKI_LINK: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\[\[[^\]]*\]\]").expect("static pattern"));
+
+/// An untrusted `readwise_url` or `location_type`, after untrusted highlight text, never
+/// breaks the section: it reads back untouched, and parsed as the editor parses it the
+/// highlight's link is its only link, and no prose outside it holds a wiki link or the URL.
+fn link_fields_stay_inside_their_link(
+    text: &str,
+    url: &str,
+    location_type: &str,
+) -> Result<(), TestCaseError> {
+    let h = hostile_highlight(text.into(), url.into(), location_type.into());
+    let href = highlight_url(&h);
+    let section = plan(&ReadwiseBook {
+        user_book_id: 1,
+        highlights: Some(vec![h]),
+        ..Default::default()
+    });
+    prop_assert!(
+        matches!(
+            read_section(&section),
+            SectionRead::Found {
+                untouched: true,
+                ..
+            }
+        ),
+        "{section}"
+    );
+    prop_assert_eq!(section.matches("](http").count(), 1, "{}", section);
+    let blocks = markdown_to_blocks(&section).expect("the section parses");
+    let (mut links, mut prose) = (Vec::new(), Vec::new());
+    links_and_prose(&blocks, &mut links, &mut prose);
+    prop_assert_eq!(&links, &vec![href], "{}", section);
+    prop_assert!(!WIKI_LINK.is_match(&section), "wiki link in {section}");
+    for run in &prose {
+        prop_assert!(!WIKI_LINK.is_match(run), "wiki link in {run:?}: {section}");
+        prop_assert!(
+            !url.starts_with("http") || text.contains(url) || !run.contains(url),
+            "URL as prose in {run:?}: {section}"
+        );
+    }
+    Ok(())
+}
+
+/// Bracket runs that open a wiki link once the escape or the markdown parser is done with
+/// them: odd runs, nesting, a pipe, an early close, and brackets spelled as backslash escapes
+/// or character references, which the parser turns back into `[`.
+const WIKI_SHAPES: &[&str] = &[
+    "[[[Secret]]",
+    "]][[x]]",
+    "[[x|y]]",
+    "[[a]]b]]",
+    "[[[[[x]]",
+    "[[[[Secret]]]]",
+    "[[a [[b]] c]]",
+    "\\[[x]]",
+    "[\\[x]]",
+    "\\[\\[x]]",
+    "\\\\[[x]]",
+    "[\\\\[x]]",
+    "a \\[\\[[x]]",
+    "&#91;&#91;x]]",
+    "[&#x5B;x]]",
+    "&#X5b;[x]]",
+    "&#0000091;[x]]",
+    "&lbrack;&lsqb;x]]",
+    "[&LeftBracket;x]]",
+];
+
+/// The shapes as highlight text, as `readwise_url` and as `location_type`, each slot alone
+/// and after hostile text.
+#[test]
+fn wiki_link_shapes_stay_inside_their_link() {
+    for shape in WIKI_SHAPES {
+        for (text, url, location_type) in [
+            (*shape, "", ""),
+            ("", *shape, ""),
+            ("", "", *shape),
+            ("a `b\\[", *shape, *shape),
+            (*shape, "https://readwise.io/open/7", *shape),
+        ] {
+            link_fields_stay_inside_their_link(text, url, location_type)
+                .unwrap_or_else(|e| panic!("{shape:?}: {e}"));
+        }
+    }
+}
+
+/// A book title the journal writes into its own `[[title]]` link cannot open a second one.
+#[test]
+fn journal_titles_hold_one_wiki_link() {
+    for shape in WIKI_SHAPES {
+        let books = [JournalBook {
+            title: (*shape).to_string(),
+            count: 1,
+            first: "2026-10-22T00:00:00.000Z".into(),
+        }];
+        let JournalWrite::Append { markdown } = plan_journal_write(None, &books, &[]) else {
+            panic!("a missing entry gets the whole section");
+        };
+        let blocks = markdown_to_blocks(&markdown).expect("the section parses");
+        let (mut links, mut prose) = (Vec::new(), Vec::new());
+        links_and_prose(&blocks, &mut links, &mut prose);
+        let opens: usize = prose.iter().map(|run| run.matches("[[").count()).sum();
+        assert!(links.is_empty() && opens == 1, "{shape:?}: {markdown}");
+    }
+}
+
 fn exact(line: &str, marker: &str) -> bool {
     line.trim_matches(|c: char| c.is_whitespace() || c == '\u{feff}') == marker
 }
@@ -357,38 +470,13 @@ fn exact(line: &str, marker: &str) -> bool {
 proptest! {
     #![proptest_config(proptest_config(256))]
 
-    /// An untrusted `readwise_url` or `location_type`, after untrusted highlight text, never
-    /// breaks the section: it reads back untouched, and parsed as the editor parses it the
-    /// highlight's link is its only link, and no prose outside it holds a wiki link or the URL.
     #[test]
     fn untrusted_link_fields_stay_inside_their_link(
         text in hostile_text(),
         url in hostile(),
         location_type in hostile(),
     ) {
-        let h = hostile_highlight(text.clone(), url.clone(), location_type);
-        let href = highlight_url(&h);
-        let section = plan(&ReadwiseBook {
-            user_book_id: 1,
-            highlights: Some(vec![h]),
-            ..Default::default()
-        });
-        prop_assert!(
-            matches!(read_section(&section), SectionRead::Found { untouched: true, .. }),
-            "{section}"
-        );
-        prop_assert_eq!(section.matches("](http").count(), 1, "{}", section);
-        let blocks = markdown_to_blocks(&section).expect("the section parses");
-        let (mut links, mut prose) = (Vec::new(), Vec::new());
-        links_and_prose(&blocks, &mut links, &mut prose);
-        prop_assert_eq!(&links, &vec![href], "{}", section);
-        for run in &prose {
-            prop_assert!(!run.contains("[["), "wiki link in {run:?}: {section}");
-            prop_assert!(
-                !url.starts_with("http") || text.contains(&url) || !run.contains(&url),
-                "URL as prose in {run:?}: {section}"
-            );
-        }
+        link_fields_stay_inside_their_link(&text, &url, &location_type)?;
     }
 
     /// The damaged-marker rules against a model that only counts marker lines.
