@@ -109,7 +109,9 @@ jobs:
           key: ${{ matrix.os }}
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Build
-        run: pnpm --filter @memry/desktop-tauri exec tauri build --no-bundle --target ${{ matrix.triple }}
+        run: |
+          node scripts/release/version-config.mjs $env:VERSION "$env:RUNNER_TEMP/version.conf.json"
+          pnpm --filter @memry/desktop-tauri exec tauri build --no-bundle --target ${{ matrix.triple }} --config "$env:RUNNER_TEMP/version.conf.json"
       - name: Stage pack dir
         run: node scripts/release/stage-payload.mjs win ${{ matrix.triple }} pack
       - name: Check the exe needs no VC++ redistributable
@@ -163,7 +165,9 @@ jobs:
           echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
           "$HOME/.dotnet/tools/vpk" -h | head -3 | grep -F "Velopack CLI $VPK_VERSION"
       - name: Build bundle (unsigned)
-        run: pnpm --filter @memry/desktop-tauri exec tauri build --target ${{ matrix.triple }} --bundles app
+        run: |
+          node scripts/release/version-config.mjs "$VERSION" "$RUNNER_TEMP/version.conf.json"
+          pnpm --filter @memry/desktop-tauri exec tauri build --target ${{ matrix.triple }} --bundles app --config "$RUNNER_TEMP/version.conf.json"
       - name: Import signing identity
         env:
           MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
@@ -212,6 +216,7 @@ jobs:
           for attempt in 1 2 3; do
             if node scripts/release/vpk-pack.mjs ${{ matrix.target }} --version "$VERSION" \
               --pack-dir pack/MemryNote.app --output-dir out --delta "$delta" \
+              --release-notes scripts/rehearsal/release-notes.md \
               --identity "$IDENTITY" --entitlements "$RUNNER_TEMP/MemryNote.entitlements" \
               --notary-profile memry-notary --keychain "$KEYCHAIN"; then
               exit 0
@@ -270,7 +275,9 @@ jobs:
           echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
           "$HOME/.dotnet/tools/vpk" -h | head -3 | grep -F "Velopack CLI $VPK_VERSION"
       - name: Build AppImage
-        run: pnpm --filter @memry/desktop-tauri exec tauri build --bundles appimage
+        run: |
+          node scripts/release/version-config.mjs "$VERSION" "$RUNNER_TEMP/version.conf.json"
+          pnpm --filter @memry/desktop-tauri exec tauri build --bundles appimage --config "$RUNNER_TEMP/version.conf.json"
       - name: Extract AppDir
         run: |
           appimage="$(ls crates/target/release/bundle/appimage/*.AppImage)"
@@ -290,7 +297,8 @@ jobs:
           mkdir -p out
           delta=BestSpeed; [ -z "$PREVIOUS_TAG" ] && delta=None
           node scripts/release/vpk-pack.mjs linux-x64 --version "$VERSION" \
-            --pack-dir MemryNote.AppDir --output-dir out --delta "$delta"
+            --pack-dir MemryNote.AppDir --output-dir out --delta "$delta" \
+            --release-notes scripts/rehearsal/release-notes.md
       - uses: actions/upload-artifact@v4
         with:
           name: rehearsal-linux-x64

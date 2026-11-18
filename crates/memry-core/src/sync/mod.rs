@@ -31,6 +31,7 @@
 //! | [`first_sync_store`] | §A.2                | that run's two work lists and its two `meta` keys |
 //! | [`driver`]        | #3534                  | the one composition a long-lived shell runs        |
 //! | [`server_vault`]  | 05 §5.2, #3534 K1      | the server's id for this vault, one `meta` key     |
+//! | [`attachments`]   | 14 §14.7, §14.8        | which uploads, drops and releases a change needs   |
 //!
 //! **The core owns no networking.** Every call here goes out through
 //! [`crate::protocol::http`], which goes out through the `Transport` seam
@@ -41,6 +42,7 @@
 pub mod account_binding;
 pub mod admission;
 pub mod apply;
+pub mod attachments;
 pub mod body_debt;
 pub mod body_heal;
 pub mod body_pull;

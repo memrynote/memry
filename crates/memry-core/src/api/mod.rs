@@ -23,6 +23,8 @@ pub mod external_feed;
 pub mod inbox;
 pub mod inbox_conformance;
 pub mod inbox_enrich;
+pub mod inbox_ingest;
+pub mod inbox_jobs;
 pub mod inbox_records;
 pub mod inbox_settings;
 pub mod inbox_write;

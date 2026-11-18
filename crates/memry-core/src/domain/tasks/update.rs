@@ -401,29 +401,16 @@ pub fn apply(
         "linkedCanvasIds",
         patch.linked_canvas_ids.as_deref().map(once),
     );
-    // The undo of `fields` holds only the entries this edit changed, each
-    // with its prior value (`null` when absent), so it never touches an entry
-    // a later local or peer edit wrote (§6.11.3).
-    let mut fields_prior = None;
     if let Some(fields) = &patch.fields {
-        let current = before.object.get("fields");
         let total = u64::try_from(clock_total(&clock_in(&before.object)?)).unwrap_or(0);
-        let stamped = versioned::stamp_map(current, fields, total);
-        let old = versioned::read_map(current).unwrap_or_default();
-        let new = versioned::read_map(Some(&stamped)).unwrap_or_default();
-        let values = versioned::plain(current);
-        let cut: Map<String, Value> = fields
-            .keys()
-            .filter(|name| old.get(*name) != new.get(*name))
-            .map(|name| {
-                (
-                    name.clone(),
-                    values.get(name).cloned().unwrap_or(Value::Null),
-                )
-            })
-            .collect();
-        fields_prior = Some(Value::Object(cut));
-        push("fields", Some(stamped));
+        push(
+            "fields",
+            Some(versioned::stamp_map(
+                before.object.get("fields"),
+                fields,
+                total,
+            )),
+        );
     }
 
     // A key written twice (a roll closing a `repeatConfig` the patch also
@@ -442,16 +429,7 @@ pub fn apply(
         }
         None => None,
     };
-    let mut write = batch.commit()?;
-    if let Some(cut) = fields_prior {
-        for prior in write.changed.iter_mut().filter(|p| p.task_id == task_id) {
-            for (field, value) in &mut prior.fields {
-                if field == "fields" {
-                    *value = cut.clone();
-                }
-            }
-        }
-    }
+    let write = batch.commit()?;
     let changed_fields = write
         .changed
         .iter()
