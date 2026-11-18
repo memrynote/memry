@@ -1,8 +1,9 @@
 // PDF export through the print window (Step 34, #3551): each page size Electron's `printToPDF`
 // offered gives pages of that size, a note longer than a page gives several, a missing note
-// answers `not_found` without a file, and a note whose raw HTML reaches for the web prints with
-// nothing fetched, opened or left behind. Pixel fidelity against the Electron baselines is
-// stage D.
+// answers `not_found` without a file, a note whose raw HTML reaches for the web prints with
+// nothing fetched, opened or left behind, and a call naming its own `outputPath` is refused. The
+// file is chosen through the save dialog, answered from the e2e dialog queue. Pixel fidelity
+// against the Electron baselines is stage D.
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { createServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
@@ -12,6 +13,7 @@ import { join } from 'node:path'
 import { invokeTest } from '../../harness/invoke-test'
 import { createNote, vaultOpen } from '../../harness/notes'
 import type { Page } from '../../harness/pw-compat/page'
+import type { TauriApp } from '../../harness/tauri-lifecycle'
 import { test, expect } from '../../harness/test'
 import { invoke } from '../../harness/vault-commands'
 
@@ -20,7 +22,6 @@ interface ExportInput {
   noteId: string
   includeMetadata?: boolean
   pageSize?: 'A4' | 'Letter' | 'Legal'
-  outputPath?: string
 }
 
 interface ExportResult {
@@ -38,6 +39,17 @@ const SIZES = {
 
 const exportPdf = (page: Page, input: ExportInput) =>
   invoke<ExportResult>(page, 'notes_export_pdf', { input })
+
+/** The export with the save dialog answering `out`. */
+async function exportPdfTo(
+  app: TauriApp,
+  page: Page,
+  input: ExportInput,
+  out: string
+): Promise<ExportResult> {
+  await invokeTest(app, 'e2e_dialog_queue_push', { kind: 'SaveFile', paths: [out] })
+  return exportPdf(page, input)
+}
 
 /** Every page's `/MediaBox` width and height, in points. */
 function pageBoxes(pdf: Buffer): Array<[number, number]> {
@@ -57,7 +69,7 @@ function longNote(): string {
   return `# Long note\n\n\`\`\`js\nconst x = 1\n\`\`\`\n\n| A | B |\n|---|---|\n| one | two |\n\n${sections.join('\n\n')}\n\nThe last paragraph.\n`
 }
 
-test('each page size prints pages of that size', async ({ page }) => {
+test('each page size prints pages of that size', async ({ app, page }) => {
   await vaultOpen(page)
   const note = await createNote(page, {
     title: `PDF sizes ${Date.now()}`,
@@ -70,7 +82,7 @@ test('each page size prints pages of that size', async ({ page }) => {
       [keyof typeof SIZES, readonly [number, number]]
     >) {
       const out = join(dir, `${size}.pdf`)
-      const result = await exportPdf(page, { noteId: note.id, pageSize: size, outputPath: out })
+      const result = await exportPdfTo(app, page, { noteId: note.id, pageSize: size }, out)
       expect(result).toEqual({ success: true, path: out })
       const pdf = readFileSync(out)
       expect(pdf.subarray(0, 5).toString('latin1')).toBe('%PDF-')
@@ -91,9 +103,33 @@ test('a missing note answers not_found and writes nothing', async ({ page }) => 
   const dir = mkdtempSync(join(tmpdir(), 'memry-export-pdf-'))
   try {
     const out = join(dir, 'missing.pdf')
-    const result = await exportPdf(page, { noteId: 'no-such-note', outputPath: out })
+    // The note is looked up before the dialog opens, so no answer is queued.
+    const result = await exportPdf(page, { noteId: 'no-such-note' })
     expect(result.success).toBe(false)
     expect(result.code).toBe('not_found')
+    expect(existsSync(out)).toBe(false)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('a call carrying outputPath is refused and writes nothing', async ({ page }) => {
+  await vaultOpen(page)
+  const note = await createNote(page, {
+    title: `PDF planted ${Date.now()}`,
+    content: 'Body.',
+    folder: 'notes'
+  })
+  const dir = mkdtempSync(join(tmpdir(), 'memry-export-pdf-'))
+  try {
+    const out = join(dir, 'planted.pdf')
+    const outcome = await invoke(page, 'notes_export_pdf', {
+      input: { noteId: note.id, outputPath: out }
+    }).then(
+      () => 'resolved',
+      (error: unknown) => `rejected: ${typeof error === 'string' ? error : JSON.stringify(error)}`
+    )
+    expect(outcome).toMatch(/^rejected: .*outputPath/)
     expect(existsSync(out)).toBe(false)
   } finally {
     rmSync(dir, { recursive: true, force: true })
@@ -161,7 +197,7 @@ test('a note whose raw HTML reaches for the web prints with nothing fetched or o
       folder: 'notes'
     })
     const out = join(dir, 'hostile.pdf')
-    const result = await exportPdf(page, { noteId: note.id, outputPath: out })
+    const result = await exportPdfTo(app, page, { noteId: note.id }, out)
     expect(result).toEqual({ success: true, path: out })
     expect(readFileSync(out).subarray(0, 5).toString('latin1')).toBe('%PDF-')
     const labels = async () =>

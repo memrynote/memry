@@ -27,8 +27,8 @@ use crate::windows::pdf_print::{self, PdfError};
 /// `ExportNoteSchema` (`packages/contracts/src/notes-api.ts`) without its `outputPath`: a
 /// webview never names the file to write, so the command always asks the user through the save
 /// dialog. `deny_unknown_fields` rejects a call that still carries one (a departure from
-/// Electron, whose handler writes to the renderer's `outputPath`). The headless export is
-/// [`export_html_to`], reachable in process only.
+/// Electron, whose handler writes to the renderer's `outputPath`). The headless exports are
+/// [`export_html_to`] and [`export_pdf_to`], reachable in process only.
 #[derive(Debug, Clone, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ExportNoteInput {
@@ -195,22 +195,51 @@ fn export_html<R: Runtime>(
 const PDF_FAILED: &str = "errors:note.exportPdfFailed";
 
 /// `notes:export-pdf`: the note printed in a hidden window with the page size asked for, written
-/// to `outputPath` or where the save dialog says.
+/// where the save dialog says. Like the HTML export it takes no path from the webview.
 #[tauri::command]
 #[specta::specta]
 pub async fn notes_export_pdf(
     app: AppHandle<Wry>,
     input: ExportNoteInput,
 ) -> Result<ExportResult, CommandError> {
-    Ok(export_pdf(&app, input).await.unwrap_or_else(|error| {
-        log_failure("notes_export_pdf", &error);
-        ExportResult::failed(ExportFailure::Failed, error.message)
-    }))
+    let dialog = app.clone();
+    let choose = move |title: &str| {
+        dialogs::save_file(
+            &dialog,
+            &text(&dialog, "system:dialog.exportPdf.title"),
+            &format!("{}.pdf", sanitize_filename(title)),
+            (
+                &text(&dialog, "system:dialog.exportPdf.filterName"),
+                &["pdf"],
+            ),
+        )
+    };
+    Ok(resolve_pdf(export_pdf(&app, input, choose).await))
 }
 
+/// The headless PDF export: the note printed to `target`, with no dialog. In-process only, as
+/// [`export_html_to`] is.
+pub async fn export_pdf_to(
+    app: &AppHandle<Wry>,
+    input: ExportNoteInput,
+    target: &Path,
+) -> ExportResult {
+    let target = target.to_path_buf();
+    resolve_pdf(export_pdf(app, input, move |_| Some(target)).await)
+}
+
+fn resolve_pdf(outcome: Result<ExportResult, CommandError>) -> ExportResult {
+    outcome.unwrap_or_else(|error| {
+        log_failure("notes_export_pdf", &error);
+        ExportResult::failed(ExportFailure::Failed, error.message)
+    })
+}
+
+/// `choose` names the file from the note's title, or `None` for a cancel.
 async fn export_pdf(
     app: &AppHandle<Wry>,
     input: ExportNoteInput,
+    choose: impl FnOnce(&str) -> Option<PathBuf> + Send + 'static,
 ) -> Result<ExportResult, CommandError> {
     let paper = match input.page_size.unwrap_or(PageSize::A4) {
         PageSize::A4 => Paper::A4,
@@ -219,7 +248,7 @@ async fn export_pdf(
     };
     let document = {
         let app = app.clone();
-        off_thread(move || pdf_document(&app, input)).await?
+        off_thread(move || pdf_document(&app, input, choose)).await?
     };
     let (html, target) = match document {
         Ok(document) => document,
@@ -264,6 +293,7 @@ async fn off_thread<T: Send + 'static>(
 fn pdf_document(
     app: &AppHandle<Wry>,
     input: ExportNoteInput,
+    choose: impl FnOnce(&str) -> Option<PathBuf>,
 ) -> Result<Result<(String, PathBuf), ExportResult>, CommandError> {
     let (vault_id, note) = {
         let open = open_vault(app)?;
@@ -278,23 +308,11 @@ fn pdf_document(
             text(app, "system:error.noteNotFound"),
         )));
     };
-    let target = match input.output_path {
-        Some(path) => PathBuf::from(path),
-        None => {
-            let chosen = dialogs::save_file(
-                app,
-                &text(app, "system:dialog.exportPdf.title"),
-                &format!("{}.pdf", sanitize_filename(&note.title)),
-                (&text(app, "system:dialog.exportPdf.filterName"), &["pdf"]),
-            );
-            let Some(chosen) = chosen else {
-                return Ok(Err(ExportResult::failed(
-                    ExportFailure::Cancelled,
-                    text(app, "system:dialog.exportCancelled"),
-                )));
-            };
-            chosen
-        }
+    let Some(target) = choose(&note.title) else {
+        return Ok(Err(ExportResult::failed(
+            ExportFailure::Cancelled,
+            text(app, "system:dialog.exportCancelled"),
+        )));
     };
     let export = HtmlExport {
         include_metadata: input.include_metadata.unwrap_or(true),

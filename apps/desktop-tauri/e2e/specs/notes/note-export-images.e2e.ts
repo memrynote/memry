@@ -1,17 +1,19 @@
 // Electron's `note-export-images.e2e.ts` (#1935): a note whose markdown embeds an uploaded image
 // shows that image, decoded at its own size, both for a small image and for one far past the URL
 // length ceiling a `data:` URL hits (#3531 14f-3d); the exported HTML keeps the image after the
-// file moves, and the exported PDF embeds it (Step 34, #3551). Export goes through the commands
-// with `outputPath`, as Electron's spec calls `window.api.notes.export*`: the menu path opens a
-// native save dialog.
+// file moves, and the exported PDF embeds it (Step 34, #3551). Export goes through the commands,
+// as Electron's spec calls `window.api.notes.export*`; the commands take no path, so the e2e
+// dialog queue answers their save dialog.
 import { mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { deflateSync, crc32 } from 'node:zlib'
 
 import { uploadAttachment } from '../../harness/attachments'
+import { invokeTest } from '../../harness/invoke-test'
 import { NOTE_EDITOR, createNote, openFromSidebar, vaultOpen } from '../../harness/notes'
 import type { Page } from '../../harness/pw-compat/page'
+import type { TauriApp } from '../../harness/tauri-lifecycle'
 import { test, expect } from '../../harness/test'
 import { invoke } from '../../harness/vault-commands'
 
@@ -94,7 +96,6 @@ interface ExportInput {
   noteId: string
   includeMetadata?: boolean
   pageSize?: 'A4' | 'Letter' | 'Legal'
-  outputPath?: string
 }
 
 interface ExportResult {
@@ -104,11 +105,17 @@ interface ExportResult {
   error?: string
 }
 
-const exportNote = (
+/** The export with the save dialog answering `out`. */
+async function exportNote(
+  app: TauriApp,
   page: Page,
   command: 'notes_export_html' | 'notes_export_pdf',
-  input: ExportInput
-) => invoke<ExportResult>(page, command, { input })
+  input: ExportInput,
+  out: string
+): Promise<ExportResult> {
+  await invokeTest(app, 'e2e_dialog_queue_push', { kind: 'SaveFile', paths: [out] })
+  return invoke<ExportResult>(page, command, { input })
+}
 
 /** The widest image object in a PDF: a resolved image embeds the note's bitmap, not an icon. */
 function widestEmbeddedImage(pdf: Buffer): number {
@@ -126,7 +133,7 @@ async function inTempDir(run: (dir: string) => Promise<void>): Promise<void> {
   }
 }
 
-test('exported HTML carries the image after the file is moved', async ({ page }) => {
+test('exported HTML carries the image after the file is moved', async ({ app, page }) => {
   await vaultOpen(page)
   const title = `Export html images ${stamp()}`
   const host = await createHost(page, title)
@@ -135,11 +142,13 @@ test('exported HTML carries the image after the file is moved', async ({ page })
   const note = await createNote(page, { title, content: `![pic](${saved.path})`, folder: 'notes' })
   await inTempDir(async (dir) => {
     const out = join(dir, 'note.html')
-    const result = await exportNote(page, 'notes_export_html', {
-      noteId: note.id,
-      includeMetadata: false,
-      outputPath: out
-    })
+    const result = await exportNote(
+      app,
+      page,
+      'notes_export_html',
+      { noteId: note.id, includeMetadata: false },
+      out
+    )
     expect(result).toEqual({ success: true, path: out })
     const moved = join(dir, 'moved.html')
     renameSync(out, moved)
@@ -151,7 +160,7 @@ test('exported HTML carries the image after the file is moved', async ({ page })
   })
 })
 
-test('exported PDF embeds the image rather than a broken reference', async ({ page }) => {
+test('exported PDF embeds the image rather than a broken reference', async ({ app, page }) => {
   await vaultOpen(page)
   const title = `Export pdf images ${stamp()}`
   const host = await createHost(page, title)
@@ -159,12 +168,13 @@ test('exported PDF embeds the image rather than a broken reference', async ({ pa
   const note = await createNote(page, { title, content: `![pic](${saved.path})`, folder: 'notes' })
   await inTempDir(async (dir) => {
     const out = join(dir, 'note.pdf')
-    const result = await exportNote(page, 'notes_export_pdf', {
-      noteId: note.id,
-      includeMetadata: false,
-      pageSize: 'A4',
-      outputPath: out
-    })
+    const result = await exportNote(
+      app,
+      page,
+      'notes_export_pdf',
+      { noteId: note.id, includeMetadata: false, pageSize: 'A4' },
+      out
+    )
     expect(result).toEqual({ success: true, path: out })
     const pdf = readFileSync(out)
     expect(pdf.subarray(0, 5).toString('latin1')).toBe('%PDF-')
@@ -173,6 +183,7 @@ test('exported PDF embeds the image rather than a broken reference', async ({ pa
 })
 
 test('exported PDF embeds an image far larger than the URL length ceiling', async ({
+  app,
   page,
   testVaultPath
 }) => {
@@ -191,12 +202,13 @@ test('exported PDF embeds an image far larger than the URL length ceiling', asyn
   })
   await inTempDir(async (dir) => {
     const out = join(dir, 'big.pdf')
-    const result = await exportNote(page, 'notes_export_pdf', {
-      noteId: note.id,
-      includeMetadata: false,
-      pageSize: 'A4',
-      outputPath: out
-    })
+    const result = await exportNote(
+      app,
+      page,
+      'notes_export_pdf',
+      { noteId: note.id, includeMetadata: false, pageSize: 'A4' },
+      out
+    )
     expect(result).toEqual({ success: true, path: out })
     const pdf = readFileSync(out)
     expect(pdf.subarray(0, 5).toString('latin1')).toBe('%PDF-')
