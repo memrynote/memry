@@ -127,9 +127,10 @@ impl VaultRegistry {
 
     /// Records the id the account knows the vault at `path` by, so the account vault directory
     /// matches it without opening its database (`vault/index.ts:966-971`). A server id the vault
-    /// is bound to always wins; otherwise the vault's own id replaces the entry's unless the
-    /// entry carries an account binding, as Electron re-stamps each open, so a new vault made at
-    /// a registered path never keeps the old vault's id.
+    /// is bound to always wins; the vault's own id fills only an empty entry, so an id another
+    /// build stamped (an imported Electron entry's server id) stays until this build binds the
+    /// vault. Departure: Electron re-stamps each open, so a new vault made at a registered path
+    /// replaces the old id there; here it keeps it until it binds.
     pub fn stamp_vault_uuid(
         &self,
         path: &str,
@@ -147,7 +148,6 @@ impl VaultRegistry {
             };
             let stamp = match server_id {
                 Some(id) => id,
-                None if !entry.contains_key("accountBinding") => own_id,
                 None if entry.get("vaultUuid").and_then(Value::as_str).is_none() => own_id,
                 None => return Ok(()),
             };

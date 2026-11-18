@@ -497,3 +497,49 @@ async fn a_sign_out_during_adoption_binds_nothing() {
     assert_eq!(adopted.unwrap(), None);
     assert_eq!(open.vault.server_vault_id().unwrap(), None);
 }
+
+/// A clear that failed while every entry then deleted on its own leaves nothing to sweep: the
+/// key a local write mints after the sign-out survives the next sign-in, so offline edits keep
+/// this device's id.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_key_minted_after_a_sign_out_whose_entries_all_went_is_kept() {
+    let s = signed_in();
+    s.script.answer(200, json!({}));
+    s.keychain.refuse_next_clear();
+    s.account.sign_out(&s.session).await.unwrap();
+    memry_core::api::auth::ensure_device_identity(s.keychain.clone()).unwrap();
+    let minted = s.keychain.get(SecureStoreKey::DeviceSigningKey).unwrap();
+
+    s.script
+        .answer(200, json!({ "success": true, "expiresIn": 600 }));
+    s.account.request_otp("b@example.com".into()).await.unwrap();
+
+    assert!(minted.is_some());
+    assert_eq!(
+        s.keychain.get(SecureStoreKey::DeviceSigningKey).unwrap(),
+        minted
+    );
+}
+
+/// A sign-out whose keychain kept the tokens is still a sign-out: the binding decision binds
+/// nothing on them.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_sign_out_whose_keychain_kept_the_tokens_binds_nothing() {
+    let s = signed_in();
+    s.open.vault.set_account_binding("not json").unwrap();
+    s.script.answer(200, json!({}));
+    s.keychain
+        .refuse_delete(&[SecureStoreKey::AccessToken, SecureStoreKey::RefreshToken]);
+    s.account.sign_out(&s.session).await.unwrap();
+    s.script.answer(200, json!({ "vaults": [] }));
+    let registry = VaultRegistry::new(s.config.clone());
+
+    let applied = s
+        .account
+        .apply_open_vault_binding(&s.open, &registry)
+        .await
+        .unwrap();
+
+    assert_eq!(applied, Applied::Held(BindingState::Unknown));
+    assert_eq!(s.open.vault.server_vault_id().unwrap(), None);
+}

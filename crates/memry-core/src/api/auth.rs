@@ -278,6 +278,13 @@ impl AuthSession {
         self.sign_out_marker.take_fault()
     }
 
+    /// The shell deleted every entry on its own after a failed clear: the store holds nothing of
+    /// the signed-out account, so the next sign-in has nothing to delete. Not part of the FFI
+    /// surface.
+    pub fn note_store_cleared(&self) {
+        self.sign_out_marker.store_cleared();
+    }
+
     /// Applies an edge, or reports that the call was not one. A new sign-in first deletes what
     /// a refused sign-out left ([`Self::forget_last_account`]).
     fn apply(&self, event: AuthEvent, action: &str) -> Result<AuthState, AuthError> {

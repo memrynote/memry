@@ -29,7 +29,7 @@ pub(super) struct SignOutMarker {
     /// This process's last sign-out could not clear the store.
     secrets_kept: AtomicBool,
     /// The last file operation that failed, until the shell takes it to log or report.
-    fault: Mutex<Option<String>>,
+    fault: Mutex<Option<Fault>>,
 }
 
 impl SignOutMarker {
@@ -47,10 +47,15 @@ impl SignOutMarker {
     /// that stayed and [`Self::take_fault`] names the write.
     pub(super) fn set(&self) {
         self.latched.store(true, Ordering::SeqCst);
-        if let Some(path) = &self.path
-            && let Err(error) = write(path)
-        {
-            self.record("could not be written", &error);
+        let Some(path) = &self.path else { return };
+        match write(path) {
+            Ok(()) => {
+                let mut fault = self.fault.lock().unwrap_or_else(|e| e.into_inner());
+                if fault.as_ref().is_some_and(|f| f.write) {
+                    *fault = None;
+                }
+            }
+            Err(error) => self.record(true, "could not be written", &error),
         }
     }
 
@@ -79,7 +84,7 @@ impl SignOutMarker {
             && let Err(error) = fs::remove_file(path)
             && error.kind() != io::ErrorKind::NotFound
         {
-            self.record("could not be removed", &error);
+            self.record(false, "could not be removed", &error);
         }
     }
 
@@ -100,21 +105,33 @@ impl SignOutMarker {
             .is_some_and(|path| match path.try_exists() {
                 Ok(present) => present,
                 Err(error) => {
-                    self.record("could not be read", &error);
+                    self.record(false, "could not be read", &error);
                     true
                 }
             })
     }
 
-    fn record(&self, what: &str, error: &io::Error) {
-        *self.fault.lock().unwrap_or_else(|e| e.into_inner()) =
-            Some(format!("the sign-out marker {what}: {error}"));
+    fn record(&self, write: bool, what: &str, error: &io::Error) {
+        *self.fault.lock().unwrap_or_else(|e| e.into_inner()) = Some(Fault {
+            write,
+            message: format!("the sign-out marker {what}: {error}"),
+        });
     }
 
-    /// The last failed file operation, once.
+    /// The last failed file operation, once. A later write that succeeds clears a failed one.
     pub(super) fn take_fault(&self) -> Option<String> {
-        self.fault.lock().unwrap_or_else(|e| e.into_inner()).take()
+        self.fault
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .take()
+            .map(|fault| fault.message)
     }
+}
+
+struct Fault {
+    /// A failed write, which a later successful write makes moot.
+    write: bool,
+    message: String,
 }
 
 fn write(path: &Path) -> io::Result<()> {

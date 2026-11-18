@@ -120,6 +120,10 @@ impl AccountService {
         };
         let mut icons_changed = false;
         for local in registry.stored() {
+            // A sign-out since the list arrived: nothing more goes to the server for this account.
+            if self.epoch.current() != epoch {
+                break;
+            }
             let Some(uuid) = local.vault_uuid.as_deref() else {
                 continue;
             };

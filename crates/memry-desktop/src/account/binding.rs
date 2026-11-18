@@ -266,8 +266,9 @@ impl AccountService {
         open: &OpenVault,
         registry: &VaultRegistry,
     ) -> Result<Applied, AccountError> {
-        let epoch = self.epoch.current();
-        let Some(user_id) = self.session.account_user_id() else {
+        // Signed in, not merely holding tokens: a refused sign-out leaves them behind.
+        let (Some(epoch), Some(user_id)) = (self.signed_in_epoch(), self.session.account_user_id())
+        else {
             return Ok(Applied::Held(BindingState::Unknown));
         };
         let binding = read_binding(&open.vault)?;

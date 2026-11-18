@@ -82,6 +82,11 @@ impl AccountService {
         if let Err(error) = self.end_session().await {
             tracing::error!(scope = "SessionTeardown", "keychain clear failed: {error}");
             result.keychain_failures = self.undeletable_entries();
+            if result.keychain_failures.is_empty() {
+                // Every entry went one by one: nothing of this account is left for the next
+                // sign-in to delete, so a key minted offline after this sign-out is kept.
+                self.session.note_store_cleared();
+            }
             if self.session.state() != AuthState::SignedOut {
                 result.session_error = Some(error.to_string());
             }

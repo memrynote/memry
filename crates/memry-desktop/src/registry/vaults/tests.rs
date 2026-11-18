@@ -193,7 +193,7 @@ fn a_pipe_as_config_json_cannot_stall_the_list_or_the_registry() {
 /// server id always wins; the vault's own id only fills an empty entry, so an id another build
 /// stamped stays until this build binds the vault.
 #[test]
-fn the_vault_id_stamp_prefers_the_server_id_and_replaces_an_unbound_stamp() {
+fn the_vault_id_stamp_prefers_the_server_id_and_keeps_a_foreign_stamp() {
     let dir = tempfile::tempdir().expect("dir");
     let registry = registry_in(
         dir.path(),
@@ -214,14 +214,14 @@ fn the_vault_id_stamp_prefers_the_server_id_and_replaces_an_unbound_stamp() {
         .expect("stamp");
     assert_eq!(
         uuid("/v/a").as_deref(),
-        Some("other"),
-        "a new vault at a registered path"
+        Some("own-a"),
+        "an empty entry only"
     );
 
     registry
         .stamp_vault_uuid("/v/b", None, "own-b")
         .expect("stamp");
-    assert_eq!(uuid("/v/b").as_deref(), Some("own-b"));
+    assert_eq!(uuid("/v/b").as_deref(), Some("electron-id"));
     registry
         .stamp_vault_uuid("/v/c", None, "own-c")
         .expect("stamp");
