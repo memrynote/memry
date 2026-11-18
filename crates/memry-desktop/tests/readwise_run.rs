@@ -577,8 +577,12 @@ fn a_server_update_defers_a_user_started_write_for_two_seconds() {
 #[test]
 fn the_cursor_stays_put_on_an_empty_window_and_never_moves_back() {
     let v = vault(&[], two_highlights());
-    // A first run fills the highlight index; until it is filled every run reads in full.
-    assert_eq!(v.run().counts.added, 1);
+    // A first import of an empty library fills the highlight index; until it is filled every
+    // run reads in full.
+    let library = std::mem::take(&mut *v.books.lock().unwrap());
+    assert_eq!(v.run().counts.books, 0);
+    assert!(v.state().highlight_index_ready().unwrap());
+    *v.books.lock().unwrap() = library;
     let later = "2026-11-01T00:00:00.000Z";
     let state = v.state();
     state.set_cursor(later).unwrap();
@@ -592,7 +596,7 @@ fn the_cursor_stays_put_on_an_empty_window_and_never_moves_back() {
     // A full read brings highlights older than the cursor.
     state.set_full_pass_pending(true).unwrap();
     let full = v.run();
-    assert_eq!(full.counts.books, 1);
+    assert_eq!(full.counts.added, 1);
     assert_eq!(state.cursor().unwrap().as_deref(), Some(later));
 }
 

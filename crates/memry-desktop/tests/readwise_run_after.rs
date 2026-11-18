@@ -11,6 +11,9 @@
 //! | a panicking observer leaves the engine free                        | `sync-service.ts` `finally`           |
 //! | an edit during an image download is not written over               | `note-writer.ts` `commit`, D6         |
 //! | a start marker without its end marker stays touched                | `note-writer.ts` append, D5           |
+//! | an append trims JavaScript white space only                        | `note-writer.ts` `trimEnd`            |
+//! | a note that names a document is adopted                            | `reader-notes.ts`, D11                |
+//! | a document a large note names fails and holds the Reader cursor    | `sync-service.ts` step 4              |
 
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::atomic::AtomicUsize;
@@ -48,6 +51,17 @@ impl Vault {
                 .unwrap()
                 .push(highlight(id, text, at));
         });
+    }
+
+    /// The run gate (33d3) waits for the property index; here the test does. `url` is the
+    /// note's id once the index lists it.
+    fn until_named(&self, url: &str) -> String {
+        let named = || {
+            let values = self.library.open.search.property_values("readwise_url");
+            (values.ok()?.into_iter()).find_map(|(id, value)| (value == url).then_some(id))
+        };
+        self.until("the property index", || named().is_some());
+        named().unwrap()
     }
 
     fn status_group(&self) -> Value {
@@ -125,8 +139,8 @@ fn an_open_journal_day_stays_pending_until_it_closes() {
     assert!(v.state().journal_pending().unwrap().is_empty());
 }
 
-fn reader_vault() -> Vault {
-    let v = vault(&[], two_highlights());
+fn reader_vault(files: &[(&str, &str)]) -> Vault {
+    let v = vault(files, two_highlights());
     v.with_book(1, |book| book["external_id"] = json!("covered"));
     v.set("readwise.readerDocuments", "true");
     *v.docs.lock().unwrap() = vec![
@@ -140,7 +154,7 @@ fn reader_vault() -> Vault {
 
 #[test]
 fn a_saved_reader_document_becomes_one_note_and_a_covered_one_none() {
-    let v = reader_vault();
+    let v = reader_vault(&[]);
     let first = v.run();
     assert_eq!((first.counts.added, first.documents), (1, 1));
     let link = v.library.store().link_by_reader_document("doc1").unwrap();
@@ -168,7 +182,7 @@ fn a_saved_reader_document_becomes_one_note_and_a_covered_one_none() {
 
 #[test]
 fn a_failed_reader_list_keeps_its_cursor_and_the_v2_work() {
-    let v = reader_vault();
+    let v = reader_vault(&[]);
     *v.fail.lock().unwrap() = Some(("/api/v3/", 404));
     let run = v.run();
     assert_eq!(
@@ -303,4 +317,89 @@ fn a_start_marker_without_its_end_marker_stays_touched() {
     for kept in ["My own words", "Third idea", "Fourth idea"] {
         assert!(content.contains(kept), "{kept}: {content}");
     }
+}
+
+/// `trimEnd` is ECMAScript white space: U+0085 is kept and U+FEFF goes, where Rust's
+/// `trim_end` does the opposite.
+#[test]
+fn an_append_trims_javascript_white_space_only() {
+    let v = vault(&[], two_highlights());
+    v.run();
+    let note = v.note(1);
+    let kept: Vec<&str> = (note.content.lines())
+        .filter(|line| !line.starts_with(END_PREFIX))
+        .collect();
+    v.edit(
+        &note,
+        format!("{}\n\nMy own words\u{85}\u{feff}", kept.join("\n")),
+    );
+
+    v.add_highlight(13, "Third idea", "2030-01-01T09:00:00.000Z");
+    assert_eq!(v.run().counts.appended, 1);
+    let content = v.note(1).content;
+    assert!(content.contains("My own words\u{85}\n\n"), "{content:?}");
+}
+
+const DOC1: &str = "https://read.readwise.io/read/doc1";
+const NAMES_DOC1: &str = "---\nreadwise_url: https://read.readwise.io/read/doc1\n---\n\n";
+
+/// The note arrives after the first run, so no link row names it: the writer finds it by its
+/// `readwise_url` and links it instead of writing a second note.
+#[test]
+fn a_note_that_names_a_document_is_adopted() {
+    let v = reader_vault(&[]);
+    let docs = std::mem::take(&mut *v.docs.lock().unwrap());
+    v.run();
+    let mine = format!("{NAMES_DOC1}Kept as I wrote it\n");
+    let path = v.e.vault.join("Mine/Saved.md");
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    fs::write(&path, &mine).unwrap();
+    v.until_named(DOC1);
+    *v.docs.lock().unwrap() = docs;
+    let run = v.run();
+    assert_eq!((run.documents, run.counts.failed), (0, 0));
+    assert_eq!(v.markdown_files(), 2);
+    let link = v.library.store().link_by_reader_document("doc1").unwrap();
+    let note = read::get(&v.library.open, &link.unwrap().note_id, None)
+        .unwrap()
+        .expect("the adopted note");
+    assert_eq!(note.path, "Mine/Saved.md");
+    assert_eq!(fs::read_to_string(&path).unwrap(), mine);
+}
+
+/// A note that names the document arrives after the first run (no link row) and grows large:
+/// the writer cannot read it, so the document fails and the Reader cursor holds.
+#[test]
+fn a_document_a_large_note_names_fails_and_holds_the_reader_cursor() {
+    let v = reader_vault(&[]);
+    let docs = std::mem::take(&mut *v.docs.lock().unwrap());
+    v.run();
+    let held = v.state().reader_cursor().unwrap();
+    assert!(held.is_some());
+
+    let path = v.e.vault.join("Mine/Big.md");
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    fs::write(&path, format!("{NAMES_DOC1}Small at first\n")).unwrap();
+    let id = v.until_named(DOC1);
+    let big = format!("{NAMES_DOC1}{}\n", "x".repeat(130 * 1024));
+    fs::write(&path, &big).unwrap();
+    v.until("the note to turn large", || {
+        read::get(&v.library.open, &id, None)
+            .unwrap()
+            .is_some_and(|note| note.content_omitted)
+    });
+
+    // Saved after the first run's cursor, so a pass that moved past the failure would move it.
+    let mut docs = docs;
+    for doc in &mut docs {
+        doc["updated_at"] = json!("2030-01-01T10:00:00.000Z");
+    }
+    *v.docs.lock().unwrap() = docs;
+    for _ in 0..2 {
+        let run = v.run();
+        assert_eq!((run.documents, run.counts.failed), (0, 1));
+        assert_eq!(v.state().reader_cursor().unwrap(), held);
+    }
+    assert_eq!(v.markdown_files(), 2);
+    assert_eq!(fs::read_to_string(&path).unwrap(), big);
 }
