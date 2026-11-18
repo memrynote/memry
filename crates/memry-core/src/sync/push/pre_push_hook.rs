@@ -9,7 +9,7 @@
 //! every push did before holds existed. A delete never waits. With no hook registered nothing
 //! waits.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 
 use super::PushCoordinator;
@@ -34,6 +34,15 @@ pub trait PrePushHook: Send + Sync {
     async fn before_push(&self, item_type: &str, item_id: &str) -> HoldDecision;
 }
 
+/// What one push wave deferred. An edit during the wave replaces the queued row with a new
+/// outbox id; the item key keeps that row waiting too, so an item costs one hook call and one
+/// deferral per wave (`rejectedThisCycle`, `push-coordinator.ts:257-259`).
+#[derive(Default)]
+pub(super) struct WaveDeferrals {
+    pub(super) rows: Vec<i64>,
+    items: HashSet<(String, String)>,
+}
+
 /// The registered hooks and the consecutive deferrals of each item. In memory, as in Electron:
 /// a restart starts every count again.
 #[derive(Default)]
@@ -43,12 +52,12 @@ pub(super) struct PrePushHooks {
 }
 
 impl PrePushHooks {
-    /// The items that go out in this batch. A deferred item's outbox ids are added to `waiting`,
-    /// which keeps them out of the rest of the wave.
+    /// The items that go out in this batch. A deferred item's outbox ids are added to
+    /// `waiting`, which keeps them out of the rest of the wave.
     pub(super) async fn admit(
         &self,
         items: Vec<Collapsed>,
-        waiting: &mut Vec<i64>,
+        waiting: &mut WaveDeferrals,
     ) -> Vec<Collapsed> {
         let mut ready = Vec::with_capacity(items.len());
         for item in items {
@@ -61,6 +70,10 @@ impl PrePushHooks {
                 }
             };
             let key = (row.item_type.clone(), row.item_id.clone());
+            if waiting.items.contains(&key) {
+                waiting.rows.extend(item.ids());
+                continue;
+            }
             let decision = hook.before_push(&row.item_type, &row.item_id).await;
             let mut deferrals = self.deferrals.lock().unwrap_or_else(|e| e.into_inner());
             if decision == HoldDecision::Push {
@@ -79,8 +92,9 @@ impl PrePushHooks {
                 ready.push(item);
                 continue;
             }
-            deferrals.insert(key, count);
-            waiting.extend(item.ids());
+            deferrals.insert(key.clone(), count);
+            waiting.items.insert(key);
+            waiting.rows.extend(item.ids());
         }
         ready
     }

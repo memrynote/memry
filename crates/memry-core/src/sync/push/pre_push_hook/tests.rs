@@ -7,6 +7,7 @@
 //! | a push from the hook resets the count                             | `canvasHoldDeferrals.delete`|
 //! | with no hook registered nothing waits                             | `if (!prepare) return`      |
 //! | other types, deletes and the rest of the batch never wait         | `type !== 'canvas'`, delete |
+//! | an edit while the hook runs is one deferral in that wave          | `rejectedThisCycle`         |
 
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
@@ -23,6 +24,7 @@ use crate::seams::transport::{
     HttpRequest, HttpResponse, SocketHandle, SocketListener, SocketRequest, Transport,
 };
 use crate::storage::{Db, open_data};
+use crate::sync::outbox::{self, Change};
 use crate::sync::push::{PendingRecord, PushCoordinator, PushSealer};
 
 /// Accepts every item of every push and records the ids each push carried.
@@ -281,4 +283,56 @@ async fn other_types_deletes_and_the_rest_of_the_batch_never_wait() {
     );
     assert_eq!(hook.calls_for("c2"), 0, "the hook never sees a delete");
     assert_eq!(hook.calls_for("n1"), 0, "nor another type");
+}
+
+/// Defers, and edits the item while the hold is in flight: the edit replaces the queued row
+/// with one under a new outbox id.
+struct EditingHook {
+    db: Db,
+    calls: Mutex<usize>,
+}
+
+#[async_trait::async_trait]
+impl PrePushHook for EditingHook {
+    async fn before_push(&self, item_type: &str, item_id: &str) -> HoldDecision {
+        *self.calls.lock().unwrap() += 1;
+        let change = Change::upsert(item_type, item_id);
+        self.db
+            .call(move |c| {
+                let tx = c.unchecked_transaction().unwrap();
+                outbox::enqueue(&tx, &change, 2)?;
+                tx.commit().unwrap();
+                Ok(())
+            })
+            .await
+            .unwrap();
+        HoldDecision::Defer
+    }
+}
+
+#[tokio::test]
+async fn an_edit_while_the_hook_runs_is_one_deferral_in_that_wave() {
+    let (db, server) = (scratch_db(), Arc::new(Server::default()));
+    queue(&db, "canvas", "c1", "upsert");
+    let hook = Arc::new(EditingHook {
+        db: db.clone(),
+        calls: Mutex::default(),
+    });
+    let push = coordinator(&db, &server).with_pre_push_hook("canvas", hook.clone());
+
+    for wave in 1..MAX_HOLD_DEFERRALS {
+        push.drain_wave().await.unwrap();
+        assert_eq!(
+            *hook.calls.lock().unwrap(),
+            wave as usize,
+            "one try per wave"
+        );
+        assert_eq!(server.pushes_of("c1"), 0, "wave {wave}: still waiting");
+    }
+    push.drain_wave().await.unwrap();
+    assert_eq!(
+        server.pushes_of("c1"),
+        1,
+        "the fifth wave's deferral pushes, not an earlier one"
+    );
 }

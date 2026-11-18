@@ -216,12 +216,12 @@ impl PushCoordinator {
         // Documents whose batch was deferred in this wave: one try per wave.
         let mut deferred_docs: Vec<String> = Vec::new();
         // Record rows a pre-push hook deferred in this wave: one try per wave.
-        let mut waiting: Vec<i64> = Vec::new();
+        let mut waiting = pre_push_hook::WaveDeferrals::default();
         for _ in 0..MAX_PUSH_ITERATIONS {
             let ceiling = self.batch_ceiling();
             let now = now_ms();
             let skip = self.skipped_docs(&deferred_docs).await?;
-            let rows = waiting.clone();
+            let rows = waiting.rows.clone();
             let Some(batch) = self
                 .db
                 .call(move |conn| outbox::next_batch(conn, now, ceiling, &skip, &rows))
