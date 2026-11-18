@@ -175,7 +175,16 @@ gh workflow run velopack-smoke.yml \
   -f update_tag=<new tag>
 ```
 
-The workflow installs the previous release's signed Setup.exe on a real Windows runner, checks the install layout and the Authenticode status, applies the new release's package with `Update.exe`, and launches the app before and after. `update_tag` defaults to `release_tag`, so a single tag holding both an installer and a newer package also works. The smoke test is skipped when the previous release predates Velopack and carries no Velopack Setup.
+The workflow runs four jobs, and each one launches the app with `MEMRY_TEST_LOG_DIR` set and fails unless the log holds `MemryNote <version> starting (packaged)`:
+
+- `smoke-windows` on `windows-2022` (x64) and `windows-11-arm` (arm64) installs the previous release's signed Setup, checks the install layout, the Authenticode status and the PE machine field (`0x8664` or `0xAA64`), applies the new release's package with `Update.exe`, and launches the app before and after.
+- `smoke-macos` on `macos-15` installs the previous release's arm64 dmg into `/Applications`, checks `codesign`, `spctl` (`Notarized Developer ID`), `stapler` and `sq.version`, applies the new release's `osx-arm64` package with `UpdateMac apply`, and launches the app before and after.
+- `smoke-linux` on `ubuntu-22.04` checks the `sq.version` inside the new release's AppImage and runs it under `xvfb-run`.
+- `migrate` proves the NSIS to Velopack hand-off on Windows x64.
+
+A Windows or macOS job updates only when `release_tag` carries the Velopack feed of its channel (`releases.win.json`, `releases.win-arm64.json`, `releases.osx-arm64.json`). Otherwise it installs the new release directly, applies nothing, and annotates the run with a warning. The first Tauri release hits that case on Windows arm64 and macOS, because Electron shipped a Velopack feed only for Windows x64.
+
+`update_tag` defaults to `release_tag`, so a single tag holding both an installer and a newer package also works. `pnpm release --smoke` skips the dispatch when the previous release carries no Velopack x64 Setup.
 
 ## Update bridge rehearsal
 

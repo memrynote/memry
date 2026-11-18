@@ -1,8 +1,16 @@
-name: Velopack Windows smoke
+name: Velopack smoke
 
-# Proves the Velopack Windows path on a real Windows box: the signed Setup.exe
+# Proves the release on real runners. On Windows x64 and arm64 the signed Setup
 # installs silently, the install layout is what the updater expects, and
-# Update.exe applies a newer package in place while Defender is running.
+# Update.exe applies a newer package in place while Defender is running. On
+# macOS the notarized dmg installs and UpdateMac applies a newer package. On
+# Linux the AppImage runs. Every launch of the app must write its startup
+# marker line.
+#
+# A job installs `release_tag` and updates it to `to_version` only when
+# `release_tag` carries a Velopack feed of the job's channel. Otherwise (the
+# first Tauri release follows Electron releases, which ship a Velopack feed for
+# Windows x64 only) it installs `update_tag` itself and applies nothing.
 #
 # The second job proves the NSIS -> Velopack hand-off: an install made by the
 # older NSIS installer is removed and replaced by the Velopack install without
@@ -12,16 +20,16 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Release tag holding the Velopack Setup.exe and the *-full.nupkg files
+        description: Release tag holding the installers to update from (Setup.exe, dmg)
         required: true
       from_version:
-        description: Version inside Setup.exe
+        description: Version of the installers on release_tag
         required: true
       to_version:
-        description: Version of the nupkg to apply as an update
+        description: Version of the nupkg files to apply as an update, and of the AppImage
         required: true
       update_tag:
-        description: Release tag holding that nupkg. Defaults to release_tag.
+        description: Release tag holding the to_version assets. Defaults to release_tag.
         required: false
       nsis_release_tag:
         description: Release tag holding the NSIS *-setup.exe used as the "existing install" fixture
@@ -67,35 +75,69 @@ jobs:
         shell: pwsh
         run: node --test apps/desktop/scripts/installer-handoff-windows.test.mjs
 
-  smoke:
-    name: Install, verify, update
-    runs-on: windows-2022
+  smoke-windows:
+    name: Install, verify, update (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Names from assetNames in scripts/release/vpk-args.mjs; machine is the PE header field.
+          - os: windows-2022
+            target: win-x64
+            setup: MemryNote-Setup-win-x64.exe
+            feed: releases.win.json
+            nupkg_channel: ''
+            machine: '8664'
+          - os: windows-11-arm
+            target: win-arm64
+            setup: MemryNote-win-arm64-Setup.exe
+            feed: releases.win-arm64.json
+            nupkg_channel: -win-arm64
+            machine: AA64
     env:
       RELEASE_TAG: ${{ inputs.release_tag }}
       FROM_VERSION: ${{ inputs.from_version }}
       TO_VERSION: ${{ inputs.to_version }}
       UPDATE_TAG: ${{ inputs.update_tag || inputs.release_tag }}
+      SETUP: ${{ matrix.setup }}
+      FEED: ${{ matrix.feed }}
+      NUPKG: MemryNote-${{ inputs.to_version }}${{ matrix.nupkg_channel }}-full.nupkg
+      PE_MACHINE: ${{ matrix.machine }}
     steps:
       - name: Download Velopack assets
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          $names = gh release view $env:RELEASE_TAG --repo "${{ github.repository }}" --json assets -q '.assets[].name'
+          if ($LASTEXITCODE -ne 0) { throw "cannot list $env:RELEASE_TAG" }
+          if ($names -contains $env:FEED) {
+            $baseTag = $env:RELEASE_TAG; $baseVersion = $env:FROM_VERSION; $apply = 'true'
+          } else {
+            Write-Output "::warning::$env:RELEASE_TAG has no $env:FEED; installing $env:UPDATE_TAG ($env:TO_VERSION) without an update"
+            $baseTag = $env:UPDATE_TAG; $baseVersion = $env:TO_VERSION; $apply = 'false'
+          }
+          "BASE_VERSION=$baseVersion", "APPLY=$apply", "MEMRY_TEST_LOG_DIR=$env:RUNNER_TEMP\memry-logs" |
+            Out-File -FilePath $env:GITHUB_ENV -Append
           New-Item -ItemType Directory -Force assets | Out-Null
-          gh release download $env:RELEASE_TAG --repo "${{ github.repository }}" -D assets `
-            --pattern 'MemryNote-Setup-win-x64.exe' --pattern 'MemryNote-win-Setup.exe'
-          # Releases up to v2026-10-25 carry the Setup under vpk's name (RETIRED_SETUP_NAME in
+          $patterns = @('--pattern', $env:SETUP)
+          # Releases up to v2026-10-25 carry the x64 Setup under vpk's name (RETIRED_SETUP_NAME in
           # scripts/release/vpk-args.mjs).
-          if (Test-Path .\assets\MemryNote-win-Setup.exe) { Rename-Item .\assets\MemryNote-win-Setup.exe MemryNote-Setup-win-x64.exe }
-          gh release download $env:UPDATE_TAG --repo "${{ github.repository }}" -D assets `
-            --pattern "MemryNote-$env:TO_VERSION-full.nupkg"
+          if ($env:SETUP -eq 'MemryNote-Setup-win-x64.exe') { $patterns += @('--pattern', 'MemryNote-win-Setup.exe') }
+          gh release download $baseTag --repo "${{ github.repository }}" -D assets @patterns
+          if (Test-Path .\assets\MemryNote-win-Setup.exe) { Rename-Item .\assets\MemryNote-win-Setup.exe $env:SETUP }
+          if (-not (Test-Path ".\assets\$env:SETUP")) { throw "no $env:SETUP on $baseTag" }
+          if ($apply -eq 'true') {
+            gh release download $env:UPDATE_TAG --repo "${{ github.repository }}" -D assets --pattern $env:NUPKG
+          }
           Get-ChildItem assets | Format-Table Name, Length
 
       - name: Setup.exe is Authenticode-signed by the Certum certificate
         shell: pwsh
         run: |
-          $sig = Get-AuthenticodeSignature .\assets\MemryNote-Setup-win-x64.exe
+          $sig = Get-AuthenticodeSignature ".\assets\$env:SETUP"
           $sig | Format-List Status, StatusMessage
           $sig.SignerCertificate.Subject
           if ($sig.Status -ne 'Valid') { throw "Setup.exe signature status: $($sig.Status)" }
@@ -104,7 +146,7 @@ jobs:
       - name: Install silently
         shell: pwsh
         run: |
-          $p = Start-Process -FilePath .\assets\MemryNote-Setup-win-x64.exe -ArgumentList '--silent', '--verbose', '--log', "$PWD\setup.log" -PassThru -Wait
+          $p = Start-Process -FilePath ".\assets\$env:SETUP" -ArgumentList '--silent', '--verbose', '--log', "$PWD\setup.log" -PassThru -Wait
           Write-Host "setup exit code: $($p.ExitCode)"
           Get-Content setup.log -Tail 40
           Start-Sleep -Seconds 5
@@ -122,12 +164,17 @@ jobs:
           }
           $ver = ([xml](Get-Content (Join-Path $root 'current\sq.version'))).package.metadata.version
           Write-Host "installed version: $ver"
-          if ($ver -ne $env:FROM_VERSION) { throw "expected $env:FROM_VERSION, got $ver" }
+          if ($ver -ne $env:BASE_VERSION) { throw "expected $env:BASE_VERSION, got $ver" }
           foreach ($exe in @('Update.exe', 'current\Memrynote.exe')) {
             $sig = Get-AuthenticodeSignature (Join-Path $root $exe)
             Write-Host "$exe : $($sig.Status) / $($sig.SignerCertificate.Subject)"
             if ($sig.Status -ne 'Valid') { throw "$exe signature status: $($sig.Status)" }
           }
+          # The COFF Machine field: 0x8664 x64, 0xAA64 arm64.
+          $bytes = [IO.File]::ReadAllBytes((Join-Path $root 'current\Memrynote.exe'))
+          $machine = [BitConverter]::ToUInt16($bytes, [BitConverter]::ToInt32($bytes, 0x3C) + 4)
+          Write-Host ("Memrynote.exe machine: 0x{0:X4}" -f $machine)
+          if ($machine -ne [Convert]::ToUInt16($env:PE_MACHINE, 16)) { throw "expected machine 0x$env:PE_MACHINE" }
           $lnk = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\MemryNote.lnk'
           if (-not (Test-Path $lnk)) { throw "missing Start menu shortcut $lnk" }
           $uninstall = Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\MemryNote' -ErrorAction Stop
@@ -141,14 +188,19 @@ jobs:
           Start-Sleep -Seconds 25
           $alive = Get-Process -Id $p.Id -ErrorAction SilentlyContinue
           Get-Process Memrynote -ErrorAction SilentlyContinue | Format-Table Id, StartTime
+          # MEMRY_TEST_LOG_DIR replaces the log dir in both the Electron and the Tauri app.
+          $marker = Select-String -Path (Join-Path $env:MEMRY_TEST_LOG_DIR '*.log') -SimpleMatch "MemryNote $env:BASE_VERSION starting (packaged)" -ErrorAction SilentlyContinue
           Get-Process Memrynote -ErrorAction SilentlyContinue | Stop-Process -Force
           if (-not $alive) { throw 'Memrynote.exe exited within 25s of launch' }
+          if (-not $marker) { throw "no 'MemryNote $env:BASE_VERSION starting (packaged)' line in $env:MEMRY_TEST_LOG_DIR" }
+          $marker.Line
 
       - name: Update.exe applies the newer package in place
+        if: env.APPLY == 'true'
         shell: pwsh
         run: |
           $root = Join-Path $env:LOCALAPPDATA 'MemryNote'
-          $pkg = Resolve-Path ".\assets\MemryNote-$env:TO_VERSION-full.nupkg"
+          $pkg = Resolve-Path ".\assets\$env:NUPKG"
           $p = Start-Process -FilePath (Join-Path $root 'Update.exe') -ArgumentList 'apply', '--norestart', '--package', "$pkg" -PassThru -Wait
           Write-Host "update exit code: $($p.ExitCode)"
           Get-ChildItem $root -Filter '*.log' | ForEach-Object { Write-Host "== $($_.Name)"; Get-Content $_.FullName -Tail 60 }
@@ -158,25 +210,161 @@ jobs:
           if ($ver -ne $env:TO_VERSION) { throw "expected $env:TO_VERSION after update, got $ver" }
           $sig = Get-AuthenticodeSignature (Join-Path $root 'current\Memrynote.exe')
           if ($sig.Status -ne 'Valid') { throw "updated Memrynote.exe signature status: $($sig.Status)" }
+          $bytes = [IO.File]::ReadAllBytes((Join-Path $root 'current\Memrynote.exe'))
+          $machine = [BitConverter]::ToUInt16($bytes, [BitConverter]::ToInt32($bytes, 0x3C) + 4)
+          Write-Host ("updated Memrynote.exe machine: 0x{0:X4}" -f $machine)
+          if ($machine -ne [Convert]::ToUInt16($env:PE_MACHINE, 16)) { throw "expected machine 0x$env:PE_MACHINE" }
 
       - name: Updated app launches
+        if: env.APPLY == 'true'
         shell: pwsh
         run: |
           $exe = Join-Path $env:LOCALAPPDATA 'MemryNote\current\Memrynote.exe'
           $p = Start-Process -FilePath $exe -PassThru
           Start-Sleep -Seconds 25
           $alive = Get-Process -Id $p.Id -ErrorAction SilentlyContinue
+          $marker = Select-String -Path (Join-Path $env:MEMRY_TEST_LOG_DIR '*.log') -SimpleMatch "MemryNote $env:TO_VERSION starting (packaged)" -ErrorAction SilentlyContinue
           Get-Process Memrynote -ErrorAction SilentlyContinue | Stop-Process -Force
           if (-not $alive) { throw 'updated Memrynote.exe exited within 25s of launch' }
+          if (-not $marker) { throw "no 'MemryNote $env:TO_VERSION starting (packaged)' line in $env:MEMRY_TEST_LOG_DIR" }
+          $marker.Line
 
       - name: Collect logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: velopack-smoke-logs
+          name: velopack-smoke-logs-${{ matrix.target }}
           path: |
             setup.log
             ${{ env.LOCALAPPDATA }}\MemryNote\*.log
+            ${{ env.MEMRY_TEST_LOG_DIR }}\*.log
+          if-no-files-found: ignore
+
+  smoke-macos:
+    name: Install, verify, update (osx-arm64)
+    runs-on: macos-15
+    timeout-minutes: 30
+    env:
+      RELEASE_TAG: ${{ inputs.release_tag }}
+      FROM_VERSION: ${{ inputs.from_version }}
+      TO_VERSION: ${{ inputs.to_version }}
+      UPDATE_TAG: ${{ inputs.update_tag || inputs.release_tag }}
+      APP: /Applications/MemryNote.app
+    steps:
+      - name: Download the dmg and the update
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name' | grep -qx 'releases.osx-arm64.json'; then
+            base_tag=$RELEASE_TAG base_version=$FROM_VERSION apply=true
+          else
+            echo "::warning::$RELEASE_TAG has no releases.osx-arm64.json; installing $UPDATE_TAG ($TO_VERSION) without an update"
+            base_tag=$UPDATE_TAG base_version=$TO_VERSION apply=false
+          fi
+          printf 'BASE_VERSION=%s\nAPPLY=%s\nMEMRY_TEST_LOG_DIR=%s\n' "$base_version" "$apply" "$RUNNER_TEMP/memry-logs" >> "$GITHUB_ENV"
+          gh release download "$base_tag" --repo "$GITHUB_REPOSITORY" -D assets -p "MemryNote-$base_version-arm64.dmg"
+          if [ "$apply" = true ]; then
+            gh release download "$UPDATE_TAG" --repo "$GITHUB_REPOSITORY" -D assets -p "MemryNote-$TO_VERSION-osx-arm64-full.nupkg"
+          fi
+          ls -l assets
+
+      - name: Install from the dmg, check signature, notarization and version
+        run: |
+          set -euo pipefail
+          hdiutil attach -nobrowse -readonly -mountpoint "$RUNNER_TEMP/dmg" "assets/MemryNote-$BASE_VERSION-arm64.dmg"
+          ditto "$RUNNER_TEMP/dmg/MemryNote.app" "$APP"
+          hdiutil detach "$RUNNER_TEMP/dmg"
+          codesign --verify --deep --strict "$APP"
+          spctl -a -t exec -vv "$APP" 2>&1 | tee "$RUNNER_TEMP/spctl.txt"
+          grep -F 'Notarized Developer ID' "$RUNNER_TEMP/spctl.txt"
+          xcrun stapler validate "$APP"
+          grep -E '<version>|<channel>' "$APP/Contents/Resources/sq.version"
+          grep -qF "<version>$BASE_VERSION</version>" "$APP/Contents/Resources/sq.version"
+
+      - name: App launches from the install
+        run: |
+          set -euo pipefail
+          open --env "MEMRY_TEST_LOG_DIR=$MEMRY_TEST_LOG_DIR" "$APP"
+          sleep 25
+          pgrep -x MemryNote || { echo '::error::MemryNote exited within 25s of launch'; exit 1; }
+          grep -hF "MemryNote $BASE_VERSION starting (packaged)" "$MEMRY_TEST_LOG_DIR"/*.log
+          pkill -x MemryNote
+          for _ in $(seq 1 30); do pgrep -x MemryNote >/dev/null || break; sleep 1; done
+          pkill -9 -x MemryNote || true
+
+      - name: UpdateMac applies the newer package in place
+        if: env.APPLY == 'true'
+        run: |
+          set -euo pipefail
+          "$APP/Contents/MacOS/UpdateMac" apply --norestart --package "$PWD/assets/MemryNote-$TO_VERSION-osx-arm64-full.nupkg"
+          grep -E '<version>|<channel>' "$APP/Contents/Resources/sq.version"
+          grep -qF "<version>$TO_VERSION</version>" "$APP/Contents/Resources/sq.version"
+          codesign --verify --deep --strict "$APP"
+          spctl -a -t exec -vv "$APP" 2>&1 | grep -F 'Notarized Developer ID'
+
+      - name: Updated app launches
+        if: env.APPLY == 'true'
+        run: |
+          set -euo pipefail
+          open --env "MEMRY_TEST_LOG_DIR=$MEMRY_TEST_LOG_DIR" "$APP"
+          sleep 25
+          pgrep -x MemryNote || { echo '::error::the updated MemryNote exited within 25s of launch'; exit 1; }
+          grep -hF "MemryNote $TO_VERSION starting (packaged)" "$MEMRY_TEST_LOG_DIR"/*.log
+          pkill -x MemryNote || true
+
+      - name: Collect logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: velopack-smoke-logs-osx-arm64
+          path: ${{ env.MEMRY_TEST_LOG_DIR }}/*.log
+          if-no-files-found: ignore
+
+  smoke-linux:
+    name: AppImage runs (linux-x64)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    env:
+      TO_VERSION: ${{ inputs.to_version }}
+      UPDATE_TAG: ${{ inputs.update_tag || inputs.release_tag }}
+    steps:
+      - name: Download the AppImage
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo "MEMRY_TEST_LOG_DIR=$RUNNER_TEMP/memry-logs" >> "$GITHUB_ENV"
+          gh release download "$UPDATE_TAG" --repo "$GITHUB_REPOSITORY" -D assets -p "MemryNote-$TO_VERSION-x86_64.AppImage"
+          chmod +x "assets/MemryNote-$TO_VERSION-x86_64.AppImage"
+          sudo apt-get update
+          sudo apt-get install -y libfuse2 xvfb libwebkit2gtk-4.1-0 libayatana-appindicator3-1
+
+      - name: The AppImage carries the Velopack version
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          "$GITHUB_WORKSPACE/assets/MemryNote-$TO_VERSION-x86_64.AppImage" --appimage-extract usr/bin/sq.version >/dev/null
+          grep -E '<version>|<channel>' squashfs-root/usr/bin/sq.version
+          grep -qF "<version>$TO_VERSION</version>" squashfs-root/usr/bin/sq.version
+
+      - name: App launches
+        run: |
+          set -euo pipefail
+          xvfb-run -a "assets/MemryNote-$TO_VERSION-x86_64.AppImage" > "$RUNNER_TEMP/app.out" 2>&1 &
+          sleep 25
+          pgrep -x memrynote || { tail -40 "$RUNNER_TEMP/app.out"; echo '::error::memrynote exited within 25s of launch'; exit 1; }
+          grep -hF "MemryNote $TO_VERSION starting (packaged)" "$MEMRY_TEST_LOG_DIR"/*.log
+          pkill -x memrynote || true
+
+      - name: Collect logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: velopack-smoke-logs-linux-x64
+          path: |
+            ${{ runner.temp }}/app.out
+            ${{ env.MEMRY_TEST_LOG_DIR }}/*.log
           if-no-files-found: ignore
 
   migrate:
