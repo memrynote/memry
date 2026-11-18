@@ -96,8 +96,7 @@ struct NoteTitleEditor: View {
     /// The Return whose keys the title holds until the body takes the caret.
     @State private var returned: LineReturn?
     @State private var pickingIcon = false
-    /// A new note's title wants the caret until the user types or moves it.
-    @State private var claimsFocus = false
+    @State private var claim = TitleFocusClaim()
     @State private var host = TitleWindow()
     @FocusState private var focused: Bool
 
@@ -142,6 +141,16 @@ struct NoteTitleEditor: View {
             if let text = caretHolder(in: subview) { return text }
         }
         return nil
+    }
+
+    /// Where `context` took the focus from the title.
+    private func focusMove(_ context: UIFocusUpdateContext) -> TitleFocusMove {
+        guard let next = context.nextFocusedItem else { return .toNothing }
+        if !context.focusHeading.isEmpty { return .byKey }
+        if next === host.title { return .intoTitle }
+        if next is UITextInput { return .intoText }
+        if (next as? UICollectionViewCell)?.isSelected == true { return .toSelectedRow }
+        return .elsewhere
     }
 
     /// Return: saves the title before it and keeps the caret, holding the
@@ -211,7 +220,6 @@ struct NoteTitleEditor: View {
             draft = value
             return returnPressed(burst)
         }
-        if value != draft { claimsFocus = false }
         draft = value
     }
 
@@ -322,26 +330,22 @@ struct NoteTitleEditor: View {
                 // again under a block that had the caret (#4457).
                 .onAppear {
                     if title.isEmpty, EditorFocusMemory.shared.titleMayAutofocus(noteId) {
-                        claimsFocus = true
+                        claim.start()
                         focused = true
                     }
                 }
-                // #4346: in the iPad split view, the list column moves focus
-                // to the new note's selected row after its insert animation,
-                // which can land after the request above. A move from the
-                // title to an item that is not a text field, in this title's
-                // window, is taken back once, a turn later once the focus
-                // state has followed it: a later tap on another row or
-                // control keeps its focus. Dismissing the keyboard focuses
-                // nothing and is left alone.
+                // #4346, #4774: in the iPad split view, the notes list moves
+                // the focus to the new note's selected row each time it
+                // mirrors its selection (`TitleFocusClaim`), which can land
+                // after the request above and after the first keys. Each such
+                // move in this title's window is taken back, a turn later
+                // once the focus state has followed it.
                 .onReceive(NotificationCenter.default.publisher(for: UIFocusSystem.didUpdateNotification)) { note in
-                    guard claimsFocus, focused, let window = host.window,
+                    guard claim.holds, focused, let window = host.window,
                           note.object as? UIFocusSystem === UIFocusSystem.focusSystem(for: window),
-                          let context = note.userInfo?[UIFocusSystem.focusUpdateContextUserInfoKey] as? UIFocusUpdateContext,
-                          let next = context.nextFocusedItem
+                          let context = note.userInfo?[UIFocusSystem.focusUpdateContextUserInfoKey] as? UIFocusUpdateContext
                     else { return }
-                    claimsFocus = false
-                    if !(next is UITextInput) { Task { focused = true } }
+                    if claim.takesBack(after: focusMove(context)) { Task { focused = true } }
                 }
                 // Saved as the app resigns, as a body block is (#2820). Not
                 // while an input method composes: Control Center resigns the
@@ -363,7 +367,7 @@ struct NoteTitleEditor: View {
                 // ends the edit without a focus change; the typed title
                 // still lands (#2680).
                 .onDisappear {
-                    claimsFocus = false
+                    claim.end()
                     keepHeld()
                     commit()
                     draftChanged?(nil)

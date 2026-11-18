@@ -47,6 +47,44 @@ struct LineReturnTests {
     }
 }
 
+/// #4774, #4824: on iPad, the notes list moves the keyboard focus to the new
+/// note's selected row each time it mirrors its selection, twice or more
+/// after New note. These are the focus updates logged on the iPad Air 13
+/// simulator with a hardware keyboard.
+@Suite("Title focus claim")
+struct TitleFocusClaimTests {
+    /// Whether a new note's title takes the caret back after each move.
+    private func takenBack(_ moves: [TitleFocusMove], claiming: Bool = true) -> [Bool] {
+        var claim = TitleFocusClaim()
+        if claiming { claim.start() }
+        return moves.map { claim.takesBack(after: $0) }
+    }
+
+    @Test func every_move_to_the_selected_row_is_taken_back() {
+        #expect(takenBack([.toSelectedRow, .intoTitle, .toSelectedRow]) == [true, false, true])
+    }
+
+    @Test func the_title_taking_the_caret_again_keeps_the_claim() {
+        #expect(takenBack([.toNothing, .intoTitle, .toSelectedRow]) == [false, false, true])
+    }
+
+    @Test func a_key_move_ends_the_claim() {
+        #expect(takenBack([.byKey, .toSelectedRow]) == [false, false])
+    }
+
+    @Test func another_text_field_ends_the_claim() {
+        #expect(takenBack([.intoText, .toSelectedRow]) == [false, false])
+    }
+
+    @Test func a_menu_or_a_control_keeps_the_focus_and_ends_the_claim() {
+        #expect(takenBack([.elsewhere, .toSelectedRow]) == [false, false])
+    }
+
+    @Test func a_title_that_claims_nothing_takes_nothing_back() {
+        #expect(takenBack([.toSelectedRow], claiming: false) == [false])
+    }
+}
+
 /// #4705: keys typed into a note's title as one burst, the way a hardware
 /// keyboard or a text expander delivers them, before the page draws again.
 @Suite("Note title bursts", .serialized)
