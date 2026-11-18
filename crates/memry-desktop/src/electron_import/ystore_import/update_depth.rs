@@ -9,7 +9,14 @@
 //!   Type items nest through parent ids across a document's updates, so the walk tracks the
 //!   nesting over all of them: an item named under a root is at depth 1, one whose parent is
 //!   the type item `p` is at `p`'s depth plus one, and one placed by an origin takes the depth
-//!   of the item it follows (else of the item it precedes), as `yrs` takes their parent.
+//!   of the item it follows (else of the item it precedes), as `yrs` takes their parent. That
+//!   tracker is a fast refusal, not the bound: `yrs` gives a clock to the first item that
+//!   integrates, which the walk cannot predict, so the fold also runs each document on a
+//!   stack sized from its type-item count ([`check`]'s result), which the nesting can never
+//!   exceed, and refuses a document of more than [`MAX_TYPE_ITEMS`]. A later item that claims
+//!   clocks an earlier different item already holds is refused too: the same item sent twice
+//!   has the same origins at every clock, and a document whose updates disagree on an item is
+//!   damaged or crafted.
 //! - `read_string` takes the bytes with `from_utf8_unchecked`, so a string that is not UTF-8 is
 //!   undefined behaviour.
 //! - `read_var_i64` shifts an `i64` by up to 69 bits, which panics in a debug build.
@@ -32,13 +39,19 @@ pub const MAX_ANY_DEPTH: usize = 128;
 /// stack (macOS, 17 Nov): a debug build of `yrs` deletes 1,024 levels and overflows at 1,536;
 /// a release build deletes 5,000.
 pub const MAX_TYPE_DEPTH: u32 = 256;
+/// Most type items (blocks of type content, over all of a document's updates) accepted; the
+/// fold sizes its stack from the count. A BlockNote block is three or four types, so this is
+/// over 60,000 blocks ever written to one note. A note past it re-seeds from its markdown.
+pub const MAX_TYPE_ITEMS: usize = 250_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Refusal {
     /// An `Any` nests deeper than [`MAX_ANY_DEPTH`], or a type deeper than [`MAX_TYPE_DEPTH`].
     TooDeep,
+    /// More than [`MAX_TYPE_ITEMS`] type items.
+    TooManyTypes,
     /// Not a v1 update this walk can follow (truncated, a bad tag, a string that is not UTF-8,
-    /// an over-long varint, a clock past `u32::MAX`).
+    /// an over-long varint, a clock past `u32::MAX`, two different items at one clock).
     Malformed,
 }
 
@@ -65,14 +78,16 @@ fn step() {
     STEPS.with(|s| s.set(s.get() + 1));
 }
 
-/// `Ok` when `yrs` can decode and integrate `updates`, in this order, without deep recursion,
-/// unchecked UTF-8 or a debug panic in its varint reader.
-pub fn check(updates: &[&[u8]]) -> Result<(), Refusal> {
+/// `Ok` with the number of type items when `yrs` can decode `updates` without deep recursion,
+/// unchecked UTF-8 or a debug panic in its varint reader. Integrating them nests types at most
+/// that many levels deep.
+pub fn check(updates: &[&[u8]]) -> Result<usize, Refusal> {
     let mut tree = Tree::default();
     for update in updates {
         walk(update, &mut tree)?;
     }
-    tree.check_depth()
+    tree.check_depth()?;
+    Ok(tree.type_items)
 }
 
 fn walk(update: &[u8], tree: &mut Tree) -> Result<(), Refusal> {
@@ -121,6 +136,12 @@ fn block(r: &mut Reader<'_>, id: Id, tree: &mut Tree) -> Result<u32, Refusal> {
         }
     }
     let (len, is_type) = content(r, info & 0b1111)?;
+    if is_type {
+        tree.type_items += 1;
+        if tree.type_items > MAX_TYPE_ITEMS {
+            return Err(Refusal::TooManyTypes);
+        }
+    }
     tree.insert(
         id,
         len,
@@ -130,7 +151,7 @@ fn block(r: &mut Reader<'_>, id: Id, tree: &mut Tree) -> Result<u32, Refusal> {
             parent,
             is_type,
         },
-    );
+    )?;
     Ok(len)
 }
 
@@ -222,14 +243,14 @@ fn any(r: &mut Reader<'_>, depth: usize) -> Result<(), Refusal> {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct Id {
     client: u64,
     clock: u32,
 }
 
 /// Where `decode_block` says an item lives, when it has no origin to copy it from.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 enum Parent {
     /// Placed by an origin: the parent is the origin's (`TypePtr::Unknown`).
     Unknown,
@@ -256,68 +277,78 @@ enum Depth {
     Known(Option<u32>),
 }
 
-/// Every item of a document's updates, keyed by the clock range it covers. Clocks already
-/// covered keep their first item, as `yrs` skips the clocks it already has, and each uncovered
-/// part of a later item is kept with its origin moved to the clock before it, as `yrs`
-/// integrates an item's tail.
+/// Every item of a document's updates, keyed by the clock range it covers.
 #[derive(Default)]
 struct Tree {
     nodes: Vec<Node>,
-    clients: HashMap<u64, Ranges>,
-}
-
-#[derive(Default)]
-struct Ranges {
-    /// Start clock -> (end clock, node).
-    items: BTreeMap<u32, (u32, usize)>,
-    /// The same clocks as maximal runs, start -> end, so finding the uncovered parts of an
-    /// item costs the runs it merges.
-    covered: BTreeMap<u32, u32>,
+    /// Per client: start clock -> (end clock, node), the ranges disjoint.
+    clients: HashMap<u64, BTreeMap<u32, (u32, usize)>>,
+    type_items: usize,
 }
 
 impl Tree {
-    fn insert(&mut self, id: Id, len: u32, node: Node) {
-        let ranges = self.clients.entry(id.client).or_default();
-        let end = id.clock.saturating_add(len);
-        let mut at = id.clock;
-        if let Some((_, &run_end)) = ranges.covered.range(..=at).next_back() {
-            at = at.max(run_end);
+    /// Records `node` at `id..id + len`. Clocks an earlier item holds must be the same item:
+    /// at each such clock the effective origin (the item's own at its first clock, the clock
+    /// before inside it), the right origin and, without either, the parent agree, as they do
+    /// when `yrs` re-encodes an item split, merged or deleted. Each overlapped piece is checked
+    /// once and replaced by `node`, so the walk visits a piece at most once.
+    fn insert(&mut self, id: Id, len: u32, mut node: Node) -> Result<(), Refusal> {
+        let (start, end) = (id.clock, id.clock.saturating_add(len));
+        if start == end {
+            return Ok(());
         }
-        let mut gaps = Vec::new();
-        while at < end {
-            step();
-            match ranges.covered.range(at..).next() {
-                Some((&run, &run_end)) if run < end => {
-                    if at < run {
-                        gaps.push((at, run));
-                    }
-                    at = run_end;
-                }
-                _ => {
-                    gaps.push((at, end));
-                    break;
-                }
-            }
-        }
-        for (start, gap_end) in gaps {
-            let mut part = node;
-            if start != id.clock {
-                part.origin = Some(Id {
+        let items = self.clients.entry(id.client).or_default();
+        let origin_at = |clock: u32, piece_start: u32, origin: Option<Id>| {
+            if clock == piece_start {
+                origin
+            } else {
+                Some(Id {
                     client: id.client,
-                    clock: start - 1,
-                });
+                    clock: clock - 1,
+                })
             }
-            ranges.items.insert(start, (gap_end, self.nodes.len()));
-            self.nodes.push(part);
-            ranges.cover(start, gap_end);
+        };
+        let first = match items.range(..start).next_back() {
+            Some((&s, &(e, _))) if e > start => s,
+            _ => start,
+        };
+        let overlapped: Vec<(u32, u32, usize)> = items
+            .range(first..end)
+            .map(|(&s, &(e, n))| (s, e, n))
+            .collect();
+        for (s, e, n) in overlapped {
+            step();
+            let old = self.nodes[n];
+            let at = s.max(start);
+            let new_origin = origin_at(at, start, node.origin);
+            let same = new_origin == origin_at(at, s, old.origin)
+                && node.right == old.right
+                && (new_origin.is_some() || node.right.is_some() || node.parent == old.parent);
+            if !same {
+                return Err(Refusal::Malformed);
+            }
+            // A deleted copy of a type keeps the type's children placeable.
+            node.is_type |= old.is_type;
+            items.remove(&s);
+            if s < start {
+                items.insert(s, (start, n));
+            }
+            if e > end {
+                let mut tail = old;
+                tail.origin = origin_at(end, s, old.origin);
+                items.insert(end, (e, self.nodes.len()));
+                self.nodes.push(tail);
+            }
         }
+        items.insert(start, (end, self.nodes.len()));
+        self.nodes.push(node);
+        Ok(())
     }
 
     fn find(&self, id: Id) -> Option<usize> {
         let (_, &(end, node)) = self
             .clients
             .get(&id.client)?
-            .items
             .range(..=id.clock)
             .next_back()?;
         (id.clock < end).then_some(node)
@@ -385,22 +416,6 @@ impl Tree {
 enum Resolved {
     Depth(Option<u32>),
     Needs(usize),
-}
-
-impl Ranges {
-    /// Adds the uncovered `start..end`, merged with the runs it touches.
-    fn cover(&mut self, mut start: u32, mut end: u32) {
-        if let Some((&before, &before_end)) = self.covered.range(..start).next_back()
-            && before_end == start
-        {
-            self.covered.remove(&before);
-            start = before;
-        }
-        if let Some(after_end) = self.covered.remove(&end) {
-            end = after_end;
-        }
-        self.covered.insert(start, end);
-    }
 }
 
 struct Reader<'a> {

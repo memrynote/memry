@@ -387,6 +387,7 @@ fn inside(vault: &Path, path: &Path) -> Result<Option<PathBuf>, ()> {
     }
 }
 
+/// Misses NTFS stream names (`.memry::$DATA`) and 8.3 short names (`MEMRY~1`): corrupt journals.
 fn is_memry_dir(name: &std::ffi::OsStr) -> bool {
     let name = name.to_string_lossy();
     let name = if cfg!(windows) {

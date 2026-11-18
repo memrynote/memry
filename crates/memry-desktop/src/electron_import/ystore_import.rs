@@ -4,11 +4,16 @@
 //! Which store is read follows `crdt-store-path.ts`: the vault's own store under
 //! `crdt-stores/` (or the directory a pending rename still names, [`YStoreReader::store_dir`]).
 //! The legacy global `crdt-store/` is read only when the vault has no store of its own and
-//! `crdtStore.legacyStoreClaimedBy` names this vault or nobody: Electron's next launch of the
-//! vault would move it there (`inheritLegacyCrdtStore`, :117-155). Taking an unclaimed store
-//! owes a partition when the profile lists more than one vault (:140-142,
-//! `legacyStoreCouldBeAnotherVaults`). When the vault has its own store, Electron leaves the
-//! legacy directory in place unread (:131-139), and so does the import.
+//! `crdtStore.legacyStoreClaimedBy` names this vault, or names nobody and this vault is the
+//! one [`fold_vault_store`] picks to inherit it: Electron's next launch of a vault without a
+//! store moves it there (`inheritLegacyCrdtStore`, :117-155). Electron gives an unclaimed store
+//! to the next vault the user opens, which the import cannot know, so it picks `currentVault`
+//! when that vault has no store of its own, else the first vault in config order without one
+//! (a departure from Electron); every other vault gets [`LegacyStore::LeftUnread`], so no
+//! legacy document lands in two vaults. Taking an unclaimed store owes a partition when the
+//! profile lists more than one vault (:140-142, `legacyStoreCouldBeAnotherVaults`). When the
+//! vault has its own store, Electron leaves the legacy directory in place unread (:131-139),
+//! and so does the import.
 //!
 //! Every document is folded, deleted notes' included, except the ones listed in
 //! [`YStoreFold::skipped`]: the store's pseudo documents, the legacy partition's set-aside
@@ -90,12 +95,13 @@ pub struct SkippedDoc {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LegacyStore {
     Absent,
-    /// Read as this vault's store: claimed by it or unclaimed, and the vault has none of its
-    /// own.
+    /// Read as this vault's store: claimed by it, or unclaimed and picked for it; the vault has
+    /// none of its own.
     Read,
     /// Claimed by another vault.
     ClaimedByOther,
-    /// Present and not read: the vault has its own store.
+    /// Present and not read: the vault has its own store, or the unclaimed store is picked for
+    /// another vault (or for none, when no vault without a store can be named).
     LeftUnread,
 }
 
@@ -121,7 +127,8 @@ pub struct YStoreFold {
     pub owed_compactions: Vec<String>,
 }
 
-/// Folds `vault_uuid`'s store. A vault with no store folds to no documents.
+/// Folds `vault_uuid`'s store. A vault with no store folds to no documents. Called once per
+/// vault of one profile, an unclaimed legacy store is `Read` by at most one of them.
 pub fn fold_vault_store(
     profile: &ElectronProfile,
     vault_uuid: &str,
@@ -132,12 +139,14 @@ pub fn fold_vault_store(
     let claimed_by = config.and_then(ElectronConfig::legacy_store_claimed_by);
     let legacy_present =
         std::fs::symlink_metadata(profile.legacy_crdt_store_dir()).is_ok_and(|m| m.is_dir());
-    let ours = claimed_by.is_none_or(|claim| claim == vault_uuid);
-    let (store, legacy) = match (own, legacy_present) {
-        (own, false) => (own, LegacyStore::Absent),
-        (own, true) if !ours => (own, LegacyStore::ClaimedByOther),
-        (Some(own), true) => (Some(own), LegacyStore::LeftUnread),
-        (None, true) => (
+    let (store, legacy) = match (own, legacy_present, claimed_by) {
+        (own, false, _) => (own, LegacyStore::Absent),
+        (own, true, Some(claim)) if claim != vault_uuid => (own, LegacyStore::ClaimedByOther),
+        (Some(own), true, _) => (Some(own), LegacyStore::LeftUnread),
+        (None, true, None) if !inherits_unclaimed_legacy(profile, vault_uuid, config) => {
+            (None, LegacyStore::LeftUnread)
+        }
+        (None, true, _) => (
             YStoreReader::open_legacy(profile, scratch)?,
             LegacyStore::Read,
         ),
@@ -170,6 +179,36 @@ pub fn fold_vault_store(
     fold.legacy = legacy;
     fold.previous_store_unread = previous_store_unread;
     Ok(fold)
+}
+
+/// Whether this vault, which has no store, is the one vault the unclaimed legacy store goes to:
+/// `currentVault` when it has no store, else the first vault in config order without one. A
+/// config entry without a `vaultUuid` cannot be named, so it is passed over; a profile of one
+/// vault (or no config) gives the store to the vault being imported.
+fn inherits_unclaimed_legacy(
+    profile: &ElectronProfile,
+    vault_uuid: &str,
+    config: Option<&ElectronConfig>,
+) -> bool {
+    let Some(config) = config else {
+        return true;
+    };
+    let (vaults, unreadable) = config.vaults();
+    if vaults.len() + unreadable <= 1 {
+        return true;
+    }
+    let has_store = |uuid: &str| {
+        std::fs::symlink_metadata(YStoreReader::store_dir(profile, uuid, Some(config)))
+            .is_ok_and(|m| m.is_dir())
+    };
+    let current = config.current_vault();
+    vaults
+        .iter()
+        .filter(|v| Some(v.path.as_str()) == current)
+        .chain(&vaults)
+        .filter_map(|v| v.vault_uuid.as_deref())
+        .find(|uuid| !has_store(uuid))
+        == Some(vault_uuid)
 }
 
 /// Folds every document of `store`. `partition_owed`: journal days are set aside.
@@ -275,8 +314,7 @@ struct Fold {
 }
 
 /// One result per job, in job order. The documents are independent, so they fold across
-/// `available_parallelism - 1` threads (at least one); each thread has the default 2 MiB stack
-/// the depth guard is sized for.
+/// `available_parallelism - 1` workers (at least one).
 fn fold_parallel(store: &YStoreReader, jobs: &[String]) -> Vec<Result<Fold, &'static str>> {
     let workers = std::thread::available_parallelism()
         .map_or(1, |n| n.get().saturating_sub(1))
@@ -306,15 +344,50 @@ fn fold_parallel(store: &YStoreReader, jobs: &[String]) -> Vec<Result<Fold, &'st
     results.into_iter().map(|(_, r)| r).collect()
 }
 
+/// Stack of a fold thread: what a spawned thread gets, which holds `yrs`'s `Any` decoding
+/// within [`update_depth::MAX_ANY_DEPTH`], plus one level of `yrs`'s recursive type delete and
+/// GC per type item. Measured per level (macOS arm64, 18 Nov, 10,000 and 40,000 nested arrays
+/// deleted) at 1,376 bytes in a debug build and 352 in release; these leave about three times
+/// that. The stack is reserved, not committed, so a large one costs address space only.
+const FOLD_STACK_BASE: usize = 2 << 20;
+const FOLD_STACK_PER_TYPE: usize = if cfg!(debug_assertions) {
+    4 << 10
+} else {
+    1 << 10
+};
+
 /// `getYDoc` in y-leveldb: every update in clock order into one document, then the whole
-/// document as one update. A panic inside `yrs` on bytes it cannot integrate counts as an
+/// document as one update, on a thread whose stack holds the deepest nesting the document's
+/// type items allow. A panic inside `yrs` on bytes it cannot integrate counts as an
 /// unreadable document, not a crash of the import.
 fn fold_doc(doc_id: &str, updates: &[(u32, &[u8])]) -> Result<Fold, &'static str> {
     let bytes: Vec<&[u8]> = updates.iter().map(|(_, update)| *update).collect();
-    update_depth::check(&bytes).map_err(|refusal| match refusal {
+    let type_items = update_depth::check(&bytes).map_err(|refusal| match refusal {
         update_depth::Refusal::TooDeep => "too_deep",
+        update_depth::Refusal::TooManyTypes => "too_many_types",
         update_depth::Refusal::Malformed => "malformed",
     })?;
+    fold_on_sized_stack(doc_id, updates, type_items)
+}
+
+/// `type_items` bounds the type nesting `updates` can build.
+fn fold_on_sized_stack(
+    doc_id: &str,
+    updates: &[(u32, &[u8])],
+    type_items: usize,
+) -> Result<Fold, &'static str> {
+    std::thread::scope(|scope| {
+        std::thread::Builder::new()
+            .name("ystore-fold".to_owned())
+            .stack_size(FOLD_STACK_BASE + type_items * FOLD_STACK_PER_TYPE)
+            .spawn_scoped(scope, || integrate(doc_id, updates))
+            .map_err(|_| "spawn")?
+            .join()
+            .unwrap_or(Err("panic"))
+    })
+}
+
+fn integrate(doc_id: &str, updates: &[(u32, &[u8])]) -> Result<Fold, &'static str> {
     catch_unwind(AssertUnwindSafe(|| {
         let sink: UpdateSink = Arc::new(|_, _| {});
         let document = DocumentRegistry::new(READER_DEVICE_ID, sink)

@@ -7,7 +7,7 @@ use std::collections::BTreeSet;
 use std::fs;
 
 use memry_desktop::electron_import::journal_replay::{BulkApplyJournal, EntrySkip, replay};
-use memry_desktop::electron_import::profile::locate_profile;
+use memry_desktop::electron_import::profile::{locate_profile, vault_dir_name};
 use memry_desktop::electron_import::ystore_import::{
     LegacyStore, SkipReason, YStoreFold, fold_vault_store,
 };
@@ -25,10 +25,14 @@ fn located(f: &ElectronProfileFixture) -> ElectronProfile {
 }
 
 fn fold(f: &ElectronProfileFixture) -> YStoreFold {
+    fold_as(f, &f.expected.vault_uuid)
+}
+
+fn fold_as(f: &ElectronProfileFixture, vault_uuid: &str) -> YStoreFold {
     let profile = located(f);
     let config = ElectronConfig::read(&profile).unwrap().unwrap();
     let scratch = Scratch::new(f.scratch_root()).unwrap();
-    fold_vault_store(&profile, &f.expected.vault_uuid, Some(&config), &scratch).unwrap()
+    fold_vault_store(&profile, vault_uuid, Some(&config), &scratch).unwrap()
 }
 
 /// The body of a folded document, as the editor reads it.
@@ -173,6 +177,43 @@ fn an_unclaimed_legacy_store_owes_a_partition_when_there_are_other_vaults() {
             .any(|s| s.doc_id == f.expected.journal_doc_id
                 && s.reason == SkipReason::AmbiguousLegacy)
     );
+}
+
+/// Electron hands an unclaimed legacy store to the next vault the user opens, which the import
+/// cannot know: it picks `currentVault` when that vault has no store, else the first vault in
+/// config order without one, so no legacy document lands in two vaults.
+#[test]
+fn an_unclaimed_legacy_store_is_read_by_exactly_one_vault() {
+    const OTHER: &str = "0b5b6f39-8d0e-4c51-9a57-3f1f2b7c9d10";
+    let f = ElectronProfileFixture::install();
+    let ours = f.expected.vault_uuid.clone();
+    let stores = f.profile.join("crdt-stores");
+    fs::remove_dir_all(stores.join(vault_dir_name(&ours))).unwrap();
+    edit_config(&f, |c| {
+        c["crdtStore"]
+            .as_object_mut()
+            .unwrap()
+            .remove("legacyStoreClaimedBy");
+        c["vaults"].as_array_mut().unwrap().push(serde_json::json!({
+            "path": "/elsewhere/Other", "name": "Other", "vaultUuid": OTHER
+        }));
+    });
+    let readers = |f: &ElectronProfileFixture| -> Vec<String> {
+        [ours.as_str(), OTHER]
+            .into_iter()
+            .filter(|uuid| fold_as(f, uuid).legacy == LegacyStore::Read)
+            .map(str::to_owned)
+            .collect()
+    };
+    assert_eq!(readers(&f), std::slice::from_ref(&ours));
+    assert_eq!(fold_as(&f, OTHER).legacy, LegacyStore::LeftUnread);
+
+    edit_config(&f, |c| c["currentVault"] = "/elsewhere/Other".into());
+    assert_eq!(readers(&f), [OTHER]);
+
+    // The current vault has a store of its own: the first vault in config order without one.
+    fs::create_dir_all(stores.join(vault_dir_name(OTHER))).unwrap();
+    assert_eq!(fold(&f).legacy, LegacyStore::Read);
 }
 
 #[test]

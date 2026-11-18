@@ -255,7 +255,7 @@ fn the_owed_compactions_marker_is_carried() {
 #[test]
 fn the_walk_accepts_the_deepest_any_yrs_decodes_on_a_spawned_threads_stack() {
     let deepest = nested_any_update(MAX_ANY_DEPTH - 1);
-    assert_eq!(update_depth::check(&[&deepest]), Ok(()));
+    assert_eq!(update_depth::check(&[&deepest]), Ok(0));
     let fold = on_small_stack(move || {
         fold_docs(&[doc("deepest00001", vec![deepest])], false)
             .docs
@@ -315,7 +315,7 @@ fn the_deepest_accepted_type_nesting_deletes_on_a_spawned_threads_stack() {
     let cap = MAX_TYPE_DEPTH as usize;
     let deepest = nested_types_then_delete(cap);
     let slices: Vec<&[u8]> = deepest.iter().map(Vec::as_slice).collect();
-    assert_eq!(update_depth::check(&slices), Ok(()));
+    assert_eq!(update_depth::check(&slices), Ok(cap));
     let fold = on_small_stack(move || fold_docs(&[doc("deepest00001", deepest)], false));
     assert_eq!(fold.docs.len(), 1, "{:?}", fold.skipped);
 
@@ -344,7 +344,7 @@ fn type_nesting_is_counted_across_updates() {
         updates.push(doc.transact().encode_state_as_update_v1(&before));
     }
     let slices: Vec<&[u8]> = updates.iter().map(Vec::as_slice).collect();
-    assert_eq!(update_depth::check(&slices[..1]), Ok(()));
+    assert_eq!(update_depth::check(&slices[..1]), Ok(1));
     assert_eq!(update_depth::check(&slices), Err(Refusal::TooDeep));
 }
 
@@ -366,7 +366,7 @@ fn a_long_origin_chain_resolves_on_a_small_stack_in_linear_steps() {
     let bound = 4 * update.len() + 10;
     on_small_stack(move || {
         assert_steps_at_most("type depth", update_depth::steps, bound, || {
-            assert_eq!(update_depth::check(&[&update]), Ok(()));
+            assert_eq!(update_depth::check(&[&update]), Ok(0));
         });
     });
 }
@@ -402,7 +402,7 @@ fn the_walk_visits_each_block_and_value_once() {
         "update depth walk",
         update_depth::steps,
         2 * update.len() + 10,
-        || assert_eq!(update_depth::check(&[&update]), Ok(())),
+        || assert_eq!(update_depth::check(&[&update]), Ok(0)),
     );
 }
 
@@ -457,7 +457,7 @@ proptest! {
     ) {
         let (updates, union) = random_updates(&script);
         let slices: Vec<&[u8]> = updates.iter().map(Vec::as_slice).collect();
-        prop_assert_eq!(update_depth::check(&slices), Ok(()));
+        prop_assert!(update_depth::check(&slices).is_ok());
         let input: usize = updates.iter().map(Vec::len).sum();
         let fold = fold_docs(&[doc("random000001", updates.clone())], false);
         if let Some(folded) = fold.docs.first() {
@@ -484,3 +484,5 @@ proptest! {
         prop_assert_eq!(fold.docs.len() + fold.skipped.len(), 1);
     }
 }
+
+mod claims;
