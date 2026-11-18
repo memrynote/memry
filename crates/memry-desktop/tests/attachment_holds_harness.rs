@@ -116,12 +116,12 @@ async fn a_hold_keeps_a_dereferenced_chunk_live_until_its_release() {
     let (a, b, c, d) = (holder("a"), holder("b"), holder("c"), holder("d"));
 
     assert_eq!(
-        holds::hold(&http, VAULT_ID, &[a.clone()]).await,
+        holds::hold(&http, VAULT_ID, std::slice::from_ref(&a)).await,
         held(&[]),
         "live chunks hold"
     );
     assert_eq!(
-        holds::hold(&http, VAULT_ID, &[a.clone()]).await,
+        holds::hold(&http, VAULT_ID, std::slice::from_ref(&a)).await,
         held(&[]),
         "holding again is a no-op"
     );
@@ -132,32 +132,32 @@ async fn a_hold_keeps_a_dereferenced_chunk_live_until_its_release() {
         .expect("dereference");
     server.purge();
     assert_eq!(
-        holds::hold(&http, VAULT_ID, &[b.clone()]).await,
+        holds::hold(&http, VAULT_ID, std::slice::from_ref(&b)).await,
         held(&[]),
         "a held chunk is live at ref_count 0 and survives the sweep"
     );
-    holds::release(&http, VAULT_ID, &[b.holder_id.clone()])
+    holds::release(&http, VAULT_ID, std::slice::from_ref(&b.holder_id))
         .await
         .unwrap();
 
     // The last hold goes: the chunks are dead, and a replayed release changes nothing.
-    holds::release(&http, VAULT_ID, &[a.holder_id.clone()])
+    holds::release(&http, VAULT_ID, std::slice::from_ref(&a.holder_id))
         .await
         .unwrap();
-    holds::release(&http, VAULT_ID, &[a.holder_id.clone()])
+    holds::release(&http, VAULT_ID, std::slice::from_ref(&a.holder_id))
         .await
         .unwrap();
     server.purge();
     assert_eq!(
-        holds::hold(&http, VAULT_ID, &[c.clone()]).await,
+        holds::hold(&http, VAULT_ID, std::slice::from_ref(&c)).await,
         held(&[c.holder_id.as_str()]),
         "a dereferenced, unheld, swept chunk is missing"
     );
-    holds::release(&http, VAULT_ID, &[a.holder_id.clone()])
+    holds::release(&http, VAULT_ID, std::slice::from_ref(&a.holder_id))
         .await
         .unwrap();
     assert_eq!(
-        holds::hold(&http, VAULT_ID, &[d.clone()]).await,
+        holds::hold(&http, VAULT_ID, std::slice::from_ref(&d)).await,
         held(&[d.holder_id.as_str()]),
         "a release replay brought nothing back"
     );
