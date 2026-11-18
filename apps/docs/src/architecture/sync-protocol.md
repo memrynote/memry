@@ -101,11 +101,15 @@ The server keeps one `client_policies` row per platform, holding a semver write
 floor and a kill switch. It is consulted on **writes only**; reads are never
 gated, so a device dropped to read-only can still open every note it owns.
 The gate classifies by route, not by method: besides `GET`, `HEAD` and
-`OPTIONS`, the `POST` routes that only read are exempt too: `/sync/pull`,
-`/sync/records/pull`, `/sync/crdt/updates/batch` and
+`OPTIONS`, the `POST` routes that change no client-authored state are exempt
+too: `/sync/pull`, `/sync/records/pull`, `/sync/crdt/updates/batch` and
 `/sync/attachments/presign-batch`. Without that list a read-only device could
-not fetch a change a peer made after the floor went up (#4716). Protocol
-chapter 11 §11.4 holds the full list.
+not fetch a change a peer made after the floor went up (#4716). The two pull
+routes are not strictly read-only: when a live row's blob is gone they stamp the
+server-set `blob_missing_at` on it (#2302), and a repeat pull keeps the first
+stamp. Only the exact paths are exempt, so `/sync/pull/` is gated, and so is
+`POST /sync/attachments/holds`, which writes chunk holds. Protocol chapter 11
+§11.4 holds the full list.
 
 | Condition                                | Server behaviour                                                   |
 | ---------------------------------------- | ------------------------------------------------------------------ |
