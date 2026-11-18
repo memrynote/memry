@@ -247,12 +247,18 @@ impl TreeSink for Sink {
 
 /// `domino.createDocument('<x-turndown id="turndown-root">' + input + '</x-turndown>')`.
 pub fn parse(html: &str) -> Dom {
+    parse_document_with(html, false)
+}
+
+/// The same tree builder with the scripting flag given: parse5 under cheerio parses with
+/// scripting on, so `noscript` holds raw text there (the Inbox metadata scraper).
+pub fn parse_document_with(html: &str, scripting_enabled: bool) -> Dom {
     let sink = Sink {
         doc: RefCell::new(Document::new()),
         templates: RefCell::new(HashMap::new()),
         integration_points: RefCell::new(HashSet::new()),
     };
     let mut opts = ParseOpts::default();
-    opts.tree_builder.scripting_enabled = false;
+    opts.tree_builder.scripting_enabled = scripting_enabled;
     parse_document(sink, opts).one(StrTendril::from(html))
 }
