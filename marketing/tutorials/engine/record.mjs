@@ -104,6 +104,7 @@ export async function record(dir, { page: given, backend } = {}) {
         await ctx.end()
         if (mod.after?.[s.id]) await mod.after[s.id](ctx)
       }
+      await rec.stop()
     } catch (error) {
       // A failed take leaves no recording running and no file behind.
       try {
@@ -113,7 +114,6 @@ export async function record(dir, { page: given, backend } = {}) {
       }
       throw error
     }
-    await rec.stop()
     const film = timeline.map(({ id, t, vo, dur, end }) => ({
       id,
       t: rec.remap(t),
@@ -124,6 +124,11 @@ export async function record(dir, { page: given, backend } = {}) {
     fs.writeFileSync(path.join(out, 'timeline.json'), JSON.stringify(film, null, 1))
     return film
   } finally {
-    await browser?.close()
+    // After a failed take the app may be gone too; the take's own error is the one that matters.
+    try {
+      await browser?.close()
+    } catch (error) {
+      console.error(`  the WebDriver session did not close: ${error.message}`)
+    }
   }
 }

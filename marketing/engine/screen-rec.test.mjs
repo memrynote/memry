@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import * as path from 'node:path'
 import { test } from 'node:test'
@@ -130,34 +130,121 @@ test('the record lock serializes takes and takes over a dead owner', async () =>
   assert.equal(existsSync(lock), false)
 })
 
-test('a throwing scene aborts the take: the recording child is killed, its file and the lock are gone', async () => {
+const STUBBORN = 'process.stdin.resume(); setInterval(() => {}, 1000)'
+
+/**
+ * A take dir and the real screen backend with ffmpeg replaced by a child that, like ffmpeg, keeps
+ * going after its stdin ends and ignores `q`. With `startFails` the child dies at once and `start`
+ * kills it and throws, as it does when no first frame arrives.
+ */
+function fakeTake(scene, { startFails = false } = {}) {
   const dir = mkdtempSync(path.join(tmpdir(), 'film-take-'))
   const lock = path.join(dir, 'record.lock')
   writeFileSync(
     path.join(dir, 'narration.json'),
-    JSON.stringify({ silent: true, scenes: [{ id: 'boom', dur: 1 }] })
+    JSON.stringify({ silent: true, scenes: [{ id: 'one', dur: 0 }] })
   )
-  writeFileSync(
-    path.join(dir, 'scenes.mjs'),
-    "export const scenes = { boom: async () => { throw new Error('scene failed') } }"
-  )
-  // The real screen backend, with ffmpeg replaced by a child that, like ffmpeg, keeps going after
-  // its stdin ends and ignores `q`.
+  writeFileSync(path.join(dir, 'scenes.mjs'), `export const scenes = { one: ${scene} }`)
   const backend = new ScreenRecorder(null, { lock })
   backend.start = async function (out) {
     this.release = await takeRecordLock('test', this.lock)
     this.raw = path.join(out, 'raw.mkv')
     writeFileSync(this.raw, 'frames')
-    this.watch(
-      spawn(process.execPath, ['-e', 'process.stdin.resume(); setInterval(() => {}, 1000)'], {
-        stdio: ['pipe', 'ignore', 'pipe']
-      })
-    )
+    const code = startFails ? 'process.exit(1)' : STUBBORN
+    this.watch(spawn(process.execPath, ['-e', code], { stdio: ['pipe', 'ignore', 'pipe'] }))
+    if (startFails) {
+      // The child is dead before this process has handled its exit, as when ffmpeg fails at once.
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 500)
+      this.ffmpeg.kill('SIGKILL')
+      throw new Error('The screen recording did not start: no frame in 10 s')
+    }
     return { width: 1440, height: 810, scale: 2 }
   }
   const page = { evaluate: async () => undefined, mouse: { move: async () => undefined } }
-  await assert.rejects(record(dir, { page, backend }), /scene failed/)
+  return { dir, lock, backend, page }
+}
+
+function assertCleanedUp({ backend, lock }) {
   assert.ok(backend.ffmpeg.exitCode !== null || backend.ffmpeg.signalCode !== null)
   assert.equal(existsSync(backend.raw), false)
   assert.equal(existsSync(lock), false)
+}
+
+test('a throwing scene aborts the take: the recording child is killed, its file and the lock are gone', async () => {
+  const take = fakeTake("async () => { throw new Error('scene failed') }")
+  await assert.rejects(record(take.dir, take), /scene failed/)
+  assertCleanedUp(take)
+})
+
+test('a failed stop aborts the take', async () => {
+  const take = fakeTake('async () => {}')
+  take.backend.driverProbe = async () => {
+    throw new Error('session gone')
+  }
+  await assert.rejects(record(take.dir, take), /session gone/)
+  assertCleanedUp(take)
+})
+
+test('a recording that never starts fails with its own message, not EPIPE', async () => {
+  const take = fakeTake('async () => {}', { startFails: true })
+  await assert.rejects(record(take.dir, take), /The screen recording did not start/)
+  assertCleanedUp(take)
+})
+
+const SCREEN_REC = new URL('./screen-rec.mjs', import.meta.url).href
+
+for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
+  test(`${signal} to the filming process kills the recording child and frees the lock`, async () => {
+    const lock = path.join(mkdtempSync(path.join(tmpdir(), 'film-signal-')), 'record.lock')
+    const script = `
+      import { spawn } from 'node:child_process'
+      import { ScreenRecorder, takeRecordLock } from ${JSON.stringify(SCREEN_REC)}
+      const rec = new ScreenRecorder(null, { lock: ${JSON.stringify(lock)} })
+      rec.release = await takeRecordLock('signal', rec.lock)
+      rec.watch(spawn(process.execPath, ['-e', ${JSON.stringify(STUBBORN)}], { stdio: ['pipe', 'ignore', 'pipe'] }))
+      console.log(rec.ffmpeg.pid)
+      setInterval(() => {}, 1000)`
+    const node = spawn(process.execPath, ['--input-type=module', '-e', script], {
+      stdio: ['ignore', 'pipe', 'inherit']
+    })
+    const pid = Number(await new Promise((done) => node.stdout.once('data', done)))
+    const ended = new Promise((done) => node.once('exit', (code, sig) => done(sig)))
+    node.kill(signal)
+    assert.equal(await ended, signal)
+    assert.equal(existsSync(lock), false)
+    let alive = true
+    for (let i = 0; i < 100 && alive; i += 1) {
+      try {
+        process.kill(pid, 0)
+        await new Promise((done) => setTimeout(done, 20))
+      } catch {
+        alive = false
+      }
+    }
+    assert.equal(alive, false, 'the recording child outlived the filming process')
+  })
+}
+
+test('a lock with no owner file is taken once it is older than a crash; a parent dir is made', async () => {
+  const lock = path.join(mkdtempSync(path.join(tmpdir(), 'film-lock-')), 'missing', 'record.lock')
+  ;(await takeRecordLock('first', lock))()
+  mkdirSync(lock)
+  const old = new Date(Date.now() - 60_000)
+  utimesSync(lock, old, old)
+  ;(await takeRecordLock('second', lock))()
+  assert.equal(existsSync(lock), false)
+})
+
+test('an owner the check may not signal (EPERM) holds the lock', async () => {
+  const lock = path.join(mkdtempSync(path.join(tmpdir(), 'film-lock-')), 'record.lock')
+  mkdirSync(lock)
+  // launchd (pid 1) runs as root: signal 0 to it fails with EPERM.
+  writeFileSync(path.join(lock, 'owner'), '1 root-take')
+  let taken = false
+  const waiting = takeRecordLock('second', lock).then((release) => ((taken = true), release))
+  await new Promise((done) => setTimeout(done, 100))
+  assert.equal(taken, false)
+  assert.equal(existsSync(path.join(lock, 'owner')), true)
+  rmSync(lock, { recursive: true, force: true })
+  ;(await waiting)()
 })

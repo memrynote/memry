@@ -32,6 +32,15 @@ export const TILE_LIMIT = 20
 const TILES = { cols: 16, rows: 9 }
 /** How long a stopped recorder may take to finish its file before it is killed. */
 const ABORT_GRACE_MS = 2000
+/**
+ * ffmpeg stops reading the screen after this long, the last backstop when this process is killed
+ * with SIGKILL and no handler runs. No take is near it.
+ */
+export const MAX_TAKE_SECONDS = 1800
+/** A lock dir with no owner file older than this is a take that crashed while taking it. */
+const OWNERLESS_LOCK_MS = 5000
+/** The signals that end this process while a recording runs. */
+const STOP_SIGNALS = ['SIGINT', 'SIGTERM', 'SIGHUP']
 export const RECORD_LOCK = '/tmp/memry-social/record.lock'
 const SIZE_ATTEMPTS = 5
 const FIRST_FRAME_TIMEOUT_MS = 10_000
@@ -138,25 +147,50 @@ export async function takeRecordLock(owner, lock = RECORD_LOCK) {
   for (let waited = 0; ; waited += 2) {
     try {
       mkdirSync(lock)
-      writeFileSync(ownerFile, `${process.pid} ${owner}`)
-      let held = true
-      return () => {
-        if (held) rmSync(lock, { recursive: true, force: true })
-        held = false
-      }
     } catch (error) {
       if (error.code !== 'EEXIST') throw error
-      const [pid, who] = (existsSync(ownerFile) ? readFileSync(ownerFile, 'utf8') : '').split(' ')
-      let alive = false
-      try {
-        alive = !!pid && process.kill(Number(pid), 0)
-      } catch {
-        // ESRCH: the owner is gone.
-      }
-      if (pid && !alive) rmSync(lock, { recursive: true, force: true })
-      else if (waited % 30 === 0) console.log(`  waiting for ${who ?? 'another'} take to finish...`)
+      const who = lockHolder(lock, ownerFile)
+      if (who === undefined) rmSync(lock, { recursive: true, force: true })
+      else if (waited % 30 === 0) console.log(`  waiting for ${who} take to finish...`)
       await sleep(2000)
+      continue
     }
+    try {
+      writeFileSync(ownerFile, `${process.pid} ${owner}`)
+    } catch (error) {
+      rmSync(lock, { recursive: true, force: true })
+      throw error
+    }
+    let held = true
+    return () => {
+      if (held) rmSync(lock, { recursive: true, force: true })
+      held = false
+    }
+  }
+}
+
+/**
+ * The take holding `lock`, or undefined when the lock is stale: its owner process is gone, or it
+ * has no owner file and is older than a crash between creating it and naming the owner.
+ */
+function lockHolder(lock, ownerFile) {
+  if (!existsSync(ownerFile)) {
+    let age = 0
+    try {
+      age = Date.now() - statSync(lock).mtimeMs
+    } catch {
+      // Released between the two checks: the next attempt takes it.
+      return undefined
+    }
+    return age > OWNERLESS_LOCK_MS ? undefined : 'another'
+  }
+  const [pid, who = 'another'] = readFileSync(ownerFile, 'utf8').split(' ')
+  try {
+    process.kill(Number(pid), 0)
+    return who
+  } catch (error) {
+    // EPERM: the owner runs as another user, so it is alive.
+    return error.code === 'EPERM' ? who : undefined
   }
 }
 
@@ -274,6 +308,8 @@ export class ScreenRecorder {
         'error',
         '-use_wallclock_as_timestamps',
         '1',
+        '-t',
+        String(MAX_TAKE_SECONDS),
         ...avfoundationInput(index),
         '-vf',
         crop,
@@ -306,16 +342,32 @@ export class ScreenRecorder {
   }
 
   /**
-   * Keeps `exited` for the recording child, and kills it if this process exits first: ffmpeg
-   * ignores the end of its stdin and would film the screen until killed.
+   * Keeps `exited` for the recording child, and kills it when this process exits or gets SIGINT,
+   * SIGTERM or SIGHUP first (the signal is raised again once the child is killed and the lock
+   * freed): ffmpeg ignores the end of its stdin and would film the screen until killed.
    */
   watch(child) {
     this.ffmpeg = child
+    // `q` written after ffmpeg died fails with EPIPE; the recording has ended either way.
+    child.stdin.on('error', (error) => {
+      if (error.code !== 'EPIPE') console.error(`  ffmpeg stdin: ${error.message}`)
+    })
     const kill = () => child.kill('SIGKILL')
+    const onSignal = (signal) => {
+      kill()
+      this.release?.()
+      unwatch()
+      process.kill(process.pid, signal)
+    }
+    const unwatch = () => {
+      process.off('exit', kill)
+      for (const signal of STOP_SIGNALS) process.off(signal, onSignal)
+    }
     process.once('exit', kill)
+    for (const signal of STOP_SIGNALS) process.once(signal, onSignal)
     this.exited = new Promise((done) =>
       child.once('exit', (code) => {
-        process.off('exit', kill)
+        unwatch()
         done(code)
       })
     )
@@ -364,7 +416,7 @@ export class ScreenRecorder {
     try {
       const child = this.ffmpeg
       if (child?.exitCode === null && child.signalCode === null) {
-        if (child.stdin.writable) child.stdin.end('q')
+        if (!child.killed && child.stdin.writable) child.stdin.end('q')
         const timer = setTimeout(() => child.kill('SIGKILL'), ABORT_GRACE_MS)
         await this.exited
         clearTimeout(timer)
