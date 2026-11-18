@@ -773,30 +773,127 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
 extension EditorSession {
     private static let continuingKinds: Set<String> = ["bulletListItem", "numberedListItem", "checkListItem"]
 
-    /// Return: a new block below, the same kind for a list item (desktop);
-    /// an empty list item or heading becomes a paragraph instead.
+    /// Return, as desktop's Enter: the text after the caret moves to a new
+    /// block below (`NoteEditorViewModel.split`), and the caret goes to its
+    /// start (#4834). A list item makes another of its kind; any other
+    /// block makes a paragraph, except at its start, where the new block
+    /// takes its type and props and leaves it empty above (`splitBlockTr`
+    /// with `keepType`). An empty list item or heading becomes a paragraph
+    /// instead. A selection goes first.
     func returnPressed(_ field: BlockField) {
+        let view = field.textView
+        let selection = view.selectedRange
+        if selection.length > 0 {
+            view.textStorage.replaceCharacters(in: selection, with: "")
+            view.selectedRange = NSRange(location: selection.location, length: 0)
+            field.textViewDidChange(view)
+        }
         // A type change still on its way (`turnKeepingCaret`), such as an
         // earlier Return's, is the kind this Return acts on.
         let kind = shortcutField === field ? shortcutKind : field.block.kind
-        let empty = field.textView.text.isEmpty
-        if empty, kind != "paragraph" { return turnKeepingCaret(field, into: InsertableBlock.all[0]) }
-        let next = Self.continuingKinds.contains(kind) ? kind : "paragraph"
-        // Desktop's `plainByContext`: Return in a plain checklist makes
-        // another plain checkbox, never a task.
-        let plain = kind == "checkListItem" && field.value("plain") == "true"
-        commit(field) { [weak self] in
-            guard let self else { return }
-            guard let model = self.model, let newId = await model.insert(next, after: field.blockId) else {
-                return self.returnRefused(in: field)
-            }
-            if plain { await model.setProp(newId, "plain", "true") }
-            self.history.record(.insert(blockId: newId, after: field.blockId, kind: next, text: ""))
-            self.returnMade(newId, from: field)
-            self.focus(newId)
+        if view.text.isEmpty, kind != "paragraph" { return turnKeepingCaret(field, into: InsertableBlock.all[0]) }
+        guard model != nil else {
+            commit(field)
+            return
         }
         // After the commit, which can redraw a typed link in `field`.
-        if model != nil { startReturnBurst(in: field) }
+        commit(field)
+        let typed = view.textStorage.string
+        let length = view.textStorage.length
+        let caret = min(view.selectedRange.location, length)
+        let continuing = Self.continuingKinds.contains(kind)
+        let pressed = BlockReturn(
+            blockId: field.blockId, kind: kind, typed: typed, caret: caret,
+            next: continuing ? kind : caret == 0 && length > 0 ? nil : "paragraph",
+            // Desktop moves nested blocks with the text after the caret; the
+            // core splits no such block, so they keep it, as before #4834,
+            // and a new block goes below them.
+            nested: hasNestedBlocks(field.blockId),
+            // Desktop's `plainByContext`: Return in a plain checklist makes
+            // another plain checkbox, never a task.
+            plain: kind == "checkListItem" && field.value("plain") == "true"
+        )
+        var cut: NSAttributedString?
+        if !pressed.nested, caret < length {
+            let range = NSRange(location: caret, length: length - caret)
+            cut = view.textStorage.attributedSubstring(from: range)
+            view.textStorage.deleteCharacters(in: range)
+            view.selectedRange = NSRange(location: caret, length: 0)
+            view.forgetTyping()
+            // The block as the core holds it once the split lands; reads
+            // from before it are older than `written`.
+            field.base = view.textStorage.string
+        }
+        field.written = enqueue { [weak self] in
+            await self?.makeBlock(for: pressed, from: field, cut: cut)
+            await self?.didChange()
+        }
+        startReturnBurst(in: field, makes: pressed.nested ? nil : pressed.next ?? kind, cut: cut)
+    }
+
+    private func hasNestedBlocks(_ blockId: String) -> Bool {
+        let blocks = blocks()
+        guard let index = blocks.firstIndex(where: { $0.id == blockId }), index + 1 < blocks.count else { return false }
+        return blocks[index + 1].depth > blocks[index].depth
+    }
+
+    /// Writes the block `pressed` makes, records it, and hands it the caret
+    /// and the keys held for it. A Backspace pressed meanwhile acts on it
+    /// first (`backspaceHeld`).
+    private func makeBlock(for pressed: BlockReturn, from field: BlockField, cut: NSAttributedString?) async {
+        guard let model else { return }
+        let blockId = pressed.blockId
+        var made: (id: String, step: EditorUndoStep)?
+        if pressed.nested {
+            let next = pressed.next ?? pressed.kind
+            made = await model.insert(next, after: blockId).map { ($0, .insert(blockId: $0, after: blockId, kind: next, text: "")) }
+        } else {
+            made = await model.split(blockId, typed: pressed.typed, at: pressed.caret, kind: pressed.next)
+        }
+        guard var made else { return splitRefused(in: field, putting: cut, typed: pressed.typed) }
+        if pressed.plain {
+            await model.setProp(made.id, "plain", "true")
+            made.step.forwardProps = [.setProp(blockId: made.id, name: "plain", value: "true")]
+        }
+        history.record(made.step)
+        if returnBurst?.blockId == blockId, returnBurst?.backspaced == true {
+            await turnParagraph(made.id, from: pressed.next ?? pressed.kind)
+        }
+        if withdrawnReturn == blockId {
+            withdrawnReturn = nil
+            return await mergeBack(made.id, into: blockId)
+        }
+        if cut != nil { caretAtStart = made.id }
+        returnMade(made.id, from: field)
+        focus(made.id)
+    }
+
+    /// The core made no block: the text the Return cut from `field` goes
+    /// back after whatever was typed there since, and the keys stay there.
+    private func splitRefused(in field: BlockField, putting cut: NSAttributedString?, typed: String) {
+        if let cut {
+            let view = field.textView
+            let selection = view.selectedRange
+            view.textStorage.append(cut)
+            view.selectedRange = selection
+            field.base = typed
+            field.dirty = view.textStorage.string != typed
+        }
+        returnRefused(in: field)
+    }
+
+    /// The block a Return made goes back into the block it was made from:
+    /// a Backspace at its start (#4834).
+    func mergeBack(_ newId: String, into blockId: String) async {
+        guard let model else { return }
+        if let step = await model.merge(newId, into: blockId) { history.record(step) }
+    }
+
+    /// The block a Return made turns into a paragraph: a Backspace at its
+    /// start, as `backspaceAtStart` does.
+    func turnParagraph(_ blockId: String, from kind: String) async {
+        guard let model else { return }
+        history.record(await model.turnIntoStep(blockId, into: InsertableBlock.all[0], from: kind))
     }
 
     /// Backspace with the caret at a block's start, in desktop's order
@@ -807,6 +904,7 @@ extension EditorSession {
     /// only an empty paragraph goes. Not yet here: a block with nested blocks
     /// (desktop lifts them out) and the first block of a column.
     func backspaceAtStart(_ field: BlockField) {
+        if backspaceHeld(in: field) { return }
         keepHeldKeys(in: field)
         if field.block.kind != "paragraph" { return turnInto(InsertableBlock.all[0]) }
         if canOutdent { return nest(false) }
@@ -840,6 +938,21 @@ extension EditorSession {
             session: self, target: BlockActionTarget(block: blocks[index], siblings: BlockSiblings.of(index, in: blocks))
         )
     }
+}
+
+/// A Return as pressed: what `EditorSession.makeBlock` writes once the
+/// typing before it lands.
+private struct BlockReturn {
+    let blockId: String
+    let kind: String
+    /// The block's text as the pane showed it, and the caret in it (UTF-16).
+    let typed: String
+    let caret: Int
+    /// The new block's kind; `nil`: the block's own kind and props.
+    let next: String?
+    /// The block has nested blocks: a new block goes below them instead.
+    let nested: Bool
+    let plain: Bool
 }
 
 /// A chip drawn ahead of the core, and the text it replaced (`undraw`).

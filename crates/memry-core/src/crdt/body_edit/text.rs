@@ -33,7 +33,7 @@ pub const INLINE_NODE_PLACEHOLDER: char = '\u{FFFC}';
 
 /// One character of a block's flattened inline content, and where it lives.
 #[derive(Clone)]
-enum Unit {
+pub(super) enum Unit {
     /// A character inside the text run at `child`, starting at `offset`
     /// (the document's offset kind, UTF-8 bytes) and `len` long.
     Text { child: u32, offset: u32, len: u32 },
@@ -48,7 +48,7 @@ enum Unit {
 /// every other element, a `hardBreak` included. Such an element takes no
 /// position here either, so the shell's text and this one line up and a diff
 /// can never remove it.
-fn flatten(txn: &TransactionMut, block: &XmlElementRef) -> (Vec<char>, Vec<Unit>) {
+pub(super) fn flatten(txn: &TransactionMut, block: &XmlElementRef) -> (Vec<char>, Vec<Unit>) {
     let mut chars = Vec::new();
     let mut units = Vec::new();
     for (index, child) in block.children(txn).enumerate() {

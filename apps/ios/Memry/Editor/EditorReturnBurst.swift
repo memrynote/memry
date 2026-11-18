@@ -38,6 +38,15 @@ struct ReturnBurst {
     /// The core made no block while the keys were carried: the redrawn row
     /// keeps them.
     var refused = false
+    /// The kind of the block the Return makes, whose Backspace at its start
+    /// a Backspace before it takes the caret is (`backspaceHeld`); `nil`
+    /// for a block made below nested blocks, which takes none.
+    var makes: String?
+    /// The text the Return moved to that block, cut from the source: a
+    /// Backspace that takes the Return back puts it back.
+    var cut: NSAttributedString?
+    /// A Backspace turned that block into a paragraph.
+    var backspaced = false
 }
 
 /// The block a Return in a one-line field (the note's title, a journal
@@ -56,13 +65,61 @@ struct TitleBurst {
 extension EditorSession {
     /// Return was pressed in `field` and its new block is on its way: keys
     /// typed in `field` from now are held for that block.
-    func startReturnBurst(in field: BlockField) {
+    func startReturnBurst(in field: BlockField, makes: String?, cut: NSAttributedString?) {
         let text = field.textView.text as NSString
         let caret = min(field.textView.selectedRange.location, text.length)
         returnBurst = ReturnBurst(
             source: field, blockId: field.blockId, head: text.substring(to: caret), tail: text.substring(from: caret),
-            typed: field.typed
+            typed: field.typed, makes: makes, cut: cut
         )
+    }
+
+    /// Backspace in `field` before it holds a key for its Return's block:
+    /// the caret would be at that block's start, as on desktop, so it is
+    /// that block's Backspace (#4834). A block that is not a paragraph turns
+    /// into one; a paragraph merges back into `field`'s block, which takes
+    /// the Return back. Answers whether it took the Backspace.
+    func backspaceHeld(in field: BlockField) -> Bool {
+        guard let burst = returnBurst, holdsKeys(field), let makes = burst.makes else { return false }
+        let view = field.textView
+        let head = (burst.head as NSString).length
+        guard view.markedTextRange == nil, view.text == burst.head + burst.tail,
+              view.selectedRange == NSRange(location: head, length: 0)
+        else { return false }
+        if makes != "paragraph", !burst.backspaced {
+            returnBurst?.backspaced = true
+            // Not made yet: its write turns it (`makeBlock`).
+            if let target = burst.target {
+                enqueue { [weak self] in
+                    await self?.turnParagraph(target, from: makes)
+                    await self?.didChange()
+                }
+            }
+            return true
+        }
+        takeBack(burst, in: field)
+        return true
+    }
+
+    /// Takes back the Return `burst` holds keys for: its text comes back to
+    /// `field`, which keeps the caret at the join, and the block it made
+    /// merges back.
+    private func takeBack(_ burst: ReturnBurst, in field: BlockField) {
+        returnBurst = nil
+        let view = field.textView
+        let head = (burst.head as NSString).length
+        if let cut = burst.cut { view.textStorage.insert(cut, at: head) }
+        view.selectedRange = NSRange(location: head, length: 0)
+        view.forgetTyping()
+        // The block as the core holds it once the merge lands.
+        field.base = view.textStorage.string
+        guard let target = burst.target else { return withdrawnReturn = burst.blockId }
+        if pendingFocus == target { pendingFocus = nil }
+        if caretAtStart == target { caretAtStart = nil }
+        field.written = enqueue { [weak self] in
+            await self?.mergeBack(target, into: burst.blockId)
+            await self?.didChange()
+        }
     }
 
     /// The core made `blockId` for the Return in `field`, whose row a type
@@ -111,6 +168,7 @@ extension EditorSession {
         guard let burst = returnBurst else { return nil }
         let view = field.textView
         let head = (burst.head as NSString).length
+        if text.isEmpty, range.length > 0, NSMaxRange(range) == head, backspaceHeld(in: field) { return false }
         let end = (view.text as NSString).length - (burst.tail as NSString).length
         if range.location >= head, NSMaxRange(range) <= end { return true }
         if range.location < head, range.length > 0, !text.isEmpty, range != view.selectedRange { return false }
@@ -220,7 +278,12 @@ extension EditorSession {
         if handing || redraw && returnBurst?.source === shortcutField { returnBurst?.handing = true }
         let took = textView.becomeFirstResponder()
         if redraw { returnBurst?.handing = false }
-        if atEnd { textView.selectedRange = NSRange(location: textView.textStorage.length, length: 0) }
+        if caretAtStart == field.blockId {
+            caretAtStart = nil
+            textView.selectedRange = NSRange(location: 0, length: 0)
+        } else if atEnd {
+            textView.selectedRange = NSRange(location: textView.textStorage.length, length: 0)
+        }
         // The old row may have left already, so nothing else holds the caret.
         if !took, redraw {
             Log.interface.error("the row a type change redrew did not take the caret")

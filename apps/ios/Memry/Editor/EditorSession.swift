@@ -151,6 +151,12 @@ final class EditorSession {
     @ObservationIgnored var shortcutKind = "paragraph"
     /// Keys typed after a Return, held for the block it makes (#4692).
     @ObservationIgnored var returnBurst: ReturnBurst?
+    /// The block whose Return a Backspace took back before the core made
+    /// the new block: the Return's write merges it back (#4834).
+    @ObservationIgnored var withdrawnReturn: String?
+    /// The block a Return split off: the caret goes to its start, where the
+    /// text after the old caret begins (#4834).
+    @ObservationIgnored var caretAtStart: String?
     /// Keys typed after the title's Return, held for the body (#4705).
     @ObservationIgnored var titleBurst: TitleBurst?
     /// A column list just inserted, by its `id` prop: the caret goes to its
@@ -1356,34 +1362,6 @@ final class EditorSession {
             text: "", marks: [mark],
             markAttrs: Dictionary(uniqueKeysWithValues: attrs.map { ("\(mark).\($0.key)", $0.value) }), target: nil
         )
-    }
-
-    /// A link or date at the end of `block`, followed by a space: the page
-    /// menu's path, for when no block has the caret.
-    func append(_ kind: EditorSuggestion.Kind, to block: Block) {
-        guard let blockId = block.id else { return }
-        let shown = BlockText.shown(block.inline)
-        let end = block.inline.reduce(0) { $0 + $1.text.utf8.count }
-        // The node goes before the space, where the block holds it once the
-        // commit is rebased onto edits this page has not read (#4706).
-        let anchor = NodeAnchor(typed: shown + " ", location: (shown as NSString).length, replaces: false, paneRange: end ..< end)
-        enqueue { [weak self] in
-            guard let self, let model = self.model else { return }
-            // The space first, so the node lands inside a text run.
-            await model.commit(shown + " ", for: blockId, base: shown)
-            switch kind {
-            case let .note(title, alias):
-                await model.insertWikiLink(in: blockId, at: anchor, title: title, alias: alias)
-            case let .create(title, alias):
-                await model.createNote(titled: title)
-                await model.insertWikiLink(in: blockId, at: anchor, title: title, alias: alias)
-            case let .date(value):
-                await model.insertDateMention(in: blockId, at: anchor, value: value)
-            case .slash:
-                break
-            }
-            await self.didChange()
-        }
     }
 
     // MARK: Undo
