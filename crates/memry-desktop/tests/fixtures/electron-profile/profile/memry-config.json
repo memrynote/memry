@@ -1,0 +1,69 @@
+{
+  "locale": "tr",
+  "currentVault": "/memry-fixture/vault",
+  "vaults": [
+    {
+      "path": "/memry-fixture/vault",
+      "name": "Fixture Vault",
+      "noteCount": 6,
+      "taskCount": 1,
+      "lastOpened": "2025-01-05T10:00:00.000Z",
+      "isDefault": true,
+      "vaultUuid": "ec702321-d1e4-4ea9-b780-502cefefedc5",
+      "accountBinding": {
+        "userId": "user-fixture-0001",
+        "mode": "sync"
+      }
+    }
+  ],
+  "sync": {
+    "recoveryPhraseConfirmed": true,
+    "email": "fixture@example.com",
+    "deviceId": "7c1e0c55-6f2b-4a8e-9d0b-2f1a3c4d5e6f",
+    "accountVaultsCache": {
+      "fetchedAt": 1736071200000,
+      "vaults": [
+        {
+          "vaultUuid": "ec702321-d1e4-4ea9-b780-502cefefedc5",
+          "name": "Fixture Vault",
+          "itemCount": 9,
+          "createdAt": 1735725600000
+        }
+      ]
+    },
+    "entitlement": {
+      "isPaid": false,
+      "plan": "free",
+      "status": "active"
+    },
+    "accountKeyVerifier": "t/sdyPS5evyVQ+34zGEVejz7WXk6w0bVJkOu5rdeDps="
+  },
+  "agent": {
+    "disclosureAccepted": true,
+    "accessMode": "vault_only"
+  },
+  "captureAllowedOrigins": [
+    "chrome-extension://fixtureextensionid"
+  ],
+  "updater": {
+    "autoDownload": true,
+    "autoCheck": true
+  },
+  "windowBounds": {
+    "width": 1280,
+    "height": 820,
+    "x": 80,
+    "y": 60,
+    "isMaximized": false
+  },
+  "crdtStore": {
+    "legacyStoreClaimedBy": "ec702321-d1e4-4ea9-b780-502cefefedc5",
+    "legacyStoreClaimedAt": 1735725600000
+  },
+  "ocrLanguages": [
+    "deu"
+  ],
+  "futureSetting": {
+    "kept": true
+  }
+}
