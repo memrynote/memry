@@ -105,7 +105,7 @@ fn properties(article: &InboxArticle) -> Value {
 /// screenshot path goes unescaped into the markdown body, so a `(`, `]`,
 /// space or control character would break it. Sync's `capture_file_name`
 /// stays looser: captures already shipped may carry other names.
-fn own_path(item_id: &str, path: &str) -> Result<String, StorageError> {
+pub(super) fn own_path(item_id: &str, path: &str) -> Result<String, StorageError> {
     let plain = |segment: &str| {
         segment
             .bytes()
