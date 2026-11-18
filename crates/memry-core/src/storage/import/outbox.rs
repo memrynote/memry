@@ -7,7 +7,7 @@ use rusqlite::{Connection, OptionalExtension, params};
 use super::{ImportWriter, failed};
 use crate::api::errors::StorageError;
 use crate::storage::repositories::StoredPayload;
-use crate::storage::repositories::projectors;
+use crate::storage::repositories::projectors::{self, ItemContext};
 use crate::storage::repositories::sync_items::PAYLOAD_STATE_FULL;
 use crate::sync::clock::VectorClock;
 use crate::sync::outbox::{self, Change, RecordOp};
@@ -141,17 +141,17 @@ impl ImportWriter {
     }
 }
 
-/// Writes the minted payload over the live record and its clock into the `clock` column. A
-/// payload the type's reader refuses, or no live record, fails the call: a create is never queued
-/// for a record the core push would retire.
+/// Writes the minted payload over the live record, its clock into the `clock` column, and
+/// projects it again, so the typed tables carry the clock too. A minted record is a local create:
+/// it projects at its enqueue time, as a never-synced import record projects at the import time.
+/// A payload the type's reader refuses, or no live record, fails the call: a create is never
+/// queued for a record the core push would retire.
 fn put_minted(tx: &Connection, item: &ImportQueued, payload: &str) -> Result<(), StorageError> {
     let refused = |what: String| StorageError::Failed {
-        what: format!(
-            "import record {}/{} {what}",
-            item.item_type, item.item_id
-        ),
+        what: format!("import record {}/{} {what}", item.item_type, item.item_id),
     };
-    let parsed = StoredPayload::parse(payload).map_err(|e| refused(format!("is unreadable: {e}")))?;
+    let parsed =
+        StoredPayload::parse(payload).map_err(|e| refused(format!("is unreadable: {e}")))?;
     let view = projectors::read(&item.item_type, parsed.object())
         .map_err(|e| refused(format!("is unreadable: {e}")))?;
     let Some(clock) = projectors::clock_text(&view) else {
@@ -164,11 +164,19 @@ fn put_minted(tx: &Connection, item: &ImportQueued, payload: &str) -> Result<(),
             params![item.item_type, item.item_id, payload, clock],
         )
         .map_err(failed)?;
-    if updated == 1 {
-        Ok(())
-    } else {
-        Err(refused("has no live record to mint a clock on".into()))
+    if updated != 1 {
+        return Err(refused("has no live record to mint a clock on".into()));
     }
+    projectors::project(
+        tx,
+        &item.item_type,
+        ItemContext {
+            item_id: &item.item_id,
+            synced_at: item.enqueued_at,
+            deleted_at: None,
+        },
+        &view,
+    )
 }
 
 /// The tombstone a core delete pushes from: the frozen delete body, its clock and `deleted_at`.

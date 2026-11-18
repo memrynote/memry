@@ -91,6 +91,14 @@ pub enum ImportError {
          it finish syncing, then quit it and try again."
     )]
     DeleteWithoutDevice,
+    /// A record that never had a clock, or a never-synced one, needs its first clock minted as
+    /// Electron's next sync would, and `memry-config.json` names no device to mint it under.
+    #[error(
+        "Changes in this vault have not synced yet, and MemryNote cannot send them without the \
+         previous app's sync device. Nothing was changed. Open the previous MemryNote app, sign \
+         in and let it finish syncing, then quit it and try again."
+    )]
+    ClockWithoutDevice,
     /// Queued note body pushes whose Yjs document the store copy does not hold. Staged
     /// without one, the push of an empty payload would have no state to send.
     #[error(

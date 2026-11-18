@@ -66,6 +66,16 @@ pub(super) fn run(
                 format!("{}/{} ({stage})", table.db.name(), table.table),
             ));
         }
+        if table.table == "sync_pending_deletes"
+            && *count > 0
+            && let Some((stage, item_type)) =
+                super::tables::replay::later_stage(sources.conn(SourceDb::Data))?
+        {
+            return Err(not_ready(
+                stage,
+                format!("data.db/sync_pending_deletes {item_type} rows ({stage})"),
+            ));
+        }
     }
     Ok(Preflight {
         tables,

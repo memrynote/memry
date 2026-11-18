@@ -46,11 +46,19 @@ pub enum DeleteRule {
 pub fn delete_rule(item_type: &str) -> Option<DeleteRule> {
     Some(match item_type {
         "note" | "journal" => DeleteRule::Captured,
-        "folder_config" | "property_definition" | "tag_definition" | "tag_category"
-        | "template" | "custom_icon" => DeleteRule::Snapshot,
+        "folder_config"
+        | "property_definition"
+        | "tag_definition"
+        | "tag_category"
+        | "template"
+        | "custom_icon" => DeleteRule::Snapshot,
         "settings" | "vault_lock" | "sticky_draft" | "agent_conversation" | "agent_message"
         | "canvas_folder" | "home_page" => DeleteRule::Later("36b"),
-        "inbox" | "bookmark" | "calendar_event" | "calendar_source" | "calendar_binding"
+        "inbox"
+        | "bookmark"
+        | "calendar_event"
+        | "calendar_source"
+        | "calendar_binding"
         | "calendar_external_event" => DeleteRule::Later("36d1"),
         "task" | "project" | "filter" | "reminder" | "task_activity" => DeleteRule::Later("36d2"),
         "canvas" => DeleteRule::Later("36f"),
@@ -392,9 +400,9 @@ fn plan_dirty(
     device_id: Option<&str>,
     now_ms: i64,
 ) -> Result<(), ImportError> {
-    let since = dirty
-        .modified
-        .map_or(String::new(), |modified| format!(" OR {modified} > synced_at"));
+    let since = dirty.modified.map_or(String::new(), |modified| {
+        format!(" OR {modified} > synced_at")
+    });
     let sql = format!(
         "SELECT rowid, {id} AS id, clock, synced_at IS NULL AS never FROM {table} \
          WHERE clock IS NOT NULL AND {rows} AND (synced_at IS NULL{since}) ORDER BY rowid",
@@ -408,7 +416,9 @@ fn plan_dirty(
         if writer.live_record_type(&id, &[kind.item_type])?.is_none() {
             return Ok(());
         }
-        let never: bool = row.get("never").map_err(|e| source_error(SourceDb::Data, e))?;
+        let never: bool = row
+            .get("never")
+            .map_err(|e| source_error(SourceDb::Data, e))?;
         plan.dirty += 1;
         if dirty.create_never_synced && never {
             let device_id = device_id.ok_or(ImportError::ClockWithoutDevice)?;
@@ -417,12 +427,14 @@ fn plan_dirty(
                 .transpose()?
                 .unwrap_or_default();
             // `recoverPendingChange` rebinds `_offline` ticks, then `applyLocalChange` ticks.
-            let minted = clock::increment(&clock::rebind_clock_device(&stored, device_id), device_id);
+            let minted =
+                clock::increment(&clock::rebind_clock_device(&stored, device_id), device_id);
             push_minted(plan, kind, id, minted, writer, now_ms)
         } else {
             // `enqueueRecoveredUpdate` at the stored clock; the core push rebinds `_offline`
             // under the same device (`seal.rs` `wire_clock`).
-            plan.queued.push(queued(kind.item_type, id, RecordOp::Upsert, None, now_ms));
+            plan.queued
+                .push(queued(kind.item_type, id, RecordOp::Upsert, None, now_ms));
             Ok(())
         }
     })
@@ -459,7 +471,14 @@ fn plan_seed(
             Mint::First => VectorClock::new(),
         };
         plan.seeded += 1;
-        push_minted(plan, kind, id, clock::increment(&base, device_id), writer, now_ms)
+        push_minted(
+            plan,
+            kind,
+            id,
+            clock::increment(&base, device_id),
+            writer,
+            now_ms,
+        )
     })
 }
 

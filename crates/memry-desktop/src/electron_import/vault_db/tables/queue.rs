@@ -330,7 +330,7 @@ fn dispose(
         }
         // A staged row of another type becomes the tombstone.
         (Folded::Delete { rowid, payload, at }, _) => {
-            let (payload, clock) = delete_body(&item.item_id, payload, *rowid, device_id)?;
+            let (payload, clock) = delete_body(&item.item_id, payload, QUEUE, *rowid, device_id)?;
             queued(
                 item.item_type.clone(),
                 RecordOp::Delete,
@@ -355,18 +355,19 @@ fn dispose(
 pub(super) fn delete_body(
     item_id: &str,
     payload: &str,
+    table: &'static str,
     rowid: i64,
     device_id: Option<&str>,
 ) -> Result<(String, VectorClock), ImportError> {
     if payload.len() > MAX_DELETE_PAYLOAD_BYTES {
-        return Err(malformed(QUEUE, rowid, "a delete payload is over 8 MiB"));
+        return Err(malformed(table, rowid, "a delete payload is over 8 MiB"));
     }
     let mut body = match serde_json::from_str::<Value>(payload) {
         Ok(Value::Object(body)) => body,
         _ => Map::from_iter([("id".to_owned(), Value::from(item_id))]),
     };
     if let Some(clock @ Value::Object(_)) = body.get("clock") {
-        let clock = vector_clock(clock.clone(), QUEUE, rowid)?;
+        let clock = vector_clock(clock.clone(), table, rowid)?;
         if usable(&clock) {
             return Ok((payload.to_owned(), clock));
         }
@@ -385,7 +386,11 @@ pub fn usable(clock: &VectorClock) -> bool {
         .any(|(device, ticks)| device != OFFLINE_CLOCK_DEVICE_ID || *ticks > 0)
 }
 
-pub(super) fn vector_clock(clock: Value, table: &'static str, rowid: i64) -> Result<VectorClock, ImportError> {
+pub(super) fn vector_clock(
+    clock: Value,
+    table: &'static str,
+    rowid: i64,
+) -> Result<VectorClock, ImportError> {
     serde_json::from_value(clock)
         .map_err(|_| malformed(table, rowid, "clock is not a vector clock"))
 }
