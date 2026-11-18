@@ -172,7 +172,8 @@ pub(crate) fn apply_remote_merged(
 }
 
 /// [`apply_remote_merged`] that also unions `lists` on the concurrent branch
-/// (§6.7.1). Only `task` has lists to union; `project` has none.
+/// and keeps a local list the remote omits on the wholesale one (§6.7.1).
+/// Only `task` has lists; `project` has none.
 pub(crate) fn apply_remote_merged_with_lists(
     conn: &Connection,
     record: &InboundRecord,
@@ -181,7 +182,10 @@ pub(crate) fn apply_remote_merged_with_lists(
     now_ms: i64,
 ) -> Result<Inbound, StorageError> {
     let (local, remote, merged_clock) = match document_gate(conn, record)? {
-        Gate::Wholesale => return wholesale(conn, record, now_ms),
+        Gate::Wholesale => {
+            let kept = keep_local_lists(conn, record, lists)?;
+            return wholesale(conn, kept.as_ref().unwrap_or(record), now_ms);
+        }
         Gate::Skip => return Ok(Inbound::Skipped),
         Gate::Merge {
             local,
@@ -211,7 +215,7 @@ pub(crate) fn apply_remote_merged_with_lists(
         })
         .collect();
     for list in lists {
-        if let Some(union) = union_list(list, local.object(), remote.object()) {
+        if let Some(union) = union_list(&record.item_id, list, local.object(), remote.object())? {
             changes.push((list, Change::set(union)));
         }
     }
@@ -236,25 +240,89 @@ pub(crate) fn apply_remote_merged_with_lists(
 /// is no removal set, so an entry one side removed comes back while the other
 /// side still holds it.
 ///
-/// `None` leaves the local list as it is: the remote does not carry the list
-/// as an array of strings (`if (data.tags)`, `:228`; `TaskSyncPayloadSchema`
-/// refuses any other shape), or the local one is not one.
-fn union_list(list: &str, local: &Object, remote: &Object) -> Option<Vec<String>> {
-    let remote = strings(remote.get(list)?)?;
+/// `None` leaves the local list as it is: the remote omits the list or carries
+/// `null` (`if (data.tags)`, `:228`), or the local one is not an array of
+/// strings. A remote list of any other shape is an `Err`, so the record is
+/// flagged corrupt as the wholesale path flags it; `TaskSyncPayloadSchema`
+/// refuses it on Electron.
+fn union_list(
+    item_id: &str,
+    list: &str,
+    local: &Object,
+    remote: &Object,
+) -> Result<Option<Vec<String>>, StorageError> {
+    let remote = match remote.get(list) {
+        None | Some(Value::Null) => return Ok(None),
+        Some(value) => strings(value).ok_or_else(|| StorageError::Failed {
+            what: format!(
+                "task {item_id}: remote `{list}` is not an array of strings (chapter 06 §6.7.1)"
+            ),
+        })?,
+    };
     let local = match local.get(list) {
         None | Some(Value::Null) => Vec::new(),
-        Some(value) => strings(value)?,
+        Some(value) => match strings(value) {
+            Some(local) => local,
+            None => return Ok(None),
+        },
     };
     let joined = local.into_iter().chain(remote);
     if list == "tags" {
-        return Some(tags::dedupe(
+        return Ok(Some(tags::dedupe(
             joined
                 .map(|tag| js_trim(&tag).to_owned())
                 .filter(|tag| !tag.is_empty()),
-        ));
+        )));
     }
     let mut seen = HashSet::new();
-    Some(joined.filter(|id| seen.insert(id.clone())).collect())
+    Ok(Some(joined.filter(|id| seen.insert(id.clone())).collect()))
+}
+
+/// §6.7.1's wholesale rule: the remote with each of `lists` it omits or nulls
+/// copied from the live local row. Electron writes a junction list only when
+/// the remote carries it (`task-handler.ts:319-321`), and Electron builds from
+/// before #1879 push no `linkedCanvasIds` (before 2026-03-19 no `tags` or
+/// `linkedNoteIds` either), so a verbatim store would drop the local list and
+/// the next local edit would push the shorter one.
+///
+/// `None` stores the remote as received: a tombstone, a remote the wholesale
+/// store flags, no list missing, or no live, uncorrupted local row.
+fn keep_local_lists(
+    conn: &Connection,
+    record: &InboundRecord,
+    lists: &[&str],
+) -> Result<Option<InboundRecord>, StorageError> {
+    if lists.is_empty() || record.deleted_at.is_some() {
+        return Ok(None);
+    }
+    let Ok(remote) = StoredPayload::parse(&record.payload_json) else {
+        return Ok(None);
+    };
+    let missing: Vec<&str> = lists
+        .iter()
+        .copied()
+        .filter(|list| remote.object().get(*list).is_none_or(Value::is_null))
+        .collect();
+    if missing.is_empty() {
+        return Ok(None);
+    }
+    let Some((local, true)) = live_payload(conn, record)? else {
+        return Ok(None);
+    };
+    let kept: Vec<(&str, Change)> = missing
+        .into_iter()
+        .filter_map(|list| {
+            let value = local.object().get(list).filter(|value| !value.is_null())?;
+            Some((list, Change::Set(value.clone())))
+        })
+        .collect();
+    if kept.is_empty() {
+        return Ok(None);
+    }
+    Ok(Some(InboundRecord {
+        payload_json: remote.merge(&kept),
+        ..record.clone()
+    }))
 }
 
 fn strings(value: &Value) -> Option<Vec<String>> {

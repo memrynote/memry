@@ -12,6 +12,8 @@
 //! | a removal on one side, an add on the other        | §6.7.1 resurrection  |
 //! | an Electron peer's row round-trips the union      | §6.7.1 order, fold   |
 //! | a remote without the key keeps the local list     | §6.7.1 absent key    |
+//! | a dominating remote without the key keeps it too  | §6.7.1 wholesale     |
+//! | a malformed remote list flags the record corrupt  | §6.7.1 shape         |
 //!
 //! The first three fail with the union removed from `task_merge.rs`: the
 //! merging device then keeps only its own list and its re-push, at the union
@@ -212,4 +214,80 @@ async fn a_remote_without_a_list_key_keeps_the_local_list() {
     assert_eq!(field(&stored, "title"), json!("From peer"));
     assert_eq!(field(&stored, "tags"), json!(["urgent"]));
     assert_eq!(field(&stored, "linkedCanvasIds"), json!(["c1"]));
+}
+
+/// REVIEW-5126 finding 1: an Electron build from before #1879 pushes no
+/// `linkedCanvasIds`. Its row dominates a's, so the apply is wholesale
+/// (`task-handler.ts:319-321`); a keeps its canvas link and takes the rest.
+/// A `null` list keeps the local one the same way.
+#[tokio::test]
+async fn a_dominating_remote_without_a_list_key_keeps_the_local_list() {
+    for canvases in [None, Some(Json::Null)] {
+        let (a, relay) = (Device::bare("a"), Relay::default());
+        create(&a, &["urgent"]);
+        relay.sync(&a).await;
+        set_list(&a, "linkedCanvasIds", &["c1"], NOW + 1);
+
+        let mut remote = json!({
+            "id": TASK, "title": "From peer", "projectId": "proj-1", "priority": 1,
+            "clock": {"a": 2, "peer": 1},
+            "fieldClocks": {"title": {"a": 1, "peer": 1}},
+            "tags": ["later"], "linkedNoteIds": ["n1"],
+        });
+        if let Some(canvases) = &canvases {
+            remote["linkedCanvasIds"] = canvases.clone();
+        }
+        relay.put("task", TASK, &remote.to_string());
+        relay.pull(&a).await;
+
+        let stored = a.stored("task", TASK);
+        assert_eq!(field(&stored, "title"), json!("From peer"), "{canvases:?}");
+        assert_eq!(field(&stored, "tags"), json!(["later"]), "{canvases:?}");
+        assert_eq!(
+            field(&stored, "linkedNoteIds"),
+            json!(["n1"]),
+            "{canvases:?}"
+        );
+        assert_eq!(
+            field(&stored, "linkedCanvasIds"),
+            json!(["c1"]),
+            "{canvases:?}"
+        );
+    }
+}
+
+/// REVIEW-5126 finding 2: a remote list that is not an array of strings is
+/// refused on the concurrent branch, as `TaskSyncPayloadSchema` refuses it and
+/// as the wholesale path's projector does. The record is flagged corrupt with
+/// the item id and list name, and the local row is left as it was.
+#[tokio::test]
+async fn a_malformed_remote_list_flags_the_record_corrupt() {
+    let (a, relay) = (Device::bare("a"), Relay::default());
+    create(&a, &["urgent"]);
+    relay.sync(&a).await;
+    retitle(&a, "From a", NOW + 1);
+
+    relay.put(
+        "task",
+        TASK,
+        &json!({
+            "id": TASK, "title": "From peer", "projectId": "proj-1", "priority": 1,
+            "clock": {"a": 1, "peer": 1},
+            "fieldClocks": {"title": {"a": 1, "peer": 1}},
+            "tags": ["ok", 7],
+        })
+        .to_string(),
+    );
+    relay.pull(&a).await;
+
+    assert_eq!(
+        a.count(
+            "SELECT COUNT(*) FROM sync_items WHERE item_type = 'task' AND item_id = 'task-1'
+             AND corrupt_reason LIKE '%task task-1: remote `tags` is not an array of strings%'"
+        ),
+        1
+    );
+    let stored = a.stored("task", TASK);
+    assert_eq!(field(&stored, "title"), json!("From a"));
+    assert_eq!(field(&stored, "tags"), json!(["urgent"]));
 }
