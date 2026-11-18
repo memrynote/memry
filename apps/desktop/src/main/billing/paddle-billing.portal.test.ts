@@ -58,15 +58,13 @@ describe('startBillingCheckout', () => {
 
   it('opens the checkout page with the token in the hash', async () => {
     await startBillingCheckout()
-    expect(mocks.openExternal).toHaveBeenCalledWith(
-      'https://memrynote.com/account/sync?utm_source=app&utm_medium=desktop&utm_campaign=checkout#token=ct_1'
-    )
+    expect(mocks.openExternal).toHaveBeenCalledWith('https://memrynote.com/account/sync#token=ct_1')
   })
 
   it('preselects the plan picked during onboarding', async () => {
     await startBillingCheckout({ plan: 'plus', cadence: 'monthly' })
     expect(mocks.openExternal).toHaveBeenCalledWith(
-      'https://memrynote.com/account/sync?plan=plus&cadence=monthly&utm_source=app&utm_medium=desktop&utm_campaign=checkout#token=ct_1'
+      'https://memrynote.com/account/sync?plan=plus&cadence=monthly#token=ct_1'
     )
   })
 })

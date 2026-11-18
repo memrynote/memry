@@ -10,8 +10,7 @@ import { dismissInstallFailed, useInstallFailedDismissed } from './install-faile
 
 const log = createLogger('Component:UpdateInstallFailedDialog')
 
-const DOWNLOAD_URL =
-  'https://memrynote.com/download/desktop?utm_source=app&utm_medium=desktop&utm_campaign=update_failed'
+const DOWNLOAD_URL = 'https://memrynote.com/download/desktop'
 
 /**
  * Only surfaces for an install that was attempted and never applied — the flag is
