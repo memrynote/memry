@@ -481,6 +481,8 @@ fn forward_events(app: AppHandle<Wry>, events: Receiver<SessionEvent>) {
                     // After the tray: registering a shortcut and the login item are slower, and
                     // the tray must follow the vault as soon as the status changes.
                     crate::shortcuts::apply_from_settings(&app);
+                    // The drafts and the tab's edge live in the vault.
+                    crate::windows::edge_tab::refresh(&app);
                     if is_open {
                         crate::autostart::on_vault_opened(&app);
                     }

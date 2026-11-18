@@ -148,7 +148,7 @@ tauri-plugin-notification = "2.7.0"
 # title bar and button sizes, and the e2e build the traffic lights' frames (`e2e/window.rs`).
 block2 = "0.6"
 objc2 = "0.6.5"
-objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "NSApplication", "NSResponder", "NSEvent", "NSWorkspace", "NSSpellChecker", "NSWindow", "NSView", "NSButton", "NSControl", "block2", "objc2-core-foundation"] }
+objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "NSApplication", "NSResponder", "NSEvent", "NSRunningApplication", "NSTrackingArea", "NSWorkspace", "NSSpellChecker", "NSWindow", "NSView", "NSButton", "NSControl", "block2", "objc2-core-foundation"] }
 objc2-service-management = { version = "0.3.2", default-features = false, features = ["std", "SMAppService", "objc2", "objc2-foundation"] }
 objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSNotification", "NSString", "NSRange", "NSArray", "NSURL", "NSURLRequest", "NSBundle", "NSError", "NSOperation", "block2", "NSAppleEventManager", "NSAppleEventDescriptor"] }
 # `shutdown/mac_quit.rs` answers a pending terminate on the main run loop.

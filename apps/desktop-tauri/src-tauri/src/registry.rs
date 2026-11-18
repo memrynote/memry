@@ -234,6 +234,8 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::stickies::sticky_resize,
             crate::commands::stickies::sticky_save_draft,
             crate::commands::stickies::sticky_tuck,
+            crate::commands::stickies::sticky_unfold,
+            crate::commands::stickies::sticky_peek,
             // fonts
             crate::fonts::system_fonts_list,
             // log
