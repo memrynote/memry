@@ -13,11 +13,10 @@ on:
         description: Draft release tag to build. Leave empty to use the newest draft.
         required: false
 
+# The build jobs run crates.io build scripts and third-party actions, so they get a read-only token
+# and no checkout keeps it. Their `gh release download` reads published releases only.
 permissions:
-  # Write rather than read even though no step here writes: GITHUB_TOKEN can only
-  # see a draft release with push access, and setup-release reads the draft to
-  # validate it.
-  contents: write
+  contents: read
 
 concurrency:
   group: publish-desktop-release
@@ -42,6 +41,10 @@ jobs:
     name: Validate draft and resolve version
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Write rather than read even though no step here writes: GITHUB_TOKEN can only see a draft
+    # release with push access, and this job reads the draft to validate it.
+    permissions:
+      contents: write
     outputs:
       app_version: ${{ steps.version.outputs.app_version }}
       commit_sha: ${{ github.sha }}
@@ -54,6 +57,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -154,7 +159,7 @@ jobs:
             echo '[]' > "$RUNNER_TEMP/previous-assets.json"
           fi
           gh release view "$DRAFT_TAG" --json body --jq .body > "$RUNNER_TEMP/draft-body.md"
-          node scripts/release/release-inputs.mjs write "$inputs" --tag "$TAG" \
+          node scripts/release/release-inputs.mjs write "$inputs" --tag "$TAG" --draft-tag "$DRAFT_TAG" \
             --body "$RUNNER_TEMP/draft-body.md" --previous-tag "$previous" \
             --previous-assets "$RUNNER_TEMP/previous-assets.json"
           ls -la "$inputs"
@@ -195,6 +200,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - uses: ./.github/actions/setup-pnpm
 
@@ -204,15 +211,10 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
           targets: ${{ matrix.triple }}
-
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: crates
-          key: release-${{ matrix.os }}
 
       - name: Install dependencies
         run: |
@@ -446,6 +448,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - uses: ./.github/actions/setup-pnpm
 
@@ -455,15 +459,10 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
           targets: ${{ matrix.triple }}
-
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: crates
-          key: release-${{ matrix.os }}
 
       - name: Install dependencies
         run: |
@@ -548,6 +547,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - uses: ./.github/actions/setup-pnpm
 
@@ -557,14 +558,9 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
-
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: crates
-          key: release-ubuntu-22.04
 
       - name: Install system libraries
         run: |
@@ -735,6 +731,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -746,6 +744,14 @@ jobs:
         with:
           pattern: memry-release-*-${{ env.APP_VERSION }}
           path: ${{ runner.temp }}/release-assets
+          merge-multiple: true
+
+      # Kept apart from the release assets: the payloads are not uploaded, `pnpm release` packs them.
+      - name: Download Windows payloads
+        uses: actions/download-artifact@v4
+        with:
+          pattern: memry-windows-payload-*-${{ env.APP_VERSION }}
+          path: ${{ runner.temp }}/windows-payloads
           merge-multiple: true
 
       # latest-mac.yml and latest-linux.yml hash the exact bytes that get uploaded. latest.yml
@@ -784,7 +790,15 @@ jobs:
           # which draft to finish, and a quote or newline in a release name must
           # not produce JSON the Mac side cannot parse.
           node <<'NODE'
-          const { writeFileSync } = require('node:fs')
+          const { createHash } = require('node:crypto')
+          const { readFileSync, writeFileSync } = require('node:fs')
+
+          // `pnpm release` checks each payload zip against this hash before `vpk pack`.
+          const windowsPayloads = ['win-x64', 'win-arm64'].map((target) => {
+            const name = `MemryNote-${process.env.APP_VERSION}-${target}-payload.zip`
+            const bytes = readFileSync(`${process.env.RUNNER_TEMP}/windows-payloads/${name}`)
+            return { target, name, sha256: createHash('sha256').update(bytes).digest('hex') }
+          })
 
           const metadata = {
             appVersion: process.env.APP_VERSION,
@@ -803,7 +817,7 @@ jobs:
 
           writeFileSync(
             `${process.env.RUNNER_TEMP}/release-metadata/release-metadata.json`,
-            `${JSON.stringify(metadata, null, 2)}\n`
+            `${JSON.stringify({ ...metadata, windowsPayloads }, null, 2)}\n`
           )
           NODE
 

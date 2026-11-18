@@ -16,7 +16,7 @@ A release runs in two places. GitHub Actions builds the Tauri app (`apps/desktop
    - macOS signs inside-out, packs, notarizes and staples with vpk, checks the designated requirement against the `v2026-10-15` Electron app, and builds a notarized dmg with `make-dmg.sh`.
    - Linux repacks the deb as Electron's `memrynote` package (`repack-deb.sh`), installs it in a clean `ubuntu:22.04` container, and runs `check-glibc.sh` on the AppDir and the deb.
 3. `build-windows` (`windows-2022` x64, `windows-11-arm` arm64) builds, stages and checks the pack directory, and uploads it as `memry-windows-payload-<target>-<version>` for the Mac to pack and sign.
-4. `stage-release` writes `latest-mac.yml` and `latest-linux.yml` from the staged bytes. It validates the mac feed and runs `required-assets.mjs --set ci`, which fails on any missing or unexpected file. It then uploads `memry-release-<version>` and `release-metadata-<version>`.
+4. `stage-release` writes `latest-mac.yml` and `latest-linux.yml` from the staged bytes. It validates the mac feed and runs `required-assets.mjs --set ci`, which fails on any missing or unexpected file. It then uploads `memry-release-<version>` and `release-metadata-<version>`. `release-metadata.json` records the sha256 of each Windows payload zip under `windowsPayloads` (`target`, `name`, `sha256`), and the step fails when either zip is missing.
 
 Every bundle build removes `export-bindings`. Tauri bundles every `[[bin]]` of the crate, and that one is a development tool.
 
