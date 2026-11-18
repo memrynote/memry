@@ -4,6 +4,7 @@
 
 use md5::Md5;
 use sha2::{Digest, Sha256};
+use zeroize::Zeroizing;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Algorithm {
@@ -37,10 +38,81 @@ pub struct Challenge {
     pub algorithm: Algorithm,
 }
 
-/// `parseDigestChallenge`: the `Digest` part of a `WWW-Authenticate` value, or `None` when it
-/// offers no usable Digest (no realm, an empty nonce, an algorithm other than MD5 and SHA-256).
+/// `parseDigestChallenge`: the best `Digest` challenge of a `WWW-Authenticate` value (SHA-256
+/// over MD5, RFC 7616 §3.7), or `None` when none is usable (no realm, an empty nonce, an
+/// algorithm other than MD5 and SHA-256). Electron read every parameter after the first `Digest`,
+/// so a later challenge's `realm` or `algorithm` overrode it; here each challenge is read alone.
 pub fn parse_challenge(header: &str) -> Option<Challenge> {
-    let params = parameters(digest_tail(header)?);
+    let offered = challenges(header)
+        .into_iter()
+        .filter(|(scheme, _)| scheme.eq_ignore_ascii_case("digest"))
+        .filter_map(|(_, params)| digest(params))
+        .collect::<Vec<_>>();
+    offered
+        .iter()
+        .find(|c| c.algorithm == Algorithm::Sha256)
+        .or(offered.first())
+        .cloned()
+}
+
+/// RFC 9110 §11.6.1: each challenge's auth-scheme and the text of its parameters. A scheme is a
+/// token at the start of a list item that no `=` follows.
+fn challenges(header: &str) -> Vec<(&str, &str)> {
+    let bytes = header.as_bytes();
+    let mut schemes: Vec<(usize, usize)> = Vec::new();
+    let (mut i, mut at_item, mut quoted) = (0, true, false);
+    while i < bytes.len() {
+        let b = bytes[i];
+        if quoted {
+            match b {
+                b'\\' => i += 1,
+                b'"' => quoted = false,
+                _ => {}
+            }
+            i += 1;
+            continue;
+        }
+        match b {
+            b'"' => {
+                quoted = true;
+                at_item = false;
+                i += 1;
+            }
+            b',' => {
+                at_item = true;
+                i += 1;
+            }
+            _ if b.is_ascii_whitespace() || !at_item => i += 1,
+            _ => {
+                let start = i;
+                while i < bytes.len()
+                    && !matches!(bytes[i], b',' | b'=' | b'"')
+                    && !bytes[i].is_ascii_whitespace()
+                {
+                    i += 1;
+                }
+                let next = bytes[i..].iter().find(|b| !b.is_ascii_whitespace());
+                if i > start && next != Some(&b'=') {
+                    schemes.push((start, i));
+                }
+                at_item = false;
+                i = i.max(start + 1);
+            }
+        }
+    }
+    schemes
+        .iter()
+        .enumerate()
+        .map(|(n, &(start, end))| {
+            let stop = schemes.get(n + 1).map_or(header.len(), |&(next, _)| next);
+            (&header[start..end], &header[end..stop])
+        })
+        .collect()
+}
+
+/// One `Digest` challenge's parameters.
+fn digest(text: &str) -> Option<Challenge> {
+    let params = parameters(text);
     let get = |name: &str| {
         params
             .iter()
@@ -69,22 +141,6 @@ pub fn parse_challenge(header: &str) -> Option<Challenge> {
         opaque: get("opaque").map(str::to_owned),
         algorithm,
     })
-}
-
-/// `/Digest\s+(.*)$/i`: what follows the first `Digest` that whitespace follows.
-fn digest_tail(header: &str) -> Option<&str> {
-    let lower = header.to_ascii_lowercase();
-    let mut from = 0;
-    while let Some(at) = lower[from..].find("digest") {
-        let start = from + at + "digest".len();
-        let rest = &header[start..];
-        let trimmed = rest.trim_start();
-        if trimmed.len() < rest.len() {
-            return Some(trimmed);
-        }
-        from = start;
-    }
-    None
 }
 
 fn is_name_byte(b: u8) -> bool {
@@ -167,10 +223,10 @@ pub struct Answer<'a> {
 pub fn authorization(challenge: &Challenge, answer: &Answer<'_>) -> String {
     let algorithm = challenge.algorithm;
     let nc = format!("{:08x}", answer.nonce_count);
-    let ha1 = algorithm.hash(&format!(
+    let ha1 = algorithm.hash(&Zeroizing::new(format!(
         "{}:{}:{}",
         answer.username, challenge.realm, answer.password
-    ));
+    )));
     let ha2 = algorithm.hash(&format!("{}:{}", answer.method, answer.uri));
     let response = if challenge.qop_auth {
         algorithm.hash(&format!(
@@ -215,6 +271,41 @@ mod tests {
         assert!(challenge.qop_auth);
         assert_eq!(challenge.opaque.as_deref(), Some("o"));
         assert_eq!(challenge.algorithm, Algorithm::Sha256);
+    }
+
+    #[test]
+    fn prefers_sha_256_over_md5_whatever_the_order() {
+        for header in [
+            "Digest realm=\"a\", nonce=\"n1\", algorithm=SHA-256, Digest realm=\"b\", nonce=\"n2\", algorithm=MD5",
+            "Digest realm=\"b\", nonce=\"n2\", algorithm=MD5, Digest realm=\"a\", nonce=\"n1\", algorithm=SHA-256",
+        ] {
+            let challenge = parse_challenge(header).unwrap();
+            assert_eq!(
+                (
+                    challenge.algorithm,
+                    challenge.realm.as_str(),
+                    challenge.nonce.as_str()
+                ),
+                (Algorithm::Sha256, "a", "n1"),
+                "{header}"
+            );
+        }
+    }
+
+    #[test]
+    fn another_scheme_after_digest_keeps_its_own_parameters() {
+        let challenge = parse_challenge(
+            "Digest realm=\"dav\", nonce=\"n, 1\", qop=\"auth\", Bearer realm=\"other\"",
+        )
+        .unwrap();
+        assert_eq!(
+            (challenge.realm.as_str(), challenge.nonce.as_str()),
+            ("dav", "n, 1")
+        );
+        assert!(challenge.qop_auth);
+        let after_basic =
+            parse_challenge("Negotiate, Basic realm=\"x\", Digest realm=\"r\", nonce=\"n\"");
+        assert_eq!(after_basic.map(|c| c.realm), Some("r".to_owned()));
     }
 
     #[test]

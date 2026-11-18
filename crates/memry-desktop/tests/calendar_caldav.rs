@@ -144,6 +144,7 @@ async fn icloud_discovery_follows_the_partition_host_with_credentials_and_skips_
 async fn a_redirect_off_the_account_never_carries_the_password() {
     let harness = serve(|seen| match (seen.host.as_str(), seen.target.as_str()) {
         (_, "/.well-known/caldav") => Reply::status(404),
+        ("dav.example", "/leak/") => Reply::redirect(307, "https://x:y@evil.example/collect/"),
         ("dav.example", _) => Reply::redirect(307, "https://evil.example/collect/"),
         ("myname.synology.me", _) => Reply::redirect(301, "https://other.synology.me/collect/"),
         _ => Reply::status(401),
@@ -152,6 +153,7 @@ async fn a_redirect_off_the_account_never_carries_the_password() {
     let accounts = accounts(&harness, TIMEOUT, Arc::default());
     for server in [
         "https://dav.example/dav/",
+        "https://dav.example/leak/",
         "https://myname.synology.me/dav/",
     ] {
         assert_eq!(code(&accounts, server).await, ConnectCode::Unauthorized);
@@ -171,6 +173,24 @@ async fn a_redirect_off_the_account_never_carries_the_password() {
             .filter(|s| matches!(s.host.as_str(), "dav.example" | "myname.synology.me"))
             .all(|s| s.authorization.is_some())
     );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_server_url_with_credentials_in_it_is_refused_before_any_request() {
+    let harness = serve(|_| Reply::status(404)).await;
+    let accounts = accounts(&harness, TIMEOUT, Arc::default());
+    for server in [
+        "https://u:p@dav.example/dav/",
+        "https://u@dav.example/dav/",
+        "u:p@dav.example/dav/",
+    ] {
+        assert_eq!(
+            code(&accounts, server).await,
+            ConnectCode::InvalidUrl,
+            "{server}"
+        );
+    }
+    assert!(harness.seen().is_empty());
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

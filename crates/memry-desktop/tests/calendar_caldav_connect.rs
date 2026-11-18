@@ -391,6 +391,49 @@ async fn a_vault_closed_during_discovery_takes_no_write() {
     assert!(caldav_sources(&reopened).is_empty());
 }
 
+/// The first file named `name` under `dir`.
+fn find(dir: &Path, name: &str) -> Option<PathBuf> {
+    std::fs::read_dir(dir).ok()?.flatten().find_map(|entry| {
+        let path = entry.path();
+        if path.is_dir() {
+            find(&path, name)
+        } else {
+            (entry.file_name() == name).then_some(path)
+        }
+    })
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_refused_row_write_leaves_the_keychain_as_it_was() {
+    let rig = Rig::new().await;
+    let open = rig.open().await;
+    let db = rusqlite::Connection::open(find(rig._dir.path(), "data.db").unwrap()).unwrap();
+    db.execute_batch(
+        "CREATE TRIGGER refuse BEFORE INSERT ON calendar_sources \
+         BEGIN SELECT RAISE(ABORT, 'read-only'); END;",
+    )
+    .unwrap();
+    let devices = Devices::signed_out();
+    let failed = rig.connect(&open, &form(SERVER), &devices).await;
+    assert!(matches!(failed, Err(CaldavError::Storage(_))), "{failed:?}");
+    assert_eq!(rig.secrets.len(), 0, "a first connect leaves no password");
+
+    let id = account_id(SERVER, USER);
+    rig.secrets.0.lock().unwrap().insert(
+        (SERVICE.to_owned(), format!("password-{id}")),
+        b"earlier".to_vec(),
+    );
+    let failed = rig.connect(&open, &form(SERVER), &devices).await;
+    assert!(matches!(failed, Err(CaldavError::Storage(_))), "{failed:?}");
+    assert_eq!(
+        rig.password(&id).as_deref(),
+        Some(&b"earlier"[..]),
+        "a reconnect keeps the password it replaced"
+    );
+    assert_eq!(rig.secrets.len(), 1);
+    assert!(caldav_sources(&open).is_empty());
+}
+
 #[test]
 fn the_form_is_held_to_the_schema_bounds() {
     let refuse = |change: fn(&mut BasicConnection)| {

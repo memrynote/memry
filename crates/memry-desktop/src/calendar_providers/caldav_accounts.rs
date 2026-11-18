@@ -182,6 +182,11 @@ impl CaldavAccounts {
             .ok_or(CaldavError::Connect(ConnectCode::InvalidUrl))?;
         let server =
             Url::parse(&server_url).map_err(|_| CaldavError::Connect(ConnectCode::InvalidUrl))?;
+        // Electron's fetch refuses a URL with credentials in it. Here reqwest would send them as
+        // a second Authorization header, and they would land in the synced `serverUrl`.
+        if !server.username().is_empty() || server.password().is_some() {
+            return Err(CaldavError::Connect(ConnectCode::InvalidUrl));
+        }
         let host = server.host_str().unwrap_or_default().to_owned();
         let transport = self.http.transport(
             &server,
@@ -229,6 +234,12 @@ impl CaldavAccounts {
         let calendar = self.calendar(open).await?;
         let username = connection.username.trim().to_owned();
         let id = account_id(&server_url, &username);
+        let (credentials, key) = (self.credentials.clone(), id.clone());
+        let previous =
+            blocking(move || credentials.get(CALDAV, &key, SecretKind::Password)).await??;
+        if !still_open(session, open) {
+            return Err(CaldavError::Closed);
+        }
         let (credentials, key, password) = (
             self.credentials.clone(),
             id.clone(),
@@ -236,6 +247,10 @@ impl CaldavAccounts {
         );
         blocking(move || credentials.set(CALDAV, &key, SecretKind::Password, Some(&password)))
             .await??;
+        if !still_open(session, open) {
+            self.restore_password(&id, previous).await;
+            return Err(CaldavError::Closed);
+        }
         let count = info.calendars.len();
         let input = CalendarCaldavConnect {
             server_url,
@@ -256,13 +271,42 @@ impl CaldavAccounts {
                 .collect(),
             selected: connection.selected_calendar_ids.clone(),
         };
-        let connected = blocking(move || calendar.caldav_connect(input)).await??;
+        let written = blocking(move || calendar.caldav_connect(input))
+            .await
+            .and_then(|r| r.map_err(CaldavError::from));
+        let connected = match written {
+            Ok(connected) => connected,
+            Err(error) => {
+                self.restore_password(&id, previous).await;
+                return Err(error);
+            }
+        };
         tracing::info!(
             scope = SCOPE,
             calendars = count,
             "connected a CalDAV account"
         );
         Ok(connected)
+    }
+
+    /// Puts back the password a failed connect replaced, or forgets the one it added.
+    async fn restore_password(&self, account: &str, previous: Option<Zeroizing<String>>) {
+        let (credentials, key) = (self.credentials.clone(), account.to_owned());
+        let restored = blocking(move || {
+            credentials.set(
+                CALDAV,
+                &key,
+                SecretKind::Password,
+                previous.as_deref().map(String::as_str),
+            )
+        })
+        .await;
+        if let Err(error) = restored.and_then(|r| r.map_err(CaldavError::from)) {
+            tracing::warn!(
+                scope = SCOPE,
+                "could not restore a CalDAV password: {error}"
+            );
+        }
     }
 
     /// `disconnectCaldavAccount`: one account, or every live one. This device forgets each

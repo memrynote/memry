@@ -48,14 +48,14 @@ fn within_domain(host: &str, domain: &str) -> bool {
             .is_some_and(|rest| rest.ends_with('.'))
 }
 
-/// `createCredentialScope`: the hosts that may receive the account's credentials. The exact host
-/// the user connected to, plus, for a known multi-host provider, the rest of that provider's own
-/// domain; never a parent domain in general (`myname.synology.me` must not reach
-/// `other.synology.me`). Credentials never travel from HTTPS to plain HTTP, and plain HTTP gets
-/// them only for the exact origin the user typed (a LAN server).
+/// `createCredentialScope`: the origins that may receive the account's credentials. The exact
+/// origin the user connected to (scheme, host and port), plus, for a known multi-host provider,
+/// the rest of that provider's own domain over HTTPS on 443; never a parent domain in general
+/// (`myname.synology.me` must not reach `other.synology.me`). Electron matched the host alone for
+/// HTTPS, so another port or an upgrade from plain HTTP kept the credentials; here they do not.
 #[derive(Debug, Clone)]
 pub struct CredentialScope {
-    https: bool,
+    scheme: String,
     host: String,
     port: Option<u16>,
     provider_domain: Option<&'static str>,
@@ -71,7 +71,7 @@ impl CredentialScope {
             _ => None,
         };
         Self {
-            https: server.scheme() == "https",
+            scheme: server.scheme().to_owned(),
             host,
             port: server.port_or_known_default(),
             provider_domain,
@@ -80,18 +80,17 @@ impl CredentialScope {
 
     pub fn allows(&self, target: &Url) -> bool {
         let host = target.host_str().unwrap_or_default().to_ascii_lowercase();
-        match target.scheme() {
-            "http" => {
-                !self.https && host == self.host && target.port_or_known_default() == self.port
-            }
-            "https" => {
-                host == self.host
-                    || self
-                        .provider_domain
-                        .is_some_and(|domain| within_domain(&host, domain))
-            }
-            _ => false,
-        }
+        let port = target.port_or_known_default();
+        let same_origin = matches!(target.scheme(), "http" | "https")
+            && target.scheme() == self.scheme
+            && host == self.host
+            && port == self.port;
+        let provider_host = target.scheme() == "https"
+            && port == Some(443)
+            && self
+                .provider_domain
+                .is_some_and(|domain| within_domain(&host, domain));
+        same_origin || provider_host
     }
 }
 
@@ -216,7 +215,7 @@ impl Transport {
         }
         let mut digest = self.digest.lock().unwrap_or_else(|e| e.into_inner());
         let Some((challenge, count)) = digest.as_mut() else {
-            let pair = format!("{}:{}", self.username, self.password.as_str());
+            let pair = Zeroizing::new(format!("{}:{}", self.username, self.password.as_str()));
             let encoded = Zeroizing::new(base64::engine::general_purpose::STANDARD.encode(pair));
             return Some(format!("Basic {}", encoded.as_str()));
         };
@@ -330,12 +329,15 @@ impl Transport {
             && !last
             && let Some(location) = &location
         {
-            let next = url
+            let mut next = url
                 .join(location)
                 .map_err(|_| TransportError::BadRedirect)?;
             if !matches!(next.scheme(), "http" | "https") {
                 return Err(TransportError::BadRedirect);
             }
+            // reqwest would send a target's userinfo as its own Basic header.
+            let _ = next.set_username("");
+            let _ = next.set_password(None);
             return Ok(Hop::Redirect(next, status));
         }
         let content_type = header(&response, CONTENT_TYPE);
@@ -405,7 +407,12 @@ mod tests {
             &icloud,
             "https://p67-caldav.icloud.com/123/calendars/"
         ));
-        assert!(allows(&icloud, "https://CALDAV.icloud.com:8443/x"));
+        assert!(allows(&icloud, "https://CALDAV.icloud.com/x"));
+        assert!(!allows(&icloud, "https://CALDAV.icloud.com:8443/x"));
+        assert!(
+            !allows(&icloud, "https://p67-caldav.icloud.com:8443/"),
+            "a provider's other hosts on 443 only"
+        );
         assert!(!allows(&icloud, "https://icloud.com.evil.example/"));
         assert!(!allows(&icloud, "https://evilicloud.com/"));
         assert!(
@@ -429,12 +436,22 @@ mod tests {
         assert!(!allows(&lan, "http://192.168.1.5:5233/"));
         assert!(!allows(&lan, "http://192.168.1.6:5232/"));
         assert!(
-            allows(&lan, "https://192.168.1.5/"),
-            "an upgrade to https keeps them"
+            !allows(&lan, "https://192.168.1.5/"),
+            "another scheme is another origin"
         );
         let tls = scope("https://dav.example.com/");
         assert!(!allows(&tls, "http://dav.example.com/"));
         assert!(!allows(&tls, "ftp://dav.example.com/"));
+    }
+
+    #[test]
+    fn another_port_on_the_same_host_gets_no_credentials() {
+        let tls = scope("https://dav.example.com/");
+        assert!(allows(&tls, "https://dav.example.com:443/a/"));
+        assert!(!allows(&tls, "https://dav.example.com:8443/"));
+        let custom = scope("https://dav.example.com:8443/dav/");
+        assert!(allows(&custom, "https://dav.example.com:8443/other/"));
+        assert!(!allows(&custom, "https://dav.example.com/"));
     }
 
     #[test]
