@@ -892,6 +892,42 @@ describe('ci tier and the workflow path gates agree', () => {
     }
   })
 
+  // The TS side of the Tauri app is Desktop Tauri CI's: no Rust job reads it (#5035).
+  it('leaves the renderer side of the Tauri app to Desktop Tauri CI', () => {
+    const pattern = (k) => text[k].match(/include: '([^']+)'/)[1]
+    const changed = (files, k) =>
+      spawnSync('bash', [changedScript], {
+        input: files.join('\n'),
+        env: { PATH: process.env.PATH, INCLUDE: pattern(k), EXCLUDE: '^$' },
+        encoding: 'utf8'
+      }).stdout.trim()
+    const rustSide = [
+      'apps/desktop-tauri/src-tauri/src/main.rs',
+      'apps/desktop-tauri/src-tauri/tauri.conf.json',
+      'apps/desktop-tauri/src-tauri/Cargo.toml',
+      'apps/desktop-tauri/scripts/generate-menu-table.mjs'
+    ]
+    const tsSide = [
+      'apps/desktop-tauri/src/app.tsx',
+      'apps/desktop-tauri/src/generated/bindings.ts',
+      'apps/desktop-tauri/e2e/specs/smoke.e2e.ts',
+      'apps/desktop-tauri/tests/setup.ts',
+      'apps/desktop-tauri/package.json',
+      'apps/desktop-tauri/vite.config.ts'
+    ]
+    for (const file of rustSide) {
+      assert.equal(changed([file], 'rust'), 'true', file)
+      assert.equal(changed([file], 'tauri'), 'true', file)
+    }
+    for (const file of tsSide) {
+      assert.equal(changed([file], 'rust'), 'false', file)
+      assert.equal(changed([file], 'tauri'), 'true', file)
+    }
+    assert.ok(text.rust.includes("- 'apps/desktop-tauri/src-tauri/**'"))
+    assert.ok(text.rust.includes("- 'apps/desktop-tauri/scripts/**'"))
+    assert.ok(!text.rust.includes("- 'apps/desktop-tauri/**'"))
+  })
+
   it('starts the workflow for every file that adds one of its OS legs', () => {
     for (const file of [
       'apps/desktop-tauri/src-tauri/build.rs',

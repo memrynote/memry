@@ -16,6 +16,7 @@ pub mod instance;
 pub mod menu;
 pub mod ml_worker;
 pub mod notifications;
+pub mod post_reveal;
 pub mod power;
 pub mod protocols;
 pub mod registry;

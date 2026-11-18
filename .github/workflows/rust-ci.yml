@@ -17,7 +17,9 @@ on:
       - feat/tauri-v2
     paths:
       - 'crates/**'
-      - 'apps/desktop-tauri/**'
+      # The Rust side of the Tauri app; its TS side is Desktop Tauri CI's (#5035).
+      - 'apps/desktop-tauri/src-tauri/**'
+      - 'apps/desktop-tauri/scripts/**'
       - 'tests/sync-harness/scripts/serve.ts'
       - 'tests/sync-harness/src/**'
       - 'apps/sync-server/**'
@@ -132,13 +134,15 @@ jobs:
           echo "Legs: $legs"
 
       # Replaces the `pull_request.paths` filter: a filtered workflow never runs, so its required gate
-      # would never report. Pushes keep their own `paths`; every other event outputs true.
+      # would never report. Pushes keep their own `paths`; every other event outputs true. Of
+      # apps/desktop-tauri only src-tauri/ (and the scripts/ that generate into it) reach a Rust job: the
+      # renderer and its tests belong to Desktop Tauri CI, which also checks the generated bindings (#5035).
       - name: Detect changed paths
         id: paths
         uses: ./.github/actions/paths-changed
         with:
           token: ${{ github.token }}
-          include: '^(crates/|apps/desktop-tauri/|tests/sync-harness/scripts/serve\.ts$|tests/sync-harness/src/|apps/sync-server/|pnpm-lock\.yaml$|packages/swift/|packages/contracts/test-vectors/|packages/article-extract/|scripts/check-line-ceilings\.mjs$|scripts/check-test-timing(\.test)?\.mjs$|scripts/fetch-pdfium\.mjs$|scripts/fetch-tesseract-sources\.mjs$|\.github/workflows/rust-ci\.yml$|\.github/actions/(apt-install|ci-tier|free-disk|ort-static|paths-changed|setup-pnpm|tesseract-sources)/)'
+          include: '^(crates/|apps/desktop-tauri/(src-tauri|scripts)/|tests/sync-harness/scripts/serve\.ts$|tests/sync-harness/src/|apps/sync-server/|pnpm-lock\.yaml$|packages/swift/|packages/contracts/test-vectors/|packages/article-extract/|scripts/check-line-ceilings\.mjs$|scripts/check-test-timing(\.test)?\.mjs$|scripts/fetch-pdfium\.mjs$|scripts/fetch-tesseract-sources\.mjs$|\.github/workflows/rust-ci\.yml$|\.github/actions/(apt-install|ci-tier|free-disk|ort-static|paths-changed|setup-pnpm|tesseract-sources)/)'
 
   lint-and-test:
     name: Rust ${{ matrix.part }}${{ matrix.partition && format(' {0}', matrix.partition) || '' }} (${{ matrix.os }})
