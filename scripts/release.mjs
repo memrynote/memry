@@ -17,6 +17,7 @@ import { stdin as input, stdout as output } from 'node:process'
 import { fileURLToPath } from 'node:url'
 
 import {
+  assertDraftReadyForDispatch,
   buildHumanizeReleaseArgs,
   buildDateReleaseVersion,
   extractWorkflowRunId,
@@ -26,7 +27,6 @@ import {
   selectDispatchedWorkflowRun,
   selectDraftRelease
 } from './release-utils.mjs'
-import { assertHumanizedReleaseNotesForPublish } from './release-notes-utils.mjs'
 import { assertPublishable, RETIRED_SETUP_NAME } from './release/vpk-args.mjs'
 import { renameToPublished } from './release/vpk-pack.mjs'
 import {
@@ -239,10 +239,10 @@ async function prepareDraft({ draftTag, options, releases }) {
     }
   }
 
-  // Dry runs too: the workflow packs the draft's humanized notes and fails without them.
-  assertHumanizedReleaseNotesForPublish({
+  assertDraftReadyForDispatch({
     body: draftDetails.body ?? '',
     draftTag: draftDetails.tagName,
+    dryRun: options.dryRun,
     expectedTag: preview.tag
   })
 
@@ -1080,7 +1080,7 @@ Options:
   --dry-run      Build in GitHub Actions and download the artifacts. No signing,
                  no upload, no publish. The draft must already be humanized
                  (pnpm release:humanize -- --tag <draft>): the workflow packs its notes.
-  --humanize     Humanize draft release notes before dispatching publish.
+  --humanize     Humanize draft release notes before dispatching publish. Not with --dry-run.
   --no-watch     Dispatch the workflow and stop. Re-run to finish the release.
   --restart      Discard saved progress for this draft and start over.
   --smoke        Dispatch the Velopack Windows smoke test after publishing.

@@ -6,7 +6,7 @@ A release runs in two places. GitHub Actions builds the Tauri app (`apps/desktop
 
 `publish-release.yml` builds the draft release's commit and uploads workflow artifacts only. It never writes to the release.
 
-1. `setup-release` checks that the draft has no assets and targets `main`, resolves the version, and checks that `SYNC_SERVER_URL` is an https URL of the production host. It uploads `release-inputs-<version>`, which holds three files:
+1. `setup-release` checks that the draft has no assets and targets `main`, resolves the version, and checks that `SYNC_SERVER_URL` is the production sync origin `https://sync.memrynote.com` with no port, path, credentials, query or fragment. It uploads `release-inputs-<version>`, which holds three files:
    - `version.conf.json`: the version overlay that every `tauri build --config` reads.
    - `release-notes.md`: the humanized notes of the draft, which `vpk --releaseNotes` puts in the feed. The draft must carry the humanized marker for the resolved tag. Run `pnpm release:humanize` first.
    - `delta.json`: the `--delta` of each pack target. A target gets a delta only when the previous published release holds a Tauri package of its channel (`shouldPackDelta`), so the first Tauri release packs `None` everywhere.

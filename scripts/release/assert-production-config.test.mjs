@@ -38,6 +38,10 @@ function withPayload(files, fn) {
 describe('assertProductionSyncServerUrl', () => {
   it('accepts the production https URL', () => {
     assert.equal(assertProductionSyncServerUrl(` ${SYNC} `), SYNC)
+    // The app strips the trailing slash; the URL parser lowercases the host.
+    for (const value of [`${SYNC}/`, 'https://SYNC.memrynote.com']) {
+      assert.equal(assertProductionSyncServerUrl(value), value)
+    }
   })
 
   it('rejects a missing, invalid, plain-http, local or staging URL', () => {
@@ -52,7 +56,12 @@ describe('assertProductionSyncServerUrl', () => {
       ['https://sync-staging.memrynote.com', /production sync host/],
       ['https://sync.example.com', /production sync host/],
       ['https://sync.memrynote.com.example.com', /production sync host/],
-      ['https://memrynote.com', /production sync host/]
+      ['https://memrynote.com', /production sync host/],
+      ['https://sync.memrynote.com:8443', /production sync host/],
+      ['https://sync.memrynote.com/api', /production sync host/],
+      ['https://user:pw@sync.memrynote.com', /production sync host/],
+      ['https://sync.memrynote.com/?x=1', /production sync host/],
+      ['https://sync.memrynote.com/#x', /production sync host/]
     ]
     for (const [value, error] of cases) {
       assert.throws(() => assertProductionSyncServerUrl(value), error, String(value))

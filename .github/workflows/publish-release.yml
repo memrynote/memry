@@ -123,13 +123,14 @@ jobs:
       - name: Resolve publish-day version
         id: version
         env:
+          DRAFT_TAG: ${{ steps.draft.outputs.draft_tag }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           gh release list --limit 100 --json tagName,isDraft,createdAt > "$RUNNER_TEMP/releases.json"
           node scripts/resolve-release-version.mjs \
             --releases-file "$RUNNER_TEMP/releases.json" \
-            --ignore-tag "${{ steps.draft.outputs.draft_tag }}"
+            --ignore-tag "$DRAFT_TAG"
 
       # Fails before any build: the sync URL must be the production https host. `build_env.rs`
       # refuses a production build without the required values at compile time.
