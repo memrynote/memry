@@ -80,6 +80,19 @@ export function useVoiceCapture(options: UseVoiceCaptureOptions): VoiceCapture {
   const sessionRef = useRef<CaptureSession | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const timerRef = useRef<number | null>(null)
+  /**
+   * Bumped by every start, stop, cancel and unmount. A start that finds it
+   * changed after an `await` was abandoned (the user left or cancelled while
+   * the permission prompt or the graph build was pending) and must not go live.
+   */
+  const attemptRef = useRef(0)
+
+  const clearTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current)
+      timerRef.current = null
+    }
+  }, [])
 
   /**
    * Hand the microphone back to the OS. `getUserMedia` turns the mic on before
@@ -96,15 +109,14 @@ export function useVoiceCapture(options: UseVoiceCaptureOptions): VoiceCapture {
 
   const stopRecording = useCallback(
     (cancelled: boolean) => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current)
-        timerRef.current = null
-      }
-
+      attemptRef.current += 1
+      clearTimer()
       releaseStream()
 
       const session = sessionRef.current
-      if (cancelled) {
+      // With no live session the stop landed during the prompt or the graph
+      // build: the bumped attempt abandons that start, so it is a cancel.
+      if (cancelled || !session) {
         // Dropping the session first means a stop already in flight resolves
         // into nothing: a cancelled memo must never reach the vault or the
         // transcriber.
@@ -115,7 +127,7 @@ export function useVoiceCapture(options: UseVoiceCaptureOptions): VoiceCapture {
         return
       }
 
-      if (!session || session.stopping) return
+      if (session.stopping) return
       session.stopping = true
 
       void session.capture.stop().then(
@@ -139,10 +151,19 @@ export function useVoiceCapture(options: UseVoiceCaptureOptions): VoiceCapture {
         }
       )
     },
-    [releaseStream]
+    [clearTimer, releaseStream]
   )
 
   const start = useCallback(async () => {
+    const attempt = ++attemptRef.current
+    const abandoned = (): boolean => attempt !== attemptRef.current
+
+    // A start while recording replaces that recording. Its timer, stream and
+    // capture go first: nothing else holds them, so they could never be stopped.
+    clearTimer()
+    releaseStream()
+    sessionRef.current?.capture.cancel()
+    sessionRef.current = null
     setState('requesting-permission')
 
     try {
@@ -154,11 +175,10 @@ export function useVoiceCapture(options: UseVoiceCaptureOptions): VoiceCapture {
         }
       })
 
-      // Overwriting the ref while an earlier stream is still live would strand
-      // it: nothing else holds a reference, so it could never be stopped.
-      releaseStream()
-      sessionRef.current?.capture.cancel()
-      sessionRef.current = null
+      if (abandoned()) {
+        mediaStream.getTracks().forEach((track) => track.stop())
+        return
+      }
 
       streamRef.current = mediaStream
 
@@ -170,9 +190,9 @@ export function useVoiceCapture(options: UseVoiceCaptureOptions): VoiceCapture {
         stopRecording(true)
       })
 
-      // A cancel or unmount while the graph was being built already released
-      // this stream; the capture it no longer owns goes with it.
-      if (streamRef.current !== mediaStream) {
+      // The stop, cancel or new start that abandoned this attempt already
+      // released its stream; the capture goes with it.
+      if (abandoned()) {
         capture.cancel()
         return
       }
@@ -194,6 +214,9 @@ export function useVoiceCapture(options: UseVoiceCaptureOptions): VoiceCapture {
         }
       }, 100)
     } catch (err) {
+      // An abandoned attempt's stream was released by whatever abandoned it,
+      // and its user no longer waits for this start.
+      if (abandoned()) return
       log.error('Failed to start recording', err)
       // `getUserMedia` may have already succeeded before the capture graph
       // failed to build, so release the mic before going idle.
@@ -201,7 +224,7 @@ export function useVoiceCapture(options: UseVoiceCaptureOptions): VoiceCapture {
       optionsRef.current.onError(toCaptureError(err))
       setState('idle')
     }
-  }, [releaseStream, stopRecording])
+  }, [clearTimer, releaseStream, stopRecording])
 
   const stop = useCallback(() => stopRecording(false), [stopRecording])
   const cancel = useCallback(() => stopRecording(true), [stopRecording])
