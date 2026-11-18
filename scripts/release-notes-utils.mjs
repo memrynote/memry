@@ -113,9 +113,10 @@ export function parseHumanizedReleaseMarker(body = '') {
 /**
  * The humanized notes of a draft body `buildHumanizedReleaseBody` wrote for `expectedTag`: the text
  * between the marker and the `## Changelog` section, the same markdown `release-notes/<V>.md` holds.
+ * `draftTag` is the tag of the draft, which the hint to humanize it names.
  */
-export function extractHumanizedReleaseNotes(body = '', expectedTag) {
-  assertHumanizedReleaseNotesForPublish({ body, draftTag: expectedTag, expectedTag })
+export function extractHumanizedReleaseNotes(body = '', expectedTag, draftTag = expectedTag) {
+  assertHumanizedReleaseNotesForPublish({ body, draftTag, expectedTag })
   const marker = new RegExp(`<!--\\s*${HUMANIZED_RELEASE_MARKER}\\s+tag=[^\\s>]+\\s*-->`).exec(body)
   const afterMarker = body.slice(marker.index + marker[0].length)
   const changelog = /^## Changelog\s*$/m.exec(afterMarker)

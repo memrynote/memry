@@ -3,8 +3,8 @@
 // Usage:
 //   node scripts/release/release-inputs.mjs previous <releases.json> --exclude-tag <draft tag>
 //     prints the tag of the newest published release (`gh release list --json tagName,isDraft,createdAt`)
-//   node scripts/release/release-inputs.mjs write <out-dir> --tag T --body <draft-body.md>
-//     --previous-tag P --previous-assets <names.json>
+//   node scripts/release/release-inputs.mjs write <out-dir> --tag T --draft-tag D
+//     --body <draft-body.md> --previous-tag P --previous-assets <names.json>
 //     writes release-notes.md (the humanized notes of the draft, for `vpk --releaseNotes`) and
 //     delta.json ({ previousTag, delta: { <pack target>: 'BestSpeed' | 'None' } })
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -35,6 +35,7 @@ export function runCli(argv) {
     options: {
       'exclude-tag': { type: 'string' },
       tag: { type: 'string' },
+      'draft-tag': { type: 'string' },
       body: { type: 'string' },
       'previous-tag': { type: 'string', default: '' },
       'previous-assets': { type: 'string' }
@@ -47,8 +48,19 @@ export function runCli(argv) {
       selectPreviousPublishedRelease(readJson(subject), { excludeTag: values['exclude-tag'] }) ?? ''
     )
   }
-  if (command === 'write' && subject && values.tag && values.body && values['previous-assets']) {
-    const notes = extractHumanizedReleaseNotes(readFileSync(values.body, 'utf8'), values.tag)
+  if (
+    command === 'write' &&
+    subject &&
+    values.tag &&
+    values['draft-tag'] &&
+    values.body &&
+    values['previous-assets']
+  ) {
+    const notes = extractHumanizedReleaseNotes(
+      readFileSync(values.body, 'utf8'),
+      values.tag,
+      values['draft-tag']
+    )
     const previousAssets = readJson(values['previous-assets'])
     if (!Array.isArray(previousAssets)) throw new Error('--previous-assets must hold a JSON array')
     mkdirSync(subject, { recursive: true })
@@ -58,7 +70,7 @@ export function runCli(argv) {
     return JSON.stringify(delta)
   }
   throw new Error(
-    'usage: release-inputs.mjs previous <releases.json> --exclude-tag D | write <out-dir> --tag T --body F --previous-tag P --previous-assets F'
+    'usage: release-inputs.mjs previous <releases.json> --exclude-tag D | write <out-dir> --tag T --draft-tag D --body F --previous-tag P --previous-assets F'
   )
 }
 

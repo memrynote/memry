@@ -49,7 +49,10 @@ describe('assertProductionSyncServerUrl', () => {
       ['https://localhost:8787', /production sync host/],
       ['https://127.0.0.1', /production sync host/],
       ['https://[::1]:8787', /production sync host/],
-      ['https://sync-staging.memrynote.com', /production sync host/]
+      ['https://sync-staging.memrynote.com', /production sync host/],
+      ['https://sync.example.com', /production sync host/],
+      ['https://sync.memrynote.com.example.com', /production sync host/],
+      ['https://memrynote.com', /production sync host/]
     ]
     for (const [value, error] of cases) {
       assert.throws(() => assertProductionSyncServerUrl(value), error, String(value))

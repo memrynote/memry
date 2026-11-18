@@ -239,13 +239,12 @@ async function prepareDraft({ draftTag, options, releases }) {
     }
   }
 
-  if (!options.dryRun) {
-    assertHumanizedReleaseNotesForPublish({
-      body: draftDetails.body ?? '',
-      draftTag: draftDetails.tagName,
-      expectedTag: preview.tag
-    })
-  }
+  // Dry runs too: the workflow packs the draft's humanized notes and fails without them.
+  assertHumanizedReleaseNotesForPublish({
+    body: draftDetails.body ?? '',
+    draftTag: draftDetails.tagName,
+    expectedTag: preview.tag
+  })
 
   printPlan({ draft: draftDetails, dryRun: options.dryRun, preview })
 
@@ -1079,7 +1078,8 @@ step. --yes does not skip it.
 Options:
   --tag <tag>    Draft release tag to publish. Defaults to the newest draft.
   --dry-run      Build in GitHub Actions and download the artifacts. No signing,
-                 no upload, no publish.
+                 no upload, no publish. The draft must already be humanized
+                 (pnpm release:humanize -- --tag <draft>): the workflow packs its notes.
   --humanize     Humanize draft release notes before dispatching publish.
   --no-watch     Dispatch the workflow and stop. Re-run to finish the release.
   --restart      Discard saved progress for this draft and start over.

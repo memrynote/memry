@@ -96,6 +96,8 @@ describe('release-inputs CLI', () => {
         out,
         '--tag',
         'v2026-11-18',
+        '--draft-tag',
+        'untagged-abc',
         '--body',
         body,
         '--previous-tag',
@@ -122,12 +124,16 @@ describe('release-inputs CLI', () => {
             path.join(dir, 'out'),
             '--tag',
             'v2026-11-18',
+            '--draft-tag',
+            'untagged-abc',
             '--body',
             body,
             '--previous-assets',
             assets
           ]),
-        /have not been humanized for v2026-11-18/
+        (error) =>
+          /have not been humanized for v2026-11-18/.test(error.message) &&
+          error.message.includes('pnpm release:humanize -- --tag untagged-abc')
       )
     }))
 })
