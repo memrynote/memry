@@ -164,7 +164,49 @@ describe('critic markup marks across builds and devices (protocol 12.5.1)', () =
     ])
   })
 
-  it('bounds the array operations of a write', () => {
+  describe('keeps a concurrent change when a write changes many separate marks', () => {
+    const many = Array.from({ length: 70 }, (_, index) => ({
+      ...c1,
+      id: `m${index}`,
+      metadata: `id=m${index};type=comment`
+    }))
+    const withBody = (marks: CriticMarkupMark[], body: string, pick: (i: number) => boolean) =>
+      marks.map((mark, index) => (pick(index) ? { ...mark, body } : mark))
+    const evens = withBody(many, 'from a', (i) => i % 2 === 0)
+    const byId = (marks: CriticMarkupMark[]) => marks.toSorted((x, y) => x.id.localeCompare(y.id))
+
+    it.each([
+      [
+        'an edit',
+        withBody(many, 'from b', (i) => i === 41),
+        withBody(evens, 'from b', (i) => i === 41)
+      ],
+      [
+        'a second large write',
+        withBody(many, 'from b', (i) => i % 2 === 1),
+        withBody(evens, 'from b', (i) => i % 2 === 1)
+      ],
+      ['a delete', many.toSpliced(41, 1), evens.toSpliced(41, 1)]
+    ])('%s', (_, fromB, expected) => {
+      for (const [idA, idB] of [
+        [10, 11],
+        [11, 10]
+      ]) {
+        const base = docWith(many)
+        const a = fork(base, idA)
+        const b = fork(base, idB)
+        writeCriticMarkupMarksToYDoc(a, evens)
+        writeCriticMarkupMarksToYDoc(b, fromB)
+        Y.applyUpdate(a, Y.encodeStateAsUpdate(b))
+        Y.applyUpdate(b, Y.encodeStateAsUpdate(a))
+
+        expect(byId(readCriticMarkupMarksFromYDoc(a)), `A=${idA}`).toEqual(byId(expected))
+        expect(byId(readCriticMarkupMarksFromYDoc(b)), `A=${idA}`).toEqual(byId(expected))
+      }
+    })
+  })
+
+  it('makes one array operation per run of changes, two per replaced run', () => {
     const many = Array.from({ length: 1000 }, (_, index) => ({
       ...c1,
       id: `m${index}`,
@@ -200,13 +242,13 @@ describe('critic markup marks across builds and devices (protocol 12.5.1)', () =
         many,
         many.filter((_, index) => index % 2 === 0)
       )
-    ).toBe(2)
+    ).toBe(500)
     expect(
       count(
         many,
         many.map((mark, index) => (index % 2 ? mark : edited(mark)))
       )
-    ).toBe(2)
+    ).toBe(1000)
     expect(count(many, [...many.slice(0, 500), c1, ...many.slice(500)])).toBe(1)
     expect(
       count(

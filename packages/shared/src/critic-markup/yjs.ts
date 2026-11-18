@@ -64,12 +64,6 @@ export function readCriticMarkupMarksFromYDoc(doc: YDocLike): CriticMarkupMark[]
 }
 
 /**
- * Past this many array operations a write rewrites the whole array: each Yjs
- * operation walks the array from its start, so the cost stays linear.
- */
-const MAX_ARRAY_OPERATIONS = 64
-
-/**
  * Makes the root hold `marks`, touching only the elements that change
  * (protocol 12.5.1): it deletes invalid elements, later copies of an id and
  * ids `marks` drops, and inserts a new id after the furthest existing mark
@@ -77,6 +71,9 @@ const MAX_ARRAY_OPERATIONS = 64
  * as this build reads it, differs from the new one in more than its offsets:
  * the window moves offsets with its typing and never writes them alone
  * (#4425). A replaced element keeps the keys this build does not know.
+ * Adjacent deletes and adjacent replacements are one operation each. Untouched
+ * elements are never deleted and inserted again: a stale copy would precede a
+ * concurrent device's copy of that id and hide its change.
  */
 export function writeCriticMarkupMarksToYDoc(doc: YDocLike, marks: CriticMarkupMark[]): void {
   const array = doc.getArray(CRITIC_MARKUP_MARKS_ARRAY)
@@ -119,20 +116,10 @@ export function writeCriticMarkupMarksToYDoc(doc: YDocLike, marks: CriticMarkupM
     anchor = Math.max(anchor, index)
   }
 
-  const deletes = runsOf(keep.map((kept) => !kept))
-  const replaces = runsOf(replaced)
-  const operations = deletes.length + 2 * replaces.length + inserts.size
-  if (operations > MAX_ARRAY_OPERATIONS) {
-    const whole = [
-      ...(inserts.get(-1) ?? []),
-      ...result.flatMap((element, index) => [element, ...(inserts.get(index) ?? [])])
-    ]
-    if (values.length > 0) array.delete(0, values.length)
-    if (whole.length > 0) array.insert(0, whole)
-    return
+  for (const [start, end] of runsOf(keep.map((kept) => !kept)).toReversed()) {
+    array.delete(start, end - start)
   }
-  for (const [start, end] of deletes.toReversed()) array.delete(start, end - start)
-  for (const [start, end] of replaces) {
+  for (const [start, end] of runsOf(replaced)) {
     array.delete(start, end - start)
     array.insert(start, result.slice(start, end))
   }

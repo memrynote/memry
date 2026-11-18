@@ -42,6 +42,10 @@ const many = Array.from({ length: 70 }, (_, index) => ({
   end: index * 10 + 4
 }))
 const edited = (mark: CriticMarkupMark): CriticMarkupMark => ({ ...mark, visibleText: 'edit' })
+const textOf = (text: string, pick: (index: number) => boolean) =>
+  many.map((mark, index) => (pick(index) ? { ...mark, visibleText: text } : mark))
+// Scattered edits: 35 replaced runs, past the old 64-operation rewrite.
+const evensFromA = textOf('from a', (index) => index % 2 === 0)
 const moved = (mark: CriticMarkupMark): CriticMarkupMark => ({
   ...mark,
   start: mark.start + 7,
@@ -144,13 +148,13 @@ const CASES: Record<string, [unknown[], CriticMarkupMark[][]]> = {
     ]
   ],
   'many-contiguous-edits-coalesced': [many, [many.map((m, i) => (i < 50 ? edited(m) : m))]],
-  'many-scattered-edits-rewrite': [many, [many.map((m, i) => (i % 2 ? m : edited(m)))]],
+  'many-scattered-edits': [many, [many.map((m, i) => (i % 2 ? m : edited(m)))]],
   'many-scattered-deletes': [many, [many.filter((_, i) => i % 2)]],
   'many-scattered-inserts': [
     many,
     [many.flatMap((m, i) => (i % 2 ? [m] : [m, { ...c3, id: `new${i}` }]))]
   ],
-  'rewrite-keeps-unknown-keys': [
+  'scattered-edits-keep-unknown-keys': [
     many.map((m, i) => (i === 1 ? { ...m, future } : m)),
     [many.map((m, i) => (i % 2 ? m : edited(m)))]
   ],
@@ -160,7 +164,10 @@ const CASES: Record<string, [unknown[], CriticMarkupMark[][]]> = {
       [c1, c2],
       [c1, c2]
     ]
-  ]
+  ],
+  'large-write-and-concurrent-edit': [many, [evensFromA, textOf('from b', (i) => i === 41)]],
+  'two-large-writes-different-marks': [many, [evensFromA, textOf('from b', (i) => i % 2 === 1)]],
+  'large-write-and-concurrent-delete': [many, [evensFromA, many.toSpliced(41, 1)]]
 }
 
 export function yjsWriteCases(): OracleCase[] {
