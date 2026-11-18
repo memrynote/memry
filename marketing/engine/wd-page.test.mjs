@@ -207,6 +207,9 @@ test('arguments pw-compat would ignore or misread throw NotInSubset', () => {
     /NotInSubset: page\.locator\("xpath=self::\*"\)/
   )
   assert.throws(() => page.locator('div >> text=Save'), /NotInSubset/)
+  assert.throws(() => page.locator('li:near(.x)'), /NotInSubset/)
+  // An engine name is a prefix only: inside an attribute value it is CSS.
+  assert.equal(typeof page.locator('[data-x="text=1"]').click, 'function')
   assert.throws(
     () => page.locator('span.chip', { hasText: 'x' }),
     /NotInSubset: page\.locator\("span\.chip", options\)/

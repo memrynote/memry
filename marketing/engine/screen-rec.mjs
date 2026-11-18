@@ -156,7 +156,8 @@ export async function takeRecordLock(owner, lock = RECORD_LOCK) {
       continue
     }
     try {
-      writeFileSync(ownerFile, `${process.pid} ${owner}`)
+      // Readable by this user only: the lock lives in the shared /tmp.
+      writeFileSync(ownerFile, `${process.pid} ${owner}`, { mode: 0o600 })
     } catch (error) {
       rmSync(lock, { recursive: true, force: true })
       throw error

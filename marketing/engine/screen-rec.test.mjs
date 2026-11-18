@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  statSync,
+  utimesSync,
+  writeFileSync
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import * as path from 'node:path'
 import { test } from 'node:test'
@@ -119,6 +127,7 @@ test(
   async () => {
     const lock = path.join(mkdtempSync(path.join(tmpdir(), 'film-lock-')), 'record.lock')
     const release = await takeRecordLock('first', lock)
+    assert.equal(statSync(path.join(lock, 'owner')).mode & 0o777, 0o600)
     let second = false
     const waiting = takeRecordLock('second', lock).then((r) => ((second = true), r))
     await new Promise((done) => setTimeout(done, 100))

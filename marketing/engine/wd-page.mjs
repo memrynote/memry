@@ -92,10 +92,10 @@ export const SUBSET = {
   ]
 }
 
-// Playwright's selector engines and pseudo-classes beyond the `:has-text`, `:text` and `:visible`
-// that pw-compat's CSS adds.
+// Playwright's selector engines (a prefix, so anchored) and its chaining and pseudo-classes beyond
+// the `:has-text`, `:text` and `:visible` that pw-compat's CSS adds (anywhere).
 const PLAYWRIGHT_SELECTOR =
-  /^(xpath|text|id|data-testid|internal:[a-z-]+)=|>>|:text-(is|matches)\(|:nth-match\(|:left-of\(|:right-of\(|:above\(|:below\(|:near\(/
+  /^(?:xpath|text|id|data-testid|internal:[a-z-]+)=|>>|:text-(is|matches)\(|:nth-match\(|:left-of\(|:right-of\(|:above\(|:below\(|:near\(/
 
 const optionKeys =
   (name, allowed) =>
