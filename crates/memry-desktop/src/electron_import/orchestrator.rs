@@ -4,15 +4,18 @@
 //! Tauri wiring (37f).
 //!
 //! **Resuming.** Every phase is a pure function of the untouched Electron data, and the report
-//! (`electron-import-report.json`) is saved after each one: a rerun after a crash or a failure
-//! skips the phases the report holds (the app-state phase is never applied again over the
-//! user's changes) and keeps each vault's first report section, so it ends with the report a
-//! run without the crash would have written. The marker (`electron-import.json`) is written
-//! last; while it is absent no vault opens.
+//! (`electron-import-report.json`) is saved after each one: a rerun after a crash skips the
+//! phases the report holds (the app-state phase is never applied again over the user's changes)
+//! and keeps each vault's first report section, so it ends with the report a run without the
+//! crash would have written. A rerun after a failure runs app-state and secrets again: the
+//! user went back to the previous app meanwhile. An installed vault is kept only while its
+//! Electron `data.db` has the fingerprint the import read; otherwise it is imported again. The
+//! marker (`electron-import.json`) is written last; while it is absent no vault opens.
 //!
 //! **Failures.** Any error stops the run: the report names the failing check, the marker stays
-//! unwritten and the shell keeps the previous app's data as it is. A Step 36 `NotReady` stops
-//! the whole run too (Kaan, #3554 Q3). A vault whose store another vault shares is never
+//! unwritten and the shell keeps the previous app's data as it is. Every vault is staged and
+//! checked before the first one installs, so a failed run leaves no vault imported. A Step 36
+//! `NotReady` stops the whole run too (Kaan, #3554 Q3). A vault whose store another vault shares is never
 //! imported (Q4), and opening it fails with every path of its group.
 //!
 //! **One import at a time.** [`ProfileLock`] only probes for a running Electron; the imports of
@@ -32,15 +35,17 @@ use std::path::{Path, PathBuf};
 use std::sync::{Mutex, PoisonError};
 use std::time::Instant;
 
+use serde_json::Value;
+
 use self::marker::{Marker, MarkerVault, write_json};
-use self::vault::{VaultPhase, settled_section, source_fingerprint};
+use self::vault::{Staged, VaultPhase, settled_section};
 use super::app_state::{AppStateInput, import_app_state};
 use super::journal_replay::BulkApplyJournal;
 use super::profile::locate_profile;
 use super::progress::{Phase, ProgressSink, ProgressUpdate};
 use super::report::{Failure, REPORT_FILE, VaultSection, VaultStatus, VerificationReport};
 use super::secrets::{ChromiumKeySource, KeytarSource};
-use super::secrets_import::SecretsMode;
+use super::secrets_import::{SecretsMode, forget_secrets_import};
 use super::vault_prep::{Disposition, PlannedVault, plan_vaults};
 use super::{ElectronConfig, ElectronProfile, ImportError, ProfileEnv, ProfileLock, Scratch};
 use crate::launch_env::LaunchEnv;
@@ -221,17 +226,27 @@ pub fn run_first_launch(
     if Marker::read(&ctx.tauri_data_dir)?.is_some() {
         return Ok(FirstLaunch::AlreadyDone);
     }
-    let Some(profile) = locate_profile(&ctx.env)? else {
+    let Some(profile) = electron_profile(&ctx.env)? else {
         return Ok(FirstLaunch::NoProfile);
     };
-    if !profile.has_config && !profile.has_secure_store {
-        return Ok(FirstLaunch::NoProfile);
-    }
     let started = Instant::now();
     let mut run = Run::load(&ctx.tauri_data_dir);
-    run.report.failure = None;
+    // A failure sent the user back to the previous app (Q3), which may have changed its config
+    // and secrets since: both phases run again.
+    let after_failure = run.report.failure.take().is_some();
+    if after_failure {
+        run.report.app_state = None;
+    }
     let mut counts = (0, 0);
-    match phases(ctx, input, &profile, &mut run, &mut counts, started) {
+    match phases(
+        ctx,
+        input,
+        &profile,
+        &mut run,
+        &mut counts,
+        started,
+        after_failure,
+    ) {
         Ok(()) => Ok(FirstLaunch::Migrated(Box::new(run.report))),
         Err(error) => {
             run.fail(&error);
@@ -265,6 +280,11 @@ fn emit(
     });
 }
 
+/// The Electron profile a migration reads: one with a config or a secret store.
+fn electron_profile(env: &ProfileEnv) -> Result<Option<ElectronProfile>, RunError> {
+    Ok(locate_profile(env)?.filter(|p| p.has_config || p.has_secure_store))
+}
+
 fn phases(
     ctx: &ImportContext<'_>,
     input: &FirstLaunchInput<'_>,
@@ -272,6 +292,7 @@ fn phases(
     run: &mut Run<'_>,
     counts: &mut (usize, usize),
     started: Instant,
+    after_failure: bool,
 ) -> Result<(), RunError> {
     let lock = probe(profile)?;
     let config = ElectronConfig::read(profile)?;
@@ -291,6 +312,14 @@ fn phases(
         &ctx.tauri_data_dir,
         ctx.free_space,
     )?;
+
+    // Nothing used the secrets of a failed run: no vault opens before the marker.
+    if after_failure && let Some(earlier) = &run.report.secrets {
+        let sync_copied = earlier.get("mode").and_then(Value::as_str) != Some("SignInAgain");
+        forget_secrets_import(input.keyring, &ctx.tauri_data_dir, sync_copied)
+            .map_err(RunError::Secrets)?;
+        run.report.secrets = None;
+    }
 
     if run.report.app_state.is_none() {
         let app_state = import_app_state(&AppStateInput {
@@ -332,20 +361,20 @@ fn phases(
         lock: &lock,
         now_ms: (ctx.now_ms)(),
     };
-    let mut marked = Vec::with_capacity(plan.vaults.len());
-    for (index, planned) in plan.vaults.iter().enumerate() {
-        let label = crate::registry::vaults::basename(&planned.path);
-        ctx.progress(Phase::Vault, index + 1, plan.vaults.len(), &label);
-        let section = match (&planned.disposition, run.section(&planned.path)) {
-            (Disposition::Import(_), Some(done)) if done.status == VaultStatus::Imported => {
-                done.clone()
-            }
-            (Disposition::Import(id), _) => vault::import(run, &phase, planned, id)?,
-            _ => settled_section(&phase, planned).unwrap_or_else(|| unreachable!()),
-        };
-        marked.push(marker_vault(&section)?);
-        run.save_section(section)?;
+    // Every vault is staged and checked before the first install, so a failed run leaves no
+    // core behind (Q3).
+    let mut slots = Vec::with_capacity(plan.vaults.len());
+    let checked = stage_all(ctx, run, &phase, &mut slots).and_then(|()| {
+        slots.iter().try_for_each(|slot| match slot {
+            Staged::Install(pending) => pending.recheck(),
+            Staged::Settled(_) => Ok(()),
+        })
+    });
+    if let Err(error) = checked {
+        discard(slots);
+        return Err(error);
     }
+    let marked = install_all(run, slots)?;
     ctx.crash_after("vault");
 
     ctx.progress(Phase::Finish, 0, 1, "report");
@@ -366,6 +395,61 @@ fn phases(
     Ok(())
 }
 
+fn stage_all(
+    ctx: &ImportContext<'_>,
+    run: &mut Run<'_>,
+    phase: &VaultPhase<'_>,
+    slots: &mut Vec<Staged>,
+) -> Result<(), RunError> {
+    let total = phase.plan.vaults.len();
+    for (index, planned) in phase.plan.vaults.iter().enumerate() {
+        let label = crate::registry::vaults::basename(&planned.path);
+        ctx.progress(Phase::Vault, index + 1, total, &label);
+        let slot = match &planned.disposition {
+            Disposition::Import(id) => vault::stage(run, phase, planned, id)?,
+            _ => Staged::Settled(settled_section(phase, planned).unwrap_or_else(|| unreachable!())),
+        };
+        if let Staged::Settled(section) = &slot {
+            run.save_section(section.clone())?;
+        }
+        slots.push(slot);
+    }
+    Ok(())
+}
+
+/// Installs every staged vault in plan order. A failure part way discards the rest; the
+/// installed ones keep their fingerprint, which a rerun compares.
+fn install_all(run: &mut Run<'_>, slots: Vec<Staged>) -> Result<Vec<MarkerVault>, RunError> {
+    let mut marked = Vec::with_capacity(slots.len());
+    let mut slots = slots.into_iter();
+    while let Some(slot) = slots.next() {
+        let section = match slot {
+            Staged::Settled(section) => Ok(section),
+            Staged::Install(pending) => pending.install(),
+        };
+        let saved = section.and_then(|section| {
+            let entry = marker_vault(&section);
+            run.save_section(section).map(|()| entry)
+        });
+        match saved {
+            Ok(entry) => marked.push(entry),
+            Err(error) => {
+                discard(slots);
+                return Err(error);
+            }
+        }
+    }
+    Ok(marked)
+}
+
+fn discard(slots: impl IntoIterator<Item = Staged>) {
+    for slot in slots {
+        if let Staged::Install(pending) = slot {
+            pending.discard();
+        }
+    }
+}
+
 fn probe(profile: &ElectronProfile) -> Result<ProfileLock, RunError> {
     ProfileLock::probe(profile).map_err(|error| match error {
         ImportError::ProfileInUse(_) => RunError::ElectronRunning,
@@ -373,26 +457,23 @@ fn probe(profile: &ElectronProfile) -> Result<ProfileLock, RunError> {
     })
 }
 
-fn marker_vault(section: &VaultSection) -> Result<MarkerVault, RunError> {
+/// The marker entry of a vault's final section. The fingerprint is the one the import read, so
+/// an Electron write after the install shows as a change.
+fn marker_vault(section: &VaultSection) -> MarkerVault {
     let imported = matches!(
         section.status,
         VaultStatus::Imported | VaultStatus::AlreadyImported
     );
-    let source_fingerprint = if imported {
-        Some(source_fingerprint(Path::new(&section.path))?)
-    } else {
-        None
-    };
-    Ok(MarkerVault {
+    MarkerVault {
         path: section.path.clone(),
         vault_uuid: section.vault_id.clone(),
         status: section.status,
         reason: section.reason.clone(),
         store: section.store.clone(),
-        source_fingerprint,
+        source_fingerprint: section.source_fingerprint.clone().filter(|_| imported),
         shared_with: section.shared_with.clone(),
         extra: serde_json::Map::new(),
-    })
+    }
 }
 
 #[cfg(test)]

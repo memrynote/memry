@@ -5,40 +5,44 @@ use std::path::Path;
 use std::sync::PoisonError;
 use std::time::Instant;
 
-use super::marker::Marker;
+use super::marker::{Marker, MarkerVault};
 use super::vault::{self, VaultPhase, settled_section, store_name};
 use super::{
-    IMPORT_LOCK, ImportContext, MigrationEventName, Run, RunError, SCRATCH_DIR, emit, marker_vault,
-    preflight, probe,
+    IMPORT_LOCK, ImportContext, MigrationEventName, Run, RunError, SCRATCH_DIR, electron_profile,
+    emit, marker_vault, preflight, probe,
 };
-use crate::electron_import::profile::locate_profile;
 use crate::electron_import::report::{VaultSection, VaultStatus};
-use crate::electron_import::vault_prep::{DeferReason, Disposition, plan_vaults};
+use crate::electron_import::vault_db::CORE_DIR;
+use crate::electron_import::vault_prep::{DeferReason, Disposition, folder_id, plan_vaults};
 use crate::electron_import::{ElectronConfig, ImportError, Scratch};
 
-/// Imports a vault the first-launch run deferred. Reads only the marker when there is nothing
-/// to do: no marker (no migration on this install), a path the marker does not list, or a
-/// vault already settled.
+/// Imports a vault the first-launch run deferred, before the session opens it. Reads only the
+/// marker for a vault already settled, and `Ok` with nothing to do when there is no Electron
+/// profile. Refuses while the first-launch run has not finished (a vault opened now would get a
+/// native core over Electron's data, which then never moves), and refuses a folder holding
+/// Electron data that the marker does not list.
 pub fn migrate_vault(ctx: &ImportContext<'_>, vault: &Path) -> Result<(), RunError> {
-    let path = vault.to_string_lossy();
-    let pending = |marker: &Marker| {
-        marker.vaults.iter().find(|v| v.path == path).and_then(|v| {
-            matches!(v.status, VaultStatus::Deferred | VaultStatus::Unreadable).then(|| v.clone())
-        })
-    };
-    let Some(marker) = Marker::read(&ctx.tauri_data_dir)? else {
-        return Ok(());
-    };
-    if pending(&marker).is_none() {
+    if let Some(marker) = Marker::read(&ctx.tauri_data_dir)?
+        && matches!(lookup(&marker, vault), Lookup::Settled)
+    {
         return Ok(());
     }
     let _one = IMPORT_LOCK.lock().unwrap_or_else(PoisonError::into_inner);
-    // Read again under the lock: another open may have imported it meanwhile.
+    // Read again under the lock: a run or another open may have finished meanwhile.
     let Some(mut marker) = Marker::read(&ctx.tauri_data_dir)? else {
-        return Ok(());
+        return match electron_profile(&ctx.env)? {
+            Some(_) => Err(RunError::NotMigrated),
+            None => Ok(()),
+        };
     };
-    let Some(entry) = pending(&marker) else {
-        return Ok(());
+    let entry = match lookup(&marker, vault) {
+        Lookup::Settled => return Ok(()),
+        Lookup::Unlisted => {
+            return Err(RunError::NotMoved {
+                vault: vault.to_string_lossy().into_owned(),
+            });
+        }
+        Lookup::Pending(entry) => entry,
     };
     if entry.reason.as_deref() == Some(vault::defer_reason(DeferReason::SharedStore)) {
         return Err(shared_store(&entry.path, &entry.shared_with));
@@ -66,6 +70,48 @@ pub fn migrate_vault(ctx: &ImportContext<'_>, vault: &Path) -> Result<(), RunErr
     }
 }
 
+enum Lookup {
+    /// Nothing to import: a settled vault, or a folder without Electron data or with a core.
+    Settled,
+    /// The marker's deferred (or unreadable) entry for the folder.
+    Pending(MarkerVault),
+    /// Electron data the marker has no entry for.
+    Unlisted,
+}
+
+/// The marker entry of `vault`: by the path as written, else, for a folder with an Electron
+/// `data.db` and no core yet, by folder identity, which a trailing slash, another Unicode
+/// normalization or case, or a symlink does not change.
+fn lookup(marker: &Marker, vault: &Path) -> Lookup {
+    let path = vault.to_string_lossy();
+    let memry = vault.join(".memry");
+    let unmoved =
+        || memry.join("data.db").is_file() && !memry.join(CORE_DIR).join("data.db").exists();
+    let entry = marker.vaults.iter().find(|v| v.path == path).or_else(|| {
+        if !unmoved() {
+            return None;
+        }
+        let id = folder_id(vault)?;
+        marker
+            .vaults
+            .iter()
+            .find(|v| folder_id(Path::new(&v.path)).as_ref() == Some(&id))
+    });
+    match entry {
+        Some(entry)
+            if matches!(
+                entry.status,
+                VaultStatus::Deferred | VaultStatus::Unreadable
+            ) =>
+        {
+            Lookup::Pending(entry.clone())
+        }
+        Some(_) => Lookup::Settled,
+        None if unmoved() => Lookup::Unlisted,
+        None => Lookup::Settled,
+    }
+}
+
 fn shared_store(path: &str, others: &[String]) -> RunError {
     RunError::SharedStore {
         paths: std::iter::once(path.to_owned())
@@ -80,7 +126,7 @@ fn deferred_import(
     run: &mut Run<'_>,
     path: &str,
 ) -> Result<(), RunError> {
-    let profile = locate_profile(&ctx.env)?.ok_or(ImportError::ProfileNotFound)?;
+    let profile = electron_profile(&ctx.env)?.ok_or(ImportError::ProfileNotFound)?;
     let lock = probe(&profile)?;
     let config = ElectronConfig::read(&profile)?;
     let scratch = Scratch::new(ctx.tauri_data_dir.join(SCRATCH_DIR))?;
@@ -170,7 +216,7 @@ fn settle(
     run: &mut Run<'_>,
     section: VaultSection,
 ) -> Result<(), RunError> {
-    let entry = marker_vault(&section)?;
+    let entry = marker_vault(&section);
     run.save_section(section)?;
     match marker.vault_mut(&entry.path) {
         Some(slot) => *slot = entry,

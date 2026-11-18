@@ -1,14 +1,15 @@
 //! One planned vault of the vault phase: preparation (37e1), Step 36's stage, checks 3, 7 and 8,
-//! `.memry/core` and the install. The report section is saved after the preparation and after
-//! the stage, so a run cut off later finds what the first attempt reported.
+//! then, once every vault of the run passed, `.memry/core` and the install. The report section
+//! is saved after the preparation and after the stage, so a run cut off later finds what the
+//! first attempt reported.
 
 use std::fs;
 use std::io::Read;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use memry_core::crdt::{DocumentRegistry, canonical_fragment};
-use memry_core::storage::import::DocumentState;
+use memry_core::storage::import::{DATA_FILE, DocumentState, INDEX_FILE, read_marker};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 
@@ -16,10 +17,10 @@ use super::{Run, RunError};
 use crate::electron_import::journal_replay::BulkApplyJournal;
 use crate::electron_import::report::{VaultSection, VaultStatus};
 use crate::electron_import::vault_db::{
-    StageOutcome, StagedVault, VaultImportInput, stage_vault_import,
+    CORE_DIR, STAGING_DIR, StageOutcome, StagedVault, VaultImportInput, stage_vault_import,
 };
 use crate::electron_import::vault_prep::{
-    DeferReason, Disposition, PlannedVault, VaultId, VaultPlan, prepare_vault,
+    DeferReason, Disposition, PlannedVault, PreparedVault, VaultId, VaultPlan, prepare_vault,
 };
 use crate::electron_import::{
     ElectronConfig, ElectronProfile, ImportError, ProfileLock, Scratch, YStoreReader,
@@ -87,20 +88,39 @@ pub(super) fn store_name(phase: &VaultPhase<'_>, id: &VaultId) -> String {
         .map_or_else(String::new, |n| n.to_string_lossy().into_owned())
 }
 
-/// Imports one vault, saving its section into `run` as it goes. `previous` is the section an
-/// earlier, cut-off attempt saved.
-pub(super) fn import(
+/// A vault staged and checked, waiting for every other vault of the run to pass too.
+pub(super) struct PendingInstall {
+    section: VaultSection,
+    staged: StagedVault,
+    prepared: PreparedVault,
+}
+
+pub(super) enum Staged {
+    /// Nothing to install: imported by an earlier attempt, or opened natively first.
+    Settled(VaultSection),
+    Install(Box<PendingInstall>),
+}
+
+/// Stages one vault and runs checks 3, 7 and 8, saving its section into `run` as it goes.
+/// Installs nothing.
+pub(super) fn stage(
     run: &mut Run<'_>,
     phase: &VaultPhase<'_>,
     vault: &PlannedVault,
     id: &VaultId,
-) -> Result<VaultSection, RunError> {
+) -> Result<Staged, RunError> {
     let path = vault.path.as_str();
     let fail = |source: ImportError| RunError::Vault {
         vault: path.to_owned(),
         source,
     };
     let previous = run.section(path).cloned();
+    // Taken before the copy: Electron writing after it makes the fingerprint stale, and the
+    // later launch then shows the downgrade notice instead of missing the change.
+    let fingerprint = source_fingerprint(Path::new(path)).map_err(fail)?;
+    if let Some(done) = earlier_import(previous.as_ref(), Path::new(path), &fingerprint) {
+        return Ok(Staged::Settled(done.map_err(fail)?));
+    }
     // An id minted by a cut-off attempt stays the vault's id.
     let id = &match previous.as_ref().and_then(|s| s.vault_id.clone()) {
         Some(vault_id) if id.minted => VaultId {
@@ -121,6 +141,7 @@ pub(super) fn import(
     let mut section = VaultSection::new(path, VaultStatus::Prepared);
     section.vault_id = Some(id.vault_id.clone());
     section.store = Some(store_name(phase, id));
+    section.source_fingerprint = Some(fingerprint);
     // A rerun's replay reads the first attempt's writes as settled: the first report stands.
     section.prep = match previous.as_ref().and_then(|s| s.prep.clone()) {
         Some(prep) => Some(prep),
@@ -160,22 +181,15 @@ pub(super) fn import(
     };
     let staged = match stage_vault_import(input).map_err(fail)? {
         StageOutcome::Staged(staged) => staged,
+        // `earlier_import` removed every core this import wrote: this one is not ours.
         StageOutcome::AlreadyImported => {
-            // Cut off during the install after the commit rename: the staged report stands.
-            return Ok(match previous.filter(|s| s.status == VaultStatus::Staged) {
-                Some(mut staged) => {
-                    staged.status = VaultStatus::Imported;
-                    staged
-                }
-                None => {
-                    section.status = VaultStatus::AlreadyImported;
-                    section
-                }
-            });
+            return Err(fail(ImportError::CoreFileExists(
+                memry.join(CORE_DIR).join(DATA_FILE),
+            )));
         }
         StageOutcome::NativeFirst => {
             section.status = VaultStatus::NativeFirst;
-            return Ok(section);
+            return Ok(Staged::Settled(section));
         }
     };
     if let Err(error) = checks(&staged, &expected, &prepared, &mut section) {
@@ -187,11 +201,138 @@ pub(super) fn import(
     section.stage = Some(serde_json::to_value(staged.report()).map_err(|_| fail(report_error()))?);
     section.status = VaultStatus::Staged;
     run.save_section(section.clone())?;
+    Ok(Staged::Install(Box::new(PendingInstall {
+        section,
+        staged,
+        prepared,
+    })))
+}
 
-    create_core_dir(&memry).map_err(fail)?;
-    staged.install().map_err(fail)?;
-    section.status = VaultStatus::Imported;
-    Ok(section)
+/// Stages and installs one vault: the import of a vault the run deferred.
+pub(super) fn import(
+    run: &mut Run<'_>,
+    phase: &VaultPhase<'_>,
+    vault: &PlannedVault,
+    id: &VaultId,
+) -> Result<VaultSection, RunError> {
+    match stage(run, phase, vault, id)? {
+        Staged::Settled(section) => Ok(section),
+        Staged::Install(pending) => pending.install(),
+    }
+}
+
+impl PendingInstall {
+    /// Check 7 again, right before the first install of the run: the vaults staged after this
+    /// one gave another writer time to change it.
+    pub(super) fn recheck(&self) -> Result<(), RunError> {
+        let changed = self
+            .prepared
+            .unexpected_changes()
+            .map_err(|e| self.fail(e))?;
+        match changed.first() {
+            None => Ok(()),
+            Some(first) => Err(self.fail(ImportError::CheckFailed {
+                check: 7,
+                detail: format!("{} vault files changed, first {first}", changed.len()),
+            })),
+        }
+    }
+
+    pub(super) fn install(self) -> Result<VaultSection, RunError> {
+        let Self {
+            mut section,
+            staged,
+            prepared,
+        } = self;
+        let fail = |source| RunError::Vault {
+            vault: section.path.clone(),
+            source,
+        };
+        create_core_dir(&prepared.dir.join(".memry")).map_err(fail)?;
+        staged.install().map_err(fail)?;
+        section.status = VaultStatus::Imported;
+        Ok(section)
+    }
+
+    pub(super) fn discard(self) {
+        if let Err(error) = self.staged.discard() {
+            tracing::warn!(%error, "could not remove the import staging directory");
+        }
+    }
+
+    fn fail(&self, source: ImportError) -> RunError {
+        RunError::Vault {
+            vault: self.section.path.clone(),
+            source,
+        }
+    }
+}
+
+/// A `core/data.db` an earlier attempt imported. Kept when that attempt read the Electron
+/// `data.db` this run finds (`Some`); removed when Electron wrote it since or the attempt is
+/// unknown (`None`, the vault is imported again). Safe to remove: no vault opens before the
+/// marker, nor a deferred one before its import, so nothing has used it. A native core or none
+/// at all is `None` and left to Step 36.
+fn earlier_import(
+    previous: Option<&VaultSection>,
+    vault: &Path,
+    fingerprint: &str,
+) -> Option<Result<VaultSection, ImportError>> {
+    let data = vault.join(".memry").join(CORE_DIR).join(DATA_FILE);
+    match fs::symlink_metadata(&data) {
+        Ok(meta) if meta.is_file() => {}
+        _ => return None,
+    }
+    match read_marker(&data) {
+        Ok(Some(_)) => {}
+        Ok(None) => return None,
+        Err(error) => return Some(Err(error.into())),
+    }
+    let same_source = |s: &&VaultSection| {
+        s.source_fingerprint.as_deref() == Some(fingerprint)
+            && matches!(
+                s.status,
+                VaultStatus::Staged | VaultStatus::Imported | VaultStatus::AlreadyImported
+            )
+    };
+    if let Some(done) = previous.filter(same_source) {
+        // Cut off after the commit rename: the staging directory install would have removed.
+        let staging = vault.join(".memry").join(STAGING_DIR);
+        match fs::remove_dir_all(&staging) {
+            Ok(()) => {}
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+            Err(e) => return Some(Err(ImportError::io(&staging, e))),
+        }
+        let mut done = done.clone();
+        done.status = VaultStatus::Imported;
+        return Some(Ok(done));
+    }
+    remove_core(&data).err().map(Err)
+}
+
+/// Removes an imported `core/` pair, sidecars before each database: a crash part way leaves
+/// either the marked `data.db` (removed again) or no `data.db` (staged again).
+fn remove_core(data: &Path) -> Result<(), ImportError> {
+    let index = data.with_file_name(INDEX_FILE);
+    for db in [data, index.as_path()] {
+        let mut files: Vec<PathBuf> = ["-wal", "-shm", "-journal"]
+            .iter()
+            .map(|suffix| {
+                let mut name = db.as_os_str().to_owned();
+                name.push(suffix);
+                PathBuf::from(name)
+            })
+            .collect();
+        files.push(db.to_owned());
+        for file in files {
+            match fs::remove_file(&file) {
+                Ok(()) => {}
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+                Err(e) => return Err(ImportError::io(&file, e)),
+            }
+        }
+    }
+    Ok(())
 }
 
 fn report_error() -> ImportError {
@@ -204,7 +345,7 @@ fn report_error() -> ImportError {
 fn checks(
     staged: &StagedVault,
     expected: &[(String, DocumentState)],
-    prepared: &crate::electron_import::vault_prep::PreparedVault,
+    prepared: &PreparedVault,
     section: &mut VaultSection,
 ) -> Result<(), ImportError> {
     for (doc_id, folded) in expected {
@@ -266,7 +407,7 @@ fn folded_state(doc_id: &str, state: &[u8]) -> Result<DocumentState, ImportError
 
 /// `<vault>/.memry/core`, mode 0700 on Unix, as the session creates it.
 fn create_core_dir(memry: &Path) -> Result<(), ImportError> {
-    let core = memry.join(crate::electron_import::vault_db::CORE_DIR);
+    let core = memry.join(CORE_DIR);
     let mut builder = fs::DirBuilder::new();
     builder.recursive(true);
     #[cfg(unix)]

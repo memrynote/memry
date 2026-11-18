@@ -437,6 +437,29 @@ pub fn import_secrets(
     Ok(SecretsPhase::Ran(outcome))
 }
 
+/// Undoes the done marker of a run whose secrets nothing used yet, so the next
+/// [`import_secrets`] copies Electron's current values: the first-launch run after a failure,
+/// when the user went back to the previous app, which may have refreshed its tokens since.
+/// `sync` also removes this app's four sync entries, which then hold that run's copies; the
+/// device key stays, and the next run checks it against Electron's again. The marker goes
+/// first: a failure part way leaves a phase that runs again.
+pub fn forget_secrets_import(
+    keyring: &KeyringStore,
+    app_dir: &Path,
+    sync: bool,
+) -> Result<(), SecretsError> {
+    let done = app_dir.join(DONE_FILE);
+    match fs::remove_file(&done) {
+        Ok(()) => {}
+        Err(error) if error.kind() == ErrorKind::NotFound => {}
+        Err(error) => return Err(SecretsError::DoneMarker(error.to_string())),
+    }
+    if sync {
+        keyring.clear()?;
+    }
+    Ok(())
+}
+
 fn adopt_error(error: AdoptError) -> SecretsError {
     match error {
         AdoptError::Taken => SecretsError::TargetOccupied {

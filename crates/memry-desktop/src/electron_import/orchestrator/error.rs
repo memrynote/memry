@@ -10,6 +10,18 @@ use crate::electron_import::secrets_import::SecretsError;
 pub enum RunError {
     #[error("Quit the previous MemryNote app, then start MemryNote again.")]
     ElectronRunning,
+    /// A vault opened before the first-launch run finished.
+    #[error(
+        "MemryNote has not finished moving your data from the previous MemryNote app. Finish \
+         moving your data first, then open this vault."
+    )]
+    NotMigrated,
+    /// A folder with Electron data that the first-launch run did not list.
+    #[error(
+        "The vault at {vault} holds data from the previous MemryNote app that MemryNote did not \
+         move. Keep using the previous MemryNote app for it."
+    )]
+    NotMoved { vault: String },
     #[error(
         "There is not enough free space on {}: moving your data needs {needed} bytes and \
          {available} are free. Free some space and try again.",
@@ -58,6 +70,8 @@ impl RunError {
     pub fn check(&self) -> String {
         match self {
             Self::ElectronRunning => "electron-running".into(),
+            Self::NotMigrated => "not-migrated".into(),
+            Self::NotMoved { .. } => "not-moved".into(),
             Self::DiskSpace { .. } => "disk-space".into(),
             Self::ElectronSchema { .. } => "electron-schema".into(),
             Self::SharedStore { .. } => "shared-store".into(),
@@ -71,6 +85,7 @@ impl RunError {
         match self {
             Self::ElectronSchema { vault, .. }
             | Self::VaultUnreachable { vault }
+            | Self::NotMoved { vault }
             | Self::Vault { vault, .. } => Some(vault.clone()),
             _ => None,
         }

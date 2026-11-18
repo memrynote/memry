@@ -21,7 +21,6 @@ use crate::registry::VaultRegistry;
 use crate::seams::secure_store::tests::fake::{Rig, rig};
 use crate::session::{OpenSource, Session, SessionError};
 
-
 #[derive(Default)]
 struct Telemetry(Mutex<Vec<MigrationEvent>>);
 
@@ -167,10 +166,29 @@ impl World {
         self.run_with(&self.ctx(None))
     }
 
-    /// The report with this world's temp root written as `<root>`, to compare across worlds.
+    /// The report with this world's temp root written as `<root>`, to compare across worlds,
+    /// and without the fingerprints, which differ with the seeded rows of each world.
     fn report(&self) -> String {
         let text = fs::read_to_string(self.data.join(REPORT_FILE)).unwrap();
-        text.replace(&*self.root.path().to_string_lossy(), "<root>")
+        let mut report: Value = serde_json::from_str(&text).unwrap();
+        for vault in report["vaults"].as_array_mut().unwrap() {
+            vault.as_object_mut().unwrap().remove("sourceFingerprint");
+        }
+        serde_json::to_string_pretty(&report)
+            .unwrap()
+            .replace(&*self.root.path().to_string_lossy(), "<root>")
+    }
+
+    /// The fingerprint of the vault's Electron `data.db` as it is now.
+    fn fingerprint(&self, name: &str) -> String {
+        vault::source_fingerprint(Path::new(&self.vault(name))).unwrap()
+    }
+
+    fn marker_fingerprint(&self, name: &str) -> Option<String> {
+        let path = self.vault(name);
+        let marker = self.marker().unwrap();
+        let entry = marker.vaults.iter().find(|v| v.path == path).unwrap();
+        entry.source_fingerprint.clone()
     }
 
     fn spell_check(&self) -> Option<Value> {
@@ -327,7 +345,13 @@ fn a_crash_after_any_phase_or_install_point_reruns_to_the_same_report() {
             "{point}: rerun"
         );
         assert_eq!(w.report(), expected, "{point}: same report");
-        assert!(w.marker().is_some(), "{point}: marker after the rerun");
+        for name in ["Work", "Home"] {
+            assert_eq!(
+                w.marker_fingerprint(name),
+                Some(w.fingerprint(name)),
+                "{point}: {name}'s fingerprint"
+            );
+        }
     }
 }
 
@@ -504,20 +528,6 @@ fn a_deferred_vault_whose_store_was_imported_never_opens() {
 }
 
 #[test]
-fn a_settled_vault_reads_only_the_marker() {
-    let w = two_vault_world();
-    let ctx = w.ctx(None);
-    migrate_vault(&ctx, Path::new(&w.vault("Work"))).unwrap();
-    assert!(!w.core_data("Work").exists(), "no marker: nothing to do");
-
-    w.run().unwrap();
-    fs::remove_dir_all(&w.profile).unwrap();
-
-    migrate_vault(&ctx, Path::new(&w.vault("Work"))).unwrap();
-    migrate_vault(&ctx, Path::new("/not/an/electron/vault")).unwrap();
-}
-
-#[test]
 fn the_session_opens_no_vault_the_migrator_refuses() {
     let w = two_vault_world();
     let config = Arc::new(AppConfig::load(w.data.join("session-config.json")));
@@ -559,3 +569,5 @@ fn pending_notes_salvage_a_torn_write() {
 }
 
 mod guards;
+mod open_hook;
+mod resume;

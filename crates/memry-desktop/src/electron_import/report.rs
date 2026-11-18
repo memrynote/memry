@@ -59,6 +59,10 @@ pub struct VaultSection {
     pub stage: Option<Value>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub checks_passed: Vec<u8>,
+    /// sha256 of the Electron `data.db` and its WAL as the import read them, hex: the marker's
+    /// downgrade fingerprint. A rerun that finds another one imports the vault again.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_fingerprint: Option<String>,
     /// Checks not run, by number, with the reason.
     #[serde(default, skip_serializing_if = "Map::is_empty")]
     pub checks_not_run: Map<String, Value>,
@@ -79,6 +83,7 @@ impl VaultSection {
             prep: None,
             stage: None,
             checks_passed: Vec::new(),
+            source_fingerprint: None,
             checks_not_run: Map::new(),
             extra: Map::new(),
         }

@@ -255,20 +255,20 @@ fn collapse_same_folders(vaults: &mut [PlannedVault]) {
 }
 
 #[cfg(unix)]
-type FolderId = (u64, u64);
+pub(crate) type FolderId = (u64, u64);
 #[cfg(not(unix))]
-type FolderId = PathBuf;
+pub(crate) type FolderId = PathBuf;
 
 /// Device and inode on Unix; elsewhere the resolved path, which Windows returns in the
 /// volume's own case.
 #[cfg(unix)]
-fn folder_id(dir: &Path) -> Option<FolderId> {
+pub(crate) fn folder_id(dir: &Path) -> Option<FolderId> {
     use std::os::unix::fs::MetadataExt;
     fs::metadata(dir).ok().map(|m| (m.dev(), m.ino()))
 }
 
 #[cfg(not(unix))]
-fn folder_id(dir: &Path) -> Option<FolderId> {
+pub(crate) fn folder_id(dir: &Path) -> Option<FolderId> {
     fs::canonicalize(dir).ok()
 }
 
