@@ -348,6 +348,8 @@ mod markdown_doc_vectors;
 mod markdown_fail_closed;
 #[path = "markdown_frontmatter_edit.rs"]
 mod markdown_frontmatter_edit;
+#[path = "markdown_frontmatter_language.rs"]
+mod markdown_frontmatter_language;
 #[path = "markdown_frontmatter_vectors.rs"]
 mod markdown_frontmatter_vectors;
 #[path = "markdown_layer_blocks_vectors.rs"]

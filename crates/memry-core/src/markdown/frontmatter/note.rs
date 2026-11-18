@@ -2,6 +2,7 @@
 //! and body, serialize it back keeping every unedited byte, and write new files.
 
 use super::js::{is_js_whitespace, js_trim};
+use super::json::json_to_yaml;
 use super::split::split_frontmatter_block;
 use super::value::{YamlMap, YamlValue};
 use super::yaml_dump::safe_dump;
@@ -63,37 +64,118 @@ fn matter_is_blank(matter: &str) -> bool {
     js_trim(&kept).is_empty()
 }
 
-/// gray-matter's split of a text (`parseMatter`), after a leading byte-order mark: the raw
-/// frontmatter (`file.matter`) and the text after its closing delimiter (`file.content`), or
-/// `None` when the text does not open with a frontmatter delimiter. An unclosed block runs to
-/// the end of the text and leaves no content.
-pub fn gray_matter_parts(text: &str) -> Option<(&str, &str)> {
+/// gray-matter's split of a text: the language named after the opening delimiter, the raw
+/// frontmatter and the content.
+struct Matter<'a> {
+    language: Option<&'a str>,
+    matter: &'a str,
+    content: &'a str,
+}
+
+fn parse_matter(text: &str) -> Option<Matter<'_>> {
     let text = text.strip_prefix('\u{FEFF}').unwrap_or(text);
     let after_open = text.strip_prefix("---")?;
     if after_open.starts_with('-') {
         return None;
     }
-    let Some(close) = after_open.find("\n---") else {
-        return Some((after_open, ""));
+    // `matter.language`: `str.slice(0, str.search(/\r?\n/))`. With no line break that is all
+    // but the last UTF-16 unit. A non-BMP last character splits: its high surrogate ends the
+    // name, which then names no engine, and its low one is a matter that is not blank. The
+    // name here takes the whole character and the matter keeps it, which fails the same way.
+    let (name_end, matter_start) = match after_open.find('\n') {
+        Some(nl) if after_open[..nl].ends_with('\r') => (nl - 1, nl - 1),
+        Some(nl) => (nl, nl),
+        None => match after_open.char_indices().next_back() {
+            Some((at, last)) if last.len_utf16() == 2 => (after_open.len(), at),
+            Some((at, _)) => (at, at),
+            None => (0, 0),
+        },
+    };
+    let name = js_trim(&after_open[..name_end]);
+    let (language, rest) = if name.is_empty() {
+        (None, after_open)
+    } else {
+        (Some(name), &after_open[matter_start..])
+    };
+    let Some(close) = rest.find("\n---") else {
+        return Some(Matter {
+            language,
+            matter: rest,
+            content: "",
+        });
     };
     // The rest of the closing line is content, less one line break.
-    let content = &after_open[close + "\n---".len()..];
+    let content = &rest[close + "\n---".len()..];
     let content = content.strip_prefix('\r').unwrap_or(content);
     let content = content.strip_prefix('\n').unwrap_or(content);
-    Some((&after_open[..close], content))
+    Some(Matter {
+        language,
+        matter: &rest[..close],
+        content,
+    })
+}
+
+/// gray-matter's split of a text (`parseMatter`), after a leading byte-order mark: the raw
+/// frontmatter (`file.matter`, less a `---<language>` line's language) and the text after its
+/// closing delimiter (`file.content`), or `None` when the text does not open with a frontmatter
+/// delimiter. An unclosed block runs to the end of the text and leaves no content.
+pub fn gray_matter_parts(text: &str) -> Option<(&str, &str)> {
+    parse_matter(text).map(|parts| (parts.matter, parts.content))
+}
+
+fn engine_error(message: String) -> YamlError {
+    YamlError {
+        message,
+        line: 0,
+        column: 0,
+    }
+}
+
+/// `JSON.parse`. serde_json refuses what JSON.parse takes past its limits (nesting past 128,
+/// a number past f64, a lone surrogate escape), so such a block fails closed.
+fn parse_json(matter: &str) -> Result<YamlValue, YamlError> {
+    serde_json::from_str::<serde_json::Value>(matter)
+        .map(|value| json_to_yaml(&value))
+        .map_err(|e| YamlError {
+            message: format!("JSON frontmatter: {e}"),
+            line: e.line().saturating_sub(1),
+            column: e.column().saturating_sub(1),
+        })
+}
+
+/// gray-matter's engine for the block's language (`lib/engine.js` over the default engines).
+/// The `javascript` engine `eval`s the block; it is refused, never run, so a file from another
+/// tool cannot execute code (a deliberate difference from Electron). A name only
+/// `Object.prototype` resolves (`constructor`, `toString`) is not registered here either.
+fn parse_with(language: Option<&str>, matter: &str) -> Result<Option<YamlValue>, YamlError> {
+    let Some(name) = language else {
+        return safe_load(matter);
+    };
+    match name {
+        "json" => parse_json(matter).map(Some),
+        _ => match name.to_lowercase().as_str() {
+            "yaml" | "yml" => safe_load(matter),
+            "js" | "javascript" => Err(engine_error(format!(
+                "gray-matter engine \"{name}\" evaluates code; the frontmatter is not evaluated"
+            ))),
+            _ => Err(engine_error(format!(
+                "gray-matter engine \"{name}\" is not registered"
+            ))),
+        },
+    }
 }
 
 /// `matter(text, {}).data`, for a block the splitter produced or for a whole file read with
 /// gray-matter directly: an unclosed block runs to the end of the text, as in gray-matter.
 pub fn gray_matter_data(block: &str) -> Result<YamlValue, YamlError> {
     let empty = || YamlValue::map(YamlMap::new());
-    let Some((matter, _)) = gray_matter_parts(block) else {
+    let Some(parts) = parse_matter(block) else {
         return Ok(empty());
     };
-    if matter_is_blank(matter) {
+    if matter_is_blank(parts.matter) {
         return Ok(empty());
     }
-    Ok(match safe_load(matter)? {
+    Ok(match parse_with(parts.language, parts.matter)? {
         None | Some(YamlValue::Null) => empty(),
         Some(value) => value,
     })
