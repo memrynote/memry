@@ -576,13 +576,18 @@ const APP_PIDFILE: &str = "MEMRY_TEST_APP_PIDFILE";
 #[test]
 fn the_worker_exits_when_the_app_dies() {
     if let Some(pidfile) = std::env::var_os(APP_PIDFILE) {
+        // The child must be inside the hung op, not waiting on stdin, whose end at the app's
+        // death would end it without the parent watch.
+        let marker = std::path::PathBuf::from(&pidfile).with_extension("hung");
         let worker = Arc::new(supervisor(limits()));
         let caller = worker.clone();
-        thread::spawn(move || caller.call(&open("hang")));
+        let op = open(&format!("hang:{}", marker.display()));
+        thread::spawn(move || caller.call(&op));
         let deadline = Instant::now() + Duration::from_secs(30);
-        while worker.pid().is_none() && Instant::now() < deadline {
+        while !marker.exists() && Instant::now() < deadline {
             thread::sleep(Duration::from_millis(10));
         }
+        assert!(marker.exists(), "the child took the hanging op");
         let pid = worker.pid().expect("running");
         std::fs::write(&pidfile, pid.to_string()).expect("write pid");
         loop {

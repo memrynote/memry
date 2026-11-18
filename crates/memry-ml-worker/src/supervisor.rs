@@ -262,10 +262,15 @@ impl Supervisor {
             let now = shared.clock.now();
             let generation = match pinned {
                 Some(generation) => generation,
-                // Stopped, or ended, between its `Ready` and this call.
+                // Ended (or stopped) between its `Ready` and this call: an exit, so the
+                // embedding breaker counts it as a crash.
                 None => match &state.running {
                     Some(running) => running.generation,
-                    None => return Err(WorkerError::Stopped),
+                    None => {
+                        return Err(WorkerError::Exited(
+                            "the worker ended right after it started".into(),
+                        ));
+                    }
                 },
             };
             if current(&mut state, generation).is_none() {
@@ -377,8 +382,9 @@ impl Drop for Supervisor {
 }
 
 /// Starts a child unless one runs or the worker is paused, and waits for its `Ready` without the
-/// state lock. A child that exits or hangs before `Ready` counts as a crash
-/// (`ocr-engine.ts:126-137`); one [`Supervisor::stop`] ends meanwhile does not.
+/// state lock. A child that exits before `Ready` counts as a crash (`ocr-engine.ts:126-137`); one
+/// that hangs past [`Limits::start_timeout`] counts too, where Electron counts only the exit. One
+/// [`Supervisor::stop`] ends meanwhile does not.
 fn start_if_needed(shared: &Arc<Shared>) -> Result<(), WorkerError> {
     let (generation, ready) = {
         let mut state = lock(&shared.state);

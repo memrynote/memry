@@ -24,8 +24,11 @@ pub fn exit_with_parent() {
                 loop {
                     std::thread::sleep(PARENT_POLL);
                     // Nothing is logged: stderr went with the app, and a failed write panics.
+                    // `_exit` runs no atexit handler or destructor while the main thread may be
+                    // inside pdfium, Tesseract or ONNX Runtime.
                     if std::os::unix::process::parent_id() != parent {
-                        std::process::exit(4);
+                        // SAFETY: ends the process at once; nothing runs after it.
+                        unsafe { libc::_exit(4) };
                     }
                 }
             });
@@ -71,7 +74,9 @@ pub fn bind_to_app(child: &Child) -> std::io::Result<()> {
                 Ok(job.0 as isize)
             }
         });
-        let job = job.as_ref().map_err(std::io::Error::other)?;
+        let job = job
+            .as_ref()
+            .map_err(|error| std::io::Error::other(error.clone()))?;
         // SAFETY: the job lives for the process, and `child` owns its handle for the call.
         unsafe {
             AssignProcessToJobObject(
