@@ -24,6 +24,8 @@ use sha2::{Digest, Sha256};
 mod electron_db;
 #[path = "electron_vault_import/records.rs"]
 mod records;
+#[path = "electron_vault_import/tag_template_records.rs"]
+mod tag_template_records;
 
 const NOW_MS: i64 = 1_800_000_000_000;
 
