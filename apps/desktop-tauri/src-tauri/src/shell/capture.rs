@@ -8,9 +8,7 @@
 use std::sync::{Arc, Mutex, PoisonError};
 
 use memry_desktop::i18n::{self, Args};
-use memry_desktop::launch_env::LaunchEnv;
 use memry_desktop::locale::LocaleService;
-use memry_desktop::paths::DEVICE_VAR;
 use memry_desktop::registry::AppConfig;
 use memry_desktop::seams::secure_store::{DeviceIdentityStore, KeyringStore};
 use memry_desktop::services::capture::pairing::Pairing;
@@ -35,10 +33,8 @@ pub fn register_stages() {
 }
 
 fn start(app: &AppHandle<Wry>) -> Result<(), CommandError> {
-    let device = app.state::<LaunchEnv>().get(DEVICE_VAR).map(str::to_owned);
     let pairing = Arc::new(Pairing::new(
         app.state::<Arc<KeyringStore>>().inner().clone(),
-        device.as_deref(),
         app.state::<Arc<AppConfig>>().inner().clone(),
     ));
     let opener = pairing.clone();

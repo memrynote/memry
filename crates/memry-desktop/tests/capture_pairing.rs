@@ -279,13 +279,38 @@ fn an_unreadable_stored_token_is_replaced() {
 }
 
 #[test]
-fn the_token_account_takes_the_device_suffix() {
+fn the_token_account_is_electrons_unsuffixed_one() {
+    // Electron keeps `pairing-token` without the `MEMRY_DEVICE` suffix
+    // (`secret-storage-callsites.test.ts:377`), and Step 37 imports the name unchanged.
     let e = env();
     let keychain = Arc::new(Keychain::default());
-    keychain.put(SERVICE, "pairing-token-work", b"work-token");
-    let pairing = Pairing::new(keychain.clone(), Some("work"), e.config.clone());
-    assert_eq!(pairing.token().unwrap().as_str(), "work-token");
+    keychain.put(SERVICE, "pairing-token", b"electron-token");
+    let pairing = Pairing::new(keychain.clone(), e.config.clone());
+    assert_eq!(pairing.token().unwrap().as_str(), "electron-token");
     assert_eq!(keychain.writes.load(Ordering::SeqCst), 0);
+}
+
+#[test]
+fn one_origins_pair_request_leaves_another_origins_window_open() {
+    let e = env();
+    runtime().block_on(async {
+        let server = e.start().await;
+        let port = server.port();
+        e.paired(CHROME);
+        e.pairing.finish_consent(OTHER_CHROME, true);
+        let r = pair_request(CHROME).send(port).await;
+        assert_eq!(r.body, json!({ "status": "already-paired" }));
+        let r = claim(OTHER_CHROME).send(port).await;
+        assert_eq!(r.status, 200, "{:?}", r.body);
+        let r = claim(CHROME).send(port).await;
+        assert_eq!(r.status, 200, "{:?}", r.body);
+        // The deep link's window is a slot of its own: an origin's window does not use it up.
+        e.pairing.open_window();
+        e.pairing
+            .open_window_for(Some(OTHER_CHROME), Duration::from_secs(60));
+        assert!(e.pairing.claim(OTHER_CHROME).unwrap().is_some());
+        assert!(e.pairing.claim(FIREFOX).unwrap().is_some());
+    });
 }
 
 /// `memry-config.json` as Electron's store leaves it after a pairing, unknown keys included.
@@ -332,7 +357,6 @@ fn a_pairing_electron_wrote_works_without_pairing_again() {
     // A new app run reads the same pairing back.
     let reloaded = Pairing::new(
         e.keychain.clone(),
-        None,
         Arc::new(AppConfig::load(e.config.path().to_owned())),
     );
     assert!(reloaded.is_allowed(Some(FIREFOX)));
@@ -396,9 +420,10 @@ fn the_extension_pairs_lists_captures_and_revokes_as_it_ships() {
                 let _ = socket.write_all(not_memry).await;
             }
         });
-        let server = memry_desktop::services::capture::start_in(e.deps(None), first, 8)
-            .await
-            .unwrap();
+        let server =
+            memry_desktop::services::capture::start_in(e.deps(None), Default::default(), first, 8)
+                .await
+                .unwrap();
         let ports: Vec<u16> = (0..8).filter_map(|i| first.checked_add(i)).collect();
         // `probeServer`: the busy port answers nothing the extension accepts.
         let (port, ping) = probe(&ports).await.expect("a memry server");
@@ -494,7 +519,7 @@ fn tags_list_the_vaults_tags_most_used_first() {
     };
     let token = e.paired(CHROME);
     runtime().block_on(async {
-        let server = memry_desktop::services::capture::start_in(deps, 0, 1)
+        let server = memry_desktop::services::capture::start_in(deps, Default::default(), 0, 1)
             .await
             .unwrap();
         let r = req("POST", "/tags")

@@ -3,11 +3,11 @@
 //! `memry-config.json`, the claim window and the per-origin consent state.
 //!
 //! Storage contract (the Electron entries are imported by Step 37, #3554): the token is 32
-//! random bytes as hex under service [`SERVICE`], account [`ACCOUNT`] (with the `MEMRY_DEVICE`
-//! suffix rule); the allowlist is the string array [`ALLOWLIST_KEY`], written through
+//! random bytes as hex under service [`SERVICE`], account [`ACCOUNT`] with no `MEMRY_DEVICE`
+//! suffix, as Electron keeps it (`secret-storage-callsites.test.ts:377`); the allowlist is the string array [`ALLOWLIST_KEY`], written through
 //! `AppConfig::update`, which keeps every other key.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::{Duration, Instant};
 
@@ -18,7 +18,7 @@ use zeroize::Zeroizing;
 
 use super::auth::is_extension_origin;
 use crate::registry::{AppConfig, ConfigError};
-use crate::seams::secure_store::{GenericSecrets, device_account};
+use crate::seams::secure_store::GenericSecrets;
 
 pub const SERVICE: &str = "com.memrynote.memry.capture";
 pub const ACCOUNT: &str = "pairing-token";
@@ -36,7 +36,6 @@ pub enum PairError {
 
 pub struct Pairing {
     secrets: Arc<dyn GenericSecrets>,
-    account: String,
     config: Arc<AppConfig>,
     /// The token once read or minted, so `/capture` costs no keychain call (`pairing.ts:18-21`).
     /// Held across the keychain call, so two first readers cannot mint two tokens.
@@ -44,18 +43,16 @@ pub struct Pairing {
     state: Mutex<State>,
 }
 
+/// Each claim window admits one claim before it closes at its `Instant`.
 #[derive(Default)]
 struct State {
-    window: Option<ClaimWindow>,
+    /// Windows opened for one origin (consent, `already-paired`), each admitting only it, so
+    /// one origin's request never closes another's window.
+    windows: HashMap<String, Instant>,
+    /// The `pair` deep link's window, which admits any extension origin.
+    any_origin: Option<Instant>,
     pending: HashSet<String>,
     denied: HashSet<String>,
-}
-
-struct ClaimWindow {
-    until: Instant,
-    /// The origin the window was opened for; `None` (the `pair` deep link) admits any
-    /// extension origin.
-    origin: Option<String>,
 }
 
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
@@ -63,15 +60,9 @@ fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
 }
 
 impl Pairing {
-    /// `device` is the `MEMRY_DEVICE` value (the `-<device>` account suffix).
-    pub fn new(
-        secrets: Arc<dyn GenericSecrets>,
-        device: Option<&str>,
-        config: Arc<AppConfig>,
-    ) -> Self {
+    pub fn new(secrets: Arc<dyn GenericSecrets>, config: Arc<AppConfig>) -> Self {
         Self {
             secrets,
-            account: device_account(ACCOUNT, device),
             config,
             token: Mutex::new(None),
             state: Mutex::new(State::default()),
@@ -89,7 +80,7 @@ impl Pairing {
         }
         let stored = self
             .secrets
-            .get_secret(SERVICE, &self.account)?
+            .get_secret(SERVICE, ACCOUNT)?
             .map(Zeroizing::new)
             .and_then(|bytes| String::from_utf8(bytes.to_vec()).ok())
             .filter(|text| !text.is_empty())
@@ -99,7 +90,7 @@ impl Pairing {
             None => {
                 let token = Zeroizing::new(hex::encode(Zeroizing::new(sodium::random_bytes(32))));
                 self.secrets
-                    .set_secret(SERVICE, &self.account, token.as_bytes())?;
+                    .set_secret(SERVICE, ACCOUNT, token.as_bytes())?;
                 token
             }
         };
@@ -128,25 +119,34 @@ impl Pairing {
 
     /// A claim window for `origin` only (`None`: any extension origin) that closes after `ttl`.
     pub fn open_window_for(&self, origin: Option<&str>, ttl: Duration) {
-        lock(&self.state).window = Some(ClaimWindow {
-            until: Instant::now() + ttl,
-            origin: origin.map(str::to_owned),
-        });
+        let now = Instant::now();
+        let mut state = lock(&self.state);
+        match origin {
+            Some(origin) => {
+                state.windows.retain(|_, until| now < *until);
+                state.windows.insert(origin.to_owned(), now + ttl);
+            }
+            None => state.any_origin = Some(now + ttl),
+        }
     }
 
     /// `claimPairing`: within an open window, `origin` joins the allowlist and gets the token,
-    /// and the window closes (one claim per window). `Ok(None)` when no window admits it.
+    /// and the window that admitted it closes (one claim per window), its own before the deep
+    /// link's. `Ok(None)` when no window admits it.
     pub fn claim(&self, origin: &str) -> Result<Option<Zeroizing<String>>, PairError> {
+        if !is_extension_origin(origin) {
+            return Ok(None);
+        }
         {
+            let now = Instant::now();
             let mut state = lock(&self.state);
-            let admitted = state.window.as_ref().is_some_and(|window| {
-                Instant::now() < window.until
-                    && window.origin.as_deref().is_none_or(|o| o == origin)
-            });
-            if !admitted || !is_extension_origin(origin) {
+            let own = state
+                .windows
+                .remove(origin)
+                .is_some_and(|until| now < until);
+            if !own && state.any_origin.take_if(|until| now < *until).is_none() {
                 return Ok(None);
             }
-            state.window = None;
         }
         let token = self.token()?;
         self.config.update(|config| {
@@ -171,14 +171,16 @@ impl Pairing {
     /// `unpairCapture`: the token deleted, every origin unpaired, the window closed.
     pub fn unpair(&self) -> Result<(), PairError> {
         let mut cached = lock(&self.token);
-        self.secrets.delete_secret(SERVICE, &self.account)?;
+        self.secrets.delete_secret(SERVICE, ACCOUNT)?;
         *cached = None;
         drop(cached);
         self.config.update(|config| {
             config.insert(ALLOWLIST_KEY.to_owned(), Value::Array(Vec::new()));
             Ok::<_, ConfigError>(())
         })?;
-        lock(&self.state).window = None;
+        let mut state = lock(&self.state);
+        state.windows.clear();
+        state.any_origin = None;
         Ok(())
     }
 

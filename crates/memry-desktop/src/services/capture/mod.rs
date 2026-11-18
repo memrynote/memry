@@ -17,16 +17,22 @@ pub mod pairing;
 mod routes;
 pub mod schema;
 
+use std::convert::Infallible;
 use std::io;
 use std::net::{Ipv4Addr, SocketAddr};
 use std::path::Path;
 use std::sync::Arc;
+use std::time::Duration;
 
-use axum::Router;
+use axum::body::Body;
 use futures_util::future::BoxFuture;
+use hyper::server::conn::http1;
+use hyper::service::service_fn;
+use hyper_util::rt::{TokioIo, TokioTimer};
 use memry_core::seams::secure_store::SecureStore;
 use tokio::net::TcpListener;
-use tokio::task::JoinHandle;
+use tokio::sync::Semaphore;
+use tokio::task::{JoinHandle, JoinSet};
 
 use self::pairing::Pairing;
 use crate::session::{OpenVault, Session};
@@ -69,7 +75,30 @@ pub struct CaptureDeps {
     pub telemetry: Option<Arc<Service>>,
 }
 
-/// A running server. Dropping it stops listening at once; requests already accepted finish.
+/// How long a client may take and how many connections are served at once.
+#[derive(Debug, Clone, Copy)]
+pub struct Limits {
+    /// A connection that has not sent a whole request head in this time is closed (Node's
+    /// `headersTimeout`, which Electron's server keeps).
+    pub header_read: Duration,
+    /// The whole request, body included, arrives within this or the answer is `408` (Node's
+    /// `requestTimeout`).
+    pub request: Duration,
+    /// Connections served at once; the next ones wait in the listen backlog.
+    pub connections: usize,
+}
+
+impl Default for Limits {
+    fn default() -> Self {
+        Self {
+            header_read: Duration::from_secs(60),
+            request: Duration::from_secs(300),
+            connections: 32,
+        }
+    }
+}
+
+/// A running server. Dropping it stops listening and closes every connection it serves.
 pub struct CaptureServer {
     port: u16,
     task: JoinHandle<()>,
@@ -89,15 +118,20 @@ impl Drop for CaptureServer {
 
 /// Binds the first free port of the extension's range and serves. Call inside a tokio runtime.
 pub async fn start(deps: CaptureDeps) -> io::Result<CaptureServer> {
-    start_in(deps, DEFAULT_PORT, PROBE_RANGE).await
+    start_in(deps, Limits::default(), DEFAULT_PORT, PROBE_RANGE).await
 }
 
 /// [`start`] over `count` ports from `first`. A port in use (or one the OS reserves, which
 /// Windows reports as access denied) moves to the next; any other bind error stops.
-pub async fn start_in(deps: CaptureDeps, first: u16, count: u16) -> io::Result<CaptureServer> {
+pub async fn start_in(
+    deps: CaptureDeps,
+    limits: Limits,
+    first: u16,
+    count: u16,
+) -> io::Result<CaptureServer> {
     for port in (0..count).filter_map(|i| first.checked_add(i)) {
         match TcpListener::bind(SocketAddr::from((Ipv4Addr::LOCALHOST, port))).await {
-            Ok(listener) => return serve(deps, listener),
+            Ok(listener) => return serve(deps, limits, listener),
             Err(error)
                 if matches!(
                     error.kind(),
@@ -112,15 +146,54 @@ pub async fn start_in(deps: CaptureDeps, first: u16, count: u16) -> io::Result<C
     ))
 }
 
-fn serve(deps: CaptureDeps, listener: TcpListener) -> io::Result<CaptureServer> {
+fn serve(deps: CaptureDeps, limits: Limits, listener: TcpListener) -> io::Result<CaptureServer> {
     let port = listener.local_addr()?.port();
-    let shared = Arc::new(routes::Shared { deps, port });
-    let app = Router::new().fallback(routes::handle).with_state(shared);
-    let task = tokio::spawn(async move {
-        if let Err(error) = axum::serve(listener, app).await {
-            tracing::error!(scope = "Capture", "the capture server stopped: {error}");
-        }
+    let shared = Arc::new(routes::Shared {
+        deps,
+        port,
+        request_timeout: limits.request,
     });
+    let task = tokio::spawn(accept(listener, shared, limits));
     tracing::info!(scope = "Capture", "capture server on 127.0.0.1:{port}");
     Ok(CaptureServer { port, task })
+}
+
+/// Serves each connection on its own task, at most `limits.connections` at once. The tasks
+/// live in a `JoinSet` this loop owns, so aborting the loop (dropping the server) aborts them.
+async fn accept(listener: TcpListener, shared: Arc<routes::Shared>, limits: Limits) {
+    let slots = Arc::new(Semaphore::new(limits.connections));
+    let mut connections = JoinSet::new();
+    let mut http = http1::Builder::new();
+    http.timer(TokioTimer::new())
+        .header_read_timeout(limits.header_read);
+    loop {
+        while connections.try_join_next().is_some() {}
+        let slot = slots
+            .clone()
+            .acquire_owned()
+            .await
+            .expect("the slots are never closed");
+        let stream = match listener.accept().await {
+            Ok((stream, _)) => stream,
+            Err(error) => {
+                // Out of file descriptors and the like: wait for some to free up instead of
+                // spinning on the error, as `axum::serve` does.
+                tracing::warn!(scope = "Capture", "capture server accept failed: {error}");
+                tokio::time::sleep(Duration::from_secs(1)).await;
+                continue;
+            }
+        };
+        let shared = shared.clone();
+        let service = service_fn(move |request: hyper::Request<_>| {
+            let shared = shared.clone();
+            async move { Ok::<_, Infallible>(routes::handle(&shared, request.map(Body::new)).await) }
+        });
+        let connection = http.serve_connection(TokioIo::new(stream), service);
+        connections.spawn(async move {
+            if let Err(error) = connection.await {
+                tracing::debug!(scope = "Capture", "capture connection ended: {error}");
+            }
+            drop(slot);
+        });
+    }
 }

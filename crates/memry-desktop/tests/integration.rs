@@ -109,6 +109,8 @@ mod block_refs;
 mod byte_preservation;
 #[path = "capture_pairing.rs"]
 mod capture_pairing;
+#[path = "capture_requests.rs"]
+mod capture_requests;
 #[path = "capture_server.rs"]
 mod capture_server;
 #[path = "command_failure.rs"]

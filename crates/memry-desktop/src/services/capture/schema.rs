@@ -3,6 +3,8 @@
 //! `url` trimmed and parsed as an absolute URL (the trimmed string is what zod outputs), and
 //! string bounds counted in UTF-16 code units as zod's `.max()` counts `.length`.
 
+use std::borrow::Cow;
+
 use memry_core::domain::inbox::ingest::{
     InboxArticle, InboxArticleProperties, InboxExtractionStatus,
 };
@@ -22,6 +24,62 @@ pub struct ArticleCapture {
 }
 
 const MODES: [&str; 4] = ["article", "selection", "screenshot", "pdf"];
+
+/// `json` with every unpaired UTF-16 surrogate escape inside a string (`\ud83d` without its low
+/// half, or a low half alone) replaced by `\ufffd`, as `toWellFormed` would. The extension cuts
+/// `excerpt` at 200 UTF-16 units, which can split an emoji, and `JSON.stringify` writes the
+/// half as an escape; `JSON.parse` accepts it, `serde_json` does not.
+pub fn to_well_formed(json: &str) -> Cow<'_, str> {
+    let bytes = json.as_bytes();
+    let mut out = String::new();
+    let (mut copied, mut at, mut in_string) = (0, 0, false);
+    while at < bytes.len() {
+        match bytes[at] {
+            b'"' => {
+                in_string = !in_string;
+                at += 1;
+            }
+            b'\\' if in_string => {
+                let Some(unit) = escaped_unit(bytes, at) else {
+                    // `\\`, `\"` and the other two-byte escapes.
+                    at += 2;
+                    continue;
+                };
+                let high = (0xd800..0xdc00).contains(&unit);
+                let paired = high && escaped_unit(bytes, at + 6).is_some_and(is_low_surrogate);
+                if paired {
+                    at += 12;
+                } else if high || is_low_surrogate(unit) {
+                    out.push_str(&json[copied..at]);
+                    out.push_str("\\ufffd");
+                    at += 6;
+                    copied = at;
+                } else {
+                    at += 6;
+                }
+            }
+            _ => at += 1,
+        }
+    }
+    if copied == 0 {
+        return Cow::Borrowed(json);
+    }
+    out.push_str(&json[copied..]);
+    Cow::Owned(out)
+}
+
+/// The code unit of a `\uXXXX` escape starting at `at`.
+fn escaped_unit(bytes: &[u8], at: usize) -> Option<u16> {
+    let hex = bytes.get(at..at + 6)?.strip_prefix(b"\\u")?;
+    if !hex.iter().all(u8::is_ascii_hexdigit) {
+        return None;
+    }
+    u16::from_str_radix(std::str::from_utf8(hex).ok()?, 16).ok()
+}
+
+fn is_low_surrogate(unit: u16) -> bool {
+    (0xdc00..0xe000).contains(&unit)
+}
 
 /// `None` when `value` is not a valid capture (`422 invalid-capture`).
 pub fn parse(value: &Value) -> Option<ArticleCapture> {

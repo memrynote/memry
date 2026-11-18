@@ -15,7 +15,7 @@ use memry_core::seams::secure_store::SecureStore;
 use memry_desktop::registry::{AppConfig, VaultRegistry};
 use memry_desktop::seams::secure_store::GenericSecrets;
 use memry_desktop::services::capture::pairing::{ACCOUNT, Pairing, SERVICE};
-use memry_desktop::services::capture::{self, CaptureDeps, CaptureFiler, CaptureServer};
+use memry_desktop::services::capture::{self, CaptureDeps, CaptureFiler, CaptureServer, Limits};
 use memry_desktop::session::{OpenSource, OpenVault, Session};
 use serde_json::Value;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -145,7 +145,7 @@ pub fn env_with_config(config: Option<&str>) -> Env {
     let session = Session::new(VaultRegistry::new(config.clone()));
     session.open(&vault, OpenSource::Select).unwrap();
     let keychain = Arc::new(Keychain::default());
-    let pairing = Arc::new(Pairing::new(keychain.clone(), None, config.clone()));
+    let pairing = Arc::new(Pairing::new(keychain.clone(), config.clone()));
     let (asked_tx, asked) = mpsc::channel();
     let (answers, answers_rx) = mpsc::channel::<bool>();
     let answers_rx = Mutex::new(answers_rx);
@@ -190,7 +190,13 @@ impl Env {
 
     /// The server on an ephemeral port.
     pub async fn start(&self) -> CaptureServer {
-        capture::start_in(self.deps(None), 0, 1).await.unwrap()
+        self.start_with(Limits::default()).await
+    }
+
+    pub async fn start_with(&self, limits: Limits) -> CaptureServer {
+        capture::start_in(self.deps(None), limits, 0, 1)
+            .await
+            .unwrap()
     }
 
     /// `origin` paired with the token the server mints, as a finished pairing leaves it.

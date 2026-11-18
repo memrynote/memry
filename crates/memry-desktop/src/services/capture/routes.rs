@@ -2,12 +2,13 @@
 //! request target (a query string is `404`, as Node's `req.url` compares). Every response is
 //! JSON with `Connection: close`, no CORS header and no OPTIONS handling.
 
-use std::sync::Arc;
+use std::time::Duration;
 
 use axum::body::Body;
-use axum::extract::State;
 use axum::http::{HeaderValue, Method, Request, Response, StatusCode, header};
+use http_body_util::BodyExt;
 use serde_json::{Value, json};
+use tokio::time::{Instant, timeout_at};
 
 use super::auth::{Asked, Denied, host_allowed, is_extension_origin, token_matches};
 use super::pairing::CLAIM_WINDOW;
@@ -19,15 +20,14 @@ use crate::telemetry::service::Service;
 pub(super) struct Shared {
     pub(super) deps: CaptureDeps,
     pub(super) port: u16,
+    /// [`super::Limits::request`].
+    pub(super) request_timeout: Duration,
 }
 
 type Reply = Result<Response<Body>, String>;
 
-pub(super) async fn handle(
-    State(shared): State<Arc<Shared>>,
-    request: Request<Body>,
-) -> Response<Body> {
-    match route(&shared, request).await {
+pub(super) async fn handle(shared: &Shared, request: Request<Body>) -> Response<Body> {
+    match route(shared, request).await {
         Ok(response) => response,
         Err(error) => {
             tracing::error!(scope = "Capture", "capture request failed: {error}");
@@ -49,6 +49,7 @@ pub(super) async fn handle(
 }
 
 async fn route(shared: &Shared, request: Request<Body>) -> Reply {
+    let deadline = Instant::now() + shared.request_timeout;
     let asked = Asked::read(request.headers());
     // Before any route: a page whose DNS name was rebound to 127.0.0.1 sends its own name.
     if !host_allowed(asked.host.as_deref(), shared.port) {
@@ -65,7 +66,9 @@ async fn route(shared: &Shared, request: Request<Body>) -> Reply {
         (Method::POST, Some("/folders")) => list_folders(shared, &asked).await,
         (Method::POST, Some("/pair/claim")) => claim(shared, &asked).await,
         (Method::POST, Some("/pair/request")) => Ok(pair_request(shared, &asked)),
-        (Method::POST, Some("/capture")) => capture(shared, &asked, request.into_body()).await,
+        (Method::POST, Some("/capture")) => {
+            capture(shared, &asked, request.into_body(), deadline).await
+        }
         (Method::POST, Some("/tags")) => tags(shared, &asked).await,
         (Method::POST, Some("/pair/revoke")) => revoke(shared, &asked).await,
         _ => Ok(error(StatusCode::NOT_FOUND, "not-found")),
@@ -214,30 +217,47 @@ fn pair_request(shared: &Shared, asked: &Asked) -> Response<Body> {
     reply(StatusCode::ACCEPTED, &json!({ "status": "pending" }))
 }
 
-/// Reads what is left of a refused body, up to the limit, so the extension receives the
-/// answer instead of a reset connection (`req.resume()`, `server.ts:170`).
-async fn drain(body: Body) {
-    let _ = axum::body::to_bytes(body, BODY_LIMIT).await;
+/// Discards what is left of a refused body frame by frame, up to the limit and the request's
+/// deadline, so the extension receives the answer instead of a reset connection
+/// (`req.resume()`, `server.ts:170`) and no frame is kept.
+async fn drain(mut body: Body, deadline: Instant) {
+    let discard = async {
+        let mut read = 0;
+        while read <= BODY_LIMIT {
+            match body.frame().await {
+                Some(Ok(frame)) => read += frame.data_ref().map_or(0, |data| data.len()),
+                _ => return,
+            }
+        }
+    };
+    // Past the deadline the refusal goes out anyway and the connection closes after it.
+    let _ = timeout_at(deadline, discard).await;
 }
 
-async fn capture(shared: &Shared, asked: &Asked, body: Body) -> Reply {
+async fn capture(shared: &Shared, asked: &Asked, body: Body, deadline: Instant) -> Reply {
     if let Err(reason) = authorize(shared, asked).await? {
-        drain(body).await;
+        drain(body, deadline).await;
         return Ok(denied(reason));
     }
     // The app is on the vault picker or switching vaults: the extension keeps the capture
     // queued and tells the user to open a vault.
     let Some(open) = open_vault(shared) else {
-        drain(body).await;
+        drain(body, deadline).await;
         return Ok(vault_closed());
     };
-    let Ok(bytes) = axum::body::to_bytes(body, BODY_LIMIT).await else {
+    let Ok(read) = timeout_at(deadline, axum::body::to_bytes(body, BODY_LIMIT)).await else {
+        return Ok(error(StatusCode::REQUEST_TIMEOUT, "request-timeout"));
+    };
+    let Ok(bytes) = read else {
         return Ok(error(StatusCode::PAYLOAD_TOO_LARGE, "payload-too-large"));
     };
-    // `Buffer.toString()` then `JSON.parse`: invalid UTF-8 becomes U+FFFD, not an error.
-    let parsed = serde_json::from_str::<Value>(&String::from_utf8_lossy(&bytes))
+    // `Buffer.toString()` then `JSON.parse`: invalid UTF-8 becomes U+FFFD, not an error, and so
+    // does a lone surrogate escape once the text reaches the vault.
+    let text = String::from_utf8_lossy(&bytes);
+    let parsed = serde_json::from_str::<Value>(&schema::to_well_formed(&text))
         .ok()
         .and_then(|value| schema::parse(&value));
+    drop(text);
     drop(bytes);
     let Some(capture) = parsed else {
         return Ok(error(StatusCode::UNPROCESSABLE_ENTITY, "invalid-capture"));
@@ -312,3 +332,6 @@ async fn revoke(shared: &Shared, asked: &Asked) -> Reply {
         .map_err(|e| e.to_string())?;
     Ok(reply(StatusCode::OK, &json!({ "ok": true })))
 }
+
+#[cfg(test)]
+mod tests;
