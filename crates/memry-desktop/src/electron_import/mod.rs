@@ -7,6 +7,7 @@
 
 pub mod config;
 pub mod dictionary;
+pub mod journal_replay;
 mod leveldb_log;
 mod leveldb_manifest;
 mod leveldb_table;
@@ -17,7 +18,9 @@ pub mod secrets;
 pub mod secrets_import;
 pub mod vault_db;
 pub mod vault_evidence;
+pub mod vault_prep;
 pub mod ystore;
+pub mod ystore_import;
 
 use std::path::PathBuf;
 
