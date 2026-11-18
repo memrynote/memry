@@ -213,6 +213,11 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "inbox_jobs",
         sql: include_str!("migrations/data/0033_inbox_jobs.sql"),
     },
+    Migration {
+        version: 34,
+        name: "attachment_sync",
+        sql: include_str!("migrations/data/0034_attachment_sync.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.
@@ -389,6 +394,8 @@ fn set_user_version(conn: &Connection, version: u32) -> Result<(), StorageError>
 
 #[cfg(test)]
 mod agent_records_tests;
+#[cfg(test)]
+mod attachment_sync_tests;
 #[cfg(test)]
 mod desktop_record_types_tests;
 #[cfg(test)]
