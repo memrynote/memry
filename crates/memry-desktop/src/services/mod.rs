@@ -4,3 +4,4 @@ pub mod file_text;
 pub mod image_processing;
 pub mod ocr_languages;
 pub mod voice;
+pub mod web_fetch;
