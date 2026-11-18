@@ -16,7 +16,7 @@ row.
 
 | Where the link lives                               | `utm_source`                     | `utm_medium` | `utm_campaign`                                   | PostHog channel                                |
 | -------------------------------------------------- | -------------------------------- | ------------ | ------------------------------------------------ | ---------------------------------------------- |
-| Desktop app                                        | `app`                            | `desktop`    | `setup_wizard`, `update_failed`, `checkout`      | Unknown                                        |
+| Desktop app (planned, Tauri app)                   | `app`                            | `desktop`    | `setup_wizard`, `update_failed`, `checkout`      | Unknown                                        |
 | iOS app                                            | `app`                            | `ios`        | `settings`, `plans`, `checkout`                  | Unknown                                        |
 | Campaign emails (`apps/marketing-emails`)          | `waitlist`                       | `email`      | the id in `src/tracking-links.ts`                | Email                                          |
 | YouTube descriptions (`marketing/tutorials`)       | `youtube`                        | `video`      | the topic slug                                   | Organic Video                                  |
@@ -33,9 +33,9 @@ Example: `https://memrynote.com/pricing?utm_source=app&utm_medium=desktop&utm_ca
 
 ## Where the links are built
 
-- Desktop: `MEMRY_PRICING_URL` in `apps/desktop/src/renderer/src/pages/settings/setup-wizard.tsx`,
-  `DOWNLOAD_URL` in `apps/desktop/src/renderer/src/components/updater/update-install-failed-dialog.tsx`,
-  and `buildCheckoutPageUrl` in `apps/desktop/src/main/billing/paddle-billing.ts`.
+- Desktop: not tagged yet. The Electron app in `apps/desktop` is deprecated and gets no changes.
+  The Tauri app (`feat/tauri-v2`) will tag its pricing, download and checkout links with the
+  values in the table.
 - iOS: `PlansLinks` in `apps/ios/Memry/Features/Billing/PlansView.swift` and the privacy and terms
   links in `apps/ios/Memry/Features/Settings/AppearanceScreen.swift`.
 - Campaign emails: `trackedMemryUrl` in `apps/marketing-emails/src/tracking-links.ts`.
