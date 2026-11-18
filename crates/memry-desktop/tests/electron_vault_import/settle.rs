@@ -150,8 +150,14 @@ fn import_and_open(fixture: &Fixture) -> Settled {
         now_ms,
         progress: None,
     };
-    staged(stage_vault_import(input).unwrap()).install().unwrap();
-    assert_eq!(e.read(PATH), fixture.file, "the import writes no vault file");
+    staged(stage_vault_import(input).unwrap())
+        .install()
+        .unwrap();
+    assert_eq!(
+        e.read(PATH),
+        fixture.file,
+        "the import writes no vault file"
+    );
     drop(lock);
 
     e.open();
@@ -188,20 +194,19 @@ fn a_failed_write_back_reaches_the_file_and_keeps_its_push() {
     });
     s.until_file("B\n");
     assert!(s.e.versions(NOTE).iter().any(|v| v.contains('A')));
-    let pushes: i64 = s
-        .e
-        .core()
-        .db_handle()
-        .call_blocking(|conn| {
-            Ok(conn
-                .query_row(
-                    "SELECT count(*) FROM outbox WHERE item_id = ?1 AND op = 'crdt-update'",
-                    [NOTE],
-                    |row| row.get(0),
-                )
-                .unwrap())
-        })
-        .unwrap();
+    let pushes: i64 =
+        s.e.core()
+            .db_handle()
+            .call_blocking(|conn| {
+                Ok(conn
+                    .query_row(
+                        "SELECT count(*) FROM outbox WHERE item_id = ?1 AND op = 'crdt-update'",
+                        [NOTE],
+                        |row| row.get(0),
+                    )
+                    .unwrap())
+            })
+            .unwrap();
     assert!(pushes >= 1);
     s.electron_unchanged();
 }
@@ -265,20 +270,19 @@ fn a_body_equal_to_its_file_is_not_rewritten() {
     });
     assert_eq!(s.quiet_file(), "A\n");
     assert_eq!(s.e.versions(NOTE), Vec::<String>::new());
-    let hash: Option<String> = s
-        .e
-        .core()
-        .db_handle()
-        .call_blocking(|conn| {
-            Ok(conn
-                .query_row(
-                    "SELECT content_hash FROM note_files WHERE note_id = ?1",
-                    [NOTE],
-                    |row| row.get(0),
-                )
-                .unwrap())
-        })
-        .unwrap();
+    let hash: Option<String> =
+        s.e.core()
+            .db_handle()
+            .call_blocking(|conn| {
+                Ok(conn
+                    .query_row(
+                        "SELECT content_hash FROM note_files WHERE note_id = ?1",
+                        [NOTE],
+                        |row| row.get(0),
+                    )
+                    .unwrap())
+            })
+            .unwrap();
     assert_eq!(hash, Some(content_hash("A\n")));
     s.electron_unchanged();
 }

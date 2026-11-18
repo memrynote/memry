@@ -12,7 +12,10 @@ use crate::electron_import::ImportError;
 fn refused(result: Result<Option<Vec<u8>>, ImportError>) -> &'static str {
     match result {
         Err(ImportError::MalformedRow { what, .. }) => what,
-        other => panic!("not refused: {:?}", other.map(|bytes| bytes.map(|b| b.len()))),
+        other => panic!(
+            "not refused: {:?}",
+            other.map(|bytes| bytes.map(|b| b.len()))
+        ),
     }
 }
 
@@ -33,8 +36,20 @@ fn a_payload_over_the_cap_is_refused_before_decoding() {
 #[test]
 fn only_strict_standard_base64_decodes() {
     assert_eq!(decode_payload("QQ==", 1).unwrap(), Some(b"A".to_vec()));
-    assert_eq!(decode_payload("", 1).unwrap(), None, "the full-state payload");
-    for payload in ["QQ", "QQ==\n", " QQ==", "-_8=", "QQ=", "Q===", "not base64!"] {
+    assert_eq!(
+        decode_payload("", 1).unwrap(),
+        None,
+        "the full-state payload"
+    );
+    for payload in [
+        "QQ",
+        "QQ==\n",
+        " QQ==",
+        "-_8=",
+        "QQ=",
+        "Q===",
+        "not base64!",
+    ] {
         assert_eq!(
             refused(decode_payload(payload, 1)),
             "a note_body payload is not base64",

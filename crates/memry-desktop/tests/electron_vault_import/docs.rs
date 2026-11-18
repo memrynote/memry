@@ -29,13 +29,10 @@ pub(super) fn doc_state(id: &str, markdown: &str) -> Vec<u8> {
     let doc = DocumentRegistry::new("electron", Arc::new(|_: &str, _: &[u8]| {}))
         .get_or_open(id)
         .unwrap();
-    assert!(Converter::new(CalloutTypes::new(Vec::new())).seed_body(
-        &doc,
-        markdown,
-        None,
-        None,
-        &NoEmbeds
-    ));
+    assert!(
+        Converter::new(CalloutTypes::new(Vec::new()))
+            .seed_body(&doc, markdown, None, None, &NoEmbeds)
+    );
     doc.encode_state().unwrap()
 }
 
@@ -67,7 +64,10 @@ fn input(vault: &Vault, docs: Vec<FoldedDoc>) -> VaultImportInput<'_> {
     }
 }
 
-fn import_docs(vault: &Vault, docs: Vec<FoldedDoc>) -> memry_desktop::electron_import::vault_db::VaultStageReport {
+fn import_docs(
+    vault: &Vault,
+    docs: Vec<FoldedDoc>,
+) -> memry_desktop::electron_import::vault_db::VaultStageReport {
     let staged = staged(stage_vault_import(input(vault, docs)).unwrap());
     let report = staged.report().clone();
     staged.install().unwrap();
@@ -83,10 +83,12 @@ fn outbox(core: &Connection) -> Vec<(String, String, String, Vec<u8>)> {
     let mut stmt = core
         .prepare("SELECT item_type, item_id, op, coalesce(payload, x'') FROM outbox ORDER BY id")
         .unwrap();
-    stmt.query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)))
-        .unwrap()
-        .collect::<Result<_, _>>()
-        .unwrap()
+    stmt.query_map([], |row| {
+        Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
+    })
+    .unwrap()
+    .collect::<Result<_, _>>()
+    .unwrap()
 }
 
 /// `(content_hash, file_hash, indexed_at)` of the note's row.
@@ -106,7 +108,14 @@ fn body(id: &str, payload: &str, at: i64) -> (String, String, String) {
 
 fn queue_bodies(vault: &Vault, rows: &[(String, String, String)]) {
     for (id, payload, at) in rows {
-        queue(&vault.data_conn(), "note_body", id, "update", payload, at.parse().unwrap());
+        queue(
+            &vault.data_conn(),
+            "note_body",
+            id,
+            "update",
+            payload,
+            at.parse().unwrap(),
+        );
     }
 }
 
@@ -127,7 +136,9 @@ fn a_document_imports_as_local_update_one_with_its_cursor() {
     let log: Vec<(String, i64, Vec<u8>, i64)> = core
         .prepare("SELECT doc_id, seq, update_blob, created_at FROM yjs_updates")
         .unwrap()
-        .query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)))
+        .query_map([], |row| {
+            Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
+        })
         .unwrap()
         .collect::<Result<_, _>>()
         .unwrap();
@@ -154,7 +165,10 @@ fn a_body_equal_to_its_file_records_the_file_hash() {
     import_docs(&vault, vec![folded(NOTE, "Today.\n", None)]);
     let core = installed(&vault);
     let on_disk = content_hash("Today.\r\n\n");
-    assert_eq!(hashes(&core, NOTE), (Some(on_disk.clone()), Some(on_disk), NOW_MS));
+    assert_eq!(
+        hashes(&core, NOTE),
+        (Some(on_disk.clone()), Some(on_disk), NOW_MS)
+    );
     assert_eq!(
         memry_core::domain::note_files::behind_bodies(&core).unwrap(),
         Vec::<String>::new()
@@ -171,7 +185,10 @@ fn a_body_ahead_of_its_file_is_stamped_behind_its_document() {
     import_docs(&vault, vec![folded(NOTE, "Tomorrow.\n", None)]);
     let core = installed(&vault);
     let on_disk = content_hash(FILE);
-    assert_eq!(hashes(&core, NOTE), (Some(on_disk.clone()), Some(on_disk), NOW_MS - 1));
+    assert_eq!(
+        hashes(&core, NOTE),
+        (Some(on_disk.clone()), Some(on_disk), NOW_MS - 1)
+    );
     assert_eq!(
         memry_core::domain::note_files::behind_bodies(&core).unwrap(),
         vec![NOTE.to_owned()]
@@ -189,7 +206,10 @@ fn an_unread_or_owed_file_keeps_no_hash() {
     electron_db::seed(
         &vault.data_conn(),
         "crdt_owed_file_bodies",
-        &[("note_id", text("Owed-note001")), ("created_at", Value::Integer(123))],
+        &[
+            ("note_id", text("Owed-note001")),
+            ("created_at", Value::Integer(123)),
+        ],
     );
     import_docs(
         &vault,
@@ -226,15 +246,19 @@ fn queued_body_pushes_become_crdt_outbox_rows_in_order() {
             body("Local-note01", "", 13),
         ],
     );
-    let report = import_docs(
-        &vault,
-        vec![doc, folded("Local-note01", "Local.\n", None)],
-    );
+    let report = import_docs(&vault, vec![doc, folded("Local-note01", "Local.\n", None)]);
     let queue = &report.tables["data.db/sync_queue"];
     assert_eq!(queue.target_count, 3);
     assert_eq!(queue.dropped, 1);
     assert_eq!(report.dropped.get("localOnlyBodyRows"), Some(&1));
-    let crdt = |payload: &[u8]| ("note".into(), NOTE.into(), "crdt-update".into(), payload.to_vec());
+    let crdt = |payload: &[u8]| {
+        (
+            "note".into(),
+            NOTE.into(),
+            "crdt-update".into(),
+            payload.to_vec(),
+        )
+    };
     assert_eq!(
         outbox(&installed(&vault)),
         vec![crdt(&update), crdt(&full), crdt(&update)]
@@ -248,7 +272,10 @@ fn an_in_flight_body_push_is_queued_again_as_the_full_state() {
     let vault = Vault::new();
     seed_note(&vault, NOTE, PATH, None, false);
     seed_note(&vault, "Done-note001", "Done.md", None, false);
-    for (id, sent, confirmed) in [(NOTE, 200, Value::Integer(100)), ("Done-note001", 100, Value::Integer(200))] {
+    for (id, sent, confirmed) in [
+        (NOTE, 200, Value::Integer(100)),
+        ("Done-note001", 100, Value::Integer(200)),
+    ] {
         electron_db::seed(
             &vault.data_conn(),
             "note_body_sync",
@@ -290,9 +317,16 @@ fn body_debts_withheld_bodies_and_extra_owed_documents_are_owed() {
     electron_db::seed(
         &data,
         "crdt_body_debts",
-        &[("note_id", text("Debt-note001")), ("failures", Value::Integer(3))],
+        &[
+            ("note_id", text("Debt-note001")),
+            ("failures", Value::Integer(3)),
+        ],
     );
-    electron_db::seed(&data, "crdt_body_withheld", &[("note_id", text("Held-note001"))]);
+    electron_db::seed(
+        &data,
+        "crdt_body_withheld",
+        &[("note_id", text("Held-note001"))],
+    );
     drop(data);
     let staged = staged(
         stage_vault_import(VaultImportInput {
