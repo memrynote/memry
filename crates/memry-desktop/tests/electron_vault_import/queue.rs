@@ -257,3 +257,35 @@ fn a_delete_payload_over_the_cap_fails_before_it_is_parsed() {
             if what.contains("8 MiB"))
     });
 }
+
+/// A delete body nested far past serde_json's recursion limit (128) fails the import naming the
+/// row, on a 2 MiB thread. The limit is the dependency's, so it cannot be shown red here.
+#[test]
+fn a_deeply_nested_delete_payload_fails_on_a_small_stack() {
+    std::thread::Builder::new()
+        .stack_size(2 * 1024 * 1024)
+        .spawn(|| {
+            let vault = Vault::new();
+            let payload = format!("{}{}", "{\"a\":".repeat(100_000), "}".repeat(100_000));
+            queue(
+                &vault.data_conn(),
+                "task",
+                "task-1",
+                "delete",
+                &payload,
+                100,
+            );
+            assert_refused(&vault, |e| {
+                matches!(
+                    e,
+                    ImportError::MalformedRow {
+                        table: "sync_queue",
+                        ..
+                    }
+                )
+            });
+        })
+        .unwrap()
+        .join()
+        .unwrap();
+}
