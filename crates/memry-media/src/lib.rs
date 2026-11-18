@@ -7,7 +7,8 @@
 //! never a panic. The checked peak counts the pixel buffers: the frame, the decoder's scratch beside
 //! it (a progressive JPEG's coefficients, `scratch` for WebP and GIF) and the pipeline's copies
 //! after it. A lossless WebP's Huffman tables, which grow with the file, not the image, are held
-//! to what that peak leaves by image-webp's memory limit (`webp`).
+//! by image-webp's memory limit (`webp`) to what the frame and scratch leave: they are freed before
+//! the pipeline's copies are made.
 
 use std::io::Cursor;
 
@@ -322,7 +323,8 @@ fn read_frame(bytes: &[u8], after: impl FnOnce(&Header) -> u64) -> Result<Frame,
         orientation,
     };
     let scratch = coefficients + scratch::decoder_scratch(format, bytes, width, height);
-    let peak = header.frame.saturating_add(scratch).max(after(&header));
+    let decoding = header.frame.saturating_add(scratch);
+    let peak = decoding.max(after(&header));
     if peak > MAX_DECODE_ALLOC {
         return Err(input(format!(
             "image needs {peak} bytes to decode, over the {MAX_DECODE_ALLOC}-byte limit"
@@ -339,7 +341,7 @@ fn read_frame(bytes: &[u8], after: impl FnOnce(&Header) -> u64) -> Result<Frame,
     };
     let mut image = if format == ImageFormat::WebP {
         drop(decoder);
-        webp::decode(bytes, &header, MAX_DECODE_ALLOC - peak)?
+        webp::decode(bytes, &header, MAX_DECODE_ALLOC - decoding)?
     } else {
         DynamicImage::from_decoder(decoder).map_err(decode_error)?
     };

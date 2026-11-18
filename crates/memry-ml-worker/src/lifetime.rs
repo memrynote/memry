@@ -23,8 +23,8 @@ pub fn exit_with_parent() {
             .spawn(move || {
                 loop {
                     std::thread::sleep(PARENT_POLL);
+                    // Nothing is logged: stderr went with the app, and a failed write panics.
                     if std::os::unix::process::parent_id() != parent {
-                        eprintln!("the app exited; the worker exits too");
                         std::process::exit(4);
                     }
                 }

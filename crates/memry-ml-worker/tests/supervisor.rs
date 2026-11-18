@@ -415,7 +415,11 @@ fn a_large_request_behind_a_hung_op_runs_on_the_next_child() {
         outcomes["hung"],
         Err(WorkerError::Timeout { op: "pdf-open" })
     );
-    assert_eq!(outcomes["large"], Ok(opened()), "not failed with the hung op");
+    assert_eq!(
+        outcomes["large"],
+        Ok(opened()),
+        "not failed with the hung op"
+    );
     assert_eq!(
         worker.call(&open("ok")),
         Ok(opened()),
@@ -605,6 +609,7 @@ fn the_worker_exits_when_the_app_dies() {
         if let Some(pid) = pid {
             break pid;
         }
+        // timing-bound: a watchdog against an app that never starts, far past its start.
         assert!(
             Instant::now() < deadline,
             "the app never started its worker"
