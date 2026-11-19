@@ -242,6 +242,8 @@ struct Scan {
     notes: Vec<(Value, String)>,
     assets: HashMap<String, Asset>,
     zips: Zips,
+    /// Bytes of note files read from every picked zip; [`MAX_NOTE_JSON_BYTES`] caps the sum.
+    held: u64,
 }
 
 pub struct GoogleKeepImporter;
@@ -308,36 +310,40 @@ impl Importer for GoogleKeepImporter {
 
 /// Every `.json` entry is a note; `.html` and `.txt` copies of a note are passed over; any other
 /// entry is an asset, by file name, the last of a name winning. Note files past
-/// [`MAX_NOTE_JSON_BYTES`] in all refuse the import.
+/// [`MAX_NOTE_JSON_BYTES`] in all the picked zips refuse the import.
 fn scan_zip(path: &Path, scan: &mut Scan, ctx: &mut ImportContext) -> io::Result<()> {
     let cancel = ctx.cancel_token();
-    let (notes, assets) = (&mut scan.notes, &mut scan.assets);
-    let mut held = 0;
+    let (notes, assets, held) = (&mut scan.notes, &mut scan.assets, &mut scan.held);
     scan.zips.walk(path, &cancel, &mut |zips, entry| {
         match entry.extension.as_str() {
             "html" | "txt" => {}
-            "json" => match zips.read(entry.at, MAX_SOURCE_BYTES.min(MAX_NOTE_JSON_BYTES - held)) {
-                Ok(bytes) => {
-                    held += bytes.len() as u64;
-                    match parse_json(&bytes) {
-                        Some(raw) => notes.push((raw, entry.filepath)),
-                        None => ctx.report_skipped(&entry.filepath, Some(INVALID_JSON.into())),
+            "json" => {
+                match zips.read(entry.at, MAX_SOURCE_BYTES.min(MAX_NOTE_JSON_BYTES - *held)) {
+                    Ok(bytes) => {
+                        *held += bytes.len() as u64;
+                        match parse_json(&bytes) {
+                            Some(raw) => notes.push((raw, entry.filepath)),
+                            None => ctx.report_skipped(&entry.filepath, Some(INVALID_JSON.into())),
+                        }
                     }
+                    Err(error)
+                        if error.kind() == io::ErrorKind::FileTooLarge
+                            && MAX_NOTE_JSON_BYTES - *held < MAX_SOURCE_BYTES =>
+                    {
+                        return Err(io::Error::other(format!(
+                            "Export holds more than {} MB of notes. Import it in smaller parts.",
+                            MAX_NOTE_JSON_BYTES / (1024 * 1024)
+                        )));
+                    }
+                    Err(error) if error.kind() == io::ErrorKind::FileTooLarge => {
+                        ctx.report_skipped(
+                            &entry.filepath,
+                            Some(ImportText::Text(error.to_string())),
+                        );
+                    }
+                    Err(error) => return Err(error),
                 }
-                Err(error)
-                    if error.kind() == io::ErrorKind::FileTooLarge
-                        && MAX_NOTE_JSON_BYTES - held < MAX_SOURCE_BYTES =>
-                {
-                    return Err(io::Error::other(format!(
-                        "Export holds more than {} MB of notes",
-                        MAX_NOTE_JSON_BYTES / (1024 * 1024)
-                    )));
-                }
-                Err(error) if error.kind() == io::ErrorKind::FileTooLarge => {
-                    ctx.report_skipped(&entry.filepath, Some(ImportText::Text(error.to_string())));
-                }
-                Err(error) => return Err(error),
-            },
+            }
             _ => {
                 assets.insert(entry.name, Asset::Entry(entry.at));
             }

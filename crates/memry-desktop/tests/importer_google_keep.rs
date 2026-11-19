@@ -515,11 +515,11 @@ fn the_body_is_built_in_one_pass_over_many_attachments() {
 }
 
 /// The run's error, with nothing written.
-fn refused(path: &Path) -> String {
+fn refused(sources: &[&Path]) -> String {
     let sink = Sink::default();
     let mut ctx = ImportContext::new("keep", CancellationToken::new(), Box::new(|_| {}));
     let error = GoogleKeepImporter
-        .run(&input(&[path]), &mut ctx, &sink)
+        .run(&input(sources), &mut ctx, &sink)
         .expect_err("the run is refused")
         .to_string();
     assert!(sink.calls().is_empty(), "{:?}", sink.calls());
@@ -560,8 +560,12 @@ fn nested_zips_past_the_memory_cap_refuse_the_import() {
     let path = dir.path().join("bomb.zip");
     fs::write(&path, archive).unwrap();
 
-    let error = refused(&path);
+    let error = refused(&[&path]);
     assert!(error.contains("nested zips"), "{error}");
+    assert!(
+        error.contains("Extract the inner zips and pick them directly"),
+        "{error}"
+    );
 }
 
 #[test]
@@ -580,7 +584,7 @@ fn nesting_past_the_cap_is_refused_before_the_nested_zip_is_read() {
     let path = dir.path().join("deep.zip");
     fs::write(&path, archive).unwrap();
 
-    let error = refused(&path);
+    let error = refused(&[&path]);
     assert!(error.contains("nested more than"), "{error}");
 }
 
@@ -594,8 +598,59 @@ fn note_files_past_the_memory_cap_refuse_the_import() {
     let path = dir.path().join("notes.zip");
     fs::write(&path, archive).unwrap();
 
-    let error = refused(&path);
+    let error = refused(&[&path]);
     assert!(error.contains("MB of notes"), "{error}");
+    assert!(error.contains("in smaller parts"), "{error}");
+}
+
+#[test]
+fn note_files_count_against_the_memory_cap_across_picked_zips() {
+    // Each zip stays under the cap on its own; the two together pass it.
+    let per_zip = MAX_NOTE_JSON_BYTES / MAX_SOURCE_BYTES / 2 + 1;
+    assert!(per_zip * MAX_SOURCE_BYTES < MAX_NOTE_JSON_BYTES);
+    assert!(2 * per_zip * MAX_SOURCE_BYTES > MAX_NOTE_JSON_BYTES);
+    let names: Vec<String> = (0..per_zip).map(|n| format!("n{n}.json")).collect();
+    let archive = copies(&names, &vec![0; MAX_SOURCE_BYTES as usize]);
+    let dir = tempfile::tempdir().unwrap();
+    let (first, second) = (dir.path().join("a.zip"), dir.path().join("b.zip"));
+    fs::write(&first, &archive).unwrap();
+    fs::write(&second, &archive).unwrap();
+
+    let (summary, _) = run(&[&first]);
+    assert_eq!(
+        skip_reasons(&summary),
+        [("Invalid JSON".to_owned(), names.len())]
+    );
+
+    let error = refused(&[&first, &second]);
+    assert!(error.contains("MB of notes"), "{error}");
+}
+
+/// A header's declared size is only a hint. One that understates an entry passes the check
+/// before inflating, so the bytes inflated are counted too.
+#[test]
+fn an_entry_whose_header_understates_its_size_is_refused_while_inflating() {
+    let mut archive = zip_bytes(&[("big.json", &[b'x'; 4096])]);
+    // The uncompressed size sits at byte 22 of the local header and 24 of the central one.
+    for (signature, at) in [(b"PK\x03\x04", 22), (b"PK\x01\x02", 24)] {
+        let header = archive.windows(4).position(|w| w == signature).unwrap();
+        archive[header + at..header + at + 4].copy_from_slice(&10u32.to_le_bytes());
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("liar.zip");
+    fs::write(&path, archive).unwrap();
+    let mut zips = Zips::default();
+    let mut seen = 0;
+    zips.walk(&path, &CancellationToken::new(), &mut |zips, entry| {
+        seen += 1;
+        let error = zips
+            .read(entry.at, 64)
+            .expect_err("4096 bytes inflate past a limit of 64");
+        assert_eq!(error.kind(), std::io::ErrorKind::FileTooLarge, "{error}");
+        Ok(())
+    })
+    .unwrap();
+    assert_eq!(seen, 1);
 }
 
 /// The zip crate keys entries by name, so of two entries with one name only the last is seen,

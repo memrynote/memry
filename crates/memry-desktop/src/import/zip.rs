@@ -130,7 +130,7 @@ impl Zips {
                 let nested = self.read(at, MAX_SOURCE_BYTES.min(room)).map_err(|error| {
                     if error.kind() == io::ErrorKind::FileTooLarge && room < MAX_SOURCE_BYTES {
                         io::Error::other(format!(
-                            "Zip holds more than {} MB of nested zips",
+                            "Zip holds more than {} MB of nested zips. Extract the inner zips and pick them directly.",
                             MAX_NESTED_ZIP_BYTES / (1024 * 1024)
                         ))
                     } else {
