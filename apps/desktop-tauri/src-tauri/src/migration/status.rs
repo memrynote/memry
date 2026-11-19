@@ -95,9 +95,7 @@ pub fn running(locale: &str, update: &ProgressUpdate) -> MigrationStatus {
 /// The share of the run done when `update` arrives: 10% for the app state, 10% for the
 /// secrets, 70% for the vaults and the rest for the checks. Never 100 before the end.
 fn percent(update: &ProgressUpdate) -> u8 {
-    let share = |done: u32, of: u32, span: u32| {
-        if of == 0 { 0 } else { span * done.min(of) / of }
-    };
+    let share = |done: u32, of: u32, span: u32| (span * done.min(of)).checked_div(of).unwrap_or(0);
     let value = match update.phase {
         Phase::AppState => share(update.current, update.total, 10),
         Phase::Secrets => 10 + share(update.current, update.total, 10),

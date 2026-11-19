@@ -82,6 +82,9 @@ fn backend(app: &AppHandle<Wry>) -> Arc<dyn Backend> {
     Arc::new(NotWired)
 }
 
+/// Shows a status on the migration page.
+pub type ShowStatus = Box<dyn Fn(&MigrationStatus) + Send + Sync>;
+
 /// The migration of this launch, managed while it runs and after.
 pub struct Migration {
     backend: Arc<dyn Backend>,
@@ -89,7 +92,7 @@ pub struct Migration {
     report: PathBuf,
     status: Mutex<MigrationStatus>,
     /// Shows a status on the page. `None` in tests, which read [`Self::status`].
-    show: Option<Box<dyn Fn(&MigrationStatus) + Send + Sync>>,
+    show: Option<ShowStatus>,
     /// Runs after a run succeeded: resumes the boot.
     finished: Box<dyn Fn() + Send + Sync>,
 }
@@ -99,7 +102,7 @@ impl Migration {
         backend: Arc<dyn Backend>,
         locale: &'static str,
         data_dir: &Path,
-        show: Option<Box<dyn Fn(&MigrationStatus) + Send + Sync>>,
+        show: Option<ShowStatus>,
         finished: Box<dyn Fn() + Send + Sync>,
     ) -> Self {
         Self {
