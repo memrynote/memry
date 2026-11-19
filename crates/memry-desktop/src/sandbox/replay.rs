@@ -1,0 +1,241 @@
+//! Replays the sandbox template into a vault folder (Electron: `generateSandboxAt`,
+//! `apps/cli/src/sandbox/generate.ts:98-120`).
+//!
+//! The replay builds the vault in a staging folder beside the target, then renames it over the
+//! target, so a failure or a crash never leaves a half-made vault and never touches the previous
+//! one:
+//! 1. The template's files are copied with their dates moved to today ([`super::rebase`]) and
+//!    every note id the template minted replaced by one the core minted. Two template files that
+//!    land on one path (two past-year journal days on Feb 28) keep the later note row's file,
+//!    as the generator's later write won.
+//! 2. Each markdown note that is not a journal day is created in the core under its new id,
+//!    with the body its file gives it ([`notes`]). The open walk claims each note for its file
+//!    by folder, title and body (`identity::adopt`), so the ids in other notes' links hold. The
+//!    walk makes notes of journal days and other files, which no template text names by id.
+//! 3. The vault icon, then the rename. A previous folder is moved aside first and deleted only
+//!    once the new one is in place; a failed rename puts it back.
+//!
+//! A crash leaves a `.<name>.sandbox-*` staging folder or a `.<name>.replaced-*` previous
+//! folder beside the target. Both are this module's and the next replay deletes them, so a rerun
+//! converges on one vault. The caller writes the marker ([`super::marker`]) after the replay.
+
+mod notes;
+mod plan;
+
+use std::fs;
+use std::io;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+
+use chrono::{DateTime, Local, Utc};
+use memry_core::api::notes_write::NotesWriter;
+use memry_core::seams::secure_store::SecureStore;
+
+use super::{Manifest, Rebase, SandboxError};
+use crate::registry::vault_icon;
+
+pub use plan::{MAX_DEPTH, MAX_FILE_BYTES, MAX_FILES};
+
+/// `SANDBOX_VAULT_ICON` (`packages/contracts/src/vault-api.ts:127`).
+pub const SANDBOX_VAULT_ICON: &str = "icon:CodesandboxIcon";
+
+const STAGING_MARK: &str = ".sandbox-";
+const REPLACED_MARK: &str = ".replaced-";
+
+/// A template on disk: `seed.json` parsed, its `vault/` folder and the bundled assets folder.
+#[derive(Debug, Clone)]
+pub struct Template {
+    pub manifest: Manifest,
+    pub vault: PathBuf,
+    pub assets: PathBuf,
+}
+
+impl Template {
+    /// The template in `dir` (`seed.json`, `vault/`), with its assets in `assets`.
+    pub fn load(dir: &Path, assets: &Path) -> Result<Self, SandboxError> {
+        let seed = dir.join("seed.json");
+        let bytes = fs::read(&seed).map_err(|error| io_error(&seed, &error))?;
+        Ok(Self {
+            manifest: Manifest::parse(&bytes)?,
+            vault: dir.join("vault"),
+            assets: assets.to_owned(),
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct ReplayOptions {
+    /// Move the template's dates to `now`'s local date; `false` keeps the template's dates.
+    pub rebase_dates: bool,
+    pub now: DateTime<Utc>,
+    /// Replace a target folder that holds anything. Without it a non-empty target is refused
+    /// before anything is written, so a replay never deletes a folder it was not told it may.
+    pub replace: bool,
+}
+
+/// What a replay wrote, in the generator's terms (`generate.ts:36-56`).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct SeedCounts {
+    /// Markdown notes that are not journal days, each created in the core.
+    pub notes: usize,
+    /// Journal day files.
+    pub journal_entries: usize,
+    /// Non-markdown files the template lists as notes.
+    pub files: usize,
+    /// `.excalidraw` canvas files.
+    pub canvases: usize,
+}
+
+/// Replays `template` into `target`, which is created or (with `replace`) replaced. The
+/// core databases are written with `store`'s device identity.
+pub fn replay(
+    template: &Template,
+    target: &Path,
+    options: &ReplayOptions,
+    store: Arc<dyn SecureStore>,
+) -> Result<SeedCounts, SandboxError> {
+    let (parent, name) = parent_and_name(target)?;
+    check_target(target, options.replace)?;
+    fs::create_dir_all(parent).map_err(|error| io_error(parent, &error))?;
+    sweep(parent, name);
+    let staging = parent.join(format!(".{name}{STAGING_MARK}{}", unique()));
+    fs::create_dir(&staging).map_err(|error| io_error(&staging, &error))?;
+    let built = build(template, &staging, options, store);
+    let swapped = built.and_then(|counts| swap(&staging, target, parent, name).map(|()| counts));
+    if swapped.is_err() {
+        remove_ours(&staging);
+    }
+    swapped
+}
+
+fn build(
+    template: &Template,
+    staging: &Path,
+    options: &ReplayOptions,
+    store: Arc<dyn SecureStore>,
+) -> Result<SeedCounts, SandboxError> {
+    let mut manifest = template.manifest.clone();
+    let rebase = options
+        .rebase_dates
+        .then(|| Rebase::for_manifest(&manifest, options.now, Local));
+    if let Some(rebase) = &rebase {
+        rebase.manifest(&mut manifest);
+    }
+    let plan = plan::plan(template, &manifest, rebase.as_ref(), |_| {
+        NotesWriter::new_note_id()
+    })?;
+    plan.write(staging)?;
+    notes::create(staging, store, &plan.notes)?;
+    vault_icon::adopt(
+        staging,
+        Some(SANDBOX_VAULT_ICON),
+        options.now.timestamp_millis(),
+    )
+    .map_err(|error| SandboxError::Io {
+        path: staging.display().to_string(),
+        message: error.to_string(),
+    })?;
+    Ok(plan.counts)
+}
+
+fn parent_and_name(target: &Path) -> Result<(&Path, &str), SandboxError> {
+    let unsafe_target = || SandboxError::UnsafeTarget(target.display().to_string());
+    let parent = target.parent().filter(|p| !p.as_os_str().is_empty());
+    let name = target.file_name().and_then(|name| name.to_str());
+    match (parent, name) {
+        (Some(parent), Some(name)) if !name.starts_with('.') => Ok((parent, name)),
+        _ => Err(unsafe_target()),
+    }
+}
+
+/// A missing or empty folder is free; anything else needs `replace`, and a link or a file is
+/// never replaced.
+fn check_target(target: &Path, replace: bool) -> Result<(), SandboxError> {
+    let meta = match fs::symlink_metadata(target) {
+        Ok(meta) => meta,
+        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(()),
+        Err(error) => return Err(io_error(target, &error)),
+    };
+    if !meta.is_dir() {
+        return Err(SandboxError::UnsafeTarget(target.display().to_string()));
+    }
+    let empty = fs::read_dir(target)
+        .map_err(|error| io_error(target, &error))?
+        .next()
+        .is_none();
+    if empty || replace {
+        Ok(())
+    } else {
+        Err(SandboxError::TargetNotEmpty(target.display().to_string()))
+    }
+}
+
+/// Deletes what an interrupted replay of `name` left beside it.
+fn sweep(parent: &Path, name: &str) {
+    let Ok(entries) = fs::read_dir(parent) else {
+        return;
+    };
+    let staging = format!(".{name}{STAGING_MARK}");
+    let replaced = format!(".{name}{REPLACED_MARK}");
+    for entry in entries.flatten() {
+        let file_name = entry.file_name();
+        let Some(file_name) = file_name.to_str() else {
+            continue;
+        };
+        if file_name.starts_with(&staging) || file_name.starts_with(&replaced) {
+            tracing::warn!(
+                folder = file_name,
+                "removing what an interrupted sandbox replay left"
+            );
+            remove_ours(&entry.path());
+        }
+    }
+}
+
+fn swap(staging: &Path, target: &Path, parent: &Path, name: &str) -> Result<(), SandboxError> {
+    let aside = match fs::symlink_metadata(target) {
+        Ok(_) => {
+            let aside = parent.join(format!(".{name}{REPLACED_MARK}{}", unique()));
+            fs::rename(target, &aside).map_err(|error| io_error(target, &error))?;
+            Some(aside)
+        }
+        Err(error) if error.kind() == io::ErrorKind::NotFound => None,
+        Err(error) => return Err(io_error(target, &error)),
+    };
+    if let Err(error) = fs::rename(staging, target) {
+        if let Some(aside) = &aside
+            && let Err(back) = fs::rename(aside, target)
+        {
+            tracing::error!(
+                aside = %aside.display(),
+                error = %back,
+                "the previous sandbox could not be put back; the next replay builds a new one"
+            );
+        }
+        return Err(io_error(target, &error));
+    }
+    if let Some(aside) = aside {
+        remove_ours(&aside);
+    }
+    Ok(())
+}
+
+/// Removes a folder this module made; a failure is left for the next replay's sweep.
+fn remove_ours(path: &Path) {
+    if let Err(error) = fs::remove_dir_all(path)
+        && error.kind() != io::ErrorKind::NotFound
+    {
+        tracing::warn!(path = %path.display(), %error, "could not remove a sandbox replay folder");
+    }
+}
+
+fn unique() -> String {
+    uuid::Uuid::new_v4().simple().to_string()
+}
+
+pub(super) fn io_error(path: &Path, error: &io::Error) -> SandboxError {
+    SandboxError::Io {
+        path: path.display().to_string(),
+        message: error.to_string(),
+    }
+}

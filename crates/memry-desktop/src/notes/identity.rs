@@ -95,7 +95,8 @@ mod properties;
 mod tags;
 
 use file::created_ms;
-pub(super) use file::{electron_db_beside, is_large_file, place};
+pub(crate) use file::place;
+pub(super) use file::{electron_db_beside, is_large_file};
 use notices::Notice;
 
 use super::owed_moves::{self, held, keeps_kind};

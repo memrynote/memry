@@ -6,15 +6,17 @@
 //! (`apps/cli/src/sandbox/export-template.ts`) into `resources/sandbox/`:
 //! the vault files, `seed.json` (the database rows, parsed as [`Manifest`]) and
 //! `manifest.json` (the moment and the generator's count table, [`TemplateInfo`]).
-//! [`rebase`] moves the template's dates to today, and [`marker`] records which
-//! app version generated the folder.
+//! [`rebase`] moves the template's dates to today, [`replay`] builds the vault from the
+//! template, and [`marker`] records which app version generated the folder.
 
 pub mod manifest;
 pub mod marker;
 pub mod rebase;
+pub mod replay;
 
 pub use manifest::{AssetCopy, Manifest, Row, TemplateInfo};
 pub use rebase::Rebase;
+pub use replay::{ReplayOptions, SeedCounts, Template, replay};
 
 /// Why a sandbox template or marker could not be used.
 #[derive(Debug, thiserror::Error)]
@@ -33,4 +35,20 @@ pub enum SandboxError {
     UnsafePath(String),
     #[error("sandbox template asset {0:?} is not a bundled asset file name with a sha256")]
     BadAsset(String),
+    #[error("sandbox template value {0} is not an RFC 3339 instant")]
+    BadRow(String),
+    #[error("sandbox template lists {0:?}, which its vault folder lacks")]
+    MissingFile(String),
+    #[error("sandbox template is too large: {0}")]
+    TemplateTooLarge(String),
+    #[error("sandbox target {0:?} is not a folder name the replay may write")]
+    UnsafeTarget(String),
+    #[error("sandbox target {0:?} holds files; replace was not asked for")]
+    TargetNotEmpty(String),
+    #[error("sandbox file error at {path}: {message}")]
+    Io { path: String, message: String },
+    #[error("sandbox vault database: {0}")]
+    Core(String),
+    #[error("sandbox note {0:?} was not created")]
+    NoteNotCreated(String),
 }
