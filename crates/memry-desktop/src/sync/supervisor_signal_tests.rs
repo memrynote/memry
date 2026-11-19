@@ -328,3 +328,21 @@ async fn the_verdict_waits_for_the_vault_list_and_only_a_clean_pass_catches_up()
     );
     assert!(!supervisor.status().sync_eligible);
 }
+
+/// FIX-5252: a pass that stops at `MAX_PAGES_PER_PASS` has not pulled everything, so it is not
+/// caught up (`full-sync-runner.ts:482` sets `lastRunCaughtUp` only after paging to the end).
+#[tokio::test(start_paused = true)]
+async fn a_pass_stopped_at_the_page_cap_is_not_caught_up_until_one_drains() {
+    let rig = Rig::new();
+    rig.backend.driver.has_more.store(true, Ordering::SeqCst);
+    let supervisor = rig.start().await;
+    settle().await;
+    assert!(rig.passes() > 0);
+    assert!(!supervisor.caught_up(), "the server has more pages");
+
+    rig.backend.driver.has_more.store(false, Ordering::SeqCst);
+    supervisor.request_push();
+    sleep(Duration::from_secs(1)).await;
+    settle().await;
+    assert!(supervisor.caught_up(), "the next pass drained");
+}

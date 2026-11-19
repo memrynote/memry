@@ -85,6 +85,9 @@ pub enum SyncNowError {
     NotConnected,
     #[error("Readwise does not sync on this device")]
     OtherDevice,
+    /// The vault is closing.
+    #[error("The vault is closing")]
+    Closing,
     #[error(transparent)]
     Keychain(Arc<SecureStoreError>),
     #[error(transparent)]
@@ -336,6 +339,7 @@ impl ReadwiseRuns {
             return Err(SyncNowError::OtherDevice);
         }
         self.begin(&token, Origin::Manual)
+            .ok_or(SyncNowError::Closing)?
             .map_err(SyncNowError::Run)
     }
 
@@ -355,14 +359,19 @@ impl ReadwiseRuns {
         )
     }
 
-    /// Takes the run slot, or joins the run that holds it.
-    fn begin(&self, token: &str, origin: Origin) -> Outcome {
+    /// Takes the run slot, or joins the run that holds it. `None` once the vault is closing:
+    /// checked under the slot's lock, so a run either holds the slot `stop()` waits on or never
+    /// starts.
+    fn begin(&self, token: &str, origin: Origin) -> Option<Outcome> {
         let started = (self.parts.clock)();
         let slot = {
             let mut schedule = lock(&self.schedule);
             if let Some(slot) = schedule.current.clone() {
                 drop(schedule);
-                return slot.wait();
+                return Some(slot.wait());
+            }
+            if self.closing.is_cancelled() {
+                return None;
             }
             let slot = Arc::new(Slot::default());
             schedule.current = Some(Arc::clone(&slot));
@@ -407,7 +416,7 @@ impl ReadwiseRuns {
         }
         *lock(&slot.outcome) = Some(outcome.clone());
         slot.done.notify_all();
-        outcome
+        Some(outcome)
     }
 }
 

@@ -60,6 +60,8 @@ mod claim;
 mod gate;
 #[path = "readwise_run_schedule.rs"]
 mod schedule;
+#[path = "readwise_run_sync_view.rs"]
+mod sync_view;
 
 use editor_window::Window;
 use readwise_server::{Reply, Seen, Server};

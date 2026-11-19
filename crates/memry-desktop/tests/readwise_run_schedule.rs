@@ -8,6 +8,7 @@
 //! | the claim held elsewhere: no run, the token is dropped       | `runtime-effects.ts:113`, `release.ts` |
 //! | a restart takes one launch run that writes nothing new       | `lastAttemptAt` null at launch    |
 //! | a vault close or a sign-out cancel stops the run and the tick | `stop()`, `cancel()`             |
+//! | a Sync now that loses the race with the close writes nothing  | `stop()`                         |
 
 use std::sync::atomic::AtomicI64;
 
@@ -198,7 +199,7 @@ fn a_vault_close_or_a_sign_out_cancel_stops_the_run_and_the_tick() {
     // Vault close: the run waiting on the index stops, the tick ends, and nothing runs again.
     r.advance(HOUR_MS);
     wait_until(|| runs.is_running());
-    runs.stop();
+    stop_within(&runs);
     assert!(!runs.is_running());
     assert_eq!(r.runs(), ["canceled", "canceled"]);
     indexing.store(false, Ordering::SeqCst);
@@ -207,6 +208,39 @@ fn a_vault_close_or_a_sign_out_cancel_stops_the_run_and_the_tick() {
     assert_eq!(r.runs().len(), 2, "no tick after the close");
     assert_eq!(r.files(), 0, "nothing was written");
     assert!(r.has_token(), "a cancel keeps the connection");
+}
+
+/// FIX-5252: a Sync now that reaches the run slot once `stop()` has returned starts no run and
+/// writes no run state into the closing vault.
+#[test]
+fn a_sync_now_that_loses_the_race_with_the_close_writes_nothing() {
+    let r = rig("dev-a", Box::new(|| false));
+    r.v.state().set_cursor("2026-10-22T00:00:00.000Z").unwrap();
+    let runs = r.service();
+    stop_within(&runs);
+    assert!(
+        matches!(runs.sync_now(), Err(SyncNowError::Closing)),
+        "the closing vault refuses the run"
+    );
+    assert!(r.runs().is_empty(), "no run started");
+    assert!(
+        r.v.state().last_run().unwrap().is_none(),
+        "no run state written"
+    );
+    assert_eq!(r.files(), 0);
+}
+
+/// `stop()` from another thread, so a close that never returns fails here instead of hanging.
+fn stop_within(runs: &Arc<ReadwiseRuns>) {
+    let (done, stopped) = std::sync::mpsc::channel();
+    let runs = Arc::clone(runs);
+    std::thread::spawn(move || {
+        runs.stop();
+        let _ = done.send(());
+    });
+    stopped
+        .recv_timeout(Duration::from_secs(30))
+        .expect("stop() never returned");
 }
 
 trait FastTick {

@@ -150,7 +150,9 @@ impl Loop {
         self.engine = Some(report.final_state);
         let clean = report.error().is_none();
         let online = !matches!(report.final_state, SyncState::Offline | SyncState::Refused);
-        self.signals.set_caught_up(clean && online);
+        // A pass stopped at the page cap left pages on the server (`full-sync-runner.ts:482`).
+        self.signals
+            .set_caught_up(clean && online && !report.pull.has_more);
         if report.transitions.contains(&SyncState::Applying) {
             self.last_pull = Some(started);
             self.signals.pulled();

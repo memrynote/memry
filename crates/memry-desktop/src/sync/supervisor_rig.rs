@@ -45,6 +45,8 @@ pub(crate) struct FakeDriver {
     pub(crate) refuse: AtomicBool,
     /// The next pass panics.
     pub(crate) panic_next: AtomicBool,
+    /// Passes stop at the page cap with more on the server.
+    pub(crate) has_more: AtomicBool,
     /// Sockets end at once with this; `None` holds them quietly until stopped.
     pub(crate) socket_end: Mutex<Option<SocketEnd>>,
     /// Sockets opened.
@@ -104,7 +106,10 @@ impl SyncPasses for FakeDriver {
             } else {
                 SyncState::Idle
             },
-            pull: PullReport::default(),
+            pull: PullReport {
+                has_more: self.has_more.load(Ordering::SeqCst),
+                ..PullReport::default()
+            },
             parked: false,
             pushed: false,
             pushed_items: 0,
