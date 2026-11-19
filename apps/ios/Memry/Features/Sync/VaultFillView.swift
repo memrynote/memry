@@ -118,6 +118,9 @@ private struct FirstSyncScreen: View {
             .accessibilityElement(children: .combine)
 
             bar
+
+            // A first sync that seems stuck is the report this exists for.
+            FeedbackSheetButton()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(.horizontal, Tokens.Space.screenInline)
@@ -224,6 +227,7 @@ struct SyncFailureNotice: View {
                 Button("Continue setting up", action: retry)
                     .memrySecondaryAction()
             }
+            FeedbackSheetButton()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

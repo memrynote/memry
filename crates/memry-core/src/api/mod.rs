@@ -15,6 +15,7 @@ pub mod content_admin;
 pub mod crypto;
 pub mod embedding_input_conformance;
 pub mod errors;
+pub mod feedback;
 pub mod inbox;
 pub mod inbox_conformance;
 pub mod inbox_enrich;

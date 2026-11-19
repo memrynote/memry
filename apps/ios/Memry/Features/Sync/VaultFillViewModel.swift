@@ -113,6 +113,7 @@ final class VaultFillViewModel {
     private func run() async {
         phase = .filling(nil)
         let start = ContinuousClock.now
+        Log.sync.notice("a first sync started")
         do {
             let summary = try await filler.firstSync { [weak self] progress in
                 self?.report(progress)
@@ -126,6 +127,8 @@ final class VaultFillViewModel {
             Log.sync.error("a first sync did not finish", .code(mapped.code))
             phase = .failed(mapped)
         }
+        let elapsed = UInt64(max(0, (ContinuousClock.now - start) / .milliseconds(1)))
+        Log.sync.notice("the first sync ran for", .milliseconds(elapsed))
     }
 
     /// One tick from the core, already hopped to this actor by
@@ -136,7 +139,20 @@ final class VaultFillViewModel {
     /// without this guard it would put the progress bar back and hide the
     /// reason. Nothing outside a running pull may move this screen.
     private func report(_ progress: SyncProgress) {
-        guard case .filling = phase else { return }
+        guard case let .filling(last) = phase else { return }
+        if last?.phase != progress.phase { Self.logReached(progress) }
         phase = .filling(progress)
+    }
+
+    /// One diagnostic line per pass, not per tick: the bodies pass alone
+    /// ticks hundreds of times.
+    private static func logReached(_ progress: SyncProgress) {
+        let total = LogDetail.count(Int(progress.total))
+        switch progress.phase {
+        case .refs: Log.sync.notice("the first sync is reading refs", total)
+        case .metadata: Log.sync.notice("the first sync is pulling metadata", total)
+        case .bodies: Log.sync.notice("the first sync is pulling bodies", total)
+        case .done: Log.sync.notice("the first sync is finishing", total)
+        }
     }
 }

@@ -10,7 +10,7 @@ enum SettingsRoute: Hashable, Sendable {
     case account, storage, devices, vaults
     case general, newNotesFolder
     case appearance, font
-    case features, semanticSearch, about
+    case features, semanticSearch, about, feedback
     case inbox, tasks
     case templates, template(String)
     case tags, properties, property(String)
@@ -30,7 +30,7 @@ enum SettingsRoute: Hashable, Sendable {
     var section: SettingsRoute {
         switch self {
         case .storage, .devices: .account
-        case .newNotesFolder: .general
+        case .newNotesFolder, .feedback: .general
         case .font: .appearance
         case .template: .templates
         case .property: .properties
@@ -219,6 +219,7 @@ struct SettingsDestination: View {
         case .features: FeaturesScreen(local: context.local)
         case .semanticSearch: SemanticSearchScreen(vault: context.vault, executor: context.executor)
         case .about: AboutScreen()
+        case .feedback: FeedbackScreen(signedIn: context.account.hasSession, accountEmail: context.account.email)
         case .inbox: InboxSettingsDestination()
         case .tasks: TaskSettingsView(store: context.tasks)
         case .templates: TemplatesScreen(context: context)
