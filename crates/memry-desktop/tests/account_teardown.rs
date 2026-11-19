@@ -23,7 +23,7 @@ use tokio::sync::broadcast;
 
 use crate::account_service::{Keychain, MASTER, Script, access_token, setup_token};
 
-const ALL: [SecureStoreKey; 5] = [
+pub(crate) const ALL: [SecureStoreKey; 5] = [
     SecureStoreKey::MasterKey,
     SecureStoreKey::DeviceSigningKey,
     SecureStoreKey::AccessToken,
@@ -31,19 +31,19 @@ const ALL: [SecureStoreKey; 5] = [
     SecureStoreKey::SetupToken,
 ];
 
-struct Signed {
+pub(crate) struct Signed {
     _dir: tempfile::TempDir,
-    script: Arc<Script>,
-    keychain: Arc<Keychain>,
-    config: Arc<AppConfig>,
-    account: Arc<AccountService>,
-    session: Session,
-    open: OpenVault,
+    pub(crate) script: Arc<Script>,
+    pub(crate) keychain: Arc<Keychain>,
+    pub(crate) config: Arc<AppConfig>,
+    pub(crate) account: Arc<AccountService>,
+    pub(crate) session: Session,
+    pub(crate) open: OpenVault,
 }
 
 /// A registered device with all five secrets, Electron's `sync` keys, and an open vault holding
 /// two queued edits, a history row and this account's binding.
-fn signed_in() -> Signed {
+pub(crate) fn signed_in() -> Signed {
     let dir = tempfile::tempdir().unwrap();
     std::fs::create_dir_all(dir.path().join("app")).unwrap();
     let config = Arc::new(AppConfig::load(dir.path().join("app/memry-config.json")));
@@ -107,7 +107,7 @@ fn signed_in() -> Signed {
     }
 }
 
-fn count(open: &OpenVault, table: &'static str) -> i64 {
+pub(crate) fn count(open: &OpenVault, table: &'static str) -> i64 {
     open.vault
         .db_handle()
         .call_blocking(move |conn| {
@@ -217,7 +217,7 @@ async fn signing_in_again_after_a_refused_sign_out_signs_in() {
 }
 
 /// The next launch's account service over the same keychain and `memry-config.json`.
-fn relaunch(
+pub(crate) fn relaunch(
     script: &Arc<Script>,
     keychain: &Arc<Keychain>,
     config: &Arc<AppConfig>,
