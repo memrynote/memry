@@ -22,6 +22,7 @@
 pub mod connection;
 pub mod index_db;
 pub mod migrations;
+pub mod nested_tx;
 pub mod repositories;
 pub mod vector_db;
 

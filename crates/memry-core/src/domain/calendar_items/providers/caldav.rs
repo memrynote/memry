@@ -25,6 +25,7 @@ use crate::domain::calendar_items::zone::LocalZone;
 use crate::domain::calendar_items::{EXTERNAL_TYPE, SOURCE_TYPE};
 use crate::domain::notes::{failed, insert_local, iso, next_clock, tombstone_local};
 use crate::domain::recreate::write_over_tombstone;
+use crate::storage::nested_tx;
 use crate::storage::repositories::instants;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox;
@@ -150,7 +151,7 @@ pub fn connect(
     let username = input.username.trim().to_owned();
     let account = account_id(&input.server_url, &username);
     let at = iso(now_ms)?;
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     upsert_source(
         &tx,
         &account_source_id(&account),
@@ -265,7 +266,7 @@ pub fn disconnect(
     device_id: &str,
     now_ms: i64,
 ) -> Result<(), StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let mut sources = account_calendars(&tx, account)?;
     sources.push((account_source_id(account), String::new()));
     archive(&tx, &sources, device_id, now_ms)?;
@@ -491,7 +492,7 @@ pub fn apply_pull(
             .into_iter()
             .filter(|i| !handled.contains(&i.remote_event_id.as_str()))
             .collect();
-        let tx = conn.unchecked_transaction().map_err(failed)?;
+        let tx = nested_tx::begin(conn).map_err(failed)?;
         changed += replace_object(&tx, source_id, object, &instances, device_id, now_ms)?;
         tx.commit().map_err(failed)?;
     }
@@ -502,7 +503,7 @@ pub fn apply_pull(
             changed += 1;
         }
     }
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let window_start = crate::domain::calendar_items::projection::iso(window.start_ms);
     let stale: Vec<String> = object_rows(&tx, source_id)?
         .into_iter()

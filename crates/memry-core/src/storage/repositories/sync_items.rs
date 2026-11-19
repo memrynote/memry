@@ -30,6 +30,7 @@ use rusqlite::{Connection, OptionalExtension, params};
 use serde_json::Value;
 
 use crate::api::errors::StorageError;
+use crate::storage::nested_tx;
 
 use super::payload::{Change, StoredPayload};
 use super::projectors::{self, ItemContext, failed};
@@ -131,7 +132,7 @@ pub fn apply_remote(
     record: &InboundRecord,
     now_ms: i64,
 ) -> Result<ApplyOutcome, StorageError> {
-    let transaction = conn.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(conn).map_err(failed)?;
     let outcome = apply_remote_in(&transaction, record, now_ms)?;
     transaction.commit().map_err(failed)?;
     Ok(outcome)
@@ -198,7 +199,7 @@ pub fn apply_local_edit(
     changes: &[(&str, Change)],
     now_ms: i64,
 ) -> Result<String, StorageError> {
-    let transaction = conn.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(conn).map_err(failed)?;
     let merged = apply_local_edit_in(&transaction, item_type, item_id, changes, now_ms)?;
     transaction.commit().map_err(failed)?;
     Ok(merged)
@@ -322,13 +323,16 @@ pub fn load(
     item_type: &str,
     item_id: &str,
 ) -> Result<Option<SyncItemRow>, StorageError> {
-    conn.query_row(
-        "SELECT item_type, item_id, payload, payload_state, clock, field_clocks,
-                server_cursor, signer_device_id, updated_at, deleted_at,
-                corrupt_reason, corrupt_at
-         FROM sync_items WHERE item_type = ?1 AND item_id = ?2",
-        params![item_type, item_id],
-        |row| {
+    let mut statement = conn
+        .prepare_cached(
+            "SELECT item_type, item_id, payload, payload_state, clock, field_clocks,
+                    server_cursor, signer_device_id, updated_at, deleted_at,
+                    corrupt_reason, corrupt_at
+             FROM sync_items WHERE item_type = ?1 AND item_id = ?2",
+        )
+        .map_err(failed)?;
+    statement
+        .query_row(params![item_type, item_id], |row| {
             Ok(SyncItemRow {
                 item_type: row.get(0)?,
                 item_id: row.get(1)?,
@@ -343,10 +347,9 @@ pub fn load(
                 corrupt_reason: row.get(10)?,
                 corrupt_at: row.get(11)?,
             })
-        },
-    )
-    .optional()
-    .map_err(failed)
+        })
+        .optional()
+        .map_err(failed)
 }
 
 /// Replays every stored payload through its projector (§A.1).
@@ -403,7 +406,7 @@ fn write_payload(
     corrupt_reason: Option<&str>,
     now_ms: i64,
 ) -> Result<(), StorageError> {
-    conn.execute(
+    conn.prepare_cached(
         "INSERT INTO sync_items (
              item_type, item_id, payload, payload_state, clock, field_clocks,
              server_cursor, signer_device_id, updated_at, deleted_at,
@@ -420,7 +423,9 @@ fn write_payload(
              deleted_at = excluded.deleted_at,
              corrupt_reason = excluded.corrupt_reason,
              corrupt_at = excluded.corrupt_at",
-        params![
+    )
+    .and_then(|mut statement| {
+        statement.execute(params![
             record.item_type,
             record.item_id,
             // Rule 1. The string the caller handed over, not a re-encoding of
@@ -435,8 +440,8 @@ fn write_payload(
             record.deleted_at,
             corrupt_reason,
             corrupt_reason.map(|_| now_ms),
-        ],
-    )
+        ])
+    })
     .map_err(failed)?;
     Ok(())
 }

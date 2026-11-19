@@ -86,6 +86,7 @@ use crate::domain::settings::{
 };
 use crate::domain::task_merge;
 use crate::domain::tasks::Inbound;
+use crate::storage::nested_tx;
 use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::sync_items::InboundRecord;
 use crate::storage::repositories::{Change, StoredPayload, sync_items};
@@ -139,7 +140,7 @@ pub(crate) fn apply_remote_merged(
         ("fieldClocks", Change::Set(merged.field_clocks)),
     ];
 
-    let transaction = conn.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(conn).map_err(failed)?;
     sync_items::apply_local_edit_in(
         &transaction,
         &record.item_type,

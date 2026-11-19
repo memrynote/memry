@@ -32,6 +32,7 @@ use yrs::{Doc, ReadTxn as _, StateVector, Transact as _};
 use crate::api::errors::StorageError;
 use crate::crdt::errors::CrdtError;
 use crate::crdt::update_log;
+use crate::storage::nested_tx;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox;
 
@@ -93,7 +94,7 @@ pub fn open_day(
     device_id: &str,
     now_ms: i64,
 ) -> Result<OpenedDay, StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let opened = open_day_in(&tx, date, device_id, now_ms)?;
     tx.commit().map_err(failed)?;
     Ok(opened)

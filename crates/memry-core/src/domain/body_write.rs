@@ -31,6 +31,7 @@ use crate::crdt::registry::UpdateSink;
 use crate::crdt::{epoch, markdown_seed, update_log};
 use crate::domain::notes::ITEM_TYPE;
 use crate::domain::reads;
+use crate::storage::nested_tx;
 use crate::sync::outbox;
 
 /// Applies one block edit to a note's body.
@@ -58,7 +59,7 @@ pub fn edit_block(
         return Ok(true);
     };
 
-    let tx = conn.unchecked_transaction().map_err(storage_failed)?;
+    let tx = nested_tx::begin(conn).map_err(storage_failed)?;
     append_in(&tx, ITEM_TYPE, note_id, &update, now_ms)?;
     tx.commit().map_err(storage_failed)?;
     Ok(true)
@@ -104,7 +105,7 @@ pub fn append_snapshot(
     else {
         return Ok(true);
     };
-    let tx = conn.unchecked_transaction().map_err(storage_failed)?;
+    let tx = nested_tx::begin(conn).map_err(storage_failed)?;
     append_in(&tx, ITEM_TYPE, note_id, &update, now_ms)?;
     tx.commit().map_err(storage_failed)?;
     Ok(true)
@@ -129,7 +130,7 @@ pub fn append_markdown(
     else {
         return Ok(true);
     };
-    let tx = conn.unchecked_transaction().map_err(storage_failed)?;
+    let tx = nested_tx::begin(conn).map_err(storage_failed)?;
     append_in(&tx, ITEM_TYPE, note_id, &update, now_ms)?;
     tx.commit().map_err(storage_failed)?;
     Ok(true)

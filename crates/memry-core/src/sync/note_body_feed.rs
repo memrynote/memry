@@ -33,6 +33,7 @@ use yrs::updates::decoder::Decode as _;
 use crate::api::errors::{ApiError, StorageError};
 use crate::crdt::update_log::{self, Namespace};
 use crate::protocol::http::{ApiRequest, HttpClient, RetryPolicy};
+use crate::storage::nested_tx;
 
 use super::body_debt;
 use super::body_pull::{CrdtCipher, PackedUpdate, crdt_cursor_scope};
@@ -331,7 +332,7 @@ pub(super) fn land_and_advance(
     cursor: Option<&str>,
     now_ms: i64,
 ) -> Result<Vec<String>, StorageError> {
-    let txn = conn.unchecked_transaction().map_err(sqlite_failed)?;
+    let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
     let mut advanced: Vec<String> = Vec::new();
     for landing in fetched.landings {
         let doc_id = match &landing {

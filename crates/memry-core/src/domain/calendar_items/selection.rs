@@ -7,6 +7,7 @@ use serde_json::{Value, json};
 
 use crate::api::errors::StorageError;
 use crate::domain::notes::{failed, iso, next_clock, tombstone_local};
+use crate::storage::nested_tx;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox;
 
@@ -28,7 +29,7 @@ pub fn set_source_selection(
     device_id: &str,
     now_ms: i64,
 ) -> Result<Result<(), SelectionRefusal>, StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let Some(source) = live_payload(&tx, SOURCE_TYPE, source_id)? else {
         return Ok(Err(SelectionRefusal::NotFound));
     };

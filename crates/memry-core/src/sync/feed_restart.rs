@@ -16,6 +16,7 @@
 use rusqlite::Connection;
 
 use crate::api::errors::StorageError;
+use crate::storage::nested_tx;
 
 use super::first_sync_store::{read_meta, write_meta};
 use super::store::{self, RECORD_CURSOR_SCOPE};
@@ -72,7 +73,7 @@ pub(super) fn begin_cursor_skip_repair(
         write_meta(conn, META_CURSOR_SKIP_REPAIR, REPAIR_DONE)?;
         return Ok(false);
     };
-    let txn = conn.unchecked_transaction().map_err(failed)?;
+    let txn = nested_tx::begin(conn).map_err(failed)?;
     store::write_cursor(&txn, RECORD_CURSOR_SCOPE, None, now_ms)?;
     write_meta(&txn, META_CURSOR_SKIP_REPAIR, &format!("pending:{cursor}"))?;
     txn.commit().map_err(failed)?;

@@ -90,7 +90,7 @@ pub fn project_note(
     item: ItemContext<'_>,
     view: &Object,
 ) -> Result<(), StorageError> {
-    conn.execute(
+    conn.prepare_cached(
         "INSERT INTO notes (
              id, title, folder_path, emoji, file_type, mime_type, attachment_id,
              attachment_references, aliases, properties, created_at, modified_at,
@@ -114,7 +114,9 @@ pub fn project_note(
              clock = excluded.clock,
              synced_at = excluded.synced_at,
              deleted_at = excluded.deleted_at",
-        params![
+    )
+    .and_then(|mut statement| {
+        statement.execute(params![
             item.item_id,
             text_or_default(view, "title", ""),
             text(view, "folderPath"),
@@ -130,8 +132,8 @@ pub fn project_note(
             clock_text(view),
             item.synced_at,
             item.deleted_at,
-        ],
-    )
+        ])
+    })
     .map_err(failed)?;
 
     project_tags(conn, item, view)
@@ -208,17 +210,15 @@ fn project_tags(
     item: ItemContext<'_>,
     view: &Object,
 ) -> Result<(), StorageError> {
-    conn.execute(
-        "DELETE FROM note_tags WHERE note_id = ?1",
-        params![item.item_id],
-    )
-    .map_err(failed)?;
+    conn.prepare_cached("DELETE FROM note_tags WHERE note_id = ?1")
+        .and_then(|mut statement| statement.execute(params![item.item_id]))
+        .map_err(failed)?;
 
     let pinned = strings(view, "pinnedTags");
     let clock = clock_text(view);
     for (position, tag) in strings(view, "tags").into_iter().enumerate() {
         let pinned_at = pinned.contains(&tag).then_some(item.synced_at);
-        conn.execute(
+        conn.prepare_cached(
             "INSERT INTO note_tags (note_id, tag, position, pinned_at, clock, synced_at, deleted_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
              ON CONFLICT(note_id, tag) DO UPDATE SET
@@ -227,7 +227,8 @@ fn project_tags(
                  clock = excluded.clock,
                  synced_at = excluded.synced_at,
                  deleted_at = excluded.deleted_at",
-            params![
+        )
+        .and_then(|mut statement| statement.execute(params![
                 item.item_id,
                 tag,
                 position as i64,
@@ -235,8 +236,7 @@ fn project_tags(
                 clock,
                 item.synced_at,
                 item.deleted_at,
-            ],
-        )
+            ]))
         .map_err(failed)?;
     }
     Ok(())

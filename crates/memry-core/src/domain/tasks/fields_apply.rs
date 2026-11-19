@@ -19,6 +19,7 @@ use serde_json::Value;
 
 use crate::api::errors::StorageError;
 use crate::domain::notes::{failed, next_clock};
+use crate::storage::nested_tx;
 use crate::storage::repositories::sync_items::{self, InboundRecord};
 use crate::storage::repositories::{Change, StoredPayload};
 use crate::sync::field_merge::canonical_json;
@@ -104,7 +105,7 @@ pub(super) fn join_after_apply(
         )?
         .acknowledge();
     } else {
-        let transaction = conn.unchecked_transaction().map_err(failed)?;
+        let transaction = nested_tx::begin(conn).map_err(failed)?;
         write(&transaction)?;
         transaction.commit().map_err(failed)?;
     }

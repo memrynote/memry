@@ -25,6 +25,7 @@ use rusqlite::{Connection, params};
 use serde_json::{Map, Value, json};
 
 use crate::api::errors::StorageError;
+use crate::storage::nested_tx;
 use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::{Change, StoredPayload, sync_items};
 use crate::sync::outbox::{self, Durable};
@@ -197,7 +198,7 @@ pub fn set_scene_expecting(
     now_ms: i64,
 ) -> Result<SceneWrite, StorageError> {
     let scene = canonical_scene(scene)?;
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let stored = live_payload(&tx, canvas_id)?;
     let current = read(canvas_id, stored.object());
     if current.scene != expected {
