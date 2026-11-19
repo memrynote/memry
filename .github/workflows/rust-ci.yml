@@ -535,6 +535,8 @@ jobs:
         env:
           CARGO_PROFILE_RELEASE_LTO: 'false'
           CARGO_PROFILE_RELEASE_CODEGEN_UNITS: '16'
+          # A release build defaults to MEMRY_ENV=production, whose build.rs needs SYNC_SERVER_URL.
+          MEMRY_ENV: development
           MEMRY_PERF_ENFORCE: '1'
           MEMRY_PERF_FACTOR: '3'
         run: cargo test -p memry-tauri --release --test calendar calendar_get_range_month_perf -- --ignored --nocapture
