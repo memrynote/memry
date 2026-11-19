@@ -2435,7 +2435,8 @@
         "vault-binding": "Kľúče tohto zariadenia sú obnovené, ale tento trezor ešte nie je nastavený na synchronizáciu s vaším účtom. V ponuke synchronizácie vyberte, ako ho synchronizovať.",
         "vault-foreign": "Kľúče tohto zariadenia sú obnovené, ale tento trezor patrí inému účtu. Zostáva lokálny v tomto zariadení.",
         "entitlement": "Kľúče tohto zariadenia sú obnovené, ale synchronizácia vyžaduje aktívny plán Sync.",
-        "unavailable": "Kľúče tohto zariadenia sú obnovené, ale synchronizáciu sa nepodarilo spustiť. Skúsi to znova; ak nie, reštartujte Memry."
+        "unavailable": "Kľúče tohto zariadenia sú obnovené, ale synchronizáciu sa nepodarilo spustiť. Skúsi to znova; ak nie, reštartujte Memry.",
+        "unavailable-restart": "Kľúče tohto zariadenia sú obnovené, ale synchronizáciu sa nepodarilo spustiť. Reštartujte Memry; ak sa synchronizácia ani potom nespustí, odhláste sa a znova sa prihláste."
       }
     },
     "pagesSettingsAiInlineSection": {
