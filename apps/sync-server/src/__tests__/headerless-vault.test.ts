@@ -4,6 +4,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { createSqliteD1, type SqliteD1 } from './d1-sqlite'
 import { errorHandler } from '../lib/errors'
+import { isReadRequest } from '../middleware/client-gate'
+import { blob } from '../routes/blob'
+import { bootstrap } from '../routes/bootstrap'
 import { sync } from '../routes/sync'
 import type { AppContext } from '../types'
 
@@ -30,6 +33,8 @@ let publicKeyPem: string
 const app = new Hono<AppContext>()
 app.onError(errorHandler)
 app.route('/sync', sync)
+app.route('/sync', blob)
+app.route('/sync/bootstrap', bootstrap)
 
 const rateLimiter = {
   idFromName: (name: string) => name,
@@ -49,6 +54,8 @@ const request = (
       DB: harness.db,
       JWT_PUBLIC_KEY: publicKeyPem,
       RATE_LIMITER: rateLimiter,
+      // An empty bucket: no vault-scoped read finds anything to serve.
+      STORAGE: { get: async () => null },
       ENVIRONMENT: 'test'
     },
     { waitUntil: () => {}, passThroughOnException: () => {}, props: {} }
@@ -213,5 +220,172 @@ describe('the status read on an account that already holds vaults', () => {
     const body = (await res.json()) as { error: { code: string } }
     expect(body.error.code).toBe('SYNC_VAULT_LIMIT_EXCEEDED')
     expect(vaultIds()).toEqual([REAL_VAULT])
+  })
+})
+
+// #4278: the status fix (#3967) covered one route. Every other vault-scoped
+// read still upserted the vault it resolved, so a header-less manifest, changes
+// or pull on an empty account minted `default`, and on Plus the real vault's
+// registration then got a 402 no upgrade could clear. Reads now resolve and
+// check the vault without inserting it, and answer from an empty vault.
+const json = (body: unknown) => ({
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(body)
+})
+const UNKNOWN_ITEM = '00000000-0000-4000-8000-000000000000'
+const HEADERLESS_READS = [
+  { route: 'GET /sync/manifest', path: '/sync/manifest', status: 200 },
+  { route: 'GET /sync/changes', path: '/sync/changes?since=0', status: 200 },
+  {
+    route: 'POST /sync/pull',
+    path: '/sync/pull',
+    init: json({ itemIds: [UNKNOWN_ITEM] }),
+    status: 200
+  },
+  {
+    route: 'POST /sync/records/pull',
+    path: '/sync/records/pull',
+    init: json({ itemIds: [UNKNOWN_ITEM] }),
+    status: 200
+  },
+  { route: 'GET /sync/items/:id', path: `/sync/items/${UNKNOWN_ITEM}`, status: 404 },
+  { route: 'GET /sync/packs', path: '/sync/packs', status: 200 },
+  { route: 'GET /sync/crdt/updates', path: '/sync/crdt/updates?note_id=note_1', status: 200 },
+  {
+    route: 'POST /sync/crdt/updates/batch',
+    path: '/sync/crdt/updates/batch',
+    init: json({ notes: [{ noteId: 'note_1' }] }),
+    status: 200
+  },
+  { route: 'GET /sync/crdt/snapshot/:noteId', path: '/sync/crdt/snapshot/note_1', status: 200 },
+  // Blob reads have nothing to serve: 404, and 501 where presign is not configured.
+  { route: 'GET /sync/blob/:key', path: '/sync/blob/item-1', status: 404 },
+  {
+    route: 'HEAD /sync/attachments/chunks/:hash',
+    path: '/sync/attachments/chunks/abc',
+    init: { method: 'HEAD' },
+    status: 404
+  },
+  {
+    route: 'GET /sync/attachments/chunks/:hash',
+    path: '/sync/attachments/chunks/abc',
+    status: 404
+  },
+  {
+    route: 'GET /sync/attachments/:id/manifest',
+    path: '/sync/attachments/att-1/manifest',
+    status: 404
+  },
+  {
+    route: 'GET /sync/attachments/upload/:id',
+    path: '/sync/attachments/upload/session-1',
+    status: 404
+  },
+  {
+    route: 'POST /sync/attachments/presign-batch',
+    path: '/sync/attachments/presign-batch',
+    init: json({ chunkHashes: ['abc'] }),
+    status: 501
+  },
+  // Without an Upgrade header the route refuses after the middleware has run.
+  { route: 'GET /sync/ws', path: '/sync/ws', status: 426 }
+]
+
+// Concrete URLs for every write route behind the paid-sync middleware.
+const HEADERLESS_WRITES = [
+  ['POST', '/sync/push'],
+  ['POST', '/sync/records/push'],
+  ['POST', '/sync/crdt/updates'],
+  ['POST', '/sync/crdt/snapshot'],
+  ['POST', '/sync/crdt/snapshot/batch'],
+  ['DELETE', '/sync/blob/:blob_key', '/sync/blob/item-1'],
+  ['POST', '/sync/attachments/upload/initiate'],
+  [
+    'PUT',
+    '/sync/attachments/upload/:session_id/chunk/:chunk_index',
+    '/sync/attachments/upload/session-1/chunk/0'
+  ],
+  [
+    'POST',
+    '/sync/attachments/upload/:session_id/complete',
+    '/sync/attachments/upload/session-1/complete'
+  ],
+  ['DELETE', '/sync/attachments/upload/:session_id', '/sync/attachments/upload/session-1'],
+  ['POST', '/sync/attachments/dereference'],
+  ['POST', '/sync/attachments/holds'],
+  ['POST', '/sync/attachments/holds/release'],
+  ['PUT', '/sync/attachments/:attachment_id/manifest', '/sync/attachments/att-1/manifest'],
+  ['POST', '/sync/bootstrap'],
+  ['POST', '/sync/bootstrap/renew'],
+  ['POST', '/sync/bootstrap/close']
+].map(([method, routePattern, path = routePattern]) => ({
+  route: `${method} ${routePattern}`,
+  routePattern: `${method} ${routePattern}`,
+  method,
+  path
+}))
+
+describe.each([
+  { plan: 'plus', maxVaults: 1 },
+  { plan: 'believer', maxVaults: null }
+])('header-less reads on a $plan account with no vaults', ({ plan, maxVaults }) => {
+  beforeEach(() => {
+    harness.raw.prepare('DELETE FROM sync_vaults WHERE user_id = ?').run(USER_ID)
+    grant(plan, maxVaults)
+  })
+
+  it.each(HEADERLESS_READS)('$route answers from an empty vault and creates none', async (read) => {
+    const res = await request(read.path, read.init)
+
+    expect(res.status).toBe(read.status)
+    expect(vaultIds()).toEqual([])
+  })
+
+  it('leave the real vault free to register', async () => {
+    for (const read of HEADERLESS_READS.slice(0, 3)) {
+      expect((await request(read.path, read.init)).status).toBe(200)
+    }
+
+    const registered = await request('/sync/vaults', {
+      ...json({ vaultUuid: REAL_VAULT, encryptedName: 'name', nameNonce: 'nonce' })
+    })
+
+    expect(registered.status).toBe(200)
+    expect(vaultIds()).toEqual([REAL_VAULT])
+  })
+
+  // Compat: a build that predates the header still gets `default` on its
+  // first write, exactly as before, on every write route. The route may refuse
+  // the request on its own (validation, missing session), after the middleware
+  // has run. #4278 review: a write wrongly added to the client gate's read list
+  // would put its rows under `default` with no `sync_vaults` row.
+  it.each(HEADERLESS_WRITES)('still creates `default` on a header-less $route', async (write) => {
+    await request(write.path, { ...json({}), method: write.method })
+
+    expect(vaultIds()).toEqual(['default'])
+  })
+
+  // A header on a read still creates its vault: a client that names a vault is
+  // registering it by using it, and only the header-less read is read-only.
+  it('creates the vault a read names in X-Memry-Vault-Id', async () => {
+    const res = await request('/sync/manifest', { headers: { 'X-Memry-Vault-Id': 'vault-new' } })
+
+    expect(res.status).toBe(200)
+    expect(vaultIds()).toEqual(['vault-new'])
+  })
+
+  // The table above is the checklist; the router is the source. A new write
+  // route that is missing from the table fails here instead of going untested.
+  it('lists every write route the router serves', () => {
+    const served = new Set(
+      app.routes
+        .filter((r) => r.method !== 'ALL' && !isReadRequest(r.method, r.path))
+        // Auth-only routes registered above the paid-sync middleware.
+        .filter((r) => !r.path.startsWith('/sync/vaults'))
+        .map((r) => `${r.method} ${r.path}`)
+    )
+
+    expect([...served].toSorted()).toEqual(HEADERLESS_WRITES.map((w) => w.routePattern).toSorted())
   })
 })

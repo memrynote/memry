@@ -49,6 +49,13 @@ the start of a sync pass, racing vault registration. Before this, on an account 
 minted `default`, and on Plus the real vault's registration then failed with 402 (#3967). A status read
 for a vault with no row answers `pendingItems: 0` and no `lastSyncAt`, the same body as before.
 
+Every other read with no vault header behaves the same way (#4278). That covers manifest, changes,
+pull, items, packs, CRDT updates and snapshots, blob and chunk downloads, presign and the WebSocket
+upgrade. On an account with no vaults these reads answer from an empty vault and create nothing. The
+client gate's read classification decides what counts as a read. Only a header-less write still
+creates `default` on an account with no vaults, because a build that predates the header needs it on
+its first push.
+
 The desktop client mirrors this gate locally to avoid pointless round-trips that can only return 402. Handlers for paid-only endpoints check the cached entitlement first and return their empty
 value (`GET_STATUS` → `local_only`, `GET_STORAGE_BREAKDOWN` → `null`) when the cache says the user
 is on the free plan. Only a **known-unpaid** entitlement is gated — an unknown/uncached
