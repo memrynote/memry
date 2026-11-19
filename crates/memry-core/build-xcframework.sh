@@ -41,6 +41,14 @@ export IPHONEOS_DEPLOYMENT_TARGET=26.0
 # workspace root so it finds crates/Cargo.toml however it was invoked.
 cd "$workspace_dir"
 
+# Every run shares target/xcframework-staging and wipes it, so two concurrent
+# runs (simulator and device dev scripts) steal each other's bindings. Re-exec
+# under an exclusive kernel lock; it drops when the process exits, crash included.
+if [[ -z "${MEMRY_XCFRAMEWORK_LOCKED:-}" ]]; then
+  mkdir -p "$workspace_dir/target"
+  exec env MEMRY_XCFRAMEWORK_LOCKED=1 lockf -k "$workspace_dir/target/.xcframework.lock" "$crate_dir/build-xcframework.sh" "$@"
+fi
+
 targets=(aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios)
 
 swift_pkg="$repo_root/packages/swift/MemryCore"
