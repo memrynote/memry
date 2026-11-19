@@ -17,9 +17,11 @@ export const PRODUCTION_FEED = 'https://github.com/memrynote/memry'
  * Strings no production executable may hold. Not `localhost` or a bare `sync-staging`: every build
  * carries `http://localhost:8787` (the development default, `memry-desktop/src/config.rs`), the
  * `*.localhost` IPC origins and the `sync-staging.memrynote.com` TLS pin, so a localhost sync URL is
- * caught only by the `pre` check of `SYNC_SERVER_URL`.
+ * caught only by the `pre` check of `SYNC_SERVER_URL`. Not a bare `memry-update-rehearsal`: a build
+ * in the rehearsal repo embeds its workspace path (`/home/runner/work/memry-update-rehearsal/...`),
+ * while the rehearsal feed always names `memrynote/memry-update-rehearsal`.
  */
-export const FORBIDDEN = ['://sync-staging', 'memry-update-rehearsal']
+export const FORBIDDEN = ['://sync-staging', 'memrynote/memry-update-rehearsal']
 
 /**
  * The production sync origin, read from `PRODUCTION_SYNC_URL` in memry-desktop's config.rs, which
