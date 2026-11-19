@@ -59,7 +59,7 @@ pub fn vec_voice(ctx: &mut TableCtx<'_>) -> Result<TableStats, ImportError> {
     copy(ctx, DerivedTable::Vectors(VecTable::Voice))
 }
 
-/// The state rows, then what each current note's vectors were built from
+/// The state rows, then the hash and title Electron's cache last saw for each current note
 /// ([`memry_core::storage::import::ImportWriter::put_note_embedding_hashes`]), so an unchanged
 /// note is not embedded again. `TABLE_MAP` puts `note_metadata` and `extracted_text` before it.
 pub fn note_embedding_state(ctx: &mut TableCtx<'_>) -> Result<TableStats, ImportError> {

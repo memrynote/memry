@@ -65,11 +65,12 @@ impl DerivedTable {
 }
 
 /// A note whose Electron vectors `note_embedding_state` calls current: what Electron's index
-/// held for it when it last ran (`note_cache.content_hash` and `title`).
+/// held for it when it last ran (`note_cache.content_hash` and `title`). The hash is `None` for
+/// a filed file (`persistFileNote` caches none) and for a markdown note tier 0 has not read.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImportEmbeddedNote {
     pub note_id: String,
-    pub content_hash: String,
+    pub content_hash: Option<String>,
     pub title: String,
 }
 
@@ -99,13 +100,21 @@ impl ImportWriter {
     }
 
     /// Records, for each note of `notes` with a staged file and a staged
-    /// `note_embedding_state` row at [`EMBEDDING_INPUT_VERSION`], the hash and title its
-    /// vectors were built from (`note_embedding_hashes`, index migration 0011): Electron's cached
-    /// hash joined with the staged text read out of its files, as
-    /// [`crate::domain::note_embeddings::with_file_text`] joins the hash it has now. A note
-    /// whose file or title moved since Electron last read it is still owed a vector; without a
-    /// row every imported note would be embedded again. Run after `extracted_text`,
-    /// `note_files` and `note_embedding_state` are staged. Returns the rows written.
+    /// `note_embedding_state` row at [`EMBEDDING_INPUT_VERSION`], a `note_embedding_hashes` row
+    /// (index migration 0011): Electron's cached hash (none for a filed file) joined with the
+    /// staged text read out of its files, as
+    /// [`crate::domain::note_embeddings::with_file_text`] joins the hash it has now, and the
+    /// cached title. A note whose file or title moved since Electron's cache last saw it is
+    /// still owed a vector; a markdown note with no cached hash gets no row and stays owed.
+    /// Without a row every imported note would be embedded again.
+    ///
+    /// The row records the hash Electron's cache last saw, not proof of what the vectors were
+    /// built from. Electron updates `note_cache` on its foreground lane and marks embeddings
+    /// dirty on an in-memory background lane, so a lost event, a quit at the drain deadline, a
+    /// crash or a tier 0 rename can leave an old vector at the current input version beside a
+    /// newer cached hash. The core then treats that vector as current, as Electron does; only
+    /// a full re-embed would close the gap. Run after `extracted_text`, `note_files` and
+    /// `note_embedding_state` are staged. Returns the rows written.
     pub fn put_note_embedding_hashes(
         &mut self,
         notes: &[ImportEmbeddedNote],
@@ -133,8 +142,13 @@ impl ImportWriter {
             let Some(markdown) = markdown.filter(|_| current) else {
                 continue;
             };
+            let file_hash = match (markdown, note.content_hash.as_deref()) {
+                (false, _) => None,
+                (true, Some(hash)) => Some(hash),
+                (true, None) => continue,
+            };
             let extracted = extracted_text_for_note(&tx, &note.note_id)?;
-            let hash = embedded_hash(markdown.then_some(note.content_hash.as_str()), &extracted);
+            let hash = embedded_hash(file_hash, &extracted);
             tx.execute(
                 "INSERT INTO note_embedding_hashes (note_id, content_hash, title) VALUES (?1, ?2, ?3)",
                 params![note.note_id, hash, note.title],

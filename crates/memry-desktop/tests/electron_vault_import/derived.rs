@@ -7,7 +7,7 @@
 
 use std::path::Path;
 
-use memry_core::domain::note_embeddings::{candidates, owed, with_file_text};
+use memry_core::domain::note_embeddings::{candidates, embedded_hash, owed, with_file_text};
 use memry_core::storage::import::{DATA_FILE, INDEX_FILE};
 use memry_desktop::electron_import::ProfileLock;
 use rusqlite::Connection;
@@ -204,6 +204,92 @@ fn derived_rows_import_unchanged_and_only_changed_notes_owe_a_vector() {
         .collect();
     owed.sort();
     assert_eq!(owed, [DIRTY, EDITED]);
+}
+
+/// Electron caches no hash for a filed file (`persistFileNote`, `note-derived-state-projector.ts:240`)
+/// nor for a markdown note its tier 0 has not read. The filed PDF records the hash the core
+/// computes for it (`embedded_hash(None, text)`), so it owes nothing; the markdown note
+/// records none and stays owed.
+#[test]
+fn notes_without_a_cached_hash_import_and_only_markdown_ones_stay_owed() {
+    const PDF: &str = "pdf1";
+    const TIER0: &str = "Vec-tier0001";
+    let vault = Vault::new();
+    electron_db::seed(
+        &vault.data_conn(),
+        "note_metadata",
+        &[
+            ("id", text(PDF)),
+            ("path", text("Files/doc.pdf")),
+            ("title", text("doc")),
+            ("file_type", text("pdf")),
+            ("created_at", text("2026-01-05T08:00:00.000Z")),
+            ("modified_at", text("2026-01-05T09:00:00.000Z")),
+        ],
+    );
+    seed_note(&vault, TIER0, &format!("{TIER0}.md"), None, false);
+    let index = Connection::open(&vault.pair.index).unwrap();
+    for (id, path, title, file_type) in [
+        (PDF, "Files/doc.pdf", "doc", "pdf"),
+        (TIER0, &format!("{TIER0}.md"), TIER0, "markdown"),
+    ] {
+        electron_db::seed(
+            &index,
+            "note_cache",
+            &[
+                ("id", text(id)),
+                ("path", text(path)),
+                ("title", text(title)),
+                ("file_type", text(file_type)),
+            ],
+        );
+        index
+            .execute(
+                "INSERT INTO vec_notes VALUES (?1, ?2)",
+                rusqlite::params![id, vector(0.1, 256)],
+            )
+            .unwrap();
+    }
+    index
+        .execute_batch(&format!(
+            "INSERT INTO note_embedding_state VALUES ('{PDF}', 6, 0), ('{TIER0}', 6, 0);
+             INSERT INTO extracted_text VALUES ('{PDF}', 'doc.pdf', 1, 'pdf-text', 'Scanned words');"
+        ))
+        .unwrap();
+
+    let staged = super::staged(
+        memry_desktop::electron_import::vault_db::stage_vault_import(
+            memry_desktop::electron_import::vault_db::VaultImportInput {
+                docs: vec![folded(TIER0, "Today.\n", None)],
+                ..vault.input()
+            },
+        )
+        .unwrap(),
+    );
+    staged.install().unwrap();
+
+    let core_index = Connection::open(vault.core().join(INDEX_FILE)).unwrap();
+    let core_data = Connection::open(vault.core().join(DATA_FILE)).unwrap();
+    let recorded: Vec<(String, Option<String>)> = core_index
+        .prepare("SELECT note_id, content_hash FROM note_embedding_hashes ORDER BY note_id")
+        .unwrap()
+        .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
+        .unwrap()
+        .collect::<Result<_, _>>()
+        .unwrap();
+    let notes = with_file_text(&core_index, candidates(&core_data).unwrap()).unwrap();
+    let pdf = notes.iter().find(|note| note.note_id == PDF).unwrap();
+    assert_eq!(
+        recorded,
+        [(PDF.to_owned(), embedded_hash(None, "Scanned words"))]
+    );
+    assert_eq!(recorded[0].1, pdf.content_hash);
+    let owed: Vec<String> = owed(&core_index, notes)
+        .unwrap()
+        .into_iter()
+        .map(|note| note.note_id)
+        .collect();
+    assert_eq!(owed, [TIER0]);
 }
 
 /// A vec0 table of another width cannot go into the core's 256 wide one: its family and state
