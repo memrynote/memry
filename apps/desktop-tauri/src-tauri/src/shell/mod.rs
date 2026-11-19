@@ -13,5 +13,6 @@ pub mod loopback;
 pub mod navigation_guard;
 pub mod note_events;
 pub mod permissions;
+pub mod readwise;
 pub mod services;
 pub mod vault_boot;

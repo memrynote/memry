@@ -51,6 +51,7 @@ async fn sign_out(app: &AppHandle<Wry>, command: &str) -> Result<SignOutResult, 
         log_failure(command, &mapped);
         mapped
     })?;
+    crate::shell::readwise::cancel_run(app);
     if let Some(bindings) = app.try_state::<Arc<OpenVaultBinding>>() {
         broadcast(
             app,

@@ -177,6 +177,20 @@ export const commands = {
 	 *  has written yet queued.
 	 */
 	foldRun: (noteId: string, level: FoldLevel) => __TAURI_INVOKE<FoldLayers>("fold_run", { noteId, level }),
+	/**  `import:readwise:ack-error-toast`: `first` once per parked episode. */
+	importReadwiseAckErrorToast: () => __TAURI_INVOKE<boolean>("import_readwise_ack_error_toast"),
+	/**  `import:readwise:cancel`: stops the run in progress at its next book. */
+	importReadwiseCancel: () => __TAURI_INVOKE<null>("import_readwise_cancel"),
+	/**  `import:readwise:connect`: checks the pasted token with Readwise, then stores it. */
+	importReadwiseConnect: (token: string) => __TAURI_INVOKE<ReadwiseStatus>("import_readwise_connect", { token }),
+	/**  `import:readwise:disconnect`: the token and run state go, the notes stay. */
+	importReadwiseDisconnect: () => __TAURI_INVOKE<null>("import_readwise_disconnect"),
+	/**  `import:readwise:set-options`: writes the given options, answers the status. */
+	importReadwiseSetOptions: (input: ReadwiseOptionsInput) => __TAURI_INVOKE<ReadwiseStatus>("import_readwise_set_options", { input }),
+	/**  `import:readwise:status`. */
+	importReadwiseStatus: () => __TAURI_INVOKE<ReadwiseStatus>("import_readwise_status"),
+	/**  `import:readwise:sync-now`: runs now, or joins the scheduled run, and returns when it ends. */
+	importReadwiseSyncNow: () => __TAURI_INVOKE<null>("import_readwise_sync_now"),
 	/**  With the account's token when signed in. */
 	iosBetaJoin: (input: IosBetaJoinInput) => __TAURI_INVOKE<IosBetaJoinResult>("ios_beta_join", { input }),
 	/**
@@ -860,6 +874,7 @@ export const events = {
 	customIconsUpdatedEvent: makeEvent<CustomIconsUpdatedEvent, CustomIconsUpdatedEvent>("custom-icons-updated-event"),
 	flushRequestedEvent: makeEvent<FlushRequestedEvent, FlushRequestedEvent>("flush-requested-event"),
 	folderConfigUpdatedEvent: makeEvent<FolderConfigUpdatedEvent, FolderConfigUpdatedEvent>("folder-config-updated-event"),
+	importReadwiseStatusChangedEvent: makeEvent<ImportReadwiseStatusChangedEvent, ImportReadwiseStatusChangedEvent>("import-readwise-status-changed-event"),
 	inboxOpenItemEvent: makeEvent<InboxOpenItemEvent, InboxOpenItemEvent>("inbox-open-item-event"),
 	journalEntryCreatedEvent: makeEvent<JournalEntryCreatedEvent, JournalEntryCreatedEvent>("journal-entry-created-event"),
 	journalEntryDeletedEvent: makeEvent<JournalEntryDeletedEvent, JournalEntryDeletedEvent>("journal-entry-deleted-event"),
@@ -1877,6 +1892,12 @@ export type ImpactQuery = { kind: "remove-field"; tag: string; name: string } | 
 
 /**  `ImpactResult`. */
 export type ImpactView = { kind: "remove-field"; filled: number; empty: number } | { kind: "rename-field"; notes: number; tasks: number; tags: string[] } | { kind: "delete-tag"; notes: number; tasks: number; values: number; fields: number; templateName: string | null } | { kind: "set-extends"; notes: number; gained: string[]; lost: string[] } | { kind: "become-objects"; notes: number };
+
+/**
+ *  The Readwise run started, moved on, ended or failed (`import:readwise:status-changed`): the
+ *  page reads the status again.
+ */
+export type ImportReadwiseStatusChangedEvent = null;
 
 /**
  *  Open an inbox item (`inbox-open-item-event`): `memry://open?item=<id>` and, with Step 27
@@ -2927,6 +2948,97 @@ export type QuarantinedItemInfo = {
 export type QuickSearchResponse = {
 	results: SearchResultItem[],
 	queryTimeMs: number | null,
+};
+
+/**  `ReadwiseCadence`. */
+export type ReadwiseCadence = "manual" | "hourly" | "daily";
+
+/**  `Record<ReadwiseCategory, boolean>`, defaults filled in. */
+export type ReadwiseCategories = {
+	books: boolean,
+	articles: boolean,
+	tweets: boolean,
+	podcasts: boolean,
+	supplementals: boolean,
+};
+
+/**  `ReadwiseSetOptionsSchema.categories`. */
+export type ReadwiseCategoriesInput = {
+	books: boolean | null,
+	articles: boolean | null,
+	tweets: boolean | null,
+	podcasts: boolean | null,
+	supplementals: boolean | null,
+};
+
+/**  `ReadwiseFolderLayout`. */
+export type ReadwiseFolderLayout = "by-category" | "flat";
+
+/**  `ReadwiseSetOptionsInput`. */
+export type ReadwiseOptionsInput = {
+	rootFolder: string | null,
+	folderLayout: ReadwiseFolderLayout | null,
+	categories: ReadwiseCategoriesInput | null,
+	cadence: ReadwiseCadence | null,
+	readerDocuments: boolean | null,
+	readerFullText: boolean | null,
+	journalHighlights: boolean | null,
+};
+
+/**  `ReadwiseOptions` (`readReadwiseOptions`). */
+export type ReadwiseOptionsView = {
+	rootFolder: string,
+	folderLayout: ReadwiseFolderLayout,
+	categories: ReadwiseCategories,
+	cadence: ReadwiseCadence,
+	readerDocuments: boolean,
+	readerFullText: boolean,
+	journalHighlights: boolean,
+};
+
+/**  `ReadwiseRunCounts`. */
+export type ReadwiseRunCounts = {
+	books: number,
+	added: number,
+	updated: number,
+	appended: number,
+	deferred: number,
+	failed: number,
+	highlights: number,
+};
+
+/**  `ReadwiseRunError`. */
+export type ReadwiseRunError = {
+	kind: ReadwiseRunErrorKind,
+	detail: string | null,
+};
+
+/**  `ReadwiseErrorKind`. */
+export type ReadwiseRunErrorKind = "invalid-token" | "subscription-expired" | "rate-limited" | "network" | "server" | "unexpected";
+
+/**  `ReadwiseRunProgress`. */
+export type ReadwiseRunProgress = {
+	stage: ReadwiseRunStage,
+	planned: number | null,
+	done: number,
+};
+
+/**  `ReadwiseRunProgress.stage`. */
+export type ReadwiseRunStage = "waiting-for-sync" | "reading" | "writing";
+
+/**  `ReadwiseStatusResult`. */
+export type ReadwiseStatus = {
+	connected: boolean,
+	options: ReadwiseOptionsView,
+	lastSyncAt: string | null,
+	needsAttention: boolean,
+	hasImported: boolean,
+	thisDevicePulls: boolean,
+	pullingDeviceName: string | null,
+	syncing: ReadwiseRunProgress | null,
+	lastRun: ReadwiseRunCounts | null,
+	error: ReadwiseRunError | null,
+	nextRunAt: string | null,
 };
 
 /**

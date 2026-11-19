@@ -88,6 +88,14 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::fold::fold_get_last_run::<Wry>,
             crate::commands::fold::fold_retry::<Wry>,
             crate::commands::fold::fold_run::<Wry>,
+            // import (Readwise)
+            crate::commands::readwise::import_readwise_ack_error_toast,
+            crate::commands::readwise::import_readwise_cancel,
+            crate::commands::readwise::import_readwise_connect,
+            crate::commands::readwise::import_readwise_disconnect,
+            crate::commands::readwise::import_readwise_set_options,
+            crate::commands::readwise::import_readwise_status,
+            crate::commands::readwise::import_readwise_sync_now,
             // ios beta
             crate::commands::ios_beta::ios_beta_join,
             // journal
@@ -382,6 +390,8 @@ pub fn builder() -> Builder<Wry> {
             crate::events::CustomIconsUpdatedEvent,
             // flush
             crate::events::FlushRequestedEvent,
+            // import (Readwise)
+            crate::events::ImportReadwiseStatusChangedEvent,
             // inbox
             crate::events::InboxOpenItemEvent,
             // journal
