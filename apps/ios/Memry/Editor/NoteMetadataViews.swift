@@ -108,7 +108,8 @@ struct NoteTitleEditor: View {
         // model: the model's `current` reads "Untitled note" while the page
         // reloads. Emptying a title is an edit on any end, so every end is
         // explicit.
-        if let text = commits.take(draft, explicit: true), text != title { rename(text) }
+        // A Return held after ⌘N that never reached the field is a space.
+        if let text = commits.take(NewNoteSeeds.title(draft), explicit: true), text != title { rename(text) }
         // Only the title's own focus: when a tap in a block ended the edit,
         // that block is already first responder and keeps its caret.
         focused = false
@@ -120,6 +121,7 @@ struct NoteTitleEditor: View {
     /// saved, so its end writes only what changes after this.
     private func save() {
         guard returned == nil, commits.editing else { return }
+        draft = NewNoteSeeds.title(draft)
         if let text = commits.take(draft, explicit: true), text != title { rename(text) }
         commits.begin(draft)
     }
@@ -217,8 +219,60 @@ struct NoteTitleEditor: View {
         guard let burst = returned else { return }
         returned = nil
         commits.begin(burst.line)
+        // With no pressed keys to place, joined as a held Return is anywhere
+        // else (`NewNoteSeeds.title`): `milk⏎buy` stays two words.
         draft = burst.kept(in: draft, dropping: host.keys.takeLate().arrived)
-            ?? draft.replacingOccurrences(of: "\n", with: "")
+            ?? NewNoteSeeds.title(draft)
+    }
+
+    /// The keys typed after ⌘N for this new note (#4787, `NewNoteSeeds`),
+    /// read as it appears: its edit starts with them before its field takes
+    /// the caret, so the keys typed in the field follow them. Returns
+    /// whether any were held: the note is new, though its title may show
+    /// them already (stored as the note was made).
+    private func attachSeed() -> Bool {
+        let shown = commits.editing ? draft : title
+        guard let seeded = NewNoteSeeds.shared.attach(noteId, to: shown, absorb: absorbSeed) else { return false }
+        if !commits.editing { commits.begin(title) }
+        draft = seeded
+        // Saved at once: a kill seconds after Home must find them stored.
+        // A Return among them waits for the caret, which moves the rest to
+        // the body (`takeSeed`).
+        if !seeded.contains(where: \.isNewline) { save() }
+        return true
+    }
+
+    /// The title has the caret: the keys held since it appeared join the
+    /// draft, and a Return among them moves the rest to the body.
+    private func takeSeed() {
+        guard commits.editing, returned == nil else { return }
+        let keys = NewNoteSeeds.shared.take(noteId)
+        if let keys {
+            draft += keys
+            if let field = titleTextView, field.text != draft { field.text = draft }
+        }
+        // The first Return splits the draft, as `NewNoteSeeds.title` would:
+        // the line before it is the title and the rest goes to the body.
+        // Not measured against the title shown, which may hold the same
+        // keys stored with a space (`milk buy` against `milk⏎buy` read only
+        // the Return as typed, and glued `milkbuy`, VERIFY-5087).
+        if draft.contains(where: \.isNewline), let burst = LineReturn(previous: "", value: draft) {
+            returnPressed(burst)
+        } else if keys != nil {
+            // Saved at once, as in `attachSeed`.
+            save()
+        }
+    }
+
+    /// Keys held for this title that it never took the caret for: its edit
+    /// ends with them (the page leaving, the app going to the background).
+    private func absorbSeed(_ keys: String) {
+        if !commits.editing {
+            draft = title
+            commits.begin(title)
+        }
+        draft += keys
+        save()
     }
 
     private func typed(_ value: String) {
@@ -373,6 +427,7 @@ struct NoteTitleEditor: View {
                         if let field = titleTextView { host.title = field }
                         host.composing = titleTextView?.markedTextRange != nil
                         host.body = nil
+                        takeSeed()
                     } else if claim.retaking {
                         Task { retake() }
                     } else {
@@ -390,10 +445,15 @@ struct NoteTitleEditor: View {
                 }
                 .onChange(of: commits.editing ? draft : nil) { _, pending in draftChanged?(pending) }
                 // A note with no title (a new one) opens with the caret in
-                // its title, as desktop does. Not when the page is drawn
-                // again under a block that had the caret (#4457).
+                // its title, as desktop does, and so does one whose title is
+                // the keys typed after ⌘N. Not when the page is drawn
+                // again under a block that had the caret (#4457), nor under
+                // something presented over the window (the search palette),
+                // which keeps the caret and its Escape (#4787).
                 .onAppear {
-                    if title.isEmpty, EditorFocusMemory.shared.titleMayAutofocus(noteId) {
+                    let seeded = attachSeed()
+                    let covered = (host.window ?? PresentingWindow.resolve()).map(PresentingWindow.isPresenting) == true
+                    if title.isEmpty || seeded, !covered, EditorFocusMemory.shared.titleMayAutofocus(noteId) {
                         claim.start()
                         focused = true
                     } else {
@@ -449,6 +509,16 @@ struct NoteTitleEditor: View {
                     claim.end()
                     split?.claimTitle(of: noteId, false)
                     keepHeld()
+                    // Keys held after ⌘N that this title never took are
+                    // its edit, stored with it (#4787).
+                    if let keys = NewNoteSeeds.shared.take(noteId) {
+                        if !commits.editing {
+                            draft = title
+                            commits.begin(title)
+                        }
+                        draft += keys
+                    }
+                    NewNoteSeeds.shared.detach(noteId)
                     commit()
                     draftChanged?(nil)
                 }

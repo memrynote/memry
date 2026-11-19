@@ -200,6 +200,11 @@ enum NotesCreateCopy {
 final class NotesLinks {
     static let shared = NotesLinks()
     private(set) var pending: String?
+    @ObservationIgnored private let seeds: NewNoteSeeds
+
+    init(seeds: NewNoteSeeds = .shared) {
+        self.seeds = seeds
+    }
 
     func open(_ id: String) { pending = id }
 
@@ -211,11 +216,41 @@ final class NotesLinks {
     /// ⌘N asked the Notes page for a new note, which it makes with its own
     /// model so its list shows the row.
     private(set) var newNoteRequested = false
+    /// The keys typed since ⌘N, held from the command on (#4787).
+    @ObservationIgnored private var keys: NewNoteKeys?
 
-    func requestNewNote() { newNoteRequested = true }
+    /// A ⌘N the page has not taken yet keeps its hold: one note, one hold.
+    func requestNewNote(window: UIWindow?) {
+        if let keys { keys.hold(in: window) } else { keys = NewNoteKeys(window: window, seeds: seeds) }
+        newNoteRequested = true
+    }
 
-    func takeNewNote() -> Bool {
-        defer { newNoteRequested = false }
-        return newNoteRequested
+    /// Another tab opened before the page took ⌘N: the request stays for
+    /// the page, and the keys held so far wait for its note. With none
+    /// typed, the request goes: a blank note made later is no one's.
+    func parkNewNote() {
+        guard newNoteRequested, let keys else { return }
+        keys.park()
+        if keys.isEmpty { dropNewNote() }
+    }
+
+    /// Sign-out: the ⌘N not taken yet and every hold's keys go with the
+    /// account, except the journaled keys of `vault`, which survives it.
+    func signedOut(keeping vault: String?) {
+        dropNewNote()
+        seeds.signedOut(keeping: vault)
+    }
+
+    private func dropNewNote() {
+        newNoteRequested = false
+        keys = nil
+    }
+
+    func takeNewNote() -> NewNoteKeys? {
+        defer {
+            newNoteRequested = false
+            keys = nil
+        }
+        return newNoteRequested ? keys : nil
     }
 }

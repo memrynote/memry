@@ -19,9 +19,7 @@ struct NotePageTitle: View {
                 title: detail.summary.title,
                 icon: model.metadata?.icon,
                 canEdit: true,
-                rename: { title in
-                    Task { await metadataModel.rename(to: title, current: model.displayTitle) }
-                },
+                rename: { metadataModel.save(title: $0, current: model.displayTitle) },
                 setIcon: { icon in
                     Task {
                         await metadataModel.setIcon(icon)

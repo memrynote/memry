@@ -179,8 +179,8 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
         // Where the next launch continues (`LaunchSnapshot`).
         .onChange(of: router.selectedTab) { _, tab in
             LaunchSnapshot.shared.setTab(tab.rawValue)
-            // A ⌘N the Notes page never took (still loading) is dropped.
-            if tab != .notes { _ = NotesLinks.shared.takeNewNote() }
+            // A ⌘N the Notes page has not taken (still loading) waits for it.
+            if tab != .notes { NotesLinks.shared.parkNewNote() }
         }
         .onChange(of: router.selectedTab, initial: true) { _, tab in tab.trackPageView() }
         .onChange(of: router.path) { _, path in LaunchSnapshot.shared.setStack("tasks", value: path) }
@@ -288,7 +288,7 @@ struct VaultTabsView<Notes: View, Tasks: View, Journal: View, More: View>: View 
     /// ⌘N: the Notes page makes the note, as its "+" does.
     private func newNote() {
         router.selectedTab = .notes
-        NotesLinks.shared.requestNewNote()
+        NotesLinks.shared.requestNewNote(window: PresentingWindow.resolve())
     }
 
     /// A capture's "View": the item on its page.
