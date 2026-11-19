@@ -54,6 +54,7 @@
     "typecheck": "node ../../scripts/typecheck.mjs"
   },
   "devDependencies": {
-    "@memry/typescript-config": "workspace:*"
+    "@memry/typescript-config": "workspace:*",
+    "yjs": "^13.6.29"
   }
 }
