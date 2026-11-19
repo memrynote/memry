@@ -53,6 +53,7 @@
 //! (`z.number()`) and the projected column only carries booleans.
 
 mod contents;
+mod delete;
 mod links;
 mod propagate;
 mod status_list;
@@ -73,6 +74,7 @@ use super::tasks::Inbound;
 pub use contents::{
     LinkedEvent, LinkedFile, LinkedNote, ProjectContents, ProjectRef, contents, projects_for_item,
 };
+pub use delete::{TaskDisposition, delete};
 pub use links::{LinkItemType, ProjectLink, link, links, set_link_pinned, unlink};
 pub use propagate::{PropagationTargets, project_names, renamed, targets, without_name};
 pub use status_list::{StatusInput, StatusType};
@@ -80,8 +82,8 @@ pub use statuses::{
     NewStatus, StatusPatch, create_status, delete_status, reorder_statuses, update_status,
 };
 pub use write::{
-    DEFAULT_PROJECT_COLOR, INBOX_ID, NewProject, ProjectEdit, TaskDisposition, create, delete,
-    ensure_inbox, reorder, seed_unclocked, set_archived, set_home_note, update,
+    DEFAULT_PROJECT_COLOR, INBOX_ID, NewProject, ProjectEdit, create, ensure_inbox, reorder,
+    seed_unclocked, set_archived, set_home_note, update,
 };
 
 /// The `(type, _)` half of every key this module reads and writes.
