@@ -181,7 +181,7 @@ impl SignerKeys for DirectoryCipher {
         Ok(key)
     }
 
-    fn begin_run(&self) {
+    fn forget_absent(&self) {
         self.absent_signers_lock().clear();
     }
 
