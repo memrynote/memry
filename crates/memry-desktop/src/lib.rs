@@ -4,6 +4,7 @@
 pub mod account;
 pub mod ai;
 pub mod attachments;
+pub mod canvas;
 pub mod command_failure;
 pub mod config;
 pub mod e2e;

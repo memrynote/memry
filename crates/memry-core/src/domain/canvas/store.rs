@@ -69,6 +69,22 @@ pub struct CanvasEdit<'a> {
     pub expected_updated_at: Option<i64>,
 }
 
+/// What a copy carries besides the source's folder and icon.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct CanvasCopy<'a> {
+    pub title: Option<&'a str>,
+    /// The id to create it under; `None` mints one (see [`NewCanvas::id`]).
+    pub id: Option<&'a str>,
+    /// The scene to copy; `None` copies the source's. Desktop copies its
+    /// file's scene, which can be newer than the payload's.
+    pub scene: Option<&'a str>,
+}
+
+/// A new canvas id, the shape every canvas id has (`generateId`).
+pub fn new_id() -> String {
+    mint_id()
+}
+
 /// The outcome of [`update`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Updated {
@@ -133,9 +149,9 @@ pub fn create(
             what: "a canvas owner is a note id, not an empty string".to_owned(),
         });
     }
+    let id = chosen_id(canvas.id)?;
     let folder = normalize_folder(canvas.folder)?;
     let scene = canonical_scene(canvas.scene.unwrap_or(""))?;
-    let id = mint_id();
     let payload = object(json!({
         "id": id,
         "vaultId": vault_id,
@@ -223,28 +239,30 @@ pub fn delete(
 }
 
 /// Copies a live canvas beside the original (`duplicateCanvas`): same scene,
-/// folder and icon, never owned by a note, titled `title` (the shell names it
-/// after the file it allocates). Its `canvas_assets` rows are copied in the
+/// folder and icon, never owned by a note, titled `copy.title` (the shell
+/// names it after the file it allocates). Its `canvas_assets` rows are copied in the
 /// same transaction: asset GC frees content no other canvas references, so a
 /// copy without them would lose its images when the original next saves.
 /// `None` when the source is gone.
 pub fn duplicate(
     conn: &Connection,
     source_id: &str,
-    title: Option<&str>,
+    copy: &CanvasCopy<'_>,
     vault_id: &str,
     device_id: &str,
     now_ms: i64,
 ) -> Result<Option<Saved>, StorageError> {
+    let id = chosen_id(copy.id)?;
+    let scene = copy.scene.map(canonical_scene).transpose()?;
     let Some(source) = get(conn, source_id)? else {
         return Ok(None);
     };
-    let id = mint_id();
+    let scene = scene.unwrap_or(source.scene);
     let payload = object(json!({
         "id": id,
         "vaultId": vault_id,
-        "title": title,
-        "scene": source.scene,
+        "title": copy.title,
+        "scene": scene,
         "folder": source.folder,
         "icon": source.icon,
         "ownerNoteId": null,
@@ -264,7 +282,18 @@ pub fn duplicate(
         params![source_id, id],
     )
     .map_err(failed)?;
-    commit(tx, &id, &source.scene, now_ms).map(Some)
+    commit(tx, &id, &scene, now_ms).map(Some)
+}
+
+/// The id the shell picked, or a new one.
+fn chosen_id(id: Option<&str>) -> Result<String, StorageError> {
+    match id {
+        Some("") => Err(StorageError::Invalid {
+            what: "a canvas id is not an empty string".to_owned(),
+        }),
+        Some(id) => Ok(id.to_owned()),
+        None => Ok(mint_id()),
+    }
 }
 
 /// Files a live canvas under `folder` (already canonical, `None` the root)
@@ -375,3 +404,6 @@ fn scene_of(payload: &Object) -> &str {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod shell_tests;

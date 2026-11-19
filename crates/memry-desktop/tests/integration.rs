@@ -102,6 +102,8 @@ mod attachments;
 mod block_refs;
 #[path = "byte_preservation.rs"]
 mod byte_preservation;
+#[path = "canvas_files.rs"]
+mod canvas_files;
 #[path = "command_failure.rs"]
 mod command_failure;
 #[path = "config_compat.rs"]
