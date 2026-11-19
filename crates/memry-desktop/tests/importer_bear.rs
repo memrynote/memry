@@ -294,3 +294,23 @@ proptest! {
         prop_assert!(rewrite_bear_links(&md, &titles).len() <= output_bound(md.len()));
     }
 }
+
+#[test]
+fn an_oversized_bear_info_json_is_read_as_missing() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("big-info.bear2bk");
+    let mut big = info(json!({ "trashed": 1 }));
+    big.extend(std::iter::repeat_n(b' ', 1024 * 1024));
+    write_zip(
+        &path,
+        &[
+            (&format!("{ROOT}Big.textbundle/info.json"), big.as_slice()),
+            (&format!("{ROOT}Big.textbundle/text.md"), b"# Big"),
+        ],
+    );
+
+    let (result, writes) = run(&[path]);
+
+    result.unwrap();
+    assert_eq!(note(&writes, "Big")["folder"], "Bear");
+}
