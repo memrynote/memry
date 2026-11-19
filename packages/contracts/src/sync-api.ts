@@ -798,7 +798,17 @@ export const PackListResponseSchema = z.object({
    * invariant. A kind it omits, or no `coverage` at all, means nothing of that
    * kind is covered: the reader's tail for it starts at 0.
    */
-  coverage: z.array(PackCoverageSchema).optional(),
+  coverage: z
+    .array(z.unknown())
+    .transform((entries) =>
+      // An entry of a kind this build does not know, or a malformed one, leaves that
+      // kind uncovered (its tail starts at 0) instead of failing the listing (§8.9).
+      entries.flatMap((entry) => {
+        const parsed = PackCoverageSchema.safeParse(entry)
+        return parsed.success ? [parsed.data] : []
+      })
+    )
+    .optional(),
   /**
    * Opaque keyset token (max_cursor + row id of the last returned pack).
    * Pass back as `cursor` on GET /sync/packs to fetch the next (older) page;

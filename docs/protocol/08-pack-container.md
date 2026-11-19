@@ -125,10 +125,11 @@ bytes** (`packages/contracts/src/pack-format.ts:37-40`; chapter 07 §7.8).
 
 ### 8.4.1 Will a reader ever see kind 2 — Q08.1
 
-**Normative: no writer produces `crdt_update = 2` today.** `PACKED_KINDS` in
-`apps/sync-server/src/services/pack-compaction.ts` does not list `crdt_update`:
-it lists `crdt_snapshot`, and `record` once step 04 (#5227, #5253) lands. When
-a kind 2 writer ships (step 05, #5228), its entries follow §8.4.3.
+**Normative: no writer produces `crdt_update = 2` today.** The writer packs
+only the kinds `PACKED_KINDS` names
+(`apps/sync-server/src/services/pack-compaction.ts`): `crdt_snapshot`, and
+`record` from step 04 (#5227, #5253) on, never `crdt_update`. A kind 2 writer
+is step 05 (#5228), and its entries follow §8.4.3.
 
 **A conforming reader MUST accept kind 2 structurally** — `KIND_BY_CODE` maps it
 (`packages/contracts/src/pack-format.ts:102-106`) and rejecting it would be a
@@ -141,7 +142,7 @@ as it would for a pack it could not verify (§8.0).
 ### 8.4.2 Record entries
 
 **Normative.** A record entry is one `POST /sync/pull` item, split three ways
-(`RecordPackEntryMetaSchema`, `packages/contracts/src/sync-api.ts:846-850`):
+(`RecordPackEntryMetaSchema`, `packages/contracts/src/sync-api.ts:856-860`):
 
 | Pull item field                                                                   | Where the entry carries it                  |
 | --------------------------------------------------------------------------------- | ------------------------------------------- |
@@ -151,7 +152,7 @@ as it would for a pack it could not verify (§8.0).
 | `operation`, `cryptoVersion`, `signature`, `signerDeviceId`, `deletedAt`, `clock` | `metaBytes`, under the pull item's own keys |
 
 `RecordPackEntryMetaSchema` is `RecordPullItemResponseSchema` without `id`,
-`type` and `blob` (`packages/contracts/src/sync-api.ts:832-850`), so a field
+`type` and `blob` (`packages/contracts/src/sync-api.ts:842-860`), so a field
 added to the pull item reaches the entry with no second list to update. A writer
 fills the meta from the same columns `POST /sync/pull` answers from
 (`pullItemFromColumns`, `apps/sync-server/src/services/sync.ts:401-420`):
@@ -172,7 +173,7 @@ fills the meta from the same columns `POST /sync/pull` answers from
   reader's fallback is `POST /sync/pull`, never a GET of that key.
 - **Rebuild and validate.** `{...meta, id, type, blob}` MUST validate as
   `RecordPullItemResponseSchema`
-  (`packages/contracts/src/sync-api.ts:832-837`). The reader then treats it as
+  (`packages/contracts/src/sync-api.ts:842-847`). The reader then treats it as
   a pull item in every respect: signature verification against the signer's
   key, `cryptoVersion` (chapter 00 §0.2.1), the delete-wins and clock rules of
   chapter 05 §5.8 and chapter 06. Coming from a pack gives an entry no
@@ -185,9 +186,7 @@ fills the meta from the same columns `POST /sync/pull` answers from
   ignored, and the item stays item-granular (see **Record tail**). The
   pack digests already passed (§8.5), so the rest of the pack is intact. This is what a reader does
   with a record pack written before this section, which carries no meta:
-  the `PACKED_KINDS` comment in
-  `apps/sync-server/src/services/pack-compaction.ts` describes that writer
-  until step 04 (#5227) replaces it.
+  every record pack built before step 04 (#5227).
 - **Undeclared types.** A pack is not filtered by the reader's type
   subscription (chapter 05 §5.3). A reader skips an entry whose type it does
   not declare, as `POST /sync/pull` would not have served it: the server reads
@@ -202,10 +201,14 @@ fills the meta from the same columns `POST /sync/pull` answers from
   it. Starting the tail at a pack's `maxCursor` instead loses every unusable
   entry for good: the tail never answers below its cursor. An entry of an
   undeclared type is exempt, because the tail would not serve it either.
+- **Manifest reconcile.** A reader that uses record packs MUST reconcile them
+  against `GET /sync/manifest`, read after it holds the pack bytes, before it
+  trusts them (§8.10, **Closing checks**). A live record it took from a pack
+  that the manifest does not list is not applied.
 - **No payload, no entry.** A purged tombstone (chapter 05 §5.12.3) and a row
   whose payload is lost (§5.12.4) have no payload bytes. A writer MUST NOT emit
   them as record entries; `POST /sync/pull` keeps them out of `items` for the
-  same reason (`packages/contracts/src/sync-api.ts:897-907`).
+  same reason (`packages/contracts/src/sync-api.ts:907-917`).
 - **Index entry size.** A writer MUST NOT emit an index entry larger than
   `PACK_MAX_INDEX_ENTRY_BYTES`, which a conforming reader rejects (§8.6;
   `crates/memry-core/src/protocol/pack/index.rs:165-170`). An item whose entry
@@ -219,7 +222,7 @@ reader (`packages/contracts/src/__tests__/pack-container.test.ts`).
 
 **Normative.** An update entry is one `crdt_updates` row, as
 `GET /sync/crdt/updates` returns it (chapter 07 §7.11), split the same way
-(`CrdtUpdatePackEntryMetaSchema`, `packages/contracts/src/sync-api.ts:857-861`):
+(`CrdtUpdatePackEntryMetaSchema`, `packages/contracts/src/sync-api.ts:867-871`):
 
 | Field                                        | Where the entry carries it                                                 |
 | -------------------------------------------- | -------------------------------------------------------------------------- |
@@ -410,7 +413,7 @@ throughout (`packages/contracts/src/sync-api.ts:730-735`).
 ## 8.9 Listing
 
 **Normative.** `GET /sync/packs` returns `PackListResponseSchema`
-(`packages/contracts/src/sync-api.ts:793-808`), whose `packs` are
+(`packages/contracts/src/sync-api.ts:793-818`), whose `packs` are
 `PackSummarySchema` (`:737-758`):
 
 | Field                    | Rule                                                                                                                                                  |
@@ -427,17 +430,20 @@ throughout (`packages/contracts/src/sync-api.ts:730-735`).
 | `coverThrough`           | inclusive upper bound of that range (`:756-757`). Both are absent on a pack written before §8.10, which is a cache only                               |
 
 `nextCursor` is an opaque keyset token, absent on the final page, and **packs
-arrive newest-first** (`packages/contracts/src/sync-api.ts:802-807`). A client
+arrive newest-first** (`packages/contracts/src/sync-api.ts:822-827`). A client
 MUST treat it as opaque. The first page also carries `coverage`, one
 `PackCoverageSchema` per kind (`packages/contracts/src/sync-api.ts:766-775`,
-`:796-801`), §8.10.
+`:796-811`), §8.10. A reader parses `coverage` entry by entry and skips an
+entry it cannot parse, such as one of a kind added after it shipped, which
+leaves that kind uncovered (`:801-811`).
 
 ## 8.10 Coverage and where the tail starts
 
 **One axis.** Coverage is stated on `server_cursor` for every kind. Records,
 snapshots and updates draw it from one per-user sequence, reserved inside the
 batch that commits the row, so no reader sees a cursor above a row that has
-not committed (chapter 05 §5.11, chapter 07 §7.17). A pack's coverage range is
+not committed (`apps/sync-server/src/services/cursor.ts:1-13`; chapter 05
+§5.11, chapter 07 §7.17). A pack's coverage range is
 `(coverFrom, coverThrough]` (`packages/contracts/src/sync-api.ts:754-757`).
 `minCursor`, `maxCursor` and the snapshot `sortKey` keep their per-kind
 meaning (§8.4, §8.9), because the released readers order and resume on them
@@ -447,28 +453,49 @@ meaning (§8.4, §8.9), because the released readers order and resume on them
 a reader needs whose `server_cursor` lies in the pack's coverage range, and no
 such row has a `server_cursor` in `(packedThrough, coveredThrough]` of that
 kind's `coverage` entry** (`packages/contracts/src/sync-api.ts:760-775`). A row
-a reader needs is one the feed or the item routes would serve it: not a body
-row of a dead document (chapter 07 §7.15), not a row with no payload (§8.4.2),
-not a purged-tombstone marker (chapter 05 §5.12.3). "Holds" means an entry at
+a reader needs is one with a payload that the feed or the item routes would
+serve it, and every body row of a document whose record is deleted: a
+re-create keeps those rows at their old cursors while the purge has not run or
+has failed (chapter 07 §7.15), so a writer packs them and a reader drops them
+on the tombstone (**Closing checks**, below). A row with no payload (§8.4.2)
+and a purged-tombstone marker (chapter 05 §5.12.3) are not needed. "Holds" means an entry at
 that row's current cursor; a row that later moves to a higher cursor (a
 rewrite, a delete) leaves a dead entry behind, and its new state is at the
 new cursor.
 
-What a server MUST do to keep it (steps 06 and 07, #5229, #5230):
+What a server MUST do to keep it. Each item is a **step 06 MUST** (#5229)
+unless it says **step 07 MUST** (#5230); no server does any of it yet.
 
 - A writer selects rows of every kind by `server_cursor` above the kind's
   watermark. A pack's `coverFrom` is the `coverThrough` of the kind's previous
   pack, or 0, so windows of rows it skipped as unneeded fall inside the next
-  range. The one exception is a row it needs but cannot pack (an index entry
-  above `PACK_MAX_INDEX_ENTRY_BYTES`, §8.4.2): it is never inside a range, so
-  the previous range ends below it and the next one starts at its cursor,
-  leaving a gap a reader reads through the feed.
+  range. A row it needs but cannot pack (an index entry above
+  `PACK_MAX_INDEX_ENTRY_BYTES`, §8.4.2, a payload that answers 404, a meta it
+  cannot build) is never inside a range: the previous range ends below it and
+  the next one starts at its cursor, leaving a gap a reader reads through the
+  feed. A writer MUST NOT leave such a row out of a range silently.
 - `coverage` is read in the same D1 batch as the first page, and a pack row,
   its watermark and `coveredThrough` commit in one batch, so the statement and
   the page are one consistent read.
-- A server states no `coverage` for `crdt_snapshot` or `crdt_update` while the
-  vault holds a needed row of that kind with a NULL `server_cursor`: such a row
-  is in no range and never in the feed (chapter 07 §7.17).
+- **The watermark and coverage advance only in a batch whose `pack_index`
+  insert applied.** The insert does nothing on a conflict on
+  `(user_id, vault_id, item_kind, min_cursor)`
+  (`apps/sync-server/migrations/0007_pack_index.sql:32`,
+  `apps/sync-server/src/services/pack-compaction.ts:548`), and two snapshot
+  packs whose first entries share a `created_at` second share `min_cursor`. A
+  watermark that moved past a pack that was never listed would leave its rows
+  in no pack and in no gap a reader can see. The batch's watermark and
+  coverage statements are guarded on the new row's id existing, so no schema
+  changes. A writer that finds its insert would conflict rolls the listed pack
+  and its new rows into one pack instead (§8.12).
+- **Step 07 MUST:** a server states no `coverage` for `crdt_snapshot` or
+  `crdt_update` while the vault holds a needed row of that kind with a NULL
+  `server_cursor`: such a row is in no range and never in the feed (chapter 07
+  §7.17).
+- `coverage` names only kinds that every client release the server serves
+  parses (`PackKindSchema`, `packages/contracts/src/sync-api.ts:719`). A reader
+  built to this section skips an entry it cannot parse (§8.9), so a server
+  that gets this wrong costs it the tail start of that kind, never the listing.
 - `packedThrough` is the `coverThrough` of the kind's newest committed pack.
   A rollup or purge that takes packs out of the listing never lowers it, so a
   reader whose packs do not chain up to it sees the gap. A server that drops
@@ -493,8 +520,9 @@ tail (`record` always; `crdt_snapshot` and `crdt_update` when it declared
 1. `end`: walk its **usable** packs of that kind (downloaded, verified, with a
    coverage range) in ascending `coverFrom`, from 0, extending `end` to a
    pack's `coverThrough` while that pack's `coverFrom` is at or below `end`.
-   Overlapping ranges are fine; a rollup can list both the old and the new
-   pack (§8.12).
+   Overlapping ranges are fine: the listing never holds an old pack and its
+   replacement at once (§8.12), but a walk that spans a rollup can meet the
+   old packs on one page and the new pack on a later one.
 2. `T_kind` = `max(end, coveredThrough)` when `end` reaches `packedThrough`,
    otherwise `end`. A kind with no `coverage` entry, or no `coverage` at all
    (every server today), gives 0.
@@ -513,15 +541,43 @@ every kind; a feed page serves every declared kind in `(cursor, nextCursor]`
 **Closing checks.** Packs and the tail are a fast path; a reader still closes
 it with checks the server answers:
 
-- **Records:** the manifest check (chapter 05 §5.15). A record the manifest
-  lists at a version the reader does not hold is pulled by id.
+- **Records: the manifest reconcile.** The manifest is the truth and a pack is
+  a cache (#5221, target design 5). Record coverage can have holes a reader
+  cannot see: a tombstone shed to a marker before any pack carried it, which
+  the feed then serves only to a reader that declares `purged_tombstones`
+  (chapter 05 §5.12.3), and rows a writer left out of a range (an oversize
+  index entry, a corrupt clock, a lost blob). So a reader that applies record
+  packs MUST read `GET /sync/manifest` to its last page (chapter 05 §5.15)
+  after it holds the pack bytes, and reconcile before it trusts the packs:
+  1. A manifest item the reader does not hold, or holds only as a tombstone,
+     is pulled by id through `POST /sync/pull`.
+  2. A live record the reader took from a pack and the manifest does not list
+     is not applied, or is removed if it was applied, unless the device
+     modified it locally since. The manifest lists every live row of the
+     declared types (`deleted_at IS NULL`,
+     `apps/sync-server/src/services/sync.ts:1203`), so absence from a complete
+     manifest read after the pack means the item was deleted. This is the one
+     exception to the chapter 05 §5.12.3 rule that absence deletes nothing,
+     and it covers only rows taken from a pack and never changed.
+  3. A packed tombstone applies as the pull item would (§8.4.2). The manifest
+     omits tombstones, and the tombstone's clock is what lets a later
+     re-create pass delete-wins (chapter 05 §5.8).
+
+  A record entry carries no `version`, so the manifest cannot show that a
+  packed live entry is stale. The tail does: a newer version sits at a higher
+  cursor, in a later range or above the tail start.
+
 - **Bodies:** before it applies a packed snapshot, a reader confirms its
   `revision` against `snapshotMeta` from a `POST /sync/crdt/updates/batch`
   answer read after it holds the pack bytes, in the same run; a different or
   missing revision means the chapter 07 §7.8 baseline through the route. The
   same answer carries the `floor` packed updates need (§8.4.3). Revisions are
   a fresh UUID per write (chapter 07 §7.5), so a snapshot of a deleted
-  incarnation never matches the current one.
+  incarnation never matches the current one. A reader drops every body it
+  took from a pack for a document whose record, after the reconcile, is a
+  tombstone or absent. The writer packs those rows because a re-create keeps
+  them (the invariant above), and the revision check then confirms them
+  against the re-created document.
 
 **Membership MUST be verified against the pack's own index block, never assumed
 from the advertised range.**
@@ -581,12 +637,14 @@ Rust core at `be319a42f9` on `main`, which the iOS build ships
 
 ## 8.12 Rollup
 
-**Normative** (step 06, #5229). A rollup reads small packs of one kind whose
+**Normative, step 06 MUST** (#5229); no server rolls up yet. A rollup reads small packs of one kind whose
 coverage ranges chain, and writes one pack that replaces them:
 
 - **Contents.** The new pack holds every entry of the old ones that is still
   a needed row at that cursor (§8.10), and drops dead entries: rows that moved
-  to a higher cursor, dead documents' bodies, purged markers. Its coverage
+  to a higher cursor and rows that no longer exist (a body the purge removed,
+  a tombstone shed to a marker). A deleted document's body rows stay while
+  they exist (§8.10). Its coverage
   range is the union of theirs, `(first.coverFrom, last.coverThrough]`, so
   §8.10 holds before and after. A rollup reads packs, not source blobs, so
   the 256-item build cap (`apps/sync-server/src/services/pack-compaction.ts:69`)
@@ -596,7 +654,8 @@ coverage ranges chain, and writes one pack that replaces them:
   `pack_index` rows, inserts the new row and records each old object for
   deletion. The old rows are deleted first in that batch: rows are unique on
   `(user_id, vault_id, item_kind, min_cursor)` and a conflicting insert does
-  nothing (`apps/sync-server/src/services/pack-compaction.ts:548`). The batch
+  nothing (`apps/sync-server/src/services/pack-compaction.ts:548`), so the
+  listing never holds an old pack and its replacement at once. The batch
   carries the commit-time recheck of chapter 07 §7.15 for every document it
   holds, so a purge that committed after the rollup read its inputs wins.
 - **Grace period.** An object whose row was removed is deleted no earlier than
@@ -605,7 +664,8 @@ coverage ranges chain, and writes one pack that replaces them:
   lifetime of 300 s (`apps/sync-server/src/services/r2-presign.ts:27`). A URL
   is signed only at listing time, from a listed row, so every URL that names
   the object expires before the object goes. A server MUST NOT raise the
-  presign lifetime above half the grace period.
+  presign lifetime above half the grace period. The deletion job of §8.13
+  deletes the objects of replaced packs too.
 - **A 404 between listing and download.** A reader treats a pack that answers
   404, 403 or any other failure as unusable: its range is a gap (§8.10), its
   items stay on the item routes and the feed. It MAY list again once to find
@@ -614,11 +674,11 @@ coverage ranges chain, and writes one pack that replaces them:
 
 ## 8.13 Scoped purge
 
-**Normative** (step 06, #5229). When the chapter 07 §7.15 purge removes a
-document's body, the document's ciphertext leaves every pack object within
+**Normative, step 06 MUST** (#5229); no server scopes the purge yet. When the
+chapter 07 §7.15 purge removes a document's body, only the packs that hold it
+are touched, and the document's ciphertext MUST leave every pack object within
 `PACK_PURGE_DEADLINE_SECONDS` = 900 of the purge's commit
-(`packages/contracts/src/sync-api.ts:784-785`), and only the packs that hold it
-are touched:
+(`packages/contracts/src/sync-api.ts:784-785`):
 
 - **Finding them.** A writer records, in the batch that inserts a pack row,
   one membership row per document the pack holds: the entry id for
@@ -626,17 +686,43 @@ are touched:
   `record` entry. The purge reads the packs of a document from those rows.
 - **Out of the listing at once.** The purge batch that deletes the body rows
   also deletes the listing rows of those packs and records their objects for
-  deletion after the grace period of §8.12. 600 s of grace is inside the 900 s
-  deadline. The document's older record versions go too: its tombstone, at a
-  higher cursor, is the row's current state.
-- **Rewrite.** Each removed pack is rewritten without the document, under the
-  same coverage range and a new key, as a rollup of one pack (§8.12). Until
-  the rewrite commits its range is a gap, which lowers a reader's tail start
-  (§8.10): speed, not data. The rewrite has no deadline.
+  deletion.
+- **Rewrite.** Each removed pack is rewritten under the same coverage range
+  and a new key, as a rollup of one pack (§8.12). It drops the document's body
+  entries and its record entries below the record's current cursor, and keeps
+  the record entry at that cursor, the tombstone: a fresh reader learns the
+  delete and its clock from it, and without that clock a re-create is refused
+  with `SYNC_DELETE_WINS` (chapter 05 §5.8). Until the rewrite commits its
+  range is a gap, which lowers a reader's tail start (§8.10): speed, not
+  data. The rewrite reads the old object, so it MUST commit before the old
+  object is deleted. When the deadline forces the deletion first, the server
+  rebuilds that range from source rows instead, so no range stays a gap.
+- **Object deletion.** The purge batch enqueues a queue message delayed by
+  `PACK_REPLACED_GRACE_SECONDS` (§8.12). Its consumer deletes each recorded
+  object whose rewrite has committed. A sweep that runs at most every 300 s
+  retries every recorded deletion that failed or waited. A deletion waits for
+  a rewrite in flight only while the next sweep still falls inside the
+  deadline. With one failed attempt the object is gone by 600 + 300 = 900 s. A
+  deletion that keeps failing is retried on every sweep and logged with the
+  vault and the object count. This replaces today's purge, which logs a failed
+  R2 delete and drops it
+  (`apps/sync-server/src/services/document-body-purge.ts:121-127`).
+- **A purge that fails.** The purge runs after the push that deleted the
+  document commits, and its failure never fails the push (chapter 07 §7.15).
+  The 900 s bound runs from the purge's commit, so it does not cover a purge
+  that failed. The 6-hourly cleanup (`cleanupDeletedDocumentBodies`,
+  `apps/sync-server/src/services/cleanup.ts`) runs the purge again, and the
+  bound runs from that commit. Until then the document's packs stay listed,
+  and the rules below keep their entries inert.
 - **Purged-tombstone markers.** Before the chapter 05 §5.12.3 shed turns a
   tombstone into a marker, the same steps take every record pack holding that
-  `(type, id)` out of the listing. A fresh reader never sees a marker, so an
-  older live entry left listed would bring a deleted item back.
+  `(type, id)` out of the listing, and the shed waits at least
+  `PACK_REPLACED_GRACE_SECONDS` after that removal. A URL signed while such a
+  pack was listed expires within 300 s (§8.12), so no reader downloads it
+  after the shed. A reader that downloaded it before the shed meets the
+  tombstone through a pack or the feed (§8.10), and the manifest reconcile
+  (§8.10) drops the live entry in any case. The rewrite drops every entry of
+  that `(type, id)`, because a marker has no payload to pack.
 
 **Why a lingering entry is harmless.** A reader can still hold bytes of a pack
 it listed or downloaded before the purge. Each kind has the rule that makes
@@ -644,7 +730,8 @@ those entries inert:
 
 - `record`: the tombstone is at a higher cursor and wins on clock (chapter 05
   §5.8); a re-create seeds its clock from the tombstone, so it dominates the
-  old entry too.
+  old entry too. A live entry of an item whose tombstone was shed is dropped
+  by the manifest reconcile (§8.10).
 - `crdt_snapshot`: applied only after its `revision` matches `snapshotMeta`
   read after the pack (§8.10); a deleted incarnation's revision never does.
 - `crdt_update`: applied only above a `floor` read after the pack (§8.4.3).
@@ -654,7 +741,7 @@ the body (chapter 07 §7.15).
 
 ## 8.14 Sizing
 
-**Normative** (steps 04 to 06, #5227, #5228, #5229). One pack holds at most
+**Normative, steps 04 to 06 MUST** (#5227, #5228, #5229). One pack holds at most
 `PACK_MAX_ENTRIES` = 4096 entries (`packages/contracts/src/pack-format.ts:90`)
 and at most `PACK_TARGET_BYTES` = 24 MiB of payload
 (`apps/sync-server/src/services/pack-compaction.ts:47`), whichever comes

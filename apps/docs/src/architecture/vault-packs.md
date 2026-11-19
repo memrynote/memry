@@ -256,13 +256,16 @@ any of it yet.
 - **Tail start.** A reader chains its usable packs of each kind from 0. If the chain reaches
   `packedThrough`, that kind is covered through `coveredThrough`. Otherwise it is covered only to
   the end of the chain. The tail starts at the lowest kind. A 404, a bad pack, or a pack that a
-  rollup took out of the listing only lowers the start. After the tail, the manifest check closes
-  any record gaps. Packed snapshots and updates are confirmed through the batch route, read after
+  rollup took out of the listing only lowers the start. Record packs can still miss a row, such
+  as a tombstone shed before it was packed, so the reader reads the manifest after the pack bytes:
+  it pulls listed items it lacks and does not apply a packed live record the manifest leaves
+  out. Packed snapshots and updates are confirmed through the batch route, read after
   the pack bytes.
 - **Rollup.** Small packs are replaced by one pack under a new key. Old rows leave the listing in
   the same batch, and old objects are deleted 600 s later, twice the presigned URL lifetime.
 - **Scoped purge.** A deleted note's packs leave the listing in the purge batch and are rewritten
-  without it. Its ciphertext is gone from pack objects within 15 minutes.
+  without its body and older versions. The tombstone stays. Its ciphertext is gone from pack
+  objects within 15 minutes, with a sweep that retries failed object deletes.
 - **Sizing.** A pack holds at most 4096 entries and 24 MiB. A vault lists at most 999 packs, so
   a released reader's 1,000-pack walk never truncates.
 
