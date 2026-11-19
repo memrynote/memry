@@ -363,7 +363,8 @@ fn plan_dirty(
             } else {
                 RecordOp::Upsert
             };
-            plan.queued.push(queued(dirty.item_type, id, op, None, now_ms));
+            plan.queued
+                .push(queued(dirty.item_type, id, op, None, now_ms));
             Ok(())
         }
     })
