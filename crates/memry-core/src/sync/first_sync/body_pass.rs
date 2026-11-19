@@ -4,8 +4,13 @@
 //! Each document's progress is durable in its own `crdt:<docId>` cursor, so
 //! pulling several at once changes nothing about a kill: a resumed run
 //! re-reads every cursor and continues each document where it stopped.
+//!
+//! A resumed run probes the documents that hold a cursor first, a hundred per
+//! request, and counts every one the probe shows current as done before any
+//! worker starts. Without that, each relaunch restarted the count at 0 and
+//! spent a probe and an updates page on every finished document.
 
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -13,7 +18,7 @@ use tokio::task::JoinSet;
 use tokio::time::Instant;
 
 use crate::api::errors::ApiError;
-use crate::sync::body_pull::{BodyPull, BodyPullError, BodyPullReport};
+use crate::sync::body_pull::{BodyPull, BodyPullError, BodyPullReport, PROBE_CHUNK, Probed};
 
 use super::{FirstSyncPhase, FirstSyncProgress, ProgressSink};
 
@@ -49,19 +54,39 @@ pub(super) async fn pull_parallel(
     elevated: bool,
     progress: &Arc<dyn ProgressSink>,
 ) -> Result<BodyPullReport, BodyPullError> {
+    let mut report = BodyPullReport::default();
+    let mut probed = HashMap::new();
+    for chunk in window.chunks(PROBE_CHUNK) {
+        probed.extend(
+            bodies
+                .probe_snapshot_meta(chunk, &mut report.requests)
+                .await?,
+        );
+    }
+    let total = window.len() as u64;
+    let (current, pending): (Vec<String>, Vec<String>) = window
+        .into_iter()
+        .partition(|doc_id| probed.get(doc_id).is_some_and(|probed| probed.current));
+    report.documents += current.len();
+
     let workers = if elevated {
         BODY_CONCURRENCY_ELEVATED
     } else {
         BODY_CONCURRENCY_STEADY
     }
-    .min(window.len());
+    .min(pending.len());
 
-    let queue = Arc::new(BodyQueue::new(window, Arc::clone(progress)));
+    let queue = Arc::new(BodyQueue::new(
+        pending,
+        total,
+        current.len() as u64,
+        probed,
+        Arc::clone(progress),
+    ));
     let mut running = JoinSet::new();
     for _ in 0..workers {
         running.spawn(body_worker(Arc::clone(bodies), Arc::clone(&queue)));
     }
-    let mut report = BodyPullReport::default();
     while let Some(joined) = running.join_next().await {
         match joined {
             Ok(Ok(part)) => report.absorb(part),
@@ -81,6 +106,7 @@ pub(super) async fn pull_parallel(
 struct BodyQueue {
     state: Mutex<QueueState>,
     total: u64,
+    probed: HashMap<String, Probed>,
     progress: Arc<dyn ProgressSink>,
 }
 
@@ -92,16 +118,31 @@ struct QueueState {
 }
 
 impl BodyQueue {
-    fn new(window: Vec<String>, progress: Arc<dyn ProgressSink>) -> Self {
-        let total = window.len() as u64;
+    /// `completed` documents of `total` are already current, so the bar
+    /// resumes where the last run left it rather than at 0.
+    fn new(
+        pending: Vec<String>,
+        total: u64,
+        completed: u64,
+        probed: HashMap<String, Probed>,
+        progress: Arc<dyn ProgressSink>,
+    ) -> Self {
+        if completed > 0 {
+            progress.progress(FirstSyncProgress {
+                phase: FirstSyncPhase::Bodies,
+                completed,
+                total,
+            });
+        }
         Self {
             state: Mutex::new(QueueState {
-                pending: window.into(),
-                completed: 0,
+                pending: pending.into(),
+                completed,
                 paused_until: None,
                 pauses: 0,
             }),
             total,
+            probed,
             progress,
         }
     }
@@ -167,7 +208,7 @@ async fn body_worker(
 ) -> Result<BodyPullReport, BodyPullError> {
     let mut report = BodyPullReport::default();
     while let Some(doc_id) = queue.next().await {
-        match bodies.pull_document(&doc_id).await {
+        match bodies.pull_with(&doc_id, queue.probed.get(&doc_id)).await {
             Ok(part) => {
                 report.absorb(part);
                 queue.finished();

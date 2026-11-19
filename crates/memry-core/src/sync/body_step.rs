@@ -23,8 +23,7 @@
 use crate::api::errors::{ApiError, StorageError};
 use crate::storage::Db;
 
-use super::body_pull::{BodyPull, BodyPullError, BodyPullReport, PROBE_CHUNK};
-use super::crdt_wire::SnapshotMeta;
+use super::body_pull::{BodyPull, BodyPullError, BodyPullReport, PROBE_CHUNK, Probed};
 use super::{body_debt, body_heal};
 
 /// Requests one pass's body step may send. The first document always runs,
@@ -69,7 +68,7 @@ async fn pull_one(
     db: &Db,
     body_pull: &BodyPull,
     doc_id: &str,
-    probed: Option<&SnapshotMeta>,
+    probed: Option<&Probed>,
     total: &mut BodyPullReport,
 ) -> Result<bool, StorageError> {
     let doc = doc_id.to_owned();

@@ -47,7 +47,10 @@
 //! peer's snapshot pruned the log past this device's cursor, the document
 //! went silent for good. Documents that hold a cursor are therefore probed
 //! first through the batch route (desktop's `CRDT batch chunk probed`), one
-//! request per hundred documents, for the meta alone.
+//! request per hundred documents, for the meta. A probe that shows nothing
+//! above the cursor and no baseline due settles the document with no further
+//! request, as desktop's probe phase does, so a resumed first sync does not
+//! pull its finished documents again.
 
 use std::sync::Arc;
 
@@ -73,6 +76,7 @@ mod pack_seed;
 mod probe;
 
 pub use pack_seed::PackSeed;
+pub(super) use probe::Probed;
 
 /// §7.3: the client's own page size for a sweep, matching the reference's
 /// `CRDT_UPDATES_PAGE_LIMIT`.
@@ -270,12 +274,16 @@ impl BodyPull {
     pub(super) async fn pull_with(
         &self,
         doc_id: &str,
-        probed: Option<&SnapshotMeta>,
+        probed: Option<&Probed>,
     ) -> Result<BodyPullReport, BodyPullError> {
         let mut report = BodyPullReport {
             documents: 1,
             ..BodyPullReport::default()
         };
+        if probed.is_some_and(|probed| probed.current) {
+            return Ok(report);
+        }
+        let probed = probed.and_then(|probed| probed.meta.as_ref());
         let mut cursor = self.read_cursor(doc_id).await?;
 
         // §7.8, first clause: a cursor of 0 always takes the snapshot first.
@@ -473,12 +481,17 @@ impl BodyPull {
     }
 
     async fn read_cursor(&self, doc_id: &str) -> Result<i64, BodyPullError> {
+        Ok(self.stored_cursor(doc_id).await?.unwrap_or(0))
+    }
+
+    /// `None` when this device never pulled the document.
+    async fn stored_cursor(&self, doc_id: &str) -> Result<Option<i64>, BodyPullError> {
         let scope = crdt_cursor_scope(doc_id);
         let stored = self
             .db
             .call(move |conn| store::read_cursor(conn, &scope))
             .await?;
-        Ok(stored.and_then(|text| text.parse().ok()).unwrap_or(0))
+        Ok(stored.and_then(|text| text.parse().ok()))
     }
 
     fn request(&self, method: &str, path: &str) -> ApiRequest {

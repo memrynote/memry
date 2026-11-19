@@ -294,7 +294,22 @@ export const bootstrapRateLimitElevation: GetElevatedLimits = async (c, bucket) 
 // Ledger operations (issuance cap, renewal, close, revocation)
 // ---------------------------------------------------------------------------
 
-/** Has this device never completed a pull for this vault? That is "fresh". */
+/**
+ * A device registered this recently may open a session even after its first
+ * refs page moved `last_cursor_seen` off 0, so a first sync the OS suspended
+ * or killed resumes elevated. iOS reruns the first sync on every relaunch,
+ * and a production user was refused 18 times (BOOTSTRAP_NOT_ELIGIBLE) and
+ * finished at a fifth of the speed. The bound is the device row, not the
+ * client's word: a re-registration already earns a fresh device, so this
+ * grants nothing a new sign-in would not.
+ */
+export const BOOTSTRAP_RESUME_WINDOW_SECONDS = 24 * 60 * 60
+
+/**
+ * Is this device still in its first sync of this vault? That is "fresh": it
+ * has never completed a pull, or it registered within
+ * BOOTSTRAP_RESUME_WINDOW_SECONDS and may be resuming an interrupted one.
+ */
 export const isFreshDeviceForVault = async (
   db: D1Database,
   userId: string,
@@ -310,7 +325,13 @@ export const isFreshDeviceForVault = async (
   // updateDeviceCursor only writes when a changes page actually delivered
   // items, so an absent row (or a NULL/0 cursor) is a genuine never-pulled
   // device — the same signal the client's LAST_CURSOR gate uses.
-  return !row || row.last_cursor_seen == null || row.last_cursor_seen === 0
+  if (!row || row.last_cursor_seen == null || row.last_cursor_seen === 0) return true
+  const device = await db
+    .prepare('SELECT created_at FROM devices WHERE id = ? AND user_id = ?')
+    .bind(deviceId, userId)
+    .first<{ created_at: number }>()
+  if (!device) return false
+  return Math.floor(Date.now() / 1000) - device.created_at < BOOTSTRAP_RESUME_WINDOW_SECONDS
 }
 
 export interface OpenBootstrapSessionResult {
