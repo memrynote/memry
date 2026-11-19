@@ -249,7 +249,7 @@ fn write_back(
     } else {
         let remote = json!({ "startAt": instance.start_at, "isAllDay": instance.is_all_day });
         super::google::apply_remote_fields(conn, target, &remote, zone, device_id, now_ms)?;
-        // `applyProviderWriteback`: a `broad` or `time_and_text` task takes the text too.
+        // `applyProviderWriteback`: in `broad` or `time_and_text` the item takes the text too.
         let mode: Option<String> = conn
             .query_row(
                 "SELECT writeback_mode FROM calendar_bindings WHERE id = ?1",
@@ -258,18 +258,8 @@ fn write_back(
             )
             .optional()
             .map_err(failed)?;
-        if target.source_type == "task"
-            && matches!(mode.as_deref(), Some("broad" | "time_and_text"))
-        {
-            let id = &target.source_id;
-            crate::domain::tasks::set_title(conn, id, &instance.title, device_id, now_ms)?;
-            crate::domain::tasks::set_description(
-                conn,
-                id,
-                instance.description.as_deref(),
-                device_id,
-                now_ms,
-            )?;
+        if matches!(mode.as_deref(), Some("broad" | "time_and_text")) {
+            write_text(conn, target, instance, device_id, now_ms)?;
         }
     }
     if let Some(mut input) = super::upsert_input(conn, target, zone, zone_id, named)? {
@@ -283,4 +273,44 @@ fn write_back(
     }
     // The fields just written queued the item as a local change; it is the server's.
     super::dequeue(conn, target)
+}
+
+/// `applyProviderWriteback`'s text fields per kind: a task's title and description, a
+/// reminder's title and note, an inbox snooze's title and content.
+fn write_text(
+    conn: &Connection,
+    target: &Target,
+    instance: &IcalInstance,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<(), StorageError> {
+    let (id, title) = (target.source_id.as_str(), instance.title.as_str());
+    let text = instance.description.as_deref();
+    match target.source_type.as_str() {
+        "task" => {
+            crate::domain::tasks::set_title(conn, id, title, device_id, now_ms)?;
+            crate::domain::tasks::set_description(conn, id, text, device_id, now_ms)?;
+        }
+        "reminder" => {
+            let update = crate::domain::reminders::ReminderUpdate {
+                title: Some(Some(title)),
+                note: Some(text),
+                ..Default::default()
+            };
+            crate::domain::reminders::update(conn, id, &update, device_id, now_ms)?.acknowledge();
+        }
+        "inbox_snooze" => {
+            crate::domain::inbox::write::update(
+                conn,
+                id,
+                Some(title),
+                Some(text),
+                device_id,
+                now_ms,
+            )?
+            .acknowledge();
+        }
+        _ => {}
+    }
+    Ok(())
 }

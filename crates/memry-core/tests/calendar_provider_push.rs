@@ -828,3 +828,139 @@ fn a_bound_task_takes_the_server_title_and_description_in_broad_mode() {
         [("Server title".to_owned(), Some("Server notes".to_owned()))]
     );
 }
+
+/// Binds `target` to `href` as a push would, in `mode`, then pulls the server's copy of it with
+/// a new title and description.
+fn pull_retitled(db: &Db, target: &Target, mode: &str) {
+    let href = format!("{CAL}{}.ics", target.source_id);
+    let (t, h, mode) = (target.clone(), href.clone(), mode.to_owned());
+    db.call_blocking(move |conn| {
+        bindings::record_push(
+            conn,
+            "caldav",
+            &t,
+            &bindings::Written {
+                calendar_id: CAL.into(),
+                event_id: h,
+                etag: Some("\"e1\"".into()),
+            },
+            json!({}),
+            "phone",
+            NOW,
+        )?;
+        conn.execute("UPDATE calendar_bindings SET writeback_mode = ?1", [&mode])
+            .expect("mode");
+        providers::dequeue(conn, &t)
+    })
+    .expect("bound item");
+    let data = format!(
+        "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:{}\r\n\
+         DTSTART:20260922T090000Z\r\nDTEND:20260922T100000Z\r\nSUMMARY:Server title\r\n\
+         DESCRIPTION:Server notes\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+        target.source_id
+    );
+    pull(
+        db,
+        vec![caldav::Object {
+            href,
+            etag: Some("\"e2\"".into()),
+            data,
+        }],
+        vec![],
+    );
+}
+
+/// A bound reminder takes the server's title and note in `broad` and `time_and_text`
+/// (`applyProviderWriteback`'s `reminder` case), and keeps its own in another mode.
+#[test]
+fn a_bound_reminder_takes_the_server_title_and_note_in_broad_and_time_and_text() {
+    use memry_core::domain::reminders;
+    for (mode, takes) in [
+        ("broad", true),
+        ("time_and_text", true),
+        ("schedule_only", false),
+    ] {
+        let db = open();
+        connect_work(&db);
+        db.call_blocking(|conn| {
+            reminders::create(
+                conn,
+                "rem-1",
+                "note-1",
+                "2026-09-22T09:00:00.000Z",
+                Some("Local title"),
+                "phone",
+                NOW,
+            )
+            .map(|_| ())
+        })
+        .expect("reminder");
+        let target = Target {
+            source_type: "reminder".into(),
+            source_id: "rem-1".into(),
+        };
+        pull_retitled(&db, &target, mode);
+        let row = db
+            .call_blocking(|conn| reminders::get(conn, "rem-1"))
+            .expect("read")
+            .expect("reminder");
+        let want = if takes {
+            (Some("Server title"), Some("Server notes"))
+        } else {
+            (Some("Local title"), None)
+        };
+        assert_eq!((row.title.as_deref(), row.note.as_deref()), want, "{mode}");
+    }
+}
+
+/// A bound inbox snooze takes the server's title and text in `broad` and `time_and_text`
+/// (`applyProviderWriteback`'s `inbox_snooze` case), and keeps its own in another mode.
+#[test]
+fn a_bound_inbox_snooze_takes_the_server_title_and_text_in_broad_and_time_and_text() {
+    use memry_core::domain::inbox::{self, states, write};
+    for (mode, takes) in [
+        ("broad", true),
+        ("time_and_text", true),
+        ("schedule_only", false),
+    ] {
+        let db = open();
+        connect_work(&db);
+        let id = db
+            .call_blocking(|conn| {
+                let write::Captured::Created(item) = write::capture_text(
+                    conn,
+                    "Local text",
+                    Some("Local title"),
+                    None,
+                    true,
+                    "phone",
+                    NOW,
+                )?
+                else {
+                    unreachable!("forced capture")
+                };
+                states::snooze(conn, &item.id, NOW + 86_400_000, None, "phone", NOW)?;
+                Ok(item.id)
+            })
+            .expect("snoozed capture");
+        let target = Target {
+            source_type: "inbox_snooze".into(),
+            source_id: id.clone(),
+        };
+        pull_retitled(&db, &target, mode);
+        let item = db
+            .call_blocking(move |conn| inbox::get(conn, &id))
+            .expect("read")
+            .expect("capture");
+        let want = if takes {
+            ("Server title", Some("Server notes"))
+        } else {
+            ("Local title", Some("Local text"))
+        };
+        assert_eq!(
+            (item.title.as_str(), item.content.as_deref()),
+            want,
+            "{mode}"
+        );
+    }
+}

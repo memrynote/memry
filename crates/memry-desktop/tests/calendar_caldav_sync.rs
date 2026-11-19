@@ -1072,3 +1072,33 @@ async fn a_marked_accounts_held_edit_keeps_its_calendar_out_of_ok() {
     assert!(queued(&open).is_empty());
     assert_eq!(sync_status(&open, &source), "ok");
 }
+
+/// Reconnecting an account the server refused clears its mark (`connectCaldavAccount`'s
+/// `setCaldavAuthFailure(false)`), so the first pass after it sends the held edit.
+#[tokio::test]
+async fn a_reconnect_clears_the_mark_and_the_next_pass_sends_the_held_edit() {
+    let (rig, open, y) =
+        another_accounts_failure_strands_nothing(|| Reply::status(401), true).await;
+    rig.clear_hook();
+    assert_eq!(rig.connect_to(&open, OTHER).await, y);
+    let y_source = calendar(&open)
+        .sources()
+        .unwrap()
+        .into_iter()
+        .find(|s| s.remote_id == OTHER_WORK)
+        .unwrap()
+        .id;
+
+    rig.sync().sync_and_drain(&open, None).await.unwrap();
+    assert!(queued(&open).is_empty());
+    assert_eq!(sync_status(&open, &y_source), "ok");
+}
+
+/// Disconnecting an account forgets its mark (`disconnectCaldavAccount`).
+#[tokio::test]
+async fn a_disconnect_clears_the_mark() {
+    let (rig, open, y) =
+        another_accounts_failure_strands_nothing(|| Reply::status(401), false).await;
+    rig.accounts.disconnect(&open, Some(&y)).await.unwrap();
+    assert!(rig.sync().auth_failures(&open).await.unwrap().is_empty());
+}

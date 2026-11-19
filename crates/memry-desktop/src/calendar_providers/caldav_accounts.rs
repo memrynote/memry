@@ -265,6 +265,7 @@ impl CaldavAccounts {
             self.restore_password(&id, previous).await;
             return Err(CaldavError::Closed);
         }
+        self.clear_auth_failure(open, &id).await;
         let count = info.calendars.len();
         let input = CalendarCaldavConnect {
             server_url,
@@ -301,6 +302,16 @@ impl CaldavAccounts {
             "connected a CalDAV account"
         );
         Ok(connected)
+    }
+
+    /// `setCaldavAuthFailure(false)`: the new password, or none, is no longer the refused one.
+    async fn clear_auth_failure(&self, open: &OpenVault, account: &str) {
+        if let Err(error) = self.sync.set_auth_failure(open, account, false).await {
+            tracing::warn!(
+                scope = SCOPE,
+                "could not clear a CalDAV account's needs-reconnect mark: {error}"
+            );
+        }
     }
 
     /// Puts back the password a failed connect replaced, or forgets the one it added.
@@ -353,6 +364,7 @@ impl CaldavAccounts {
             {
                 tracing::warn!(scope = SCOPE, "could not forget a CalDAV password: {error}");
             }
+            self.clear_auth_failure(open, id).await;
             let (writer, key) = (calendar.clone(), id.clone());
             blocking(move || writer.caldav_disconnect(key)).await??;
         }
