@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders, userEvent } from '@tests/utils/render'
 import { FolderViewPage } from './folder-view'
+import { TabIdentityProvider } from '@/contexts/tabs/tab-identity'
 import type React from 'react'
 import type * as TagsServiceModule from '@/services/tags-service'
 import type * as UseDisplayDensityModule from '@/hooks/use-display-density'
@@ -785,13 +786,22 @@ describe('FolderViewPage tag scope', () => {
     expect(screen.getByText('lastik')).toBeInTheDocument()
   })
 
+  /** The tag tab `tag-tab` in the `right` pane, while `tab-1` is the active tab. */
+  function renderTagTab(tag: string): void {
+    renderWithProviders(
+      <TabIdentityProvider tabId="tag-tab" groupId="right" entityId={tag}>
+        <FolderViewPage scope={{ kind: 'tag', tag }} />
+      </TabIdentityProvider>
+    )
+  }
+
   it('closes the tab when the tag is renamed from another window', async () => {
-    renderWithProviders(<FolderViewPage scope={{ kind: 'tag', tag: 'araba' }} />)
+    renderTagTab('araba')
     await screen.findByText('araba')
 
     mocks.renamedHandler?.({ oldName: 'araba', newName: 'oto' })
 
-    await waitFor(() => expect(mocks.closeTab).toHaveBeenCalledWith('tab-1'))
+    await waitFor(() => expect(mocks.closeTab).toHaveBeenCalledWith('tag-tab', 'right'))
   })
 
   it('does not close the tab when a different tag is renamed', async () => {
@@ -803,13 +813,15 @@ describe('FolderViewPage tag scope', () => {
     expect(mocks.closeTab).not.toHaveBeenCalled()
   })
 
-  it('closes the tab when the tag is deleted from another window', async () => {
-    renderWithProviders(<FolderViewPage scope={{ kind: 'tag', tag: 'araba' }} />)
+  // Split view: the active tab is the other pane's, which a delete of this tag leaves open.
+  it('closes its own tab, not the active one, when the tag is deleted from another window', async () => {
+    renderTagTab('araba')
     await screen.findByText('araba')
 
     mocks.deletedHandler?.({ tag: 'araba' })
 
-    await waitFor(() => expect(mocks.closeTab).toHaveBeenCalledWith('tab-1'))
+    await waitFor(() => expect(mocks.closeTab).toHaveBeenCalledWith('tag-tab', 'right'))
+    expect(mocks.closeTab).toHaveBeenCalledTimes(1)
   })
 
   it('does not close the tab when a different tag is deleted', async () => {

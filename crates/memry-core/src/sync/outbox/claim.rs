@@ -30,16 +30,21 @@ use crate::api::errors::StorageError;
 /// held parent types are one uncorrelated subquery, read once per claim.
 ///
 /// `skip_docs` are documents this wave already deferred: their rows stay out of
-/// the rest of the wave, whatever the clock says.
+/// the rest of the wave, whatever the clock says. `skip_rows` are record rows a
+/// pre-push hook deferred in this wave (`sync/push/pre_push_hook.rs`), kept out
+/// the same way.
 pub fn claim(
     conn: &Connection,
     now_ms: i64,
     limit: usize,
     skip_docs: &[String],
+    skip_rows: &[i64],
 ) -> Result<Vec<OutboxRow>, StorageError> {
-    let skipped = serde_json::to_string(skip_docs).map_err(|error| StorageError::Failed {
-        what: format!("could not encode the skipped documents: {error}"),
-    })?;
+    let encode = |what: &str, error: serde_json::Error| StorageError::Failed {
+        what: format!("could not encode the skipped {what}: {error}"),
+    };
+    let skipped = serde_json::to_string(skip_docs).map_err(|e| encode("documents", e))?;
+    let rows = serde_json::to_string(skip_rows).map_err(|e| encode("rows", e))?;
     let mut statement = conn
         .prepare(&format!(
             "SELECT id, item_type, item_id, op, payload, enqueued_at,
@@ -55,7 +60,14 @@ pub fn claim(
         .map_err(failed)?;
     let rows = statement
         .query_map(
-            params![now_ms, OP_CRDT_UPDATE, limit as i64, skipped, OP_DELETE],
+            params![
+                now_ms,
+                OP_CRDT_UPDATE,
+                limit as i64,
+                skipped,
+                OP_DELETE,
+                rows
+            ],
             |row| {
                 Ok(OutboxRow {
                     id: row.get(0)?,
@@ -94,7 +106,7 @@ pub fn crdt_docs(conn: &Connection) -> Result<Vec<String>, StorageError> {
 pub fn claimable_count(conn: &Connection, now_ms: i64) -> Result<usize, StorageError> {
     conn.query_row(
         &format!("SELECT count(*) FROM outbox WHERE {}", claimable()),
-        params![now_ms, OP_CRDT_UPDATE, 0, "[]", OP_DELETE],
+        params![now_ms, OP_CRDT_UPDATE, 0, "[]", OP_DELETE, "[]"],
         |row| row.get::<_, i64>(0),
     )
     .map_err(failed)
@@ -102,7 +114,7 @@ pub fn claimable_count(conn: &Connection, now_ms: i64) -> Result<usize, StorageE
 }
 
 /// The rows claimable now, over `?1` now, `?2` the CRDT op, `?4` the skipped
-/// documents and `?5` the delete op.
+/// documents, `?5` the delete op and `?6` the skipped row ids.
 fn claimable() -> String {
     let cascades = crate::sync::hardening::orphans::CASCADED
         .map(|(child, _, parent)| format!("('{parent}', '{child}')"))
@@ -114,6 +126,7 @@ fn claimable() -> String {
                 WHERE held.op = ?2 AND held.item_id = outbox.item_id
                   AND held.id < outbox.id AND held.next_attempt_at > ?1))
          AND NOT (op = ?2 AND item_id IN (SELECT value FROM json_each(?4)))
+         AND id NOT IN (SELECT value FROM json_each(?6))
          AND NOT (op = ?5 AND item_type IN (
                SELECT cascade.column1 FROM (VALUES {cascades}) AS cascade
                 WHERE EXISTS (SELECT 1 FROM outbox child
