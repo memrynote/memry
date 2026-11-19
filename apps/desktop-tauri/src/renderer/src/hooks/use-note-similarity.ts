@@ -11,7 +11,10 @@ import { useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { NoteTagSuggestion, SimilarNoteItem } from '@memry/contracts/notes-api'
 import { useAISettingsContext } from '@/contexts/ai-settings-context'
-import { notesService, onNoteUpdated } from '@/services/notes-service'
+import { onNoteUpdated } from '@/services/notes-service'
+import { subscribeToEvents } from '@/services/tauri-event'
+import { rereadQueries } from './use-notes-query'
+import { similarityService } from '@/services/similarity-service'
 
 // Under the `notes` root (notesKeys.all) so a blanket notes invalidation refreshes them too.
 export const similarityKeys = {
@@ -29,10 +32,18 @@ function useRefreshOnContentChange(
   const queryClient = useQueryClient()
   useEffect(() => {
     if (!noteId || !enabled) return undefined
-    return onNoteUpdated((event) => {
-      if (event.id !== noteId && event.changes.content === undefined) return
-      void queryClient.invalidateQueries({ queryKey: key(noteId) })
-    })
+    // The list is read on mount, and a change before its listener went live sent its event to
+    // nobody (#4270): it reads again then.
+    return subscribeToEvents(
+      [
+        (live) =>
+          onNoteUpdated((event) => {
+            if (event.id !== noteId && event.changes.content === undefined) return
+            void queryClient.invalidateQueries({ queryKey: key(noteId) })
+          }, live)
+      ],
+      () => rereadQueries(queryClient, key(noteId))
+    )
   }, [noteId, enabled, key, queryClient])
 }
 
@@ -45,7 +56,7 @@ export function useSimilarNotes(noteId: string | null): SimilarNoteItem[] {
   const { data } = useQuery({
     queryKey: similarityKeys.similar(noteId ?? ''),
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- queryFn only runs when enabled, which requires a noteId
-    queryFn: () => notesService.getSimilar(noteId as string),
+    queryFn: () => similarityService.getSimilar(noteId as string),
     enabled,
     staleTime: STALE_TIME
   })
@@ -64,7 +75,7 @@ export function useTagSuggestions(
   const { data } = useQuery({
     queryKey: similarityKeys.tagSuggestions(noteId ?? ''),
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- queryFn only runs when enabled, which requires a noteId
-    queryFn: () => notesService.getTagSuggestions(noteId as string),
+    queryFn: () => similarityService.getTagSuggestions(noteId as string),
     enabled,
     staleTime: STALE_TIME
   })

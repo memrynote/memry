@@ -8653,12 +8653,15 @@ public protocol SearchRecentsProtocol: AnyObject, Sendable {
     func clear() throws 
     
     /**
-     * The recents whose items still exist, newest first, at most ten.
+     * The recents whose items still exist, newest first, at most the cap the
+     * handle was built with. A note shows its emoji as it is now; any other
+     * kind shows the icon it was recorded with.
      */
     func list() throws  -> [SearchRecent]
     
     /**
-     * Records that `result` was opened from a search for `query`.
+     * Records that `result` was opened from a search for `query`. The
+     * result's `emoji` is stored as its icon, whatever its kind.
      */
     func record(result: SearchResult, query: String) throws 
     
@@ -8731,7 +8734,9 @@ open func clear()throws   {try rustCallWithError(FfiConverterTypeStorageError_li
 }
     
     /**
-     * The recents whose items still exist, newest first, at most ten.
+     * The recents whose items still exist, newest first, at most the cap the
+     * handle was built with. A note shows its emoji as it is now; any other
+     * kind shows the icon it was recorded with.
      */
 open func list()throws  -> [SearchRecent]  {
     return try  FfiConverterSequenceTypeSearchRecent.lift(try rustCallWithError(FfiConverterTypeStorageError_lift) {
@@ -8743,7 +8748,8 @@ open func list()throws  -> [SearchRecent]  {
 }
     
     /**
-     * Records that `result` was opened from a search for `query`.
+     * Records that `result` was opened from a search for `query`. The
+     * result's `emoji` is stored as its icon, whatever its kind.
      */
 open func record(result: SearchResult, query: String)throws   {try rustCallWithError(FfiConverterTypeStorageError_lift) {
         uniffiCallStatus in
@@ -12290,9 +12296,10 @@ public protocol VaultProtocol: AnyObject, Sendable {
     func search() throws  -> Search
     
     /**
-     * The search sheet's recently opened results, device-local (#4322).
+     * The search sheet's recently opened results, device-local (#4322),
+     * keeping the newest `cap` (iOS 10, desktop 20).
      */
-    func searchRecents()  -> SearchRecents
+    func searchRecents(cap: UInt32)  -> SearchRecents
     
     /**
      * Queues every record this vault has never pushed, before its first sync
@@ -12553,13 +12560,15 @@ open func search()throws  -> Search  {
 }
     
     /**
-     * The search sheet's recently opened results, device-local (#4322).
+     * The search sheet's recently opened results, device-local (#4322),
+     * keeping the newest `cap` (iOS 10, desktop 20).
      */
-open func searchRecents() -> SearchRecents  {
+open func searchRecents(cap: UInt32) -> SearchRecents  {
     return try!  FfiConverterTypeSearchRecents_lift(try! rustCall() {
         uniffiCallStatus in
     uniffi_memry_core_fn_method_vault_search_recents(
-            self.uniffiCloneHandle(),uniffiCallStatus
+            self.uniffiCloneHandle(),
+        FfiConverterUInt32.lower(cap),uniffiCallStatus
     )
 })
 }
@@ -37476,10 +37485,10 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_searchrecents_clear() != 45558) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_searchrecents_list() != 46811) {
+    if (uniffi_memry_core_checksum_method_searchrecents_list() != 49417) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_searchrecents_record() != 34679) {
+    if (uniffi_memry_core_checksum_method_searchrecents_record() != 10547) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_settings_clear() != 25310) {
@@ -37887,7 +37896,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_vault_search() != 52313) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_vault_search_recents() != 42539) {
+    if (uniffi_memry_core_checksum_method_vault_search_recents() != 24521) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vault_seed_unsynced() != 5083) {

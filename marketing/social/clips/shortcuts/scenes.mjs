@@ -37,7 +37,7 @@ export const scenes = {
   async rebind({ rec, page, zoom, sleep, at }) {
     zoom(960, 440, 1.7)
     await sleep(600)
-    await rec.click(page.getByTitle('Click to rebind').first())
+    await rec.click(page.locator('[title="Click to rebind"]').first())
     await page.getByText('Press shortcut…').waitFor()
     await sleep(900)
     rec.mark('key', { key: 'Meta+Shift+L' })

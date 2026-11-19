@@ -26,9 +26,9 @@ async fn bind(
     store: &Arc<dyn SecureStore>,
     session: &Session,
 ) -> String {
-    let (wiring, _) = wiring(account, store, session);
+    let (wiring, changes) = wiring(account, store, session);
     attach(session, &wiring).await;
-    wait_for_binding(&wiring, &BindingState::Bound).await;
+    wait_for_binding(&changes, &BindingState::Bound).await;
     detach(session).await;
     let open = session.current().expect("open");
     open.vault.server_vault_id().unwrap().expect("bound")

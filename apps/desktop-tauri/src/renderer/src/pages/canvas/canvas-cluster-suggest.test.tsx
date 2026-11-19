@@ -19,8 +19,8 @@ vi.mock('@excalidraw/excalidraw', () => ({
   ROUNDNESS: { ADAPTIVE_RADIUS: 3 }
 }))
 
-vi.mock('@/services/notes-service', () => ({
-  notesService: { cluster: mocks.cluster }
+vi.mock('@/services/similarity-service', () => ({
+  similarityService: { cluster: mocks.cluster }
 }))
 
 vi.mock('sonner', () => ({
