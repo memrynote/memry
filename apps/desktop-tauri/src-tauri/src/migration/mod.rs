@@ -13,12 +13,16 @@ pub mod status;
 
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex, PoisonError};
+use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 
 use memry_desktop::electron_import::progress::{ProgressSink, ProgressUpdate};
 use memry_desktop::electron_import::report::REPORT_FILE;
 use memry_desktop::i18n::{self, Arg, Args};
+use memry_desktop::locale::LocaleService;
 use memry_desktop::paths::AppPaths;
+use memry_desktop::registry::AppConfig;
+use memry_desktop::telemetry::events::TelemetryEvent;
+use memry_desktop::telemetry::service::{FlushReason, Service};
 use tauri::{AppHandle, Manager, Wry};
 use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
 
@@ -41,7 +45,11 @@ pub trait Backend: Send + Sync {
     /// or a secret store.
     fn needed(&self) -> bool;
     /// Runs the import. Called again by Try again after a failure, so it repeats cleanly.
-    fn run(&self, progress: &dyn ProgressSink) -> Result<(), MigrationFailure>;
+    fn run(
+        &self,
+        progress: &dyn ProgressSink,
+        telemetry: &dyn TelemetrySink,
+    ) -> Result<(), MigrationFailure>;
     /// The Electron profile directory, which the import leaves untouched as the backup.
     fn backup(&self) -> PathBuf;
     /// True once for each change the Electron app made to an imported vault after the import
@@ -57,7 +65,11 @@ impl Backend for NotWired {
         false
     }
 
-    fn run(&self, _progress: &dyn ProgressSink) -> Result<(), MigrationFailure> {
+    fn run(
+        &self,
+        _progress: &dyn ProgressSink,
+        _telemetry: &dyn TelemetrySink,
+    ) -> Result<(), MigrationFailure> {
         Err(MigrationFailure {
             check: "not-wired".to_owned(),
             details: "the first-launch import is not wired yet".to_owned(),
@@ -70,6 +82,50 @@ impl Backend for NotWired {
 
     fn take_change_notice(&self) -> bool {
         false
+    }
+}
+
+/// Where a run sends Step 37e2's `migration_started`, `migration_completed` and
+/// `migration_failed`. The run sends the first only after its app-state phase carried Electron's
+/// telemetry choice and install id over; each holds counts, a duration and a check name, never a
+/// path.
+pub trait TelemetrySink: Send + Sync {
+    fn record(&self, event: TelemetryEvent);
+}
+
+/// Starts the app's telemetry at the first event and not before: started earlier, it would read
+/// the telemetry choice before the import carried Electron's opt-out. `Stage::Telemetry` then
+/// finds it running. Each event is flushed at once, since a failed run never resumes the boot.
+pub struct LazyTelemetry {
+    start: Box<dyn Fn() -> Option<Arc<Service>> + Send + Sync>,
+    service: OnceLock<Option<Arc<Service>>>,
+}
+
+impl LazyTelemetry {
+    pub fn new(start: Box<dyn Fn() -> Option<Arc<Service>> + Send + Sync>) -> Self {
+        Self {
+            start,
+            service: OnceLock::new(),
+        }
+    }
+}
+
+impl TelemetrySink for LazyTelemetry {
+    fn record(&self, event: TelemetryEvent) {
+        let Some(service) = self.service.get_or_init(|| (self.start)()).clone() else {
+            return;
+        };
+        service.track_main_event(event);
+        tauri::async_runtime::spawn(async move {
+            let result = service.flush(FlushReason::Manual).await;
+            if !result.success {
+                tracing::warn!(
+                    scope = "Migration",
+                    "migration telemetry not sent: {:?}",
+                    result.error
+                );
+            }
+        });
     }
 }
 
@@ -91,6 +147,7 @@ pub struct Migration {
     locale: &'static str,
     report: PathBuf,
     status: Mutex<MigrationStatus>,
+    telemetry: Arc<dyn TelemetrySink>,
     /// Shows a status on the page. `None` in tests, which read [`Self::status`].
     show: Option<ShowStatus>,
     /// Runs after a run succeeded: resumes the boot.
@@ -102,6 +159,7 @@ impl Migration {
         backend: Arc<dyn Backend>,
         locale: &'static str,
         data_dir: &Path,
+        telemetry: Arc<dyn TelemetrySink>,
         show: Option<ShowStatus>,
         finished: Box<dyn Fn() + Send + Sync>,
     ) -> Self {
@@ -110,6 +168,7 @@ impl Migration {
             locale,
             report: data_dir.join(REPORT_FILE),
             status: Mutex::new(status::idle()),
+            telemetry,
             show,
             finished,
         }
@@ -160,7 +219,8 @@ impl Migration {
     /// One run of the backend; true when it succeeded.
     fn run_once(&self) -> bool {
         let progress = Progress(self);
-        let outcome = catch_unwind(AssertUnwindSafe(|| self.backend.run(&progress)))
+        let telemetry = &*self.telemetry;
+        let outcome = catch_unwind(AssertUnwindSafe(|| self.backend.run(&progress, telemetry)))
             .unwrap_or_else(|_| {
                 Err(MigrationFailure {
                     check: "panic".to_owned(),
@@ -240,11 +300,16 @@ fn first_launch_migration(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     let data_dir = app.state::<AppPaths>().data_dir.clone();
     let page = app.clone();
     let show = move |status: &MigrationStatus| show_on_page(&page, status);
-    let finished = resume_on_main_thread(app.clone(), locale, backend.backup());
+    let finished = resume_on_main_thread(app.clone(), backend.backup());
+    let telemetry_app = app.clone();
+    let telemetry = LazyTelemetry::new(Box::new(move || {
+        crate::shell::services::telemetry_started(&telemetry_app)
+    }));
     let migration = Arc::new(Migration::new(
         backend,
         locale,
         &data_dir,
+        Arc::new(telemetry),
         Some(Box::new(show)),
         Box::new(finished),
     ));
@@ -257,23 +322,20 @@ fn first_launch_migration(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     Ok(())
 }
 
-fn resume_on_main_thread(
-    app: AppHandle<Wry>,
-    locale: &'static str,
-    backup: PathBuf,
-) -> impl Fn() + Send + Sync {
+fn resume_on_main_thread(app: AppHandle<Wry>, backup: PathBuf) -> impl Fn() + Send + Sync {
     move || {
         let main = app.clone();
         let backup = backup.clone();
-        if let Err(error) = app.run_on_main_thread(move || resume(&main, locale, &backup)) {
+        if let Err(error) = app.run_on_main_thread(move || resume(&main, &backup)) {
             tracing::error!(scope = "Migration", "boot not resumed: {error}");
         }
     }
 }
 
-/// Runs the rest of the boot, then closes the migration window once the main window shows and
-/// tells the user where the untouched Electron data is.
-fn resume(app: &AppHandle<Wry>, locale: &'static str, backup: &Path) {
+/// Runs the rest of the boot in the language of the merged config, then closes the migration
+/// window once the main window shows and tells the user where the untouched Electron data is.
+fn resume(app: &AppHandle<Wry>, backup: &Path) {
+    let locale = relocalize(app);
     let result = startup::resume_boot(app);
     let preboot = app.get_webview_window(&WindowKind::Preboot.label(0));
     if let Err(failure) = result {
@@ -297,6 +359,34 @@ fn resume(app: &AppHandle<Wry>, locale: &'static str, backup: &Path) {
             &backup,
         );
     });
+}
+
+/// The `I18n` stage resolved the locale from an empty config (the OS language); the import
+/// merged Electron's `locale` in since. Resolves it again, as that stage does, so the menu, the
+/// tray, the main window and telemetry use the user's language from this session on.
+fn relocalize(app: &AppHandle<Wry>) -> &'static str {
+    let locale = locale_after_import(
+        app.state::<Arc<AppConfig>>().inner(),
+        &app.state::<Arc<LocaleService>>(),
+        sys_locale::get_locale,
+    );
+    if let Some(service) = app.try_state::<Arc<Service>>() {
+        service.set_locale(locale);
+    }
+    tracing::info!(scope = "Migration", "locale after the migration: {locale}");
+    locale
+}
+
+/// Switches `live` to the locale `config` now resolves to. The import must merge into this
+/// `config` (the managed one), whose cache [`AppConfig::read`] answers from.
+fn locale_after_import(
+    config: &Arc<AppConfig>,
+    live: &LocaleService,
+    os_locale: impl FnOnce() -> Option<String>,
+) -> &'static str {
+    let locale = crate::shell::services::boot_locale(config, os_locale);
+    live.switch(locale);
+    locale
 }
 
 /// A native message naming the Electron data, which never waits for an answer.

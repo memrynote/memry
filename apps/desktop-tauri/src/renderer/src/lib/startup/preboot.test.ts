@@ -200,6 +200,17 @@ describe('localStorage import script', () => {
     expect(window.localStorage.getItem('memry-zoom')).toBe('1.3')
   })
 
+  it('a rerun (reload, crash recovery) never brings back a key the renderer deleted', () => {
+    const invoke = vi.fn(async () => undefined)
+    testWindow.__TAURI_INTERNALS__ = { invoke }
+    run({ 'task-orders:/v': '[1,2]', 'memry-zoom': '1.1' })
+    window.localStorage.removeItem('task-orders:/v')
+    run({ 'task-orders:/v': '[1,2]', 'memry-zoom': '1.1' })
+
+    expect(window.localStorage.getItem('task-orders:/v')).toBeNull()
+    expect(invoke).toHaveBeenCalledTimes(2)
+  })
+
   it('a failed write leaves the file pending', () => {
     const invoke = vi.fn(async () => undefined)
     testWindow.__TAURI_INTERNALS__ = { invoke }

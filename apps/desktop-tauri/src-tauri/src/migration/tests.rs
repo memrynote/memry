@@ -5,9 +5,16 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use memry_desktop::electron_import::progress::{Phase, ProgressSink, ProgressUpdate};
+use memry_desktop::locale::LocaleService;
+use memry_desktop::registry::AppConfig;
+use memry_desktop::telemetry::events::TelemetryEvent;
+use memry_desktop::telemetry::service::Service;
 
 use super::status::{MigrationState, MigrationStatus};
-use super::{Backend, Migration, MigrationFailure, update_script};
+use super::{
+    Backend, LazyTelemetry, Migration, MigrationFailure, TelemetrySink, locale_after_import,
+    update_script,
+};
 
 /// Answers each run with the next outcome of its script, after the run's progress updates, and
 /// holds a run while `gate` is armed.
@@ -38,11 +45,16 @@ impl Backend for Script {
         true
     }
 
-    fn run(&self, progress: &dyn ProgressSink) -> Result<(), MigrationFailure> {
+    fn run(
+        &self,
+        progress: &dyn ProgressSink,
+        telemetry: &dyn TelemetrySink,
+    ) -> Result<(), MigrationFailure> {
         self.runs.fetch_add(1, Ordering::SeqCst);
         if let Some(gate) = self.gate.lock().unwrap().take() {
             gate.recv().unwrap();
         }
+        telemetry.record(Service::event("migration_started", "app", "started"));
         for (phase, current, total) in [(Phase::Secrets, 1, 1), (Phase::Vault, 1, 2)] {
             progress.update(ProgressUpdate {
                 phase,
@@ -52,6 +64,12 @@ impl Backend for Script {
             });
         }
         let outcome = self.outcomes.lock().unwrap().remove(0);
+        let end = if outcome.is_ok() {
+            "completed"
+        } else {
+            "failed"
+        };
+        telemetry.record(Service::event(&format!("migration_{end}"), "app", end));
         if outcome
             .as_ref()
             .is_err_and(|failure| failure.check == "panic!")
@@ -70,20 +88,33 @@ impl Backend for Script {
     }
 }
 
+/// The events a run sent.
+#[derive(Default)]
+struct Sent(Mutex<Vec<String>>);
+
+impl TelemetrySink for Sent {
+    fn record(&self, event: TelemetryEvent) {
+        self.0.lock().unwrap().push(event.name);
+    }
+}
+
 struct World {
     migration: Arc<Migration>,
     shown: Arc<Mutex<Vec<MigrationStatus>>>,
     finished: Arc<AtomicU32>,
+    sent: Arc<Sent>,
 }
 
 fn world(backend: Arc<Script>) -> World {
     let shown = Arc::new(Mutex::new(Vec::new()));
     let finished = Arc::new(AtomicU32::new(0));
     let (page, done) = (shown.clone(), finished.clone());
+    let sent = Arc::new(Sent::default());
     let migration = Arc::new(Migration::new(
         backend,
         "en",
         std::path::Path::new("/data"),
+        sent.clone(),
         Some(Box::new(move |status: &MigrationStatus| {
             page.lock().unwrap().push(status.clone());
         })),
@@ -95,6 +126,7 @@ fn world(backend: Arc<Script>) -> World {
         migration,
         shown,
         finished,
+        sent,
     }
 }
 
@@ -198,4 +230,63 @@ fn the_update_script_cannot_close_a_script_tag() {
     assert!(script.starts_with("window.memryMigration&&window.memryMigration.update({"));
     assert!(!script.contains("</script>"));
     assert!(script.contains(r"\u003c/script>"));
+}
+
+/// A failed run never resumes the boot, so `Stage::Telemetry` never runs: the run's own sink
+/// still carries `migration_failed`, and Try again gets the sink again.
+#[test]
+fn a_failed_run_still_sends_its_failure_and_try_again_reports_too() {
+    let w = world(Script::new(vec![Err(failure("disk-space")), Ok(())]));
+    assert!(w.migration.start());
+    wait_for(&w.migration, MigrationState::Failed);
+    assert_eq!(
+        *w.sent.0.lock().unwrap(),
+        ["migration_started", "migration_failed"]
+    );
+    assert!(w.migration.start());
+    wait_for(&w.migration, MigrationState::Done);
+    assert_eq!(
+        w.sent.0.lock().unwrap()[2..],
+        ["migration_started", "migration_completed"]
+    );
+}
+
+/// Telemetry starts at the first event, after the import carried Electron's opt-out, and once.
+#[test]
+fn telemetry_starts_at_the_first_event_and_only_once() {
+    let starts = Arc::new(AtomicU32::new(0));
+    let counted = starts.clone();
+    let sink = LazyTelemetry::new(Box::new(move || {
+        counted.fetch_add(1, Ordering::SeqCst);
+        None
+    }));
+    assert_eq!(
+        starts.load(Ordering::SeqCst),
+        0,
+        "nothing starts before an event"
+    );
+    sink.record(Service::event("migration_started", "app", "started"));
+    sink.record(Service::event("migration_failed", "app", "failed"));
+    assert_eq!(starts.load(Ordering::SeqCst), 1);
+}
+
+/// The `I18n` stage stored the OS language in the empty config; the import merged Electron's
+/// over it, so the rest of the boot (menu, tray, main window) runs in Electron's language.
+#[test]
+fn after_the_import_the_boot_uses_the_imported_locale_not_the_os_one() {
+    let dir = tempfile::tempdir().unwrap();
+    let config = Arc::new(AppConfig::load(dir.path().join("memry-config.json")));
+    let os = || Some("ja-JP".to_owned());
+    let live = LocaleService::new(crate::shell::services::boot_locale(&config, os));
+    assert_eq!(live.get(), "ja", "first run adopts the OS language");
+
+    config
+        .update(|map| {
+            map.insert("locale".to_owned(), "en".into());
+            Ok::<_, memry_desktop::registry::ConfigError>(())
+        })
+        .unwrap();
+
+    assert_eq!(locale_after_import(&config, &live, os), "en");
+    assert_eq!(live.get(), "en");
 }

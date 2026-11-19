@@ -19,9 +19,10 @@ use memry_desktop::electron_import::progress::{Phase, ProgressSink, ProgressUpda
 use memry_desktop::electron_import::report::REPORT_FILE;
 use memry_desktop::launch_env::LaunchEnv;
 use memry_desktop::paths::AppPaths;
+use memry_desktop::telemetry::service::Service;
 use tauri::{AppHandle, Manager, Wry};
 
-use crate::migration::{Backend, MigrationFailure};
+use crate::migration::{Backend, MigrationFailure, TelemetrySink};
 
 pub const SCRIPT_VAR: &str = "MEMRY_E2E_MIGRATION";
 const STEP: Duration = Duration::from_millis(400);
@@ -104,11 +105,20 @@ impl Backend for Scripted {
         !matches!(self.script, Script::Notice)
     }
 
-    fn run(&self, progress: &dyn ProgressSink) -> Result<(), MigrationFailure> {
+    fn run(
+        &self,
+        progress: &dyn ProgressSink,
+        telemetry: &dyn TelemetrySink,
+    ) -> Result<(), MigrationFailure> {
         let first_run = self.runs.fetch_add(1, Ordering::SeqCst) == 0;
         walk(progress, &[update(Phase::AppState, 1, 1)]);
+        // After the app state, as Step 37e2's run: the opt-out is carried by then.
+        telemetry.record(Service::event("migration_started", "app", "started"));
         match &self.script {
             Script::Fail(check) if first_run => {
+                let mut event = Service::event("migration_failed", "app", "failed");
+                event.error_code = Some(check.clone());
+                telemetry.record(event);
                 let report = serde_json::json!({"version": 1, "failure": {"check": check}});
                 let _ = std::fs::write(self.data_dir.join(REPORT_FILE), report.to_string());
                 Err(MigrationFailure {
@@ -132,6 +142,7 @@ impl Backend for Scripted {
                         update(Phase::Finish, 0, 0),
                     ],
                 );
+                telemetry.record(Service::event("migration_completed", "app", "completed"));
                 Ok(())
             }
         }

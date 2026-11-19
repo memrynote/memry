@@ -126,17 +126,11 @@ pub fn show_crashed(app: &AppHandle<Wry>, count: usize, reason: &str) {
 }
 
 /// Brings the startup-error window forward. False when there is none.
-pub fn raise(app: &AppHandle<Wry>) -> bool {
+fn raise(app: &AppHandle<Wry>) -> bool {
     let Some(window) = app.get_webview_window(&WindowKind::StartupError.label(0)) else {
         return false;
     };
-    if let Err(error) = window
-        .unminimize()
-        .and_then(|()| window.show())
-        .and_then(|()| window.set_focus())
-    {
-        tracing::warn!(scope = "Window", "startup-error window not raised: {error}");
-    }
+    crate::instance::raise(&window);
     true
 }
 

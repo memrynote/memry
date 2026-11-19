@@ -120,6 +120,18 @@ impl<R: Runtime> Stages<R> {
         self.entries.push((stage, name, f));
     }
 
+    /// The registrations in the order [`Self::run`] runs them.
+    pub fn names(&self) -> Vec<(Stage, &'static str)> {
+        let mut names: Vec<_> = self
+            .entries
+            .iter()
+            .map(|(stage, name, _)| (*stage, *name))
+            .collect();
+        // Stable, as in `run_from`.
+        names.sort_by_key(|(stage, _)| *stage);
+        names
+    }
+
     /// Runs the registrations stage by stage in enum order and in registration order inside a
     /// stage. `Schedulers` registrations are skipped once `shutting_down` reports true, and
     /// nothing runs after a registration that leaves `halted` true.
@@ -179,6 +191,14 @@ pub fn register(stage: Stage, name: &'static str, f: StageFn<Wry>) {
         .lock()
         .unwrap_or_else(PoisonError::into_inner)
         .register(stage, name, f);
+}
+
+/// The app's registrations in boot order.
+pub fn registered() -> Vec<(Stage, &'static str)> {
+    stages()
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .names()
 }
 
 /// Runs every registered stage of the app.

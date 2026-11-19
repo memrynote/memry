@@ -10,9 +10,11 @@ use std::time::{Duration, Instant};
 
 use memry_desktop::electron_import::progress::ProgressSink;
 use memry_desktop::paths::AppPaths;
+use memry_desktop::telemetry::events::TelemetryEvent;
 use memry_tauri::binary;
+use memry_tauri::instance::window_to_raise;
 use memry_tauri::migration::status::{MigrationState, MigrationStatus};
-use memry_tauri::migration::{Backend, Migration, MigrationFailure};
+use memry_tauri::migration::{Backend, Migration, MigrationFailure, TelemetrySink};
 use memry_tauri::registry::{PREBOOT_COMMANDS, window_allows, window_gate};
 use serde_json::Value;
 use tauri::ipc::{CallbackFn, InvokeBody, InvokeResponseBody};
@@ -43,7 +45,11 @@ impl Backend for FailOnce {
         true
     }
 
-    fn run(&self, _progress: &dyn ProgressSink) -> Result<(), MigrationFailure> {
+    fn run(
+        &self,
+        _progress: &dyn ProgressSink,
+        _telemetry: &dyn TelemetrySink,
+    ) -> Result<(), MigrationFailure> {
         if self.0.fetch_add(1, Ordering::SeqCst) == 0 {
             return Err(MigrationFailure {
                 check: "disk-space".to_owned(),
@@ -60,6 +66,12 @@ impl Backend for FailOnce {
     fn take_change_notice(&self) -> bool {
         false
     }
+}
+
+struct NoTelemetry;
+
+impl TelemetrySink for NoTelemetry {
+    fn record(&self, _event: TelemetryEvent) {}
 }
 
 struct Fixture {
@@ -89,6 +101,7 @@ fn fixture() -> Fixture {
         Arc::new(FailOnce(AtomicU32::new(0))),
         "en",
         dir.path(),
+        Arc::new(NoTelemetry),
         None,
         Box::new(|| {}),
     ));
@@ -233,4 +246,23 @@ fn the_preboot_window_reaches_no_sign_in_token_or_vault_command() {
             .iter()
             .all(|command| !window_allows("startup-error", command))
     );
+}
+
+/// A second launch while the boot waits for the migration brings the migration window forward:
+/// the main window does not exist yet. A startup-error window still comes first.
+#[test]
+fn a_second_launch_brings_the_migration_window_forward() {
+    let app = mock_builder().build(mock_context(noop_assets())).unwrap();
+    let raised = || window_to_raise(app.handle()).map(|window| window.label().to_owned());
+    let window = |label| {
+        WebviewWindowBuilder::new(&app, label, WebviewUrl::default())
+            .build()
+            .unwrap()
+    };
+    assert_eq!(raised(), None, "the main window path");
+    let _preboot = window("preboot");
+    assert_eq!(raised().as_deref(), Some("preboot"));
+    let _startup_error = window("startup-error");
+    assert_eq!(raised().as_deref(), Some("startup-error"));
+    std::mem::forget(app);
 }

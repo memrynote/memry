@@ -178,6 +178,45 @@ fn a_suspended_boot_resumes_after_the_suspending_registration() {
     );
 }
 
+/// #3554: no sign-in, token refresh, vault open, sync or telemetry runs before the first-launch
+/// migration has carried the Electron install over (and its telemetry opt-out with it).
+#[test]
+fn the_first_launch_migration_runs_before_telemetry_account_vault_and_sync() {
+    for later in [
+        Stage::Menu,
+        Stage::Telemetry,
+        Stage::Handlers,
+        Stage::VaultOpen,
+        Stage::Window,
+        Stage::Schedulers,
+    ] {
+        assert!(
+            Stage::Migration < later,
+            "{later:?} runs before the migration"
+        );
+    }
+    memry_tauri::register_stages();
+    let names: Vec<_> = memry_tauri::startup::registered()
+        .into_iter()
+        .map(|(_, name)| name)
+        .collect();
+    let at = |name: &str| {
+        names
+            .iter()
+            .position(|registered| *registered == name)
+            .unwrap_or_else(|| panic!("{name} is not registered: {names:?}"))
+    };
+    let migration = at("first-launch migration");
+    for later in [
+        "start telemetry",
+        "manage account",
+        "open the last vault",
+        "start account sync",
+    ] {
+        assert!(migration < at(later), "{later} runs before the migration");
+    }
+}
+
 #[test]
 fn startup_script_freezes_the_state_and_never_closes_a_script_tag() {
     let state = StartupState {

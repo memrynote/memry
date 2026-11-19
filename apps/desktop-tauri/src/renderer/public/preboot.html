@@ -13,7 +13,8 @@
         --canvas: #f6f5f0;
         --ink: #1a1a1a;
         --ink-rgb: 26, 26, 26;
-        --tint: #f97316;
+        /* 3.7:1 against the bar's track (WCAG 1.4.11); the dark scheme keeps the brand orange. */
+        --tint: #c2410c;
         color-scheme: light dark;
       }
       @media (prefers-color-scheme: dark) {
@@ -21,6 +22,7 @@
           --canvas: #121212;
           --ink: #bcbab6;
           --ink-rgb: 188, 186, 182;
+          --tint: #f97316;
         }
       }
       html,
@@ -86,7 +88,7 @@
         margin-bottom: 6px;
       }
       .sub {
-        opacity: 0.55;
+        opacity: 0.75;
         font-size: 13px;
       }
       .error {
@@ -122,7 +124,7 @@
           SFMono-Regular,
           Menlo,
           monospace;
-        opacity: 0.6;
+        opacity: 0.8;
         background: rgba(var(--ink-rgb), 0.05);
         border-radius: 6px;
         padding: 10px;
@@ -137,7 +139,7 @@
       .logs {
         margin-top: 10px;
         font-size: 12px;
-        opacity: 0.6;
+        opacity: 0.75;
         word-break: break-all;
         -webkit-user-select: text;
         user-select: text;
@@ -170,9 +172,6 @@
         opacity: 0.75;
         line-height: 1.5;
         margin-block-end: 12px;
-      }
-      .migration .details {
-        opacity: 0.8;
       }
       .migration .check {
         font-weight: 600;
