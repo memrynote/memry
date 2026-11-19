@@ -276,17 +276,37 @@ struct NoteTitleEditor: View {
     }
 
     private func typed(_ value: String) {
+        var value = value
         if let field = titleTextView {
             host.title = field
+            host.relay.watch(field)
             host.keys.locale = field.textInputMode?.primaryLanguage.map(Locale.init) ?? .current
+            // SwiftUI can report the text from before a confirm's restore
+            // again in the same turn: the field shows the restore.
+            if let shown = host.restored, field.text == shown, value != shown { return }
             // An input method confirming its composition on Return first
             // deletes it, as Backspace does: marked text gone with no Return
             // down ends the composition.
             if field.markedTextRange != nil {
                 host.composing = true
                 host.keys.reset()
-            } else if !host.returnDown {
-                host.composing = false
+            } else {
+                if !host.returnDown { host.composing = false }
+                // The input method dropped the composition SwiftUI refused
+                // to confirm (`TitleWindow.confirmed`): the confirmed text
+                // goes where it was, and the caret keeps its place after it.
+                // One that kept the composition as text instead, as
+                // `unmarkText` does, already shows it.
+                let confirmed = host.confirmed
+                host.confirmed = nil
+                if let confirmed, confirmed.dropped(from: value) {
+                    let at = min(confirmed.location, (value as NSString).length)
+                    let caret = field.selectedRange.location
+                    value = (value as NSString).replacingCharacters(in: NSRange(location: at, length: 0), with: confirmed.text)
+                    field.text = value
+                    field.selectedRange = NSRange(location: max(caret, at) + (confirmed.text as NSString).length, length: 0)
+                    host.restored = value
+                }
             }
         }
         // The text view reports the text it showed at the hand-off again
@@ -389,6 +409,7 @@ struct NoteTitleEditor: View {
                 }
                 .onSubmit {
                     host.returnDown = false
+                    host.confirmed = nil
                     guard host.window.flatMap(Self.caretHolder) == nil else { return }
                     if host.composing || returned != nil {
                         // An input method took the Return as its own, or the
@@ -424,13 +445,18 @@ struct NoteTitleEditor: View {
                             draft = title
                             commits.begin(title)
                         }
-                        if let field = titleTextView { host.title = field }
+                        if let field = titleTextView {
+                            host.title = field
+                            host.relay.watch(field)
+                        }
                         host.composing = titleTextView?.markedTextRange != nil
+                        host.confirmed = nil
                         host.body = nil
                         takeSeed()
                     } else if claim.retaking {
                         Task { retake() }
                     } else {
+                        host.confirmed = nil
                         focusLost()
                     }
                 }
@@ -489,6 +515,7 @@ struct NoteTitleEditor: View {
                 // the background ends the composition as it stands, as a
                 // Return in the body does, and saves it.
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
+                    host.confirmed = nil
                     if titleTextView?.markedTextRange == nil { save() }
                 }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
@@ -540,6 +567,7 @@ struct NoteTitleEditor: View {
 }
 
 /// The window a title is drawn in, read without redrawing the title.
+@MainActor
 private final class TitleWindow {
     weak var window: UIWindow?
     /// The title's text view, which keeps no caret once SwiftUI ends its
@@ -548,6 +576,28 @@ private final class TitleWindow {
     /// Whether an input method composes in the title: from a change with
     /// marked text until a change without while no Return is down.
     var composing = false
+    /// The text an input method confirmed its composition with, and where:
+    /// a replacement of the whole marked text that SwiftUI's field refused,
+    /// as it refuses every edit while Return is down (#4798). The input
+    /// method then drops the marked text, and the title puts this text where
+    /// the marked text was.
+    ///
+    /// Invariant: set only by that refused replacement, and used at most
+    /// once, by the change that drops the marked text in the same turn of
+    /// the run loop, the turn of the Return's key event. The input method
+    /// may mark its leftover first, as `n` after `かn` confirmed as `か`.
+    /// The turn's end, a submit, a focus change, and the app resigning clear
+    /// it, so marked text deleted with Backspace or Escape, cancelled, or
+    /// ended by the caret leaving never comes back. That change inserts it
+    /// only if the marked text left the title (`Confirm.dropped`), so an
+    /// input method that keeps it as text with `unmarkText` shows it once.
+    var confirmed: TitleDelegateRelay.Confirm?
+    /// The title as the confirm's restore showed it, until the turn ends.
+    var restored: String?
+    /// Counts the confirms, so a turn's end clears only its own.
+    private var confirms = 0
+    /// Hears the title's delegate calls ahead of SwiftUI.
+    let relay = TitleDelegateRelay()
     /// A Return went down in the title and its key-up has not submitted.
     var returnDown = false
     /// The keys pressed in the title that the keyboard has not inserted.
@@ -561,6 +611,18 @@ private final class TitleWindow {
     /// The view drawn behind the title, with its frame.
     weak var probe: UIView?
 
+    init() {
+        relay.refusedConfirm = { [unowned self] confirm in
+            confirmed = confirm
+            confirms += 1
+            DispatchQueue.main.async { [weak self, confirm = confirms] in
+                guard let self, confirms == confirm else { return }
+                confirmed = nil
+                restored = nil
+            }
+        }
+    }
+
     /// Whether `item` is the title's text view: the one drawn where the
     /// title is, so neither when it was first seen nor a page that drew a
     /// new one matters.
@@ -569,6 +631,70 @@ private final class TitleWindow {
         else { return false }
         let center = text.convert(CGPoint(x: text.bounds.midX, y: text.bounds.midY), to: nil)
         return probe.convert(probe.bounds, to: nil).contains(center)
+    }
+}
+
+/// Stands between the title's text view and SwiftUI's delegate, and passes
+/// every call on, to hear the input method's confirm SwiftUI refuses
+/// (`TitleWindow.confirmed`).
+final class TitleDelegateRelay: NSObject, UITextViewDelegate {
+    /// A replacement of the whole marked text the delegate refused.
+    struct Confirm {
+        /// The text the input method confirmed the marked text with.
+        let text: String
+        /// Where the marked text starts, in UTF-16 units.
+        let location: Int
+        /// The marked text.
+        let marked: String
+        /// The title's UTF-16 length with the marked text in it.
+        let length: Int
+
+        /// Whether `title` no longer holds the marked text: it is gone
+        /// from `location`, or the title shrank by at least its length.
+        func dropped(from title: String) -> Bool {
+            let title = title as NSString
+            let markedLength = (marked as NSString).length
+            return title.length <= length - markedLength
+                || location + markedLength > title.length
+                || title.substring(with: NSRange(location: location, length: markedLength)) != marked
+        }
+    }
+
+    /// Called with each confirm the delegate refused.
+    var refusedConfirm: (Confirm) -> Void = { _ in }
+    private weak var field: UITextView?
+    /// SwiftUI's delegate of `field`.
+    private weak var inner: (any UITextViewDelegate)?
+
+    /// Puts the relay in front of `field`'s delegate, and gives the field
+    /// it stood in front of before its own delegate back.
+    func watch(_ field: UITextView) {
+        guard field.delegate !== self else { return }
+        if let old = self.field, old.delegate === self { old.delegate = inner }
+        self.field = field
+        inner = field.delegate
+        field.delegate = self
+    }
+
+    override func responds(to selector: Selector!) -> Bool {
+        super.responds(to: selector) || inner?.responds(to: selector) == true
+    }
+
+    override func forwardingTarget(for selector: Selector!) -> Any? { inner ?? super.forwardingTarget(for: selector) }
+
+    func textView(_ textView: UITextView, shouldChangeTextInRanges ranges: [NSValue], replacementText text: String) -> Bool {
+        let allowed = inner?.textView?(textView, shouldChangeTextInRanges: ranges, replacementText: text)
+            ?? ranges.map(\.rangeValue).reduce(nil) { union, range in union.map { NSUnionRange($0, range) } ?? range }
+                .flatMap { inner?.textView?(textView, shouldChangeTextIn: $0, replacementText: text) }
+            ?? true
+        if !allowed, ranges.count == 1, let marked = textView.markedTextRange, let markedText = textView.text(in: marked) {
+            let location = textView.offset(from: textView.beginningOfDocument, to: marked.start)
+            let length = textView.offset(from: marked.start, to: marked.end)
+            if ranges[0].rangeValue == NSRange(location: location, length: length) {
+                refusedConfirm(Confirm(text: text, location: location, marked: markedText, length: (textView.text as NSString).length))
+            }
+        }
+        return allowed
     }
 }
 
