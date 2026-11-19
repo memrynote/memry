@@ -956,6 +956,8 @@
     "componentsVaultSwitcher": {
       "noVaultsYet": "Noch keine Tresore",
       "openVault": "Tresor öffnen",
+      "createVault": "Tresor erstellen",
+      "openFolderAsVault": "Ordner als Tresor öffnen",
       "settings": "Einstellungen",
       "remove": "Entfernen „",
       "removeVaultTitle": "„{name}“ aus der Liste entfernen?",

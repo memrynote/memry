@@ -2238,6 +2238,10 @@
         "prevVault": {
           "label": "Forrige boks",
           "description": "Gå til forrige boks i sidebjælken"
+        },
+        "todayJournal": {
+          "label": "Dagens dagbog",
+          "description": "Åbn dagbogen på dagens indlæg"
         }
       },
       "tabs": {

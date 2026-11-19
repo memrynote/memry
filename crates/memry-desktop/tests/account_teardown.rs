@@ -326,23 +326,26 @@ async fn an_unknown_binding_is_checked_again_after_a_minute_and_reported_once() 
         .await
         .unwrap();
 
-    for _ in 0..1_000 {
-        if !changes.lock().unwrap().is_empty() {
-            break;
-        }
-        tokio::time::sleep(Duration::from_millis(100)).await;
-    }
     let decided = BindingState::NeedsDecision {
         account_vault_count: 0,
         merge_target: None,
     };
-    assert_eq!(*changes.lock().unwrap(), vec![decided.clone()]);
+    for _ in 0..1_000 {
+        if changes.lock().unwrap().last() == Some(&decided) {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    // The neutral state is `Bound` until the first decision, so the unreadable list's
+    // `Unknown` is reported, once, before the retry decides.
+    let reported = vec![BindingState::Unknown, decided.clone()];
+    assert_eq!(*changes.lock().unwrap(), reported);
     assert!(start.elapsed() >= BINDING_RETRY, "{:?}", start.elapsed());
     assert_eq!(s.script.count("/sync/vaults"), 2);
 
     tokio::time::sleep(BINDING_RETRY * 10).await;
     assert_eq!(s.script.count("/sync/vaults"), 2, "a decision is final");
-    assert_eq!(*changes.lock().unwrap(), vec![decided]);
+    assert_eq!(*changes.lock().unwrap(), reported);
     let session = s.session.clone();
     tokio::task::spawn_blocking(move || session.detach_sync())
         .await
@@ -416,4 +419,129 @@ async fn an_empty_unbound_vault_binds_to_its_own_id_and_mirrors_the_registry() {
         .and_then(|v| v.account_binding)
         .map(|b| (b.user_id, b.mode));
     assert_eq!(mirrored, Some(("u".into(), "sync".into())));
+    assert_eq!(
+        registry
+            .get(&s.open.path.to_string_lossy())
+            .and_then(|v| v.vault_uuid),
+        Some(s.open.vault.id()),
+        "the id lands in the same write as the binding mirror"
+    );
+}
+
+/// #4766: the next account never signs in with the device key a refused sign-out kept: the
+/// first step of the next sign-in replaces it.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn the_next_sign_in_replaces_a_device_key_the_keychain_refused_to_delete() {
+    let s = signed_in();
+    s.script.answer(200, json!({}));
+    s.keychain
+        .refuse_delete(&[SecureStoreKey::DeviceSigningKey]);
+    let kept = s.keychain.get(SecureStoreKey::DeviceSigningKey).unwrap();
+    s.account.sign_out(&s.session).await.unwrap();
+    assert_eq!(
+        s.keychain.get(SecureStoreKey::DeviceSigningKey).unwrap(),
+        kept
+    );
+
+    s.script
+        .answer(200, json!({ "success": true, "expiresIn": 600 }));
+    s.account.request_otp("b@example.com".into()).await.unwrap();
+
+    let now = s.keychain.get(SecureStoreKey::DeviceSigningKey).unwrap();
+    assert!(now.is_some());
+    assert_ne!(now, kept);
+}
+
+/// A clear that fails once while every entry then deletes on its own is a finished sign-out:
+/// no "did not finish" warning.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_clear_that_fails_once_signs_out_without_a_warning() {
+    let s = signed_in();
+    s.script.answer(200, json!({}));
+    s.keychain.refuse_next_clear();
+
+    let result = s.account.sign_out(&s.session).await.unwrap();
+
+    assert_eq!(s.account.session().state(), AuthState::SignedOut);
+    assert!(ALL.iter().all(|key| !s.keychain.has(*key)));
+    assert_eq!(result.keychain_warning(), None);
+}
+
+/// A sign-out while adoption waits on the account's vault list binds nothing: the next account
+/// would otherwise find the vault bound to this one's server vault.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_sign_out_during_adoption_binds_nothing() {
+    let s = signed_in();
+    let open = &s.open;
+    open.vault
+        .db_handle()
+        .call_blocking(|conn| {
+            conn.execute_batch("DELETE FROM outbox; DELETE FROM sync_history;")
+                .unwrap();
+            Ok(())
+        })
+        .unwrap();
+    let held = s.script.held_answer(
+        200,
+        json!({ "vaults": [{ "vaultUuid": "server-vault-a", "itemCount": 3, "createdAt": 1 }] }),
+    );
+    s.script.answer(200, json!({}));
+
+    let signing_out = async {
+        while s.script.count("/sync/vaults") == 0 {
+            tokio::task::yield_now().await;
+        }
+        s.account.sign_out(&s.session).await.unwrap();
+        held.notify_one();
+    };
+    let (adopted, ()) = tokio::join!(s.account.adopt_account_vault_if_absent(open), signing_out);
+
+    assert_eq!(adopted.unwrap(), None);
+    assert_eq!(open.vault.server_vault_id().unwrap(), None);
+}
+
+/// A clear that failed while every entry then deleted on its own leaves nothing to sweep: the
+/// key a local write mints after the sign-out survives the next sign-in, so offline edits keep
+/// this device's id.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_key_minted_after_a_sign_out_whose_entries_all_went_is_kept() {
+    let s = signed_in();
+    s.script.answer(200, json!({}));
+    s.keychain.refuse_next_clear();
+    s.account.sign_out(&s.session).await.unwrap();
+    memry_core::api::auth::ensure_device_identity(s.keychain.clone()).unwrap();
+    let minted = s.keychain.get(SecureStoreKey::DeviceSigningKey).unwrap();
+
+    s.script
+        .answer(200, json!({ "success": true, "expiresIn": 600 }));
+    s.account.request_otp("b@example.com".into()).await.unwrap();
+
+    assert!(minted.is_some());
+    assert_eq!(
+        s.keychain.get(SecureStoreKey::DeviceSigningKey).unwrap(),
+        minted
+    );
+}
+
+/// A sign-out whose keychain kept the tokens is still a sign-out: the binding decision binds
+/// nothing on them.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_sign_out_whose_keychain_kept_the_tokens_binds_nothing() {
+    let s = signed_in();
+    s.open.vault.set_account_binding("not json").unwrap();
+    s.script.answer(200, json!({}));
+    s.keychain
+        .refuse_delete(&[SecureStoreKey::AccessToken, SecureStoreKey::RefreshToken]);
+    s.account.sign_out(&s.session).await.unwrap();
+    s.script.answer(200, json!({ "vaults": [] }));
+    let registry = VaultRegistry::new(s.config.clone());
+
+    let applied = s
+        .account
+        .apply_open_vault_binding(&s.open, &registry)
+        .await
+        .unwrap();
+
+    assert_eq!(applied, Applied::Held(BindingState::Unknown));
+    assert_eq!(s.open.vault.server_vault_id().unwrap(), None);
 }

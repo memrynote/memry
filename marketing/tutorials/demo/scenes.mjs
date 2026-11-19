@@ -26,7 +26,8 @@ const day = (offset = 0) => {
 
 /** The vault the running app has open: agent-app copies the tutorial vault for each run. */
 const vaultPath = () =>
-  JSON.parse(fs.readFileSync(path.join(os.tmpdir(), 'memry-agent-app.json'), 'utf8')).vaultPath
+  JSON.parse(fs.readFileSync(path.join(os.tmpdir(), 'memry-agent-app-tauri.json'), 'utf8'))
+    .vaultPath
 const vaultText = (rel) => {
   const f = path.join(vaultPath(), rel)
   return fs.existsSync(f) ? fs.readFileSync(f, 'utf8') : ''

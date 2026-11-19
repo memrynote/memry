@@ -24,8 +24,8 @@ const chip = (page, text) => page.getByText(text).first()
 export const scenes = {
   async hook({ rec, page: _page, at }) {
     await at(0.4)
-    await rec.glide(1350, 520, 1200)
-    await rec.glide(1500, 590, 900)
+    await rec.glide(1215, 468, 1200)
+    await rec.glide(1350, 531, 900)
   },
   async overdue({ rec, page, zoom, at }) {
     zoom(1400, 560, 1.8)
