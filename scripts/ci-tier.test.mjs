@@ -525,6 +525,7 @@ describe('ci tier OS legs for a fast-tier PR', () => {
       'crates/.cargo/config.toml',
       'crates/rust-toolchain.toml',
       '.github/actions/ci-tier/tier.sh',
+      '.github/actions/libsodium-dist/action.yml',
       '.github/actions/setup-pnpm/action.yml'
     ]) {
       assert.deepEqual(legsOf(file, '+x'), allOsLegs, file)
@@ -938,6 +939,7 @@ describe('ci tier and the workflow path gates agree', () => {
       'crates/Cargo.lock',
       'crates/memry-core/src/paths.rs',
       '.github/actions/ci-tier/tier.sh',
+      '.github/actions/libsodium-dist/action.yml',
       '.github/actions/setup-pnpm/action.yml',
       '.github/actions/ort-static/action.yml',
       '.github/workflows/rust-ci.yml',
@@ -1071,6 +1073,7 @@ describe('ci tier after a merge into feat/tauri-v2', () => {
       'pnpm-lock.yaml',
       'scripts/fetch-tesseract-sources.mjs',
       'crates/memry-ml-worker/build.rs',
+      '.github/actions/libsodium-dist/action.yml',
       '.github/actions/setup-pnpm/action.yml',
       '.github/workflows/rust-ci.yml',
       '.github/workflows/desktop-tauri-ci.yml'
