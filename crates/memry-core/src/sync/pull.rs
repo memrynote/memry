@@ -275,10 +275,14 @@ impl PullLoop {
     /// ([`super::hardening::orphans`]), now that the deletes and moves pushed
     /// before it have all landed. An orphan-repair failure is logged, not
     /// returned: the pages have committed, and the next delivering run
-    /// repairs again.
+    /// repairs again. The run's signer misses end here, so a fetch after it
+    /// (the manifest check) looks a missing signer up again.
     pub async fn end_run(&self, total: &PullReport, repairing: bool) -> Result<(), PullError> {
         if total.refused || total.has_more {
             return Ok(());
+        }
+        if let Some(keys) = &self.signer_keys {
+            keys.forget_absent();
         }
         if repairing {
             self.db
@@ -347,7 +351,7 @@ impl PullLoop {
     pub async fn pull_first_page(&self) -> Result<PullReport, PullError> {
         self.retry_refused().await;
         if let Some(keys) = &self.signer_keys {
-            keys.begin_run();
+            keys.forget_absent();
         }
         self.page(true).await
     }
