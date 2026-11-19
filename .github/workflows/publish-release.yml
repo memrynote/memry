@@ -312,8 +312,8 @@ jobs:
           set -euo pipefail
           node scripts/release/assert-production-config.mjs post pack/MemryNote.app
           plist=pack/MemryNote.app/Contents/Info.plist
+          # Info.plist and the binary read the same config.version; x64 codegen drops the binary's literal, so no byte grep.
           [ "$(plutil -extract CFBundleShortVersionString raw "$plist")" = "$VERSION" ] || { echo "::error::Info.plist does not carry $VERSION"; exit 1; }
-          grep -aqF "$VERSION" pack/MemryNote.app/Contents/MacOS/MemryNote || { echo "::error::the main binary does not carry $VERSION"; exit 1; }
 
       - name: The worker and pdfium are signed with the hardened runtime, the app's Team ID and no entitlements
         run: |
@@ -511,12 +511,17 @@ jobs:
       - name: Check the payload
         run: node scripts/release/assert-payload.mjs pack windows
 
-      - name: The payload carries the production config and the release version
+      - name: The payload carries the production config
         env:
           SYNC_SERVER_URL: ${{ secrets.SYNC_SERVER_URL }}
+        run: node scripts/release/assert-production-config.mjs post pack
+
+      - name: Memrynote.exe carries the release version
+        shell: pwsh
         run: |
-          node scripts/release/assert-production-config.mjs post pack
-          grep -aqF "$VERSION" pack/Memrynote.exe || { echo "::error::Memrynote.exe does not carry $VERSION"; exit 1; }
+          # tauri-build writes config.version verbatim as the ProductVersion string (no 4-part padding).
+          $product = (Get-Item pack/Memrynote.exe).VersionInfo.ProductVersion
+          if ($product -cne $env:VERSION) { Write-Output "::error::Memrynote.exe ProductVersion is '$product', not $env:VERSION"; exit 1 }
 
       - name: The bundled worker opens a PDF with the bundled pdfium
         run: node scripts/release/smoke-worker.mjs pack windows crates/memry-ml-worker/tests/fixtures/two-pages.pdf
@@ -653,7 +658,7 @@ jobs:
             node scripts/release/assert-payload.mjs "$root" linux
             node scripts/release/assert-production-config.mjs post "$root"
             scripts/release/check-glibc.sh "$root"
-            grep -aqF "$VERSION" "$root/usr/bin/memrynote" || { echo "::error::$root/usr/bin/memrynote does not carry $VERSION"; exit 1; }
+            # The deb Version check pins config.version; both roots come from one tauri build (linuxdeploy rewrites the AppImage binary's RPATH, so no cmp).
             echo "::endgroup::"
           done
 

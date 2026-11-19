@@ -81,6 +81,16 @@ describe('scanPayload', () => {
     )
   })
 
+  // A build in the rehearsal repo embeds its workspace path (build-script OUT_DIR, panic
+  // locations); only the feed, `memrynote/memry-update-rehearsal`, marks a rehearsal build.
+  it('passes an executable that holds the rehearsal workspace path but not its feed', () => {
+    const workspace =
+      '/home/runner/work/memry-update-rehearsal/memry-update-rehearsal/crates/target'
+    withPayload({ 'usr/bin/memrynote': [ELF, `${MAIN}${workspace}`] }, (dir) =>
+      assert.deepEqual(scanPayload(dir, SYNC), [])
+    )
+  })
+
   // MEMRY_UPDATE_FEED_URL set to the rehearsal repo compiles the rehearsal feed into the binary.
   it('fails on a rehearsal feed or a staging sync URL in any executable', () => {
     withPayload(
@@ -90,7 +100,7 @@ describe('scanPayload', () => {
       },
       (dir) =>
         assert.deepEqual(scanPayload(dir, SYNC), [
-          'Memrynote.exe contains "memry-update-rehearsal"',
+          'Memrynote.exe contains "memrynote/memry-update-rehearsal"',
           'memry-ml-worker.exe contains "://sync-staging"'
         ])
     )
@@ -124,10 +134,11 @@ describe('assert-production-config cli', () => {
     const pre = run(['pre'], { SYNC_SERVER_URL: 'https://sync-staging.memrynote.com' })
     assert.equal(pre.status, 1)
     assert.match(pre.stderr, /production sync host/)
-    withPayload({ 'usr/bin/memrynote': [ELF, `${MAIN}memry-update-rehearsal`] }, (dir) => {
+    const feed = 'https://api.github.com/repos/memrynote/memry-update-rehearsal/releases'
+    withPayload({ 'usr/bin/memrynote': [ELF, `${MAIN}${feed}`] }, (dir) => {
       const post = run(['post', dir], { SYNC_SERVER_URL: SYNC })
       assert.equal(post.status, 1)
-      assert.match(post.stderr, /contains "memry-update-rehearsal"/)
+      assert.match(post.stderr, /contains "memrynote\/memry-update-rehearsal"/)
     })
     assert.match(run(['post'], { SYNC_SERVER_URL: SYNC }).stderr, /usage/)
   })
