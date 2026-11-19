@@ -86,6 +86,23 @@ pub trait PassSeed: Send + Sync {
     async fn seed(&self) -> Result<(), StorageError>;
 }
 
+/// Runs every seed, in order, when `pull` reached the feed head: the seed step of the driver's
+/// pass and of [`crate::api::sync::VaultSync::sync_now`]. A failure is logged and the push still
+/// runs.
+pub(crate) async fn seed_at_head(pull: &PullReport, seeds: &[Arc<dyn PassSeed>]) {
+    if pull.has_more {
+        return;
+    }
+    for seed in seeds {
+        if let Err(error) = seed.seed().await {
+            eprintln!(
+                "memry-core: a sync pass seed failed; pushing what is queued, the next pass \
+                 seeds again: {error}"
+            );
+        }
+    }
+}
+
 /// Told what each pass's pull did, before its push wave runs. The snapshot
 /// gate reads it (chapter 07 §7.13.2 condition 1): a push wave's snapshot
 /// fallback must see this pass's pull, never the one before.
@@ -313,9 +330,7 @@ impl SyncEngine {
             return self.finish(trigger, trail, pull, done);
         }
 
-        if !pull.has_more {
-            self.seed().await;
-        }
+        seed_at_head(&pull, &self.seeds).await;
         self.push_wave(&mut trail, &mut done).await;
         self.finish(trigger, trail, pull, done)
     }
@@ -406,18 +421,6 @@ impl SyncEngine {
         // pass resumes from the committed cursor.
         trail.enter(SyncState::Idle);
         (total, None)
-    }
-
-    /// Every [`PassSeed`], in order. A failure is logged and the push still runs.
-    async fn seed(&self) {
-        for seed in &self.seeds {
-            if let Err(error) = seed.seed().await {
-                eprintln!(
-                    "memry-core: a sync pass seed failed; pushing what is queued, the next pass \
-                     seeds again: {error}"
-                );
-            }
-        }
     }
 
     /// `Idle -> Pushing -> (Idle | ReadOnly | BlockedUpgrade | Failed)`.

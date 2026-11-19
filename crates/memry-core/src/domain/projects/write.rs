@@ -12,8 +12,8 @@ use serde_json::{Value, json};
 
 use crate::api::errors::StorageError;
 use crate::crypto::sodium::random_bytes;
-use crate::storage::repositories::Change;
 use crate::storage::repositories::schema::Object;
+use crate::storage::repositories::{Change, sync_items};
 use crate::sync::field_merge::{PROJECT_SYNCABLE_FIELDS, init_all_field_clocks};
 use crate::sync::outbox::{self, Durable};
 
@@ -99,6 +99,29 @@ fn insert(
         Some(id) => tasks::valid_item_id(id)?.to_owned(),
         None => mint_id(),
     };
+    let mut payload = new_payload(project, &id, is_inbox, now_ms)?;
+    outbox::commit(
+        conn,
+        &outbox::Change::upsert(ITEM_TYPE, &id),
+        now_ms,
+        |tx| {
+            let (clock, field_clocks) = first_clocks(device_id)?;
+            payload.insert("position".to_owned(), json!(next_position(tx)?));
+            payload.insert("clock".to_owned(), clock);
+            payload.insert("fieldClocks".to_owned(), field_clocks);
+            insert_local(tx, ITEM_TYPE, &id, payload, now_ms)?;
+            Ok(id.clone())
+        },
+    )
+}
+
+/// A new project's payload, validated, without its position and clocks.
+fn new_payload(
+    project: &NewProject<'_>,
+    id: &str,
+    is_inbox: bool,
+    now_ms: i64,
+) -> Result<Object, StorageError> {
     valid_name(project.name)?;
     if let Some(description) = project.description {
         valid_description(description)?;
@@ -107,55 +130,53 @@ fn insert(
     valid_color(color)?;
     let at = iso(now_ms)?;
     let statuses = match project.statuses {
-        Some(inputs) => custom_statuses(&id, inputs, &at)?,
-        None => default_statuses(&id, &at),
+        Some(inputs) => custom_statuses(id, inputs, &at)?,
+        None => default_statuses(id, &at),
     };
+    let mut payload = object(json!({
+        "name": project.name,
+        "color": color,
+        "isInbox": is_inbox,
+        "statuses": statuses,
+        "links": [],
+        "createdAt": at,
+        "modifiedAt": at,
+    }));
+    // Absent rather than `null` (§13.4): a create knows of nothing to clear.
+    for (key, value) in [("description", project.description), ("icon", project.icon)] {
+        if let Some(value) = value {
+            payload.insert(key.to_owned(), json!(value));
+        }
+    }
+    Ok(payload)
+}
 
-    outbox::commit(
-        conn,
-        &outbox::Change::upsert(ITEM_TYPE, &id),
-        now_ms,
-        |tx| {
-            let clock = next_clock(&Object::new(), device_id)?;
-            let field_clocks =
-                init_all_field_clocks(&task_merge::as_clock(&clock)?, &PROJECT_SYNCABLE_FIELDS);
-            let mut payload = object(json!({
-                "name": project.name,
-                "color": color,
-                "position": next_position(tx)?,
-                "isInbox": is_inbox,
-                "statuses": statuses,
-                "links": [],
-                "clock": clock,
-                "fieldClocks": field_clocks,
-                "createdAt": at,
-                "modifiedAt": at,
-            }));
-            // Absent rather than `null` (§13.4): a create knows of nothing to clear.
-            for (key, value) in [("description", project.description), ("icon", project.icon)] {
-                if let Some(value) = value {
-                    payload.insert(key.to_owned(), json!(value));
-                }
-            }
-            insert_local(tx, ITEM_TYPE, &id, payload, now_ms)?;
-            Ok(id.clone())
-        },
-    )
+/// This device's first document clock and all nine field clocks seeded from it (§6.7).
+fn first_clocks(device_id: &str) -> Result<(Value, Value), StorageError> {
+    let clock = next_clock(&Object::new(), device_id)?;
+    let field_clocks =
+        init_all_field_clocks(&task_merge::as_clock(&clock)?, &PROJECT_SYNCABLE_FIELDS);
+    Ok((clock, json!(field_clocks)))
 }
 
 /// The Inbox (desktop's `ensureDefaultTaskProject`,
-/// `apps/desktop/src/main/database/defaults.ts`): id `inbox`, desktop's
+/// `apps/desktop/src/main/database/defaults.ts:12`): id `inbox`, desktop's
 /// name, colour and icon, the default three statuses. Written only when no
 /// Inbox record exists, tombstones included, so a vault that never synced
 /// (or a phone whose first sync has not reached it) still has somewhere to
 /// file a task.
 ///
-/// Every device seeds the same id, as desktop does, and pushes it like any
-/// create (desktop's `seedUnclocked` pushes its seed on the first sync), so
-/// concurrent seeds meet as one record under the field merge (§6.8).
+/// Written as desktop writes it: with **no clock and no outbox row**. A pull
+/// that brings another device's Inbox replaces it outright (a local record
+/// with no clock takes the remote wholesale, §6.3.1), so a vault joined
+/// before its first pull never merges its seed's statuses and links into the
+/// synced ones. A sync pass whose pull reached the feed head then gives a
+/// seed no pull replaced its clock and queues it ([`seed_unclocked`]), as
+/// desktop's `seedUnclocked` does, so every device still meets on the one id.
 /// Returns whether it wrote one.
-pub fn ensure_inbox(conn: &Connection, device_id: &str, now_ms: i64) -> Result<bool, StorageError> {
-    let exists: bool = conn
+pub fn ensure_inbox(conn: &Connection, now_ms: i64) -> Result<bool, StorageError> {
+    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let exists: bool = tx
         .query_row(
             "SELECT EXISTS(SELECT 1 FROM projects WHERE id = ?1 OR is_inbox = 1)
                  OR EXISTS(SELECT 1 FROM sync_items WHERE item_type = ?2 AND item_id = ?1)",
@@ -174,8 +195,58 @@ pub fn ensure_inbox(conn: &Connection, device_id: &str, now_ms: i64) -> Result<b
         icon: Some("📥"),
         statuses: None,
     };
-    insert(conn, &inbox, true, device_id, now_ms)?.acknowledge();
+    let mut payload = new_payload(&inbox, INBOX_ID, true, now_ms)?;
+    payload.insert("position".to_owned(), json!(next_position(&tx)?));
+    insert_local(&tx, ITEM_TYPE, INBOX_ID, payload, now_ms)?;
+    tx.commit().map_err(failed)?;
     Ok(true)
+}
+
+/// Desktop's `seedUnclocked` for projects (`project-handler.ts:402`): each
+/// project record this device wrote with no clock and no pull touched (only
+/// [`ensure_inbox`] writes one) gets this device's first clock and all nine
+/// field clocks, and is queued as a `create`. Run by the sync pass after a
+/// pull that reached the feed head ([`crate::sync::engine::PassSeed`]), so an
+/// Inbox another device pushed first has already replaced the seed.
+/// Idempotent: a seeded record has a clock. Returns the seeded ids.
+pub fn seed_unclocked(
+    conn: &Connection,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<Vec<String>, StorageError> {
+    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let ids: Vec<String> = {
+        let mut statement = tx
+            .prepare(
+                "SELECT item_id FROM sync_items
+                  WHERE item_type = ?1 AND clock IS NULL AND signer_device_id IS NULL
+                    AND server_cursor IS NULL AND deleted_at IS NULL AND payload IS NOT NULL
+                    AND corrupt_at IS NULL
+                  ORDER BY rowid",
+            )
+            .map_err(failed)?;
+        statement
+            .query_map([ITEM_TYPE], |row| row.get(0))
+            .map_err(failed)?
+            .collect::<Result<_, _>>()
+            .map_err(failed)?
+    };
+    for id in &ids {
+        let (clock, field_clocks) = first_clocks(device_id)?;
+        sync_items::apply_local_edit_in(
+            &tx,
+            ITEM_TYPE,
+            id,
+            &[
+                ("clock", Change::Set(clock)),
+                ("fieldClocks", Change::Set(field_clocks)),
+            ],
+            now_ms,
+        )?;
+        outbox::enqueue(&tx, &outbox::Change::create(ITEM_TYPE, id), now_ms)?;
+    }
+    tx.commit().map_err(failed)?;
+    Ok(ids)
 }
 
 /// Edits name, description, colour, icon and statuses in one write

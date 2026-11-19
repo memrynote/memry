@@ -39,6 +39,7 @@ pub mod startup_values;
 pub mod sticky;
 pub mod sync;
 pub mod tags;
+pub mod tasks;
 pub mod telemetry;
 pub mod templates;
 pub mod updater;
