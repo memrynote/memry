@@ -2002,23 +2002,50 @@ describe('FullSyncRunner', () => {
       expect(mocks.beginBootstrap).not.toHaveBeenCalled()
     })
 
-    it('#then a bootstrap whose pull never delivers stops resuming after the server window', async () => {
-      const h = createHarness()
+    /** A pull that lands pages but never reaches the head of the feed. */
+    function interruptedPull(h: Harness): void {
       h.actions.pull.mockImplementation(async (): Promise<SyncRunOutcome> => {
         h.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, '42')
         return { status: 'incomplete' }
       })
-      await h.runner.run()
-      vi.advanceTimersByTime(60 * 60 * 1000)
-      await h.runner.run()
-      expect(mocks.beginBootstrap).toHaveBeenCalledTimes(2)
+    }
 
-      vi.advanceTimersByTime(24 * 60 * 60 * 1000)
+    it('#then a key without a timestamp from an earlier build still resumes a bootstrap that started on this build', async () => {
+      const h = createHarness()
+      h.setStateValue(SYNC_STATE_KEYS.LAST_CURSOR, '42')
+      h.setStateValue('bootstrapPending', '1')
+
+      await h.runner.run()
+
+      expect(mocks.beginBootstrap).toHaveBeenCalledWith('first_full_sync')
+    })
+
+    it('#then a clock corrected forward after the first launch does not end the resume window early', async () => {
+      const now = Date.now()
+      const h = createHarness()
+      interruptedPull(h)
+      vi.setSystemTime(now - 48 * 60 * 60 * 1000)
+      await h.runner.run()
+
+      vi.setSystemTime(now + 60_000)
       mocks.beginBootstrap.mockClear()
       await h.runner.run()
 
-      expect(mocks.beginBootstrap).not.toHaveBeenCalled()
+      expect(mocks.beginBootstrap).toHaveBeenCalledWith('first_full_sync')
+    })
+
+    it('#then a server that refuses the bootstrap (409) ends the resume', async () => {
+      const h = createHarness()
+      interruptedPull(h)
+      await h.runner.run()
+
+      mocks.openBootstrapSession.mockResolvedValueOnce('ineligible')
+      await h.runner.run()
       expect(h.getStateValue('bootstrapPending')).toBeUndefined()
+
+      mocks.beginBootstrap.mockClear()
+      await h.runner.run()
+      expect(mocks.beginBootstrap).not.toHaveBeenCalled()
     })
 
     it('#then full text is marked only once the paced queue fully drains', async () => {

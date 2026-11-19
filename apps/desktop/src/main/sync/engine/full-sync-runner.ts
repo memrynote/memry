@@ -35,20 +35,14 @@ const log = createLogger('SyncEngine')
 const CURSOR_SKIP_REPAIR_DONE = 'done'
 
 /**
- * `sync_state` key (#5234): the epoch ms of the first full sync of a device
- * with no cursor, kept until a pull delivers to the head of the feed. A
- * relaunch within BOOTSTRAP_PENDING_TTL_MS resumes the bootstrap from the
- * persisted cursor, elevated and with packs, instead of running as a
- * steady-state device. Older builds ignore the row.
+ * `sync_state` key (#5234): `'1'` from the first full sync of a device with no
+ * cursor until a pull delivers to the head of the feed. A relaunch that finds
+ * it resumes the bootstrap from the persisted cursor, elevated and with packs,
+ * instead of running as a steady-state device. The server owns the resume
+ * window (BOOTSTRAP_RESUME_WINDOW_SECONDS, from device registration): its 409
+ * on POST /sync/bootstrap deletes the key. Older builds ignore the row.
  */
 const BOOTSTRAP_PENDING_KEY = 'bootstrapPending'
-
-/**
- * The server's BOOTSTRAP_RESUME_WINDOW_SECONDS, counted from device
- * registration, which precedes the first sync: past it POST /sync/bootstrap
- * answers 409, so a pull that never delivers stops resuming as a bootstrap.
- */
-const BOOTSTRAP_PENDING_TTL_MS = 24 * 60 * 60 * 1000
 
 /**
  * How long the paced CRDT drain must stay CONTINUOUSLY blocked before the
@@ -382,29 +376,14 @@ export class FullSyncRunner {
     // beginBootstrap no-ops while a window is already open (the vault-download
     // seam fires earlier and keeps the truer start time), and telemetry must
     // never break sync.
-    const noCursor = this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR) == null
-    let pendingSince = Number(this.stateManager.getStateValue(BOOTSTRAP_PENDING_KEY) ?? NaN)
-    if (noCursor) {
+    if (this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR) == null) {
       // Only this build's pulls ever wrote a cursor here, and they skip no
       // range: there is nothing for the #2382 repair to heal, now or after an
       // interruption.
       this.stateManager.setStateValue(SYNC_STATE_KEYS.CURSOR_SKIP_REPAIR, CURSOR_SKIP_REPAIR_DONE)
-      if (Number.isNaN(pendingSince)) {
-        pendingSince = Date.now()
-        this.stateManager.setStateValue(BOOTSTRAP_PENDING_KEY, String(pendingSince))
-      }
+      this.stateManager.setStateValue(BOOTSTRAP_PENDING_KEY, '1')
     }
-    const resumable = Date.now() - pendingSince < BOOTSTRAP_PENDING_TTL_MS
-    if (!Number.isNaN(pendingSince) && !resumable && !noCursor) {
-      log.info(
-        'fullSync: interrupted bootstrap outlived the resume window, syncing as steady state',
-        {
-          pendingSince
-        }
-      )
-      this.stateManager.deleteStateValue(BOOTSTRAP_PENDING_KEY)
-    }
-    const isFreshDevice = noCursor || resumable
+    const isFreshDevice = this.stateManager.getStateValue(BOOTSTRAP_PENDING_KEY) != null
     // Before the first await: a pull the socket's `connected` scheduled while
     // the session opened took the lock, read the whole feed outside this run,
     // and left the repair unrecorded (#5234).
@@ -419,7 +398,11 @@ export class FullSyncRunner {
         // Elevated limits + presigned sets for this pull (#1837). Any failure
         // — old server, unconfigured, capped, offline — silently falls back to
         // steady-state pacing; nothing downstream may depend on it succeeding.
-        await openBootstrapSession(this.ctx.deps.getAccessToken)
+        const session = await openBootstrapSession(this.ctx.deps.getAccessToken)
+        if (session === 'ineligible') {
+          log.info('fullSync: server ended the bootstrap resume window, syncing as steady state')
+          this.stateManager.deleteStateValue(BOOTSTRAP_PENDING_KEY)
+        }
         this.bootstrapSessionOpen = true
       }
     } catch {
