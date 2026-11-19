@@ -956,6 +956,8 @@
     "componentsVaultSwitcher": {
       "noVaultsYet": "Ingen hvelv ennå",
       "openVault": "Åpne hvelv",
+      "createVault": "Opprett hvelv",
+      "openFolderAsVault": "Åpne mappe som hvelv",
       "settings": "Innstillinger",
       "remove": "Fjern \"",
       "removeVaultTitle": "Vil du fjerne «{name}» fra listen?",

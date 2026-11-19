@@ -136,6 +136,7 @@ impl PinFailureSink for NoPins {
     }
 }
 
+#[allow(dead_code)] // Not every binary goes online.
 pub struct Online;
 
 impl Reachability for Online {

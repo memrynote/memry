@@ -18,7 +18,8 @@ import type {
 import type {
   CalendarGoogleSettings,
   CalendarProviderSettings,
-  GlobalCaptureResult
+  GlobalCaptureResult,
+  StickyShortcutResult
 } from '@memry/contracts/settings-schemas'
 import type { CalloutTypeDefinition } from '@memry/editor-schema/callout-types'
 import {
@@ -215,6 +216,9 @@ export const settingsService = {
     commands.shortcutRegisterGlobalCapture(),
   setGlobalCapture: (binding: ShortcutBindingDTO | null): Promise<GlobalCaptureResult> =>
     commands.shortcutSetGlobalCapture(binding),
+  registerStickyShortcut: (): Promise<StickyShortcutResult> => commands.shortcutRegisterSticky(),
+  setStickyShortcut: (binding: ShortcutBindingDTO | null): Promise<StickyShortcutResult> =>
+    commands.shortcutSetSticky(binding),
   getAISettings: (): Promise<AISettings> => commands.settingsGetAi(),
   setAISettings: async (patch: Partial<AISettings>): Promise<Result> => {
     try {

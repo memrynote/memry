@@ -174,7 +174,10 @@ impl VaultSync {
             &attachment_id,
             filename,
             bytes.len() as u64,
-            &chunks,
+            &chunks
+                .iter()
+                .map(|chunk| chunk.reference.clone())
+                .collect::<Vec<_>>(),
         )
         .await
         .map_err(attachment_error)?;

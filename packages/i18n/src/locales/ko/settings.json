@@ -2238,6 +2238,10 @@
         "prevVault": {
           "label": "이전 볼트",
           "description": "사이드바의 이전 볼트로 이동"
+        },
+        "todayJournal": {
+          "label": "오늘의 저널",
+          "description": "오늘 항목으로 저널을 엽니다"
         }
       },
       "tabs": {
