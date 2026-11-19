@@ -11,10 +11,11 @@
 //! | an Electron peer's row round-trips its arrays          | §6.7.2            |
 //! | a malformed remote array flags the record corrupt      | §6.7.2 shape      |
 //! | a markdown note's link survives a concurrent retitle   | §6.7.2 markdown   |
+//! | a markdown note's link survives a dominating remote    | §6.7.2 markdown   |
 //!
 //! The first and third fail with the concurrent branch keeping the local
 //! arrays (the rule before Kaan's decision of 18 Nov), the second with the
-//! wholesale branch storing the remote verbatim, the fifth with the remote's
+//! wholesale branch storing the remote verbatim, the last two with the remote's
 //! `links` replacing the local markdown-note entries.
 
 use crate::desktop_relay::{Device, NOW, Relay, failed};
@@ -373,6 +374,34 @@ fn seed_markdown_note(device: &Device) {
         .expect("seed the note");
 }
 
+fn link_note(device: &Device) {
+    let who = device.id;
+    device
+        .db()
+        .call_blocking(move |conn| {
+            projects::link(conn, PROJECT, LinkItemType::Note, "note-1", who, NOW + 1)
+                .map(drop)
+                .map_err(failed)
+        })
+        .expect("link the note");
+}
+
+/// The project hub's item ids, and the note's project chips.
+fn hub_and_chips(device: &Device) -> (Vec<String>, Vec<String>) {
+    device
+        .db()
+        .call_blocking(|conn| {
+            let hub = projects::links(conn, PROJECT)
+                .map_err(failed)?
+                .into_iter()
+                .map(|link| link.item_id)
+                .collect();
+            let chips = note_tasks::note_project_ids(conn, "note-1").map_err(failed)?;
+            Ok((hub, chips))
+        })
+        .expect("the hub and the chip")
+}
+
 /// REVIEW-5156 finding 1. A markdown note's membership is its `project`
 /// property: `reconcileLinks` (`:116-137`) deletes only table-owned rows, so
 /// Electron keeps the note in the hub whatever `links` a concurrent remote
@@ -385,13 +414,7 @@ async fn a_markdown_notes_link_survives_a_concurrent_retitle_on_both_devices() {
         let (a, b, relay) = synced_pair().await;
         seed_markdown_note(&a);
         seed_markdown_note(&b);
-        a.db()
-            .call_blocking(|conn| {
-                projects::link(conn, PROJECT, LinkItemType::Note, "note-1", "a", NOW + 1)
-                    .map(drop)
-                    .map_err(failed)
-            })
-            .expect("link the note");
+        link_note(&a);
         retitle(&b, "From b");
 
         let (pusher, merger) = if linker_pushes_first {
@@ -408,20 +431,39 @@ async fn a_markdown_notes_link_survives_a_concurrent_retitle_on_both_devices() {
             let case = format!("{who}, linker pushes first: {linker_pushes_first}");
             let stored = device.stored("project", PROJECT);
             assert_eq!(field(&stored, "name"), json!("From b"), "{case}");
-            let (hub, chips) = device
-                .db()
-                .call_blocking(|conn| {
-                    let hub: Vec<String> = projects::links(conn, PROJECT)
-                        .map_err(failed)?
-                        .into_iter()
-                        .map(|link| link.item_id)
-                        .collect();
-                    let chips = note_tasks::note_project_ids(conn, "note-1").map_err(failed)?;
-                    Ok((hub, chips))
-                })
-                .expect("the hub and the chip");
+            let (hub, chips) = hub_and_chips(device);
             assert_eq!(hub, ["note-1"], "{case}");
             assert_eq!(chips, [PROJECT], "{case}");
         }
     }
+}
+
+/// The wholesale half of finding 1: a peer that never derived the note's link
+/// (an Electron device that has not pulled the note yet) pushes a dominating
+/// row with `links: []`. The local entry stays while the note names the
+/// project, as Electron's derived row stays.
+#[tokio::test]
+async fn a_markdown_notes_link_survives_a_dominating_remote_without_it() {
+    let (a, relay) = (Device::bare("a"), Relay::default());
+    create(&a);
+    seed_markdown_note(&a);
+    link_note(&a);
+    relay.sync(&a).await;
+
+    relay.put(
+        "project",
+        PROJECT,
+        &json!({
+            "id": PROJECT, "name": "Launch", "color": "#6366f1", "position": 0,
+            "isInbox": false, "clock": {"a": 2, "peer": 1},
+            "fieldClocks": {"name": {"a": 1}}, "links": [],
+        })
+        .to_string(),
+    );
+    relay.pull(&a).await;
+
+    assert_eq!(
+        hub_and_chips(&a),
+        (vec!["note-1".to_owned()], vec![PROJECT.to_owned()])
+    );
 }
