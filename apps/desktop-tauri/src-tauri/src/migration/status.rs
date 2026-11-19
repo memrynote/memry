@@ -132,6 +132,8 @@ fn failure_body(check: &str) -> &'static str {
         "electron-schema" => "system:migration.failed.electronSchema",
         "shared-store" => "system:migration.failed.sharedStore",
         "vault-unreachable" => "system:migration.failed.vaultUnreachable",
+        // Data a later build imports: keep using the previous app, update, then Try again.
+        "not-ready" => "system:migration.failed.notReady",
         check if check.starts_with("secrets:") => "system:migration.failed.secrets",
         _ => "system:migration.failed.verification",
     }
@@ -227,6 +229,7 @@ mod tests {
             "shared-store",
             "vault-unreachable",
             "secrets:read",
+            "not-ready",
             "check-3",
         ];
         for locale in memry_desktop::locale::SUPPORTED {
@@ -235,6 +238,24 @@ mod tests {
                 assert_ne!(i18n::t(locale, key, &Args::new()), key, "{locale} {check}");
             }
         }
+    }
+
+    /// #5140: data a later build imports keeps the user on the previous app, with Try again
+    /// and no way to continue without the import.
+    #[test]
+    fn not_ready_tells_the_user_to_keep_the_previous_app_and_update() {
+        let failure = MigrationFailure {
+            check: "not-ready".to_owned(),
+            details: "cannot move this vault's tasks yet".to_owned(),
+        };
+        let status = failed("en", &failure);
+        assert_eq!(
+            status.body,
+            "This version of MemryNote can't move this vault's data yet. Your data is still in \
+             the previous MemryNote app. Keep using it, and update MemryNote to try again."
+        );
+        assert_eq!(status.state, MigrationState::Failed);
+        assert_eq!(page_slots("en")[0], ("retry", "Try again".to_owned()));
     }
 
     #[test]

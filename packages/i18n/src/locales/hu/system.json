@@ -111,7 +111,8 @@
       "sharedStore": "Néhány széf ugyanazon a szinkronizálási előzményen osztozik, ezért nem helyezhetők át. Ezekhez továbbra is az előző MemryNote-alkalmazást használd.",
       "vaultUnreachable": "Egy széf most nem olvasható. Ellenőrizd, hogy a meghajtója csatlakoztatva van-e, majd próbáld újra.",
       "secrets": "Néhány mentett bejelentkezési adatot nem sikerült beolvasni. Próbáld újra. Ha továbbra is előfordul, ellenőrizd, hogy a kulcskarika fel van-e oldva.",
-      "verification": "Az áthelyezett adatok egyik ellenőrzése nem sikerült, ezért a MemryNote mindent úgy hagyott, ahogy volt."
+      "verification": "Az áthelyezett adatok egyik ellenőrzése nem sikerült, ezért a MemryNote mindent úgy hagyott, ahogy volt.",
+      "notReady": "A MemryNote ezen verziója még nem tudja áthelyezni ennek a széfnek az adatait. Az adataid továbbra is az előző MemryNote-alkalmazásban vannak. Használd tovább azt, és frissítsd a MemryNote-ot, hogy újra próbálkozhass."
     },
     "done": {
       "title": "Az adataid készen állnak",

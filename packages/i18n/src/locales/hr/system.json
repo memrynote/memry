@@ -111,7 +111,8 @@
       "sharedStore": "Neki trezori dijele istu povijest sinkronizacije pa se ne mogu premjestiti. Za njih i dalje koristite prethodnu aplikaciju MemryNote.",
       "vaultUnreachable": "Trezor se trenutačno ne može pročitati. Provjerite je li njegov disk povezan pa pokušajte ponovno.",
       "secrets": "Neki spremljeni podaci za prijavu nisu se mogli pročitati. Pokušajte ponovno. Ako se to nastavi, provjerite je li privjesak ključeva otključan.",
-      "verification": "Provjera premještenih podataka nije prošla pa je MemryNote sve ostavio kako je bilo."
+      "verification": "Provjera premještenih podataka nije prošla pa je MemryNote sve ostavio kako je bilo.",
+      "notReady": "Ova verzija aplikacije MemryNote još ne može premjestiti podatke ovog trezora. Vaši su podaci i dalje u prethodnoj aplikaciji MemryNote. Nastavite je koristiti i ažurirajte MemryNote da biste pokušali ponovno."
     },
     "done": {
       "title": "Vaši podaci su spremni",

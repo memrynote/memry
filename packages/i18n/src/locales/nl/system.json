@@ -111,7 +111,8 @@
       "sharedStore": "Sommige kluizen delen één synchronisatiegeschiedenis en kunnen daarom niet worden verplaatst. Blijf de vorige MemryNote-app voor deze kluizen gebruiken.",
       "vaultUnreachable": "Een kluis kan nu niet worden gelezen. Controleer of de schijf ervan is aangesloten en probeer het opnieuw.",
       "secrets": "Sommige opgeslagen inloggegevens konden niet worden gelezen. Probeer het opnieuw. Blijft het gebeuren, controleer dan of je sleutelhanger ontgrendeld is.",
-      "verification": "Een controle van je verplaatste gegevens is niet geslaagd, dus MemryNote heeft alles gelaten zoals het was."
+      "verification": "Een controle van je verplaatste gegevens is niet geslaagd, dus MemryNote heeft alles gelaten zoals het was.",
+      "notReady": "Deze versie van MemryNote kan de gegevens van deze kluis nog niet verplaatsen. Je gegevens staan nog in de vorige MemryNote-app. Blijf die gebruiken en werk MemryNote bij om het opnieuw te proberen."
     },
     "done": {
       "title": "Je gegevens zijn klaar",

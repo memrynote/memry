@@ -111,7 +111,8 @@
       "sharedStore": "Algunas bóvedas comparten un mismo historial de sincronización, así que no se pueden mover. Sigue usando la app anterior de MemryNote para ellas.",
       "vaultUnreachable": "Ahora no se puede leer una bóveda. Comprueba que su unidad esté conectada y vuelve a intentarlo.",
       "secrets": "No se pudieron leer algunos datos de inicio de sesión guardados. Vuelve a intentarlo. Si sigue pasando, comprueba que tu llavero esté desbloqueado.",
-      "verification": "Una comprobación de tus datos movidos no se superó, así que MemryNote lo dejó todo como estaba."
+      "verification": "Una comprobación de tus datos movidos no se superó, así que MemryNote lo dejó todo como estaba.",
+      "notReady": "Esta versión de MemryNote todavía no puede mover los datos de esta bóveda. Tus datos siguen en la app anterior de MemryNote. Sigue usándola y actualiza MemryNote para volver a intentarlo."
     },
     "done": {
       "title": "Tus datos están listos",

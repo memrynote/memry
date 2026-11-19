@@ -111,7 +111,8 @@
       "sharedStore": "Niektóre sejfy mają wspólną historię synchronizacji, więc nie można ich przenieść. Używaj dla nich nadal poprzedniej aplikacji MemryNote.",
       "vaultUnreachable": "Nie można teraz odczytać sejfu. Sprawdź, czy jego dysk jest podłączony, a potem spróbuj ponownie.",
       "secrets": "Nie udało się odczytać niektórych zapisanych danych logowania. Spróbuj ponownie. Jeśli to się powtarza, sprawdź, czy pęk kluczy jest odblokowany.",
-      "verification": "Sprawdzenie przeniesionych danych nie powiodło się, więc MemryNote zostawił wszystko bez zmian."
+      "verification": "Sprawdzenie przeniesionych danych nie powiodło się, więc MemryNote zostawił wszystko bez zmian.",
+      "notReady": "Ta wersja MemryNote nie może jeszcze przenieść danych tego sejfu. Twoje dane są nadal w poprzedniej aplikacji MemryNote. Używaj jej dalej i zaktualizuj MemryNote, aby spróbować ponownie."
     },
     "done": {
       "title": "Dane są gotowe",

@@ -111,7 +111,8 @@
       "sharedStore": "Alcuni vault condividono la stessa cronologia di sincronizzazione, quindi non possono essere trasferiti. Continua a usare la precedente app MemryNote per questi.",
       "vaultUnreachable": "Al momento non è possibile leggere un vault. Controlla che la sua unità sia collegata, poi riprova.",
       "secrets": "Non è stato possibile leggere alcuni dati di accesso salvati. Riprova. Se continua a succedere, controlla che il portachiavi sia sbloccato.",
-      "verification": "Un controllo dei dati trasferiti non è stato superato, quindi MemryNote ha lasciato tutto com'era."
+      "verification": "Un controllo dei dati trasferiti non è stato superato, quindi MemryNote ha lasciato tutto com'era.",
+      "notReady": "Questa versione di MemryNote non può ancora trasferire i dati di questo vault. I tuoi dati sono ancora nella precedente app MemryNote. Continua a usarla e aggiorna MemryNote per riprovare."
     },
     "done": {
       "title": "I tuoi dati sono pronti",

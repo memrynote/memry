@@ -111,7 +111,8 @@
       "sharedStore": "Vissa valv delar samma synkhistorik och kan därför inte flyttas. Fortsätt använda den tidigare MemryNote-appen för dem.",
       "vaultUnreachable": "Ett valv kan inte läsas just nu. Kontrollera att dess enhet är ansluten och försök igen.",
       "secrets": "Vissa sparade inloggningsuppgifter kunde inte läsas. Försök igen. Om det fortsätter, kontrollera att nyckelringen är upplåst.",
-      "verification": "En kontroll av dina flyttade data godkändes inte, så MemryNote lät allt vara som det var."
+      "verification": "En kontroll av dina flyttade data godkändes inte, så MemryNote lät allt vara som det var.",
+      "notReady": "Den här versionen av MemryNote kan ännu inte flytta det här valvets data. Dina data finns kvar i den tidigare MemryNote-appen. Fortsätt använda den och uppdatera MemryNote för att försöka igen."
     },
     "done": {
       "title": "Dina data är klara",

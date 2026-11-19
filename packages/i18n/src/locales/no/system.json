@@ -111,7 +111,8 @@
       "sharedStore": "Noen hvelv deler én synkroniseringshistorikk og kan derfor ikke flyttes. Fortsett å bruke den forrige MemryNote-appen for dem.",
       "vaultUnreachable": "Et hvelv kan ikke leses akkurat nå. Kontroller at stasjonen er koblet til, og prøv igjen.",
       "secrets": "Noen lagrede påloggingsopplysninger kunne ikke leses. Prøv igjen. Hvis det fortsetter, kontroller at nøkkelringen er låst opp.",
-      "verification": "En kontroll av de flyttede dataene dine besto ikke, så MemryNote lot alt være som det var."
+      "verification": "En kontroll av de flyttede dataene dine besto ikke, så MemryNote lot alt være som det var.",
+      "notReady": "Denne versjonen av MemryNote kan ennå ikke flytte dataene i dette hvelvet. Dataene dine er fortsatt i den forrige MemryNote-appen. Fortsett å bruke den, og oppdater MemryNote for å prøve igjen."
     },
     "done": {
       "title": "Dataene dine er klare",

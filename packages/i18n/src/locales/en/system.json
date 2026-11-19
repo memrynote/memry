@@ -111,7 +111,8 @@
       "sharedStore": "Some vaults share one sync history, so they can't be moved. Keep using the previous MemryNote app for them.",
       "vaultUnreachable": "A vault can't be read right now. Check that its drive is connected, then try again.",
       "secrets": "Some saved sign-in details couldn't be read. Try again. If it keeps happening, check that your keychain is unlocked.",
-      "verification": "A check of your moved data didn't pass, so MemryNote kept everything as it was."
+      "verification": "A check of your moved data didn't pass, so MemryNote kept everything as it was.",
+      "notReady": "This version of MemryNote can't move this vault's data yet. Your data is still in the previous MemryNote app. Keep using it, and update MemryNote to try again."
     },
     "done": {
       "title": "Your data is ready",

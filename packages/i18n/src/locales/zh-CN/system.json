@@ -111,7 +111,8 @@
       "sharedStore": "部分仓库共用同一份同步记录，因此无法迁移。请继续使用之前的 MemryNote 应用打开它们。",
       "vaultUnreachable": "暂时无法读取某个仓库。请确认其所在磁盘已连接，然后重试。",
       "secrets": "无法读取部分已保存的登录信息。请重试。如果问题持续，请确认钥匙串已解锁。",
-      "verification": "迁移后的数据未通过检查，因此 MemryNote 保持了原样。"
+      "verification": "迁移后的数据未通过检查，因此 MemryNote 保持了原样。",
+      "notReady": "此版本的 MemryNote 暂时无法迁移该仓库的数据。你的数据仍在之前的 MemryNote 应用中。请继续使用它，并更新 MemryNote 后重试。"
     },
     "done": {
       "title": "你的数据已就绪",

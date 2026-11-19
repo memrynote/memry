@@ -111,7 +111,8 @@
       "sharedStore": "Bazı kasalar aynı eşitleme geçmişini paylaştığı için taşınamıyor. Onlar için önceki MemryNote uygulamasını kullanmaya devam edin.",
       "vaultUnreachable": "Bir kasa şu anda okunamıyor. Sürücüsünün bağlı olduğunu kontrol edin, sonra yeniden deneyin.",
       "secrets": "Kayıtlı bazı oturum açma bilgileri okunamadı. Yeniden deneyin. Bu sürerse anahtar zincirinizin kilidinin açık olduğunu kontrol edin.",
-      "verification": "Taşınan verilerinizin bir kontrolü geçmedi, bu yüzden MemryNote her şeyi olduğu gibi bıraktı."
+      "verification": "Taşınan verilerinizin bir kontrolü geçmedi, bu yüzden MemryNote her şeyi olduğu gibi bıraktı.",
+      "notReady": "MemryNote'un bu sürümü bu kasanın verilerini henüz taşıyamıyor. Verileriniz hâlâ önceki MemryNote uygulamasında. Onu kullanmaya devam edin ve yeniden denemek için MemryNote'u güncelleyin."
     },
     "done": {
       "title": "Verileriniz hazır",

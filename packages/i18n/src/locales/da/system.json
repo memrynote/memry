@@ -111,7 +111,8 @@
       "sharedStore": "Nogle bokse deler én synkroniseringshistorik og kan derfor ikke flyttes. Bliv ved med at bruge den tidligere MemryNote-app til dem.",
       "vaultUnreachable": "En boks kan ikke læses lige nu. Kontrollér, at dens drev er tilsluttet, og prøv igen.",
       "secrets": "Nogle gemte loginoplysninger kunne ikke læses. Prøv igen. Hvis det bliver ved, så kontrollér, at din nøglering er låst op.",
-      "verification": "En kontrol af dine flyttede data bestod ikke, så MemryNote lod alt være, som det var."
+      "verification": "En kontrol af dine flyttede data bestod ikke, så MemryNote lod alt være, som det var.",
+      "notReady": "Denne version af MemryNote kan endnu ikke flytte denne boks' data. Dine data er stadig i den tidligere MemryNote-app. Bliv ved med at bruge den, og opdater MemryNote for at prøve igen."
     },
     "done": {
       "title": "Dine data er klar",

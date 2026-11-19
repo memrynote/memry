@@ -111,7 +111,8 @@
       "sharedStore": "Joillakin holveilla on yhteinen synkronointihistoria, joten niitä ei voi siirtää. Käytä niille edelleen aiempaa MemryNote-sovellusta.",
       "vaultUnreachable": "Holvia ei voi lukea juuri nyt. Tarkista, että sen asema on liitetty, ja yritä uudelleen.",
       "secrets": "Joitakin tallennettuja kirjautumistietoja ei voitu lukea. Yritä uudelleen. Jos tämä toistuu, tarkista, että avainnippusi on avattu.",
-      "verification": "Siirrettyjen tietojesi tarkistus ei mennyt läpi, joten MemryNote jätti kaiken ennalleen."
+      "verification": "Siirrettyjen tietojesi tarkistus ei mennyt läpi, joten MemryNote jätti kaiken ennalleen.",
+      "notReady": "Tämä MemryNote-versio ei vielä pysty siirtämään tämän holvin tietoja. Tietosi ovat yhä aiemmassa MemryNote-sovelluksessa. Käytä sitä edelleen ja päivitä MemryNote yrittääksesi uudelleen."
     },
     "done": {
       "title": "Tietosi ovat valmiina",

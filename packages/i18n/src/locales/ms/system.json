@@ -111,7 +111,8 @@
       "sharedStore": "Sesetengah bilik kebal berkongsi satu sejarah penyegerakan, jadi ia tidak boleh dipindahkan. Teruskan menggunakan apl MemryNote sebelumnya untuknya.",
       "vaultUnreachable": "Sebuah bilik kebal tidak dapat dibaca sekarang. Pastikan pemacunya disambungkan, kemudian cuba lagi.",
       "secrets": "Sesetengah butiran log masuk yang disimpan tidak dapat dibaca. Cuba lagi. Jika ia berterusan, pastikan rantai kunci anda tidak berkunci.",
-      "verification": "Semakan data yang dipindahkan tidak lulus, jadi MemryNote membiarkan semuanya seperti asal."
+      "verification": "Semakan data yang dipindahkan tidak lulus, jadi MemryNote membiarkan semuanya seperti asal.",
+      "notReady": "Versi MemryNote ini belum boleh memindahkan data bilik kebal ini. Data anda masih dalam apl MemryNote sebelumnya. Teruskan menggunakannya, dan kemas kini MemryNote untuk cuba lagi."
     },
     "done": {
       "title": "Data anda sudah sedia",

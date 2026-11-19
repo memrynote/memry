@@ -111,7 +111,8 @@
       "sharedStore": "Certains coffres partagent un même historique de synchronisation et ne peuvent donc pas être transférés. Continuez à utiliser l'ancienne app MemryNote pour eux.",
       "vaultUnreachable": "Un coffre ne peut pas être lu pour le moment. Vérifiez que son disque est connecté, puis réessayez.",
       "secrets": "Certaines informations de connexion enregistrées n'ont pas pu être lues. Réessayez. Si cela continue, vérifiez que votre trousseau est déverrouillé.",
-      "verification": "Une vérification de vos données transférées a échoué, MemryNote a donc tout laissé tel quel."
+      "verification": "Une vérification de vos données transférées a échoué, MemryNote a donc tout laissé tel quel.",
+      "notReady": "Cette version de MemryNote ne peut pas encore transférer les données de ce coffre. Vos données sont toujours dans l'ancienne app MemryNote. Continuez à l'utiliser et mettez MemryNote à jour pour réessayer."
     },
     "done": {
       "title": "Vos données sont prêtes",

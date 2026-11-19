@@ -111,7 +111,8 @@
       "sharedStore": "Některé trezory sdílejí jednu historii synchronizace, a proto je nelze přesunout. Pro ně dál používejte předchozí aplikaci MemryNote.",
       "vaultUnreachable": "Trezor teď nelze přečíst. Zkontrolujte, že je jeho disk připojený, a zkuste to znovu.",
       "secrets": "Některé uložené přihlašovací údaje nešlo přečíst. Zkuste to znovu. Pokud se to opakuje, zkontrolujte, že je klíčenka odemčená.",
-      "verification": "Kontrola přesunutých dat neprošla, a proto MemryNote nechal vše tak, jak bylo."
+      "verification": "Kontrola přesunutých dat neprošla, a proto MemryNote nechal vše tak, jak bylo.",
+      "notReady": "Tato verze MemryNote zatím nedokáže přesunout data tohoto trezoru. Vaše data jsou stále v předchozí aplikaci MemryNote. Dál ji používejte a aktualizujte MemryNote, abyste to mohli zkusit znovu."
     },
     "done": {
       "title": "Vaše data jsou připravená",

@@ -10,9 +10,10 @@ use std::time::{Duration, Instant};
 
 use memry_desktop::electron_import::progress::ProgressSink;
 use memry_desktop::paths::AppPaths;
+use memry_tauri::binary;
 use memry_tauri::migration::status::{MigrationState, MigrationStatus};
 use memry_tauri::migration::{Backend, Migration, MigrationFailure};
-use memry_tauri::registry::{PREBOOT_COMMANDS, window_gate};
+use memry_tauri::registry::{PREBOOT_COMMANDS, window_allows, window_gate};
 use serde_json::Value;
 use tauri::ipc::{CallbackFn, InvokeBody, InvokeResponseBody};
 use tauri::test::{
@@ -182,4 +183,54 @@ fn the_startup_error_window_reaches_no_command() {
         assert!(refused(&fixture.startup_error, command), "{command}");
     }
     assert_eq!(fixture.migration.status().state, MigrationState::Failed);
+}
+
+/// The boot waits in the migration stage, before any vault opens and before the main window
+/// exists, so no sign-in, token refresh or vault open may run before the import marker does
+/// (#5140). Every command the app registers is refused to the preboot window but the three of
+/// its view.
+#[test]
+fn the_preboot_window_reaches_no_sign_in_token_or_vault_command() {
+    let registry = include_str!("../src/registry.rs");
+    let mut commands: Vec<&str> = registry
+        .lines()
+        .filter_map(|line| line.trim().strip_prefix("crate::commands::"))
+        .filter_map(|path| {
+            path.split("::<")
+                .next()?
+                .trim_end_matches(',')
+                .rsplit("::")
+                .next()
+        })
+        .chain(binary::COMMANDS.iter().copied())
+        .collect();
+    commands.sort_unstable();
+    commands.dedup();
+    for command in [
+        "auth_refresh_token",
+        "auth_request_otp",
+        "auth_verify_otp",
+        "auth_init_oauth",
+        "sync_link_via_recovery",
+        "vault_select",
+        "vault_switch",
+        "vault_create",
+    ] {
+        assert!(commands.contains(&command), "{command} is registered");
+    }
+    assert!(commands.len() > 300, "{} commands read", commands.len());
+
+    let reachable: Vec<&str> = commands
+        .iter()
+        .copied()
+        .filter(|command| window_allows("preboot", command))
+        .collect();
+    let mut expected = PREBOOT_COMMANDS.to_vec();
+    expected.sort_unstable();
+    assert_eq!(reachable, expected);
+    assert!(
+        commands
+            .iter()
+            .all(|command| !window_allows("startup-error", command))
+    );
 }

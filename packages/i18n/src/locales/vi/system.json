@@ -111,7 +111,8 @@
       "sharedStore": "Một số kho dùng chung một lịch sử đồng bộ nên không thể chuyển. Hãy tiếp tục dùng ứng dụng MemryNote trước cho các kho đó.",
       "vaultUnreachable": "Hiện không đọc được một kho. Hãy kiểm tra ổ đĩa của nó đã được kết nối rồi thử lại.",
       "secrets": "Không đọc được một số thông tin đăng nhập đã lưu. Hãy thử lại. Nếu vẫn xảy ra, hãy kiểm tra chuỗi khóa đã được mở khóa.",
-      "verification": "Một bước kiểm tra dữ liệu đã chuyển không đạt, nên MemryNote giữ mọi thứ như cũ."
+      "verification": "Một bước kiểm tra dữ liệu đã chuyển không đạt, nên MemryNote giữ mọi thứ như cũ.",
+      "notReady": "Phiên bản MemryNote này chưa thể chuyển dữ liệu của kho này. Dữ liệu của bạn vẫn nằm trong ứng dụng MemryNote trước. Hãy tiếp tục dùng ứng dụng đó, và cập nhật MemryNote để thử lại."
     },
     "done": {
       "title": "Dữ liệu của bạn đã sẵn sàng",

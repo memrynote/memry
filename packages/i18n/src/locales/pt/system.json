@@ -111,7 +111,8 @@
       "sharedStore": "Alguns cofres compartilham o mesmo histórico de sincronização, então não podem ser movidos. Continue usando o app anterior do MemryNote para eles.",
       "vaultUnreachable": "Não é possível ler um cofre agora. Verifique se a unidade dele está conectada e tente de novo.",
       "secrets": "Não foi possível ler alguns dados de login salvos. Tente de novo. Se continuar acontecendo, verifique se o seu chaveiro está desbloqueado.",
-      "verification": "Uma verificação dos dados movidos não passou, então o MemryNote deixou tudo como estava."
+      "verification": "Uma verificação dos dados movidos não passou, então o MemryNote deixou tudo como estava.",
+      "notReady": "Esta versão do MemryNote ainda não consegue mover os dados deste cofre. Seus dados continuam no app anterior do MemryNote. Continue usando-o e atualize o MemryNote para tentar de novo."
     },
     "done": {
       "title": "Seus dados estão prontos",

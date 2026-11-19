@@ -111,7 +111,8 @@
       "sharedStore": "Beberapa brankas berbagi satu riwayat sinkronisasi sehingga tidak dapat dipindahkan. Tetap gunakan aplikasi MemryNote sebelumnya untuk brankas itu.",
       "vaultUnreachable": "Sebuah brankas tidak dapat dibaca saat ini. Pastikan drive-nya terhubung, lalu coba lagi.",
       "secrets": "Sebagian detail masuk yang tersimpan tidak dapat dibaca. Coba lagi. Jika terus terjadi, pastikan keychain Anda tidak terkunci.",
-      "verification": "Pemeriksaan data yang dipindahkan tidak lolos, jadi MemryNote membiarkan semuanya seperti semula."
+      "verification": "Pemeriksaan data yang dipindahkan tidak lolos, jadi MemryNote membiarkan semuanya seperti semula.",
+      "notReady": "Versi MemryNote ini belum dapat memindahkan data brankas ini. Data Anda masih ada di aplikasi MemryNote sebelumnya. Tetap gunakan aplikasi itu, dan perbarui MemryNote untuk mencoba lagi."
     },
     "done": {
       "title": "Data Anda sudah siap",

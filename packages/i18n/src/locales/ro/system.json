@@ -111,7 +111,8 @@
       "sharedStore": "Unele seifuri au același istoric de sincronizare, așa că nu pot fi mutate. Folosește în continuare aplicația MemryNote anterioară pentru ele.",
       "vaultUnreachable": "Un seif nu poate fi citit acum. Verifică dacă unitatea lui este conectată, apoi încearcă din nou.",
       "secrets": "Unele date de conectare salvate nu au putut fi citite. Încearcă din nou. Dacă se repetă, verifică dacă brelocul de chei este deblocat.",
-      "verification": "O verificare a datelor mutate nu a trecut, așa că MemryNote a lăsat totul cum era."
+      "verification": "O verificare a datelor mutate nu a trecut, așa că MemryNote a lăsat totul cum era.",
+      "notReady": "Această versiune MemryNote nu poate încă muta datele acestui seif. Datele tale sunt în continuare în aplicația MemryNote anterioară. Folosește-o în continuare și actualizează MemryNote pentru a încerca din nou."
     },
     "done": {
       "title": "Datele tale sunt gata",

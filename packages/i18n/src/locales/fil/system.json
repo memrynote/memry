@@ -111,7 +111,8 @@
       "sharedStore": "May mga vault na iisa ang history ng sync, kaya hindi sila mailipat. Patuloy na gamitin ang dating MemryNote app para sa mga ito.",
       "vaultUnreachable": "Hindi mabasa ang isang vault ngayon. Tiyaking nakakonekta ang drive nito, pagkatapos ay subukang muli.",
       "secrets": "Hindi nabasa ang ilang naka-save na detalye sa pag-sign in. Subukang muli. Kung patuloy itong mangyari, tiyaking naka-unlock ang iyong keychain.",
-      "verification": "Hindi pumasa ang isang pagsusuri sa nailipat na data, kaya iniwan ng MemryNote ang lahat gaya ng dati."
+      "verification": "Hindi pumasa ang isang pagsusuri sa nailipat na data, kaya iniwan ng MemryNote ang lahat gaya ng dati.",
+      "notReady": "Hindi pa kayang ilipat ng bersyong ito ng MemryNote ang data ng vault na ito. Nasa dating MemryNote app pa rin ang data mo. Patuloy itong gamitin, at i-update ang MemryNote para subukang muli."
     },
     "done": {
       "title": "Handa na ang iyong data",
