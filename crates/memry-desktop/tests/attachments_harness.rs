@@ -19,6 +19,8 @@
 mod device_key;
 #[path = "harness_server/mod.rs"]
 mod harness_server;
+#[path = "attachments_harness/service.rs"]
+mod service;
 
 use std::collections::BTreeSet;
 use std::io::{Seek, SeekFrom, Write};

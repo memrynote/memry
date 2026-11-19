@@ -126,9 +126,15 @@ async fn upload_row(
     match result {
         Ok(attachment_id) => {
             let (owner, path, device) = (row.owner_id.clone(), rel.clone(), device_id.to_owned());
+            let queued = row.disk_path.clone();
             let referenced = db
                 .call(move |conn| {
-                    record_uploaded(conn, &owner, &path, &attachment_id, &device, now_ms())
+                    let referenced =
+                        record_uploaded(conn, &owner, &path, &attachment_id, &device, now_ms())?;
+                    // The row is keyed by the absolute path it was queued under, which
+                    // `record_uploaded`'s vault-relative clear does not match.
+                    upload_queue::clear(conn, &owner, &queued)?;
+                    Ok(referenced)
                 })
                 .await?;
             if !referenced {
