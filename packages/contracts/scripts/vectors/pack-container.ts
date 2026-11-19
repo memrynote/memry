@@ -1,5 +1,5 @@
 /**
- * Class: MPAK pack container (`pack-container.json`), 10 READER-ONLY cases.
+ * Class: MPAK pack container (`pack-container.json`), 14 READER-ONLY cases.
  *
  * The pack WRITER lives server-side and is not in `packages/contracts`
  * (`packages/contracts/src/pack-format.ts:10-14`). `packages/contracts` must
@@ -23,6 +23,8 @@
  */
 import { createHash } from 'node:crypto'
 
+import { z } from 'zod'
+
 import {
   PACK_FOOTER_SIZE,
   PACK_HEADER_SIZE,
@@ -32,6 +34,8 @@ import {
   PackKindCode,
   parsePack
 } from '../../src/pack-format'
+import { buildCrdtUpdate } from './crdt-update'
+import { buildRecordEnvelope } from './record-envelope'
 import { meta } from './shared'
 
 const sha256 = (bytes: Uint8Array): Uint8Array =>
@@ -198,6 +202,178 @@ const threeKinds: EntryInput[] = [
   }
 ]
 
+const RecordEnvelopeCasesSchema = z.object({
+  cases: z.array(
+    z.object({
+      name: z.string(),
+      input: z.object({ vaultKeyHex: z.string(), signingSeedHex: z.string() }),
+      expected: z.object({
+        pushItem: z.object({
+          id: z.string(),
+          type: z.string(),
+          operation: z.string(),
+          encryptedKey: z.string(),
+          keyNonce: z.string(),
+          encryptedData: z.string(),
+          dataNonce: z.string(),
+          signature: z.string(),
+          signerDeviceId: z.string(),
+          clock: z.record(z.string(), z.number()).optional(),
+          deletedAt: z.number().optional()
+        }),
+        roundTripUtf8: z.string()
+      })
+    })
+  )
+})
+
+const CrdtUpdateCasesSchema = z.object({
+  cases: z.array(
+    z.object({
+      name: z.string(),
+      input: z.object({
+        noteId: z.string(),
+        vaultKeyHex: z.string(),
+        signingSeedHex: z.string(),
+        updateHex: z.string()
+      }),
+      expected: z.object({ packedHex: z.string() })
+    })
+  )
+})
+
+type RecordEnvelopeCase = z.infer<typeof RecordEnvelopeCasesSchema>['cases'][number]
+type CrdtUpdateCase = z.infer<typeof CrdtUpdateCasesSchema>['cases'][number]
+
+const byName = <T extends { name: string }>(cases: T[], name: string): T => {
+  const found = cases.find((c) => c.name === name)
+  if (!found) throw new Error(`vector case missing: ${name}`)
+  return found
+}
+
+/**
+ * A record entry built from a signed record-envelope case (chapter 08 §8.4.2).
+ *
+ * The expected pull item comes from the push item, the way the server's pull
+ * answers for that row: the signed fields, `cryptoVersion: 1`, and the four
+ * blob fields under `blob`. The verifier rebuilds it from the PACK BYTES, so
+ * the two derivations meet only when meta plus payload carry everything the
+ * pull item does.
+ */
+function recordEntryFrom(source: RecordEnvelopeCase, sortKey: number) {
+  const push = source.expected.pushItem
+  const blob = {
+    dataNonce: push.dataNonce,
+    encryptedData: push.encryptedData,
+    encryptedKey: push.encryptedKey,
+    keyNonce: push.keyNonce
+  }
+  const entryMeta: Record<string, unknown> = {
+    operation: push.operation,
+    cryptoVersion: 1,
+    signature: push.signature,
+    signerDeviceId: push.signerDeviceId,
+    ...(push.deletedAt === undefined ? {} : { deletedAt: push.deletedAt }),
+    ...(push.clock === undefined ? {} : { clock: push.clock })
+  }
+  const entry: EntryInput = {
+    kind: 'record',
+    id: `${push.type}:${push.id}`,
+    sourceKey: `u/1/v/1/${push.type}/${push.id}`,
+    sortKey,
+    meta: entryMeta,
+    // Chapter 05 §5.9 A: the R2 object is the four fields, keys sorted, no whitespace.
+    payload: utf8(JSON.stringify(blob, Object.keys(blob).toSorted()))
+  }
+  const expectation = {
+    id: entry.id,
+    usable: true,
+    pullItem: { id: push.id, type: push.type, ...entryMeta, blob },
+    vaultKeyHex: source.input.vaultKeyHex,
+    signingSeedHex: source.input.signingSeedHex,
+    plaintextUtf8: source.expected.roundTripUtf8
+  }
+  return { entry, expectation }
+}
+
+function updateEntryFrom(source: CrdtUpdateCase, sequenceNum: number, sortKey: number) {
+  const entryMeta = { sequenceNum, signerDeviceId: 'device-a', createdAt: 1760000000 + sequenceNum }
+  const entry: EntryInput = {
+    kind: 'crdt_update',
+    id: source.input.noteId,
+    sourceKey: `u/1/v/1/upd/${source.input.noteId}/${sequenceNum}`,
+    sortKey,
+    meta: entryMeta,
+    payload: Uint8Array.from(Buffer.from(source.expected.packedHex, 'hex'))
+  }
+  const expectation = {
+    noteId: source.input.noteId,
+    usable: true,
+    meta: entryMeta,
+    vaultKeyHex: source.input.vaultKeyHex,
+    signingSeedHex: source.input.signingSeedHex,
+    plaintextHex: source.input.updateHex
+  }
+  return { entry, expectation }
+}
+
+async function entryContractSpecs() {
+  const records = RecordEnvelopeCasesSchema.parse(await buildRecordEnvelope()).cases
+  const updates = CrdtUpdateCasesSchema.parse(await buildCrdtUpdate()).cases
+
+  const live = [
+    recordEntryFrom(byName(records, 'note create, body over 64 bytes and compressible'), 42),
+    recordEntryFrom(byName(records, 'task update with clock'), 43),
+    recordEntryFrom(byName(records, 'settings update with no clock'), 44)
+  ]
+  const tombstone = recordEntryFrom(byName(records, 'note delete with deletedAt'), 45)
+
+  const unusableBase = recordEntryFrom(byName(records, 'journal update'), 46)
+  const withoutSignature = Object.fromEntries(
+    Object.entries(unusableBase.entry.meta ?? {}).filter(([key]) => key !== 'signature')
+  )
+  const noMeta: EntryInput = { ...unusableBase.entry, meta: undefined }
+  const badMeta: EntryInput = {
+    ...recordEntryFrom(byName(records, 'note create with a second data nonce'), 47).entry,
+    meta: withoutSignature
+  }
+
+  const first = updateEntryFrom(byName(updates, '512-byte update, compressible'), 4, 100)
+  const second = updateEntryFrom(byName(updates, '40-byte update'), 5, 103)
+
+  return [
+    {
+      name: 'record entries carrying the pull-item meta',
+      entries: live.map((r) => r.entry),
+      pins: 'chapter 08 §8.4.2: meta plus payload rebuild the /sync/pull item, which verifies and decrypts; an absent optional field (clock) stays absent',
+      entryContract: { records: live.map((r) => r.expectation) }
+    },
+    {
+      name: 'a tombstone record entry',
+      entries: [tombstone.entry],
+      pins: 'chapter 08 §8.4.2: a delete carries operation and deletedAt in meta and its signed payload as bytes',
+      entryContract: { records: [tombstone.expectation] }
+    },
+    {
+      name: 'record entries a reader cannot use',
+      entries: [noMeta, badMeta],
+      pins: 'chapter 08 §8.4.2: no meta (a record pack written before this contract) or meta failing RecordPackEntryMetaSchema makes the ENTRY unusable, not the pack; the item stays item-granular',
+      entryContract: {
+        records: [
+          { id: noMeta.id, usable: false },
+          { id: badMeta.id, usable: false }
+        ]
+      }
+    },
+    {
+      name: 'crdt_update entries of one document',
+      entries: [first.entry, second.entry],
+      pins: 'chapter 08 §8.4.3: identity is the document id, sortKey the server_cursor, meta {sequenceNum, signerDeviceId, createdAt}, payload the stored packed envelope',
+      entryContract: { updates: [first.expectation, second.expectation] }
+    }
+  ]
+}
+
 /**
  * The expected block is the READER'S OWN OUTPUT, not a prediction.
  *
@@ -261,13 +437,14 @@ export async function buildPackContainer(): Promise<Record<string, unknown>> {
   ]
 
   const cases = []
-  for (const spec of specs) {
+  for (const spec of [...specs, ...(await entryContractSpecs())]) {
     const packBytes = assemble(spec.entries)
     cases.push({
       name: spec.name,
       pins: spec.pins,
       packHex: hex(packBytes),
-      expected: await readBack(packBytes)
+      expected: await readBack(packBytes),
+      ...('entryContract' in spec ? { entryContract: spec.entryContract } : {})
     })
   }
 

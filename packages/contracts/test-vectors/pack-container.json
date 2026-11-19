@@ -19,7 +19,7 @@
       "crdt_snapshot": 1,
       "crdt_update": 2
     },
-    "caseCount": 10
+    "caseCount": 14
   },
   "cases": [
     {
@@ -139,6 +139,308 @@
           }
         ],
         "integrityVerified": true
+      }
+    },
+    {
+      "name": "record entries carrying the pull-item meta",
+      "pins": "chapter 08 §8.4.2: meta plus payload rebuild the /sync/pull item, which verifies and decrypts; an absent optional field (clock) stays absent",
+      "packHex": "4d50414b010000007b22646174614e6f6e6365223a2241414543417751464267634943516f4c4441304f4478415245684d5546525958222c22656e6372797074656444617461223a224d6d545374614453374b712f5444586f336f7a55697949734a662b644c6c48674b2b5854677a544b326471456e714c77377a77394e323969614c645872324a66734a79673164525a377a4766222c22656e637279707465644b6579223a2276543542357661485855475339394b2b4f6f6d465879445939684a304767726f38483469733034425654554f537a3659694433437370697a396e36534d4f794d222c226b65794e6f6e6365223a224678595646424d53455241504467304d43776f4a434163474251514441674541227d7b22646174614e6f6e6365223a2241414543417751464267634943516f4c4441304f4478415245684d5546525958222c22656e6372797074656444617461223a224d3264736b702b7553654e55502f4a5a76437a732f6e356f6a5a4d6743487970772b592b73784275465748317650685169326263424f714a6e31507162352b4f304c5a45365349686c6c787a45336953617042414678633d222c22656e637279707465644b6579223a2276543542357661485855475339394b2b4f6f6d465879445939684a304767726f38483469733034425654554f537a3659694433437370697a396e36534d4f794d222c226b65794e6f6e6365223a224678595646424d53455241504467304d43776f4a434163474251514441674541227d7b22646174614e6f6e6365223a2241414543417751464267634943516f4c4441304f4478415245684d5546525958222c22656e6372797074656444617461223a224d3264736c5a4f755565385959714d6f376a362b755739756a634579464476776d75686f75426c7345796a74704f63546e576949455054416b4653684d4d6558376b6b61316e74376e4672386270505375714e504862494431774c463875354866676a37222c22656e637279707465644b6579223a2276543542357661485855475339394b2b4f6f6d465879445939684a304767726f38483469733034425654554f537a3659694433437370697a396e36534d4f794d222c226b65794e6f6e6365223a224678595646424d53455241504467304d43776f4a434163474251514441674541227d0000116e6f74653a6162633132336465663435360019752f312f762f312f6e6f74652f616263313233646566343536000000000000002a00c27b226f7065726174696f6e223a22637265617465222c2263727970746f56657273696f6e223a312c227369676e6174757265223a2235433331386a396c5261684c394e2b68376d4c6d4f7a644138596b3361733867736973526842584b6c567a696a4a744e354c3954464938516c5866694f394239584338584149754547325174344b6c4168664e5441513d3d222c227369676e65724465766963654964223a226465766963652d61222c22636c6f636b223a7b226465766963652d61223a317d7d0000000000000000000000000000010f9511f270003d69f145e94c7a2ada4f29871fe5aa1c2cac62e1e49ae05156ea2d00001a7461736b3a56315374475852385a356a64486936426d795431320022752f312f762f312f7461736b2f56315374475852385a356a64486936426d79543132000000000000002b00c27b226f7065726174696f6e223a22757064617465222c2263727970746f56657273696f6e223a312c227369676e6174757265223a2234495531754e546e327a4a2b4b436565586e6b436b6c63475533735a4443545a447979727779334638515574734c586d6431422b72754971533242616d63706773624f56447479522f4f6961373846624e65433843773d3d222c227369676e65724465766963654964223a226465766963652d61222c22636c6f636b223a7b226465766963652d61223a347d7d000000000000010f000000000000011b5ffc5ef7f36106de29193cfe493f9a1555ffe04e7b91ba753960046b35a32b7000001873657474696e67733a73796e6365645f73657474696e67730020752f312f762f312f73657474696e67732f73796e6365645f73657474696e6773000000000000002c00ab7b226f7065726174696f6e223a22757064617465222c2263727970746f56657273696f6e223a312c227369676e6174757265223a22645330792f676c505a44445776362f727770444a6d387459774a3842587343524f5948697a334b46496e7a6b3061706f2f6f644665462b52354938544774656d755935756c365549304f3839566e3768534e537043513d3d222c227369676e65724465766963654964223a226465766963652d61227d000000000000022a0000000000000127a023fe212ef2ff7f1c19bc696b055a68fd8fab8d012f7f3195f4efcdd93fd2a4c90c6522b7f5257ca062dd62ecd60ce3973bd5b8122fb82c83143bac9896291f000000000000000300000000000003594d50414b01",
+      "expected": {
+        "version": 1,
+        "entries": [
+          {
+            "kind": "record",
+            "id": "note:abc123def456",
+            "sourceKey": "u/1/v/1/note/abc123def456",
+            "sortKey": 42,
+            "offset": 0,
+            "length": 271,
+            "meta": {
+              "operation": "create",
+              "cryptoVersion": 1,
+              "signature": "5C318j9lRahL9N+h7mLmOzdA8Yk3as8gsisRhBXKlVzijJtN5L9TFI8QlXfiO9B9XC8XAIuEG2Qt4KlAhfNTAQ==",
+              "signerDeviceId": "device-a",
+              "clock": {
+                "device-a": 1
+              }
+            }
+          },
+          {
+            "kind": "record",
+            "id": "task:V1StGXR8Z5jdHi6BmyT12",
+            "sourceKey": "u/1/v/1/task/V1StGXR8Z5jdHi6BmyT12",
+            "sortKey": 43,
+            "offset": 271,
+            "length": 283,
+            "meta": {
+              "operation": "update",
+              "cryptoVersion": 1,
+              "signature": "4IU1uNTn2zJ+KCeeXnkCklcGU3sZDCTZDyyrwy3F8QUtsLXmd1B+ruIqS2BamcpgsbOVDtyR/Oia78FbNeC8Cw==",
+              "signerDeviceId": "device-a",
+              "clock": {
+                "device-a": 4
+              }
+            }
+          },
+          {
+            "kind": "record",
+            "id": "settings:synced_settings",
+            "sourceKey": "u/1/v/1/settings/synced_settings",
+            "sortKey": 44,
+            "offset": 554,
+            "length": 295,
+            "meta": {
+              "operation": "update",
+              "cryptoVersion": 1,
+              "signature": "dS0y/glPZDDWv6/rwpDJm8tYwJ8BXsCROYHiz3KFInzk0apo/odFeF+R5I8TGtemuY5ul6UI0O89Vn7hSNSpCQ==",
+              "signerDeviceId": "device-a"
+            }
+          }
+        ],
+        "integrityVerified": true
+      },
+      "entryContract": {
+        "records": [
+          {
+            "id": "note:abc123def456",
+            "usable": true,
+            "pullItem": {
+              "id": "abc123def456",
+              "type": "note",
+              "operation": "create",
+              "cryptoVersion": 1,
+              "signature": "5C318j9lRahL9N+h7mLmOzdA8Yk3as8gsisRhBXKlVzijJtN5L9TFI8QlXfiO9B9XC8XAIuEG2Qt4KlAhfNTAQ==",
+              "signerDeviceId": "device-a",
+              "clock": {
+                "device-a": 1
+              },
+              "blob": {
+                "dataNonce": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX",
+                "encryptedData": "MmTStaDS7Kq/TDXo3ozUiyIsJf+dLlHgK+XTgzTK2dqEnqLw7zw9N29iaLdXr2JfsJyg1dRZ7zGf",
+                "encryptedKey": "vT5B5vaHXUGS99K+OomFXyDY9hJ0Ggro8H4is04BVTUOSz6YiD3Cspiz9n6SMOyM",
+                "keyNonce": "FxYVFBMSERAPDg0MCwoJCAcGBQQDAgEA"
+              }
+            },
+            "vaultKeyHex": "0f1e2d3c4b5a69788796a5b4c3d2e1f00112233445566778899aabbccddeeff0",
+            "signingSeedHex": "a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
+            "plaintextUtf8": "# Title\n\nThe quick brown fox. The quick brown fox. The quick brown fox. The quick brown fox. The quick brown fox. The quick brown fox. The quick brown fox. The quick brown fox. The quick brown fox. The quick brown fox. The quick brown fox. The quick brown fox. "
+          },
+          {
+            "id": "task:V1StGXR8Z5jdHi6BmyT12",
+            "usable": true,
+            "pullItem": {
+              "id": "V1StGXR8Z5jdHi6BmyT12",
+              "type": "task",
+              "operation": "update",
+              "cryptoVersion": 1,
+              "signature": "4IU1uNTn2zJ+KCeeXnkCklcGU3sZDCTZDyyrwy3F8QUtsLXmd1B+ruIqS2BamcpgsbOVDtyR/Oia78FbNeC8Cw==",
+              "signerDeviceId": "device-a",
+              "clock": {
+                "device-a": 4
+              },
+              "blob": {
+                "dataNonce": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX",
+                "encryptedData": "M2dskp+uSeNUP/JZvCzs/n5ojZMgCHypw+Y+sxBuFWH1vPhQi2bcBOqJn1Pqb5+O0LZE6SIhllxzE3iSapBAFxc=",
+                "encryptedKey": "vT5B5vaHXUGS99K+OomFXyDY9hJ0Ggro8H4is04BVTUOSz6YiD3Cspiz9n6SMOyM",
+                "keyNonce": "FxYVFBMSERAPDg0MCwoJCAcGBQQDAgEA"
+              }
+            },
+            "vaultKeyHex": "0f1e2d3c4b5a69788796a5b4c3d2e1f00112233445566778899aabbccddeeff0",
+            "signingSeedHex": "a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
+            "plaintextUtf8": "{\"title\":\"Ship the spec\",\"clock\":{\"device-a\":4}}"
+          },
+          {
+            "id": "settings:synced_settings",
+            "usable": true,
+            "pullItem": {
+              "id": "synced_settings",
+              "type": "settings",
+              "operation": "update",
+              "cryptoVersion": 1,
+              "signature": "dS0y/glPZDDWv6/rwpDJm8tYwJ8BXsCROYHiz3KFInzk0apo/odFeF+R5I8TGtemuY5ul6UI0O89Vn7hSNSpCQ==",
+              "signerDeviceId": "device-a",
+              "blob": {
+                "dataNonce": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX",
+                "encryptedData": "M2dslZOuUe8YYqMo7j6+uW9ujcEyFDvwmuhouBlsEyjtpOcTnWiIEPTAkFShMMeX7kka1nt7nFr8bpPSuqNPHbID1wLF8u5Hfgj7",
+                "encryptedKey": "vT5B5vaHXUGS99K+OomFXyDY9hJ0Ggro8H4is04BVTUOSz6YiD3Cspiz9n6SMOyM",
+                "keyNonce": "FxYVFBMSERAPDg0MCwoJCAcGBQQDAgEA"
+              }
+            },
+            "vaultKeyHex": "0f1e2d3c4b5a69788796a5b4c3d2e1f00112233445566778899aabbccddeeff0",
+            "signingSeedHex": "a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
+            "plaintextUtf8": "{\"settings\":{\"general\":{\"theme\":\"dark\"}},\"fieldClocks\":{}}"
+          }
+        ]
+      }
+    },
+    {
+      "name": "a tombstone record entry",
+      "pins": "chapter 08 §8.4.2: a delete carries operation and deletedAt in meta and its signed payload as bytes",
+      "packHex": "4d50414b010000007b22646174614e6f6e6365223a2241414543417751464267634943516f4c4441304f4478415245684d5546525958222c22656e6372797074656444617461223a224d305357465562623868535538565169467a716c4c37303d222c22656e637279707465644b6579223a2276543542357661485855475339394b2b4f6f6d465879445939684a304767726f38483469733034425654554f537a3659694433437370697a396e36534d4f794d222c226b65794e6f6e6365223a224678595646424d53455241504467304d43776f4a434163474251514441674541227d0000116e6f74653a6162633132336465663435360019752f312f762f312f6e6f74652f616263313233646566343536000000000000002d00dc7b226f7065726174696f6e223a2264656c657465222c2263727970746f56657273696f6e223a312c227369676e6174757265223a2262597569704c2b61396a594b674b2b70513074346a744e7a4a654b5a5867795a7a4e716676772b42565a31612b3868726771332b4a6a676f4e4a356d61333865394849364677544b5a4431526c687263514d642b43513d3d222c227369676e65724465766963654964223a226465766963652d61222c2264656c657465644174223a313736303030303030303030302c22636c6f636b223a7b226465766963652d61223a337d7d000000000000000000000000000000db4196e587313f4e64299fd8ea24f33e8879b60c63af08e6a990be831069edfb314196e587313f4e64299fd8ea24f33e8879b60c63af08e6a990be831069edfb31000000000000000100000000000000e34d50414b01",
+      "expected": {
+        "version": 1,
+        "entries": [
+          {
+            "kind": "record",
+            "id": "note:abc123def456",
+            "sourceKey": "u/1/v/1/note/abc123def456",
+            "sortKey": 45,
+            "offset": 0,
+            "length": 219,
+            "meta": {
+              "operation": "delete",
+              "cryptoVersion": 1,
+              "signature": "bYuipL+a9jYKgK+pQ0t4jtNzJeKZXgyZzNqfvw+BVZ1a+8hrgq3+JjgoNJ5ma38e9HI6FwTKZD1RlhrcQMd+CQ==",
+              "signerDeviceId": "device-a",
+              "deletedAt": 1760000000000,
+              "clock": {
+                "device-a": 3
+              }
+            }
+          }
+        ],
+        "integrityVerified": true
+      },
+      "entryContract": {
+        "records": [
+          {
+            "id": "note:abc123def456",
+            "usable": true,
+            "pullItem": {
+              "id": "abc123def456",
+              "type": "note",
+              "operation": "delete",
+              "cryptoVersion": 1,
+              "signature": "bYuipL+a9jYKgK+pQ0t4jtNzJeKZXgyZzNqfvw+BVZ1a+8hrgq3+JjgoNJ5ma38e9HI6FwTKZD1RlhrcQMd+CQ==",
+              "signerDeviceId": "device-a",
+              "deletedAt": 1760000000000,
+              "clock": {
+                "device-a": 3
+              },
+              "blob": {
+                "dataNonce": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX",
+                "encryptedData": "M0SWFUbb8hSU8VQiFzqlL70=",
+                "encryptedKey": "vT5B5vaHXUGS99K+OomFXyDY9hJ0Ggro8H4is04BVTUOSz6YiD3Cspiz9n6SMOyM",
+                "keyNonce": "FxYVFBMSERAPDg0MCwoJCAcGBQQDAgEA"
+              }
+            },
+            "vaultKeyHex": "0f1e2d3c4b5a69788796a5b4c3d2e1f00112233445566778899aabbccddeeff0",
+            "signingSeedHex": "a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
+            "plaintextUtf8": ""
+          }
+        ]
+      }
+    },
+    {
+      "name": "record entries a reader cannot use",
+      "pins": "chapter 08 §8.4.2: no meta (a record pack written before this contract) or meta failing RecordPackEntryMetaSchema makes the ENTRY unusable, not the pack; the item stays item-granular",
+      "packHex": "4d50414b010000007b22646174614e6f6e6365223a2241414543417751464267634943516f4c4441304f4478415245684d5546525958222c22656e6372797074656444617461223a224d32647367706575514b524d4a2b4936356e4f78376a3474325956785644752b674b3176386b5a6156473632372b384c7a563758782f345a785a5032527145454d757a693546744c56673d3d222c22656e637279707465644b6579223a2276543542357661485855475339394b2b4f6f6d465879445939684a304767726f38483469733034425654554f537a3659694433437370697a396e36534d4f794d222c226b65794e6f6e6365223a224678595646424d53455241504467304d43776f4a434163474251514441674541227d7b22646174614e6f6e6365223a222f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f222c22656e6372797074656444617461223a2251634e4d3469486b372f444d4a54734a5664644a6c394b49356e474d3251494c6a50756b6e32795442474a6c7347417231737577567a4c5769337749792f6c33376c4a734a61766a4d777173616247426159725575314b6638636c51707952496a2b4f6578376d4277684944222c22656e637279707465644b6579223a2276543542357661485855475339394b2b4f6f6d465879445939684a304767726f38483469733034425654554f537a3659694433437370697a396e36534d4f794d222c226b65794e6f6e6365223a224678595646424d53455241504467304d43776f4a434163474251514441674541227d0000136a6f75726e616c3a6a323032362d30342d3136001b752f312f762f312f6a6f75726e616c2f6a323032362d30342d3136000000000000002e00000000000000000000000000000000010fe03b055db6558fe9b24d881bcc1cbc44d14d997e969fc654593126e2c46cff080000116e6f74653a7a7a7a3939396161613131310019752f312f762f312f6e6f74652f7a7a7a393939616161313131000000000000002f005b7b226f7065726174696f6e223a22757064617465222c2263727970746f56657273696f6e223a312c227369676e65724465766963654964223a226465766963652d61222c22636c6f636b223a7b226465766963652d61223a317d7d000000000000010f000000000000012fc5b10843c8a32c0951f5b2faa6ef2dfabb9a5d1de15febeeef5adfcf9e82734b7cdc75791d672d2cfd920e5c3062dd11c2167578a7cdfa4f983e9bf3cace8616000000000000000200000000000002464d50414b01",
+      "expected": {
+        "version": 1,
+        "entries": [
+          {
+            "kind": "record",
+            "id": "journal:j2026-04-16",
+            "sourceKey": "u/1/v/1/journal/j2026-04-16",
+            "sortKey": 46,
+            "offset": 0,
+            "length": 271
+          },
+          {
+            "kind": "record",
+            "id": "note:zzz999aaa111",
+            "sourceKey": "u/1/v/1/note/zzz999aaa111",
+            "sortKey": 47,
+            "offset": 271,
+            "length": 303,
+            "meta": {
+              "operation": "update",
+              "cryptoVersion": 1,
+              "signerDeviceId": "device-a",
+              "clock": {
+                "device-a": 1
+              }
+            }
+          }
+        ],
+        "integrityVerified": true
+      },
+      "entryContract": {
+        "records": [
+          {
+            "id": "journal:j2026-04-16",
+            "usable": false
+          },
+          {
+            "id": "note:zzz999aaa111",
+            "usable": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "crdt_update entries of one document",
+      "pins": "chapter 08 §8.4.3: identity is the document id, sortKey the server_cursor, meta {sequenceNum, signerDeviceId, createdAt}, payload the stored packed envelope",
+      "packHex": "4d50414b01000000000102030405060708090a0b0c0d0e0f101112131415161717161514131211100f0e0d0c0b0a09080706050403020100bd3e41e6f6875d4192f7d2be3a89855f20d8f612741a0ae8f07e22b34e0155350e4b3e98883dc2b298b3f67e9230ec8cb03b1be6c61c7ce77dbcaff254330643332a62d42193a9a1f7dcea522f7c715de7a3c1b4098d891e3c25d4d49d6278ab7ac9c463bf10a972cba264265025980e3264d28596c220a56f05d008d4459d64ed21117f9db1e28d12e1b9d89167e2000102030405060708090a0b0c0d0e0f101112131415161717161514131211100f0e0d0c0b0a09080706050403020100bd3e41e6f6875d4192f7d2be3a89855f20d8f612741a0ae8f07e22b34e0155350e4b3e98883dc2b298b3f67e9230ec8c5a31f6c7dbed0cf4996933b037f2d0bafe1b7e335303230851f77e81651af65f2ef96479e7b77e58384dcdfbd369b503a916f24ec4bbf90a0e3b410565dbe90433115afdd4f315b148409c598e24f4b17c7d6c38c1e1b96d4f7fa013b6d0aed5316b7789ed0aba7a97e466f6036e89735ae2554122d938803502000c616263313233646566343536001a752f312f762f312f7570642f6162633132336465663435362f34000000000000006400447b2273657175656e63654e756d223a342c227369676e65724465766963654964223a226465766963652d61222c22637265617465644174223a313736303030303030347d000000000000000000000000000000bfb65adecdcc6fead3be1c895b9556b6d68a71eee23be5624862e24cd45f18c59202000c616263313233646566343536001a752f312f762f312f7570642f6162633132336465663435362f35000000000000006700447b2273657175656e63654e756d223a352c227369676e65724465766963654964223a226465766963652d61222c22637265617465644174223a313736303030303030357d00000000000000bf00000000000000d97bc405dd878e4b34a7d8fd1404d1815c7c1a9757adff8c59218883146c65acf32affbaa965f39e6227a3aaf426a4890bbe59aa1d7d3ecbc72037358705f8229b000000000000000200000000000001a04d50414b01",
+      "expected": {
+        "version": 1,
+        "entries": [
+          {
+            "kind": "crdt_update",
+            "id": "abc123def456",
+            "sourceKey": "u/1/v/1/upd/abc123def456/4",
+            "sortKey": 100,
+            "offset": 0,
+            "length": 191,
+            "meta": {
+              "sequenceNum": 4,
+              "signerDeviceId": "device-a",
+              "createdAt": 1760000004
+            }
+          },
+          {
+            "kind": "crdt_update",
+            "id": "abc123def456",
+            "sourceKey": "u/1/v/1/upd/abc123def456/5",
+            "sortKey": 103,
+            "offset": 191,
+            "length": 217,
+            "meta": {
+              "sequenceNum": 5,
+              "signerDeviceId": "device-a",
+              "createdAt": 1760000005
+            }
+          }
+        ],
+        "integrityVerified": true
+      },
+      "entryContract": {
+        "updates": [
+          {
+            "noteId": "abc123def456",
+            "usable": true,
+            "meta": {
+              "sequenceNum": 4,
+              "signerDeviceId": "device-a",
+              "createdAt": 1760000004
+            },
+            "vaultKeyHex": "0f1e2d3c4b5a69788796a5b4c3d2e1f00112233445566778899aabbccddeeff0",
+            "signingSeedHex": "a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
+            "plaintextHex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          },
+          {
+            "noteId": "abc123def456",
+            "usable": true,
+            "meta": {
+              "sequenceNum": 5,
+              "signerDeviceId": "device-a",
+              "createdAt": 1760000005
+            },
+            "vaultKeyHex": "0f1e2d3c4b5a69788796a5b4c3d2e1f00112233445566778899aabbccddeeff0",
+            "signingSeedHex": "a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0",
+            "plaintextHex": "0d141b222930373e454c535a61686f767d848b9299a0a7aeb5bcc3cad1d8dfe6edf4fb020910171e"
+          }
+        ]
       }
     }
   ],

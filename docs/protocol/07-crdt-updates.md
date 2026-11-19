@@ -533,6 +533,11 @@ gap and owes the document a re-pull
 take the stop-at-gap side**: it is the only one under which no update can be
 skipped permanently.
 
+Updates read from a pack add one condition: the cursor moves across a packed
+update only when its `sequenceNum` is the cursor plus one, and a missing number
+is pulled from the server, never skipped (chapter 08 §8.4.3,
+`packages/contracts/src/sync-api.ts:814-818`).
+
 ## 7.10 Retry policy and rate limits
 
 **Normative.** Every CRDT request uses `maxRetries: 3`, `baseDelayMs: 2000`,
@@ -593,6 +598,10 @@ snapshot endpoint under the §7.13.2 gate.
 
 - an update entry is `{ sequenceNum, data, createdAt, signerDeviceId }`, where
   `data` is base64 of the **packed envelope** of chapter 04 §4.11;
+  a `crdt_update` pack entry carries the same entry, with the envelope bytes as
+  its payload and the other three fields as its meta
+  (`CrdtUpdatePackEntryMetaSchema`, `packages/contracts/src/sync-api.ts:814-818`,
+  chapter 08 §8.4.3);
 - the batch response is
   `{ notes: Record<noteId, { updates, hasMore }>, snapshotMeta?: Record<noteId,
   { sequenceNum, revision, signerDeviceId }> }`;

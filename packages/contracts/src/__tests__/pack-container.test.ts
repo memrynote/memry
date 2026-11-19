@@ -8,8 +8,14 @@
  * `readFooter` is exercised on the TAIL SLICE alone, because that is what a
  * streaming reader passes: it never holds the file.
  */
-import { describe, expect, it } from 'vitest'
+import sodium, { ready } from 'libsodium-wrappers-sumo'
+import { beforeAll, describe, expect, it } from 'vitest'
 
+import {
+  decryptCrdtUpdatePacked,
+  decryptRecordItem
+} from '../../../sync-client/src/pull/record-decrypt.ts'
+import { deterministicProvider, hex } from '../../test-vectors/deterministic-provider'
 import {
   PACK_FOOTER_SIZE,
   PACK_HEADER_SIZE,
@@ -17,10 +23,37 @@ import {
   PACK_MAX_ENTRIES,
   PACK_VERSION,
   PackKindCode,
+  extractEntry,
   parsePack,
   readFooter
 } from '../pack-format'
+import {
+  CrdtUpdatePackEntryMetaSchema,
+  EncryptedItemPayloadSchema,
+  RecordPackEntryMetaSchema,
+  RecordPullItemResponseSchema
+} from '../sync-api'
 import { fromHex, loadVectorFile } from './vector-loader'
+
+interface EntryContract {
+  records?: Array<{
+    id: string
+    usable: boolean
+    // Present when `usable`.
+    pullItem?: unknown
+    vaultKeyHex?: string
+    signingSeedHex?: string
+    plaintextUtf8?: string
+  }>
+  updates?: Array<{
+    noteId: string
+    usable: boolean
+    meta: unknown
+    vaultKeyHex: string
+    signingSeedHex: string
+    plaintextHex: string
+  }>
+}
 
 const vectors = loadVectorFile<{
   meta: {
@@ -33,6 +66,7 @@ const vectors = loadVectorFile<{
     pins: string
     packHex: string
     expected: { version: number; entries: unknown[]; integrityVerified: boolean }
+    entryContract?: EntryContract
   }>
   errorCases: Array<{
     name: string
@@ -119,4 +153,93 @@ describe('pack-container vectors', () => {
     expect(first.offset).toBe(0)
     expect(PACK_HEADER_SIZE).toBe(8)
   })
+})
+
+/**
+ * Chapter 08 §8.4.2 and §8.4.3: what one record or update entry means.
+ *
+ * Rebuilt from the pack bytes and pushed through the production verify and
+ * decrypt paths, so a meta that dropped a field the pull item carries fails
+ * here on the signature, not on a shape comparison alone.
+ */
+describe('pack entry contract vectors', () => {
+  beforeAll(async () => {
+    await ready
+  })
+
+  const contractCases = vectors.cases.filter((c) => c.entryContract)
+
+  it('covers record entries, a record entry without meta, and kind 2', () => {
+    const records = contractCases.flatMap((c) => c.entryContract?.records ?? [])
+    const updates = contractCases.flatMap((c) => c.entryContract?.updates ?? [])
+    expect(records.some((r) => r.usable)).toBe(true)
+    expect(records.some((r) => !r.usable)).toBe(true)
+    expect(updates.length).toBeGreaterThan(1)
+  })
+
+  for (const entry of contractCases) {
+    // oxlint-disable-next-line vitest/valid-title -- title comes from vector/fixture data typed as string; the rule is not type-aware
+    it(entry.name, async () => {
+      const bytes = fromHex(entry.packHex)
+      const parsed = await parsePack(bytes)
+      const wantRecords = entry.entryContract?.records ?? []
+      const wantUpdates = entry.entryContract?.updates ?? []
+      const records = parsed.entries.filter((e) => e.kind === 'record')
+      const updates = parsed.entries.filter((e) => e.kind === 'crdt_update')
+      expect(records.map((e) => e.id)).toEqual(wantRecords.map((r) => r.id))
+      expect(updates.length).toBe(wantUpdates.length)
+
+      for (const [i, packed] of records.entries()) {
+        const want = wantRecords[i]
+        const meta = RecordPackEntryMetaSchema.safeParse(packed.meta)
+        expect(meta.success, `${packed.id}: usable`).toBe(want.usable)
+        if (!meta.success) continue
+        // `type:id`, split at the first colon: no record type contains one.
+        const split = packed.id.indexOf(':')
+        const blob = EncryptedItemPayloadSchema.parse(
+          JSON.parse(new TextDecoder().decode(extractEntry(bytes, packed)))
+        )
+        const pullItem = RecordPullItemResponseSchema.parse({
+          ...meta.data,
+          id: packed.id.slice(split + 1),
+          type: packed.id.slice(0, split),
+          blob
+        })
+        expect(pullItem).toEqual(want.pullItem)
+
+        const signer = sodium.crypto_sign_seed_keypair(fromHex(want.signingSeedHex ?? ''))
+        const plaintext = await decryptRecordItem(
+          deterministicProvider(),
+          { ...pullItem, ...pullItem.blob, cryptoVersion: pullItem.cryptoVersion ?? 1 },
+          fromHex(want.vaultKeyHex ?? ''),
+          signer.publicKey
+        )
+        expect(new TextDecoder().decode(plaintext)).toBe(want.plaintextUtf8)
+      }
+
+      // Within one document, server_cursor order is sequenceNum order (chapter 07 §7.17).
+      const sortKeys = updates.map((u) => u.sortKey)
+      const sequenceNums = updates.map(
+        (u) => CrdtUpdatePackEntryMetaSchema.parse(u.meta).sequenceNum
+      )
+      expect(sortKeys).toEqual(sortKeys.toSorted((a, b) => a - b))
+      expect(sequenceNums).toEqual(sequenceNums.toSorted((a, b) => a - b))
+
+      for (const [i, packed] of updates.entries()) {
+        const want = wantUpdates[i]
+        expect(packed.id).toBe(want.noteId)
+        const meta = CrdtUpdatePackEntryMetaSchema.parse(packed.meta)
+        expect(meta).toEqual(want.meta)
+        const signer = sodium.crypto_sign_seed_keypair(fromHex(want.signingSeedHex))
+        const plaintext = await decryptCrdtUpdatePacked(
+          deterministicProvider(),
+          extractEntry(bytes, packed),
+          fromHex(want.vaultKeyHex),
+          packed.id,
+          signer.publicKey
+        )
+        expect(hex(plaintext)).toBe(want.plaintextHex)
+      }
+    })
+  }
 })

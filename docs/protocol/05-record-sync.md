@@ -653,6 +653,13 @@ The four ciphertext fields are identical in both spellings; only their nesting
 differs. A conforming reader accepts the nested form, and `record-envelope.json`
 pins the flat one because the vectors are written from the writer's side.
 
+A `record` pack entry carries this same item: `idBytes` holds `type:id`, the
+payload holds `blob`, and `metaBytes` holds the rest
+(`RecordPackEntryMetaSchema`, `packages/contracts/src/sync-api.ts:803-807`,
+chapter 08 §8.4.2). The meta schema is derived from
+`RecordPullItemResponseSchema`, so a field added to the read item reaches packs
+with no second change.
+
 `purgedTombstones` (§5.12.3) and `blobMissing` (§5.12.4) are present only when
 non-empty, so a page with neither is byte-identical to the pre-#2302 response.
 `purgedTombstones` is only ever sent to a client that declared

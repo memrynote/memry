@@ -109,13 +109,15 @@ actually behaves rather than as it ought to.
 **Normative.** `PackKindCode` is `record = 0`, `crdt_snapshot = 1`,
 `crdt_update = 2` (`packages/contracts/src/pack-format.ts:94-98`).
 
-| Kind            | Identity (`idBytes`) | `sortKey`                       |
-| --------------- | -------------------- | ------------------------------- |
-| `record`        | `type:id`            | `server_cursor`                 |
-| `crdt_snapshot` | the document id      | `created_at`, epoch **seconds** |
-| `crdt_update`   | the document id      | `created_at`, epoch seconds     |
+| Kind            | Identity (`idBytes`) | `sortKey`                       | `metaBytes`                  |
+| --------------- | -------------------- | ------------------------------- | ---------------------------- |
+| `record`        | `type:id`            | `server_cursor`                 | the pull-item fields, §8.4.2 |
+| `crdt_snapshot` | the document id      | `created_at`, epoch **seconds** | `{sequenceNum, revision}`    |
+| `crdt_update`   | the document id      | `server_cursor`                 | §8.4.3                       |
 
-(`packages/contracts/src/pack-format.ts:31-36`.)
+(`packages/contracts/src/pack-format.ts:31-36`.) Every pack holds entries of one
+kind, the one its listing row names (`apps/sync-server/src/services/pack-compaction.ts:162-215`
+selects one kind per pack). A reader still checks each entry's own `kind`.
 
 Snapshot entries carry `{sequenceNum, revision}` in `metaBytes`, which is the
 **freshness token a client compares against `snapshotMeta` before trusting the
@@ -123,9 +125,9 @@ bytes** (`packages/contracts/src/pack-format.ts:37-40`; chapter 07 §7.8).
 
 ### 8.4.1 Will a reader ever see kind 2 — Q08.1
 
-**Normative: `crdt_update = 2` is reserved and no writer produces it.** Updates
-live in D1 and have no R2 small-object GET floor to kill
-(`packages/contracts/src/sync-api.ts:505-506`).
+**Normative: no writer produces `crdt_update = 2` today.** `PACKED_KINDS` is
+`['crdt_snapshot']` (`apps/sync-server/src/services/pack-compaction.ts:104`).
+When a writer ships, its entries follow §8.4.3.
 
 **A conforming reader MUST accept kind 2 structurally** — `KIND_BY_CODE` maps it
 (`packages/contracts/src/pack-format.ts:102-106`) and rejecting it would be a
@@ -134,6 +136,110 @@ entry**, falling back to the item-granular endpoints for that document, exactly
 as it would for a pack it could not verify (§8.0).
 
 **Disposition of Q08.1: answered** (this section).
+
+### 8.4.2 Record entries
+
+**Normative.** A record entry is one `POST /sync/pull` item, split three ways
+(`RecordPackEntryMetaSchema`, `packages/contracts/src/sync-api.ts:803-807`):
+
+| Pull item field                                                                   | Where the entry carries it                  |
+| --------------------------------------------------------------------------------- | ------------------------------------------- |
+| `type`, `id`                                                                      | `idBytes`, as `type:id`                     |
+| `blob`                                                                            | the payload bytes                           |
+| `operation`, `cryptoVersion`, `signature`, `signerDeviceId`, `deletedAt`, `clock` | `metaBytes`, under the pull item's own keys |
+
+`RecordPackEntryMetaSchema` is `RecordPullItemResponseSchema` without `id`,
+`type` and `blob` (`packages/contracts/src/sync-api.ts:789-807`), so a field
+added to the pull item reaches the entry with no second list to update. A writer
+fills the meta from the same columns `POST /sync/pull` answers from
+(`pullItemFromColumns`, `apps/sync-server/src/services/sync.ts:401-420`):
+`deletedAt` and `clock` are present exactly when the pull item has them.
+
+- **Payload.** The payload is the R2 object byte for byte: the four blob fields
+  as sorted-key JSON (chapter 05 §5.9 A,
+  `apps/sync-server/src/services/sync.ts:343-351`). A reader parses it as JSON
+  and validates it with `EncryptedItemPayloadSchema`
+  (`packages/contracts/src/sync-api.ts:389-394`) as the item's `blob`.
+- **Identity.** A reader splits `idBytes` at the **first** `:`. No record type
+  contains one (`RECORD_SYNC_ITEM_TYPES`), and an id may.
+- **Rebuild and validate.** `{...meta, id, type, blob}` MUST validate as
+  `RecordPullItemResponseSchema`
+  (`packages/contracts/src/sync-api.ts:789-794`). The reader then treats it as
+  a pull item in every respect: signature verification against the signer's
+  key, `cryptoVersion` (chapter 00 §0.2.1), the delete-wins and clock rules of
+  chapter 05 §5.8 and chapter 06. A packed entry is never newer than local state
+  because it came from a pack.
+- **An unusable entry costs that entry, not the pack.** An entry whose meta is
+  absent (`metaLen` 0) or fails `RecordPackEntryMetaSchema`, whose payload is
+  not a valid blob, or whose rebuilt item fails validation or verification is
+  ignored, and the item stays on `POST /sync/pull`. The pack digests already
+  passed (§8.5), so the rest of the pack is intact. This is what a reader does
+  with a record pack written before this section, which carries no meta
+  (`apps/sync-server/src/services/pack-compaction.ts:88-104` describes that
+  writer).
+- **Undeclared types.** A pack is not filtered by the reader's type
+  subscription (chapter 05 §5.3). A reader skips an entry whose type it does
+  not declare, as `POST /sync/pull` would not have served it.
+- **No payload, no entry.** A purged tombstone (chapter 05 §5.12.3) and a row
+  whose payload is lost (§5.12.4) have no payload bytes. A writer MUST NOT emit
+  them as record entries; `POST /sync/pull` keeps them out of `items` for the
+  same reason (`packages/contracts/src/sync-api.ts:854-863`).
+- **Index entry size.** A writer MUST NOT emit an index entry larger than
+  `PACK_MAX_INDEX_ENTRY_BYTES`, which a conforming reader rejects (§8.6;
+  `crates/memry-core/src/protocol/pack/index.rs:165-170`). An item whose entry
+  would exceed it is left out of packs.
+
+`pack-container.json` pins this with real signed items: the verifier rebuilds
+each pull item from the pack bytes and decrypts it through the production
+reader (`packages/contracts/src/__tests__/pack-container.test.ts`).
+
+### 8.4.3 Update entries (kind 2)
+
+**Normative.** An update entry is one `crdt_updates` row, as
+`GET /sync/crdt/updates` returns it (chapter 07 §7.11), split the same way
+(`CrdtUpdatePackEntryMetaSchema`, `packages/contracts/src/sync-api.ts:814-818`):
+
+| Field                                        | Where the entry carries it                                                 |
+| -------------------------------------------- | -------------------------------------------------------------------------- |
+| `noteId`                                     | `idBytes`: the document id, a note or a journal (chapter 07 §7.1)          |
+| `server_cursor`                              | `sortKey`                                                                  |
+| `data`                                       | the payload: the stored packed envelope (chapter 04 §4.11), not its base64 |
+| `sequenceNum`, `signerDeviceId`, `createdAt` | `metaBytes`                                                                |
+
+- **Identity.** One document has many updates, so an entry is named by
+  `(document id, sequenceNum)`. D1 holds that pair unique
+  (`apps/sync-server/migrations/0001_baseline.sql:218`), and a sequence number
+  for an id never moves down (chapter 07 §7.4), so the pair names one immutable
+  row. Two entries a reader holds for the same pair with different digests make
+  that document's packed updates unusable: the reader fetches it through the
+  routes of chapter 07 §7.2.
+- **Sort key.** `sortKey` is the row's `server_cursor`
+  (`apps/sync-server/migrations/0011_crdt_server_cursor.sql:15`). A row with a
+  NULL cursor, written before migration `0011`, is never a kind 2 entry and
+  stays on the routes of chapter 07 §7.2, as it stays out of the feed (§7.17).
+- **Ordering.** A writer emits entries in ascending `sortKey`. Within one
+  document that is ascending `sequenceNum` (chapter 07 §7.17). A reader sorts a
+  document's entries by `sequenceNum` itself and does not rely on index order.
+- **Sequence continuity.** The update, snapshot and floor tables share one
+  sequence space per document
+  (`apps/sync-server/src/services/crdt.ts:143-151`), and a snapshot reuses the
+  current maximum rather than taking a new number
+  (`apps/sync-server/src/services/crdt-snapshot-write.ts:252-260`, `:334-336`).
+  So a document's updates above any baseline are numbered `baseline + 1`,
+  `baseline + 2`, and so on. A reader applies packed updates under chapter 07
+  §7.9 with one addition: **it advances a document's update cursor across a
+  packed update only when that update's `sequenceNum` is the cursor plus one.**
+  At the first missing number it stops using packed updates for that document
+  and pulls from its cursor through the routes of chapter 07 §7.2, then may
+  resume with the packed updates above what the pull returned. A pack never
+  proves that an update is absent, so a gap is resolved by the server, never
+  skipped. This is chapter 07 §7.9's stop-at-gap rule applied to packed data.
+- **Verification.** The reader opens the envelope with the document id as
+  associated data and checks it against `signerDeviceId`'s key, as for an
+  update the route returned (chapter 07 §7.14).
+
+`pack-container.json` pins two updates of one document, opened through the
+production reader.
 
 ## 8.5 Reader obligations
 
@@ -246,7 +352,7 @@ blobs remain the source of truth throughout
 | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `id`, `packKey`          | non-empty strings                                                                                                                                     |
 | `itemKind`               | one of `record`, `crdt_snapshot`, `crdt_update` (`:498`)                                                                                              |
-| `minCursor`, `maxCursor` | `server_cursor` bounds for `record`; `created_at` epoch-second bounds for `crdt_snapshot` (`:492-494`)                                                |
+| `minCursor`, `maxCursor` | `server_cursor` bounds for `record` and `crdt_update`; `created_at` epoch-second bounds for `crdt_snapshot` (`:711-716`)                              |
 | `itemCount`              |                                                                                                                                                       |
 | `byteSize`               | **the payload region only** — header, index and footer excluded. **NOT a file length: a reader MUST NOT Range-request against it** (`:526-530`)       |
 | `createdAt`              |                                                                                                                                                       |
@@ -268,3 +374,39 @@ dead bytes and also fall back to item GETs
 
 **Membership MUST be verified against the pack's own index block, never assumed
 from the advertised cursor range.**
+
+## 8.11 Compatibility of record and update packs
+
+**Normative.** A server MAY list `record` and `crdt_update` packs to every
+client version. The readers that shipped before §8.4.2 and §8.4.3 ignore them,
+and a reader built to those sections reads packs from any older server. Readers
+cited: desktop at the last release tag `v2026-11-19` (`df8108df66`), and the
+Rust core at `be319a42f9` on `main`, which the iOS build ships
+(`crates/memry-core/src/sync/pack_bootstrap.rs`, last changed in `6b5d90b80e`).
+
+| Reader                    | Server lists a `record` or `crdt_update` pack                                                                                                                                                                                                                                                    | A `record` pack without meta                                  |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------- |
+| desktop `v2026-11-19`     | `PackListResponseSchema` accepts all three kinds (`packages/contracts/src/sync-api.ts:717` at the tag); the pack is dropped before download (`apps/desktop/src/main/sync/packs/pack-bootstrap.ts:189` at the tag), and a non-snapshot entry in any pack it opens is counted skipped (`:347-350`) | never downloaded                                              |
+| Rust core, iOS            | `usable_pack` returns `None` for any kind but `crdt_snapshot` (`crates/memry-core/src/sync/pack_bootstrap.rs:334-337`); `apply_pack` skips any other entry (`:238-243`)                                                                                                                          | never downloaded                                              |
+| a reader built to §8.4.2+ | reads it                                                                                                                                                                                                                                                                                         | each entry unusable, item stays on `POST /sync/pull` (§8.4.2) |
+
+- **New reader, old server.** A server whose `PACKED_KINDS` is
+  `['crdt_snapshot']` (`apps/sync-server/src/services/pack-compaction.ts:104`)
+  lists no record or update pack, and the reader bootstraps records and updates
+  item by item (§8.0). No server has written a kind 2 entry. A record pack
+  from a server that built them before §8.4.2 carries no meta, and the row
+  above applies.
+- **Listing order.** The listing sorts on `max_cursor` across kinds
+  (`apps/sync-server/src/services/pack-list.ts:79`, `:95`). Record and update
+  packs advertise `server_cursor` bounds, which sit far below the epoch-second
+  bounds of snapshot packs for any vault whose cursor is under about 1.7 × 10⁹,
+  so a shipped reader meets them only on the last pages, after every snapshot
+  pack. Both shipped readers stop after 20 pages
+  (`apps/desktop/src/main/sync/packs/pack-bootstrap.ts:54` at the tag,
+  `crates/memry-core/src/sync/pack_bootstrap.rs:52`) of 50 packs
+  (`PACK_LIST_PAGE_LIMIT`, `:51` at the tag, `:49`). When the extra packs push a
+  listing past 1,000 packs, the walk ends `truncated`: the snapshot packs it saw
+  still apply, and the applied-through watermark is not recorded
+  (`apps/desktop/src/main/sync/packs/pack-bootstrap.ts:310-314` at the tag,
+  `crates/memry-core/src/sync/pack_bootstrap.rs:184-188`), so the next run lists
+  again. That costs requests and loses nothing.
