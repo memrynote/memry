@@ -6,6 +6,10 @@ use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
 use memry_core::api::errors::TransportError;
+use memry_core::domain::write_back::{BodyRead, body_for_file};
+use memry_core::markdown::convert::NoEmbeds;
+use memry_core::markdown::convert::api::Converter;
+use memry_core::markdown::schema::callout_types::CalloutTypes;
 use memry_core::protocol::envelope::EnvelopeError;
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
 use memry_core::protocol::types::Declaration;
@@ -58,9 +62,37 @@ fn core_conn(vault: &Vault) -> Connection {
 
 const DEBT_AT_S: i64 = 1_790_000_000;
 
+/// Electron writes the debt on every open of an unmarked store and converts it only at sync
+/// start, which a vault that never synced (free, signed out, held) never reaches. Without a
+/// record cursor the core's first sync owes every live document itself, so the import owes
+/// nothing and write-back stays open.
 #[test]
-fn a_legacy_crdt_debt_owes_every_note_and_journal_body() {
+fn a_crdt_debt_of_a_vault_that_never_synced_owes_nothing() {
     let vault = Vault::new();
+    seed_markdown(&vault, "n-1", "a.md", None);
+    seed_key(&vault, "crdtUnmergedDebt", "1", DEBT_AT_S);
+    import(&vault);
+    let conn = core_conn(&vault);
+    assert!(body_debt::owed(&conn).unwrap().is_empty());
+    let read = body_for_file(
+        &conn,
+        &Converter::new(CalloutTypes::new(Vec::new())),
+        "n-1",
+        "a.md",
+        "",
+        &NoEmbeds,
+    )
+    .unwrap();
+    assert!(
+        !matches!(read, BodyRead::BodyNotPulled | BodyRead::NoNote),
+        "{read:?}"
+    );
+}
+
+#[test]
+fn a_legacy_crdt_debt_of_a_synced_vault_owes_every_note_and_journal_body() {
+    let vault = Vault::new();
+    seed_key(&vault, "lastCursor", "42", DEBT_AT_S);
     seed_markdown(&vault, "n-1", "a.md", None);
     seed_markdown(&vault, "n-2", "b.md", None);
     seed_markdown(
@@ -78,7 +110,7 @@ fn a_legacy_crdt_debt_owes_every_note_and_journal_body() {
         body_debt::owed(&core_conn(&vault)).unwrap(),
         ["j2026-01-05", "n-1", "n-2"]
     );
-    assert_eq!(report.tables["data.db/sync_state"].target_count, 1);
+    assert_eq!(report.tables["data.db/sync_state"].target_count, 2);
 }
 
 #[test]
@@ -86,6 +118,7 @@ fn a_crdt_debt_electron_already_converted_owes_nothing_again() {
     // `convertUnmergedDebtMirror` records the row's `updated_at` (`Date#getTime`) once converted.
     for (value, mirror_at) in [("1", Some("1790000000000")), ("0", None)] {
         let vault = Vault::new();
+        seed_key(&vault, "lastCursor", "42", DEBT_AT_S);
         seed_markdown(&vault, "n-1", "a.md", None);
         seed_key(&vault, "crdtUnmergedDebt", value, DEBT_AT_S);
         if let Some(at) = mirror_at {

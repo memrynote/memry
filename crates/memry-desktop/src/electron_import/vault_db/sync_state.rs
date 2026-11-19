@@ -249,7 +249,12 @@ pub fn plan(source: &Connection) -> Result<SyncStatePlan, ImportError> {
             Carried::Dropped(reason) => plan.stats.dropped.push((reason, 1)),
         }
     }
-    plan.state.owe_every_body = unconverted_debt(source)?;
+    // Electron writes the debt on every vault open with an unmarked store but converts it only
+    // at sync start (`crdt-store-epoch.ts:56-73`, `engine.ts:292`), so a vault that never synced
+    // (free, signed out, held) keeps a dormant one. Without a record cursor the core's first
+    // sync owes every live document itself (`first_sync_store::owe_live_documents`); owing them
+    // here would freeze write-back and outside edits until a sync that may never run.
+    plan.state.owe_every_body = plan.state.record_cursor.is_some() && unconverted_debt(source)?;
     plan.state
         .journal_merges
         .sort_by(|a, b| a.foreign_id.cmp(&b.foreign_id));
