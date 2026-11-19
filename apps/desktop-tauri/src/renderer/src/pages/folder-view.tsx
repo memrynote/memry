@@ -25,7 +25,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
-import { useTabs, useActiveTab } from '@/contexts/tabs'
+import { useTabs } from '@/contexts/tabs'
+import { useTabIdentity } from '@/contexts/tabs/tab-identity'
 import { sidebarItemForRow } from '@/lib/folder-row-navigation'
 import { useOpenPage } from '@/hooks/use-open-target'
 import { useNoteTasks } from '@/hooks/use-note-tasks'
@@ -547,21 +548,21 @@ export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Elemen
 
   // ============================================================================
   // Tag scope: rename/delete + lifecycle subscriptions (ported from
-  // tag-view.tsx:193-273, verbatim in behaviour). This page is only ever
-  // mounted as the active tab of some group, so the currently active tab is
-  // this page's own tab. The tab's identity is the tag name at open time and
+  // tag-view.tsx:193-273, verbatim in behaviour). The page closes its own tab
+  // by id and group: in split view the globally active tab may sit in the
+  // other pane. The tab's identity is the tag name at open time and
   // there's no tabs-context action to repoint an existing tab's `entityId`,
   // so a rename (from this tab or another window) closes the tab, same as a
   // delete — otherwise it would keep resolving color/items against a name
   // that no longer exists while the tab strip shows the new one.
   // ============================================================================
 
-  const activeTab = useActiveTab()
+  const ownTab = useTabIdentity()
   const closeThisTab = useCallback(() => {
-    if (activeTab) {
-      closeTab(activeTab.id)
+    if (ownTab) {
+      closeTab(ownTab.tabId, ownTab.groupId)
     }
-  }, [activeTab, closeTab])
+  }, [ownTab, closeTab])
 
   const activeTagName = scope.kind === 'tag' ? scope.tag : null
 

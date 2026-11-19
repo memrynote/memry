@@ -183,6 +183,9 @@ jobs:
           workspaces: crates
           key: ${{ matrix.os }}
 
+      - name: libsodium archives
+        uses: ./.github/actions/libsodium-dist
+
       # doc_to_markdown misses its budget today (#3600); the numbers are the
       # record, so the step reports and does not fail. Set MEMRY_PERF_ENFORCE=1
       # here when #3600 lands.

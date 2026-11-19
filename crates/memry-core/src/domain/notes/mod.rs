@@ -69,6 +69,7 @@ pub mod journal_day;
 pub mod large_file;
 pub mod link_rewrite;
 pub mod local_only;
+pub(crate) mod merge;
 mod metadata;
 pub mod names;
 #[cfg(feature = "markdown")]

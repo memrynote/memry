@@ -11,6 +11,7 @@
 //! A declined consent or ten minutes without a callback ends the attempt. The code, the `state`
 //! and the Google URL (which carries the `state`) are never logged.
 
+use std::sync::atomic::Ordering;
 use std::sync::{Arc, PoisonError};
 use std::time::Duration;
 
@@ -33,6 +34,8 @@ const INIT_TIMEOUT_MS: u64 = 15_000;
 pub struct OAuthStarted {
     pub state: String,
     pub authorization_url: String,
+    /// The Cancel count when the start was asked for ([`AccountService::oauth_attempt_live`]).
+    generation: u64,
 }
 
 /// What the loopback heard, for the renderer (`sync:oauth-callback`, `sync:oauth-error`).
@@ -70,6 +73,8 @@ pub struct FirstDevice {
 /// arrived) and the task waiting on its loopback.
 pub(super) struct OAuthAttempt {
     state: String,
+    /// The Cancel count when its start was asked for: a Cancel ends only older attempts.
+    generation: u64,
     authorization_url: Option<String>,
     waiter: tokio::task::AbortHandle,
 }
@@ -89,6 +94,7 @@ impl AccountService {
         probe: &dyn NoRedirect,
         on_event: impl Fn(OAuthEvent) + Send + Sync + 'static,
     ) -> Result<OAuthStarted, AccountError> {
+        let generation = self.oauth_cancels.load(Ordering::SeqCst);
         // Held until the attempt is in place, so a later start or a Cancel ends it.
         let _start = self.oauth_start.lock().await;
         self.end_pending_sign_in().await?;
@@ -157,13 +163,22 @@ impl AccountService {
         });
         *self.oauth.lock().unwrap_or_else(PoisonError::into_inner) = Some(OAuthAttempt {
             state: state.clone(),
+            generation,
             authorization_url: Some(authorization_url.clone()),
             waiter: waiter.abort_handle(),
         });
         Ok(OAuthStarted {
             state,
             authorization_url,
+            generation,
         })
+    }
+
+    /// The started attempt is still the one waiting and no Cancel was asked for since its start,
+    /// even one still queued: the browser opens only for a live attempt.
+    pub fn oauth_attempt_live(&self, started: &OAuthStarted) -> bool {
+        self.oauth_cancels.load(Ordering::SeqCst) == started.generation
+            && self.oauth_retry_url(&started.state).is_ok()
     }
 
     /// `AUTH_RETRY_OAUTH`: the Google URL of the attempt still waiting for its browser.
@@ -226,9 +241,20 @@ impl AccountService {
     }
 
     /// The user's Cancel: ends the attempt in flight, after a start still waiting on the server
-    /// has opened it.
+    /// has opened it. Counted before the wait, so an attempt whose start was asked for after
+    /// this Cancel is left alone.
     pub async fn cancel_oauth(&self) -> Result<(), AccountError> {
+        let cancel = self.oauth_cancels.fetch_add(1, Ordering::SeqCst) + 1;
         let _start = self.oauth_start.lock().await;
+        let newer = self
+            .oauth
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .as_ref()
+            .is_some_and(|attempt| attempt.generation >= cancel);
+        if newer {
+            return Ok(());
+        }
         self.end_oauth_attempt()
     }
 
