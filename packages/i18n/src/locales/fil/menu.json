@@ -102,7 +102,6 @@
   "commands": {
     "goHome": "Pumunta sa Home",
     "goInbox": "Pumunta sa Inbox",
-    "goJournal": "Pumunta sa Talaarawan",
     "goCalendar": "Pumunta sa Kalendaryo",
     "goTasks": "Pumunta sa Mga gawain",
     "goGraph": "Pumunta sa Graph",

@@ -956,6 +956,8 @@
     "componentsVaultSwitcher": {
       "noVaultsYet": "아직 볼트가 없습니다",
       "openVault": "볼트 열기",
+      "createVault": "볼트 만들기",
+      "openFolderAsVault": "폴더를 볼트로 열기",
       "settings": "설정",
       "remove": "제거: “",
       "removeVaultTitle": "목록에서 “{name}” 볼트를 제거하시겠습니까?",

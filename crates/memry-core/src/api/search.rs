@@ -49,6 +49,8 @@ mod embeddings;
 mod file_text;
 #[cfg(feature = "markdown")]
 mod fold;
+#[cfg(feature = "markdown")]
+mod folder_view;
 #[cfg(feature = "vec")]
 mod grouped;
 #[cfg(feature = "vec")]

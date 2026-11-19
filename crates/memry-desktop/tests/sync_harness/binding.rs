@@ -43,6 +43,7 @@ pub(super) fn wiring(
         keychain_recovered: broadcast::Sender::new(4),
         telemetry: None,
         on_status: Arc::new(|_| {}),
+        on_event: Arc::new(|_| {}),
         bindings: Arc::new(OpenVaultBinding::default()),
         on_binding: Arc::new(move |state| seen.lock().unwrap().push(state.clone())),
         on_vault_list_changed: Arc::new(|| {}),
@@ -66,16 +67,18 @@ pub(super) async fn detach(session: &Session) {
         .unwrap();
 }
 
-pub(super) async fn wait_for_binding(wiring: &SyncWiring, want: &BindingState) {
+/// Waits for the binding decision itself: `OpenVaultBinding::state()` reads `Bound` before the
+/// first decision (`vault-account-binding.ts:140-141`), so only `on_binding`'s log shows it.
+pub(super) async fn wait_for_binding(changes: &Mutex<Vec<BindingState>>, want: &BindingState) {
     for _ in 0..120 {
-        if wiring.bindings.state() == *want {
+        if changes.lock().unwrap().last() == Some(want) {
             return;
         }
         tokio::time::sleep(Duration::from_millis(250)).await;
     }
     panic!(
         "the binding never became {want:?}: {:?}",
-        wiring.bindings.state()
+        changes.lock().unwrap()
     );
 }
 
@@ -119,7 +122,7 @@ async fn a_vault_one_account_synced_holds_foreign_for_the_next_and_runs_no_pass(
     let (_a_dir, a, _) = new_account(&mut server, a_store.clone(), super::account::EMAIL).await;
     let (a_wiring, a_changes) = wiring(&a, &a_store, &session);
     attach(&session, &a_wiring).await;
-    wait_for_binding(&a_wiring, &BindingState::Bound).await;
+    wait_for_binding(&a_changes, &BindingState::Bound).await;
     assert_eq!(*a_changes.lock().unwrap(), vec![BindingState::Bound]);
     detach(&session).await;
     assert_eq!(a_wiring.bindings.state(), BindingState::Bound, "neutral");
@@ -128,7 +131,7 @@ async fn a_vault_one_account_synced_holds_foreign_for_the_next_and_runs_no_pass(
     let (_b_dir, b, _) = new_account(&mut server, b_store.clone(), OTHER).await;
     let (b_wiring, b_changes) = wiring(&b, &b_store, &session);
     attach(&session, &b_wiring).await;
-    wait_for_binding(&b_wiring, &BindingState::Foreign).await;
+    wait_for_binding(&b_changes, &BindingState::Foreign).await;
     assert_eq!(*b_changes.lock().unwrap(), vec![BindingState::Foreign]);
 
     let supervisor = session.sync_supervisor().expect("a supervisor");
@@ -224,9 +227,9 @@ async fn a_revoked_device_stops_sync_once_and_keeps_its_keys_and_queue() {
         session.subscribe_auth_signals(),
         move |event| heard.lock().unwrap().push(event),
     );
-    let (b_wiring, _) = wiring(&b, &b_store, &session);
+    let (b_wiring, b_changes) = wiring(&b, &b_store, &session);
     attach(&session, &b_wiring).await;
-    wait_for_binding(&b_wiring, &BindingState::Bound).await;
+    wait_for_binding(&b_changes, &BindingState::Bound).await;
     let open = session.current().unwrap();
     b.session()
         .register_vault(

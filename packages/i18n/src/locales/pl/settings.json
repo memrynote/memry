@@ -2238,6 +2238,10 @@
         "prevVault": {
           "label": "Poprzedni sejf",
           "description": "Przejdź do poprzedniego sejfu na pasku bocznym"
+        },
+        "todayJournal": {
+          "label": "Dzisiejszy dziennik",
+          "description": "Otwórz dziennik na dzisiejszym wpisie"
         }
       },
       "tabs": {

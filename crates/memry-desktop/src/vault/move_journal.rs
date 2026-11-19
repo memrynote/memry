@@ -344,7 +344,7 @@ fn read_record(
         });
         stepped?;
         let file = match opened {
-            Ok(Some(file)) => file,
+            Ok(Some((file, _))) => file,
             Ok(None) => return Ok(None),
             Err(OpenError::Io(error)) => return Err(error),
             Err(changing @ OpenError::KeptChanging) => {

@@ -19,3 +19,7 @@
 #
 # ORT_LIB_LOCATION stays an environment variable, not an [env] entry: an entry here would also
 # apply on the targets that link the prebuilt archive, and ort-sys would look for libraries there.
+
+# Developer tasks (`crates/xtask`): `cargo xtask seed bench`.
+[alias]
+xtask = "run -p xtask --"

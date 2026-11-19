@@ -475,6 +475,11 @@ pub struct FlushRequestedEvent {
     pub request_id: String,
 }
 
+/// A sticky draft was written or deleted (`sticky:drafts-changed`), sent to every window; the
+/// edge tab and the sticky read the list again.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+pub struct StickyDraftsChangedEvent;
+
 /// Open an inbox item (`inbox-open-item-event`): `memry://open?item=<id>` and, with Step 27
 /// (#3544), a clicked inbox notification.
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
