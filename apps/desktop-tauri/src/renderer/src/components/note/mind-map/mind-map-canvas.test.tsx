@@ -364,6 +364,20 @@ describe('MindMapCanvas controls', () => {
     })
   })
 
+  it('frames the whole drawing without the flight when the app reduces motion', () => {
+    const surface = mountSurface(null, ({ children }) => (
+      <MotionConfig reducedMotion="always">{children}</MotionConfig>
+    ))
+    mocks.scrollToContent.mockClear()
+
+    act(() => surface.controls().fit())
+
+    expect(mocks.scrollToContent).toHaveBeenCalledWith(undefined, {
+      fitToContent: true,
+      animate: false
+    })
+  })
+
   it('copies the live scene as an image, not the elements the map was built from', async () => {
     const surface = mountSurface()
 

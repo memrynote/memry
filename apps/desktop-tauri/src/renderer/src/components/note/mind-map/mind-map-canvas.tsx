@@ -382,8 +382,11 @@ export function MindMapCanvas({
   )
 
   const fit = useCallback((): void => {
-    apiRef.current?.scrollToContent(undefined, { fitToContent: true, animate: true })
-  }, [])
+    apiRef.current?.scrollToContent(undefined, {
+      fitToContent: true,
+      animate: !prefersReducedMotion
+    })
+  }, [prefersReducedMotion])
 
   /**
    * Neither `fitToContent` nor `fitToViewport` is passed, and that is the whole

@@ -1395,6 +1395,20 @@ describe('NotePage', () => {
     expect(await screen.findByTestId('editor-note-tags-at-mount')).toHaveTextContent('work,fresh')
   })
 
+  it('hands the editor one chip for a tag the header and the body both name', async () => {
+    // #given the header holds `Work` and the body spells it `#work` and `#WORK`
+    mocks.noteState.note = {
+      ...note,
+      tags: ['Work'],
+      content: 'Tagged #work and #fresh and #WORK #Fresh.'
+    }
+
+    renderWithProviders(<NotePage noteId="note-1" />)
+
+    // #then each tag is listed once, in the header's spelling first
+    expect(await screen.findByTestId('editor-note-tags-at-mount')).toHaveTextContent(/^Work,fresh$/)
+  })
+
   it('does not write the note when opening it reports its inline tags', async () => {
     renderWithProviders(<NotePage noteId="note-1" />)
     await screen.findByRole('button', { name: 'Load inline tags' })
