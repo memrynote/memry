@@ -13,14 +13,18 @@
 //! | a save after a remote tombstone writes nothing                    | `delete.ts:82-85`              |
 //! | a remote folder delete removes its emptied directory              | `canvas-folder-handler.ts:165` |
 //! | an echo of this device's own write changes nothing                | `canvas-handler.ts:226-230`    |
+//! | a remote update tells the renderer `canvas:updated`               | `canvas-handler.ts:336`        |
+//! | a remote tombstone tells the renderer `canvas:deleted`            | `canvas-handler.ts:387`        |
+//! | an echo tells the renderer nothing                                | `canvas-handler.ts:231-234`    |
 
 use std::fs;
 
 use memry_core::domain::canvas::ITEM_TYPE;
 use memry_core::domain::canvas_folder;
-use memry_core::storage::repositories::sync_items::InboundRecord;
+use memry_core::storage::repositories::sync_items::{ApplyOutcome, InboundRecord};
 use memry_core::sync::apply::apply_inbound;
 use memry_core::sync::driver::{AppliedOutcome, AppliedRecord};
+use memry_desktop::canvas::mirror::CanvasSynced;
 use memry_desktop::canvas::service::Update;
 use serde_json::{Value, json};
 
@@ -43,7 +47,13 @@ fn record(item_type: &str, item_id: &str, payload: Value, deleted: bool) -> Inbo
 
 impl World {
     /// Applies another device's `canvas` record at `tick` of its clock, then mirrors it.
-    fn remote(&self, tick: u64, title: &str, folder: Option<&str>, label: &str) {
+    fn remote(
+        &self,
+        tick: u64,
+        title: &str,
+        folder: Option<&str>,
+        label: &str,
+    ) -> Vec<CanvasSynced> {
         let payload = json!({
             "id": ID, "vaultId": self.core.vault_id(), "title": title, "folder": folder,
             "icon": null, "ownerNoteId": null, "scene": scene(label),
@@ -52,29 +62,37 @@ impl World {
         self.pull(
             record(ITEM_TYPE, ID, payload, false),
             AppliedOutcome::Updated,
-        );
+        )
     }
 
-    fn remote_tombstone(&self, tick: u64) {
+    fn remote_tombstone(&self, tick: u64) -> Vec<CanvasSynced> {
         let payload = json!({ "id": ID, "clock": { "peer": tick }, "deletedAt": NOW });
         self.pull(
             record(ITEM_TYPE, ID, payload, true),
             AppliedOutcome::Deleted,
-        );
+        )
     }
 
-    fn pull(&self, inbound: InboundRecord, outcome: AppliedOutcome) {
-        let applied = AppliedRecord {
-            item_type: inbound.item_type.clone(),
-            item_id: inbound.item_id.clone(),
-            outcome,
-            conflicts: Vec::new(),
-        };
-        self.core
+    /// Applies `inbound` through core, then mirrors it as `outcome`, or as `Skipped` when core
+    /// changed nothing (the applied feed's rule). Returns what the renderer is told.
+    fn pull(&self, inbound: InboundRecord, outcome: AppliedOutcome) -> Vec<CanvasSynced> {
+        let (item_type, item_id) = (inbound.item_type.clone(), inbound.item_id.clone());
+        let applied = self
+            .core
             .db()
             .call_blocking(move |conn| apply_inbound(conn, &inbound, NOW))
             .unwrap();
-        self.canvases.mirror_applied(&[applied], LATER);
+        let outcome = match applied {
+            ApplyOutcome::Skipped => AppliedOutcome::Skipped,
+            _ => outcome,
+        };
+        let applied = AppliedRecord {
+            item_type,
+            item_id,
+            outcome,
+            conflicts: Vec::new(),
+        };
+        self.canvases.mirror_applied(&[applied], LATER)
     }
 
     fn mirrored(&self) -> Vec<Option<String>> {
@@ -259,4 +277,43 @@ fn an_echo_of_this_devices_own_write_changes_nothing() {
     );
     assert_eq!(before, after, "no write");
     assert_eq!(w.mirrored(), vec![Some("Plan".to_owned())]);
+}
+
+#[test]
+fn a_remote_update_tells_the_renderer_canvas_updated() {
+    let w = world();
+    w.remote(1, "Plan", None, "first");
+
+    let told = w.remote(2, "Renamed", None, "second");
+
+    let [CanvasSynced::Updated(canvas)] = told.as_slice() else {
+        panic!("one canvas:updated, got {told:?}");
+    };
+    assert_eq!(canvas.id, ID);
+    assert_eq!(canvas.title.as_deref(), Some("Renamed"));
+    let read = w.canvases.get(ID).unwrap().unwrap();
+    assert!(
+        read.scene.contains("second"),
+        "the document holds the remote scene when told"
+    );
+}
+
+#[test]
+fn a_remote_tombstone_tells_the_renderer_canvas_deleted() {
+    let w = world();
+    w.remote(1, "Plan", None, "ink");
+
+    let told = w.remote_tombstone(2);
+
+    assert_eq!(told, vec![CanvasSynced::Deleted(ID.to_owned())]);
+}
+
+#[test]
+fn an_echo_tells_the_renderer_nothing() {
+    let w = world();
+    w.remote(1, "Plan", None, "ink");
+
+    let told = w.remote(1, "Plan", None, "ink");
+
+    assert!(told.is_empty(), "an echo is not news: {told:?}");
 }

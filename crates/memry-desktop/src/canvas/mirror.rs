@@ -20,6 +20,7 @@
 //! re-pointed or released by the time the rename window ends, so it is not a delete again.
 
 use std::collections::HashSet;
+use std::sync::Arc;
 
 use memry_core::domain::canvas::file_format::{strip_file_meta, with_file_meta};
 use memry_core::domain::canvas::folder_paths::canvas_path_key;
@@ -34,13 +35,31 @@ use super::reconcile::now_ms;
 use super::scene_file::{
     Expect, allocate_canvas_path, folder_of_canvas_path, rename_canvas_file, write_canvas_file,
 };
-use super::service::{CanvasError, CanvasService, Found, file_stem, meta};
+use super::service::{
+    CanvasError, CanvasService, CanvasSummaryView, Found, file_stem, meta, summary,
+};
 use super::settle::Settled;
 
 const SCOPE: &str = "CanvasMirror";
 
+/// What a followed record tells the renderer, with Electron's payloads (`canvas-handler.ts:224`,
+/// `:336`, `:387`, `:572`): `canvas:created`, `canvas:updated` or `canvas:deleted`. Sent after the
+/// document follows, so an open editor that reloads reads the remote scene before its next save.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CanvasSynced {
+    Created(CanvasSummaryView),
+    Updated(CanvasSummaryView),
+    Deleted(String),
+}
+
+/// Hands each [`CanvasSynced`] to the renderer.
+pub type CanvasSyncedHook = Arc<dyn Fn(CanvasSynced) + Send + Sync>;
+
 /// The applied-record observer of one open vault's sync.
-pub struct CanvasMirror(pub CanvasService);
+pub struct CanvasMirror {
+    pub service: CanvasService,
+    pub synced: CanvasSyncedHook,
+}
 
 impl ApplyObserver for CanvasMirror {
     fn name(&self) -> &str {
@@ -48,30 +67,36 @@ impl ApplyObserver for CanvasMirror {
     }
 
     fn records_applied(&self, batch: &[AppliedRecord]) {
-        self.0.mirror_applied(batch, now_ms());
+        for told in self.service.mirror_applied(batch, now_ms()) {
+            (self.synced)(told);
+        }
     }
 }
 
 /// What following one canvas did to its document, after the writer call.
 enum Followed {
-    /// The scene to index, and a conflict copy a settle made.
-    Live(Option<String>, Settled),
+    /// The canvas as followed, the scene to index, and a conflict copy a settle made.
+    Live(CanvasSummaryView, Option<String>, Settled),
     /// The canvas is deleted: its document, if any, to trash, and the conflict copy kept of it.
     Deleted(Option<String>, Option<Settled>),
 }
 
 impl CanvasService {
-    /// Follows every canvas and folder record of an applied page on disk. A failure is logged
-    /// per record and the rest still run.
-    pub fn mirror_applied(&self, batch: &[AppliedRecord], now_ms: i64) {
+    /// Follows every canvas and folder record of an applied page on disk, returning what the
+    /// renderer is told. A failure is logged per record and the rest still run.
+    pub fn mirror_applied(&self, batch: &[AppliedRecord], now_ms: i64) -> Vec<CanvasSynced> {
         let applied = || {
             batch
                 .iter()
                 .filter(|r| r.outcome != AppliedOutcome::Skipped)
         };
+        let mut told = Vec::new();
         for record in applied().filter(|r| r.item_type == canvas::ITEM_TYPE) {
-            if let Err(error) = self.follow_canvas(&record.item_id, now_ms) {
-                tracing::error!(scope = SCOPE, %error, "a synced canvas did not reach its document");
+            match self.follow_canvas(&record.item_id, record.outcome, now_ms) {
+                Ok(events) => told.extend(events),
+                Err(error) => {
+                    tracing::error!(scope = SCOPE, %error, "a synced canvas did not reach its document")
+                }
             }
         }
         for record in applied().filter(|r| {
@@ -87,19 +112,34 @@ impl CanvasService {
                 }
             }
         }
+        told
     }
 
-    fn follow_canvas(&self, id: &str, now_ms: i64) -> Result<(), CanvasError> {
+    /// Follows canvas `id` on disk, returning what the renderer is told.
+    fn follow_canvas(
+        &self,
+        id: &str,
+        outcome: AppliedOutcome,
+        now_ms: i64,
+    ) -> Result<Vec<CanvasSynced>, CanvasError> {
         let followed = self.write::<_, CanvasError>(|conn| match canvas::get(conn, id)? {
             Some(canvas) => self.follow_live(conn, &canvas, now_ms),
             None => self.follow_deleted(conn, id, now_ms),
         })?;
         match followed {
-            Followed::Live(scene, settled) => {
+            Followed::Live(canvas, scene, settled) => {
                 if let Some(scene) = scene {
                     self.rewrite_edges(id, &scene)?;
                 }
-                self.index_settled_copy(&settled)
+                self.index_settled_copy(&settled)?;
+                let canvas = match outcome {
+                    AppliedOutcome::Created => CanvasSynced::Created(canvas),
+                    _ => CanvasSynced::Updated(canvas),
+                };
+                Ok(copy_created(Some(&settled))
+                    .into_iter()
+                    .chain([canvas])
+                    .collect())
             }
             Followed::Deleted(path, copy) => {
                 self.index.call_blocking(|index| edges::clear(index, id))?;
@@ -109,7 +149,12 @@ impl CanvasService {
                 if let Some(path) = path {
                     self.remove_document(&path);
                 }
-                Ok(self.release_removed(&[id.to_owned()])?)
+                self.release_removed(&[id.to_owned()])?;
+                let deleted = CanvasSynced::Deleted(id.to_owned());
+                Ok(copy_created(copy.as_ref())
+                    .into_iter()
+                    .chain([deleted])
+                    .collect())
             }
         }
     }
@@ -138,7 +183,7 @@ impl CanvasService {
             true => canvas::get(conn, id)?.map(|canvas| canvas.scene),
             false => None,
         };
-        Ok(Followed::Live(scene, settled))
+        Ok(Followed::Live(summary(canvas.clone()), scene, settled))
     }
 
     /// A document for a canvas this device has none of, at a path named for its title.
@@ -236,6 +281,16 @@ impl CanvasService {
             kept = Some(Settled::ConflictCopy(Box::new(copy)));
         }
         Ok(Followed::Deleted(Some(path), kept))
+    }
+}
+
+/// `canvas:created` for the conflict copy a settle kept (`canvas-handler.ts:572`).
+fn copy_created(settled: Option<&Settled>) -> Option<CanvasSynced> {
+    match settled {
+        Some(Settled::ConflictCopy(copy)) => {
+            Some(CanvasSynced::Created(copy.canvas.summary.clone()))
+        }
+        _ => None,
     }
 }
 
