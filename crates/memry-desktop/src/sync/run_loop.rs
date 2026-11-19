@@ -338,6 +338,7 @@ impl Loop {
     fn reevaluate_with(&mut self, facts: AuthFacts) {
         let inputs = self.gate.inputs(facts);
         let decision = gate::evaluate(&inputs);
+        self.signals.decide(&inputs, facts.keychain_unavailable);
         let was = std::mem::replace(&mut self.decision, decision);
         // The keychain only holds sync back when everything else would start it
         // (`runtime.ts:982`); otherwise the gate's own status shows.

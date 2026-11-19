@@ -297,3 +297,34 @@ async fn a_blocking_stop_gives_up_on_a_loop_stuck_in_the_keychain() {
     .unwrap();
     assert!(!stopped, "the close went on without the loop");
 }
+
+/// The Readwise pull gate's readings (`isSyncDecided`, `isCaughtUpWithServer`): a vault list not
+/// fetched yet is no verdict, signed out is one, and only a clean pass catches up.
+#[tokio::test(start_paused = true)]
+async fn the_verdict_waits_for_the_vault_list_and_only_a_clean_pass_catches_up() {
+    let rig = Rig::new();
+    let supervisor = start_unbound(&rig).await;
+    settle().await;
+    assert!(!supervisor.decided(), "an unknown binding is no verdict");
+    assert!(!supervisor.caught_up());
+    rig.gate.set_binding(VaultBinding::Bound);
+    settle().await;
+    assert!(supervisor.decided() && supervisor.status().sync_eligible);
+    assert!(supervisor.caught_up(), "a clean pass caught up");
+
+    lock(&rig.backend.driver.errors).push(unauthorized());
+    supervisor.request_push();
+    sleep(Duration::from_secs(1)).await;
+    settle().await;
+    assert!(!supervisor.caught_up(), "a failed pass did not");
+
+    let signed_out = Rig::new();
+    signed_out.backend.signed_in.store(false, Ordering::SeqCst);
+    let supervisor = signed_out.start().await;
+    settle().await;
+    assert!(
+        supervisor.decided(),
+        "signed out is a verdict: this install does not sync"
+    );
+    assert!(!supervisor.status().sync_eligible);
+}

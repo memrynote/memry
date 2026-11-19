@@ -148,6 +148,9 @@ impl Loop {
     /// Takes in what one pass did and says how a Sync Now caller sees it.
     fn record(&mut self, report: &PassReport, started: Instant) -> TriggerSyncResult {
         self.engine = Some(report.final_state);
+        let clean = report.error().is_none();
+        let online = !matches!(report.final_state, SyncState::Offline | SyncState::Refused);
+        self.signals.set_caught_up(clean && online);
         if report.transitions.contains(&SyncState::Applying) {
             self.last_pull = Some(started);
             self.signals.pulled();

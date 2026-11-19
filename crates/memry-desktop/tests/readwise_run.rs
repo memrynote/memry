@@ -58,6 +58,8 @@ mod after;
 mod claim;
 #[path = "readwise_run_gate.rs"]
 mod gate;
+#[path = "readwise_run_schedule.rs"]
+mod schedule;
 
 use editor_window::Window;
 use readwise_server::{Reply, Seen, Server};

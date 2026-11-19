@@ -27,7 +27,7 @@ use super::gate::{self, GateDecision, SyncStartGate};
 use super::result::{SyncNowBlockedReason as Blocked, TriggerSyncResult};
 use super::run_loop::Loop;
 use super::signals::{AuthSignal, AuthSignals, Signals};
-use super::status::{self, StatusFacts, SyncStatus};
+use super::status::{self, StatusFacts, SyncStatus, SyncStatusValue};
 use super::telemetry::BootstrapMetrics;
 use super::triggers::Trigger;
 use crate::shell::power::PowerEvent;
@@ -148,6 +148,20 @@ impl SyncSupervisor {
     /// How many passes have pulled since the loop started.
     pub fn completed_pulls(&self) -> u64 {
         self.signals.completed_pulls()
+    }
+
+    /// The gate answered for this vault: sync starts, or it does not for a reason the user
+    /// settled (`isSyncDecided`).
+    pub fn decided(&self) -> bool {
+        self.signals.decided()
+    }
+
+    /// `isCaughtUpWithServer`: the last pass ended cleanly, and sync is neither paused nor
+    /// offline now.
+    pub fn caught_up(&self) -> bool {
+        let now = self.status().status;
+        self.signals.caught_up()
+            && !matches!(now, SyncStatusValue::Paused | SyncStatusValue::Offline)
     }
 
     /// Waits until more than `after` passes have pulled; answers how many have.
