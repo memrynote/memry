@@ -165,7 +165,7 @@ fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
     );
     index.register(session);
     crate::ml_worker::register_embedding_lane(app, session, &index, &tier);
-    app.manage(index);
+    app.manage(index.clone());
     register_flushes(app, &tier, session);
     forward_writeback_failures(app.clone(), tier.subscribe_failures());
     forward_activity_changes(app.clone(), tier.activity().subscribe());
@@ -177,6 +177,7 @@ fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
     let schemas_changed = app.clone();
     memry_desktop::tags::schema::rename::register_resume(
         &notes,
+        &index,
         session,
         Arc::new(move || broadcast(&schemas_changed, NoteTagsChangedEvent)),
     );

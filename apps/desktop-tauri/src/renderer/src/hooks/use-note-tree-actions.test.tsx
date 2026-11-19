@@ -678,18 +678,28 @@ describe('useNoteTreeActions', () => {
     })
     expect(result.current.folderToConfigureTemplate).toBeNull()
 
-    vi.mocked(notesService.setFolderConfig).mockRejectedValueOnce(new Error('template failed'))
+    // A failed save (the command rejects with a CommandError) comes back from
+    // notesService as `{ success: false, error }`, not a rejection (#3905).
+    vi.mocked(notesService.setFolderConfig).mockResolvedValueOnce({
+      success: false,
+      error: 'template failed'
+    })
     act(() => result.current.handleSetFolderTemplate('Work'))
     await act(async () => {
       await result.current.handleFolderTemplateSelect('tpl-1')
     })
-    expect(toast.error).toHaveBeenCalledWith('phaseI.toasts.failedToSetDefaultTemplate')
+    expect(toast.error).toHaveBeenCalledWith('template failed')
 
-    vi.mocked(notesService.setFolderConfig).mockRejectedValueOnce(new Error('clear failed'))
+    vi.mocked(notesService.setFolderConfig).mockResolvedValueOnce({
+      success: false,
+      error: 'clear failed'
+    })
     await act(async () => {
       await result.current.handleClearFolderTemplate('Work')
     })
-    expect(toast.error).toHaveBeenCalledWith('phaseI.toasts.failedToClearDefaultTemplate')
+    expect(toast.error).toHaveBeenCalledWith('clear failed')
+    expect(toast.success).not.toHaveBeenCalled()
+    expect(setFolderTemplateNames).not.toHaveBeenCalled()
 
     await act(async () => {
       await result.current.handleMove({

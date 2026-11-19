@@ -102,7 +102,6 @@
   "commands": {
     "goHome": "Ugrás a Kezdőlapra",
     "goInbox": "Ugrás a Beérkezőkhöz",
-    "goJournal": "Ugrás a Naplóhoz",
     "goCalendar": "Ugrás a Naptárhoz",
     "goTasks": "Ugrás a Feladatokhoz",
     "goGraph": "Ugrás a Gráfhoz",
