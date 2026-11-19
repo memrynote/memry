@@ -672,6 +672,37 @@ which now resolves the replacement. That includes a write-back armed before the 
 destroying the superseded doc is not what makes it safe, since a destroyed Y.Doc can still
 be read; resolving the note id when the pass runs is.
 
+### Review marks merge by id
+
+The `criticMarkupMarks` root holds one plain object for each suggestion or comment. Yjs
+merges the array but never the keys inside an element. If two devices edit the same
+comment offline, the merged array holds two elements with the same id, in the same order on
+every device. `readCriticMarkupMarksFromYDoc` and the Rust readers keep the first valid
+element of each id. `writeCriticMarkupMarksToYDoc` and `write_critic_marks` change only the
+elements that differ, ignoring key order. They delete removed ids, invalid elements, and
+later copies of an id, and they insert new ids in place. A rewritten element keeps the keys
+the writer does not know, so a field added by a newer build survives an older build that
+follows these rules.
+
+The writers compare the stored mark, read as this build reads it, with the new mark and
+ignore `start` and `end`. An element that differs only in its offsets stays untouched. The
+window moves offsets as the user types and recomputes them from the text, so an offset-only
+write would replace a comment another device edited and lose that edit. Both writers own
+this rule, so the desktop editor and the Rust apply path follow it alike. As a result, the
+stored offsets of an untouched element can lag behind the text.
+
+A write coalesces adjacent deletes and adjacent replacements into runs. It never deletes and
+re-inserts an element it does not change: the stale copy would come before another device's
+concurrent copy of that id, so first-copy-wins would lose that device's edit or undo its
+delete. This has a known performance limit. Each Yjs operation walks the array from its
+start, so a write that changes `k` separate runs of an `n`-element array costs O(k·n). Only
+many scattered changes in one write reach it, and the marks come from the user's own
+devices.
+
+Shipped Electron builds still rewrite the whole array. For that reason,
+a new mark field is also written into the mark's `metadata` string, which every shipped
+build copies unchanged (protocol §12.5.1).
+
 ## IPC Loop Prevention
 
 Three pieces of metadata prevent feedback loops:
