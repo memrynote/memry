@@ -13,7 +13,7 @@ use memry_desktop::agent::mcp::{
 };
 use memry_desktop::agent::runtime::{
     APPROVAL_ABANDONED_CODE, APPROVAL_ABANDONED_MESSAGE, APPROVAL_EXPIRED_CODE,
-    APPROVAL_EXPIRED_MESSAGE, APPROVAL_TIMEOUT, AgentWriteGate, AlwaysAllowScope,
+    APPROVAL_EXPIRED_MESSAGE, APPROVAL_TIMEOUT, AgentWriteGate, AlwaysAllowScope, ApprovalLabel,
     ApproveToolDecision, CANCELLED, DENIED, Gate, GateHost, GateInput, NO_TURN, PendingApproval,
     PreviewKind, ReviewTarget, ToolApprovalMode, TurnGrants, UNKNOWN_CONVERSATION,
     classified_desktop_writes, decide_tool_gate, preview_kind_for_call, preview_kind_for_tool,
@@ -79,6 +79,7 @@ impl GateHost for Host {
             message.to_owned(),
         ));
     }
+    fn approval_decided(&self, _: ApprovalLabel) {}
 }
 
 struct Vault {

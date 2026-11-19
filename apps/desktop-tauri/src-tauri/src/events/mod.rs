@@ -15,12 +15,14 @@ use tauri::{AppHandle, Emitter, EventTarget, Runtime};
 use crate::commands::vault_locks::VaultLockStateView;
 
 mod account;
+mod agent;
 mod ai;
 mod sync;
 mod tags;
 mod voice;
 
 pub use account::*;
+pub use agent::*;
 pub use ai::*;
 pub use sync::*;
 pub use tags::*;

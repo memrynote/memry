@@ -1,10 +1,12 @@
 //! Local agent provider settings (Step 22, #3539): the `agent:*LocalProvider*` and
 //! `agent:listLocalModels` channels of Electron's `ipc/agent-handlers.ts`. Each command is one
 //! call of `memry_desktop::ai::local_provider`; the key stays in Rust and the renderer learns
-//! only whether one is stored.
+//! only whether one is stored. Also the vault's standing tool approvals that Settings lists and
+//! revokes (Step 28d, #3545).
 
 use std::sync::Arc;
 
+use memry_desktop::agent::runtime::{edit_vault_trust_list, vault_trust_list};
 use memry_desktop::ai::catalog::ProbeClient;
 use memry_desktop::ai::local_provider::probe::{
     self, AgentLocalModelList, AgentLocalProviderProbeResult,
@@ -15,6 +17,8 @@ use memry_desktop::ai::local_provider::{
 };
 use memry_desktop::i18n::{self, Args};
 use memry_desktop::locale::LocaleService;
+use memry_desktop::session::Session;
+use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, Runtime};
 
 use super::blocking;
@@ -171,4 +175,60 @@ pub async fn agent_probe_local_provider<R: Runtime>(
     let (provider, keychain_failed) = read(&app, "agent_probe_local_provider").await?;
     let result = probe::probe(&client(), &provider).await.result;
     Ok(with_keychain_detail(&app, result, keychain_failed))
+}
+
+/// The open vault's standing tool approvals (`AgentToolGrantsSchema`), for the Settings list.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentToolGrants {
+    pub tools: Vec<String>,
+}
+
+/// The vault branch of `EditTrustListRequestSchema`: grants `add`, then revokes `remove`.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentVaultTrustEdit {
+    #[serde(default)]
+    #[specta(optional)]
+    pub add: Vec<String>,
+    #[serde(default)]
+    #[specta(optional)]
+    pub remove: Vec<String>,
+}
+
+/// `agent:getToolGrants`. No open vault has no grants, as Electron's unavailable handler answers.
+#[tauri::command]
+#[specta::specta]
+pub async fn agent_get_tool_grants<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<AgentToolGrants, CommandError> {
+    let session = app.state::<Session>();
+    let tools = session
+        .current()
+        .map(|open| vault_trust_list(session.registry().config(), &open.vault_id))
+        .unwrap_or_default();
+    Ok(AgentToolGrants { tools })
+}
+
+/// `agent:editTrustList` with `scope: 'vault'`, which Settings uses to revoke a standing
+/// approval. The gate reads the list at every write call, so the revoke holds from the next one.
+#[tauri::command]
+#[specta::specta]
+pub async fn agent_edit_vault_trust_list<R: Runtime>(
+    app: AppHandle<R>,
+    edit: AgentVaultTrustEdit,
+) -> Result<AgentToolGrants, CommandError> {
+    blocking("agent_edit_vault_trust_list", move || {
+        let session = app.state::<Session>();
+        let open = session.current().ok_or_else(|| {
+            CommandError::new(ErrorKind::Invalid, "no_vault", "No vault is open.")
+        })?;
+        let config = session.registry().config();
+        edit_vault_trust_list(config, &open.vault_id, &edit.add, &edit.remove)
+            .map(|tools| AgentToolGrants { tools })
+            .map_err(|error| {
+                CommandError::new(ErrorKind::Storage, "agent_prefs_write", error.to_string())
+            })
+    })
+    .await
 }

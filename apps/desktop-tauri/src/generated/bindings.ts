@@ -40,8 +40,15 @@ export const commands = {
 	syncSetupFirstDevice: (provider: string, oauthToken: string, state: string) => __TAURI_INVOKE<AuthFirstDevice>("sync_setup_first_device", { provider, oauthToken, state }),
 	/**  `sync:setup-new-account`. The phrase waits for `sync_get_recovery_phrase`. */
 	syncSetupNewAccount: () => __TAURI_INVOKE<AccountDevice>("sync_setup_new_account"),
+	/**
+	 *  `agent:editTrustList` with `scope: 'vault'`, which Settings uses to revoke a standing
+	 *  approval. The gate reads the list at every write call, so the revoke holds from the next one.
+	 */
+	agentEditVaultTrustList: (edit: AgentVaultTrustEdit) => __TAURI_INVOKE<AgentToolGrants>("agent_edit_vault_trust_list", { edit }),
 	/**  `agent:getLocalProviderSettings`. A locked keychain still opens the screen. */
 	agentGetLocalProviderSettings: () => __TAURI_INVOKE<AgentLocalProviderSettings>("agent_get_local_provider_settings"),
+	/**  `agent:getToolGrants`. No open vault has no grants, as Electron's unavailable handler answers. */
+	agentGetToolGrants: () => __TAURI_INVOKE<AgentToolGrants>("agent_get_tool_grants"),
 	/**
 	 *  `agent:listLocalModels`. An unreachable server or a keychain that cannot answer is an empty
 	 *  list, as in Electron.
@@ -854,6 +861,7 @@ export const commands = {
 
 /** Events */
 export const events = {
+	agentEventEmittedEvent: makeEvent<AgentEventEmittedEvent, AgentEventEmittedEvent>("agent-event-emitted-event"),
 	aiEmbeddingProgressEvent: makeEvent<AiEmbeddingProgressEvent, AiEmbeddingProgressEvent>("ai-embedding-progress-event"),
 	aiInlineSettingsChangedEvent: makeEvent<AiInlineSettingsChangedEvent, AiInlineSettingsChangedEvent>("ai-inline-settings-changed-event"),
 	appNavigationRequestedEvent: makeEvent<AppNavigationRequestedEvent, AppNavigationRequestedEvent>("app-navigation-requested-event"),
@@ -962,6 +970,19 @@ export type AddReasonInput = {
 	searchQuery: string,
 };
 
+/**
+ *  `AgentEventSchema` (`ipc-agent.ts:700`), the variants the gate raises. The runtime stage adds
+ *  the rest.
+ */
+export type AgentEvent = { kind: "tool_call_pending_approval"; conversationId: string; toolCallId: string; name: string; args: Value; requiresDiff: boolean; previewKind: PreviewKind; reviewTarget: ReviewTarget | null } | { kind: "tool_call_failed"; conversationId: string; toolCallId: string; error: AgentEventError };
+
+export type AgentEventEmittedEvent = AgentEvent;
+
+export type AgentEventError = {
+	code: string,
+	message: string,
+};
+
 /**  `AgentLocalModelList`. */
 export type AgentLocalModelList = {
 	models: string[],
@@ -1011,6 +1032,17 @@ export type AgentLocalProviderSettingsUpdate = {
 
 /**  `AgentLocalThinking`: `off` asks a thinking model to answer without thinking. */
 export type AgentLocalThinking = "default" | "off";
+
+/**  The open vault's standing tool approvals (`AgentToolGrantsSchema`), for the Settings list. */
+export type AgentToolGrants = {
+	tools: string[],
+};
+
+/**  The vault branch of `EditTrustListRequestSchema`: grants `add`, then revokes `remove`. */
+export type AgentVaultTrustEdit = {
+	add?: string[],
+	remove?: string[],
+};
 
 /**  `EmbeddingProgressEvent.phase`: the model's download and load, then a note embedding pass. */
 export type AiEmbeddingPhase = "downloading" | "loading" | "ready" | "error" | "embedding" | "complete";
@@ -2946,6 +2978,9 @@ export type PresetOfferView = {
 /**  `PresetOffer.state`. */
 export type PresetState = "add" | "add-fields" | "added";
 
+/**  `ChangePreviewKindSchema` (`ipc-agent.ts:618`): the picture the approval card draws. */
+export type PreviewKind = "none" | "fields" | "body" | "loss";
+
 /**  A tag on the card, with its colour (`stone` when the tag has no definition). */
 export type PreviewTagView = {
 	name: string,
@@ -3168,6 +3203,9 @@ export type ResumeSyncResult = {
 	success: boolean,
 	pendingCount: number,
 };
+
+/**  `AgentReviewTargetSchema` (`ipc-agent.ts:694`): the page that reviews a body edit in place. */
+export type ReviewTarget = { kind: "note"; id: string } | { kind: "journal"; date: string };
 
 /**  `SameDayEntry` (`packages/contracts/src/journal-api.ts`). */
 export type SameDayEntryView = {

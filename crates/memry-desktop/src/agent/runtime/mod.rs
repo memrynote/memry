@@ -1,9 +1,14 @@
-//! The agent runtime (Step 28, #3545), the port of Electron's `agent/runtime`. This stage holds
-//! the write gate: turn grants, the gate order and the approval map.
+//! The agent runtime (Step 28, #3545), the port of Electron's `agent/runtime`: the write gate
+//! (turn grants, the gate order, the approval map), the turn locks, the vault's standing
+//! approvals and the per-vault agent the app builds on every vault open.
 
 mod approvals;
 mod gate;
 mod grants;
+mod host;
+mod service;
+mod trust;
+mod turns;
 mod write_gate;
 
 pub use approvals::{
@@ -17,4 +22,10 @@ pub use gate::{
     preview_kind_for_tool, previewed_tools, review_target_for_tool,
 };
 pub use grants::{TurnGrant, TurnGrants};
-pub use write_gate::{AgentWriteGate, CANCELLED, DENIED, GateHost, NO_TURN, UNKNOWN_CONVERSATION};
+pub use host::{AgentEvent, AgentEventError, AgentEvents, HostParts, TrackEvent, VaultGateHost};
+pub use service::{AgentFactory, AgentService, ToolsNotPorted, VaultAgent, stop_chat_server};
+pub use trust::{edit_vault_trust_list, vault_trust_list};
+pub use turns::{KillBackend, TrackedBackend, Turn, TurnError};
+pub use write_gate::{
+    AgentWriteGate, ApprovalLabel, CANCELLED, DENIED, GateHost, NO_TURN, UNKNOWN_CONVERSATION,
+};
