@@ -124,6 +124,30 @@ fn a_panicking_task_does_not_stop_the_next_one() {
 }
 
 #[test]
+fn a_registration_while_a_task_runs_waits_for_the_tasks_queued_before_it() {
+    let queue = Arc::new(PostReveal::default());
+    let (tx, rx) = recorder();
+    let (entered_tx, entered) = mpsc::channel();
+    let (release, release_rx) = mpsc::channel::<()>();
+    queue.register("boom", move || {
+        entered_tx.send(()).expect("receiver alive");
+        let _ = release_rx.recv();
+        panic!("task failed");
+    });
+    queue.register("next", record(&tx, "next"));
+    arm(&queue, false).send(()).expect("drain waiting");
+    entered.recv_timeout(HANG).expect("the drain started boom");
+
+    // `boom` is still running and `next` still queued: the marker goes behind `next`.
+    queue.register("marker", record(&tx, "marker"));
+    release.send(()).expect("boom waiting");
+    let order: Vec<_> = (0..2)
+        .map(|_| rx.recv_timeout(HANG).expect("task ran"))
+        .collect();
+    assert_eq!(order, ["next", "marker"]);
+}
+
+#[test]
 fn the_reveal_arms_the_drain_from_a_thread_outside_the_runtime() {
     // `reveal::show` runs on the event loop thread, which has no tokio context: arming the
     // app's queue there must not build the timer on the calling thread.
