@@ -12,6 +12,7 @@ import { isMac } from '@/lib/shortcut-catalog'
 import { CreateVaultForm } from '@/components/onboarding/create-vault-form'
 import { SyncVaultPanel } from '@/components/onboarding/sync-vault-panel'
 import { openLink } from '@/lib/external-link-guard'
+import { vaultService } from '@/services/vault-service'
 
 type Translate = (key: string) => string
 
@@ -108,6 +109,8 @@ export function VaultOnboarding(): React.JSX.Element {
         {view === 'create' ? (
           <main className="flex flex-col grow shrink basis-0 h-full bg-background">
             <CreateVaultForm
+              create={(parent, name) => vaultService.create(parent, name)}
+              onCancel={() => setView('home')}
               onBack={() => setView('home')}
               onCreated={trackCompleted}
               onOpenExisting={(path) => void handleOpenFolder(path)}

@@ -36,6 +36,10 @@
     ],
     "macOS": {
       "minimumSystemVersion": "13.0"
+    },
+    "resources": {
+      "../../../crates/memry-desktop/resources/sandbox": "sandbox",
+      "../../cli/src/sandbox/assets": "sandbox-assets"
     }
   }
 }

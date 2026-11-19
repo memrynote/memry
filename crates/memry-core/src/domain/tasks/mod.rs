@@ -367,11 +367,12 @@ pub fn apply_remote(
     clock_device: Option<&str>,
 ) -> Result<Inbound, StorageError> {
     let local = TASK_FIELDS.local(conn, record)?;
-    let inbound = task_merge::apply_remote_merged_with_lists(
+    let inbound = task_merge::apply_remote_merged(
         conn,
         record,
         &TASK_SYNCABLE_FIELDS,
         &UNCLOCKED_LISTS,
+        task_merge::Carry::Union,
         now_ms,
     )?;
     TASK_FIELDS.join_after_apply(conn, record, local, &inbound, clock_device, now_ms)?;

@@ -50,11 +50,18 @@
 
 /**
  * A reader who asked for less motion still gets the mark — it is what tells
- * them where the click went — just without the fade.
+ * them where the click went — just without the fade. The OS preference and the
+ * app's Reduce motion setting both ask: base.css shortens every animation under
+ * the setting, which would leave this one ended on its transparent last frame.
  */
 @media (prefers-reduced-motion: reduce) {
   .mind-map-focus-ring {
     animation-name: none;
     opacity: 1;
   }
+}
+
+:root[data-reduce-motion='on'] .mind-map-focus-ring {
+  animation-name: none;
+  opacity: 1;
 }
