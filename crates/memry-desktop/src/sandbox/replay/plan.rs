@@ -172,6 +172,9 @@ impl Plan {
     pub fn write(&self, root: &Path) -> Result<(), SandboxError> {
         for (path, content) in &self.files {
             check_relative_path(path)?;
+            if in_core(path) {
+                return Err(SandboxError::UnsafePath(path.clone()));
+            }
             let to = root.join(path);
             if let Some(parent) = to.parent() {
                 fs::create_dir_all(parent).map_err(|error| io_error(parent, &error))?;
@@ -185,6 +188,12 @@ impl Plan {
         }
         Ok(())
     }
+}
+
+/// `path` is the core's folder or under it, in any case: APFS and NTFS ignore case.
+fn in_core(path: &str) -> bool {
+    let path = path.to_ascii_lowercase();
+    path == CORE_DIR || path.starts_with(&format!("{CORE_DIR}/"))
 }
 
 fn notes_of(manifest: &Manifest) -> Vec<&Row> {
@@ -247,7 +256,7 @@ fn walk(root: &Path) -> Result<Vec<String>, SandboxError> {
                 format!("{prefix}/{name}")
             };
             check_relative_path(&rel)?;
-            if rel == CORE_DIR || rel.starts_with(&format!("{CORE_DIR}/")) {
+            if in_core(&rel) {
                 return Err(SandboxError::UnsafePath(rel));
             }
             let path = entry.path();
@@ -352,6 +361,41 @@ mod tests {
         });
         assert_eq!(out.len(), text.len());
         assert!(lookups <= 200_000, "{lookups} lookups");
+    }
+
+    /// A minted id lands in an `attachments/<id>/` path; one that leaves the folder is refused
+    /// before anything is written.
+    #[test]
+    fn a_minted_id_that_leaves_the_vault_is_refused() {
+        let dir = tempfile::tempdir().unwrap();
+        let vault = dir.path().join("vault");
+        let id = "note_AAAAAAAAAAAA";
+        fs::create_dir_all(vault.join("attachments").join(id)).unwrap();
+        fs::write(vault.join("A.md"), "a\n").unwrap();
+        fs::write(vault.join("attachments").join(id).join("a.txt"), "x").unwrap();
+        let at = "2026-01-14T12:00:00.000Z";
+        let seed = serde_json::json!({
+            "version": 1, "generatedAt": at, "timezone": "UTC", "assets": [], "index": {},
+            "data": { "note_metadata": [{
+                "id": id, "path": "A.md", "file_type": "markdown", "journal_date": null,
+                "created_at": at, "modified_at": at,
+            }] },
+        });
+        let template = Template {
+            manifest: Manifest::parse(seed.to_string().as_bytes()).unwrap(),
+            vault,
+            assets: dir.path().join("assets"),
+        };
+        let plan =
+            plan::<chrono::Utc>(&template, &template.manifest, None, |_| "../x".into()).unwrap();
+        let root = dir.path().join("out");
+        let refused = plan.write(&root);
+        assert!(
+            matches!(&refused, Err(SandboxError::UnsafePath(path)) if path == "attachments/../x/a.txt"),
+            "{:?}",
+            refused.err()
+        );
+        assert!(!dir.path().join("x").exists() && !root.join("x").exists());
     }
 
     #[test]

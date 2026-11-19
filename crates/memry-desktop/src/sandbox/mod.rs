@@ -43,7 +43,9 @@ pub enum SandboxError {
     MissingFile(String),
     #[error("sandbox target {0:?} is not a folder name the replay may write")]
     UnsafeTarget(String),
-    #[error("sandbox target {0:?} holds files; replace was not asked for")]
+    #[error(
+        "sandbox target {0:?} holds files; only an earlier sandbox is replaced, and only when asked"
+    )]
     TargetNotEmpty(String),
     #[error("sandbox file error at {path}: {message}")]
     Io { path: String, message: String },

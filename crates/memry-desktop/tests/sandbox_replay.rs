@@ -15,8 +15,12 @@ mod vault_env;
 use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use chrono::{DateTime, Utc};
+use memry_core::api::errors::SecureStoreError;
+use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_desktop::notes::identity::NotesIdentity;
 use memry_desktop::registry::vault_icon;
 use memry_desktop::sandbox::replay::{MAX_DEPTH, SANDBOX_VAULT_ICON};
@@ -25,6 +29,7 @@ use memry_desktop::sandbox::{
 };
 use regex::Regex;
 use serde_json::{Value, json};
+use sha2::{Digest, Sha256};
 use vault_env::{env_named, indexed};
 
 const TEMPLATE_NOW: &str = "2026-01-14T12:00:00.000Z";
@@ -228,16 +233,18 @@ fn a_rebased_replay_writes_the_generators_paths_for_that_day() {
 fn a_rerun_after_a_crash_converges_on_one_vault() {
     let dir = tempfile::tempdir().unwrap();
     let target = dir.path().join("Sandbox");
-    // What a replay killed mid-build, and one killed between its two renames, leave behind.
-    for left in [".Sandbox.sandbox-dead", ".Sandbox.replaced-dead"] {
+    // What a replay killed mid-build, and one killed after its two renames, leave behind.
+    let leave = |left: &str| {
         fs::create_dir_all(dir.path().join(left).join(".memry")).unwrap();
         fs::write(dir.path().join(left).join("half.md"), "half\n").unwrap();
-    }
+    };
+    leave(".Sandbox.sandbox-dead");
     let store = device_key::with_device_key();
     let first = replay(&template(), &target, &options(false), store.clone()).unwrap();
     assert_eq!(siblings(dir.path()), ["Sandbox"]);
     assert_eq!(core_notes(&target).len(), first.notes);
 
+    leave(".Sandbox.replaced-dead");
     let again = replay(&template(), &target, &options(true), store.clone()).unwrap();
     assert_eq!(again, first);
     assert_eq!(siblings(dir.path()), ["Sandbox"]);
@@ -251,6 +258,133 @@ fn a_rerun_after_a_crash_converges_on_one_vault() {
     assert!(matches!(failed, Err(SandboxError::Io { .. })), "{failed:?}");
     assert_eq!(siblings(dir.path()), ["Sandbox"]);
     assert_eq!(core_notes(&target), before);
+}
+
+/// A replay killed between its two renames left the previous sandbox aside and no target; a
+/// rerun that then fails to build still leaves that sandbox in place.
+#[test]
+fn a_sandbox_left_aside_by_a_crash_is_put_back_before_the_sweep() {
+    let dir = tempfile::tempdir().unwrap();
+    let target = dir.path().join("Sandbox");
+    let store = device_key::with_device_key();
+    replay(&template(), &target, &options(false), store.clone()).unwrap();
+    let before = core_notes(&target);
+    fs::rename(&target, dir.path().join(".Sandbox.replaced-dead")).unwrap();
+
+    let mut broken = template();
+    broken.assets = dir.path().join("no-assets");
+    let failed = replay(&broken, &target, &options(true), store);
+    assert!(matches!(failed, Err(SandboxError::Io { .. })), "{failed:?}");
+    assert_eq!(siblings(dir.path()), ["Sandbox"]);
+    assert_eq!(core_notes(&target), before);
+}
+
+/// `replace` replaces only an earlier sandbox: a vault, or a folder holding vaults, is refused
+/// and keeps every file.
+#[test]
+fn replace_never_replaces_a_folder_that_is_not_a_sandbox() {
+    let dir = tempfile::tempdir().unwrap();
+    let target = dir.path().join("MyVault");
+    let mine = [".memry/config.json", "Mine.md", "Child/.memry/config.json"];
+    for rel in mine {
+        fs::create_dir_all(target.join(rel).parent().unwrap()).unwrap();
+        fs::write(target.join(rel), "{}\n").unwrap();
+    }
+    let refused = replay(
+        &template(),
+        &target,
+        &options(true),
+        device_key::with_device_key(),
+    );
+    assert!(
+        matches!(refused, Err(SandboxError::TargetNotEmpty(_))),
+        "{refused:?}"
+    );
+    assert_eq!(files(&target), mine.map(str::to_owned).into());
+    assert_eq!(siblings(dir.path()), ["MyVault"]);
+}
+
+/// A store that writes a file into the target the first time the build reads it, as a user
+/// saving into the folder while the replay runs.
+struct LateWrite {
+    store: Arc<dyn SecureStore>,
+    file: PathBuf,
+    written: AtomicBool,
+}
+
+impl SecureStore for LateWrite {
+    fn get(&self, key: SecureStoreKey) -> Result<Option<Vec<u8>>, SecureStoreError> {
+        if !self.written.swap(true, Ordering::SeqCst) {
+            fs::write(&self.file, "written during the build\n").unwrap();
+        }
+        self.store.get(key)
+    }
+    fn set(&self, key: SecureStoreKey, value: Vec<u8>) -> Result<(), SecureStoreError> {
+        self.store.set(key, value)
+    }
+    fn delete(&self, key: SecureStoreKey) -> Result<(), SecureStoreError> {
+        self.store.delete(key)
+    }
+    fn clear(&self) -> Result<(), SecureStoreError> {
+        self.store.clear()
+    }
+}
+
+#[test]
+fn a_file_added_to_an_empty_target_during_the_build_stops_the_replay() {
+    let dir = tempfile::tempdir().unwrap();
+    let target = dir.path().join("Notes");
+    fs::create_dir(&target).unwrap();
+    let late = target.join("Late.md");
+    let store = Arc::new(LateWrite {
+        store: device_key::with_device_key(),
+        file: late.clone(),
+        written: AtomicBool::new(false),
+    });
+    let refused = replay(&template(), &target, &options(false), store.clone());
+    assert!(store.written.load(Ordering::SeqCst));
+    assert!(
+        matches!(refused, Err(SandboxError::TargetNotEmpty(_))),
+        "{refused:?}"
+    );
+    assert_eq!(
+        fs::read_to_string(&late).unwrap(),
+        "written during the build\n"
+    );
+    assert_eq!(files(&target), BTreeSet::from(["Late.md".to_owned()]));
+    assert_eq!(siblings(dir.path()), ["Notes"]);
+}
+
+/// No template file or asset copy lands in the core's folder, in any case.
+#[test]
+fn nothing_is_written_into_the_core_folder_in_any_case() {
+    let mini = Mini::new("A.md", "a\n");
+    mini.file(".MEMRY/core/data.db", b"not a database");
+    let refused = mini.replay();
+    assert!(
+        matches!(refused, Err(SandboxError::UnsafePath(_))),
+        "{refused:?}"
+    );
+    mini.assert_untouched();
+
+    for path in [".memry/core/data.db", ".Memry/Core/data.db"] {
+        let mini = Mini::new("A.md", "a\n");
+        let bytes = b"not a database";
+        fs::write(mini.dir.path().join("assets/db.bin"), bytes).unwrap();
+        let sha256 = hex::encode(Sha256::digest(bytes));
+        let copy = json!({ "path": path, "asset": "db.bin", "sha256": sha256 });
+        let row = json!({
+            "id": "note_AAAAAAAAAAAA", "path": "A.md", "file_type": "markdown",
+            "journal_date": null, "created_at": TEMPLATE_NOW, "modified_at": TEMPLATE_NOW,
+        });
+        mini.seed(json!([copy]), json!([row]));
+        let refused = mini.replay();
+        assert!(
+            matches!(refused, Err(SandboxError::UnsafePath(_))),
+            "{path}: {refused:?}"
+        );
+        mini.assert_untouched();
+    }
 }
 
 #[test]

@@ -12,12 +12,14 @@
 //!    with the body its file gives it ([`notes`]). The open walk claims each note for its file
 //!    by folder, title and body (`identity::adopt`), so the ids in other notes' links hold. The
 //!    walk makes notes of journal days and other files, which no template text names by id.
-//! 3. The vault icon, then the rename. A previous folder is moved aside first and deleted only
-//!    once the new one is in place; a failed rename puts it back.
+//! 3. The vault icon, then the rename. A previous sandbox is moved aside first and deleted only
+//!    once the new one is in place; a failed rename puts it back. An empty folder moved aside is
+//!    removed only while still empty, so a file added during the build stops the replay.
 //!
-//! A crash leaves a `.<name>.sandbox-*` staging folder or a `.<name>.replaced-*` previous
-//! folder beside the target. Both are this module's and the next replay deletes them, so a rerun
-//! converges on one vault. The caller writes the marker ([`super::marker`]) after the replay,
+//! Only an earlier sandbox (one with [`SANDBOX_VAULT_ICON`]) is ever replaced. A crash leaves a
+//! `.<name>.sandbox-*` staging folder or a `.<name>.replaced-*` previous folder beside the
+//! target. Both are this module's: a previous folder whose target is missing is renamed back,
+//! then the next replay deletes the rest, so a rerun converges on one vault. The caller writes the marker ([`super::marker`]) after the replay,
 //! and runs one replay of a target at a time, as `ensureSandboxVault` does
 //! (`apps/desktop/src/main/vault/sandbox.ts:62-69`): two would sweep each other's staging.
 
@@ -70,8 +72,9 @@ pub struct ReplayOptions {
     /// Move the template's dates to `now`'s local date; `false` keeps the template's dates.
     pub rebase_dates: bool,
     pub now: DateTime<Utc>,
-    /// Replace a target folder that holds anything. Without it a non-empty target is refused
-    /// before anything is written, so a replay never deletes a folder it was not told it may.
+    /// Replace a target folder that holds an earlier sandbox. Without it, or for any other
+    /// non-empty folder, the target is refused before anything is written, so a replay never
+    /// deletes a folder that is not a sandbox or that it was not told it may.
     pub replace: bool,
 }
 
@@ -97,13 +100,15 @@ pub fn replay(
     store: Arc<dyn SecureStore>,
 ) -> Result<SeedCounts, SandboxError> {
     let (parent, name) = parent_and_name(target)?;
-    check_target(target, options.replace)?;
+    restore_replaced(target, parent, name)?;
+    let previous = check_target(target, options.replace)?;
     fs::create_dir_all(parent).map_err(|error| io_error(parent, &error))?;
     sweep(parent, name);
     let staging = parent.join(format!(".{name}{STAGING_MARK}{}", unique()));
     fs::create_dir(&staging).map_err(|error| io_error(&staging, &error))?;
     let built = build(template, &staging, options, store);
-    let swapped = built.and_then(|counts| swap(&staging, target, parent, name).map(|()| counts));
+    let swapped =
+        built.and_then(|counts| swap(&staging, target, parent, name, previous).map(|()| counts));
     if swapped.is_err() {
         remove_ours(&staging);
     }
@@ -150,12 +155,21 @@ fn parent_and_name(target: &Path) -> Result<(&Path, &str), SandboxError> {
     }
 }
 
-/// A missing or empty folder is free; anything else needs `replace`, and a link or a file is
-/// never replaced.
-fn check_target(target: &Path, replace: bool) -> Result<(), SandboxError> {
+/// What the target held when the replay checked it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Previous {
+    /// Missing or empty: whatever is there at the swap must still be empty.
+    Nothing,
+    /// An earlier sandbox, replaced as a whole.
+    Sandbox,
+}
+
+/// A missing or empty folder is free; an earlier sandbox needs `replace`; anything else, a
+/// link or a file included, is never replaced.
+fn check_target(target: &Path, replace: bool) -> Result<Previous, SandboxError> {
     let meta = match fs::symlink_metadata(target) {
         Ok(meta) => meta,
-        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(()),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(Previous::Nothing),
         Err(error) => return Err(io_error(target, &error)),
     };
     if !meta.is_dir() {
@@ -165,11 +179,47 @@ fn check_target(target: &Path, replace: bool) -> Result<(), SandboxError> {
         .map_err(|error| io_error(target, &error))?
         .next()
         .is_none();
-    if empty || replace {
-        Ok(())
+    let sandbox = || {
+        vault_icon::read(target)
+            .and_then(|icon| icon.value)
+            .as_deref()
+            == Some(SANDBOX_VAULT_ICON)
+    };
+    if empty {
+        Ok(Previous::Nothing)
+    } else if replace && sandbox() {
+        Ok(Previous::Sandbox)
     } else {
         Err(SandboxError::TargetNotEmpty(target.display().to_string()))
     }
+}
+
+/// A replay killed between its two renames left the previous sandbox aside and no target:
+/// rename it back, so the sweep never deletes the only copy.
+fn restore_replaced(target: &Path, parent: &Path, name: &str) -> Result<(), SandboxError> {
+    match fs::symlink_metadata(target) {
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+        Ok(_) => return Ok(()),
+        Err(error) => return Err(io_error(target, &error)),
+    }
+    let Ok(entries) = fs::read_dir(parent) else {
+        return Ok(());
+    };
+    let replaced = format!(".{name}{REPLACED_MARK}");
+    let found = entries.flatten().find(|entry| {
+        entry
+            .file_name()
+            .to_str()
+            .is_some_and(|file_name| file_name.starts_with(&replaced))
+    });
+    if let Some(entry) = found {
+        tracing::warn!(
+            folder = ?entry.file_name(),
+            "restoring the sandbox an interrupted replay moved aside"
+        );
+        fs::rename(entry.path(), target).map_err(|error| io_error(target, &error))?;
+    }
+    Ok(())
 }
 
 /// Deletes what an interrupted replay of `name` left beside it.
@@ -194,7 +244,13 @@ fn sweep(parent: &Path, name: &str) {
     }
 }
 
-fn swap(staging: &Path, target: &Path, parent: &Path, name: &str) -> Result<(), SandboxError> {
+fn swap(
+    staging: &Path,
+    target: &Path,
+    parent: &Path,
+    name: &str,
+    previous: Previous,
+) -> Result<(), SandboxError> {
     let aside = match fs::symlink_metadata(target) {
         Ok(_) => {
             let aside = parent.join(format!(".{name}{REPLACED_MARK}{}", unique()));
@@ -204,15 +260,26 @@ fn swap(staging: &Path, target: &Path, parent: &Path, name: &str) -> Result<(), 
         Err(error) if error.kind() == io::ErrorKind::NotFound => None,
         Err(error) => return Err(io_error(target, &error)),
     };
+    // A folder that was empty or missing at the check is removed only while empty: a file
+    // added during the build puts it back and stops the replay.
+    let aside = match aside {
+        Some(aside) if previous == Previous::Nothing => {
+            if let Err(error) = fs::remove_dir(&aside) {
+                put_back(&aside, target);
+                return Err(match error.kind() {
+                    io::ErrorKind::DirectoryNotEmpty => {
+                        SandboxError::TargetNotEmpty(target.display().to_string())
+                    }
+                    _ => io_error(target, &error),
+                });
+            }
+            None
+        }
+        aside => aside,
+    };
     if let Err(error) = fs::rename(staging, target) {
-        if let Some(aside) = &aside
-            && let Err(back) = fs::rename(aside, target)
-        {
-            tracing::error!(
-                aside = %aside.display(),
-                error = %back,
-                "the previous sandbox could not be put back; the next replay builds a new one"
-            );
+        if let Some(aside) = &aside {
+            put_back(aside, target);
         }
         return Err(io_error(target, &error));
     }
@@ -220,6 +287,16 @@ fn swap(staging: &Path, target: &Path, parent: &Path, name: &str) -> Result<(), 
         remove_ours(&aside);
     }
     Ok(())
+}
+
+fn put_back(aside: &Path, target: &Path) {
+    if let Err(error) = fs::rename(aside, target) {
+        tracing::error!(
+            aside = %aside.display(),
+            %error,
+            "the previous folder could not be put back; the next replay renames it back"
+        );
+    }
 }
 
 /// Removes a folder this module made; a failure is left for the next replay's sweep.
