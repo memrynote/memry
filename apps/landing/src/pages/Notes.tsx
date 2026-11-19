@@ -28,6 +28,7 @@ import {
 import { Container } from '@/components/layout/Container'
 import { FeatureHeroScreenshot } from '@/components/shared/FeatureHeroScreenshot'
 import { PageHead } from '@/components/shared/PageHead'
+import { RelatedLinks } from '@/components/shared/RelatedLinks'
 import { Button } from '@/components/ui/button'
 import {
   Accordion,
@@ -60,7 +61,7 @@ const fadeUpVariant = {
 export function NotesFeaturePage() {
   return (
     <>
-      <PageHead page="notes" />
+      <PageHead page="notes" faqs={NOTES_FAQ} />
       <main>
         <NotesHero />
         <EverythingInOnePlace />
@@ -71,6 +72,7 @@ export function NotesFeaturePage() {
         <WorksWithRest />
         <NotesUseCases />
         <MoreNoteFeatures />
+        <CompareNotesApps />
         <NotesFaq />
         <NotesFinalCta />
       </main>
@@ -107,8 +109,8 @@ function NotesHero() {
             in <span className="italic text-terracotta">Markdown.</span>
           </h1>
           <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-muted md:text-lg">
-            A file-first notes app built on plain{' '}
-            <code className="font-mono-accent text-ink">.md</code> files in a folder you own.
+            A Markdown notes app that saves every note as a plain{' '}
+            <code className="font-mono-accent text-ink">.md</code> file in a folder you own.
             Wiki-links connect every idea, properties give each note shape, and version history
             holds the receipts.
           </p>
@@ -948,6 +950,36 @@ function MoreNoteFeatures() {
   )
 }
 
+const NOTES_COMPARISONS = [
+  {
+    label: 'Open source note-taking apps',
+    href: '/blog/open-source-note-taking-apps',
+    description: 'Joplin, Logseq, Standard Notes, Notesnook, Trilium, SiYuan, and memrynote.'
+  },
+  {
+    label: 'How memrynote encrypts your notes',
+    href: '/encrypted-notes-app',
+    description: 'What the sync server can and cannot see, and what happens without your keys.'
+  },
+  {
+    label: 'memrynote vs Obsidian',
+    href: '/obsidian-alternative',
+    description: 'Two Markdown vaults: one with tasks, calendar, and encrypted sync built in.'
+  }
+] as const
+
+function CompareNotesApps() {
+  return (
+    <section className="py-24 md:py-28">
+      <Container>
+        <motion.div {...fadeUp}>
+          <RelatedLinks title="Comparing Markdown notes apps" links={NOTES_COMPARISONS} />
+        </motion.div>
+      </Container>
+    </section>
+  )
+}
+
 const NOTES_FAQ = [
   {
     question: 'Are my notes really just plain Markdown files?',
@@ -967,7 +999,17 @@ const NOTES_FAQ = [
   {
     question: 'Can I import from Obsidian or Notion?',
     answer:
-      'Obsidian vaults open directly — same file format, same [[wiki-link]] syntax. Notion exports import as plain markdown with frontmatter preserved.'
+      'Obsidian vaults open directly — same file format, same [[wiki-link]] syntax. For Notion, export your workspace as HTML and use the Notion importer in Settings → Import: pages become Markdown notes, links between pages become wiki-links, and database properties become frontmatter.'
+  },
+  {
+    question: 'Can I edit my notes in another editor while memrynote is open?',
+    answer:
+      'Yes. memrynote watches the vault folder, so a note you change in VS Code, iA Writer, or a sync tool updates in the app. Changes made while memrynote was closed are picked up at the next launch.'
+  },
+  {
+    question: 'Are my notes encrypted?',
+    answer:
+      'On disk your notes are plain Markdown, so use FileVault, BitLocker, or LUKS if you want them encrypted there. When you sync, each note is encrypted on your device with XChaCha20-Poly1305 and the server stores it only as ciphertext. Tag names and folder paths are visible to the server, because sync uses them as item IDs.'
   },
   {
     question: 'What about real-time collaboration?',

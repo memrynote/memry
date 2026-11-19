@@ -31,7 +31,9 @@ After signing in you land on the account dashboard, organized into three section
   device is lost or you want to reset access. Each device must sign in again afterward.
 - **Delete account** — permanently erases your account and all synced (encrypted) data on the
   server. This is **irreversible** and is gated behind a typed confirmation plus a fresh email
-  code.
+  code. Deleting the account does not cancel a subscription bought through the App Store or
+  Google Play, and the store keeps billing you. Cancel it first in Apple's or Google Play's
+  subscription settings; the section links to both.
 
 ### Billing
 

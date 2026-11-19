@@ -124,6 +124,9 @@ vi.mock('../middleware/auth', () => ({
 vi.mock('../middleware/paid-sync', () => ({
   paidSyncMiddleware: vi.fn().mockImplementation(async (_c: any, next: any) => {
     await next()
+  }),
+  paidSyncReadMiddleware: vi.fn().mockImplementation(async (_c: any, next: any) => {
+    await next()
   })
 }))
 

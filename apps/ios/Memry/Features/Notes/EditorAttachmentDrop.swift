@@ -18,13 +18,18 @@ extension NoteAttachmentComposer {
 
     /// Each dropped file into a block after the one before it, the first
     /// after `blockId`, so the blocks keep the drag's order. A refusal or an
-    /// unreadable file does not stop the rest; one alert at the end says how
+    /// unreadable file does not stop the rest, nor does an item that is not
+    /// a file (text dragged with the files); one alert at the end says how
     /// many were not added, in the first refusal's words.
     func attachDropped(_ providers: [NSItemProvider], in session: EditorSession, after blockId: String) async {
-        let files = providers.compactMap { provider in EditorDrop.fileType(of: provider).map { (provider, $0) } }
         var after = blockId
         var refusals: [UserFacingError] = []
-        for (provider, type) in files {
+        for provider in providers {
+            guard let type = EditorDrop.fileType(of: provider) else {
+                Log.storage.error("a dropped item that is not a file", .code(ErrorMapping.droppedNotFile.code))
+                refusals.append(ErrorMapping.droppedNotFile)
+                continue
+            }
             beginReading()
             guard let payload = await Self.payload(provider, type: type) else {
                 Log.storage.error("a dropped file could not be read", .code(ErrorMapping.droppedFileUnreadable.code))
@@ -38,7 +43,7 @@ extension NoteAttachmentComposer {
             }
         }
         if let first = refusals.first {
-            fail(files.count == 1 ? first : ErrorMapping.notAdded(refusals.count, of: files.count, first))
+            fail(providers.count == 1 ? first : ErrorMapping.notAdded(refusals.count, of: providers.count, first))
         }
     }
 
@@ -87,6 +92,14 @@ extension ErrorMapping {
         code: "attachment.dropUnreadable",
         title: "Memry could not read a dropped file.",
         guidance: "Drop it again, or add it with Choose File.",
+        recourse: .retry,
+        isUserVisible: true
+    )
+
+    static let droppedNotFile = UserFacingError(
+        code: "attachment.dropNotFile",
+        title: "Memry can only attach files here.",
+        guidance: "Drop text on its own to insert it.",
         recourse: .retry,
         isUserVisible: true
     )

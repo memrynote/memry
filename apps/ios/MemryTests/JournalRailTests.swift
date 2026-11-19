@@ -6,8 +6,9 @@ import Testing
 @testable import Memry
 
 // #4351: what the Journal rail and the regular-width year grid read. "On
-// this day" over a scratch vault and the real core, with desktop's same-day
-// rule (`packages/domain-notes/src/journal/same-day.ts`), leap days included.
+// this day" over a scratch vault and the real core, which owns the same-day
+// rule (`journal_rules/same_day.rs`, desktop's `same-day.ts`), leap days
+// included (#4833).
 
 @MainActor
 @Suite("Journal rail", .serialized)
