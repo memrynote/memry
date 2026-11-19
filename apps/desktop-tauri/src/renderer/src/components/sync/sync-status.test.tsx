@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from 'sonner'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { VaultBindingState } from '@memry/contracts/ipc-sync-ops'
 
@@ -14,9 +15,13 @@ const sync = vi.hoisted(() => ({
 
 const status = vi.hoisted(() => ({ overrides: {} as Record<string, unknown> }))
 const auth = vi.hoisted(() => ({ resetAuthState: vi.fn() }))
-const repairDeviceKeys = vi.fn()
+const repairDeviceKeys = vi.hoisted(() => vi.fn())
 
 vi.mock('sonner', () => ({ toast: { info: vi.fn(), error: vi.fn() } }))
+
+vi.mock('@/services/sync-account-service', () => ({
+  syncAccountService: { repairDeviceKeys }
+}))
 
 vi.mock('@/contexts/auth-context', () => ({
   useAuth: () => auth
@@ -110,9 +115,6 @@ describe('SyncStatus with device keys missing', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     sync.vaultBinding = { status: 'bound' }
-    ;(
-      window as unknown as { api: { syncOps: { repairDeviceKeys: typeof repairDeviceKeys } } }
-    ).api = { syncOps: { repairDeviceKeys } }
     status.overrides = {
       status: 'error',
       label: 'account.sync.statuses.deviceKeysMissing',
@@ -164,8 +166,26 @@ describe('SyncStatus with device keys missing', () => {
       screen.getByRole('button', { name: 'phaseF.componentsSyncSyncStatus.repairDeviceKeys' })
     )
 
+    expect(toast.info).toHaveBeenCalledWith(
+      'phaseF.componentsSyncSyncStatus.syncNotStarted.entitlement',
+      expect.anything()
+    )
     expect(auth.resetAuthState).not.toHaveBeenCalled()
     expect(onOpenSettings).not.toHaveBeenCalled()
+  })
+
+  it('tells the user to restart when sync could not start after the repair', async () => {
+    repairDeviceKeys.mockResolvedValue({ status: 'sync-not-started', reason: 'unavailable' })
+    const user = await openPopover()
+
+    await user.click(
+      screen.getByRole('button', { name: 'phaseF.componentsSyncSyncStatus.repairDeviceKeys' })
+    )
+
+    expect(toast.info).toHaveBeenCalledWith(
+      'phaseF.componentsSyncSyncStatus.syncNotStarted.unavailable-restart',
+      expect.anything()
+    )
   })
 
   it('sends the user to sign in when main signed the device out', async () => {

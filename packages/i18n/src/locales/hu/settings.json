@@ -2435,7 +2435,8 @@
         "vault-binding": "Az eszköz kulcsai helyreálltak, de ez a széf még nincs szinkronizálásra beállítva a fiókjával. A szinkronizálás menüben válassza ki, hogyan szinkronizálja.",
         "vault-foreign": "Az eszköz kulcsai helyreálltak, de ez a széf egy másik fiókhoz tartozik. Ezen az eszközön helyi marad.",
         "entitlement": "Az eszköz kulcsai helyreálltak, de a szinkronizáláshoz aktív Sync-csomag szükséges.",
-        "unavailable": "Az eszköz kulcsai helyreálltak, de a szinkronizálás nem tudott elindulni. Újra próbálkozik; ha nem sikerül, indítsa újra a Memryt."
+        "unavailable": "Az eszköz kulcsai helyreálltak, de a szinkronizálás nem tudott elindulni. Újra próbálkozik; ha nem sikerül, indítsa újra a Memryt.",
+        "unavailable-restart": "Az eszköz kulcsai helyreálltak, de a szinkronizálás nem tudott elindulni. Indítsa újra a Memryt; ha a szinkronizálás így sem indul el, jelentkezzen ki, majd újra be."
       }
     },
     "pagesSettingsAiInlineSection": {
