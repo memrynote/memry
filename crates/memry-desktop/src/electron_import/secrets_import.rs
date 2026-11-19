@@ -50,10 +50,12 @@ use crate::seams::secure_store::{
     AdoptError, Adoption, DeviceIdentityStore, GenericSecrets, KEYS, KeyringStore, SERVICE,
     account, device_account,
 };
-use crate::vault::fs_atomic::atomic_write;
 use checks::{check_device, check_master};
+pub use done::forget_secrets_import;
+use done::{DONE_FILE, mark_done};
 
 mod checks;
+mod done;
 
 /// Electron's service of the five sync secrets (`KEYCHAIN_ENTRIES`).
 const ELECTRON_SYNC: &str = "com.memry.sync";
@@ -65,8 +67,6 @@ const DEVICE_KEY_LEN: usize = 64;
 /// app does.
 const LOCAL_PROVIDER: &str = "memry.agent.local-provider";
 const LOCAL_PROVIDER_ACCOUNT: &str = "api-key";
-/// The phase's done marker, in this app's data dir.
-const DONE_FILE: &str = "secrets-import.done";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SecretsMode {
@@ -430,34 +430,10 @@ pub fn import_secrets(
         Err(error) => return Err(SecretsError::DoneMarker(error.to_string())),
     }
     let (report, evidence) = inputs().map_err(|error| SecretsError::Read(error.to_string()))?;
-    let outcome = run(&report, &evidence, mode, keyring, identity)?;
+    let (outcome, synced) = run(&report, &evidence, mode, keyring, identity)?;
     // A failed marker write leaves a finished import: the rerun finds every slot present.
-    atomic_write(&done, b"done\n")
-        .map_err(|error| SecretsError::DoneMarker(error.source.to_string()))?;
+    mark_done(app_dir, &synced)?;
     Ok(SecretsPhase::Ran(outcome))
-}
-
-/// Undoes the done marker of a run whose secrets nothing used yet, so the next
-/// [`import_secrets`] copies Electron's current values: the first-launch run after a failure,
-/// when the user went back to the previous app, which may have refreshed its tokens since.
-/// `sync` also removes this app's four sync entries, which then hold that run's copies; the
-/// device key stays, and the next run checks it against Electron's again. The marker goes
-/// first: a failure part way leaves a phase that runs again.
-pub fn forget_secrets_import(
-    keyring: &KeyringStore,
-    app_dir: &Path,
-    sync: bool,
-) -> Result<(), SecretsError> {
-    let done = app_dir.join(DONE_FILE);
-    match fs::remove_file(&done) {
-        Ok(()) => {}
-        Err(error) if error.kind() == ErrorKind::NotFound => {}
-        Err(error) => return Err(SecretsError::DoneMarker(error.to_string())),
-    }
-    if sync {
-        keyring.clear()?;
-    }
-    Ok(())
 }
 
 fn adopt_error(error: AdoptError) -> SecretsError {
@@ -475,7 +451,7 @@ fn run(
     mode: SecretsMode,
     keyring: &KeyringStore,
     identity: &DeviceIdentityStore,
-) -> Result<SecretsOutcome, SecretsError> {
+) -> Result<(SecretsOutcome, Vec<(SecureStoreKey, Secret)>), SecretsError> {
     let mut plan = plan(report, mode, keyring.device_suffix())?;
     let device_checked = match &plan.device {
         Some(device) => check_device(device, evidence)?,
@@ -521,7 +497,8 @@ fn run(
                 outcome.present += usize::from(device_key == DeviceKey::AlreadyHeld);
                 outcome.device_key = device_key;
             }
-            Ok(outcome)
+            // Every sync slot of the plan now holds Electron's value: written or found present.
+            Ok((outcome, plan.sync))
         }
         Err(error) => Err(ledger.roll_back(keyring, error)),
     }

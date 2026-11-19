@@ -35,8 +35,6 @@ use std::path::{Path, PathBuf};
 use std::sync::{Mutex, PoisonError};
 use std::time::Instant;
 
-use serde_json::Value;
-
 use self::marker::{Marker, MarkerVault, write_json};
 use self::vault::{Staged, VaultPhase, settled_section};
 use super::app_state::{AppStateInput, import_app_state};
@@ -313,11 +311,9 @@ fn phases(
         ctx.free_space,
     )?;
 
-    // Nothing used the secrets of a failed run: no vault opens before the marker.
-    if after_failure && let Some(earlier) = &run.report.secrets {
-        let sync_copied = earlier.get("mode").and_then(Value::as_str) != Some("SignInAgain");
-        forget_secrets_import(input.keyring, &ctx.tauri_data_dir, sync_copied)
-            .map_err(RunError::Secrets)?;
+    // The sync entries the failed run copied go; one this app wrote since stays.
+    if after_failure && run.report.secrets.is_some() {
+        forget_secrets_import(input.keyring, &ctx.tauri_data_dir).map_err(RunError::Secrets)?;
         run.report.secrets = None;
     }
 
@@ -464,7 +460,7 @@ fn probe(profile: &ElectronProfile) -> Result<ProfileLock, RunError> {
 fn marker_vault(section: &VaultSection) -> MarkerVault {
     let imported = matches!(
         section.status,
-        VaultStatus::Imported | VaultStatus::AlreadyImported
+        VaultStatus::Imported | VaultStatus::AlreadyImported | VaultStatus::Kept
     );
     MarkerVault {
         path: section.path.clone(),

@@ -146,5 +146,30 @@ fn a_folder_with_electron_data_the_marker_does_not_list_is_refused() {
     let error = migrate_vault(&w.ctx(None), Path::new(&w.vault("Stray"))).unwrap_err();
 
     assert!(matches!(error, RunError::NotMoved { .. }), "{error}");
+    let message = error.to_string();
+    assert!(
+        message.contains(&w.vault("Stray")),
+        "names the folder: {message}"
+    );
+    assert!(message.contains("Keep using the previous MemryNote app"));
     assert!(!w.core_data("Stray").exists());
+}
+
+/// VERIFY-5140 #1. Red with folder identity tried only where there is no core: the alias finds
+/// no entry and opens the core of an import the marker still records as deferred.
+#[test]
+fn a_deferred_import_cut_off_before_its_marker_entry_is_finished_under_an_alias() {
+    let w = deferred("Away");
+    let ctx = w.ctx(None);
+    let away = w.vault("Away");
+    let before = fs::read(w.data.join(MARKER_FILE)).unwrap();
+    migrate_vault(&ctx, Path::new(&away)).unwrap();
+    fs::write(w.data.join(MARKER_FILE), before).unwrap();
+    assert!(w.core_data("Away").is_file());
+
+    migrate_vault(&ctx, Path::new(&format!("{away}/"))).unwrap();
+
+    let marker = w.marker().unwrap();
+    let entry = marker.vaults.iter().find(|v| v.path == away).unwrap();
+    assert_eq!(entry.status, VaultStatus::Imported);
 }

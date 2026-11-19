@@ -169,3 +169,113 @@ fn a_rerun_after_a_failure_copies_the_config_and_secrets_electron_has_now() {
     assert_eq!(token(), Some(b"token-2".to_vec()));
     assert_eq!(w.spell_check(), Some(json!(false)));
 }
+
+/// Red with every sync entry removed after a failure: the token this app got by signing in
+/// after the failed run is lost.
+#[test]
+fn a_rerun_after_a_failure_keeps_a_token_this_app_wrote_since() {
+    let w = two_vault_world();
+    electron_access_token(&w, "token-1");
+    block(&w, "Home", true);
+    let mut ctx = w.ctx(None);
+    ctx.env.host = HostOs::Linux;
+    let token = || w.rig.store.get(SecureStoreKey::AccessToken).unwrap();
+    w.run_with(&ctx).unwrap_err();
+    assert_eq!(token(), Some(b"token-1".to_vec()));
+
+    w.rig
+        .store
+        .set(SecureStoreKey::AccessToken, b"signed-in-here".to_vec())
+        .unwrap();
+    block(&w, "Home", false);
+    let rerun = w.run_with(&ctx);
+
+    assert_eq!(token(), Some(b"signed-in-here".to_vec()));
+    // The copy step then refuses to overwrite it.
+    assert_eq!(rerun.unwrap_err().check(), "secrets:target-occupied");
+}
+
+/// Opens `name` through a session with no migrator, as a launch that did not see the Electron
+/// profile does, and writes a table the import never makes.
+fn open_here(w: &World, name: &str) -> Result<(), SessionError> {
+    let config = Arc::new(AppConfig::load(w.data.join("session-config.json")));
+    let session = Session::new(VaultRegistry::new(config));
+    session.open(Path::new(&w.vault(name)), OpenSource::Select)?;
+    session.close();
+    Connection::open(w.core_data(name))
+        .unwrap()
+        .execute("CREATE TABLE tauri_probe (x)", [])
+        .unwrap();
+    Ok(())
+}
+
+fn has_probe(w: &World, name: &str) -> bool {
+    Connection::open(w.core_data(name))
+        .unwrap()
+        .query_row(
+            "SELECT count(*) FROM sqlite_master WHERE name = 'tauri_probe'",
+            [],
+            |row| row.get::<_, i64>(0),
+        )
+        .unwrap()
+        == 1
+}
+
+/// Red with an installed core removed whenever its fingerprint is not the report's: the core
+/// this app opened, and what the user wrote there, are deleted. With the report readable the
+/// fingerprints differ; with it unreadable the earlier attempt is unknown.
+#[test]
+fn a_core_this_app_opened_is_kept_when_electron_wrote_since() {
+    for unreadable_report in [false, true] {
+        let w = two_vault_world();
+        let crashed = catch_unwind(AssertUnwindSafe(|| w.run_with(&w.ctx(Some("vault")))));
+        assert!(crashed.is_err());
+        let imported = w.fingerprint("Work");
+        open_here(&w, "Work").unwrap();
+        add_tag(&electron_db(&w, "Work"));
+        let written = w.fingerprint("Work");
+        if unreadable_report {
+            fs::write(w.data.join(REPORT_FILE), b"{torn").unwrap();
+        }
+
+        w.run().unwrap();
+
+        assert!(
+            has_probe(&w, "Work"),
+            "unreadable report: {unreadable_report}"
+        );
+        assert_eq!(core_tags(&w, "Work"), 0, "not imported again");
+        assert_eq!(w.status("Work"), VaultStatus::Kept);
+        assert_eq!(w.fingerprint("Work"), written, "Electron's data untouched");
+        let marked = w.marker_fingerprint("Work");
+        if unreadable_report {
+            assert_eq!(marked, None);
+        } else {
+            assert_eq!(marked, Some(imported), "the later launch sees the change");
+        }
+        let report = fs::read_to_string(w.data.join(REPORT_FILE)).unwrap();
+        assert!(report.contains("Make them again in MemryNote"));
+        assert_eq!(w.status("Home"), VaultStatus::Imported);
+    }
+}
+
+/// Red with the origin write tolerated: the core opens without the fact that keeps a rerun from
+/// removing it.
+#[test]
+fn a_core_that_cannot_record_its_open_does_not_open() {
+    let w = two_vault_world();
+    let crashed = catch_unwind(AssertUnwindSafe(|| w.run_with(&w.ctx(Some("vault")))));
+    assert!(crashed.is_err());
+    Connection::open(w.core_data("Work"))
+        .unwrap()
+        .execute_batch(
+            "CREATE TRIGGER no_origin BEFORE INSERT ON meta WHEN NEW.key = 'vault.origin.v1'
+             BEGIN SELECT RAISE(ABORT, 'refused'); END;",
+        )
+        .unwrap();
+
+    let error = open_here(&w, "Work").unwrap_err();
+
+    assert!(matches!(error, SessionError::Storage(_)), "{error}");
+    assert!(!has_probe(&w, "Work"));
+}

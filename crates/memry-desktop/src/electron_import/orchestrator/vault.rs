@@ -9,7 +9,9 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use memry_core::crdt::{DocumentRegistry, canonical_fragment};
+use memry_core::domain::notes::identity::VAULT_ORIGIN_META_KEY;
 use memry_core::storage::import::{DATA_FILE, DocumentState, INDEX_FILE, read_marker};
+use rusqlite::{Connection, OpenFlags};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 
@@ -118,7 +120,7 @@ pub(super) fn stage(
     // Taken before the copy: Electron writing after it makes the fingerprint stale, and the
     // later launch then shows the downgrade notice instead of missing the change.
     let fingerprint = source_fingerprint(Path::new(path)).map_err(fail)?;
-    if let Some(done) = earlier_import(previous.as_ref(), Path::new(path), &fingerprint) {
+    if let Some(done) = earlier_import(previous.as_ref(), path, &fingerprint) {
         return Ok(Staged::Settled(Box::new(done.map_err(fail)?)));
     }
     // An id minted by a cut-off attempt stays the vault's id.
@@ -269,15 +271,16 @@ impl PendingInstall {
 }
 
 /// A `core/data.db` an earlier attempt imported. Kept when that attempt read the Electron
-/// `data.db` this run finds (`Some`); removed when Electron wrote it since or the attempt is
-/// unknown (`None`, the vault is imported again). Safe to remove: no vault opens before the
-/// marker, nor a deferred one before its import, so nothing has used it. A native core or none
-/// at all is `None` and left to Step 36.
+/// `data.db` this run finds (`Some`). Otherwise (Electron wrote it since, or the attempt is
+/// unknown) it is removed and the vault imported again (`None`), but only if this app never
+/// opened it: an opened core may hold the user's writes, so it is kept as
+/// [`VaultStatus::Kept`]. A native core or none at all is `None` and left to Step 36.
 fn earlier_import(
     previous: Option<&VaultSection>,
-    vault: &Path,
+    path: &str,
     fingerprint: &str,
 ) -> Option<Result<VaultSection, ImportError>> {
+    let vault = Path::new(path);
     let data = vault.join(".memry").join(CORE_DIR).join(DATA_FILE);
     match fs::symlink_metadata(&data) {
         Ok(meta) if meta.is_file() => {}
@@ -307,7 +310,40 @@ fn earlier_import(
         done.status = VaultStatus::Imported;
         return Some(Ok(done));
     }
-    remove_core(&data).err().map(Err)
+    match opened(&data) {
+        Ok(false) => remove_core(&data).err().map(Err),
+        Ok(true) => {
+            let mut kept = previous
+                .cloned()
+                .unwrap_or_else(|| VaultSection::new(path, VaultStatus::Kept));
+            kept.status = VaultStatus::Kept;
+            kept.detail = Some(
+                "MemryNote already opened this vault, so it keeps the copy it moved earlier. \
+                 Changes made to the vault in the previous MemryNote app after that were not \
+                 moved; they are still there. Make them again in MemryNote."
+                    .into(),
+            );
+            Some(Ok(kept))
+        }
+        Err(error) => Some(Err(error)),
+    }
+}
+
+/// Whether a session opened this core: every open records the vault's origin before the vault
+/// is used (`session::open`), and the import never writes it.
+fn opened(data: &Path) -> Result<bool, ImportError> {
+    let read = || -> rusqlite::Result<bool> {
+        let conn = Connection::open_with_flags(
+            data,
+            OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
+        )?;
+        conn.query_row(
+            "SELECT EXISTS (SELECT 1 FROM meta WHERE key = ?1)",
+            [VAULT_ORIGIN_META_KEY],
+            |row| row.get(0),
+        )
+    };
+    read().map_err(|error| ImportError::Sqlite(error.to_string()))
 }
 
 /// Removes an imported `core/` pair, sidecars before each database: a crash part way leaves

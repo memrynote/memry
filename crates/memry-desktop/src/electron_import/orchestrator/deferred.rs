@@ -80,15 +80,15 @@ enum Lookup {
 }
 
 /// The marker entry of `vault`: by the path as written, else, for a folder with an Electron
-/// `data.db` and no core yet, by folder identity, which a trailing slash, another Unicode
-/// normalization or case, or a symlink does not change.
+/// `data.db`, by folder identity, which a trailing slash, another Unicode normalization or case,
+/// or a symlink does not change. A core there does not end the search: a deferred import cut off
+/// before its marker entry leaves one, and the entry must still say `Pending`.
 fn lookup(marker: &Marker, vault: &Path) -> Lookup {
     let path = vault.to_string_lossy();
     let memry = vault.join(".memry");
-    let unmoved =
-        || memry.join("data.db").is_file() && !memry.join(CORE_DIR).join("data.db").exists();
+    let electron = memry.join("data.db").is_file();
     let entry = marker.vaults.iter().find(|v| v.path == path).or_else(|| {
-        if !unmoved() {
+        if !electron {
             return None;
         }
         let id = folder_id(vault)?;
@@ -107,7 +107,7 @@ fn lookup(marker: &Marker, vault: &Path) -> Lookup {
             Lookup::Pending(Box::new(entry.clone()))
         }
         Some(_) => Lookup::Settled,
-        None if unmoved() => Lookup::Unlisted,
+        None if electron && !memry.join(CORE_DIR).join("data.db").exists() => Lookup::Unlisted,
         None => Lookup::Settled,
     }
 }

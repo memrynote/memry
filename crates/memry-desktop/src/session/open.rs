@@ -86,22 +86,17 @@ pub(super) fn prepare_core_dir(
 /// What the core was created over, for the note identity: a core created over Electron's
 /// `data.db` is never imported (Step 36 answers `NativeFirst`), so no file of it gets a new note
 /// id. Every open records it unless it is there, so a core whose first open stopped before this
-/// (or failed here) gets it at the next one; until then no id is minted beside Electron's
-/// database. A core with Electron's database beside it when this first runs counts as created
-/// over it.
-fn record_origin(path: &Path, vault: &Vault) {
+/// gets it at the next one. A core with Electron's database beside it when this first runs
+/// counts as created over it. The row is also the fact that this app opened the core, which
+/// keeps a rerun of the Electron import from replacing it (`electron_import::orchestrator`), so a
+/// core that cannot record it does not open.
+fn record_origin(path: &Path, vault: &Vault) -> Result<(), StorageError> {
     let origin = if path.join(".memry").join("data.db").is_file() {
         Origin::OverElectron
     } else {
         Origin::Native
     };
-    if let Err(error) = vault.record_origin(origin) {
-        tracing::error!(
-            %error,
-            ?origin,
-            "the vault's origin was not recorded; the next open tries again"
-        );
-    }
+    vault.record_origin(origin)
 }
 
 impl Session {
@@ -133,7 +128,7 @@ impl Session {
             },
             other => SessionError::Storage(other),
         })?;
-        record_origin(path, &vault);
+        record_origin(path, &vault)?;
         let (search, index_reason) = vault.search_reporting()?;
         if let Some(reason) = &index_reason {
             self.emit(SessionEvent::IndexRecovered {

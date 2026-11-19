@@ -102,6 +102,10 @@ pub enum VaultStatus {
     AlreadyImported,
     /// The vault was opened natively first; Electron's files stay as they are.
     NativeFirst,
+    /// Imported by an earlier attempt and opened in this app since, then written by the
+    /// previous app (or the attempt is unknown): the core is kept, Electron's files stay as they
+    /// are, and `detail` tells the user what was not moved.
+    Kept,
     Sandbox,
     SameFolder,
     /// Imported when the vault is first opened (`migrate_vault`), except a shared store.
