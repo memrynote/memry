@@ -57,6 +57,7 @@ pub mod outbox;
 pub mod pack_bootstrap;
 pub mod policy;
 pub mod pull;
+mod pull_decode;
 mod pull_report;
 pub mod push;
 pub mod settings_merge;

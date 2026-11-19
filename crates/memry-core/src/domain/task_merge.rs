@@ -44,6 +44,7 @@ use serde_json::Value;
 use crate::api::errors::StorageError;
 use crate::domain::notes::failed;
 use crate::domain::tasks::Inbound;
+use crate::storage::nested_tx;
 use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::sync_items::InboundRecord;
 use crate::storage::repositories::{Change, StoredPayload, sync_items};
@@ -189,7 +190,7 @@ pub(crate) fn apply_remote_merged(
 
     // One transaction, and **no outbox row**: §6.5.2 P3, the merging device
     // stores the union clock and does not re-push.
-    let transaction = conn.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(conn).map_err(failed)?;
     sync_items::apply_local_edit_in(
         &transaction,
         &record.item_type,

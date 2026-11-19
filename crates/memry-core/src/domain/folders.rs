@@ -31,6 +31,7 @@
 use rusqlite::Connection;
 
 use crate::api::errors::StorageError;
+use crate::storage::nested_tx;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox::{self, Durable};
 
@@ -182,7 +183,7 @@ pub fn delete(
     now_ms: i64,
 ) -> Result<Removal, StorageError> {
     let path = valid_path(path)?;
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
 
     let held = notes_within(&tx, path)?;
     if !held.is_empty() {
@@ -227,7 +228,7 @@ fn relocate(
         });
     }
 
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     if !folders_within(&tx, to)?.is_empty() || !notes_within(&tx, to)?.is_empty() {
         return Err(StorageError::Failed {
             what: format!("`{to}` is already in use"),

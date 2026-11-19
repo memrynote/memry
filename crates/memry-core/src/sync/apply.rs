@@ -48,6 +48,7 @@ use crate::crdt::update_log;
 use crate::domain::task_merge::{self, Gate};
 use crate::domain::tasks::Inbound;
 use crate::domain::{calendar_items, canvas, inbox, journal, projects, settings, tasks};
+use crate::storage::nested_tx;
 use crate::storage::repositories::projectors;
 use crate::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
 
@@ -249,7 +250,7 @@ fn apply_tombstone(
     clock_device: Option<&str>,
     totals: &mut ApplyTotals,
 ) -> Result<(), StorageError> {
-    let txn = conn.unchecked_transaction().map_err(sqlite_failed)?;
+    let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
     if let Some(clock) = clock.filter(|clock| !clock.is_empty()) {
         store::record_tombstone_clock(&txn, item_type, item_id, clock, now_ms)?;
         if live_clock_is_after(&txn, item_type, item_id, clock)? {
@@ -337,7 +338,7 @@ fn apply_untyped_tombstone(
     now_ms: i64,
     totals: &mut ApplyTotals,
 ) -> Result<(), StorageError> {
-    let txn = conn.unchecked_transaction().map_err(sqlite_failed)?;
+    let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
     let item_types = store::item_types_for(&txn, item_id)?;
     store::apply_untyped_tombstone(&txn, item_id, now_ms, now_ms)?;
     journal_day_merge::mark_deleted(&txn, item_id)?;

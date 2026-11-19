@@ -42,6 +42,7 @@ use rusqlite::{Connection, params};
 use serde_json::{Map, Value};
 
 use crate::api::errors::StorageError;
+use crate::storage::nested_tx;
 use crate::storage::repositories::projectors::settings::SETTINGS_ITEM_ID;
 use crate::storage::repositories::{Change, StoredPayload, sync_items};
 use crate::sync::clock::{self, VectorClock};
@@ -143,7 +144,7 @@ pub fn apply(
     now_ms: i64,
 ) -> Result<String, StorageError> {
     let segments = segments(path)?;
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     ensure_item(&tx, now_ms)?;
 
     let payload = stored(&tx)?.ok_or_else(|| StorageError::Failed {

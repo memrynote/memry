@@ -27,6 +27,7 @@ use crate::domain::journal::{self, ITEM_TYPE};
 use crate::domain::notes::{failed, iso, names, next_clock, require_payload};
 use crate::domain::properties::{self, PropertyError};
 use crate::domain::tags;
+use crate::storage::nested_tx;
 use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox;
@@ -190,7 +191,7 @@ fn write_day<T, E>(
 where
     E: From<StorageError>,
 {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     if journal::live_entry(&tx, date)?.is_none() && !creates {
         return plan(&Object::new()).map(|(_, out)| out);
     }

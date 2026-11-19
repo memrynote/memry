@@ -13,10 +13,11 @@
 
 use std::collections::HashMap;
 
-use rusqlite::{Connection, Transaction};
+use rusqlite::Connection;
 use serde_json::Value;
 
 use crate::api::errors::StorageError;
+use crate::storage::nested_tx;
 use crate::storage::repositories::Change;
 use crate::storage::repositories::schema::Object;
 use crate::sync::field_merge::TASK_SYNCABLE_FIELDS;
@@ -86,7 +87,7 @@ impl TaskWrite {
 
 /// One open transaction plus the report of what it wrote.
 pub(super) struct Batch<'c> {
-    tx: Transaction<'c>,
+    tx: nested_tx::NestedTx<'c>,
     device_id: String,
     now_ms: i64,
     write: TaskWrite,
@@ -99,7 +100,7 @@ impl<'c> Batch<'c> {
         now_ms: i64,
     ) -> Result<Self, StorageError> {
         Ok(Self {
-            tx: conn.unchecked_transaction().map_err(failed)?,
+            tx: nested_tx::begin(conn).map_err(failed)?,
             device_id: device_id.to_owned(),
             now_ms,
             write: TaskWrite::default(),

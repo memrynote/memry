@@ -225,13 +225,15 @@ pub fn item_types_for(conn: &Connection, item_id: &str) -> Result<Vec<String>, S
 /// type has to outrank the typed item that arrives after it; otherwise the
 /// "does not resurrect it locally" guarantee holds only until the next page.
 pub fn has_bare_tombstone(conn: &Connection, item_id: &str) -> Result<bool, StorageError> {
-    conn.query_row(
+    conn.prepare_cached(
         "SELECT 1 FROM sync_items
          WHERE item_type = ?1 AND item_id = ?2 AND deleted_at IS NOT NULL",
-        params![BARE_TOMBSTONE_ITEM_TYPE, item_id],
-        |_| Ok(()),
     )
-    .optional()
+    .and_then(|mut statement| {
+        statement
+            .query_row(params![BARE_TOMBSTONE_ITEM_TYPE, item_id], |_| Ok(()))
+            .optional()
+    })
     .map_err(failed)
     .map(|found| found.is_some())
 }
