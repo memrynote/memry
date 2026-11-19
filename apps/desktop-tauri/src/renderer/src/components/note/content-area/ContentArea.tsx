@@ -16,6 +16,7 @@ import {
 import { SuggestionMenu } from '@blocknote/core/extensions'
 import { insertOrUpdateBlockForSlashMenu, type BlockNoteEditor } from '@blocknote/core'
 import { withCollaborationIfLive } from './collaboration-options'
+import { withShortcutLabels } from './editor-shortcut-labels'
 import { MENTION_MENU_FLOATING_OPTIONS } from './mention-menu-placement'
 import { Paperclip } from '@/lib/icons'
 import { BlockNoteView } from '@blocknote/shadcn'
@@ -748,7 +749,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         checkListItem: t('editor.content.todoPlaceholder')
       },
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
-      dictionary: { ...coreEn, ai: aiEn } as any,
+      dictionary: withShortcutLabels({ ...coreEn, ai: aiEn }) as any,
       // Dropping a block on another block's left or right edge puts the two
       // side by side, the way Notion does; anywhere else is BlockNote's own
       // drop cursor.

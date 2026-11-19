@@ -22,6 +22,11 @@ import {
   EditorFormattingToolbar,
   useEditorLinkClicks
 } from '@/components/note/content-area/editor-links'
+import {
+  StockSlashMenuController,
+  withShortcutLabels
+} from '@/components/note/content-area/editor-shortcut-labels'
+import { en as coreEn } from '@blocknote/core/locales'
 import { useTheme } from 'next-themes'
 
 import '@blocknote/shadcn/style.css'
@@ -85,7 +90,8 @@ export const TaskDescriptionEditor = memo(function TaskDescriptionEditor({
       bulletListItem: 'List item',
       numberedListItem: 'List item',
       checkListItem: 'To-do item'
-    }
+    },
+    dictionary: withShortcutLabels(coreEn)
   })
 
   // `useCreateBlockNote` never disposes what it builds.
@@ -146,9 +152,11 @@ export const TaskDescriptionEditor = memo(function TaskDescriptionEditor({
         sideMenu={false}
         linkToolbar={false}
         formattingToolbar={false}
+        slashMenu={false}
       >
         <LinkAddressToolbarController />
         <FormattingToolbarController formattingToolbar={EditorFormattingToolbar} />
+        <StockSlashMenuController />
         <SideMenuController
           sideMenu={DragHandleOnlySideMenu}
           floatingUIOptions={SIDE_MENU_FLOATING_OPTIONS}
