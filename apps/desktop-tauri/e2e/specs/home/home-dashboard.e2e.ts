@@ -167,6 +167,72 @@ async function closeBoardManager(page: Page): Promise<void> {
 const boardIdsInOrder = async (page: Page): Promise<string[]> =>
   byPosition(await listBoards(page)).map((b) => b.id)
 
+const managerHandle = (page: Page, boardId: string): Locator =>
+  page.locator(`${SEL.managerRow}[data-board-id="${boardId}"] ${SEL.managerDrag}`).first()
+
+/** Two boards with the manager open; returns their ids in the saved order. */
+async function openManagerWithTwoBoards(page: Page): Promise<string[]> {
+  await ready(page)
+  await waitForSeed(page)
+  await createBoard(page)
+  await expect.poll(async () => (await listBoards(page)).length, T).toBe(2)
+  const before = await boardIdsInOrder(page)
+  await openBoardManager(page)
+  return before
+}
+
+/** dnd-kit moves the row the dragged one passes once it has measured the drag over that row. */
+const waitForRowShift = (page: Page, boardId: string): Promise<void> =>
+  expect
+    .poll(
+      () =>
+        page
+          .locator(`${SEL.managerRow}[data-board-id="${boardId}"]`)
+          .evaluate((row: HTMLElement) => row.style.transform),
+      T
+    )
+    .toMatch(/translate3d\(\S+, [1-9]/)
+
+/** The two boards trade places, in `data.db` and still after a reload. */
+async function expectBoardsSwapped(page: Page, before: string[]): Promise<void> {
+  const swapped = [before[1], before[0]].join(',')
+  await expect.poll(async () => (await boardIdsInOrder(page)).join(','), T).toBe(swapped)
+
+  await closeBoardManager(page)
+  await reload(page)
+  expect((await boardIdsInOrder(page)).join(',')).toBe(swapped)
+}
+
+/**
+ * One pointer event on a handle, as a mouse makes it. WKWebView's WebDriver sends no `pointermove`
+ * (HOOKS.md, Porting a spec), so a drag is dispatched in the page, as
+ * `specs/editor/table-cell-image.e2e.ts` does for its grip.
+ */
+const pointerAt = (
+  handle: Locator,
+  type: 'pointerdown' | 'pointermove' | 'pointerup',
+  x: number,
+  y: number
+): Promise<void> =>
+  handle.evaluate(
+    (el: HTMLElement, p: { type: string; x: number; y: number }) => {
+      el.dispatchEvent(
+        new PointerEvent(p.type, {
+          bubbles: true,
+          cancelable: true,
+          pointerId: 1,
+          pointerType: 'mouse',
+          isPrimary: true,
+          button: 0,
+          buttons: p.type === 'pointerup' ? 0 : 1,
+          clientX: p.x,
+          clientY: p.y
+        })
+      )
+    },
+    { type, x, y }
+  )
+
 const activeBoardId = (page: Page): Promise<string | null> =>
   page.evaluate((key: string) => localStorage.getItem(key), ACTIVE_KEY)
 
@@ -326,34 +392,44 @@ test.describe('Home Dashboard — B: board switcher & multi-board', () => {
   })
 
   test('B8: moving a row in the manager reorders the boards', async ({ page }) => {
-    await ready(page)
-    await waitForSeed(page)
-    await createBoard(page)
-    await expect.poll(async () => (await listBoards(page)).length, T).toBe(2)
-
-    const before = await boardIdsInOrder(page)
-    await openBoardManager(page)
+    const before = await openManagerWithTwoBoards(page)
 
     // dnd-kit's keyboard sensor (Enter, ArrowUp, Enter) on the row's handle runs the same
-    // `onReorder` as a pointer drag. WKWebView's WebDriver sends no `pointermove`, so the
-    // pointer sensor never activates there (HOOKS.md, Porting a spec), and its Space key
-    // arrives with an empty `code`, which dnd-kit does not read as Space.
-    const handle = page
-      .locator(`${SEL.managerRow}[data-board-id="${before[1]}"] ${SEL.managerDrag}`)
-      .first()
+    // `onReorder` as a pointer drag (B8b). Its Space key arrives with an empty `code` on
+    // WKWebView's WebDriver, which dnd-kit does not read as Space.
+    const handle = managerHandle(page, before[1])
     await handle.focus()
     await page.keyboard.press('Enter')
-    await page.waitForTimeout(200)
+    await expect(handle).toHaveAttribute('aria-pressed', 'true', T)
     await page.keyboard.press('ArrowUp')
-    await page.waitForTimeout(200)
+    await waitForRowShift(page, before[0])
     await page.keyboard.press('Enter')
 
-    const swapped = [before[1], before[0]].join(',')
-    await expect.poll(async () => (await boardIdsInOrder(page)).join(','), T).toBe(swapped)
+    await expectBoardsSwapped(page, before)
+  })
 
-    await closeBoardManager(page)
-    await reload(page)
-    expect((await boardIdsInOrder(page)).join(',')).toBe(swapped)
+  test('B8b: dragging a row handle with the pointer reorders the boards', async ({ page }) => {
+    const before = await openManagerWithTwoBoards(page)
+
+    // `PointerSensor` starts the drag after 6 px of movement, then dnd-kit measures the rows and
+    // finds the one the pointer is over after the next move: each step waits for the state the
+    // previous one sets, as a hand's pace would.
+    const handle = managerHandle(page, before[1])
+    const from = await handle.boundingBox()
+    const target = await managerHandle(page, before[0]).boundingBox()
+    if (!from || !target) throw new Error('the manager rows have no box')
+    const x = from.x + from.width / 2
+    const y = from.y + from.height / 2
+    const over = y + (target.y - from.y)
+
+    await pointerAt(handle, 'pointerdown', x, y)
+    await pointerAt(handle, 'pointermove', x, y - 8)
+    await expect(handle).toHaveAttribute('aria-pressed', 'true', T)
+    await pointerAt(handle, 'pointermove', x, over)
+    await waitForRowShift(page, before[0])
+    await pointerAt(handle, 'pointerup', x, over)
+
+    await expectBoardsSwapped(page, before)
   })
 
   test('B9: deleting a board from the manager removes it', async ({ page }) => {
