@@ -711,8 +711,8 @@ export const DeviceSyncStateSchema = z.object({
  * What a pack file compacts. `record` packs hold sync-item payload blobs and
  * their min/max are server_cursor values; `crdt_snapshot` packs hold note-body
  * snapshots and their min/max are created_at epoch-second bounds.
- * `crdt_update` is reserved: updates live in D1 today and have no R2
- * small-object GET floor to kill.
+ * `crdt_update` has no writer yet; its entries and min/max use server_cursor
+ * (protocol 08 §8.4.3).
  */
 export const PACK_KINDS = ['record', 'crdt_snapshot', 'crdt_update'] as const
 
@@ -792,6 +792,33 @@ export const RecordPullItemResponseSchema = PullItemResponseSchema.omit({
 }).extend({
   type: z.enum(RECORD_SYNC_ITEM_TYPES)
 })
+
+/**
+ * `metaBytes` of a `record` pack entry (protocol 08 §8.4.2): the `/sync/pull`
+ * item minus what the entry already holds. `id` and `type` are the entry's
+ * `type:id` identity and `blob` is its payload, so meta plus payload rebuild
+ * the pull item exactly. Derived, so a field added to the pull item reaches
+ * packs too. Unknown keys are stripped: a newer writer may add keys.
+ */
+export const RecordPackEntryMetaSchema = RecordPullItemResponseSchema.omit({
+  id: true,
+  type: true,
+  blob: true
+})
+
+/**
+ * `metaBytes` of a `crdt_update` pack entry (protocol 08 §8.4.3): the update
+ * entry of `GET /sync/crdt/updates` (protocol 07 §7.11) minus `data`, which is
+ * the entry's payload.
+ */
+export const CrdtUpdatePackEntryMetaSchema = z.object({
+  sequenceNum: z.number().int().min(1),
+  signerDeviceId: z.string().min(1),
+  createdAt: z.number().int().min(0)
+})
+
+export type RecordPackEntryMeta = z.infer<typeof RecordPackEntryMetaSchema>
+export type CrdtUpdatePackEntryMeta = z.infer<typeof CrdtUpdatePackEntryMetaSchema>
 
 export const PullResponseSchema = z.object({
   items: z.array(PullItemResponseSchema)

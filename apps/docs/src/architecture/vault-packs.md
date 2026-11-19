@@ -47,8 +47,8 @@ One index record:
 | `kind`         | uint8          | `PackKindCode` — `record` 0, `crdt_snapshot` 1, `crdt_update` 2                       |
 | `idLen`+id     | uint16 + bytes | UTF-8 identity a client matches on: `type:id` for records, the note id for CRDT kinds |
 | `keyLen`+key   | uint16 + bytes | The source R2 key — provenance, and the per-item fallback address                     |
-| `sortKey`      | int64          | `server_cursor` for records; `created_at` epoch seconds for CRDT kinds                |
-| `metaLen`+meta | uint16 + bytes | UTF-8 JSON, or empty. For snapshots: `{sequenceNum, revision}`                        |
+| `sortKey`      | int64          | `server_cursor` for records and updates; `created_at` epoch seconds for snapshots     |
+| `metaLen`+meta | uint16 + bytes | UTF-8 JSON, or empty. Per kind: see [entry meta](#entry-meta-per-kind)                |
 | `offset`       | uint64         | Entry start **within the payload region** (add the 8-byte header for a file offset)   |
 | `length`       | uint64         | Entry byte length                                                                     |
 | `sha256`       | 32             | Digest of this entry's payload bytes                                                  |
@@ -198,12 +198,27 @@ Records keep bootstrapping through the item-granular pull, which already pages t
 axis is where the per-note GET floor actually was.
 
 Re-enabling record packs needs the signature, signer, clock and operation carried in the entry meta
-— the meta field is free-form JSON, so that is additive rather than a format break — plus a client
-apply path that verifies them. Tracked as
-[#1852](https://github.com/memrynote/memry/issues/1852).
+plus a client apply path that verifies them. The meta contract is now written down (below); the
+writer and the Rust core reader are steps of
+[#5221](https://github.com/memrynote/memry/issues/5221).
 
-`crdt_update` is reserved and never produced: updates live in D1 rows, not R2 objects, so there is
-no small-object GET floor there to kill.
+No server produces `crdt_update` entries yet.
+
+### Entry meta per kind
+
+Chapter 08 §8.4 of `docs/protocol` is normative; this is the summary.
+
+| Kind            | `metaBytes`                                                                                                                  |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `record`        | `RecordPackEntryMetaSchema`: the `/sync/pull` item without `id`, `type` and `blob`. Meta plus payload rebuild the pull item. |
+| `crdt_snapshot` | `{sequenceNum, revision}`                                                                                                    |
+| `crdt_update`   | `CrdtUpdatePackEntryMetaSchema`: `{sequenceNum, signerDeviceId, createdAt}`. The payload is the stored packed envelope.      |
+
+A record entry with no meta, which is what a record pack built before this contract holds, is
+unusable on its own and the item stays on `POST /sync/pull`. Released desktop and iOS builds skip
+`record` and `crdt_update` packs at listing time, so a server can list them without breaking those
+builds. A client advances a document's update cursor across packed updates only while their
+sequence numbers are consecutive, and pulls the rest from the server at the first gap.
 
 ## Coverage Semantics a Client Must Respect
 
