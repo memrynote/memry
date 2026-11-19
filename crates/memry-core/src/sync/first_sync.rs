@@ -399,6 +399,19 @@ impl FirstSync {
                             reference.modified_at,
                             None,
                         )?;
+                        // A body this device seeded with no clock and never
+                        // pushed (the Inbox, `projects::ensure_inbox`) is not
+                        // the server's: pass two fetches the server's over it
+                        // (a local record with no clock takes the remote
+                        // wholesale, §6.3.1) rather than the seed being clocked
+                        // and pushed over the user's own (#3538).
+                        txn.execute(
+                            "UPDATE sync_items SET payload_state = 'metadata-only'
+                              WHERE item_type = ?1 AND item_id = ?2 AND clock IS NULL
+                                AND server_cursor IS NULL AND payload IS NOT NULL",
+                            rusqlite::params![reference.item_type, reference.item_id],
+                        )
+                        .map_err(sqlite_failed)?;
                     }
                     // §5.12.1: an id in `deleted` may have no type on the
                     // wire, and the refs-only pass has no envelope to read one

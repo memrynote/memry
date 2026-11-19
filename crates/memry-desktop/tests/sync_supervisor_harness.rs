@@ -11,6 +11,8 @@
 //! | ten hints during a held pass give one trailing pass    | chapter 09 hints coalesce into one wake |
 //! | real passes tell item-synced and queue-cleared         | L7 events through the real driver      |
 //! | a fresh device's supervisor runs the first sync        | #4893: progress, every body, then passes |
+//! | a fresh device's seeded Inbox takes the user's Inbox   | #3538: the refs pass demotes the seed  |
+//! | a failed metadata pass does not push the seeded Inbox  | #3538: a demoted seed is not seeded    |
 
 #![cfg(feature = "harness")]
 
@@ -20,7 +22,7 @@ mod device_key;
 mod harness_server;
 
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -28,12 +30,16 @@ use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use harness_server::{NoPins, Online, Server};
 use memry_core::api::auth::{AuthSession, DeviceDescriptor};
-use memry_core::api::errors::{StorageError, SyncError};
+use memry_core::api::errors::{StorageError, SyncError, TransportError};
 use memry_core::api::vault::Vault;
 use memry_core::crdt::body_edit::BlockEdit;
 use memry_core::crypto::keys::derive_vault_key;
+use memry_core::domain::projects::{self, ProjectEdit};
 use memry_core::protocol::auth::DevicePlatform;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
+use memry_core::seams::transport::{
+    HttpRequest, HttpResponse, SocketHandle, SocketListener, SocketRequest, Transport,
+};
 use memry_core::sync::driver::progress::{InitialSyncPhase, InitialSyncSink};
 use memry_core::sync::driver::{DriverConfig, SyncDriver};
 use memry_core::sync::engine::{PassReport, PassSeed};
@@ -69,6 +75,15 @@ struct Device {
 
 impl Device {
     fn new(server: &Server, at: usize) -> Self {
+        Self::over(server, at, |transport| transport)
+    }
+
+    /// [`Device::new`] with its transport wrapped by `wrap`.
+    fn over(
+        server: &Server,
+        at: usize,
+        wrap: impl FnOnce(Arc<dyn Transport>) -> Arc<dyn Transport>,
+    ) -> Self {
         let boot: &Value = &server.devices[at];
         let store = device_key::with_device_key();
         let secret = BASE64
@@ -101,7 +116,7 @@ impl Device {
             Some(core.search().unwrap()),
         ));
 
-        let transport = app_transport(&["127.0.0.1".to_owned()], Arc::new(NoPins));
+        let transport = wrap(app_transport(&["127.0.0.1".to_owned()], Arc::new(NoPins)));
         let session = Arc::new(
             AuthSession::new(
                 transport,
@@ -205,6 +220,53 @@ impl Device {
 
     fn attempts(&self) -> i64 {
         self.count("SELECT COALESCE(SUM(attempt_count), 0) FROM outbox")
+    }
+
+    fn ensure_inbox(&self) {
+        let wrote = self
+            .core
+            .db_handle()
+            .call_blocking(|conn| projects::ensure_inbox(conn, 1_000))
+            .unwrap();
+        assert!(wrote, "a fresh vault seeds its Inbox");
+    }
+
+    fn rename_inbox(&self, server: &Server, at: usize, name: &'static str) {
+        let device = server.devices[at]["deviceId"].as_str().unwrap().to_owned();
+        self.core
+            .db_handle()
+            .call_blocking(move |conn| {
+                let edit = ProjectEdit {
+                    name: Some(name),
+                    description: None,
+                    color: None,
+                    icon: None,
+                    statuses: None,
+                };
+                projects::update(conn, projects::INBOX_ID, &edit, &device, 2_000).map(|_| ())
+            })
+            .unwrap();
+    }
+
+    /// The live projects' names, so a second Inbox shows too.
+    fn project_names(&self) -> Vec<String> {
+        self.core
+            .db_handle()
+            .call_blocking(|conn| {
+                let failed = |error: rusqlite::Error| StorageError::Failed {
+                    what: error.to_string(),
+                };
+                let mut statement = conn
+                    .prepare("SELECT name FROM projects ORDER BY id")
+                    .map_err(failed)?;
+                let names = statement
+                    .query_map([], |row| row.get(0))
+                    .map_err(failed)?
+                    .collect::<Result<Vec<String>, _>>()
+                    .map_err(failed);
+                names
+            })
+            .unwrap()
     }
 
     fn count(&self, sql: &'static str) -> i64 {
@@ -731,6 +793,125 @@ async fn a_fresh_devices_supervisor_runs_the_first_sync_then_ordinary_passes() {
         "an ordinary pass tells no progress"
     );
     supervisor.stop().await;
+}
+
+/// A pushes its Inbox and renames it "Triage"; B seeds its own unclocked Inbox at vault open
+/// (`tasks/defaults.rs`). A is A's first device, so B's first sync replaces the seed with
+/// "Triage" and never pushes the seed over it.
+async fn a_triage_inbox_on_the_server(server: &Server) -> (Device, SyncDriver) {
+    let a = Device::new(server, 0);
+    a.ensure_inbox();
+    let driver_a = a.driver().await;
+    pass(&driver_a).await;
+    a.rename_inbox(server, 0, "Triage");
+    pass(&driver_a).await;
+    assert_eq!(a.outbox(), 0, "A pushed its Inbox and the rename");
+    (a, driver_a)
+}
+
+/// #3538: B's refs pass records the server's Inbox while B holds an unclocked seed at the same
+/// id. The seed must not count as the body: the metadata pass fetches the user's Inbox over it.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_fresh_devices_seeded_inbox_takes_the_users_inbox() {
+    let server = Server::start();
+    let (a, driver_a) = a_triage_inbox_on_the_server(&server).await;
+    let b = Device::new(&server, 1);
+    b.ensure_inbox();
+
+    let gate = Arc::new(SyncStartGate::default());
+    gate.set_binding(VaultBinding::Bound);
+    let supervisor = b.supervisor(&gate);
+    until("B's first sync ended", || {
+        supervisor.status().last_sync_at.is_some()
+    })
+    .await;
+    until("B idle", || {
+        supervisor.status().status != SyncStatusValue::Syncing
+    })
+    .await;
+    supervisor.stop().await;
+
+    assert_eq!(b.project_names(), ["Triage"]);
+    assert_eq!(b.outbox(), 0, "B queued no Inbox of its own");
+    pass(&driver_a).await;
+    assert_eq!(a.project_names(), ["Triage"], "nothing of B's reached A");
+}
+
+/// Fails every `POST /sync/pull` while `armed`.
+struct FailingPulls {
+    inner: Arc<dyn Transport>,
+    armed: Arc<AtomicBool>,
+    failed: Arc<AtomicUsize>,
+}
+
+#[async_trait::async_trait]
+impl Transport for FailingPulls {
+    async fn send(&self, request: HttpRequest) -> Result<HttpResponse, TransportError> {
+        if self.armed.load(Ordering::SeqCst)
+            && request.method == "POST"
+            && request.url.ends_with("/sync/pull")
+        {
+            self.failed.fetch_add(1, Ordering::SeqCst);
+            return Ok(HttpResponse {
+                status: 503,
+                headers: Default::default(),
+                body: Vec::new(),
+            });
+        }
+        self.inner.send(request).await
+    }
+
+    fn open_socket(
+        &self,
+        request: SocketRequest,
+        listener: Arc<dyn SocketListener>,
+    ) -> Result<Arc<dyn SocketHandle>, TransportError> {
+        self.inner.open_socket(request, listener)
+    }
+}
+
+/// #3538: B's metadata pass fails with a 5xx before it fetches the Inbox, and the pass that
+/// drains the outbox after a failed first sync runs the seeds. The Inbox the refs pass demoted
+/// stays unseeded, so the next first sync still fetches "Triage" over it.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_failed_metadata_pass_does_not_push_the_seeded_inbox() {
+    let server = Server::start();
+    let (a, driver_a) = a_triage_inbox_on_the_server(&server).await;
+    let (armed, failed) = (Arc::new(AtomicBool::new(true)), Arc::default());
+    let b = Device::over(&server, 1, |inner| {
+        Arc::new(FailingPulls {
+            inner,
+            armed: Arc::clone(&armed),
+            failed: Arc::clone(&failed),
+        })
+    });
+    b.ensure_inbox();
+
+    let gate = Arc::new(SyncStartGate::default());
+    gate.set_binding(VaultBinding::Bound);
+    let supervisor = b.supervisor(&gate);
+    until("B's first sync failed", || {
+        supervisor.status().error_category.is_some()
+    })
+    .await;
+    until("B idle", || {
+        supervisor.status().status != SyncStatusValue::Syncing
+    })
+    .await;
+    assert!(
+        failed.load(Ordering::SeqCst) > 0,
+        "the metadata pass hit the 5xx"
+    );
+    assert_eq!(b.outbox(), 0, "the drain pass queued no Inbox");
+
+    armed.store(false, Ordering::SeqCst);
+    let result = supervisor.sync_now().await;
+    assert!(result.success, "{result:?}");
+    supervisor.stop().await;
+
+    assert_eq!(b.project_names(), ["Triage"]);
+    pass(&driver_a).await;
+    assert_eq!(a.project_names(), ["Triage"], "nothing of B's reached A");
 }
 
 /// Polls `done` every 50 ms, at most 600 times.
