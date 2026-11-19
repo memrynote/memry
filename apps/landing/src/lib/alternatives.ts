@@ -333,7 +333,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
           'Yes. memrynote has the same daily-note, task-backlink, and calendar workflow, so your planning habits carry over.'
       },
       {
-        question: 'Can memrynote read my NotePlan Markdown files?',
+        question: 'Can I import my NotePlan notes into memrynote?',
         answer:
           'Yes. The NotePlan importer in Settings → Import reads your NotePlan folder or a backup of it. Daily notes become journal entries, folders and #tags carry over, and tasks become real tasks that link back to the note they came from.'
       },
@@ -835,7 +835,7 @@ export const ALTERNATIVES: readonly AlternativeConfig[] = [
       {
         question: 'Does memrynote have an iPhone or iPad app?',
         answer:
-          'An iPhone app is in beta on TestFlight, on the same vault as your desktop: notes, tasks, journal, calendar, and search. Join the beta at memrynote.com/ios-beta. Canvases, the graph, and home boards are not on the phone yet, and there is no Android app yet.'
+          'The iPhone app is in TestFlight beta; iPad support is in development. The iPhone app works on the same vault as your desktop: notes, tasks, journal, calendar, and search. Join the beta at memrynote.com/ios-beta. Canvases, the graph, and home boards are not on the phone yet, and there is no Android or web app yet.'
       },
       {
         question: 'Is Apple Notes free?',

@@ -213,8 +213,8 @@ struct AboutScreen: View {
                 link(SettingsCopy.feedback, "bubble.left", "mailto:kaan@memrynote.com?subject=MemryNote%20feedback%20from%20iOS%20\(Self.version)%20(\(Self.build))")
             }
             Section {
-                link(SettingsCopy.privacyPolicy, "hand.raised", "https://memrynote.com/privacy")
-                link(SettingsCopy.terms, "doc.text", "https://memrynote.com/terms")
+                link(SettingsCopy.privacyPolicy, "hand.raised", "https://memrynote.com/privacy?utm_source=app&utm_medium=ios&utm_campaign=settings")
+                link(SettingsCopy.terms, "doc.text", "https://memrynote.com/terms?utm_source=app&utm_medium=ios&utm_campaign=settings")
                 DisclosureGroup(SettingsCopy.licenses) {
                     SettingsFooter(SettingsCopy.licensesBody)
                 }

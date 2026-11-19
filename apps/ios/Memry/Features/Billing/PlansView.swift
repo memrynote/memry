@@ -240,11 +240,11 @@ struct PlansView: View {
 }
 
 enum PlansLinks {
-    static let terms = URL(string: "https://memrynote.com/terms")
-    static let privacy = URL(string: "https://memrynote.com/privacy")
+    static let terms = URL(string: "https://memrynote.com/terms?utm_source=app&utm_medium=ios&utm_campaign=plans")
+    static let privacy = URL(string: "https://memrynote.com/privacy?utm_source=app&utm_medium=ios&utm_campaign=plans")
 
     static func checkout(token: String) -> URL? {
-        var components = URLComponents(string: "https://memrynote.com/account/sync")
+        var components = URLComponents(string: "https://memrynote.com/account/sync?utm_source=app&utm_medium=ios&utm_campaign=checkout")
         var fragment = URLComponents()
         fragment.queryItems = [URLQueryItem(name: "token", value: token)]
         components?.percentEncodedFragment = fragment.percentEncodedQuery

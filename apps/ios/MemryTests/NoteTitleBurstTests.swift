@@ -47,6 +47,107 @@ struct LineReturnTests {
     }
 }
 
+/// #4774, #4824: on iPad, the notes list moves the keyboard focus to the new
+/// note's selected row each time it mirrors its selection, twice or more
+/// after New note. These are the focus updates logged on the iPad Air 13
+/// simulator with a hardware keyboard.
+@Suite("Title focus claim")
+struct TitleFocusClaimTests {
+    /// Whether a new note's title takes the caret back after each move.
+    private func takenBack(_ moves: [TitleFocusMove], claiming: Bool = true) -> [Bool] {
+        var claim = TitleFocusClaim()
+        if claiming { claim.start() }
+        return moves.map { claim.takesBack(after: $0) }
+    }
+
+    @Test func every_move_to_the_selected_row_is_taken_back() {
+        #expect(takenBack([.toSelectedRow, .intoTitle, .toSelectedRow]) == [true, false, true])
+    }
+
+    @Test func the_title_taking_the_caret_again_keeps_the_claim() {
+        #expect(takenBack([.toNothing, .intoTitle, .toSelectedRow]) == [false, false, true])
+    }
+
+    @Test func a_key_move_ends_the_claim() {
+        #expect(takenBack([.byKey, .toSelectedRow]) == [false, false])
+    }
+
+    @Test func another_text_field_ends_the_claim() {
+        #expect(takenBack([.intoText, .toSelectedRow]) == [false, false])
+    }
+
+    @Test func a_menu_or_a_control_keeps_the_focus_and_ends_the_claim() {
+        #expect(takenBack([.elsewhere, .toSelectedRow]) == [false, false])
+    }
+
+    @Test func a_title_that_claims_nothing_takes_nothing_back() {
+        #expect(takenBack([.toSelectedRow], claiming: false) == [false])
+    }
+
+    /// The title losing the caret to a move it takes back is no end of the
+    /// edit, and its coming back is no new one.
+    @Test func a_take_back_keeps_the_edit_going() {
+        var claim = TitleFocusClaim()
+        claim.start()
+        let takenBack = claim.takesBack(after: .toSelectedRow)
+        #expect(takenBack && claim.retaking)
+        let retaken = claim.retakes(caretInOtherText: false)
+        #expect(retaken)
+        let cameBack = claim.refocused()
+        #expect(cameBack && !claim.retaking)
+        let laterFocus = claim.refocused()
+        #expect(!laterFocus, "a later focus of the title is a new edit")
+    }
+
+    /// The user put the caret in the body before the take-back ran: it
+    /// stays there, and the claim ends.
+    @Test func a_take_back_leaves_a_caret_the_user_moved_to_a_text_view() {
+        var claim = TitleFocusClaim()
+        claim.start()
+        _ = claim.takesBack(after: .toSelectedRow)
+        let retaken = claim.retakes(caretInOtherText: true)
+        #expect(!retaken)
+        #expect(!claim.holds)
+        #expect(!claim.retaking)
+    }
+
+    @Test func a_take_back_after_the_claim_ended_takes_nothing() {
+        var claim = TitleFocusClaim()
+        claim.start()
+        _ = claim.takesBack(after: .toSelectedRow)
+        claim.end()
+        let retaken = claim.retakes(caretInOtherText: false)
+        #expect(!retaken)
+    }
+
+    /// The title focusing again settles a take-back. Its text view letting
+    /// go of the caret as the list takes it is part of the move.
+    @Test func a_take_back_is_settled_only_by_the_title_focusing_again() {
+        var claim = TitleFocusClaim()
+        claim.start()
+        _ = claim.takesBack(after: .toSelectedRow)
+        _ = claim.takesBack(after: .toNothing)
+        #expect(claim.retaking)
+        _ = claim.takesBack(after: .intoTitle)
+        #expect(!claim.retaking)
+        #expect(claim.holds)
+    }
+
+    /// UIKit's focus update as a move: a heading is a key's move, except to
+    /// nothing.
+    @Test func focus_updates_map_to_moves() {
+        let cases: [(TitleFocusTarget, Bool, TitleFocusMove)] = [
+            (.nothing, false, .toNothing), (.nothing, true, .toNothing),
+            (.selectedRow, true, .byKey), (.text, true, .byKey), (.title, true, .byKey),
+            (.title, false, .intoTitle), (.text, false, .intoText),
+            (.selectedRow, false, .toSelectedRow), (.other, false, .elsewhere),
+        ]
+        for (target, byKey, move) in cases {
+            #expect(TitleFocusMove(to: target, byKey: byKey) == move, "\(target) byKey \(byKey)")
+        }
+    }
+}
+
 /// #4823, #4815: the keys pressed before a Return belong to its line, also
 /// the ones the keyboard dropped.
 @Suite("Pressed keys")
@@ -735,6 +836,109 @@ struct NoteTitleBurstTests {
         #expect(field.markedTextRange == nil)
         #expect(field.text == "Fook")
     }
+
+    /// The iPad notes list moving the focus from the title to its selected
+    /// row, as UIKit reports it, and the title's text view letting go.
+    private func listSteals(from field: UITextView, in window: UIWindow) {
+        let row = UICollectionViewCell()
+        row.isSelected = true
+        NotificationCenter.default.post(
+            name: UIFocusSystem.didUpdateNotification, object: UIFocusSystem.focusSystem(for: window),
+            userInfo: [UIFocusSystem.focusUpdateContextUserInfoKey: FocusUpdate.make(previous: field, next: row)]
+        )
+        field.resignFirstResponder()
+    }
+
+    /// #4824 review: the list took the caret after `tit` and the title took
+    /// it back. A take-back used to end the edit, saving `tit` as the rename
+    /// went on, and start another from the stored title, still empty: `le`
+    /// was written over `tit`.
+    @Test(.timeLimit(.minutes(1))) func keys_typed_after_a_take_back_keep_the_title_typed_before_it() async throws {
+        let f = try fixture()
+        let (window, field) = try await open(f)
+        defer { window.isHidden = true }
+
+        for key in "tit" { field.insertText(String(key)) }
+        listSteals(from: field, in: window)
+        await until { field.isFirstResponder }
+        #expect(field.isFirstResponder, "the title did not take the caret back")
+        #expect(try await stored(f).title == "", "the take-back saved the title as an end of the edit")
+        for key in "le" { field.insertText(String(key)) }
+        #expect(field.text == "title")
+
+        field.resignFirstResponder()
+        try await expectTitle(f, "title")
+    }
+
+    /// #4824 review: the user put the caret in the body before the take-back
+    /// ran. It stays in the body, and the title typed so far is saved.
+    @Test(.timeLimit(.minutes(1))) func a_take_back_leaves_the_caret_the_user_put_in_the_body() async throws {
+        let f = try await newNote()
+        let (window, field) = try await open(f)
+        defer { window.isHidden = true }
+
+        for key in "tit" { field.insertText(String(key)) }
+        let block = try #require(views(BlockTextView.self, in: window).first, "the body has no block")
+        listSteals(from: field, in: window)
+        block.becomeFirstResponder()
+        try await settle(f)
+
+        #expect(block.isFirstResponder, "the take-back pulled the caret out of the body")
+        #expect(!field.isFirstResponder)
+        try await expectTitle(f, "tit")
+    }
+
+    /// #5081 over #5083: the list took the caret mid-burst, after `title`
+    /// went down and only `tit` arrived, and the title took it back. Then a
+    /// held Return dropped `le`. The take-back keeps the presses, so the
+    /// line puts `le` back, and `le` delivered late into the body is
+    /// dropped there: no key is lost or typed twice.
+    @Test(.timeLimit(.minutes(2)), arguments: [false, true])
+    func a_steal_mid_burst_then_return_keeps_every_key_once(lateIntoBody: Bool) async throws {
+        let seen = try await uninterrupted { f, window, field in
+            for character in "title" { field.next?.pressesBegan([HardwarePress(character)], with: nil) }
+            for character in "tit" { key(String(character), in: window, title: field) }
+            listSteals(from: field, in: window)
+            await until { field.isFirstResponder }
+            let press = HardwarePress(.keyboardReturnOrEnter, "\r")
+            field.next?.pressesBegan([press], with: nil)
+            field.pressesBegan([press], with: nil)
+            field.pressesEnded([press], with: nil)
+            await until { views(BlockTextView.self, in: window).first?.isFirstResponder == true }
+            let block = views(BlockTextView.self, in: window).first
+            for character in (lateIntoBody ? "le" : "") + "body" { key(String(character), in: window, title: field) }
+            let body = block?.text
+            block?.resignFirstResponder()
+            for _ in 0..<300 {
+                let now = try await stored(f)
+                if now.title == "title", now.body == ["body"] { break }
+                try await Task.sleep(for: .milliseconds(20))
+            }
+            return (body, try await stored(f))
+        }
+        #expect(seen.0 == "body", "the body shows \(seen.0 ?? "nil")")
+        #expect(seen.1.title == "title", "\(seen.1)")
+        #expect(seen.1.body == ["body"], "\(seen.1)")
+    }
+}
+
+/// A focus update as UIKit hands it to the notification's observers.
+/// Made without `init`, which asks the screen for its focus system and
+/// throws in a test host; the moves live in the class, one at a time.
+@MainActor
+private final class FocusUpdate: UIFocusUpdateContext {
+    private static var previous: UIFocusItem?
+    private static var next: UIFocusItem?
+
+    static func make(previous: UIFocusItem?, next: UIFocusItem?) -> UIFocusUpdateContext {
+        Self.previous = previous
+        Self.next = next
+        return class_createInstance(FocusUpdate.self, 0) as! FocusUpdate
+    }
+
+    override var previouslyFocusedItem: UIFocusItem? { MainActor.assumeIsolated { Self.previous } }
+    override var nextFocusedItem: UIFocusItem? { MainActor.assumeIsolated { Self.next } }
+    override var focusHeading: UIFocusHeading { [] }
 }
 
 /// A hardware key press, as a keyboard delivers it to the first responder's

@@ -263,6 +263,6 @@ struct FreeLocalVaultTests {
 
     @Test("the web checkout carries the token in the fragment")
     func checkoutURL() {
-        #expect(PlansLinks.checkout(token: "abc")?.absoluteString == "https://memrynote.com/account/sync#token=abc")
+        #expect(PlansLinks.checkout(token: "abc")?.absoluteString == "https://memrynote.com/account/sync?utm_source=app&utm_medium=ios&utm_campaign=checkout#token=abc")
     }
 }

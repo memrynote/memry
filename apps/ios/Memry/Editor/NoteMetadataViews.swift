@@ -96,8 +96,7 @@ struct NoteTitleEditor: View {
     /// The Return whose keys the title holds until the body takes the caret.
     @State private var returned: LineReturn?
     @State private var pickingIcon = false
-    /// A new note's title wants the caret until the user types or moves it.
-    @State private var claimsFocus = false
+    @State private var claim = TitleFocusClaim()
     @State private var host = TitleWindow()
     @FocusState private var focused: Bool
 
@@ -142,6 +141,41 @@ struct NoteTitleEditor: View {
             if let text = caretHolder(in: subview) { return text }
         }
         return nil
+    }
+
+    /// What UIKit's focus `item` is to the title.
+    private func focusTarget(_ item: UIFocusItem?) -> TitleFocusTarget {
+        guard let item else { return .nothing }
+        if host.isTitle(item) { return .title }
+        if item is UITextInput { return .text }
+        if (item as? UICollectionViewCell)?.isSelected == true { return .selectedRow }
+        return .other
+    }
+
+    /// The list took the caret and the claim takes it back, once the focus
+    /// state has followed the loss. Never from a text view the user moved
+    /// to meanwhile: then the loss ends the edit after all.
+    private func retake() {
+        let caret = host.window.flatMap(Self.caretHolder)
+        if claim.retakes(caretInOtherText: caret.map { !host.isTitle($0) } ?? false) {
+            focused = true
+        } else if !focused {
+            focusLost()
+        }
+    }
+
+    /// The title lost the caret: the edit ends.
+    private func focusLost() {
+        if returned != nil {
+            // The body taking the caret ends the title's focus before it
+            // takes the held keys, on the same turn.
+            DispatchQueue.main.async {
+                keepHeld()
+                commit()
+            }
+        } else {
+            commit()
+        }
     }
 
     /// Return: saves the title before it and keeps the caret, holding the
@@ -246,7 +280,6 @@ struct NoteTitleEditor: View {
             burst.line = host.keys.restoring(burst.line, end: newline)
             return returnPressed(burst)
         }
-        if value != draft { claimsFocus = false }
         draft = value
     }
 
@@ -353,6 +386,8 @@ struct NoteTitleEditor: View {
                 }
                 .onChange(of: focused) { _, isFocused in
                     if isFocused {
+                        // A take-back goes on with the edit it interrupted.
+                        if claim.refocused() { return }
                         host.keys.reset()
                         host.handedOff = nil
                         EditorFocusMemory.shared.forget()
@@ -363,15 +398,10 @@ struct NoteTitleEditor: View {
                         if let field = titleTextView { host.title = field }
                         host.composing = titleTextView?.markedTextRange != nil
                         host.body = nil
-                    } else if returned != nil {
-                        // The body taking the caret ends the title's focus
-                        // before it takes the held keys, on the same turn.
-                        DispatchQueue.main.async {
-                            keepHeld()
-                            commit()
-                        }
+                    } else if claim.retaking {
+                        Task { retake() }
                     } else {
-                        commit()
+                        focusLost()
                     }
                 }
                 // A draft the user has not changed follows the saved title.
@@ -389,26 +419,26 @@ struct NoteTitleEditor: View {
                 // again under a block that had the caret (#4457).
                 .onAppear {
                     if title.isEmpty, EditorFocusMemory.shared.titleMayAutofocus(noteId) {
-                        claimsFocus = true
+                        claim.start()
                         focused = true
                     }
                 }
-                // #4346: in the iPad split view, the list column moves focus
-                // to the new note's selected row after its insert animation,
-                // which can land after the request above. A move from the
-                // title to an item that is not a text field, in this title's
-                // window, is taken back once, a turn later once the focus
-                // state has followed it: a later tap on another row or
-                // control keeps its focus. Dismissing the keyboard focuses
-                // nothing and is left alone.
+                // #4346, #4774: in the iPad split view, the notes list moves
+                // the focus to the new note's selected row each time it
+                // mirrors its selection (`TitleFocusClaim`), which can land
+                // after the request above and after the first keys. Each such
+                // move from this title is taken back, a turn after the focus
+                // state follows it (`retake`). A move counts from the title by
+                // UIKit's previous item, not by `focused`, which lags.
                 .onReceive(NotificationCenter.default.publisher(for: UIFocusSystem.didUpdateNotification)) { note in
-                    guard claimsFocus, focused, let window = host.window,
+                    guard claim.holds, let window = host.window,
                           note.object as? UIFocusSystem === UIFocusSystem.focusSystem(for: window),
                           let context = note.userInfo?[UIFocusSystem.focusUpdateContextUserInfoKey] as? UIFocusUpdateContext,
-                          let next = context.nextFocusedItem
+                          let previous = context.previouslyFocusedItem, host.isTitle(previous)
                     else { return }
-                    claimsFocus = false
-                    if !(next is UITextInput) { Task { focused = true } }
+                    _ = claim.takesBack(after: TitleFocusMove(
+                        to: focusTarget(context.nextFocusedItem), byKey: !context.focusHeading.isEmpty
+                    ))
                 }
                 // Saved as the app resigns, as a body block is (#2820). Not
                 // while an input method composes: Control Center resigns the
@@ -430,7 +460,7 @@ struct NoteTitleEditor: View {
                 // ends the edit without a focus change; the typed title
                 // still lands (#2680).
                 .onDisappear {
-                    claimsFocus = false
+                    claim.end()
                     keepHeld()
                     commit()
                     draftChanged?(nil)
@@ -474,6 +504,18 @@ private final class TitleWindow {
     /// The body block a Return in the title moved the caret to, until the
     /// title takes the caret again.
     weak var body: UITextView?
+    /// The view drawn behind the title, with its frame.
+    weak var probe: UIView?
+
+    /// Whether `item` is the title's text view: the one drawn where the
+    /// title is, so neither when it was first seen nor a page that drew a
+    /// new one matters.
+    func isTitle(_ item: UIFocusItem) -> Bool {
+        guard let text = item as? UITextView, let probe, let window = probe.window, text.window === window
+        else { return false }
+        let center = text.convert(CGPoint(x: text.bounds.midX, y: text.bounds.midY), to: nil)
+        return probe.convert(probe.bounds, to: nil).contains(center)
+    }
 }
 
 private struct TitleWindowReader: UIViewRepresentable {
@@ -482,12 +524,14 @@ private struct TitleWindowReader: UIViewRepresentable {
     func makeUIView(context: Context) -> Probe {
         let probe = Probe()
         probe.host = host
+        host.probe = probe
         probe.isUserInteractionEnabled = false
         return probe
     }
 
     func updateUIView(_ probe: Probe, context: Context) {
         probe.host = host
+        host.probe = probe
     }
 
     final class Probe: UIView {

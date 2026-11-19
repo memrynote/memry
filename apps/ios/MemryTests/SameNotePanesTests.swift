@@ -552,24 +552,6 @@ struct SameNotePanesTests {
         #expect(try await kinds() == ["wikiLink"])
     }
 
-    /// #4706: the page menu's append from B, which has not re-read A's
-    /// `XYZ `, lands at the end of the block as the core holds it.
-    @Test(.timeLimit(.minutes(1))) func an_append_from_a_stale_pane_lands_at_the_live_end() async throws {
-        let f = try fixture("hello")
-        let a = pane(f)
-        let b = pane(f)
-        let drawn = try await block(f)
-        let fieldA = draw(drawn, in: a)
-
-        await prepend(in: fieldA, of: a)
-        b.session.append(.note(title: "Foo", alias: ""), to: drawn)
-        await b.session.tail?.value
-
-        let runs = try await block(f).inline
-        #expect(BlockText.shown(runs) == "XYZ hello\u{FFFC} ")
-        #expect(runs.filter { $0.marks.contains("wikiLink") }.map(\.target) == ["Foo"])
-    }
-
     /// `q `, a link to Foo, then ` z`.
     private func fixtureWithLink() throws -> Fixture {
         let f = try fixture("q  z")

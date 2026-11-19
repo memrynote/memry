@@ -306,6 +306,28 @@ pub enum BlockEdit {
         block_id: String,
         into_block_id: String,
     },
+    /// Return inside a block's text (desktop's `splitBlockTr`): the inline
+    /// content from `at` on, marks and inline nodes kept, moves to a new
+    /// block `new_block_id` right after `block_id`. `MergeBlocks` of the new
+    /// block into `block_id` undoes it.
+    ///
+    /// `at` counts characters of the block's text as `ReplaceText` spells
+    /// it: Unicode scalar values, each inline node one U+FFFC. A byte offset
+    /// could not tell the caret before a textless node (a date) from the
+    /// caret after it.
+    ///
+    /// `kind` names the new block's type, with its default props. `None`
+    /// gives it `block_id`'s type and props, as desktop's split at a block's
+    /// start does. A block with nested blocks is refused: on desktop they go
+    /// with the tail, and `MergeBlocks` refuses to bring them back. Last, to
+    /// keep earlier FFI indices.
+    SplitBlock {
+        block_id: String,
+        at: u32,
+        #[uniffi(default = None)]
+        kind: Option<String>,
+        new_block_id: String,
+    },
 }
 
 /// Applies one edit to `document`.
@@ -416,6 +438,12 @@ fn apply_in(txn: &mut TransactionMut, edit: &BlockEdit) -> Result<(), CrdtError>
             block_id,
             into_block_id,
         } => merge_blocks(txn, block_id, into_block_id),
+        BlockEdit::SplitBlock {
+            block_id,
+            at,
+            kind,
+            new_block_id,
+        } => split_block(txn, block_id, *at, kind.as_deref(), new_block_id),
     }
 }
 
@@ -549,47 +577,6 @@ fn missing(id: &str) -> CrdtError {
         doc_id: id.to_owned(),
         what: "this body holds no such block".to_owned(),
     }
-}
-
-/// Removes a block, or a whole `columnList`, by id. A column its last block
-/// left is settled ([`settle_after_removal`]).
-fn delete(txn: &mut TransactionMut, block_id: &str) -> Result<(), CrdtError> {
-    let container = locate_row(txn, block_id).ok_or_else(|| missing(block_id))?;
-    let parent = container.parent();
-    match parent {
-        Some(XmlOut::Element(element)) => {
-            let index = element
-                .children(txn)
-                .position(|child| match child {
-                    XmlOut::Element(inner) => {
-                        attribute(txn, &inner, "id").as_deref() == Some(block_id)
-                    }
-                    _ => false,
-                })
-                .ok_or_else(|| missing(block_id))? as u32;
-            element.remove_range(txn, index, 1);
-            // The last child of a nested group leaves no empty group behind,
-            // and the last block of a column no empty column: BlockNote's
-            // schema requires both to hold a block.
-            settle_after_removal(txn, &element);
-        }
-        _ => {
-            let fragment = txn
-                .get_xml_fragment(BODY_FRAGMENT)
-                .ok_or_else(|| missing(block_id))?;
-            let index = fragment
-                .children(txn)
-                .position(|child| match child {
-                    XmlOut::Element(inner) => {
-                        attribute(txn, &inner, "id").as_deref() == Some(block_id)
-                    }
-                    _ => false,
-                })
-                .ok_or_else(|| missing(block_id))? as u32;
-            fragment.remove_range(txn, index, 1);
-        }
-    }
-    Ok(())
 }
 
 #[cfg(test)]
