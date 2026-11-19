@@ -38,6 +38,7 @@
 
 pub mod claim;
 pub mod client;
+pub mod connection;
 pub mod cursor;
 pub mod engine;
 pub mod highlights;

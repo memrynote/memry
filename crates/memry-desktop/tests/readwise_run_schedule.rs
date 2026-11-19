@@ -24,11 +24,11 @@ use super::claim::{Keychain, vault_files};
 use super::gate::{Cloud, FakeSync, fake_sync, keychain_with_token, settings, two_books};
 use super::*;
 
-const HOUR_MS: i64 = 60 * 60 * 1000;
-const T0: i64 = 1_800_000_000_000;
+pub(super) const HOUR_MS: i64 = 60 * 60 * 1000;
+pub(super) const T0: i64 = 1_800_000_000_000;
 
-struct Rig {
-    v: Vault,
+pub(super) struct Rig {
+    pub(super) v: Vault,
     keychain: Arc<Keychain>,
     sync: Arc<FakeSync>,
     clock: Arc<AtomicI64>,
@@ -36,7 +36,7 @@ struct Rig {
     runs: Arc<Mutex<Vec<String>>>,
 }
 
-fn rig(id: &str, indexing: Box<dyn Fn() -> bool + Send + Sync>) -> Rig {
+pub(super) fn rig(id: &str, indexing: Box<dyn Fn() -> bool + Send + Sync>) -> Rig {
     let cloud = Cloud::default();
     let v = vault(&[], two_books());
     let keychain = keychain_with_token(&v);
@@ -52,7 +52,7 @@ fn rig(id: &str, indexing: Box<dyn Fn() -> bool + Send + Sync>) -> Rig {
 
 impl Rig {
     /// One service, as one launch builds it for the open vault.
-    fn service(&self) -> Arc<ReadwiseRuns> {
+    pub(super) fn service(&self) -> Arc<ReadwiseRuns> {
         let l = &self.v.library;
         let library = Library::new(
             l.open.clone(),
@@ -86,6 +86,7 @@ impl Rig {
             engine,
             gate,
             token: token(),
+            client: self.v._server.client(),
             sync: self.sync.clone(),
             online: Arc::new(|| true),
             clock,
@@ -95,21 +96,21 @@ impl Rig {
         }))
     }
 
-    fn runs(&self) -> Vec<String> {
+    pub(super) fn runs(&self) -> Vec<String> {
         self.runs.lock().unwrap().clone()
     }
 
-    fn advance(&self, ms: i64) {
+    pub(super) fn advance(&self, ms: i64) {
         self.clock.fetch_add(ms, Ordering::SeqCst);
     }
 
-    fn has_token(&self) -> bool {
+    pub(super) fn has_token(&self) -> bool {
         let secrets: Arc<dyn GenericSecrets> = self.keychain.clone();
         let token = ReadwiseToken::new(secrets, &self.v.e.vault, None).unwrap();
         token.read().unwrap().is_some()
     }
 
-    fn files(&self) -> usize {
+    pub(super) fn files(&self) -> usize {
         vault_files(&self.v)
     }
 }
