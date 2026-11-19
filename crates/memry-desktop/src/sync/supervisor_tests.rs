@@ -311,10 +311,7 @@ async fn closing_clears_the_key_when_the_open_failed_or_its_pass_was_cut() {
     assert_eq!(rig.backend.opens(), 1);
     rig.gate.set_entitlement(Entitlement::Unentitled);
     settle().await;
-    assert!(
-        rig.backend.closes.load(Ordering::SeqCst) >= 1,
-        "a failed open"
-    );
+    assert_eq!(rig.closes(), 1, "a failed open");
 
     let rig = Rig::new();
     rig.gate.set_binding(VaultBinding::Unknown);
@@ -328,7 +325,8 @@ async fn closing_clears_the_key_when_the_open_failed_or_its_pass_was_cut() {
     );
     rig.gate.set_entitlement(Entitlement::Unentitled);
     settle().await;
-    assert!(rig.backend.closes.load(Ordering::SeqCst) >= 1, "a cut pass");
+    // Exactly one: the unbound start closed nothing it had not opened.
+    assert_eq!(rig.closes(), 1, "a cut pass");
 }
 
 /// A `Refused` pass pushed nothing: it is a failure, never "synced just now".
