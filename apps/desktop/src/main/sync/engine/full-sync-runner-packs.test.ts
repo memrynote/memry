@@ -348,6 +348,8 @@ describe('FullSyncRunner pack bootstrap seam', () => {
   })
 
   it('#given packs are unusable #then the run is byte-for-byte the pre-pack path', async () => {
+    // Both runs stamp the bootstrap start into sync_state.
+    const now = vi.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000)
     const withPacks = createHarness()
     mocks.runPackBootstrap.mockResolvedValue({
       usedPacks: false,
@@ -364,5 +366,6 @@ describe('FullSyncRunner pack bootstrap seam', () => {
 
     expect(withPacks.order).toEqual(withoutPacks.order)
     expect(withPacks.setStateValue.mock.calls).toEqual(withoutPacks.setStateValue.mock.calls)
+    now.mockRestore()
   })
 })

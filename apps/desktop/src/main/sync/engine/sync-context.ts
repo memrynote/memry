@@ -108,6 +108,12 @@ export interface SyncContext {
 
   state: EngineSyncState
   syncing: boolean
+  /**
+   * Bumped only by the sync lock holder's own work: a pull slice or page that
+   * commits, a push batch the server answers. The stale-lock watchdog reads it;
+   * user edits and socket frames never move it (#5234).
+   */
+  lockProgress: number
   fullSyncActive: boolean
   abortController: AbortController | null
   inFlightSync: Promise<void> | null

@@ -66,11 +66,12 @@ const log = createLogger('SyncEngine')
 // subscriber behind a silent budget. See src/main/sync/emitter-budget.test.ts.
 const MAX_SYNC_ENGINE_LISTENERS = 10
 
-// How long a lock may be held with no progress: no page cursor, applied item
-// or push drain (#5234). Far above SYNC_REQUEST_TIMEOUT_MS × the retry budget,
-// so a lock this quiet is leaked (a never-settling non-HTTP await): left alone
-// it makes periodicPull skip forever, and only an app restart recovers. Not a
-// bound on the run: a fresh bootstrap's record pull applies pages for longer.
+// How long a lock may be held with no progress of its own: no committed pull
+// slice or page, no answered push batch (`SyncContext.lockProgress`, #5234).
+// Far above SYNC_REQUEST_TIMEOUT_MS × the retry budget, so a lock this quiet
+// is leaked (a never-settling non-HTTP await): left alone it makes
+// periodicPull skip forever, and only an app restart recovers. Not a bound on
+// the run: a fresh bootstrap's record pull applies pages for longer.
 export const SYNC_LOCK_STALE_MS = 15 * 60 * 1000
 
 // Floor between two pulls issued by the 60s tick while the socket has been
@@ -119,9 +120,9 @@ export class SyncEngine extends SyncEventEmitter {
    * close-during-initial-sync), so a fresh engine means a fresh latch.
    */
   private cancelRequested = false
-  /** When the lock holder last made progress; see `syncProgressMark`. */
+  /** When `ctx.lockProgress` last moved while the lock was held. */
   private syncLockProgressAt: number | null = null
-  private syncLockProgressMark: string | null = null
+  private syncLockProgressMark: number | null = null
   private activeLockRelease: (() => void) | null = null
   // The socket generation the previous pull tick observed, and when the tick
   // last actually pulled. Both are instance state re-armed with the interval —
@@ -174,6 +175,7 @@ export class SyncEngine extends SyncEventEmitter {
       applier: new ItemApplier(deps.db, deps.emitToRenderer, adapters),
       state: 'idle',
       syncing: false,
+      lockProgress: 0,
       fullSyncActive: false,
       abortController: null,
       inFlightSync: null,
@@ -850,7 +852,7 @@ export class SyncEngine extends SyncEventEmitter {
     if (this.stateManager.isPaused()) return { refused: 'paused' }
     this.ctx.syncing = true
     this.syncLockProgressAt = Date.now()
-    this.syncLockProgressMark = this.syncProgressMark()
+    this.syncLockProgressMark = this.ctx.lockProgress
 
     let release!: () => void
     const prev = this.syncLock
@@ -904,9 +906,8 @@ export class SyncEngine extends SyncEventEmitter {
   // accepted over sync staying dead until restart.
   private recoverStaleSyncLock(): void {
     if (!this.ctx.syncing || this.syncLockProgressAt === null) return
-    const mark = this.syncProgressMark()
-    if (mark !== this.syncLockProgressMark) {
-      this.syncLockProgressMark = mark
+    if (this.ctx.lockProgress !== this.syncLockProgressMark) {
+      this.syncLockProgressMark = this.ctx.lockProgress
       this.syncLockProgressAt = Date.now()
       return
     }
@@ -925,16 +926,6 @@ export class SyncEngine extends SyncEventEmitter {
     this.pendingWakeCursor = null
     this.activeLockRelease?.()
     this.releaseLock()
-  }
-
-  /**
-   * Moves whenever the lock holder gets work done: a pull persists a page's
-   * cursor or applies an item, a push drains the queue. A pull of the whole
-   * feed outlived a held-since bound while applying a page every few seconds.
-   */
-  private syncProgressMark(): string {
-    const cursor = this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR) ?? ''
-    return `${cursor}|${this.ctx.applier.changedCount}|${this.ctx.deps.queue.getPendingCount()}`
   }
 
   private releaseLock(): void {

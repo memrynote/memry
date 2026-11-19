@@ -408,4 +408,45 @@ describe('the stale-lock watchdog, against a real sync server', () => {
     await expect(engine.pull()).resolves.toEqual({ status: 'delivered' })
     await engine.stop()
   }, 180_000)
+
+  it('recovers a hung pull while the user keeps editing', async () => {
+    const account = await seedAccount()
+    await writeHistory(account)
+    const fresh = account.devices[1]
+    openDevice('fresh', account, fresh)
+    vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] })
+
+    let hang = false
+    const hung: Array<() => void> = []
+    const engine = startSync(account, fresh, createMockWs(), async () => {
+      if (hang) await new Promise<void>((resolve) => hung.push(resolve))
+      return account.vaultKey.slice()
+    })
+    await engine.start()
+
+    hang = true
+    void engine.pull()
+    await vi.waitUntil(() => engine['ctx'].syncing, { interval: 5 })
+
+    // A local edit every five minutes grows the push queue; none of it is the
+    // hung pull's work. The tick that frees the lock starts the next pull.
+    for (let minute = 1; minute <= 40; minute++) {
+      if (minute % 5 === 0) {
+        const name = `edit-${minute}`
+        getDatabase()
+          .insert(tagDefinitions)
+          .values({ name, color: 'red', clock: { [fresh.deviceId]: 1 } } as never)
+          .run()
+        enqueueLocalSyncUpdate('tag_definition', name)
+      }
+      vi.advanceTimersByTime(60_000)
+      await Promise.resolve()
+    }
+
+    await vi.waitUntil(() => hung.length > 1, { timeout: 2000, interval: 5 }).catch(() => {})
+    expect(hung.length).toBeGreaterThan(1)
+    hang = false
+    for (const resolve of hung) resolve()
+    await engine.stop()
+  }, 180_000)
 })

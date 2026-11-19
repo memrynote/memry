@@ -190,7 +190,7 @@ describe('SyncEngine', () => {
       engine['ctx'].fullSyncActive = true
       engine['ctx'].abortController = abortController
       engine['syncLockProgressAt'] = Date.now() - SYNC_LOCK_STALE_MS - 1
-      engine['syncLockProgressMark'] = engine['syncProgressMark']()
+      engine['syncLockProgressMark'] = engine['ctx'].lockProgress
 
       engine['recoverStaleSyncLock']()
 
@@ -204,7 +204,7 @@ describe('SyncEngine', () => {
       const engine = new SyncEngine(deps)
       engine['ctx'].syncing = true
       engine['syncLockProgressAt'] = Date.now()
-      engine['syncLockProgressMark'] = engine['syncProgressMark']()
+      engine['syncLockProgressMark'] = engine['ctx'].lockProgress
 
       engine['recoverStaleSyncLock']()
 
@@ -473,7 +473,7 @@ describe('SyncEngine', () => {
 
       engine['ctx'].syncing = true
       engine['syncLockProgressAt'] = Date.now() - SYNC_LOCK_STALE_MS - 1
-      engine['syncLockProgressMark'] = engine['syncProgressMark']()
+      engine['syncLockProgressMark'] = engine['ctx'].lockProgress
       engine['recoverStaleSyncLock']()
 
       ws.emit('message', wake(3))
