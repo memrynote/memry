@@ -208,7 +208,9 @@ fills the meta from the same columns `POST /sync/pull` answers from
 - **No payload, no entry.** A purged tombstone (chapter 05 §5.12.3) and a row
   whose payload is lost (§5.12.4) have no payload bytes. A writer MUST NOT emit
   them as record entries; `POST /sync/pull` keeps them out of `items` for the
-  same reason (`packages/contracts/src/sync-api.ts:907-917`).
+  same reason (`packages/contracts/src/sync-api.ts:907-917`). A live row whose
+  payload is lost is still a needed row, so it ends the writer's range
+  (§8.10).
 - **Index entry size.** A writer MUST NOT emit an index entry larger than
   `PACK_MAX_INDEX_ENTRY_BYTES`, which a conforming reader rejects (§8.6;
   `crates/memry-core/src/protocol/pack/index.rs:165-170`). An item whose entry
@@ -457,8 +459,11 @@ a reader needs is one with a payload that the feed or the item routes would
 serve it, and every body row of a document whose record is deleted: a
 re-create keeps those rows at their old cursors while the purge has not run or
 has failed (chapter 07 §7.15), so a writer packs them and a reader drops them
-on the tombstone (**Closing checks**, below). A row with no payload (§8.4.2)
-and a purged-tombstone marker (chapter 05 §5.12.3) are not needed. "Holds" means an entry at
+on the tombstone (**Closing checks**, below). A purged-tombstone marker
+(chapter 05 §5.12.3) is not needed. A live row whose payload is lost
+(`blob_missing_at` set, or a 404 when the writer reads it, chapter 05 §5.12.4)
+is needed but cannot be packed, so it ends the range (below). The feed then
+serves it, and the reader's `POST /sync/pull` reports it in `blobMissing`. "Holds" means an entry at
 that row's current cursor; a row that later moves to a higher cursor (a
 rewrite, a delete) leaves a dead entry behind, and its new state is at the
 new cursor.
@@ -470,8 +475,8 @@ unless it says **step 07 MUST** (#5230); no server does any of it yet.
   watermark. A pack's `coverFrom` is the `coverThrough` of the kind's previous
   pack, or 0, so windows of rows it skipped as unneeded fall inside the next
   range. A row it needs but cannot pack (an index entry above
-  `PACK_MAX_INDEX_ENTRY_BYTES`, §8.4.2, a payload that answers 404, a meta it
-  cannot build) is never inside a range: the previous range ends below it and
+  `PACK_MAX_INDEX_ENTRY_BYTES`, §8.4.2, a lost payload, `blob_missing_at` set
+  or a 404 at build time, a meta it cannot build) is never inside a range: the previous range ends below it and
   the next one starts at its cursor, leaving a gap a reader reads through the
   feed. A writer MUST NOT leave such a row out of a range silently.
 - `coverage` is read in the same D1 batch as the first page, and a pack row,
@@ -565,7 +570,10 @@ it with checks the server answers:
 
   A record entry carries no `version`, so the manifest cannot show that a
   packed live entry is stale. The tail does: a newer version sits at a higher
-  cursor, in a later range or above the tail start.
+  cursor, in a later range, in a gap, or above the tail start. A newer version
+  whose payload is lost is in no range (above), so the tail serves it and
+  `POST /sync/pull` reports it in `blobMissing` (chapter 05 §5.12.4); the
+  reader then knows its packed version is not current.
 
 - **Bodies:** before it applies a packed snapshot, a reader confirms its
   `revision` against `snapshotMeta` from a `POST /sync/crdt/updates/batch`
@@ -656,8 +664,11 @@ coverage ranges chain, and writes one pack that replaces them:
   `(user_id, vault_id, item_kind, min_cursor)` and a conflicting insert does
   nothing (`apps/sync-server/src/services/pack-compaction.ts:548`), so the
   listing never holds an old pack and its replacement at once. The batch
-  carries the commit-time recheck of chapter 07 §7.15 for every document it
-  holds, so a purge that committed after the rollup read its inputs wins.
+  inserts the new row only if every input pack's listing row still exists,
+  so a purge or a shed (§8.13) that removed an input after the rollup read it
+  wins, and the rollup's object is deleted unlisted. The new pack also drops
+  every record entry whose row is now a marker. The batch carries the
+  commit-time recheck of chapter 07 §7.15 for every document it holds.
 - **Grace period.** An object whose row was removed is deleted no earlier than
   `PACK_REPLACED_GRACE_SECONDS` = 600 after the removal
   (`packages/contracts/src/sync-api.ts:777-782`), twice the presigned URL
@@ -700,11 +711,13 @@ are touched, and the document's ciphertext MUST leave every pack object within
 - **Object deletion.** The purge batch enqueues a queue message delayed by
   `PACK_REPLACED_GRACE_SECONDS` (§8.12). Its consumer deletes each recorded
   object whose rewrite has committed. A sweep that runs at most every 300 s
-  retries every recorded deletion that failed or waited. A deletion waits for
-  a rewrite in flight only while the next sweep still falls inside the
-  deadline. With one failed attempt the object is gone by 600 + 300 = 900 s. A
-  deletion that keeps failing is retried on every sweep and logged with the
-  vault and the object count. This replaces today's purge, which logs a failed
+  covers every recorded deletion past its grace period, whether its queue
+  message failed, waited, or was never delivered. A deletion waits for a
+  rewrite in flight only while the next sweep still falls inside the
+  deadline. Every object is gone within 900 s of the purge's commit unless two
+  delete attempts fail; a lost queue message counts as one. A deletion still
+  pending past the deadline raises an alert, an error log with the vault and
+  the object count, and the sweep keeps retrying it. This replaces today's purge, which logs a failed
   R2 delete and drops it
   (`apps/sync-server/src/services/document-body-purge.ts:121-127`).
 - **A purge that fails.** The purge runs after the push that deleted the
