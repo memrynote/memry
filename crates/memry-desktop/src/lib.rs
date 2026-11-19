@@ -30,6 +30,7 @@ pub mod paths;
 pub mod readwise;
 pub mod redact;
 pub mod registry;
+pub mod sandbox;
 pub mod seams;
 pub mod search;
 pub mod services;

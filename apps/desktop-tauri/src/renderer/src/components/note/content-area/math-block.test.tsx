@@ -43,6 +43,16 @@ describe('MathBlockRenderer', () => {
     expect(container.querySelector('math')).not.toBeNull()
   })
 
+  it('spans the column, so the formula is centered in it (#3929)', () => {
+    // BlockNote's block content is a flex row, which shrinks a child without a
+    // width to its content and leaves the formula at the start edge.
+    const { container } = render(
+      <MathBlockRenderer block={{ props: { latex: 'E = mc^2' } }} editor={editorDouble()} />
+    )
+
+    expect(container.firstElementChild).toHaveClass('w-full', 'min-w-0')
+  })
+
   it('shows the parse error for LaTeX it cannot render', () => {
     // #given a control sequence KaTeX does not know. Its own fallback prints
     // the source in red, which reads as a rendered formula that is merely

@@ -2238,6 +2238,10 @@
         "prevVault": {
           "label": "הכספת הקודמת",
           "description": "מעבר לכספת הקודמת בסרגל הצד"
+        },
+        "todayJournal": {
+          "label": "היומן של היום",
+          "description": "פתיחת היומן ברשומה של היום"
         }
       },
       "tabs": {

@@ -85,7 +85,7 @@ export function useFindInPage(
     }
   }, [])
 
-  const highlightAndScroll = useCallback((index: number) => {
+  const highlightCurrent = useCallback((index: number, scroll: boolean) => {
     try {
       CSS.highlights.delete('find-current')
     } catch {
@@ -95,8 +95,10 @@ export function useFindInPage(
     if (index >= 0 && index < matches.length) {
       try {
         CSS.highlights.set('find-current', new Highlight(matches[index]))
-        const el = matches[index].startContainer.parentElement
-        el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        if (scroll) {
+          const el = matches[index].startContainer.parentElement
+          el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
       } catch {
         // Range may have been invalidated
       }
@@ -109,6 +111,12 @@ export function useFindInPage(
   // True while the bar was opened by `openAt` and the user has not taken it over.
   const [autoClose, setAutoClose] = useState(false)
 
+  /**
+   * `keepIndex` marks a refresh after the document changed under the open bar.
+   * It keeps the current match and never scrolls, because scrolling itself
+   * mutates the editor (hover UI mounts) and would snap the view back (#3508).
+   * The one exception is an `openAt` request landing once enough matches exist.
+   */
   const performSearch = useCallback(
     (searchQuery: string, keepIndex = false) => {
       clearHighlights()
@@ -133,20 +141,22 @@ export function useFindInPage(
         }
         const pending = pendingIndexRef.current
         let start = keepIndex && currentIndexRef.current >= 0 ? currentIndexRef.current : 0
+        let scroll = !keepIndex
         if (pending !== null && pending < ranges.length) {
           start = pending
+          scroll = true
           pendingIndexRef.current = null
         }
         if (start >= ranges.length) start = 0
         setCurrentIndex(start)
         currentIndexRef.current = start
-        highlightAndScroll(start)
+        highlightCurrent(start, scroll)
       } else {
         setCurrentIndex(-1)
         currentIndexRef.current = -1
       }
     },
-    [containerRef, clearHighlights, highlightAndScroll]
+    [containerRef, clearHighlights, highlightCurrent]
   )
 
   // Pending debounced search. `pendingQueryRef` is the query the timer will run,
@@ -170,11 +180,6 @@ export function useFindInPage(
     cancelPendingSearch()
     performSearch(pending)
   }, [cancelPendingSearch, performSearch])
-
-  // Highlight current match + scroll into view on navigation (next/prev)
-  useEffect(() => {
-    highlightAndScroll(currentIndex)
-  }, [currentIndex, highlightAndScroll])
 
   const rerunSearch = useEffectEvent(() => {
     performSearch(query, true)
@@ -272,8 +277,8 @@ export function useFindInPage(
     const newIndex = (currentIndexRef.current + 1) % len
     currentIndexRef.current = newIndex
     setCurrentIndex(newIndex)
-    highlightAndScroll(newIndex)
-  }, [flushPendingSearch, highlightAndScroll])
+    highlightCurrent(newIndex, true)
+  }, [flushPendingSearch, highlightCurrent])
 
   const prev = useCallback(() => {
     pendingIndexRef.current = null
@@ -283,8 +288,8 @@ export function useFindInPage(
     const newIndex = (currentIndexRef.current - 1 + len) % len
     currentIndexRef.current = newIndex
     setCurrentIndex(newIndex)
-    highlightAndScroll(newIndex)
-  }, [flushPendingSearch, highlightAndScroll])
+    highlightCurrent(newIndex, true)
+  }, [flushPendingSearch, highlightCurrent])
 
   // A bar that search opened is only a landing aid: the first click into the
   // document means the user is back to reading or editing, so it gets out of
