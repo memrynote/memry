@@ -16,6 +16,10 @@ const mocks = vi.hoisted(() => ({
   },
   listeners: new Map<string, (event: { payload: unknown }) => void>()
 }))
+const SETTINGS_PAGE = {
+  operation: 'pull',
+  items: [{ itemId: 'synced_settings', type: 'settings', itemOperation: 'update' }]
+}
 
 vi.mock('../../../generated/bindings', () => {
   const event = (name: string) => ({
@@ -28,7 +32,8 @@ vi.mock('../../../generated/bindings', () => {
     commands: mocks.commands,
     events: {
       settingsChangedEvent: event('changed'),
-      settingsOpenSectionEvent: event('open')
+      settingsOpenSectionEvent: event('open'),
+      syncItemSyncedEvent: event('synced')
     }
   }
 })
@@ -170,6 +175,32 @@ describe('settingsService', () => {
     await flush()
 
     expect(seen).toEqual([{ key: 'sidebar.notesFirst', value: true }])
+  })
+
+  it('hands each synced group to a listener when a pulled page holds the settings', async () => {
+    const groups: Record<string, Record<string, unknown>> = {
+      general: { theme: 'dark' },
+      editor: { spellCheck: false },
+      sidebar: { notesFirst: true }
+    }
+    mocks.commands.settingsGetGroup.mockImplementation(async (name: string) => groups[name] ?? {})
+    mocks.commands.settingsGetPath.mockResolvedValue(null)
+    const seen: Array<{ key: string; value: unknown }> = []
+    vi.useFakeTimers()
+    try {
+      onSettingsChanged((change) => seen.push(change))
+      await vi.advanceTimersByTimeAsync(0)
+
+      mocks.listeners.get('synced')?.({ payload: SETTINGS_PAGE })
+      await vi.advanceTimersByTimeAsync(150)
+    } finally {
+      vi.useRealTimers()
+    }
+
+    expect(seen).toContainEqual({ key: 'general', value: { theme: 'dark' } })
+    expect(seen).toContainEqual({ key: 'editor', value: { spellCheck: false } })
+    expect(seen).toContainEqual({ key: 'sidebar.notesFirst', value: true })
+    expect(seen).toContainEqual({ key: 'journal', value: {} })
   })
 
   it('reads tag searches from the flat device-local key', async () => {

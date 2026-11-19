@@ -27,6 +27,7 @@ import {
 } from '../../../generated/bindings'
 import { sanitizeCalloutTypeDefinitions } from '@memry/editor-schema/callout-types'
 import { createLogger } from '../lib/logger'
+import { withSyncedRecords } from './sync-service'
 import { subscribeToEvent } from './tauri-event'
 
 const log = createLogger('SettingsService')
@@ -284,17 +285,41 @@ export interface SettingsChange {
   value: unknown
 }
 
+/** The groups a pulled settings record writes (`projectors/settings.rs`). */
+const SYNCED_GROUPS = [
+  'general',
+  'editor',
+  'tasks',
+  'calendar',
+  'keyboard',
+  'notes',
+  'sync',
+  'inbox',
+  'journal',
+  'sidebar',
+  'readwise'
+]
+
 /**
  * Subscribes to settings writes. Rust announces `{ key, fields }` (names only); each listener
  * gets the Electron shape back by reading the written fields, with `sidebar` fields and the
- * callout types addressed as `group.field` the way those listeners filter.
+ * callout types addressed as `group.field` the way those listeners filter. A pulled settings
+ * record names no group, so each synced group is read and announced whole, as Electron's
+ * settings handler broadcast every merged group.
  */
 export function onSettingsChanged(callback: (change: SettingsChange) => void): () => void {
-  return subscribeToEvent(events.settingsChangedEvent, (event) => {
-    void announce(event.key, event.fields, callback).catch((error: unknown) =>
-      log.warn(`settings change for ${event.key} could not be read`, error)
+  const tell = (key: string, fields: string[]): void => {
+    void announce(key, fields, callback).catch((error: unknown) =>
+      log.warn(`settings change for ${key} could not be read`, error)
     )
-  })
+  }
+  return withSyncedRecords(
+    (live) => subscribeToEvent(events.settingsChangedEvent, (e) => tell(e.key, e.fields), live),
+    ['settings'],
+    () => {
+      for (const name of SYNCED_GROUPS) tell(name, [])
+    }
+  )
 }
 
 async function announce(
@@ -305,24 +330,21 @@ async function announce(
   // The AI switches are flat local keys, not a group (`settings_set_ai`).
   const current: Record<string, Value> =
     key === 'ai' ? await commands.settingsGetAi() : await readObject(key)
+  // No field names: the whole group changed.
+  const names = fields.length > 0 ? fields : Object.keys(current)
   if (key === 'sidebar') {
-    for (const field of fields) callback({ key: `sidebar.${field}`, value: current[field] ?? null })
+    for (const field of names) callback({ key: `sidebar.${field}`, value: current[field] ?? null })
     return
   }
-  const patchFields = fields.filter((field) => field in current)
-  if (fields.includes('calloutTypes')) {
+  const patchFields = names.filter((field) => field in current)
+  if (names.includes('calloutTypes')) {
     callback({
       key: 'editor.calloutTypes',
       value: await readCalloutTypeList()
     })
   }
   if (fields.length > 0 && patchFields.length === 0) return
-  const patch = Object.fromEntries(
-    (fields.length === 0 ? Object.keys(current) : patchFields).map((field) => [
-      field,
-      current[field]
-    ])
-  )
+  const patch = Object.fromEntries(patchFields.map((field) => [field, current[field]]))
   callback({ key, value: patch })
 }
 
