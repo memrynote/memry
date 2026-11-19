@@ -2,7 +2,6 @@
 //! and body, serialize it back keeping every unedited byte, and write new files.
 
 use super::js::{is_js_whitespace, js_trim};
-use super::json::json_to_yaml;
 use super::split::split_frontmatter_block;
 use super::value::{YamlMap, YamlValue};
 use super::yaml_dump::safe_dump;
@@ -123,53 +122,26 @@ pub fn gray_matter_parts(text: &str) -> Option<(&str, &str)> {
     parse_matter(text).map(|parts| (parts.matter, parts.content))
 }
 
-fn engine_error(message: String) -> YamlError {
-    YamlError {
-        message,
-        line: 0,
-        column: 0,
-    }
-}
-
-/// `JSON.parse`. serde_json refuses what JSON.parse takes past its limits (nesting past 128,
-/// a number past f64, a lone surrogate escape), so such a block fails closed.
-fn parse_json(matter: &str) -> Result<YamlValue, YamlError> {
-    serde_json::from_str::<serde_json::Value>(matter)
-        .map(|value| json_to_yaml(&value))
-        .map_err(|e| YamlError {
-            message: format!("JSON frontmatter: {e}"),
-            line: e.line().saturating_sub(1),
-            column: e.column().saturating_sub(1),
-        })
-}
-
-/// gray-matter's engine for the block's language (`lib/engine.js` over the default engines).
-/// The `javascript` engine `eval`s the block; it is refused, never run, so a file from another
-/// tool cannot execute code (a deliberate difference from Electron). A name only
-/// `Object.prototype` resolves (`constructor`, `toString`) is not registered here either.
+/// Only YAML frontmatter is read: no language, or gray-matter's `yaml`/`yml` aliases in any
+/// case. Every other language (`json`, `js`, `coffee`, ...) is refused, so the file's
+/// frontmatter is unreadable, as with Electron's patched gray-matter (#5154).
 fn parse_with(language: Option<&str>, matter: &str) -> Result<Option<YamlValue>, YamlError> {
     let Some(name) = language else {
         return safe_load(matter);
     };
-    match name {
-        "json" => parse_json(matter).map(Some),
-        _ => match name.to_lowercase().as_str() {
-            "yaml" | "yml" => safe_load(matter),
-            "js" | "javascript" => Err(engine_error(format!(
-                "gray-matter engine \"{name}\" evaluates code; the frontmatter is not evaluated"
-            ))),
-            _ => {
-                // The name is the file's first line, so the message shows at most 64 chars.
-                let mut shown: String = name.chars().take(64).collect();
-                if shown.len() < name.len() {
-                    shown.push('…');
-                }
-                Err(engine_error(format!(
-                    "gray-matter engine \"{shown}\" is not registered"
-                )))
-            }
-        },
+    if matches!(name.to_lowercase().as_str(), "yaml" | "yml") {
+        return safe_load(matter);
     }
+    // The name is the file's first line, so the message shows at most 64 chars.
+    let mut shown: String = name.chars().take(64).collect();
+    if shown.len() < name.len() {
+        shown.push('…');
+    }
+    Err(YamlError {
+        message: format!("frontmatter language \"{shown}\" is not supported"),
+        line: 0,
+        column: 0,
+    })
 }
 
 /// `matter(text, {}).data`, for a block the splitter produced or for a whole file read with

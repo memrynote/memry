@@ -70,6 +70,57 @@ fn deep_frontmatter_fails_its_note_on_a_small_stack() {
     assert_eq!(ops(&calls, "createNote"), 1);
 }
 
+/// Only YAML frontmatter imports. A file whose opening line names another language (any case,
+/// any space gray-matter trims) fails with unreadable frontmatter, as in Electron's patched
+/// gray-matter (#5154): its block is never parsed as JSON nor run as JavaScript.
+#[test]
+fn a_non_yaml_frontmatter_language_fails_its_note() {
+    let refused = [
+        "---json",
+        "---JSON",
+        "---json  ",
+        "--- json",
+        "---json\r",
+        "---js",
+        "---JS",
+        "--- javascript",
+        "---Javascript ",
+        "---coffee",
+        "---toml",
+    ];
+    let dir = tempfile::tempdir().unwrap();
+    for (at, open) in refused.iter().enumerate() {
+        let file = format!("{open}\n{{\"title\": \"T\", \"k\": 1}}\n---\nbody\n");
+        fs::write(dir.path().join(format!("refused-{at}.md")), file).unwrap();
+    }
+    for (at, open) in ["---", "---yaml", "--- YML "].iter().enumerate() {
+        let file = format!("{open}\nk: 1\n---\nbody\n");
+        fs::write(dir.path().join(format!("yaml-{at}.md")), file).unwrap();
+    }
+
+    let (summary, calls) = run(&MarkdownImporter, &[dir.path()]);
+    let mut failed: Vec<&str> = summary
+        .failed
+        .iter()
+        .map(|f| f.item.rsplit(['/', '\\']).next().unwrap())
+        .collect();
+    failed.sort_unstable();
+    let mut expected: Vec<String> = (0..refused.len())
+        .map(|at| format!("refused-{at}.md"))
+        .collect();
+    expected.sort_unstable();
+    assert_eq!(failed, expected, "{summary:?}");
+    assert!(
+        summary
+            .failed
+            .iter()
+            .all(|f| f.error.contains("is not supported")),
+        "{summary:?}"
+    );
+    assert_eq!(summary.imported, 3, "the YAML files import");
+    assert_eq!(ops(&calls, "createNote"), 3);
+}
+
 #[test]
 fn csv_steps_are_linear_in_a_wide_header_over_short_rows() {
     // 2000 columns, then 2000 rows of one cell: a pass over every column of every row is 4
