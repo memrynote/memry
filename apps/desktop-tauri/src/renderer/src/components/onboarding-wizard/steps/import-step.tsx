@@ -19,6 +19,7 @@ import {
   useDeviceLabel
 } from '../wizard-ui'
 import type { StepProps } from './basic-steps'
+import { commands } from '../../../../../generated/bindings'
 
 const log = createLogger('Onboarding:Import')
 const K = 'onboardingWizard.import'
@@ -42,8 +43,8 @@ function useImportSources(): { importers: ImporterMeta[]; sources: OnboardingSou
       .list()
       .then((list) => !cancelled && setImporters(list.filter((meta) => !meta.accountBased)))
       .catch((error: unknown) => log.warn('Listing importers failed', error))
-    window.api.onboarding
-      .detectSources()
+    commands
+      .onboardingDetectSources()
       .then((found) => !cancelled && setSources(found))
       .catch((error: unknown) => {
         log.warn('Detecting import sources failed', error)

@@ -40,11 +40,16 @@ interface Recipe {
   build: (get: Get) => Promise<Built>
 }
 
-/** Launch options of the current file, set with `test.use`. */
-let launchOptions: Pick<
+type LaunchOptions = Pick<
   FreshOptions,
   'syncServerUrl' | 'extraEnv' | 'keepWindowRect' | 'startupFails'
-> = {}
+> & {
+  /** Instance A starts with no known vault, so the first-run wizard shows. */
+  firstRun?: boolean
+}
+
+/** Launch options of the current file, set with `test.use`. */
+let launchOptions: LaunchOptions = {}
 
 interface MultiBrowser {
   isMultiremote?: boolean
@@ -92,7 +97,7 @@ const BASE_RECIPES: Record<string, Recipe> = {
         ...launchOptions,
         syncServerUrl: (get('syncServerUrl') as string | null) ?? launchOptions.syncServerUrl,
         label: isMulti() ? 'A' : undefined,
-        testVaultPath: get('testVaultPath') as string
+        testVaultPath: launchOptions.firstRun ? null : (get('testVaultPath') as string)
       })
       return { value: app, teardown: () => dispose(app) }
     }
@@ -219,9 +224,7 @@ interface TestApi<F> {
   }
   slow(): void
   setTimeout(ms: number): void
-  use(
-    options: Pick<FreshOptions, 'syncServerUrl' | 'extraEnv' | 'keepWindowRect' | 'startupFails'>
-  ): void
+  use(options: LaunchOptions): void
   /** Adds or overrides fixtures, as Playwright's `test.extend`. */
   extend<T extends Record<string, unknown>>(defs: {
     [K in keyof T]: FixtureDef<T[K], F & T>

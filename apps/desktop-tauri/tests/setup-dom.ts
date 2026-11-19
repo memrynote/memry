@@ -399,6 +399,11 @@ vi.mock('../src/generated/bindings', () => {
         })
       ),
       aiLoadModel: vi.fn(() => Promise.resolve({ success: true })),
+      // The first-run wizard's detection; its tests set what a computer has.
+      onboardingDetectSources: vi.fn(() =>
+        Promise.resolve({ obsidianVaults: [], installedApps: [] })
+      ),
+      onboardingIsMemryVault: vi.fn(() => Promise.resolve(false)),
       aiReindexEmbeddings: vi.fn(() => Promise.resolve({ success: true, computed: 0, skipped: 0 })),
       // Settings > General reads it on mount; the row's own test mocks the bindings.
       ocrLanguagesGetState: () =>

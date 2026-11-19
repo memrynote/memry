@@ -230,7 +230,8 @@ export async function start(/** @type {Context} */ ctx) {
       device: deviceId,
       testVaultPath: firstRun ? null : vaultPath,
       syncServerUrl: null,
-      extraEnv: {}
+      // The first-run wizard reads Obsidian's vault list from here, never from the host's.
+      extraEnv: { MEMRY_TEST_OS_APP_DATA_DIR: join(appDataDir, 'os-app-data') }
     })
   )
 
