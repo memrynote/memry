@@ -287,3 +287,20 @@ fn a_stale_range_takes_the_files_range_of_the_same_mark() {
         Some(vec![4])
     );
 }
+
+/// Two zero-width comments at one spot both stay, in array order, as Electron's serializer
+/// keeps them, with or without a file (VERIFY-5196D).
+#[test]
+fn zero_width_comments_at_one_spot_are_both_kept_in_array_order() {
+    let file = "x {>>a<<}{>>b<<}y";
+    let marks = parse_critic_markup(file).marks;
+    let reversed: Vec<_> = marks.iter().rev().cloned().collect();
+    let (a, b) = (
+        "{====}{>>id=critic-comment-2-3hlb2;type=comment | a<<}",
+        "{====}{>>id=critic-comment-2-3hlb1;type=comment | b<<}",
+    );
+    for read in [Some(file), None] {
+        assert_eq!(written(&marks, "x y", read), Some(format!("x {a}{b}y")));
+        assert_eq!(written(&reversed, "x y", read), Some(format!("x {b}{a}y")));
+    }
+}

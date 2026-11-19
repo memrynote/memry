@@ -203,10 +203,11 @@ fn placed_marks(
         }
         None => (None, Vec::new()),
     };
+    // Zero-width ranges at one point coexist (Electron's serializer keeps every comment there).
     let free = |taken: &[(i64, i64)], (start, end): (i64, i64)| {
         taken
             .iter()
-            .all(|&(s, e)| (s, e) != (start, end) && (end <= s || e <= start))
+            .all(|&(s, e)| (start == end || (s, e) != (start, end)) && (end <= s || e <= start))
     };
     // The first free range of the same mark in the file, moved onto `plain`; only `exact` when
     // given.
