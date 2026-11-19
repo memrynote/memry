@@ -112,6 +112,17 @@ pub fn pending_count(conn: &Connection) -> Result<u32, StorageError> {
     Ok(count)
 }
 
+/// Forgets this device's fire record of `reminder_id`, inside the caller's
+/// transaction: the reminder was deleted.
+pub(super) fn forget(tx: &Connection, reminder_id: &str) -> Result<(), StorageError> {
+    tx.execute(
+        "DELETE FROM reminder_fires WHERE reminder_id = ?1",
+        [reminder_id],
+    )
+    .map_err(failed)?;
+    Ok(())
+}
+
 /// The instants shown for live `pending` and `snoozed` reminders, the only ones
 /// a tick can fire.
 fn fired_instants(conn: &Connection) -> Result<HashSet<(String, i64)>, StorageError> {
