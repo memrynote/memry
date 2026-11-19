@@ -14,7 +14,7 @@ use std::path::Path;
 
 pub use map::{
     MapError, NotePlan, map_pages, parse_daily_note_title, quoted_bytes_scrubbed, scrub_markup,
-    split_title_path,
+    split_title_path, template_bytes_scanned,
 };
 
 use super::messages::{importing_item, status};
@@ -27,6 +27,9 @@ use crate::web::extract::utils::json::{self, JsValue};
 /// The most note body text one run maps. Electron had no bound: a block referenced from many
 /// blocks, or a deep outline of empty blocks, grows far past the export that holds it.
 pub const MAX_MAPPED_BYTES: usize = 256 * 1024 * 1024;
+/// The most export text one run reads across every picked file, since every parsed graph is
+/// held until the mapping ends. Electron had no bound.
+pub const MAX_TOTAL_SOURCE_BYTES: usize = 128 * 1024 * 1024;
 
 const NOT_ROAM: &str = "Not a Roam JSON export (expected an array of pages)";
 /// Node's `JSON.parse` message names the token; this one does not.
@@ -75,11 +78,23 @@ impl Importer for RoamImporter {
         ctx.status(status("roamReading"));
 
         let mut pages: Vec<JsValue> = Vec::new();
+        let mut read_bytes = 0usize;
         for path in &input.source_paths {
             if ctx.is_cancelled() {
                 return Ok(());
             }
-            let parsed = read_source_text(Path::new(path))
+            let text = read_source_text(Path::new(path));
+            if let Ok(text) = &text {
+                read_bytes = read_bytes.saturating_add(text.len());
+                if read_bytes > MAX_TOTAL_SOURCE_BYTES {
+                    return Err(io::Error::other(format!(
+                        "The picked Roam files hold more than {} MB",
+                        MAX_TOTAL_SOURCE_BYTES / (1024 * 1024)
+                    ))
+                    .into());
+                }
+            }
+            let parsed = text
                 .map_err(|error| error.to_string())
                 .and_then(|text| json::parse(&text).map_err(|_| INVALID_JSON.to_owned()));
             match parsed {
@@ -130,7 +145,15 @@ impl Importer for RoamImporter {
 /// `writeNote`: a refused note fails its item and the import goes on.
 fn write_note(note: NotePlan, ctx: &mut ImportContext, sink: &dyn ImportSink) {
     ctx.status(importing_item(&note.title));
-    let title = note.title.clone();
+    // The page's title path, so two failed `Note` leaves stay apart.
+    let title = match note
+        .folder
+        .strip_prefix(map::ROOT)
+        .and_then(|f| f.strip_prefix('/'))
+    {
+        Some(parents) => format!("{parents}/{}", note.title),
+        None => note.title.clone(),
+    };
     let created = if climbs_out(&note.folder) {
         Err(UNSAFE_FOLDER.to_owned())
     } else {

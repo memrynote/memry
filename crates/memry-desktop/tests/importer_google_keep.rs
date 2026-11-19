@@ -12,10 +12,10 @@ use memry_desktop::attachments::{self, SavedAttachment};
 use memry_desktop::import::google_keep::{
     GoogleKeepImporter, body_bytes_copied, map_keep_note, parse_keep_note,
 };
-use memry_desktop::import::zip::{MAX_ZIP_NESTING, Zips};
+use memry_desktop::import::zip::{MAX_NESTED_ZIP_BYTES, MAX_ZIP_NESTING, Zips};
 use memry_desktop::import::{
     ImportContext, ImportInput, ImportSink, ImportSummary, ImportedJournalEntry, ImportedNote,
-    ImportedTask, Importer, JournalEntry, SinkError,
+    ImportedTask, Importer, JournalEntry, MAX_NOTE_JSON_BYTES, MAX_SOURCE_BYTES, SinkError,
 };
 use memry_test_kit::{assert_steps_at_most, on_small_stack, output_bound, proptest_config};
 use proptest::prelude::*;
@@ -548,6 +548,111 @@ fn the_body_is_built_in_one_pass_over_many_attachments() {
             assert_eq!(summary.attachments, count);
         },
     );
+}
+
+/// The run's error, with nothing written.
+fn refused(path: &Path) -> String {
+    let sink = Sink::default();
+    let mut ctx = ImportContext::new("keep", CancellationToken::new(), Box::new(|_| {}));
+    let error = GoogleKeepImporter
+        .run(&input(&[path]), &mut ctx, &sink)
+        .expect_err("the run is refused")
+        .to_string();
+    assert!(sink.calls().is_empty(), "{:?}", sink.calls());
+    error
+}
+
+/// A small zip whose root holds one deflated copy of `content` under each of `names`: the
+/// content is compressed once and copied raw.
+fn copies(names: &[String], content: &[u8]) -> Vec<u8> {
+    let one = zip_bytes(&[("x", content)]);
+    let mut source = zip::ZipArchive::new(std::io::Cursor::new(one)).unwrap();
+    let mut zip = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+    for name in names {
+        zip.raw_copy_file_rename(source.by_index_raw(0).unwrap(), name)
+            .unwrap();
+    }
+    zip.finish().unwrap().into_inner()
+}
+
+fn stored_zip(entries: &[(&str, &[u8])]) -> Vec<u8> {
+    let options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
+    let mut zip = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+    for (name, bytes) in entries {
+        zip.start_file(*name, options).unwrap();
+        zip.write_all(bytes).unwrap();
+    }
+    zip.finish().unwrap().into_inner()
+}
+
+#[test]
+fn nested_zips_past_the_memory_cap_refuse_the_import() {
+    let part = (MAX_NESTED_ZIP_BYTES / 3 + 1024 * 1024) as usize;
+    let inner = stored_zip(&[("pad.bin", &vec![0; part])]);
+    let names: Vec<String> = (0..3).map(|n| format!("Part-{n}.zip")).collect();
+    let archive = copies(&names, &inner);
+    assert!(archive.len() < 2 * 1024 * 1024, "{} bytes", archive.len());
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("bomb.zip");
+    fs::write(&path, archive).unwrap();
+
+    let error = refused(&path);
+    assert!(error.contains("nested zips"), "{error}");
+}
+
+#[test]
+fn nesting_past_the_cap_is_refused_before_the_nested_zip_is_read() {
+    // The innermost `part.zip` fails its checksum, so reading it gives a different error.
+    let mut archive = stored_zip(&[("part.zip", b"PK not really")]);
+    let at = archive
+        .windows(10)
+        .position(|w| w == b"not really")
+        .unwrap();
+    archive[at] = b'N';
+    for _ in 1..MAX_ZIP_NESTING {
+        archive = zip_bytes(&[("part.zip", &archive)]);
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("deep.zip");
+    fs::write(&path, archive).unwrap();
+
+    let error = refused(&path);
+    assert!(error.contains("nested more than"), "{error}");
+}
+
+#[test]
+fn note_files_past_the_memory_cap_refuse_the_import() {
+    let count = MAX_NOTE_JSON_BYTES / MAX_SOURCE_BYTES + 1;
+    let names: Vec<String> = (0..count).map(|n| format!("n{n}.json")).collect();
+    let archive = copies(&names, &vec![0; MAX_SOURCE_BYTES as usize]);
+    assert!(archive.len() < 2 * 1024 * 1024, "{} bytes", archive.len());
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("notes.zip");
+    fs::write(&path, archive).unwrap();
+
+    let error = refused(&path);
+    assert!(error.contains("MB of notes"), "{error}");
+}
+
+/// The zip crate keys entries by name, so of two entries with one name only the last is seen,
+/// at the first one's place. Electron's yauzl imported both. Pinned as a known departure.
+#[test]
+fn of_two_entries_with_one_name_only_the_last_is_imported() {
+    let mut archive = zip_bytes(&[
+        ("A.json", &keep(json!({ "title": "First" }))),
+        ("B.json", &keep(json!({ "title": "Second" }))),
+    ]);
+    while let Some(at) = archive.windows(6).position(|w| w == b"B.json") {
+        archive[at] = b'A';
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("dup.zip");
+    fs::write(&path, archive).unwrap();
+
+    let (summary, sink) = run(&[&path]);
+    assert_eq!(summary.imported, 1);
+    let titles: Vec<String> = sink.notes().into_iter().map(|n| n.title).collect();
+    assert_eq!(titles, ["Second"]);
 }
 
 proptest! {
