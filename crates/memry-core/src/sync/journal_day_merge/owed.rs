@@ -1,6 +1,6 @@
 //! The apply-time half of §1.9.1: which foreign ids are owed a merge, kept as
 //! one `meta` row per foreign id, `journal.day_merge:<foreignId>` =
-//! `{foreignId, date, clock, deleted, recordMarkdown?}`.
+//! `{foreignId, date, clock, deleted, recordMarkdown?, fallbackMarkdown?}`.
 
 use rusqlite::{Connection, OptionalExtension as _, params};
 use serde_json::{Value, json};
@@ -103,7 +103,8 @@ fn tombstoned_past(
 
 /// Records an owed merge. Idempotent; a second sighting widens the clock so
 /// the tombstone dominates every version seen, and keeps the record text
-/// (`content`) the drain builds a body from when the foreign doc has none.
+/// (`content`) the drain builds a body from when the foreign doc has none, and
+/// any imported day text of this device.
 pub(super) fn owe(
     conn: &Connection,
     foreign_id: &str,
@@ -124,8 +125,9 @@ pub(super) fn owe(
         foreign_id: foreign_id.to_owned(),
         date: date.to_owned(),
         clock,
-        deleted: existing.is_some_and(|existing| existing.deleted),
+        deleted: existing.as_ref().is_some_and(|existing| existing.deleted),
         record_markdown: markdown,
+        fallback_markdown: existing.and_then(|existing| existing.fallback_markdown),
     };
     write_owed(conn, &owed)
 }
@@ -191,7 +193,7 @@ pub(crate) fn mark_deleted(conn: &Connection, foreign_id: &str) -> Result<(), St
     }
 }
 
-fn write_owed(conn: &Connection, owed: &OwedMerge) -> Result<(), StorageError> {
+pub(crate) fn write_owed(conn: &Connection, owed: &OwedMerge) -> Result<(), StorageError> {
     let mut value = json!({
         "foreignId": owed.foreign_id,
         "date": owed.date,
@@ -200,6 +202,9 @@ fn write_owed(conn: &Connection, owed: &OwedMerge) -> Result<(), StorageError> {
     });
     if let Some(markdown) = &owed.record_markdown {
         value["recordMarkdown"] = json!(markdown);
+    }
+    if let Some(markdown) = &owed.fallback_markdown {
+        value["fallbackMarkdown"] = json!(markdown);
     }
     let foreign_id = &owed.foreign_id;
     conn.execute(
@@ -237,6 +242,10 @@ fn parse_owed(value: &str) -> Option<OwedMerge> {
             .get("recordMarkdown")
             .and_then(Value::as_str)
             .map(str::to_owned),
+        fallback_markdown: value
+            .get("fallbackMarkdown")
+            .and_then(Value::as_str)
+            .map(str::to_owned),
     })
 }
 
@@ -256,4 +265,34 @@ pub fn owed(conn: &Connection) -> Result<Vec<OwedMerge>, StorageError> {
         .iter()
         .filter_map(|value| parse_owed(value))
         .collect())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// An imported day text is this device's only copy of it: a later sighting of the foreign
+    /// record, or its tombstone, keeps it.
+    #[test]
+    fn a_later_sighting_keeps_the_imported_day_text() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch("CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+            .unwrap();
+        let held = OwedMerge {
+            foreign_id: "f".into(),
+            date: "2026-01-05".into(),
+            clock: VectorClock::from([("a".to_owned(), 1)]),
+            deleted: false,
+            record_markdown: None,
+            fallback_markdown: Some("mine".into()),
+        };
+        write_owed(&conn, &held).unwrap();
+        let seen = VectorClock::from([("b".to_owned(), 1)]);
+        owe(&conn, "f", "2026-01-05", &seen, Some("theirs")).unwrap();
+        mark_deleted(&conn, "f").unwrap();
+        let owed = read_owed(&conn, "f").unwrap().unwrap();
+        assert_eq!(owed.fallback_markdown.as_deref(), Some("mine"));
+        assert_eq!(owed.record_markdown.as_deref(), Some("theirs"));
+        assert!(owed.deleted);
+    }
 }

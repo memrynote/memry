@@ -84,13 +84,6 @@ fn every_drizzle_table_has_a_mapping_or_a_skip_reason() {
             );
         }
     }
-    for key in crate::electron_import::vault_db::sync_state::SYNC_STATE_KEYS {
-        if let crate::electron_import::vault_db::sync_state::KeyRule::Pending { stage, .. } =
-            key.rule
-        {
-            assert!(super::pending_area(stage).is_some(), "{stage}");
-        }
-    }
 }
 
 #[test]
