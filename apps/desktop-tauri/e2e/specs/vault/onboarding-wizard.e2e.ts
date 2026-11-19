@@ -29,23 +29,37 @@ test('a new user goes through the wizard to Home, and a relaunch skips it', asyn
   const parent = mkdtempSync(join(tmpdir(), 'memry-e2e-wizard-'))
   const vaultPath = join(parent, 'My notes')
 
-  await page.getByRole('button', { name: 'Get started' }).click({ timeout: 30_000 })
-  await page.getByRole('button', { name: 'Continue' }).first().click() // theme
+  // A fresh profile follows the OS language; the spec reads the English strings.
+  await expect
+    .poll(() => page.evaluate(() => typeof window.__TAURI__?.core?.invoke), { timeout: 30_000 })
+    .toBe('function')
+  await invoke(page, 'locale_set', { locale: 'en' })
+  await page.getByRole('button', { name: /Get started/ }).click({ timeout: 30_000 })
+  await page
+    .getByRole('button', { name: /Continue/ })
+    .first()
+    .click() // theme
   // AI off: no agent step, and no model download on the way out of it.
   await page.getByRole('checkbox', { name: /AI and agent/ }).click()
-  await page.getByRole('button', { name: 'Continue' }).first().click() // modules
+  await page
+    .getByRole('button', { name: /Continue/ })
+    .first()
+    .click() // modules
 
   await expect(page.getByText(obsidianVault)).toBeVisible({ timeout: 15_000 })
-  await page.getByRole('button', { name: 'Skip, import later from Settings' }).click()
+  await page.getByRole('button', { name: /Skip, import later/ }).click()
 
   await expect(page.getByText('Where should your notes live?')).toBeVisible()
-  await page.getByRole('button', { name: 'Continue' }).first().click() // storage: this device
+  await page
+    .getByRole('button', { name: /Continue/ })
+    .first()
+    .click() // storage: this device
 
   await invokeTest(app, 'e2e_dialog_queue_push', { kind: 'OpenFolder', paths: [parent] })
   await page.getByRole('button', { name: 'Change', exact: true }).click()
   await expect(page.getByText(vaultPath)).toBeVisible()
   await page.getByRole('switch', { name: 'Share anonymous usage metrics' }).click()
-  await page.getByRole('button', { name: 'Open MemryNote' }).click()
+  await page.getByRole('button', { name: /Open MemryNote/ }).click()
 
   await expect
     .poll(async () => vaultStatus(page), { timeout: 45_000 })
@@ -70,7 +84,7 @@ test('a new user goes through the wizard to Home, and a relaunch skips it', asyn
   await expect
     .poll(async () => vaultStatus(page), { timeout: 45_000 })
     .toMatchObject({ isOpen: true, path: vaultPath })
-  await expect(page.getByRole('button', { name: 'Get started' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /Get started/ })).toHaveCount(0)
   await expect(page.locator('.driver-popover')).toHaveCount(0)
   expect(await stored()).toEqual({ telemetry: false, onboarded: true, tour: '1', aiModule: false })
 })
