@@ -212,11 +212,11 @@ describe('CRDT sweep: conditional snapshot baseline', () => {
     }
     const { coordinator, seedFromMarkdownPublic } = setup()
 
-    // Cold pass: no watermarks yet, so no probe is even sent and the cost is
-    // exactly what it was before this feature existed.
+    // Cold pass: no watermarks yet. The probe still runs, but both notes have a
+    // server snapshot, so both baselines are downloaded.
     await coordinator.pullCrdtForNotes(['note-1', 'note-2'])
     expect(snapshotGets).toEqual(['note-1', 'note-2'])
-    expect(probeRequests()).toHaveLength(0)
+    expect(probeRequests()).toHaveLength(1)
 
     batchRequests = []
     snapshotGets = []
@@ -404,7 +404,7 @@ describe('CRDT sweep: conditional snapshot baseline', () => {
     }
     const { coordinator } = setup()
     await coordinator.pullCrdtForNotes(['note-1'])
-    expect(snapshotGets).toEqual(['note-1'])
+    expect(snapshotGets).toEqual([])
 
     batchRequests = []
     snapshotGets = []
@@ -502,6 +502,6 @@ describe('CRDT sweep: conditional snapshot baseline', () => {
     await coordinator.pullCrdtForNotes(['note-1'])
 
     expect(snapshotGets).toEqual(['note-1'])
-    expect(probeRequests()).toHaveLength(0)
+    expect(probeRequests()).toHaveLength(1)
   })
 })

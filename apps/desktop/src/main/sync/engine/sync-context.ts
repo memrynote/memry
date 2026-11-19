@@ -393,15 +393,15 @@ export const CRDT_SNAPSHOT_CONCURRENCY = 4
 //     -> 15 POST/min = 50% of 30, 0 GET/min = 0% of 600, ~40 s wall clock.
 //
 //   Cold (first sync, or a store rebuilt/quarantined under this one):
-//     10 chunks x 100 notes. No note has a watermark, so NO probe is sent at
-//     all — that path costs exactly what it cost before the probe existed.
-//     Each: 100 GETs + ceil(100/32) = 4 apply POSTs (at R = 1 round each).
-//     delay = max(4_000, 4 x 4_000, 100 x 200) = 20 s
-//     -> 300 GET/min = 50% of 600, 12 POST/min = 40% of 30, ~3 min 20 s.
+//     10 chunks x 100 notes, every note with a server snapshot. Each: 1 probe
+//     POST, 100 GETs + ceil(100/32) = 4 apply POSTs (at R = 1 round each).
+//     delay = max(4_000, 5 x 4_000, 100 x 200) = 20 s
+//     -> 300 GET/min = 50% of 600, 15 POST/min = 50% of 30, ~3 min 20 s.
+//     A note the probe's `snapshotMeta` names no snapshot for costs no GET.
 //
 //   Old server (no `snapshotMeta` in the batch response):
 //     one wasted probe on the first chunk, then `snapshotMetaUnsupported`
-//     latches and the arithmetic is the cold one exactly.
+//     latches and the arithmetic is the cold one without its probe.
 //
 // Before this, at 25 notes / 15 s with an unconditional baseline, all three
 // regimes were 100 GET/min, 4 POST/min and TEN MINUTES.

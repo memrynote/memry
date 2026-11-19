@@ -1452,9 +1452,18 @@ and the peer's edits never reach the note (#2511). An empty document therefore d
 and downloads the baseline. A note the probe finishes is never opened, so an unchanged note still
 costs no download.
 
+A note the probe answered for and that is absent from a present `snapshotMeta` has no server
+snapshot at all. It skips the GET whether or not it has a watermark, and a note with no watermark or
+an empty document walks its incrementals from 0. That is the `since` a GET answering
+`{ snapshot: null }` produced. The probe runs on a cold chunk too, so a fresh bootstrap spends no GET
+on these notes (#5234). Another device can snapshot the note after the probe, which prunes the
+updates the walk starts from. Every apply round's `snapshotMeta` is checked for that case. A note
+that gained a snapshot is not settled and not seeded, and it is owed a pull. The next pass downloads
+the snapshot.
+
 Everything else falls through to a fetch: an absent `snapshotMeta` key (an older server), a note the
-server left out of the response, and any note this session holds no merged revision for. A missed
-skip costs one request; a wrong skip costs a note body.
+server left out of the response, and any note with a server snapshot that this session holds no
+merged revision for. A missed skip costs one request; a wrong skip costs a note body.
 
 The bookkeeping — `{ appliedSequence, snapshotRevision }` per note, the **snapshot watermark** — is
 persisted **inside the per-vault CRDT store**, so the warm path survives an app restart and a fresh

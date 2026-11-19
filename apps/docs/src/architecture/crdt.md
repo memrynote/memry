@@ -1131,15 +1131,16 @@ Both rates are then ≤ 50 % by construction, in every regime, without the clien
 know in advance which regime it is in — which it cannot, because that is what the probe is
 for. For a 1,000-note vault:
 
-| Regime     | Per 100-note chunk                   | Charged delay | GET/min    | POST/min  | Wall clock  |
-| ---------- | ------------------------------------ | ------------- | ---------- | --------- | ----------- |
-| Warm       | 1 probe POST, 0 GETs                 | 4 s           | 0 (0 %)    | 15 (50 %) | ~40 s       |
-| Cold       | 100 GETs, 4 apply POSTs, no probe    | 20 s          | 300 (50 %) | 12 (40 %) | ~3 min 20 s |
-| Old server | one wasted probe, then the cold cost | 20 s          | 300 (50 %) | 12–15     | ~3 min 20 s |
+| Regime     | Per 100-note chunk               | Charged delay | GET/min    | POST/min  | Wall clock  |
+| ---------- | -------------------------------- | ------------- | ---------- | --------- | ----------- |
+| Warm       | 1 probe POST, 0 GETs             | 4 s           | 0 (0 %)    | 15 (50 %) | ~40 s       |
+| Cold       | 1 probe, 100 GETs, 4 apply POSTs | 20 s          | 300 (50 %) | 15 (50 %) | ~3 min 20 s |
+| Old server | one wasted probe, then no probe  | 20 s          | 300 (50 %) | 12–15     | ~3 min 20 s |
 
 Before this, at 25 notes every 15 s with an unconditional baseline, all three regimes cost
-100 GET/min and 4 POST/min and took **ten minutes**. A cold vault costs no probe at all —
-no note has a watermark, so nothing could be skipped and the request is not sent.
+100 GET/min and 4 POST/min and took **ten minutes**. The cold row assumes every note has a
+server snapshot. A cold chunk still sends the probe, because its `snapshotMeta` names the
+notes with no snapshot, and each of those costs no GET (#5234).
 
 The batch POST figure is a **floor rather than an exact count**, because an apply
 sub-chunk loops while any of its notes still reports `hasMore`. That is precisely why the

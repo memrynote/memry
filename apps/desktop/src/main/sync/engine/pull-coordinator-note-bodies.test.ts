@@ -1171,7 +1171,8 @@ describe('Durable CRDT body debts across a record page (#2297)', () => {
   }
 
   /**
-   * A record page carrying `noteId`'s record; the batch POST answers `batch`.
+   * A record page carrying `noteId`'s record; every batch POST, the probe and
+   * the walk alike, answers `batch`.
    * `noteBodies` absent is a server that does not serve bodies in the feed.
    */
   async function mockRecordPage(
@@ -1244,7 +1245,7 @@ describe('Durable CRDT body debts across a record page (#2297)', () => {
     expect(owed).toEqual(['note-1'])
     await crdtSyncOf(second).pullCrdtForNotes(owed)
 
-    expect(batch).toHaveBeenCalledOnce()
+    expect(batch).toHaveBeenCalledTimes(2)
     expect(second.hasUnmergedRemoteCrdtState('note-1')).toBe(false)
     // The same clean walk lets the doc vouch for claims again (#2299).
     expect(provider.recordWholeBodyMerged).toHaveBeenCalledWith('note-1')
@@ -1413,7 +1414,7 @@ describe('Durable CRDT body debts across a record page (#2297)', () => {
 
     await engine.pull()
 
-    expect(batch).toHaveBeenCalledOnce()
+    expect(batch).toHaveBeenCalledTimes(2)
     expect(debts()).toEqual([])
     expect(engine.hasUnmergedRemoteCrdtState('note-1')).toBe(false)
   })
@@ -1441,7 +1442,7 @@ describe('Durable CRDT body debts across a record page (#2297)', () => {
     await engine.pull()
 
     expect(atCursorWrite).toEqual([[]])
-    expect(batch).toHaveBeenCalledOnce()
+    expect(batch).toHaveBeenCalledTimes(2)
     expect(debts()).toEqual([])
   })
 
@@ -1457,7 +1458,7 @@ describe('Durable CRDT body debts across a record page (#2297)', () => {
 
     await engine.pull()
 
-    expect(batch).toHaveBeenCalledOnce()
+    expect(batch).toHaveBeenCalledTimes(2)
   })
 
   // #2421: the per-page batch pays the run's debts through the queued-pull
@@ -1487,7 +1488,7 @@ describe('Durable CRDT body debts across a record page (#2297)', () => {
 
     await engine.pull()
 
-    expect(batch).toHaveBeenCalledOnce()
+    expect(batch).toHaveBeenCalledTimes(2)
   })
 
   // #2421 ruling 5 (g) and 6 (A-4, B-6): a session-only debt store cannot
@@ -1502,7 +1503,7 @@ describe('Durable CRDT body debts across a record page (#2297)', () => {
 
     await engine.pull()
 
-    expect(batch).toHaveBeenCalledOnce()
+    expect(batch).toHaveBeenCalledTimes(2)
   })
 
   // #2421 ruling 5 (h, A-5, B-5): the feed dropped a body as rowless, a local
@@ -1547,7 +1548,7 @@ describe('Durable CRDT body debts across a record page (#2297)', () => {
 
       await engine.pull()
 
-      expect(batch).toHaveBeenCalledOnce()
+      expect(batch).toHaveBeenCalledTimes(2)
     }
   )
 
@@ -1595,7 +1596,7 @@ describe('Durable CRDT body debts across a record page (#2297)', () => {
 
       await engine.pull()
 
-      expect(batch).toHaveBeenCalledOnce()
+      expect(batch).toHaveBeenCalledTimes(2)
     }
   )
 
