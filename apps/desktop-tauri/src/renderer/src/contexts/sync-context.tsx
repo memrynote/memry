@@ -11,6 +11,7 @@ import {
 import { toast } from 'sonner'
 import { useAuth } from './auth-context'
 import { onVaultStatusChanged } from '@/services/vault-service'
+import { onSyncedRecords } from '@/services/sync-service'
 import {
   onDeviceRevoked,
   onLinkingApproved,
@@ -106,7 +107,7 @@ type SyncAction =
   | { type: 'PRUNE_STALE'; now: number }
   | { type: 'QUEUE_CLEARED' }
   | { type: 'CLOCK_SKEW_WARNING' }
-  | { type: 'ITEM_SYNCED'; lastSyncAt: number; operation: 'push' | 'pull' }
+  | { type: 'RECORDS_PULLED'; lastSyncAt: number; count: number }
   | { type: 'INITIAL_SYNC_PROGRESS'; phase: InitialSyncPhase; current: number; total: number }
   | { type: 'RESET' }
 
@@ -229,15 +230,15 @@ export function syncReducer(state: SyncState, action: SyncAction): SyncState {
       return { ...state, pendingCount: 0 }
     case 'CLOCK_SKEW_WARNING':
       return { ...state, clockSkewDetected: true }
-    case 'ITEM_SYNCED':
+    case 'RECORDS_PULLED':
       return {
         ...state,
-        // Main sets the first lastSyncAt when a pull completes. A pushed item,
-        // or an item applied mid-pull, must not stand in for it.
+        // Main sets the first lastSyncAt when a pull completes. Records applied
+        // mid-pull must not stand in for it.
         lastSyncAt: state.lastSyncAt === null ? null : action.lastSyncAt,
         syncActivity: {
-          pushCount: state.syncActivity.pushCount + (action.operation === 'push' ? 1 : 0),
-          pullCount: state.syncActivity.pullCount + (action.operation === 'pull' ? 1 : 0)
+          ...state.syncActivity,
+          pullCount: state.syncActivity.pullCount + action.count
         }
       }
     case 'INITIAL_SYNC_PROGRESS':
@@ -483,9 +484,9 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     )
 
     cleanups.push(
-      window.api.onItemSynced((event) => {
+      onSyncedRecords('all', (items) => {
         if (cancelled) return
-        dispatch({ type: 'ITEM_SYNCED', lastSyncAt: Date.now(), operation: event.operation })
+        dispatch({ type: 'RECORDS_PULLED', lastSyncAt: Date.now(), count: items.length })
       })
     )
 

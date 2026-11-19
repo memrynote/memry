@@ -12,7 +12,18 @@ const mocks = vi.hoisted(() => ({
   },
   listeners: {} as Record<string, () => void>,
   syncStatusListener: null as ((event: { status: string }) => void) | null,
+  synced: null as {
+    types: readonly string[] | 'all'
+    callback: (items: Array<{ itemId: string; type: string; itemOperation: string }>) => void
+  } | null,
   unsubscribe: vi.fn()
+}))
+
+vi.mock('@/services/sync-service', () => ({
+  onSyncedRecords: vi.fn((types, callback) => {
+    mocks.synced = { types, callback }
+    return mocks.unsubscribe
+  })
 }))
 
 vi.mock('@/lib/logger', () => ({
@@ -97,11 +108,7 @@ describe('useTaskWorkspaceData', () => {
       mocks.syncStatusListener = callback as (event: { status: string }) => void
       return mocks.unsubscribe
     }) as typeof window.api.onSyncStatusChanged
-    window.api.onItemSynced = vi.fn((callback) => {
-      mocks.listeners.itemSyncedTask = () => callback({ type: 'task', id: 'task-1' })
-      mocks.listeners.itemSyncedProject = () => callback({ type: 'project', id: 'project-1' })
-      return mocks.unsubscribe
-    })
+    mocks.synced = null
     vi.mocked(tasksService.listProjects).mockResolvedValue({
       projects: [
         {
@@ -190,8 +197,20 @@ describe('useTaskWorkspaceData', () => {
     expect(invalidate).toHaveBeenCalledWith({ queryKey: taskKeys.tasks() })
     expect(invalidate).toHaveBeenCalledWith({ queryKey: taskKeys.projects() })
 
-    act(() => mocks.listeners.itemSyncedProject())
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: taskKeys.projects() })
+    expect(mocks.synced?.types).toEqual(['task', 'project'])
+    invalidate.mockClear()
+    act(() =>
+      mocks.synced?.callback([{ itemId: 'project-1', type: 'project', itemOperation: 'update' }])
+    )
+    expect(invalidate.mock.calls).toEqual([[{ queryKey: taskKeys.projects() }]])
+    invalidate.mockClear()
+    act(() =>
+      mocks.synced?.callback([
+        { itemId: 'task-1', type: 'task', itemOperation: 'create' },
+        { itemId: 'task-2', type: 'task', itemOperation: 'delete' }
+      ])
+    )
+    expect(invalidate.mock.calls).toEqual([[{ queryKey: taskKeys.tasks() }]])
 
     unmount()
     expect(mocks.unsubscribe).toHaveBeenCalled()

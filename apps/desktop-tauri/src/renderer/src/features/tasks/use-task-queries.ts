@@ -15,6 +15,7 @@ import {
   onProjectDeleted
 } from '@/services/tasks-service'
 import { createLogger } from '@/lib/logger'
+import { onSyncedRecords } from '@/services/sync-service'
 import { applyTaskUpdate } from '@/contexts/tasks/apply-task-update'
 import {
   applyFieldsPatch,
@@ -252,19 +253,10 @@ export function useTaskWorkspaceData({ enabled = true }: { enabled?: boolean }) 
       invalidateProjects()
     }
 
-    const unsubscribeItemSynced =
-      typeof window.api.onItemSynced === 'function'
-        ? window.api.onItemSynced((event) => {
-            if (event.type === 'task') {
-              invalidateTasks()
-              return
-            }
-
-            if (event.type === 'project') {
-              invalidateProjects()
-            }
-          })
-        : () => {}
+    const unsubscribeSyncedRecords = onSyncedRecords(['task', 'project'], (items) => {
+      if (items.some((item) => item.type === 'task')) invalidateTasks()
+      if (items.some((item) => item.type === 'project')) invalidateProjects()
+    })
 
     // A window that never loses focus never reaches the refetchOnWindowFocus
     // reconcile above, so a dropped ITEM_SYNCED would still strand the list
@@ -286,7 +278,7 @@ export function useTaskWorkspaceData({ enabled = true }: { enabled?: boolean }) 
       onProjectCreated(invalidateProjects),
       onProjectUpdated(invalidateProjects),
       onProjectDeleted(invalidateProjects),
-      unsubscribeItemSynced
+      unsubscribeSyncedRecords
     ]
 
     return () => {

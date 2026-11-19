@@ -12,7 +12,9 @@ let syncStatusListeners: EventCallback[] = []
 let uploadProgressListeners: EventCallback[] = []
 let downloadProgressListeners: EventCallback[] = []
 let attachmentUploadFailedListeners: EventCallback[] = []
-let itemSyncedListeners: EventCallback[] = []
+type SyncedRecordsCallback = (items: Array<Record<string, unknown>>) => void
+let syncedRecordsListeners: SyncedRecordsCallback[] = []
+const pulledTask = (itemId: string) => ({ itemId, type: 'task', itemOperation: 'update' })
 let initialSyncProgressListeners: EventCallback[] = []
 let queueClearedListeners: VoidCallback[] = []
 let clockSkewWarningListeners: VoidCallback[] = []
@@ -72,6 +74,15 @@ const mockAccount = vi.hoisted(() => ({
   resolveVaultBinding: vi.fn()
 }))
 
+vi.mock('@/services/sync-service', () => ({
+  onSyncedRecords: (_types: unknown, cb: SyncedRecordsCallback) => {
+    syncedRecordsListeners.push(cb)
+    return () => {
+      syncedRecordsListeners = syncedRecordsListeners.filter((l) => l !== cb)
+    }
+  }
+}))
+
 vi.mock('@/services/sync-account-service', () => {
   const subscribe =
     (name: string) =>
@@ -129,7 +140,7 @@ beforeEach(async () => {
   uploadProgressListeners = []
   downloadProgressListeners = []
   attachmentUploadFailedListeners = []
-  itemSyncedListeners = []
+  syncedRecordsListeners = []
   initialSyncProgressListeners = []
   queueClearedListeners = []
   clockSkewWarningListeners = []
@@ -179,12 +190,6 @@ beforeEach(async () => {
     clockSkewWarningListeners.push(cb)
     return () => {
       clockSkewWarningListeners = clockSkewWarningListeners.filter((l) => l !== cb)
-    }
-  })
-  api.onItemSynced = vi.fn((cb: EventCallback) => {
-    itemSyncedListeners.push(cb)
-    return () => {
-      itemSyncedListeners = itemSyncedListeners.filter((l) => l !== cb)
     }
   })
   api.onInitialSyncProgress = vi.fn((cb: EventCallback) => {
@@ -651,14 +656,13 @@ describe('SyncProvider', () => {
 
       act(() => {
         for (const cb of syncStatusListeners) cb({ status: 'syncing', pendingCount: 4 })
-        for (const cb of itemSyncedListeners) cb({ operation: 'push' })
-        for (const cb of itemSyncedListeners) cb({ operation: 'pull' })
+        for (const cb of syncedRecordsListeners) cb([pulledTask('t1'), pulledTask('t2')])
         for (const cb of initialSyncProgressListeners) {
           cb({ phase: 'notes', processedItems: 2, totalItems: 5 })
         }
       })
 
-      expect(result.current.state.syncActivity).toEqual({ pushCount: 1, pullCount: 1 })
+      expect(result.current.state.syncActivity).toEqual({ pushCount: 0, pullCount: 2 })
       expect(result.current.state.initialSyncProgress).toEqual({
         phase: 'notes',
         current: 2,
@@ -911,27 +915,16 @@ describe('SyncProvider', () => {
         () => ({ lastSyncAt: useSync().state.lastSyncAt, seedAllowed: useHomeSeedGate() }),
         { wrapper }
       )
-      await vi.waitFor(() => expect(itemSyncedListeners.length).toBeGreaterThan(0))
+      await vi.waitFor(() => expect(syncedRecordsListeners.length).toBeGreaterThan(0))
       return rendered
     }
-
-    it('#then a push-only item-synced event keeps the gate closed', async () => {
-      const { result } = await mountGate()
-
-      act(() => {
-        for (const cb of itemSyncedListeners) cb({ operation: 'push' })
-        for (const cb of syncStatusListeners) cb({ status: 'idle', pendingCount: 0 })
-      })
-
-      expect(result.current).toEqual({ lastSyncAt: null, seedAllowed: false })
-    })
 
     it('#then items applied mid-pull keep it closed until the pull completes', async () => {
       const { result } = await mountGate()
 
       act(() => {
         for (const cb of syncStatusListeners) cb({ status: 'syncing', pendingCount: 0 })
-        for (const cb of itemSyncedListeners) cb({ operation: 'pull' })
+        for (const cb of syncedRecordsListeners) cb([pulledTask('t1')])
       })
       expect(result.current).toEqual({ lastSyncAt: null, seedAllowed: false })
 
@@ -944,7 +937,7 @@ describe('SyncProvider', () => {
 
       vi.spyOn(Date, 'now').mockReturnValue(1_790_432_510_000)
       act(() => {
-        for (const cb of itemSyncedListeners) cb({ operation: 'push' })
+        for (const cb of syncedRecordsListeners) cb([pulledTask('t2')])
       })
       vi.mocked(Date.now).mockRestore()
       expect(result.current).toEqual({ lastSyncAt: 1_790_432_510_000, seedAllowed: true })

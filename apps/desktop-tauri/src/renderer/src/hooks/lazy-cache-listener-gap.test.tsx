@@ -570,8 +570,6 @@ describe('a change made before an on-demand cache listens', () => {
   })
 
   it("a note's properties show a value written while they opened, read once", async () => {
-    // Sync's item events still come through `window.api` (not ported yet).
-    ;(window.api as unknown as Record<string, unknown>).onItemSynced = () => () => undefined
     tauri.answers.properties_get = [{ name: 'status', value: 'draft', type: 'text' }]
     const { result } = renderHook(() => useProperties('n1'), { wrapper })
     await settle()

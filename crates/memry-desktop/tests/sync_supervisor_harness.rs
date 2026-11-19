@@ -42,7 +42,7 @@ use memry_desktop::notes::property_definitions::{DefinitionsSeed, PropertyDefini
 use memry_desktop::seams::transport::app_transport;
 use memry_desktop::sync::backend::{SyncBackend, SyncPasses, VaultSyncBackend};
 use memry_desktop::sync::error_category::SyncErrorCategory;
-use memry_desktop::sync::events::{ItemOperation, OnSyncEvent, SyncEvent};
+use memry_desktop::sync::events::{OnSyncEvent, SyncEvent};
 use memry_desktop::sync::gate::AuthFacts;
 use memry_desktop::sync::gate::{SyncStartGate, VaultBinding};
 use memry_desktop::sync::realtime::{RealtimeSocket, SocketEnd};
@@ -573,23 +573,17 @@ async fn real_passes_tell_item_synced_and_queue_cleared() {
 
     let supervisor_b = b.supervisor_over(&gate, Arc::new(b.backend()), recorder(&events_b));
     until("B pulled the note", || b.notes() == 1).await;
-    let pulled: Vec<SyncEvent> = events_b
+    // The note reached B; its event is the vault tier's, so the sync feed tells no note.
+    let notes_told: Vec<SyncEvent> = events_b
         .lock()
         .unwrap()
         .iter()
-        .filter(|event| matches!(event, SyncEvent::Pulled { item_type, .. } if item_type == "note"))
+        .filter(|event| {
+            matches!(event, SyncEvent::Pulled(items) if items.iter().any(|item| item.item_type == "note"))
+        })
         .cloned()
         .collect();
-    assert!(
-        matches!(
-            pulled.as_slice(),
-            [SyncEvent::Pulled {
-                operation: ItemOperation::Create,
-                ..
-            }]
-        ),
-        "{pulled:?}"
-    );
+    assert!(notes_told.is_empty(), "{notes_told:?}");
     supervisor_a.stop().await;
     supervisor_b.stop().await;
 }
