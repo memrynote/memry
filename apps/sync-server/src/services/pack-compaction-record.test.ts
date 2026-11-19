@@ -346,6 +346,46 @@ describe('record packs carry the pull item (#5227)', () => {
     expect(recordWatermark()).toBe(rowOf('task-y').server_cursor)
   })
 
+  // VERIFY-5253: the shed deletes the R2 object before its D1 update. A GET
+  // between the two re-reads an unchanged row, which the shed still empties
+  // in place on its next tick.
+  it('abandons the range when an expired tombstone 404s before the shed marks it', async () => {
+    const app = buildApp()
+    await push(app, [{ id: 'task-x', operation: 'create', clock: { [DEVICE_ID]: 1 } }])
+    await expiredTombstone(app, 'task-x')
+    await push(app, [{ id: 'task-y', operation: 'create', clock: { [DEVICE_ID]: 1 } }])
+    const shedding = rowOf('task-x')
+    const realGet = storage.get.bind(storage)
+    vi.spyOn(storage, 'get').mockImplementation(async (key: string) => {
+      if (key === shedding.blob_key) await storage.delete(key)
+      return realGet(key)
+    })
+
+    const raced = await compactOneRange(harness.db, storage, SCOPE, 'record')
+    vi.mocked(storage.get).mockRestore()
+
+    expect(raced.built).toBe(false)
+    expect(recordWatermark()).toBeNull()
+    expect(rowOf('task-x')).toEqual(shedding)
+  })
+
+  // VERIFY-5253: a tombstone inside retention never sheds, so a lost blob is
+  // an ordinary hole, left to the manifest reconcile (#5254). It must not
+  // hold back the vault's record packs until it expires.
+  it('keeps a hole for an unexpired tombstone whose blob is lost', async () => {
+    const app = buildApp()
+    await push(app, [{ id: 'task-x', operation: 'create', clock: { [DEVICE_ID]: 1 } }])
+    await push(app, [{ id: 'task-x', clock: { [DEVICE_ID]: 2 }, deletedAt: now() }])
+    await push(app, [{ id: 'task-y', operation: 'create', clock: { [DEVICE_ID]: 1 } }])
+    await storage.delete(rowOf('task-x').blob_key)
+
+    const result = await compactOneRange(harness.db, storage, SCOPE, 'record')
+
+    expect(result.built).toBe(true)
+    expect(result.holes).toEqual(['task:task-x'])
+    expect(recordWatermark()).toBe(rowOf('task-y').server_cursor)
+  })
+
   // REVIEW-5253 probe a, the documented outcome for #5254: a tombstone shed
   // before it was packed is never an entry, so the packs keep only the live
   // version. A reader that trusted packs and tailed from their maxCursor would

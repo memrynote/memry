@@ -1,6 +1,7 @@
 import { PACK_MAX_INDEX_ENTRY_BYTES } from '@memry/contracts/pack-format'
 
 import { createLogger } from '../lib/logger'
+import { EXPIRED_TOMBSTONE_SQL } from './cleanup'
 import { packIndexRecordBytes, packSha256, type PackEntryPlanMeta } from './pack-format'
 import { isSupportedRecordSyncItemType, recordMetaFromColumns } from './sync'
 
@@ -27,6 +28,8 @@ export interface RecordRow {
 }
 
 /** A record candidate's meta and content hash, read from one row. */
+type VaultScope = { userId: string; vaultId: string }
+
 export interface RecordEntry {
   meta: PackEntryPlanMeta
   contentHash: string
@@ -34,7 +37,7 @@ export interface RecordEntry {
 
 /** Rows above the composite watermark, ascending, with every RecordRow column. */
 export const recordSelectionQuery = (
-  scope: { userId: string; vaultId: string },
+  scope: VaultScope,
   watermark: { last_sort_value: number; last_sort_tiebreak: string },
   limit: number
 ): { sql: string; bind: unknown[] } => ({
@@ -64,9 +67,19 @@ export const recordSelectionQuery = (
  * conforming reader. Such a row is invisible to a reader that tails from a
  * pack's maxCursor; the reader reconciles against GET /sync/manifest (#5254).
  */
-export const recordEntryOf = (row: RecordRow): RecordEntry | null => {
-  if (row.blob_key === '' || !isSupportedRecordSyncItemType(row.item_type)) return null
-  if (!row.signer_device_id || !row.signature) return null
+export const recordEntryOf = (scope: VaultScope, row: RecordRow): RecordEntry | null => {
+  const omit = (reason: string): null => {
+    logger.warn('record row left out of packs', {
+      userId: scope.userId,
+      vaultId: scope.vaultId,
+      id: row.tiebreak,
+      reason
+    })
+    return null
+  }
+  if (row.blob_key === '') return omit('purged tombstone')
+  if (!isSupportedRecordSyncItemType(row.item_type)) return omit('unknown type')
+  if (!row.signer_device_id || !row.signature) return omit('missing signer metadata')
   let meta: PackEntryPlanMeta
   try {
     meta = recordMetaFromColumns({
@@ -80,11 +93,10 @@ export const recordEntryOf = (row: RecordRow): RecordEntry | null => {
       clock: row.clock
     })
   } catch {
-    logger.warn('record row has a corrupt clock; left out of packs', { itemType: row.item_type })
-    return null
+    return omit('corrupt clock')
   }
   const indexBytes = packIndexRecordBytes({ id: row.tiebreak, sourceKey: row.blob_key, meta })
-  if (indexBytes > PACK_MAX_INDEX_ENTRY_BYTES) return null
+  if (indexBytes > PACK_MAX_INDEX_ENTRY_BYTES) return omit('index entry too large')
   return { meta, contentHash: row.content_hash }
 }
 
@@ -101,32 +113,44 @@ export const isSelectedRecordVersion = async (
 ): Promise<boolean> => toHex(await packSha256(bytes)) === entry.contentHash
 
 /**
- * True when a selected row whose payload 404'd still sits at its selected
- * cursor under another blob key: the tombstone shed (cleanup.ts) emptied it
- * in place. Leaving a hole there would move the watermark past a row whose
- * cursor never moves, so the caller abandons the range instead. A row that
- * moved to a higher cursor was replaced by a push, and the tail serves it.
+ * True when a selected row whose payload 404'd is one the shed empties in
+ * place at its cursor: already a marker (another blob key, `''`), or a
+ * tombstone past retention whose blob the shed deleted before its D1 update
+ * (cleanup.ts deletes R2 first). The caller abandons the range then. Any
+ * other 404 stays a hole: a row a push replaced sits at a higher cursor, and
+ * an unexpired tombstone or live row with a lost blob is left to the
+ * manifest reconcile (#5254) rather than blocking the vault's record packs.
  */
-export const recordRowChangedInPlace = async (
+export const recordRowShedInPlace = async (
   db: D1Database,
-  scope: { userId: string; vaultId: string },
+  scope: VaultScope,
   missing: ReadonlyArray<{ id: string; sourceKey: string; sortKey: number }>
 ): Promise<boolean> => {
   if (missing.length === 0) return false
+  // A record type never contains ':' (protocol 08 §8.4.2), so the first one
+  // splits the identity.
+  const pairs = missing.map((entry) => {
+    const at = entry.id.indexOf(':')
+    return [entry.id.slice(0, at), entry.id.slice(at + 1)]
+  })
   const rows = await db
     .prepare(
-      `SELECT item_type || ':' || item_id AS id, blob_key, server_cursor FROM sync_items
-       WHERE user_id = ? AND vault_id = ?
-         AND item_type || ':' || item_id IN (SELECT value FROM json_each(?))`
+      `SELECT si.item_type || ':' || si.item_id AS id, si.blob_key, si.server_cursor,
+              (${EXPIRED_TOMBSTONE_SQL}) AS expired
+       FROM sync_items si
+       LEFT JOIN sync_entitlements e ON e.user_id = si.user_id
+       WHERE si.user_id = ? AND si.vault_id = ?
+         AND (si.item_type, si.item_id) IN
+           (SELECT json_extract(value, '$[0]'), json_extract(value, '$[1]') FROM json_each(?))`
     )
-    .bind(scope.userId, scope.vaultId, JSON.stringify(missing.map((entry) => entry.id)))
-    .all<{ id: string; blob_key: string; server_cursor: number }>()
+    .bind(Math.floor(Date.now() / 1000), scope.userId, scope.vaultId, JSON.stringify(pairs))
+    .all<{ id: string; blob_key: string; server_cursor: number; expired: number }>()
   return (rows.results ?? []).some((row) => {
     const selected = missing.find((entry) => entry.id === row.id)
     return (
       selected !== undefined &&
       row.server_cursor === selected.sortKey &&
-      row.blob_key !== selected.sourceKey
+      (row.blob_key !== selected.sourceKey || Boolean(row.expired))
     )
   })
 }

@@ -10,7 +10,7 @@ import {
 import {
   isSelectedRecordVersion,
   recordEntryOf,
-  recordRowChangedInPlace,
+  recordRowShedInPlace,
   recordSelectionQuery,
   type RecordEntry,
   type RecordRow
@@ -218,8 +218,11 @@ export const selectCandidates = async (
   for (const row of rowList(rows)) {
     if (row.dead) continue
     if (row.size_bytes > MAX_PACKED_ITEM_BYTES) continue // oversized: permanent item-granular tail
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the record query selects every RecordRow column
-    const record = kind === 'record' ? recordEntryOf(row as typeof row & RecordRow) : undefined
+    const record =
+      kind === 'record'
+        ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the record query selects every RecordRow column
+          recordEntryOf(scope, row as typeof row & RecordRow)
+        : undefined
     if (record === null) continue
     if (bytes + row.size_bytes > PACK_TARGET_BYTES) break
     bytes += row.size_bytes
@@ -374,6 +377,12 @@ export const compactOneRange = async (
   // source references (`body`, `bytes` go out of scope) after the copy —
   // payload bytes are never retained twice, so peak stays at the pack buffer
   // plus ONE transient blob rather than payload + assembled copy.
+  const holeLog = (plan: PackEntryPlan) => ({
+    userId: scope.userId,
+    vaultId: scope.vaultId,
+    kind,
+    id: plan.id
+  })
   const holes: string[] = []
   const missingRecords: PackEntryPlan[] = []
   let writtenCount = 0
@@ -392,6 +401,7 @@ export const compactOneRange = async (
         // skipEntry, not a bare `continue`: the writer claims slots in strict
         // plan order, so an unclaimed slot makes the NEXT writeEntry throw and
         // abort the whole range before the watermark moves.
+        logger.warn('pack entry source is missing; hole', { ...holeLog(plan), reason: 'not found' })
         pack.skipEntry(plan)
         holes.push(plan.id)
         if (record) missingRecords.push(plan)
@@ -405,6 +415,7 @@ export const compactOneRange = async (
       // an aborted or truncated write can leave a 0-byte object behind, and a
       // row declaring size_bytes 0 slips past the drift guard below (0 === 0).
       if (bytes.byteLength === 0) {
+        logger.warn('pack entry source is empty; hole', { ...holeLog(plan), reason: 'empty' })
         pack.skipEntry(plan)
         holes.push(plan.id)
         continue
@@ -435,7 +446,10 @@ export const compactOneRange = async (
       // selection fails here or 404s above, and its new row sits at a higher
       // cursor, so the tail serves it.
       if (record && !(await isSelectedRecordVersion(bytes, record))) {
-        logger.warn('record payload is not the selected version; skipping', { kind })
+        logger.warn('record payload is not the selected version; hole', {
+          ...holeLog(plan),
+          reason: 'content hash mismatch'
+        })
         pack.skipEntry(plan)
         holes.push(plan.id)
         continue
@@ -445,11 +459,16 @@ export const compactOneRange = async (
     }
   }
 
-  // A record row emptied in place (tombstone shed) keeps its cursor, so a hole
-  // for it is never revisited. Abandon the range without moving the
-  // watermark; the next run reads the row as it now is (REVIEW-5253).
-  if (await recordRowChangedInPlace(db, scope, missingRecords)) {
-    logger.info('record row changed in place during a build; range abandoned', { kind })
+  // Invariant: the watermark never passes a row the shed will drop on a later
+  // tick. The shed empties a tombstone in place at its cursor, so a hole for it
+  // would never be revisited; abandon the range and let the next run read the
+  // row as it then is (REVIEW-5253, VERIFY-5253).
+  if (await recordRowShedInPlace(db, scope, missingRecords)) {
+    logger.info('record row shed during a build; range abandoned', {
+      userId: scope.userId,
+      vaultId: scope.vaultId,
+      kind
+    })
     return { ...noop, holes }
   }
 
