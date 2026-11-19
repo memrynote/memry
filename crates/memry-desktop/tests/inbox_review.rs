@@ -195,7 +195,7 @@ impl World {
     }
 
     /// A peer's edit of the capture, its clock ahead of this device's, through the sync apply.
-    fn from_peer(&self, vault: &OpenVault, id: &str, edit: impl FnOnce(&mut Value)) {
+    fn peer_edit(&self, vault: &OpenVault, id: &str, edit: impl FnOnce(&mut Value)) {
         let id = id.to_owned();
         let db = vault.vault.db_handle();
         let raw = db
@@ -558,10 +558,10 @@ fn a_snooze_a_peer_changed_is_honoured_at_the_next_tick() {
     let cleared = w.capture_id(&vault, "unsnoozed by the peer");
     w.snooze(&vault, &moved, now + 24 * HOUR);
     w.snooze(&vault, &cleared, now - 60_000);
-    w.from_peer(&vault, &moved, |p| {
+    w.peer_edit(&vault, &moved, |p| {
         p["snoozedUntil"] = json!("2020-01-01T00:00:00.000Z");
     });
-    w.from_peer(&vault, &cleared, |p| {
+    w.peer_edit(&vault, &cleared, |p| {
         p["snoozedUntil"] = Value::Null;
         p["snoozeReason"] = Value::Null;
     });
@@ -585,7 +585,7 @@ fn a_resurfaced_thumbnail_is_a_url_only_inside_the_vault() {
     let mut ids = Vec::new();
     for path in paths {
         let id = w.capture_id(&vault, path);
-        w.from_peer(&vault, &id, |p| {
+        w.peer_edit(&vault, &id, |p| {
             p["thumbnailPath"] = json!(path);
             p["snoozedUntil"] = json!("2020-01-01T00:00:00.000Z");
         });
