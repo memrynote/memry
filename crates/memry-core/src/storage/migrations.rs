@@ -223,6 +223,11 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "recents",
         sql: include_str!("migrations/data/0035_recents.sql"),
     },
+    Migration {
+        version: 44,
+        name: "attachment_revivals",
+        sql: include_str!("migrations/data/0044_attachment_revivals.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.
