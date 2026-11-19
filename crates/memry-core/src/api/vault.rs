@@ -88,6 +88,8 @@ pub struct Vault {
 mod tags;
 // The desktop sync driver and the server vault binding (#3534).
 mod sync_driver;
+// The desktop sticky drafts' accessor (Step 31).
+mod sticky;
 
 impl Vault {
     /// [`Vault::open`] with explicit [`OpenOptions`], for desktop. Not on the FFI surface.

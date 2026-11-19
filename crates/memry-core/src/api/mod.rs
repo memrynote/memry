@@ -46,6 +46,7 @@ pub mod runtime;
 pub mod search;
 pub mod search_recents;
 pub mod settings;
+pub mod sticky_store;
 pub mod sync;
 pub mod tag_hub;
 pub mod tag_schemas;

@@ -102,9 +102,9 @@ pub trait SignerKeys: Send + Sync {
     /// (Electron's `readKnownDeviceIds`).
     fn known_devices(&self) -> Option<HashSet<String>>;
 
-    /// A pull run starts: forget the signers the last run did not find, as
-    /// Electron clears `deviceKeyCache` (`pull-coordinator.ts:153`).
-    fn begin_run(&self) {}
+    /// A pull run starts or ends: forget the signers it did not find, as
+    /// Electron clears `deviceKeyCache` (`pull-coordinator.ts:153`, `:587`).
+    fn forget_absent(&self) {}
 }
 
 /// Why a marker applies nothing, logged by reason (Electron's
