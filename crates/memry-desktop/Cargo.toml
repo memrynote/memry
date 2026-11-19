@@ -14,7 +14,9 @@ memry-core = { path = "../memry-core", default-features = false, features = ["ma
 # The PDF worker's frames and supervisor only: the pdfium side is the sidecar binary, never linked.
 memry-ml-worker = { path = "../memry-ml-worker", default-features = false }
 serde = { workspace = true }
-serde_json = { workspace = true }
+# `float_roundtrip`: Readwise payload numbers (`location`, `published_date`) parse correctly
+# rounded, as `JSON.parse` does; the default parser can land one ULP off.
+serde_json = { workspace = true, features = ["float_roundtrip"] }
 thiserror = { workspace = true }
 # Device name and OS version for registration (Step 19); both already in the lockfile.
 gethostname = "1.1.0"
@@ -40,6 +42,9 @@ unicode-segmentation = "1.13.3"
 # The note fold formats inline dates in the local time zone, as `Intl.DateTimeFormat` does;
 # already built for `trash`.
 chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
+# The IANA zones Readwise highlight dates are written in (`readwise::text::format_day`), as
+# Electron's `Intl.DateTimeFormat` reads them.
+chrono-tz = "0.10.4"
 # The device zone's IANA name for the sandbox's calendar events (`sandbox::device_zone_name`);
 # chrono's `clock` feature already builds it, so the lockfile gains no crate.
 iana-time-zone = "0.1.65"
@@ -300,6 +305,14 @@ path = "tests/telemetry_vectors.rs"
 [[test]]
 name = "file_text_worker"
 path = "tests/file_text_worker.rs"
+
+[[test]]
+name = "readwise_vectors"
+path = "tests/readwise_vectors.rs"
+
+[[test]]
+name = "readwise_untrusted"
+path = "tests/readwise_untrusted.rs"
 
 [[test]]
 name = "watch_perf"

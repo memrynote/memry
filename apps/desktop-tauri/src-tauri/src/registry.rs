@@ -174,6 +174,8 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::notes::notes_rename::<Wry>,
             crate::commands::notes::notes_update::<Wry>,
             crate::commands::notes::notes_apply_template::<Wry>,
+            crate::commands::notes_import::notes_import_files::<Wry>,
+            crate::commands::notes_import::notes_show_import_dialog,
             crate::commands::notes::notes_append_blocks::<Wry>,
             crate::commands::notes::notes_undo_tag_template::<Wry>,
             crate::commands::notes::notes_reorder::<Wry>,
