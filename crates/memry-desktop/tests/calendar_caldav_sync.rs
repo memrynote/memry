@@ -1102,3 +1102,35 @@ async fn a_disconnect_clears_the_mark() {
     rig.accounts.disconnect(&open, Some(&y)).await.unwrap();
     assert!(rig.sync().auth_failures(&open).await.unwrap().is_empty());
 }
+
+/// Reconnecting or disconnecting account Y clears only Y's mark: account X, refused too, stays
+/// marked (`setCaldavAuthFailure` keys the mark by account).
+#[tokio::test]
+async fn connect_and_disconnect_on_one_account_keep_the_others_mark() {
+    let rig = Rig::new(true).await;
+    let open = rig.open().await;
+    let (x, _) = rig.connect(&open).await;
+    let y = rig.connect_to(&open, OTHER).await;
+    rig.set_hook(|seen, reply| {
+        if seen.method == "REPORT" {
+            Reply::status(401)
+        } else {
+            reply
+        }
+    });
+    assert!(rig.sync().sync_and_drain(&open, None).await.is_err());
+    rig.clear_hook();
+    let marked = |marks: serde_json::Map<String, serde_json::Value>, account: &str| {
+        marks.get(account) == Some(&serde_json::Value::Bool(true))
+    };
+    let marks = rig.sync().auth_failures(&open).await.unwrap();
+    assert!(marked(marks.clone(), &x) && marked(marks, &y));
+
+    assert_eq!(rig.connect_to(&open, OTHER).await, y);
+    let marks = rig.sync().auth_failures(&open).await.unwrap();
+    assert!(marked(marks.clone(), &x) && !marked(marks, &y));
+
+    rig.accounts.disconnect(&open, Some(&y)).await.unwrap();
+    let marks = rig.sync().auth_failures(&open).await.unwrap();
+    assert_eq!(marks.keys().collect::<Vec<_>>(), [&x]);
+}

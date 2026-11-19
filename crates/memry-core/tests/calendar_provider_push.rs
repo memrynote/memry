@@ -832,6 +832,11 @@ fn a_bound_task_takes_the_server_title_and_description_in_broad_mode() {
 /// Binds `target` to `href` as a push would, in `mode`, then pulls the server's copy of it with
 /// a new title and description.
 fn pull_retitled(db: &Db, target: &Target, mode: &str) {
+    pull_text(db, target, mode, "Server title", "Server notes");
+}
+
+/// [`pull_retitled`] with the server's SUMMARY and DESCRIPTION given.
+fn pull_text(db: &Db, target: &Target, mode: &str, summary: &str, description: &str) {
     let href = format!("{CAL}{}.ics", target.source_id);
     let (t, h, mode) = (target.clone(), href.clone(), mode.to_owned());
     db.call_blocking(move |conn| {
@@ -855,8 +860,8 @@ fn pull_retitled(db: &Db, target: &Target, mode: &str) {
     .expect("bound item");
     let data = format!(
         "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:{}\r\n\
-         DTSTART:20260922T090000Z\r\nDTEND:20260922T100000Z\r\nSUMMARY:Server title\r\n\
-         DESCRIPTION:Server notes\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+         DTSTART:20260922T090000Z\r\nDTEND:20260922T100000Z\r\nSUMMARY:{summary}\r\n\
+         DESCRIPTION:{description}\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
         target.source_id
     );
     pull(
@@ -963,4 +968,81 @@ fn a_bound_inbox_snooze_takes_the_server_title_and_text_in_broad_and_time_and_te
             "{mode}"
         );
     }
+}
+
+/// Server text skips the user-input caps (`applyProviderWriteback` writes it as it is): a
+/// reminder in `broad` takes a 201-character title and a 1001-character note, and the pull that
+/// carries them succeeds instead of failing on every pass.
+#[test]
+fn a_bound_reminder_takes_server_text_past_the_input_caps() {
+    use memry_core::domain::reminders;
+    let (title, note) = ("t".repeat(201), "n".repeat(1001));
+    let db = open();
+    connect_work(&db);
+    db.call_blocking(|conn| {
+        reminders::create(
+            conn,
+            "rem-1",
+            "note-1",
+            "2026-09-22T09:00:00.000Z",
+            Some("Local title"),
+            "phone",
+            NOW,
+        )
+        .map(|_| ())
+    })
+    .expect("reminder");
+    let target = Target {
+        source_type: "reminder".into(),
+        source_id: "rem-1".into(),
+    };
+    pull_text(&db, &target, "broad", &title, &note);
+    let row = db
+        .call_blocking(|conn| reminders::get(conn, "rem-1"))
+        .expect("read")
+        .expect("reminder");
+    assert_eq!(
+        (row.title.as_deref(), row.note.as_deref()),
+        (Some(title.as_str()), Some(note.as_str()))
+    );
+}
+
+/// A blank server title on a bound inbox snooze (`handleUpdate` refuses a blank title from the
+/// user) arrives as the parser's "Untitled event", and the pull succeeds.
+#[test]
+fn a_bound_inbox_snooze_takes_a_blank_server_title_as_untitled() {
+    use memry_core::domain::inbox::{self, states, write};
+    let db = open();
+    connect_work(&db);
+    let id = db
+        .call_blocking(|conn| {
+            let write::Captured::Created(item) = write::capture_text(
+                conn,
+                "Local text",
+                Some("Local title"),
+                None,
+                true,
+                "phone",
+                NOW,
+            )?
+            else {
+                unreachable!("forced capture")
+            };
+            states::snooze(conn, &item.id, NOW + 86_400_000, None, "phone", NOW)?;
+            Ok(item.id)
+        })
+        .expect("snoozed capture");
+    let target = Target {
+        source_type: "inbox_snooze".into(),
+        source_id: id.clone(),
+    };
+    pull_text(&db, &target, "broad", " ", "Server notes");
+    let item = db
+        .call_blocking(move |conn| inbox::get(conn, &id))
+        .expect("read")
+        .expect("capture");
+    assert_eq!(
+        (item.title.as_str(), item.content.as_deref()),
+        ("Untitled event", Some("Server notes"))
+    );
 }

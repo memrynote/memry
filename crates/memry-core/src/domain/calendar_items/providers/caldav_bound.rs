@@ -21,7 +21,7 @@ use crate::domain::calendar_items::ical::{
 use crate::domain::calendar_items::write::{EventPatch, update_event};
 use crate::domain::calendar_items::zone::LocalZone;
 use crate::domain::notes::failed;
-use crate::storage::repositories::instants;
+use crate::storage::repositories::{Change, instants};
 
 const YEAR_MS: i64 = 366 * 24 * 60 * 60 * 1000;
 
@@ -276,7 +276,9 @@ fn write_back(
 }
 
 /// `applyProviderWriteback`'s text fields per kind: a task's title and description, a
-/// reminder's title and note, an inbox snooze's title and content.
+/// reminder's title and note, an inbox snooze's title and content. Server text is written as it
+/// is, past the user-input rules of `reminders::update` (length caps) and `inbox::write::update`
+/// (non-blank title): a refusal would fail the calendar's pull on every pass.
 fn write_text(
     conn: &Connection,
     target: &Target,
@@ -286,29 +288,19 @@ fn write_text(
 ) -> Result<(), StorageError> {
     let (id, title) = (target.source_id.as_str(), instance.title.as_str());
     let text = instance.description.as_deref();
+    let text_value = || Change::Set(text.map_or(Value::Null, Value::from));
     match target.source_type.as_str() {
         "task" => {
             crate::domain::tasks::set_title(conn, id, title, device_id, now_ms)?;
             crate::domain::tasks::set_description(conn, id, text, device_id, now_ms)?;
         }
         "reminder" => {
-            let update = crate::domain::reminders::ReminderUpdate {
-                title: Some(Some(title)),
-                note: Some(text),
-                ..Default::default()
-            };
-            crate::domain::reminders::update(conn, id, &update, device_id, now_ms)?.acknowledge();
+            let changes = vec![("title", Change::set(title)), ("note", text_value())];
+            crate::domain::reminders::edit(conn, id, changes, device_id, now_ms)?.acknowledge();
         }
         "inbox_snooze" => {
-            crate::domain::inbox::write::update(
-                conn,
-                id,
-                Some(title),
-                Some(text),
-                device_id,
-                now_ms,
-            )?
-            .acknowledge();
+            let changes = vec![("title", Change::set(title)), ("content", text_value())];
+            crate::domain::inbox::write::edit(conn, id, changes, device_id, now_ms)?.acknowledge();
         }
         _ => {}
     }
