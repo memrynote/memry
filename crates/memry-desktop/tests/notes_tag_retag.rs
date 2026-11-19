@@ -299,3 +299,29 @@ fn removing_a_tag_from_a_note_edits_that_note_alone() {
         "{blank:?}"
     );
 }
+
+/// S14-1: a tag tab that missed the rename or delete asks `tags::gone`. A tag deleted is gone,
+/// in any spelling, once no header, record or body carries it; a live tag, a tag merged away
+/// that a body still carries, the merge target, a child still carried, and a tag never
+/// defined are not.
+#[test]
+fn a_tag_is_gone_once_merged_away_or_deleted_and_nothing_carries_it() {
+    let (mut e, notes, store) = opened();
+    let ids = vault(&notes, &mut e, &store);
+    let open = e.session.current().unwrap();
+    let gone = |tag: &str| memry_desktop::tags::gone(&open, tag).unwrap();
+    assert!(!gone("job"), "a live tag");
+    assert!(!gone("never defined"), "a tag with no definition");
+    notes.merge_tag(&open, "job", "work").unwrap();
+    for id in &ids {
+        measured(&e, id);
+    }
+    assert!(!gone("JOB"), "merged away, but a body still carries it");
+    assert!(!gone("work"), "the merge target");
+    assert!(!gone("job/lead"), "a child the merge left on Plan");
+    notes.delete_tag(&open, "Work").unwrap();
+    for id in &ids {
+        measured(&e, id);
+    }
+    assert!(gone("work"), "deleted, and no note or day carries it");
+}

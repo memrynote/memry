@@ -100,6 +100,7 @@ fn register_stages() {
     deep_link::register_stages();
     notifications::register_stages();
     shortcuts::register_stages();
+    windows::sticky::register_stages();
     spell::register_stages();
     updater::register_stages();
     commands::ocr_languages::register_stages();
