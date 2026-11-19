@@ -127,6 +127,9 @@ pub async fn e2e_restart_sync_runtime(app: AppHandle<Wry>) -> Result<(), Command
     if restarted {
         Ok(())
     } else {
-        Err(invalid("e2e_no_supervisor", "the reopened vault runs no supervisor"))
+        Err(invalid(
+            "e2e_no_supervisor",
+            "the reopened vault runs no supervisor",
+        ))
     }
 }
