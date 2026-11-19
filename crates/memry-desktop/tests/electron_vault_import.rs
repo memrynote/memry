@@ -302,11 +302,14 @@ fn rows_whose_importer_is_pending_abort_before_any_write() {
     electron_db::seed(
         &vault.data_conn(),
         "settings",
-        &[("key", Value::Text("theme".into()))],
+        &[
+            ("key", Value::Text("readwise.cursor".into())),
+            ("value", Value::Text("\"c\"".into())),
+        ],
     );
     assert_refused(
         &vault,
-        |e| matches!(e, ImportError::NotReady { detail, .. } if detail.contains("data.db/settings")),
+        |e| matches!(e, ImportError::NotReady { detail, .. } if detail.contains("readwise.cursor")),
     );
 
     let vault = Vault::new();
