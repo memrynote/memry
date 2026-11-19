@@ -20,6 +20,7 @@ import { cardDefaultSize, entityKey, extractEntityRefs, getCardRefs } from './ca
 import type { DrawPlanOptions } from './canvas-draw-plan'
 import { getLiveCanvas } from './canvas-live-registry'
 import { planCardPlacements, type SceneEditElement } from './canvas-scene-edit'
+import { canvasService } from '@/services/canvas-service'
 import { notesService } from '@/services/notes-service'
 
 export interface CanvasMutation {
@@ -90,7 +91,7 @@ export async function applyAdd(
 async function readStoredScene(
   canvasId: string
 ): Promise<{ updatedAt: number; scene: Record<string, unknown>; elements: SceneEditElement[] }> {
-  const canvas = await window.api.canvas.get(canvasId)
+  const canvas = await canvasService.get(canvasId)
   if (!canvas) throw new Error(`Canvas ${canvasId} not found`)
   const scene = canvas.scene
     ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON or persisted data narrowed at its boundary; fields are read defensively after
@@ -132,7 +133,7 @@ export async function writeCanvas<M extends CanvasMutation>(
     // it, and this write would then silently discard that change. Guarding on
     // the original read means anything that landed in between is rejected,
     // which is the entire point.
-    const result = await window.api.canvas.update({
+    const result = await canvasService.update({
       id: canvasId,
       scene: JSON.stringify({ ...stored.scene, elements: mutation.elements }),
       // Never trust the caller's view of what is on the canvas.
