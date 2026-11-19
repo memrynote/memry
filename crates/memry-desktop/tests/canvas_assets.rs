@@ -463,6 +463,59 @@ fn a_pulled_canvas_keeps_its_sidecar_images_through_open_and_save() {
 }
 
 #[test]
+fn a_sync_conflict_copy_keeps_its_sidecar_images_through_open_and_save() {
+    let w = world();
+    w.create("Seed", None, "a");
+    let (a, b) = (hash(b"image a"), hash(b"image b"));
+    memry_core::domain::canvas::create(
+        &w.data_db(),
+        &memry_core::domain::canvas::NewCanvas {
+            id: Some("diverged"),
+            title: Some("Board"),
+            scene: Some(&w.scene_with_sidecar(&a, &b)),
+            ..Default::default()
+        },
+        &w.vault_id(),
+        "device-x",
+        NOW,
+    )
+    .unwrap();
+    // A peer's concurrent edit to another drawing: Electron's `createConflictCopy` keeps ours.
+    let payload = serde_json::json!({
+        "id": "diverged", "vaultId": w.vault_id(), "title": "Board",
+        "scene": super::canvas_service::scene("theirs"), "folder": null, "icon": null,
+        "ownerNoteId": null, "clock": { "device-peer": 1 }, "deletedAt": null,
+    });
+    let record = memry_core::storage::repositories::sync_items::InboundRecord {
+        item_type: "canvas".to_owned(),
+        item_id: "diverged".to_owned(),
+        payload_json: payload.to_string(),
+        server_cursor: Some(1),
+        signer_device_id: Some("device-peer".to_owned()),
+        updated_at: NOW,
+        deleted_at: None,
+    };
+    memry_core::sync::apply::apply_inbound_on(&w.data_db(), &record, NOW, Some("device-x"))
+        .unwrap();
+    let copy_id: String = w
+        .data_db()
+        .query_row(
+            "SELECT item_id FROM sync_items WHERE item_type = 'canvas'
+                 AND json_extract(payload, '$.title') = 'Board (conflict copy)'",
+            [],
+            |row| row.get(0),
+        )
+        .expect("a conflict copy");
+
+    w.open_and_save(&copy_id, &w.scene_with_two_images(&a, &b));
+
+    let saved = w.file(&saved_path(&w, &copy_id));
+    assert_eq!(hashes(&sidecar(&saved)), vec![a.clone(), b.clone()]);
+    let pushed = w.queued_scene(&copy_id).expect("the save is queued");
+    assert_eq!(hashes(&sidecar(&pushed)), vec![a, b]);
+}
+
+#[test]
 fn a_conflict_copy_keeps_the_sidecar_of_the_drawing_found_on_disk() {
     let w = world();
     let id = w.create("Board", None, "a").canvas.summary.id;

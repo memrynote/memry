@@ -140,7 +140,8 @@ fn kept_changes(
     Ok(changes)
 }
 
-/// `createConflictCopy`: the losing local drawing as a new canvas, queued.
+/// `createConflictCopy`: the losing local drawing as a new canvas, queued,
+/// with its sidecar's images recorded for the copy (`recordSceneAssets`).
 fn write_conflict_copy(
     tx: &Connection,
     local: &Object,
@@ -164,6 +165,12 @@ fn write_conflict_copy(
         "deletedAt": null,
     }));
     insert_local(tx, ITEM_TYPE, &copy_id, payload, now_ms)?;
+    if let (Some(vault_id), Some(scene)) = (
+        local.get("vaultId").and_then(Value::as_str),
+        local.get("scene").and_then(Value::as_str),
+    ) {
+        record_scene_assets(tx, vault_id, &copy_id, scene, now_ms)?;
+    }
     outbox::enqueue(tx, &outbox::Change::upsert(ITEM_TYPE, &copy_id), now_ms)?;
     Ok(())
 }
