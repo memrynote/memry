@@ -638,7 +638,10 @@ final class NoteMetadataViewModel {
         guard let writer, title != current else { return nil }
         let noteId = noteId
         let previous = lastRename
+        // The keys typed after ⌘N stored as the title when the note was made.
+        let seeded = NewNoteSeeds.shared.landing(noteId)
         let write = Task.detached {
+            await seeded?.value
             _ = await previous?.result
             try await writer.rename(id: noteId, title: title)
         }

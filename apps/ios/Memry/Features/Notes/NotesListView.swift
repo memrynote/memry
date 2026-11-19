@@ -58,6 +58,7 @@ struct NotesListView: View {
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     private let notesLinks = NotesLinks.shared
     @Environment(\.requestVaultSync) private var requestVaultSync
+    @Environment(\.handoffVaultId) private var vaultId
 
     /// The production entry point: an opened `Vault` and the shell's one core
     /// queue. `State(initialValue:)` so the model outlives a re-render — a
@@ -204,15 +205,21 @@ struct NotesListView: View {
             Task {
                 guard let id = await model.createNote(in: nil) else { return keys.failed() }
                 keys.made(id) { [writer = model.writer, model] id, title in
-                    do {
-                        try await writer?.rename(id: id, title: title)
-                    } catch {
-                        Log.storage.error("the keys typed after a new note could not be stored as its title")
-                    }
+                    try await writer?.rename(id: id, title: title)
                     await model.refresh()
                 }
                 notesLinks.open(id)
             }
+        }
+        // Keys typed after ⌘N that a kill caught before their title landed
+        // (#4787, `NewNoteJournal`). ⌘N opens Notes, which the next launch
+        // restores, so this runs at launch after such a kill.
+        .task(id: vaultId) {
+            guard let vaultId, let writer = model.writer,
+                  await NewNoteSeeds.shared.recover(vault: vaultId, reader: model.reader, writer: writer)
+            else { return }
+            requestVaultSync?()
+            await model.refresh()
         }
         .onChange(of: width, initial: true) { _, width in router.isSplit = width == .regular }
     }

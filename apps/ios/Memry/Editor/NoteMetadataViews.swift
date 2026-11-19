@@ -192,18 +192,19 @@ struct NoteTitleEditor: View {
 
     /// The keys typed after ⌘N for this new note (#4787, `NewNoteSeeds`),
     /// read as it appears: its edit starts with them before its field takes
-    /// the caret, so the keys typed in the field follow them.
-    private func attachSeed() {
-        guard let keys = NewNoteSeeds.shared.attach(noteId, absorb: absorbSeed) else { return }
-        if !commits.editing {
-            draft = title
-            commits.begin(title)
-        }
-        draft += keys
+    /// the caret, so the keys typed in the field follow them. Returns
+    /// whether any were held: the note is new, though its title may show
+    /// them already (stored as the note was made).
+    private func attachSeed() -> Bool {
+        let shown = commits.editing ? draft : title
+        guard let seeded = NewNoteSeeds.shared.attach(noteId, to: shown, absorb: absorbSeed) else { return false }
+        if !commits.editing { commits.begin(title) }
+        draft = seeded
         // Saved at once: a kill seconds after Home must find them stored.
         // A Return among them waits for the caret, which moves the rest to
         // the body (`takeSeed`).
-        if !keys.contains(where: \.isNewline) { save() }
+        if !seeded.contains(where: \.isNewline) { save() }
+        return true
     }
 
     /// The title has the caret: the keys held since it appeared join the
@@ -215,7 +216,12 @@ struct NoteTitleEditor: View {
             draft += keys
             if let field = titleTextView, field.text != draft { field.text = draft }
         }
-        if draft.contains(where: \.isNewline), let burst = LineReturn(previous: title, value: draft) {
+        // The first Return splits the draft, as `NewNoteSeeds.title` would:
+        // the line before it is the title and the rest goes to the body.
+        // Not measured against the title shown, which may hold the same
+        // keys stored with a space (`milk buy` against `milk⏎buy` read only
+        // the Return as typed, and glued `milkbuy`, VERIFY-5087).
+        if draft.contains(where: \.isNewline), let burst = LineReturn(previous: "", value: draft) {
             returnPressed(burst)
         } else if keys != nil {
             // Saved at once, as in `attachSeed`.
@@ -407,15 +413,16 @@ struct NoteTitleEditor: View {
                     if commits.editing { draft = commits.follow(draft, stored: new) }
                 }
                 .onChange(of: commits.editing ? draft : nil) { _, pending in draftChanged?(pending) }
-                .onAppear(perform: attachSeed)
                 // A note with no title (a new one) opens with the caret in
-                // its title, as desktop does. Not when the page is drawn
+                // its title, as desktop does, and so does one whose title is
+                // the keys typed after ⌘N. Not when the page is drawn
                 // again under a block that had the caret (#4457), nor under
                 // something presented over the window (the search palette),
                 // which keeps the caret and its Escape (#4787).
                 .onAppear {
+                    let seeded = attachSeed()
                     let covered = (host.window ?? PresentingWindow.resolve()).map(PresentingWindow.isPresenting) == true
-                    if title.isEmpty, !covered, EditorFocusMemory.shared.titleMayAutofocus(noteId) {
+                    if title.isEmpty || seeded, !covered, EditorFocusMemory.shared.titleMayAutofocus(noteId) {
                         claimsFocus = true
                         focused = true
                     }

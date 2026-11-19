@@ -44,13 +44,13 @@ struct NewNoteKeysTests {
 
         let keys = NewNoteKeys(window: window, seeds: seeds)
         try type("milk")
-        keys.made("new") { _, _ in Issue.record("no page left") }
-        #expect(seeds.take("new") == nil, "the hold still has the caret")
+        keys.made("new") { _, _ in }
+        try type("s")
         let other = textView()
         other.becomeFirstResponder()
 
         #expect(body.text == "body line two")
-        #expect(seeds.take("new") == "milk")
+        #expect(seeds.take("new") == "milks")
     }
 
     @Test("a text input that is not the new title gets none of the keys")
@@ -63,7 +63,7 @@ struct NewNoteKeysTests {
         let search = textView()
         search.becomeFirstResponder()
         try type("q")
-        keys.made("new") { _, _ in Issue.record("no page left") }
+        keys.made("new") { _, _ in }
 
         #expect(search.text == "q")
         #expect(seeds.take("new") == "milk")
@@ -134,8 +134,8 @@ struct NewNoteKeysTests {
         try type("one")
         let second = NewNoteKeys(window: window, seeds: seeds)
         try type("two")
-        first.made("first") { _, _ in Issue.record("no page left") }
-        second.made("second") { _, _ in Issue.record("no page left") }
+        first.made("first") { _, _ in }
+        second.made("second") { _, _ in }
         textView().becomeFirstResponder()
 
         #expect(seeds.take("first") == "one")
@@ -156,7 +156,7 @@ struct NewNoteKeysTests {
         links.requestNewNote(window: window)
         try type("lk")
         let keys = try #require(links.takeNewNote())
-        keys.made(noteId) { _, _ in Issue.record("no page left") }
+        keys.made(noteId) { _, _ in }
         textView().becomeFirstResponder()
 
         #expect(body.text.isEmpty)
@@ -171,8 +171,8 @@ struct NewNoteKeysTests {
 
         let keys = NewNoteKeys(window: window, seeds: seeds)
         try type("milk")
-        keys.made("new") { _, _ in Issue.record("the title is on screen") }
-        #expect(seeds.attach("new") { _ in Issue.record("nothing was left") } == "milk")
+        keys.made("new") { _, _ in }
+        #expect(seeds.attach("new", to: "") { _ in Issue.record("nothing was left") } == "milk")
         try type("s")
         textView().becomeFirstResponder()
 
@@ -186,9 +186,9 @@ struct NewNoteKeysTests {
         var absorbed: [String] = []
 
         let keys = NewNoteKeys(window: window, seeds: seeds)
-        keys.made("new") { _, _ in Issue.record("the title is on screen") }
-        _ = seeds.attach("new") { _ in Issue.record("the page before was redrawn") }
-        _ = seeds.attach("new") { absorbed.append($0) }
+        keys.made("new") { _, _ in }
+        _ = seeds.attach("new", to: "") { _ in Issue.record("the page before was redrawn") }
+        _ = seeds.attach("new", to: "") { absorbed.append($0) }
         seeds.detach("new")
         try type("milk")
         seeds.flush()
@@ -233,8 +233,8 @@ struct NewNoteKeysTests {
             try await Task.sleep(for: .milliseconds(20))
         }
 
-        // Made in the foreground, the note's hold ends with nothing to land.
-        #expect(holds.landedAtRelease == (beforeTheNote ? ["milk"] : [nil, "milk"]))
+        // Stored as the note is made: no release before the title landed.
+        #expect(holds.landedAtRelease == ["milk"])
         let stored = try await CoreNotesReader(vault: vault.vault, executor: .shared).read(id: noteId)
         #expect(stored?.summary.title == "milk")
     }
@@ -256,7 +256,7 @@ struct NewNoteKeysTests {
         await until { settled != nil }
         try type("s")
         settled?.resume()
-        await until { holds.open == 0 && !kept.withLock { $0.isEmpty } }
+        await until { holds.open == 0 && kept.withLock { $0["new"] == "milks" } }
 
         #expect(firstResponder(in: window) == nil)
         #expect(kept.withLock { $0 } == ["new": "milks"])
@@ -274,14 +274,118 @@ struct NewNoteKeysTests {
 
         let keys = NewNoteKeys(window: window, seeds: seeds)
         try type("kz")
-        keys.made("new") { _, _ in Issue.record("the title is on screen") }
-        #expect(seeds.attach("new") { absorbed.append($0) } == "kz")
+        keys.made("new") { _, _ in }
+        #expect(seeds.attach("new", to: "") { absorbed.append($0) } == "kz")
         try type("h2")
         seeds.flush()
         seeds.flush()
 
         #expect(absorbed == ["h2"])
         #expect(seeds.take("new") == nil)
+    }
+
+    /// The keys are stored as the title when the note is made, and the page
+    /// may read that title before its title editor appears: the editor's
+    /// edit is the keys once, not the stored title followed by the keys.
+    @Test("a title showing the keys already stored for it takes them once", arguments: ["", "kz"])
+    func aStoredTitleTakesTheKeysOnce(shown: String) throws {
+        let seeds = NewNoteSeeds()
+        textView().becomeFirstResponder()
+
+        let keys = NewNoteKeys(window: window, seeds: seeds)
+        try type("kz")
+        keys.made("new") { _, _ in }
+        try type("h")
+
+        #expect(seeds.attach("new", to: shown) { _ in } == "kzh")
+    }
+
+    /// #4787 (VERIFY-5087 round 2, K1): `made` with keys held ended the ⌘N
+    /// hold, and nothing stored them until the main actor ran again, which
+    /// it did not before the kill.
+    @Test("keys held when the note is made are stored as its title with the main actor blocked", .timeLimit(.minutes(1)))
+    func madeStoresTheHeldKeysWithoutTheMainActor() async throws {
+        let holds = Holds()
+        let seeds = NewNoteSeeds(hold: { holds.begin() })
+        textView().becomeFirstResponder()
+        let vault = try TasksTestVault()
+        let writer = CoreNotesWriter(vault: vault.vault, store: TaskTestKeychain(), executor: .shared)
+        let noteId = try await writer.create(title: "", folderPath: nil)
+        let landed = Mutex<String?>(nil)
+
+        let keys = NewNoteKeys(window: window, seeds: seeds)
+        try type("milk")
+        keys.made(noteId) { id, title in
+            try await writer.rename(id: id, title: title)
+            landed.withLock { $0 = title }
+        }
+        // The main thread stays busy, as it is drawing the app's snapshot
+        // after Home: no main-actor turn runs until the write landed.
+        let deadline = Date().addingTimeInterval(20)
+        while landed.withLock({ $0 }) == nil, Date() < deadline { usleep(10_000) }
+
+        #expect(landed.withLock { $0 } == "milk")
+        #expect(holds.open == 1, "the write runs under its own background task")
+        let stored = try await CoreNotesReader(vault: vault.vault, executor: .shared).read(id: noteId)
+        #expect(stored?.summary.title == "milk")
+    }
+
+    /// #4787 (VERIFY-5087 round 2, K2): the app left before the core made the
+    /// note, the keys waited in memory, and a kill before `made` lost them.
+    /// The journal holds them on disk from the moment the hold ends, and the
+    /// next launch stores them in the note made for them, or a new one.
+    @Test("keys held when the app leaves before the note is made survive a kill", .timeLimit(.minutes(1)), arguments: [true, false])
+    func keysJournaledBeforeTheNoteSurviveAKill(noteMade: Bool) async throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("new-note-keys-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let seeds = NewNoteSeeds(journal: NewNoteJournal(url: url))
+        textView().becomeFirstResponder()
+        let vault = try TasksTestVault()
+        let writer = CoreNotesWriter(vault: vault.vault, store: TaskTestKeychain(), executor: .shared)
+        let reader = CoreNotesReader(vault: vault.vault, executor: .shared)
+
+        let keys = NewNoteKeys(window: window, seeds: seeds, vault: "v1")
+        try type("milk\tlist")
+        seeds.flush()
+        // On disk in the same call, before any later turn.
+        let journaled = try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any]
+        #expect(journaled?["v"] as? Int == 1)
+        #expect((journaled?["entries"] as? [[String: Any]])?.first?["keys"] as? String == "milk list")
+        let made = noteMade ? try await writer.create(title: "", folderPath: nil) : nil
+        _ = keys // killed: `made` never runs
+
+        // The next launch.
+        let relaunched = NewNoteSeeds(journal: NewNoteJournal(url: url))
+        #expect(await relaunched.recover(vault: "other", reader: reader, writer: writer) == false)
+        #expect(await relaunched.recover(vault: "v1", reader: reader, writer: writer))
+
+        let notes = try await reader.list()
+        #expect(notes.map(\.title) == ["milk list"], "one note, titled once")
+        if let made { #expect(notes.first?.id == made) }
+        #expect(!FileManager.default.fileExists(atPath: url.path), "the journal clears once stored")
+        #expect(await relaunched.recover(vault: "v1", reader: reader, writer: writer) == false)
+    }
+
+    @Test("the journal entry clears once the title write lands, and a failed write keeps it", .timeLimit(.minutes(1)))
+    func theJournalClearsWhenTheTitleLands() async throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("new-note-keys-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let holds = Holds()
+        let seeds = NewNoteSeeds(hold: { holds.begin() }, journal: NewNoteJournal(url: url))
+        textView().becomeFirstResponder()
+
+        let failing = NewNoteKeys(window: window, seeds: seeds, vault: "v1")
+        try type("one")
+        failing.made("first") { _, _ in throw CancellationError() }
+        await until { holds.open == 0 }
+        #expect(NewNoteJournal(url: url).stranded(in: "v1").map(\.keys) == ["one"])
+
+        let landing = NewNoteKeys(window: window, seeds: seeds, vault: "v1")
+        try type("two")
+        landing.made("second") { _, _ in }
+        #expect(NewNoteJournal(url: url).stranded(in: "v1").map(\.note) == ["first", "second"])
+        await until { holds.open == 0 }
+        #expect(NewNoteJournal(url: url).stranded(in: "v1").map(\.note) == ["first"])
     }
 
     @Test("a title that appeared keeps the hold until its field takes the caret")
@@ -292,8 +396,8 @@ struct NewNoteKeysTests {
 
         let keys = NewNoteKeys(window: window, seeds: seeds)
         try type("milk")
-        keys.made("new") { _, _ in Issue.record("the app did not leave") }
-        _ = seeds.attach("new") { _ in Issue.record("the app did not leave") }
+        keys.made("new") { _, _ in }
+        _ = seeds.attach("new", to: "") { _ in Issue.record("the app did not leave") }
         await until { settled != nil }
         settled?.resume()
         await Task.yield()
@@ -327,7 +431,9 @@ struct NewNoteKeysTests {
         let vault = try TasksTestVault()
         let noteId = try await CoreNotesWriter(vault: vault.vault, store: TaskTestKeychain(), executor: .shared)
             .create(title: "", folderPath: nil)
-        keys.made(noteId) { _, _ in Issue.record("the page took no seed") }
+        // Stored as the title at once, as the app does: the page may read it.
+        let writer = CoreNotesWriter(vault: vault.vault, store: TaskTestKeychain(), executor: .shared)
+        keys.made(noteId) { try await writer.rename(id: $0, title: $1) }
         let reader = CoreNotesReader(vault: vault.vault, executor: .shared)
         window.rootViewController = UIHostingController(rootView: NoteReadView(
             route: NoteRoute(id: noteId), reader: reader, filler: NoBodies(),
