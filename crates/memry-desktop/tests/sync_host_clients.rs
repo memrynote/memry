@@ -101,6 +101,10 @@ const ALLOWED: &[(&str, &str)] = &[
         "the local agent provider the person configured, through ai::local_provider::probe",
     ),
     (
+        "crates/memry-desktop/src/onboarding.rs",
+        "Ollama and LM Studio on localhost, the first-run wizard's model server probe, no proxy",
+    ),
+    (
         "apps/desktop-tauri/src-tauri/src/updater/velopack_backend.rs",
         "the update feed on github.com, fetched by Velopack; only its error type is named here",
     ),

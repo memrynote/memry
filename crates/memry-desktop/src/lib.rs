@@ -26,6 +26,7 @@ pub mod locks;
 pub mod logging;
 pub mod notes;
 pub mod oauth;
+pub mod onboarding;
 pub mod paths;
 pub mod redact;
 pub mod registry;
