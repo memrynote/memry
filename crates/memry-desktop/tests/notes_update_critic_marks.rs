@@ -12,6 +12,7 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use memry_core::api::editor::Editor;
+use memry_core::crdt::BODY_FRAGMENT;
 use memry_core::crdt::resident::EDITOR_LIFECYCLE;
 use memry_core::domain::write_back::BodyRead;
 use memry_core::markdown::convert::NoEmbeds;
@@ -26,10 +27,13 @@ use memry_desktop::notes::service::NotesService;
 use memry_desktop::notes::update::NoteUpdateInput;
 use serde_json::{Value, json};
 use yrs::updates::decoder::Decode;
-use yrs::{Any, Array as _, Doc, ReadTxn as _, StateVector, Transact as _, Update};
+use yrs::{
+    Any, Array as _, Doc, ReadTxn as _, StateVector, Text as _, Transact as _, Update,
+    XmlFragment as _, XmlOut,
+};
 
 use crate::index_support::until;
-use crate::vault_env::{Env, QUIET, env, indexed};
+use crate::vault_env::{Env, env, indexed};
 
 const WINDOW: &str = "main";
 const EDITOR: &str = "editor-1";
@@ -398,10 +402,38 @@ fn the_write_back_after_a_typed_save_keeps_the_windows_mark_places() {
         typed.trim_end(),
         "the write-back moved or dropped a mark"
     );
-    std::thread::sleep(QUIET);
+    // The window types on after its save, and only a write-back puts that text in the file.
+    // The document's text is now ahead of the file, so the marks take the file's places moved
+    // past the typing.
+    let copy = window_copy(&editor.open(&id, WINDOW).unwrap().state);
+    let typing = window_types(&copy, "Hi ");
+    editor.apply_update(&id, &typing, WINDOW).unwrap();
+    e.tier.schedule(&id);
+    until("the write-back wrote the typing", || {
+        e.read("Plan.md").starts_with("Hi ")
+    });
     assert_eq!(
         e.read("Plan.md"),
-        typed,
-        "the scheduled write-back moved a mark"
+        serialize_critic_markup(&format!("Hi beta. {PLAIN}"), &marks(9)),
+        "the scheduled write-back moved or dropped a mark"
     );
+}
+
+/// Types `text` at the start of the document's first text, as the window's editor does, and
+/// returns the update it sends.
+fn window_types(copy: &Doc, text: &str) -> Vec<u8> {
+    let before = copy.transact().state_vector();
+    let fragment = copy.get_or_insert_xml_fragment(BODY_FRAGMENT);
+    let mut txn = copy.transact_mut();
+    let mut node = fragment.get(&txn, 0).expect("a block");
+    let first = loop {
+        node = match node {
+            XmlOut::Text(first) => break first,
+            XmlOut::Element(element) => element.get(&txn, 0).expect("a child"),
+            XmlOut::Fragment(_) => panic!("a fragment in the body"),
+        };
+    };
+    first.insert(&mut txn, 0, text);
+    drop(txn);
+    copy.transact().encode_diff_v1(&before)
 }

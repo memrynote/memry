@@ -83,9 +83,12 @@ pub fn body_for_file(
         ..SerializeOptions::default()
     };
     // `None` too when the author's spelling could not be restored from the file
-    // (`SourceRestoreOutcome::FileUnreadable`, `RestoreThrew`).
+    // (`SourceRestoreOutcome::FileUnreadable`, `RestoreThrew`), or when a suggestion has no
+    // place in the body: writing it would drop the suggestion and the text it replaced.
     let Some(body) = converter.serialize_note_body(&document, BODY_FRAGMENT, &options) else {
-        return Ok(BodyRead::Failed("the body did not serialize"));
+        return Ok(BodyRead::Failed(
+            "the body did not serialize, or a suggestion it holds has no place in it",
+        ));
     };
     // One structural check: the read keeps every element, text run, mark and attribute. A
     // node the schema cannot build and an element the read drops both fail it.
