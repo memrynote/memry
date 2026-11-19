@@ -737,6 +737,27 @@ Additional events in the same pipeline:
 | `server_log_recorded`             | Structured sync-server diagnostic logs                       |
 | `release_download_count_snapshot` | Daily GitHub Releases download-count pull (not a user event) |
 
+### IP addresses and location
+
+PostHog records the address each event arrives from as `$ip`, and its GeoIP transformation adds
+`$geoip_*` location properties from that address. What they hold depends on who sends the event:
+
+| Events                                                                    | Sender PostHog sees                                                                                   | `$ip`                                                 | GeoIP location                                                                        |
+| ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Desktop and iOS (`/telemetry/batch`), server business and error events    | The sync-server Worker (`capturePostHogEvents`)                                                       | A Cloudflare Workers egress address, never the user's | Always `US`, the egress address's country, so it says nothing about where the user is |
+| Landing (`posthog-js`, [Landing Site Telemetry](#landing-site-telemetry)) | The visitor's browser, through the `e.memrynote.com` managed proxy, which forwards the client address | The visitor's IP address                              | The visitor's country and city                                                        |
+
+The sync server reads the client address (`CF-Connecting-IP`) only to key rate limits.
+`middleware/rate-limit.ts` falls back to it when a request has no user id, which includes
+`/telemetry/batch`, and the Durable Object counter it names lasts one window (60 seconds for
+telemetry). No route forwards the address to PostHog.
+
+The PostHog project setting **Discard client IP data** (Settings > Project > IP data capture)
+decides whether PostHog stores `$ip`. It is off, so landing events keep the visitor's address.
+With it on, PostHog drops `$ip` after GeoIP and bot detection have read it, so landing country and
+city stay, and desktop location stays `US` either way. posthog-js has no client option for this:
+its `ip` config option does nothing.
+
 ### Batch Validation & Retry
 
 Each `/telemetry/batch` payload is schema-validated on the sync server. A malformed batch is

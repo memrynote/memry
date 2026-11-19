@@ -258,7 +258,7 @@ export const FAQ_ITEMS = [
   {
     question: 'Can I import from other apps?',
     answer:
-      'Yes. memrynote imports Markdown folders (including Obsidian vaults), Notion, Evernote, Apple Notes, Apple Journal, Bear, Roam Research, Google Keep, NotePlan, Todoist, TickTick, Raindrop, and CSV.'
+      'Yes. memrynote imports Markdown folders (including Obsidian vaults), Notion, Evernote, OneNote, Apple Notes (on macOS), Apple Journal, Bear, Roam Research, Google Keep, NotePlan, Readwise, Todoist, TickTick, Raindrop, HTML files, and CSV.'
   },
   {
     question: 'Is memrynote open source?',
@@ -269,54 +269,6 @@ export const FAQ_ITEMS = [
 
 export const HOME_FAQ_COUNT = 6
 export const HOME_FAQ_ITEMS = FAQ_ITEMS.slice(0, HOME_FAQ_COUNT)
-
-export const ROADMAP_DATA = {
-  releaseDate: 'Available now',
-  earlyAccess: 'The desktop app is available now',
-  phases: [
-    {
-      status: 'done' as const,
-      title: 'Available now',
-      caption: 'The local-first desktop workspace is already usable across the core flows.',
-      items: [
-        'Local vault with Markdown notes, backlinks, and global search',
-        'Inbox capture for text, URLs, images, and voice',
-        'Tasks, projects, subtasks, recurring rules, and multiple views',
-        'Daily journal, calendar week view, and reminders',
-        'End-to-end encrypted sync for notes and journals',
-        'Web clipper for Chrome, Firefox, and Edge',
-        'Importers for Obsidian, Notion, Roam, Bear, Evernote, and more',
-        'Agent Chat, voice memos with transcription, and Memrynote CLI'
-      ]
-    },
-    {
-      status: 'in-progress' as const,
-      title: 'Building now',
-      caption: 'The next work is focused on wider clipping and agent reliability.',
-      items: [
-        'Safari web clipper support',
-        'Browser store listing: Edge Add-ons',
-        'Optional AI Agent polish: provider settings, streaming, approvals'
-      ]
-    },
-    {
-      status: 'planned' as const,
-      title: 'Planned next',
-      caption: 'Direction, not a release promise. These unlock more ways to use your vault.',
-      items: [
-        'Mobile apps for iPhone, iPad, and Android (targeting late 2026)',
-        'iPad handwriting and PDF annotation',
-        'Offline mobile vault with conflict-safe sync',
-        'Mobile share sheet, widgets, and quick capture',
-        'Locked spaces for sensitive notes',
-        'Public and shared vaults',
-        'Plugin API for custom tools and views',
-        'Templates marketplace',
-        'Self-hosted encrypted sync server'
-      ]
-    }
-  ]
-} as const
 
 export const USE_CASES = [
   {
