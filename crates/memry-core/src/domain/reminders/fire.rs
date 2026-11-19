@@ -21,6 +21,7 @@ use serde_json::{Map, Value, json};
 use crate::api::errors::StorageError;
 use crate::domain::inbox;
 use crate::domain::notes::{insert_local, iso, object};
+use crate::sync::calendar_push;
 
 use super::queries::{due_unless, failed, fire_instant};
 use super::{DueReminder, STATUS_PENDING, STATUS_SNOOZED};
@@ -52,6 +53,10 @@ pub fn due(conn: &Connection, now_ms: i64) -> Result<Vec<DueReminder>, StorageEr
 /// transaction. `None` when it was already fired for that instant, so a second
 /// call (a racing tick, a restart) files nothing.
 ///
+/// The fire also queues the reminder's calendar push (desktop
+/// `syncReminderCalendarState`): a fired reminder is off the calendar, so a
+/// provider event written for it is taken down.
+///
 /// The inbox item has no clock and no outbox row, as desktop's insert writes
 /// neither: each device files its own, and the manifest check re-uploads only
 /// clocked rows, so it never reaches another device.
@@ -74,6 +79,7 @@ pub fn fire(
     let inbox_id = format!("inbox_rem_{}", inbox::write::mint_id());
     let payload = inbox_payload(&tx, due, &inbox_id, now_ms)?;
     insert_local(&tx, inbox::ITEM_TYPE, &inbox_id, payload, now_ms)?;
+    calendar_push::queue_source(&tx, "reminder", &due.reminder.id, now_ms)?;
     tx.commit().map_err(failed)?;
     Ok(Some(Fired {
         reminder_id: due.reminder.id.clone(),

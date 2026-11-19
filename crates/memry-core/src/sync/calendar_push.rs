@@ -25,11 +25,23 @@ pub(super) fn queue(tx: &Connection, change: &Change, now_ms: i64) -> Result<(),
         "inbox" => "inbox_snooze",
         _ => return Ok(()),
     };
+    queue_source(tx, source_type, item_id, now_ms)
+}
+
+/// Queues the push of one calendar source (`event`, `task`, `reminder`,
+/// `inbox_snooze`): a local change that makes no outbox row still moves it on
+/// or off a provider calendar, as a reminder's fire does.
+pub(crate) fn queue_source(
+    tx: &Connection,
+    source_type: &str,
+    source_id: &str,
+    now_ms: i64,
+) -> Result<(), StorageError> {
     tx.execute(
         "INSERT INTO calendar_push_queue (source_type, source_id, queued_at) VALUES (?1, ?2, ?3)
          ON CONFLICT(source_type, source_id) DO UPDATE SET queued_at = excluded.queued_at,
            attempts = 0, last_error = NULL",
-        params![source_type, item_id, now_ms],
+        params![source_type, source_id, now_ms],
     )
     .map_err(failed)?;
     Ok(())
