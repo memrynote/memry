@@ -16,7 +16,7 @@ row.
 
 | Where the link lives                               | `utm_source`                     | `utm_medium` | `utm_campaign`                                   | PostHog channel                                |
 | -------------------------------------------------- | -------------------------------- | ------------ | ------------------------------------------------ | ---------------------------------------------- |
-| Desktop app (planned, Tauri app)                   | `app`                            | `desktop`    | `setup_wizard`, `update_failed`, `checkout`      | Unknown                                        |
+| Desktop app (Tauri app, first Tauri release)       | `app`                            | `desktop`    | `setup_wizard`, `update_failed`, `checkout`      | Unknown                                        |
 | iOS app                                            | `app`                            | `ios`        | `settings`, `plans`, `checkout`                  | Unknown                                        |
 | Campaign emails (`apps/marketing-emails`)          | `waitlist`                       | `email`      | the id in `src/tracking-links.ts`                | Email                                          |
 | YouTube descriptions (`marketing/tutorials`)       | `youtube`                        | `video`      | the topic slug                                   | Organic Video                                  |
@@ -33,9 +33,11 @@ Example: `https://memrynote.com/pricing?utm_source=app&utm_medium=desktop&utm_ca
 
 ## Where the links are built
 
-- Desktop: not tagged yet. The Electron app in `apps/desktop` is deprecated and gets no changes.
-  The Tauri app (`feat/tauri-v2`) will tag its pricing, download and checkout links with the
-  values in the table.
+- Desktop: the Tauri app tags its setup-wizard, update-failed and checkout links with the values in
+  the table, through `apps/desktop-tauri/src/renderer/src/lib/memrynote-url.ts` and
+  `crates/memry-desktop/src/billing/service.rs`. That code is PR #5158 on `feat/tauri-v2`, not
+  merged yet, and the tags ship with the first Tauri release. The Electron app in `apps/desktop`
+  is deprecated and stays untagged.
 - iOS: `PlansLinks` in `apps/ios/Memry/Features/Billing/PlansView.swift` and the privacy and terms
   links in `apps/ios/Memry/Features/Settings/AppearanceScreen.swift`.
 - Campaign emails: `trackedMemryUrl` in `apps/marketing-emails/src/tracking-links.ts`.
