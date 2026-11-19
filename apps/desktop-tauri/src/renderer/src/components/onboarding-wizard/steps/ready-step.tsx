@@ -258,7 +258,10 @@ export function ReadyStep({ state, dispatch }: StepProps): React.JSX.Element {
             </span>
           }
         >
-          <span className={cn('truncate font-mono text-xs leading-4', MUTED)}>
+          <span
+            dir="ltr"
+            className={cn('self-start max-w-full truncate font-mono text-xs leading-4', MUTED)}
+          >
             {draft.folder ? folderPath(draft.folder) : '…'}
           </span>
           <span className="pt-[3px]">
