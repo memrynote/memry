@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { StickyDraft, StickyKind } from '@memry/contracts/sticky-api'
 import { createLogger } from '@/lib/logger'
+import { stickyService } from '@/services/sticky-service'
 
 const log = createLogger('Component:StickyDraft')
 
@@ -54,8 +55,8 @@ export function useStickyDraft(): StickyDraftState {
     void (async () => {
       try {
         const [session, drafts, settings] = await Promise.all([
-          window.api.sticky.getSession(),
-          window.api.sticky.listDrafts(),
+          stickyService.getSession(),
+          stickyService.listDrafts(),
           window.api.settings.getStickySettings()
         ])
         if (cancelled) return
@@ -88,7 +89,7 @@ export function useStickyDraft(): StickyDraftState {
       try {
         if (!text.trim()) {
           if (id) {
-            await window.api.sticky.deleteDraft(id)
+            await stickyService.deleteDraft(id)
             latest.current.draftId = null
             setDraftId(null)
           }
@@ -96,7 +97,7 @@ export function useStickyDraft(): StickyDraftState {
           return
         }
         setSaveStatus('saving')
-        const saved = await window.api.sticky.saveDraft({
+        const saved = await stickyService.saveDraft({
           id: id ?? undefined,
           content: text,
           kind: k
@@ -139,6 +140,26 @@ export function useStickyDraft(): StickyDraftState {
     [write]
   )
 
+  // A quit waits for this window's draft only once main knows the page listens (#4015).
+  useEffect(
+    () =>
+      stickyService.onFlushRequested(
+        (requestId) => {
+          void flush()
+            .catch((err: unknown) => log.error('Failed to flush the sticky draft', err))
+            // Answered even after a failure: main waits on this reply and would only time out.
+            .then(() => stickyService.flushDone(requestId))
+            .catch((err: unknown) => log.warn('Could not answer the flush request', err))
+        },
+        () => {
+          stickyService
+            .flushReady()
+            .catch((err: unknown) => log.error('Could not tell main the sticky listens', err))
+        }
+      ),
+    [flush]
+  )
+
   const setContent = useCallback(
     (next: string) => {
       latest.current.content = next
@@ -171,7 +192,7 @@ export function useStickyDraft(): StickyDraftState {
     const { content: text, kind: k, draftId: id } = latest.current
     if (!text.trim()) return null
     clear()
-    if (id) await window.api.sticky.deleteDraft(id)
+    if (id) await stickyService.deleteDraft(id)
     return { content: text, kind: k }
   }, [flush, clear])
 

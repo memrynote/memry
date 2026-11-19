@@ -47,6 +47,7 @@ use zeroize::Zeroizing;
 
 use crate::api::auth::AuthSession;
 use crate::api::errors::{StorageError, SyncError};
+use crate::api::projects::ProjectSeed;
 use crate::api::sync::snapshot_fallback::{LastPull, PassSnapshots};
 use crate::api::tag_hub::{TagHub, TagSeed};
 use crate::crdt::SnapshotPusher;
@@ -271,7 +272,8 @@ impl SyncDriver {
             .with_pull_sink(Arc::clone(&snapshots) as _)
             .with_gate(pass_gate)
             .with_max_pages(config.max_pages_per_pass)
-            .with_seed(Arc::new(TagSeed(Arc::new(tags))));
+            .with_seed(Arc::new(TagSeed(Arc::new(tags))))
+            .with_seed(ProjectSeed::over(db.clone(), device_id.clone()));
         #[cfg(feature = "markdown")]
         if declaration.classify(crate::domain::vault_locks::ITEM_TYPE)
             == crate::protocol::types::ArrivingItemType::Subscribed

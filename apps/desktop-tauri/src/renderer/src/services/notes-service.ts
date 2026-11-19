@@ -704,6 +704,13 @@ export const notesService: NotesServiceApi = createWindowApiForwarder<
   PortedNoteMethod
 >(() => window.api.notes, ported)
 
+/** The note's list row, `null` once it is gone; unlike `notesService.get`, it counts no
+ * `note_opened`. Not an Electron method: Electron's listeners were live at once. */
+export async function getNoteListItem(id: string): Promise<NoteListItem | null> {
+  const item = await commands.notesGetListItem(id)
+  return item ? toListItem(item) : null
+}
+
 /**
  * Note events were dropped (`shell/note_events.rs`): whatever the app shows of notes may be
  * stale. Not an Electron channel: Electron sends every event.
