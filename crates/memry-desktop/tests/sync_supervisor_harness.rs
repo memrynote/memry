@@ -9,6 +9,7 @@
 //! | a write floor above the build parks the outbox         | §11.8 `minWriteVersion`: `version_incompatible`, pulls go on |
 //! | wait_for_pull and outbox_count follow real passes      | L4b test hooks: a pull counted, `synced_settings` 1 then 0 |
 //! | ten hints during a held pass give one trailing pass    | chapter 09 hints coalesce into one wake |
+//! | real passes tell item-synced and queue-cleared         | L7 events through the real driver      |
 
 #![cfg(feature = "harness")]
 
@@ -41,6 +42,7 @@ use memry_desktop::notes::property_definitions::{DefinitionsSeed, PropertyDefini
 use memry_desktop::seams::transport::app_transport;
 use memry_desktop::sync::backend::{SyncBackend, SyncPasses, VaultSyncBackend};
 use memry_desktop::sync::error_category::SyncErrorCategory;
+use memry_desktop::sync::events::{ItemOperation, OnSyncEvent, SyncEvent};
 use memry_desktop::sync::gate::AuthFacts;
 use memry_desktop::sync::gate::{SyncStartGate, VaultBinding};
 use memry_desktop::sync::realtime::{RealtimeSocket, SocketEnd};
@@ -126,7 +128,7 @@ impl Device {
 
     /// A supervisor over this device's real backend, gated on `gate`.
     fn supervisor(&self, gate: &Arc<SyncStartGate>) -> SyncSupervisor {
-        self.supervisor_over(gate, Arc::new(self.backend()))
+        self.supervisor_over(gate, Arc::new(self.backend()), Arc::new(|_| {}))
     }
 
     fn backend(&self) -> VaultSyncBackend {
@@ -144,6 +146,7 @@ impl Device {
         &self,
         gate: &Arc<SyncStartGate>,
         backend: Arc<dyn SyncBackend>,
+        on_event: OnSyncEvent,
     ) -> SyncSupervisor {
         SyncSupervisor::start(
             &tokio::runtime::Handle::current(),
@@ -157,6 +160,7 @@ impl Device {
                 telemetry: None,
                 signals: memry_desktop::sync::signals::AuthSignals::new(),
                 on_status: Arc::new(|_| {}),
+                on_event,
             },
         )
     }
@@ -172,6 +176,7 @@ impl Device {
                 Arc::new(Online),
                 DriverConfig::desktop(),
                 self.seeds(),
+                Vec::new(),
             )
             .await
             .expect("the driver")
@@ -436,9 +441,6 @@ impl SyncPasses for Held {
     fn server_clock(&self) -> Option<ServerClock> {
         self.inner.server_clock()
     }
-    fn observe(&self, observer: Arc<dyn memry_core::sync::driver::ApplyObserver>) {
-        self.inner.observe(observer);
-    }
 }
 
 #[derive(Default)]
@@ -467,9 +469,12 @@ impl SyncBackend for HeldBackend {
     async fn auth_facts(&self) -> AuthFacts {
         self.inner.auth_facts().await
     }
-    async fn open(&self) -> Result<Arc<dyn SyncPasses>, SyncError> {
+    async fn open(
+        &self,
+        observers: Vec<Arc<dyn memry_core::sync::driver::ApplyObserver>>,
+    ) -> Result<Arc<dyn SyncPasses>, SyncError> {
         Ok(Arc::new(Held {
-            inner: self.inner.open().await?,
+            inner: self.inner.open(observers).await?,
             hold: Arc::clone(&self.hold),
             release: Arc::clone(&self.release),
             ran: Arc::clone(&self.ran),
@@ -496,7 +501,11 @@ async fn ten_hints_during_a_held_pass_give_exactly_one_trailing_pass() {
         ran: Arc::default(),
     });
     let gate = Arc::new(SyncStartGate::default());
-    let supervisor = a.supervisor_over(&gate, Arc::clone(&backend) as Arc<dyn SyncBackend>);
+    let supervisor = a.supervisor_over(
+        &gate,
+        Arc::clone(&backend) as Arc<dyn SyncBackend>,
+        Arc::new(|_| {}),
+    );
     gate.set_binding(VaultBinding::Bound);
     until("the start pass", || {
         supervisor.status().last_sync_at.is_some()
@@ -528,6 +537,61 @@ async fn ten_hints_during_a_held_pass_give_exactly_one_trailing_pass() {
     assert_eq!(ran.len(), before + 2, "{ran:?}");
     assert_eq!(ran.last(), Some(&PassTrigger::SocketHint));
     supervisor.stop().await;
+}
+
+/// The supervisor's events through a real driver: A's push that empties its outbox tells
+/// queue-cleared, and B's pull of the note tells item-synced once, as a create.
+#[tokio::test(flavor = "multi_thread")]
+async fn real_passes_tell_item_synced_and_queue_cleared() {
+    let server = Server::start();
+    let a = Device::new(&server, 0);
+    let b = Device::new(&server, 1);
+    let recorder = |events: &Arc<Mutex<Vec<SyncEvent>>>| -> OnSyncEvent {
+        let events = Arc::clone(events);
+        Arc::new(move |event| events.lock().unwrap().push(event.clone()))
+    };
+    let (events_a, events_b) = (Arc::default(), Arc::default());
+    let gate = Arc::new(SyncStartGate::default());
+    gate.set_binding(VaultBinding::Bound);
+    let supervisor_a = a.supervisor_over(&gate, Arc::new(a.backend()), recorder(&events_a));
+    until("A's start pass", || {
+        supervisor_a.status().last_sync_at.is_some()
+    })
+    .await;
+
+    a.write_note("Pushed");
+    supervisor_a.request_push();
+    until("A's push", || a.outbox() == 0).await;
+    until("queue-cleared", || !events_a.lock().unwrap().is_empty()).await;
+    assert!(
+        matches!(
+            events_a.lock().unwrap().as_slice(),
+            [SyncEvent::QueueCleared { item_count: 1, .. }]
+        ),
+        "{events_a:?}"
+    );
+
+    let supervisor_b = b.supervisor_over(&gate, Arc::new(b.backend()), recorder(&events_b));
+    until("B pulled the note", || b.notes() == 1).await;
+    let pulled: Vec<SyncEvent> = events_b
+        .lock()
+        .unwrap()
+        .iter()
+        .filter(|event| matches!(event, SyncEvent::Pulled { item_type, .. } if item_type == "note"))
+        .cloned()
+        .collect();
+    assert!(
+        matches!(
+            pulled.as_slice(),
+            [SyncEvent::Pulled {
+                operation: ItemOperation::Create,
+                ..
+            }]
+        ),
+        "{pulled:?}"
+    );
+    supervisor_a.stop().await;
+    supervisor_b.stop().await;
 }
 
 /// Polls `done` every 50 ms, at most 600 times.
