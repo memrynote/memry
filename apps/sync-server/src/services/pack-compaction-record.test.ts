@@ -5,6 +5,7 @@ import { createMemoryR2, createSqliteD1, type SqliteD1 } from '../__tests__/d1-s
 import { encodeSignaturePayload } from '../lib/cbor'
 import { errorHandler } from '../lib/errors'
 import type { AppContext, Bindings } from '../types'
+import { cleanupExpiredTombstones } from './cleanup'
 import { compactOneRange, compactVault } from './pack-compaction'
 import { extractEntry, parsePack, type PackedEntry } from './pack-format'
 import {
@@ -124,16 +125,16 @@ const signedItem = async ({ id, type = 'task', operation, clock, deletedAt }: Pu
   return { ...wire, ...(clock ? { clock } : {}), signature, signerDeviceId: DEVICE_ID }
 }
 
-const request = (app: App, path: string, body: unknown) =>
+const request = (app: App, path: string, body?: unknown) =>
   app.request(
     path,
     {
-      method: 'POST',
+      method: body === undefined ? 'GET' : 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-Memry-Sync-Types': [...RECORD_SYNC_ITEM_TYPES, 'purged_tombstones'].join(',')
       },
-      body: JSON.stringify(body)
+      ...(body === undefined ? {} : { body: JSON.stringify(body) })
     },
     env,
     {
@@ -181,6 +182,29 @@ const packedRecordItems = async (): Promise<
   }
   return out
 }
+
+/** Item ids GET /sync/manifest lists as live; a deleted item is absent. */
+const manifestIds = async (app: App): Promise<string[]> => {
+  const res = await request(app, '/sync/manifest')
+  expect(res.status).toBe(200)
+  const body: { items: Array<{ id: string }> } = await res.json()
+  return body.items.map((item) => item.id).toSorted()
+}
+
+/** Delete `itemId`, then age the tombstone past the 30-day retention so the shed takes it. */
+const expiredTombstone = async (app: App, itemId: string): Promise<void> => {
+  await push(app, [{ id: itemId, clock: { [DEVICE_ID]: 2 }, deletedAt: now() }])
+  harness.raw
+    .prepare('UPDATE sync_items SET deleted_at = ? WHERE user_id = ? AND item_id = ?')
+    .run(now() - 40 * 86_400, USER_ID, itemId)
+}
+
+const recordWatermark = (): number | null =>
+  (
+    harness.raw
+      .prepare(`SELECT last_sort_value FROM pack_watermarks WHERE item_kind = 'record'`)
+      .get() as { last_sort_value: number } | undefined
+  )?.last_sort_value ?? null
 
 const rowOf = (itemId: string) =>
   harness.raw
@@ -290,5 +314,59 @@ describe('record packs carry the pull item (#5227)', () => {
     vi.mocked(storage.get).mockRestore()
 
     expect((await packedRecordItems()).map(({ item }) => item)).toEqual(before)
+  })
+
+  // REVIEW-5253 probe b: the shed empties a tombstone in place, keeping its
+  // cursor, between selection and the R2 GET. A hole there would move the
+  // watermark past a row that never moves again.
+  it('abandons the range when a tombstone is shed during the build', async () => {
+    const app = buildApp()
+    await push(app, [{ id: 'task-x', operation: 'create', clock: { [DEVICE_ID]: 1 } }])
+    await expiredTombstone(app, 'task-x')
+    await push(app, [{ id: 'task-y', operation: 'create', clock: { [DEVICE_ID]: 1 } }])
+    const shedding = rowOf('task-x')
+    let shed = 0
+    const realGet = storage.get.bind(storage)
+    vi.spyOn(storage, 'get').mockImplementation(async (key: string) => {
+      if (key === shedding.blob_key) shed = await cleanupExpiredTombstones(harness.db, storage)
+      return realGet(key)
+    })
+
+    const raced = await compactOneRange(harness.db, storage, SCOPE, 'record')
+    vi.mocked(storage.get).mockRestore()
+
+    expect(shed).toBe(1)
+    expect(raced.built).toBe(false)
+    expect(recordWatermark()).toBeNull()
+    expect(rowOf('task-x')).toEqual({ blob_key: '', server_cursor: shedding.server_cursor })
+
+    // The next run reads the marker as it now is: no payload, no entry.
+    await compactOneRange(harness.db, storage, SCOPE, 'record')
+    expect((await packedRecordItems()).map(({ item }) => item)).toEqual(await pull(app, ['task-y']))
+    expect(recordWatermark()).toBe(rowOf('task-y').server_cursor)
+  })
+
+  // REVIEW-5253 probe a, the documented outcome for #5254: a tombstone shed
+  // before it was packed is never an entry, so the packs keep only the live
+  // version. A reader that trusted packs and tailed from their maxCursor would
+  // resurrect the item; GET /sync/manifest is what says it is gone. Step 09
+  // (#5232) makes its reader pass this by reconciling against the manifest.
+  it('a record-pack reader must reconcile against GET /sync/manifest: packs keep a shed tombstone live', async () => {
+    const app = buildApp()
+    await push(app, [
+      { id: 'task-x', operation: 'create', clock: { [DEVICE_ID]: 1 } },
+      { id: 'task-y', operation: 'create', clock: { [DEVICE_ID]: 1 } }
+    ])
+    await compactVault(harness.db, storage, SCOPE)
+    await expiredTombstone(app, 'task-x')
+    await push(app, [{ id: 'task-z', operation: 'create', clock: { [DEVICE_ID]: 1 } }])
+    expect(await cleanupExpiredTombstones(harness.db, storage)).toBe(1)
+    await compactVault(harness.db, storage, SCOPE)
+
+    const packedX = (await packedRecordItems()).filter(({ item }) => item.id === 'task-x')
+    expect(packedX.map(({ item }) => item.operation)).toEqual(['create'])
+    expect(recordWatermark()).toBe(rowOf('task-z').server_cursor)
+    expect(rowOf('task-x').server_cursor).toBeLessThan(rowOf('task-z').server_cursor)
+    expect(await manifestIds(app)).toEqual(['task-y', 'task-z'])
   })
 })

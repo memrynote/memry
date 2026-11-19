@@ -1,17 +1,20 @@
-import { PACK_MAX_INDEX_ENTRY_BYTES } from '@memry/contracts/pack-format'
-
 import { AppError, ErrorCodes } from '../lib/errors'
 import { createLogger } from '../lib/logger'
 import {
   openPack,
-  packIndexRecordBytes,
-  packSha256,
   type PackEntryMeta,
   type PackEntryPlan,
   type PackEntryPlanMeta,
   type PackKindName
 } from './pack-format'
-import { isSupportedRecordSyncItemType, recordMetaFromColumns } from './sync'
+import {
+  isSelectedRecordVersion,
+  recordEntryOf,
+  recordRowChangedInPlace,
+  recordSelectionQuery,
+  type RecordEntry,
+  type RecordRow
+} from './pack-record-selection'
 
 const logger = createLogger('PackCompaction')
 
@@ -123,7 +126,7 @@ export interface PackSelection {
     sourceKey: string
     sizeBytes: number
     /** Record entries: the pull-item meta and the content hash of the same D1 row. */
-    record?: { meta: PackEntryPlanMeta; contentHash: string }
+    record?: RecordEntry
   }>
   /** Progress marker AFTER the last candidate (composite, exclusive). */
   nextSortValue: number
@@ -172,23 +175,7 @@ export const selectCandidates = async (
 
   const query =
     kind === 'record'
-      ? {
-          sql: `SELECT server_cursor AS sort_key, item_type || ':' || item_id AS tiebreak, item_type, item_id, blob_key, size_bytes,
-                  content_hash, crypto_version, operation, signer_device_id, signature, clock, deleted_at
-                FROM sync_items
-                WHERE user_id = ? AND vault_id = ?
-                  AND (server_cursor > ? OR (server_cursor = ? AND (item_type || ':' || item_id) > ?))
-                ORDER BY server_cursor ASC, tiebreak ASC
-                LIMIT ?`,
-          bind: [
-            scope.userId,
-            scope.vaultId,
-            watermark.last_sort_value,
-            watermark.last_sort_value,
-            watermark.last_sort_tiebreak,
-            PACK_MAX_ITEMS
-          ]
-        }
+      ? recordSelectionQuery(scope, watermark, PACK_MAX_ITEMS)
       : {
           // A deleted note keeps its snapshot row, and a packed body lands on a
           // fresh device before the tombstone that deletes it. A note id with
@@ -268,55 +255,6 @@ export const selectCandidates = async (
     nextTiebreak: last.tiebreak
   }
 }
-
-interface RecordRow {
-  tiebreak: string
-  item_type: string
-  item_id: string
-  blob_key: string
-  content_hash: string
-  crypto_version: number
-  operation: string
-  signer_device_id: string | null
-  signature: string | null
-  clock: string | null
-  deleted_at: number | null
-}
-
-/**
- * The meta and content hash of one record entry, read from the same row, or
- * null when the row cannot be an entry: `POST /sync/pull` would not serve it
- * as an item either (protocol 08 §8.4.2). A purged tombstone has no payload
- * (`blob_key` ''), an unknown type is never pulled, a row without signer
- * metadata or with a corrupt clock fails the pull, and an index entry above
- * PACK_MAX_INDEX_ENTRY_BYTES fails every conforming reader.
- */
-const recordEntryOf = (row: RecordRow): { meta: PackEntryPlanMeta; contentHash: string } | null => {
-  if (row.blob_key === '' || !isSupportedRecordSyncItemType(row.item_type)) return null
-  if (!row.signer_device_id || !row.signature) return null
-  let meta: PackEntryPlanMeta
-  try {
-    meta = recordMetaFromColumns({
-      id: row.item_id,
-      type: row.item_type,
-      operation: row.operation,
-      cryptoVersion: row.crypto_version,
-      signature: row.signature,
-      signerDeviceId: row.signer_device_id,
-      deletedAt: row.deleted_at,
-      clock: row.clock
-    })
-  } catch {
-    logger.warn('record row has a corrupt clock; left out of packs', { itemType: row.item_type })
-    return null
-  }
-  const indexBytes = packIndexRecordBytes({ id: row.tiebreak, sourceKey: row.blob_key, meta })
-  if (indexBytes > PACK_MAX_INDEX_ENTRY_BYTES) return null
-  return { meta, contentHash: row.content_hash }
-}
-
-const toHex = (bytes: Uint8Array): string =>
-  Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
 
 const rowList = <T>(result: { results?: T[] }): T[] => result.results ?? []
 
@@ -437,6 +375,7 @@ export const compactOneRange = async (
   // payload bytes are never retained twice, so peak stays at the pack buffer
   // plus ONE transient blob rather than payload + assembled copy.
   const holes: string[] = []
+  const missingRecords: PackEntryPlan[] = []
   let writtenCount = 0
   for (let i = 0; i < plans.length; i += PACK_FETCH_CONCURRENCY) {
     const window = plans.slice(i, i + PACK_FETCH_CONCURRENCY)
@@ -455,6 +394,7 @@ export const compactOneRange = async (
         // abort the whole range before the watermark moves.
         pack.skipEntry(plan)
         holes.push(plan.id)
+        if (record) missingRecords.push(plan)
         continue
       }
       const bytes = new Uint8Array(await body.arrayBuffer())
@@ -494,7 +434,7 @@ export const compactOneRange = async (
       // exactly the bytes it hashed). A push that replaced the row after
       // selection fails here or 404s above, and its new row sits at a higher
       // cursor, so the tail serves it.
-      if (record && toHex(await packSha256(bytes)) !== record.contentHash) {
+      if (record && !(await isSelectedRecordVersion(bytes, record))) {
         logger.warn('record payload is not the selected version; skipping', { kind })
         pack.skipEntry(plan)
         holes.push(plan.id)
@@ -503,6 +443,14 @@ export const compactOneRange = async (
       await pack.writeEntry(plan, bytes)
       writtenCount++
     }
+  }
+
+  // A record row emptied in place (tombstone shed) keeps its cursor, so a hole
+  // for it is never revisited. Abandon the range without moving the
+  // watermark; the next run reads the row as it now is (REVIEW-5253).
+  if (await recordRowChangedInPlace(db, scope, missingRecords)) {
+    logger.info('record row changed in place during a build; range abandoned', { kind })
+    return { ...noop, holes }
   }
 
   if (writtenCount === 0) {
