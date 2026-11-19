@@ -102,8 +102,9 @@ fn window_copy(state: &[u8]) -> Doc {
     doc
 }
 
-/// What the window authors writing `marks` over its copy (`writeCriticMarkupMarksToYDoc`:
-/// the whole array deleted, then the marks pushed).
+/// What a window that rewrites the whole array authors over its copy: the
+/// array deleted, then `marks` pushed. Frozen Electron writes this way;
+/// `writeCriticMarkupMarksToYDoc` now writes per id (protocol 12.5.1).
 fn window_writes_marks(copy: &Doc, marks: &[Value]) -> Vec<u8> {
     let before = copy.transact().state_vector();
     let array = copy.get_or_insert_array(MARKS);
