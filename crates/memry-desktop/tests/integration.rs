@@ -289,6 +289,8 @@ mod notes_folders;
 mod notes_frontmatter;
 #[path = "notes_identity.rs"]
 mod notes_identity;
+#[path = "notes_import_files.rs"]
+mod notes_import_files;
 #[path = "notes_kept.rs"]
 mod notes_kept;
 #[path = "notes_link_rewrite.rs"]
@@ -305,6 +307,8 @@ mod notes_moves_edges;
 mod notes_outside_after_reopen;
 #[path = "notes_outside_tags.rs"]
 mod notes_outside_tags;
+#[path = "notes_plain_checklists.rs"]
+mod notes_plain_checklists;
 #[path = "notes_properties.rs"]
 mod notes_properties;
 #[path = "notes_resolve_refs.rs"]
