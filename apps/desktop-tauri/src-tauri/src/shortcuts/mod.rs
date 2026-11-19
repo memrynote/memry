@@ -12,8 +12,8 @@ use memry_desktop::launch_env::LaunchEnv;
 use memry_desktop::session::Session;
 use memry_desktop::settings::SettingsService;
 use memry_desktop::shell::shortcut::{
-    GlobalCapture, GlobalCaptureResult, Keys, OnFire, RegisterError, ShortcutBinding,
-    ShortcutStatus, is_wayland,
+    ConfiguredShortcut, GlobalCapture, GlobalCaptureResult, Keys, OnFire, RegisterError,
+    ShortcutBinding, ShortcutStatus, is_wayland,
 };
 use memry_desktop::telemetry::main_warning::Level;
 use serde_json::Value;
@@ -27,11 +27,28 @@ use crate::startup::{self, Stage};
 /// Opens the quick capture window.
 pub type OpenHandler = Arc<dyn Fn(&AppHandle<Wry>) + Send + Sync>;
 
-#[derive(Default)]
+pub mod sticky;
+
 pub struct ShortcutService {
     capture: Mutex<GlobalCapture>,
     open: Mutex<Option<OpenHandler>>,
     presses: AtomicU64,
+    /// The sticky's shortcut (`keyboard.stickyShortcut`), held only while a vault is open.
+    sticky: Mutex<ConfiguredShortcut>,
+}
+
+impl Default for ShortcutService {
+    fn default() -> Self {
+        Self {
+            capture: Mutex::default(),
+            open: Mutex::default(),
+            presses: AtomicU64::default(),
+            sticky: Mutex::new(ConfiguredShortcut::new(
+                "Sticky",
+                "sticky_shortcut_register_failed",
+            )),
+        }
+    }
 }
 
 pub fn register_stages() {
@@ -168,6 +185,10 @@ impl ShortcutService {
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
             .release_all(&PluginKeys(app));
+        self.sticky
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .release(&PluginKeys(app));
     }
 
     fn report(&self, app: &AppHandle<Wry>, result: &GlobalCaptureResult) {
@@ -229,8 +250,9 @@ pub fn read_binding(app: &AppHandle<Wry>, field: &str) -> Option<ShortcutBinding
     }
 }
 
-/// Re-reads `keyboard.globalCapture` and converges.
+/// Re-reads `keyboard.globalCapture` and `keyboard.stickyShortcut` and converges on both.
 pub fn apply_from_settings(app: &AppHandle<Wry>) -> GlobalCaptureResult {
+    sticky::apply_from_settings(app);
     let binding = read_binding(app, "globalCapture");
     app.state::<ShortcutService>().apply(app, binding.as_ref())
 }

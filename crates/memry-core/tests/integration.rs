@@ -41,6 +41,8 @@ mod api_search_cjk;
 #[cfg(feature = "markdown")]
 #[path = "api_search_file_text.rs"]
 mod api_search_file_text;
+#[path = "api_sticky_store.rs"]
+mod api_sticky_store;
 #[path = "api_sync_declaration.rs"]
 mod api_sync_declaration;
 #[path = "api_sync_oversized_update.rs"]
@@ -67,6 +69,8 @@ mod api_vault_sync;
 mod attachment_cache;
 #[path = "attachment_download.rs"]
 mod attachment_download;
+#[path = "attachment_holds.rs"]
+mod attachment_holds;
 #[path = "attachment_manifest_vectors.rs"]
 mod attachment_manifest_vectors;
 #[path = "attachment_plan.rs"]
@@ -217,6 +221,8 @@ mod domain_notes;
 mod domain_projects;
 #[path = "domain_projects_links.rs"]
 mod domain_projects_links;
+#[path = "domain_projects_statuses.rs"]
+mod domain_projects_statuses;
 #[path = "domain_projects_write.rs"]
 mod domain_projects_write;
 #[path = "domain_related_items.rs"]
@@ -264,6 +270,8 @@ mod domain_templates;
 #[cfg(feature = "markdown")]
 #[path = "driver_snapshots.rs"]
 mod driver_snapshots;
+#[path = "driver_vault_header.rs"]
+mod driver_vault_header;
 #[path = "dryoc_parity.rs"]
 mod dryoc_parity;
 #[path = "editor_compaction.rs"]
@@ -294,6 +302,8 @@ mod header_tags;
 mod header_tags_untrusted;
 #[path = "http_client.rs"]
 mod http_client;
+#[path = "inbox_seed_sync.rs"]
+mod inbox_seed_sync;
 #[path = "inbox_suggest_vectors.rs"]
 mod inbox_suggest_vectors;
 #[path = "inbox_vectors.rs"]
@@ -467,6 +477,9 @@ mod sync_hardening_orphans;
 mod sync_hardening_purged;
 #[path = "sync_hardening_repairs.rs"]
 mod sync_hardening_repairs;
+#[cfg(feature = "markdown")]
+#[path = "sync_list_fields_union.rs"]
+mod sync_list_fields_union;
 #[path = "sync_note_body_feed.rs"]
 mod sync_note_body_feed;
 #[path = "sync_outbox.rs"]
