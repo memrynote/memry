@@ -429,6 +429,21 @@ pub enum SyncError {
     AttachmentCorrupt { what: String },
 }
 
+impl SyncError {
+    /// A request the caller cut ([`TransportError::Cancelled`]): a paused
+    /// driver's, never a failure of the pass.
+    pub fn is_cancelled(&self) -> bool {
+        matches!(
+            self,
+            Self::Api {
+                source: ApiError::Transport {
+                    source: TransportError::Cancelled
+                }
+            }
+        )
+    }
+}
+
 /// Why a property write was refused, as the shell meets it.
 ///
 /// A separate type from [`crate::domain::properties::PropertyError`] rather
