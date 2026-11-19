@@ -59,8 +59,10 @@ use crate::seams::secure_store::{
 };
 use crate::vault::fs_atomic::atomic_write;
 use checks::{check_device, check_master};
+use ledger::{Ledger, Written};
 
 mod checks;
+mod ledger;
 
 /// Electron's service of the five sync secrets (`KEYCHAIN_ENTRIES`).
 const ELECTRON_SYNC: &str = "com.memry.sync";
@@ -342,46 +344,6 @@ fn plan(
         }
     }
     Ok(plan)
-}
-
-enum Written {
-    Sync(SecureStoreKey),
-    Generic { service: String, account: String },
-}
-
-/// What this run wrote, deleted again in reverse on a failure.
-#[derive(Default)]
-struct Ledger(Vec<Written>);
-
-impl Ledger {
-    fn roll_back(self, keyring: &KeyringStore, cause: SecretsError) -> SecretsError {
-        let mut left = 0;
-        for written in self.0.into_iter().rev() {
-            let result = match &written {
-                Written::Sync(key) => keyring.delete(*key),
-                Written::Generic { service, account } => keyring.delete_secret(service, account),
-            };
-            if let Err(error) = result {
-                left += 1;
-                let what = match &written {
-                    Written::Sync(key) => kind(*key).to_owned(),
-                    Written::Generic { service, .. } => service.clone(),
-                };
-                tracing::warn!(
-                    scope = "ElectronImport",
-                    "the rollback could not remove the {what} this run wrote: {error}"
-                );
-            }
-        }
-        if left == 0 {
-            cause
-        } else {
-            SecretsError::RollbackIncomplete {
-                cause: Box::new(cause),
-                left,
-            }
-        }
-    }
 }
 
 /// Slots that need a write, after reading every target once. Nothing is written yet.
