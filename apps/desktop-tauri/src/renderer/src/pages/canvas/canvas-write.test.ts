@@ -23,7 +23,8 @@ describe('writeCanvas with no live editor', () => {
       ownerNoteId: null,
       createdAt: 1,
       updatedAt: 7,
-      scene: JSON.stringify({ type: 'excalidraw', elements: [] })
+      scene: JSON.stringify({ type: 'excalidraw', elements: [] }),
+      sha256: 'sha-7'
     })
     commands.canvasUpdate.mockResolvedValue({ updatedAt: 9, tooLarge: true })
 
@@ -33,7 +34,8 @@ describe('writeCanvas with no live editor', () => {
     expect(commands.canvasUpdate).toHaveBeenCalledWith({
       id: 'c1',
       scene: JSON.stringify({ type: 'excalidraw', elements: [] }),
-      expectedUpdatedAt: 7
+      expectedUpdatedAt: 7,
+      expectedSha256: 'sha-7'
     })
     expect(result).toMatchObject({ updatedAt: 9, tooLarge: true, path: 'headless' })
   })

@@ -109,6 +109,8 @@ fn a_canvas_written_through_its_commands_is_announced_with_electrons_payloads() 
     let read = tauri::async_runtime::block_on(canvas_get(app(), id.clone()))
         .unwrap()
         .unwrap();
+    assert_eq!(read.sha256, created.sha256);
+    assert!(serde_json::to_value(&read).unwrap()["sha256"].is_string());
     let stale: CanvasUpdateInput = serde_json::from_value(json!({
         "id": id,
         "scene": read.scene,
@@ -150,6 +152,15 @@ fn a_folder_refusal_reaches_the_renderer_as_its_code_and_key() {
     .unwrap_err();
     assert_eq!(refused.code, "CANVAS_FOLDER_EXISTS");
     assert_eq!(refused.message, "errors:canvasFolder.exists");
+
+    // A canvas command refuses a folder in the same words as the folder commands.
+    let deep = CanvasCreateInput {
+        folder: Some("A/B/C/D/E/F/G/H/I".into()),
+        ..CanvasCreateInput::default()
+    };
+    let refused = tauri::async_runtime::block_on(canvas_create(app(), deep)).unwrap_err();
+    assert_eq!(refused.code, "CANVAS_FOLDER_DEPTH");
+    assert_eq!(refused.message, "errors:canvasFolder.depth");
 
     let renamed =
         tauri::async_runtime::block_on(canvas_folder_rename(app(), "work".into(), "Plans".into()))

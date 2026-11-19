@@ -2,8 +2,8 @@
 //! [`memry_core::domain::canvas::folders`], which owns the records. A folder is a real directory
 //! under `<vault>/canvases`.
 //!
-//! Create makes the directory first. A rename or move refuses a destination that exists on disk,
-//! moves the directory, and moves it back when the record write fails, so disk and records never
+//! Create makes the directory first. A rename or move refuses a destination that exists on disk
+//! and a canvas or folder it would carry past the depth cap, then moves the directory, and moves it back when the record write fails, so disk and records never
 //! disagree about where a canvas is; the canvases' `canvas_files` rows follow in the same writer
 //! call. Delete deletes the records first, then sends the directory to the OS trash, and never
 //! removes it any other way: it can hold anything the user put there.
@@ -12,12 +12,12 @@ use std::fs;
 use std::path::PathBuf;
 
 use memry_core::api::errors::StorageError;
-use memry_core::domain::canvas::edges;
 use memry_core::domain::canvas::folder_paths::{
     CanvasFolderError, canvas_path_key, folder_segments, is_descendant_folder, join_folder,
-    parent_folder,
+    parent_folder, rewrite_folder_prefix,
 };
 use memry_core::domain::canvas::folders::{self, FolderWriteError};
+use memry_core::domain::canvas::{self, edges};
 use memry_core::domain::canvas_folder::{self, CanvasFolder};
 use rusqlite::Connection;
 use serde::Serialize;
@@ -219,6 +219,16 @@ impl CanvasService {
             {
                 return Err(CanvasFolderError::Exists.into());
             }
+        }
+        // Depth breaches of anything carried are refused before the disk (`folder-store.ts:430`).
+        let canvases = canvas::list(conn, self.canvases.vault_id())?;
+        let folders = canvas_folder::list(conn)?;
+        let carried = canvases
+            .iter()
+            .map(|canvas| canvas.folder.as_deref())
+            .chain(folders.iter().map(|folder| Some(folder.path.as_str())));
+        for placed in carried {
+            rewrite_folder_prefix(placed, &folder.path, &to)?;
         }
         let undo = self.move_dir(&folder.path, &to)?;
         let relocated = folders::relocate(

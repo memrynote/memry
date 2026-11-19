@@ -1491,11 +1491,18 @@ export type CanvasUpdateInput = {
 	folder?: string | null,
 	icon?: string | null,
 	expectedUpdatedAt?: number | null,
+	/**
+	 *  The `sha256` of the [`CanvasView`] the scene was drawn over; absent or `null` when the
+	 *  reader got no document. A scene saved over other bytes first keeps them as a copy.
+	 */
+	expectedSha256?: string | null,
 };
 
 /**  `CanvasUpdateResponse`. */
 export type CanvasUpdateResponse = {
 	tooLarge: boolean,
+	/**  The document's sha256 after the save: the saver's next `expectedSha256`. */
+	sha256: string | null,
 } & CanvasSummaryView;
 
 /**  A canvas was saved, renamed or moved (`canvas:updated`). */
@@ -1509,6 +1516,11 @@ export type CanvasUpdatedEvent = {
  */
 export type CanvasView = {
 	scene: string,
+	/**
+	 *  The sha256 of the document bytes this reader got, `null` when it got none. The reader
+	 *  sends it back as `expectedSha256`, so its save never replaces bytes it did not see.
+	 */
+	sha256: string | null,
 	unreadable?: boolean | null,
 } & CanvasSummaryView;
 

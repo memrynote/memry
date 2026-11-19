@@ -6,6 +6,8 @@
 //! | a new canvas is a document named for its title, its id inside | `store.ts:150-215`              |
 //! | a reserved folder name is stored as its disk spelling         | `store.ts:165-171`              |
 //! | a save never overwrites an edit made on disk since it was read | departure: Electron overwrites |
+//! | a read by another reader never lets a stale save overwrite    | departure: Electron overwrites  |
+//! | a save over a document no longer a drawing keeps it aside     | `store.ts:338-420` (overwrites) |
 //! | an out-of-date save is refused and writes nothing             | `store.ts:316-318`              |
 //! | a move renames the document and the title follows its number  | `store.ts:338-399`              |
 //! | a document moved outside the app is found by its id           | departure: Electron unreadable  |
@@ -121,17 +123,38 @@ impl World {
         self.canvases.create(&input, NOW).unwrap()
     }
 
+    /// Saves over the document as read just now.
     pub fn save(&self, id: &str, label: &str) -> Update {
+        let read = self.canvases.get(id).unwrap().unwrap();
+        self.save_over(id, label, read.sha256)
+    }
+
+    /// Saves a scene drawn over the document bytes `read` (`CanvasView::sha256`).
+    pub fn save_over(&self, id: &str, label: &str, read: Option<String>) -> Update {
         let input = CanvasUpdateInput {
             id: id.to_owned(),
             scene: Some(scene(label)),
+            expected_sha256: read,
             ..CanvasUpdateInput::default()
         };
         self.canvases.update(&input, NOW + 10).unwrap()
     }
 
+    fn edit_on_disk(&self, id: &str, label: &str) {
+        let meta = FileMeta {
+            id: id.to_owned(),
+            created_at: NOW,
+            updated_at: NOW,
+        };
+        fs::write(
+            self.vault.join("canvases/Plan.excalidraw"),
+            with_file_meta(&scene(label), &meta),
+        )
+        .unwrap();
+    }
+
     pub fn scene_of(&self, id: &str) -> String {
-        self.canvases.get(id, NOW).unwrap().unwrap().scene
+        self.canvases.get(id).unwrap().unwrap().scene
     }
 }
 
@@ -168,20 +191,10 @@ fn a_save_never_overwrites_an_edit_made_on_disk_since_it_was_read() {
     let w = world();
     let plan = w.create("Plan", None, "a");
     let id = plan.canvas.summary.id.clone();
-    w.scene_of(&id);
-    let meta = FileMeta {
-        id: id.clone(),
-        created_at: NOW,
-        updated_at: NOW,
-    };
-    let edited = scene("edited-on-disk");
-    fs::write(
-        w.vault.join("canvases/Plan.excalidraw"),
-        with_file_meta(&edited, &meta),
-    )
-    .unwrap();
+    let read = w.canvases.get(&id).unwrap().unwrap();
+    w.edit_on_disk(&id, "edited-on-disk");
 
-    let Update::Saved { conflict_copy, .. } = w.save(&id, "from-app") else {
+    let Update::Saved { conflict_copy, .. } = w.save_over(&id, "from-app", read.sha256) else {
         panic!("the save lands");
     };
     let copy = conflict_copy.expect("the edit on disk is kept as a copy");
@@ -201,6 +214,50 @@ fn a_save_never_overwrites_an_edit_made_on_disk_since_it_was_read() {
         panic!("the save lands");
     };
     assert!(conflict_copy.is_none());
+}
+
+#[test]
+fn a_read_by_another_reader_never_lets_a_stale_save_overwrite_a_disk_edit() {
+    let w = world();
+    let id = w.create("Plan", None, "a").canvas.summary.id;
+    let a = w.canvases.get(&id).unwrap().unwrap();
+    w.edit_on_disk(&id, "edited-on-disk");
+    // Another window, an embedding note or the agent reads the canvas.
+    let b = w.canvases.get(&id).unwrap().unwrap();
+    assert_ne!(a.sha256, b.sha256);
+
+    let Update::Saved { conflict_copy, .. } = w.save_over(&id, "from-a", a.sha256) else {
+        panic!("the save lands");
+    };
+    let copy = conflict_copy.expect("the edit on disk is kept as a copy");
+    assert!(
+        w.scene_of(&copy.canvas.summary.id)
+            .contains("edited-on-disk")
+    );
+    assert!(w.file("canvases/Plan.excalidraw").contains("from-a"));
+}
+
+#[test]
+fn a_save_over_a_document_no_longer_a_drawing_keeps_it_aside() {
+    let w = world();
+    let id = w.create("Plan", None, "a").canvas.summary.id;
+    let read = w.canvases.get(&id).unwrap().unwrap();
+    fs::write(w.vault.join("canvases/Plan.excalidraw"), "not a drawing").unwrap();
+
+    let Update::Saved { sha256, .. } = w.save_over(&id, "strokes", read.sha256) else {
+        panic!("the save lands");
+    };
+    assert!(w.file("canvases/Plan.excalidraw").contains("strokes"));
+    assert_eq!(
+        w.file("canvases/Plan (conflict copy).excalidraw"),
+        "not a drawing"
+    );
+    // The next save is over what this one wrote.
+    let Update::Saved { conflict_copy, .. } = w.save_over(&id, "more", sha256) else {
+        panic!("the save lands");
+    };
+    assert!(conflict_copy.is_none());
+    assert!(w.file("canvases/Plan.excalidraw").contains("more"));
 }
 
 #[test]
@@ -288,7 +345,7 @@ fn a_document_linking_outside_the_vault_is_never_read_or_written() {
     fs::remove_file(w.vault.join("canvases/Plan.excalidraw")).unwrap();
     std::os::unix::fs::symlink(&outside, w.vault.join("canvases/Plan.excalidraw")).unwrap();
 
-    let read = w.canvases.get(&id, NOW).unwrap().unwrap();
+    let read = w.canvases.get(&id).unwrap().unwrap();
     assert_eq!(read.unreadable, Some(true));
     assert_eq!(read.scene, "");
     let input = CanvasUpdateInput {
@@ -332,7 +389,7 @@ fn a_delete_trashes_the_document_or_unlinks_it() {
     assert!(w.canvases.delete(&id, NOW + 1).unwrap());
     assert!(!w.vault.join("canvases/Plan.excalidraw").exists());
     assert!(w.vault.join(".trash/Plan.excalidraw").is_file());
-    assert!(w.canvases.get(&id, NOW).unwrap().is_none());
+    assert!(w.canvases.get(&id).unwrap().is_none());
     assert!(!w.canvases.delete(&id, NOW + 2).unwrap());
 
     let w = world_with(refusing_trash);

@@ -229,6 +229,11 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "canvases",
         sql: include_str!("migrations/data/0036_canvases.sql"),
     },
+    Migration {
+        version: 37,
+        name: "canvas_scene_marks",
+        sql: include_str!("migrations/data/0037_canvas_scene_marks.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.
@@ -417,6 +422,8 @@ fn set_user_version(conn: &Connection, version: u32) -> Result<(), StorageError>
 mod agent_records_tests;
 #[cfg(test)]
 mod attachment_sync_tests;
+#[cfg(test)]
+mod canvas_scene_marks_tests;
 #[cfg(test)]
 mod canvases_tests;
 #[cfg(test)]
