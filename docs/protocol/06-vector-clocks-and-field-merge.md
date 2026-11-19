@@ -562,7 +562,7 @@ payload carries with the union of the local list and the remote list
    is refused: `TaskSyncPayloadSchema` accepts only an array of strings
    (`packages/contracts/src/sync-payloads.ts:56-58`), and the core flags the
    record corrupt with the item id and list name
-   (`crates/memry-core/src/domain/task_merge/carried.rs:108-140`).
+   (`crates/memry-core/src/domain/task_merge/carried.rs:200-232`).
 2. **Order.** Order is not part of the rule, and a reader MUST NOT depend on
    it. Electron builds the union as the local entries, then the remote's new
    ones (`[...new Set([...local, ...remote])]`, `:230`, `:235`, `:240`), but
@@ -593,7 +593,7 @@ payload carries with the union of the local list and the remote list
    §11.11) lets them push. A client that stored such a row verbatim would drop
    the local list and push the shorter list with its next edit. The core copies
    the local value into the remote payload before it stores the row
-   (`crates/memry-core/src/domain/task_merge/carried.rs:151-188`, called at
+   (`crates/memry-core/src/domain/task_merge/carried.rs:244-296`, called at
    `crates/memry-core/src/domain/task_merge.rs:180`).
    A tombstone, a remote that will not parse, and a deleted or corrupt local
    row keep nothing.
@@ -628,6 +628,13 @@ and after the apply branch (`:239-257`) alike
    concurrently retitles the project, the device that merges takes the other
    device's statuses, and §6.5.2 P3's re-push carries that result to every
    device. The rename survives only when the renaming device pushes first.
+   A status that one device adds, with tasks moved onto it, is dropped the
+   same way, and those tasks keep a `statusId` no status has: Electron clears
+   it to `null` on receipt (`resolveStatusId`,
+   `apps/desktop/src/main/sync/item-handlers/task-handler.ts:45-65`), the core
+   reads it as a to-do status
+   (`crates/memry-core/src/domain/tasks/structure.rs:164`), and no task data
+   is lost.
 2. **Wholesale branch.** A remote that omits an array keeps the local array.
    Electron builds that predate the project hub push no `links`, and the write
    floor (chapter 11 §11.11) lets them push. A client that stored such a row
@@ -639,10 +646,28 @@ and after the apply branch (`:239-257`) alike
    chapter 13 §13.4's clear on both branches, because its projector already
    reads an explicit `null` array as empty
    (`crates/memry-core/src/storage/repositories/projectors/projects.rs:113`).
-4. **Shape.** A remote array of any other shape is refused. The core flags the
-   record corrupt with the item id and array name on the concurrent branch
-   (`crates/memry-core/src/domain/task_merge/carried.rs:84-94`); the projector
-   flags it on the wholesale branch (`Kind::Array`, `projectors/projects.rs:41-42`).
+4. **Shape.** A remote array of any other shape is refused, and so is an
+   array with an entry that `StatusSyncSchema` or `ProjectLinkSyncSchema`
+   refuses (`packages/contracts/src/sync-payloads.ts:227-247`: a required key
+   missing, or a key of the wrong type, `null` included). On the concurrent
+   branch the core flags the record corrupt with the item id, the array name
+   and the entry's index
+   (`crates/memry-core/src/domain/task_merge/carried.rs:116-186`); stored, a
+   bad entry would be re-pushed at the union clock and every Electron peer
+   would refuse the row. On the wholesale branch the projector flags a
+   non-array (`Kind::Array`, `projectors/projects.rs:41-42`) and skips an
+   entry without an `id`; the core does not re-push that row.
+5. **A markdown note's link.** A markdown note's membership is its own
+   `project` property, a list of project names, and Electron derives the
+   note's link row from it. `reconcileLinks` deletes only table-owned rows
+   (`:116-137`, `listTableOwnedProjectLinks`), so no inbound project removes a
+   markdown note from a project. The core mirrors that link into the `links`
+   array (`crates/memry-core/src/domain/projects/links.rs:1-19`), so on both
+   branches it keeps each local `links` entry whose item is a markdown note
+   that the remote array does not list (matched by `itemId`) and whose
+   `project` property still names the project, under its local name or the
+   remote's. The kept entries follow the remote's entries
+   (`crates/memry-core/src/domain/projects/links.rs:212-243`).
 
 **Known divergence, inside an entry.** The core stores the remote array as the
 payload. Electron reconciles rows: a remote link without `pinned` keeps the
@@ -650,13 +675,14 @@ local row's pin (`:150`), a remote status keeps the local row's `createdAt`
 (`:53-61`), and a markdown note's link applies only `pinned` and `position` to
 the row this device derived from the note's `project` property, never
 membership (`:94-114`, `:119-131`). The core has no per-device derived link
-row: it mirrors a markdown note's link into the `links` array
-(`crates/memry-core/src/domain/projects/links.rs:1-19`), so the remote array is
-the whole truth on the core.
+row. A markdown note's remote entry, `pinned` and `position` included, replaces
+the local one, and a remote that lists a markdown note this device's property
+does not name still adds it to the hub. Item 5 keeps the membership the remote
+omits; it does not remove membership the remote adds.
 
 The core runs the rule in
 `crates/memry-core/src/domain/task_merge/carried.rs` (`Carry::Remote`), passed
-by `crates/memry-core/src/domain/projects/mod.rs:322-339`. The `field-merge`
+by `crates/memry-core/src/domain/projects/mod.rs:323-340`. The `field-merge`
 vector class does not cover it: the rule is inline in the project handler and
 not in `mergeProjectFields`. The two-device tests in
 `crates/memry-core/tests/sync_project_nested_arrays.rs` pin it.
