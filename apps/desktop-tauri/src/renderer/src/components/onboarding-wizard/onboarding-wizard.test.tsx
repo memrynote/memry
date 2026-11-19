@@ -27,6 +27,7 @@ vi.mock('@/contexts/auth-context', () => ({
   useAuth: () => ({ state: authState })
 }))
 
+import { trackTelemetry } from '@/lib/telemetry'
 import { commands } from '../../../../generated/bindings'
 import { FirstRunGate } from './first-run-gate'
 import { finishFirstRunWizard } from './first-run-store'
@@ -41,6 +42,18 @@ const press = async (name: RegExp | string): Promise<void> => {
     fireEvent.click(button)
   })
 }
+
+const toReady = async (): Promise<void> => {
+  await press(/welcome\.getStarted/)
+  await press(/keys\.continue/) // theme
+  await press(/keys\.continue/) // modules
+  await press(/keys\.continue/) // import
+  await press(/keys\.continue/) // agent
+  await press(/keys\.continue/) // storage
+}
+
+const startedCalls = (): unknown[][] =>
+  vi.mocked(trackTelemetry).mock.calls.filter(([name]) => name === 'onboarding_started')
 
 const toggle = async (name: string): Promise<void> => {
   await act(async () => {
@@ -170,14 +183,39 @@ describe('first-run wizard', () => {
     expect(screen.queryByRole('checkbox', { name: /Evernote/ })).not.toBeInTheDocument()
   })
 
+  it('sends no onboarding event while the wizard shows, before the metrics choice', async () => {
+    render(<FirstRunGate />)
+    await toReady()
+
+    expect(screen.getByRole('switch', { name: /ready\.metrics/ })).toBeInTheDocument()
+    expect(trackTelemetry).not.toHaveBeenCalled()
+  })
+
+  it('sends onboarding_started once, after metrics are turned on and the vault opens', async () => {
+    render(<FirstRunGate />)
+    await toReady()
+    await press(/ready\.open/)
+
+    await waitFor(() =>
+      expect(trackTelemetry).toHaveBeenCalledWith('onboarding_completed', expect.anything())
+    )
+    expect(startedCalls()).toEqual([
+      ['onboarding_started', { surface: 'onboarding', action: 'wizard' }]
+    ])
+    const [consentAt] = api.telemetry.setEnabled.mock.invocationCallOrder
+    const [openAt] = api.vault.create.mock.invocationCallOrder
+    const startedAt = vi
+      .mocked(trackTelemetry)
+      .mock.calls.findIndex(([name]) => name === 'onboarding_started')
+    expect(api.telemetry.setEnabled).toHaveBeenCalledWith(true)
+    expect(vi.mocked(trackTelemetry).mock.invocationCallOrder[startedAt]).toBeGreaterThan(
+      Math.max(consentAt, openAt)
+    )
+  })
+
   it('stores the metrics choice before the vault opens, and marks onboarding complete', async () => {
     render(<FirstRunGate />)
-    await press(/welcome\.getStarted/)
-    await press(/keys\.continue/) // theme
-    await press(/keys\.continue/) // modules
-    await press(/keys\.continue/) // import
-    await press(/keys\.continue/) // agent
-    await press(/keys\.continue/) // storage
+    await toReady()
     await act(async () => {
       fireEvent.click(screen.getByRole('switch', { name: /ready\.metrics/ }))
     })
@@ -191,6 +229,8 @@ describe('first-run wizard', () => {
     const [openAt] = api.vault.create.mock.invocationCallOrder
     expect(consentAt).toBeLessThan(openAt)
     expect(localStorage.getItem('memry:onboarding:star:v1')).toBe('pending')
+    // Metrics off: the wizard never says it started.
+    expect(startedCalls()).toEqual([])
   })
 
   it('shows the vault picker, not the wizard, when this computer already knows a vault', async () => {

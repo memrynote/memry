@@ -1,4 +1,5 @@
 use std::fs;
+use std::io::{self, Write};
 
 use memry_test_kit::{on_small_stack, proptest_config};
 use proptest::prelude::*;
@@ -58,8 +59,9 @@ fn lists_existing_vaults_in_registry_order_named_by_folder() {
 fn a_missing_registry_is_no_vaults() {
     let temp = tempfile::tempdir().unwrap();
     assert!(read_obsidian_vaults(&temp.path().join("obsidian.json")).is_empty());
-    let sources = detect_sources(temp.path(), temp.path());
+    let sources = detect_sources(temp.path(), &[temp.path().join("Applications")]);
     assert!(sources.obsidian_vaults.is_empty());
+    assert!(sources.installed_apps.is_empty());
 }
 
 #[test]
@@ -96,22 +98,37 @@ fn an_array_of_vaults_reads_like_object_values() {
 fn registry_over_the_cap_is_refused_unparsed() {
     let temp = tempfile::tempdir().unwrap();
     let work = vault_dir(temp.path(), "Work");
-    let mut body =
-        serde_json::json!({ "vaults": { "a": { "path": work } }, "pad": "" }).to_string();
-    let pad = " ".repeat(OBSIDIAN_REGISTRY_CAP as usize);
-    body.insert_str(body.len() - 1, &pad);
-    let registry = registry_with(temp.path(), &body);
-    assert!(read_obsidian_vaults(&registry).is_empty());
+    let json = serde_json::json!({ "vaults": { "a": { "path": work } } }).to_string();
+    // Spaces after the document keep it valid JSON, so a read cut short anywhere still parses.
+    let padded = |len: u64| format!("{json}{}", " ".repeat(len as usize - json.len()));
 
-    let at_cap = format!(
-        "{}{}",
-        serde_json::json!({ "vaults": { "a": { "path": work } } }),
-        " ".repeat(64)
-    );
-    assert_eq!(
-        read_obsidian_vaults(&registry_with(temp.path(), &at_cap)).len(),
-        1
-    );
+    let at_cap = registry_with(temp.path(), &padded(OBSIDIAN_REGISTRY_CAP));
+    assert_eq!(read_obsidian_vaults(&at_cap).len(), 1);
+    let over = registry_with(temp.path(), &padded(OBSIDIAN_REGISTRY_CAP + 1));
+    assert!(read_obsidian_vaults(&over).is_empty());
+}
+
+/// A registry that never ends is refused once the read passes the cap, not read to its end.
+#[cfg(unix)]
+#[test]
+fn the_registry_read_stops_past_the_cap() {
+    let temp = tempfile::tempdir().unwrap();
+    let registry = temp.path().join("obsidian.json");
+    let made = std::process::Command::new("mkfifo")
+        .arg(&registry)
+        .status()
+        .unwrap();
+    assert!(made.success());
+    let fifo = registry.clone();
+    let writer = std::thread::spawn(move || {
+        let mut pipe = fs::OpenOptions::new().write(true).open(&fifo).unwrap();
+        // Twice the cap: the write completes only when the reader takes all of it.
+        pipe.write_all(&vec![b' '; 2 * OBSIDIAN_REGISTRY_CAP as usize])
+    });
+
+    assert!(read_obsidian_vaults(&registry).is_empty());
+    let written = writer.join().unwrap().map_err(|error| error.kind());
+    assert_eq!(written, Err(io::ErrorKind::BrokenPipe));
 }
 
 #[test]
@@ -167,15 +184,37 @@ fn installed_apps_are_mac_only() {
     let temp = tempfile::tempdir().unwrap();
     fs::create_dir_all(temp.path().join("Applications").join("Notion.app")).unwrap();
     assert!(
-        detect_sources(temp.path(), temp.path())
+        detect_sources(temp.path(), &[temp.path().join("Applications")])
             .installed_apps
             .is_empty()
     );
 }
 
-fn client() -> reqwest::Client {
+#[test]
+fn only_a_folder_with_memry_is_a_vault() {
+    let temp = tempfile::tempdir().unwrap();
+    assert!(!is_memry_vault(temp.path()));
+    fs::create_dir(temp.path().join(".memry")).unwrap();
+    assert!(is_memry_vault(temp.path()));
+}
+
+/// Electron's `existsSync` answers `false` for a folder it cannot look into (`EACCES`).
+#[cfg(unix)]
+#[test]
+fn a_folder_that_cannot_be_looked_into_is_not_a_vault() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let temp = tempfile::tempdir().unwrap();
+    let folder = temp.path().join("Locked");
+    fs::create_dir_all(folder.join(".memry")).unwrap();
+    fs::set_permissions(&folder, fs::Permissions::from_mode(0o000)).unwrap();
+    let locked = is_memry_vault(&folder);
+    fs::set_permissions(&folder, fs::Permissions::from_mode(0o700)).unwrap();
+    assert!(!locked);
+}
+
+fn install_crypto() {
     let _ = rustls::crypto::ring::default_provider().install_default();
-    crate::http::builder().no_proxy().build().unwrap()
 }
 
 /// A server that answers each connection with `status`, and sends the request line it saw.
@@ -198,24 +237,27 @@ async fn serve(status: &'static str) -> (String, tokio::sync::mpsc::UnboundedRec
 
 #[tokio::test]
 async fn a_server_that_lists_models_answers() {
+    install_crypto();
     let (base, mut requests) = serve("200 OK").await;
-    assert!(local_server_answers(&client(), &base).await);
+    assert!(local_server_answers(&base).await);
     assert_eq!(requests.recv().await.unwrap(), "GET /v1/models HTTP/1.1");
 }
 
 #[tokio::test]
 async fn an_error_status_or_closed_port_does_not_answer() {
+    install_crypto();
     let (base, _requests) = serve("404 Not Found").await;
-    assert!(!local_server_answers(&client(), &base).await);
+    assert!(!local_server_answers(&base).await);
 
     let closed = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let base = format!("http://{}/v1", closed.local_addr().unwrap());
     drop(closed);
-    assert!(!local_server_answers(&client(), &base).await);
+    assert!(!local_server_answers(&base).await);
 }
 
 #[tokio::test(start_paused = true)]
 async fn a_server_that_never_answers_times_out() {
+    install_crypto();
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let base = format!("http://{}/v1", listener.local_addr().unwrap());
     // Accepts and holds the connection without a reply; the probe's own deadline ends the wait.
@@ -224,6 +266,44 @@ async fn a_server_that_never_answers_times_out() {
         std::future::pending::<()>().await;
         drop(socket);
     });
-    assert!(!local_server_answers(&client(), &base).await);
+    assert!(!local_server_answers(&base).await);
     held.abort();
+}
+
+const PROXY_CHILD: &str = "onboarding::tests::the_probe_child_asks_the_server_directly";
+const PROBE_TARGET: &str = "MEMRY_TEST_PROBE_TARGET";
+
+#[tokio::test]
+async fn the_probe_ignores_a_configured_proxy() {
+    let (base, _requests) = serve("200 OK").await;
+    let (proxy, mut proxied) = serve("404 Not Found").await;
+    let proxy = proxy.trim_end_matches("/v1").to_owned();
+    // The proxy is set in a child process, so no other test of this binary goes through it.
+    let status = tokio::task::spawn_blocking(move || {
+        std::process::Command::new(std::env::current_exe().unwrap())
+            .args(["--ignored", "--exact", PROXY_CHILD, "--nocapture"])
+            .env(PROBE_TARGET, &base)
+            .env("HTTP_PROXY", &proxy)
+            .env("http_proxy", &proxy)
+            .env_remove("NO_PROXY")
+            .env_remove("no_proxy")
+            .status()
+    })
+    .await
+    .unwrap()
+    .unwrap();
+
+    assert!(status.success(), "the child's probe failed: {status}");
+    assert!(
+        proxied.try_recv().is_err(),
+        "the probe went through the proxy"
+    );
+}
+
+#[tokio::test]
+#[ignore = "the proxy test runs it in a child process with HTTP_PROXY set"]
+async fn the_probe_child_asks_the_server_directly() {
+    install_crypto();
+    let base = std::env::var(PROBE_TARGET).unwrap();
+    assert!(local_server_answers(&base).await);
 }

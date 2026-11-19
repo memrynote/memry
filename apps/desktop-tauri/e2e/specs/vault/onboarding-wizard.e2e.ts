@@ -1,7 +1,7 @@
 // The first-run wizard on a fresh profile (Step 32i1, #3549): Obsidian's vaults come from the
 // detection command, the new-user path ends on Home with the folder, the metrics choice and the
 // onboarding record stored, and a relaunch opens the vault without the wizard or the tour.
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -10,7 +10,8 @@ import { invokeTest } from '../../harness/invoke-test'
 import { restart } from '../../harness/tauri-lifecycle'
 import { invoke, vaultStatus } from '../../harness/vault-commands'
 
-// Stands in for the OS app data folder, so the run never lists the host's Obsidian vaults.
+// Stands in for the OS app data and app folders, so the run never lists the host's Obsidian
+// vaults or apps.
 const osAppData = mkdtempSync(join(tmpdir(), 'memry-e2e-os-appdata-'))
 const obsidianVault = join(osAppData, 'Research')
 mkdirSync(join(osAppData, 'obsidian'), { recursive: true })
@@ -20,13 +21,25 @@ writeFileSync(
   JSON.stringify({ vaults: { a1b2c3d4e5f60718: { path: obsidianVault, ts: 1 } } })
 )
 
-test.use({ firstRun: true, extraEnv: { MEMRY_TEST_OS_APP_DATA_DIR: osAppData } })
+const parent = mkdtempSync(join(tmpdir(), 'memry-e2e-wizard-'))
+
+test.use({
+  firstRun: true,
+  extraEnv: {
+    MEMRY_TEST_OS_APP_DATA_DIR: osAppData,
+    MEMRY_TEST_OS_APPS_DIR: join(osAppData, 'Applications')
+  }
+})
+
+test.afterAll(() => {
+  rmSync(osAppData, { recursive: true, force: true })
+  rmSync(parent, { recursive: true, force: true })
+})
 
 test('a new user goes through the wizard to Home, and a relaunch skips it', async ({
   app,
   page
 }) => {
-  const parent = mkdtempSync(join(tmpdir(), 'memry-e2e-wizard-'))
   const vaultPath = join(parent, 'My notes')
 
   // A fresh profile follows the OS language; the spec reads the English strings.

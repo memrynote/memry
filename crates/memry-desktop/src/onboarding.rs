@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::ai::local_provider::AgentLocalProviderPreset;
+use crate::vault::layout::MEMRY_DIR;
 
 /// `obsidian.json` holds a few hundred bytes. A larger file is refused before it is parsed.
 pub const OBSIDIAN_REGISTRY_CAP: u64 = 1024 * 1024;
@@ -46,11 +47,17 @@ pub struct OnboardingSources {
     pub installed_apps: Vec<String>,
 }
 
+/// The folders `installedMacApps` looks in (`detect.ts:91`).
+pub fn mac_app_roots(home: &Path) -> Vec<PathBuf> {
+    vec![PathBuf::from("/Applications"), home.join("Applications")]
+}
+
 /// `detectSources` (`detect.ts:99`). `app_data` is Electron's `app.getPath('appData')`, the OS
-/// config folder Obsidian writes its registry under. Installed apps are looked up on macOS only.
-pub fn detect_sources(app_data: &Path, home: &Path) -> OnboardingSources {
+/// config folder Obsidian writes its registry under. Installed apps are looked up in
+/// `app_roots` ([`mac_app_roots`] outside tests), on macOS only.
+pub fn detect_sources(app_data: &Path, app_roots: &[PathBuf]) -> OnboardingSources {
     let installed_apps = if cfg!(target_os = "macos") {
-        installed_mac_apps(&[PathBuf::from("/Applications"), home.join("Applications")])
+        installed_mac_apps(app_roots)
     } else {
         Vec::new()
     };
@@ -148,9 +155,25 @@ pub fn installed_mac_apps(roots: &[PathBuf]) -> Vec<String> {
         .collect()
 }
 
+/// `isVaultInitialized` as the wizard calls it (`vault/init.ts:63`): `.memry` exists. A folder
+/// that cannot be looked at is not a vault, as for Node's `existsSync`.
+pub fn is_memry_vault(folder: &Path) -> bool {
+    folder.join(MEMRY_DIR).try_exists().unwrap_or(false)
+}
+
 /// `localServerAnswers` (`detect.ts:27`): `GET <base>/models` answers 2xx within
-/// [`LOCAL_SERVER_TIMEOUT`].
-pub async fn local_server_answers(client: &reqwest::Client, base_url: &str) -> bool {
+/// [`LOCAL_SERVER_TIMEOUT`]. The servers run on this computer, so no proxy is asked.
+pub async fn local_server_answers(base_url: &str) -> bool {
+    let client = match crate::http::builder().no_proxy().build() {
+        Ok(client) => client,
+        Err(error) => {
+            tracing::warn!(
+                scope = "onboarding",
+                "no client for the model server probe: {error}"
+            );
+            return false;
+        }
+    };
     client
         .get(format!("{base_url}/models"))
         .timeout(LOCAL_SERVER_TIMEOUT)
@@ -161,13 +184,10 @@ pub async fn local_server_answers(client: &reqwest::Client, base_url: &str) -> b
 
 /// The `local_openai_compatible` row of `detectAgents` (`detect.ts:38`): Ollama or LM Studio
 /// answers at its preset URL. Both are asked at once.
-pub async fn local_model_server_running(client: &reqwest::Client) -> bool {
+pub async fn local_model_server_running() -> bool {
     let (ollama, lm_studio) = futures_util::future::join(
-        local_server_answers(client, AgentLocalProviderPreset::Ollama.default_base_url()),
-        local_server_answers(
-            client,
-            AgentLocalProviderPreset::LmStudio.default_base_url(),
-        ),
+        local_server_answers(AgentLocalProviderPreset::Ollama.default_base_url()),
+        local_server_answers(AgentLocalProviderPreset::LmStudio.default_base_url()),
     )
     .await;
     ollama || lm_studio
