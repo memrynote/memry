@@ -275,6 +275,10 @@ name = "sanitize_svg_memory"
 path = "tests/sanitize_svg_memory.rs"
 
 [[test]]
+name = "sandbox_template"
+path = "tests/sandbox_template.rs"
+
+[[test]]
 name = "telemetry_vectors"
 path = "tests/telemetry_vectors.rs"
 
