@@ -5,6 +5,7 @@
 
 use std::sync::Arc;
 
+use memry_desktop::canvas::folders::FolderError;
 use memry_desktop::canvas::library::{read_canvas_library, write_canvas_library};
 use memry_desktop::canvas::service::{
     CanvasCreateInput, CanvasError, CanvasService, CanvasSummaryView, CanvasUpdateInput,
@@ -36,13 +37,24 @@ pub(crate) fn canvases<R: Runtime>(app: &AppHandle<R>) -> Result<CanvasService, 
     CanvasService::open(&open, store).map_err(|error| CommandError::from_core(&error))
 }
 
+/// A folder refusal fails as the folder commands do (`CANVAS_FOLDER_*`, `errors:canvasFolder.*`);
+/// any other refusal is `canvas_write_refused`, which the renderer shows as Electron's
+/// `canvas.actionFailed`. The English message stays for the logs.
 fn failed(error: CanvasError) -> CommandError {
-    match &error {
-        CanvasError::Storage(storage) => CommandError::from_core(storage),
-        _ => CommandError::new(
+    match error {
+        CanvasError::Storage(storage) => CommandError::from_core(&storage),
+        CanvasError::Folder(refused) => match FolderError::Refused(refused).refusal() {
+            Some((code, key)) => CommandError::new(ErrorKind::Invalid, code, key),
+            None => CommandError::new(
+                ErrorKind::Invalid,
+                "canvas_write_refused",
+                refused.to_string(),
+            ),
+        },
+        other => CommandError::new(
             ErrorKind::Invalid,
             "canvas_write_refused",
-            error.to_string(),
+            other.to_string(),
         ),
     }
 }
@@ -72,6 +84,8 @@ pub struct CanvasUpdateResponse {
     #[serde(flatten)]
     pub summary: CanvasSummaryView,
     pub too_large: bool,
+    /// The document's sha256 after the save: the saver's next `expectedSha256`.
+    pub sha256: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, specta::Type)]
@@ -127,7 +141,7 @@ pub async fn canvas_get<R: Runtime>(
     id: String,
 ) -> Result<Option<CanvasView>, CommandError> {
     blocking("canvas_get", move || {
-        canvases(&app)?.get(&id, now_ms()).map_err(failed)
+        canvases(&app)?.get(&id).map_err(failed)
     })
     .await
 }
@@ -141,12 +155,13 @@ pub async fn canvas_update<R: Runtime>(
 ) -> Result<CanvasUpdateResponse, CommandError> {
     blocking("canvas_update", move || {
         let outcome = canvases(&app)?.update(&input, now_ms()).map_err(failed)?;
-        let (summary, too_large, conflict_copy) = match outcome {
+        let (summary, too_large, sha256, conflict_copy) = match outcome {
             Update::Saved {
                 summary,
                 too_large,
+                sha256,
                 conflict_copy,
-            } => (summary, too_large, conflict_copy),
+            } => (summary, too_large, sha256, conflict_copy),
             Update::Conflict => {
                 return Err(CommandError::new(
                     ErrorKind::Invalid,
@@ -179,7 +194,11 @@ pub async fn canvas_update<R: Runtime>(
                 },
             );
         }
-        Ok(CanvasUpdateResponse { summary, too_large })
+        Ok(CanvasUpdateResponse {
+            summary,
+            too_large,
+            sha256,
+        })
     })
     .await
 }

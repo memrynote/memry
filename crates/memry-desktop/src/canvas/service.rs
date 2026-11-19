@@ -8,8 +8,10 @@
 //! never lands in between, as Electron's transaction does.
 //!
 //! Departures from Electron, each so a user's drawing is never lost:
-//! - a save over a document edited on disk since the app read it first files the on-disk
-//!   drawing as a new canvas, `"<title> (conflict copy)"`; Electron overwrites the edit.
+//! - a save over document bytes its reader did not get (each reader carries the sha256 it read)
+//!   first files the on-disk drawing as a new canvas, `"<title> (conflict copy)"`, or moves a
+//!   document that is no longer a drawing to a file of that name; Electron overwrites both.
+//! - the scene saved carries no `memryAssets` sidecar until the asset commands land (30e3).
 //! - a canvas whose row names no document is found by the id inside its file, wherever it was
 //!   moved, before anything is written; with no document at all its synced scene is served (and
 //!   the next save writes a new document) where Electron reports it unreadable.
@@ -35,6 +37,7 @@ use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 
 use super::files::{self, FileRow};
+use super::reconcile::now_ms;
 use super::scene_file::{
     CanvasDocument, Expect, ReadError, WriteError, allocate_canvas_path, folder_of_canvas_path,
     list_canvas_files, portable_canvas_folder, read_canvas_file, resolve_canvas_file,
@@ -58,9 +61,9 @@ pub enum CanvasError {
     Write(#[from] WriteError),
     #[error(transparent)]
     Read(#[from] ReadError),
-    /// The canvas's document changed on disk and is not a drawing the app can keep as a copy,
-    /// so the save is refused rather than replace it.
-    #[error("the canvas document changed on disk and cannot be kept as a copy")]
+    /// The canvas's document changed on disk into something that is not a drawing and could not
+    /// be moved aside, so the save is refused rather than replace it.
+    #[error("the canvas document changed on disk and could not be kept aside")]
     ChangedUnreadable,
 }
 
@@ -85,6 +88,9 @@ pub struct CanvasView {
     #[serde(flatten)]
     pub summary: CanvasSummaryView,
     pub scene: String,
+    /// The sha256 of the document bytes this reader got, `null` when it got none. The reader
+    /// sends it back as `expectedSha256`, so its save never replaces bytes it did not see.
+    pub sha256: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[specta(optional)]
     pub unreadable: Option<bool>,
@@ -132,6 +138,11 @@ pub struct CanvasUpdateInput {
     #[serde(default)]
     #[specta(optional)]
     pub expected_updated_at: Option<i64>,
+    /// The `sha256` of the [`CanvasView`] the scene was drawn over; absent or `null` when the
+    /// reader got no document. A scene saved over other bytes first keeps them as a copy.
+    #[serde(default)]
+    #[specta(optional)]
+    pub expected_sha256: Option<String>,
 }
 
 /// A canvas written: `too_large` when it is saved here and held back from sync.
@@ -147,6 +158,8 @@ pub enum Update {
     Saved {
         summary: CanvasSummaryView,
         too_large: bool,
+        /// The sha256 of the document now on disk, the saver's next `expected_sha256`.
+        sha256: Option<String>,
         /// The drawing found edited on disk, filed as a new canvas before the save.
         conflict_copy: Option<Box<Written>>,
     },
@@ -157,11 +170,9 @@ pub enum Update {
 
 /// Where a canvas's document is.
 pub(super) enum Found {
-    /// `seen` is the sha256 the app last wrote or read there, when the row names this path.
     File {
         path: String,
         document: CanvasDocument,
-        seen: Option<String>,
     },
     /// A link out of the vault: never read, never written.
     Outside,
@@ -218,9 +229,11 @@ impl CanvasService {
         Ok(canvases.into_iter().map(summary).collect())
     }
 
-    /// One live canvas with the scene of its document (`getCanvas`). Records the document as
-    /// read, so the next save expects it.
-    pub fn get(&self, id: &str, now_ms: i64) -> Result<Option<CanvasView>, CanvasError> {
+    /// One live canvas with the scene of its document and the sha256 of the bytes read
+    /// (`getCanvas`), settled with its record first. The read itself stamps nothing: the reader
+    /// sends that sha256 back with its save.
+    pub fn get(&self, id: &str) -> Result<Option<CanvasView>, CanvasError> {
+        let now_ms = now_ms();
         let view = self.write::<_, CanvasError>(|conn| {
             let Some(canvas) = canvas::get(conn, id)? else {
                 return Ok(None);
@@ -232,40 +245,34 @@ impl CanvasService {
                 true => canvas::get(conn, id)?.unwrap_or(canvas),
                 false => canvas,
             };
-            let (scene, unreadable) = match self.locate(conn, id)? {
-                Found::File { path, document, .. } => {
-                    let scene = strip_file_meta(&document.text);
-                    let row = FileRow {
-                        path,
-                        sha256: document.sha256,
-                    };
-                    if files::get(conn, id)?.as_ref() != Some(&row) {
-                        files::put(conn, id, &row, now_ms)?;
-                    }
-                    (scene, None)
+            let (scene, sha256, unreadable) = match self.locate(conn, id)? {
+                Found::File { document, .. } => {
+                    (strip_file_meta(&document.text), Some(document.sha256), None)
                 }
                 Found::Outside => {
                     tracing::warn!(
                         scope = "CanvasStore",
                         "refusing a canvas document that links outside the vault"
                     );
-                    (String::new(), Some(true))
+                    (String::new(), None, Some(true))
                 }
-                Found::None => (canvas.scene.clone(), None),
+                Found::None => (canvas.scene.clone(), None, None),
             };
             let view = CanvasView {
                 summary: summary(canvas),
                 scene,
+                sha256,
                 unreadable,
             };
-            Ok(Some((view, settled.scene_changed())))
+            Ok(Some((view, settled)))
         })?;
-        let Some((view, changed)) = view else {
+        let Some((view, settled)) = view else {
             return Ok(None);
         };
-        if changed {
+        if settled.scene_changed() {
             self.rewrite_edges(id, &view.scene)?;
         }
+        self.index_settled_copy(&settled)?;
         Ok(Some(view))
     }
 
@@ -324,8 +331,18 @@ impl CanvasService {
             now_ms,
         )
         .inspect_err(|_| self.discard(&path, &sha256))?;
-        files::put(conn, &id, &FileRow { path, sha256 }, now_ms)?;
-        Ok(written(saved.canvas, strip_file_meta(&text), saved.sync))
+        let row = FileRow {
+            path,
+            sha256: sha256.clone(),
+            record_sha256: Some(files::scene_sha256(&saved.canvas.scene)),
+        };
+        files::put(conn, &id, &row, now_ms)?;
+        Ok(written(
+            saved.canvas,
+            strip_file_meta(&text),
+            sha256,
+            saved.sync,
+        ))
     }
 
     /// Removes a document this call just wrote, when its record could not be written.
@@ -387,10 +404,16 @@ impl CanvasService {
                 self.discard(&path, &sha256);
                 return Ok(None);
             };
-            files::put(conn, &copy_id, &FileRow { path, sha256 }, now_ms)?;
+            let row = FileRow {
+                path,
+                sha256: sha256.clone(),
+                record_sha256: Some(files::scene_sha256(&saved.canvas.scene)),
+            };
+            files::put(conn, &copy_id, &row, now_ms)?;
             Ok(Some(written(
                 saved.canvas,
                 strip_file_meta(&text),
+                sha256,
                 saved.sync,
             )))
         })?;
@@ -422,7 +445,7 @@ impl CanvasService {
         Ok(true)
     }
 
-    fn remove_document(&self, path: &str) {
+    pub(super) fn remove_document(&self, path: &str) {
         let Ok(absolute) = resolve_canvas_file(&self.vault, path) else {
             return;
         };
@@ -479,7 +502,6 @@ impl CanvasService {
                     return Ok(Found::File {
                         path: row.path.clone(),
                         document,
-                        seen: Some(row.sha256.clone()),
                     });
                 }
                 Ok(_) => {}
@@ -495,11 +517,7 @@ impl CanvasService {
                 continue;
             };
             if read_file_meta(&document.text, 0).is_some_and(|meta| meta.id == id) {
-                return Ok(Found::File {
-                    path,
-                    document,
-                    seen: None,
-                });
+                return Ok(Found::File { path, document });
             }
         }
         Ok(Found::None)
@@ -565,11 +583,12 @@ pub(super) fn summary(canvas: Canvas) -> CanvasSummaryView {
     }
 }
 
-pub(super) fn written(canvas: Canvas, scene: String, sync: SyncHold) -> Written {
+pub(super) fn written(canvas: Canvas, scene: String, sha256: String, sync: SyncHold) -> Written {
     Written {
         canvas: CanvasView {
             summary: summary(canvas),
             scene,
+            sha256: Some(sha256),
             unreadable: None,
         },
         too_large: sync != SyncHold::Queued,

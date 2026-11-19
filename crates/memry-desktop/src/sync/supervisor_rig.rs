@@ -326,6 +326,7 @@ impl Rig {
                 keychain_recovered: Some(self.recovered.subscribe()),
                 db: self.db.clone(),
                 telemetry: self.telemetry.clone(),
+                observers: Vec::new(),
                 signals: self.signals.clone(),
                 on_status: Arc::new(move |status| {
                     lock(&events).push((Instant::now(), status.clone()));

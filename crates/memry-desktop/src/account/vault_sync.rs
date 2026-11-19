@@ -16,10 +16,13 @@ use memry_core::api::search::Search;
 use memry_core::api::vault::Vault;
 use memry_core::seams::reachability::Reachability;
 use memry_core::seams::secure_store::SecureStore;
+use memry_core::sync::driver::ApplyObserver;
 use tokio::sync::broadcast;
 
 use super::binding::{Applied, BindingChoice, BindingState};
 use super::{AccountError, AccountService};
+use crate::canvas::mirror::{CanvasMirror, CanvasSyncedHook};
+use crate::canvas::service::CanvasService;
 use crate::registry::VaultRegistry;
 use crate::session::{OpenVault, SupervisorFactory, lock};
 use crate::shell::power::PowerEvent;
@@ -129,9 +132,31 @@ pub struct SyncWiring {
     pub on_binding: Arc<dyn Fn(&BindingState) + Send + Sync>,
     /// A vault directory refresh changed a vault's icon (`vault:list-changed`).
     pub on_vault_list_changed: Arc<dyn Fn() + Send + Sync>,
+    /// Each canvas a sync pull created, changed or deleted (`canvas:created`, `canvas:updated`,
+    /// `canvas:deleted`).
+    pub on_canvas: CanvasSyncedHook,
     /// Each new gate, before its supervisor starts: billing tells it the plan
     /// (`BillingService::attach_gate`).
     pub on_gate: GateHook,
+}
+
+/// The canvas documents follow what sync applies; with no canvas store they do not, and the
+/// next open's reconcile catches them up.
+fn canvas_mirror(
+    open: &OpenVault,
+    store: &Arc<dyn SecureStore>,
+    synced: &CanvasSyncedHook,
+) -> Option<Arc<dyn ApplyObserver>> {
+    match CanvasService::open(open, Arc::clone(store)) {
+        Ok(service) => Some(Arc::new(CanvasMirror {
+            service,
+            synced: Arc::clone(synced),
+        })),
+        Err(error) => {
+            tracing::error!(scope = "CanvasMirror", %error, "synced canvases will not reach their documents");
+            None
+        }
+    }
 }
 
 /// The open vault without keeping it open: a closed vault ends the binding task.
@@ -194,6 +219,9 @@ impl SyncWiring {
                 keychain_recovered: Some(self.keychain_recovered.subscribe()),
                 db: open.vault.db_handle(),
                 telemetry: self.telemetry.clone(),
+                observers: canvas_mirror(open, &self.store, &self.on_canvas)
+                    .into_iter()
+                    .collect(),
                 signals: signals.clone(),
                 on_status: Arc::clone(&self.on_status),
             },

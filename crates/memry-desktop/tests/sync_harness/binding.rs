@@ -46,6 +46,7 @@ pub(super) fn wiring(
         bindings: Arc::new(OpenVaultBinding::default()),
         on_binding: Arc::new(move |state| seen.lock().unwrap().push(state.clone())),
         on_vault_list_changed: Arc::new(|| {}),
+        on_canvas: Arc::new(|_| {}),
         on_gate: Arc::new(|_| {}),
     });
     (wiring, changes)

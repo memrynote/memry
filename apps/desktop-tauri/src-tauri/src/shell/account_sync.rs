@@ -8,6 +8,7 @@ use memry_desktop::account::AccountService;
 use memry_desktop::account::binding::BindingState;
 use memry_desktop::account::session_events::{self, AccountEvent};
 use memry_desktop::account::vault_sync::{OpenVaultBinding, SyncWiring};
+use memry_desktop::canvas::mirror::CanvasSynced;
 use memry_desktop::seams::reachability::DesktopReachability;
 use memry_desktop::seams::secure_store::{DeviceIdentityStore, KeyringStore};
 use memry_desktop::session::Session;
@@ -19,9 +20,10 @@ use tokio::sync::broadcast::error::RecvError;
 
 use crate::commands::error::CommandError;
 use crate::events::{
-    AuthSessionExpiredEvent, SessionExpiredReason, SyncDeviceRemovedEvent,
-    SyncLinkingApprovedEvent, SyncLinkingRequestedEvent, SyncStatusChangedEvent,
-    SyncVaultBindingChangedEvent, VaultListChangedEvent, broadcast,
+    AuthSessionExpiredEvent, CanvasCreatedEvent, CanvasDeletedEvent, CanvasUpdatedEvent,
+    SessionExpiredReason, SyncDeviceRemovedEvent, SyncLinkingApprovedEvent,
+    SyncLinkingRequestedEvent, SyncStatusChangedEvent, SyncVaultBindingChangedEvent,
+    VaultListChangedEvent, broadcast,
 };
 use crate::power::PowerMonitor;
 use crate::shell::{billing, services};
@@ -63,6 +65,7 @@ fn start(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     let binding_app = app.clone();
     let status_app = app.clone();
     let list_app = app.clone();
+    let canvas_app = app.clone();
     let wiring = Arc::new(SyncWiring {
         runtime,
         account,
@@ -80,6 +83,11 @@ fn start(app: &AppHandle<Wry>) -> Result<(), CommandError> {
             broadcast(&binding_app, SyncVaultBindingChangedEvent(state.into()));
         }),
         on_vault_list_changed: Arc::new(move || broadcast(&list_app, VaultListChangedEvent)),
+        on_canvas: Arc::new(move |synced| match synced {
+            CanvasSynced::Created(canvas) => broadcast(&canvas_app, CanvasCreatedEvent { canvas }),
+            CanvasSynced::Updated(canvas) => broadcast(&canvas_app, CanvasUpdatedEvent { canvas }),
+            CanvasSynced::Deleted(id) => broadcast(&canvas_app, CanvasDeletedEvent { id }),
+        }),
         on_gate: Arc::new(move |gate| billing.attach_gate(gate)),
     });
     app.manage(bindings);

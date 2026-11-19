@@ -17,6 +17,7 @@ use std::sync::Arc;
 use memry_core::api::errors::StorageError;
 use memry_core::seams::reachability::{Reachability, ReachabilityObserver, Reachable};
 use memry_core::storage::Db;
+use memry_core::sync::driver::ApplyObserver;
 use memry_core::sync::outbox;
 use memry_core::sync::socket::HintSink;
 use tokio::sync::{broadcast, mpsc, oneshot, watch};
@@ -46,6 +47,8 @@ pub struct SupervisorParts {
     pub db: Db,
     /// The app's telemetry, which drops every event while telemetry is off.
     pub telemetry: Option<Arc<Service>>,
+    /// Told every committed page of each driver the loop starts (the canvas mirror).
+    pub observers: Vec<Arc<dyn ApplyObserver>>,
     /// The session's account signals, shared by every supervisor it builds.
     pub signals: AuthSignals,
     /// Every status change, at most one per [`STATUS_THROTTLE`], the latest winning.
