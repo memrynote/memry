@@ -31,7 +31,9 @@ pub enum OpenBuild {
     Owed,
     /// A step of the pass that reports it.
     Step(IndexProgress),
-    Ended,
+    /// `walked`: the pass ran after the walk's `Indexed`, so the rows hold every note the walk
+    /// offered. A pass before it (a failed watcher's, a lag's) ends the build all the same.
+    Ended { walked: bool },
 }
 pub type Answer = reply::Receiver<Result<Backfilled, IndexError>>;
 type Reply = reply::Sender<Result<Backfilled, IndexError>>;
@@ -127,6 +129,8 @@ struct Owed {
     /// A pass, for the property rows' types alone.
     retype: bool,
     walk: Walk,
+    /// The walk's `Indexed` was seen; a lag that lost it leaves this unset for the open.
+    indexed: bool,
     /// The open's pass progress (`indexVault` on open) goes out with the next pass: the
     /// renderer refreshes the notes list on it.
     report: bool,
@@ -285,7 +289,9 @@ impl Indexer {
                         .send(self.reindex(&mut owed, progress, cancel, announce, landed, defined));
                 }
                 if carried {
-                    report(OpenBuild::Ended);
+                    report(OpenBuild::Ended {
+                        walked: owed.indexed,
+                    });
                 }
             }
             let next = owed.next();
@@ -324,7 +330,7 @@ impl Indexer {
                     let steps = carried.then_some(&step as &dyn Fn(IndexProgress));
                     self.work(&mut owed, cancel, steps, announce, landed, defined);
                     if carried {
-                        report(OpenBuild::Ended);
+                        report(OpenBuild::Ended { walked: owed.indexed });
                     }
                 }
             }
@@ -352,6 +358,7 @@ impl Indexer {
                 if !std::mem::replace(&mut owed.report, true) {
                     report(OpenBuild::Owed);
                 }
+                owed.indexed = true;
                 owed.end_walk();
             }
             Applied::Vault(VaultEvent::Rescanned { .. }) => {

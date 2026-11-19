@@ -148,8 +148,8 @@ type Report = Arc<dyn Fn(IndexReport) + Send + Sync>;
 struct Indexing {
     /// The open's build: from the open to the end of the pass that reports it.
     building: bool,
-    /// The open's build ended with its pass: the rows hold every note the open walk offered
-    /// ([`NoteIndex::wait_built`]).
+    /// The open's build ended with a pass after the walk's `Indexed`: the rows hold every note
+    /// the open walk offered ([`NoteIndex::wait_built`]).
     built: bool,
     /// Reindexes asked and not answered yet.
     asked: usize,
@@ -358,14 +358,15 @@ impl NoteIndex {
             OpenBuild::Owed => set_indexing(&self.indexing, &self.report, |state| {
                 state.start();
                 state.building = true;
+                state.built = false;
             }),
             OpenBuild::Step(step) => {
                 set_indexing(&self.indexing, &self.report, |state| state.step = step);
                 (self.report)(IndexReport::Progress(step));
             }
-            OpenBuild::Ended => set_indexing(&self.indexing, &self.report, |state| {
+            OpenBuild::Ended { walked } => set_indexing(&self.indexing, &self.report, |state| {
                 state.building = false;
-                state.built = true;
+                state.built = walked;
             }),
         }
     }
