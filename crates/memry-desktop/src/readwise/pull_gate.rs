@@ -4,15 +4,24 @@
 //! engine awaits [`RunGate::await_ready`] before it reads Readwise, so every caller (the
 //! scheduler, the import dialog) is held to the same rule.
 //!
-//! Two devices that claim at once both write `syncDeviceId`. Electron has no tie-break of its
-//! own, and none is needed: a `settings` push is never refused (protocol §5.7), so the server
-//! holds one row, the last push, and §6.3's "remote wins a tie" makes every device take that
-//! row on its next pull. The claim converges to the device whose push the server took last.
+//! Two devices that claim at once both write `syncDeviceId` into the shared `synced_settings`
+//! blob. Electron has no tie-break of its own: sync merges the blob field by field on vector
+//! clocks (§6.3, `field_merge.rs:139`). The claim with the larger clock total wins on every
+//! device; two claims written from the same state have equal totals, and on a tie the remote
+//! value wins, so each device takes the server's row on its next pull and the claim converges.
 //!
-//! **Departure:** Electron pulls as soon as its claim is delivered. If a peer's claim lands on
-//! the server after that push, both devices pull until their next sync pull, and both rewrite
-//! the same notes. This gate waits for one more sync pull after the delivery and reads the
-//! claim again, so the device whose push the server took first stops before its first book.
+//! **Departure:** Electron pulls as soon as its claim is delivered (`pull-gate.ts:157-159`), on
+//! every run. This gate also waits, once per claim, for a sync pull that starts after the
+//! delivery and reads the claim again, so a peer's claim the server took after ours stops this
+//! device before its first book. Later runs only wait for an undelivered claim, as Electron.
+//!
+//! **Residual risk:** the confirming pull narrows the race; it does not close it. A peer that
+//! pulled before our push and pushes after our confirming pull (B pulls, A pushes, A confirms,
+//! B pushes) runs too, and both devices write until A's next sync pull brings B's claim and
+//! A's per-book `claim_lost` check stops it. Electron has the same race with a wider window
+//! (from A's delivery to A's next pull). Closing it needs a server-side compare-and-set.
+
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -32,7 +41,7 @@ const SCOPE: &str = "Readwise:PullGate";
 const POLL: Duration = Duration::from_millis(500);
 /// `READY_TIMEOUT_MS` (2 minutes) in polls.
 const READY_POLLS: u32 = 240;
-/// `PUSH_TIMEOUT_MS` (30 s) in polls; also the wait for the confirming pull.
+/// `PUSH_TIMEOUT_MS` (30 s) in polls; also the wait for the confirming pull, once per claim.
 const PUSH_POLLS: u32 = 60;
 
 /// `PullEnv`.
@@ -131,6 +140,9 @@ pub struct PullGate {
     settings: Arc<Settings>,
     sync: Arc<dyn SyncView>,
     poll: Duration,
+    /// A sync pull that started after this device's claim was delivered saw the claim still
+    /// ours. Reset when the claim moves or this device claims again.
+    confirmed: AtomicBool,
 }
 
 impl PullGate {
@@ -151,6 +163,7 @@ impl PullGate {
             settings,
             sync,
             poll: POLL,
+            confirmed: AtomicBool::new(false),
         }
     }
 
@@ -168,22 +181,29 @@ impl PullGate {
     /// `awaitPullAuthority`, plus the confirming pull (the module's departure). Returns `Ok` on
     /// cancel; the engine checks the signal next.
     fn await_authority(&self, cancel: &CancellationToken) -> Result<(), RunError> {
-        let mut confirmed = false;
         let mut waited = 0;
         while !cancel.is_cancelled() {
             let env = self.sync.env();
             let claim = self.claim.claim().map_err(failed)?;
             match authority(&env, &claim) {
-                Authority::Pull if !env.eligible || confirmed => return Ok(()),
+                Authority::Pull if !env.eligible => return Ok(()),
                 Authority::Pull => {
                     self.await_delivered(cancel)?;
+                    if self.confirmed.load(Ordering::SeqCst) {
+                        return Ok(());
+                    }
                     self.await_next_pull(cancel)?;
-
-                    confirmed = true;
+                    if !cancel.is_cancelled() {
+                        self.confirmed.store(true, Ordering::SeqCst);
+                    }
                     continue;
                 }
-                Authority::Elsewhere(name) => return Err(PullGateError::Elsewhere(name).into()),
+                Authority::Elsewhere(name) => {
+                    self.confirmed.store(false, Ordering::SeqCst);
+                    return Err(PullGateError::Elsewhere(name).into());
+                }
                 Authority::ClaimNeeded => {
+                    self.confirmed.store(false, Ordering::SeqCst);
                     self.claim_this_device(&env)?;
                     continue;
                 }
@@ -227,17 +247,32 @@ impl PullGate {
         Err(PullGateError::ClaimNotDelivered.into())
     }
 
-    /// One more sync pull after the delivery, so a peer's claim the server took after ours
-    /// reaches this device before it reads Readwise.
+    /// A sync pull that starts after the delivery, so a peer's claim the server took after ours
+    /// reaches this device before it reads Readwise. A pass pulls before it pushes and counts
+    /// its pull when it ends, so the pass that delivered the claim may still end after
+    /// `delivered` is read: only the pass after it is sure to have pulled after the delivery.
     fn await_next_pull(&self, cancel: &CancellationToken) -> Result<(), RunError> {
         let delivered = self.sync.completed_pulls();
+        let mut seen = delivered;
         self.sync.request_push();
         for _ in 0..PUSH_POLLS {
-            if cancel.is_cancelled() || self.sync.completed_pulls() > delivered {
+            if cancel.is_cancelled() {
                 return Ok(());
+            }
+            let pulls = self.sync.completed_pulls();
+            if pulls >= delivered + 2 {
+                return Ok(());
+            }
+            if pulls > seen {
+                seen = pulls;
+                self.sync.request_push();
             }
             self.sleep(cancel);
         }
+        tracing::info!(
+            scope = SCOPE,
+            "Readwise run held back: no memry sync pull confirmed the delivered claim"
+        );
         Err(PullGateError::NotReady.into())
     }
 
@@ -267,6 +302,7 @@ impl RunGate for PullGate {
     }
 
     fn on_claim_lost(&self) {
+        self.confirmed.store(false, Ordering::SeqCst);
         self.claim.on_claim_lost();
     }
 }
