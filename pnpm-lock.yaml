@@ -68,6 +68,7 @@ overrides:
   react-router@>=7.0.0 <7.18.0: 7.18.0
 
 patchedDependencies:
+  gray-matter@4.0.3: 1c5e485ac499286a641ec32c84fbec4d967d138d8ac5bf9a0aa00e09d19814de
   y-prosemirror@1.3.7: 485382d91d52cf599b2cfe6be351839d1875c7b1d63087fede5fc31f4a849009
 
 importers:
@@ -142,7 +143,7 @@ importers:
         version: 0.45.2(@cloudflare/workers-types@4.20260305.1)(@op-engineering/op-sqlite@18.1.4(react-native@0.86.2(@babel/core@7.29.7)(@react-native/metro-config@0.86.2(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0))(@opentelemetry/api@1.9.1)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1)(expo-sqlite@57.0.1(expo@57.0.15)(react-native@0.86.2(@babel/core@7.29.7)(@react-native/metro-config@0.86.2(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0))
       gray-matter:
         specifier: ^4.0.3
-        version: 4.0.3
+        version: 4.0.3(patch_hash=1c5e485ac499286a641ec32c84fbec4d967d138d8ac5bf9a0aa00e09d19814de)
       marked:
         specifier: ^17.0.1
         version: 17.0.1
@@ -618,7 +619,7 @@ importers:
         version: 0.24.8
       gray-matter:
         specifier: ^4.0.3
-        version: 4.0.3
+        version: 4.0.3(patch_hash=1c5e485ac499286a641ec32c84fbec4d967d138d8ac5bf9a0aa00e09d19814de)
       ical.js:
         specifier: 2.2.1
         version: 2.2.1
@@ -1028,7 +1029,7 @@ importers:
         version: 0.45.2(@cloudflare/workers-types@4.20260305.1)(@op-engineering/op-sqlite@18.1.4(react-native@0.86.2(@babel/core@7.29.7)(@react-native/metro-config@0.86.2(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0))(@opentelemetry/api@1.9.1)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.11.1)(expo-sqlite@57.0.1(expo@57.0.15)(react-native@0.86.2(@babel/core@7.29.7)(@react-native/metro-config@0.86.2(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0))
       gray-matter:
         specifier: ^4.0.3
-        version: 4.0.3
+        version: 4.0.3(patch_hash=1c5e485ac499286a641ec32c84fbec4d967d138d8ac5bf9a0aa00e09d19814de)
       nanoid:
         specifier: ^5.1.6
         version: 5.1.16
@@ -1231,7 +1232,7 @@ importers:
         version: 5.9.0
       gray-matter:
         specifier: ^4.0.3
-        version: 4.0.3
+        version: 4.0.3(patch_hash=1c5e485ac499286a641ec32c84fbec4d967d138d8ac5bf9a0aa00e09d19814de)
       protobufjs:
         specifier: '>=7.6.5 <8'
         version: 7.6.5
@@ -23971,7 +23972,7 @@ snapshots:
 
   graphql@16.12.0: {}
 
-  gray-matter@4.0.3:
+  gray-matter@4.0.3(patch_hash=1c5e485ac499286a641ec32c84fbec4d967d138d8ac5bf9a0aa00e09d19814de):
     dependencies:
       js-yaml: 3.15.2
       kind-of: 6.0.3
