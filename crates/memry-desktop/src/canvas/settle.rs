@@ -64,16 +64,15 @@ impl CanvasService {
         found: Found,
         now_ms: i64,
     ) -> Result<Settled, CanvasError> {
-        let (path, document, seen) = match found {
-            Found::File {
-                path,
-                document,
-                seen,
-            } => (path, document, seen),
+        let (path, document) = match found {
+            Found::File { path, document } => (path, document),
             Found::Outside => return Ok(Settled::Outside),
             Found::None => return Ok(Settled::Missing),
         };
         let id = canvas.id.as_str();
+        let seen = files::get(conn, id)?
+            .filter(|row| row.path == path)
+            .map(|row| row.sha256);
         let on_disk = canonical_scene(&strip_file_meta(&document.text)).ok();
         let unchanged = seen.as_deref() == Some(document.sha256.as_str());
         let folder = folder_of_canvas_path(&path);

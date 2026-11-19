@@ -84,7 +84,7 @@ pub fn register(session: &Session, store: Arc<dyn SecureStore>) {
     );
 }
 
-fn now_ms() -> i64 {
+pub(super) fn now_ms() -> i64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(0, |elapsed| elapsed.as_millis() as i64)
@@ -216,7 +216,6 @@ impl CanvasService {
             let found = Found::File {
                 path: path.to_owned(),
                 document,
-                seen: None,
             };
             self.settle_in(conn, &canvas, found, now_ms)?;
             return Ok(Some(Adopted::Repointed));

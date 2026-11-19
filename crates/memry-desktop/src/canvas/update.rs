@@ -1,5 +1,5 @@
 //! `updateCanvas` ([`CanvasService::update`]): the title, placement, icon and scene of a live
-//! canvas, with the conflict copy that keeps a drawing edited on disk since it was read.
+//! canvas, with the conflict copy that keeps a document changed on disk since the saver read it.
 
 use std::collections::HashSet;
 
@@ -21,8 +21,9 @@ use super::service::{
 
 impl CanvasService {
     /// `updateCanvas`: the title, placement, icon and scene. A title or folder change moves the
-    /// document and the title follows a renumbered file name; a save over a document edited on
-    /// disk since it was read first files that drawing as a conflict copy.
+    /// document and the title follows a renumbered file name. A scene saved over bytes other than
+    /// the ones its reader got (`expected_sha256`) first keeps them: a drawing as a conflict-copy
+    /// canvas, anything else as a file beside it, so the save then writes a new document.
     pub fn update(&self, input: &CanvasUpdateInput, now_ms: i64) -> Result<Update, CanvasError> {
         let scene = input.scene.as_deref().map(canonical_scene).transpose()?;
         let id = input.id.as_str();
@@ -55,20 +56,23 @@ impl CanvasService {
             };
             let found = match self.locate(conn, id)? {
                 Found::Outside => return Err(ReadError::Outside.into()),
-                Found::File {
-                    path,
-                    document,
-                    seen,
-                } => Some((path, document, seen)),
+                Found::File { path, document } => Some((path, document)),
                 Found::None => None,
             };
             let mut conflict_copy = None;
-            if let (Some(_), Some((_, document, seen))) = (&scene, &found)
-                && (stale || seen.as_ref().is_some_and(|seen| *seen != document.sha256))
+            // `None` once the document at the path was set aside: the save writes a new one.
+            let mut expected = found.as_ref().map(|(_, document)| document.sha256.clone());
+            if let (Some(_), Some((path, document))) = (&scene, &found)
+                && (stale || input.expected_sha256.as_deref() != Some(document.sha256.as_str()))
             {
-                conflict_copy = Some(Box::new(
-                    self.conflict_copy(conn, &canvas, document, now_ms)?,
-                ));
+                if canonical_scene(&strip_file_meta(&document.text)).is_ok() {
+                    conflict_copy = Some(Box::new(
+                        self.conflict_copy(conn, &canvas, document, now_ms)?,
+                    ));
+                } else {
+                    self.set_aside(&canvas, path)?;
+                    expected = None;
+                }
             }
 
             let mut title = input.title.clone().unwrap_or(canvas.title.clone());
@@ -78,7 +82,7 @@ impl CanvasService {
             };
             let mut moved = false;
             let mut file = None;
-            if let Some((path, document, _)) = found {
+            if let Some((path, document)) = found {
                 let mut path = path;
                 let retitled = input.title.is_some() && title != canvas.title;
                 if retitled || folder != canvas.folder {
@@ -104,14 +108,10 @@ impl CanvasService {
             }
 
             let row = match (&scene, file) {
-                (Some(scene), Some((path, document))) => {
+                (Some(scene), Some((path, _))) => {
                     let text = with_file_meta(scene, &meta(id, canvas.created_at, now_ms));
-                    let sha256 = write_canvas_file(
-                        &self.vault,
-                        &path,
-                        &text,
-                        Expect::Unchanged(&document.sha256),
-                    )?;
+                    let expect = expected.as_deref().map_or(Expect::New, Expect::Unchanged);
+                    let sha256 = write_canvas_file(&self.vault, &path, &text, expect)?;
                     Some(FileRow { path, sha256 })
                 }
                 (Some(scene), None) => {
@@ -161,11 +161,12 @@ impl CanvasService {
                 Updated::Saved(saved) => saved,
                 Updated::Conflict => return Ok(Update::Conflict),
             };
-            if let Some(row) = row {
-                files::put(conn, id, &row, now_ms)?;
+            if let Some(row) = &row {
+                files::put(conn, id, row, now_ms)?;
             }
             Ok(Update::Saved {
                 too_large: saved.sync != SyncHold::Queued,
+                sha256: row.map(|row| row.sha256),
                 summary: summary(saved.canvas),
                 conflict_copy,
             })
@@ -190,13 +191,7 @@ impl CanvasService {
         now_ms: i64,
     ) -> Result<Written, CanvasError> {
         let scene = strip_file_meta(&document.text);
-        if canonical_scene(&scene).is_err() {
-            return Err(CanvasError::ChangedUnreadable);
-        }
-        let title = format!(
-            "{} (conflict copy)",
-            canvas.title.as_deref().unwrap_or("Canvas")
-        );
+        let title = conflict_title(canvas);
         tracing::warn!(
             scope = "CanvasStore",
             "a canvas document changed on disk since it was read; keeping it as a conflict copy"
@@ -213,4 +208,31 @@ impl CanvasService {
             now_ms,
         )
     }
+
+    /// Moves a document that is no longer a drawing to `"<title> (conflict copy)"` beside it,
+    /// bytes untouched, where Electron would overwrite it. Refuses the save when it cannot move.
+    fn set_aside(&self, canvas: &Canvas, path: &str) -> Result<(), CanvasError> {
+        let target = allocate_canvas_path(
+            &self.vault,
+            Some(&conflict_title(canvas)),
+            &HashSet::new(),
+            None,
+            folder_of_canvas_path(path).as_deref(),
+        )?;
+        if rename_canvas_file(&self.vault, path, &target) == path {
+            return Err(CanvasError::ChangedUnreadable);
+        }
+        tracing::warn!(
+            scope = "CanvasStore",
+            "a canvas document is no longer a drawing; keeping it beside the saved canvas"
+        );
+        Ok(())
+    }
+}
+
+fn conflict_title(canvas: &Canvas) -> String {
+    format!(
+        "{} (conflict copy)",
+        canvas.title.as_deref().unwrap_or("Canvas")
+    )
 }

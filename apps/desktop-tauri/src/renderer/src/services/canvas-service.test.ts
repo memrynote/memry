@@ -57,9 +57,18 @@ afterEach(() => {
 
 describe('canvas-service', () => {
   it('creates through canvas_create, an absent input as an empty one', async () => {
-    commands.canvasCreate.mockResolvedValue({ ...summary, scene: '', unreadable: null })
+    commands.canvasCreate.mockResolvedValue({
+      ...summary,
+      scene: '',
+      sha256: 'sha-0',
+      unreadable: null
+    })
 
-    await expect(canvasService.create()).resolves.toEqual({ ...summary, scene: '' })
+    await expect(canvasService.create()).resolves.toEqual({
+      ...summary,
+      scene: '',
+      sha256: 'sha-0'
+    })
     await canvasService.create({ folder: 'work', title: 'Plan' })
 
     expect(commands.canvasCreate).toHaveBeenNthCalledWith(1, {})
@@ -67,12 +76,18 @@ describe('canvas-service', () => {
   })
 
   it('reads a canvas, keeping the unreadable flag a link out of the vault carries', async () => {
-    commands.canvasGet.mockResolvedValueOnce({ ...summary, scene: '{}', unreadable: true })
+    commands.canvasGet.mockResolvedValueOnce({
+      ...summary,
+      scene: '{}',
+      sha256: null,
+      unreadable: true
+    })
     commands.canvasGet.mockResolvedValueOnce(null)
 
     await expect(canvasService.get('c1')).resolves.toEqual({
       ...summary,
       scene: '{}',
+      sha256: null,
       unreadable: true
     })
     await expect(canvasService.get('gone')).resolves.toBeNull()
@@ -86,13 +101,15 @@ describe('canvas-service', () => {
       id: 'c1',
       scene: '{"elements":[]}',
       entityRefs: [{ entityType: 'note', entityId: 'n1' }],
-      expectedUpdatedAt: 2
+      expectedUpdatedAt: 2,
+      expectedSha256: 'sha-2'
     })
 
     expect(commands.canvasUpdate).toHaveBeenCalledWith({
       id: 'c1',
       scene: '{"elements":[]}',
-      expectedUpdatedAt: 2
+      expectedUpdatedAt: 2,
+      expectedSha256: 'sha-2'
     })
   })
 

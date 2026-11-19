@@ -7,9 +7,12 @@
  */
 
 import type {
-  Canvas,
+  Canvas as ElectronCanvas,
   CanvasSummary,
   CanvasClientAPI,
+  CanvasCreateInput,
+  CanvasUpdateInput as ElectronCanvasUpdateInput,
+  CanvasUpdateResponse as ElectronCanvasUpdateResponse,
   CanvasCreatedEvent,
   CanvasUpdatedEvent,
   CanvasDeletedEvent,
@@ -20,7 +23,23 @@ import { commands, events, type CanvasView, type Value } from '../../../generate
 import { subscribeToEvent } from './tauri-event'
 import { createWindowApiForwarder } from './window-api-forwarder'
 
-export type { Canvas, CanvasSummary }
+export type { CanvasSummary }
+
+/**
+ * A canvas with the sha256 of the document bytes this reader got (`null`: none). Each reader
+ * keeps its own and sends it back as `expectedSha256`, so a save over bytes it never saw keeps
+ * them as a conflict copy instead of overwriting them.
+ */
+export type Canvas = ElectronCanvas & { sha256: string | null }
+export type CanvasUpdateInput = ElectronCanvasUpdateInput & { expectedSha256?: string | null }
+/** `sha256`: the document after the save, the saver's next `expectedSha256`. */
+export type CanvasUpdateResponse = ElectronCanvasUpdateResponse & { sha256: string | null }
+
+type CanvasApi = Omit<CanvasClientAPI, 'create' | 'get' | 'update'> & {
+  create: (input?: CanvasCreateInput) => Promise<Canvas>
+  get: (id: string) => Promise<Canvas | null>
+  update: (input: CanvasUpdateInput) => Promise<CanvasUpdateResponse>
+}
 
 /** `unreadable` is set only for a document linked out of the vault, as in Electron. */
 function toCanvas({ unreadable, ...canvas }: CanvasView): Canvas {
@@ -51,12 +70,12 @@ const ported = {
   librarySave: (libraryItems) =>
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- an item is JSON the command carries as is
     commands.canvasLibrarySave({ libraryItems: libraryItems as Value[] })
-} satisfies Partial<CanvasClientAPI>
+} satisfies Partial<CanvasApi>
 
-export const canvasService: CanvasClientAPI = createWindowApiForwarder<
-  CanvasClientAPI,
-  keyof typeof ported
->(() => window.api.canvas, ported)
+export const canvasService: CanvasApi = createWindowApiForwarder<CanvasApi, keyof typeof ported>(
+  () => window.api.canvas,
+  ported
+)
 
 export function onCanvasCreated(callback: (event: CanvasCreatedEvent) => void): () => void {
   return subscribeToEvent(events.canvasCreatedEvent, callback)

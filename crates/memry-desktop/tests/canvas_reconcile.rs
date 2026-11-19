@@ -144,7 +144,7 @@ fn a_deleted_canvas_document_put_back_is_a_new_canvas() {
     .unwrap();
 
     assert_eq!(w.reconcile().adopted, 1);
-    assert!(w.canvases.get(&id, NOW).unwrap().is_none());
+    assert!(w.canvases.get(&id).unwrap().is_none());
     let back = w.sidecar_id("canvases/Plan.excalidraw");
     assert_ne!(back, id);
     assert!(w.scene_of(&back).contains("ink"));
@@ -293,10 +293,11 @@ fn opening_a_canvas_after_a_synced_edit_serves_and_writes_that_edit() {
 fn a_save_from_a_read_before_a_synced_edit_keeps_that_edit() {
     let w = world();
     let id = w.create("Plan", None, "ink").canvas.summary.id;
-    assert!(w.scene_of(&id).contains("ink"));
+    let read = w.canvases.get(&id).unwrap().unwrap();
+    assert!(read.scene.contains("ink"));
     w.core.set_scene(id.clone(), scene("synced")).unwrap();
 
-    let Update::Saved { conflict_copy, .. } = w.save(&id, "local") else {
+    let Update::Saved { conflict_copy, .. } = w.save_over(&id, "local", read.sha256) else {
         panic!("the save was not made");
     };
     assert!(w.file("canvases/Plan.excalidraw").contains("local"));
