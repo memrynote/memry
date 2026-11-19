@@ -265,6 +265,8 @@ describe('pack entry contract vectors', () => {
         if (!meta.success || !declared) continue
         expect(packed.sortKey).toBe(want.sortKey)
         expect(packed.sourceKey).toBe(want.sourceKey)
+        // §8.4.2: a step 04 writer puts the row's version in meta for the manifest reconcile.
+        expect(meta.data.version, `${packed.id}: version`).toBe(1)
         const blob = EncryptedItemPayloadSchema.parse(
           JSON.parse(new TextDecoder().decode(extractEntry(bytes, packed)))
         )

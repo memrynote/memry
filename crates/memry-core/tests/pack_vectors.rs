@@ -111,10 +111,12 @@ fn pack_entry_contract_vectors() {
             for key in ["id", "type", "blob"] {
                 meta.remove(key);
             }
+            // Plus the row's sync_items.version, for the manifest reconcile (§8.4.2).
+            meta.insert("version".to_owned(), serde_json::Value::from(1));
             assert_eq!(
                 entry.meta.as_ref(),
                 Some(&serde_json::Value::Object(meta)),
-                "{name}: meta is the pull item minus id, type, blob"
+                "{name}: meta is the pull item minus id, type, blob, plus version"
             );
             checked += 1;
         }

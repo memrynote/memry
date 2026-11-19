@@ -595,7 +595,8 @@ storing `nextCursor`.
 applied record packs, and body packs when it declared `note_body`, starts
 `GET /sync/changes` at the cursor chapter 08 §8.10 gives it, never above it,
 and reconciles its packed records against the manifest as chapter 08 §8.10
-requires. Without `coverage` in the pack
+requires: version-exact, so every manifest item whose `version` differs from
+the one it holds goes to `POST /sync/pull`. Without `coverage` in the pack
 listing (`packages/contracts/src/sync-api.ts:796-811`), that cursor is 0.
 
 ## 5.11.1 The response shapes
@@ -1117,7 +1118,9 @@ replaced after it was read is not a lost blob: the row is left out, as before,
 and the replacement arrives at a later cursor. There is no background sweep:
 the pull, which meets every lost blob a client actually needs, is what reports
 it. Nothing deletes a row because of it. The next accepted push of the item
-clears it, and nothing triggers that push automatically.
+clears it, and nothing triggers that push automatically. A record pack writer
+omits such a row, and the version-exact manifest reconcile of chapter 08
+§8.10 sends a pack reader to this pull for it.
 
 A conforming client records a `blobMissing` entry, applies nothing for it,
 never treats it as a delete, keeps any local row, and advances the cursor

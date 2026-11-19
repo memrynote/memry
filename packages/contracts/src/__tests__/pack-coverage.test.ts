@@ -86,8 +86,9 @@ describe('pack coverage vectors', () => {
  * the chapter: each function below restates one chapter 08 §8.10 to §8.13 rule
  * as a writer, a server or a fresh reader over one small vault, and the probes
  * check that the rules together keep the zero-loss oracle: after the bootstrap the reader holds
- * every live record, every tombstone that still has a payload, and each live
- * document's current body, exactly as the server does. Each probe failed under
+ * every live record at its current version (or knows its payload is lost),
+ * every tombstone that still has a payload, and each live document's current
+ * body, exactly as the server does. Each probe failed under
  * the text it replaces (PR #5254 body, Proof). A dead document's body rows
  * are needed rows: a re-create revives them (chapter 07 §7.15).
  */
@@ -101,7 +102,14 @@ interface Row {
   // A purged-tombstone marker (chapter 05 §5.12.3): no payload, never in a fresh reader's feed.
   marker?: boolean
   // A live row whose payload is lost (`blob_missing_at`, chapter 05 §5.12.4): a writer cannot pack it.
+  // Live rows only: a tombstone whose payload is lost is a marker (sync.ts:470-479).
   lost?: boolean
+  // An index entry above PACK_MAX_INDEX_ENTRY_BYTES: the item routes serve it, packs never do.
+  oversize?: boolean
+  // `sync_items.version` of a record; 1 when absent.
+  version?: number
+  // The R2 key the row points at, for the 404 recheck.
+  key?: string
   revision?: string
 }
 
@@ -116,17 +124,24 @@ interface Pack {
 function buildPack(rows: Row[], kind: ProbeKind, coverFrom: number, coverThrough: number): Pack {
   const entries = rows.filter(
     (r) =>
-      r.kind === kind && r.cursor > coverFrom && r.cursor <= coverThrough && !r.marker && !r.lost
+      r.kind === kind &&
+      r.cursor > coverFrom &&
+      r.cursor <= coverThrough &&
+      !r.marker &&
+      !r.lost &&
+      !r.oversize
   )
   return { kind, coverFrom, coverThrough, entries }
 }
 
 /**
- * §8.10 writer over `(coverFrom, coverThrough]`: a needed row it cannot pack
- * (here, a lost payload) is in no range. The range before it ends below it, and
- * the next starts at its cursor, so a reader's chain stops there.
+ * §8.10 writer over `(coverFrom, coverThrough]`. A record row it cannot pack is
+ * omitted and the range spans it, so record ranges tile. A body row it cannot
+ * pack (a lost snapshot) is in no range: the range before it ends below it and
+ * the next starts at its cursor, a gap one cursor wide.
  */
 function writeRanges(rows: Row[], kind: ProbeKind, coverFrom: number, coverThrough: number) {
+  if (kind === 'record') return [buildPack(rows, kind, coverFrom, coverThrough)]
   const packs: Pack[] = []
   let from = coverFrom
   for (const r of rows.filter((row) => row.kind === kind && row.lost)) {
@@ -136,6 +151,84 @@ function writeRanges(rows: Row[], kind: ProbeKind, coverFrom: number, coverThrou
   }
   packs.push(buildPack(rows, kind, from, coverThrough))
   return packs
+}
+
+/**
+ * §8.10 lost body row: a selected row whose object answers 404 is lost only
+ * while the row still points at the key it was read with. A row that moved or
+ * is gone is not needed at that cursor.
+ */
+function readForBuild(selected: Row[], objects: Set<string>, current: Row[]): Row[] {
+  return selected.flatMap((r) => {
+    if (r.key === undefined || objects.has(r.key)) return [r]
+    const now = current.find((c) => c.kind === r.kind && c.doc === r.doc)
+    return now?.key === r.key ? [{ ...r, lost: true }] : []
+  })
+}
+
+/** §8.10 Bridging a body gap: adjacent ranges merge once the gap holds no needed row. */
+function bridgeGaps(packs: Pack[], current: Row[]): Pack[] {
+  const out: Pack[] = []
+  for (const p of packs.toSorted((a, b) => a.coverFrom - b.coverFrom)) {
+    const prev = out.at(-1)
+    const needed = (r: Row) =>
+      prev !== undefined &&
+      r.kind === p.kind &&
+      r.cursor > prev.coverThrough &&
+      r.cursor <= p.coverFrom
+    if (prev && prev.coverThrough < p.coverFrom && !current.some(needed)) {
+      out[out.length - 1] = {
+        ...prev,
+        coverThrough: p.coverThrough,
+        entries: [...prev.entries, ...p.entries]
+      }
+    } else out.push(p)
+  }
+  return out
+}
+
+const FEED_PAGE_ROWS = 500 // MAX_CHANGES_LIMIT, apps/sync-server/src/services/sync.ts:41
+
+/**
+ * §8.10 SHOULD: read the feed across each gap `(a, b]` of a kind, from `a`
+ * until `nextCursor` reaches `b`, then treat the gap as usable. Returns the
+ * feed pages that costs and the packs with each gap filled.
+ */
+function readAcrossGaps(packs: Pack[]) {
+  let pages = 0
+  const filled: Pack[] = []
+  for (const kind of ['record', 'crdt_snapshot'] as const) {
+    let end = 0
+    for (const p of packs
+      .filter((q) => q.kind === kind)
+      .toSorted((a, b) => a.coverFrom - b.coverFrom)) {
+      if (p.coverFrom > end) {
+        pages += Math.ceil((p.coverFrom - end) / FEED_PAGE_ROWS)
+        filled.push({ kind, coverFrom: end, coverThrough: p.coverFrom, entries: [] })
+      }
+      end = Math.max(end, p.coverThrough)
+    }
+  }
+  return { pages, packs: [...packs, ...filled] }
+}
+
+type ProbeCoverage = Array<{ itemKind: ProbeKind; packedThrough: number; coveredThrough: number }>
+
+/** §8.10 tail start for a reader that declares `note_body`; updates are fully covered here. */
+function tailOf(packs: Pack[], coverage: ProbeCoverage): number {
+  return tailFrom({
+    scenario: '',
+    noteBody: true,
+    coverage: [...coverage, { itemKind: 'crdt_update', packedThrough: 0, coveredThrough: 1e9 }],
+    packs: packs.map((p) => ({
+      itemKind: p.kind,
+      coverFrom: p.coverFrom,
+      coverThrough: p.coverThrough,
+      usable: true
+    })),
+    unusableRecordSortKeys: [],
+    tailFrom: 0
+  })
 }
 
 /**
@@ -175,7 +268,10 @@ function oracle(rows: Row[]) {
   for (const r of rows)
     if (r.kind === 'crdt_snapshot' && live.includes(r.doc)) bodies[r.doc] = r.revision ?? ''
   return {
-    live: live.toSorted(),
+    live: rows
+      .filter((r) => r.kind === 'record' && !r.deleted && !r.lost)
+      .map((r) => `${r.doc}@${r.version ?? 1}`)
+      .toSorted(),
     tombstones: rows
       .filter((r) => r.kind === 'record' && r.deleted && !r.marker)
       .map((r) => r.doc)
@@ -190,40 +286,27 @@ function oracle(rows: Row[]) {
 
 /**
  * A fresh reader that declares `note_body` but not `purged_tombstones`:
- * §8.10 tail start, then the feed above it, then the record reconcile against
- * `GET /sync/manifest` (live records only, `deleted_at IS NULL`) and the body
- * check against `snapshotMeta`, both read after the pack bytes.
+ * §8.10 tail start, then the feed above it, then the version-exact record
+ * reconcile against `GET /sync/manifest` (live records with their `version`,
+ * `deleted_at IS NULL`) and the body check against `snapshotMeta`, both read
+ * after the pack bytes. Every id the reconcile pulls lands in `pulls`.
  */
 function bootstrap(input: {
   packs: Pack[]
-  coverage: Array<{ itemKind: ProbeKind; packedThrough: number; coveredThrough: number }>
+  coverage: ProbeCoverage
   rowsAtTail: Row[]
   rowsAfterPack: Row[]
   localModified?: string[]
+  pulls?: string[]
 }) {
-  const tail = tailFrom({
-    scenario: '',
-    noteBody: true,
-    coverage: [
-      ...input.coverage,
-      { itemKind: 'crdt_update', packedThrough: 0, coveredThrough: 1e9 }
-    ],
-    packs: input.packs.map((p) => ({
-      itemKind: p.kind,
-      coverFrom: p.coverFrom,
-      coverThrough: p.coverThrough,
-      usable: true
-    })),
-    unusableRecordSortKeys: [],
-    tailFrom: 0
-  })
+  const tail = tailOf(input.packs, input.coverage)
   const records = new Map<string, Row & { fromPack: boolean }>()
-  const blobMissing: string[] = []
+  const blobMissing = new Set<string>()
   const bodies = new Map<string, Row>()
   const take = (r: Row, fromPack: boolean) => {
     if (r.lost) {
       // `POST /sync/pull` reports it in `blobMissing`; the held row stays (chapter 05 §5.12.4).
-      blobMissing.push(r.doc)
+      blobMissing.add(r.doc)
     } else if (r.kind === 'record') {
       const held = records.get(r.doc)
       if (!held || r.cursor > held.cursor) records.set(r.doc, { ...r, fromPack })
@@ -237,26 +320,37 @@ function bootstrap(input: {
     for (const e of pack.entries)
       if (e.kind === 'record' || e.revision === snapshotMeta(e.doc)) take(e, true)
   for (const r of input.rowsAtTail) if (r.cursor > tail && !r.marker) take(r, false)
-  const manifest = liveDocs(input.rowsAfterPack)
+  const manifest = input.rowsAfterPack.filter((r) => r.kind === 'record' && !r.deleted)
   for (const [doc, r] of records)
-    if (r.fromPack && !r.deleted && !manifest.includes(doc) && !input.localModified?.includes(doc))
+    if (
+      r.fromPack &&
+      !r.deleted &&
+      !manifest.some((m) => m.doc === doc) &&
+      !input.localModified?.includes(doc)
+    )
       records.delete(doc)
-  for (const doc of manifest) {
-    if (records.get(doc)?.deleted === false) continue
-    const row = input.rowsAfterPack.find((r) => r.kind === 'record' && r.doc === doc)
-    if (row) records.set(doc, { ...row, fromPack: false })
+  for (const item of manifest) {
+    const held = records.get(item.doc)
+    if (held && !held.deleted && (held.version ?? 1) === (item.version ?? 1)) continue
+    input.pulls?.push(item.doc)
+    if (item.lost) blobMissing.add(item.doc)
+    else records.set(item.doc, { ...item, fromPack: false })
   }
-  const live = [...records.values()].filter((r) => !r.deleted).map((r) => r.doc)
+  const held = [...records.values()].filter((r) => !r.deleted)
+  const live = new Set(held.map((r) => r.doc))
   return {
-    live: live.toSorted(),
+    live: held
+      .filter((r) => !blobMissing.has(r.doc))
+      .map((r) => `${r.doc}@${r.version ?? 1}`)
+      .toSorted(),
     tombstones: [...records.values()]
       .filter((r) => r.deleted)
       .map((r) => r.doc)
       .toSorted(),
     bodies: Object.fromEntries(
-      [...bodies.values()].filter((r) => live.includes(r.doc)).map((r) => [r.doc, r.revision ?? ''])
+      [...bodies.values()].filter((r) => live.has(r.doc)).map((r) => [r.doc, r.revision ?? ''])
     ),
-    blobMissing: blobMissing.toSorted()
+    blobMissing: [...blobMissing].toSorted()
   }
 }
 
@@ -372,7 +466,7 @@ describe('chapter 08 §8.10-§8.13 rule models (REVIEW-5254, REVIEW-5253, VERIFY
     }
     expect(bootstrap(input)).toEqual(oracle(shed))
     // A pack-sourced record the device modified locally stays, for its push to decide.
-    expect(bootstrap({ ...input, localModified: ['x'] }).live).toEqual(['x', 'y'])
+    expect(bootstrap({ ...input, localModified: ['x'] }).live).toEqual(['x@1', 'y@1'])
   })
 
   it('P3: the shed waits out every URL signed while the record pack was listed', () => {
@@ -470,23 +564,86 @@ describe('chapter 08 §8.10-§8.13 rule models (REVIEW-5254, REVIEW-5253, VERIFY
     expect(read).toEqual(oracle(rows))
   })
 
-  it('V1: a newer version whose payload is lost ends the range, so the reader learns of it', () => {
-    const first: Row[] = [{ kind: 'record', doc: 'x', cursor: 10 }]
-    const rows: Row[] = [
-      { kind: 'record', doc: 'x', cursor: 50, lost: true },
-      { kind: 'record', doc: 'y', cursor: 55 }
-    ]
-    const read = bootstrap({
-      packs: [buildPack(first, 'record', 0, 20), ...writeRanges(rows, 'record', 20, 60)],
-      coverage: [
+  it('V1: record ranges tile over an omitted X v2, and the version-exact reconcile pulls it', () => {
+    const first: Row[] = [{ kind: 'record', doc: 'x', cursor: 10, version: 1 }]
+    // X v2 at 50 cannot be packed: its payload is lost, or its index entry is too large.
+    for (const unpackable of [{ lost: true }, { oversize: true }]) {
+      const rows: Row[] = [
+        { kind: 'record', doc: 'x', cursor: 50, version: 2, ...unpackable },
+        { kind: 'record', doc: 'y', cursor: 55 }
+      ]
+      const packs = [buildPack(first, 'record', 0, 20), ...writeRanges(rows, 'record', 20, 60)]
+      const coverage: ProbeCoverage = [
         { itemKind: 'record', packedThrough: 60, coveredThrough: 60 },
         { itemKind: 'crdt_snapshot', packedThrough: 0, coveredThrough: 1e9 }
-      ],
-      rowsAtTail: rows,
-      rowsAfterPack: rows
-    })
-    expect(read).toEqual(oracle(rows))
-    expect(read.blobMissing).toEqual(['x'])
+      ]
+      expect(tailOf(packs, coverage)).toBe(60)
+      const pulls: string[] = []
+      const read = bootstrap({ packs, coverage, rowsAtTail: rows, rowsAfterPack: rows, pulls })
+      expect(pulls).toEqual(['x'])
+      expect(read).toEqual(oracle(rows))
+    }
+  })
+
+  it('R1: a lost record row keeps the tail at the top, and a body gap costs one feed page', () => {
+    const top = 20_000
+    const rows: Row[] = [
+      { kind: 'record', doc: 'x', cursor: 50, lost: true },
+      { kind: 'crdt_snapshot', doc: 'y', cursor: 60, key: 'k-y', lost: true },
+      { kind: 'record', doc: 'y', cursor: top }
+    ]
+    const coverage: ProbeCoverage = [
+      { itemKind: 'record', packedThrough: top, coveredThrough: top },
+      { itemKind: 'crdt_snapshot', packedThrough: top, coveredThrough: top }
+    ]
+    const records = writeRanges(rows, 'record', 0, top)
+    const snapshots = writeRanges(rows, 'crdt_snapshot', 0, top)
+    // Records: the lost row is omitted, not a gap.
+    expect(tailOf([...records, ...bridgeGaps(snapshots, [])], coverage)).toBe(top)
+    // Bodies: a MUST-only reader starts the tail at the gap, about 40 pages.
+    const mustOnly = tailOf([...records, ...snapshots], coverage)
+    expect(mustOnly).toBe(59)
+    expect(Math.ceil((top - mustOnly) / FEED_PAGE_ROWS)).toBe(40)
+    // The SHOULD: read the feed across the one-cursor gap, one page, then tail from the top.
+    const across = readAcrossGaps([...records, ...snapshots])
+    expect(across.pages).toBe(1)
+    expect(tailOf(across.packs, coverage)).toBe(top)
+  })
+
+  it('R2: a 404 on a replaced snapshot is no gap, and a gap whose row moved is bridged', () => {
+    const range = (p: Pack) => [p.coverFrom, p.coverThrough]
+    // The writer selected a@50 under k1; a concurrent write moved it to 70 under k2 and deleted k1.
+    const selected: Row[] = [
+      { kind: 'crdt_snapshot', doc: 'a', cursor: 50, key: 'k1', revision: 'r1' }
+    ]
+    const current: Row[] = [
+      { kind: 'record', doc: 'a', cursor: 5 },
+      { kind: 'crdt_snapshot', doc: 'a', cursor: 70, key: 'k2', revision: 'r2' }
+    ]
+    const replaced = readForBuild(selected, new Set(['k2']), current)
+    expect(writeRanges(replaced, 'crdt_snapshot', 0, 60).map(range)).toEqual([[0, 60]])
+    // A real loss at 50 leaves a gap. It stays while the row is there, and the run after
+    // the write that moved it bridges it.
+    const gapped = writeRanges(readForBuild(selected, new Set(), selected), 'crdt_snapshot', 0, 60)
+    expect(gapped.map(range)).toEqual([
+      [0, 49],
+      [50, 60]
+    ])
+    expect(bridgeGaps(gapped, selected).map(range)).toEqual(gapped.map(range))
+    const bridged = bridgeGaps(gapped, current)
+    expect(bridged.map(range)).toEqual([[0, 60]])
+    const packs = [
+      buildPack(current, 'record', 0, 80),
+      ...bridged,
+      buildPack(current, 'crdt_snapshot', 60, 80)
+    ]
+    const coverage: ProbeCoverage = [
+      { itemKind: 'record', packedThrough: 80, coveredThrough: 80 },
+      { itemKind: 'crdt_snapshot', packedThrough: 80, coveredThrough: 80 }
+    ]
+    expect(tailOf(packs, coverage)).toBe(80)
+    const read = bootstrap({ packs, coverage, rowsAtTail: current, rowsAfterPack: current })
+    expect(read).toEqual(oracle(current))
   })
 
   it('V2: a rollup that straddles a shed does not list the shed item again', () => {

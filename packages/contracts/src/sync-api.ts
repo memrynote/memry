@@ -851,13 +851,13 @@ export const RecordPullItemResponseSchema = PullItemResponseSchema.omit({
  * item minus what the entry already holds. `id` and `type` are the entry's
  * `type:id` identity and `blob` is its payload, so meta plus payload rebuild
  * the pull item exactly. Derived, so a field added to the pull item reaches
- * packs too. Unknown keys are stripped: a newer writer may add keys.
+ * packs too, plus `version` for the manifest reconcile. Unknown keys are stripped.
  */
 export const RecordPackEntryMetaSchema = RecordPullItemResponseSchema.omit({
   id: true,
   type: true,
   blob: true
-})
+}).extend({ version: z.number().int().min(1).optional() })
 
 /**
  * `metaBytes` of a `crdt_update` pack entry (protocol 08 §8.4.3): the update

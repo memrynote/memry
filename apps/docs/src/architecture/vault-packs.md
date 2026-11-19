@@ -249,17 +249,19 @@ any of it yet.
 
 - **One axis.** Every pack gets a coverage range `(coverFrom, coverThrough]` on `server_cursor`,
   for every kind. The first `GET /sync/packs` page states, per kind, `packedThrough` and
-  `coveredThrough`. A pack holds every needed row whose cursor is in its range, and no needed row
-  sits in `(packedThrough, coveredThrough]`. Selecting snapshots by `server_cursor` removes the
+  `coveredThrough`. A body pack holds every needed row whose cursor is in its range, and no needed
+  row sits in `(packedThrough, coveredThrough]`. A record row the writer cannot pack (a lost blob,
+  an oversize entry) is left out while the range still spans it, so record ranges tile. Selecting snapshots by `server_cursor` removes the
   same-second under-coverage above. `minCursor` and `maxCursor` keep their old meaning for
   released readers.
 - **Tail start.** A reader chains its usable packs of each kind from 0. If the chain reaches
   `packedThrough`, that kind is covered through `coveredThrough`. Otherwise it is covered only to
-  the end of the chain. The tail starts at the lowest kind. A 404, a bad pack, or a pack that a
-  rollup took out of the listing only lowers the start. Record packs can still miss a row, such
-  as a tombstone shed before it was packed, so the reader reads the manifest after the pack bytes:
-  it pulls listed items it lacks and does not apply a packed live record the manifest leaves
-  out. Packed snapshots and updates are confirmed through the batch route, read after
+  the end of the chain. The tail starts at the lowest kind. A 404, a bad pack, a pack that a
+  rollup took out of the listing, or a lost snapshot only lowers the start, and a reader should
+  read the feed across such a gap instead (one page for a lost snapshot). Record packs can miss
+  rows, so the reader reads the manifest after the pack bytes. The check is version-exact: it
+  pulls every listed item it lacks or holds at another version (a record entry carries its
+  version), and does not apply a packed live record the manifest leaves out. Packed snapshots and updates are confirmed through the batch route, read after
   the pack bytes.
 - **Rollup.** Small packs are replaced by one pack under a new key. Old rows leave the listing in
   the same batch, and old objects are deleted 600 s later, twice the presigned URL lifetime.
