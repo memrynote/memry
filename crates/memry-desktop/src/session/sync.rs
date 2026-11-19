@@ -149,7 +149,10 @@ mod tests {
                 keychain_unavailable: false,
             }
         }
-        async fn open(&self) -> Result<Arc<dyn SyncPasses>, SyncError> {
+        async fn open(
+            &self,
+            _observers: Vec<Arc<dyn memry_core::sync::driver::ApplyObserver>>,
+        ) -> Result<Arc<dyn SyncPasses>, SyncError> {
             Err(SyncError::Locked)
         }
         fn refresh_refused(&self) -> bool {
@@ -200,6 +203,7 @@ mod tests {
                         telemetry: None,
                         signals: signals.clone(),
                         on_status: Arc::new(|_| {}),
+                        on_event: Arc::new(|_| {}),
                     },
                 ))
             })
@@ -279,6 +283,7 @@ mod tests {
                         telemetry: None,
                         signals: signals.clone(),
                         on_status: Arc::new(|_| {}),
+                        on_event: Arc::new(|_| {}),
                     },
                 ))
             })

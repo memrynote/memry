@@ -2238,6 +2238,10 @@
         "prevVault": {
           "label": "Previous Vault",
           "description": "Move to the previous vault in the sidebar"
+        },
+        "todayJournal": {
+          "label": "Today's Journal",
+          "description": "Open the journal on today's entry"
         }
       },
       "tabs": {

@@ -29,6 +29,7 @@ pub mod oauth;
 pub mod paths;
 pub mod redact;
 pub mod registry;
+pub mod sandbox;
 pub mod seams;
 pub mod search;
 pub mod services;

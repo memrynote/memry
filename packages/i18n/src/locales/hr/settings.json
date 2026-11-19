@@ -2238,6 +2238,10 @@
         "prevVault": {
           "label": "Prethodni trezor",
           "description": "Prijeđite na prethodni trezor na bočnoj traci"
+        },
+        "todayJournal": {
+          "label": "Današnji dnevnik",
+          "description": "Otvori dnevnik na današnjem unosu"
         }
       },
       "tabs": {

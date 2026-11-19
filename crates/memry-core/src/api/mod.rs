@@ -3,6 +3,7 @@
 pub mod account;
 pub mod auth;
 pub mod billing;
+pub mod bookmarks;
 pub mod calendar;
 pub mod calendar_conformance;
 pub mod calendar_ical_conformance;
@@ -39,6 +40,7 @@ pub mod note_positions;
 pub mod notes;
 pub mod notes_write;
 pub mod projects;
+pub mod recently_opened;
 pub mod relation_targets;
 pub mod runtime;
 pub mod search;

@@ -2238,6 +2238,10 @@
         "prevVault": {
           "label": "Cofre anterior",
           "description": "Ir para o cofre anterior da barra lateral"
+        },
+        "todayJournal": {
+          "label": "Diário de hoje",
+          "description": "Abrir o diário na entrada de hoje"
         }
       },
       "tabs": {

@@ -2238,6 +2238,10 @@
         "prevVault": {
           "label": "Brankas sebelumnya",
           "description": "Pindah ke brankas sebelumnya di bilah samping"
+        },
+        "todayJournal": {
+          "label": "Jurnal hari ini",
+          "description": "Buka jurnal pada entri hari ini"
         }
       },
       "tabs": {

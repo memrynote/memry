@@ -288,7 +288,6 @@ vi.mock('@blocknote/xl-ai', () => ({
 }))
 
 vi.mock('@blocknote/xl-ai/locales', () => ({ en: {} }))
-vi.mock('@blocknote/core/locales', () => ({ en: {} }))
 
 vi.mock('next-themes', () => ({
   useTheme: () => ({ resolvedTheme: 'dark' })

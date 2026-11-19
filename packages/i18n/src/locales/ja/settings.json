@@ -2238,6 +2238,10 @@
         "prevVault": {
           "label": "前の保管庫",
           "description": "サイドバーの前の保管庫に移動します"
+        },
+        "todayJournal": {
+          "label": "今日のジャーナル",
+          "description": "今日のエントリでジャーナルを開きます"
         }
       },
       "tabs": {

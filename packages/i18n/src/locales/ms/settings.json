@@ -2238,6 +2238,10 @@
         "prevVault": {
           "label": "Bilik kebal sebelumnya",
           "description": "Beralih ke bilik kebal sebelumnya dalam bar sisi"
+        },
+        "todayJournal": {
+          "label": "Jurnal hari ini",
+          "description": "Buka jurnal pada catatan hari ini"
         }
       },
       "tabs": {

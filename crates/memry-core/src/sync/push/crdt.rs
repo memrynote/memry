@@ -133,7 +133,6 @@ impl PushCoordinator {
         let mut updates: Vec<String> = Vec::with_capacity(rows.len());
         let mut sent: Vec<i64> = Vec::with_capacity(rows.len());
         let mut oversized = false;
-        let retired_before = report.retired;
         let mut unsealed: Vec<(i64, Vec<u8>)> = Vec::with_capacity(rows.len());
         for row in rows {
             let Some(update) = row.payload else {
@@ -163,13 +162,6 @@ impl PushCoordinator {
                     self.retire_rejected(doc_id, id, &error.to_string()).await?;
                     report.retired += 1;
                 }
-            }
-        }
-        if report.retired > retired_before {
-            // Dropped for good: only a snapshot of the whole document carries
-            // them now (`note-body-outbox.ts:323`).
-            if let Some(pacing) = &self.crdt_pacing {
-                pacing.requests.request(doc_id, now_ms());
             }
         }
         if sent.is_empty() {
@@ -310,7 +302,13 @@ impl PushCoordinator {
     /// §A.2's retire for one CRDT row, and its document's refusal in the same
     /// transaction: a refusal written after the retire commits is lost for
     /// good when its write fails, since the row it would retry from is gone.
+    /// Retires a row for good. Only a snapshot of the whole document carries
+    /// it now (`note-body-outbox.ts:323`), so the snapshot is requested first:
+    /// a retired row is never left without it.
     async fn retire_rejected(&self, doc_id: &str, id: i64, reason: &str) -> Result<(), PushError> {
+        if let Some(pacing) = &self.crdt_pacing {
+            pacing.requests.request(doc_id, now_ms());
+        }
         let (doc, reason) = (doc_id.to_owned(), reason.to_owned());
         self.db
             .call(move |conn| {

@@ -2238,6 +2238,10 @@
         "prevVault": {
           "label": "Önceki kasa",
           "description": "Kenar çubuğundaki önceki kasaya geç"
+        },
+        "todayJournal": {
+          "label": "Bugünün günlüğü",
+          "description": "Günlüğü bugünün kaydında aç"
         }
       },
       "tabs": {
