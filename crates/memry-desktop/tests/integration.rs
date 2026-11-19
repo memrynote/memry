@@ -22,6 +22,8 @@ mod vault_env;
 mod account_oauth;
 #[path = "account_service.rs"]
 mod account_service;
+#[path = "account_sign_out_cancel.rs"]
+mod account_sign_out_cancel;
 #[path = "account_teardown.rs"]
 mod account_teardown;
 #[path = "account_vault_directory.rs"]
