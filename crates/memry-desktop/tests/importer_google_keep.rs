@@ -15,8 +15,8 @@ use memry_desktop::import::google_keep::{
 use memry_desktop::import::zip::{MAX_NESTED_ZIP_BYTES, MAX_ZIP_NESTING, Zips};
 use memry_desktop::import::{
     ImportContext, ImportInput, ImportSink, ImportSummary, ImportedBookmark, ImportedJournalEntry,
-    ImportedNote, ImportedTask, Importer, JournalEntry, MAX_NOTE_JSON_BYTES, MAX_SOURCE_BYTES,
-    SinkError,
+    ImportedNote, ImportedProjectTask, ImportedTask, Importer, JournalEntry, MAX_NOTE_JSON_BYTES,
+    MAX_SOURCE_BYTES, SinkError,
 };
 use memry_test_kit::{assert_steps_at_most, on_small_stack, output_bound, proptest_config};
 use proptest::prelude::*;
@@ -110,6 +110,14 @@ impl ImportSink for Sink {
     }
 
     fn archive_task(&self, _: &str) -> Result<(), SinkError> {
+        unreachable!("Google Keep creates no tasks")
+    }
+
+    fn create_project(&self, _: &str) -> Result<String, SinkError> {
+        unreachable!("Google Keep creates no projects")
+    }
+
+    fn create_project_task(&self, _: ImportedProjectTask) -> Result<String, SinkError> {
         unreachable!("Google Keep creates no tasks")
     }
 

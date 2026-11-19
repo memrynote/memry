@@ -10,8 +10,8 @@ use base64::Engine;
 use memry_core::markdown::frontmatter::{YamlMap, YamlValue};
 use memry_desktop::attachments::{self, SavedAttachment};
 use memry_desktop::import::{
-    ImportProgress, ImportSink, ImportedBookmark, ImportedJournalEntry, ImportedNote, ImportedTask,
-    JournalEntry, SinkError,
+    ImportProgress, ImportSink, ImportedBookmark, ImportedJournalEntry, ImportedNote,
+    ImportedProjectTask, ImportedTask, JournalEntry, SinkError,
 };
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -22,6 +22,7 @@ pub struct RecordingSink {
     pub timeline: Timeline,
     notes: AtomicUsize,
     tasks: AtomicUsize,
+    projects: AtomicUsize,
     /// The generator's `getInboxProjectId`.
     pub inbox: Option<String>,
     /// The generator's `nestedSubtasks`.
@@ -32,6 +33,10 @@ pub struct RecordingSink {
     pub fail_journal_id: bool,
     /// `saveBookmark` throws for this URL.
     pub fail_bookmark_url: Option<String>,
+    /// `createProject` throws for this name.
+    pub fail_project: Option<String>,
+    /// `createTask` (Todoist's) returns no task for this title.
+    pub fail_project_task: Option<String>,
 }
 
 impl RecordingSink {
@@ -40,11 +45,14 @@ impl RecordingSink {
             timeline,
             notes: AtomicUsize::new(0),
             tasks: AtomicUsize::new(0),
+            projects: AtomicUsize::new(0),
             inbox: Some("inbox".to_owned()),
             nested_subtasks: true,
             journals: HashMap::new(),
             fail_journal_id: false,
             fail_bookmark_url: None,
+            fail_project: None,
+            fail_project_task: None,
         }
     }
 
@@ -117,6 +125,40 @@ impl ImportSink for RecordingSink {
 
     fn nested_subtasks(&self) -> bool {
         self.nested_subtasks
+    }
+
+    /// The generator's `recordingProjects.createProject`.
+    fn create_project(&self, name: &str) -> Result<String, SinkError> {
+        if self.fail_project.as_deref() == Some(name) {
+            return Err(SinkError("project boom".to_owned()));
+        }
+        self.push(json!({ "op": "createProject", "name": name }));
+        Ok(format!(
+            "project-{}",
+            self.projects.fetch_add(1, Ordering::SeqCst) + 1
+        ))
+    }
+
+    /// The generator's `recordingProjects.createTask`.
+    fn create_project_task(&self, task: ImportedProjectTask) -> Result<String, SinkError> {
+        if self.fail_project_task.as_deref() == Some(task.title.as_str()) {
+            return Err(SinkError("Task creation failed".to_owned()));
+        }
+        self.push(json!({
+            "op": "createTask",
+            "projectId": task.project_id,
+            "parentId": task.parent_id,
+            "title": task.title,
+            "description": task.description,
+            "priority": task.priority,
+            "dueDate": task.due_date,
+            "dueTime": task.due_time,
+            "position": task.position,
+        }));
+        Ok(format!(
+            "task-{}",
+            self.tasks.fetch_add(1, Ordering::SeqCst) + 1
+        ))
     }
 
     fn create_task(&self, task: ImportedTask) -> Result<String, SinkError> {
