@@ -208,6 +208,7 @@ struct NotesListView: View {
                     try await writer?.rename(id: id, title: title)
                     await model.refresh()
                 }
+                if router.isSplit { router.created(id) }
                 notesLinks.open(id)
             }
         }

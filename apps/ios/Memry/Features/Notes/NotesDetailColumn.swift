@@ -213,7 +213,10 @@ private struct NotesEmptyDetail: View {
             if model.writer != nil {
                 Button(NotesCreateCopy.newNote, systemImage: "square.and.pencil") {
                     Task {
-                        if let id = await model.createNote(in: folder) { router.select(NoteRoute(id: id)) }
+                        if let id = await model.createNote(in: folder) {
+                            router.created(id)
+                            router.select(NoteRoute(id: id))
+                        }
                     }
                 }
                 .memryPrimaryAction()
