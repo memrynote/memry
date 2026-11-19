@@ -36,6 +36,23 @@ impl CanvasService {
             {
                 return Ok(Update::Conflict);
             }
+            // A scene that reached the record or the document without passing through the
+            // reader (a synced edit, an edit on disk) is settled first, so the save cannot
+            // overwrite it unseen: it is kept as a conflict copy below.
+            let mut stale = false;
+            let canvas = match &scene {
+                Some(_) => {
+                    let found = self.locate(conn, id)?;
+                    stale = self
+                        .settle_in(conn, &canvas, found, now_ms)?
+                        .scene_changed();
+                    match stale {
+                        true => canvas::get(conn, id)?.unwrap_or(canvas),
+                        false => canvas,
+                    }
+                }
+                None => canvas,
+            };
             let found = match self.locate(conn, id)? {
                 Found::Outside => return Err(ReadError::Outside.into()),
                 Found::File {
@@ -46,8 +63,8 @@ impl CanvasService {
                 Found::None => None,
             };
             let mut conflict_copy = None;
-            if let (Some(_), Some((_, document, Some(seen)))) = (&scene, &found)
-                && *seen != document.sha256
+            if let (Some(_), Some((_, document, seen))) = (&scene, &found)
+                && (stale || seen.as_ref().is_some_and(|seen| *seen != document.sha256))
             {
                 conflict_copy = Some(Box::new(
                     self.conflict_copy(conn, &canvas, document, now_ms)?,
@@ -137,7 +154,8 @@ impl CanvasService {
                 folder: (input.folder.is_some() || moved).then_some(folder.as_deref()),
                 icon: input.icon.as_ref().map(Option::as_deref),
                 scene: scene.as_deref(),
-                expected_updated_at: input.expected_updated_at,
+                // Checked above; a settle since has moved `updated_at` on.
+                expected_updated_at: input.expected_updated_at.filter(|_| !stale),
             };
             let saved = match canvas::update(conn, id, &edit, self.canvases.device_id(), now_ms)? {
                 Updated::Saved(saved) => saved,

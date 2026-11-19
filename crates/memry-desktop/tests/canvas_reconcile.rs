@@ -12,6 +12,8 @@
 //! | a record change the document missed reaches the document          | departure: one copy in Electron |
 //! | both changed: the on-disk drawing is kept as a conflict copy      | departure: one copy in Electron |
 //! | opening a canvas carries an edit made on disk into the record     | departure: one copy in Electron |
+//! | opening a canvas after a synced edit serves and writes that edit  | `canvas-handler.ts:300`        |
+//! | a save from a read before a synced edit keeps that edit           | departure: Electron overwrites |
 //! | directories are adopted, renamed portable, and restored           | `reconcile.ts:127-320,600-712` |
 //! | a deleted folder's emptied directory goes, any other stays        | `reconcile.ts:322-332,640-668` |
 //! | the removals take only empty directories, never the root          | `scene-file.ts:340-465`        |
@@ -23,6 +25,8 @@ use memry_desktop::canvas::dirs::{
     remove_canvas_folder_dir_if_empty, remove_empty_canvas_folder_dirs,
 };
 use memry_desktop::canvas::reconcile::Reconciled;
+
+use memry_desktop::canvas::service::Update;
 
 use crate::canvas_service::{NOW, World, scene, world};
 
@@ -273,4 +277,30 @@ fn opening_a_canvas_carries_an_edit_made_on_disk_into_the_record() {
 
     assert!(w.scene_of(&id).contains("edited"));
     assert!(w.core.canvas(id).unwrap().unwrap().scene.contains("edited"));
+}
+
+#[test]
+fn opening_a_canvas_after_a_synced_edit_serves_and_writes_that_edit() {
+    let w = world();
+    let id = w.create("Plan", None, "ink").canvas.summary.id;
+    w.core.set_scene(id.clone(), scene("synced")).unwrap();
+
+    assert!(w.scene_of(&id).contains("synced"));
+    assert!(w.file("canvases/Plan.excalidraw").contains("synced"));
+}
+
+#[test]
+fn a_save_from_a_read_before_a_synced_edit_keeps_that_edit() {
+    let w = world();
+    let id = w.create("Plan", None, "ink").canvas.summary.id;
+    assert!(w.scene_of(&id).contains("ink"));
+    w.core.set_scene(id.clone(), scene("synced")).unwrap();
+
+    let Update::Saved { conflict_copy, .. } = w.save(&id, "local") else {
+        panic!("the save was not made");
+    };
+    assert!(w.file("canvases/Plan.excalidraw").contains("local"));
+    let copy = conflict_copy.expect("the synced edit is kept as a copy");
+    assert!(copy.canvas.scene.contains("synced"));
+    assert!(w.scene_of(&copy.canvas.summary.id).contains("synced"));
 }
