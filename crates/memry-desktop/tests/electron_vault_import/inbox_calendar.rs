@@ -579,7 +579,9 @@ fn rows_electron_would_re_push_at_start_are_refused() {
             source(c, "s", "google", text(r#"{"d":1}"#), &[]);
             external(c, "x", "s", &[("clock", Value::Null)]);
         }),
-        ("calendar_sources", |c| source(c, "s", "google", Value::Null, &[])),
+        ("calendar_sources", |c| {
+            source(c, "s", "google", Value::Null, &[])
+        }),
         ("calendar_bindings", |c| {
             seed(
                 c,
@@ -622,8 +624,14 @@ fn unsynced_rows_of_a_never_signed_in_vault_ask_for_sign_in() {
         ],
     );
     assert_refused(&vault, |e| {
-        matches!(e, ImportError::NeverSynced { table: "inbox_items" })
-            && e.to_string().contains("Sign in to sync in the previous MemryNote app")
+        matches!(
+            e,
+            ImportError::NeverSynced {
+                table: "inbox_items"
+            }
+        ) && e
+            .to_string()
+            .contains("Sign in to sync in the previous MemryNote app")
     });
 }
 
