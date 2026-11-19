@@ -956,6 +956,8 @@
     "componentsVaultSwitcher": {
       "noVaultsYet": "Inga valv ännu",
       "openVault": "Öppna valv",
+      "createVault": "Skapa valv",
+      "openFolderAsVault": "Öppna mapp som valv",
       "settings": "Inställningar",
       "remove": "Ta bort ”",
       "removeVaultTitle": "Ta bort ”{name}” från listan?",

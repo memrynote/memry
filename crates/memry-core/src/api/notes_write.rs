@@ -25,6 +25,8 @@
 
 use std::sync::Arc;
 
+mod bookmark_writes;
+
 use crate::api::errors::{AuthError, PropertyWriteError, StorageError};
 use crate::crdt::body_edit::{self, BlockEdit};
 use crate::crdt::errors::CrdtError;

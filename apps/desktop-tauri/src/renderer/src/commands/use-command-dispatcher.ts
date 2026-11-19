@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { isInputFocused, isRichTextFocused } from '@/hooks/use-keyboard-shortcuts'
-import { isMac, isShortcutRecording } from '@/hooks/use-keyboard-shortcuts-base'
+import { isLinux, isMac, isShortcutRecording } from '@/hooks/use-keyboard-shortcuts-base'
 import { useFolderNoteShortcuts, useShortcutOverrides } from '@/lib/shortcut-bindings'
 import { isFolderNoteRunnable, runFolderNote } from './folder-note-runner'
 import { focusOwnsLocalCommandMenu } from './local-command-menu'
@@ -47,6 +47,7 @@ export function useCommandDispatcher(): void {
       const onKeyDown = (e: KeyboardEvent): void => {
         const env: KeydownEnv = {
           isMac,
+          isLinux,
           isRecording: isShortcutRecording(),
           isBlocked: isKeyboardBlocked(),
           isInInput: isTypingTarget(e.target),

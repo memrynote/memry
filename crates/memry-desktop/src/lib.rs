@@ -14,6 +14,7 @@ pub mod embedding;
 pub mod error;
 pub mod export;
 pub mod fold;
+pub mod folder_view;
 pub mod http;
 pub mod i18n;
 pub mod import;
