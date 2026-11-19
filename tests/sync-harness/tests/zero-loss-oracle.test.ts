@@ -1,9 +1,9 @@
-import { createHash } from 'node:crypto'
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { SimulatedServer } from '../src/simulated-server.js'
 import { SimulatedDevice } from '../src/simulated-device.js'
 import { createTestDevice } from '../src/test-auth.js'
 import { generateVaultKey, initCrypto } from '../src/crypto.js'
+import { harnessDigest as digest, harnessDigests as digestsOf } from '../src/harness-digest.js'
 import type { DeviceIdentity } from '../src/types.js'
 import {
   checkSemantic,
@@ -52,21 +52,6 @@ const post = async (identity: DeviceIdentity, path: string, body: unknown): Prom
 }
 
 const bytes = (...values: number[]): string => Buffer.from(values).toString('base64')
-
-/** Harness stand-in for the §12.11 digest: the record content plus the body's applied payloads. */
-const digest = (content: Record<string, unknown>, bodyParts: string[]): string =>
-  createHash('sha256')
-    .update(`${JSON.stringify(content)}\n${bodyParts.join(',')}`)
-    .digest('hex')
-
-const digestsOf = (label: string, device: SimulatedDevice): DeviceDigests => {
-  const digests: Record<string, string> = {}
-  for (const item of device.getAllItems().values()) {
-    if (item.operation === 'delete') continue
-    digests[item.id] = digest(item.content, device.getBodyParts(item.id))
-  }
-  return { label, digests }
-}
 
 const expectRed = (findings: Finding[], kind: Finding['kind'], itemId: string): void => {
   console.log(`[#5225 ${kind}]\n${formatFindings(findings)}`)
