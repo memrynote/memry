@@ -242,6 +242,10 @@ name = "sync_supervisor_harness"
 path = "tests/sync_supervisor_harness.rs"
 
 [[test]]
+name = "attachment_holds_harness"
+path = "tests/attachment_holds_harness.rs"
+
+[[test]]
 name = "keyring_live"
 path = "tests/keyring_live.rs"
 
