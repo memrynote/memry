@@ -1,6 +1,17 @@
+import { PACK_MAX_INDEX_ENTRY_BYTES } from '@memry/contracts/pack-format'
+
 import { AppError, ErrorCodes } from '../lib/errors'
 import { createLogger } from '../lib/logger'
-import { openPack, type PackEntryMeta, type PackEntryPlan, type PackKindName } from './pack-format'
+import {
+  openPack,
+  packIndexRecordBytes,
+  packSha256,
+  type PackEntryMeta,
+  type PackEntryPlan,
+  type PackEntryPlanMeta,
+  type PackKindName
+} from './pack-format'
+import { isSupportedRecordSyncItemType, recordMetaFromColumns } from './sync'
 
 const logger = createLogger('PackCompaction')
 
@@ -62,9 +73,13 @@ export const PACK_HARD_MAX_BYTES = 32 * 1024 * 1024
 // + 5 D1 round trips (watermark read, candidate select, duplicate check,
 //   pack_index insert, watermark upsert)
 // + up to ⌈256/40⌉ = 7 D1 chunk reads loading snapshot freshness metadata
-// => ~269 subrequests per full 256-item pack (~27% of the ceiling). Two kinds
-// compacted back-to-back in one invocation still fit (~540), and a full retry
-// doubles safely. The free plan's 50-subrequest ceiling cannot fit ANY pack;
+// => ~269 subrequests per full 256-item pack (~27% of the ceiling). A record
+// pack reads its entry meta in the selection query itself, so it costs
+// ~262. compactVault builds one pack per kind per queue message
+// (max_batch_size 1), ~531 together, and a large vault drains across
+// invocations: each push nudges one more pack per kind, and the cron backfill
+// continues from the watermark.
+// A full retry doubles safely. The free plan's 50-subrequest ceiling cannot fit ANY pack;
 // compaction has always been a paid-plan background job by construction.
 export const PACK_MAX_ITEMS = 256
 
@@ -81,27 +96,14 @@ export const MAX_PACKED_ITEM_BYTES = 8 * 1024 * 1024
 // unaffected — this only shapes concurrency, not budget.
 export const PACK_FETCH_CONCURRENCY = 16
 
-/** Kinds whose sources live in R2 and are packed today. */
 /**
- * Kinds the vault sweep and the cron backfill actually build packs for.
- *
- * `record` is deliberately ABSENT even though `compactOneRange` supports it.
- * A record pack entry is exactly the R2 payload blob
- * (`{dataNonce, encryptedData, encryptedKey, keyNonce}`), while the Ed25519
- * signature, signer device id, vector clock, operation and deleted_at live in
- * the `sync_items` D1 row and reach a client only through `POST /sync/pull`.
- * The index block carries none of them, so a client cannot verify a packed
- * record without skipping signature verification — unacceptable in an E2E
- * vault. Building them anyway would mint immutable R2 objects that no client
- * can ever read, and packs are never rewritten, so those bytes would be dead
- * forever. Records still bootstrap through the item-granular pull, which
- * already pages them; the snapshot axis is where the per-note GET floor was.
- *
- * Re-enabling needs the signature/signer/clock/operation carried in the entry
- * meta (the meta field is free-form JSON, so that is additive, not a format
- * break) plus a client apply path that verifies them. Tracked separately.
+ * Kinds the vault sweep and the cron backfill build packs for. A `record`
+ * entry carries the pull item's signature, signer, clock, operation and
+ * deletion state as its meta (protocol 08 §8.4.2), so a client verifies it
+ * exactly as a pulled item. Released readers drop record packs before
+ * download (§8.11). `crdt_update` waits for its writer (#5228).
  */
-export const PACKED_KINDS: readonly PackKindName[] = ['crdt_snapshot']
+export const PACKED_KINDS: readonly PackKindName[] = ['crdt_snapshot', 'record']
 
 export interface VaultScope {
   userId: string
@@ -120,6 +122,8 @@ export interface PackSelection {
     id: string
     sourceKey: string
     sizeBytes: number
+    /** Record entries: the pull-item meta and the content hash of the same D1 row. */
+    record?: { meta: PackEntryPlanMeta; contentHash: string }
   }>
   /** Progress marker AFTER the last candidate (composite, exclusive). */
   nextSortValue: number
@@ -169,7 +173,8 @@ export const selectCandidates = async (
   const query =
     kind === 'record'
       ? {
-          sql: `SELECT server_cursor AS sort_key, item_type || ':' || item_id AS tiebreak, item_type, item_id, blob_key, size_bytes
+          sql: `SELECT server_cursor AS sort_key, item_type || ':' || item_id AS tiebreak, item_type, item_id, blob_key, size_bytes,
+                  content_hash, crypto_version, operation, signer_device_id, signature, clock, deleted_at
                 FROM sync_items
                 WHERE user_id = ? AND vault_id = ?
                   AND (server_cursor > ? OR (server_cursor = ? AND (item_type || ':' || item_id) > ?))
@@ -211,19 +216,24 @@ export const selectCandidates = async (
   const rows = await db
     .prepare(query.sql)
     .bind(...query.bind)
-    .all<{
-      sort_key: number
-      tiebreak: string
-      blob_key: string
-      size_bytes: number
-      dead?: number
-    }>()
+    .all<
+      {
+        sort_key: number
+        tiebreak: string
+        blob_key: string
+        size_bytes: number
+        dead?: number
+      } & Partial<RecordRow>
+    >()
 
   const candidates: PackSelection['candidates'] = []
   let bytes = 0
   for (const row of rowList(rows)) {
     if (row.dead) continue
     if (row.size_bytes > MAX_PACKED_ITEM_BYTES) continue // oversized: permanent item-granular tail
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the record query selects every RecordRow column
+    const record = kind === 'record' ? recordEntryOf(row as typeof row & RecordRow) : undefined
+    if (record === null) continue
     if (bytes + row.size_bytes > PACK_TARGET_BYTES) break
     bytes += row.size_bytes
     candidates.push({
@@ -231,7 +241,8 @@ export const selectCandidates = async (
       tiebreak: row.tiebreak,
       id: row.tiebreak,
       sourceKey: row.blob_key,
-      sizeBytes: row.size_bytes
+      sizeBytes: row.size_bytes,
+      ...(record ? { record } : {})
     })
   }
 
@@ -257,6 +268,55 @@ export const selectCandidates = async (
     nextTiebreak: last.tiebreak
   }
 }
+
+interface RecordRow {
+  tiebreak: string
+  item_type: string
+  item_id: string
+  blob_key: string
+  content_hash: string
+  crypto_version: number
+  operation: string
+  signer_device_id: string | null
+  signature: string | null
+  clock: string | null
+  deleted_at: number | null
+}
+
+/**
+ * The meta and content hash of one record entry, read from the same row, or
+ * null when the row cannot be an entry: `POST /sync/pull` would not serve it
+ * as an item either (protocol 08 §8.4.2). A purged tombstone has no payload
+ * (`blob_key` ''), an unknown type is never pulled, a row without signer
+ * metadata or with a corrupt clock fails the pull, and an index entry above
+ * PACK_MAX_INDEX_ENTRY_BYTES fails every conforming reader.
+ */
+const recordEntryOf = (row: RecordRow): { meta: PackEntryPlanMeta; contentHash: string } | null => {
+  if (row.blob_key === '' || !isSupportedRecordSyncItemType(row.item_type)) return null
+  if (!row.signer_device_id || !row.signature) return null
+  let meta: PackEntryPlanMeta
+  try {
+    meta = recordMetaFromColumns({
+      id: row.item_id,
+      type: row.item_type,
+      operation: row.operation,
+      cryptoVersion: row.crypto_version,
+      signature: row.signature,
+      signerDeviceId: row.signer_device_id,
+      deletedAt: row.deleted_at,
+      clock: row.clock
+    })
+  } catch {
+    logger.warn('record row has a corrupt clock; left out of packs', { itemType: row.item_type })
+    return null
+  }
+  const indexBytes = packIndexRecordBytes({ id: row.tiebreak, sourceKey: row.blob_key, meta })
+  if (indexBytes > PACK_MAX_INDEX_ENTRY_BYTES) return null
+  return { meta, contentHash: row.content_hash }
+}
+
+const toHex = (bytes: Uint8Array): string =>
+  Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
 
 const rowList = <T>(result: { results?: T[] }): T[] => result.results ?? []
 
@@ -344,7 +404,7 @@ export const compactOneRange = async (
   // client's freshness check entirely. Looked up in one batched pass,
   // best-effort: a missed lookup leaves meta empty and the client falls back
   // to the item GET.
-  let metaBySourceKey: Map<string, PackEntryMeta> | null = null
+  let metaBySourceKey: Map<string, PackEntryPlanMeta> | null = null
   if (kind === 'crdt_snapshot') {
     metaBySourceKey = await loadSnapshotMeta(
       db,
@@ -364,7 +424,7 @@ export const compactOneRange = async (
       sortKey: candidate.sortKey,
       sizeBytes: candidate.sizeBytes
     }
-    const meta = metaBySourceKey?.get(candidate.sourceKey)
+    const meta = candidate.record?.meta ?? metaBySourceKey?.get(candidate.sourceKey)
     if (meta) plan.meta = meta
     return plan
   })
@@ -383,6 +443,7 @@ export const compactOneRange = async (
     const bodies = await Promise.all(window.map((plan) => storage.get(plan.sourceKey)))
     for (let j = 0; j < window.length; j++) {
       const plan = window[j]
+      const record = selection.candidates[i + j].record
       const body = bodies[j]
       // A null body is a HOLE, not a failure: the blob was replaced/deleted
       // between selection and fetch (or is a dangling row). Membership is
@@ -423,6 +484,18 @@ export const compactOneRange = async (
           declared: plan.sizeBytes,
           actual: bytes.byteLength
         })
+        pack.skipEntry(plan)
+        holes.push(plan.id)
+        continue
+      }
+      // A record's meta and payload must be one version (protocol 08 §8.4.2).
+      // The meta and content_hash came from one row read, and the payload is
+      // that version only when it hashes to that content_hash (the push stores
+      // exactly the bytes it hashed). A push that replaced the row after
+      // selection fails here or 404s above, and its new row sits at a higher
+      // cursor, so the tail serves it.
+      if (record && toHex(await packSha256(bytes)) !== record.contentHash) {
+        logger.warn('record payload is not the selected version; skipping', { kind })
         pack.skipEntry(plan)
         holes.push(plan.id)
         continue
