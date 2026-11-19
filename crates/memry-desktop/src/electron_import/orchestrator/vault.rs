@@ -97,7 +97,7 @@ pub(super) struct PendingInstall {
 
 pub(super) enum Staged {
     /// Nothing to install: imported by an earlier attempt, or opened natively first.
-    Settled(VaultSection),
+    Settled(Box<VaultSection>),
     Install(Box<PendingInstall>),
 }
 
@@ -119,7 +119,7 @@ pub(super) fn stage(
     // later launch then shows the downgrade notice instead of missing the change.
     let fingerprint = source_fingerprint(Path::new(path)).map_err(fail)?;
     if let Some(done) = earlier_import(previous.as_ref(), Path::new(path), &fingerprint) {
-        return Ok(Staged::Settled(done.map_err(fail)?));
+        return Ok(Staged::Settled(Box::new(done.map_err(fail)?)));
     }
     // An id minted by a cut-off attempt stays the vault's id.
     let id = &match previous.as_ref().and_then(|s| s.vault_id.clone()) {
@@ -189,7 +189,7 @@ pub(super) fn stage(
         }
         StageOutcome::NativeFirst => {
             section.status = VaultStatus::NativeFirst;
-            return Ok(Staged::Settled(section));
+            return Ok(Staged::Settled(Box::new(section)));
         }
     };
     if let Err(error) = checks(&staged, &expected, &prepared, &mut section) {
@@ -216,7 +216,7 @@ pub(super) fn import(
     id: &VaultId,
 ) -> Result<VaultSection, RunError> {
     match stage(run, phase, vault, id)? {
-        Staged::Settled(section) => Ok(section),
+        Staged::Settled(section) => Ok(*section),
         Staged::Install(pending) => pending.install(),
     }
 }

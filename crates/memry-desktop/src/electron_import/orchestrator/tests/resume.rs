@@ -63,26 +63,29 @@ fn a_failed_run_installs_no_vault_and_the_rerun_reads_what_electron_wrote_since(
     assert_eq!(w.marker_fingerprint("Work"), Some(w.fingerprint("Work")));
 }
 
-struct EditAtFinish {
+/// Electron writes Work's `data.db` once the run reaches Home: after Work is staged, before it
+/// is installed.
+struct EditAtSecondVault {
     data_db: PathBuf,
     edited: AtomicBool,
 }
 
-impl ProgressSink for EditAtFinish {
+impl ProgressSink for EditAtSecondVault {
     fn update(&self, update: ProgressUpdate) {
-        if update.phase == Phase::Finish && !self.edited.swap(true, Ordering::SeqCst) {
+        let second = update.phase == Phase::Vault && update.current == 2;
+        if second && !self.edited.swap(true, Ordering::SeqCst) {
             add_tag(&self.data_db);
         }
     }
 }
 
-/// Red with the fingerprint taken when the marker is written: an Electron write after the
-/// install then matches the marker, and the downgrade notice (37f) never shows.
+/// Red with the fingerprint taken when the marker entry is built: it then describes a write the
+/// import never read, and the downgrade notice (37f) never shows for it.
 #[test]
 fn the_marker_holds_the_fingerprint_the_import_read() {
     let w = two_vault_world();
     let read = w.fingerprint("Work");
-    let sink = EditAtFinish {
+    let sink = EditAtSecondVault {
         data_db: electron_db(&w, "Work"),
         edited: AtomicBool::new(false),
     };
@@ -92,11 +95,7 @@ fn the_marker_holds_the_fingerprint_the_import_read() {
     w.run_with(&ctx).unwrap();
 
     assert!(sink.edited.load(Ordering::SeqCst));
-    assert_ne!(
-        w.fingerprint("Work"),
-        read,
-        "Electron wrote after the install"
-    );
+    assert_ne!(w.fingerprint("Work"), read, "Electron wrote during the run");
     assert_eq!(w.marker_fingerprint("Work"), Some(read));
 }
 

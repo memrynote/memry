@@ -407,10 +407,12 @@ fn stage_all(
         ctx.progress(Phase::Vault, index + 1, total, &label);
         let slot = match &planned.disposition {
             Disposition::Import(id) => vault::stage(run, phase, planned, id)?,
-            _ => Staged::Settled(settled_section(phase, planned).unwrap_or_else(|| unreachable!())),
+            _ => Staged::Settled(Box::new(
+                settled_section(phase, planned).unwrap_or_else(|| unreachable!()),
+            )),
         };
         if let Staged::Settled(section) = &slot {
-            run.save_section(section.clone())?;
+            run.save_section(VaultSection::clone(section))?;
         }
         slots.push(slot);
     }
@@ -424,7 +426,7 @@ fn install_all(run: &mut Run<'_>, slots: Vec<Staged>) -> Result<Vec<MarkerVault>
     let mut slots = slots.into_iter();
     while let Some(slot) = slots.next() {
         let section = match slot {
-            Staged::Settled(section) => Ok(section),
+            Staged::Settled(section) => Ok(*section),
             Staged::Install(pending) => pending.install(),
         };
         let saved = section.and_then(|section| {

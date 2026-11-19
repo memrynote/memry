@@ -74,7 +74,7 @@ enum Lookup {
     /// Nothing to import: a settled vault, or a folder without Electron data or with a core.
     Settled,
     /// The marker's deferred (or unreadable) entry for the folder.
-    Pending(MarkerVault),
+    Pending(Box<MarkerVault>),
     /// Electron data the marker has no entry for.
     Unlisted,
 }
@@ -104,7 +104,7 @@ fn lookup(marker: &Marker, vault: &Path) -> Lookup {
                 VaultStatus::Deferred | VaultStatus::Unreadable
             ) =>
         {
-            Lookup::Pending(entry.clone())
+            Lookup::Pending(Box::new(entry.clone()))
         }
         Some(_) => Lookup::Settled,
         None if unmoved() => Lookup::Unlisted,
