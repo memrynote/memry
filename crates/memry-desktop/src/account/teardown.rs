@@ -28,8 +28,12 @@ const TEARDOWN_ORDER: [SecureStoreKey; 5] = [
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct SignedOut {
     pub keychain_failures: Vec<String>,
-    /// The session's own sign-out failed although every entry was deleted.
+    /// The session's own sign-out failed although every entry was deleted, and the session is
+    /// not signed out.
     pub session_error: Option<String>,
+    /// The sign-out marker could not be written while entries stayed: the next launch can
+    /// restore the session the user ended (#4767).
+    pub restore_risk: Option<String>,
 }
 
 impl SignedOut {
@@ -42,10 +46,13 @@ impl SignedOut {
                 .as_ref()
                 .map(|error| format!("Sign-out did not finish: {error}"));
         }
-        Some(format!(
-            "Failed to remove: {}",
-            self.keychain_failures.join(", ")
-        ))
+        let failures = self.keychain_failures.join(", ");
+        Some(match self.restore_risk {
+            Some(_) => {
+                format!("Failed to remove: {failures}; the app may sign back in at the next launch")
+            }
+            None => format!("Failed to remove: {failures}"),
+        })
     }
 }
 
@@ -53,6 +60,9 @@ impl AccountService {
     /// `sync:auth-logout` and `account:signOut`, one teardown. Runs after any key-changing
     /// operation in flight, never beside one.
     pub async fn sign_out(&self, session: &Session) -> Result<SignedOut, AccountError> {
+        // First: a write that started under this account and waits on the network lands nowhere,
+        // and none starts until the teardown is done (the guard ends the term again on drop).
+        let _term = self.epoch.end();
         let _op = self.key_op.lock().await;
         tracing::info!(scope = "SessionTeardown", "session teardown started");
         let stopping = session.clone();
@@ -73,7 +83,20 @@ impl AccountService {
         if let Err(error) = self.end_session().await {
             tracing::error!(scope = "SessionTeardown", "keychain clear failed: {error}");
             result.keychain_failures = self.undeletable_entries();
-            result.session_error = Some(error.to_string());
+            if result.keychain_failures.is_empty() {
+                // Every entry went one by one: nothing of this account is left for the next
+                // sign-in to delete, so a key minted offline after this sign-out is kept.
+                self.session.note_store_cleared();
+            }
+            if self.session.state() != AuthState::SignedOut {
+                result.session_error = Some(error.to_string());
+            }
+        }
+        if let Some(fault) = self.session.take_sign_out_marker_fault() {
+            tracing::error!(scope = "SessionTeardown", "{fault}");
+            if !result.keychain_failures.is_empty() {
+                result.restore_risk = Some(fault);
+            }
         }
         if let Some(open) = session.current()
             && let Err(error) = open.vault.clear_sync_session_state()
@@ -115,6 +138,9 @@ impl AccountService {
     /// The session's own sign-out where the machine has the edge (it revokes the server session
     /// and clears the store); otherwise the attempt in flight ends and the store is cleared
     /// without an edge, so no secret outlives a sign-out from any state and none restores it.
+    /// From `Refreshing` (§C.1 draws no sign-out edge there) the store clears and the core latches
+    /// the sign-out with no state edge; the latch only refuses a restore, and the cleared store
+    /// has nothing to restore, so it has no effect until a device registers and clears it.
     async fn end_session(&self) -> Result<(), AccountError> {
         match self.session.state() {
             AuthState::Registered | AuthState::SessionExpired | AuthState::Revoked => {
