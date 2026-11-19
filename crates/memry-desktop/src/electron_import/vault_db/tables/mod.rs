@@ -8,6 +8,7 @@
 use super::ImportError;
 use super::TableCtx;
 
+mod attachments;
 pub mod js_json;
 pub(super) mod note_file;
 mod notes;
@@ -144,9 +145,9 @@ pub const TABLE_MAP: &[TableMapping] = &[
     // data.db, 64 tables (and sync_unknown_fields, last).
     map!(Data Migration "agent_conversations" [16, Convert, "36b"]: "core agent_conversation record table of Step 16; clocks and version 1 ciphertext envelope copied byte for byte"),
     map!(Data Migration "agent_messages" [16, Convert, "36b"]: "core agent_message record table of Step 16; sealed content ciphertext kept byte for byte"),
-    map!(Data Migration "attachment_download_failures" [18, Reseed]: "retry state; rows are dropped and the Step 18 redrive recomputes failures from the manifest"),
-    map!(Data Migration "attachment_files" [18, Convert, "36f"]: "Step 18 attachment table (note id, path, attachment id, recorded at)"),
-    map!(Data Migration "attachment_upload_queue" [18, Convert, "36f"]: "Step 18 upload queue; pending uploads must survive"),
+    map!(Data Migration "attachment_download_failures" [18, Copy => attachments::attachment_download_failures]: "Step 18 download failures (data 0034), every column unchanged: probe counts and next attempts drive the reference prune"),
+    map!(Data Migration "attachment_files" [18, Convert => attachments::attachment_files]: "Step 18 attachment_files (data 0034), every column unchanged"),
+    map!(Data Migration "attachment_upload_queue" [18, Convert => attachments::attachment_upload_queue]: "Step 18 upload queue (data 0034), every column unchanged; pending uploads survive"),
     map!(Data Migration "bookmarks" [29, Convert, "36d1"]: "core bookmarks table (data 0009) with the Electron clock columns"),
     map!(Data Migration "calendar_bindings" [28, Convert, "36d1"]: "core calendar_bindings; created_at kept verbatim in created_at_raw and parsed to ms"),
     map!(Data Migration "calendar_events" [28, Convert, "36d1"]: "core calendar_events; ISO instants to ms, JSON columns unchanged"),
@@ -162,7 +163,7 @@ pub const TABLE_MAP: &[TableMapping] = &[
     map!(Data Migration "crdt_body_withheld" [17, Convert => super::docs::crdt_body_withheld]: "each row becomes a core body debt sync.body_owed:<docId>"),
     map!(Data Migration "crdt_owed_file_bodies" [12, Convert => super::docs::crdt_owed_file_bodies]: "Step 12 owed file body markers through owed_file_body::record, at the original record time"),
     map!(Data Migration "custom_icons" [13, Convert => row_dumps::custom_icons]: "custom_icon sync_items records with the base64 payload; .memry/icons/ files untouched"),
-    map!(Data Migration "deleted_asset_releases" [18, Convert, "36f"]: "Step 18 release queue; deleted_at keeps the 30 day grace"),
+    map!(Data Migration "deleted_asset_releases" [18, Convert => attachments::deleted_asset_releases]: "Step 18 release queue (data 0034), every column unchanged; deleted_at keeps the 30 day grace"),
     map!(Data Migration "filing_history" [26, Skip]: "derived: core derives filing history from filed inbox_items (Inbox::filing_history)"),
     map!(Data Migration "folder_configs" [13, Convert => records::folder_configs]: "core folders table (data 0002, item id is the folder path)"),
     map!(Data Migration "home_pages" [16, Convert, "36b"]: "core home_page record table of Step 16"),
@@ -252,7 +253,7 @@ pub fn pending_area(stage: &str) -> Option<&'static str> {
         "36d1" => "inbox items, calendars or bookmarks",
         "36d2" => "tasks or projects",
         "36e" => "search and similar-note data",
-        "36f" => "attachments, whiteboards or Readwise highlights",
+        "36f" => "whiteboards, recent items or Readwise highlights",
         _ => return None,
     })
 }

@@ -94,7 +94,10 @@ fn seed_failure(
             ("reason", text(reason)),
             ("attempts", Value::Integer(attempts)),
             ("last_error", text("HTTP 404")),
-            ("next_attempt_at", next_attempt_at.map_or(Value::Null, Value::Integer)),
+            (
+                "next_attempt_at",
+                next_attempt_at.map_or(Value::Null, Value::Integer),
+            ),
             ("updated_at", Value::Integer(T + attempts)),
         ],
     );
@@ -107,7 +110,12 @@ fn seed_failure(
 fn seed_attachment_state(vault: &Vault) {
     let conn = vault.data_conn();
     for (owner, path, attachment, at) in [
-        (NOTE, "attachments/-0QKFMSbJ-18/photo.png", Some("att-up"), T),
+        (
+            NOTE,
+            "attachments/-0QKFMSbJ-18/photo.png",
+            Some("att-up"),
+            T,
+        ),
         (NOTE, "attachments/-0QKFMSbJ-18/old.pdf", None, T + 1),
         ("NvXCU8_x4cv9", files::COUNTED_EMPTY, None, T + 2),
     ] {
@@ -122,7 +130,13 @@ fn seed_attachment_state(vault: &Vault) {
             ],
         );
     }
-    seed_upload(&conn, "q-1", NOTE, &upload_path(vault, "new.png"), Value::Integer(0));
+    seed_upload(
+        &conn,
+        "q-1",
+        NOTE,
+        &upload_path(vault, "new.png"),
+        Value::Integer(0),
+    );
     electron_db::seed(
         &conn,
         "attachment_upload_queue",
@@ -218,7 +232,11 @@ fn imported_attachment_state_reads_back_through_the_core_store() {
             ("attachments/-0QKFMSbJ-18/photo.png", Some("att-up")),
         ]
     );
-    assert!(files::owners_with_records(&core).unwrap().contains("NvXCU8_x4cv9"));
+    assert!(
+        files::owners_with_records(&core)
+            .unwrap()
+            .contains("NvXCU8_x4cv9")
+    );
 
     let pending = upload_queue::list_pending(&core, upload_queue::DRAIN_BATCH_LIMIT).unwrap();
     assert_eq!(
@@ -243,18 +261,31 @@ fn imported_attachment_state_reads_back_through_the_core_store() {
     assert!(!may("n1", "att-gone", i64::MAX));
     assert!(may("n2", "att-blip", T + 60_000));
 
-    assert!(releases::due(&core, T - 1).unwrap().is_empty(), "grace runs from the delete");
+    assert!(
+        releases::due(&core, T - 1).unwrap().is_empty(),
+        "grace runs from the delete"
+    );
     let due = releases::due(&core, T).unwrap();
     let mut seen = due
         .iter()
-        .map(|d| (d.item_type.clone(), d.item_id.as_str(), d.attachment_ids.clone()))
+        .map(|d| {
+            (
+                d.item_type.clone(),
+                d.item_id.as_str(),
+                d.attachment_ids.clone(),
+            )
+        })
         .collect::<Vec<_>>();
     seen.sort_by(|a, b| a.1.cmp(b.1));
     assert_eq!(
         seen,
         vec![
             (Ok(ItemType::Canvas), "c-del", RecordedIds::None),
-            (Ok(ItemType::Inbox), "i-del", RecordedIds::Ids(vec!["x".into()])),
+            (
+                Ok(ItemType::Inbox),
+                "i-del",
+                RecordedIds::Ids(vec!["x".into()])
+            ),
             (Ok(ItemType::Note), "n-bad", RecordedIds::Unreadable),
             (
                 Ok(ItemType::Note),

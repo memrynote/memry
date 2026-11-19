@@ -17,11 +17,15 @@ use crate::api::errors::StorageError;
 use crate::storage::migrations::{self, INDEX_MIGRATIONS};
 use crate::storage::pragmas::{self, Profile};
 
+mod attachments;
 mod crdt;
 mod notes;
 mod outbox;
 mod records;
 
+pub use attachments::{
+    ImportAssetRelease, ImportAttachmentFile, ImportAttachmentUpload, ImportDownloadFailure,
+};
 pub use crdt::{
     DocumentState, ImportBodyPush, ImportBodySync, ImportBodyVersion, ImportDocument,
     ImportFileHash, document_state,
