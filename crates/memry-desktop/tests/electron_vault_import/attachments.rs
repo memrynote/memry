@@ -60,6 +60,11 @@ fn upload_path(vault: &Vault, name: &str) -> String {
         .into_owned()
 }
 
+/// The path the core keys an upload by, which `record_uploaded` clears once the file is up.
+fn rel_path(name: &str) -> String {
+    format!("attachments/{NOTE}/{name}")
+}
+
 fn seed_upload(conn: &Connection, id: &str, owner: &str, path: &str, attempts: Value) {
     electron_db::seed(
         conn,
@@ -194,8 +199,17 @@ fn attachment_tables_import_row_for_row() {
 
     let (source, core) = (vault.data_conn(), installed(&vault));
     for (table, sql) in TABLES {
-        let expected = rows(&source, sql);
+        let mut expected = rows(&source, sql);
         assert!(!expected.is_empty(), "{table} seeded");
+        if table == "attachment_upload_queue" {
+            for row in &mut expected {
+                for name in ["new.png", "scan.jpg"] {
+                    if row[2] == text(&upload_path(&vault, name)) {
+                        row[2] = text(&rel_path(name));
+                    }
+                }
+            }
+        }
         assert_eq!(rows(&core, sql), expected, "{table}");
         let t = &report.tables[&format!("data.db/{table}")];
         assert_eq!(
@@ -247,7 +261,7 @@ fn imported_attachment_state_reads_back_through_the_core_store() {
         // Four failures wait min(1 min * 2^3, 6 h) after the last write.
         vec![(NOTE, 0, 0), ("canvas-1", 4, T + 20 + 8 * 60_000)]
     );
-    assert!(upload_queue::has_pending(&core, NOTE, &upload_path(&vault, "new.png")).unwrap());
+    assert!(upload_queue::has_pending(&core, NOTE, &rel_path("new.png")).unwrap());
 
     let refs = ["att-gone", "att-probe", "att-blip", "att-never"].map(String::from);
     let gone = download_failures::proven_gone(&core, "n1", &refs).unwrap();
@@ -255,6 +269,12 @@ fn imported_attachment_state_reads_back_through_the_core_store() {
     // A gone reference of an owner that still owes an upload is not pruned.
     let held = download_failures::proven_gone(&core, NOTE, &["att-held".into()]).unwrap();
     assert!(held.is_empty());
+    // The row is keyed by the vault-relative path the finished upload records and clears, so the
+    // owner's gone reference becomes prunable once its upload is done.
+    upload_queue::clear(&core, NOTE, &rel_path("new.png")).unwrap();
+    assert!(!upload_queue::owner_has_pending(&core, NOTE).unwrap());
+    let held = download_failures::proven_gone(&core, NOTE, &["att-held".into()]).unwrap();
+    assert_eq!(held.into_iter().collect::<Vec<_>>(), vec!["att-held"]);
     let may = |owner, id, at| download_failures::may_attempt(&core, owner, id, at).unwrap();
     assert!(!may("n1", "att-probe", T + DAY_MS - 1));
     assert!(may("n1", "att-probe", T + DAY_MS));
@@ -345,7 +365,66 @@ fn attachment_files_and_partial_downloads_stay_in_place() {
     assert_eq!(file_bytes(&dir), before);
     assert_eq!(
         upload_queue::list_pending(&installed(&vault), 50).unwrap()[0].disk_path,
-        upload_path(&vault, "new.png")
+        rel_path("new.png")
+    );
+}
+
+/// A queued upload outside the vault (Electron's drain drops it as `deleted`) and a recorded file
+/// that is no plain vault path are dropped and counted; a second spelling of a queued path is
+/// one row.
+#[test]
+fn attachment_paths_outside_the_vault_are_dropped() {
+    let vault = Vault::new();
+    let conn = vault.data_conn();
+    let root = vault.root.display();
+    let escape = format!("{root}/attachments/../../escape.png");
+    let respelled = format!("{root}/./attachments/{NOTE}/new.png");
+    for (id, path) in [
+        ("q-1", upload_path(&vault, "new.png")),
+        ("q-2", "/elsewhere/attachments/n/x.png".to_owned()),
+        ("q-3", escape),
+        ("q-4", respelled),
+    ] {
+        seed_upload(&conn, id, NOTE, &path, Value::Integer(0));
+    }
+    for path in [
+        "attachments/n/ok.png",
+        "../escape.png",
+        "/abs/x.png",
+        files::COUNTED_EMPTY,
+    ] {
+        electron_db::seed(
+            &conn,
+            "attachment_files",
+            &[
+                ("note_id", text(NOTE)),
+                ("path", text(path)),
+                ("attachment_id", Value::Null),
+                ("recorded_at", Value::Integer(T)),
+            ],
+        );
+    }
+    drop(conn);
+
+    let report = import(&vault);
+
+    let core = installed(&vault);
+    assert_eq!(
+        upload_queue::list_all(&core).unwrap(),
+        vec![(NOTE.to_owned(), rel_path("new.png"))]
+    );
+    let known = files::records(&core, NOTE).unwrap();
+    assert_eq!(
+        known.iter().map(|f| f.path.as_str()).collect::<Vec<_>>(),
+        vec![files::COUNTED_EMPTY, "attachments/n/ok.png"]
+    );
+    assert_eq!(report.dropped["uploadsOutsideVault"], 2);
+    assert_eq!(report.dropped["uploadsDuplicatePath"], 1);
+    assert_eq!(report.dropped["attachmentFilesOutsideVault"], 2);
+    let t = |table: &str| report.tables[&format!("data.db/{table}")].dropped;
+    assert_eq!(
+        (t("attachment_upload_queue"), t("attachment_files")),
+        (3, 2)
     );
 }
 
