@@ -10,7 +10,7 @@ use std::sync::Arc;
 use memry_desktop::i18n::{self, Args};
 use memry_desktop::import::source_paths::ImportGrants;
 use memry_desktop::locale::LocaleService;
-use memry_desktop::notes::import_files::{ImportFilesInput, ImportFilesResult};
+use memry_desktop::notes::import_files::{ImportFilesInput, ImportFilesResult, import_folder};
 use memry_desktop::shell::drop_stage::DropStaging;
 use memry_desktop::telemetry::Service;
 use memry_desktop::telemetry::events::Metrics;
@@ -85,6 +85,9 @@ pub async fn notes_import_files<R: Runtime>(
 ) -> Result<ImportFilesResult, CommandError> {
     blocking("notes_import_files", move || {
         let open = open_vault(&app)?;
+        // Before the admit, so a refused folder takes no pick of the import dialog.
+        let folder =
+            import_folder(&open, input.target_folder.as_deref()).map_err(|error| failed(&error))?;
         let staging: PathBuf = app
             .try_state::<Arc<DropStaging>>()
             .map(|staging| staging.root().to_path_buf())
@@ -102,9 +105,7 @@ pub async fn notes_import_files<R: Runtime>(
             .options
             .and_then(|options| options.plain_checklists)
             .unwrap_or(false);
-        let result = service(&app)?
-            .import_files(&open, sources, input.target_folder.as_deref(), plain)
-            .map_err(|error| failed(&error))?;
+        let result = service(&app)?.import_files(&open, &folder, sources, plain);
         if let Some(telemetry) = services::telemetry(&app) {
             let mut event = Service::event("note_imported", "notes", "imported");
             event.object_type = Some("note".to_owned());

@@ -5,15 +5,15 @@
 //!
 //! - The folder is the one named, vault-relative, else the vault's default note folder
 //!   (`getDefaultNoteDir`). One outside the vault, or a locked one (`assertFolderWritable`),
-//!   refuses the call before anything is copied. Electron joined the name to the vault path
-//!   unchecked.
+//!   refuses the call before any file is admitted ([`import_folder`]), so the call takes no
+//!   pick of the import dialog. Electron joined the name to the vault path unchecked.
 //! - Each file keeps its name, or takes the first free `<name> (n)<ext>` (Node's
 //!   `path.extname`). A name is taken by any entry there, a dangling link included, and by a
 //!   file that appears there while the copy is placed: the copy never replaces one
 //!   ([`copy_imported_file`]). Electron's `fs.access` let a dangling link through, and its
 //!   copy replaced such a file. After [`MAX_CANDIDATES`] taken names the file fails.
-//! - With `plain_checklists` a markdown file's checkbox lines are marked plain
-//!   ([`copy_imported_file`]).
+//! - With `plain_checklists` a file named as markdown has its checkbox lines marked plain
+//!   ([`copy_imported_file`]), wherever a link with that name leads.
 //! - A file that cannot be copied fails alone: its message joins the result's errors and the
 //!   activity log takes it as a failed drop copy (`recordDropCopyFailure`).
 //!
@@ -72,6 +72,25 @@ pub struct ImportedFileInfo {
     pub file_type: FileType,
 }
 
+/// The vault folder an import copies into, from [`import_folder`] only.
+#[derive(Debug)]
+pub struct ImportFolder(String);
+
+/// `target_folder`, vault-relative, else the vault's default note folder; refused when it is
+/// outside the vault or locked (module doc).
+pub fn import_folder(
+    open: &OpenVault,
+    target_folder: Option<&str>,
+) -> Result<ImportFolder, NotesError> {
+    let root = open.path.as_path();
+    let folder = match target_folder.filter(|folder| !folder.is_empty()) {
+        Some(folder) => vault_folder(root, folder)?,
+        None => vault_folder(root, &read_vault_config(root).default_note_folder)?,
+    };
+    Locks::of(open).refuse_folder(&disk_spelling(root, &folder))?;
+    Ok(ImportFolder(folder))
+}
+
 /// `ImportFilesResult`.
 #[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
@@ -84,20 +103,15 @@ pub struct ImportFilesResult {
 }
 
 impl NotesService {
-    /// Copies `sources` into `target_folder` (module doc).
+    /// Copies `sources` into `folder` (module doc).
     pub fn import_files(
         &self,
         open: &OpenVault,
+        folder: &ImportFolder,
         sources: Vec<ImportSource>,
-        target_folder: Option<&str>,
         plain_checklists: bool,
-    ) -> Result<ImportFilesResult, NotesError> {
+    ) -> ImportFilesResult {
         let root = open.path.as_path();
-        let folder = match target_folder.filter(|folder| !folder.is_empty()) {
-            Some(folder) => vault_folder(root, folder)?,
-            None => vault_folder(root, &read_vault_config(root).default_note_folder)?,
-        };
-        Locks::of(open).refuse_folder(&disk_spelling(root, &folder))?;
         let activity = self.tier.activity();
         let mut result = ImportFilesResult {
             success: true,
@@ -107,7 +121,7 @@ impl NotesService {
             imported_files: Vec::new(),
         };
         for source in sources {
-            match copy_one(root, &folder, &source, plain_checklists) {
+            match copy_one(root, &folder.0, &source, plain_checklists) {
                 Ok(rel) => {
                     result.imported += 1;
                     result.imported_files.push(ImportedFileInfo {
@@ -134,7 +148,7 @@ impl NotesService {
                 }
             }
         }
-        Ok(result)
+        result
     }
 }
 

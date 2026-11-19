@@ -8,6 +8,9 @@
 //! | no folder: the vault's default note folder                         | `getDefaultNoteDir`                   |
 //! | with `plainChecklists` a markdown file's checklists stay checklists | `copyImportedFile`                    |
 //! | a path outside staging and the dialog's answer refuses the call    | #3709: refused before any read        |
+//! | a path neither staged nor picked is refused unread, existing or not | #3709: decided on its spelling        |
+//! | a picked path named twice refuses the call and stays picked        | #3709: one read per pick              |
+//! | a picked link named `.md` is marked as markdown                    | `getExtension(sourcePath)`            |
 //! | a dialog's path is read once, and only the last dialog's           | #3709: this request's dialog          |
 //! | a file that is gone fails alone, in the result and the activity log | `recordDropCopyFailure`              |
 //! | a folder outside the vault, or a locked one, refuses the call      | `assertFolderWritable`                |
@@ -25,7 +28,7 @@ use memry_core::domain::vault_locks::TargetKind;
 use memry_desktop::error::CoreError;
 use memry_desktop::import::source_paths::{ImportGrants, SourceRefused};
 use memry_desktop::notes::identity::NotesIdentity;
-use memry_desktop::notes::import_files::ImportFilesResult;
+use memry_desktop::notes::import_files::{ImportFilesResult, import_folder};
 use memry_desktop::notes::service::NotesService;
 use memry_desktop::vault::activity::{ActivityFilter, ActivityKind, ActivitySource};
 use memry_desktop::vault::file_types::FileType;
@@ -83,11 +86,10 @@ impl World {
         folder: Option<&str>,
         plain: bool,
     ) -> ImportFilesResult {
-        let sources = grants.admit(&self.staging(), paths).expect("admitted");
         let open = self.e.session.current().unwrap();
-        self.notes
-            .import_files(&open, sources, folder, plain)
-            .expect("the import")
+        let folder = import_folder(&open, folder).expect("the folder");
+        let sources = grants.admit(&self.staging(), paths).expect("admitted");
+        self.notes.import_files(&open, &folder, sources, plain)
     }
 
     fn vault_file(&self, rel: &str) -> Vec<u8> {
@@ -237,10 +239,12 @@ fn a_path_outside_staging_and_the_dialogs_answer_refuses_the_whole_call() {
         let link = world.staging().join("b");
         fs::create_dir_all(&link).unwrap();
         std::os::unix::fs::symlink(&secret, link.join("id_rsa.md")).unwrap();
-        refused.push(vec![link.join("id_rsa.md").to_string_lossy().into_owned()]);
         std::os::unix::fs::symlink(world.outside.path(), world.staging().join("c")).unwrap();
         let through = world.staging().join("c").join("id_rsa");
-        refused.push(vec![through.to_string_lossy().into_owned()]);
+        refused.extend([
+            vec![link.join("id_rsa.md").to_string_lossy().into_owned()],
+            vec![through.to_string_lossy().into_owned()],
+        ]);
     }
 
     for paths in refused {
@@ -257,6 +261,95 @@ fn a_path_outside_staging_and_the_dialogs_answer_refuses_the_whole_call() {
         Path::new(&staged).exists(),
         "the staged file stays for the shell to release"
     );
+}
+
+/// Whether a path exists, or what it names (a share, an automount), is never looked up for a
+/// path neither staged nor picked: each refuses the call alike, and nothing reaches the log.
+#[test]
+fn a_path_neither_staged_nor_picked_is_refused_unread_whether_it_exists_or_not() {
+    let world = World::new(&[]);
+    let grants = ImportGrants::default();
+    let existing = world.elsewhere("id_rsa", b"secret");
+    let missing = world
+        .outside
+        .path()
+        .join("id_ed25519")
+        .to_string_lossy()
+        .into_owned();
+    let open = world.e.session.current().unwrap();
+    let folder = import_folder(&open, Some("In")).unwrap();
+
+    for path in [
+        existing,
+        missing,
+        r"\\host\share\x".to_owned(),
+        "/net/host/x".to_owned(),
+    ] {
+        let outcome = grants
+            .admit(&world.staging(), std::slice::from_ref(&path))
+            .map(|sources| world.notes.import_files(&open, &folder, sources, false));
+        assert!(
+            matches!(outcome, Err(SourceRefused::NotAllowed)),
+            "{path}: {outcome:?}"
+        );
+    }
+    let logged: Vec<_> = world
+        .e
+        .tier
+        .activity()
+        .list(100, ActivityFilter::All)
+        .entries
+        .into_iter()
+        .filter(|entry| entry.source == ActivitySource::Drop)
+        .collect();
+    assert!(logged.is_empty(), "{logged:?}");
+}
+
+/// One pick admits its file once, even named three times in one call; a refused call takes no
+/// pick it had admitted.
+#[test]
+fn a_picked_path_named_twice_refuses_the_call_and_stays_picked() {
+    let world = World::new(&[]);
+    let grants = ImportGrants::default();
+    let picked = world.elsewhere("picked.md", b"two");
+    let secret = world.elsewhere("id_rsa", b"secret");
+    grants.grant(&[PathBuf::from(&picked)]);
+
+    for paths in [
+        vec![picked.clone(), picked.clone(), picked.clone()],
+        vec![picked.clone(), secret],
+    ] {
+        assert!(
+            matches!(
+                grants.admit(&world.staging(), &paths),
+                Err(SourceRefused::NotAllowed)
+            ),
+            "{paths:?}"
+        );
+    }
+    let result = world.import(&grants, std::slice::from_ref(&picked), Some("In"), false);
+
+    assert_eq!(result.imported, 1);
+    assert!(grants.admit(&world.staging(), &[picked]).is_err());
+}
+
+/// Electron's `copyImportedFile` read the type from the path the user named, not where its
+/// link leads.
+#[cfg(unix)]
+#[test]
+fn a_picked_link_named_md_is_marked_as_markdown() {
+    let world = World::new(&[]);
+    let grants = ImportGrants::default();
+    let target = world.elsewhere("b", b"- [ ] new\n");
+    let link = world.outside.path().join("a.md");
+    std::os::unix::fs::symlink(&target, &link).unwrap();
+    grants.grant(std::slice::from_ref(&link));
+
+    let link = link.to_string_lossy().into_owned();
+    let result = world.import(&grants, &[link], Some("In"), true);
+
+    assert_eq!(result.imported, 1);
+    assert_eq!(world.vault_file("In/a.md"), b"- [ ] new {check}\n");
 }
 
 #[test]
@@ -342,20 +435,13 @@ fn a_folder_outside_the_vault_or_a_locked_one_refuses_the_call() {
         .locks()
         .set(TargetKind::Folder, "Archive", true, "device-a")
         .unwrap();
-    let grants = ImportGrants::default();
     let open = world.e.session.current().unwrap();
 
     for (folder, code) in [
         ("../Escaped", "invalid_folder"),
         ("Archive/Sub", "folder_locked"),
     ] {
-        let sources = grants
-            .admit(&world.staging(), &[world.stage(code, "a.md", b"a")])
-            .unwrap();
-        let error = world
-            .notes
-            .import_files(&open, sources, Some(folder), false)
-            .expect_err(folder);
+        let error = import_folder(&open, Some(folder)).expect_err(folder);
         assert_eq!(error.kind_and_code().1, code, "{folder}");
     }
     assert!(!world.outside.path().join("Escaped").exists());
