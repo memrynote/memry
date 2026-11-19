@@ -671,12 +671,43 @@ describe.each([
     })
   })
 
+  const HELD_CHUNK = 'c'.repeat(64)
+  const rowCount = (sql: string) => (harness.raw.prepare(sql).get() as { n: number }).n
+
+  // Each row names the table its route writes when it passes the gate (#4278).
   it.each([
-    ['/sync/push', async () => ({ items: [await pushItem('task-blocked', 2)] })],
-    ['/sync/crdt/updates', async () => ({ noteId: 'note_blocked', updates: [body] })]
-  ])('is still refused on %s', async (path, makeBody) => {
+    [
+      '/sync/push',
+      async () => ({ items: [await pushItem('task-blocked', 2)] }),
+      `SELECT COUNT(*) AS n FROM sync_items WHERE item_id = 'task-blocked'`
+    ],
+    [
+      '/sync/crdt/updates',
+      async () => ({ noteId: 'note_blocked', updates: [body] }),
+      `SELECT COUNT(*) AS n FROM crdt_updates WHERE note_id = 'note_blocked'`
+    ],
+    // Only the exact read paths pass: a trailing slash is a different route.
+    [
+      '/sync/pull/',
+      async () => ({ itemIds: ['task-blocked'] }),
+      `SELECT COUNT(*) AS n FROM sync_items WHERE blob_missing_at IS NOT NULL`
+    ],
+    // A write on the pull path (protocol 14 §14.8.1).
+    [
+      '/sync/attachments/holds',
+      async () => ({ holds: [{ holderId: 'b'.repeat(64), chunkHashes: [HELD_CHUNK] }] }),
+      `SELECT COUNT(*) AS n FROM attachment_chunk_holds`
+    ]
+  ])('is still refused on %s', async (path, makeBody, writtenRows) => {
     const app = buildAppWithBlob()
     setPolicy('ios', policy)
+    // A live chunk, so an ungated hold request would insert a hold row.
+    harness.raw
+      .prepare(
+        `INSERT INTO blob_chunks (id, hash, user_id, vault_id, r2_key, size_bytes, ref_count, created_at)
+         VALUES ('chunk-held', ?, ?, ?, 'r2-held', 1, 1, ?)`
+      )
+      .run(HELD_CHUNK, USER_ID, VAULT_ID, now())
 
     const res = await request(app, path, {
       method: 'POST',
@@ -685,6 +716,6 @@ describe.each([
     })
 
     expect(res.status).toBe(status)
-    expect(itemRow('task-blocked')).toBeUndefined()
+    expect(rowCount(writtenRows)).toBe(0)
   })
 })
