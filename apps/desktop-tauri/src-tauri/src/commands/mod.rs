@@ -26,6 +26,7 @@ pub mod linking;
 pub mod locale;
 pub mod logging;
 pub mod notes;
+pub mod notes_import;
 pub mod notes_similarity;
 pub mod notes_versions;
 pub mod ocr_languages;
