@@ -69,7 +69,7 @@ pub use links::{LinkItemType, ProjectLink, link, links, set_link_pinned, unlink}
 pub use status_list::{StatusInput, StatusType};
 pub use write::{
     DEFAULT_PROJECT_COLOR, INBOX_ID, NewProject, ProjectEdit, TaskDisposition, create, delete,
-    ensure_inbox, reorder, set_archived, set_home_note, update,
+    ensure_inbox, reorder, seed_unclocked, set_archived, set_home_note, update,
 };
 
 /// The `(type, _)` half of every key this module reads and writes.

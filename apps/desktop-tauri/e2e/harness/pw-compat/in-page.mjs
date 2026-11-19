@@ -220,9 +220,12 @@ export function memryPwInstall(win) {
 
   const TEXT_PSEUDO = /:(has-text|text)\(("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')\)/g
 
+  const VISIBLE_PSEUDO = /:visible$/
+
   /**
    * `querySelectorAll` plus Playwright's `:has-text("x")` (the element's text contains x,
-   * ignoring case) and `:text("x")` (the smallest element whose text contains x).
+   * ignoring case), `:text("x")` (the smallest element whose text contains x) and `:visible`
+   * at the end of a selector (the match is visible).
    */
   function queryCss(ctx, selector) {
     const found = []
@@ -235,7 +238,10 @@ export function memryPwInstall(win) {
         })
         return ''
       })
-      let hits = [...ctx.querySelectorAll(plain || '*')]
+      const visibleOnly = VISIBLE_PSEUDO.test(plain.trim())
+      const css = plain.trim().replace(VISIBLE_PSEUDO, '')
+      let hits = [...ctx.querySelectorAll(css || '*')]
+      if (visibleOnly) hits = hits.filter(isVisible)
       for (const { kind, text } of texts) {
         hits = hits.filter((el) => matches(textOf(el), text, false))
         if (kind === 'text') {

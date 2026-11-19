@@ -411,7 +411,6 @@ export function createMockAPI(config?: MockAPIConfig): Record<string, unknown> {
     onNoteDeleted: vi.fn().mockReturnValue(() => {}),
     onNoteRenamed: vi.fn().mockReturnValue(() => {}),
     onNoteMoved: vi.fn().mockReturnValue(() => {}),
-    onNoteExternalChange: vi.fn().mockReturnValue(() => {}),
     onTagsChanged: vi.fn().mockReturnValue(() => {}),
     onTaskCreated: vi.fn().mockReturnValue(() => {}),
     onTaskUpdated: vi.fn().mockReturnValue(() => {}),
