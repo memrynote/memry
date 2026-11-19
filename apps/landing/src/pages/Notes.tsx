@@ -620,7 +620,7 @@ const PROPERTY_TYPES = [
   { icon: CheckSquare, label: 'Checkbox' },
   { icon: Calendar, label: 'Date' },
   { icon: Link2, label: 'URL' },
-  { icon: Star, label: 'Rating' },
+  { icon: Type, label: 'Status' },
   { icon: Hash, label: 'Select' },
   { icon: Layers, label: 'Multi-select' }
 ] as const
@@ -638,8 +638,8 @@ function PropertiesSection() {
               <span className="italic text-terracotta">You choose it.</span>
             </h2>
             <p className="mt-5 max-w-md text-lg leading-relaxed text-muted">
-              YAML frontmatter, rendered as a clean property panel. Eight property types cover
-              status, dates, ratings, URLs, and more — sortable and filterable inside folder views.
+              YAML frontmatter, rendered as a clean property panel. Property types cover status,
+              dates, URLs, and more — sortable and filterable inside folder views.
             </p>
             <div className="mt-7 flex flex-wrap gap-2">
               {PROPERTY_TYPES.map((p) => (
@@ -678,7 +678,7 @@ function PropertiesSection() {
                 value="docs.memrynote.com/specs"
                 tone="terracotta"
               />
-              <PropertyRow icon={Star} label="Priority" value="★★★★★" tone="terracotta" />
+              <PropertyRow icon={ListOrdered} label="Priority" value="1" tone="terracotta" />
               <PropertyRow icon={Hash} label="Tag" value="#launch" tone="sage" />
               <PropertyRow
                 icon={Layers}
