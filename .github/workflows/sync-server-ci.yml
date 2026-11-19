@@ -46,23 +46,27 @@ env:
   TURBO_TELEMETRY_DISABLED: 1
 
 jobs:
-  # Applies the path filter that used to sit on `pull_request`, in a job, so the workflow always runs
-  # and the gate always reports. Pushes keep their own `paths`; every other event outputs true.
-  changes:
-    name: Changed paths
+  # The one check name a ruleset requires for this workflow (merge queue, #3517). It is the only
+  # job: it detects changed paths, then runs the work or skips it. A job with no work steps run
+  # still passes, so a PR that touches no protected path reports green. Every trigger runs it, so
+  # PRs into main and pushes also see this name; main requires no checks.
+  gate:
+    name: Sync Server CI gate
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 25
     permissions:
       contents: read
       pull-requests: read
-    outputs:
-      run: ${{ steps.paths.outputs.changed }}
     steps:
-      - name: Checkout
+      # The paths action lives in the repo, so a minimal checkout comes first. The full checkout
+      # below runs only when the pull request touches a protected path.
+      - name: Checkout the paths action
         uses: actions/checkout@v6
         with:
           sparse-checkout: .github
 
+      # Replaces the `pull_request` path filter: a filtered workflow never runs, so a required
+      # gate would never report. Every event other than `pull_request` outputs true.
       - name: Detect changed paths
         id: paths
         uses: ./.github/actions/paths-changed
@@ -70,23 +74,16 @@ jobs:
           token: ${{ github.token }}
           include: '^(apps/sync-server/|packages/(contracts|rpc|shared|sync-core)/|tests/sync-harness/|apps/desktop/src/main/sync/(attachments\.ts|attachments\.integration\.test\.ts|http-client\.ts)$|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|turbo\.json$|\.github/workflows/sync-server-ci\.yml$)'
 
-  sync-server:
-    name: Typecheck, test, and Worker bundle
-    needs: changes
-    if: ${{ !cancelled() && (needs.changes.outputs.run == 'true' || needs.changes.result == 'failure') }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-
-    steps:
       - name: Checkout
+        if: steps.paths.outputs.changed == 'true'
         uses: actions/checkout@v6
-        with: &lean-checkout
+        with:
           # Bounded checkout: a blob filter plus sparse patterns, no history. Of the ~2 GB of blobs,
           # ~1.6 GB is marketing/ media that no job reads; a full-tree checkout took 2 to 22 minutes
           # in a busy hour and consumed the job timeout. marketing/ keeps only the file types
           # lint and format cover (the later patterns win); a new text type there that a job
-          # must read goes in this list. Media elsewhere stays: builds need it. The Secret scan job
-          # in security-ci.yml deliberately keeps its own list (every media extension, repo-wide).
+          # must read goes in this list. Media elsewhere stays: builds need it. The secret scan in
+          # security-ci.yml deliberately keeps its own list (every media extension, repo-wide).
           fetch-depth: 1
           filter: blob:none
           sparse-checkout-cone-mode: false
@@ -111,32 +108,40 @@ jobs:
             /marketing/**/*.html
 
       - name: Setup pnpm
+        if: steps.paths.outputs.changed == 'true'
         uses: pnpm/action-setup@v4
         with:
           run_install: false
 
       - name: Setup Node.js
+        if: steps.paths.outputs.changed == 'true'
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
           cache: pnpm
 
       - name: Install dependencies
+        if: steps.paths.outputs.changed == 'true'
         run: pnpm install --frozen-lockfile
 
       - name: Typecheck shared packages
+        if: steps.paths.outputs.changed == 'true'
         run: pnpm typecheck:packages
 
       - name: Typecheck sync-server
+        if: steps.paths.outputs.changed == 'true'
         run: pnpm typecheck:sync-server
 
       - name: Test sync-server
+        if: steps.paths.outputs.changed == 'true'
         run: pnpm test:sync-server
 
       - name: Build sync-harness worker
+        if: steps.paths.outputs.changed == 'true'
         run: pnpm --filter @memry/sync-harness build:worker
 
       - name: Run sync protocol harness
+        if: steps.paths.outputs.changed == 'true'
         run: pnpm --filter @memry/sync-harness test
 
       # Real client against the real Worker (miniflare + real D1 + real R2).
@@ -145,30 +150,12 @@ jobs:
       # Needs no Electron binary and no display server (the spec injects fetchFn
       # and stubs the electron import), and runs in seconds.
       - name: Run attachment client/server integration spec
+        if: steps.paths.outputs.changed == 'true'
         run: |
           pnpm --filter @memry/desktop exec vitest run \
             --config config/vitest.config.ts \
             --project main-integration
 
       - name: Validate Worker bundle
+        if: steps.paths.outputs.changed == 'true'
         run: pnpm --filter @memry/sync-server exec wrangler deploy --dry-run --outdir .wrangler/ci --env staging
-
-  # The one check name a ruleset requires for this workflow (merge queue, #3517). Matrix legs and
-  # fast/full tiers change which jobs exist; this name does not. A skipped job counts as passed.
-  # Runs only for feat/tauri-v2 and the merge queue, so main and its PRs see no new check.
-  gate:
-    name: Sync Server CI gate
-    needs: [changes, sync-server]
-    if: ${{ always() && (github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || github.base_ref == 'feat/tauri-v2' || github.ref == 'refs/heads/feat/tauri-v2') }}
-    runs-on: ubuntu-22.04
-    timeout-minutes: 5
-    steps:
-      - name: Fail when a needed job failed or was cancelled
-        env:
-          RESULTS: ${{ join(needs.*.result, ' ') }}
-          DETECT_RESULT: ${{ needs.changes.result }}
-        run: |
-          echo "needed job results: $RESULTS"
-          # A skipped detection job (a noop `labeled` or `opened` run) must not read as a pass.
-          if [ "$DETECT_RESULT" != success ]; then echo "::error::changes job result was $DETECT_RESULT"; exit 1; fi
-          case " $RESULTS " in *" failure "*|*" cancelled "*) exit 1 ;; esac
