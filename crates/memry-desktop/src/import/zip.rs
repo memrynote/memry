@@ -146,6 +146,14 @@ impl Zips {
         Ok(())
     }
 
+    /// The entry's declared size, for a log line about an entry [`Zips::read`] refused.
+    pub fn size(&mut self, at: EntryAt) -> io::Result<u64> {
+        let entry = self.archives[at.archive]
+            .by_index(at.index)
+            .map_err(zip_error)?;
+        Ok(entry.size())
+    }
+
     /// The entry's bytes, refused when it holds more than `limit`.
     pub fn read(&mut self, at: EntryAt, limit: u64) -> io::Result<Vec<u8>> {
         let mut entry = self.archives[at.archive]

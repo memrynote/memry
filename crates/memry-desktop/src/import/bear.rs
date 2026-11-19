@@ -182,10 +182,23 @@ fn scan_zip(path: &Path, scan: &mut Scan, ctx: &mut ImportContext) -> io::Result
             scan.stash(folder).md = Some(entry.at);
             ctx.report_progress(scan.stashes.len(), 0);
         } else if entry.name == "info.json" {
-            let info = read_text(zips, entry.at, MAX_INFO_BYTES)
-                .ok()
-                .and_then(|text| json::parse(&text).ok())
-                .unwrap_or(JsValue::Null);
+            let info = match read_text(zips, entry.at, MAX_INFO_BYTES) {
+                Ok(text) => json::parse(&text).ok(),
+                Err(error) if error.kind() == io::ErrorKind::FileTooLarge => {
+                    let note = bundle_name(folder);
+                    tracing::warn!(
+                        scope = "import",
+                        note,
+                        size = zips.size(entry.at).ok(),
+                        "bear info.json over the size limit, read as missing"
+                    );
+                    let item = format!("{note}/info.json");
+                    ctx.report_skipped(&item, Some(ImportText::Text(error.to_string())));
+                    None
+                }
+                Err(_) => None,
+            }
+            .unwrap_or(JsValue::Null);
             let uid = parse_info(&info).unique_identifier;
             let stash = scan.stash(folder);
             stash.info = info;
