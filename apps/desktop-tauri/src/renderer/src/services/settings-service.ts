@@ -16,6 +16,11 @@ import type {
   VoiceTranscriptionSettings
 } from '../../../preload/index.d'
 import type { GlobalCaptureResult } from '@memry/contracts/settings-schemas'
+import {
+  parseGraphViewsSettings,
+  type GraphViewsSettings,
+  type GraphViewsSettingsPatch
+} from '@memry/contracts/graph-api'
 import type { CalloutTypeDefinition } from '@memry/editor-schema/callout-types'
 import { commands, events, type Value } from '../../../generated/bindings'
 import { sanitizeCalloutTypeDefinitions } from '@memry/editor-schema/callout-types'
@@ -231,15 +236,15 @@ export const settingsService = {
     await commands.settingsSetLocal('tagSearches', { searches } as Value)
     return searches
   },
-  getGraphViews: async (): Promise<unknown> =>
-    (await commands.settingsGetLocal('graphViews')) ?? {},
-  setGraphViews: async (patch: unknown): Promise<unknown> => {
-    const current = asShape<Record<string, Value>>(
-      (await commands.settingsGetLocal('graphViews')) ?? {}
-    )
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the patch is JSON built by the graph view UI
-    const next = { ...current, ...(patch as Record<string, Value>) }
-    await commands.settingsSetLocal('graphViews', next)
+  // Electron's `readGraphViews` and `SET_GRAPH_VIEWS`: a vault with no saved views reads as
+  // none, and the merged blob is parsed before it is written.
+  getGraphViews: async (): Promise<GraphViewsSettings> =>
+    parseGraphViewsSettings(await commands.settingsGetLocal('graphViews')),
+  setGraphViews: async (patch: GraphViewsSettingsPatch): Promise<GraphViewsSettings> => {
+    const current = parseGraphViewsSettings(await commands.settingsGetLocal('graphViews'))
+    const next = parseGraphViewsSettings({ ...current, ...patch })
+    // A spread, because an interface is not assignable to `Value` and an object type is.
+    await commands.settingsSetLocal('graphViews', { ...next })
     return next
   }
 }
