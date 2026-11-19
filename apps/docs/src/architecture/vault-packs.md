@@ -167,8 +167,11 @@ bare `packs/<kind>/` prefix would match nothing.
 ### Holes
 
 A slot in the selection whose bytes cannot be used is a **hole**: it is skipped, and it produces no
-index record at all. Four conditions make a hole, and all four mean the same thing to a client —
-the item was never in this pack, so fetch it individually.
+index record at all. Four conditions make a hole. What a hole means to a client depends on the
+kind. A record row the writer cannot pack is omitted, the record range still spans it, and the
+cursor-exact manifest reconcile (chapter 08 §8.10) pulls it. A lost snapshot ends a body range
+only while its row still points at the key that 404'd; a row replaced since then sits at a higher
+cursor.
 
 | Condition                     | Why it is a hole rather than a failure                                                                                                                                                                                                                                                                                                           |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

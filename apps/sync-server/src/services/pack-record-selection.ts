@@ -25,6 +25,8 @@ export interface RecordRow {
   signature: string | null
   clock: string | null
   deleted_at: number | null
+  /** Read for step 06 (#5229), which omits a row whose payload is lost. */
+  blob_missing_at: number | null
 }
 
 /** A record candidate's meta and content hash, read from one row. */
@@ -42,7 +44,8 @@ export const recordSelectionQuery = (
   limit: number
 ): { sql: string; bind: unknown[] } => ({
   sql: `SELECT server_cursor AS sort_key, item_type || ':' || item_id AS tiebreak, item_type, item_id, blob_key, size_bytes,
-          content_hash, crypto_version, operation, signer_device_id, signature, clock, deleted_at
+          content_hash, crypto_version, operation, signer_device_id, signature, clock, deleted_at,
+          blob_missing_at
         FROM sync_items
         WHERE user_id = ? AND vault_id = ?
           AND (server_cursor > ? OR (server_cursor = ? AND (item_type || ':' || item_id) > ?))
@@ -64,8 +67,9 @@ export const recordSelectionQuery = (
  * purged tombstone has no payload (`blob_key` ''), an unknown type is never
  * pulled, a row without signer metadata or with a corrupt clock fails the
  * pull, and an index entry above PACK_MAX_INDEX_ENTRY_BYTES fails every
- * conforming reader. Such a row is invisible to a reader that tails from a
- * pack's maxCursor; the reader reconciles against GET /sync/manifest (#5254).
+ * conforming reader. Such a row is omitted and the range still spans it: the
+ * reader's cursor-exact GET /sync/manifest reconcile pulls it (protocol 08
+ * §8.10).
  */
 export const recordEntryOf = (scope: VaultScope, row: RecordRow): RecordEntry | null => {
   const omit = (reason: string): null => {
@@ -118,8 +122,9 @@ export const isSelectedRecordVersion = async (
  * tombstone past retention whose blob the shed deleted before its D1 update
  * (cleanup.ts deletes R2 first). The caller abandons the range then. Any
  * other 404 stays a hole: a row a push replaced sits at a higher cursor, and
- * an unexpired tombstone or live row with a lost blob is left to the
- * manifest reconcile (#5254) rather than blocking the vault's record packs.
+ * an unexpired tombstone or live row with a lost blob is omitted while the
+ * range still spans it. The reader's cursor-exact manifest reconcile pulls
+ * the omitted row (protocol 08 §8.10); the range does not end there.
  */
 export const recordRowShedInPlace = async (
   db: D1Database,

@@ -1245,7 +1245,11 @@ export const getManifest = async (
       type: row.item_type as RecordSyncItemType,
       version: row.version,
       modifiedAt: row.updated_at,
-      size: row.size_bytes
+      size: row.size_bytes,
+      // The reader's record reconcile keys on this, not `version`, which two
+      // concurrent pushes can both commit (protocol 08 §8.10). Manifest only:
+      // pull and socket items never carry it.
+      serverCursor: row.server_cursor
     }))
 
   // nextCursor comes from the last row KEPT, unsupported types included — the
