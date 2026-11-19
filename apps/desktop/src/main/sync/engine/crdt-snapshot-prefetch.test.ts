@@ -120,7 +120,8 @@ describe('CRDT batch pass: snapshot GET prefetch', () => {
     expect(maxInFlight).toBe(2)
     expect(snapshotGets).toEqual(noteIds(12))
     expect(baselinesApplied).toEqual(noteIds(12))
-    expect(cost).toEqual({ snapshotGets: 12, batchPosts: 1 })
+    // The probe, then one apply round.
+    expect(cost).toEqual({ snapshotGets: 12, batchPosts: 2 })
   })
 
   it('keeps 6 GETs in flight under an elevated bootstrap session', async () => {
