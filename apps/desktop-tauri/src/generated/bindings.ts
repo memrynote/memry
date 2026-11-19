@@ -350,6 +350,12 @@ export const commands = {
 	notesGetAllPositions: () => __TAURI_INVOKE<{ [key in string]: number }>("notes_get_all_positions"),
 	notesGetByPath: (path: string) => __TAURI_INVOKE<NoteView | null>("notes_get_by_path", { path }),
 	notesGetFile: (id: string) => __TAURI_INVOKE<FileView | null>("notes_get_file", { id }),
+	/**
+	 *  The note as the list shows it, `None` once it is gone: a read of its row that opens nothing,
+	 *  so it counts no `note_opened`. The note page asks once its delete and rename listeners are
+	 *  live, for the event it may have missed before then (S14-1).
+	 */
+	notesGetListItem: (id: string) => __TAURI_INVOKE<NoteListItemView | null>("notes_get_list_item", { id }),
 	/**  The links the note makes and the notes linking to it, with the text around each link. */
 	notesGetLinks: (id: string) => __TAURI_INVOKE<NoteLinksView>("notes_get_links", { id }),
 	/**  `notes:get-local-only-count`. */
@@ -693,6 +699,11 @@ export const commands = {
 	tagsDeleteCategory: (id: string) => __TAURI_INVOKE<null>("tags_delete_category", { id }),
 	tagsGetAllWithCounts: () => __TAURI_INVOKE<TagWithCountView[]>("tags_get_all_with_counts"),
 	tagsGetNotesByTag: (input: NotesByTagInput) => __TAURI_INVOKE<NotesByTagView>("tags_get_notes_by_tag", { input }),
+	/**
+	 *  Whether the tag a tab shows was renamed away or deleted ([`tags::gone`]): the tab asks once
+	 *  its rename and delete listeners are live, for the event it may have missed before then.
+	 */
+	tagsIsGone: (tag: string) => __TAURI_INVOKE<boolean>("tags_is_gone", { tag }),
 	tagsListCategories: () => __TAURI_INVOKE<TagCategoryView[]>("tags_list_categories"),
 	/**  Only a tag the note's record carries can be pinned (`memry_core::domain::tags::set_pinned`). */
 	tagsPinNoteToTag: (noteId: string, tag: string) => __TAURI_INVOKE<null>("tags_pin_note_to_tag", { noteId, tag }),

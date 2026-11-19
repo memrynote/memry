@@ -174,6 +174,17 @@ pub async fn tags_get_all_with_counts(
     .await
 }
 
+/// Whether the tag a tab shows was renamed away or deleted ([`tags::gone`]): the tab asks once
+/// its rename and delete listeners are live, for the event it may have missed before then.
+#[tauri::command]
+#[specta::specta]
+pub async fn tags_is_gone(app: AppHandle<Wry>, tag: String) -> Result<bool, CommandError> {
+    blocking("tags_is_gone", move || {
+        tags::gone(&open_vault(&app)?, &tag).map_err(|error| CommandError::from_core(&error))
+    })
+    .await
+}
+
 #[tauri::command]
 #[specta::specta]
 pub async fn tags_get_notes_by_tag(
