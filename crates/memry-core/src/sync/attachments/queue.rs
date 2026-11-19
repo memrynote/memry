@@ -1,13 +1,10 @@
-//! The attachment transfer queues (#3535 S5): downloads three at a time with
-//! Electron's dedupe, priority, pacing and global backoff
-//! (`apps/desktop/src/main/sync/download-queue.ts`), and the upload outbox
-//! drain (`attachment-outbox.ts` `drainAttachmentOutbox`, three at a time as
-//! `upload-queue.ts`).
+//! The attachment download queue (#3535 S5): three at a time with Electron's
+//! dedupe, priority, pacing and global backoff
+//! (`apps/desktop/src/main/sync/download-queue.ts`), and the [`VaultFiles`]
+//! seam the runners read the vault through.
 //!
-//! A network error never drops a download or an upload: the download goes back
-//! to the front of the queue behind a backoff, and the upload row keeps its
-//! place in `attachment_upload_queue`. The queue rows are the only state an
-//! upload needs, so a drain cut off by a crash resumes from them.
+//! A network error never drops a download: it goes back to the front of the
+//! queue behind a backoff.
 
 use std::cmp::Reverse;
 use std::collections::{HashMap, VecDeque};
@@ -19,24 +16,19 @@ use std::pin::Pin;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Duration;
 
-use tokio::sync::{Semaphore, oneshot};
-use tokio::task::JoinSet;
+use tokio::sync::oneshot;
 use tokio::time::Instant;
 
 use super::download::{DownloadTarget, Downloaded};
-use super::records::record_uploaded;
-use super::store::upload_queue::{self, PendingUpload, STUCK_UPLOAD_ATTEMPTS};
-use super::transfer::{AttachmentTransfer, TransferError, now_ms};
-use crate::api::errors::{ApiError, StorageError};
-use crate::domain::notes::read_attachment_references;
+use super::transfer::TransferError;
+use crate::api::errors::ApiError;
 use crate::protocol::attachments::AttachmentError;
-use crate::storage::Db;
 
 pub const MAX_CONCURRENT_DOWNLOADS: usize = 3;
-pub const MAX_CONCURRENT_UPLOADS: usize = 3;
 pub const NETWORK_BASE_BACKOFF_MS: u64 = 1000;
 pub const NETWORK_MAX_BACKOFF_MS: u64 = 60_000;
-/// The server's `blob_download` bucket allows 200 a minute; pace below it.
+/// The server's `blob_download` bucket allows 600 a minute (`blob.ts:96`);
+/// one token per download leaves room for its manifest and chunk reads.
 pub const PACER_MAX_REQUESTS: usize = 150;
 pub const PACER_WINDOW_MS: u64 = 60_000;
 /// At or under this a file is small and goes first.
@@ -56,6 +48,10 @@ pub trait VaultFiles: Send + Sync {
     /// The file names directly inside a vault-relative folder, `NotFound` when
     /// the folder is not there.
     fn list_files(&self, rel_dir: &str) -> io::Result<Vec<String>>;
+    /// Whether the vault is there to read now (Electron's `isVaultReachable`,
+    /// `vault/init.ts:74`). A removable, network or cloud vault that is away
+    /// answers `false`, and its missing files are not deletions.
+    fn is_reachable(&self) -> bool;
 }
 
 /// The absolute path a queue row stores for a vault-relative file (Electron
@@ -131,7 +127,7 @@ impl DownloadRequest {
 /// Every caller of one download gets the same answer.
 pub type DownloadOutcome = Result<Downloaded, Arc<TransferError>>;
 pub type DownloadFuture = Pin<Box<dyn Future<Output = Result<Downloaded, TransferError>> + Send>>;
-/// Runs one transfer: [`AttachmentTransfer::download_to_file`] in the app.
+/// Runs one transfer: [`super::transfer::AttachmentTransfer::download_to_file`] in the app.
 pub type DownloadFn = Arc<dyn Fn(DownloadRequest) -> DownloadFuture + Send + Sync>;
 
 /// The queue was cleared (vault switch, stop) before the download ran: not an
@@ -156,6 +152,8 @@ struct State {
     rate_limited_until: Option<Instant>,
     network_until: Option<Instant>,
     timer_armed: bool,
+    /// Set by [`DownloadQueue::clear`]: the vault is gone, nothing runs again.
+    disposed: bool,
 }
 
 /// `DownloadPacer`: at most `PACER_MAX_REQUESTS * multiplier` downloads start
@@ -198,6 +196,9 @@ impl DownloadQueue {
         let (tx, rx) = oneshot::channel();
         {
             let mut state = lock(&self.inner.state);
+            if state.disposed {
+                return Err(QueueCleared);
+            }
             let key = request.key();
             match state.waiters.get_mut(&key) {
                 Some(waiters) => {
@@ -245,10 +246,14 @@ impl DownloadQueue {
         self.inner.pacer.lock().await.multiplier = multiplier.max(1);
     }
 
-    /// Drops every queued download; its callers get [`QueueCleared`]. Running
-    /// transfers finish and answer their callers.
+    /// Retires the queue (vault switch, stop): drops every queued download and
+    /// turns later ones away; their callers get [`QueueCleared`]. Running
+    /// transfers finish and answer their callers, except one that would retry:
+    /// it ends with [`QueueCleared`] instead of going back into the queue
+    /// (`download-queue.ts:363-370`).
     pub fn clear(&self) {
         let mut state = lock(&self.inner.state);
+        state.disposed = true;
         let queued = std::mem::take(&mut state.queue);
         for item in queued {
             state.waiters.remove(&item.request.key());
@@ -274,7 +279,7 @@ fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
 
 fn drain(inner: &Arc<Inner>) {
     let mut state = lock(&inner.state);
-    while !state.queue.is_empty() && state.running < MAX_CONCURRENT_DOWNLOADS {
+    while !state.disposed && !state.queue.is_empty() && state.running < MAX_CONCURRENT_DOWNLOADS {
         let resume = state.rate_limited_until.max(state.network_until);
         if let Some(at) = resume.filter(|at| *at > Instant::now()) {
             if !state.timer_armed {
@@ -310,6 +315,9 @@ async fn run(inner: Arc<Inner>, mut item: Item) {
         let mut state = lock(&inner.state);
         state.running -= 1;
         match retry_of(&result) {
+            Retry::RateLimited(_) | Retry::Network if state.disposed => {
+                state.waiters.remove(&item.request.key());
+            }
             Retry::RateLimited(seconds) => {
                 let until = Instant::now() + Duration::from_secs(seconds);
                 state.rate_limited_until = state.rate_limited_until.max(Some(until));
@@ -396,144 +404,4 @@ fn network_backoff_ms(attempts: u32) -> u64 {
     NETWORK_BASE_BACKOFF_MS
         .saturating_mul(doubled)
         .min(NETWORK_MAX_BACKOFF_MS)
-}
-
-/// What one drain of the upload outbox did.
-#[derive(Debug, Default)]
-pub struct UploadDrain {
-    pub uploaded: usize,
-    /// Rows kept for a later pass (network, disk, or any other failure).
-    pub failed: usize,
-    /// Rows that reached [`STUCK_UPLOAD_ATTEMPTS`] on this pass.
-    pub stuck: Vec<PendingUpload>,
-    /// Rows dropped because they can never upload: the file is gone, outside
-    /// the vault, empty or too large. Each with the reason, for the user.
-    pub dropped: Vec<(PendingUpload, String)>,
-}
-
-enum Settled {
-    Uploaded,
-    Failed(Option<PendingUpload>),
-    Dropped(PendingUpload, String),
-}
-
-/// Uploads every due row once, three at a time (`drainAttachmentOutbox`).
-/// Each row is settled in the database before the next pass can see it, so a
-/// drain cut off anywhere converges on the next one.
-pub async fn drain_uploads(
-    db: Db,
-    transfer: Arc<AttachmentTransfer>,
-    vault: Arc<dyn VaultFiles>,
-    device_id: Arc<str>,
-) -> Result<UploadDrain, StorageError> {
-    let due = db
-        .call(|conn| upload_queue::list_due(conn, now_ms()))
-        .await?;
-    let slots = Arc::new(Semaphore::new(MAX_CONCURRENT_UPLOADS));
-    let mut tasks = JoinSet::new();
-    for row in due {
-        let (db, transfer, vault) = (db.clone(), transfer.clone(), vault.clone());
-        let (device_id, slots) = (device_id.clone(), slots.clone());
-        tasks.spawn(async move {
-            let _slot = slots.acquire_owned().await;
-            upload_row(&db, &transfer, vault.as_ref(), &device_id, row).await
-        });
-    }
-    let mut drained = UploadDrain::default();
-    while let Some(joined) = tasks.join_next().await {
-        let settled = joined.map_err(|error| StorageError::Failed {
-            what: format!("an upload task failed: {error}"),
-        })??;
-        match settled {
-            Settled::Uploaded => drained.uploaded += 1,
-            Settled::Failed(stuck) => {
-                drained.failed += 1;
-                drained.stuck.extend(stuck);
-            }
-            Settled::Dropped(row, reason) => drained.dropped.push((row, reason)),
-        }
-    }
-    Ok(drained)
-}
-
-async fn upload_row(
-    db: &Db,
-    transfer: &AttachmentTransfer,
-    vault: &dyn VaultFiles,
-    device_id: &str,
-    row: PendingUpload,
-) -> Result<Settled, StorageError> {
-    let Some(rel) = relative(vault, &row.disk_path) else {
-        return drop_row(db, row, "the file is outside the vault".to_owned()).await;
-    };
-    let owner = row.owner_id.clone();
-    let reusable = db
-        .call(move |conn| read_attachment_references(conn, &owner))
-        .await?;
-    let name = rel.rsplit('/').next().unwrap_or(&rel).to_owned();
-    let mut result = upload_once(transfer, vault, &rel, &name, &reusable).await;
-    if matches!(result, Err(TransferError::FileChanged)) {
-        // Nothing of the changed bytes left; the new bytes go up from the start.
-        result = upload_once(transfer, vault, &rel, &name, &reusable).await;
-    }
-    match result {
-        Ok(attachment_id) => {
-            let (owner, path, device) = (row.owner_id.clone(), rel.clone(), device_id.to_owned());
-            let referenced = db
-                .call(move |conn| {
-                    record_uploaded(conn, &owner, &path, &attachment_id, &device, now_ms())
-                })
-                .await?;
-            if !referenced {
-                eprintln!(
-                    "memry-core: uploaded attachment of {} has no live note to reference it",
-                    row.owner_id
-                );
-            }
-            Ok(Settled::Uploaded)
-        }
-        Err(TransferError::Io(error)) if error.kind() == io::ErrorKind::NotFound => {
-            drop_row(db, row, "the file was deleted".to_owned()).await
-        }
-        Err(error @ (TransferError::EmptyFile | TransferError::TooLarge { .. })) => {
-            drop_row(db, row, error.to_string()).await
-        }
-        Err(error) => {
-            let text = error.to_string();
-            eprintln!(
-                "memry-core: attachment upload of {} failed, kept for retry: {text}",
-                row.owner_id
-            );
-            let (owner, path) = (row.owner_id.clone(), row.disk_path.clone());
-            let attempts = db
-                .call(move |conn| upload_queue::mark_failed(conn, &owner, &path, &text, now_ms()))
-                .await?;
-            Ok(Settled::Failed(
-                (attempts == STUCK_UPLOAD_ATTEMPTS).then_some(PendingUpload { attempts, ..row }),
-            ))
-        }
-    }
-}
-
-async fn upload_once(
-    transfer: &AttachmentTransfer,
-    vault: &dyn VaultFiles,
-    rel: &str,
-    name: &str,
-    reusable: &[String],
-) -> Result<String, TransferError> {
-    let file = vault.open(rel)?;
-    let uploaded = transfer.upload_file(file, name, reusable).await?;
-    Ok(uploaded.attachment_id)
-}
-
-async fn drop_row(db: &Db, row: PendingUpload, reason: String) -> Result<Settled, StorageError> {
-    eprintln!(
-        "memry-core: attachment upload of {} dropped: {reason}",
-        row.owner_id
-    );
-    let (owner, path) = (row.owner_id.clone(), row.disk_path.clone());
-    db.call(move |conn| upload_queue::clear(conn, &owner, &path))
-        .await?;
-    Ok(Settled::Dropped(row, reason))
 }

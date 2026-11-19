@@ -3,13 +3,14 @@
 //! a note keeps, and when a deleted item's chunks are freed, and moves their
 //! bytes: [`transfer::AttachmentTransfer`] uploads ([`upload`]) and downloads
 //! ([`download`]) one file at a time, and [`records`] writes what a finished
-//! transfer leaves behind. The runners drive them: [`queue`] (downloads and
-//! the upload drain), [`backfill`], [`revival`] and [`release`].
+//! transfer leaves behind. The runners drive them: [`queue`] (downloads),
+//! [`outbox`] (the upload drain), [`backfill`], [`revival`] and [`release`].
 
 #[cfg(feature = "markdown")]
 pub mod backfill;
 pub mod download;
 pub mod holds;
+pub mod outbox;
 pub mod plan;
 pub mod presign;
 pub mod queue;

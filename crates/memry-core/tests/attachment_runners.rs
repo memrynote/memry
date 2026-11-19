@@ -10,6 +10,10 @@
 //! | a deleted canvas releases its holds before the dereference   | §14.8.1, `releaseCanvas`             |
 //! | a deleted note is freed on day 30, never a live reference    | `releaseExpiredDeletedAssets`        |
 //! | a backfill cut off midway converges and keeps retry windows  | `backfillUnsyncedAttachmentsWith`    |
+//! | a cleared download queue takes no failed download back       | `DownloadQueue.dispose`              |
+//! | a vault that is away keeps every queued upload               | `uploadFileState`                    |
+//! | a revival reupload waits for its vault                       | `uploadFileState`                    |
+//! | a revoked device stops the drain, no attempt counted         | `drainOutboxWith` (#3414)            |
 
 #[allow(unused_imports)]
 use crate::http_fakes;
@@ -26,26 +30,30 @@ use std::sync::{Arc, Mutex};
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use http_fakes::{FakeTransport, RecordingSleeper, body_json, error_response, response};
-use memry_core::api::errors::StorageError;
+use memry_core::api::errors::{ApiError, StorageError, TransportError};
+use memry_core::crypto::sodium;
 use memry_core::domain::notes::{self, NewNote};
-use memry_core::protocol::attachments::SignerResolver;
+use memry_core::protocol::account::DeviceSigner;
+use memry_core::protocol::attachments::{AttachmentError, SignerResolver};
 use memry_core::protocol::http::{ClientIdentity, HttpClient};
 use memry_core::storage::Db;
 use memry_core::sync::attachments::download::DownloadTarget;
 use memry_core::sync::attachments::holds::{NOTE_PROBE_DOMAIN, canvas_asset_holder_id, holder_id};
+use memry_core::sync::attachments::outbox::drain_uploads;
 use memry_core::sync::attachments::plan::RELEASE_GRACE_MS;
 use memry_core::sync::attachments::queue::{
-    DownloadFn, DownloadQueue, DownloadRequest, DownloadSource, VaultFiles,
+    DownloadFn, DownloadQueue, DownloadRequest, DownloadSource, QueueCleared, VaultFiles,
 };
 use memry_core::sync::attachments::release::{CanvasAsset, CanvasAssets, CanvasKept, release_due};
 use memry_core::sync::attachments::revival::{mark_revived, revived, settle_revived};
 use memry_core::sync::attachments::server::AttachmentServer;
 use memry_core::sync::attachments::store::releases::{self, ItemType};
 use memry_core::sync::attachments::store::{files, upload_queue};
-use memry_core::sync::attachments::transfer::TransferError;
+use memry_core::sync::attachments::transfer::{AttachmentTransfer, TransferError};
 use rusqlite::Connection;
 use serde_json::json;
 use support::{ScratchDb, hex_field, scratch_data_db, scratch_dir, str_field, vector_file};
+use zeroize::Zeroizing;
 
 const DEVICE: &str = "device-a";
 const NOW: i64 = 1_800_000_000_000;
@@ -69,6 +77,18 @@ impl TempVault {
     fn abs(&self, rel: &str) -> String {
         self.0.path().join(rel).to_string_lossy().into_owned()
     }
+
+    /// Unmounts (`true`) or remounts the vault, as a removable or network
+    /// vault does.
+    fn set_away(&self, away: bool) {
+        let parked = self.0.path().with_extension("away");
+        let (from, to) = if away {
+            (self.0.path(), parked.as_path())
+        } else {
+            (parked.as_path(), self.0.path())
+        };
+        fs::rename(from, to).unwrap();
+    }
 }
 
 impl VaultFiles for TempVault {
@@ -81,6 +101,10 @@ impl VaultFiles for TempVault {
             return Err(io::Error::other("outside the vault"));
         }
         File::open(self.0.path().join(rel))
+    }
+
+    fn is_reachable(&self) -> bool {
+        self.0.path().is_dir()
     }
 
     fn list_files(&self, rel_dir: &str) -> io::Result<Vec<String>> {
@@ -289,6 +313,55 @@ async fn a_duplicate_download_joins_the_running_one_and_takes_no_slot() {
         "both callers got one answer"
     );
     assert_eq!(calls.load(Ordering::SeqCst), 2);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_cleared_queue_takes_no_failed_download_back() {
+    let calls = Arc::new(AtomicUsize::new(0));
+    let gate = Arc::new(tokio::sync::Semaphore::new(0));
+    let (counter, opened) = (calls.clone(), gate.clone());
+    let download: DownloadFn = Arc::new(move |_request| {
+        counter.fetch_add(1, Ordering::SeqCst);
+        let opened = opened.clone();
+        Box::pin(async move {
+            let _pass = opened.acquire().await;
+            Err(TransferError::Attachment(AttachmentError::Api(
+                ApiError::Transport {
+                    source: TransportError::Failed {
+                        what: "offline".into(),
+                    },
+                },
+            )))
+        })
+    });
+    let queue = DownloadQueue::new(download);
+    let request = DownloadRequest {
+        owner_id: "note-1".into(),
+        attachment_id: "att-1".into(),
+        target: DownloadTarget::Dir(PathBuf::from("/old-vault/attachments/note-1")),
+        source: DownloadSource::Eager,
+        size_hint: None,
+        recency_hint: None,
+    };
+    let mut running = Box::pin(queue.enqueue(request.clone()));
+    poll_once(&mut running).await;
+    while calls.load(Ordering::SeqCst) == 0 {
+        tokio::time::sleep(std::time::Duration::from_millis(1)).await;
+    }
+
+    queue.clear();
+    gate.add_permits(10);
+    while queue.active() > 0 {
+        tokio::time::sleep(std::time::Duration::from_millis(1)).await;
+    }
+    assert_eq!(queue.pending(), 0, "the failed download is not re-queued");
+    assert_eq!(running.await.unwrap_err(), QueueCleared);
+    assert_eq!(queue.enqueue(request).await.unwrap_err(), QueueCleared);
+    assert_eq!(
+        calls.load(Ordering::SeqCst),
+        1,
+        "the old vault downloads nothing more"
+    );
 }
 
 /// Runs `future` up to its first wait: an `enqueue` registers its request.
@@ -644,4 +717,176 @@ mod backfill {
             }
         }
     }
+}
+
+fn transfer(server: &Server) -> Arc<AttachmentTransfer> {
+    let (_, secret) = sodium::sign_seed_keypair(&[11u8; 32]).unwrap();
+    let http = HttpClient::new(
+        server.transport.clone(),
+        "https://sync.example",
+        ClientIdentity::new("desktop", "1.2.3").unwrap(),
+    )
+    .with_sleeper(RecordingSleeper::new());
+    let signers = Signers {
+        device_id: String::new(),
+        public_key: Vec::new(),
+    };
+    Arc::new(AttachmentTransfer::new(
+        Arc::new(http),
+        VAULT,
+        Zeroizing::new(server.vault_key.clone()),
+        DeviceSigner::new(DEVICE, secret.to_vec()).unwrap(),
+        Arc::new(signers),
+        |name| name.to_owned(),
+    ))
+}
+
+/// Every queued row with its attempts.
+fn attempts(db: &Db) -> Vec<(String, u32)> {
+    let mut rows: Vec<_> = with(db, |conn| upload_queue::list_pending(conn, 100))
+        .into_iter()
+        .map(|row| (row.disk_path, row.attempts))
+        .collect();
+    rows.sort();
+    rows
+}
+
+#[tokio::test]
+async fn a_vault_that_is_away_keeps_every_queued_upload() {
+    let db = scratch_data_db("drain-unreachable");
+    let vault = Arc::new(TempVault::new());
+    note(&db, "n1", "notes/n1.md", &[]);
+    vault.write("notes/n1.md", b"");
+    for rel in ["attachments/n1/a.png", "attachments/n1/b.png"] {
+        vault.write(rel, b"picture");
+        let path = vault.abs(rel);
+        with(&db, move |conn| {
+            upload_queue::enqueue(conn, "n1", &path, NOW)
+        });
+    }
+    let both = vec![
+        (vault.abs("attachments/n1/a.png"), 0),
+        (vault.abs("attachments/n1/b.png"), 0),
+    ];
+    let server = Server::new();
+    let drain = || {
+        drain_uploads(
+            (*db).clone(),
+            transfer(&server),
+            vault.clone(),
+            DEVICE.into(),
+        )
+    };
+
+    vault.set_away(true);
+    let report = drain().await.unwrap();
+    vault.set_away(false);
+    assert_eq!(report.unreachable, 2, "{report:?}");
+    assert!(report.dropped.is_empty(), "{report:?}");
+    assert_eq!(attempts(&db), both, "kept, and no failure counted");
+
+    // The note's folder is away too: still not a deletion.
+    fs::remove_file(vault.0.path().join("attachments/n1/a.png")).unwrap();
+    fs::remove_file(vault.0.path().join("attachments/n1/b.png")).unwrap();
+    fs::remove_dir_all(vault.0.path().join("notes")).unwrap();
+    let report = drain().await.unwrap();
+    assert_eq!(report.unreachable, 2, "{report:?}");
+    assert_eq!(attempts(&db), both);
+
+    vault.write("notes/n1.md", b"");
+    let report = drain().await.unwrap();
+    assert_eq!(report.dropped.len(), 2, "{report:?}");
+    assert!(
+        attempts(&db).is_empty(),
+        "a file deleted from a present vault is dropped"
+    );
+    assert!(server.paths().is_empty(), "{:?}", server.paths());
+}
+
+#[tokio::test]
+async fn a_revival_reupload_waits_for_its_vault() {
+    let db: ScratchDb = scratch_data_db("revival-unreachable");
+    let vault = Arc::new(TempVault::new());
+    revived_note(&db, &vault, "attachments/n1/abc123-pic.png", STORED);
+    let server = Server::new();
+    let holder = holder_id(&server.vault_key, NOTE_PROBE_DOMAIN, "n1", STORED).unwrap();
+    server.manifest();
+    server.ok(&json!({ "missing": [holder] }).to_string());
+    server.ok("{}");
+    let report = settle_revived(&db, server.view(), vault.clone(), DEVICE)
+        .await
+        .unwrap();
+    assert_eq!(report.queued, 1);
+    assert!(
+        references(&db, "n1").is_empty(),
+        "the gone id is already dropped"
+    );
+    let row = vec![(vault.abs("attachments/n1/abc123-pic.png"), 0)];
+    let drain = || {
+        drain_uploads(
+            (*db).clone(),
+            transfer(&server),
+            vault.clone(),
+            DEVICE.into(),
+        )
+    };
+
+    vault.set_away(true);
+    let report = drain().await.unwrap();
+    vault.set_away(false);
+    assert_eq!(report.unreachable, 1, "{report:?}");
+    assert_eq!(
+        attempts(&db),
+        row,
+        "the only copy peers can get stays queued"
+    );
+
+    server
+        .transport
+        .push(error_response(400, "BAD_REQUEST", "refused"));
+    let report = drain().await.unwrap();
+    assert_eq!(report.failed, 1, "{report:?}");
+    let paths = server.paths();
+    assert!(
+        paths[3].ends_with("/sync/attachments/upload/initiate"),
+        "the file went up once the vault returned: {paths:?}"
+    );
+}
+
+#[tokio::test]
+async fn a_revoked_device_stops_the_drain_and_counts_no_attempt() {
+    let db = scratch_data_db("drain-revoked");
+    let vault = Arc::new(TempVault::new());
+    note(&db, "n1", "n1.md", &[]);
+    let mut rows = Vec::new();
+    for index in 0..5 {
+        let rel = format!("attachments/n1/{index}.png");
+        vault.write(&rel, b"picture");
+        let path = vault.abs(&rel);
+        rows.push((path.clone(), 0));
+        with(&db, move |conn| {
+            upload_queue::enqueue(conn, "n1", &path, NOW)
+        });
+    }
+    rows.sort();
+    let server = Server::new();
+    for _ in 0..3 {
+        server
+            .transport
+            .push(error_response(401, "AUTH_DEVICE_REVOKED", "revoked"));
+    }
+
+    let report = drain_uploads(
+        (*db).clone(),
+        transfer(&server),
+        vault.clone(),
+        DEVICE.into(),
+    )
+    .await
+    .unwrap();
+
+    assert!(report.revoked, "{report:?}");
+    assert_eq!(report.failed, 0, "{report:?}");
+    assert_eq!(attempts(&db), rows, "every row as it was");
+    assert_eq!(server.paths().len(), 3, "no row starts after the refusal");
 }
