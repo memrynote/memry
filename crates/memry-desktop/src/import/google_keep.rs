@@ -21,7 +21,7 @@ use super::messages::{ImportText, importing_item, status};
 use super::zip::{EntryAt, Zips, too_large};
 use super::{
     FileSpec, ImportContext, ImportError, ImportInput, ImportPhase, ImportSink, ImportedNote,
-    Importer, ImporterMeta, MAX_SOURCE_BYTES, read_source_text,
+    Importer, ImporterMeta, MAX_NOTE_JSON_BYTES, MAX_SOURCE_BYTES, read_source_text,
 };
 use crate::attachments::MAX_FILE_SIZE;
 
@@ -307,18 +307,32 @@ impl Importer for GoogleKeepImporter {
 }
 
 /// Every `.json` entry is a note; `.html` and `.txt` copies of a note are passed over; any other
-/// entry is an asset, by file name, the last of a name winning.
+/// entry is an asset, by file name, the last of a name winning. Note files past
+/// [`MAX_NOTE_JSON_BYTES`] in all refuse the import.
 fn scan_zip(path: &Path, scan: &mut Scan, ctx: &mut ImportContext) -> io::Result<()> {
     let cancel = ctx.cancel_token();
     let (notes, assets) = (&mut scan.notes, &mut scan.assets);
+    let mut held = 0;
     scan.zips.walk(path, &cancel, &mut |zips, entry| {
         match entry.extension.as_str() {
             "html" | "txt" => {}
-            "json" => match zips.read(entry.at, MAX_SOURCE_BYTES) {
-                Ok(bytes) => match parse_json(&bytes) {
-                    Some(raw) => notes.push((raw, entry.filepath)),
-                    None => ctx.report_skipped(&entry.filepath, Some(INVALID_JSON.into())),
-                },
+            "json" => match zips.read(entry.at, MAX_SOURCE_BYTES.min(MAX_NOTE_JSON_BYTES - held)) {
+                Ok(bytes) => {
+                    held += bytes.len() as u64;
+                    match parse_json(&bytes) {
+                        Some(raw) => notes.push((raw, entry.filepath)),
+                        None => ctx.report_skipped(&entry.filepath, Some(INVALID_JSON.into())),
+                    }
+                }
+                Err(error)
+                    if error.kind() == io::ErrorKind::FileTooLarge
+                        && MAX_NOTE_JSON_BYTES - held < MAX_SOURCE_BYTES =>
+                {
+                    return Err(io::Error::other(format!(
+                        "Export holds more than {} MB of notes",
+                        MAX_NOTE_JSON_BYTES / (1024 * 1024)
+                    )));
+                }
                 Err(error) if error.kind() == io::ErrorKind::FileTooLarge => {
                     ctx.report_skipped(&entry.filepath, Some(ImportText::Text(error.to_string())));
                 }

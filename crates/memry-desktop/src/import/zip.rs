@@ -8,7 +8,8 @@
 //! Electron read the whole zip into memory and every entry with no limit. Here the picked zip
 //! is read from disk on demand, [`Zips::read`] takes the caller's limit and checks it against
 //! the declared size before inflating and against the bytes inflated after, a nested zip is held
-//! in memory only up to [`MAX_SOURCE_BYTES`], and nesting stops at [`MAX_ZIP_NESTING`] archives.
+//! in memory only up to [`MAX_SOURCE_BYTES`] and all of them up to [`MAX_NESTED_ZIP_BYTES`], and
+//! nesting stops at [`MAX_ZIP_NESTING`] archives before the next one is read.
 
 use std::fs::File;
 use std::io::{self, Cursor, Read, Seek};
@@ -23,6 +24,11 @@ use super::MAX_SOURCE_BYTES;
 /// Archives one walk may open, the picked zip included. Electron recursed without a bound, so a
 /// zip that holds itself never ended.
 pub const MAX_ZIP_NESTING: usize = 4;
+
+/// Bytes of nested zips one walk holds in memory. Takeout splits an export only into parts of
+/// 1 GB or more, which [`MAX_SOURCE_BYTES`] already refuses as a nested zip, so a real nested
+/// export holds one part of at most 100 MB; this leaves room for two.
+pub const MAX_NESTED_ZIP_BYTES: u64 = 256 * 1024 * 1024;
 
 trait Source: Read + Seek + Send {}
 impl<T: Read + Seek + Send> Source for T {}
@@ -52,6 +58,8 @@ pub struct ZipEntry {
 #[derive(Default)]
 pub struct Zips {
     archives: Vec<ZipArchive<Box<dyn Source>>>,
+    /// Bytes of the nested zips in `archives`.
+    held: u64,
 }
 
 pub type Visit<'a> = dyn FnMut(&mut Zips, ZipEntry) -> io::Result<()> + 'a;
@@ -76,11 +84,6 @@ impl Zips {
         cancel: &CancellationToken,
         visit: &mut Visit<'_>,
     ) -> io::Result<()> {
-        if depth > MAX_ZIP_NESTING {
-            return Err(io::Error::other(format!(
-                "Zip nested more than {MAX_ZIP_NESTING} deep"
-            )));
-        }
         let archive_at = self.archives.len();
         self.archives
             .push(ZipArchive::new(source).map_err(zip_error)?);
@@ -118,7 +121,23 @@ impl Zips {
                 at,
             };
             if entry.extension == "zip" && entry.parent.is_empty() {
-                let nested = self.read(at, MAX_SOURCE_BYTES)?;
+                if depth == MAX_ZIP_NESTING {
+                    return Err(io::Error::other(format!(
+                        "Zip nested more than {MAX_ZIP_NESTING} deep"
+                    )));
+                }
+                let room = MAX_NESTED_ZIP_BYTES - self.held;
+                let nested = self.read(at, MAX_SOURCE_BYTES.min(room)).map_err(|error| {
+                    if error.kind() == io::ErrorKind::FileTooLarge && room < MAX_SOURCE_BYTES {
+                        io::Error::other(format!(
+                            "Zip holds more than {} MB of nested zips",
+                            MAX_NESTED_ZIP_BYTES / (1024 * 1024)
+                        ))
+                    } else {
+                        error
+                    }
+                })?;
+                self.held += nested.len() as u64;
                 self.open(Box::new(Cursor::new(nested)), depth + 1, cancel, visit)?;
                 continue;
             }

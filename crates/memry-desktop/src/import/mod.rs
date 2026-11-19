@@ -39,6 +39,11 @@ pub use sink::{ImportSink, ImportedNote, SinkError};
 /// fails its item before it is read.
 pub const MAX_SOURCE_BYTES: u64 = 100 * 1024 * 1024;
 
+/// Bytes of note files one zip scan reads and holds until the import ends. Google Keep caps a
+/// note at 20,000 characters (at most about 80 KB of JSON), so this holds over 6,500 notes of
+/// maximal length and far more of the usual few KB; Electron held any amount.
+pub const MAX_NOTE_JSON_BYTES: u64 = 512 * 1024 * 1024;
+
 /// `ImportInput`: the picked paths and the importer's own options.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
