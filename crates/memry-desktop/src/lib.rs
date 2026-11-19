@@ -12,6 +12,7 @@ pub mod editor;
 pub mod electron_import;
 pub mod embedding;
 pub mod error;
+pub mod export;
 pub mod fold;
 pub mod http;
 pub mod i18n;
