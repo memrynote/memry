@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   BOOTSTRAP_ELEVATION_MULTIPLIERS,
   BOOTSTRAP_RENEW_LEAD_SECONDS,
+  BOOTSTRAP_RESUME_WINDOW_SECONDS,
   BOOTSTRAP_SESSION_TTL_SECONDS,
   MAX_BOOTSTRAP_SESSION_LIFETIME_SECONDS,
   bootstrapRateLimitElevation,
@@ -204,9 +205,15 @@ describe('bootstrapRateLimitElevation', () => {
 
 const seedDevice = (
   harness: SqliteD1,
-  opts: { deviceId?: string; lastCursor?: number | null; vaultId?: string } = {}
+  opts: {
+    deviceId?: string
+    lastCursor?: number | null
+    vaultId?: string
+    registeredAgoSeconds?: number
+  } = {}
 ): void => {
   const now = Math.floor(Date.now() / 1000)
+  const registeredAt = now - (opts.registeredAgoSeconds ?? 0)
   const deviceId = opts.deviceId ?? 'd1'
   const vaultId = opts.vaultId ?? 'v1'
   // device_sync_state carries an FK to devices.
@@ -215,7 +222,7 @@ const seedDevice = (
       `INSERT OR IGNORE INTO devices (id, user_id, name, platform, app_version, auth_public_key, vault_id, created_at, updated_at)
        VALUES (?, 'u1', ?, 'desktop', '0.0.0-test', ?, ?, ?, ?)`
     )
-    .run(deviceId, `dev-${deviceId}`, `pk-${deviceId}`, vaultId, now, now)
+    .run(deviceId, `dev-${deviceId}`, `pk-${deviceId}`, vaultId, registeredAt, registeredAt)
   if (opts.lastCursor !== null) {
     harness.raw
       .prepare(
@@ -269,13 +276,41 @@ describe('open/renew/close over real SQLite', () => {
   })
 
   it('refuses a device that has already pulled this vault', async () => {
-    // #given
-    seedDevice(harness, { lastCursor: 42 })
+    // #given — registered past the resume window
+    seedDevice(harness, { lastCursor: 42, registeredAgoSeconds: BOOTSTRAP_RESUME_WINDOW_SECONDS })
 
     // #when / #then — typed 409, the client's silent-fallback signal
     await expect(
       openBootstrapSession(harness.db, SECRET, { userId: 'u1', deviceId: 'd1', vaultId: 'v1' })
     ).rejects.toMatchObject({ code: 'BOOTSTRAP_NOT_ELIGIBLE', statusCode: 409 })
+  })
+
+  it('reopens for a device resuming an interrupted first sync', async () => {
+    // #given — the first refs page moved the cursor, then the app was killed
+    seedDevice(harness, { lastCursor: 42, registeredAgoSeconds: 8 * 60 * 60 })
+    const identity = { userId: 'u1', deviceId: 'd1', vaultId: 'v1' }
+    const first = await openBootstrapSession(harness.db, SECRET, identity)
+    await closeBootstrapSession(harness.db, SECRET, first.token, identity)
+
+    // #when — the relaunched first sync opens again
+    const { token } = await openBootstrapSession(harness.db, SECRET, identity)
+
+    // #then — elevated, not 409 BOOTSTRAP_NOT_ELIGIBLE (production: 18 refusals)
+    expect(await verifyBootstrapSession(SECRET, token)).toMatchObject(identity)
+  })
+
+  it('still caps a resuming device at the per-user concurrent limit', async () => {
+    // #given — a resuming device whose sessions were never closed
+    seedDevice(harness, { lastCursor: 42, registeredAgoSeconds: 60 })
+    const identity = { userId: 'u1', deviceId: 'd1', vaultId: 'v1' }
+    await openBootstrapSession(harness.db, SECRET, identity)
+    await openBootstrapSession(harness.db, SECRET, identity)
+
+    // #when / #then
+    await expect(openBootstrapSession(harness.db, SECRET, identity)).rejects.toMatchObject({
+      code: 'BOOTSTRAP_SESSION_LIMIT',
+      statusCode: 429
+    })
   })
 
   it('enforces the per-user concurrent session cap', async () => {
@@ -581,12 +616,22 @@ describe('open/renew/close over real SQLite', () => {
 
   it('isFreshDeviceForVault reads the same signal the client cursor gate uses', async () => {
     // #given
-    seedDevice(harness, { lastCursor: 42 })
-    seedDevice(harness, { deviceId: 'd-zero', lastCursor: 0 })
+    seedDevice(harness, { lastCursor: 42, registeredAgoSeconds: BOOTSTRAP_RESUME_WINDOW_SECONDS })
+    seedDevice(harness, {
+      deviceId: 'd-zero',
+      lastCursor: 0,
+      registeredAgoSeconds: BOOTSTRAP_RESUME_WINDOW_SECONDS
+    })
+    seedDevice(harness, {
+      deviceId: 'd-young',
+      lastCursor: 42,
+      registeredAgoSeconds: BOOTSTRAP_RESUME_WINDOW_SECONDS - 1
+    })
 
     // #when / #then
     expect(await isFreshDeviceForVault(harness.db, 'u1', 'd-none', 'v1')).toBe(true)
     expect(await isFreshDeviceForVault(harness.db, 'u1', 'd-zero', 'v1')).toBe(true)
+    expect(await isFreshDeviceForVault(harness.db, 'u1', 'd-young', 'v1')).toBe(true)
     expect(await isFreshDeviceForVault(harness.db, 'u1', 'd1', 'v1')).toBe(false)
   })
 

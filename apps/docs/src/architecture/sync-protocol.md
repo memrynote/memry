@@ -1804,21 +1804,32 @@ elevates nothing.
 
 ### Eligibility, TTL and the lifetime cap
 
-`POST /sync/bootstrap` is only granted to a device that has never completed a pull for this vault:
-`device_sync_state.last_cursor_seen` is absent, NULL or 0. `updateDeviceCursor` only writes when a
-changes page actually delivered items, so that is a genuine never-pulled device — the same signal
-the client's own `LAST_CURSOR` gate uses. An already-synced device gets `BOOTSTRAP_NOT_ELIGIBLE`
+`POST /sync/bootstrap` is granted to a device that is still in its first sync of this vault. That
+is either a device that has never completed a pull (`device_sync_state.last_cursor_seen` is
+absent, NULL or 0) or one whose `devices` row was registered less than
+`BOOTSTRAP_RESUME_WINDOW_SECONDS` (24 hours) ago. `updateDeviceCursor` only writes when a changes
+page actually delivered items, so the first case is a genuine never-pulled device, the same
+signal the client's own `LAST_CURSOR` gate uses. Any other device gets `BOOTSTRAP_NOT_ELIGIBLE`
 (409).
 
-Any `GET /sync/changes` page that delivers an item therefore spends eligibility, including one
-that is not part of a pull. The desktop launch probe for a revoked device (`checkDeviceStatus`)
+The second case exists for resumed first syncs. The first refs page moves the cursor off 0, and
+iOS reruns the first sync on every relaunch after the OS suspends or kills the app. Before the
+resume window, every relaunch was refused and the rest of the sync ran at steady-state pacing,
+about a fifth of the elevated speed (one production user hit the 409 eighteen times). The window
+reads the server's own `devices.created_at`, not anything the client sends, and a re-registration
+already earns a new device row, so it grants no elevation a new sign-in would not. The per-user cap
+of two concurrent sessions still applies. Desktop opens a session only when its own `LAST_CURSOR`
+is unset, so the window does not change what desktop does.
+
+After the window, any `GET /sync/changes` page that delivers an item spends eligibility, including
+one that is not part of a pull. The desktop launch probe for a revoked device (`checkDeviceStatus`)
 used to read `/sync/changes?limit=1`, so every fresh desktop device got the 409 on its first full
 sync. It now reads `GET /sync/status`, which sits behind the same `authMiddleware` revocation check
 and writes nothing. It is not a single-row read: `getSyncStatus` also counts the vault's
 `sync_items` rows above the device cursor, which for a fresh device is the whole vault, served by
 `idx_sync_user_cursor`. A client that sends identification headers also costs one `getClientPolicy`
-read. Desktop builds that still send the old probe keep losing the session; that costs them
-elevated limits, not data.
+read. Desktop builds that still send the old probe lost the session before the resume window, at a
+cost of elevated limits, not data. A device registered within the window now gets one anyway.
 
 | Constant                                 | Value      | Why                                                 |
 | ---------------------------------------- | ---------- | --------------------------------------------------- |

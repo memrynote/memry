@@ -3,7 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createSqliteD1, type SqliteD1 } from '../__tests__/d1-sqlite'
 import { errorHandler } from '../lib/errors'
-import { signBootstrapSession, verifyBootstrapSession } from '../services/bootstrap-session'
+import {
+  BOOTSTRAP_RESUME_WINDOW_SECONDS,
+  signBootstrapSession,
+  verifyBootstrapSession
+} from '../services/bootstrap-session'
 import type { AppContext } from '../types'
 import type * as RateLimitModule from '../middleware/rate-limit'
 
@@ -81,8 +85,10 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-const seedDevice = (opts: { deviceId?: string; lastCursor?: number | null } = {}): void => {
-  const ts = now()
+const seedDevice = (
+  opts: { deviceId?: string; lastCursor?: number | null; registeredAgoSeconds?: number } = {}
+): void => {
+  const ts = now() - (opts.registeredAgoSeconds ?? 0)
   const deviceId = opts.deviceId ?? 'device-1'
   harness.raw
     .prepare(
@@ -143,8 +149,8 @@ describe('POST /sync/bootstrap', () => {
   })
 
   it('refuses a device that already synced this vault with a typed 409', async () => {
-    // #given
-    seedDevice({ lastCursor: 42 })
+    // #given — registered past the resume window
+    seedDevice({ lastCursor: 42, registeredAgoSeconds: BOOTSTRAP_RESUME_WINDOW_SECONDS })
     const app = createApp()
 
     // #when
@@ -164,6 +170,27 @@ describe('POST /sync/bootstrap', () => {
     expect(((await res.json()) as { error: { code: string } }).error.code).toBe(
       'BOOTSTRAP_NOT_ELIGIBLE'
     )
+  })
+
+  it('reopens for a device resuming an interrupted first sync', async () => {
+    // #given — one refs page landed (cursor 42), then iOS killed the app.
+    // Production: 18 refusals, and the resumed run paced at a fifth of the speed.
+    seedDevice({ lastCursor: 42, registeredAgoSeconds: 8 * 60 * 60 })
+    const app = createApp()
+
+    // #when
+    const res = await app.request(
+      '/sync/bootstrap',
+      { method: 'POST' },
+      {
+        DB: harness.db,
+        ENVIRONMENT: 'development',
+        BOOTSTRAP_SESSION_HMAC_KEY: SECRET
+      }
+    )
+
+    // #then
+    expect(res.status).toBe(200)
   })
 
   it('opens a session for a fresh device carrying manifest page + tail cursor + packs placeholder', async () => {
