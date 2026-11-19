@@ -31,10 +31,18 @@ fn arm(queue: &Arc<PostReveal>, shutting_down: bool) -> oneshot::Sender<()> {
     open
 }
 
-/// Registers a marker last and waits for it, so every task queued before it has run.
-fn drained(queue: &PostReveal, rx: &Receiver<&'static str>) -> Vec<&'static str> {
+/// Queues a marker behind every task registered so far, opens the gate and waits for the
+/// marker. The drain runs its queue in order on one thread, so every task queued before the
+/// marker has run when it does. The marker goes in before the gate opens: registered after,
+/// it can find the queue drained while the drain still runs a task, and run at once.
+fn drain(
+    queue: &PostReveal,
+    open: oneshot::Sender<()>,
+    rx: &Receiver<&'static str>,
+) -> Vec<&'static str> {
     let (tx, done) = mpsc::channel();
     queue.register("marker", move || tx.send(()).expect("receiver alive"));
+    open.send(()).expect("drain waiting");
     done.recv_timeout(HANG).expect("the drain ran");
     rx.try_iter().collect()
 }
@@ -49,8 +57,7 @@ fn work_waits_for_the_delay_after_the_reveal_and_runs_once() {
     queue.register("late", record(&tx, "late"));
     assert!(rx.try_recv().is_err(), "nothing runs before the delay ends");
 
-    open.send(()).expect("drain waiting");
-    assert_eq!(drained(&queue, &rx), ["ocr", "late"]);
+    assert_eq!(drain(&queue, open, &rx), ["ocr", "late"]);
 
     queue.register("ocr-languages", record(&tx, "ocr again"));
     assert!(rx.try_recv().is_err(), "a started name never runs again");
@@ -60,8 +67,7 @@ fn work_waits_for_the_delay_after_the_reveal_and_runs_once() {
 fn a_registration_after_the_drain_runs_at_once() {
     let queue = Arc::new(PostReveal::default());
     let (tx, rx) = recorder();
-    arm(&queue, false).send(()).expect("drain waiting");
-    assert!(drained(&queue, &rx).is_empty());
+    assert!(drain(&queue, arm(&queue, false), &rx).is_empty());
 
     queue.register("after", record(&tx, "after"));
     assert_eq!(rx.try_recv(), Ok("after"));
@@ -74,8 +80,7 @@ fn registering_a_queued_name_again_replaces_its_task_in_its_place() {
     queue.register("updater", record(&tx, "first"));
     queue.register("ocr-languages", record(&tx, "ocr"));
     queue.register("updater", record(&tx, "second"));
-    arm(&queue, false).send(()).expect("drain waiting");
-    assert_eq!(drained(&queue, &rx), ["second", "ocr"]);
+    assert_eq!(drain(&queue, arm(&queue, false), &rx), ["second", "ocr"]);
 }
 
 #[test]
@@ -86,8 +91,7 @@ fn a_second_reveal_does_not_arm_a_second_drain() {
     let first = arm(&queue, false);
     // Never opened: the repeat call returns before it spawns a waiter on it.
     let _second = arm(&queue, false);
-    first.send(()).expect("drain waiting");
-    assert_eq!(drained(&queue, &rx), ["task"]);
+    assert_eq!(drain(&queue, first, &rx), ["task"]);
 }
 
 #[test]
@@ -119,8 +123,7 @@ fn a_panicking_task_does_not_stop_the_next_one() {
     let (tx, rx) = recorder();
     queue.register("boom", || panic!("task failed"));
     queue.register("next", record(&tx, "next"));
-    arm(&queue, false).send(()).expect("drain waiting");
-    assert_eq!(drained(&queue, &rx), ["next"]);
+    assert_eq!(drain(&queue, arm(&queue, false), &rx), ["next"]);
 }
 
 #[test]

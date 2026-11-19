@@ -67,6 +67,8 @@ mod api_vault_sync;
 mod attachment_cache;
 #[path = "attachment_download.rs"]
 mod attachment_download;
+#[path = "attachment_holds.rs"]
+mod attachment_holds;
 #[path = "attachment_manifest_vectors.rs"]
 mod attachment_manifest_vectors;
 #[path = "attachment_plan.rs"]
@@ -264,6 +266,8 @@ mod domain_templates;
 #[cfg(feature = "markdown")]
 #[path = "driver_snapshots.rs"]
 mod driver_snapshots;
+#[path = "driver_vault_header.rs"]
+mod driver_vault_header;
 #[path = "dryoc_parity.rs"]
 mod dryoc_parity;
 #[path = "editor_compaction.rs"]
@@ -294,6 +298,8 @@ mod header_tags;
 mod header_tags_untrusted;
 #[path = "http_client.rs"]
 mod http_client;
+#[path = "inbox_seed_sync.rs"]
+mod inbox_seed_sync;
 #[path = "inbox_vectors.rs"]
 mod inbox_vectors;
 #[path = "journal_body.rs"]
@@ -465,6 +471,9 @@ mod sync_hardening_orphans;
 mod sync_hardening_purged;
 #[path = "sync_hardening_repairs.rs"]
 mod sync_hardening_repairs;
+#[cfg(feature = "markdown")]
+#[path = "sync_list_fields_union.rs"]
+mod sync_list_fields_union;
 #[path = "sync_note_body_feed.rs"]
 mod sync_note_body_feed;
 #[path = "sync_outbox.rs"]
