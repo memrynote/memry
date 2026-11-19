@@ -141,50 +141,22 @@ struct NoteEditorTests {
 
     // MARK: - Block boundaries (N501)
 
-    /// Enter in the middle of a block splits it: the head stays, the tail
-    /// becomes a new block below.
-    @Test func enter_in_the_middle_splits_a_block() async {
+    /// Enter in the middle of a block splits it in one write
+    /// (`BlockEdit.splitBlock`), so no failure leaves the text twice or not
+    /// at all. The caret counts characters of the shown text, a UTF-16
+    /// surrogate pair as one, and the undo step merges the new block back.
+    @Test func enter_in_the_middle_splits_a_block_in_one_write() async throws {
         let editor = ScriptedEditor()
         let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
 
-        let newId = await model.split("block-1", at: 5, text: "hello world")
+        let split = try #require(await model.split("block-1", typed: "h😀llo world", at: 6, kind: "paragraph"))
 
-        let edits = editor.edits.withLock { $0 }
-        #expect(edits.count == 2)
-
-        // **The tail is written before the head is truncated.** A failure
-        // between the two leaves the text duplicated, which the user can see
-        // and fix; the other order loses it.
-        guard case let .insertParagraph(after, tail, inserted) = edits[0] else {
-            Issue.record("expected the insert first, got \(edits[0])")
-            return
-        }
-        #expect(after == "block-1")
-        #expect(tail == " world")
-        #expect(inserted == newId)
-
-        guard case let .setText(blockId, head) = edits[1] else {
-            Issue.record("expected the truncation second, got \(edits[1])")
-            return
-        }
-        #expect(blockId == "block-1")
-        #expect(head == "hello")
-    }
-
-    /// Enter at the very end is a split with an empty tail, which is how a
-    /// new empty paragraph appears below.
-    @Test func enter_at_the_end_leaves_the_text_alone() async {
-        let editor = ScriptedEditor()
-        let model = NoteEditorViewModel(noteId: "note-1", editor: editor)
-
-        await model.split("block-1", at: 5, text: "hello")
-
-        let edits = editor.edits.withLock { $0 }
-        guard case let .insertParagraph(_, tail, _) = edits[0] else {
-            Issue.record("expected an insert")
-            return
-        }
-        #expect(tail == "")
+        #expect(editor.edits.withLock { $0 } == [
+            .splitBlock(blockId: "block-1", at: 5, kind: "paragraph", newBlockId: split.id),
+        ])
+        #expect(split.step.backward == .mergeBlocks(blockId: split.id, intoBlockId: "block-1"))
+        #expect(split.step.forward == editor.edits.withLock { $0 }[0])
+        #expect(model.status == .idle)
     }
 
     /// Backspace at offset zero joins a block to the one above in one write

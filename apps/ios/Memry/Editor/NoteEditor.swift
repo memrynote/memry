@@ -146,36 +146,29 @@ final class NoteEditorViewModel {
 
     // MARK: - Block boundaries (N501)
 
-    /// Splits a block at `offset`: what is before the caret stays, what is
-    /// after it becomes a new block below.
+    /// Return inside a block's text (desktop's `splitBlockTr`): the text
+    /// from the caret on, marks and inline nodes kept, moves to a new block
+    /// below in one write (`BlockEdit.splitBlock`). `typed` is the block as
+    /// the pane shows it and `caret` a UTF-16 location in it; the split goes
+    /// where the block holds that place when it is written, so another
+    /// pane's typing before it does not move it. `kind` is the new block's
+    /// type, or `nil` for the block's own type and props.
     ///
-    /// **Two operations, in this order.** The tail is written into the new
-    /// block *before* the head is truncated, so a failure between them leaves
-    /// the text duplicated rather than destroyed. Duplicated text is a
-    /// user-visible mistake they can fix; deleted text is not.
-    @discardableResult
-    func split(_ blockId: String, at offset: Int, text: String) async -> String? {
-        guard let editor else { return nil }
-        let cut = text.index(text.startIndex, offsetBy: min(offset, text.count))
-        let head = String(text[text.startIndex..<cut])
-        let tail = String(text[cut...])
+    /// - Returns: the new block's id and the step that undoes it, a merge
+    ///   back; `nil` when it did not land or the place is gone.
+    func split(_ blockId: String, typed: String, at caret: Int, kind: String?) async -> (id: String, step: EditorUndoStep)? {
         let newId = UUID().uuidString.lowercased()
-
-        status = .saving
-        do {
-            _ = try await editor.edit(
-                noteId: noteId,
-                .insertParagraph(afterBlockId: blockId, text: tail, newBlockId: newId)
-            )
-            _ = try await editor.edit(noteId: noteId, .setText(blockId: blockId, text: head))
-            drafts[blockId] = head
-            drafts[newId] = tail
-            status = .idle
-            return newId
-        } catch {
-            status = .failed(ErrorMapping.userFacing(error))
-            return nil
+        let located = await run(in: blockId) { runs in
+            let live = runs.map(BlockText.shown) ?? typed
+            guard let at = BlockText.follow(caret, length: 0, from: typed, to: live) else { return nil }
+            let characters = (live as NSString).substring(to: min(at, (live as NSString).length)).unicodeScalars.count
+            return .splitBlock(blockId: blockId, at: UInt32(characters), kind: kind, newBlockId: newId)
         }
+        guard case let .landed(forward)? = located else { return nil }
+        drafts[blockId] = nil
+        return (newId, EditorUndoStep(
+            name: "Split", backward: .mergeBlocks(blockId: newId, intoBlockId: blockId), forward: forward
+        ))
     }
 
     /// Merges a block into the one above it, which is Backspace at offset 0:

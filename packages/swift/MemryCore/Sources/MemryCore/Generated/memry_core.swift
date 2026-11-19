@@ -28930,6 +28930,25 @@ public enum BlockEdit: Equatable, Hashable {
      */
     case mergeBlocks(blockId: String, intoBlockId: String
     )
+    /**
+     * Return inside a block's text (desktop's `splitBlockTr`): the inline
+     * content from `at` on, marks and inline nodes kept, moves to a new
+     * block `new_block_id` right after `block_id`. `MergeBlocks` of the new
+     * block into `block_id` undoes it.
+     *
+     * `at` counts characters of the block's text as `ReplaceText` spells
+     * it: Unicode scalar values, each inline node one U+FFFC. A byte offset
+     * could not tell the caret before a textless node (a date) from the
+     * caret after it.
+     *
+     * `kind` names the new block's type, with its default props. `None`
+     * gives it `block_id`'s type and props, as desktop's split at a block's
+     * start does. A block with nested blocks is refused: on desktop they go
+     * with the tail, and `MergeBlocks` refuses to bring them back. Last, to
+     * keep earlier FFI indices.
+     */
+    case splitBlock(blockId: String, at: UInt32, kind: String? = nil, newBlockId: String
+    )
 
 
 
@@ -29021,6 +29040,9 @@ public struct FfiConverterTypeBlockEdit: FfiConverterRustBuffer {
         )
         
         case 24: return .mergeBlocks(blockId: try FfiConverterString.read(from: &buf), intoBlockId: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 25: return .splitBlock(blockId: try FfiConverterString.read(from: &buf), at: try FfiConverterUInt32.read(from: &buf), kind: try FfiConverterOptionString.read(from: &buf), newBlockId: try FfiConverterString.read(from: &buf)
         )
         
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -29192,6 +29214,14 @@ public struct FfiConverterTypeBlockEdit: FfiConverterRustBuffer {
             writeInt(&buf, Int32(24))
             FfiConverterString.write(blockId, into: &buf)
             FfiConverterString.write(intoBlockId, into: &buf)
+            
+        
+        case let .splitBlock(blockId,at,kind,newBlockId):
+            writeInt(&buf, Int32(25))
+            FfiConverterString.write(blockId, into: &buf)
+            FfiConverterUInt32.write(at, into: &buf)
+            FfiConverterOptionString.write(kind, into: &buf)
+            FfiConverterString.write(newBlockId, into: &buf)
             
         }
     }
