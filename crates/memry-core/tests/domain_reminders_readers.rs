@@ -191,7 +191,7 @@ fn a_fired_reminder_is_not_written_to_a_provider_and_its_fire_queues_the_push() 
             .collect();
         assert_eq!(
             queued,
-            [target.clone()],
+            std::slice::from_ref(&target),
             "the fire queues the push that takes it down"
         );
         Ok(())
