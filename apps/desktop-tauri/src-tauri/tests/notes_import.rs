@@ -2,6 +2,7 @@
 //! a real vault: a folder the call refuses reads no file and takes no pick, so the same picked
 //! file imports on the retry.
 
+#[allow(dead_code, reason = "only the open and invoke of the harness are used")]
 mod support;
 
 use std::fs;

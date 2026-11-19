@@ -233,9 +233,10 @@ fn a_path_outside_staging_and_the_dialogs_answer_refuses_the_whole_call() {
         .join("id_rsa")
         .to_string_lossy()
         .into_owned();
-    let mut refused = vec![vec![staged.clone(), secret.clone()], vec![escaping]];
+    let refused = vec![vec![staged.clone(), secret.clone()], vec![escaping]];
     #[cfg(unix)]
-    {
+    let refused = {
+        let mut refused = refused;
         let link = world.staging().join("b");
         fs::create_dir_all(&link).unwrap();
         std::os::unix::fs::symlink(&secret, link.join("id_rsa.md")).unwrap();
@@ -245,7 +246,8 @@ fn a_path_outside_staging_and_the_dialogs_answer_refuses_the_whole_call() {
             vec![link.join("id_rsa.md").to_string_lossy().into_owned()],
             vec![through.to_string_lossy().into_owned()],
         ]);
-    }
+        refused
+    };
 
     for paths in refused {
         let refusal = grants.admit(&world.staging(), &paths).err();
