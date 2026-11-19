@@ -2238,6 +2238,10 @@
         "prevVault": {
           "label": "上一個儲存庫",
           "description": "移至側邊欄中的上一個儲存庫"
+        },
+        "todayJournal": {
+          "label": "今日日誌",
+          "description": "在今天的條目開啟日誌"
         }
       },
       "tabs": {

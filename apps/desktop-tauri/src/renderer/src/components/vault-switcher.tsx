@@ -2,7 +2,17 @@
 
 import { useState, useCallback, useEffect, useRef, type ReactElement } from 'react'
 import { toast } from 'sonner'
-import { Plus, Check, Loader2, X, Cloud, Trash2, Codesandbox, RotateCcw } from '@/lib/icons'
+import {
+  Plus,
+  Check,
+  Loader2,
+  X,
+  Cloud,
+  Trash2,
+  Codesandbox,
+  RotateCcw,
+  FolderOpen
+} from '@/lib/icons'
 
 import { Picker, PICKER_ROW_SELECTOR } from '@/components/ui/picker'
 import {
@@ -22,6 +32,8 @@ import {
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { CreateVaultForm } from '@/components/onboarding/create-vault-form'
 import { cn } from '@/lib/utils'
 import { useVault, useVaultList } from '@/hooks/use-vault'
 import { useAccountVaults } from '@/hooks/use-account-vaults'
@@ -50,7 +62,7 @@ interface VaultSwitcherProps {
 export function VaultSwitcher({ renderTrigger, placement }: VaultSwitcherProps = {}) {
   const { t: tPhaseF } = useT('common')
   const { isMobile, open: sidebarOpen, setOpen: setSidebarOpen, setOpenMobile } = useSidebar()
-  const { status, isLoading, selectVault, switchVault } = useVault()
+  const { status, isLoading, selectVault, switchVault, createVault } = useVault()
   const { vaults, sandbox, removeVault, refresh: refreshVaults } = useVaultList()
   const { state: authState } = useAuth()
   const { accountVaults, refresh: refreshAccountVaults } = useAccountVaults()
@@ -61,6 +73,7 @@ export function VaultSwitcher({ renderTrigger, placement }: VaultSwitcherProps =
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [sandboxBusy, setSandboxBusy] = useState(false)
+  const [creatingVault, setCreatingVault] = useState(false)
 
   /** Element focused when ⌘⇧O opened the switcher, so Escape can hand it back. */
   const restoreFocusRef = useRef<HTMLElement | null>(null)
@@ -123,10 +136,13 @@ export function VaultSwitcher({ renderTrigger, placement }: VaultSwitcherProps =
 
   // The popover renders in a portal outside the inert workspace, so it stays
   // clickable while a switch runs. Only one switch may be in flight.
-  const handleSelectNewVault = useCallback(async () => {
-    if (getVaultSwitchState().pending) return
-    await selectVault()
-  }, [selectVault])
+  const handleSelectNewVault = useCallback(
+    async (path?: string) => {
+      if (getVaultSwitchState().pending) return
+      await selectVault(path)
+    },
+    [selectVault]
+  )
 
   const handleSwitchVault = useCallback(
     async (vault: VaultInfo) => {
@@ -222,6 +238,7 @@ export function VaultSwitcher({ renderTrigger, placement }: VaultSwitcherProps =
         <Picker
           value={null}
           onValueChange={(action) => {
+            if (action === 'create-vault') setCreatingVault(true)
             if (action === 'open-vault') void handleSelectNewVault()
           }}
           open={open}
@@ -477,9 +494,14 @@ export function VaultSwitcher({ renderTrigger, placement }: VaultSwitcherProps =
               <Picker.Separator />
 
               <Picker.Item
-                value="open-vault"
-                label={tPhaseF('phaseF.componentsVaultSwitcher.openVault')}
+                value="create-vault"
+                label={tPhaseF('phaseF.componentsVaultSwitcher.createVault')}
                 icon={<Plus className="size-3.5" />}
+              />
+              <Picker.Item
+                value="open-vault"
+                label={tPhaseF('phaseF.componentsVaultSwitcher.openFolderAsVault')}
+                icon={<FolderOpen className="size-3.5" />}
               />
             </Picker.List>
           </Picker.Content>
@@ -487,6 +509,26 @@ export function VaultSwitcher({ renderTrigger, placement }: VaultSwitcherProps =
       </SidebarMenuItem>
 
       <DownloadVaultDialog vault={vaultToDownload} onClose={() => setVaultToDownload(null)} />
+
+      <Dialog open={creatingVault} onOpenChange={setCreatingVault}>
+        <DialogContent
+          aria-describedby={undefined}
+          className="flex h-[min(480px,85vh)] max-w-[440px] flex-col gap-0 p-0"
+        >
+          <DialogTitle className="sr-only">
+            {tPhaseF('phaseF.componentsVaultSwitcher.createVault')}
+          </DialogTitle>
+          <CreateVaultForm
+            create={createVault}
+            onCancel={() => setCreatingVault(false)}
+            onCreated={() => setCreatingVault(false)}
+            onOpenExisting={(path) => {
+              setCreatingVault(false)
+              void handleSelectNewVault(path)
+            }}
+          />
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={!!vaultToRemove} onOpenChange={(o) => !o && setVaultToRemove(null)}>
         <AlertDialogContent>

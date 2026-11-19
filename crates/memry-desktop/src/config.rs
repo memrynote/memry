@@ -154,12 +154,14 @@ impl RuntimeConfig {
         hosts
     }
 
-    /// Enabled when the stored flag says so; else `MEMRY_TELEMETRY_ENABLED=true`; else on only for
-    /// the production channel.
+    /// Off when the launch sets `MEMRY_TELEMETRY_ENABLED=false`, in any build and over the
+    /// stored flag, so a VM or automation run of a release build never reports as a user (#3457).
+    /// Else enabled when the stored flag says so; else `MEMRY_TELEMETRY_ENABLED=true`; else on
+    /// only for the production channel.
     pub fn telemetry_enabled(&self, stored: Option<bool>, env: &LaunchEnv) -> bool {
-        stored.unwrap_or_else(|| {
-            env.get("MEMRY_TELEMETRY_ENABLED") == Some("true") || self.env == MemryEnv::Production
-        })
+        let switch = env.get("MEMRY_TELEMETRY_ENABLED");
+        switch != Some("false")
+            && stored.unwrap_or_else(|| switch == Some("true") || self.env == MemryEnv::Production)
     }
 }
 
@@ -255,5 +257,13 @@ mod tests {
         assert!(!dev.telemetry_enabled(None, &launch(&[])));
         assert!(dev.telemetry_enabled(None, &launch(&[("MEMRY_TELEMETRY_ENABLED", "true")])));
         assert!(!format!("{prod:?}").contains("client_secret"));
+    }
+
+    #[test]
+    fn the_launch_switch_turns_telemetry_off_in_a_production_build_over_the_stored_flag() {
+        let prod = RuntimeConfig::resolve(&Compiled::default(), &launch(&[]));
+        let off = launch(&[("MEMRY_TELEMETRY_ENABLED", "false")]);
+        assert!(!prod.telemetry_enabled(None, &off));
+        assert!(!prod.telemetry_enabled(Some(true), &off));
     }
 }

@@ -102,7 +102,6 @@
   "commands": {
     "goHome": "Gå till Hem",
     "goInbox": "Gå till Inkorg",
-    "goJournal": "Gå till Dagbok",
     "goCalendar": "Gå till Kalender",
     "goTasks": "Gå till Uppgifter",
     "goGraph": "Gå till Graf",

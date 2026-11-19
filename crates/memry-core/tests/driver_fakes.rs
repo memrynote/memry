@@ -26,7 +26,7 @@ use memry_core::seams::transport::{
     HttpRequest, HttpResponse, SocketHandle, SocketListener, SocketRequest, Transport,
 };
 use memry_core::storage::{Db, open_data};
-use memry_core::sync::driver::{DriverConfig, DriverParts, SyncDriver};
+use memry_core::sync::driver::{ApplyObserver, DriverConfig, DriverParts, SyncDriver};
 use memry_core::sync::engine::{MAX_PAGES_PER_PASS, PassReport};
 use memry_core::sync::first_sync::FirstSyncLimits;
 use memry_core::sync::server_vault;
@@ -54,6 +54,8 @@ pub struct FakeServer {
     added_devices: Mutex<Vec<(String, u8)>>,
     /// `GET /auth/devices` answers 503 while set.
     devices_down: AtomicBool,
+    /// Routes whose requests are recorded and never answered.
+    hung: Mutex<Vec<&'static str>>,
 }
 
 impl FakeServer {
@@ -68,6 +70,7 @@ impl FakeServer {
             markers: Mutex::default(),
             added_devices: Mutex::default(),
             devices_down: AtomicBool::new(false),
+            hung: Mutex::default(),
         })
     }
 
@@ -119,6 +122,12 @@ impl FakeServer {
             .lock()
             .unwrap()
             .push((id.to_owned(), seed));
+    }
+
+    /// Records every request to `route` from now on and never answers it.
+    #[cfg(feature = "markdown")]
+    pub fn hang(&self, route: &'static str) {
+        self.hung.lock().unwrap().push(route);
     }
 
     /// Fails `GET /auth/devices` until called with `false`.
@@ -354,6 +363,15 @@ struct Routes(Arc<FakeServer>);
 impl Transport for Routes {
     async fn send(&self, request: HttpRequest) -> Result<HttpResponse, TransportError> {
         self.0.calls.lock().unwrap().push(request.clone());
+        let hung = self
+            .0
+            .hung
+            .lock()
+            .unwrap()
+            .contains(&route_of(&request.url));
+        if hung {
+            std::future::pending::<()>().await;
+        }
         let (status, body) = self.0.answer(&request);
         Ok(HttpResponse {
             status,
@@ -467,17 +485,33 @@ impl Desktop {
         })
         .expect("seed");
 
-        Self::drive(db, FakeServer::new(), declaration).await
+        Self::drive(db, FakeServer::new(), declaration, Vec::new()).await
     }
 
     /// The app restarted: a new driver over the same `data.db` and server.
     #[cfg(feature = "markdown")]
     pub async fn reopen(self, declaration: Declaration) -> Self {
         let Self { db, server, .. } = self;
-        Self::drive(db, server, declaration).await
+        Self::drive(db, server, declaration, Vec::new()).await
     }
 
-    async fn drive(db: Db, server: Arc<FakeServer>, declaration: Declaration) -> Self {
+    /// The app restarted, and `observers` hear the new driver from its open on.
+    #[cfg(feature = "markdown")]
+    pub async fn reopen_observed(
+        self,
+        declaration: Declaration,
+        observers: Vec<Arc<dyn ApplyObserver>>,
+    ) -> Self {
+        let Self { db, server, .. } = self;
+        Self::drive(db, server, declaration, observers).await
+    }
+
+    async fn drive(
+        db: Db,
+        server: Arc<FakeServer>,
+        declaration: Declaration,
+        observers: Vec<Arc<dyn ApplyObserver>>,
+    ) -> Self {
         let (session, _) = session_on(&server);
         let network = Arc::new(Network::default());
         let driver = SyncDriver::open(DriverParts {
@@ -493,6 +527,7 @@ impl Desktop {
             },
             seeds: Vec::new(),
             pass_gate: Arc::default(),
+            observers,
         })
         .await
         .expect("the driver");
