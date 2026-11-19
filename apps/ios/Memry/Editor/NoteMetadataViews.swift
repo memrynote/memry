@@ -241,8 +241,11 @@ struct NoteTitleEditor: View {
                 // The input method dropped the composition SwiftUI refused
                 // to confirm (`TitleWindow.confirmed`): the confirmed text
                 // goes where it was, and the caret keeps its place after it.
-                if let confirmed = host.confirmed {
-                    host.confirmed = nil
+                // One that kept the composition as text instead, as
+                // `unmarkText` does, already shows it.
+                let confirmed = host.confirmed
+                host.confirmed = nil
+                if let confirmed, confirmed.dropped(from: value) {
                     let at = min(confirmed.location, (value as NSString).length)
                     let caret = field.selectedRange.location
                     value = (value as NSString).replacingCharacters(in: NSRange(location: at, length: 0), with: confirmed.text)
@@ -515,9 +518,10 @@ private final class TitleWindow {
     /// may mark its leftover first, as `n` after `かn` confirmed as `か`.
     /// The turn's end, a submit, a focus change, and the app resigning clear
     /// it, so marked text deleted with Backspace or Escape, cancelled, or
-    /// ended by the caret leaving never comes back. Nothing is inferred
-    /// from the text itself.
-    var confirmed: (text: String, location: Int)?
+    /// ended by the caret leaving never comes back. That change inserts it
+    /// only if the marked text left the title (`Confirm.dropped`), so an
+    /// input method that keeps it as text with `unmarkText` shows it once.
+    var confirmed: TitleDelegateRelay.Confirm?
     /// The title as the confirm's restore showed it, until the turn ends.
     var restored: String?
     /// Counts the confirms, so a turn's end clears only its own.
@@ -538,8 +542,8 @@ private final class TitleWindow {
     weak var probe: UIView?
 
     init() {
-        relay.refusedConfirm = { [unowned self] text, location in
-            confirmed = (text, location)
+        relay.refusedConfirm = { [unowned self] confirm in
+            confirmed = confirm
             confirms += 1
             DispatchQueue.main.async { [weak self, confirm = confirms] in
                 guard let self, confirms == confirm else { return }
@@ -564,9 +568,30 @@ private final class TitleWindow {
 /// every call on, to hear the input method's confirm SwiftUI refuses
 /// (`TitleWindow.confirmed`).
 final class TitleDelegateRelay: NSObject, UITextViewDelegate {
-    /// Called with a replacement of the whole marked text the delegate
-    /// refused, and where the marked text starts.
-    var refusedConfirm: (String, Int) -> Void = { _, _ in }
+    /// A replacement of the whole marked text the delegate refused.
+    struct Confirm {
+        /// The text the input method confirmed the marked text with.
+        let text: String
+        /// Where the marked text starts, in UTF-16 units.
+        let location: Int
+        /// The marked text.
+        let marked: String
+        /// The title's UTF-16 length with the marked text in it.
+        let length: Int
+
+        /// Whether `title` no longer holds the marked text: it is gone
+        /// from `location`, or the title shrank by at least its length.
+        func dropped(from title: String) -> Bool {
+            let title = title as NSString
+            let markedLength = (marked as NSString).length
+            return title.length <= length - markedLength
+                || location + markedLength > title.length
+                || title.substring(with: NSRange(location: location, length: markedLength)) != marked
+        }
+    }
+
+    /// Called with each confirm the delegate refused.
+    var refusedConfirm: (Confirm) -> Void = { _ in }
     private weak var field: UITextView?
     /// SwiftUI's delegate of `field`.
     private weak var inner: (any UITextViewDelegate)?
@@ -585,16 +610,19 @@ final class TitleDelegateRelay: NSObject, UITextViewDelegate {
         super.responds(to: selector) || inner?.responds(to: selector) == true
     }
 
-    override func forwardingTarget(for selector: Selector!) -> Any? { inner }
+    override func forwardingTarget(for selector: Selector!) -> Any? { inner ?? super.forwardingTarget(for: selector) }
 
     func textView(_ textView: UITextView, shouldChangeTextInRanges ranges: [NSValue], replacementText text: String) -> Bool {
         let allowed = inner?.textView?(textView, shouldChangeTextInRanges: ranges, replacementText: text)
-            ?? ranges.first.flatMap { inner?.textView?(textView, shouldChangeTextIn: $0.rangeValue, replacementText: text) }
+            ?? ranges.map(\.rangeValue).reduce(nil) { union, range in union.map { NSUnionRange($0, range) } ?? range }
+                .flatMap { inner?.textView?(textView, shouldChangeTextIn: $0, replacementText: text) }
             ?? true
-        if !allowed, ranges.count == 1, let marked = textView.markedTextRange {
+        if !allowed, ranges.count == 1, let marked = textView.markedTextRange, let markedText = textView.text(in: marked) {
             let location = textView.offset(from: textView.beginningOfDocument, to: marked.start)
             let length = textView.offset(from: marked.start, to: marked.end)
-            if ranges[0].rangeValue == NSRange(location: location, length: length) { refusedConfirm(text, location) }
+            if ranges[0].rangeValue == NSRange(location: location, length: length) {
+                refusedConfirm(Confirm(text: text, location: location, marked: markedText, length: (textView.text as NSString).length))
+            }
         }
         return allowed
     }

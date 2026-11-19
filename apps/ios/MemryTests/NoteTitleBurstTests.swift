@@ -812,6 +812,31 @@ struct NoteTitleBurstTests {
         #expect(field.text == "titleかnx")
     }
 
+    /// An input method that, once the field refuses its confirm, ends the
+    /// composition with `unmarkText` keeps the marked text as text. The
+    /// title holds it once.
+    @Test(.timeLimit(.minutes(1))) func a_refused_confirm_kept_by_unmark_text_is_not_doubled() async throws {
+        let f = try await newNote()
+        let (window, field) = try await open(f)
+        defer { window.isHidden = true }
+
+        for character in "title" { key(String(character), in: window, title: field) }
+        field.setMarkedText("한", selectedRange: NSRange(location: 1, length: 0))
+        try await settle(f)
+        let press = HardwarePress(.keyboardReturnOrEnter, "\r")
+        field.pressesBegan([press], with: nil)
+        let marked = NSRange(location: 5, length: 1)
+        #expect(field.delegate?.textView?(field, shouldChangeTextInRanges: [NSValue(range: marked)], replacementText: "한") == false)
+        field.unmarkText()
+        field.pressesEnded([press], with: nil)
+        try await settle(f)
+
+        #expect(field.text == "title한")
+        key("x", in: window, title: field)
+        try await settle(f)
+        #expect(field.text == "title한x")
+    }
+
     /// An input method's confirm as the keyboard runs it: it asks the
     /// field's delegate to replace the composition with `text` (its marked
     /// text unless given), and drops the composition when the delegate
