@@ -1,6 +1,6 @@
 //! Stage 36b4: Electron's `settings` table. The synced part becomes the core `settings`
-//! record with its per-path clocks, the key verifier and account binding go to `meta`, the
-//! config caches are skipped, and every other row stays device-local in `local_settings`.
+//! record with its per-path clocks, the key verifier, account binding and tag keys go to `meta`,
+//! and every other row stays device-local in `local_settings`.
 
 use memry_core::storage::import::DATA_FILE;
 use memry_desktop::electron_import::ImportError;
@@ -13,7 +13,7 @@ use super::{Vault, electron_db, import};
 const MODIFIED: &str = "2026-01-03T03:04:05.123Z";
 const MODIFIED_MS: i64 = 1_767_409_445_123;
 
-fn seed(conn: &Connection, key: &str, value: &str) {
+pub(super) fn seed(conn: &Connection, key: &str, value: &str) {
     electron_db::seed(
         conn,
         "settings",
@@ -63,9 +63,8 @@ fn settings_rows_reach_their_owners() {
     let table = &report.tables["data.db/settings"];
     assert_eq!(
         (table.source_count, table.dropped, table.target_count),
-        (10, 3, 7)
+        (10, 1, 9)
     );
-    assert_eq!(report.dropped.get("settingsConfigCache"), Some(&2));
     assert_eq!(report.dropped.get("settingsSessionStatus"), Some(&1));
     assert_eq!(report.notices.get("unknownSettingsKeys"), Some(&1));
 
@@ -114,6 +113,12 @@ fn settings_rows_reach_their_owners() {
         local,
         vec![
             ("ai-inline".to_owned(), ai.to_owned(), MODIFIED_MS),
+            ("editor".to_owned(), "{}".to_owned(), MODIFIED_MS),
+            (
+                "general".to_owned(),
+                r#"{"theme":"light"}"#.to_owned(),
+                MODIFIED_MS
+            ),
             (
                 "journal.defaultTemplate".to_owned(),
                 "daily".to_owned(),
@@ -154,6 +159,32 @@ fn readwise_run_state_is_not_ready_before_anything_is_written() {
                 area: "attachments, whiteboards or Readwise highlights",
                 ..
             }
+        ),
+        "{error:?}"
+    );
+    assert!(!vault.staging().exists());
+}
+
+/// Electron's tag rename cut off mid-run: the core's job needs a plan this import cannot derive,
+/// so the vault is refused until Electron has finished it.
+#[test]
+fn an_unfinished_tag_rename_is_not_ready_before_anything_is_written() {
+    let vault = Vault::new();
+    seed(
+        &vault.data_conn(),
+        "tags.renameJob",
+        r#"{"from":"a","to":"b","runId":"r1"}"#,
+    );
+    let Err(error) = stage_vault_import(vault.input()) else {
+        panic!("the import was not refused");
+    };
+    assert!(
+        matches!(
+            &error,
+            ImportError::NotReady {
+                area: "tag rename that has not finished",
+                detail,
+            } if detail.contains("tags.renameJob")
         ),
         "{error:?}"
     );

@@ -181,7 +181,7 @@ fn a_sealed_column_that_is_no_envelope_fails_naming_the_row() {
     );
 }
 
-fn seed_lock(conn: &Connection, id: &str, kind: &str, target: &str, clock: Value) {
+pub(super) fn seed_lock(conn: &Connection, id: &str, kind: &str, target: &str, clock: Value) {
     electron_db::seed(
         conn,
         "vault_locks",
@@ -253,7 +253,8 @@ fn a_locked_note_stays_locked_with_its_baseline_and_file_modes() {
     assert_eq!(baseline.updated_at, 1_767_409_445_000);
     let mode = vault_locks::file_mode(&core, "Work/a.md").unwrap().unwrap();
     assert_eq!(mode.mode, 0o100644);
-    assert_eq!(mode.identity.as_deref(), Some("1234:1767000000000"));
+    // Electron's `ino:birthtimeMs` is not the lock guard's form: the first open binds its own.
+    assert_eq!(mode.identity, None);
 }
 
 #[test]

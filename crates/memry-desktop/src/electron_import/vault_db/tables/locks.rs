@@ -4,6 +4,7 @@
 //! baseline (the text an outside edit is reverted to) and the file modes the lock replaced are
 //! device-local and land through the core owner's writers, so the first open's lock reconcile
 //! (`locks::reconcile`) finds the baseline Electron kept instead of taking the file as found.
+//! A file mode lands without Electron's identity ([`ImportFileMode`] says why).
 
 use memry_core::storage::import::{ImportFileMode, ImportLockBaseline, ImportRecord};
 use memry_core::storage::repositories::instants::to_epoch_ms;
@@ -68,7 +69,7 @@ pub fn vault_lock_file_modes(ctx: &mut TableCtx<'_>) -> Result<TableStats, Impor
     const TABLE: &str = "vault_lock_file_modes";
     let rows = read_rows(
         ctx,
-        "SELECT rowid, path, mode, identity FROM vault_lock_file_modes",
+        "SELECT rowid, path, mode FROM vault_lock_file_modes",
         |row, rowid| {
             let mode = match column(row, "mode", TABLE, rowid)? {
                 Value::Number(n) => n.as_u64().and_then(|n| u32::try_from(n).ok()),
@@ -78,7 +79,6 @@ pub fn vault_lock_file_modes(ctx: &mut TableCtx<'_>) -> Result<TableStats, Impor
             Ok(ImportFileMode {
                 path: read_source_id(row, SourceDb::Data, TABLE, "path")?,
                 mode,
-                identity: text(row, "identity")?,
             })
         },
     )?;

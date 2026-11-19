@@ -256,6 +256,8 @@ pub fn pending_area(stage: &str) -> Option<&'static str> {
         "36d2" => "tasks or projects",
         "36e" => "search and similar-note data",
         "36f" => "attachments, whiteboards or Readwise highlights",
+        // `settings.rs` `TAG_RENAME_JOB`: the previous app finishes it at its next start.
+        "tagRename" => "tag rename that has not finished",
         _ => return None,
     })
 }

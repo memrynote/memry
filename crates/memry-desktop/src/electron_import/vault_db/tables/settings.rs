@@ -5,10 +5,14 @@
 //!   Electron's `getPayload` pushes it, per-path clocks included;
 //! - the vault key verifier and the account binding go to the core `meta` table under the same
 //!   keys, before any key is installed, so Step 37's first `set_at_rest_key` checks the key
-//!   against Electron's verifier;
-//! - `general` and `editor` are caches of `.memry/config.json`, which wins at open, and are
-//!   skipped;
-//! - Readwise run state and the sync state rows wait for their stages;
+//!   against Electron's verifier; so do the tag field rename job and the preset offer flag,
+//!   which the core reads from `meta` under Electron's keys and values;
+//! - `general` and `editor` are copied verbatim like every local row: Electron's rows alone
+//!   hold this device's fields (`onboardingCompleted`, `clockFormat`, `zoomFactor`, editor
+//!   `width`), and the core reads of a group skip the synced fields of its row, so the synced
+//!   record and `.memry/config.json` still own theirs;
+//! - Readwise run state, the sync state rows and a tag rename cut off mid-run wait for their
+//!   stages;
 //! - every other row is device-local and lands in `local_settings` under its key, value
 //!   verbatim (`ai-inline` with its key: the desktop `InlineAiStore` moves it into the keychain
 //!   on its first read). A key outside [`KNOWN_LOCAL_KEYS`] is copied too and counted.
@@ -29,9 +33,22 @@ const TABLE: &str = "settings";
 const SYNCED: &str = "synced_settings";
 const SYNCED_CLOCKS: &str = "synced_settings_clocks";
 
-/// Electron keys the core keeps in `meta` under the same name: the key verifier
-/// (`crypto/vault-key-state.ts:17`) and the account binding (`vault-account-binding.ts:39`).
-const META_KEYS: [&str; 2] = ["vault.crypto.verifier.v1", "sync.account-binding.v1"];
+/// Electron keys the core keeps in `meta` under the same name and value: the key verifier
+/// (`crypto/vault-key-state.ts:17`), the account binding (`vault-account-binding.ts:39`), the
+/// field rename a locked note held (`field-rename.ts:25`, core `tag_schema/rename.rs`) and the
+/// dismissed preset offer (`presets.ts:17`, core `tag_schema::preset_offer_dismissed`).
+const META_KEYS: [&str; 4] = [
+    "vault.crypto.verifier.v1",
+    "sync.account-binding.v1",
+    "tags.fieldRenameJob",
+    "tagFields.presetOfferDismissed",
+];
+
+/// Electron's tag rename in progress (`rename-tag.ts:33`, `{from, to, runId}`). The core's
+/// (`tags.rename_job`) carries the plan Electron recomputes: the name pairs and the holders not
+/// renamed yet, which this import cannot derive from the job alone. Electron finishes it at its
+/// next start, so a vault holding one is refused until it has.
+const TAG_RENAME_JOB: &str = "tags.renameJob";
 
 /// The Readwise run state (`readwise/run-state.ts`), owned by Step 33's `readwise_run_state`.
 const READWISE_RUN_STATE: [&str; 9] = [
@@ -53,6 +70,7 @@ const KNOWN_LOCAL_KEYS: &[&str] = &[
     "ai.imageEmbeddings",
     "ai.summarizeAgent",
     "ai.summarizeLongNotes",
+    "backup",
     "calendar",
     "calendar.caldav",
     "calendar.caldav.authFailures",
@@ -62,19 +80,29 @@ const KNOWN_LOCAL_KEYS: &[&str] = &[
     "calendar.ics",
     "captureAllowedOrigins",
     "codeLinkReindexV2",
+    "editor",
     "editor.calloutTypes",
     "features",
     "features.spatialCanvasPromoted",
     "frontmatterPropertiesRootV1",
+    "general",
     "general.openPagesInNewTabDefaultFlipped",
+    "graph",
     "graphViews",
     "inbox",
     "inbox.reviewLastNotifiedDate",
     "inbox.staleThresholdDays",
+    "journal.allYearsView",
     "journal.defaultTemplate",
+    "journal.showAIConnections",
+    "journal.showOnThisDay",
+    "journal.showSchedule",
+    "journal.showStatsFooter",
+    "journal.showTasks",
     "journal.weekdayTemplates",
     "keyboard",
     "noteCoverReindexV1",
+    "noteEditor.toolbarMode",
     "noteTaskIdsReindexV2",
     "projectFrontmatterBackfill",
     "propertyDefinitionsFileBackfillV1",
@@ -88,6 +116,8 @@ const KNOWN_LOCAL_KEYS: &[&str] = &[
     "sidebar.sortModes",
     "sticky",
     "sync",
+    "tabs.restoreSessionOnStart",
+    "tabs.tabCloseButton",
     "tagSearches",
     "tasks",
     "templates.importedFromFiles",
@@ -115,7 +145,7 @@ pub fn rule(key: &str) -> SettingRule {
     match key {
         SYNCED | SYNCED_CLOCKS => SettingRule::Synced,
         key if META_KEYS.contains(&key) => SettingRule::Meta,
-        "general" | "editor" => SettingRule::Skip("settingsConfigCache"),
+        TAG_RENAME_JOB => SettingRule::Pending("tagRename"),
         // The sync state table's rules (`sync_state.rs`): session status, then 36c3's keys.
         "lastSyncAt" => SettingRule::Skip("settingsSessionStatus"),
         "syncPaused" | "quarantinedItems" => SettingRule::Pending("36c3"),

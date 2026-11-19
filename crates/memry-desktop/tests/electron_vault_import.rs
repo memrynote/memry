@@ -28,6 +28,8 @@ mod device_key;
 mod docs;
 #[path = "support/electron_db.rs"]
 mod electron_db;
+#[path = "electron_vault_import/first_open.rs"]
+mod first_open;
 #[path = "electron_vault_import/notes.rs"]
 mod notes;
 #[path = "electron_vault_import/queue.rs"]

@@ -17,12 +17,15 @@ pub struct ImportLockBaseline {
 }
 
 /// One `vault_lock_file_modes` row: the bits a file had before a lock made it read-only.
+///
+/// It is written with no identity, as Electron's older rows are: Electron's `ino:birthtimeMs`
+/// is not the desktop lock guard's `ino:birth_nanos`, and reads as a replaced file whose
+/// read-only bits replace `mode`. With none, the guard binds the file it finds at the next open
+/// and keeps `mode`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImportFileMode {
     pub path: String,
     pub mode: u32,
-    /// Electron's `ino:birthtimeMs`, the identity the desktop lock guard reads.
-    pub identity: Option<String>,
 }
 
 impl ImportWriter {
@@ -43,7 +46,7 @@ impl ImportWriter {
             )?;
         }
         for row in modes {
-            vault_locks::record_file_mode(&tx, &row.path, row.mode, row.identity.as_deref())?;
+            vault_locks::record_file_mode(&tx, &row.path, row.mode, None)?;
         }
         tx.commit().map_err(failed)
     }
