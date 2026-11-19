@@ -338,15 +338,9 @@ fn a_scan_with_nothing_changed_compares_each_file_once() {
         .unwrap();
     assert!(f.compared() - before_first >= FILES);
 
-    let before = f.compared();
-    f.file_text.rescan_all();
-    f.until("one rescan", |f| f.compared() >= before + FILES);
-    f.scanned();
-    assert_eq!(
-        f.compared() - before,
-        3 * FILES,
-        "each scan compares each file once"
-    );
+    for _ in 0..3 {
+        assert_eq!(f.rescanned(), FILES, "each scan compares each file once");
+    }
     assert_eq!(
         open.search
             .file_text_jobs_with_status(FileTextJobStatus::Failed)
