@@ -259,6 +259,8 @@ mod domain_template_legacy;
 mod domain_template_store;
 #[path = "domain_templates.rs"]
 mod domain_templates;
+#[path = "driver_imported_vault.rs"]
+mod driver_imported_vault;
 #[cfg(feature = "markdown")]
 #[path = "driver_snapshots.rs"]
 mod driver_snapshots;

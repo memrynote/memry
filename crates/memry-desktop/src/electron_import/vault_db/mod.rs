@@ -93,7 +93,8 @@ pub enum StageOutcome {
 /// A verified staged pair waiting for [`StagedVault::install`] or [`StagedVault::discard`].
 pub struct StagedVault {
     paths: Paths,
-    report: VaultStageReport,
+    /// Boxed: the report is most of the struct, and `StageOutcome`'s other variants are empty.
+    report: Box<VaultStageReport>,
 }
 
 impl StagedVault {
@@ -121,6 +122,9 @@ pub struct VaultStageReport {
     pub dropped: BTreeMap<String, u64>,
     /// Source rows carried over with less than the source held, by named reason.
     pub notices: BTreeMap<String, u64>,
+    /// Pushes queued by Electron's runtime-start replays ([`tables::replay::runtime_start`]),
+    /// by rule: `dirtyRecordsQueued`, `deletedNotesRecreated`.
+    pub queued: BTreeMap<String, u64>,
     pub merged_tables: Vec<String>,
     pub checks_passed: Vec<u8>,
 }
@@ -184,7 +188,10 @@ pub fn stage_vault_import(input: VaultImportInput<'_>) -> Result<StageOutcome, I
     // A failure discards the staging directory here, explicitly and not on drop, so a crash
     // point (a panic) leaves it behind the way a real crash would.
     match stage(&input, &paths) {
-        Ok(report) => Ok(StageOutcome::Staged(StagedVault { paths, report })),
+        Ok(report) => Ok(StageOutcome::Staged(StagedVault {
+            paths,
+            report: Box::new(report),
+        })),
         Err(error) => {
             if let Err(cleanup) = remove_staging(&paths) {
                 tracing::warn!(%cleanup, "could not remove the import staging directory");
@@ -289,6 +296,24 @@ fn stage(input: &VaultImportInput<'_>, paths: &Paths) -> Result<VaultStageReport
             .insert(format!("{}/{}", mapping.db.name(), mapping.table), table);
     }
 
+    let replayed = tables::replay::runtime_start(&mut TableCtx {
+        source: sources.conn(tables::SourceDb::Data),
+        index: sources.conn(tables::SourceDb::Index),
+        vault_dir: &input.vault_dir,
+        vault_id: &input.vault_id,
+        writer: &mut writer,
+        now_ms: input.now_ms,
+        electron_device_id: input.electron_device_id.as_deref(),
+        docs: &input.docs,
+    })?;
+    for (rule, count) in [
+        ("dirtyRecordsQueued", replayed.dirty),
+        ("deletedNotesRecreated", replayed.recreated),
+    ] {
+        if count > 0 {
+            report.queued.insert(rule.to_owned(), count);
+        }
+    }
     docs::import_documents(
         input,
         sources.conn(tables::SourceDb::Data),
@@ -301,6 +326,7 @@ fn stage(input: &VaultImportInput<'_>, paths: &Paths) -> Result<VaultStageReport
         &writer,
         input.electron_device_id.as_deref(),
         &input.docs,
+        input.now_ms,
     )?;
     drop(sources);
     source::remove(&paths.staging)?;

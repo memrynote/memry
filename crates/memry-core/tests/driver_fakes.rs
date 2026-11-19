@@ -158,8 +158,8 @@ impl FakeServer {
             .collect()
     }
 
-    /// `(type, id, operation)` of every pushed record.
-    pub fn pushed(&self) -> Vec<(String, String, String)> {
+    /// Every pushed record as the push sent it.
+    pub fn pushed_items(&self) -> Vec<Json> {
         self.calls_to("/sync/push")
             .iter()
             .flat_map(|call| {
@@ -168,6 +168,13 @@ impl FakeServer {
                     .cloned()
                     .unwrap_or_default()
             })
+            .collect()
+    }
+
+    /// `(type, id, operation)` of every pushed record.
+    pub fn pushed(&self) -> Vec<(String, String, String)> {
+        self.pushed_items()
+            .into_iter()
             .map(|item| {
                 let field = |key: &str| item[key].as_str().unwrap_or_default().to_owned();
                 (field("type"), field("id"), field("operation"))
@@ -402,7 +409,11 @@ impl Desktop {
             seed(conn)
         })
         .expect("seed");
+        Self::over(db, declaration).await
+    }
 
+    /// A driver sending `declaration` over the vault `db` holds, bound to `vault-1`.
+    pub async fn over(db: Db, declaration: Declaration) -> Self {
         let (_, peer_secret) = sodium::sign_seed_keypair(&[12u8; 32]).expect("a keypair");
         let server = Arc::new(FakeServer {
             records: Mutex::default(),

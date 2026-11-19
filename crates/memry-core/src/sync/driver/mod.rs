@@ -53,6 +53,7 @@ use crate::crdt::SnapshotPusher;
 use crate::crdt::snapshot_cadence::SnapshotRequests;
 use crate::crypto::agent_envelope::AtRestKey;
 use crate::crypto::keys;
+use crate::domain::unclocked_seed::UnclockedSeed;
 use crate::protocol::account::{AccountSealer, DeviceSigner, device_directory};
 use crate::protocol::auth::TokenManager;
 use crate::protocol::http::{HttpClient, TokenProvider};
@@ -271,7 +272,8 @@ impl SyncDriver {
             .with_pull_sink(Arc::clone(&snapshots) as _)
             .with_gate(pass_gate)
             .with_max_pages(config.max_pages_per_pass)
-            .with_seed(Arc::new(TagSeed(Arc::new(tags))));
+            .with_seed(Arc::new(TagSeed(Arc::new(tags))))
+            .with_seed(Arc::new(UnclockedSeed::new(db.clone(), device_id.clone())));
         #[cfg(feature = "markdown")]
         if declaration.classify(crate::domain::vault_locks::ITEM_TYPE)
             == crate::protocol::types::ArrivingItemType::Subscribed

@@ -3,7 +3,8 @@
 //!
 //! In order: the drizzle ledger ends at the frozen migration `TABLE_MAP` describes; every table
 //! is mapped (shadow tables of a mapped virtual table excepted); every `sync_state` key is
-//! mapped; no table or key whose importer is still pending holds rows.
+//! mapped; no table or key whose importer is still pending holds rows, and no pending delete
+//! is of a type a later stage imports.
 
 use std::collections::BTreeMap;
 
@@ -64,6 +65,16 @@ pub(super) fn run(
             return Err(not_ready(
                 stage,
                 format!("{}/{} ({stage})", table.db.name(), table.table),
+            ));
+        }
+        if table.table == "sync_pending_deletes"
+            && *count > 0
+            && let Some((stage, item_type)) =
+                super::tables::replay::later_stage(sources.conn(SourceDb::Data))?
+        {
+            return Err(not_ready(
+                stage,
+                format!("data.db/sync_pending_deletes {item_type} rows ({stage})"),
             ));
         }
     }

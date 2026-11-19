@@ -6,7 +6,9 @@ use rusqlite::{Connection, OptionalExtension, params};
 
 use super::{ImportWriter, failed};
 use crate::api::errors::StorageError;
-use crate::storage::repositories::projectors;
+use crate::domain::tag_admin::DEFINITION_TYPE;
+use crate::storage::repositories::StoredPayload;
+use crate::storage::repositories::projectors::{self, ItemContext};
 use crate::storage::repositories::sync_items::PAYLOAD_STATE_FULL;
 use crate::sync::clock::VectorClock;
 use crate::sync::outbox::{self, Change, RecordOp};
@@ -29,6 +31,10 @@ pub struct ImportQueued {
     /// For a delete: its tombstone row, written from the payload Electron froze when the delete
     /// was queued. It replaces a staged row the delete supersedes (a soft-deleted tag category).
     pub tombstone: Option<ImportDeleted>,
+    /// For a create or upsert that minted the record's first clock (Electron's seed of unclocked
+    /// rows, a never-synced row's create): the live record's payload carrying that clock, written
+    /// over the staged one before the row is queued. Its `clock` fills the `clock` column.
+    pub minted: Option<String>,
     pub enqueued_at: i64,
 }
 
@@ -71,6 +77,9 @@ impl ImportWriter {
             if let Some(deleted) = &item.tombstone {
                 put_deleted(&tx, item, deleted)?;
             }
+            if let Some(payload) = &item.minted {
+                put_minted(&tx, item, payload)?;
+            }
             let change = Change::Record {
                 item_type: item.item_type.clone(),
                 item_id: item.item_id.clone(),
@@ -82,18 +91,28 @@ impl ImportWriter {
         Ok(queued)
     }
 
-    /// The first of `types` holding a live (not deleted) record `item_id`.
+    /// The first of `types` holding a live (not deleted) record `item_id`. A tag definition's
+    /// name matches without ASCII case: Electron's `tag_definitions.name` is `NOCASE`
+    /// (`drizzle-data/0034_tag_nocase.sql`), and so is the core's projection of it, so "Work" is
+    /// live while "work" is.
     pub fn live_record_type(
         &self,
         item_id: &str,
         types: &[&str],
     ) -> Result<Option<String>, StorageError> {
         for item_type in types {
+            let collate = if *item_type == DEFINITION_TYPE {
+                " COLLATE NOCASE"
+            } else {
+                ""
+            };
             let live = self
                 .data
                 .query_row(
-                    "SELECT 1 FROM sync_items
-                      WHERE item_type = ?1 AND item_id = ?2 AND deleted_at IS NULL",
+                    &format!(
+                        "SELECT 1 FROM sync_items
+                          WHERE item_type = ?1 AND item_id = ?2{collate} AND deleted_at IS NULL"
+                    ),
                     [item_type, &item_id],
                     |_| Ok(()),
                 )
@@ -104,6 +123,15 @@ impl ImportWriter {
             }
         }
         Ok(None)
+    }
+
+    /// The staged delete clock of `(item_type, item_id)`, which a re-create's first clock absorbs.
+    pub fn tombstone_clock(
+        &self,
+        item_type: &str,
+        item_id: &str,
+    ) -> Result<Option<VectorClock>, StorageError> {
+        crate::sync::store::tombstone_clock(&self.data, item_type, item_id)
     }
 
     /// `(item_type, item_id, op)` of every staged outbox row, for stage check 4.
@@ -122,6 +150,44 @@ impl ImportWriter {
     pub fn is_local_only_note(&self, id: &str) -> Result<bool, StorageError> {
         crate::domain::note_files::is_local_only(&self.data, id)
     }
+}
+
+/// Writes the minted payload over the live record, its clock into the `clock` column, and
+/// projects it again, so the typed tables carry the clock too. A minted record is a local create:
+/// it projects at its enqueue time, as a never-synced import record projects at the import time.
+/// A payload the type's reader refuses, or no live record, fails the call: a create is never
+/// queued for a record the core push would retire.
+fn put_minted(tx: &Connection, item: &ImportQueued, payload: &str) -> Result<(), StorageError> {
+    let refused = |what: String| StorageError::Failed {
+        what: format!("import record {}/{} {what}", item.item_type, item.item_id),
+    };
+    let parsed =
+        StoredPayload::parse(payload).map_err(|e| refused(format!("is unreadable: {e}")))?;
+    let view = projectors::read(&item.item_type, parsed.object())
+        .map_err(|e| refused(format!("is unreadable: {e}")))?;
+    let Some(clock) = projectors::clock_text(&view) else {
+        return Err(refused("has no minted clock".into()));
+    };
+    let updated = tx
+        .execute(
+            "UPDATE sync_items SET payload = ?3, clock = ?4
+              WHERE item_type = ?1 AND item_id = ?2 AND deleted_at IS NULL",
+            params![item.item_type, item.item_id, payload, clock],
+        )
+        .map_err(failed)?;
+    if updated != 1 {
+        return Err(refused("has no live record to mint a clock on".into()));
+    }
+    projectors::project(
+        tx,
+        &item.item_type,
+        ItemContext {
+            item_id: &item.item_id,
+            synced_at: item.enqueued_at,
+            deleted_at: None,
+        },
+        &view,
+    )
 }
 
 /// The tombstone a core delete pushes from: the frozen delete body, its clock and `deleted_at`.
