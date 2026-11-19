@@ -3205,7 +3205,10 @@ export type ReminderView = {
 	title: string | null,
 	note: string | null,
 	status: string,
-	/**  When this device fired the reminder for its current instant. */
+	/**
+	 *  When this device last fired the reminder for its `remindAt` or `snoozedUntil`: kept
+	 *  through a dismiss and a snooze, gone after a new `remindAt` (Electron's `triggeredAt`).
+	 */
 	triggeredAt: string | null,
 	dismissedAt: string | null,
 	snoozedUntil: string | null,

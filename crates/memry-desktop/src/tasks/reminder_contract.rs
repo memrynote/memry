@@ -168,7 +168,8 @@ pub struct ReminderView {
     pub title: Option<String>,
     pub note: Option<String>,
     pub status: String,
-    /// When this device fired the reminder for its current instant.
+    /// When this device last fired the reminder for its `remindAt` or `snoozedUntil`: kept
+    /// through a dismiss and a snooze, gone after a new `remindAt` (Electron's `triggeredAt`).
     pub triggered_at: Option<String>,
     pub dismissed_at: Option<String>,
     pub snoozed_until: Option<String>,
@@ -192,7 +193,7 @@ impl From<&Reminder> for ReminderView {
             title: reminder.title.clone(),
             note: reminder.note.clone(),
             status: reminder.shown_status().to_owned(),
-            triggered_at: iso(reminder.fired_at_ms),
+            triggered_at: iso(reminder.triggered_at_ms),
             dismissed_at: reminder.dismissed_at.clone(),
             snoozed_until: reminder.snoozed_until.clone(),
             modified_at: iso(reminder.modified_at_ms).unwrap_or_else(|| created_at.clone()),
