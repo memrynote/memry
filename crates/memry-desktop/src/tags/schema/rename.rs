@@ -27,7 +27,9 @@
 //!
 //! [`Tasks::rename_field`]: memry_core::api::tasks::Tasks
 
-use std::sync::{Arc, Mutex, MutexGuard, PoisonError, TryLockError};
+#[cfg(feature = "test-hooks")]
+use std::sync::PoisonError;
+use std::sync::{Arc, Mutex, MutexGuard, TryLockError};
 use std::time::{Duration, Instant};
 
 use memry_core::api::errors::StorageError;
