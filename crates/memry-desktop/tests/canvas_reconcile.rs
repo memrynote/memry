@@ -21,6 +21,8 @@
 //! | a document that is not a drawing is left alone on every open      | departure: one copy in Electron |
 //! | a synced edit survives a move outside the app, an edit with it    | departure: one copy in Electron |
 //! | a document adopted while the listing ran is not adopted again     | `reconcile.ts:497-588`         |
+//! | an edit on disk survives a rename or a move made in the app       | departure: one copy in Electron |
+//! | a save of the scene on disk after a rename makes no copy          | departure: one copy in Electron |
 
 use std::fs;
 
@@ -432,4 +434,69 @@ fn a_document_adopted_while_the_listing_ran_is_not_adopted_again() {
     let all = w.canvases.list().unwrap();
     assert_eq!(all.len(), 1);
     assert_eq!(w.sidecar_id("canvases/Plan.excalidraw"), all[0].id);
+}
+
+fn moved_in_app(w: &World, id: &str, title: Option<&str>, folder: Option<&str>) {
+    let input = CanvasUpdateInput {
+        id: id.to_owned(),
+        title: title.map(|title| Some(title.to_owned())),
+        folder: folder.map(|folder| Some(folder.to_owned())),
+        ..CanvasUpdateInput::default()
+    };
+    assert!(matches!(
+        w.canvases.update(&input, NOW + 20).unwrap(),
+        Update::Saved { .. }
+    ));
+}
+
+/// The edit on disk is not seen by the move: reconcile takes it into the record (the record is
+/// as the app left it), never writes the old record scene over it, and makes no copy.
+fn an_edit_on_disk_survives(title: Option<&str>, folder: Option<&str>, landed: &str) {
+    let w = world();
+    w.canvases.create_folder(None, "Work", NOW).unwrap();
+    let id = w.create("Plan", None, "ink").canvas.summary.id;
+    w.put("canvases/Plan.excalidraw", &on_disk(&id, "edited"));
+    moved_in_app(&w, &id, title, folder);
+    assert!(w.file(landed).contains("edited"));
+
+    let done = w.reconcile();
+    assert_eq!((done.settled, done.conflict_copies), (1, 0));
+    assert!(w.file(landed).contains("edited"));
+    assert!(
+        w.core
+            .canvas(id.clone())
+            .unwrap()
+            .unwrap()
+            .scene
+            .contains("edited")
+    );
+    assert!(w.scene_of(&id).contains("edited"));
+    assert_eq!(w.canvases.list().unwrap().len(), 1);
+    assert_eq!(w.reconcile(), Reconciled::default());
+}
+
+#[test]
+fn an_edit_on_disk_survives_a_rename_made_in_the_app() {
+    an_edit_on_disk_survives(Some("Renamed"), None, "canvases/Renamed.excalidraw");
+}
+
+#[test]
+fn an_edit_on_disk_survives_a_move_made_in_the_app() {
+    an_edit_on_disk_survives(None, Some("Work"), "canvases/Work/Plan.excalidraw");
+}
+
+#[test]
+fn a_save_of_the_scene_on_disk_after_a_rename_makes_no_copy() {
+    let w = world();
+    let id = w.create("Plan", None, "ink").canvas.summary.id;
+    let read = w.canvases.get(&id).unwrap().unwrap();
+    // The rename refreshes the sidecar, so the editor's read no longer matches the bytes.
+    moved_in_app(&w, &id, Some("Renamed"), None);
+
+    let Update::Saved { conflict_copy, .. } = w.save_over(&id, "ink", read.sha256) else {
+        panic!("the save was not made");
+    };
+    assert!(conflict_copy.is_none());
+    assert_eq!(w.canvases.list().unwrap().len(), 1);
+    assert!(w.file("canvases/Renamed.excalidraw").contains("ink"));
 }

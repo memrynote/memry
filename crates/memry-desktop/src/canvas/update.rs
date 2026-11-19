@@ -61,13 +61,19 @@ impl CanvasService {
             if let (Some(_), Some((path, document))) = (&scene, &found)
                 && (stale || input.expected_sha256.as_deref() != Some(document.sha256.as_str()))
             {
-                if canonical_scene(&strip_file_meta(&document.text)).is_ok() {
-                    conflict_copy = Some(Box::new(
-                        self.conflict_copy(conn, &canvas, document, now_ms)?,
-                    ));
-                } else {
-                    self.set_aside(&canvas, path)?;
-                    expected = None;
+                match canonical_scene(&strip_file_meta(&document.text)) {
+                    // The save writes the scene the document holds (only its sidecar moved on,
+                    // as a rename refreshes it): nothing to keep.
+                    Ok(on_disk) if Some(&on_disk) == scene.as_ref() => {}
+                    Ok(_) => {
+                        conflict_copy = Some(Box::new(
+                            self.conflict_copy(conn, &canvas, document, now_ms)?,
+                        ));
+                    }
+                    Err(_) => {
+                        self.set_aside(&canvas, path)?;
+                        expected = None;
+                    }
                 }
             }
 
