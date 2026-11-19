@@ -103,6 +103,9 @@ impl Loop {
         if let Some(telemetry) = self.telemetry.as_ref().filter(|_| fresh) {
             driver.observe(Arc::new(ConflictTelemetry(Arc::clone(telemetry))));
         }
+        for observer in self.observers.iter().filter(|_| fresh) {
+            driver.observe(Arc::clone(observer));
+        }
         if self.paused {
             driver.pause();
         }

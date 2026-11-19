@@ -146,6 +146,7 @@ fn attach(mocked: &Mocked) -> SyncSupervisor {
                     keychain_recovered: None,
                     db: open.vault.db_handle(),
                     telemetry: None,
+                    observers: Vec::new(),
                     signals: signals.clone(),
                     on_status: Arc::new(|_| {}),
                 },

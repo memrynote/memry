@@ -445,7 +445,7 @@ impl CanvasService {
         Ok(true)
     }
 
-    fn remove_document(&self, path: &str) {
+    pub(super) fn remove_document(&self, path: &str) {
         let Ok(absolute) = resolve_canvas_file(&self.vault, path) else {
             return;
         };

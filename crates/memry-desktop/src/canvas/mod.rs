@@ -7,6 +7,7 @@ pub mod dirs;
 mod files;
 pub mod folders;
 pub mod library;
+pub mod mirror;
 pub mod reconcile;
 pub mod scene_file;
 pub mod service;
