@@ -6,6 +6,7 @@
 //! transfer leaves behind.
 
 pub mod download;
+pub mod holds;
 pub mod plan;
 pub mod presign;
 pub mod records;
