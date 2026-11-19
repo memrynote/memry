@@ -241,12 +241,27 @@ export function onReminderSnoozed(callback: (event: ReminderSnoozedEvent) => voi
 export function onReminderDue(callback: (event: ReminderDueEvent) => void): () => void {
   return subscribeResolved(
     events.reminderDueEvent,
-    async ({ reminders: hints }) => {
+    async ({ reminders: hints, count }) => {
       const reminders = await readBack(hints)
-      return reminders.length > 0 ? { reminders, count: reminders.length } : null
+      return reminders.length > 0 ? { reminders, count } : null
     },
     callback
   )
+}
+
+/** A scheduler tick fired reminders: their ids and targets as the event names them, not read back. */
+export function onRemindersFired(callback: (reminders: ReminderHint[]) => void): () => void {
+  return subscribeToEvent(events.reminderDueEvent, ({ reminders }) => callback(reminders))
+}
+
+/**
+ * A pull applied a reminder another device changed: Electron's sync handler sends `{ id }` on
+ * the created, updated and deleted channels (`reminder-handler.ts`).
+ */
+export function onReminderSynced(callback: (event: { id: string }) => void): () => void {
+  return subscribeToEvent(events.syncItemSyncedEvent, (event) => {
+    if (event.type === 'reminder' && event.operation === 'pull') callback({ id: event.itemId })
+  })
 }
 
 /** The user clicked a reminder's notification. */

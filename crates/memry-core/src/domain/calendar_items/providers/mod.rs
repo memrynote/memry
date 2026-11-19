@@ -343,33 +343,18 @@ pub fn upsert_input(
                 };
                 Some(base(title, description, start, end, all_day))
             }),
-        "reminder" => conn
-            .query_row(
-                "SELECT title, note, highlight_text, remind_at, status, snoozed_until FROM reminders
-                  WHERE id = ?1 AND deleted_at IS NULL",
-                [id],
-                |row| {
-                    Ok((
-                        row.get::<_, Option<String>>(0)?,
-                        row.get::<_, Option<String>>(1)?,
-                        row.get::<_, Option<String>>(2)?,
-                        row.get::<_, String>(3)?,
-                        row.get::<_, String>(4)?,
-                        row.get::<_, Option<String>>(5)?,
-                    ))
-                },
-            )
-            .optional()
-            .map_err(failed)?
-            .and_then(|(title, note, highlight, remind_at, status, snoozed)| {
-                let start = match status.as_str() {
-                    "dismissed" | "triggered" => return None,
-                    "snoozed" => snoozed?,
-                    _ => remind_at,
-                };
-                let title = title.map(|t| t.trim().to_owned()).filter(|t| !t.is_empty()).unwrap_or_else(|| "Reminder".to_owned());
-                Some(base(title, note.or(highlight), start, None, false))
-            }),
+        // A fired reminder is off the calendar, as desktop's `triggered` status is.
+        "reminder" => crate::domain::reminders::get(conn, id)?.and_then(|reminder| {
+            if reminder.status == "dismissed" || reminder.is_fired() {
+                return None;
+            }
+            let start = match reminder.status.as_str() {
+                "snoozed" => reminder.snoozed_until?,
+                _ => reminder.remind_at,
+            };
+            let title = reminder.title.map(|t| t.trim().to_owned()).filter(|t| !t.is_empty()).unwrap_or_else(|| "Reminder".to_owned());
+            Some(base(title, reminder.note.or(reminder.highlight_text), start, None, false))
+        }),
         "inbox_snooze" => conn
             .query_row(
                 "SELECT title, content, snoozed_until FROM inbox_items

@@ -223,6 +223,8 @@ mod domain_related_items;
 mod domain_reminders_fire;
 #[path = "domain_reminders_list.rs"]
 mod domain_reminders_list;
+#[path = "domain_reminders_readers.rs"]
+mod domain_reminders_readers;
 #[path = "domain_reminders_task.rs"]
 mod domain_reminders_task;
 #[path = "domain_saved_filters.rs"]
