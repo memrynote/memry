@@ -6,6 +6,7 @@
  * pagination machinery. Disabled when folderPath is empty.
  */
 
+import { folderViewService } from '@/services/folder-view-service'
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import type { NoteWithProperties } from '@memry/contracts/folder-view-api'
@@ -36,7 +37,7 @@ export function useFolderNotes({
   const query = useQuery({
     queryKey: ['folder-notes', folderPath, limit, sortBy, sortOrder] as const,
     queryFn: async (): Promise<NoteWithProperties[]> => {
-      const result = await window.api.folderView.listWithProperties({
+      const result = await folderViewService.listWithProperties({
         scope: { kind: 'folder', path: folderPath },
         properties: undefined,
         limit,

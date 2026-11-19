@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { Loader2, Lock } from '@/lib/icons'
 import { createLogger } from '@/lib/logger'
 import { cn } from '@/lib/utils'
+import { commands, type BillingStatusResult } from '../../../../../generated/bindings'
 import type { PlanCadence, PlanId } from '../wizard-model'
 import {
   ContinueButton,
@@ -30,17 +31,11 @@ const PRICES: Record<PlanId, { monthly: number; annual: number } | { lifetime: n
 const PLANS: PlanId[] = ['plus', 'pro', 'believer']
 const BADGE: Partial<Record<PlanId, string>> = { pro: 'popular', believer: 'founding' }
 
-interface BillingSnapshot {
-  plan: string
-  status: string
-  expiresAt: number | null
-}
-
-function paidPlanOf(status: unknown): PlanId | null {
-  if (!status || typeof status !== 'object' || !('plan' in status)) return null
-  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- IPC payload; shape is only partially checked above
-  const { plan, status: state, expiresAt } = status as BillingSnapshot
-  const active = state === 'active' && (expiresAt === null || expiresAt > Date.now())
+function paidPlanOf(result: BillingStatusResult): PlanId | null {
+  if (!('plan' in result)) return null
+  const { plan, status: state, expiresAt } = result
+  // `expiresAt` is epoch seconds (the server's `parseTimestamp`).
+  const active = state === 'active' && (expiresAt === null || expiresAt * 1000 > Date.now())
   return active ? (PLANS.find((id) => id === plan) ?? null) : null
 }
 
@@ -62,7 +57,7 @@ export function PlanStep({ state, dispatch }: StepProps): React.JSX.Element {
     let cancelled = false
     const check = async (): Promise<void> => {
       try {
-        const paid = paidPlanOf(await window.api.account.refreshBillingStatus())
+        const paid = paidPlanOf(await commands.accountRefreshBillingStatus(null))
         if (!cancelled && paid) finish(paid)
       } catch (err) {
         log.warn('Checking billing status failed', err)
@@ -82,11 +77,11 @@ export function PlanStep({ state, dispatch }: StepProps): React.JSX.Element {
   const checkout = async (): Promise<void> => {
     setError(null)
     try {
-      const result = await window.api.account.startCheckout({
+      const result = await commands.accountStartCheckout({
         plan,
         cadence: plan === 'believer' ? 'lifetime' : cadence
       })
-      if (!result.success) throw new Error(result.error)
+      if (!result.success) throw new Error(result.error ?? '')
       setWaiting(true)
     } catch (err) {
       log.warn('Starting checkout failed', err)

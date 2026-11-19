@@ -29,7 +29,9 @@ import { useUnlinkedMentionsQuery } from './use-unlinked-mentions'
 import { useFolderView } from './use-folder-view'
 import { useGraphData, useGraphReactivity } from './use-graph-data'
 import { useNoteMetadataEvents } from './use-note-metadata-events'
-import { useNoteLinksQuery } from './use-notes-query'
+import { useNote, useNoteLinksQuery } from './use-notes-query'
+import { useProperties } from './use-properties'
+import { tagSchemaQueryKey, useTagSchemas } from '@/features/tag-fields/use-tag-schemas'
 import { useTags } from './use-tags'
 
 type Handler = (event: { payload: unknown }) => void
@@ -87,7 +89,7 @@ vi.mock('@tauri-apps/api/core', () => ({
   Channel: vi.fn()
 }))
 
-// The graph and the folder view still read through `window.api` (not ported yet).
+// The graph still reads through `window.api` (not ported yet).
 const windowApi = window.api as unknown as Record<string, Record<string, unknown>>
 
 const noteView = (title: string, id = 'n1') => ({
@@ -519,11 +521,9 @@ describe('a change made before an on-demand cache listens', () => {
 
   it("a tag's view shows a note pinned while it opened", async () => {
     let notes = [{ id: 'a', title: 'A', path: 'A.md', properties: {} }]
-    windowApi.folderView = {
-      getViews: vi.fn(async () => ({ views: [], defaultIndex: 0 })),
-      getAvailableProperties: vi.fn(async () => ({ properties: [], builtIn: [], formulas: [] })),
-      listWithProperties: vi.fn(async () => ({ notes, hasMore: false, total: notes.length }))
-    }
+    tauri.answers.folder_view_get_views = { views: null, defaultIndex: 0, fieldColumns: null }
+    tauri.answers.folder_view_available_properties = { properties: [], builtIn: [], formulas: [] }
+    tauri.answers.folder_view_list = () => ({ notes, hasMore: false, total: notes.length })
     const { result } = renderHook(() => useFolderView({ scope: { kind: 'tag', tag: 'work' } }), {
       wrapper
     })
@@ -534,5 +534,87 @@ describe('a change made before an on-demand cache listens', () => {
     await act(async () => tauri.goLive())
 
     await waitFor(() => expect(result.current.totalNotes).toBe(2))
+  })
+  it('a note read while its listeners went live shows the title it was renamed to', async () => {
+    tauri.answers.notes_get = noteView('Before')
+    const { result } = renderHook(() => useNote('n1'), { wrapper })
+    await waitFor(() => expect(result.current.note?.title).toBe('Before'))
+
+    tauri.answers.notes_get = noteView('After')
+    tauri.emit('note-renamed-event', {
+      id: 'n1',
+      oldPath: 'notes/Before.md',
+      newPath: 'notes/After.md',
+      oldTitle: 'Before',
+      newTitle: 'After'
+    })
+    await act(async () => tauri.goLive())
+
+    await waitFor(() => expect(result.current.note?.title).toBe('After'))
+  })
+
+  it('tag schemas opened while a tag changed read the change, and read once', async () => {
+    const schema = (preset: string | null) => ({ tags: { person: { name: 'Person', preset } } })
+    tauri.answers.tags_get_schema_snapshot = schema(null)
+    const { result } = renderHook(() => useTagSchemas(), { wrapper })
+    await settle()
+
+    tauri.answers.tags_get_schema_snapshot = schema('meeting')
+    tauri.emit('note-tags-changed-event', null)
+    await act(async () => tauri.goLive())
+
+    await waitFor(() => expect(result.current.data).toEqual(schema('meeting')))
+    expect(countOf('tags_get_schema_snapshot')).toBe(1)
+  })
+
+  it("a note's properties show a value written while they opened, read once", async () => {
+    // Sync's item events still come through `window.api` (not ported yet).
+    ;(window.api as unknown as Record<string, unknown>).onItemSynced = () => () => undefined
+    tauri.answers.properties_get = [{ name: 'status', value: 'draft', type: 'text' }]
+    const { result } = renderHook(() => useProperties('n1'), { wrapper })
+    await settle()
+
+    tauri.answers.properties_get = [{ name: 'status', value: 'done', type: 'text' }]
+    tauri.emit('note-updated-event', {
+      id: 'n1',
+      changes: { properties: { status: 'done' } },
+      source: 'external'
+    })
+    await act(async () => tauri.goLive())
+
+    await waitFor(() => expect(result.current.propertiesRecord).toEqual({ status: 'done' }))
+    expect(countOf('properties_get')).toBe(1)
+  })
+  it('two portals of one note read it once when their listeners go live in two batches', async () => {
+    tauri.answers.notes_get = noteView('Source')
+    const { result } = renderHook(
+      () => [usePortalSourceNote('n1'), usePortalSourceNote('n1')] as const,
+      { wrapper }
+    )
+    await settle()
+
+    // Main answers the first portal's `listen` calls, then the second's.
+    const half = tauri.pending.length / 2
+    await act(async () => {
+      for (const call of tauri.pending.splice(0, half)) call.register()
+    })
+    await settle()
+    await act(async () => tauri.goLive())
+
+    await waitFor(() => expect(result.current[1].note?.title).toBe('Source'))
+    await settle()
+    expect(countOf('notes_get')).toBe(1)
+  })
+
+  it('tag schemas a tab icon read at startup take a tag change made before they listened', async () => {
+    const schema = (preset: string | null) => ({ tags: { person: { name: 'Person', preset } } })
+    // What `useOptionalTagSchemaSnapshot` prefetches for the tab icons, with no listeners.
+    queryClient.setQueryData(tagSchemaQueryKey, schema(null))
+    tauri.answers.tags_get_schema_snapshot = schema('meeting')
+    const { result } = renderHook(() => useTagSchemas(), { wrapper })
+    tauri.emit('note-tags-changed-event', null)
+    await act(async () => tauri.goLive())
+
+    await waitFor(() => expect(result.current.data).toEqual(schema('meeting')))
   })
 })

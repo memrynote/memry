@@ -12,8 +12,9 @@ use super::{PullError, PullLoop, PullReport, now_ms};
 use crate::storage::repositories::sync_items;
 use crate::sync::apply::{self, Pending};
 use crate::sync::changes_page::ChangesPage;
+use crate::sync::driver::observer::CorruptItem;
 use crate::sync::hardening::purged;
-use crate::sync::hardening::quarantine::{self, SecurityWarning};
+use crate::sync::hardening::quarantine;
 use crate::sync::note_body_feed::{self, FeedClient, FetchedBodies};
 use crate::sync::pull_decode::{self, Undecodable, server_cursor};
 
@@ -41,17 +42,17 @@ impl PullLoop {
         } else {
             items
         };
-        let mut warnings = Vec::new();
+        let mut marked = Vec::new();
         for (item, decoded) in self.decode_batch(items).await? {
             match decoded {
                 Ok(decoded) => pending.push(decoded),
                 Err(corrupt) => {
                     report.corrupt += 1;
-                    warnings.extend(self.record_corrupt(&item, &corrupt).await?);
+                    marked.extend(self.record_corrupt(&item, &corrupt).await?);
                 }
             }
         }
-        self.warn(warnings).await;
+        self.warn(marked).await;
         Ok(())
     }
 
@@ -85,10 +86,11 @@ impl PullLoop {
         Ok(named)
     }
 
-    /// Tells the observers each quarantine this pull recorded.
-    pub(super) async fn warn(&self, warnings: Vec<SecurityWarning>) {
+    /// Tells the observers each corrupt record this pull marked, and its
+    /// quarantine.
+    pub(super) async fn warn(&self, marked: Vec<CorruptItem>) {
         if let Some(observers) = &self.observers {
-            observers.security_warnings(warnings).await;
+            observers.corrupt(marked).await;
         }
     }
 
@@ -170,7 +172,7 @@ impl PullLoop {
     /// Records a corrupt item against its row when the wire told us enough to
     /// find one (§5.14, chapter 13 §13.2 rule 5). In a hardened pull a
     /// signature that did not verify is also one failure in the quarantine,
-    /// in the same writer call, and its warning is returned.
+    /// in the same writer call, and its warning is returned with the mark.
     ///
     /// An item so malformed that neither its id nor its type is readable is
     /// counted and nothing else: there is no row to flag, and inventing a key
@@ -179,7 +181,7 @@ impl PullLoop {
         &self,
         item: &Json,
         corrupt: &Undecodable,
-    ) -> Result<Option<SecurityWarning>, PullError> {
+    ) -> Result<Option<CorruptItem>, PullError> {
         let (Some(item_id), Some(item_type)) = (
             item.get("id").and_then(Json::as_str),
             item.get("type").and_then(Json::as_str),
@@ -194,7 +196,13 @@ impl PullLoop {
             (self.hardened && corrupt.signature_invalid).then(|| field(item, "signerDeviceId"));
         let now = now_ms();
         let eviction_logged = Arc::clone(&self.eviction_logged);
-        let warning = self
+        let mut marked = CorruptItem {
+            item_type: item_type.clone(),
+            item_id: item_id.clone(),
+            reason: reason.clone(),
+            warning: None,
+        };
+        marked.warning = self
             .db
             .call(move |conn| {
                 sync_items::upsert_metadata_only(conn, &item_type, &item_id, now, cursor)?;
@@ -216,7 +224,7 @@ impl PullLoop {
                     .transpose()
             })
             .await?;
-        Ok(warning)
+        Ok(Some(marked))
     }
 }
 
