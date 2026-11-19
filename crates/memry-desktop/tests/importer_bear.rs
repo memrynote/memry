@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::collections::HashMap;
 
 use memry_desktop::import::bear::{BearImporter, BearInfo, map_note, rewrite_bear_links};
-use memry_desktop::import::{ImportContext, ImportError, ImportInput, Importer};
+use memry_desktop::import::{ImportContext, ImportError, ImportInput, ImportSummary, Importer};
 use memry_test_kit::{on_small_stack, output_bound, proptest_config};
 use proptest::prelude::*;
 use serde_json::{Value, json};
@@ -33,8 +33,8 @@ fn info(inner: Value) -> Vec<u8> {
     serde_json::to_vec(&json!({ "net.shinyfrog.bear": inner })).unwrap()
 }
 
-/// Runs the importer over `paths` and returns its result and every sink write.
-fn run(paths: &[PathBuf]) -> (Result<(), ImportError>, Vec<Value>) {
+/// Runs the importer over `paths` and returns its result, every sink write and the summary.
+fn run_with_summary(paths: &[PathBuf]) -> (Result<(), ImportError>, Vec<Value>, ImportSummary) {
     let timeline = Timeline::default();
     let sink = RecordingSink::new(timeline.clone());
     let mut ctx = ImportContext::new("bear", CancellationToken::new(), Box::new(|_| {}));
@@ -47,7 +47,22 @@ fn run(paths: &[PathBuf]) -> (Result<(), ImportError>, Vec<Value>) {
     };
     let result = BearImporter.run(&input, &mut ctx, &sink);
     let writes = timeline.lock().unwrap().clone();
+    (result, writes, ctx.summary())
+}
+
+/// Runs the importer over `paths` and returns its result and every sink write.
+fn run(paths: &[PathBuf]) -> (Result<(), ImportError>, Vec<Value>) {
+    let (result, writes, _) = run_with_summary(paths);
     (result, writes)
+}
+
+fn skip_reasons(summary: &ImportSummary) -> Vec<(String, usize)> {
+    summary
+        .skipped_reasons
+        .iter()
+        .flatten()
+        .map(|group| (group.reason.text().to_owned(), group.count))
+        .collect()
 }
 
 fn notes(writes: &[Value]) -> Vec<&Value> {
@@ -309,8 +324,64 @@ fn an_oversized_bear_info_json_is_read_as_missing() {
         ],
     );
 
-    let (result, writes) = run(&[path]);
+    let (result, writes, summary) = run_with_summary(&[path]);
 
     result.unwrap();
     assert_eq!(note(&writes, "Big")["folder"], "Bear");
+    assert_eq!(summary.skipped, 1);
+    assert_eq!(
+        skip_reasons(&summary),
+        [("File is larger than 1 MB".to_owned(), 1)]
+    );
+}
+
+#[test]
+fn a_bear_asset_over_100_mb_is_skipped_and_the_note_still_imports() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("huge-asset.bear2bk");
+    let bundle = format!("{ROOT}Huge.textbundle/");
+    let md = "# Huge\n![huge](assets/huge.png)\n![small](assets/small.png)";
+    let mut zip = zip::ZipWriter::new(File::create(&path).unwrap());
+    zip.start_file(format!("{bundle}text.md"), SimpleFileOptions::default())
+        .unwrap();
+    zip.write_all(md.as_bytes()).unwrap();
+    zip.start_file(
+        format!("{bundle}assets/huge.png"),
+        SimpleFileOptions::default(),
+    )
+    .unwrap();
+    // 101 MiB of zeros deflates to about 100 KiB, so the archive stays small.
+    let chunk = vec![0u8; 1024 * 1024];
+    for _ in 0..101 {
+        zip.write_all(&chunk).unwrap();
+    }
+    zip.start_file(
+        format!("{bundle}assets/small.png"),
+        SimpleFileOptions::default(),
+    )
+    .unwrap();
+    zip.write_all(b"png").unwrap();
+    zip.finish().unwrap();
+
+    let (result, writes, summary) = run_with_summary(&[path]);
+
+    result.unwrap();
+    let saved: Vec<&str> = writes
+        .iter()
+        .filter(|w| w["op"] == "saveAttachment" && w["refused"].is_null())
+        .map(|w| w["name"].as_str().unwrap())
+        .collect();
+    assert_eq!(saved, ["small.png"]);
+    assert_eq!(
+        note(&writes, "Huge")["content"],
+        "# Huge\n![huge](assets/huge.png)\n![small](attachments/note-1/small.png)"
+    );
+    assert_eq!(summary.imported, 1);
+    assert_eq!(summary.attachments, 1);
+    assert_eq!(summary.skipped, 1);
+    assert!(summary.failed.is_empty(), "{:?}", summary.failed);
+    assert_eq!(
+        skip_reasons(&summary),
+        [("File is larger than 100 MB".to_owned(), 1)]
+    );
 }
