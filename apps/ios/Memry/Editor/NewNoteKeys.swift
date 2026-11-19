@@ -115,7 +115,15 @@ final class NewNoteKeys {
     /// on nothing waits for the main actor to make them durable. The hold's
     /// background task ends here: from now on a seed or a title saved as the
     /// app leaves begins its own, in the same turn (`NewNoteSeeds.flush`).
+    /// Keys typed in another vault than the open one (a sign-out or a vault
+    /// switch since ⌘N) never go to this note: they stay journaled for
+    /// their own vault, or went with a sign-out (`discard`).
     func made(_ noteId: String, keep: @escaping NewNoteSeeds.Keep) {
+        if let typedIn = entry.vault, typedIn != vault() {
+            park()
+            log.error("the keys typed after a new note were kept for the vault they were typed in")
+            return
+        }
         self.noteId = noteId
         self.keep = keep
         let keys = waiting + drain()
@@ -158,6 +166,17 @@ final class NewNoteKeys {
     /// request, or for the next launch's recovery.
     func park() {
         end()
+        releaseHold()
+    }
+
+    /// No key is held: none typed since ⌘N.
+    var isEmpty: Bool { waiting.isEmpty && (holder?.text ?? "").isEmpty }
+
+    /// Sign-out: the keys held in memory go with the account; its journal
+    /// entries go with `NewNoteJournal.erase(keeping:)`.
+    fileprivate func discard() {
+        waiting = ""
+        finish()
         releaseHold()
     }
 
@@ -275,6 +294,13 @@ final class NewNoteSeeds {
 
     fileprivate func holding(_ hold: NewNoteKeys) {
         holds.add(hold)
+    }
+
+    /// Sign-out: every hold not made yet lets go of its keys, and the journal
+    /// keeps only the entries of `vault`, the local vault that survives it.
+    func signedOut(keeping vault: String?) {
+        holds.allObjects.forEach { $0.discard() }
+        journal?.erase(keeping: vault)
     }
 
     /// Tabs become spaces: a title holds none.
@@ -443,7 +469,8 @@ final class NewNoteSeeds {
 /// An entry with no vault is dropped unread: no vault is known to own it.
 /// A file this build cannot read (another version) is logged and replaced.
 /// The keys are the user's text in plaintext, so the file is excluded from
-/// backup, like the vault (`FileProtection`), and a sign-out erases it.
+/// backup, like the vault (`FileProtection`), and a sign-out erases
+/// the entries of every vault it removes.
 @MainActor
 final class NewNoteJournal {
     struct Entry: Codable, Equatable {
@@ -524,10 +551,12 @@ final class NewNoteJournal {
         entries.filter { !live.contains($0.hold) && $0.vault == vault }
     }
 
-    /// Sign-out: the keys of the account's vaults go with them.
-    func erase() {
-        entries = []
-        live = []
+    /// Sign-out: the keys of the account's vaults go with them. `vault`, the
+    /// unattached local vault that survives a sign-out, keeps its entries,
+    /// recovered by its next launch.
+    func erase(keeping vault: String?) {
+        entries.removeAll { vault == nil || $0.vault != vault }
+        live.formIntersection(entries.map(\.hold))
         write()
     }
 

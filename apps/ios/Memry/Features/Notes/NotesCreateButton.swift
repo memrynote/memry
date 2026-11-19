@@ -200,6 +200,11 @@ enum NotesCreateCopy {
 final class NotesLinks {
     static let shared = NotesLinks()
     private(set) var pending: String?
+    @ObservationIgnored private let seeds: NewNoteSeeds
+
+    init(seeds: NewNoteSeeds = .shared) {
+        self.seeds = seeds
+    }
 
     func open(_ id: String) { pending = id }
 
@@ -216,14 +221,29 @@ final class NotesLinks {
 
     /// A ⌘N the page has not taken yet keeps its hold: one note, one hold.
     func requestNewNote(window: UIWindow?) {
-        if let keys { keys.hold(in: window) } else { keys = NewNoteKeys(window: window) }
+        if let keys { keys.hold(in: window) } else { keys = NewNoteKeys(window: window, seeds: seeds) }
         newNoteRequested = true
     }
 
     /// Another tab opened before the page took ⌘N: the request stays for
-    /// the page, and the keys held so far wait for its note.
+    /// the page, and the keys held so far wait for its note. With none
+    /// typed, the request goes: a blank note made later is no one's.
     func parkNewNote() {
-        if newNoteRequested { keys?.park() }
+        guard newNoteRequested, let keys else { return }
+        keys.park()
+        if keys.isEmpty { dropNewNote() }
+    }
+
+    /// Sign-out: the ⌘N not taken yet and every hold's keys go with the
+    /// account, except the journaled keys of `vault`, which survives it.
+    func signedOut(keeping vault: String?) {
+        dropNewNote()
+        seeds.signedOut(keeping: vault)
+    }
+
+    private func dropNewNote() {
+        newNoteRequested = false
+        keys = nil
     }
 
     func takeNewNote() -> NewNoteKeys? {

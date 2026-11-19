@@ -91,19 +91,19 @@ struct SignOutService: Sendable {
     private let session: any AuthSessionProtocol
     private let content: any VaultContentRemoval
     private let executor: CoreExecutor
-    /// The keys typed after ⌘N not yet in the vault (`NewNoteJournal`).
-    private let newNoteKeys: @MainActor @Sendable () -> NewNoteJournal?
+    /// The ⌘N requests and the keys typed after them not yet in the vault.
+    private let newNotes: @MainActor @Sendable () -> NotesLinks
 
     init(
         session: any AuthSessionProtocol,
         content: any VaultContentRemoval,
         executor: CoreExecutor = .shared,
-        newNoteKeys: @escaping @MainActor @Sendable () -> NewNoteJournal? = { NewNoteSeeds.shared.journal }
+        newNotes: @escaping @MainActor @Sendable () -> NotesLinks = { .shared }
     ) {
         self.session = session
         self.content = content
         self.executor = executor
-        self.newNoteKeys = newNoteKeys
+        self.newNotes = newNotes
     }
 
     /// FR-025. The user signed out.
@@ -147,8 +147,10 @@ struct SignOutService: Sendable {
     private func wipe(_ reason: LocalWipeReason, leaving state: AuthState) async -> LocalWipe {
         // Where the user was names the account's vaults and notes by id.
         LaunchSnapshot.shared.clear()
-        // Plaintext keys of this account's notes.
-        await MainActor.run { newNoteKeys()?.erase() }
+        // Plaintext keys of this account's notes, and a ⌘N that would make a
+        // note for them in the next account's vault.
+        let kept = content.survivingVault()
+        await MainActor.run { newNotes().signedOut(keeping: kept) }
         do {
             try content.removeAllVaultContent()
             return LocalWipe(reason: reason, state: state, residue: nil)

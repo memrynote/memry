@@ -2,6 +2,7 @@ import Foundation
 import MemryCore
 import Synchronization
 import Testing
+import UIKit
 
 @testable import Memry
 
@@ -85,11 +86,15 @@ private final class OrderLog: Sendable {
 private final class ScriptedContent: VaultContentRemoval, @unchecked Sendable {
     private let log: OrderLog
     private let failure: (any Error)?
+    private let survivor: String?
 
-    init(log: OrderLog, failure: (any Error)? = nil) {
+    init(log: OrderLog, failure: (any Error)? = nil, survivor: String? = nil) {
         self.log = log
         self.failure = failure
+        self.survivor = survivor
     }
+
+    func survivingVault() -> String? { survivor }
 
     @discardableResult
     func removeAllVaultContent() throws -> Int {
@@ -137,13 +142,68 @@ struct SignOutServiceTests {
             session: ScriptedSession(log: log),
             content: ScriptedContent(log: log),
             executor: executor(),
-            newNoteKeys: { journal }
+            newNotes: { NotesLinks(seeds: NewNoteSeeds(journal: journal)) }
         )
 
         _ = try await service.signOut()
 
         #expect(!FileManager.default.fileExists(atPath: url.path))
         #expect(NewNoteJournal(url: url).stranded(in: "v1").isEmpty)
+    }
+
+    /// REVIEW-5087 #1: the parked request stayed in `NotesLinks`, and the next
+    /// account's Notes page made a note in its vault for the old account's keys.
+    @Test("a sign-out drops a parked ⌘N and its keys: the next account makes no note for them")
+    @MainActor
+    func signOutDropsAParkedNewNote() async throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("new-note-keys-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 400, height: 400))
+        window.rootViewController = UIViewController()
+        window.isHidden = false
+        let links = NotesLinks(seeds: NewNoteSeeds(journal: NewNoteJournal(url: url)))
+        let log = OrderLog()
+        let service = SignOutService(
+            session: ScriptedSession(log: log),
+            content: ScriptedContent(log: log),
+            executor: executor(),
+            newNotes: { links }
+        )
+
+        links.requestNewNote(window: window)
+        let holder = try #require(window.subviews.first { $0.isFirstResponder } as? UIKeyInput)
+        holder.insertText("milk")
+        links.parkNewNote()
+        #expect(FileManager.default.fileExists(atPath: url.path), "parked keys are journaled")
+        _ = try await service.signOut()
+
+        #expect(links.takeNewNote() == nil)
+        #expect(!FileManager.default.fileExists(atPath: url.path))
+    }
+
+    /// REVIEW-5087 #2: the unattached local vault survives a sign-out, and so
+    /// do the keys journaled for it.
+    @Test("a sign-out keeps the journaled keys of the local vault that survives it")
+    @MainActor
+    func signOutKeepsTheSurvivingVaultsKeys() async throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("new-note-keys-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let journal = NewNoteJournal(url: url)
+        journal.record(NewNoteJournal.Entry(hold: "a", vault: "account", at: 0, keys: "milk"))
+        journal.record(NewNoteJournal.Entry(hold: "l", vault: "local", at: 0, keys: "eggs"))
+        let log = OrderLog()
+        let service = SignOutService(
+            session: ScriptedSession(log: log),
+            content: ScriptedContent(log: log, survivor: "local"),
+            executor: executor(),
+            newNotes: { NotesLinks(seeds: NewNoteSeeds(journal: journal)) }
+        )
+
+        _ = try await service.signOut()
+
+        let relaunched = NewNoteJournal(url: url)
+        #expect(relaunched.stranded(in: "account").isEmpty)
+        #expect(relaunched.stranded(in: "local").map(\.keys) == ["eggs"])
     }
 
     /// The locked-keychain case, and the reason the order is what it is: a

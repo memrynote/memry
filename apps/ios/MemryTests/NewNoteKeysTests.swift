@@ -467,6 +467,39 @@ struct NewNoteKeysTests {
         #expect(NewNoteSeeds.shared.take(noteId) == "milk")
     }
 
+    /// REVIEW-5087 #3: a parked request with nothing typed made a blank note
+    /// whenever the Notes page next loaded.
+    @Test("another tab before any key is typed after ⌘N drops the request")
+    func aTabSwitchWithNoKeysDropsTheRequest() {
+        let links = NotesLinks()
+        textView().becomeFirstResponder()
+
+        links.requestNewNote(window: window)
+        links.parkNewNote()
+
+        #expect(links.takeNewNote() == nil)
+    }
+
+    /// REVIEW-5087 #1: a note made after a sign-out or a vault switch is in
+    /// another vault than the one the keys were typed in.
+    @Test("keys typed in one vault never title a note made in another, and stay journaled for theirs")
+    func keysStayWithTheirVault() throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("new-note-keys-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let seeds = NewNoteSeeds(journal: NewNoteJournal(url: url))
+        textView().becomeFirstResponder()
+        var open: String? = "v1"
+
+        let keys = NewNoteKeys(window: window, seeds: seeds, vault: { open })
+        try type("milk")
+        open = "v2"
+        keys.made("new") { _, _ in Issue.record("no title is written") }
+
+        #expect(seeds.take("new") == nil)
+        #expect(NewNoteJournal(url: url).stranded(in: "v1").map(\.keys) == ["milk"])
+        #expect(NewNoteJournal(url: url).stranded(in: "v2").isEmpty)
+    }
+
     @Test("a title that appeared keeps the hold until its field takes the caret")
     func aShownTitleKeepsTheHold() async throws {
         var settled: CheckedContinuation<Void, Never>?
