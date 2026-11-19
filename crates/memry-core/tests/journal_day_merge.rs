@@ -229,6 +229,7 @@ async fn a_foreign_journal_for_a_held_day_is_skipped_and_owed_not_corrupt() {
                 clock: clock_of([("device-b", 1)]),
                 deleted: false,
                 record_markdown: None,
+                fallback_markdown: None,
             }]
         );
         Ok(())
@@ -281,6 +282,7 @@ async fn the_canonical_day_displaces_a_foreign_holder_and_owes_its_merge() {
                 clock: clock_of([("device-b", 2)]),
                 deleted: false,
                 record_markdown: None,
+                fallback_markdown: None,
             }]
         );
         Ok(())

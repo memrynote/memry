@@ -28,6 +28,8 @@ mod docs;
 mod electron_db;
 #[path = "electron_vault_import/notes.rs"]
 mod notes;
+#[path = "electron_vault_import/owed_work.rs"]
+mod owed_work;
 #[path = "electron_vault_import/queue.rs"]
 mod queue;
 #[path = "electron_vault_import/queue_deletes.rs"]
@@ -291,17 +293,6 @@ fn rows_whose_importer_is_pending_abort_before_any_write() {
     assert_refused(
         &vault,
         |e| matches!(e, ImportError::NotReady { detail, .. } if detail.contains("data.db/settings")),
-    );
-
-    let vault = Vault::new();
-    electron_db::seed(
-        &vault.data_conn(),
-        "sync_state",
-        &[("key", Value::Text("crdtUnmergedDebt".into()))],
-    );
-    assert_refused(
-        &vault,
-        |e| matches!(e, ImportError::NotReady { detail, .. } if detail.contains("crdtUnmergedDebt")),
     );
 }
 

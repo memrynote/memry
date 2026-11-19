@@ -21,7 +21,7 @@ mod owed;
 
 use owed::owe_holder;
 pub use owed::owed;
-pub(crate) use owed::{hold_for_merge, mark_deleted, plan_inbound};
+pub(crate) use owed::{hold_for_merge, mark_deleted, plan_inbound, write_owed};
 
 use rusqlite::{Connection, params};
 use serde_json::json;
@@ -60,6 +60,11 @@ pub struct OwedMerge {
     /// The foreign record's `content`. A live foreign id whose doc holds no
     /// Yjs state gets its body built from it (§1.9.1).
     pub record_markdown: Option<String>,
+    /// This device's own text of the foreign day: the day file Electron kept when `j<D>`
+    /// took over a foreign holder's file (`fallbackMarkdown`, `journal-day-merge.ts:53`).
+    /// Only the Electron import writes it. It is preferred to `record_markdown`, deleted or
+    /// not, as on Electron.
+    pub fallback_markdown: Option<String>,
 }
 
 /// What one [`drain`] did.
@@ -300,16 +305,22 @@ fn forget(tx: &Connection, foreign: &str, now_ms: i64) -> Result<(), StorageErro
     drop_owed(tx, foreign)
 }
 
-/// The record text a live foreign id with no Yjs history is built from. A
-/// deleted one was merged by the device that deleted it, which built any body
-/// it lacked; building it here too would mint a second copy. The core keeps
-/// no day file, so a holder's unpushed text is only ever its local Yjs
-/// state, which `settle` folds whether or not `F` is deleted.
+/// The text a foreign id with no Yjs history is built from: this device's own
+/// day text when an Electron import carried one, deleted or not, as desktop
+/// does (`journal-day-merge.ts:210-220`); else the record text of a live
+/// foreign id. A deleted one was merged by the device that deleted it, which
+/// built any body it lacked from the record; building it here too would mint a
+/// second copy. The core keeps no day file, so otherwise a holder's unpushed
+/// text is only ever its local Yjs state, which `settle` folds whether or not
+/// `F` is deleted.
 fn build_text(merge: &OwedMerge) -> Option<&str> {
-    merge
-        .record_markdown
-        .as_deref()
-        .filter(|markdown| !merge.deleted && !markdown.trim().is_empty())
+    let text = |markdown: &&str| !markdown.trim().is_empty();
+    merge.fallback_markdown.as_deref().filter(text).or_else(|| {
+        merge
+            .record_markdown
+            .as_deref()
+            .filter(|markdown| !merge.deleted && text(markdown))
+    })
 }
 
 /// The foreign doc built from its record text, as one v1 update. Its client

@@ -2,14 +2,13 @@
 //! a source this build cannot read completely is refused, never imported in part.
 //!
 //! In order: the drizzle ledger ends at the frozen migration `TABLE_MAP` describes; every table
-//! is mapped (shadow tables of a mapped virtual table excepted); no table or `sync_state` key
-//! whose importer is still pending holds rows. An unknown `sync_state` key is reported by the
-//! table's importer, not refused: Electron refuses none.
+//! is mapped (shadow tables of a mapped virtual table excepted); no table whose importer is
+//! still pending holds rows. An unknown `sync_state` key is reported by the table's importer,
+//! not refused: Electron refuses none.
 
-use rusqlite::{Connection, OptionalExtension};
+use rusqlite::Connection;
 
 use super::source::{Sources, source_error};
-use super::sync_state::{self, KeyRule};
 use super::tables::{
     ELECTRON_DATA_LAST_MIGRATION, ELECTRON_INDEX_LAST_MIGRATION, Importer, LEDGER_TABLE, SourceDb,
     TableMapping, mapping, pending_area,
@@ -51,8 +50,6 @@ pub(super) fn run(
             .position(|t| t.db == m.db && t.table == m.table)
     };
     tables.sort_by_key(|(m, _)| order(m));
-
-    pending_sync_state_keys(sources.conn(SourceDb::Data))?;
 
     for (table, count) in &tables {
         if let Some(Importer::Pending(stage)) = table.class.importer()
@@ -186,34 +183,4 @@ fn row_count(conn: &Connection, db: SourceDb, table: &str) -> Result<u64, Import
     })
     .map(|n| n as u64)
     .map_err(|e| source_error(db, e))
-}
-
-/// [`ImportError::NotReady`] for a `sync_state` key whose handler a later stage writes.
-fn pending_sync_state_keys(conn: &Connection) -> Result<(), ImportError> {
-    let db = SourceDb::Data;
-    let present: Option<i64> = conn
-        .query_row(
-            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'sync_state'",
-            [],
-            |row| row.get(0),
-        )
-        .optional()
-        .map_err(|e| source_error(db, e))?;
-    if present.is_none() {
-        return Ok(());
-    }
-    let mut stmt = conn
-        .prepare("SELECT key FROM sync_state ORDER BY key")
-        .map_err(|e| source_error(db, e))?;
-    let keys = stmt
-        .query_map([], |row| row.get::<_, String>(0))
-        .map_err(|e| source_error(db, e))?
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| source_error(db, e))?;
-    for key in keys {
-        if let Some(KeyRule::Pending { stage, .. }) = sync_state::classify(&key).map(|r| r.rule) {
-            return Err(not_ready(stage, format!("sync_state key {key} ({stage})")));
-        }
-    }
-    Ok(())
 }
