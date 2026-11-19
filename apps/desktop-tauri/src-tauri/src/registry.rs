@@ -299,6 +299,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::sync_account::account_sign_out,
             crate::commands::sync_account::sync_get_vault_binding,
             crate::commands::sync_account::sync_logout,
+            crate::commands::sync_account::sync_repair_device_keys,
             crate::commands::sync_account::sync_resolve_vault_binding,
             // tags
             crate::commands::tag_schema::tags_edit_schema,
