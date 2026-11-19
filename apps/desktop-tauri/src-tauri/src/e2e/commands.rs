@@ -32,6 +32,7 @@ e2e_commands! {
     os_drag => [e2e_os_drag],
     dialog => [e2e_dialog_queue_push, e2e_dialog_queue_clear],
     reveal => [e2e_revealed_paths, e2e_os_opens],
+    sticky => [e2e_open_sticky, e2e_tuck_and_open_sticky],
     shell_integrations => [
         e2e_apply_login_item,
         e2e_close_window,

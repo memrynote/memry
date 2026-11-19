@@ -131,6 +131,9 @@ pub(crate) struct Keychain {
     master_locked: bool,
     access_locked: AtomicBool,
     undeletable: Mutex<Vec<SecureStoreKey>>,
+    unsettable: Mutex<Vec<SecureStoreKey>>,
+    /// The next `clear` fails and removes nothing; per-entry deletes still work.
+    clear_refused: AtomicBool,
 }
 
 impl SecureStore for Keychain {
@@ -143,6 +146,11 @@ impl SecureStore for Keychain {
         Ok(self.items.lock().unwrap().get(&key).cloned())
     }
     fn set(&self, key: SecureStoreKey, value: Vec<u8>) -> Result<(), SecureStoreError> {
+        if self.unsettable.lock().unwrap().contains(&key) {
+            return Err(SecureStoreError::Failed {
+                what: "the keychain refused".into(),
+            });
+        }
         self.items.lock().unwrap().insert(key, value);
         Ok(())
     }
@@ -157,6 +165,11 @@ impl SecureStore for Keychain {
     }
     /// Every entry, one after another; the first refusal is returned (`KeyringStore::clear`).
     fn clear(&self) -> Result<(), SecureStoreError> {
+        if self.clear_refused.swap(false, Ordering::SeqCst) {
+            return Err(SecureStoreError::Failed {
+                what: "the keychain refused".into(),
+            });
+        }
         let keys: Vec<_> = self.items.lock().unwrap().keys().copied().collect();
         keys.into_iter()
             .map(|key| self.delete(key))
@@ -167,6 +180,12 @@ impl SecureStore for Keychain {
 impl Keychain {
     pub(crate) fn refuse_delete(&self, keys: &[SecureStoreKey]) {
         self.undeletable.lock().unwrap().extend_from_slice(keys);
+    }
+    pub(crate) fn refuse_set(&self, keys: &[SecureStoreKey]) {
+        self.unsettable.lock().unwrap().extend_from_slice(keys);
+    }
+    pub(crate) fn refuse_next_clear(&self) {
+        self.clear_refused.store(true, Ordering::SeqCst);
     }
     pub(crate) fn has(&self, key: SecureStoreKey) -> bool {
         self.items.lock().unwrap().contains_key(&key)
@@ -380,6 +399,21 @@ async fn a_failed_registration_keeps_the_device_key_it_had() {
         f.keychain.get(SecureStoreKey::DeviceSigningKey).unwrap(),
         before
     );
+}
+
+/// A master key the keychain refuses after setup published the keys fails the setup, and the
+/// phrase stays held for the user (as Electron does).
+#[tokio::test]
+async fn a_refused_master_key_write_keeps_the_phrase_held() {
+    let f = fixture(Keychain::default());
+    f.verify(json!({ "needsSetup": true })).await.unwrap();
+    f.answer_registration("server-device-1");
+    f.script.answer(200, json!({ "success": true }));
+    f.keychain.refuse_set(&[SecureStoreKey::MasterKey]);
+
+    f.service.setup_new_account().await.unwrap_err();
+
+    assert!(f.service.recovery_phrase().is_some());
 }
 
 #[tokio::test]

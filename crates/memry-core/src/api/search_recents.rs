@@ -2,7 +2,8 @@
 //!
 //! Its own object rather than more methods on [`crate::api::search::Search`]:
 //! it reads only `data.db`, so it never pays for opening `index.db`. The rules
-//! (cap, dedupe, liveness) are [`crate::domain::search::recents`]'s.
+//! (trim, dedupe, liveness) are [`crate::domain::search::recents`]'s; how many
+//! recents to keep is the shell's, given once when it builds the handle.
 
 use crate::api::errors::StorageError;
 use crate::api::search::SearchResult;
@@ -25,19 +26,26 @@ pub struct SearchRecent {
 #[derive(uniffi::Object)]
 pub struct SearchRecents {
     data: Db,
+    cap: u32,
 }
 
 impl SearchRecents {
     /// Built by [`crate::api::vault::Vault::search_recents`].
-    pub(crate) fn over(data: Db) -> Self {
-        Self { data }
+    pub(crate) fn over(data: Db, cap: u32) -> Self {
+        // A cap of zero would erase every recent on the next open.
+        Self {
+            data,
+            cap: cap.max(1),
+        }
     }
 }
 
 #[uniffi::export]
 impl SearchRecents {
-    /// Records that `result` was opened from a search for `query`.
+    /// Records that `result` was opened from a search for `query`. The
+    /// result's `emoji` is stored as its icon, whatever its kind.
     pub fn record(&self, result: SearchResult, query: String) -> Result<(), StorageError> {
+        let icon = result.emoji.clone();
         let kind = match (result.kind.as_str(), result.journal_date) {
             ("note", _) => HitKind::Note {
                 emoji: result.emoji,
@@ -63,19 +71,31 @@ impl SearchRecents {
             match_kind: result.match_kind,
             matched_name: result.matched_name,
         };
-        self.data
-            .call_blocking(move |data| recents::record(data, &hit, &query, now_ms()))
+        let cap = self.cap;
+        self.data.call_blocking(move |data| {
+            recents::record(data, &hit, &query, icon.as_deref(), cap, now_ms())
+        })
     }
 
-    /// The recents whose items still exist, newest first, at most ten.
+    /// The recents whose items still exist, newest first, at most the cap the
+    /// handle was built with. A note shows its emoji as it is now; any other
+    /// kind shows the icon it was recorded with.
     pub fn list(&self) -> Result<Vec<SearchRecent>, StorageError> {
-        self.data.call_blocking(|data| {
-            Ok(recents::list(data)?
+        let cap = self.cap;
+        self.data.call_blocking(move |data| {
+            Ok(recents::list(data, cap)?
                 .into_iter()
-                .map(|recent| SearchRecent {
-                    result: SearchResult::from(recent.hit),
-                    query: recent.query,
-                    visited_at: recent.visited_at,
+                .map(|recent| {
+                    let is_note = matches!(recent.hit.kind, HitKind::Note { .. });
+                    let mut result = SearchResult::from(recent.hit);
+                    if !is_note {
+                        result.emoji = recent.icon;
+                    }
+                    SearchRecent {
+                        result,
+                        query: recent.query,
+                        visited_at: recent.visited_at,
+                    }
                 })
                 .collect())
         })

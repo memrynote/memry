@@ -9,6 +9,8 @@
 //! 1. Records: `GET /sync/changes` + `POST /sync/pull` from the stored cursor
 //!    to the end ([`PullLoop::run`]), with the note bodies the feed serves
 //!    (`note_body`, chapter 07 §7.17) landed before each page's cursor.
+//!    When that pull reached the feed head, the unclocked Inbox is clocked
+//!    and queued ([`ProjectSeed`]), as the driver's pass does.
 //! 2. Bodies: the per-note pull of every note or journal owed one
 //!    ([`crate::sync::body_debt`]): each whose record arrived in step 1, each
 //!    a feed body could not land for, and each still owed from an earlier
@@ -28,11 +30,13 @@ use zeroize::Zeroizing;
 use super::VaultSync;
 use super::snapshot_fallback::{LastPull, PassSnapshots};
 use crate::api::errors::{StorageError, SyncError};
+use crate::api::projects::ProjectSeed;
 use crate::crdt::SnapshotPusher;
 use crate::crypto::keys;
 use crate::protocol::account::{AccountSealer, DeviceSigner};
 use crate::sync::body_pull::BodyPull;
 use crate::sync::body_step;
+use crate::sync::engine::seed_at_head;
 use crate::sync::journal_day_merge;
 use crate::sync::pull::{PullError, PullLoop};
 use crate::sync::push::{PushCoordinator, PushError};
@@ -149,6 +153,14 @@ impl VaultSync {
         .with_note_bodies(cipher.clone())
         .run(MAX_PULL_PAGES)
         .await?;
+        // The unclocked Inbox becomes this device's record only once the feed is read to its
+        // head, so an Inbox another device pushed first has replaced it (#3538).
+        let device_id = self.session.device_id()?;
+        seed_at_head(
+            &pulled,
+            &[ProjectSeed::over(self.db.clone(), device_id) as _],
+        )
+        .await;
 
         // Bodies next, best effort: every document owed a per-note pull,
         // within a budget. Nothing in it stops the push below (#2297).
@@ -193,6 +205,8 @@ impl VaultSync {
             pull: Arc::new(RwLock::new(LastPull::of(&pulled, false))),
             admission: None,
         };
+        // Built per pass, so it takes no pre-push hook: its deferral counts would restart every
+        // pass and never reach the limit. Hooks go on the driver's coordinator (`driver/mod.rs`).
         let push = PushCoordinator::new(http, self.db.clone(), self.declaration.clone(), sealer)
             .with_vault(&self.vault_id)
             .with_at_rest_key(self.at_rest.clone())

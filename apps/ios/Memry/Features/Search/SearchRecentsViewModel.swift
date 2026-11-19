@@ -3,8 +3,8 @@ import MemryCore
 import Observation
 
 // The search sheet's recently opened results (#4322), desktop's recent
-// reasons. The core owns the rules (device-local in `data.db`, ten newest,
-// one row per item, deleted items skipped); this is the shell's handle.
+// reasons. The core owns the rules (device-local in `data.db`, one row per
+// item, deleted items skipped); this shell keeps the ten newest.
 // The query that found an item is private, so it is never logged.
 
 /// The recents surface over one vault.
@@ -20,7 +20,7 @@ struct CoreSearchRecents: SearchRecentsStoring {
     private let executor: CoreExecutor
 
     init(vault: Vault, executor: CoreExecutor) {
-        recents = vault.searchRecents()
+        recents = vault.searchRecents(cap: 10)
         self.executor = executor
     }
 

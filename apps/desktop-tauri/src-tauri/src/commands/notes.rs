@@ -36,7 +36,8 @@ use memry_desktop::notes::service::NotesService;
 use memry_desktop::notes::tag_template::{TagTemplateOutcome, UndoStatus, UndoTagTemplateInput};
 use memry_desktop::notes::update::NoteUpdateInput;
 use memry_desktop::notes::view::{
-    FileView, MovedNoteView, NoteCreateInput, NoteListOptions, NoteListPageView, NoteView,
+    FileView, MovedNoteView, NoteCreateInput, NoteListItemView, NoteListOptions, NoteListPageView,
+    NoteView,
 };
 use memry_desktop::notes::{local_only, positions, read};
 use memry_desktop::session::{OpenVault, Session};
@@ -327,6 +328,21 @@ pub async fn notes_get(app: AppHandle<Wry>, id: String) -> Result<Option<NoteVie
             track(&app, "note_opened", "opened");
         }
         Ok(note)
+    })
+    .await
+}
+
+/// The note as the list shows it, `None` once it is gone: a read of its row that opens nothing,
+/// so it counts no `note_opened`. The note page asks once its delete and rename listeners are
+/// live, for the event it may have missed before then (S14-1).
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_get_list_item(
+    app: AppHandle<Wry>,
+    id: String,
+) -> Result<Option<NoteListItemView>, CommandError> {
+    blocking("notes_get_list_item", move || {
+        read::list_item(&open_vault(&app)?, &id).map_err(|error| failed(&error))
     })
     .await
 }

@@ -26,8 +26,7 @@ export async function setup({ page }) {
   await closeOtherTabs(page, `🌱${PROJECT}`)
   await page.getByRole('tab', { name: 'Overview' }).click()
   await page
-    .getByText('JAN 1', { exact: true })
-    .or(page.getByText('Jan 1', { exact: true }))
+    .getByText(/^(JAN|Jan) 1$/)
     .first()
     .waitFor()
   await settle(page, 800, 640)
