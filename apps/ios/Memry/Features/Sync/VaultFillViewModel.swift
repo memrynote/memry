@@ -52,8 +52,6 @@ final class VaultFillViewModel {
     /// What sits above the vault's contents. Never instead of them.
     enum Banner: Equatable {
         case none
-        /// The run, as a compact strip; `nil` before the first tick.
-        case progress(SyncProgress?)
         case failure(UserFacingError)
         /// The run finished, and some of it could not be opened.
         case incomplete(String)
@@ -93,12 +91,11 @@ final class VaultFillViewModel {
         }
     }
 
-    /// `.checking` is one local row and shows nothing: a banner that flashed
-    /// up on every launch of a synced vault would be noise.
+    /// `.checking` and `.filling` show nothing: the run continues in the
+    /// background and the vault's contents fill in as it lands.
     var banner: Banner {
         switch phase {
-        case .checking: .none
-        case let .filling(progress): .progress(progress)
+        case .checking, .filling: .none
         case .filled: incomplete.map(Banner.incomplete) ?? .none
         case let .failed(error): .failure(error)
         }
