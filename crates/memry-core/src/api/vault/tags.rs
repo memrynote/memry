@@ -69,6 +69,15 @@ impl Vault {
         self.db.read_blocking(crate::domain::tag_rename::read)
     }
 
+    /// [`crate::domain::tag_admin::definition_deleted`] (desktop Step 14, S14-1); a read, so no
+    /// identity. Not part of the FFI surface.
+    #[doc(hidden)]
+    pub fn tag_definition_deleted(&self, tag: &str) -> Result<bool, StorageError> {
+        let tag = tag.to_owned();
+        self.db
+            .read_blocking(move |conn| crate::domain::tag_admin::definition_deleted(conn, &tag))
+    }
+
     /// The tag hub's categories with their tag counts (desktop Step 13j); a read, so no
     /// identity. Not part of the FFI surface: the Rust desktop shell is its only caller.
     #[doc(hidden)]

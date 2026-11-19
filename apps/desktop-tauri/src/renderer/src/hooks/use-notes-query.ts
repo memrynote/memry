@@ -5,7 +5,7 @@
  * @module hooks/use-notes-query
  */
 
-import { useEffect, useCallback, useMemo } from 'react'
+import { useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   useQuery,
   useMutation,
@@ -31,7 +31,6 @@ import {
   onNoteLinksChanged,
   onNoteRenamed,
   onNoteMoved,
-  onNoteExternalChange,
   onNoteEventsDropped
 } from '@/services/notes-service'
 import {
@@ -196,62 +195,63 @@ export function useNote(id: string | null, options: UseNoteOptions = {}): UseNot
     staleTime: readOnMount ? 0 : NOTE_STALE_TIME,
     gcTime: NOTE_GC_TIME
   })
+  const enabledRef = useRef(enabled)
+  useEffect(() => {
+    enabledRef.current = enabled
+  })
 
-  // Subscribe to note events for cache invalidation
   useEffect(() => {
     if (!id) return undefined
-
-    const unsubUpdated = onNoteUpdated((event) => {
-      if (event.id === id) {
-        // Invalidate this specific note
-        void queryClient.invalidateQueries({ queryKey: notesKeys.note(id) })
+    const key = notesKeys.note(id)
+    // What this mount read before its listeners went live: a read it started, or one under way.
+    // An observer disabled at mount reads once its caller says so (a portal waits for its own
+    // listeners), never before these.
+    const readsAtMount = enabledRef.current
+    const atMount = queryClient.getQueryState(key)
+    const fetchingAtMount = atMount?.fetchStatus === 'fetching'
+    const updatesAtMount = atMount?.dataUpdateCount ?? 0
+    const invalidate = (): void => void queryClient.invalidateQueries({ queryKey: key })
+    return subscribeToEvents(
+      [
+        (live) =>
+          onNoteUpdated((event) => {
+            if (event.id === id) invalidate()
+          }, live),
+        (live) =>
+          onNoteRenamed((event) => {
+            if (event.id === id) invalidate()
+          }, live),
+        // A folder rename or move sends no rename event for the notes inside it, only this one.
+        (live) =>
+          onNoteMoved((event) => {
+            if (event.id !== id) return
+            queryClient.setQueryData<Note | null>(key, (cached) =>
+              cached ? { ...cached, path: event.newPath } : cached
+            )
+            // A read in flight began before the move and would answer the old path: read again.
+            if (queryClient.isFetching({ queryKey: key }) > 0) rereadQueries(queryClient, key)
+          }, live),
+        (live) =>
+          onNoteDeleted((event) => {
+            if (event.id === id) queryClient.removeQueries({ queryKey: key })
+          }, live),
+        // A dropped event may have been this note's.
+        (live) => onNoteEventsDropped(invalidate, live)
+      ],
+      // A read this mount made may have missed a change between it and these listeners going
+      // live, whose event went to nobody (#4270). A fresh cached answer was read under another
+      // mount's listeners. The note page reads again itself (`useNoteBody`, `startup-gap`): a
+      // second read here would race it and count another `note_opened`.
+      () => {
+        if (readOnMount || !readsAtMount) return
+        const state = queryClient.getQueryState(key)
+        const fetching = state?.fetchStatus === 'fetching'
+        if (fetchingAtMount || fetching || (state?.dataUpdateCount ?? 0) > updatesAtMount) {
+          rereadQueries(queryClient, key)
+        }
       }
-    })
-
-    const unsubRenamed = onNoteRenamed((event) => {
-      if (event.id === id) {
-        void queryClient.invalidateQueries({ queryKey: notesKeys.note(id) })
-      }
-    })
-
-    // A folder rename or move sends no rename event for the notes inside it, only this one.
-    const unsubMoved = onNoteMoved((event) => {
-      if (event.id !== id) return
-      const key = notesKeys.note(id)
-      queryClient.setQueryData<Note | null>(key, (cached) =>
-        cached ? { ...cached, path: event.newPath } : cached
-      )
-      // A read in flight began before the move and would answer the old path: read again.
-      if (queryClient.isFetching({ queryKey: key }) > 0) rereadQueries(queryClient, key)
-    })
-
-    const unsubDeleted = onNoteDeleted((event) => {
-      if (event.id === id) {
-        // Remove from cache
-        queryClient.removeQueries({ queryKey: notesKeys.note(id) })
-      }
-    })
-
-    const unsubExternal = onNoteExternalChange((event) => {
-      if (event.id === id) {
-        void queryClient.invalidateQueries({ queryKey: notesKeys.note(id) })
-      }
-    })
-
-    // A dropped event may have been this note's.
-    const unsubDropped = onNoteEventsDropped(() => {
-      void queryClient.invalidateQueries({ queryKey: notesKeys.note(id) })
-    })
-
-    return () => {
-      unsubUpdated()
-      unsubRenamed()
-      unsubMoved()
-      unsubDeleted()
-      unsubExternal()
-      unsubDropped()
-    }
-  }, [id, queryClient])
+    )
+  }, [id, queryClient, readOnMount])
 
   return {
     note: query.data ?? null,

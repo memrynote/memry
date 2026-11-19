@@ -2238,6 +2238,10 @@
         "prevVault": {
           "label": "Predchádzajúci trezor",
           "description": "Prejsť na predchádzajúci trezor v bočnom paneli"
+        },
+        "todayJournal": {
+          "label": "Dnešný denník",
+          "description": "Otvoriť denník na dnešnom zázname"
         }
       },
       "tabs": {

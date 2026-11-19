@@ -1,6 +1,7 @@
 //! The app-command ACL: the permissions in `permissions/` name exactly the registered commands,
 //! and Tauri's own IPC check, on the ACL that `tauri-build` resolves from this crate's
-//! capabilities, lets the main window call every command and refuses every other window.
+//! capabilities, lets the main window call every command, the sticky window exactly its own
+//! commands, and refuses every other window.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -123,15 +124,25 @@ fn every_permission_names_a_registered_command() {
 }
 
 #[test]
-fn only_the_main_window_and_e2e_builds_get_capabilities_with_app_commands() {
+fn only_main_sticky_and_e2e_builds_get_capabilities_with_app_commands() {
+    let set = |names: &[&str]| names.iter().map(|name| (*name).to_owned()).collect();
     let enabled = strings(&read_json("tauri.conf.json")["app"]["security"]["capabilities"]);
-    assert_eq!(enabled, BTreeSet::from(["main".to_owned()]));
+    assert_eq!(enabled, set(&["main", "sticky"]));
     let main = read_json("capabilities/main.json");
-    assert_eq!(
-        strings(&main["windows"]),
-        BTreeSet::from(["main".to_owned()])
-    );
+    assert_eq!(strings(&main["windows"]), set(&["main"]));
     assert!(strings(&main["permissions"]).contains("app-all"));
+    let sticky = read_json("capabilities/sticky.json");
+    assert_eq!(strings(&sticky["windows"]), set(&["sticky"]));
+    assert_eq!(
+        strings(&sticky["permissions"]),
+        set(&[
+            "core:default",
+            "core:window:allow-start-dragging",
+            "boot",
+            "sticky"
+        ])
+    );
+    assert_eq!(permissions()["sticky"], set(&STICKY));
 
     let e2e = read_json("tauri.e2e.conf.json");
     let granted: BTreeSet<String> = e2e["app"]["security"]["capabilities"]
@@ -182,11 +193,24 @@ fn call(window: &WebviewWindow<MockRuntime>, command: &str) -> Result<(), String
 /// App commands the tables expect a window without `app-all` to be refused.
 const APP_SAMPLE: [&str; 4] = ["app_info", "log_write", "account_get_info", "crdt_open_doc"];
 
+/// The `sticky` permission: what the sticky renderer calls besides `boot`.
+const STICKY: [&str; 10] = [
+    "flush_done",
+    "flush_ready",
+    "settings_get_ai",
+    "settings_get_path",
+    "sticky_delete_draft",
+    "sticky_get_session",
+    "sticky_list_drafts",
+    "sticky_resize",
+    "sticky_save_draft",
+    "sticky_tuck",
+];
+
 /// Labels no capability names in either config.
-const NO_CAPABILITY: [&str; 6] = [
+const NO_CAPABILITY: [&str; 5] = [
     "preboot",
     "pdf-print-1",
-    "sticky",
     "sticky-tab",
     "quick-capture",
     "unknown",
@@ -204,13 +228,27 @@ fn table(e2e: bool) -> Vec<(&'static str, Vec<String>, Vec<String>)> {
             .collect::<Vec<_>>()
     };
     let none_of_them = [names(&APP_SAMPLE), names(&["e2e_app_info"])].concat();
+    // The sticky reaches exactly `boot` + `sticky` of the app commands and is refused the rest.
+    let sticky: BTreeSet<String> = permissions["boot"]
+        .iter()
+        .cloned()
+        .chain(names(&STICKY))
+        .collect();
+    let sticky_reaches: Vec<String> = sticky.iter().cloned().collect();
+    let sticky_refused: Vec<String> = app_all
+        .iter()
+        .filter(|command| !sticky.contains(*command))
+        .cloned()
+        .collect();
     let mut rows = if e2e {
         let everything = [app_all, e2e_all.clone()].concat();
         vec![
             ("main", everything.clone(), names(&["not_a_command"])),
             ("e2e-1", everything, names(&["not_a_command"])),
             // `startup-recovery.e2e.ts` drives the startup-error window through `e2e_*` calls.
-            ("startup-error", e2e_all, names(&APP_SAMPLE)),
+            ("startup-error", e2e_all.clone(), names(&APP_SAMPLE)),
+            // `sticky.e2e.ts` calls `e2e_*` with the sticky window selected.
+            ("sticky", [sticky_reaches, e2e_all].concat(), sticky_refused),
         ]
     } else {
         vec![
@@ -221,6 +259,11 @@ fn table(e2e: bool) -> Vec<(&'static str, Vec<String>, Vec<String>)> {
             ),
             ("startup-error", Vec::new(), none_of_them.clone()),
             ("e2e-1", Vec::new(), none_of_them.clone()),
+            (
+                "sticky",
+                sticky_reaches,
+                [sticky_refused, names(&["e2e_app_info"])].concat(),
+            ),
         ]
     };
     for label in NO_CAPABILITY {

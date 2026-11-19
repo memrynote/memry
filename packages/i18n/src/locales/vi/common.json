@@ -956,6 +956,8 @@
     "componentsVaultSwitcher": {
       "noVaultsYet": "Chưa có kho nào",
       "openVault": "Mở kho",
+      "createVault": "Tạo kho",
+      "openFolderAsVault": "Mở thư mục làm kho",
       "settings": "Cài đặt",
       "remove": "Gỡ “",
       "removeVaultTitle": "Gỡ “{name}” khỏi danh sách?",

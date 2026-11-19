@@ -1,0 +1,861 @@
+{
+  "type": "excalidraw",
+  "version": 2,
+  "source": "memry",
+  "memry": {
+    "id": "canvas_iDDyIsc24YC6",
+    "createdAt": 1768392000000,
+    "updatedAt": 1768392000000
+  },
+  "elements": [
+    {
+      "id": "heading",
+      "type": "text",
+      "x": 0,
+      "y": -110,
+      "width": 523.6,
+      "height": 35,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": null,
+      "seed": 1,
+      "version": 1,
+      "versionNonce": 1,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "text": "Notes in the space race: structure",
+      "originalText": "Notes in the space race: structure",
+      "fontSize": 28,
+      "fontFamily": 5,
+      "textAlign": "left",
+      "verticalAlign": "top",
+      "containerId": null,
+      "autoResize": true,
+      "lineHeight": 1.25
+    },
+    {
+      "id": "card-agc",
+      "type": "rectangle",
+      "x": 30,
+      "y": 310,
+      "width": 260,
+      "height": 168,
+      "angle": 0,
+      "strokeColor": "#ced4da",
+      "backgroundColor": "#ffffff",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": "frame-paper",
+      "roundness": {
+        "type": 3
+      },
+      "seed": 3,
+      "version": 1,
+      "versionNonce": 3,
+      "isDeleted": false,
+      "boundElements": [
+        {
+          "type": "arrow",
+          "id": "arrow-draft-agc"
+        },
+        {
+          "type": "arrow",
+          "id": "arrow-agc-checklists"
+        }
+      ],
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "entityType": "note",
+        "entityId": "note_Vm1qSMYbYxRw"
+      }
+    },
+    {
+      "id": "card-checklists",
+      "type": "rectangle",
+      "x": 340,
+      "y": 310,
+      "width": 260,
+      "height": 168,
+      "angle": 0,
+      "strokeColor": "#ced4da",
+      "backgroundColor": "#ffffff",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": "frame-paper",
+      "roundness": {
+        "type": 3
+      },
+      "seed": 4,
+      "version": 1,
+      "versionNonce": 4,
+      "isDeleted": false,
+      "boundElements": [
+        {
+          "type": "arrow",
+          "id": "arrow-agc-checklists"
+        }
+      ],
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "entityType": "note",
+        "entityId": "note_VZUw1LqiGP2P"
+      }
+    },
+    {
+      "id": "frame-paper",
+      "type": "frame",
+      "x": 0,
+      "y": 260,
+      "width": 640,
+      "height": 260,
+      "angle": 0,
+      "strokeColor": "#bbb",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": null,
+      "seed": 14,
+      "version": 1,
+      "versionNonce": 14,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "name": "Act I: paper"
+    },
+    {
+      "id": "card-flight-plan",
+      "type": "rectangle",
+      "x": 730,
+      "y": 310,
+      "width": 260,
+      "height": 168,
+      "angle": 0,
+      "strokeColor": "#ced4da",
+      "backgroundColor": "#ffffff",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": "frame-voice",
+      "roundness": {
+        "type": 3
+      },
+      "seed": 5,
+      "version": 1,
+      "versionNonce": 5,
+      "isDeleted": false,
+      "boundElements": [
+        {
+          "type": "arrow",
+          "id": "arrow-plan-capcom"
+        }
+      ],
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "entityType": "note",
+        "entityId": "note_m--f3sPbdKee"
+      }
+    },
+    {
+      "id": "card-capcom",
+      "type": "rectangle",
+      "x": 1040,
+      "y": 310,
+      "width": 260,
+      "height": 168,
+      "angle": 0,
+      "strokeColor": "#ced4da",
+      "backgroundColor": "#ffffff",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": "frame-voice",
+      "roundness": {
+        "type": 3
+      },
+      "seed": 6,
+      "version": 1,
+      "versionNonce": 6,
+      "isDeleted": false,
+      "boundElements": [
+        {
+          "type": "arrow",
+          "id": "arrow-plan-capcom"
+        },
+        {
+          "type": "arrow",
+          "id": "arrow-capcom-safire"
+        }
+      ],
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "entityType": "note",
+        "entityId": "note_ntSCDGrmI4YI"
+      }
+    },
+    {
+      "id": "frame-voice",
+      "type": "frame",
+      "x": 700,
+      "y": 260,
+      "width": 640,
+      "height": 260,
+      "angle": 0,
+      "strokeColor": "#bbb",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": null,
+      "seed": 15,
+      "version": 1,
+      "versionNonce": 15,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "name": "Act II: voice"
+    },
+    {
+      "id": "card-safire",
+      "type": "rectangle",
+      "x": 1430,
+      "y": 310,
+      "width": 260,
+      "height": 168,
+      "angle": 0,
+      "strokeColor": "#ced4da",
+      "backgroundColor": "#ffffff",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": "frame-ending",
+      "roundness": {
+        "type": 3
+      },
+      "seed": 7,
+      "version": 1,
+      "versionNonce": 7,
+      "isDeleted": false,
+      "boundElements": [
+        {
+          "type": "arrow",
+          "id": "arrow-capcom-safire"
+        }
+      ],
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "entityType": "note",
+        "entityId": "note_NubUPj3qckiw"
+      }
+    },
+    {
+      "id": "card-apollo1",
+      "type": "rectangle",
+      "x": 1740,
+      "y": 310,
+      "width": 260,
+      "height": 168,
+      "angle": 0,
+      "strokeColor": "#ced4da",
+      "backgroundColor": "#ffffff",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": "frame-ending",
+      "roundness": {
+        "type": 3
+      },
+      "seed": 8,
+      "version": 1,
+      "versionNonce": 8,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "entityType": "note",
+        "entityId": "note_XYOlgaSB-ZkE"
+      }
+    },
+    {
+      "id": "frame-ending",
+      "type": "frame",
+      "x": 1400,
+      "y": 260,
+      "width": 640,
+      "height": 260,
+      "angle": 0,
+      "strokeColor": "#bbb",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": null,
+      "seed": 16,
+      "version": 1,
+      "versionNonce": 16,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "name": "Ending"
+    },
+    {
+      "id": "card-draft",
+      "type": "rectangle",
+      "x": 700,
+      "y": -20,
+      "width": 260,
+      "height": 168,
+      "angle": 0,
+      "strokeColor": "#ced4da",
+      "backgroundColor": "#ffffff",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": {
+        "type": 3
+      },
+      "seed": 2,
+      "version": 1,
+      "versionNonce": 2,
+      "isDeleted": false,
+      "boundElements": [
+        {
+          "type": "arrow",
+          "id": "arrow-draft-agc"
+        }
+      ],
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "entityType": "note",
+        "entityId": "note_yrj9PmybLcey"
+      }
+    },
+    {
+      "id": "card-pillars",
+      "type": "rectangle",
+      "x": 0,
+      "y": -40,
+      "width": 260,
+      "height": 240,
+      "angle": 0,
+      "strokeColor": "#ced4da",
+      "backgroundColor": "#ffffff",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": {
+        "type": 3
+      },
+      "seed": 9,
+      "version": 1,
+      "versionNonce": 9,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "customData": {
+        "entityType": "file",
+        "entityId": "note_ExStzIwciKv-"
+      }
+    },
+    {
+      "id": "sticky-question",
+      "type": "rectangle",
+      "x": 1400,
+      "y": 0,
+      "width": 300,
+      "height": 90,
+      "angle": 0,
+      "strokeColor": "#e67700",
+      "backgroundColor": "#fff3bf",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": {
+        "type": 3
+      },
+      "seed": 17,
+      "version": 1,
+      "versionNonce": 17,
+      "isDeleted": false,
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "sticky-question-label"
+        }
+      ],
+      "updated": 0,
+      "link": null,
+      "locked": false
+    },
+    {
+      "id": "sticky-question-label",
+      "type": "text",
+      "x": 1410,
+      "y": 20,
+      "width": 277.20000000000005,
+      "height": 45,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": null,
+      "seed": 18,
+      "version": 1,
+      "versionNonce": 18,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "text": "Where do the women computers\nfit? Act I or a new act?",
+      "originalText": "Where do the women computers\nfit? Act I or a new act?",
+      "fontSize": 18,
+      "fontFamily": 5,
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "sticky-question",
+      "autoResize": true,
+      "lineHeight": 1.25
+    },
+    {
+      "id": "link-outline-day",
+      "type": "rectangle",
+      "x": 1400,
+      "y": 600,
+      "width": 300,
+      "height": 90,
+      "angle": 0,
+      "strokeColor": "#1971c2",
+      "backgroundColor": "#e7f5ff",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": {
+        "type": 3
+      },
+      "seed": 19,
+      "version": 1,
+      "versionNonce": 19,
+      "isDeleted": false,
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "link-outline-day-label"
+        }
+      ],
+      "updated": 0,
+      "link": "memry://journal/2026-01-01?label=Outline+day",
+      "locked": false
+    },
+    {
+      "id": "link-outline-day-label",
+      "type": "text",
+      "x": 1410,
+      "y": 620,
+      "width": 356.40000000000003,
+      "height": 22.5,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": null,
+      "seed": 20,
+      "version": 1,
+      "versionNonce": 20,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "text": "Journal: the day the outline clicked",
+      "originalText": "Journal: the day the outline clicked",
+      "fontSize": 18,
+      "fontFamily": 5,
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "link-outline-day",
+      "autoResize": true,
+      "lineHeight": 1.25
+    },
+    {
+      "id": "link-hamilton",
+      "type": "rectangle",
+      "x": 0,
+      "y": 600,
+      "width": 300,
+      "height": 90,
+      "angle": 0,
+      "strokeColor": "#1971c2",
+      "backgroundColor": "#ebfbee",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": {
+        "type": 3
+      },
+      "seed": 21,
+      "version": 1,
+      "versionNonce": 21,
+      "isDeleted": false,
+      "boundElements": [
+        {
+          "type": "text",
+          "id": "link-hamilton-label"
+        }
+      ],
+      "updated": 0,
+      "link": "https://en.wikipedia.org/wiki/Margaret_Hamilton_(software_engineer)",
+      "locked": false
+    },
+    {
+      "id": "link-hamilton-label",
+      "type": "text",
+      "x": 10,
+      "y": 620,
+      "width": 297,
+      "height": 22.5,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": null,
+      "seed": 22,
+      "version": 1,
+      "versionNonce": 22,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "text": "Margaret Hamilton on Wikipedia",
+      "originalText": "Margaret Hamilton on Wikipedia",
+      "fontSize": 18,
+      "fontFamily": 5,
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "link-hamilton",
+      "autoResize": true,
+      "lineHeight": 1.25
+    },
+    {
+      "id": "arrow-draft-agc",
+      "type": "arrow",
+      "x": 830,
+      "y": 64,
+      "width": 670,
+      "height": 330,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": {
+        "type": 2
+      },
+      "seed": 10,
+      "version": 1,
+      "versionNonce": 10,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -670,
+          330
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": {
+        "elementId": "card-draft",
+        "focus": 0,
+        "gap": 4
+      },
+      "endBinding": {
+        "elementId": "card-agc",
+        "focus": 0,
+        "gap": 4
+      },
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "elbowed": false
+    },
+    {
+      "id": "arrow-agc-checklists",
+      "type": "arrow",
+      "x": 160,
+      "y": 394,
+      "width": 310,
+      "height": 0,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": {
+        "type": 2
+      },
+      "seed": 11,
+      "version": 1,
+      "versionNonce": 11,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          310,
+          0
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": {
+        "elementId": "card-agc",
+        "focus": 0,
+        "gap": 4
+      },
+      "endBinding": {
+        "elementId": "card-checklists",
+        "focus": 0,
+        "gap": 4
+      },
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "elbowed": false
+    },
+    {
+      "id": "arrow-plan-capcom",
+      "type": "arrow",
+      "x": 860,
+      "y": 394,
+      "width": 310,
+      "height": 0,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": {
+        "type": 2
+      },
+      "seed": 12,
+      "version": 1,
+      "versionNonce": 12,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          310,
+          0
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": {
+        "elementId": "card-flight-plan",
+        "focus": 0,
+        "gap": 4
+      },
+      "endBinding": {
+        "elementId": "card-capcom",
+        "focus": 0,
+        "gap": 4
+      },
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "elbowed": false
+    },
+    {
+      "id": "arrow-capcom-safire",
+      "type": "arrow",
+      "x": 1170,
+      "y": 394,
+      "width": 390,
+      "height": 0,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "dashed",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": {
+        "type": 2
+      },
+      "seed": 13,
+      "version": 1,
+      "versionNonce": 13,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 0,
+      "link": null,
+      "locked": false,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          390,
+          0
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": {
+        "elementId": "card-capcom",
+        "focus": 0,
+        "gap": 4
+      },
+      "endBinding": {
+        "elementId": "card-safire",
+        "focus": 0,
+        "gap": 4
+      },
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "elbowed": false
+    }
+  ],
+  "appState": {
+    "gridSize": 20,
+    "viewBackgroundColor": "#ffffff"
+  },
+  "files": {}
+}
