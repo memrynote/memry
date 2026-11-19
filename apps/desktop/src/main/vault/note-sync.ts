@@ -33,12 +33,14 @@ import {
   saveCanonicalPropertyDefinition
 } from '@memry/domain-notes'
 import {
+  getNoteMetadataById,
   getNoteMetadataByPath,
   getPropertyDefinition as getCanonicalPropertyDefinition,
   updateNoteMetadata,
   type NoteMetadataDb
 } from '@memry/storage-data'
-import { publishProjectionEvent } from '../projections'
+import { flushProjectionEvents, publishProjectionEvent } from '../projections'
+import { DEFAULT_PROJECTION_QUEUE_LIMIT } from '../projections/bus'
 import type { FileNoteProjection, MarkdownNoteProjection } from '../projections/types'
 
 function getCanonicalDb() {
@@ -111,6 +113,13 @@ export function findCanonicalNoteByPath(path: string): { id: string; createdAt: 
   if (!dataDb) return null
   const existing = getNoteMetadataByPath(dataDb, path)
   return existing ? { id: existing.id, createdAt: existing.createdAt } : null
+}
+
+/** The path the canonical row gives note `id`, or null when it has no row. */
+export function findCanonicalNotePath(id: string): string | null {
+  const dataDb = getCanonicalDb()
+  if (!dataDb) return null
+  return getNoteMetadataById(dataDb, id)?.path ?? null
 }
 
 function removeCanonicalMetadata(noteId: string): void {
@@ -345,6 +354,13 @@ export function syncNoteStatToCache(
   input: NoteStatSyncInput,
   options: NoteStatSyncOptions
 ): void {
+  publishProjectionEvent({ type: 'note.upserted', note: persistNoteStat(input, options) })
+}
+
+function persistNoteStat(
+  input: NoteStatSyncInput,
+  options: NoteStatSyncOptions
+): MarkdownNoteProjection {
   const { id, path, title, createdAt, modifiedAt, fileSize } = input
   const localOnly = input.localOnly ?? false
   const emoji = input.emoji ?? null
@@ -368,7 +384,7 @@ export function syncNoteStatToCache(
     }
   }
 
-  const note: MarkdownNoteProjection = {
+  return {
     kind: 'markdown',
     noteId: id,
     path,
@@ -391,8 +407,40 @@ export function syncNoteStatToCache(
     aliases: null,
     wikiLinks: []
   }
+}
 
-  publishProjectionEvent({ type: 'note.upserted', note })
+/** A note row that a folder rename or move carries to a new path. */
+export type NoteMove =
+  | { kind: 'markdown'; input: NoteStatSyncInput }
+  | { kind: 'file'; input: FileSyncInput }
+
+/**
+ * Projection lanes drop their oldest events past DEFAULT_PROJECTION_QUEUE_LIMIT,
+ * and the note-cache lane has no repair for a dropped move.
+ */
+const MOVE_PROJECTION_BATCH = DEFAULT_PROJECTION_QUEUE_LIMIT / 4
+
+/**
+ * Carry many notes to new paths, as a folder rename does.
+ *
+ * Every canonical row moves first, in one synchronous pass, so a watcher event
+ * handled while the index catches up already finds each note at its new path.
+ * The index follows in batches the projection lanes can hold. Publishing one
+ * event per note at once overflowed them on a folder of a few thousand notes,
+ * and every dropped event left a note in the sidebar under the old folder.
+ */
+export async function moveNotesInCache(db: IndexDb, moves: NoteMove[]): Promise<void> {
+  const notes = moves.map((move) =>
+    move.kind === 'markdown'
+      ? persistNoteStat(move.input, { isNew: false })
+      : persistFile(db, move.input).note
+  )
+  for (let start = 0; start < notes.length; start += MOVE_PROJECTION_BATCH) {
+    for (const note of notes.slice(start, start + MOVE_PROJECTION_BATCH)) {
+      publishProjectionEvent({ type: 'note.upserted', note })
+    }
+    await flushProjectionEvents()
+  }
 }
 
 /**
@@ -521,6 +569,15 @@ export interface FileSyncResult {
  * @returns Sync result
  */
 export function syncFileToCache(db: IndexDb, input: FileSyncInput): FileSyncResult {
+  const { result, note } = persistFile(db, input)
+  publishProjectionEvent({ type: 'note.upserted', note })
+  return result
+}
+
+function persistFile(
+  db: IndexDb,
+  input: FileSyncInput
+): { result: FileSyncResult; note: FileNoteProjection } {
   const { id, path, title, fileType, mimeType, fileSize, createdAt, modifiedAt } = input
 
   syncCanonicalMetadata({
@@ -550,17 +607,5 @@ export function syncFileToCache(db: IndexDb, input: FileSyncInput): FileSyncResu
     modifiedAt: modifiedAt.toISOString()
   }
 
-  publishProjectionEvent({
-    type: 'note.upserted',
-    note
-  })
-
-  return {
-    id: noteId,
-    path,
-    title,
-    fileType,
-    mimeType,
-    fileSize
-  }
+  return { result: { id: noteId, path, title, fileType, mimeType, fileSize }, note }
 }

@@ -44,6 +44,14 @@ import { tagsService } from '@/services/tags-service'
  */
 const INDEX_PROGRESS_INVALIDATE_MS = 2000
 
+/**
+ * Minimum spacing between notes-list refetches driven by note events. A folder
+ * rename or a sync pull sends one event per note, and a refetch per event
+ * queued one full `listNotes` per note in main: renaming a 2,500-note folder
+ * kept main busy for minutes after the move itself was done.
+ */
+const NOTE_EVENT_INVALIDATE_MS = 250
+
 // =============================================================================
 // Query Keys
 // =============================================================================
@@ -249,27 +257,29 @@ export function useNotesList(options: UseNotesListOptions = {}): UseNotesListRes
 
   // Subscribe to note events for list invalidation
   useEffect(() => {
-    const unsubCreated = onNoteCreated(() => {
-      // New note added, invalidate lists
+    // The first event refetches at once; the rest of a burst waits for the
+    // window and is covered by one more refetch at its end.
+    let burstTimer: ReturnType<typeof setTimeout> | null = null
+    let burstPending = false
+    const invalidateLists = (): void => {
+      if (burstTimer) {
+        burstPending = true
+        return
+      }
       void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
-    })
+      burstTimer = setTimeout(() => {
+        burstTimer = null
+        if (!burstPending) return
+        burstPending = false
+        invalidateLists()
+      }, NOTE_EVENT_INVALIDATE_MS)
+    }
 
-    const unsubDeleted = onNoteDeleted(() => {
-      // Note removed, invalidate lists
-      void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
-    })
-
-    const unsubUpdated = onNoteUpdated(() => {
-      void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
-    })
-
-    const unsubRenamed = onNoteRenamed(() => {
-      void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
-    })
-
-    const unsubMoved = onNoteMoved(() => {
-      void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
-    })
+    const unsubCreated = onNoteCreated(invalidateLists)
+    const unsubDeleted = onNoteDeleted(invalidateLists)
+    const unsubUpdated = onNoteUpdated(invalidateLists)
+    const unsubRenamed = onNoteRenamed(invalidateLists)
+    const unsubMoved = onNoteMoved(invalidateLists)
 
     // The background index build (vault open on a not-yet-indexed vault) writes
     // notes straight into the cache without per-note events, so the list would
@@ -284,6 +294,7 @@ export function useNotesList(options: UseNotesListOptions = {}): UseNotesListRes
     })
 
     return () => {
+      if (burstTimer) clearTimeout(burstTimer)
       unsubCreated()
       unsubUpdated()
       unsubDeleted()

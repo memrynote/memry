@@ -74,6 +74,7 @@ import {
 import { flushPendingWritebacks } from '../sync/crdt-writeback'
 import { DEFAULT_JOURNAL_DATE_FORMAT } from '@memry/storage-vault'
 import { indexVault, rebuildIndex, resetIndexDatabase } from './indexer'
+import { healCaseVariantRows } from './case-variant-heal'
 import { closeActivityLog, openActivityLog } from './activity-log'
 import { createLogger } from '../lib/logger'
 import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
@@ -465,6 +466,14 @@ async function runBackgroundIndexBuild(input: BackgroundIndexBuildInput): Promis
     backgroundIndexBuildCancelled || isVaultShuttingDown() || getStatus().path !== vaultPath
 
   await lockedFilesChecked
+  if (isStale()) return
+
+  try {
+    await healCaseVariantRows(vaultPath)
+  } catch (error) {
+    logger.error('Dropping case-variant copies of notes and folders failed:', error)
+    trackMainError('vault', 'case_variant_heal', error)
+  }
   if (isStale()) return
 
   // Before the walk: a file renamed or moved while closed pairs with its

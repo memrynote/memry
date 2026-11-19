@@ -190,6 +190,20 @@ An empty folder cannot produce a phantom, so this class of bug hides until a fol
 
 Related: folder expanded state is keyed by the `folder-<path>` node id and persisted, in both renderers. A path change must **remap** those keys (`remapExpandedFolderIds`, exposed as `renameNode` on both tree handles), or the folder and everything open inside it collapse on rename and the dead ids linger in storage.
 
+## Case-Only Folder Renames on Case-Insensitive Disks
+
+macOS (APFS) and Windows (NTFS) are case-insensitive by default, so after `Supernotes` becomes `SuperNotes` the old spelling still opens every file. chokidar keeps reporting files and subfolders under the old spelling (`change Supernotes/x.md`, `addDir Supernotes/Sub`). No row has that exact path, so the watcher used to index each file again under a new id, record the old-case folder again, and queue a sync create for every note. The sidebar then showed both folders, only one existed on disk, and the server received thousands of duplicate notes.
+
+The rules that keep this closed:
+
+- The watcher spells every add, change and addDir path the way the disk does (`diskCaseOf`, `src/main/vault/disk-case.ts`, built on the native `realpathSync`) before it looks up a row.
+- While the app runs its own folder rename, the watcher skips the add and change events for notes the app already moved.
+- A delayed unlink is dropped when the data DB shows the note now lives at another path. The index catches up in batches, so on Linux an unlink of the old path can arrive after the data DB moved the note.
+- `moveNotesInCache` moves every data-DB row in one synchronous pass, then updates the index in batches of 500 with a flush between them. One update per note used to overflow the 2,000-event projection queue, and the overflow left notes at the old path for good.
+- The notes list refetch from note events is throttled (`use-notes-query.ts`). One refetch per moved note pinned main for minutes on a large folder.
+
+Vaults already damaged by the old behavior heal at vault open (`case-variant-heal.ts`). Rows whose paths differ only in case and point to the same file collapse onto the row that matches the disk's spelling. The heal is local only: it touches no file and syncs no delete, because a case-insensitive peer can hold the duplicate and the real note in one file, and a synced delete would unlink the real note there. Duplicates that were already pushed stay on the server and on other devices. On Linux each spelling is its own file, so the heal changes nothing.
+
 ## Windows: The Vault Watcher Locks Every Folder That Has a Subfolder
 
 chokidar watches the vault with one `fs.watch` per directory, and on Windows each of those is an open directory handle. Windows refuses to rename a directory while anything beneath it is open, so `fs.rename` of any vault folder that contains a subfolder fails `EPERM` for as long as the watcher runs. Retrying never helps. A folder with no subfolder renames fine, which makes the failure look like it only hits "certain folders" (#2206).

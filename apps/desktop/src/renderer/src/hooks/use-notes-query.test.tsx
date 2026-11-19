@@ -210,16 +210,44 @@ describe('use-notes-query', () => {
       hasMore: false
     } satisfies NoteListResponse)
 
-    await act(async () => {
-      mocks.handlers.created[0]()
-      mocks.handlers.updated[0]({ id: 'n2' })
-      mocks.handlers.renamed[0]({ id: 'n2' })
-      mocks.handlers.moved[0]()
-      mocks.handlers.deleted[0]({ id: 'n2' })
-    })
-
-    await waitFor(() => expect(mocks.notesService.list).toHaveBeenCalledTimes(6))
+    const events = [
+      () => mocks.handlers.created[0](),
+      () => mocks.handlers.updated[0]({ id: 'n2' }),
+      () => mocks.handlers.renamed[0]({ id: 'n2' }),
+      () => mocks.handlers.moved[0](),
+      () => mocks.handlers.deleted[0]({ id: 'n2' })
+    ]
+    for (const [i, fire] of events.entries()) {
+      // Apart, so each event is the first of its own burst.
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 300))
+        fire()
+      })
+      await waitFor(() => expect(mocks.notesService.list).toHaveBeenCalledTimes(i + 2))
+    }
     expect(result.current.notes[0]?.title).toBe('Second')
+  })
+
+  it('refetches a burst of note events once at its start and once at its end', async () => {
+    const { result } = renderHook(() => useNotesList({ folder: 'Work' }), { wrapper })
+    await waitFor(() => expect(result.current.notes[0]?.title).toBe('First'))
+
+    mocks.notesService.list.mockResolvedValue({
+      notes: [listItem('n2', 'Moved')],
+      total: 1,
+      hasMore: false
+    } satisfies NoteListResponse)
+
+    // A folder rename sends one event per note it moved.
+    await act(async () => {
+      for (let i = 0; i < 2500; i++) mocks.handlers.moved[0]()
+    })
+    await waitFor(() => expect(mocks.notesService.list).toHaveBeenCalledTimes(3))
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 600))
+    })
+    expect(mocks.notesService.list).toHaveBeenCalledTimes(3)
+    expect(result.current.notes[0]?.title).toBe('Moved')
   })
 
   it('refetches a list that includes journal entries on journal events, and only that one', async () => {
