@@ -37,6 +37,7 @@ pub mod session;
 pub mod settings;
 pub mod shell;
 pub mod startup_values;
+pub mod sticky;
 pub mod sync;
 pub mod tags;
 pub mod telemetry;
