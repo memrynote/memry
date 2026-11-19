@@ -3,7 +3,7 @@
 //! reach that editor, or its next autosave overwrites the write. A stale entry is harmless: the
 //! write falls back to the headless path, which is guarded by the read stamp.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::Mutex;
 
 #[derive(Default)]
@@ -12,13 +12,11 @@ pub struct LiveCanvases(Mutex<Registry>);
 #[derive(Default)]
 struct Registry {
     owners: HashMap<String, String>,
-    windows: HashSet<String>,
 }
 
 impl LiveCanvases {
-    /// `markCanvasOpen`. `true` the first time this window opens a canvas, so the shell hooks its
-    /// close once per window rather than once per open.
-    pub fn open(&self, canvas_id: &str, window: &str) -> bool {
+    /// `markCanvasOpen`.
+    pub fn open(&self, canvas_id: &str, window: &str) {
         let mut registry = self
             .0
             .lock()
@@ -26,7 +24,6 @@ impl LiveCanvases {
         registry
             .owners
             .insert(canvas_id.to_owned(), window.to_owned());
-        registry.windows.insert(window.to_owned())
     }
 
     /// `markCanvasClosed`: only the current owner releases a canvas, so a window that unmounts
@@ -52,7 +49,6 @@ impl LiveCanvases {
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         registry.owners.retain(|_, owner| owner != window);
-        registry.windows.remove(window);
     }
 
     /// `getCanvasWindowId`.
@@ -73,10 +69,9 @@ mod tests {
     fn the_latest_opener_owns_a_canvas_until_it_closes_it() {
         let live = LiveCanvases::default();
         assert_eq!(live.window_of("c1"), None);
-        assert!(live.open("c1", "main"));
+        live.open("c1", "main");
         assert_eq!(live.window_of("c1").as_deref(), Some("main"));
-        assert!(live.open("c1", "w2"), "a new window is reported once");
-        assert!(!live.open("c2", "w2"));
+        live.open("c1", "w2");
         live.close("c1", "main");
         assert_eq!(live.window_of("c1").as_deref(), Some("w2"));
         live.close("c1", "w2");
@@ -93,6 +88,7 @@ mod tests {
         assert_eq!(live.window_of("c1"), None);
         assert_eq!(live.window_of("c2"), None);
         assert_eq!(live.window_of("c3").as_deref(), Some("w2"));
-        assert!(live.open("c1", "main"), "a reopened window is hooked again");
+        live.open("c1", "main");
+        assert_eq!(live.window_of("c1").as_deref(), Some("main"));
     }
 }

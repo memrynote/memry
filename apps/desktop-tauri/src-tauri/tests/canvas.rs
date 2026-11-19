@@ -22,6 +22,7 @@ use memry_tauri::commands::canvas::{
 };
 use memry_tauri::commands::canvas_folders::{canvas_folder_create, canvas_folder_rename};
 use memry_tauri::events::{CanvasCreatedEvent, CanvasFolderUpdatedEvent, CanvasUpdatedEvent};
+use memry_tauri::guards::process_gone::release_page_resources;
 use serde_json::{Value, json};
 use tauri::test::{MockRuntime, mock_app};
 use tauri::{App, Listener, Manager, WebviewUrl, WebviewWindowBuilder};
@@ -241,4 +242,29 @@ fn a_window_owns_the_canvas_it_opened_until_it_closes_it() {
         tauri::async_runtime::block_on(canvas_live_closed(app(), window(), "c1".into())).unwrap();
     assert!(closed.ok);
     assert_eq!(f.app.state::<LiveCanvases>().window_of("c1"), None);
+}
+
+#[test]
+fn a_window_that_goes_forgets_the_canvases_it_had_open() {
+    let f = opened();
+    let app = || f.app.handle().clone();
+    let main = WebviewWindowBuilder::new(&f.app, "main", WebviewUrl::default())
+        .build()
+        .unwrap();
+    let board = WebviewWindowBuilder::new(&f.app, "board", WebviewUrl::default())
+        .build()
+        .unwrap();
+    for (window, id) in [(&board, "c1"), (&board, "c2"), (&main, "c3")] {
+        let window = window.as_ref().window();
+        tauri::async_runtime::block_on(canvas_live_opened(app(), window, id.into())).unwrap();
+    }
+
+    // What the window's `Destroyed` (and a page reload) runs: the page-watch plugin's hooks
+    // cannot be driven (`RunEvent` is non-exhaustive).
+    release_page_resources(&app(), "board");
+
+    let live = f.app.state::<LiveCanvases>();
+    assert_eq!(live.window_of("c1"), None);
+    assert_eq!(live.window_of("c2"), None);
+    assert_eq!(live.window_of("c3").as_deref(), Some("main"));
 }

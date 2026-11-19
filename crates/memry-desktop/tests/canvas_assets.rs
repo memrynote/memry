@@ -319,3 +319,217 @@ fn dropping_an_image_or_deleting_the_canvas_keeps_its_file() {
     assert!(w.canvases.delete(&id, NOW + 30).unwrap());
     assert!(w.store_file(&filename).exists());
 }
+
+/// A sidecar descriptor as Electron's upload writes it.
+fn descriptor(content_hash: &str, file_id: &str, attachment_id: &str) -> Value {
+    serde_json::json!({
+        "fileId": file_id, "attachmentId": attachment_id, "contentHash": content_hash,
+        "chunkHashes": ["c1"], "mimeType": "image/png", "sizeBytes": 10,
+        "filename": format!("{content_hash}.png"),
+    })
+}
+
+impl World {
+    /// A scene showing two stored images, as the editor saves it: no sidecar of its own.
+    fn scene_with_two_images(&self, a: &str, b: &str) -> String {
+        serde_json::json!({
+            "type": "excalidraw", "version": 2, "source": "memry",
+            "elements": [{ "id": "i1", "type": "image", "fileId": "f1" },
+                         { "id": "i2", "type": "image", "fileId": "f2" }],
+            "appState": {},
+            "files": {
+                "f1": { "id": "f1", "mimeType": "image/png",
+                        "dataURL": self.asset_url(&format!("{a}.png")) },
+                "f2": { "id": "f2", "mimeType": "image/png",
+                        "dataURL": self.asset_url(&format!("{b}.png")) }
+            }
+        })
+        .to_string()
+    }
+
+    /// The same scene as a peer pushed it, with its `memryAssets` sidecar.
+    fn scene_with_sidecar(&self, a: &str, b: &str) -> String {
+        let mut scene: Value = serde_json::from_str(&self.scene_with_two_images(a, b)).unwrap();
+        scene["memryAssets"] =
+            serde_json::json!([descriptor(a, "f1", "att-a"), descriptor(b, "f2", "att-b")]);
+        scene.to_string()
+    }
+
+    /// The scene of the payload the next push sends, `None` when no push is queued.
+    fn queued_scene(&self, id: &str) -> Option<String> {
+        let db = self.data_db();
+        let queued: bool = db
+            .query_row(
+                "SELECT EXISTS (SELECT 1 FROM outbox WHERE item_type = 'canvas' AND item_id = ?1)",
+                [id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let payload: String = db
+            .query_row(
+                "SELECT payload FROM sync_items WHERE item_type = 'canvas' AND item_id = ?1",
+                [id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let payload: Value = serde_json::from_str(&payload).unwrap();
+        queued.then(|| payload["scene"].as_str().unwrap().to_owned())
+    }
+
+    /// Opens the canvas and saves the scene the editor shows, as the editor does on mount.
+    fn open_and_save(&self, id: &str, scene: &str) -> Update {
+        self.data_db().execute("DELETE FROM outbox", []).unwrap();
+        self.save_scene(id, scene)
+    }
+}
+
+fn hashes(sidecar: &Value) -> Vec<String> {
+    sidecar
+        .as_array()
+        .expect("a sidecar")
+        .iter()
+        .map(|d| d["contentHash"].as_str().unwrap().to_owned())
+        .collect()
+}
+
+fn saved_path(w: &World, id: &str) -> String {
+    let db = w.data_db();
+    db.query_row(
+        "SELECT file_path FROM canvas_files WHERE canvas_id = ?1",
+        [id],
+        |row| row.get(0),
+    )
+    .unwrap()
+}
+
+#[test]
+fn an_adopted_canvas_keeps_its_sidecar_images_through_open_and_save() {
+    let w = world();
+    w.create("Seed", None, "a");
+    let (a, b) = (hash(b"image a"), hash(b"image b"));
+    // Reconcile's adopt (`canvas/reconcile.rs` on #5211, Electron `reconcile.ts:593`) records a
+    // document no row names through `canvas::create` with the document's scene.
+    let id = memry_core::domain::canvas::new_id();
+    memry_core::domain::canvas::create(
+        &w.data_db(),
+        &memry_core::domain::canvas::NewCanvas {
+            id: Some(&id),
+            title: Some("Adopted"),
+            scene: Some(&w.scene_with_sidecar(&a, &b)),
+            ..Default::default()
+        },
+        &w.vault_id(),
+        "device-x",
+        NOW,
+    )
+    .unwrap();
+
+    w.open_and_save(&id, &w.scene_with_two_images(&a, &b));
+
+    let saved = w.file(&saved_path(&w, &id));
+    assert_eq!(hashes(&sidecar(&saved)), vec![a.clone(), b.clone()]);
+    let pushed = w.queued_scene(&id).expect("the save is queued");
+    assert_eq!(hashes(&sidecar(&pushed)), vec![a.clone(), b.clone()]);
+    assert_eq!(sidecar(&pushed)[1]["attachmentId"], "att-b");
+}
+
+#[test]
+fn a_pulled_canvas_keeps_its_sidecar_images_through_open_and_save() {
+    let w = world();
+    w.create("Seed", None, "a");
+    let (a, b) = (hash(b"image a"), hash(b"image b"));
+    let payload = serde_json::json!({
+        "id": "pulled", "vaultId": w.vault_id(), "title": "Pulled",
+        "scene": w.scene_with_sidecar(&a, &b), "folder": null, "icon": null,
+        "ownerNoteId": null, "clock": { "device-peer": 1 }, "deletedAt": null,
+    });
+    let record = memry_core::storage::repositories::sync_items::InboundRecord {
+        item_type: "canvas".to_owned(),
+        item_id: "pulled".to_owned(),
+        payload_json: payload.to_string(),
+        server_cursor: Some(1),
+        signer_device_id: Some("device-peer".to_owned()),
+        updated_at: NOW,
+        deleted_at: None,
+    };
+    memry_core::sync::apply::apply_inbound(&w.data_db(), &record, NOW).unwrap();
+
+    w.open_and_save("pulled", &w.scene_with_two_images(&a, &b));
+
+    let saved = w.file(&saved_path(&w, "pulled"));
+    assert_eq!(hashes(&sidecar(&saved)), vec![a.clone(), b.clone()]);
+    let pushed = w.queued_scene("pulled").expect("the save is queued");
+    assert_eq!(hashes(&sidecar(&pushed)), vec![a, b]);
+}
+
+#[test]
+fn a_conflict_copy_keeps_the_sidecar_of_the_drawing_found_on_disk() {
+    let w = world();
+    let id = w.create("Board", None, "a").canvas.summary.id;
+    let read = w.canvases.get(&id).unwrap().unwrap().sha256;
+    let (a, b) = (hash(b"image a"), hash(b"image b"));
+    // Another device's save landed in the document after this reader read it.
+    let meta = memry_core::domain::canvas::file_format::FileMeta {
+        id: id.clone(),
+        created_at: NOW,
+        updated_at: NOW,
+    };
+    fs::write(
+        w.vault.join("canvases/Board.excalidraw"),
+        memry_core::domain::canvas::file_format::with_file_meta(
+            &w.scene_with_sidecar(&a, &b),
+            &meta,
+        ),
+    )
+    .unwrap();
+
+    let input = CanvasUpdateInput {
+        id: id.clone(),
+        scene: Some(super::canvas_service::scene("mine")),
+        expected_sha256: read,
+        ..CanvasUpdateInput::default()
+    };
+    let Update::Saved {
+        conflict_copy: Some(copy),
+        ..
+    } = w.canvases.update(&input, NOW + 10).unwrap()
+    else {
+        panic!("a conflict copy");
+    };
+    let copy_id = copy.canvas.summary.id;
+    assert_eq!(
+        hashes(&sidecar(&copy.canvas.scene)),
+        vec![a.clone(), b.clone()]
+    );
+    assert_eq!(
+        hashes(&sidecar(&w.file(&saved_path(&w, &copy_id)))),
+        vec![a.clone(), b.clone()]
+    );
+    let mut rows = w.rows(&copy_id);
+    rows.sort();
+    let mut expected = vec![a, b];
+    expected.sort();
+    assert_eq!(rows, expected, "the copy's images are recorded for it");
+}
+
+#[test]
+fn a_save_with_no_read_stamp_still_carries_the_sidecar() {
+    let w = world();
+    let id = w.create("Board", None, "a").canvas.summary.id;
+    let shown = hash(PNG);
+    w.record(&id, &shown, "f1", &format!("{shown}.png"));
+
+    let input = CanvasUpdateInput {
+        id: id.clone(),
+        scene: Some(w.scene_with_image("f1", &format!("{shown}.png"))),
+        expected_sha256: None,
+        ..CanvasUpdateInput::default()
+    };
+    w.canvases.update(&input, NOW + 10).unwrap();
+
+    assert_eq!(hashes(&sidecar(&w.scene_of(&id))), vec![shown.clone()]);
+    assert_eq!(
+        hashes(&sidecar(&w.queued_scene(&id).expect("queued"))),
+        vec![shown]
+    );
+}

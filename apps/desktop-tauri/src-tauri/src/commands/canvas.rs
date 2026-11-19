@@ -18,7 +18,7 @@ use memry_desktop::canvas::service::{
 use memry_desktop::seams::secure_store::DeviceIdentityStore;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tauri::{AppHandle, Manager, Runtime, Window, WindowEvent, Wry};
+use tauri::{AppHandle, Manager, Runtime, Window, Wry};
 
 use super::blocking;
 use super::error::{CommandError, ErrorKind};
@@ -444,8 +444,14 @@ fn live<R: Runtime>(app: &AppHandle<R>) -> tauri::State<'_, LiveCanvases> {
     app.state::<LiveCanvases>()
 }
 
-/// `canvas:live-opened`: the calling window now has the canvas in its editor. The window's close
-/// is hooked once, on its first open, and forgets everything it owned.
+/// The page of window `label` closed or started a new document: it has no canvas mounted any
+/// more (`forgetWindow`). Called from `release_page_resources`, which the window's `Destroyed`
+/// reaches; a reloaded editor opens its canvas again.
+pub fn release_page<R: Runtime>(app: &AppHandle<R>, label: &str) {
+    live(app).forget_window(label);
+}
+
+/// `canvas:live-opened`: the calling window now has the canvas in its editor.
 #[tauri::command]
 #[specta::specta]
 pub async fn canvas_live_opened<R: Runtime>(
@@ -456,15 +462,7 @@ pub async fn canvas_live_opened<R: Runtime>(
     if canvas_id.is_empty() {
         return Ok(CanvasLiveAck { ok: false });
     }
-    let label = window.label().to_owned();
-    if live(&app).open(&canvas_id, &label) {
-        let app = app.clone();
-        window.on_window_event(move |event| {
-            if matches!(event, WindowEvent::Destroyed) {
-                live(&app).forget_window(&label);
-            }
-        });
-    }
+    live(&app).open(&canvas_id, window.label());
     Ok(CanvasLiveAck { ok: true })
 }
 

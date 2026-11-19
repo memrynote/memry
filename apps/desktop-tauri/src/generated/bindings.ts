@@ -143,10 +143,7 @@ export const commands = {
 	canvasListAssets: (canvasId: string) => __TAURI_INVOKE<CanvasListAssetsResponse>("canvas_list_assets", { canvasId }),
 	/**  `canvas:live-closed`: only the window that owns the canvas releases it. */
 	canvasLiveClosed: (canvasId: string) => __TAURI_INVOKE<CanvasLiveAck>("canvas_live_closed", { canvasId }),
-	/**
-	 *  `canvas:live-opened`: the calling window now has the canvas in its editor. The window's close
-	 *  is hooked once, on its first open, and forgets everything it owned.
-	 */
+	/**  `canvas:live-opened`: the calling window now has the canvas in its editor. */
 	canvasLiveOpened: (canvasId: string) => __TAURI_INVOKE<CanvasLiveAck>("canvas_live_opened", { canvasId }),
 	/**  `canvas:open-external`: the document in the OS default app. */
 	canvasOpenExternal: (id: string) => __TAURI_INVOKE<null>("canvas_open_external", { id }),
