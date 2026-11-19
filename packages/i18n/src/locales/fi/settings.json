@@ -2238,6 +2238,10 @@
         "prevVault": {
           "label": "Edellinen holvi",
           "description": "Siirry sivupalkin edelliseen holviin"
+        },
+        "todayJournal": {
+          "label": "Tämän päivän päiväkirja",
+          "description": "Avaa päiväkirja tämän päivän merkintään"
         }
       },
       "tabs": {

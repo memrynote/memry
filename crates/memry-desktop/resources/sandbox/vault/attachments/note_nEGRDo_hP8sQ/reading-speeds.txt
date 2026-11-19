@@ -1,0 +1,6 @@
+Reading speed samples from the Aurora beta (words per minute)
+reader,day theme,night theme
+r01,231,244
+r02,198,215
+r03,264,259
+r04,212,240

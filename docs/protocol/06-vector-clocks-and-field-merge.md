@@ -538,12 +538,74 @@ homeNoteId
 ```
 
 **A field absent from the list is not merged at all** and does not appear in
-`merged` (`packages/sync-client/src/field-merge.ts:118`).
+`merged` (`packages/sync-client/src/field-merge.ts:118`). A task's three list
+fields are the one exception, unioned by §6.7.1 beside the field merge.
 
 `initAllFieldClocks(docClock, fields)` seeds **every listed field** with a copy of
 the document clock (`packages/sync-client/src/field-merge.ts:42-46`). It is what
 a client uses when a row has a document clock but no field clocks yet
 (`packages/sync-client/src/offline-clock.ts:76`, `:92`).
+
+### 6.7.1 A task's list fields are unioned on a concurrent merge
+
+**Normative.** `tags`, `linkedNoteIds` and `linkedCanvasIds` are outside
+`TASK_SYNCABLE_FIELDS` and carry no field clock. On §6.3.1's concurrent branch
+of a `task` apply, a client MUST replace each of the three lists that the remote
+payload carries with the union of the local list and the remote list
+(`apps/desktop/src/main/sync/item-handlers/task-handler.ts:221-242`):
+
+1. **Presence.** The union runs only for a list the remote carries
+   (`if (data.tags)`, `:228`, `:233`, `:238`). A remote that omits the key or
+   carries `null` leaves the local list unchanged. A remote empty array is
+   present, so the result is the local list. A remote list of any other shape
+   is refused: `TaskSyncPayloadSchema` accepts only an array of strings
+   (`packages/contracts/src/sync-payloads.ts:56-58`), and the core flags the
+   record corrupt with the item id and list name
+   (`crates/memry-core/src/domain/task_merge.rs:248-279`).
+2. **Order.** Order is not part of the rule, and a reader MUST NOT depend on
+   it. Electron builds the union as the local entries, then the remote's new
+   ones (`[...new Set([...local, ...remote])]`, `:230`, `:235`, `:240`), but
+   stores it in junction tables and reads it back in index order: `task_tags`
+   has the primary key `(task_id, tag)` on a `NOCASE` column
+   (`packages/db-schema/src/schema/task-relations.ts:35-44`), and `queryTags`
+   has no `ORDER BY` (`task-handler.ts:69-76`). Electron stores
+   `["Alpha", "beta", "gamma", "zeta"]` where the core stores
+   `["zeta", "Alpha", "beta", "gamma"]`. Both hold the same set.
+3. **Tags.** `writeTags` stores the result (`:100-115`). It trims each tag with
+   JavaScript `trim`, drops an empty tag, and dedupes by `foldTag`
+   (`packages/shared/src/tag-fold.ts:25`; vector class `tag-fold`), keeping the
+   first spelling. A local `urgent` and a remote `Urgent` give `urgent`.
+4. **Links.** Note and canvas ids dedupe by exact string equality, so `n1` and
+   `N1` are two links (`:117-133`).
+5. **No removal set.** The union cannot express a removal. When one device
+   removes an entry and the other device makes any concurrent edit to the task
+   while it still holds the entry, the merge brings the entry back on every
+   device. Electron accepts this trade (`:222-227`): a stray link is visible and
+   removable, and a silently dropped link is not.
+6. **Wholesale branch.** On §6.3.1's apply branch (the remote dominates, or
+   there is nothing to compare), a client MUST keep each of the three lists
+   that the remote omits or carries as `null` at its local value. Electron
+   writes a junction list only when the remote carries it
+   (`task-handler.ts:312-321`). Electron builds from before #1879
+   (2026-08-28) push no `linkedCanvasIds`, builds from before 2026-03-19 push
+   no `tags` or `linkedNoteIds` either, and the write floor (chapter 11
+   §11.11) lets them push. A client that stored such a row verbatim would drop
+   the local list and push the shorter list with its next edit. The core copies
+   the local value into the remote payload before it stores the row
+   (`crates/memry-core/src/domain/task_merge.rs:281-326`, called at `:184-187`).
+   A tombstone, a remote that will not parse, and a deleted or corrupt local
+   row keep nothing.
+
+The merged row is re-queued at the union clock by §6.5.2 P3, so the union
+reaches the server and the peer. A client that kept only the local lists would
+re-push them under a clock that dominates the peer's row, and an entry the peer
+added would be lost on every device. Desktop's Rust core does the union in
+`crates/memry-core/src/domain/task_merge.rs` (`union_list`), on the one apply
+path that pull, first sync and relay share (`crates/memry-core/src/sync/apply/record.rs:85`).
+
+The `field-merge` vector class does not cover this rule: the union is inline in
+the task handler and not in `mergeTaskFields`. The two-device tests in
+`crates/memry-core/tests/sync_list_fields_union.rs` pin it.
 
 ## 6.8 Which types merge which way — Q06.5
 
@@ -551,11 +613,12 @@ a client uses when a row has a document clock but no field clocks yet
 
 | Type                            | Algorithm                                                                                  |
 | ------------------------------- | ------------------------------------------------------------------------------------------ |
-| `task`                          | field-level merge over `TASK_SYNCABLE_FIELDS`                                              |
+| `task`                          | field-level merge over `TASK_SYNCABLE_FIELDS`, plus the list union of §6.7.1               |
 | `project`                       | field-level merge over `PROJECT_SYNCABLE_FIELDS`                                           |
 | `calendar_event`                | field-level merge over the fourteen `CALENDAR_EVENT_SYNCABLE_FIELDS` (chapter 13 §13.7.17) |
 | `settings`                      | dotted-path field clocks, §6.9                                                             |
 | `canvas`                        | the document-level resolver of §6.3.1, plus a conflict copy (chapter 13 §13.7.21)          |
+| `note`                          | the document-level resolver of §6.3.1, plus the reference union of §6.8.1                  |
 | **every other subscribed type** | the document-level resolver of §6.3.1                                                      |
 
 The field-level path exists only where a payload carries `fieldClocks`
@@ -573,6 +636,66 @@ above is the enumeration.
 whatever the row's algorithm decided.
 
 **Disposition of Q06.5: answered** (this section).
+
+### 6.8.1 A note's attachment references are unioned on apply
+
+**Normative.** `attachmentReferences` (chapter 14 §14.7) carries no field
+clock. When a client applies a remote `note` over a live local note, on
+§6.3.1's concurrent branch and on its apply branch alike, it MUST store the
+union of the local list and the remote list in place of the remote list
+(`apps/desktop/src/main/sync/item-handlers/note-handler.ts:135-145`, `:537-553`):
+
+1. **Presence.** A remote list that is absent, `null` or `[]` leaves the local
+   list unchanged (`if (!remote?.length) return undefined`, `:139`). Desktop
+   pushes the key only when the list is non-empty
+   (`apps/desktop/src/main/sync/item-handlers/note-handler-sync-helpers.ts:79-81`),
+   so a peer that removed its last reference sends no key.
+2. **Order.** The result starts with the local entries in their order, local
+   duplicates kept, then adds each remote id the result does not hold yet, in
+   the remote's order (`:140-144`). Ids compare by exact string equality.
+3. **Prune.** The client then drops each id it has itself proved gone, and
+   only when all three of these hold
+   (`pruneUnresolvableReferences`,
+   `packages/sync-client/src/attachment-download-state.ts:324-366`; `:541-543`;
+   `crates/memry-core/src/sync/attachments/store/download_failures.rs:213-246`):
+   - this device recorded `MISSING_PROBE_LIMIT` (3) failures of reason
+     `missing` for the id under this note, each probe at least 24 h after the
+     one before (`attachment-download-state.ts:26-34`, `:205-210`;
+     `download_failures.rs:24-27`, `:133-135`). A 404 or 410 counts as
+     missing, and so does a manifest signature that does not verify
+     (`attachment-download-state.ts:108-118`; `download_failures.rs:9-11`);
+   - the failure has no retry left: `next_attempt_at IS NULL`, which the
+     third missing record sets (`attachment-download-state.ts:346`;
+     `download_failures.rs:229-230`);
+   - no `attachment_upload_queue` row is queued for the note
+     (`attachment-download-state.ts:331-337`; `download_failures.rs:222`).
+
+   One 404, a transient failure, or an id never probed drops nothing, so a
+   slow upload is never pruned. A prune that fails keeps every id, and the
+   note still applies (`attachment-download-state.ts:362-364`).
+
+4. **No removal set.** The union cannot express a removal. An id one device
+   removes stays on every device that still holds it, whichever clock wins, and
+   that device's next push of the note brings it back everywhere. Only the
+   prune of rule 3 drops an id for good.
+5. **Scope.** A new note, a tombstone and a skip store the remote's value
+   unchanged (`:702-704`). Desktop leaves the list of a local binary note
+   untouched (`:255-342`); desktop pushes no list for one (`:40-52`), so a
+   remote binary note carries none and rule 1 gives the same result.
+
+On the concurrent branch the union is part of the merged row that §6.5.2 P3
+re-queues at the union clock, so it reaches the server and the peer. A client
+that stored the remote list there would re-push it under a clock that
+dominates the local row, and the id only this device held would be lost on
+every device. The two devices of a concurrent upload can hold the same ids in
+different orders: the merging device keeps its own first, and the other device
+unions the merged row over its own list on the apply branch.
+
+The Rust core runs the union in `crates/memry-core/src/domain/notes/merge.rs`,
+on the one apply path that pull, first sync and relay share
+(`crates/memry-core/src/sync/apply/record.rs:89`). No vector class covers this
+rule. The two-device tests in
+`crates/memry-core/tests/sync_note_attachment_union.rs` pin it.
 
 ## 6.9 Settings use a third shape
 

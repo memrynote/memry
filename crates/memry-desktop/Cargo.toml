@@ -40,6 +40,9 @@ unicode-segmentation = "1.13.3"
 # The note fold formats inline dates in the local time zone, as `Intl.DateTimeFormat` does;
 # already built for `trash`.
 chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
+# The device zone's IANA name for the sandbox's calendar events (`sandbox::device_zone_name`);
+# chrono's `clock` feature already builds it, so the lockfile gains no crate.
+iana-time-zone = "0.1.65"
 # `String.prototype.normalize("NFKC")` of the MathJax glyph text in `elements/math`.
 unicode-normalization = "0.1.25"
 # Spec-conformant HTML parsing where Electron uses one: Turndown's domino and the HTML block text
@@ -111,6 +114,8 @@ image = { workspace = true }
 memry-media = { path = "../memry-media" }
 # The OCR language packs are gzip; native Tesseract reads them unpacked (`services::ocr_languages`).
 flate2 = { workspace = true }
+# Note export (Step 34, #3551): markdown rendered as `marked` renders it, without the CLI and highlighting defaults.
+comrak = { version = "=0.57.0", default-features = false }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
@@ -181,6 +186,14 @@ doc = false
 # (tests/integration.rs), and a target of its own for each file that needs one.
 
 [[test]]
+name = "export_vectors"
+path = "tests/export_vectors.rs"
+
+[[test]]
+name = "export_untrusted"
+path = "tests/export_untrusted.rs"
+
+[[test]]
 name = "integration"
 path = "tests/integration.rs"
 
@@ -229,6 +242,10 @@ name = "sync_supervisor_harness"
 path = "tests/sync_supervisor_harness.rs"
 
 [[test]]
+name = "attachment_holds_harness"
+path = "tests/attachment_holds_harness.rs"
+
+[[test]]
 name = "keyring_live"
 path = "tests/keyring_live.rs"
 
@@ -263,6 +280,10 @@ path = "tests/redact_vectors.rs"
 [[test]]
 name = "sanitize_svg_memory"
 path = "tests/sanitize_svg_memory.rs"
+
+[[test]]
+name = "sandbox_template"
+path = "tests/sandbox_template.rs"
 
 [[test]]
 name = "telemetry_vectors"
