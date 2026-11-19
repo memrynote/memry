@@ -5,7 +5,6 @@
 // With `MEMRY_E2E=1` (an `e2e` build) it also writes the e2e control file for `--profile` and opens
 // one note first (`launch-bench-e2e.mjs`), because that build ignores `MEMRY_APP_DATA_DIR`.
 
-import { spawn, spawnSync } from 'node:child_process'
 import {
   existsSync,
   mkdirSync,
@@ -21,12 +20,12 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { CONFIG_FILE, seedVaultRegistry } from '../apps/desktop-tauri/e2e/harness/seed-registry.mjs'
+import { forceKill, launch, quit } from './launch-bench-app.mjs'
 import {
-  assertControlNamesProfile,
+  ControlFileError,
   openOneNote,
-  removeE2eControl,
-  webdriverPort,
-  writeE2eControl
+  startE2eSession,
+  webdriverPort
 } from './launch-bench-e2e.mjs'
 
 const IDENTIFIER = 'com.memrynote.memry'
@@ -48,7 +47,6 @@ const DEFAULT_VAULT = path.join(homedir(), 'MemryBenchVault')
 const DEFAULT_PROFILE = path.join(tmpdir(), 'memry-launch-bench', 'profile')
 
 const SETTLE_MS = 2_000
-const QUIT_DEADLINE_MS = 20_000
 const LOG_DEADLINE_MS = 45_000
 // The renderer reports when the note-readable mark lands, or 8 s after `load` on a launch that
 // restored no note (`NOTE_READABLE_WAIT_MS`, `lib/launch-marks.ts`); this covers both.
@@ -431,14 +429,12 @@ function parseArgs(argv) {
 
 let lockHeld = false
 let running = null
-// The control file this run wrote for an e2e build; removed with the lock, on every exit path.
-let e2eControlFile = null
+// Removes the control file this run wrote for an e2e build; runs with the lock, on every exit path.
+let releaseE2eControl = null
 
 function releaseRun() {
-  if (e2eControlFile) {
-    removeE2eControl(e2eControlFile.file, e2eControlFile.control.appDataDir)
-    e2eControlFile = null
-  }
+  releaseE2eControl?.()
+  releaseE2eControl = null
   if (!lockHeld) {
     return
   }
@@ -546,40 +542,6 @@ async function waitForLog(file, anchorOffset, deadlineMs, found) {
   return null
 }
 
-function launch(executable, env) {
-  const child = spawn(executable, [], { env, stdio: 'ignore' })
-  const exited = new Promise((resolve) => {
-    child.once('exit', resolve)
-    child.once('error', resolve)
-  })
-  return { child, exited }
-}
-
-function forceKill({ child }) {
-  if (process.platform === 'win32') {
-    spawnSync('taskkill', ['/F', '/T', '/PID', String(child.pid)], { stdio: 'ignore' })
-  } else {
-    child.kill('SIGKILL')
-  }
-}
-
-/** Asks the app to quit (SIGTERM starts its shutdown; Windows gets WM_CLOSE), then forces it. */
-async function quit(app) {
-  if (process.platform === 'win32') {
-    spawnSync('taskkill', ['/PID', String(app.child.pid)], { stdio: 'ignore' })
-  } else {
-    app.child.kill('SIGTERM')
-  }
-  const timedOut = Symbol('timeout')
-  const outcome = await Promise.race([app.exited, delay(QUIT_DEADLINE_MS).then(() => timedOut)])
-  if (outcome !== timedOut) {
-    return null
-  }
-  forceKill(app)
-  await app.exited
-  return `the app did not quit within ${QUIT_DEADLINE_MS} ms and was killed`
-}
-
 function prepareProfile(profile, vault) {
   if (!existsSync(path.join(vault, '.memry'))) {
     throw new Error(`${vault} is not a vault; seed it first (pnpm seed1k)`)
@@ -600,19 +562,22 @@ function prepareProfile(profile, vault) {
 async function primeProfile(executable, env) {
   const app = launch(executable, env)
   running = app
+  let noteId
+  let quitWarning
   try {
-    const noteId = await openOneNote(
+    noteId = await openOneNote(
       webdriverPort(env),
       () => app.child.exitCode === null && app.child.signalCode === null
     )
-    console.error(`primed the profile: opened note ${noteId}`)
   } finally {
-    const warning = await quit(app)
+    quitWarning = await quit(app)
     running = null
-    if (warning) {
-      console.error(`priming: ${warning}`)
-    }
   }
+  // A killed app may not have flushed its tab state, and the runs would then restore no note.
+  if (quitWarning) {
+    throw new Error(`priming: ${quitWarning}, so its tab state may not be stored; no run measured`)
+  }
+  console.error(`primed the profile: opened note ${noteId}`)
 }
 
 export function collectWarnings(record) {
@@ -698,12 +663,11 @@ async function runBench(options) {
   const launchEnv = benchEnv(process.env, options.profile)
   prepareProfile(options.profile, options.vault)
   // An e2e build takes profile, log dir and device from the control file, not from the env.
-  e2eControlFile = launchEnv.MEMRY_E2E === '1' ? writeE2eControl(launchEnv, options.profile) : null
-  const env = e2eControlFile
-    ? { ...launchEnv, MEMRY_TEST_LOG_DIR: e2eControlFile.control.logDir }
-    : launchEnv
+  const e2e = launchEnv.MEMRY_E2E === '1' ? startE2eSession(launchEnv, options.profile) : null
+  releaseE2eControl = e2e?.release ?? null
+  const env = e2e?.env ?? launchEnv
   const log = logPath(env, process.platform, homedir())
-  if (e2eControlFile) {
+  if (e2e) {
     await primeProfile(executable, env)
   }
 
@@ -716,10 +680,6 @@ async function runBench(options) {
 
   for (let run = 1; run <= options.runs; run += 1) {
     await delay(SETTLE_MS)
-    // Right before the launch: an e2e build reads the control file as it starts.
-    if (e2eControlFile) {
-      assertControlNamesProfile(e2eControlFile.file, options.profile)
-    }
     try {
       const record = await measureRun({
         run,
@@ -732,6 +692,9 @@ async function runBench(options) {
       runs.push(record)
       console.log(JSON.stringify(record))
     } catch (error) {
+      if (error instanceof ControlFileError) {
+        throw error
+      }
       const message = error instanceof Error ? error.message : String(error)
       failures.push({ run, message })
       console.error(`run ${run} failed: ${message}`)

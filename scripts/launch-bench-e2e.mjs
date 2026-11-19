@@ -4,7 +4,7 @@
 // dir, so a launch on any other profile reads another, empty tab state. On such a build the bench
 // points the control file at `--profile`, opens one note there over WebDriver, and measures on
 // that same file.
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
@@ -20,6 +20,9 @@ const PRIME_DEADLINE_MS = 60_000
 const PRIME_TOTAL_MS = 150_000
 // The key prefix of the vault-scoped tab state in the web view's localStorage.
 const TAB_STATE_PREFIX = 'memry_tab_state:'
+
+/** A control file the bench cannot use: a launch on it would run on another profile. */
+export class ControlFileError extends Error {}
 
 export function webdriverPort(env) {
   const raw = env.TAURI_WEBDRIVER_PORT ?? ''
@@ -42,9 +45,24 @@ export function e2eControl(env, profile) {
   }
 }
 
-/** Writes the control file of the bench's WebDriver port and returns where and what. */
+/**
+ * Writes the control file of the bench's WebDriver port and returns where and what. A file
+ * already there that does not name `profile` belongs to a live e2e run or `agent-app.mjs`, or is a
+ * leftover of one: it is never overwritten.
+ */
 export function writeE2eControl(env, profile, tmp = tmpdir()) {
-  const file = controlFilePath(tmp, webdriverPort(env))
+  const port = webdriverPort(env)
+  const file = controlFilePath(tmp, port)
+  if (existsSync(file)) {
+    const named = readControlProfile(file)
+    if (named !== profile) {
+      const state = named === undefined ? 'is unreadable' : `names ${named}`
+      throw new ControlFileError(
+        `port ${port}: ${file} ${state}, not the bench profile ${profile}. ` +
+          'Stop the e2e run or agent-app that owns it, or set TAURI_WEBDRIVER_PORT to a free port; if nothing owns it, delete it.'
+      )
+    }
+  }
   const control = e2eControl(env, profile)
   mkdirSync(path.dirname(file), { recursive: true })
   writeFileSync(file, JSON.stringify(control))
@@ -70,16 +88,35 @@ export function assertControlNamesProfile(file, profile) {
     return
   }
   const state = named === undefined ? 'is missing or unreadable' : `names ${named}`
-  throw new Error(
+  throw new ControlFileError(
     `MEMRY_E2E=1 makes the app read ${file} and ignore MEMRY_APP_DATA_DIR, and that file ${state}, not ${profile}. ` +
       'Stop the e2e run or agent-app on that port or set TAURI_WEBDRIVER_PORT to a free port, then rerun the bench (it writes the file); or unset MEMRY_E2E to measure a release build.'
   )
+}
+
+/** The check every launch of an e2e build passes first: its control file still names its profile. */
+export function assertLaunchProfile(env, tmp = tmpdir()) {
+  if (env.MEMRY_E2E === '1') {
+    assertControlNamesProfile(controlFilePath(tmp, webdriverPort(env)), env.MEMRY_APP_DATA_DIR)
+  }
 }
 
 /** Removes the control file when it is still the bench's. */
 export function removeE2eControl(file, profile) {
   if (readControlProfile(file) === profile) {
     rmSync(file, { force: true })
+  }
+}
+
+/**
+ * Writes the control file for `profile`. Returns the env to launch with (the log dir the control
+ * file names) and the removal of the file.
+ */
+export function startE2eSession(launchEnv, profile) {
+  const { file, control } = writeE2eControl(launchEnv, profile)
+  return {
+    env: { ...launchEnv, MEMRY_TEST_LOG_DIR: control.logDir },
+    release: () => removeE2eControl(file, profile)
   }
 }
 
@@ -170,7 +207,7 @@ async function prime(port, stillRunning) {
     'the vault listed a note',
     () => run(FIRST_NOTE),
     stillRunning,
-    'seed the bench vault first (pnpm seed1k)'
+    'seed the bench vault with the Tauri seed first (cd crates && cargo xtask seed bench --vault <dir>); a vault the Electron seed wrote lists no notes'
   )
   await until('the tab state named the note', () => run(OPEN_NOTE, note), stillRunning)
   return note.id
