@@ -375,7 +375,7 @@ async fn a_refused_password_marks_the_account_holds_its_writes_and_a_good_pull_c
     let summary = rig.sync().drain(&open).await.unwrap();
     assert_eq!(summary.waiting, 1);
     assert!(rig.since(mark).is_empty(), "a marked account sends nothing");
-    assert_eq!(queued(&open), [id.clone()]);
+    assert_eq!(queued(&open), std::slice::from_ref(&id));
 
     rig.clear_hook();
     rig.sync().sync_source(&open, &source).await.unwrap();
@@ -522,7 +522,11 @@ async fn a_drain_cut_off_after_its_put_lands_one_object_after_a_restart() {
     let open = rig.open().await;
     let id = new_event(&open, "Standup");
     let open = rig.reopen(open).await;
-    assert_eq!(queued(&open), [id.clone()], "the queue survives a close");
+    assert_eq!(
+        queued(&open),
+        std::slice::from_ref(&id),
+        "the queue survives a close"
+    );
     rig.connect(&open).await;
 
     let landed = Arc::new(tokio::sync::Notify::new());
@@ -546,7 +550,7 @@ async fn a_drain_cut_off_after_its_put_lands_one_object_after_a_restart() {
     assert_eq!(rig.dav.store.paths().len(), 1, "the PUT landed");
 
     let open = rig.reopen(open).await;
-    assert_eq!(queued(&open), [id.clone()]);
+    assert_eq!(queued(&open), std::slice::from_ref(&id));
     let summary = rig.sync().drain(&open).await.unwrap();
     assert_eq!(summary.pushed, 1);
     assert_eq!(writes(&rig.harness.seen(), "PUT").len(), 1);
