@@ -17,7 +17,7 @@ use memry_core::seams::secure_store::SecureStore;
 use memry_core::storage::OpenOptions;
 
 use super::plan::NewNote;
-use crate::notes::identity::place;
+use crate::notes::identity::file::place;
 use crate::sandbox::SandboxError;
 use crate::session::prepare_core_dir;
 use crate::vault::consumer::{converter_for, writing_of};

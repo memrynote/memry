@@ -86,7 +86,7 @@ use crate::vault::journal_format::JournalDays;
 use crate::vault::note_file::NoteFile;
 use crate::vault::notices::{Listed, VaultNotices};
 
-mod file;
+pub(crate) mod file;
 mod large;
 mod moving;
 mod new_files;
@@ -95,8 +95,7 @@ mod properties;
 mod tags;
 
 use file::created_ms;
-pub(crate) use file::place;
-pub(super) use file::{electron_db_beside, is_large_file};
+pub(super) use file::{electron_db_beside, is_large_file, place};
 use notices::Notice;
 
 use super::owed_moves::{self, held, keeps_kind};
