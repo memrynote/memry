@@ -1,5 +1,5 @@
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -7,8 +7,9 @@ use std::time::{Duration, Instant};
 use memry_desktop::electron_import::progress::{Phase, ProgressSink, ProgressUpdate};
 use memry_desktop::locale::LocaleService;
 use memry_desktop::registry::AppConfig;
+use memry_desktop::seams::transport::NativeTransport;
 use memry_desktop::telemetry::events::TelemetryEvent;
-use memry_desktop::telemetry::service::Service;
+use memry_desktop::telemetry::service::{self, Context, Service};
 
 use super::status::{MigrationState, MigrationStatus};
 use super::{
@@ -256,10 +257,13 @@ fn a_failed_run_still_sends_its_failure_and_try_again_reports_too() {
 fn telemetry_starts_at_the_first_event_and_only_once() {
     let starts = Arc::new(AtomicU32::new(0));
     let counted = starts.clone();
-    let sink = LazyTelemetry::new(Box::new(move || {
-        counted.fetch_add(1, Ordering::SeqCst);
-        None
-    }));
+    let sink = LazyTelemetry::new(
+        Box::new(move || {
+            counted.fetch_add(1, Ordering::SeqCst);
+            None
+        }),
+        Box::new(|| true),
+    );
     assert_eq!(
         starts.load(Ordering::SeqCst),
         0,
@@ -268,6 +272,56 @@ fn telemetry_starts_at_the_first_event_and_only_once() {
     sink.record(Service::event("migration_started", "app", "started"));
     sink.record(Service::event("migration_failed", "app", "failed"));
     assert_eq!(starts.load(Ordering::SeqCst), 1);
+}
+
+/// The failed run started telemetry; the user then opted out in the old app and pressed Try
+/// again in this window. The retry's events are not queued, and the service stays off.
+#[test]
+fn an_opt_out_made_between_two_attempts_stops_the_next_attempts_events() {
+    let dir = tempfile::tempdir().unwrap();
+    let context = Context {
+        install_id: "11111111-1111-4111-8111-111111111111".into(),
+        session_id: "s".into(),
+        app_version: "1.0.0".into(),
+        build_channel: "production".into(),
+        platform: "linux".into(),
+        arch: "x64".into(),
+        locale: "en".into(),
+        timezone_offset_minutes: 0,
+    };
+    // A dead endpoint: a failed flush keeps the queue, so the queue shows what would be sent.
+    let service = Arc::new(Service::start(
+        dir.path(),
+        context,
+        service::Sender::new(
+            "http://127.0.0.1:9/telemetry/batch",
+            NativeTransport::loopback(),
+        ),
+        true,
+    ));
+    let opted_in = Arc::new(AtomicBool::new(true));
+    let (started, read) = (service.clone(), opted_in.clone());
+    let sink = LazyTelemetry::new(
+        Box::new(move || Some(started.clone())),
+        Box::new(move || read.load(Ordering::SeqCst)),
+    );
+    sink.record(Service::event("migration_started", "app", "started"));
+    sink.record(Service::event("migration_failed", "app", "failed"));
+    assert!(service.enabled());
+
+    opted_in.store(false, Ordering::SeqCst);
+    let retry = Service::event("migration_started", "app", "started");
+    let retry_id = retry.id.clone();
+    sink.record(retry);
+
+    assert!(
+        !service.enabled(),
+        "the service still sends after the opt-out"
+    );
+    assert!(
+        !service.queued().iter().any(|event| event.id == retry_id),
+        "the retry's event was queued after the opt-out"
+    );
 }
 
 /// The `I18n` stage stored the OS language in the empty config; the import merged Electron's

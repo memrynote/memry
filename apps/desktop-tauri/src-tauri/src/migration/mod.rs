@@ -22,6 +22,7 @@ use memry_desktop::locale::LocaleService;
 use memry_desktop::paths::AppPaths;
 use memry_desktop::registry::AppConfig;
 use memry_desktop::telemetry::events::TelemetryEvent;
+use memry_desktop::telemetry::logship;
 use memry_desktop::telemetry::service::{FlushReason, Service};
 use tauri::{AppHandle, Manager, Wry};
 use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
@@ -96,15 +97,22 @@ pub trait TelemetrySink: Send + Sync {
 /// Starts the app's telemetry at the first event and not before: started earlier, it would read
 /// the telemetry choice before the import carried Electron's opt-out. `Stage::Telemetry` then
 /// finds it running. Each event is flushed at once, since a failed run never resumes the boot.
+/// `enabled` is read again at every event: Try again can carry an opt-out the service, started
+/// by the failed run, has not seen.
 pub struct LazyTelemetry {
     start: Box<dyn Fn() -> Option<Arc<Service>> + Send + Sync>,
+    enabled: Box<dyn Fn() -> bool + Send + Sync>,
     service: OnceLock<Option<Arc<Service>>>,
 }
 
 impl LazyTelemetry {
-    pub fn new(start: Box<dyn Fn() -> Option<Arc<Service>> + Send + Sync>) -> Self {
+    pub fn new(
+        start: Box<dyn Fn() -> Option<Arc<Service>> + Send + Sync>,
+        enabled: Box<dyn Fn() -> bool + Send + Sync>,
+    ) -> Self {
         Self {
             start,
+            enabled,
             service: OnceLock::new(),
         }
     }
@@ -115,6 +123,15 @@ impl TelemetrySink for LazyTelemetry {
         let Some(service) = self.service.get_or_init(|| (self.start)()).clone() else {
             return;
         };
+        if !(self.enabled)() {
+            if service.enabled() {
+                service.set_enabled(false);
+                if let Some(ship) = logship::global() {
+                    ship.set_enabled(false);
+                }
+            }
+            return;
+        }
         service.track_main_event(event);
         tauri::async_runtime::spawn(async move {
             let result = service.flush(FlushReason::Manual).await;
@@ -302,9 +319,11 @@ fn first_launch_migration(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     let show = move |status: &MigrationStatus| show_on_page(&page, status);
     let finished = resume_on_main_thread(app.clone(), backend.backup());
     let telemetry_app = app.clone();
-    let telemetry = LazyTelemetry::new(Box::new(move || {
-        crate::shell::services::telemetry_started(&telemetry_app)
-    }));
+    let enabled_app = app.clone();
+    let telemetry = LazyTelemetry::new(
+        Box::new(move || crate::shell::services::telemetry_started(&telemetry_app)),
+        Box::new(move || crate::shell::services::telemetry_enabled(&enabled_app)),
+    );
     let migration = Arc::new(Migration::new(
         backend,
         locale,
