@@ -112,7 +112,15 @@
       "vaultUnreachable": "Holvia ei voi lukea juuri nyt. Tarkista, että sen asema on liitetty, ja yritä uudelleen.",
       "secrets": "Joitakin tallennettuja kirjautumistietoja ei voitu lukea. Yritä uudelleen. Jos tämä toistuu, tarkista, että avainnippusi on avattu.",
       "verification": "Siirrettyjen tietojesi tarkistus ei mennyt läpi, joten MemryNote jätti kaiken ennalleen.",
-      "notReady": "Tämä MemryNote-versio ei vielä pysty siirtämään tämän holvin tietoja. Tietosi ovat yhä aiemmassa MemryNote-sovelluksessa. Käytä sitä edelleen ja päivitä MemryNote yrittääksesi uudelleen."
+      "notReady": "Tämä MemryNote-versio ei vielä pysty siirtämään tämän holvin tietoja. Tietosi ovat yhä aiemmassa MemryNote-sovelluksessa. Käytä sitä edelleen ja päivitä MemryNote yrittääksesi uudelleen.",
+      "io": "Tiedostoa ei voitu lukea tai kirjoittaa tietojen siirron aikana. Varmista, että levyllä on vapaata tilaa ja että holvikansioihin voi kirjoittaa, ja yritä uudelleen.",
+      "sourceChanged": "Aiempi MemryNote-sovellus muutti tietojaan siirron aikana. Sulje se ja yritä uudelleen.",
+      "coreFileExists": "Holvissa on jo tämän MemryNote-version tietoja, joten sitä ei korvattu. Käytä edelleen aiempaa sovellusta ja lähetä kohdan Näytä tiedot raportti tukeen.",
+      "malformedRow": "Osa aiemman sovelluksen tiedoista on muodossa, jota ei voi siirtää. Käytä edelleen aiempaa sovellusta ja lähetä kohdan Näytä tiedot raportti tukeen.",
+      "deleteWithoutDevice": "Holvissa oleva poisto ei ole vielä synkronoitunut. Avaa aiempi MemryNote-sovellus, anna sen synkronoida loppuun, sulje se ja yritä uudelleen.",
+      "deviceKeyMismatch": "Aiemman sovelluksen laiteavain ei vastaa tämän laitteen synkronointirekisteröintiä, joten kirjautumistasi ei siirretty. Käytä edelleen aiempaa sovellusta ja lähetä kohdan Näytä tiedot raportti tukeen.",
+      "keyVerifierMismatch": "Aiemman sovelluksen salausavain ei vastaa tiliäsi, joten kirjautumistasi ei siirretty. Käytä edelleen aiempaa sovellusta ja lähetä kohdan Näytä tiedot raportti tukeen.",
+      "targetOccupied": "Tämä MemryNote-versio on jo kirjautunut, joten aiemman sovelluksen kirjautumista ei siirretty sen päälle. Käytä edelleen aiempaa sovellusta ja lähetä kohdan Näytä tiedot raportti tukeen."
     },
     "done": {
       "title": "Tietosi ovat valmiina",

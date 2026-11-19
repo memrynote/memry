@@ -134,6 +134,15 @@ fn failure_body(check: &str) -> &'static str {
         "vault-unreachable" => "system:migration.failed.vaultUnreachable",
         // Data a later build imports: keep using the previous app, update, then Try again.
         "not-ready" => "system:migration.failed.notReady",
+        "io" => "system:migration.failed.io",
+        "source-changed" => "system:migration.failed.sourceChanged",
+        "core-file-exists" => "system:migration.failed.coreFileExists",
+        "malformed-row" => "system:migration.failed.malformedRow",
+        "delete-without-device" => "system:migration.failed.deleteWithoutDevice",
+        "secrets:device_key_mismatch" => "system:migration.failed.deviceKeyMismatch",
+        "secrets:KeyVerifierMismatch" => "system:migration.failed.keyVerifierMismatch",
+        // A sign-in this app made before the import (the boot pause blocks one during it).
+        "secrets:target-occupied" => "system:migration.failed.targetOccupied",
         check if check.starts_with("secrets:") => "system:migration.failed.secrets",
         _ => "system:migration.failed.verification",
     }
@@ -230,6 +239,14 @@ mod tests {
             "vault-unreachable",
             "secrets:read",
             "not-ready",
+            "io",
+            "source-changed",
+            "core-file-exists",
+            "malformed-row",
+            "delete-without-device",
+            "secrets:device_key_mismatch",
+            "secrets:KeyVerifierMismatch",
+            "secrets:target-occupied",
             "check-3",
         ];
         for locale in memry_desktop::locale::SUPPORTED {
@@ -238,6 +255,29 @@ mod tests {
                 assert_ne!(i18n::t(locale, key, &Args::new()), key, "{locale} {check}");
             }
         }
+    }
+
+    /// Each check 37e2 names gets its own advice, not the general one.
+    #[test]
+    fn named_checks_get_their_own_advice() {
+        let general = [
+            "system:migration.failed.verification",
+            "system:migration.failed.secrets",
+        ];
+        for check in [
+            "io",
+            "source-changed",
+            "core-file-exists",
+            "malformed-row",
+            "delete-without-device",
+            "secrets:device_key_mismatch",
+            "secrets:KeyVerifierMismatch",
+            "secrets:target-occupied",
+        ] {
+            assert!(!general.contains(&failure_body(check)), "{check}");
+        }
+        assert_eq!(failure_body("import"), general[0]);
+        assert_eq!(failure_body("secrets:unreadable"), general[1]);
     }
 
     /// #5140: data a later build imports keeps the user on the previous app, with Try again

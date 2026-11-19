@@ -112,7 +112,15 @@
       "vaultUnreachable": "Hiện không đọc được một kho. Hãy kiểm tra ổ đĩa của nó đã được kết nối rồi thử lại.",
       "secrets": "Không đọc được một số thông tin đăng nhập đã lưu. Hãy thử lại. Nếu vẫn xảy ra, hãy kiểm tra chuỗi khóa đã được mở khóa.",
       "verification": "Một bước kiểm tra dữ liệu đã chuyển không đạt, nên MemryNote giữ mọi thứ như cũ.",
-      "notReady": "Phiên bản MemryNote này chưa thể chuyển dữ liệu của kho này. Dữ liệu của bạn vẫn nằm trong ứng dụng MemryNote trước. Hãy tiếp tục dùng ứng dụng đó, và cập nhật MemryNote để thử lại."
+      "notReady": "Phiên bản MemryNote này chưa thể chuyển dữ liệu của kho này. Dữ liệu của bạn vẫn nằm trong ứng dụng MemryNote trước. Hãy tiếp tục dùng ứng dụng đó, và cập nhật MemryNote để thử lại.",
+      "io": "Không thể đọc hoặc ghi một tệp trong khi chuyển dữ liệu của bạn. Hãy kiểm tra ổ đĩa còn dung lượng trống và có thể ghi vào các thư mục kho của bạn, rồi thử lại.",
+      "sourceChanged": "Ứng dụng MemryNote trước đã thay đổi dữ liệu của nó trong lúc chuyển. Hãy thoát nó rồi thử lại.",
+      "coreFileExists": "Một kho đã có dữ liệu từ phiên bản MemryNote này nên không bị thay thế. Hãy tiếp tục dùng ứng dụng trước và gửi báo cáo trong Hiện chi tiết cho bộ phận hỗ trợ.",
+      "malformedRow": "Một phần dữ liệu của ứng dụng trước ở dạng không thể chuyển. Hãy tiếp tục dùng ứng dụng trước và gửi báo cáo trong Hiện chi tiết cho bộ phận hỗ trợ.",
+      "deleteWithoutDevice": "Một thao tác xóa trong kho chưa được đồng bộ. Hãy mở ứng dụng MemryNote trước, để nó đồng bộ xong, thoát nó rồi thử lại.",
+      "deviceKeyMismatch": "Khóa thiết bị của ứng dụng trước không khớp với đăng ký đồng bộ của thiết bị này nên thông tin đăng nhập của bạn chưa được chuyển. Hãy tiếp tục dùng ứng dụng trước và gửi báo cáo trong Hiện chi tiết cho bộ phận hỗ trợ.",
+      "keyVerifierMismatch": "Khóa mã hóa của ứng dụng trước không khớp với tài khoản của bạn nên thông tin đăng nhập của bạn chưa được chuyển. Hãy tiếp tục dùng ứng dụng trước và gửi báo cáo trong Hiện chi tiết cho bộ phận hỗ trợ.",
+      "targetOccupied": "Phiên bản MemryNote này đã đăng nhập nên thông tin đăng nhập của ứng dụng trước không được chuyển đè lên. Hãy tiếp tục dùng ứng dụng trước và gửi báo cáo trong Hiện chi tiết cho bộ phận hỗ trợ."
     },
     "done": {
       "title": "Dữ liệu của bạn đã sẵn sàng",

@@ -112,7 +112,15 @@
       "vaultUnreachable": "En boks kan ikke læses lige nu. Kontrollér, at dens drev er tilsluttet, og prøv igen.",
       "secrets": "Nogle gemte loginoplysninger kunne ikke læses. Prøv igen. Hvis det bliver ved, så kontrollér, at din nøglering er låst op.",
       "verification": "En kontrol af dine flyttede data bestod ikke, så MemryNote lod alt være, som det var.",
-      "notReady": "Denne version af MemryNote kan endnu ikke flytte denne boks' data. Dine data er stadig i den tidligere MemryNote-app. Bliv ved med at bruge den, og opdater MemryNote for at prøve igen."
+      "notReady": "Denne version af MemryNote kan endnu ikke flytte denne boks' data. Dine data er stadig i den tidligere MemryNote-app. Bliv ved med at bruge den, og opdater MemryNote for at prøve igen.",
+      "io": "En fil kunne ikke læses eller skrives, mens dine data blev flyttet. Tjek, at der er ledig plads på disken, og at der kan skrives til dine vault-mapper, og prøv igen.",
+      "sourceChanged": "Den tidligere MemryNote-app ændrede sine data under flytningen. Luk den, og prøv igen.",
+      "coreFileExists": "En vault har allerede data fra denne version af MemryNote, så den blev ikke erstattet. Bliv ved med at bruge den tidligere app, og send rapporten under Vis detaljer til support.",
+      "malformedRow": "Nogle af den tidligere apps data har en form, der ikke kan flyttes. Bliv ved med at bruge den tidligere app, og send rapporten under Vis detaljer til support.",
+      "deleteWithoutDevice": "En sletning i en vault er ikke synkroniseret endnu. Åbn den tidligere MemryNote-app, lad den synkronisere færdig, luk den, og prøv igen.",
+      "deviceKeyMismatch": "Den tidligere apps enhedsnøgle passer ikke til denne enheds synkroniseringsregistrering, så dit login blev ikke flyttet. Bliv ved med at bruge den tidligere app, og send rapporten under Vis detaljer til support.",
+      "keyVerifierMismatch": "Den tidligere apps krypteringsnøgle passer ikke til din konto, så dit login blev ikke flyttet. Bliv ved med at bruge den tidligere app, og send rapporten under Vis detaljer til support.",
+      "targetOccupied": "Denne version af MemryNote er allerede logget ind, så den tidligere apps login blev ikke flyttet hen over det. Bliv ved med at bruge den tidligere app, og send rapporten under Vis detaljer til support."
     },
     "done": {
       "title": "Dine data er klar",

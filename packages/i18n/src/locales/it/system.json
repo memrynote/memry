@@ -112,7 +112,15 @@
       "vaultUnreachable": "Al momento non è possibile leggere un vault. Controlla che la sua unità sia collegata, poi riprova.",
       "secrets": "Non è stato possibile leggere alcuni dati di accesso salvati. Riprova. Se continua a succedere, controlla che il portachiavi sia sbloccato.",
       "verification": "Un controllo dei dati trasferiti non è stato superato, quindi MemryNote ha lasciato tutto com'era.",
-      "notReady": "Questa versione di MemryNote non può ancora trasferire i dati di questo vault. I tuoi dati sono ancora nella precedente app MemryNote. Continua a usarla e aggiorna MemryNote per riprovare."
+      "notReady": "Questa versione di MemryNote non può ancora trasferire i dati di questo vault. I tuoi dati sono ancora nella precedente app MemryNote. Continua a usarla e aggiorna MemryNote per riprovare.",
+      "io": "Non è stato possibile leggere o scrivere un file durante lo spostamento dei dati. Controlla che il disco abbia spazio libero e che le cartelle dei tuoi vault siano scrivibili, poi riprova.",
+      "sourceChanged": "La precedente app MemryNote ha modificato i suoi dati durante lo spostamento. Chiudila, poi riprova.",
+      "coreFileExists": "Un vault contiene già dati di questa versione di MemryNote, quindi non è stato sostituito. Continua a usare la precedente app e invia all'assistenza il report in Mostra dettagli.",
+      "malformedRow": "Alcuni dati della precedente app hanno una forma che non si può spostare. Continua a usare la precedente app e invia all'assistenza il report in Mostra dettagli.",
+      "deleteWithoutDevice": "Un'eliminazione in un vault non è ancora sincronizzata. Apri la precedente app MemryNote, lasciale completare la sincronizzazione, chiudila, poi riprova.",
+      "deviceKeyMismatch": "La chiave del dispositivo della precedente app non corrisponde alla registrazione di sincronizzazione di questo dispositivo, quindi il tuo accesso non è stato spostato. Continua a usare la precedente app e invia all'assistenza il report in Mostra dettagli.",
+      "keyVerifierMismatch": "La chiave di crittografia della precedente app non corrisponde al tuo account, quindi il tuo accesso non è stato spostato. Continua a usare la precedente app e invia all'assistenza il report in Mostra dettagli.",
+      "targetOccupied": "Questa versione di MemryNote ha già un accesso attivo, quindi l'accesso della precedente app non è stato spostato sopra. Continua a usare la precedente app e invia all'assistenza il report in Mostra dettagli."
     },
     "done": {
       "title": "I tuoi dati sono pronti",

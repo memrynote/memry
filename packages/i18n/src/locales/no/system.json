@@ -112,7 +112,15 @@
       "vaultUnreachable": "Et hvelv kan ikke leses akkurat nå. Kontroller at stasjonen er koblet til, og prøv igjen.",
       "secrets": "Noen lagrede påloggingsopplysninger kunne ikke leses. Prøv igjen. Hvis det fortsetter, kontroller at nøkkelringen er låst opp.",
       "verification": "En kontroll av de flyttede dataene dine besto ikke, så MemryNote lot alt være som det var.",
-      "notReady": "Denne versjonen av MemryNote kan ennå ikke flytte dataene i dette hvelvet. Dataene dine er fortsatt i den forrige MemryNote-appen. Fortsett å bruke den, og oppdater MemryNote for å prøve igjen."
+      "notReady": "Denne versjonen av MemryNote kan ennå ikke flytte dataene i dette hvelvet. Dataene dine er fortsatt i den forrige MemryNote-appen. Fortsett å bruke den, og oppdater MemryNote for å prøve igjen.",
+      "io": "En fil kunne ikke leses eller skrives mens dataene dine ble flyttet. Sjekk at disken har ledig plass, og at det kan skrives til vault-mappene dine, og prøv igjen.",
+      "sourceChanged": "Den forrige MemryNote-appen endret dataene sine under flyttingen. Avslutt den, og prøv igjen.",
+      "coreFileExists": "Et vault har allerede data fra denne versjonen av MemryNote, så det ble ikke erstattet. Fortsett å bruke den forrige appen, og send rapporten under Vis detaljer til kundestøtte.",
+      "malformedRow": "Noen av dataene i den forrige appen har en form som ikke kan flyttes. Fortsett å bruke den forrige appen, og send rapporten under Vis detaljer til kundestøtte.",
+      "deleteWithoutDevice": "En sletting i et vault er ikke synkronisert ennå. Åpne den forrige MemryNote-appen, la den fullføre synkroniseringen, avslutt den, og prøv igjen.",
+      "deviceKeyMismatch": "Enhetsnøkkelen i den forrige appen samsvarer ikke med synkroniseringsregistreringen til denne enheten, så påloggingen din ble ikke flyttet. Fortsett å bruke den forrige appen, og send rapporten under Vis detaljer til kundestøtte.",
+      "keyVerifierMismatch": "Krypteringsnøkkelen i den forrige appen samsvarer ikke med kontoen din, så påloggingen din ble ikke flyttet. Fortsett å bruke den forrige appen, og send rapporten under Vis detaljer til kundestøtte.",
+      "targetOccupied": "Denne versjonen av MemryNote er allerede pålogget, så påloggingen fra den forrige appen ble ikke flyttet over den. Fortsett å bruke den forrige appen, og send rapporten under Vis detaljer til kundestøtte."
     },
     "done": {
       "title": "Dataene dine er klare",

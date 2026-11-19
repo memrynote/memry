@@ -112,7 +112,15 @@
       "vaultUnreachable": "Trezor teď nelze přečíst. Zkontrolujte, že je jeho disk připojený, a zkuste to znovu.",
       "secrets": "Některé uložené přihlašovací údaje nešlo přečíst. Zkuste to znovu. Pokud se to opakuje, zkontrolujte, že je klíčenka odemčená.",
       "verification": "Kontrola přesunutých dat neprošla, a proto MemryNote nechal vše tak, jak bylo.",
-      "notReady": "Tato verze MemryNote zatím nedokáže přesunout data tohoto trezoru. Vaše data jsou stále v předchozí aplikaci MemryNote. Dál ji používejte a aktualizujte MemryNote, abyste to mohli zkusit znovu."
+      "notReady": "Tato verze MemryNote zatím nedokáže přesunout data tohoto trezoru. Vaše data jsou stále v předchozí aplikaci MemryNote. Dál ji používejte a aktualizujte MemryNote, abyste to mohli zkusit znovu.",
+      "io": "Při přesunu dat se nepodařilo přečíst nebo zapsat soubor. Zkontrolujte, že je na disku volné místo a že do složek trezorů lze zapisovat, a zkuste to znovu.",
+      "sourceChanged": "Předchozí aplikace MemryNote během přesunu změnila svá data. Ukončete ji a zkuste to znovu.",
+      "coreFileExists": "Trezor už obsahuje data z této verze MemryNote, a proto nebyl nahrazen. Dál používejte předchozí aplikaci a pošlete podpoře zprávu z „Zobrazit podrobnosti“.",
+      "malformedRow": "Část dat předchozí aplikace je ve tvaru, který nelze přesunout. Dál používejte předchozí aplikaci a pošlete podpoře zprávu z „Zobrazit podrobnosti“.",
+      "deleteWithoutDevice": "Smazání v jednom trezoru ještě není synchronizované. Otevřete předchozí aplikaci MemryNote, nechte ji dokončit synchronizaci, ukončete ji a zkuste to znovu.",
+      "deviceKeyMismatch": "Klíč zařízení předchozí aplikace neodpovídá registraci synchronizace tohoto zařízení, a proto přihlášení nebylo přesunuto. Dál používejte předchozí aplikaci a pošlete podpoře zprávu z „Zobrazit podrobnosti“.",
+      "keyVerifierMismatch": "Šifrovací klíč předchozí aplikace neodpovídá vašemu účtu, a proto přihlášení nebylo přesunuto. Dál používejte předchozí aplikaci a pošlete podpoře zprávu z „Zobrazit podrobnosti“.",
+      "targetOccupied": "Tato verze MemryNote už je přihlášená, a proto přihlášení předchozí aplikace nebylo přesunuto přes ni. Dál používejte předchozí aplikaci a pošlete podpoře zprávu z „Zobrazit podrobnosti“."
     },
     "done": {
       "title": "Vaše data jsou připravená",

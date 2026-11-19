@@ -112,7 +112,15 @@
       "vaultUnreachable": "Trezor se trenutačno ne može pročitati. Provjerite je li njegov disk povezan pa pokušajte ponovno.",
       "secrets": "Neki spremljeni podaci za prijavu nisu se mogli pročitati. Pokušajte ponovno. Ako se to nastavi, provjerite je li privjesak ključeva otključan.",
       "verification": "Provjera premještenih podataka nije prošla pa je MemryNote sve ostavio kako je bilo.",
-      "notReady": "Ova verzija aplikacije MemryNote još ne može premjestiti podatke ovog trezora. Vaši su podaci i dalje u prethodnoj aplikaciji MemryNote. Nastavite je koristiti i ažurirajte MemryNote da biste pokušali ponovno."
+      "notReady": "Ova verzija aplikacije MemryNote još ne može premjestiti podatke ovog trezora. Vaši su podaci i dalje u prethodnoj aplikaciji MemryNote. Nastavite je koristiti i ažurirajte MemryNote da biste pokušali ponovno.",
+      "io": "Datoteka se nije mogla pročitati ili zapisati tijekom premještanja podataka. Provjerite ima li na disku slobodnog prostora i mogu li se mape vaših trezora zapisivati, pa pokušajte ponovno.",
+      "sourceChanged": "Prethodna aplikacija MemryNote promijenila je svoje podatke tijekom premještanja. Zatvorite je pa pokušajte ponovno.",
+      "coreFileExists": "Trezor već sadrži podatke iz ove verzije MemryNotea pa nije zamijenjen. Nastavite koristiti prethodnu aplikaciju i pošaljite podršci izvješće iz Prikaži pojedinosti.",
+      "malformedRow": "Dio podataka prethodne aplikacije u obliku je koji se ne može premjestiti. Nastavite koristiti prethodnu aplikaciju i pošaljite podršci izvješće iz Prikaži pojedinosti.",
+      "deleteWithoutDevice": "Brisanje u jednom trezoru još nije sinkronizirano. Otvorite prethodnu aplikaciju MemryNote, pustite je da završi sinkronizaciju, zatvorite je pa pokušajte ponovno.",
+      "deviceKeyMismatch": "Ključ uređaja prethodne aplikacije ne odgovara registraciji sinkronizacije ovog uređaja pa vaša prijava nije premještena. Nastavite koristiti prethodnu aplikaciju i pošaljite podršci izvješće iz Prikaži pojedinosti.",
+      "keyVerifierMismatch": "Ključ šifriranja prethodne aplikacije ne odgovara vašem računu pa vaša prijava nije premještena. Nastavite koristiti prethodnu aplikaciju i pošaljite podršci izvješće iz Prikaži pojedinosti.",
+      "targetOccupied": "Ova verzija MemryNotea već je prijavljena pa prijava prethodne aplikacije nije premještena preko nje. Nastavite koristiti prethodnu aplikaciju i pošaljite podršci izvješće iz Prikaži pojedinosti."
     },
     "done": {
       "title": "Vaši podaci su spremni",

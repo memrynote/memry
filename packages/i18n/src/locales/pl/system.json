@@ -112,7 +112,15 @@
       "vaultUnreachable": "Nie można teraz odczytać sejfu. Sprawdź, czy jego dysk jest podłączony, a potem spróbuj ponownie.",
       "secrets": "Nie udało się odczytać niektórych zapisanych danych logowania. Spróbuj ponownie. Jeśli to się powtarza, sprawdź, czy pęk kluczy jest odblokowany.",
       "verification": "Sprawdzenie przeniesionych danych nie powiodło się, więc MemryNote zostawił wszystko bez zmian.",
-      "notReady": "Ta wersja MemryNote nie może jeszcze przenieść danych tego sejfu. Twoje dane są nadal w poprzedniej aplikacji MemryNote. Używaj jej dalej i zaktualizuj MemryNote, aby spróbować ponownie."
+      "notReady": "Ta wersja MemryNote nie może jeszcze przenieść danych tego sejfu. Twoje dane są nadal w poprzedniej aplikacji MemryNote. Używaj jej dalej i zaktualizuj MemryNote, aby spróbować ponownie.",
+      "io": "Podczas przenoszenia danych nie udało się odczytać lub zapisać pliku. Sprawdź, czy na dysku jest wolne miejsce i czy foldery Twoich sejfów są zapisywalne, a potem spróbuj ponownie.",
+      "sourceChanged": "Poprzednia aplikacja MemryNote zmieniła swoje dane w trakcie przenoszenia. Zamknij ją, a potem spróbuj ponownie.",
+      "coreFileExists": "Sejf zawiera już dane z tej wersji MemryNote, więc nie został zastąpiony. Używaj dalej poprzedniej aplikacji i wyślij do pomocy technicznej raport z „Pokaż szczegóły”.",
+      "malformedRow": "Część danych poprzedniej aplikacji ma postać, której nie da się przenieść. Używaj dalej poprzedniej aplikacji i wyślij do pomocy technicznej raport z „Pokaż szczegóły”.",
+      "deleteWithoutDevice": "Usunięcie w jednym z sejfów nie zostało jeszcze zsynchronizowane. Otwórz poprzednią aplikację MemryNote, pozwól jej dokończyć synchronizację, zamknij ją, a potem spróbuj ponownie.",
+      "deviceKeyMismatch": "Klucz urządzenia poprzedniej aplikacji nie pasuje do rejestracji synchronizacji tego urządzenia, więc Twoje logowanie nie zostało przeniesione. Używaj dalej poprzedniej aplikacji i wyślij do pomocy technicznej raport z „Pokaż szczegóły”.",
+      "keyVerifierMismatch": "Klucz szyfrowania poprzedniej aplikacji nie pasuje do Twojego konta, więc Twoje logowanie nie zostało przeniesione. Używaj dalej poprzedniej aplikacji i wyślij do pomocy technicznej raport z „Pokaż szczegóły”.",
+      "targetOccupied": "Ta wersja MemryNote jest już zalogowana, więc logowanie poprzedniej aplikacji nie zostało przeniesione na nią. Używaj dalej poprzedniej aplikacji i wyślij do pomocy technicznej raport z „Pokaż szczegóły”."
     },
     "done": {
       "title": "Dane są gotowe",

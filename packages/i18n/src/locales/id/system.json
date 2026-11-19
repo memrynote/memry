@@ -112,7 +112,15 @@
       "vaultUnreachable": "Sebuah brankas tidak dapat dibaca saat ini. Pastikan drive-nya terhubung, lalu coba lagi.",
       "secrets": "Sebagian detail masuk yang tersimpan tidak dapat dibaca. Coba lagi. Jika terus terjadi, pastikan keychain Anda tidak terkunci.",
       "verification": "Pemeriksaan data yang dipindahkan tidak lolos, jadi MemryNote membiarkan semuanya seperti semula.",
-      "notReady": "Versi MemryNote ini belum dapat memindahkan data brankas ini. Data Anda masih ada di aplikasi MemryNote sebelumnya. Tetap gunakan aplikasi itu, dan perbarui MemryNote untuk mencoba lagi."
+      "notReady": "Versi MemryNote ini belum dapat memindahkan data brankas ini. Data Anda masih ada di aplikasi MemryNote sebelumnya. Tetap gunakan aplikasi itu, dan perbarui MemryNote untuk mencoba lagi.",
+      "io": "Sebuah file tidak dapat dibaca atau ditulis saat data Anda dipindahkan. Pastikan disk memiliki ruang kosong dan folder vault Anda dapat ditulisi, lalu coba lagi.",
+      "sourceChanged": "Aplikasi MemryNote sebelumnya mengubah datanya selama pemindahan. Tutup aplikasinya, lalu coba lagi.",
+      "coreFileExists": "Sebuah vault sudah berisi data dari versi MemryNote ini, jadi tidak diganti. Tetap gunakan aplikasi sebelumnya, dan kirim laporan di Tampilkan detail ke dukungan.",
+      "malformedRow": "Sebagian data aplikasi sebelumnya berbentuk yang tidak dapat dipindahkan. Tetap gunakan aplikasi sebelumnya, dan kirim laporan di Tampilkan detail ke dukungan.",
+      "deleteWithoutDevice": "Penghapusan di sebuah vault belum disinkronkan. Buka aplikasi MemryNote sebelumnya, biarkan sinkronisasinya selesai, tutup aplikasinya, lalu coba lagi.",
+      "deviceKeyMismatch": "Kunci perangkat aplikasi sebelumnya tidak cocok dengan pendaftaran sinkronisasi perangkat ini, jadi info masuk Anda tidak dipindahkan. Tetap gunakan aplikasi sebelumnya, dan kirim laporan di Tampilkan detail ke dukungan.",
+      "keyVerifierMismatch": "Kunci enkripsi aplikasi sebelumnya tidak cocok dengan akun Anda, jadi info masuk Anda tidak dipindahkan. Tetap gunakan aplikasi sebelumnya, dan kirim laporan di Tampilkan detail ke dukungan.",
+      "targetOccupied": "Versi MemryNote ini sudah masuk ke akun, jadi info masuk aplikasi sebelumnya tidak dipindahkan menimpanya. Tetap gunakan aplikasi sebelumnya, dan kirim laporan di Tampilkan detail ke dukungan."
     },
     "done": {
       "title": "Data Anda sudah siap",

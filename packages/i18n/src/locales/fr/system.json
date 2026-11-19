@@ -112,7 +112,15 @@
       "vaultUnreachable": "Un coffre ne peut pas être lu pour le moment. Vérifiez que son disque est connecté, puis réessayez.",
       "secrets": "Certaines informations de connexion enregistrées n'ont pas pu être lues. Réessayez. Si cela continue, vérifiez que votre trousseau est déverrouillé.",
       "verification": "Une vérification de vos données transférées a échoué, MemryNote a donc tout laissé tel quel.",
-      "notReady": "Cette version de MemryNote ne peut pas encore transférer les données de ce coffre. Vos données sont toujours dans l'ancienne app MemryNote. Continuez à l'utiliser et mettez MemryNote à jour pour réessayer."
+      "notReady": "Cette version de MemryNote ne peut pas encore transférer les données de ce coffre. Vos données sont toujours dans l'ancienne app MemryNote. Continuez à l'utiliser et mettez MemryNote à jour pour réessayer.",
+      "io": "Un fichier n'a pas pu être lu ou écrit pendant le transfert de vos données. Vérifiez que le disque a de l'espace libre et que les dossiers de vos coffres sont accessibles en écriture, puis réessayez.",
+      "sourceChanged": "L'ancienne app MemryNote a modifié ses données pendant le transfert. Quittez-la, puis réessayez.",
+      "coreFileExists": "Un coffre contient déjà des données de cette version de MemryNote, il n'a donc pas été remplacé. Continuez à utiliser l'ancienne app et envoyez au support le rapport accessible via Afficher les détails.",
+      "malformedRow": "Une partie des données de l'ancienne app a une forme qui ne peut pas être transférée. Continuez à utiliser l'ancienne app et envoyez au support le rapport accessible via Afficher les détails.",
+      "deleteWithoutDevice": "Une suppression dans un coffre n'est pas encore synchronisée. Ouvrez l'ancienne app MemryNote, laissez-la terminer la synchronisation, quittez-la, puis réessayez.",
+      "deviceKeyMismatch": "La clé d'appareil de l'ancienne app ne correspond pas à l'enregistrement de synchronisation de cet appareil, votre connexion n'a donc pas été transférée. Continuez à utiliser l'ancienne app et envoyez au support le rapport accessible via Afficher les détails.",
+      "keyVerifierMismatch": "La clé de chiffrement de l'ancienne app ne correspond pas à votre compte, votre connexion n'a donc pas été transférée. Continuez à utiliser l'ancienne app et envoyez au support le rapport accessible via Afficher les détails.",
+      "targetOccupied": "Cette version de MemryNote est déjà connectée, la connexion de l'ancienne app n'a donc pas été transférée par-dessus. Continuez à utiliser l'ancienne app et envoyez au support le rapport accessible via Afficher les détails."
     },
     "done": {
       "title": "Vos données sont prêtes",

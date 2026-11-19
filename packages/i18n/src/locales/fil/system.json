@@ -112,7 +112,15 @@
       "vaultUnreachable": "Hindi mabasa ang isang vault ngayon. Tiyaking nakakonekta ang drive nito, pagkatapos ay subukang muli.",
       "secrets": "Hindi nabasa ang ilang naka-save na detalye sa pag-sign in. Subukang muli. Kung patuloy itong mangyari, tiyaking naka-unlock ang iyong keychain.",
       "verification": "Hindi pumasa ang isang pagsusuri sa nailipat na data, kaya iniwan ng MemryNote ang lahat gaya ng dati.",
-      "notReady": "Hindi pa kayang ilipat ng bersyong ito ng MemryNote ang data ng vault na ito. Nasa dating MemryNote app pa rin ang data mo. Patuloy itong gamitin, at i-update ang MemryNote para subukang muli."
+      "notReady": "Hindi pa kayang ilipat ng bersyong ito ng MemryNote ang data ng vault na ito. Nasa dating MemryNote app pa rin ang data mo. Patuloy itong gamitin, at i-update ang MemryNote para subukang muli.",
+      "io": "Hindi nabasa o naisulat ang isang file habang inililipat ang iyong data. Tiyaking may bakanteng espasyo ang disk at puwedeng sulatan ang mga folder ng iyong mga vault, pagkatapos ay subukang muli.",
+      "sourceChanged": "Binago ng dating MemryNote app ang data nito habang naglilipat. Isara ito, pagkatapos ay subukang muli.",
+      "coreFileExists": "May data na mula sa bersyong ito ng MemryNote ang isang vault, kaya hindi ito pinalitan. Patuloy na gamitin ang dating app, at ipadala sa support ang report sa Ipakita ang mga detalye.",
+      "malformedRow": "May bahagi ng data ng dating app na nasa anyong hindi mailipat. Patuloy na gamitin ang dating app, at ipadala sa support ang report sa Ipakita ang mga detalye.",
+      "deleteWithoutDevice": "Hindi pa naka-sync ang isang pagbura sa isang vault. Buksan ang dating MemryNote app, hayaang matapos ang pag-sync, isara ito, pagkatapos ay subukang muli.",
+      "deviceKeyMismatch": "Hindi tugma ang device key ng dating app sa sync registration ng device na ito, kaya hindi nailipat ang iyong sign-in. Patuloy na gamitin ang dating app, at ipadala sa support ang report sa Ipakita ang mga detalye.",
+      "keyVerifierMismatch": "Hindi tugma ang encryption key ng dating app sa iyong account, kaya hindi nailipat ang iyong sign-in. Patuloy na gamitin ang dating app, at ipadala sa support ang report sa Ipakita ang mga detalye.",
+      "targetOccupied": "Naka-sign in na ang bersyong ito ng MemryNote, kaya hindi inilipat sa ibabaw nito ang sign-in ng dating app. Patuloy na gamitin ang dating app, at ipadala sa support ang report sa Ipakita ang mga detalye."
     },
     "done": {
       "title": "Handa na ang iyong data",
