@@ -27,6 +27,7 @@ use crate::sync::outbox::Durable;
 
 use super::super::notes::{self, failed, iso};
 use super::super::tasks::valid_item_id;
+use super::propagate::{project_names, renamed, without_name};
 use super::write::{edit_project, mint_id};
 use super::{ITEM_TYPE, require_live};
 
@@ -94,7 +95,8 @@ pub fn links(conn: &Connection, project_id: &str) -> Result<Vec<ProjectLink>, St
 }
 
 /// Links an item to the project (`linkProjectItem`), returning the project
-/// payload. Linking an item already linked adds no second entry.
+/// payload. Linking an item already linked adds no second entry and writes no
+/// project (`None`).
 pub fn link(
     conn: &Connection,
     project_id: &str,
@@ -102,7 +104,7 @@ pub fn link(
     item_id: &str,
     device_id: &str,
     now_ms: i64,
-) -> Result<Durable<String>, StorageError> {
+) -> Result<Option<Durable<String>>, StorageError> {
     let project = require_live(conn, project_id)?;
     valid_item_id(item_id)?;
     let markdown = item_type == LinkItemType::Note && is_markdown_note(conn, item_id)?;
@@ -137,7 +139,7 @@ pub fn link(
 }
 
 /// Unlinks an item from the project (`unlinkProjectItem`), returning the
-/// project payload.
+/// project payload; `None` when the item was not linked.
 pub fn unlink(
     conn: &Connection,
     project_id: &str,
@@ -145,7 +147,7 @@ pub fn unlink(
     item_id: &str,
     device_id: &str,
     now_ms: i64,
-) -> Result<Durable<String>, StorageError> {
+) -> Result<Option<Durable<String>>, StorageError> {
     let project = require_live(conn, project_id)?;
     let markdown = item_type == LinkItemType::Note && is_markdown_note(conn, item_id)?;
     if markdown {
@@ -168,8 +170,9 @@ pub fn unlink(
 /// Pins or unpins a linked item (`setProjectLinkPinned`), matched by item id
 /// alone as desktop matches it. Unpinning keeps the link.
 ///
-/// An item with no link is an error rather than desktop's silent no-op write:
-/// a write that changes nothing would still tick the clock and push.
+/// An item with no link is an error rather than desktop's silent no-op write,
+/// and a pin that already holds is `None`: a write that changes nothing must
+/// not tick the clock and push (see `write::edit_project`).
 pub fn set_link_pinned(
     conn: &Connection,
     project_id: &str,
@@ -177,7 +180,7 @@ pub fn set_link_pinned(
     pinned: bool,
     device_id: &str,
     now_ms: i64,
-) -> Result<Durable<String>, StorageError> {
+) -> Result<Option<Durable<String>>, StorageError> {
     require_live(conn, project_id)?;
     let mut entries = stored_links(conn, project_id)?;
     let mut found = false;
@@ -231,16 +234,7 @@ pub(super) fn propagate_rename(
 ) -> Result<(), StorageError> {
     for note_id in markdown_note_ids(conn, project_id)? {
         rewrite_linked_note(conn, &note_id, device_id, now_ms, |names| {
-            names
-                .into_iter()
-                .map(|name| {
-                    if name.to_lowercase() == old.to_lowercase() {
-                        new.to_owned()
-                    } else {
-                        name
-                    }
-                })
-                .collect()
+            renamed(names, old, new)
         })?;
     }
     Ok(())
@@ -299,7 +293,7 @@ fn rewrite_note_names(
             });
         }
     };
-    let names = read_project_names(properties.get(PROJECT_PROPERTY_KEY));
+    let names = project_names(properties.get(PROJECT_PROPERTY_KEY));
     let next = rewrite(names.clone());
     if next == names {
         return Ok(());
@@ -317,41 +311,6 @@ fn rewrite_note_names(
     Ok(())
 }
 
-/// Desktop's `readProjectNames`: a clean, case-insensitively unique name list
-/// from every shape a hand-edited frontmatter produces — an array, a bare
-/// string, a JSON array written as a string by an older build, or nothing.
-fn read_project_names(raw: Option<&Value>) -> Vec<String> {
-    let entries: Vec<Value> = match raw {
-        None | Some(Value::Null) => Vec::new(),
-        Some(Value::Array(entries)) => entries.clone(),
-        Some(Value::String(text)) => {
-            let trimmed = text.trim();
-            match serde_json::from_str::<Value>(trimmed) {
-                Ok(Value::Array(entries)) if trimmed.starts_with('[') => entries,
-                _ => vec![Value::String(text.clone())],
-            }
-        }
-        Some(_) => Vec::new(),
-    };
-    let mut names: Vec<String> = Vec::new();
-    for entry in entries {
-        let Some(name) = entry
-            .as_str()
-            .map(str::trim)
-            .filter(|name| !name.is_empty())
-        else {
-            continue;
-        };
-        if !names
-            .iter()
-            .any(|seen| seen.to_lowercase() == name.to_lowercase())
-        {
-            names.push(name.to_owned());
-        }
-    }
-    names
-}
-
 fn with_name(mut names: Vec<String>, name: &str) -> Vec<String> {
     if !names
         .iter()
@@ -360,13 +319,6 @@ fn with_name(mut names: Vec<String>, name: &str) -> Vec<String> {
         names.push(name.to_owned());
     }
     names
-}
-
-fn without_name(names: Vec<String>, name: &str) -> Vec<String> {
-    names
-        .into_iter()
-        .filter(|seen| seen.to_lowercase() != name.to_lowercase())
-        .collect()
 }
 
 /// Whether an entry is the link to this item. A markdown note's entry is
@@ -431,21 +383,6 @@ fn is_markdown_note(conn: &Connection, note_id: &str) -> Result<bool, StorageErr
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn project_names_read_every_shape_desktop_tolerates() {
-        assert_eq!(read_project_names(None), Vec::<String>::new());
-        assert_eq!(read_project_names(Some(&json!(""))), Vec::<String>::new());
-        assert_eq!(read_project_names(Some(&json!("Alpha"))), vec!["Alpha"]);
-        assert_eq!(
-            read_project_names(Some(&json!("[\"Alpha\",\"Beta\"]"))),
-            vec!["Alpha", "Beta"]
-        );
-        assert_eq!(
-            read_project_names(Some(&json!([" Alpha ", "alpha", null, "", "Beta"]))),
-            vec!["Alpha", "Beta"]
-        );
-    }
 
     #[test]
     fn a_name_is_added_once_and_removed_case_insensitively() {
