@@ -30,6 +30,7 @@ import {
 import {
   CrdtUpdatePackEntryMetaSchema,
   EncryptedItemPayloadSchema,
+  RECORD_SYNC_ITEM_TYPES,
   RecordPackEntryMetaSchema,
   RecordPullItemResponseSchema
 } from '../sync-api'
@@ -40,6 +41,7 @@ interface EntryContract {
     id: string
     usable: boolean
     // Present when `usable`.
+    sortKey?: number
     pullItem?: unknown
     vaultKeyHex?: string
     signingSeedHex?: string
@@ -48,11 +50,47 @@ interface EntryContract {
   updates?: Array<{
     noteId: string
     usable: boolean
+    sortKey: number
     meta: unknown
     vaultKeyHex: string
     signingSeedHex: string
     plaintextHex: string
   }>
+  updatePlans?: Array<{
+    cursor: number
+    lowerBound: number | null
+    apply: number[]
+    cursorAfter: number
+  }>
+}
+
+/**
+ * Chapter 08 §8.4.3 as a reader would run it over one document's packed
+ * updates: nothing without a server-provided lower bound, nothing when one
+ * pair carries two digests, and otherwise consecutive numbers above
+ * max(cursor, lowerBound) until the first gap.
+ */
+function planPackedUpdates(
+  entries: Array<{ meta?: unknown; payloadHex: string }>,
+  cursor: number,
+  lowerBound: number | null
+): { apply: number[]; cursorAfter: number } {
+  if (lowerBound === null) return { apply: [], cursorAfter: cursor }
+  const digestBySeq = new Map<number, string>()
+  for (const entry of entries) {
+    const { sequenceNum } = CrdtUpdatePackEntryMetaSchema.parse(entry.meta)
+    const digest = entry.payloadHex
+    const seen = digestBySeq.get(sequenceNum)
+    if (seen !== undefined && seen !== digest) return { apply: [], cursorAfter: cursor }
+    digestBySeq.set(sequenceNum, digest)
+  }
+  const apply: number[] = []
+  let at = Math.max(cursor, lowerBound)
+  while (digestBySeq.has(at + 1)) {
+    at += 1
+    apply.push(at)
+  }
+  return { apply, cursorAfter: apply.length > 0 ? at : cursor }
 }
 
 const vectors = loadVectorFile<{
@@ -177,6 +215,14 @@ describe('pack entry contract vectors', () => {
     expect(updates.length).toBeGreaterThan(1)
   })
 
+  it('covers a purge, a gap and one pair with two digests', () => {
+    const plans = contractCases.flatMap((c) => c.entryContract?.updatePlans ?? [])
+    expect(plans.some((p) => p.lowerBound === null)).toBe(true)
+    expect(plans.some((p) => p.lowerBound !== null && p.lowerBound > p.cursor)).toBe(true)
+    expect(contractCases.some((c) => c.name.includes('gap'))).toBe(true)
+    expect(contractCases.some((c) => c.name.includes('two digests'))).toBe(true)
+  })
+
   for (const entry of contractCases) {
     // oxlint-disable-next-line vitest/valid-title -- title comes from vector/fixture data typed as string; the rule is not type-aware
     it(entry.name, async () => {
@@ -187,15 +233,22 @@ describe('pack entry contract vectors', () => {
       const records = parsed.entries.filter((e) => e.kind === 'record')
       const updates = parsed.entries.filter((e) => e.kind === 'crdt_update')
       expect(records.map((e) => e.id)).toEqual(wantRecords.map((r) => r.id))
-      expect(updates.length).toBe(wantUpdates.length)
+      // Plan cases carry entries but no per-entry expectations.
+      expect(updates.length).toBe(
+        entry.entryContract?.updatePlans ? updates.length : wantUpdates.length
+      )
 
       for (const [i, packed] of records.entries()) {
         const want = wantRecords[i]
         const meta = RecordPackEntryMetaSchema.safeParse(packed.meta)
-        expect(meta.success, `${packed.id}: usable`).toBe(want.usable)
-        if (!meta.success) continue
         // `type:id`, split at the first colon: no record type contains one.
         const split = packed.id.indexOf(':')
+        const declared = (RECORD_SYNC_ITEM_TYPES as readonly string[]).includes(
+          packed.id.slice(0, split)
+        )
+        expect(meta.success && declared, `${packed.id}: usable`).toBe(want.usable)
+        if (!meta.success || !declared) continue
+        expect(packed.sortKey).toBe(want.sortKey)
         const blob = EncryptedItemPayloadSchema.parse(
           JSON.parse(new TextDecoder().decode(extractEntry(bytes, packed)))
         )
@@ -225,9 +278,11 @@ describe('pack entry contract vectors', () => {
       expect(sortKeys).toEqual(sortKeys.toSorted((a, b) => a - b))
       expect(sequenceNums).toEqual(sequenceNums.toSorted((a, b) => a - b))
 
-      for (const [i, packed] of updates.entries()) {
-        const want = wantUpdates[i]
+      for (const [i, want] of wantUpdates.entries()) {
+        const packed = updates[i]
         expect(packed.id).toBe(want.noteId)
+        expect(packed.sortKey).toBe(want.sortKey)
+        expect(packed.sourceKey).toBe('')
         const meta = CrdtUpdatePackEntryMetaSchema.parse(packed.meta)
         expect(meta).toEqual(want.meta)
         const signer = sodium.crypto_sign_seed_keypair(fromHex(want.signingSeedHex))
@@ -239,6 +294,18 @@ describe('pack entry contract vectors', () => {
           signer.publicKey
         )
         expect(hex(plaintext)).toBe(want.plaintextHex)
+      }
+
+      // Equal payloads are equal digests: parsePack already checked each one.
+      const packedUpdates = updates.map((u) => ({
+        meta: u.meta,
+        payloadHex: hex(extractEntry(bytes, u))
+      }))
+      for (const plan of entry.entryContract?.updatePlans ?? []) {
+        expect(planPackedUpdates(packedUpdates, plan.cursor, plan.lowerBound)).toEqual({
+          apply: plan.apply,
+          cursorAfter: plan.cursorAfter
+        })
       }
     })
   }

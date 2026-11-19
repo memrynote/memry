@@ -534,8 +534,10 @@ take the stop-at-gap side**: it is the only one under which no update can be
 skipped permanently.
 
 Updates read from a pack add one condition: the cursor moves across a packed
-update only when its `sequenceNum` is the cursor plus one, and a missing number
-is pulled from the server, never skipped (chapter 08 §8.4.3,
+update only when its `sequenceNum` is the cursor plus one, a missing number is
+pulled from the server, never skipped, and no packed update is used before the
+server has given a lower bound for the document, so a purged update a pack still
+holds is never applied (chapter 08 §8.4.3,
 `packages/contracts/src/sync-api.ts:814-818`).
 
 ## 7.10 Retry policy and rate limits

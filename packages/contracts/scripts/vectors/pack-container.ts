@@ -1,5 +1,5 @@
 /**
- * Class: MPAK pack container (`pack-container.json`), 14 READER-ONLY cases.
+ * Class: MPAK pack container (`pack-container.json`), 19 READER-ONLY cases.
  *
  * The pack WRITER lives server-side and is not in `packages/contracts`
  * (`packages/contracts/src/pack-format.ts:10-14`). `packages/contracts` must
@@ -23,7 +23,16 @@
  */
 import { createHash } from 'node:crypto'
 
+import { ready } from 'libsodium-wrappers-sumo'
 import { z } from 'zod'
+
+import { encryptRecordForPush } from '../../../sync-client/src/push/record-encrypt.ts'
+import {
+  FIXED,
+  deterministicProvider,
+  fromHex,
+  signerFromSeed
+} from '../../test-vectors/deterministic-provider'
 
 import {
   PACK_FOOTER_SIZE,
@@ -288,6 +297,7 @@ function recordEntryFrom(source: RecordEnvelopeCase, sortKey: number) {
   const expectation = {
     id: entry.id,
     usable: true,
+    sortKey,
     pullItem: { id: push.id, type: push.type, ...entryMeta, blob },
     vaultKeyHex: source.input.vaultKeyHex,
     signingSeedHex: source.input.signingSeedHex,
@@ -296,12 +306,39 @@ function recordEntryFrom(source: RecordEnvelopeCase, sortKey: number) {
   return { entry, expectation }
 }
 
+/**
+ * A record whose id holds two colons, signed through the production push path.
+ * `record-envelope` has no such item, and the signature covers the id, so a
+ * reader that splits `idBytes` at any colon but the first fails to verify it.
+ */
+async function colonIdRecord(source: RecordEnvelopeCase): Promise<RecordEnvelopeCase> {
+  await ready
+  const content = 'a folder config whose path holds colons'
+  const signer = signerFromSeed(source.input.signingSeedHex)
+  const { pushItem } = await encryptRecordForPush(deterministicProvider(), {
+    id: 'Projects:2026:Q1',
+    type: 'folder_config',
+    operation: 'update',
+    content: utf8(content),
+    vaultKey: fromHex(source.input.vaultKeyHex),
+    signingSecretKey: signer.secretKey,
+    signerDeviceId: FIXED.DEVICE_A,
+    clock: { [FIXED.DEVICE_A]: 1 }
+  })
+  return {
+    name: 'folder_config with colons in its id',
+    input: source.input,
+    expected: { pushItem, roundTripUtf8: content }
+  }
+}
+
 function updateEntryFrom(source: CrdtUpdateCase, sequenceNum: number, sortKey: number) {
   const entryMeta = { sequenceNum, signerDeviceId: 'device-a', createdAt: 1760000000 + sequenceNum }
   const entry: EntryInput = {
     kind: 'crdt_update',
     id: source.input.noteId,
-    sourceKey: `u/1/v/1/upd/${source.input.noteId}/${sequenceNum}`,
+    // §8.4.3: an update is a D1 row with no R2 object, so keyBytes is empty.
+    sourceKey: '',
     sortKey,
     meta: entryMeta,
     payload: Uint8Array.from(Buffer.from(source.expected.packedHex, 'hex'))
@@ -309,12 +346,27 @@ function updateEntryFrom(source: CrdtUpdateCase, sequenceNum: number, sortKey: n
   const expectation = {
     noteId: source.input.noteId,
     usable: true,
+    sortKey,
     meta: entryMeta,
     vaultKeyHex: source.input.vaultKeyHex,
     signingSeedHex: source.input.signingSeedHex,
     plaintextHex: source.input.updateHex
   }
   return { entry, expectation }
+}
+
+// Plan cases (§8.4.3). Their payloads are never opened, so a fixed blob with
+// one varied byte stands in for an envelope; only sequence numbers and
+// digests decide the plan.
+function planEntry(sequenceNum: number, sortKey: number, variant = 0): EntryInput {
+  return {
+    kind: 'crdt_update',
+    id: 'abc123def456',
+    sourceKey: '',
+    sortKey,
+    meta: { sequenceNum, signerDeviceId: 'device-a', createdAt: 1760000000 + sequenceNum },
+    payload: Uint8Array.from(UPDATE_BLOB, (b, i) => (i === 0 ? b ^ sequenceNum ^ variant : b))
+  }
 }
 
 async function entryContractSpecs() {
@@ -338,8 +390,19 @@ async function entryContractSpecs() {
     meta: withoutSignature
   }
 
+  const undeclared: EntryInput = {
+    ...recordEntryFrom(byName(records, 'journal update'), 48).entry,
+    id: 'whiteboard:board-1'
+  }
+  const colonId = recordEntryFrom(
+    await colonIdRecord(byName(records, 'settings update with no clock')),
+    49
+  )
+
   const first = updateEntryFrom(byName(updates, '512-byte update, compressible'), 4, 100)
   const second = updateEntryFrom(byName(updates, '40-byte update'), 5, 103)
+
+  const acrossPurge = [1, 2, 3, 4, 5].map((seq) => planEntry(seq, 200 + seq))
 
   return [
     {
@@ -366,10 +429,45 @@ async function entryContractSpecs() {
       }
     },
     {
+      name: 'a record entry of a type the reader does not declare',
+      entries: [undeclared],
+      pins: 'chapter 08 §8.4.2: an entry whose type is outside the reader subscription is skipped, as POST /sync/pull would not have served it; its sortKey bounds the record tail',
+      entryContract: { records: [{ id: undeclared.id, usable: false }] }
+    },
+    {
+      name: 'a record id containing colons',
+      entries: [colonId.entry],
+      pins: 'chapter 08 §8.4.2: idBytes splits at the FIRST colon; the signature covers the id, so any other split fails to verify',
+      entryContract: { records: [colonId.expectation] }
+    },
+    {
       name: 'crdt_update entries of one document',
       entries: [first.entry, second.entry],
       pins: 'chapter 08 §8.4.3: identity is the document id, sortKey the server_cursor, meta {sequenceNum, signerDeviceId, createdAt}, payload the stored packed envelope',
       entryContract: { updates: [first.expectation, second.expectation] }
+    },
+    {
+      name: 'packed updates of a document purged at sequence 3',
+      entries: acrossPurge,
+      pins: 'chapter 08 §8.4.3: a pack built before a purge still holds the deleted updates 1..3. A reader uses packed updates only above a server-provided lower bound; with none it uses none',
+      entryContract: {
+        updatePlans: [
+          { cursor: 0, lowerBound: 3, apply: [4, 5], cursorAfter: 5 },
+          { cursor: 0, lowerBound: null, apply: [], cursorAfter: 0 }
+        ]
+      }
+    },
+    {
+      name: 'packed updates with a sequence gap',
+      entries: [planEntry(1, 301), planEntry(2, 302), planEntry(4, 304)],
+      pins: 'chapter 08 §8.4.3: the cursor stops at the first missing number and the reader pulls from it',
+      entryContract: { updatePlans: [{ cursor: 0, lowerBound: 0, apply: [1, 2], cursorAfter: 2 }] }
+    },
+    {
+      name: 'one update pair carried with two digests',
+      entries: [planEntry(5, 405), planEntry(5, 406, 0x80), planEntry(6, 407)],
+      pins: 'chapter 08 §8.4.3: two entries for one (document, sequenceNum) with different digests make the document packed updates unusable',
+      entryContract: { updatePlans: [{ cursor: 4, lowerBound: 4, apply: [], cursorAfter: 4 }] }
     }
   ]
 }
