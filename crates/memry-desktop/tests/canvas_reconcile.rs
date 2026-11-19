@@ -7,7 +7,7 @@
 //! | a document moved outside the app keeps its canvas                 | `reconcile.ts:526-543`         |
 //! | a copied document becomes a second canvas under a new id          | `reconcile.ts:545-551`         |
 //! | a deleted canvas's document put back is a new canvas              | `reconcile.ts:477-496`         |
-//! | a canvas whose document is gone is kept and nothing is written    | `reconcile.ts:757-779`         |
+//! | a canvas whose document is gone is deleted and nothing is written | `reconcile.ts:757-779`, `watcher.ts:503-560` |
 //! | an edit made on disk reaches the record                           | departure: one copy in Electron |
 //! | a record change the document missed reaches the document          | departure: one copy in Electron |
 //! | both changed: the on-disk drawing is kept as a conflict copy      | departure: one copy in Electron |
@@ -151,13 +151,14 @@ fn a_deleted_canvas_document_put_back_is_a_new_canvas() {
 }
 
 #[test]
-fn a_canvas_whose_document_is_gone_is_kept_and_nothing_is_written() {
+fn a_canvas_whose_document_is_gone_is_deleted_and_nothing_is_written() {
     let w = world();
     w.create("Plan", None, "ink");
     fs::remove_file(w.vault.join("canvases/Plan.excalidraw")).unwrap();
 
-    assert_eq!(w.reconcile().missing_files, 1);
-    assert_eq!(w.titles().len(), 1);
+    let done = w.reconcile();
+    assert_eq!((done.missing_files, done.removed), (1, 1));
+    assert!(w.titles().is_empty());
     assert!(!w.vault.join("canvases/Plan.excalidraw").exists());
 }
 

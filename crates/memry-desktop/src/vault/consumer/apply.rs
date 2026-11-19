@@ -79,6 +79,8 @@ pub(super) struct Applier {
     /// The open's write-back, which writes a body that won over an outside edit; `None` in a
     /// test that runs none.
     pub(super) writeback: Option<Arc<WriteBack>>,
+    /// Where a removed canvas path goes (`run::take`); `None` when the app set no hook.
+    pub(super) canvas_gone: Option<super::tier::OpenCanvasGone>,
 }
 
 impl Applier {

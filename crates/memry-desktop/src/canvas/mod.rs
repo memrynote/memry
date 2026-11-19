@@ -12,3 +12,4 @@ pub mod scene_file;
 pub mod service;
 pub mod settle;
 mod update;
+pub mod watch;

@@ -11,11 +11,13 @@
 //!   placeholder) is not.
 //! - `handle`: the worker's queue, and what a consumer may ask of it.
 //! - [`runtime`]: the `notify` watcher and the one thread that owns the reconciler.
+//! - `canvas`: a canvas document removed outside the app, reported once its window is over.
 //! - [`safety`]: the rescans that stand in for events the OS watcher lost without saying so.
 //!
 //! The watcher is inert for notes: it reads `note_files` and the files, changes neither, and
 //! hands events to a sink. The consumer (`vault::consumer`) applies them.
 
+mod canvas;
 pub mod debounce;
 pub mod echo;
 pub mod event;
@@ -34,6 +36,7 @@ pub mod safety;
 pub use echo::EchoGuard;
 pub use event::{EventSink, VaultEvent};
 pub use handle::{NewFiles, WatchHandle};
+pub use rescan::{MASS_REMOVAL_MIN_COUNT, MASS_REMOVAL_MIN_SHARE};
 #[cfg(test)]
 pub(crate) use runtime::HoldFn;
 #[cfg(feature = "test-hooks")]

@@ -11,9 +11,11 @@
 //!   is deleted and no live canvas's document is in it: then the emptied directory is removed.
 //!   A live folder record whose directory is gone gets the directory back.
 //!
-//! Additive, as Electron's: nothing here deletes a record, and the only thing removed from disk
-//! is the empty directory of a folder already deleted. A deleted document becomes a canvas
-//! delete through the vault watcher, never here.
+//! - A live canvas whose document this device had and is gone becomes a canvas delete, the
+//!   removal the vault watcher missed while the app was closed ([`super::watch`]).
+//!
+//! Otherwise additive, as Electron's: the only thing removed from disk is the empty directory of
+//! a folder already deleted.
 //!
 //! Departures from Electron: the record's scene is kept in agreement with the document (Electron
 //! has no second copy); a document that is not a drawing is not adopted; there is no migration of
@@ -61,6 +63,10 @@ pub struct Reconciled {
     pub folders_adopted: usize,
     pub folders_restored: usize,
     pub folders_pruned: usize,
+    /// Live canvases deleted because their document was removed while the app was closed.
+    pub removed: usize,
+    /// Too many documents were missing at once: none of their canvases was deleted.
+    pub removals_withheld: bool,
 }
 
 /// Runs [`CanvasService::reconcile`] in the background of every open.
@@ -84,7 +90,7 @@ pub fn register(session: &Session, store: Arc<dyn SecureStore>) {
     );
 }
 
-fn now_ms() -> i64 {
+pub(super) fn now_ms() -> i64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(0, |elapsed| elapsed.as_millis() as i64)
@@ -153,6 +159,7 @@ impl CanvasService {
         if cancelled() {
             return Ok(done);
         }
+        self.replay_missed_removals(now_ms, &mut done)?;
         self.reconcile_folders(now_ms, &mut done)?;
         Ok(done)
     }
