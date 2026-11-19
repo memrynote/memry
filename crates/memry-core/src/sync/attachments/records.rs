@@ -10,7 +10,9 @@ use crate::api::errors::StorageError;
 use crate::domain::notes;
 
 /// Records an upload of the vault file `path` (vault-relative) of `owner_id`
-/// that the server now holds as `attachment_id`.
+/// that the server now holds as `attachment_id`, and drops its queue row,
+/// keyed `queued`: the path the row was queued under, absolute or (older rows)
+/// vault-relative.
 ///
 /// When the owner is a live note, the id joins the note's
 /// `attachmentReferences` as a union, in one transaction with the note's
@@ -27,6 +29,7 @@ pub fn record_uploaded(
     conn: &Connection,
     owner_id: &str,
     path: &str,
+    queued: &str,
     attachment_id: &str,
     device_id: &str,
     now_ms: i64,
@@ -38,7 +41,7 @@ pub fn record_uploaded(
     let transaction = conn.unchecked_transaction().map_err(failed)?;
     download_failures::clear(&transaction, owner_id, attachment_id)?;
     files::record(&transaction, owner_id, path, attachment_id, now_ms)?;
-    upload_queue::clear(&transaction, owner_id, path)?;
+    upload_queue::clear(&transaction, owner_id, queued)?;
     transaction.commit().map_err(failed)?;
     Ok(referenced)
 }

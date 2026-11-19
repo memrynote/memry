@@ -13,9 +13,11 @@ mod runners;
 pub mod vault_files;
 
 use std::collections::HashSet;
+use std::fmt::Display;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, PoisonError, Weak};
 
+use memry_core::api::auth::AuthSession;
 use memry_core::seams::reachability::{Reachability, ReachabilityObserver, Reachable};
 use memry_core::storage::Db;
 use memry_core::sync::attachments::queue::{DownloadFn, DownloadQueue, VaultFiles};
@@ -23,6 +25,8 @@ use memry_core::sync::attachments::revival;
 use memry_core::sync::attachments::store::download_failures;
 use memry_core::sync::attachments::transfer::AttachmentTransfer;
 use memry_core::sync::driver::{ApplyObserver, AttachmentDownload};
+use memry_core::sync::engine::PassReport;
+use memry_core::sync::state::SyncState;
 use tokio::sync::Notify;
 use tokio::task::JoinHandle;
 
@@ -41,8 +45,11 @@ struct Inner {
     vault: Arc<dyn VaultFiles>,
     auto_download: AutoDownload,
     runtime: tokio::runtime::Handle,
-    /// A pass pulled to the feed head since the drivers started (`isCaughtUpWithServer`).
+    /// The last pass pulled to the feed head (`lastRunCaughtUp`); a pause or going offline
+    /// clears it.
     caught_up: AtomicBool,
+    paused: AtomicBool,
+    online: AtomicBool,
     running: Mutex<Option<Running>>,
 }
 
@@ -51,6 +58,8 @@ struct Inner {
 struct Live {
     transfer: Arc<AttachmentTransfer>,
     device_id: Arc<str>,
+    /// Gates the upload re-drive on a token and a device that is not revoked.
+    session: Arc<AuthSession>,
     queue: Arc<DownloadQueue>,
     /// Wakes an upload re-drive (a revived note).
     uploads: Arc<Notify>,
@@ -82,13 +91,12 @@ impl AttachmentSync {
             auto_download,
             runtime,
             caught_up: AtomicBool::new(false),
+            paused: AtomicBool::new(false),
+            online: AtomicBool::new(reachability.current() != Reachable::Offline),
             running: Mutex::new(None),
         });
         // Weak: the reachability source keeps its observers for good.
-        reachability.observe(Arc::new(Network {
-            sync: Arc::downgrade(&inner),
-            online: AtomicBool::new(reachability.current() != Reachable::Offline),
-        }));
+        reachability.observe(Arc::new(Network(Arc::downgrade(&inner))));
         Self { inner }
     }
 
@@ -97,10 +105,11 @@ impl AttachmentSync {
         Arc::new(Observer(Arc::downgrade(&self.inner)))
     }
 
-    /// Starts the drivers over `transfer`; `device_id` stamps the reference writes. The first
+    /// Starts the drivers over `transfer`; `device_id` stamps the reference writes, and `session`
+    /// gates the uploads. The first
     /// round runs at once: the upload re-drive, then the download re-drive, then the release
     /// (`runtime.ts:892-921`).
-    pub fn start(&self, transfer: AttachmentTransfer, device_id: &str) {
+    pub fn start(&self, transfer: AttachmentTransfer, device_id: &str, session: Arc<AuthSession>) {
         self.stop();
         let transfer = Arc::new(transfer);
         let download: DownloadFn = {
@@ -117,6 +126,7 @@ impl AttachmentSync {
         let live = Live {
             transfer,
             device_id: device_id.into(),
+            session,
             queue: Arc::new(DownloadQueue::new(download)),
             uploads: Arc::default(),
             reconnect: Arc::default(),
@@ -141,8 +151,41 @@ impl AttachmentSync {
 
     /// A pass pulled to the feed head: the release may trust the local view now. The first one
     /// runs the release a start round skipped, rather than an hour later.
-    pub fn caught_up(&self) {
-        if !self.inner.caught_up.swap(true, Ordering::SeqCst)
+    /// The open's transfer could not be built: the drivers stop, so the observer requests no
+    /// download until a later open starts them (Electron releases the claim when it has no
+    /// download queue, `sync-attachment-handlers.ts:666`).
+    pub fn not_started(&self, error: &dyn Display) {
+        tracing::error!(%error, "attachment sync not started; downloads wait for the next open");
+        self.stop();
+    }
+
+    /// Sync paused or resumed. A pause forgets the last pass's catch-up: only a later pass that
+    /// pulls to the feed head says it again.
+    pub fn set_paused(&self, paused: bool) {
+        if paused {
+            self.inner.caught_up.store(false, Ordering::SeqCst);
+        }
+        self.inner.paused.store(paused, Ordering::SeqCst);
+    }
+
+    /// `isCaughtUpWithServer` (`engine.ts:632`): the last pass pulled to the feed head and sync is
+    /// neither paused nor offline. Only then does the local view reflect what peers did.
+    pub fn caught_up_with_server(&self) -> bool {
+        self.inner.caught_up_with_server()
+    }
+
+    /// What a pass did (`lastRunCaughtUp`, `full-sync-runner.ts:438,509,514`): caught up only when
+    /// it pulled to the feed head with no error or refusal. A skipped pass (`None`) or an offline
+    /// one is not. The first catch-up runs the release a start round skipped, not an hour later.
+    pub fn heard(&self, pass: Option<&PassReport>) {
+        let caught_up = pass.is_some_and(|pass| {
+            pass.transitions.contains(&SyncState::Pulling)
+                && pass.pull_error.is_none()
+                && !pass.pull.has_more
+                && !pass.pull.refused
+        });
+        if !self.inner.caught_up.swap(caught_up, Ordering::SeqCst)
+            && caught_up
             && let Some(live) = self.inner.live()
         {
             live.release.notify_one();
@@ -160,6 +203,12 @@ impl Drop for Inner {
 }
 
 impl Inner {
+    fn caught_up_with_server(&self) -> bool {
+        self.caught_up.load(Ordering::SeqCst)
+            && !self.paused.load(Ordering::SeqCst)
+            && self.online.load(Ordering::SeqCst)
+    }
+
     fn live(&self) -> Option<Live> {
         lock(&self.running)
             .as_ref()
@@ -209,16 +258,19 @@ impl ApplyObserver for Observer {
     }
 }
 
-struct Network {
-    sync: Weak<Inner>,
-    online: AtomicBool,
-}
+struct Network(Weak<Inner>);
 
 impl ReachabilityObserver for Network {
     fn on_change(&self, reachable: Reachable) {
+        let Some(inner) = self.0.upgrade() else {
+            return;
+        };
         let online = reachable != Reachable::Offline;
-        let was = self.online.swap(online, Ordering::SeqCst);
-        let Some(live) = self.sync.upgrade().and_then(|inner| inner.live()) else {
+        let was = inner.online.swap(online, Ordering::SeqCst);
+        if !online {
+            inner.caught_up.store(false, Ordering::SeqCst);
+        }
+        let Some(live) = inner.live() else {
             return;
         };
         if reachable == Reachable::Wifi {

@@ -150,7 +150,7 @@ struct Device {
     clock_id: String,
     secret: Vec<u8>,
     registered: String,
-    session: AuthSession,
+    session: Arc<AuthSession>,
     wire: Arc<Wire>,
 }
 
@@ -197,7 +197,7 @@ impl Device {
             clock_id: keys::local_device_id_hex(&secret[32..]).unwrap(),
             secret,
             registered: boot["deviceId"].as_str().unwrap().to_owned(),
-            session,
+            session: Arc::new(session),
             wire,
         }
     }
@@ -560,7 +560,7 @@ async fn a_crash_mid_upload_restarts_cleanly_and_the_merge_keeps_every_id() {
     let clock = a.clock_id.clone();
     let recorded = id.clone();
     let referenced =
-        a.db.call(move |conn| record_uploaded(conn, "note-1", REL, &recorded, &clock, 4))
+        a.db.call(move |conn| record_uploaded(conn, "note-1", REL, REL, &recorded, &clock, 4))
             .await
             .unwrap();
     assert!(referenced);
@@ -574,7 +574,7 @@ async fn a_crash_mid_upload_restarts_cleanly_and_the_merge_keeps_every_id() {
 
     let clock = a.clock_id.clone();
     let recorded = id.clone();
-    a.db.call(move |conn| record_uploaded(conn, "note-1", REL, &recorded, &clock, 5))
+    a.db.call(move |conn| record_uploaded(conn, "note-1", REL, REL, &recorded, &clock, 5))
         .await
         .unwrap();
     assert_eq!(references(&a).await, ["from-a-peer".to_owned(), id.clone()]);

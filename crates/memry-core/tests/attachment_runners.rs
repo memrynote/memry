@@ -14,6 +14,7 @@
 //! | a vault that is away keeps every queued upload               | `uploadFileState`                    |
 //! | a revival reupload waits for its vault                       | `uploadFileState`                    |
 //! | a revoked device stops the drain, no attempt counted         | `drainOutboxWith` (#3414)            |
+//! | an upload clears its queue row in either path form           | `onSaved` `clearUploadQueue`         |
 
 #[allow(unused_imports)]
 use crate::http_fakes;
@@ -44,6 +45,7 @@ use memry_core::sync::attachments::plan::RELEASE_GRACE_MS;
 use memry_core::sync::attachments::queue::{
     DownloadFn, DownloadQueue, DownloadRequest, DownloadSource, QueueCleared, VaultFiles,
 };
+use memry_core::sync::attachments::records::record_uploaded;
 use memry_core::sync::attachments::release::{CanvasAsset, CanvasAssets, CanvasKept, release_due};
 use memry_core::sync::attachments::revival::{mark_revived, revived, settle_revived};
 use memry_core::sync::attachments::server::AttachmentServer;
@@ -889,4 +891,27 @@ async fn a_revoked_device_stops_the_drain_and_counts_no_attempt() {
     assert_eq!(report.failed, 0, "{report:?}");
     assert_eq!(attempts(&db), rows, "every row as it was");
     assert_eq!(server.paths().len(), 3, "no row starts after the refusal");
+}
+
+/// Rows queued under the absolute path (the outbox's form) and under the
+/// vault-relative one (older rows) both clear with the upload's record.
+#[tokio::test]
+async fn an_upload_clears_its_queue_row_in_either_path_form() {
+    let db = scratch_data_db("record-uploaded-key");
+    let vault = TempVault::new();
+    note(&db, "n1", "notes/n1.md", &[]);
+    let absolute = vault.abs("attachments/n1/a.png");
+    for (queued, rel, id) in [
+        (absolute.as_str(), "attachments/n1/a.png", "id-a"),
+        ("attachments/n1/b.png", "attachments/n1/b.png", "id-b"),
+    ] {
+        let queued = queued.to_owned();
+        let pending = with(&db, move |conn| {
+            upload_queue::enqueue(conn, "n1", &queued, NOW)?;
+            record_uploaded(conn, "n1", rel, &queued, id, DEVICE, NOW)?;
+            upload_queue::has_pending(conn, "n1", &queued)
+        });
+        assert!(!pending, "the {rel} row is cleared");
+    }
+    assert!(attempts(&db).is_empty());
 }

@@ -242,10 +242,12 @@ impl SyncBackend for VaultSyncBackend {
         // Sync runs without them: a transfer that cannot be built is logged, never fatal.
         match driver.attachment_transfer(&self.session, sanitize_filename) {
             Ok(transfer) => match self.session.local_device_id() {
-                Ok(device_id) => attachments.start(transfer, &device_id),
-                Err(error) => tracing::error!(%error, "attachment sync not started: no device id"),
+                Ok(device_id) => {
+                    attachments.start(transfer, &device_id, Arc::clone(&self.session));
+                }
+                Err(error) => attachments.not_started(&format!("no device id: {error}")),
             },
-            Err(error) => tracing::error!(%error, "attachment sync not started"),
+            Err(error) => attachments.not_started(&error),
         }
         Ok(Arc::new(Tracked {
             driver,
@@ -269,8 +271,8 @@ impl SyncBackend for VaultSyncBackend {
     }
 }
 
-/// The driver, telling the attachment drivers when a pass pulled to the feed head: the release
-/// trusts the local view only then (`isCaughtUpWithServer`).
+/// The driver, telling the attachment drivers every pass's result and every pause: the release
+/// trusts the local view only while caught up with the server (`isCaughtUpWithServer`).
 struct Tracked {
     driver: SyncDriver,
     attachments: AttachmentSync,
@@ -278,13 +280,7 @@ struct Tracked {
 
 impl Tracked {
     fn heard(&self, pass: Option<PassReport>) -> Option<PassReport> {
-        if let Some(pass) = &pass
-            && pass.pull_error.is_none()
-            && !pass.pull.has_more
-            && !pass.pull.refused
-        {
-            self.attachments.caught_up();
-        }
+        self.attachments.heard(pass.as_ref());
         pass
     }
 }
@@ -306,9 +302,11 @@ impl SyncPasses for Tracked {
         SyncPasses::realtime(&self.driver, sink, latch, on_connected)
     }
     fn pause(&self) {
+        self.attachments.set_paused(true);
         SyncPasses::pause(&self.driver);
     }
     fn resume(&self) {
+        self.attachments.set_paused(false);
         SyncPasses::resume(&self.driver);
     }
     fn set_entitled(&self, entitled: bool) {

@@ -10,11 +10,15 @@
 //! | a revived note is recorded before the observer returns            | `onNoteRevived`                  |
 //! | the re-drive purges a dead failure and lands a live one           | `redriveAttachmentDownloads`     |
 //! | the release waits for a pass that caught up                       | `deletedAssetReleaseRunner`      |
+//! | the release gate closes on a pause, offline, or a short pass      | `isCaughtUpWithServer`           |
+//! | offline upload rounds count nothing, the reconnect uploads        | `attachmentUploadRedriver`       |
+//! | a transfer that cannot start leaves no live queue                 | `getOrCreateDownloadQueue`       |
 
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use memry_core::api::errors::SyncError;
 use memry_core::domain::notes;
 use memry_core::seams::reachability::{Reachability, ReachabilityObserver, Reachable};
 use memry_core::sync::attachments::queue::absolute;
@@ -23,30 +27,77 @@ use memry_core::sync::attachments::revival;
 use memry_core::sync::attachments::store::download_failures::{self, FailureReason};
 use memry_core::sync::attachments::store::{files, releases, upload_queue};
 use memry_core::sync::driver::AttachmentDownload;
+use memry_core::sync::engine::PassReport;
+use memry_core::sync::pull::PullReport;
+use memry_core::sync::state::{PassTrigger, SyncState};
 use memry_desktop::sync::attachments::AttachmentSync;
 use memry_desktop::sync::attachments::vault_files::DesktopVaultFiles;
 
 use super::{Device, MIB, REL, Server, content, routes};
 
-struct Online;
+/// A network the test switches; the drivers hear each change. Online at first.
+#[derive(Default)]
+struct Network {
+    offline: AtomicBool,
+    observers: Mutex<Vec<Arc<dyn ReachabilityObserver>>>,
+}
 
-impl Reachability for Online {
-    fn current(&self) -> Reachable {
-        Reachable::Wifi
+impl Network {
+    fn set_online(&self, online: bool) {
+        self.offline.store(!online, Ordering::SeqCst);
+        let observers = self.observers.lock().unwrap().clone();
+        for observer in observers {
+            observer.on_change(self.current());
+        }
     }
-    fn observe(&self, _observer: Arc<dyn ReachabilityObserver>) {}
+}
+
+impl Reachability for Network {
+    fn current(&self) -> Reachable {
+        if self.offline.load(Ordering::SeqCst) {
+            Reachable::Offline
+        } else {
+            Reachable::Wifi
+        }
+    }
+    fn observe(&self, observer: Arc<dyn ReachabilityObserver>) {
+        self.observers.lock().unwrap().push(observer);
+    }
 }
 
 /// The device's drivers, with background downloads switched by `auto`.
 fn sync_of(device: &Device, auto: &Arc<AtomicBool>) -> AttachmentSync {
+    sync_on(device, auto, &Network::default())
+}
+
+fn sync_on(device: &Device, auto: &Arc<AtomicBool>, network: &Network) -> AttachmentSync {
     let auto = Arc::clone(auto);
     AttachmentSync::new(
         device.db.clone(),
         Arc::new(DesktopVaultFiles::new(device.vault.clone())),
         Arc::new(move || auto.load(Ordering::SeqCst)),
-        &Online,
+        network,
         tokio::runtime::Handle::current(),
     )
+}
+
+/// A pass that pulled to the feed head.
+fn pulled() -> PassReport {
+    PassReport {
+        trigger: PassTrigger::Timer,
+        transitions: vec![SyncState::Pulling, SyncState::Applying, SyncState::Idle],
+        final_state: SyncState::Idle,
+        pull: PullReport {
+            pages: 1,
+            ..PullReport::default()
+        },
+        parked: false,
+        pushed: false,
+        pushed_items: 0,
+        push_ms: 0,
+        pull_error: None,
+        push_error: None,
+    }
 }
 
 fn on() -> Arc<AtomicBool> {
@@ -54,7 +105,11 @@ fn on() -> Arc<AtomicBool> {
 }
 
 async fn start(device: &Device, sync: &AttachmentSync) {
-    sync.start(device.transfer().await, &device.clock_id);
+    sync.start(
+        device.transfer().await,
+        &device.clock_id,
+        Arc::clone(&device.session),
+    );
 }
 
 async fn create_note(device: &Device, id: &'static str) {
@@ -333,7 +388,7 @@ async fn the_release_waits_for_a_pass_that_caught_up() {
             .is_empty()
     );
 
-    sync.caught_up();
+    sync.heard(Some(&pulled()));
 
     until(&a, "the release settles", |conn| {
         releases::due(conn, i64::MAX)
@@ -372,4 +427,137 @@ async fn an_owner_id_that_climbs_out_of_the_vault_asks_for_nothing() {
         .count();
     assert_eq!(asked, 1, "only note-1 asked: {:?}", routes(&b.wire.sent()));
     assert!(!b.vault.join("../escaped").exists());
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn the_release_gate_closes_on_a_pause_offline_or_a_short_pass() {
+    let server = Server::start();
+    let a = Device::new(&server, 0);
+    let network = Network::default();
+    let sync = sync_on(&a, &on(), &network);
+    let caught_up = |sync: &AttachmentSync| sync.caught_up_with_server();
+
+    assert!(!caught_up(&sync), "no pass heard yet");
+    sync.heard(Some(&pulled()));
+    assert!(caught_up(&sync), "caught up and online");
+
+    sync.set_paused(true);
+    assert!(!caught_up(&sync), "caught up, then paused");
+    sync.set_paused(false);
+    assert!(!caught_up(&sync), "a resume waits for the next pass");
+    sync.heard(Some(&pulled()));
+    assert!(caught_up(&sync));
+
+    network.set_online(false);
+    assert!(!caught_up(&sync), "caught up, then offline");
+    network.set_online(true);
+    assert!(!caught_up(&sync), "a reconnect waits for the next pass");
+
+    let short: [(&str, PassReport); 4] = [
+        (
+            "a failed pull",
+            PassReport {
+                pull_error: Some(SyncError::Locked),
+                ..pulled()
+            },
+        ),
+        (
+            "a pull with more pages",
+            PassReport {
+                pull: PullReport {
+                    has_more: true,
+                    ..pulled().pull
+                },
+                ..pulled()
+            },
+        ),
+        (
+            "a refused pull",
+            PassReport {
+                pull: PullReport {
+                    refused: true,
+                    ..pulled().pull
+                },
+                ..pulled()
+            },
+        ),
+        (
+            "an offline pass",
+            PassReport {
+                transitions: vec![SyncState::Offline],
+                final_state: SyncState::Offline,
+                pull: PullReport::default(),
+                ..pulled()
+            },
+        ),
+    ];
+    for (what, pass) in short {
+        sync.heard(Some(&pulled()));
+        assert!(caught_up(&sync));
+        sync.heard(Some(&pass));
+        assert!(!caught_up(&sync), "caught up, then {what}");
+    }
+    sync.heard(Some(&pulled()));
+    sync.heard(None);
+    assert!(!caught_up(&sync), "caught up, then a skipped pass");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn offline_upload_rounds_count_nothing_and_the_reconnect_uploads() {
+    let server = Server::start();
+    let a = Device::new(&server, 0);
+    a.write(REL, &content(MIB, 61));
+    create_note(&a, "note-1").await;
+    let queued = absolute(&DesktopVaultFiles::new(a.vault.clone()), REL);
+    let row = queued.clone();
+    a.db.call(move |conn| upload_queue::enqueue(conn, "note-1", &row, 2))
+        .await
+        .unwrap();
+    let network = Network::default();
+    network.set_online(false);
+    let sync = sync_on(&a, &on(), &network);
+    let transfer = a.transfer().await;
+    a.wire.clear();
+    sync.start(transfer, &a.clock_id, Arc::clone(&a.session));
+    // Time for the start round, which runs the upload re-drive first.
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    let rows =
+        a.db.call(|conn| upload_queue::list_pending(conn, 10))
+            .await
+            .unwrap();
+    assert_eq!(rows.len(), 1, "the row stays queued");
+    assert_eq!(rows[0].attempts, 0, "an offline round counts no attempt");
+    assert!(a.wire.sent().is_empty(), "nothing goes out offline");
+
+    network.set_online(true);
+    until(&a, "the reconnect round uploads the row", move |conn| {
+        (!upload_queue::has_pending(conn, "note-1", &queued).unwrap()).then_some(())
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_transfer_that_cannot_start_leaves_no_live_queue() {
+    let server = Server::start();
+    let (a, b) = (Device::new(&server, 0), Device::new(&server, 1));
+    a.write(REL, &content(MIB, 67));
+    let id = a.upload(REL, &[]).await.unwrap();
+    create_note(&b, "note-1").await;
+    let sync = sync_of(&b, &on());
+    // An earlier open started the drivers; this open's transfer failed.
+    start(&b, &sync).await;
+    sync.not_started(&"the master key is gone");
+    b.wire.clear();
+
+    sync.observer()
+        .attachment_download_needed(&wanted("note-1", &id));
+    tokio::time::sleep(Duration::from_millis(500)).await;
+
+    assert!(
+        routes(&b.wire.sent())
+            .iter()
+            .all(|route| !route.contains(&id)),
+        "nothing downloads over the earlier open's transfer"
+    );
+    assert!(!b.vault.join(REL).exists());
 }

@@ -7,6 +7,7 @@ use std::sync::atomic::Ordering;
 use std::sync::{Arc, Weak};
 use std::time::Duration;
 
+use memry_core::api::auth::AuthState;
 use memry_core::api::errors::{ApiError, StorageError};
 use memry_core::domain::notes;
 use memry_core::protocol::attachments::AttachmentError;
@@ -79,6 +80,9 @@ async fn redrive_uploads(inner: &Inner, live: &Live) {
         tracing::info!("attachment upload re-drive skipped: the vault is not reachable");
         return;
     }
+    if !may_upload(inner, live).await {
+        return;
+    }
     let db = &inner.db;
     match settle_revived(
         db,
@@ -125,6 +129,30 @@ async fn redrive_uploads(inner: &Inner, live: &Live) {
             }
         }
         Err(error) => tracing::warn!(%error, "attachment upload re-drive failed"),
+    }
+}
+
+/// The re-drive's gate (`attachment-upload-redriver.ts:48`, `runtime.ts:892`): offline, revoked
+/// or with no token every upload fails, and each failure counts an attempt against its row.
+async fn may_upload(inner: &Inner, live: &Live) -> bool {
+    if !inner.online.load(Ordering::SeqCst) {
+        tracing::debug!("attachment upload re-drive skipped: offline");
+        return false;
+    }
+    if live.session.state() == AuthState::Revoked {
+        tracing::info!("attachment upload re-drive skipped: this device is revoked");
+        return false;
+    }
+    match live.session.valid_access_token().await {
+        Ok(Some(_)) => true,
+        Ok(None) => {
+            tracing::info!("attachment upload re-drive skipped: signed out");
+            false
+        }
+        Err(error) => {
+            tracing::warn!(%error, "attachment upload re-drive skipped: no valid access token");
+            false
+        }
     }
 }
 
@@ -326,10 +354,10 @@ fn is_missing(error: &TransferError) -> bool {
     )
 }
 
-/// `deletedAssetReleaseRunner.run`: only once a pass caught up this session and while the vault
-/// is reachable. Canvas records stay deferred until Step 30 (#3547) supplies `CanvasAssets`.
+/// `deletedAssetReleaseRunner.run`: only while caught up with the server (the last pass pulled to
+/// the feed head, and sync is online and not paused) and the vault is reachable. Canvas records stay deferred until Step 30 (#3547) supplies `CanvasAssets`.
 async fn release_round(inner: &Inner, live: &Live) {
-    if !inner.caught_up.load(Ordering::SeqCst) || !inner.vault.is_reachable() {
+    if !inner.caught_up_with_server() || !inner.vault.is_reachable() {
         return;
     }
     match release_due(&inner.db, live.transfer.server(), None, now_ms()).await {
