@@ -262,6 +262,23 @@ fn queued(open: &OpenVault) -> Vec<String> {
         .collect()
 }
 
+fn location(open: &OpenVault, id: &str) -> Option<String> {
+    calendar(open)
+        .event(id.to_owned())
+        .unwrap()
+        .and_then(|e| e.location)
+}
+
+fn sync_status(open: &OpenVault, source: &str) -> String {
+    calendar(open)
+        .sources()
+        .unwrap()
+        .into_iter()
+        .find(|s| s.id == source)
+        .unwrap()
+        .sync_status
+}
+
 fn cursor(open: &OpenVault, source: &str) -> Option<String> {
     calendar(open)
         .sources()
@@ -437,8 +454,11 @@ async fn a_drain_creates_then_updates_with_if_match() {
     assert_eq!(only_object(&rig), path);
 }
 
+/// Both sides retitled: the 412 fetches the server copy and merges it field by field against the
+/// last pushed copy (`push-conflict-retry.ts`); a field the remote changed takes the remote value,
+/// so the remote title wins on both sides and the retry lands.
 #[tokio::test]
-async fn a_412_update_overwrites_neither_side_and_keeps_the_item_queued() {
+async fn a_412_update_merges_and_the_remote_wins_a_field_both_sides_changed() {
     let rig = Rig::new(true).await;
     let open = rig.open().await;
     rig.connect(&open).await;
@@ -452,12 +472,14 @@ async fn a_412_update_overwrites_neither_side_and_keeps_the_item_queued() {
         .unwrap()
         .1
         .replace("SUMMARY:Standup", "SUMMARY:Remote");
-    rig.dav.store.put_remote(&path, &remote);
+    let remote_etag = rig.dav.store.put_remote(&path, &remote);
 
     retitle(&open, &id, "Local");
     let summary = rig.sync().drain(&open).await.unwrap();
-    assert_eq!(summary.failed, 1);
-    assert_eq!(writes(&rig.harness.seen(), "PUT").len(), 2);
+    assert_eq!((summary.pushed, summary.failed), (1, 0));
+    let puts = writes(&rig.harness.seen(), "PUT");
+    assert_eq!(puts.len(), 3, "create, the 412, one retry");
+    assert_eq!(puts[2].if_match.as_deref(), Some(remote_etag.as_str()));
     assert!(
         rig.dav
             .store
@@ -466,8 +488,8 @@ async fn a_412_update_overwrites_neither_side_and_keeps_the_item_queued() {
             .1
             .contains("SUMMARY:Remote")
     );
-    assert_eq!(titles(&open, "event"), ["Local"]);
-    assert_eq!(queued(&open), [id]);
+    assert_eq!(titles(&open, "event"), ["Remote"]);
+    assert!(queued(&open).is_empty());
 }
 
 #[tokio::test]
@@ -600,16 +622,91 @@ async fn a_sync_keeps_a_queued_edit_when_the_remote_object_changed_too() {
         .replace("END:VEVENT", "LOCATION:Room 1\r\nEND:VEVENT");
     rig.dav.store.put_remote(&path, &remote);
 
-    rig.sync().sync_and_drain(&open, None).await.unwrap();
+    for _ in 0..3 {
+        rig.sync().sync_and_drain(&open, None).await.unwrap();
+    }
     assert_eq!(titles(&open, "event"), ["Local"]);
-    let sent = rig
-        .dav
-        .store
-        .object(&path)
-        .unwrap()
-        .1
-        .contains("SUMMARY:Local");
-    assert!(sent || queued(&open) == [id], "the local edit was lost");
+    assert_eq!(location(&open, &id).as_deref(), Some("Room 1"));
+    let server = rig.dav.store.object(&path).unwrap().1;
+    assert!(
+        server.contains("SUMMARY:Local") && server.contains("LOCATION:Room 1"),
+        "{server}"
+    );
+    assert!(queued(&open).is_empty());
+}
+
+/// A merge whose retry meets another 412 leaves the edit queued and the calendar's sync state
+/// says so after the pass (the settings row's error and Retry), not only a log line.
+#[tokio::test]
+async fn a_merge_that_still_conflicts_stays_queued_and_marks_the_calendar() {
+    let rig = Rig::new(true).await;
+    let open = rig.open().await;
+    let (_, source) = rig.connect(&open).await;
+    let id = new_event(&open, "Standup");
+    rig.sync().drain(&open).await.unwrap();
+    retitle(&open, &id, "Local");
+    rig.set_hook(|seen, reply| {
+        if seen.method == "PUT" {
+            Reply::status(412)
+        } else {
+            reply
+        }
+    });
+
+    rig.sync().sync_and_drain(&open, None).await.unwrap();
+    assert_eq!(queued(&open), [id]);
+    assert_eq!(sync_status(&open, &source), "error");
+}
+
+/// Electron applies a remote delete even over an unsent local edit (`applyBoundCaldavObject`,
+/// `ProviderGoneError` → `applyProviderDelete`); here the calendar's sync state shows the loss.
+async fn a_remote_delete_over_a_queued_edit(sync_collection: bool) {
+    let rig = Rig::new(sync_collection).await;
+    let open = rig.open().await;
+    let (_, source) = rig.connect(&open).await;
+    let id = new_event(&open, "Standup");
+    rig.sync().drain(&open).await.unwrap();
+    rig.sync().sync_source(&open, &source).await.unwrap();
+    assert_eq!(sync_status(&open, &source), "ok");
+    retitle(&open, &id, "Local");
+    rig.dav.store.delete_remote(&only_object(&rig));
+
+    rig.sync().sync_source(&open, &source).await.unwrap();
+    assert!(titles(&open, "event").is_empty());
+    assert!(queued(&open).is_empty());
+    assert_eq!(
+        sync_status(&open, &source),
+        "error",
+        "the dropped edit shows"
+    );
+}
+
+#[tokio::test]
+async fn a_ctag_pull_over_a_queued_edit_applies_the_remote_delete_and_shows_it() {
+    a_remote_delete_over_a_queued_edit(false).await;
+}
+
+#[tokio::test]
+async fn a_token_pull_over_a_queued_edit_applies_the_remote_delete_and_shows_it() {
+    a_remote_delete_over_a_queued_edit(true).await;
+}
+
+/// The drain meets the delete first (its `If-Match` gets a 412, the object is gone): the item
+/// follows the server and the pass ends with the calendar marked.
+#[tokio::test]
+async fn a_drain_over_a_remote_delete_drops_the_edit_and_shows_it() {
+    let rig = Rig::new(true).await;
+    let open = rig.open().await;
+    let (_, source) = rig.connect(&open).await;
+    let id = new_event(&open, "Standup");
+    rig.sync().drain(&open).await.unwrap();
+    retitle(&open, &id, "Local");
+    rig.dav.store.delete_remote(&only_object(&rig));
+
+    rig.sync().sync_and_drain(&open, None).await.unwrap();
+    assert!(titles(&open, "event").is_empty());
+    assert!(queued(&open).is_empty());
+    assert_eq!(sync_status(&open, &source), "error");
 }
 
 /// A bound object has no mirror row; a pull by ctag still sees it deleted on the server.

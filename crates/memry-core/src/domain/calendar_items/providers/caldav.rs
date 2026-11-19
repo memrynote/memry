@@ -464,9 +464,13 @@ pub fn apply_pull(
         changed += replace_object(&tx, source_id, object, &instances, device_id, now_ms)?;
         tx.commit().map_err(failed)?;
     }
-    // A bound object deleted on the server deletes (or unschedules) its item.
+    // A bound object deleted on the server deletes (or unschedules) its item, as Electron does
+    // even over a local edit not sent yet (`applyBoundCaldavObject`); the source's sync state
+    // then shows `error`, so the dropped edit is not silent.
+    let mut dropped = false;
     for href in &pull.removed {
         for (target, binding) in bindings::for_object(conn, calendar_url, href)? {
+            dropped |= super::caldav_bound::queued(conn, &target)?;
             super::apply_remote_delete(conn, &target, &binding.id, device_id, now_ms)?;
             changed += 1;
         }
@@ -491,7 +495,7 @@ pub fn apply_pull(
         conn,
         source_id,
         pull.cursor.as_deref(),
-        "ok",
+        if dropped { "error" } else { "ok" },
         device_id,
         now_ms,
     )?;

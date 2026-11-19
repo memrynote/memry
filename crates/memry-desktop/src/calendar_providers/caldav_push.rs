@@ -15,13 +15,14 @@
 //! and sends nothing. An update or delete needs no journal: a replay carries the old ETag and
 //! takes the conflict path, a delete of an object already gone counts as deleted.
 //!
-//! **Conflicts.** A 412 never overwrites the remote, and the drain never overwrites the local edit:
-//! an update that meets one fails and stays queued (Electron merges field by field against the
-//! last pushed snapshot, `push-conflict-retry.ts:120-130`; the core has no API for that merge yet);
-//! a delete that meets one keeps the remote object and retires the binding, so the next pull
-//! mirrors it; excluding one occurrence retries once on the fresh object, which leaves the rest.
+//! **Conflicts.** An update that meets a 412 fetches the server's copy, merges it into the item
+//! field by field ([`super::caldav_conflict`]) and retries once; one that still conflicts stays
+//! queued and the calendar's sync state shows it. An update whose object is gone applies the
+//! remote delete, as Electron does, and the calendar's sync state shows the dropped edit. A delete
+//! that meets a 412 keeps the remote object and retires the binding, so the next pull mirrors it;
+//! excluding one occurrence retries once on the fresh object, which leaves the rest.
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, PoisonError};
 
 use memry_core::api::calendar::VaultCalendar;
 use memry_core::api::calendar_provider_sync::{CalendarCaldavObject, CalendarPushPlan};
@@ -46,19 +47,22 @@ pub struct DrainSummary {
     pub skipped: u32,
     pub waiting: u32,
     pub failed: u32,
+    /// The calendar sources a write needs the person for: a conflict the merge did not settle,
+    /// or a local edit a remote delete dropped.
+    pub attention: Vec<String>,
 }
 
 /// What one item came to.
-enum Outcome {
+pub(super) enum Outcome {
     Pushed,
     Skipped,
     Waiting,
 }
 
-struct Item<'a> {
-    source_type: &'a str,
-    source_id: &'a str,
-    queued_at: i64,
+pub(super) struct Item<'a> {
+    pub(super) source_type: &'a str,
+    pub(super) source_id: &'a str,
+    pub(super) queued_at: i64,
 }
 
 impl Item<'_> {
@@ -68,10 +72,11 @@ impl Item<'_> {
 }
 
 /// The pass's view of this device: its sources, the accounts the server refused.
-struct Pass {
-    calendar: Arc<VaultCalendar>,
+pub(super) struct Pass {
+    pub(super) calendar: Arc<VaultCalendar>,
     sources: Vec<CalendarSourceRecord>,
     failures: Map<String, Value>,
+    attention: Mutex<Vec<String>>,
 }
 
 impl Pass {
@@ -85,6 +90,16 @@ impl Pass {
         self.sources
             .iter()
             .find(|s| live(s, "account") && s.account_id.as_deref() == Some(id))
+    }
+
+    pub(super) fn needs_attention(&self, source: &CalendarSourceRecord) {
+        let mut ids = self
+            .attention
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
+        if !ids.contains(&source.id) {
+            ids.push(source.id.clone());
+        }
     }
 }
 
@@ -101,6 +116,7 @@ impl CaldavSync {
             calendar,
             sources,
             failures: self.auth_failures(open).await?,
+            attention: Mutex::default(),
         };
         let reader = pass.calendar.clone();
         let enabled =
@@ -168,13 +184,18 @@ impl CaldavSync {
         if pending.len() != before {
             self.set_pending(open, pending).await?;
         }
+        summary.attention = pass
+            .attention
+            .into_inner()
+            .unwrap_or_else(PoisonError::into_inner);
         Ok(summary)
     }
 
     /// The push drain, then every account's pull (or one's). Draining first sends local edits
     /// before the pull sees the remote; a pull skips items still queued either way. A calendar
     /// that failed to pull fails the pass; an item the drain could not write stays queued with its
-    /// reason and is only logged.
+    /// reason. A calendar the drain flagged (`DrainSummary::attention`) is marked `error` after
+    /// its pull, which would otherwise mark it `ok`.
     pub async fn sync_and_drain(
         &self,
         open: &OpenVault,
@@ -182,6 +203,13 @@ impl CaldavSync {
     ) -> Result<(), SyncError> {
         let drained = self.drain(open).await?;
         let summary = self.sync_now(open, account_id).await?;
+        for id in drained.attention {
+            let writer = self.calendar(open).await?;
+            blocking(move || {
+                writer.provider_source_error(id, "a CalDAV write was not applied".to_owned())
+            })
+            .await??;
+        }
         if drained.failed > 0 || drained.waiting > 0 {
             tracing::info!(
                 scope = SCOPE,
@@ -209,7 +237,7 @@ impl CaldavSync {
         self.transport(account).await
     }
 
-    async fn plan(
+    pub(super) async fn plan(
         &self,
         pass: &Pass,
         item: &Item<'_>,
@@ -281,7 +309,10 @@ impl CaldavSync {
             "upsert" if plan.if_match.is_none() => {
                 self.create(open, pass, item, &plan, &transport).await
             }
-            "upsert" => self.update(pass, item, &plan, &transport).await,
+            "upsert" => {
+                self.update(pass, item, held, source, &plan, &transport)
+                    .await
+            }
             "delete" => self.delete(pass, item, &plan, &transport).await,
             "exclude" => self.exclude(pass, item, held, &plan, &transport).await,
             "none" => self.skip(pass, item).await,
@@ -289,7 +320,7 @@ impl CaldavSync {
         }
     }
 
-    async fn skip(&self, pass: &Pass, item: &Item<'_>) -> Result<Outcome, SyncError> {
+    pub(super) async fn skip(&self, pass: &Pass, item: &Item<'_>) -> Result<Outcome, SyncError> {
         let (writer, t, id) = (
             pass.calendar.clone(),
             item.source_type.to_owned(),
@@ -300,8 +331,8 @@ impl CaldavSync {
     }
 
     /// The bound object is gone from the server: a delete is done; an upsert applies the remote
-    /// delete to the item, as a pull would (`applyProviderDelete`).
-    async fn gone(
+    /// delete to the item, as a pull would (`applyProviderDelete`), and that drops its edit.
+    pub(super) async fn gone(
         &self,
         pass: &Pass,
         item: &Item<'_>,
@@ -312,6 +343,7 @@ impl CaldavSync {
         if let Some(binding) = plan.binding_id.clone() {
             return self.deleted(pass, item, binding).await;
         }
+        pass.needs_attention(source);
         let cursor = source.sync_cursor.clone();
         apply_objects(
             &pass.calendar,
@@ -340,7 +372,7 @@ impl CaldavSync {
         Ok(Outcome::Pushed)
     }
 
-    async fn done(
+    pub(super) async fn done(
         &self,
         pass: &Pass,
         item: &Item<'_>,
@@ -384,7 +416,7 @@ impl CaldavSync {
 
     /// `written`: a server that rewrote the object may answer without an ETag (RFC 4791
     /// §5.3.4); then its stored copy is read back, so the next write sends a real `If-Match`.
-    async fn written(
+    pub(super) async fn written(
         transport: &Transport,
         href: &str,
         sent: &str,
@@ -448,36 +480,6 @@ impl CaldavSync {
         pending.remove(&key);
         self.set_pending(open, pending).await?;
         Ok(outcome)
-    }
-
-    async fn update(
-        &self,
-        pass: &Pass,
-        item: &Item<'_>,
-        plan: &CalendarPushPlan,
-        transport: &Transport,
-    ) -> Result<Outcome, SyncError> {
-        let (Some(href), Some(body), Some(if_match)) = (
-            plan.href.as_deref(),
-            plan.body.as_deref(),
-            plan.if_match.as_deref(),
-        ) else {
-            return self.skip(pass, item).await;
-        };
-        match caldav_dav::put(transport, href, body, Precondition::Match(if_match)).await {
-            Ok(etag) => {
-                let (etag, data) = Self::written(transport, href, body, etag).await?;
-                let remote = plan
-                    .remote_event_id
-                    .clone()
-                    .unwrap_or_else(|| href.to_owned());
-                self.done(pass, item, &plan.calendar_id, &remote, etag, data)
-                    .await
-            }
-            // Both sides changed. Neither is overwritten: the item stays queued with the
-            // conflict until the core can merge the two field by field.
-            Err(error) => Err(error.into()),
-        }
     }
 
     async fn delete(
@@ -563,7 +565,7 @@ impl CaldavSync {
     }
 }
 
-fn dav_object(object: caldav_dav::DavObject) -> CalendarCaldavObject {
+pub(super) fn dav_object(object: caldav_dav::DavObject) -> CalendarCaldavObject {
     CalendarCaldavObject {
         href: object.href,
         etag: object.etag,

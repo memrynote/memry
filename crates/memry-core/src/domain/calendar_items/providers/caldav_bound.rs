@@ -1,7 +1,8 @@
 //! A pulled CalDAV object Memry wrote flows back into the items bound to it
 //! (`applyBoundCaldavObject`), unless a local change to the item is still
 //! queued: the drain sends that change first, and its `If-Match` meets the
-//! remote change as a conflict instead of the pull overwriting the edit.
+//! remote change as a conflict instead of the pull overwriting the edit. That conflict merges
+//! the server's copy into the item ([`merge_remote`]) before the drain's one retry.
 
 use std::collections::HashMap;
 
@@ -14,8 +15,9 @@ use crate::api::calendar_records::CalendarZone;
 use crate::api::errors::StorageError;
 use crate::domain::calendar_items::ical::parse::Component;
 use crate::domain::calendar_items::ical::{
-    IcalInstance, IcalWindow, IcalZones, expand_calendar_events,
+    IcalInstance, IcalWindow, IcalZones, expand_calendar_events, parse::parse_calendar,
 };
+use crate::domain::calendar_items::write::{EventPatch, update_event};
 use crate::domain::calendar_items::zone::LocalZone;
 use crate::domain::notes::failed;
 use crate::storage::repositories::instants;
@@ -31,7 +33,7 @@ pub struct Bound {
     pub changed: usize,
 }
 
-fn queued(conn: &Connection, target: &Target) -> Result<bool, StorageError> {
+pub(super) fn queued(conn: &Connection, target: &Target) -> Result<bool, StorageError> {
     conn.query_row(
         "SELECT 1 FROM calendar_push_queue WHERE source_type = ?1 AND source_id = ?2",
         params![target.source_type, target.source_id],
@@ -71,27 +73,7 @@ pub fn apply(
             continue;
         }
         let (_, rid) = bindings::caldav_parts(&binding.remote_event_id);
-        let mut instance = instances
-            .iter()
-            .find(|i| i.remote_event_id == binding.remote_event_id)
-            .or_else(|| rid.is_none().then(|| instances.first()).flatten())
-            .cloned();
-        // A single event the server moved out of the window still moves its item; a series
-        // there is left, as its occurrences are.
-        if instance.is_none() && rid.is_none() && !object.data.contains("RRULE") {
-            let href = object.href.clone();
-            let key = move |_uid: &str, rid: Option<&str>| {
-                rid.map_or_else(|| href.clone(), |rid| format!("{href}::{rid}"))
-            };
-            let wide = IcalWindow {
-                start_ms: window.start_ms - 50 * YEAR_MS,
-                end_ms: window.end_ms + 50 * YEAR_MS,
-            };
-            let calendar_zone = root.text("X-WR-TIMEZONE");
-            instance = expand_calendar_events(root, wide, calendar_zone.as_deref(), &key, zones)
-                .ok()
-                .and_then(|all| all.into_iter().next());
-        }
+        let instance = instance_for(&binding, object, root, instances, window, zones);
         match instance {
             Some(instance) => write_back(
                 conn,
@@ -121,6 +103,112 @@ pub fn apply(
         bound.changed += 1;
     }
     Ok(bound)
+}
+
+/// The instance a binding takes from an object: its occurrence, else (a whole object) the first
+/// in the window. A single event the server moved out of the window still moves its item; a
+/// series there is left, as its occurrences are.
+fn instance_for(
+    binding: &bindings::Binding,
+    object: &Object,
+    root: &Component,
+    instances: &[IcalInstance],
+    window: IcalWindow,
+    zones: &IcalZones,
+) -> Option<IcalInstance> {
+    let (_, rid) = bindings::caldav_parts(&binding.remote_event_id);
+    let found = instances
+        .iter()
+        .find(|i| i.remote_event_id == binding.remote_event_id)
+        .or_else(|| rid.is_none().then(|| instances.first()).flatten())
+        .cloned();
+    if found.is_some() || rid.is_some() || object.data.contains("RRULE") {
+        return found;
+    }
+    let href = object.href.clone();
+    let key = move |_uid: &str, rid: Option<&str>| {
+        rid.map_or_else(|| href.clone(), |rid| format!("{href}::{rid}"))
+    };
+    let wide = IcalWindow {
+        start_ms: window.start_ms - 50 * YEAR_MS,
+        end_ms: window.end_ms + 50 * YEAR_MS,
+    };
+    let calendar_zone = root.text("X-WR-TIMEZONE");
+    expand_calendar_events(root, wide, calendar_zone.as_deref(), &key, zones)
+        .ok()
+        .and_then(|all| all.into_iter().next())
+}
+
+/// `object` parsed and expanded as a pull would, then the binding's instance of it.
+fn instance_of(
+    binding: &bindings::Binding,
+    object: &Object,
+    window: IcalWindow,
+    zones: &IcalZones,
+) -> Option<IcalInstance> {
+    let root = parse_calendar(&object.data).ok()?;
+    let href = object.href.clone();
+    let key = move |_uid: &str, rid: Option<&str>| {
+        rid.map_or_else(|| href.clone(), |rid| format!("{href}::{rid}"))
+    };
+    let calendar_zone = root.text("X-WR-TIMEZONE");
+    let instances =
+        expand_calendar_events(&root, window, calendar_zone.as_deref(), &key, zones).ok()?;
+    instance_for(binding, object, &root, &instances, window, zones)
+}
+
+/// An update met a 412 and `object` is what the server holds now (`pushEventWithConflictRetry`
+/// with `threeWayMerge`, `mergeRemoteEventIntoLocal`). Each field the server changed since the
+/// copy the binding stored takes the server's value, even one the local edit changed too (equal
+/// field clocks, so `mergeFields` takes the remote); every other field keeps the local edit.
+/// Without a stored copy the server wins every field. Only events merge, as in Electron; another
+/// item's retry sends it as it is. Answers the item's queue stamp after the merge, which the
+/// retry's `push_done` takes.
+pub fn merge_remote(
+    conn: &Connection,
+    target: &Target,
+    object: &Object,
+    window: IcalWindow,
+    zones: &IcalZones,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<Option<i64>, StorageError> {
+    if target.source_type == "event"
+        && let Some(binding) = bindings::find(conn, CALDAV, target)?
+        && let Some(remote) = instance_of(&binding, object, window, zones)
+    {
+        let stored = bindings::stored_object(conn, &binding)?.map(|data| Object {
+            href: object.href.clone(),
+            etag: binding.remote_version.clone(),
+            data,
+        });
+        let base = stored.and_then(|s| instance_of(&binding, &s, window, zones));
+        let changed = |same: fn(&IcalInstance, &IcalInstance) -> bool| {
+            base.as_ref().is_none_or(|b| !same(b, &remote))
+        };
+        let patch = EventPatch {
+            title: changed(|b, r| b.title == r.title).then(|| remote.title.clone()),
+            description: changed(|b, r| b.description == r.description)
+                .then(|| remote.description.clone()),
+            location: changed(|b, r| b.location == r.location).then(|| remote.location.clone()),
+            start_at: changed(|b, r| b.start_at == r.start_at).then(|| remote.start_at.clone()),
+            end_at: changed(|b, r| b.end_at == r.end_at).then(|| remote.end_at.clone()),
+            timezone: remote
+                .timezone
+                .clone()
+                .filter(|_| changed(|b, r| b.timezone == r.timezone)),
+            is_all_day: changed(|b, r| b.is_all_day == r.is_all_day).then_some(remote.is_all_day),
+            ..EventPatch::default()
+        };
+        update_event(conn, &target.source_id, &patch, device_id, now_ms)?;
+    }
+    conn.query_row(
+        "SELECT queued_at FROM calendar_push_queue WHERE source_type = ?1 AND source_id = ?2",
+        params![target.source_type, target.source_id],
+        |row| row.get(0),
+    )
+    .optional()
+    .map_err(failed)
 }
 
 #[allow(clippy::too_many_arguments)]

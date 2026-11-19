@@ -5,6 +5,7 @@ pub mod auth;
 pub mod billing;
 pub mod bookmarks;
 pub mod calendar;
+pub mod calendar_caldav_merge;
 pub mod calendar_conformance;
 pub mod calendar_ical_conformance;
 pub mod calendar_provider_sync;

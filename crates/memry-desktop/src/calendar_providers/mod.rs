@@ -7,6 +7,7 @@
 //! scheduling, as the core's provider API asks of a shell.
 
 pub mod caldav_accounts;
+mod caldav_conflict;
 pub mod caldav_dav;
 pub mod caldav_digest;
 pub mod caldav_discover;

@@ -101,6 +101,30 @@ const ALLOWED: &[(&str, &str)] = &[
         "the local agent provider the person configured, through ai::local_provider::probe",
     ),
     (
+        "crates/memry-desktop/src/calendar_providers/caldav_transport.rs",
+        "the CalDAV server the person connects, on its own client from the shared builder",
+    ),
+    (
+        "crates/memry-desktop/src/calendar_providers/caldav_dav.rs",
+        "the CalDAV server the person connects; only the method type, requests go through caldav_transport",
+    ),
+    (
+        "apps/desktop-tauri/src-tauri/src/commands/calendar_providers.rs",
+        "the CalDAV server the person connects; builds caldav_transport's client from the shared builder",
+    ),
+    (
+        "crates/memry-desktop/src/calendar_providers/caldav_discover.rs",
+        "the CalDAV server the person connects; only the PROPFIND method type, requests go through caldav_transport",
+    ),
+    (
+        "crates/memry-desktop/src/calendar_providers/ics_fetch.rs",
+        "the ICS feed link the person subscribes to, one GET per refresh with its validators",
+    ),
+    (
+        "apps/desktop-tauri/src-tauri/src/commands/calendar_ics.rs",
+        "the ICS feed link the person subscribes to; builds ics_fetch's client from the shared builder",
+    ),
+    (
         "apps/desktop-tauri/src-tauri/src/updater/velopack_backend.rs",
         "the update feed on github.com, fetched by Velopack; only its error type is named here",
     ),

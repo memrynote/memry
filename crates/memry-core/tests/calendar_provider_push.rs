@@ -708,3 +708,52 @@ fn an_edit_made_during_a_push_stays_queued_and_is_sent_next() {
         "the next plan sends the edit"
     );
 }
+
+/// An edit in the same millisecond as the change before it still re-stamps the queue row, so a
+/// push planned from the first stamp leaves the edit queued.
+#[test]
+fn an_edit_in_the_same_millisecond_as_the_create_still_restamps_the_queue() {
+    let db = open();
+    connect_work(&db);
+    let event_id = db
+        .call_blocking(|conn| {
+            write::create_event(
+                conn,
+                &NewEvent {
+                    title: "Standup".into(),
+                    start_at: "2026-03-10T09:00:00.000Z".into(),
+                    end_at: Some("2026-03-10T10:00:00.000Z".into()),
+                    timezone: "UTC".into(),
+                    target_calendar_id: Some(CAL.into()),
+                    ..NewEvent::default()
+                },
+                "phone",
+                NOW,
+            )
+        })
+        .expect("create");
+    let stamp = |db: &Db, id: String| {
+        db.call_blocking(move |conn| providers::queue(conn))
+            .expect("queue")
+            .into_iter()
+            .find(|q| q.target.source_id == id)
+            .expect("queued")
+            .queued_at
+    };
+    let planned = stamp(&db, event_id.clone());
+    let id = event_id.clone();
+    db.call_blocking(move |conn| {
+        write::update_event(
+            conn,
+            &id,
+            &EventPatch {
+                title: Some("Retro".into()),
+                ..EventPatch::default()
+            },
+            "phone",
+            NOW,
+        )
+    })
+    .expect("update");
+    assert!(stamp(&db, event_id) > planned, "the same-ms edit re-stamps");
+}
