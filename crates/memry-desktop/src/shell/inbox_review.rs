@@ -10,13 +10,14 @@ use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
 use chrono::{Datelike, Local, NaiveDateTime, Timelike};
+use memry_core::api::inbox::Inbox;
 use memry_core::seams::secure_store::SecureStore;
 use tokio::sync::broadcast::{self, error::RecvError};
 use tokio::sync::mpsc;
 use tokio::time::MissedTickBehavior;
 
 use crate::i18n::{self, Args};
-use crate::session::{Session, SessionEvent};
+use crate::session::{Session, SessionEvent, lock};
 use crate::shell::power::PowerEvent;
 
 /// The notification's key: a new nudge replaces one still on screen.
@@ -102,6 +103,9 @@ pub struct InboxReview {
     session: Session,
     store: Arc<dyn SecureStore>,
     outlet: Arc<dyn ReviewOutlet>,
+    /// The open vault's inbox, built at its first tick and dropped by the close hook before the
+    /// vault closes, so a tick does not read the device key every minute.
+    inbox: Arc<Mutex<Option<Arc<Inbox>>>>,
     /// The last tick failure logged, so a lasting one is logged once and not every minute.
     last_failure: Mutex<Option<String>>,
 }
@@ -112,10 +116,14 @@ impl InboxReview {
         store: Arc<dyn SecureStore>,
         outlet: Arc<dyn ReviewOutlet>,
     ) -> Self {
+        let inbox = Arc::new(Mutex::new(None));
+        let held = inbox.clone();
+        session.on_close("inbox review", Arc::new(move |_| *lock(&held) = None));
         Self {
             session,
             store,
             outlet,
+            inbox,
             last_failure: Mutex::new(None),
         }
     }
@@ -124,16 +132,11 @@ impl InboxReview {
     /// and records the day before it answers. Returns the reviewable count when the nudge fired.
     /// Blocking.
     pub fn tick(&self, at: &LocalMinute) -> Option<i64> {
-        let open = self.session.current()?;
-        let due = open
-            .vault
-            .inbox(self.store.clone())
-            .map_err(|error| error.to_string())
-            .and_then(|inbox| {
-                inbox
-                    .review_due(at.date.clone(), at.minutes)
-                    .map_err(|error| error.to_string())
-            });
+        let due = self.inbox()?.and_then(|inbox| {
+            inbox
+                .review_due(at.date.clone(), at.minutes)
+                .map_err(|error| error.to_string())
+        });
         let count = match due {
             Ok(count) => {
                 *self.failure() = None;
@@ -169,6 +172,22 @@ impl InboxReview {
         }
         self.outlet.show(notice);
         true
+    }
+
+    /// The open vault's inbox, `None` without an open vault. The lock is held from `current` to
+    /// the store, so a close that has taken the vault finds nothing left to drop after it.
+    fn inbox(&self) -> Option<Result<Arc<Inbox>, String>> {
+        let mut held = lock(&self.inbox);
+        let open = self.session.current()?;
+        if let Some(inbox) = held.as_ref() {
+            return Some(Ok(inbox.clone()));
+        }
+        let built = open.vault.inbox(self.store.clone());
+        Some(
+            built
+                .inspect(|inbox| *held = Some(inbox.clone()))
+                .map_err(|error| error.to_string()),
+        )
     }
 
     fn failure(&self) -> std::sync::MutexGuard<'_, Option<String>> {

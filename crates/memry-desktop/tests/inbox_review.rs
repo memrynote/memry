@@ -4,8 +4,10 @@
 //! the scheduler's cadence on a paused clock.
 
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::future::Future;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
+use std::task::{Context, Wake, Waker};
 use std::time::Duration;
 
 use chrono::NaiveDate;
@@ -20,28 +22,36 @@ use memry_desktop::shell::inbox_review::{
 };
 use memry_desktop::shell::power::PowerEvent;
 use serde_json::{Map, Value, json};
+use tokio::sync::mpsc::error::TryRecvError;
 use tokio::sync::{broadcast, mpsc};
 
+/// The secure store, counting the reads of the device key.
 #[derive(Default)]
-struct MemoryStore(Mutex<HashMap<SecureStoreKey, Vec<u8>>>);
+struct MemoryStore {
+    values: Mutex<HashMap<SecureStoreKey, Vec<u8>>>,
+    key_reads: AtomicUsize,
+}
 
 impl SecureStore for MemoryStore {
     fn get(&self, key: SecureStoreKey) -> Result<Option<Vec<u8>>, SecureStoreError> {
-        Ok(self.0.lock().unwrap().get(&key).cloned())
+        if key == SecureStoreKey::DeviceSigningKey {
+            self.key_reads.fetch_add(1, Ordering::SeqCst);
+        }
+        Ok(self.values.lock().unwrap().get(&key).cloned())
     }
 
     fn set(&self, key: SecureStoreKey, value: Vec<u8>) -> Result<(), SecureStoreError> {
-        self.0.lock().unwrap().insert(key, value);
+        self.values.lock().unwrap().insert(key, value);
         Ok(())
     }
 
     fn delete(&self, key: SecureStoreKey) -> Result<(), SecureStoreError> {
-        self.0.lock().unwrap().remove(&key);
+        self.values.lock().unwrap().remove(&key);
         Ok(())
     }
 
     fn clear(&self) -> Result<(), SecureStoreError> {
-        self.0.lock().unwrap().clear();
+        self.values.lock().unwrap().clear();
         Ok(())
     }
 }
@@ -86,6 +96,7 @@ struct World {
     dir: tempfile::TempDir,
     session: Session,
     store: Arc<dyn SecureStore>,
+    keys: Arc<MemoryStore>,
     settings: SettingsService,
     outlet: Arc<Recorder>,
     review: InboxReview,
@@ -97,7 +108,8 @@ fn world() -> World {
     std::fs::create_dir_all(&app).expect("app dir");
     let config = Arc::new(AppConfig::load(app.join("memry-config.json")));
     let session = Session::new(VaultRegistry::new(config.clone()));
-    let store: Arc<dyn SecureStore> = Arc::new(MemoryStore::default());
+    let keys = Arc::new(MemoryStore::default());
+    let store: Arc<dyn SecureStore> = keys.clone();
     // A profile that captured or changed a setting has its device key.
     ensure_device_identity(store.clone()).expect("device key");
     let settings = SettingsService::new(store.clone(), config);
@@ -107,6 +119,7 @@ fn world() -> World {
         dir,
         session,
         store,
+        keys,
         settings,
         outlet,
         review,
@@ -142,6 +155,10 @@ impl World {
 
     fn tick(&self, day: u32, hour: u32, minute: u32) -> Option<i64> {
         self.review.tick(&at(day, hour, minute))
+    }
+
+    fn key_reads(&self) -> usize {
+        self.keys.key_reads.load(Ordering::SeqCst)
     }
 }
 
@@ -311,6 +328,46 @@ async fn the_scheduler_ticks_at_start_every_minute_on_wake_and_on_open() {
     assert_eq!(drain(&mut ticks), 5);
 }
 
+/// Counts the wakes of a future polled by hand.
+#[derive(Default)]
+struct Wakes(AtomicUsize);
+
+impl Wake for Wakes {
+    fn wake(self: Arc<Self>) {
+        self.wake_by_ref();
+    }
+
+    fn wake_by_ref(self: &Arc<Self>) {
+        self.0.fetch_add(1, Ordering::SeqCst);
+    }
+}
+
+#[tokio::test(start_paused = true)]
+async fn closed_channels_leave_the_scheduler_asleep_until_the_minute() {
+    let (power, power_rx) = broadcast::channel::<PowerEvent>(4);
+    let (opened, opens_rx) = mpsc::unbounded_channel();
+    drop(power);
+    drop(opened);
+    let ticks = Arc::new(AtomicUsize::new(0));
+    let counted = ticks.clone();
+    let mut run = std::pin::pin!(inbox_review::run(power_rx, opens_rx, move || {
+        counted.fetch_add(1, Ordering::SeqCst);
+        std::future::ready(())
+    }));
+    let wakes = Arc::new(Wakes::default());
+    let waker = Waker::from(wakes.clone());
+
+    assert!(
+        run.as_mut()
+            .poll(&mut Context::from_waker(&waker))
+            .is_pending()
+    );
+    assert_eq!(ticks.load(Ordering::SeqCst), 1, "the launch's catch-up");
+    // A loop that went on reading a closed channel would be cut off by tokio's budget and
+    // wake itself to spin again.
+    assert_eq!(wakes.0.load(Ordering::SeqCst), 0, "asleep until the minute");
+}
+
 #[test]
 fn an_open_is_signalled_once_the_vault_is_the_open_one() {
     let w = world();
@@ -322,5 +379,48 @@ fn an_open_is_signalled_once_the_vault_is_the_open_one() {
         json!({"reviewReminderEnabled": true, "reviewReminderTime": "00:00"}),
     );
     opens.blocking_recv().expect("the open");
+    assert_eq!(opens.try_recv(), Err(TryRecvError::Empty), "one signal");
     assert_eq!(w.tick(18, 0, 0), Some(1), "the open vault answers the tick");
+
+    // The forwarder ends with the session, so every event it read is in the channel by then.
+    drop(vault);
+    w.session.close();
+    drop(w);
+    assert_eq!(
+        opens.blocking_recv(),
+        None,
+        "the close and the open's other events send nothing"
+    );
+}
+
+#[test]
+fn a_tick_reads_the_device_key_once_per_open() {
+    let w = world();
+    let vault = w.open();
+    w.capture(&vault, "something to review");
+    w.schedule(
+        &vault,
+        json!({"reviewReminderEnabled": true, "reviewReminderTime": "09:30"}),
+    );
+    let before = w.key_reads();
+    for minute in 28..33 {
+        w.tick(18, 9, minute);
+    }
+    assert_eq!(w.outlet.due(), [1]);
+    assert_eq!(
+        w.key_reads() - before,
+        1,
+        "read at the open's first tick only"
+    );
+
+    drop(vault);
+    w.session.close();
+    assert_eq!(w.tick(18, 9, 33), None, "no vault is open");
+    let vault = w.open();
+    let before = w.key_reads();
+    for minute in 34..37 {
+        w.tick(18, 9, minute);
+    }
+    assert_eq!(w.key_reads() - before, 1, "the next open builds its own");
+    drop(vault);
 }
