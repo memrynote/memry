@@ -11,7 +11,7 @@ This directory owns the Tauri v2 desktop app (`@memry/desktop-tauri`), the app t
 
 ## Dual renderer rule
 
-Until the cutover step deletes `apps/desktop`, a renderer change that fixes a critical bug lands in both `apps/desktop/src/renderer` and `apps/desktop-tauri/src/renderer` in the same PR, and the PR body names both paths. The Tauri copy differs from the Electron one only in `index.html`, `main.tsx`, `env.d.ts`, `lib/logger.ts`, `lib/startup-theme.ts`, `lib/startup-locale.ts`, `lib/ipc-error.ts`, `lib/ipc-binary.ts`, `lib/not-ported.ts`, `lib/startup/`, `services/vault-service.ts`, `pages/settings/vault-section.tsx` and `pages/settings/journal-section.tsx` (a refused journal folder change shows its message and puts the saved folder back, as the date format field does; Electron refuses no folder). The Tauri copy has no `pdf-host.html` and no `src/pdf-host/`: the `memry-ml-worker` sidecar reads PDFs instead (#3542). Check with `diff -r apps/desktop/src/renderer apps/desktop-tauri/src/renderer`.
+Until the cutover step deletes `apps/desktop`, a renderer change that fixes a critical bug lands in both `apps/desktop/src/renderer` and `apps/desktop-tauri/src/renderer` in the same PR, and the PR body names both paths. The Tauri copy differs from the Electron one only in `index.html`, `main.tsx`, `env.d.ts`, `lib/logger.ts`, `lib/startup-theme.ts`, `lib/startup-locale.ts`, `lib/ipc-error.ts`, `lib/ipc-binary.ts`, `lib/not-ported.ts`, `lib/launch-marks.ts`, `lib/startup/`, `services/vault-service.ts`, `hooks/use-account-vaults.ts`, `components/vault-switcher.tsx`, `pages/settings/vault-section.tsx` and `pages/settings/journal-section.tsx` (a refused journal folder change shows its message and puts the saved folder back, as the date format field does; Electron refuses no folder). The Tauri copy has no `pdf-host.html` and no `src/pdf-host/`: the `memry-ml-worker` sidecar reads PDFs instead (#3542). Check with `diff -r apps/desktop/src/renderer apps/desktop-tauri/src/renderer`.
 
 ## Commands
 
@@ -39,6 +39,7 @@ Until the cutover step deletes `apps/desktop`, a renderer change that fixes a cr
 - The web inspector exists in debug builds only: View > Toggle Developer Tools, F12, and Tauri's Cmd+Opt+I or Ctrl+Shift+I. Release builds compile none of it, so the `tauri` dependency carries no `devtools` feature (Rust CI fails when a crate turns it on) and inspector code sits behind `cfg(debug_assertions)`.
 - Cmd/Ctrl+R and F5 reload the page in debug builds only (`windows/scripts/dev-keys.js`). In a release build View > Reload is the only reload.
 - React DevTools, which the Electron app loaded as an extension, has no counterpart here. Read component state through the inspector.
+- `pnpm seed1k` (`cargo xtask seed bench [--vault <dir>] [--count 1000] [--seed 42]`, from `crates/`) wipes `~/MemryBenchVault` and writes the benchmark vault in Rust (`crates/xtask`). The same count and seed give the TypeScript generator's bytes; `crates/xtask/tests/bulk_notes_golden.rs` holds the hashes it recorded. The demo, rich and small seeds still run on Electron until Step 40f.
 
 ## Startup
 

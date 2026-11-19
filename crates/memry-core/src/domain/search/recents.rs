@@ -1,7 +1,7 @@
 //! The search sheet's recently opened results (#4322), desktop's
 //! `search_reasons`.
 //!
-//! Device-local UI state in `data.db` (migrations 0017 and 0034): never
+//! Device-local UI state in `data.db` (migrations 0017 and 0035): never
 //! synced, never logged, gone with the vault on sign-out. A recent names an
 //! item, so it can outlive it: [`list`] checks every row against `data.db` the
 //! way a search hit is checked, and skips an item deleted since it was opened.
@@ -61,8 +61,11 @@ pub fn record(
     .map_err(failed)?;
     match icon.filter(|icon| !icon.is_empty()) {
         Some(icon) => tx.execute(
-            "INSERT INTO search_recent_icons (item_type, item_id, icon) VALUES (?1, ?2, ?3)
-             ON CONFLICT (item_type, item_id) DO UPDATE SET icon = excluded.icon",
+            "INSERT INTO search_recent_icons (item_type, item_id, icon, recorded_at)
+             SELECT ?1, ?2, ?3, visited_at FROM search_recents
+              WHERE item_type = ?1 AND item_id = ?2
+             ON CONFLICT (item_type, item_id) DO UPDATE SET
+               icon = excluded.icon, recorded_at = excluded.recorded_at",
             params![item_type, hit.id, icon],
         ),
         None => tx.execute(
@@ -90,6 +93,9 @@ pub fn record(
 
 /// The recents whose items are still live, newest first, at most `cap`.
 ///
+/// An icon lists only with the visit it was recorded with: a build that
+/// predates icons moves `visited_at` on reopen and leaves the old icon.
+///
 /// [`record`] trims the table to its cap, dead or live, and this drops the
 /// dead ones after reading them. A deleted item therefore keeps its slot
 /// until newer opens push it out, and the list can hold fewer than `cap`
@@ -101,6 +107,7 @@ pub fn list(data: &Connection, cap: u32) -> Result<Vec<Recent>, StorageError> {
                FROM search_recents r
                LEFT JOIN search_recent_icons i
                  ON i.item_type = r.item_type AND i.item_id = r.item_id
+                AND i.recorded_at = r.visited_at
              ORDER BY r.visited_at DESC, r.item_id LIMIT ?1",
         )
         .map_err(failed)?;
@@ -325,7 +332,7 @@ mod tests {
             .expect("recents");
     }
 
-    /// 0017 and 0034 add the tables to a `data.db` an older build wrote,
+    /// 0017 and 0035 add the tables to a `data.db` an older build wrote,
     /// leaving its rows alone, and recents work on it straight away.
     #[test]
     fn an_older_data_database_gains_an_empty_recents_table() {
@@ -394,6 +401,31 @@ mod tests {
                 );
                 record(conn, &hit(HitKind::Task, "t1"), "q", None, 20, 3)?;
                 assert_eq!(icons(conn)[0], ("t1".to_owned(), None));
+                Ok(())
+            })
+            .expect("recents");
+    }
+
+    /// An older build reopens the item with 0017's upsert and never touches
+    /// the icon, so the icon of the earlier visit must not come back.
+    #[test]
+    fn an_icon_an_older_build_left_behind_is_not_listed() {
+        migrated()
+            .call_blocking(|conn| {
+                live(conn, "task", "t1");
+                record(conn, &hit(HitKind::Task, "t1"), "q", Some("✅"), 20, 1)?;
+                conn.execute(
+                    "INSERT INTO search_recents (item_type, item_id, title, query, visited_at)
+                     VALUES ('task', 't1', 'title t1', 'older', 2)
+                     ON CONFLICT (item_type, item_id) DO UPDATE SET
+                       title = excluded.title, query = excluded.query,
+                       visited_at = excluded.visited_at",
+                    [],
+                )
+                .map_err(failed)?;
+                assert_eq!(icons(conn), [("t1".to_owned(), None)]);
+                record(conn, &hit(HitKind::Task, "t1"), "q", Some("✅"), 20, 3)?;
+                assert_eq!(icons(conn), [("t1".to_owned(), Some("✅".to_owned()))]);
                 Ok(())
             })
             .expect("recents");

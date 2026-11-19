@@ -956,6 +956,8 @@
     "componentsVaultSwitcher": {
       "noVaultsYet": "Aún no hay bóvedas",
       "openVault": "Abrir bóveda",
+      "createVault": "Crear bóveda",
+      "openFolderAsVault": "Abrir carpeta como bóveda",
       "settings": "Ajustes",
       "remove": "Quitar “",
       "removeVaultTitle": "¿Quitar «{name}» de la lista?",

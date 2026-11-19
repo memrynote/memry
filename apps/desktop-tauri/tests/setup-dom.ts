@@ -128,9 +128,50 @@ vi.mock('../src/generated/bindings', () => {
     listen: async (handler: (received: { payload: unknown }) => void) =>
       subscribe()((payload) => handler({ payload: wrap(payload) }))
   })
+  // `window.api.folderView` keeps the Electron names; component tests still set them.
+  const folderView = () =>
+    (
+      window.api as unknown as {
+        folderView: Record<string, (...args: unknown[]) => Promise<unknown>>
+      }
+    ).folderView
+  const viewWrite = async (result: Promise<unknown>) => {
+    const answer = (await result) as { success?: boolean; error?: string } | undefined
+    if (answer?.success === false) throw new Error(answer.error ?? '')
+    return null
+  }
   return {
     commands: {
       appInfo: () => Promise.resolve({}),
+      folderViewGetConfig: async (folderPath: string) => {
+        const answer = (await folderView().getConfig(folderPath)) as
+          | { config?: unknown }
+          | undefined
+        return answer?.config ?? null
+      },
+      folderViewList: (input: unknown) => folderView().listWithProperties(input),
+      folderViewAvailableProperties: (scope: unknown) => folderView().getAvailableProperties(scope),
+      folderViewGetViews: async (scope: unknown) => {
+        const answer = (await folderView().getViews(scope)) as
+          | { views?: unknown[]; defaultIndex?: number }
+          | undefined
+        return {
+          views: answer?.views?.length ? answer.views : null,
+          defaultIndex: answer?.defaultIndex ?? 0,
+          fieldColumns: null
+        }
+      },
+      folderViewSetView: (scope: unknown, view: unknown, previousName: string | null) =>
+        viewWrite(
+          previousName === null
+            ? folderView().setView(scope, view)
+            : folderView().setView(scope, view, previousName)
+        ),
+      folderViewDeleteView: (scope: unknown, viewName: string) =>
+        viewWrite(folderView().deleteView(scope, viewName)),
+      folderViewSetConfig: (folderPath: string, config: unknown) =>
+        viewWrite(folderView().setConfig(folderPath, config)),
+      folderViewFolderExists: (folderPath: string) => folderView().folderExists(folderPath),
       // `openLink` (lib/external-link-guard.ts); a test spies on it to see what was opened.
       shellOpenLink: (_url: string) => Promise.resolve(null),
       vaultSelect: (path: string | null) => vault().select(path ?? undefined),
@@ -147,6 +188,8 @@ vi.mock('../src/generated/bindings', () => {
       vaultSetIcon: (path: string, icon: string | null) => vault().setIcon(path, icon),
       vaultListAccount: () => vault().listAccount(),
       vaultDeleteFromAccount: (vaultUuid: string) => vault().deleteFromAccount(vaultUuid),
+      vaultDownloadRemote: (vaultUuid: string, parent: string | null) =>
+        vault().downloadRemote(vaultUuid, parent ?? undefined),
       vaultReindex: () => vault().reindex(),
       vaultGetConfig: () => vault().getConfig(),
       vaultUpdateConfig: (config: Parameters<typeof window.api.vault.updateConfig>[0]) =>
@@ -977,7 +1020,6 @@ const createMockApi = () => ({
   onNoteRenamed: vi.fn().mockReturnValue(() => {}),
   onLinksChanged: vi.fn().mockReturnValue(() => {}),
   onNoteMoved: vi.fn().mockReturnValue(() => {}),
-  onNoteExternalChange: vi.fn().mockReturnValue(() => {}),
   onCanvasCreated: vi.fn().mockReturnValue(() => {}),
   onCanvasUpdated: vi.fn().mockReturnValue(() => {}),
   onHomePageCreated: vi.fn().mockReturnValue(() => {}),

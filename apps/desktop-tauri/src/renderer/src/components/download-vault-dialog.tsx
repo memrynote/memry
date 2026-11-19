@@ -14,6 +14,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { linkingService } from '@/services/linking-service'
+import { useVault } from '@/hooks/use-vault'
 import type { AccountVaultInfo } from '../../../preload/index.d'
 import { useT } from '@memry/i18n/renderer'
 
@@ -24,6 +25,7 @@ interface DownloadVaultDialogProps {
 
 export function DownloadVaultDialog({ vault, onClose }: DownloadVaultDialogProps) {
   const { t } = useT('common')
+  const { downloadVault } = useVault()
   const [parentPath, setParentPath] = useState<string | null>(null)
   const [downloading, setDownloading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -50,7 +52,7 @@ export function DownloadVaultDialog({ vault, onClose }: DownloadVaultDialogProps
     setDownloading(true)
     setError(null)
     try {
-      const result = await window.api.vault.downloadRemote(vault.vaultUuid, parentPath ?? undefined)
+      const result = await downloadVault(vault, parentPath ?? undefined, { source: 'menu' })
       if (!result.success) {
         setError(result.error ?? t('phaseF.componentsVaultSwitcher.downloadFailed'))
         setDownloading(false)

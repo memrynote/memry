@@ -7,7 +7,9 @@
 
 mod ai_fake;
 mod device_key;
+mod electron_profile;
 mod embedding_lane;
+mod import_support;
 mod index_support;
 mod move_tree;
 mod on_warning;
@@ -20,10 +22,14 @@ mod vault_env;
 mod account_oauth;
 #[path = "account_service.rs"]
 mod account_service;
+#[path = "account_sign_out_cancel.rs"]
+mod account_sign_out_cancel;
 #[path = "account_teardown.rs"]
 mod account_teardown;
 #[path = "account_vault_directory.rs"]
 mod account_vault_directory;
+#[path = "account_vault_download.rs"]
+mod account_vault_download;
 #[path = "activity_log.rs"]
 mod activity_log;
 #[path = "activity_scan.rs"]
@@ -96,6 +102,8 @@ mod attachment_sources;
 mod attachment_uploads;
 #[path = "attachments.rs"]
 mod attachments;
+#[path = "billing_service.rs"]
+mod billing_service;
 #[path = "block_refs.rs"]
 mod block_refs;
 #[path = "byte_preservation.rs"]
@@ -119,6 +127,8 @@ mod editor_host;
 #[cfg(unix)]
 #[path = "editor_readonly.rs"]
 mod editor_readonly;
+#[path = "electron_profile_fixture.rs"]
+mod electron_profile_fixture;
 #[path = "embedding_file_text.rs"]
 mod embedding_file_text;
 #[path = "embedding_owed.rs"]
@@ -145,6 +155,8 @@ mod fold_untrusted;
 mod folder_file;
 #[path = "folder_prune.rs"]
 mod folder_prune;
+#[path = "folder_view.rs"]
+mod folder_view;
 #[path = "fs_atomic.rs"]
 mod fs_atomic;
 #[path = "home_covers.rs"]
@@ -161,6 +173,12 @@ mod image_embedding_lane;
 mod image_processing;
 #[path = "import_copy.rs"]
 mod import_copy;
+#[path = "import_runner.rs"]
+mod import_runner;
+#[path = "importer_untrusted.rs"]
+mod importer_untrusted;
+#[path = "importer_vectors.rs"]
+mod importer_vectors;
 #[path = "index_tag_definitions.rs"]
 mod index_tag_definitions;
 #[path = "indexer_facts.rs"]
@@ -307,6 +325,8 @@ mod notes_update_critic_marks;
 mod notes_writes;
 #[path = "oauth_loopback.rs"]
 mod oauth_loopback;
+#[path = "obsidian_task_import.rs"]
+mod obsidian_task_import;
 #[path = "ocr_languages.rs"]
 mod ocr_languages;
 #[path = "path_collision.rs"]
@@ -335,8 +355,12 @@ mod sanitize_svg_vectors;
 mod seams_tls;
 #[path = "seams_transport.rs"]
 mod seams_transport;
+#[path = "search_reasons.rs"]
+mod search_reasons;
 #[path = "settings_service.rs"]
 mod settings_service;
+#[path = "sticky_drafts.rs"]
+mod sticky_drafts;
 #[path = "sync_backend.rs"]
 mod sync_backend;
 #[path = "sync_host_clients.rs"]
@@ -353,6 +377,8 @@ mod tag_objects;
 mod tag_schema;
 #[path = "tags.rs"]
 mod tags;
+#[path = "task_defaults.rs"]
+mod task_defaults;
 #[path = "telemetry_flush.rs"]
 mod telemetry_flush;
 #[path = "telemetry_report_posts.rs"]

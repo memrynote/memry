@@ -490,6 +490,28 @@ describe('useBlockNoteSetup', () => {
     expect(aiExtension.openAIMenuAtBlock).toHaveBeenCalledWith('block-1')
   })
 
+  it("leaves Ctrl+Alt+J, Linux's today's journal chord, to the app", async () => {
+    const aiExtension = { openAIMenuAtBlock: vi.fn() }
+    const editor = {
+      getExtension: vi.fn(() => aiExtension),
+      registerExtension: vi.fn(),
+      unregisterExtension: vi.fn(),
+      getTextCursorPosition: vi.fn(() => ({ block: { id: 'block-1' } })),
+      focus: vi.fn(),
+      document: []
+    }
+
+    renderHook(() => useBlockNoteSetup({ editor, aiEnabled: true, editorContainerRef }))
+
+    const chord = new KeyboardEvent('keydown', { key: 'j', ctrlKey: true, altKey: true })
+    await act(async () => {
+      document.dispatchEvent(chord)
+    })
+
+    expect(aiExtension.openAIMenuAtBlock).not.toHaveBeenCalled()
+    expect(chord.defaultPrevented).toBe(false)
+  })
+
   it('scrolls to and highlights initial text matches', () => {
     vi.useFakeTimers()
     const { editor } = createEditor()

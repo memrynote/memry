@@ -16,6 +16,7 @@ pub mod instance;
 pub mod menu;
 pub mod ml_worker;
 pub mod notifications;
+pub mod post_reveal;
 pub mod power;
 pub mod protocols;
 pub mod registry;
@@ -88,11 +89,13 @@ fn register_stages() {
     shell::account_sync::register_stages();
     shutdown::register_stages();
     ml_worker::register_stages();
+    commands::voice::register_stages();
     tray::register_stages();
     windows::close::register_stages();
     deep_link::register_stages();
     notifications::register_stages();
     shortcuts::register_stages();
+    windows::sticky::register_stages();
     spell::register_stages();
     updater::register_stages();
     commands::ocr_languages::register_stages();
@@ -122,7 +125,10 @@ fn init_logging(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     // Taken and dropped at `RunEvent::Exit` (`shutdown::flush_log`): the process ends without
     // dropping managed state, which would lose the lines still queued for the writer thread.
     app.manage(std::sync::Mutex::new(Some(guard)));
-    logging::log_startup(env!("CARGO_PKG_VERSION"), BuildKind::current().into());
+    logging::log_startup(
+        &app.package_info().version.to_string(),
+        BuildKind::current().into(),
+    );
     Ok(())
 }
 
