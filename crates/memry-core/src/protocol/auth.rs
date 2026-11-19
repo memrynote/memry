@@ -4,9 +4,9 @@
 //! uses, the device challenge, and the token lifecycle — the part of chapter 02
 //! that is policy rather than JSON.
 //!
-//! **The rejection latch is the load-bearing piece.** Chapter 02 §2.9: outside
-//! a ten-second grace window an unknown refresh token revokes every token for
-//! the device, so a client that retries a refused refresh locks itself out.
+//! **The rejection latch is the load-bearing piece.** Chapter 02 §2.9: apart
+//! from a retry after a lost answer, a reused refresh token revokes every token
+//! for the device, so a client that retries a refused refresh locks itself out.
 //! §2.10 therefore forbids retrying a 401 inline, backs off 60 s then 300 s,
 //! and blocks refresh permanently after the third. The reason is on record:
 //! fifteen demand-driven callers on one install produced 58 requests in 47
@@ -469,8 +469,8 @@ impl TokenManager {
                     self.store_session(&response.access_token, &response.refresh_token)?;
                     return Ok(response.access_token);
                 }
-                // Never retried inline (chapter 02 §2.9): outside the ten
-                // second grace window an unknown refresh token revokes every
+                // Never retried inline (chapter 02 §2.9): apart from a retry
+                // after a lost answer, a reused refresh token revokes every
                 // token this device holds.
                 Err(ApiError::Unauthorized { .. }) => return Err(self.reject()),
                 Err(error) => {

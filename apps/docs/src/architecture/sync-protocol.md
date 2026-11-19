@@ -2257,6 +2257,12 @@ during which no refresh request reaches the network at all; that spacing exists 
 server-side 401 can recover before the session is written off. The third rejection is terminal: the
 client stops refreshing for good and prompts the user to sign in again.
 
+A refresh whose answer never arrived is not a rejection. The server rotates the token before it
+answers, so the client retries with the token it still holds, and the server re-issues for it while
+the rotation is under 15 minutes old and its successor is unused (§2.9 of
+`docs/protocol/02-auth-and-sessions.md`). The client's request deadline counts only time its main thread could run: after a stall it gives the
+request a few more seconds to read an answer that arrived during the stall, instead of discarding it.
+
 Signing out remains an explicit user action. The session is already dead on the server, but local
 key material is never cleared on the strength of an HTTP status alone. Signing in again clears the
 latch and sync resumes.

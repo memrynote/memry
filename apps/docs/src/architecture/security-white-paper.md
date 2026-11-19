@@ -149,7 +149,10 @@ server stores the code as an HMAC and accepts it for 10 minutes and 5 attempts. 
 single-use setup token, and the device registers by proving that it holds its new Ed25519 key
 ([02 §2.3][p02]). The device then gets a 15-minute access token (an EdDSA JWT) and a 7-day refresh
 token that rotates on each use. Reusing an old refresh token revokes all of the device's tokens
-([02 §2.2, §2.9][p02]).
+([02 §2.2, §2.9][p02]). One reuse is not theft: a device that never received the answer to a
+rotation retries with the token it still holds. The server re-issues for that token for 15 minutes,
+and only while the token the rotation issued has never been used. Once that successor is used, the
+old token reads as theft again.
 
 Signing in gives a device access to the account's ciphertext and metadata. To read content, the
 device also needs the master key, from another device or from the recovery phrase. The server
