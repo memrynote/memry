@@ -313,18 +313,19 @@ pub fn open_under_root_with(
     rel: &str,
     links: LinkPolicy,
 ) -> Result<Option<File>, OpenError> {
-    open_checked(root, rel, links, &mut || {})
+    Ok(open_checked(root, rel, links, &mut || {})?.map(|(file, _)| file))
 }
 
 /// `open_under_root_with` and a hook that runs between the open and the re-check, so a test
-/// can swap the file in that window.
+/// can swap the file in that window. Also returns the resolved path the opened file was
+/// checked against, links followed, re-rooted at `root`: its name is the opened file's.
 #[doc(hidden)]
 pub fn open_checked(
     root: &Path,
     rel: &str,
     links: LinkPolicy,
     between: &mut dyn FnMut(),
-) -> Result<Option<File>, OpenError> {
+) -> Result<Option<(File, PathBuf)>, OpenError> {
     for attempt in 1..=REPLACED_RETRIES {
         let path = match resolve_under_root(root, rel)? {
             Resolution::Outside => return Err(OpenError::Outside),
@@ -355,7 +356,7 @@ pub fn open_checked(
                 if let Ok(current) = open_read(&now)
                     && file_identity(&current)?.0 == opened
                 {
-                    return Ok(Some(file));
+                    return Ok(Some((file, now)));
                 }
             }
             Resolution::Missing => {}
@@ -385,7 +386,7 @@ fn open_read(path: &Path) -> io::Result<File> {
 
 /// Identity of an open file: the volume and the file on it. 128 bits for the file, because
 /// ReFS and some network file systems have no 64-bit index.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FileId(u64, u128);
 
 impl FileId {
@@ -457,99 +458,4 @@ pub fn file_identity(file: &File) -> io::Result<(FileId, u64)> {
 }
 
 #[cfg(all(test, windows))]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn only_the_volume_roots_deleted_area_is_a_file_being_replaced() {
-        for (path, deleted) in [
-            (r"\\?\C:\$Extend\$Deleted\000500000000B31853FE9168", true),
-            (r"\\?\C:\$extend\$deleted\1", true),
-            (r"\\?\Volume{0a1b}\$Extend\$Deleted\1", true),
-            (r"\\?\UNC\srv\share\$Extend\$Deleted\1", true),
-            (r"C:\$Extend\$Deleted\1", true),
-            (r"\\?\C:\vault\$Extend\$Deleted\1", false),
-            (r"\\?\C:\$Extend\other\1", false),
-            (r"\\?\C:\Users\agent\vault\notes\a.md", false),
-            (r"$Extend\$Deleted\1", false),
-        ] {
-            assert_eq!(in_deleted_area(Path::new(path)), deleted, "{path}");
-        }
-    }
-
-    /// A denial (os 5) or a pending delete (os 303) is asked again once, after the first
-    /// wait, and is the answer if it comes again. The old file's deleted-files name is asked
-    /// again through every wait. Any other answer is kept at once.
-    #[test]
-    fn a_denial_is_asked_again_once_and_a_deleted_name_through_every_wait() {
-        let inside = || Ok(PathBuf::from(r"\\?\C:\vault\notes\a.md"));
-        let deleted = || Ok(PathBuf::from(r"\\?\C:\$Extend\$Deleted\1"));
-        let os = |code| move || Err(io::Error::from_raw_os_error(code));
-        type Answer = Box<dyn Fn() -> io::Result<PathBuf>>;
-        /// The path holds this part, or the error has this OS code.
-        type Want = Result<&'static str, Option<i32>>;
-        let cases: Vec<(&str, Vec<Answer>, Want, usize)> = vec![
-            (
-                "denied, then the file",
-                vec![Box::new(os(5)), Box::new(inside)],
-                Ok("notes"),
-                2,
-            ),
-            (
-                "denied twice",
-                vec![Box::new(os(5)), Box::new(os(5))],
-                Err(Some(5)),
-                2,
-            ),
-            (
-                "delete pending, then denied",
-                vec![Box::new(os(303)), Box::new(os(5))],
-                Err(Some(5)),
-                2,
-            ),
-            (
-                "deleted, then denied",
-                vec![Box::new(deleted), Box::new(os(5))],
-                Err(Some(5)),
-                2,
-            ),
-            (
-                "deleted, then the file",
-                vec![Box::new(deleted), Box::new(inside)],
-                Ok("notes"),
-                2,
-            ),
-            (
-                "deleted on every ask",
-                vec![Box::new(deleted)],
-                Err(None),
-                RESOLVE_AGAIN_MS.len() + 1,
-            ),
-            (
-                "outside",
-                vec![Box::new(|| Ok(PathBuf::from(r"C:\other\a.md")))],
-                Ok("other"),
-                1,
-            ),
-            (
-                "missing",
-                vec![Box::new(os(2)), Box::new(inside)],
-                Err(Some(2)),
-                1,
-            ),
-        ];
-        for (case, answers, want, asks) in cases {
-            let mut asked = 0;
-            let got = settle(|| {
-                asked += 1;
-                answers[(asked - 1).min(answers.len() - 1)]()
-            });
-            match (got, want) {
-                (Ok(path), Ok(part)) => assert!(path.to_string_lossy().contains(part), "{case}"),
-                (Err(error), Err(code)) => assert_eq!(error.raw_os_error(), code, "{case}"),
-                (got, want) => panic!("{case}: {got:?}, want {want:?}"),
-            }
-            assert_eq!(asked, asks, "{case}");
-        }
-    }
-}
+mod tests;

@@ -30,3 +30,9 @@ packages/contracts/test-vectors/markdown-convert/corpus/** -text -whitespace
 crates/memry-core/src/storage/migrations/**/*.sql text eol=lf
 # PDF fixtures of the worker tests: the xref table ends each entry in a space by spec.
 crates/memry-ml-worker/tests/fixtures/*.pdf binary
+# The note export embeds its stylesheet with include_str! and compares fixtures byte for byte
+# with Electron's output; a Windows checkout must not turn either into CRLF.
+crates/memry-desktop/src/export/styles.css text eol=lf
+crates/memry-desktop/tests/fixtures/export/** -text
+# Importer vector inputs (Step 32): BOM, CRLF and malformed bytes are what the importers are tested on.
+packages/contracts/test-vectors/importers/** -text -whitespace

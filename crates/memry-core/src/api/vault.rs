@@ -51,6 +51,7 @@ use crate::api::notes_write::NotesWriter;
 use crate::api::search::Search;
 use crate::api::search_recents::SearchRecents;
 use crate::api::sync::VaultSync;
+use crate::api::task_store::TaskStore;
 use crate::api::tasks::Tasks;
 use crate::crypto::agent_envelope::AtRestKey;
 use crate::domain::agent_records;
@@ -87,6 +88,8 @@ pub struct Vault {
 mod tags;
 // The desktop sync driver and the server vault binding (#3534).
 mod sync_driver;
+// The desktop sticky drafts' accessor (Step 31).
+mod sticky;
 
 impl Vault {
     /// [`Vault::open`] with explicit [`OpenOptions`], for desktop. Not on the FFI surface.
@@ -109,6 +112,12 @@ impl Vault {
             excluded: Default::default(),
             at_rest_key: AtRestKey::default(),
         })
+    }
+
+    /// The desktop task surface ([`TaskStore`]). Not on the FFI
+    /// surface; needs the keychain as [`Vault::tasks`] does.
+    pub fn task_store(&self, store: &Arc<dyn SecureStore>) -> Result<TaskStore, AuthError> {
+        TaskStore::over(self.db.clone(), store)
     }
 
     /// [`Vault::search`] that also says why `index.db` was rebuilt (`None` when the file

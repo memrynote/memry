@@ -179,12 +179,7 @@ fn hold_choice(slot: &Arc<Mutex<Option<PendingChoice>>>, choice: PendingChoice) 
 /// vault ids as UUIDs; this is core's id rule (`account_admin::segment`).
 fn vault_folder(parent: &Path, vault_id: &str) -> Result<PathBuf, AccountError> {
     let refused = || AccountError::VaultChoice("The account vault's id is not valid".into());
-    if vault_id.is_empty()
-        || vault_id.len() > 128
-        || !vault_id
-            .bytes()
-            .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
-    {
+    if !is_vault_id(vault_id) {
         return Err(refused());
     }
     let name = dormant_vault_folder_name(vault_id);
@@ -200,6 +195,16 @@ fn vault_folder(parent: &Path, vault_id: &str) -> Result<PathBuf, AccountError> 
         return Err(refused());
     }
     Ok(folder)
+}
+
+/// Core's id rule (`account_admin::segment`): the server's vault ids become folder names, so one
+/// like `../..` is refused before it can leave the parent folder.
+pub(super) fn is_vault_id(vault_id: &str) -> bool {
+    !vault_id.is_empty()
+        && vault_id.len() <= 128
+        && vault_id
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
 }
 
 /// `dormantVaultFolderName` (`sync/vault-provisioning.ts:16-18`).
@@ -238,8 +243,9 @@ impl AccountService {
 
     /// `APPROVE_LINKING` (`linking-service.ts:653-766`): core verifies the scanning device's
     /// confirm tag before it reads the master key, then seals the key and the account's vault
-    /// list for it. An account that lists no vault sends the open vault's server id instead
-    /// (`collectVaultTransfer`). The pending code is gone either way.
+    /// list for it. An account that lists no vault sends the open vault's id instead, its server
+    /// id when bound and its own id otherwise (`collectVaultTransfer`, `vault-transfer.ts:43-47`).
+    /// The pending code is gone either way.
     pub async fn approve_linking(
         &self,
         session_id: &str,
@@ -247,13 +253,14 @@ impl AccountService {
     ) -> Result<(), AccountError> {
         self.pending_invite(session_id)?;
         let fallback = match open.map(|open| open.vault.clone()) {
-            Some(vault) => tokio::task::spawn_blocking(move || vault.server_vault_id())
-                .await
-                .ok()
-                .and_then(Result::ok)
-                .flatten()
-                .into_iter()
-                .collect(),
+            Some(vault) => {
+                tokio::task::spawn_blocking(move || super::binding::local_vault_uuid(&vault))
+                    .await
+                    .ok()
+                    .and_then(Result::ok)
+                    .into_iter()
+                    .collect()
+            }
             None => Vec::new(),
         };
         let approved = self.linking.approver.approve_with_fallback(fallback).await;

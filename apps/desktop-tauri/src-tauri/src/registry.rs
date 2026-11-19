@@ -54,6 +54,13 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::ai_structured::writing_generate_assist::<Wry>,
             // app
             crate::commands::app::app_info,
+            // billing
+            crate::commands::billing::account_change_plan,
+            crate::commands::billing::account_get_billing_status,
+            crate::commands::billing::account_open_billing_portal,
+            crate::commands::billing::account_preview_plan_change,
+            crate::commands::billing::account_refresh_billing_status,
+            crate::commands::billing::account_start_checkout,
             // calendar feeds
             crate::commands::calendar_ics::calendar_refresh_ics,
             crate::commands::calendar_ics::calendar_subscribe_ics,
@@ -113,6 +120,8 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::journal::journal_get_streak::<Wry>,
             crate::commands::journal::journal_get_year_stats::<Wry>,
             crate::commands::journal::journal_update_entry::<Wry>,
+            // launch
+            crate::commands::launch::launch_report_renderer_marks,
             // locale
             crate::commands::locale::locale_get,
             crate::commands::locale::locale_list,
@@ -154,6 +163,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::notes::notes_get_all_positions::<Wry>,
             crate::commands::notes::notes_get_by_path,
             crate::commands::notes::notes_get_file,
+            crate::commands::notes::notes_get_list_item,
             crate::commands::notes::notes_get_links,
             crate::commands::notes::notes_get_local_only_count,
             crate::commands::notes::notes_get_unlinked_mentions,
@@ -194,6 +204,10 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::property_definitions::notes_update_option_color,
             crate::commands::property_definitions::notes_update_property_definition,
             crate::commands::unsplash::notes_download_unsplash_photo,
+            // notes: similarity
+            crate::commands::notes_similarity::notes_cluster::<Wry>,
+            crate::commands::notes_similarity::notes_get_similar::<Wry>,
+            crate::commands::notes_similarity::notes_get_tag_suggestions::<Wry>,
             // notes: versions
             crate::commands::notes_versions::notes_delete_version,
             crate::commands::notes_versions::notes_get_version,
@@ -220,10 +234,19 @@ pub fn builder() -> Builder<Wry> {
             // shortcut
             crate::commands::shortcuts::shortcut_register_global_capture,
             crate::commands::shortcuts::shortcut_set_global_capture,
+            crate::commands::shortcuts::shortcut_register_sticky,
+            crate::commands::shortcuts::shortcut_set_sticky,
             // spell
             crate::commands::spell::spell_check_word,
             crate::commands::spell::spell_add_word,
             crate::commands::spell::spell_add_words,
+            // stickies
+            crate::commands::stickies::sticky_delete_draft,
+            crate::commands::stickies::sticky_get_session,
+            crate::commands::stickies::sticky_list_drafts,
+            crate::commands::stickies::sticky_resize,
+            crate::commands::stickies::sticky_save_draft,
+            crate::commands::stickies::sticky_tuck,
             // fonts
             crate::fonts::system_fonts_list,
             // log
@@ -258,6 +281,19 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::shell::shell_open_path,
             crate::commands::shell::shell_reveal_path,
             crate::commands::shell::shell_take_crash_reload,
+            // sync
+            crate::commands::sync::sync_get_history::<Wry>,
+            crate::commands::sync::sync_get_large_notes::<Wry>,
+            crate::commands::sync::sync_get_note_sync_state::<Wry>,
+            crate::commands::sync::sync_get_quarantined_items::<Wry>,
+            crate::commands::sync::sync_get_queue_size::<Wry>,
+            crate::commands::sync::sync_get_status::<Wry>,
+            crate::commands::sync::sync_get_synced_settings::<Wry>,
+            crate::commands::sync::sync_get_unsent_notes::<Wry>,
+            crate::commands::sync::sync_pause::<Wry>,
+            crate::commands::sync::sync_resume::<Wry>,
+            crate::commands::sync::sync_trigger::<Wry>,
+            crate::commands::sync::sync_update_synced_setting::<Wry>,
             // sync account
             crate::commands::sync_account::account_sign_out,
             crate::commands::sync_account::sync_get_vault_binding,
@@ -273,6 +309,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::tags::tags_delete_category,
             crate::commands::tags::tags_get_all_with_counts,
             crate::commands::tags::tags_get_notes_by_tag,
+            crate::commands::tags::tags_is_gone,
             crate::commands::tags::tags_list_categories,
             crate::commands::tags::tags_pin_note_to_tag::<Wry>,
             crate::commands::tags::tags_rename::<Wry>,
@@ -324,6 +361,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::vault::vault_switch,
             crate::commands::vault::vault_update_config::<Wry>,
             crate::commands::vault_account::vault_delete_from_account,
+            crate::commands::vault_account::vault_download_remote,
             crate::commands::vault_account::vault_list_account,
             // vault activity
             crate::commands::vault_activity::vault_activity_clear,
@@ -341,6 +379,13 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::vault_notices::vault_notices_delete_kept,
             crate::commands::vault_notices::vault_notices_list,
             crate::commands::vault_notices::vault_notices_restore_kept,
+            // voice
+            crate::commands::voice::settings_download_voice_model,
+            crate::commands::voice::settings_get_voice_model_status,
+            crate::commands::voice::settings_get_voice_recording_readiness,
+            crate::commands::voice::settings_get_voice_transcription_openai_key_status,
+            crate::commands::voice::settings_open_os_microphone_settings,
+            crate::commands::voice::settings_set_voice_transcription_openai_key,
             // window
             crate::commands::shell::window_close,
             crate::commands::shell::window_minimize,
@@ -388,6 +433,18 @@ pub fn builder() -> Builder<Wry> {
             crate::events::SettingsOpenSectionEvent,
             // menu
             crate::events::MenuCommandInvokedEvent,
+            // stickies
+            crate::events::StickyDraftsChangedEvent,
+            // sync
+            crate::events::SyncCertificatePinFailedEvent,
+            crate::events::SyncClockSkewWarningEvent,
+            crate::events::SyncInitialSyncProgressEvent,
+            crate::events::SyncItemCorruptEvent,
+            crate::events::SyncItemRecoveredEvent,
+            crate::events::SyncItemSyncedEvent,
+            crate::events::SyncQueueClearedEvent,
+            crate::events::SyncSecurityWarningEvent,
+            crate::events::SyncStatusChangedEvent,
             // sync account
             crate::events::SyncDeviceRemovedEvent,
             crate::events::SyncVaultBindingChangedEvent,
@@ -431,6 +488,8 @@ pub fn builder() -> Builder<Wry> {
             // vault locks
             crate::events::VaultLocksChangedEvent,
             crate::events::VaultLocksExternalEditRestoredEvent,
+            // voice
+            crate::events::VoiceModelProgressEvent,
             // window
             crate::events::WindowCaptionHoverChangedEvent,
             crate::events::WindowCaptionPressedChangedEvent,

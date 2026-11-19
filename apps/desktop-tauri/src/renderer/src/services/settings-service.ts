@@ -15,9 +15,16 @@ import type {
   TaskSettingsDTO,
   VoiceTranscriptionSettings
 } from '../../../preload/index.d'
-import type { GlobalCaptureResult } from '@memry/contracts/settings-schemas'
+import type { GlobalCaptureResult, StickyShortcutResult } from '@memry/contracts/settings-schemas'
 import type { CalloutTypeDefinition } from '@memry/editor-schema/callout-types'
-import { commands, events, type Value } from '../../../generated/bindings'
+import {
+  commands,
+  events,
+  type Value,
+  type VoiceModelStatus,
+  type VoiceOpenAiKeyStatus,
+  type VoiceRecordingReadiness
+} from '../../../generated/bindings'
 import { sanitizeCalloutTypeDefinitions } from '@memry/editor-schema/callout-types'
 import { createLogger } from '../lib/logger'
 import { subscribeToEvent } from './tauri-event'
@@ -133,8 +140,9 @@ const voice = group<VoiceTranscriptionSettings>('voiceTranscription')
 
 /**
  * The `window.api.settings` functions Step 09 owns: every group and flat key core stores. The
- * rest of the Electron surface (AI writes and models, calendar providers, the voice model, the
- * terminal command and the global shortcuts) belongs to the steps that port those features.
+ * voice model, readiness, OpenAI key and microphone pane are Step 24's (#3541). The rest of the
+ * Electron surface (calendar providers, the terminal command) belongs to the steps that port
+ * those features.
  */
 export const settingsService = {
   getGeneralSettings: general.get,
@@ -177,6 +185,9 @@ export const settingsService = {
     commands.shortcutRegisterGlobalCapture(),
   setGlobalCapture: (binding: ShortcutBindingDTO | null): Promise<GlobalCaptureResult> =>
     commands.shortcutSetGlobalCapture(binding),
+  registerStickyShortcut: (): Promise<StickyShortcutResult> => commands.shortcutRegisterSticky(),
+  setStickyShortcut: (binding: ShortcutBindingDTO | null): Promise<StickyShortcutResult> =>
+    commands.shortcutSetSticky(binding),
   getAISettings: (): Promise<AISettings> => commands.settingsGetAi(),
   setAISettings: async (patch: Partial<AISettings>): Promise<Result> => {
     try {
@@ -189,6 +200,29 @@ export const settingsService = {
   },
   getVoiceTranscriptionSettings: voice.get,
   setVoiceTranscriptionSettings: voice.set,
+  getVoiceModelStatus: (): Promise<VoiceModelStatus> => commands.settingsGetVoiceModelStatus(),
+  downloadVoiceModel: async (): Promise<Result> => {
+    try {
+      await commands.settingsDownloadVoiceModel()
+      return { success: true }
+    } catch (error) {
+      return failure(error)
+    }
+  },
+  getVoiceRecordingReadiness: (): Promise<VoiceRecordingReadiness> =>
+    commands.settingsGetVoiceRecordingReadiness(),
+  getVoiceTranscriptionOpenAIKeyStatus: (): Promise<VoiceOpenAiKeyStatus> =>
+    commands.settingsGetVoiceTranscriptionOpenaiKeyStatus(),
+  setVoiceTranscriptionOpenAIKey: async (apiKey: string): Promise<Result> => {
+    try {
+      await commands.settingsSetVoiceTranscriptionOpenaiKey(apiKey)
+      return { success: true }
+    } catch (error) {
+      return failure(error)
+    }
+  },
+  openOsMicrophoneSettings: (): Promise<{ success: boolean }> =>
+    commands.settingsOpenOsMicrophoneSettings(),
 
   getSidebarSortModes: async (): Promise<Record<SidebarSortSurface, SidebarSortMode>> => ({
     ...SIDEBAR_SORT_DEFAULTS,

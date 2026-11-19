@@ -138,6 +138,8 @@ vi.mock('../src/generated/bindings', () => {
       vaultSetIcon: (path: string, icon: string | null) => vault().setIcon(path, icon),
       vaultListAccount: () => vault().listAccount(),
       vaultDeleteFromAccount: (vaultUuid: string) => vault().deleteFromAccount(vaultUuid),
+      vaultDownloadRemote: (vaultUuid: string, parent: string | null) =>
+        vault().downloadRemote(vaultUuid, parent ?? undefined),
       vaultReindex: () => vault().reindex(),
       vaultGetConfig: () => vault().getConfig(),
       vaultUpdateConfig: (config: Parameters<typeof window.api.vault.updateConfig>[0]) =>
@@ -934,7 +936,6 @@ const createMockApi = () => ({
   onNoteRenamed: vi.fn().mockReturnValue(() => {}),
   onLinksChanged: vi.fn().mockReturnValue(() => {}),
   onNoteMoved: vi.fn().mockReturnValue(() => {}),
-  onNoteExternalChange: vi.fn().mockReturnValue(() => {}),
   onCanvasCreated: vi.fn().mockReturnValue(() => {}),
   onCanvasUpdated: vi.fn().mockReturnValue(() => {}),
   onHomePageCreated: vi.fn().mockReturnValue(() => {}),
