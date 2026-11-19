@@ -214,6 +214,7 @@ mod links {
                     &mut once
                 )
                 .unwrap()
+                .map(|(file, _)| file)
             ),
             "replacement"
         );

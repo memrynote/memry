@@ -12,6 +12,8 @@ use crate::domain::projects::{
 };
 use crate::domain::saved_filters::{self, NewSavedFilter};
 use crate::domain::task_settings;
+use crate::storage::Db;
+use crate::sync::engine::PassSeed;
 
 /// One status in a project editor.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
@@ -131,9 +133,8 @@ impl Tasks {
     /// Seeds the Inbox when the vault has none, so a new task always has a
     /// project to land in. Returns whether it wrote one.
     pub fn ensure_inbox(&self) -> Result<bool, StorageError> {
-        let device = self.device_id.clone();
         self.db
-            .call_blocking(move |conn| projects::ensure_inbox(conn, &device, now_ms()))
+            .call_blocking(move |conn| projects::ensure_inbox(conn, now_ms()))
     }
 
     /// Creates a project and returns its id.
@@ -459,5 +460,31 @@ impl Tasks {
     pub fn set_nested_subtasks(&self, on: bool) -> Result<TaskSettingsItem, StorageError> {
         self.db
             .call_blocking(move |conn| Ok(task_settings::set_nested_subtasks(conn, on)?.into()))
+    }
+}
+
+/// The unclocked Inbox seeded by a sync pass ([`projects::seed_unclocked`]), as desktop's full
+/// sync seeds its unclocked projects between its pull and its push. Desktop's sync driver
+/// registers it, and iOS's [`crate::api::sync::VaultSync::sync_now`] runs it, both through
+/// [`crate::sync::engine::seed_at_head`].
+pub(crate) struct ProjectSeed {
+    db: Db,
+    device_id: String,
+}
+
+impl ProjectSeed {
+    pub(crate) fn over(db: Db, device_id: String) -> std::sync::Arc<Self> {
+        std::sync::Arc::new(Self { db, device_id })
+    }
+}
+
+#[async_trait::async_trait]
+impl PassSeed for ProjectSeed {
+    async fn seed(&self) -> Result<(), StorageError> {
+        let device_id = self.device_id.clone();
+        self.db
+            .call(move |conn| projects::seed_unclocked(conn, &device_id, now_ms()))
+            .await?;
+        Ok(())
     }
 }
