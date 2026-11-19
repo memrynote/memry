@@ -564,7 +564,8 @@ vi.mock('@/components/note', () => ({
     focusAtEndRef,
     review,
     onReadOnlyChange,
-    editable
+    editable,
+    noteTags
   }: {
     initialContent: string
     externalContentRevision?: number
@@ -579,10 +580,13 @@ vi.mock('@/components/note', () => ({
     review?: { onEditorReady?: (editor: unknown) => void }
     onReadOnlyChange?: (readOnly: DocReadOnly | null) => void
     editable?: boolean
+    noteTags?: string[]
   }) => {
     mocks.onMarkdownChange = onMarkdownChange
     mocks.onReadOnlyChange = onReadOnlyChange
     const [content] = useState(initialContent)
+    // The editor reads the tags it may promote once, when it binds.
+    const [noteTagsAtMount] = useState(noteTags)
     // A fresh mount mints a fresh editor, exactly as the real one does — which
     // is what makes "same instance across a round trip" a real assertion and
     // not a comment.
@@ -613,6 +617,7 @@ vi.mock('@/components/note', () => ({
         </div>
         {/* the live prop the editor re-reads when the revision moves */}
         <div data-testid="editor-live-content">{initialContent}</div>
+        <div data-testid="editor-note-tags-at-mount">{(noteTagsAtMount ?? []).join(',')}</div>
         <div data-testid="editor-external-revision">
           {String(externalContentRevision ?? 'none')}
         </div>
@@ -1378,6 +1383,16 @@ describe('NotePage', () => {
       id: 'note-1',
       headerTags: { add: [], remove: ['work', 'urgent'], source: 'inline' }
     })
+  })
+
+  it('hands the editor the inline tags of a body the index has not tagged yet', async () => {
+    // #given a note just added to the vault: its body has a tag the index has not projected
+    mocks.noteState.note = { ...note, tags: ['work'], content: 'Tagged #fresh here.' }
+
+    renderWithProviders(<NotePage noteId="note-1" />)
+
+    // #then the editor binds with it, so the first open shows the chip
+    expect(await screen.findByTestId('editor-note-tags-at-mount')).toHaveTextContent('work,fresh')
   })
 
   it('does not write the note when opening it reports its inline tags', async () => {
