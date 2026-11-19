@@ -203,6 +203,10 @@ name = "integration"
 path = "tests/integration.rs"
 
 [[test]]
+name = "obsidian_task_local_zone"
+path = "tests/obsidian_task_local_zone.rs"
+
+[[test]]
 name = "activity_log_memory"
 path = "tests/activity_log_memory.rs"
 
@@ -237,6 +241,10 @@ path = "tests/model_download_proxy.rs"
 [[test]]
 name = "sync_harness"
 path = "tests/sync_harness.rs"
+
+[[test]]
+name = "attachments_harness"
+path = "tests/attachments_harness.rs"
 
 [[test]]
 name = "sync_driver_harness"
