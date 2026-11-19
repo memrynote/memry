@@ -185,6 +185,8 @@ export const settingsService = {
     commands.shortcutRegisterGlobalCapture(),
   setGlobalCapture: (binding: ShortcutBindingDTO | null): Promise<GlobalCaptureResult> =>
     commands.shortcutSetGlobalCapture(binding),
+  sendTestInboxReviewNotification: (): Promise<{ supported: boolean }> =>
+    commands.settingsSendTestInboxReviewNotification(),
   getAISettings: (): Promise<AISettings> => commands.settingsGetAi(),
   setAISettings: async (patch: Partial<AISettings>): Promise<Result> => {
     try {

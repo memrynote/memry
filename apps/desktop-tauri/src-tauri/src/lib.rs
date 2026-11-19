@@ -87,6 +87,7 @@ fn register_stages() {
     startup::register(Stage::Handlers, "drop staging", shell::drop_stage::init);
     shell::vault_boot::register_stages();
     shell::account_sync::register_stages();
+    shell::inbox_review::register_stages();
     shutdown::register_stages();
     ml_worker::register_stages();
     commands::voice::register_stages();

@@ -586,6 +586,11 @@ export const commands = {
 	 */
 	settingsResetKeyboard: () => __TAURI_INVOKE<null>("settings_reset_keyboard"),
 	/**
+	 *  Shows the inbox review notification now (Settings > Inbox), so the user can check that the
+	 *  system shows it and, on macOS, answer the permission prompt (`sendTestReviewNotification`).
+	 */
+	settingsSendTestInboxReviewNotification: () => __TAURI_INVOKE<InboxReviewTestResult>("settings_send_test_inbox_review_notification"),
+	/**
 	 *  `settings:setAISettings` (`writeAISettings`): writes the switches, forgets the fold's
 	 *  agent detection when a switch the fold reads changed (`refreshNoteFold`), and announces
 	 *  `ai` with the written fields, one `setting_changed` each. With no vault open it refuses with
@@ -871,6 +876,8 @@ export const events = {
 	flushRequestedEvent: makeEvent<FlushRequestedEvent, FlushRequestedEvent>("flush-requested-event"),
 	folderConfigUpdatedEvent: makeEvent<FolderConfigUpdatedEvent, FolderConfigUpdatedEvent>("folder-config-updated-event"),
 	inboxOpenItemEvent: makeEvent<InboxOpenItemEvent, InboxOpenItemEvent>("inbox-open-item-event"),
+	inboxReviewDueEvent: makeEvent<InboxReviewDueEvent, InboxReviewDueEvent>("inbox-review-due-event"),
+	inboxReviewOpenEvent: makeEvent<InboxReviewOpenEvent, InboxReviewOpenEvent>("inbox-review-open-event"),
 	journalEntryCreatedEvent: makeEvent<JournalEntryCreatedEvent, JournalEntryCreatedEvent>("journal-entry-created-event"),
 	journalEntryDeletedEvent: makeEvent<JournalEntryDeletedEvent, JournalEntryDeletedEvent>("journal-entry-deleted-event"),
 	journalEntryUpdatedEvent: makeEvent<JournalEntryUpdatedEvent, JournalEntryUpdatedEvent>("journal-entry-updated-event"),
@@ -1949,6 +1956,25 @@ export type InboxResultMetadata = {
 	sourceUrl: string | null,
 	sourceTitle: string | null,
 	filedAt: string | null,
+};
+
+/**
+ *  The daily inbox review nudge fired (`inbox:review-due`): the renderer shows its toast.
+ *  `count` is the number of captures to review.
+ */
+export type InboxReviewDueEvent = {
+	count: number,
+};
+
+/**  The inbox review notification was clicked (`inbox:review-open`): the renderer opens the inbox. */
+export type InboxReviewOpenEvent = Record<string, never>;
+
+/**
+ *  What the inbox review test reports: `supported` is false when the platform cannot show a
+ *  notification. A refusal by the user shows nowhere, as in Electron.
+ */
+export type InboxReviewTestResult = {
+	supported: boolean,
 };
 
 export type InheritedFieldsView = {
