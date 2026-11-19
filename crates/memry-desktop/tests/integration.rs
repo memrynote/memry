@@ -105,6 +105,8 @@ mod byte_preservation;
 mod calendar_caldav;
 #[path = "calendar_caldav_connect.rs"]
 mod calendar_caldav_connect;
+#[path = "calendar_caldav_sync.rs"]
+mod calendar_caldav_sync;
 #[path = "calendar_feeds.rs"]
 mod calendar_feeds;
 #[path = "calendar_ics_fetch.rs"]
