@@ -11,6 +11,7 @@
 //! TypeScript importers and `tests/importer_vectors.rs` replays here.
 
 pub mod assets;
+pub mod bear;
 pub mod context;
 pub mod csv;
 pub mod google_keep;

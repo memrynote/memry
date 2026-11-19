@@ -111,10 +111,17 @@ fn is_embeddable(reference: &str) -> bool {
 /// `percentDecodeRef`: `decodeURIComponent`, or the ref unchanged when that throws (a `%` not
 /// followed by two hex digits, or escapes that are not UTF-8).
 pub fn percent_decode_ref(reference: &str) -> String {
-    decode_uri_component(reference).unwrap_or_else(|| reference.to_owned())
+    decode_uri(reference, b"").unwrap_or_else(|| reference.to_owned())
 }
 
-fn decode_uri_component(text: &str) -> Option<String> {
+/// `decodeURI` (`decodeURIComponent` that keeps the escapes of `;/?:@&=+$,#`), or the text
+/// unchanged when that throws.
+pub fn decode_uri_or_keep(text: &str) -> String {
+    decode_uri(text, b";/?:@&=+$,#").unwrap_or_else(|| text.to_owned())
+}
+
+/// Decodes `%XX` escapes, keeping the escape of a byte in `reserved` as written.
+fn decode_uri(text: &str, reserved: &[u8]) -> Option<String> {
     let bytes = text.as_bytes();
     let mut out = Vec::with_capacity(bytes.len());
     let mut i = 0;
@@ -133,6 +140,10 @@ fn decode_uri_component(text: &str) -> Option<String> {
         }
         let lead = escaped(i)?;
         i += 3;
+        if reserved.contains(&lead) {
+            out.extend_from_slice(&bytes[i - 3..i]);
+            continue;
+        }
         let len = match lead.leading_ones() {
             0 => 1,
             n @ 2..=4 => n as usize,
@@ -155,7 +166,7 @@ fn decode_uri_component(text: &str) -> Option<String> {
 }
 
 /// `encodeAttachmentUrl`: a space or a parenthesis would end the markdown link.
-fn encode_attachment_url(url: &str) -> String {
+pub(crate) fn encode_attachment_url(url: &str) -> String {
     url.replace(' ', "%20")
         .replace('(', "%28")
         .replace(')', "%29")
