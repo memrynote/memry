@@ -181,7 +181,7 @@ fills the meta from the same columns `POST /sync/pull` answers from
 - **An unusable entry costs that entry, not the pack.** An entry whose meta is
   absent (`metaLen` 0) or fails `RecordPackEntryMetaSchema`, whose payload is
   not a valid blob, or whose rebuilt item fails validation or verification is
-  ignored, and the item stays on `POST /sync/pull` (see **Record tail**). The
+  ignored, and the item stays item-granular (see **Record tail**). The
   pack digests already passed (§8.5), so the rest of the pack is intact. This is what a reader does
   with a record pack written before this section, which carries no meta
   (`apps/sync-server/src/services/pack-compaction.ts:88-104` describes that
@@ -193,11 +193,13 @@ fills the meta from the same columns `POST /sync/pull` answers from
   (`apps/sync-server/src/lib/sync-types.ts:20-24`,
   `pullItems` with the subscription's `recordTypes`,
   `apps/sync-server/src/routes/sync.ts:637-643`).
-- **Record tail.** A reader that uses record packs and then pulls the rest
-  through `POST /sync/pull` MUST start that pull at a cursor no higher than
-  `sortKey − 1` of every record entry it skipped, for any reason in this
-  section. Starting the tail at a pack's `maxCursor` instead loses every
-  skipped entry for good: no pull ever answers below its cursor.
+- **Record tail.** A reader that uses record packs and then follows the cursor
+  tail through `GET /sync/changes` (chapter 05 §5.11.1) MUST start that tail at
+  a cursor no higher than `sortKey − 1` of every record entry it found
+  unusable. The tail then names the item again and `POST /sync/pull` serves
+  it. Starting the tail at a pack's `maxCursor` instead loses every unusable
+  entry for good: the tail never answers below its cursor. An entry of an
+  undeclared type is exempt, because the tail would not serve it either.
 - **No payload, no entry.** A purged tombstone (chapter 05 §5.12.3) and a row
   whose payload is lost (§5.12.4) have no payload bytes. A writer MUST NOT emit
   them as record entries; `POST /sync/pull` keeps them out of `items` for the
@@ -246,11 +248,15 @@ reader (`packages/contracts/src/__tests__/pack-container.test.ts`).
   `COALESCE(MAX(sequence_num), 0) + 1` over the union of the update, snapshot
   and floor tables, inside an `INSERT OR IGNORE` that takes none for an ignored
   retry (`apps/sync-server/src/services/crdt.ts:143-151`). A snapshot takes an
-  existing number: without a claim the union's current maximum
+  existing number or a lower one: without a claim the union's current maximum
   (`apps/sync-server/src/services/crdt-snapshot-write.ts:252-260`, `:336`), with
   a claim its covered watermark, the highest update the claim covers
-  (`:138-146`, `:152-156`, `:334-335`). So a document's updates above any
-  baseline are numbered `baseline + 1`, `baseline + 2`, and so on. A reader applies packed updates under chapter 07
+  (`:138-146`, `:152-156`, `:334-335`). A claimed watermark starts at the
+  existing snapshot row or 0 and never reads the floor (`:284`, `:311-312`), so
+  after a purge a claimed snapshot can number below the floor (#5248). So a
+  document's updates above any baseline are numbered `baseline + 1`,
+  `baseline + 2`, and so on, and a snapshot's number is never a lower bound for
+  packed updates. A reader applies packed updates under chapter 07
   §7.9 with one addition: **it advances a document's update cursor across a
   packed update only when that update's `sequenceNum` is the cursor plus one.**
   At the first missing number it stops using packed updates for that document
@@ -258,32 +264,30 @@ reader (`packages/contracts/src/__tests__/pack-container.test.ts`).
   resume with the packed updates above what the pull returned. A pack never
   proves that an update is absent, so a gap is resolved by the server, never
   skipped. This is chapter 07 §7.9's stop-at-gap rule applied to packed data.
-- **Lower bound.** A reader MUST NOT use any packed update of a document until
-  it holds a server-provided lower bound `L` for that document, and then uses
-  only packed updates with `sequenceNum > L`, starting its cursor at
-  `max(cursor, L)`. With no bound it uses none and fetches the document through
-  chapter 07 §7.2. The reason is the purge: it sets the floor `N` and deletes
-  rows `1..N` (chapter 07 §7.15), but a pack built before it still holds
-  updates `1..N`, and no client sees the floor. A fresh device starts that
-  re-created document at cursor 0 and, without a bound, applies the deleted
-  text as `cursor + 1`. Today's servers provide two bounds:
-  - `snapshotMeta.sequenceNum` (chapter 07 §7.11), once the reader has
-    applied that snapshot under §7.8. A snapshot of a re-created document
-    numbers at or above the floor (§7.4).
-  - the first answer of `GET /sync/crdt/updates` or its batch form for
-    `since` = the reader's cursor: one less than the lowest `sequenceNum` it
-    returns, because the route answers the surviving rows above `since` in
-    ascending order (`apps/sync-server/src/services/crdt.ts:270`). An empty
-    answer means no row above the cursor survives, so no packed update is
-    usable.
-- **Purge dependency.** The §7.15 purge drops only `crdt_snapshot` packs
-  (`apps/sync-server/src/services/document-body-purge.ts:45-127`). **Before any
-  server writes a kind 2 entry (step 05 of #5221), the purge MUST also drop the
-  vault's `crdt_update` packs and reset that kind's watermark**, with the same
-  commit-time recheck §7.15 gives snapshot compaction. Part b of #5226
-  (coverage, rollup and scoped purge) depends on this. The lower bound covers a
-  reader that listed a pack before the purge; the drop keeps every later
-  listing clean.
+- **Floor.** **A reader applies a packed update of a document only when the
+  update's `sequenceNum` is above that document's `floor` and is its cursor
+  plus one, where `floor` comes from a `GET /sync/crdt/updates` or batch answer
+  for that document read after the reader holds the pack bytes, in the same
+  run; an answer without `floor` makes every packed update of that document
+  unusable.** `floor` is the document's highest purged sequence number, 0 when
+  it was never purged (chapter 07 §7.4, §7.15); it is introduced by step 05
+  (#5228), which also ships the first kind 2 writer, and no server sends it
+  today, so today's readers fall back to chapter 07 §7.2 (fail closed). The
+  reason is the purge: it records floor `N` and deletes rows `1..N`, but a pack
+  built before it still holds updates `1..N`. Without the floor a fresh device
+  at cursor 0 applies the deleted text into the re-created document. A floor
+  read before the pack can predate a purge the pack still reflects, so it is
+  read again on every run. Neither `snapshotMeta.sequenceNum` (#5248) nor the
+  lowest `sequenceNum` a route returned stands in for it.
+- **Purge dependency.** Whenever the §7.15 purge deletes any `crdt_updates`
+  row of a document, it MUST drop, or once part b's rewrite exists rewrite
+  within 15 minutes, every `crdt_update` pack that holds that document, with
+  the same commit-time recheck §7.15 gives snapshot compaction. Today it drops
+  only `crdt_snapshot` packs, and only when it deleted a snapshot blob
+  (`apps/sync-server/src/services/document-body-purge.ts:102-104`). **This
+  ships before any server writes a kind 2 entry (step 05, #5228), and part b of
+  #5226 depends on it.** The floor covers a reader that holds a pack from
+  before the purge; the drop keeps later listings clean.
 - **Verification.** The reader opens the envelope with the document id as
   associated data and checks it against `signerDeviceId`'s key, as for an
   update the route returned (chapter 07 §7.14).

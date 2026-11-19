@@ -205,6 +205,7 @@
             "id": "note:abc123def456",
             "usable": true,
             "sortKey": 42,
+            "sourceKey": "u/1/v/1/note/abc123def456",
             "pullItem": {
               "id": "abc123def456",
               "type": "note",
@@ -230,6 +231,7 @@
             "id": "task:V1StGXR8Z5jdHi6BmyT12",
             "usable": true,
             "sortKey": 43,
+            "sourceKey": "u/1/v/1/task/V1StGXR8Z5jdHi6BmyT12",
             "pullItem": {
               "id": "V1StGXR8Z5jdHi6BmyT12",
               "type": "task",
@@ -255,6 +257,7 @@
             "id": "settings:synced_settings",
             "usable": true,
             "sortKey": 44,
+            "sourceKey": "u/1/v/1/settings/synced_settings",
             "pullItem": {
               "id": "synced_settings",
               "type": "settings",
@@ -310,6 +313,7 @@
             "id": "note:abc123def456",
             "usable": true,
             "sortKey": 45,
+            "sourceKey": "u/1/v/1/note/abc123def456",
             "pullItem": {
               "id": "abc123def456",
               "type": "note",
@@ -337,7 +341,7 @@
     },
     {
       "name": "record entries a reader cannot use",
-      "pins": "chapter 08 §8.4.2: no meta (a record pack written before this contract) or meta failing RecordPackEntryMetaSchema makes the ENTRY unusable, not the pack; the item stays item-granular",
+      "pins": "chapter 08 §8.4.2: no meta (a record pack written before this contract) or meta failing RecordPackEntryMetaSchema makes the ENTRY unusable, not the pack; the GET /sync/changes tail starts at or below its sortKey - 1",
       "packHex": "4d50414b010000007b22646174614e6f6e6365223a2241414543417751464267634943516f4c4441304f4478415245684d5546525958222c22656e6372797074656444617461223a224d32647367706575514b524d4a2b4936356e4f78376a3474325956785644752b674b3176386b5a6156473632372b384c7a563758782f345a785a5032527145454d757a693546744c56673d3d222c22656e637279707465644b6579223a2276543542357661485855475339394b2b4f6f6d465879445939684a304767726f38483469733034425654554f537a3659694433437370697a396e36534d4f794d222c226b65794e6f6e6365223a224678595646424d53455241504467304d43776f4a434163474251514441674541227d7b22646174614e6f6e6365223a222f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f2f222c22656e6372797074656444617461223a2251634e4d3469486b372f444d4a54734a5664644a6c394b49356e474d3251494c6a50756b6e32795442474a6c7347417231737577567a4c5769337749792f6c33376c4a734a61766a4d777173616247426159725575314b6638636c51707952496a2b4f6578376d4277684944222c22656e637279707465644b6579223a2276543542357661485855475339394b2b4f6f6d465879445939684a304767726f38483469733034425654554f537a3659694433437370697a396e36534d4f794d222c226b65794e6f6e6365223a224678595646424d53455241504467304d43776f4a434163474251514441674541227d0000136a6f75726e616c3a6a323032362d30342d3136001b752f312f762f312f6a6f75726e616c2f6a323032362d30342d3136000000000000002e00000000000000000000000000000000010fe03b055db6558fe9b24d881bcc1cbc44d14d997e969fc654593126e2c46cff080000116e6f74653a7a7a7a3939396161613131310019752f312f762f312f6e6f74652f7a7a7a393939616161313131000000000000002f005b7b226f7065726174696f6e223a22757064617465222c2263727970746f56657273696f6e223a312c227369676e65724465766963654964223a226465766963652d61222c22636c6f636b223a7b226465766963652d61223a317d7d000000000000010f000000000000012fc5b10843c8a32c0951f5b2faa6ef2dfabb9a5d1de15febeeef5adfcf9e82734b7cdc75791d672d2cfd920e5c3062dd11c2167578a7cdfa4f983e9bf3cace8616000000000000000200000000000002464d50414b01",
       "expected": {
         "version": 1,
@@ -384,7 +388,7 @@
     },
     {
       "name": "a record entry of a type the reader does not declare",
-      "pins": "chapter 08 §8.4.2: an entry whose type is outside the reader subscription is skipped, as POST /sync/pull would not have served it; its sortKey bounds the record tail",
+      "pins": "chapter 08 §8.4.2: an entry whose type is outside the reader subscription is skipped, as the GET /sync/changes tail would not have served it; unlike an unusable entry it does not bound the tail",
       "packHex": "4d50414b010000007b22646174614e6f6e6365223a2241414543417751464267634943516f4c4441304f4478415245684d5546525958222c22656e6372797074656444617461223a224d32647367706575514b524d4a2b4936356e4f78376a3474325956785644752b674b3176386b5a6156473632372b384c7a563758782f345a785a5032527145454d757a693546744c56673d3d222c22656e637279707465644b6579223a2276543542357661485855475339394b2b4f6f6d465879445939684a304767726f38483469733034425654554f537a3659694433437370697a396e36534d4f794d222c226b65794e6f6e6365223a224678595646424d53455241504467304d43776f4a434163474251514441674541227d0000127768697465626f6172643a626f6172642d31001b752f312f762f312f6a6f75726e616c2f6a323032362d30342d3136000000000000003000c27b226f7065726174696f6e223a22757064617465222c2263727970746f56657273696f6e223a312c227369676e6174757265223a22564f6b3959365839614b6939754e554637364871475474647a4f476969346b42593654677252356b5964597958687274507a3139384446753435394968642b2f626c59544d4662722b616d5a6e62584361436b5a41513d3d222c227369676e65724465766963654964223a226465766963652d61222c22636c6f636b223a7b226465766963652d61223a317d7d0000000000000000000000000000010fe03b055db6558fe9b24d881bcc1cbc44d14d997e969fc654593126e2c46cff08e03b055db6558fe9b24d881bcc1cbc44d14d997e969fc654593126e2c46cff08000000000000000100000000000001174d50414b01",
       "expected": {
         "version": 1,
@@ -451,6 +455,7 @@
             "id": "folder_config:Projects:2026:Q1",
             "usable": true,
             "sortKey": 49,
+            "sourceKey": "u/1/v/1/folder_config/Projects:2026:Q1",
             "pullItem": {
               "id": "Projects:2026:Q1",
               "type": "folder_config",
@@ -544,7 +549,7 @@
     },
     {
       "name": "packed updates of a document purged at sequence 3",
-      "pins": "chapter 08 §8.4.3: a pack built before a purge still holds the deleted updates 1..3. A reader uses packed updates only above a server-provided lower bound; with none it uses none",
+      "pins": "chapter 08 §8.4.3: a pack built before a purge still holds the deleted updates 1..3. A packed update is applied only above the floor read after the pack, at cursor + 1; snapshotMeta never stands in for the floor",
       "packHex": "4d50414b0100000000060b10151a1f24292e33383d42474c51565b60656a6f74797e83888d92979c03060b10151a1f24292e33383d42474c51565b60656a6f74797e83888d92979c02060b10151a1f24292e33383d42474c51565b60656a6f74797e83888d92979c05060b10151a1f24292e33383d42474c51565b60656a6f74797e83888d92979c04060b10151a1f24292e33383d42474c51565b60656a6f74797e83888d92979c02000c616263313233646566343536000000000000000000c900447b2273657175656e63654e756d223a312c227369676e65724465766963654964223a226465766963652d61222c22637265617465644174223a313736303030303030317d0000000000000000000000000000002075c4c881dc1ec9c3b38896a7bec2cbca83344336b9153b5e5fa32c1d40f84f2102000c616263313233646566343536000000000000000000ca00447b2273657175656e63654e756d223a322c227369676e65724465766963654964223a226465766963652d61222c22637265617465644174223a313736303030303030327d00000000000000200000000000000020aa59717de79bc5d2239342ce5919f898d3a5466e897aa92aad5d5a38da97377a02000c616263313233646566343536000000000000000000cb00447b2273657175656e63654e756d223a332c227369676e65724465766963654964223a226465766963652d61222c22637265617465644174223a313736303030303030337d00000000000000400000000000000020c55decea865033c605a7926762f8d1035c6b98314af658ff243867e46db1fd6b02000c616263313233646566343536000000000000000000cc00447b2273657175656e63654e756d223a342c227369676e65724465766963654964223a226465766963652d61222c22637265617465644174223a313736303030303030347d0000000000000060000000000000002097add6693a3f5bc505da41ba3b9122d40af31f617277b8400c84180c952c546502000c616263313233646566343536000000000000000000cd00447b2273657175656e63654e756d223a352c227369676e65724465766963654964223a226465766963652d61222c22637265617465644174223a313736303030303030357d00000000000000800000000000000020cbd6999a64040fda431749f1811dbb9fd5aa9bcbc20b6477ee741115f19cfbf258829328f98e1515f6495828370f36f00522febba4c00afbb38e68722270f674000000000000000500000000000000a84d50414b01",
       "expected": {
         "version": 1,
@@ -620,17 +625,67 @@
       "entryContract": {
         "updatePlans": [
           {
-            "cursor": 0,
-            "lowerBound": 3,
+            "scenario": "floor read after the pack",
+            "cursor": 4,
+            "floor": 3,
+            "floorReadAfterPack": true,
+            "snapshotSequenceNum": null,
             "apply": [
-              4,
               5
             ],
             "cursorAfter": 5
           },
           {
+            "scenario": "fresh device after the purge",
             "cursor": 0,
-            "lowerBound": null,
+            "floor": 3,
+            "floorReadAfterPack": true,
+            "snapshotSequenceNum": null,
+            "apply": [],
+            "cursorAfter": 0
+          },
+          {
+            "scenario": "answer without floor (every server today)",
+            "cursor": 0,
+            "floor": null,
+            "floorReadAfterPack": true,
+            "snapshotSequenceNum": null,
+            "apply": [],
+            "cursorAfter": 0
+          },
+          {
+            "scenario": "claimed snapshot after the purge, no floor",
+            "cursor": 0,
+            "floor": null,
+            "floorReadAfterPack": true,
+            "snapshotSequenceNum": 0,
+            "apply": [],
+            "cursorAfter": 0
+          },
+          {
+            "scenario": "claimed snapshot after the purge, with floor",
+            "cursor": 0,
+            "floor": 3,
+            "floorReadAfterPack": true,
+            "snapshotSequenceNum": 0,
+            "apply": [],
+            "cursorAfter": 0
+          },
+          {
+            "scenario": "floor read before the purge, then the pack",
+            "cursor": 0,
+            "floor": 0,
+            "floorReadAfterPack": false,
+            "snapshotSequenceNum": null,
+            "apply": [],
+            "cursorAfter": 0
+          },
+          {
+            "scenario": "floor above the pack",
+            "cursor": 0,
+            "floor": 7,
+            "floorReadAfterPack": true,
+            "snapshotSequenceNum": null,
             "apply": [],
             "cursorAfter": 0
           }
@@ -689,8 +744,11 @@
       "entryContract": {
         "updatePlans": [
           {
+            "scenario": "never purged",
             "cursor": 0,
-            "lowerBound": 0,
+            "floor": 0,
+            "floorReadAfterPack": true,
+            "snapshotSequenceNum": null,
             "apply": [
               1,
               2
@@ -752,8 +810,11 @@
       "entryContract": {
         "updatePlans": [
           {
+            "scenario": "never purged",
             "cursor": 4,
-            "lowerBound": 4,
+            "floor": 0,
+            "floorReadAfterPack": true,
+            "snapshotSequenceNum": null,
             "apply": [],
             "cursorAfter": 4
           }

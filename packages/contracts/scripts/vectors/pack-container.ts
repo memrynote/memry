@@ -298,6 +298,7 @@ function recordEntryFrom(source: RecordEnvelopeCase, sortKey: number) {
     id: entry.id,
     usable: true,
     sortKey,
+    sourceKey: entry.sourceKey,
     pullItem: { id: push.id, type: push.type, ...entryMeta, blob },
     vaultKeyHex: source.input.vaultKeyHex,
     signingSeedHex: source.input.signingSeedHex,
@@ -369,6 +370,25 @@ function planEntry(sequenceNum: number, sortKey: number, variant = 0): EntryInpu
   }
 }
 
+/**
+ * One reader run over a document's packed updates (§8.4.3). `floor` is what
+ * the update route answered (null: no `floor` key), `floorReadAfterPack`
+ * whether that answer came after the reader held the pack bytes, and
+ * `snapshotSequenceNum` the `snapshotMeta.sequenceNum` the reader also saw,
+ * which the rule ignores.
+ */
+function plan(
+  scenario: string,
+  cursor: number,
+  floor: number | null,
+  floorReadAfterPack: boolean,
+  snapshotSequenceNum: number | null,
+  apply: number[]
+) {
+  const cursorAfter = apply.length > 0 ? apply[apply.length - 1] : cursor
+  return { scenario, cursor, floor, floorReadAfterPack, snapshotSequenceNum, apply, cursorAfter }
+}
+
 async function entryContractSpecs() {
   const records = RecordEnvelopeCasesSchema.parse(await buildRecordEnvelope()).cases
   const updates = CrdtUpdateCasesSchema.parse(await buildCrdtUpdate()).cases
@@ -420,7 +440,7 @@ async function entryContractSpecs() {
     {
       name: 'record entries a reader cannot use',
       entries: [noMeta, badMeta],
-      pins: 'chapter 08 §8.4.2: no meta (a record pack written before this contract) or meta failing RecordPackEntryMetaSchema makes the ENTRY unusable, not the pack; the item stays item-granular',
+      pins: 'chapter 08 §8.4.2: no meta (a record pack written before this contract) or meta failing RecordPackEntryMetaSchema makes the ENTRY unusable, not the pack; the GET /sync/changes tail starts at or below its sortKey - 1',
       entryContract: {
         records: [
           { id: noMeta.id, usable: false },
@@ -431,7 +451,7 @@ async function entryContractSpecs() {
     {
       name: 'a record entry of a type the reader does not declare',
       entries: [undeclared],
-      pins: 'chapter 08 §8.4.2: an entry whose type is outside the reader subscription is skipped, as POST /sync/pull would not have served it; its sortKey bounds the record tail',
+      pins: 'chapter 08 §8.4.2: an entry whose type is outside the reader subscription is skipped, as the GET /sync/changes tail would not have served it; unlike an unusable entry it does not bound the tail',
       entryContract: { records: [{ id: undeclared.id, usable: false }] }
     },
     {
@@ -449,11 +469,16 @@ async function entryContractSpecs() {
     {
       name: 'packed updates of a document purged at sequence 3',
       entries: acrossPurge,
-      pins: 'chapter 08 §8.4.3: a pack built before a purge still holds the deleted updates 1..3. A reader uses packed updates only above a server-provided lower bound; with none it uses none',
+      pins: 'chapter 08 §8.4.3: a pack built before a purge still holds the deleted updates 1..3. A packed update is applied only above the floor read after the pack, at cursor + 1; snapshotMeta never stands in for the floor',
       entryContract: {
         updatePlans: [
-          { cursor: 0, lowerBound: 3, apply: [4, 5], cursorAfter: 5 },
-          { cursor: 0, lowerBound: null, apply: [], cursorAfter: 0 }
+          plan('floor read after the pack', 4, 3, true, null, [5]),
+          plan('fresh device after the purge', 0, 3, true, null, []),
+          plan('answer without floor (every server today)', 0, null, true, null, []),
+          plan('claimed snapshot after the purge, no floor', 0, null, true, 0, []),
+          plan('claimed snapshot after the purge, with floor', 0, 3, true, 0, []),
+          plan('floor read before the purge, then the pack', 0, 0, false, null, []),
+          plan('floor above the pack', 0, 7, true, null, [])
         ]
       }
     },
@@ -461,13 +486,13 @@ async function entryContractSpecs() {
       name: 'packed updates with a sequence gap',
       entries: [planEntry(1, 301), planEntry(2, 302), planEntry(4, 304)],
       pins: 'chapter 08 §8.4.3: the cursor stops at the first missing number and the reader pulls from it',
-      entryContract: { updatePlans: [{ cursor: 0, lowerBound: 0, apply: [1, 2], cursorAfter: 2 }] }
+      entryContract: { updatePlans: [plan('never purged', 0, 0, true, null, [1, 2])] }
     },
     {
       name: 'one update pair carried with two digests',
       entries: [planEntry(5, 405), planEntry(5, 406, 0x80), planEntry(6, 407)],
       pins: 'chapter 08 §8.4.3: two entries for one (document, sequenceNum) with different digests make the document packed updates unusable',
-      entryContract: { updatePlans: [{ cursor: 4, lowerBound: 4, apply: [], cursorAfter: 4 }] }
+      entryContract: { updatePlans: [plan('never purged', 4, 0, true, null, [])] }
     }
   ]
 }

@@ -42,6 +42,7 @@ interface EntryContract {
     usable: boolean
     // Present when `usable`.
     sortKey?: number
+    sourceKey?: string
     pullItem?: unknown
     vaultKeyHex?: string
     signingSeedHex?: string
@@ -57,8 +58,11 @@ interface EntryContract {
     plaintextHex: string
   }>
   updatePlans?: Array<{
+    scenario: string
     cursor: number
-    lowerBound: number | null
+    floor: number | null
+    floorReadAfterPack: boolean
+    snapshotSequenceNum: number | null
     apply: number[]
     cursorAfter: number
   }>
@@ -66,16 +70,19 @@ interface EntryContract {
 
 /**
  * Chapter 08 §8.4.3 as a reader would run it over one document's packed
- * updates: nothing without a server-provided lower bound, nothing when one
- * pair carries two digests, and otherwise consecutive numbers above
- * max(cursor, lowerBound) until the first gap.
+ * updates: nothing without a `floor` read after the pack, nothing when one pair
+ * carries two digests, and otherwise each update that is above the floor and
+ * the cursor plus one, until the first that is not. `snapshotMeta` is never
+ * consulted: a claimed snapshot after a purge can number below the floor
+ * (#5248).
  */
 function planPackedUpdates(
   entries: Array<{ meta?: unknown; payloadHex: string }>,
   cursor: number,
-  lowerBound: number | null
+  floor: number | null,
+  floorReadAfterPack: boolean
 ): { apply: number[]; cursorAfter: number } {
-  if (lowerBound === null) return { apply: [], cursorAfter: cursor }
+  if (floor === null || !floorReadAfterPack) return { apply: [], cursorAfter: cursor }
   const digestBySeq = new Map<number, string>()
   for (const entry of entries) {
     const { sequenceNum } = CrdtUpdatePackEntryMetaSchema.parse(entry.meta)
@@ -85,12 +92,12 @@ function planPackedUpdates(
     digestBySeq.set(sequenceNum, digest)
   }
   const apply: number[] = []
-  let at = Math.max(cursor, lowerBound)
-  while (digestBySeq.has(at + 1)) {
+  let at = cursor
+  while (at + 1 > floor && digestBySeq.has(at + 1)) {
     at += 1
     apply.push(at)
   }
-  return { apply, cursorAfter: apply.length > 0 ? at : cursor }
+  return { apply, cursorAfter: at }
 }
 
 const vectors = loadVectorFile<{
@@ -217,8 +224,15 @@ describe('pack entry contract vectors', () => {
 
   it('covers a purge, a gap and one pair with two digests', () => {
     const plans = contractCases.flatMap((c) => c.entryContract?.updatePlans ?? [])
-    expect(plans.some((p) => p.lowerBound === null)).toBe(true)
-    expect(plans.some((p) => p.lowerBound !== null && p.lowerBound > p.cursor)).toBe(true)
+    const scenarios = plans.map((p) => p.scenario)
+    for (const required of [
+      'claimed snapshot after the purge, no floor',
+      'floor read before the purge, then the pack',
+      'answer without floor (every server today)',
+      'floor above the pack'
+    ]) {
+      expect(scenarios).toContain(required)
+    }
     expect(contractCases.some((c) => c.name.includes('gap'))).toBe(true)
     expect(contractCases.some((c) => c.name.includes('two digests'))).toBe(true)
   })
@@ -249,6 +263,7 @@ describe('pack entry contract vectors', () => {
         expect(meta.success && declared, `${packed.id}: usable`).toBe(want.usable)
         if (!meta.success || !declared) continue
         expect(packed.sortKey).toBe(want.sortKey)
+        expect(packed.sourceKey).toBe(want.sourceKey)
         const blob = EncryptedItemPayloadSchema.parse(
           JSON.parse(new TextDecoder().decode(extractEntry(bytes, packed)))
         )
@@ -302,7 +317,10 @@ describe('pack entry contract vectors', () => {
         payloadHex: hex(extractEntry(bytes, u))
       }))
       for (const plan of entry.entryContract?.updatePlans ?? []) {
-        expect(planPackedUpdates(packedUpdates, plan.cursor, plan.lowerBound)).toEqual({
+        expect(
+          planPackedUpdates(packedUpdates, plan.cursor, plan.floor, plan.floorReadAfterPack),
+          plan.scenario
+        ).toEqual({
           apply: plan.apply,
           cursorAfter: plan.cursorAfter
         })

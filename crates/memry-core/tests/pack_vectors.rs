@@ -78,6 +78,12 @@ fn pack_entry_contract_vectors() {
         let records = contract["records"]
             .as_array()
             .map_or(&[][..], Vec::as_slice);
+        let record_entries = parsed
+            .entries
+            .iter()
+            .filter(|e| e.kind == PackKind::Record)
+            .count();
+        assert_eq!(record_entries, records.len(), "{name}: record entry count");
         for want in records.iter().filter(|r| r.get("pullItem").is_some()) {
             let id = str_field(want, "id");
             let entry = parsed
@@ -94,6 +100,12 @@ fn pack_entry_contract_vectors() {
                 entry.sort_key,
                 want["sortKey"].as_i64().expect("sortKey"),
                 "{name}: sortKey"
+            );
+            // keyBytes is the row's sync_items.blob_key (§8.4.2).
+            assert_eq!(
+                entry.source_key,
+                str_field(want, "sourceKey"),
+                "{name}: record keyBytes"
             );
             let mut meta = pull.as_object().expect("pullItem").clone();
             for key in ["id", "type", "blob"] {
@@ -131,6 +143,11 @@ fn pack_entry_contract_vectors() {
         let wanted = contract["updates"]
             .as_array()
             .map_or(&[][..], Vec::as_slice);
+        // `zip` stops at the shorter side, so an entry dropped on either side
+        // must fail here first. Plan cases carry entries with no expectations.
+        if contract.get("updatePlans").is_none() {
+            assert_eq!(updates.len(), wanted.len(), "{name}: kind 2 entry count");
+        }
         for (entry, want) in updates.iter().zip(wanted) {
             assert_eq!(entry.id, str_field(want, "noteId"), "{name}: noteId");
             assert_eq!(
