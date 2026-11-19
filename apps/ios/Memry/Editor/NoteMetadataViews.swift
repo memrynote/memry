@@ -396,6 +396,10 @@ struct NoteTitleEditor: View {
                     if title.isEmpty, EditorFocusMemory.shared.titleMayAutofocus(noteId) {
                         claim.start()
                         focused = true
+                    } else {
+                        // A claim its creator set (`NotesSplitRouter.created`)
+                        // ends when the title does not take the caret.
+                        split?.claimTitle(of: noteId, false)
                     }
                 }
                 // #4346, #4774: in the iPad split view, the notes list moves
@@ -410,15 +414,13 @@ struct NoteTitleEditor: View {
                           note.object as? UIFocusSystem === UIFocusSystem.focusSystem(for: window),
                           let context = note.userInfo?[UIFocusSystem.focusUpdateContextUserInfoKey] as? UIFocusUpdateContext
                     else { return }
-                    let next = focusTarget(context.nextFocusedItem)
+                    let move = TitleFocusMove(
+                        to: focusTarget(context.nextFocusedItem), byKey: !context.focusHeading.isEmpty
+                    )
                     if let previous = context.previouslyFocusedItem, host.isTitle(previous) {
-                        _ = claim.takesBack(after: TitleFocusMove(to: next, byKey: !context.focusHeading.isEmpty))
-                    } else if next == .text {
-                        // #5100: the user put the caret in the body from no
-                        // focused item, or from the row. That move is theirs:
-                        // the claim ends, and the list's selection follows
-                        // focus again.
-                        claim.end()
+                        _ = claim.takesBack(after: move)
+                    } else {
+                        claim.observed(move)
                     }
                 }
                 // Saved as the app resigns, as a body block is (#2820). Not
@@ -438,7 +440,7 @@ struct NoteTitleEditor: View {
                 }
                 .background(TitleWindowReader(host: host))
                 // The notes list moves no focus to the note's row while the
-                // claim holds (`NotesListFocusGate`, #5100).
+                // claim holds (`NotesListFocusHold`, #5100).
                 .onChange(of: claim.holds) { _, holds in split?.claimTitle(of: noteId, holds) }
                 // Leaving the page, or the page reloading under the field,
                 // ends the edit without a focus change; the typed title

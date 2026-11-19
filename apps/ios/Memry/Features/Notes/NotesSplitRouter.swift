@@ -101,9 +101,21 @@ final class NotesSplitRouter {
     var splitFits = false
 
     /// The note whose new title claims the keyboard focus
-    /// (`TitleFocusClaim`). The list moves no keyboard focus to its row
-    /// meanwhile (`NotesListFocusGate`, #5100).
-    private(set) var titleClaim: String?
+    /// (`TitleFocusClaim`). The list moves no keyboard focus to any row
+    /// meanwhile, and gets its own setting back when the claim ends
+    /// (`NotesListFocusHold`, #5100).
+    private(set) var titleClaim: String? {
+        didSet { focusHold.holding = titleClaim != nil }
+    }
+
+    @ObservationIgnored let focusHold = NotesListFocusHold()
+
+    /// A note just made, opened next. Its title claims the caret from the
+    /// start, so the list's first mirror of the new selection, which can
+    /// come before the title is drawn, already moves no focus (#5100).
+    func created(_ noteId: String) {
+        titleClaim = noteId
+    }
 
     func claimTitle(of noteId: String, _ holds: Bool) {
         if holds {
@@ -157,6 +169,7 @@ final class NotesSplitRouter {
 
     /// A row picked in the list or the sidebar, into the focused pane.
     func select(_ route: NoteRoute?) {
+        if route?.id != titleClaim { titleClaim = nil }
         update(focus) { $0 = NotesPane(note: route) }
     }
 
@@ -371,9 +384,9 @@ private struct NotesRowSelection: ViewModifier {
         if let split, case let .note(note) = row.kind {
             content.background {
                 if split.selected?.id == note.id { SelectedRowFill() }
-                // #5100: no focus moves to this row while its new note's
-                // title claims the caret.
-                if split.titleClaim == note.id { NotesListFocusGate() }
+                // #5100: finds the list the router holds while a new
+                // note's title claims the caret.
+                NotesListFocusGate(hold: split.focusHold)
             }
         } else {
             content

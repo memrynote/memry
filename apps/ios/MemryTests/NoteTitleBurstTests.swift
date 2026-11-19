@@ -84,6 +84,20 @@ struct TitleFocusClaimTests {
         #expect(takenBack([.toSelectedRow], claiming: false) == [false])
     }
 
+    /// #5100: a move that did not start in the title, as after the keyboard
+    /// went away. Only the list's own, to its selected row with no key
+    /// pressed, keeps the claim; Tab or an arrow into the list ends it.
+    @Test(arguments: [
+        (TitleFocusMove.byKey, false), (.intoText, false), (.elsewhere, false),
+        (.toSelectedRow, true), (.toNothing, true), (.intoTitle, true),
+    ])
+    func a_move_from_elsewhere_ends_the_claim_unless_the_list_made_it(move: TitleFocusMove, holds: Bool) {
+        var claim = TitleFocusClaim()
+        claim.start()
+        claim.observed(move)
+        #expect(claim.holds == holds)
+    }
+
     /// The title losing the caret to a move it takes back is no end of the
     /// edit, and its coming back is no new one.
     @Test func a_take_back_keeps_the_edit_going() {
@@ -870,30 +884,38 @@ struct NoteTitleBurstTests {
         #expect(seen.1.body == ["body"], "\(seen.1)")
     }
 
+    /// How a test ends a new title's claim.
+    enum ClaimEnd: CaseIterable, Sendable {
+        /// The caret moves from the title into the body.
+        case bodyFromTitle
+        /// The caret reaches the body from no focused item.
+        case bodyFromNothing
+        /// Tab or an arrow moves the focus into the list from no focused item.
+        case keyIntoList
+        /// The claimed row leaves the list (scrolled away, filtered out), then
+        /// the caret moves from the title into the body.
+        case bodyAfterRowRemoved
+    }
+
     /// #5100: the split view's notes list moved the focus to the new note's
     /// selected row up to six times after New note, each time it mirrored its
     /// selection, and the keys typed while the row held it were lost. While
     /// the title claims the caret, the list's selection does not follow
-    /// focus, so a mirrored selection moves none; once the user moved the
-    /// caret, it does again: also when the caret reaches the body from no
-    /// focused item, so arrow keys in the list select again.
-    @Test(.timeLimit(.minutes(1)), arguments: [true, false])
-    func the_notes_list_moves_no_focus_while_a_new_title_claims_it(fromTitle: Bool) async throws {
+    /// focus, so a mirrored selection moves none, also once the row's cell is
+    /// gone. When the user moves the focus, by a key into the list too, it
+    /// follows focus again, so arrow keys in the list select again.
+    @Test(.timeLimit(.minutes(1)), arguments: ClaimEnd.allCases)
+    func the_notes_list_moves_no_focus_while_a_new_title_claims_it(end: ClaimEnd) async throws {
         let f = try await newNote()
         let router = NotesSplitRouter()
         router.select(NoteRoute(id: f.noteId))
+        let rows = ListedRow()
         let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
         let window = UIWindow(windowScene: scene)
         defer { window.isHidden = true }
         let writer = CoreNoteMetadataWriter(vault: f.vault.vault, store: TaskTestKeychain(), executor: .shared)
-        let note = NoteSummary(
-            id: f.noteId, title: "", folderPath: nil, emoji: nil, createdAt: nil, modifiedAt: nil, aliases: []
-        )
         window.rootViewController = UIHostingController(rootView: HStack {
-            NotesList {
-                NavigationLink(value: NoteRoute(id: f.noteId)) { Text("Untitled note") }
-                    .notesSelection(.note(note))
-            }
+            ClaimedNoteList(noteId: f.noteId, row: rows)
             NoteReadView(
                 route: NoteRoute(id: f.noteId), reader: f.reader, filler: QuietFiller(),
                 editor: CoreBlockEditor(vault: f.vault.vault, store: TaskTestKeychain(), executor: .shared),
@@ -907,18 +929,124 @@ struct NoteTitleBurstTests {
         await until { !list.selectionFollowsFocus }
         #expect(!list.selectionFollowsFocus, "the list's selection still moves the focus from the claiming title")
 
-        // The user moves the caret to the body: the claim ends.
+        if end == .bodyAfterRowRemoved {
+            rows.shown = false
+            await until { list.visibleCells.isEmpty }
+            #expect(list.visibleCells.isEmpty, "the row is still drawn")
+            #expect(!list.selectionFollowsFocus, "the row's cell leaving ended the hold while the title still claims")
+        }
         await until { !views(BlockTextView.self, in: window).isEmpty }
         let block = try #require(views(BlockTextView.self, in: window).first, "the body has no block")
-        block.becomeFirstResponder()
+        let (previous, next, heading): (UIFocusItem?, UIFocusItem?, UIFocusHeading) = switch end {
+        case .bodyFromTitle, .bodyAfterRowRemoved: (field, block, [])
+        case .bodyFromNothing: (nil, block, [])
+        case .keyIntoList: (nil, list.visibleCells.first, .down)
+        }
+        if next === block { block.becomeFirstResponder() }
         NotificationCenter.default.post(
             name: UIFocusSystem.didUpdateNotification, object: UIFocusSystem.focusSystem(for: window),
             userInfo: [UIFocusSystem.focusUpdateContextUserInfoKey: FocusUpdate.make(
-                previous: fromTitle ? field : nil, next: block
+                previous: previous, next: next, heading: heading
             )]
         )
         await until { list.selectionFollowsFocus }
         #expect(list.selectionFollowsFocus, "the list kept its selection from following focus after the claim ended")
+    }
+}
+
+/// Whether the claimed note's row is in the list.
+@MainActor
+@Observable
+private final class ListedRow {
+    var shown = true
+}
+
+/// The split view's list with the new note's row, which a test can take out.
+private struct ClaimedNoteList: View {
+    let noteId: String
+    let row: ListedRow
+
+    var body: some View {
+        NotesList {
+            if row.shown {
+                NavigationLink(value: NoteRoute(id: noteId)) { Text("Untitled note") }
+                    .notesSelection(.note(NoteSummary(
+                        id: noteId, title: "", folderPath: nil, emoji: nil, createdAt: nil, modifiedAt: nil, aliases: []
+                    )))
+            }
+        }
+    }
+}
+
+/// #5100: the router alone holds the notes list while a new title claims the
+/// caret, and gives the list its own setting back when the claim ends. No
+/// row's cell decides either.
+@Suite("Notes list focus hold")
+@MainActor
+struct NotesListFocusHoldTests {
+    private func list() -> UICollectionView {
+        let list = UICollectionView(frame: .zero, collectionViewLayout: UICollectionViewFlowLayout())
+        list.selectionFollowsFocus = true
+        return list
+    }
+
+    /// New note claims the title as it makes the note, before the new row's
+    /// first cell exists: the first mirror of the selection is held too.
+    @Test func a_created_note_holds_the_list_before_its_row_is_drawn() {
+        let router = NotesSplitRouter()
+        let list = list()
+        router.focusHold.attach(list)
+        router.created("new")
+        #expect(!list.selectionFollowsFocus)
+        router.select(NoteRoute(id: "new"))
+        #expect(!list.selectionFollowsFocus, "selecting the new note ended its claim")
+        router.claimTitle(of: "new", false)
+        #expect(list.selectionFollowsFocus)
+    }
+
+    @Test func a_list_found_after_the_claim_started_is_held_until_it_ends() {
+        let router = NotesSplitRouter()
+        let list = list()
+        router.claimTitle(of: "new", true)
+        router.focusHold.attach(list)
+        #expect(!list.selectionFollowsFocus)
+        router.claimTitle(of: "new", false)
+        #expect(list.selectionFollowsFocus)
+    }
+
+    @Test func selecting_another_note_ends_the_claim() {
+        let router = NotesSplitRouter()
+        let list = list()
+        router.focusHold.attach(list)
+        router.created("new")
+        router.select(NoteRoute(id: "other"))
+        #expect(router.titleClaim == nil)
+        #expect(list.selectionFollowsFocus)
+    }
+
+    /// The list drawn again while held, as when New note opens another
+    /// folder: the old one gets its setting back, the new one is held.
+    @Test func a_list_drawn_again_while_held_gives_the_old_one_back() {
+        let router = NotesSplitRouter()
+        let old = list()
+        let new = list()
+        router.focusHold.attach(old)
+        router.created("new")
+        router.focusHold.attach(new)
+        #expect(old.selectionFollowsFocus)
+        #expect(!new.selectionFollowsFocus)
+        router.claimTitle(of: "new", false)
+        #expect(new.selectionFollowsFocus)
+    }
+
+    /// Another title's claim ending leaves this one's hold.
+    @Test func only_the_claimed_notes_end_lets_go() {
+        let router = NotesSplitRouter()
+        let list = list()
+        router.focusHold.attach(list)
+        router.created("new")
+        router.claimTitle(of: "older", false)
+        #expect(!list.selectionFollowsFocus)
     }
 }
 
@@ -929,16 +1057,18 @@ struct NoteTitleBurstTests {
 private final class FocusUpdate: UIFocusUpdateContext {
     private static var previous: UIFocusItem?
     private static var next: UIFocusItem?
+    private static var heading: UIFocusHeading = []
 
-    static func make(previous: UIFocusItem?, next: UIFocusItem?) -> UIFocusUpdateContext {
+    static func make(previous: UIFocusItem?, next: UIFocusItem?, heading: UIFocusHeading = []) -> UIFocusUpdateContext {
         Self.previous = previous
         Self.next = next
+        Self.heading = heading
         return class_createInstance(FocusUpdate.self, 0) as! FocusUpdate
     }
 
     override var previouslyFocusedItem: UIFocusItem? { MainActor.assumeIsolated { Self.previous } }
     override var nextFocusedItem: UIFocusItem? { MainActor.assumeIsolated { Self.next } }
-    override var focusHeading: UIFocusHeading { [] }
+    override var focusHeading: UIFocusHeading { MainActor.assumeIsolated { Self.heading } }
 }
 
 /// A hardware key press, as a keyboard delivers it to the first responder's
