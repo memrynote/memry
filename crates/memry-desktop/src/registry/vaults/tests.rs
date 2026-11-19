@@ -197,7 +197,10 @@ fn the_vault_id_stamp_prefers_the_server_id_and_keeps_a_foreign_stamp() {
     let dir = tempfile::tempdir().expect("dir");
     let registry = registry_in(
         dir.path(),
-        Some(r#"{"vaults":[{"path":"/v/b","name":"b","vaultUuid":"electron-id"}]}"#),
+        Some(
+            r#"{"vaults":[{"path":"/v/b","name":"b","vaultUuid":"electron-id"},
+            {"path":"/v/c","name":"c","vaultUuid":"bound-id","accountBinding":{"userId":"u","mode":"sync"}}]}"#,
+        ),
     );
     registry.record_open("/v/a", 1, 0).expect("a");
     let uuid = |path: &str| registry.get(path).and_then(|v| v.vault_uuid);
@@ -219,6 +222,10 @@ fn the_vault_id_stamp_prefers_the_server_id_and_keeps_a_foreign_stamp() {
         .stamp_vault_uuid("/v/b", None, "own-b")
         .expect("stamp");
     assert_eq!(uuid("/v/b").as_deref(), Some("electron-id"));
+    registry
+        .stamp_vault_uuid("/v/c", None, "own-c")
+        .expect("stamp");
+    assert_eq!(uuid("/v/c").as_deref(), Some("bound-id"), "a bound entry");
     registry
         .stamp_vault_uuid("/v/b", Some("server-b"), "own-b")
         .expect("stamp");
@@ -247,8 +254,10 @@ fn the_binding_mirror_changes_only_the_binding_of_the_entry_on_disk() {
         user_id: "me".into(),
         mode: "sync".into(),
     };
-    app.set_account_binding("/v/c", &binding).expect("bind c");
-    app.set_account_binding("/v/a", &binding).expect("bind a");
+    app.set_account_binding("/v/c", &binding, Some("server-c"))
+        .expect("bind c");
+    app.set_account_binding("/v/a", &binding, Some("server-a"))
+        .expect("bind a");
 
     let on_disk: Value =
         serde_json::from_str(&std::fs::read_to_string(app.config().path()).expect("file"))
@@ -266,4 +275,8 @@ fn the_binding_mirror_changes_only_the_binding_of_the_entry_on_disk() {
     );
     assert_eq!(vaults[1]["isDefault"], true);
     assert_eq!(vaults[0]["accountBinding"]["userId"], "me");
+    assert_eq!(
+        vaults[0]["vaultUuid"], "server-a",
+        "the server id lands in the same write"
+    );
 }
