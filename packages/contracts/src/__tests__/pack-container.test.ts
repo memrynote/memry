@@ -29,6 +29,7 @@ import {
 } from '../pack-format'
 import {
   CrdtUpdatePackEntryMetaSchema,
+  PackCoverageSchema,
   EncryptedItemPayloadSchema,
   RECORD_SYNC_ITEM_TYPES,
   RecordPackEntryMetaSchema,
@@ -100,6 +101,49 @@ function planPackedUpdates(
   return { apply, cursorAfter: at }
 }
 
+interface CoverageCase {
+  scenario: string
+  noteBody: boolean
+  coverage: unknown[] | null
+  packs: Array<{ itemKind: string; coverFrom?: number; coverThrough?: number; usable: boolean }>
+  unusableRecordSortKeys: number[]
+  tailFrom: number
+}
+
+/**
+ * Chapter 08 §8.10 as a reader would run it: per kind that bounds the tail,
+ * chain the usable packs that carry a coverage range from 0; reaching
+ * `packedThrough` earns `coveredThrough`, a gap stops at the chain's end, and a
+ * kind with no coverage entry gives 0. Unusable record entries pull the record
+ * bound to `sortKey - 1`. The tail starts at the lowest bound.
+ */
+function tailFrom(c: CoverageCase): number {
+  const stated = c.coverage?.map((entry) => PackCoverageSchema.parse(entry)) ?? []
+  const kinds = c.noteBody ? ['record', 'crdt_snapshot', 'crdt_update'] : ['record']
+  const bounds = kinds.map((kind) => {
+    const coverage = stated.find((entry) => entry.itemKind === kind)
+    if (!coverage) return 0
+    const ranges = c.packs
+      .filter((p) => p.itemKind === kind && p.usable)
+      .flatMap((p) =>
+        p.coverFrom === undefined || p.coverThrough === undefined
+          ? []
+          : [{ from: p.coverFrom, through: p.coverThrough }]
+      )
+      .toSorted((a, b) => a.from - b.from)
+    let end = 0
+    for (const range of ranges) {
+      if (range.from > end) break
+      end = Math.max(end, range.through)
+    }
+    const bound = end >= coverage.packedThrough ? Math.max(end, coverage.coveredThrough) : end
+    return kind === 'record'
+      ? Math.min(bound, ...c.unusableRecordSortKeys.map((sortKey) => sortKey - 1))
+      : bound
+  })
+  return Math.min(...bounds)
+}
+
 const vectors = loadVectorFile<{
   meta: {
     caseCount: number
@@ -125,6 +169,7 @@ const vectors = loadVectorFile<{
     expectErrorCode: string
     pins: string
   }>
+  coverageCases: CoverageCase[]
 }>('pack-container.json')
 
 describe('pack-container vectors', () => {
@@ -207,6 +252,29 @@ describe('pack-container vectors', () => {
  * decrypt paths, so a meta that dropped a field the pull item carries fails
  * here on the signature, not on a shape comparison alone.
  */
+describe('pack coverage vectors', () => {
+  it('covers a gap, a rollup overlap, an unusable record entry and a cache-only pack', () => {
+    const scenarios = vectors.coverageCases.map((c) => c.scenario)
+    for (const required of [
+      'no coverage (every server today)',
+      'a pack in the middle of the chain answered 404',
+      'a rollup listed both the old packs and the new one',
+      'the newest pack left the listing during the walk',
+      'an unusable record entry',
+      'a snapshot pack without a coverage range is a cache only'
+    ]) {
+      expect(scenarios).toContain(required)
+    }
+  })
+
+  for (const c of vectors.coverageCases) {
+    // oxlint-disable-next-line vitest/valid-title -- title comes from vector/fixture data typed as string; the rule is not type-aware
+    it(c.scenario, () => {
+      expect(tailFrom(c)).toBe(c.tailFrom)
+    })
+  }
+})
+
 describe('pack entry contract vectors', () => {
   beforeAll(async () => {
     await ready
@@ -226,6 +294,7 @@ describe('pack entry contract vectors', () => {
     const plans = contractCases.flatMap((c) => c.entryContract?.updatePlans ?? [])
     const scenarios = plans.map((p) => p.scenario)
     for (const required of [
+      'cursor at the floor',
       'claimed snapshot after the purge, no floor',
       'floor read before the purge, then the pack',
       'answer without floor (every server today)',

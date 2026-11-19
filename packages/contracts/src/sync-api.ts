@@ -727,13 +727,12 @@ export const PackKindSchema = z.enum(PACK_KINDS)
  * present only when the deployment opted into presigned transfers (#1836);
  * absent means "use the item-granular endpoints".
  *
- * Tail semantics: packs cover the cursor ranges they advertise. Records tile
- * their axis completely; snapshot coverage can under-cover same-second writes
- * (a note written the same second as an already-packed tie group with a
- * smaller note_id sorts below the watermark and stays item-granular forever).
- * Holes inside a range (replaced/deleted items are dead bytes) also fall back
- * to item GETs — membership is verified against the pack's own index block,
- * never assumed, and individual blobs remain the source of truth throughout.
+ * Coverage (protocol 08 §8.10): `coverFrom`/`coverThrough` are the pack's
+ * coverage range on the server_cursor axis, for every kind. `minCursor` and
+ * `maxCursor` keep their per-kind meaning for released readers. A pack without
+ * a coverage range is a cache only: it never moves where a reader's tail
+ * starts. Membership is verified against the pack's own index block, never
+ * assumed, and individual blobs remain the source of truth throughout.
  */
 export const PackSummarySchema = z.object({
   id: z.string().min(1),
@@ -751,12 +750,55 @@ export const PackSummarySchema = z.object({
   createdAt: z.number().int().min(0),
   url: z.url().optional(),
   /** Epoch seconds at which `url` stops working; mirrors the presign TTL. */
-  expiresAt: z.number().int().min(0).optional()
+  expiresAt: z.number().int().min(0).optional(),
+  /** Exclusive lower bound of the coverage range, a server_cursor. */
+  coverFrom: z.number().int().min(0).optional(),
+  /** Inclusive upper bound of the coverage range, a server_cursor. */
+  coverThrough: z.number().int().min(0).optional()
 })
+
+/**
+ * What the listed packs of one kind cover (protocol 08 §8.10), read in the
+ * same D1 batch as the first page. Every row of the kind a reader needs whose
+ * server_cursor is inside a listed pack's range is held by that pack, and none
+ * has a server_cursor in `(packedThrough, coveredThrough]`.
+ */
+export const PackCoverageSchema = z.object({
+  itemKind: PackKindSchema,
+  /**
+   * `coverThrough` of the newest pack the writer committed for this kind, 0
+   * when none. A rollup or purge that takes packs out of the listing never
+   * lowers it, so a reader whose packs do not chain up to it sees the gap.
+   */
+  packedThrough: z.number().int().min(0),
+  coveredThrough: z.number().int().min(0)
+})
+
+/**
+ * A replaced or purged pack's object outlives its listing row by at least this
+ * long, twice the presigned URL lifetime (`DEFAULT_PRESIGN_TTL_SECONDS`, 300),
+ * so a URL handed out before the row went away still reads (protocol 08 §8.12).
+ */
+export const PACK_REPLACED_GRACE_SECONDS = 600
+
+/** A deleted document's ciphertext leaves every pack object within this (§8.13). */
+export const PACK_PURGE_DEADLINE_SECONDS = 900
+
+/**
+ * Listed packs per vault stay at or below this, so a released reader's
+ * 20-page walk of 50 never ends truncated (protocol 08 §8.14).
+ */
+export const PACK_LIST_MAX_PACKS_PER_VAULT = 999
 
 export const PackListResponseSchema = z.object({
   packs: z.array(PackSummarySchema),
   serverTime: z.number().int().min(0),
+  /**
+   * Present on the first page only, from a server that keeps the §8.10
+   * invariant. A kind it omits, or no `coverage` at all, means nothing of that
+   * kind is covered: the reader's tail for it starts at 0.
+   */
+  coverage: z.array(PackCoverageSchema).optional(),
   /**
    * Opaque keyset token (max_cursor + row id of the last returned pack).
    * Pass back as `cursor` on GET /sync/packs to fetch the next (older) page;
@@ -767,6 +809,7 @@ export const PackListResponseSchema = z.object({
 
 export type PackKind = z.infer<typeof PackKindSchema>
 export type PackSummary = z.infer<typeof PackSummarySchema>
+export type PackCoverage = z.infer<typeof PackCoverageSchema>
 export type PackListResponse = z.infer<typeof PackListResponseSchema>
 
 // ============================================================================

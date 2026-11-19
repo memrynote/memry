@@ -34,8 +34,9 @@ export type BootstrapSession = z.infer<typeof BootstrapSessionSchema>
  * `manifest` is the FIRST page of the opt-in paginated manifest service
  * (MAX_MANIFEST_PAGE_LIMIT), never the whole vault. `tailCursor` is the
  * current MAX(server_cursor) so the client knows when its pull has caught up.
- * `packs` is RESERVED for #1839/#1840: always present, always empty until the
- * pack pipeline lands, so #1840 plugs in without a protocol change.
+ * `packs` is RESERVED: always present, always empty. Pack coverage is stated
+ * by `GET /sync/packs` next to the ranges it describes (protocol 08 §8.10),
+ * which a client reads with or without a session.
  * `attachments` is likewise RESERVED-for-future: an INFORMATIONAL first keyset
  * page of the vault's ciphertext chunk hashes (absent entirely when the
  * deployment cannot presign) — no continuation endpoint ships yet, so clients

@@ -591,6 +591,12 @@ body entry in it lies in `(cursor, nextCursor]`
 `note_body` MUST apply the page's bodies together with its records before
 storing `nextCursor`.
 
+**After a pack bootstrap the tail starts where the packs end.** A reader that
+applied record packs, and body packs when it declared `note_body`, starts
+`GET /sync/changes` at the cursor chapter 08 §8.10 gives it, never above it,
+and then runs the manifest check of §5.15. Without `coverage` in the pack
+listing (`packages/contracts/src/sync-api.ts:796-801`), that cursor is 0.
+
 ## 5.11.1 The response shapes
 
 **Normative.** The chapters describe these routes' _behaviour_ at length and
@@ -655,7 +661,7 @@ pins the flat one because the vectors are written from the writer's side.
 
 A `record` pack entry carries this same item: `idBytes` holds `type:id`, the
 payload holds `blob`, and `metaBytes` holds the rest
-(`RecordPackEntryMetaSchema`, `packages/contracts/src/sync-api.ts:803-807`,
+(`RecordPackEntryMetaSchema`, `packages/contracts/src/sync-api.ts:846-850`,
 chapter 08 §8.4.2). The meta schema is derived from
 `RecordPullItemResponseSchema`, so a field added to the read item reaches packs
 with no second change.

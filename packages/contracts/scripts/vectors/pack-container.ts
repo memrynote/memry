@@ -1,5 +1,6 @@
 /**
- * Class: MPAK pack container (`pack-container.json`), 19 READER-ONLY cases.
+ * Class: MPAK pack container (`pack-container.json`), 19 READER-ONLY cases,
+ * plus `coverageCases`: where a reader's tail starts (chapter 08 §8.10).
  *
  * The pack WRITER lives server-side and is not in `packages/contracts`
  * (`packages/contracts/src/pack-format.ts:10-14`). `packages/contracts` must
@@ -389,6 +390,148 @@ function plan(
   return { scenario, cursor, floor, floorReadAfterPack, snapshotSequenceNum, apply, cursorAfter }
 }
 
+type CoverageKind = 'record' | 'crdt_snapshot' | 'crdt_update'
+
+/**
+ * One reader's tail start (chapter 08 §8.10): the packs it holds, which of
+ * them it could use, the listing's `coverage` (null: none, every server
+ * today), whether it declared `note_body`, and the sortKey of every unusable
+ * record entry. `tailFrom` is the highest cursor the rule lets it start at.
+ */
+function coverage(
+  scenario: string,
+  noteBody: boolean,
+  stated: Array<[CoverageKind, number, number]> | null,
+  packs: Array<[CoverageKind, number | null, number | null, boolean]>,
+  unusableRecordSortKeys: number[],
+  tailFrom: number
+) {
+  return {
+    scenario,
+    noteBody,
+    coverage:
+      stated?.map(([itemKind, packedThrough, coveredThrough]) => ({
+        itemKind,
+        packedThrough,
+        coveredThrough
+      })) ?? null,
+    packs: packs.map(([itemKind, coverFrom, coverThrough, usable]) => ({
+      itemKind,
+      ...(coverFrom === null ? {} : { coverFrom }),
+      ...(coverThrough === null ? {} : { coverThrough }),
+      usable
+    })),
+    unusableRecordSortKeys,
+    tailFrom
+  }
+}
+
+function coverageCases() {
+  return [
+    coverage('no coverage (every server today)', false, null, [['record', 0, 100, true]], [], 0),
+    coverage(
+      'record packs that chain up to packedThrough',
+      false,
+      [['record', 200, 210]],
+      [
+        ['record', 100, 200, true],
+        ['record', 0, 100, true]
+      ],
+      [],
+      210
+    ),
+    coverage(
+      'a pack in the middle of the chain answered 404',
+      false,
+      [['record', 300, 300]],
+      [
+        ['record', 0, 100, true],
+        ['record', 100, 200, false],
+        ['record', 200, 300, true]
+      ],
+      [],
+      100
+    ),
+    coverage(
+      'a rollup listed both the old packs and the new one',
+      false,
+      [['record', 200, 250]],
+      [
+        ['record', 0, 100, true],
+        ['record', 100, 200, true],
+        ['record', 0, 200, true]
+      ],
+      [],
+      250
+    ),
+    coverage(
+      'the newest pack left the listing during the walk',
+      false,
+      [['record', 200, 200]],
+      [['record', 0, 100, true]],
+      [],
+      100
+    ),
+    coverage(
+      'an unusable record entry',
+      false,
+      [['record', 300, 300]],
+      [['record', 0, 300, true]],
+      [150],
+      149
+    ),
+    coverage(
+      'note_body declared and a body kind has no coverage entry',
+      true,
+      [['record', 100, 100]],
+      [['record', 0, 100, true]],
+      [],
+      0
+    ),
+    coverage(
+      'note_body not declared: body kinds do not bound the tail',
+      false,
+      [
+        ['record', 100, 100],
+        ['crdt_snapshot', 0, 0]
+      ],
+      [['record', 0, 100, true]],
+      [],
+      100
+    ),
+    coverage(
+      'note_body declared: the lowest kind bounds the tail',
+      true,
+      [
+        ['record', 300, 300],
+        ['crdt_snapshot', 250, 280],
+        ['crdt_update', 0, 260]
+      ],
+      [
+        ['record', 0, 300, true],
+        ['crdt_snapshot', 0, 250, true]
+      ],
+      [],
+      260
+    ),
+    coverage(
+      'a snapshot pack without a coverage range is a cache only',
+      true,
+      [
+        ['record', 100, 100],
+        ['crdt_snapshot', 50, 60],
+        ['crdt_update', 0, 100]
+      ],
+      [
+        ['record', 0, 100, true],
+        ['crdt_snapshot', null, null, true]
+      ],
+      [],
+      0
+    )
+  ]
+}
+
 async function entryContractSpecs() {
   const records = RecordEnvelopeCasesSchema.parse(await buildRecordEnvelope()).cases
   const updates = CrdtUpdateCasesSchema.parse(await buildCrdtUpdate()).cases
@@ -473,6 +616,7 @@ async function entryContractSpecs() {
       entryContract: {
         updatePlans: [
           plan('floor read after the pack', 4, 3, true, null, [5]),
+          plan('cursor at the floor', 3, 3, true, null, [4, 5]),
           plan('fresh device after the purge', 0, 3, true, null, []),
           plan('answer without floor (every server today)', 0, null, true, null, []),
           plan('claimed snapshot after the purge, no floor', 0, null, true, 0, []),
@@ -622,6 +766,7 @@ export async function buildPackContainer(): Promise<Record<string, unknown>> {
       caseCount: cases.length + errorCases.length
     }),
     cases,
-    errorCases
+    errorCases,
+    coverageCases: coverageCases()
   }
 }

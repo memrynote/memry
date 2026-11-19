@@ -242,6 +242,30 @@ Two packs can also share a `maxCursor`: a same-second group larger than the byte
 across packs. Any client bookkeeping keyed on `maxCursor` has to treat such a tie group as a unit —
 see the watermark rule below.
 
+### The coverage contract (not built yet)
+
+Chapter 08 §8.10 to §8.14 define the contract steps 04 to 07 of #5221 build. No server sends
+any of it yet.
+
+- **One axis.** Every pack gets a coverage range `(coverFrom, coverThrough]` on `server_cursor`,
+  for every kind. The first `GET /sync/packs` page states, per kind, `packedThrough` and
+  `coveredThrough`. A pack holds every needed row whose cursor is in its range, and no needed row
+  sits in `(packedThrough, coveredThrough]`. Selecting snapshots by `server_cursor` removes the
+  same-second under-coverage above. `minCursor` and `maxCursor` keep their old meaning for
+  released readers.
+- **Tail start.** A reader chains its usable packs of each kind from 0. If the chain reaches
+  `packedThrough`, that kind is covered through `coveredThrough`. Otherwise it is covered only to
+  the end of the chain. The tail starts at the lowest kind. A 404, a bad pack, or a pack that a
+  rollup took out of the listing only lowers the start. After the tail, the manifest check closes
+  any record gaps. Packed snapshots and updates are confirmed through the batch route, read after
+  the pack bytes.
+- **Rollup.** Small packs are replaced by one pack under a new key. Old rows leave the listing in
+  the same batch, and old objects are deleted 600 s later, twice the presigned URL lifetime.
+- **Scoped purge.** A deleted note's packs leave the listing in the purge batch and are rewritten
+  without it. Its ciphertext is gone from pack objects within 15 minutes.
+- **Sizing.** A pack holds at most 4096 entries and 24 MiB. A vault lists at most 999 packs, so
+  a released reader's 1,000-pack walk never truncates.
+
 ## Client Bootstrap Flow
 
 The pack path runs on a **fresh device only** — the engine's `LAST_CURSOR` state key is absent —
