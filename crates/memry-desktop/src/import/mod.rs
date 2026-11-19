@@ -18,6 +18,7 @@ pub mod google_keep;
 pub mod markdown;
 pub mod messages;
 pub mod registry;
+pub mod roam;
 pub mod runner;
 pub mod sink;
 pub mod zip;
