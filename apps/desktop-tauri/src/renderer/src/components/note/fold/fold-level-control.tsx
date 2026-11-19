@@ -1,8 +1,9 @@
 import { useT } from '@memry/i18n/renderer'
 import type { FoldLayers, FoldLevel } from '@memry/contracts/note-fold'
+import type { ShortcutBinding } from '@memry/contracts/settings-schemas'
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { bindingParts, isMac } from '@/lib/shortcut-catalog'
+import { formatBinding } from '@/lib/shortcut-catalog'
 import { useShortcutBinding } from '@/lib/shortcut-bindings'
 import { cn } from '@/lib/utils'
 import { levelWordCount } from './fold-display'
@@ -38,7 +39,7 @@ function FoldGlyph() {
   )
 }
 
-function Keys({ parts, className }: { parts: string[]; className?: string }) {
+function Keys({ binding, className }: { binding: ShortcutBinding; className?: string }) {
   return (
     <kbd
       className={cn(
@@ -46,7 +47,7 @@ function Keys({ parts, className }: { parts: string[]; className?: string }) {
         className
       )}
     >
-      {parts.join(isMac ? '' : '+')}
+      {formatBinding(binding)}
     </kbd>
   )
 }
@@ -106,7 +107,7 @@ export function FoldLevelControl({
           </PopoverAnchor>
           <TooltipContent side="bottom" align="end" className="flex items-center gap-2">
             {folded ? `${levelName} · ${words}` : `${t('fold.chrome.fold')} · ${words}`}
-            {!folded && <Keys parts={bindingParts(briefBinding)} className="border-white/30" />}
+            {!folded && <Keys binding={briefBinding} className="border-white/30" />}
           </TooltipContent>
         </Tooltip>
         <PopoverContent
@@ -120,10 +121,7 @@ export function FoldLevelControl({
             <p className="text-xs leading-4 text-text-secondary">{t('fold.hint.body')}</p>
           </div>
           <div className="flex items-center justify-between">
-            <Keys
-              parts={bindingParts(briefBinding)}
-              className="border-border text-text-secondary"
-            />
+            <Keys binding={briefBinding} className="border-border text-text-secondary" />
             <button
               type="button"
               onClick={dismissHint}

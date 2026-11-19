@@ -2238,6 +2238,10 @@
         "prevVault": {
           "label": "Coffre précédent",
           "description": "Passer au coffre précédent dans la barre latérale"
+        },
+        "todayJournal": {
+          "label": "Journal du jour",
+          "description": "Ouvrir le journal sur l'entrée du jour"
         }
       },
       "tabs": {
