@@ -479,6 +479,9 @@ mod sync_hardening_repairs;
 #[cfg(feature = "markdown")]
 #[path = "sync_list_fields_union.rs"]
 mod sync_list_fields_union;
+#[cfg(feature = "markdown")]
+#[path = "sync_note_attachment_union.rs"]
+mod sync_note_attachment_union;
 #[path = "sync_note_body_feed.rs"]
 mod sync_note_body_feed;
 #[path = "sync_outbox.rs"]
