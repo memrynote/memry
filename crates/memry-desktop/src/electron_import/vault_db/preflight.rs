@@ -11,6 +11,7 @@ use rusqlite::{Connection, OptionalExtension};
 
 use super::source::{Sources, source_error};
 use super::sync_state::{self, KeyRule};
+use super::tables::settings::{self, SettingRule};
 use super::tables::{
     ELECTRON_DATA_LAST_MIGRATION, ELECTRON_INDEX_LAST_MIGRATION, Importer, LEDGER_TABLE, SourceDb,
     TableMapping, mapping, pending_area,
@@ -56,6 +57,7 @@ pub(super) fn run(
     tables.sort_by_key(|(m, _)| order(m));
 
     let dropped_keys = sync_state_keys(sources.conn(SourceDb::Data))?;
+    pending_settings_keys(sources.conn(SourceDb::Data))?;
 
     for (table, count) in &tables {
         if let Some(Importer::Pending(stage)) = table.class.importer()
@@ -71,6 +73,25 @@ pub(super) fn run(
         tables,
         dropped_keys,
     })
+}
+
+/// [`ImportError::NotReady`] for the first `settings` key whose stage is still pending.
+fn pending_settings_keys(conn: &Connection) -> Result<(), ImportError> {
+    let db = SourceDb::Data;
+    let mut stmt = conn
+        .prepare("SELECT key FROM settings ORDER BY key")
+        .map_err(|e| source_error(db, e))?;
+    let keys = stmt
+        .query_map([], |row| row.get::<_, String>(0))
+        .map_err(|e| source_error(db, e))?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| source_error(db, e))?;
+    for key in keys {
+        if let SettingRule::Pending(stage) = settings::rule(&key) {
+            return Err(not_ready(stage, format!("settings key {key} ({stage})")));
+        }
+    }
+    Ok(())
 }
 
 /// [`ImportError::NotReady`] for a pending stage, in the user's words.

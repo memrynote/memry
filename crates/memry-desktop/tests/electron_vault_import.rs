@@ -20,12 +20,16 @@ use rusqlite::Connection;
 use rusqlite::types::Value;
 use sha2::{Digest, Sha256};
 
+#[path = "electron_vault_import/desktop_records.rs"]
+mod desktop_records;
 #[path = "device_key/mod.rs"]
 mod device_key;
 #[path = "electron_vault_import/docs.rs"]
 mod docs;
 #[path = "support/electron_db.rs"]
 mod electron_db;
+#[path = "electron_vault_import/first_open.rs"]
+mod first_open;
 #[path = "electron_vault_import/notes.rs"]
 mod notes;
 #[path = "electron_vault_import/queue.rs"]
@@ -34,6 +38,8 @@ mod queue;
 mod queue_deletes;
 #[path = "electron_vault_import/records.rs"]
 mod records;
+#[path = "electron_vault_import/settings.rs"]
+mod settings;
 #[path = "electron_vault_import/settle.rs"]
 mod settle;
 #[path = "electron_vault_import/tag_template_records.rs"]
@@ -298,11 +304,14 @@ fn rows_whose_importer_is_pending_abort_before_any_write() {
     electron_db::seed(
         &vault.data_conn(),
         "settings",
-        &[("key", Value::Text("theme".into()))],
+        &[
+            ("key", Value::Text("readwise.cursor".into())),
+            ("value", Value::Text("\"c\"".into())),
+        ],
     );
     assert_refused(
         &vault,
-        |e| matches!(e, ImportError::NotReady { detail, .. } if detail.contains("data.db/settings")),
+        |e| matches!(e, ImportError::NotReady { detail, .. } if detail.contains("readwise.cursor")),
     );
 
     let vault = Vault::new();
