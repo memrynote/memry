@@ -1,5 +1,5 @@
 //! Replays the sandbox template into a vault folder (Electron: `generateSandboxAt`,
-//! `apps/cli/src/sandbox/generate.ts:98-120`).
+//! `apps/cli/src/sandbox/generate.ts:100-118`).
 //!
 //! The replay builds the vault in a staging folder beside the target, then renames it over the
 //! target, so a failure or a crash never leaves a half-made vault and never touches the previous
@@ -17,7 +17,9 @@
 //!
 //! A crash leaves a `.<name>.sandbox-*` staging folder or a `.<name>.replaced-*` previous
 //! folder beside the target. Both are this module's and the next replay deletes them, so a rerun
-//! converges on one vault. The caller writes the marker ([`super::marker`]) after the replay.
+//! converges on one vault. The caller writes the marker ([`super::marker`]) after the replay,
+//! and runs one replay of a target at a time, as `ensureSandboxVault` does
+//! (`apps/desktop/src/main/vault/sandbox.ts:62-69`): two would sweep each other's staging.
 
 mod notes;
 mod plan;
@@ -73,7 +75,7 @@ pub struct ReplayOptions {
     pub replace: bool,
 }
 
-/// What a replay wrote, in the generator's terms (`generate.ts:36-56`).
+/// What a replay wrote, in the generator's terms (`generate.ts:38-59`).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct SeedCounts {
     /// Markdown notes that are not journal days, each created in the core.
