@@ -283,7 +283,7 @@ async fn opens_the_checkout_page_with_the_token_in_the_hash() {
         }))
         .await
         .unwrap();
-    let url = "https://memrynote.com/account/sync?plan=plus&cadence=monthly#token=tok.sig";
+    let url = "https://memrynote.com/account/sync?plan=plus&cadence=monthly&utm_source=app&utm_medium=desktop&utm_campaign=checkout#token=tok.sig";
     assert!(result.success);
     assert_eq!(result.checkout_url.as_deref(), Some(url));
     assert_eq!(*f.browser.opened.lock().unwrap(), vec![url.to_owned()]);
