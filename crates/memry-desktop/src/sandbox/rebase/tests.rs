@@ -24,7 +24,7 @@ fn template() -> NaiveDate {
 }
 
 fn utc(now: &str) -> Rebase<Utc> {
-    Rebase::new(template(), at(now), Utc)
+    Rebase::new(template(), at(now), Utc, "UTC")
 }
 
 fn plus3(now: &str) -> Rebase<FixedOffset> {
@@ -32,6 +32,7 @@ fn plus3(now: &str) -> Rebase<FixedOffset> {
         template(),
         at(now),
         FixedOffset::east_opt(3 * 3600).unwrap(),
+        "Europe/Istanbul",
     )
 }
 
@@ -184,4 +185,133 @@ fn monthly_tasks_stay_on_their_day_of_the_month() {
     // April has 30 days: JavaScript's Date rolls day 31 into May 1.
     assert_eq!(rows[1]["due_date"], "2028-05-01");
     assert_eq!(rows[2]["due_date"], "2028-03-06");
+}
+
+fn named(now: &str, hours: i32, zone: &str) -> Rebase<FixedOffset> {
+    Rebase::new(
+        template(),
+        at(now),
+        FixedOffset::east_opt(hours * 3600).unwrap(),
+        zone,
+    )
+}
+
+fn events_manifest() -> Manifest {
+    serde_json::from_value(json!({
+        "version": 1,
+        "generatedAt": "2026-01-14T12:00:00.000Z",
+        "timezone": "UTC",
+        "assets": [],
+        "data": { "calendar_events": [
+            { "id": "a", "is_all_day": 0, "timezone": "UTC", "start_at": "2026-01-16T09:00:00.000Z" },
+            { "id": "b", "is_all_day": 1, "timezone": "UTC", "start_at": "2026-01-16T00:00:00.000Z" },
+            { "id": "c", "is_all_day": 0, "timezone": "Asia/Tokyo", "start_at": "2026-01-16T09:00:00.000Z" }
+        ] },
+        "index": {}
+    }))
+    .unwrap()
+}
+
+#[test]
+fn events_take_the_device_zone_name() {
+    for (rebase, zone, start) in [
+        (
+            named("2026-01-20T12:00:00Z", 3, "Europe/Istanbul"),
+            "Europe/Istanbul",
+            "2026-01-22T06:00:00.000Z",
+        ),
+        (
+            named("2026-01-20T20:00:00Z", -8, "America/Los_Angeles"),
+            "America/Los_Angeles",
+            "2026-01-22T17:00:00.000Z",
+        ),
+    ] {
+        let mut manifest = events_manifest();
+        rebase.manifest(&mut manifest);
+        let rows = &manifest.data["calendar_events"];
+        assert_eq!(rows[0]["timezone"], zone);
+        assert_eq!(rows[0]["start_at"], start);
+        assert_eq!(rows[1]["timezone"], zone);
+        assert_eq!(rows[1]["start_at"], "2026-01-22T00:00:00.000Z");
+        // Only the template's own zone is the device's; a named zone stays.
+        assert_eq!(rows[2]["timezone"], "Asia/Tokyo");
+    }
+}
+
+fn weekly_manifest() -> Manifest {
+    let weekly = |days: &str| {
+        format!(
+            "{{\"frequency\":\"weekly\",\"interval\":1,\"daysOfWeek\":{days},\"endType\":\"never\"}}"
+        )
+    };
+    // The template's Wednesday 2026-01-14 as the generator set them (content/tasks.ts).
+    serde_json::from_value(json!({
+        "version": 1,
+        "generatedAt": "2026-01-14T12:00:00.000Z",
+        "timezone": "UTC",
+        "assets": [],
+        "data": { "tasks": [
+            { "id": "standup", "due_date": "2026-01-14", "repeat_config": weekly("[1,2,3,4,5]") },
+            { "id": "review", "due_date": "2026-01-16", "repeat_config": weekly("[5]") },
+            { "id": "mum", "due_date": "2026-01-18", "repeat_config": weekly("[0]") }
+        ] },
+        "index": {}
+    }))
+    .unwrap()
+}
+
+#[test]
+fn weekly_tasks_stay_on_their_weekdays() {
+    // (today, standup, review: nextFriday, mum: (7 - weekday) % 7), Electron's dates.
+    for (now, standup, review, mum) in [
+        (
+            "2026-01-20T12:00:00Z",
+            "2026-01-20",
+            "2026-01-23",
+            "2026-01-25",
+        ), // Tuesday
+        (
+            "2026-01-18T12:00:00Z",
+            "2026-01-18",
+            "2026-01-23",
+            "2026-01-18",
+        ), // Sunday
+        (
+            "2026-01-17T12:00:00Z",
+            "2026-01-17",
+            "2026-01-23",
+            "2026-01-18",
+        ), // Saturday
+    ] {
+        let mut manifest = weekly_manifest();
+        utc(now).manifest(&mut manifest);
+        let rows = &manifest.data["tasks"];
+        assert_eq!(
+            [
+                &rows[0]["due_date"],
+                &rows[1]["due_date"],
+                &rows[2]["due_date"]
+            ],
+            [standup, review, mum],
+            "{now}"
+        );
+    }
+}
+
+#[test]
+fn canvas_times_move_as_instants() {
+    // 1768392000000 is the template's 2026-01-14T12:00:00Z.
+    let scene = "{\n  \"memry\": {\n    \"id\": \"c\",\n    \"createdAt\": 1768392000000,\n    \"updatedAt\": 1768392000000\n  },\n  \"text\": \"\\\"createdAt\\\": 1768392000000\"\n}\n";
+    let moved = named("2026-01-20T09:00:00Z", 3, "Europe/Istanbul").file("a/b.excalidraw", scene);
+    // 12:00 on 2026-01-20 at +03:00 is 09:00Z: 1768899600000.
+    let expected = scene.replacen("1768392000000", "1768899600000", 2);
+    assert_eq!(moved, expected);
+    assert!(matches!(
+        utc("2026-01-20T12:00:00Z").file("a/b.md", scene),
+        Cow::Borrowed(_)
+    ));
+    assert!(matches!(
+        utc("2026-01-14T12:00:00Z").file("a/b.excalidraw", scene),
+        Cow::Borrowed(_)
+    ));
 }

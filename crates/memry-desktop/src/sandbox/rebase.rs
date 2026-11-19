@@ -19,6 +19,19 @@
 //! - A date not bounded by non-digits, or not a real calendar day, is left alone.
 //! - A task repeating monthly on a day of the month is due on that day of next
 //!   month, as the generator sets it (`dayOfMonthOffset` in `content/tasks.ts`).
+//! - A task repeating weekly on given weekdays and due after the template's
+//!   date is due on the first of those weekdays on or after today
+//!   (`content/tasks.ts`: Call Mum's `(7 - weekday) % 7`). Known difference:
+//!   the generator's `nextFriday` skips today, so on a Friday Weekly review is
+//!   due today here and next Friday in Electron. A weekly task due on the
+//!   template's date stays due today (the standup's `due: 0`).
+//! - `calendar_events.timezone` holding the template's zone becomes the
+//!   device's IANA name, which the generator stamps on every event.
+//! - `inbox_stats` is derived, so it is rebuilt from the moved inbox items the
+//!   way `rebuildInboxStatsTable` (and the generator's `post/inbox.ts`) builds
+//!   it: on the UTC dates of their instants, which a device zone can regroup.
+//! - [`Rebase::file`] also moves a canvas's `memry.createdAt`/`updatedAt`
+//!   (epoch milliseconds, `steps/canvases.ts`) as instants.
 
 use std::borrow::Cow;
 use std::sync::LazyLock;
@@ -32,7 +45,7 @@ use chrono::{
 };
 use regex::{Captures, Regex};
 
-use super::manifest::Manifest;
+use super::manifest::{Manifest, Row, TEMPLATE_ZONE};
 
 /// How far from the template's date a date may be and still move: five years.
 pub const WINDOW_DAYS: i64 = 5 * 366;
@@ -59,27 +72,56 @@ static TOKEN_ENGINE: LazyLock<GeneralPurpose> = LazyLock::new(|| {
     )
 });
 
-/// A rebase from a template's date to today in the device's zone `tz`.
+/// A canvas's `memry.createdAt`/`updatedAt` as a JSON member; the quote is checked to be unescaped.
+static CANVAS_TIME: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#""(?:createdAt|updatedAt)": ?(?P<ms>[0-9]{1,15})"#).expect("static regex")
+});
+
+/// The device's IANA zone name, from where chrono's `Local` reads the zone: `TZ` on Unix,
+/// then the OS setting. Resolve it once, beside the `Local` handed to [`Rebase::new`].
+pub fn device_zone_name() -> String {
+    #[cfg(unix)]
+    if let Some(name) = std::env::var("TZ")
+        .ok()
+        .map(|tz| tz.trim_start_matches(':').to_owned())
+        .filter(|tz| !tz.is_empty() && !tz.starts_with('/'))
+    {
+        return name;
+    }
+    iana_time_zone::get_timezone().unwrap_or_else(|error| {
+        tracing::warn!(%error, "device time zone has no IANA name; sandbox events use UTC");
+        TEMPLATE_ZONE.to_owned()
+    })
+}
+
+/// A rebase from a template's date to today in the device's zone `tz`, named `zone`.
 #[derive(Debug, Clone)]
 pub struct Rebase<Tz: TimeZone> {
     from: NaiveDate,
     delta: i64,
     tz: Tz,
+    zone: String,
 }
 
 impl<Tz: TimeZone> Rebase<Tz> {
-    /// `from` is the template's date; today is `now`'s date in `tz`.
-    pub fn new(from: NaiveDate, now: DateTime<Utc>, tz: Tz) -> Self {
+    /// `from` is the template's date; today is `now`'s date in `tz`; `zone` is `tz`'s IANA name.
+    pub fn new(from: NaiveDate, now: DateTime<Utc>, tz: Tz, zone: impl Into<String>) -> Self {
         let today = now.with_timezone(&tz).date_naive();
         Self {
             from,
             delta: (today - from).num_days(),
             tz,
+            zone: zone.into(),
         }
     }
 
-    pub fn for_manifest(manifest: &Manifest, now: DateTime<Utc>, tz: Tz) -> Self {
-        Self::new(manifest.template_date(), now, tz)
+    pub fn for_manifest(
+        manifest: &Manifest,
+        now: DateTime<Utc>,
+        tz: Tz,
+        zone: impl Into<String>,
+    ) -> Self {
+        Self::new(manifest.template_date(), now, tz, zone)
     }
 
     /// Today in the device's zone.
@@ -203,6 +245,45 @@ impl<Tz: TimeZone> Rebase<Tz> {
         )
     }
 
+    /// A vault file's text: [`Rebase::text`], plus a canvas's millisecond timestamps.
+    pub fn file<'a>(&self, path: &str, text: &'a str) -> Cow<'a, str> {
+        let moved = self.text(text);
+        if !path.ends_with(".excalidraw") {
+            return moved;
+        }
+        if let Some(out) = self.canvas_times(&moved) {
+            Cow::Owned(out)
+        } else {
+            moved
+        }
+    }
+
+    fn canvas_times(&self, text: &str) -> Option<String> {
+        let mut changed = false;
+        let bytes = text.as_bytes();
+        let out = CANVAS_TIME.replace_all(text, |caps: &Captures| {
+            let whole = caps.get(0).expect("match");
+            let ms = caps.name("ms").expect("group");
+            let escaped = whole.start() > 0 && bytes[whole.start() - 1] == b'\\';
+            let digit_after = bytes.get(ms.end()).is_some_and(u8::is_ascii_digit);
+            let moved = (!escaped && !digit_after)
+                .then(|| ms.as_str().parse::<i64>().ok())
+                .flatten()
+                .and_then(DateTime::from_timestamp_millis)
+                .map(|at| self.instant(at).timestamp_millis().to_string())
+                .filter(|moved| moved != ms.as_str());
+            match moved {
+                Some(moved) => {
+                    changed = true;
+                    let head = &text[whole.start()..ms.start()];
+                    format!("{head}{moved}")
+                }
+                None => whole.as_str().to_owned(),
+            }
+        });
+        changed.then(|| out.into_owned())
+    }
+
     /// A `((date:…))` token: rebases its JSON payload and re-encodes it when a date moved.
     fn token(&self, payload: &str) -> Option<String> {
         // Older writers used base64url's `-` and `_`, and escapers add `\`; all decode the same.
@@ -246,23 +327,32 @@ impl<Tz: TimeZone> Rebase<Tz> {
     /// Every row value and asset path of a template. All-day events keep UTC midnights.
     pub fn manifest(&self, manifest: &mut Manifest) {
         for (table, rows) in manifest.data.iter_mut().chain(manifest.index.iter_mut()) {
+            let events = table == "calendar_events";
             for row in rows {
-                let all_day = table == "calendar_events" && is_truthy(row.get("is_all_day"));
-                let monthly_day = (table == "tasks").then(|| monthly_day(row)).flatten();
+                let all_day = events && is_truthy(row.get("is_all_day"));
+                let repeat_due = (table == "tasks").then(|| self.repeat_due(row)).flatten();
                 for (column, value) in row.iter_mut() {
                     if all_day && (column == "start_at" || column == "end_at") {
                         self.all_day_value(value);
+                    } else if events && column == "timezone" && *value == TEMPLATE_ZONE {
+                        *value = serde_json::Value::String(self.zone.clone());
                     } else {
                         self.value(value);
                     }
                 }
-                if let Some(day) = monthly_day {
-                    let due = next_month_day(self.today(), day)
-                        .format("%Y-%m-%d")
-                        .to_string();
+                if let Some(due) = repeat_due {
+                    let due = due.format("%Y-%m-%d").to_string();
                     row.insert("due_date".to_owned(), serde_json::Value::String(due));
                 }
             }
+        }
+        if let Some(template) = manifest.data.remove("inbox_stats") {
+            let items = manifest
+                .data
+                .get("inbox_items")
+                .map_or(&[][..], Vec::as_slice);
+            let rebuilt = inbox_stats(items, &template);
+            manifest.data.insert("inbox_stats".to_owned(), rebuilt);
         }
         for copy in &mut manifest.assets {
             if let Cow::Owned(moved) = self.text(&copy.path) {
@@ -284,17 +374,85 @@ impl<Tz: TimeZone> Rebase<Tz> {
     }
 }
 
-/// The day of a monthly repeat with a due date (`{"frequency":"monthly","dayOfMonth":n}`).
-fn monthly_day(row: &super::manifest::Row) -> Option<u32> {
-    row.get("due_date")?.as_str()?;
-    let config: serde_json::Value =
-        serde_json::from_str(row.get("repeat_config")?.as_str()?).ok()?;
-    if config.get("frequency")?.as_str()? != "monthly" {
-        return None;
+impl<Tz: TimeZone> Rebase<Tz> {
+    /// The due date a repeating task's rule sets, by the module docs; `None` keeps the plain shift.
+    fn repeat_due(&self, row: &Row) -> Option<NaiveDate> {
+        let due = row.get("due_date")?.as_str()?;
+        let config: serde_json::Value =
+            serde_json::from_str(row.get("repeat_config")?.as_str()?).ok()?;
+        match config.get("frequency")?.as_str()? {
+            // `{"frequency":"monthly","dayOfMonth":n}`
+            "monthly" => {
+                let day = u32::try_from(config.get("dayOfMonth")?.as_u64()?)
+                    .ok()
+                    .filter(|day| (1..=31).contains(day))?;
+                Some(next_month_day(self.today(), day))
+            }
+            // `{"frequency":"weekly","daysOfWeek":[0..6]}`, 0 = Sunday
+            "weekly" => {
+                if NaiveDate::parse_from_str(due, "%Y-%m-%d").ok()? <= self.from {
+                    return None;
+                }
+                let days = config
+                    .get("daysOfWeek")?
+                    .as_array()?
+                    .iter()
+                    .map(|day| day.as_u64().filter(|day| *day <= 6))
+                    .collect::<Option<Vec<u64>>>()?;
+                (0..7)
+                    .filter_map(|n| add_days(self.today(), n))
+                    .find(|date| days.contains(&u64::from(date.weekday().num_days_from_sunday())))
+            }
+            _ => None,
+        }
     }
-    u32::try_from(config.get("dayOfMonth")?.as_u64()?)
-        .ok()
-        .filter(|day| (1..=31).contains(day))
+}
+
+/// The item types `inbox_stats` has a capture column for (`STAT_COLUMNS`).
+const CAPTURE_TYPES: [&str; 8] = [
+    "link", "note", "image", "voice", "clip", "pdf", "social", "reminder",
+];
+
+/// `rebuildInboxStatsTable` over moved items: a capture counts on the UTC date of
+/// `created_at`, a filing on that of `filed_at`, an archive on that of `archived_at`.
+/// A row keeps the id of the (moved) template row of its date.
+fn inbox_stats(items: &[Row], template: &[Row]) -> Vec<Row> {
+    use serde_json::Value;
+    let mut out: Vec<Row> = Vec::new();
+    let mut by_date: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+    let mut bump = |at: Option<&Value>, column: &str| {
+        let Some(date) = at.and_then(Value::as_str).and_then(|at| at.get(..10)) else {
+            return;
+        };
+        let index = *by_date.entry(date.to_owned()).or_insert_with(|| {
+            let id = template
+                .iter()
+                .find(|row| row.get("date").and_then(Value::as_str) == Some(date))
+                .and_then(|row| row.get("id").cloned())
+                .unwrap_or_else(|| Value::String(format!("istat_{date}")));
+            let mut row = Row::new();
+            row.insert("id".to_owned(), id);
+            row.insert("date".to_owned(), Value::String(date.to_owned()));
+            for kind in CAPTURE_TYPES {
+                row.insert(format!("capture_count_{kind}"), Value::from(0));
+            }
+            row.insert("processed_count".to_owned(), Value::from(0));
+            row.insert("archived_count".to_owned(), Value::from(0));
+            out.push(row);
+            out.len() - 1
+        });
+        let count = out[index].entry(column).or_insert(Value::from(0));
+        *count = Value::from(count.as_i64().unwrap_or(0) + 1);
+    };
+    for item in items {
+        let kind = item.get("type").and_then(Value::as_str);
+        if let Some(kind) = kind.filter(|kind| CAPTURE_TYPES.contains(kind)) {
+            bump(item.get("created_at"), &format!("capture_count_{kind}"));
+        }
+        bump(item.get("filed_at"), "processed_count");
+        bump(item.get("archived_at"), "archived_count");
+    }
+    out
 }
 
 /// `new Date(year, month + 1, day)`: day `day` of next month, overflowing into the month after like JavaScript.

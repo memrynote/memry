@@ -14,11 +14,13 @@ pub mod marker;
 pub mod rebase;
 
 pub use manifest::{AssetCopy, Manifest, Row, TemplateInfo};
-pub use rebase::Rebase;
+pub use rebase::{Rebase, device_zone_name};
 
 /// Why a sandbox template or marker could not be used.
 #[derive(Debug, thiserror::Error)]
 pub enum SandboxError {
+    #[error("sandbox template is {0} bytes, over the {max} byte limit", max = manifest::MAX_TEMPLATE_BYTES)]
+    TooLarge(usize),
     #[error("sandbox template is not valid JSON: {0}")]
     Json(#[from] serde_json::Error),
     #[error("sandbox template version {0} is not supported")]
