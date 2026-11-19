@@ -35,6 +35,8 @@
 
 mod bodies;
 mod cipher;
+#[cfg(feature = "markdown")]
+mod lock_seed;
 pub mod observer;
 pub mod progress;
 mod repairs;
@@ -80,6 +82,8 @@ use super::push::PushCoordinator;
 use super::socket::{HintSink, RealtimeClient};
 use super::state::{PassTrigger, SyncState, WriteGate};
 use cipher::DirectoryCipher;
+#[cfg(feature = "markdown")]
+use lock_seed::VaultLockSeed;
 pub use observer::{
     AppliedFeed, AppliedOutcome, AppliedRecord, ApplyObserver, AttachmentDownload, FieldConflict,
     Observers, SecurityWarning,
@@ -573,30 +577,5 @@ impl SyncDriver {
                 self.cipher.keep_missed(ids);
             }
         }
-    }
-}
-
-/// Gives each lock written before Step 16 its record (Electron's
-/// `seedUnclocked`, [`crate::domain::vault_locks::seed_unsynced`]). Registered
-/// only for a declaration that subscribes `vault_lock`: without it the device
-/// never pulls a peer's edit of the lock, so its pushes would tick only its own
-/// clock.
-#[cfg(feature = "markdown")]
-struct VaultLockSeed {
-    db: Db,
-    device_id: String,
-}
-
-#[cfg(feature = "markdown")]
-#[async_trait::async_trait]
-impl PassSeed for VaultLockSeed {
-    async fn seed(&self) -> Result<(), StorageError> {
-        let device_id = self.device_id.clone();
-        self.db
-            .call(move |conn| {
-                crate::domain::vault_locks::seed_unsynced(conn, &device_id, super::pull::now_ms())
-            })
-            .await?;
-        Ok(())
     }
 }
