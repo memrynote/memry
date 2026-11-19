@@ -134,8 +134,7 @@ struct JournalDayPage: View {
                     openTag: nil,
                     brokenLink: $brokenLink,
                     emptyBody: { preview in emptyBody(preview, model: model) },
-                    keepsEmptyBody: model.handingOff,
-                    afterBacklinks: { EmptyView() }
+                    keepsEmptyBody: model.handingOff
                 )
             }
             .modifier(NotePageEnvironment(model: model.read, taskBridge: taskBridge))

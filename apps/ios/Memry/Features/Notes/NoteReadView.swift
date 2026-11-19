@@ -289,6 +289,7 @@ struct NoteReadView: View {
                         backlinks: backlinks,
                         unlinkedMentions: unlinkedMentions,
                         linkedTasks: linkedTasks,
+                        reminders: reminders,
                         taskBridge: taskBridge,
                         open: openRoute,
                         openTag: openTag,
@@ -305,11 +306,6 @@ struct NoteReadView: View {
                                 download: model.canFetchBody ? { Task { await model.fetchBody() } } : nil
                             )
                             }
-                        },
-                        afterBacklinks: {
-                            // N804, under the backlinks: both are about the
-                            // note rather than in it.
-                            NoteRemindersSection(model: reminders)
                         },
                         tapBelowBody: editorModel.canEdit && model.preview != .notPulled
                             ? { Task { await focusBody(atEnd: true) } } : nil

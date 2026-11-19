@@ -102,16 +102,7 @@ struct BacklinksSection: View {
     }
 
     private var orderPicker: some View {
-        Picker("Order", selection: Binding(
-            get: { model.order },
-            set: { model.order = $0 }
-        )) {
-            Text("Recent").tag(BacklinkOrder.recent)
-            Text("Title").tag(BacklinkOrder.title)
-            Text("Oldest").tag(BacklinkOrder.oldest)
-        }
-        .pickerStyle(.menu)
-        .accessibilityLabel("Order backlinks")
+        BacklinkOrderPicker(model: model)
     }
 
     /// The section shows only once there is something to say: a link, or a
@@ -161,6 +152,44 @@ struct BacklinksSection: View {
     }
 }
 
+/// How the backlinks are ordered.
+struct BacklinkOrderPicker: View {
+    let model: BacklinksViewModel
+
+    var body: some View {
+        // A menu over an inline picker rather than a menu-style picker, whose
+        // label ignores the font and draws at body size beside a caption.
+        Menu {
+            Picker("Order", selection: Binding(
+                get: { model.order },
+                set: { model.order = $0 }
+            )) {
+                ForEach(Self.orders, id: \.0) { order, name in Text(name).tag(order) }
+            }
+            .pickerStyle(.inline)
+        } label: {
+            HStack(spacing: Tokens.Space.tight) {
+                Text(name(model.order))
+                Image(systemName: "chevron.up.chevron.down")
+                    .imageScale(.small)
+            }
+            .font(Tokens.Typography.caption.font)
+            .frame(minHeight: Tokens.Size.minimumHitArea)
+            .contentShape(.rect)
+        }
+        .accessibilityLabel("Order backlinks")
+        .accessibilityValue(name(model.order))
+    }
+
+    private static let orders: [(BacklinkOrder, String)] = [
+        (.recent, "Recent"), (.title, "Title"), (.oldest, "Oldest"),
+    ]
+
+    private func name(_ order: BacklinkOrder) -> String {
+        Self.orders.first { $0.0 == order }?.1 ?? "Recent"
+    }
+}
+
 /// One backlink: a note pushes its page, a journal day opens in the Journal
 /// tab.
 struct BacklinkRowButton: View {
@@ -177,19 +206,14 @@ struct BacklinkRowButton: View {
 
     var body: some View {
         Button(action: tap) {
-            VStack(alignment: .leading, spacing: Tokens.Space.tight) {
-                Text(backlink.title)
-                    .font(Tokens.Typography.body.font)
-                    .foregroundStyle(Tokens.Text.primary.color)
-                if case .journalDay = backlink.destination {
-                    Text(JournalCopy.journalKind)
-                        .font(Tokens.Typography.caption.font)
-                        .foregroundStyle(Tokens.Text.secondary.color)
-                }
-            }
-            .frame(maxWidth: .infinity, minHeight: Tokens.Size.minimumHitArea, alignment: .leading)
-            .contentShape(.rect)
+            ConnectionRow(
+                symbol: isJournal ? "calendar" : "doc.text",
+                tint: isJournal ? Tokens.Task.tokenDate.color : Tokens.Task.tokenNote.color,
+                title: backlink.title,
+                detail: isJournal ? JournalCopy.journalKind : nil
+            )
         }
+        .buttonStyle(.plain)
         .disabled(isJournal && openJournalDay == nil)
         .modifier(BacklinkOpenToTheSide(open: toSide, commandHeld: $commandHeld))
         .accessibilityElement(children: .combine)

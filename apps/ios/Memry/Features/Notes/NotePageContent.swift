@@ -5,15 +5,15 @@ import SwiftUI
 // JP033 (spec 005-journal). The parts of a note page under its title, shared
 // by the note screen and the journal day page, so the day page composes the
 // note page rather than forking it: the tags and properties rows (with the
-// ghost row), the body as editable blocks, review comments, backlinks and
-// linked tasks. What differs between the two pages is passed in: what an
-// empty body says, and what sits between the backlinks and the linked tasks
-// (a note's reminders; nothing on a day, whose reminders live on the bell).
+// ghost row), the body as editable blocks, review comments and the
+// connections card. What differs between the two pages is passed in: what an
+// empty body says, and the reminders (a note's; none on a day, whose
+// reminders live on the bell).
 //
 // Moved verbatim from `NoteReadView`; the note screen draws exactly what it
 // drew before.
 
-struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
+struct NotePageContent<EmptyBody: View>: View {
     let model: NoteReadViewModel
     let detail: NoteDetail
     let editorModel: NoteEditorViewModel
@@ -25,6 +25,8 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
     /// its own date).
     var unlinkedMentions: UnlinkedMentionsViewModel?
     let linkedTasks: LinkedTasksViewModel
+    /// `nil` on a journal day, whose reminders live on the bell.
+    var reminders: NoteRemindersViewModel?
     let taskBridge: NoteTaskBridge
     /// Pushes another note. `nil` leaves links drawn but inert.
     let open: ((NoteRoute) -> Void)?
@@ -36,7 +38,6 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
     /// window: a journal day's first line holds the caret until its block
     /// takes it (#4705).
     var keepsEmptyBody = false
-    @ViewBuilder let afterBacklinks: () -> AfterBacklinks
     /// A tap in the space under the body puts the caret at its end. `nil`
     /// leaves no such space (a read-only page, the journal day).
     var tapBelowBody: (() -> Void)?
@@ -207,20 +208,17 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
             // On a view that is always present, so the first block typed
             // into an empty note is seen too.
             .onChange(of: model.blocks, initial: true) { syncInlineTags() }
-        // Under the body, where desktop puts it and where a reader looks
+        // Under the body, where desktop puts them and where a reader looks
         // after finishing the note (N800).
-        if let open {
-            if !inspectorShown {
-                BacklinksSection(model: backlinks, open: open)
-            }
-            if let unlinkedMentions {
-                UnlinkedMentionsSection(
-                    model: unlinkedMentions, targetTitle: detail.summary.title, open: open
-                )
-            }
-        }
-        afterBacklinks()
-        LinkedTasksSection(model: linkedTasks, open: taskBridge.open)
+        NoteConnections(
+            backlinks: inspectorShown ? nil : backlinks,
+            linkedTasks: linkedTasks,
+            reminders: reminders,
+            unlinkedMentions: unlinkedMentions,
+            targetTitle: detail.summary.title,
+            open: open,
+            openTask: taskBridge.open
+        )
     }
 
     /// A `#tag` typed into the body becomes one of the note's tags, and one
