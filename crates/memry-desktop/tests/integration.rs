@@ -349,6 +349,8 @@ mod sanitize_svg_vectors;
 mod seams_tls;
 #[path = "seams_transport.rs"]
 mod seams_transport;
+#[path = "search_reasons.rs"]
+mod search_reasons;
 #[path = "settings_service.rs"]
 mod settings_service;
 #[path = "sticky_drafts.rs"]
