@@ -3072,7 +3072,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   useEffect(() => {
     if (!aiEnabled || !aiError) return undefined
     const onKeyDown = (e: KeyboardEvent): void => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'j') {
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key === 'j') {
         e.preventDefault()
         reportAIUnavailableRef.current()
       }
