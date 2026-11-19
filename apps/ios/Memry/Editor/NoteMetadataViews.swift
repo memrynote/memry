@@ -179,7 +179,9 @@ struct NoteTitleEditor: View {
         guard let burst = returned else { return }
         returned = nil
         commits.begin(burst.line)
-        draft = draft.replacingOccurrences(of: "\n", with: "")
+        // Joined as a held Return is anywhere else (`NewNoteSeeds.title`):
+        // `milk⏎buy` stays two words.
+        draft = NewNoteSeeds.title(draft)
     }
 
     /// The keys typed after ⌘N for this new note (#4787, `NewNoteSeeds`),
@@ -192,18 +194,26 @@ struct NoteTitleEditor: View {
             commits.begin(title)
         }
         draft += keys
+        // Saved at once: a kill seconds after Home must find them stored.
+        // A Return among them waits for the caret, which moves the rest to
+        // the body (`takeSeed`).
+        if !keys.contains(where: \.isNewline) { save() }
     }
 
     /// The title has the caret: the keys held since it appeared join the
     /// draft, and a Return among them moves the rest to the body.
     private func takeSeed() {
         guard commits.editing, returned == nil else { return }
-        if let keys = NewNoteSeeds.shared.take(noteId) {
+        let keys = NewNoteSeeds.shared.take(noteId)
+        if let keys {
             draft += keys
             if let field = titleTextView, field.text != draft { field.text = draft }
         }
         if draft.contains(where: \.isNewline), let burst = LineReturn(previous: title, value: draft) {
             returnPressed(burst)
+        } else if keys != nil {
+            // Saved at once, as in `attachSeed`.
+            save()
         }
     }
 
@@ -359,9 +369,12 @@ struct NoteTitleEditor: View {
                 .onAppear(perform: attachSeed)
                 // A note with no title (a new one) opens with the caret in
                 // its title, as desktop does. Not when the page is drawn
-                // again under a block that had the caret (#4457).
+                // again under a block that had the caret (#4457), nor under
+                // something presented over the window (the search palette),
+                // which keeps the caret and its Escape (#4787).
                 .onAppear {
-                    if title.isEmpty, EditorFocusMemory.shared.titleMayAutofocus(noteId) {
+                    let covered = (host.window ?? PresentingWindow.resolve()).map(PresentingWindow.isPresenting) == true
+                    if title.isEmpty, !covered, EditorFocusMemory.shared.titleMayAutofocus(noteId) {
                         claimsFocus = true
                         focused = true
                     }

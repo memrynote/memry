@@ -1,5 +1,6 @@
 import MemryCore
 import SwiftUI
+import Synchronization
 import Testing
 import UIKit
 @testable import Memry
@@ -105,19 +106,22 @@ struct NewNoteKeysTests {
     /// `flush` is what leaving the app runs (`didEnterBackgroundNotification`);
     /// called directly, as the notification reaches every suite's pages.
     @Test("leaving the app before the note is made stores the keys as its title once it is")
-    func backgroundBeforeTheNoteKeepsTheKeys() throws {
+    func backgroundBeforeTheNoteKeepsTheKeys() async throws {
         let seeds = NewNoteSeeds()
         textView().becomeFirstResponder()
-        var kept: [String: String] = [:]
+        let kept = Mutex<[String: String]>([:])
 
         let keys = NewNoteKeys(window: window, seeds: seeds)
         try type("milk\tlist\nbuy")
         seeds.flush()
-        #expect(kept.isEmpty)
-        keys.made("new") { kept[$0] = $1 }
+        #expect(kept.withLock { $0.isEmpty })
+        keys.made("new") { id, title in kept.withLock { $0[id] = title } }
         seeds.flush()
+        for _ in 0..<100 where kept.withLock({ $0.isEmpty }) {
+            try await Task.sleep(for: .milliseconds(10))
+        }
 
-        #expect(kept == ["new": "milk list buy"])
+        #expect(kept.withLock { $0 } == ["new": "milk list buy"])
         #expect(seeds.take("new") == nil)
     }
 
@@ -191,6 +195,89 @@ struct NewNoteKeysTests {
 
         #expect(absorbed == ["milk"])
         #expect(firstResponder(in: window) == nil)
+    }
+
+
+    /// #4787 (VERIFY-5087 1): ⌘N, typing and Home in one burst, then a kill
+    /// 2 s later lost every key. iOS suspends the app once it holds no
+    /// background task, and a kill then ends it: `released` records, each
+    /// time the last task ends, the title that had landed by then.
+    @Test(.timeLimit(.minutes(1)), arguments: [true, false])
+    func leavingTheAppStoresTheKeysBeforeItMayBeSuspended(beforeTheNote: Bool) async throws {
+        let holds = Holds()
+        var background = false
+        let seeds = NewNoteSeeds(hold: { holds.begin() }, inBackground: { background })
+        textView().becomeFirstResponder()
+        let vault = try TasksTestVault()
+        let writer = CoreNotesWriter(vault: vault.vault, store: TaskTestKeychain(), executor: .shared)
+        let landed = Mutex<String?>(nil)
+        holds.released = { landed.withLock { $0 } }
+
+        let keys = NewNoteKeys(window: window, seeds: seeds)
+        try type("milk")
+        if beforeTheNote {
+            background = true
+            seeds.flush()
+            #expect(holds.open == 1, "nothing keeps the app running while the note is made")
+        }
+        let noteId = try await writer.create(title: "", folderPath: nil)
+        keys.made(noteId) { id, title in
+            try? await writer.rename(id: id, title: title)
+            landed.withLock { $0 = title }
+        }
+        if !beforeTheNote {
+            background = true
+            seeds.flush()
+        }
+        for _ in 0..<300 where holds.open > 0 {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+
+        // Made in the foreground, the note's hold ends with nothing to land.
+        #expect(holds.landedAtRelease == (beforeTheNote ? ["milk"] : [nil, "milk"]))
+        let stored = try await CoreNotesReader(vault: vault.vault, executor: .shared).read(id: noteId)
+        #expect(stored?.summary.title == "milk")
+    }
+
+    /// #4787 (VERIFY-5087 3): an opened note whose page never drew its title
+    /// (iPhone, where the page did not open) kept the caret in the holder,
+    /// and every key typed after went nowhere the user could see.
+    @Test("a title that has not appeared once the note is open ends the hold, and the keys wait for the note")
+    func noTitleOnceTheNoteIsOpenEndsTheHold() async throws {
+        var settled: CheckedContinuation<Void, Never>?
+        let seeds = NewNoteSeeds(settle: { await withCheckedContinuation { settled = $0 } })
+        textView().becomeFirstResponder()
+
+        let keys = NewNoteKeys(window: window, seeds: seeds)
+        try type("milk")
+        keys.made("new") { _, _ in Issue.record("the app did not leave") }
+        await until { settled != nil }
+        try type("s")
+        settled?.resume()
+        await until { firstResponder(in: window) == nil }
+
+        #expect(firstResponder(in: window) == nil)
+        #expect(seeds.take("new") == "milks")
+    }
+
+    @Test("a title that appeared keeps the hold until its field takes the caret")
+    func aShownTitleKeepsTheHold() async throws {
+        var settled: CheckedContinuation<Void, Never>?
+        let seeds = NewNoteSeeds(settle: { await withCheckedContinuation { settled = $0 } })
+        textView().becomeFirstResponder()
+
+        let keys = NewNoteKeys(window: window, seeds: seeds)
+        try type("milk")
+        keys.made("new") { _, _ in Issue.record("the app did not leave") }
+        _ = seeds.attach("new") { _ in Issue.record("the app did not leave") }
+        await until { settled != nil }
+        settled?.resume()
+        await Task.yield()
+        try type("s")
+
+        #expect(seeds.take("new") == nil, "the hold ended")
+        textView().becomeFirstResponder()
+        #expect(seeds.take("new") == "s")
     }
 
     // MARK: The new note's page
@@ -349,6 +436,66 @@ struct NewNoteKeysTests {
         withKnownIssue("#5119: a Return before the blocks are read", isIntermittent: true) {
             #expect(seen.1, "the caret stayed in the title")
             #expect(seen.2.body == [body], "\(seen.2)")
+        }
+    }
+
+    /// #4787 (VERIFY-5087 4): the palette over the window keeps its caret,
+    /// and its Escape, when a new note's title appears under it.
+    @Test(.timeLimit(.minutes(3)))
+    func aTitleUnderThePaletteLeavesItTheCaret() async throws {
+        let seen = try await uninterrupted(typingAtOnce: false) { window, _ in
+            let root = UIViewController()
+            window.rootViewController = root
+            window.makeKeyAndVisible()
+            let palette = UIViewController()
+            palette.modalPresentationStyle = .formSheet
+            let query = UITextField(frame: CGRect(x: 0, y: 0, width: 200, height: 40))
+            palette.view.addSubview(query)
+            root.present(palette, animated: false)
+            query.becomeFirstResponder()
+
+            let vault = try TasksTestVault()
+            let noteId = try await CoreNotesWriter(vault: vault.vault, store: TaskTestKeychain(), executor: .shared)
+                .create(title: "", folderPath: nil)
+            let page = UIHostingController(rootView: NoteReadView(
+                route: NoteRoute(id: noteId), reader: CoreNotesReader(vault: vault.vault, executor: .shared),
+                filler: NoBodies(),
+                editor: CoreBlockEditor(vault: vault.vault, store: TaskTestKeychain(), executor: .shared),
+                metadataWriter: CoreNoteMetadataWriter(vault: vault.vault, store: TaskTestKeychain(), executor: .shared)
+            ))
+            root.addChild(page)
+            page.view.frame = root.view.bounds
+            root.view.addSubview(page.view)
+            page.didMove(toParent: root)
+            await until { title(in: window) != nil }
+            try await Task.sleep(for: .milliseconds(500))
+            let seen = (title(in: window)?.isFirstResponder, query.isFirstResponder)
+            palette.dismiss(animated: false)
+            return seen
+        }
+
+        #expect(seen.0 == false, "the title took the caret from the palette")
+        #expect(seen.1 == true)
+    }
+
+}
+
+/// Background tasks, counted: `released` reads what had landed each time
+/// the last one ends, the moment iOS may suspend the app.
+@MainActor
+private final class Holds {
+    private(set) var open = 0
+    private(set) var landedAtRelease: [String?] = []
+    var released: () -> String? = { nil }
+
+    func begin() -> () -> Void {
+        open += 1
+        var ended = false
+        return { [self] in
+            guard !ended else { return }
+            ended = true
+            open -= 1
+            if open == 0 { landedAtRelease.append(released()) }
         }
     }
 }

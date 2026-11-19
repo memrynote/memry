@@ -140,6 +140,10 @@ struct NotesListView: View {
                                 openTag: { path.append(TagRoute(name: $0)) },
                                 noteTasks: model.noteTasks
                             )
+                            // A note opened over an open one replaces the path at
+                            // the same depth: without its own identity the old
+                            // page stayed, showing the old note (#4787).
+                            .id(route)
                             .onAppear { router.shown(route) }
                         }
                         // N600, registered on the root for the same reason the two
@@ -170,10 +174,6 @@ struct NotesListView: View {
                         .notesCreate(model, in: nil, place: "At the top of this vault.") {
                             path.append(NoteRoute(id: $0))
                         }
-                        // A search hit or a capture's "View" opens its note here.
-                        .onChange(of: notesLinks.pending, initial: true) {
-                            if let id = notesLinks.take() { path = NavigationPath([NoteRoute(id: id)]) }
-                        }
                         .task { await model.loadIfNeeded() }
                         // Not a one-off in `.task`: Notes is the first tab, and on a
                         // cold launch the vault's sync request is still nil until the
@@ -184,6 +184,12 @@ struct NotesListView: View {
                         .onChange(of: path) { _, path in LaunchSnapshot.shared.setPath(NotesSplitRouter.compactKey, path) }
                         .onAppear { Task { await model.refresh() } }
                         .writeFailureAlert(model)
+                }
+                // A search hit, a capture's "View" or ⌘N opens its note here.
+                // On the stack, not its root content: a pushed note page
+                // covers the root, whose observers then never run (#4787).
+                .onChange(of: notesLinks.pending, initial: true) {
+                    if let id = notesLinks.take() { path = NavigationPath([NoteRoute(id: id)]) }
                 }
             }
         }
@@ -197,7 +203,14 @@ struct NotesListView: View {
             guard let keys = notesLinks.takeNewNote() else { return }
             Task {
                 guard let id = await model.createNote(in: nil) else { return keys.failed() }
-                keys.made(id) { id, text in Task { await model.renameNote(id: id, to: text) } }
+                keys.made(id) { [writer = model.writer, model] id, title in
+                    do {
+                        try await writer?.rename(id: id, title: title)
+                    } catch {
+                        Log.storage.error("the keys typed after a new note could not be stored as its title")
+                    }
+                    await model.refresh()
+                }
                 notesLinks.open(id)
             }
         }

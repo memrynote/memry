@@ -202,6 +202,30 @@ struct NoteMetadataViewModelTests {
         #expect(model.status == .idle)
     }
 
+    /// #4787: a title saved as the app leaves. iOS may suspend the app once
+    /// no background task is held, so the write lands before the last ends.
+    @Test func a_saved_title_lands_before_the_app_may_be_suspended() async throws {
+        let writer = ScriptedMetadataWriter()
+        let model = NoteMetadataViewModel(noteId: "note-1", writer: writer)
+        var held = 0
+        var landedAtRelease: [[ScriptedMetadataWriter.Call]] = []
+        model.hold = {
+            held += 1
+            return {
+                held -= 1
+                landedAtRelease.append(writer.all)
+            }
+        }
+
+        model.save(title: "New", current: "Old")
+        #expect(held == 1, "nothing keeps the app running while the title is written")
+        for _ in 0..<300 where held > 0 {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+
+        #expect(landedAtRelease == [[.rename("New")]])
+    }
+
     /// A metadata write sits in the outbox until a pass pushes it. A title
     /// edit that asked for none waited for the next foreground (#2910).
     @Test func every_landed_write_asks_for_a_sync_pass() async {
