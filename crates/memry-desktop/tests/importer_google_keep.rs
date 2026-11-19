@@ -14,7 +14,8 @@ use memry_desktop::import::google_keep::{
 };
 use memry_desktop::import::zip::{MAX_ZIP_NESTING, Zips};
 use memry_desktop::import::{
-    ImportContext, ImportInput, ImportSink, ImportSummary, ImportedNote, Importer, SinkError,
+    ImportContext, ImportInput, ImportSink, ImportSummary, ImportedJournalEntry, ImportedNote,
+    ImportedTask, Importer, JournalEntry, SinkError,
 };
 use memry_test_kit::{assert_steps_at_most, on_small_stack, output_bound, proptest_config};
 use proptest::prelude::*;
@@ -85,6 +86,42 @@ impl ImportSink for Sink {
             .push(format!("note {}", note.id.clone().unwrap_or_default()));
         self.notes.lock().unwrap().push(note);
         Ok(())
+    }
+
+    fn create_note_as_written(&self, _: ImportedNote) -> Result<(), SinkError> {
+        unreachable!("Google Keep notes go through create_note")
+    }
+
+    fn inbox_project_id(&self) -> Option<String> {
+        unreachable!("Google Keep creates no tasks")
+    }
+
+    fn nested_subtasks(&self) -> bool {
+        unreachable!("Google Keep creates no tasks")
+    }
+
+    fn create_task(&self, _: ImportedTask) -> Result<String, SinkError> {
+        unreachable!("Google Keep creates no tasks")
+    }
+
+    fn complete_task(&self, _: &str, _: Option<&str>) -> Result<(), SinkError> {
+        unreachable!("Google Keep creates no tasks")
+    }
+
+    fn archive_task(&self, _: &str) -> Result<(), SinkError> {
+        unreachable!("Google Keep creates no tasks")
+    }
+
+    fn journal_entry_id(&self, _: &str) -> String {
+        unreachable!("Google Keep writes no journal entries")
+    }
+
+    fn read_journal_entry(&self, _: &str) -> Result<Option<JournalEntry>, SinkError> {
+        unreachable!("Google Keep writes no journal entries")
+    }
+
+    fn create_journal_entry(&self, _: ImportedJournalEntry) -> Result<(), SinkError> {
+        unreachable!("Google Keep writes no journal entries")
     }
 }
 

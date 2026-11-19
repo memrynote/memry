@@ -17,6 +17,7 @@ pub mod csv;
 pub mod google_keep;
 pub mod markdown;
 pub mod messages;
+pub mod noteplan;
 pub mod registry;
 pub mod roam;
 pub mod runner;
@@ -35,7 +36,9 @@ pub use context::{
 };
 pub use messages::{ImportMessage, ImportText};
 pub use registry::Registry;
-pub use sink::{ImportSink, ImportedNote, SinkError};
+pub use sink::{
+    ImportSink, ImportedJournalEntry, ImportedNote, ImportedTask, JournalEntry, SinkError,
+};
 
 /// The largest source file an importer reads into memory. Electron read any size; a larger file
 /// fails its item before it is read.
