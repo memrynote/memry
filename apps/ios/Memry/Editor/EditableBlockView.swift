@@ -160,6 +160,8 @@ final class BlockTextView: UITextView {
     /// The editor's hardware keys (#4354): which apply now, and the handler.
     var editorKeys: (() -> [EditorKeyCommand])?
     var editorKeyPressed: ((EditorKeyCommand) -> Void)?
+    /// A hardware key went down, with the text it types.
+    var keyWentDown: ((String) -> Void)?
 
     init() {
         let storage = NSTextStorage()
@@ -195,6 +197,13 @@ final class BlockTextView: UITextView {
         guard markedTextRange == nil else { return super.keyCommands }
         let editor = (editorKeys?() ?? []).map { $0.keyCommand(action: #selector(editorKey(_:))) }
         return editor + (super.keyCommands ?? [])
+    }
+
+    override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        for press in presses {
+            if let key = press.key { keyWentDown?(key.characters) }
+        }
+        super.pressesBegan(presses, with: event)
     }
 
     @objc func editorKey(_ sender: UIKeyCommand) {
@@ -348,6 +357,10 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
         }
         textView.editorKeyPressed = { [weak self] command in
             self?.session?.perform(command)
+        }
+        textView.keyWentDown = { [weak self] characters in
+            guard let self else { return }
+            self.session?.keyWentDown(characters, in: self)
         }
         let undo = textView.editorUndo
         undo.typing = { [weak textView] in textView?.typingUndo }
@@ -725,6 +738,7 @@ final class BlockField: NSObject, UITextViewDelegate, UIGestureRecognizerDelegat
     }
 
     func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
+        if let session, session.dropsLateKeys(text, in: self) { return false }
         // Held for the block a Return is making, as typed (#4692).
         if let session, session.holdsKeys(self), let holds = session.holdsEdit(range, text, in: self) { return holds }
         if let session, session.carriesEdit(range, text, in: self) { return false }

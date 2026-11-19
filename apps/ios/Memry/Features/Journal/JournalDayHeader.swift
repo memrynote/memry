@@ -276,12 +276,12 @@ final class JournalFirstLineDraft {
     /// after a Return of their own, which makes the next block as it does
     /// there, at any typing speed. `moved` false: the block refused the
     /// caret, and the keys stay in the field (`TitleBurst.Take`).
-    func takeHeld(_ moved: Bool) -> String? {
-        guard let burst = returned else { return nil }
+    func takeHeld(_ moved: Bool) -> TitleBurst.Taken {
+        guard let burst = returned else { return (nil, nil) }
         returned = nil
         let held = burst.held(in: text) ?? ""
         text = moved ? "" : held
-        return moved ? "\n" + held : nil
+        return (moved ? "\n" + held : nil, nil)
     }
 
     /// `keepingCaret`: the last line's block takes the caret while the field
