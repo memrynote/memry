@@ -361,6 +361,8 @@ mod markdown_doc_vectors;
 mod markdown_fail_closed;
 #[path = "markdown_frontmatter_edit.rs"]
 mod markdown_frontmatter_edit;
+#[path = "markdown_frontmatter_language.rs"]
+mod markdown_frontmatter_language;
 #[path = "markdown_frontmatter_vectors.rs"]
 mod markdown_frontmatter_vectors;
 #[path = "markdown_layer_blocks_vectors.rs"]
@@ -492,6 +494,9 @@ mod sync_note_body_feed;
 mod sync_outbox;
 #[path = "sync_pack_bootstrap.rs"]
 mod sync_pack_bootstrap;
+#[cfg(feature = "markdown")]
+#[path = "sync_project_nested_arrays.rs"]
+mod sync_project_nested_arrays;
 #[path = "sync_realtime.rs"]
 mod sync_realtime;
 #[path = "sync_realtime_run.rs"]
