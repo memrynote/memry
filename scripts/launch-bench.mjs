@@ -2,6 +2,8 @@
 // Launch bench for the Tauri app. Each run starts the app on a bench profile, reads the shell's
 // `launch timeline {` block and the renderer's `renderer launch marks {json}` line from
 // `main.log`, then quits it. No debugger attaches: every number is one the app logs itself.
+// With `MEMRY_E2E=1` (an `e2e` build) it also writes the e2e control file for `--profile` and opens
+// one note first (`launch-bench-e2e.mjs`), because that build ignores `MEMRY_APP_DATA_DIR`.
 
 import { spawn, spawnSync } from 'node:child_process'
 import {
@@ -19,6 +21,13 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { CONFIG_FILE, seedVaultRegistry } from '../apps/desktop-tauri/e2e/harness/seed-registry.mjs'
+import {
+  assertControlNamesProfile,
+  openOneNote,
+  removeE2eControl,
+  webdriverPort,
+  writeE2eControl
+} from './launch-bench-e2e.mjs'
 
 const IDENTIFIER = 'com.memrynote.memry'
 // A device of its own keeps every launch off the user's keychain accounts, log, data dir and
@@ -422,8 +431,14 @@ function parseArgs(argv) {
 
 let lockHeld = false
 let running = null
+// The control file this run wrote for an e2e build; removed with the lock, on every exit path.
+let e2eControlFile = null
 
-function releaseLock() {
+function releaseRun() {
+  if (e2eControlFile) {
+    removeE2eControl(e2eControlFile.file, e2eControlFile.control.appDataDir)
+    e2eControlFile = null
+  }
   if (!lockHeld) {
     return
   }
@@ -467,7 +482,7 @@ function acquireLock() {
       if (running) {
         forceKill(running)
       }
-      releaseLock()
+      releaseRun()
       process.exit(signal === 'SIGINT' ? 130 : 143)
     })
   }
@@ -581,6 +596,25 @@ function prepareProfile(profile, vault) {
   }
 }
 
+/** Opens one note in an e2e build on the bench profile and quits it by SIGTERM, as a run does. */
+async function primeProfile(executable, env) {
+  const app = launch(executable, env)
+  running = app
+  try {
+    const noteId = await openOneNote(
+      webdriverPort(env),
+      () => app.child.exitCode === null && app.child.signalCode === null
+    )
+    console.error(`primed the profile: opened note ${noteId}`)
+  } finally {
+    const warning = await quit(app)
+    running = null
+    if (warning) {
+      console.error(`priming: ${warning}`)
+    }
+  }
+}
+
 export function collectWarnings(record) {
   const warnings = []
   if (record.tier !== 'packaged') {
@@ -606,8 +640,6 @@ export function collectWarnings(record) {
 }
 
 async function measureRun({ run, executable, log, env, appMtimeMs, firstRunAfterAppChange }) {
-  await delay(SETTLE_MS)
-
   const anchorOffset = logSizeOrZero(log)
   const t0 = Date.now()
   const app = launch(executable, env)
@@ -663,9 +695,17 @@ async function measureRun({ run, executable, log, env, appMtimeMs, firstRunAfter
 async function runBench(options) {
   const executable = resolveExecutable(options.appPath, options)
   checkProfile(options.profile, process.env, process.platform, homedir())
-  const env = benchEnv(process.env, options.profile)
-  const log = logPath(env, process.platform, homedir())
+  const launchEnv = benchEnv(process.env, options.profile)
   prepareProfile(options.profile, options.vault)
+  // An e2e build takes profile, log dir and device from the control file, not from the env.
+  e2eControlFile = launchEnv.MEMRY_E2E === '1' ? writeE2eControl(launchEnv, options.profile) : null
+  const env = e2eControlFile
+    ? { ...launchEnv, MEMRY_TEST_LOG_DIR: e2eControlFile.control.logDir }
+    : launchEnv
+  const log = logPath(env, process.platform, homedir())
+  if (e2eControlFile) {
+    await primeProfile(executable, env)
+  }
 
   const appMtimeMs = statSync(executable).mtimeMs
   let firstRunAfterAppChange = readStoredAppMtimeMs() !== appMtimeMs
@@ -675,6 +715,11 @@ async function runBench(options) {
   const failures = []
 
   for (let run = 1; run <= options.runs; run += 1) {
+    await delay(SETTLE_MS)
+    // Right before the launch: an e2e build reads the control file as it starts.
+    if (e2eControlFile) {
+      assertControlNamesProfile(e2eControlFile.file, options.profile)
+    }
     try {
       const record = await measureRun({
         run,
@@ -733,7 +778,7 @@ async function runCli() {
   try {
     await runBench(options)
   } finally {
-    releaseLock()
+    releaseRun()
   }
 }
 
