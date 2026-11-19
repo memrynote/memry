@@ -95,6 +95,15 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::fold::fold_get_last_run::<Wry>,
             crate::commands::fold::fold_retry::<Wry>,
             crate::commands::fold::fold_run::<Wry>,
+            // folder view
+            crate::commands::folder_view::folder_view_available_properties,
+            crate::commands::folder_view::folder_view_delete_view,
+            crate::commands::folder_view::folder_view_folder_exists,
+            crate::commands::folder_view::folder_view_get_config,
+            crate::commands::folder_view::folder_view_get_views,
+            crate::commands::folder_view::folder_view_list,
+            crate::commands::folder_view::folder_view_set_config,
+            crate::commands::folder_view::folder_view_set_view,
             // ios beta
             crate::commands::ios_beta::ios_beta_join,
             // journal
