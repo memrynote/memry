@@ -545,7 +545,7 @@ type Case = (&'static str, fn(&Connection));
 /// no replay for them yet, so it refuses rather than stage the vault without the push.
 #[test]
 fn rows_electron_would_re_push_at_start_are_refused() {
-    let cases: [Case; 5] = [
+    let cases: [Case; 7] = [
         ("inbox_items", |c| {
             inbox_item(c, "i", &[("synced_at", Value::Null)])
         }),
@@ -579,15 +579,52 @@ fn rows_electron_would_re_push_at_start_are_refused() {
             source(c, "s", "google", text(r#"{"d":1}"#), &[]);
             external(c, "x", "s", &[("clock", Value::Null)]);
         }),
+        ("calendar_sources", |c| source(c, "s", "google", Value::Null, &[])),
+        ("calendar_bindings", |c| {
+            seed(
+                c,
+                "calendar_bindings",
+                &[
+                    ("id", text("bd")),
+                    ("source_type", text("event")),
+                    ("source_id", text("e")),
+                    ("provider", text("google")),
+                    ("remote_calendar_id", text("primary")),
+                    ("remote_event_id", text("g")),
+                    ("ownership_mode", text("memry_managed")),
+                    ("writeback_mode", text("broad")),
+                ],
+            )
+        }),
     ];
     for (table, seed_case) in cases {
         let vault = Vault::new();
         seed_case(&vault.data_conn());
         assert_refused(
             &vault,
-            |e| matches!(e, ImportError::NotReady { detail, .. } if detail.contains(table)),
+            |e| matches!(e, ImportError::UnsyncedChanges { table: t } if *t == table),
         );
     }
+}
+
+/// Electron never signed in ticks `_offline` and leaves `synced_at` NULL; it sends nothing until
+/// signed in, so the user is told to sign in there, not to reopen it.
+#[test]
+fn unsynced_rows_of_a_never_signed_in_vault_ask_for_sign_in() {
+    let mut vault = Vault::new();
+    vault.device_id = None;
+    inbox_item(
+        &vault.data_conn(),
+        "i",
+        &[
+            ("clock", text(r#"{"_offline":1}"#)),
+            ("synced_at", Value::Null),
+        ],
+    );
+    assert_refused(&vault, |e| {
+        matches!(e, ImportError::NeverSynced { table: "inbox_items" })
+            && e.to_string().contains("Sign in to sync in the previous MemryNote app")
+    });
 }
 
 #[test]

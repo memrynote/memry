@@ -152,8 +152,9 @@ pub fn inbox_items(ctx: &mut TableCtx<'_>) -> Result<TableStats, ImportError> {
 /// Electron re-pushes some rows at every start: its dirty sweeps (`dirty-recovery.ts`) and the
 /// seed of unclocked rows (`seedUnclocked`). The import has no replay for this stage's types
 /// yet (it lands with stage 36c2's `replay.rs`), and an imported vault is converted once, so a
-/// vault holding such a row is refused instead of staged without its push. `condition` is
-/// Electron's predicate, as SQL over `table`.
+/// vault holding such a row is refused instead of staged without its push. Without a sync
+/// device the previous app never signed in, and only signing in there sends the rows.
+/// `condition` is Electron's predicate, as SQL over `table`.
 pub(super) fn refuse_unreplayed(
     ctx: &TableCtx<'_>,
     table: &'static str,
@@ -166,9 +167,9 @@ pub(super) fn refuse_unreplayed(
     if owed == 0 {
         return Ok(());
     }
-    Err(ImportError::NotReady {
-        area: super::pending_area("36d1").unwrap_or_default(),
-        detail: format!("data.db/{table}: changes Electron re-sends at start (36d1 replay)"),
+    Err(match ctx.electron_device_id {
+        Some(_) => ImportError::UnsyncedChanges { table },
+        None => ImportError::NeverSynced { table },
     })
 }
 
