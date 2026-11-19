@@ -34,8 +34,15 @@ async function supervisorIdle(page: Page): Promise<boolean> {
 
 // A pass already running answers `busy`; the polls below run Sync Now again until they see
 // what they wait for.
-async function syncNow(page: Page): Promise<void> {
-  await page.evaluate(() => window.__TAURI__.core.invoke('sync_trigger'))
+async function syncNow(page: Page): Promise<{ success: boolean; reason?: string; error?: string }> {
+  return page.evaluate(
+    () =>
+      window.__TAURI__.core.invoke('sync_trigger') as Promise<{
+        success: boolean
+        reason?: string
+        error?: string
+      }>
+  )
 }
 
 test.describe('CRDT store after vault adoption (#2424)', () => {
@@ -86,11 +93,14 @@ test.describe('CRDT store after vault adoption (#2424)', () => {
     // Closes B's vault and opens it again as a launch does; the reopen has read both keys when
     // it answers.
     await invokeTest(appB, 'e2e_restart_sync_runtime')
+    // Read before the new supervisor's first pass: a pass sets a missing key back to `done` (the
+    // server sends `noteBodies` on every page), so only this read sees a restart that dropped it.
+    expect(await metaValue(appB, 'sync.note_body_legacy_pull')).toBe('done')
     await expectStoreKept()
     // The new supervisor binds and runs its first pass after the hook answers; a rearm of the
     // legacy pull or a new binding lands by then.
     await expect.poll(() => supervisorIdle(pageB), { timeout: TIMEOUT }).toBe(true)
-    await syncNow(pageB)
+    expect(await syncNow(pageB)).toEqual({ success: true })
 
     expect(await metaValue(appB, 'sync.note_body_legacy_pull')).toBe('done')
     await expectStoreKept()
