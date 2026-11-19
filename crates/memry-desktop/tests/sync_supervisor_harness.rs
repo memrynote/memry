@@ -13,6 +13,7 @@
 //! | a fresh device's supervisor runs the first sync        | #4893: progress, every body, then passes |
 //! | a fresh device's seeded Inbox takes the user's Inbox   | #3538: the refs pass demotes the seed  |
 //! | a failed metadata pass does not push the seeded Inbox  | #3538: a demoted seed is not seeded    |
+//! | a failed metadata pass does not push a demoted tag mint | a demoted mint is not seeded          |
 
 #![cfg(feature = "harness")]
 
@@ -35,6 +36,7 @@ use memry_core::api::vault::Vault;
 use memry_core::crdt::body_edit::BlockEdit;
 use memry_core::crypto::keys::derive_vault_key;
 use memry_core::domain::projects::{self, ProjectEdit};
+use memry_core::domain::{tag_admin, tag_mint};
 use memry_core::protocol::auth::DevicePlatform;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_core::seams::transport::{
@@ -912,6 +914,79 @@ async fn a_failed_metadata_pass_does_not_push_the_seeded_inbox() {
     assert_eq!(b.project_names(), ["Triage"]);
     pass(&driver_a).await;
     assert_eq!(a.project_names(), ["Triage"], "nothing of B's reached A");
+}
+
+/// A tag mint is an unclocked seed too (`tag_mint::define_used`): B mints `work` while A's red
+/// `work` is on the server, B's metadata pass fails before it fetches A's, and the drain pass
+/// runs the seeds. The demoted mint stays unseeded, so A's colour survives on both devices.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_failed_metadata_pass_does_not_push_a_demoted_tag_mint() {
+    let server = Server::start();
+    let a = Device::new(&server, 0);
+    let device_a = server.devices[0]["deviceId"].as_str().unwrap().to_owned();
+    a.core
+        .db_handle()
+        .call_blocking(move |conn| tag_admin::set_color(conn, "work", "red", &device_a, 1_000))
+        .unwrap();
+    let driver_a = a.driver().await;
+    pass(&driver_a).await;
+    assert_eq!(a.outbox(), 0, "A pushed its red tag");
+
+    let (armed, failed) = (Arc::new(AtomicBool::new(true)), Arc::default());
+    let b = Device::over(&server, 1, |inner| {
+        Arc::new(FailingPulls {
+            inner,
+            armed: Arc::clone(&armed),
+            failed: Arc::clone(&failed),
+        })
+    });
+    let minted = b
+        .core
+        .db_handle()
+        .call_blocking(|conn| tag_mint::define_used(conn, &["work".to_owned()], 1_000))
+        .unwrap();
+    assert_eq!(minted, 1);
+
+    let gate = Arc::new(SyncStartGate::default());
+    gate.set_binding(VaultBinding::Bound);
+    let supervisor = b.supervisor(&gate);
+    until("B's first sync failed", || {
+        supervisor.status().error_category.is_some()
+    })
+    .await;
+    until("B idle", || {
+        supervisor.status().status != SyncStatusValue::Syncing
+    })
+    .await;
+    assert!(
+        failed.load(Ordering::SeqCst) > 0,
+        "the metadata pass hit the 5xx"
+    );
+    assert_eq!(
+        b.count(
+            "SELECT COUNT(*) FROM sync_items WHERE item_type = 'tag_definition'
+               AND clock IS NOT NULL AND signer_device_id IS NULL"
+        ),
+        0,
+        "no mint was clocked"
+    );
+
+    armed.store(false, Ordering::SeqCst);
+    let result = supervisor.sync_now().await;
+    assert!(result.success, "{result:?}");
+    supervisor.stop().await;
+
+    pass(&driver_a).await;
+    for device in [&a, &b] {
+        let color = device
+            .core
+            .db_handle()
+            .call_blocking(|conn| tag_admin::definitions(conn))
+            .unwrap()["work"]
+            .color
+            .clone();
+        assert_eq!(color, "red");
+    }
 }
 
 /// Polls `done` every 50 ms, at most 600 times.
