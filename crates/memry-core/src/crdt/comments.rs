@@ -85,7 +85,11 @@ pub fn extract_comments(document: &Document) -> Result<Vec<ReviewComment>, CrdtE
     })
 }
 
+/// One mark per id, the first valid copy winning (§12.5.1): two devices that
+/// edit one mark offline leave two copies, which Yjs orders the same on every
+/// replica.
 fn read_marks<T: ReadTxn>(array: &ArrayRef, txn: &T) -> Vec<ReviewComment> {
+    let mut seen = std::collections::HashSet::new();
     array
         .iter(txn)
         .filter_map(|value| {
@@ -107,6 +111,7 @@ fn read_marks<T: ReadTxn>(array: &ArrayRef, txn: &T) -> Vec<ReviewComment> {
                 _ => None,
             }
         })
+        .filter(|mark| seen.insert(mark.id.clone()))
         .collect()
 }
 
