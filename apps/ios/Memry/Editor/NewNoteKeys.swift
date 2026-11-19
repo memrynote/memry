@@ -37,7 +37,8 @@
 //  the stored title only for a note whose page is not on screen, as the
 //  page leaves or as the app goes to the background. A title that has not
 //  appeared once the note is open ends the hold, so the caret is not kept
-//  by a holder no one sees. A failed create discards the keys with a log
+//  by a holder no one sees, and its keys are stored as the title at once.
+//  A failed create discards the keys with a log
 //  line next to the failure's alert.
 //
 
@@ -90,9 +91,12 @@ final class NewNoteKeys {
         if holder != nil {
             // The note opens now: a title that has not appeared once the
             // page had time to draw never will (a page that could not open).
+            // The keys become its stored title at once, durable and listed.
             Task { [seeds] in
                 await seeds.settle()
-                if seeds.unshown(noteId) { self.end() }
+                guard seeds.unshown(noteId) else { return }
+                self.end()
+                seeds.keep(noteId)
             }
         }
         releaseHold()
@@ -236,15 +240,26 @@ final class NewNoteSeeds {
                 log.debug("new note seed absorbed by its title", .count(seed.keys.count))
                 absorb(seed.keys)
             } else {
-                log.debug("new note seed kept as its title", .count(seed.keys.count))
-                let end = hold()
-                let (keep, title) = (seed.keep, Self.title(seed.keys))
-                let write = Task.detached { await keep(noteId, title) }
-                Task {
-                    await write.value
-                    end()
-                }
+                store(seed, as: noteId)
             }
+        }
+    }
+
+    /// Writes `noteId`'s seed as its stored title: no title editor will take it.
+    fileprivate func keep(_ noteId: String) {
+        guard let seed = seeds.removeValue(forKey: noteId) else { return }
+        store(seed, as: noteId)
+    }
+
+    /// The write holds its own background task until it lands.
+    private func store(_ seed: (keys: String, keep: Keep), as noteId: String) {
+        log.debug("new note seed kept as its title", .count(seed.keys.count))
+        let end = hold()
+        let (keep, title) = (seed.keep, Self.title(seed.keys))
+        let write = Task.detached { await keep(noteId, title) }
+        Task {
+            await write.value
+            end()
         }
     }
 

@@ -242,22 +242,46 @@ struct NewNoteKeysTests {
     /// #4787 (VERIFY-5087 3): an opened note whose page never drew its title
     /// (iPhone, where the page did not open) kept the caret in the holder,
     /// and every key typed after went nowhere the user could see.
-    @Test("a title that has not appeared once the note is open ends the hold, and the keys wait for the note")
+    @Test("a title that has not appeared once the note is open ends the hold and stores the keys as its title")
     func noTitleOnceTheNoteIsOpenEndsTheHold() async throws {
         var settled: CheckedContinuation<Void, Never>?
-        let seeds = NewNoteSeeds(settle: { await withCheckedContinuation { settled = $0 } })
+        let holds = Holds()
+        let seeds = NewNoteSeeds(hold: { holds.begin() }, settle: { await withCheckedContinuation { settled = $0 } })
         textView().becomeFirstResponder()
+        let kept = Mutex<[String: String]>([:])
 
         let keys = NewNoteKeys(window: window, seeds: seeds)
         try type("milk")
-        keys.made("new") { _, _ in Issue.record("the app did not leave") }
+        keys.made("new") { id, title in kept.withLock { $0[id] = title } }
         await until { settled != nil }
         try type("s")
         settled?.resume()
-        await until { firstResponder(in: window) == nil }
+        await until { holds.open == 0 && !kept.withLock { $0.isEmpty } }
 
         #expect(firstResponder(in: window) == nil)
-        #expect(seeds.take("new") == "milks")
+        #expect(kept.withLock { $0 } == ["new": "milks"])
+        #expect(seeds.take("new") == nil)
+        #expect(holds.open == 0)
+    }
+
+    /// #4787 (VERIFY-5087 2): a held key reached the title twice. Each
+    /// hand-off empties its giver, so a key moves once, whichever path it takes.
+    @Test("every key held after ⌘N reaches the title exactly once")
+    func eachKeyReachesTheTitleOnce() throws {
+        let seeds = NewNoteSeeds()
+        textView().becomeFirstResponder()
+        var absorbed: [String] = []
+
+        let keys = NewNoteKeys(window: window, seeds: seeds)
+        try type("kz")
+        keys.made("new") { _, _ in Issue.record("the title is on screen") }
+        #expect(seeds.attach("new") { absorbed.append($0) } == "kz")
+        try type("h2")
+        seeds.flush()
+        seeds.flush()
+
+        #expect(absorbed == ["h2"])
+        #expect(seeds.take("new") == nil)
     }
 
     @Test("a title that appeared keeps the hold until its field takes the caret")
