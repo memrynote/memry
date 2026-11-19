@@ -60,7 +60,7 @@ fn tick(conn: &Connection, now_ms: i64) -> Vec<String> {
     fire::due(conn, now_ms)
         .expect("due")
         .iter()
-        .filter_map(|due| fire::fire(conn, due, DEVICE, now_ms).expect("fire"))
+        .filter_map(|due| fire::fire(conn, due, now_ms).expect("fire"))
         .map(|fired| fired.reminder_id)
         .collect()
 }
@@ -261,18 +261,17 @@ fn a_write_to_a_missing_or_deleted_reminder_is_not_found() {
 }
 
 #[test]
-fn a_snooze_or_reminder_time_that_is_not_in_the_future_is_refused() {
+fn a_reminder_time_that_is_not_in_the_future_is_refused() {
     let db = open("past");
     db.call_blocking(|conn| {
         let now = ms(NOW);
         create(conn, &journal("rem_a", "2026-03-20T09:00:00.000Z"), now);
-        for until in [NOW, "2026-03-20T07:59:59Z"] {
-            let refused = reminders::snooze(conn, "rem_a", until, DEVICE, now);
-            assert!(
-                matches!(refused, Err(StorageError::Invalid { .. })),
-                "{until}"
-            );
-        }
+        let edit = ReminderUpdate {
+            remind_at: Some("2026-03-20T07:59:59Z"),
+            ..ReminderUpdate::default()
+        };
+        let refused = reminders::update(conn, "rem_a", &edit, DEVICE, now);
+        assert!(matches!(refused, Err(StorageError::Invalid { .. })));
         let past = reminders::create_reminder(conn, &journal("rem_b", NOW), DEVICE, now);
         assert!(matches!(past, Err(StorageError::Invalid { .. })));
         assert_eq!(get(conn, "rem_a").shown_status(), "pending");

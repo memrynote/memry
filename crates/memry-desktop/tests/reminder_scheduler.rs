@@ -15,8 +15,6 @@ use memry_desktop::tasks::reminders::{
 use serde_json::json;
 use tokio::sync::mpsc;
 
-const DEVICE: &str = "device-a";
-
 fn ms(iso: &str) -> i64 {
     instants::to_epoch_ms(iso).expect("an ISO instant")
 }
@@ -102,8 +100,15 @@ async fn the_scheduler_fires_missed_reminders_at_open_then_each_minute_and_never
     );
 
     // Open: the reminder missed while the app was closed fires at once, the badge counts one.
-    scheduler.start(db.clone(), DEVICE.to_owned());
+    // The paused clock auto-advances while the test waits, so "at once" is the clock not moving.
+    let opened = tokio::time::Instant::now();
+    scheduler.start(db.clone());
     let first = rx.recv().await.expect("the open tick");
+    assert_eq!(
+        tokio::time::Instant::now(),
+        opened,
+        "the open tick runs at open, not a period later"
+    );
     assert_eq!(fired_ids(&first), ["rem_missed"]);
     assert_eq!(first.pending, 1);
 
@@ -123,7 +128,7 @@ async fn the_scheduler_fires_missed_reminders_at_open_then_each_minute_and_never
     );
 
     // Restart: the open tick fires nothing again and sets the badge to zero.
-    scheduler.start(db.clone(), DEVICE.to_owned());
+    scheduler.start(db.clone());
     let reopened = rx.recv().await.expect("the open tick after a restart");
     assert!(reopened.fired.is_empty());
     assert_eq!(reopened.pending, 0);
@@ -134,7 +139,7 @@ async fn the_scheduler_fires_missed_reminders_at_open_then_each_minute_and_never
 #[test]
 fn an_idle_tick_reports_zero_and_files_nothing() {
     let db = open("idle");
-    let report = reminders::tick(&db, DEVICE, ms("2026-03-20T09:00:00Z")).expect("tick");
+    let report = reminders::tick(&db, ms("2026-03-20T09:00:00Z")).expect("tick");
     assert_eq!(
         report,
         TickReport {
@@ -144,7 +149,7 @@ fn an_idle_tick_reports_zero_and_files_nothing() {
     );
     // A future reminder is pending but not due.
     seed(&db, "rem_future", "2026-03-21T09:00:00.000Z");
-    let report = reminders::tick(&db, DEVICE, ms("2026-03-20T09:00:00Z")).expect("tick");
+    let report = reminders::tick(&db, ms("2026-03-20T09:00:00Z")).expect("tick");
     assert!(report.fired.is_empty());
     assert_eq!(report.pending, 1);
     assert_eq!(inbox_count(&db), 0);
@@ -224,7 +229,7 @@ fn two_ticks_at_the_same_instant_fire_once() {
         .map(|_| {
             let (db, results) = (db.clone(), results.clone());
             std::thread::spawn(move || {
-                let report = reminders::tick(&db, DEVICE, at).expect("tick");
+                let report = reminders::tick(&db, at).expect("tick");
                 results.lock().expect("lock").push(report.fired.len());
             })
         })

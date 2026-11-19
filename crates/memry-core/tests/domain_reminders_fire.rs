@@ -4,12 +4,22 @@
 //! and `countPendingReminders` in `apps/desktop/src/main/lib/reminders.ts`,
 //! and the no-refire rule of `reminder-handler.ts` (`a4e8920c55`).
 
+use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
+
 use memry_core::domain::reminders::{self, fire};
+use memry_core::protocol::http::{ClientIdentity, HttpClient};
+use memry_core::protocol::types::Declaration;
 use memry_core::storage::repositories::instants;
 use memry_core::storage::repositories::sync_items::{self, InboundRecord};
 use memry_core::storage::{Db, open_data};
+use memry_core::sync::hardening::manifest::ManifestCheck;
+use memry_core::sync::pull::{PullLoop, RecordCipher};
 use rusqlite::Connection;
+use rusqlite::trace::{TraceEvent, TraceEventCodes};
 use serde_json::{Value, json};
+
+use crate::http_fakes::{FakeTransport, response};
 
 const DEVICE: &str = "device-a";
 
@@ -75,7 +85,7 @@ fn tick(conn: &Connection, now_ms: i64) -> Vec<fire::Fired> {
     fire::due(conn, now_ms)
         .expect("due")
         .iter()
-        .filter_map(|due| fire::fire(conn, due, DEVICE, now_ms).expect("fire"))
+        .filter_map(|due| fire::fire(conn, due, now_ms).expect("fire"))
         .collect()
 }
 
@@ -304,7 +314,7 @@ fn a_peers_pending_copy_never_refires_but_a_new_time_does() {
             );
             assert!(tick(conn, at + 60_000).is_empty(), "no second inbox item");
             let due = reminders::due_window(conn, Some(at))?;
-            assert_eq!(fire::fire(conn, &due[0], DEVICE, at + 60_000)?, None);
+            assert_eq!(fire::fire(conn, &due[0], at + 60_000)?, None);
 
             // A reschedule on the peer is new user intent: it fires again.
             apply(
@@ -331,4 +341,166 @@ fn a_peers_pending_copy_never_refires_but_a_new_time_does() {
             Ok(())
         })
         .expect("peer copy");
+}
+
+/// Every envelope a pull would open; the manifest check below pulls nothing.
+struct NoPull;
+
+impl RecordCipher for NoPull {
+    fn open(
+        &self,
+        _envelope: &memry_core::protocol::envelope::RecordEnvelope,
+    ) -> Result<Vec<u8>, memry_core::protocol::envelope::EnvelopeError> {
+        unreachable!("the manifest lists nothing to pull")
+    }
+}
+
+/// Electron's reminder inbox row has no clock, and its manifest check
+/// re-uploads only clocked rows: a fired reminder's inbox item stays on the
+/// device that fired it, or every device would file every other device's.
+#[tokio::test]
+async fn a_fired_reminders_inbox_item_is_never_reuploaded_by_the_manifest_check() {
+    let db = open_at(&scratch("manifest"));
+    let at = ms("2026-03-20T09:00:00Z");
+    let fired = db
+        .call_blocking(move |conn| {
+            seed(conn, "rem_m", "2026-03-20T09:00:00.000Z", json!({}));
+            Ok(tick(conn, at))
+        })
+        .expect("fire");
+    assert_eq!(fired.len(), 1);
+    let inbox_id = fired[0].inbox_id.clone();
+    let clock: Option<String> = db
+        .call_blocking(move |conn| {
+            Ok(conn
+                .query_row(
+                    "SELECT clock FROM sync_items WHERE item_type = 'inbox' AND item_id = ?1",
+                    [&inbox_id],
+                    |row| row.get(0),
+                )
+                .expect("the inbox row"))
+        })
+        .expect("read the clock");
+    assert_eq!(clock, None, "the inbox item is clockless");
+
+    let http = HttpClient::new(
+        FakeTransport::new(vec![response(
+            200,
+            // The reminder came from the server; the inbox item never went there.
+            &json!({"items": [{"type": "reminder", "id": "rem_m"}], "nextCursor": null})
+                .to_string(),
+        )]),
+        "https://sync.example",
+        ClientIdentity::new("desktop", "1.0.0").expect("a valid identity"),
+    );
+    let declared = Declaration::declare(&["inbox", "reminder"]).expect("recognised");
+    let pull =
+        PullLoop::new(Arc::new(http), db.clone(), declared, Arc::new(NoPull)).with_hardening();
+    let outcome = ManifestCheck::default()
+        .run(&pull, at + 60_000)
+        .await
+        .expect("the check")
+        .expect("not throttled");
+
+    assert!(outcome.reuploaded.is_empty(), "{:?}", outcome.reuploaded);
+    let queued = db
+        .call_blocking(|conn| Ok(count(conn, "SELECT count(*) FROM outbox")))
+        .expect("the outbox");
+    assert_eq!(queued, 0);
+}
+
+/// Review probe (REVIEW-5144 #2): fired at T, snoozed to S and fired again,
+/// then an Electron peer that held `triggered` edits the title, and its
+/// outbound copy turns `triggered` into `pending` with T and S. T was shown:
+/// no third fire.
+#[test]
+fn a_peer_pending_copy_after_a_fired_snooze_never_refires_the_first_instant() {
+    let db = open_at(&scratch("snooze-peer"));
+    db.call_blocking(|conn| {
+        seed(conn, "rem_ps", "2026-03-20T09:00:00.000Z", json!({}));
+        let at = ms("2026-03-20T09:00:00Z");
+        assert_eq!(tick(conn, at).len(), 1);
+        reminders::snooze(
+            conn,
+            "rem_ps",
+            "2026-03-20T09:15:00.000Z",
+            DEVICE,
+            at + 1_000,
+        )?
+        .acknowledge();
+        let until = ms("2026-03-20T09:15:00Z");
+        assert_eq!(tick(conn, until).len(), 1);
+
+        apply(
+            conn,
+            "rem_ps",
+            json!({
+                "targetType": "journal",
+                "targetId": "2026-03-29",
+                "remindAt": "2026-03-20T09:00:00.000Z",
+                "snoozedUntil": "2026-03-20T09:15:00.000Z",
+                "title": "renamed on the peer",
+                "status": "pending",
+                "clock": {"device-a": 9, "device-b": 9},
+            }),
+            until + 1_000,
+        );
+        assert_eq!(
+            reminders::get(conn, "rem_ps")?.map(|r| r.status),
+            Some("pending".to_owned()),
+            "the peer copy applied"
+        );
+        assert!(tick(conn, until + 60_000).is_empty(), "no refire");
+        assert_eq!(fire::pending_count(conn)?, 0);
+        assert_eq!(
+            count(
+                conn,
+                "SELECT count(*) FROM sync_items WHERE item_type = 'inbox'"
+            ),
+            2
+        );
+        Ok(())
+    })
+    .expect("snooze then peer copy");
+}
+
+static TARGET_LOOKUPS: AtomicUsize = AtomicUsize::new(0);
+
+fn count_target_lookups(event: TraceEvent<'_>) {
+    if let TraceEvent::Stmt(_, sql) = event
+        && sql.contains("FROM notes WHERE id = ?1")
+    {
+        TARGET_LOOKUPS.fetch_add(1, Ordering::SeqCst);
+    }
+}
+
+/// A tick's cost does not grow with reminders already fired: they are dropped
+/// before their target is looked up.
+#[test]
+fn a_tick_looks_up_no_target_of_an_already_fired_reminder() {
+    let db = open_at(&scratch("fired-many"));
+    db.call_blocking(|conn| {
+        for n in 0..50 {
+            seed(
+                conn,
+                &format!("rem_{n:02}"),
+                "2026-03-20T09:00:00.000Z",
+                json!({"targetType": "note", "targetId": format!("note_{n}")}),
+            );
+        }
+        seed(conn, "rem_future", "2026-03-21T09:00:00.000Z", json!({}));
+        let at = ms("2026-03-20T09:00:00Z");
+        assert_eq!(tick(conn, at).len(), 50);
+
+        conn.trace_v2(
+            TraceEventCodes::SQLITE_TRACE_STMT,
+            Some(count_target_lookups),
+        );
+        let fired = tick(conn, at + 60_000);
+        conn.trace_v2(TraceEventCodes::empty(), None);
+        assert!(fired.is_empty());
+        assert_eq!(TARGET_LOOKUPS.load(Ordering::SeqCst), 0);
+        Ok(())
+    })
+    .expect("many fired");
 }

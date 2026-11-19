@@ -317,9 +317,9 @@ pub fn dismiss(
     )
 }
 
-/// Snoozes a reminder until `until`, an ISO instant strictly after `now_ms`
-/// (desktop refuses an earlier one: "Snooze time must be in the future").
-/// `snoozedUntil` is written in `toISOString` form, as `remindAt` is.
+/// Snoozes a reminder until `until`, an ISO instant, written in `toISOString`
+/// form as `remindAt` is. Desktop's command refuses a time that is not in the
+/// future before it gets here; the iOS API has never refused one.
 pub fn snooze(
     conn: &Connection,
     id: &str,
@@ -327,7 +327,7 @@ pub fn snooze(
     device_id: &str,
     now_ms: i64,
 ) -> Result<Durable<String>, StorageError> {
-    let until = future_instant(until, now_ms)?;
+    let until = normalized(until)?;
     edit(
         conn,
         id,
@@ -375,15 +375,20 @@ fn require_live(tx: &Connection, id: &str) -> Result<(), StorageError> {
 /// form. Desktop refuses a reminder time that is not in the future
 /// (`system:error.reminderTimeMustBeFuture`).
 fn future_instant(text: &str, now_ms: i64) -> Result<String, StorageError> {
-    let Some(at_ms) = instants::to_epoch_ms(text) else {
-        return Err(invalid(format!("`{text}` is not an ISO instant")));
-    };
-    if at_ms <= now_ms {
+    let at = normalized(text)?;
+    if instants::to_epoch_ms(&at).unwrap_or(i64::MIN) <= now_ms {
         return Err(invalid(format!(
             "reminder time must be in the future: `{text}`"
         )));
     }
-    iso(at_ms)
+    Ok(at)
+}
+
+/// `text` as an instant in `toISOString` form.
+fn normalized(text: &str) -> Result<String, StorageError> {
+    instants::to_epoch_ms(text)
+        .map(iso)
+        .ok_or_else(|| invalid(format!("`{text}` is not an ISO instant")))?
 }
 
 /// `Some("")` and `None` both write `null`, as desktop's `value || null`.

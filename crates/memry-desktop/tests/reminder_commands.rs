@@ -48,7 +48,7 @@ fn journal_at(service: &ReminderService, remind_at: &str) -> ReminderView {
 }
 
 fn fire_at(db: &Db, at: &str) -> Vec<String> {
-    reminders::tick(db, DEVICE, ms(at))
+    reminders::tick(db, ms(at))
         .expect("tick")
         .fired
         .into_iter()
@@ -336,7 +336,7 @@ fn a_dismiss_racing_a_tick_fires_at_most_once_and_stays_dismissed() {
         let at = ms("2026-03-20T09:00:01Z") + round;
         let ticker = {
             let db = db.clone();
-            std::thread::spawn(move || reminders::tick(&db, DEVICE, at).expect("tick"))
+            std::thread::spawn(move || reminders::tick(&db, at).expect("tick"))
         };
         let dismisser = {
             let (service, id) = (service.clone(), id.clone());
