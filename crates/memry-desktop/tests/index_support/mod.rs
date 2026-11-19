@@ -174,17 +174,21 @@ pub fn with_reporting_task(
         open,
         facts,
         crate::device_key::with_device_key(),
-        report,
+        &|build| {
+            if let OpenBuild::Step(step) = build {
+                report(step);
+            }
+        },
         test,
     );
 }
 
-/// [`with_reporting_task`] whose task reads records under `store`.
+/// [`with_task`] whose task reads records under `store` and tells `report` the open's build.
 pub fn with_task_under(
     open: &OpenVault,
     facts: Receiver<Applied>,
     store: Arc<dyn SecureStore>,
-    report: &(dyn Fn(IndexProgress) + Sync),
+    report: &(dyn Fn(OpenBuild) + Sync),
     test: impl FnOnce(&TaskHandle),
 ) {
     let indexer = Indexer::new(open, store);
@@ -198,11 +202,7 @@ pub fn with_task_under(
                     inbox,
                     &cancel,
                     TaskEvents {
-                        report: &|build| {
-                            if let OpenBuild::Step(step) = build {
-                                report(step);
-                            }
-                        },
+                        report,
                         announce: &|_| {},
                         landed: &|_| {},
                         defined: &|| {},

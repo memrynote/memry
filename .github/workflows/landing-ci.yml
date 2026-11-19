@@ -20,7 +20,13 @@ on:
       - 'pnpm-workspace.yaml'
       - 'turbo.json'
       - '.github/workflows/landing-ci.yml'
+  # Pushes test only the branches that ship or integrate landing: main deploys it
+  # (deploy-landing.yml), feat/tauri-v2 is where the merge queue lands. Feature
+  # branches are covered by pull_request; testing their pushes too doubled the runs.
   push:
+    branches:
+      - main
+      - feat/tauri-v2
     paths:
       - 'apps/landing/**'
       - 'package.json'

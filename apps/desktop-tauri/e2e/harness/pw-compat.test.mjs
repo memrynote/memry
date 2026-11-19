@@ -4,7 +4,13 @@ import { test } from 'node:test'
 import { JSDOM } from 'jsdom'
 
 import { memryPwInstall, INSTALL_SCRIPT } from './pw-compat/in-page.mjs'
-import { keyToCodepoint, parseKeyCombo, pressActions, typeActions } from './pw-compat/keys.ts'
+import {
+  heldFlags,
+  keyToCodepoint,
+  parseKeyCombo,
+  pressActions,
+  typeActions
+} from './pw-compat/keys.ts'
 import { describeSpec, rootSpec, specs } from './pw-compat/selector-spec.ts'
 
 // ---- keys -------------------------------------------------------------------------------------
@@ -26,6 +32,16 @@ test('ControlOrMeta follows the platform', () => {
   assert.equal(keyToCodepoint('ControlOrMeta', 'darwin'), '\uE03D')
   assert.equal(keyToCodepoint('ControlOrMeta', 'win32'), '\uE009')
   assert.equal(keyToCodepoint('ControlOrMeta', 'linux'), '\uE009')
+})
+
+test('a click holds the flags of its modifier keys, ControlOrMeta by platform', () => {
+  const none = { metaKey: false, ctrlKey: false, shiftKey: false, altKey: false }
+  assert.deepEqual(heldFlags(['ControlOrMeta'], 'darwin'), { ...none, metaKey: true })
+  assert.deepEqual(heldFlags(['ControlOrMeta', 'Shift'], 'linux'), {
+    ...none,
+    ctrlKey: true,
+    shiftKey: true
+  })
 })
 
 test('key combos split on plus, and a lone plus is the plus key', () => {
@@ -193,6 +209,20 @@ test('css supports :has-text and :text like Playwright, case-insensitively', () 
     q([{ kind: 'css', selector: 'a:has-text("Foo, bar")' }]).map((el) => el.id),
     ['l1']
   )
+})
+
+test('css supports :visible like Playwright', () => {
+  const { dom, q } = page(`
+    <section id="hidden" aria-label="Backlinks" style="display: none"><b>x</b></section>
+    <section id="shown" aria-label="Backlinks"><b>x</b></section><i id="visible-tag"></i>`)
+  // jsdom lays nothing out; give every element a box so display decides.
+  dom.window.Element.prototype.getBoundingClientRect = () => ({ x: 0, y: 0, width: 10, height: 10 })
+  const ids = (selector) => q([{ kind: 'css', selector }]).map((el) => el.id)
+  assert.deepEqual(ids('section[aria-label="Backlinks"]'), ['hidden', 'shown'])
+  assert.deepEqual(ids('section[aria-label="Backlinks"]:visible'), ['shown'])
+  // Only at the end of a selector, where it filters the matches; elsewhere it is no CSS.
+  assert.throws(() => ids('section:visible b'))
+  assert.deepEqual(ids('#visible-tag'), ['visible-tag'])
 })
 
 test('inspect reports counts and reads only a single match', () => {
@@ -379,3 +409,24 @@ for (const windowFocused of [true, false]) {
     assert.deepEqual(events, ['focusin', 'focusout'])
   })
 }
+
+// tauri-plugin-wdio-webdriver 1.5.0 sends its synthetic clicks without the held modifiers.
+test('a held modifier reaches the page on the driver click that lacked it, once', () => {
+  const { dom, pw } = page('<button id="b">Tag</button>')
+  const seen = []
+  const button = dom.window.document.getElementById('b')
+  button.addEventListener('click', (event) => seen.push([event.metaKey, event.ctrlKey]))
+  const click = () =>
+    button.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true, cancelable: true }))
+
+  pw.hold({ metaKey: true, ctrlKey: false, shiftKey: false, altKey: false })
+  click()
+  assert.deepEqual(seen, [[true, false]])
+
+  pw.hold(null)
+  click()
+  assert.deepEqual(seen, [
+    [true, false],
+    [false, false]
+  ])
+})

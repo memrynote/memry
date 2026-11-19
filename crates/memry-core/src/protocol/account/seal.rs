@@ -123,6 +123,12 @@ impl DeviceSigner {
     pub fn signing_public_key(&self) -> &[u8] {
         &self.secret_key[32..SIGNING_SECRET_KEY_BYTES]
     }
+
+    /// The secret key, for signing an attachment manifest
+    /// (`attachment_manifest::encrypt`). Crate-only, so it never crosses the FFI.
+    pub(crate) fn secret_key(&self) -> &[u8] {
+        &self.secret_key
+    }
 }
 
 /// Prints the id and nothing else. A signing key in a log is a compromised

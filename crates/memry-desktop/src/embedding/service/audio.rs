@@ -33,7 +33,7 @@ impl EmbeddingService {
             return None;
         }
         let open = Request::OpenAudio(path.into());
-        let (generation, opened) = match self.encoder_request(Encoder::Audio, open, None)? {
+        let (generation, opened) = match self.encoder_request(Encoder::Audio, open, None, None)? {
             (generation, Reply::AudioOpened(opened)) => (generation, opened),
             _ => return None,
         };
@@ -47,7 +47,7 @@ impl EmbeddingService {
                 recording: opened.recording,
                 window,
             };
-            match self.encoder_request(Encoder::Audio, request, Some(generation))? {
+            match self.encoder_request(Encoder::Audio, request, Some(generation), None)? {
                 (_, Reply::Embedded(vector)) => vectors.push(vector),
                 _ => return None,
             }

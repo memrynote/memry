@@ -2238,6 +2238,10 @@
         "prevVault": {
           "label": "Bóveda anterior",
           "description": "Ir a la bóveda anterior de la barra lateral"
+        },
+        "todayJournal": {
+          "label": "Diario de hoy",
+          "description": "Abrir el diario en la entrada de hoy"
         }
       },
       "tabs": {

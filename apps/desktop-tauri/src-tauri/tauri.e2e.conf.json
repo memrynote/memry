@@ -5,9 +5,10 @@
     "security": {
       "capabilities": [
         "main",
+        "sticky",
         {
           "identifier": "e2e",
-          "windows": ["main", "e2e-*"],
+          "windows": ["main", "e2e-*", "sticky"],
           "permissions": ["wdio:default", "wdio-webdriver:default"]
         },
         {
