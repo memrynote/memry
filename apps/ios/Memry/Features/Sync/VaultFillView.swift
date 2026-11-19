@@ -8,17 +8,9 @@ import SwiftUI
 // that took a day, or was killed by every screen lock and restarted on every
 // launch, left the user staring at a bar over notes that were already on the
 // phone. The core's own promise is that app open is never blocked on a first
-// sync (`first_sync.rs`), and this screen now keeps it: the run is a strip
-// above the contents, and a note whose body has not arrived yet fetches it
+// sync (`first_sync.rs`), and this screen now keeps it: the run is silent and
+// in the background, and a note whose body has not arrived yet fetches it
 // when opened (`NoteReadViewModel.refreshFromRemote`).
-//
-// **`DESIGN.md` names no progress surface.** "loading" appears only in the
-// component-state list and the review checklist. What is chosen here is the
-// smallest thing consistent with what it does say: words rather than a bare
-// spinner, no duration the user cannot use, no promise of a mechanism this
-// build does not have, and the platform's own `ProgressView` rather than a
-// hand-built bar, so Dynamic Type, RTL mirroring and the VoiceOver value come
-// from the system.
 //
 // **There is no Cancel, and that is not an omission** (spec-defect 108).
 // `rust_future_cancel` appears zero times in the bindings, so an in-flight core
@@ -73,8 +65,6 @@ struct VaultFillView<Content: View>: View {
         switch model.banner {
         case .none:
             EmptyView()
-        case let .progress(progress):
-            FirstSyncStrip(progress: progress)
         case let .failure(error):
             // The contents are underneath, and they are the point. A pull
             // that stopped after forty notes leaves forty real notes.
@@ -99,92 +89,6 @@ extension EnvironmentValues {
     @Entry var firstSyncLanded: Int = 0
     /// ``VaultFillViewModel/isPending``: the vault's sync passes wait for it.
     @Entry var firstSyncPending: Bool = false
-}
-
-/// The run, as a strip above the vault's contents.
-private struct FirstSyncStrip: View {
-    let progress: SyncProgress?
-
-    /// The bar takes the leading space; a trailing action, such as a way to
-    /// report a run that seems stuck, sits beside it on the same line.
-    var body: some View {
-        HStack(alignment: .center, spacing: Tokens.Space.medium) {
-            bar.frame(maxWidth: .infinity, alignment: .leading)
-            // A first sync that seems stuck is the report this exists for.
-            FeedbackSheetButton()
-        }
-        .padding(.horizontal, Tokens.Space.screenInline)
-        .padding(.vertical, Tokens.Space.small)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Tokens.Canvas.surface.color)
-        .overlay(alignment: .bottom) {
-            Tokens.Line.border.color.frame(height: Tokens.Size.hairline)
-        }
-    }
-
-    /// Words in every case, and a determinate bar only where there is a real
-    /// denominator. `SyncProgress.completed` is never above `total`, so the
-    /// fraction needs no guard against one above 1.
-    ///
-    /// **What VoiceOver says, and how often.** The bar is one accessibility
-    /// element: the label is the pass, the value is a whole percentage.
-    /// Nothing here posts an announcement — a run over thousands of notes
-    /// ticks dozens of times, and a strip that interrupted the user on each
-    /// one, while they read a note, would be unusable. A focused
-    /// `ProgressView` is read when the user asks, which is the platform
-    /// behaviour.
-    @ViewBuilder
-    private var bar: some View {
-        if let progress, progress.total > 0 {
-            let fraction = Double(progress.completed) / Double(progress.total)
-            VStack(alignment: .leading, spacing: Tokens.Space.tight) {
-                ProgressView(value: Double(progress.completed), total: Double(progress.total)) {
-                    Text(Self.sentence(for: progress.phase))
-                        .font(Tokens.Typography.supporting.font)
-                        .foregroundStyle(Tokens.Text.secondary.color)
-                }
-                // A tint fill, which is what `DESIGN.md` reserves the accent
-                // for. Nothing here rests on the colour: the count under it
-                // says the same thing in words.
-                .tint(Tokens.Tint.base.color)
-                // A count the user can act on — unlike a duration, which this
-                // strip still refuses to invent.
-                Text("\(progress.completed) of \(progress.total) notes")
-                    .font(Tokens.Typography.technicalCaption.font.monospacedDigit())
-                    .foregroundStyle(Tokens.Text.secondary.color)
-            }
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel(Self.sentence(for: progress.phase))
-            .accessibilityValue("\(Int(fraction * 100)) per cent")
-            // Reduce-motion branched at the modifier level: under the
-            // preference this resolves to no animation at all, so the bar
-            // keeps the final state and loses the movement.
-            .calmAnimation(.normal, .moving, value: progress.completed)
-        } else {
-            HStack(spacing: Tokens.Space.small) {
-                ProgressView()
-                    .progressViewStyle(.circular)
-                    .tint(Tokens.Text.secondary.color)
-                Text("Starting")
-                    .font(Tokens.Typography.supporting.font)
-                    .foregroundStyle(Tokens.Text.secondary.color)
-            }
-            .accessibilityElement(children: .combine)
-        }
-    }
-
-    /// One sentence per pass. `DESIGN.md` names no vocabulary for these, so
-    /// they say what the pass does in the user's terms rather than the
-    /// protocol's — "refs", "metadata" and "CRDT updates" are chapter 05 and
-    /// chapter 07 words and mean nothing on a phone.
-    static func sentence(for phase: SyncPhase) -> String {
-        switch phase {
-        case .refs: "Checking what this vault holds"
-        case .metadata: "Bringing in your notes"
-        case .bodies: "Downloading recent notes"
-        case .done: "Finishing"
-        }
-    }
 }
 
 /// A first sync that stopped, rendered above whatever did arrive.

@@ -34,6 +34,7 @@ use std::collections::HashMap;
 use rusqlite::{Connection, params};
 
 use crate::api::errors::StorageError;
+use crate::storage::nested_tx;
 
 /// The three `op` spellings data-model §A.2 defines.
 pub const OP_UPSERT: &str = "upsert";
@@ -202,7 +203,7 @@ pub fn commit<T, F>(
 where
     F: FnOnce(&Connection) -> Result<T, StorageError>,
 {
-    let transaction = conn.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(conn).map_err(failed)?;
     let value = source(&transaction)?;
     let outbox_id = enqueue(&transaction, change, now_ms)?;
     transaction.commit().map_err(failed)?;
@@ -502,7 +503,7 @@ pub fn defer(
 /// the row first so a crash inside the window leaves the reason behind rather
 /// than a silent disappearance.
 pub fn retire(conn: &Connection, ids: &[i64], reason: &str) -> Result<(), StorageError> {
-    let transaction = conn.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(conn).map_err(failed)?;
     let truncated = truncate(reason);
     for id in ids {
         transaction

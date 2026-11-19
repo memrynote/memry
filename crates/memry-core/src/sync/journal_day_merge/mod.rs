@@ -37,6 +37,7 @@ use crate::domain::journal_rules::{
 };
 use crate::domain::{body_write, tasks};
 use crate::storage::Db;
+use crate::storage::nested_tx;
 use crate::storage::repositories::projectors;
 use crate::storage::repositories::sync_items;
 
@@ -157,7 +158,7 @@ async fn drain_one(
         // not have pushed it.
         JournalDayMergeAction::Forget => {
             db.call(move |conn| {
-                let tx = conn.unchecked_transaction().map_err(failed)?;
+                let tx = nested_tx::begin(conn).map_err(failed)?;
                 forget(&tx, &merge.foreign_id, now_ms())?;
                 tx.commit().map_err(failed)
             })
@@ -207,7 +208,7 @@ fn ensure_canonical(
     let canonical = canonical_journal_id(date);
     let holder = journal::live_entry(conn, date)?;
     let plan = plan_journal_day_apply(&canonical, date, holder.as_deref());
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     if let (true, Some(holder)) = (plan.remove_holder, holder.as_deref()) {
         owe_holder(&tx, holder, date)?;
         tx.execute("DELETE FROM journal_entries WHERE id = ?1", params![holder])
@@ -264,7 +265,7 @@ fn settle(
     })
     .map_err(crdt_failed)?;
 
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     if let Some(update) = update {
         body_write::append_in(&tx, ITEM_TYPE, canonical, &update, now_ms).map_err(crdt_failed)?;
     }

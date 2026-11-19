@@ -40,6 +40,7 @@ use rusqlite::Connection;
 use serde_json::Value;
 
 use crate::api::errors::StorageError;
+use crate::storage::nested_tx;
 use crate::storage::repositories::instants;
 use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::{Change, StoredPayload, sync_items};
@@ -274,7 +275,7 @@ fn write(
         changes.push(("pinnedTags", Change::set(pinned)));
     }
 
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     sync_items::apply_local_edit_in(&tx, item_type, item_id, &changes, now_ms)?;
     outbox::enqueue(&tx, &outbox::Change::upsert(item_type, item_id), now_ms)?;
     tx.commit().map_err(failed)?;

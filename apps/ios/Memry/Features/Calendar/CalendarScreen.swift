@@ -83,7 +83,10 @@ struct CalendarScreen: View {
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbarItems }
-        .sheet(item: $sheet) { sheetContent($0) }
+        .sheet(item: $sheet) {
+            sheetContent($0)
+                .environment(\.calendarSheetLayout, LayoutWidth(horizontal: horizontalSizeClass, vertical: verticalSizeClass))
+        }
         .alert(CalendarCopy.deleteTitle, isPresented: deleteBinding, presenting: deleting) { item in
             Button(CalendarCopy.deleteConfirm, role: .destructive) { Task { await delete(item) } }
             Button(CalendarCopy.cancel, role: .cancel) {}

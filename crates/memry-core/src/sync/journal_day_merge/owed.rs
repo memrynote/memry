@@ -8,6 +8,7 @@ use serde_json::{Value, json};
 use crate::api::errors::StorageError;
 use crate::domain::journal::{self, ITEM_TYPE};
 use crate::domain::journal_rules::{canonical_journal_id, plan_journal_day_apply};
+use crate::storage::nested_tx;
 use crate::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
 use crate::sync::clock::{self, ClockOrder, VectorClock};
 
@@ -53,7 +54,7 @@ pub(crate) fn plan_inbound(
         return Ok(None);
     }
 
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     for foreign_id in &plan.owe_merge {
         if *foreign_id == record.item_id {
             if !tombstoned_past(&tx, foreign_id, &incoming_clock)? {

@@ -21,6 +21,7 @@ use crate::crdt::body_edit::BlockEdit;
 use crate::crdt::errors::CrdtError;
 use crate::domain::body_write;
 use crate::domain::journal::{self, ITEM_TYPE};
+use crate::storage::nested_tx;
 
 /// What [`edit_day`] did.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -63,7 +64,7 @@ pub fn edit_day(
         });
     };
 
-    let tx = conn.unchecked_transaction().map_err(storage_failed)?;
+    let tx = nested_tx::begin(conn).map_err(storage_failed)?;
     let opened = journal::open_day_in(&tx, date, device_id, now_ms)?;
     if opened.id != id {
         // The entry changed between authoring and the transaction; the update
@@ -102,7 +103,7 @@ pub fn edit_entry(
     let Some(update) = body_write::author(conn, id, edit, device_id)? else {
         return Ok(true);
     };
-    let tx = conn.unchecked_transaction().map_err(storage_failed)?;
+    let tx = nested_tx::begin(conn).map_err(storage_failed)?;
     body_write::append_in(&tx, ITEM_TYPE, id, &update, now_ms)?;
     tx.commit().map_err(storage_failed)?;
     Ok(true)

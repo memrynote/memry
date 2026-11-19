@@ -20,6 +20,7 @@ use serde_json::json;
 
 use crate::api::errors::StorageError;
 use crate::domain::notes::{insert_local, iso, next_clock, object, require_payload};
+use crate::storage::nested_tx;
 use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox;
@@ -157,7 +158,7 @@ pub fn toggle(
             what: "a bookmark names an item type and an item id".to_owned(),
         });
     }
-    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let tx = nested_tx::begin(conn).map_err(failed)?;
     let live = live_ids(&tx, item_type, item_id)?;
     let bookmarked = if live.is_empty() {
         let id = sync_id(item_type, item_id);

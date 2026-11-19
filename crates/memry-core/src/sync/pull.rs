@@ -42,18 +42,23 @@ use std::sync::Arc;
 
 use serde_json::{Value as Json, json};
 
-use crate::protocol::envelope::{self, EnvelopeError, RecordEnvelope, SyncOperation};
-use crate::protocol::http::{ApiRequest, Auth, HttpClient, SYNC_TYPES_HEADER, VAULT_ID_HEADER};
-use crate::protocol::types::{ArrivingItemType, Declaration};
-use crate::storage::Db;
-use crate::storage::repositories::sync_items::{self, InboundRecord};
+use rusqlite::Connection;
 
-use super::apply::{self, ApplyTotals, DOCUMENT_TYPES, Pending};
+use crate::api::errors::StorageError;
+use crate::protocol::envelope::{EnvelopeError, RecordEnvelope};
+use crate::protocol::http::{ApiRequest, Auth, HttpClient, SYNC_TYPES_HEADER, VAULT_ID_HEADER};
+use crate::protocol::types::Declaration;
+use crate::storage::Db;
+use crate::storage::nested_tx;
+use crate::storage::repositories::sync_items;
+
+use super::apply::{self, ApplyTotals, Pending};
 use super::body_debt;
 use super::body_pull::CrdtCipher;
 use super::changes_page::{ChangesPage, read_changes_page, requested_ids, uncovered_ids};
 use super::feed_restart;
 use super::note_body_feed::{self, FeedClient, FetchedBodies, NOTE_BODY_SYNC_TYPE};
+use super::pull_decode::{Decoder, Decoding, now_ms, server_cursor};
 use super::store::{self, RECORD_CURSOR_SCOPE};
 
 /// §5.10.2: a new client SHOULD request the server's ceiling. Five times fewer
@@ -236,7 +241,7 @@ impl PullLoop {
             .await?;
 
         let inline = ask_inline && cursor.is_some();
-        let page = self.fetch_changes(cursor.as_deref(), inline).await?;
+        let mut page = self.fetch_changes(cursor.as_deref(), inline).await?;
         let mut report = PullReport {
             pages: 1,
             has_more: page.has_more,
@@ -248,11 +253,13 @@ impl PullLoop {
 
         let fetch = uncovered_ids(&page, &ids);
 
-        self.take_items(&page.inline, &mut report, &mut pending)
-            .await?;
+        let decoder = self.decoder();
+        let inline = decoder.spawn(std::mem::take(&mut page.inline));
+        self.take_items(inline, &mut report, &mut pending).await?;
+        let mut decoding = Vec::with_capacity(fetch.len().div_ceil(MAX_PULL_IDS));
         for chunk in fetch.chunks(MAX_PULL_IDS) {
-            let body = self.fetch_bodies(chunk).await?;
-            let Some(items) = body.get("items").and_then(Json::as_array) else {
+            let mut body = self.fetch_bodies(chunk).await?;
+            let Some(items) = body.get_mut("items").and_then(Json::as_array_mut) else {
                 // §5.14 (#2285): not a pull envelope at all, which is a server
                 // contract regression. Nothing from the page is applied and the
                 // cursor holds, so the page is still there to re-pull once the
@@ -262,7 +269,10 @@ impl PullLoop {
                 report.cursor = cursor;
                 return Ok(report);
             };
-            self.take_items(items, &mut report, &mut pending).await?;
+            decoding.push(decoder.spawn(std::mem::take(items)));
+        }
+        for chunk in decoding {
+            self.take_items(chunk, &mut report, &mut pending).await?;
         }
 
         // §5.13: rank, then a **stable** sort, so two items of the same rank
@@ -283,24 +293,39 @@ impl PullLoop {
         // Only a loop that lands bodies owes them: its caller is the one that
         // settles the debts (#2297 review A-7).
         let owe_bodies = self.bodies.is_some();
-        let outcomes = self.apply_all(pending, untyped, owe_bodies).await?;
+        let now = now_ms();
+        let clock_device = self.clock_device.clone();
+        let advanced = page.next_cursor.clone().or(cursor);
+        let stored = advanced.clone();
+        // Invariant (§5.11, #5231): a page's applied records and its cursor commit in
+        // one transaction or not at all.
+        let (outcomes, advanced_documents) = self
+            .db
+            .call(move |conn| {
+                let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
+                let totals = apply_items(
+                    &txn,
+                    pending,
+                    untyped,
+                    owe_bodies,
+                    now,
+                    clock_device.as_deref(),
+                )?;
+                still_open(&txn)?;
+                let advanced =
+                    note_body_feed::land_and_advance(&txn, bodies, stored.as_deref(), now)?;
+                still_open(&txn)?;
+                txn.commit().map_err(sqlite_failed)?;
+                Ok((totals, advanced))
+            })
+            .await?;
         report.applied += outcomes.applied;
         report.deleted += outcomes.deleted;
         report.skipped += outcomes.skipped;
         report.corrupt += outcomes.corrupt;
         report.expired += outcomes.expired;
         report.purged_documents.extend(outcomes.purged_documents);
-
-        // §5.11: only now, and in the transaction that lands the bodies.
-        let now = now_ms();
-        let advanced = page.next_cursor.clone().or(cursor);
-        let stored = advanced.clone();
-        report.advanced_documents = self
-            .db
-            .call(move |conn| {
-                note_body_feed::land_and_advance(conn, bodies, stored.as_deref(), now)
-            })
-            .await?;
+        report.advanced_documents = advanced_documents;
         report.cursor = advanced;
 
         // §5.14's breaker, all three conditions or none.
@@ -323,25 +348,39 @@ impl PullLoop {
         let mut report = PullReport::default();
         let mut pending: Vec<Pending> = Vec::with_capacity(ids.len());
 
+        let decoder = self.decoder();
+        let mut decoding = Vec::with_capacity(ids.len().div_ceil(MAX_PULL_IDS));
         for chunk in ids.chunks(MAX_PULL_IDS) {
-            let body = self.fetch_bodies(chunk).await?;
-            let Some(items) = body.get("items").and_then(Json::as_array) else {
+            let mut body = self.fetch_bodies(chunk).await?;
+            let Some(items) = body.get_mut("items").and_then(Json::as_array_mut) else {
                 report.dropped_pages += 1;
                 continue;
             };
-            for item in items {
-                match self.decode(item) {
-                    Ok(decoded) => pending.push(decoded),
-                    Err(corrupt) => {
-                        report.corrupt += 1;
-                        self.record_corrupt(item, &corrupt).await?;
-                    }
-                }
-            }
+            decoding.push(decoder.spawn(std::mem::take(items)));
+        }
+        for chunk in decoding {
+            self.take_items(chunk, &mut report, &mut pending).await?;
         }
 
         pending.sort_by_key(|item| apply::apply_rank(item.item_type()));
-        let outcomes = self.apply_all(pending, Vec::new(), false).await?;
+        let now = now_ms();
+        let clock_device = self.clock_device.clone();
+        let outcomes = self
+            .db
+            .call(move |conn| {
+                let txn = nested_tx::begin(conn).map_err(sqlite_failed)?;
+                let totals = apply_items(
+                    &txn,
+                    pending,
+                    Vec::new(),
+                    false,
+                    now,
+                    clock_device.as_deref(),
+                )?;
+                txn.commit().map_err(sqlite_failed)?;
+                Ok(totals)
+            })
+            .await?;
         report.applied += outcomes.applied;
         report.deleted += outcomes.deleted;
         report.skipped += outcomes.skipped;
@@ -351,20 +390,27 @@ impl PullLoop {
         Ok(report)
     }
 
-    /// Decodes pulled items per item (§5.14): each one is pending or one
+    fn decoder(&self) -> Arc<Decoder> {
+        Arc::new(Decoder {
+            declaration: self.declaration.clone(),
+            cipher: Arc::clone(&self.cipher),
+        })
+    }
+
+    /// Takes one decoded chunk per item (§5.14): each one is pending or one
     /// recorded corrupt item.
     async fn take_items(
         &self,
-        items: &[Json],
+        chunk: Decoding,
         report: &mut PullReport,
         pending: &mut Vec<Pending>,
     ) -> Result<(), PullError> {
-        for item in items {
-            match self.decode(item) {
+        for (item, decoded) in chunk.finish().await? {
+            match decoded {
                 Ok(decoded) => pending.push(decoded),
                 Err(corrupt) => {
                     report.corrupt += 1;
-                    self.record_corrupt(item, &corrupt).await?;
+                    self.record_corrupt(&item, &corrupt).await?;
                 }
             }
         }
@@ -459,66 +505,6 @@ impl PullLoop {
         request
     }
 
-    /// Per-item validation. Every `Err` here is **one** corrupt item.
-    fn decode(&self, item: &Json) -> Result<Pending, String> {
-        let envelope =
-            envelope::from_json(item).map_err(|error| format!("malformed envelope: {error}"))?;
-
-        // §5.3.1: a type this client did not declare is recorded, not applied.
-        // The record feed cannot produce it today; the rule is defensive.
-        if self.declaration.classify(&envelope.item_type) == ArrivingItemType::Undeclared {
-            return Err(format!("undeclared item type `{}`", envelope.item_type));
-        }
-
-        // §5.12: a present `deletedAt` overrides the declared operation, and
-        // the body is never applied, only read for `bodyStateVector` (§5.8).
-        let deleted_at = envelope
-            .deleted_at
-            .or_else(|| (envelope.operation == SyncOperation::Delete).then(now_ms));
-        if let Some(deleted_at) = deleted_at {
-            return Ok(Pending::Tombstone {
-                body_state_vector: self.tombstone_body_state_vector(&envelope),
-                item_type: envelope.item_type.clone(),
-                item_id: envelope.id.clone(),
-                deleted_at,
-                server_cursor: server_cursor(item),
-                clock: envelope.clock.clone(),
-            });
-        }
-
-        let plaintext = self
-            .cipher
-            .open(&envelope)
-            .map_err(|error| format!("could not open the record: {error}"))?;
-        let payload_json = String::from_utf8(plaintext)
-            .map_err(|_| "the decrypted payload is not UTF-8".to_owned())?;
-
-        Ok(Pending::Record(InboundRecord {
-            item_type: envelope.item_type,
-            item_id: envelope.id,
-            payload_json,
-            server_cursor: server_cursor(item),
-            signer_device_id: Some(envelope.signer_device_id),
-            updated_at: now_ms(),
-            deleted_at: None,
-        }))
-    }
-
-    /// A note or journal tombstone's `bodyStateVector` (§5.8, #3037). `None`
-    /// for other types and for a payload that does not open (an old build's
-    /// delete, a shed marker): the keep rule then decides as before.
-    fn tombstone_body_state_vector(&self, envelope: &RecordEnvelope) -> Option<String> {
-        if !DOCUMENT_TYPES.contains(&envelope.item_type.as_str()) {
-            return None;
-        }
-        let plaintext = self.cipher.open(envelope).ok()?;
-        let payload: Json = serde_json::from_slice(&plaintext).ok()?;
-        payload
-            .get("bodyStateVector")
-            .and_then(Json::as_str)
-            .map(str::to_owned)
-    }
-
     /// Records a corrupt item against its row when the wire told us enough to
     /// find one (§5.14, chapter 13 §13.2 rule 5).
     ///
@@ -545,56 +531,57 @@ impl PullLoop {
             .await?;
         Ok(())
     }
+}
 
-    /// Hands the page to [`apply`], which owns every decision about what an
-    /// item's type means. The loop's only remaining job is the clock it is
-    /// applied at, and on a feed page the body debt of its documents.
-    ///
-    /// The debt is written **before** the apply (#2294): a page re-pulled
-    /// after a crash skips its identical records (chapter 06 §6.5.2 P4), so a
-    /// debt written after them would be lost with the crash. A debt this page
-    /// created for a record it then skipped is taken back; one an earlier
-    /// page left is kept.
-    async fn apply_all(
-        &self,
-        pending: Vec<Pending>,
-        untyped: Vec<String>,
-        owe_bodies: bool,
-    ) -> Result<ApplyTotals, PullError> {
-        let now = now_ms();
-        let clock_device = self.clock_device.clone();
-        Ok(self
-            .db
-            .call(move |conn| {
-                let owed_here = if owe_bodies {
-                    body_debt::owe_page(conn, &pending)?
-                } else {
-                    Vec::new()
-                };
-                let totals =
-                    apply::apply_page(conn, pending, untyped, now, clock_device.as_deref())?;
-                for doc_id in &owed_here {
-                    if !totals.applied_documents.contains(doc_id) {
-                        body_debt::settle(conn, doc_id)?;
-                    }
-                }
-                Ok(totals)
-            })
-            .await?)
+/// Hands the page to [`apply`], which owns every decision about what an
+/// item's type means. The loop's only remaining job is the clock it is
+/// applied at, and on a feed page the body debt of its documents. Runs inside
+/// the caller's transaction.
+///
+/// The debt is written **before** the apply (#2294): a page re-pulled after a
+/// crash skips its identical records (chapter 06 §6.5.2 P4), so a debt
+/// written after them would be lost with the crash. A debt this page created
+/// for a record it then skipped is taken back; one an earlier page left is
+/// kept.
+fn apply_items(
+    conn: &Connection,
+    pending: Vec<Pending>,
+    untyped: Vec<String>,
+    owe_bodies: bool,
+    now: i64,
+    clock_device: Option<&str>,
+) -> Result<ApplyTotals, StorageError> {
+    let owed_here = if owe_bodies {
+        body_debt::owe_page(conn, &pending)?
+    } else {
+        Vec::new()
+    };
+    let totals = apply::apply_page(conn, pending, untyped, now, clock_device)?;
+    for doc_id in &owed_here {
+        if !totals.applied_documents.contains(doc_id) {
+            body_debt::settle(conn, doc_id)?;
+        }
+    }
+    Ok(totals)
+}
+
+/// Fails the page when SQLite rolled its transaction back on its own: writing
+/// on would autocommit the cursor without the records it names.
+fn still_open(conn: &Connection) -> Result<(), StorageError> {
+    if conn.is_autocommit() {
+        return Err(StorageError::Failed {
+            what: "the page's transaction was rolled back".to_owned(),
+        });
+    }
+    Ok(())
+}
+
+fn sqlite_failed(error: rusqlite::Error) -> StorageError {
+    StorageError::Failed {
+        what: error.to_string(),
     }
 }
 
 fn typed_covers(pending: &[Pending], id: &str) -> bool {
     pending.iter().any(|item| item.item_id() == id)
-}
-
-fn server_cursor(item: &Json) -> Option<i64> {
-    item.get("serverCursor").and_then(Json::as_i64)
-}
-
-fn now_ms() -> i64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|elapsed| elapsed.as_millis() as i64)
-        .unwrap_or_default()
 }

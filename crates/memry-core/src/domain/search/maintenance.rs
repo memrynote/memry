@@ -34,6 +34,7 @@ use crate::crdt::blocks::extract_blocks;
 use crate::crdt::update_log::LOCAL_NAMESPACE_PREFIX;
 use crate::domain::body_tags;
 use crate::domain::wiki_target::WikiNames;
+use crate::storage::nested_tx;
 use crate::storage::repositories::projectors::{strings, text};
 
 use super::body_cache::{body_document, body_text, crdt_failed};
@@ -86,7 +87,7 @@ pub fn reindex(
         .query_row("PRAGMA user_version", [], |row| row.get(0))
         .map_err(failed)?;
 
-    let transaction = index.unchecked_transaction().map_err(failed)?;
+    let transaction = nested_tx::begin(index).map_err(failed)?;
     let indexed = meta_number(&transaction, DATA_VERSION_KEY)?;
     let notes_from = meta_number(&transaction, NOTES_WATERMARK_KEY)?;
     let tasks_from = meta_number(&transaction, TASKS_WATERMARK_KEY)?;
