@@ -142,7 +142,7 @@ as it would for a pack it could not verify (§8.0).
 ### 8.4.2 Record entries
 
 **Normative.** A record entry is one `POST /sync/pull` item, split three ways
-(`RecordPackEntryMetaSchema`, `packages/contracts/src/sync-api.ts:856-860`):
+(`RecordPackEntryMetaSchema`, `packages/contracts/src/sync-api.ts:865-869`):
 
 | Pull item field                                                                   | Where the entry carries it                  |
 | --------------------------------------------------------------------------------- | ------------------------------------------- |
@@ -150,24 +150,26 @@ as it would for a pack it could not verify (§8.0).
 | the row's `sync_items.blob_key`                                                   | `keyBytes`                                  |
 | `blob`                                                                            | the payload bytes                           |
 | `operation`, `cryptoVersion`, `signature`, `signerDeviceId`, `deletedAt`, `clock` | `metaBytes`, under the pull item's own keys |
-| the row's `sync_items.version` (not a pull item field)                            | `metaBytes`, as `version`                   |
+| the row's `server_cursor`                                                         | `sortKey` (§8.4)                            |
 
 `RecordPackEntryMetaSchema` is `RecordPullItemResponseSchema` without `id`,
-`type` and `blob` (`packages/contracts/src/sync-api.ts:842-860`), so a field
+`type` and `blob` (`packages/contracts/src/sync-api.ts:851-869`), so a field
 added to the pull item reaches the entry with no second list to update. A writer
 fills the meta from the same columns `POST /sync/pull` answers from
 (`pullItemFromColumns`, `apps/sync-server/src/services/sync.ts:401-420`):
 `deletedAt` and `clock` are present exactly when the pull item has them.
 
-- **Version.** `version` is the row's `sync_items.version`, the column
-  `GET /sync/manifest` answers as the item's `version`
-  (`apps/sync-server/src/services/sync.ts:1201`, `:1235`). It is optional in
-  `RecordPackEntryMetaSchema`, and a **step 04 MUST** (#5227): every record
-  entry a writer emits carries it. The manifest reconcile compares it (§8.10,
-  **Closing checks**). A reader treats an entry without `version` as holding a
-  version that differs from every manifest version, so it pulls that item by id.
-  The rebuilt pull item does not carry it: `RecordPullItemResponseSchema`
-  strips the key.
+- **Cursor.** The entry's `sortKey` is the row's `server_cursor`, the cursor
+  the manifest reconcile compares (§8.10, **Closing checks**). It identifies
+  one write: every accepted push reserves a fresh cursor in the batch that
+  commits the row (`apps/sync-server/src/services/sync.ts:897`), and the
+  cursor is unique per user and only grows
+  (`apps/sync-server/src/services/cursor.ts:1-13`). `sync_items.version` does
+  not: a push reads the row, writes `version + 1`, and upserts with no
+  compare-and-swap (`apps/sync-server/src/services/sync.ts:727`, `:796`,
+  `:894`), so two concurrent pushes can commit the same version with different
+  content (`apps/sync-server/src/services/sync.test.ts:2711`). Meta carries no
+  `version`.
 
 - **Payload.** The payload is the R2 object byte for byte: the four blob fields
   as sorted-key JSON (chapter 05 §5.9 A,
@@ -184,7 +186,7 @@ fills the meta from the same columns `POST /sync/pull` answers from
   reader's fallback is `POST /sync/pull`, never a GET of that key.
 - **Rebuild and validate.** `{...meta, id, type, blob}` MUST validate as
   `RecordPullItemResponseSchema`
-  (`packages/contracts/src/sync-api.ts:842-847`). The reader then treats it as
+  (`packages/contracts/src/sync-api.ts:851-856`). The reader then treats it as
   a pull item in every respect: signature verification against the signer's
   key, `cryptoVersion` (chapter 00 §0.2.1), the delete-wins and clock rules of
   chapter 05 §5.8 and chapter 06. Coming from a pack gives an entry no
@@ -214,15 +216,15 @@ fills the meta from the same columns `POST /sync/pull` answers from
   undeclared type is exempt, because the tail would not serve it either.
 - **Manifest reconcile.** A reader that uses record packs MUST reconcile them
   against `GET /sync/manifest`, read after it holds the pack bytes, before it
-  trusts them (§8.10, **Closing checks**). The reconcile is version-exact: a
-  manifest item whose `version` differs from the one the reader holds goes to
-  `POST /sync/pull`. A live record it took from a pack that the manifest does
+  trusts them (§8.10, **Closing checks**). The reconcile is cursor-exact: a
+  manifest item whose `serverCursor` differs from the cursor of the row the
+  reader holds goes to `POST /sync/pull`. A live record it took from a pack that the manifest does
   not list is not applied.
 - **No payload, no entry.** A purged tombstone (chapter 05 §5.12.3) and a row
   whose payload is lost (§5.12.4) have no payload bytes. A writer MUST NOT emit
   them as record entries; `POST /sync/pull` keeps them out of `items` for the
-  same reason (`packages/contracts/src/sync-api.ts:907-917`). The writer
-  omits them, and the record range still spans them: the version-exact
+  same reason (`packages/contracts/src/sync-api.ts:916-926`). The writer
+  omits them, and the record range still spans them: the cursor-exact
   reconcile delivers a live one (§8.10).
 - **Index entry size.** A writer MUST NOT emit an index entry larger than
   `PACK_MAX_INDEX_ENTRY_BYTES`, which a conforming reader rejects (§8.6;
@@ -238,7 +240,7 @@ reader (`packages/contracts/src/__tests__/pack-container.test.ts`).
 
 **Normative.** An update entry is one `crdt_updates` row, as
 `GET /sync/crdt/updates` returns it (chapter 07 §7.11), split the same way
-(`CrdtUpdatePackEntryMetaSchema`, `packages/contracts/src/sync-api.ts:867-871`):
+(`CrdtUpdatePackEntryMetaSchema`, `packages/contracts/src/sync-api.ts:876-880`):
 
 | Field                                        | Where the entry carries it                                                 |
 | -------------------------------------------- | -------------------------------------------------------------------------- |
@@ -424,12 +426,12 @@ period of §8.12. Stale entries therefore stay as dead bytes for the life of
 the object, not forever. A client MUST NOT expect a pack it has read to
 change, MUST NOT expect a listed pack to stay listed or downloadable, and MUST
 NOT treat a pack as authoritative: individual blobs remain the source of truth
-throughout (`packages/contracts/src/sync-api.ts:730-735`).
+throughout (`packages/contracts/src/sync-api.ts:739-744`).
 
 ## 8.9 Listing
 
 **Normative.** `GET /sync/packs` returns `PackListResponseSchema`
-(`packages/contracts/src/sync-api.ts:793-818`), whose `packs` are
+(`packages/contracts/src/sync-api.ts:802-827`), whose `packs` are
 `PackSummarySchema` (`:737-758`):
 
 | Field                    | Rule                                                                                                                                                  |
@@ -446,10 +448,10 @@ throughout (`packages/contracts/src/sync-api.ts:730-735`).
 | `coverThrough`           | inclusive upper bound of that range (`:756-757`). Both are absent on a pack written before §8.10, which is a cache only                               |
 
 `nextCursor` is an opaque keyset token, absent on the final page, and **packs
-arrive newest-first** (`packages/contracts/src/sync-api.ts:822-827`). A client
+arrive newest-first** (`packages/contracts/src/sync-api.ts:831-836`). A client
 MUST treat it as opaque. The first page also carries `coverage`, one
-`PackCoverageSchema` per kind (`packages/contracts/src/sync-api.ts:766-775`,
-`:796-811`), §8.10. A reader parses `coverage` entry by entry and skips an
+`PackCoverageSchema` per kind (`packages/contracts/src/sync-api.ts:775-784`,
+`:805-820`), §8.10. A reader parses `coverage` entry by entry and skips an
 entry it cannot parse, such as one of a kind added after it shipped, which
 leaves that kind uncovered (`:801-811`).
 
@@ -460,7 +462,7 @@ snapshots and updates draw it from one per-user sequence, reserved inside the
 batch that commits the row, so no reader sees a cursor above a row that has
 not committed (`apps/sync-server/src/services/cursor.ts:1-13`; chapter 05
 §5.11, chapter 07 §7.17). A pack's coverage range is
-`(coverFrom, coverThrough]` (`packages/contracts/src/sync-api.ts:754-757`).
+`(coverFrom, coverThrough]` (`packages/contracts/src/sync-api.ts:763-766`).
 `minCursor`, `maxCursor` and the snapshot `sortKey` keep their per-kind
 meaning (§8.4, §8.9), because the released readers order and resume on them
 (§8.11).
@@ -469,8 +471,8 @@ meaning (§8.4, §8.9), because the released readers order and resume on them
 holds every row of that kind a reader needs whose `server_cursor` lies in the
 pack's coverage range, and no such row has a `server_cursor` in
 `(packedThrough, coveredThrough]` of that kind's `coverage` entry**
-(`packages/contracts/src/sync-api.ts:760-775`). **For `record`, coverage is
-complete up to omitted rows, and the version-exact manifest reconcile
+(`packages/contracts/src/sync-api.ts:769-784`). **For `record`, coverage is
+complete up to omitted rows, and the cursor-exact manifest reconcile
 (Closing checks, below) delivers every omitted row.**
 
 A body row a reader needs is one with a payload that the feed or the body
@@ -487,8 +489,8 @@ still spans it: a lost payload (`blob_missing_at` set, or a 404 when the
 writer reads it, chapter 05 §5.12.4), an index entry above
 `PACK_MAX_INDEX_ENTRY_BYTES` (§8.4.2), a corrupt clock, a missing signer, or
 any meta it cannot build. An omitted live row is in the manifest at its
-current `version` (`apps/sync-server/src/services/sync.ts:1201-1205`), so the
-reconcile pulls it, and `POST /sync/pull` serves it or reports it in
+current `server_cursor` (`apps/sync-server/src/services/sync.ts:1201-1205`),
+which no entry the reader holds carries, so the reconcile pulls it, and `POST /sync/pull` serves it or reports it in
 `blobMissing`. An omitted tombstone, and a purged-tombstone marker (chapter 05
 §5.12.3), is not needed: the manifest omits the item, so the reconcile drops
 any older packed live entry of it, and `POST /sync/pull` answers a tombstone
@@ -548,7 +550,7 @@ unless it says **step 07 MUST** (#5230); no server does any of it yet.
   `server_cursor`: such a row is in no range and never in the feed (chapter 07
   §7.17).
 - `coverage` names only kinds that every client release the server serves
-  parses (`PackKindSchema`, `packages/contracts/src/sync-api.ts:719`). A reader
+  parses (`PackKindSchema`, `packages/contracts/src/sync-api.ts:728`). A reader
   built to this section skips an entry it cannot parse (§8.9), so a server
   that gets this wrong costs it the tail start of that kind, never the listing.
 - `packedThrough` is the `coverThrough` of the kind's newest committed pack.
@@ -608,16 +610,16 @@ it with checks the server answers:
   entry, a corrupt clock, a lost blob). So a reader that applies record packs
   MUST read `GET /sync/manifest` to its last page (chapter 05 §5.15) after it
   holds the pack bytes, and reconcile before it trusts the packs. The
-  reconcile is **version-exact**:
+  reconcile is **cursor-exact**:
   1. A manifest item the reader does not hold, holds only as a tombstone, or
-     holds at a `version` other than the manifest's is pulled by id through
-     `POST /sync/pull`, at most 100 ids per request
-     (`packages/contracts/src/sync-api.ts:514`). The version it holds is the
-     entry's meta `version` for a row taken from a pack (§8.4.2; an entry
-     without one matches no version), or the version of the feed ref or
-     manifest item it last pulled against. A pulled item whose payload is
-     lost comes back in `blobMissing` (chapter 05 §5.12.4), and the reader
-     then knows its held version is not current.
+     holds at a cursor other than the item's `serverCursor` is pulled by id
+     through `POST /sync/pull`, at most 100 ids per request
+     (`packages/contracts/src/sync-api.ts:514`). The cursor it holds is the
+     entry's `sortKey` for a row taken from a pack (§8.4.2), or the
+     `serverCursor` of the feed ref it pulled against (chapter 05 §5.11.1); a
+     row held with no known cursor matches none. A pulled item whose payload
+     is lost comes back in `blobMissing` (chapter 05 §5.12.4), and the reader
+     then knows its held row is not current.
   2. A live record the reader took from a pack and the manifest does not list
      is not applied, or is removed if it was applied, unless the device
      modified it locally since. The manifest lists every live row of the
@@ -630,10 +632,25 @@ it with checks the server answers:
      omits tombstones, and the tombstone's clock is what lets a later
      re-create pass delete-wins (chapter 05 §5.8).
 
-  Every live record row is in the manifest at its current `version`, so any
-  live row the writer omitted, whatever the reason, is absent from what the
-  reader holds or differs from it, and rule 1 pulls it. A stale packed entry
-  is caught the same way, whether or not its newer version could be packed.
+  Every live record row is in the manifest at its current `server_cursor`
+  (`apps/sync-server/src/services/sync.ts:1201-1205`). Each accepted write
+  gives the row a cursor no earlier write of that user had
+  (`apps/sync-server/src/services/cursor.ts:1-13`, set at
+  `apps/sync-server/src/services/sync.ts:897`), so a held row whose cursor
+  equals the manifest's is the current write, byte for byte. Any live row the
+  writer omitted, whatever the reason, is absent from what the reader holds or
+  sits at another cursor, and rule 1 pulls it. A stale packed entry is caught
+  the same way, whether or not its newer write could be packed, and even when
+  two writes share a `version`.
+
+  **A manifest without `serverCursor`.** Every server before step 04 (#5227)
+  omits it (`RecordSyncManifestItemSchema`,
+  `packages/contracts/src/sync-api.ts:543-545`). A reader then does not trust
+  record packs: it may apply them only as a seed, and it pulls every manifest
+  item through `POST /sync/pull`, as if it held none of them. Rules 2 and 3
+  still apply. This fails closed, and it costs what a bootstrap without
+  record packs costs: `ceil(n / 100)` pull requests for `n` live records, 136
+  at 13,527.
 
 - **Bodies:** before it applies a packed snapshot, a reader confirms its
   `revision` against `snapshotMeta` from a `POST /sync/crdt/updates/batch`
@@ -661,7 +678,7 @@ Rust core at `be319a42f9` on `main`, which the iOS build ships
 
 | Reader                    | Server lists a `record` or `crdt_update` pack                                                                                                                                                                                                                                                    | A `record` pack without meta                                  |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------- |
-| desktop `v2026-11-19`     | `PackListResponseSchema` accepts all three kinds (`packages/contracts/src/sync-api.ts:717` at the tag); the pack is dropped before download (`apps/desktop/src/main/sync/packs/pack-bootstrap.ts:189` at the tag), and a non-snapshot entry in any pack it opens is counted skipped (`:347-350`) | never downloaded                                              |
+| desktop `v2026-11-19`     | `PackListResponseSchema` accepts all three kinds (`packages/contracts/src/sync-api.ts:726` at the tag); the pack is dropped before download (`apps/desktop/src/main/sync/packs/pack-bootstrap.ts:189` at the tag), and a non-snapshot entry in any pack it opens is counted skipped (`:347-350`) | never downloaded                                              |
 | Rust core, iOS            | `usable_pack` returns `None` for any kind but `crdt_snapshot` (`crates/memry-core/src/sync/pack_bootstrap.rs:334-337`); `apply_pack` skips any other entry (`:238-243`)                                                                                                                          | never downloaded                                              |
 | a reader built to §8.4.2+ | reads it                                                                                                                                                                                                                                                                                         | each entry unusable, item stays on `POST /sync/pull` (§8.4.2) |
 
@@ -691,7 +708,7 @@ Rust core at `be319a42f9` on `main`, which the iOS build ships
   1,000 listed packs of all kinds, so the walk never truncates.
 - **Coverage fields.** `coverFrom`, `coverThrough` and `coverage` are
   optional. Desktop `v2026-11-19` parses the listing with zod objects that
-  strip unknown keys (`packages/contracts/src/sync-api.ts:738`, `:757` at the
+  strip unknown keys (`packages/contracts/src/sync-api.ts:747`, `:766` at the
   tag), and the Rust core reads only the keys it names
   (`crates/memry-core/src/sync/pack_bootstrap.rs:338-342`), so both ignore
   them.
@@ -733,7 +750,7 @@ coverage ranges chain, and writes one pack that replaces them:
   commit-time recheck of chapter 07 §7.15 for every document it holds.
 - **Grace period.** An object whose row was removed is deleted no earlier than
   `PACK_REPLACED_GRACE_SECONDS` = 600 after the removal
-  (`packages/contracts/src/sync-api.ts:777-782`), twice the presigned URL
+  (`packages/contracts/src/sync-api.ts:786-791`), twice the presigned URL
   lifetime of 300 s (`apps/sync-server/src/services/r2-presign.ts:27`). A URL
   is signed only at listing time, from a listed row, so every URL that names
   the object expires before the object goes. A server MUST NOT raise the
@@ -751,7 +768,7 @@ coverage ranges chain, and writes one pack that replaces them:
 chapter 07 §7.15 purge removes a document's body, only the packs that hold it
 are touched, and the document's ciphertext MUST leave every pack object within
 `PACK_PURGE_DEADLINE_SECONDS` = 900 of the purge's commit
-(`packages/contracts/src/sync-api.ts:784-785`):
+(`packages/contracts/src/sync-api.ts:793-794`):
 
 - **Finding them.** A writer records, in the batch that inserts a pack row,
   one membership row per document the pack holds: the entry id for
@@ -827,7 +844,7 @@ also capped at 256 items by its subrequest budget
 (§8.12).
 
 **A vault lists at most `PACK_LIST_MAX_PACKS_PER_VAULT` = 999 packs of all
-kinds** (`packages/contracts/src/sync-api.ts:787-791`), below the 1,000 a
+kinds** (`packages/contracts/src/sync-api.ts:796-800`), below the 1,000 a
 released reader walks (§8.11). A writer rolls up before a new row would pass
 it; when a rollup cannot make room, the writer stops, and the rest of the vault
 stays on the tail. At 24 MiB per pack that bound is about 23 GiB, far above

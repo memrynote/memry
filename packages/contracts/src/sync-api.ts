@@ -535,8 +535,17 @@ export const SyncManifestSchema = z.object({
   serverTime: z.number().int().min(0)
 })
 
+/**
+ * A `GET /sync/manifest` item. `serverCursor` is the row's `server_cursor`,
+ * which a record pack reader reconciles on (protocol 08 §8.10). Absent from
+ * every server before step 04 of #5221.
+ */
+export const RecordSyncManifestItemSchema = RecordSyncItemRefSchema.extend({
+  serverCursor: z.number().int().min(0).optional()
+})
+
 export const RecordSyncManifestSchema = z.object({
-  items: z.array(RecordSyncItemRefSchema),
+  items: z.array(RecordSyncManifestItemSchema),
   serverTime: z.number().int().min(0),
   /**
    * Present only on a paginated response (`GET /sync/manifest?limit=N`) that
@@ -851,13 +860,13 @@ export const RecordPullItemResponseSchema = PullItemResponseSchema.omit({
  * item minus what the entry already holds. `id` and `type` are the entry's
  * `type:id` identity and `blob` is its payload, so meta plus payload rebuild
  * the pull item exactly. Derived, so a field added to the pull item reaches
- * packs too, plus `version` for the manifest reconcile. Unknown keys are stripped.
+ * packs too. Unknown keys are stripped: a newer writer may add keys.
  */
 export const RecordPackEntryMetaSchema = RecordPullItemResponseSchema.omit({
   id: true,
   type: true,
   blob: true
-}).extend({ version: z.number().int().min(1).optional() })
+})
 
 /**
  * `metaBytes` of a `crdt_update` pack entry (protocol 08 §8.4.3): the update

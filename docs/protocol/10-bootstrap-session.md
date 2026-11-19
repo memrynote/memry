@@ -69,7 +69,7 @@ feature additive.
 and MUST NOT treat `packs: []` as meaning the vault has no packs — use
 `GET /sync/packs` (chapter 08 §8.9). Coverage is stated there, next to the
 ranges it describes, because a client reads the listing with or without a
-session (`packages/contracts/src/sync-api.ts:796-811`).
+session (`packages/contracts/src/sync-api.ts:805-820`).
 
 ## 10.5 Errors, and the fallback rule
 

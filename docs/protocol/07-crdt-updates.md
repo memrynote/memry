@@ -539,7 +539,7 @@ pulled from the server, never skipped, and a packed update is used only above
 the document's `floor`, read from the routes after the pack, so a purged update a
 pack still holds is never applied. An answer without `floor`, which every server
 sends today, leaves packed updates unusable (chapter 08 §8.4.3,
-`packages/contracts/src/sync-api.ts:867-871`).
+`packages/contracts/src/sync-api.ts:876-880`).
 
 ## 7.10 Retry policy and rate limits
 
@@ -603,7 +603,7 @@ snapshot endpoint under the §7.13.2 gate.
   `data` is base64 of the **packed envelope** of chapter 04 §4.11;
   a `crdt_update` pack entry carries the same entry, with the envelope bytes as
   its payload and the other three fields as its meta
-  (`CrdtUpdatePackEntryMetaSchema`, `packages/contracts/src/sync-api.ts:867-871`,
+  (`CrdtUpdatePackEntryMetaSchema`, `packages/contracts/src/sync-api.ts:876-880`,
   chapter 08 §8.4.3);
 - the batch response is
   `{ notes: Record<noteId, { updates, hasMore }>, snapshotMeta?: Record<noteId,
@@ -801,7 +801,7 @@ purged snapshot can sit in any pack built before its last write. Compaction
 rebuilds them without the dead note. Chapter 08 §8.13 narrows this to the packs
 that hold the document, for every kind: a step 06 MUST (#5229) removes its
 ciphertext from pack objects within `PACK_PURGE_DEADLINE_SECONDS` = 900 of the
-purge's commit (`packages/contracts/src/sync-api.ts:784-785`). Until it does,
+purge's commit (`packages/contracts/src/sync-api.ts:793-794`). Until it does,
 a fresh device bootstraps
 those bodies item by item.
 
@@ -938,7 +938,7 @@ and no push response carries the cursor.
   tails this feed from the cursor chapter 08 §8.10 gives it, and confirms each
   packed snapshot and the `floor` of its packed updates through
   `POST /sync/crdt/updates/batch` read after the pack bytes
-  (`packages/contracts/src/sync-api.ts:760-775`).
+  (`packages/contracts/src/sync-api.ts:769-784`).
 
 ### 7.17.1 What the feed serves
 

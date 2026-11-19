@@ -278,7 +278,7 @@ function recordEntryFrom(source: RecordEnvelopeCase, sortKey: number) {
     encryptedKey: push.encryptedKey,
     keyNonce: push.keyNonce
   }
-  const pullMeta: Record<string, unknown> = {
+  const entryMeta: Record<string, unknown> = {
     operation: push.operation,
     cryptoVersion: 1,
     signature: push.signature,
@@ -286,8 +286,6 @@ function recordEntryFrom(source: RecordEnvelopeCase, sortKey: number) {
     ...(push.deletedAt === undefined ? {} : { deletedAt: push.deletedAt }),
     ...(push.clock === undefined ? {} : { clock: push.clock })
   }
-  // Chapter 08 §8.4.2: meta also carries the row's sync_items.version, which the pull item lacks.
-  const entryMeta = { ...pullMeta, version: 1 }
   const entry: EntryInput = {
     kind: 'record',
     id: `${push.type}:${push.id}`,
@@ -302,7 +300,7 @@ function recordEntryFrom(source: RecordEnvelopeCase, sortKey: number) {
     usable: true,
     sortKey,
     sourceKey: entry.sourceKey,
-    pullItem: { id: push.id, type: push.type, ...pullMeta, blob },
+    pullItem: { id: push.id, type: push.type, ...entryMeta, blob },
     vaultKeyHex: source.input.vaultKeyHex,
     signingSeedHex: source.input.signingSeedHex,
     plaintextUtf8: source.expected.roundTripUtf8

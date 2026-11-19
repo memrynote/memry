@@ -595,9 +595,10 @@ storing `nextCursor`.
 applied record packs, and body packs when it declared `note_body`, starts
 `GET /sync/changes` at the cursor chapter 08 §8.10 gives it, never above it,
 and reconciles its packed records against the manifest as chapter 08 §8.10
-requires: version-exact, so every manifest item whose `version` differs from
-the one it holds goes to `POST /sync/pull`. Without `coverage` in the pack
-listing (`packages/contracts/src/sync-api.ts:796-811`), that cursor is 0.
+requires: cursor-exact, so every manifest item whose `serverCursor` differs
+from the cursor of the row it holds goes to `POST /sync/pull`, and against a
+manifest without `serverCursor` every item does. Without `coverage` in the pack
+listing (`packages/contracts/src/sync-api.ts:805-820`), that cursor is 0.
 
 ## 5.11.1 The response shapes
 
@@ -627,7 +628,7 @@ the column could not supply one.
 
 **A `/sync/changes` ref adds two optional fields** (#2280,
 `RecordChangesItemRefSchema` in `packages/contracts/src/sync-api.ts:514`). The
-manifest ref does not carry them.
+manifest ref carries only `serverCursor` (see `GET /sync/manifest` below).
 
 | Field            | Type                                                           |
 | ---------------- | -------------------------------------------------------------- |
@@ -663,7 +664,7 @@ pins the flat one because the vectors are written from the writer's side.
 
 A `record` pack entry carries this same item: `idBytes` holds `type:id`, the
 payload holds `blob`, and `metaBytes` holds the rest
-(`RecordPackEntryMetaSchema`, `packages/contracts/src/sync-api.ts:856-860`,
+(`RecordPackEntryMetaSchema`, `packages/contracts/src/sync-api.ts:865-869`,
 chapter 08 §8.4.2). The meta schema is derived from
 `RecordPullItemResponseSchema`, so a field added to the read item reaches packs
 with no second change.
@@ -689,7 +690,7 @@ port that types it as string-or-number will serialise the wrong thing back.
 `note_body` (§5.3); a client that did not declare it gets the response above
 without the key, byte for byte. Absent on a request that declared it means the
 server does not serve bodies in the feed. Entries are in cursor order
-(`packages/contracts/src/sync-api.ts:557`). The page schema types the array
+(`packages/contracts/src/sync-api.ts:566`). The page schema types the array
 as `unknown[]`: a reader validates each entry with `NoteBodyChangeSchema` on its
 own, so one bad entry costs that entry, never the page (§5.14). A body entry
 is:
@@ -723,6 +724,11 @@ element is a `POST /sync/pull` read item.
 Here `nextCursor` **is** optional: it appears only on a paginated call
 (`?limit=N`) that has more rows, and is absent on the final page and on the
 param-less everything-at-once call.
+
+A manifest ref row adds an optional `serverCursor`, the row's `server_cursor`
+(`RecordSyncManifestItemSchema`, `packages/contracts/src/sync-api.ts:543-545`).
+A server before step 04 of #5221 omits it. A record pack reader reconciles on
+it (chapter 08 §8.10); every other client ignores it.
 
 **`POST /sync/push`** — request `{ items: <push item>[] }`, **1 to 100 items**;
 fewer than one or more than a hundred is rejected before anything is applied.
@@ -1119,7 +1125,7 @@ and the replacement arrives at a later cursor. There is no background sweep:
 the pull, which meets every lost blob a client actually needs, is what reports
 it. Nothing deletes a row because of it. The next accepted push of the item
 clears it, and nothing triggers that push automatically. A record pack writer
-omits such a row, and the version-exact manifest reconcile of chapter 08
+omits such a row, and the cursor-exact manifest reconcile of chapter 08
 §8.10 sends a pack reader to this pull for it.
 
 A conforming client records a `blobMissing` entry, applies nothing for it,

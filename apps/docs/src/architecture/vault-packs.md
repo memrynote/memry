@@ -259,9 +259,9 @@ any of it yet.
   the end of the chain. The tail starts at the lowest kind. A 404, a bad pack, a pack that a
   rollup took out of the listing, or a lost snapshot only lowers the start, and a reader should
   read the feed across such a gap instead (one page for a lost snapshot). Record packs can miss
-  rows, so the reader reads the manifest after the pack bytes. The check is version-exact: it
-  pulls every listed item it lacks or holds at another version (a record entry carries its
-  version), and does not apply a packed live record the manifest leaves out. Packed snapshots and updates are confirmed through the batch route, read after
+  rows, so the reader reads the manifest after the pack bytes. The check is cursor-exact: it
+  pulls every listed item it lacks or holds at another `server_cursor` (a record entry's sort
+  key), pulls every item when the manifest has no cursors, and does not apply a packed live record the manifest leaves out. Packed snapshots and updates are confirmed through the batch route, read after
   the pack bytes.
 - **Rollup.** Small packs are replaced by one pack under a new key. Old rows leave the listing in
   the same batch, and old objects are deleted 600 s later, twice the presigned URL lifetime.

@@ -86,7 +86,7 @@ describe('pack coverage vectors', () => {
  * the chapter: each function below restates one chapter 08 §8.10 to §8.13 rule
  * as a writer, a server or a fresh reader over one small vault, and the probes
  * check that the rules together keep the zero-loss oracle: after the bootstrap the reader holds
- * every live record at its current version (or knows its payload is lost),
+ * every live record at its current write (or knows its payload is lost),
  * every tombstone that still has a payload, and each live document's current
  * body, exactly as the server does. Each probe failed under
  * the text it replaces (PR #5254 body, Proof). A dead document's body rows
@@ -106,7 +106,8 @@ interface Row {
   lost?: boolean
   // An index entry above PACK_MAX_INDEX_ENTRY_BYTES: the item routes serve it, packs never do.
   oversize?: boolean
-  // `sync_items.version` of a record; 1 when absent.
+  // `sync_items.version` of a record; 1 when absent. Not unique per write: two concurrent
+  // pushes can both commit the same version (sync.ts:727, :796, :894).
   version?: number
   // The R2 key the row points at, for the 404 recheck.
   key?: string
@@ -270,7 +271,7 @@ function oracle(rows: Row[]) {
   return {
     live: rows
       .filter((r) => r.kind === 'record' && !r.deleted && !r.lost)
-      .map((r) => `${r.doc}@${r.version ?? 1}`)
+      .map((r) => `${r.doc}@${r.version ?? 1}#${r.cursor}`)
       .toSorted(),
     tombstones: rows
       .filter((r) => r.kind === 'record' && r.deleted && !r.marker)
@@ -286,8 +287,9 @@ function oracle(rows: Row[]) {
 
 /**
  * A fresh reader that declares `note_body` but not `purged_tombstones`:
- * §8.10 tail start, then the feed above it, then the version-exact record
- * reconcile against `GET /sync/manifest` (live records with their `version`,
+ * §8.10 tail start, then the feed above it, then the cursor-exact record
+ * reconcile against `GET /sync/manifest` (live records with their `serverCursor`,
+ * or without it from a server before step 04, which makes every item a pull;
  * `deleted_at IS NULL`) and the body check against `snapshotMeta`, both read
  * after the pack bytes. Every id the reconcile pulls lands in `pulls`.
  */
@@ -298,6 +300,7 @@ function bootstrap(input: {
   rowsAfterPack: Row[]
   localModified?: string[]
   pulls?: string[]
+  manifestWithoutCursors?: boolean
 }) {
   const tail = tailOf(input.packs, input.coverage)
   const records = new Map<string, Row & { fromPack: boolean }>()
@@ -331,7 +334,8 @@ function bootstrap(input: {
       records.delete(doc)
   for (const item of manifest) {
     const held = records.get(item.doc)
-    if (held && !held.deleted && (held.version ?? 1) === (item.version ?? 1)) continue
+    const current = !input.manifestWithoutCursors && held?.cursor === item.cursor
+    if (held && !held.deleted && current) continue
     input.pulls?.push(item.doc)
     if (item.lost) blobMissing.add(item.doc)
     else records.set(item.doc, { ...item, fromPack: false })
@@ -341,7 +345,7 @@ function bootstrap(input: {
   return {
     live: held
       .filter((r) => !blobMissing.has(r.doc))
-      .map((r) => `${r.doc}@${r.version ?? 1}`)
+      .map((r) => `${r.doc}@${r.version ?? 1}#${r.cursor}`)
       .toSorted(),
     tombstones: [...records.values()]
       .filter((r) => r.deleted)
@@ -466,7 +470,7 @@ describe('chapter 08 §8.10-§8.13 rule models (REVIEW-5254, REVIEW-5253, VERIFY
     }
     expect(bootstrap(input)).toEqual(oracle(shed))
     // A pack-sourced record the device modified locally stays, for its push to decide.
-    expect(bootstrap({ ...input, localModified: ['x'] }).live).toEqual(['x@1', 'y@1'])
+    expect(bootstrap({ ...input, localModified: ['x'] }).live).toEqual(['x@1#10', 'y@1#12'])
   })
 
   it('P3: the shed waits out every URL signed while the record pack was listed', () => {
@@ -564,7 +568,7 @@ describe('chapter 08 §8.10-§8.13 rule models (REVIEW-5254, REVIEW-5253, VERIFY
     expect(read).toEqual(oracle(rows))
   })
 
-  it('V1: record ranges tile over an omitted X v2, and the version-exact reconcile pulls it', () => {
+  it('V1: record ranges tile over an omitted X v2, and the cursor-exact reconcile pulls it', () => {
     const first: Row[] = [{ kind: 'record', doc: 'x', cursor: 10, version: 1 }]
     // X v2 at 50 cannot be packed: its payload is lost, or its index entry is too large.
     for (const unpackable of [{ lost: true }, { oversize: true }]) {
@@ -583,6 +587,48 @@ describe('chapter 08 §8.10-§8.13 rule models (REVIEW-5254, REVIEW-5253, VERIFY
       expect(pulls).toEqual(['x'])
       expect(read).toEqual(oracle(rows))
     }
+  })
+
+  it('V3: two writes that share a version differ by cursor, so the omitted one is pulled', () => {
+    // Two concurrent pushes both commit X v4: content A at 100 is packed, content B at 101
+    // is too large to pack. A version compare would keep A for good.
+    const first: Row[] = [{ kind: 'record', doc: 'x', cursor: 100, version: 4 }]
+    const rows: Row[] = [{ kind: 'record', doc: 'x', cursor: 101, version: 4, oversize: true }]
+    const packs = [buildPack(first, 'record', 0, 100), ...writeRanges(rows, 'record', 100, 101)]
+    const coverage: ProbeCoverage = [
+      { itemKind: 'record', packedThrough: 101, coveredThrough: 101 },
+      { itemKind: 'crdt_snapshot', packedThrough: 0, coveredThrough: 1e9 }
+    ]
+    expect(tailOf(packs, coverage)).toBe(101)
+    const pulls: string[] = []
+    const read = bootstrap({ packs, coverage, rowsAtTail: rows, rowsAfterPack: rows, pulls })
+    expect(pulls).toEqual(['x'])
+    expect(read).toEqual(oracle(rows))
+  })
+
+  it('V4: a manifest without serverCursor makes every live record a pull', () => {
+    const rows: Row[] = Array.from({ length: 250 }, (_, i) => ({
+      kind: 'record' as const,
+      doc: `d${i}`,
+      cursor: i + 1
+    }))
+    const packs = writeRanges(rows, 'record', 0, 250)
+    const coverage: ProbeCoverage = [
+      { itemKind: 'record', packedThrough: 250, coveredThrough: 250 },
+      { itemKind: 'crdt_snapshot', packedThrough: 0, coveredThrough: 1e9 }
+    ]
+    const pulls: string[] = []
+    const read = bootstrap({
+      packs,
+      coverage,
+      rowsAtTail: rows,
+      rowsAfterPack: rows,
+      pulls,
+      manifestWithoutCursors: true
+    })
+    expect(read).toEqual(oracle(rows))
+    // Every live record goes to POST /sync/pull, at most 100 ids per request (sync-api.ts:514).
+    expect(pulls).toHaveLength(250)
   })
 
   it('R1: a lost record row keeps the tail at the top, and a body gap costs one feed page', () => {
