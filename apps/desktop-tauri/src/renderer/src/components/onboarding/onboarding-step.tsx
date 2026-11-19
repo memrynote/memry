@@ -4,7 +4,7 @@ import { useT } from '@memry/i18n/renderer'
 
 /**
  * Shared frame for the onboarding sub-flows (create vault, open from sync):
- * a back link, a title block, the step body, and an optional footer row.
+ * an optional back link, a title block, the step body, and an optional footer row.
  */
 export function OnboardingStep({
   onBack,
@@ -13,7 +13,7 @@ export function OnboardingStep({
   children,
   footer
 }: {
-  onBack: () => void
+  onBack?: () => void
   title?: string
   subtitle?: ReactNode
   children: ReactNode
@@ -24,14 +24,16 @@ export function OnboardingStep({
     <div className="flex flex-col grow shrink basis-0 min-h-0">
       <div className="flex flex-col grow shrink basis-0 min-h-0 overflow-y-auto">
         <div className="flex flex-col w-full max-w-[440px] self-center pt-6 pb-8 px-8 gap-6">
-          <button
-            type="button"
-            onClick={onBack}
-            className="flex items-center self-start gap-1.5 -ms-1 rounded-md px-1 py-0.5 text-xs leading-4 text-text-tertiary hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="size-3.5 rtl:rotate-180" />
-            <span>{t('phaseF.componentsVaultOnboarding.flow.back')}</span>
-          </button>
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              className="flex items-center self-start gap-1.5 -ms-1 rounded-md px-1 py-0.5 text-xs leading-4 text-text-tertiary hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="size-3.5 rtl:rotate-180" />
+              <span>{t('phaseF.componentsVaultOnboarding.flow.back')}</span>
+            </button>
+          )}
           {title && (
             <div className="flex flex-col gap-1.5">
               <h2 className="font-heading font-semibold text-text-bright text-xl leading-6 tracking-[-0.01em]">

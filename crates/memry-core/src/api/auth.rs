@@ -271,11 +271,32 @@ impl AuthSession {
         self.state.lock().unwrap_or_else(|e| e.into_inner()).clone()
     }
 
-    /// Applies an edge, or reports that the call was not one.
+    /// The last sign-out marker file operation that failed (#4767), once, for the shell to log
+    /// or report. A failed write matters when the store also kept a secret: the next launch
+    /// then restores the session the user ended. Not part of the FFI surface.
+    pub fn take_sign_out_marker_fault(&self) -> Option<String> {
+        self.sign_out_marker.take_fault()
+    }
+
+    /// The shell deleted every entry on its own after a failed clear: the store holds nothing of
+    /// the signed-out account, so the next sign-in has nothing to delete. Not part of the FFI
+    /// surface.
+    pub fn note_store_cleared(&self) {
+        self.sign_out_marker.store_cleared();
+    }
+
+    /// Applies an edge, or reports that the call was not one. A new sign-in first deletes what
+    /// a refused sign-out left ([`Self::forget_last_account`]).
     fn apply(&self, event: AuthEvent, action: &str) -> Result<AuthState, AuthError> {
         let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
         match transition(&state, &event) {
             Some(next) => {
+                if matches!(
+                    event,
+                    AuthEvent::OtpRequested { .. } | AuthEvent::ProviderSheetOpened { .. }
+                ) {
+                    self.forget_last_account()?;
+                }
                 if event == AuthEvent::DeviceRegistered {
                     self.sign_out_marker.clear();
                 }

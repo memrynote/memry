@@ -88,6 +88,8 @@ pub struct Vault {
 mod tags;
 // The desktop sync driver and the server vault binding (#3534).
 mod sync_driver;
+// The desktop sticky drafts' accessor (Step 31).
+mod sticky;
 
 impl Vault {
     /// [`Vault::open`] with explicit [`OpenOptions`], for desktop. Not on the FFI surface.
@@ -195,6 +197,21 @@ impl Vault {
     #[doc(hidden)]
     pub fn db_handle(&self) -> Db {
         self.db.clone()
+    }
+
+    /// Desktop's bookmark list and lookups (Step 30a). Not part of the FFI
+    /// surface: the Rust desktop shell is its only caller. The writes are on
+    /// [`Vault::notes_writer`], which carries the device identity.
+    #[doc(hidden)]
+    pub fn bookmarks(&self) -> crate::api::bookmarks::Bookmarks {
+        crate::api::bookmarks::Bookmarks::over(self.db.clone())
+    }
+
+    /// Desktop's device-local "recently opened" trail (Step 30a). Not part of
+    /// the FFI surface: the Rust desktop shell is its only caller.
+    #[doc(hidden)]
+    pub fn recently_opened(&self) -> crate::api::recently_opened::RecentlyOpened {
+        crate::api::recently_opened::RecentlyOpened::over(self.db.clone())
     }
 
     /// Path identity and file state of this vault's files (desktop Step 12).
@@ -532,8 +549,9 @@ impl Vault {
         Ok(Arc::new(Search::over(self.db.clone(), &self.directory)?))
     }
 
-    /// The search sheet's recently opened results, device-local (#4322).
-    pub fn search_recents(&self) -> Arc<SearchRecents> {
-        Arc::new(SearchRecents::over(self.db.clone()))
+    /// The search sheet's recently opened results, device-local (#4322),
+    /// keeping the newest `cap` (iOS 10, desktop 20).
+    pub fn search_recents(&self, cap: u32) -> Arc<SearchRecents> {
+        Arc::new(SearchRecents::over(self.db.clone(), cap))
     }
 }
