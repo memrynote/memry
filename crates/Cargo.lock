@@ -4145,6 +4145,7 @@ dependencies = [
  "hex",
  "hmac",
  "html5ever 0.40.1",
+ "iana-time-zone",
  "icu_decimal",
  "icu_locale",
  "icu_plurals",
