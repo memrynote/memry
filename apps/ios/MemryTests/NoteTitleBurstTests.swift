@@ -1,4 +1,5 @@
 import MemryCore
+import os
 import SwiftUI
 import Testing
 import UIKit
@@ -322,12 +323,12 @@ struct NoteTitleBurstTests {
     }
 
     /// Opens the new note's page in a scene window; its title takes the caret.
-    private func open(_ f: Fixture) async throws -> (UIWindow, UITextView) {
+    private func open(_ f: Fixture, reader: (any NotesReading)? = nil) async throws -> (UIWindow, UITextView) {
         let scene = try #require(UIApplication.shared.connectedScenes.first as? UIWindowScene)
         let window = UIWindow(windowScene: scene)
         let writer = CoreNoteMetadataWriter(vault: f.vault.vault, store: TaskTestKeychain(), executor: .shared)
         window.rootViewController = UIHostingController(rootView: NoteReadView(
-            route: NoteRoute(id: f.noteId), reader: f.reader, filler: QuietFiller(),
+            route: NoteRoute(id: f.noteId), reader: reader ?? f.reader, filler: QuietFiller(),
             editor: CoreBlockEditor(vault: f.vault.vault, store: TaskTestKeychain(), executor: .shared),
             metadataWriter: writer
         ))
@@ -398,6 +399,23 @@ struct NoteTitleBurstTests {
         defer { window.isHidden = true }
 
         for key in "F1 paragraph\nbody" { field.insertText(String(key)) }
+
+        try await expectBody(in: window, f)
+        #expect(field.text == "F1 paragraph")
+    }
+
+    /// #5119: Return in a new note's title before the page has walked its
+    /// blocks. The keys after it wait in the title for the walk, then land
+    /// in the note's one paragraph, which stays the only block.
+    @Test(.timeLimit(.minutes(1))) func keys_after_a_return_before_the_blocks_are_read_land_in_the_body() async throws {
+        let f = try await newNote()
+        let walk = BlockWalkGate(f.reader)
+        let (window, field) = try await open(f, reader: walk)
+        defer { window.isHidden = true }
+
+        for key in "F1 paragraph\nbody" { field.insertText(String(key)) }
+        try await settle(f)
+        walk.open()
 
         try await expectBody(in: window, f)
         #expect(field.text == "F1 paragraph")
@@ -1333,5 +1351,26 @@ private final class Resigned {
     func stop() {
         observer.map(NotificationCenter.default.removeObserver)
         observer = nil
+    }
+}
+
+/// The vault's reader, with the block walk held until `open()`: a page
+/// whose blocks are still being read (#5119).
+private final class BlockWalkGate: NotesReading, @unchecked Sendable {
+    private let reader: CoreNotesReader
+    private let opened = OSAllocatedUnfairLock(initialState: false)
+
+    init(_ reader: CoreNotesReader) { self.reader = reader }
+
+    func open() { opened.withLock { $0 = true } }
+
+    func folders() async throws -> [FolderSummary] { try await reader.folders() }
+    func list() async throws -> [NoteSummary] { try await reader.list() }
+    func read(id: String) async throws -> NoteDetail? { try await reader.read(id: id) }
+    func metadata(id: String) async throws -> NoteMetadata? { try await reader.metadata(id: id) }
+
+    func blocks(id: String) async throws -> [Block]? {
+        while !opened.withLock({ $0 }) { try await Task.sleep(for: .milliseconds(10)) }
+        return try await reader.blocks(id: id)
     }
 }
