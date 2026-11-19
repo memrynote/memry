@@ -7,8 +7,9 @@ use std::sync::Arc;
 use memry_desktop::account::AccountService;
 use memry_desktop::account::e2e_bootstrap::E2eDevice;
 use memry_desktop::account::vault_sync::{OpenVaultBinding, SyncWiring};
+use memry_desktop::launch_env::LaunchEnv;
 use memry_desktop::seams::reachability::DesktopReachability;
-use memry_desktop::session::Session;
+use memry_desktop::session::{Session, StartupOutcome};
 use memry_desktop::sync::gate::{Entitlement, VaultBinding};
 use serde::Serialize;
 use tauri::{AppHandle, Manager, Wry};
@@ -97,28 +98,35 @@ pub async fn e2e_bootstrap_sync_device(
     Ok(Bootstrapped { device_id })
 }
 
-/// Electron's `restartSyncRuntimeForTests`: stops the open vault's supervisor without the
-/// shutdown's final rounds and builds a new one, which decides the vault's binding again. Answers
-/// once the new supervisor runs; fails while sync is not wired or the account is signed out.
+/// Electron's `restartSyncRuntimeForTests`, done the way an app restart does it: closes the open
+/// vault, which stops its supervisor without the shutdown's final rounds, then opens the launch
+/// vault again through `Session::open_startup`. The reopen reads the database's identity and
+/// binding from disk, stamps the registry entry, and starts a new supervisor. Answers once that
+/// supervisor runs; its bind and first pass run after. Fails while sync is not wired or the
+/// account is signed out.
 #[tauri::command]
 pub async fn e2e_restart_sync_runtime(app: AppHandle<Wry>) -> Result<(), CommandError> {
     let wiring = app
         .try_state::<Arc<SyncWiring>>()
-        .map(|wiring| Arc::clone(wiring.inner()))
         .ok_or_else(|| invalid("e2e_no_sync", "sync is not wired yet"))?;
     if !wiring.account.info().signed_in {
         return Err(invalid("e2e_signed_out", "the account is signed out"));
     }
-    let session = app.state::<Session>().inner().clone();
     let restarted = tauri::async_runtime::spawn_blocking(move || {
-        session.attach_sync(wiring.factory());
-        session.sync_supervisor().is_some()
+        let session = app.state::<Session>();
+        session.close();
+        match session.open_startup(&app.state::<LaunchEnv>()) {
+            StartupOutcome::Opened(_) => Ok(session.sync_supervisor().is_some()),
+            StartupOutcome::Picker => Err("no launch vault to reopen".to_owned()),
+            StartupOutcome::Failed { error, .. } => Err(error.to_string()),
+        }
     })
     .await
+    .map_err(|e| invalid("e2e_restart_sync_runtime", e))?
     .map_err(|e| invalid("e2e_restart_sync_runtime", e))?;
     if restarted {
         Ok(())
     } else {
-        Err(invalid("e2e_no_supervisor", "no vault is open to sync"))
+        Err(invalid("e2e_no_supervisor", "the reopened vault runs no supervisor"))
     }
 }

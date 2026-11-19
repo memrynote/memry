@@ -20,10 +20,15 @@ async function metaValue(app: TauriApp, key: string): Promise<string | null> {
   return rows[0]?.value ?? null
 }
 
-async function syncStatus(page: Page): Promise<string> {
+// `idle` alone also means no supervisor runs (`sync::status::idle`). A supervisor sets
+// `lastSyncAt` only when its first pass ends, so `idle` with it means one is bound and has synced.
+async function supervisorIdle(page: Page): Promise<boolean> {
   return page.evaluate(async () => {
-    const status = (await window.__TAURI__.core.invoke('sync_get_status')) as { status: string }
-    return status.status
+    const status = (await window.__TAURI__.core.invoke('sync_get_status')) as {
+      status: string
+      lastSyncAt?: number
+    }
+    return status.status === 'idle' && status.lastSyncAt !== undefined
   })
 }
 
@@ -44,8 +49,8 @@ test.describe('CRDT store after vault adoption (#2424)', () => {
     test.setTimeout(180_000)
     const body = 'merged before the restart'
 
-    await expect.poll(() => syncStatus(page), { timeout: TIMEOUT }).toBe('idle')
-    await expect.poll(() => syncStatus(pageB), { timeout: TIMEOUT }).toBe('idle')
+    await expect.poll(() => supervisorIdle(page), { timeout: TIMEOUT }).toBe(true)
+    await expect.poll(() => supervisorIdle(pageB), { timeout: TIMEOUT }).toBe(true)
     const note = await createNote(page, { title: `Adoption Store ${Date.now()}`, content: body })
     await expect
       .poll(
@@ -71,13 +76,23 @@ test.describe('CRDT store after vault adoption (#2424)', () => {
     const epoch = await metaValue(appB, 'vault.id')
     expect(epoch).toBeTruthy()
 
+    const adopted = syncBootstrap.deviceB.vaultId.toLowerCase()
+    // The same database identity, still bound to the adopted vault, not to a new one.
+    const expectStoreKept = async (): Promise<void> => {
+      expect(await metaValue(appB, 'vault.id')).toBe(epoch)
+      expect(await metaValue(appB, 'sync.server_vault_id')).toBe(adopted)
+    }
+
+    // Closes B's vault and opens it again as a launch does; the reopen has read both keys when
+    // it answers.
     await invokeTest(appB, 'e2e_restart_sync_runtime')
+    await expectStoreKept()
+    // The new supervisor binds and runs its first pass after the hook answers; a rearm of the
+    // legacy pull or a new binding lands by then.
+    await expect.poll(() => supervisorIdle(pageB), { timeout: TIMEOUT }).toBe(true)
+    await syncNow(pageB)
 
     expect(await metaValue(appB, 'sync.note_body_legacy_pull')).toBe('done')
-    expect(await metaValue(appB, 'vault.id')).toBe(epoch)
-    // The store is still bound to the adopted vault, not to a new one.
-    expect(await metaValue(appB, 'sync.server_vault_id')).toBe(
-      syncBootstrap.deviceB.vaultId.toLowerCase()
-    )
+    await expectStoreKept()
   })
 })

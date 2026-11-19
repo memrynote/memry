@@ -122,9 +122,13 @@ not read. The server is the control file's `syncServerUrl`: a fixture that sets
 only in the e2e build (`memry-core` and `memry-desktop` feature `e2e`).
 
 `e2e_restart_sync_runtime` (`src-tauri/src/e2e/sync.rs`) is Electron's
-`restartSyncRuntimeForTests`: it stops the open vault's supervisor without the shutdown's final
-rounds and builds a new one through `Session::attach_sync`, which decides the vault's binding
-again. It answers once the new supervisor runs, and fails while the account is signed out.
+`restartSyncRuntimeForTests`, done the way an app restart does it: it closes the open vault,
+which stops its supervisor without the shutdown's final rounds, and opens the launch vault again
+through `Session::open_startup`. The reopen reads `vault.id` and `sync.server_vault_id` from
+disk, stamps the registry entry, and starts a new supervisor. The hook answers once that
+supervisor runs, and fails while the account is signed out. Its bind and first pass run after,
+so a spec waits for `sync_get_status` to report `idle` with a `lastSyncAt` (plain `idle` also
+means no supervisor runs) before it reads the state.
 
 Electron's sync state keys live in the vault's `data.db` `meta` table, which a spec reads with
 `e2e_debug_query`. `specs/two-device/sync-adoption-store-restart.e2e.ts` reads three:
@@ -137,7 +141,9 @@ Electron's sync state keys live in the vault's `data.db` `meta` table, which a s
 
 Electron names the CRDT store directory after the vault uuid and renames it on adoption. The
 Tauri store is the vault's `data.db`, so there is no directory to list: the adopted id is the
-binding `sync.server_vault_id`, and `vault.id` is the database's own identity, minted once.
+binding `sync.server_vault_id`, and `vault.id` is the database's own identity, minted once. A
+reopen that lost either one fails the spec: `vault.id` would be minted again and the binding
+would be gone.
 
 ## Spelling
 
