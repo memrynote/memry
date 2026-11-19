@@ -9,6 +9,7 @@ import {
   DEFAULT_VIEW,
   PROJECT_FOLDER,
   PROJECT_NOTES,
+  cellUnder,
   folderConfigPath,
   folderHeader,
   folderViews,
@@ -27,11 +28,22 @@ import { test as base, expect } from '../../harness/test'
 
 const TABS = '[role="tab"][data-group-id]'
 const ALPHA = PROJECT_NOTES[0].title
+const BULK_FOLDER = 'notes/Bulk'
+const SYNCED_FOLDER = 'notes/Synced'
 
 /** The vault holds the three project notes before the app opens it. */
 const test = base.extend<{ testVaultPath: string }>({
   testVaultPath: async ({ testVaultPath }, use) => {
     seedProjectNotes(testVaultPath)
+    await use(testVaultPath)
+  }
+})
+
+/** A folder whose `.folder.md` already holds its Default view, as after a view was saved. */
+const defaultViewTest = base.extend<{ testVaultPath: string }>({
+  testVaultPath: async ({ testVaultPath }, use) => {
+    seedProjectNotes(testVaultPath)
+    writeFolderConfig(testVaultPath, PROJECT_FOLDER, { views: [DEFAULT_VIEW] })
     await use(testVaultPath)
   }
 })
@@ -53,9 +65,14 @@ test.describe('Folder View', () => {
     await toggleColumn(page, 'status')
     await toggleColumn(page, 'priority')
 
-    const alpha = tableRow(page, ALPHA)
-    await expect(alpha).toContainText('active')
-    await expect(alpha).toContainText('4')
+    await expect(page.locator('th').filter({ hasText: 'Status' })).toBeVisible()
+    await expect(page.locator('th').filter({ hasText: 'Priority' })).toBeVisible()
+    // Each value is read under its own header: Alpha's `active` is also a tag, and `4` can sit in
+    // a date, so only the Status and Priority cells can satisfy these.
+    for (const note of PROJECT_NOTES) {
+      await expect(await cellUnder(page, note.title, 'Status')).toHaveText(note.status)
+      await expect(await cellUnder(page, note.title, 'Priority')).toHaveText(String(note.priority))
+    }
   })
 
   test('T126: should persist column add/remove in .folder.md', async ({ page, testVaultPath }) => {
@@ -107,10 +124,7 @@ test.describe('Folder View', () => {
     await expect(page.locator('tbody tr').filter({ hasText: 'Project Gamma' })).toHaveCount(0)
   })
 
-  // The first view made on a folder without `.folder.md` replaces the implicit Default on disk,
-  // so its name editor renames index 1 of a one-view list and the name never sticks. Main does
-  // the same (shared renderer and SET_VIEW semantics). Owner: Step 30 (#3547), Low on #4278.
-  test.fixme('T129: should support multiple named views', async ({ page, testVaultPath }) => {
+  defaultViewTest('T129: should support multiple named views', async ({ page, testVaultPath }) => {
     await openFolderView(page, PROJECT_FOLDER)
 
     // A new view opens its name editor; the user names it there.
@@ -121,14 +135,32 @@ test.describe('Folder View', () => {
     await expect(viewSwitcher(page, 'Review View')).toBeVisible()
     await page.keyboard.press('Escape')
 
-    // The implicit Default is not on disk until a view is saved, so the named view is the file's
-    // first (main's SET_VIEW does the same); a second one makes the folder's views plural.
     await viewSwitcher(page, 'Review View').click()
     await page.getByRole('button', { name: 'New view', exact: true }).click()
     await expect(viewSwitcher(page, 'New view')).toBeVisible()
     await expect
       .poll(() => folderViews(testVaultPath, PROJECT_FOLDER).map((view) => view.name))
-      .toEqual(['Review View', 'New view'])
+      .toEqual(['Default', 'Review View', 'New view'])
+  })
+
+  // The no-config path of T129, with no `.folder.md` on disk. The first view made there replaces
+  // the implicit Default on disk, so its name editor renames index 1 of a one-view list and the
+  // name never sticks. Main does the same (shared renderer and SET_VIEW semantics). Owner: Step
+  // 30 (#3547), Low on #4278.
+  test.fixme('T129: should name the first view made on a folder without .folder.md', async ({
+    page,
+    testVaultPath
+  }) => {
+    await openFolderView(page, PROJECT_FOLDER)
+
+    await viewSwitcher(page, 'Default').click()
+    await page.getByRole('button', { name: 'New view', exact: true }).click()
+    await page.getByPlaceholder('My Custom View').fill('Review View')
+    await page.keyboard.press('Enter')
+    await expect(viewSwitcher(page, 'Review View')).toBeVisible()
+    await expect
+      .poll(() => folderViews(testVaultPath, PROJECT_FOLDER).map((view) => view.name))
+      .toContain('Review View')
   })
 
   test('T130: should open note in a new tab on double click', async ({ page }) => {
@@ -140,6 +172,8 @@ test.describe('Folder View', () => {
   })
 
   test('T131: should react to manual .folder.md edits', async ({ page, testVaultPath }) => {
+    // The poll below runs up to 60 s, the local mocha budget.
+    test.slow()
     await openFolderView(page, PROJECT_FOLDER)
 
     const existing = readFolderConfig(testVaultPath, PROJECT_FOLDER) ?? {}
@@ -179,7 +213,6 @@ test.describe('Folder View', () => {
     page,
     testVaultPath
   }) => {
-    const synced = 'Synced'
     await openFolderView(page, PROJECT_FOLDER)
 
     // A sync brings a folder whose `.folder.md` is a copy of another folder's.
@@ -194,20 +227,20 @@ test.describe('Folder View', () => {
         }
       ]
     })
-    fs.mkdirSync(path.join(testVaultPath, synced), { recursive: true })
+    fs.mkdirSync(path.join(testVaultPath, SYNCED_FOLDER), { recursive: true })
     fs.copyFileSync(
       folderConfigPath(testVaultPath, PROJECT_FOLDER),
-      folderConfigPath(testVaultPath, synced)
+      folderConfigPath(testVaultPath, SYNCED_FOLDER)
     )
     writeNoteFile(
       testVaultPath,
-      synced,
+      SYNCED_FOLDER,
       'Synced Note.md',
       { id: 'synced-1', title: 'Synced Note', tags: ['sync'] },
       '# Synced Note'
     )
 
-    await openFolderView(page, synced)
+    await openFolderView(page, SYNCED_FOLDER)
     await expect(viewSwitcher(page, 'Synced View')).toBeVisible()
     await expect(tableRow(page, 'Synced Note')).toBeVisible()
   })
@@ -253,14 +286,14 @@ test.describe('Folder View', () => {
 test.describe('Folder View Performance', () => {
   const bulkTest = base.extend<{ testVaultPath: string }>({
     testVaultPath: async ({ testVaultPath }, use) => {
-      seedBulkNotes(testVaultPath, 'Bulk', 120)
+      seedBulkNotes(testVaultPath, BULK_FOLDER, 120)
       await use(testVaultPath)
     }
   })
 
   bulkTest('T132: should handle folders with 100+ notes', async ({ page }) => {
-    await openFolderView(page, 'Bulk')
-    await expect(folderHeader(page, 'Bulk')).toContainText('120 notes', { timeout: 30_000 })
+    await openFolderView(page, BULK_FOLDER)
+    await expect(folderHeader(page, BULK_FOLDER)).toContainText('120 notes', { timeout: 30_000 })
     await expect(page.locator('tbody tr').first()).toBeVisible()
   })
 })
@@ -285,7 +318,7 @@ test.describe('Folder View — binary rows (#2073)', () => {
   })
 
   // Tauri indexes no binary vault file: the PDF is in neither `notes_list`, the tree nor the
-  // folder view, before or after launch. Owner: Step 13 (#3530), note_metadata file items.
+  // folder view, before or after launch. Owner: #4209 (vault PDFs and images indexed as file items).
   pdfTest.fixme(
     'a bulk tag add over a PDF row leaves the PDF byte-for-byte intact',
     async ({ page, testVaultPath }) => {
