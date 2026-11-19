@@ -21,7 +21,7 @@ use crate::web::extract::utils::date::iso_string;
 use crate::web::extract::utils::js::{self, is_js_whitespace};
 use crate::web::extract::utils::json::JsValue;
 
-const ROOT: &str = "Roam";
+pub(super) const ROOT: &str = "Roam";
 const INDENT: &str = "  ";
 
 /// JavaScript's regex `\s`.
@@ -45,7 +45,6 @@ static ITALIC: LazyLock<Regex> = LazyLock::new(|| re(r"__(<dot>+?)__"));
 static HIGHLIGHT: LazyLock<Regex> = LazyLock::new(|| re(r"\^\^(<dot>+?)\^\^"));
 static EMBED: LazyLock<Regex> =
     LazyLock::new(|| re(r"\{\{\[?\[?embed\]?\]?:\s*\(\(([^)]+)\)\)\s*\}\}"));
-static TEMPLATE: LazyLock<Regex> = LazyLock::new(|| re(r"\{\{[^}]*\}\}"));
 static REF: LazyLock<Regex> =
     LazyLock::new(|| re(r"\{\{embed:\(\(([^)(]+)\)\)\}\}|\(\(([^)(]+)\)\)"));
 static LONG_DATE: LazyLock<Regex> =
@@ -69,6 +68,17 @@ const MONTHS: [&str; 12] = [
 
 thread_local! {
     static QUOTED_BYTES: Cell<usize> = const { Cell::new(0) };
+    static TEMPLATE_BYTES: Cell<usize> = const { Cell::new(0) };
+}
+
+/// Bytes this thread has scanned to drop `{{…}}` templates.
+#[doc(hidden)]
+pub fn template_bytes_scanned() -> usize {
+    TEMPLATE_BYTES.with(Cell::get)
+}
+
+fn count_template_bytes(bytes: usize) {
+    TEMPLATE_BYTES.with(|n| n.set(n.get() + bytes));
 }
 
 /// Bytes of referenced block text this thread has scrubbed to quote a block reference.
@@ -113,19 +123,39 @@ pub fn scrub_markup(input: &str) -> String {
     drop_templates(&out)
 }
 
-/// `/\{\{(?!embed:)[^}]*\}\}/g` → ''. A match that starts with `{{embed:` fails the lookahead,
-/// so the search goes on one character later.
+/// `/\{\{(?!embed:)[^}]*\}\}/g` → '', in linear time. A `{{` that is not `{{embed:` matches
+/// when the first `}` after it is doubled; a failed start retries one byte later, as the regex
+/// does. Every start before that `}` shares it, so it is searched for once, not per start.
 fn drop_templates(text: &str) -> String {
+    let bytes = text.as_bytes();
     let mut out = String::with_capacity(text.len());
-    let (mut copied, mut from) = (0, 0);
-    while let Some(m) = TEMPLATE.find_at(text, from) {
-        if text[m.start()..].starts_with("{{embed:") {
-            from = m.start() + 1;
+    let (mut copied, mut at) = (0, 0);
+    let mut close: Option<usize> = None;
+    while let Some(offset) = text[at..].find("{{") {
+        count_template_bytes(offset + 2);
+        let start = at + offset;
+        at = start + 1;
+        if text[start..].starts_with("{{embed:") {
             continue;
         }
-        out.push_str(&text[copied..m.start()]);
-        copied = m.end();
-        from = m.end();
+        let end = match close {
+            Some(end) if end >= start + 2 => end,
+            _ => {
+                let rest = &bytes[start + 2..];
+                let Some(found) = rest.iter().position(|&b| b == b'}') else {
+                    // No `}` is left, so no later start can match either.
+                    count_template_bytes(rest.len());
+                    break;
+                };
+                count_template_bytes(found + 1);
+                *close.insert(start + 2 + found)
+            }
+        };
+        if bytes.get(end + 1) == Some(&b'}') {
+            out.push_str(&text[copied..start]);
+            copied = end + 2;
+            at = end + 2;
+        }
     }
     out.push_str(&text[copied..]);
     out
@@ -139,12 +169,25 @@ enum Child<'a> {
     Empty,
 }
 
-/// `children ?? []` iterated with `for…of`.
-fn children(value: Option<&JsValue>) -> Result<Vec<Child<'_>>, MapError> {
+/// A fixed charge per outline entry, however short its text: its walk-stack slot and the line
+/// it becomes. A string of n characters is n entries.
+const ENTRY_COST: usize = size_of::<(Child<'static>, usize)>() + size_of::<String>();
+
+/// `children ?? []` iterated with `for…of`, charged per entry before it is allocated.
+fn children<'a>(
+    value: Option<&'a JsValue>,
+    budget: &mut Budget,
+) -> Result<Vec<Child<'a>>, MapError> {
+    let entries = match value {
+        Some(JsValue::String(s)) => s.chars().count(),
+        Some(JsValue::Array(items)) => items.len(),
+        _ => 0,
+    };
+    budget.spend(entries.saturating_mul(ENTRY_COST))?;
     match value {
         None | Some(JsValue::Null) => Ok(Vec::new()),
         // A string iterates by code point.
-        Some(JsValue::String(s)) => Ok(vec![Child::Empty; s.chars().count()]),
+        Some(JsValue::String(_)) => Ok(vec![Child::Empty; entries]),
         Some(JsValue::Array(items)) => items
             .iter()
             .map(|item| match item {
@@ -194,13 +237,17 @@ fn heading_prefix(level: Option<&JsValue>) -> String {
 /// Walks a page's blocks depth first, in document order, without recursion.
 fn walk<'a>(
     top: Option<&'a JsValue>,
-    mut visit: impl FnMut(Child<'a>, usize) -> Result<(), MapError>,
+    budget: &mut Budget,
+    mut visit: impl FnMut(Child<'a>, usize, &mut Budget) -> Result<(), MapError>,
 ) -> Result<(), MapError> {
-    let mut stack: Vec<(Child<'a>, usize)> =
-        children(top)?.into_iter().rev().map(|c| (c, 0)).collect();
+    let mut stack: Vec<(Child<'a>, usize)> = children(top, budget)?
+        .into_iter()
+        .rev()
+        .map(|c| (c, 0))
+        .collect();
     while let Some((block, depth)) = stack.pop() {
-        visit(block, depth)?;
-        let kids = children(field(block, "children"))?;
+        visit(block, depth, budget)?;
+        let kids = children(field(block, "children"), budget)?;
         stack.extend(kids.into_iter().rev().map(|c| (c, depth + 1)));
     }
     Ok(())
@@ -209,11 +256,11 @@ fn walk<'a>(
 /// `indexBlocks`: uid → (page title, raw text); the last block of a uid wins.
 type Index<'a> = HashMap<&'a str, (&'a str, &'a str)>;
 
-fn index_blocks(pages: &[JsValue]) -> Result<Index<'_>, MapError> {
+fn index_blocks<'a>(pages: &'a [JsValue], budget: &mut Budget) -> Result<Index<'a>, MapError> {
     let mut index = Index::new();
     for page in pages {
         let title = page.get("title").and_then(JsValue::as_str).unwrap_or("");
-        walk(page.get("children"), |block, _| {
+        walk(page.get("children"), budget, |block, _, _| {
             if let Some(uid) = field(block, "uid").and_then(JsValue::as_str)
                 && !uid.is_empty()
             {
@@ -236,9 +283,16 @@ impl Budget {
 }
 
 /// `convertBlocks`.
-fn convert_blocks(top: Option<&JsValue>, budget: &mut Budget) -> Result<String, MapError> {
+fn convert_blocks(
+    top: Option<&JsValue>,
+    budget: &mut Budget,
+    cancel: &CancellationToken,
+) -> Result<String, MapError> {
     let mut lines: Vec<String> = Vec::new();
-    walk(top, |block, depth| {
+    walk(top, budget, |block, depth, budget| {
+        if cancel.is_cancelled() {
+            return Err(MapError::Cancelled);
+        }
         let text = heading_prefix(field(block, "heading")) + &scrub_markup(block_text(block)?);
         let line = format!("{}- {text}", INDENT.repeat(depth));
         let line = line.trim_end_matches(is_js_whitespace).to_owned();
@@ -353,9 +407,9 @@ pub fn map_pages(
     max_bytes: usize,
     cancel: &CancellationToken,
 ) -> Result<Vec<NotePlan>, MapError> {
-    let index = index_blocks(pages)?;
-    let mut quoted = HashMap::new();
     let mut budget = Budget(max_bytes);
+    let index = index_blocks(pages, &mut budget)?;
+    let mut quoted = HashMap::new();
     let mut plans = Vec::with_capacity(pages.len());
     for page in pages {
         if cancel.is_cancelled() {
@@ -363,7 +417,7 @@ pub fn map_pages(
         }
         let title = page.get("title").and_then(JsValue::as_str).unwrap_or("");
         let daily = detect_daily_note(title, page.get("uid"))?;
-        let converted = convert_blocks(page.get("children"), &mut budget)?;
+        let converted = convert_blocks(page.get("children"), &mut budget, cancel)?;
         let body = resolve_refs(&converted, &index, &mut quoted, &mut budget)?;
         let (folder, title) = match &daily {
             Some(iso) => (ROOT.to_owned(), iso.clone()),

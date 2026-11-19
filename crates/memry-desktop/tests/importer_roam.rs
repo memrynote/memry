@@ -5,11 +5,14 @@
 use std::path::{Path, PathBuf};
 
 use memry_desktop::import::roam::{
-    MAX_MAPPED_BYTES, RoamImporter, quoted_bytes_scrubbed, scrub_markup,
+    MAX_MAPPED_BYTES, MAX_TOTAL_SOURCE_BYTES, MapError, RoamImporter, map_pages,
+    quoted_bytes_scrubbed, scrub_markup, template_bytes_scanned,
 };
 use memry_desktop::import::{ImportContext, ImportError, ImportInput, ImportSummary, Importer};
+use memry_desktop::web::extract::utils::json as js_json;
 use memry_test_kit::{assert_steps_at_most, on_small_stack, proptest_config};
 use proptest::prelude::*;
+use regex::Regex;
 use serde_json::{Value, json};
 use tokio_util::sync::CancellationToken;
 
@@ -266,7 +269,8 @@ fn a_page_title_that_climbs_out_of_the_folder_is_refused() {
     let all = notes(&writes);
     assert_eq!(all.len(), 1);
     assert_eq!(all[0]["title"], "Safe");
-    assert_eq!(summary.failed.len(), 2);
+    let items: Vec<&str> = summary.failed.iter().map(|f| f.item.as_str()).collect();
+    assert_eq!(items, ["../../escape/Note", "a/..\\../Note"]);
 }
 
 #[test]
@@ -423,8 +427,80 @@ fn a_referenced_block_is_scrubbed_once_however_often_it_is_referenced() {
     );
 }
 
+#[test]
+fn picked_files_over_the_total_input_cap_refuse_the_run_before_mapping() {
+    let dir = tempfile::tempdir().unwrap();
+    let half = (MAX_TOTAL_SOURCE_BYTES / 2 + 1) as u64;
+    assert!(half <= memry_desktop::import::MAX_SOURCE_BYTES);
+    let paths: Vec<PathBuf> = ["a.json", "b.json"]
+        .iter()
+        .map(|name| {
+            let path = dir.path().join(name);
+            std::fs::File::create(&path).unwrap().set_len(half).unwrap();
+            path
+        })
+        .collect();
+
+    let (result, writes, _) = run(&paths);
+
+    let error = result.expect_err("two files over the total cap refuse the run");
+    assert!(error.to_string().contains("MB"), "{error}");
+    assert!(writes.is_empty());
+}
+
+#[test]
+fn many_tiny_children_are_charged_per_entry_against_the_budget() {
+    // 200 one-character lines hold 400 bytes of text, but 200 entries cost more than 1000.
+    let page = format!(r#"{{"title":"P","children":"{}"}}"#, "x".repeat(200));
+    let pages = [js_json::parse(&page).unwrap()];
+    let cancel = CancellationToken::new();
+
+    assert_eq!(map_pages(&pages, 1000, &cancel), Err(MapError::TooLarge));
+    assert!(map_pages(&pages[..], 1024 * 1024, &cancel).is_ok());
+}
+
+#[test]
+fn an_unclosed_embed_run_drops_templates_in_linear_steps() {
+    // Each `{{embed:` once restarted a scan to the end: 14.5 s at 40 KB in release.
+    let text = format!("{}}}}}", "{{embed:".repeat(5_000));
+
+    assert_steps_at_most(
+        "bytes scanned dropping templates",
+        template_bytes_scanned,
+        4 * text.len(),
+        || assert_eq!(scrub_markup(&text), text),
+    );
+}
+
+/// The regex the hand scanner replaced: `/\{\{(?!embed:)[^}]*\}\}/g` with the lookahead
+/// emulated by retrying one byte later.
+fn drop_templates_by_regex(text: &str) -> String {
+    let template = Regex::new(r"\{\{[^}]*\}\}").unwrap();
+    let mut out = String::new();
+    let (mut copied, mut from) = (0, 0);
+    while let Some(m) = template.find_at(text, from) {
+        if text[m.start()..].starts_with("{{embed:") {
+            from = m.start() + 1;
+            continue;
+        }
+        out.push_str(&text[copied..m.start()]);
+        copied = m.end();
+        from = m.end();
+    }
+    out.push_str(&text[copied..]);
+    out
+}
+
 proptest! {
     #![proptest_config(proptest_config(256))]
+
+    /// No `(`, `[`, `_`, `^`, whitespace or capitals, so only the template pass changes text.
+    #[test]
+    fn dropping_templates_matches_the_regex(
+        text in "(\\{\\{embed:|\\{\\{|\\}\\}|[{}e:x\né])*",
+    ) {
+        prop_assert_eq!(scrub_markup(&text), drop_templates_by_regex(&text));
+    }
 
     #[test]
     fn scrubbing_never_grows_a_block(
