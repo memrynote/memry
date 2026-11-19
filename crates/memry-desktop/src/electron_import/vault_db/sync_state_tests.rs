@@ -16,6 +16,51 @@ fn prefixes_need_an_id_and_exact_keys_match_exactly() {
     ));
 }
 
+/// Every `sync_state` key Electron writes on origin/main (18 Nov 2026), a prefix with an id:
+/// `SYNC_STATE_KEYS` in `apps/desktop/src/main/sync/engine/sync-context.ts`, `initialSeedDone`
+/// (`sync/initial-seed.ts`), `declinedSyncRefs` (`packages/sync-client/src/declined-refs.ts`),
+/// `packSeeded:` (`sync/engine/pack-seeded-docs.ts`), `journalDayMerge:`
+/// (`sync/journal-day-merge.ts`) and `note-cover:` (`sync/item-handlers/note-cover-sync.ts`).
+/// `lastCrdtSweepAt` is retired (#2421), but older builds wrote it. Found by
+/// `git grep -nE "setStateValue\(|insert\(syncState\)"` over those two trees; a new writer
+/// goes here and in [`SYNC_STATE_KEYS`].
+const ELECTRON_KEYS: &[&str] = &[
+    "lastCursor",
+    "lastSyncAt",
+    "syncPaused",
+    "initialSeedDone",
+    "quarantinedItems",
+    "lastManifestCheckAt",
+    "lastCrdtSweepAt",
+    "crdtUnmergedDebt",
+    "crdtBodyDebtMirrorAt",
+    "packsAppliedThroughCursor",
+    "packSeedSettlePending",
+    "cursorSkipRepair",
+    "schemaInvalidItems",
+    "noteBodyLegacySweep",
+    "noteBodyFeedCursor",
+    "crdtStoreEpoch",
+    "declinedSyncRefs",
+    "packSeeded:n-1",
+    "journalDayMerge:2026-11-18",
+    "note-cover:n-1",
+];
+
+#[test]
+fn the_rules_are_exactly_electrons_keys() {
+    for key in ELECTRON_KEYS {
+        assert!(classify(key).is_some(), "{key} has no rule");
+    }
+    for rule in SYNC_STATE_KEYS {
+        assert!(
+            ELECTRON_KEYS.iter().any(|key| rule.matches(key)),
+            "{} matches no Electron key",
+            rule.report_name()
+        );
+    }
+}
+
 #[test]
 fn no_key_matches_two_rules() {
     for rule in SYNC_STATE_KEYS {
