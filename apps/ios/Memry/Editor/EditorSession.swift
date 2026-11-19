@@ -153,6 +153,9 @@ final class EditorSession {
     @ObservationIgnored var returnBurst: ReturnBurst?
     /// Keys typed after the title's Return, held for the body (#4705).
     @ObservationIgnored var titleBurst: TitleBurst?
+    /// The keys the title's Return put back in its line that the keyboard
+    /// may still deliver to the block that took the caret (#4823).
+    @ObservationIgnored var lateKeys: (blockId: String, keys: LateKeys)?
     /// A column list just inserted, by its `id` prop: the caret goes to its
     /// first block once a redraw shows the ids the core minted for it
     /// (`resolveColumnFocus`).

@@ -19,9 +19,10 @@ export interface BlogCodeBlock {
   code: string
 }
 
+// Every row has one cell per header.
 export interface BlogComparisonTable {
-  headers: [string, string, string]
-  rows: Array<[string, string, string]>
+  headers: readonly string[]
+  rows: readonly (readonly string[])[]
 }
 
 export interface BlogFact {
@@ -39,6 +40,8 @@ export interface BlogSection {
   callout?: BlogCallout
   code?: BlogCodeBlock
   table?: BlogComparisonTable
+  // Internal pages to read next, shown after the section body.
+  links?: readonly { label: string; href: string; description: string }[]
 }
 
 // One row of a "The short answer" table: a situation and the app to pick for it.
@@ -251,12 +254,12 @@ Energy remained high throughout the afternoon. Taking walks between coding block
       {
         heading: 'How genuine zero-knowledge E2EE works under the hood',
         paragraphs: [
-          'In a genuine zero-knowledge architecture like memrynote, cryptographic operations occur strictly on your physical machine before any byte touches the network wire. The sync server acts as a blind relay for encrypted binary chunks.',
+          'In a genuine zero-knowledge architecture like memrynote, cryptographic operations occur strictly on your physical machine before your notes touch the network. The sync server stores and relays encrypted payloads it cannot read.',
           'Here is the step-by-step cryptographic pipeline that ensures mathematical confidentiality:',
-          '1. Key Derivation: When you create a vault, your device derives a 256-bit master key using Argon2id with memory-hard parameters, making brute-force dictionary attacks computationally infeasible.',
+          '1. Key Derivation: When you set up sync, your device derives a 256-bit master key from your 24-word recovery phrase using Argon2id with memory-hard parameters, making brute-force dictionary attacks computationally infeasible.',
           '2. Symmetric Payload Encryption: Every note, journal entry, and task payload is encrypted locally using libsodium’s authenticated XChaCha20-Poly1305 cipher with random 192-bit nonces, ensuring both privacy and tamper-proofing.',
           '3. Device Identity & Signing: Each authorized device generates an Ed25519 asymmetric keypair. Sync requests and CRDT vector updates are cryptographically signed by the device private key to prevent replay attacks.',
-          '4. Storage Separation: Encrypted payload blobs reside in Cloudflare R2 object storage, while opaque item IDs and version vectors reside in D1. The server coordinates sync routing but possesses zero capability to decrypt note text, filenames, or tag properties.'
+          '4. Storage Separation: Encrypted payload blobs reside in Cloudflare R2 object storage, while item metadata (IDs, types, sizes, and change times) resides in D1. Most item IDs are random, but a tag’s ID is its name and a folder’s ID is its path, so the server can read tag names and folder paths. It cannot decrypt note titles, bodies, or properties.'
         ],
         code: {
           language: 'typescript',
@@ -633,7 +636,7 @@ Referenced in [[Q3 Roadmap]] and [[Security Whitepaper]].`
           'MemryNote is our app, so read this list knowing that. It is on the list because it is what we recommend to people who want their notes, tasks, journal, and calendar in one encrypted place. It is not the right pick for everyone. These are its gaps today:'
         ],
         bullets: [
-          'It is a desktop app first. MemryNote runs on macOS, Windows, and Linux. The iPhone app is in TestFlight beta, and there is no Android app, iPad layout, or web app yet.',
+          'It is a desktop app first. MemryNote runs on macOS, Windows, and Linux. The iPhone app is in TestFlight beta; iPad support is in development. There is no Android app or web app yet.',
           'It is in beta. The app is young and built by one founder, so expect rough edges and frequent releases.',
           'AI features are early. Agent Chat is available in the desktop app, while AI search and suggestions are still listed as coming soon.',
           'There is no sharing or collaboration. A vault syncs across your own devices only. Shared vaults and publishing are on the roadmap.',
@@ -911,7 +914,7 @@ Referenced in [[Q3 Roadmap]] and [[Security Whitepaper]].`
           {
             label: 'What the server sees',
             value:
-              'Your account email, your devices, and for each item an ID, its type, its size, and when it changed. Titles, bodies, properties, task fields, and attachments are ciphertext.'
+              'Your account email, your devices, and for each item an ID, its type, its size, and when it changed. Tag names and folder paths are visible too, because sync uses them as item IDs. Titles, bodies, properties, task fields, and attachments are ciphertext.'
           },
           {
             label: 'Local-first',
@@ -931,7 +934,7 @@ Referenced in [[Q3 Roadmap]] and [[Security Whitepaper]].`
           {
             label: 'Where it falls short',
             value:
-              'The iPhone app is in TestFlight beta, and there is no Android, iPad, or web app. The whole app is in beta, there is no sharing or self-hosted sync, and AI features are early. The full list is at the top of this page.'
+              'The iPhone app is in TestFlight beta; iPad support is in development. There is no Android or web app. The whole app is in beta, there is no sharing or self-hosted sync, and AI features are early. The full list is at the top of this page.'
           }
         ]
       },
@@ -1002,34 +1005,35 @@ Referenced in [[Q3 Roadmap]] and [[Security Whitepaper]].`
   {
     slug: 'private-notion-alternatives-that-work-offline',
     pageKey: 'blogPrivateNotionAlternatives',
-    title: 'Private Notion alternatives that work offline',
+    title: 'Notion alternatives that are private and work offline',
     description:
-      'A Notion alternative that stays private and works offline: what to check, how memrynote does it, and how Anytype, AFFiNE, and Obsidian differ.',
+      'Notion alternatives that keep your notes private and work offline: memrynote, AppFlowy, AFFiNE, Anytype, and Obsidian compared, including which are open source.',
     summary:
-      'What to look for when you leave Notion for privacy or offline reasons, how memrynote covers notes, tasks, and planning without the cloud, and how three other options differ.',
+      'What to look for when you leave Notion for privacy or offline reasons, how memrynote covers notes, tasks, and planning without the cloud, and how AppFlowy, AFFiNE, Anytype, and Obsidian differ, license included.',
     datePublished: '2026-10-13T09:00:00.000Z',
-    dateModified: '2026-10-13T09:00:00.000Z',
+    dateModified: '2026-11-19T09:00:00.000Z',
     author: DEFAULT_AUTHOR,
-    readingTime: '7 min read',
+    readingTime: '8 min read',
     category: 'Philosophy & Workflows',
     heroTint: 'sky',
-    tags: ['Notion', 'Privacy', 'Offline', 'Comparison'],
+    tags: ['Notion', 'Privacy', 'Offline', 'Open Source', 'Comparison'],
     featured: false,
-    lead: 'Notion is a flexible workspace, but it is cloud-first. Your pages live on its servers in a form the service can read, and the app depends on a connection to work well. People usually start looking for an alternative for one of two reasons: they want their notes to stay private, or they want a workspace that keeps working on a plane. This guide covers what to check, how memrynote approaches both, and how a few other options differ.',
+    lead: 'Notion is a flexible workspace, but it is cloud-first. Your pages live on its servers in a form the service can read, and the app depends on a connection to work well. People usually start looking for an alternative for one of three reasons: they want their notes to stay private, they want a workspace that keeps working on a plane, or they want software whose code they can read. This guide covers what to check, how memrynote approaches all three, and how AppFlowy, AFFiNE, Anytype, and Obsidian differ.',
     sections: [
       {
         heading: 'What "private" and "offline" should mean',
         paragraphs: [
-          'Private means the company running the sync server cannot read your content. That requires end-to-end encryption, where notes are encrypted on your device and the server only stores ciphertext. Encryption at rest on the vendor side does not meet this bar, because the vendor holds the keys.',
+          'Private means the company running the sync server cannot read your content. That requires end-to-end encryption, where notes are encrypted on your device and the server stores them only as ciphertext. Encryption at rest on the vendor side does not meet this bar, because the vendor holds the keys.',
           'Offline means the full workspace runs on your machine: opening, editing, searching, and planning, with no spinner when the connection drops. A cached copy that becomes read-only offline is not the same thing.',
-          'There is a third property worth adding to the list: ownership. If your notes are stored as files you can open without the app, leaving later is a folder copy rather than an export project.'
+          'There is a third property worth adding to the list: ownership. If your notes are stored as files you can open without the app, leaving later is a folder copy rather than an export project.',
+          'Open source is a fourth check, and the license matters. An open source license such as AGPL-3.0 or MIT lets anyone read, run, and change the code. A source-available license publishes the code but limits how you may use it, and a closed-source app asks you to trust its claims.'
         ]
       },
       {
         heading: 'memrynote: the Notion workflow, on your own disk',
         paragraphs: [
           'memrynote keeps the parts of Notion most people use daily, notes, tasks, and planning, and runs them locally. Notes are Markdown files with frontmatter properties in a vault folder you choose. Tasks live in projects with custom statuses, subtasks, and Kanban, list, and calendar views. A daily journal and a capture inbox sit in the same workspace.',
-          'Everything works offline with no account. When you turn on sync, each item is encrypted on your device with XChaCha20-Poly1305 and the server stores only ciphertext. Local use is free and sync starts at $5 a month. The app is open source and runs on macOS, Windows, and Linux.',
+          'Everything works offline with no account. When you turn on sync, each item is encrypted on your device with XChaCha20-Poly1305 and the server stores your notes only as ciphertext. Local use is free and sync starts at $5 a month. The app is open source and runs on macOS, Windows, and Linux.',
           'Switching is built in. Export your Notion workspace as Markdown & CSV, then use the Notion importer in memrynote settings. Pages become Markdown notes and databases become structured notes in your vault.'
         ],
         callout: {
@@ -1039,18 +1043,45 @@ Referenced in [[Q3 Roadmap]] and [[Security Whitepaper]].`
         }
       },
       {
-        heading: 'How other private, offline options differ',
+        heading: 'How other Notion alternatives compare',
         paragraphs: [
-          'Anytype is local-first and end-to-end encrypted, built around typed objects. Its working format is its own object store, with Markdown available on export. AFFiNE is an open-source workspace that combines documents and whiteboards, with local and cloud workspaces. Obsidian stores notes as local Markdown files; tasks and calendars come from community plugins, and encrypted sync is a paid add-on.',
-          'The right pick depends on how you used Notion. If you mostly wrote documents and tracked your own work, a local workspace that covers notes and tasks together replaces it with the fewest moving parts.'
+          'AppFlowy is the closest open source match to Notion itself: pages and databases you can view as a grid, a board, or a calendar, under AGPL-3.0. It keeps your data on your device and syncs through AppFlowy Cloud or a server you host yourself.',
+          'AFFiNE combines documents and whiteboards, with local and cloud workspaces. Its app is MIT-licensed, and its server code is under a separate enterprise license. Anytype is local-first and end-to-end encrypted, built around typed objects. Its working format is its own object store, with Markdown available on export, and its code is published under a source-available license that limits commercial use. Obsidian stores notes as local Markdown files; tasks and calendars come from community plugins, encrypted sync is a paid add-on, and the app is closed source.',
+          'The right pick depends on how you used Notion. If you mostly wrote documents and tracked your own work, a local workspace that covers notes and tasks together replaces it with the fewest moving parts. If you lived in Notion databases, start with AppFlowy.'
         ],
         table: {
-          headers: ['App', 'Where your notes live', 'Notes + tasks + calendar'],
+          headers: ['App', 'License', 'Where your notes live', 'Notes + tasks + calendar'],
           rows: [
-            ['memrynote', 'Plain Markdown files you own', 'Built in, encrypted sync included'],
-            ['Anytype', 'Its own local object store', 'Built from object types and views'],
-            ['AFFiNE', 'Local or cloud workspace', 'Docs and whiteboards'],
-            ['Obsidian', 'Plain Markdown files you own', 'Through community plugins']
+            [
+              'memrynote',
+              'Open source (AGPL-3.0)',
+              'Plain Markdown files you own',
+              'Built in, encrypted sync included'
+            ],
+            [
+              'AppFlowy',
+              'Open source (AGPL-3.0)',
+              'On your device, synced through AppFlowy Cloud or your own server',
+              'Databases with grid, board, and calendar views'
+            ],
+            [
+              'AFFiNE',
+              'Open source app (MIT), server under its own license',
+              'Local or cloud workspace',
+              'Docs and whiteboards'
+            ],
+            [
+              'Anytype',
+              'Source-available, limits commercial use',
+              'Its own local object store',
+              'Built from object types and views'
+            ],
+            [
+              'Obsidian',
+              'Closed source, free to use',
+              'Plain Markdown files you own',
+              'Through community plugins'
+            ]
           ]
         }
       },
@@ -1058,12 +1089,44 @@ Referenced in [[Q3 Roadmap]] and [[Security Whitepaper]].`
         heading: 'A simple way to decide',
         paragraphs: [
           'List the three things you open Notion for most often. If they are notes, a task list, and some planning, try memrynote with an imported copy of your workspace for a week. It costs nothing, needs no account, and your Notion workspace stays untouched while you compare.'
+        ],
+        links: [
+          {
+            label: 'memrynote vs Notion',
+            href: '/notion-alternative',
+            description:
+              'Feature by feature, where Notion is still the better pick, and how to import.'
+          },
+          {
+            label: 'Open source note-taking apps',
+            href: '/blog/open-source-note-taking-apps',
+            description:
+              'Joplin, Logseq, Standard Notes, Notesnook, Trilium, SiYuan, and memrynote compared.'
+          }
         ]
+      }
+    ],
+    faqs: [
+      {
+        question: 'What is the best Notion alternative?',
+        answer:
+          'It depends on what you used Notion for. For personal notes, tasks, and planning that stay private and work offline, memrynote covers them in one app with plain Markdown files. For Notion-style databases on a server you control, AppFlowy is the closest match. For documents next to whiteboards, try AFFiNE. For a plain-file vault you extend with plugins, Obsidian.'
+      },
+      {
+        question: 'Is there an open source Notion alternative?',
+        answer:
+          'Yes. AppFlowy and memrynote are open source under AGPL-3.0, and the AFFiNE app is MIT-licensed, with its server under a separate enterprise license. Anytype publishes its code under a source-available license that limits commercial use, and Obsidian is closed source.'
+      },
+      {
+        question: 'Which Notion alternatives work offline?',
+        answer:
+          'memrynote, AppFlowy, Anytype, and Obsidian keep your data on your device and work without a connection. AFFiNE works offline in a local workspace. Notion keeps only the pages it has downloaded for offline use.'
       }
     ],
     takeaways: [
       'A private Notion alternative needs end-to-end encryption, not vendor-side encryption at rest.',
       'Offline should mean the full workspace runs locally, including search and planning.',
+      'Check the license: AGPL-3.0 and MIT are open source, while a source-available license limits how you may use the code.',
       'memrynote covers notes, tasks, a calendar, and a journal locally, with encrypted sync and a built-in Notion importer.',
       'Plain Markdown files make leaving any app later a folder copy instead of an export project.'
     ],
@@ -1077,36 +1140,37 @@ Referenced in [[Q3 Roadmap]] and [[Security Whitepaper]].`
   {
     slug: 'most-private-journaling-apps',
     pageKey: 'blogPrivateJournalingApps',
-    title: 'The most private journaling apps in 2026',
+    title: 'Private journal apps: the most private journaling apps in 2026',
     description:
-      'What makes a journaling app private: encryption, local storage, and files you can read without the app. memrynote, Day One, and Apple Journal compared.',
+      'Which private journal app keeps entries readable only by you? Encryption, offline use, open source code, and plain files compared for memrynote, Day One, Apple Journal, and more.',
     summary:
-      'A journal is the most personal thing most people write. What to check before you trust an app with it, how memrynote keeps entries private, and where the other options land.',
+      'A journal is the most personal thing most people write. What to check before you trust an app with it, how memrynote keeps entries private, and how Day One, Apple Journal, and Standard Notes compare on encryption and open source code.',
     datePublished: '2026-10-13T10:00:00.000Z',
-    dateModified: '2026-10-13T10:00:00.000Z',
+    dateModified: '2026-11-19T10:00:00.000Z',
     author: DEFAULT_AUTHOR,
-    readingTime: '7 min read',
+    readingTime: '8 min read',
     category: 'Philosophy & Workflows',
     heroTint: 'sand',
-    tags: ['Journaling', 'Privacy', 'E2EE', 'Comparison'],
+    tags: ['Journaling', 'Privacy', 'E2EE', 'Open Source', 'Comparison'],
     featured: false,
-    lead: 'A journal holds things you would not put anywhere else: worries, health notes, relationships, decisions you are still unsure about. That makes privacy the first feature to check, before prompts or streaks. A private journaling app keeps entries readable only by you, works without sending your writing to anyone, and leaves you with files you can still open in twenty years.',
+    lead: 'A journal holds things you would not put anywhere else: worries, health notes, relationships, decisions you are still unsure about. That makes privacy the first feature to check, before prompts or streaks. A private journal app keeps entries readable only by you, works without sending your writing to anyone, and leaves you with files you can still open in twenty years.',
     sections: [
       {
         heading: 'What a private journal needs',
         paragraphs: [
           'End-to-end encryption for anything that leaves your device. Entries should be encrypted before upload, with keys the company never holds. If the service can show your entries in a web dashboard after a password reset, it can read them.',
           'Local storage that works offline. Journaling happens at night, on trains, and in places without signal. The app should open and save entries with no connection.',
-          "An exit you can read. A journal is a decades-long record. If the only readable copy lives inside one app's database, the journal lasts as long as that app does. Plain text files avoid that problem."
+          "An exit you can read. A journal is a decades-long record. If the only readable copy lives inside one app's database, the journal lasts as long as that app does. Plain text files avoid that problem.",
+          'Code you can check. With an open source journal app, anyone can read how entries are encrypted and confirm the app does what its privacy page says. With a closed-source app, you rely on the company.'
         ]
       },
       {
         heading: 'memrynote: a daily journal as encrypted Markdown',
         paragraphs: [
           'memrynote stores one journal entry per day as a plain Markdown file in your vault, beside your notes and tasks. Each entry can start from your own templates and prompts, and a side panel shows the schedule, tasks, and linked notes for that date. Highlights and revisit reminders bring past entries back when they are relevant.',
-          'Entries never need to leave your device. If you sync, each one is encrypted on your machine with XChaCha20-Poly1305 and the server stores only ciphertext. No company account is needed to journal locally, and local use is free.',
+          'Entries never need to leave your device. If you sync, each one is encrypted on your machine with XChaCha20-Poly1305 and the server stores it only as ciphertext. No company account is needed to journal locally, and local use is free.',
           'Because entries are Markdown files, your journal opens in any text editor and survives any app, including memrynote. You can bring an existing journal with you: memrynote imports Apple Journal, Markdown folders, and other note apps.',
-          'memrynote runs on macOS, Windows, and Linux today. Mobile apps are planned, so if you journal mainly on your phone, check the roadmap first.'
+          'memrynote runs on macOS, Windows, and Linux. The iPhone app is in beta on TestFlight (join at memrynote.com/ios-beta), and there is no Android app yet, so if you journal mainly on Android, look elsewhere for now.'
         ],
         callout: {
           type: 'tip',
@@ -1117,16 +1181,41 @@ Referenced in [[Q3 Roadmap]] and [[Security Whitepaper]].`
       {
         heading: 'How other journaling apps compare',
         paragraphs: [
-          'Day One encrypts new journals end to end by default and has apps for iPhone, iPad, Android, Mac, and the web; syncing across devices is part of its paid plans. Apple Journal is built into Apple devices and syncs through iCloud. Standard Notes offers Daily Notebooks for journaling on its paid Productivity plan, inside its encrypted note storage.',
-          'All three keep entries in their own app storage, with exports available. If you want entries as plain files on your own disk, or a journal that runs natively on Windows and Linux, memrynote is the option that does both.'
+          'Day One encrypts new journals end to end by default and has apps for iPhone, iPad, Android, Mac, and the web; syncing across devices is part of its paid plans. Apple Journal is built into Apple devices and syncs through iCloud, where Apple lists journal data among the categories that are always end-to-end encrypted. Standard Notes offers Daily Notebooks for journaling on its paid Productivity plan, inside its encrypted note storage.',
+          'Standard Notes and memrynote are open source under AGPL-3.0. Day One and Apple Journal are closed source.',
+          'Day One, Apple Journal, and Standard Notes keep entries in their own app storage, with exports available. If you want entries as plain files on your own disk, or a journal that runs natively on Windows and Linux, memrynote is the option that does both.'
         ],
         table: {
-          headers: ['App', 'Where entries live', 'Platforms'],
+          headers: [
+            'App',
+            'End-to-end encryption',
+            'Open source',
+            'Where entries live',
+            'Platforms'
+          ],
           rows: [
-            ['memrynote', 'Plain Markdown files you own', 'macOS, Windows, Linux'],
-            ['Day One', 'Its own app storage', 'iPhone, iPad, Android, Mac, web'],
-            ['Apple Journal', 'Its own app storage', 'Apple devices'],
-            ['Standard Notes', 'Encrypted app storage', 'Web, desktop, mobile']
+            [
+              'memrynote',
+              'Always on for sync',
+              'Yes (AGPL-3.0)',
+              'Plain Markdown files you own',
+              'macOS, Windows, Linux; iPhone in TestFlight beta'
+            ],
+            [
+              'Day One',
+              'On by default for new journals',
+              'No',
+              'Its own app storage',
+              'iPhone, iPad, Android, Mac, web'
+            ],
+            ['Apple Journal', 'Always on in iCloud', 'No', 'Its own app storage', 'Apple devices'],
+            [
+              'Standard Notes',
+              'On by default',
+              'Yes (AGPL-3.0)',
+              'Encrypted app storage',
+              'Web, desktop, mobile'
+            ]
           ]
         }
       },
@@ -1134,11 +1223,48 @@ Referenced in [[Q3 Roadmap]] and [[Security Whitepaper]].`
         heading: 'Start with the format',
         paragraphs: [
           'Features change every year; the storage format of your journal is what decides whether you can read it later. Choose an app that encrypts what it uploads and keeps the original as plain text you control. Then pick the prompts and rituals that make you write.'
+        ],
+        links: [
+          {
+            label: 'The best journaling apps in 2026',
+            href: '/blog/best-journaling-apps',
+            description:
+              'Day One, Apple Journal, Journey, Diarium, Obsidian, and memrynote: platforms, price, and where each falls short.'
+          },
+          {
+            label: 'memrynote vs Day One',
+            href: '/day-one-alternative',
+            description:
+              'A side-by-side look for Day One users who want Windows, Linux, or plain files.'
+          }
         ]
+      }
+    ],
+    faqs: [
+      {
+        question: 'What is the most private journal app?',
+        answer:
+          'Look for one that encrypts entries end to end before they leave your device, works offline, and leaves you files you can read without it. Apple Journal, Day One, Standard Notes, and memrynote all encrypt synced entries end to end. memrynote also keeps each entry as a plain Markdown file on your disk and runs on Windows and Linux.'
+      },
+      {
+        question: 'Is there an open source journal app?',
+        answer:
+          'Yes. memrynote and Standard Notes are open source under AGPL-3.0, so anyone can check how they encrypt entries. Day One and Apple Journal are closed source.'
+      },
+      {
+        question: 'Is Apple Journal end-to-end encrypted?',
+        answer:
+          'Yes. Apple lists journal data among the iCloud categories that are end-to-end encrypted even with standard data protection. Apple Journal runs only on Apple devices, and entries live in the app rather than as files you can open elsewhere.'
+      },
+      {
+        question: 'Does memrynote have a journal app for iPhone?',
+        answer:
+          'The iPhone app is in beta on TestFlight. Its Journal tab reads and writes the same days, templates, and reminders as the desktop app. Join at memrynote.com/ios-beta. There is no Android app yet.'
       }
     ],
     takeaways: [
       'A private journal needs end-to-end encryption for anything that leaves your device.',
+      'Open source journal apps, such as memrynote and Standard Notes, let anyone check how entries are encrypted.',
       'Offline writing and local storage matter more for journals than for any other kind of note.',
       'memrynote stores each day as a Markdown file beside your notes and tasks, encrypted whenever it syncs.',
       'The storage format decides whether you can still read your journal decades from now.'
@@ -1211,7 +1337,7 @@ Referenced in [[Q3 Roadmap]] and [[Security Whitepaper]].`
           'memrynote is our app, so read this list knowing that. It is on the list because it is the journal we recommend to people who already plan their day at a computer. For phone-first journaling, other apps on this list are better today. These are its gaps:'
         ],
         bullets: [
-          'The iPhone app is in TestFlight beta. It has a Journal tab that reads and writes the same days as the desktop app, but there is no Android, iPad, or web app.',
+          'The iPhone app is in TestFlight beta. It has a Journal tab that reads and writes the same days as the desktop app. iPad support is in development, and there is no Android or web app.',
           'There are no writing prompts beyond the templates you pick or write. Day One, Apple Journal, and Journey suggest what to write about.',
           'It is not a photo journal. You can attach photos to an entry, but there is no map view, photo timeline, or printed book.',
           'Sync is paid. Journaling on one computer is free, and syncing between devices starts at $5 a month.',
@@ -1419,13 +1545,13 @@ Referenced in [[Q3 Roadmap]] and [[Security Whitepaper]].`
         paragraphs: [
           'memrynote is our app: one local-first workspace for notes, tasks, a daily journal, and a calendar. Each journal day is a Markdown file in a folder you choose, so the journal opens in any text editor, with or without memrynote installed.',
           'A day can start from a template, and you can set a different template for each weekday. Below the entry, On this day lists the same date from earlier years. A property you fill in every day, such as sleep or mood, can be charted over the last 13 weeks. The day also shows the tasks due that day, you can link to it from any note with [[2026-05-07]], and you can set a reminder to read it again later.',
-          'Journaling needs no account. If you turn on sync, every entry is encrypted on your device with XChaCha20-Poly1305 before upload, and the server stores only ciphertext. The desktop app runs on macOS, Windows, and Linux, and the iPhone app in TestFlight beta has its own Journal tab. memrynote can import an Apple Journal export, which arrives as notes.'
+          'Journaling needs no account. If you turn on sync, every entry is encrypted on your device with XChaCha20-Poly1305 before upload, and the server stores it only as ciphertext. The desktop app runs on macOS, Windows, and Linux, and the iPhone app in TestFlight beta has its own Journal tab. memrynote can import an Apple Journal export, which arrives as notes.'
         ],
         facts: [
           {
             label: 'Platforms',
             value:
-              'macOS, Windows, and Linux. iPhone in TestFlight beta (iOS 26 or later). No Android, iPad, or web app.'
+              'macOS, Windows, and Linux. iPhone in TestFlight beta (iOS 26 or later). iPad support in development. No Android or web app.'
           },
           {
             label: 'Privacy',
@@ -1571,7 +1697,7 @@ Referenced in [[Q3 Roadmap]] and [[Security Whitepaper]].`
           'memrynote is our app, released under AGPL-3.0 with its code on GitHub. It is on this list because it is what we recommend to people who want their notes, tasks, journal, and calendar in one local-first app. It is not the right pick for everyone. These are its gaps today:'
         ],
         bullets: [
-          'It is a desktop app first. It runs on macOS, Windows, and Linux. The iPhone app is in TestFlight beta, and there is no Android, iPad, or web app.',
+          'It is a desktop app first. It runs on macOS, Windows, and Linux. The iPhone app is in TestFlight beta, iPad support is in development, and there is no Android or web app.',
           'You cannot choose your own sync backend. Sync runs through our hosted, end-to-end encrypted service, and a self-hosted sync server is planned, not available. Joplin and Trilium sync to servers you run today.',
           'Sync is paid. The local app is free, and syncing between devices starts at $5 a month. Joplin, Standard Notes, and Notesnook sync for free.',
           'There is no sharing or collaboration. A vault syncs across your own devices only.',
@@ -1808,7 +1934,7 @@ Referenced in [[Q3 Roadmap]] and [[Security Whitepaper]].`
           {
             label: 'Platforms',
             value:
-              'macOS, Windows, and Linux. iPhone in TestFlight beta. No Android, iPad, or web app.'
+              'macOS, Windows, and Linux. iPhone in TestFlight beta. iPad support in development. No Android or web app.'
           },
           {
             label: 'Encryption',
@@ -1867,7 +1993,7 @@ Referenced in [[Q3 Roadmap]] and [[Security Whitepaper]].`
       label: 'Read the security architecture',
       href: '/security',
       description:
-        'How memrynote encrypts every item on your device and keeps the sync server unable to read your notes.'
+        'How memrynote encrypts your notes on your device, what the sync server can still see, and why it cannot read your notes.'
     },
     relatedSlugs: [
       'best-end-to-end-encrypted-notes-apps',
