@@ -13,22 +13,8 @@ import Observation
 // markdown: §12.1.2 forbids a non-desktop client from doing either outside two
 // core writes (§12.1.0).
 //
-// **Four outcomes, four screens, and no arm shared between them.** This is the
-// single most likely bug in this task, so the distinction is carried by types
-// rather than by care:
-//
-//   * `read` **threw** — the note may exist and may hold anything. `.unreadable`.
-//   * `read` returned **nil** — this vault holds no live note by that id.
-//     `.missing`. A restored navigation path lands here, and so does a note
-//     deleted on another device.
-//   * the body is **not on this device** — `present == false`. `.notPulled`.
-//   * the body is **empty** — `present == true`, no text. `.empty`.
-//
-// The first two are `Phase` cases; the last two are ``NoteBodyPreview`` cases,
-// because they are facts about a note that was read successfully and so must
-// still show its title and its dates. Collapsing any pair would report an
-// unread note as an empty one, which is the failure `domain/reads.rs` says the
-// whole module was written against.
+// The four outcomes of a read, and why no two share a screen, are in
+// `NoteReadParts.swift` beside the types that carry them.
 //
 // **The call blocks.** `Notes.read(id:)` is a local SQLite read plus a `yrs`
 // apply (`contracts/core-api.md`, the read slice), so it goes on the shell's
@@ -139,15 +125,22 @@ final class NoteReadViewModel {
     /// record of. It is **permanent** — the mapped copy says so and carries
     /// `.blocked`, so the view offers no retry over it.
     func fetchBody() async {
-        guard let filler, fetch != .fetching else { return }
+        guard filler != nil, fetch != .fetching else { return }
         fetch = .fetching
+        // Not cancelled with the screen's task. The pull cannot be (spec-
+        // defect 108), so a page task cancelled mid-pull would leave the body
+        // it landed unread, and during a first sync no pass comes to re-read
+        // it (`VaultFillView`).
+        await Task { await pullBody() }.value
+    }
+
+    private func pullBody() async {
+        guard let filler else { return }
         do {
             let summary = try await filler.fetchNoteBody(noteId: route.id)
             Log.sync.notice("fetched one note body", .count(Int(summary.updates)))
             fetch = summary.stopped ? .incomplete : .idle
         } catch {
-            // Cancelled with its `.task`, not failed: no notice.
-            if Task.isCancelled { fetch = .idle; return }
             let mapped = ErrorMapping.userFacing(error)
             Log.sync.error("a note body could not be fetched", .code(mapped.code))
             fetch = .failed(mapped)

@@ -18,8 +18,8 @@ import Testing
 // **No network call is made by this file, and every test asserts it.** The
 // stub `URLProtocol` records every request it is handed and the suite expects
 // zero. That is not incidental — it is the assertion for the entry gate, which
-// exists precisely so that a shell can decide whether to show a setting-up
-// screen without going near the network.
+// exists precisely so that a shell can decide whether to start a first sync
+// without going near the network.
 //
 // The two real-core failures driven here are the two that need no request at
 // all, which is what makes them hermetic:

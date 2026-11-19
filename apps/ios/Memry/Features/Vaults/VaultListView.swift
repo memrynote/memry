@@ -38,13 +38,13 @@ struct VaultListView: View {
 
     /// T237, and the answer to spec-defect 136.
     ///
-    /// **The browse screen is on the far side of the pull.** Before this, an
-    /// opened vault went straight to `NotesListView`, which reads a local
-    /// database that nothing on the FFI surface had ever put a row in — so a
-    /// phone that had never synced showed "no notes" against an account
-    /// holding ninety-four. `VaultFillView` is the gate; it asks
-    /// `isFirstSyncComplete()` first, which makes no request, so a vault this
-    /// phone already has is reached without waiting on a network.
+    /// **The browse screen sits under the pull.** Before this, an opened vault
+    /// went straight to `NotesListView`, which reads a local database that
+    /// nothing on the FFI surface had ever put a row in — so a phone that had
+    /// never synced showed "no notes" against an account holding ninety-four.
+    /// `VaultFillView` runs the first sync when `isFirstSyncComplete()` (one
+    /// local row, no request) says it has not finished, and shows the browse
+    /// screen the whole time, with the run as a strip above it.
     ///
     /// With no filler — a caller that supplied no `VaultFillerMinting` — the
     /// old path is what runs. That is deliberate: browsing what is already on

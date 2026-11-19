@@ -71,6 +71,10 @@ struct NoteBodyView: View {
             // shown and the gap is said beside it rather than instead of it.
             NoteTextPreview(text: text)
             NoteFetchState(fetch: fetch, download: download)
+        case .notPulled where fetch == .fetching:
+            // Opening the note asked for its text, which is a load and not a
+            // gap: a first sync still running, or a body outside its window.
+            NoteFetchState(fetch: fetch, download: download)
         case .notPulled:
             // The note is here. Its body is not, and that is neither an empty
             // note nor a failure — nothing went wrong, it is simply outside
@@ -214,6 +218,7 @@ struct NotePageLoad: ViewModifier {
     let source: UUID
     @State private var reportedOpen = false
     @Environment(\.vaultSyncPasses) private var vaultSyncPasses
+    @Environment(\.firstSyncLanded) private var firstSyncLanded
 
     func body(content: Content) -> some View {
         content
@@ -233,6 +238,15 @@ struct NotePageLoad: ViewModifier {
             .task(id: vaultSyncPasses) {
                 await model.loadIfNeeded()
                 await model.refreshFromRemote()
+            }
+            // Opened, or restored at launch, before the first sync brought
+            // its record in (`VaultFillView`): read again as records land.
+            .onChange(of: firstSyncLanded) {
+                guard case .missing = model.phase else { return }
+                Task {
+                    await model.reload()
+                    await model.refreshFromRemote()
+                }
             }
             .onReceive(NotificationCenter.default.publisher(for: NoteReadViewModel.titleSaved)) { note in
                 guard note.object as? String == model.route.id else { return }

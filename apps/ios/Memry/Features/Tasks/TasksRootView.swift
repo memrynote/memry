@@ -91,6 +91,10 @@ struct VaultTasksScope<Content: View>: View {
     let filler: (any VaultFilling)?
     @ViewBuilder let content: (TasksStore?, UserFacingError?) -> Content
     @Environment(\.scenePhase) private var scenePhase
+    /// No pass while the vault's first sync is pending (`VaultFillView`): a
+    /// pass started first would hold the core's pass gate for a whole
+    /// unwindowed pull. One pass runs when it ends, for what was written.
+    @Environment(\.firstSyncPending) private var firstSyncPending
     @State private var store: TasksStore?
     @State private var failure: UserFacingError?
     @State private var searchIndex: VaultSearchIndex?
@@ -107,9 +111,13 @@ struct VaultTasksScope<Content: View>: View {
             // Pull and push on every return to the foreground, whichever tab
             // shows: a tab's own views miss scene changes while hidden. The
             // pass for the vault opening runs from `make()`, because the
-            // scene can already be active before the store exists.
+            // scene can already be active before the store exists, or when
+            // the first sync ends.
             .onChange(of: scenePhase) { _, phase in
-                if phase == .active, let store { Task { await store.sync() } }
+                if phase == .active, !firstSyncPending, let store { Task { await store.sync() } }
+            }
+            .onChange(of: firstSyncPending) { _, pending in
+                if !pending, let store { Task { await store.sync() } }
             }
             // Reconnect: retry attachments a dead path left missing (#3261).
             .onReceive(NotificationCenter.default.publisher(for: PathReachability.attachmentPathChanged).receive(on: DispatchQueue.main)) { _ in
@@ -130,7 +138,12 @@ struct VaultTasksScope<Content: View>: View {
             // Keyed on `.background`, not `.active`: Control Center or a
             // notification banner makes the scene `.inactive` for a moment,
             // and reconnecting after each is a handshake for nothing.
-            .task(id: RealtimeKey(vault: vault.id(), foreground: scenePhase != .background, store: store?.vaultId)) {
+            .task(id: RealtimeKey(
+                vault: vault.id(),
+                foreground: scenePhase != .background,
+                firstSyncPending: firstSyncPending,
+                store: store?.vaultId
+            )) {
                 await holdRealtime()
             }
     }
@@ -138,13 +151,15 @@ struct VaultTasksScope<Content: View>: View {
     private struct RealtimeKey: Equatable {
         let vault: String
         let foreground: Bool
+        let firstSyncPending: Bool
         let store: String?
     }
 
-    /// Runs until the scene goes to the background or the store changes;
+    /// Runs until the scene goes to the background, the store changes or a
+    /// first sync starts;
     /// SwiftUI cancels the task, and the cancel stops the socket.
     private func holdRealtime() async {
-        guard scenePhase != .background, let store,
+        guard scenePhase != .background, !firstSyncPending, let store,
               let realtime = filler?.realtime(onChanges: { store.scheduleSync() })
         else { return }
         let terminal = await withTaskCancellationHandler {
@@ -163,8 +178,9 @@ struct VaultTasksScope<Content: View>: View {
 
     private var syncRequest: (@MainActor () -> Void)? {
         guard let store else { return nil }
+        let pending = firstSyncPending
         return { [searchIndex] in
-            store.scheduleSync()
+            if !pending { store.scheduleSync() }
             searchIndex?.schedule()
         }
     }
@@ -187,7 +203,7 @@ struct VaultTasksScope<Content: View>: View {
             let tasks = try vault.tasks(store: secureStore)
             let made = TasksStore(core: tasks, filler: filler, vaultId: vault.id())
             store = made
-            Task { await made.sync() }
+            if !firstSyncPending { Task { await made.sync() } }
         } catch {
             failure = ErrorMapping.userFacing(error)
         }

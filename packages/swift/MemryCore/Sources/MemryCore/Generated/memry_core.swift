@@ -13938,6 +13938,10 @@ public protocol VaultSyncProtocol: AnyObject, Sendable {
      * through leaves the notes that did arrive visible and readable; it throws,
      * and what it throws is the reason. A shell must render that reason, never
      * an empty state.
+     *
+     * **A [`Self::sync_now`] asked for meanwhile waits for this run**, as a
+     * second pass waits for the first: the shell shows the vault while it
+     * fills, so writes and foregrounds ask for passes during it.
      */
     func firstSync(progress: SyncProgressListener?) async throws  -> FirstSyncSummary
     
@@ -14058,7 +14062,8 @@ public protocol VaultSyncProtocol: AnyObject, Sendable {
      * queued. Safe to call repeatedly. Passes over one vault run one at a
      * time: two overlapping passes would push the same outbox rows twice and
      * report the second copy as rejected, so a second call waits for the
-     * first and then runs its own pass.
+     * first and then runs its own pass. It waits for a running
+     * [`VaultSync::first_sync`] the same way.
      */
     func syncNow() async throws  -> SyncPassSummary
     
@@ -14190,6 +14195,10 @@ open func fetchNoteBody(noteId: String)async throws  -> BodyFetchSummary  {
      * through leaves the notes that did arrive visible and readable; it throws,
      * and what it throws is the reason. A shell must render that reason, never
      * an empty state.
+     *
+     * **A [`Self::sync_now`] asked for meanwhile waits for this run**, as a
+     * second pass waits for the first: the shell shows the vault while it
+     * fills, so writes and foregrounds ask for passes during it.
      */
 open func firstSync(progress: SyncProgressListener?)async throws  -> FirstSyncSummary  {
     return
@@ -14422,7 +14431,8 @@ open func syncInboxAttachments(reachable: Reachable)async throws  -> InboxAttach
      * queued. Safe to call repeatedly. Passes over one vault run one at a
      * time: two overlapping passes would push the same outbox rows twice and
      * report the second copy as rejected, so a second call waits for the
-     * first and then runs its own pass.
+     * first and then runs its own pass. It waits for a running
+     * [`VaultSync::first_sync`] the same way.
      */
 open func syncNow()async throws  -> SyncPassSummary  {
     return
@@ -37852,7 +37862,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_vaultsync_fetch_note_body() != 40537) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_vaultsync_first_sync() != 1318) {
+    if (uniffi_memry_core_checksum_method_vaultsync_first_sync() != 29986) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vaultsync_is_first_sync_complete() != 42151) {
@@ -37879,7 +37889,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_memry_core_checksum_method_vaultsync_sync_inbox_attachments() != 64358) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_memry_core_checksum_method_vaultsync_sync_now() != 13576) {
+    if (uniffi_memry_core_checksum_method_vaultsync_sync_now() != 38818) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_memry_core_checksum_method_vaultsync_realtime() != 27087) {

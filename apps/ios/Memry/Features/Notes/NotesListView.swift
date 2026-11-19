@@ -59,6 +59,7 @@ struct NotesListView: View {
     private let notesLinks = NotesLinks.shared
     @Environment(\.requestVaultSync) private var requestVaultSync
     @Environment(\.handoffVaultId) private var vaultId
+    @Environment(\.firstSyncLanded) private var firstSyncLanded
 
     /// The production entry point: an opened `Vault` and the shell's one core
     /// queue. `State(initialValue:)` so the model outlives a re-render — a
@@ -198,6 +199,8 @@ struct NotesListView: View {
         .onChange(of: width) { _, width in
             if width == .compact { path = router.compactPath() }
         }
+        // The vault shows while its first sync fills it (`VaultFillView`).
+        .onChange(of: firstSyncLanded) { Task { await model.refresh() } }
         // ⌘N (#4355): the "+"'s create, opened the way a search hit opens.
         .onChange(of: notesLinks.newNoteRequested, initial: true) {
             // The keys typed since ⌘N wait for the new note (#4787).
