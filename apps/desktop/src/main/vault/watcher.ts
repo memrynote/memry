@@ -28,7 +28,8 @@ import {
   syncNoteStatToCache,
   syncFileToCache,
   deleteNoteFromCache,
-  findCanonicalNoteByPath
+  findCanonicalNoteByPath,
+  findCanonicalNotePath
 } from './note-sync'
 import {
   getAllNoteRefRows,
@@ -96,6 +97,7 @@ import { liveCanvasPaths, trackExternalCanvasRemoval } from '../canvas/delete'
 import { isCanvasFilePath, resolveCanvasFile } from '../canvas/scene-file'
 import { hasBulkApplyJournal } from '../sync/bulk-apply'
 import { isGoneFromDisk } from './gone-from-disk'
+import { diskCaseOf } from './disk-case'
 
 const logger = createLogger('Watcher')
 
@@ -203,6 +205,16 @@ function extractJournalDate(relativePath: string): string {
 async function isModifiedSince(absolutePath: string, indexedAt: string): Promise<boolean> {
   const stats = await fs.stat(absolutePath).catch(() => null)
   return stats !== null && stats.mtimeMs > Date.parse(indexedAt)
+}
+
+/**
+ * An add or change under a folder the app is renaming, at a path the app has
+ * already moved a note to: the echo of its own move, whose rows
+ * `moveIndexedNotesWithFolder` writes. Handled as adds while the index caught
+ * up, the echoes re-listed and re-read every file of a large folder.
+ */
+function isAppMoveEcho(relativePath: string): boolean {
+  return isAppFolderChange(relativePath) && findCanonicalNoteByPath(relativePath) !== null
 }
 
 /** Cache timestamps come back as an ISO string or a Date, depending on driver. */
@@ -567,8 +579,9 @@ export class VaultWatcher {
    * Also checks if this might be a rename (matching UUID with pending delete).
    * Supports all file types: markdown, pdf, images, audio, video.
    */
-  private async handleFileAdd(absolutePath: string): Promise<void> {
+  private async handleFileAdd(eventPath: string): Promise<void> {
     if (!this.vaultPath) return
+    const absolutePath = this.inDiskCase(eventPath)
 
     if (isWritebackIgnored(absolutePath)) {
       await this.checkLockedFileInWritebackWindow(absolutePath)
@@ -579,7 +592,7 @@ export class VaultWatcher {
       const relativePath = normalizeRelativePath(path.relative(this.vaultPath, absolutePath))
       const fileType = getFileType(getExtension(absolutePath))
 
-      if (!fileType) {
+      if (!fileType || isAppMoveEcho(relativePath)) {
         return
       }
 
@@ -638,8 +651,9 @@ export class VaultWatcher {
    * Only folders getFolders lists get one, the same set the backfill records:
    * the journal folder, canvases and excluded roots stay out of folder_config.
    */
-  private handleDirAdd(absolutePath: string): void {
+  private handleDirAdd(eventPath: string): void {
     if (!this.vaultPath) return
+    const absolutePath = this.inDiskCase(eventPath)
     const relativePath = normalizeRelativePath(path.relative(this.vaultPath, absolutePath))
     try {
       if (!createTreeFolderFilter(getConfig())(relativePath)) return
@@ -681,6 +695,22 @@ export class VaultWatcher {
       }
     }, DIR_UNLINK_SETTLE_MS)
     this.dirUnlinkTimers.add(timer)
+  }
+
+  /**
+   * An event's path as the disk spells it (see `diskCaseOf`). After a
+   * case-only folder rename (`Supernotes` -> `SuperNotes`) on macOS or Windows,
+   * chokidar keeps watching the folder under its old case and reports its files
+   * and subfolders there too. No row has the old-case path, so each file was
+   * indexed again as a new note, and each subfolder recorded again: the old
+   * folder came back in the sidebar, and every copy synced as a create.
+   */
+  private inDiskCase(absolutePath: string): string {
+    const vaultPath = this.vaultPath
+    if (!vaultPath) return absolutePath
+    const relativePath = normalizeRelativePath(path.relative(vaultPath, absolutePath))
+    const onDisk = diskCaseOf(vaultPath, relativePath)
+    return onDisk === null || onDisk === relativePath ? absolutePath : path.join(vaultPath, onDisk)
   }
 
   /**
@@ -949,8 +979,9 @@ export class VaultWatcher {
    * Handle file modification.
    * Supports all file types: markdown, pdf, images, audio, video.
    */
-  private async handleFileChange(absolutePath: string): Promise<void> {
+  private async handleFileChange(eventPath: string): Promise<void> {
     if (!this.vaultPath) return
+    const absolutePath = this.inDiskCase(eventPath)
 
     if (isWritebackIgnored(absolutePath)) {
       await this.checkLockedFileInWritebackWindow(absolutePath)
@@ -961,7 +992,7 @@ export class VaultWatcher {
       const relativePath = normalizeRelativePath(path.relative(this.vaultPath, absolutePath))
       const fileType = getFileType(getExtension(absolutePath))
 
-      if (!fileType) {
+      if (!fileType || isAppMoveEcho(relativePath)) {
         return
       }
 
@@ -1239,6 +1270,10 @@ export class VaultWatcher {
         relativePath,
         async () => {
           if (keepUnpaired) return
+          // The note was moved, not deleted: a folder rename or a synced move
+          // re-keyed its canonical row before the index followed.
+          const canonicalPath = findCanonicalNotePath(cached.id)
+          if (canonicalPath !== null && canonicalPath !== relativePath) return
           if (!(await this.isGoneFromVault(vaultPath, absolutePath, relativePath))) return
           // A locked note removed outside the app gets its locked text back
           // instead of a delete that would reach every device (#2606).
