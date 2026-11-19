@@ -65,7 +65,8 @@ fn parse(value: &str) -> Option<Script> {
     match parts.next()? {
         "done" => Some(Script::Done),
         "notice" => Some(Script::Notice),
-        "fail" => Some(Script::Fail(parts.next()?.to_owned())),
+        // The whole rest: a check such as `secrets:unreadable` holds a colon.
+        "fail" => Some(Script::Fail(value.split_once(':')?.1.to_owned())),
         "hold" => {
             let phase = match parts.next()? {
                 "app-state" => Phase::AppState,
