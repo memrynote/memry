@@ -226,6 +226,14 @@ export function stopTagRename(): Promise<boolean> {
   return commands.tagsRenameAbandon()
 }
 
+/**
+ * Whether `tag` was renamed away or deleted (`tags::gone`): its definition is deleted and no
+ * note carries it. A tag whose notes all let go of it is not gone.
+ */
+export async function isTagGone(tag: string): Promise<boolean> {
+  return await commands.tagsIsGone(tag)
+}
+
 /** The tag methods served from Rust; `window.api.tags` is typed without them. */
 export type PortedTagMethod = keyof typeof ported
 
@@ -257,8 +265,11 @@ export const tagsService: TagsService = {
  * Subscribe to tag renamed events.
  * @returns Unsubscribe function
  */
-export function onTagRenamed(callback: (event: TagRenamedEvent) => void): () => void {
-  return subscribeToEvent(events.tagRenamedEvent, callback)
+export function onTagRenamed(
+  callback: (event: TagRenamedEvent) => void,
+  onListening?: () => void
+): () => void {
+  return subscribeToEvent(events.tagRenamedEvent, callback, onListening)
 }
 
 /**
@@ -281,8 +292,11 @@ export function onTagColorUpdated(callback: (event: TagColorUpdatedEvent) => voi
  * Subscribe to tag deleted events: a tag deleted or merged into another.
  * @returns Unsubscribe function
  */
-export function onTagDeleted(callback: (event: TagDeletedEvent) => void): () => void {
-  return subscribeToEvent(events.tagDeletedEvent, callback)
+export function onTagDeleted(
+  callback: (event: TagDeletedEvent) => void,
+  onListening?: () => void
+): () => void {
+  return subscribeToEvent(events.tagDeletedEvent, callback, onListening)
 }
 
 /**
