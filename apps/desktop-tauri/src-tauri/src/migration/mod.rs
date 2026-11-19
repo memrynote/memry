@@ -220,13 +220,19 @@ fn first_launch_migration(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     let backend = backend(app);
     let locale = preboot::locale(app);
     if backend.take_change_notice() {
-        tell(
-            app,
-            locale,
-            "system:migration.notice.title",
-            "system:migration.notice.body",
-            &backend.backup(),
-        );
+        // After the main window shows: a message asked for while the boot runs, before the
+        // event loop does, never appears.
+        let shown = app.clone();
+        let backup = backend.backup();
+        crate::post_reveal::once_window_shown("tell of changes in the previous app", move || {
+            tell(
+                &shown,
+                locale,
+                "system:migration.notice.title",
+                "system:migration.notice.body",
+                &backup,
+            );
+        });
     }
     if !backend.needed() {
         return Ok(());
@@ -294,14 +300,21 @@ fn resume(app: &AppHandle<Wry>, locale: &'static str, backup: &Path) {
 }
 
 /// A native message naming the Electron data, which never waits for an answer.
+/// On macOS it is a sheet of the main window: without a parent, rfd picks the app's first
+/// window, which can be a hidden one, and nobody sees the message.
 fn tell(app: &AppHandle<Wry>, locale: &str, title: &str, body: &str, backup: &Path) {
     let path = backup.display().to_string();
     let args = Args::from([("path".to_owned(), Arg::from(path.as_str()))]);
-    app.dialog()
+    let mut dialog = app
+        .dialog()
         .message(i18n::t(locale, body, &args))
         .title(i18n::t(locale, title, &Args::new()))
-        .kind(MessageDialogKind::Info)
-        .show(|_| {});
+        .kind(MessageDialogKind::Info);
+    if let Some(main) = app.get_webview_window(&WindowKind::Main.label(0)) {
+        dialog = dialog.parent(&main);
+    }
+    dialog.show(|_| tracing::info!(scope = "Migration", "message closed"));
+    tracing::info!(scope = "Migration", title, "message shown");
 }
 
 /// `memryMigration.update(status)` on the migration page. `<` is escaped, so no string closes
