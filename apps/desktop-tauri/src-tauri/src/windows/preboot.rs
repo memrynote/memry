@@ -155,7 +155,7 @@ pub fn show_migration(
         WindowKind::Preboot,
         fill,
         Some(Box::new(|| {})),
-        |builder| builder.inner_size(480.0, 320.0).visible(false),
+        |builder| builder.inner_size(480.0, 360.0).visible(false),
     )
 }
 
