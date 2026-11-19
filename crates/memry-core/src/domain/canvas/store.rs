@@ -216,21 +216,9 @@ pub fn delete(
     if get(conn, canvas_id)?.is_none() {
         return Ok(false);
     }
-    outbox::commit(
-        conn,
-        &outbox::Change::delete(ITEM_TYPE, canvas_id),
-        now_ms,
-        |tx| {
-            let stored = live(tx, ITEM_TYPE, canvas_id, "canvas")?;
-            let changes = vec![
-                ("deletedAt", Change::set(now_ms)),
-                ("scene", Change::Remove),
-            ];
-            tombstone(
-                tx, ITEM_TYPE, canvas_id, &stored, changes, device_id, now_ms,
-            )
-        },
-    )?;
+    let tx = conn.unchecked_transaction().map_err(failed)?;
+    tombstone_in(&tx, canvas_id, device_id, now_ms)?;
+    tx.commit().map_err(failed)?;
     Ok(true)
 }
 
@@ -277,6 +265,71 @@ pub fn duplicate(
     )
     .map_err(failed)?;
     commit(tx, &id, &source.scene, now_ms).map(Some)
+}
+
+/// Files a live canvas under `folder` (already canonical, `None` the root)
+/// inside a transaction the caller holds: ticks its clock and queues it
+/// unless its scene is over the cap. A folder move or rename does this for
+/// each canvas it carries (`relocateFolder`).
+pub(crate) fn set_folder_in(
+    tx: &Connection,
+    canvas_id: &str,
+    folder: Option<&str>,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<SyncHold, StorageError> {
+    let stored = live(tx, ITEM_TYPE, canvas_id, "canvas")?;
+    let changes = [
+        ("folder", Change::Set(json!(folder))),
+        (
+            "clock",
+            Change::Set(next_clock(stored.object(), device_id)?),
+        ),
+    ];
+    sync_items::apply_local_edit_in(tx, ITEM_TYPE, canvas_id, &changes, now_ms)?;
+    let sync = sync_hold(scene_of(stored.object()));
+    if sync == SyncHold::Queued {
+        outbox::enqueue(tx, &outbox::Change::upsert(ITEM_TYPE, canvas_id), now_ms)?;
+    }
+    Ok(sync)
+}
+
+/// [`delete`] of a canvas known to be live, inside a transaction the caller
+/// holds, with its outbox row.
+pub(crate) fn tombstone_in(
+    tx: &Connection,
+    canvas_id: &str,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<(), StorageError> {
+    let stored = live(tx, ITEM_TYPE, canvas_id, "canvas")?;
+    let changes = vec![
+        ("deletedAt", Change::set(now_ms)),
+        ("scene", Change::Remove),
+    ];
+    tombstone(
+        tx, ITEM_TYPE, canvas_id, &stored, changes, device_id, now_ms,
+    )?;
+    outbox::enqueue(tx, &outbox::Change::delete(ITEM_TYPE, canvas_id), now_ms)?;
+    Ok(())
+}
+
+/// The id and folder of every live canvas of the vault, read without scenes.
+pub(crate) fn placements(
+    conn: &Connection,
+    vault_id: &str,
+) -> Result<Vec<(String, Option<String>)>, StorageError> {
+    let mut statement = conn
+        .prepare_cached(
+            "SELECT id, folder FROM canvases
+             WHERE vault_id IN (?1, '') AND deleted_at IS NULL ORDER BY id",
+        )
+        .map_err(failed)?;
+    statement
+        .query_map([vault_id], |row| Ok((row.get(0)?, row.get(1)?)))
+        .map_err(failed)?
+        .collect::<Result<_, _>>()
+        .map_err(failed)
 }
 
 /// Queues the canvas when `scene` fits the cap, commits, and reads it back.

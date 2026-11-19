@@ -21,7 +21,11 @@
 //! [`folder_paths`] and [`scene_refs`] are the pure rules both build on.
 
 pub mod edges;
+/// Desktop writes the files, and links the JavaScript JSON helpers this uses.
+#[cfg(feature = "markdown")]
+pub mod file_format;
 pub mod folder_paths;
+pub mod folders;
 pub mod merge;
 pub mod scene_refs;
 mod store;
