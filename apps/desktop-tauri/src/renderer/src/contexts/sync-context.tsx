@@ -157,7 +157,10 @@ function pruneProgress(
 export function syncReducer(state: SyncState, action: SyncAction): SyncState {
   switch (action.type) {
     case 'STATUS_CHANGED': {
-      const leavingSyncing = state.status === 'syncing' && action.status !== 'syncing'
+      // Main sends a page's count up to 150 ms after the status leaves `syncing`, so a reset on
+      // leaving would let the last page's count carry into the next cycle. A cycle's counts
+      // start at zero when it starts.
+      const startingSync = state.status !== 'syncing' && action.status === 'syncing'
       // A pull that dies in a rethrowing failure category (offline, rate-limit,
       // auth) never reaches phase:'complete', so the last INITIAL_SYNC_PROGRESS
       // event would outlive its transfer and keep the skeleton and the
@@ -177,7 +180,7 @@ export function syncReducer(state: SyncState, action: SyncAction): SyncState {
         errorCategory: action.errorCategory ?? null,
         offlineSince: action.offlineSince ?? null,
         initialSyncProgress: transferEnded ? null : state.initialSyncProgress,
-        syncActivity: leavingSyncing ? { pushCount: 0, pullCount: 0 } : state.syncActivity
+        syncActivity: startingSync ? { pushCount: 0, pullCount: 0 } : state.syncActivity
       }
     }
     case 'SET_ERROR':

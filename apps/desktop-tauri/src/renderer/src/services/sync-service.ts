@@ -9,10 +9,15 @@ const COALESCE_MS = 150
  * record once with its last operation. Main sends one event per committed page, and a pull of
  * many pages would otherwise refetch once per page. Notes and journals never arrive here: their
  * events come from the vault (`onNoteUpdated`, the journal events).
+ *
+ * `onListening` runs once the events reach this page. A page main sends before then reaches
+ * nobody and names no record, so a subscriber that reads what the records change reads it all
+ * again there (`subscribeToEvents`).
  */
 export function onSyncedRecords(
   types: readonly string[] | 'all',
-  callback: (items: SyncedItem[]) => void
+  callback: (items: SyncedItem[]) => void,
+  onListening?: () => void
 ): () => void {
   let pending = new Map<string, SyncedItem>()
   let timer: ReturnType<typeof setTimeout> | null = null
@@ -22,15 +27,19 @@ export function onSyncedRecords(
     pending = new Map()
     callback(items)
   }
-  const stop = subscribeToEvent(events.syncItemSyncedEvent, ({ items }) => {
-    for (const item of items) {
-      if (types !== 'all' && !types.includes(item.type)) continue
-      const key = `${item.type}\u0000${item.itemId}`
-      pending.delete(key)
-      pending.set(key, item)
-    }
-    if (pending.size > 0 && timer === null) timer = setTimeout(flush, COALESCE_MS)
-  })
+  const stop = subscribeToEvent(
+    events.syncItemSyncedEvent,
+    ({ items }) => {
+      for (const item of items) {
+        if (types !== 'all' && !types.includes(item.type)) continue
+        const key = `${item.type}\u0000${item.itemId}`
+        pending.delete(key)
+        pending.set(key, item)
+      }
+      if (pending.size > 0 && timer === null) timer = setTimeout(flush, COALESCE_MS)
+    },
+    onListening
+  )
   return () => {
     stop()
     if (timer !== null) clearTimeout(timer)

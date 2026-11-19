@@ -15,13 +15,14 @@ const mocks = vi.hoisted(() => ({
   synced: null as {
     types: readonly string[] | 'all'
     callback: (items: Array<{ itemId: string; type: string; itemOperation: string }>) => void
+    onListening?: () => void
   } | null,
   unsubscribe: vi.fn()
 }))
 
 vi.mock('@/services/sync-service', () => ({
-  onSyncedRecords: vi.fn((types, callback) => {
-    mocks.synced = { types, callback }
+  onSyncedRecords: vi.fn((types, callback, onListening) => {
+    mocks.synced = { types, callback, onListening }
     return mocks.unsubscribe
   })
 }))
@@ -216,11 +217,31 @@ describe('useTaskWorkspaceData', () => {
     expect(mocks.unsubscribe).toHaveBeenCalled()
   })
 
-  // A pull on the other machine emits one ITEM_SYNCED per item. If that event
-  // is dropped, nothing else refreshes this list: the app-wide default is
-  // refetchOnWindowFocus: false and there is no interval, so the user has to
-  // restart the app to see the other machine's tasks. Settling out of `syncing`
-  // is the reconcile point that does not depend on the window losing focus.
+  // Tauri's listener goes live only when main answers `listen`, and a page of synced records sent
+  // before then reaches nobody. The subscriber cannot tell which records it missed, so the
+  // workspace is read again once the listener is live.
+  it('reads the workspace again once the synced-records listener is live', async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const { result } = renderHook(() => useTaskWorkspaceData({ enabled: true }), {
+      wrapper: createWrapper(queryClient)
+    })
+
+    await waitFor(() => expect(result.current.tasks).toHaveLength(3))
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
+
+    expect(mocks.synced?.onListening).toBeTypeOf('function')
+    act(() => mocks.synced?.onListening?.())
+
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: taskKeys.tasks() })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: taskKeys.projects() })
+  })
+
+  // A pull on the other machine emits one synced-records event per committed
+  // page. If that event is dropped, nothing else refreshes this list: the
+  // app-wide default is refetchOnWindowFocus: false and there is no interval,
+  // so the user has to restart the app to see the other machine's tasks.
+  // Settling out of `syncing` is the reconcile point that does not depend on
+  // the window losing focus.
   it('reconciles the workspace when a sync settles', async () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     const { result } = renderHook(() => useTaskWorkspaceData({ enabled: true }), {

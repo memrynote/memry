@@ -9,7 +9,7 @@
 //! | a write floor above the build parks the outbox         | §11.8 `minWriteVersion`: `version_incompatible`, pulls go on |
 //! | wait_for_pull and outbox_count follow real passes      | L4b test hooks: a pull counted, `synced_settings` 1 then 0 |
 //! | ten hints during a held pass give one trailing pass    | chapter 09 hints coalesce into one wake |
-//! | real passes tell item-synced and queue-cleared         | L7 events through the real driver      |
+//! | real passes tell queue-cleared and no note on the feed | L7 events through the real driver      |
 
 #![cfg(feature = "harness")]
 
@@ -540,7 +540,7 @@ async fn ten_hints_during_a_held_pass_give_exactly_one_trailing_pass() {
 }
 
 /// The supervisor's events through a real driver: A's push that empties its outbox tells
-/// queue-cleared, and B's pull of the note tells item-synced once, as a create.
+/// queue-cleared, and B's pull of the note reaches B's vault but tells the sync feed no note.
 #[tokio::test(flavor = "multi_thread")]
 async fn real_passes_tell_item_synced_and_queue_cleared() {
     let server = Server::start();

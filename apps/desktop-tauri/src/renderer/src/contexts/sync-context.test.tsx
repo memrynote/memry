@@ -681,7 +681,38 @@ describe('SyncProvider', () => {
       expect(result.current.state.pendingCount).toBe(9)
       expect(result.current.state.clockSkewDetected).toBe(true)
       expect(result.current.state.initialSyncProgress).toBeNull()
+
+      act(() => {
+        for (const cb of syncStatusListeners) cb({ status: 'syncing', pendingCount: 9 })
+      })
       expect(result.current.state.syncActivity).toEqual({ pushCount: 0, pullCount: 0 })
+    })
+
+    // Main sends one event per committed page and the renderer coalesces them for 150 ms, so the
+    // last page's count lands after the status already left `syncing`. It belongs to the finished
+    // cycle and must not show in the next one's "N pulled".
+    it('#then keeps a count that lands after a cycle ended out of the next cycle', async () => {
+      const { result } = renderHook(() => useSync(), { wrapper })
+      await vi.waitFor(() => expect(syncStatusListeners.length).toBeGreaterThan(0))
+
+      act(() => {
+        for (const cb of syncStatusListeners) cb({ status: 'syncing', pendingCount: 0 })
+        for (const cb of syncedRecordsListeners) cb([pulledTask('t1')])
+        for (const cb of syncStatusListeners) cb({ status: 'idle', pendingCount: 0 })
+      })
+      act(() => {
+        for (const cb of syncedRecordsListeners) cb([pulledTask('t2'), pulledTask('t3')])
+      })
+      act(() => {
+        for (const cb of syncStatusListeners) cb({ status: 'syncing', pendingCount: 0 })
+      })
+
+      expect(result.current.state.syncActivity).toEqual({ pushCount: 0, pullCount: 0 })
+
+      act(() => {
+        for (const cb of syncedRecordsListeners) cb([pulledTask('t4')])
+      })
+      expect(result.current.state.syncActivity).toEqual({ pushCount: 0, pullCount: 1 })
     })
 
     it('#then handles linking lifecycle, key-rotation errors, and clear/dismiss actions', async () => {

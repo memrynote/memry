@@ -6,13 +6,16 @@ type Payload = {
 }
 
 const channel = vi.hoisted(() => ({
-  handlers: [] as Array<(received: { payload: Payload }) => void>
+  handlers: [] as Array<(received: { payload: Payload }) => void>,
+  /** Holds every `listen` answer until released, as main does before the listener is live. */
+  answer: null as Promise<void> | null
 }))
 
 vi.mock('../../../generated/bindings', () => ({
   events: {
     syncItemSyncedEvent: {
       listen: async (handler: (received: { payload: Payload }) => void) => {
+        await channel.answer
         channel.handlers.push(handler)
         return () => {
           channel.handlers = channel.handlers.filter((h) => h !== handler)
@@ -35,6 +38,7 @@ const task = (itemId: string, itemOperation: 'create' | 'update' | 'delete' = 'u
 
 beforeEach(() => {
   channel.handlers = []
+  channel.answer = null
   vi.useFakeTimers()
 })
 afterEach(() => vi.useRealTimers())
@@ -100,6 +104,29 @@ describe('onSyncedRecords', () => {
     stop()
     await vi.advanceTimersByTimeAsync(150)
 
+    expect(callback).not.toHaveBeenCalled()
+  })
+
+  // Tauri's `listen` goes live only when main answers it, and a page main sends before then
+  // reaches nobody: the subscriber cannot tell which records it missed, so its owner reads again.
+  it('tells the subscriber once the listener is live, so a page sent before then is read again', async () => {
+    let release = (): void => undefined
+    channel.answer = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const callback = vi.fn()
+    const onListening = vi.fn()
+    onSyncedRecords(['task'], callback, onListening)
+
+    page(task('t1'))
+    await vi.advanceTimersByTimeAsync(150)
+    expect(callback).not.toHaveBeenCalled()
+    expect(onListening).not.toHaveBeenCalled()
+
+    release()
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(onListening).toHaveBeenCalledTimes(1)
     expect(callback).not.toHaveBeenCalled()
   })
 })
