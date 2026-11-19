@@ -16,6 +16,7 @@ pub mod instance;
 pub mod menu;
 pub mod ml_worker;
 pub mod notifications;
+pub mod post_reveal;
 pub mod power;
 pub mod protocols;
 pub mod registry;
@@ -94,6 +95,7 @@ fn register_stages() {
     deep_link::register_stages();
     notifications::register_stages();
     shortcuts::register_stages();
+    windows::sticky::register_stages();
     spell::register_stages();
     updater::register_stages();
     commands::ocr_languages::register_stages();

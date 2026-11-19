@@ -73,6 +73,8 @@
     "vectors:html-text:check": "tsx scripts/html-text-oracle/generate.ts --check",
     "vectors:agent-mcp": "tsx scripts/generate-agent-mcp-vectors.ts",
     "vectors:agent-mcp:check": "tsx scripts/generate-agent-mcp-vectors.ts --check",
+    "vectors:export": "tsx scripts/export-oracle/generate.ts",
+    "vectors:export:check": "tsx scripts/export-oracle/generate.ts --check",
     "smoke:local-provider": "node --import tsx scripts/smoke-local-provider.ts",
     "db:generate": "drizzle-kit generate --config config/drizzle-data.config.ts && drizzle-kit generate --config config/drizzle-index.config.ts",
     "db:generate:data": "drizzle-kit generate --config config/drizzle-data.config.ts",

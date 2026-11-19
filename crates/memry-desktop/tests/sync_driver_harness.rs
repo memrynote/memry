@@ -42,7 +42,7 @@ use memry_core::domain::agent_conversation::{self, NewConversation};
 use memry_core::domain::agent_message::{self, NewMessage};
 use memry_core::domain::agent_queue::Queue;
 use memry_core::domain::vault_locks::{self, TargetKind};
-use memry_core::domain::{canvas_folder, home_page, sticky_draft, tag_mint};
+use memry_core::domain::{canvas_folder, home_page, projects, sticky_draft, tag_mint};
 use memry_core::protocol::auth::DevicePlatform;
 use memry_core::seams::reachability::{Reachability, ReachabilityObserver, Reachable};
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
@@ -479,10 +479,10 @@ async fn records_converge_through_the_driver() {
 }
 
 /// What only a seed makes syncable reaches the other device through the driver's pass: a learned
-/// property type (the caller's seed), a minted tag definition and a lock written before Step 16
-/// (the driver's own).
+/// property type (the caller's seed), a minted tag definition, a lock written before Step 16 and
+/// the seeded Inbox (the driver's own).
 #[tokio::test(flavor = "multi_thread")]
-async fn the_drivers_seeds_carry_definitions_tags_and_locks() {
+async fn the_drivers_seeds_carry_definitions_tags_locks_and_the_inbox() {
     let server = Server::start();
     let a = Device::new(&server, 0).await;
     let b = Device::new(&server, 1).await;
@@ -494,6 +494,7 @@ async fn the_drivers_seeds_carry_definitions_tags_and_locks() {
     a.db()
         .call_blocking(move |conn| {
             tag_mint::define_used(conn, &["work".to_owned()], NOW)?;
+            projects::ensure_inbox(conn, NOW)?;
             conn.execute(
                 "INSERT INTO vault_locks (id, target_kind, target, locked, created_at, updated_at)
                  VALUES (?1, 'folder', 'Old', 1, ?2, ?2)",
@@ -503,17 +504,28 @@ async fn the_drivers_seeds_carry_definitions_tags_and_locks() {
             Ok(())
         })
         .unwrap();
-    for item_type in ["tag_definition", "vault_lock"] {
+    for item_type in ["tag_definition", "vault_lock", "project"] {
         assert_eq!(
             a.queued(item_type),
             0,
             "no {item_type} queued before the pass"
         );
     }
+    // B seeded its own Inbox before its first pull: the pull replaces it, nothing goes back.
+    b.db()
+        .call_blocking(|conn| projects::ensure_inbox(conn, NOW).map(drop))
+        .unwrap();
 
     let pushed = a.sync().await;
     assert!(pushed.pushed, "{pushed:?}");
     b.sync().await;
+    assert_eq!(b.ids("project"), ["inbox"]);
+    let inbox: Value = serde_json::from_str(&b.stored("project", "inbox").unwrap()).unwrap();
+    assert!(
+        inbox["clock"].is_object(),
+        "B holds the Inbox A's pass clocked and pushed: {inbox}"
+    );
+    assert_eq!(b.queued("project"), 0, "B's seed was replaced, not pushed");
     assert_eq!(b.ids("property_definition"), ["rating"]);
     assert_eq!(
         b.ids("tag_definition").len(),

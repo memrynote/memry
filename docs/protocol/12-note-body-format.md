@@ -691,7 +691,7 @@ on a throwaway `Y.Doc` under `PERSISTENCE_PROBE_KEY`
 | `markdownSource`           | Map (`record: {source, htmlComments?}`) | `packages/shared/src/markdown-source.ts:182-191` via `apps/desktop/src/main/sync/blocknote-converter.ts:517-541`, `apps/desktop/src/main/sync/crdt-feed.ts:80`                                                                                                                                     | `apps/desktop/src/main/sync/blocknote-converter.ts:156`, `:161`                                             | foreign-vault bytes are re-spelled to house style on the next write-back: a `git diff` across the user's file, violating FR-041's "change only the edited region" |
 | `linkReferenceDefinitions` | Array                                   | `packages/shared/src/link-references.ts:178` via `apps/desktop/src/main/sync/blocknote-converter.ts:470-471`                                                                                                                                                                                       | `packages/shared/src/link-references.ts:187`, `apps/desktop/src/main/sync/blocknote-converter.ts:237-238`   | reference-link definitions are deleted and `[docs][d]` is inlined                                                                                                 |
 | `linkReferenceUsages`      | Array                                   | same (`packages/shared/src/link-references.ts:179`)                                                                                                                                                                                                                                                | same (`:191`)                                                                                               | same                                                                                                                                                              |
-| `criticMarkupMarks`        | Array                                   | `packages/shared/src/critic-markup/yjs.ts:34-45` via `apps/desktop/src/main/sync/blocknote-converter.ts:469`; renderer `apps/desktop/src/renderer/src/components/note/content-area/ContentArea.tsx:602`                                                                                            | `apps/desktop/src/main/sync/crdt-writeback.ts:466`, `apps/desktop/src/main/sync/blocknote-converter.ts:158` | **every suggestion and comment is deleted from the file on the next write-back, and source restoration flips back on, so the body is additionally re-spelled**    |
+| `criticMarkupMarks`        | Array                                   | `packages/shared/src/critic-markup/yjs.ts:78-129` via `apps/desktop/src/main/sync/blocknote-converter.ts:469`; renderer `apps/desktop/src/renderer/src/components/note/content-area/ContentArea.tsx:602`                                                                                           | `apps/desktop/src/main/sync/crdt-writeback.ts:466`, `apps/desktop/src/main/sync/blocknote-converter.ts:158` | **every suggestion and comment is deleted from the file on the next write-back, and source restoration flips back on, so the body is additionally re-spelled**    |
 
 Root name constants:
 `CRITIC_MARKUP_MARKS_ARRAY = 'criticMarkupMarks'`
@@ -759,8 +759,80 @@ on create, whole-array replace on a tag edit
 
 The critic-markup reader **drops any element failing shape validation** — `id`,
 `kind`, `visibleText`, finite `start <= end`
-(`packages/shared/src/critic-markup/yjs.ts:55-66`) — so a client that rewrites
+(`packages/shared/src/critic-markup/yjs.ts:200-208`) — so a client that rewrites
 elements MUST keep that shape exactly.
+
+**Normative: each element of `criticMarkupMarks` is one mark, and its id names
+it.** An element is one plain object, so Yjs merges the array and never the keys
+inside an element. Two devices that change the same mark offline therefore leave
+two elements with one id, which Yjs orders the same on every replica.
+
+- **Read: one mark per id, the first valid element wins**
+  (`packages/shared/src/critic-markup/yjs.ts:56-64`,
+  `crates/memry-core/src/markdown/convert/roots.rs:177-184`,
+  `crates/memry-core/src/crdt/comments.rs:91-116`).
+- **Write: element by element** (`packages/shared/src/critic-markup/yjs.ts:78-129`,
+  `crates/memry-core/src/markdown/convert/roots.rs:216-291`). A writer deletes
+  the elements that fail validation, every element after the first valid one of
+  an id, and the ids it no longer holds. It does not move existing elements, and
+  it inserts a new id after the furthest existing element among the marks that
+  precede the new id in the writer's list.
+- **A writer replaces an element only for an edit.** It compares the stored
+  mark, normalized as the reader normalizes it, with the mark it writes, without
+  `start` and `end` (`packages/shared/src/critic-markup/yjs.ts:144-150`,
+  `crates/memry-core/src/markdown/convert/roots.rs:310-321`). Key order is not
+  a difference either. Offsets alone are never written: the window moves them
+  with its typing (#4425), and a copy written only to move a mark would hide
+  another device's edit of that mark under first-copy-wins. A replaced element
+  keeps every top-level key the writer does not know
+  (`packages/shared/src/critic-markup/yjs.ts:32-45`,
+  `crates/memry-core/src/markdown/convert/roots.rs:160-173`, `:324-337`).
+  Two devices that change different marks therefore merge without duplicates,
+  and a later write deletes the duplicates of an earlier concurrent edit.
+- **The items of `mentions`, `attachments` and `formatRanges` take no new
+  keys.** Readers normalize them to a closed key set, and writers compare and
+  write the normalized items, so a key added inside an item is lost on the first
+  edit of its mark.
+- **A writer never deletes and re-inserts an element it does not change.** A
+  re-inserted stale copy would precede another device's concurrent copy of that
+  id, so first-copy-wins would hide that device's edit, and a re-inserted mark
+  would undo its delete. Deletes and replaces of adjacent elements are one
+  operation each, and the new ids after one element are one insert.
+- **Known performance limit.** Each Yjs and yrs array operation walks the array
+  from its start, so a write that changes `k` separate runs of an array of `n`
+  elements costs O(k·n). Only many scattered changes in one write reach this
+  worst case, and the marks come from the user's own devices. Data safety takes
+  priority over this cost.
+- **A new comment field is also written into `metadata`.** Electron builds
+  rewrite the whole array and write only the keys they know, so any other
+  top-level key is lost after they write. Every shipped build copies `metadata`
+  unchanged, and the CriticMarkup serializer keeps a `metadata` part it does not
+  know (`packages/shared/src/critic-markup/parser.ts:474-491`). A comment field
+  added after `formatRanges` MUST therefore also be written as a `key=value` part
+  of `metadata`, with parts separated by `;` and the value URI-encoded, as
+  `mentions=` and `format=` are. The key MUST NOT be one of `id`, `type`,
+  `createdAt`, `mentions`, `attachments` or `format`. The field MAY also be a
+  top-level key, and a reader that finds the top-level key missing MUST read the
+  field from `metadata`. This protects comments only: an addition, deletion or
+  substitution writes no metadata to the file
+  (`packages/shared/src/critic-markup/parser.ts:409-419`), so a new field on
+  those kinds is lost on an Electron write and on a reseed from the file.
+- **No new `kind`.** Every shipped reader drops an element whose `kind` it does
+  not know, and every writer then deletes it.
+
+The `critic.yjsWrite` cases of
+`packages/contracts/test-vectors/markdown-convert/layer-critic.json` pin this
+behavior: unknown keys (nested ones included), key order, offset-only changes,
+duplicate ids, inserts and deletes, many scattered changes, and writers that
+merge concurrently, including a large write concurrent with another device's
+edit, large write or delete. `crates/memry-core/tests/markdown_layer_critic_vectors.rs`
+reproduces them.
+
+Shipped Electron builds do not follow these write rules. It still rewrites the
+whole array, which drops the top-level keys it does not know and duplicates
+marks that are edited concurrently. Readers that follow §12.5.1 show one copy of
+each id, and the next write by a build that follows §12.5.1 deletes the
+duplicates.
 
 ### 12.5.2 The `meta` key set
 

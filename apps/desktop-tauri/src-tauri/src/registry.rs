@@ -110,6 +110,8 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::journal::journal_get_streak::<Wry>,
             crate::commands::journal::journal_get_year_stats::<Wry>,
             crate::commands::journal::journal_update_entry::<Wry>,
+            // launch
+            crate::commands::launch::launch_report_renderer_marks,
             // locale
             crate::commands::locale::locale_get,
             crate::commands::locale::locale_list,
@@ -151,6 +153,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::notes::notes_get_all_positions::<Wry>,
             crate::commands::notes::notes_get_by_path,
             crate::commands::notes::notes_get_file,
+            crate::commands::notes::notes_get_list_item,
             crate::commands::notes::notes_get_links,
             crate::commands::notes::notes_get_local_only_count,
             crate::commands::notes::notes_get_unlinked_mentions,
@@ -221,10 +224,19 @@ pub fn builder() -> Builder<Wry> {
             // shortcut
             crate::commands::shortcuts::shortcut_register_global_capture,
             crate::commands::shortcuts::shortcut_set_global_capture,
+            crate::commands::shortcuts::shortcut_register_sticky,
+            crate::commands::shortcuts::shortcut_set_sticky,
             // spell
             crate::commands::spell::spell_check_word,
             crate::commands::spell::spell_add_word,
             crate::commands::spell::spell_add_words,
+            // stickies
+            crate::commands::stickies::sticky_delete_draft,
+            crate::commands::stickies::sticky_get_session,
+            crate::commands::stickies::sticky_list_drafts,
+            crate::commands::stickies::sticky_resize,
+            crate::commands::stickies::sticky_save_draft,
+            crate::commands::stickies::sticky_tuck,
             // fonts
             crate::fonts::system_fonts_list,
             // log
@@ -287,6 +299,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::tags::tags_delete_category,
             crate::commands::tags::tags_get_all_with_counts,
             crate::commands::tags::tags_get_notes_by_tag,
+            crate::commands::tags::tags_is_gone,
             crate::commands::tags::tags_list_categories,
             crate::commands::tags::tags_pin_note_to_tag::<Wry>,
             crate::commands::tags::tags_rename::<Wry>,
@@ -410,6 +423,8 @@ pub fn builder() -> Builder<Wry> {
             crate::events::SettingsOpenSectionEvent,
             // menu
             crate::events::MenuCommandInvokedEvent,
+            // stickies
+            crate::events::StickyDraftsChangedEvent,
             // sync
             crate::events::SyncCertificatePinFailedEvent,
             crate::events::SyncClockSkewWarningEvent,
