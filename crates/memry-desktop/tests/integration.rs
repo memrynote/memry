@@ -7,7 +7,9 @@
 
 mod ai_fake;
 mod device_key;
+mod electron_profile;
 mod embedding_lane;
+mod import_support;
 mod index_support;
 mod move_tree;
 mod on_warning;
@@ -98,6 +100,8 @@ mod attachment_sources;
 mod attachment_uploads;
 #[path = "attachments.rs"]
 mod attachments;
+#[path = "billing_service.rs"]
+mod billing_service;
 #[path = "block_refs.rs"]
 mod block_refs;
 #[path = "byte_preservation.rs"]
@@ -121,6 +125,8 @@ mod editor_host;
 #[cfg(unix)]
 #[path = "editor_readonly.rs"]
 mod editor_readonly;
+#[path = "electron_profile_fixture.rs"]
+mod electron_profile_fixture;
 #[path = "embedding_file_text.rs"]
 mod embedding_file_text;
 #[path = "embedding_owed.rs"]
@@ -163,6 +169,12 @@ mod image_embedding_lane;
 mod image_processing;
 #[path = "import_copy.rs"]
 mod import_copy;
+#[path = "import_runner.rs"]
+mod import_runner;
+#[path = "importer_untrusted.rs"]
+mod importer_untrusted;
+#[path = "importer_vectors.rs"]
+mod importer_vectors;
 #[path = "index_tag_definitions.rs"]
 mod index_tag_definitions;
 #[path = "indexer_facts.rs"]
@@ -337,8 +349,12 @@ mod sanitize_svg_vectors;
 mod seams_tls;
 #[path = "seams_transport.rs"]
 mod seams_transport;
+#[path = "search_reasons.rs"]
+mod search_reasons;
 #[path = "settings_service.rs"]
 mod settings_service;
+#[path = "sticky_drafts.rs"]
+mod sticky_drafts;
 #[path = "sync_backend.rs"]
 mod sync_backend;
 #[path = "sync_host_clients.rs"]
@@ -355,6 +371,8 @@ mod tag_objects;
 mod tag_schema;
 #[path = "tags.rs"]
 mod tags;
+#[path = "task_defaults.rs"]
+mod task_defaults;
 #[path = "telemetry_flush.rs"]
 mod telemetry_flush;
 #[path = "telemetry_report_posts.rs"]

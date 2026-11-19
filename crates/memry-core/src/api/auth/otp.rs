@@ -190,6 +190,8 @@ impl AuthSession {
         let cleared = self.tokens.clear();
         if cleared.is_ok() {
             self.sign_out_marker.store_cleared();
+        } else {
+            self.sign_out_marker.store_kept();
         }
         *pending = PendingSignIn::default();
         *state = next.clone();
@@ -202,7 +204,10 @@ impl AuthSession {
     /// refused delete left. Rust-only.
     pub fn clear_without_edge(&self) -> Result<(), AuthError> {
         self.sign_out_marker.set();
-        self.tokens.clear()?;
+        if let Err(error) = self.tokens.clear() {
+            self.sign_out_marker.store_kept();
+            return Err(error);
+        }
         self.sign_out_marker.store_cleared();
         Ok(())
     }

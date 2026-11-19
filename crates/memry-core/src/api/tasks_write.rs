@@ -27,6 +27,7 @@ use crate::domain::task_activity::{self, FieldChange};
 use crate::domain::task_records;
 use crate::domain::tasks::{self, NewTask, SubtaskDisposal, TaskDetails, TaskWrite};
 use crate::storage::repositories::instants;
+use crate::sync::versioned;
 
 /// Everything a new task can carry.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
@@ -129,12 +130,24 @@ pub(crate) fn after(
         let news: Vec<(String, Value, Value)> = prior
             .fields
             .iter()
-            .map(|(field, old)| {
-                (
-                    field.clone(),
-                    old.clone(),
-                    payload_value(&prior.task_id, field),
-                )
+            .flat_map(|(field, old)| {
+                let new = payload_value(&prior.task_id, field);
+                if field != "fields" {
+                    return vec![(field.clone(), old.clone(), new)];
+                }
+                // One plain row per changed entry, as desktop's `fieldRows`.
+                let values = versioned::plain(Some(&new));
+                old.as_object()
+                    .into_iter()
+                    .flatten()
+                    .map(|(name, before)| {
+                        (
+                            format!("fields.{name}"),
+                            before.clone(),
+                            values.get(name).cloned().unwrap_or(Value::Null),
+                        )
+                    })
+                    .collect()
             })
             .collect();
         let (moves, updates): (Vec<_>, Vec<_>) = news

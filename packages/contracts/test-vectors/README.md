@@ -76,12 +76,14 @@ one-class change reviewable.
 | `note-blocks.json`                       |                                   32 | `../scripts/vectors/note-blocks.ts`                                                            | `../src/__tests__/note-blocks.test.ts` + the Rust and iOS harnesses                  |
 | `block-edit.json`                        |                                   12 | `../scripts/vectors/block-edit.ts`                                                             | `../src/__tests__/block-edit.test.ts` + the Rust writer harness                      |
 | `attachment-manifest.json`               |                                    4 | `../scripts/vectors/attachment-manifest.ts`                                                    | `../src/__tests__/attachment-manifest.test.ts` + the Rust harness                    |
+| `chunk-holds.json`                       |                                   14 | `../scripts/vectors/chunk-holds.ts` (Electron's `canvas/assets/chunk-holds.ts`)                | Rust `attachment_holds.rs`                                                           |
 | `delete-attestation.json`                |                                   19 | `../scripts/vectors/delete-attestation.ts`                                                     | `../src/__tests__/delete-attestation.test.ts` + the Rust harness                     |
 | `portal-resolve.json`                    |                                   29 | `../scripts/vectors/portal-resolve.ts`                                                         | `../src/__tests__/portal-resolve.test.ts` + the Rust harness                         |
 | `note-fold-text.json`                    |                                   75 | `apps/desktop/scripts/note-fold-oracle/`                                                       | Rust `note_fold_text_vectors.rs`                                                     |
 | `note-fold.json`                         |                                   48 | same                                                                                           | Rust `note_fold_vectors.rs`                                                          |
 | `embedding-input.json`                   |                                   61 | `apps/desktop/scripts/embedding-input-oracle/`                                                 | Rust `domain::embedding_input` tests                                                 |
 | `html-text.json`                         |                                   35 | `apps/desktop/scripts/html-text-oracle/`                                                       | Rust `services::file_text::html` tests                                               |
+| `export.json`                            |                                   72 | `apps/desktop/scripts/export-oracle/`                                                          | Rust `memry-desktop/tests/export_vectors.rs`                                         |
 | `embeddings-text.json`                   |                    31 + 2 + 12 pairs | `crates/memry-ml/tests/golden/generate.mjs` (needs the model)                                  | Rust `memry-ml/tests/golden_text.rs` (full tier)                                     |
 | `audio-features.json`                    |                           33 + 9 + 7 | `crates/memry-ml/tests/golden/generate-audio.mjs` (needs the model)                            | Rust `memry-ml/tests/audio_features.rs`                                              |
 | `embeddings-audio.json`                  |                  7 files, 17 windows | same                                                                                           | Rust `memry-ml/tests/golden_audio.rs` (full tier)                                    |
@@ -102,7 +104,7 @@ one-class change reviewable.
 | `markdown-convert/layer-text.json`       |                                13074 | same                                                                                           | same + Rust `markdown_layer_text_vectors.rs`                                         |
 | `markdown-convert/layer-markers.json`    |                                 3243 | same                                                                                           | same + Rust `markdown_layer_markers_vectors.rs`                                      |
 | `markdown-convert/layer-blocks.json`     |                                 5116 | same                                                                                           | same + Rust `markdown_layer_blocks_vectors.rs`                                       |
-| `markdown-convert/layer-critic.json`     |                                 2944 | same                                                                                           | same + Rust `markdown_layer_critic_vectors.rs`                                       |
+| `markdown-convert/layer-critic.json`     |                                 3011 | same                                                                                           | same + Rust `markdown_layer_critic_vectors.rs`                                       |
 | `markdown-convert/seed-corpus.json`      |                                  250 | same                                                                                           | same + Rust `markdown_seed_corpus_vectors.rs`                                        |
 | `markdown-convert/grammar-corpus.json`   |                                  454 | same                                                                                           | same + Rust `markdown_seed_corpus_vectors.rs`                                        |
 | `markdown-convert/seed-doc.json`         |                                  751 | same                                                                                           | same + Rust `markdown_doc_vectors.rs`                                                |
@@ -110,7 +112,22 @@ one-class change reviewable.
 | `markdown-convert/blocks.json`           |                                  844 | same                                                                                           | same + Rust `markdown_doc_vectors.rs`                                                |
 | `markdown-convert/serialize-doc.json`    |                                  537 | same                                                                                           | same + Rust `markdown_doc_edit_vectors.rs`                                           |
 | `markdown-convert/replace-body.json`     |                                   44 | same                                                                                           | same + Rust `markdown_doc_edit_vectors.rs`                                           |
-| **Total**                                | **32346 cases plus 6 fuzz families** |                                                                                                |                                                                                      |
+| `importers/markdown/expected.json`       |                                    6 | `apps/desktop/src/main/import/__vectors__/importer-vectors.test.ts`                            | Rust `importer_vectors.rs`                                                           |
+| `importers/csv/expected.json`            |                                    2 | same                                                                                           | same                                                                                 |
+| `importers/messages.json`                |                                    1 | same                                                                                           | same                                                                                 |
+| **Total**                                | **32355 cases plus 6 fuzz families** |                                                                                                |                                                                                      |
+
+### `importers/`: frozen at cutover
+
+The generator runs Electron's Markdown and CSV importers over the files in
+`importers/<source>/input/`, copied to a temp folder with every file modified at one instant, and
+records each sink call (`saveAttachment`, `createImportedNote`) and progress
+snapshot in order, the summary and the CSV preview. `crates/memry-desktop/tests/importer_vectors.rs`
+replays the same inputs through the Rust importers and compares the records as JSON. Without
+`MEMRY_WRITE_VECTORS=1` the generator fails on a stale file. These files are frozen at cutover:
+once the Electron importers are deleted, the files stay as committed and the Rust importers are
+held to them; a deliberate change edits the Rust and the expected file in the same change and
+says why. A difference is a bug in the Rust.
 
 ### `embeddings-text.json`: lone surrogates are a known divergence
 

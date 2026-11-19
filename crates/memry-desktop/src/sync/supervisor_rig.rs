@@ -187,7 +187,7 @@ impl RealtimeSocket for FakeSocket {
 pub(crate) struct FakeBackend {
     pub(crate) driver: Arc<FakeDriver>,
     pub(crate) signed_in: AtomicBool,
-    /// The gate read never returns, as a keychain access prompt nobody answers.
+    /// The gate read waits while set, as a keychain access prompt nobody has answered yet.
     pub(crate) stall_facts: AtomicBool,
     /// The keychain does not answer the master-key read.
     pub(crate) keychain_locked: AtomicBool,
@@ -212,8 +212,8 @@ impl FakeBackend {
 impl SyncBackend for FakeBackend {
     async fn auth_facts(&self) -> AuthFacts {
         lock(&self.fact_reads).push(Instant::now());
-        if self.stall_facts.load(Ordering::SeqCst) {
-            std::future::pending::<()>().await;
+        while self.stall_facts.load(Ordering::SeqCst) {
+            sleep(Duration::from_millis(1)).await;
         }
         let locked = self.keychain_locked.load(Ordering::SeqCst);
         AuthFacts {

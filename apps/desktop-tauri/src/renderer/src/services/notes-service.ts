@@ -20,7 +20,6 @@ import type {
   NoteCreateInput,
   NoteCreateResponse,
   NoteDeletedEvent,
-  NoteExternalChangeEvent,
   NoteLinksResponse,
   NoteListItem,
   NoteListOptions,
@@ -98,7 +97,6 @@ export type {
   NoteCreateInput,
   NoteCreateResponse,
   NoteDeletedEvent,
-  NoteExternalChangeEvent,
   NoteLinksResponse,
   NoteListItem,
   NoteListOptions,
@@ -692,7 +690,11 @@ export type NoteSaveResponse = NoteUpdateResponse &
  */
 export type AppendBlocksSaveResponse = AppendBlocksResponse & { errorCode?: 'target_not_taken' }
 
-type NotesServiceApi = Omit<NotesClientAPI, PortedLargeFileMethod | 'update' | 'appendBlocks'> & {
+// Similar notes, tag suggestions and grouping go through `similarity-service.ts`.
+type NotesServiceApi = Omit<
+  NotesClientAPI,
+  PortedLargeFileMethod | 'update' | 'appendBlocks' | 'getSimilar' | 'getTagSuggestions' | 'cluster'
+> & {
   update: (input: NoteSaveInput) => Promise<NoteSaveResponse>
   appendBlocks: (input: AppendBlocksInput) => Promise<AppendBlocksSaveResponse>
 }
@@ -701,6 +703,13 @@ export const notesService: NotesServiceApi = createWindowApiForwarder<
   NotesServiceApi,
   PortedNoteMethod
 >(() => window.api.notes, ported)
+
+/** The note's list row, `null` once it is gone; unlike `notesService.get`, it counts no
+ * `note_opened`. Not an Electron method: Electron's listeners were live at once. */
+export async function getNoteListItem(id: string): Promise<NoteListItem | null> {
+  const item = await commands.notesGetListItem(id)
+  return item ? toListItem(item) : null
+}
 
 /**
  * Note events were dropped (`shell/note_events.rs`): whatever the app shows of notes may be
@@ -801,12 +810,6 @@ export function onNoteMoved(
   onListening?: () => void
 ): () => void {
   return subscribeToEvent(events.noteMovedEvent, callback, onListening)
-}
-
-export function onNoteExternalChange(
-  callback: (event: NoteExternalChangeEvent) => void
-): () => void {
-  return window.api.onNoteExternalChange(callback)
 }
 
 /** Something the tag list shows changed (`commands/tags.rs`); the payload is empty. */
