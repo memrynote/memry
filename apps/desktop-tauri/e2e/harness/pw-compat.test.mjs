@@ -195,6 +195,20 @@ test('css supports :has-text and :text like Playwright, case-insensitively', () 
   )
 })
 
+test('css supports :visible like Playwright', () => {
+  const { dom, q } = page(`
+    <section id="hidden" aria-label="Backlinks" style="display: none"><b>x</b></section>
+    <section id="shown" aria-label="Backlinks"><b>x</b></section><i id="visible-tag"></i>`)
+  // jsdom lays nothing out; give every element a box so display decides.
+  dom.window.Element.prototype.getBoundingClientRect = () => ({ x: 0, y: 0, width: 10, height: 10 })
+  const ids = (selector) => q([{ kind: 'css', selector }]).map((el) => el.id)
+  assert.deepEqual(ids('section[aria-label="Backlinks"]'), ['hidden', 'shown'])
+  assert.deepEqual(ids('section[aria-label="Backlinks"]:visible'), ['shown'])
+  // Only at the end of a selector, where it filters the matches; elsewhere it is no CSS.
+  assert.throws(() => ids('section:visible b'))
+  assert.deepEqual(ids('#visible-tag'), ['visible-tag'])
+})
+
 test('inspect reports counts and reads only a single match', () => {
   const { pw } = page(
     '<input id="a" value="x"><input id="b" type="checkbox" checked><input id="c" disabled>'

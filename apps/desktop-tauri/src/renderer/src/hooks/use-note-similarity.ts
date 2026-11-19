@@ -12,6 +12,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { NoteTagSuggestion, SimilarNoteItem } from '@memry/contracts/notes-api'
 import { useAISettingsContext } from '@/contexts/ai-settings-context'
 import { onNoteUpdated } from '@/services/notes-service'
+import { subscribeToEvents } from '@/services/tauri-event'
+import { rereadQueries } from './use-notes-query'
 import { similarityService } from '@/services/similarity-service'
 
 // Under the `notes` root (notesKeys.all) so a blanket notes invalidation refreshes them too.
@@ -30,10 +32,18 @@ function useRefreshOnContentChange(
   const queryClient = useQueryClient()
   useEffect(() => {
     if (!noteId || !enabled) return undefined
-    return onNoteUpdated((event) => {
-      if (event.id !== noteId && event.changes.content === undefined) return
-      void queryClient.invalidateQueries({ queryKey: key(noteId) })
-    })
+    // The list is read on mount, and a change before its listener went live sent its event to
+    // nobody (#4270): it reads again then.
+    return subscribeToEvents(
+      [
+        (live) =>
+          onNoteUpdated((event) => {
+            if (event.id !== noteId && event.changes.content === undefined) return
+            void queryClient.invalidateQueries({ queryKey: key(noteId) })
+          }, live)
+      ],
+      () => rereadQueries(queryClient, key(noteId))
+    )
   }, [noteId, enabled, key, queryClient])
 }
 

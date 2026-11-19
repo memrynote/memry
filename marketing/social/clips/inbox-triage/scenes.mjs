@@ -3,7 +3,7 @@
 // the thought becomes a task due today (it shows up in the day panel's tasks). The link's title is
 // fetched live from the page.
 import { day } from '../../vault/cli.mjs'
-import { expandFolder, expandSection, settle } from '../../engine/kit.mjs'
+import { expandFolder, expandSection, settle, waitForFocus } from '../../engine/kit.mjs'
 
 const LINK = 'https://en.wikipedia.org/wiki/Sintra'
 const THOUGHT = 'Book train tickets to Sintra'
@@ -66,10 +66,7 @@ export async function setup({ page }) {
 /** Click into the capture bar and wait for its focus: after a capture the list takes it back. */
 async function focusCapture({ rec, page, sleep }) {
   await rec.click(capture(page), { dx: -120 })
-  await page.waitForFunction(
-    (el) => el === document.activeElement,
-    await capture(page).elementHandle()
-  )
+  await waitForFocus(capture(page))
   await sleep(200)
 }
 

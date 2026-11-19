@@ -2238,6 +2238,10 @@
         "prevVault": {
           "label": "Kho trước",
           "description": "Chuyển sang kho trước trong thanh bên"
+        },
+        "todayJournal": {
+          "label": "Nhật ký hôm nay",
+          "description": "Mở nhật ký ở mục hôm nay"
         }
       },
       "tabs": {
