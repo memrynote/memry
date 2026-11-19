@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 
 use memry_desktop::import::raindrop::{MAX_PLANNED_BYTES, RaindropImporter, steps};
 use memry_desktop::import::{FailedItem, ImportContext, ImportInput, ImportSummary, Importer};
+use memry_desktop::web::extract::utils::date::parse_date;
 use memry_test_kit::{assert_steps_at_most, proptest_config};
 use proptest::prelude::*;
 use serde_json::{Value, json};
@@ -172,16 +173,9 @@ fn the_unsorted_collection_is_dropped_and_the_folder_tag_dedupes_against_the_tag
     );
 }
 
-#[test]
-fn a_created_time_that_is_not_an_iso_instant_is_the_import_time() {
+/// The `createdAt` each of `created` saves, as `Run::bookmarks` records it.
+fn created_at_of(created: &[&str]) -> Vec<Value> {
     let dir = tempfile::tempdir().unwrap();
-    let created = [
-        "not-a-date",
-        "2024-05-01",
-        "2024-13-45T00:00:00Z",
-        " 2024-05-01T10:00:00+02:00 ",
-        "2024-05-01T10:00",
-    ];
     let rows: Vec<String> = created
         .iter()
         .enumerate()
@@ -189,17 +183,84 @@ fn a_created_time_that_is_not_an_iso_instant_is_the_import_time() {
         .collect();
     let rows: Vec<&str> = rows.iter().map(String::as_str).collect();
     let run = run(&[export(dir.path(), &rows)]);
-    let got: Vec<&Value> = run.bookmarks.iter().map(|b| &b["createdAt"]).collect();
+    run.bookmarks
+        .iter()
+        .map(|b| b["createdAt"].clone())
+        .collect()
+}
+
+#[test]
+fn a_created_time_that_is_not_an_iso_instant_is_the_import_time() {
+    let got = created_at_of(&[
+        "not-a-date",
+        "2024-05-01",
+        "2024-13-45T00:00:00Z",
+        " 2024-05-01T10:00:00+02:00 ",
+        "2024-05-01T10:00",
+    ]);
     assert_eq!(
         got,
         [
-            &json!("<now>"),
-            &json!("<now>"),
-            &json!("<now>"),
-            &json!("2024-05-01T10:00:00+02:00"),
-            &json!("2024-05-01T10:00"),
+            json!("<now>"),
+            json!("<now>"),
+            json!("<now>"),
+            json!("2024-05-01T10:00:00+02:00"),
+            json!("2024-05-01T10:00"),
         ]
     );
+}
+
+#[test]
+fn a_created_time_keeps_the_iso_forms_v8_reads_and_drops_the_ones_it_refuses() {
+    let got = created_at_of(&[
+        "2024-02-30T00:00:00Z",
+        "2024-05-01T10:00:00z",
+        "2024-05-01T10:00:00+0530",
+        "2024-02-32T00:00:00Z",
+        "2024-05-01T10:00:00+2400",
+        "2024-05-01T10:00:00+0560",
+    ]);
+    assert_eq!(
+        got,
+        [
+            json!("2024-02-30T00:00:00Z"),
+            json!("2024-05-01T10:00:00z"),
+            json!("2024-05-01T10:00:00+0530"),
+            json!("<now>"),
+            json!("<now>"),
+            json!("<now>"),
+        ]
+    );
+}
+
+#[test]
+fn dates_parse_to_the_millisecond_v8_gives() {
+    // Each value is `Date.parse(text)` in node.
+    let cases: [(&str, Option<f64>); 20] = [
+        ("2024-02-30T00:00:00Z", Some(1709251200000.0)),
+        ("2023-02-29T10:00:00Z", Some(1677664800000.0)),
+        ("2024-04-31T00:00:00Z", Some(1714521600000.0)),
+        ("2024-02-30", Some(1709251200000.0)),
+        ("Feb 30 2024", Some(1709251200000.0)),
+        ("2/30/2024", Some(1709251200000.0)),
+        ("2024/02/30", Some(1709251200000.0)),
+        ("2024-01-01T00:00:00z", Some(1704067200000.0)),
+        ("2024-01-01T00:00z", Some(1704067200000.0)),
+        ("2024-01-01T00:00:00+0530", Some(1704047400000.0)),
+        ("2024-01-01T00:00:00-0530", Some(1704087000000.0)),
+        ("2024-01-01T00:00:00.123+0530", Some(1704047400123.0)),
+        ("2024-01-01T00:00+0530", Some(1704047400000.0)),
+        ("2024-02-30T00:00:00+0530", Some(1709231400000.0)),
+        ("2024-02-32T00:00:00Z", None),
+        ("2024-00-10T00:00:00Z", None),
+        ("2024-01-00T00:00:00Z", None),
+        ("2024-01-01T00:00:00+2400", None),
+        ("2024-01-01T00:00:00+0560", None),
+        ("2024-01-01T00:00:00+05300", None),
+    ];
+    for (text, want) in cases {
+        assert_eq!(parse_date(text), want, "{text:?}");
+    }
 }
 
 #[test]
@@ -369,6 +430,23 @@ fn preview_refuses_an_export_past_the_budget() {
 }
 
 #[test]
+fn a_bookmark_is_charged_for_every_copy_of_the_url_it_stores() {
+    let dir = tempfile::tempdir().unwrap();
+    let url = format!("https://example.com/{}", "u".repeat(10_000));
+    let row = |title: &str| format!("{HEADER}\n1,{title},,,{url},,,,,,false");
+    // With no title the URL is the title, the source URL and the metadata URL: three copies.
+    // With one it is two.
+    let untitled = write(dir.path(), "untitled.csv", &row(""));
+    let titled = write(dir.path(), "titled.csv", &row("t"));
+    let importer = RaindropImporter { budget: 25_000 };
+    let run = run_full(&importer, &[untitled], None, CancellationToken::new());
+    assert!(run.bookmarks.is_empty());
+    assert_eq!(run.summary.failed, [failed("untitled.csv", TOO_MANY)]);
+    let run = run_full(&importer, &[titled], None, CancellationToken::new());
+    assert_eq!(run.summary.imported, 1);
+}
+
+#[test]
 fn the_importer_runs_with_the_default_budget() {
     assert_eq!(RaindropImporter::default().budget, MAX_PLANNED_BYTES);
 }
@@ -384,6 +462,44 @@ fn a_cancelled_import_saves_nothing() {
     cancel.cancel();
     let run = run_full(&RaindropImporter::default(), &[path], None, cancel);
     assert!(run.bookmarks.is_empty());
+}
+
+#[test]
+fn a_cancel_after_the_first_bookmark_saves_no_more() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = export(
+        dir.path(),
+        &[
+            &format!("1,A,,,https://a.com,Reading,,{AT},,,false"),
+            &format!("2,B,,,https://b.com,Reading,,{AT},,,false"),
+            &format!("3,C,,,https://c.com,Reading,,{AT},,,false"),
+        ],
+    );
+    let cancel = CancellationToken::new();
+    let trigger = cancel.clone();
+    let timeline = Timeline::default();
+    let sink = RecordingSink::new(timeline.clone());
+    let mut ctx = ImportContext::new(
+        "raindrop",
+        cancel,
+        Box::new(move |progress| {
+            if progress.imported == 1 {
+                trigger.cancel();
+            }
+        }),
+    );
+    RaindropImporter::default()
+        .run(&input(&[path]), &mut ctx, &sink)
+        .unwrap();
+    let saved: Vec<String> = timeline
+        .lock()
+        .unwrap()
+        .iter()
+        .filter(|w| w["op"] == "saveBookmark")
+        .map(|w| w["sourceUrl"].as_str().unwrap().to_owned())
+        .collect();
+    assert_eq!(saved, ["https://a.com"]);
+    assert_eq!(ctx.summary().imported, 1);
 }
 
 #[test]

@@ -4,9 +4,11 @@
 //! with this port by up to a day for such text, which only the legacy (non-ISO) formats carry.
 //!
 //! Supported: the ECMAScript ISO format (`YYYY`, `YYYY-MM`, `YYYY-MM-DD`, with `THH:mm[:ss[.s+]]`
-//! and `Z` or `±HH:mm`), and V8's legacy forms of the shape `[weekday,] Month D[,] YYYY
-//! [h:mm[:ss] [AM|PM] [GMT|UTC|±hhmm]]`, `D Month YYYY ...`, `M/D/YYYY` and `YYYY/M/D`. Anything
-//! else is `NaN`, which V8 would sometimes still parse; `tests/article_date.rs` pins the forms.
+//! and `Z` or `z`, or `±HH:mm` or V8's `±HHmm`), where V8 takes a day 1 to 31 in every month and
+//! rolls the excess into the next (`2024-02-30` is `2024-03-01`), and V8's legacy forms of the
+//! shape `[weekday,] Month D[,] YYYY [h:mm[:ss] [AM|PM] [GMT|UTC|±hhmm]]`, `D Month YYYY ...`,
+//! `M/D/YYYY` and `YYYY/M/D`. Anything else is `NaN`, which V8 would sometimes still parse;
+//! `tests/importer_raindrop.rs` pins the forms against node.
 
 use std::sync::LazyLock;
 
@@ -40,15 +42,6 @@ fn civil_from_days(z: i64) -> (i64, i64, i64) {
     (if m <= 2 { y + 1 } else { y }, m, d)
 }
 
-fn days_in_month(y: i64, m: i64) -> i64 {
-    match m {
-        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
-        4 | 6 | 9 | 11 => 30,
-        _ if (y % 4 == 0 && y % 100 != 0) || y % 400 == 0 => 29,
-        _ => 28,
-    }
-}
-
 #[allow(clippy::too_many_arguments)]
 fn make_time(
     y: i64,
@@ -60,7 +53,7 @@ fn make_time(
     ms: i64,
     offset_min: i64,
 ) -> Option<f64> {
-    if !(1..=12).contains(&mo) || d < 1 || d > days_in_month(y, mo) {
+    if !(1..=12).contains(&mo) || !(1..=31).contains(&d) {
         return None;
     }
     if h > 24 || mi > 59 || s > 59 || (h == 24 && (mi > 0 || s > 0 || ms > 0)) {
@@ -74,7 +67,7 @@ fn make_time(
 
 static ISO: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
-        r"^([+-][0-9]{6}|[0-9]{4})(?:-([0-9]{2})(?:-([0-9]{2}))?)?(?:T([0-9]{2}):([0-9]{2})(?::([0-9]{2})(?:\.([0-9]+))?)?(Z|[+-][0-9]{2}:[0-9]{2})?)?$",
+        r"^([+-][0-9]{6}|[0-9]{4})(?:-([0-9]{2})(?:-([0-9]{2}))?)?(?:T([0-9]{2}):([0-9]{2})(?::([0-9]{2})(?:\.([0-9]+))?)?([Zz]|[+-][0-9]{2}:?[0-9]{2})?)?$",
     )
     .expect("static pattern")
 });
@@ -93,10 +86,11 @@ fn parse_iso(text: &str) -> Option<f64> {
         digits.parse().unwrap_or(0)
     });
     let offset = match m.get(8).map(|g| g.as_str()) {
-        Some(z) if z != "Z" => {
+        Some(z) if !z.eq_ignore_ascii_case("z") => {
             let sign = if z.starts_with('-') { -1 } else { 1 };
-            let oh: i64 = z[1..3].parse().ok()?;
-            let om: i64 = z[4..6].parse().ok()?;
+            let digits = z[1..].replace(':', "");
+            let oh: i64 = digits[..2].parse().ok()?;
+            let om: i64 = digits[2..].parse().ok()?;
             if oh > 23 || om > 59 {
                 return None;
             }

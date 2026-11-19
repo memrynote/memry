@@ -153,9 +153,13 @@ pub trait ImportSink: Send + Sync {
     /// `createJournalEntry`: writes the entry of `entry.date`.
     fn create_journal_entry(&self, entry: ImportedJournalEntry) -> Result<(), SinkError>;
 
-    /// Raindrop's `saveBookmark`: inserts a `link` inbox item with its tags (processing
-    /// complete, captured by `api`, modified now) and, for an http(s) URL, queues the article
-    /// extraction job. `Err` fails that bookmark; the import goes on.
+    /// Raindrop's `saveBookmark`: `insertItemWithTags` inserts a `link` inbox item with its tags
+    /// (processing complete, captured by `api`, modified now), then `emitCapturedAndSync` emits
+    /// the inbox's captured event and writes the item to sync. Both run for every bookmark. Only
+    /// when `source_url` matches `/^https?:\/\//i` (`http://` or `https://` at the start, the
+    /// scheme ASCII case-insensitive) does `queueInboxArticleExtractJob` run too. A sink that
+    /// skips the event or the sync write, or tests the URL any other way, departs from
+    /// Electron. `Err` fails that bookmark; the import goes on.
     fn save_bookmark(&self, bookmark: ImportedBookmark) -> Result<(), SinkError>;
 
     /// Runs once after the importer returned, before the runner reports `done`: the production

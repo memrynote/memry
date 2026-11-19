@@ -29,14 +29,14 @@ use crate::web::extract::utils::date::parse_date;
 /// The memory one run's plans may take, summed over every picked file. It holds about 300,000
 /// bookmarks of a typical size; Electron had no bound.
 pub const MAX_PLANNED_BYTES: usize = 512 * 1024 * 1024;
-/// What a planned bookmark costs besides twice its cells' text (the URL, note and excerpt are
-/// held twice): the struct, its strings' headers and the allocator's overhead.
+/// What a planned bookmark costs besides the text it stores: the struct, its strings' headers
+/// and the allocator's overhead.
 const ITEM_COST: usize = 1024;
 /// What one tag costs besides its text.
 const TAG_COST: usize = 48;
 /// What a skipped row costs: its number, and the warning the preview renders from it.
 const WARNING_COST: usize = 256;
-// The budget holds 300,000 bookmarks of 300 bytes of text and three tags each.
+// The budget holds 300,000 bookmarks of 300 bytes of text, stored twice, and three tags each.
 const _: () = assert!(MAX_PLANNED_BYTES / (ITEM_COST + 2 * 300 + 3 * TAG_COST) >= 300_000);
 const SAMPLE_MAX: usize = 5;
 const UNSORTED: &str = "unsorted";
@@ -216,13 +216,8 @@ impl Reader<'_> {
             }
             return;
         }
-        let text: usize = cells.iter().map(String::len).sum();
-        let tags = cells[TAGS].matches(',').count() + 1;
-        if !self.charge(ITEM_COST + 2 * text + TAG_COST * tags) {
-            return;
-        }
         let created = js_trim(&cells[CREATED]);
-        self.plan.items.push(ImportedBookmark {
+        let item = ImportedBookmark {
             title: match js_trim(&cells[TITLE]) {
                 "" => url.to_owned(),
                 title => title.to_owned(),
@@ -240,8 +235,29 @@ impl Reader<'_> {
                 hero_image: js_trim(&cells[COVER]).to_owned(),
                 highlights: js_trim(&cells[HIGHLIGHTS]).to_owned(),
             },
-        });
+        };
+        if self.charge(stored_cost(&item)) {
+            self.plan.items.push(item);
+        }
     }
+}
+
+/// What `item` holds, counting its text once for each place it is stored: an empty title's URL
+/// is the title, the source URL and the metadata's, and a tag counts as lowercased.
+fn stored_cost(item: &ImportedBookmark) -> usize {
+    let meta = &item.metadata;
+    let text = item.title.len()
+        + item.content.as_deref().map_or(0, str::len)
+        + item.source_url.len()
+        + item.created_at.as_deref().map_or(0, str::len)
+        + meta.url.len()
+        + meta.excerpt.len()
+        + meta.note.len()
+        + meta.folder.len()
+        + meta.hero_image.len()
+        + meta.highlights.len();
+    let tags: usize = item.tags.iter().map(|tag| TAG_COST + tag.len()).sum();
+    ITEM_COST + text + tags
 }
 
 /// `splitTags`: comma-separated, trimmed and lowercased.
