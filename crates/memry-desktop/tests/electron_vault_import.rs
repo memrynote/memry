@@ -20,6 +20,8 @@ use rusqlite::Connection;
 use rusqlite::types::Value;
 use sha2::{Digest, Sha256};
 
+#[path = "electron_vault_import/attachments.rs"]
+mod attachments;
 #[path = "device_key/mod.rs"]
 mod device_key;
 #[path = "electron_vault_import/docs.rs"]
