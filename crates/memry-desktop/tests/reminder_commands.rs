@@ -116,7 +116,7 @@ fn create_answers_the_reminder_and_the_badge_and_refuses_what_electron_refuses()
 fn update_reschedules_a_fired_reminder_and_edits_title_and_note() {
     let (db, service) = open("update");
     let id = journal_at(&service, "2026-03-20T09:00:00.000Z").id;
-    assert_eq!(fire_at(&db, "2026-03-20T09:00:01Z"), [id.clone()]);
+    assert_eq!(fire_at(&db, "2026-03-20T09:00:01Z"), [id.as_str()]);
 
     let edited = service
         .update(
@@ -158,7 +158,7 @@ fn dismissing_a_fired_reminder_takes_it_out_of_due_and_the_badge() {
     let id = journal_at(&service, "2026-03-20T09:00:00.000Z").id;
     let at = "2026-03-20T09:00:01Z";
     assert_eq!(service.due(ms(at)).expect("due").len(), 1);
-    assert_eq!(fire_at(&db, at), [id.clone()]);
+    assert_eq!(fire_at(&db, at), [id.as_str()]);
     assert!(service.due(ms(at)).expect("due").is_empty());
     let fired = service.get(&id).expect("get").expect("the reminder");
     assert_eq!(fired.reminder.status, "triggered");
@@ -180,7 +180,7 @@ fn dismissing_a_fired_reminder_takes_it_out_of_due_and_the_badge() {
 fn snoozing_a_fired_reminder_fires_it_again_at_the_snooze_time() {
     let (db, service) = open("snooze");
     let id = journal_at(&service, "2026-03-20T09:00:00.000Z").id;
-    assert_eq!(fire_at(&db, "2026-03-20T09:00:01Z"), [id.clone()]);
+    assert_eq!(fire_at(&db, "2026-03-20T09:00:01Z"), [id.as_str()]);
     assert_eq!(service.count_pending().expect("count"), 0);
 
     let past: ReminderSnoozeInput = input(json!({"id": id, "snoozeUntil": "2026-03-20T09:00:00Z"}));
@@ -201,7 +201,7 @@ fn snoozing_a_fired_reminder_fires_it_again_at_the_snooze_time() {
     );
     assert_eq!(snoozed.pending, 1);
     assert!(fire_at(&db, "2026-03-20T09:14:59Z").is_empty());
-    assert_eq!(fire_at(&db, "2026-03-20T09:15:00Z"), [id.clone()]);
+    assert_eq!(fire_at(&db, "2026-03-20T09:15:00Z"), [id.as_str()]);
     assert_eq!(inbox_count(&db), 2);
 }
 
@@ -262,7 +262,7 @@ fn list_upcoming_and_for_target_answer_electrons_queries() {
     let early = journal_at(&service, "2026-03-20T09:00:00.000Z").id;
     let late = journal_at(&service, "2026-03-25T09:00:00.000Z").id;
     let far = journal_at(&service, "2026-06-01T09:00:00.000Z").id;
-    assert_eq!(fire_at(&db, "2026-03-20T09:00:01Z"), [early.clone()]);
+    assert_eq!(fire_at(&db, "2026-03-20T09:00:01Z"), [early.as_str()]);
 
     let triggered = service
         .list(&input::<ReminderListInput>(json!({"status": "triggered"})))
