@@ -66,6 +66,15 @@ describe('graph controls i18n', () => {
     expect(screen.getByText('Show labels')).toBeInTheDocument()
   })
 
+  it('slides the closed drawer off the inline end in both directions', () => {
+    renderControlPanel()
+
+    const drawer = screen.getByPlaceholderText('Search nodes...').closest('div.absolute')
+
+    expect(drawer).toHaveClass('ltr:translate-x-full', 'rtl:-translate-x-full', 'rounded-es-lg')
+    expect(drawer).not.toHaveClass('translate-x-full', 'rounded-bl-lg')
+  })
+
   it('offers a canvas connections switch that toggles canvas edges', () => {
     const dispatch = vi.fn()
     renderWithI18n(
