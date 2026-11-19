@@ -57,6 +57,7 @@ export const reminderKeys = {
  */
 function eventMatchesTarget(
   event: {
+    id?: string
     reminder?: { targetType?: string; targetId?: string } | null
     targetType?: string
     targetId?: string
