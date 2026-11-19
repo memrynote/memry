@@ -229,7 +229,12 @@
     {
       "name": "name only",
       "hits": [],
-      "nameMatches": [["recipes", 0.9]],
+      "nameMatches": [
+        [
+          "recipes",
+          0.9
+        ]
+      ],
       "expected": [
         {
           "path": "recipes",
@@ -255,7 +260,12 @@
           "similarity": 0.5
         }
       ],
-      "nameMatches": [["recipes", 0.9]],
+      "nameMatches": [
+        [
+          "recipes",
+          0.9
+        ]
+      ],
       "expected": [
         {
           "path": "recipes",
@@ -282,7 +292,12 @@
     {
       "name": "tag only",
       "hits": [],
-      "tagMatches": [["cooking", 0.8]],
+      "tagMatches": [
+        [
+          "cooking",
+          0.8
+        ]
+      ],
       "expected": [
         {
           "path": "cooking",
@@ -308,7 +323,9 @@
           "similarity": 0.9
         }
       ],
-      "exclude": ["current"],
+      "exclude": [
+        "current"
+      ],
       "expected": [
         {
           "path": "recipes",
@@ -578,8 +595,18 @@
           "similarity": 0.6
         }
       ],
-      "nameMatches": [["x", 0.6]],
-      "tagMatches": [["w", 0.6]],
+      "nameMatches": [
+        [
+          "x",
+          0.6
+        ]
+      ],
+      "tagMatches": [
+        [
+          "w",
+          0.6
+        ]
+      ],
       "expected": [
         {
           "path": "x",
@@ -638,12 +665,24 @@
         }
       ],
       "nameMatches": [
-        ["food/italian", 0.5],
-        ["food", 1]
+        [
+          "food/italian",
+          0.5
+        ],
+        [
+          "food",
+          1
+        ]
       ],
       "tagMatches": [
-        ["food/italian", 1],
-        ["wine", 0.5]
+        [
+          "food/italian",
+          1
+        ],
+        [
+          "wine",
+          0.5
+        ]
       ],
       "minConfidence": 0.45,
       "limit": 3,
@@ -686,8 +725,14 @@
       "name": "floor sits on the confidence",
       "hits": [],
       "nameMatches": [
-        ["exact", 0.45],
-        ["under", 0.44999999999999996]
+        [
+          "exact",
+          0.45
+        ],
+        [
+          "under",
+          0.44999999999999996
+        ]
       ],
       "minConfidence": 0.45,
       "expected": [
@@ -706,8 +751,18 @@
     {
       "name": "zero name and tag scores are not signals",
       "hits": [],
-      "nameMatches": [["zero", 0]],
-      "tagMatches": [["zero", 0]],
+      "nameMatches": [
+        [
+          "zero",
+          0
+        ]
+      ],
+      "tagMatches": [
+        [
+          "zero",
+          0
+        ]
+      ],
       "expected": []
     },
     {
@@ -744,23 +799,41 @@
       "expected": 0
     },
     {
-      "sims": [0.9],
+      "sims": [
+        0.9
+      ],
       "expected": 0.63
     },
     {
-      "sims": [0.9, 0.5],
+      "sims": [
+        0.9,
+        0.5
+      ],
       "expected": 0.595
     },
     {
-      "sims": [0.9, 0.5, 0.7],
+      "sims": [
+        0.9,
+        0.5,
+        0.7
+      ],
       "expected": 0.6300000000000001
     },
     {
-      "sims": [0.1, 0.9, 0.5, 0.7, 0.95],
+      "sims": [
+        0.1,
+        0.9,
+        0.5,
+        0.7,
+        0.95
+      ],
       "expected": 0.765
     },
     {
-      "sims": [0.3333, 0.6667],
+      "sims": [
+        0.3333,
+        0.6667
+      ],
       "expected": 0.425
     }
   ]

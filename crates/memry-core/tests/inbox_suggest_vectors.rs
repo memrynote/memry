@@ -1,4 +1,4 @@
-//! `tests/vectors/inbox_suggest.json`, written by Electron's folder scorer
+//! `packages/contracts/test-vectors/inbox-suggest.json`, written by Electron's folder scorer
 //! (`apps/desktop/scripts/inbox-suggest-oracle/generate.ts`), reproduced by
 //! `domain::inbox::suggest`. Paths, order, support, titles and every signal
 //! are exact; numbers to 1e-12, because V8's `Math.pow` and the platform's
@@ -9,7 +9,7 @@ use memry_core::domain::inbox::suggest::{
 };
 use serde_json::Value;
 
-const VECTORS: &str = include_str!("vectors/inbox_suggest.json");
+const VECTORS: &str = include_str!("../../../packages/contracts/test-vectors/inbox-suggest.json");
 
 fn close(actual: f64, expected: &Value, what: &str) {
     let expected = expected.as_f64().expect("a number");

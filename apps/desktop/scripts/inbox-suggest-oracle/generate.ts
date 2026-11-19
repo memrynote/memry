@@ -1,5 +1,5 @@
 /**
- * Generates `crates/memry-core/tests/vectors/inbox_suggest.json` by running
+ * Generates `packages/contracts/test-vectors/inbox-suggest.json` by running
  * Electron's folder scorer (`src/main/inbox/folder-scoring.ts`) in place as the
  * oracle for the Rust port (`crates/memry-core/src/domain/inbox/suggest.rs`).
  *
@@ -20,7 +20,7 @@ import {
 } from '../../src/main/inbox/folder-scoring'
 
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
-const PATH = join(resolve(appRoot, '../../crates/memry-core/tests/vectors'), 'inbox_suggest.json')
+const PATH = join(resolve(appRoot, '../../packages/contracts/test-vectors'), 'inbox-suggest.json')
 
 interface ScoreCase {
   name: string
