@@ -38,6 +38,9 @@ pub struct DavProps {
     pub components: Option<Vec<String>>,
     /// Local names inside each `<supported-report><report>`.
     pub reports: Option<Vec<String>>,
+    pub getetag: Option<String>,
+    /// The iCalendar object of a `calendar-query` or `calendar-multiget` answer.
+    pub calendar_data: Option<String>,
 }
 
 impl DavProps {
@@ -56,7 +59,9 @@ impl DavProps {
             getctag,
             sync_token,
             components,
-            reports
+            reports,
+            getetag,
+            calendar_data
         );
     }
 
@@ -70,6 +75,8 @@ impl DavProps {
             &self.calendar_timezone,
             &self.getctag,
             &self.sync_token,
+            &self.getetag,
+            &self.calendar_data,
         ];
         let lists = [&self.resource_types, &self.components, &self.reports];
         strings
@@ -130,6 +137,8 @@ struct State {
     response: Option<DavResponse>,
     /// The open `<propstat>`: its props and status.
     propstat: Option<(DavProps, Option<u16>)>,
+    /// The `<sync-token>` of a `sync-collection` answer, beside its responses.
+    sync_token: Option<String>,
 }
 
 impl State {
@@ -213,6 +222,7 @@ impl State {
                     self.responses.push(response);
                 }
             }
+            (_, "multistatus", "sync-token") => self.sync_token = nonempty(&text),
             (_, "response", "href") => {
                 if let Some(response) = self.response.as_mut()
                     && response.href.is_none()
@@ -247,6 +257,8 @@ impl State {
                         "calendar-timezone" => &mut props.calendar_timezone,
                         "getctag" => &mut props.getctag,
                         "sync-token" => &mut props.sync_token,
+                        "getetag" => &mut props.getetag,
+                        "calendar-data" => &mut props.calendar_data,
                         _ => return,
                     };
                     *slot = value;
@@ -279,6 +291,13 @@ impl State {
 /// The `<response>` entries of a `multistatus` document; `Ok(None)` when the root element is
 /// something else (tsdav then reports the HTTP response alone).
 pub fn parse_multistatus(body: &str) -> Result<Option<Vec<DavResponse>>, XmlError> {
+    Ok(parse_multistatus_with_token(body)?.map(|(responses, _)| responses))
+}
+
+/// [`parse_multistatus`] with the document's own `<sync-token>` (RFC 6578).
+pub fn parse_multistatus_with_token(
+    body: &str,
+) -> Result<Option<(Vec<DavResponse>, Option<String>)>, XmlError> {
     let mut reader = Reader::from_str(body);
     let mut state = State::default();
     let mut rooted = None;
@@ -317,7 +336,7 @@ pub fn parse_multistatus(body: &str) -> Result<Option<Vec<DavResponse>>, XmlErro
         return Err(XmlError::Malformed);
     }
     match rooted {
-        Some(true) => Ok(Some(state.responses)),
+        Some(true) => Ok(Some((state.responses, state.sync_token))),
         _ => Ok(None),
     }
 }
