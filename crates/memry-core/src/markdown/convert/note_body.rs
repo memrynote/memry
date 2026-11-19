@@ -16,7 +16,7 @@ use super::writing::{EncodedWritingRanges, insert_writing_sentinels, writing_fro
 use super::writing_roots::{
     WritingAlternative, read_writing_alternatives, read_writing_ghosts, read_writing_overflow,
 };
-use crate::markdown::shared::critic_markup::units::{index_of_units, slice_units, to_units};
+use crate::markdown::shared::critic_markup::units::{slice_units, to_units};
 use crate::markdown::shared::critic_markup::{
     CriticMarkupKind, CriticMarkupMark, parse_critic_markup, serialize_critic_markup,
 };
@@ -139,21 +139,22 @@ pub fn serialize_note_body<T: ReadTxn>(
 }
 
 /// The document's `marks` placed for `plain`, the body without its markup; `None` refuses the
-/// write over the file (S14-24, REVIEW-5196). The window moves its marks with its typing and
-/// keeps those offsets (#4425; Electron's writes them into the document), so a mark's range in
-/// the document can be stale, and the file the body is written over holds the window's last
-/// save. A mark takes the range of the same mark in the file, moved onto `plain` through the
-/// text diff since (a merge or another window), unless the document's range holds the mark's
-/// text, differs, and touches text the diff changed while the file's text is not `plain` (a
-/// peer that writes its offsets is ahead of the file). A comment is the same mark by its id
-/// first; a suggestion's id is its parse position, so a suggestion is the same by its kind and
-/// texts. A comment placed nowhere is left to the serializer, which moves it to the first copy
-/// of its words; any other mark would be dropped with the text it replaced, so the file is kept
-/// as it is instead. A write with no file to write over (`read_file_body` answers `Ok(None)`:
-/// a kept note's restore, a held day's first file) has nothing to keep and nothing to map
-/// against: a mark whose range does not hold its words takes their first copy, and one whose
-/// words are gone passes as it is. Without `read_file_body` (the feed's and the identity's
-/// comparisons) the marks pass as they are.
+/// write over the file (S14-24, REVIEW-5196, VERIFY-5196B). The window moves its marks with its
+/// typing and keeps those offsets (#4425; Electron's writes them into the document), so a mark's
+/// range in the document can be stale, and the file the body is written over holds the window's
+/// last save. One rule places every mark: in array order, a mark takes its first candidate range
+/// that holds its words and overlaps no range an earlier mark took (the serializer drops an
+/// overlapping mark). The candidates are the range of the same mark in the file, moved onto
+/// `plain` through the text diff since (a merge or another window), then the document's range;
+/// the document's comes first when it touches text the diff changed (a peer that writes its
+/// offsets is ahead of the file). A comment is the file's same mark by its id only; a
+/// suggestion's id is its parse position, so a suggestion is the same by its kind and texts.
+/// With no file to write over (`read_file_body` answers `Ok(None)`: a kept note's restore, a
+/// held day's first file), after every mark has had those, the copies of a mark's words follow,
+/// in order. A comment with no candidate is left to the serializer, which moves it to the first
+/// copy of its words; any other mark would be dropped with the text it replaced, so the file is
+/// kept as it is instead, or, with no file to keep, the mark passes as it is. Without
+/// `read_file_body` (the feed's and the identity's comparisons) the marks pass as they are.
 fn placed_marks(
     marks: &[CriticMarkupMark],
     plain: &str,
@@ -168,79 +169,88 @@ fn placed_marks(
             && end >= start
             && slice_units(&units, start, end) == to_units(&mark.visible_text).as_slice()
     };
-    let body = match read() {
-        Ok(None) => {
-            return Some(
-                marks
-                    .iter()
-                    .map(|mark| at_its_words(mark, &units))
-                    .collect(),
-            );
-        }
-        read => read.ok().flatten().unwrap_or_default(),
+    let file = match read() {
+        Ok(None) => None,
+        read => Some(read.ok().flatten().unwrap_or_default()),
     };
-    // Decoded as `restore_file_spelling` reads it: the writing markers count toward no offset.
-    let decoded = decode_writing_markers(&with_lf_line_endings(&body));
-    let file = without_writing_sentinels(&parse_critic_markup(&decoded.text), &decoded.sentinels);
-    let (file_text, file_marks) = (file.plain_text, file.marks);
-    let moved = OffsetMap::new(&file_text, plain);
-    // The serializer and the save may disagree on the body's last line break.
-    let same_text = file_text.trim_end_matches('\n') == plain.trim_end_matches('\n');
-    let mut filed: Vec<Option<CriticMarkupMark>> = file_marks.into_iter().map(Some).collect();
-    let mut placed = Vec::with_capacity(marks.len());
+    let (moved, mut filed) = match &file {
+        Some(body) => {
+            // Decoded as `restore_file_spelling` reads it: the writing markers count toward no
+            // offset.
+            let decoded = decode_writing_markers(&with_lf_line_endings(body));
+            let file =
+                without_writing_sentinels(&parse_critic_markup(&decoded.text), &decoded.sentinels);
+            let moved = OffsetMap::new(&file.plain_text, plain);
+            (moved, file.marks.into_iter().map(Some).collect())
+        }
+        None => (None, Vec::new()),
+    };
+    let mut taken: Vec<(i64, i64)> = Vec::new();
+    let free = |taken: &[(i64, i64)], (start, end): (i64, i64)| {
+        taken
+            .iter()
+            .all(|&(s, e)| (s, e) != (start, end) && (end <= s || e <= start))
+    };
+    let mut ranges: Vec<Option<(i64, i64)>> = Vec::with_capacity(marks.len());
     for mark in marks {
-        let in_document = Some((mark.start, mark.end)).filter(|range| holds(mark, *range));
-        let in_file = |by_id: bool| {
-            filed.iter().enumerate().find_map(|(at, other)| {
-                let other = other.as_ref()?;
-                let same = other.kind == mark.kind
+        let in_file = filed.iter().enumerate().find_map(|(at, other)| {
+            let other = other.as_ref()?;
+            let same = if mark.kind == CriticMarkupKind::Comment {
+                other.id == mark.id
+            } else {
+                other.kind == mark.kind
                     && other.visible_text == mark.visible_text
                     && other.original_text == mark.original_text
-                    && (!by_id || other.id == mark.id);
-                let range = moved.as_ref()?.range(other.start, other.end)?;
-                (same && holds(mark, range)).then_some((at, range))
-            })
+            };
+            let range = moved.as_ref()?.range(other.start, other.end)?;
+            (same && holds(mark, range) && free(&taken, range)).then_some((Some(at), range))
+        });
+        let in_document = Some((mark.start, mark.end))
+            .filter(|range| holds(mark, *range) && free(&taken, *range))
+            .map(|range| (None, range));
+        let peer_ahead = in_document
+            .is_some_and(|(_, range)| moved.as_ref().is_some_and(|map| map.touches_change(range)));
+        let range = if peer_ahead {
+            in_document.or(in_file)
+        } else {
+            in_file.or(in_document)
         };
-        let peer_ahead = |range: (i64, i64)| {
-            !same_text && moved.as_ref().is_none_or(|map| map.touches_change(range))
-        };
-        let range = match (in_file(true).or_else(|| in_file(false)), in_document) {
-            (Some((_, filed)), Some(document)) if document != filed && peer_ahead(document) => {
-                Some(document)
+        if let Some((Some(at), _)) = range {
+            filed[at] = None;
+        }
+        taken.extend(range.map(|(_, range)| range));
+        ranges.push(range.map(|(_, range)| range));
+    }
+    if file.is_none() {
+        for (mark, range) in marks.iter().zip(&mut ranges) {
+            let visible = to_units(&mark.visible_text);
+            if range.is_some() || visible.is_empty() {
+                continue;
             }
-            (Some((at, range)), _) => {
-                filed[at] = None;
-                Some(range)
-            }
-            (None, document) => document,
-        };
+            *range = units
+                .windows(visible.len())
+                .enumerate()
+                .filter(|(_, window)| *window == visible.as_slice())
+                .map(|(at, _)| (at as i64, (at + visible.len()) as i64))
+                .find(|&copy| free(&taken, copy));
+            taken.extend(*range);
+        }
+    }
+    let mut placed = Vec::with_capacity(marks.len());
+    for (mark, range) in marks.iter().zip(ranges) {
         match range {
             Some((start, end)) => placed.push(CriticMarkupMark {
                 start,
                 end,
                 ..mark.clone()
             }),
-            None if mark.kind == CriticMarkupKind::Comment => placed.push(mark.clone()),
+            None if mark.kind == CriticMarkupKind::Comment || file.is_none() => {
+                placed.push(mark.clone())
+            }
             None => return None,
         }
     }
     Some(placed)
-}
-
-/// `mark` where its range holds its words, else at their first copy in `units`, else as it is.
-fn at_its_words(mark: &CriticMarkupMark, units: &[u16]) -> CriticMarkupMark {
-    let visible = to_units(&mark.visible_text);
-    let holds = mark.start >= 0
-        && mark.end >= mark.start
-        && slice_units(units, mark.start, mark.end) == visible.as_slice();
-    match index_of_units(units, &visible).filter(|_| !holds && !visible.is_empty()) {
-        Some(start) => CriticMarkupMark {
-            start: start as i64,
-            end: (start + visible.len()) as i64,
-            ..mark.clone()
-        },
-        None => mark.clone(),
-    }
 }
 
 fn characters(text: &str) -> Vec<&str> {
@@ -340,6 +350,69 @@ mod tests {
             "start": start, "end": start + visible.len() as i64,
         }))
         .unwrap()
+    }
+
+    /// A comment `id` on the `beta` at `start`.
+    fn comment_with(id: &str, start: i64) -> CriticMarkupMark {
+        CriticMarkupMark {
+            id: id.to_owned(),
+            ..comment(start)
+        }
+    }
+
+    /// A suggestion of `visible` over `original`, at `start`.
+    fn suggestion_over(visible: &str, original: &str, start: i64) -> CriticMarkupMark {
+        CriticMarkupMark {
+            original_text: Some(original.to_owned()),
+            ..suggestion(visible, start)
+        }
+    }
+
+    /// The body serialized with the marks placed for it, `None` when the write-back is refused.
+    fn written(marks: &[CriticMarkupMark], plain: &str, file: Option<&str>) -> Option<String> {
+        let read = || Ok(file.map(str::to_owned));
+        let options = SerializeOptions {
+            read_file_body: Some(&read),
+            ..SerializeOptions::default()
+        };
+        placed_marks(marks, plain, &options).map(|marks| serialize_critic_markup(plain, &marks))
+    }
+
+    /// Two stale suggestions on the same words take distinct copies, so neither is dropped with
+    /// the text it replaced (VERIFY-5196B).
+    #[test]
+    fn stale_suggestions_on_the_same_words_take_distinct_copies() {
+        let marks = [
+            suggestion_over("Alpha", "One", 0),
+            suggestion_over("Alpha", "Two", 0),
+        ];
+        let originals = |marks: &[CriticMarkupMark]| -> Vec<(i64, Option<String>)> {
+            let body = written(marks, "x Alpha Alpha", None).unwrap();
+            parse_critic_markup(&body)
+                .marks
+                .into_iter()
+                .map(|mark| (mark.start, mark.original_text))
+                .collect()
+        };
+        let at = |start, original: &str| (start, Some(original.to_owned()));
+        assert_eq!(originals(&marks), [at(2, "One"), at(8, "Two")]);
+        // A range that holds its words is taken before any stale mark searches for a copy.
+        let holding = [marks[0].clone(), suggestion_over("Alpha", "Two", 2)];
+        assert_eq!(originals(&holding), [at(2, "Two"), at(8, "One")]);
+    }
+
+    /// A peer ahead of the file added a comment on another copy of a filed comment's words, text
+    /// unchanged: a comment is the file's by its id only, so each keeps its range in either
+    /// array order (VERIFY-5196B).
+    #[test]
+    fn a_comment_takes_the_files_range_only_by_its_id() {
+        let file = serialize_critic_markup("beta beta", &[comment(5)]);
+        let (c1, c2) = (comment(5), comment_with("c2", 0));
+        assert_eq!(
+            placed(&[c2.clone(), c1.clone()], "beta beta", &file),
+            Some(vec![0, 5])
+        );
+        assert_eq!(placed(&[c1, c2], "beta beta", &file), Some(vec![5, 0]));
     }
 
     /// The marks' starts, `None` when the write-back is refused.
