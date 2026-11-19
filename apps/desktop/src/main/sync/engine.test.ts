@@ -189,7 +189,8 @@ describe('SyncEngine', () => {
       engine['ctx'].syncing = true
       engine['ctx'].fullSyncActive = true
       engine['ctx'].abortController = abortController
-      engine['syncLockAcquiredAt'] = Date.now() - SYNC_LOCK_STALE_MS - 1
+      engine['syncLockProgressAt'] = Date.now() - SYNC_LOCK_STALE_MS - 1
+      engine['syncLockProgressMark'] = engine['syncProgressMark']()
 
       engine['recoverStaleSyncLock']()
 
@@ -202,7 +203,8 @@ describe('SyncEngine', () => {
       const deps = createMockDeps(getDb())
       const engine = new SyncEngine(deps)
       engine['ctx'].syncing = true
-      engine['syncLockAcquiredAt'] = Date.now()
+      engine['syncLockProgressAt'] = Date.now()
+      engine['syncLockProgressMark'] = engine['syncProgressMark']()
 
       engine['recoverStaleSyncLock']()
 
@@ -470,7 +472,8 @@ describe('SyncEngine', () => {
       expect(pull).toHaveBeenCalledTimes(1)
 
       engine['ctx'].syncing = true
-      engine['syncLockAcquiredAt'] = Date.now() - SYNC_LOCK_STALE_MS - 1
+      engine['syncLockProgressAt'] = Date.now() - SYNC_LOCK_STALE_MS - 1
+      engine['syncLockProgressMark'] = engine['syncProgressMark']()
       engine['recoverStaleSyncLock']()
 
       ws.emit('message', wake(3))

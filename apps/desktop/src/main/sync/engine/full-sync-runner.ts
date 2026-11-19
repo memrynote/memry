@@ -35,14 +35,22 @@ const log = createLogger('SyncEngine')
 const CURSOR_SKIP_REPAIR_DONE = 'done'
 
 /**
+ * `sync_state` key (#5234): `'1'` from the first full sync of a device with no
+ * cursor until a pull delivers to the head of the feed. A relaunch that finds
+ * it resumes the bootstrap from the persisted cursor, elevated and with packs,
+ * instead of running as a steady-state device. Older builds ignore the row.
+ */
+const BOOTSTRAP_PENDING_KEY = 'bootstrapPending'
+
+/**
  * How long the paced CRDT drain must stay CONTINUOUSLY blocked before the
  * elevated bootstrap session is given up (#1837).
  *
  * Releasing on the first blocked tick was an unbounded regression. The session
- * is opened exactly once per vault, gated on `LAST_CURSOR == null`, and the
- * first pull page persists that cursor — so once it is released nothing
- * re-opens it, and the rest of the bootstrap drains at base pacing for the
- * whole run. A laptop lid, a wifi switch or a VPN reconnect lasting seconds
+ * is opened once per run while the bootstrap is pending (no cursor, or a first
+ * pull that never delivered), so once it is released nothing re-opens it
+ * before a relaunch, and the rest of the bootstrap drains at base pacing for
+ * the whole run. A laptop lid, a wifi switch or a VPN reconnect lasting seconds
  * therefore cost the entire remaining drain its elevation factor, which on a
  * large vault turns minutes of chunk delay into tens of minutes — a permanent
  * slowdown of exactly the workload the session exists to accelerate.
@@ -361,10 +369,23 @@ export class FullSyncRunner {
     log.debug('fullSync started')
     if (this.disposed) this.wirePullTimers()
     // No persisted cursor = this device has never completed a pull for this
-    // vault: a genuine fresh-device bootstrap (#1835). beginBootstrap no-ops
-    // while a window is already open (the vault-download seam fires earlier
-    // and keeps the truer start time), and telemetry must never break sync.
-    const isFreshDevice = this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR) == null
+    // vault: a genuine fresh-device bootstrap (#1835). Pending = a bootstrap a
+    // quit interrupted after its first page, which resumes from its cursor.
+    // beginBootstrap no-ops while a window is already open (the vault-download
+    // seam fires earlier and keeps the truer start time), and telemetry must
+    // never break sync.
+    if (this.stateManager.getStateValue(SYNC_STATE_KEYS.LAST_CURSOR) == null) {
+      // Only this build's pulls ever wrote a cursor here, and they skip no
+      // range: there is nothing for the #2382 repair to heal, now or after an
+      // interruption.
+      this.stateManager.setStateValue(SYNC_STATE_KEYS.CURSOR_SKIP_REPAIR, CURSOR_SKIP_REPAIR_DONE)
+      this.stateManager.setStateValue(BOOTSTRAP_PENDING_KEY, '1')
+    }
+    const isFreshDevice = this.stateManager.getStateValue(BOOTSTRAP_PENDING_KEY) === '1'
+    // Before the first await: a pull the socket's `connected` scheduled while
+    // the session opened took the lock, read the whole feed outside this run,
+    // and left the repair unrecorded (#5234).
+    this.ctx.fullSyncActive = true
     try {
       if (isFreshDevice) {
         beginBootstrap('first_full_sync')
@@ -381,7 +402,6 @@ export class FullSyncRunner {
     } catch {
       /* telemetry only — sync proceeds */
     }
-    this.ctx.fullSyncActive = true
     if (isFreshDevice) {
       // Compaction packs (#1840): seed note bodies from a handful of large
       // transfers before the item-granular pull, so the CRDT sweep that
@@ -415,6 +435,7 @@ export class FullSyncRunner {
       pullDelivered = pull.status === 'delivered'
       if (pullDelivered) {
         this.bootstrapPullSucceeded = true
+        this.stateManager.deleteStateValue(BOOTSTRAP_PENDING_KEY)
         if (repairFrom !== null) {
           this.finishCursorSkipRepair(repairFrom, this.ctx.applier.changedCount - changedBeforePull)
         }

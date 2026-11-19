@@ -275,12 +275,20 @@ function createHarness(
     fullSyncActive: false
   } as unknown as SyncContext
 
-  const setStateValue = vi.fn((key: string) => {
+  const state = new Map<string, string>()
+  const setStateValue = vi.fn((key: string, value: string) => {
     calls.push(`setState:${key}`)
+    state.set(key, value)
   })
-  const getStateValue = vi.fn((_key: string) => undefined as string | undefined)
+  const getStateValue = vi.fn((key: string) => state.get(key))
+  const deleteStateValue = vi.fn((key: string) => state.delete(key))
   const isPaused = vi.fn(() => false)
-  const stateManager = { setStateValue, getStateValue, isPaused } as unknown as SyncStateManager
+  const stateManager = {
+    setStateValue,
+    getStateValue,
+    deleteStateValue,
+    isPaused
+  } as unknown as SyncStateManager
 
   const clearPendingAfterFullSync = vi.fn(() => {
     calls.push('clearPendingAfterFullSync')
@@ -372,6 +380,7 @@ describe('FullSyncRunner', () => {
 
       expect(h.calls).toEqual([
         `setState:${SYNC_STATE_KEYS.CURSOR_SKIP_REPAIR}`,
+        'setState:bootstrapPending',
         'pull',
         'seed',
         'push',
@@ -1976,7 +1985,6 @@ describe('FullSyncRunner', () => {
 
     it('#then a run with no persisted cursor arms a first_full_sync bootstrap', async () => {
       const h = createHarness()
-      h.getStateValue.mockReturnValue(undefined)
 
       await h.runner.run()
 
