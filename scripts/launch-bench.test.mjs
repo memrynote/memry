@@ -1,9 +1,20 @@
 import assert from 'node:assert/strict'
-import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { spawn } from 'node:child_process'
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { after, describe, it } from 'node:test'
+import { fileURLToPath } from 'node:url'
 
+import { startFakeWebDriver } from '../apps/desktop-tauri/scripts/lib/fake-webdriver.mjs'
 import {
   benchEnv,
   checkProfile,
@@ -22,6 +33,15 @@ import {
   resolveExecutable,
   summarize
 } from './launch-bench.mjs'
+import {
+  assertControlNamesProfile,
+  controlFilePath,
+  e2eControl,
+  openOneNote,
+  removeE2eControl,
+  webdriverPort,
+  writeE2eControl
+} from './launch-bench-e2e.mjs'
 
 const STARTING_LINE =
   '2026-09-04 14:13:53.280 [info]  [ (Main)                         ] MemryNote 2026.903.2 starting (packaged)'
@@ -499,3 +519,253 @@ describe('collectWarnings', () => {
     )
   })
 })
+
+// `script` tells the three page calls apart; the fake answers each as the page would. `notes`
+// is what `notes_list` answers on each call, the last answer repeating.
+async function startDriver(notes, tabStateStoredAtOpen, ready = () => true) {
+  const state = { opens: [], listCalls: 0 }
+  const driver = await startFakeWebDriver((method, url, body) => {
+    if (url === '/status') return { ready: ready() }
+    if (url === '/session') return { sessionId: 's1' }
+    if (body.script.includes('vault_get_status')) return { ok: true, value: true }
+    if (body.script.includes('notes_list')) {
+      state.listCalls += 1
+      return { ok: true, value: notes[Math.min(state.listCalls, notes.length) - 1] }
+    }
+    state.opens.push(body.args[0])
+    return { ok: true, value: state.opens.length >= tabStateStoredAtOpen }
+  })
+  return { driver, state }
+}
+
+describe('the e2e control file', () => {
+  const tmp = mkdtempSync(path.join(tmpdir(), 'launch-bench-e2e-test-'))
+  after(() => rmSync(tmp, { recursive: true, force: true }))
+
+  it('points the app at --profile, with the bench device and its own log dir', () => {
+    const env = benchEnv({ TAURI_WEBDRIVER_PORT: '4555' }, '/tmp/bench/profile')
+    const { file, control } = writeE2eControl(env, '/tmp/bench/profile', tmp)
+
+    assert.equal(file, path.join(tmp, 'memry-e2e', 'control-4555.json'))
+    // The keys of `memry_desktop::e2e::control::ControlFile`, which denies unknown fields.
+    assert.deepEqual(JSON.parse(readFileSync(file, 'utf8')), {
+      appDataDir: '/tmp/bench/profile',
+      logDir: path.join('/tmp/bench/profile', 'logs'),
+      device: 'launch-bench',
+      testVaultPath: null,
+      syncServerUrl: null,
+      extraEnv: {}
+    })
+    assert.deepEqual(control, e2eControl(env, '/tmp/bench/profile'))
+  })
+
+  it('takes the port the app takes: TAURI_WEBDRIVER_PORT, else the plugin default', () => {
+    assert.equal(webdriverPort({ TAURI_WEBDRIVER_PORT: '9222' }), 9222)
+    for (const raw of [undefined, '', 'abc', '70000', '-1', '12 ']) {
+      assert.equal(webdriverPort({ TAURI_WEBDRIVER_PORT: raw }), 4445, String(raw))
+    }
+    assert.equal(controlFilePath('/t', 4445), path.join('/t', 'memry-e2e', 'control-4445.json'))
+  })
+
+  it('refuses a launch when the control file is missing or names another profile', () => {
+    const env = benchEnv({ TAURI_WEBDRIVER_PORT: '4556' }, '/tmp/bench/profile')
+    const file = controlFilePath(tmp, 4556)
+
+    assert.throws(
+      () => assertControlNamesProfile(file, '/tmp/bench/profile'),
+      (error) =>
+        error.message.includes('MEMRY_E2E=1') &&
+        error.message.includes(file) &&
+        error.message.includes('is missing or unreadable') &&
+        error.message.includes('unset MEMRY_E2E')
+    )
+
+    writeE2eControl(env, '/tmp/other/profile', tmp)
+    assert.throws(
+      () => assertControlNamesProfile(file, '/tmp/bench/profile'),
+      /names \/tmp\/other\/profile, not \/tmp\/bench\/profile/
+    )
+
+    rmSync(file)
+    writeE2eControl(env, '/tmp/bench/profile', tmp)
+    assert.doesNotThrow(() => assertControlNamesProfile(file, '/tmp/bench/profile'))
+  })
+
+  it("rewrites the bench's own leftover file and refuses any other file on the port", () => {
+    const env = benchEnv({ TAURI_WEBDRIVER_PORT: '4558' }, '/tmp/bench/profile')
+    const file = controlFilePath(tmp, 4558)
+    writeE2eControl(env, '/tmp/bench/profile', tmp)
+    assert.doesNotThrow(() => writeE2eControl(env, '/tmp/bench/profile', tmp))
+
+    writeFileSync(file, JSON.stringify({ appDataDir: '/live/session' }))
+    assert.throws(
+      () => writeE2eControl(env, '/tmp/bench/profile', tmp),
+      (error) =>
+        error.message.includes('port 4558') &&
+        error.message.includes(file) &&
+        error.message.includes('names /live/session, not the bench profile /tmp/bench/profile')
+    )
+    assert.equal(JSON.parse(readFileSync(file, 'utf8')).appDataDir, '/live/session', 'left alone')
+
+    writeFileSync(file, '{')
+    assert.throws(() => writeE2eControl(env, '/tmp/bench/profile', tmp), /port 4558.*unreadable/)
+  })
+
+  it("removes only a control file that is still the bench's", () => {
+    const env = benchEnv({ TAURI_WEBDRIVER_PORT: '4557' }, '/tmp/bench/profile')
+    const { file } = writeE2eControl(env, '/tmp/other/profile', tmp)
+
+    removeE2eControl(file, '/tmp/bench/profile')
+    assert.ok(existsSync(file), "another session's file stays")
+
+    rmSync(file)
+    writeE2eControl(env, '/tmp/bench/profile', tmp)
+    removeE2eControl(file, '/tmp/bench/profile')
+    assert.ok(!existsSync(file))
+  })
+})
+
+describe('openOneNote', () => {
+  it('opens the first note of the vault until its tab state is stored', async () => {
+    const note = { id: 'n1', title: 'First note' }
+    const { driver, state } = await startDriver([note], 2)
+    try {
+      assert.equal(await openOneNote(driver.port, () => true), 'n1')
+      assert.deepEqual(state.opens, [note, note])
+    } finally {
+      await driver.close()
+    }
+  })
+
+  it('waits for the index to list a note after the vault opens', async () => {
+    const note = { id: 'n2', title: 'Indexed later' }
+    const { driver, state } = await startDriver([null, null, note], 1)
+    try {
+      assert.equal(await openOneNote(driver.port, () => true), 'n2')
+      assert.equal(state.listCalls, 3)
+    } finally {
+      await driver.close()
+    }
+  })
+
+  it('stops when the app exits while the vault lists no note', async () => {
+    const { driver } = await startDriver([null], 1)
+    let polls = 0
+    try {
+      await assert.rejects(
+        () => openOneNote(driver.port, () => (polls += 1) <= 6),
+        /the app exited before the vault listed a note/
+      )
+    } finally {
+      await driver.close()
+    }
+  })
+
+  it('stops when the app has exited', async () => {
+    await assert.rejects(() => openOneNote(1, () => false), /the app exited before/)
+  })
+})
+
+// The bench as `pnpm bench:launch` runs it, on a fake e2e app. It counts its launches in
+// FAKE_LAUNCHES (the first is the priming) and creates that file once it handles SIGTERM, which
+// is when the fake WebDriver reports ready. It logs a finished launch like the real one, and acts
+// on the bench's first SIGTERM as FAKE_FIRST_TERM says: `remove-control` (an e2e run on the same
+// port took the control file) or `ignore` (the bench has to kill it).
+const FAKE_APP = `#!${process.execPath}
+const fs = require('node:fs')
+const path = require('node:path')
+const env = process.env
+const first = !fs.existsSync(env.FAKE_LAUNCHES)
+process.on('SIGTERM', () => {
+  if (first && env.FAKE_FIRST_TERM === 'ignore') return
+  if (first && env.FAKE_FIRST_TERM === 'remove-control') fs.rmSync(env.FAKE_CONTROL, { force: true })
+  process.exit(0)
+})
+fs.mkdirSync(env.MEMRY_TEST_LOG_DIR, { recursive: true })
+fs.appendFileSync(path.join(env.MEMRY_TEST_LOG_DIR, 'main.log'), env.FAKE_LOG)
+fs.appendFileSync(env.FAKE_LAUNCHES, 'launch\\n')
+setInterval(() => {}, 1000)
+`
+
+describe(
+  'the bench CLI on an e2e build',
+  { concurrency: true, skip: process.platform === 'win32' && 'the fake app is a shebang script' },
+  () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'launch-bench-cli-test-'))
+    after(() => rmSync(root, { recursive: true, force: true }))
+
+    // `TMPDIR` gives each run its own control file directory and bench lock.
+    async function runBench(name, { firstTerm = '', beforeRun } = {}) {
+      const dir = path.join(root, name)
+      const vault = path.join(dir, 'vault')
+      mkdirSync(path.join(vault, '.memry'), { recursive: true })
+      const launches = path.join(dir, 'launches')
+      const note = { id: 'n1', title: 'First note' }
+      const { driver } = await startDriver([note], 1, () => existsSync(launches))
+      const control = controlFilePath(dir, driver.port)
+      const app = path.join(dir, 'fake-app.cjs')
+      writeFileSync(app, FAKE_APP, { mode: 0o755 })
+      beforeRun?.(control)
+      const args = ['--app', app, '--vault', vault, '--profile', path.join(dir, 'profile')]
+      const child = spawn(
+        process.execPath,
+        [fileURLToPath(new URL('./launch-bench.mjs', import.meta.url)), ...args, '--runs', '1'],
+        {
+          stdio: ['ignore', 'ignore', 'pipe'],
+          env: {
+            ...process.env,
+            TMPDIR: dir,
+            MEMRY_DEVICE: '',
+            MEMRY_E2E: '1',
+            TAURI_WEBDRIVER_PORT: String(driver.port),
+            FAKE_LAUNCHES: launches,
+            FAKE_CONTROL: control,
+            FAKE_FIRST_TERM: firstTerm,
+            FAKE_LOG: `${SLICE}${RENDERER_LINE}\n`
+          }
+        }
+      )
+      let stderr = ''
+      child.stderr.on('data', (chunk) => (stderr += chunk))
+      const code = await new Promise((resolve) => child.once('close', resolve))
+      await driver.close()
+      const launched = existsSync(launches)
+        ? readFileSync(launches, 'utf8').trim().split('\n').length
+        : 0
+      return { code, stderr, control, port: driver.port, launched }
+    }
+
+    it('stops with exit 2 and measures nothing when the app removes the control file', async () => {
+      const result = await runBench('removed', { firstTerm: 'remove-control' })
+
+      assert.equal(result.code, 2, result.stderr)
+      assert.ok(result.stderr.includes(result.control), result.stderr)
+      assert.ok(result.stderr.includes('is missing or unreadable'), result.stderr)
+      assert.equal(result.launched, 1, 'the priming launch only: no run launched afterwards')
+    })
+
+    it("launches nothing on another session's control file", async () => {
+      const result = await runBench('foreign', {
+        beforeRun: (control) => {
+          mkdirSync(path.dirname(control), { recursive: true })
+          writeFileSync(control, JSON.stringify({ appDataDir: '/live/session' }))
+        }
+      })
+
+      assert.equal(result.code, 2, result.stderr)
+      assert.ok(result.stderr.includes(`port ${result.port}`), result.stderr)
+      assert.ok(result.stderr.includes(result.control), result.stderr)
+      assert.ok(result.stderr.includes('/live/session'), result.stderr)
+      assert.equal(result.launched, 0)
+      assert.equal(JSON.parse(readFileSync(result.control, 'utf8')).appDataDir, '/live/session')
+    })
+
+    it('fails the bench when priming had to kill the app, instead of measuring', async () => {
+      const result = await runBench('killed', { firstTerm: 'ignore' })
+
+      assert.equal(result.code, 2, result.stderr)
+      assert.match(result.stderr, /priming: the app did not quit within \d+ ms and was killed/)
+      assert.equal(result.launched, 1, 'the priming launch only: no run launched afterwards')
+    })
+  }
+)
