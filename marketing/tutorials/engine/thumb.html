@@ -76,8 +76,9 @@
     <div id="headline"></div>
     <div id="card"></div>
     <script>
-      // window.draw(P): P = { text, frame, crop: { x, y, w, h } }, set by thumb.mjs before each
-      // screenshot. crop is the shot's center and size in the recorder's CSS px (1600x900 at 2x).
+      // window.draw(P): P = { text, frame, crop: { x, y, w, h }, size: { width, height } }, set by
+      // thumb.mjs before each screenshot. crop is the shot's center and size in the recorder's CSS
+      // px; size is the take's (1440x810 at 2x).
       // Returns { overflow, cover }: why the words do not fit beside the card (or null), and the
       // share of the frame the card covers.
       const SIZE = 150 // px, the template's type size
@@ -112,7 +113,7 @@
         card.style.width = `${P.crop.w * k}px`
         card.style.height = `${P.crop.h * k}px`
         card.style.backgroundImage = `url("${P.frame}")`
-        card.style.backgroundSize = `${1600 * k}px ${900 * k}px`
+        card.style.backgroundSize = `${P.size.width * k}px ${P.size.height * k}px`
         card.style.backgroundPosition = `${-(P.crop.x - P.crop.w / 2) * k}px ${-(P.crop.y - P.crop.h / 2) * k}px`
 
         await document.fonts.ready

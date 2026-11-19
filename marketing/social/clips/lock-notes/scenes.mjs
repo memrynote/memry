@@ -83,7 +83,7 @@ export const scenes = {
 
 const file = () => {
   const { vaultPath } = JSON.parse(
-    fs.readFileSync(path.join(process.env.TMPDIR, 'memry-agent-app.json'), 'utf8')
+    fs.readFileSync(path.join(process.env.TMPDIR, 'memry-agent-app-tauri.json'), 'utf8')
   )
   return fs.readFileSync(path.join(vaultPath, 'Studio North/Studio North Kickoff.md'), 'utf8')
 }

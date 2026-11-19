@@ -6,6 +6,7 @@ use std::sync::Arc;
 use memry_desktop::account::AccountService;
 use memry_desktop::account::binding::BindingChoice;
 use memry_desktop::account::vault_sync::{OpenVaultBinding, SyncWiring};
+use memry_desktop::billing::BillingService;
 use memry_desktop::session::Session;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, Wry};
@@ -46,7 +47,12 @@ pub struct ResolveVaultBindingResult {
 async fn sign_out(app: &AppHandle<Wry>, command: &str) -> Result<SignOutResult, CommandError> {
     let account = app.state::<Arc<AccountService>>().inner().clone();
     let session = app.state::<Session>().inner().clone();
-    let signed_out = account.sign_out(&session).await.map_err(|error| {
+    let signed_out = account.sign_out(&session).await;
+    // A billing answer still in flight is the account's that left.
+    if let Some(billing) = app.try_state::<Arc<BillingService>>() {
+        billing.forget();
+    }
+    let signed_out = signed_out.map_err(|error| {
         let mapped = CommandError::from_core(&error);
         log_failure(command, &mapped);
         mapped

@@ -19,6 +19,9 @@
     // Grammar corpus notes of the markdown converter: their bytes are the test input.
     "packages/contracts/test-vectors/markdown-convert/corpus/**",
 
+    // The note export stylesheet: its bytes are Electron's getEmbeddedStyles(), compared by export_vectors.rs.
+    "crates/memry-desktop/src/export/styles.css",
+
     // Golden files for the i18n codemod tests, compared byte for byte.
     "apps/desktop/scripts/i18n/fixtures/**",
     "package-lock.json",
@@ -73,6 +76,8 @@
     "crates/memry-desktop/tests/fixtures/electron-journal/",
     // Template files and rows Electron wrote (scripts/electron-fixtures/capture-templates.mjs).
     "crates/memry-desktop/tests/fixtures/electron-templates/",
+    // A profile and vault Electron wrote (scripts/electron-fixtures/capture-profile.mjs).
+    "crates/memry-desktop/tests/fixtures/electron-profile/",
     "crates/memry-desktop/tests/fixtures/*.json",
     "crates/memry-desktop/tests/fixtures/electron-vault/*.json",
 
