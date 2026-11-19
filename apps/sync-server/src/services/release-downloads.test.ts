@@ -205,6 +205,45 @@ describe('syncReleaseDownloadCounts', () => {
     ])
   })
 
+  it('ignores the ort-static CI prerelease, whose archives are build inputs (#4447)', async () => {
+    // #given baselines for an app installer and for the CPU-only ONNX Runtime archives
+    // that every rust-ci leg downloads from the `ort-static-*` prerelease
+    const { db, binds } = createDb([
+      { asset_id: '1', download_count: 10 },
+      { asset_id: '50', download_count: 100 },
+      { asset_id: '51', download_count: 100 }
+    ])
+    const githubFetch = githubResponse(
+      releasesPayload([
+        {
+          tag_name: 'ort-static-1.31.0',
+          assets: [
+            { id: 50, name: 'ort-static-1.31.0-x86_64-apple-darwin.tar.zst', download_count: 140 },
+            {
+              id: 51,
+              name: 'ort-static-1.31.0-x86_64-pc-windows-msvc.tar.zst',
+              download_count: 160
+            }
+          ]
+        },
+        {
+          tag_name: 'v2026-08-06',
+          assets: [{ id: 1, name: 'MemryNote-1.0.0-arm64.dmg', download_count: 12 }]
+        }
+      ])
+    )
+
+    // #when CI downloads move the archive counts
+    const emitted = await syncReleaseDownloadCounts(createEnv(db, githubFetch))
+
+    // #then only the app installer emits, and the archives are neither emitted nor stored
+    expect(emitted).toBe(1)
+    expect(capturedEvents(postHogFetch).map((event) => event.properties.asset_name)).toEqual([
+      'MemryNote-1.0.0-arm64.dmg'
+    ])
+    expect(binds).toEqual([['1', 'v2026-08-06', 'MemryNote-1.0.0-arm64.dmg', 12, 1_700_000_000]])
+  })
+
   it('labels platform and separates auto-update metadata from installers', async () => {
     // #given one of every asset shape a release actually publishes, all with a baseline
     const names = [

@@ -63,6 +63,7 @@ export function buildLlmsTxt(): string {
     page('/about', PAGE_META.about.description),
     page('/features', PAGE_META.features.description),
     page('/security', PAGE_META.security.description),
+    page('/encrypted-notes-app', PAGE_META.encryptedNotesApp.description),
     page('/pricing', PAGE_META.pricing.description),
     page('/faq', PAGE_META.faq.description),
     page('/use-cases', PAGE_META.useCases.description),

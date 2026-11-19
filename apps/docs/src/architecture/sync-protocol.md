@@ -43,6 +43,12 @@ as `default`. `GET /sync/storage` is account-wide and sits outside this gate ent
 vault header and never creates a vault, and it still answers `SYNC_PAYMENT_REQUIRED` without an active
 plan.
 
+`GET /sync/status` (and `GET /sync/records/status`) resolve the vault the same way and return the same
+400 and 402 errors, but never create the vault row. The Rust core polls status with no vault header at
+the start of a sync pass, racing vault registration. Before this, on an account with no vaults the poll
+minted `default`, and on Plus the real vault's registration then failed with 402 (#3967). A status read
+for a vault with no row answers `pendingItems: 0` and no `lastSyncAt`, the same body as before.
+
 The desktop client mirrors this gate locally to avoid pointless round-trips that can only return 402. Handlers for paid-only endpoints check the cached entitlement first and return their empty
 value (`GET_STATUS` → `local_only`, `GET_STORAGE_BREAKDOWN` → `null`) when the cache says the user
 is on the free plan. Only a **known-unpaid** entitlement is gated — an unknown/uncached
@@ -95,11 +101,15 @@ The server keeps one `client_policies` row per platform, holding a semver write
 floor and a kill switch. It is consulted on **writes only**; reads are never
 gated, so a device dropped to read-only can still open every note it owns.
 The gate classifies by route, not by method: besides `GET`, `HEAD` and
-`OPTIONS`, the `POST` routes that only read are exempt too: `/sync/pull`,
-`/sync/records/pull`, `/sync/crdt/updates/batch` and
+`OPTIONS`, the `POST` routes that change no client-authored state are exempt
+too: `/sync/pull`, `/sync/records/pull`, `/sync/crdt/updates/batch` and
 `/sync/attachments/presign-batch`. Without that list a read-only device could
-not fetch a change a peer made after the floor went up (#4716). Protocol
-chapter 11 §11.4 holds the full list.
+not fetch a change a peer made after the floor went up (#4716). The two pull
+routes are not strictly read-only: when a live row's blob is gone they stamp the
+server-set `blob_missing_at` on it (#2302), and a repeat pull keeps the first
+stamp. Only the exact paths are exempt, so `/sync/pull/` is gated, and so is
+`POST /sync/attachments/holds`, which writes chunk holds. Protocol chapter 11
+§11.4 holds the full list.
 
 | Condition                                | Server behaviour                                                   |
 | ---------------------------------------- | ------------------------------------------------------------------ |

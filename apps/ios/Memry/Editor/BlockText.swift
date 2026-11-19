@@ -443,7 +443,7 @@ enum BlockText {
 /// Where a pane puts an inline node: at the space it wrote at UTF-16
 /// `location` in `typed`, its text once its commit landed, either over
 /// that space (`replaces`, a date chip's update) or just before it (a
-/// menu's node, an append). Another pane's write may land before the node
+/// menu's node). Another pane's write may land before the node
 /// does and move that space (#4706), so the node goes where the block holds
 /// it then.
 struct NodeAnchor: Sendable, Equatable {

@@ -3,6 +3,7 @@ import type { MiddlewareHandler } from 'hono'
 import { AppError, ErrorCodes } from '../lib/errors'
 import {
   assertPaidSyncAccess,
+  assertSyncVaultAllowed,
   ensureLocalAdminPaidSyncAccessForUser,
   ensureSyncVaultAllowed
 } from '../services/entitlements'
@@ -56,28 +57,43 @@ const resolveVaultIdWithoutHeader = async (db: D1Database, userId: string): Prom
   )
 }
 
-export const paidSyncMiddleware: MiddlewareHandler<AppContext> = async (c, next) => {
-  const userId = c.get('userId')!
-  // The header is the only source. The device row's vault_id is where the
-  // device registered, 'default' for a client that sent none (iOS), and
-  // reading it here bypassed the resolver and minted that phantom vault.
-  const vaultId =
-    c.req.header('X-Memry-Vault-Id') ?? (await resolveVaultIdWithoutHeader(c.env.DB, userId))
+/**
+ * `upsertVault: false` is for reads that are scoped to a vault but must never
+ * create one (`GET /sync/status`): same vault resolution, same 400/402s, no
+ * insert. memry-core polls status with no header at the start of a pass, racing
+ * vault registration, and on an empty account that poll minted `default` (#3967).
+ */
+const paidSync =
+  (upsertVault: boolean): MiddlewareHandler<AppContext> =>
+  async (c, next) => {
+    const userId = c.get('userId')!
+    // The header is the only source. The device row's vault_id is where the
+    // device registered, 'default' for a client that sent none (iOS), and
+    // reading it here bypassed the resolver and minted that phantom vault.
+    const vaultId =
+      c.req.header('X-Memry-Vault-Id') ?? (await resolveVaultIdWithoutHeader(c.env.DB, userId))
 
-  if (!VAULT_ID_PATTERN.test(vaultId)) {
-    throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid vault id', 400)
+    if (!VAULT_ID_PATTERN.test(vaultId)) {
+      throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid vault id', 400)
+    }
+
+    await ensureLocalAdminPaidSyncAccessForUser(
+      c.env.DB,
+      c.env.ENVIRONMENT,
+      userId,
+      c.env.LOCAL_ADMIN_SYNC_EMAILS
+    )
+    const entitlement = await assertPaidSyncAccess(c.env.DB, userId)
+    if (upsertVault) {
+      await ensureSyncVaultAllowed(c.env.DB, userId, vaultId, entitlement)
+    } else {
+      await assertSyncVaultAllowed(c.env.DB, userId, vaultId, entitlement)
+    }
+    c.set('vaultId', vaultId)
+    c.set('syncEntitlement', entitlement)
+
+    await next()
   }
 
-  await ensureLocalAdminPaidSyncAccessForUser(
-    c.env.DB,
-    c.env.ENVIRONMENT,
-    userId,
-    c.env.LOCAL_ADMIN_SYNC_EMAILS
-  )
-  const entitlement = await assertPaidSyncAccess(c.env.DB, userId)
-  await ensureSyncVaultAllowed(c.env.DB, userId, vaultId, entitlement)
-  c.set('vaultId', vaultId)
-  c.set('syncEntitlement', entitlement)
-
-  await next()
-}
+export const paidSyncMiddleware = paidSync(true)
+export const paidSyncReadMiddleware = paidSync(false)

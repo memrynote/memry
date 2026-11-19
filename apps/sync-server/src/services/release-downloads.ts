@@ -75,6 +75,11 @@ interface AssetSnapshot {
   downloadCount: number
 }
 
+// `ort-static-*` prereleases hold the static ONNX Runtime archives that CI downloads on
+// every memry-ml build. They are build inputs, not app releases, and their names contain
+// `darwin`/`win`/`linux`, so counting them would report CI runs as installer downloads (#4447).
+const CI_ARTIFACT_RELEASE = /^ort-static-/
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null
 
@@ -129,6 +134,7 @@ const parseAssets = (payload: unknown): AssetSnapshot[] => {
   for (const release of payload) {
     if (!isRecord(release) || !Array.isArray(release.assets)) continue
     const releaseTag = typeof release.tag_name === 'string' ? release.tag_name : 'unknown'
+    if (CI_ARTIFACT_RELEASE.test(releaseTag)) continue
 
     for (const asset of release.assets) {
       if (!isRecord(asset)) continue
