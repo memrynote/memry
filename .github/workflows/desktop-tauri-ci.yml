@@ -296,6 +296,12 @@ jobs:
         if: matrix.shard == 1
         run: pnpm --filter @memry/desktop-tauri test:scripts
 
+      # The library icon table the note export reads (crates/memry-desktop/resources) is
+      # generated from @hugeicons/core-free-icons; a bump of the package without a regenerate fails.
+      - name: Check export icons
+        if: matrix.shard == 1
+        run: pnpm check:export-icons
+
   # Fast tier: linux-x64 (plus the windows-x64 and macos-arm64 legs the plan adds for a diff that can
   # break them), and only when the diff can change app behavior. Full: every leg the plan job lists
   # (no Apple Silicon in the merge queue, no Intel except on main and dispatch).
