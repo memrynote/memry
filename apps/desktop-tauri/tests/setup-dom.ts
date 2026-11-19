@@ -425,6 +425,7 @@ vi.mock('../src/generated/bindings', () => {
       vaultNoticesChangedEvent: { listen: async () => () => undefined },
       ocrLanguagesChangedEvent: { listen: async () => () => undefined },
       aiEmbeddingProgressEvent: { listen: async () => () => undefined },
+      inboxSnoozeDueEvent: event(() => api().onInboxSnoozeDue),
       journalEntryCreatedEvent: event(() => api().onJournalEntryCreated),
       journalEntryUpdatedEvent: event(() => api().onJournalEntryUpdated),
       journalEntryDeletedEvent: event(() => api().onJournalEntryDeleted),

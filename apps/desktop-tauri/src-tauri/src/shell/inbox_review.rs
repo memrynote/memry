@@ -1,7 +1,7 @@
-//! The daily inbox review nudge in the app (`startInboxReviewScheduler`): the scheduler of
-//! `memry_desktop::shell::inbox_review` starts with the other schedulers, shows its notification
-//! through [`NotificationService`] and tells the renderer. A click on the notification opens
-//! the inbox.
+//! The inbox's minute tick in the app (`startSnoozeScheduler`, `startInboxReviewScheduler`): the
+//! scheduler of `memry_desktop::shell::inbox_review` starts with the other schedulers, tells the
+//! renderer of resurfaced snoozes, shows the review notification through [`NotificationService`]
+//! and tells the renderer. A click on the review notification opens the inbox.
 
 use std::sync::Arc;
 
@@ -10,11 +10,14 @@ use memry_desktop::seams::secure_store::DeviceIdentityStore;
 use memry_desktop::session::Session;
 use memry_desktop::shell::inbox_review::{
     self, InboxReview, LocalMinute, NOTIFICATION_KEY, OPEN_HANDLER, ReviewNotice, ReviewOutlet,
+    SnoozeDueItem,
 };
+use memry_desktop::telemetry::Service;
+use memry_desktop::telemetry::events::Metrics;
 use tauri::{AppHandle, Manager, Wry};
 
 use crate::commands::error::CommandError;
-use crate::events::{InboxReviewDueEvent, InboxReviewOpenEvent, broadcast};
+use crate::events::{InboxReviewDueEvent, InboxReviewOpenEvent, InboxSnoozeDueEvent, broadcast};
 use crate::notifications::{NotificationRequest, NotificationRoute, NotificationService};
 use crate::power::PowerMonitor;
 use crate::startup::{self, Stage};
@@ -58,6 +61,22 @@ impl ReviewOutlet for ShellOutlet {
     fn due(&self, count: i64) {
         broadcast(&self.0, InboxReviewDueEvent { count });
     }
+
+    /// Closes the snooze funnel (`inbox_snoozed`: snoozed by hand, resurfaced here).
+    fn snooze_due(&self, items: Vec<SnoozeDueItem>) {
+        let count = items.len();
+        if let Some(telemetry) = self.0.try_state::<Arc<Service>>() {
+            let mut event = Service::event("inbox_snoozed", "inbox", "resurfaced");
+            event.result = Some("success".to_owned());
+            event.metrics = Some(Metrics {
+                item_count: Some(count as f64),
+                ..Metrics::default()
+            });
+            telemetry.track_main_event(event);
+        }
+        let count = i64::try_from(count).unwrap_or(i64::MAX);
+        broadcast(&self.0, InboxSnoozeDueEvent { count, items });
+    }
 }
 
 /// Runs in `Schedulers`, after the session (`VaultOpen`), the power monitor (`Handlers`) and
@@ -85,10 +104,14 @@ fn start(app: &AppHandle<Wry>) -> Result<(), CommandError> {
             if startup::shutdown_started() {
                 return;
             }
-            if let Err(error) =
-                tauri::async_runtime::spawn_blocking(move || review.tick(&LocalMinute::now())).await
-            {
-                tracing::warn!(scope = "InboxReview", "review tick failed: {error}");
+            // Snoozes first, as Electron registers its minute-tick listeners: a resurfaced
+            // capture counts toward the review nudge of the same tick.
+            let pass = move || {
+                review.resurface();
+                review.tick(&LocalMinute::now());
+            };
+            if let Err(error) = tauri::async_runtime::spawn_blocking(pass).await {
+                tracing::warn!(scope = "InboxReview", "inbox tick failed: {error}");
             }
         }
     }));

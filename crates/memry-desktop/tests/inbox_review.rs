@@ -1,7 +1,8 @@
 //! The inbox review nudge against a real session and vault, with a recording outlet in place of
 //! the OS notification: once per local day at the set minute, again the same day after the
 //! schedule changes through the settings service, the test notification shown exactly once, and
-//! the scheduler's cadence on a paused clock.
+//! the scheduler's cadence on a paused clock. The snooze pass on the same tick: every capture due
+//! after a long sleep back once, and a snooze a peer changed honoured at the next tick.
 
 use std::collections::HashMap;
 use std::future::Future;
@@ -13,12 +14,15 @@ use std::time::Duration;
 use chrono::NaiveDate;
 use memry_core::api::auth::ensure_device_identity;
 use memry_core::api::errors::SecureStoreError;
+use memry_core::domain::inbox::write;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
+use memry_core::storage::repositories::sync_items::{self, InboundRecord};
+use memry_core::sync::apply::apply_inbound;
 use memry_desktop::registry::{AppConfig, VaultRegistry};
 use memry_desktop::session::{OpenSource, OpenVault, Session};
 use memry_desktop::settings::SettingsService;
 use memry_desktop::shell::inbox_review::{
-    self, InboxReview, LocalMinute, ReviewNotice, ReviewOutlet,
+    self, InboxReview, LocalMinute, ReviewNotice, ReviewOutlet, SnoozeDueItem,
 };
 use memry_desktop::shell::power::PowerEvent;
 use serde_json::{Map, Value, json};
@@ -61,6 +65,7 @@ impl SecureStore for MemoryStore {
 struct Recorder {
     shown: Mutex<Vec<ReviewNotice>>,
     due: Mutex<Vec<i64>>,
+    snoozes_due: Mutex<Vec<Vec<SnoozeDueItem>>>,
     unsupported: AtomicBool,
 }
 
@@ -80,6 +85,10 @@ impl ReviewOutlet for Recorder {
     fn due(&self, count: i64) {
         self.due.lock().unwrap().push(count);
     }
+
+    fn snooze_due(&self, items: Vec<SnoozeDueItem>) {
+        self.snoozes_due.lock().unwrap().push(items);
+    }
 }
 
 impl Recorder {
@@ -89,6 +98,19 @@ impl Recorder {
 
     fn due(&self) -> Vec<i64> {
         self.due.lock().unwrap().clone()
+    }
+
+    /// The resurfaced ids of each snooze-due event, sorted.
+    fn snoozes_due(&self) -> Vec<Vec<String>> {
+        let events = self.snoozes_due.lock().unwrap();
+        events
+            .iter()
+            .map(|items| {
+                let mut ids: Vec<String> = items.iter().map(|item| item.id.clone()).collect();
+                ids.sort();
+                ids
+            })
+            .collect()
     }
 }
 
@@ -153,6 +175,51 @@ impl World {
             .expect("capture");
     }
 
+    fn capture_id(&self, vault: &OpenVault, content: &str) -> String {
+        let inbox = vault.vault.inbox(self.store.clone()).expect("inbox");
+        let captured = inbox.capture_text(content.to_owned(), None, None, false);
+        captured.expect("capture").item.id
+    }
+
+    /// A snooze until `until`, set an hour before it.
+    fn snooze(&self, vault: &OpenVault, id: &str, until: i64) {
+        let id = id.to_owned();
+        vault
+            .vault
+            .db_handle()
+            .call_blocking(move |conn| {
+                write::snooze(conn, &id, until, None, "this-device", until - HOUR)?;
+                Ok(())
+            })
+            .expect("snooze");
+    }
+
+    /// A peer's edit of the capture, its clock ahead of this device's, through the sync apply.
+    fn from_peer(&self, vault: &OpenVault, id: &str, edit: impl FnOnce(&mut Value)) {
+        let id = id.to_owned();
+        let db = vault.vault.db_handle();
+        let raw = db
+            .call_blocking({
+                let id = id.clone();
+                move |conn| Ok(sync_items::push_payload(conn, "inbox", &id)?.expect("payload"))
+            })
+            .expect("the local record");
+        let mut payload: Value = serde_json::from_str(&raw).expect("json");
+        edit(&mut payload);
+        payload["clock"]["peer"] = json!(1);
+        let record = InboundRecord {
+            item_type: "inbox".into(),
+            item_id: id,
+            payload_json: payload.to_string(),
+            server_cursor: Some(1),
+            signer_device_id: Some("peer".into()),
+            updated_at: now_ms(),
+            deleted_at: None,
+        };
+        db.call_blocking(move |conn| apply_inbound(conn, &record, now_ms()))
+            .expect("apply");
+    }
+
     fn tick(&self, day: u32, hour: u32, minute: u32) -> Option<i64> {
         self.review.tick(&at(day, hour, minute))
     }
@@ -160,6 +227,13 @@ impl World {
     fn key_reads(&self) -> usize {
         self.keys.key_reads.load(Ordering::SeqCst)
     }
+}
+
+const HOUR: i64 = 3_600_000;
+
+fn now_ms() -> i64 {
+    let since = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH);
+    i64::try_from(since.expect("after 1970").as_millis()).expect("ms")
 }
 
 fn at(day: u32, hour: u32, minute: u32) -> LocalMinute {
@@ -424,4 +498,111 @@ fn a_tick_reads_the_device_key_once_per_open() {
     }
     assert_eq!(w.key_reads() - before, 1, "the next open builds its own");
     drop(vault);
+}
+
+/// `processDueItems` after a long sleep: every capture whose snooze passed while the machine slept
+/// comes back in one event, the rest stay snoozed, and the next tick finds nothing to repeat.
+#[test]
+fn every_snooze_due_after_a_long_sleep_comes_back_once() {
+    let w = world();
+    assert_eq!(w.review.resurface(), 0, "no vault is open");
+    let vault = w.open();
+    let now = now_ms();
+    let ids: Vec<String> = ["three days", "yesterday", "a minute ago", "tomorrow"]
+        .iter()
+        .map(|title| w.capture_id(&vault, title))
+        .collect();
+    for (id, until) in ids.iter().zip([-72 * HOUR, -24 * HOUR, -60_000, 24 * HOUR]) {
+        w.snooze(&vault, id, now + until);
+    }
+
+    assert_eq!(w.review.resurface(), 3);
+    let mut due = ids[..3].to_vec();
+    due.sort();
+    assert_eq!(w.outlet.snoozes_due(), [due]);
+    let first = w.outlet.snoozes_due.lock().unwrap()[0].clone();
+    let item = first
+        .iter()
+        .find(|item| item.id == ids[1])
+        .expect("yesterday");
+    assert_eq!(
+        (item.title.as_str(), item.item_type.as_str()),
+        ("yesterday", "note")
+    );
+    assert_eq!(
+        (item.processing_status.as_str(), item.is_stale),
+        ("complete", false)
+    );
+    assert!(item.created_at.ends_with('Z'), "{}", item.created_at);
+
+    assert_eq!(w.review.resurface(), 0, "nothing is due twice");
+    assert_eq!(w.outlet.snoozes_due().len(), 1);
+    let inbox = vault.vault.inbox(w.store.clone()).expect("inbox");
+    let snoozed: Vec<String> = inbox
+        .snoozed()
+        .expect("snoozed")
+        .into_iter()
+        .map(|i| i.id)
+        .collect();
+    assert_eq!(snoozed, [ids[3].clone()], "tomorrow stays snoozed");
+}
+
+/// The pass reads the store at every tick: a peer that moved a snooze into the past brings the
+/// capture back, and one that cleared a past-due snooze leaves nothing to resurface.
+#[test]
+fn a_snooze_a_peer_changed_is_honoured_at_the_next_tick() {
+    let w = world();
+    let vault = w.open();
+    let now = now_ms();
+    let moved = w.capture_id(&vault, "moved by the peer");
+    let cleared = w.capture_id(&vault, "unsnoozed by the peer");
+    w.snooze(&vault, &moved, now + 24 * HOUR);
+    w.snooze(&vault, &cleared, now - 60_000);
+    w.from_peer(&vault, &moved, |p| {
+        p["snoozedUntil"] = json!("2020-01-01T00:00:00.000Z");
+    });
+    w.from_peer(&vault, &cleared, |p| {
+        p["snoozedUntil"] = Value::Null;
+        p["snoozeReason"] = Value::Null;
+    });
+
+    assert_eq!(w.review.resurface(), 1);
+    assert_eq!(w.outlet.snoozes_due(), [vec![moved]]);
+}
+
+/// `resolveAttachmentUrl`: a thumbnail in the vault is a `memry-file` URL, a missing one is
+/// none, and a path a peer pointed outside the vault is none.
+#[test]
+fn a_resurfaced_thumbnail_is_a_url_only_inside_the_vault() {
+    let w = world();
+    let vault = w.open();
+    let thumb = "attachments/inbox/t/thumb.png";
+    let file = vault.path.join(thumb);
+    std::fs::create_dir_all(file.parent().expect("dir")).expect("dir");
+    std::fs::write(&file, b"png").expect("thumb");
+    std::fs::write(w.dir.path().join("outside.png"), b"png").expect("outside");
+    let paths = [thumb, "attachments/inbox/t/missing.png", "../outside.png"];
+    let mut ids = Vec::new();
+    for path in paths {
+        let id = w.capture_id(&vault, path);
+        w.from_peer(&vault, &id, |p| {
+            p["thumbnailPath"] = json!(path);
+            p["snoozedUntil"] = json!("2020-01-01T00:00:00.000Z");
+        });
+        ids.push(id);
+    }
+
+    assert_eq!(w.review.resurface(), 3);
+    let items = w.outlet.snoozes_due.lock().unwrap()[0].clone();
+    let url = |id: &str| {
+        let item = items.iter().find(|item| item.id == id).expect("item");
+        item.thumbnail_url.clone()
+    };
+    let shown = url(&ids[0]).expect("a url");
+    assert!(
+        shown.starts_with("memry-file://") && shown.ends_with(thumb),
+        "{shown}"
+    );
+    assert_eq!(url(&ids[1]), None);
+    assert_eq!(url(&ids[2]), None);
 }
