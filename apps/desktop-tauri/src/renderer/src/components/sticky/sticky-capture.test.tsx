@@ -20,6 +20,14 @@ vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() })
 }))
 
+// The ported calls go through the sticky service; send, undo and open-target still go through
+// `window.api.sticky` (#3548 stage 31c). Both reach the one mock object below.
+vi.mock('@/services/sticky-service', () => ({
+  get stickyService() {
+    return sticky
+  }
+}))
+
 vi.mock('@/hooks/use-feature-flags', () => ({
   useFeatureFlags: () => ({ isEnabled: (key: string) => mocks.flags[key] ?? true })
 }))
@@ -44,16 +52,24 @@ function stickyApi(session: { draftId: string | null }, drafts: StickyDraft[] = 
     saveDraft: vi.fn(async (input: { id?: string; content: string; kind: StickyDraft['kind'] }) =>
       draft({ id: input.id ?? 'draft-new', content: input.content, kind: input.kind })
     ),
-    deleteDraft: vi.fn().mockResolvedValue({ success: true }),
+    deleteDraft: vi.fn().mockResolvedValue(true),
     send: vi.fn(),
     undoSend: vi.fn(),
     openTarget: vi.fn().mockResolvedValue(undefined),
     tuck: vi.fn().mockResolvedValue(undefined),
-    resize: vi.fn().mockResolvedValue(undefined)
+    resize: vi.fn().mockResolvedValue(undefined),
+    onFlushRequested: vi.fn((callback: (requestId: string) => void, onListening: () => void) => {
+      flushRequest = callback
+      onListening()
+      return () => undefined
+    }),
+    flushDone: vi.fn().mockResolvedValue(null),
+    flushReady: vi.fn().mockResolvedValue(null)
   }
 }
 
 let sticky: ReturnType<typeof stickyApi>
+let flushRequest: ((requestId: string) => void) | undefined
 
 function setup(session: { draftId: string | null }, drafts: StickyDraft[] = []): void {
   sticky = stickyApi(session, drafts)
@@ -197,6 +213,24 @@ describe('StickyCapture', () => {
     expect(sticky.saveDraft).toHaveBeenCalledWith({ content: 'half a thought', kind: 'task' })
     expect(sticky.saveDraft.mock.invocationCallOrder[0]).toBeLessThan(
       sticky.tuck.mock.invocationCallOrder[0]
+    )
+  })
+
+  it('answers a quit flush with the pending text written first', async () => {
+    setup({ draftId: null })
+    const input = await renderSticky()
+    expect(sticky.flushReady).toHaveBeenCalled()
+
+    fireEvent.change(input, { target: { value: 'typed just before quit' } })
+    act(() => flushRequest?.('req-1'))
+
+    await waitFor(() => expect(sticky.flushDone).toHaveBeenCalledWith('req-1'))
+    expect(sticky.saveDraft).toHaveBeenCalledWith({
+      content: 'typed just before quit',
+      kind: 'task'
+    })
+    expect(sticky.saveDraft.mock.invocationCallOrder[0]).toBeLessThan(
+      sticky.flushDone.mock.invocationCallOrder[0]
     )
   })
 
