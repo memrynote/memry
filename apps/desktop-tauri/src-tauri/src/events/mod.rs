@@ -16,11 +16,13 @@ use crate::commands::vault_locks::VaultLockStateView;
 
 mod account;
 mod ai;
+mod canvas;
 mod sync;
 mod tags;
 
 pub use account::*;
 pub use ai::*;
+pub use canvas::*;
 pub use sync::*;
 pub use tags::*;
 

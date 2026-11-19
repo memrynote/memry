@@ -104,6 +104,10 @@ mod block_refs;
 mod byte_preservation;
 #[path = "canvas_files.rs"]
 mod canvas_files;
+#[path = "canvas_folders.rs"]
+mod canvas_folders;
+#[path = "canvas_service.rs"]
+mod canvas_service;
 #[path = "command_failure.rs"]
 mod command_failure;
 #[path = "config_compat.rs"]

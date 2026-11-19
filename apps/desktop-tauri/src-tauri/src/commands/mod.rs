@@ -8,6 +8,8 @@ pub mod ai_structured;
 pub mod app;
 pub mod attachment_sources;
 pub mod attachments;
+pub mod canvas;
+pub mod canvas_folders;
 pub mod clipboard;
 pub mod custom_icons;
 pub mod devices;

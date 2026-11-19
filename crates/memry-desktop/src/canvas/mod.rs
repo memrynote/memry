@@ -3,5 +3,9 @@
 //! and `canvas/library-file.ts`). The record and its sync live in
 //! [`memry_core::domain::canvas`]; the file text in its `file_format`.
 
+mod files;
+pub mod folders;
 pub mod library;
 pub mod scene_file;
+pub mod service;
+mod update;
