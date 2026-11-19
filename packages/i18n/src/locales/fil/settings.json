@@ -2238,6 +2238,10 @@
         "prevVault": {
           "label": "Nakaraang vault",
           "description": "Lumipat sa nakaraang vault sa sidebar"
+        },
+        "todayJournal": {
+          "label": "Talaarawan ngayong araw",
+          "description": "Buksan ang talaarawan sa entry ngayong araw"
         }
       },
       "tabs": {

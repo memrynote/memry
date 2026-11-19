@@ -1,6 +1,12 @@
 import { newItemViewState } from '@/contexts/tabs/helpers'
 import { useFeatureFlags } from '@/hooks/use-feature-flags'
 import { useNavigateToPage } from '@/hooks/use-navigate-to-page'
+import { useToday } from '@/hooks/use-today'
+import {
+  DEFAULT_JOURNAL_DRILL,
+  JOURNAL_DATE_KEY,
+  JOURNAL_VIEW_STATE_KEYS
+} from '@/pages/journal-view-state'
 import { useAppCommands } from './use-command-impls'
 
 /**
@@ -11,6 +17,7 @@ import { useAppCommands } from './use-command-impls'
 export function usePageCommands(): void {
   const navigate = useNavigateToPage()
   const { isEnabled } = useFeatureFlags()
+  const today = useToday()
 
   useAppCommands('pages', {
     'go.home': {
@@ -20,9 +27,16 @@ export function usePageCommands(): void {
       enabled: isEnabled('inbox'),
       run: () => navigate('inbox')
     },
+    // Lands on today's day view even when the journal tab shows another day or a month.
     'go.journal': {
       enabled: isEnabled('journal'),
-      run: () => navigate('journal')
+      run: () =>
+        navigate('journal', {
+          viewState: {
+            [JOURNAL_DATE_KEY]: today,
+            [JOURNAL_VIEW_STATE_KEYS.drill]: DEFAULT_JOURNAL_DRILL
+          }
+        })
     },
     'go.calendar': {
       enabled: isEnabled('calendar'),

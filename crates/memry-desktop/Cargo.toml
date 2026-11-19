@@ -40,6 +40,9 @@ unicode-segmentation = "1.13.3"
 # The note fold formats inline dates in the local time zone, as `Intl.DateTimeFormat` does;
 # already built for `trash`.
 chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
+# The device zone's IANA name for the sandbox's calendar events (`sandbox::device_zone_name`);
+# chrono's `clock` feature already builds it, so the lockfile gains no crate.
+iana-time-zone = "0.1.65"
 # `String.prototype.normalize("NFKC")` of the MathJax glyph text in `elements/math`.
 unicode-normalization = "0.1.25"
 # Spec-conformant HTML parsing where Electron uses one: Turndown's domino and the HTML block text
@@ -282,6 +285,10 @@ path = "tests/redact_vectors.rs"
 [[test]]
 name = "sanitize_svg_memory"
 path = "tests/sanitize_svg_memory.rs"
+
+[[test]]
+name = "sandbox_template"
+path = "tests/sandbox_template.rs"
 
 [[test]]
 name = "telemetry_vectors"

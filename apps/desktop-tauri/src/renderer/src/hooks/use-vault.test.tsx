@@ -22,6 +22,7 @@ function vaultApi() {
       select: ReturnType<typeof vi.fn>
       close: ReturnType<typeof vi.fn>
       switch: ReturnType<typeof vi.fn>
+      create: ReturnType<typeof vi.fn>
       updateConfig: ReturnType<typeof vi.fn>
       reindex: ReturnType<typeof vi.fn>
       getAll: ReturnType<typeof vi.fn>
@@ -356,6 +357,29 @@ describe('useVault during a vault switch', () => {
 
     unregisterPendingSave('note-1')
     expect(order).toEqual(['flush', 'switch'])
+  })
+
+  it('creates a vault as a switch: edits written, the new folder marked, then main creates it', async () => {
+    const api = vaultApi()
+    const order: string[] = []
+    registerPendingSave('note-1', () => {
+      order.push('flush')
+    })
+    // oxlint-disable-next-line typescript/no-misused-promises -- vaultApi() types the mock as a bare vi.fn() whose implementation is void-returning
+    api.vault.create.mockImplementation(async (parent: string, name: string) => {
+      order.push(`create ${parent} ${name} -> ${getVaultSwitchState().pending?.path}`)
+      return { success: true, vault: { path: '/parent/Work' } }
+    })
+
+    const { result } = renderHook(() => useVault())
+    await waitFor(() => expect(result.current.vaultPath).toBe('/a'))
+    await act(async () => {
+      await result.current.createVault('/parent', 'Work')
+    })
+
+    unregisterPendingSave('note-1')
+    expect(order).toEqual(['flush', 'create /parent Work -> /parent/Work'])
+    expect(getVaultSwitchState().pending).toBeNull()
   })
 })
 

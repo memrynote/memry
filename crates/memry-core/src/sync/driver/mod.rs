@@ -10,8 +10,9 @@
 //!
 //! What it adds over the engine:
 //!
-//! - **Pause.** A paused driver runs no pass and no first sync; the caller
-//!   persists the flag (`meta` `sync.paused`, the supervisor's).
+//! - **Pause** ([`pause`]). A paused driver runs no pass and no first sync,
+//!   and the pass in flight ends at its next request; the caller persists the
+//!   flag (`meta` `sync.paused`, the supervisor's).
 //! - **The seeds.** The tag seed and the lock seed are registered here; the
 //!   caller adds its own (desktop's property definitions).
 //! - **The server vault id** ([`super::server_vault`]) on every request. An
@@ -36,11 +37,11 @@
 mod bodies;
 mod cipher;
 pub mod observer;
+mod pause;
 pub mod progress;
 mod repairs;
 mod snapshots;
 
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
 
 use zeroize::Zeroizing;
@@ -62,6 +63,7 @@ use crate::seams::reachability::{Reachability, ReachabilityObserver};
 use crate::seams::transport::Transport;
 use crate::storage::Db;
 use crate::storage::repositories::sync_items;
+use pause::PauseSwitch;
 
 use super::admission::CrdtAdmission;
 use super::body_pull::BodyPull;
@@ -80,8 +82,8 @@ use super::socket::{HintSink, RealtimeClient};
 use super::state::{PassTrigger, SyncState, WriteGate};
 use cipher::DirectoryCipher;
 pub use observer::{
-    AppliedFeed, AppliedOutcome, AppliedRecord, ApplyObserver, AttachmentDownload, FieldConflict,
-    Observers, SecurityWarning,
+    AppliedFeed, AppliedOutcome, AppliedRecord, ApplyObserver, AttachmentDownload, CorruptItem,
+    FieldConflict, Observers, SecurityWarning,
 };
 use progress::{InitialSyncPhase, InitialSyncSink, Phases, TasksPhase};
 pub use snapshots::SnapshotRound;
@@ -140,6 +142,8 @@ pub struct DriverParts {
     pub seeds: Vec<Arc<dyn PassSeed>>,
     /// The vault's one pass gate (`api::sync::pass_gate`).
     pub pass_gate: Arc<tokio::sync::Mutex<()>>,
+    /// Hear every page applied from the open on, its re-pull included.
+    pub observers: Vec<Arc<dyn ApplyObserver>>,
 }
 
 /// The first sync's parts, built once and run under the pass gate.
@@ -161,10 +165,9 @@ pub struct SyncDriver {
     tokens: Arc<TokenManager>,
     server_vault: String,
     cipher: Arc<DirectoryCipher>,
-    observers: Arc<Observers>,
     /// The `tasks` progress, the seed registered after every other.
     tasks: Arc<TasksPhase>,
-    paused: AtomicBool,
+    pause: PauseSwitch,
     /// The 30-minute manifest check ([`super::hardening::manifest`]).
     manifest: ManifestCheck,
     /// The snapshot pusher and the gate's last pull ([`snapshots`]).
@@ -186,6 +189,7 @@ impl SyncDriver {
             config,
             seeds,
             pass_gate,
+            observers: listeners,
         } = parts;
         let server_vault = db
             .call(|conn| super::server_vault::bound(conn))
@@ -193,7 +197,11 @@ impl SyncDriver {
             .ok_or_else(|| StorageError::Failed {
                 what: "this vault is bound to no server vault; bind it before syncing".into(),
             })?;
-        let http = session.http();
+        let pause = PauseSwitch::default();
+        let http = Arc::new(pause.client(
+            &session.http(),
+            Arc::clone(&session.tokens) as Arc<dyn TokenProvider>,
+        ));
         let master_key = Zeroizing::new(session.master_key()?.ok_or(SyncError::Locked)?);
         let vault_key = Zeroizing::new(keys::derive_vault_key(&master_key)?.to_vec());
         let directory = device_directory(&http).await?;
@@ -208,6 +216,9 @@ impl SyncDriver {
         })?;
         let sealer = Arc::new(AccountSealer::new(vault_key.to_vec(), signer));
         let observers = Arc::new(Observers::default());
+        for listener in listeners {
+            observers.register(listener);
+        }
         let declaration = config.declaration.clone();
 
         let pull_loop = || {
@@ -303,9 +314,8 @@ impl SyncDriver {
             tokens: Arc::clone(&session.tokens),
             server_vault: server_vault.clone(),
             cipher,
-            observers,
             tasks,
-            paused: AtomicBool::new(false),
+            pause,
             manifest: ManifestCheck::default(),
             snapshots,
             snapshot_requests,
@@ -313,12 +323,6 @@ impl SyncDriver {
         };
         driver.repull_unknown_signers().await?;
         Ok(driver)
-    }
-
-    /// Adds an observer of every page applied from now on, after those
-    /// already registered.
-    pub fn register_observer(&self, observer: Arc<dyn ApplyObserver>) {
-        self.observers.register(observer);
     }
 
     /// One pass ([`SyncEngine::run_pass`]); `None` while paused.
@@ -411,16 +415,6 @@ impl SyncDriver {
         Ok(Some(FirstSyncOutcome { first_sync, passes }))
     }
 
-    /// Stops passes and first syncs until [`SyncDriver::resume`]. A pass
-    /// already running finishes.
-    pub fn pause(&self) {
-        self.paused.store(true, Ordering::SeqCst);
-    }
-
-    pub fn resume(&self) {
-        self.paused.store(false, Ordering::SeqCst);
-    }
-
     pub fn status(&self) -> DriverStatus {
         DriverStatus {
             state: self.engine.state(),
@@ -450,7 +444,9 @@ impl SyncDriver {
         if pass.pushed_items > 0 {
             rows.push((HistoryKind::Push, pass.pushed_items, None));
         }
-        for error in [&pass.pull_error, &pass.push_error].into_iter().flatten() {
+        // A request a pause cut is not a failure.
+        let errors = [&pass.pull_error, &pass.push_error].into_iter().flatten();
+        for error in errors.filter(|error| !error.is_cancelled()) {
             rows.push((HistoryKind::Error, 0, Some(error.to_string())));
         }
         if rows.is_empty() {
@@ -507,10 +503,6 @@ impl SyncDriver {
     /// The session's tokens, which the realtime socket refreshes through.
     pub fn token_provider(&self) -> Arc<dyn TokenProvider> {
         Arc::clone(&self.tokens) as Arc<dyn TokenProvider>
-    }
-
-    fn is_paused(&self) -> bool {
-        self.paused.load(Ordering::SeqCst)
     }
 
     /// Re-pulls, under the pass gate and over the directory `open` just
