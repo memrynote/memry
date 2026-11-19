@@ -297,10 +297,8 @@ impl PullLoop {
         let clock_device = self.clock_device.clone();
         let advanced = page.next_cursor.clone().or(cursor);
         let stored = advanced.clone();
-        // §5.11: the page's records, its bodies and the cursor that names them
-        // commit as one transaction (#5231), so a kill anywhere in the page
-        // leaves the device at the previous cursor with none of the page's
-        // rows, and the re-pull lands each row once.
+        // Invariant (§5.11, #5231): a page's records and its cursor commit in
+        // one transaction or not at all.
         let (outcomes, advanced_documents) = self
             .db
             .call(move |conn| {
@@ -313,8 +311,10 @@ impl PullLoop {
                     now,
                     clock_device.as_deref(),
                 )?;
+                still_open(&txn)?;
                 let advanced =
                     note_body_feed::land_and_advance(&txn, bodies, stored.as_deref(), now)?;
+                still_open(&txn)?;
                 txn.commit().map_err(sqlite_failed)?;
                 Ok((totals, advanced))
             })
@@ -563,6 +563,17 @@ fn apply_items(
         }
     }
     Ok(totals)
+}
+
+/// Fails the page when SQLite rolled its transaction back on its own: writing
+/// on would autocommit the cursor without the records it names.
+fn still_open(conn: &Connection) -> Result<(), StorageError> {
+    if conn.is_autocommit() {
+        return Err(StorageError::Failed {
+            what: "the page's transaction was rolled back".to_owned(),
+        });
+    }
+    Ok(())
 }
 
 fn sqlite_failed(error: rusqlite::Error) -> StorageError {

@@ -425,6 +425,7 @@ pub fn apply_inbound_on(
     {
         return Ok(outcome);
     }
+    let in_transaction = !conn.is_autocommit();
     let merged = match record.item_type.as_str() {
         tasks::ITEM_TYPE => tasks::apply_remote(conn, record, now_ms, clock_device),
         projects::ITEM_TYPE => projects::apply_remote(conn, record, now_ms),
@@ -441,6 +442,10 @@ pub fn apply_inbound_on(
     };
     match merged {
         Ok(inbound) => Ok(outcome(inbound)),
+        // SQLite rolled back the caller's whole transaction (a full disk, an
+        // interrupt): the page's earlier records are gone, so the failure is
+        // the page's, not this record's.
+        Err(error) if in_transaction && conn.is_autocommit() => Err(error),
         Err(error) => refuse(conn, record, &error.to_string(), now_ms),
     }
 }

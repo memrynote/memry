@@ -69,10 +69,23 @@ impl Deref for NestedTx<'_> {
 
 impl Drop for NestedTx<'_> {
     fn drop(&mut self) {
+        if !self.open {
+            return;
+        }
         // SQLite may already have rolled the transaction back on its own (a
-        // full disk, an interrupt); there is then nothing left to undo.
-        if self.open && !self.conn.is_autocommit() {
-            let _ = self.rollback();
+        // full disk, an interrupt); there is then nothing left to undo, and
+        // the caller sees the failure that caused it.
+        if self.conn.is_autocommit() {
+            eprintln!("memry-core: transaction already rolled back by SQLite when dropped");
+        } else if let Err(error) = self.rollback() {
+            eprintln!(
+                "memry-core: rolling back a dropped {} failed: {error}",
+                if self.savepoint {
+                    "savepoint"
+                } else {
+                    "transaction"
+                }
+            );
         }
     }
 }
@@ -118,13 +131,38 @@ mod tests {
         assert_eq!(kept, [1, 3]);
     }
 
-    /// The one file still on `unchecked_transaction` runs only in its own
-    /// `Db::call`, never inside a page; the bulk body apply (#5231 part b)
-    /// moves it.
-    const RAW_TRANSACTION_ALLOWED: [&str; 2] = ["nested_tx.rs", "body_pull/log_writes.rs"];
+    /// `log_writes.rs` runs only in its own `Db::call`, never inside a page;
+    /// the bulk body apply (#5231 part b) moves it. The other two open with
+    /// `Connection::transaction`, which takes `&mut Connection`, so nothing
+    /// holding a page's shared `&Connection` can reach them.
+    const RAW_TRANSACTION_ALLOWED: [&str; 4] = [
+        "nested_tx.rs",
+        "body_pull/log_writes.rs",
+        "crdt/update_log.rs",
+        "storage/migrations.rs",
+    ];
+
+    /// rusqlite's two transaction openers, and a `BEGIN` statement with or
+    /// without a mode. iCalendar's `BEGIN:` lines are not SQL.
+    fn opens_raw_transaction(source: &str) -> bool {
+        const OPENERS: [&str; 8] = [
+            ".unchecked_transaction(",
+            ".transaction()",
+            "(\"BEGIN\"",
+            "(\"BEGIN;",
+            "(\"BEGIN ",
+            "\"BEGIN DEFERRED",
+            "\"BEGIN IMMEDIATE",
+            "\"BEGIN EXCLUSIVE",
+        ];
+        OPENERS.iter().any(|opener| source.contains(opener))
+    }
 
     #[test]
     fn no_core_write_opens_a_transaction_that_cannot_nest() {
+        assert!(opens_raw_transaction(r#"conn.execute_batch("BEGIN")?"#));
+        assert!(opens_raw_transaction("let tx = conn.transaction()?;"));
+        assert!(!opens_raw_transaction(r#"format!("BEGIN:{}", name)"#));
         fn scan(dir: &std::path::Path, offenders: &mut Vec<String>) {
             for entry in std::fs::read_dir(dir).expect("read src") {
                 let path = entry.expect("an entry").path();
@@ -137,9 +175,9 @@ mod tests {
                     && !RAW_TRANSACTION_ALLOWED
                         .iter()
                         .any(|allowed| shown.ends_with(allowed))
-                    && std::fs::read_to_string(&path)
-                        .expect("read a source file")
-                        .contains(".unchecked_transaction(")
+                    && opens_raw_transaction(
+                        &std::fs::read_to_string(&path).expect("read a source file"),
+                    )
                 {
                     offenders.push(shown);
                 }
