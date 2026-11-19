@@ -120,13 +120,11 @@ impl Signals {
     }
 
     /// The gate answered for the open vault (`markSyncEligible` / `markSyncIneligible`). A
-    /// keychain that did not answer, a vault list not fetched yet and a binding the user has
-    /// not chosen are no answer: sync may still start, so a Readwise run waits.
+    /// keychain that did not answer and a vault list not fetched yet are no answer: sync may
+    /// still start, so a Readwise run waits. A binding the user has not chosen is Electron's
+    /// `held` (`runtime.ts:440`): decided, this vault does not sync.
     pub(super) fn decide(&self, inputs: &GateInputs, keychain_unavailable: bool) {
-        let pending = matches!(
-            inputs.binding,
-            VaultBinding::Unknown | VaultBinding::NeedsDecision
-        );
+        let pending = inputs.binding == VaultBinding::Unknown;
         let open = keychain_unavailable || (inputs.auth.signed_in && pending);
         self.decided.store(!open, Ordering::SeqCst);
     }
