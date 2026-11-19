@@ -98,6 +98,12 @@ fn build_eventkit_helper(checkout_dir: &Path) {
         _ => panic!("no EventKit helper build for {triple}"),
     };
     let output = dir.join("bin").join(format!("memry-eventkit-{triple}"));
+    let modified = |path: &Path| std::fs::metadata(path).and_then(|metadata| metadata.modified());
+    let source_time = modified(&source).expect("read main.swift's modified time");
+    // This script reruns for other inputs too; a helper stamped below is already current.
+    if modified(&output).is_ok_and(|time| time == source_time) {
+        return;
+    }
     std::fs::create_dir_all(dir.join("bin")).expect("create eventkit/bin");
     let status = std::process::Command::new("xcrun")
         .args(["swiftc", "-O", "-swift-version", "5", "-target"])
@@ -108,12 +114,13 @@ fn build_eventkit_helper(checkout_dir: &Path) {
         .arg(&output)
         .status()
         .unwrap_or_else(|error| panic!("run xcrun swiftc (Xcode command line tools): {error}"));
-    assert!(status.success(), "swiftc could not build {}", source.display());
+    assert!(
+        status.success(),
+        "swiftc could not build {}",
+        source.display()
+    );
     // tauri-build watches the copied file. Written during this run, it would be newer than the
     // run and rerun this script on every build, so it takes the source's time.
-    let source_time = std::fs::metadata(&source)
-        .and_then(|metadata| metadata.modified())
-        .expect("read main.swift's modified time");
     std::fs::File::options()
         .write(true)
         .open(&output)

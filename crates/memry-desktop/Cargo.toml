@@ -91,7 +91,7 @@ snap = "1.1.2"
 tempfile = "3"
 uuid = { workspace = true }
 # The shutdown sequence and the flush table are async and tauri-free.
-tokio = { workspace = true, features = ["time", "sync", "net", "fs", "io-util"] }
+tokio = { workspace = true, features = ["time", "sync", "net", "fs", "io-util", "process"] }
 # The loopback media server (`shell/loopback.rs`): HTTP/1 on 127.0.0.1, streamed bodies.
 axum = { version = "0.8.9", default-features = false, features = ["http1", "tokio"] }
 tokio-util = { version = "0.7.19", features = ["io"] }

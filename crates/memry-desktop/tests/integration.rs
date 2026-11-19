@@ -106,6 +106,8 @@ mod billing_service;
 mod block_refs;
 #[path = "byte_preservation.rs"]
 mod byte_preservation;
+#[path = "calendar_eventkit.rs"]
+mod calendar_eventkit;
 #[path = "command_failure.rs"]
 mod command_failure;
 #[path = "config_compat.rs"]
