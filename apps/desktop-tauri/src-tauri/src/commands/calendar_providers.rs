@@ -311,8 +311,8 @@ pub async fn calendar_connect_provider(
         .map_err(|e| thrown(COMMAND, &e))
 }
 
-/// `calendar:refresh-provider` (`caldav-provider.ts:91-115`): with `sourceId`, that calendar's
-/// pull; otherwise every account's (or `accountId`'s) pull, then the push drain. A failure
+/// `calendar:refresh-provider` (`caldav-provider.ts:91-115`): the push drain, then with `sourceId`
+/// that calendar's pull (its Retry), otherwise every account's (or `accountId`'s). A failure
 /// answers `sync_failed`. The answer carries no `source` until the source view lands (#4894).
 #[tauri::command]
 #[specta::specta]
@@ -337,7 +337,7 @@ pub async fn calendar_refresh_provider(
     }
     let sync = accounts.sync();
     let outcome = match source_id {
-        Some(source) => sync.sync_source(&open, &source).await.map(|_| ()),
+        Some(source) => sync.sync_source_and_drain(&open, &source).await,
         None => sync.sync_and_drain(&open, account_id.as_deref()).await,
     };
     let failure = match outcome {

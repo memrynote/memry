@@ -7,12 +7,13 @@
 use std::collections::HashMap;
 
 use rusqlite::{Connection, OptionalExtension, params};
-use serde_json::json;
+use serde_json::{Value, json};
 
 use super::caldav::Object;
 use super::{CALDAV, Target, bindings};
 use crate::api::calendar_records::CalendarZone;
 use crate::api::errors::StorageError;
+use crate::domain::calendar_items::colors::event_color_from_id;
 use crate::domain::calendar_items::ical::parse::Component;
 use crate::domain::calendar_items::ical::{
     IcalInstance, IcalWindow, IcalZones, expand_calendar_events, parse::parse_calendar,
@@ -183,23 +184,7 @@ pub fn merge_remote(
             data,
         });
         let base = stored.and_then(|s| instance_of(&binding, &s, window, zones));
-        let changed = |same: fn(&IcalInstance, &IcalInstance) -> bool| {
-            base.as_ref().is_none_or(|b| !same(b, &remote))
-        };
-        let patch = EventPatch {
-            title: changed(|b, r| b.title == r.title).then(|| remote.title.clone()),
-            description: changed(|b, r| b.description == r.description)
-                .then(|| remote.description.clone()),
-            location: changed(|b, r| b.location == r.location).then(|| remote.location.clone()),
-            start_at: changed(|b, r| b.start_at == r.start_at).then(|| remote.start_at.clone()),
-            end_at: changed(|b, r| b.end_at == r.end_at).then(|| remote.end_at.clone()),
-            timezone: remote
-                .timezone
-                .clone()
-                .filter(|_| changed(|b, r| b.timezone == r.timezone)),
-            is_all_day: changed(|b, r| b.is_all_day == r.is_all_day).then_some(remote.is_all_day),
-            ..EventPatch::default()
-        };
+        let patch = remote_patch(&remote, base.as_ref());
         update_event(conn, &target.source_id, &patch, device_id, now_ms)?;
     }
     conn.query_row(
@@ -209,6 +194,34 @@ pub fn merge_remote(
     )
     .optional()
     .map_err(failed)
+}
+
+/// `mapGoogleEventToCalendarEventChanges` for one server instance: each field the server changed
+/// since `base` (every field without one). RRULE and STATUS are not among them, as in Electron.
+fn remote_patch(remote: &IcalInstance, base: Option<&IcalInstance>) -> EventPatch {
+    let changed =
+        |same: fn(&IcalInstance, &IcalInstance) -> bool| base.is_none_or(|b| !same(b, remote));
+    EventPatch {
+        title: changed(|b, r| b.title == r.title).then(|| remote.title.clone()),
+        description: changed(|b, r| b.description == r.description)
+            .then(|| remote.description.clone()),
+        location: changed(|b, r| b.location == r.location).then(|| remote.location.clone()),
+        start_at: changed(|b, r| b.start_at == r.start_at).then(|| remote.start_at.clone()),
+        end_at: changed(|b, r| b.end_at == r.end_at).then(|| remote.end_at.clone()),
+        timezone: remote
+            .timezone
+            .clone()
+            .filter(|_| changed(|b, r| b.timezone == r.timezone)),
+        is_all_day: changed(|b, r| b.is_all_day == r.is_all_day).then_some(remote.is_all_day),
+        attendees: changed(|b, r| b.attendees == r.attendees)
+            .then(|| remote.attendees.clone().unwrap_or(Value::Null)),
+        reminders: changed(|b, r| b.reminders == r.reminders)
+            .then(|| remote.reminders.clone().unwrap_or(Value::Null)),
+        visibility: changed(|b, r| b.visibility == r.visibility).then(|| remote.visibility.clone()),
+        color: changed(|b, r| b.color_id == r.color_id)
+            .then(|| event_color_from_id(remote.color_id.as_deref()).map(str::to_owned)),
+        ..EventPatch::default()
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -225,12 +238,18 @@ fn write_back(
     device_id: &str,
     now_ms: i64,
 ) -> Result<(), StorageError> {
-    let remote = json!({
-        "title": instance.title, "description": instance.description, "location": instance.location,
-        "startAt": instance.start_at, "endAt": instance.end_at, "timezone": instance.timezone,
-        "isAllDay": instance.is_all_day,
-    });
-    super::google::apply_remote_fields(conn, target, &remote, zone, device_id, now_ms)?;
+    if target.source_type == "event" {
+        update_event(
+            conn,
+            &target.source_id,
+            &remote_patch(instance, None),
+            device_id,
+            now_ms,
+        )?;
+    } else {
+        let remote = json!({ "startAt": instance.start_at, "isAllDay": instance.is_all_day });
+        super::google::apply_remote_fields(conn, target, &remote, zone, device_id, now_ms)?;
+    }
     if let Some(mut input) = super::upsert_input(conn, target, zone, zone_id, named)? {
         input["caldavRaw"] = json!(object.data);
         let written = bindings::Written {

@@ -47,8 +47,8 @@ pub struct DrainSummary {
     pub skipped: u32,
     pub waiting: u32,
     pub failed: u32,
-    /// The calendar sources a write needs the person for: a conflict the merge did not settle,
-    /// or a local edit a remote delete dropped.
+    /// The calendar sources a write needs the person for: a write that failed, a conflict the
+    /// merge did not settle, or a local edit a remote delete dropped.
     pub attention: Vec<String>,
 }
 
@@ -191,39 +191,6 @@ impl CaldavSync {
         Ok(summary)
     }
 
-    /// The push drain, then every account's pull (or one's). Draining first sends local edits
-    /// before the pull sees the remote; a pull skips items still queued either way. A calendar
-    /// that failed to pull fails the pass; an item the drain could not write stays queued with its
-    /// reason. A calendar the drain flagged (`DrainSummary::attention`) is marked `error` after
-    /// its pull, which would otherwise mark it `ok`.
-    pub async fn sync_and_drain(
-        &self,
-        open: &OpenVault,
-        account_id: Option<&str>,
-    ) -> Result<(), SyncError> {
-        let drained = self.drain(open).await?;
-        let summary = self.sync_now(open, account_id).await?;
-        for id in drained.attention {
-            let writer = self.calendar(open).await?;
-            blocking(move || {
-                writer.provider_source_error(id, "a CalDAV write was not applied".to_owned())
-            })
-            .await??;
-        }
-        if drained.failed > 0 || drained.waiting > 0 {
-            tracing::info!(
-                scope = SCOPE,
-                failed = drained.failed,
-                waiting = drained.waiting,
-                "CalDAV writes left queued"
-            );
-        }
-        if summary.failed > 0 {
-            return Err(SyncError::Partial(summary.failed));
-        }
-        Ok(())
-    }
-
     /// `writableTransportFor`'s account half: a live account, not refused, with a password here.
     async fn usable(
         &self,
@@ -269,7 +236,7 @@ impl CaldavSync {
         held: &[String],
         enabled: bool,
     ) -> Result<Outcome, SyncError> {
-        let mut plan = self.plan(pass, item, held, None).await?;
+        let plan = self.plan(pass, item, held, None).await?;
         if plan.provider != CALDAV || plan.action == "wait" {
             if plan.action == "none" {
                 return self.skip(pass, item).await;
@@ -296,9 +263,30 @@ impl CaldavSync {
         let Some(transport) = self.usable(pass, account).await? else {
             return Ok(Outcome::Waiting);
         };
+        let written = self
+            .send(open, pass, item, held, source, plan, &transport)
+            .await;
+        // A write that failed leaves the item queued; the calendar's sync state shows it.
+        if written.is_err() {
+            pass.needs_attention(source);
+        }
+        written
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    async fn send(
+        &self,
+        open: &OpenVault,
+        pass: &Pass,
+        item: &Item<'_>,
+        held: &[String],
+        source: &CalendarSourceRecord,
+        mut plan: CalendarPushPlan,
+        transport: &Transport,
+    ) -> Result<Outcome, SyncError> {
         if plan.action == "fetch" {
             let href = plan.href.clone().unwrap_or_default();
-            let Some(object) = caldav_dav::get(&transport, &href).await? else {
+            let Some(object) = caldav_dav::get(transport, &href).await? else {
                 return self.gone(pass, item, source, &plan, &href).await;
             };
             plan = self
@@ -307,14 +295,14 @@ impl CaldavSync {
         }
         match plan.action.as_str() {
             "upsert" if plan.if_match.is_none() => {
-                self.create(open, pass, item, &plan, &transport).await
+                self.create(open, pass, item, &plan, transport).await
             }
             "upsert" => {
-                self.update(pass, item, held, source, &plan, &transport)
+                self.update(pass, item, held, source, &plan, transport)
                     .await
             }
-            "delete" => self.delete(pass, item, &plan, &transport).await,
-            "exclude" => self.exclude(pass, item, held, &plan, &transport).await,
+            "delete" => self.delete(pass, item, &plan, transport).await,
+            "exclude" => self.exclude(pass, item, held, &plan, transport).await,
             "none" => self.skip(pass, item).await,
             _ => Ok(Outcome::Waiting),
         }

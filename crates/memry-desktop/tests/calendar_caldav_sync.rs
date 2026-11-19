@@ -810,3 +810,141 @@ async fn a_create_that_meets_a_412_keeps_the_server_copy() {
     assert!(puts[1].body.contains("SUMMARY:Retro"));
     assert!(puts[1].body.contains("X-SERVER-NOTE:kept"));
 }
+
+fn event(open: &OpenVault, id: &str) -> memry_core::api::calendar_records::CalendarEventRecord {
+    calendar(open).event(id.to_owned()).unwrap().unwrap()
+}
+
+/// The server's copy with `lines` added to its event.
+fn remote_with(rig: &Rig, path: &str, lines: &str) -> String {
+    let data = rig.dav.store.object(path).unwrap().1;
+    let remote = data.replace("END:VEVENT", &format!("{lines}END:VEVENT"));
+    rig.dav.store.put_remote(path, &remote);
+    remote
+}
+
+/// A 412 merge takes from the server what Electron's does (`mapGoogleEventToCalendarEventChanges`:
+/// attendees, reminders, visibility and colorId besides the times and text), so the retry keeps
+/// the server's COLOR, VALARM and ATTENDEE; it patches the server copy, so an X- property stays.
+/// The title only the local edit changed stays local.
+#[tokio::test]
+async fn a_412_merge_keeps_the_server_colour_alarm_attendee_and_x_property() {
+    let rig = Rig::new(true).await;
+    let open = rig.open().await;
+    rig.connect(&open).await;
+    let id = new_event(&open, "Standup");
+    rig.sync().drain(&open).await.unwrap();
+    let path = only_object(&rig);
+    retitle(&open, &id, "Local");
+    remote_with(
+        &rig,
+        &path,
+        "COLOR:tomato\r\nX-SERVER-NOTE:kept\r\nATTENDEE;CN=Ada;PARTSTAT=ACCEPTED:mailto:ada@example.com\r\n\
+         BEGIN:VALARM\r\nACTION:DISPLAY\r\nDESCRIPTION:Reminder\r\nTRIGGER:-PT15M\r\nEND:VALARM\r\n",
+    );
+
+    rig.sync().sync_and_drain(&open, None).await.unwrap();
+    // Unfolded: a long ATTENDEE line wraps.
+    let server = rig.dav.store.object(&path).unwrap().1.replace("\r\n ", "");
+    for line in [
+        "SUMMARY:Local",
+        "COLOR:tomato",
+        "X-SERVER-NOTE:kept",
+        "mailto:ada@example.com",
+        "TRIGGER:-PT15M",
+    ] {
+        assert!(server.contains(line), "{line} in {server}");
+    }
+    let local = event(&open, &id);
+    assert_eq!(local.title, "Local");
+    assert_eq!(local.color_id.as_deref(), Some("11"));
+    assert!(local.attendees_json.unwrap().contains("ada@example.com"));
+    assert!(local.reminders_json.unwrap().contains("15"));
+    assert!(queued(&open).is_empty());
+}
+
+/// The server made the event private while the title was edited here: both survive.
+#[tokio::test]
+async fn a_412_merge_takes_a_server_class_change_and_keeps_the_local_title() {
+    let rig = Rig::new(true).await;
+    let open = rig.open().await;
+    rig.connect(&open).await;
+    let id = new_event(&open, "Standup");
+    rig.sync().drain(&open).await.unwrap();
+    let path = only_object(&rig);
+    retitle(&open, &id, "Local");
+    remote_with(&rig, &path, "CLASS:PRIVATE\r\n");
+
+    rig.sync().sync_and_drain(&open, None).await.unwrap();
+    let server = rig.dav.store.object(&path).unwrap().1;
+    assert!(server.contains("SUMMARY:Local") && server.contains("CLASS:PRIVATE"));
+    let local = event(&open, &id);
+    assert_eq!(local.title, "Local");
+    assert_eq!(local.visibility.as_deref(), Some("private"));
+    assert!(queued(&open).is_empty());
+}
+
+/// A pull over a bound object with no local edit takes the same fields (`applyProviderWriteback`).
+#[tokio::test]
+async fn a_bound_pull_takes_the_server_colour_and_class() {
+    let rig = Rig::new(true).await;
+    let open = rig.open().await;
+    let (_, source) = rig.connect(&open).await;
+    let id = new_event(&open, "Standup");
+    rig.sync().drain(&open).await.unwrap();
+    let path = only_object(&rig);
+    remote_with(&rig, &path, "COLOR:tomato\r\nCLASS:CONFIDENTIAL\r\n");
+
+    rig.sync().sync_source(&open, &source).await.unwrap();
+    let local = event(&open, &id);
+    assert_eq!(local.color_id.as_deref(), Some("11"));
+    assert_eq!(local.visibility.as_deref(), Some("confidential"));
+    assert!(queued(&open).is_empty());
+}
+
+/// The calendar's Retry (`calendar_refresh_provider` with a `sourceId`) sends a queued edit
+/// before it pulls, as `sync_and_drain` does, instead of leaving it stranded.
+#[tokio::test]
+async fn a_calendar_retry_sends_a_queued_edit() {
+    let rig = Rig::new(true).await;
+    let open = rig.open().await;
+    let (_, source) = rig.connect(&open).await;
+    let id = new_event(&open, "Standup");
+    rig.sync().drain(&open).await.unwrap();
+    retitle(&open, &id, "Local");
+
+    rig.sync()
+        .sync_source_and_drain(&open, &source)
+        .await
+        .unwrap();
+    let server = rig.dav.store.object(&only_object(&rig)).unwrap().1;
+    assert!(server.contains("SUMMARY:Local"), "{server}");
+    assert!(queued(&open).is_empty());
+    assert_eq!(sync_status(&open, &source), "ok");
+}
+
+/// A Retry whose write fails leaves the edit queued and the calendar in `error`: its pull must
+/// not mark it `ok` while the edit waits.
+#[tokio::test]
+async fn a_calendar_retry_whose_write_fails_keeps_the_calendar_in_error() {
+    let rig = Rig::new(true).await;
+    let open = rig.open().await;
+    let (_, source) = rig.connect(&open).await;
+    let id = new_event(&open, "Standup");
+    rig.sync().drain(&open).await.unwrap();
+    retitle(&open, &id, "Local");
+    rig.set_hook(|seen, reply| {
+        if seen.method == "PUT" {
+            Reply::status(503)
+        } else {
+            reply
+        }
+    });
+
+    rig.sync()
+        .sync_source_and_drain(&open, &source)
+        .await
+        .unwrap();
+    assert_eq!(queued(&open), [id]);
+    assert_eq!(sync_status(&open, &source), "error");
+}

@@ -23,6 +23,7 @@ use serde_json::{Map, Value};
 use url::Url;
 
 use super::caldav_dav::{self, DavError, DavObject};
+use super::caldav_push::DrainSummary;
 use super::caldav_transport::{CaldavHttp, Transport};
 use super::credentials::{CredentialError, ProviderCredentials, SecretKind};
 use super::zones::feed_zones;
@@ -227,6 +228,57 @@ impl CaldavSync {
         let password =
             blocking(move || credentials.get(CALDAV, &id, SecretKind::Password)).await??;
         Ok(password.map(|p| self.http.transport(&server, &meta.username, p.as_str())))
+    }
+
+    /// The push drain, then every account's pull (or one's). Draining first sends local edits
+    /// before the pull sees the remote; a pull skips items still queued either way. A calendar
+    /// that failed to pull fails the pass; an item the drain could not write stays queued with its
+    /// reason. A calendar the drain flagged (`DrainSummary::attention`) is marked `error` after
+    /// its pull, which would otherwise mark it `ok`.
+    pub async fn sync_and_drain(
+        &self,
+        open: &OpenVault,
+        account_id: Option<&str>,
+    ) -> Result<(), SyncError> {
+        let drained = self.drain(open).await?;
+        let summary = self.sync_now(open, account_id).await;
+        self.flag(open, drained).await?;
+        match summary?.failed {
+            0 => Ok(()),
+            failed => Err(SyncError::Partial(failed)),
+        }
+    }
+
+    /// One calendar's Retry (`calendar_refresh_provider` with a `sourceId`): the push drain, then
+    /// that calendar's pull, flagged the same way, so a queued edit is sent rather than stranded.
+    pub async fn sync_source_and_drain(
+        &self,
+        open: &OpenVault,
+        source_id: &str,
+    ) -> Result<(), SyncError> {
+        let drained = self.drain(open).await?;
+        let pulled = self.sync_source(open, source_id).await;
+        self.flag(open, drained).await?;
+        pulled.map(|_| ())
+    }
+
+    async fn flag(&self, open: &OpenVault, drained: DrainSummary) -> Result<(), SyncError> {
+        for id in drained.attention {
+            let writer = self.calendar(open).await?;
+            blocking(move || {
+                writer.provider_source_error(id, "a CalDAV write was not applied".to_owned())
+            })
+            .await??;
+        }
+        if drained.failed > 0 || drained.waiting > 0 {
+            tracing::info!(
+                scope = SCOPE,
+                failed = drained.failed,
+                waiting = drained.waiting,
+                "CalDAV writes left queued"
+            );
+        }
+        Ok(())
     }
 
     /// `syncCaldavCalendarSource`: pulls one calendar. A stale sync token pulls in full; a

@@ -4,12 +4,12 @@
 
 use std::collections::{HashMap, HashSet};
 
-use super::budget;
 use super::parse::{Component, IcalTime, TimeZoneRef, parse_duration, time_of, times_of};
 use super::rrule::{Occurrences, Until, parse_rule};
 use super::{
     IcalInstance, IcalWindow, InstanceKey, MAX_INSTANCES_PER_SERIES, MAX_RECURRENCE_STEPS, Resolver,
 };
+use super::{budget, vevent_extras};
 use crate::domain::calendar::CivilDate;
 use crate::domain::calendar_items::projection::iso;
 
@@ -104,6 +104,10 @@ pub(super) fn to_instance(
         }
         .to_owned(),
         remote_updated_at: updated.map(|u| iso(resolver.instant_ms(&u, None))),
+        attendees: vevent_extras::attendees(event),
+        reminders: vevent_extras::reminders(event),
+        visibility: vevent_extras::visibility(event),
+        color_id: vevent_extras::color_id(event),
     })
 }
 

@@ -15,6 +15,7 @@ pub mod parse;
 pub mod rrule;
 mod rrule_days;
 mod series;
+mod vevent_extras;
 pub mod vtimezone;
 
 use std::collections::{HashMap, HashSet};
@@ -54,6 +55,14 @@ pub struct IcalInstance {
     /// `confirmed` | `tentative`.
     pub status: String,
     pub remote_updated_at: Option<String>,
+    /// `parseAttendees`: an array of attendees, or none.
+    pub attendees: Option<serde_json::Value>,
+    /// `parseReminders`: `{ useDefault: false, overrides }` from the VALARMs, or none.
+    pub reminders: Option<serde_json::Value>,
+    /// `parseVisibility`: CLASS as `public` | `private` | `confidential`.
+    pub visibility: Option<String>,
+    /// Google's colour id for the COLOR (`COLOR_ID_BY_NAME`).
+    pub color_id: Option<String>,
 }
 
 /// `IcsFeed`.
