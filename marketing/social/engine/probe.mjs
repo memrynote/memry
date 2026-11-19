@@ -6,11 +6,12 @@
  *   node marketing/social/engine/probe.mjs [--slot N] 'await page.keyboard.press("Meta+k")'
  *   node marketing/social/engine/probe.mjs [--slot N] --shot /tmp/x.png [--width 1000] ['<js>']
  *
- * The JS runs as an async function body with `page` (Playwright) in scope; a returned value is
- * printed. Boxes are CSS px in the 1600x900 window, the coordinates scenes.mjs uses.
+ * The JS runs as an async function body with `page` (the film engine's WebDriver page, the
+ * Playwright subset of marketing/engine/wd-page.mjs) in scope; a returned value is printed. Boxes
+ * are CSS px in the window, the coordinates scenes.mjs uses (1440x810 once a take has sized it).
  */
 import { execFileSync } from 'node:child_process'
-import { chromium } from 'playwright'
+import { connect } from '../../engine/wd-page.mjs'
 
 const args = process.argv.slice(2)
 const flag = (name) => {
@@ -23,11 +24,7 @@ const shot = flag('shot')
 const width = flag('width') ?? '1000'
 const code = args[0]
 
-const browser = await chromium.connectOverCDP(`http://127.0.0.1:${9222 + 10 * slot}`)
-const page = browser
-  .contexts()[0]
-  .pages()
-  .find((p) => p.url().includes('renderer/index.html'))
+const { browser, page } = await connect({ port: 9222 + 10 * slot })
 try {
   if (code) {
     // oxlint-disable-next-line typescript/no-implied-eval -- the probe's purpose is to run ad-hoc code from the CLI against the page
@@ -76,7 +73,7 @@ try {
     console.log(list.join('\n'))
   }
   if (shot) {
-    await page.screenshot({ path: shot, scale: 'css' })
+    await page.screenshot({ path: shot })
     execFileSync('sips', ['--resampleWidth', width, shot], { stdio: 'ignore' })
     console.log(`shot: ${shot}`)
   }
