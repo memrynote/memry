@@ -1,12 +1,16 @@
-//! The canvas commands (`canvas:*` of `ipc/canvas-handlers.ts` but the asset and live-canvas
-//! ones), each one call of `memry_desktop::canvas::service`. Every write announces itself with
+//! The canvas commands (`canvas:*` of `ipc/canvas-handlers.ts`), each one call of
+//! `memry_desktop::canvas::service`, `canvas::assets` or `canvas::live`. Every write announces itself with
 //! Electron's payloads: [`CanvasCreatedEvent`], [`CanvasUpdatedEvent`], [`CanvasDeletedEvent`],
 //! and [`CanvasTooLargeEvent`] for a canvas saved here and held back from sync.
 
 use std::sync::Arc;
 
+use memry_desktop::canvas::assets::{
+    AssetError, CanvasUploadAssetInput, MemryAssetDescriptor, UploadedAsset,
+};
 use memry_desktop::canvas::folders::FolderError;
 use memry_desktop::canvas::library::{read_canvas_library, write_canvas_library};
+use memry_desktop::canvas::live::LiveCanvases;
 use memry_desktop::canvas::service::{
     CanvasCreateInput, CanvasError, CanvasService, CanvasSummaryView, CanvasUpdateInput,
     CanvasView, Update, Written,
@@ -14,7 +18,7 @@ use memry_desktop::canvas::service::{
 use memry_desktop::seams::secure_store::DeviceIdentityStore;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tauri::{AppHandle, Manager, Runtime, Wry};
+use tauri::{AppHandle, Manager, Runtime, Window, WindowEvent, Wry};
 
 use super::blocking;
 use super::error::{CommandError, ErrorKind};
@@ -329,4 +333,152 @@ pub async fn canvas_library_save<R: Runtime>(
         Ok(CanvasLibrarySaveResponse { changed })
     })
     .await
+}
+
+/// `CanvasCanUploadAssetResponse`.
+#[derive(Debug, Clone, Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct CanvasCanUploadAssetResponse {
+    pub can_upload: bool,
+}
+
+/// `CanvasGetAssetResponse`.
+#[derive(Debug, Clone, Serialize, specta::Type)]
+pub struct CanvasGetAssetResponse {
+    #[serde(rename = "ref")]
+    pub reference: Option<String>,
+}
+
+/// `CanvasListAssetsResponse`.
+#[derive(Debug, Clone, Serialize, specta::Type)]
+pub struct CanvasListAssetsResponse {
+    pub assets: Vec<MemryAssetDescriptor>,
+}
+
+/// The `{ ok }` of `canvas:live-opened` and `canvas:live-closed`.
+#[derive(Debug, Clone, Serialize, specta::Type)]
+pub struct CanvasLiveAck {
+    pub ok: bool,
+}
+
+fn asset_failed(error: AssetError) -> CommandError {
+    match error {
+        AssetError::Storage(storage) => CommandError::from_core(&storage),
+        AssetError::Write(write) => CommandError::new(
+            ErrorKind::Invalid,
+            "canvas_write_refused",
+            write.to_string(),
+        ),
+        AssetError::UploadUnavailable => CommandError::new(
+            ErrorKind::Invalid,
+            "canvas_asset_upload_unavailable",
+            error.to_string(),
+        ),
+        AssetError::Escape => CommandError::new(
+            ErrorKind::Invalid,
+            "canvas_asset_refused",
+            error.to_string(),
+        ),
+    }
+}
+
+/// `canvas:upload-asset`: only bytes this vault already stores (a dedup hit); the upload of new
+/// bytes is 30f's.
+#[tauri::command]
+#[specta::specta]
+pub async fn canvas_upload_asset<R: Runtime>(
+    app: AppHandle<R>,
+    input: CanvasUploadAssetInput,
+) -> Result<UploadedAsset, CommandError> {
+    blocking("canvas_upload_asset", move || {
+        canvases(&app)?
+            .upload_asset(&input, now_ms())
+            .map_err(asset_failed)
+    })
+    .await
+}
+
+/// `canvas:can-upload-asset`: `false` until the attachment upload lands (30f), Electron's answer
+/// with no sync. The editor then keeps new images inline in the scene.
+#[tauri::command]
+#[specta::specta]
+pub async fn canvas_can_upload_asset() -> Result<CanvasCanUploadAssetResponse, CommandError> {
+    Ok(CanvasCanUploadAssetResponse { can_upload: false })
+}
+
+/// `canvas:get-asset`.
+#[tauri::command]
+#[specta::specta]
+pub async fn canvas_get_asset<R: Runtime>(
+    app: AppHandle<R>,
+    canvas_id: String,
+    file_id: String,
+) -> Result<CanvasGetAssetResponse, CommandError> {
+    blocking("canvas_get_asset", move || {
+        let reference = canvases(&app)?
+            .asset_ref(&canvas_id, &file_id)
+            .map_err(|error| CommandError::from_core(&error))?;
+        Ok(CanvasGetAssetResponse { reference })
+    })
+    .await
+}
+
+/// `canvas:list-assets`.
+#[tauri::command]
+#[specta::specta]
+pub async fn canvas_list_assets<R: Runtime>(
+    app: AppHandle<R>,
+    canvas_id: String,
+) -> Result<CanvasListAssetsResponse, CommandError> {
+    blocking("canvas_list_assets", move || {
+        let assets = canvases(&app)?
+            .list_assets(&canvas_id)
+            .map_err(|error| CommandError::from_core(&error))?;
+        Ok(CanvasListAssetsResponse { assets })
+    })
+    .await
+}
+
+fn live<R: Runtime>(app: &AppHandle<R>) -> tauri::State<'_, LiveCanvases> {
+    app.manage(LiveCanvases::default());
+    app.state::<LiveCanvases>()
+}
+
+/// `canvas:live-opened`: the calling window now has the canvas in its editor. The window's close
+/// is hooked once, on its first open, and forgets everything it owned.
+#[tauri::command]
+#[specta::specta]
+pub async fn canvas_live_opened<R: Runtime>(
+    app: AppHandle<R>,
+    window: Window<R>,
+    canvas_id: String,
+) -> Result<CanvasLiveAck, CommandError> {
+    if canvas_id.is_empty() {
+        return Ok(CanvasLiveAck { ok: false });
+    }
+    let label = window.label().to_owned();
+    if live(&app).open(&canvas_id, &label) {
+        let app = app.clone();
+        window.on_window_event(move |event| {
+            if matches!(event, WindowEvent::Destroyed) {
+                live(&app).forget_window(&label);
+            }
+        });
+    }
+    Ok(CanvasLiveAck { ok: true })
+}
+
+/// `canvas:live-closed`: only the window that owns the canvas releases it.
+#[tauri::command]
+#[specta::specta]
+pub async fn canvas_live_closed<R: Runtime>(
+    app: AppHandle<R>,
+    window: Window<R>,
+    canvas_id: String,
+) -> Result<CanvasLiveAck, CommandError> {
+    if canvas_id.is_empty() {
+        return Ok(CanvasLiveAck { ok: false });
+    }
+    live(&app).close(&canvas_id, window.label());
+    Ok(CanvasLiveAck { ok: true })
 }

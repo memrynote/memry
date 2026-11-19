@@ -106,6 +106,8 @@ mod billing_service;
 mod block_refs;
 #[path = "byte_preservation.rs"]
 mod byte_preservation;
+#[path = "canvas_assets.rs"]
+mod canvas_assets;
 #[path = "canvas_files.rs"]
 mod canvas_files;
 #[path = "canvas_folders.rs"]
