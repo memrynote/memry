@@ -256,7 +256,6 @@ async fn the_card_events_have_the_contract_shape() {
                 "conversationId": f.conversation,
                 "toolCallId": card,
                 "name": "vault_create_task",
-                "args": { "title": SECRET },
                 "requiresDiff": true,
                 "previewKind": "fields",
                 "reviewTarget": null,
@@ -269,6 +268,29 @@ async fn the_card_events_have_the_contract_shape() {
             }),
         ]
     );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_card_event_for_a_large_write_stays_under_one_kib() {
+    let f = fixture();
+    let turn = f.agent.begin_turn(&f.conversation).unwrap();
+    let body = "x".repeat(200 * 1024);
+    let note = json!({ "title": SECRET, "content_markdown": body }).to_string();
+    let call = spawn(&f.agent, ("vault_create_note", &note), turn.grant());
+    let card = f.card(&call).await;
+    // The arguments stay with the gate for `agent_get_tool_call`.
+    let pending = f.agent.gate().pending_approval(&card).unwrap();
+    assert_eq!(pending.args["content_markdown"], body);
+    f.agent.cancel_turn(&f.conversation);
+    call.await.unwrap();
+
+    let events = f.events.lock().unwrap();
+    assert_eq!(events.len(), 2);
+    for event in events.iter() {
+        let wire = serde_json::to_string(event).unwrap();
+        assert!(wire.len() < 1024, "{} bytes", wire.len());
+        assert!(!wire.contains(SECRET), "an event carried a tool argument");
+    }
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

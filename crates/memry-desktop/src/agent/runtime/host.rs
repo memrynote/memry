@@ -19,8 +19,9 @@ use crate::registry::AppConfig;
 use crate::telemetry::events::{TelemetryEvent, to_safe_token};
 use crate::telemetry::service::Service;
 
-/// `AgentEventSchema` (`ipc-agent.ts:700`), the variants the gate raises. The runtime stage adds
-/// the rest.
+/// The approval-card events, which reach every window. They carry ids and small hints only,
+/// never the tool arguments: a card fetches those through `agent_get_tool_call`, served from
+/// `AgentWriteGate::pending_approval`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, specta::Type)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum AgentEvent {
@@ -29,7 +30,6 @@ pub enum AgentEvent {
         conversation_id: String,
         tool_call_id: String,
         name: String,
-        args: Value,
         requires_diff: bool,
         preview_kind: PreviewKind,
         review_target: Option<ReviewTarget>,
@@ -134,7 +134,6 @@ impl GateHost for VaultGateHost {
             conversation_id: approval.conversation_id.clone(),
             tool_call_id: approval.tool_call_id.clone(),
             name: approval.name.clone(),
-            args: approval.args.clone(),
             requires_diff: approval.requires_diff,
             preview_kind: approval.preview_kind,
             review_target: approval.review_target.clone(),

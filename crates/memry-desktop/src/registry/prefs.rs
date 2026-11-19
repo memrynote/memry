@@ -166,28 +166,6 @@ impl AppConfig {
         })
     }
 
-    /// Replaces one vault's standing approvals and leaves every other vault's alone.
-    pub fn set_always_allowed_tools(
-        &self,
-        vault_uuid: &str,
-        tools: &[String],
-    ) -> Result<(), ConfigError> {
-        self.update(|map| {
-            let mut all = map
-                .get("agent")
-                .and_then(|a| a.get("alwaysAllowedTools"))
-                .and_then(Value::as_object)
-                .cloned()
-                .unwrap_or_default();
-            all.insert(
-                vault_uuid.to_owned(),
-                tools.iter().cloned().map(Value::from).collect(),
-            );
-            set_in(map, "agent", "alwaysAllowedTools", Some(Value::Object(all)));
-            Ok(())
-        })
-    }
-
     /// The OCR languages the user chose, `None` when the app language decides. Entries that are
     /// not strings are dropped; the caller validates the names.
     pub fn ocr_languages(&self) -> Option<Vec<String>> {
@@ -250,7 +228,7 @@ mod tests {
         let (config, _dir) =
             config(r#"{"agent":{"accessMode":"vault_only","alwaysAllowedTools":{"work":["a"]}}}"#);
         config
-            .set_always_allowed_tools("home", &["b".into(), "c".into()])
+            .edit_always_allowed_tools("home", |tools| tools.extend(["b".into(), "c".into()]))
             .expect("write");
         let agent = config.agent();
         assert_eq!(agent.always_allowed_tools["work"], ["a"]);

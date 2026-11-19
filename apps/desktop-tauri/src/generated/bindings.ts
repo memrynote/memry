@@ -47,6 +47,12 @@ export const commands = {
 	agentEditVaultTrustList: (edit: AgentVaultTrustEdit) => __TAURI_INVOKE<AgentToolGrants>("agent_edit_vault_trust_list", { edit }),
 	/**  `agent:getLocalProviderSettings`. A locked keychain still opens the screen. */
 	agentGetLocalProviderSettings: () => __TAURI_INVOKE<AgentLocalProviderSettings>("agent_get_local_provider_settings"),
+	/**
+	 *  `agent_get_tool_call`: the name and arguments of a card on screen, which the all-window
+	 *  `tool_call_pending_approval` event leaves out. A card that settled or belongs to another
+	 *  conversation is `not_found`.
+	 */
+	agentGetToolCall: (conversationId: string, toolCallId: string) => __TAURI_INVOKE<ToolCall>("agent_get_tool_call", { conversationId, toolCallId }),
 	/**  `agent:getToolGrants`. No open vault has no grants, as Electron's unavailable handler answers. */
 	agentGetToolGrants: () => __TAURI_INVOKE<AgentToolGrants>("agent_get_tool_grants"),
 	/**
@@ -971,10 +977,11 @@ export type AddReasonInput = {
 };
 
 /**
- *  `AgentEventSchema` (`ipc-agent.ts:700`), the variants the gate raises. The runtime stage adds
- *  the rest.
+ *  The approval-card events, which reach every window. They carry ids and small hints only,
+ *  never the tool arguments: a card fetches those through `agent_get_tool_call`, served from
+ *  `AgentWriteGate::pending_approval`.
  */
-export type AgentEvent = { kind: "tool_call_pending_approval"; conversationId: string; toolCallId: string; name: string; args: Value; requiresDiff: boolean; previewKind: PreviewKind; reviewTarget: ReviewTarget | null } | { kind: "tool_call_failed"; conversationId: string; toolCallId: string; error: AgentEventError };
+export type AgentEvent = { kind: "tool_call_pending_approval"; conversationId: string; toolCallId: string; name: string; requiresDiff: boolean; previewKind: PreviewKind; reviewTarget: ReviewTarget | null } | { kind: "tool_call_failed"; conversationId: string; toolCallId: string; error: AgentEventError };
 
 export type AgentEventEmittedEvent = AgentEvent;
 
@@ -3866,6 +3873,15 @@ export type TestConnectionResult = {
 export type TitleMatchView = {
 	id: string,
 	path: string,
+};
+
+/**
+ *  What `agent_get_tool_call` serves for a card on screen: the arguments the all-window event
+ *  leaves out.
+ */
+export type ToolCall = {
+	name: string,
+	args: Value,
 };
 
 /**  `FileMetadata.transcriptionStatus`. */

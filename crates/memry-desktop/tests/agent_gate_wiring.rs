@@ -2,7 +2,7 @@
 //! `Session` (close, switch, quit), the turn lock and the stop. A pending approval never outlives
 //! the turn, the vault or the app that raised it, and a stopped backend raises no new card.
 
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -10,7 +10,7 @@ use async_trait::async_trait;
 use memry_desktop::agent::mcp::{CallContext, ToolError, ToolRegistry, ToolReply, VaultToolHost};
 use memry_desktop::agent::runtime::{
     AgentService, ApprovalLabel, CANCELLED, DENIED, GateHost, NO_TURN, PendingApproval,
-    ToolApprovalMode, TurnError, VaultAgent, stop_chat_server,
+    ToolApprovalMode, ToolCall, TurnError, VaultAgent, stop_chat_server,
 };
 use memry_desktop::registry::{AppConfig, VaultRegistry};
 use memry_desktop::session::{OpenSource, Session};
@@ -81,6 +81,11 @@ struct App {
     requested: mpsc::UnboundedReceiver<PendingApproval>,
     failed: Arc<Mutex<Vec<(String, String, String)>>>,
     decided: Arc<Mutex<Vec<ApprovalLabel>>>,
+    /// Agent builds so far; `fail_next` makes the next one fail.
+    builds: Arc<AtomicUsize>,
+    fail_next: Arc<AtomicBool>,
+    /// Whether an agent was still installed when a close hook registered before the agent's ran.
+    probe: Arc<Mutex<Vec<bool>>>,
 }
 
 /// A real session with the agent attached as the app attaches it.
@@ -102,7 +107,16 @@ fn app() -> App {
         Arc::clone(&failed),
         Arc::clone(&decided),
     );
+    let (builds, fail_next) = (
+        Arc::new(AtomicUsize::new(0)),
+        Arc::new(AtomicBool::new(false)),
+    );
+    let (counted, failing) = (Arc::clone(&builds), Arc::clone(&fail_next));
     let service = AgentService::new(Arc::new(move |open| {
+        counted.fetch_add(1, Ordering::SeqCst);
+        if failing.swap(false, Ordering::SeqCst) {
+            return None;
+        }
         let host = Arc::new(Host {
             requested: cards.clone(),
             failed: Arc::clone(&failures),
@@ -111,6 +125,16 @@ fn app() -> App {
         let registry = Arc::new(ToolRegistry::new(tools.clone()));
         Some(VaultAgent::new(open.vault_id.clone(), registry, host))
     }));
+    // Registered first, as the at-rest key's hook is: it runs after the agent's.
+    let probe = Arc::new(Mutex::new(Vec::new()));
+    let (seen, watched) = (Arc::clone(&probe), Arc::downgrade(&service));
+    session.on_close(
+        "probe",
+        Arc::new(move |_| {
+            let installed = watched.upgrade().and_then(|s| s.current()).is_some();
+            seen.lock().unwrap().push(installed);
+        }),
+    );
     service.attach(&session);
     App {
         _dir: dir,
@@ -122,6 +146,9 @@ fn app() -> App {
         requested,
         failed,
         decided,
+        builds,
+        fail_next,
+        probe,
     }
 }
 
@@ -164,7 +191,17 @@ fn denied_with(message: &str) -> Option<(String, String)> {
 impl App {
     fn open(&self, path: &std::path::Path) -> Arc<VaultAgent> {
         self.session.open(path, OpenSource::Select).unwrap();
-        self.service.current().expect("the open vault has an agent")
+        self.started()
+    }
+
+    fn started(&self) -> Arc<VaultAgent> {
+        self.service
+            .ensure_started(&self.session)
+            .expect("the open vault has an agent")
+    }
+
+    fn builds(&self) -> usize {
+        self.builds.load(Ordering::SeqCst)
     }
 
     /// The card `call` raised; a call that ends without one fails the test.
@@ -211,6 +248,18 @@ async fn a_vault_close_denies_its_open_approval_and_stops_its_agent() {
     assert_eq!(refusal(&late), denied_with(NO_GATE));
     app.no_new_card();
     assert_eq!(app.written(), 0);
+    // A backend that registers after the close is killed as it registers.
+    let killed = Arc::new(AtomicBool::new(false));
+    let flag = Arc::clone(&killed);
+    let _backend = agent.track_backend(
+        "conversation-1",
+        Arc::new(move || flag.store(true, Ordering::SeqCst)),
+    );
+    assert!(
+        killed.load(Ordering::SeqCst),
+        "a late backend outlived the close"
+    );
+    assert_eq!(*app.probe.lock().unwrap(), [false]);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -225,7 +274,13 @@ async fn a_vault_switch_denies_the_old_vaults_approval_and_builds_a_fresh_agent(
 
     let result = tokio::time::timeout(Duration::from_secs(5), call).await;
     assert_eq!(refusal(&result.unwrap().unwrap()), denied_with(DENIED));
-    let new = app.service.current().expect("the new vault has an agent");
+    // The old agent was gone before the hooks registered ahead of it (the at-rest key) ran.
+    assert_eq!(*app.probe.lock().unwrap(), [false]);
+    assert!(
+        app.service.current().is_none(),
+        "the switch started an agent"
+    );
+    let new = app.started();
     assert!(!Arc::ptr_eq(&old, &new));
     assert_ne!(old.vault_id(), new.vault_id());
     // The old vault's turn grant authorises nothing in the new one.
@@ -262,6 +317,10 @@ async fn quit_denies_open_approvals_in_stop_chat_server() {
     assert_eq!(refusal(&result.unwrap().unwrap()), denied_with(DENIED));
     assert!(killed.load(Ordering::SeqCst), "the backend outlived quit");
     assert!(app.service.current().is_none());
+    assert!(
+        app.service.ensure_started(&app.session).is_none(),
+        "an agent started after quit"
+    );
     // `close-vault` behind it finds nothing left to stop.
     app.session.close();
     assert_eq!(*app.decided.lock().unwrap(), [ApprovalLabel::Abandoned]);
@@ -331,7 +390,10 @@ async fn stop_kills_the_backend_and_no_new_card_appears() {
     let result = tokio::time::timeout(Duration::from_secs(5), call).await;
     assert_eq!(refusal(&result.unwrap().unwrap()), denied_with(DENIED));
     // The backend got its kill but answered one more write before it died: no card.
-    let after = spawn(&agent, TASK, turn.grant()).await.unwrap();
+    let after = tokio::time::timeout(Duration::from_secs(5), spawn(&agent, TASK, turn.grant()))
+        .await
+        .expect("a write after the stop hung")
+        .unwrap();
     assert_eq!(refusal(&after), denied_with(NO_TURN));
     app.no_new_card();
     // A backend the turn registers after the stop is killed as it registers.
@@ -346,6 +408,53 @@ async fn stop_kills_the_backend_and_no_new_card_appears() {
     );
     assert_eq!(refusal(&kept.await.unwrap()), None);
     assert_eq!(app.written(), 1);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn the_agent_starts_on_first_use_and_retries_a_failed_build() {
+    let app = app();
+    assert!(app.service.ensure_started(&app.session).is_none());
+    app.session
+        .open(&app.vault_a.clone(), OpenSource::Select)
+        .unwrap();
+    assert_eq!(app.builds(), 0, "the vault open built an agent");
+    assert!(app.service.current().is_none());
+
+    app.fail_next.store(true, Ordering::SeqCst);
+    assert!(app.service.ensure_started(&app.session).is_none());
+    let agent = app.started();
+    assert!(Arc::ptr_eq(&agent, &app.started()));
+    assert_eq!(app.builds(), 2);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_card_serves_its_arguments_to_its_own_conversation_only() {
+    let mut app = app();
+    let agent = app.open(&app.vault_a.clone());
+    let turn = agent.begin_turn("conversation-1").unwrap();
+    let mut call = spawn(&agent, TASK, turn.grant());
+    let card = app.card(&mut call).await;
+
+    assert_eq!(
+        app.service
+            .pending_tool_call("conversation-1", &card.tool_call_id),
+        Some(ToolCall {
+            name: TASK.0.to_owned(),
+            args: json!({ "title": "Task" }),
+        })
+    );
+    assert_eq!(
+        app.service
+            .pending_tool_call("conversation-2", &card.tool_call_id),
+        None
+    );
+    agent.cancel_turn("conversation-1");
+    call.await.unwrap();
+    assert_eq!(
+        app.service
+            .pending_tool_call("conversation-1", &card.tool_call_id),
+        None
+    );
 }
 
 #[path = "agent_gate_wiring_host.rs"]

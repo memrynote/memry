@@ -1,12 +1,14 @@
-//! The agent of the open vault and its place in the vault lifecycle. Each open builds one
-//! [`VaultAgent`] (its tool registry with the write gate installed, its turns); close, switch and
-//! quit shut it down, so no grant, card or backend outlives its vault. The port of Electron's
-//! `startVaultAgentServices` / `stopVaultAgentServices` around `AgentRuntime.install` and
-//! `killAll` (`runtime.ts:327-345`).
+//! The agent of the open vault and its place in the vault lifecycle. The first use builds one
+//! [`VaultAgent`] for the open vault (its tool registry with the write gate installed, its
+//! turns); close, switch and quit shut it down, so no grant, card or backend outlives its vault.
+//! The port of Electron's `lazy-services.ts` and `startVaultAgentServices` /
+//! `stopVaultAgentServices` around `AgentRuntime.install` and `killAll` (`runtime.ts:327-345`).
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, Weak};
 
 use async_trait::async_trait;
+use serde::Serialize;
 use serde_json::Value;
 
 use super::turns::{KillBackend, TrackedBackend, Turn, TurnError, Turns};
@@ -14,7 +16,7 @@ use super::write_gate::{AgentWriteGate, GateHost};
 use crate::agent::mcp::{
     CallContext, ToolError, ToolErrorCode, ToolRegistry, ToolReply, VaultToolHost,
 };
-use crate::session::{OpenStage, OpenVault, Session};
+use crate::session::{OpenVault, Session};
 use crate::shell::shutdown::StepFn;
 
 pub struct VaultAgent {
@@ -84,12 +86,22 @@ impl VaultToolHost for ToolsNotPorted {
     }
 }
 
-/// Builds the agent of a vault that just opened; `None` leaves the vault without one.
+/// What `agent_get_tool_call` serves for a card on screen: the arguments the all-window event
+/// leaves out.
+#[derive(Debug, Clone, PartialEq, Serialize, specta::Type)]
+pub struct ToolCall {
+    pub name: String,
+    pub args: Value,
+}
+
+/// Builds the agent of the open vault; `None` leaves it without one until the next use.
 pub type AgentFactory = Arc<dyn Fn(&OpenVault) -> Option<VaultAgent> + Send + Sync>;
 
 pub struct AgentService {
     factory: AgentFactory,
     current: Mutex<Option<Arc<VaultAgent>>>,
+    /// Set by `stop-chat-server`: the app is quitting and no use starts an agent again.
+    quitting: AtomicBool,
 }
 
 impl AgentService {
@@ -97,6 +109,7 @@ impl AgentService {
         Arc::new(Self {
             factory,
             current: Mutex::new(None),
+            quitting: AtomicBool::new(false),
         })
     }
 
@@ -106,46 +119,61 @@ impl AgentService {
             .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 
-    /// Builds an agent for every vault `session` opens, the one open now included, and shuts it
-    /// down on every close (a switch closes first). Register it after the at-rest key's close
-    /// hook, so the agent lets go of the vault key before the key is cleared.
+    /// Shuts the agent down on every close (a switch closes first). Register it after the
+    /// at-rest key's close hook, so the agent lets go of the vault key before the key is cleared.
     pub fn attach(self: &Arc<Self>, session: &Session) {
-        let opening = Arc::downgrade(self);
-        let closing = Arc::downgrade(self);
-        session.attach_lifecycle(
+        let service = Arc::downgrade(self);
+        session.on_close(
             "agent",
-            OpenStage::SyncStart,
-            Arc::new(move |open| {
-                if let Some(service) = Weak::upgrade(&opening) {
-                    service.start(open);
-                }
-                Ok(())
-            }),
             Arc::new(move |_| {
-                if let Some(service) = Weak::upgrade(&closing) {
+                if let Some(service) = Weak::upgrade(&service) {
                     service.stop();
                 }
             }),
         );
     }
 
+    /// The open vault's agent, built on the first use (`ensureLazyAgentServicesStarted`). Runs
+    /// behind the vault lifecycle, so no close slips between the build and the install. `None`
+    /// when no vault is open, the build failed (the next use tries again) or the app is quitting.
+    pub fn ensure_started(&self, session: &Session) -> Option<Arc<VaultAgent>> {
+        session
+            .with_current(|open| {
+                let mut slot = self.current_slot();
+                // Read under the slot: `stop-chat-server` sets it before it takes the slot.
+                if self.quitting.load(Ordering::SeqCst) {
+                    return None;
+                }
+                if let Some(agent) = slot.as_ref().filter(|a| a.vault_id == open.vault_id) {
+                    return Some(Arc::clone(agent));
+                }
+                let agent = (self.factory)(open).map(Arc::new);
+                if let Some(previous) = std::mem::replace(&mut *slot, agent.clone()) {
+                    previous.shutdown();
+                }
+                agent
+            })
+            .flatten()
+    }
+
     pub fn current(&self) -> Option<Arc<VaultAgent>> {
         self.current_slot().clone()
     }
 
-    /// Shuts the open vault's agent down (vault close, and `stop-chat-server` at quit).
+    /// The card `tool_call_id` of `conversation_id` on screen now, with its arguments.
+    pub fn pending_tool_call(&self, conversation_id: &str, tool_call_id: &str) -> Option<ToolCall> {
+        let approval = self.current()?.gate.pending_approval(tool_call_id)?;
+        (approval.conversation_id == conversation_id).then(|| ToolCall {
+            name: approval.name,
+            args: approval.args,
+        })
+    }
+
+    /// Shuts the open vault's agent down (vault close).
     pub fn stop(&self) {
         let agent = self.current_slot().take();
         if let Some(agent) = agent {
             agent.shutdown();
-        }
-    }
-
-    fn start(&self, open: &OpenVault) {
-        let agent = (self.factory)(open).map(Arc::new);
-        let previous = std::mem::replace(&mut *self.current_slot(), agent);
-        if let Some(previous) = previous {
-            previous.shutdown();
         }
     }
 }
@@ -156,6 +184,7 @@ pub fn stop_chat_server(service: Arc<AgentService>) -> StepFn {
     Arc::new(move |_, _| {
         let service = Arc::clone(&service);
         Box::pin(async move {
+            service.quitting.store(true, Ordering::SeqCst);
             service.stop();
             Ok(())
         })

@@ -323,6 +323,13 @@ impl Session {
         }
     }
 
+    /// Runs `f` on the open vault, queued behind a running open, close or switch, so the vault
+    /// stays open until `f` returns. `None` when no vault is open; never call it from a hook.
+    pub fn with_current<T>(&self, f: impl FnOnce(&OpenVault) -> T) -> Option<T> {
+        let _queue = lock(&self.inner.lifecycle);
+        self.current().map(|open| f(&open))
+    }
+
     /// Registered before a vault opens; each open starts a lane for it.
     pub fn register_projector(&self, projector: Arc<dyn Projector>) {
         lock(&self.inner.projectors).push(projector);

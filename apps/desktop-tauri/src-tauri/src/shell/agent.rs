@@ -1,7 +1,8 @@
-//! The agent of the open vault (Step 28d, #3545): on every vault open the app builds its tool
-//! registry with the write gate installed over the production gate host, and on every close,
-//! switch and quit (`stop-chat-server`) shuts it down. Built after account sync, which owns the
-//! at-rest key and its close hook: the agent's close hook then runs first and lets go of the key.
+//! The agent of the open vault (Step 28d, #3545): the first use builds its tool registry with the
+//! write gate installed over the production gate host (`AgentService::ensure_started`), and
+//! every close, switch and quit (`stop-chat-server`) shuts it down. Attached after account sync,
+//! which owns the at-rest key and its close hook: the agent's close hook then runs first and lets
+//! go of the key.
 
 use std::sync::Arc;
 
@@ -85,8 +86,7 @@ fn start(app: &AppHandle<Wry>) -> Result<(), CommandError> {
         ))
     };
     let service = AgentService::new(Arc::new(build));
-    app.manage(service.clone());
-    // Off the boot thread: the attach waits behind a running open and reads the keychain.
-    tauri::async_runtime::spawn_blocking(move || service.attach(&session));
+    service.attach(&session);
+    app.manage(service);
     Ok(())
 }

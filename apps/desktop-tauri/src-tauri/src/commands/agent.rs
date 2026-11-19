@@ -2,11 +2,13 @@
 //! `agent:listLocalModels` channels of Electron's `ipc/agent-handlers.ts`. Each command is one
 //! call of `memry_desktop::ai::local_provider`; the key stays in Rust and the renderer learns
 //! only whether one is stored. Also the vault's standing tool approvals that Settings lists and
-//! revokes (Step 28d, #3545).
+//! revokes, and the arguments of an approval card (Step 28d, #3545).
 
 use std::sync::Arc;
 
-use memry_desktop::agent::runtime::{edit_vault_trust_list, vault_trust_list};
+use memry_desktop::agent::runtime::{
+    AgentService, ToolCall, edit_vault_trust_list, vault_trust_list,
+};
 use memry_desktop::ai::catalog::ProbeClient;
 use memry_desktop::ai::local_provider::probe::{
     self, AgentLocalModelList, AgentLocalProviderProbeResult,
@@ -231,4 +233,25 @@ pub async fn agent_edit_vault_trust_list<R: Runtime>(
             })
     })
     .await
+}
+
+/// `agent_get_tool_call`: the name and arguments of a card on screen, which the all-window
+/// `tool_call_pending_approval` event leaves out. A card that settled or belongs to another
+/// conversation is `not_found`.
+#[tauri::command]
+#[specta::specta]
+pub async fn agent_get_tool_call<R: Runtime>(
+    app: AppHandle<R>,
+    conversation_id: String,
+    tool_call_id: String,
+) -> Result<ToolCall, CommandError> {
+    app.try_state::<Arc<AgentService>>()
+        .and_then(|service| service.pending_tool_call(&conversation_id, &tool_call_id))
+        .ok_or_else(|| {
+            CommandError::new(
+                ErrorKind::NotFound,
+                "agent_tool_call_not_found",
+                "No approval is pending for this tool call.",
+            )
+        })
 }
