@@ -17,6 +17,10 @@
 //! | directories are adopted, renamed portable, and restored           | `reconcile.ts:127-320,600-712` |
 //! | a deleted folder's emptied directory goes, any other stays        | `reconcile.ts:322-332,640-668` |
 //! | the removals take only empty directories, never the root          | `scene-file.ts:340-465`        |
+//! | a title or icon change never marks an edit on disk as seen        | departure: one copy in Electron |
+//! | a document that is not a drawing is left alone on every open      | departure: one copy in Electron |
+//! | a synced edit survives a move outside the app, an edit with it    | departure: one copy in Electron |
+//! | a document adopted while the listing ran is not adopted again     | `reconcile.ts:497-588`         |
 
 use std::fs;
 
@@ -26,7 +30,7 @@ use memry_desktop::canvas::dirs::{
 };
 use memry_desktop::canvas::reconcile::Reconciled;
 
-use memry_desktop::canvas::service::Update;
+use memry_desktop::canvas::service::{CanvasUpdateInput, Update};
 
 use crate::canvas_service::{NOW, World, scene, world};
 
@@ -304,4 +308,128 @@ fn a_save_from_a_read_before_a_synced_edit_keeps_that_edit() {
     let copy = conflict_copy.expect("the synced edit is kept as a copy");
     assert!(copy.canvas.scene.contains("synced"));
     assert!(w.scene_of(&copy.canvas.summary.id).contains("synced"));
+}
+
+fn retitle(w: &World, id: &str, title: Option<&str>, icon: Option<&str>) {
+    let input = CanvasUpdateInput {
+        id: id.to_owned(),
+        title: title.map(|title| Some(title.to_owned())),
+        icon: icon.map(|icon| Some(icon.to_owned())),
+        ..CanvasUpdateInput::default()
+    };
+    assert!(matches!(
+        w.canvases.update(&input, NOW + 20).unwrap(),
+        Update::Saved { .. }
+    ));
+}
+
+fn conflict_copy_of(w: &World, title: &str) -> Option<String> {
+    w.canvases
+        .list()
+        .unwrap()
+        .into_iter()
+        .find(|c| c.title.as_deref() == Some(title))
+        .map(|c| w.scene_of(&c.id))
+}
+
+#[test]
+fn an_icon_change_never_marks_an_edit_made_on_disk_as_seen() {
+    let w = world();
+    let id = w.create("Plan", None, "ink").canvas.summary.id;
+    w.put("canvases/Plan.excalidraw", &on_disk(&id, "edited"));
+    retitle(&w, &id, None, Some("🎨"));
+
+    assert!(w.scene_of(&id).contains("edited"));
+    assert!(w.file("canvases/Plan.excalidraw").contains("edited"));
+    assert!(w.core.canvas(id).unwrap().unwrap().scene.contains("edited"));
+}
+
+#[test]
+fn a_document_that_is_not_a_drawing_is_left_alone_on_every_open() {
+    let w = world();
+    let id = w.create("Plan", None, "ink").canvas.summary.id;
+    w.put("canvases/Plan.excalidraw", "{ half written");
+
+    w.scene_of(&id);
+    w.scene_of(&id);
+    w.reconcile();
+    assert_eq!(w.file("canvases/Plan.excalidraw"), "{ half written");
+    assert!(w.core.canvas(id).unwrap().unwrap().scene.contains("ink"));
+}
+
+#[test]
+fn a_synced_edit_then_a_move_outside_the_app_keeps_the_synced_edit() {
+    let w = world();
+    let id = w.create("Plan", None, "ink").canvas.summary.id;
+    w.core.set_scene(id.clone(), scene("synced")).unwrap();
+    fs::create_dir_all(w.vault.join("canvases/Work")).unwrap();
+    fs::rename(
+        w.vault.join("canvases/Plan.excalidraw"),
+        w.vault.join("canvases/Work/Moved.excalidraw"),
+    )
+    .unwrap();
+
+    assert_eq!(w.reconcile().repointed, 1);
+    assert!(
+        w.core
+            .canvas(id.clone())
+            .unwrap()
+            .unwrap()
+            .scene
+            .contains("synced")
+    );
+    assert!(w.file("canvases/Work/Moved.excalidraw").contains("synced"));
+    assert_eq!(w.titles(), [("Plan".to_owned(), Some("Work".to_owned()))]);
+}
+
+#[test]
+fn a_synced_edit_then_a_move_and_an_edit_outside_the_app_keeps_both() {
+    let w = world();
+    let id = w.create("Plan", None, "ink").canvas.summary.id;
+    w.core.set_scene(id.clone(), scene("synced")).unwrap();
+    fs::remove_file(w.vault.join("canvases/Plan.excalidraw")).unwrap();
+    w.put("canvases/Moved.excalidraw", &on_disk(&id, "edited"));
+
+    // Found by its id on open, before any reconcile re-points it.
+    assert!(w.scene_of(&id).contains("synced"));
+    assert!(w.file("canvases/Moved.excalidraw").contains("synced"));
+    let copy = conflict_copy_of(&w, "Plan (conflict copy)").expect("the disk edit is kept");
+    assert!(copy.contains("edited"));
+}
+
+#[test]
+fn a_synced_edit_then_a_title_change_then_an_edit_on_disk_keeps_both() {
+    let w = world();
+    let id = w.create("Plan", None, "ink").canvas.summary.id;
+    w.core.set_scene(id.clone(), scene("synced")).unwrap();
+    retitle(&w, &id, Some("Renamed"), None);
+    w.put("canvases/Renamed.excalidraw", &on_disk(&id, "edited"));
+
+    assert_eq!(w.reconcile().conflict_copies, 1);
+    assert!(w.core.canvas(id).unwrap().unwrap().scene.contains("synced"));
+    assert!(w.file("canvases/Renamed.excalidraw").contains("synced"));
+    let copy = conflict_copy_of(&w, "Renamed (conflict copy)").expect("the disk edit is kept");
+    assert!(copy.contains("edited"));
+}
+
+#[test]
+fn a_document_adopted_while_the_listing_ran_is_not_adopted_again() {
+    let w = world();
+    w.put("canvases/Plan.excalidraw", &scene("dropped"));
+    let raced = std::cell::Cell::new(false);
+    let done = w
+        .canvases
+        .reconcile(NOW + 100, &|| {
+            if !raced.replace(true) {
+                // Another adopter (an earlier open's reconcile, the watcher) takes it first.
+                assert_eq!(w.reconcile().adopted, 1);
+            }
+            false
+        })
+        .unwrap();
+
+    assert_eq!(done.adopted, 0);
+    let all = w.canvases.list().unwrap();
+    assert_eq!(all.len(), 1);
+    assert_eq!(w.sidecar_id("canvases/Plan.excalidraw"), all[0].id);
 }

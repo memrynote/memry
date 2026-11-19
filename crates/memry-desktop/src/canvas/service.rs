@@ -264,14 +264,15 @@ impl CanvasService {
                 sha256,
                 unreadable,
             };
-            Ok(Some((view, settled.scene_changed())))
+            Ok(Some((view, settled)))
         })?;
-        let Some((view, changed)) = view else {
+        let Some((view, settled)) = view else {
             return Ok(None);
         };
-        if changed {
+        if settled.scene_changed() {
             self.rewrite_edges(id, &view.scene)?;
         }
+        self.index_settled_copy(&settled)?;
         Ok(Some(view))
     }
 
@@ -330,15 +331,12 @@ impl CanvasService {
             now_ms,
         )
         .inspect_err(|_| self.discard(&path, &sha256))?;
-        files::put(
-            conn,
-            &id,
-            &FileRow {
-                path,
-                sha256: sha256.clone(),
-            },
-            now_ms,
-        )?;
+        let row = FileRow {
+            path,
+            sha256: sha256.clone(),
+            record_sha256: Some(files::scene_sha256(&saved.canvas.scene)),
+        };
+        files::put(conn, &id, &row, now_ms)?;
         Ok(written(
             saved.canvas,
             strip_file_meta(&text),
@@ -406,15 +404,12 @@ impl CanvasService {
                 self.discard(&path, &sha256);
                 return Ok(None);
             };
-            files::put(
-                conn,
-                &copy_id,
-                &FileRow {
-                    path,
-                    sha256: sha256.clone(),
-                },
-                now_ms,
-            )?;
+            let row = FileRow {
+                path,
+                sha256: sha256.clone(),
+                record_sha256: Some(files::scene_sha256(&saved.canvas.scene)),
+            };
+            files::put(conn, &copy_id, &row, now_ms)?;
             Ok(Some(written(
                 saved.canvas,
                 strip_file_meta(&text),
