@@ -33,7 +33,7 @@ use chrono::{DateTime, Local, Utc};
 use memry_core::api::notes_write::NotesWriter;
 use memry_core::seams::secure_store::SecureStore;
 
-use super::{Manifest, Rebase, SandboxError};
+use super::{Manifest, Rebase, SandboxError, device_zone_name};
 use crate::registry::vault_icon;
 
 pub use plan::{MAX_DEPTH, MAX_FILE_BYTES, MAX_FILES};
@@ -119,7 +119,7 @@ fn build(
     let mut manifest = template.manifest.clone();
     let rebase = options
         .rebase_dates
-        .then(|| Rebase::for_manifest(&manifest, options.now, Local));
+        .then(|| Rebase::for_manifest(&manifest, options.now, Local, device_zone_name()));
     if let Some(rebase) = &rebase {
         rebase.manifest(&mut manifest);
     }

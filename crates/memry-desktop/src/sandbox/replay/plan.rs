@@ -70,6 +70,12 @@ pub(super) fn plan<Tz: TimeZone>(
             .map_or(Cow::Borrowed(text), |r| r.text(text))
             .into_owned()
     };
+    // A file's text also moves a canvas's timestamps ([`Rebase::file`]).
+    let moved_file = |path: &str, text: &str| -> String {
+        rebase
+            .map_or(Cow::Borrowed(text), |r| r.file(path, text))
+            .into_owned()
+    };
     let template_rows = notes_of(&template.manifest);
     let rows = notes_of(manifest);
 
@@ -128,7 +134,7 @@ pub(super) fn plan<Tz: TimeZone>(
         let content = if is_text(path) {
             let bytes = fs::read(&source_path).map_err(|error| io_error(&source_path, &error))?;
             match String::from_utf8(bytes) {
-                Ok(raw) => Content::Text(rewrite(&moved(&raw))),
+                Ok(raw) => Content::Text(rewrite(&moved_file(path, &raw))),
                 Err(raw) => Content::Bytes(raw.into_bytes()),
             }
         } else {
@@ -225,7 +231,7 @@ fn asset(template: &Template, name: &str, sha256: &str) -> Result<Vec<u8>, Sandb
 
 /// The template vault's files, vault-relative and sorted.
 fn walk(root: &Path) -> Result<Vec<String>, SandboxError> {
-    let too_large = |what: String| SandboxError::TemplateTooLarge(what);
+    let too_large = SandboxError::TooLarge;
     let mut found = Vec::new();
     let mut stack = vec![(root.to_path_buf(), String::new(), 0usize)];
     while let Some((dir, prefix, depth)) = stack.pop() {

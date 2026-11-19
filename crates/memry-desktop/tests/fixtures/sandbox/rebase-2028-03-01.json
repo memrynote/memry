@@ -1,5 +1,6 @@
 {
   "now": "2028-03-01T12:00:00.000Z",
+  "tz": "UTC",
   "paths": [
     ".memry/config.json",
     ".memry/properties.md",
@@ -545,6 +546,38 @@
       "2028-03-26T00:00:00.000Z",
       "2028-04-06T00:00:00.000Z"
     ],
+    "calendar_events.timezone": [
+      "UTC",
+      "UTC",
+      "UTC",
+      "UTC",
+      "UTC",
+      "UTC",
+      "UTC",
+      "UTC",
+      "UTC",
+      "UTC",
+      "UTC",
+      "UTC",
+      "UTC",
+      "UTC",
+      "UTC",
+      "UTC",
+      "UTC",
+      "UTC",
+      "UTC",
+      "UTC",
+      "UTC",
+      "UTC",
+      "UTC",
+      "UTC",
+      "UTC",
+      "UTC",
+      "UTC",
+      "UTC",
+      "UTC",
+      "UTC"
+    ],
     "reminders.remind_at": [
       "2028-02-25T16:00:00.000Z",
       "2028-02-29T09:00:00.000Z",
@@ -581,6 +614,23 @@
       "2028-02-28",
       "2028-02-29",
       "2028-03-01"
+    ]
+  },
+  "repeats": {
+    "Post standup notes": "2028-03-01",
+    "Weekly review": "2028-03-03",
+    "Pay coworking rent": "2028-04-01",
+    "Call Mum": "2028-03-05",
+    "Water the fig tree": "2028-03-02"
+  },
+  "canvasTimes": {
+    "canvases/Aurora/Aurora launch map.excalidraw": [
+      1835524800000,
+      1835524800000
+    ],
+    "canvases/Essay/Space race essay board.excalidraw": [
+      1835524800000,
+      1835524800000
     ]
   }
 }

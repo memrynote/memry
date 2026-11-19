@@ -15,12 +15,14 @@ pub mod rebase;
 pub mod replay;
 
 pub use manifest::{AssetCopy, Manifest, Row, TemplateInfo};
-pub use rebase::Rebase;
+pub use rebase::{Rebase, device_zone_name};
 pub use replay::{ReplayOptions, SeedCounts, Template, replay};
 
 /// Why a sandbox template or marker could not be used.
 #[derive(Debug, thiserror::Error)]
 pub enum SandboxError {
+    #[error("sandbox template is too large: {0}")]
+    TooLarge(String),
     #[error("sandbox template is not valid JSON: {0}")]
     Json(#[from] serde_json::Error),
     #[error("sandbox template version {0} is not supported")]
@@ -39,8 +41,6 @@ pub enum SandboxError {
     BadRow(String),
     #[error("sandbox template lists {0:?}, which its vault folder lacks")]
     MissingFile(String),
-    #[error("sandbox template is too large: {0}")]
-    TemplateTooLarge(String),
     #[error("sandbox target {0:?} is not a folder name the replay may write")]
     UnsafeTarget(String),
     #[error("sandbox target {0:?} holds files; replace was not asked for")]

@@ -17,6 +17,21 @@ use super::SandboxError;
 /// The only template version this build reads.
 pub const MANIFEST_VERSION: u32 = 1;
 
+/// The zone every template is exported in (`bin/sandbox.mjs` sets `TZ=UTC`).
+pub const TEMPLATE_ZONE: &str = "UTC";
+
+/// Largest `seed.json` or `manifest.json` parsed; the bundled `seed.json` is about 250 KiB.
+pub const MAX_TEMPLATE_BYTES: usize = 16 * 1024 * 1024;
+
+/// Columns holding a vault-relative path (or, for `filed_to`, a path or a task id).
+const PATH_COLUMNS: &[(&str, &str)] = &[
+    ("note_metadata", "path"),
+    ("folder_configs", "path"),
+    ("inbox_items", "attachment_path"),
+    ("inbox_items", "thumbnail_path"),
+    ("inbox_items", "filed_to"),
+];
+
 /// Tables of `data.db` a template may carry rows for (the exporter's `DATA_TABLES`).
 pub const DATA_TABLES: &[&str] = &[
     "settings",
@@ -82,6 +97,7 @@ pub struct Manifest {
 impl Manifest {
     /// Parses and validates `seed.json`.
     pub fn parse(bytes: &[u8]) -> Result<Self, SandboxError> {
+        check_size(bytes)?;
         let manifest: Self = serde_json::from_slice(bytes)?;
         manifest.validate()?;
         Ok(manifest)
@@ -92,6 +108,15 @@ impl Manifest {
         for (tables, known) in [(&self.data, DATA_TABLES), (&self.index, INDEX_TABLES)] {
             if let Some(table) = tables.keys().find(|table| !known.contains(&table.as_str())) {
                 return Err(SandboxError::UnknownTable(table.clone()));
+            }
+        }
+        for (table, column) in PATH_COLUMNS {
+            for row in self.data.get(*table).into_iter().flatten() {
+                match row.get(*column) {
+                    None | Some(serde_json::Value::Null) => {}
+                    Some(serde_json::Value::String(path)) => check_relative_path(path)?,
+                    Some(other) => return Err(SandboxError::UnsafePath(other.to_string())),
+                }
             }
         }
         for copy in &self.assets {
@@ -135,6 +160,7 @@ pub struct TemplateInfo {
 
 impl TemplateInfo {
     pub fn parse(bytes: &[u8]) -> Result<Self, SandboxError> {
+        check_size(bytes)?;
         let info: Self = serde_json::from_slice(bytes)?;
         check_header(info.version, &info.generated_at, &info.timezone)?;
         Ok(info)
@@ -146,11 +172,21 @@ impl TemplateInfo {
     }
 }
 
+fn check_size(bytes: &[u8]) -> Result<(), SandboxError> {
+    if bytes.len() > MAX_TEMPLATE_BYTES {
+        return Err(SandboxError::TooLarge(format!(
+            "{} bytes, over the {MAX_TEMPLATE_BYTES} byte limit",
+            bytes.len()
+        )));
+    }
+    Ok(())
+}
+
 fn check_header(version: u32, generated_at: &str, timezone: &str) -> Result<(), SandboxError> {
     if version != MANIFEST_VERSION {
         return Err(SandboxError::UnsupportedVersion(version));
     }
-    if timezone != "UTC" {
+    if timezone != TEMPLATE_ZONE {
         return Err(SandboxError::UnsupportedTimezone(timezone.to_owned()));
     }
     if parse_instant(generated_at).is_none() {

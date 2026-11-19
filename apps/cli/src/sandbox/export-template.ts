@@ -15,6 +15,8 @@
 // date tokens, dated database values) to
 // crates/memry-desktop/tests/fixtures/sandbox/rebase-<date>.json. The Rust
 // rebase of the committed template to the same moment must reproduce them.
+// `--tz=<IANA name>` runs that generator in another zone and adds the zone
+// to the file name (rebase-<date>-<zone>.json).
 import { createHash } from 'node:crypto'
 import fs from 'node:fs/promises'
 import os from 'node:os'
@@ -27,6 +29,10 @@ import { getDataDbPath, getIndexDbPath } from '../app-core/paths.ts'
 
 const TEMPLATE_NOW = '2026-01-14T12:00:00.000Z'
 const VECTOR_ARG = process.argv.find((arg) => arg.startsWith('--rebase-vector='))
+const ZONE = process.argv.find((arg) => arg.startsWith('--tz='))?.slice('--tz='.length)
+if (ZONE && !VECTOR_ARG) throw new Error('--tz is for --rebase-vector only; templates are UTC')
+// Node reads TZ again when it changes, so this applies before any date is formatted.
+if (ZONE) process.env.TZ = ZONE
 const FIXED_NOW = Date.parse(
   VECTOR_ARG ? VECTOR_ARG.slice('--rebase-vector='.length) : TEMPLATE_NOW
 )
@@ -166,6 +172,8 @@ const CLOCK_INSTANTS = new Set([
   'reminders.snoozed_until',
   'inbox_items.snoozed_until'
 ])
+/** Columns holding the device's IANA zone name. */
+const ZONE_COLUMNS = new Set(['calendar_events.timezone'])
 
 function dateFacts(text: string): string[] {
   const expanded = text.replace(DATE_TOKEN, (_, payload: string) =>
@@ -182,6 +190,7 @@ function dateFacts(text: string): string[] {
 
 async function writeRebaseVector(vault: string, at: string): Promise<void> {
   const files: Record<string, string[]> = {}
+  const canvasTimes: Record<string, [number, number]> = {}
   const paths: string[] = []
   for (const relative of await walk(vault)) {
     if (isDatabaseFile(relative) || relative.startsWith('attachments/')) continue
@@ -190,28 +199,49 @@ async function writeRebaseVector(vault: string, at: string): Promise<void> {
       const facts = dateFacts(await fs.readFile(path.join(vault, relative), 'utf8'))
       if (facts.length > 0) files[relative] = facts
     }
+    if (relative.endsWith('.excalidraw')) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the generator's own scene shape (steps/canvases.ts)
+      const scene = JSON.parse(await fs.readFile(path.join(vault, relative), 'utf8')) as {
+        memry: { createdAt: number; updatedAt: number }
+      }
+      canvasTimes[relative] = [scene.memry.createdAt, scene.memry.updatedAt]
+    }
   }
   const values: Record<string, string[]> = {}
   const tables = dumpTables(getDataDbPath(vault), DATA_TABLES, 0, 0)
+  // Due dates of repeating tasks by title: the rule-bound dates, checked on every weekday.
+  const repeats: Record<string, unknown> = {}
+  for (const task of tables.tasks) {
+    if (task.repeat_config) repeats[String(task.title)] = task.due_date
+  }
   for (const [table, rows] of Object.entries(tables)) {
     for (const row of rows) {
       for (const [column, value] of Object.entries(row)) {
         const key = `${table}.${column}`
         if (typeof value !== 'string') continue
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(value) && !CLOCK_INSTANTS.has(key)) continue
+        const listed = CLOCK_INSTANTS.has(key) || ZONE_COLUMNS.has(key)
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(value) && !listed) continue
         ;(values[key] ??= []).push(value)
       }
     }
   }
   for (const list of Object.values(values)) list.sort()
-  const out = path.join(CRATE_DIR, 'tests/fixtures/sandbox', `rebase-${at.slice(0, 10)}.json`)
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+  const zoneSuffix = ZONE ? `-${ZONE.replace(/\//g, '-').toLowerCase()}` : ''
+  const out = path.join(
+    CRATE_DIR,
+    'tests/fixtures/sandbox',
+    `rebase-${at.slice(0, 10)}${zoneSuffix}.json`
+  )
   await fs.mkdir(path.dirname(out), { recursive: true })
-  await fs.writeFile(out, `${JSON.stringify({ now: at, paths, files, values }, null, 2)}\n`)
+  const vector = { now: at, tz, paths, files, values, repeats, canvasTimes }
+  await fs.writeFile(out, `${JSON.stringify(vector, null, 2)}\n`)
   process.stdout.write(`Rebase vector written to ${out}\n`)
 }
 
 async function main(): Promise<void> {
-  if (process.env.TZ !== 'UTC') throw new Error('Run through bin/sandbox.mjs, which sets TZ=UTC')
+  if (process.env.TZ !== (ZONE ?? 'UTC'))
+    throw new Error('Run through bin/sandbox.mjs, which sets TZ=UTC')
   const { realStart, realNow } = installFixedClock()
   // Lazy: the generator reads the clock while it runs, so it loads after the fixed clock is in place.
   const { generateSandbox } = await import('./generate.ts')

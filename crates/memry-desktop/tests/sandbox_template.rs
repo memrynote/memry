@@ -3,7 +3,9 @@
 //! counts and assets, and rebases to what Electron's generator writes on
 //! another day: `tests/fixtures/sandbox/rebase-2028-03-01.json` holds the
 //! date facts of a real generator run on 2028-03-01, a Wednesday like the
-//! template's 2026-01-14, whose past-year journal days cross Feb 29.
+//! template's 2026-01-14, whose past-year journal days cross Feb 29. The
+//! `-<zone>` vectors are the same run in another zone, and the 2028-03-05
+//! (Sunday) and 2028-03-07 (Tuesday) runs pin the repeating tasks' days.
 
 use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet};
@@ -11,9 +13,10 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use base64::Engine as _;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, TimeZone, Utc};
 use memry_desktop::sandbox::{
-    Manifest, Rebase, SandboxError, TemplateInfo, manifest::check_relative_path,
+    Manifest, Rebase, SandboxError, TemplateInfo, device_zone_name,
+    manifest::{MAX_TEMPLATE_BYTES, check_relative_path},
 };
 use regex::Regex;
 use serde_json::{Value, json};
@@ -177,6 +180,41 @@ fn hostile_templates_are_refused() {
             "{name}"
         );
     }
+    for (table, column) in [
+        ("note_metadata", "path"),
+        ("folder_configs", "path"),
+        ("inbox_items", "attachment_path"),
+        ("inbox_items", "thumbnail_path"),
+        ("inbox_items", "filed_to"),
+    ] {
+        let row = |value: Value| json!({ "data": { table: [{ "id": "x", column: value }] } });
+        assert!(seed(row(json!("Work/a b.md"))).is_ok(), "{table}.{column}");
+        assert!(seed(row(Value::Null)).is_ok(), "{table}.{column}");
+        for value in [json!("../x.md"), json!("/etc/x"), json!("C:/x"), json!(7)] {
+            assert!(
+                matches!(seed(row(value.clone())), Err(SandboxError::UnsafePath(_))),
+                "{table}.{column} {value}"
+            );
+        }
+    }
+}
+
+#[test]
+fn oversized_templates_are_refused_before_parsing() {
+    // Not JSON, so only the size check can refuse it with TooLarge.
+    let bytes = vec![b' '; MAX_TEMPLATE_BYTES + 1];
+    assert!(matches!(
+        Manifest::parse(&bytes),
+        Err(SandboxError::TooLarge(what)) if what.starts_with(&format!("{} bytes", MAX_TEMPLATE_BYTES + 1))
+    ));
+    assert!(matches!(
+        TemplateInfo::parse(&bytes),
+        Err(SandboxError::TooLarge(_))
+    ));
+    assert!(matches!(
+        Manifest::parse(&bytes[..MAX_TEMPLATE_BYTES]),
+        Err(SandboxError::Json(_))
+    ));
 }
 
 /// The exporter's `dateFacts`: date tokens decoded, then every date or instant not inside a digit run.
@@ -219,18 +257,47 @@ const CLOCK_INSTANTS: &[&str] = &[
     "reminders.snoozed_until",
     "inbox_items.snoozed_until",
 ];
+/// The exporter's `ZONE_COLUMNS`.
+const ZONE_COLUMNS: &[&str] = &["calendar_events.timezone"];
 
-#[test]
-fn rebase_reproduces_the_generator_on_another_day() {
-    let vector: Value = serde_json::from_slice(
-        &fs::read(crate_dir().join("tests/fixtures/sandbox/rebase-2028-03-01.json")).unwrap(),
+fn vector(name: &str) -> Value {
+    serde_json::from_slice(
+        &fs::read(crate_dir().join("tests/fixtures/sandbox").join(name)).unwrap(),
     )
-    .unwrap();
+    .unwrap()
+}
+
+/// What the rebase of the committed template makes of the vector's sections.
+#[derive(Clone, Copy, PartialEq)]
+enum Sections {
+    /// Every section: the generator ran on a Wednesday, as the template did.
+    All,
+    /// The repeating tasks and canvases: on another weekday the generator
+    /// picks other workdays for the rest, which one template cannot follow.
+    WeekdayFree,
+}
+
+fn check_vector<Tz: TimeZone>(name: &str, tz: Tz, zone: &str, sections: Sections) {
+    let vector = vector(name);
     let now: DateTime<Utc> = vector["now"].as_str().unwrap().parse().unwrap();
     let (mut manifest, _) = load();
-    let rebase = Rebase::for_manifest(&manifest, now, Utc);
+    let rebase = Rebase::for_manifest(&manifest, now, tz, zone);
     let template_notes = manifest.data["note_metadata"].clone();
     rebase.manifest(&mut manifest);
+
+    let repeats: BTreeMap<String, Value> = manifest.data["tasks"]
+        .iter()
+        .filter(|task| !task["repeat_config"].is_null())
+        .map(|task| {
+            (
+                task["title"].as_str().unwrap().to_owned(),
+                task["due_date"].clone(),
+            )
+        })
+        .collect();
+    let expected_repeats: BTreeMap<String, Value> =
+        serde_json::from_value(vector["repeats"].clone()).unwrap();
+    assert_eq!(repeats, expected_repeats, "{name} repeats");
 
     // Two past-year journal days can land on one date (Feb 29 -> Feb 28); the
     // generator wrote that note once, and the later write won. Notes are in
@@ -248,9 +315,25 @@ fn rebase_reproduces_the_generator_on_another_day() {
             let text = fs::read_to_string(vault.join(path)).unwrap();
             texts.insert(
                 rebase.text(path).into_owned(),
-                rebase.text(&text).into_owned(),
+                rebase.file(path, &text).into_owned(),
             );
         }
+    }
+
+    let canvas_times: BTreeMap<String, Value> = texts
+        .iter()
+        .filter(|(path, _)| path.ends_with(".excalidraw"))
+        .map(|(path, text)| {
+            let scene: Value = serde_json::from_str(text).unwrap();
+            let times = json!([scene["memry"]["createdAt"], scene["memry"]["updatedAt"]]);
+            (path.clone(), times)
+        })
+        .collect();
+    let expected_canvas_times: BTreeMap<String, Value> =
+        serde_json::from_value(vector["canvasTimes"].clone()).unwrap();
+    assert_eq!(canvas_times, expected_canvas_times, "{name} canvasTimes");
+    if sections == Sections::WeekdayFree {
+        return;
     }
 
     let mut paths: BTreeSet<String> = vault_files(&vault)
@@ -265,7 +348,7 @@ fn rebase_reproduces_the_generator_on_another_day() {
         .iter()
         .map(|p| p.as_str().unwrap().to_owned())
         .collect();
-    assert_eq!(paths, expected_paths);
+    assert_eq!(paths, expected_paths, "{name} paths");
 
     let files: BTreeMap<String, Vec<String>> = texts
         .iter()
@@ -274,7 +357,7 @@ fn rebase_reproduces_the_generator_on_another_day() {
         .collect();
     let expected_files: BTreeMap<String, Vec<String>> =
         serde_json::from_value(vector["files"].clone()).unwrap();
-    assert_eq!(files, expected_files);
+    assert_eq!(files, expected_files, "{name} files");
 
     let mut seen_paths = BTreeMap::new();
     let notes = &manifest.data["note_metadata"];
@@ -291,7 +374,9 @@ fn rebase_reproduces_the_generator_on_another_day() {
                 let key = format!("{table}.{column}");
                 let Some(text) = value.as_str() else { continue };
                 let date_only = text.len() == 10 && date_facts(text) == [text];
-                if date_only || CLOCK_INSTANTS.contains(&key.as_str()) {
+                let listed =
+                    CLOCK_INSTANTS.contains(&key.as_str()) || ZONE_COLUMNS.contains(&key.as_str());
+                if date_only || listed {
                     values.entry(key).or_default().push(text.to_owned());
                 }
             }
@@ -300,13 +385,69 @@ fn rebase_reproduces_the_generator_on_another_day() {
     values.values_mut().for_each(|list| list.sort());
     let expected_values: BTreeMap<String, Vec<String>> =
         serde_json::from_value(vector["values"].clone()).unwrap();
-    assert_eq!(values, expected_values);
+    let keys: BTreeSet<&String> = values.keys().chain(expected_values.keys()).collect();
+    for key in keys {
+        assert_eq!(values.get(key), expected_values.get(key), "{name} {key}");
+    }
+}
+
+#[test]
+fn rebase_reproduces_the_generator_on_another_day() {
+    check_vector("rebase-2028-03-01.json", Utc, "UTC", Sections::All);
+}
+
+#[test]
+fn rebase_keeps_repeating_tasks_on_their_days_on_other_weekdays() {
+    // 2028-03-07 is a Tuesday, 2028-03-05 a Sunday.
+    for name in ["rebase-2028-03-07.json", "rebase-2028-03-05.json"] {
+        check_vector(name, Utc, "UTC", Sections::WeekdayFree);
+    }
+}
+
+/// Set by `rebase_reproduces_the_generator_in_other_zones` for its child process.
+const ZONE_VECTOR_ENV: &str = "MEMRY_SANDBOX_ZONE_VECTOR";
+
+/// Runs [`zone_vector_child`] in a child process with `TZ` set, so the device
+/// zone reaches the rebase the way the app resolves it: chrono's `Local` and
+/// [`device_zone_name`]. The Los Angeles run crosses a daylight saving change.
+/// Unix only: chrono's `Local` reads `TZ` there and not on Windows.
+#[cfg(unix)]
+#[test]
+fn rebase_reproduces_the_generator_in_other_zones() {
+    for name in [
+        "rebase-2028-03-01-america-los_angeles.json",
+        "rebase-2028-03-01-europe-istanbul.json",
+    ] {
+        let zone = vector(name)["tz"].as_str().unwrap().to_owned();
+        let output = std::process::Command::new(std::env::current_exe().unwrap())
+            .args(["zone_vector_child", "--exact", "--ignored", "--nocapture"])
+            .env("TZ", &zone)
+            .env(ZONE_VECTOR_ENV, name)
+            .output()
+            .unwrap();
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(
+            output.status.success() && stdout.contains("1 passed"),
+            "{name} in {zone}:\n{stdout}\n{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+}
+
+#[test]
+#[ignore = "run in a child process with TZ set by rebase_reproduces_the_generator_in_other_zones"]
+fn zone_vector_child() {
+    let name = std::env::var(ZONE_VECTOR_ENV)
+        .expect("run through rebase_reproduces_the_generator_in_other_zones");
+    let zone = device_zone_name();
+    assert_eq!(zone, vector(&name)["tz"].as_str().unwrap());
+    check_vector(&name, chrono::Local, &zone, Sections::All);
 }
 
 #[test]
 fn rebase_to_the_template_day_in_utc_changes_nothing() {
     let (manifest, _) = load();
-    let rebase = Rebase::for_manifest(&manifest, manifest.generated_at(), Utc);
+    let rebase = Rebase::for_manifest(&manifest, manifest.generated_at(), Utc, "UTC");
     let mut moved = manifest.clone();
     rebase.manifest(&mut moved);
     assert_eq!(moved, manifest);
@@ -314,7 +455,10 @@ fn rebase_to_the_template_day_in_utc_changes_nothing() {
     for path in vault_files(&vault) {
         assert!(matches!(rebase.text(&path), Cow::Borrowed(_)), "{path}");
         if let Ok(text) = fs::read_to_string(vault.join(&path)) {
-            assert!(matches!(rebase.text(&text), Cow::Borrowed(_)), "{path}");
+            assert!(
+                matches!(rebase.file(&path, &text), Cow::Borrowed(_)),
+                "{path}"
+            );
         }
     }
 }

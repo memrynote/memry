@@ -382,7 +382,7 @@ fn folders_deeper_than_the_limit_are_refused_on_a_small_stack() {
         (mini.replay(), mini)
     });
     assert!(
-        matches!(refused, Err(SandboxError::TemplateTooLarge(_))),
+        matches!(refused, Err(SandboxError::TooLarge(_))),
         "{refused:?}"
     );
     mini.assert_untouched();
