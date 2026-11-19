@@ -39,8 +39,6 @@ pub trait SyncPasses: Send + Sync {
     fn resume(&self);
     fn set_entitled(&self, entitled: bool);
     fn server_clock(&self) -> Option<ServerClock>;
-    /// Hears every committed page from now on.
-    fn observe(&self, observer: Arc<dyn ApplyObserver>);
     /// Whether a requested snapshot is due (chapter 07 §7.13.3).
     fn snapshots_due(&self, _now_ms: i64) -> bool {
         false
@@ -87,9 +85,6 @@ impl SyncPasses for SyncDriver {
     fn server_clock(&self) -> Option<ServerClock> {
         SyncDriver::server_clock(self)
     }
-    fn observe(&self, observer: Arc<dyn ApplyObserver>) {
-        self.register_observer(observer);
-    }
     fn snapshots_due(&self, now_ms: i64) -> bool {
         SyncDriver::snapshots_due(self, now_ms)
     }
@@ -109,9 +104,13 @@ impl SyncPasses for SyncDriver {
 pub trait SyncBackend: Send + Sync {
     /// The account side of the gate, read at each start attempt.
     async fn auth_facts(&self) -> AuthFacts;
-    /// A driver for the open vault. Fails offline (it fetches the device directory) and on a
-    /// vault bound to no server vault; the supervisor retries on the next trigger.
-    async fn open(&self) -> Result<Arc<dyn SyncPasses>, SyncError>;
+    /// A driver for the open vault, which `observers` hear from its open on. Fails offline (it
+    /// fetches the device directory) and on a vault bound to no server vault; the supervisor
+    /// retries on the next trigger.
+    async fn open(
+        &self,
+        observers: Vec<Arc<dyn ApplyObserver>>,
+    ) -> Result<Arc<dyn SyncPasses>, SyncError>;
     /// The server refused the session's refresh token for good. Answered from the session's
     /// tokens, so a refused refresh during [`SyncBackend::open`] counts too.
     fn refresh_refused(&self) -> bool;
@@ -177,7 +176,10 @@ impl SyncBackend for VaultSyncBackend {
         }
     }
 
-    async fn open(&self) -> Result<Arc<dyn SyncPasses>, SyncError> {
+    async fn open(
+        &self,
+        observers: Vec<Arc<dyn ApplyObserver>>,
+    ) -> Result<Arc<dyn SyncPasses>, SyncError> {
         let vault = Arc::clone(&self.vault);
         let store = Arc::clone(&self.store);
         let closes = Arc::clone(&self.closes);
@@ -215,6 +217,7 @@ impl SyncBackend for VaultSyncBackend {
                 Arc::clone(&self.reachability),
                 DriverConfig::desktop(),
                 self.seeds.clone(),
+                observers,
             )
             .await
             .inspect_err(|_| self.close())?;

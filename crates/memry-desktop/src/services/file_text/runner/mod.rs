@@ -123,18 +123,30 @@ const OUTSIDE_VAULT: &str = "outside-vault";
 struct Wake {
     changed: BTreeSet<String>,
     rescan_all: bool,
+    /// Bumped by every `rescan_all`: the ticket a full scan that starts now serves.
+    rescans: u64,
     stopped: bool,
     /// Bumped by every `note_changed`, `languages_changed` and `stop`: what ends a timed sleep.
     pokes: u64,
+}
+
+/// The last full scan that ended, for the tests.
+#[doc(hidden)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct Rescanned {
+    /// The newest [`FileTextRunner::rescan_all`] ticket asked for before the scan began.
+    pub ticket: u64,
+    /// The files it compared.
+    pub compared: usize,
 }
 
 pub struct FileTextRunner {
     deps: RunnerDeps,
     state: Mutex<Wake>,
     wake: Condvar,
-    /// Files whose bytes a scan compared, and scans that ended, for the tests.
+    /// Files whose bytes a scan compared, for the tests.
     compared: AtomicUsize,
-    scans: AtomicUsize,
+    rescanned: Mutex<Rescanned>,
     /// HTML files parsed, for the tests.
     html_parses: AtomicUsize,
 }
@@ -223,7 +235,7 @@ impl FileTextRunner {
             }),
             wake: Condvar::new(),
             compared: AtomicUsize::new(0),
-            scans: AtomicUsize::new(0),
+            rescanned: Mutex::default(),
             html_parses: AtomicUsize::new(0),
         })
     }
@@ -244,8 +256,15 @@ impl FileTextRunner {
     }
 
     /// The OCR languages changed, or a pass is owed for every note: compare every file again.
-    pub fn rescan_all(&self) {
-        self.poke(|state| state.rescan_all = true);
+    /// The ticket [`Self::rescanned`] reaches once a full scan that began after this call ends.
+    pub fn rescan_all(&self) -> u64 {
+        let mut ticket = 0;
+        self.poke(|state| {
+            state.rescan_all = true;
+            state.rescans += 1;
+            ticket = state.rescans;
+        });
+        ticket
     }
 
     /// Ends the loop and fails the worker calls in flight. The page in progress is read again
@@ -261,10 +280,13 @@ impl FileTextRunner {
         self.compared.load(Ordering::SeqCst)
     }
 
-    /// The scans that ended, failed ones included.
+    /// The last full scan that ended without failing or being stopped.
     #[doc(hidden)]
-    pub fn scans(&self) -> usize {
-        self.scans.load(Ordering::SeqCst)
+    pub fn rescanned(&self) -> Rescanned {
+        *self
+            .rescanned
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
     }
 
     /// The HTML files the runner parsed.
@@ -373,19 +395,32 @@ impl FileTextRunner {
     /// Take the pending changes and compare their files. A pass that fails hands its notes
     /// back, so the next pass compares them again.
     fn queue_changed_files(&self) -> Result<(), String> {
-        let ids = {
+        let (ids, ticket) = {
             let mut state = self.lock();
             if !state.rescan_all && state.changed.is_empty() {
                 return Ok(());
             }
             let ids = (!state.rescan_all).then(|| std::mem::take(&mut state.changed));
+            let ticket = state.rescan_all.then_some(state.rescans);
             state.rescan_all = false;
             state.changed.clear();
-            ids
+            (ids, ticket)
         };
         let listed: Option<Vec<String>> = ids.as_ref().map(|ids| ids.iter().cloned().collect());
+        let compared = self.compared.load(Ordering::SeqCst);
         let outcome = self.queue_files(listed.as_deref());
-        self.scans.fetch_add(1, Ordering::SeqCst);
+        if let Some(ticket) = ticket
+            && outcome.is_ok()
+            && !self.stopped()
+        {
+            *self
+                .rescanned
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner) = Rescanned {
+                ticket,
+                compared: self.compared.load(Ordering::SeqCst) - compared,
+            };
+        }
         if outcome.is_err() {
             let mut state = self.lock();
             match ids {
