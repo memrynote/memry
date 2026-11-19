@@ -125,6 +125,27 @@ struct SignOutServiceTests {
         #expect(wipe.isComplete)
     }
 
+    @Test("a sign-out erases the keys typed after ⌘N that were not stored yet")
+    @MainActor
+    func signOutErasesTheNewNoteKeys() async throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("new-note-keys-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let journal = NewNoteJournal(url: url)
+        journal.record(NewNoteJournal.Entry(hold: "h", vault: "v1", at: 0, keys: "milk"))
+        let log = OrderLog()
+        let service = SignOutService(
+            session: ScriptedSession(log: log),
+            content: ScriptedContent(log: log),
+            executor: executor(),
+            newNoteKeys: { journal }
+        )
+
+        _ = try await service.signOut()
+
+        #expect(!FileManager.default.fileExists(atPath: url.path))
+        #expect(NewNoteJournal(url: url).stranded(in: "v1").isEmpty)
+    }
+
     /// The locked-keychain case, and the reason the order is what it is: a
     /// phone that has not been unlocked since boot reads `Locked`, not
     /// "absent" (`Keychain`'s header, chapter 02 §2.14). Nothing may be

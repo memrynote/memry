@@ -344,7 +344,7 @@ struct NewNoteKeysTests {
         let writer = CoreNotesWriter(vault: vault.vault, store: TaskTestKeychain(), executor: .shared)
         let reader = CoreNotesReader(vault: vault.vault, executor: .shared)
 
-        let keys = NewNoteKeys(window: window, seeds: seeds, vault: "v1")
+        let keys = NewNoteKeys(window: window, seeds: seeds, vault: { "v1" })
         try type("milk\tlist")
         seeds.flush()
         // On disk in the same call, before any later turn.
@@ -374,18 +374,97 @@ struct NewNoteKeysTests {
         let seeds = NewNoteSeeds(hold: { holds.begin() }, journal: NewNoteJournal(url: url))
         textView().becomeFirstResponder()
 
-        let failing = NewNoteKeys(window: window, seeds: seeds, vault: "v1")
+        let failing = NewNoteKeys(window: window, seeds: seeds, vault: { "v1" })
         try type("one")
         failing.made("first") { _, _ in throw CancellationError() }
         await until { holds.open == 0 }
         #expect(NewNoteJournal(url: url).stranded(in: "v1").map(\.keys) == ["one"])
 
-        let landing = NewNoteKeys(window: window, seeds: seeds, vault: "v1")
+        let landing = NewNoteKeys(window: window, seeds: seeds, vault: { "v1" })
         try type("two")
         landing.made("second") { _, _ in }
         #expect(NewNoteJournal(url: url).stranded(in: "v1").map(\.note) == ["first", "second"])
         await until { holds.open == 0 }
         #expect(NewNoteJournal(url: url).stranded(in: "v1").map(\.note) == ["first"])
+    }
+
+    @Test("the journal, the user's text in plaintext, is excluded from backup after every write")
+    func theJournalStaysOutOfBackups() throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("new-note-keys-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let journal = NewNoteJournal(url: url)
+
+        for keys in ["m", "mi"] {
+            journal.record(NewNoteJournal.Entry(hold: "h", vault: "v1", at: 0, keys: keys))
+            let fresh = URL(fileURLWithPath: url.path)
+            #expect(try fresh.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup == true)
+        }
+    }
+
+    @Test("keys journaled with no vault open are never recovered, and a vault open by the write owns them", .timeLimit(.minutes(1)))
+    func keysWithNoVaultAreNotRecoveredElsewhere() async throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("new-note-keys-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let seeds = NewNoteSeeds(journal: NewNoteJournal(url: url))
+        textView().becomeFirstResponder()
+        let vault = try TasksTestVault()
+        let writer = CoreNotesWriter(vault: vault.vault, store: TaskTestKeychain(), executor: .shared)
+        let reader = CoreNotesReader(vault: vault.vault, executor: .shared)
+
+        let unowned = NewNoteKeys(window: window, seeds: seeds, vault: { nil })
+        try type("milk")
+        seeds.flush()
+        var open: String?
+        let owned = NewNoteKeys(window: window, seeds: seeds, vault: { open })
+        open = "v1"
+        try type("eggs")
+        seeds.flush()
+        _ = (unowned, owned) // killed: `made` never runs
+
+        let relaunched = NewNoteSeeds(journal: NewNoteJournal(url: url))
+        #expect(await relaunched.recover(vault: "v2", reader: reader, writer: writer) == false)
+        #expect(await relaunched.recover(vault: "v1", reader: reader, writer: writer))
+        #expect(try await reader.list().map(\.title) == ["eggs"])
+        #expect(!FileManager.default.fileExists(atPath: url.path), "the entry with no vault is dropped")
+    }
+
+    @Test("recovery gives each ⌘N, oldest first, the earliest untitled note made after it that no other took")
+    func recoveryClaimsEachNoteOnce() {
+        func note(_ id: String, _ created: Int64) -> NoteSummary {
+            NoteSummary(id: id, title: "", folderPath: nil, emoji: nil, createdAt: created, modifiedAt: nil, aliases: [])
+        }
+        let entries = [
+            NewNoteJournal.Entry(hold: "b", vault: "v1", at: 10200, keys: "b"),
+            NewNoteJournal.Entry(hold: "a", vault: "v1", at: 10000, keys: "a"),
+            NewNoteJournal.Entry(hold: "c", vault: "v1", at: 10100, keys: "c", note: "named"),
+        ]
+        let notes = [note("n2", 10300), note("n1", 10250), note("named", 10150), note("foreign", 9500)]
+
+        let matched = NewNoteJournal.Entry.matched(entries, in: notes).map { "\($0.entry.hold)=\($0.note?.id ?? "-")" }
+
+        #expect(matched == ["a=n1", "c=named", "b=n2"])
+    }
+
+    /// The Notes page takes the request when it loads; another tab before
+    /// that used to drop the keys with a log line.
+    @Test("another tab before the Notes page takes ⌘N keeps the keys for the note it makes later")
+    func aTabSwitchKeepsTheHeldKeys() throws {
+        let links = NotesLinks()
+        let body = textView()
+        body.becomeFirstResponder()
+        let noteId = UUID().uuidString
+
+        links.requestNewNote(window: window)
+        try type("mi")
+        links.parkNewNote()
+        links.requestNewNote(window: window)
+        try type("lk")
+        let keys = try #require(links.takeNewNote())
+        keys.made(noteId) { _, _ in }
+        textView().becomeFirstResponder()
+
+        #expect(body.text.isEmpty)
+        #expect(NewNoteSeeds.shared.take(noteId) == "milk")
     }
 
     @Test("a title that appeared keeps the hold until its field takes the caret")

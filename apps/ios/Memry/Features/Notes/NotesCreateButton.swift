@@ -216,8 +216,14 @@ final class NotesLinks {
 
     /// A ⌘N the page has not taken yet keeps its hold: one note, one hold.
     func requestNewNote(window: UIWindow?) {
-        if keys == nil { keys = NewNoteKeys(window: window) }
+        if let keys { keys.hold(in: window) } else { keys = NewNoteKeys(window: window) }
         newNoteRequested = true
+    }
+
+    /// Another tab opened before the page took ⌘N: the request stays for
+    /// the page, and the keys held so far wait for its note.
+    func parkNewNote() {
+        if newNoteRequested { keys?.park() }
     }
 
     func takeNewNote() -> NewNoteKeys? {

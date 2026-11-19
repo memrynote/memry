@@ -50,7 +50,9 @@
 //  appeared once the note is open ends the hold, so the caret is not kept
 //  by a holder no one sees, and its keys are stored as the title at once.
 //  A failed create discards the keys with a log
-//  line next to the failure's alert.
+//  line next to the failure's alert. Another tab opened before the Notes
+//  page took ⌘N parks the hold (`park`): its keys wait, journaled, and the
+//  page makes their note when it takes the request.
 //
 
 import MemryCore
@@ -71,19 +73,28 @@ final class NewNoteKeys {
     /// Ends the background task begun at ⌘N.
     private var release: (() -> Void)?
     /// This hold's line in the journal: its id, its vault and when ⌘N came.
-    private let entry: NewNoteJournal.Entry
+    private var entry: NewNoteJournal.Entry
+    /// The open vault, which a journal entry is recovered into only.
+    private let vault: () -> String?
 
     /// ⌘N: holds the keys typed from now on in `window`.
     init(
         window: UIWindow?, seeds: NewNoteSeeds = .shared, log: Log = .interface,
-        vault: String? = LaunchSnapshot.shared.lastVault
+        vault: @escaping () -> String? = { LaunchSnapshot.shared.lastVault }
     ) {
         self.seeds = seeds
         self.log = log
+        self.vault = vault
         entry = NewNoteJournal.Entry(
-            hold: UUID().uuidString, vault: vault, at: Int64(Date().timeIntervalSince1970 * 1000), keys: ""
+            hold: UUID().uuidString, vault: vault(), at: Int64(Date().timeIntervalSince1970 * 1000), keys: ""
         )
-        guard let window else { return }
+        hold(in: window)
+    }
+
+    /// Holds the keys typed from now on in `window`: at ⌘N, and at a second
+    /// ⌘N after the hold was parked. A hold whose note exists takes no more.
+    func hold(in window: UIWindow?) {
+        guard holder == nil, noteId == nil, let window else { return }
         let holder = KeyHolder(frame: CGRect(x: 0, y: 0, width: 1, height: 1))
         window.addSubview(holder)
         guard holder.becomeFirstResponder() else {
@@ -142,6 +153,14 @@ final class NewNoteKeys {
         }
     }
 
+    /// Another tab opened before the Notes page took ⌘N: the keys held so
+    /// far wait, journaled, for the note the page makes when it takes the
+    /// request, or for the next launch's recovery.
+    func park() {
+        end()
+        releaseHold()
+    }
+
     /// The keys held so far, for the note's title as it appears. The holder
     /// keeps the caret until the title's field takes it.
     fileprivate func drain() -> String {
@@ -166,6 +185,9 @@ final class NewNoteKeys {
 
     /// Writes `keys`, every key this hold has not stored, to the journal.
     private func journal(_ keys: String) {
+        // With no vault at ⌘N, the one open when the keys are journaled: an
+        // entry with none is never recovered (`NewNoteJournal`).
+        if entry.vault == nil { entry.vault = vault() }
         var entry = entry
         entry.keys = keys.replacingOccurrences(of: "\t", with: " ")
         entry.note = noteId
@@ -362,11 +384,20 @@ final class NewNoteSeeds {
         guard let journal, !recovering else { return false }
         recovering = true
         defer { recovering = false }
+        let stranded = journal.stranded(in: vault)
+        guard !stranded.isEmpty else { return false }
+        let notes: [NoteSummary]
+        do {
+            notes = try await reader.list()
+        } catch {
+            log.error("the keys typed after a new note could not be recovered", .code(ErrorMapping.userFacing(error).code))
+            return false
+        }
         var wrote = false
-        for entry in journal.stranded(in: vault) {
+        for (entry, note) in NewNoteJournal.Entry.matched(stranded, in: notes) {
             let title = Self.title(entry.keys)
             do {
-                if let note = entry.made(in: try await reader.list()) {
+                if let note {
                     if note.title.isEmpty {
                         try await writer.rename(id: note.id, title: title)
                         wrote = true
@@ -405,26 +436,42 @@ final class NewNoteSeeds {
 /// is made; the file is overwritten whole on each change, atomically, in
 /// the caller's turn, and deleted when the last entry clears, which is when
 /// its title write lands. A launch recovers the entries no hold of its own
-/// wrote (`NewNoteSeeds.recover`): the note named by `note`, else the
-/// untitled note the core made in the minute after `at`, gets the keys as
-/// its title when still untitled; with no such note, a new note is made
-/// with that title. A file this build cannot read (another version) is
-/// logged and replaced.
+/// wrote (`NewNoteSeeds.recover`) into their own vault only: the note named
+/// by `note`, else the earliest untitled note the core made in the minute
+/// after `at` that no earlier entry claimed, gets the keys as its title when
+/// still untitled; with no such note, a new note is made with that title.
+/// An entry with no vault is dropped unread: no vault is known to own it.
+/// A file this build cannot read (another version) is logged and replaced.
+/// The keys are the user's text in plaintext, so the file is excluded from
+/// backup, like the vault (`FileProtection`), and a sign-out erases it.
 @MainActor
 final class NewNoteJournal {
     struct Entry: Codable, Equatable {
         let hold: String
-        let vault: String?
+        var vault: String?
         let at: Int64
         var keys: String
         var note: String?
 
-        /// The note made for these keys among `notes`, if the core made it.
-        func made(in notes: [NoteSummary]) -> NoteSummary? {
-            if let note { return notes.first { $0.id == note } }
+        /// Each entry with the note the core made for it among `notes`, if
+        /// it made one. Oldest ⌘N first, so each takes the earliest untitled
+        /// note made after it that no earlier entry took.
+        static func matched(_ entries: [Entry], in notes: [NoteSummary]) -> [(entry: Entry, note: NoteSummary?)] {
+            // A note an entry names is that entry's alone.
+            var claimed = Set(entries.compactMap(\.note))
+            return entries.sorted { $0.at < $1.at }.map { entry in
+                if let id = entry.note { return (entry, notes.first { $0.id == id }) }
+                let note = entry.untitled(in: notes.filter { !claimed.contains($0.id) })
+                if let note { claimed.insert(note.id) }
+                return (entry, note)
+            }
+        }
+
+        private func untitled(in notes: [NoteSummary]) -> NoteSummary? {
             // Made, and the app killed before it said so: the untitled note
-            // created in the minute after ⌘N (a second earlier for clocks).
-            let window: ClosedRange<Int64> = (at - 1000)...(at + 60000)
+            // created in the minute after ⌘N. One created before ⌘N is
+            // another device's or another ⌘N's.
+            let window: ClosedRange<Int64> = at...(at + 60000)
             let untitled = notes.filter { note in
                 guard let created = note.createdAt else { return false }
                 return note.title.isEmpty && window.contains(created)
@@ -452,7 +499,11 @@ final class NewNoteJournal {
             return
         }
         if let file = try? JSONDecoder().decode(File.self, from: data), file.v == 1 {
-            entries = file.entries
+            entries = file.entries.filter { $0.vault != nil }
+            if entries.count < file.entries.count {
+                log.notice("new note keys with no vault were dropped", .count(file.entries.count - entries.count))
+                write()
+            }
         } else {
             log.error("the new note keys journal could not be read")
             entries = []
@@ -470,7 +521,14 @@ final class NewNoteJournal {
 
     /// The entries an earlier launch left for `vault`.
     func stranded(in vault: String) -> [Entry] {
-        entries.filter { !live.contains($0.hold) && ($0.vault == nil || $0.vault == vault) }
+        entries.filter { !live.contains($0.hold) && $0.vault == vault }
+    }
+
+    /// Sign-out: the keys of the account's vaults go with them.
+    func erase() {
+        entries = []
+        live = []
+        write()
     }
 
     func record(_ entry: Entry) {
@@ -501,6 +559,11 @@ final class NewNoteJournal {
             try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
             try JSONEncoder().encode(File(entries: entries))
                 .write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+            // An atomic write replaces the file, and its flag with it.
+            var file = url
+            var values = URLResourceValues()
+            values.isExcludedFromBackup = true
+            try file.setResourceValues(values)
         } catch {
             log.error("the new note keys journal could not be written", .code(ErrorMapping.userFacing(error).code))
         }
