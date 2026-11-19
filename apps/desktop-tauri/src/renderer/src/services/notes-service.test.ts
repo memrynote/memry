@@ -88,7 +88,6 @@ import {
   onNoteEventsDropped,
   onNoteRenamed,
   onNoteMoved,
-  onNoteExternalChange,
   onTagsChanged,
   onFolderConfigUpdated
 } from './notes-service'
@@ -1236,15 +1235,6 @@ describe('notes-service', () => {
     expect(updated).toHaveBeenCalledWith({ path: 'Work/Plans' })
     stop()
     await vi.waitFor(() => expect(listeners.has('folderConfig')).toBe(false))
-  })
-
-  it('registers the note event subscription not yet ported on window.api', () => {
-    const unsubscribe = vi.fn()
-    api.onNoteExternalChange = vi.fn(() => unsubscribe)
-    const handler = vi.fn()
-
-    expect(onNoteExternalChange(handler)).toBe(unsubscribe)
-    expect(api.onNoteExternalChange).toHaveBeenCalledWith(handler)
   })
 
   describe('position operations', () => {

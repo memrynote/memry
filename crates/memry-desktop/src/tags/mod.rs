@@ -64,6 +64,19 @@ pub fn all_with_counts(open: &OpenVault) -> Result<Vec<TagWithCountView>, Storag
         .collect())
 }
 
+/// Whether `tag` was renamed away or deleted, for a tag's tab that may have missed the event
+/// that says so (S14-1): its definition is deleted and no note or day carries it. A tag whose
+/// last note let go of it keeps its definition, so it is not gone, and neither is a deleted
+/// tag a file carries again.
+pub fn gone(open: &OpenVault, tag: &str) -> Result<bool, StorageError> {
+    if !open.vault.tag_definition_deleted(tag)? {
+        return Ok(false);
+    }
+    let key = tag_key(tag);
+    let used = open.search.used_tags(None)?;
+    Ok(!used.iter().any(|name| tag_key(name) == key))
+}
+
 /// `tags:get-notes-by-tag`. An empty tag is refused (`GetNotesByTagSchema`: `min(1)`).
 pub fn notes_by_tag(
     open: &OpenVault,

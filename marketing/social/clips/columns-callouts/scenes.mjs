@@ -113,7 +113,7 @@ export const scenes = {
 /** The note as the app saved it, in the vault copy the app runs on (agent-app's state file). */
 function savedNote() {
   const { vaultPath } = JSON.parse(
-    fs.readFileSync(path.join(os.tmpdir(), 'memry-agent-app.json'), 'utf8')
+    fs.readFileSync(path.join(os.tmpdir(), 'memry-agent-app-tauri.json'), 'utf8')
   )
   return fs.readFileSync(path.join(vaultPath, 'Studio North', `${NOTE}.md`), 'utf8')
 }

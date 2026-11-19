@@ -499,6 +499,37 @@ async fn a_signer_the_directory_lacks_is_looked_up_once_per_run() {
     assert_eq!(desktop.server.count("/auth/devices"), lookups + 2);
 }
 
+/// A run's misses end with it (Electron's `cleanupAfterPull`,
+/// `pull-coordinator.ts:587`): the manifest check after the run looks the
+/// signer up again instead of reusing the run's answer.
+#[tokio::test]
+async fn a_signer_a_run_missed_is_looked_up_again_after_the_run() {
+    let desktop = holding_a_task().await;
+    let ghost = |id: &str| {
+        marker(
+            "task",
+            id,
+            json!({ PEER: 2 }),
+            DELETED_AT,
+            Some(("ghost", 14)),
+        )
+    };
+    serve(&desktop, ghost("t1"));
+    // Listed live by the manifest, so the check fetches it by id.
+    desktop.server.purge(ghost("t2"));
+    desktop.server.put("task", "t2", json!({ "title": "t2" }));
+    let lookups = desktop.server.count("/auth/devices");
+
+    desktop.pass().await;
+
+    assert_eq!(desktop.server.count("/sync/manifest"), 1, "the check ran");
+    assert_eq!(
+        desktop.server.count("/auth/devices"),
+        lookups + 2,
+        "one lookup in the run, one in the manifest check"
+    );
+}
+
 #[tokio::test]
 async fn the_first_sync_refs_pass_reads_the_feed_without_purged_tombstones() {
     let desktop = Desktop::open_with(Declaration::desktop(), |_| Ok(())).await;
