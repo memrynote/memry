@@ -757,3 +757,74 @@ fn an_edit_in_the_same_millisecond_as_the_create_still_restamps_the_queue() {
     .expect("update");
     assert!(stamp(&db, event_id) > planned, "the same-ms edit re-stamps");
 }
+
+/// A task Memry wrote to CalDAV (`broad` binding) takes the server's title and description on a
+/// pull, as `applyProviderWriteback` writes them for `broad` and `time_and_text`.
+#[test]
+fn a_bound_task_takes_the_server_title_and_description_in_broad_mode() {
+    use memry_core::domain::tasks::{self, NewTask};
+    let db = open();
+    connect_work(&db);
+    let target = Target {
+        source_type: "task".into(),
+        source_id: "task-1".into(),
+    };
+    let href = format!("{CAL}task-1.ics");
+    let (t, h) = (target.clone(), href.clone());
+    db.call_blocking(move |conn| {
+        let task = NewTask {
+            id: "task-1",
+            title: "Local title",
+            project_id: "proj-1",
+            due_date: Some("2026-09-22"),
+            due_time: Some("09:00"),
+            priority: 1,
+            repeat_config: None,
+            tags: &[],
+        };
+        tasks::create(conn, &task, "phone", NOW)?;
+        bindings::record_push(
+            conn,
+            "caldav",
+            &t,
+            &bindings::Written {
+                calendar_id: CAL.into(),
+                event_id: h,
+                etag: Some("\"e1\"".into()),
+            },
+            json!({}),
+            "phone",
+            NOW,
+        )?;
+        providers::dequeue(conn, &t)
+    })
+    .expect("bound task");
+
+    let data = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:task-1\r\n\
+                DTSTART:20260922T090000Z\r\nDTEND:20260922T100000Z\r\nSUMMARY:Server title\r\n\
+                DESCRIPTION:Server notes\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
+    pull(
+        &db,
+        vec![caldav::Object {
+            href,
+            etag: Some("\"e2\"".into()),
+            data: data.into(),
+        }],
+        vec![],
+    );
+    let row: Vec<(String, Option<String>)> = db
+        .call_blocking(|conn| {
+            Ok(conn
+                .prepare("SELECT title, description FROM tasks WHERE id = 'task-1'")
+                .expect("prepare")
+                .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
+                .expect("query")
+                .collect::<Result<_, _>>()
+                .expect("rows"))
+        })
+        .expect("task");
+    assert_eq!(
+        row,
+        [("Server title".to_owned(), Some("Server notes".to_owned()))]
+    );
+}

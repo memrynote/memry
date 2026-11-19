@@ -948,3 +948,127 @@ async fn a_calendar_retry_whose_write_fails_keeps_the_calendar_in_error() {
     assert_eq!(queued(&open), [id]);
     assert_eq!(sync_status(&open, &source), "error");
 }
+
+/// Account Y's server fails (`reply` for its host); Y's edit is queued ahead of account X's.
+/// Each account drains on its own (`syncCaldavNow` runs every account separately): X's edit
+/// reaches the server and X stays `ok`, Y's edit stays queued and Y shows `error`.
+async fn another_accounts_failure_strands_nothing(
+    reply: fn() -> Reply,
+    whole: bool,
+) -> (Rig, OpenVault, String) {
+    let rig = Rig::new(true).await;
+    let open = rig.open().await;
+    let (_, x_source) = rig.connect(&open).await;
+    let y_account = rig.connect_to(&open, OTHER).await;
+    let y_source = calendar(&open)
+        .sources()
+        .unwrap()
+        .into_iter()
+        .find(|s| s.remote_id == OTHER_WORK)
+        .unwrap()
+        .id;
+    let y_item = new_event_in(&open, "Y edit", OTHER_WORK);
+    // The queue runs oldest first: Y's edit goes out ahead of X's.
+    std::thread::sleep(std::time::Duration::from_millis(5));
+    let x_item = new_event(&open, "X edit");
+    assert_eq!(queued(&open), [y_item.clone(), x_item]);
+    let y_host = url::Url::parse(OTHER)
+        .unwrap()
+        .host_str()
+        .unwrap()
+        .to_owned();
+    rig.set_hook(move |seen, answer| {
+        if seen.host.starts_with(&y_host) {
+            reply()
+        } else {
+            answer
+        }
+    });
+
+    if whole {
+        // Y's pull fails too, so the pass reports it.
+        assert!(rig.sync().sync_and_drain(&open, None).await.is_err());
+    } else {
+        rig.sync()
+            .sync_source_and_drain(&open, &x_source)
+            .await
+            .unwrap();
+    }
+    // The fake stores a write before the hook swaps its answer, so look for X's object by content.
+    let paths = rig.dav.store.paths();
+    assert!(
+        paths.iter().any(|p| rig
+            .dav
+            .store
+            .object(p)
+            .unwrap()
+            .1
+            .contains("SUMMARY:X edit")),
+        "X's edit never reached its server"
+    );
+    assert_eq!(queued(&open), [y_item]);
+    assert_eq!(sync_status(&open, &x_source), "ok");
+    assert_eq!(sync_status(&open, &y_source), "error");
+    (rig, open, y_account)
+}
+
+#[tokio::test]
+async fn a_refused_password_on_one_account_leaves_the_other_draining_and_marks_it() {
+    let (rig, open, y) =
+        another_accounts_failure_strands_nothing(|| Reply::status(401), false).await;
+    let marks = rig.sync().auth_failures(&open).await.unwrap();
+    assert_eq!(marks.get(&y), Some(&serde_json::Value::Bool(true)));
+}
+
+#[tokio::test]
+async fn an_offline_account_leaves_the_other_draining() {
+    let (rig, open, _) =
+        another_accounts_failure_strands_nothing(|| Reply::status(503), false).await;
+    assert!(rig.sync().auth_failures(&open).await.unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn a_whole_sync_drains_past_another_accounts_refused_password() {
+    let (rig, open, y) =
+        another_accounts_failure_strands_nothing(|| Reply::status(401), true).await;
+    let marks = rig.sync().auth_failures(&open).await.unwrap();
+    assert_eq!(marks.get(&y), Some(&serde_json::Value::Bool(true)));
+}
+
+#[tokio::test]
+async fn a_whole_sync_drains_past_an_offline_account() {
+    another_accounts_failure_strands_nothing(|| Reply::status(503), true).await;
+}
+
+/// An account marked from an earlier refused pull holds its edit; the Retry's pull that lands
+/// clears the mark but must not show the calendar `ok` while the edit is still queued.
+#[tokio::test]
+async fn a_marked_accounts_held_edit_keeps_its_calendar_out_of_ok() {
+    let rig = Rig::new(true).await;
+    let open = rig.open().await;
+    let (_, source) = rig.connect(&open).await;
+    rig.set_hook(|seen, reply| {
+        if seen.method == "REPORT" {
+            Reply::status(401)
+        } else {
+            reply
+        }
+    });
+    rig.sync().sync_source(&open, &source).await.unwrap_err();
+    rig.clear_hook();
+    let id = new_event(&open, "Standup");
+
+    rig.sync()
+        .sync_source_and_drain(&open, &source)
+        .await
+        .unwrap();
+    assert_eq!(queued(&open), std::slice::from_ref(&id));
+    assert_eq!(sync_status(&open, &source), "error");
+
+    rig.sync()
+        .sync_source_and_drain(&open, &source)
+        .await
+        .unwrap();
+    assert!(queued(&open).is_empty());
+    assert_eq!(sync_status(&open, &source), "ok");
+}

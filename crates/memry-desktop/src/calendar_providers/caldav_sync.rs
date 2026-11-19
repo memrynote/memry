@@ -193,7 +193,7 @@ impl CaldavSync {
     }
 
     /// `setCaldavAuthFailure`: writes only when the mark changes.
-    async fn set_auth_failure(
+    pub(super) async fn set_auth_failure(
         &self,
         open: &OpenVault,
         account: &str,

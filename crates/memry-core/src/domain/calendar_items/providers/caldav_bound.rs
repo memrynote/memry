@@ -249,6 +249,28 @@ fn write_back(
     } else {
         let remote = json!({ "startAt": instance.start_at, "isAllDay": instance.is_all_day });
         super::google::apply_remote_fields(conn, target, &remote, zone, device_id, now_ms)?;
+        // `applyProviderWriteback`: a `broad` or `time_and_text` task takes the text too.
+        let mode: Option<String> = conn
+            .query_row(
+                "SELECT writeback_mode FROM calendar_bindings WHERE id = ?1",
+                [&binding.id],
+                |row| row.get(0),
+            )
+            .optional()
+            .map_err(failed)?;
+        if target.source_type == "task"
+            && matches!(mode.as_deref(), Some("broad" | "time_and_text"))
+        {
+            let id = &target.source_id;
+            crate::domain::tasks::set_title(conn, id, &instance.title, device_id, now_ms)?;
+            crate::domain::tasks::set_description(
+                conn,
+                id,
+                instance.description.as_deref(),
+                device_id,
+                now_ms,
+            )?;
+        }
     }
     if let Some(mut input) = super::upsert_input(conn, target, zone, zone_id, named)? {
         input["caldavRaw"] = json!(object.data);

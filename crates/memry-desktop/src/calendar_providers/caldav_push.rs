@@ -77,6 +77,8 @@ pub(super) struct Pass {
     sources: Vec<CalendarSourceRecord>,
     failures: Map<String, Value>,
     attention: Mutex<Vec<String>>,
+    /// Accounts whose server refused, limited or did not answer a write this pass.
+    halted: Mutex<Vec<String>>,
 }
 
 impl Pass {
@@ -105,8 +107,10 @@ impl Pass {
 
 impl CaldavSync {
     /// Writes out every queued item routed to a CalDAV calendar this device can write to. A rate
-    /// limit, an unreachable server or a refused password ends the pass with the item still
-    /// queued; any other failure stays on its item and the pass goes on.
+    /// limit, an unreachable server or a refused password (which marks the account) holds that
+    /// account's items for the rest of the pass; other accounts go on, each on its own as in
+    /// `syncCaldavNow`. Any other failure stays on its item. A calendar left with a held or failed
+    /// item is flagged (`DrainSummary::attention`).
     pub async fn drain(&self, open: &OpenVault) -> Result<DrainSummary, SyncError> {
         let _one = self.draining.lock().await;
         let calendar = self.calendar(open).await?;
@@ -117,6 +121,7 @@ impl CaldavSync {
             sources,
             failures: self.auth_failures(open).await?,
             attention: Mutex::default(),
+            halted: Mutex::default(),
         };
         let reader = pass.calendar.clone();
         let enabled =
@@ -125,7 +130,7 @@ impl CaldavSync {
                 .is_none_or(|v| v != "false");
         let mut held = Vec::new();
         for account in pass.sources.iter().filter(|s| live(s, "account")) {
-            if self.usable(&pass, account).await?.is_some() {
+            if self.transport(account).await?.is_some() {
                 held.push(CALDAV.to_owned());
                 break;
             }
@@ -145,12 +150,6 @@ impl CaldavSync {
                 Ok(Outcome::Waiting) => summary.waiting += 1,
                 Err(error) => {
                     summary.failed += 1;
-                    let halt = matches!(
-                        error,
-                        SyncError::Dav(
-                            DavError::Auth(_) | DavError::RateLimited(_) | DavError::Transient(_)
-                        )
-                    );
                     tracing::warn!(
                         scope = SCOPE,
                         source_type = item.source_type,
@@ -164,9 +163,6 @@ impl CaldavSync {
                         error.to_string(),
                     );
                     blocking(move || writer.push_failed(t, id, text)).await??;
-                    if halt {
-                        break;
-                    }
                 }
             }
         }
@@ -189,19 +185,6 @@ impl CaldavSync {
             .into_inner()
             .unwrap_or_else(PoisonError::into_inner);
         Ok(summary)
-    }
-
-    /// `writableTransportFor`'s account half: a live account, not refused, with a password here.
-    async fn usable(
-        &self,
-        pass: &Pass,
-        account: &CalendarSourceRecord,
-    ) -> Result<Option<Transport>, SyncError> {
-        let id = account.account_id.as_deref().unwrap_or_default();
-        if pass.failures.get(id) == Some(&Value::Bool(true)) {
-            return Ok(None);
-        }
-        self.transport(account).await
     }
 
     pub(super) async fn plan(
@@ -260,15 +243,39 @@ impl CaldavSync {
         let Some(account) = source.account_id.as_deref().and_then(|id| pass.account(id)) else {
             return self.skip(pass, item).await;
         };
-        let Some(transport) = self.usable(pass, account).await? else {
+        let id = account.account_id.clone().unwrap_or_default();
+        let halted = pass
+            .halted
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .contains(&id);
+        // `writableTransportFor`: a refused account, or one this pass held, writes nothing; its
+        // calendar must not read `ok` after the pull while the item waits.
+        if halted || pass.failures.get(&id) == Some(&Value::Bool(true)) {
+            pass.needs_attention(source);
+            return Ok(Outcome::Waiting);
+        }
+        let Some(transport) = self.transport(account).await? else {
             return Ok(Outcome::Waiting);
         };
         let written = self
             .send(open, pass, item, held, source, plan, &transport)
             .await;
         // A write that failed leaves the item queued; the calendar's sync state shows it.
-        if written.is_err() {
+        if let Err(error) = &written {
             pass.needs_attention(source);
+            if let SyncError::Dav(
+                DavError::Auth(_) | DavError::RateLimited(_) | DavError::Transient(_),
+            ) = error
+            {
+                pass.halted
+                    .lock()
+                    .unwrap_or_else(PoisonError::into_inner)
+                    .push(id.clone());
+            }
+            if error.is_auth() {
+                self.set_auth_failure(open, &id, true).await?;
+            }
         }
         written
     }
