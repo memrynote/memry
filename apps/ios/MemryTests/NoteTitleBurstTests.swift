@@ -668,11 +668,142 @@ struct NoteTitleBurstTests {
         try await expectTitle(f, "titleかなx")
     }
 
+    /// The candidate an input method shows is not its marked text: `かな`
+    /// marked, `仮名` chosen. The confirm the field refused carries the
+    /// candidate, and the title keeps it rather than the reading.
+    @Test(.timeLimit(.minutes(1))) func a_return_confirming_a_candidate_keeps_the_candidate() async throws {
+        let f = try await newNote()
+        let (window, field) = try await open(f)
+        defer { window.isHidden = true }
+
+        for character in "title" { key(String(character), in: window, title: field) }
+        field.setMarkedText("かな", selectedRange: NSRange(location: 2, length: 0))
+        try await settle(f)
+        let press = HardwarePress(.keyboardReturnOrEnter, "\r")
+        field.pressesBegan([press], with: nil)
+        confirm(in: field, with: "仮名")
+        field.pressesEnded([press], with: nil)
+        try await settle(f)
+
+        #expect(field.text == "title仮名")
+        key("x", in: window, title: field)
+        try await settle(f)
+        #expect(field.text == "title仮名x")
+    }
+
+    /// A composition in the middle of the title: the confirmed text lands
+    /// where it was, with the caret after it.
+    @Test(.timeLimit(.minutes(1))) func a_confirm_in_the_middle_of_the_title_keeps_its_place() async throws {
+        let f = try await newNote()
+        let (window, field) = try await open(f)
+        defer { window.isHidden = true }
+
+        for character in "abcd" { key(String(character), in: window, title: field) }
+        try await Task.sleep(for: .milliseconds(300))
+        field.selectedRange = NSRange(location: 2, length: 0)
+        try await Task.sleep(for: .milliseconds(300))
+        field.setMarkedText("かな", selectedRange: NSRange(location: 2, length: 0))
+        try await settle(f)
+        let press = HardwarePress(.keyboardReturnOrEnter, "\r")
+        field.pressesBegan([press], with: nil)
+        confirm(in: field)
+        field.pressesEnded([press], with: nil)
+        try await settle(f)
+
+        #expect(field.text == "abかなcd")
+        key("て", in: window, title: field)
+        try await settle(f)
+        #expect(field.text == "abかなてcd")
+    }
+
+    /// After a Return confirmed `か`, `ki` composes `き` and two Backspaces
+    /// delete it while the next Return is already down. The deleted
+    /// composition is no confirm and does not come back.
+    @Test(.timeLimit(.minutes(1))) func a_composition_deleted_while_the_next_return_is_down_stays_deleted() async throws {
+        let f = try await newNote()
+        let (window, field) = try await open(f)
+        defer { window.isHidden = true }
+
+        for character in "title" { key(String(character), in: window, title: field) }
+        field.setMarkedText("か", selectedRange: NSRange(location: 1, length: 0))
+        try await settle(f)
+        let press = HardwarePress(.keyboardReturnOrEnter, "\r")
+        field.pressesBegan([press], with: nil)
+        confirm(in: field)
+        field.pressesEnded([press], with: nil)
+        try await settle(f)
+        #expect(field.text == "titleか")
+
+        field.setMarkedText("き", selectedRange: NSRange(location: 1, length: 0))
+        try await settle(f)
+        field.pressesBegan([press], with: nil)
+        field.setMarkedText("", selectedRange: NSRange(location: 0, length: 0))
+        field.unmarkText()
+        try await settle(f)
+        #expect(field.text == "titleか", "the deleted composition came back")
+        field.pressesEnded([press], with: nil)
+        try await settle(f)
+        #expect(field.text == "titleか")
+    }
+
+    /// A cancelled Return press leaves the Return marked as down, and the
+    /// input method kept its composition after the refused confirm. A
+    /// composition deleted after that is still deleted.
+    @Test(.timeLimit(.minutes(1))) func a_composition_deleted_after_a_cancelled_return_stays_deleted() async throws {
+        let f = try await newNote()
+        let (window, field) = try await open(f)
+        defer { window.isHidden = true }
+
+        for character in "title" { key(String(character), in: window, title: field) }
+        field.setMarkedText("き", selectedRange: NSRange(location: 1, length: 0))
+        try await settle(f)
+        let press = HardwarePress(.keyboardReturnOrEnter, "\r")
+        field.pressesBegan([press], with: nil)
+        let marked = NSRange(location: 5, length: 1)
+        #expect(field.delegate?.textView?(field, shouldChangeTextInRanges: [NSValue(range: marked)], replacementText: "き") == false)
+        field.pressesCancelled([press], with: nil)
+        try await settle(f)
+        field.setMarkedText("", selectedRange: NSRange(location: 0, length: 0))
+        field.unmarkText()
+        try await settle(f)
+        #expect(field.text == "title", "the deleted composition came back")
+    }
+
+    /// Romaji `kan` with the Return down before the `n` is a kana: the
+    /// input method confirms `かn` as `か`, which the field refuses, marks
+    /// the leftover `n`, commits it, and drops the marked text, all in the
+    /// Return's turn (logged on the simulator with a hardware keyboard).
+    /// The title keeps `か`.
+    @Test(.timeLimit(.minutes(1))) func a_split_confirm_keeps_the_confirmed_text() async throws {
+        let f = try await newNote()
+        let (window, field) = try await open(f)
+        defer { window.isHidden = true }
+
+        for character in "title" { key(String(character), in: window, title: field) }
+        field.setMarkedText("かn", selectedRange: NSRange(location: 2, length: 0))
+        try await settle(f)
+        let press = HardwarePress(.keyboardReturnOrEnter, "\r")
+        field.pressesBegan([press], with: nil)
+        let marked = NSRange(location: 5, length: 2)
+        #expect(field.delegate?.textView?(field, shouldChangeTextInRanges: [NSValue(range: marked)], replacementText: "か") == false)
+        field.setMarkedText("n", selectedRange: NSRange(location: 1, length: 0))
+        // The field let the leftover's commit through on the simulator.
+        field.insertText("n")
+        field.pressesEnded([press], with: nil)
+        try await settle(f)
+
+        #expect(field.text == "titleかn")
+        key("x", in: window, title: field)
+        try await settle(f)
+        #expect(field.text == "titleかnx")
+    }
+
     /// An input method's confirm as the keyboard runs it: it asks the
-    /// field's delegate to replace the composition with its text, and drops
-    /// the composition when the delegate refuses.
-    private func confirm(in field: UITextView) {
-        guard let marked = field.markedTextRange, let text = field.text(in: marked) else { return }
+    /// field's delegate to replace the composition with `text` (its marked
+    /// text unless given), and drops the composition when the delegate
+    /// refuses.
+    private func confirm(in field: UITextView, with text: String? = nil) {
+        guard let marked = field.markedTextRange, let text = text ?? field.text(in: marked) else { return }
         let range = NSRange(
             location: field.offset(from: field.beginningOfDocument, to: marked.start),
             length: field.offset(from: marked.start, to: marked.end)
