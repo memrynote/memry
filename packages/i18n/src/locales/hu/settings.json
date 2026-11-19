@@ -2238,6 +2238,10 @@
         "prevVault": {
           "label": "Előző széf",
           "description": "Ugrás az oldalsáv előző széfére"
+        },
+        "todayJournal": {
+          "label": "Mai napló",
+          "description": "A napló megnyitása a mai bejegyzésnél"
         }
       },
       "tabs": {
