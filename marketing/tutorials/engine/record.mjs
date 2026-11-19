@@ -6,16 +6,20 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { ScreenRecorder } from '../../engine/screen-rec.mjs'
 import { connect } from './pw.mjs'
-import { Recorder, installCursor, sleep } from './rec.mjs'
+import { CdpScreencast, Recorder, installCursor, sleep } from './rec.mjs'
 
 // Silence before and after each line; a scene can set its own `lead` and `tail` in narration.json
 // (the title card needs time for the logo before the first word, the end card a hold after the last).
 const LEAD = 0.5
 const TAIL = 0.7
 
-/** `page` films that page instead of the app (the social clips' terminal and diagram scenes). */
-export async function record(dir, { page: given } = {}) {
+/**
+ * `page` (a Playwright page) films that page through its screencast instead of the app (the
+ * social clips' terminal and diagram scenes); the app is filmed from the screen.
+ */
+export async function record(dir, { page: given, backend } = {}) {
   const N = JSON.parse(fs.readFileSync(path.join(dir, 'narration.json'), 'utf8'))
   const mod = await import(pathToFileURL(path.join(dir, 'scenes.mjs')).href)
   const missing = N.scenes.filter((s) => !mod.scenes[s.id]).map((s) => s.id)
@@ -23,7 +27,11 @@ export async function record(dir, { page: given } = {}) {
 
   const { browser, page } = given ? { page: given } : await connect()
   const out = path.join(dir, 'out/take')
-  const rec = new Recorder(page, out)
+  const rec = new Recorder(
+    page,
+    out,
+    backend ?? (given ? new CdpScreencast(given) : new ScreenRecorder(browser))
+  )
   const timeline = []
   let scene = null
 
@@ -59,42 +67,68 @@ export async function record(dir, { page: given } = {}) {
     /** Viewport position of the text caret, for zooming on what is being typed. */
     caret: () =>
       page.evaluate(() => {
-        const r = getSelection().getRangeAt(0).getBoundingClientRect()
+        const range = getSelection().getRangeAt(0)
+        let r = range.getBoundingClientRect()
+        // WebKit gives the caret in an empty block no box; the block has one.
+        if (!r.height) {
+          const node = range.startContainer
+          r = (
+            node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement
+          ).getBoundingClientRect()
+        }
         return { x: r.x, y: r.y + r.height / 2 }
       })
   }
 
-  await installCursor(page)
-  await mod.setup?.(ctx)
-  await rec.start()
-  for (const s of N.scenes) {
-    const a = N.silent
-      ? null
-      : JSON.parse(fs.readFileSync(path.join(dir, 'vo', `${s.id}.json`), 'utf8')).alignment
-    scene = {
-      id: s.id,
-      t: rec.now(),
-      vo: rec.now() + (s.lead ?? (N.silent ? 0 : LEAD)),
-      tail: s.tail ?? (N.silent ? 0 : TAIL),
-      dur: a ? a.character_end_times_seconds.at(-1) : s.dur,
-      chars: a ? a.characters.join('') : '',
-      a
+  try {
+    await installCursor(page)
+    await mod.setup?.(ctx)
+    try {
+      await rec.start()
+      for (const s of N.scenes) {
+        const a = N.silent
+          ? null
+          : JSON.parse(fs.readFileSync(path.join(dir, 'vo', `${s.id}.json`), 'utf8')).alignment
+        scene = {
+          id: s.id,
+          t: rec.now(),
+          vo: rec.now() + (s.lead ?? (N.silent ? 0 : LEAD)),
+          tail: s.tail ?? (N.silent ? 0 : TAIL),
+          dur: a ? a.character_end_times_seconds.at(-1) : s.dur,
+          chars: a ? a.characters.join('') : '',
+          a
+        }
+        rec.mark('scene', { id: s.id })
+        timeline.push(scene)
+        await mod.scenes[s.id](ctx)
+        await ctx.end()
+        if (mod.after?.[s.id]) await mod.after[s.id](ctx)
+      }
+      await rec.stop()
+    } catch (error) {
+      // A failed take leaves no recording running and no file behind.
+      try {
+        await rec.abort()
+      } catch (abortError) {
+        console.error(`  the recorder did not end cleanly: ${abortError.message}`)
+      }
+      throw error
     }
-    rec.mark('scene', { id: s.id })
-    timeline.push(scene)
-    await mod.scenes[s.id](ctx)
-    await ctx.end()
-    if (mod.after?.[s.id]) await mod.after[s.id](ctx)
+    const film = timeline.map(({ id, t, vo, dur, end }) => ({
+      id,
+      t: rec.remap(t),
+      vo: rec.remap(vo),
+      dur,
+      end: rec.remap(end)
+    }))
+    fs.writeFileSync(path.join(out, 'timeline.json'), JSON.stringify(film, null, 1))
+    return film
+  } finally {
+    // After a failed take the app may be gone too; the take's own error is the one that matters.
+    try {
+      await browser?.close()
+    } catch (error) {
+      console.error(`  the WebDriver session did not close: ${error.message}`)
+    }
   }
-  await rec.stop()
-  const film = timeline.map(({ id, t, vo, dur, end }) => ({
-    id,
-    t: rec.remap(t),
-    vo: rec.remap(vo),
-    dur,
-    end: rec.remap(end)
-  }))
-  fs.writeFileSync(path.join(out, 'timeline.json'), JSON.stringify(film, null, 1))
-  await browser?.close()
-  return film
 }

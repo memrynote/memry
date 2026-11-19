@@ -351,6 +351,8 @@ mod seams_tls;
 mod seams_transport;
 #[path = "settings_service.rs"]
 mod settings_service;
+#[path = "sticky_drafts.rs"]
+mod sticky_drafts;
 #[path = "sync_backend.rs"]
 mod sync_backend;
 #[path = "sync_host_clients.rs"]
@@ -367,6 +369,8 @@ mod tag_objects;
 mod tag_schema;
 #[path = "tags.rs"]
 mod tags;
+#[path = "task_defaults.rs"]
+mod task_defaults;
 #[path = "telemetry_flush.rs"]
 mod telemetry_flush;
 #[path = "telemetry_report_posts.rs"]

@@ -13,7 +13,8 @@
 //!   when its bytes or text change (the signature) or the input version moves. A failed embed
 //!   stores nothing and is tried again on the next event or vault open; a pass gives up after
 //!   three failures in a row (:21-24, 140-150).
-//! - **Gated before every image**: the session's cancel token, the vault still being the one
+//! - **Gated before every image**: the session's cancel token (read again by the service when it
+//!   takes the request, [`EmbeddingService::embed_image`]), the vault still being the one
 //!   the work started on, and `ai.enabled` with `ai.imageEmbeddings` (`isImageEmbeddingEnabled`).
 //!   The listing's drop of vectors whose image is gone runs whatever the setting (:120-126).
 //! - **Departures.** The reconcile and rebuild wait while the index builds, as the note lane's
@@ -202,7 +203,7 @@ impl ImageEmbeddingProjector {
                 text: interleaved,
                 soft_tokens: page_budget.then_some(PAGE_SOFT_TOKENS),
             };
-            let Some(vector) = self.service.embed_image(input) else {
+            let Some(vector) = self.service.embed_image(input, work.cancel) else {
                 return Ok(false);
             };
             if !self.may_embed(work) {
