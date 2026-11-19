@@ -119,8 +119,9 @@ pub trait ImportSink: Send + Sync {
     /// `archiveTask`: Memry has no cancelled state.
     fn archive_task(&self, id: &str) -> Result<(), SinkError>;
 
-    /// `resolveJournalEntryId`: the id the entry of `date` has or will be created under.
-    fn journal_entry_id(&self, date: &str) -> String;
+    /// `resolveJournalEntryId`: the id the entry of `date` has or will be created under. `Err`
+    /// fails that entry, as Electron's throw did.
+    fn journal_entry_id(&self, date: &str) -> Result<String, SinkError>;
 
     /// `readJournalEntry`: the stored entry of `date`, if any.
     fn read_journal_entry(&self, date: &str) -> Result<Option<JournalEntry>, SinkError>;

@@ -32,7 +32,7 @@ pub use map::{
     CalendarFile, ConvertedBody, ParsedTask, TaskState, classify_calendar_stem, convert_body,
     first_heading, lines_scanned, parse_tags, strip_first_heading, task_placeholder,
 };
-pub use scan::{LINK_NOT_FOLLOWED, MAX_FOLDER_DEPTH, OUTSIDE_PICK, RESERVED_NAME, TOO_DEEP};
+pub use scan::{ALREADY_WALKED, LINK_NOT_FOLLOWED, MAX_FOLDER_DEPTH, RESERVED_NAME, TOO_DEEP};
 
 use super::assets::{AssetNote, RealRoots, resolve_co_located_assets};
 use super::markdown::object_entries;
@@ -259,7 +259,7 @@ impl Run<'_> {
             .sink
             .read_journal_entry(&planned.date)
             .map_err(|e| e.0)?;
-        let entry_id = self.sink.journal_entry_id(&planned.date);
+        let entry_id = self.sink.journal_entry_id(&planned.date).map_err(|e| e.0)?;
         let markdown = self.body_for_write(&prepared, &planned.path, &planned.root, &entry_id, ctx);
 
         let (content, tags, mut properties) = match existing {

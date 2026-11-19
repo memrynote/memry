@@ -1,11 +1,14 @@
 //! The folder scan of `noteplan-importer.ts` (`scanSource`, `collectArea`) and `mapFiles`: the
 //! picked NotePlan folder to a plan of notes and journal entries, writing nothing.
 //!
-//! Electron followed no link and skipped any it met without a word, and it walked any depth.
-//! Here every refusal is reported: a link, a folder past [`MAX_FOLDER_DEPTH`], a folder whose
-//! name no Windows device can create, an area folder that resolves outside the pick, and a
-//! folder that cannot be listed.
+//! An area folder that is a link is followed wherever it points, as Electron's `fs.stat` did:
+//! a synced install's data folder often is one. Below an area, Electron followed no link and
+//! skipped any it met without a word, and it walked any depth. Here every refusal is reported:
+//! a link below an area, an area link that does not resolve, a folder already walked through
+//! another link, a folder past [`MAX_FOLDER_DEPTH`], a folder whose name no Windows device can
+//! create, and a folder that cannot be listed.
 
+use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -25,7 +28,7 @@ const CALENDAR_FOLDER: &str = "NotePlan/Calendar";
 const ARCHIVE_FOLDER: &str = "NotePlan/Archive";
 
 pub const LINK_NOT_FOLLOWED: &str = "Symbolic link not followed";
-pub const OUTSIDE_PICK: &str = "Folder resolves outside the selected folder";
+pub const ALREADY_WALKED: &str = "Folder already imported through another link";
 pub const TOO_DEEP: &str = "Folder nested too deep";
 pub const RESERVED_NAME: &str = "Folder name is reserved on Windows";
 const NOT_CALENDAR: &str = "Not a NotePlan calendar filename";
@@ -84,7 +87,7 @@ fn is_reserved_folder(name: &str) -> bool {
 
 /// `scanSource`: the areas of one picked folder, or the whole folder as notes when it has none.
 pub fn scan_source(source: &Path, plan: &mut Plan, ctx: &mut ImportContext) {
-    let real_source = fs::canonicalize(source).unwrap_or_else(|_| source.to_path_buf());
+    let mut visited = HashSet::new();
     let mut matched = false;
     for (name, area) in [
         ("Calendar", Area::Calendar),
@@ -92,24 +95,44 @@ pub fn scan_source(source: &Path, plan: &mut Plan, ctx: &mut ImportContext) {
         ("@Archive", Area::Archive),
     ] {
         let dir = source.join(name);
-        if !fs::metadata(&dir).is_ok_and(|meta| meta.is_dir()) {
-            continue;
+        match fs::metadata(&dir) {
+            Ok(meta) if meta.is_dir() => {
+                matched = true;
+                if first_visit(&dir, &mut visited) {
+                    collect_area(&dir, source, area, &mut visited, plan, ctx);
+                } else {
+                    ctx.report_skipped(name, Some(ImportText::from(ALREADY_WALKED)));
+                }
+            }
+            // A link whose target is missing or loops: Electron's `isDirectory` read it as
+            // absent and said nothing.
+            Err(error) if fs::symlink_metadata(&dir).is_ok() => {
+                ctx.report_failed(name, &error.to_string());
+            }
+            _ => {}
         }
-        matched = true;
-        // `Notes` may itself be a link (the data folder of a synced install often is one).
-        if !fs::canonicalize(&dir).is_ok_and(|real| real.starts_with(&real_source)) {
-            ctx.report_skipped(name, Some(ImportText::from(OUTSIDE_PICK)));
-            continue;
-        }
-        collect_area(&dir, source, area, plan, ctx);
     }
     if !matched {
-        collect_area(source, source, Area::Notes, plan, ctx);
+        first_visit(source, &mut visited);
+        collect_area(source, source, Area::Notes, &mut visited, plan, ctx);
     }
 }
 
+/// Whether `dir` is walked for the first time, by its real path: two area links to one folder,
+/// or `Notes` linked back to the pick, walk each folder once.
+fn first_visit(dir: &Path, visited: &mut HashSet<PathBuf>) -> bool {
+    fs::canonicalize(dir).map_or(true, |real| visited.insert(real))
+}
+
 /// `collectArea`, depth first, each folder's entries by name; iterative.
-fn collect_area(dir: &Path, root: &Path, area: Area, plan: &mut Plan, ctx: &mut ImportContext) {
+fn collect_area(
+    dir: &Path,
+    root: &Path,
+    area: Area,
+    visited: &mut HashSet<PathBuf>,
+    plan: &mut Plan,
+    ctx: &mut ImportContext,
+) {
     let mut stack = vec![match sorted_entries(dir, "") {
         Ok(entries) => entries.into_iter(),
         Err(error) => {
@@ -133,6 +156,8 @@ fn collect_area(dir: &Path, root: &Path, area: Area, plan: &mut Plan, ctx: &mut 
                 ctx.report_skipped(&rel, Some(ImportText::from(RESERVED_NAME)));
             } else if stack.len() > MAX_FOLDER_DEPTH {
                 ctx.report_skipped(&rel, Some(ImportText::from(TOO_DEEP)));
+            } else if !first_visit(&path, visited) {
+                ctx.report_skipped(&rel, Some(ImportText::from(ALREADY_WALKED)));
             } else {
                 match sorted_entries(&path, &rel) {
                     Ok(entries) => stack.push(entries.into_iter()),

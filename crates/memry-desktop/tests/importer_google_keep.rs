@@ -112,7 +112,7 @@ impl ImportSink for Sink {
         unreachable!("Google Keep creates no tasks")
     }
 
-    fn journal_entry_id(&self, _: &str) -> String {
+    fn journal_entry_id(&self, _: &str) -> Result<String, SinkError> {
         unreachable!("Google Keep writes no journal entries")
     }
 

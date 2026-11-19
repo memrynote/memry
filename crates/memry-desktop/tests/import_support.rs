@@ -28,6 +28,8 @@ pub struct RecordingSink {
     pub nested_subtasks: bool,
     /// The entries the generator's `readJournalEntry` finds, by date.
     pub journals: HashMap<String, JournalEntry>,
+    /// `resolveJournalEntryId` throws.
+    pub fail_journal_id: bool,
 }
 
 impl RecordingSink {
@@ -39,6 +41,7 @@ impl RecordingSink {
             inbox: Some("inbox".to_owned()),
             nested_subtasks: true,
             journals: HashMap::new(),
+            fail_journal_id: false,
         }
     }
 
@@ -143,8 +146,11 @@ impl ImportSink for RecordingSink {
         Ok(())
     }
 
-    fn journal_entry_id(&self, date: &str) -> String {
-        format!("j{date}")
+    fn journal_entry_id(&self, date: &str) -> Result<String, SinkError> {
+        if self.fail_journal_id {
+            return Err(SinkError("no journal id".to_owned()));
+        }
+        Ok(format!("j{date}"))
     }
 
     fn read_journal_entry(&self, date: &str) -> Result<Option<JournalEntry>, SinkError> {

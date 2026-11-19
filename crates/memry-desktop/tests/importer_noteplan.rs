@@ -8,8 +8,8 @@ use std::path::{Path, PathBuf};
 
 use memry_core::markdown::frontmatter::{YamlMap, YamlValue};
 use memry_desktop::import::noteplan::{
-    LINK_NOT_FOLLOWED, MAX_FOLDER_DEPTH, NotePlanImporter, OUTSIDE_PICK, RESERVED_NAME, TOO_DEEP,
-    convert_body, lines_scanned, task_placeholder,
+    ALREADY_WALKED, LINK_NOT_FOLLOWED, MAX_FOLDER_DEPTH, NotePlanImporter, RESERVED_NAME, TOO_DEEP,
+    convert_body, first_heading, lines_scanned, task_placeholder,
 };
 use memry_desktop::import::{ImportContext, ImportInput, ImportSummary, Importer, JournalEntry};
 use memry_test_kit::{assert_steps_at_most, on_small_stack, output_bound, proptest_config};
@@ -260,23 +260,125 @@ fn links_are_never_followed_and_each_is_reported() {
     assert_eq!(skipped_for(&summary, LINK_NOT_FOLLOWED), 2);
 }
 
+fn titles(writes: &[Value]) -> Vec<Value> {
+    ops(writes, "createNoteAsWritten")
+        .iter()
+        .map(|n| n["title"].clone())
+        .collect()
+}
+
+/// A synced install's data folder is often a link: Electron followed an area link wherever it
+/// pointed, and so does this.
 #[cfg(unix)]
 #[test]
-fn an_area_folder_linked_outside_the_pick_is_refused() {
+fn an_area_folder_linked_outside_the_pick_is_imported() {
     let outside = tempfile::tempdir().unwrap();
-    write(outside.path(), "n.txt", "# Elsewhere\n");
+    write(
+        outside.path(),
+        "sub/n.txt",
+        "# Elsewhere
+",
+    );
     let dir = tempfile::tempdir().unwrap();
-    write(dir.path(), "Calendar/2026.txt", "# Year\n");
+    write(
+        dir.path(),
+        "Calendar/2026.txt",
+        "# Year
+",
+    );
     std::os::unix::fs::symlink(outside.path(), dir.path().join("Notes")).unwrap();
 
     let (writes, summary) = run(dir.path());
 
-    let titles: Vec<_> = ops(&writes, "createNoteAsWritten")
-        .iter()
-        .map(|n| n["title"].clone())
-        .collect();
-    assert_eq!(titles, ["Year"]);
-    assert_eq!(skipped_for(&summary, OUTSIDE_PICK), 1);
+    assert_eq!(titles(&writes), ["Year", "Elsewhere"]);
+    assert_eq!(note(&writes, "Elsewhere")["folder"], "NotePlan/sub");
+    assert_eq!(summary.skipped, 0);
+    assert!(summary.failed.is_empty());
+}
+
+#[cfg(unix)]
+#[test]
+fn an_area_link_inside_the_pick_is_walked() {
+    let dir = tempfile::tempdir().unwrap();
+    write(dir.path(), "store/notes/a.txt", "# A\n");
+    std::os::unix::fs::symlink(dir.path().join("store/notes"), dir.path().join("Notes")).unwrap();
+
+    let (writes, summary) = run(dir.path());
+
+    assert_eq!(titles(&writes), ["A"]);
+    assert_eq!(note(&writes, "A")["folder"], "NotePlan");
+    assert_eq!(summary.skipped, 0);
+}
+
+/// `Notes` pointing back at the pick would walk `Calendar` a second time as notes, and two
+/// links pointing at each other never resolve: each folder is walked once and the loop is
+/// reported.
+#[cfg(unix)]
+#[test]
+fn an_area_link_cycle_terminates() {
+    use std::os::unix::fs::symlink;
+    let dir = tempfile::tempdir().unwrap();
+    write(dir.path(), "Calendar/20260812.txt", "day\n");
+    write(dir.path(), "loose.txt", "# Loose\n");
+    symlink(dir.path(), dir.path().join("Notes")).unwrap();
+    symlink(dir.path().join("loop"), dir.path().join("@Archive")).unwrap();
+    symlink(dir.path().join("@Archive"), dir.path().join("loop")).unwrap();
+
+    let (writes, summary) = run(dir.path());
+
+    assert_eq!(ops(&writes, "createJournalEntry").len(), 1);
+    assert_eq!(titles(&writes), ["Loose"]);
+    assert_eq!(skipped_for(&summary, ALREADY_WALKED), 1);
+    let failed: Vec<_> = summary.failed.iter().map(|f| f.item.as_str()).collect();
+    assert_eq!(failed, ["@Archive"]);
+}
+
+#[cfg(unix)]
+#[test]
+fn an_area_link_to_a_missing_target_is_reported() {
+    let dir = tempfile::tempdir().unwrap();
+    write(dir.path(), "Calendar/2026.txt", "# Year\n");
+    std::os::unix::fs::symlink(dir.path().join("gone"), dir.path().join("Notes")).unwrap();
+
+    let (writes, summary) = run(dir.path());
+
+    assert_eq!(titles(&writes), ["Year"]);
+    let failed: Vec<_> = summary.failed.iter().map(|f| f.item.as_str()).collect();
+    assert_eq!(failed, ["Notes"]);
+}
+
+/// `resolveJournalEntryId` threw into the entry's catch: that entry fails, the rest import.
+#[test]
+fn a_journal_id_the_sink_cannot_resolve_fails_that_entry() {
+    let dir = tempfile::tempdir().unwrap();
+    write(dir.path(), "Calendar/20260812.txt", "* task\n");
+    write(dir.path(), "Notes/a.txt", "# A\n");
+
+    let (writes, summary) = run_sink(dir.path(), |sink| sink.fail_journal_id = true);
+
+    assert!(ops(&writes, "createJournalEntry").is_empty());
+    assert!(ops(&writes, "createTask").is_empty());
+    assert_eq!(titles(&writes), ["A"]);
+    assert_eq!(summary.failed.len(), 1);
+    assert_eq!(summary.failed[0].error, "no journal id");
+}
+
+/// Departure 8: Electron's `.` stopped at a CR or U+2028 and dropped the rest of the line.
+#[test]
+fn text_after_a_mid_line_cr_or_line_separator_is_kept() {
+    let converted = convert_body("* call\rBob\n* pay\u{2028}rent\n", true);
+    let titles: Vec<_> = converted.tasks.iter().map(|t| t.title.as_str()).collect();
+    assert_eq!(titles, ["call\rBob", "pay\u{2028}rent"]);
+    assert_eq!(
+        first_heading("# Plan\u{2028}B\n").as_deref(),
+        Some("Plan\u{2028}B")
+    );
+}
+
+#[test]
+fn a_wiki_link_in_a_task_title_is_left_as_written() {
+    let converted = convert_body("* call [[Bob Smith]] >2026-01-02\n", true);
+    assert_eq!(converted.tasks[0].title, "call [[Bob Smith]]");
 }
 
 #[test]
