@@ -22,6 +22,7 @@ use memry_core::sync::socket::HintSink;
 use tokio::sync::{broadcast, mpsc, oneshot, watch};
 
 use super::backend::SyncBackend;
+use super::events::OnSyncEvent;
 use super::frames::FrameSink;
 use super::gate::{self, GateDecision, SyncStartGate};
 use super::result::{SyncNowBlockedReason as Blocked, TriggerSyncResult};
@@ -50,6 +51,9 @@ pub struct SupervisorParts {
     pub signals: AuthSignals,
     /// Every status change, at most one per [`STATUS_THROTTLE`], the latest winning.
     pub on_status: Arc<dyn Fn(&SyncStatus) + Send + Sync>,
+    /// The other sync events, each as it happens. Pulled records and quarantines come from a
+    /// pool thread after their page committed; the rest from the loop.
+    pub on_event: OnSyncEvent,
 }
 
 /// How long [`SyncSupervisor::stop_blocking`] waits for the loop.
@@ -294,6 +298,9 @@ impl ReachabilityObserver for Observer {
     }
 }
 
+#[cfg(test)]
+#[path = "supervisor_event_tests.rs"]
+mod event_tests;
 #[cfg(test)]
 #[path = "supervisor_review_tests.rs"]
 mod review_tests;

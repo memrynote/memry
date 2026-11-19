@@ -685,7 +685,7 @@ Note the general lesson, which is why this is written out rather than left
 implied: a transition that names several causes on one line is a transition
 nobody checks has several call sites.
 
-### 2.14.2 A rate-limited verify is not a rejected code
+### 2.14.2 A refused or rate-limited verify keeps the attempt
 
 **Normative.** `POST /auth/otp/verify` sits behind the per-IP OTP limiter
 (`apps/sync-server/src/routes/auth.ts:73-77`, `:244`), which answers `429`
@@ -702,6 +702,8 @@ awaiting-OTP state, so a resend and then the right code finish it. A client that
 left the state while keeping the address would let the right code be spent
 server-side and then refuse the setup token it brought. Only a verify failure
 that is not a `4xx` takes the failure edge
-(`crates/memry-core/src/api/auth/otp.rs:76-94`). Outside the awaiting-OTP state
+(`crates/memry-core/src/api/auth/otp.rs:76-94`), and so does a `200` that
+carries no setup token, since that answer is not the edge to the setup state
+(`crates/memry-core/src/api/auth/otp.rs:95-100`). Outside the awaiting-OTP state
 a client **MUST NOT** send a verify or a resend
 (`crates/memry-core/src/api/auth/otp.rs:110-118`).

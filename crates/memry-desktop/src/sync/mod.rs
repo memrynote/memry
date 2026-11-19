@@ -3,6 +3,7 @@
 
 pub mod backend;
 pub mod error_category;
+pub mod events;
 mod frames;
 pub mod gate;
 pub mod ops;

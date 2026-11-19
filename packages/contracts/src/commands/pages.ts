@@ -4,7 +4,8 @@ import type { CommandMeta } from './types'
  * Commands that open a page as a tab. `go.*` is the sidebar's own click: the
  * page, as it opens from the rail. `create.*` lands the user ready to add, with
  * the intent `newItemViewState` carries for the New menu. A page with no such
- * intent (Journal opens on today's entry) has no `create.*` command.
+ * intent (Journal opens on today's entry) has no `create.*` command. `go.journal`
+ * differs from the rail's click: it always lands on today's entry.
  */
 export const PAGE_COMMANDS = {
   'go.home': {
@@ -23,7 +24,18 @@ export const PAGE_COMMANDS = {
     context: 'app',
     owner: 'pages',
     group: 'navigation',
-    i18nKey: 'commands.goJournal'
+    i18nKey: 'nav.todayJournal',
+    // ⌥⌘T: ⌘T is `tabs.newTab` (the iPad's journal page takes ⌘T). Ctrl+Alt is AltGr on Windows.
+    // GNOME and Ubuntu open a terminal on Ctrl+Alt+T before the app sees it, so Linux gets J.
+    keyboard: {
+      owner: 'app',
+      default: {
+        mac: { key: 't', modifiers: { meta: true, alt: true } },
+        other: { key: 't', modifiers: { meta: true, alt: true } },
+        linux: { key: 'j', modifiers: { meta: true, alt: true } }
+      },
+      skipAltGraph: true
+    }
   },
   'go.calendar': {
     context: 'app',

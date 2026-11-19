@@ -5,12 +5,17 @@ import { runCommand } from './run-command'
 import { isCommandAvailable, resetCommandStoreForTests } from './store'
 import { usePageCommands } from './use-page-commands'
 
-const mocks = vi.hoisted(() => ({ navigate: vi.fn(), disabled: new Set<string>() }))
+const mocks = vi.hoisted(() => ({
+  navigate: vi.fn(),
+  disabled: new Set<string>(),
+  today: '2026-11-18'
+}))
 
 vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() })
 }))
 vi.mock('@/hooks/use-navigate-to-page', () => ({ useNavigateToPage: () => mocks.navigate }))
+vi.mock('@/hooks/use-today', () => ({ useToday: () => mocks.today }))
 vi.mock('@/hooks/use-feature-flags', () => ({
   useFeatureFlags: () => ({ isEnabled: (feature: FeatureKey) => !mocks.disabled.has(feature) })
 }))
@@ -25,7 +30,6 @@ describe('page commands', () => {
   it.each([
     ['go.home', 'home'],
     ['go.inbox', 'inbox'],
-    ['go.journal', 'journal'],
     ['go.calendar', 'calendar'],
     ['go.tasks', 'tasks'],
     ['go.graph', 'graph'],
@@ -36,6 +40,16 @@ describe('page commands', () => {
     await expect(runCommand(command, 'palette')).resolves.toBe('ran')
 
     expect(mocks.navigate).toHaveBeenCalledWith(page)
+  })
+
+  it("go.journal lands on today's day view, whatever day or month the journal tab shows", async () => {
+    renderHook(usePageCommands)
+
+    await expect(runCommand('go.journal', 'keyboard')).resolves.toBe('ran')
+
+    expect(mocks.navigate).toHaveBeenCalledWith('journal', {
+      viewState: { date: mocks.today, journalDrill: { type: 'day' } }
+    })
   })
 
   it.each([

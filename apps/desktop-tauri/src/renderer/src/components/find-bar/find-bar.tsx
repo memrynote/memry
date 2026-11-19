@@ -51,7 +51,9 @@ export const FindBar = memo(function FindBar({
   return (
     <div
       className={cn(
-        'absolute end-4 top-14 z-30',
+        // z-50 outranks the pinned formatting toolbar (z-index 40 in base.css),
+        // which sticks at the same height and would otherwise cover the bar.
+        'absolute end-4 top-14 z-50',
         'transition-all duration-100 ease-out',
         isOpen
           ? 'opacity-100 translate-y-0 pointer-events-auto'

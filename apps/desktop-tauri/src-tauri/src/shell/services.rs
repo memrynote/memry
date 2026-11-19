@@ -63,8 +63,8 @@ fn compiled() -> Compiled {
     }
 }
 
-/// Whether this launch reports telemetry, before the telemetry service exists: the stored
-/// choice, else the build's default.
+/// Whether this launch reports telemetry, before the telemetry service exists: off under the
+/// `MEMRY_TELEMETRY_ENABLED=false` launch switch, else the stored choice, else the build's default.
 pub fn telemetry_enabled(app: &AppHandle<Wry>) -> bool {
     let env = app.state::<LaunchEnv>();
     let stored = memry_desktop::telemetry::TelemetryConfig::new(&app.state::<AppPaths>().data_dir);
