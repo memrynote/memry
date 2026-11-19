@@ -245,6 +245,7 @@ pub const TABLE_MAP: &[TableMapping] = &[
 /// is no stage (the coverage test holds every pending entry to a known one).
 pub fn pending_area(stage: &str) -> Option<&'static str> {
     Some(match stage {
+        "36b" => "settings, vault locks, AI chats or canvas folders",
         // `sync_pending_deletes` holds every local delete until the manifest check sees the
         // server no longer lists it, so a synced vault nearly always has rows; `sync_intents`
         // holds local changes still owed to the server.
